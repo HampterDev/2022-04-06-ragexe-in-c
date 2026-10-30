@@ -327,3 +327,11 @@ Faults of the original found during the rewrite, now fixed:
   past the object; they are now made only for players.
 - The footprint effect launcher passed a float where a 3D vector is read.
 - `CZ_ENTER`'s client tick field was sent with whatever was on the stack; it is now sent as 0.
+
+## Contributing
+
+The aim is a client that behaves exactly like the original exe, apart from the changes
+listed above. If you find a reconstruction bug, anything this build does differently from
+the original 2022-04-06 client, feel free to open a pull request (or an issue, if you have
+not tracked it down yet). Please keep to the conventions above and run `tests\build.bat`
+before you open it.
