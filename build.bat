@@ -1,0 +1,56 @@
+@echo off
+REM build.bat      -> build\main_rebuild.exe  (release)
+REM build.bat dbg  -> build\main_dbg.exe      (optimized, with build\main_dbg.pdb)
+setlocal enabledelayedexpansion
+set "ROOT=%~dp0"
+cd /d "%ROOT%"
+set "BUILD=%ROOT%build"
+if not exist "%BUILD%" mkdir "%BUILD%"
+
+set "WANTDBG="
+for %%a in (%*) do if /i "%%~a"=="dbg" set "WANTDBG=1"
+if defined WANTDBG (
+  set "OUT=main_dbg"
+  set "OBJ=%BUILD%\obj_dbg"
+  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:main_dbg.pdb"
+  set "CDBG=/Z7"
+) else (
+  set "OUT=main_rebuild"
+  set "OBJ=%BUILD%\obj"
+  set "LINKDBG="
+  set "CDBG="
+)
+if not exist "%OBJ%" mkdir "%OBJ%"
+
+call "%ROOT%tools\find_vcvars.bat" || exit /b 1
+call "%VCVARS%" >nul
+set VSCMD_SKIP_SENDTELEMETRY=1
+
+echo [1/3] Dependencies...
+call "%ROOT%vendor\build_vendor.bat"
+if errorlevel 1 ( echo *** VENDOR BUILD FAILED *** & exit /b 1 )
+
+echo [2/3] Compiling...
+type nul > "%BUILD%\sources.rsp"
+type nul > "%BUILD%\%OUT%.objs.rsp"
+for /r "%ROOT%src" %%f in (*.c) do (
+  >> "%BUILD%\sources.rsp" echo "%%f"
+  >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\%%~nf.obj"
+)
+set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\giflib" /I"%ROOT%vendor\curl-7.46.0\include""
+cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources.rsp" /Fo:"%OBJ%\\"
+if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
+>> "%BUILD%\%OUT%.objs.rsp" echo "%ROOT%res\app.res"
+
+echo [3/3] Linking...
+set "VLIB=%BUILD%\vendor"
+link /nologo msvcrt.lib msvcprt.lib @"%BUILD%\%OUT%.objs.rsp" ^
+ "%VLIB%\imglibs.lib" "%VLIB%\lua514.lib" "%VLIB%\yyjson.lib" "%VLIB%\crijndael.lib" "%VLIB%\font_backend.lib" /LIBPATH:"%ROOT%lib" ^
+ binkw32.lib cps.lib granny2.lib ijl15.lib mss32.lib shlwapi.lib ^
+ msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib wininet.lib ^
+ dbghelp.lib kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib iphlpapi.lib oleaut32.lib ^
+ ws2_32.lib winmm.lib ddraw.lib d3d9.lib dxguid.lib gdiplus.lib imm32.lib ole32.lib uuid.lib netapi32.lib ^
+ /OUT:"%BUILD%\%OUT%.exe" /IMPLIB:"%BUILD%\%OUT%.lib" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE ^
+ /OPT:NOICF /MAP:"%BUILD%\%OUT%.map" /Brepro %LINKDBG%
+if errorlevel 1 ( echo *** LINK FAILED *** & exit /b 1 )
+echo Done -^> "%BUILD%\%OUT%.exe"

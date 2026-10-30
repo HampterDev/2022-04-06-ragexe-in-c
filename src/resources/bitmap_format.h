@@ -1,0 +1,4 @@
+#ifndef RESOURCES_BITMAP_FORMAT_H
+#define RESOURCES_BITMAP_FORMAT_H
+#define BMP_CLIENT_MAGIC "총알이빨토니"
+#endif

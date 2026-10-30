@@ -1,0 +1,16 @@
+# Build outputs: build.bat and tests\build.bat write everything to build\
+build/
+*.obj
+*.exe
+*.map
+*.exp
+*.pdb
+*.ilk
+
+# Python bytecode caches
+__pycache__/
+
+# Editor / OS cruft
+*.bak
+*~
+Thumbs.db

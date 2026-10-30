@@ -1,0 +1,6 @@
+#ifndef GAMEMODE_QUEST_INFO_H
+#define GAMEMODE_QUEST_INFO_H
+#include "contents/quest.h"
+#define QUEST_HUNT_SLOTS RENEW_QUEST_HUNT_MAX
+#define QUEST_NAME_FROM_TABLE RENEW_QUEST_ANY_MOB
+#endif

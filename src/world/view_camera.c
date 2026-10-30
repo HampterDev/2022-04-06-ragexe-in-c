@@ -1,0 +1,367 @@
+#include "actor/render_ops.h"
+#include "world/model_types.h"
+#include "world/ground_api.h"
+#include "world/hover_cell.h"
+#include "session/state.h"
+#include "world/camera.h"
+#include "world/mode.h"
+#include "game/context.h"
+
+#include <math.h>
+#include <stdlib.h>
+#include <mmsystem.h>
+#include "actor/types.h"
+#include "game/talk_type.h"
+#include "actor/sprite_quad.h"
+#include "game/camera.h"
+#include "game/mode_callbacks.h"
+
+float g_depthPerPixelCot = 0.159999996f;
+
+int g_drawnCellMaxX = 0;
+
+int g_drawnCellMaxY = 0;
+
+int g_drawnCellMinX = 0;
+
+int g_drawnCellMinY = 0;
+
+static INIT_ONCE g_quakeDistanceGuard = INIT_ONCE_STATIC_INIT;
+
+static float g_quakeDistanceOffset = 0;
+
+static int g_quakeFrameDrawn = 0;
+
+static INIT_ONCE g_quakeLatitudeGuard = INIT_ONCE_STATIC_INIT;
+
+static float g_quakeLatitudeOffset = 0;
+
+static INIT_ONCE g_quakeSidewaysGuard = INIT_ONCE_STATIC_INIT;
+
+static float g_quakeSidewaysOffset = 0;
+static void view_process_quake(struct View *self);
+
+void view_add_longitude(struct View *self, float d)
+{
+    self->destLongitude = d + self->destLongitude;
+}
+
+static void eye_offset(const struct View *v, const float *m, float *out)
+{
+    const float z = 0.0f;
+    float nd = -v->distance;
+    int i;
+
+    for (i = 0; i < 3; i++)
+        out[i] = m[3 + i] * z + m[i] * z + nd * m[6 + i] + m[9 + i];
+}
+
+static void clamp_eye_to_ground(float eye[3])
+{
+    struct World *world = game_current_world();
+    float height;
+
+    if (!world || !world->attr)
+        return;
+    height = c3d_attr_get_height(world->attr, eye[0], eye[2]);
+    if (eye[1] > height)
+        eye[1] = height;
+}
+
+static void view_build_view_matrix(struct View *self)
+{
+    float m[12], off[3];
+
+    mat_set_rotate_x(m, VIEW_DEG_TO_RAD(self->latitude));
+    mat_rotate_y(m, VIEW_DEG_TO_RAD(self->longitude));
+    eye_offset(self, m, off);
+    self->from[1] = off[1];
+    self->from[2] = off[2];
+    self->from[1] = self->at[1] + self->from[1];
+    self->from[2] = self->at[2] + self->from[2];
+    self->from[0] = off[0] + self->at[0];
+    clamp_eye_to_ground(self->from);
+    {
+        Vec3 eye_point = {self->from[0], self->from[1], self->from[2]};
+        Vec3 target_point = {self->at[0], self->at[1], self->at[2]};
+        Vec3 up_direction = {self->up[0], self->up[1], self->up[2]};
+        mat_look_at(self->viewMatrix, &eye_point, &target_point, &up_direction);
+    }
+    mat_invert(self->invViewMatrix, self->viewMatrix);
+}
+
+void view_get_view_dir(struct View *self, float *dir)
+{
+    float inv;
+
+    dir[1] = self->at[1] - self->from[1];
+    dir[0] = self->at[0] - self->from[0];
+    dir[2] = self->at[2] - self->from[2];
+    inv = 1.0f / sqrtf(dir[1] * dir[1] + dir[0] * dir[0] + dir[2] * dir[2]);
+    dir[0] = dir[0] * inv;
+    dir[1] = dir[1] * inv;
+    dir[2] = dir[2] * inv;
+}
+
+float *view_get_view_matrix_at(struct View *self, float *out, float longitude)
+{
+    float m[12], eye[3];
+
+    mat_set_rotate_x(m, VIEW_DEG_TO_RAD(self->latitude));
+    mat_rotate_y(m, VIEW_DEG_TO_RAD(longitude));
+    eye_offset(self, m, eye);
+    eye[0] = eye[0] + self->at[0];
+    eye[1] = eye[1] + self->at[1];
+    eye[2] = eye[2] + self->at[2];
+    clamp_eye_to_ground(eye);
+    {
+        Vec3 eye_point = {eye[0], eye[1], eye[2]};
+        Vec3 target_point = {self->at[0], self->at[1], self->at[2]};
+        Vec3 up_direction = {self->up[0], self->up[1], self->up[2]};
+        mat_look_at(out, &eye_point, &target_point, &up_direction);
+    }
+    return out;
+}
+
+void view_process_camera(struct View *self)
+{
+    float d, rot, zoom, x, y, z, t, cot, bias, k, r;
+
+    while (self->destLongitude >= 360.0f)
+        self->destLongitude -= 360.0f;
+    while (0.0f > self->destLongitude)
+        self->destLongitude += 360.0f;
+    d = self->destLongitude - self->longitude;
+    while (d >= 180.0f)
+        d -= 360.0f;
+    while (-180.0f > d)
+        d += 360.0f;
+    self->longitude = d / 10.0f + self->longitude;
+    while (self->longitude >= 360.0f)
+        self->longitude -= 360.0f;
+    while (0.0f > self->longitude)
+        self->longitude += 360.0f;
+
+    rot = self->destLatitude - self->latitude;
+    zoom = self->destDistance - self->distance;
+    x = self->destAt[0];
+    y = self->destAt[1];
+    rot = rot / 10.0f;
+    zoom = zoom / 10.0f;
+    rot = rot + self->latitude;
+    zoom = zoom + self->distance;
+    z = self->destAt[2];
+    self->latitude = rot;
+    self->distance = zoom;
+    if (g_isFixedCamera == 0) {
+        x = (x - self->at[0]) / 10.0f + self->at[0];
+        y = (y - self->at[1]) / 10.0f + self->at[1];
+        z = (z - self->at[2]) / 10.0f + self->at[2];
+    }
+    self->at[2] = z;
+    self->at[1] = y;
+    self->at[0] = x;
+
+    t = get_sin_deg((int)-rot) / get_cos_deg((int)-self->latitude);
+    cot = get_cos_deg((int)-self->latitude) / get_sin_deg((int)-self->latitude);
+    k = g_spriteDepthScale * t;
+    r = g_renderer->scaleY;
+    g_spriteRowDepthStep = k / r;
+    k = g_spriteDepthScale * cot;
+    r = g_renderer->scaleY;
+    g_depthPerPixelCot = k / r;
+    bias = get_sin_deg((int)-self->latitude) / get_sin_deg(45) * 9.0e-6f;
+    g_spriteLayerDepthStep = g_fixedViewDistanceMax / self->distance * bias;
+    g_spriteScaleDepthBias = g_fixedViewDistanceMax / self->distance * 3.6e-5f;
+}
+
+void view_on_calc_view_info(struct View *self)
+{
+    const struct RenderObject *player = (const struct RenderObject *)self->world->player;
+
+    self->destAt[0] = player->pos.x;
+    self->destAt[1] = player->pos.y;
+    self->destAt[2] = player->pos.z;
+    view_process_camera(self);
+    view_process_quake(self);
+    view_build_view_matrix(self);
+}
+
+void view_set_quake(struct View *self, int on, int duration, float sideways,
+                               float distance, float latitude)
+{
+    DWORD now;
+
+    self->quaking = on;
+    now = timeGetTime();
+    self->quakeDistance = distance;
+    self->quakeStart = now;
+    self->quakeSideways = sideways;
+    self->quakeLatitude = latitude;
+    if (duration == 0)
+        self->quakeDuration = 650;
+    else if (duration == 1)
+        self->quakeDuration = 200;
+    else
+        self->quakeDuration = duration;
+}
+
+void view_set_quake_amplitude(struct View *self, float sideways, float distance,
+                                        float latitude)
+{
+    self->quakeSideways = sideways;
+    self->quakeLatitude = latitude;
+    self->quakeDistance = distance;
+}
+
+static float quake_step(float divisor)
+{
+    int r = rand() % 5;
+    return (float)((r < 0 ? 0 : r) - 2) / divisor;
+}
+
+static void view_process_quake(struct View *self)
+{
+    float f, z0;
+
+    if (!self->quaking)
+        return;
+    if (timeGetTime() >= self->quakeDuration + self->quakeStart) {
+        self->at[0] = self->destAt[0];
+        self->at[1] = self->destAt[1];
+        self->at[2] = self->destAt[2];
+        self->distance = self->destDistance;
+        self->quaking = 0;
+        self->latitude = self->destLatitude;
+        return;
+    }
+    if (!g_quakeFrameDrawn)
+        return;
+    g_quakeFrameDrawn = 0;
+
+    if (once_begin(&g_quakeSidewaysGuard)) {
+        g_quakeSidewaysOffset = self->quakeSideways;
+        once_complete(&g_quakeSidewaysGuard);
+    }
+    {
+        int r = rand() % 5;
+        float s = get_cos_deg((int)self->longitude);
+        f = (float)((r < 0 ? 0 : r) - 2) / 10.0f + g_quakeSidewaysOffset;
+        self->at[0] = self->at[0] + s * f;
+    }
+    {
+        int r = rand() % 5;
+        float c;
+        z0 = self->at[2];
+        c = get_sin_deg((int)self->longitude);
+        f = (float)((r < 0 ? 0 : r) - 2) / 10.0f + g_quakeSidewaysOffset;
+        g_quakeSidewaysOffset = -g_quakeSidewaysOffset;
+        self->at[2] = z0 - c * f;
+    }
+
+    if (once_begin(&g_quakeDistanceGuard)) {
+        g_quakeDistanceOffset = self->quakeDistance;
+        once_complete(&g_quakeDistanceGuard);
+    }
+    f = quake_step(10.0f) + g_quakeDistanceOffset;
+    g_quakeDistanceOffset = -g_quakeDistanceOffset;
+    self->distance = f + self->distance;
+
+    if (once_begin(&g_quakeLatitudeGuard)) {
+        g_quakeLatitudeOffset = self->quakeLatitude;
+        once_complete(&g_quakeLatitudeGuard);
+    }
+    f = quake_step(15.0f) + g_quakeLatitudeOffset;
+    g_quakeLatitudeOffset = -g_quakeLatitudeOffset;
+    self->latitude = f + self->latitude;
+}
+
+static void cells_min(int *v, int c)
+{
+    if (*v > c)
+        *v = c;
+}
+
+static void cells_max(int *v, int c)
+{
+    if (*v < c)
+        *v = c;
+}
+
+void view_on_render(struct View *self)
+{
+    struct Renderer *r;
+    struct ListNode *n;
+    size_t leaf_index;
+    float *view = self->viewMatrix;
+
+    g_quakeFrameDrawn = 1;
+    r = g_renderer;
+    view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
+    g_drawnCellMinY = 999;
+    g_drawnCellMinX = 999;
+    g_drawnCellMaxY = 0;
+    g_drawnCellMaxX = 0;
+
+    for (leaf_index = 0; leaf_index < self->frustum.crossing_count; ++leaf_index) {
+        struct SceneGraphNode *leaf = self->frustum.crossing[leaf_index];
+        size_t index;
+
+        for (index = 0; index < leaf->objects.count; ++index) {
+            struct C3dActor *a = leaf->objects.data[index];
+            int res;
+
+            if (a->lastFrame == g_renderer->frame)
+                continue;
+            res = view_frustum_test_obb(&self->frustum, &a->obb);
+            if (g_isSkipFrame > 0)
+                a->ops->tick(a);
+            if (res == FRUSTUM_INSIDE)
+                a->ops->render(a, view, 0);
+            else if (res == FRUSTUM_CROSSING)
+                a->ops->render(a, view, 1);
+            a->lastFrame = g_renderer->frame;
+        }
+        c3d_ground15_render(leaf->ground, view, leaf->groundCell, 1);
+        cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
+        cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
+        cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
+        cells_max(&g_drawnCellMaxY, leaf->groundCell[3]);
+    }
+
+    for (leaf_index = 0; leaf_index < self->frustum.inside_count; ++leaf_index) {
+        struct SceneGraphNode *leaf = self->frustum.inside[leaf_index];
+        size_t index;
+
+        for (index = 0; index < leaf->objects.count; ++index) {
+            struct C3dActor *a = leaf->objects.data[index];
+
+            if (g_isSkipFrame > 0)
+                a->ops->tick(a);
+            if (a->lastFrame != g_renderer->frame) {
+                a->ops->render(a, view, 0);
+                a->lastFrame = g_renderer->frame;
+            }
+        }
+        c3d_ground15_render(leaf->ground, view, leaf->groundCell, 0);
+        cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
+        cells_max(&g_drawnCellMaxY, leaf->groundCell[3]);
+        cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
+        cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
+    }
+
+    navi_manager_draw_path(&g_navi, view);
+    if (g_hoverCellHidden == 0)
+        c3d_ground15_render_attr_tile(self->world->ground, view,
+                                                          g_hoverCellX, g_hoverCellY, g_hoverCellColor);
+    if (g_session1.homun_ai_flags[0] && g_session1.homun_command[1] && g_session1.homun_command[2])
+        c3d_ground15_render_attr_tile(self->world->ground, view,
+                                                          g_session1.homun_command[1], g_session1.homun_command[2], (int)0xfeff0000);
+    for (n = self->world->gameObjects.head->next; n != self->world->gameObjects.head; n = n->next) {
+        struct GameObject *object = *LIST_VALUE(n, struct GameObject *);
+        game_object_render(object, view);
+    }
+    effect_mgr_render(g_effectMgr);
+
+    view_frustum_clear(&self->frustum);
+}

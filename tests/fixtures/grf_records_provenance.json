@@ -1,0 +1,24 @@
+{
+  "snapshot": "before_grf_archive_owner.zip",
+  "records": 240,
+  "versions": [
+    256,
+    257,
+    258,
+    259,
+    512,
+    513
+  ],
+  "fixture_sha256": "7cc8987f55a3ac6998aa661a5b24b358212973d674ec335119880aea543407ba",
+  "original_source_sha256": {
+    "src/fileio/grf_pak.c": "48ce436fbb3ca7987a5db0c344c9309f5c9c4ea7492cbabfdbc4a91af05f441f",
+    "src/fileio/grf.h": "a9058df7537a91185d59850271270d04383b98ab4925288a49a8565db2eb6e01",
+    "src/fileio/grf_cipher.c": "6a1040ca7a6b9fbae143e6db734bd7a97fa286a973f7dbdaee4203ddfcb1af62",
+    "src/std/std_sort.c": "15f8af3a0ddc238163f84b81de76f5789131d7e0a15d4b25c128e6b8f29148bd"
+  },
+  "capture_source_sha256": {
+    "build/native_c/capture_grf_reference.c": "7bc020cb8e1f1ca5fa07b5aa4975687e697a6899b8a4f21f6e400b824ba287f9",
+    "tests/grf_fixture.h": "3e683c56a5d8ad638ad6f12a63aa24db97f8e2d5a7e6edfe6a0e0c54d47621d9"
+  },
+  "method": "Actual archived GRF parser and shared sort run against in-memory complete archives. C storage stand-ins replace only legacy container allocation/capacity helpers. Actual format cipher and vendored zlib generate valid data. Every captured logical payload was independently checked against one of the forty input payloads. Duplicate key lookup selects entry 33 in every version."
+}

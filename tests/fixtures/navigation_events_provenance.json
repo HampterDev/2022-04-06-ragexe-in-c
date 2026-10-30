@@ -1,0 +1,43 @@
+{
+  "description": "Exact archived packed record declarations and writer bodies; real archived string owners; capture-only recorder double.",
+  "archive": "build/native_c/before_navigation_events.zip",
+  "archive_sha256": "8bca8289b1ad637a9555689b34c174618556c754bbd1b286cf754c3ef770e685",
+  "archived_inputs": {
+    "src/navi/navi_window.c": "4d4f9f716601823aeeb1b71c287c3ecebf912c5891d6caad80e5cf2fef338333",
+    "src/std/string_value.c": "29797b8ccafadb978ad1f87a4b8167a18901830a11256499aba6e00331314147",
+    "src/std/string_storage.c": "7fcf06dcb7046b81028d2003287bc84264b0265e7f8c8dc03abc180d5b57cb20",
+    "src/std/container_memory.c": "6db2f3faeb5e22ae2bfc858591feb92445932f5ccb4bb23020627ae6628f532b"
+  },
+  "harness_inputs": {
+    "tests/test_navigation_events.c": "e4010c00f551c29625b1237ca3594b7e7114522cdf2f69447f4b3a8a4e6d6d44",
+    "tests/world_state_memory.h": "35732064e3b896bb0462e1b46f457dee582f1c5f2ee8675cc324be06f6c5b17f",
+    "build/native_c/navigation_event_oracle.h": "84760cd786839bd96e08f924bb8263eeb5ddc748b36b181b942dfb76fe3131c5",
+    "build/native_c/navigation_event_oracle.bat": "94bf721d05521d179aafa82ec2e06017ab22d62bf59d8d6f6af69fab3ef6a962",
+    "build/native_c/prepare_navigation_event_tests.py": "a5f2b1e7400cb416cbd0880061928339cac47db65bc02f20939b35211300826c",
+    "tests/navigation_event_support.c": "217bec5eaa3a5c15e01ccbbf7a8c7962bbc21a027dddb0a09b4b6f2291fa87e3"
+  },
+  "normalization": "none",
+  "fixtures": {
+    "route_short": {
+      "size": 54,
+      "sha256": "d00a5a764df98a16d13145c8e2109b0d09afd173ae88672623dd7b47175ccccd"
+    },
+    "route_full": {
+      "size": 54,
+      "sha256": "b5b8a414f052392e66bd2dc487016e3a4b77919a526952fcadda7b4e970ca509"
+    },
+    "route_korean": {
+      "size": 54,
+      "sha256": "71e82272d687cd903f2f6439b7ef6fdfed801b9bbe76c8b6b2d1fe8d286574df"
+    },
+    "map_short": {
+      "size": 44,
+      "sha256": "ec13f4db5dadc58c7782eb24342a826a6aa29a42bd4eed783d4e8e96c6e9878a"
+    },
+    "map_full": {
+      "size": 44,
+      "sha256": "e03c389f04cb3a88677c2bf61cd4b5ccbfb91e6fa2508a4e9e64d7a26733968e"
+    }
+  },
+  "header_sha256": "88b0f0cd0ce16f2c38308c32481258785d337c0270a07ec1c4f92e3686847018"
+}

@@ -1,0 +1,280 @@
+#include "session/csession.h"
+#include "session/session_jobs.h"
+
+int session_get_job_without_mount(struct Session *self, int job)
+{
+    switch (job) {
+    case 0xd: case 0x1067:
+        return 0x7;
+    case 0x15: case 0x106b:
+        return 0xe;
+    case 0xfae: case 0x1068:
+        return 0xfa8;
+    case 0xfb6: case 0x106c:
+        return 0xfaf;
+    case 0xfc4: case 0x106f:
+        return 0xfbe;
+    case 0xfcc: case 0x1072:
+        return 0xfc5;
+    case 0xff0: case 0xff8: case 0xffa: case 0xffc: case 0xffe: case 0x106a:
+        return 0xfd6;
+    case 0xff1: case 0xff9: case 0xffb: case 0xffd: case 0xfff:
+        return 0xfdc;
+    case 0xff2: case 0x1069:
+        return 0xfe2;
+    case 0xff3:
+        return 0xfe9;
+    case 0xff4: case 0x1066:
+        return 0xfd8;
+    case 0xff5:
+        return 0xfde;
+    case 0xff6: case 0x1065:
+        return 0xfda;
+    case 0xff7:
+        return 0xfe0;
+    case 0x100d: case 0x1071:
+        return 0x1000;
+    case 0x100e: case 0x1070:
+        return 0x1006;
+    case 0x100f: case 0x106e:
+        return 0x1002;
+    case 0x1010: case 0x106d:
+        return 0x1004;
+    case 0x1012:
+        return 0x19;
+    case 0x1013:
+        return 0x18;
+    case 0x1014:
+        return 0x1;
+    case 0x1015:
+        return 0xfd1;
+    case 0x1016:
+        return 0xfab;
+    case 0x1017:
+        return 0x5;
+    case 0x1018:
+        return 0xfe7;
+    case 0x1019:
+        return 0xfb3;
+    case 0x101a:
+        return 0x3;
+    case 0x101b:
+        return 0xfcf;
+    case 0x101c:
+        return 0x0;
+    case 0x101d:
+        return 0xf;
+    case 0x101e:
+        return 0x4;
+    case 0x101f:
+        return 0xfe6;
+    case 0x1020:
+        return 0x17;
+    case 0x1021:
+        return 0xfd9;
+    case 0x1022:
+        return 0x2;
+    case 0x1023:
+        return 0x10;
+    case 0x1024:
+        return 0xfe3;
+    case 0x1025:
+        return 0xfd7;
+    case 0x1026:
+        return 0x9;
+    case 0x1027:
+        return 0xfb1;
+    case 0x1028:
+        return 0xfaa;
+    case 0x1029:
+        return 0x12;
+    case 0x102a:
+        return 0xa;
+    case 0x102b:
+        return 0xfb0;
+    case 0x102c:
+        return 0xfdb;
+    case 0x102d:
+        return 0x6;
+    case 0x102e:
+        return 0x11;
+    case 0x102f:
+        return 0xfe8;
+    case 0x1030:
+        return 0xfb2;
+    case 0x1031:
+        return 0xc;
+    case 0x1032:
+        return 0xfad;
+    case 0x1033:
+        return 0x14;
+    case 0x1034:
+        return 0xfe4;
+    case 0x1035:
+        return 0x13;
+    case 0x1036:
+        return 0xfac;
+    case 0x1037:
+        return 0xfe5;
+    case 0x1038:
+        return 0xfb5;
+    case 0x1039:
+        return 0xfb4;
+    case 0x103a:
+        return 0xb;
+    case 0x103b:
+        return 0xfce;
+    case 0x103c:
+        return 0x8;
+    case 0x103d:
+        return 0xfa9;
+    case 0x103e:
+        return 0xfb7;
+    case 0x103f:
+        return 0xfb8;
+    case 0x1040:
+        return 0xfb9;
+    case 0x1041:
+        return 0xfba;
+    case 0x1042:
+        return 0xfbb;
+    case 0x1043:
+        return 0xfbc;
+    case 0x1044:
+        return 0xfc2;
+    case 0x1045:
+        return 0xfc3;
+    case 0x1046:
+        return 0xfc6;
+    case 0x1047:
+        return 0xfc7;
+    case 0x1048:
+        return 0xfc8;
+    case 0x1049:
+        return 0xfc9;
+    case 0x104a:
+        return 0xfca;
+    case 0x104b:
+        return 0xfcb;
+    case 0x104c:
+        return 0xfcd;
+    case 0x104d:
+        return 0x1001;
+    case 0x104e:
+        return 0x1003;
+    case 0x104f:
+        return 0x1005;
+    case 0x1050:
+        return 0x1007;
+    case 0x1051:
+        return 0x1008;
+    case 0x1052:
+        return 0x1009;
+    case 0x1053:
+        return 0x100a;
+    case 0x1054:
+        return 0x100b;
+    case 0x1055:
+        return 0xfbd;
+    case 0x1056:
+        return 0x100c;
+    case 0x1057:
+        return 0xfa1;
+    case 0x1058:
+        return 0xfa2;
+    case 0x1059:
+        return 0xfa3;
+    case 0x105a:
+        return 0xfa4;
+    case 0x105b:
+        return 0xfa5;
+    case 0x105c:
+        return 0xfa6;
+    case 0x105d:
+        return 0xfa7;
+    case 0x1060:
+        return 0x105e;
+    case 0x1061:
+        return 0x105f;
+    case 0x1062:
+        return 0xfbf;
+    case 0x1063:
+        return 0xfc0;
+    case 0x1064:
+        return 0xfc1;
+    case 0x1075: case 0x1087:
+        return 0x1073;
+    case 0x1076:
+        return 0x1074;
+    case 0x1078:
+        return 0x1077;
+    case 0x107b:
+        return 0x107a;
+    case 0x107d:
+        return 0x107c;
+    case 0x1086:
+        return 0x107e;
+    case 0x1088:
+        return 0x1080;
+    case 0x1089:
+        return 0x1081;
+    case 0x108a:
+        return 0x1082;
+    case 0x108b:
+        return 0x1083;
+    case 0x108c:
+        return 0x1084;
+    case 0x108d:
+        return 0x1085;
+    case 0x1095:
+        return 0x108f;
+    case 0x1096:
+        return 0x1090;
+    case 0x1097:
+        return 0x1091;
+    case 0x1098:
+        return 0x1092;
+    case 0x10a9: case 0x10b8:
+        return 0x109c;
+    case 0x10aa: case 0x10b7:
+        return 0x109d;
+    case 0x10ab:
+        return 0x109e;
+    case 0x10ac:
+        return 0x109f;
+    case 0x10ad:
+        return 0x10a0;
+    case 0x10ae: case 0x10b6:
+        return 0x10a1;
+    case 0x10af: case 0x10b9:
+        return 0x10a2;
+    case 0x10b0:
+        return 0x10a3;
+    case 0x10b1:
+        return 0x10a4;
+    case 0x10b2:
+        return 0x10a5;
+    case 0x10b3:
+        return 0x10a6;
+    case 0x10b4:
+        return 0x10a7;
+    case 0x10b5:
+        return 0x10a8;
+    case 0x10d5:
+        return 0x10ce;
+    case 0x10d6:
+        return 0x10cf;
+    case 0x10d7:
+        return 0x10d0;
+    case 0x10d8:
+        return 0x10d1;
+    case 0x10d9:
+        return 0x10d2;
+    case 0x10da:
+        return 0x10d3;
+    case 0x10db:
+        return 0x10d4;
+    default:
+        return job;
+    }
+}

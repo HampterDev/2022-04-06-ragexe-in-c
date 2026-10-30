@@ -1,0 +1,44 @@
+{
+  "archive": "before_navigation_snapshots.zip",
+  "archive_sha256": "c5068fd5da0b23ca5361567ab5f5d516df5926fbef40d7cb8927f23595f1943f",
+  "archived_source_sha256": {
+    "src/navi/navi_records.c": "e8f3f84f958932e180143624f760f2ad54e574796de7c4f9350c9dcfeacf1a79",
+    "src/navi/navi_state.c": "5996721c5684ebe91411343bfc6184746a6e87d57457647727a4609206bc5f7d",
+    "src/navi/navi_results.c": "f6e4f92a542100ffa6996b85db981127d2412189ed5d2204e4be0b2c1ebf1662",
+    "src/navi/navi_maps.c": "da2551b0cd58ecab90075f5cf1e70b273574c5cb4803618712f8dcfc09392843",
+    "src/navi/navi_base.c": "19577cf45474305c122c1369b2feeacb7236bca1b31573693ba82cadb9aba111",
+    "src/navi/navi_objects.c": "eb470dfb3b41221614d0404ae2524bbd71ea76ba529e6f7e4e85169ea7164897",
+    "src/navi/navi_links.c": "6649c583bfd077292aad6c9e015b742dafda19407939707ef8aaf2cfde9bc29f",
+    "src/navi/navi_containers.c": "7b02eff914ec6e22314a7024ced28128e15e15e545b50d9e78ff51950fdd17bd",
+    "src/std/string_value.c": "29797b8ccafadb978ad1f87a4b8167a18901830a11256499aba6e00331314147",
+    "src/std/string_storage.c": "7fcf06dcb7046b81028d2003287bc84264b0265e7f8c8dc03abc180d5b57cb20",
+    "src/std/container_memory.c": "6db2f3faeb5e22ae2bfc858591feb92445932f5ccb4bb23020627ae6628f532b",
+    "src/std/vector_storage.c": "3ec0f7ef75552ed77b09394b7ff466ccd083e7606815b047b7f3cae487801566",
+    "src/std/std_vector.c": "84cc715c157e2c47ac05ee2f03b0eb963dd8b3e2117e9037b5bf898b06c6524e"
+  },
+  "fixtures": {
+    "navigation_object": {
+      "size": 64,
+      "sha256": "e40f221feee2a49693a804df3847178d45f239cf7b2462d767df601f3919e681"
+    },
+    "navigation_link": {
+      "size": 59,
+      "sha256": "be1a4d4847f2b8182e64a454df92b215305597aa1efe8430944f151ab632aac3"
+    },
+    "navigation_result": {
+      "size": 68,
+      "sha256": "ecdc8984e0a3c78c6ee28b1781366e1fa70b0da5504a4200452155857d6ed2cc"
+    },
+    "navigation_state": {
+      "size": 493,
+      "sha256": "e31dbc5587f6b26cb26716de361d45149b3d83c99a73e3799cf2c4f66dee562a"
+    },
+    "navigation_results": {
+      "size": 129,
+      "sha256": "20235422224f7628263fb4abfc5ec1413c190b3203a0a0a06983e9f4b606706e"
+    }
+  },
+  "method": "Compiled archived writers with actual archived string and domain owners; temporary byte-vector allocation doubled with guarded storage. No output normalization.",
+  "test_sha256": "70645021b1871094100602ea24bf02c7ce766c2b5fd23403d07b45bf00e4b7b0",
+  "support_sha256": "d6a0ef850a34ff13a4fc9cc84e8fae6ce949807b843563aa4f39c621cf1902a1"
+}

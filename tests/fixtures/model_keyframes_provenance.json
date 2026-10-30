@@ -1,0 +1,17 @@
+{
+  "description": "3640 samples captured from unchanged production V1/V2 and UV evaluators before replacing reconstructed containers. Tree queries borrow fixture tracks; no evaluator is substituted.",
+  "fixture_sha256": "20655a787e68d1cd2b12bd8a74023528752e2611e14d3ee06e7e24705962d53c",
+  "samples": 3640,
+  "capture_flag": "CAPTURE_KEYFRAME_REFERENCE",
+  "compiler_flags": "MSVC x86 /O2 /MD /Gy /Gw",
+  "baseline_archive": "before_model_animation_owner.zip",
+  "baseline_sources_sha256": {
+    "src/render/keyframes.c": "05b29b493f425271a20d5ba5fd1ef1d946cf4629467e0cdd683aaf67d38a8ec7",
+    "src/render/keyframes.h": "9fe069f532776fe541cd4a04955a288dcd6d53f854ba207301686d70aa10fe79",
+    "src/render/math3d.c": "113c17b64f8567088b0aede83125ff1ad00377a8b976e81f4b28db1efa27ce07",
+    "src/render/math3d.h": "c0cd11f991d41cff6bdc14d10a0116920d736bdeb3658d15c98532fdc8ece369"
+  },
+  "capture_test_source_sha256": "b7c152d39e7a86b8b6ead35b6af8dcbb351a387d800c0982745705e093fda7e7",
+  "capture_support_sha256": "6326f9f35231c2fa05868f1f1a3bcf561c44deecb06d09aa60f6e688ec9701bc",
+  "limitations": "Finite times with empty/single/multiple tracks, duplicate frame numbers, before/after intervals and absent/present UV channels. Old undefined NaN-time and empty/single UV out-of-range reads are excluded; define and test those separately."
+}

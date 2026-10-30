@@ -1,0 +1,6 @@
+#ifndef RESOURCES_MODEL_NODE_NAMES_H
+#define RESOURCES_MODEL_NODE_NAMES_H
+
+struct C3dModelRes;
+
+#endif

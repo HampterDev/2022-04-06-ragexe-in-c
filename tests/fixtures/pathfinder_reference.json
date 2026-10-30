@@ -1,0 +1,36 @@
+{
+  "source": "src/world/pathfinder.c",
+  "source_sha256": "7d7f13ac918153957f28f0f1c20fb0691507674444feb773ae846888e7e80455",
+  "snapshot": "before_pathfinder_owner.zip",
+  "namespace": {
+    "CPathFinder_PurgeAttrCache": "reference_CPathFinder_PurgeAttrCache",
+    "g_pathFinder": "reference_g_pathFinder",
+    "path_index_destroy": "reference_path_index_destroy",
+    "path_index_free_head": "reference_path_index_free_head",
+    "path_attr_cache_destroy": "reference_path_attr_cache_destroy",
+    "path_attr_cache_free_head": "reference_path_attr_cache_free_head",
+    "path_attr_key_destroy": "reference_path_attr_key_destroy",
+    "CPathFinder_Construct": "reference_CPathFinder_Construct",
+    "CPathFinder_Destruct": "reference_CPathFinder_Destruct",
+    "CPathFinder_ClearSearch": "reference_CPathFinder_ClearSearch",
+    "CPathFinder_SetAttr": "reference_CPathFinder_SetAttr",
+    "CPathFinder_AttrHeight": "reference_CPathFinder_AttrHeight",
+    "CPathFinder_AttrWidth": "reference_CPathFinder_AttrWidth",
+    "CPathFinder_UseMapAttr": "reference_CPathFinder_UseMapAttr",
+    "CPathFinder_CellWalkable": "reference_CPathFinder_CellWalkable",
+    "CPathFinder_CanStep": "reference_CPathFinder_CanStep",
+    "CPathFinder_NewNode": "reference_CPathFinder_NewNode",
+    "CPathFinder_GetNode": "reference_CPathFinder_GetNode",
+    "CPathFinder_Visit": "reference_CPathFinder_Visit",
+    "CPathFinder__FindPath": "reference_CPathFinder__FindPath",
+    "CPathFinder": "ReferencePathFinder",
+    "PathNode": "ReferencePathNode"
+  },
+  "fixture_sha256": "696c7637d90bbc9873ed631a2be7a1185caeffe2a8ff8cf0cee962fc0fbd12f6",
+  "transformation": "Replace public/record names and includes, prepend frozen record and append one lifecycle wrapper; original function bodies otherwise unchanged.",
+  "dependency_adapter": {
+    "stage": "resource_lifecycle_api",
+    "before_sha256": "4953a89075cad2ffd71d8b6ccbb0453df7adcf170cb154d053f9bb48b0a803c6",
+    "change": "Three comment/preprocessor lines map the historical attribute factory and consuming deletion names to their current C APIs. Both historical deletion calls pass flag 1. After removing these lines and normalizing CRLF to LF, the entire fixture matches the prior snapshot."
+  }
+}

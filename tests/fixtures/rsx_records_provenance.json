@@ -1,0 +1,16 @@
+{
+  "description": "648 canonical decoded data, texture-order and hierarchy records from 12 valid fixtures loaded by pre-migration production RSX loader; actual strings and list containers retained, pointer-list clear delegated to equivalent production list clear. Unreached UI vector stubs abort.",
+  "baseline_archive": "before_rsx_owner.zip",
+  "records": 648,
+  "cases": 12,
+  "fixture_sha256": "0d6e2115cf8c141fc7f53c4fb7b015fd727dd67e9eb5dd03d4235efec978fe94",
+  "source_sha256": {
+    "src/resources/anim_model_res.c": "aae52dd416c9d35030443667886521b1a7ef2e7db196370cea32b2fac4250b3c",
+    "src/resources/anim_model_res.h": "b6811971bf0621915fc4cc9673f55ea81fc5e21f7374cef723ecd79898570850",
+    "tests/test_rsx_owner.c": "fe2e8f8b5276d99841f3f195f104d6cacba2760052c470b6e6433aae996e3cd0",
+    "tests/rsx_fixture.h": "ac66c21ae1fe0494333a2453ee9365835735c76c46c3f83f0770486db62f5064",
+    "build/native_c/rsx_reference_support.c": "434272e704379529d69d6e7286fe8aee3668a166d1f4b6cf1cfc91aa7ff3856b"
+  },
+  "flags": "MSVC x86 /O2 /MD /Gy /Gw /DCAPTURE_RSX_REFERENCE",
+  "limitations": "Valid fixtures only, with 3 frames, child before parent, shared/per-frame UV records, repeated texture indices, Korean names and original version-dependent header reading. Failure cases are new guarded tests."
+}

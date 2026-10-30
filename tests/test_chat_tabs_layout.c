@@ -1,0 +1,141 @@
+#include <assert.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "session/state.h"
+#include <lauxlib.h>
+#include "session/chat_tabs_layout.h"
+#include "fileio/file_api.h"
+
+struct Session g_session1;
+static char output[16384];
+static size_t output_size;
+static int file_state;
+
+void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+struct File *file_construct(struct File *file)
+{
+    assert(file_state == 0);
+    file_state = 1;
+    memset(file, 0, sizeof *file);
+    return file;
+}
+unsigned char file_open(struct File *file, const char *name, int mode, unsigned char resolve, unsigned char disk_only)
+{
+    (void)file;
+    assert(file_state == 1 && mode == 0x1001 && resolve == 1 && disk_only == 0);
+    assert(!strcmp(name, "SaveData\\ChatWndInfo_U.lua"));
+    file_state = 2;
+    return 1;
+}
+unsigned char file_write(struct File *file, const void *bytes, int size)
+{
+    (void)file;
+    assert(file_state == 2 && size >= 0 && output_size + size < sizeof output);
+    memcpy(output + output_size, bytes, size);
+    output_size += size;
+    output[output_size] = 0;
+    return 1;
+}
+void file_close(struct File *file) { (void)file; assert(file_state == 2); file_state = 3; }
+void file_destruct(struct File *file) { (void)file; assert(file_state == 3); file_state = 4; }
+static int field(lua_State *L, const char *name)
+{
+    int value;
+    lua_getfield(L, -1, name);
+    assert(lua_isnumber(L, -1));
+    value = (int)lua_tonumber(L, -1);
+    lua_pop(L, 1);
+    return value;
+}
+
+static void check_record(lua_State *L, int number, const char *name, int main_window, int n)
+{
+    char key[32];
+    int i;
+    snprintf(key, sizeof key, "ChatSubWnd_%d", number);
+    lua_getglobal(L, key);
+    assert(lua_istable(L, -1));
+    lua_getfield(L, -1, "TabName");
+    assert(!strcmp(lua_tostring(L, -1), name));
+    lua_pop(L, 1);
+    lua_getfield(L, -1, "TabState");
+    assert(!strcmp(lua_tostring(L, -1), main_window ? "On" : "Off"));
+    lua_pop(L, 1);
+    assert(field(L, "XPos") == (main_window ? 0 : -7));
+    assert(field(L, "YPos") == (main_window ? 0 : 25));
+    assert(field(L, "Width") == (main_window ? 0 : 480));
+    assert(field(L, "Height") == (main_window ? 0 : 120));
+    for (i = 1; i <= CHAT_TAB_FLAG_COUNT; ++i) {
+        snprintf(key, sizeof key, "option%d", i);
+        assert(field(L, key) == (i + n) % 3);
+    }
+    lua_pop(L, 1);
+}
+
+int main(void)
+{
+    lua_State *L = luaL_newstate();
+    struct ChatTabSettings tab = {0};
+    const char *names[] = {"한글", "Second", "Window"};
+    int keys[] = {20, -3, 8};
+    int n, i;
+    assert(L);
+    g_session1.canDragWnd = 1;
+    tab.x = -7; tab.y = 25; tab.width = 480; tab.height = 120;
+    for (n = 0; n < 3; ++n) {
+        assert(owned_text_assign(&tab.name, text_view_cstr(names[n])));
+        for (i = 0; i < CHAT_TAB_FLAG_COUNT; ++i) tab.shown[i] = (unsigned char)((i + 1 + n) % 3);
+        assert(chat_tabs_set(n < 2 ? &g_session1.chatWndTabs : &g_session1.subChatWnds, keys[n], &tab));
+    }
+    chat_tab_settings_clear(&tab);
+    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+                          g_session1.canDragWnd == 1, "SaveData\\ChatWndInfo_U.lua");
+    assert(file_state == 4);
+    assert(strstr(output, "CanDragWnd = 1\r\n\r\n") == output);
+    assert(strstr(output, "TabName = [[한글]],\r\n"));
+    assert(strstr(output, "TabName = \"Window\",\r\n"));
+    assert(luaL_loadbuffer(L, output, output_size, "saved-layout") == 0);
+    assert(lua_pcall(L, 0, 0, 0) == 0);
+    lua_getglobal(L, "CanDragWnd");
+    assert(lua_tonumber(L, -1) == 1);
+    lua_pop(L, 1);
+    check_record(L, 1, "Second", 1, 1);
+    check_record(L, 2, "한글", 1, 0);
+    check_record(L, 3, "Window", 0, 2);
+    lua_getglobal(L, "ChatSubWnd_4");
+    assert(lua_isnil(L, -1));
+    lua_pop(L, 1);
+    assert(lua_gettop(L) == 0);
+    lua_close(L);
+    chat_tabs_clear(&g_session1.chatWndTabs);
+    chat_tabs_clear(&g_session1.subChatWnds);
+    {
+        char long_name[4097];
+        memset(long_name, 'x', sizeof long_name - 1);
+        long_name[sizeof long_name - 1] = 0;
+        assert(owned_text_assign(&tab.name, text_view_cstr(long_name)));
+        assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
+        chat_tab_settings_clear(&tab);
+        file_state = 0;
+        output_size = 0;
+        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+        L = luaL_newstate();
+        assert(L);
+        assert(luaL_loadbuffer(L, output, output_size, "long-layout") == 0);
+        assert(lua_pcall(L, 0, 0, 0) == 0);
+        lua_getglobal(L, "ChatSubWnd_1");
+        lua_getfield(L, -1, "TabName");
+        assert(lua_objlen(L, -1) == sizeof long_name - 1);
+        assert(!memcmp(lua_tostring(L, -1), long_name, sizeof long_name));
+        lua_close(L);
+        chat_tabs_clear(&g_session1.chatWndTabs);
+        file_state = 0;
+        output_size = 0;
+        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+        assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n") && file_state == 4);
+    }
+    puts("Chat-tab layout: production writer, ordered main/separate tabs, Korean and 4096-byte names, geometry and all options round-trip through Lua");
+    return 0;
+}

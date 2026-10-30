@@ -1,0 +1,22 @@
+{
+  "origin": "Pre-migration mesh smoother and real vertex adjacency containers, compiled with MSVC x86 /O2 /MD; reference sources recovered from before_model_mesh_owner.zip",
+  "baseline_sources_sha256": {
+    "src/render/anim_mesh.c": "bc7744e945ce81ebdbf9b3048d671b04c8967d192afffe262c934c419e90d6da",
+    "src/render/anim_mesh.h": "80275a3b1c60f9a2bd4a3cb1129ea24167195f9dbbe0fe7c63720323a8e88022",
+    "src/std/std_tree.c": "1c95bf3b164ef9eaaf2b21be590037bfedaf860f9469fa2353766cf64284ae62",
+    "src/std/std_vector.c": "3b9f1f3ac03eeaa5d2fe274fdc06ea33cd65bf49a1994ee16c7af3b79b4152b3",
+    "src/std/vector_storage.c": "3ec0f7ef75552ed77b09394b7ff466ccd083e7606815b047b7f3cae487801566",
+    "src/render/math3d.c": "113c17b64f8567088b0aede83125ff1ad00377a8b976e81f4b28db1efa27ce07"
+  },
+  "fixture_sha256": "cd4e549c30bd5705e3818a0391ce07bba4299bf9970c5ee1c0608628beb0ec59",
+  "scenarios": 128,
+  "coverage": [
+    "varying topology",
+    "face/corner insertion order",
+    "duplicate vertices per face",
+    "zero through seven smoothing groups",
+    "repeated and negative groups",
+    "degenerate faces and NaN normalization"
+  ],
+  "capture_driver": "tests/test_model_mesh_normals.c compiled with LEGACY_MESH_REFERENCE against the archived header and implementation; writes face and corner normals in scenario order as little-endian floats"
+}

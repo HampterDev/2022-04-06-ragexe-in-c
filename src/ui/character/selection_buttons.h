@@ -1,0 +1,37 @@
+#ifndef UI_CHARACTER_SELECTION_BUTTONS_H
+#define UI_CHARACTER_SELECTION_BUTTONS_H
+
+#include "ui/controls/buttons.h"
+
+struct UIHairBitmap;
+struct UIHairStyleButton {
+    struct UIBitmapButton button;
+    int style;
+    int male;
+    int doram;
+    struct UIHairBitmap *picture;
+    BYTE selected;
+};
+
+struct UISlotBmpButton {
+    struct UIBitmapButton bmp;
+    int occupied;
+    BYTE selected;
+    int style;
+    int slot;
+    struct UIWindow *job_icon;
+    short anim_tick;
+    short anim_divisor;
+};
+
+struct UIHairStyleButton *ui_hair_style_button_construct(struct UIHairStyleButton *self, int style, int male);
+int ui_hair_style_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
+                                         int val2, int val3, int val4);
+struct UIWindow *ui_descript_race_create(int race);
+int ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
+                                      int val2, int val3, int val4);
+
+struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd *self);
+struct UIWindow *ui_new_make_char_wnd_new(void);
+
+#endif

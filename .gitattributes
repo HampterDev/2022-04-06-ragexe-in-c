@@ -1,0 +1,17 @@
+# Let git detect text vs binary, and normalize text line endings on commit.
+* text=auto
+
+# Windows batch files want CRLF.
+*.bat text eol=crlf
+
+*.md           text
+.gitignore     text
+.gitattributes text
+
+# Prebuilt libraries and the compiled resource script.
+*.lib binary
+*.res binary
+*.exe binary
+
+# Third-party sources kept byte-identical to upstream.
+vendor/** -whitespace

@@ -1,0 +1,40 @@
+#ifndef GAMEMODE_DRAG_INFO_H
+#define GAMEMODE_DRAG_INFO_H
+
+#include "base.h"
+#include "iteminfo/item_types.h"
+
+struct UIWindow;
+
+struct DragInfo {
+    int source;
+    int index;
+    int price;
+    int charged_price;
+    int drop_count;
+    int count;
+    int type;
+    int refine;
+    char identified;
+    struct String display_name;
+    struct String name;
+    struct String name2;
+    int level;
+    int slots[4];
+    char named;
+    struct UIWindow *drop_window;
+    int option_count;
+    struct ItemOption options[5];
+    int shop_index;
+    short grade;
+    char by_index;
+    int equip_location;
+    __int64 view;
+};
+OFFSET_ASSERT(DragInfo, display_name, 0x24);
+
+void drag_info_copy(struct DragInfo *dst, const struct DragInfo *src);
+void drag_info_assign(struct DragInfo *dst, const struct DragInfo *src);
+void drag_info_destroy(struct DragInfo *drag);
+
+#endif
