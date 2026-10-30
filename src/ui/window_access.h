@@ -13,6 +13,7 @@ void ui_window_mgr_raise_window(struct UIWindowMgr *manager, struct UIWindow *wi
 void ui_window_mgr_post_quit2(struct UIWindowMgr *manager, struct UIWindow *window);
 
 struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *manager);
+struct UIWindow *ui_window_mgr_focus_root(struct UIWindowMgr *manager);
 
 struct UIWindow *ui_window_find(int id);
 struct UIWindow *ui_window_open(int id);

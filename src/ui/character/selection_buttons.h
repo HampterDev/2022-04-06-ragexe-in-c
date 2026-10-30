@@ -22,7 +22,10 @@ struct UISlotBmpButton {
     struct UIWindow *job_icon;
     short anim_tick;
     short anim_divisor;
+    unsigned long long drawn_key;
 };
+
+int ui_slot_bmp_button_changed(struct UISlotBmpButton *self);
 
 struct UIHairStyleButton *ui_hair_style_button_construct(struct UIHairStyleButton *self, int style, int male);
 int ui_hair_style_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,

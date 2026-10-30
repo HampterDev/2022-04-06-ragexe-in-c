@@ -126,30 +126,45 @@ struct String *session_get_glow_weapon_spr_name(struct String *out, int a, int b
     return out;
 }
 
-void *session_get_stepped_motion(void *master, void *slave,
-                                          int action, int block, DWORD startTime, int *frame)
+int session_get_motion_stepping(void *master, void *slave, int action, int block, DWORD start_time,
+                                struct MotionStepping *out)
 {
-    int masterCount, slaveCount, ratio, delay, step;
-    DWORD elapsed;
-    double wall;
+    int masterCount, slaveCount;
 
     if (!master || !slave)
-        return NULL;
+        return 0;
     masterCount = (int)actres_frame_count(master, action);
     slaveCount = (int)actres_frame_count(slave, action);
     if (masterCount <= 0 || slaveCount <= 0 || masterCount >= slaveCount)
-        return NULL;
+        return 0;
     if (slaveCount % masterCount != 0)
+        return 0;
+    out->ratio = slaveCount / masterCount;
+    out->delay = (int)act_res_get_delay(slave, action);
+    if (out->delay == 0)
+        out->delay = 4;
+    out->block = block;
+    out->start_time = start_time;
+    return 1;
+}
+
+int motion_stepping_frame(const struct MotionStepping *stepping)
+{
+    DWORD elapsed = timeGetTime() - stepping->start_time;
+    double wall = (double)elapsed;
+
+    return (int)((float)wall / 24.0f / (float)stepping->delay) % stepping->ratio + stepping->ratio * stepping->block;
+}
+
+void *session_get_stepped_motion(void *master, void *slave,
+                                          int action, int block, DWORD startTime, int *frame)
+{
+    struct MotionStepping stepping;
+
+    if (!session_get_motion_stepping(master, slave, action, block, startTime, &stepping))
         return NULL;
-    ratio = slaveCount / masterCount;
-    delay = (int)act_res_get_delay(slave, action);
-    elapsed = timeGetTime() - startTime;
-    wall = (double)elapsed;
-    if (delay == 0)
-        delay = 4;
-    step = (int)((float)wall / 24.0f / (float)delay) % ratio + ratio * block;
-    *frame = step;
-    return act_res_get_motion(slave, action, step);
+    *frame = motion_stepping_frame(&stepping);
+    return act_res_get_motion(slave, action, *frame);
 }
 
 int session_get_mounted_job(int job)

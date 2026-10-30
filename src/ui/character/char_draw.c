@@ -412,6 +412,45 @@ static int *character_draw_head_offset(struct CharacterDraw *self, int *out, voi
     return out;
 }
 
+void ui_animation_reset(struct UIAnimation *self)
+{
+    self->count = 0;
+}
+
+void ui_animation_add(struct UIAnimation *self, const struct MotionStepping *stepping, int frame)
+{
+    if (self->count < UI_ANIMATION_STEPS) {
+        self->steps[self->count].stepping = *stepping;
+        self->steps[self->count].frame = frame;
+    }
+    self->count++;
+}
+
+int ui_animation_due(const struct UIAnimation *self)
+{
+    int i;
+
+    if (self->count > UI_ANIMATION_STEPS)
+        return 1;
+    for (i = 0; i < self->count; i++)
+        if (motion_stepping_frame(&self->steps[i].stepping) != self->steps[i].frame)
+            return 1;
+    return 0;
+}
+
+static void *character_draw_stepped_motion(struct CharacterDraw *self, void *master, void *slave, int block,
+                                           int *frame)
+{
+    struct MotionStepping stepping;
+    void *motion = session_get_stepped_motion(master, slave, self->options.action, block,
+                                              self->options.start_time, frame);
+
+    if (self->options.animation && session_get_motion_stepping(master, slave, self->options.action, block,
+                                                               self->options.start_time, &stepping))
+        ui_animation_add(self->options.animation, &stepping, *frame);
+    return motion;
+}
+
 static int *character_draw_accessory_offset(struct CharacterDraw *self, int *out, int layer,
                                             void **motion, void *act)
 {
@@ -423,8 +462,7 @@ static int *character_draw_accessory_offset(struct CharacterDraw *self, int *out
     out[1] = 0;
     character_draw_get_layer(self, &head, 2);
     head_motion = act_res_get_motion(head.act, self->options.action, self->options.motion);
-    stepped = session_get_stepped_motion(head.act, act, self->options.action, self->options.motion,
-                                       self->options.start_time, &frame);
+    stepped = character_draw_stepped_motion(self, head.act, act, self->options.motion, &frame);
     if (stepped && frame != self->options.motion) {
         *motion = stepped;
         cur = stepped;
@@ -471,8 +509,7 @@ static void *character_draw_robe_motion(struct CharacterDraw *self, int layer)
         (unsigned)(self->options.action - 16) <= 7)
         block = 0;
     character_draw_get_layer(self, &body, 1);
-    session_get_stepped_motion(body.act, robe.act, self->options.action, block,
-                             self->options.start_time, &frame);
+    character_draw_stepped_motion(self, body.act, robe.act, block, &frame);
     return act_res_get_motion(robe.act, self->options.action, frame);
 }
 

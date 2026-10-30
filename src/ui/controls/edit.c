@@ -12,6 +12,7 @@
 #include <mmsystem.h>
 #include <stdlib.h>
 #include "diag/perf.h"
+#include "ui/draw_key.h"
 
 struct UIEditCtrl;
 struct UIWindow;
@@ -372,6 +373,30 @@ BYTE ui_edit_ctrl_caret_shown(void)
     if (ui_window_mgr_is_chat_edit_focused(&g_windowMgr) && !g_windowMgr.chat_bar_shown)
         return 0;
     return 1;
+}
+
+unsigned long long ui_edit_ctrl_focus_key(void)
+{
+    struct Language *language = g_language;
+    unsigned long long key = DRAW_KEY_START;
+
+    key = draw_key_int(key, (int)language->input_length);
+    key = draw_key_bytes(key, language->input, language->input_length);
+    key = draw_key_int(key, language->caret);
+    key = draw_key_int(key, language->anchor);
+    key = draw_key_int(key, (int)language->reading_length);
+    key = draw_key_bytes(key, language->reading, language->reading_length);
+    key = draw_key_int(key, (int)language->composition_length);
+    key = draw_key_bytes(key, language->composition, language->composition_length);
+    key = draw_key_int(key, language->composition_cursor);
+    key = draw_key_int(key, language->candidate_count);
+    key = draw_key_int(key, language->candidate_page);
+    key = draw_key_int(key, language->candidate_selection);
+    key = draw_key_int(key, language->masked);
+    key = draw_key_text(key, language_charset_tag(language, 0));
+    key = draw_key_int(key, (int)((timeGetTime() / CARET_BLINK_MS) & 1));
+    key = draw_key_int(key, g_windowMgr.chat_bar_shown);
+    return draw_key_int(key, ui_edit_ctrl_caret_shown());
 }
 
 void ui_edit_ctrl_make_select(struct UIWindow *wnd)

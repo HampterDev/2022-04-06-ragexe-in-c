@@ -98,6 +98,7 @@ void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *self, int x);
 void ui_edit_ctrl_place_key_stroke_wnd(struct UIEditCtrl *self, int x);
 void ui_edit_ctrl_layout_navi_links(struct UIEditCtrl *self);
 BYTE ui_edit_ctrl_caret_shown(void);
+unsigned long long ui_edit_ctrl_focus_key(void);
 
 void ui_window_text_out_doubled(struct UIWindow *self, int x, int y, const char *text,
                                         COLORREF colour, COLORREF colour2, int len, int font_face,

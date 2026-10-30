@@ -32,6 +32,8 @@
 #include "login/loginmode.h"
 #include "session/session_names.h"
 #include "session/session_talk.h"
+#include "ui/draw_key.h"
+#include "ui/character/selection_buttons.h"
 
 #define SELECT_DIR UI_SKIN "select_character_ver3\\"
 #define COLUMNS 5
@@ -85,6 +87,7 @@ void ui_new_select_char_wnd_destroy(struct UIWindow *window);
 void ui_new_select_char_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_new_select_char_wnd_on_process(struct UIWindow *self);
 void ui_new_select_char_wnd_on_draw(struct UIWindow *self);
+BYTE ui_new_select_char_wnd_render(struct UIWindow *self, int force);
 void ui_new_select_char_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 int ui_new_select_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
 const struct UIWindowOps ui_new_select_char_wnd_ops = {
@@ -121,7 +124,7 @@ const struct UIWindowOps ui_new_select_char_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_new_select_char_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_new_select_char_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -152,6 +155,7 @@ struct UINewSelectCharWnd {
     int page;
     int cur;
     int move_from;
+    unsigned long long drawn_key;
 };
 
 #define WND(self) (&(self)->frame.base)
@@ -320,6 +324,8 @@ struct UIWindow *ui_new_select_char_wnd_create(void)
 
     ui_frame_wnd_construct(&self->frame, 0);
     WND(self)->ops = &ui_new_select_char_wnd_ops;
+    WND(self)->redraws_tree = 1;
+    self->drawn_key = 0;
     tree_init(&self->gids);
     select_char_init_storage(&self->storage,
         (int64_t)g_session1.charListCounts[1] + g_session1.charListCounts[2] + g_session1.charListCounts[3],
@@ -809,6 +815,76 @@ static void update_delete_time(struct UINewSelectCharWnd *self)
     time_destruct(&t);
 }
 
+static int deletion_passed(int delete_date)
+{
+    struct Time t;
+    int passed;
+
+    time_construct(&t, delete_date);
+    passed = time_is_past(&t) == 1;
+    time_destruct(&t);
+    return passed;
+}
+
+static unsigned long long deletion_key(unsigned long long key, const struct CharInfo *info)
+{
+    if (!info)
+        return draw_key_int(key, -1);
+    key = draw_key_int(key, info->delete_date);
+    return draw_key_int(key, info->delete_date ? deletion_passed(info->delete_date) : 0);
+}
+
+static unsigned long long select_char_key(struct UINewSelectCharWnd *self)
+{
+    unsigned long long key = DRAW_KEY_START;
+    int i;
+
+    key = draw_key_int(key, self->page);
+    key = draw_key_int(key, self->cur);
+    key = draw_key_bytes(key, g_session1.charListCounts, sizeof g_session1.charListCounts);
+    key = draw_key_int(key, self->delete_button->bmp.button.disabled);
+    key = draw_key_int(key, g_loginCharInfo.slot);
+    key = deletion_key(key, ui_char_info(g_loginCharInfo.slot));
+    for (i = 0; i < self->storage.per_page; i++) {
+        int index = self->page * self->storage.per_page + i;
+
+        if (index >= self->storage.slot_count)
+            continue;
+        key = draw_key_int(key, self->storage.empty[index]);
+        key = deletion_key(key, ui_char_info(index));
+    }
+    return draw_key_children(key, WND(self));
+}
+
+static void draw_characters(struct UINewSelectCharWnd *self)
+{
+    int i;
+
+    for (i = 0; i < self->storage.per_page; i++) {
+        int index = self->page * self->storage.per_page + i;
+        struct CharInfo *info;
+
+        if (index >= self->storage.slot_count)
+            continue;
+        info = ui_char_info(index);
+        if (!self->storage.empty[index] && info)
+            draw_character(self, info, &self->storage.previews[index]);
+    }
+}
+
+BYTE ui_new_select_char_wnd_render(struct UIWindow *window, int force)
+{
+    struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
+    struct UIWindow *button = SLOT_BUTTON(self, self->cur);
+
+    if (button && ui_slot_bmp_button_changed((struct UISlotBmpButton *)button))
+        ui_window_invalidate_children(button);
+    if (select_char_key(self) != self->drawn_key)
+        ui_window_invalidate_base(window);
+    draw_characters(self);
+    return ui_window_render_base(window, force);
+}
+
 void ui_new_select_char_wnd_on_draw(struct UIWindow *window)
 {
     struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
@@ -823,12 +899,11 @@ void ui_new_select_char_wnd_on_draw(struct UIWindow *window)
             continue;
         info = ui_char_info(index);
         draw_slot_kind(self, index);
-        if (!self->storage.empty[index] && info)
-            draw_character(self, info, &self->storage.previews[index]);
         update_slot_button(self, index);
         update_deletion(self, info, index);
     }
     update_delete_time(self);
+    self->drawn_key = select_char_key(self);
 }
 
 void ui_new_select_char_wnd_on_l_btn_down(struct UIWindow *self, int x, int y)
@@ -852,10 +927,8 @@ void ui_new_select_char_wnd_on_process(struct UIWindow *window)
     if (top)
         ui_window_mgr_raise_window(&g_windowMgr, top);
     button = SLOT_BUTTON(self, self->cur);
-    if (button) {
+    if (button)
         ui_window_on_process(button);
-        ui_window_invalidate_children(SLOT_BUTTON(self, self->cur));
-    }
 }
 
 void ui_new_select_char_wnd_hide_button(struct UINewSelectCharWnd *self, int id)

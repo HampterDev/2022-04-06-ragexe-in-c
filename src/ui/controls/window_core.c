@@ -41,6 +41,7 @@ struct UIWindow *ui_window_construct(struct UIWindow *self, int composites)
     self->sprite_quads.first = self->sprite_quads.last = self->sprite_quads.end = NULL;
     self->serial = ++g_uiWindowSerial;
     self->composites = (BYTE)composites;
+    self->redraws_tree = 0;
     return self;
 }
 

@@ -1,6 +1,10 @@
 #include "ui/hotkeys/hotkey_bars.h"
 #include "session/session_jobs.h"
 #include "ui/render/graphic_setting.h"
+#include "ui/draw_key.h"
+#include "iteminfo/item_api.h"
+#include "session/session_items.h"
+#include "session/session_skills.h"
 
 struct SkillCooldownNode *hotkey_cooldown_of(int skill_id)
 {
@@ -53,6 +57,29 @@ void hotkey_cooldowns_draw(struct UIWindow *wnd, struct CooldownSlotList *slots,
             icon_sheet_queue(g_stateIconSheet, 0, 0, 0xc, 0xc, &t->value, sheet_arg, wnd->x, wnd->y);
         node = node->next;
     }
+}
+
+unsigned long long hotkey_slot_key(unsigned long long key, const struct HotkeySlot *slot)
+{
+    key = draw_key_int(key, slot->id);
+    if (slot->id == 0)
+        return key;
+    key = draw_key_int(key, slot->is_skill);
+    key = draw_key_int(key, slot->level);
+    if (slot->is_skill) {
+        struct SkillInfo info;
+
+        session_get_skill_info(&info, slot->id);
+        key = draw_key_skill(key, &info);
+        skill_info_destruct(&info);
+    } else {
+        struct ItemInfo item;
+
+        session_get_inventory_item_by_id(&g_session1, &item, slot->id, 1);
+        key = draw_key_item(key, &item);
+        item_info_destruct(&item);
+    }
+    return key;
 }
 
 void hotkey_place_describe(struct UIWindow *wnd, struct UIWindow *describe, int x, int y)

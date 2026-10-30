@@ -17,6 +17,7 @@
 #include "ui/game.h"
 #include "ui/ui_items.h"
 #include "iteminfo/item_tables.h"
+#include "ui/character/character_draw.h"
 #include <mmsystem.h>
 
 static __inline struct UIBitmapButton *ui_add_skin_button(struct UIWindow *parent, const char *name, int x, int y,
@@ -127,9 +128,11 @@ struct UISwapEquipmentWnd {
     int accessory_mid;
     int robe;
     int hover[3];
+    struct UIAnimation animation;
 };
 
 struct UISwapEquipmentWnd *ui_swap_equipment_wnd_construct(struct UISwapEquipmentWnd *self);
+unsigned long long ui_swap_equipment_wnd_key(struct UISwapEquipmentWnd *self, unsigned long long key);
 int ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                           int val2, int val3, int val4);
 

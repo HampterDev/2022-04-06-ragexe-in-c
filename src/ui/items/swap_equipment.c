@@ -20,6 +20,7 @@
 #include "session/session_items.h"
 #include "session/session_names.h"
 #include "session/session_talk.h"
+#include "ui/draw_key.h"
 #include "ui/quests/npc_input.h"
 #include "ui/shops/merchant.h"
 
@@ -189,6 +190,7 @@ struct UISwapEquipmentWnd *ui_swap_equipment_wnd_construct(struct UISwapEquipmen
     self->swap = NULL;
     self->kind = 0;
     self->made_at = timeGetTime();
+    ui_animation_reset(&self->animation);
     self->hover[0] = SWAP_SLOT_NONE;
     self->hover[1] = SWAP_SLOT_NONE;
     self->hover[2] = SWAP_SLOT_NONE;
@@ -387,8 +389,38 @@ void ui_swap_equipment_wnd_draw_character(struct UISwapEquipmentWnd *self)
         .action = 0,
         .motion = 0,
         .start_time = self->made_at,
+        .animation = &self->animation,
     };
     ui_draw_character(wnd, &options, 0);
+}
+
+unsigned long long ui_swap_equipment_wnd_key(struct UISwapEquipmentWnd *self, unsigned long long key)
+{
+    struct ItemInfo item;
+    int i;
+
+    key = draw_key_int(key, self->kind);
+    for (i = 0; i < SWAP_SLOTS; i++) {
+        ui_swap_equipment_wnd_set_item(self, &item, i);
+        key = draw_key_item(key, &item);
+        item_info_destruct(&item);
+        if (self->kind == SWAP_KIND_SPECIAL)
+            session_get_worn_costume(&g_session1, &item, i);
+        else
+            session_get_equipped_item(&g_session1, &item, i);
+        key = draw_key_item(key, &item);
+        item_info_destruct(&item);
+    }
+    key = draw_key_int(key, session_get_sex(&g_session1));
+    key = draw_key_int(key, g_session1.job);
+    key = draw_key_int(key, g_session1.body);
+    key = draw_key_int(key, g_session1.hairStyle);
+    key = draw_key_int(key, g_session1.clothesColor);
+    key = draw_key_int(key, g_session1.hairColor);
+    session_get_inventory_item(&g_session1, &item, g_session1.switchArrowIndex);
+    key = draw_key_item(key, &item);
+    item_info_destruct(&item);
+    return key;
 }
 
 void ui_swap_equipment_wnd_on_create(struct UIWindow *window, int width, int height)
@@ -435,6 +467,7 @@ void ui_swap_equipment_wnd_on_draw(struct UIWindow *window)
     struct ItemInfo ammo;
     int len;
 
+    ui_animation_reset(&self->animation);
     ui_window_clear_canvas(wnd, 0xffffffff);
     string_init(&path);
     if (self->kind == SWAP_KIND_EQUIP)

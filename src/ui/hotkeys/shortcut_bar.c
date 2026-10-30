@@ -24,6 +24,7 @@
 #include "session/session_skills.h"
 #include "session/skill_levels.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/draw_key.h"
 
 struct UIShortCutWnd;
 struct UIWindow;
@@ -33,7 +34,9 @@ void ui_short_cut_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const
 void ui_short_cut_wnd_store_info(struct UIWindow *self);
 void ui_short_cut_wnd_set_show(struct UIWindow *self, int visible);
 void ui_short_cut_wnd_on_create(struct UIWindow *self, int width, int height);
+void ui_short_cut_wnd_on_process(struct UIWindow *self);
 void ui_short_cut_wnd_on_draw(struct UIWindow *self);
+BYTE ui_short_cut_wnd_render(struct UIWindow *self, int force);
 void ui_short_cut_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_short_cut_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_short_cut_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
@@ -73,7 +76,7 @@ const struct UIWindowOps ui_short_cut_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_short_cut_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_short_cut_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -348,11 +351,34 @@ void ui_short_cut_wnd_on_process(struct UIWindow *window)
 {
     struct UIShortCutWnd *self = (struct UIShortCutWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
-    int column = ui_short_cut_wnd_hit_slot(self, g_mouse.x - wnd->x, g_mouse.y - wnd->y);
 
-    if (column != self->hover_column)
-        self->hover_column = column;
-    ui_window_invalidate_base(wnd);
+    self->hover_column = ui_short_cut_wnd_hit_slot(self, g_mouse.x - wnd->x, g_mouse.y - wnd->y);
+}
+
+static unsigned long long short_cut_key(struct UIShortCutWnd *self)
+{
+    unsigned long long key = DRAW_KEY_START;
+    int index;
+
+    key = draw_key_int(key, self->rows);
+    key = draw_key_int(key, self->hover_row);
+    key = draw_key_int(key, self->hover_column);
+    key = draw_key_int(key, g_session1.shortenSkillPage);
+    for (index = 0; index < self->rows * HOTKEY_SLOTS_PER_ROW && index < HOTKEY_BAR_SLOTS; index++)
+        key = hotkey_slot_key(key, self->slots[index]);
+    return draw_key_children(key, &self->frame.base);
+}
+
+BYTE ui_short_cut_wnd_render(struct UIWindow *window, int force)
+{
+    struct UIShortCutWnd *self = (struct UIShortCutWnd *)window;
+    BYTE result;
+
+    if (short_cut_key(self) != self->drawn_key)
+        ui_window_invalidate_base(window);
+    result = ui_window_render_base(window, force);
+    hotkey_cooldowns_draw(window, &g_session1.cooldownSlotsBar, 0, self->rows * SHORTCUT_ROW_HEIGHT + 4);
+    return result;
 }
 
 void ui_short_cut_wnd_on_draw(struct UIWindow *window)
@@ -440,7 +466,7 @@ void ui_short_cut_wnd_on_draw(struct UIWindow *window)
                          SHORTCUT_FONT_HEIGHT, SHORTCUT_COLOUR_ROW_NUMBER, 0, 0);
         string_free(&number);
     }
-    hotkey_cooldowns_draw(wnd, &g_session1.cooldownSlotsBar, 0, self->rows * SHORTCUT_ROW_HEIGHT + 4);
+    self->drawn_key = short_cut_key(self);
 }
 
 void ui_short_cut_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
@@ -901,9 +927,11 @@ struct UIShortCutWnd *ui_short_cut_wnd_construct(struct UIShortCutWnd *self)
     self->frame.base.ops = &ui_short_cut_wnd_ops;
     self->minus = NULL;
     self->plus = NULL;
+    self->frame.base.redraws_tree = 1;
     self->hover_column = -1;
     self->hover_row = -1;
     self->rows = 1;
+    self->drawn_key = 0;
     return self;
 }
 

@@ -12,6 +12,7 @@
 #include "ui/character/character.h"
 
 #include "ui/character/char_preview.h"
+#include "ui/character/character_draw.h"
 
 #include "ui/character/char_info.h"
 #define CMODE_GET_CHAR_INFO 8
@@ -44,6 +45,8 @@ struct UISelCharForUServerWnd {
     struct Vec lines;
     int checked;
     int columns;
+    struct UIAnimation animation;
+    unsigned long long drawn_key;
 };
 
 struct UISelCharForUServerWnd *ui_sel_char_for_u_server_wnd_construct(struct UISelCharForUServerWnd *self);

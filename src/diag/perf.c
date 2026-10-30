@@ -123,8 +123,8 @@ static void build_lines(void)
               (c->textMeasured + c->textHits) / f,
               c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
               c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
-    wsprintfA(P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated (%u deferred), %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
-              c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->invalidatesDeferred / f, c->ondraws / f,
+    wsprintfA(P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
+              c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
               c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
     P.nlines = 7;
     P.dirty = 1;

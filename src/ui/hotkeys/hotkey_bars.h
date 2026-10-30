@@ -59,6 +59,7 @@ void ui_window_text_out_outlined_right(struct UIWindow *self, int x, int y,
                                               int font_face, int font_height, int font_arg);
 
 void hotkey_cooldowns_draw(struct UIWindow *wnd, struct CooldownSlotList *slots, int quick, int sheet_arg);
+unsigned long long hotkey_slot_key(unsigned long long key, const struct HotkeySlot *slot);
 struct SkillCooldownNode *hotkey_cooldown_of(int skill_id);
 void hotkey_place_describe(struct UIWindow *wnd, struct UIWindow *describe, int x, int y);
 
@@ -77,10 +78,11 @@ struct UIShortCutWnd {
     int hover_column;
     int hover_row;
     int rows;
+    unsigned long long drawn_key;
 };
 OFFSET_ASSERT(UIShortCutWnd, slots, 0xa4);
 OFFSET_ASSERT(UIShortCutWnd, hover_column, 0x134);
-SIZE_ASSERT(UIShortCutWnd, 0x140);
+SIZE_ASSERT(UIShortCutWnd, 0x148);
 
 int quik_slot_wnd_info_is_valid(struct WindowInfo *self);
 void quik_slot_wnd_info_make_default(struct WindowInfo *self);
@@ -90,9 +92,10 @@ struct UIQuikSlotWnd {
     int hover;
     struct WindowInfo *info;
     struct HotkeySlot slots[HOTKEY_QUICK_SLOTS];
+    unsigned long long drawn_key;
 };
 OFFSET_ASSERT(UIQuikSlotWnd, slots, 0x9c);
-SIZE_ASSERT(UIQuikSlotWnd, 0xac);
+SIZE_ASSERT(UIQuikSlotWnd, 0xb8);
 
 #define HOTKEY_MSG_RELAYOUT 0xe
 #define HOTKEY_MSG_REFRESH 0x17
@@ -104,9 +107,6 @@ SIZE_ASSERT(UIQuikSlotWnd, 0xac);
 #define MSG_SHORTCUT_GROUP_TIP 0xe0c
 #define MSG_SKILL_SLOT 0xb8
 #define MSG_ITEM_SLOT 0xb7
-
-void ui_quik_slot_wnd_on_process(struct UIWindow *window);
-void ui_short_cut_wnd_on_process(struct UIWindow *window);
 
 struct UIQuikSlotWnd *ui_quik_slot_wnd_construct(struct UIQuikSlotWnd *self);
 struct UIWindow *ui_quik_slot_wnd_new(void);

@@ -48,6 +48,8 @@ struct UIWindowMgr {
     struct Tree snap_rects;
     struct UIWindow *capture;
     struct UIWindow *focus_edit;
+    struct UIWindow *focus_drawn;
+    unsigned long long focus_key;
     struct UIWindow *modal_wnd;
     struct UIWindow *mouse_wnd;
     struct UIWindow *loading_wnd;

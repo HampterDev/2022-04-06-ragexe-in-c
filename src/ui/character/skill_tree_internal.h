@@ -23,5 +23,6 @@ void skill_tree_reset_points(struct UINewSkillListWnd *self);
 BYTE skill_tree_raise_skill(struct UINewSkillListWnd *self, int skill_id);
 void skill_tree_apply_points(struct UINewSkillListWnd *self);
 void skill_tree_mark_required(struct UINewSkillListWnd *self);
+BYTE ui_new_skill_list_wnd_render(struct UIWindow *window, int force);
 
 #endif

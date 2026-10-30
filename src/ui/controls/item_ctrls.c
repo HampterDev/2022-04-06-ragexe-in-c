@@ -24,6 +24,7 @@
 #include "session/session_items.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
+#include "ui/draw_key.h"
 
 #define ITEM_WND_ID 0xc
 #define ITEM_WND_MSG_SHOW 0x18
@@ -710,12 +711,50 @@ void ui_slot_bmp_button_on_process(struct UIWindow *window)
         self->anim_tick = 0;
 }
 
+static unsigned long long slot_bmp_button_key(struct UISlotBmpButton *self)
+{
+    const struct CharInfo *info;
+    unsigned long long key = DRAW_KEY_START;
+
+    key = draw_key_int(key, self->bmp.button.base.state);
+    key = draw_key_int(key, self->bmp.button.disabled);
+    key = draw_key_int(key, self->style);
+    key = draw_key_int(key, self->selected);
+    if (!self->bmp.button.disabled && self->style == 1 && self->selected == 1)
+        key = draw_key_int(key, self->anim_tick / self->anim_divisor);
+    key = draw_key_int(key, self->occupied);
+    key = draw_key_int(key, g_session1.charListCounts[0]);
+    key = draw_key_int(key, self->slot);
+    if (self->slot < 0)
+        return key;
+    info = (const struct CharInfo *)mode_send_message(client_current_mode(), MODE_MSG_CHAR_INFO, self->slot, 0, 0, 0);
+    if (!info)
+        return key;
+    key = draw_key_int(key, info->rename_count);
+    key = draw_key_int(key, info->slot_change_count);
+    key = draw_key_int(key, info->delete_date);
+    if (info->delete_date) {
+        struct Time when;
+
+        time_construct(&when, info->delete_date);
+        key = draw_key_int(key, time_is_past(&when));
+        time_destruct(&when);
+    }
+    return key;
+}
+
+int ui_slot_bmp_button_changed(struct UISlotBmpButton *self)
+{
+    return slot_bmp_button_key(self) != self->drawn_key;
+}
+
 void ui_slot_bmp_button_on_draw(struct UIWindow *window)
 {
     struct UISlotBmpButton *self = (struct UISlotBmpButton *)window;
     struct UIWindow *wnd = &self->bmp.button.base;
     const struct CharInfo *info;
 
+    self->drawn_key = slot_bmp_button_key(self);
     ui_window_clear_canvas(wnd, UI_TRANSPARENT);
     ui_bitmap_button_on_draw((struct UIWindow *)(&self->bmp));
 
@@ -851,6 +890,7 @@ static struct UISlotBmpButton *slot_bmp_button_construct(struct UISlotBmpButton 
     self->job_icon = NULL;
     self->anim_tick = 0;
     self->anim_divisor = 5;
+    self->drawn_key = 0;
     return self;
 }
 

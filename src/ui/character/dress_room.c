@@ -13,6 +13,7 @@
 #include "diag/perf.h"
 #include "session/session_jobs.h"
 #include "session/session_talk.h"
+#include "ui/draw_key.h"
 
 struct DressOption {
     struct String text;
@@ -25,6 +26,7 @@ struct UIWindow;
 void ui_second_costume_wnd_destroy(struct UIWindow *window);
 void ui_second_costume_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_second_costume_wnd_on_draw(struct UIWindow *self);
+BYTE ui_second_costume_wnd_render(struct UIWindow *self, int force);
 int ui_second_costume_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
 const struct UIWindowOps ui_second_costume_wnd_ops = {
     .destroy = ui_second_costume_wnd_destroy,
@@ -60,7 +62,7 @@ const struct UIWindowOps ui_second_costume_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_second_costume_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_second_costume_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -108,6 +110,8 @@ struct UISecondCostumeWnd {
     int direction;
     struct String spr_paths[DRESS_STRINGS];
     struct String act_paths[DRESS_STRINGS];
+    struct UIAnimation animation;
+    unsigned long long drawn_key;
 };
 OFFSET_ASSERT(UISecondCostumeWnd, lists, 0xb0);
 OFFSET_ASSERT(UISecondCostumeWnd, start_time, 0xe0);
@@ -136,6 +140,9 @@ struct UISecondCostumeWnd *ui_second_costume_wnd_construct(struct UISecondCostum
         self->selected[i] = 0;
     self->start_time = timeGetTime();
     self->direction = 0;
+    self->frame.base.redraws_tree = 1;
+    ui_animation_reset(&self->animation);
+    self->drawn_key = 0;
     return self;
 }
 
@@ -224,6 +231,7 @@ void ui_second_costume_wnd_draw_character(struct UISecondCostumeWnd *self, int x
         .action = self->direction,
         .motion = 0,
         .start_time = self->start_time,
+        .animation = &self->animation,
     };
     ui_draw_character(&self->frame.base, &options, 0);
 }
@@ -342,6 +350,37 @@ void ui_second_costume_wnd_on_create(struct UIWindow *window, int width, int hei
     add_arrow(self, UI_SKIN "scroll1right.bmp", width - 0x13, DRESS_ID_TURN_LEFT);
 }
 
+static unsigned long long dress_key(struct UISecondCostumeWnd *self)
+{
+    struct PlayerAppearance appearance;
+    unsigned long long key = DRAW_KEY_START;
+    int i;
+
+    for (i = 0; i < DRESS_LISTS; i++)
+        key = draw_key_int(key, picked_value(self, i));
+    key = draw_key_int(key, self->direction);
+    key = draw_key_int(key, session_get_sex(&g_session1));
+    key = draw_key_int(key, session_get_drawn_job(&g_session1));
+    key = draw_key_int(key, g_session1.headBottom);
+    key = draw_key_int(key, g_session1.headTop);
+    key = draw_key_int(key, g_session1.headMid);
+    key = draw_key_int(key, g_session1.robe);
+    if (player_get_appearance(game_current_player(), &appearance))
+        key = draw_key_int(key, appearance.mounted);
+    else
+        key = draw_key_int(key, -1);
+    return draw_key_children(key, &self->frame.base);
+}
+
+BYTE ui_second_costume_wnd_render(struct UIWindow *window, int force)
+{
+    struct UISecondCostumeWnd *self = (struct UISecondCostumeWnd *)window;
+
+    if (dress_key(self) != self->drawn_key || ui_animation_due(&self->animation))
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
+}
+
 void ui_second_costume_wnd_on_draw(struct UIWindow *window)
 {
     struct UISecondCostumeWnd *self = (struct UISecondCostumeWnd *)window;
@@ -350,11 +389,13 @@ void ui_second_costume_wnd_on_draw(struct UIWindow *window)
     int x = wnd->width - DRESS_PANEL_WIDTH;
     struct BitmapRes *back;
 
+    ui_animation_reset(&self->animation);
     ui_window_draw_body(wnd, 0x11, 0, "");
     back = ui_skin_bitmap(UI_SKIN "basic_interface\\dressroomback.bmp");
     if (back)
         ui_window_draw_bitmap(wnd, x, top + 3, back, 0);
     ui_second_costume_wnd_draw_character(self, x + 0x64, wnd->height - 0x23);
+    self->drawn_key = dress_key(self);
 }
 
 int ui_second_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,

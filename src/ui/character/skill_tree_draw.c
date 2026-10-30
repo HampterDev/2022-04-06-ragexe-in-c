@@ -17,6 +17,7 @@
 #include "session/session_names.h"
 #include "session/session_talk.h"
 #include "session/skill_levels.h"
+#include "ui/draw_key.h"
 
 #define MSG_SKILL_TREE_TITLE 0x11b
 #define MSG_POINTS_LEFT_LIST 0x11c
@@ -47,6 +48,27 @@ static struct String *required_level_text(struct UINewSkillListWnd *self, struct
     }
     string_init(out);
     return out;
+}
+
+static int character_frame(DWORD anim_time, int frame_count)
+{
+    return (int)((float)(double)(DWORD)(timeGetTime() - anim_time) / 300.0f) / frame_count;
+}
+
+static int character_due(struct UINewSkillListWnd *self)
+{
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        int frame;
+
+        if (!self->anim_frame_counts[i])
+            continue;
+        frame = character_frame(self->anim_time, self->anim_frame_counts[i]);
+        if (frame >= 3 || frame != self->anim_frames[i])
+            return 1;
+    }
+    return 0;
 }
 
 static void draw_character(struct UINewSkillListWnd *self)
@@ -94,6 +116,7 @@ static void draw_character(struct UINewSkillListWnd *self)
     string_assign(&imf, string_cstr(&tmp), tmp.size);
     string_free(&tmp);
 
+    self->anim_frame_counts[0] = self->anim_frame_counts[1] = 0;
     for (i = 0; i < 2; i++) {
         struct ActRes *act;
         struct SprRes *spr;
@@ -109,12 +132,13 @@ static void draw_character(struct UINewSkillListWnd *self)
             continue;
         act = res_mgr_get(res(), string_cstr(&act_path[i]));
         spr = res_mgr_get(res(), string_cstr(&spr_path[i]));
-        frame = (int)((float)(double)(DWORD)(timeGetTime() - self->anim_time) / 300.0f)
-                / (int)actres_frame_count(act, 0x17);
+        self->anim_frame_counts[i] = (int)actres_frame_count(act, 0x17);
+        frame = character_frame(self->anim_time, self->anim_frame_counts[i]);
         if (frame >= 3) {
             frame = 0;
             self->anim_time = timeGetTime();
         }
+        self->anim_frames[i] = frame;
         motion = act_res_get_motion(act, 0x17, frame);
         if (session_is_doram_job(&g_session1, g_session1.job) == 1) {
             int accessory = 0, ox = 0, oy = 0;
@@ -448,6 +472,67 @@ static void draw_cells(struct UINewSkillListWnd *self)
     }
 }
 
+static unsigned long long skill_tree_key(struct UINewSkillListWnd *self)
+{
+    struct UIWindow *wnd = WND(self);
+    struct List *list = skill_tree_shown_list(self);
+    struct ListNode *node;
+    unsigned long long key = DRAW_KEY_START;
+    int first = self->top * self->columns;
+
+    key = draw_key_int(key, wnd->width);
+    key = draw_key_int(key, wnd->height);
+    key = draw_key_int(key, self->top_margin);
+    key = draw_key_int(key, self->bottom_margin);
+    key = draw_key_int(key, self->tab);
+    key = draw_key_int(key, self->top);
+    key = draw_key_int(key, self->columns);
+    key = draw_key_int(key, self->rows);
+    key = draw_key_int(key, self->hover);
+    key = draw_key_int(key, self->pending);
+    key = draw_key_int(key, self->points_left);
+    key = draw_key_int(key, g_session1.skillPoints);
+    key = draw_key_int(key, g_session1.job);
+    key = draw_key_int(key, session_get_sex(&g_session1));
+    key = draw_key_int(key, g_session1.hairStyle);
+    key = draw_key_int(key, g_session1.body);
+    key = draw_key_int(key, g_session1.clothesColor);
+    key = draw_key_int(key, g_session1.hairColor);
+    for (node = list->head->next; node != list->head; node = node->next) {
+        struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo), *known, *extra, at;
+        struct SkillRequirement *required;
+        int slot = SKILL_INFO_SLOT(info);
+
+        if (slot == -1 || slot < first || slot - first >= SKILL_TREE_CELLS)
+            continue;
+        required = skill_tree_level_list_find(&self->required, info->id);
+        known = player_skill_bundle_find_tree_skill(&g_session1.skills, info->id);
+        extra = player_skill_bundle_find_extra_skill(&g_session1.skills, info->id);
+        key = draw_key_skill(key, info);
+        key = draw_key_int(key, required ? required->level : -1);
+        key = draw_key_int(key, skill_tree_planned_level(self, info->id));
+        key = draw_key_int(key, known ? SKILL_INFO_BASE_LEVEL(known) : -1);
+        key = draw_key_int(key, extra ? extra->level : -1);
+        key = draw_key_int(key, player_skill_bundle_tree_skill_level(&g_session1.skills, info->id));
+        key = draw_key_int(key, session_get_skill_table_value(&g_session1, info->id));
+        key = draw_key_int(key, player_skill_bundle_is_level_boosted(&g_session1.skills, info->id));
+        skill_tree_skill_at(self, &at, slot, 1);
+        key = draw_key_int(key, at.level);
+        skill_info_destruct(&at);
+    }
+    return draw_key_children(key, wnd);
+}
+
+BYTE ui_new_skill_list_wnd_render(struct UIWindow *window, int force)
+{
+    struct UINewSkillListWnd *self = (struct UINewSkillListWnd *)window;
+
+    window->redraws_tree = !g_session1.simpleSkillWnd;
+    if (window->redraws_tree && (skill_tree_key(self) != self->drawn_key || character_due(self)))
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
+}
+
 void ui_new_skill_list_wnd_on_draw(struct UIWindow *window)
 {
     struct UINewSkillListWnd *self = (struct UINewSkillListWnd *)window;
@@ -498,6 +583,7 @@ void ui_new_skill_list_wnd_on_draw(struct UIWindow *window)
         string_free(&text);
         draw_cells(self);
         draw_character(self);
+        self->drawn_key = skill_tree_key(self);
     }
     self->dirty = 0;
 }

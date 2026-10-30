@@ -1,4 +1,3 @@
-#include "ui/hotkeys/hotkey_bars.h"
 #include "ui/window_access.h"
 #include <stdint.h>
 #include "contents/mouse.h"
@@ -159,18 +158,11 @@ static void close_combo_box(struct UIWindowMgr *self, struct UIWindow *combo, in
         ui_window_mgr_post_quit1(self, window_id);
 }
 
-static void invalidate_per_frame(struct UIWindow *wnd)
-{
-    ui_soft_next(1);
-    ui_window_invalidate(wnd);
-    ui_soft_next(0);
-}
-
 int ui_window_mgr_process_input(struct UIWindowMgr *self)
 {
     int mx = g_mouse.x, my = g_mouse.y;
     int answer = 0;
-    struct UIWindow *wnd, *root;
+    struct UIWindow *wnd;
     struct ListNode *node;
     struct TreeNode *it;
 
@@ -196,21 +188,6 @@ int ui_window_mgr_process_input(struct UIWindowMgr *self)
             close_combo_box(self, self->combo_box_idwnd, 0x104, wnd);
         }
 
-        if (self->new_select_char_wnd)
-            invalidate_per_frame(self->new_select_char_wnd);
-        if (self->equip_wnd)
-            invalidate_per_frame(self->equip_wnd);
-        if (self->n_cash_wnd)
-            invalidate_per_frame(self->n_cash_wnd);
-        if (self->other_equip_wnd)
-            invalidate_per_frame(self->other_equip_wnd);
-        if (self->sel_char_for_userver_wnd)
-            invalidate_per_frame(self->sel_char_for_userver_wnd);
-        if (self->new_skill_list_wnd && !g_session1.simpleSkillWnd)
-            invalidate_per_frame(self->new_skill_list_wnd);
-        if (self->second_costume_wnd)
-            invalidate_per_frame(self->second_costume_wnd);
-
         if (wnd) {
             if (self->mouse_wnd && wnd != self->mouse_wnd) {
                 int sx = 0, sy = 0;
@@ -221,13 +198,6 @@ int ui_window_mgr_process_input(struct UIWindowMgr *self)
             }
             self->mouse_wnd = wnd;
         }
-    }
-
-    if (self->focus_edit) {
-        ui_window_invalidate(self->focus_edit);
-        root = ui_window_get_ancestor(self->focus_edit);
-        if (root && root != self->guild_position_manage_wnd)
-            ui_window_invalidate(root);
     }
 
     self->mouse_y_last = my;
@@ -259,17 +229,8 @@ void ui_window_mgr_on_process(struct UIWindowMgr *self)
     struct ListNode *node;
     struct TreeNode *it;
 
-    for (node = self->windows.head->next; node != self->windows.head; node = node->next) {
-        struct UIWindow *wnd = *LIST_VALUE(node, struct UIWindow *);
-        int per_frame = wnd->ops->on_process == ui_short_cut_wnd_on_process ||
-                        wnd->ops->on_process == ui_quik_slot_wnd_on_process;
-
-        if (per_frame)
-            ui_soft_next(1);
-        ui_window_on_process(wnd);
-        if (per_frame)
-            ui_soft_next(0);
-    }
+    for (node = self->windows.head->next; node != self->windows.head; node = node->next)
+        ui_window_on_process(*LIST_VALUE(node, struct UIWindow *));
     for (it = tree_first(&self->browsers); it != self->browsers.head; it = tree_next(it)) {
         struct WebBrowser *browser = TREE_VALUE(it, struct WmBrowser)->browser;
 

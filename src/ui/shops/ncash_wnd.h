@@ -42,6 +42,7 @@ struct UInCashWnd {
     int row_height;
     int grid_top;
     int top;
+    unsigned long long drawn_key;
 };
 OFFSET_ASSERT(UInCashWnd, count, 0xd0);
 OFFSET_ASSERT(UInCashWnd, cart, 0xd8);
@@ -50,7 +51,7 @@ OFFSET_ASSERT(UInCashWnd, scroll, 0x130);
 OFFSET_ASSERT(UInCashWnd, cart_pos, 0x138);
 OFFSET_ASSERT(UInCashWnd, tab, 0x148);
 OFFSET_ASSERT(UInCashWnd, points, 0x158);
-SIZE_ASSERT(UInCashWnd, 0x168);
+SIZE_ASSERT(UInCashWnd, 0x170);
 
 struct UInCashWnd *u_in_cash_wnd_construct(struct UInCashWnd *self);
 struct UIWindow *u_in_cash_wnd_new(void);

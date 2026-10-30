@@ -120,6 +120,7 @@ struct UIWindow {
     struct Vec sprite_quads;
     int serial;
     BYTE composites;
+    BYTE redraws_tree;
 };
 
 #define UI_WINDOW(p) ((struct UIWindow *)(p))

@@ -69,7 +69,7 @@ const struct UIWindowOps ui_new_skill_list_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_new_skill_list_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_new_skill_list_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -128,6 +128,9 @@ struct UINewSkillListWnd *ui_new_skill_list_wnd_construct(struct UINewSkillListW
     self->dirty = 1;
     self->hover = -1;
     self->anim_time = timeGetTime();
+    self->anim_frame_counts[0] = self->anim_frame_counts[1] = 0;
+    self->anim_frames[0] = self->anim_frames[1] = 0;
+    self->drawn_key = 0;
     self->top_margin = 0x14;
     self->bottom_margin = 0x20;
     self->info = NULL;

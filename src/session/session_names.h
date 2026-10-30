@@ -104,6 +104,13 @@ struct String *session_get_glow_weapon_act_name(struct String *out, int a,
                                                           int b, int c, int d, int e);
 struct String *session_get_glow_weapon_spr_name(struct String *out, int a,
                                                           int b, int c, int d, int e);
+struct MotionStepping {
+    int ratio, delay, block;
+    DWORD start_time;
+};
+int session_get_motion_stepping(void *master, void *slave, int action, int block, DWORD start_time,
+                                struct MotionStepping *out);
+int motion_stepping_frame(const struct MotionStepping *stepping);
 void *session_get_stepped_motion(void *master, void *slave, int action,
                                           int block, DWORD startTime, int *frame);
 int session_get_mounted_job(int job);

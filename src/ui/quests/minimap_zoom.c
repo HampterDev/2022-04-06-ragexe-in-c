@@ -46,6 +46,11 @@ struct ZoomButton {
 #define MZ_BIG_MAP_WND 0x111
 #define MZ_WORLD_MAP_WND 0x8c
 
+static void track_facilities(struct UIMinimapZoomWnd *self)
+{
+    self->frame.base.redraws_tree = g_windowMgr.minimap_show_navigation && self->buttons.size;
+}
+
 void ui_minimap_zoom_wnd_on_create(struct UIWindow *self, int width, int height)
 {
     static const int ids[5] = { 0x1bc, 0xd0, 0xd1, 0xb5, 0x1be };
@@ -118,6 +123,7 @@ void ui_minimap_zoom_wnd_on_create(struct UIWindow *self, int width, int height)
         string_free(&info.name);
     }
     string_free(&prefix);
+    track_facilities((struct UIMinimapZoomWnd *)self);
 }
 
 void ui_minimap_zoom_wnd_on_draw(struct UIWindow *self)
@@ -134,17 +140,21 @@ void ui_minimap_zoom_wnd_on_draw(struct UIWindow *self)
     string_free(&text);
 }
 
-static void soft_invalidate(struct UIWindow *wnd)
+static void show_facility(struct UIWindow *wnd, struct UIWindow *button, BYTE show)
 {
-    ui_soft_next(1);
-    ui_window_invalidate(wnd);
-    ui_soft_next(0);
-}
-static void soft_set_show(struct UIWindow *button, BYTE show)
-{
-    ui_soft_next(1);
+    if (button->visible == show && ((struct UIButton *)button)->disabled == (show ^ 1))
+        return;
     ui_button_show((struct UIButton *)(button), show);
-    ui_soft_next(0);
+    ui_window_invalidate_base(wnd);
+}
+
+static void place_facility(struct UIWindow *wnd, struct UIWindow *button, int x, int y)
+{
+    int old_x = button->x, old_y = button->y;
+
+    ui_window_move(button, x, y);
+    if (button->x != old_x || button->y != old_y)
+        ui_window_invalidate_base(wnd);
 }
 
 static struct UIWindow *facility_button(struct UIMinimapZoomWnd *self, int index)
@@ -217,16 +227,17 @@ int ui_minimap_zoom_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     case MZ_CMD_OBJECT:
         g_windowMgr.minimap_show_navigation = g_windowMgr.minimap_show_navigation == 0;
         for (it = tree_first(&self->buttons); it != self->buttons.head; it = tree_next(it))
-            soft_set_show(TREE_VALUE(it, struct ZoomButton)->button, (BYTE)g_windowMgr.minimap_show_navigation);
-        soft_invalidate(wnd);
+            ui_button_show((struct UIButton *)(TREE_VALUE(it, struct ZoomButton)->button),
+                           (BYTE)g_windowMgr.minimap_show_navigation);
+        track_facilities(self);
+        ui_window_invalidate_base(wnd);
         return 0;
     case MZ_MSG_PLACE:
         button = facility_button(self, val2);
         if (button) {
-            soft_set_show(button, 1);
-            ui_window_move(button, val3 - wnd->x, val4 - wnd->y);
+            show_facility(wnd, button, 1);
+            place_facility(wnd, button, val3 - wnd->x, val4 - wnd->y);
         }
-        soft_invalidate(wnd);
         return 0;
     case MZ_CMD_VIEWON:
         toggle_window(MZ_WORLD_MAP_WND);
@@ -234,8 +245,7 @@ int ui_minimap_zoom_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     case MZ_MSG_HIDE:
         button = facility_button(self, val2);
         if (button)
-            soft_set_show(button, 0);
-        soft_invalidate(wnd);
+            show_facility(wnd, button, 0);
         return 0;
     case MZ_MSG_TOGGLE_ZOOM:
         for (p = (struct UIWindow **)self->row.first; p != (struct UIWindow **)self->row.last; p++)

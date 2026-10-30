@@ -23,6 +23,7 @@ struct UIMerchantShopTitle;
 void ui_merchant_shop_title_destroy(struct UIWindow *window);
 void ui_merchant_shop_title_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_merchant_shop_title_on_draw(struct UIWindow *self);
+BYTE ui_merchant_shop_title_render(struct UIWindow *self, int force);
 void ui_merchant_shop_title_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_merchant_shop_title_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_merchant_shop_title_on_mouse_shape(struct UIWindow *self, int x, int y);
@@ -62,7 +63,7 @@ const struct UIWindowOps ui_merchant_shop_title_ops = {
     .snap = ui_window_snap_base,
     .send_msg = ui_merchant_shop_title_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_merchant_shop_title_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_window_get_records_base,
@@ -79,6 +80,7 @@ struct UIMerchantShopTitle {
     struct UIWindow *title;
     int owner;
     short font_code;
+    BYTE highlighted;
     int buying;
 };
 OFFSET_ASSERT(UIMerchantShopTitle, owner, 0x80);
@@ -97,7 +99,9 @@ static struct UIMerchantShopTitle *ui_merchant_shop_title_construct(struct UIMer
 {
     ui_window_construct(&self->base, 0);
     self->base.ops = &ui_merchant_shop_title_ops;
+    self->base.redraws_tree = 1;
     self->buying = buying;
+    self->highlighted = 0;
     self->base.id = UI_ID_SHOP_TITLE;
     return self;
 }
@@ -140,17 +144,31 @@ void ui_merchant_shop_title_on_create(struct UIWindow *window, int width_unused,
     ui_window_add_child(&self->base, self->title);
 }
 
+static BYTE shop_title_highlighted(const struct UIMerchantShopTitle *self)
+{
+    return self->owner == g_session1.storeSearchClickedAid;
+}
+
 void ui_merchant_shop_title_on_draw(struct UIWindow *window)
 {
     struct UIMerchantShopTitle *self = (struct UIMerchantShopTitle *)window;
     struct UIWindow *wnd = &self->base;
 
+    self->highlighted = shop_title_highlighted(self);
     ui_window_clear_canvas(wnd, 0xffff00ff);
-    ui_window_fill_round_rect(wnd, 0, 0, wnd->width, wnd->height - 6,
-                           self->owner == g_session1.storeSearchClickedAid ? 0x7dfaff : 0xffffff);
+    ui_window_fill_round_rect(wnd, 0, 0, wnd->width, wnd->height - 6, self->highlighted ? 0x7dfaff : 0xffffff);
     ui_window_draw_round_frame(wnd, 2, 2, wnd->width - 4, wnd->height - 10, 0xc3c3c3);
     ui_window_draw_bitmap(wnd, 3, 3,
                         ui_skin_bitmap(self->buying ? UI_SKIN "buyingshop.bmp" : UI_SKIN "shop.bmp"), 1);
+}
+
+BYTE ui_merchant_shop_title_render(struct UIWindow *window, int force)
+{
+    struct UIMerchantShopTitle *self = (struct UIMerchantShopTitle *)window;
+
+    if (shop_title_highlighted(self) != self->highlighted)
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
 }
 
 static void open_shop(struct UIMerchantShopTitle *self)

@@ -20,6 +20,7 @@
 #include "session/session_skills.h"
 #include "session/session_windows.h"
 #include "session/skill_levels.h"
+#include "ui/draw_key.h"
 
 struct UIQuikSlotWnd;
 struct UIWindow;
@@ -28,6 +29,7 @@ void ui_quik_slot_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const
 void ui_quik_slot_wnd_store_info(struct UIWindow *self);
 void ui_quik_slot_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_quik_slot_wnd_on_draw(struct UIWindow *self);
+BYTE ui_quik_slot_wnd_render(struct UIWindow *self, int force);
 void ui_quik_slot_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_quik_slot_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_quik_slot_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
@@ -50,7 +52,7 @@ const struct UIWindowOps ui_quik_slot_wnd_ops = {
     .set_show = ui_window_set_show_base,
     .on_create = ui_quik_slot_wnd_on_create,
     .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_quik_slot_wnd_on_process,
+    .on_process = ui_window_on_process_base,
     .on_draw = ui_quik_slot_wnd_on_draw,
     .on_focus = ui_window_on_focus_base,
     .on_focus_lost = ui_window_on_focus_lost_base,
@@ -67,7 +69,7 @@ const struct UIWindowOps ui_quik_slot_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_quik_slot_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_quik_slot_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -242,10 +244,26 @@ void ui_quik_slot_wnd_on_create(struct UIWindow *self, int width, int height)
 {
 }
 
-void ui_quik_slot_wnd_on_process(struct UIWindow *window)
+static unsigned long long quik_slot_key(struct UIQuikSlotWnd *self)
+{
+    unsigned long long key = draw_key_int(DRAW_KEY_START, self->hover);
+    int i;
+
+    for (i = 0; i < HOTKEY_QUICK_SLOTS; i++)
+        key = hotkey_slot_key(key, &self->slots[i]);
+    return draw_key_children(key, &self->frame.base);
+}
+
+BYTE ui_quik_slot_wnd_render(struct UIWindow *window, int force)
 {
     struct UIQuikSlotWnd *self = (struct UIQuikSlotWnd *)window;
-    ui_window_invalidate_base(&self->frame.base);
+    BYTE result;
+
+    if (quik_slot_key(self) != self->drawn_key)
+        ui_window_invalidate_base(window);
+    result = ui_window_render_base(window, force);
+    hotkey_cooldowns_draw(window, &g_session1.cooldownSlotsQuick, 1, 0);
+    return result;
 }
 
 void ui_quik_slot_wnd_on_draw(struct UIWindow *window)
@@ -307,7 +325,7 @@ void ui_quik_slot_wnd_on_draw(struct UIWindow *window)
             item_info_destruct(&item);
         }
     }
-    hotkey_cooldowns_draw(wnd, &g_session1.cooldownSlotsQuick, 1, 0);
+    self->drawn_key = quik_slot_key(self);
 }
 
 void ui_quik_slot_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
@@ -622,8 +640,10 @@ struct UIQuikSlotWnd *ui_quik_slot_wnd_construct(struct UIQuikSlotWnd *self)
 {
     ui_frame_wnd_construct(&self->frame, 0);
     self->frame.base.ops = &ui_quik_slot_wnd_ops;
+    self->frame.base.redraws_tree = 1;
     self->hover = -1;
     memset(self->slots, 0, sizeof self->slots);
+    self->drawn_key = 0;
     return self;
 }
 

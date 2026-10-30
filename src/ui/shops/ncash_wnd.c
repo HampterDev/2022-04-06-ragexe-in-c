@@ -15,6 +15,7 @@
 #include "session/session_items.h"
 #include "ui/items/items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/draw_key.h"
 
 #define NCASH_MSG_CART_WHEEL 7
 #define NCASH_MSG_CART_UP 9
@@ -459,6 +460,46 @@ static void draw_goods_and_cart(struct UInCashWnd *self)
     }
 }
 
+static unsigned long long ncash_items_key(unsigned long long key, struct List *list, int from, int count)
+{
+    struct ListNode *node;
+    int index = 0;
+
+    key = draw_key_int(key, (int)list->size);
+    for (node = list->head->next; node != list->head && index < from + count; node = node->next, index++)
+        if (index >= from)
+            key = draw_key_item(key, LIST_VALUE(node, struct ItemInfo));
+    return key;
+}
+
+static unsigned long long ncash_key(struct UInCashWnd *self)
+{
+    unsigned long long key = DRAW_KEY_START;
+    int first = self->page * NCASH_PAGE_GOODS - NCASH_PAGE_GOODS;
+
+    key = draw_key_int(key, self->base.frame.base.height);
+    key = draw_key_int(key, self->page);
+    key = draw_key_int(key, self->page_count);
+    key = draw_key_int(key, self->points);
+    key = draw_key_int(key, self->cash);
+    key = draw_key_int(key, self->cart_total);
+    key = draw_key_int(key, self->cart_pos);
+    key = draw_key_int(key, self->row_height);
+    key = draw_key_int(key, self->grid_top);
+    key = ncash_items_key(key, &self->base.items, first < 0 ? 0 : first, NCASH_PAGE_GOODS);
+    key = ncash_items_key(key, &self->cart, self->cart_pos, NCASH_ROWS);
+    return draw_key_children(key, &self->base.frame.base);
+}
+
+BYTE u_in_cash_wnd_render(struct UIWindow *window, int force)
+{
+    struct UInCashWnd *self = (struct UInCashWnd *)window;
+
+    if (ncash_key(self) != self->drawn_key)
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
+}
+
 void u_in_cash_wnd_on_draw(struct UIWindow *window)
 {
     struct UInCashWnd *self = (struct UInCashWnd *)window;
@@ -487,6 +528,7 @@ void u_in_cash_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_shadow_text(wnd, 0x104, h - 0x11, text, len, 0, 0xffffff, 0, 0xc, 0);
     ui_window_text_out(wnd, 0x1ab, h - 0x11, "C", 0, 0, 0xc, 0, 0, 0);
     draw_goods_and_cart(self);
+    self->drawn_key = ncash_key(self);
 }
 
 void u_in_cash_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
@@ -1018,6 +1060,7 @@ void u_in_cash_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const stru
 void u_in_cash_wnd_store_info(struct UIWindow *self);
 void u_in_cash_wnd_on_create(struct UIWindow *self, int width, int height);
 void u_in_cash_wnd_on_draw(struct UIWindow *self);
+BYTE u_in_cash_wnd_render(struct UIWindow *self, int force);
 void u_in_cash_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void u_in_cash_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void u_in_cash_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
@@ -1057,7 +1100,7 @@ const struct UIWindowOps u_in_cash_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = u_in_cash_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = u_in_cash_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -1073,6 +1116,8 @@ struct UInCashWnd *u_in_cash_wnd_construct(struct UInCashWnd *self)
 {
     ui_item_base_wnd_construct(&self->base);
     self->base.frame.base.ops = &u_in_cash_wnd_ops;
+    self->base.frame.base.redraws_tree = 1;
+    self->drawn_key = 0;
     list_init(&self->cart);
     self->info = NULL;
     self->tab = 0;

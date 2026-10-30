@@ -37,13 +37,13 @@ stability.
 
 | | original | this build |
 |---|---:|---:|
-| file | 12,188,712 | 4,724,736 |
-| `.text` (code) | 9,278,494 | 3,724,908 |
-| `.rdata` (constants, imports) | 1,715,682 | 646,444 |
+| file | 12,188,712 | 4,732,416 |
+| `.text` (code) | 9,278,494 | 3,732,524 |
+| `.rdata` (constants, imports) | 1,715,682 | 646,252 |
 | `.data` (in the file) | 375,808 | 3,584 |
-| `.data` (in memory) | 3,989,092 | 5,439,388 |
+| `.data` (in memory) | 3,989,092 | 5,406,588 |
 | `.rsrc` (icons, dialogs, manifest) | 151,592 | 151,360 |
-| `.reloc` | 656,572 | 196,372 |
+| `.reloc` | 656,572 | 196,504 |
 
 Sizes in bytes. Both link the MSVC runtime as DLLs (`vcruntime140`, the UCRT). The
 original's code also carries the inlined C++ standard library (`std::string`, the
@@ -282,12 +282,11 @@ Data, time and leaks:
 - Effect particles reuse the camera angle's sine,
   cosine and rotation matrix while the camera does not turn. The results are the same as
   before, to the bit.
-- UI windows the client redraws every frame without a change (the chat
-  window and its edit line, the shortcut bar, the quick slots, the minimap buttons, vendor
-  shop titles) redraw from those per-frame calls at most every 50 to 100 ms (shop titles every
-  250 ms). Input, new lines, clicks and server updates still redraw at once. The shortcut bar and quick slots redraw
-  every frame while a cooldown runs. This applies in the game mode only. `RAGEXE_UI_FLOOR_MS`
-  overrides the interval, and `0` turns it off.
+- UI windows the original redraws every frame (character selection, equipment, skill tree,
+  dress room, cash shop, shortcut bar, quick slots, minimap buttons, vendor shop titles and
+  the window of the focused edit line) redraw only in the frame where something they show
+  changes: a drawn value, a hover, an animation frame, the caret blink. Cooldown pies and the
+  characters on the selection screen are still drawn every frame over the unchanged window.
 - The exe is large-address-aware: under 64-bit Windows it can use 4 GB of address space
   instead of 2 GB.
 

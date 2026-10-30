@@ -55,7 +55,6 @@ struct perf_counters {
     unsigned buildsSkipped;
     unsigned invalidates;
     unsigned ondraws;
-    unsigned invalidatesDeferred;
     unsigned resGets;
     unsigned resHits;
     unsigned actorLookups;
@@ -86,6 +85,5 @@ static __inline unsigned perf_prim_count(int prim, int n)
 struct UIWindow;
 void ui_window_invalidate_base(struct UIWindow *self);
 void ui_window_invalidate_children(struct UIWindow *self);
-void ui_soft_next(int on);
 
 #endif

@@ -297,6 +297,25 @@ void *session_get_stepped_motion(void *master, void *slave, int action, int fram
     *out = (test_case & 1) ? frame + 1 : frame;
     return act_res_get_motion(slave, action, *out);
 }
+static int animation_shift;
+static unsigned steppings;
+int session_get_motion_stepping(void *master, void *slave, int action, int block, DWORD start,
+                                struct MotionStepping *out)
+{
+    (void)action;
+    if (!master || !slave)
+        return 0;
+    ++steppings;
+    out->ratio = 1;
+    out->delay = 4;
+    out->block = block;
+    out->start_time = start;
+    return 1;
+}
+int motion_stepping_frame(const struct MotionStepping *stepping)
+{
+    return stepping->block + (int)(test_case & 1) + animation_shift;
+}
 
 struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct SprImg *image,
                                       const DWORD *palette, struct SpriteRegion *region)
@@ -404,6 +423,36 @@ static void run_case(unsigned n)
         assert(texture_before < texture_draws && scaled_before == scaled_draws);
 }
 
+#ifndef DRAW_OWNERS_REFERENCE
+static void check_animation(void)
+{
+    static struct UIAnimation animation;
+    struct UIWindow window = {0};
+    struct CharacterDrawOptions options = {.x = 41, .y = -7, .sex = 1, .job = 7, .body = 9, .head = 10,
+                                           .accessory = 105, .accessory2 = 181, .accessory3 = 103, .robe = 107,
+                                           .body_palette = 2, .head_palette = 3, .action = 9, .motion = 2,
+                                           .start_time = 0xabcdef12};
+    unsigned before = steppings;
+
+    test_case = 3;
+    g_session1.new_layer_table_loaded = 1;
+    window.canvas = (struct DcBitmap *)&canvas;
+    ui_draw_character(&window, &options, 0);
+    assert(steppings == before);
+    options.animation = &animation;
+    ui_animation_reset(&animation);
+    ui_draw_character(&window, &options, 0);
+    assert(animation.count > 0 && steppings == before + (unsigned)animation.count);
+    assert(!ui_animation_due(&animation));
+    animation_shift = 1;
+    assert(ui_animation_due(&animation));
+    animation_shift = 0;
+    animation.count = UI_ANIMATION_STEPS + 1;
+    assert(ui_animation_due(&animation));
+    assert(live_blocks == 0);
+}
+#endif
+
 int main(int argc, char **argv)
 {
     unsigned i, j;
@@ -442,6 +491,9 @@ int main(int argc, char **argv)
         assert(fwrite(trace, sizeof *trace, trace_count, f) == trace_count);
         assert(!fclose(f));
     }
+#ifndef DRAW_OWNERS_REFERENCE
+    check_animation();
+#endif
     printf("Character drawing: 48 cases, scaled and canvas paths, layer ordering, borrowed "
            "resources and guarded cleanup passed; %u trace words.\n",
            trace_count);

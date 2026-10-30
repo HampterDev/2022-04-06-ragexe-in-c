@@ -41,6 +41,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "session/session_skills.h"
 #include "ui/character/popup_menu.h"
+#include "ui/draw_key.h"
 
 #define EQUIP_WND_ID 0xa
 #define EQUIP_VIEW_WND_ID 0x8b
@@ -144,6 +145,8 @@ struct UIEquipWnd {
     int swap_mode;
     struct UIBitmapButton *swap_button;
     struct UIBitmapButton *take_off_button;
+    struct UIAnimation animation;
+    unsigned long long drawn_key;
 };
 OFFSET_ASSERT(UIEquipWnd, viewing_other, 0x94);
 OFFSET_ASSERT(UIEquipWnd, info, 0xa8);
@@ -367,6 +370,7 @@ void ui_equip_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const struc
 void ui_equip_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_equip_wnd_on_process(struct UIWindow *self);
 void ui_equip_wnd_on_draw(struct UIWindow *self);
+BYTE ui_equip_wnd_render(struct UIWindow *self, int force);
 void ui_equip_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
@@ -409,7 +413,7 @@ const struct UIWindowOps ui_equip_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_equip_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_equip_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -425,6 +429,9 @@ struct UIEquipWnd *ui_equip_wnd_construct(struct UIEquipWnd *self)
 {
     ui_frame_wnd_construct(&self->frame, 0);
     self->frame.base.ops = &ui_equip_wnd_ops;
+    self->frame.base.redraws_tree = 1;
+    ui_animation_reset(&self->animation);
+    self->drawn_key = 0;
     self->swap_wnd = NULL;
     self->swap_mode = 0;
     self->swap_button = NULL;
@@ -604,9 +611,68 @@ void ui_equip_wnd_on_process(struct UIWindow *self)
 {
 }
 
-void ui_equip_wnd_on_draw(struct UIWindow *window)
+static unsigned long long equip_key(struct UIEquipWnd *self)
+{
+    struct UIWindow *wnd = &self->frame.base;
+    unsigned long long key = DRAW_KEY_START;
+    int i;
+
+    key = draw_key_int(key, wnd->width);
+    key = draw_key_int(key, wnd->height);
+    key = draw_key_int(key, self->viewing_other);
+    key = draw_key_int(key, self->tab);
+    key = draw_key_int(key, self->top);
+    key = draw_key_bytes(key, self->marked, sizeof self->marked);
+    if (self->viewing_other) {
+        key = draw_key_bytes(key, g_session1.viewedName, sizeof g_session1.viewedName);
+        key = draw_key_bytes(key, g_session1.viewedLook, sizeof g_session1.viewedLook);
+        key = draw_key_int(key, g_session1.viewedBody);
+    } else {
+        struct PlayerAppearance appearance;
+
+        key = draw_key_int(key, session_get_drawn_job(&g_session1));
+        key = draw_key_int(key, session_get_sex(&g_session1));
+        key = draw_key_int(key, g_session1.hairStyle);
+        key = draw_key_int(key, g_session1.clothesColor);
+        key = draw_key_int(key, g_session1.hairColor);
+        if (player_get_appearance(game_current_player(), &appearance))
+            key = draw_key_int(key, appearance.body_style);
+        else
+            key = draw_key_int(key, self->body);
+    }
+    key = draw_key_int(key, g_session1.madogear);
+    key = draw_key_int(key, g_session1.ownTitleId);
+    for (i = 0; i < 10; i++) {
+        struct ItemInfo item;
+
+        equip_item_in_slot(self, &item, i);
+        key = draw_key_item(key, &item);
+        item_info_destruct(&item);
+    }
+    if (!self->viewing_other && self->tab == EQUIP_TAB_EQUIPMENT) {
+        struct ItemInfo item;
+
+        session_get_inventory_item(&g_session1, &item, g_session1.wornArrowIndex);
+        key = draw_key_item(key, &item);
+        item_info_destruct(&item);
+    }
+    if (self->swap_wnd && self->swap_wnd->frame.base.state)
+        key = ui_swap_equipment_wnd_key(self->swap_wnd, key);
+    return draw_key_children(key, wnd);
+}
+
+BYTE ui_equip_wnd_render(struct UIWindow *window, int force)
 {
     struct UIEquipWnd *self = (struct UIEquipWnd *)window;
+
+    if (equip_key(self) != self->drawn_key || ui_animation_due(&self->animation)
+        || (self->swap_wnd && self->swap_wnd->frame.base.state && ui_animation_due(&self->swap_wnd->animation)))
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
+}
+
+static void equip_draw(struct UIEquipWnd *self)
+{
     static const int mark_x[2] = {4, 0xf8};
     struct UIWindow *wnd = &self->frame.base;
     struct BitmapRes *bmp;
@@ -680,6 +746,7 @@ void ui_equip_wnd_on_draw(struct UIWindow *window)
             .action = 0,
             .motion = 0,
             .start_time = self->created,
+            .animation = &self->animation,
         };
         ui_draw_character(wnd, &options, 0);
 
@@ -704,6 +771,15 @@ void ui_equip_wnd_on_draw(struct UIWindow *window)
     }
     if (self->swap_wnd)
         ui_swap_equipment_wnd_send_msg(&self->swap_wnd->frame.base, NULL, SWAP_MSG_REFRESH, 0, 0, 0, 0);
+}
+
+void ui_equip_wnd_on_draw(struct UIWindow *window)
+{
+    struct UIEquipWnd *self = (struct UIEquipWnd *)window;
+
+    ui_animation_reset(&self->animation);
+    equip_draw(self);
+    self->drawn_key = equip_key(self);
 }
 
 static void equip_link_item(const struct ItemInfo *info)

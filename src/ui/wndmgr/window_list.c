@@ -139,6 +139,16 @@ struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *self)
     return self->focus_edit;
 }
 
+struct UIWindow *ui_window_mgr_focus_root(struct UIWindowMgr *self)
+{
+    struct UIWindow *root;
+
+    if (!self->focus_edit)
+        return NULL;
+    root = ui_window_get_ancestor(self->focus_edit);
+    return root == self->guild_position_manage_wnd ? NULL : root;
+}
+
 struct UIWindow *ui_window_mgr_get_capture(struct UIWindowMgr *self)
 {
     return self->capture;

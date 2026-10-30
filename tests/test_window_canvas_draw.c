@@ -3,6 +3,7 @@
 #include <string.h>
 #include "render/cdc.h"
 #include "../src/ui/wndmgr/render_windows.c"
+#include "../src/ui/draw_key.c"
 
 DWORD g_renderCheckpointLine;
 const char *g_renderCheckpointFile;
@@ -48,7 +49,17 @@ void ui_window_flush_quads(struct UIWindow *w)
 { assert(w == &window && renders == 1); ++flushes; }
 void icon_sheet_flush_bars(struct StateIconSheet *sheet)
 { assert(sheet == g_stateIconSheet && flushes == 1); ++icons; }
-void ui_soft_next(int on) { (void)on; assert(0); }
+static unsigned long long focus_key;
+static unsigned focus_keys, edit_invalidates[2];
+static struct UIWindow edits[2], *focus_root;
+unsigned long long ui_edit_ctrl_focus_key(void) { ++focus_keys; return focus_key; }
+struct UIWindow *ui_window_mgr_focus_root(struct UIWindowMgr *mgr) { (void)mgr; return focus_root; }
+struct String *item_info_get_display_name(const struct ItemInfo *item, struct String *out)
+{ (void)item; assert(0); return out; }
+void string_free(struct String *s) { (void)s; assert(0); }
+static void edit_invalidate(struct UIWindow *w)
+{ assert(w == &edits[0] || w == &edits[1]); ++edit_invalidates[w - edits]; }
+static struct UIWindowOps edit_ops = { .invalidate = edit_invalidate };
 void draw_box_screen(int x,int y,int w,int h,DWORD tint)
 {
     assert(x == -7 && y == 9 && w == 121 && h == 52 && tint == 0x6688aabb);
@@ -88,14 +99,71 @@ static void run_cases(void)
         assert(backdrops == (box_result != 1 && window_ops.has_custom_backdrop ? renders : 0));
       }
     }
+    assert(!focus_keys);
+}
+static void check_focus_edit(void)
+{
+    struct UIWindowMgr mgr = {0};
+    struct ListNode head = {0};
+    head.next = head.prev = &head;
+    mgr.windows.head = &head;
+    edits[0].ops = edits[1].ops = &edit_ops;
+    ui_window_mgr_render_windows(&mgr);
+    assert(!focus_keys && !edit_invalidates[0]);
+    mgr.focus_edit = &edits[0]; focus_key = 5;
+    ui_window_mgr_render_windows(&mgr);
+    assert(focus_keys == 1 && edit_invalidates[0] == 1);
+    ui_window_mgr_render_windows(&mgr);
+    assert(focus_keys == 2 && edit_invalidates[0] == 1);
+    focus_key = 6;
+    ui_window_mgr_render_windows(&mgr);
+    assert(focus_keys == 3 && edit_invalidates[0] == 2);
+    mgr.focus_edit = &edits[1];
+    ui_window_mgr_render_windows(&mgr);
+    assert(focus_keys == 4 && edit_invalidates[0] == 2 && edit_invalidates[1] == 1);
+    mgr.focus_edit = NULL;
+    ui_window_mgr_render_windows(&mgr);
+    assert(focus_keys == 4 && edit_invalidates[1] == 1);
+}
+static void check_focus_root(void)
+{
+    static struct ListNode edit_head, root_head;
+    static struct { struct ListNode links; struct UIWindow *window; } entry;
+    static struct UIWindow root;
+    struct UIWindowMgr mgr = {0};
+    struct ListNode head = {0};
+    head.next = head.prev = &head;
+    mgr.windows.head = &head;
+    edit_head.next = edit_head.prev = &edit_head;
+    edits[0].children.head = &edit_head;
+    edits[0].visible = 1;
+    entry.window = &edits[0];
+    entry.links.next = entry.links.prev = &root_head;
+    root_head.next = root_head.prev = &entry.links;
+    root.children.head = &root_head;
+    mgr.focus_edit = &edits[0];
+    ui_window_mgr_render_windows(&mgr);
+    assert(edit_invalidates[0] == 3);
+    focus_root = &root;
+    ui_window_mgr_render_windows(&mgr);
+    assert(edit_invalidates[0] == 4);
+    ui_window_mgr_render_windows(&mgr);
+    assert(edit_invalidates[0] == 4);
+    edits[0].x = 4;
+    ui_window_mgr_render_windows(&mgr);
+    assert(edit_invalidates[0] == 5);
+    edits[0].visible = 0;
+    ui_window_mgr_render_windows(&mgr);
+    assert(edit_invalidates[0] == 6 && focus_keys == 9);
+    focus_root = NULL;
 }
 int main(void)
 {
-    __try { run_cases(); }
+    __try { run_cases(); check_focus_edit(); check_focus_root(); }
     __except(EXCEPTION_EXECUTE_HANDLER) {
         fputs("Window drawing accessed an invalid legacy canvas dispatch pointer.\n",stderr);
         return 1;
     }
-    puts("Window canvas drawing: actual frame loop, bitmap/texture routes, backdrop priority and exact flags, missing targets, visibility, geometry, tint and ordering passed.");
+    puts("Window canvas drawing: actual frame loop, bitmap/texture routes, backdrop priority and exact flags, missing targets, visibility, geometry, tint and ordering passed; the focused edit redraws only when its look changes.");
     return 0;
 }

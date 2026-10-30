@@ -20,6 +20,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_talk.h"
+#include "ui/draw_key.h"
 
 static int g_selCharHeadOffsetX = 0;
 
@@ -233,10 +234,14 @@ static void draw_layer(struct UISelCharForUServerWnd *self, int index, struct Ch
     } else if (layer == 2 || layer == 3 || layer == 4) {
         struct Motion *head = act_res_get_motion(get_res(&look->act[LAYER_HEAD]), look->action, look->frame);
         int step = 0;
+        struct MotionStepping stepping;
         struct Motion *stepped = session_get_stepped_motion(get_res(&look->act[LAYER_HEAD]),
                                                            get_res(&look->act[layer]), look->action, look->frame,
                                                            self->start_time, &step);
 
+        if (session_get_motion_stepping(get_res(&look->act[LAYER_HEAD]), get_res(&look->act[layer]), look->action,
+                                        look->frame, self->start_time, &stepping))
+            ui_animation_add(&self->animation, &stepping, step);
         if (stepped && step != look->frame)
             motion = stepped;
         attach_delta(motion, head, &dx, &dy);
@@ -273,11 +278,33 @@ static void draw_layer(struct UISelCharForUServerWnd *self, int index, struct Ch
                          img->widthHalved + 1, img->heightHalved + 1);
 }
 
+static unsigned long long sel_char_key(struct UISelCharForUServerWnd *self)
+{
+    unsigned long long key = DRAW_KEY_START;
+    int i;
+
+    key = draw_key_int(key, g_session1.charCount);
+    key = draw_key_int(key, session_get_sex(&g_session1));
+    for (i = 0; i < g_session1.charCount; i++)
+        key = draw_key_int(key, self->hidden[i]);
+    return draw_key_children(key, &self->frame.base);
+}
+
+BYTE ui_sel_char_for_u_server_wnd_render(struct UIWindow *window, int force)
+{
+    struct UISelCharForUServerWnd *self = (struct UISelCharForUServerWnd *)window;
+
+    if (sel_char_key(self) != self->drawn_key || ui_animation_due(&self->animation))
+        ui_window_invalidate_base(window);
+    return ui_window_render_base(window, force);
+}
+
 void ui_sel_char_for_u_server_wnd_on_draw(struct UIWindow *window)
 {
     struct UISelCharForUServerWnd *self = (struct UISelCharForUServerWnd *)window;
     int i, layer;
 
+    ui_animation_reset(&self->animation);
     ui_window_draw_bitmap(&self->frame.base, 0, 0,
                         res_mgr_get(g_resMgr(),
                                      ui_skin_path(g_session1.charCount > 0xc
@@ -298,6 +325,7 @@ void ui_sel_char_for_u_server_wnd_on_draw(struct UIWindow *window)
                 draw_layer(self, i, look, layer, &place);
         }
     }
+    self->drawn_key = sel_char_key(self);
 }
 
 static void push_line(struct Vec *lines, const char *text)
@@ -458,6 +486,7 @@ struct UIWindow;
 void ui_sel_char_for_u_server_wnd_destroy(struct UIWindow *window);
 void ui_sel_char_for_u_server_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_sel_char_for_u_server_wnd_on_draw(struct UIWindow *self);
+BYTE ui_sel_char_for_u_server_wnd_render(struct UIWindow *self, int force);
 void ui_sel_char_for_u_server_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 int ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
 const struct UIWindowOps ui_sel_char_for_u_server_wnd_ops = {
@@ -494,7 +523,7 @@ const struct UIWindowOps ui_sel_char_for_u_server_wnd_ops = {
     .snap = ui_frame_wnd_snap,
     .send_msg = ui_sel_char_for_u_server_wnd_send_msg,
     .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
+    .render = ui_sel_char_for_u_server_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
     .get_records = ui_frame_wnd_get_records,
@@ -525,6 +554,9 @@ struct UISelCharForUServerWnd *ui_sel_char_for_u_server_wnd_construct(struct UIS
     for (i = 0; i < g_session1.charCount; i++)
         self->hidden[i] = 1;
     self->start_time = timeGetTime();
+    self->frame.base.redraws_tree = 1;
+    ui_animation_reset(&self->animation);
+    self->drawn_key = 0;
     return self;
 }
 
