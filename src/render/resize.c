@@ -146,6 +146,14 @@ static void monitor_rects(HMONITOR m, RECT *mon, RECT *work)
     }
 }
 
+static void monitor_size(HMONITOR m, int *w, int *h)
+{
+    RECT mon, work;
+    monitor_rects(m, &mon, &work);
+    *w = mon.right - mon.left;
+    *h = mon.bottom - mon.top;
+}
+
 int borderless_rect(const GUID *adapter, RECT *rc)
 {
     RECT work;
@@ -233,12 +241,8 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     GetWindowRect(d->hwnd, &old);
     was = target_monitor(d->hwnd, &init_adapter);
     on = target_monitor(d->hwnd, adapter ? adapter : &init_adapter);
-    if (kind == KIND_BORDERLESS) {
-        RECT mon, work;
-        monitor_rects(on, &mon, &work);
-        w = mon.right - mon.left;
-        h = mon.bottom - mon.top;
-    }
+    if (kind == KIND_BORDERLESS)
+        monitor_size(on, &w, &h);
     if (w == oldW && h == oldH && kind == wasKind && !moving)
         return 1;
     if (devFull) {
@@ -265,12 +269,15 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
         init_adapter = *adapter;
     d->fullscreen = devFull;
     if (!devFull && wasDevFull) {
-        if (kind == KIND_BORDERLESS)
+        int modeW = d->width, modeH = d->height;
+        if (kind == KIND_BORDERLESS) {
+            monitor_size(on, &w, &h);
             place_frameless(d->hwnd, on, w, h);
-        else
+        } else {
             place_windowed(d->hwnd, on, 0, 0, w, h, 1);
+        }
         read_geometry(d, 0, w, h);
-        if (d->width != w || d->height != h)
+        if (d->width != modeW || d->height != modeH)
             gfx_set_mode(d, NULL, d->width, d->height, 0);
     }
     if (devFull && !wasDevFull)
