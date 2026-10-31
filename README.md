@@ -215,8 +215,7 @@ Data, time and leaks:
 - Changing the Graphic Device applies at once when the new adapter has the same
   GPU model (same vendor and device id); textures are copied to the new device. Other device
   changes restart as before.
-- [![NEMO: Use borderless mode in full screen](https://img.shields.io/badge/NEMO-Use_borderless_mode_in_full_screen-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/UseBorderlessFullScreen.qs)
-  A new "Borderless" checkbox, on by default and saved as `ISBORDERLESS` in `OptionInfo.lua`.
+- A new "Borderless" checkbox, on by default and saved as `ISBORDERLESS` in `OptionInfo.lua`.
   With it on, Fullscreen is a frameless window covering the monitor at the monitor's own
   resolution: no mode switch, and no device loss on Alt+Tab. With it off, Fullscreen is the
   exclusive mode as in the original.
