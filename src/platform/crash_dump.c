@@ -4,6 +4,10 @@
 #include <string.h>
 #include <wchar.h>
 
+typedef BOOL (WINAPI *MiniDumpWriter)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION,
+                                      PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
+
+static MiniDumpWriter minidump_writer;
 static HANDLE request_event, done_event, worker;
 static LONG stopping, requested;
 static DWORD fault_thread;
@@ -72,15 +76,16 @@ static DWORD WINAPI write_dump(void *unused)
             break;
         memset(&completed, 0, sizeof completed);
         completed.status = CRASH_DUMP_FAILED;
-        file = create_dump(path, sizeof path / sizeof path[0]);
-        if (file == INVALID_HANDLE_VALUE) {
+        if (!minidump_writer) {
+            completed.error = ERROR_PROC_NOT_FOUND;
+        } else if ((file = create_dump(path, sizeof path / sizeof path[0])) == INVALID_HANDLE_VALUE) {
             completed.error = GetLastError();
         } else {
             info.ThreadId = fault_thread;
             info.ExceptionPointers = &pointers;
             info.ClientPointers = FALSE;
-            if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpNormal,
-                                  have_exception ? &info : NULL, NULL, NULL)) {
+            if (minidump_writer(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpNormal,
+                                have_exception ? &info : NULL, NULL, NULL)) {
                 completed.status = CRASH_DUMP_SAVED;
             } else {
                 completed.error = GetLastError();
@@ -94,6 +99,13 @@ static DWORD WINAPI write_dump(void *unused)
     return 0;
 }
 
+static MiniDumpWriter find_minidump_writer(void)
+{
+    HMODULE dbghelp = LoadLibraryExW(L"dbghelp.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+    return dbghelp ? (MiniDumpWriter)GetProcAddress(dbghelp, "MiniDumpWriteDump") : NULL;
+}
+
 int crash_dump_start(void)
 {
     if (worker) {
@@ -101,6 +113,7 @@ int crash_dump_start(void)
             return 0;
         close_worker();
     }
+    minidump_writer = find_minidump_writer();
     stopping = requested = 0;
     request_event = CreateEventW(NULL, FALSE, FALSE, NULL);
     done_event = CreateEventW(NULL, TRUE, FALSE, NULL);

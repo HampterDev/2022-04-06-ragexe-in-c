@@ -193,7 +193,12 @@ Data, time and leaks:
   read instead of throwing an exception out of the loader.
 - GRF, SPR, IMF, GND and EZ effect files and the
   water settings are checked (counts, sizes, names) before use. A short or malformed file fails
-  to load instead of being read past its end.
+  to load instead of being read past its end. A GRF record that points outside the archive
+  (the kRO `data.grf` has such a deleted-file record) is left out, and the other files stay
+  readable.
+- An empty XML element written without a space before the slash, such as `<readfolder/>`
+  in `clientinfo.xml`, is read as empty. The original cut the tag name at the slash before
+  checking for it, so the element swallowed the rest of the file and the connections in it.
 - Player-name requests and the name cache still time out correctly
   when the millisecond clock wraps, after 49.7 days of Windows uptime.
 

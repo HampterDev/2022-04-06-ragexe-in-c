@@ -8,7 +8,7 @@
 
 static wchar_t directory[MAX_PATH], executable[MAX_PATH], saved_path[MAX_PATH + 128];
 static HANDLE owned[3], entered, release_writer;
-static int event_calls, fail_event, fail_thread, writer_mode, force_timeout;
+static int event_calls, fail_event, fail_thread, writer_mode, force_timeout, missing_writer;
 static LONG writer_calls;
 static DWORD caller_thread, writer_thread;
 static const EXCEPTION_RECORD *original_record;
@@ -64,6 +64,18 @@ BOOL WINAPI test_dump_close(HANDLE object)
     for (i = 0; i < 3; ++i)
         if (owned[i] == object) owned[i] = NULL;
     return CloseHandle(object);
+}
+
+HMODULE WINAPI test_dump_library(const wchar_t *name, HANDLE file, DWORD flags)
+{
+    assert(!wcscmp(name, L"dbghelp.dll") && !file && flags == LOAD_LIBRARY_SEARCH_SYSTEM32);
+    return GetModuleHandleW(NULL);
+}
+
+FARPROC WINAPI test_dump_proc(HMODULE module, const char *name)
+{
+    assert(module == GetModuleHandleW(NULL) && !strcmp(name, "MiniDumpWriteDump"));
+    return missing_writer ? NULL : (FARPROC)test_dump_write;
 }
 
 BOOL WINAPI test_dump_write(HANDLE process, DWORD pid, HANDLE file, MINIDUMP_TYPE type,
@@ -212,6 +224,14 @@ int main(void)
     assert(crash_dump_stop());
     assert(DeleteFileW(earlier_path));
     reset();
+    missing_writer = 1;
+    assert(crash_dump_start());
+    crash_dump_write(&exception, &result);
+    assert(result.status == CRASH_DUMP_FAILED && result.error == ERROR_PROC_NOT_FOUND && !writer_calls);
+    assert(!result.filename[0]);
+    assert(crash_dump_stop());
+    missing_writer = 0;
+    reset();
     writer_mode = 2;
     assert(crash_dump_start());
     crash_dump_write(&exception, &result);
@@ -258,6 +278,6 @@ int main(void)
     assert(RemoveDirectoryW(directory));
     CloseHandle(entered);
     CloseHandle(release_writer);
-    puts("PASS native crash dumps: lifecycle, owned snapshots, timeout, failure cleanup, SDK streams");
+    puts("PASS native crash dumps: lifecycle, owned snapshots, timeout, failure cleanup, missing writer, SDK streams");
     return 0;
 }

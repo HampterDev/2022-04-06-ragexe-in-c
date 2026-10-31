@@ -11,6 +11,8 @@ HANDLE WINAPI test_dump_thread(SECURITY_ATTRIBUTES *attributes, SIZE_T stack, LP
                               void *parameter, DWORD flags, DWORD *id);
 DWORD WINAPI test_dump_wait(HANDLE object, DWORD timeout);
 BOOL WINAPI test_dump_close(HANDLE object);
+HMODULE WINAPI test_dump_library(const wchar_t *name, HANDLE file, DWORD flags);
+FARPROC WINAPI test_dump_proc(HMODULE module, const char *name);
 BOOL WINAPI test_dump_write(HANDLE process, DWORD pid, HANDLE file, MINIDUMP_TYPE type,
                            MINIDUMP_EXCEPTION_INFORMATION *exception,
                            MINIDUMP_USER_STREAM_INFORMATION *streams,
@@ -23,6 +25,7 @@ BOOL WINAPI test_dump_write(HANDLE process, DWORD pid, HANDLE file, MINIDUMP_TYP
 #define CreateThread test_dump_thread
 #define WaitForSingleObject test_dump_wait
 #define CloseHandle test_dump_close
-#define MiniDumpWriteDump test_dump_write
+#define LoadLibraryExW test_dump_library
+#define GetProcAddress test_dump_proc
 #endif
 #endif

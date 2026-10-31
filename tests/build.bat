@@ -814,4 +814,8 @@ call "%~dp0build_thread_text.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_attack_records.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" "%ROOT%\tests\test_xml.c" "%ROOT%\src\core\xml.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_xml.exe
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+test_xml.exe
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 popd

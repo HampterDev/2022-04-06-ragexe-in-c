@@ -119,13 +119,15 @@ static int entry_valid(const struct GrfArchive *archive, const struct GrfEntry *
 
 static int finish_table(struct GrfArchive *archive)
 {
-    size_t i, largest = 0;
+    size_t i, kept = 0, largest = 0;
     for (i = 0; i < archive->entry_count; ++i) {
         const struct GrfEntry *entry = archive->entries + i;
-        if (!entry_valid(archive, entry)) return 0;
+        if (!entry_valid(archive, entry)) continue;
         if ((entry->flags & (GRF_FLAG_DES | GRF_FLAG_DES_HEADER)) && entry->sizeAligned > largest)
             largest = entry->sizeAligned;
+        archive->entries[kept++] = *entry;
     }
+    archive->entry_count = kept;
     if (largest) {
         archive->scratch = malloc(largest);
         if (!archive->scratch) return 0;

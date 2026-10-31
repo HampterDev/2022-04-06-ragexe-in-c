@@ -171,6 +171,7 @@ char *xml_parse_children(struct XmlDocument *doc, struct XmlElement *parent,
 {
     struct XmlElement *element;
     char *after;
+    int empty;
 
     while (text != end) {
         if (*text == '<') {
@@ -189,9 +190,10 @@ char *xml_parse_children(struct XmlDocument *doc, struct XmlElement *parent,
                 continue;
             }
             after = xml_tag_close(text, end) + 1;
+            empty = after[-2] == '/';
             element = xml_element_new(doc, text + 1, end);
             xml_add_child(parent, element);
-            if (after[-2] == '/') {
+            if (empty) {
                 text = after;
                 continue;
             }

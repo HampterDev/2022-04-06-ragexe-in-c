@@ -224,9 +224,41 @@ static void malformed_records(const char *path)
                 if (v < 0x200) store32(archive_bytes + archive_table + fixture_record_offsets[0] + 13, UINT_MAX);
                 else archive_bytes[archive_table + 8] ^= 0xff;
             }
-            write_fixture(path); assert(!grf_archive_create(path)); empty_owners();
+            write_fixture(path);
+            if (which == 7 && v < 0x200) {
+                struct GrfArchive *archive = grf_archive_create(path);
+                assert(archive && archive->entry_count == GRF_FIXTURE_COUNT - 1);
+                grf_archive_destroy(archive);
+            } else assert(!grf_archive_create(path));
+            empty_owners();
         }
     }
+}
+
+static void deleted_record_skipped(const char *path)
+{
+    struct GrfArchive *archive;
+    struct GrfEntry entry;
+    struct Hash key;
+    BYTE output[GRF_FIXTURE_PAYLOAD];
+    char name[252];
+    unsigned long packed;
+    make_grf_fixture(0x200);
+    memset(table_bytes + fixture_record_offsets[2], 0, 13);
+    store32(table_bytes + fixture_record_offsets[2] + 13, UINT_MAX - 0x2d);
+    packed = sizeof archive_bytes - archive_table - 8;
+    assert(compress(archive_bytes + archive_table + 8, &packed, table_bytes, table_size) == Z_OK);
+    store32(archive_bytes + archive_table, (unsigned)packed);
+    archive_size = archive_table + 8 + (unsigned)packed;
+    write_fixture(path);
+    archive = grf_archive_create(path);
+    assert(archive && archive->entry_count == GRF_FIXTURE_COUNT - 1);
+    fixture_name(2, name); hash_construct(&key, name);
+    assert(!grf_archive_find(archive, &key, NULL));
+    fixture_name(3, name); hash_construct(&key, name);
+    assert(grf_archive_find(archive, &key, &entry) && grf_archive_read(archive, &entry, output, sizeof output));
+    grf_archive_destroy(archive); empty_owners();
+    puts("GRF records: a record outside the archive is left out and the others stay readable");
 }
 
 static void empty_and_bounded_records(const char *path)
@@ -295,6 +327,7 @@ int main(int argc, char **argv)
     assert(GetTempFileNameA(directory, "grf", 0, second));
     reference_cases(first, argv[1]);
     mapping_failures(first); allocation_and_read_failures(first); malformed_records(first);
+    deleted_record_skipped(first);
     empty_and_bounded_records(first);
     manager_lifetime(first, second);
     assert(DeleteFileA(first) && DeleteFileA(second));
