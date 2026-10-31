@@ -48,7 +48,6 @@ char i_process_construct(void);
 void app_activate(int active);
 int app_init_3d(void);
 struct InitResult *app_init_managers(struct InitResult *out);
-char app_replace_exe(const char *exe, const char *replacement);
 
 unsigned char select_package_create(void);
 void select_package_free(void);

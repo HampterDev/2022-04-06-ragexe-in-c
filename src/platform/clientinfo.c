@@ -17,9 +17,6 @@ const char *g_serverPort = "";
 const char *g_serverDomain = "";
 const char *g_registrationWeb = "";
 const char *g_licenceFile = "";
-const char *g_clientExeName = "";
-const char *g_patcherExeName = "";
-const char *g_runClientMessage = "";
 const char *g_windowClassName = "";
 const char *g_registryKeyPath = "";
 
@@ -142,34 +139,6 @@ void clientinfo_load(const char *xml_name)
     g_startupSecondMod4 = (BYTE)now.wSecond & 3;
     g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
     g_windowClassName = "Ragnarok";
-    switch (g_serverType) {
-    case 1:
-        g_clientExeName = "sakray.exe";
-        g_patcherExeName = "Sakup.exe";
-        g_runClientMessage = "Please run sakray.exe";
-        break;
-    case 2:
-        g_clientExeName = "RagIndoor.exe";
-        g_patcherExeName = "Indoorup.exe";
-        g_runClientMessage = "Please run RagIndoor.exe";
-        break;
-    case 3:
-        g_clientExeName = "RagGuild.exe";
-        g_patcherExeName = "Guildup.exe";
-        g_runClientMessage = "Please run RagGuild.exe";
-        break;
-    default:
-        if (strstr(g_session1.launchArg3, "Dev")) {
-            g_clientExeName = "RagnarokQM.exe";
-            g_patcherExeName = "PatchupQM.exe";
-            g_runClientMessage = "Please run RagnarokQM.exe";
-        } else {
-            g_clientExeName = "Ragnarok.exe";
-            g_patcherExeName = "Patchup.exe";
-            g_runClientMessage = "Please run Ragnarok.exe";
-        }
-        break;
-    }
     file_destruct(&file);
 }
 

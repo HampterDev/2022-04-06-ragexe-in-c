@@ -180,8 +180,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     }
     gg_hash_manager_is_intact(g_ggHashMgr);
     clientinfo_load(config);
-    if (app_replace_exe(g_clientExeName, g_patcherExeName))
-        return 0;
+    app_swap_ai_folder();
 
     session_init_at_startup(&g_session1);
     if (read_registry() == 0) {

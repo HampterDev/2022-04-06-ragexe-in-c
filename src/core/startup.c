@@ -33,7 +33,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <io.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
@@ -371,23 +370,4 @@ struct InitResult *app_init_managers(struct InitResult *out)
     string_init(&out->what);
     string_assign_cstr(&out->what, "good");
     return out;
-}
-
-char app_replace_exe(const char *exe, const char *replacement)
-{
-    char text[0x104];
-
-    app_swap_ai_folder();
-    if (_access(replacement, 0) != 0)
-        return 0;
-    sprintf(text, g_serviceType != 0xc ? "%s is changed. Press ok to restart"
-                                           : "%s foi modificada. Clique em Ok para continuar.", exe);
-    if (MessageBoxA(0, text, "Alert", MB_OKCANCEL | MB_ICONASTERISK) != IDOK)
-        return 0;
-    _chmod(exe, 0x80);
-    _unlink(exe);
-    if (rename(replacement, exe) != 0)
-        return 0;
-    app_run(exe);
-    return 1;
 }

@@ -107,6 +107,10 @@ lists it, in an orange badge.
   The login server is `<address>:<port>` from `clientinfo.xml`. The original picked a
   built-in `*.ragnarok.co.kr` server by server type, and set the client version and the
   built-in admin lists with it.
+- The client does not look for a newer patcher at start. When `Patchup.exe` (`Sakup.exe`,
+  `Indoorup.exe`, ... by server type) was next to it, the original asked "Ragnarok.exe is
+  changed. Press ok to restart" and on OK replaced `Ragnarok.exe` with that file and ran it,
+  which in a kRO full client folder starts the kRO patcher.
 - The GDI check is retired. The original compared gdi32's `TextOutW`
   import with `GetProcAddress` and checked for a debugger. On a mismatch it disconnected and
   quit three times in five, and once due it ran every frame.
