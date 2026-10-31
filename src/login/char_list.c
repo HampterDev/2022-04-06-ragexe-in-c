@@ -148,10 +148,8 @@ void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
     }
 }
 
-void login_mode_on_accept_make_char(struct LoginMode *self, const BYTE *pkt)
+void login_mode_on_accept_make_char(struct LoginMode *self, const struct CharInfo *chara)
 {
-    const struct CharInfo *chara = (const struct CharInfo *)pkt;
-
     memcpy_s(&g_loginCharInfo, sizeof g_loginCharInfo, chara, sizeof g_loginCharInfo);
     memcpy_s(&self->chars[self->numChar], sizeof(struct CharInfo), chara, sizeof(struct CharInfo));
     map_display_name(self->chars[self->numChar].map_name);

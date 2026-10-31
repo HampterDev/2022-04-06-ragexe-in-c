@@ -157,7 +157,8 @@ struct EffectPrim *effect_prim_construct(struct EffectPrim *self)
 
 struct PrimParticle *prim_particle_construct(struct PrimParticle *p)
 {
-    memset(p, 0, 0x3c);
+    memset(&p->pos, 0, sizeof p->pos);
+    memset(p->corners, 0, sizeof p->corners);
     return p;
 }
 

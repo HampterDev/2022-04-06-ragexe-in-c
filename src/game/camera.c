@@ -33,13 +33,18 @@ float g_viewPitch = -45.0f;
 #include "actor/render_ops.h"
 #define MOUSE_POINTER_MSG_SHOW_MARKER 1
 
+static short preset_value(const struct Vec *preset, int i)
+{
+    return (short)(int)atof(string_cstr((const struct String *)preset->first + i));
+}
+
 void game_mode_init_view(struct GameMode *self)
 {
     struct View *view = self->view;
     const struct Player *player = self->world->player;
     struct Vec *preset;
     float pitch_range, max_distance, pitch, distance;
-    int found, i;
+    int found;
 
     view->at[0] = player->pos.x;
     view->at[1] = player->pos.y;
@@ -53,9 +58,18 @@ void game_mode_init_view(struct GameMode *self)
     self->has_camera_preset = 0;
     preset = session_get_map_view_preset(&g_session1, self->map_name, &found);
     if (found) {
+        struct CameraPreset *camera = &self->camera_preset;
+
         self->has_camera_preset = 1;
-        for (i = 0; i < 9; i++)
-            ((short *)&self->camera_preset)[i] = (short)(int)atof(string_cstr((struct String *)preset->first + i));
+        camera->distance_min = preset_value(preset, 0);
+        camera->distance_range = preset_value(preset, 1);
+        camera->distance = preset_value(preset, 2);
+        camera->yaw_min = preset_value(preset, 3);
+        camera->yaw_max = preset_value(preset, 4);
+        camera->yaw = preset_value(preset, 5);
+        camera->pitch_max = preset_value(preset, 6);
+        camera->pitch_min = preset_value(preset, 7);
+        camera->pitch = preset_value(preset, 8);
     }
 
     if (!session_is_fixed_view_map(&g_session1, self->map_name)) {

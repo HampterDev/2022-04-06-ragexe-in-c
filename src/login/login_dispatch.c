@@ -165,9 +165,9 @@ static void disconnect(void)
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
 }
 
-static void read_billing(struct LoginMode *self, const BYTE *src)
+static void read_billing(struct LoginMode *self, const struct LoginBillingInfo *src)
 {
-    memcpy(&self->billing, src, sizeof self->billing);
+    self->billing = *src;
     self->billing.value1 = ntohl(self->billing.value1);
     self->billing.value5 = ntohl(self->billing.value5);
     self->billing.value9 = ntohl(self->billing.value9);
@@ -283,7 +283,7 @@ static void on_char_list_userver(struct LoginMode *self)
     const struct PACKET_HC_ACCEPT_ENTER2 *packet = (const struct PACKET_HC_ACCEPT_ENTER2 *)g_packetBuffer;
     unsigned len;
 
-    read_billing(self, (const BYTE *)&packet->billing);
+    read_billing(self, &packet->billing);
     len = (unsigned)packet->packet_length - 0x18;
     self->numChar = (int)(len / 0xaf);
     (g_session1.charCount) = self->numChar;
@@ -667,7 +667,7 @@ void login_mode_process_packets(struct LoginMode *self)
                 g_session1.inventoryExtension = packet->size;
             break;
         }
-        case 0xb6f: login_mode_on_accept_make_char(self, (const BYTE *)&((const struct PACKET_HC_ACCEPT_MAKECHAR_NEO *)g_packetBuffer)->chara); break;
+        case 0xb6f: login_mode_on_accept_make_char(self, &((const struct PACKET_HC_ACCEPT_MAKECHAR_NEO *)g_packetBuffer)->chara); break;
         case 0xb71: on_char_updated(self); break;
         case 0xb72: login_mode_on_char_list_page(self, g_packetBuffer); break;
         default:

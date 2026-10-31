@@ -3,10 +3,6 @@
 
 #include "ui/ui_std.h"
 
-struct StdInt3 {
-    int v[3];
-};
-
 struct UIGraphicSettingWnd *ui_graphic_setting_wnd_construct(struct UIGraphicSettingWnd *self);
 struct UIWindow *ui_graphic_setting_wnd_new(void);
 

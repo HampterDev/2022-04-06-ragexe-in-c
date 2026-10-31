@@ -111,7 +111,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
     return 0;
 }
 
-int game_mode_msg_aim_skill(struct GameMode *self, int type, const int *info, int level)
+int game_mode_msg_aim_skill(struct GameMode *self, int type, const struct SkillInfo *info, int level)
 {
     struct SkillInfo skill;
 
@@ -120,9 +120,9 @@ int game_mode_msg_aim_skill(struct GameMode *self, int type, const int *info, in
     self->skill_use.type = type;
     if (!info)
         return 0;
-    self->skill_use.skill_id = info[2];
-    self->skill_use.range = info[7];
-    if (skill_info_is_level_used(info[2])) {
+    self->skill_use.skill_id = info->id;
+    self->skill_use.range = info->range;
+    if (skill_info_is_level_used(info->id)) {
         self->skill_use.level = level;
     } else {
         session_get_skill_info(&skill, self->skill_use.skill_id);
@@ -133,7 +133,7 @@ int game_mode_msg_aim_skill(struct GameMode *self, int type, const int *info, in
     return 0;
 }
 
-int game_mode_msg_skill_target(struct GameMode *self, const int *info, int level, int quiet, int d)
+int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *info, int level, int quiet, int d)
 {
     struct Player *player;
     int skill_id, target;
@@ -142,26 +142,26 @@ int game_mode_msg_skill_target(struct GameMode *self, const int *info, int level
         return 0;
     if (!quiet) {
         player = self->world->player;
-        if (player->mounted && !session_is_homunculus_skill(&g_session1, info[2])
-                && !session_is_merc_or_elemental_skill(&g_session1, info[2])) {
+        if (player->mounted && !session_is_homunculus_skill(&g_session1, info->id)
+                && !session_is_merc_or_elemental_skill(&g_session1, info->id)) {
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED, 0, 0);
-            session_clear_rolling_cutter_one_shot(info[2]);
+            session_clear_rolling_cutter_one_shot(info->id);
             return 0;
         }
     }
     self_msg(self, MODE_MSG_CANCEL_SKILL_AIM, 0, 0, 0, 0);
     self->skill_use_unchecked = d == -1;
-    switch (info[3]) {
+    switch (info->type) {
     case 1:
         return self_msg(self, MODE_MSG_AIM_SKILL, 2, (int)info, level, 0), 0;
     case 2:
         return self_msg(self, MODE_MSG_AIM_SKILL, 1, (int)info, level, 0), 0;
     case 4:
-        if (session_is_homunculus_skill(&g_session1, info[2]))
+        if (session_is_homunculus_skill(&g_session1, info->id))
             target = g_session1.homunAid;
         else
-            target = session_is_merc_or_elemental_skill(&g_session1, info[2]) ? g_session1.mercAid : g_session1.ownAid;
-        skill_id = info[2];
+            target = session_is_merc_or_elemental_skill(&g_session1, info->id) ? g_session1.mercAid : g_session1.ownAid;
+        skill_id = info->id;
         self_msg(self, MODE_MSG_USE_SKILL, skill_id, target, level, quiet);
         self_msg(self, MODE_MSG_AIM_SKILL, 0, 0, 0, 0);
         return 0;
@@ -322,7 +322,7 @@ done:
     return 0;
 }
 
-int game_mode_msg_use_skill_to_ground(struct GameMode *self, const int *use, int b)
+int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct GroundSkillUse *use, int b)
 {
 #pragma pack(push, 1)
     struct {
@@ -344,10 +344,10 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const int *use, int
     }
     if (game_mode_is_blocking_window_open() == 1)
         return 0;
-    skill_id = use[0];
-    x = use[1];
-    y = use[2];
-    level = use[3];
+    skill_id = use->skill_id;
+    x = use->x;
+    y = use->y;
+    level = use->level;
     if (!self->skill_use_unchecked && !session_is_skill_delay_over(&g_session1, skill_id)) {
         skill_not_usable(skill_id);
         return 0;
@@ -366,7 +366,7 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const int *use, int
     return 0;
 }
 
-int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const int *use)
+int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struct GroundSkillTalkbox *talkbox)
 {
 #pragma pack(push, 1)
     struct {
@@ -381,15 +381,15 @@ int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const int *
     struct SkillInfo skill;
 
     packet.id = CZ_USE_SKILL_TOGROUND_WITHTALKBOX2;
-    packet.level = (unsigned short)use[3];
-    packet.skill_id = (unsigned short)use[0];
-    packet.x = (unsigned short)use[1];
-    packet.y = (unsigned short)use[2];
+    packet.level = (unsigned short)talkbox->use.level;
+    packet.skill_id = (unsigned short)talkbox->use.skill_id;
+    packet.x = (unsigned short)talkbox->use.x;
+    packet.y = (unsigned short)talkbox->use.y;
     if (!self->skill_use_unchecked && !session_is_skill_delay_over(&g_session1, packet.skill_id)) {
         skill_not_usable(packet.skill_id);
         return 0;
     }
-    _snprintf_s(packet.text, 0x15, (size_t)-1, "%s", (const char *)use[4]);
+    _snprintf_s(packet.text, 0x15, (size_t)-1, "%s", talkbox->text);
     if (word_filter_contains(&g_nameFilter, packet.text)) {
         chat_refresh();
         chat_print_msg(0x32, COLOR_SKILL_REFUSED);

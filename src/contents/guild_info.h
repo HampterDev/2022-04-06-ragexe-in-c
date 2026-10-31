@@ -39,6 +39,12 @@ struct GuildRelation {
     struct String name;
 };
 
+struct GuildBanTarget {
+    unsigned guild_id;
+    unsigned aid;
+    unsigned char_id;
+};
+
 struct GuildExpelled {
     int gid;
     struct String name;

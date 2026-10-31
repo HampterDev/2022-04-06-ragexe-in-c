@@ -6,8 +6,6 @@
 
 void item_info_clear(struct ItemInfo *self)
 {
-    int i;
-
     self->type = 0;
     self->index = 0;
     self->equip_location = 0;
@@ -30,8 +28,7 @@ void item_info_clear(struct ItemInfo *self)
     self->move_pending = 0;
     self->option_count = 0;
     self->refine = 0;
-    for (i = 0; i < (int)sizeof self->options; i++)
-        ((BYTE *)self->options)[i] = 0;
+    memset(self->options, 0, sizeof self->options);
     self->by_index = 0;
     self->sale_kind = 0;
     self->sale_start_time = 0;

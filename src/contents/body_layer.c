@@ -555,7 +555,7 @@ static void render_layer(struct BodyLayerDraw *self, int order, int layer)
 void body_layer_render(struct BodyLayerDraw *self, const float *matrix, int opaque_override,
                                   char opaque_override_kind)
 {
-    const float *p;
+    const Vec3 *p;
     struct Pc *pc = self->pc;
     struct String imf_name;
     char head_seen = 0, body_moved = 0;
@@ -569,10 +569,10 @@ void body_layer_render(struct BodyLayerDraw *self, const float *matrix, int opaq
     self->opaque_override_kind = opaque_override_kind;
     body_layer_reset(self);
 
-    p = &self->pc->pos.x;
-    self->pos[0] = matrix[3] * p[1] + matrix[0] * p[0] + matrix[6] * p[2] + matrix[9];
-    self->pos[1] = matrix[1] * p[0] + matrix[4] * p[1] + matrix[7] * p[2] + matrix[10];
-    self->pos[2] = matrix[2] * p[0] + matrix[5] * p[1] + matrix[8] * p[2] + matrix[11];
+    p = &self->pc->pos;
+    self->pos[0] = matrix[3] * p->y + matrix[0] * p->x + matrix[6] * p->z + matrix[9];
+    self->pos[1] = matrix[1] * p->x + matrix[4] * p->y + matrix[7] * p->z + matrix[10];
+    self->pos[2] = matrix[2] * p->x + matrix[5] * p->y + matrix[8] * p->z + matrix[11];
     renderer_project_point(g_renderer, &self->pc->pos, matrix, &self->screen_x, &self->screen_y, &self->screen_z);
     self->screen_scale = (float)renderer_screen_scale(g_renderer, self->screen_z);
     self->pc->scale = self->screen_scale / g_spriteScaleDivisor;

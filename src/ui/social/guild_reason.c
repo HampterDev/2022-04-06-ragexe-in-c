@@ -26,7 +26,7 @@ SIZE_ASSERT(UIGuildLeaveReasonDescWnd, 0x9c);
 
 struct UIGuildBanReasonDescWnd {
     struct UIGuildLeaveReasonDescWnd leave;
-    int member[3];
+    struct GuildBanTarget member;
 };
 OFFSET_ASSERT(UIGuildBanReasonDescWnd, member, 0x9c);
 SIZE_ASSERT(UIGuildBanReasonDescWnd, 0xa8);
@@ -252,7 +252,7 @@ int ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWind
     if (msg == UI_MSG_COMMAND) {
         if (val1 == UI_ID_OK) {
             ui_window_mgr_post_quit1(&g_windowMgr, GUILD_BAN_REASON_WND_ID);
-            mode_send_message(client_current_mode(), REQ_GUILD_EXPEL, (int)self->member,
+            mode_send_message(client_current_mode(), REQ_GUILD_EXPEL, (int)&self->member,
                           (int)ui_edit_ctrl_get_text(self->leave.reason), 0, 0);
         } else if (val1 == UI_ID_CANCEL) {
             ui_window_mgr_post_quit1(&g_windowMgr, GUILD_BAN_REASON_WND_ID);
@@ -260,11 +260,7 @@ int ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWind
         return 0;
     }
     if (msg == MSG_GUILD_BAN_MEMBER) {
-        const int *member = (const int *)val1;
-
-        self->member[0] = member[0];
-        self->member[1] = member[1];
-        self->member[2] = member[2];
+        self->member = *(const struct GuildBanTarget *)val1;
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->leave.frame), sender, msg, val1, val2, val3, val4);

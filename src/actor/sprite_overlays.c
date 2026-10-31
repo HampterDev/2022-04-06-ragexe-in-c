@@ -264,7 +264,7 @@ void pc_draw_layer_overlays(struct Pc *pc, struct SqQuad *quad, struct SprClip *
                            void *palette, void *image, int *flags, int dx, int dy)
 {
     struct RenderObject *object = (struct RenderObject *)pc;
-    const short *img = (const short *)image;
+    const struct SprImg *img = image;
     struct SqQuad q;
     unsigned short hover = 0;
     float hover_f, k, l, r, depth_a = 0.0f, depth_b = 0.0f;
@@ -339,12 +339,13 @@ void pc_draw_layer_overlays(struct Pc *pc, struct SqQuad *quad, struct SprClip *
             double scale_x = renderer_scale_x(g_renderer);
             float h = (float)(scale_x * ((float)pc->shift_x * pc->zoom) * s);
             float top = (float)((double)(dy + clip->y) * s * clip->zoomY * zoom + y);
-            float bottom = (float)((double)((img[3] + 1) * img[1] + clip->y + dy) * s * clip->zoomY * zoom + y + 1.0);
+            float bottom = (float)((double)((img->heightHalved + 1) * img->height + clip->y + dy) * s * clip->zoomY
+                                   * zoom + y + 1.0);
             const struct Renderer *screen = g_renderer;
             double xl, xr;
 
             if (clip->flags & 1) {
-                xl = (double)((img[2] + 1) * img[0] + clip->x + dx) * s * clip->zoomX;
+                xl = (double)((img->widthHalved + 1) * img->width + clip->x + dx) * s * clip->zoomX;
                 xr = (double)(dx + clip->x) * s * clip->zoomX;
                 if (!(rect[1] < screen->height && rect[1] > 0 && rect[2] < screen->width && rect[0] > 0))
                     continue;
@@ -352,7 +353,7 @@ void pc_draw_layer_overlays(struct Pc *pc, struct SqQuad *quad, struct SprClip *
                 if (!(rect[1] < screen->height && rect[3] > 0 && rect[0] < screen->width && rect[2] > 0))
                     continue;
                 xl = (double)(clip->x + dx) * s * clip->zoomX;
-                xr = (double)((img[2] + 1) * img[0] + clip->x + dx) * s * clip->zoomX;
+                xr = (double)((img->widthHalved + 1) * img->width + clip->x + dx) * s * clip->zoomX;
             }
             q.image = (struct SprImg *)image;
             q.x0 = (float)(zoom * xl + x) + h;

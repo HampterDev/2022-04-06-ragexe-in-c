@@ -338,7 +338,7 @@ void navigation_wnd_info_make_default(struct NavigationWndInfo *self)
     self->rect.x = (int)((double)g_renderer->width * 0.5 - 136.0);
     self->rect.width = 0x110;
     self->rect.height = 0x152;
-    *(BYTE *)&self->is_screen = 1;
+    self->is_screen = 1;
     self->rect.y = (int)((double)g_renderer->height * 0.5 - 169.0);
 }
 

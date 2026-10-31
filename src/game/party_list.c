@@ -90,11 +90,9 @@ void game_mode_on_group_list2(struct GameMode *self, const struct PacketGroupLis
 
     for (i = 0; i < count; i++) {
         struct PartyListMember member;
-        unsigned char *p = (unsigned char *)&member;
         int k;
 
-        for (k = 0; k < (int)sizeof member; k++)
-            p[k] = 0;
+        memset(&member, 0, sizeof member);
         member.aid = packet->members[i].aid;
         for (k = 0; k < 24; k++)
             member.name[k] = packet->members[i].name[k];

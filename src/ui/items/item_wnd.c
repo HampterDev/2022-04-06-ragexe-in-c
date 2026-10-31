@@ -1130,7 +1130,7 @@ void ui_item_wnd_clear_new_marks(struct UIItemWnd *self, BYTE keep)
         return;
     for (node = self->base.items.head->next; node != self->base.items.head; node = node->next) {
         session_clear_inventory_new_flags(&g_session1);
-        ((BYTE *)LIST_VALUE(node, struct ItemInfo))[0x75] = 0;
+        LIST_VALUE(node, struct ItemInfo)->is_new = 0;
     }
     wnd = ui_window_find(WND_ID_MENU_ICON);
     if (wnd)

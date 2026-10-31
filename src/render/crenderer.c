@@ -338,7 +338,7 @@ static void renderer_do_fog_(struct Renderer *self)
     fogEnd = g_fogFar * 1490.0f + 10.0f;
     memset(&identity, 0, sizeof(identity));
     identity.m[0][0] = identity.m[1][1] = identity.m[2][2] = identity.m[3][3] = 1.0f;
-    mat4_perspective_lh((float *)&proj, 0.26179939f, self->aspect, 10.0f, 1500.0f);
+    mat4_perspective_lh(proj.m[0], 0.26179939f, self->aspect, 10.0f, 1500.0f);
     gfx_set_transform(GFX_TS_WORLD, &identity);
     gfx_set_transform(GFX_TS_PROJECTION, &proj);
     gfx_set_transform(GFX_TS_VIEW, &identity);

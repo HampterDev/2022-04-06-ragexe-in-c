@@ -179,7 +179,7 @@ int game_mode_msg_leave_guild(const char *reason)
     return 0;
 }
 
-int game_mode_msg_ban_guild_member(const unsigned *who, const char *reason)
+int game_mode_msg_ban_guild_member(const struct GuildBanTarget *who, const char *reason)
 {
 #pragma pack(push, 1)
     struct {
@@ -194,9 +194,9 @@ int game_mode_msg_ban_guild_member(const unsigned *who, const char *reason)
     if (!g_guildInfo.is_master && !g_guildInfo.can_expel)
         return 0;
     packet.id = CZ_REQ_BAN_GUILD;
-    packet.guild_id = who[0];
-    packet.aid = who[1];
-    packet.char_id = who[2];
+    packet.guild_id = who->guild_id;
+    packet.aid = who->aid;
+    packet.char_id = who->char_id;
     if (g_useCharsetTag)
         strncpy(charset_prefix(packet.reason), reason, 0x24);
     else

@@ -468,22 +468,24 @@ static int player_burrow_skill(int skill, int hi, int with_250)
     return skill == 0x89 || skill == 0xd4 || skill == 0x211 || skill == 0x212 || (with_250 && skill == 0x250);
 }
 
-static void player_msg_walk(struct Player *self, struct GameMode *mode, const int *p)
+static void player_msg_walk(struct Player *self, struct GameMode *mode, const struct ActorMove *move)
 {
     int x, y, sub_x, sub_y;
 
     self->move_request_pending = 0;
-    self->path_start = p[0];
-    if (game_actor_find_path((struct GameActor *)self, p[1], p[2], p[3], p[4], p[5], p[6], g_session1.walkSpeed)) {
-        self->cell_x = p[5];
-        self->cell_y = p[6];
+    self->path_start = move->start_tick;
+    if (game_actor_find_path((struct GameActor *)self, move->src_x, move->src_y, move->sub_x, move->sub_y,
+                             move->dst_x, move->dst_y, g_session1.walkSpeed)) {
+        self->cell_x = move->dst_x;
+        self->cell_y = move->dst_y;
         actor_set_state(self, 1, 1);
         self->path_cell = 0;
     } else {
         game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &x, &y, &sub_x, &sub_y);
-        if (game_actor_find_path((struct GameActor *)self, x, y, sub_x, sub_y, p[5], p[6], g_session1.walkSpeed)) {
-            self->cell_x = p[5];
-            self->cell_y = p[6];
+        if (game_actor_find_path((struct GameActor *)self, x, y, sub_x, sub_y, move->dst_x, move->dst_y,
+                                 g_session1.walkSpeed)) {
+            self->cell_x = move->dst_x;
+            self->cell_y = move->dst_y;
             actor_set_state(self, 1, 1);
         }
     }
@@ -547,21 +549,21 @@ static void player_msg_turn(struct Player *self, struct GameMode *mode, int x, i
 
 static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
 {
-    struct { int skill, x, y, level; } cast;
+    struct GroundSkillUse cast;
     struct PathInfo path;
     struct UIWindow *wnd;
     int x, y, sub_x, sub_y, dir;
 
     cast.x = self->skill_cell_x;
-    cast.skill = self->skill_id;
+    cast.skill_id = self->skill_id;
     cast.y = self->skill_cell_y;
     cast.level = self->skill_level;
-    if (cast.skill == 0x7d || cast.skill == 0xdc) {
-        wnd = ui_window_open(cast.skill == 0x7d ? 0x54 : 0x65);
+    if (cast.skill_id == 0x7d || cast.skill_id == 0xdc) {
+        wnd = ui_window_open(cast.skill_id == 0x7d ? 0x54 : 0x65);
         ui_window_send(wnd, NULL, 0x44, (int)&cast, 0, 0, 0);
         return;
     }
-    if (cast.skill != 0x108 && cast.skill != 0xa04) {
+    if (cast.skill_id != 0x108 && cast.skill_id != 0xa04) {
         MODE_SEND(mode, 0x46, (int)&cast, 0, 0);
         return;
     }
@@ -594,7 +596,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         }
     switch ((int)msg) {
     case 0x0:
-        player_msg_walk(self, mode, (const int *)p1);
+        player_msg_walk(self, mode, MSG_PTR(par1));
         break;
     case 0x8:
         actor_set_state(self, 0, 1);

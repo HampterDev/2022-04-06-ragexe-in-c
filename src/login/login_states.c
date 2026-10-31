@@ -203,7 +203,8 @@ static void login_screen(struct LoginMode *self)
     if (g_session1.canBackToLogin == 1) {
         self->stateTick = timeGetTime();
         g_mapServerAidPending = 0;
-        *(WORD *)&self->auth_answered = 0;
+        self->auth_answered = 0;
+        self->auth_waiting = 0;
         memset(g_session1.ssoToken, 0, 0x1f4);
     }
     if (strcmp((const char *)g_session1.ssoToken, "") == 0) {

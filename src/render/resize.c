@@ -1,5 +1,6 @@
 #include "ui/window_manager_lifecycle.h"
 #include "render/device.h"
+#include "render/display_devices.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type.h"
@@ -25,12 +26,15 @@ static struct UICheckBox *borderlessBox;
 
 static int live_request(const struct UIGraphicSettingWnd *wnd, int *w, int *h, int *fullscreen)
 {
+    const struct DisplayMode *mode;
+
     if (!g_3dDevice.dev)
         return 0;
     if (!wnd->modes.first || wnd->mode < 0)
         return 0;
-    *w = ((int (*)[3])wnd->modes.first)[wnd->mode][0];
-    *h = ((int (*)[3])wnd->modes.first)[wnd->mode][1];
+    mode = (const struct DisplayMode *)wnd->modes.first + wnd->mode;
+    *w = (int)mode->width;
+    *h = (int)mode->height;
     *fullscreen = wnd->box_fullscreen && wnd->box_fullscreen->base.state;
     return *w > 0 && *h > 0;
 }

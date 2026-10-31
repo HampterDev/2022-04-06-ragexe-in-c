@@ -12,7 +12,8 @@
 #include "world/scene_types.h"
 #include "world/ray_picker.h"
 
-BYTE obb_overlaps_box(const void *obb, const float *box);
+struct FrustumObb;
+BYTE obb_overlaps_box(const struct FrustumObb *obb, const struct SceneGraphNode *node);
 
 struct SceneGraphNode *scene_graph_node_construct(struct SceneGraphNode *self);
 void scene_graph_node_destruct(struct SceneGraphNode *self);

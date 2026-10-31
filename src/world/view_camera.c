@@ -90,17 +90,17 @@ static void view_build_view_matrix(struct View *self)
     mat_invert(self->invViewMatrix, self->viewMatrix);
 }
 
-void view_get_view_dir(struct View *self, float *dir)
+void view_get_view_dir(struct View *self, Vec3 *dir)
 {
     float inv;
 
-    dir[1] = self->at[1] - self->from[1];
-    dir[0] = self->at[0] - self->from[0];
-    dir[2] = self->at[2] - self->from[2];
-    inv = 1.0f / sqrtf(dir[1] * dir[1] + dir[0] * dir[0] + dir[2] * dir[2]);
-    dir[0] = dir[0] * inv;
-    dir[1] = dir[1] * inv;
-    dir[2] = dir[2] * inv;
+    dir->y = self->at[1] - self->from[1];
+    dir->x = self->at[0] - self->from[0];
+    dir->z = self->at[2] - self->from[2];
+    inv = 1.0f / sqrtf(dir->y * dir->y + dir->x * dir->x + dir->z * dir->z);
+    dir->x = dir->x * inv;
+    dir->y = dir->y * inv;
+    dir->z = dir->z * inv;
 }
 
 float *view_get_view_matrix_at(struct View *self, float *out, float longitude)

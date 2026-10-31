@@ -97,7 +97,7 @@ void character_npc_delete(struct GameObject *object)
     mem_free(self);
 }
 
-static void npc_model_fill(struct CharacterNpc *self, const BYTE *info, int shift)
+static void npc_model_fill(struct CharacterNpc *self, const struct ActorLook *look, int robe, int body)
 {
     struct CharacterRender *model = self->model;
 
@@ -107,13 +107,27 @@ static void npc_model_fill(struct CharacterNpc *self, const BYTE *info, int shif
     self->model->job = self->job;
     self->model->sex = self->sex;
     self->model->head = self->entry_head;
-    self->model->body_palette = *(const DWORD *)(info + 0x58 + shift);
-    self->model->head_palette = *(const DWORD *)(info + 0x54 + shift);
-    self->model->accessory_top = *(const DWORD *)(info + 0x30 + shift * 2);
-    self->model->accessory_mid = *(const DWORD *)(info + 0x4c + shift);
-    self->model->accessory_bottom = *(const DWORD *)(info + 0x50 + shift);
-    character_render_set_robe(self->model, *(const int *)(info + 0x70 + shift));
-    self->model->body_style = *(const DWORD *)(info + 0x78 + shift);
+    self->model->body_palette = look->body_palette;
+    self->model->head_palette = look->head_palette;
+    self->model->accessory_top = look->accessory[0];
+    self->model->accessory_mid = look->accessory[1];
+    self->model->accessory_bottom = look->accessory[2];
+    character_render_set_robe(self->model, robe);
+    self->model->body_style = body;
+}
+
+static void npc_model_fill_entry(struct CharacterNpc *self, const struct ActorEntryInfo *entry)
+{
+    struct ActorLook look = actor_look_from_entry(entry);
+
+    npc_model_fill(self, &look, entry->robe, entry->body);
+}
+
+static void npc_model_fill_move(struct CharacterNpc *self, const struct ActorMoveEntryInfo *entry)
+{
+    struct ActorLook look = actor_look_from_move_entry(entry);
+
+    npc_model_fill(self, &look, entry->robe, entry->body);
 }
 
 void character_npc_send_msg(struct GameObject *object, struct GameObject *source,
@@ -121,15 +135,15 @@ void character_npc_send_msg(struct GameObject *object, struct GameObject *source
 {
     struct CharacterNpc *self = (struct CharacterNpc *)object;
 
-    const BYTE *info = (const BYTE *)(DWORD)par1;
-    const struct ActorEntryInfo *entry = (const struct ActorEntryInfo *)info;
+    const struct ActorEntryInfo *entry = MSG_PTR(par1);
+    const struct ActorMoveEntryInfo *walk = MSG_PTR(par1);
 
     switch (msg) {
     case 3:
         game_actor_send_msg(object, source, msg, par1, par2, par3, par4);
         if (!self->model)
             return;
-        npc_model_fill(self, info, 0);
+        npc_model_fill_entry(self, entry);
         return;
     case 4:
         game_actor_send_msg(object, source, msg, par1, par2, par3, par4);
@@ -138,7 +152,7 @@ void character_npc_send_msg(struct GameObject *object, struct GameObject *source
         if (self->model)
             return;
         self->model = character_render_create(0, 0);
-        npc_model_fill(self, info, 0);
+        npc_model_fill_entry(self, entry);
         return;
     case 6:
     case 0x7a:
@@ -146,14 +160,14 @@ void character_npc_send_msg(struct GameObject *object, struct GameObject *source
         if (self->model)
             return;
         self->model = character_render_create(0, 0);
-        npc_model_fill(self, info, 4);
+        npc_model_fill_move(self, walk);
         return;
     case 5:
     case 0x7b:
         game_actor_send_msg(object, source, msg, par1, par2, par3, par4);
         if (!self->model)
             return;
-        npc_model_fill(self, info, 4);
+        npc_model_fill_move(self, walk);
         return;
     default:
         npc_send_msg(object, source, msg, par1, par2, par3, par4);

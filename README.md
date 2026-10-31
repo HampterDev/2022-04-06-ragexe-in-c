@@ -43,7 +43,7 @@ stability.
 | `.data` (in the file) | 375,808 | 3,584 |
 | `.data` (in memory) | 3,989,092 | 5,406,588 |
 | `.rsrc` (icons, dialogs, manifest) | 151,592 | 151,360 |
-| `.reloc` | 656,572 | 196,504 |
+| `.reloc` | 656,572 | 196,552 |
 
 Sizes in bytes. Both link the MSVC runtime as DLLs (`vcruntime140`, the UCRT). The
 original's code also carries the inlined C++ standard library (`std::string`, the

@@ -66,7 +66,6 @@
 #define REG_SUBKEY "\\NeoCash"
 #define REG_TAB_VALUE "CASH_CATEGORY"
 
-#define NCASH_BUTTON_AT(self, i) (*(struct UIWindow **)((BYTE *)(self)->buttons + (i) * 4))
 #define BUTTON_DISABLED(wnd) (((struct UIButton *)(wnd))->disabled)
 
 static void copy_cart(struct UInCashWnd *self)
@@ -601,7 +600,7 @@ static void reg_key_path(char *key)
 
 static void place_scroll(struct UInCashWnd *self)
 {
-    struct UIWindow *scroll = NCASH_BUTTON_AT(self, 19);
+    struct UIWindow *scroll = &self->scroll->base;
 
     if (self->tab == NCASH_TAB_SALE)
         ui_window_move(scroll, self->base.frame.base.width - scroll->width - 10, 0x16);
@@ -625,7 +624,7 @@ static void open_shop(struct UInCashWnd *self, int cash, int points)
         self->tab = 10;
     else if (self->tab < 0)
         self->tab = 0;
-    button = NCASH_BUTTON_AT(self, self->tab);
+    button = self->buttons[self->tab];
     BUTTON_DISABLED(button) = 1;
     ui_window_invalidate(button);
     place_scroll(self);
@@ -640,14 +639,14 @@ static void select_tab(struct UInCashWnd *self, int id)
     DWORD disposition = 0;
     struct UIWindow *button;
 
-    if ((unsigned)self->tab <= 10 && NCASH_BUTTON_AT(self, self->tab)) {
-        button = NCASH_BUTTON_AT(self, self->tab);
+    if ((unsigned)self->tab <= 10 && self->buttons[self->tab]) {
+        button = self->buttons[self->tab];
         BUTTON_DISABLED(button) = 0;
         ui_window_invalidate(button);
-        ui_window_set_state(NCASH_BUTTON_AT(self, self->tab), 0);
+        ui_window_set_state(self->buttons[self->tab], 0);
     }
     self->tab = id - NCASH_ID_TAB0;
-    button = NCASH_BUTTON_AT(self, self->tab);
+    button = self->buttons[self->tab];
     BUTTON_DISABLED(button) = 1;
     ui_window_invalidate(button);
     place_scroll(self);

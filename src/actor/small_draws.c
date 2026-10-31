@@ -172,7 +172,7 @@ void sound_maker_send_msg(struct GameObject *object, struct GameObject *source,
             (fade_step) = (unsigned)LO(par2) << 24;                                                              \
             return;                                                                                              \
         case 2:                                                                                                  \
-            *(int *)(fade_float) = LO(par1);                                                                     \
+            (fade_float) = LO(par1);                                                                             \
             return;                                                                                              \
         case 3:                                                                                                  \
             (self)->motion_held = 1;                                                                             \

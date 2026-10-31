@@ -368,7 +368,7 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
                 return;
             pick = mem_alloc(sizeof *pick);
             if (pick)
-                memset(pick, 0, 0x18);
+                memset(pick, 0, sizeof *pick);
             pick->left = rect->left < rect->right ? rect->left : rect->right;
             pick->top = rect->top;
             pick->near_z = rect->z + lift;

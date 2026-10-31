@@ -646,12 +646,12 @@ static void menu_choice(struct UIGuildMemberManageWnd *self, int choice)
     case MENU_EXPEL:
         guild_member_construct(&m);
         if (ui_guild_member_manage_wnd_get_member(self, self->selected, &m)) {
-            int info[3];
+            struct GuildBanTarget target;
 
-            info[0] = g_guildInfo.guild_id;
-            info[1] = m.aid;
-            info[2] = m.gid;
-            ui_window_send(ui_window_open(WND_ID_GUILD_EXPEL), NULL, UI_MSG_SET_INFO, (int)info, 0, 0, 0);
+            target.guild_id = g_guildInfo.guild_id;
+            target.aid = m.aid;
+            target.char_id = m.gid;
+            ui_window_send(ui_window_open(WND_ID_GUILD_EXPEL), NULL, UI_MSG_SET_INFO, (int)&target, 0, 0, 0);
         }
         break;
     case MENU_LEAVE:

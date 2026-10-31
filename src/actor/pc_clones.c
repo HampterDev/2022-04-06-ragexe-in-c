@@ -96,7 +96,7 @@ struct BlurPC *blur_pc_construct(struct BlurPC *self, struct Pc *master)
     self->owner = (struct GameActor *)master;
     pc_copy_look_head((struct Pc *)self, master);
     pc_copy_look_tail((struct Pc *)self, master);
-    *(int *)self->fade_param = 0;
+    self->fade_param = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
     string_assign(&self->body_pal_name, string_cstr(&master->body_pal_name), master->body_pal_name.size);
@@ -114,7 +114,7 @@ struct HalluPC2 *hallu_pc2_construct(struct HalluPC2 *self, struct Pc *master)
     self->owner = (struct GameActor *)master;
     pc_copy_look_head((struct Pc *)self, master);
     pc_copy_look_tail((struct Pc *)self, master);
-    *(int *)self->fade_float = 0;
+    self->fade_float = 0;
     self->frames = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
@@ -136,7 +136,7 @@ struct RenderObject *hallu_pc_construct(void *mem, struct RenderObject *actor)
     self->owner = (struct GameActor *)master;
     pc_copy_look_head((struct Pc *)self, master);
     pc_copy_look_tail((struct Pc *)self, master);
-    *(int *)self->fade_float = 0;
+    self->fade_float = 0;
     self->frames = 0;
     self->fade_step = 0x10000000;
     self->body_palette = master->body_palette;
@@ -160,7 +160,8 @@ struct Npc *npc_construct(struct Npc *self)
     self->last_effect_tick = timeGetTime();
     self->area_effect_launched = 0;
     self->mark = NULL;
-    self->mark_id = 9999;
+    self->mark_effect = 9999;
+    self->mark_icon = 0;
     return self;
 }
 
@@ -209,7 +210,7 @@ struct HalluNPC *hallu_npc_construct(struct HalluNPC *self, struct GameActor *sr
     npc_job_palette((struct Npc *)self);
     self->guild_id = game_actor_get_guild_id(src);
     self->aid = 0;
-    *(int *)self->fade_level = 0;
+    self->fade_level = 0;
     self->frames = 0;
     self->fade_step = 0x10000000;
     self->not_pickable = 1;

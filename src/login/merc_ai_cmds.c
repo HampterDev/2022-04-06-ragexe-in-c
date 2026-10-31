@@ -428,18 +428,19 @@ int merc_ai_move_to_owner(lua_State *L)
 
 int merc_ai_skill_ground(lua_State *L)
 {
-    struct { int skill, x, y, level; } use;
+    struct GroundSkillUse use;
     DWORD id = arg_id(L, 1);
     BYTE *actor;
     int st;
 
-    use.skill = arg_int(L, 3);
+    use.skill_id = arg_int(L, 3);
     use.x = arg_int(L, 4);
     use.y = arg_int(L, 5);
     use.level = arg_int(L, 2);
     if (!session_is_homunculus_aid(&g_session1, id) && !session_is_mercenary_aid(&g_session1, id))
         return 0;
-    if (!session_is_homunculus_skill(&g_session1, use.skill) && !session_is_merc_or_elemental_skill(&g_session1, use.skill))
+    if (!session_is_homunculus_skill(&g_session1, use.skill_id)
+            && !session_is_merc_or_elemental_skill(&g_session1, use.skill_id))
         return 0;
     actor = (BYTE *)game_find_actor(id);
     if (!actor)

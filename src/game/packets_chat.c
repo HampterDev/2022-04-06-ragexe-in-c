@@ -255,7 +255,7 @@ void game_mode_zc_change_chatroom(struct GameMode *self, const unsigned char *pk
     room_owner->aid = packet->aid;
     string_init(&room.title);
     string_init(&room.password);
-    string_assign(&room.title, (const char *)(packet + 1), packet->length - 0x11);
+    string_assign(&room.title, (const char *)(packet + 1), packet->length - sizeof *packet);
     room.type = packet->type;
     room.users = packet->users;
     room.max_users = packet->max_users;

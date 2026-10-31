@@ -178,7 +178,7 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         wm_show(wnd);
         break;
     case 0x28:
-        if (!map_property_mgr_get(g_mapFlags, g_session1_state, 0x28)) {
+        if (!map_property_mgr_get(g_mapFlags, g_session1.mapType, 0x28)) {
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
             ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(0x94c), 0xff, 0, 0);
             return NULL;

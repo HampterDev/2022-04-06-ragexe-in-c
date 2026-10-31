@@ -26,8 +26,6 @@
 const char monster_spr_fmt[] = "몬스터\\%s.spr";
 const char monster_act_fmt[] = "몬스터\\%s.act";
 
-#define NPC_MARK_ID(self)  (((short *)&(self)->mark_id)[0])
-#define NPC_MARK_SUB(self) (((short *)&(self)->mark_id)[1])
 #define MODE_SEND(mode, msg, a, b, c, d) \
     mode_send_message((struct Mode *)(mode), (msg), (a), (b), (c), (d))
 #define NPC_IS_MERCENARY(self) \
@@ -65,25 +63,27 @@ void npc_update_quest_mark(struct Npc *self)
         if (self->mark) {
             render_object_send(self->mark, NULL, 0x35, 0, 0, 0, 0);
             self->mark = NULL;
-            self->mark_id = 9999;
+            self->mark_effect = 9999;
+            self->mark_icon = 0;
         }
         return;
     }
     id = rec->effect;
     if (self->mark) {
-        if (id == NPC_MARK_ID(self) && rec->icon == NPC_MARK_SUB(self))
+        if (id == self->mark_effect && rec->icon == self->mark_icon)
             return;
         render_object_send(self->mark, NULL, 0x35, 0, 0, 0, 0);
         self->mark = NULL;
-        self->mark_id = 9999;
+        self->mark_effect = 9999;
+        self->mark_icon = 0;
         id = rec->effect;
     }
     obj = game_mode_make_msg_effect(mode, (id < 6 ? 0x24 : 0x36) + id, &self->pos, self->aid, 1);
     list_push_back(&self->attached, &obj, sizeof obj);
     render_object_send(obj, self, 0x32, 0, 0, 0, 0);
     self->mark = obj;
-    NPC_MARK_ID(self) = rec->effect;
-    NPC_MARK_SUB(self) = rec->icon;
+    self->mark_effect = rec->effect;
+    self->mark_icon = rec->icon;
 }
 
 static void npc_run_ai(struct Npc *self, struct MercenaryAI **slot, int kind, int user_ai, const char *stock,

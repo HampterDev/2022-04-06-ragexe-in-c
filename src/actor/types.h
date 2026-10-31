@@ -279,6 +279,17 @@ struct GroundSkillInfo {
     int level;
 };
 
+struct GroundSkillUse {
+    int skill_id;
+    int x, y;
+    int level;
+};
+
+struct GroundSkillTalkbox {
+    struct GroundSkillUse use;
+    const char *text;
+};
+
 struct ActorStates {
     int body_state;
     int effect_state;
@@ -401,7 +412,8 @@ struct SoundMaker {
     struct UIWindow *player_gage;              \
     struct UIWindow *pc_gage;                  \
     struct GameObject *mark;                   \
-    int mark_id;
+    short mark_effect;                         \
+    short mark_icon;
 struct Npc { CNPC_MEMBERS };
 
 struct Corpse {
@@ -411,14 +423,14 @@ struct Corpse {
 
 struct BlurPC {
     CPC_MEMBERS
-    unsigned char fade_param[0x4];
+    int fade_param;
     unsigned fade_step;
     struct GameActor *owner;
 };
 
 struct HalluPC {
     CPC_MEMBERS
-    unsigned char fade_float[0x4];
+    int fade_float;
     unsigned fade_step;
     unsigned frames;
     struct GameActor *owner;
@@ -426,7 +438,7 @@ struct HalluPC {
 
 struct HalluPC2 {
     CPC_MEMBERS
-    unsigned char fade_float[0x4];
+    int fade_float;
     unsigned fade_step;
     unsigned frames;
     struct GameActor *owner;
@@ -434,7 +446,7 @@ struct HalluPC2 {
 
 struct HalluNPC {
     CNPC_MEMBERS
-    unsigned char fade_level[0x4];
+    int fade_level;
     unsigned fade_step;
     unsigned frames;
 };

@@ -370,7 +370,7 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
     light.x = 0.0f;
     light.y = 0.0f;
     light.z = 0.0f;
-    view_get_view_dir(mode->view, &light.x);
+    view_get_view_dir(mode->view, &light);
     lx = ((view[0] * light.x + view[3] * light.y) + view[6] * light.z) + view[9];
     ly = ((view[1] * light.x + view[4] * light.y) + view[7] * light.z) + view[10];
     lz = ((view[2] * light.x + view[5] * light.y) + view[8] * light.z) + view[11];

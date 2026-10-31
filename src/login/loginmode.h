@@ -73,7 +73,7 @@ SIZE_ASSERT(LoginZoneEntry, 0x14);
 
 struct LoginMode {
     struct Mode base;
-    int new_char_stats[8];
+    struct NewCharLooks new_char;
     char new_char_name[0x40];
     char email[0x80];
     char password[0x40];
@@ -168,7 +168,7 @@ int login_mode_max_char_slot(struct LoginMode *self);
 void login_mode_remove_deleted_char(struct LoginMode *self);
 void login_mode_on_char_list_header(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt);
-void login_mode_on_accept_make_char(struct LoginMode *self, const BYTE *pkt);
+void login_mode_on_accept_make_char(struct LoginMode *self, const struct CharInfo *chara);
 void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_char_list(struct LoginMode *self, const BYTE *pkt);
 

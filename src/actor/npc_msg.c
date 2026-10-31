@@ -8,6 +8,7 @@
 #include "ui/window_manager_state.h"
 #include "actor/actor.h"
 #include "actor/game_actor.h"
+#include "game/actor_entry.h"
 #include "session/session_items.h"
 #include "session/session_jobs.h"
 #include "ui/window.h"
@@ -77,16 +78,16 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
     struct Npc *self = (struct Npc *)object;
 
     if (msg == 4) {
-        const int *info = (const int *)(int)par1;
+        const struct ActorEntryInfo *info = MSG_PTR(par1);
 
         game_actor_send_msg(object, source, 4, par1, par2, par3, par4);
         switch (self->object_type) {
         case 8: case 9: case 10: case 13: case 14:
-            self->owner_aid = info[0x74 / 4];
+            self->owner_aid = info->char_id;
             break;
         }
-        self->visible = session_is_visible_npc(info[1]);
-        game_actor_set_guild((struct GameActor *)self, info[0x60 / 4], info[0x64 / 4]);
+        self->visible = session_is_visible_npc(info->job);
+        game_actor_set_guild((struct GameActor *)self, info->guild_id, info->emblem_version);
         return;
     }
     if (msg == 0x22) {

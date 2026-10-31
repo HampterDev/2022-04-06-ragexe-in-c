@@ -315,7 +315,7 @@ int ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *
         struct ItemInfo info;
 
         item_info_construct(&info);
-        item_info_set_item_id(&info, *(int *)val1);
+        item_info_set_item_id(&info, *(const int *)val1);
         info.identified = 1;
         item_info_copy(list_push_back(&list->items, NULL, sizeof(struct ItemInfo)), &info);
         ui_making_arrow_list_wnd_send_msg(&list->frame.base, NULL, UI_MSG_LIST_CHANGED, 0, 0, 0, 0);

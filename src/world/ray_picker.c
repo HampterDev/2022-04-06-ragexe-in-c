@@ -14,14 +14,14 @@ struct RayPicker *ray_picker_construct(struct RayPicker *self)
     return self;
 }
 
-static int ray_picker_hits_box(struct RayPicker *self, const float *box)
+static int ray_picker_hits_box(struct RayPicker *self, const struct SceneGraphNode *node)
 {
-    float cy = (box[1] + box[4]) * 0.5f;
-    float cx = (box[3] + box[0]) * 0.5f;
-    float cz = (box[2] + box[5]) * 0.5f;
-    float hy = box[4] - cy;
-    float hx = box[3] - cx;
-    float hz = box[5] - cz;
+    float cy = (node->min[1] + node->max[1]) * 0.5f;
+    float cx = (node->max[0] + node->min[0]) * 0.5f;
+    float cz = (node->min[2] + node->max[2]) * 0.5f;
+    float hy = node->max[1] - cy;
+    float hx = node->max[0] - cx;
+    float hz = node->max[2] - cz;
     float dy = cy - self->origin[1];
     float dx = cx - self->origin[0];
     float dz = cz - self->origin[2];
@@ -99,7 +99,7 @@ static void ray_picker_collect(struct RayPicker *self, struct SceneGraphNode *no
         return;
     }
     for (i = 0; i < 4; i++)
-        if (node->child[i] && ray_picker_hits_box(self, node->child[i]->min))
+        if (node->child[i] && ray_picker_hits_box(self, node->child[i]))
             ray_picker_collect(self, node->child[i], level + 1);
 }
 
@@ -118,6 +118,6 @@ void ray_picker_pick_ray(struct RayPicker *self, const struct Ray3 *ray,
     self->maxT = SCENE_HEIGHT_HUGE;
     if (!root) return;
     for (i = 0; i < 4; i++)
-        if (root->child[i] && ray_picker_hits_box(self, root->child[i]->min))
+        if (root->child[i] && ray_picker_hits_box(self, root->child[i]))
             ray_picker_collect(self, root->child[i], 1);
 }

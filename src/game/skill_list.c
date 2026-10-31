@@ -240,7 +240,7 @@ enum {
 
 #pragma pack(push, 1)
 struct MakingListEntry {
-    unsigned char data[4];
+    int item_id;
 };
 #pragma pack(pop)
 SIZE_ASSERT(MakingListEntry, 4);
@@ -274,7 +274,7 @@ void game_mode_zc_making_arrow_list(const unsigned char *pkt)
     wnd = ui_window_open(WINDOW_MAKING_LIST);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_START, 0, 0, 0, 0);
     for (; n != 0; n--, entry++)
-        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)entry, 0, 0, 0);
+        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)&entry->item_id, 0, 0, 0);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_KIND, MAKING_KIND_ARROWS, 0, 0, 0);
 }
 
@@ -291,7 +291,7 @@ void game_mode_zc_making_item_list(const unsigned char *pkt)
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_START, 0, 0, 0, 0);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_KIND, packet->kind, 0, 0, 0);
     for (; n != 0; n--, entry++)
-        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)entry, 0, 0, 0);
+        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)&entry->item_id, 0, 0, 0);
 }
 
 #pragma pack(push, 1)

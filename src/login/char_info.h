@@ -57,6 +57,12 @@ OFFSET_ASSERT(CharInfo, delete_date, 0x9e);
 OFFSET_ASSERT(CharInfo, sex, 0xae);
 SIZE_ASSERT(CharInfo, 0xaf);
 
+struct NewCharLooks {
+    int stats[6];
+    int head_palette;
+    int head;
+};
+
 extern struct CharInfo g_loginCharInfo;
 
 #endif

@@ -90,7 +90,6 @@ extern struct MiniPartyWndAreaMgr *g_miniPartyAreaMgr;
 struct MiniPartyWndAreaMgr *mini_party_area_mgr_construct(struct MiniPartyWndAreaMgr *self);
 void mini_party_area_mgr_delete(struct MiniPartyWndAreaMgr *self);
 #define WM_MINI_PARTY_AREA_MGR_SIZE sizeof(struct MiniPartyWndAreaMgr)
-#define g_session1_state (*(int *)&g_session1)
 
 BYTE ui_window_mgr_is_untracked_id(struct UIWindowMgr *self, int window_id);
 void ui_window_mgr_forget_window_id(struct UIWindowMgr *self, int window_id);

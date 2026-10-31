@@ -94,7 +94,7 @@ static void clamp_size(int *width, int *height, int max_width, int max_height)
 }
 
 static int read_records(const char *buf, unsigned size, short begin1, short begin2, short end1, short end2,
-                        short value_tag, void *value, struct UIWindow *notify)
+                        short value_tag, int *value, struct UIWindow *notify)
 {
     struct UIRecordHeader hdr;
     unsigned pos = sizeof hdr;
@@ -111,7 +111,7 @@ static int read_records(const char *buf, unsigned size, short begin1, short begi
             memcpy(value, buf + pos, hdr.len);
             pos += hdr.len;
             if (notify)
-                ui_window_send_msg(notify, NULL, SHOP_MSG_NOTICE, *(int *)value, 0, 0, 0);
+                ui_window_send_msg(notify, NULL, SHOP_MSG_NOTICE, *value, 0, 0, 0);
         } else {
             pos += hdr.len;
         }

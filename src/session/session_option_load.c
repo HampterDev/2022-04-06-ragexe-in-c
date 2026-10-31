@@ -91,8 +91,8 @@ void session_load_options(struct Session *self)
     g_screenWidth = g_displayWidth;
     g_screenHeight = g_displayHeight;
     g_bitsPerPixel = session_get_option_int(self, "BITPERPIXEL", 16);
-    memset((BYTE *)&version + 4, 0, 0x90);
-    version.dwOSVersionInfoSize = 0x94;
+    memset(&version, 0, sizeof version);
+    version.dwOSVersionInfoSize = sizeof version;
     GetVersionExA(&version);
     if (version.dwMajorVersion >= 6 && version.dwMinorVersion >= 2)
         g_bitsPerPixel = 32;

@@ -86,14 +86,14 @@ void login_mode_on_init(struct Mode *mode, const char *name)
     int start;
 
     sound_stop_stream();
-    self->new_char_stats[0] = 5;
-    self->new_char_stats[1] = 5;
-    self->new_char_stats[2] = 5;
-    self->new_char_stats[3] = 5;
-    self->new_char_stats[4] = 5;
-    self->new_char_stats[5] = 5;
-    self->new_char_stats[6] = 0;
-    self->new_char_stats[7] = 1;
+    self->new_char.stats[0] = 5;
+    self->new_char.stats[1] = 5;
+    self->new_char.stats[2] = 5;
+    self->new_char.stats[3] = 5;
+    self->new_char.stats[4] = 5;
+    self->new_char.stats[5] = 5;
+    self->new_char.head_palette = 0;
+    self->new_char.head = 1;
     self->new_char_name[0] = 0;
     string_assign_cstr(&self->wallpaper, g_loginBackgroundName);
     self->base.loop_cond = 1;
@@ -288,7 +288,8 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
                 return;
             if (timeout_box(0xd16) != 0xb0)
                 return;
-            *(WORD *)&self->auth_waiting = 0;
+            self->auth_waiting = 0;
+            self->auth_timed_out = 0;
         } else {
             if (timeGetTime() <= self->stateTick + 80000)
                 return;

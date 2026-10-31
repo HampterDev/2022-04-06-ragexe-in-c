@@ -178,7 +178,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_USE_SKILL:
         return game_mode_msg_use_skill(self, a, b, c, d);
     case MODE_MSG_USE_SKILL_TO_GROUND:
-        return game_mode_msg_use_skill_to_ground(self, (const int *)a, b);
+        return game_mode_msg_use_skill_to_ground(self, (const struct GroundSkillUse *)a, b);
     case MODE_MSG_CANCEL_SKILL_AIM:
         self->skill_use.type = 0;
         self->skill_use.skill_id = 0;
@@ -186,7 +186,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         g_skillAimGood = 0;
         return 0;
     case MODE_MSG_AIM_SKILL:
-        return game_mode_msg_aim_skill(self, a, (const int *)b, c);
+        return game_mode_msg_aim_skill(self, a, (const struct SkillInfo *)b, c);
     case MODE_MSG_CANCEL_LOCKON:
         send_id(0x118);
         return 0;
@@ -295,11 +295,11 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_LEAVE_GUILD:
         return game_mode_msg_leave_guild((const char *)a);
     case MODE_MSG_BAN_GUILD_MEMBER:
-        return game_mode_msg_ban_guild_member((const unsigned *)a, (const char *)b);
+        return game_mode_msg_ban_guild_member((const struct GuildBanTarget *)a, (const char *)b);
     case MODE_MSG_MAKE_GUILD:
         return game_mode_msg_make_guild((const char *)a, b);
     case MODE_MSG_SKILL_TARGET:
-        return game_mode_msg_skill_target(self, (const int *)a, b, c, d);
+        return game_mode_msg_skill_target(self, (const struct SkillInfo *)a, b, c, d);
     case MODE_MSG_JOIN_GUILD_ANSWER:
         send_u32_u32(0x16b, a, b);
         return 0;
@@ -352,7 +352,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_MAKE_ITEM:
         return game_mode_msg_make_item(a, (const struct ItemInfo *)b);
     case MODE_MSG_USE_SKILL_TO_GROUND_TALKBOX:
-        return game_mode_msg_use_skill_to_ground_talkbox(self, (const int *)a);
+        return game_mode_msg_use_skill_to_ground_talkbox(self, (const struct GroundSkillTalkbox *)a);
     case MODE_MSG_DRAG_BY_NAME:
         return game_mode_msg_drag_by_name(self, (const char *)a);
     case MODE_MSG_SET_VIEW:

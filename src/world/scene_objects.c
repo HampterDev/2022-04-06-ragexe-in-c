@@ -34,7 +34,7 @@ static int prepare_insert(struct SceneGraphNode *node, const struct C3dActor *ac
     for (i = 0; i < 4; ++i) {
         struct SceneGraphNode *child = node->child[i];
         if (!child) return 0;
-        if (obb_overlaps_box(&actor->obb, child->min)
+        if (obb_overlaps_box(&actor->obb, child)
                 && !prepare_insert(child, actor, level + 1, leaves, count))
             return 0;
     }

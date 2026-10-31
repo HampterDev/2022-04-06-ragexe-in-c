@@ -117,7 +117,7 @@ const struct UIWindowOps ui_talkbox_trap_input_wnd_ops = {
 
 struct UISkillTextWnd {
     struct UIFrameWnd frame;
-    int cell[4];
+    struct GroundSkillUse use;
     struct UIWindow *edit;
 };
 SIZE_ASSERT(UISkillTextWnd, 0xa8);
@@ -260,14 +260,11 @@ int ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *window, struct UIWindow 
                                              int val1, int val2, int val3, int val4)
 {
     struct UISkillTextWnd *self = (struct UISkillTextWnd *)window;
-    struct {
-        int cell[4];
-        const char *text;
-    } request;
+    struct GroundSkillTalkbox request;
 
     if (msg == UI_MSG_COMMAND) {
         if (val1 == UI_ID_OK) {
-            memcpy(request.cell, self->cell, sizeof request.cell);
+            request.use = self->use;
             request.text = ui_edit_ctrl_get_text(self->edit);
             game_send_message(MODE_MSG_TALKBOX_TEXT, (int)&request, 0, 0, 0);
         } else if (val1 != UI_ID_CANCEL) {
@@ -277,7 +274,7 @@ int ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         return 0;
     }
     if (msg == SKILL_TEXT_MSG_SET_CELL) {
-        memcpy(self->cell, (const int *)val1, sizeof self->cell);
+        self->use = *(const struct GroundSkillUse *)val1;
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

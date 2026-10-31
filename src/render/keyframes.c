@@ -10,17 +10,6 @@
 static void key_quat_slerp_spin(struct KeyQuat *out, float t,
     const struct KeyQuat *a, const struct KeyQuat *b, int spin);
 
-static void axis_angle_quat(float *q, float ax, float ay, float az, float angle)
-{
-    float half = angle * 0.5f;
-    float s = float_sin(half);
-
-    q[0] = s * ax;
-    q[1] = s * ay;
-    q[2] = s * az;
-    q[3] = float_cos(half);
-}
-
 void key_pos_matrix(const struct KeyPos *keys, size_t count, int frame,
                                   float *out)
 {
@@ -257,9 +246,10 @@ void key_vec_scale(const struct KeyVec *keys, size_t count, float t,
     *(struct Mat34 *)out = scale;
 }
 
-static void quat_slerp_spin(float *out, float t, const float *a, const float *b, int spin)
+static void key_quat_slerp_spin(struct KeyQuat *out, float t,
+                                     const struct KeyQuat *a, const struct KeyQuat *b, int spin)
 {
-    float dot = ((b[0] * a[0] + b[1] * a[1]) + a[2] * b[2]) + a[3] * b[3];
+    float dot = ((b->x * a->x + b->y * a->y) + a->z * b->z) + a->w * b->w;
     char negative = 0.0f > dot;
     float cos_theta = negative ? -dot : dot;
     float wa, wb;
@@ -277,22 +267,22 @@ static void quat_slerp_spin(float *out, float t, const float *a, const float *b,
     }
     if (negative)
         wb = -wb;
-    out[0] = a[0] * wa + b[0] * wb;
-    out[1] = wa * a[1] + b[1] * wb;
-    out[2] = a[2] * wa + b[2] * wb;
-    out[3] = a[3] * wa + b[3] * wb;
-}
-
-static void key_quat_slerp_spin(struct KeyQuat *out, float t,
-                                     const struct KeyQuat *a, const struct KeyQuat *b, int spin)
-{
-    quat_slerp_spin(&out->x, t, &a->x, &b->x, spin);
+    out->x = a->x * wa + b->x * wb;
+    out->y = wa * a->y + b->y * wb;
+    out->z = a->z * wa + b->z * wb;
+    out->w = a->w * wa + b->w * wb;
 }
 
 void key_quat_from_axis_angle(struct KeyQuat *key, const float axis[3], float angle)
 {
+    float half = angle * 0.5f;
+    float s = float_sin(half);
+
     key->frame = 0;
-    axis_angle_quat(&key->x, axis[0], axis[1], axis[2], angle);
+    key->x = s * axis[0];
+    key->y = s * axis[1];
+    key->z = s * axis[2];
+    key->w = float_cos(half);
 }
 
 void key_uv_channels_eval(const struct KeyFloatTrack channels[KEYFLOAT_CHANNELS], float t,

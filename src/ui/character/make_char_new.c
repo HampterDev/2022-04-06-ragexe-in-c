@@ -61,17 +61,6 @@
 #define LOGIN_REQ_NAME 0x271f
 #define LOGIN_REQ_LOOKS 0x2721
 
-struct MakeCharDefaults {
-    int stats[6];
-    int head_palette;
-    int head;
-};
-struct MakeCharLooks {
-    int stats[6];
-    int head_palette;
-    int head;
-};
-
 struct UINewMakeCharWnd;
 void ui_new_make_char_wnd_destroy(struct UIWindow *window);
 void ui_new_make_char_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
@@ -179,7 +168,7 @@ static void load_sprites(struct UINewMakeCharWnd *self, int fix_head)
 struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd *self)
 {
     struct CharInfo *info = &self->info;
-    struct MakeCharDefaults *defaults;
+    const struct NewCharLooks *defaults;
     int i;
 
     ui_frame_wnd_construct(&self->frame, 0);
@@ -191,7 +180,8 @@ struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd 
     self->race_buttons[1] = NULL;
     WND(self)->state_count = 0;
 
-    defaults = (struct MakeCharDefaults *)mode_send_message(client_current_mode(), LOGIN_REQ_MAKE_DEFAULTS, 0, 0, 0, 0);
+    defaults = (const struct NewCharLooks *)mode_send_message(client_current_mode(), LOGIN_REQ_MAKE_DEFAULTS,
+                                                              0, 0, 0, 0);
     for (i = 0; i < 6; i++)
         info->stats[i] = (BYTE)defaults->stats[i];
     info->head_palette = (short)defaults->head_palette;
@@ -513,7 +503,7 @@ static int has_gm_tag(const char *s)
 static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
 {
     struct String arg;
-    struct MakeCharLooks looks;
+    struct NewCharLooks looks;
     BYTE service_ok, filter_ok, blank_edge;
     int i;
 

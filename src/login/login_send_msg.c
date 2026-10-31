@@ -340,8 +340,8 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case 0x271d: return (int)self->email;
     case 0x271e: return (int)self->new_char_name;
     case 0x271f: strcpy(self->new_char_name, (const char *)a); return 0;
-    case 0x2720: return (int)self->new_char_stats;
-    case 0x2721: memcpy(self->new_char_stats, (const void *)a, sizeof self->new_char_stats); return 0;
+    case 0x2720: return (int)&self->new_char;
+    case 0x2721: self->new_char = *(const struct NewCharLooks *)a; return 0;
     case 0x2722:
         if (b == 0xc1) {
             CMODE_SENDMSG(client_current_mode(), 2, 0, 0, 0, 0);

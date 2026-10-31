@@ -190,8 +190,8 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
     const struct DisplayDevice *rec;
     unsigned count, i, hw, m;
 
-    memset((BYTE *)&version + 4, 0, 0x90);
-    version.dwOSVersionInfoSize = sizeof(version);
+    memset(&version, 0, sizeof version);
+    version.dwOSVersionInfoSize = sizeof version;
     GetVersionExA(&version);
     count = (unsigned)display_devices_count();
     self->modes.last = self->modes.first;
@@ -220,33 +220,33 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
                 if ((unsigned)height >= 0x298 && bpp == 32 && (unsigned)width <= 0x2000
                     && (unsigned)height <= 0x1000) {
                     struct String text;
-                    struct StdInt3 entry;
+                    struct DisplayMode entry;
 
                     string_init(&text);
                     string_format(&text, "%d x %d x %d", width, height, bpp);
                     string_vec_push_copy(&self->mode_names, &text);
                     string_free(&text);
-                    entry.v[0] = width;
-                    entry.v[1] = height;
-                    entry.v[2] = 32;
+                    entry.width = width;
+                    entry.height = height;
+                    entry.bpp = 32;
                     vec_push(&self->modes, &entry, sizeof entry);
                 }
             } else if ((unsigned)height >= 0x298 && (unsigned)width <= 0x2000 && (unsigned)height <= 0x1000
                        && (bpp == 16 || bpp == 32)) {
                 struct String text;
-                struct StdInt3 entry;
+                struct DisplayMode entry;
 
                 string_init(&text);
                 string_format(&text, "%d x %d x %d", width, height, bpp);
                 string_vec_push_copy(&self->mode_names, &text);
                 string_free(&text);
-                entry.v[0] = width;
-                entry.v[1] = height;
-                entry.v[2] = bpp;
-                vec_push(&self->modes, &entry, sizeof(struct StdInt3));
+                entry.width = width;
+                entry.height = height;
+                entry.bpp = bpp;
+                vec_push(&self->modes, &entry, sizeof entry);
             }
             if (width == g_displayWidth && height == g_displayHeight && bpp == g_bitsPerPixel) {
-                g_displayModeIndex = (int)(((BYTE *)self->modes.last - (BYTE *)self->modes.first) / 12) - 1;
+                g_displayModeIndex = (int)vec_count(&self->modes, sizeof(struct DisplayMode)) - 1;
                 self->mode = g_displayModeIndex;
             }
         }

@@ -357,7 +357,7 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
     case 0x9b: return command(ui_window_find(0x24), 0x21d);
     case 0x9d: return toggle(&g_windowMgr, 0x144);
     case 0x9f:
-        if (g_session1_state != 0 && g_session1_state != 1)
+        if (g_session1.mapType != 0 && g_session1.mapType != 1)
             session_set_hide_other_players(&g_session1, 0);
         else
             session_set_hide_other_players(&g_session1, g_session1.hideOtherPlayers == 0);

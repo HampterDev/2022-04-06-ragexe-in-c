@@ -1,4 +1,5 @@
 #include "world/scene_graph.h"
+#include "world/frustum.h"
 #include <math.h>
 
 #define OBB_EPS ((double)1e-6f)
@@ -8,19 +9,19 @@ static float obb_abs(float x)
     return (float)fabs((double)x);
 }
 
-BYTE obb_overlaps_box(const void *obb, const float *box)
+BYTE obb_overlaps_box(const struct FrustumObb *obb, const struct SceneGraphNode *node)
 {
-    const float *e = (const float *)obb, *c = e + 3;
-    const float *axisX = e + 6, *axisY = e + 9, *axisZ = e + 12;
+    const float *e = obb->extent, *c = obb->centre;
+    const float *axisX = obb->axis[0], *axisY = obb->axis[1], *axisZ = obb->axis[2];
     float h0, h1, h2, d0, d1, d2, t0, t1, t2;
     float r00, r01, r02, r10, r11, r12, r20, r21, r22;
 
-    h0 = (box[3] - box[0]) * 0.5f;
-    h1 = (box[4] - box[1]) * 0.5f;
-    h2 = (box[5] - box[2]) * 0.5f;
-    d0 = c[0] - (box[0] + box[3]) * 0.5f;
-    d1 = c[1] - (box[1] + box[4]) * 0.5f;
-    d2 = c[2] - (box[2] + box[5]) * 0.5f;
+    h0 = (node->max[0] - node->min[0]) * 0.5f;
+    h1 = (node->max[1] - node->min[1]) * 0.5f;
+    h2 = (node->max[2] - node->min[2]) * 0.5f;
+    d0 = c[0] - (node->min[0] + node->max[0]) * 0.5f;
+    d1 = c[1] - (node->min[1] + node->max[1]) * 0.5f;
+    d2 = c[2] - (node->min[2] + node->max[2]) * 0.5f;
 
     t0 = (axisX[1] * d1 + axisX[0] * d0) + axisX[2] * d2;
     r00 = obb_abs(axisX[0]);

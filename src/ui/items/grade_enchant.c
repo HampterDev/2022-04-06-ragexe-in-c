@@ -438,7 +438,7 @@ struct UIGradeEnchantWnd *ui_grade_enchant_wnd_construct(struct UIGradeEnchantWn
     self->selected = -1;
     self->hover = -1;
     self->materials.first = self->materials.last = self->materials.end = NULL;
-    *(WORD *)&self->protect = 0;
+    self->protect = 0;
     self->blessing_used = 0;
     self->success_chance = 0;
     self->cautions.first = self->cautions.last = self->cautions.end = NULL;

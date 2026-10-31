@@ -176,7 +176,8 @@ int game_mode_msg_open_buying_store(const char *title, int open, int limit)
         packet.limit = limit;
         packet.open = 1;
     } else {
-        *(unsigned short *)&packet.open = 0;
+        packet.open = 0;
+        packet.title[0] = 0;
         packet.limit = 0;
     }
     if (!g_replayPlaying)

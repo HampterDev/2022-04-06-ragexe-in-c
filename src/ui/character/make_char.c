@@ -108,12 +108,6 @@ const struct UIWindowOps ui_make_char_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-struct MakeCharStart {
-    int stats[6];
-    int hair_colour;
-    int hair_style;
-};
-
 struct UIMakeCharWnd {
     struct UIFrameWnd frame;
     struct UIWindow *name_edit;
@@ -132,7 +126,7 @@ OFFSET_ASSERT(UIMakeCharWnd, view, 0x148);
 struct UIMakeCharWnd *ui_make_char_wnd_construct(struct UIMakeCharWnd *self)
 {
     struct CharPreview *view = &self->view;
-    struct MakeCharStart *start;
+    const struct NewCharLooks *start;
     struct String path;
     int head, i;
 
@@ -154,11 +148,12 @@ struct UIMakeCharWnd *ui_make_char_wnd_construct(struct UIMakeCharWnd *self)
     self->name_edit = NULL;
     self->info.sex = ((BYTE)g_session1.accountSex);
 
-    start = (struct MakeCharStart *)mode_send_message(client_current_mode(), MODE_REQ_MAKE_CHAR_INFO, 0, 0, 0, 0);
+    start = (const struct NewCharLooks *)mode_send_message(client_current_mode(), MODE_REQ_MAKE_CHAR_INFO,
+                                                           0, 0, 0, 0);
     for (i = 0; i < 6; i++)
         self->info.stats[i] = (BYTE)start->stats[i];
-    self->info.head_palette = (short)start->hair_colour;
-    self->info.head = (short)start->hair_style;
+    self->info.head_palette = (short)start->head_palette;
+    self->info.head = (short)start->head;
     self->info.name[0] = 0;
     self->info.job = 0;
     self->info.status_points = 0;
@@ -428,7 +423,7 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     struct String copy;
     struct Mode *mode;
     char name[MAKE_CHAR_NAME_MAX];
-    int stats[8];
+    struct NewCharLooks looks;
     int filtered, service, blank, i;
 
     if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
@@ -492,10 +487,10 @@ send:
     mode = client_current_mode();
     mode_send_message(mode, MODE_REQ_MAKE_CHAR_NAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
     for (i = 0; i < 6; i++)
-        stats[i] = self->info.stats[i];
-    stats[6] = self->info.head_palette;
-    stats[7] = self->info.head;
-    mode_send_message(mode, MODE_REQ_MAKE_CHAR_STATS, (int)stats, 0, 0, 0);
+        looks.stats[i] = self->info.stats[i];
+    looks.head_palette = self->info.head_palette;
+    looks.head = self->info.head;
+    mode_send_message(mode, MODE_REQ_MAKE_CHAR_STATS, (int)&looks, 0, 0, 0);
     return 0;
 }
 
