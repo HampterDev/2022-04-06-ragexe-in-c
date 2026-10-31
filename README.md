@@ -75,34 +75,39 @@ account or registry settings.
 
 This client is Ragexe 2022-04-06, the Korean Ragnarok Online client of 6 April 2022,
 reconstructed from its executable and rebuilt as plain C. It is meant to behave like the
-original exe. The differences below are deliberate.
+original exe. The differences below are deliberate. Where a patch of the
+[NEMO](https://gitlab.com/4144/Nemo) patcher does the same, its name as NEMO lists it comes
+first.
 
 ### Starting and connecting
 
-- Settings are read from and written to `HKEY_CURRENT_USER` instead of
-  `HKEY_LOCAL_MACHINE`, so the client needs no administrator rights.
-- The message strings come from `msgStringTable.txt` for every service
-  type. Packet 0x204 always carries the MD5 of the running exe. The original sent it only for
-  some service and server types, with a fixed key or zeros in place of the digest.
-- nProtect GameGuard is not started, and the login and game loops ignore
-  its error state. On an error the original disconnected, quit and showed an "nProtect
-  GameGuard" message box. The GameGuard code itself is gone; a stub keeps its interface.
-- GameGuard's FindHack scan does not run.
-- The client starts without a launcher argument. The original refused to run
-  unless the command line contained `1rag1`, `1sak1`, `1gld1`, `2rag2`, `1eve1` or `1pk1`.
-- The start-up process check never stops the client. The original quit
-  with "Please run a genuine Ragnarok client".
-- The login server is `<address>:<port>` from `clientinfo.xml`. The
-  original picked a built-in `*.ragnarok.co.kr` server by server type, and set the client
-  version and the built-in admin lists with it.
+- **NEMO: HKLM To HKCU.** Settings are read from and written to `HKEY_CURRENT_USER`
+  instead of `HKEY_LOCAL_MACHINE`, so the client needs no administrator rights.
+- **NEMO: Always read msgstringtable.txt.** The message strings come from
+  `msgStringTable.txt` for every service type.
+- **NEMO: Force Send Client Hash Packet.** Packet 0x204 always carries the MD5 of the
+  running exe. The original sent it only for some service and server types, with a fixed key
+  or zeros in place of the digest.
+- **NEMO: Disable Game Guard (NProtect).** nProtect GameGuard is not started, its FindHack
+  scan does not run, and the login and game loops ignore its error state. On an error the
+  original disconnected, quit and showed an "nProtect GameGuard" message box. The GameGuard
+  code itself is gone; a stub keeps its interface.
+- **NEMO: Disable 1rag1 type parameters.** The client starts without a launcher argument.
+  The original refused to run unless the command line contained `1rag1`, `1sak1`, `1gld1`,
+  `2rag2`, `1eve1` or `1pk1`.
+- **NEMO: Disable Ragexe Filename Check.** The start-up process check never stops the
+  client. The original quit with "Please run a genuine Ragnarok client".
+- **NEMO: Remove hardcoded address/port.** The login server is `<address>:<port>` from
+  `clientinfo.xml`. The original picked a built-in `*.ragnarok.co.kr` server by server type,
+  and set the client version and the built-in admin lists with it.
 - The GDI check is retired. The original compared gdi32's `TextOutW`
   import with `GetProcAddress` and checked for a debugger. On a mismatch it disconnected and
   quit three times in five, and once due it ran every frame.
 
 ### Input and text
 
-- While a text field has the keyboard, Ctrl+Alt (AltGr) keys type text instead
-  of triggering hotkeys. AltGr+Q types `@` on a German layout; the original took it for
+- **NEMO: @ Bug Fix.** While a text field has the keyboard, Ctrl+Alt (AltGr) keys type text
+  instead of triggering hotkeys. AltGr+Q types `@` on a German layout; the original took it for
   Alt+Q (the equipment window) and lost the character. The same goes for `€` and `{ [ ] }`.
 
 ### Bugs of the original fixed
@@ -205,8 +210,8 @@ Data, time and leaks:
 - Changing the Graphic Device applies at once when the new adapter has the same
   GPU model (same vendor and device id); textures are copied to the new device. Other device
   changes restart as before.
-- A new "Borderless" checkbox, on by default and saved as `ISBORDERLESS` in
-  `OptionInfo.lua`. With it on, Fullscreen is a frameless window covering the monitor at the
+- **NEMO: Use borderless mode in full screen.** A new "Borderless" checkbox, on by default
+  and saved as `ISBORDERLESS` in `OptionInfo.lua`. With it on, Fullscreen is a frameless window covering the monitor at the
   monitor's own resolution: no mode switch, and no device loss on Alt+Tab. With it off,
   Fullscreen is the exclusive mode as in the original.
 - The 3D scene is drawn with 4x multisampling; the original never anti-aliases.
