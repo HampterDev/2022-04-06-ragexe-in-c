@@ -486,9 +486,8 @@ void dc_bitmap_alpha_from_brightness(struct DcBitmap *self, BYTE level)
             DWORD *p = &self->bits[self->width * row + col];
             DWORD v = *p;
             BYTE grey = (BYTE)((((v >> 8) & 0xff) + ((v >> 16) & 0xff) + (v & 0xff)) / 3);
-            volatile BYTE dropped = (BYTE)(int)((float)grey / (float)level * 255.0f);
+            BYTE alpha = (BYTE)(int)((float)grey / (float)level * 255.0f);
 
-            (void)dropped;
-            *p = v;
+            *p = (v & 0x00ffffff) | (DWORD)alpha << 24;
         }
 }

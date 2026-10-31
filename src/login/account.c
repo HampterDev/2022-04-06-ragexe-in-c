@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <iphlpapi.h>
-#include <winsock2.h>
 #include "core/app.h"
 #include "contents/md5ctx.h"
 #include "core/msg_str.h"
@@ -230,30 +228,4 @@ void login_mode_send_exe_digest(struct LoginMode *self)
     }
     md5ctx_final(&md5, pkt.digest);
     login_send_packet((short)pkt.id, &pkt);
-}
-
-struct String *get_mac(struct String *out)
-{
-    ULONG size = 0;
-    IP_ADAPTER_INFO *info;
-    char text[100];
-
-    if (GetAdaptersInfo(NULL, &size) == ERROR_BUFFER_OVERFLOW) {
-        info = mem_try_alloc(size);
-        memset(info, 0, size);
-        GetAdaptersInfo(info, &size);
-        if (info) {
-            memset(text, 0, sizeof text);
-            _snprintf(text, sizeof text, "%02X-%02X-%02X-%02X-%02X-%02X",
-                         info->Address[0], info->Address[1], info->Address[2],
-                         info->Address[3], info->Address[4], info->Address[5]);
-            mem_free(info);
-            string_init(out);
-            string_assign_cstr(out, text);
-            return out;
-        }
-    }
-    string_init(out);
-    string_assign_cstr(out, "11-22-33-44-55-66");
-    return out;
 }

@@ -194,6 +194,11 @@ int main(void)
         assert(bitmap.changed && bitmap.bits[0] == 1 && bitmap.bits[4] == 3 && bitmap.bits[1] == 0);
         assert(!outstanding);
     }
+    bitmap.bits[0] = 0x00ffffff; bitmap.bits[1] = 0x00000000; bitmap.bits[2] = 0x34ffffff;
+    dc_bitmap_alpha_from_brightness(&bitmap, 0xff);
+    assert(bitmap.bits[0] == 0xffffffff && bitmap.bits[1] == 0 && bitmap.bits[2] == 0xffffffff);
+    bitmap.bits[0] = 0x00404040; dc_bitmap_alpha_from_brightness(&bitmap, 0x80);
+    assert(bitmap.bits[0] == 0x7f404040);
     dc_bitmap_destruct(&bitmap);
     assert(!dc_bitmap_construct(&bitmap, -1, 2) && !bitmap.hdc);
     assert(!dc_bitmap_construct(&bitmap, INT_MAX, INT_MAX) && !bitmap.hdc);

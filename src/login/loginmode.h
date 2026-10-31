@@ -159,7 +159,6 @@ int login_mode_client_type(void);
 void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int form);
 void login_mode_send_exe_digest(struct LoginMode *self);
-struct String *get_mac(struct String *out);
 
 BYTE login_mode_load_connections(struct LoginMode *self);
 BYTE login_mode_load_sub_connections(struct LoginMode *self, int index);

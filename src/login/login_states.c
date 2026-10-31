@@ -18,7 +18,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <winsock2.h>
 #include "ui/character/select_server.h"
 #include "ui/character/replay_play.h"
 #include "render/render_api.h"
@@ -319,47 +318,6 @@ static void char_select(struct LoginMode *self)
     }
 }
 
-static void send_sso_login(void)
-{
-#pragma pack(push, 1)
-    struct {
-        WORD id;
-        WORD length;
-        DWORD version;
-        BYTE clientType;
-        char account[0x33];
-        char mac[0x11];
-        char ip[0x10];
-    } sso;
-#pragma pack(pop)
-    BYTE packet[0x5c + 0x1f4];
-    struct String mac;
-    char host[0x64];
-    struct hostent *found;
-    size_t n, tokenLen;
-
-    sso.id = 0x825;
-    sso.version = g_clientVersion;
-    sso.clientType = (BYTE)login_mode_client_type();
-    get_mac(&mac);
-    strncpy(sso.mac, string_cstr(&mac), 0x11);
-    string_free(&mac);
-    n = strlen(g_session1.launchArg2);
-    strncpy(sso.account, g_session1.launchArg2, n);
-    sso.account[n] = 0;
-    gethostname(host, sizeof host);
-    found = gethostbyname(host);
-    if (!found)
-        memcpy(sso.ip, "111.111.111.111", 0x10);
-    else
-        strcpy(sso.ip, inet_ntoa(*(struct in_addr *)found->h_addr_list[0]));
-    tokenLen = strlen(g_session1.ssoToken);
-    sso.length = (WORD)(tokenLen + 0x5c);
-    memcpy(packet, &sso, 0x5c);
-    memcpy(packet + 0x5c, g_session1.ssoToken, tokenLen);
-    rag_connection_send_packet(rag_connection_instance(), (WORD)(tokenLen + 0x5c), packet);
-}
-
 static void char_server(struct LoginMode *self)
 {
     struct ServerAddress addr;
@@ -407,11 +365,6 @@ static void char_server(struct LoginMode *self)
         return;
     }
     st = g_serviceType;
-    if (st == 0 || st == 0x12 || st == 0xc) {
-        send_sso_login();
-        wait_window(0x7a, 0x10);
-        return;
-    }
     login.id = 0x64;
     login.version = g_clientVersion;
     memcpy(login.userId, self->userId, 24);

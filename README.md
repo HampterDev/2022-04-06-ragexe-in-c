@@ -107,6 +107,11 @@ lists it, in an orange badge.
   The login server is `<address>:<port>` from `clientinfo.xml`. The original picked a
   built-in `*.ragnarok.co.kr` server by server type, and set the client version and the
   built-in admin lists with it.
+- [![NEMO: Restore old login packet](https://img.shields.io/badge/NEMO-Restore_old_login_packet-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/RestoreOldLoginPacket.qs)
+  Every service type logs in with packet 0x64 (account and password). For korea (langtype
+  0), brazil (12) and france (18) the original sent the token login 0x825, with the token
+  from the login server's reply in place of the password, which an emulator cannot check
+  against the account.
 - The client does not look for a newer patcher at start. When `Patchup.exe` (`Sakup.exe`,
   `Indoorup.exe`, ... by server type) was next to it, the original asked "Ragnarok.exe is
   changed. Press ok to restart" and on OK replaced `Ragnarok.exe` with that file and ran it,
