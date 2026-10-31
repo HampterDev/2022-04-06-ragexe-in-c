@@ -85,7 +85,10 @@ lists it, in an orange badge.
   Settings are read from and written to `HKEY_CURRENT_USER` instead of `HKEY_LOCAL_MACHINE`,
   so the client needs no administrator rights.
 - [![NEMO: Always read msgstringtable.txt](https://img.shields.io/badge/NEMO-Always_read_msgstringtable.txt-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/ReadMsgstringtabledottxt.qs)
-  The message strings come from `msgStringTable.txt` for every service type.
+  The message strings come from `msgStringTable.txt` for every service type. The file is
+  required: the client has no built-in strings, and the kRO full client does not ship one, so
+  it comes from a translation or the server's data (in `data\` or a GRF). Without it every
+  label reads "NO MSG".
 - [![NEMO: Force Send Client Hash Packet](https://img.shields.io/badge/NEMO-Force_Send_Client_Hash_Packet-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/ForceSendClientHash.qs)
   Packet 0x204 always carries the MD5 of the running exe. The original sent it only for some
   service and server types, with a fixed key or zeros in place of the digest.
