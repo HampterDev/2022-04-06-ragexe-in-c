@@ -22,37 +22,6 @@ compiler and linker for 32-bit Windows (Visual Studio 2022 or its Build Tools, x
 Ragexe 2022-04-06 is the client version the BrowEdit community recommends most, for its
 stability.
 
-## The original
-
-| | |
-|---|---|
-| file | `2022-04-06_Ragexe_1648707856.exe` |
-| size | 12,188,712 bytes |
-| SHA-256 | `656b2f274c09dbb99787b3205e51feaac884d761bc11fbe31926acd92b1971a7` |
-| MD5 | `f914d47b44f11dbb73e51146d1993674` |
-
-## Size
-
-`build.bat` produces an executable well under half the original's size:
-
-| | original | this build |
-|---|---:|---:|
-| file | 12,188,712 | 4,732,416 |
-| `.text` (code) | 9,278,494 | 3,732,524 |
-| `.rdata` (constants, imports) | 1,715,682 | 646,252 |
-| `.data` (in the file) | 375,808 | 3,584 |
-| `.data` (in memory) | 3,989,092 | 5,406,588 |
-| `.rsrc` (icons, dialogs, manifest) | 151,592 | 151,360 |
-| `.reloc` | 656,572 | 196,552 |
-
-Sizes in bytes. Both link the MSVC runtime as DLLs (`vcruntime140`, the UCRT). The
-original's code also carries the inlined C++ standard library (`std::string`, the
-containers, jsoncons), exception-handling tables, the DirectDraw renderer, the GameGuard and
-launcher checks, and code this build removed as unreachable. This build is C, keeps only what
-the client uses, and draws with Direct3D 9. Its global data starts zeroed instead of being stored in
-the file. It no longer imports `MSVCP140`, `DDRAW`, `WININET`, `NETAPI32` or `cps`, and adds
-`d3d9` and `dbghelp` (for the crash minidump).
-
 ## Build
 
 From cmd or PowerShell in this folder:
