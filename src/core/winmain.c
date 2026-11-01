@@ -143,7 +143,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     replay_recorder_set_mode(replay_recorder_instance(), 1);
     if (strstr(cmd, "1qm1") != 0)
         _snprintf_s(g_session1.launchArg3, 0x18, (size_t)-1, strstr(cmd, "1sak1") != 0 ? "QmSakray" : "Dev");
-    session_set_pair(&g_session1, 0x12, strstr(cmd, "1roc1") != 0 ? 1 : 0);
 
     if (strstr(cmd, "-t:") != 0 && g_replayLaunch == 0) {
         read_launch_args(cmd);

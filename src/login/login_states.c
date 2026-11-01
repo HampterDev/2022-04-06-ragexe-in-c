@@ -338,19 +338,6 @@ static void char_server(struct LoginMode *self)
     strcpy(addr.ip, g_serverAddress);
     addr.port = atoi(g_serverPort);
     _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_serverDomain);
-    if (g_serverType == 0xd) {
-        if (g_serviceType == 1) {
-            memset(&addr, 0, sizeof addr);
-            _snprintf_s(addr.ip, 0x10, (size_t)-1,
-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "128.241.92.211" : "128.241.92.212");
-            addr.port = 0x1a90;
-        } else if (g_serviceType == 5) {
-            memset(&addr, 0, sizeof addr);
-            _snprintf_s(addr.host, 0x81, (size_t)-1,
-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "thro-zone01c.gnjoy.in.th:50001"
-                                                                         : "thro-zone-t1.gnjoy.in.th:50001");
-        }
-    }
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connect_failed(self);
