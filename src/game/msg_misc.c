@@ -150,11 +150,14 @@ int game_mode_msg_req_status(struct GameMode *self)
 
 int game_mode_msg_emotion(struct GameMode *self, int emotion)
 {
+    DWORD now;
+
     if (emotion >= 0x5d || self->emotion_pending)
         return 0;
-    if (timeGetTime() <= self->emotion_time + EMOTION_WAIT)
+    now = timeGetTime();
+    if ((DWORD)(now - self->emotion_time) <= EMOTION_WAIT)
         return 0;
-    self->emotion_time = timeGetTime();
+    self->emotion_time = now;
     self->emotion_pending = 1;
     send_u8(CZ_REQ_EMOTION, emotion);
     return 0;
