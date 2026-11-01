@@ -179,7 +179,7 @@ static void restart_bgm(struct GameMode *self)
     struct String *map;
     const char *name;
 
-    if (!sound_stream_playing() || g_sound_settings.bgm_overridden == 0)
+    if (sound_stream_playing() || g_sound_settings.bgm_overridden == 0)
         return;
     g_sound_settings.bgm_overridden = 0;
     map = game_mode_get_map_name(self, &rsw);
