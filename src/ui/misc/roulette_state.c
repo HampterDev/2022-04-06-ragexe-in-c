@@ -26,7 +26,9 @@ static int prize_less(const void *a, const void *b)
 {
     const struct RoulettePrize *x = a, *y = b;
 
-    return (short)x->row < (short)y->row && (short)x->position < (short)y->position;
+    if ((short)x->row != (short)y->row)
+        return (short)x->row < (short)y->row;
+    return (short)x->position < (short)y->position;
 }
 
 static void destroy_prize(void *value)
