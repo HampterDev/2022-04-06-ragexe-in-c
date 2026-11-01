@@ -327,7 +327,7 @@ void ui_emotion_wnd_save_macros(struct UIEmotionWnd *self)
     for (i = 0; i < CHAT_MACRO_COUNT; i++) {
         _itoa(i, name, 10);
         text = ui_edit_ctrl_get_text(self->macro_edit[i]);
-        if (*text && !session_set_chat_macro(&g_session1, i, text_view_cstr(text))) {
+        if (!session_set_chat_macro(&g_session1, i, text_view_cstr(text))) {
             RegCloseKey(key);
             return;
         }
