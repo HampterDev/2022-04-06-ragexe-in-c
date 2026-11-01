@@ -1,7 +1,6 @@
 #ifndef TEST_JPEG_FIXTURE_H
 #define TEST_JPEG_FIXTURE_H
 #include "resources/jpeg_codec.h"
-#include "platform/ijl_api.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdint.h>
@@ -11,8 +10,8 @@
 
 static struct { unsigned char *base; size_t size; } jpeg_blocks[32];
 static int jpeg_live, jpeg_allocations, jpeg_fail_allocation;
-static int jpeg_inits, jpeg_frees, jpeg_headers, jpeg_reads, jpeg_writes, jpeg_active;
-static int jpeg_fail_init, jpeg_fail_header, jpeg_fail_read, jpeg_fail_write;
+static int jpeg_reads, jpeg_writes;
+static int jpeg_fail_read, jpeg_fail_write;
 static int jpeg_width = 3, jpeg_height = 2;
 static unsigned char jpeg_written[4096];
 static size_t jpeg_written_stride;
@@ -57,97 +56,53 @@ static void jpeg_test_free(void *memory)
     --jpeg_live;
 }
 
-static int __stdcall jpeg_test_init(struct IjlProps *props)
-{
-    size_t i;
-    const unsigned char *bytes = (const unsigned char *)props;
-    for (i = 0; i < sizeof *props; ++i) assert(bytes[i] == 0);
-    ++jpeg_inits;
-    if (jpeg_fail_init) return -1;
-    assert(!jpeg_active);
-    jpeg_active = 1;
-    props->useProps = 12345;
-    return 0;
-}
-
-static int __stdcall jpeg_test_free_props(struct IjlProps *props)
-{
-    assert(jpeg_active && props->useProps == 12345);
-    ++jpeg_frees;
-    jpeg_active = 0;
-    return 0;
-}
-
-static int __stdcall jpeg_test_read(struct IjlProps *props, int operation)
-{
-    int x, y;
-    size_t stride;
-    assert(jpeg_active && props->useProps == 12345);
-    assert(props->jpgBytes == jpeg_input && props->jpgSizeBytes == sizeof jpeg_input);
-    if (operation == IJL_JBUFF_READPARAMS) {
-        ++jpeg_headers;
-        props->jpgWidth = jpeg_width;
-        props->jpgHeight = jpeg_height;
-        return jpeg_fail_header ? -2 : 0;
-    }
-    assert(operation == IJL_JBUFF_READWHOLEIMAGE);
-    ++jpeg_reads;
-    assert(props->dibWidth == jpeg_width && props->dibHeight == jpeg_height);
-    assert(props->dibColor == IJL_BGR && props->dibChannels == 3);
-    stride = ((size_t)jpeg_width * 3 + 3) & ~(size_t)3;
-    assert(props->dibPadBytes == stride - (size_t)jpeg_width * 3);
-    for (y = 0; y < jpeg_height; ++y) {
-        unsigned char *row = props->dibBytes + (size_t)y * stride;
-        for (x = 0; x < jpeg_width; ++x) {
-            row[3*x] = (unsigned char)(10 + x);
-            row[3*x+1] = (unsigned char)(20 + y);
-            row[3*x+2] = (unsigned char)(30 + x + y);
-        }
-    }
-    props->dibBytes[0] = 254;
-    props->dibBytes[1] = 3;
-    props->dibBytes[2] = 255;
-    return jpeg_fail_read ? -3 : 0;
-}
-
-static int __stdcall jpeg_test_write(struct IjlProps *props, int operation)
-{
-    size_t bytes;
-    assert(jpeg_active && props->useProps == 12345);
-    assert(operation == IJL_JFILE_WRITEWHOLEIMAGE);
-    assert(props->jpgFile && props->jpgFile[0]);
-    assert(props->dibColor == IJL_BGR && props->dibChannels == 3);
-    assert(props->dibWidth == props->jpgWidth && props->dibHeight == props->jpgHeight);
-    ++jpeg_writes;
-    jpeg_written_stride = (size_t)props->dibWidth * 3 + props->dibPadBytes;
-    jpeg_written_width = props->jpgWidth;
-    jpeg_written_height = props->jpgHeight;
-    bytes = jpeg_written_stride * (size_t)jpeg_written_height;
-    assert(bytes <= sizeof jpeg_written);
-    memcpy(jpeg_written, props->dibBytes, bytes);
-    return jpeg_fail_write ? -4 : 0;
-}
-
 #define calloc jpeg_test_calloc
 #define free jpeg_test_free
-#define ijlInit jpeg_test_init
-#define ijlFree jpeg_test_free_props
-#define ijlRead jpeg_test_read
-#define ijlWrite jpeg_test_write
-#include "../src/resources/jpeg_codec.c"
+#include "../src/resources/jpeg_storage.c"
 #undef calloc
 #undef free
-#undef ijlInit
-#undef ijlFree
-#undef ijlRead
-#undef ijlWrite
+
+int jpeg_image_read(struct JpegImage *image, const void *data, size_t size)
+{
+    struct JpegImage next = {0};
+    int x, y;
+    assert(data == jpeg_input && size == sizeof jpeg_input);
+    ++jpeg_reads;
+    if (jpeg_fail_read || !jpeg_image_create(&next, jpeg_width, jpeg_height)) return 0;
+    for (y = 0; y < jpeg_height; ++y) {
+        unsigned char *row = next.pixels + (size_t)y * next.stride;
+        for (x = 0; x < jpeg_width; ++x) {
+            row[x * 3] = (unsigned char)(10 + x);
+            row[x * 3 + 1] = (unsigned char)(20 + y);
+            row[x * 3 + 2] = (unsigned char)(30 + x + y);
+        }
+    }
+    next.pixels[0] = 254;
+    next.pixels[1] = 3;
+    next.pixels[2] = 255;
+    jpeg_image_destroy(image);
+    *image = next;
+    return 1;
+}
+
+int jpeg_image_write(const struct JpegImage *image, FILE *file)
+{
+    size_t bytes = image->stride * (size_t)image->height;
+    assert(file && bytes <= sizeof jpeg_written);
+    ++jpeg_writes;
+    jpeg_written_stride = image->stride;
+    jpeg_written_width = image->width;
+    jpeg_written_height = image->height;
+    memcpy(jpeg_written, image->pixels, bytes);
+    return !jpeg_fail_write;
+}
 
 static void jpeg_fixture_reset(void)
 {
-    assert(jpeg_live == 0 && jpeg_active == 0);
+    assert(jpeg_live == 0);
     jpeg_allocations = jpeg_fail_allocation = 0;
-    jpeg_inits = jpeg_frees = jpeg_headers = jpeg_reads = jpeg_writes = 0;
-    jpeg_fail_init = jpeg_fail_header = jpeg_fail_read = jpeg_fail_write = 0;
+    jpeg_reads = jpeg_writes = 0;
+    jpeg_fail_read = jpeg_fail_write = 0;
     jpeg_width = 3;
     jpeg_height = 2;
     memset(jpeg_written, 0xcc, sizeof jpeg_written);

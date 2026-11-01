@@ -62,8 +62,12 @@ char renderer_screenshot(struct Renderer *self, struct String filename)
             ok = 1;
         }
         gfx_unlock(g_3dDevice.target);
-        if (ok)
-            ok = (char)jpeg_image_write(&image, string_cstr(&filename));
+        if (ok) {
+            FILE *file = fopen(string_cstr(&filename), "wb");
+            ok = file && jpeg_image_write(&image, file);
+            if (file && fclose(file))
+                ok = 0;
+        }
     }
     jpeg_image_destroy(&image);
     string_free(&filename);

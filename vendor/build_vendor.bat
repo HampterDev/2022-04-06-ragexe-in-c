@@ -12,6 +12,8 @@ call :library lua514 "" lua-5.1.4\src\*.c
 if errorlevel 1 goto failed
 call :library yyjson "/DYYJSON_READER_DEPTH_LIMIT=256 /DYYJSON_WRITER_DEPTH_LIMIT=256" yyjson-0.13.0\*.c
 if errorlevel 1 goto failed
+call :library jpeg "" stb\stb_impl.c
+if errorlevel 1 goto failed
 call :library crijndael "/EHsc /GR- /I..\src" crijndael\*.cpp
 if errorlevel 1 goto failed
 call :library font_backend "/EHsc /GR- /I..\src" font_backend\*.cpp

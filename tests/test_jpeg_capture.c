@@ -1,5 +1,11 @@
 #include "jpeg_fixture.h"
+static FILE *capture_open(const char *name, const char *mode);
+static int capture_close(FILE *file);
+#define fopen capture_open
+#define fclose capture_close
 #include "../src/render/frame_capture.c"
+#undef fopen
+#undef fclose
 
 struct C3dDevice g_3dDevice;
 static struct Renderer renderer;
@@ -7,6 +13,21 @@ static unsigned char frame[1024];
 static struct gfx_lock frame_lock;
 static int surface_token;
 static int locks, unlocks, held, fail_lock, destroyed_strings;
+static int fail_open, fail_close, opens, closes, output_token;
+
+static FILE *capture_open(const char *name, const char *mode)
+{
+    assert(!held && !strcmp(name, "capture.jpg") && !strcmp(mode, "wb"));
+    ++opens;
+    return fail_open ? NULL : (FILE *)(void *)&output_token;
+}
+
+static int capture_close(FILE *file)
+{
+    assert(file == (FILE *)(void *)&output_token);
+    ++closes;
+    return fail_close ? EOF : 0;
+}
 
 int gfx_lock(gfx_surface *handle, const RECT *rect, int flags, struct gfx_lock *out)
 {
@@ -46,6 +67,7 @@ static void reset_capture(int bits)
     memset(&g_3dDevice, 0, sizeof g_3dDevice);
     memset(frame, 0xef, sizeof frame);
     locks = unlocks = held = fail_lock = destroyed_strings = 0;
+    fail_open = fail_close = opens = closes = 0;
     renderer.width = 5;
     renderer.height = 4;
     g_3dDevice.target = (gfx_surface *)&surface_token;
@@ -107,7 +129,7 @@ static void check_pixels(void)
             }
             for (pad = (size_t)width * 3; pad < jpeg_written_stride; ++pad) assert(row[pad] == 0);
         }
-        assert(locks == 1 && unlocks == 1 && !held && !jpeg_live && jpeg_frees == 1);
+        assert(locks == 1 && unlocks == 1 && !held && !jpeg_live && opens == 1 && closes == 1);
         assert(destroyed_strings == 1);
     }
 }
@@ -115,17 +137,18 @@ static void check_pixels(void)
 static void check_failures(void)
 {
     int failure;
-    for (failure = 0; failure < 6; ++failure) {
+    for (failure = 0; failure < 7; ++failure) {
         reset_capture(32);
         if (failure == 0) fail_lock = 1;
         if (failure == 1) jpeg_fail_allocation = 1;
-        if (failure == 2) jpeg_fail_init = 1;
-        if (failure == 3) jpeg_fail_write = 1;
-        if (failure == 4) frame_lock.pitch = 1;
-        if (failure == 5) frame_lock.bpp = 24;
+        if (failure == 2) jpeg_fail_write = 1;
+        if (failure == 3) frame_lock.pitch = 1;
+        if (failure == 4) frame_lock.bpp = 24;
+        if (failure == 5) fail_open = 1;
+        if (failure == 6) fail_close = 1;
         assert(!save());
-        assert(locks == 1 && unlocks == (failure != 0) && !held && !jpeg_live && !jpeg_active);
-        assert(jpeg_frees == (failure == 3));
+        assert(locks == 1 && unlocks == (failure != 0) && !held && !jpeg_live);
+        assert(closes == (failure == 2 || failure == 6));
         assert(destroyed_strings == 1);
     }
 

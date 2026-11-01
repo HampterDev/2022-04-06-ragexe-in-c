@@ -35,6 +35,30 @@ The initial CTest set covers the real string, container, numeric and XML modules
 Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
 The full Windows regression suite still runs through `tests/build.bat`.
 
+## JPEG without IJL
+
+JPEG loading and screenshots use the pinned stb implementation in `vendor/stb`.
+The Windows link no longer includes `ijl15.lib`. The public image representation
+remains top-down, four-byte-padded BGR; the codec translates to/from packed RGB.
+Failed reads preserve the previous image. Dimension/byte-count checks apply on
+both pointer widths.
+
+`jpeg_image_write` accepts an already-open `FILE *`, never opens/closes it, and
+reports encoder/write failures. The caller must check `fclose` for buffered I/O
+errors. Frame capture unlocks the render target before opening/writing the file,
+keeps the existing Windows filename handling and checks close failures. This avoids
+mixing filename encoding policy into the codec.
+
+`tests/build_jpeg.bat` covers the real decoder/encoder, bitmap color keys, padded
+rows, and framebuffer/file failures. CTest runs the codec test on every platform.
+The quadrant JPEG is our own image, generated independently with Pillow by
+`tests/fixtures/make_jpeg_quadrants.py`; Pillow is only needed to regenerate it.
+UBSan found a signed-shift defect in stb's JPEG bit writer; the documented local
+patch uses unsigned shifts instead. No sanitizer suppression is used.
+
+Screenshots now use JPEG quality 90. Compressed bytes are not intended to match
+IJL; visual comparison of full in-game screenshots is still pending.
+
 ## Platform boundaries
 
 - `platform/clock.h` exposes wrapping **32-bit monotonic milliseconds**, independent
@@ -122,7 +146,8 @@ the workflow actually completes.
 ## Remaining work
 
 1. Validate the probe on macOS, especially real Hangul composition and Retina.
-2. Replace IJL and Miles, and stub/convert Granny as the plan describes.
+2. Compare JPEG screenshots in-game, replace Miles, and stub/convert Granny as
+   the plan describes. The IJL code and import library have been removed.
 3. Migrate all message arguments and pointer-bearing runtime fields to pointer
    width; audit raw strides and keep packet fields fixed width.
 4. Expand CMake to the application and remaining test suites; migrate filesystem,

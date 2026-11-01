@@ -45,8 +45,8 @@ if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
 echo [3/3] Linking...
 set "VLIB=%BUILD%\vendor"
 link /nologo msvcrt.lib msvcprt.lib @"%BUILD%\%OUT%.objs.rsp" ^
- "%VLIB%\imglibs.lib" "%VLIB%\lua514.lib" "%VLIB%\yyjson.lib" "%VLIB%\crijndael.lib" "%VLIB%\font_backend.lib" /LIBPATH:"%ROOT%lib" ^
- cps.lib granny2.lib ijl15.lib mss32.lib shlwapi.lib ^
+ "%VLIB%\imglibs.lib" "%VLIB%\lua514.lib" "%VLIB%\yyjson.lib" "%VLIB%\crijndael.lib" "%VLIB%\font_backend.lib" "%VLIB%\jpeg.lib" /LIBPATH:"%ROOT%lib" ^
+ cps.lib granny2.lib mss32.lib shlwapi.lib ^
  msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib ^
  kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib oleaut32.lib ^
  ws2_32.lib winmm.lib ddraw.lib d3d9.lib dxguid.lib gdiplus.lib imm32.lib ole32.lib uuid.lib netapi32.lib ^
