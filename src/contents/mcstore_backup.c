@@ -1,5 +1,6 @@
 #include "json/service_json.h"
 #include "session/state.h"
+#include "session/session_items.h"
 #include "ui/window_manager_state.h"
 #include <stdlib.h>
 #include <string.h>
@@ -74,29 +75,28 @@ static void inventory_item(struct ItemInfo *out, const struct McStoreItem *saved
 
 void mcstore_restore_shop(struct McStoreBackup *self, char mode, int count)
 {
-    size_t at = 0;
-    int visited;
-    for (visited = 0; visited < count && at < self->item_count; ++visited) {
+    size_t at, kept = 0;
+    if (count <= 0) return;
+    for (at = 0; at < self->item_count && kept < (size_t)count; ++at) {
         struct ItemInfo item;
         struct InventoryMatch match;
         inventory_item(&item, &self->items[at]);
         session_find_inventory_item(&g_session1, &match, &item);
         item_info_destruct(&item);
-        if (!match.found) {
-            --self->item_count;
-            memmove(self->items + at, self->items + at + 1,
-                (self->item_count - at) * sizeof *self->items);
-        } else {
+        if (match.found && match.item.index != 0 && match.item.count > 0 &&
+            !session_get_store_setup_count(&g_session1, match.item.index)) {
             if (!mode && match.item.count > self->items[at].count)
                 match.item.count = self->items[at].count;
-            if (match.item.index != 0) {
-                session_sell_list_add(&g_session1, &match.item, (unsigned char)mode, 0);
+            if (session_sell_list_add(&g_session1, &match.item, (unsigned char)mode, 0)) {
                 session_mirror_remove(&g_session1, &match.item, (unsigned char)mode, 0);
+                self->items[kept] = self->items[at];
+                if (!mode) self->items[kept].count = match.item.count;
+                ++kept;
             }
-            ++at;
         }
         item_info_destruct(&match.item);
     }
+    self->item_count = kept;
 }
 
 void mcstore_reset(struct McStoreBackup *self)

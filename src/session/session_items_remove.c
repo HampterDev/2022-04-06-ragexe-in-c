@@ -244,16 +244,16 @@ struct InventoryMatch *session_find_inventory_item(struct Session *self,
         if (have->identified != item->identified || have->refine != item->refine)
             continue;
         count = have->option_count;
-        if (count != item->option_count || count >= 5)
+        if (count != item->option_count || count < 0 || count > 5)
             continue;
         if (count == 0)
             break;
         for (i = 0; i < count; i++) {
             const struct ItemOption *a = &have->options[i], *b = &item->options[i];
-            if (a->id == b->id && a->value == b->value && a->param == b->param)
+            if (a->id != b->id || a->value != b->value || a->param != b->param)
                 break;
         }
-        if (i < count)
+        if (i == count)
             break;
     }
     if (node != list->head) {
