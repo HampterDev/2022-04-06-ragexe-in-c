@@ -6,40 +6,30 @@
 #include "session/state.h"
 #include <lauxlib.h>
 #include "session/chat_tabs_layout.h"
-#include "fileio/file_api.h"
 
 struct Session g_session1;
+void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
 static char output[16384];
 static size_t output_size;
-static int file_state;
+static char test_directory[MAX_PATH], test_path[MAX_PATH];
 
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
-struct File *file_construct(struct File *file)
+static void save_and_read(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
+                          int editable, const char *path)
 {
-    assert(file_state == 0);
-    file_state = 1;
-    memset(file, 0, sizeof *file);
-    return file;
+    HANDLE file;
+    DWORD size, read;
+    assert(!strcmp(path, "SaveData\\ChatWndInfo_U.lua"));
+    assert(chat_tabs_save_layout(main_tabs, separate_tabs, editable, test_path));
+    file = CreateFileA(test_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    assert(file != INVALID_HANDLE_VALUE);
+    size = GetFileSize(file, NULL);
+    assert(size < sizeof output);
+    assert(ReadFile(file, output, size, &read, NULL) && read == size);
+    assert(CloseHandle(file));
+    output_size = size;
+    output[size] = 0;
 }
-unsigned char file_open(struct File *file, const char *name, int mode, unsigned char resolve, unsigned char disk_only)
-{
-    (void)file;
-    assert(file_state == 1 && mode == 0x1001 && resolve == 1 && disk_only == 0);
-    assert(!strcmp(name, "SaveData\\ChatWndInfo_U.lua"));
-    file_state = 2;
-    return 1;
-}
-unsigned char file_write(struct File *file, const void *bytes, int size)
-{
-    (void)file;
-    assert(file_state == 2 && size >= 0 && output_size + size < sizeof output);
-    memcpy(output + output_size, bytes, size);
-    output_size += size;
-    output[output_size] = 0;
-    return 1;
-}
-void file_close(struct File *file) { (void)file; assert(file_state == 2); file_state = 3; }
-void file_destruct(struct File *file) { (void)file; assert(file_state == 3); file_state = 4; }
+
 static int field(lua_State *L, const char *name)
 {
     int value;
@@ -84,11 +74,9 @@ static int check_literal_name(const char *label, const char *name, size_t length
     assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
     assert(chat_tabs_set(&g_session1.subChatWnds, 0, &tab));
     chat_tab_settings_clear(&tab);
-    file_state = 0;
     output_size = 0;
-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
+    save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
                          "SaveData\\ChatWndInfo_U.lua");
-    assert(file_state == 4);
     status = luaL_loadbuffer(L, output, output_size, "literal-layout");
     if (!status) status = lua_pcall(L, 0, 0, 0);
     if (status) {
@@ -157,7 +145,13 @@ int main(void)
     const char *names[] = {"한글", "Second", "Window"};
     int keys[] = {20, -3, 8};
     int n, i;
+    char temporary[MAX_PATH];
     assert(L);
+    assert(GetTempPathA(MAX_PATH, temporary) > 0);
+    assert(GetTempFileNameA(temporary, "clt", 0, test_directory));
+    assert(DeleteFileA(test_directory));
+    assert(CreateDirectoryA(test_directory, NULL));
+    assert(snprintf(test_path, sizeof test_path, "%s\\ChatWndInfo_U.lua", test_directory) < MAX_PATH);
     g_session1.canDragWnd = 1;
     tab.x = -7; tab.y = 25; tab.width = 480; tab.height = 120;
     for (n = 0; n < 3; ++n) {
@@ -166,9 +160,8 @@ int main(void)
         assert(chat_tabs_set(n < 2 ? &g_session1.chatWndTabs : &g_session1.subChatWnds, keys[n], &tab));
     }
     chat_tab_settings_clear(&tab);
-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+    save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds,
                           g_session1.canDragWnd == 1, "SaveData\\ChatWndInfo_U.lua");
-    assert(file_state == 4);
     assert(strstr(output, "CanDragWnd = 1\r\n\r\n") == output);
     assert(strstr(output, "TabName = \"Window\",\r\n"));
     assert(luaL_loadbuffer(L, output, output_size, "saved-layout") == 0);
@@ -193,9 +186,8 @@ int main(void)
         assert(owned_text_assign(&tab.name, text_view_cstr(long_name)));
         assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
         chat_tab_settings_clear(&tab);
-        file_state = 0;
         output_size = 0;
-        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+        save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
         L = luaL_newstate();
         assert(L);
         assert(luaL_loadbuffer(L, output, output_size, "long-layout") == 0);
@@ -206,12 +198,13 @@ int main(void)
         assert(!memcmp(lua_tostring(L, -1), long_name, sizeof long_name));
         lua_close(L);
         chat_tabs_clear(&g_session1.chatWndTabs);
-        file_state = 0;
         output_size = 0;
-        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
-        assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n") && file_state == 4);
+        save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+        assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n"));
     }
     if (check_literal_names()) return 1;
+    assert(DeleteFileA(test_path));
+    assert(RemoveDirectoryA(test_directory));
     puts("Chat-tab layout: production writer, ordered main/separate tabs, Korean and 4096-byte names, geometry and all options round-trip through Lua");
     return 0;
 }

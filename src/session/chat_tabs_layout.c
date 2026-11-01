@@ -1,14 +1,27 @@
 #include "session/chat_tabs_layout.h"
-#include "fileio/file_api.h"
+#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 
-static void write_line(struct File *file, const char *line)
+struct LayoutWriter {
+    HANDLE file;
+    int ok;
+};
+
+static void write_bytes(struct LayoutWriter *writer, const void *data, size_t size)
 {
-    file_write(file, line, (int)strlen(line));
+    DWORD written = 0;
+    if (!writer->ok) return;
+    writer->ok = size <= MAXDWORD &&
+        WriteFile(writer->file, data, (DWORD)size, &written, NULL) && written == size;
 }
 
-static void write_name(struct File *file, struct TextView name)
+static void write_line(struct LayoutWriter *writer, const char *line)
+{
+    write_bytes(writer, line, strlen(line));
+}
+
+static void write_name(struct LayoutWriter *file, struct TextView name)
 {
     char buffer[256];
     size_t i, used = 0;
@@ -17,7 +30,7 @@ static void write_name(struct File *file, struct TextView name)
     for (i = 0; i < name.size; ++i) {
         unsigned byte = (unsigned char)name.data[i];
         if (used > sizeof buffer - 4) {
-            file_write(file, buffer, (int)used);
+            write_bytes(file, buffer, used);
             used = 0;
         }
         if (byte < 32 || byte > 126 || byte == '"' || byte == '\\') {
@@ -30,11 +43,11 @@ static void write_name(struct File *file, struct TextView name)
             buffer[used++] = (char)byte;
         }
     }
-    if (used) file_write(file, buffer, (int)used);
+    if (used) write_bytes(file, buffer, used);
     write_line(file, "\"");
 }
 
-static void write_tab(struct File *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
+static void write_tab(struct LayoutWriter *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
 {
     char line[128];
     int i;
@@ -55,19 +68,35 @@ static void write_tab(struct File *file, unsigned number, const struct ChatTabSe
     write_line(file, "}\r\n\r\n");
 }
 
-void chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
-                          int editable, const char *path)
+int chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
+                         int editable, const char *path)
 {
-    struct File file;
+    struct LayoutWriter writer;
+    char target[MAX_PATH], directory[MAX_PATH], temporary[MAX_PATH], *name;
+    DWORD length;
     unsigned i;
 
-    file_construct(&file);
-    file_open(&file, path, 0x1001, 1, 0);
-    write_line(&file, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
-    for (i = 0; i < main_tabs->size; ++i)
-        write_tab(&file, i + 1, &main_tabs->items[i].value, 1);
-    for (i = 0; i < separate_tabs->size; ++i)
-        write_tab(&file, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
-    file_close(&file);
-    file_destruct(&file);
+    if (!path || !*path) return 0;
+    length = GetFullPathNameA(path, MAX_PATH, target, &name);
+    if (!length || length >= MAX_PATH || !name || !*name) return 0;
+    memcpy(directory, target, (size_t)(name - target));
+    directory[name - target] = 0;
+    if (!GetTempFileNameA(directory, "cht", 0, temporary)) return 0;
+    writer.file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+    writer.ok = writer.file != INVALID_HANDLE_VALUE;
+    if (writer.ok) {
+        write_line(&writer, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
+        for (i = 0; writer.ok && i < main_tabs->size; ++i)
+            write_tab(&writer, i + 1, &main_tabs->items[i].value, 1);
+        for (i = 0; writer.ok && i < separate_tabs->size; ++i)
+            write_tab(&writer, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
+        if (writer.ok) writer.ok = FlushFileBuffers(writer.file) != 0;
+        if (!CloseHandle(writer.file)) writer.ok = 0;
+    }
+    if (writer.ok)
+        writer.ok = MoveFileExA(temporary, target,
+                               MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+    if (!writer.ok) DeleteFileA(temporary);
+    return writer.ok;
 }

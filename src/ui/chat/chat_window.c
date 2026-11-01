@@ -131,12 +131,17 @@ struct UIWindow *ui_new_chat_wnd_new(void)
 void ui_new_chat_wnd_destroy(struct UIWindow *window)
 {
     struct UINewChatWnd *self = (struct UINewChatWnd *)window;
+    int saved;
     self->frame.base.ops = &ui_new_chat_wnd_ops;
-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
-                          g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
+    saved = chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+                                 g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
     vec_free(&self->boxes);
     ui_frame_wnd_destruct(&self->frame);
     mem_free(self);
+    if (!saved)
+        MessageBoxA(NULL, "Could not save your chat layout.\n"
+                    "Your latest layout changes will not be restored next time.",
+                    "Chat layout", MB_OK | MB_ICONWARNING | MB_TASKMODAL);
 }
 
 void ui_new_chat_wnd_resize(struct UIWindow *window, int width, int height)

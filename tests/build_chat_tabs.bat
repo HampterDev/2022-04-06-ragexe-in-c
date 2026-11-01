@@ -26,5 +26,11 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_chat_tabs_layout.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+python "%ROOT%\tests\extract_chat_layout_destroy.py" "%ROOT%" "%CD%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%CD%" "%ROOT%\tests\test_chat_layout_save.c" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\session\chat_tabs.c" /Fe:test_chat_layout_save.exe
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+test_chat_layout_save.exe
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 popd
 exit /b 0
