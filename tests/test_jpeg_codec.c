@@ -54,6 +54,8 @@ int main(int argc, char **argv)
     original = image;
     assert(!jpeg_image_create(&image, INT_MAX, 1));
     assert(!jpeg_image_create(&image, 1, INT_MAX));
+    assert(!jpeg_image_create(&image, 65536, 1));
+    assert(!jpeg_image_create(&image, 1, 65536));
     assert(!jpeg_image_create(&image, 0, 1));
     assert(!jpeg_image_create(NULL, 1, 1));
     assert(!memcmp(&image, &original, sizeof image));
@@ -84,6 +86,18 @@ int main(int argc, char **argv)
 
     file = tmpfile();
     assert(file);
+    {
+        struct JpegImage invalid = image;
+        invalid.width = 65536;
+        invalid.stride = 196608;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+        invalid = image;
+        invalid.height = 65536;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+        invalid = image;
+        ++invalid.stride;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+    }
     assert(jpeg_image_write(&image, file));
     assert(!fflush(file));
     encoded = read_stream(file, &encoded_size);
