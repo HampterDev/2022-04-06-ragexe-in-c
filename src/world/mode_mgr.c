@@ -4,6 +4,7 @@
 #include "contents/sound.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
+#include "ui/window_mgr.h"
 #include "contents/mouse.h"
 #include "world/mode.h"
 
@@ -157,6 +158,15 @@ static void watermark_code(int id, char code[12])
     } while (divisor > 0);
 }
 
+static void screenshot_save_error(const char *path)
+{
+    struct String message;
+    string_init(&message);
+    string_format(&message, "Could not save screenshot:\n%s", path);
+    ui_message_box(string_cstr(&message));
+    string_free(&message);
+}
+
 void mode_screen_shot(struct Mode *self)
 {
     static const char *const weekdays[7] = {
@@ -191,6 +201,8 @@ void mode_screen_shot(struct Mode *self)
     string_init(&dir);
     string_format(&dir, "%s\\ScreenShot", g_clientDir);
     if (_access(string_cstr(&dir), 0) != 0 && _mkdir(string_cstr(&dir)) != 0) {
+        screenshot_save_error(string_cstr(&dir));
+        string_clear(&self->screenshot_name);
         string_free(&dir);
         return;
     }
@@ -222,9 +234,12 @@ void mode_screen_shot(struct Mode *self)
     }
 
     string_copy(&arg, &path);
-    renderer_screenshot(g_renderer, arg);
-    string_append_cstr(&path, " is Saved.");
-    ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (int)string_cstr(&path), 0xff00, 0, 0);
+    if (renderer_screenshot(g_renderer, arg)) {
+        string_append_cstr(&path, " is Saved.");
+        ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (int)string_cstr(&path), 0xff00, 0, 0);
+    } else {
+        screenshot_save_error(string_cstr(&path));
+    }
     string_clear(&self->screenshot_name);
 
     string_free(&path);

@@ -94,7 +94,7 @@ char renderer_screenshot(struct Renderer *self, struct String filename)
     (void)self;
 
     logo = (struct BitmapRes *)res_mgr_get(g_resMgr(), "scr_logo.bmp");
-    if (logo && gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lock) >= 0) {
+    if (gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lock) >= 0) {
         if (lock.bits && lock.width && lock.height &&
             lock.width <= INT_MAX && lock.height <= INT_MAX &&
             (lock.bpp == 16 || lock.bpp == 32) && lock.pitch > 0 &&

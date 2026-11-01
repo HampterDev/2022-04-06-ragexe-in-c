@@ -9,6 +9,7 @@ static unsigned char frame[1024];
 static struct gfx_lock frame_lock;
 static int surface_token, resource_token;
 static int locks, unlocks, held, fail_lock, destroyed_strings;
+static int missing_logo;
 
 int gfx_lock(gfx_surface *handle, const RECT *rect, int flags, struct gfx_lock *out)
 {
@@ -31,7 +32,7 @@ struct ResMgr *g_resMgr(void) { return (struct ResMgr *)&resource_token; }
 void *res_mgr_get(struct ResMgr *manager, const char *name)
 {
     assert(manager == g_resMgr() && !strcmp(name, "scr_logo.bmp"));
-    return &logo;
+    return missing_logo ? NULL : &logo;
 }
 void string_free(struct String *name)
 {
@@ -49,6 +50,7 @@ static void reset_capture(int bits)
     memset(&g_3dDevice, 0, sizeof g_3dDevice);
     memset(frame, 0xef, sizeof frame);
     locks = unlocks = held = fail_lock = destroyed_strings = 0;
+    missing_logo = 0;
     renderer.width = 5;
     renderer.height = 4;
     g_3dDevice.target = (gfx_surface *)&surface_token;
@@ -99,9 +101,11 @@ static void check_pixels(void)
 {
     const RECT region = {1, 1, 4, 3};
     int mode, bits, x, y;
-    for (mode = 1; mode <= 2; ++mode) for (bits = 16; bits <= 32; bits += 16) {
+    /* Mode 3 covers screenshots with a missing optional logo. */
+    for (mode = 1; mode <= 3; ++mode) for (bits = 16; bits <= 32; bits += 16) {
         int width = mode == 1 ? 3 : 5, height = mode == 1 ? 2 : 4;
         reset_capture(bits);
+        missing_logo = mode == 3;
         assert(save(mode, &region));
         assert(jpeg_written_width == width && jpeg_written_height == height);
         for (y = 0; y < height; ++y) {
@@ -168,6 +172,6 @@ int main(void)
     check_failures();
     check_logo();
     jpeg_fixture_reset();
-    puts("Frame capture: two JPEG writers, 16/32-bit pixels, independent pitches, crop edges, logos, failure cleanup and unlocks passed");
+    puts("Frame capture: two JPEG writers, 16/32-bit pixels, independent pitches, crop edges, present/absent logos, failure cleanup and unlocks passed");
     return 0;
 }
