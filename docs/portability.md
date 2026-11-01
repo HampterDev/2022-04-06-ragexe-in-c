@@ -31,7 +31,7 @@ as classic Mac OS rewrites the SDK's function declaration and prevents compilati
 The matching classic-Mac branch in libpng's `pngpriv.h` also excludes `__APPLE__`,
 so current macOS uses `<math.h>` rather than the removed `<fp.h>`.
 
-The initial CTest set covers the real string, container, numeric and XML modules,
+The initial CTest set covers the real string, container, numeric, 3D math and XML modules,
 Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
 The full Windows regression suite still runs through `tests/build.bat`.
 
@@ -83,6 +83,11 @@ IJL; visual comparison of full in-game screenshots is still pending.
 - Runtime containers and XML nodes are not serialized layouts. Their old x86
   offset/size checks were removed as those modules were made buildable on x64.
   Packet/file layout checks elsewhere remain intact.
+- `core/layout.h` provides the same layout assertions without pulling in Win32.
+  The shared 3D math module now builds on every platform, retaining its layout
+  checks. Its projection result has an explicit signed 32-bit type so error codes
+  stay negative on LP64; transform, quaternion, picking and projection tests run
+  in CTest. Float cache keys use `memcpy` rather than aliasing through an integer.
 
 ## Korean source literals
 

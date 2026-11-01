@@ -10,6 +10,7 @@ Implemented so far:
 
 - Portable CMake builds and subsystem tests on Windows x86/x64, Linux and macOS arm64.
 - CP949 literal generation, 32-bit Lua chunk loading on 64-bit hosts, and portable clock/file boundaries.
+- Shared 3D math builds without Win32 types, with layout checks and signed 32-bit projection results.
 - SDL3 input/window bring-up with a thin Metal presenter on macOS. Native macOS CI smoke passes;
   real Hangul composition still needs interactive verification.
 - IJL replaced with a portable JPEG codec; the rebuilt Windows executable no longer imports `ijl15.dll`.
