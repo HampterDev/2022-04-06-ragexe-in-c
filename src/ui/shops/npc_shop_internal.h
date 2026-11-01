@@ -67,9 +67,7 @@
 #define CHAT_RED 0xff
 
 int purchase_info_usable(struct WindowInfo *self);
-int sell_info_usable(struct WindowInfo *self);
 void purchase_info_default(struct WindowInfo *self);
-void sell_info_default(struct WindowInfo *self);
 
 void npc_shop_price_unit_long(char *buf, int cash);
 void npc_shop_show_price_tooltip(struct UIItemBaseWnd *base, int x, int y, const char *unit, int with_count,

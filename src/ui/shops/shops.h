@@ -151,6 +151,8 @@ struct UIBitmapButton *shop_place_button(struct UIWindow *wnd, struct UIBitmapBu
                                          const char *const names[3], int x, int y, int id);
 void shop_resize(struct UIItemShopWnd2 *self, int width, int height, int with_check);
 int shop_info_usable(struct WindowInfo *self);
+int sell_info_usable(struct WindowInfo *self);
+void sell_info_default(struct WindowInfo *self);
 void shop_info_default(struct WindowInfo *self);
 
 struct UIWindow *shop_add_title(struct UIWindow *wnd, int width, int msg);
