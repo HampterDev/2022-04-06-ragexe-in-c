@@ -29,6 +29,7 @@ static int wave_kind = AIL_FILE_WAV, rigid = 1, has_alpha = 1;
 static int vertex_count = 3, index_count = 3, invalid_index;
 static unsigned texture_copies;
 static int path_available = 1;
+static unsigned last_lookup_job;
 static const char *job_model_name = "guildflag90_1.gr2";
 static char last_opened_name[512];
 static unsigned char file_data[68];
@@ -82,7 +83,7 @@ float float_sqrt(float value) { (void)value; abort(); }
 void mat_multiply(float *out, const float *a, const float *b) { (void)out; (void)a; (void)b; abort(); }
 void mat_set_rotate_z(float *out, float angle) { (void)out; (void)angle; abort(); }
 const char *session_get_job_name(struct Session *session, unsigned job, int sex)
-{ assert(session == &g_session1 && job > 0 && sex == -1); return job_model_name; }
+{ assert(session == &g_session1 && job > 0 && sex == -1); last_lookup_job = job; return job_model_name; }
 granny_control *__stdcall _GrannyPlayControlledAnimation(float time, granny_animation *a, granny_model_instance *m)
 { (void)time; (void)a; (void)m; abort(); }
 void __stdcall _GrannySetControlLoopCount(granny_control *p, int count) { (void)p; (void)count; abort(); }
@@ -382,13 +383,20 @@ static void test_animation_lookup(void)
     char long_name[400];
     unsigned before;
     fixture(); info.AnimationCount = 1; info.Animations = animations;
-    assert(granny_animation_cache_get(&cache, 0, 0) == animations[0]);
+    file_available = 0;
+    assert(!granny_animation_cache_get(&cache, 1, 0));
+    assert(!cache.entries[1][0].file && !cache.entries[1][0].animation);
+    assert(!outstanding && !sdk_handles);
+    file_available = 1;
+    assert(granny_animation_cache_get(&cache, 1, 0) == animations[0]);
+    assert(last_lookup_job == 722);
+    assert(cache.entries[1][0].file && !cache.entries[5][0].file);
     assert(!strcmp(last_opened_name, "model\\3dmob\\guildflag90_1.gr2"));
     assert(granny_animation_cache_get(&cache, 9, 4) == animations[0]);
     assert(!strcmp(last_opened_name, "model\\3dmob_bone\\9_damage.gr2"));
     before = allocation_calls;
     assert(granny_animation_cache_get(&cache, 9, 4) == animations[0]);
-    assert(!granny_animation_cache_get(&cache, 1, 0));
+    assert(granny_animation_cache_get(&cache, 1, 0) == animations[0]);
     path_available = 0;
     assert(!granny_animation_cache_get(&cache, 2, 2)); path_available = 1;
     memset(long_name, 'x', sizeof long_name - 1); long_name[sizeof long_name - 1] = 0;
@@ -398,6 +406,9 @@ static void test_animation_lookup(void)
     assert(!granny_animation_cache_get(&cache, 2, 0));
     job_model_name = "guildflag90_1.gr2";
     assert(before == allocation_calls);
+    granny_animation_cache_clear(&cache);
+    assert(!outstanding && !sdk_handles);
+    assert(granny_animation_cache_get(&cache, 1, 0) == animations[0]);
     granny_animation_cache_clear(&cache);
     assert(!outstanding && !sdk_handles);
 }
@@ -416,5 +427,6 @@ int main(void)
     assert(!outstanding && !sdk_handles && file_closes && errors);
     puts("resource lifecycle: typed dispatch, wave allocator ownership, Granny load failures, replacement and complete/repeated cleanup passed");
     puts("Granny resources: every allocation failure preserves the old model, pinned reload rejected, invalid geometry bounded, RGBA converted, 50 animation files owned and released exactly once");
+    puts("Guild flag: lazy loading, job-722 lookup, missing-file retry, cache reuse and reload after clear passed");
     return 0;
 }

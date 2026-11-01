@@ -263,7 +263,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
                g_renderer->height);
     ui_window_mgr_init_ui_rect_info_from_reg(&g_windowMgr);
     granny_animation_cache_init(&g_grannyBoneRes);
-    granny_animation_cache_load(&g_grannyBoneRes, "model\\3dmob\\guildflag90_1.gr2", 5, 0);
     skin_mgr_scan(&g_skinMgr);
     math_init_degree_tables();
 

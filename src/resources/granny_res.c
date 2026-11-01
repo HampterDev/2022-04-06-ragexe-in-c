@@ -325,8 +325,7 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     }
     if (length <= 0 || (size_t)length >= sizeof name || !file_make_file_name(name, 0))
         return NULL;
-    if (job != 1)
-        granny_animation_cache_load(bones, name, job, part);
+    granny_animation_cache_load(bones, name, job, part);
     return entry->animation;
 }
 
