@@ -191,7 +191,7 @@ HANDLE app_run(const char *cmd)
         _snprintf_s(line, sizeof line, (size_t)-1, "%s %s %s %c %s", cmd, g_session1.ssoToken, g_session1.launchArg2,
                        (int)g_session1.launchArgFlag, g_session1.launchArg3);
     else
-        _snprintf_s(line, sizeof line, (size_t)-1, cmd);
+        _snprintf_s(line, sizeof line, (size_t)-1, "%s", cmd);
     memset(&si, 0, sizeof si);
     si.cb = sizeof si;
     si.dwFlags = STARTF_USESHOWWINDOW;
