@@ -819,3 +819,6 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_xml.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 popd
+
+call "%~dp0build_emblem_cache.bat"
+if errorlevel 1 exit /b 1

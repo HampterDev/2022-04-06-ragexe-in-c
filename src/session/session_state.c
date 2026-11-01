@@ -1,6 +1,7 @@
 #include "render/renderer.h"
 #include "session/character_name.h"
 #include "contents/guild_info.h"
+#include "contents/guild_emblem_name.h"
 #include "session/csession.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
@@ -306,7 +307,13 @@ void session_save_emblem(struct Session *self, const void *data, size_t size,
         _chmod(name, 0x80);
         _unlink(name);
     }
-    sprintf(path, "%s%s_%d_%d.ebm", dir, string_cstr(&self->worldName), guildId, version);
+    {
+        struct String name;
+
+        guild_emblem_name(&name, &self->worldName, (unsigned)guildId, version);
+        snprintf(path, sizeof path, "%s%s", dir, string_cstr(&name));
+        string_free(&name);
+    }
     f = fopen(path, "wb");
     if (f) {
         fwrite(data, size, 1, f);
