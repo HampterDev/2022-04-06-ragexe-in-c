@@ -9,7 +9,7 @@ struct ScheduleOps {
     void (*run)(struct Schedule *job, int now);
     void (*destroy)(struct Schedule *job);
 };
-enum ScheduleKind { SCHEDULE_ONCE, SCHEDULE_REPEAT, SCHEDULE_RANDOM };
+enum ScheduleKind { SCHEDULE_ONCE, SCHEDULE_REPEAT };
 
 struct Schedule {
     const struct ScheduleOps *ops;
@@ -71,6 +71,4 @@ void captcha_upload_destruct(struct CaptchaUploadSchedule *job);
 void captcha_upload_destroy(struct CaptchaUploadSchedule *job);
 void captcha_upload_run(struct CaptchaUploadSchedule *job);
 
-struct Schedule *gdi_check_create(int now, int interval, int kind);
-void gdi_check_run(struct Schedule *job, int now);
 #endif

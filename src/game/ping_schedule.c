@@ -33,8 +33,6 @@ void game_mode_add_schedules(void)
     __time32_t now;
     struct Schedule *job;
     _time32(&now);
-    job = gdi_check_create(now, 60, SCHEDULE_RANDOM);
-    if (job && !time_scheduler_add(g_timeScheduler, job)) schedule_free(job);
     job = schedule_create(now, 5, SCHEDULE_REPEAT, &ping_ops);
     if (!job) return;
     if (!time_scheduler_add(g_timeScheduler, job)) { schedule_free(job); return; }

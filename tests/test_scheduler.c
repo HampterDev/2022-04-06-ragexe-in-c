@@ -191,14 +191,11 @@ static void test_clocks_and_jobs(void)
 {
     struct Schedule s;
     struct PartialShutDownSchedule partial;
-    unsigned before;
     schedule_construct(&s, 100, 5, SCHEDULE_ONCE, 1, 0);
     assert(!schedule_is_due(&s, 105) && schedule_is_due(&s, 106));
     s.last_run = INT_MAX - 1; assert(!schedule_is_due(&s, INT_MAX));
     s.interval = 0; assert(!schedule_is_due(&s, INT_MAX));
     schedule_run(&s, 200); assert(!s.alive && s.last_run == INT_MAX - 1);
-    schedule_construct(&s, 100, 1, SCHEDULE_RANDOM, 1, 0);
-    for (before = 0; before < 1000; ++before) { schedule_run(&s, 200); assert(s.interval >= 30 && s.interval <= 330 && s.last_run == 200); }
 
     partial_shutdown_construct(&partial, 100, 3600, SCHEDULE_REPEAT);
     assert(!partial_shutdown_start(&partial, 50, 100));
@@ -269,15 +266,15 @@ static void test_consumers(void)
     assert(!strcmp(notice_text, "2026-01-01 12:00:00") && queue.count == 1);
     assert(((struct PartialShutDownSchedule *)queue.first->job)->end == end);
     time_scheduler_clear(&queue);
-    for (i = 1; i <= 4; ++i) {
+    for (i = 1; i <= 2; ++i) {
         g_session1.gameModeScheduleId = -1; fail_at = allocation_calls + i;
         game_mode_add_schedules();
-        if (i >= 3) assert(g_session1.gameModeScheduleId == -1);
-        else assert(time_scheduler_find(&queue, g_session1.gameModeScheduleId));
+        assert(g_session1.gameModeScheduleId == -1 && !queue.count);
         time_scheduler_clear(&queue); assert(!outstanding);
     }
     fail_at = 0; game_mode_add_schedules();
-    ping = time_scheduler_find(&queue, g_session1.gameModeScheduleId); assert(ping && queue.count == 2);
+    ping = time_scheduler_find(&queue, g_session1.gameModeScheduleId);
+    assert(ping && queue.count == 1 && ping->ops == &ping_ops);
     connected = 1; g_session1.lastPacketTime = UINT_MAX - 100; g_session1.lastSendTime = UINT_MAX - 20000;
     ticks_ms = 100; packets = packet_bytes = 0; ping_run(ping, 1);
     assert(packets == 1 && lengths[0] == 2 && wire[0] == 0x1c && wire[1] == 0x0b && ping->alive);

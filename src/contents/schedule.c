@@ -30,7 +30,6 @@ static void captcha_job_destroy(struct Schedule *s) { captcha_upload_destroy((st
 static const struct ScheduleOps plain_ops = {schedule_run, schedule_free};
 static const struct ScheduleOps partial_ops = {partial_job_run, schedule_free};
 static const struct ScheduleOps captcha_ops = {captcha_job_run, captcha_job_destroy};
-static const struct ScheduleOps gdi_ops = {gdi_check_run, schedule_free};
 
 static void chat_line(const char *text, int color)
 {
@@ -70,8 +69,6 @@ char schedule_is_due(struct Schedule *self, int now)
 void schedule_run(struct Schedule *self, int now)
 {
     if (self->kind == SCHEDULE_ONCE) { self->alive = 0; return; }
-    if (self->kind == SCHEDULE_RANDOM)
-        self->interval = (int)(300.0 * (rand() / (double)RAND_MAX) + 30.0);
     self->last_run = now;
 }
 
@@ -266,15 +263,4 @@ void captcha_upload_run(struct CaptchaUploadSchedule *self)
         self->sent += chunk;
     }
     if (self->sent == self->size) self->base.alive = 0;
-}
-
-void gdi_check_run(struct Schedule *self, int now)
-{
-     (void)now;
-    self->alive = 0;
-}
-
-struct Schedule *gdi_check_create(int now, int interval, int kind)
-{
-    return schedule_create(now, interval, kind, &gdi_ops);
 }
