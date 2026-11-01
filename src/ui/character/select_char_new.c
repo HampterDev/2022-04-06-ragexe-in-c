@@ -282,7 +282,7 @@ static void set_page_label(struct UINewSelectCharWnd *self)
 static void read_cur_slot(struct UINewSelectCharWnd *self)
 {
     HKEY key;
-    DWORD type = REG_DWORD, size = 4, slot;
+    DWORD type = REG_DWORD, size = 4, slot = 0;
 
     LONG failed = RegOpenKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key);
 

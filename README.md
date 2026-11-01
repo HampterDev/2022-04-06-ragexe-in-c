@@ -144,6 +144,8 @@ Dangling pointers and races:
 
 Uninitialized values:
 
+- Without a saved `CURSLOT` registry value, character selection starts at the first slot
+  instead of selecting a slot from leftover stack data and potentially disabling Game Start.
 - The damage numbers of one hit packet came out blue at random. Its
   "SP damage" byte was left as the stack had it.
 - The key-stroke window read its colour chip's green from the stack.
