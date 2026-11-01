@@ -623,6 +623,8 @@ void ui_check_attendance_wnd_banner_on_process(struct UIWindow *window)
     struct UICheckAttendanceWnd_Banner *self = (struct UICheckAttendanceWnd_Banner *)window;
     unsigned next;
 
+    if (BANNER_COUNT(self) <= 1)
+        return;
     if (self->shown_at + BANNER_SWITCH_MS >= timeGetTime())
         return;
     next = self->current + 1;
