@@ -8,6 +8,32 @@ static void write_line(struct File *file, const char *line)
     file_write(file, line, (int)strlen(line));
 }
 
+static void write_name(struct File *file, struct TextView name)
+{
+    char buffer[256];
+    size_t i, used = 0;
+
+    write_line(file, "\"");
+    for (i = 0; i < name.size; ++i) {
+        unsigned byte = (unsigned char)name.data[i];
+        if (used > sizeof buffer - 4) {
+            file_write(file, buffer, (int)used);
+            used = 0;
+        }
+        if (byte < 32 || byte > 126 || byte == '"' || byte == '\\') {
+            /* Three decimal digits prevent a following digit joining the escape. */
+            buffer[used++] = '\\';
+            buffer[used++] = (char)('0' + byte / 100);
+            buffer[used++] = (char)('0' + byte / 10 % 10);
+            buffer[used++] = (char)('0' + byte % 10);
+        } else {
+            buffer[used++] = (char)byte;
+        }
+    }
+    if (used) file_write(file, buffer, (int)used);
+    write_line(file, "\"");
+}
+
 static void write_tab(struct File *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
 {
     char line[128];
@@ -19,9 +45,9 @@ static void write_tab(struct File *file, unsigned number, const struct ChatTabSe
     write_line(file, line);
     snprintf(line, sizeof line, "\tWidth = %d,\r\n\tHeight = %d,\r\n", in_window ? 0 : tab->width, in_window ? 0 : tab->height);
     write_line(file, line);
-    write_line(file, in_window ? "\tTabState = \"On\",\r\n\tTabName = [[" : "\tTabState = \"Off\",\r\n\tTabName = \"");
-    write_line(file, owned_text_cstr(&tab->name));
-    write_line(file, in_window ? "]],\r\n" : "\",\r\n");
+    write_line(file, in_window ? "\tTabState = \"On\",\r\n\tTabName = " : "\tTabState = \"Off\",\r\n\tTabName = ");
+    write_name(file, owned_text_view(&tab->name));
+    write_line(file, ",\r\n");
     for (i = 1; i <= CHAT_TAB_FLAG_COUNT; i++) {
         snprintf(line, sizeof line, "\toption%d = %d,\r\n", i, tab->shown[i - 1]);
         write_line(file, line);

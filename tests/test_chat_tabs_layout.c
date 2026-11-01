@@ -74,6 +74,82 @@ static void check_record(lua_State *L, int number, const char *name, int main_wi
     lua_pop(L, 1);
 }
 
+static int check_literal_name(const char *label, const char *name, size_t length)
+{
+    struct ChatTabSettings tab = {0};
+    lua_State *L = luaL_newstate();
+    int status, number, failed = 0;
+    assert(L);
+    assert(owned_text_assign(&tab.name, text_view(name, length)));
+    assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
+    assert(chat_tabs_set(&g_session1.subChatWnds, 0, &tab));
+    chat_tab_settings_clear(&tab);
+    file_state = 0;
+    output_size = 0;
+    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
+                         "SaveData\\ChatWndInfo_U.lua");
+    assert(file_state == 4);
+    status = luaL_loadbuffer(L, output, output_size, "literal-layout");
+    if (!status) status = lua_pcall(L, 0, 0, 0);
+    if (status) {
+        fprintf(stderr, "FAIL %s: saved layout is not valid Lua\n", label);
+        failed = 1;
+    } else {
+        for (number = 1; number <= 2; ++number) {
+            char key[32];
+            size_t actual_length;
+            const char *actual;
+            snprintf(key, sizeof key, "ChatSubWnd_%d", number);
+            lua_getglobal(L, key);
+            assert(lua_istable(L, -1));
+            lua_getfield(L, -1, "TabName");
+            actual = lua_tolstring(L, -1, &actual_length);
+            if (!actual || actual_length != length || memcmp(actual, name, length)) {
+                fprintf(stderr, "FAIL %s: %s name changed\n", label,
+                        number == 1 ? "docked" : "detached");
+                failed = 1;
+            }
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "injected");
+            assert(lua_isnil(L, -1));
+            lua_pop(L, 2);
+        }
+        lua_getglobal(L, "injected");
+        assert(lua_isnil(L, -1));
+    }
+    lua_close(L);
+    chat_tabs_clear(&g_session1.chatWndTabs);
+    chat_tabs_clear(&g_session1.subChatWnds);
+    return failed;
+}
+
+static int check_literal_names(void)
+{
+    static const char *const names[] = {
+        "", "Party", "A\"B", "A'B", "A\\B", "A\\nB", "end\\",
+        "A]]B", "[=[brackets]=]", "\nleading", "A\r\nB\n\rC", "A\tB",
+        "한글", "100% %s %n", "A]], injected=true, spare=[[B",
+        "A\", injected=true, spare=\"B"
+    };
+    char bytes[256], long_name[4097], label[32];
+    unsigned i;
+    int failures = 0;
+    for (i = 0; i < sizeof names / sizeof *names; ++i) {
+        snprintf(label, sizeof label, "literal case %u", i);
+        failures += check_literal_name(label, names[i], strlen(names[i]));
+    }
+    for (i = 0; i < sizeof bytes; ++i) bytes[i] = (char)i;
+    failures += check_literal_name("all 256 byte values", bytes, sizeof bytes);
+    memset(long_name, 'x', sizeof long_name);
+    /* Exercise escaping at output-buffer boundaries and before decimal digits. */
+    for (i = 0; i < sizeof long_name; i += 127) long_name[i] = '\\';
+    long_name[255] = '\1'; long_name[256] = '2'; long_name[257] = '3';
+    failures += check_literal_name("long mixed name", long_name, sizeof long_name);
+    if (failures) return 1;
+    puts("Chat names: 18 cases in both docked/detached layouts preserve literal bytes through real Lua.");
+    return 0;
+}
+
 int main(void)
 {
     lua_State *L = luaL_newstate();
@@ -94,7 +170,6 @@ int main(void)
                           g_session1.canDragWnd == 1, "SaveData\\ChatWndInfo_U.lua");
     assert(file_state == 4);
     assert(strstr(output, "CanDragWnd = 1\r\n\r\n") == output);
-    assert(strstr(output, "TabName = [[한글]],\r\n"));
     assert(strstr(output, "TabName = \"Window\",\r\n"));
     assert(luaL_loadbuffer(L, output, output_size, "saved-layout") == 0);
     assert(lua_pcall(L, 0, 0, 0) == 0);
@@ -136,6 +211,7 @@ int main(void)
         chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
         assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n") && file_state == 4);
     }
+    if (check_literal_names()) return 1;
     puts("Chat-tab layout: production writer, ordered main/separate tabs, Korean and 4096-byte names, geometry and all options round-trip through Lua");
     return 0;
 }
