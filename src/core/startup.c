@@ -66,19 +66,23 @@ int read_registry(void)
     LONG failed;
 
     failed = RegOpenKeyExA(SETTINGS_ROOT, g_setupRegistryKeyPath, 0, KEY_QUERY_VALUE, &probe);
-    RegCloseKey(probe);
     if (failed)
         return 0;
+    RegCloseKey(probe);
     failed = RegOpenKeyExA(SETTINGS_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe);
-    RegCloseKey(probe);
     if (failed)
         return 0;
+    RegCloseKey(probe);
 
     if (RegOpenKeyExA(SETTINGS_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) == 0) {
         type = 4;
         size = 4;
         RegQueryValueExA(key, "ISVOODOO", 0, &type, (BYTE *)&g_isVoodoo, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         RegQueryValueExA(key, "SHOWTIPSATSTARTUP", 0, &type, (BYTE *)&g_showTipsAtStartup, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         if (RegQueryValueExA(key, "TRILINEARFILTER", 0, &type, (BYTE *)&g_trilinearFilter, &size))
             g_trilinearFilter = 0;
         if (g_showTipsAtStartup != 1)
@@ -100,9 +104,17 @@ int read_registry(void)
         type = 4;
         size = 4;
         RegQueryValueExA(key, "SOUNDMODE", 0, &type, (BYTE *)&g_soundMode, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         RegQueryValueExA(key, "SPEAKERTYPE", 0, &type, (BYTE *)&g_sound_speaker_type, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         RegQueryValueExA(key, "DIGITALRATETYPE", 0, &type, (BYTE *)&g_sound_rate_type, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         RegQueryValueExA(key, "DIGITALBITSTYPE", 0, &type, (BYTE *)&g_sound_bits_type, &size);
+        type = REG_DWORD;
+        size = sizeof(DWORD);
         if (RegQueryValueExA(key, "NUMSAMPLETYPE", 0, &type, (BYTE *)&g_sound_sample_type, &size))
             g_sound_sample_type = 2;
         type = 1;
