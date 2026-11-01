@@ -13,8 +13,8 @@
 #include "platform/clientinfo.h"
 
 enum {
-    MSG_ITEM_REFORM_RESULT = 0xb92,
-    CHAT_CHANNEL_ITEM_REFORM = 0x15,
+    MSG_CALL_BLOCKED = 0xb92,
+    CHAT_CHANNEL_CALL_NOTICE = 0x15,
     MSG_ITEM_VALUE = 0xcce,
 };
 
@@ -119,7 +119,7 @@ void game_mode_on_msg_value_string(struct GameMode *self, unsigned short msg_id,
     string_format(&line, msg_str(msg_id), value);
     if (line.size != 0)
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
-                            msg_id == MSG_ITEM_REFORM_RESULT ? CHAT_CHANNEL_ITEM_REFORM : 0, 0);
+                            msg_id == MSG_CALL_BLOCKED ? CHAT_CHANNEL_CALL_NOTICE : 0, 0);
     string_free(&line);
 }
 
