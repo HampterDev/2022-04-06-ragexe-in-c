@@ -8,6 +8,9 @@
 #include "iteminfo/iteminfo.h"
 
 #include <string.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include "core/msg_str.h"
 #include "session/session_names.h"
 #include "ui/ui_std.h"
@@ -46,9 +49,8 @@ unsigned char read_int_file(struct Vec *out, const char *name)
 {
     struct File file;
     struct Vec shrunk;
-    DWORD size;
-    char *text, *start;
-    int i;
+    int size;
+    char *text, *cursor, *end;
 
     out->last = out->first;
     file_construct(&file);
@@ -60,44 +62,51 @@ unsigned char read_int_file(struct Vec *out, const char *name)
         return 0;
     }
     size = file.size;
-    text = mem_alloc(size + 1);
-    vec_reserve(out, size, sizeof(int));
-    file_read(&file, text, size);
+    if (size < 0) {
+        file_destruct(&file);
+        return 0;
+    }
+    text = mem_alloc((size_t)size + 1);
+    if (!file_read(&file, text, size)) {
+        mem_free(text);
+        file_destruct(&file);
+        return 0;
+    }
     text[size] = 0;
     file_close(&file);
 
-    start = text;
-    for (i = 0; i < (int)size; i++) {
-        char c = text[i];
+    cursor = text;
+    end = text + size;
+    while (cursor < end) {
+        char *next;
+        long parsed;
+        int value;
 
-        if (c == '/' && text[i + 1] == c) {
-            while (c != '\r' && i < (int)size) {
-                c = text[i + 1];
-                i++;
-                if (c == '\n')
-                    break;
-            }
-            start = text + i + 1;
+        if (isspace((unsigned char)*cursor)) {
+            ++cursor;
+            continue;
         }
-        switch (text[i]) {
-        case '\t':
-        case ' ': {
-            int value;
+        if (*cursor == '/' && cursor + 1 < end && cursor[1] == '/') {
+            while (cursor < end && *cursor != '\r' && *cursor != '\n')
+                ++cursor;
+            continue;
+        }
 
-            text[i] = 0;
-            value = atoi(start);
-            vec_push(out, &value, sizeof value);
-            start = text + i + 1;
-            break;
+        errno = 0;
+        parsed = strtol(cursor, &next, 10);
+        if (next == cursor || errno == ERANGE || parsed < INT_MIN || parsed > INT_MAX
+            || (next < end && !isspace((unsigned char)*next)
+                && !(*next == '/' && next + 1 < end && next[1] == '/'))) {
+            out->last = out->first;
+            mem_free(text);
+            file_destruct(&file);
+            return 0;
         }
-        case '\n':
-        case '\r':
-            start = text + i + 1;
-            break;
-        }
+        value = (int)parsed;
+        vec_push(out, &value, sizeof value);
+        cursor = next;
     }
-    if (text)
-        mem_free(text);
+    mem_free(text);
 
     vec_copy(&shrunk, out, sizeof(int));
     if (&shrunk != out) {
@@ -306,10 +315,12 @@ void item_tables_load(void)
 
     moveInfo.first = moveInfo.last = moveInfo.end = NULL;
     if (read_int_file(&moveInfo, "ItemMoveInfoV5.txt") && moveInfo.first != moveInfo.last) {
-        const int *line;
+        size_t records = vec_count(&moveInfo, sizeof(int)) / 9;
 
-        for (line = moveInfo.first; line != (int *)moveInfo.last; line += 9)
+        for (size_t index = 0; index < records; index++) {
+            const int *line = (const int *)moveInfo.first + index * 9;
             item_move_info_add(line[0], line + 1);
+        }
     }
     vec_free(&moveInfo);
 }
