@@ -13,8 +13,11 @@ struct TexDrawPrim *ui_window_make_quad_base(struct UIWindow *self)
     float tw, th;
     int i;
 
-    if (self->composites == 0)
+    if (self->composites == 0) {
+        if (!self->canvas)
+            return NULL;
         dc_bitmap_to_texture(self->canvas, &self->texture);
+    }
     quad = renderer_new_prim(g_renderer);
     tex = self->texture;
     quad->base.texture = tex;
