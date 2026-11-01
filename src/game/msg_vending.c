@@ -75,7 +75,6 @@ int game_mode_msg_open_vending(const char *title, int open)
     if (count == 0)
         packet.open = 0;
     send_raw((short)packet.len, &packet);
-    session_clear_store_setup(&g_session1);
     return 0;
 }
 

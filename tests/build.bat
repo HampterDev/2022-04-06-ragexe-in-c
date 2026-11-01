@@ -99,6 +99,8 @@ call "%ROOT%\tests\build_map_info.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_canvas_owner.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%ROOT%\tests\build_vending_retry.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_animation_owner.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_rma_owner.bat"
