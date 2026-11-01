@@ -122,10 +122,10 @@ static int open_whisper(struct UIWindowMgr *self, const char *name, const char *
         string_assign(&((struct UIWhisperWnd *)wnd)->title_name, string_cstr(&key), key.size);
     } else {
         string_copy(&part1, &key);
-        string_append_cstr(&part1, " (");
+        string_append_cstr(&part1, "  (");
         string_append_cstr(&part1, title);
         string_move(&part2, &part1);
-        string_append_cstr(&part2, ") *^_^*");
+        string_append_cstr(&part2, ")  *^_^*");
         string_move(&full, &part2);
         string_free(&((struct UIWhisperWnd *)wnd)->title_name);
         string_move(&((struct UIWhisperWnd *)wnd)->title_name, &full);
