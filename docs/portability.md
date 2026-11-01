@@ -139,7 +139,8 @@ a native desktop window. Linux desktop builds need SDL's X11/Wayland development
 dependencies; consult the [SDL build documentation](https://wiki.libsdl.org/SDL3/README-linux).
 
 The CI matrix covers Windows x86/x64, Linux with sanitizers, and macOS arm64 with
-the probe. The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+the probe. The Windows x86 job additionally builds the complete client and runs
+the full existing regression suite. The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Workflow configuration is not evidence of a successful run; record results when
 the workflow actually completes.
 

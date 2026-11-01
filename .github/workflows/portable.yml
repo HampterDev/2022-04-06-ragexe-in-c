@@ -34,3 +34,11 @@ jobs:
         run: cmake --build build/portable --config Debug --parallel 4
       - name: Test
         run: ctest --test-dir build/portable -C Debug --output-on-failure
+      - name: Build Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        shell: cmd
+        run: build.bat
+      - name: Test Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        shell: cmd
+        run: tests\build.bat

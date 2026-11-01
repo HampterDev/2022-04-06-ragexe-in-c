@@ -6,6 +6,16 @@ The original assessment below predates this branch. Its `client/` prefix is abse
 work belongs in the root `src/`, `tests/` and `vendor/`. Purist already removed Bink, embedded browsing
 and HTTP services. The full client has not yet run on a Mac.
 
+Implemented so far:
+
+- Portable CMake builds and subsystem tests on Windows x86/x64, Linux and macOS arm64.
+- CP949 literal generation, 32-bit Lua chunk loading on 64-bit hosts, and portable clock/file boundaries.
+- SDL3 input/window bring-up with a thin Metal presenter on macOS. Native macOS CI smoke passes;
+  real Hangul composition still needs interactive verification.
+- IJL replaced with a portable JPEG codec; the rebuilt Windows executable no longer imports `ijl15.dll`.
+- Windows build/regression validation and a cross-platform CI matrix. Detailed commands and limitations
+  are recorded in the portability notes; no complete milestone or gameplay parity is claimed yet.
+
 Original assessment (2026-10-31): The
 counts come from the working tree of 2026-10-31, including its uncommitted changes, and from the data in
 `GIT/client-files`. The time estimates are judgement, not measurements. Line numbers will drift.
