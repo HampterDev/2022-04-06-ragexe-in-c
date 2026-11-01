@@ -230,7 +230,8 @@ BYTE ui_window_render_base(struct UIWindow *self, int force)
             if (child->visible == 1) {
                 void *quad = ui_window_make_quad(child);
 
-                list_push_back(&quads, &quad, sizeof quad);
+                if (quad)
+                    list_push_back(&quads, &quad, sizeof quad);
             }
         }
         render_quads_to_texture(self->width, self->height, &quads, (struct Texture **)&self->texture);
