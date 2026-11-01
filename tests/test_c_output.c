@@ -1,5 +1,4 @@
 #include "core/unique_file.h"
-#include "platform/filesystem.h"
 #include "game/box_report.h"
 #include <windows.h>
 #include <assert.h>
@@ -20,7 +19,7 @@ static void path_for(char *path, const char *name)
 static void expect_bytes(const char *path, const char *expected)
 {
     char bytes[4096];
-    FILE *file = platform_file_open(path, "rb");
+    FILE *file = fopen(path, "rb");
     size_t count;
     assert(file);
     count = fread(bytes, 1, sizeof bytes, file);
@@ -47,7 +46,7 @@ static void report_format(void)
                       "502\tOrange Potion\t1\t33.33334%\r\n"
                       "\r\nresult item count:3\r\n");
 
-    file = platform_file_open(path, "r");
+    file = fopen(path, "r");
     assert(file);
     assert(setvbuf(file, NULL, _IONBF, 0) == 0);
     assert(!box_report_begin(file));
@@ -63,9 +62,9 @@ static void report_format(void)
     assert(fclose(file) == 0);
     path_for(path, "report(1).txt");
     expect_bytes(path, "ID\tname\tcount\tproperty\r\n\r\n\r\nresult item count:0\r\n");
-    assert(platform_file_remove(path) == 0);
+    assert(remove(path) == 0);
     path_for(path, "report.txt");
-    assert(platform_file_remove(path) == 0);
+    assert(remove(path) == 0);
 }
 
 static void names_and_failures(void)
@@ -85,14 +84,14 @@ static void names_and_failures(void)
         expect_bytes(path, "original");
         path_for(other, numbered[i]);
         expect_bytes(other, "second");
-        assert(platform_file_remove(path) == 0 && platform_file_remove(other) == 0);
+        assert(remove(path) == 0 && remove(other) == 0);
     }
     path_for(path, "directory.txt");
     assert(_mkdir(path) == 0);
     first = file_open_unique(path);
     assert(first && fclose(first) == 0);
     path_for(other, "directory(1).txt");
-    assert(platform_file_remove(other) == 0 && _rmdir(path) == 0);
+    assert(remove(other) == 0 && _rmdir(path) == 0);
     path_for(path, "missing\\report.txt");
     assert(file_open_unique(path) == NULL && errno == ENOENT);
     assert(file_open_unique(NULL) == NULL && errno == EINVAL);
@@ -134,7 +133,7 @@ static void concurrent_files(void)
             strcpy(name, "concurrent.txt");
         path_for(path, name);
         expect_bytes(path, "complete");
-        assert(platform_file_remove(path) == 0);
+        assert(remove(path) == 0);
     }
     CloseHandle(start_event);
 }

@@ -1,3 +1,4 @@
+#include "platform/filesystem.h"
 #include "render/renderer.h"
 #include "session/character_name.h"
 #include "contents/guild_info.h"
@@ -227,7 +228,7 @@ void session_save_mini_party_info(struct Session *self)
         sprintf_s(line, 0x200, "{%s,%d,%d,%d}\n", session_character_name(&g_session1), v->found, v->id, v->cell);
         string_append_cstr(&text, line);
     }
-    f = fopen("savedata\\MiniPartyInfo.lua", "w");
+    f = platform_file_open("savedata\\MiniPartyInfo.lua", "w");
     if (f) {
         int (*print)(FILE *, const char *, ...) = fprintf;
         print(f, string_cstr(&text));

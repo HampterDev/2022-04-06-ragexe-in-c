@@ -1,3 +1,4 @@
+#include "platform/filesystem.h"
 #include "game/packet_handlers.h"
 #include "game/gamemode.h"
 #include "game/mode_callbacks.h"
@@ -97,7 +98,7 @@ void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt)
     const struct PACKET_ZC_NOTIFY_TIME *packet = (const struct PACKET_ZC_NOTIFY_TIME *)pkt;
 
     if (g_trackPing) {
-        FILE *log = fopen("PingLog.txt", "at");
+        FILE *log = platform_file_open("PingLog.txt", "at");
 
         if (log) {
             DWORD sent = *LIST_VALUE(g_keepAliveTimes.head->next, DWORD);

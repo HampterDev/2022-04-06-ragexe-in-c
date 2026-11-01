@@ -1,10 +1,10 @@
 #include "core/unique_file.h"
-#include "platform/filesystem.h"
 
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 FILE *file_open_unique(const char *path)
 {
@@ -43,11 +43,14 @@ FILE *file_open_unique(const char *path)
     }
     memcpy(candidate, path, length + 1);
     for (;;) {
-        file = platform_file_open(candidate, "wx");
+        struct _stat status;
+
+        file = fopen(candidate, "wx");
         if (file)
             break;
         error = errno;
-        if (error != EEXIST && !platform_path_is_directory(candidate))
+        if (error != EEXIST &&
+            !(_stat(candidate, &status) == 0 && (status.st_mode & _S_IFDIR)))
             break;
         if (number == UINT_MAX) {
             error = EEXIST;

@@ -1,3 +1,4 @@
+#include "platform/filesystem.h"
 #include "game/actor_packets.h"
 #include "game/gamemode.h"
 #include "game/ground_item_packets.h"
@@ -35,7 +36,7 @@ static void log_entry(void)
     FILE *f;
     __time32_t now;
 
-    f = fopen("PingLog.txt", "at");
+    f = platform_file_open("PingLog.txt", "at");
     if (f != 0) {
         _time32(&now);
         fprintf(f, "\n");

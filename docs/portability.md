@@ -41,7 +41,8 @@ The full Windows regression suite still runs through `tests/build.bat`.
   GRF keys or lowercase names. Invalid encodings fail instead of substituting
   characters. `platform_file_open` returns a normal `FILE *`, owned by the caller;
   close it with `fclose`. The mode is the usual ASCII stdio mode. Exclusive `x`
-  creation remains atomic. Unique report output is the first migrated consumer.
+  creation remains atomic. Ping logs and the relative mini-party settings path
+  are the first migrated consumers.
 - Native paths from an OS file picker are a separate input domain: do not pass
   UTF-8 strings to the CP949 interface. A future native-path API must preserve
   characters outside CP949. Exact case is currently required on case-sensitive
@@ -122,5 +123,10 @@ the workflow actually completes.
    clock, synchronization, network, settings, text and input consumers by subsystem.
 5. Implement the Metal backend behind a platform-neutral graphics seam. Linux
    will need its own graphics backend; it must not inherit Metal-specific types.
+
+Absolute paths assembled from `g_clientDir` are still Windows system-code-page
+paths, sometimes mixed with CP949 filenames. Their existing Windows I/O is
+preserved. Migrating them requires separating the native directory from the
+game-encoded filename; passing the mixed string to the CP949 API is incorrect.
 
 No renderer, font, audio or gameplay parity claim is made by these foundation tests.

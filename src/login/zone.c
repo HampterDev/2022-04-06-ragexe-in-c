@@ -17,6 +17,7 @@
 #include "ui/character/character.h"
 #include "game/connection.h"
 #include "login/zone.h"
+#include "platform/filesystem.h"
 
 struct ServerAddress g_mapServerIp;
 void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
@@ -77,7 +78,7 @@ static void zone_ping_log(void)
     FILE *f;
     __time32_t t;
 
-    f = fopen("PingLog.txt", "at");
+    f = platform_file_open("PingLog.txt", "at");
     if (f) {
         _time32(&t);
         fprintf(f, "\n");
