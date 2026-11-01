@@ -29,7 +29,6 @@
 #include "core/memory.h"
 #include "core/fatal.h"
 #include <windows.h>
-#include <objbase.h>
 #include <shellapi.h>
 #include <string.h>
 #include <io.h>
@@ -106,7 +105,6 @@ void app_last_pump(void)
 {
     pump_messages();
     window_drag_follow();
-    CoUninitialize();
     DestroyWindow(g_hMainWnd);
 }
 

@@ -127,6 +127,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     WIN32_FIND_DATAA replay_found, navi_found;
     HANDLE find, replay_find, navi_find;
     TIMECAPS caps;
+    HRESULT com_result;
     UINT period;
     int result;
 
@@ -214,10 +215,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
         timeBeginPeriod(period);
     }
     frame_timer_reset();
-    CoInitialize(0);
+    com_result = CoInitialize(0);
     if (!sound_mgr_create()) {
         error_msg("Audio System Init Failed", 0);
-        return 0;
+        result = 0;
+        goto com_done;
     }
 
     session_startup(&g_session1);
@@ -229,8 +231,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     }
 
     res_mgr_read_res_name_table(g_resMgr());
-    if (app_create_window(instance) == 0)
-        return 1;
+    if (app_create_window(instance) == 0) {
+        result = 1;
+        goto com_done;
+    }
     app_init_managers(&init);
     if (!init.ok) {
         MessageBoxA(0, string_cstr(&init.what), "ERROR", 0);
@@ -300,7 +304,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     delete_hack_files();
     app_destroy_singletons();
     sound_mgr_destroy();
-    CoUninitialize();
     if (period != 0)
         timeEndPeriod(period);
     crash_report_uninstall();
@@ -323,5 +326,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
 done:
     async_work_mgr_destroy();
     string_free(&init.what);
+com_done:
+    if (SUCCEEDED(com_result))
+        CoUninitialize();
     return result;
 }
