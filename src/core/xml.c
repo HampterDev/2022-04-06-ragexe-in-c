@@ -201,9 +201,6 @@ char *xml_parse_children(struct XmlDocument *doc, struct XmlElement *parent,
             text = xml_parse_children(doc, element, after, end);
             continue;
         }
-        if (*text == '&' && strcmp(parent->name, "registrationweb") != 0)
-            while (text != end && *text != ';')
-                text++;
         text++;
     }
     return text;
