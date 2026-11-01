@@ -10,10 +10,6 @@ include(cmake/SourceEncoding.cmake)
 option(RAGE_SANITIZERS "Enable address and undefined-behavior checks" OFF)
 option(RAGE_PLATFORM_PROBE "Build the optional SDL3 window, IME and Metal bring-up probe" OFF)
 
-if(UNIX)
-    add_compile_definitions(_POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700)
-endif()
-
 if(MSVC)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     add_compile_options(/source-charset:utf-8 /execution-charset:.949)
@@ -37,6 +33,7 @@ if(WIN32)
     target_link_libraries(rage_platform PUBLIC winmm)
 else()
     find_package(Iconv REQUIRED)
+    target_compile_definitions(rage_platform PRIVATE _POSIX_C_SOURCE=200809L)
     target_link_libraries(rage_platform PUBLIC Iconv::Iconv)
 endif()
 
