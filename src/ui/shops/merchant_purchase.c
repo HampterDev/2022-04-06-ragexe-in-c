@@ -526,8 +526,8 @@ int ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWin
 
     case UI_MSG_SET_INFO:
         self->info = (struct WindowInfo *)val1;
-        if (!shop_info_usable(self->info))
-            shop_info_default(self->info);
+        if (!sell_info_usable(self->info))
+            sell_info_default(self->info);
         ui_merchant_item_purchase_wnd_send_msg(&self->base.frame.base, NULL, UI_MSG_RESIZE, PURCHASE_RESIZE_EDGE, self->info->width, self->info->height, 0);
         ui_frame_wnd_move(&self->base.frame.base, self->info->x, self->info->y);
         return 0;
