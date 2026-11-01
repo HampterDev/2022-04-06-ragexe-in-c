@@ -25,6 +25,10 @@ Clang and GCC builds can enable `-DRAGE_SANITIZERS=ON` for ASan, UBSan and
 float-cast-overflow checking. Set `UBSAN_OPTIONS=halt_on_error=1` when running tests.
 Test assertions stay enabled even in Release configurations.
 
+The zlib 1.2.11 `zutil.h` classic-Mac branch excludes modern `__APPLE__` targets:
+current SDKs define `TARGET_OS_MAC`, but macOS provides POSIX `fdopen`. Treating it
+as classic Mac OS rewrites the SDK's function declaration and prevents compilation.
+
 The initial CTest set covers the real string, container, numeric and XML modules,
 Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
 The full Windows regression suite still runs through `tests/build.bat`.
