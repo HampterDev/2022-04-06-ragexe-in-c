@@ -4,7 +4,6 @@
 #include "game/packet_handlers.h"
 #include "actor/actor_ops.h"
 #include "contents/player_names.h"
-#include "contents/manner_filter.h"
 #include "ui/guild_windows.h"
 #include "contents/guild_info.h"
 #include "game/objects.h"

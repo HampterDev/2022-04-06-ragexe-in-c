@@ -1,9 +1,7 @@
 #include "ui/controls/edit.h"
-#include "ui/window_records.h"
 #include "world/tooltip.h"
 #include "render/rp_pool.h"
 #include "session/number_codec.h"
-#include "ui/record_tags.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -68,7 +66,6 @@ const struct UIWindowOps ui_exchange_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_exchange_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -81,7 +78,6 @@ const struct UIWindowOps ui_exchange_wnd_ops = {
 #define MODE_REQ_TRADE_LOCK 0x34
 #define MODE_REQ_TRADE_CANCEL 0x35
 #define MODE_REQ_TRADE_COMMIT 0x36
-#define MODE_MSG_SCREENSHOT 0x44
 
 #define UI_MSG_WHEEL_SCROLL 7
 #define UI_MSG_TRADE_REFRESH 0x17
@@ -113,8 +109,6 @@ struct UIExchangeWnd {
     short partner_level;
     short row_height;
     short hover_x;
-    struct UIWindow *notify_check;
-    BYTE notify;
     int money_len;
     struct String money_text;
 };
@@ -136,7 +130,6 @@ struct UIExchangeWnd *ui_exchange_wnd_construct(struct UIExchangeWnd *self)
     list_init(&self->my_items);
     list_init(&self->partner_items);
     string_init(&self->partner_name);
-    self->notify = 0;
     self->row_height = 0x1e;
     string_init(&self->money_text);
     self->money_len = 0;
@@ -254,7 +247,7 @@ void ui_exchange_wnd_on_create(struct UIWindow *window, int width_unused, int he
         { UI_SKIN "btn_cancel.bmp", UI_SKIN "btn_cancel_a.bmp", UI_SKIN "btn_cancel_b.bmp" },
     };
     struct UIWindow *wnd = &self->frame.base;
-    struct UIWindow *edit, *check;
+    struct UIWindow *edit;
     int drop[3], i;
 
     ui_exchange_wnd_send_msg(wnd, NULL, UI_MSG_TRADE_REFRESH, 0, 0, 0, 0);
@@ -293,16 +286,6 @@ void ui_exchange_wnd_on_create(struct UIWindow *window, int width_unused, int he
     ui_window_mgr_set_focus_edit(&g_windowMgr, self->money_edit);
     ui_edit_ctrl_select_all(self->money_edit);
 
-    check = mem_alloc(sizeof(struct UICheckBox));
-    if (check)
-        check = (struct UIWindow *)ui_check_box_construct(check);
-    self->notify_check = check;
-    ui_window_create(check, 0x30, 0xc);
-    ui_check_box_set_bitmaps_fit((struct UICheckBox *)self->notify_check, UI_SKIN "checkbox_1.bmp",
-                             UI_SKIN "checkbox_0.bmp");
-    ui_window_move_base(self->notify_check, 0x69, wnd->height - 0x13);
-    ui_check_box_set_check(self->notify_check, self->notify);
-    ui_window_add_child(wnd, self->notify_check);
     self->frame.default_id = 0x239;
 }
 
@@ -418,8 +401,6 @@ void ui_exchange_wnd_on_draw(struct UIWindow *window)
 
     ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\titlebar_fix2.bmp"), 0);
     ui_window_draw_bitmap(wnd, 0, 0x11, ui_skin_bitmap(UI_SKIN "basic_interface\\exchange_bg2.bmp"), 0);
-    ui_window_text_out_outlined(wnd, 0x7b, wnd->height - 0x14, msg_str(0x727), 0, 0x0000ff, 0xffffff, 0, 12, 1,
-                             0);
 
     sprintf(label, "%s : ", msg_str(0xce));
     ui_window_text_out(wnd, 0xd, 4, label, 0, 0, 12, 0xffffff, 0, 0);
@@ -513,89 +494,7 @@ void ui_exchange_wnd_on_wheel(struct UIWindow *window, int delta)
     ui_exchange_wnd_send_msg(&self->frame.base, self->scroll_bar, UI_MSG_WHEEL_SCROLL, delta < 0 ? 1 : -1, 0, 0, 0);
 }
 
-int ui_exchange_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIExchangeWnd *self = (struct UIExchangeWnd *)window;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_TRADE_BEGIN, NULL, 0);
-    snapshot_write(&writer, REC_TRADE_PARTNER_CID, &self->partner_cid, 4);
-    snapshot_write(&writer, REC_TRADE_PARTNER_LEVEL, &self->partner_level, 2);
-    snapshot_write(&writer, REC_TRADE_PARTNER_NAME, string_cstr(&self->partner_name), self->partner_name.size);
-    snapshot_write(&writer, REC_TRADE_LOCKED_MINE, &self->locked_mine, 4);
-    snapshot_write(&writer, REC_TRADE_LOCKED_PARTNER, &self->locked_partner, 4);
-    snapshot_write(&writer, REC_TRADE_PRESSED_OK, &self->pressed_ok, 4);
-    snapshot_write(&writer, REC_TRADE_PRESSED_EXCHANGE, &self->pressed_exchange, 4);
-    snapshot_write(&writer, REC_TRADE_PRESSED_CANCEL, &self->pressed_cancel, 4);
-    snapshot_write(&writer, REC_TRADE_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
-static void load_records(struct UIExchangeWnd *self, const char *buf, unsigned size)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    struct UIRecordHeader hdr = { 0 };
-    unsigned pos = sizeof hdr;
-    int cid, level;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != REC_TRADE_BEGIN)
-        return;
-    cid = 0;
-    level = 0;
-    while (pos < size) {
-        int *flag = NULL;
-        int msg = 0, val1 = 0;
-
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        switch (hdr.tag) {
-        case REC_TRADE_END:
-            ui_exchange_wnd_send_msg(wnd, NULL, UI_MSG_TRADE_REFRESH, 0, 0, 0, 0);
-            return;
-        case REC_TRADE_PARTNER_NAME: {
-            char name[0x104];
-
-            memset(name, 0, sizeof name);
-            memcpy(name, buf + pos, hdr.len);
-            pos += hdr.len;
-            ui_exchange_wnd_send_msg(wnd, NULL, UI_MSG_TRADE_PARTNER, (int)name, cid, (short)level, 0);
-            continue;
-        }
-        case REC_TRADE_PARTNER_CID:
-            memcpy(&cid, buf + pos, hdr.len);
-            pos += hdr.len;
-            continue;
-        case REC_TRADE_PARTNER_LEVEL:
-            memcpy(&level, buf + pos, hdr.len);
-            pos += hdr.len;
-            continue;
-        case REC_TRADE_LOCKED_MINE:
-            flag = &self->locked_mine, msg = UI_MSG_TRADE_LOCKED_MINE;
-            break;
-        case REC_TRADE_LOCKED_PARTNER:
-            flag = &self->locked_partner, msg = UI_MSG_TRADE_LOCKED_PARTNER;
-            break;
-        case REC_TRADE_PRESSED_OK:
-            flag = &self->pressed_ok, msg = UI_MSG_COMMAND, val1 = UI_ID_OK;
-            break;
-        case REC_TRADE_PRESSED_EXCHANGE:
-            flag = &self->pressed_exchange, msg = UI_MSG_COMMAND, val1 = UI_ID_EXCHANGE;
-            break;
-        case REC_TRADE_PRESSED_CANCEL:
-            flag = &self->pressed_cancel, msg = UI_MSG_COMMAND, val1 = UI_ID_CANCEL;
-            break;
-        default:
-            pos += hdr.len;
-            continue;
-        }
-        memcpy(flag, buf + pos, hdr.len);
-        pos += hdr.len;
-        if (*flag)
-            ui_exchange_wnd_send_msg(wnd, NULL, msg, val1, 0, 0, 0);
-    }
-}
-
-static int on_command(struct UIExchangeWnd *self, int id, int state)
+static int on_command(struct UIExchangeWnd *self, int id)
 {
     struct Mode *mode = game_current_base_mode();
     char buf[24];
@@ -631,9 +530,6 @@ static int on_command(struct UIExchangeWnd *self, int id, int state)
         mode_send_message(mode, MODE_REQ_TRADE_CANCEL, 0, 0, 0, 0);
         self->pressed_cancel = 1;
         return 0;
-    case UI_ID_CHECKBOX:
-        self->notify = state != 0;
-        return 0;
     case UI_ID_DA: {
         int amount;
 
@@ -651,14 +547,6 @@ static int on_command(struct UIExchangeWnd *self, int id, int state)
     case UI_ID_EXCHANGE:
         if (self->pressed_exchange)
             return 0;
-        if (self->notify) {
-            struct String text;
-
-            string_init(&text);
-            string_format(&text, msg_str(0x728), string_cstr(&self->partner_name));
-            mode_send_message(g_modeMgr.curMode, MODE_MSG_SCREENSHOT, (int)string_cstr(&text), 0, 0, 0);
-            string_free(&text);
-        }
         mode_send_message(mode, MODE_REQ_TRADE_COMMIT, 0, 0, 0, 0);
         self->pressed_exchange = 1;
         layout_buttons(self);
@@ -673,7 +561,7 @@ int ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
     struct UIExchangeWnd *self = (struct UIExchangeWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        return on_command(self, val1, val2);
+        return on_command(self, val1);
     case UI_MSG_WHEEL_SCROLL:
         return 0;
     case UI_MSG_TRADE_REFRESH: {
@@ -721,14 +609,6 @@ int ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         self->locked_partner = 1;
         hide_money_edit(self);
         layout_buttons(self);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        load_records(self, (const char *)val1, (unsigned)val2);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

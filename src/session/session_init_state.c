@@ -13,31 +13,11 @@ DWORD session_get_server_time(struct Session *self)
     return timeGetTime() + (0xffffffb8u - self->serverTimeOffset);
 }
 
-static void write_rag_path(void)
-{
-    char exePath[0x104], folder[0x104];
-    const char *name;
-    HKEY key;
-
-    memset(exePath, 0, sizeof(exePath));
-    memset(folder, 0, sizeof(folder));
-    GetModuleFileNameA(NULL, exePath, 0x104);
-    name = strrchr(exePath, '\\');
-    strncpy(folder, exePath, strlen(exePath) - strlen(name + 1));
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Gravity\\RagnarokOnline", 0, NULL, 0, KEY_ALL_ACCESS,
-                        NULL, &key, NULL) == ERROR_SUCCESS) {
-        RegSetValueExA(key, "RagPath", 0, REG_SZ, (const BYTE *)folder, (DWORD)strlen(folder));
-        RegCloseKey(key);
-    }
-}
-
 void session_init_at_startup(struct Session *self)
 {
     SYSTEMTIME st;
     DWORD base;
     int i;
-
-    write_rag_path();
 
     self->averagePing = 0;
     self->chatTarget = 0;
@@ -185,17 +165,15 @@ void session_init_at_startup(struct Session *self)
     tracked_achievements_clear(&self->trackedAchievements);
     self->ownDressUp = 0;
     self->body = 0;
-    self->lastPetTalkTime = timeGetTime();
+    self->lastPetEmotionTime = timeGetTime();
     self->showCashShopIcon = 1;
     self->showGoldPcIcon = 1;
-    self->showRouletteIcon = 1;
     self->screenShake = 1;
     self->skillUseKey = 0;
     self->lastKeyDown = 0;
     self->aid = -1;
     self->homunAid = -1;
     self->mercAid = -1;
-    self->snsAuthorised = 0;
     self->minimapButtons = 1;
     self->guildMemberSort = 1;
     self->blockPrivateTab = 0;

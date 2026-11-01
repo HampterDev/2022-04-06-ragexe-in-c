@@ -1,8 +1,7 @@
+#include "contents/adventurer_agency.h"
 #include "ui/controls/edit.h"
 #include "ui/controls/buttons.h"
 #include "render/rp_pool.h"
-#include "session/character_name.h"
-#include "web/service_managers.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include "ui/window_access.h"
@@ -54,7 +53,6 @@ const struct UIButtonOps ui_job_slot_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -108,7 +106,6 @@ const struct UIWindowOps ui_adven_party_board_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -617,12 +614,11 @@ static int board_search(struct UIAdvenPartyBoardWnd *self, int page)
         ad.roles[i] = self->roles[i]->checked;
     if (ui_edit_ctrl_get_text_size(self->min_level) > 0)
         ad.min_level = atoi(ui_edit_ctrl_get_text(self->min_level));
-    if (ui_edit_ctrl_get_text_size(self->min_level) > 0)
+    if (ui_edit_ctrl_get_text_size(self->max_level) > 0)
         ad.max_level = atoi(ui_edit_ctrl_get_text(self->max_level));
     if (self->purpose)
         ad.purpose = self->purpose;
     if (!owned_text_assign(&ad.memo, text_view_cstr(ui_edit_ctrl_get_text(self->search_text)))) goto done;
-    if (!owned_text_assign(&ad.name, text_view_cstr(session_character_name(&g_session1)))) goto done;
     sent = adventurer_agency_search(g_adventurerAgency, &ad, page);
     if (sent) {
         self->searching = 1;
@@ -745,8 +741,7 @@ static void board_page_buttons(struct UIAdvenPartyBoardWnd *self)
 {
     if (self->page > self->pages)
         self->page = self->pages;
-    if (self->page != self->pages)
-        button_enable(self->next_page, 0);
+    button_enable(self->next_page, self->page >= self->pages);
     button_enable(self->prev_page, self->page == 1);
     ui_window_invalidate_base(&self->frame.base);
     if (g_session1.partyLeader == 0)

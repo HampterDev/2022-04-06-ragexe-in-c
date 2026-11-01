@@ -1,4 +1,3 @@
-#include "ui/media/video.h"
 #include "navi/navi_manager.h"
 #include "ui/misc/snap_mgr.h"
 #include "session/state.h"
@@ -14,7 +13,6 @@
 #include "ui/chat/sub_chat.h"
 #include "ui/hotkeys/hotkey_bars.h"
 #include "ui/hotkeys/hotkey_guide.h"
-#include "ui/items/book_wnd.h"
 #include "ui/items/items.h"
 #include "ui/map/map_std.h"
 #include "ui/quests/navigation.h"
@@ -25,7 +23,6 @@
 #include "ui/render/character_render.h"
 #include "ui/render/render_std.h"
 #include "ui/social/social.h"
-#include "ui/tips/tips.h"
 #include "ui/worldmap/romap.h"
 
 struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
@@ -118,9 +115,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
             ui_window_mgr_add_window(self, wnd);
         }
         wm_show(wnd);
-        break;
-    case 0x26:
-        wnd = WM_OPEN(tip_of_the_day_wnd, ui_tip_of_the_day_wnd_new, 0x118, 0xb4, WM_AT_640, 0xc8, 0x78);
         break;
     case 0x10:
         wnd = WM_OPEN_INFO(say_dialog_wnd, ui_say_dialog_wnd_new, 0x118, 0xb4, WM_AT_640, 0xc8, 0x64, say_dialog_info);
@@ -241,16 +235,13 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
     case 0x67:
         wnd = WM_OPEN(prohibit_list_wnd, ui_prohibit_list_wnd_new, 0x1f4, 0x190, WM_AT_640, 0x64, 0x64);
         break;
-    case 0x6a:
-        wnd = WM_OPEN(book_wnd, ui_book_wnd_new, 0x258, 0x1a4, WM_AT_640, 0, 0);
-        break;
     case 0x70:
         wnd = WM_OPEN(command_list_wnd, ui_command_list_wnd_new, 0xfa, 0xc8, WM_AT_640, 0x190, 0xc8);
         break;
     case 0xcb:
         if (self->navigation_v4_wnd)
             return NULL;
-        ui_window_mgr_note_window_opened(self, 0xcb);
+
         g_navi.windowHidden = 0;
         wnd = ui_navigation_v4_wnd_new();
         self->navigation_v4_wnd = wnd;
@@ -360,16 +351,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         wm_show(wnd);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0x112:
-        if (self->editctrl_wnd)
-            return NULL;
-        wnd = ui_editctrl_wnd_new();
-        self->editctrl_wnd = wnd;
-        ui_window_create(wnd, 0xfa, 0x2a);
-        wm_move(wnd, g_mouse.x, g_mouse.y);
-        wm_show(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x114:
         if (ui_window_mgr_get_window(self, 0x114)) {
             wnd = self->round_box_tooltip_wnd;
@@ -382,14 +363,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         wm_move_640_up(wnd, 0xb9, 0x12c, 0x78);
         ui_window_mgr_add_window(self, wnd);
         wm_show(wnd);
-        break;
-    case 0x11b:
-        wnd = ui_window_mgr_get_window(self, 0x11b);
-        if (wnd)
-            break;
-        wnd = ui_control_rect_wnd_new();
-        ui_window_create(wnd, g_renderer->width, g_renderer->height);
-        ui_window_mgr_add_window(self, wnd);
         break;
     case 0x121:
         wnd = ui_window_mgr_get_window(self, 0x121);
@@ -441,16 +414,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         wm_move(wnd, wm_center_x(0x3a6), wm_center_y(0x1f2));
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0x130:
-        wnd = ui_window_mgr_get_window(self, 0x130);
-        if (wnd)
-            break;
-        wnd = video_window_create();
-        if (!wnd) break;
-        ui_window_create(wnd, g_renderer->width, g_renderer->height);
-        wm_move(wnd, 0, 0);
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x133:
         wnd = ui_window_mgr_get_window(self, 0x133);
         if (wnd)
@@ -481,19 +444,8 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         }
         wm_show(wnd);
         break;
-    case 0x13b:
-        wnd = ui_window_mgr_get_window(self, 0x13b);
-        if (wnd == NULL) {
-            wnd = ui_tipbox_wnd_new();
-            self->tipbox_wnd = wnd;
-            ui_window_create(wnd, 0x1e0, 0x16d);
-            wm_move_640(wnd, 0x78, 0x78);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
     case 0x141:
-        ui_window_mgr_note_window_opened(self, 0x141);
+
         wnd = ui_window_mgr_get_window(self, 0x141);
         if (wnd == NULL) {
             wnd = ui_renew_quest_wnd_new();
@@ -508,7 +460,7 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         self->quest_info.show = 1;
         break;
     case 0x142:
-        ui_window_mgr_note_window_opened(self, 0x141);
+
         wnd = ui_window_mgr_get_window(self, 0x142);
         if (wnd == NULL) {
             struct UIWindow *quest;

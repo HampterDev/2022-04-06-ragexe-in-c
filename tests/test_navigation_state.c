@@ -56,8 +56,7 @@ int main(void)
     vec_free(&points); assert(!live_blocks);
     memset(&path, 0xa5, sizeof path);
     path_info_init(&path);
-    assert(!path.cells && !path.count && !path.current);
-    path.current = 14; path_info_rewind(&path); assert(!path.current);
+    assert(!path.cells && !path.count);
     path_info_destroy(&path); assert(!live_blocks);
     texture.reqWidth = 320; texture.reqHeight = 200;
     assert(texture_image_width(&texture) == 320 && texture_image_height(&texture) == 200);

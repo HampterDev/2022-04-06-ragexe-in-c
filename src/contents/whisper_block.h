@@ -6,8 +6,6 @@
 
 struct WhisperBlockMgr {
     struct TextArray names;
-    int loaded;
-    uint64_t pending;
 };
 
 extern struct WhisperBlockMgr *g_whisperBlockMgr;

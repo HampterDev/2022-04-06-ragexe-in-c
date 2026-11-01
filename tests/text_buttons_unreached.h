@@ -1,6 +1,6 @@
 void ui_window_drag_and_drop_base(struct UIWindow *self, int x, int y, const struct DragInfo *drag) { abort(); }
 DWORD ui_window_get_color(struct UIWindow *self) { abort(); }
-int ui_window_get_records_base(struct UIWindow *self, struct ReplayBuffer *out) { abort(); }
+
 struct UIWindow *ui_window_hit_test_base(struct UIWindow *self, int x, int y) { abort(); }
 BYTE ui_window_is_hit_testable_base(struct UIWindow *self) { abort(); }
 struct TexDrawPrim *ui_window_make_quad_base(struct UIWindow *self) { abort(); }

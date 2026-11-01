@@ -53,7 +53,7 @@ __declspec(noreturn) void fatal_error(const char *message) { fputs(message, stde
 
 static int resources_available, gif_available, resource_token;
 static struct BitmapRes monster_mark;
-static unsigned filtered, resource_checks;
+static unsigned resource_checks;
 struct ResMgr *g_resMgr(void) { return (struct ResMgr *)&resource_token; }
 void *res_mgr_get(struct ResMgr *mgr, const char *path)
 {
@@ -69,14 +69,6 @@ BYTE res_mgr_exists(struct ResMgr *mgr, struct String path)
     found = resources_available && (!strstr(string_cstr(&path), ".gif") || gif_available);
     string_free(&path);
     return found;
-}
-int word_filter_contains(const struct WordFilter *filter, const char *text)
-{ assert(filter == &g_nameFilter); ++filtered; return strstr(text, "bad") != NULL; }
-void word_filter_censor(const struct WordFilter *filter, char *text)
-{
-    char *word;
-    assert(filter == &g_nameFilter);
-    while ((word = strstr(text, "bad")) != NULL) memcpy(word, "***", 3);
 }
 struct UIWindow *ui_window_construct(struct UIWindow *window, int composites)
 { assert(!composites); memset(window, 0, sizeof *window); return window; }
@@ -113,7 +105,7 @@ static void name_card_cases(void)
     struct UINameBalloonText name;
     struct ActorNameCard card = {0}, before;
     unsigned i, old_resized;
-    const char *const labels[] = {"한국#hidden", "bad party with long name", "bad guild", "bad rank", "Champion", "NPC title"};
+    const char *const labels[] = {"한국#hidden", "bad party with long name", "bad Guild", "bad Rank", "Champion", "NPC title"};
     struct String *fields[] = {&card.name, &card.party, &card.guild, &card.position,
                                  &card.achievement_title, &card.npc_title};
     for (i = 0; i < 6; ++i) {
@@ -126,19 +118,19 @@ static void name_card_cases(void)
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
     assert(name.balloon.lines.size == 3 && name.balloon.base.height == 48);
     assert_line(&name, 0, "NPC title");
-    assert_line(&name, 1, "[Champion] 한국 (*** party with long name)");
-    assert_line(&name, 2, "*** guild [*** rank]");
-    assert(name.balloon.base.width == (int)strlen("[Champion] 한국 (*** party with long name)") + 8);
-    assert(filtered == 3 && !memcmp(&card, &before, sizeof card));
+    assert_line(&name, 1, "[Champion] 한국 (bad party with long name)");
+    assert_line(&name, 2, "bad Guild [bad Rank]");
+    assert(name.balloon.base.width == (int)strlen("[Champion] 한국 (bad party with long name)") + 8);
+    assert(!memcmp(&card, &before, sizeof card));
     for (i = 0; i < 6; ++i) assert(!strcmp(string_cstr(fields[i]), labels[i]));
     g_serviceType = 0;
     ui_name_balloon_text_set_name_text(&name, &card, 0, 0);
-    assert_line(&name, 1, "[Champion] 한국#hidden『*** party with long name』");
-    assert_line(&name, 2, "*** guild『*** rank』");
+    assert_line(&name, 1, "[Champion] 한국#hidden『bad party with long name』");
+    assert_line(&name, 2, "bad Guild『bad Rank』");
     g_showNameA = 1;
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
     assert_line(&name, 0, "NPC title");
-    assert_line(&name, 1, "*** rank");
+    assert_line(&name, 1, "bad Rank");
     assert_line(&name, 2, "한국");
     for (i = 1; i < 6; ++i) string_clear(fields[i]);
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);

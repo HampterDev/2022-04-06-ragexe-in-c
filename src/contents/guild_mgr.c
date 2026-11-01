@@ -3,8 +3,6 @@
 #include "contents/guild_mgr.h"
 #include "contents/client_res.h"
 #include "fileio/res_mgr.h"
-#include "replay/replay.h"
-
 struct GuildMgr *g_guildMgr;
 
 struct GuildEmblem {
@@ -116,7 +114,7 @@ struct String *guild_mgr_emblem_file_name(struct GuildMgr *self, struct String *
 
         guild_mgr_emblem_path(self, &path, guild, node->emblem_version);
         string_copy(&name, &path);
-        if (!res_mgr_get_string(g_resMgr(), name) && !g_replayPlaying)
+        if (!res_mgr_get_string(g_resMgr(), name))
             emblem_bundle_queue(self->requests, guild, guild_mgr_emblem_version(self, guild));
         *out = path;
         return out;

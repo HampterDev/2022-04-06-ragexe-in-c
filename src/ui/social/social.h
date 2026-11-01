@@ -1,6 +1,5 @@
 #include "skills/skill_info.h"
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "contents/connection_api.h"
 #ifndef UI_SOCIAL_H
@@ -75,17 +74,12 @@ struct UIWindow *ui_choose_sell_buy_wnd_new(void);
 struct UIAcceptWnd *ui_exchange_accept_wnd_construct(struct UIAcceptWnd *self);
 struct UIWindow *ui_exchange_accept_wnd_new(void);
 
-struct UIClanInfoManageWnd *ui_clan_info_manage_wnd_construct(struct UIClanInfoManageWnd *self);
-struct UIWindow *ui_clan_info_manage_wnd_new(void);
-
 struct UIEmblemWnd *ui_emblem_wnd_new(void);
 
 struct UICreateGuildWnd *ui_create_guild_wnd_construct(struct UICreateGuildWnd *self, int disband);
 struct UIWindow *ui_create_guild_wnd_new(int arg);
 struct UIGuildHelperWnd *ui_guild_helper_wnd_construct(struct UIGuildHelperWnd *self);
 struct UIWindow *ui_guild_helper_wnd_new(void);
-struct UIGuildTipWnd *ui_guild_tip_wnd_construct(struct UIGuildTipWnd *self);
-struct UIWindow *ui_guild_tip_wnd_new(void);
 
 struct UIGuildBanReasonDescWnd *ui_guild_ban_reason_desc_wnd_construct(struct UIGuildBanReasonDescWnd *self);
 struct UIWindow *ui_guild_ban_reason_desc_wnd_new(void);

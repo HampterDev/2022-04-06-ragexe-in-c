@@ -26,18 +26,6 @@ const char *session_get_efst_image(struct Session *self, int efst, int pass)
     if (strcmp(name, "") != 0)
         return name;
     switch (pass) {
-    case 0:
-        switch (efst) {
-        case 0x2fa:
-            return "effect\\SWORDCLAN.TGA";
-        case 0x2fb:
-            return "effect\\ARCWANDCLAN.TGA";
-        case 0x2fc:
-            return "effect\\GOLDENMACECLAN.TGA";
-        case 0x2fd:
-            return "effect\\CROSSBOWCLAN.TGA";
-        }
-        break;
     case 1:
         switch (efst) {
         case 0x20:

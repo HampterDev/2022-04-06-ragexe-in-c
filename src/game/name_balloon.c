@@ -4,11 +4,9 @@
 #include "actor/actor_ops.h"
 #include "ui/window_access.h"
 #include "render/rp_pool.h"
-#include "ui/window_records.h"
 #include "contents/guild_emblem_api.h"
 #include "game/ground_item_state.h"
 #include "world/object_lookup.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include "world/actor_lookup.h"
@@ -20,7 +18,6 @@
 #include "platform/clientinfo.h"
 #include "session/session_jobs.h"
 #include "ui/chat/chat.h"
-#include "contents/clan_info.h"
 
 struct Item;
 
@@ -52,7 +49,6 @@ void game_mode_make_name_balloon(struct GameMode *self, struct UIWindow **slot)
 #define BALLOON(w) ((struct UINameBalloonText *)(w))
 
 #define GROUP_EMBLEM_FMT "유저인터페이스\\group\\group_%d.bmp"
-#define CLAN_EMBLEM_FMT "유저인터페이스\\clan_system\\clan_emblem%02d.bmp"
 
 static void card_set_name(struct GameMode *self, struct ActorNameCard *card, struct GameActor *actor)
 {
@@ -78,7 +74,6 @@ void game_mode_show_name_balloon(struct GameMode *self, struct GameActor *actor)
     struct UIWindow **slot;
     struct ActorNameCard card;
     struct String text;
-    char buf[256];
     unsigned char flag;
     unsigned aid;
     int job;
@@ -108,20 +103,8 @@ void game_mode_show_name_balloon(struct GameMode *self, struct GameActor *actor)
         }
         ui_name_balloon_text_set_name_text(BALLOON(*slot), &card, flag, 0);
     } else {
-        struct ActorNameCard copy;
-        char name[24];
-
-        name_card_copy_init(&copy, &card);
-        memset(name, 0, sizeof name);
-        strncpy_s(name, sizeof name, string_cstr(&card.name), card.name.size);
-        if (word_filter_contains(&g_nameFilter, name) == 1) {
-            word_filter_censor(&g_nameFilter, name);
-
-            string_assign_cstr(&copy.name, name);
-        }
         job = game_actor_get_job(actor);
-        ui_name_balloon_text_set_name_text(BALLOON(self->name_balloon), &copy, game_actor_is_pc_job(job) == 0, 0);
-        name_card_destroy(&copy);
+        ui_name_balloon_text_set_name_text(BALLOON(self->name_balloon), &card, game_actor_is_pc_job(job) == 0, 0);
     }
 
     if ((session_get_pet_acc_act_name(&g_session1, game_actor_get_job(actor)) != 0 ||
@@ -144,15 +127,6 @@ void game_mode_show_name_balloon(struct GameMode *self, struct GameActor *actor)
         guild_mgr_emblem_file_name(emblems, &text, id);
         ui_name_balloon_text_set_emblem(BALLOON(*slot), string_cstr(&text), siege_emblem_frame(self));
         string_free(&text);
-    } else if (self->world->player == (struct Player *)actor) {
-        memset(buf, 0, sizeof buf);
-        if (g_clanInfo->in_clan == 1 && g_clanInfo->emblem != 0)
-            _snprintf_s(buf, sizeof buf, (size_t)-1, CLAN_EMBLEM_FMT, g_clanInfo->emblem);
-        ui_name_balloon_text_set_emblem(BALLOON(*slot), buf, 0);
-    } else if (actor->clan_emblem_shown) {
-        memset(buf, 0, sizeof buf);
-        sprintf(buf, CLAN_EMBLEM_FMT, actor->clan_emblem);
-        ui_name_balloon_text_set_emblem(BALLOON(*slot), buf, 0);
     } else {
         ui_name_balloon_text_set_emblem(BALLOON(*slot), "", 0);
     }

@@ -4,8 +4,6 @@
 #include "session/hotkey_bindings.h"
 #include "skills/skill_bundle.h"
 #include "skills/skill_info.h"
-#include "ui/browser_windows.h"
-#include "replay/replay.h"
 #include "navi/navi_manager.h"
 #include "ui/misc/snap_mgr.h"
 #include "session/state.h"
@@ -41,11 +39,6 @@ struct WmClosedRect {
     struct WindowInfo *rect;
 };
 
-struct WmBrowser {
-    unsigned hwnd;
-    struct WebBrowser *browser;
-};
-
 struct WmWhisperWnd {
     struct String name;
     struct UIWindow *wnd;
@@ -57,11 +50,10 @@ SIZE_ASSERT(GuildWndInfo, 0x14);
 
 SIZE_ASSERT(ItemWndInfo, 0x28);
 SIZE_ASSERT(ItemStoreWndInfo, 0x98);
-SIZE_ASSERT(MiniMapWndInfo, 0x24);
+SIZE_ASSERT(MiniMapWndInfo, 0x1c);
 
 extern const char *g_regUIRectInfoKey;
 extern const char *g_regShortcutItemKey;
-extern const char *g_regSkillUseLevelKey;
 #define SAKRAY "사크라이"
 #define SHORTCUT_SLOTS 36
 #define SHORTCUT_PAGE_SLOTS 9
@@ -70,17 +62,10 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self);
 void item_store_wnd_info_set_default(struct ItemStoreWndInfo *self);
 void item_store_sub_info_set_default(struct WindowInfo *self, int index);
 void mini_map_info_set_default(struct MiniMapWndInfo *self);
-
-struct ReplayRecorder;
-#define WM_REPLAY_RECORDING 2
 void memorial_dun_info_reset(void);
 struct UINavigationV4Wnd;
-struct Roulette;
-void roulette_reset(struct Roulette *self);
 
 struct HotKey;
-enum { WM_WEB_BROWSER_MAX = 5 };
-void wm_destroy_browser(struct UIWindowMgr *self, struct WebBrowser *browser);
 struct WmSnapRect {
     struct UIWindow *wnd;
     struct SnapInfo info;
@@ -127,10 +112,10 @@ BYTE actor_merc_ai_running(void *actor);
 void ui_window_mgr_close_all_plates(struct UIWindowMgr *self);
 int ui_window_mgr_is_dragging_member_plate(struct UIWindowMgr *self);
 void ui_window_mgr_restore_plates(struct UIWindowMgr *self);
-void ui_window_mgr_init_window_flags(struct UIWindowMgr *self);
+
 void ui_window_mgr_close_drag_plate(struct UIWindowMgr *self);
 BYTE ui_window_mgr_is_hot_key_of_window(struct UIWindowMgr *self);
-void ui_window_mgr_note_window_opened(struct UIWindowMgr *self, int window_id);
+
 struct WindowInfo *ui_window_mgr_get_closed_rect(struct UIWindowMgr *self, int window_id);
 int ui_scale_x640(int v);
 int ui_center_x640(int x);
@@ -147,10 +132,7 @@ void ui_window_mgr_create_party_plates(struct UIWindowMgr *self);
 void ui_window_mgr_command_plate_of(struct UIWindowMgr *self, int aid, int a, int b);
 void ui_window_mgr_move_dragged_plate(struct UIWindowMgr *self, int x, int y);
 
-void ui_window_mgr_reset_shown_infos(struct UIWindowMgr *self, const BYTE *opts);
-
 void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self);
-void ui_window_mgr_init_skill_use_level_from_reg(struct UIWindowMgr *self);
 void ui_window_mgr_write_shortcut_item_info_to_reg(struct UIWindowMgr *self);
 
 void ui_window_mgr_render_windows(struct UIWindowMgr *self);
@@ -160,7 +142,6 @@ void ui_window_mgr_set_chat_line(struct UIWindowMgr *self, const char *text);
 int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, const char *name, const char *line,
                                                        unsigned colour, int cid);
 
-void session_refresh_merchant_mirror_item_wnd(struct UIWindowMgr *self);
 struct UIWindow *ui_minimap_zoom_wnd_new(void);
 BYTE ui_minimap_zoom_wnd_claims_mouse(struct UIWindow *self);
 void ui_minimap_zoom_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
@@ -173,12 +154,12 @@ void ui_window_mgr_drop_window_refs(struct UIWindowMgr *self, struct UIWindow *w
 void ui_window_mgr_edit_focus_to_chat_wnd(struct UIWindowMgr *self);
 void ui_window_mgr_focus_next_edit(struct UIWindowMgr *self);
 void ui_window_mgr_focus_prev_edit(struct UIWindowMgr *self);
-int ui_window_mgr_get_window_ids(struct UIWindowMgr *self, int *ids);
+
 void ui_window_mgr_hide_chat_wnd(struct UIWindowMgr *self);
 void ui_window_mgr_navigation_help(struct UIWindowMgr *self);
 void ui_window_mgr_refresh_item_windows(struct UIWindowMgr *self);
 void ui_window_mgr_remove_snap_rect(struct UIWindowMgr *self, struct UIWindow *wnd);
-void ui_window_mgr_replay_close_window(struct UIWindowMgr *self, int window_id);
+
 void ui_window_mgr_send_key_up(struct UIWindowMgr *self);
 void ui_window_mgr_send_key_right(struct UIWindowMgr *self);
 void ui_window_mgr_set_active_top_window(struct UIWindowMgr *self, struct UIWindow *wnd);

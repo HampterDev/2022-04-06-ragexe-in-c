@@ -55,7 +55,6 @@ const struct UIWindowOps ui_item_shop_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -112,7 +111,6 @@ const struct UIWindowOps ui_item_shop_wnd2_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -438,7 +436,7 @@ void ui_item_shop_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->shop.hover = ui_item_base_wnd_index_at(&self->shop.base, x, y);
     if (old != self->shop.hover)
         ui_window_invalidate_base(&self->shop.base.frame.base);
-    if (!g_replayPlaying) {
+    {
         struct ItemInfo info;
 
         ui_item_base_wnd_get_item(&self->shop.base, &info, self->shop.hover);
@@ -551,13 +549,10 @@ int ui_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(wnd, val1, val2, val3, val4);
+
         if (val1 != UI_ID_CHECKBOX)
             return 0;
-        if (g_replayPlaying) {
-            shop->check->state = val2;
-            ui_window_invalidate_base(shop->check);
-        }
+
         g_windowMgr.drag_all = val2;
         return 0;
 

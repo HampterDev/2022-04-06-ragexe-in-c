@@ -1,0 +1,528 @@
+--- a/src/session/chat_tabs_layout.c
++++ b/src/session/chat_tabs_layout.c
+@@ -1,14 +1,27 @@
+ #include "session/chat_tabs_layout.h"
+-#include "fileio/file_api.h"
++#include <windows.h>
+ #include <stdio.h>
+ #include <string.h>
+ 
+-static void write_line(struct File *file, const char *line)
++struct LayoutWriter {
++    HANDLE file;
++    int ok;
++};
++
++static void write_bytes(struct LayoutWriter *writer, const void *data, size_t size)
+ {
+-    file_write(file, line, (int)strlen(line));
++    DWORD written = 0;
++    if (!writer->ok) return;
++    writer->ok = size <= MAXDWORD &&
++        WriteFile(writer->file, data, (DWORD)size, &written, NULL) && written == size;
+ }
+ 
+-static void write_name(struct File *file, struct TextView name)
++static void write_line(struct LayoutWriter *writer, const char *line)
++{
++    write_bytes(writer, line, strlen(line));
++}
++
++static void write_name(struct LayoutWriter *file, struct TextView name)
+ {
+     char buffer[256];
+     size_t i, used = 0;
+@@ -17,7 +30,7 @@
+     for (i = 0; i < name.size; ++i) {
+         unsigned byte = (unsigned char)name.data[i];
+         if (used > sizeof buffer - 4) {
+-            file_write(file, buffer, (int)used);
++            write_bytes(file, buffer, used);
+             used = 0;
+         }
+         if (byte < 32 || byte > 126 || byte == '"' || byte == '\\') {
+@@ -30,11 +43,11 @@
+             buffer[used++] = (char)byte;
+         }
+     }
+-    if (used) file_write(file, buffer, (int)used);
++    if (used) write_bytes(file, buffer, used);
+     write_line(file, "\"");
+ }
+ 
+-static void write_tab(struct File *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
++static void write_tab(struct LayoutWriter *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
+ {
+     char line[128];
+     int i;
+@@ -55,19 +68,35 @@
+     write_line(file, "}\r\n\r\n");
+ }
+ 
+-void chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
+-                          int editable, const char *path)
++int chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
++                         int editable, const char *path)
+ {
+-    struct File file;
++    struct LayoutWriter writer;
++    char target[MAX_PATH], directory[MAX_PATH], temporary[MAX_PATH], *name;
++    DWORD length;
+     unsigned i;
+ 
+-    file_construct(&file);
+-    file_open(&file, path, 0x1001, 1, 0);
+-    write_line(&file, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
+-    for (i = 0; i < main_tabs->size; ++i)
+-        write_tab(&file, i + 1, &main_tabs->items[i].value, 1);
+-    for (i = 0; i < separate_tabs->size; ++i)
+-        write_tab(&file, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
+-    file_close(&file);
+-    file_destruct(&file);
++    if (!path || !*path) return 0;
++    length = GetFullPathNameA(path, MAX_PATH, target, &name);
++    if (!length || length >= MAX_PATH || !name || !*name) return 0;
++    memcpy(directory, target, (size_t)(name - target));
++    directory[name - target] = 0;
++    if (!GetTempFileNameA(directory, "cht", 0, temporary)) return 0;
++    writer.file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING,
++                              FILE_ATTRIBUTE_NORMAL, NULL);
++    writer.ok = writer.file != INVALID_HANDLE_VALUE;
++    if (writer.ok) {
++        write_line(&writer, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
++        for (i = 0; writer.ok && i < main_tabs->size; ++i)
++            write_tab(&writer, i + 1, &main_tabs->items[i].value, 1);
++        for (i = 0; writer.ok && i < separate_tabs->size; ++i)
++            write_tab(&writer, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
++        if (writer.ok) writer.ok = FlushFileBuffers(writer.file) != 0;
++        if (!CloseHandle(writer.file)) writer.ok = 0;
++    }
++    if (writer.ok)
++        writer.ok = MoveFileExA(temporary, target,
++                               MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
++    if (!writer.ok) DeleteFileA(temporary);
++    return writer.ok;
+ }
+--- a/src/session/chat_tabs_layout.h
++++ b/src/session/chat_tabs_layout.h
+@@ -3,7 +3,8 @@
+ 
+ #include "session/chat_tabs.h"
+ 
+-void chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
+-                          int editable, const char *path);
++/* Returns nonzero only after the complete layout replaces the saved file. */
++int chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
++                         int editable, const char *path);
+ 
+ #endif
+--- a/src/ui/chat/chat_window.c
++++ b/src/ui/chat/chat_window.c
+@@ -131,12 +131,17 @@
+ void ui_new_chat_wnd_destroy(struct UIWindow *window)
+ {
+     struct UINewChatWnd *self = (struct UINewChatWnd *)window;
++    int saved;
+     self->frame.base.ops = &ui_new_chat_wnd_ops;
+-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+-                          g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
++    saved = chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
++                                 g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
+     vec_free(&self->boxes);
+     ui_frame_wnd_destruct(&self->frame);
+     mem_free(self);
++    if (!saved)
++        MessageBoxA(NULL, "Could not save your chat layout.\n"
++                    "Your latest layout changes will not be restored next time.",
++                    "Chat layout", MB_OK | MB_ICONWARNING | MB_TASKMODAL);
+ }
+ 
+ void ui_new_chat_wnd_resize(struct UIWindow *window, int width, int height)
+--- a/tests/test_chat_tabs_layout.c
++++ b/tests/test_chat_tabs_layout.c
+@@ -6,40 +6,30 @@
+ #include "session/state.h"
+ #include <lauxlib.h>
+ #include "session/chat_tabs_layout.h"
+-#include "fileio/file_api.h"
+ 
+ struct Session g_session1;
++void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+ static char output[16384];
+ static size_t output_size;
+-static int file_state;
+-
+-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+-struct File *file_construct(struct File *file)
+-{
+-    assert(file_state == 0);
+-    file_state = 1;
+-    memset(file, 0, sizeof *file);
+-    return file;
+-}
+-unsigned char file_open(struct File *file, const char *name, int mode, unsigned char resolve, unsigned char disk_only)
+-{
+-    (void)file;
+-    assert(file_state == 1 && mode == 0x1001 && resolve == 1 && disk_only == 0);
+-    assert(!strcmp(name, "SaveData\\ChatWndInfo_U.lua"));
+-    file_state = 2;
+-    return 1;
+-}
+-unsigned char file_write(struct File *file, const void *bytes, int size)
+-{
+-    (void)file;
+-    assert(file_state == 2 && size >= 0 && output_size + size < sizeof output);
+-    memcpy(output + output_size, bytes, size);
+-    output_size += size;
+-    output[output_size] = 0;
+-    return 1;
+-}
+-void file_close(struct File *file) { (void)file; assert(file_state == 2); file_state = 3; }
+-void file_destruct(struct File *file) { (void)file; assert(file_state == 3); file_state = 4; }
++static char test_directory[MAX_PATH], test_path[MAX_PATH];
++
++static void save_and_read(const struct ChatTabs *main_tabs, const struct ChatTabs *separate_tabs,
++                          int editable, const char *path)
++{
++    HANDLE file;
++    DWORD size, read;
++    assert(!strcmp(path, "SaveData\\ChatWndInfo_U.lua"));
++    assert(chat_tabs_save_layout(main_tabs, separate_tabs, editable, test_path));
++    file = CreateFileA(test_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
++    assert(file != INVALID_HANDLE_VALUE);
++    size = GetFileSize(file, NULL);
++    assert(size < sizeof output);
++    assert(ReadFile(file, output, size, &read, NULL) && read == size);
++    assert(CloseHandle(file));
++    output_size = size;
++    output[size] = 0;
++}
++
+ static int field(lua_State *L, const char *name)
+ {
+     int value;
+@@ -84,11 +74,9 @@
+     assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
+     assert(chat_tabs_set(&g_session1.subChatWnds, 0, &tab));
+     chat_tab_settings_clear(&tab);
+-    file_state = 0;
+     output_size = 0;
+-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
++    save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
+                          "SaveData\\ChatWndInfo_U.lua");
+-    assert(file_state == 4);
+     status = luaL_loadbuffer(L, output, output_size, "literal-layout");
+     if (!status) status = lua_pcall(L, 0, 0, 0);
+     if (status) {
+@@ -157,7 +145,13 @@
+     const char *names[] = {"한글", "Second", "Window"};
+     int keys[] = {20, -3, 8};
+     int n, i;
++    char temporary[MAX_PATH];
+     assert(L);
++    assert(GetTempPathA(MAX_PATH, temporary) > 0);
++    assert(GetTempFileNameA(temporary, "clt", 0, test_directory));
++    assert(DeleteFileA(test_directory));
++    assert(CreateDirectoryA(test_directory, NULL));
++    assert(snprintf(test_path, sizeof test_path, "%s\\ChatWndInfo_U.lua", test_directory) < MAX_PATH);
+     g_session1.canDragWnd = 1;
+     tab.x = -7; tab.y = 25; tab.width = 480; tab.height = 120;
+     for (n = 0; n < 3; ++n) {
+@@ -166,9 +160,8 @@
+         assert(chat_tabs_set(n < 2 ? &g_session1.chatWndTabs : &g_session1.subChatWnds, keys[n], &tab));
+     }
+     chat_tab_settings_clear(&tab);
+-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
++    save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+                           g_session1.canDragWnd == 1, "SaveData\\ChatWndInfo_U.lua");
+-    assert(file_state == 4);
+     assert(strstr(output, "CanDragWnd = 1\r\n\r\n") == output);
+     assert(strstr(output, "TabName = \"Window\",\r\n"));
+     assert(luaL_loadbuffer(L, output, output_size, "saved-layout") == 0);
+@@ -193,9 +186,8 @@
+         assert(owned_text_assign(&tab.name, text_view_cstr(long_name)));
+         assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
+         chat_tab_settings_clear(&tab);
+-        file_state = 0;
+         output_size = 0;
+-        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
++        save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+         L = luaL_newstate();
+         assert(L);
+         assert(luaL_loadbuffer(L, output, output_size, "long-layout") == 0);
+@@ -206,12 +198,13 @@
+         assert(!memcmp(lua_tostring(L, -1), long_name, sizeof long_name));
+         lua_close(L);
+         chat_tabs_clear(&g_session1.chatWndTabs);
+-        file_state = 0;
+         output_size = 0;
+-        chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+-        assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n") && file_state == 4);
++        save_and_read(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
++        assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n"));
+     }
+     if (check_literal_names()) return 1;
++    assert(DeleteFileA(test_path));
++    assert(RemoveDirectoryA(test_directory));
+     puts("Chat-tab layout: production writer, ordered main/separate tabs, Korean and 4096-byte names, geometry and all options round-trip through Lua");
+     return 0;
+ }
+--- a/tests/build_chat_tabs.bat
++++ b/tests/build_chat_tabs.bat
+@@ -26,5 +26,11 @@
+ if not "%errorlevel%"=="0" (popd & exit /b 1)
+ test_chat_tabs_layout.exe
+ if not "%errorlevel%"=="0" (popd & exit /b 1)
++python "%ROOT%\tests\extract_chat_layout_destroy.py" "%ROOT%" "%CD%"
++if not "%errorlevel%"=="0" (popd & exit /b 1)
++cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%CD%" "%ROOT%\tests\test_chat_layout_save.c" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\session\chat_tabs.c" /Fe:test_chat_layout_save.exe
++if not "%errorlevel%"=="0" (popd & exit /b 1)
++test_chat_layout_save.exe
++if not "%errorlevel%"=="0" (popd & exit /b 1)
+ popd
+ exit /b 0
+--- /dev/null
++++ b/tests/test_chat_layout_save.c
+@@ -0,0 +1,227 @@
++#include <windows.h>
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "session/chat_tabs_layout.h"
++
++enum { NONE, PATH_FAIL, LONG_PATH, TEMP_FAIL, OPEN_FAIL, WRITE_FAIL,
++       SHORT_WRITE, FLUSH_FAIL, CLOSE_FAIL, MOVE_FAIL };
++static int fault, fail_write, writes, moves, deletes, live_handles, warnings, cleanup;
++static int failed_delete;
++static char directory[MAX_PATH], target[MAX_PATH], temporary[MAX_PATH];
++static const char old_layout[] = "previous complete layout\r\n";
++static struct { struct ChatTabs chatWndTabs, subChatWnds; int canDragWnd; } g_session1;
++
++static DWORD WINAPI get_path(LPCSTR path, DWORD capacity, LPSTR out, LPSTR *name)
++{
++    if (fault == PATH_FAIL) return 0;
++    if (fault == LONG_PATH) return capacity + 1;
++    return GetFullPathNameA(path, capacity, out, name);
++}
++static UINT WINAPI get_temp(LPCSTR folder, LPCSTR prefix, UINT unique, LPSTR out)
++{
++    UINT result;
++    if (fault == TEMP_FAIL) return 0;
++    result = GetTempFileNameA(folder, prefix, unique, out);
++    if (result) strcpy(temporary, out);
++    return result;
++}
++static HANDLE WINAPI open_temp(LPCSTR path, DWORD access, DWORD share,
++    LPSECURITY_ATTRIBUTES security, DWORD creation, DWORD flags, HANDLE template_file)
++{
++    HANDLE file;
++    assert(!strcmp(path, temporary) && strcmp(path, target));
++    assert(creation == TRUNCATE_EXISTING && access == GENERIC_WRITE);
++    if (fault == OPEN_FAIL) return INVALID_HANDLE_VALUE;
++    file = CreateFileA(path, access, share, security, creation, flags, template_file);
++    if (file != INVALID_HANDLE_VALUE) ++live_handles;
++    return file;
++}
++static BOOL WINAPI write_temp(HANDLE file, LPCVOID bytes, DWORD size,
++                            LPDWORD written, LPOVERLAPPED overlap)
++{
++    ++writes;
++    if (writes == fail_write) {
++        if (fault == WRITE_FAIL) { *written = 0; return FALSE; }
++        if (fault == SHORT_WRITE) return WriteFile(file, bytes, size / 2, written, overlap);
++    }
++    return WriteFile(file, bytes, size, written, overlap);
++}
++static BOOL WINAPI flush_temp(HANDLE file)
++{
++    if (fault == FLUSH_FAIL) return FALSE;
++    return FlushFileBuffers(file);
++}
++static BOOL WINAPI close_temp(HANDLE file)
++{
++    BOOL result = CloseHandle(file);
++    assert(result && live_handles == 1);
++    --live_handles;
++    return fault == CLOSE_FAIL ? FALSE : result;
++}
++static BOOL WINAPI replace_temp(LPCSTR from, LPCSTR to, DWORD flags)
++{
++    ++moves;
++    assert(!live_handles && !strcmp(from, temporary) && !strcmp(to, target));
++    assert(flags == (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH));
++    if (fault == MOVE_FAIL) return FALSE;
++    return MoveFileExA(from, to, flags);
++}
++static BOOL WINAPI delete_temp(LPCSTR path)
++{
++    ++deletes;
++    assert(!strcmp(path, temporary) && strcmp(path, target) && !live_handles);
++    if (failed_delete) return FALSE;
++    return DeleteFileA(path);
++}
++
++#define GetFullPathNameA get_path
++#define GetTempFileNameA get_temp
++#define CreateFileA open_temp
++#define WriteFile write_temp
++#define FlushFileBuffers flush_temp
++#define CloseHandle close_temp
++#define MoveFileExA replace_temp
++#define DeleteFileA delete_temp
++#include "../src/session/chat_tabs_layout.c"
++#undef GetFullPathNameA
++#undef GetTempFileNameA
++#undef CreateFileA
++#undef WriteFile
++#undef FlushFileBuffers
++#undef CloseHandle
++#undef MoveFileExA
++#undef DeleteFileA
++
++/* Actual destruction function, with only UI cleanup and notification substituted. */
++struct UIWindow { const int *ops; };
++struct UIFrameWnd { struct UIWindow base; };
++struct UINewChatWnd { struct UIFrameWnd frame; int boxes; };
++static int ui_new_chat_wnd_ops;
++static void vec_free(int *boxes) { (void)boxes; assert(cleanup == 0); cleanup = 1; }
++static void ui_frame_wnd_destruct(struct UIFrameWnd *frame)
++{ assert(frame->base.ops == &ui_new_chat_wnd_ops && cleanup == 1); cleanup = 2; }
++static void mem_free(void *memory) { assert(cleanup == 2); cleanup = 3; free(memory); }
++static int WINAPI warn(HWND owner, LPCSTR text, LPCSTR title, UINT flags)
++{
++    assert(!owner && cleanup == 3 && !live_handles);
++    assert(strstr(text, "Could not save") && strstr(text, "not be restored"));
++    assert(!strcmp(title, "Chat layout") && flags == (MB_OK | MB_ICONWARNING | MB_TASKMODAL));
++    ++warnings;
++    return IDOK;
++}
++#define CHAT_LAYOUT_FILE target
++#define MessageBoxA warn
++#include "chat_layout_destroy.inc"
++#undef MessageBoxA
++
++static void reset(int failure, int at)
++{
++    assert(!live_handles);
++    fault = failure; fail_write = at;
++    writes = moves = deletes = warnings = cleanup = failed_delete = 0;
++    temporary[0] = 0;
++}
++static void seed(void)
++{
++    DWORD written;
++    HANDLE file = CreateFileA(target, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
++    assert(file != INVALID_HANDLE_VALUE);
++    assert(WriteFile(file, old_layout, sizeof old_layout - 1, &written, NULL));
++    assert(written == sizeof old_layout - 1 && CloseHandle(file));
++}
++static void check_old(void)
++{
++    char bytes[sizeof old_layout];
++    DWORD read;
++    HANDLE file = CreateFileA(target, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
++    assert(file != INVALID_HANDLE_VALUE);
++    assert(GetFileSize(file, NULL) == sizeof old_layout - 1);
++    assert(ReadFile(file, bytes, sizeof bytes, &read, NULL) && read == sizeof old_layout - 1);
++    assert(!memcmp(bytes, old_layout, read) && CloseHandle(file));
++}
++static void check_clean(void)
++{
++    assert(!live_handles);
++    if (*temporary) assert(GetFileAttributesA(temporary) == INVALID_FILE_ATTRIBUTES);
++}
++static void destroy_window(void)
++{
++    struct UINewChatWnd *window = calloc(1, sizeof *window);
++    assert(window);
++    ui_new_chat_wnd_destroy(&window->frame.base);
++    assert(cleanup == 3);
++}
++
++int main(void)
++{
++    struct ChatTabSettings tab = {0};
++    char base[MAX_PATH], previous_directory[MAX_PATH], missing[MAX_PATH], too_long[MAX_PATH + 5];
++    HANDLE held;
++    int i, count;
++    assert(GetTempPathA(MAX_PATH, base) > 0);
++    assert(GetTempFileNameA(base, "cst", 0, directory));
++    assert(DeleteFileA(directory) && CreateDirectoryA(directory, NULL));
++    assert(snprintf(target, sizeof target, "%s\\layout.lua", directory) < MAX_PATH);
++    assert(owned_text_assign(&tab.name, text_view_cstr("Party\\chat \"quoted\" ]]]")));
++    assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
++    assert(chat_tabs_set(&g_session1.subChatWnds, 0, &tab));
++    chat_tab_settings_clear(&tab);
++    g_session1.canDragWnd = 1;
++    seed(); reset(NONE, 0); destroy_window();
++    assert(!warnings && moves == 1 && !deletes); check_clean();
++    count = writes;
++    assert(count > 20);
++
++    /* Every serializer write can fail or succeed with a short byte count. */
++    for (i = 1; i <= count; ++i) {
++        seed(); reset(WRITE_FAIL, i); destroy_window();
++        assert(warnings == 1 && writes == i && !moves && deletes == 1);
++        check_old(); check_clean();
++        seed(); reset(SHORT_WRITE, i); destroy_window();
++        assert(warnings == 1 && writes == i && !moves && deletes == 1);
++        check_old(); check_clean();
++    }
++    for (i = PATH_FAIL; i <= MOVE_FAIL; ++i) {
++        if (i == WRITE_FAIL || i == SHORT_WRITE) continue;
++        seed(); reset(i, 0); destroy_window();
++        assert(warnings == 1);
++        check_old(); check_clean();
++    }
++    seed(); reset(NONE, 0);
++    held = CreateFileA(target, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
++    assert(held != INVALID_HANDLE_VALUE);
++    destroy_window(); assert(warnings == 1 && moves == 1);
++    check_old(); check_clean(); assert(CloseHandle(held));
++    seed(); assert(SetFileAttributesA(target, FILE_ATTRIBUTE_READONLY));
++    reset(NONE, 0); destroy_window(); assert(warnings == 1);
++    check_old(); check_clean(); assert(SetFileAttributesA(target, FILE_ATTRIBUTE_NORMAL));
++    assert(DeleteFileA(target));
++    reset(WRITE_FAIL, 2); destroy_window(); assert(warnings == 1);
++    assert(GetFileAttributesA(target) == INVALID_FILE_ATTRIBUTES); check_clean();
++    reset(NONE, 0); destroy_window(); assert(!warnings && moves == 1); check_clean();
++
++    seed(); reset(MOVE_FAIL, 0); failed_delete = 1; destroy_window();
++    assert(warnings == 1 && deletes == 1); check_old();
++    assert(DeleteFileA(temporary)); /* Simulated cleanup denial: remove our fixture. */
++    reset(NONE, 0);
++    assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, NULL));
++    assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, ""));
++    memset(too_long, 'x', sizeof too_long - 1); too_long[sizeof too_long - 1] = 0;
++    assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, too_long));
++    check_old(); check_clean();
++    assert(snprintf(missing, sizeof missing, "%s\\missing\\layout.lua", directory) < MAX_PATH);
++    assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, missing));
++    check_old(); check_clean();
++    assert(GetCurrentDirectoryA(MAX_PATH, previous_directory) > 0);
++    assert(SetCurrentDirectoryA(directory));
++    reset(NONE, 0);
++    assert(chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, "layout.lua"));
++    assert(SetCurrentDirectoryA(previous_directory));
++    assert(moves == 1); check_clean();
++    assert(DeleteFileA(target)); assert(RemoveDirectoryA(directory));
++    chat_tabs_clear(&g_session1.chatWndTabs); chat_tabs_clear(&g_session1.subChatWnds);
++    printf("Chat saves: %d failed/short write positions, path/temp/open/flush/close/replace failures, real locked/read-only targets, first save and one warning after cleanup passed.\n", count * 2);
++    return 0;
++}
+--- /dev/null
++++ b/tests/extract_chat_layout_destroy.py
+@@ -0,0 +1,12 @@
++"""Exercise the actual chat-window cleanup and save-warning decision."""
++from pathlib import Path
++import sys
++
++root, output = map(Path, sys.argv[1:])
++output.mkdir(parents=True, exist_ok=True)
++source = (root / 'src/ui/chat/chat_window.c').read_text(encoding='utf-8')
++signature = 'void ui_new_chat_wnd_destroy(struct UIWindow *window)\n{'
++assert source.count(signature) == 1
++start = source.index(signature)
++body = source[start:source.index('\n}', start) + 2]
++(output / 'chat_layout_destroy.inc').write_text(body + '\n', encoding='utf-8')

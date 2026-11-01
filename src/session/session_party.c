@@ -207,17 +207,6 @@ static struct PartyMember *default_member(struct PartyMember *out)
     return out;
 }
 
-int session_count_online_party_members(struct Session *self)
-{
-    struct ListNode *node;
-    int n = 0;
-
-    for (node = self->partyMembers.head->next; node != self->partyMembers.head; node = node->next)
-        if (LIST_VALUE(node, struct PartyMember)->state == 0)
-            n++;
-    return n;
-}
-
 struct PartyMember *session_get_party_member(struct Session *self,
                                                                struct PartyMember *out, DWORD aid)
 {

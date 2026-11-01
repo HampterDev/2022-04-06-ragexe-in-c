@@ -7,32 +7,15 @@ static void set_action_delay(struct RenderObject *self, int action)
     float delay = act_res_get_delay(self->act, action);
     float d, v;
 
-    if (g_replayPlaying)
-        delay = replay_recorder_duration_scale(replay_recorder_instance()) * delay;
     if (delay > 0.0f)
         self->motion_delay = delay;
     d = self->motion_delay;
     if (1.0f > d) {
-        if (g_replayPlaying) {
-            float r = replay_recorder_duration_scale(replay_recorder_instance());
-
-            if (r > 0.0f) {
-                self->motion_delay = r;
-                d = r;
-            } else {
-                d = self->motion_delay;
-            }
-        } else {
-            self->motion_delay = 1.0f;
-            d = 1.0f;
-        }
+        self->motion_delay = 1.0f;
+        d = 1.0f;
     }
     v = self->delay_factor * d;
-    if (g_replayPlaying) {
-        v = replay_recorder_duration_scale(replay_recorder_instance()) * v;
-        if (v > 0.0f)
-            self->motion_delay = v;
-    } else if (v > 0.0f) {
+    if (v > 0.0f) {
         self->motion_delay = v;
     }
 }

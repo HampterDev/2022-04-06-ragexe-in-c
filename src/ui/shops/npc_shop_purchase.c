@@ -1,5 +1,4 @@
 #include "ui/controls/edit.h"
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "render/rp_pool.h"
 #include "session/state.h"
@@ -58,7 +57,6 @@ const struct UIWindowOps ui_item_purchase_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_purchase_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -100,15 +98,6 @@ void ui_item_purchase_wnd_store_info(struct UIWindow *window)
 {
     struct UIItemPurchaseWnd *self = (struct UIItemPurchaseWnd *)window;
     npc_shop_store_info(&self->base.frame.base, self->info);
-}
-
-int ui_item_purchase_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_PURCHASE_BEGIN, NULL, 0);
-    snapshot_write(&writer, REC_PURCHASE_END, NULL, 0);
-    return snapshot_finish(&writer, out);
 }
 
 void ui_item_purchase_wnd_on_create(struct UIWindow *window, int width, int height)
@@ -161,7 +150,7 @@ void ui_item_purchase_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->hover = ui_item_base_wnd_index_at(&self->base, x, y);
     if (old != self->hover)
         ui_window_invalidate_base(&self->base.frame.base);
-    if (!g_replayPlaying) {
+    {
         struct ItemInfo info;
 
         ui_item_base_wnd_get_item(&self->base, &info, self->hover);
@@ -450,7 +439,6 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
     case UI_MSG_COMMAND: {
         struct Mode *mode;
 
-        ui_window_record_command(wnd, val1, val2, val3, val4);
         mode = client_current_mode();
         if (val1 == UI_ID_OK) {
             purchase_buy(self, mode);
@@ -519,19 +507,6 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
 
     case UI_MSG_ADD_DRAGGED:
         purchase_add_dragged(self);
-        return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        if (npc_shop_records_reach((const char *)val1, (unsigned)val2, REC_PURCHASE_BEGIN, REC_PURCHASE_END)) {
-            npc_shop_open_shop_list(WND_ID_SHOP2, 0);
-            ui_window_send_msg(&self->base.frame.base, NULL, SHOP_MSG_SET_MODE, 0, 0, 0, 0);
-            ui_window_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-        }
         return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);

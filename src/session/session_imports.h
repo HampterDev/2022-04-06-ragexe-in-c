@@ -1,5 +1,5 @@
 #include "contents/private_airplane.h"
-#include "contents/pet_evolution.h"
+#include "contents/pet_auto_feed.h"
 #include "contents/check_attendance.h"
 #include "web/barter_market.h"
 #include "web/barter_expanded.h"
@@ -24,7 +24,6 @@
 #include "contents/guild_emblem_api.h"
 #include "game/own_states.h"
 #include "platform/service.h"
-#include "replay/replay.h"
 #include "contents/quest.h"
 #ifndef SESSION_IMPORTS_H
 #define SESSION_IMPORTS_H
@@ -42,8 +41,6 @@
 #include "navi/navi_manager.h"
 #include "contents/item_info_mgr.h"
 #include "ui/quests/world_view.h"
-#include "ui/tips/tipbox_mgr.h"
-#include "contents/manner_filter.h"
 #include "game/client_state.h"
 #include "core/window_state.h"
 #include "effects/durations.h"

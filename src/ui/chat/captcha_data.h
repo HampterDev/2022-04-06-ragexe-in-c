@@ -25,6 +25,5 @@ void captcha_stream_clear(struct CaptchaStream *stream);
 int captcha_stream_begin(struct CaptchaStream *stream, size_t size);
 enum CaptchaAppend captcha_stream_append(struct CaptchaStream *stream, const void *chunk, size_t size);
 int captcha_bitmap_valid(const void *bitmap, size_t size);
-int captcha_data_pack(struct CaptchaData *out, const void *bitmap, size_t size);
 int captcha_data_unpack(struct CaptchaData *out, const struct CaptchaData *packed);
 #endif

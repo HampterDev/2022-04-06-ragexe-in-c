@@ -40,17 +40,13 @@ static DWORD fixture_clock(void) { return fixture_time; }
 
 struct gfx_surface { unsigned pixels; };
 static struct ResMgr manager;
-static int manager_live = 1, fail_upload, missing_bitmap, video_available, recurse;
+static int manager_live = 1, fail_upload, missing_bitmap, recurse;
 static int resource_delay;
 static unsigned live_textures, live_handles, loads, releases, purges;
 static char loaded_names[8192][256];
 static struct BitmapRes bitmap;
 static DWORD pixels[256];
 static struct TexCache *recursive_cache;
-struct WorldVideoList { int unused; };
-struct WorldVideo { int active, width, height; };
-static struct WorldVideoList videos;
-static struct WorldVideo movie;
 struct C3dDevice g_3dDevice;
 unsigned g_resPurgeAgeMs = 15;
 
@@ -71,21 +67,6 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
 }
 void res_mgr_release(struct ResMgr *self, struct Res *res)
 { assert(self == &manager && res == &bitmap.res); ++releases; }
-struct WorldVideoList *game_current_video_list(void) { return video_available ? &videos : NULL; }
-struct WorldVideo *world_video_list_open(struct WorldVideoList *list, const char *name, int loop)
-{
-    assert(list == &videos && loop == 1 && !strcmp(name, "test.bik"));
-    return &movie;
-}
-
-int world_video_dimensions(struct WorldVideo *video, int *width, int *height)
-{
-    *width = *height = 0;
-    if (!video || !video->active) return 0;
-    *width = video->width; *height = video->height;
-    return 1;
-}
-
 void surface_reset(struct Surface *surface)
 {
     if (surface->surface) { assert(live_handles); --live_handles; checked_free(surface->surface); }
@@ -199,7 +180,7 @@ static void lookup_reload_and_recursion(void)
     empty(&cache);
 }
 
-static void time_and_movies(void)
+static void time_and_missing_textures(void)
 {
     struct TexCache cache = {0};
     struct Texture *recent, *locked, *texture;
@@ -219,14 +200,6 @@ static void time_and_movies(void)
     texture = texture_cache_get(&cache, "missing.bmp", 0, 1);
     assert(texture != &g_whiteTexture && texture->base.width == 1 && texture->base.surface->pixels == 0);
     missing_bitmap = 0; empty(&cache);
-    texture = texture_cache_get(&cache, "test.bik", 0, 1);
-    assert(texture->base.width == 1); empty(&cache);
-    video_available = 1; movie.active = 1; movie.width = 20; movie.height = 12;
-    texture = texture_cache_get(&cache, "test.bik", 0, 1);
-    assert(texture->base.width == 20 && texture->base.height == 12); empty(&cache);
-    movie.active = 0;
-    assert(texture_cache_get(&cache, "test.bik", 0, 1)->base.width == 1); empty(&cache);
-    video_available = 0;
 }
 
 static DWORD WINAPI lookup_thread(void *context)
@@ -263,7 +236,7 @@ int main(void)
     struct TexCache final_cache = {0};
     InitializeCriticalSection(&manager.lock);
     bitmap.width = bitmap.height = 16; bitmap.pixels = pixels; pixels[0] = 7;
-    ownership_and_failures(); lookup_reload_and_recursion(); time_and_movies();
+    ownership_and_failures(); lookup_reload_and_recursion(); time_and_missing_textures();
     parallel_lookup(); assert(!write_depth && cache_stat[S_TEX_PURGES] == purges);
     assert(texture_cache_get(&final_cache, "shutdown.bmp", 0, 1) != &g_whiteTexture);
     DeleteCriticalSection(&manager.lock); manager_live = 0;

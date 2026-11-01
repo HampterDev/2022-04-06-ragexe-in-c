@@ -1,7 +1,5 @@
 #include "ui/controls/listbox.h"
-#include "ui/window_records.h"
 #include "render/rp_pool.h"
-#include "ui/record_tags.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
 #include <string.h>
@@ -59,7 +57,6 @@ const struct UIWindowOps ui_choose_sell_buy_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_choose_sell_buy_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -108,7 +105,6 @@ const struct UIWindowOps ui_exchange_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_exchange_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -188,21 +184,13 @@ void ui_accept_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->frame.base, 0, 0, ui_skin_bitmap(UI_SKIN "win_msgbox.bmp"), 0);
 }
 
-int ui_choose_sell_buy_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, CHOOSER_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, CHOOSER_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 int ui_choose_sell_buy_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                           int val2, int val3, int val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (!self->frame.base.visible)
             return 0;
         if (val1 == UI_ID_CANCEL) {
@@ -219,33 +207,6 @@ int ui_choose_sell_buy_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
     case MSG_CHOOSER_REQUESTER:
         self->requester = val1;
         return 0;
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const char *buf = (const char *)val1;
-        struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-        unsigned pos = sizeof rec;
-
-        if (rec.tag != CHOOSER_REC_BEGIN)
-            return 0;
-        while ((unsigned)val2 > pos) {
-            rec = *(const struct UIRecordHeader *)(buf + pos);
-            pos += sizeof rec;
-            if (rec.tag == CHOOSER_REC_END) {
-                game_mark_npc_dialog_open();
-                ui_window_send_msg(&self->frame.base, NULL, MSG_CHOOSER_REQUESTER, 0, 0, 0, 0);
-                ui_close_window(NPC_SHOP_WND_A_ID);
-                ui_close_window(NPC_SHOP_WND_B_ID);
-                ui_close_window(NPC_SHOP_WND_C_ID);
-                return 0;
-            }
-            pos += rec.len;
-        }
-        return 0;
-    }
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }
@@ -292,13 +253,6 @@ void ui_exchange_accept_wnd_store_info(struct UIWindow *window)
     info->y = self->frame.base.y;
     info->width = self->frame.base.width;
     info->height = self->frame.base.height;
-}
-
-int ui_exchange_accept_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
-    return ui_dialog_records_save(self->text, msg_str(MSG_EXCHANGE_QUESTION),
-                                  EXCHANGE_REC_BEGIN, EXCHANGE_REC_NAME, EXCHANGE_REC_END, out);
 }
 
 static int exchange_info_usable(const struct WindowInfo *info)
@@ -351,7 +305,7 @@ int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             ui_close_window(EXCHANGE_ACCEPT_WND_ID);
             mode_send_message(client_current_mode(), REQ_EXCHANGE_ANSWER, EXCHANGE_ACCEPTED, 0, 0, 0);
@@ -401,47 +355,6 @@ int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
             string_free(&line);
         }
         string_free(&text);
-        return 0;
-    }
-
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const char *buf = (const char *)val1;
-        struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-        unsigned pos = sizeof rec;
-
-        if (rec.tag != EXCHANGE_REC_BEGIN)
-            return 0;
-        while ((unsigned)val2 > pos) {
-            rec = *(const struct UIRecordHeader *)(buf + pos);
-            pos += sizeof rec;
-            if (rec.tag == EXCHANGE_REC_END)
-                break;
-            if (rec.tag == EXCHANGE_REC_NAME) {
-                char name[0x104];
-                struct String str, copy;
-                struct String *partner;
-
-                memset(name, 0, sizeof name);
-                memcpy(name, buf + pos, rec.len);
-                pos += rec.len;
-                ui_window_send_msg(&self->frame.base, NULL, MSG_EXCHANGE_ASKER, (int)name, 0, 0, 0);
-                string_init(&str);
-                string_assign_cstr(&str, name);
-                string_copy(&copy, &str);
-                partner = game_current_trade_partner();
-                if (partner && partner != &copy)
-                    string_assign(partner, string_cstr(&copy), copy.size);
-                string_free(&copy);
-                string_free(&str);
-            } else {
-                pos += rec.len;
-            }
-        }
         return 0;
     }
     }

@@ -1,0 +1,113 @@
+--- a/src/session/session_init.c
++++ b/src/session/session_init.c
+@@ -3,6 +3,9 @@
+ #include "session/csession.h"
+ #include "session/session_state.h"
+ 
++#include <ctype.h>
++#include <errno.h>
++#include <limits.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include "platform/language.h"
+@@ -98,58 +101,56 @@
+             map_property_mgr_clear(g_mapFlags);
+     } else {
+         int size = file.size;
+-        char *text = (char *)mem_alloc(size + 1);
++        char *text = (char *)mem_alloc((size_t)size + 1);
+         int pos = 0, row = 0, column = 0;
+-        char c;
+-
+-        file_read(&file, text, size);
+-        text[size] = 0;
+-        do {
+-            c = text[pos++];
+-            if (pos >= size)
+-                continue;
+-            for (;;) {
+-                if (c == '/') {
+-                    c = text[pos];
+-                    if (c == '/') {
+-                        do
+-                            c = text[pos++];
+-                        while (c != '\n');
+-                    } else if (c == '*') {
+-                        do {
+-                            do
+-                                c = text[pos++];
+-                            while (c != '*');
+-                        } while (text[pos] != '/');
++
++        if (file_read(&file, text, size)) {
++            text[size] = 0;
++            while (pos < size && row < 30) {
++                int start, valid;
++                char saved, *end;
++                long value;
++
++                if (isspace((unsigned char)text[pos])) {
++                    pos++;
++                    continue;
++                }
++                if (text[pos] == '/' && pos < size - 1) {
++                    if (text[pos + 1] == '/') {
++                        pos += 2;
++                        while (pos < size && text[pos] != '\n')
++                            pos++;
++                        continue;
+                     }
+-                } else if (c == ' ' || c == '\t') {
+-                } else if (c == '\r') {
+-                    pos++;
+-                } else {
+-                    char token[16];
+-                    char *p = token;
+-
+-                    memset(token, 0, sizeof token);
+-                    while (c != ' ' && c != '\t') {
+-                        *p++ = c;
+-                        c = text[pos++];
+-                        if (c == '\r') {
++                    if (text[pos + 1] == '*') {
++                        pos += 2;
++                        while (pos < size - 1 && !(text[pos] == '*' && text[pos + 1] == '/'))
+                             pos++;
++                        if (pos >= size - 1)
+                             break;
+-                        }
+-                    }
+-                    map_property_mgr_set(g_mapFlags, row, column, atoi(token));
+-                    if (++column >= 27) {
+-                        row++;
+-                        column = 0;
+-                        break;
++                        pos += 2;
++                        continue;
+                     }
+                 }
+-                c = text[pos++];
+-                if (pos >= size)
++                start = pos;
++                while (pos < size && !isspace((unsigned char)text[pos]) && text[pos] != '/')
++                    pos++;
++                saved = text[pos];
++                text[pos] = 0;
++                errno = 0;
++                value = strtol(text + start, &end, 10);
++                valid = end != text + start && *end == 0 && errno != ERANGE
++                    && value >= INT_MIN && value <= INT_MAX;
++                text[pos] = saved;
++                if (!valid)
+                     break;
++                map_property_mgr_set(g_mapFlags, row, column, (int)value);
++                if (++column >= 27) {
++                    row++;
++                    column = 0;
++                }
+             }
+-        } while (row < 30 && pos < size);
++        }
+         mem_free(text);
+         file_close(&file);
+     }

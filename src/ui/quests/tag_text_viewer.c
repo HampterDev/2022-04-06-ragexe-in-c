@@ -16,7 +16,6 @@
 #include <shellapi.h>
 #include "core/app.h"
 #include "diag/perf.h"
-#include "ui/tips/tips.h"
 
 void ui_tag_text_viewer_destroy(struct UIWindow *window);
 void tag_text_viewer_ui_scroll_on_create(struct UIWindow *self, int width, int height);
@@ -61,7 +60,6 @@ const struct UIWindowOps ui_tag_text_viewer_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -72,7 +70,6 @@ const struct UIWindowOps ui_tag_text_viewer_ops = {
 #define TAG_LINK_URL 0x1ad
 #define TAG_LINK_NAVI 0x1ae
 #define TAG_LINK_ITEM 0x1c8
-#define TAG_LINK_TIP 0x1fd
 #define TAG_LINK_QUEST 0x213
 #define UI_MSG_TAG_BUTTON_CLICK 0x62
 
@@ -80,7 +77,6 @@ const struct UIWindowOps ui_tag_text_viewer_ops = {
 
 #define ITEM_WND_ID 0xc
 #define UI_MSG_SHOW_ITEM 0x18
-#define TAG_WND_TIPBOX 0x13b
 
 struct TagTextPosition { struct UIWindow *child; float x, y; };
 
@@ -185,20 +181,6 @@ void ui_tag_text_viewer_on_item_link(struct UITagTextViewer *self, struct UIText
     item_info_destruct(&item);
 }
 
-void ui_tag_text_viewer_on_tip_link(struct UITagTextViewer *self, struct UITextButton *link)
-{
-    struct UIWindow *wnd;
-    int number;
-
-    (void)self;
-    if (!link || !link_arg_count(link))
-        return;
-    number = link_arg_number(link, 0);
-    wnd = ui_make_window(TAG_WND_TIPBOX);
-    if (wnd)
-        ui_tipbox_wnd_show_tip((struct UITipboxWnd *)wnd, number);
-}
-
 void ui_tag_text_viewer_on_quest_link(struct UITagTextViewer *self, struct UITextButton *link)
 {
     int number;
@@ -222,9 +204,6 @@ static void ui_tag_text_viewer_on_link(struct UITagTextViewer *self, struct UITe
     case TAG_LINK_ITEM:
         ui_tag_text_viewer_on_item_link(self, link);
         break;
-    case TAG_LINK_TIP:
-        ui_tag_text_viewer_on_tip_link(self, link);
-        break;
     case TAG_LINK_QUEST:
         ui_tag_text_viewer_on_quest_link(self, link);
         break;
@@ -244,7 +223,6 @@ int ui_tag_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender
         case TAG_LINK_URL:
         case TAG_LINK_NAVI:
         case TAG_LINK_ITEM:
-        case TAG_LINK_TIP:
         case TAG_LINK_QUEST:
             ui_tag_text_viewer_on_link(self, (struct UITextButton *)sender, val1);
             break;

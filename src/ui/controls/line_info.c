@@ -53,7 +53,6 @@ const struct UIWindowOps line_cutter_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -74,7 +73,6 @@ enum LineItemKind {
     LINE_ITEM_NAVI = 0x1ae,
     LINE_ITEM_ITEM = 0x1c8,
     LINE_ITEM_ITEML = 0x1ed,
-    LINE_ITEM_TIPBOX = 0x1fd,
     LINE_ITEM_QUEST = 0x213,
     LINE_ITEM_NAVIL = 0x22a,
     LINE_ITEM_MSG = 0x22b,
@@ -202,7 +200,7 @@ static const struct TagPair links[] = {
     {"<URL>", "</URL>", LINE_ITEM_URL}, {"<ITEM>", "</ITEM>", LINE_ITEM_ITEM},
     {"<ITEML>", "</ITEML>", LINE_ITEM_ITEML}, {"<NAVI>", "</NAVI>", LINE_ITEM_NAVI},
     {"<NAVIL>", "</NAVIL>", LINE_ITEM_NAVIL}, {"<MSG>", "</MSG>", LINE_ITEM_MSG},
-    {"<QUEST>", "</QUEST>", LINE_ITEM_QUEST}, {"<TIPBOX>", "</TIPBOX>", LINE_ITEM_TIPBOX}
+    {"<QUEST>", "</QUEST>", LINE_ITEM_QUEST}, {"<TIPBOX>", "</TIPBOX>", LINE_ITEM_TEXT}
 };
 
 static const struct TagPair *link_tags(int kind)
@@ -278,6 +276,12 @@ static size_t parse_tagged(struct LineBuilder *self, size_t pos, const struct Ta
         size_t end = close_at + strlen(tags->close);
         push_item(self, tags->kind);
         append_text(self, text_view(text.data + pos, end - pos));
+        if (tags->kind == LINE_ITEM_TEXT) {
+            /* Retired guide links keep their labels, without a clickable target. */
+            struct String *label = &self->items[self->item_count - 1].text;
+            label->size = text_unwrap_tag(label->data, label->size, tags->open, tags->close);
+            label->size = text_strip_info(label->data, label->size);
+        }
         self->style_changed = 1;
         return end;
     }
@@ -545,7 +549,7 @@ static void layout(struct LineBuilder *self)
             else x = add_text(self, x, text, item->style);
             break;
         case LINE_ITEM_URL: case LINE_ITEM_NAVI: case LINE_ITEM_ITEM:
-        case LINE_ITEM_TIPBOX: case LINE_ITEM_QUEST:
+        case LINE_ITEM_QUEST:
             x = add_link(self, x, text, item->kind, item->style);
             break;
         case LINE_ITEM_MSG: {

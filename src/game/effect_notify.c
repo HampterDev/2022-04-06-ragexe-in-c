@@ -164,7 +164,6 @@ void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect
 
     if (effect_id == EF_HEAL_HP) {
         if (aid == g_session1.ownAid) {
-            session_reroll_values(&g_session1);
             value = g_session1.hp + (int)num;
             if (g_session1.hp != value) {
                 g_session1.hp = value;
@@ -174,7 +173,6 @@ void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect
         show_number(actor, num, 0xff00ff00);
     } else if (effect_id == EF_HEAL_SP) {
         if (aid == g_session1.ownAid) {
-            session_reroll_values(&g_session1);
             value = g_session1.sp + (int)num;
             if (g_session1.sp != value) {
                 g_session1.sp = value;

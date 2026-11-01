@@ -19,7 +19,6 @@ struct Mode {
     int attack_in_progress;
     int screenshot_pending;
     float cursor_offset_x, cursor_offset_y;
-    struct String screenshot_name;
     int cursor_action, cursor_motion;
 };
 

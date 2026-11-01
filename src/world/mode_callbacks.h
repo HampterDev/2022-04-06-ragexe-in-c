@@ -5,6 +5,5 @@
 #include "world/mode_dispatch.h"
 
 struct Mode *mode_construct(struct Mode *mode);
-void mode_destruct(struct Mode *mode);
 
 #endif

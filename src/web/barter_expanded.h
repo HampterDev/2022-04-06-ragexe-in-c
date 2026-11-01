@@ -1,5 +1,5 @@
-#ifndef ASYNCWORK_BARTER_EXPANDED_H
-#define ASYNCWORK_BARTER_EXPANDED_H
+#ifndef WEB_BARTER_EXPANDED_H
+#define WEB_BARTER_EXPANDED_H
 
 #include "contents/barter_item.h"
 

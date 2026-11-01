@@ -1,7 +1,5 @@
 #include "ui/controls/listbox.h"
-#include "ui/window_records.h"
 #include "render/rp_pool.h"
-#include "ui/record_tags.h"
 #include "core/object_type_tables.h"
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +54,6 @@ const struct UIWindowOps ui_join_friend_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_join_friend_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -91,40 +88,6 @@ void ui_join_friend_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_friend_accept_wnd_get_records(struct UIWindow *window,
-                                                              struct ReplayBuffer *out)
-{
-    struct UIJoinFriendAcceptWnd *self = (struct UIJoinFriendAcceptWnd *)window;
-    return ui_dialog_records_save(self->accept.text, msg_str(MSG_JOIN_FRIEND_QUESTION),
-                                  JOIN_FRIEND_REC_BEGIN, JOIN_FRIEND_REC_NAME,
-                                  JOIN_FRIEND_REC_END, out);
-}
-
-static void load_records(struct UIJoinFriendAcceptWnd *self, const char *buf, unsigned size)
-{
-    struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-    unsigned pos = sizeof rec;
-
-    if (rec.tag != JOIN_FRIEND_REC_BEGIN)
-        return;
-    while (size > pos) {
-        rec = *(const struct UIRecordHeader *)(buf + pos);
-        pos += sizeof rec;
-        if (rec.tag == JOIN_FRIEND_REC_END)
-            return;
-        if (rec.tag == JOIN_FRIEND_REC_NAME) {
-            char name[0x104];
-
-            memset(name, 0, sizeof name);
-            memcpy(name, buf + pos, rec.len);
-            pos += rec.len;
-            ui_join_friend_accept_wnd_send_msg(&self->accept.frame.base, NULL, JOIN_FRIEND_MSG_ASKER, 0, 0, (int)name, 0);
-        } else {
-            pos += rec.len;
-        }
-    }
-}
-
 int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                                              int val1, int val2, int val3, int val4)
 {
@@ -133,7 +96,7 @@ int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow 
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->accept.frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_JOIN_FRIEND_ACCEPT);
             mode_send_message(g_modeMgr.curMode, REQ_JOIN_FRIEND_ANSWER, self->asker_id1, self->asker_id2, 1, 0);
@@ -148,14 +111,6 @@ int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         sprintf(line, msg_str(MSG_JOIN_FRIEND_QUESTION), (const char *)val3);
         ui_list_box_clear((struct UIListBox *)(self->accept.text));
         ui_window_send_msg(self->accept.text, NULL, UI_MSG_ADD_TEXT, (int)line, 0x26, 0, 0);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        load_records(self, (const char *)val1, val2);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->accept.frame), sender, msg, val1, val2, val3, val4);

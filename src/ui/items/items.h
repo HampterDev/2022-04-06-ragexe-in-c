@@ -94,10 +94,6 @@ struct UIWindow *merge_item_wnd_new(void);
 struct UIRoundBoxTooltipWnd *ui_round_box_tooltip_wnd_construct(struct UIRoundBoxTooltipWnd *self);
 struct UIWindow *ui_round_box_tooltip_wnd_new(void);
 
-struct UIItemParamChangeDisplayWnd *
-ui_item_param_change_display_wnd_construct(struct UIItemParamChangeDisplayWnd *self);
-struct UIWindow *ui_item_param_change_display_wnd_new(void);
-
 struct UIPetInfoWnd *ui_pet_info_wnd_construct(struct UIPetInfoWnd *self);
 struct UIWindow *ui_pet_info_wnd_new(void);
 

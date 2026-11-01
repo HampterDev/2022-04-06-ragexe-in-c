@@ -49,7 +49,7 @@ int ui_agit_message_box_send_msg(struct UIWindow *window, struct UIWindow *sende
     struct UIAgitMessageBox *self = (struct UIAgitMessageBox *)window;
     if (msg != UI_MSG_COMMAND)
         return AGIT_BOX_NO;
-    ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
     if (val1 == AGIT_BOX_YES) {
         game_send_message(MODE_REQ_MOVE_GUILD_AGIT, self->agit_id, 0, 0, 0);
         ui_window_mgr_post_quit2(&g_windowMgr, &self->frame.base);

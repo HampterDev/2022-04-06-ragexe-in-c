@@ -1,3 +1,4 @@
+#include "contents/adventurer_agency.h"
 #include "world/mode_actions.h"
 #include "game/cells.h"
 #include "game/connection.h"
@@ -9,16 +10,11 @@
 #include "world/lifecycle.h"
 #include "ui/window_access.h"
 #include "contents/player_names.h"
-#include "contents/map_info_api.h"
 #include "contents/frame_timer.h"
 #include "render/device.h"
-#include "security/gameguard.h"
-#include "security/gg_hash_mgr.h"
 #include "render/renderer.h"
 #include "contents/schedule.h"
-#include "web/work_manager.h"
 #include "contents/guild_emblem_api.h"
-#include "replay/replay.h"
 #include "world/ground_api.h"
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
@@ -73,7 +69,7 @@ int game_mode_on_run(struct Mode *mode)
                 game_mode_on_change_state(mode, next);
             }
         }
-        gameguard_has_error(g_gameGuard);
+
         game_mode_on_update(mode);
         Sleep(0);
     }
@@ -84,7 +80,6 @@ int game_mode_on_run(struct Mode *mode)
 
 INIT_ONCE g_firstFrameTickGuard;
 extern DWORD g_firstFrameTick;
-enum { REPLAY_WND_MSG_STOPPED = 0x23 };
 
 unsigned g_followLastMoveTick;
 unsigned g_followLostSinceTick;
@@ -175,19 +170,16 @@ static void play_loop_sounds(struct GameMode *self)
 
 static void restart_bgm(struct GameMode *self)
 {
-    struct String rsw, mp3;
+    struct String rsw;
     struct String *map;
     const char *name;
 
-    if (!sound_stream_playing() || g_sound_settings.bgm_overridden == 0)
+    if (sound_stream_playing() || g_sound_settings.bgm_overridden == 0)
         return;
     g_sound_settings.bgm_overridden = 0;
     map = game_mode_get_map_name(self, &rsw);
     name = session_get_mp3_name(&g_session1, string_cstr(map));
-    string_init(&mp3);
-    string_assign_cstr(&mp3, name);
-    sound_play_bgm(string_cstr(&mp3));
-    string_free(&mp3);
+    sound_play_bgm(name);
     string_free(&rsw);
 }
 
@@ -195,8 +187,6 @@ static void run_logic_steps(struct GameMode *self)
 {
     int steps, n;
 
-    gameguard_send_auth_answers(g_gameGuard);
-    security_poll(g_ggHashMgr);
     if (g_isSkipFrame > 0) {
         game_mode_send_keep_alive(self, 0);
         renderer_run_every15s();
@@ -226,7 +216,6 @@ static void render_frame(struct GameMode *self)
     game_mode_draw_minimap(self);
     ui_window_mgr_render(&g_windowMgr);
     ui_window_mgr_render_windows(&g_windowMgr);
-    map_info_render_banner(g_mapInfo);
     if (self->world->is_pvp != 0 || g_session1.map_rule_flags[3] != 0) {
         game_mode_draw_pk_ranking(self);
         game_mode_draw_ranking_time_attack(self);
@@ -266,19 +255,17 @@ void game_mode_on_update(struct Mode *mode)
         g_firstFrameTick = timeGetTime();
         once_complete(&g_firstFrameTickGuard);
     }
+    adventurer_agency_tick(g_adventurerAgency);
     check_system_message();
     game_mode_poll_network_msg(self);
     if (!self->base.loop_cond)
         return;
-    if (replay_recorder_tick(replay_recorder_instance()) == 0)
-        ui_window_send_msg(g_windowMgr.replay_control_wnd, 0, REPLAY_WND_MSG_STOPPED,
-                                                                  0, 0, 0, 0);
+
     if (self->base.loop_cond != 0) {
         time_scheduler_tick(g_timeScheduler);
         player_names_update();
         name_card_holder_update(&self->actor_names);
         guild_mgr_update_requests(g_guildMgr);
-        async_work_mgr_process_responses(1000);
         game_mode_process_input(self);
         follow_pointed_actor(self);
         play_loop_sounds(self);

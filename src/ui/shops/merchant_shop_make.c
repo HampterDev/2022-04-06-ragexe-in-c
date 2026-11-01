@@ -1,9 +1,7 @@
 #include "ui/controls/edit.h"
-#include "ui/window_records.h"
 #include "ui/shops/merchant_shop_make.h"
 #include "ui/window_access.h"
 #include "render/rp_pool.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -70,7 +68,6 @@ const struct UIWindowOps ui_merchant_shop_make_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_merchant_shop_make_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -281,8 +278,7 @@ void ui_merchant_shop_make_wnd_on_create(struct UIWindow *window, int width, int
     self->buttons[0] = shop_add_button(wnd, ok_button, wnd->width - 0x5c, wnd->height - 0x18, UI_ID_OK);
     self->buttons[1] = shop_add_button(wnd, g_shopCancelButton, wnd->width - 0x2e, wnd->height - 0x18, UI_ID_CANCEL);
     self->frame.default_id = UI_ID_OK;
-    if (replay_recorder_instance()->state != REPLAY_STATE_STOPPED)
-        session_clear_store_setup(&g_session1);
+    session_clear_store_setup(&g_session1);
 
     if (!self->buying) {
         struct UIWindow *box = mem_alloc(sizeof(struct UICheckBox));
@@ -754,8 +750,7 @@ void ui_merchant_shop_make_wnd_on_l_btn_down(struct UIWindow *window, int x, int
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
         return;
     }
-    if (g_replayPlaying)
-        return;
+
     ui_merchant_shop_make_wnd_item_at(self, &item, x, y);
     if ((unsigned)item.index > 0) {
         mode = game_current_mode();
@@ -841,18 +836,4 @@ void ui_merchant_shop_make_wnd_store_info(struct UIWindow *window)
     self->info->y = self->frame.base.y;
     self->info->width = self->frame.base.width;
     self->info->height = self->frame.base.height;
-}
-
-int ui_merchant_shop_make_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIMerchantShopMakeWnd *self = (struct UIMerchantShopMakeWnd *)window;
-    struct SnapshotWriter writer = {0};
-    if (self->buying) {
-        snapshot_write(&writer, REC_BUYING_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_BUYING_END, NULL, 0);
-    } else {
-        snapshot_write(&writer, REC_VENDING_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_VENDING_END, NULL, 0);
-    }
-    return snapshot_finish(&writer, out);
 }

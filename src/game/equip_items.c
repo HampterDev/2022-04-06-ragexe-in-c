@@ -1,6 +1,6 @@
 #include "game/packet_handlers.h"
 #include "session/item_predicates.h"
-#include "contents/pet_evolution.h"
+#include "contents/pet_auto_feed.h"
 #include "session/state.h"
 #include <stdlib.h>
 #include "game/client.h"
@@ -34,7 +34,7 @@ void game_mode_check_pet_auto_feed(const struct ItemInfo *item)
     got = session_get_inventory_item(&g_session1, &egg, g_session1.hatchedEggIndex);
     egg_id = atoi(string_cstr(&got->id_text));
     item_info_destruct(&egg);
-    if (!pet_evolution_is_auto_feeding(g_petTable, egg_id) && g_session1.petAutoFeed == 1)
+    if (!pet_auto_feed_is_allowed(g_petAutoFeed, egg_id) && g_session1.petAutoFeed == 1)
         session_send_pet_auto_feed(&g_session1, 0);
 }
 

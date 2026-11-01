@@ -21,7 +21,6 @@ static int g_loadingScreenNext = 0;
 #define WND_ID_RESTART 0x13
 #define WND_ID_QUIT 0x30
 #define WND_ID_REBIRTH 0x81
-#define WND_ID_ROULETTE 0x10d
 
 #define GAME_REQ_RESTART 0x19
 #define RESTART_TO_SAVE_POINT 0
@@ -72,7 +71,6 @@ const struct UIWindowOps ui_quit_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -123,7 +121,6 @@ const struct UIWindowOps ui_restart_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -173,7 +170,6 @@ const struct UIWindowOps ui_rebirth_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -224,7 +220,6 @@ const struct UIWindowOps ui_wait_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -274,7 +269,6 @@ const struct UIWindowOps ui_loading_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -325,7 +319,6 @@ const struct UIWindowOps ui_disconnected_server_msg_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -526,7 +519,6 @@ int ui_restart_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, in
     case RESTART_ID_CHAR_SELECT:
         mode_send_message(game, GAME_REQ_RESTART, RESTART_TO_CHAR_SELECT, 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_RESTART);
-        ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_ROULETTE);
         break;
     }
     return 0;
@@ -609,7 +601,6 @@ int ui_rebirth_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, in
     case REBIRTH_ID_CHAR_SELECT:
         mode_send_message(game, GAME_REQ_RESTART, RESTART_TO_CHAR_SELECT, 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_REBIRTH);
-        ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_ROULETTE);
         break;
     case REBIRTH_ID_RISE_HERE:
         mode_send_message(game, GAME_REQ_RISE_HERE, 0, 0, 0, 0);

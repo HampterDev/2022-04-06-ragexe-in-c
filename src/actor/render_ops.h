@@ -35,7 +35,6 @@ void game_object_set_render_info(struct RenderObject *object, const struct Scree
 void game_actor_set_render_info(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);
 void skill_render_body(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);
 void item_add_pick_box(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);
-void icon_render_body(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);
 
 int game_actor_get_effect_state(struct RenderObject *object);
 int render_object_return_zero(struct RenderObject *object);
@@ -59,7 +58,6 @@ extern const struct RenderObjectOps ground_scope_ops;
 extern const struct RenderObjectOps mandra_attack_effect_ops;
 extern const struct RenderObjectOps msg_effect_ops;
 extern const struct RenderObjectOps item_ops;
-extern const struct RenderObjectOps signboard_object_ops;
 
 static __inline const struct RenderObjectOps *render_object_ops_of(const struct RenderObject *object)
 {

@@ -64,8 +64,6 @@ struct GameMode *game_mode_create(void)
     self->name_balloon_pos = 0;
     self->preferences_loaded = 0;
     self->mouse_pointer = 0;
-    self->replay_paused_at = 0;
-    self->replay_drop_taken = 0;
     self->status_bars = 0;
     return self;
 }
@@ -112,7 +110,6 @@ __declspec(noinline) void game_mode_destruct(struct GameMode *self)
     string_free(&self->exchange_partner);
 
     string_free(&self->whisper_setting_name);
-    mode_destruct(&self->base);
 }
 
 void game_mode_destroy(struct Mode *mode)

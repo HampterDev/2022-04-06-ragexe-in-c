@@ -3,7 +3,6 @@
 #include "core/object_type_tables.h"
 #include "ui/controls/controls.h"
 #include <string.h>
-#include "replay/replay.h"
 #include "diag/perf.h"
 
 struct UIListBox;
@@ -46,7 +45,6 @@ const struct UIListBoxOps ui_list_box_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -99,7 +97,6 @@ const struct UIListBoxOps ui_list_box_navi_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -400,8 +397,6 @@ void ui_list_box_navi_on_l_btn_down(struct UIWindow *window, int x, int y)
     struct UIListBoxNavi *self = (struct UIListBoxNavi *)window;
     struct UIListBox *lb = &self->list;
 
-    if (g_replayPlaying)
-        return;
     lb->selected = ui_list_box_hit_line(lb, x, y);
     if (lb->selected != -1)
         ui_window_send_msg(lb->base.parent, &lb->base, UI_MSG_COMMAND, lb->base.id, lb->selected, 0, 0);
@@ -535,7 +530,6 @@ const struct UIListBoxOps ui_list_box2_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,

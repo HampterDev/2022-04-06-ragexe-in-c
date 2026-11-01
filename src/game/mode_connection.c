@@ -1,7 +1,6 @@
 #include "game/packet_handlers.h"
 #include "game/gamemode.h"
 #include "game/mode_callbacks.h"
-#include "security/gameguard.h"
 #include "std/string.h"
 #include "game/own_states.h"
 #include "navi/navi_manager.h"
@@ -20,9 +19,7 @@
 #include "login/zone_addr.h"
 #include "render/render_api.h"
 #include "platform/language.h"
-#include "replay/replay.h"
 #include "std/std.h"
-#include "contents/clan_info.h"
 #include "core/msg_str.h"
 #include "session/session_options.h"
 #include "session/session_party.h"
@@ -30,7 +27,6 @@
 #include "session/session_talk.h"
 #include "ui/character/character.h"
 #include "ui/items/styling_shop.h"
-#include "ui/net/packet_crypt.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
@@ -72,7 +68,7 @@ void game_mode_send_keep_alive(struct GameMode *self, char force)
 
     if (!force && timeGetTime() <= self->server_time_requested_at + g_keepAliveInterval)
         return;
-    gameguard_check(g_gameGuard);
+
     self->server_time_answered = 0;
     self->server_time_requested_at = timeGetTime();
     packet.id = CZ_KEEP_ALIVE;
@@ -135,8 +131,7 @@ static int enter_zone(struct GameMode *self)
             game_mode_send_msg(&self->base, MODE_MSG_TO_LOGIN, 0, 0, 0, 0);
         return 0;
     }
-    gameguard_on_connect(g_gameGuard);
-    packet_keys_next(g_packetKeys, 1);
+
     connection = rag_connection_instance();
     connection_delay_sends(rag_connection_transport(connection), 1000);
     packet.id = CZ_ENTER;
@@ -184,7 +179,7 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
     if (g_wobbleFramesLeft > 0)
         g_wobbleFramesLeft = g_wobbleMode == 2 ? 10001 : g_wobbleFramesLeft;
 
-    if (g_replayPlaying != 0 || enter_zone(self)) {
+    if (enter_zone(self)) {
         loading = ui_window_open(WND_LOADING);
         ui_wait_wnd_set_text(loading, msg_str(0x7a));
         g_windowMgr.modal_result = 0xb1;
@@ -192,11 +187,6 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
     string_free(&name);
     string_free(&map_name);
     string_free(&server_map_name);
-}
-
-void game_mode_game_guard_auth(void)
-{
-    gameguard_authenticate(g_gameGuard);
 }
 
 enum { SERVICE_TYPE_TAIWAN = 4 };
@@ -309,7 +299,6 @@ void game_mode_zc_restart_ack(const unsigned char *pkt)
     navi_manager_reset(&g_navi, 1);
     navi_manager_clear_target_and_marker(&g_navi);
     g_navi.windowPage = 0;
-    clan_info_clear(g_clanInfo);
     if (packet->result == 1) {
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         g_loginStartMode = LOGIN_START_RESTART;

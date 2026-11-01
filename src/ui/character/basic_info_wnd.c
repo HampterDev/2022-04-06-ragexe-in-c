@@ -104,7 +104,6 @@ const struct UIWindowOps ui_basic_info_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -709,7 +708,7 @@ static void basic_toggle(int window_id)
         ui_window_open(window_id);
 }
 
-static const int basic_closed_windows[] = {0xb, 0xd, 8, 0x141, 0xa, 0x45, 0x1b, 0x1e, 0x25, 0x26, 0x58, 0x56, 0x57,
+static const int basic_closed_windows[] = {0xb, 0xd, 8, 0x141, 0xa, 0x45, 0x1b, 0x1e, 0x25, 0x58, 0x56, 0x57,
                                            0x28, 0x3b};
 
 int ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,

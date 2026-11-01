@@ -24,7 +24,6 @@ void model_res_clear(struct C3dModelRes *model)
     model->blocks = NULL;
     model->blockCount = 0;
     owned_text_clear(&model->fileName);
-    text_array_clear(&model->videoNames);
 }
 
 static struct Res *model_resource_create(const struct ResourceOps *ops)

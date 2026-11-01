@@ -11,7 +11,6 @@
 #define SOUND_SAMPLES 48
 #define FADE_STEPS 1000
 #define FADE_STEP_MS 10
-#define BUTTON_SOUND "버튼소리.wav"
 
 struct SoundManager {
     CRITICAL_SECTION stream_lock;
@@ -25,7 +24,6 @@ struct SoundManager {
     void *samples_3d[SOUND_SAMPLES];
     void *provider;
     void *listener;
-    int sample_count;
     int bgm_fade_target;
     int bgm_volume;
     int effect_volume;
@@ -36,13 +34,8 @@ struct SoundManager {
 
 static struct SoundManager *sound_manager;
 static int cleanup_registered;
-struct SoundSettings g_sound_settings = { 1, 0, 1, 0 };
-char g_sound_provider_name[1024];
-int g_sound_use_waveout;
+struct SoundSettings g_sound_settings = { 1, 1, 0 };
 int g_sound_speaker_type;
-int g_sound_rate_type;
-int g_sound_sample_type;
-int g_sound_bits_type;
 
 static int clamp_volume(int volume)
 {
@@ -167,32 +160,28 @@ static void destroy_manager(struct SoundManager *mgr)
 
 static int open_manager(struct SoundManager *mgr)
 {
-    int i, rate, bits, channels;
+    int i, channels;
     void *next = NULL, *provider = NULL;
     char *name = NULL;
     if (g_soundMode == 0)
         return 1;
-    mgr->sample_count = g_sound_sample_type == 0 ? 48 : g_sound_sample_type == 1 ? 32 : 16;
     _AIL_set_redist_directory(".\\");
     _AIL_startup();
     mgr->miles_started = 1;
     channels = g_soundMode == 1 ? 1 : 2;
-    rate = g_sound_rate_type == 0 ? 22050 : g_sound_rate_type == 1 ? 11025 : 8000;
-    bits = g_sound_bits_type == 0 ? 16 : 8;
-    _AIL_set_preference(15, g_sound_use_waveout);
-    mgr->driver = _AIL_open_digital_driver(rate, bits, channels, 1);
+    _AIL_set_preference(15, 0);
+    mgr->driver = _AIL_open_digital_driver(22050, 16, channels, 1);
     if (!mgr->driver)
         return 0;
     if (g_soundMode == 1) {
-        for (i = 0; i < mgr->sample_count; ++i) {
+        for (i = 0; i < SOUND_SAMPLES; ++i) {
             mgr->samples[i] = _AIL_allocate_sample_handle(mgr->driver);
             if (!mgr->samples[i])
                 break;
         }
     } else if (g_soundMode == 2) {
-        strcpy_s(g_sound_provider_name, sizeof g_sound_provider_name, "Miles Fast 2D Positional Audio");
         while (_AIL_enumerate_3D_providers(&next, &provider, &name)) {
-            if (name && strcmp(name, g_sound_provider_name) == 0) {
+            if (name && strcmp(name, "Miles Fast 2D Positional Audio") == 0) {
                 if (_AIL_open_3D_provider(provider) != 0)
                     return 0;
                 mgr->provider = provider;
@@ -201,7 +190,7 @@ static int open_manager(struct SoundManager *mgr)
                 mgr->listener = _AIL_open_3D_listener(provider);
                 if (!mgr->listener)
                     return 0;
-                for (i = 0; i < mgr->sample_count; ++i) {
+                for (i = 0; i < SOUND_SAMPLES; ++i) {
                     mgr->samples_3d[i] = _AIL_allocate_3D_sample_handle(provider);
                     if (!mgr->samples_3d[i])
                         break;
@@ -236,7 +225,7 @@ int sound_mgr_create(void)
         }
         cleanup_registered = 1;
     }
-    g_sound_settings = (struct SoundSettings){ 1, 0, 1, 0 };
+    g_sound_settings = (struct SoundSettings){ 1, 1, 0 };
     sound_manager = mgr;
     return 1;
 }
@@ -263,16 +252,22 @@ void sound_play_stream(const char *name, int loop_count)
 void sound_play_bgm(const char *name)
 {
     struct SoundManager *mgr = sound_manager;
-    char *copy;
-    if (!mgr || !name)
+    char *copy = NULL;
+    if (!mgr)
         return;
-    copy = copy_name(name);
-    if (!copy)
-        return;
+    if (name && *name) {
+        copy = copy_name(name);
+        if (!copy)
+            return;
+    }
+    EnterCriticalSection(&mgr->stream_lock);
     free(mgr->bgm_name);
     mgr->bgm_name = copy;
-    if (g_sound_settings.bgm_on)
-        sound_play_stream(NULL, 0);
+    if (!copy)
+        close_stream(mgr);
+    else if (g_sound_settings.bgm_on && g_soundMode)
+        play_stream(mgr, copy, 0);
+    LeaveCriticalSection(&mgr->stream_lock);
     sound_set_room_type(0);
 }
 
@@ -314,7 +309,7 @@ static char sound_play_2d(struct SoundManager *self, void *file, const float *x,
     if (!((float)full_distance >= distance))
         volume = (int)((float)volume * (float)full_distance / distance);
     volume = (int)((float)volume * volume_scale);
-    for (i = 0; i < self->sample_count; i++) {
+    for (i = 0; i < SOUND_SAMPLES; i++) {
         void *sample = self->samples[i];
 
         if (sample && _AIL_sample_status(sample) == MSS_SAMPLE_DONE) {
@@ -336,7 +331,7 @@ static char sound_play_3d(struct SoundManager *self, void *file, const float *x,
 
     if (!self->provider)
         return sound_play_2d(self, file, x, y, z, 250, 40, 1.0f);
-    for (i = 0; i < self->sample_count; i++) {
+    for (i = 0; i < SOUND_SAMPLES; i++) {
         void *sample = self->samples_3d[i];
 
         if (!sample || _AIL_3D_sample_status(sample) != MSS_SAMPLE_DONE)
@@ -361,8 +356,6 @@ void sound_play_wave(const char *name, float x, float y, float z,
     struct Wave *wave;
 
     if (!self || !name || g_soundMode == 0 || !g_sound_settings.effects_on)
-        return;
-    if (g_sound_settings.button_sound_only && strcmp(name, BUTTON_SOUND) != 0)
         return;
     wave = (struct Wave *)res_mgr_get(g_resMgr(), name);
     if (!wave)

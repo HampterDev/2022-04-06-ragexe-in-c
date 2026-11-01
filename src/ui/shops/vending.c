@@ -1,5 +1,4 @@
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/actor_labels.h"
 #include "ui/controls/static.h"
 #include "session/state.h"
@@ -66,7 +65,6 @@ const struct UIWindowOps ui_merchant_shop_title_ops = {
     .render = ui_merchant_shop_title_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -86,14 +84,6 @@ struct UIMerchantShopTitle {
 OFFSET_ASSERT(UIMerchantShopTitle, owner, 0x80);
 OFFSET_ASSERT(UIMerchantShopTitle, buying, 0x88);
 SIZE_ASSERT(UIMerchantShopTitle, 0x8c);
-
-const char *ui_merchant_shop_title_text(const struct UIWindow *window, size_t *length)
-{
-    const struct UIMerchantShopTitle *shop = (const struct UIMerchantShopTitle *)window;
-    const struct UIStaticText *title = shop ? (const struct UIStaticText *)shop->title : NULL;
-    if (length) *length = title ? title->tooltip.size : 0;
-    return title ? string_cstr(&title->tooltip) : "";
-}
 
 static struct UIMerchantShopTitle *ui_merchant_shop_title_construct(struct UIMerchantShopTitle *self, int buying)
 {
@@ -250,9 +240,6 @@ int ui_merchant_shop_title_send_msg(struct UIWindow *window, struct UIWindow *se
     default:
         return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);
     }
-    if (word_filter_contains(&g_nameFilter, text) == 1) {
-        word_filter_censor(&g_nameFilter, text);
-    }
     string_init(&name);
     string_assign_cstr(&name, text);
     chars = string_cstr(&name);
@@ -320,7 +307,6 @@ const struct UIWindowOps ui_merchant_item_purchase_msg_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

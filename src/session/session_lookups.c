@@ -60,7 +60,7 @@ int session_count_hidden_hotkeys_below(struct Session *self, int list, int index
         return 0;
     for (i = 0x1e; i < index; i++) {
         if (i == 0x1e || i == 0x21 || i == 0x22 || i == 0x24 || i == 0x35 || i == 0x38 || i == 0x3a
-            || i == 0x2b || i == 0x2d) {
+            || i == 0x2b || i == 0x2d || i == 0x36) {
             index++;
             n++;
         }

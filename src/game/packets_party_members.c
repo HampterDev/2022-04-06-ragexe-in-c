@@ -1,6 +1,5 @@
 #include "game/packet_handlers.h"
 #include "std/string.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include <string.h>
 #include "game/packets_world.h"
@@ -125,9 +124,6 @@ void game_mode_add_party_member(struct GameMode *self, const char *name, unsigne
     m.level = level;
     strncpy(party, party_name, 24);
     party[24] = 0;
-    if (word_filter_contains(&g_nameFilter, party)) {
-        word_filter_censor(&g_nameFilter, party);
-    }
     string_assign_cstr(&g_session1.partyName, party);
 
     if (aid == (unsigned)((unsigned)g_session1.ownAid)) {

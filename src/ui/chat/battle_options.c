@@ -56,7 +56,6 @@ const struct UIWindowOps ui_battle_msg_option_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -65,14 +64,18 @@ const struct UIWindowOps ui_battle_msg_option_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-#define BATTLE_OPTION_COUNT CHAT_TAB_FLAG_COUNT
+#define BATTLE_OPTION_COUNT 21
 #define BATTLE_ROW_HEIGHT 20
 #define MSG_BATTLE_OPTION_HIDDEN 0x60d
 #define MSG_BATTLE_OPTION_TITLE 0x509
 
 static const int battle_option_msgs[BATTLE_OPTION_COUNT] = {
     0x50b, 0x4fd, 0x4fe, 0x4ff, 0x500, 0x501, 0x502, 0x503, 0x504, 0x505, 0x506,
-    0x507, 0x508, 0x533, 0x60d, 0x652, 0x653, 0x654, 0x656, 0x657, 0x93d, 0xba4,
+    0x507, 0x508, 0x533, 0x60d, 0x652, 0x653, 0x654, 0x656, 0x657, 0xba4,
+};
+
+static const unsigned char battle_option_flags[BATTLE_OPTION_COUNT] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21,
 };
 
 struct UIBattleMsgOptionWnd {
@@ -254,7 +257,7 @@ void ui_battle_msg_option_wnd_on_l_btn_down(struct UIWindow *window, int x, int 
     if (!tab)
         return;
     self->on[self->hover] = self->on[self->hover] == 0;
-    tab->shown[self->hover] = self->on[self->hover];
+    tab->shown[battle_option_flags[self->hover]] = self->on[self->hover];
     self->all_on = 1;
     all_on = 1;
     for (i = 0; i < BATTLE_OPTION_COUNT; i++) {
@@ -345,7 +348,7 @@ static void show_tab(struct UIBattleMsgOptionWnd *self, int key, int kind, int h
 
         self->all_on = 1;
         for (i = 0; i < BATTLE_OPTION_COUNT; i++) {
-            self->on[i] = tab.shown[i];
+            self->on[i] = tab.shown[battle_option_flags[i]];
             if (!self->on[i])
                 self->all_on = 0;
         }
@@ -385,7 +388,7 @@ int ui_battle_msg_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *
                 BYTE on = self->all_on != 0;
 
                 self->on[i] = on;
-                tab->shown[i] = on;
+                tab->shown[battle_option_flags[i]] = on;
             }
             ui_window_invalidate_base(&self->frame.base);
         }

@@ -87,7 +87,6 @@ struct GuildWndInfo {
 };
 
 struct MiniMapWndInfo {
-    int memo_x, memo_y;
     int x, y;
     int width, height;
     int show_quest;

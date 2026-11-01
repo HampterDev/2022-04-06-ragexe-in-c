@@ -2,10 +2,7 @@
 #include "navi/navi_manager.h"
 #include "navi/navi_search.h"
 #include "navi/navigation.h"
-#include "navi/replay_events.h"
 #include "game/navigation.h"
-#include "game/replay_navigation.h"
-#include "replay/replay.h"
 #include "ui/quests/navigation.h"
 #include "ui/navigation_view.h"
 #include "world_state_memory.h"
@@ -14,25 +11,15 @@
 
 struct NaviManager g_navi;
 struct UIWindowMgr g_windowMgr;
-static struct ReplayRecorder recorder;
 static struct NaviMap map;
 static struct UINavigationV4Wnd window;
 static struct UIWindowOps window_table;
-static unsigned char packet_bytes[128];
-static size_t packet_size;
-static int writes, write_ok = 1, opens, raised, invalidated, relayouts, list_layouts, refreshed;
+static int opens, raised, invalidated, relayouts, list_layouts, refreshed;
 static int chat_lines, boxes, commands, guided_maps, result_maps, route_maps;
 static int guide_status = 11, guide_calls, guide_x, guide_y, updates, searches, open_ok = 1;
 static struct NaviManager *searched_manager;
 static char searched_text[256];
 
-struct ReplayRecorder *replay_recorder_instance(void) { return &recorder; }
-BYTE replay_recorder_write_packet(struct ReplayRecorder *owner, unsigned short size, const void *data, int mode, DWORD time)
-{
-    assert(owner == &recorder && mode == REPLAY_TIME_ZERO && time == 0 && size <= sizeof packet_bytes);
-    memcpy(packet_bytes, data, size); packet_size = size; ++writes;
-    return (BYTE)write_ok;
-}
 char *msg_str(int id) { return id == 0x90b ? "%s" : "Navigation status"; }
 struct NaviMap *navi_manager_map_by_name(struct NaviManager *manager, const char *name)
 { assert(manager); return !strcmp(name, string_cstr(&map.name)) ? &map : NULL; }
@@ -70,18 +57,17 @@ void ui_navigation_v4_wnd_fill_results(struct UINavigationV4Wnd *value) { assert
 void ui_ro_map_wnd_load_guided_map(struct UIRoMapWnd *value) { assert((void *)value == g_windowMgr.kafra_move_map_service_info_wnd); ++guided_maps; }
 void ui_ro_map_wnd_load_result_maps(struct UIRoMapWnd *value) { assert((void *)value == g_windowMgr.kafra_move_map_service_info_wnd); ++result_maps; }
 void ui_ro_map_wnd_load_route_maps(struct UIRoMapWnd *value) { assert((void *)value == g_windowMgr.kafra_move_map_service_info_wnd); ++route_maps; }
-int navi_results_load(struct NaviManager *manager, const void *data, size_t size) { (void)manager; (void)data; (void)size; abort(); }
 
 static void reset(void)
 {
-    memset(&g_navi, 0, sizeof g_navi); memset(&g_windowMgr, 0, sizeof g_windowMgr); memset(&recorder, 0, sizeof recorder);
+    memset(&g_navi, 0, sizeof g_navi); memset(&g_windowMgr, 0, sizeof g_windowMgr);
     memset(&window, 0, sizeof window); memset(&window_table, 0, sizeof window_table);
     window_table.invalidate = invalidate; window.frame.base.ops = &window_table;
     string_init(&map.name); string_assign_cstr(&map.name, "prontera");
     string_init(&g_navi.searchText); search_result_init(&g_navi.guided, -1); search_result_init(&g_navi.destination, -1);
-    writes = opens = raised = invalidated = relayouts = list_layouts = refreshed = 0;
+    opens = raised = invalidated = relayouts = list_layouts = refreshed = 0;
     chat_lines = boxes = commands = guided_maps = result_maps = route_maps = 0;
-    guide_calls = updates = searches = 0; guide_status = 11; write_ok = open_ok = 1;
+    guide_calls = updates = searches = 0; guide_status = 11; open_ok = 1;
 }
 static void cleanup(void)
 {
@@ -90,71 +76,22 @@ static void cleanup(void)
     assert(!live_blocks);
 }
 
-#ifdef NAVI_EVENT_ORACLE
-#include "navigation_event_oracle.h"
-static void emit(const char *name)
-{
-    char path[100]; FILE *file;
-    sprintf(path, "%s.bin", name); file = fopen(path, "wb"); assert(file);
-    assert(fwrite(packet_bytes, 1, packet_size, file) == packet_size); assert(!fclose(file));
-}
-int main(void)
-{
-    struct String name;
-    recorder.state = 2;
-    string_init(&name);
-    string_assign_cstr(&name, "prontera"); NaviManager_RecordNavigate(&g_navi, name, 3, 0x105, 1, -12, 32767, 1002); emit("route_short");
-    string_init(&name);
-    string_assign_cstr(&name, "abcdefghijklmnopqrstuvwxyz1234"); NaviManager_RecordNavigate(&g_navi, name, 1, 7, 0, INT_MIN, INT_MAX, -1); emit("route_full");
-    string_init(&name);
-    string_assign_cstr(&name, "프론테라"); NaviManager_RecordNavigate(&g_navi, name, 0, 5, 1, 27, 31, 1002); emit("route_korean");
-    string_init(&name);
-    string_assign_cstr(&name, "prontera"); NaviManager_RecordShowMap(&g_navi, name, 1000, -1); emit("map_short");
-    string_init(&name);
-    string_assign_cstr(&name, "abcdefghijklmnopqrstuvwxyz1234"); NaviManager_RecordShowMap(&g_navi, name, INT_MIN, INT_MAX); emit("map_full");
-    assert(!live_blocks); puts("archived navigation event writer fixtures generated"); return 0;
-}
-#else
-#include "fixtures/navigation_events_wire.h"
-static void equals(const unsigned char *expected, size_t size)
-{ assert(packet_size == size && !memcmp(packet_bytes, expected, size)); }
-static void writers(void)
-{
-    unsigned allocations = live_blocks;
-    recorder.state = 2;
-    assert(navi_record_route("prontera", 8, 3, 0x105, 1, -12, 32767, 1002) == 54); equals(route_short, sizeof route_short);
-    assert(navi_record_route("abcdefghijklmnopqrstuvwxyz1234", 30, 1, 7, 0, INT_MIN, INT_MAX, -1) == 54); equals(route_full, sizeof route_full);
-    assert(navi_record_route("프론테라", strlen("프론테라"), 0, 5, 1, 27, 31, 1002) == 54); equals(route_korean, sizeof route_korean);
-    assert(navi_record_map("prontera", 8, 1000, -1) == 44); equals(map_short, sizeof map_short);
-    assert(navi_record_map("abcdefghijklmnopqrstuvwxyz1234", 30, INT_MIN, INT_MAX) == 44); equals(map_full, sizeof map_full);
-    assert(live_blocks == allocations);
-    assert(navi_record_map("abcdefghijklmnopqrstuvwxyz12345", 31, 1, 2) == -1 && recorder.writeFailed);
-    recorder.writeFailed = 0; assert(navi_record_route("abcdefghijklmnopqrstuvwxyz12345", 31, 0, 0, 0, 0, 0, 0) == -1 && recorder.writeFailed);
-    recorder.writeFailed = 0; assert(navi_record_map(NULL, 0, 0, 0) == -1 && recorder.writeFailed);
-    recorder.writeFailed = 0; assert(navi_record_route(NULL, 0, 0, 0, 0, 0, 0, 0) == -1 && recorder.writeFailed);
-    recorder.writeFailed = 0; recorder.state = 0;
-    assert(!navi_record_map(NULL, SIZE_MAX, 0, 0) && !recorder.writeFailed);
-    assert(!navi_record_route(NULL, SIZE_MAX, 0, 0, 0, 0, 0, 0) && !recorder.writeFailed);
-    recorder.state = 2; write_ok = 0; assert(navi_record_map("prontera", 8, 1, 2) == -1); write_ok = 1;
-}
 static void command_paths(void)
 {
     const char *borrowed = "map_alias"; int before;
-    recorder.state = 2; g_windowMgr.kafra_move_map_service_info_wnd = (void *)2;
-    before = writes;
+    g_windowMgr.kafra_move_map_service_info_wnd = (void *)2;
     assert(navi_navigate(&g_navi, borrowed, NAVI_RESULT_MAP, 5, 1, 17, 29, 1002));
-    assert(guide_x == 17 && guide_y == 29 && writes == before + 1 && !opens && g_navi.windowHidden == 1);
-    assert(g_navi.guided.obj == &map && g_navi.destination.obj == &map && !strcmp((const char *)packet_bytes + 6, borrowed));
+    assert(guide_x == 17 && guide_y == 29 && !opens && g_navi.windowHidden == 1);
+    assert(g_navi.guided.obj == &map && g_navi.destination.obj == &map);
     assert(g_navi.routeUseKafra == 1 && g_navi.routeUseScrolls == 0 && g_navi.routeUseAirship == 1);
     assert(guided_maps == 1 && result_maps == 1 && route_maps == 1);
     string_assign(&g_navi.searchText, "an_alias_owned_by_the_manager", sizeof "an_alias_owned_by_the_manager" - 1);
     assert(navi_navigate(&g_navi, string_cstr(&g_navi.searchText), NAVI_RESULT_MAP, 5, 1, 17, 29, 0));
-    assert(!strcmp((const char *)packet_bytes + 6, "an_alias_owned_by_the_manager"));
     g_windowMgr.navigation_v4_wnd = &window.frame.base;
     assert(navi_navigate(&g_navi, "prontera", NAVI_RESULT_MAP, 2, 1, 7, 8, 0));
     assert(!g_navi.windowHidden && relayouts == 1);
-    before = writes; guide_status = -94;
-    assert(!navi_navigate(&g_navi, borrowed, NAVI_RESULT_MAP, 5, 0, 1, 2, 0) && writes == before); guide_status = 11;
+    guide_status = -94;
+    assert(!navi_navigate(&g_navi, borrowed, NAVI_RESULT_MAP, 5, 0, 1, 2, 0)); guide_status = 11;
     assert(!navi_navigate(&g_navi, borrowed, 4, 5, 0, 1, 2, 0));
     assert(!navi_navigate(&g_navi, borrowed, 5, 5, 0, 1, 2, 0));
     assert(!navi_navigate(&g_navi, NULL, 1, 5, 0, 1, 2, 0));
@@ -167,7 +104,7 @@ static void command_paths(void)
     {
         char long_name[301];
         memset(long_name, 'a', 300); long_name[300] = 0; string_assign(&map.name, long_name, 300);
-        recorder.state = 0; assert(navi_show_map(&g_navi, long_name, INT_MIN, INT_MAX));
+        assert(navi_show_map(&g_navi, long_name, INT_MIN, INT_MAX));
         assert(g_navi.guided.name.size == 323 && !memcmp(string_cstr(&g_navi.guided.name), long_name, 300));
         string_assign_cstr(&map.name, "prontera");
     }
@@ -190,29 +127,7 @@ static void command_paths(void)
 }
 static void readers(void)
 {
-    unsigned char copy[sizeof route_full + 1]; size_t i; int before;
-    recorder.state = 0;
-    assert(!game_replay_navigation_route(NULL, sizeof route_full));
-    assert(!game_replay_navigation_map(NULL, sizeof map_full));
-    memcpy(copy, route_full, sizeof route_full); before = guide_calls;
-    for (i = 0; i < sizeof route_full; ++i) assert(!game_replay_navigation_route(copy, i));
-    assert(!game_replay_navigation_route(copy, sizeof copy) && guide_calls == before);
-    string_assign_cstr(&map.name, "abcdefghijklmnopqrstuvwxyz1234");
-    assert(game_replay_navigation_route(copy, sizeof route_full) && guide_x == INT_MIN && guide_y == INT_MAX);
-    assert(!memcmp(copy, route_full, sizeof route_full));
-    for (i = 0; i < 6; ++i) {
-        memcpy(copy, route_full, sizeof route_full); copy[i] ^= 1;
-        assert(!game_replay_navigation_route(copy, sizeof route_full));
-    }
-    memcpy(copy, map_full, sizeof map_full); before = updates;
-    assert(!game_replay_navigation_map(copy, sizeof map_full + 1));
-    for (i = 0; i < sizeof map_full; ++i) assert(!game_replay_navigation_map(copy, i));
-    assert(updates == before && game_replay_navigation_map(copy, sizeof map_full));
-    assert(!memcmp(copy, map_full, sizeof map_full));
-    for (i = 0; i < 6; ++i) {
-        memcpy(copy, map_full, sizeof map_full); copy[i] ^= 1;
-        assert(!game_replay_navigation_map(copy, sizeof map_full));
-    }
+    int before;
     {
         struct PacketNavigationActive packet = {0}; int digits;
         packet.type = NAVI_RESULT_MAP; packet.hide_window = 1;
@@ -232,8 +147,7 @@ static void readers(void)
 }
 int main(void)
 {
-    reset(); writers(); command_paths(); readers(); cleanup();
-    puts("navigation events: archived bytes, bounded names, borrowed commands, full-width packets, malformed headers, long labels, search ownership and typed UI operations passed");
+    reset(); command_paths(); readers(); cleanup();
+    puts("navigation events: borrowed commands, full-width packets, long labels, search ownership and typed UI operations passed");
     return 0;
 }
-#endif

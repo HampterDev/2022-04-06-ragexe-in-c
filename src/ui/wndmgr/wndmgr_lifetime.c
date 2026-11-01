@@ -39,7 +39,6 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     tree_init(&self->whisper_wnds);
     list_init(&self->hidden_wnds);
     self->basic_info_info.tall = 1;
-    tree_init(&self->browsers);
     self->message_boxes.first = NULL;
     self->message_boxes.last = NULL;
     self->message_boxes.end = NULL;
@@ -51,7 +50,6 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->macro_reporter_info.players.end = NULL;
     list_init(&self->plates);
     list_init(&self->plate_ids);
-    list_init(&self->browsers_to_delete);
 
     ui_window_mgr_clear_slots(self);
     self->backdrop = NULL;
@@ -92,13 +90,7 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->chat_bar_shown = 0;
     self->chat_bar_toggleable = 1;
     self->hide_ui_state = 0;
-    self->replay_control_wnd = NULL;
-    self->replay_reccontrol_wnd = NULL;
-    self->replay_wnd = NULL;
-    ui_window_mgr_init_window_flags(self);
     self->navigation_v4_wnd = NULL;
-    self->active_web_browser = NULL;
-    self->browser = NULL;
     self->hover_serial = 0;
     self->hover_prev = 0;
     self->round_box_tooltip_show = 0;
@@ -134,13 +126,11 @@ void ui_window_mgr_destroy(struct UIWindowMgr *self)
         mem_free(TREE_VALUE(it, struct WmClosedRect)->rect);
     tree_clear(&self->closed_rects, NULL);
 
-    list_free(&self->browsers_to_delete, NULL);
     list_free(&self->plate_ids, NULL);
     list_free(&self->plates, NULL);
     reported_players_free(&self->macro_reporter_info.players);
     tree_free(&self->closed_rects, NULL);
     vec_free(&self->message_boxes);
-    tree_free(&self->browsers, NULL);
     list_free(&self->hidden_wnds, NULL);
     tree_free(&self->whisper_wnds, wm_whisper_wnd_destroy);
     string_free(&self->chat_line);

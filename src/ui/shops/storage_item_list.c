@@ -60,14 +60,13 @@ void storage_draw_items(struct UIItemBaseWnd *base, int x0, int name_width)
     }
 }
 
-void storage_on_lbtn_down(struct UIItemBaseWnd *base, int x, int y, int left, int replay_stops)
+void storage_on_lbtn_down(struct UIItemBaseWnd *base, int x, int y, int left)
 {
     struct ItemInfo info;
 
     if (y < ITEM_GRID_Y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&base->frame), x, y);
-    if (replay_stops && g_replayPlaying)
-        return;
+
     store_item_at(base, &info, x, y, left);
     if (info.index && !info.move_pending) {
         struct GameMode *mode = game_current_mode();

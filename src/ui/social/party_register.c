@@ -1,9 +1,8 @@
+#include "contents/adventurer_agency.h"
 #include "ui/controls/edit.h"
 #include "core/text_array.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"
-#include "web/service_managers.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include <ctype.h>
@@ -56,7 +55,6 @@ const struct UIWindowOps ui_register_party_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -75,7 +73,6 @@ const struct UIWindowOps ui_register_party_wnd_ops = {
 #define MSG_REGISTER 0xd2b
 #define MSG_NOTICE 0xd2a
 #define MSG_NOT_LEADER 0xdb2
-#define MSG_MEMO_FILTERED 0xd2c
 #define MSG_LEVELS_REVERSED 0xdbc
 
 #define CHAT_RED 0xff
@@ -301,8 +298,6 @@ static int register_send(struct UIRegisterPartyWnd *self)
     ad.purpose = self->purpose;
     text = ui_edit_ctrl_get_text(self->memo);
     if (!owned_text_assign(&ad.memo, text_view_cstr(text))) goto done;
-    text = session_character_name(&g_session1);
-    if (!owned_text_assign(&ad.name, text_view_cstr(text))) goto done;
     sent = adventurer_agency_register(g_adventurerAgency, &ad);
 done:
     party_booking_clear(&ad);
@@ -328,10 +323,6 @@ int ui_register_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
             if (val1 != BOARD_ID_OWN_AD && val1 != BOARD_ID_RECRUIT)
                 return 0;
             if (g_session1.partyLeader != 0) {
-                if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->memo)) == 1) {
-                    chat_red(MSG_MEMO_FILTERED);
-                    return 0;
-                }
                 ui_register_party_wnd_check_levels(self);
                 if (atoi(ui_edit_ctrl_get_text(self->min_level)) >
                     atoi(ui_edit_ctrl_get_text(self->max_level))) {

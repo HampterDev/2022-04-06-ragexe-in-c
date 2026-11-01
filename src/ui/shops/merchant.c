@@ -1,10 +1,8 @@
 #include "ui/controls/edit.h"
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "ui/window_access.h"
 #include "world/tooltip.h"
 #include "ui/items/item_tags.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -65,7 +63,6 @@ const struct UIWindowOps ui_merchant_item_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -120,7 +117,6 @@ const struct UIWindowOps ui_merchant_mirror_item_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_merchant_mirror_item_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -328,8 +324,7 @@ void ui_merchant_item_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 
     if (y < ITEM_GRID_Y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->base.frame), x, y);
-    if (g_replayPlaying)
-        return;
+
     ui_item_base_wnd_item_at(&self->base, &info, x, y);
     if ((unsigned)info.index > 0 && !g_windowMgr.merchant_shop_make_wnd && !info.move_pending) {
         struct GameMode *mode = game_current_mode();
@@ -427,8 +422,7 @@ void ui_merchant_mirror_item_wnd_on_create(struct UIWindow *window, int width, i
         session_fill_buying_store_list(&g_session1);
     else if (self->variant == 2)
         session_fill_buying_store_list_priced(&g_session1);
-    else if (replay_recorder_instance()->state != REPLAY_STATE_STOPPED)
-        session_mirror_from_cart(&g_session1);
+    else session_mirror_from_cart(&g_session1);
     ui_merchant_mirror_item_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
 }
 
@@ -439,8 +433,7 @@ void ui_merchant_mirror_item_wnd_on_l_btn_down(struct UIWindow *window, int x, i
 
     if (y < ITEM_GRID_Y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->base.frame), x, y);
-    if (g_replayPlaying)
-        return;
+
     ui_item_base_wnd_item_at(&self->base, &info, x, y);
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
@@ -517,25 +510,6 @@ static void mirror_add_dragged(struct UIMerchantMirrorItemWnd *self)
     item_info_destruct(&info);
 }
 
-static void mirror_load_records(struct UIMerchantMirrorItemWnd *self, const char *buf, unsigned size)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != REC_MIRROR_BEGIN)
-        return;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == REC_MIRROR_END) {
-            ui_merchant_mirror_item_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-            return;
-        }
-        pos += hdr.len;
-    }
-}
-
 int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                                                int val1, int val2, int val3, int val4)
 {
@@ -578,25 +552,6 @@ int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindo
     case UI_MSG_ADD_DRAGGED:
         mirror_add_dragged(self);
         return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        mirror_load_records(self, (const char *)val1, (unsigned)val2);
-        return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
-}
-
-int ui_merchant_mirror_item_wnd_get_records(struct UIWindow *self,
-                                                                struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_MIRROR_BEGIN, NULL, 0);
-    snapshot_write(&writer, REC_MIRROR_END, NULL, 0);
-    return snapshot_finish(&writer, out);
 }

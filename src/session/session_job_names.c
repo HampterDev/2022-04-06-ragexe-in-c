@@ -352,14 +352,6 @@ void ui_window_mgr_render_menu(struct Session *self)
     names_resize(&self->doramHairNamesFemale, 0xb, "1");
     APPLY(&self->doramHairNamesFemale, s_doramHairFemale);
 
-    names_resize(&self->accessoryNames, 0xbb8, "_병아리모자");
-    ((const char **)self->accessoryNames.first)[0] = "";
-    for (i = 1; i < 0xbb8; i++) {
-        const char *name = NULL;
-        if (client_lua_call(self->luaState, "ReqAccName", "d>s", i, &name))
-            ((const char **)self->accessoryNames.first)[i] = name;
-    }
-
     names_resize(&self->jobSpritePaths, 0x6d93, BEGINNER "\\" BEGINNER);
     APPLY(&self->jobSpritePaths, s_jobSpritePaths);
 

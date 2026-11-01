@@ -2,7 +2,6 @@
 #define SKILLS_SKILL_BUNDLE_H
 
 #include "skills/skill_bundle_types.h"
-#include "skills/skill_tree.h"
 #include "skills/skill_answer.h"
 
 struct PlayerSkillBundle *player_skill_bundle_construct(struct PlayerSkillBundle *self);

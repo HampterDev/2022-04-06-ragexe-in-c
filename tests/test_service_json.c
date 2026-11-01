@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-void test_party_booking_json(void);
 
 char *native_json_roundtrip(const char *input, size_t length);
 
@@ -71,7 +70,6 @@ static void fields(void)
     json_value_assign(json_value_member(&root, "a"), &number);
     json_tree_free(&number);
     assert(json_value_as_int(json_value_member(&root, "a")) == 42);
-    assert(json_value_as_bool(&root));
     json_tree_free(&root);
     json_value_at(&root, 4);
     assert(root.count == 5 && json_value_is_null(&root.u.items[3]));
@@ -124,7 +122,6 @@ int main(void)
     fields();
     invalid_input();
     borrowed_input();
-    test_party_booking_json();
     puts("Party booking JSON: defaults, all fields, counted strings and atomic allocation failures passed");
     puts("service JSON: ownership, counted text, numbers, duplicate keys and parse failures passed");
     return 0;

@@ -5,8 +5,6 @@
 #include "core/packet_table.h"
 #include "core/res_mgr.h"
 #include "contents/guild_info.h"
-#include "contents/manner_filter.h"
-#include "contents/tips.h"
 #include "core/xml.h"
 #include "fileio/file_manager.h"
 #include "fileio/res_mgr.h"
@@ -37,7 +35,6 @@
 #include "ui/skin_manager.h"
 #include "ui/social/guild_member_sort.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "ui/social/entry_queue_state.h"
 #include "ui/window_manager_lifecycle.h"
 #include "ui/window_manager_state.h"
 #include "ui/worldmap/kafra_services.h"
@@ -53,8 +50,6 @@ static void release_snap_mgr(void) { snap_mgr_destruct(&g_snapMgr); }
 static void release_window_mgr(void) { ui_window_mgr_destroy(&g_windowMgr); }
 static void release_actor_pick_node(void) { actor_pick_node_destruct(&g_actorPickNode); }
 static void release_guild_info(void) { guild_info_destruct(&g_guildInfo); }
-static void release_guild_tips(void) { tip_list_free(&g_guildTips.tips); }
-static void release_tip_of_the_day(void) { tip_list_free(&g_tipOfTheDay.tips); }
 static void release_navi(void) { navi_manager_destruct(&g_navi); }
 static void release_weather(void) { weather_destruct(&g_weather); }
 static void release_path_finder(void) { path_finder_destruct(&g_pathFinder); }
@@ -107,9 +102,6 @@ void client_init(void)
     atexit(release_actor_pick_node);
     guild_info_construct(&g_guildInfo);
     atexit(release_guild_info);
-    atexit(release_guild_tips);
-    name_filter_init();
-    atexit(release_tip_of_the_day);
     navi_manager_construct(&g_navi);
     atexit(release_navi);
     weather_construct(&g_weather);
@@ -126,7 +118,6 @@ void client_init(void)
     card_affix_table_init();
     metal_process_table_init();
     table_reader_init();
-    book_item_table_init();
     item_move_info_table_init();
     resource_cache_init();
     atexit(release_granny_bone_res);
@@ -140,5 +131,4 @@ void client_init(void)
     atexit(release_admin_aids);
     atexit(release_yellow_aids);
     atexit(release_loading_screens);
-    atexit(entry_queue_catalog_clear);
 }

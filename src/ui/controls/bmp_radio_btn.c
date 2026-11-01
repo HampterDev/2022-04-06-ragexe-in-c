@@ -77,7 +77,6 @@ const struct UIWindowOps ui_bmp_radio_btn_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_bmp_radio_btn_hover_on,
     .on_hover_leave = ui_bmp_radio_btn_hover_off,
@@ -151,6 +150,7 @@ void ui_bmp_radio_btn_on_draw(struct UIWindow *window)
     end = self->style_count ? self->styles + self->style_count : self->styles;
     for (s = self->styles; s != end && s->look != look; s++)
         ;
+
     if (s != end) {
         if (look >= RADIO_LOOK_CHOSEN) {
             if (s->shadow == 1)

@@ -86,7 +86,7 @@ static int placed_by_the_game(const struct UIWindow *win, int oldW, int oldH)
     if (win->x + win->width <= 0 || win->y + win->height <= 0 || win->x >= oldW || win->y >= oldH)
         return 1;
     return class_is(cls, "UIPcGage") || class_is(cls, "UIPlayerGage") || class_is(cls, "UIMonsterGage")
-        || class_is(cls, "UIMerchantShopTitle") || class_is(cls, "UIChatRoomTitle") || class_is(cls, "CBmpObjWnd")
+        || class_is(cls, "UIMerchantShopTitle") || class_is(cls, "UIChatRoomTitle")
         || class_is(cls, "UIBalloonText") || class_is(cls, "UINameBalloonText") || class_is(cls, "UICharInfoBalloonText")
         || class_is(cls, "UIColorTransBalloonText") || class_is(cls, "UIAchBalloonText");
 }

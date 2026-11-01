@@ -5,8 +5,7 @@
 
 enum TableReadMode {
     TABLE_FIELDS,
-    TABLE_FIELDS_AND_LINES,
-    TABLE_RECORDS
+    TABLE_FIELDS_AND_LINES
 };
 
 struct TableBlock;

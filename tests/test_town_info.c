@@ -300,5 +300,3 @@ int main(int argc, char **argv)
     printf("Town info: real Lua, all icons, owned queries, failures and cleanup passed; digest %08x.\n", trace_hash);
     return 0;
 }
-
-void client_lua_loadfile_hook(const char *name) { abort(); }

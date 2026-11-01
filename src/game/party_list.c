@@ -1,6 +1,5 @@
 #include "game/packet_handlers.h"
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include <string.h>
@@ -27,9 +26,6 @@ void game_mode_set_party_list(struct GameMode *self, const char *party_name, con
     session_clear_party_members(&g_session1);
     memcpy(name, party_name, 24);
     name[24] = 0;
-    if (word_filter_contains(&g_nameFilter, name)) {
-        word_filter_censor(&g_nameFilter, name);
-    }
     string_assign_cstr(&g_session1.partyName, name);
 
     for (m = (const struct PartyListMember *)members->first; m != (const struct PartyListMember *)members->last; m++) {
@@ -166,13 +162,6 @@ static void chat_close_dialog(void)
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_CLOSE_DIALOG, 0, 0, 0, 0);
 }
 
-static void censor_party_name(char *name)
-{
-    if (word_filter_contains(&g_nameFilter, name)) {
-        word_filter_censor(&g_nameFilter, name);
-    }
-}
-
 #pragma pack(push, 1)
 struct GroupListEntry {
     int aid;
@@ -205,7 +194,6 @@ void game_mode_group_list(const unsigned char *pkt)
     session_clear_party_members(&g_session1);
     memcpy(party_name, packet->party_name, 24);
     party_name[24] = 0;
-    censor_party_name(party_name);
     string_assign_cstr(&g_session1.partyName, party_name);
     len = packet->length;
     if (len == 0x1c)
@@ -271,7 +259,6 @@ void game_mode_add_member_to_group(struct GameMode *self, const unsigned char *p
     name[24] = 0;
     strncpy(party_name, packet->party_name, 24);
     party_name[24] = 0;
-    censor_party_name(party_name);
     string_assign_cstr(&g_session1.partyName, party_name);
     memcpy(map_name, packet->map_name, 16);
     map_name[16] = 0;
@@ -408,9 +395,6 @@ void game_mode_notify_chat_party(struct GameMode *self, const unsigned char *pkt
     vec_resize(&text, len + 1, 1);
     line = text.first;
     memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, len);
-    if (word_filter_contains(&g_nameFilter, line) == 1) {
-        word_filter_censor(&g_nameFilter, line);
-    }
     if (packet->aid == g_session1.ownAid) {
         chat_line(line, 0xc8ff, 3);
         render_object_send(self->world->player, NULL, ACTOR_MSG_CHAT, (int)line, 0, 0, 0);

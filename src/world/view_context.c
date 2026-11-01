@@ -21,12 +21,6 @@ int game_copy_view_matrix_at(float matrix[12], float heading)
     return 1;
 }
 
-struct WorldVideoList *game_current_video_list(void)
-{
-    struct World *world = game_current_world();
-    return world ? world->videoList : 0;
-}
-
 struct C3dGround15 *game_current_ground(void)
 {
     struct World *world = game_current_world();

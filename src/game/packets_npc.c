@@ -6,7 +6,6 @@
 #include "platform/code_page.h"
 #include "std/string.h"
 #include "game/own_states.h"
-#include "replay/replay.h"
 #include "iteminfo/item_table.h"
 #include "contents/sound.h"
 #include "session/state.h"
@@ -288,14 +287,6 @@ void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt
     string_assign_cstr(&map, name_buf);
     shorter = map.size - 4;
     string_resize(&map, shorter, 0);
-
-    if (replay_recorder_instance()->state == 2) {
-        replay_recorder_set_mode(replay_recorder_instance(), 3);
-        wnd_send(g_windowMgr.replay_reccontrol_wnd, 0x57, 0, 0, 0, 0);
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc6);
-    } else if (replay_recorder_instance()->state == 7) {
-        replay_recorder_set_mode(replay_recorder_instance(), 8);
-    }
 
     if (strcmp(string_cstr(&map), g_session1.mapName) != 0) {
         void *loading;

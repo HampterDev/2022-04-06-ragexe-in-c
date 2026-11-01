@@ -91,7 +91,6 @@ int game_object_dir_of(struct GameObject *object, float roty)
     return 7;
 }
 void world_models_process(struct World *w) { assert(w == &world); ++model_passes; }
-void world_video_list_update(struct WorldVideoList *list) { (void)list; abort(); }
 void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender,
     RenderMsgArg msg, RenderMsgArg a, RenderMsgArg b, RenderMsgArg c)
 {

@@ -1,6 +1,5 @@
 #include "actor/actor_ops.h"
 #include "resources/state_icon_sheet.h"
-#include "replay/replay.h"
 #include "contents/sound.h"
 #include "session/state.h"
 #include <windows.h>
@@ -13,7 +12,6 @@
 #include "game/session_bridge.h"
 #include "game/own_states.h"
 #include "game/skill_cooldowns.h"
-#include "game/replay.h"
 #include "game/rodex_mail.h"
 #include "game/state_change_helpers.h"
 #include "actor/game_actor.h"
@@ -102,7 +100,7 @@ static int state_known(int index)
     return skill_action_mgr_has_efst_action(skill_action_mgr_instance(), index) == 1;
 }
 
-static void own_state_list(struct GameMode *mode, int index, int remain_ms, int val1, int val2, int total_ms)
+static void own_state_list(int index, int remain_ms, int val1, int val2, int total_ms)
 {
     struct SkillCooldown cooldown = {0};
     struct OwnStateEntry entry = {0};
@@ -110,10 +108,7 @@ static void own_state_list(struct GameMode *mode, int index, int remain_ms, int 
     unsigned end;
     int skill_id;
 
-    if (index == 0x2b8) {
-        if (mode->world->player)
-            game_actor_set_clan((struct GameActor *)mode->world->player, 1, val2);
-    } else if (index == 0x2e || index == 0x2ac) {
+    if (index == 0x2e || index == 0x2ac) {
         cooldown_add(&cooldown, index == 0x2e ? 0x241 : 0x270f, remain_ms, total_ms);
         skill_cooldown_clear(&cooldown);
     } else if (index == 0xaf) {
@@ -125,10 +120,7 @@ static void own_state_list(struct GameMode *mode, int index, int remain_ms, int 
     entry.index = index;
     if (remain_ms == STATE_NO_TIME)
         end = STATE_END_NEVER;
-    else if (g_replayPlaying)
-        end = replay_recorder_instance()->elapsed + remain_ms;
-    else
-        end = timeGetTime() + remain_ms;
+    else end = timeGetTime() + remain_ms;
     entry.end_tick = end;
 
     if ((unsigned)(index - EFST_TIMER_KIND_FIRST) <= 4)
@@ -719,7 +711,7 @@ void game_mode_zc_msg_state_change(struct GameMode *mode, int aid, int state,
                 if (index == 0x338)
                     g_rodex->mail_count = val2;
                 else
-                    own_state_list(mode, index, remain_ms, val1, val2, total_ms);
+                    own_state_list(index, remain_ms, val1, val2, total_ms);
             }
             how = change_began(mode, aid, (unsigned char)state, index, remain_ms, val1, val2, val3,
                                (unsigned char)from_entry, text, &color);

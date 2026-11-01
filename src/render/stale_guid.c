@@ -36,7 +36,7 @@ int stale_guid(void)
             MessageBoxA(NULL,
                         "The display device this client had saved is no longer available, so it has "
                         "been reset to your primary display.\r\n\r\n"
-                        "Use the setup program to choose a device again.",
+                        "Choose a display device in the in-game graphics settings.",
                         "Display device reset", MB_ICONEXCLAMATION);
         }
     }

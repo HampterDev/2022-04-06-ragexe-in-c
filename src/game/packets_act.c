@@ -6,18 +6,14 @@
 #include "session/session_jobs.h"
 #include "session/session_state.h"
 #include "session/session_talk.h"
-#include "ui/window_mgr.h"
 #include "world/actor_lookup.h"
 #include "world/object_lookup.h"
-#include "actor/job.h"
 
-#define ACTOR_MSG_TALK          7
 #define ACTOR_MSG_ATTACK        0xb
 #define DAMAGE_NONE             (-30000)
 #define DEFAULT_MOTION_TIME     1440
-#define PET_TALK_CHANCE         25
-#define PET_TALK_INTERVAL       60000
-#define MONSTER_TALK_COLOR      0xfafafa
+#define PET_EMOTION_CHANCE         25
+#define PET_EMOTION_INTERVAL       60000
 
 static struct GameActor *attacker(struct GameMode *self, unsigned aid)
 {
@@ -32,29 +28,19 @@ static struct GameActor *attacker(struct GameMode *self, unsigned aid)
     return actor;
 }
 
-static void attack_talk(struct GameMode *self, struct GameActor *actor, unsigned aid)
+static void pet_attack_emotion(struct GameMode *self, unsigned aid)
 {
-    char text[0x100];
-
     if (aid == (unsigned)g_session1.ownAid) {
         if (world_get_game_actor_by_aid(self->world, (unsigned)g_session1.aid)) {
             int hunger = session_pet_hunger_level(g_session1.petFullness);
             int intimacy = session_pet_intimacy_level(g_session1.petIntimacy);
             int emotion = session_get_pet_emotion(&g_session1, hunger, intimacy, 1);
 
-            if (rand() % 100 < PET_TALK_CHANCE && session_pet_talk_due(&g_session1, PET_TALK_INTERVAL) == 1) {
-                mode_send_msg(self, MODE_MSG_PET_ACT, session_make_pet_talk_id(g_session1.petJob, 1, hunger), 0, 0, 0);
+            if (rand() % 100 < PET_EMOTION_CHANCE && session_pet_emotion_due(&g_session1, PET_EMOTION_INTERVAL) == 1) {
                 mode_send_msg(self, MODE_MSG_PET_ACT, emotion, 0, 0, 0);
             }
         }
-        return;
     }
-    session_get_monster_talk_info(&g_session1, game_actor_get_job(actor), 0, 0, text, (int)aid);
-    if (text[0] == '\0')
-        return;
-    actor_send(actor, ACTOR_MSG_TALK, MSG_ARG_PTR(text), 0);
-    if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1)
-        ui_chat_line(text, MONSTER_TALK_COLOR);
 }
 
 void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, int start_time,
@@ -85,7 +71,7 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
         return;
     if (actor->state == 0 && (unsigned)actor->attack_target_aid != target
         && attack.action != 1 && attack.action != 2 && attack.action != 3)
-        attack_talk(self, actor, aid);
+        pet_attack_emotion(self, aid);
     actor_send(actor, ACTOR_MSG_ATTACK, MSG_ARG_PTR(&attack), 0);
 }
 

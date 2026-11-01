@@ -1,7 +1,6 @@
 #include "ui/controls/edit.h"
 #include "ui/controls/buttons.h"
 #include "render/rp_pool.h"
-#include "contents/client_lua_calls.h"
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -10,8 +9,6 @@
 #include "contents/connection_api.h"
 #include <string.h>
 #include "ui/shops/cash_shop.h"
-#include <mmsystem.h>
-#include <shellapi.h>
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
@@ -81,7 +78,6 @@ const struct UIWindowOps ui_cash_shop_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -93,7 +89,6 @@ const struct UIWindowOps ui_cash_shop_wnd_ops = {
 struct UICashShopWnd {
     struct UIFrameWnd frame;
     struct List goods;
-    struct UICashShopWnd_Banner *banner;
     struct Tree tabs;
     int tab;
     int page_rows;
@@ -110,10 +105,10 @@ struct UICashShopWnd {
     struct UIWindow *cart;
 };
 OFFSET_ASSERT(UICashShopWnd, goods, 0x94);
-OFFSET_ASSERT(UICashShopWnd, tab, 0xa8);
-OFFSET_ASSERT(UICashShopWnd, search, 0xbc);
-OFFSET_ASSERT(UICashShopWnd, tiles, 0xd4);
-SIZE_ASSERT(UICashShopWnd, 0xe4);
+OFFSET_ASSERT(UICashShopWnd, tab, 0xa4);
+OFFSET_ASSERT(UICashShopWnd, search, 0xb8);
+OFFSET_ASSERT(UICashShopWnd, tiles, 0xd0);
+SIZE_ASSERT(UICashShopWnd, 0xe0);
 
 struct CashTab {
     int id;
@@ -125,7 +120,6 @@ struct UICashShopWnd *ui_cash_shop_wnd_construct(struct UICashShopWnd *self)
     ui_frame_wnd_construct(&self->frame, 0);
     self->frame.base.ops = &ui_cash_shop_wnd_ops;
     list_init(&self->goods);
-    self->banner = NULL;
     tree_init(&self->tabs);
     self->tab = 0;
     self->page_rows = CASH_PAGE_ROWS;
@@ -188,7 +182,6 @@ void ui_cash_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const
         ui_window_send_msg(g_windowMgr.item_drop_cnt_wnd, NULL, COUNT_MSG_OPEN, COUNT_FOR_CASH_SHOP, drag->drop_count, 0, 0);
 }
 
-void ui_cash_shop_wnd_banner_on_process(struct UIWindow *self);
 void ui_cash_shop_wnd_on_process(struct UIWindow *window)
 {
     struct UICashShopWnd *self = (struct UICashShopWnd *)window;
@@ -219,7 +212,6 @@ void ui_cash_shop_wnd_on_process(struct UIWindow *window)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->count, string_cstr(&zero));
         string_free(&zero);
     }
-    ui_cash_shop_wnd_banner_on_process(UI_WINDOW(self->banner));
     string_free(&count);
     string_free(&search);
 }
@@ -272,195 +264,6 @@ void ui_cash_shop_wnd_on_draw(struct UIWindow *window)
     string_free(&text);
 }
 
-#define BANNER_PERIOD 5000
-
-struct CashShopBanner {
-    struct String image;
-    struct String url;
-};
-
-void ui_cash_shop_wnd_banner_destroy(struct UIWindow *window);
-void ui_cash_shop_wnd_banner_on_draw(struct UIWindow *self);
-void ui_cash_shop_wnd_banner_on_mouse_shape(struct UIWindow *self, int x, int y);
-void ui_cash_shop_wnd_banner_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_cash_shop_wnd_banner_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_cash_shop_wnd_banner_ops = {
-    .destroy = ui_cash_shop_wnd_banner_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 0,
-    .refreshes_children = 0,
-    .move = ui_window_move_base,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_window_save_pos_base,
-    .move_delta = ui_window_move_delta_base,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_cash_shop_wnd_banner_on_process,
-    .on_draw = ui_cash_shop_wnd_banner_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_window_on_l_btn_down_base,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_window_on_mouse_move_base,
-    .on_mouse_hover = ui_window_on_mouse_hover_base,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_cash_shop_wnd_banner_on_mouse_shape,
-    .on_l_btn_up = ui_cash_shop_wnd_banner_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_window_snap_base,
-    .send_msg = ui_cash_shop_wnd_banner_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
-    .type = UI_TYPE_WINDOW,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
-struct UICashShopWnd_Banner {
-    struct UIWindow base;
-    struct Vec banners;
-    struct Vec radios;
-    unsigned current;
-    DWORD shown_at;
-};
-OFFSET_ASSERT(UICashShopWnd_Banner, banners, 0x7c);
-OFFSET_ASSERT(UICashShopWnd_Banner, current, 0x94);
-SIZE_ASSERT(UICashShopWnd_Banner, 0x9c);
-
-struct UICashShopWnd_Banner *ui_cash_shop_wnd_banner_construct(struct UICashShopWnd_Banner *self)
-{
-    ui_window_construct(&self->base, 0);
-    self->base.ops = &ui_cash_shop_wnd_banner_ops;
-    memset(&self->banners, 0, sizeof self->banners);
-    memset(&self->radios, 0, sizeof self->radios);
-    self->current = 0;
-    self->shown_at = timeGetTime();
-    return self;
-}
-
-void ui_cash_shop_wnd_banner_destruct(struct UICashShopWnd_Banner *self)
-{
-    struct CashShopBanner *banner;
-
-    self->base.ops = &ui_cash_shop_wnd_banner_ops;
-    vec_free(&self->radios);
-    for (banner = self->banners.first; banner != self->banners.last; banner++) {
-        string_free(&banner->url);
-        string_free(&banner->image);
-    }
-    vec_free(&self->banners);
-    ui_window_destruct(&self->base);
-}
-
-void ui_cash_shop_wnd_banner_destroy(struct UIWindow *window)
-{
-    struct UICashShopWnd_Banner *self = (struct UICashShopWnd_Banner *)window;
-    ui_cash_shop_wnd_banner_destruct(self);
-    mem_free(self);
-}
-
-void ui_cash_shop_wnd_add_banner(struct UIWindow *window, const struct String *image, const struct String *url)
-{
-    struct UICashShopWnd *self = (struct UICashShopWnd *)window;
-    struct CashShopBanner banner;
-
-    string_copy(&banner.image, image);
-    string_copy(&banner.url, url);
-    vec_push(&self->banner->banners, &banner, sizeof banner);
-}
-
-static unsigned banner_count(struct UICashShopWnd_Banner *self)
-{
-    return (unsigned)VEC_COUNT(&self->banners, struct CashShopBanner);
-}
-
-void ui_cash_shop_wnd_banner_on_process(struct UIWindow *window)
-{
-    struct UICashShopWnd_Banner *self = (struct UICashShopWnd_Banner *)window;
-    unsigned next;
-
-    if (self->banners.first == self->banners.last)
-        return;
-    if (self->shown_at + BANNER_PERIOD >= timeGetTime())
-        return;
-    next = self->current + 1 < banner_count(self) ? self->current + 1 : 0;
-    ui_cash_shop_wnd_banner_send_msg(&self->base, ((struct UIWindow **)self->radios.first)[next], UI_MSG_COMMAND, UI_ID_RADIO, 0, 0, 0);
-}
-
-void ui_cash_shop_wnd_banner_on_draw(struct UIWindow *window)
-{
-    struct UICashShopWnd_Banner *self = (struct UICashShopWnd_Banner *)window;
-    struct CashShopBanner *banner;
-    struct String path;
-    void *res;
-
-    if (self->banners.first == self->banners.last)
-        return;
-    banner = (struct CashShopBanner *)self->banners.first + self->current;
-    string_init(&path);
-    string_assign_cstr(&path, UI_SKIN "cashshop\\");
-    string_append(&path, string_cstr(&banner->image), banner->image.size);
-    res = path.size ? res_mgr_get(g_resMgr(), string_cstr(&path)) : NULL;
-    string_free(&path);
-    ui_window_draw_bitmap(&self->base, 0, 0, res, 0);
-}
-
-void ui_cash_shop_wnd_banner_on_mouse_shape(struct UIWindow *self, int x, int y)
-{
-    mode_set_cursor_action(g_modeMgr.curMode, CURSOR_HAND);
-}
-
-void ui_cash_shop_wnd_banner_on_l_btn_up(struct UIWindow *window, int x, int y)
-{
-    struct UICashShopWnd_Banner *self = (struct UICashShopWnd_Banner *)window;
-    struct CashShopBanner *banner;
-    struct String url;
-
-    if (self->banners.first == self->banners.last)
-        return;
-    banner = (struct CashShopBanner *)self->banners.first + self->current;
-    string_copy(&url, &banner->url);
-    ShellExecuteA(NULL, "OPEN", "iexplore.exe", string_cstr(&url), NULL, SW_SHOW);
-    string_free(&url);
-}
-
-int ui_cash_shop_wnd_banner_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
-{
-    struct UICashShopWnd_Banner *self = (struct UICashShopWnd_Banner *)window;
-    if (msg == UI_MSG_COMMAND && val1 == UI_ID_RADIO) {
-        unsigned i;
-
-        for (i = 0; i < VEC_COUNT(&self->radios, struct UIWindow *); i++) {
-            struct UIWindow *radio = ((struct UIWindow **)self->radios.first)[i];
-
-            if (sender == radio) {
-                ui_window_send_msg(radio, &self->base, UI_MSG_SET_STATE, 1, 0, 0, 0);
-                self->current = i;
-            } else {
-                ui_window_send_msg(radio, &self->base, UI_MSG_SET_STATE, 0, 0, 0, 0);
-            }
-        }
-        self->shown_at = timeGetTime();
-        ui_window_invalidate_base(&self->base);
-    }
-    return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);
-}
-
 #define UI_ID_CASH_SHOP 0xb8
 
 void u_in_cash_call_wnd_destroy(struct UIWindow *window);
@@ -504,7 +307,6 @@ const struct UIWindowOps u_in_cash_call_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -567,12 +369,10 @@ struct UICashShopWnd_Cart;
 #define CASH_ID_CLEAR_CART 0x17a
 #define CASH_ID_FIRST_PAGE 0x17b
 #define CASH_ID_LAST_PAGE 0x17c
-#define CASH_ID_CHARGE 0x114
 #define CASH_ID_REFRESH 0x197
 #define CASH_WND_ID 0x13e
 
 #define CASH_MSG_RELIST 0x17
-#define CASH_MSG_LOAD_BANNER 0x22
 #define CASH_MSG_DROP 0x26
 #define CASH_MSG_POINTS 0x78
 #define CASH_MSG_POINTS_B 0x7a
@@ -580,8 +380,6 @@ struct UICashShopWnd_Cart;
 #define CASH_MSG_CLEARED 7
 #define MODE_REQ_CASH_SHOP 0x140
 
-#define MSG_CASH_CHARGE_URL 0xce5
-#define MSG_CASH_CHARGE 0xce3
 #define MSG_CASH_BUY 0xce4
 #define MSG_CASH_REFRESH 0xcea
 #define MSG_CASH_SOLD_OUT 0xe50
@@ -673,7 +471,6 @@ void ui_cash_shop_wnd_on_create(struct UIWindow *window, int width_unused, int h
 {
     struct UICashShopWnd *self = (struct UICashShopWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
-    struct UICashShopWnd_Banner *banner;
     struct UIBitmapButton *button;
     struct UIBmpTextButton *text_button;
     struct CashTab *current;
@@ -682,14 +479,6 @@ void ui_cash_shop_wnd_on_create(struct UIWindow *window, int width_unused, int h
 
     ui_window_add_sys_button(wnd);
     ui_window_add_close_button(wnd, "", 0);
-
-    banner = mem_alloc(sizeof *banner);
-    if (banner)
-        banner = ui_cash_shop_wnd_banner_construct(banner);
-    self->banner = banner;
-    ui_window_create(&banner->base, 0x213, 0x33);
-    ui_window_move_base(&self->banner->base, 3, 0x12);
-    ui_window_add_child(wnd, &self->banner->base);
 
     for (tab = 0, x = 8; tab < CASH_TAB_COUNT; tab++) {
         struct UIWindow *radio = NULL;
@@ -723,12 +512,6 @@ void ui_cash_shop_wnd_on_create(struct UIWindow *window, int width_unused, int h
               CASH_ID_FIRST_PAGE);
     add_arrow(self, UI_SKIN "cashshop\\bt_arrowR2_off.bmp", UI_SKIN "cashshop\\bt_arrowR2_on.bmp", 0x130,
               CASH_ID_LAST_PAGE);
-
-    text_button = new_text_button();
-    make_bitmap_button(&text_button->bmp, UI_SKIN "cashshop\\btn_charge_normal.bmp",
-                       UI_SKIN "cashshop\\btn_charge_press.bmp", UI_SKIN "cashshop\\btn_charge_press.bmp");
-    set_caption(text_button, MSG_CASH_CHARGE);
-    add_at(self, &text_button->bmp.button.base, 0x28e, 0x2e, CASH_ID_CHARGE);
 
     text_button = new_text_button();
     self->refresh = &text_button->bmp.button.base;
@@ -827,24 +610,6 @@ static void ui_cash_shop_wnd_layout_page(struct UICashShopWnd *self)
         tile_count = (unsigned)VEC_COUNT(&self->tiles, struct UIWindow *);
     }
     ui_window_invalidate_base(&self->frame.base);
-}
-
-static void ui_cash_shop_wnd_banner_make_radios(struct UICashShopWnd_Banner *self)
-{
-    unsigned i = 0;
-    struct CashShopBanner *banner;
-
-    for (banner = self->banners.first; banner != self->banners.last; banner++, i++) {
-        struct UIWindow *radio = ui_bmp_radio_btn_create(0);
-        ui_bmp_radio_btn_set_bitmap(radio, UI_SKIN "cashshop\\btn_ad_off.bmp", 0);
-        ui_bmp_radio_btn_set_bitmap(radio, UI_SKIN "cashshop\\btn_ad_off.bmp", 1);
-        ui_bmp_radio_btn_set_bitmap(radio, UI_SKIN "cashshop\\btn_ad_on.bmp", 2);
-        ui_window_move(radio, self->base.width + (int)(i - banner_count(self)) * 12 - 12, 0x29);
-        ui_window_send_msg(radio, &self->base, UI_MSG_SET_STATE, i == self->current, 0, 0, 0);
-        ui_window_add_child(&self->base, radio);
-        vec_push(&self->radios, &radio, sizeof(struct UIWindow *));
-    }
-    ui_window_invalidate_base(&self->base);
 }
 
 static void ui_cash_shop_wnd_cart_clear(struct UIWindow *cart)
@@ -1106,9 +871,6 @@ int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
         case CASH_ID_ADD:
             buy_cart(self);
             return 0;
-        case CASH_ID_CHARGE:
-            ShellExecuteA(NULL, "OPEN", "iexplore.exe", msg_str(MSG_CASH_CHARGE_URL), NULL, SW_SHOW);
-            return 0;
         case CASH_ID_PREV_PAGE:
             self->page = self->page - 1 >= 0 ? self->page - 1 : 0;
             ui_cash_shop_wnd_layout_page(self);
@@ -1162,14 +924,6 @@ int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     case CASH_MSG_ADD:
         ui_cash_shop_wnd_cart_send_msg(self->cart, sender, CASH_MSG_ADD, val1, 1, 0, 0);
         return 0;
-
-    case CASH_MSG_LOAD_BANNER: {
-        if (client_lua_call(g_session1.luaState, "set_cashshop_banner", "") == 1) {
-            ui_cash_shop_wnd_banner_make_radios(self->banner);
-            ui_window_invalidate_base(&self->frame.base);
-        }
-        return 0;
-    }
 
     case CASH_MSG_DROP:
         drop_on_shop(self);

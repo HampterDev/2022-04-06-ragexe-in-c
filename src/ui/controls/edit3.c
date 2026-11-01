@@ -63,7 +63,6 @@ const struct UIEditCtrl3Ops ui_edit_ctrl3_ops = {
             .render = ui_window_render_base,
             .has_custom_backdrop = 0,
             .draw_backdrop = ui_window_draw_backdrop_base,
-            .get_records = ui_window_get_records_base,
             .type = UI_TYPE_EDIT,
             .on_hover_enter = ui_window_on_hover_enter_base,
             .on_hover_leave = ui_window_on_hover_leave_base,

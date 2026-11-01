@@ -10,27 +10,19 @@
 #define WND_COMBINED_CARD_COLLECTION 0x52
 #define WND_ITEM_COLLECTION_CMP 0xea
 #define WND_COMBINED_CARD_COLLECTION_CMP 0xfa
-#define WND_BOOK 0x6a
 #define WND_ITEM_MOVE_INFO 0x114
 #define WND_EQUIP_PREVIEW 0x126
 
 #define UI_MSG_COLLECTION_ITEM 0x18
 #define UI_MSG_COLLECTION_REFRESH 0x1d
 #define UI_MSG_COLLECTION_IDENTIFIED 0x4c
-#define UI_MSG_BOOK_OPEN 0x5e
 #define UI_MSG_PREVIEW_ITEM 0x17
 #define UI_MSG_MOVE_INFO_ITEM 0x93
-#define UI_MSG_PARAM_ITEM 0x40
-#define UIWM_MSG_SHOW_CHAT 3
 
 #define ID_VIEW_BUTTON 0xf2
-#define ID_BOOK_BUTTON_1 0x117
-#define ID_BOOK_BUTTON_2 0x118
 #define ID_PREVIEW_BUTTON 0x15a
 #define ID_MOVE_INFO 0x1df
 
-#define MSG_BOOK_TOOLTIP_1 0x50e
-#define MSG_BOOK_TOOLTIP_2 0x50f
 #define MSG_MOVE_INFO 0xaec
 #define MSG_OPTION_TITLE 0xf2e
 #define MSG_EXPIRE_TIME_FORMAT 0x4ec
@@ -43,9 +35,6 @@
 #define TEXT_LAYOUT 0x1a
 #define TEXT_LAYOUT_SERVICE_6 0x18
 #define TEXT_LAYOUT_EXPIRE 0x20
-
-#define BOOK_NAME "책읽기"
-#define NO_BOOK_TEXT "책이 없습니다"
 
 #define ITEM_EGG_STATE(info) ((info)->slot[2])
 
@@ -68,8 +57,6 @@ struct UIItemCollectionWnd {
     struct ItemInfo item;
     struct UIWindow *text;
     struct UIBitmapButton *view_btn;
-    struct UIWindow *book_btn[2];
-    DWORD book_anim_time;
     struct String picture;
     struct String card_picture;
     int wnd_id;
@@ -119,7 +106,6 @@ void ui_item_collection_wnd_destroy(struct UIWindow *window);
 
 void ui_item_collection_wnd_move(struct UIWindow *window, int x, int y);
 void ui_item_collection_wnd_store_info(struct UIWindow *window);
-void ui_item_collection_wnd_on_process(struct UIWindow *window);
 void ui_item_collection_wnd_on_draw(struct UIWindow *window);
 void ui_item_collection_wnd_on_l_btn_down(struct UIWindow *window, int x, int y);
 void ui_item_collection_wnd_on_mouse_hover(struct UIWindow *window, int x, int y);

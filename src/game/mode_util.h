@@ -15,6 +15,5 @@ void game_mode_confirm_feed_homun(void);
 void game_mode_confirm_feed_pet(void);
 void game_mode_draw_shown_timer(struct GameMode *self);
 void game_mode_on_own_aid(struct GameMode *self, int aid);
-void game_mode_pass_map_rsw(void);
 
 #endif

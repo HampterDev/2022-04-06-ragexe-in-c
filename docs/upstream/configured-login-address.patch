@@ -1,0 +1,32 @@
+--- a/src/core/winmain.c
++++ b/src/core/winmain.c
+@@ -142,7 +142,6 @@
+     replay_recorder_set_mode(replay_recorder_instance(), 1);
+     if (strstr(cmd, "1qm1") != 0)
+         _snprintf_s(g_session1.launchArg3, 0x18, (size_t)-1, strstr(cmd, "1sak1") != 0 ? "QmSakray" : "Dev");
+-    session_set_pair(&g_session1, 0x12, strstr(cmd, "1roc1") != 0 ? 1 : 0);
+ 
+     if (strstr(cmd, "-t:") != 0 && g_replayLaunch == 0) {
+         read_launch_args(cmd);
+--- a/src/login/login_states.c
++++ b/src/login/login_states.c
+@@ -338,19 +338,6 @@
+     strcpy(addr.ip, g_serverAddress);
+     addr.port = atoi(g_serverPort);
+     _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_serverDomain);
+-    if (g_serverType == 0xd) {
+-        if (g_serviceType == 1) {
+-            memset(&addr, 0, sizeof addr);
+-            _snprintf_s(addr.ip, 0x10, (size_t)-1,
+-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "128.241.92.211" : "128.241.92.212");
+-            addr.port = 0x1a90;
+-        } else if (g_serviceType == 5) {
+-            memset(&addr, 0, sizeof addr);
+-            _snprintf_s(addr.host, 0x81, (size_t)-1,
+-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "thro-zone01c.gnjoy.in.th:50001"
+-                                                                         : "thro-zone-t1.gnjoy.in.th:50001");
+-        }
+-    }
+     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
+     if (!self->base.connected) {
+         connect_failed(self);

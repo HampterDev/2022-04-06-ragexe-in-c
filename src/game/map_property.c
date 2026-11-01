@@ -14,7 +14,6 @@ unsigned char g_mapPropertyQuiet;
 #include "contents/connection_api.h"
 #include "game/packet_handlers.h"
 #include "game/client.h"
-#include "game/net.h"
 
 #define CZ_REQUEST_AFTER_MAPPROPERTY 0x447
 #define COLOUR_NOTICE 0xffff64

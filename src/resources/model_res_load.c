@@ -143,13 +143,6 @@ static int read_model_body(struct C3dModelRes *model, struct File *file, int fam
     } else if (!file_read(file, skipped, sizeof skipped)) goto done;
     if ((family == 1 || minor < 3) && !read_model_names(file, &textures, family == 1)) goto done;
     if (family == 1) {
-        for (i = 0; i < textures.size; ++i) {
-            if (strstr(owned_text_cstr(&textures.items[i]), ".bik")) {
-                size_t next = model->videoNames.size;
-                if (!text_array_resize(&model->videoNames, next + 1) ||
-                    !owned_text_assign(&model->videoNames.items[next], owned_text_view(&textures.items[i]))) goto done;
-            }
-        }
         if (!text_array_resize(&model->mainNodes, 1) || !read_model_name(file, &model->mainNodes.items[0], 1)) goto done;
     } else if (!read_model_names(file, &model->mainNodes, 0)) goto done;
     if (!read_model_count(file, &count, sizeof *model->nodes)) goto done;

@@ -51,7 +51,6 @@ void session_save_options(struct Session *self)
             OPT_INT("Show_SkillDescript", self->showSkillDescript);
             OPT_INT("ChangeChatMode", g_windowMgr.chat_bar_toggleable);
             OPT_INT("LockMouse", self->lockMouse);
-            OPT_INT("ShowBattleFieldIcon", g_session1.showBattleFieldIcon);
             OPT_INT("MouseExclusive", g_session1.mouseExclusiveOption);
             write_display_options(self, &out, "ISFULLSCREENMODE", g_fullscreenMode);
             OPT_INT("WIDTH", g_displayWidth);
@@ -75,7 +74,6 @@ void session_save_options(struct Session *self)
             OPT_INT(msg_str(0xdb9), self->zoomFarLimit);
             OPT_INT(msg_str(0xdc6), self->emblemFrame);
             OPT_INT("bExtendDamage", self->extendDamage);
-            OPT_INT("bShowMapName", self->showMapName);
             file_close(&out);
         }
         file_destruct(&out);

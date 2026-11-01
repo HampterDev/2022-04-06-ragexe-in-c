@@ -15,7 +15,6 @@ struct ItemMoveInfo {
 
 const struct CardAffix *card_affix_get(int id);
 unsigned char card_affix_has(int id);
-unsigned char book_item_has(int id);
 const struct ItemTextLines *metal_process_get(int id);
 const struct ItemMoveInfo *item_move_info_get(int id);
 #endif

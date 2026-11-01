@@ -1,6 +1,5 @@
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "core/object_type_tables.h"
 #include <stdio.h>
@@ -58,7 +57,6 @@ const struct UIGuildWndOps ui_guild_notice_wnd_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_frame_wnd_get_records,
         .type = UI_TYPE_FRAME,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -76,7 +74,6 @@ const struct UIGuildWndOps ui_guild_notice_wnd_ops = {
 #define GUILD_BODY_MAX 0x77
 #define MSG_GUILD_NOTICE_SUBJECT 0x203
 #define MSG_GUILD_NOTICE_BODY 0x204
-#define MSG_NAME_FILTERED 0xe
 #define UI_MSG_GUILD_REFRESH 0x3c
 #define MODE_REQ_GUILD_INFO 0x6b
 #define MODE_REQ_GUILD_NOTICE 0x76
@@ -121,7 +118,6 @@ const struct UIEditCtrlOps ui_edit_ctrl_var_id_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_EDIT,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -258,12 +254,6 @@ static void guild_notice_send(struct UIGuildNoticeWnd *self)
     string_init(&body);
     text = ui_edit_ctrl_get_text(self->body_edit);
     string_assign_cstr(&body, text);
-    if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->subject_edit)) == 1
-        || word_filter_contains(&g_nameFilter, string_cstr(&body)) == 1) {
-        ui_message_box(msg_str(MSG_NAME_FILTERED));
-        string_free(&body);
-        return;
-    }
     if (g_guildInfo.is_master != 0)
         mode_send_message(g_modeMgr.curMode, MODE_REQ_GUILD_NOTICE, g_guildInfo.guild_id,
                       (int)ui_edit_ctrl_get_text(self->subject_edit), (int)string_cstr(&body), 0);

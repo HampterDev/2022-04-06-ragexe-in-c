@@ -20,12 +20,6 @@ struct RenewQuestBase {
     int npc_y;
 };
 
-struct RenewQuestA {
-    struct RenewQuestBase base;
-    struct String image;
-    struct Vec lists[3];
-};
-
 struct QuestDeadline {
     short year, month, day, hour, minute;
 };
@@ -78,18 +72,13 @@ struct String *renew_quest_condition_text(struct RenewQuestMgr *self, struct Str
                                                         unsigned name_mask, int min_level,
                                                         int max_level);
 struct RenewQuestB *renew_quest_ongoing_info(struct RenewQuestMgr *self, unsigned quest_id);
-struct RenewQuestA *renew_quest_recommended_info(struct RenewQuestMgr *self, unsigned quest_id);
 struct RenewQuestB *renew_quest_find_ongoing(struct RenewQuestMgr *self, unsigned quest_id);
-struct RenewQuestA *renew_quest_find_recommended(struct RenewQuestMgr *self, unsigned quest_id);
-struct RenewQuestBase *renew_quest_find(struct RenewQuestMgr *self, char ongoing, unsigned quest_id);
 void renew_quest_read_ongoing(struct RenewQuestMgr *self, unsigned quest_id,
                                          struct RenewQuestB *info);
 char renew_quest_set_active(struct RenewQuestMgr *self, unsigned quest_id, char active);
-char renew_quest_set_recommended_active(struct RenewQuestMgr *self, unsigned quest_id, char active);
 char renew_quest_set_shown(struct RenewQuestMgr *self, unsigned quest_id, char shown);
 void renew_quest_refresh_windows(void);
 void renew_quest_save_simple_view_list(struct RenewQuestMgr *self);
-void renew_quest_save_recommended_active_list(struct RenewQuestMgr *self);
 
 void renew_quest_clear_ongoing(struct RenewQuestMgr *quests);
 void renew_quest_remove(struct RenewQuestMgr *quests, unsigned quest_id);

@@ -1,0 +1,431 @@
+diff --git a/src/ui/map/minimap_wnd.c b/src/ui/map/minimap_wnd.c
+--- a/src/ui/map/minimap_wnd.c
++++ b/src/ui/map/minimap_wnd.c
+@@ -332,6 +332,45 @@
+     string_format(out, MEMO_PATH_FORMAT, g_clientDir, g_session1.mapName);
+ }
+ 
++static void memo_save_error(const struct String *path)
++{
++    struct String message;
++
++    string_init(&message);
++    string_format(&message, "Could not save minimap notes to:\n%s\n\n"
++                  "Check that the folder exists, is writable, and has free disk space.",
++                  string_cstr(path));
++    ui_message_box(string_cstr(&message));
++    string_free(&message);
++}
++
++/* Hand-edited files may lack the newline normally written by the client. */
++static int memo_append_separator(FILE *file)
++{
++    long size;
++    int last;
++    const char *separator;
++    size_t length;
++
++    if (fseek(file, 0, SEEK_END) != 0)
++        return 0;
++    size = ftell(file);
++    if (size < 0)
++        return 0;
++    if (size == 0)
++        return 1;
++    if (fseek(file, -1, SEEK_END) != 0)
++        return 0;
++    last = fgetc(file);
++    if (last == EOF || fseek(file, 0, SEEK_END) != 0)
++        return 0;
++    if (last == '\n')
++        return 1;
++    separator = last == '\r' ? "\n" : "\r\n";
++    length = strlen(separator);
++    return fwrite(separator, 1, length, file) == length;
++}
++
+ static int minimap_load_memos(struct UIMiniMapWnd *self)
+ {
+     static const char delims[] = "\t ,\t\r\n";
+@@ -402,33 +441,37 @@
+     return count;
+ }
+ 
+-static int minimap_save_memos(struct UIMiniMapWnd *self)
+-{
+-    struct String path, tooltip, line;
+-    int i, saved = 0;
++static int minimap_save_memos(struct UIMiniMapWnd *self, int omitted)
++{
++    struct String path, line;
++    int i, failed, saved = 0;
+     FILE *file;
+ 
+     memo_path(&path);
+     file = fopen(string_cstr(&path), "wb");
++    failed = file == NULL;
+     if (file != NULL) {
+         for (i = 0; i < MEMO_MAX; i++) {
+             struct UIWindow *memo = &self->memos[i]->button.base;
+ 
+-            if (memo->x <= 0 || memo->y <= 0)
++            if (i == omitted || memo->x <= 0 || memo->y <= 0)
+                 continue;
+-            string_copy(&tooltip, &self->memos[i]->button.tooltip);
+             string_init(&line);
+-            string_format(&line, MEMO_LINE_FORMAT, memo->x, memo->y, string_cstr(&tooltip));
+-            string_assign(&path, string_cstr(&line), line.size);
++            string_format(&line, MEMO_LINE_FORMAT, memo->x, memo->y,
++                          string_cstr(&self->memos[i]->button.tooltip));
++            failed = fwrite(string_cstr(&line), 1, line.size, file) != line.size;
+             string_free(&line);
+-            string_free(&tooltip);
+-            fwrite(string_cstr(&path), path.size, 1, file);
++            if (failed)
++                break;
+             saved++;
+         }
+-        fclose(file);
+-    }
++        if (fclose(file) != 0)
++            failed = 1;
++    }
++    if (failed)
++        memo_save_error(&path);
+     string_free(&path);
+-    return saved;
++    return failed ? -1 : saved;
+ }
+ 
+ static void minimap_dress_player(struct UIMiniMapWnd *self)
+@@ -646,13 +689,10 @@
+     if (id >= MEMO_ID_FIRST && id < MEMO_ID_FIRST + MEMO_MAX) {
+         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xabf), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+                                    0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+-            struct UIBitmapButton *memo = self->memos[id - MEMO_ID_FIRST];
+-
+-            ui_bitmap_button_set_tool_tip(memo, "");
+-            ui_window_move_base(&memo->button.base, OUT_OF_SIGHT, OUT_OF_SIGHT);
+-            minimap_save_memos(self);
+-            self->memo_count = minimap_load_memos(self);
+-            ui_window_invalidate_base(wnd);
++            if (minimap_save_memos(self, id - MEMO_ID_FIRST) >= 0) {
++                self->memo_count = minimap_load_memos(self);
++                ui_window_invalidate_base(wnd);
++            }
+         }
+         return 0;
+     }
+@@ -839,18 +879,26 @@
+ {
+     struct String path, line;
+     FILE *file;
++    int failed;
+ 
+     memo_path(&path);
+-    file = fopen(string_cstr(&path), "ab");
++    file = fopen(string_cstr(&path), "a+b");
++    failed = file == NULL;
+     if (file != NULL) {
+-        fseek(file, 0, SEEK_END);
+-        string_init(&line);
+-        string_format(&line, MEMO_LINE_FORMAT, g_windowMgr.minimap_info.memo_x, g_windowMgr.minimap_info.memo_y,
+-                      ui_edit_ctrl_get_text(self->edit));
+-        string_assign(&path, string_cstr(&line), line.size);
+-        string_free(&line);
+-        fwrite(string_cstr(&path), path.size, 1, file);
+-        fclose(file);
++        failed = !memo_append_separator(file);
++        if (!failed) {
++            string_init(&line);
++            string_format(&line, MEMO_LINE_FORMAT, g_windowMgr.minimap_info.memo_x, g_windowMgr.minimap_info.memo_y,
++                          ui_edit_ctrl_get_text(self->edit));
++            failed = fwrite(string_cstr(&line), 1, line.size, file) != line.size;
++            string_free(&line);
++        }
++        if (fclose(file) != 0)
++            failed = 1;
++    }
++    if (failed) {
++        memo_save_error(&path);
++    } else {
+         if (g_windowMgr.mini_map_wnd != NULL)
+             minimap_load_memos((struct UIMiniMapWnd *)g_windowMgr.mini_map_wnd);
+         ui_window_mgr_post_quit1(&g_windowMgr, MEMO_EDIT_WND);
+diff --git a/tests/extract_minimap_memos.py b/tests/extract_minimap_memos.py
+new file mode 100644
+--- /dev/null
++++ b/tests/extract_minimap_memos.py
+@@ -0,0 +1,25 @@
++"""Test the production memo handlers unchanged, with only UI/stdio boundaries replaced."""
++from pathlib import Path
++import re
++import sys
++
++source = Path(sys.argv[1]).read_text(encoding="utf-8")
++parts = ["/* Generated from minimap_wnd.c; do not edit. */"]
++for macro in ("MEMO_MAX", "MEMO_EDIT_WND", "CMD_MEMO_OK",
++              "MEMO_PATH_FORMAT", "MEMO_LINE_FORMAT"):
++    parts.append(re.search(r"^#define " + macro + r" .+$", source, re.M).group())
++parts.append("#define MARK_KINDS 3")
++for struct in ("UIMiniMapWnd", "UIEditctrlWnd"):
++    parts.append(re.search(r"^struct " + struct + r" \{.*?^\};", source, re.M | re.S).group())
++parts.append("static int minimap_load_memos(struct UIMiniMapWnd *self);")
++for function in ("memo_path", "memo_save_error", "memo_append_separator",
++                 "minimap_save_memos", "memo_save", "ui_editctrl_wnd_send_msg"):
++    match = re.search(r"^(?:static )?(?:void|int) " + function + r"\([^;{]*\{.*?^\}",
++                      source, re.M | re.S)
++    if match is None:
++        # Allows the regression test to run against the original silent writer.
++        if function in ("memo_save_error", "memo_append_separator"):
++            continue
++        raise ValueError(f"Missing production function: {function}")
++    parts.append(match.group())
++Path(sys.argv[2]).write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+diff --git a/tests/test_minimap_memos.c b/tests/test_minimap_memos.c
+new file mode 100644
+--- /dev/null
++++ b/tests/test_minimap_memos.c
+@@ -0,0 +1,212 @@
++#include "ui/controls/buttons.h"
++#include "ui/controls/edit.h"
++#include "ui/ui_std.h"
++#include "ui/window_mgr.h"
++#include "session/state.h"
++#include "core/app.h"
++#include "core/fatal.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#define CHECK(expr) do { if (!(expr)) { \
++    fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #expr); exit(1); \
++} } while (0)
++
++struct Session g_session1;
++struct UIWindowMgr g_windowMgr;
++char g_clientDir[0x88];
++static enum { IO_OK, OPEN_FAIL, WRITE_FAIL, CLOSE_FAIL, SEEK_FAIL, TELL_FAIL, READ_FAIL } failure;
++static int closes, reloads, editor_closed, errors;
++static char error_text[1024], written[1024];
++static const char *existing = "";
++static const char expected_path[] = "C:\\memo-test\\Memo\\$$prontera.txt";
++static char note_text[32] = "hello";
++
++void *mem_alloc(size_t n) { void *p = malloc(n); CHECK(p != NULL); return p; }
++void mem_free(void *p) { free(p); }
++void *std_allocate_bytes(size_t n) { return mem_alloc(n); }
++__declspec(noreturn) void fatal_error(const char *s) { fputs(s, stderr); abort(); }
++const char *ui_edit_ctrl_get_text(struct UIWindow *w) { (void)w; return note_text; }
++int ui_edit_ctrl_get_text_size(struct UIWindow *w) { (void)w; return (int)strlen(note_text); }
++BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *m, int id)
++{
++    CHECK(m == &g_windowMgr && id == 0x112);
++    editor_closed++;
++    return 1;
++}
++int ui_window_mgr_message_box(struct UIWindowMgr *m, const char *text, int type,
++                             int a, int b, int c, const char *title, int w, int h, int d)
++{
++    CHECK(m == &g_windowMgr && type == UI_MSGBOX_OK);
++    (void)a; (void)b; (void)c; (void)title; (void)w; (void)h; (void)d;
++    CHECK(strlen(text) < sizeof error_text);
++    strcpy(error_text, text);
++    errors++;
++    return 0;
++}
++int ui_frame_wnd_send_msg(struct UIWindow *w, struct UIWindow *sender, int msg,
++                         int a, int b, int c, int d)
++{
++    (void)w; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d;
++    abort();
++}
++
++static FILE *test_fopen(const char *path, const char *mode)
++{
++    FILE *file;
++    CHECK(strcmp(path, expected_path) == 0);
++    CHECK(strcmp(mode, "ab") == 0 || strcmp(mode, "a+b") == 0 || strcmp(mode, "wb") == 0);
++    if (failure == OPEN_FAIL)
++        return NULL;
++    file = tmpfile();
++    CHECK(file != NULL);
++    if (mode[0] == 'a')
++        CHECK(fwrite(existing, 1, strlen(existing), file) == strlen(existing));
++    return file;
++}
++static size_t test_fwrite(const void *bytes, size_t size, size_t count, FILE *file)
++{
++    size_t n = size * count;
++    if (failure == WRITE_FAIL) {
++        CHECK(n > 0);
++        CHECK(fwrite(bytes, 1, n - 1, file) == n - 1);
++        return (n - 1) / size;
++    }
++    return fwrite(bytes, size, count, file);
++}
++static int test_fseek(FILE *file, long offset, int origin)
++{
++    return failure == SEEK_FAIL ? -1 : fseek(file, offset, origin);
++}
++static long test_ftell(FILE *file)
++{
++    return failure == TELL_FAIL ? -1 : ftell(file);
++}
++static int test_fgetc(FILE *file)
++{
++    return failure == READ_FAIL ? EOF : fgetc(file);
++}
++static int test_fclose(FILE *file)
++{
++    size_t n;
++    CHECK(fflush(file) == 0);
++    CHECK(fseek(file, 0, SEEK_SET) == 0);
++    n = fread(written, 1, sizeof written - 1, file);
++    written[n] = '\0';
++    CHECK(fclose(file) == 0);
++    closes++;
++    return failure == CLOSE_FAIL ? EOF : 0;
++}
++
++#define fopen test_fopen
++#define fwrite test_fwrite
++#define fclose test_fclose
++#define fseek test_fseek
++#define ftell test_ftell
++#define fgetc test_fgetc
++#include "minimap_memos.inc"
++#undef fopen
++#undef fwrite
++#undef fclose
++#undef fseek
++#undef ftell
++#undef fgetc
++
++static int minimap_load_memos(struct UIMiniMapWnd *self)
++{
++    CHECK(self != NULL && closes == 1 && errors == 0);
++    reloads++;
++    return 1;
++}
++static void reset(void)
++{
++    closes = reloads = editor_closed = errors = 0;
++    error_text[0] = written[0] = '\0';
++    existing = "";
++    failure = IO_OK;
++}
++static void store(struct UIEditctrlWnd *editor)
++{
++    ui_editctrl_wnd_send_msg(&editor->frame.base, NULL, UI_MSG_COMMAND, CMD_MEMO_OK, 0, 0, 0);
++    CHECK(strcmp(note_text, "hello") == 0);
++}
++static void check_failure(int mode)
++{
++    CHECK(errors == 1);
++    CHECK(strstr(error_text, expected_path) != NULL);
++    CHECK(editor_closed == 0 && reloads == 0);
++    CHECK(closes == (mode == OPEN_FAIL ? 0 : 1));
++}
++int main(void)
++{
++    struct UIEditctrlWnd editor = {0};
++    struct UIMiniMapWnd map = {0};
++    struct UIBitmapButton pins[MEMO_MAX] = {0};
++    const char *endings[] = { "", "\n", "\r", "\r\n" };
++    char manual[64], expected[128];
++    int mode, i;
++    strcpy(g_clientDir, "C:\\memo-test");
++    strcpy(g_session1.mapName, "prontera");
++    g_windowMgr.minimap_info.memo_x = 80;
++    g_windowMgr.minimap_info.memo_y = 90;
++    g_windowMgr.mini_map_wnd = &map.frame.base;
++    for (mode = OPEN_FAIL; mode <= READ_FAIL; mode++) {
++        reset();
++        failure = mode;
++        existing = "20\t30\tmanual note\r\n";
++        store(&editor);
++        check_failure(mode);
++    }
++    /* A short write while adding the missing separator also leaves the editor open. */
++    reset();
++    existing = "20\t30\tmanual note";
++    failure = WRITE_FAIL;
++    store(&editor);
++    check_failure(WRITE_FAIL);
++    /* Retry through the same Store handler and editor after clearing the fault. */
++    reset();
++    store(&editor);
++    CHECK(errors == 0 && editor_closed == 1 && reloads == 1 && closes == 1);
++    CHECK(strcmp(written, "80\t90\thello\r\n") == 0);
++    for (i = 0; i < sizeof endings / sizeof endings[0]; i++) {
++        reset();
++        sprintf(manual, "20\t30\tmanual note%s", endings[i]);
++        sprintf(expected, "20\t30\tmanual note%s80\t90\thello\r\n",
++                strcmp(endings[i], "\n") == 0 ? "\n" : "\r\n");
++        existing = manual;
++        store(&editor);
++        CHECK(errors == 0 && editor_closed == 1 && reloads == 1 && closes == 1);
++        CHECK(strcmp(written, expected) == 0);
++    }
++    for (i = 0; i < MEMO_MAX; i++) {
++        map.memos[i] = &pins[i];
++        string_init(&pins[i].button.tooltip);
++    }
++    pins[0].button.base.x = 20;
++    pins[0].button.base.y = 30;
++    string_assign_cstr(&pins[0].button.tooltip, "keep");
++    pins[1].button.base.x = 40;
++    pins[1].button.base.y = 50;
++    string_assign_cstr(&pins[1].button.tooltip, "remove");
++    for (mode = OPEN_FAIL; mode <= CLOSE_FAIL; mode++) {
++        reset();
++        failure = mode;
++        CHECK(minimap_save_memos(&map, 1) == -1);
++        check_failure(mode);
++        CHECK(pins[1].button.base.x == 40 && pins[1].button.base.y == 50);
++        CHECK(strcmp(string_cstr(&pins[1].button.tooltip), "remove") == 0);
++    }
++    reset();
++    CHECK(minimap_save_memos(&map, 1) == 1);
++    CHECK(errors == 0 && closes == 1);
++    CHECK(strcmp(written, "20\t30\tkeep\r\n") == 0);
++    pins[1].button.base.x = pins[1].button.base.y = -100;
++    reset();
++    CHECK(minimap_save_memos(&map, 0) == 0);
++    CHECK(errors == 0 && closes == 1 && written[0] == '\0');
++    for (i = 0; i < MEMO_MAX; i++)
++        string_free(&pins[i].button.tooltip);
++    puts("Minimap memo save tests passed.");
++    return 0;
++}
+diff --git a/tests/build_minimap_memos.bat b/tests/build_minimap_memos.bat
+new file mode 100644
+--- /dev/null
++++ b/tests/build_minimap_memos.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++if not exist "%ROOT%\build\tests\minimap_memos" mkdir "%ROOT%\build\tests\minimap_memos"
++pushd "%ROOT%\build\tests\minimap_memos" || exit /b 1
++python "%ROOT%\tests\extract_minimap_memos.py" "%ROOT%\src\ui\map\minimap_wnd.c" minimap_memos.inc
++if errorlevel 1 (popd & exit /b 1)
++cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I. /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_minimap_memos.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" /Fe:test_minimap_memos.exe /link /OPT:REF
++if errorlevel 1 (popd & exit /b 1)
++test_minimap_memos.exe
++if errorlevel 1 (popd & exit /b 1)
++popd
++exit /b 0
+diff --git a/tests/build.bat b/tests/build.bat
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -822,3 +822,6 @@
+ 
+ call "%~dp0build_emblem_cache.bat"
+ if errorlevel 1 exit /b 1
++
++call "%~dp0build_minimap_memos.bat"
++if not "%errorlevel%"=="0" exit /b 1

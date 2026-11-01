@@ -157,7 +157,6 @@ static void setup(void)
     g_session1.ownAid = OWN_AID;
     g_session1.aid = 0;
     sent_count = 0;
-    attack_test_talk_line = 0;
     attack_test_monster_actor = 1;
 }
 
@@ -258,22 +257,17 @@ static void act(void)
                    t0, t1, 144 + 200 * i);
 
     setup();
-    attack_test_talk_line = 1;
     game_mode_notify_act(&mode, MONSTER_AID, OWN_AID, 0, 400, 500, 30, 1, 0, 0, 0);
-    assert(sent_count == 6);
-    assert(sent[0].what == SENT_TALK && sent[0].to == &monster && !strcmp(sent[0].text, "Poring!"));
-    assert(sent[1].what == SENT_CHAT && !strcmp(sent[1].text, "Poring!") && sent[1].value[0] == 0xfafafa);
-    assert(sent[2].what == SENT_ATTACK);
+    assert(sent_count == 4 && sent[0].what == SENT_ATTACK && sent[0].to == &monster);
+    assert(sent[1].what == SENT_SPEED && sent[2].what == SENT_STATE && sent[3].what == SENT_HIT);
     setup();
-    attack_test_talk_line = 1;
     monster.attack_target_aid = OWN_AID;
     game_mode_notify_act(&mode, MONSTER_AID, OWN_AID, 0, 400, 500, 30, 1, 0, 0, 0);
     assert(sent[0].what == SENT_ATTACK);
     setup();
-    attack_test_talk_line = 1;
     g_session1.hideChat = 1;
     game_mode_notify_act(&mode, MONSTER_AID, OWN_AID, 0, 400, 500, 30, 1, 0, 0, 0);
-    assert(sent[0].what == SENT_TALK && sent[1].what == SENT_ATTACK);
+    assert(sent_count == 4 && sent[0].what == SENT_ATTACK);
     g_session1.hideChat = 0;
 
     setup();

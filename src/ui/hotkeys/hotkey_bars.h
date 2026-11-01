@@ -4,7 +4,6 @@
 #include "skills/skill_info.h"
 #include "ui/cooldown.h"
 #include "resources/state_icon_sheet.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #ifndef UI_HOTKEY_BARS_H
 #define UI_HOTKEY_BARS_H

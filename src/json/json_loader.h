@@ -31,8 +31,6 @@ void json_loader_read_double(struct JsonCppLoader *self, const char *key, const 
 void json_loader_read_bool(struct JsonCppLoader *self, const char *key, const struct JsonTree *row,
                            unsigned char *out);
 void json_loader_read_int(struct JsonCppLoader *self, const char *key, const struct JsonTree *row, int *out);
-const struct JsonTree *json_loader_read_array(struct JsonCppLoader *self, const char *key,
-                                              const struct JsonTree *row);
 
 const struct JsonTree *json_loader_table(struct JsonCppLoader *self, const char *name, size_t name_length);
 

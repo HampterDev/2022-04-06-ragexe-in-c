@@ -1,4 +1,3 @@
-#include "ui/window_records.h"
 #include "render/rp_pool.h"
 #include "skills/skill_info.h"
 #include "core/object_type_tables.h"
@@ -57,7 +56,6 @@ const struct UIWindowOps ui_pet_egg_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_identify_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -108,9 +106,7 @@ int ui_pet_egg_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&list->frame.base, val1, val2, list->selected, val4);
-        if (g_replayPlaying)
-            list->selected = val3;
+
         if (val1 == UI_ID_OK) {
             struct ItemInfo info;
             int found = 0;
@@ -184,7 +180,6 @@ const struct UIWindowOps ui_making_arrow_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_making_arrow_list_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -233,52 +228,6 @@ static void making_request(struct UIMakingArrowListWnd *self, int item_id)
         mode_send_message(g_modeMgr.curMode, GAME_REQ_MAKE_ITEM, item_id, self->kind, 0, 0);
 }
 
-int ui_making_arrow_list_wnd_get_records(struct UIWindow *window,
-                                                             struct ReplayBuffer *out)
-{
-    struct UIMakingArrowListWnd *self = (struct UIMakingArrowListWnd *)window;
-    struct ListNode *node;
-
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_MAKING_BEGIN, NULL, 0);
-    for (node = self->list.items.head->next; node != self->list.items.head; node = node->next) {
-        int item_id = atoi(string_cstr(&LIST_VALUE(node, struct ItemInfo)->id_text));
-        snapshot_write(&writer, REC_MAKING_ITEM, &item_id, sizeof item_id);
-    }
-    snapshot_write(&writer, REC_MAKING_KIND, &self->kind, sizeof self->kind);
-    snapshot_write(&writer, REC_MAKING_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
-static void making_load_records(struct UIMakingArrowListWnd *self, const char *buf, unsigned size)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != REC_MAKING_BEGIN)
-        return;
-    while (pos < size) {
-        int value = 0;
-
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == REC_MAKING_END)
-            break;
-        if (hdr.tag == REC_MAKING_ITEM) {
-            memcpy(&value, buf + pos, hdr.len);
-            pos += hdr.len;
-            ui_making_arrow_list_wnd_send_msg(&self->list.frame.base, NULL, UI_MSG_LIST_ADD, (int)&value, 0, 0, 0);
-        } else if (hdr.tag == REC_MAKING_KIND) {
-            memcpy(&value, buf + pos, hdr.len);
-            pos += hdr.len;
-            ui_making_arrow_list_wnd_send_msg(&self->list.frame.base, NULL, UI_MSG_LIST_SET_KIND, (short)value, 0, 0, 0);
-        } else {
-            pos += hdr.len;
-        }
-    }
-}
-
 int ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused,
                                             int msg, int val1, int val2, int val3, int val4)
 {
@@ -287,11 +236,7 @@ int ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&list->frame.base, val1, val2, val3, list->selected);
-        if (g_replayPlaying) {
-            list->selected = val4;
-            ui_window_invalidate_base(&list->frame.base);
-        }
+
         if (val1 == UI_ID_OK) {
             struct ItemInfo info;
             int found;
@@ -331,14 +276,6 @@ int ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *
         return 0;
     case UI_MSG_LIST_CLEAR:
         list_clear(&list->items, item_info_destroy);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        making_load_records(self, (const char *)val1, (unsigned)val2);
         return 0;
     }
     return 0;
@@ -390,7 +327,6 @@ const struct UIWindowOps ui_spell_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_identify_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -479,7 +415,7 @@ int ui_spell_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&list->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             int selected = list->selected;
 
@@ -566,7 +502,6 @@ const struct UIWindowOps ui_item_composition_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_composition_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -631,14 +566,6 @@ void ui_item_composition_wnd_store_info(struct UIWindow *window)
     self->info->y = wnd->y;
 }
 
-int ui_item_composition_wnd_get_records(struct UIWindow *window,
-                                                             struct ReplayBuffer *out)
-{
-    struct UIItemCompositionWnd *self = (struct UIItemCompositionWnd *)window;
-    return item_list_packet_records(&self->list, out, REC_COMPOSITION_BEGIN, REC_COMPOSITION_END,
-                                    REC_COMPOSITION_PACKET, PACKET_ITEM_COMPOSITION_LIST);
-}
-
 static void composition_set_card(struct UIItemCompositionWnd *self, int card_index)
 {
     struct ItemInfo card;
@@ -668,9 +595,7 @@ int ui_item_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&list->frame.base, val1, val2, list->selected, val4);
-        if (g_replayPlaying)
-            list->selected = val3;
+
         if (val1 == UI_ID_OK) {
             if (list->selected != -1) {
                 struct ItemInfo info;
@@ -694,15 +619,6 @@ int ui_item_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
         return 0;
     case UI_MSG_COMPOSE_CARD:
         composition_set_card(self, val1);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        item_list_load_packets((const char *)val1, (unsigned)val2, REC_COMPOSITION_BEGIN, REC_COMPOSITION_END,
-                               REC_COMPOSITION_PACKET, game_mode_item_composition_list);
         return 0;
     }
     return ui_item_identify_wnd_send_msg((struct UIWindow *)(list), sender, msg, val1, val2, val3, val4);

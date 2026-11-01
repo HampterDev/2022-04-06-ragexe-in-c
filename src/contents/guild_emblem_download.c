@@ -1,5 +1,4 @@
 #include "contents/guild_mgr.h"
-#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,12 +27,14 @@ int guild_mgr_download_chunk(struct GuildMgr *manager, int part, unsigned guild,
     case 1:
         if (download->guild_id != guild || download->version != version)
             return 0;
-        if (download->size > INT_MAX || size > INT_MAX - download->size)
+        if (download->size > GUILD_EMBLEM_MAX_SIZE || size > GUILD_EMBLEM_MAX_SIZE - download->size)
             goto failed;
         needed = download->size + size;
         if (needed > download->capacity)
         {
-            capacity = download->capacity > INT_MAX / 2 ? INT_MAX : download->capacity * 2;
+            capacity = download->capacity > GUILD_EMBLEM_MAX_SIZE / 2
+                           ? GUILD_EMBLEM_MAX_SIZE
+                           : download->capacity * 2;
             if (capacity < 256)
                 capacity = 256;
             if (capacity < needed)

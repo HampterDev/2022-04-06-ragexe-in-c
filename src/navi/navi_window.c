@@ -1,4 +1,3 @@
-#include "navi/replay_events.h"
 #include <limits.h>
 #include <stdio.h>
 #include "navi/navi_manager.h"
@@ -347,7 +346,7 @@ static unsigned char navigate_on(struct NaviManager *self, const char *mapName, 
     } else if (!self->windowHidden) {
         ui_navigation_open();
     }
-    navi_record_route(recorded_map, recorded_size, kind, flags, silent, x, y, id);
+
     return 1;
 }
 
@@ -389,7 +388,7 @@ int navi_show_map(struct NaviManager *self, const char *mapName, int x, int y)
     struct NaviMap *map;
     const char *canonical;
     if (!self || !mapName || !(map = navi_manager_map_by_name(self, mapName))) return 0;
-    navi_record_map(mapName, strlen(mapName), x, y);
+
     self->guided.obj = map;
     self->guided.kind = x == 1000 ? NAVI_RESULT_MAP : NAVI_RESULT_PLACE;
     self->guided.x = x == 1000 ? -1 : x;

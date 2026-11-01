@@ -16,7 +16,7 @@ void mode_show_tooltip(struct Mode * arg0, const char * arg1, int arg2, int arg3
 void ui_skin_color_chip(struct SkinMgr * arg0, int arg1, int arg2, int * arg3, int * arg4, int * arg5) { abort(); }
 void ui_window_drag_and_drop_base(struct UIWindow *arg0, int arg1, int arg2, const struct DragInfo *arg3) { abort(); }
 unsigned long ui_window_get_color(struct UIWindow * arg0) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 unsigned char ui_window_is_hit_testable_base(struct UIWindow * arg0) { abort(); }
 struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort(); }

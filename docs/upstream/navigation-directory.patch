@@ -1,0 +1,13 @@
+--- a/src/core/winmain.c
++++ b/src/core/winmain.c
+@@ -276,8 +276,8 @@
+         CreateDirectoryA("Replay", 0);
+     else
+         FindClose(replay_find);
+-    navi_find = FindFirstFileA("", &navi_found);
+-    if (replay_find == INVALID_HANDLE_VALUE)
++    navi_find = FindFirstFileA("Navigationdata", &navi_found);
++    if (navi_find == INVALID_HANDLE_VALUE)
+         CreateDirectoryA("Navigationdata", 0);
+     else
+         FindClose(navi_find);

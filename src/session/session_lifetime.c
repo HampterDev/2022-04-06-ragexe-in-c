@@ -21,21 +21,20 @@
 
 struct Session g_session1;
 
-static void session_inventory_lists(struct Session *self, struct List *lists[13])
+static void session_inventory_lists(struct Session *self, struct List *lists[12])
 {
     lists[0] = &self->itemList;
     lists[1] = &self->shopItems;
     lists[2] = &self->purchaseItems;
-    lists[3] = &self->snapshotOnlyItems;
-    lists[4] = &self->sellItems;
-    lists[5] = &self->storageItems;
-    lists[6] = &self->cartItems;
-    lists[7] = &self->otherStoreItems;
-    lists[8] = &self->storeCandidateItems;
-    lists[9] = &self->ownStoreItems;
-    lists[10] = &self->storePurchaseItems;
-    lists[11] = &self->storeSetupItems;
-    lists[12] = &self->storePurchaseSent;
+    lists[3] = &self->sellItems;
+    lists[4] = &self->storageItems;
+    lists[5] = &self->cartItems;
+    lists[6] = &self->otherStoreItems;
+    lists[7] = &self->storeCandidateItems;
+    lists[8] = &self->ownStoreItems;
+    lists[9] = &self->storePurchaseItems;
+    lists[10] = &self->storeSetupItems;
+    lists[11] = &self->storePurchaseSent;
 }
 
 static void destroy_party_member(void *value)
@@ -81,22 +80,14 @@ struct Session *session_construct(struct Session *self)
     list_init(&self->pingSamples);
     vec_init(&self->jobBodyNames);
     text_array_init(&self->chatMacros);
-    text_array_init(&self->chatMacrosLoaded);
     for (i = 0; i < 0x19; i++)
         string_init(&self->pet_state_texts[i]);
+    xml_element_construct(&self->monsterSkillTable.root, "XMLDocument");
+    self->monsterSkillTable.copy = NULL;
     {
-        struct XmlDocument *documents[] = {
-            &self->petTalkTable, &self->monsterSkillTable, &self->monsterTalkTable
-        };
-        for (i = 0; i < 3; i++) {
-            xml_element_construct(&documents[i]->root, "XMLDocument");
-            documents[i]->copy = NULL;
-        }
-    }
-    {
-        struct List *lists[13];
+        struct List *lists[12];
         session_inventory_lists(self, lists);
-        for (i = 0; i < 13; i++)
+        for (i = 0; i < 12; i++)
             list_init(lists[i]);
     }
     vec_init(&self->buyingStoreItems);
@@ -128,7 +119,6 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->jobSpriteNames);
     vec_init(&self->sexSpriteNames);
     vec_init(&self->weaponSpriteNames);
-    vec_init(&self->accessoryNames);
     vec_init(&self->shieldSpriteNames);
     vec_init(&self->exceptionMinimapNames);
     self->talkOptionSettings = (struct TalkOptionSettings){0};
@@ -169,7 +159,6 @@ struct Session *session_construct(struct Session *self)
     self->zoomFarLimit = 0;
     self->emblemFrame = 0;
     self->extendDamage = 1;
-    self->showMapName = 1;
     tree_init(&self->pendingNameAids);
     self->gameModeScheduleId = 0;
     self->lastPacketTime = 0;
@@ -180,7 +169,6 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->pcNames);
     self->hideOtherPlayers = self->userConfigEntry1 = 0;
     vec_init(&self->accountCharNames);
-    text_array_init(&self->luaFileNames);
 
     if (!user_hotkey_mgr_create())
         MessageBoxA(NULL, "CUserHotkeyMgr::CreateInstance()", "Error", MB_OK);
@@ -188,8 +176,8 @@ struct Session *session_construct(struct Session *self)
         MessageBoxA(NULL, "InstanceCBarterMarketItemMgr::CreateInstance()", "Error", MB_OK);
     if (!expanded_barter_create())
         MessageBoxA(NULL, "InstanceCBarterMarketItem2Mgr::CreateInstance()", "Error", MB_OK);
-    if (!pet_evolution_create())
-        MessageBoxA(NULL, "CPetEvolutionMgr file Init", "Error", MB_OK);
+    if (!pet_auto_feed_create())
+        MessageBoxA(NULL, "Pet auto-feeding data initialization", "Error", MB_OK);
     if (!achievement_create())
         MessageBoxA(NULL, "CAchievementMgr file init", "Error", MB_OK);
     self->new_layer_table_loaded = 0;
@@ -240,18 +228,16 @@ void session_destruct(struct Session *self)
 
     embedded_fonts_clear();
     item_info_mgr_clear();
-    pet_evolution_destroy();
+    pet_auto_feed_destroy();
     achievement_destroy();
     display_devices_reset();
     tree_clear(&self->transparentItemPulses, NULL);
     memset(&self->baseLevel, 0, 0x7938 - 0x7900);
     private_airplane_destroy();
     check_attendance_destroy();
-    tipbox_clear();
     self->auras[15] = 0;
     self->auras[16] = 0;
 
-    text_array_clear(&self->luaFileNames);
     string_vec_free(&self->accountCharNames);
     vec_free(&self->pcNames);
     mcstore_destroy(&self->mcStoreBackup);
@@ -294,7 +280,6 @@ void session_destruct(struct Session *self)
     talk_option_settings_clear(&self->talkOptionSettings);
     string_vec_free(&self->exceptionMinimapNames);
     vec_free(&self->shieldSpriteNames);
-    vec_free(&self->accessoryNames);
     vec_free(&self->weaponSpriteNames);
     vec_free(&self->sexSpriteNames);
     vec_free(&self->jobSpriteNames);
@@ -325,23 +310,15 @@ void session_destruct(struct Session *self)
         list_free(&self->cashShopGoods[i], item_info_destroy);
     vec_free(&self->buyingStoreItems);
     {
-        struct List *lists[13];
+        struct List *lists[12];
         session_inventory_lists(self, lists);
-        for (i = 13; i-- > 0;)
+        for (i = 12; i-- > 0;)
             list_free(lists[i], item_info_destroy);
     }
-    {
-        struct XmlDocument *documents[] = {
-            &self->petTalkTable, &self->monsterSkillTable, &self->monsterTalkTable
-        };
-        for (i = 3; i-- > 0;) {
-            xml_document_release(documents[i]);
-            xml_element_destruct(&documents[i]->root);
-        }
-    }
+    xml_document_release(&self->monsterSkillTable);
+    xml_element_destruct(&self->monsterSkillTable.root);
     for (i = 0x19; i-- > 0;)
         string_free(&self->pet_state_texts[i]);
-    text_array_clear(&self->chatMacrosLoaded);
     text_array_clear(&self->chatMacros);
     vec_free(&self->jobBodyNames);
     list_free(&self->pingSamples, NULL);

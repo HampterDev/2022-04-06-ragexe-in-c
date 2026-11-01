@@ -13,7 +13,6 @@
 #include "game/store_assistant.h"
 #include "game/store_entries.h"
 #include "game/actor_entry.h"
-#include "replay/replay.h"
 #include "actor/actor_common.h"
 #include "core/msg_str.h"
 #include "game/packets_entry.h"
@@ -325,9 +324,6 @@ void game_mode_take_other_vending_store_items(struct GameMode *self, const struc
 
 void game_mode_take_my_vending_store_items(struct GameMode *self, const struct Vec *items)
 {
-    if (g_replayPlaying != 0) {
-        game_send_message(0x52, 0, 0, 0, 0);
-    }
     session_clear_own_store_items(&g_session1);
     if ((int)((char *)items->last - (char *)items->first) / (int)sizeof(struct ItemInfo) == 0) {
         mode_send_msg(self, 0x28, 0, 0, 0, 0);

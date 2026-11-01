@@ -1,8 +1,6 @@
 #include "ui/controls/listbox.h"
 #include "ui/window_access.h"
 #include "render/rp_pool.h"
-#include "navi/snapshot.h"
-#include "replay/replay.h"
 #include "render/texture_image.h"
 #include "navi/navi_manager.h"
 #include "session/state.h"
@@ -12,7 +10,6 @@
 #include <string.h>
 #include "ui/worldmap/navi_wnd.h"
 #include <mmsystem.h>
-#include "core/file_util.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/wndmgr/wndmgr.h"
@@ -64,7 +61,6 @@ const struct UIWindowOps ui_navigation_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -80,7 +76,6 @@ const struct UIWindowOps ui_navigation_wnd_ops = {
 void ui_navigation_wnd_destruct(struct UINavigationWnd *self)
 {
     self->frame.base.ops = &ui_navigation_wnd_ops;
-    string_vec_free(&self->files);
     string_free(&self->folded_text);
     string_free(&self->title);
     ui_frame_wnd_destruct(&self->frame);
@@ -150,13 +145,11 @@ static struct UIWindow *add_check(struct UINavigationWnd *self, struct String *d
 void ui_navigation_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UINavigationWnd *self = (struct UINavigationWnd *)window;
-    static const char *const names[6] = {"NaviSearch", "NaviStart", "NaviRoute", "NaviList", "Navisyschange2",
-                                         "navifolder"};
-    static const int ids[6] = {NAVI_ID_SEARCH, NAVI_ID_START, NAVI_ID_ROUTE, NAVI_ID_LIST, NAVI_ID_WIDE,
-                               NAVI_ID_FOLDER};
+    static const char *const names[5] = {"NaviSearch", "NaviStart", "NaviRoute", "NaviList", "Navisyschange2"};
+    static const int ids[5] = {NAVI_ID_SEARCH, NAVI_ID_START, NAVI_ID_ROUTE, NAVI_ID_LIST, NAVI_ID_WIDE};
     struct UIWindow *wnd = &self->frame.base;
     struct String skin, dir, path;
-    const char *tips[6];
+    const char *tips[5];
     struct UIResizer *resizer;
     struct UIWindow *combo, *edit;
     const char *hint;
@@ -186,9 +179,9 @@ void ui_navigation_wnd_on_create(struct UIWindow *window, int width, int height)
 
     string_copy(&dir, &skin);
     string_append_cstr(&dir, "navigation_interface\\");
-    for (i = 0; i < 6; i++)
+    for (i = 0; i < 5; i++)
         tips[i] = msg_str(0x894 + i);
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < 5; i++) {
         struct UIBitmapButton *button = mem_alloc(sizeof *button);
 
         if (button)
@@ -252,10 +245,6 @@ void ui_navigation_wnd_on_create(struct UIWindow *window, int width, int height)
     if (hint)
         string_assign_cstr(&((struct UIEditCtrl *)edit)->tooltip, hint);
     ui_window_add_child(wnd, edit);
-    if (g_replayPlaying) {
-        ((struct UIEditCtrl *)self->edit)->disabled = 1;
-        ui_window_invalidate(self->edit);
-    }
 
     self->check_scrolls = add_check(self, &dir, &skin, 0x8a3, g_navi.routeUseScrolls, 0x8a4);
     self->check_kafra = add_check(self, &dir, &skin, 0x8a5, g_navi.routeUseKafra, 0x8a6);
@@ -309,7 +298,7 @@ void ui_navigation_wnd_place(struct UINavigationWnd *self)
         ui_window_move_base(self->close, wnd->width - 0xe, 3);
         ui_window_move_base(self->mini, wnd->width - 0x1c, 3);
         ui_bitmap_button_set_tool_tip((struct UIBitmapButton *)self->mini, msg_str(0x89b));
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < 5; i++)
             ui_window_move_base(&self->buttons[i]->button.base, OFF_SCREEN, OFF_SCREEN);
         ui_navigation_wnd_show_list(self);
         ui_window_move(self->mode_combo, OFF_SCREEN, OFF_SCREEN);
@@ -318,7 +307,7 @@ void ui_navigation_wnd_place(struct UINavigationWnd *self)
         ui_window_move_base(self->check_airship, OFF_SCREEN, OFF_SCREEN);
         ui_window_move(self->edit, OFF_SCREEN, OFF_SCREEN);
     } else {
-        int xs[6], ys[6];
+        int xs[5], ys[5];
 
         if (self->info->is_screen) {
             self->info->rect.width = 0x110;
@@ -352,9 +341,7 @@ void ui_navigation_wnd_place(struct UINavigationWnd *self)
         ys[3] = OFF_SCREEN;
         xs[4] = wnd->width - 0xe0;
         ys[4] = wnd->height - 0x16;
-        xs[5] = wnd->width - 0x1f;
-        ys[5] = 0x12;
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < 5; i++)
             ui_window_move_base(&self->buttons[i]->button.base, xs[i], ys[i]);
         ui_navigation_wnd_show_list(self);
         ui_window_move(self->mode_combo, 6, 0x12);
@@ -759,117 +746,15 @@ done:
     search_result_destroy(&dest);
 }
 
-BYTE ui_navigation_wnd_load_place_file(struct UINavigationWnd *self, int index)
-{
-    struct String name, path;
-    unsigned count;
-    FILE *file;
-    BYTE done;
-
-    if (self->files.first == self->files.last)
-        return 0;
-    count = (unsigned)((struct String *)self->files.last - (struct String *)self->files.first);
-    if ((unsigned)index > count || index < 0)
-        return 0;
-    {
-        const char *text = string_cstr(&((struct String *)self->files.first)[index]);
-
-        string_init(&name);
-        string_assign_cstr(&name, text);
-    }
-    if (name.size == 0) {
-        string_free(&name);
-        return 0;
-    }
-    string_init(&path);
-    string_format(&path, "%s\\Navigationdata\\%s", g_clientDir, string_cstr(&name));
-    file = fopen(string_cstr(&path), "rb");
-    if (!file) {
-        done = 0;
-    } else {
-        static const char delims_init[6] = "\t ,\t\n";
-        char delims[6];
-        char buf[0x400];
-        struct Vec words = {0};
-
-        navi_manager_clear_results(&g_navi);
-        memcpy(delims, delims_init, sizeof delims);
-        memset(buf, 0, sizeof buf);
-        while (!feof(file)) {
-            char *word;
-
-            fgets(buf, 0x400, file);
-            for (word = strtok(buf, delims); word; word = strtok(NULL, delims))
-                string_vec_push_text(&words, word, strlen(word));
-            navi_manager_add_place(&g_navi, &words);
-            string_vec_clear(&words);
-        }
-        fclose(file);
-        if (navi_manager_result_count(&g_navi) > 0) {
-            struct ReplayBuffer bytes = {0};
-
-            if (!navi_results_save(&g_navi, &bytes) && replay_recorder_instance()->state == 2)
-                replay_recorder_instance()->writeFailed = 1;
-            ui_window_record_bytes(&self->frame.base, 0x38f, bytes.data, bytes.size);
-            replay_buffer_destroy(&bytes);
-        }
-        ui_navigation_wnd_fill_results(self);
-        ui_window_send_msg(&self->frame.base, &self->frame.base, UI_MSG_COMMAND, NAVI_ID_LIST, 0, 0, 0);
-        done = 1;
-        string_vec_free(&words);
-    }
-    string_free(&path);
-    string_free(&name);
-    return done;
-}
-
-static void list_place_files(struct UINavigationWnd *self)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    struct String *s, dir;
-    struct UIWindow *combo;
-    int count, height, x, y;
-
-    if (g_windowMgr.combo_box_wnd)
-        ui_close_window(UI_WND_COMBO_BOX);
-    for (s = self->files.first; s != (struct String *)self->files.last; s++) {
-        string_clear(s);
-    }
-    for (s = self->files.first; s != (struct String *)self->files.last; s++)
-        string_free(s);
-    self->files.last = self->files.first;
-    string_init(&dir);
-    string_format(&dir, "%s\\Navigationdata\\", g_clientDir);
-    dir_list_names_vector(&self->files, string_cstr(&dir), "*.txt");
-    count = (int)((struct String *)self->files.last - (struct String *)self->files.first);
-    if (count) {
-        combo = ui_make_window(UI_WND_COMBO_BOX);
-        for (s = self->files.first; s != (struct String *)self->files.last; s++)
-            ui_window_send_msg(combo, NULL, 0x1f, (int)string_cstr(s), 0, 0, 0);
-        height = count << 4;
-        if (height > 0xa0)
-            height = 0xa0;
-        ui_window_send_msg(combo, NULL, 0x28, 0, 0, 0, 0);
-        ui_window_resize(combo, 0xa0, height);
-        ui_window_send_msg(combo, NULL, 0x53, WND_NAVIGATION, 0, 0, 0);
-        x = wnd->width - 0xa5;
-        y = 0x24;
-        ui_window_to_screen(wnd, &x, &y);
-        ui_window_move(combo, x, y);
-    }
-    string_free(&dir);
-}
-
 static void pick_line(struct UINavigationWnd *self, struct UIWindow *list, int id, int line, int val3, int val4)
 {
     int index;
     unsigned char guided;
 
-    if (!g_replayPlaying)
-        line = ((struct UIListBox *)list)->selected;
+    line = ((struct UIListBox *)list)->selected;
     if (line == -1)
         return;
-    ui_window_record_command(&self->frame.base, id, line, val3, val4);
+
     index = line - ui_list_box_navi_row_base(NAVI_LIST(list));
     if (id == NAVI_ID_RESULTS) {
         if (index < 0)
@@ -889,8 +774,6 @@ static void command(struct UINavigationWnd *self, struct UIWindow *sender, int i
 {
     struct UIWindow *wnd = &self->frame.base;
 
-    if (id != NAVI_ID_RESULTS && id != NAVI_ID_ROUTE_LIST)
-        ui_window_record_command(wnd, id, val2, val3, val4);
     switch (id) {
     case NAVI_ID_START: {
         int status;
@@ -920,9 +803,6 @@ static void command(struct UINavigationWnd *self, struct UIWindow *sender, int i
     case NAVI_ID_LIST:
         g_navi.windowPage = 0;
         ui_navigation_wnd_show_list(self);
-        return;
-    case NAVI_ID_FOLDER:
-        list_place_files(self);
         return;
     case UI_ID_CLOSE:
         if (g_navi.guideState == 2) {
@@ -1056,10 +936,6 @@ int ui_navigation_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         if (self->mode_combo == sender) {
             g_navi.searchFilter = val1;
             ui_window_invalidate_base(wnd);
-            if (g_replayPlaying)
-                ui_window_send_msg(self->mode_combo, NULL, 0x39, val1, 0, 0, 0);
-        } else if (!g_replayPlaying) {
-            ui_navigation_wnd_load_place_file(self, val1);
         }
         return 0;
     }

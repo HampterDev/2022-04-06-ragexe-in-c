@@ -2,7 +2,6 @@
 #include "ui/window_keyboard.h"
 #include "core/text_markup.h"
 #include "session/chat_macros.h"
-#include "replay/replay.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "session/session_talk.h"
@@ -16,7 +15,6 @@
 #include <string.h>
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/draw.h"
-#include "contents/clan_info.h"
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include "session/session_names.h"
@@ -25,12 +23,10 @@
 #include "session/session_windows.h"
 #include "ui/chat/chat_window.h"
 #include "ui/hotkeys/hotkeys.h"
-#include "ui/media/connect_sns.h"
 
 #define MODE_MSG_CHAT_LINE 6
 #define MODE_MSG_PARTY_LINE 0x42
 #define MODE_MSG_GUILD_LINE 0x81
-#define MODE_MSG_CLAN_LINE 0x121
 #define MODE_MSG_TALK_COMMAND 0x2a
 
 static BYTE command(struct UIWindow *wnd, int id)
@@ -88,14 +84,12 @@ static BYTE minimap(struct UIWindowMgr *self)
 static BYTE chat_window(struct UIWindowMgr *self)
 {
     struct UIWindow *chat = self->new_chat_wnd;
-    BYTE allowed;
 
     if (chat == NULL)
         return 1;
-    allowed = !g_replayPlaying || replay_recorder_instance()->info.options[6];
     if (chat->visible) {
         ui_window_send_msg(chat, NULL, 2, 0, 0, 0, 0);
-        if (self->new_chat_wnd->state || !allowed)
+        if (self->new_chat_wnd->state)
             return 1;
         self->chat_wnd_show = 0;
         if (self->new_chat_wnd == NULL)
@@ -104,13 +98,11 @@ static BYTE chat_window(struct UIWindowMgr *self)
         ui_window_store_info(self->new_chat_wnd);
         return 1;
     }
-    if (allowed) {
-        self->chat_wnd_show = 1;
-        if (self->new_chat_wnd == NULL)
-            ui_window_open(0x1);
-        ui_window_set_show(self->new_chat_wnd, 1);
-        ui_window_mgr_raise_window(&g_windowMgr, self->new_chat_wnd);
-    }
+    self->chat_wnd_show = 1;
+    if (self->new_chat_wnd == NULL)
+        ui_window_open(0x1);
+    ui_window_set_show(self->new_chat_wnd, 1);
+    ui_window_mgr_raise_window(&g_windowMgr, self->new_chat_wnd);
     ui_new_chat_wnd_place_bar((struct UINewChatWnd *)self->new_chat_wnd);
     return 1;
 }
@@ -127,13 +119,6 @@ static BYTE companion_command(int aid, BYTE (*ready)(void *), int which)
     if (actor == NULL || !ready(actor))
         return 1;
     game_actor_set_request(actor, request, which);
-    return 1;
-}
-
-static BYTE replay_command(struct UIWindowMgr *self, int id)
-{
-    if (g_replayPlaying && self->replay_control_wnd)
-        command(self->replay_control_wnd, id);
     return 1;
 }
 
@@ -183,25 +168,6 @@ static BYTE hotkey_row(struct UIWindowMgr *self)
     return 1;
 }
 
-static BYTE replay_allows(int action)
-{
-    const BYTE *option = &replay_recorder_instance()->info.options[0];
-
-    switch (action) {
-    case 0x67: case 0x6c: case 0x71: case 0x73: case 0x78:
-        return 1;
-    case 0x64: return option[0];
-    case 0x65: case 0x7a: case 0x7b: case 0x7c: return option[1];
-    case 0x6b: case 0x6d: return option[2];
-    case 0x66: return option[3];
-    case 0x68: case 0x69: return option[5];
-    case 0x76: case 0x77: return option[6];
-    case 0x75: return option[7];
-    case 0x93: return option[8];
-    }
-    return 0;
-}
-
 BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
 {
     struct UIWindow *wnd;
@@ -212,8 +178,7 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
     action = ui_window_mgr_get_hot_key_behavior(self);
     if (action == -1)
         return 0;
-    if (g_replayPlaying && action != 0x8b && action != 0x8c && action != 0x8d && !replay_allows(action))
-        return 0;
+
     if (session_get_instant_var(&g_session1, 5) > 0 || self->private_airplane_wnd)
         return 0;
     if (action <= 0x2c) {
@@ -221,8 +186,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
             ui_window_send_msg(self->short_cut_wnd, NULL, 0x29, action % 9, action / 9, 0, 0);
         return 1;
     }
-    if (self->modal_result == 0 && ui_window_mgr_get_window(self, 0x165))
-        return 0;
 
     switch (action) {
     case 0x64: return basic_command(self, 0xc2);
@@ -310,18 +273,7 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
         else
             ui_window_mgr_post_quit1(&g_windowMgr, 0x13e);
         return 1;
-    case 0x8a:
-        command(ui_window_find(0x133), 0x187);
-        return command(ui_window_find(0xb6), 0x187);
-    case 0x8b:
-        if (g_replayPlaying && self->replay_control_wnd) {
-            command(self->replay_control_wnd,
-                    replay_recorder_instance()->state == 6 ? 0x189 : 0x18a);
-            ui_window_send_msg(self->replay_control_wnd, NULL, 0x23, 0, 0, 0, 0);
-        }
-        return 1;
-    case 0x8c: return replay_command(self, 0x18d);
-    case 0x8d: return replay_command(self, 0x18e);
+
     case 0x8e:
         if (g_windowMgr.navigation_v4_wnd)
             return command(g_windowMgr.navigation_v4_wnd, 0xc1);
@@ -329,7 +281,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
             return command(g_windowMgr.kafra_move_map_service_info_wnd, 0xc0);
         ui_window_open(0xcb);
         return 1;
-    case 0x90: return basic_toggle(self, 0xed);
     case 0x92: return bank();
     case 0x93: return basic_command(self, 0xb8);
     case 0x94: return hotkey_row(self);
@@ -349,11 +300,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
     case 0x98:
         game_send_message(0x130, 0, 0, 0, 0);
         return 1;
-    case 0x99:
-        if (g_connectSnsMgr && connect_sns_mgr_is_window_closed() != 1)
-            command(ui_window_find(0x11a), 0xc1);
-        return 1;
-    case 0x9a: return toggle(&g_windowMgr, 0x13b);
     case 0x9b: return command(ui_window_find(0x24), 0x21d);
     case 0x9d: return toggle(&g_windowMgr, 0x144);
     case 0x9f:
@@ -362,7 +308,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
         else
             session_set_hide_other_players(&g_session1, g_session1.hideOtherPlayers == 0);
         return 1;
-    case 0xa0: return toggle(&g_windowMgr, 0x15a);
     case 0xc8: case 0xc9: case 0xca: case 0xcb: case 0xcc:
     case 0xcd: case 0xce: case 0xcf: case 0xd0: case 0xd1:
         if (client_current_mode())
@@ -398,8 +343,6 @@ void ui_window_mgr_send_chat_macro(int index)
             mode_send_message(client_current_mode(), MODE_MSG_GUILD_LINE, 0, 0, 0, 0);
         else if (target == 1 && session_get_party_member_count(&g_session1))
             mode_send_message(client_current_mode(), MODE_MSG_PARTY_LINE, 0, 0, 0, 0);
-        else if (target == 3 && g_clanInfo->in_clan)
-            mode_send_message(client_current_mode(), MODE_MSG_CLAN_LINE, 0, 0, 0, 0);
         else
             mode_send_message(client_current_mode(), MODE_MSG_CHAT_LINE, 0, 0, 0, 0);
         return;

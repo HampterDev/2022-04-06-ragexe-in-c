@@ -79,7 +79,6 @@ const struct UIWindowOps ui_pet_taming_deceive_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -163,7 +162,7 @@ void ui_pet_taming_deceive_wnd_on_draw(struct UIWindow *window)
 void ui_pet_taming_deceive_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 {
     struct UIPetTamingDeceiveWnd *self = (struct UIPetTamingDeceiveWnd *)window;
-    if (g_replayPlaying || self->clicked)
+    if (self->clicked)
         return;
     self->action = 1;
     self->stop_frame = PET_TAMING_STOP_STEP;

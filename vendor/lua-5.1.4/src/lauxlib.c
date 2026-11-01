@@ -540,8 +540,6 @@ static const char *getF (lua_State *L, void *ud, size_t *size) {
 }
 
 
-extern void client_lua_loadfile_hook (const char *filename);
-
 static int errfile (lua_State *L, const char *what, int fnameindex) {
   const char *serr = strerror(errno);
   const char *filename = lua_tostring(L, fnameindex) + 1;
@@ -566,9 +564,6 @@ LUALIB_API int luaL_loadfile (lua_State *L, const char *filename) {
     lf.f = fopen(filename, "r");
     if (lf.f == NULL) return errfile(L, "open", fnameindex);
   }
-  client_lua_loadfile_hook(filename);  /* the client's Lua calls a file-access
-      hook here with the filename (NULL for stdin), after open and before the
-      first getc. This is the only difference from stock 5.1.4 in this tree. */
   c = getc(lf.f);
   if (c == '#') {  /* Unix exec. file? */
     lf.extraline = 1;

@@ -20,7 +20,6 @@ struct TexCache;
 struct ItemInfo;
 struct RPQuad;
 struct RenewQuestB;
-struct ReplayBuffer;
 struct SprImg;
 struct SpriteRegion;
 struct String;
@@ -160,7 +159,7 @@ void adventurer_agency_cancel_own_booking(struct AdventurerAgencyMgr *arg0)
     abort();
 }
 
-void char_user_data_save(struct CharUserDataMgr *arg0)
+int char_user_data_save(struct CharUserDataMgr *arg0)
 {
     abort();
 }
@@ -203,11 +202,6 @@ int g_serviceType;
 struct Session g_session1;
 
 struct TexCache g_textureCache;
-
-void replay_buffer_destroy(struct ReplayBuffer *arg0)
-{
-    abort();
-}
 
 void screen_texture_rect(struct Renderer *arg0, const RECT *arg1, int arg2, float arg3, DWORD arg4,
                          struct Texture *arg5, struct TextureUV arg6)

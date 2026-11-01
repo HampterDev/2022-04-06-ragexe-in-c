@@ -14,10 +14,8 @@ void mcstore_clear_items(struct McStoreBackup *self);
 void mcstore_restore_shop(struct McStoreBackup *self, char mode, int count);
 
 int mcstore_read_items(struct McStoreBackup *self, const struct JsonTree *data);
-void mcstore_read_item(struct McStoreItem *item, const struct JsonTree *object);
-void mcstore_write_items(struct McStoreBackup *self, struct JsonTree *out);
-void mcstore_on_loaded(struct McStoreBackup *self, int succeeded, struct TextView response);
-void mcstore_on_saved(struct McStoreBackup *self, int succeeded, struct TextView response);
+int mcstore_read_item(struct McStoreItem *item, const struct JsonTree *object);
+int mcstore_write_items(struct McStoreBackup *self, struct JsonTree *out);
 
 void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *window);
 

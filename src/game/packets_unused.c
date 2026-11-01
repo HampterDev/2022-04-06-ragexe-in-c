@@ -9,19 +9,8 @@
 #include "contents/connection_api.h"
 #include <windows.h>
 #include "game/packets.h"
-#include "contents/clan_info.h"
 #include "session/session_jobs.h"
 #include "core/app.h"
-
-void game_mode_player_progress(struct GameMode *self, const struct PacketActorProgress *pkt)
-{
-    struct GameActor *player = (struct GameActor *)self->world->player;
-
-    if (!player)
-        return;
-    actor_send(player, 0x52, pkt->seconds * 1000u, 0);
-    g_session1.progressBarPending = 1;
-}
 
 void game_mode_ignore_packet(const unsigned char *pkt)
 {

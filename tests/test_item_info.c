@@ -2,7 +2,6 @@
 #include "iteminfo/item_api.h"
 #include "std/vec.h"
 #include "game/item_info.h"
-#include "iteminfo/item_snapshot.h"
 #include "iteminfo/iteminfo.h"
 #include "iteminfo/item_list.h"
 #include <assert.h>
@@ -34,8 +33,6 @@ void fatal_error(const char *message)
     (void)message;
     abort();
 }
-
-#include "fixtures/item_snapshot_wire.h"
 
 static void item_list_ownership(void)
 {
@@ -94,9 +91,7 @@ int main(void)
         struct ItemInfo item[2];
         unsigned guard;
     } pair;
-    struct ItemInfo copy, decoded;
-    struct ReplayBuffer wire = {0};
-    struct SnapshotWriter writer = {0};
+    struct ItemInfo copy;
     const char *name = "긴 이름의 검증용 장비 아이템";
     const char *id = "00000000000000000000000000000501";
     unsigned char untouched[sizeof(struct ItemInfo)];
@@ -153,24 +148,11 @@ int main(void)
     assert(!strcmp(string_cstr(&copy.name), name));
     assert(!strcmp(string_cstr(&pair.item[1].name), name));
 
-    item_snapshot_write(&writer, &copy);
-    assert(snapshot_finish(&writer, &wire));
-    assert(wire.size == sizeof expected_tlv);
-    assert(!memcmp(wire.data, expected_tlv, sizeof expected_tlv));
-    item_info_construct(&decoded);
-    assert(item_snapshot_load(&decoded, wire.data, wire.size) == sizeof expected_tlv);
-    assert(!strcmp(string_cstr(&decoded.id_text), "501"));
-    assert(!strcmp(string_cstr(&decoded.name), name));
-    assert(decoded.price == 12345 && decoded.charged_price == 12000);
-    assert(decoded.bind_on_equip_type == 258 && decoded.view == 42);
-    assert(decoded.option_count == 0);
-    replay_buffer_destroy(&wire);
-    item_info_destruct(&decoded);
     item_info_destruct(&copy);
     item_info_destruct(&pair.item[1]);
     item_info_destruct(&pair.item[0]);
     assert(pair.guard == 0xa5a5a5a5u && !allocations);
     item_list_ownership();
-    puts("item records: owned lists, adjacent storage, deep copies, padding and CP949 TLV round trip passed");
+    puts("item records: owned lists, adjacent storage, deep copies, padding and CP949 names passed");
     return 0;
 }

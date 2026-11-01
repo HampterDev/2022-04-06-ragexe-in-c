@@ -1,5 +1,4 @@
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/social/guild_requests.h"
 #include "contents/guild_info.h"
 #include "core/object_type_tables.h"
@@ -51,7 +50,6 @@ const struct UIGuildWndOps ui_guild_wnd_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_frame_wnd_get_records,
         .type = UI_TYPE_FRAME,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -127,7 +125,6 @@ const struct UIGuildWndOps ui_guild_banished_member_wnd_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_frame_wnd_get_records,
         .type = UI_TYPE_FRAME,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -190,7 +187,6 @@ const struct UIGuildWndOps ui_guild_total_info_wnd_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_frame_wnd_get_records,
         .type = UI_TYPE_FRAME,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -419,9 +415,6 @@ void ui_guild_banished_member_wnd_on_draw(struct UIWindow *window)
         ui_window_move(self->names[drawn], 8, y);
         memset(reason, 0, sizeof reason);
         strncpy_s(reason, sizeof reason, string_cstr(&LIST_VALUE(node, struct GuildExpelled)->reason), LIST_VALUE(node, struct GuildExpelled)->reason.size);
-        if (word_filter_contains(&g_nameFilter, reason) == 1) {
-            word_filter_censor(&g_nameFilter, reason);
-        }
         ui_static_text_set_text_ellipsis(self->reasons[drawn], reason);
         ui_window_move(self->reasons[drawn], g_guildLayout.expelled_cols[0] + 9, y);
         string_free(&name);

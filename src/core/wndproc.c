@@ -1,19 +1,18 @@
+#include "contents/adventurer_agency.h"
+#include "contents/character_settings.h"
+#include "contents/account_settings.h"
 #include "ui/window_keyboard.h"
 #include "ui/window.h"
 #include "platform/language.h"
 #include "contents/frame_timer.h"
 #include "render/device.h"
 #include "ui/window_messages.h"
-#include "web/service_managers.h"
-#include "ui/browser_windows.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
 #include "game/context.h"
 #include "ui/window_access.h"
 #include <windows.h>
-#include <shellapi.h>
-#include <string.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
@@ -66,15 +65,9 @@ static void language_windows(void)
     }
 }
 
-static void open_page(const char *url)
-{
-    ShellExecuteA(g_hMainWnd, "open", url, 0, 0, SW_SHOWNORMAL);
-}
-
-static LRESULT on_activate(HWND hwnd, WPARAM wparam, LPARAM lparam)
+static LRESULT on_activate(HWND hwnd, WPARAM wparam)
 {
     WORD state = LOWORD(wparam);
-    struct WebBrowser *wnd;
 
     if (state == WA_INACTIVE) {
         if (g_mouse.ready != 0) {
@@ -97,11 +90,6 @@ static LRESULT on_activate(HWND hwnd, WPARAM wparam, LPARAM lparam)
         ShowWindow(hwnd, SW_MAXIMIZE);
         return 1;
     }
-    wnd = ui_window_mgr_find_web_browser_by_hwnd(&g_windowMgr, (HWND)lparam);
-    if (wnd != 0 && web_browser_owns_window(wnd, (HWND)lparam)) {
-        app_activate(1);
-        return 1;
-    }
     ShowWindow(hwnd, SW_MINIMIZE);
     return 1;
 }
@@ -114,8 +102,6 @@ static LRESULT on_close(void)
         char_user_data_save(g_charUserDataMgr);
     if (game_current_mode() != 0)
         adventurer_agency_cancel_own_booking(g_adventurerAgency);
-    if (g_serviceType == 0xb)
-        open_page("http://www.ragnarok.co.in/index.php");
     return 0;
 }
 
@@ -135,13 +121,8 @@ static LRESULT on_set_cursor(LPARAM lparam)
 
 static LRESULT on_key_down(WPARAM wparam, LPARAM lparam)
 {
-    struct UIWindow *wnd = ui_window_find(0x130);
     struct UIWindow *edit;
 
-    if (wnd != 0) {
-        ui_window_send_msg(wnd, 0, 0, (int)wparam, 0, 0, 0);
-        return 0;
-    }
     if (ui_window_mgr_on_key_down(&g_windowMgr, wparam, lparam, !(lparam >> 30 & 1)))
         return 0;
     if (g_windowMgr.key_as_text == 0) {
@@ -202,11 +183,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     }
     switch (msg) {
     case WM_CREATE:
-        return 0;
     case WM_DESTROY:
-        if (strlen(g_windowMgr.view_homepage) == 0)
-            return 0;
-        open_page(g_windowMgr.view_homepage);
         return 0;
     case WM_MOVE:
         if (g_windowActive == 1)
@@ -216,7 +193,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         c3d_device_show_frame(&g_3dDevice, 1);
         return 0;
     case WM_ACTIVATE:
-        return on_activate(hwnd, wparam, lparam);
+        return on_activate(hwnd, wparam);
     case WM_PAINT:
         ValidateRect(hwnd, 0);
         return 0;
@@ -240,8 +217,6 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         ui_window_mgr_on_key_down(&g_windowMgr, wparam, lparam, 1);
         return 0;
     case WM_CHAR:
-        if (ui_window_find(0x130) != 0)
-            return 0;
         if (g_windowMgr.key_as_text == 0)
             return 0;
         language_on_char(g_language, wparam);

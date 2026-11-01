@@ -208,18 +208,6 @@ int json_value_as_int(const struct JsonTree *value)
     return number >= INT_MIN && number <= INT_MAX ? (int)number : 0;
 }
 
-char json_value_as_bool(const struct JsonTree *value)
-{
-    if (!value)
-        return 0;
-    switch (value->type) {
-    case JSON_TREE_STRING: return value->count && value->u.text[0];
-    case JSON_TREE_ARRAY:
-    case JSON_TREE_OBJECT: return value->count != 0;
-    default: return json_value_as_double(value) != 0;
-    }
-}
-
 struct TextView json_value_text(const struct JsonTree *value)
 {
     if (value && value->type == JSON_TREE_STRING)
@@ -237,12 +225,6 @@ char json_value_is_null(const struct JsonTree *value)
 char json_value_is_object(const struct JsonTree *value)
 {
     return value && value->type == JSON_TREE_OBJECT;
-}
-
-char json_value_empty(const struct JsonTree *value)
-{
-    return json_value_is_null(value) ||
-        ((value->type == JSON_TREE_ARRAY || value->type == JSON_TREE_OBJECT) && !value->count);
 }
 
 static void read_value(struct JsonTree *out, yyjson_val *value)

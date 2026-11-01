@@ -1,4 +1,3 @@
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "world/tooltip.h"
 #include "session/state.h"
@@ -63,7 +62,6 @@ const struct UIWindowOps ui_merchant_item_purchase_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_merchant_item_purchase_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -240,8 +238,7 @@ void ui_merchant_item_purchase_wnd_on_l_btn_down(struct UIWindow *window, int x,
     self->hover = ui_item_base_wnd_index_at(&self->base, x, y);
     if (old != self->hover)
         ui_window_invalidate_base(&self->base.frame.base);
-    if (g_replayPlaying)
-        return;
+
     ui_item_base_wnd_get_item(&self->base, &info, self->hover);
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
@@ -476,37 +473,13 @@ static void purchase_add_dragged(struct UIMerchantItemPurchaseWnd *self)
     item_info_destruct(&dragged);
 }
 
-static void purchase_load_records(struct UIMerchantItemPurchaseWnd *self, const char *buf, unsigned size)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != REC_MERCHANT_PURCHASE_BEGIN && hdr.tag != REC_PURCHASE_VARIANT_BEGIN)
-        return;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == REC_PURCHASE_VARIANT_END) {
-            ui_merchant_item_purchase_wnd_send_msg(&self->base.frame.base, NULL, PURCHASE_MSG_SET_REQUEST, 0, 0, 0, 0);
-            ui_merchant_item_purchase_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-            return;
-        }
-        if (hdr.tag == REC_MERCHANT_PURCHASE_END) {
-            ui_merchant_item_purchase_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-            return;
-        }
-        pos += hdr.len;
-    }
-}
-
 int ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
                                                  int msg, int val1, int val2, int val3, int val4)
 {
     struct UIMerchantItemPurchaseWnd *self = (struct UIMerchantItemPurchaseWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->base.frame.base, val1, val2, val3, val4);
+
         purchase_command(self, val1);
         return 0;
 
@@ -535,30 +508,6 @@ int ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWin
     case UI_MSG_ADD_DRAGGED:
         purchase_add_dragged(self);
         return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        purchase_load_records(self, (const char *)val1, (unsigned)val2);
-        return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
-}
-
-int ui_merchant_item_purchase_wnd_get_records(struct UIWindow *window,
-                                                                  struct ReplayBuffer *out)
-{
-    struct UIMerchantItemPurchaseWnd *self = (struct UIMerchantItemPurchaseWnd *)window;
-    struct SnapshotWriter writer = {0};
-    if (self->variant) {
-        snapshot_write(&writer, REC_PURCHASE_VARIANT_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_PURCHASE_VARIANT_END, NULL, 0);
-    } else {
-        snapshot_write(&writer, REC_MERCHANT_PURCHASE_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_MERCHANT_PURCHASE_END, NULL, 0);
-    }
-    return snapshot_finish(&writer, out);
 }

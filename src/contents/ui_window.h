@@ -8,8 +8,6 @@
 #include "base.h"
 #include "ui/window.h"
 #include "ui/window_access.h"
-#include "ui/window_records.h"
-
 struct ItemInfo;
 
 #define UI_MSG_BUTTON           6

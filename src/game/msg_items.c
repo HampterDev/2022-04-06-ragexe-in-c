@@ -1,12 +1,10 @@
 #include "iteminfo/item_api.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include "core/select_package.h"
 #include "ui/window_access.h"
 #include <windows.h>
 #include <mmsystem.h>
 #include "game/mode_msg.h"
-#include "replay/replay.h"
 #include "session/session_items.h"
 #include "session/session_skills.h"
 #include "ui/items/refining_internal.h"
@@ -16,7 +14,6 @@
 #define CZ_ITEM_THROW           0x363
 #define CZ_USE_ITEM             0x439
 #define CZ_REQ_WEAR_EQUIP_V5    0x998
-#define CZ_USE_ITEM_BAF         0xbaf
 
 #define ACK_WAIT 2000
 
@@ -39,7 +36,6 @@ enum {
     WID_RANDOM_UPGRADE = 0x12e,
     WID_BARTER_MARKET = 0x14e,
     WID_GRADE_ENCHANT = 0x157,
-    WID_CHOICE_PACKAGE_ITEM_BOX = 0x165,
 };
 
 static int refuse_pressed(void)
@@ -48,15 +44,8 @@ static int refuse_pressed(void)
     return 0;
 }
 
-static int is_refused_item(int id)
-{
-    return id == 0x259 || id == 0x25a || id == 0x263 || id == 0x25d || id == 0x25e || id == 0x5813;
-}
-
 int game_mode_msg_cancel_drag(struct GameMode *self)
 {
-    if (g_replayPlaying && self->replay_drop_taken)
-        return 0;
     self->drag.source = 0;
     self->drag.index = 0;
     self->drag.drop_count = 0;
@@ -100,7 +89,6 @@ static int drop_named(struct GameMode *self, int x, int y)
         else
             return cancel_drag(self);
         if (w) {
-            ui_window_record_drag(w, x, y, &self->drag, -1);
             w->ops->drag_and_drop(w, x, y, &self->drag);
         }
     } else {
@@ -177,8 +165,6 @@ int game_mode_msg_drop_dragged(struct GameMode *self, int x, int y)
     if (g_session1.wornArrowIndex == self->drag.index) {
         session_get_inventory_item(&g_session1, &item, self->drag.index);
         if (item.index != 0) {
-            if (g_replayPlaying)
-                self->replay_drop_taken = 0;
             self_msg(self, MODE_MSG_CANCEL_DRAG, 0, 0, 0, 0);
             message_box_msg(0x291);
             item_info_destruct(&item);
@@ -327,9 +313,7 @@ int game_mode_msg_use_item(struct GameMode *self, int index)
 #pragma pack(pop)
     struct ItemInfo item;
     struct Player *player;
-    struct UIWindow *w;
     int state, mode;
-    struct Package *target_wnd;
 
     if (g_windowMgr.exchange_wnd)
         return refuse_pressed();
@@ -353,64 +337,12 @@ int game_mode_msg_use_item(struct GameMode *self, int index)
             goto done;
         }
     }
-    target_wnd = select_package_find(g_selectPackageMgr, item_info_get_item_id(&item));
-    if (target_wnd) {
-        close_window(WID_CHOICE_PACKAGE_ITEM_BOX);
-        w = ui_window_open(WID_CHOICE_PACKAGE_ITEM_BOX);
-        if (w)
-            ui_window_send(w, NULL, 0xab, (int)target_wnd, item_info_get_item_id(&item), item.index, 0);
-        goto done;
-    }
     self->use_item_pending = 1;
     packet.id = CZ_USE_ITEM;
     packet.aid = g_session1.ownAid;
     packet.index = (unsigned short)index;
     send_packet(CZ_USE_ITEM, &packet);
 done:
-    item_info_destruct(&item);
-    return 0;
-}
-
-int game_mode_msg_use_item_with_target(struct GameMode *self, int index, int b, int c)
-{
-#pragma pack(push, 1)
-    struct { unsigned short id, index; int aid, b, c; } packet;
-#pragma pack(pop)
-    struct ItemInfo item;
-    struct Player *player;
-    int mode, id;
-
-    if (g_windowMgr.exchange_wnd)
-        return refuse_pressed();
-    if (game_mode_is_blocking_window_open() == 1 || self->use_item_pending || self->throw_item_pending) {
-        chat_print_msg(0xf84, CHAT_COLOR_RED);
-        return 0;
-    }
-    if (self->player_dead) {
-        chat_print_msg(0xbb7, CHAT_COLOR_RED);
-        return 0;
-    }
-    if (is_effect_state_burrow(actor_get_effect_state(self->world->player))) {
-        chat_print_msg(0xf83, CHAT_COLOR_RED);
-        return 0;
-    }
-    session_get_inventory_item(&g_session1, &item, index);
-    player = self->world->player;
-    mode = player->body_state;
-    if (mode == 4 || mode == 1) {
-        chat_print_msg(0xf82, CHAT_COLOR_RED);
-    } else if (player->state == 6 && (id = item_info_get_item_id(&item), is_refused_item(id))) {
-        chat_print_msg(0x297, CHAT_COLOR_RED);
-    } else {
-        self->use_item_pending = 1;
-        packet.id = CZ_USE_ITEM_BAF;
-        packet.aid = g_session1.ownAid;
-        packet.index = (unsigned short)index;
-        packet.b = b;
-        packet.c = c;
-        send_packet(CZ_USE_ITEM_BAF, &packet);
-        close_window(WID_CHOICE_PACKAGE_ITEM_BOX);
-    }
     item_info_destruct(&item);
     return 0;
 }

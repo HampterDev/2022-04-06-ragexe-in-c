@@ -98,8 +98,6 @@ unsigned char table_reader_read(struct TableReader *reader, const char *name,
                 break;
             text[i] = 0;
             append_field(reader, field);
-            if (mode == TABLE_RECORDS)
-                append_field(reader, NULL);
             field = text + i + 1;
             break;
         }

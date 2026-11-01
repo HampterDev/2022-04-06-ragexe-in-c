@@ -2,7 +2,6 @@
 #include "actor/actor_ops.h"
 #include "contents/player_names.h"
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "core/markup_tags.h"
@@ -169,13 +168,6 @@ static char is_our_name(const char *name)
     return same;
 }
 
-static void censor_filtered_text(char *line)
-{
-    if (word_filter_contains(&g_nameFilter, line) == 1) {
-        word_filter_censor(&g_nameFilter, line);
-    }
-}
-
 static void name_or_unknown(struct String *name)
 {
     if (name->size == 0) {
@@ -194,7 +186,6 @@ static void report_expelled(const char *name, const char *reason)
     guild_chat(line, CHAT_COLOR_YELLOW);
     memset(line, 0, sizeof line);
     sprintf_s(line, sizeof line, msg_str(MSG_EXPEL_REASON), reason);
-    censor_filtered_text(line);
     guild_chat(line, CHAT_COLOR_YELLOW);
     guild_ban_construct(&ban);
     string_assign_cstr(&ban.name, name);
@@ -212,7 +203,6 @@ static void report_left(const char *name, const char *reason)
     sprintf(line, msg_str(MSG_MEMBER_LEFT), name);
     guild_chat(line, CHAT_COLOR_YELLOW);
     sprintf_s(line, sizeof line, msg_str(MSG_LEAVE_REASON), reason);
-    censor_filtered_text(line);
     guild_chat(line, CHAT_COLOR_YELLOW);
 }
 
@@ -368,9 +358,6 @@ void game_mode_zc_ack_change_guild_position_info(const struct PacketPositionInfo
 
         memcpy(name, entry.title, 24);
         name[24] = 0;
-        if (word_filter_contains(&g_nameFilter, name)) {
-            word_filter_censor(&g_nameFilter, name);
-        }
         kept = guild_position_title(entry.position_id);
         string_assign_cstr(kept, name);
         string_init(&title);

@@ -1,5 +1,4 @@
 #include "contents/client_lua_calls.h"
-#include "platform/service.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include <stdlib.h>
@@ -13,12 +12,7 @@
 
 struct RenewQuestB g_questEmptyOngoing;
 INIT_ONCE g_questEmptyOngoingGuard;
-struct RenewQuestA g_questEmptyRecommended;
-INIT_ONCE g_questEmptyRecommendedGuard;
 void renew_quest_empty_ongoing_atexit(void);
-void renew_quest_empty_recommended_atexit(void);
-
-#define SERVICE_SAKRAY 1
 
 #define TITLE_WIDTH 0xfa
 #define TITLE_FONT_HEIGHT 0xc
@@ -37,45 +31,11 @@ struct RenewQuestB *renew_quest_ongoing_info(struct RenewQuestMgr *self, unsigne
     return &g_questEmptyOngoing;
 }
 
-struct RenewQuestA *renew_quest_recommended_info(struct RenewQuestMgr *self, unsigned quest_id)
-{
-    struct RecommendedQuestEntry *entry = tree_find(&self->quests_a, &quest_id, tree_less_uint);
-
-    if (entry)
-        return &entry->quest;
-    if (once_begin(&g_questEmptyRecommendedGuard)) {
-        renew_quest_a_construct(&g_questEmptyRecommended);
-        atexit(renew_quest_empty_recommended_atexit);
-        once_complete(&g_questEmptyRecommendedGuard);
-    }
-    return &g_questEmptyRecommended;
-}
-
 struct RenewQuestB *renew_quest_find_ongoing(struct RenewQuestMgr *self, unsigned quest_id)
 {
     struct OngoingQuestEntry *entry = tree_find(&self->quests_b, &quest_id, tree_less_uint);
 
     return entry ? &entry->quest : 0;
-}
-
-struct RenewQuestA *renew_quest_find_recommended(struct RenewQuestMgr *self, unsigned quest_id)
-{
-    struct RecommendedQuestEntry *entry = tree_find(&self->quests_a, &quest_id, tree_less_uint);
-
-    return entry ? &entry->quest : 0;
-}
-
-struct RenewQuestBase *renew_quest_find(struct RenewQuestMgr *self, char ongoing, unsigned quest_id)
-{
-    if (ongoing) {
-        struct RenewQuestB *quest = renew_quest_find_ongoing(self, quest_id);
-
-        return quest ? &quest->base : 0;
-    } else {
-        struct RenewQuestA *quest = renew_quest_find_recommended(self, quest_id);
-
-        return quest ? &quest->base : 0;
-    }
 }
 
 static void register_function(const char *name, lua_CFunction fn)
@@ -92,23 +52,11 @@ void renew_quest_load(void)
 
     register_function("AddOngoingDescription", renew_quest_lua_add_ongoing_description);
     register_function("AddOngoingRewardInfo", renew_quest_lua_add_ongoing_reward_info);
-    register_function("InsertRecommededQuestInfo", renew_quest_lua_insert_recommended_quest_info);
-    register_function("AddRecommendedQuestInfo", renew_quest_lua_add_recommended_quest_info);
-    register_function("SetRecommendedQuestActive", renew_quest_lua_set_recommended_quest_active);
 
     lua = g_session1.luaState;
     client_lua_load_file(lua, "Lua Files\\DataInfo\\QuestInfo_f", 1, 0);
     client_lua_load_file(g_session1.luaState, "savedata\\OngoingSimpleViewList", 0, 1);
-    client_lua_load_file(g_session1.luaState, "savedata\\RecommendedActiveList", 0, 1);
-    if (g_serverType == SERVICE_SAKRAY) {
-        client_lua_load_file(g_session1.luaState, "system\\OngoingQuestInfoList_Sakray", 0, 1);
-        client_lua_load_file(g_session1.luaState, "system\\RecommendedQuestInfoList_Sakray", 0, 1);
-    } else {
-        client_lua_load_file(g_session1.luaState, "system\\OngoingQuestInfoList_True", 0, 1);
-        client_lua_load_file(g_session1.luaState, "system\\RecommendedQuestInfoList_True", 0, 1);
-    }
-    client_lua_call(g_session1.luaState, "RecommendedQuestInfoLoad", "");
-    client_lua_call(g_session1.luaState, "RecommendedQuestActiveLoad", "");
+    client_lua_load_file(g_session1.luaState, "system\\OngoingQuestInfoList_True", 0, 1);
 }
 
 static const struct {
@@ -212,14 +160,4 @@ void renew_quest_empty_ongoing_atexit(void)
     string_free(&g_questEmptyOngoing.reward_exp);
     string_vec_free(&g_questEmptyOngoing.description);
     renew_quest_base_destruct(&g_questEmptyOngoing.base);
-}
-
-void renew_quest_empty_recommended_atexit(void)
-{
-    int i;
-
-    for (i = 3; i-- > 0;)
-        string_vec_free(&g_questEmptyRecommended.lists[i]);
-    string_free(&g_questEmptyRecommended.image);
-    renew_quest_base_destruct(&g_questEmptyRecommended.base);
 }

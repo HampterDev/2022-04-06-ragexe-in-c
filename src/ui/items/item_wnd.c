@@ -161,7 +161,6 @@ const struct UIWindowOps ui_item_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -908,8 +907,7 @@ void ui_item_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 
     if (y < GRID_TOP)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->base.frame), x, y);
-    if (g_replayPlaying)
-        return;
+
     ui_item_wnd_item_at(self, &item, x, y);
     if (item.index > 0) {
         game = game_current_mode();

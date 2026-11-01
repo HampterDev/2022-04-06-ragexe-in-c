@@ -1,0 +1,117 @@
+--- a/src/ui/quests/attendance.c
++++ b/src/ui/quests/attendance.c
+@@ -623,6 +623,8 @@
+     struct UICheckAttendanceWnd_Banner *self = (struct UICheckAttendanceWnd_Banner *)window;
+     unsigned next;
+ 
++    if (BANNER_COUNT(self) <= 1)
++        return;
+     if (self->shown_at + BANNER_SWITCH_MS >= timeGetTime())
+         return;
+     next = self->current + 1;
+--- /dev/null
++++ b/tests/test_attendance_banner.c
+@@ -0,0 +1,68 @@
++#include <assert.h>
++#include <stdio.h>
++#include <windows.h>
++#include <mmsystem.h>
++static DWORD now;
++static DWORD test_time(void) { return now; }
++#define timeGetTime test_time
++#include "attendance_banner_functions.inc"
++#undef timeGetTime
++
++static unsigned notifications, redraws;
++static int selector_message(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
++{
++    (void)window; (void)sender; (void)b; (void)c; (void)d;
++    assert(msg == UI_MSG_SET_STATE && (a == 0 || a == 1));
++    ++notifications;
++    return 0;
++}
++static const struct UIWindowOps selector_ops = {.send_msg = selector_message};
++void ui_window_invalidate_base(struct UIWindow *window) { (void)window; ++redraws; }
++int ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
++{
++    (void)window; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d;
++    return 0;
++}
++
++static void verify(void)
++{
++    struct UICheckAttendanceWnd_Banner banner = {0};
++    struct StdBanner38 rows[3] = {0};
++    struct UIWindow controls[3] = {0};
++    struct UIWindow *buttons[] = {controls, controls + 1, controls + 2};
++    unsigned count;
++
++    for (count = 0; count < 3; ++count)
++        controls[count].ops = &selector_ops;
++    for (count = 0; count <= 1; ++count) {
++        banner.banners.first = rows;
++        banner.banners.last = banner.banners.end = rows + (1 - count);
++        now = 6000;
++        ui_check_attendance_wnd_banner_on_process(&banner.base);
++        assert(!notifications && !redraws && !banner.current && !banner.shown_at);
++    }
++    banner.banners.last = banner.banners.end = rows + 3;
++    banner.buttons.first = buttons;
++    banner.buttons.last = banner.buttons.end = buttons + 3;
++    now = 5000;
++    ui_check_attendance_wnd_banner_on_process(&banner.base);
++    assert(!notifications && !redraws && !banner.current);
++    now = 5001;
++    ui_check_attendance_wnd_banner_on_process(&banner.base);
++    assert(banner.current == 1 && banner.shown_at == now && notifications == 3 && redraws == 1);
++    banner.current = 2;
++    now = 10002;
++    ui_check_attendance_wnd_banner_on_process(&banner.base);
++    assert(!banner.current && banner.shown_at == now && notifications == 6 && redraws == 2);
++    puts("PASS: zero/single banners need no selectors; multiple banners retain timing, selection and wraparound.");
++}
++
++int main(void)
++{
++    __try { verify(); }
++    __except(EXCEPTION_EXECUTE_HANDLER) {
++        puts("FAIL: banner update read an absent selector.");
++        return 1;
++    }
++    return 0;
++}
+--- /dev/null
++++ b/tests/extract_attendance_banner.py
+@@ -0,0 +1,15 @@
++from pathlib import Path
++import re
++import sys
++
++source = Path(sys.argv[1]).read_text(encoding='utf-8')
++pieces = ['#include "ui/quests/quests_std.h"\n#include "ui/controls/check_radio.h"\n#include "ui/controls/buttons.h"\n']
++for name in ('BANNER_SWITCH_MS', 'BANNER_COUNT'):
++    pieces.append(re.search(r'^#define ' + name + r'[^\n]*\n', source, re.M).group())
++pieces.append(re.search(r'^struct UICheckAttendanceWnd_Banner \{.*?^\};\n', source, re.M|re.S).group())
++names = ('ui_check_attendance_wnd_banner_send_msg', 'ui_check_attendance_wnd_banner_on_process')
++for name in names:
++    match = re.search(r'^(?:void|int) ' + name + r'\([^;]*?\)\n\{.*?^\}\n', source, re.M|re.S)
++    assert match, name
++    pieces.append(match.group())
++Path(sys.argv[2]).write_text('\n'.join(pieces), encoding='utf-8')
+--- /dev/null
++++ b/tests/build_attendance_banner.bat
+@@ -0,0 +1,14 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\attendance-banner-tests"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++if not exist "%OUT%" mkdir "%OUT%"
++python "%ROOT%\tests\extract_attendance_banner.py" "%ROOT%\src\ui\quests\attendance.c" "%OUT%\attendance_banner_functions.inc"
++if errorlevel 1 exit /b 1
++set "INC=/I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib""
++cl /nologo /std:c11 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 %INC% "%ROOT%\tests\test_attendance_banner.c" /Fo:"%OUT%\test_attendance_banner.obj" /Fe:"%OUT%\test_attendance_banner.exe"
++if errorlevel 1 exit /b 1
++"%OUT%\test_attendance_banner.exe"
++if not "%errorlevel%"=="0" exit /b 1

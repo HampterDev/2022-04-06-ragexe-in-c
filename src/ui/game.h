@@ -9,10 +9,7 @@
 #include "skills/skill_info.h"
 #include "session/number_codec.h"
 #include "session/character_name.h"
-#include "web/service_managers.h"
 #include "contents/client_lua_calls.h"
-#include "replay/replay.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "game/context.h"
@@ -39,11 +36,7 @@ struct Session;
 
 struct Language;
 
-struct ReplayRecorder;
-
 int session_get_param(struct Session *self, int type);
-
-extern const char *g_bookmarkSubkey;
 
 struct Time {
     __time32_t t;
@@ -61,7 +54,5 @@ struct Time *time_construct(struct Time *self, __time32_t t);
 BYTE time_is_past(struct Time *self);
 struct TimeRecord *time_get_as_record(struct Time *self, struct TimeRecord *out);
 void time_destruct(struct Time *self);
-
-struct ReplayRecorder;
 
 #endif

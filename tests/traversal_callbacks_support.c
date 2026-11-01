@@ -1,14 +1,10 @@
 #include "render/rp_pool.h"
 #include "world/model.h"
-#include "skills/world_video.h"
 #include <stdlib.h>
 
 struct Renderer *g_renderer;
 struct Texture g_whiteTexture;
 
-struct WorldVideoList *game_current_video_list(void) { abort(); }
-struct WorldVideo *world_video_list_open(struct WorldVideoList *list, const char *name, int loop) { abort(); }
-int world_video_add_position(struct WorldVideo *video, Vec3 position) { abort(); }
 void error_msg(const char *message, int flags) { abort(); }
 
 struct C3dNode;

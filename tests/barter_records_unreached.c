@@ -7,7 +7,6 @@
 struct Session g_session1;
 struct Mouse g_mouse;
 struct Renderer *g_renderer;
-int g_replayPlaying;
 
 int game_mode_send_msg(struct Mode *mode, int message, int a, int b, int c, int d) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type,

@@ -10,36 +10,9 @@
 #define QUEST_WND_ID 0x141
 #define QUEST_WND_MSG_REFRESH 0x17
 
-void renew_quest_put_recommended(struct RenewQuestMgr *self, unsigned quest_id,
-                                            const struct RenewQuestA *info)
-{
-    struct RecommendedQuestEntry entry;
-    int added, i;
-
-    tree_erase_key(&self->quests_a, &quest_id, tree_less_uint, recommended_quest_entry_destroy);
-    entry.id = quest_id;
-    renew_quest_base_copy(&entry.quest.base, &info->base);
-    string_copy(&entry.quest.image, &info->image);
-    for (i = 0; i < 3; i++)
-        string_vec_copy(&entry.quest.lists[i], &info->lists[i]);
-    tree_add(&self->quests_a, &entry, sizeof entry, tree_less_uint, &added);
-    if (!added)
-        renew_quest_a_destruct(&entry.quest);
-}
-
 char renew_quest_set_active(struct RenewQuestMgr *self, unsigned quest_id, char active)
 {
     struct OngoingQuestEntry *entry = tree_find(&self->quests_b, &quest_id, tree_less_uint);
-
-    if (!entry)
-        return 0;
-    entry->quest.base.active = active;
-    return 1;
-}
-
-char renew_quest_set_recommended_active(struct RenewQuestMgr *self, unsigned quest_id, char active)
-{
-    struct RecommendedQuestEntry *entry = tree_find(&self->quests_a, &quest_id, tree_less_uint);
 
     if (!entry)
         return 0;
@@ -109,13 +82,6 @@ void renew_quest_save_simple_view_list(struct RenewQuestMgr *self)
     save_list(&self->quests_b, offsetof(struct OngoingQuestEntry, quest.shown),
               "SaveData\\OngoingSimpleViewList.lua",
               "OngoingSimpleViewList = {}\r\n\r\n", "OngoingSimpleViewList = \r\n{\r\n");
-}
-
-void renew_quest_save_recommended_active_list(struct RenewQuestMgr *self)
-{
-    save_list(&self->quests_a, offsetof(struct RecommendedQuestEntry, quest.base.active),
-              "SaveData\\RecommendedActiveList.lua",
-              "RecommendedActiveList = {}\r\n\r\n", "RecommendedActiveList = \r\n{\r\n");
 }
 
 void renew_quest_clear_ongoing(struct RenewQuestMgr *quests)

@@ -112,12 +112,6 @@ void ui_window_parse_navi_links(struct UIWindow *self, struct String text,
     parse_pair(self, text, &text_tag_NAVI, &text_tag_NAVI_END, out);
 }
 
-void ui_window_parse_tipbox_links(struct UIWindow *self, struct String text,
-                                          struct Vec *out)
-{
-    parse_pair(self, text, &text_tag_TIPBOX, &text_tag_TIPBOX_END, out);
-}
-
 void ui_window_parse_url_links(struct UIWindow *self, struct String text,
                                        struct Vec *out)
 {

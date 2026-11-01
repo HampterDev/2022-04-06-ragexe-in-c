@@ -1,6 +1,4 @@
 #include "render/texture_cache.h"
-#include "platform/bink_api.h"
-#include "skills/bink_player.h"
 #include "render/display_devices.h"
 #include "render/render_api.h"
 #include "std/list.h"
@@ -79,21 +77,4 @@ char render_quads_to_texture(int w, int h, const struct List *quads, struct Text
     if (rt)
         gfx_release(rt);
     return ok;
-}
-
-unsigned char bink_frame_to_texture(struct BinkPlayer *self, void *texture)
-{
-    struct Texture *tex = texture;
-    struct gfx_lock lk;
-    RECT rc;
-
-    if (!tex || !tex->base.surface)
-        return 0;
-    if (gfx_lock(tex->base.surface, NULL, GFX_LOCK_WAIT, &lk) < 0)
-        return 0;
-    _BinkCopyToBuffer(self->bink, lk.bits, lk.pitch, lk.height, 0, 0, 5);
-    if (gfx_unlock(tex->base.surface) < 0)
-        return 0;
-    SetRect(&rc, 0, 0, lk.width, lk.height);
-    return (unsigned char)texture_update_mip_chain(tex, &rc);
 }

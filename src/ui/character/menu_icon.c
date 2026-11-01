@@ -54,7 +54,6 @@ const struct UIButtonOps ui_menu_icon_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -82,18 +81,13 @@ static const struct {
     { 0x161, 0x086, 0x525 },
     { 0x16a, 0x166, 0xc38 },
     { 0x16d, 0x03b, 0xc3e },
-    { 0x170, 0x09d, 0x7d3 },
-    { 0x187, 0x0c6, 0x92e },
     { 0x1a6, 0x0cb, 0x931 },
     { 0x1c5, 0x0fb, 0xc3f },
     { 0x1d1, 0x10e, 0xa56 },
     { 0x1d4, 0x107, 0xc40 },
-    { 0x1f7, 0x13b, 0xca7 },
     { 0x1f8, 0x13e, 0xc41 },
-    { 0x1fe, 0x11a, 0xb1d },
     { 0x214, 0x148, 0xd91 },
     { 0x218, 0x144, 0xdba },
-    { 0x22f, 0x15a, 0xef3 },
 };
 
 static void set_tooltip_with_key(struct UIMenuIcon *self, int name_msg, const char *key)

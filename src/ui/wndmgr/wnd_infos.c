@@ -190,8 +190,6 @@ void mini_map_info_set_default(struct MiniMapWndInfo *self)
 {
     int x = g_renderer->width - 0x218;
 
-    self->memo_x = x;
-    self->memo_y = 0xbe;
     self->x = x;
     self->y = 0xbe;
     self->width = 0x204;
@@ -463,7 +461,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     frame_set(&self->merchant_item_purchase_info, 0x118, 0x118, 0x118, 0x98);
     frame_set(&self->item_collection_info, 0x118, 0x7e, 0x118, 0x78);
     frame_set(&self->combined_card_item_collection_info, 0x118, 0x116, 0x118, 0x78);
-    frame_set(&self->item_param_change_display_info, 0x118, 0xf6, 0x118, 0x22);
     party_setting_wnd_info_make_default(&self->party_setting_info);
     detail_level_wnd_info_make_default(&self->detail_level_info);
     guild_wnd_info_make_default(&self->guild_info);
@@ -479,7 +476,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     frame_set(&self->sub_chat_st_info, 0, g_renderer->height - 0x77, 0x12c, 0x5f);
     frame_set(&self->sub_chat_bt_info, 0x12c, g_renderer->height - 0x77, 0x12c, 0x5f);
     quik_slot_wnd_info_make_default(&self->quick_slot_info);
-    frame_set(&self->battlefield_info, 0x15e, 0x96, 0x118, 0x168);
     frame_set(&self->buying_store_make_info, 0, 0xf0, 0x118, 0xdc);
     frame_set(&self->buying_store_mirror_item_info, 0, 0x78, 0x118, 0x78);
     frame_set(&self->buying_store_item_my_shop_info, 0xc8, 0x78, 0x118, 0x78);
@@ -488,7 +484,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     frame_set(&self->buying_store_mirror_sell_list_info, 0, 0x78, 0x118, 0x78);
     n_cash_info_set_default(&self->n_cash_info);
 
-    frame_set(&self->replay_rec_control_info, 0x103, 0xe6, 0xc2, 0x22);
     navigation_wnd_info_make_default(&self->navigation_info);
     mini_map_info_set_default(&self->minimap_info);
     ach_tracing_info_set_default(&self->ach_tracing_pos);

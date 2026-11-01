@@ -1,3 +1,4 @@
+#include "contents/account_settings.h"
 #include "ui/character/character_draw.h"
 #include "ui/controls/buttons.h"
 #include "ui/window_access.h"
@@ -5,7 +6,6 @@
 #include "ui/character/select_char_storage.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"
-#include "web/service_managers.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
 #include "session/state.h"
@@ -127,7 +127,6 @@ const struct UIWindowOps ui_new_select_char_wnd_ops = {
     .render = ui_new_select_char_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

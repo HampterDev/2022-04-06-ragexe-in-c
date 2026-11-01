@@ -10,8 +10,6 @@
 #include "world/mode_manager.h"
 #include <string.h>
 
-#include "replay/replay.h"
-
 #include "ui/character/character.h"
 #include "ui/character/select_server.h"
 #include "core/msg_str.h"
@@ -63,7 +61,6 @@ const struct UIWindowOps ui_select_server_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -114,7 +111,6 @@ const struct UIListBoxOps ui_server_list_box_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -167,7 +163,6 @@ const struct UIWindowOps ui_color_trans_balloon_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -248,7 +243,6 @@ void ui_server_list_box_on_mouse_hover(struct UIWindow *window, int x, int y)
 #define SELECT_SERVER_ID_OK 0xb0
 #define SELECT_SERVER_ID_CANCEL 0xb1
 #define SELECT_SERVER_ID_EXIT 0xd5
-#define SELECT_SERVER_ID_REPLAY 0x188
 #define MSG_SELECT_SERVER_TITLE 0x822
 #define MSG_SELECT_ESCAPE_ZONE_TITLE 0x823
 
@@ -289,13 +283,11 @@ void ui_select_server_wnd_destroy(struct UIWindow *window)
 static const struct {
     int id;
     const char *name[3];
-} select_server_buttons[4] = {
+} select_server_buttons[3] = {
     { SELECT_SERVER_ID_OK, { "btn_ok", "btn_ok_a", "btn_ok_b" } },
     { SELECT_SERVER_ID_CANCEL, { "btn_cancel", "btn_cancel_a", "btn_cancel_b" } },
     { SELECT_SERVER_ID_EXIT, { "login_interface\\btn_exit", "login_interface\\btn_exit_a",
                                "login_interface\\btn_exit_b" } },
-    { SELECT_SERVER_ID_REPLAY, { "replay_interface\\btn_replay", "replay_interface\\btn_replay_a",
-                                 "replay_interface\\btn_replay_b" } },
 };
 
 void ui_select_server_wnd_on_create(struct UIWindow *window, int width, int height)
@@ -303,8 +295,8 @@ void ui_select_server_wnd_on_create(struct UIWindow *window, int width, int heig
     struct UISelectServerWnd *self = (struct UISelectServerWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
     struct UIServerListBox *list = mem_alloc(sizeof *list);
-    int x[4] = { 0xbd, 0xea, 0x1b2, -100 };
-    int y[4] = { height - 0x18, height - 0x18, height - 0x18, -100 };
+    int x[3] = { 0xbd, 0xea, 0x1b2 };
+    int y[3] = { height - 0x18, height - 0x18, height - 0x18 };
     char path[3][0x80];
     int i, state;
 
@@ -318,7 +310,7 @@ void ui_select_server_wnd_on_create(struct UIWindow *window, int width, int heig
     self->list->list.base.id = SELECT_SERVER_ID_LIST;
     ui_window_add_child(wnd, &self->list->list.base);
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         struct UIBitmapButton *button;
 
         for (state = 0; state < 3; state++)
@@ -358,7 +350,6 @@ void ui_select_server_wnd_on_draw(struct UIWindow *window)
 #define SELECT_SERVER_EXIT_X 0xea
 #define SELECT_SERVER_REQ_QUIT 2
 #define SELECT_SERVER_REQ_CANCEL 0x2716
-#define SELECT_SERVER_REQ_REPLAY 0x272a
 #define MSG_SELECT_SERVER_QUIT_ASK 0x11
 
 int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
@@ -367,11 +358,9 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
     struct UISelectServerWnd *self = (struct UISelectServerWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *list = &self->list->list.base;
-    struct ReplayFileList *files;
     const char *value;
     HKEY probe, key;
     DWORD type, size, disposition;
-    int sex;
 
     switch (msg) {
     case UI_MSG_COMMAND:
@@ -401,15 +390,6 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
                                        0, 0, "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
                 return 0;
             mode_send_message(client_current_mode(), SELECT_SERVER_REQ_QUIT, 0, 0, 0, 0);
-            ui_window_mgr_post_quit2(&g_windowMgr, wnd);
-            return 0;
-        case SELECT_SERVER_ID_REPLAY:
-            replay_file_list_set_recorder(replay_file_list_instance(), replay_recorder_instance());
-            replay_file_list_instance()->aid = g_session1.ownAid;
-            sex = session_get_sex(&g_session1);
-            files = replay_file_list_instance();
-            files->sex = sex;
-            mode_send_message(client_current_mode(), SELECT_SERVER_REQ_REPLAY, 0, 0, 0, 0);
             ui_window_mgr_post_quit2(&g_windowMgr, wnd);
             return 0;
         }

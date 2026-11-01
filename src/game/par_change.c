@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include "game/character_stats.h"
 #include "game/session_bridge.h"
-#include "replay/replay.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "game/status_values.h"
@@ -60,12 +59,12 @@ enum {
 enum {
     ACTOR_MSG_MANNER_PENALTY = 0x15,
     ACTOR_MSG_MANNER_OK = 0x76,
-    MM_PET_TALK = 0x94,
+    MM_PET_ACT = 0x94,
     PET_ACTION_HP_LOW = 2,
     PET_ACTION_LEVEL_UP = 6,
-    PET_TALK_INTERVAL = 5000,
-    PET_TALK_HP_PERCENT = 25,
-    PET_TALK_CHANCE = 50,
+    PET_EMOTION_INTERVAL = 5000,
+    PET_EMOTION_HP_PERCENT = 25,
+    PET_EMOTION_CHANCE = 50,
     WINDOW_LEVEL_UP = 0x15,
     WINDOW_JOB_LEVEL_UP = 0x31,
     WINDOW_MENU_ICON = 0x133,
@@ -100,13 +99,12 @@ static void weight_icon(void)
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_WEIGHT_ICON, 0, 0, 0, 0);
 }
 
-static void pet_talk(struct GameMode *self, int action)
+static void pet_emotion(struct GameMode *self, int action)
 {
     int hunger = session_pet_hunger_level(g_session1.petFullness);
     int intimacy = session_pet_intimacy_level(g_session1.petIntimacy);
 
-    mode_send_msg(self, MM_PET_TALK, session_make_pet_talk_id(g_session1.petJob, action, hunger), 0, 0, 0);
-    mode_send_msg(self, MM_PET_TALK, session_get_pet_emotion(&g_session1, hunger, intimacy, action), 0, 0, 0);
+    mode_send_msg(self, MM_PET_ACT, session_get_pet_emotion(&g_session1, hunger, intimacy, action), 0, 0, 0);
 }
 
 static int pet_present(struct GameMode *self)
@@ -157,11 +155,10 @@ static void base_level_up(struct GameMode *self, int level)
     self->world->player->level = (short)g_session1.charBaseLevel;
     sound_play_wave("levelup.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
     launch_on_player(self, level_up_effect());
-    if (!g_replayPlaying)
-        ui_window_open(WINDOW_LEVEL_UP);
+    ui_window_open(WINDOW_LEVEL_UP);
     if (pet_present(self))
-        pet_talk(self, PET_ACTION_LEVEL_UP);
-    if (!g_replayPlaying && g_windowMgr.basic_info_wnd)
+        pet_emotion(self, PET_ACTION_LEVEL_UP);
+    if (g_windowMgr.basic_info_wnd)
         ui_basic_info_wnd_set_height((struct UIBasicInfoWnd *)g_windowMgr.basic_info_wnd, g_windowMgr.basic_info_wnd->height);
     game_mode_refresh_actor_effects(self, 1);
     mark_menu_new(0xb8);
@@ -172,7 +169,7 @@ static void job_level_up(struct GameMode *self, int level)
     g_session1.jobLevel = level;
     session_invalidate_windows(&g_session1);
     launch_on_player(self, level > JOB_LEVEL_HIGH ? EF_JOB_LEVEL_UP_HIGH : EF_JOB_LEVEL_UP);
-    if (!g_replayPlaying) {
+    {
         ui_window_open(WINDOW_JOB_LEVEL_UP);
         if (g_windowMgr.basic_info_wnd)
             ui_basic_info_wnd_set_height((struct UIBasicInfoWnd *)g_windowMgr.basic_info_wnd, g_windowMgr.basic_info_wnd->height);
@@ -202,9 +199,9 @@ static void set_manner(struct GameMode *self, int value, struct String *line)
 
 static void set_hp(struct GameMode *self, int value)
 {
-    if (g_session1.maxHp > 0 && value * 100 / g_session1.maxHp < PET_TALK_HP_PERCENT && pet_present(self)
-        && rand() % 100 < PET_TALK_CHANCE && session_pet_talk_due(&g_session1, PET_TALK_INTERVAL) == 1)
-        pet_talk(self, PET_ACTION_HP_LOW);
+    if (g_session1.maxHp > 0 && value * 100 / g_session1.maxHp < PET_EMOTION_HP_PERCENT && pet_present(self)
+        && rand() % 100 < PET_EMOTION_CHANCE && session_pet_emotion_due(&g_session1, PET_EMOTION_INTERVAL) == 1)
+        pet_emotion(self, PET_ACTION_HP_LOW);
     if (g_session1.hp != value) {
         g_session1.hp = value;
         session_refresh_basic_info(&g_session1);

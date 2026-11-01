@@ -8,7 +8,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "contents/repute_wnd.h"
 #include "ui/ui_std.h"
 #include "ui/ui_items.h"
 #include "ui/wndmgr/wndmgr.h"
@@ -380,11 +379,6 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         }
         return invited(out, &joined, pos);
     }
-    if (string_equal_cstr(TOK(0), "/web") && COUNT() >= 2) {
-        *type = 0xce;
-        assign_token(out, tokens, 1);
-        return *type == 0 ? at : skip_blanks(text, at);
-    }
     if ((string_equal_cstr(TOK(0), "/navi") || string_equal_cstr(TOK(0), "/navigation"))
         && COUNT() >= 3) {
         *type = 0xcf;
@@ -404,11 +398,6 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xd7;
         return -1;
     }
-    if ((string_equal_cstr(TOK(0), "/cl") || string_equal_cstr(TOK(0), "/clanchat")) && COUNT() >= 2) {
-        *type = 0xd4;
-        string_assign_cstr(out, string_equal_cstr(TOK(0), "/cl") ? text + 4 : text + 0xa);
-        return -1;
-    }
     if (string_equal_cstr(TOK(0), msg_str(0x9df))) {
         *type = 0xd6;
         return -1;
@@ -421,18 +410,8 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xd9;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/roulette")) {
-        *type = 0xda;
-        return -1;
-    }
     if (string_equal_cstr(TOK(0), "/quake")) {
         *type = 0xdb;
-        return -1;
-    }
-    if (string_equal_cstr(TOK(0), "/트윗")
-        || string_equal_cstr(TOK(0), "/트위터")
-        || string_equal_cstr(TOK(0), "/twitter")) {
-        *type = 0xdc;
         return -1;
     }
     if (string_equal_cstr(TOK(0), "/매크로등록")

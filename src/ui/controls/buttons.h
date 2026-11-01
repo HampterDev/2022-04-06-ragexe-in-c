@@ -23,8 +23,6 @@ enum UIButtonState {
 #define UI_ID_HOVER_NOTE 0x107
 #define UI_WND_NOTE_TARGET 0xb6
 #define UI_WND_NO_TOOLTIPS 0xcb
-#define UI_ID_SEND_EDITS_A 0xb0
-#define UI_ID_SEND_EDITS_B 0x139
 
 #define UI_MSG_SET_STATE 0xd
 #define UI_GREY_TEXT 0xb5b5b5

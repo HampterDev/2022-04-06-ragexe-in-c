@@ -77,7 +77,7 @@ static void entry_note_pet(struct GameActor *actor, unsigned aid, int accessory)
     if ((unsigned)g_session1.aid == aid)
         g_session1.petAccessory = accessory;
     if (accessory != 0)
-        render_object_load_act_res((struct RenderObject *)actor, session_get_pet_accessory_act(&g_session1, accessory));
+        game_actor_set_pet_accessory(actor, accessory);
 }
 
 void entry_siege_emblem(struct GameMode *self, struct GameActor *actor, int is_pet,
@@ -754,7 +754,7 @@ static void entry_note_pet_existing(struct GameActor *actor, unsigned aid, int a
         g_session1.petAccessory = accessory;
     if (accessory != 0
         && !game_actor_get_guild_id(actor))
-        render_object_load_act_res((struct RenderObject *)actor, session_get_pet_accessory_act(&g_session1, accessory));
+        game_actor_set_pet_accessory(actor, accessory);
 }
 
 static void entry_move_marks(struct GameMode *self, struct GameActor *actor, const struct ActorMoveEntryInfo *info)

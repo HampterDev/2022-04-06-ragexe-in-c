@@ -112,12 +112,6 @@ void json_loader_read_int(struct JsonCppLoader *self, const char *key, const str
         *out = (int)value->u.i64;
 }
 
-const struct JsonTree *json_loader_read_array(struct JsonCppLoader *self, const char *key,
-                                              const struct JsonTree *row)
-{
-    return field(self, key, row, JSON_TREE_ARRAY);
-}
-
 const struct JsonTree *json_loader_table(struct JsonCppLoader *self, const char *name, size_t name_length)
 {
     const struct JsonTree *table;

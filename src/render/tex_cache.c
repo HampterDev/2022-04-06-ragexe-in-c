@@ -2,8 +2,6 @@
 #include "render/texture_globals.h"
 #include "resources/bitmap_types.h"
 #include "fileio/resource_api.h"
-#include "game/context.h"
-#include "skills/world_video.h"
 #include "render/cache_lock.h"
 #include "render/render_api.h"
 #include <stdlib.h>
@@ -158,31 +156,15 @@ static struct Texture *black_texture(int key)
 
 static struct Texture *texture_load(const char *name, int a, int b)
 {
-    if (strstr(name, ".bik")) {
-        struct WorldVideoList *video_list = game_current_video_list();
-        if (video_list) {
-            struct WorldVideo *frame = world_video_list_open(video_list, name, 1);
-            int w, h;
-            if (world_video_dimensions(frame, &w, &h)) {
-                struct Texture *tex;
+    struct BitmapRes *res = (struct BitmapRes *)res_mgr_get(g_resMgr(), name);
+    struct Texture *tex;
 
-                tex = texture_create(w, h, 4);
-                if (tex)
-                    return tex;
-            }
-        }
+    if (!res)
         return black_texture(a);
-    } else {
-        struct BitmapRes *res = (struct BitmapRes *)res_mgr_get(g_resMgr(), name);
-        struct Texture *tex;
-
-        if (!res)
-            return black_texture(a);
-        tex = texture_from_pixels(res->width, res->height, res->pixels,
-                         res->hasAlpha != 0, a, (char)b);
-        res_mgr_release(g_resMgr(), &res->res);
-        return tex;
-    }
+    tex = texture_from_pixels(res->width, res->height, res->pixels,
+                             res->hasAlpha != 0, a, (char)b);
+    res_mgr_release(g_resMgr(), &res->res);
+    return tex;
 }
 
 struct Texture *texture_cache_get(struct TexCache *cache, const char *name,

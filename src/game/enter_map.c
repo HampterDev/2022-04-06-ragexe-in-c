@@ -2,14 +2,12 @@
 #include "game/gamemode.h"
 #include "game/ground_item_packets.h"
 #include "session/option_pairs.h"
-#include "replay/replay.h"
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include <stdio.h>
 #include <time.h>
 #include "game/packet_handlers.h"
 #include "game/client.h"
-#include "game/net.h"
 #include "login/zone_addr.h"
 #include "session/session_state.h"
 #include "ui/items/styling_shop.h"
@@ -17,8 +15,6 @@
 #include "login/zone.h"
 
 #define MODE_GAME 1
-
-#define WINDOW_REPLAY_REC_CONTROL 0xc6
 
 static void set_position(const unsigned char *pos_dir)
 {
@@ -56,16 +52,6 @@ static void log_entry(void)
 void game_mode_accept_enter2(const unsigned char *pkt)
 {
     const struct PACKET_ZC_ACCEPT_ENTER2 *packet = (const struct PACKET_ZC_ACCEPT_ENTER2 *)pkt;
-    int state = replay_recorder_instance()->state;
-    struct ReplayRecorder *flow = replay_recorder_instance();
-
-    if (state == 2) {
-        replay_recorder_set_mode(flow, 3);
-        UIWINDOW_SENDMSG(g_windowMgr.replay_reccontrol_wnd, 0x57, 0, 0, 0, 0);
-        ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_REPLAY_REC_CONTROL);
-    } else if (flow->state == 7) {
-        replay_recorder_set_mode(replay_recorder_instance(), 8);
-    }
     session_set_server_time(&g_session1, packet->start_time);
     set_position(packet->pos_dir);
     g_session1.font = packet->font;

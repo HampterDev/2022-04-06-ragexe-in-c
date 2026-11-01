@@ -3,7 +3,6 @@
 #include "render/screen_bounds.h"
 #include "ui/window_access.h"
 #include "std/tree.h"
-#include "actor/gauge.h"
 #include "ui/character/gauge.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -14,8 +13,19 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_skills.h"
+#include "session/session_talk.h"
 
 #define ACTOR_SEND(self, sender, msg, par1) render_object_send((self), (sender), (msg), (par1), 0, 0, 0)
+
+void game_actor_set_pet_accessory(struct GameActor *self, int accessory)
+{
+    const char *name = accessory ? session_get_pet_accessory_act(&g_session1, accessory) : NULL;
+
+    if (name)
+        render_object_load_act_res((struct RenderObject *)self, name);
+    else
+        actor_set_spr_job(self, game_actor_get_job(self));
+}
 
 void game_actor_show_level_aura(struct GameActor *self)
 {
@@ -350,16 +360,6 @@ float game_actor_get_mount_lift(struct GameActor *self)
     return 0.0f;
 }
 
-int game_actor_get_gage_hp(struct GameActor *self)
-{
-    return ui_monster_gauge_hp(self->monster_gage_wnd);
-}
-
-int game_actor_get_gage_max_hp(struct GameActor *self)
-{
-    return ui_monster_gauge_max_hp(self->monster_gage_wnd);
-}
-
 unsigned char job_is_monster(int job)
 {
     if ((job > 0x3e8 && job < 0xf9f) || (unsigned)(job - 0x4e35) <= 0x2eca)
@@ -403,12 +403,6 @@ static void actor_rejob(struct GameActor *self, int job)
 {
     actor_set_spr_job(self, job > 0 ? job : game_actor_get_job(self));
     actor_set_state(self, self->state, 1);
-}
-
-void game_actor_set_clan(struct GameActor *self, unsigned char a, int b)
-{
-    self->clan_emblem_shown = a;
-    self->clan_emblem = b;
 }
 
 void game_actor_raise_body_quarter_height(struct GameActor *self, int value)

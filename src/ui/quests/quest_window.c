@@ -5,10 +5,9 @@
 #include "contents/connection_api.h"
 #include <stdio.h>
 #include "ui/quests/quests.h"
+#include "ui/quests/quest_journal_layout.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
-
-static BYTE g_questRecommendedFirstOpen = 1u;
 
 #define QUEST_WND_ID 0x141
 #define QUEST_SIMPLE_VIEW_WND_ID 0xcc
@@ -27,13 +26,6 @@ static BYTE g_questRecommendedFirstOpen = 1u;
 #define QUEST_ROW_ID_FIRST 0x17d
 #define QUEST_SIMPLE_VIEW_BOX_ID UI_ID_CHECKBOX
 
-enum {
-    QUEST_TAB_ACTIVE,
-    QUEST_TAB_RECOMMENDED,
-    QUEST_TAB_PAUSED,
-    QUEST_TAB_OTHER,
-    QUEST_TAB_COUNT
-};
 #define QUEST_BOX_SHOWN 0
 #define QUEST_BOX_LOCK 1
 
@@ -41,7 +33,6 @@ enum {
 #define MSG_QUEST_SIMPLE_VIEW 0x7e3
 #define MSG_QUEST_SHOWN_TIP 0xd51
 #define MSG_QUEST_LOCK_TIP 0xd4f
-#define MSG_RECOMMENDED_LOCK_TIP 0xd50
 
 #define QUEST_MSG_SET_TAB 0x16
 #define QUEST_MSG_REFRESH 0x17
@@ -57,8 +48,6 @@ struct PACKET_CZ_ACTIVE_QUEST {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_CZ_ACTIVE_QUEST, 7);
-
-#define RECOMMENDED_TEXT_WIDTH 0xfa
 
 struct UIRenewQuestWnd;
 struct UIWindow;
@@ -106,7 +95,6 @@ const struct UIWindowOps ui_renew_quest_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -133,7 +121,7 @@ struct UIRenewQuestWnd {
 };
 OFFSET_ASSERT(UIRenewQuestWnd, tab, 0x110);
 OFFSET_ASSERT(UIRenewQuestWnd, lists, 0x124);
-SIZE_ASSERT(UIRenewQuestWnd, 0x154);
+SIZE_ASSERT(UIRenewQuestWnd, 0x148);
 
 static unsigned quest_wnd_count(struct UIRenewQuestWnd *self, int tab)
 {
@@ -154,7 +142,7 @@ static void quest_wnd_show_selected(struct UIRenewQuestWnd *self)
     if (!detail)
         return;
     id = self->lists[self->tab].first == self->lists[self->tab].last ? 0 : quest_wnd_id(self, self->tab, self->selected);
-    ui_renew_detail_quest_info_wnd_show_quest(detail, id, self->tab == QUEST_TAB_RECOMMENDED);
+    ui_renew_detail_quest_info_wnd_show_quest(detail, id);
 }
 
 struct UIRenewQuestWnd *ui_renew_quest_wnd_construct(struct UIRenewQuestWnd *self)
@@ -246,9 +234,9 @@ void ui_renew_quest_wnd_on_create(struct UIWindow *window, int width_unused, int
     if (tabs)
         tabs = (struct UIWindow *)ui_tab_construct((struct UITab *)tabs);
     self->tabs = tabs;
-    ui_window_create(tabs, 0x1d, 0x194);
+    ui_window_create(tabs, QUEST_TAB_WIDTH, QUEST_TAB_HEIGHT * QUEST_TAB_COUNT);
     ((struct UITab *)(self->tabs))->count = QUEST_TAB_COUNT;
-    ui_window_move_base(self->tabs, 0, 0x11);
+    ui_window_move_base(self->tabs, 0, QUEST_TAB_Y);
     ((struct UITab *)(self->tabs))->kind = -1;
     ui_tab_send_msg(self->tabs, wnd, UI_TAB_MSG_SELECT, self->tab, 0, 0, 0);
     ui_window_add_child(wnd, self->tabs);
@@ -295,26 +283,25 @@ void ui_renew_quest_wnd_on_draw(struct UIWindow *window)
 {
     struct UIRenewQuestWnd *self = (struct UIRenewQuestWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
-    char path[MAX_PATH];
     int i, row_y;
 
     ui_window_clear_canvas(wnd, 0xffff00ff);
-    sprintf(path, QUEST_UI_DIR "bg_quest%d.bmp", self->tab + 1);
-    ui_window_draw_body(wnd, 0, 0, path);
+    quest_journal_draw_background(wnd, self->tab);
     ui_window_text_out(wnd, 0x2d, 2, msg_str(MSG_QUEST_WND_TITLE), 0, 0, 13, 0, 0, 0);
 
     for (i = 0, row_y = 0; row_y < QUEST_ROWS * QUEST_ROW_HEIGHT; i++, row_y += QUEST_ROW_HEIGHT) {
         int index = self->top + i;
         const struct RenewQuestBase *info;
+        const struct RenewQuestB *quest;
         COLORREF title_colour;
         int y = row_y;
 
         if ((unsigned)index >= quest_wnd_count(self, self->tab))
             return;
-        info = renew_quest_find(g_questTable, self->tab != QUEST_TAB_RECOMMENDED,
-                               quest_wnd_id(self, self->tab, index));
-        if (!info)
+        quest = renew_quest_find_ongoing(g_questTable, quest_wnd_id(self, self->tab, index));
+        if (!quest)
             return;
+        info = &quest->base;
 
         if (index == self->selected) {
             y += self->pressed;
@@ -399,6 +386,7 @@ static void ui_renew_quest_wnd_update_rows(struct UIRenewQuestWnd *self)
     for (i = 0; i < QUEST_ROWS; i++) {
         unsigned index = self->top + i;
         struct UIWindow *shown = self->shown_boxes[i], *lock = self->lock_boxes[i];
+        struct RenewQuestB *info;
 
         if (index >= quest_wnd_count(self, self->tab)) {
             ui_check_box_set_hidden(shown, 1);
@@ -406,30 +394,19 @@ static void ui_renew_quest_wnd_update_rows(struct UIRenewQuestWnd *self)
             ui_window_set_show(self->icons[i], 0);
             continue;
         }
-        if (self->tab == QUEST_TAB_RECOMMENDED) {
-            struct RenewQuestA *info =
-                renew_quest_recommended_info(g_questTable, quest_wnd_id(self, QUEST_TAB_RECOMMENDED, index));
+        info = renew_quest_ongoing_info(g_questTable, quest_wnd_id(self, self->tab, index));
 
-            quest_wnd_set_box_state(lock, info->base.active);
-            ui_check_box_set_tool_tip(lock, msg_str(MSG_RECOMMENDED_LOCK_TIP));
-            ui_check_box_set_hidden(lock, 0);
+        if (self->tab == QUEST_TAB_OTHER) {
             ui_check_box_set_hidden(shown, 1);
-            quest_wnd_set_icon(self->icons[i], &info->base);
+            ui_check_box_set_hidden(lock, 1);
         } else {
-            struct RenewQuestB *info = renew_quest_ongoing_info(g_questTable, quest_wnd_id(self, self->tab, index));
-
-            if (self->tab == QUEST_TAB_OTHER) {
-                ui_check_box_set_hidden(shown, 1);
-                ui_check_box_set_hidden(lock, 1);
-            } else {
-                quest_wnd_set_box_state(lock, info->base.active);
-                ui_check_box_set_tool_tip(lock, msg_str(MSG_QUEST_LOCK_TIP));
-                ui_check_box_set_hidden(lock, 0);
-                quest_wnd_set_box_state(shown, info->shown);
-                ui_check_box_set_hidden(shown, 0);
-            }
-            quest_wnd_set_icon(self->icons[i], &info->base);
+            quest_wnd_set_box_state(lock, info->base.active);
+            ui_check_box_set_tool_tip(lock, msg_str(MSG_QUEST_LOCK_TIP));
+            ui_check_box_set_hidden(lock, 0);
+            quest_wnd_set_box_state(shown, info->shown);
+            ui_check_box_set_hidden(shown, 0);
         }
+        quest_wnd_set_icon(self->icons[i], &info->base);
     }
 }
 
@@ -457,49 +434,26 @@ static void ui_renew_quest_wnd_update_scroll(struct UIRenewQuestWnd *self)
     ui_renew_quest_wnd_update_rows(self);
 }
 
-#define QUEST_LISTS_ALL 0
-#define QUEST_LISTS_ONGOING 1
-#define QUEST_LISTS_RECOMMENDED 2
-
-static void ui_renew_quest_wnd_rebuild_lists(struct UIRenewQuestWnd *self, int which, int quest_id)
+static void ui_renew_quest_wnd_rebuild_lists(struct UIRenewQuestWnd *self, int quest_id)
 {
     struct RenewQuestMgr *table = g_questTable;
     struct TreeNode *node;
     unsigned index, count;
 
-    if (which == QUEST_LISTS_ALL || which == QUEST_LISTS_ONGOING) {
-        vec_clear(&self->lists[QUEST_TAB_ACTIVE]);
-        vec_clear(&self->lists[QUEST_TAB_PAUSED]);
-        vec_clear(&self->lists[QUEST_TAB_OTHER]);
-        for (node = tree_first(&table->quests_b); node != table->quests_b.head; node = tree_next(node)) {
-            struct OngoingQuestEntry *entry = TREE_VALUE(node, struct OngoingQuestEntry);
-            int tab;
+    vec_clear(&self->lists[QUEST_TAB_ACTIVE]);
+    vec_clear(&self->lists[QUEST_TAB_PAUSED]);
+    vec_clear(&self->lists[QUEST_TAB_OTHER]);
+    for (node = tree_first(&table->quests_b); node != table->quests_b.head; node = tree_next(node)) {
+        struct OngoingQuestEntry *entry = TREE_VALUE(node, struct OngoingQuestEntry);
+        int tab;
 
-            if (entry->quest.cool_time_quest == 1 && entry->quest.cool_time_quest_high == 0)
-                tab = QUEST_TAB_OTHER;
-            else if (entry->quest.base.active == 1)
-                tab = QUEST_TAB_ACTIVE;
-            else
-                tab = QUEST_TAB_PAUSED;
-            vec_push(&self->lists[tab], &entry->id, sizeof(int));
-        }
-    }
-    if (which == QUEST_LISTS_ALL || which == QUEST_LISTS_RECOMMENDED) {
-        struct Vec *list = &self->lists[QUEST_TAB_RECOMMENDED];
-
-        vec_clear(list);
-        for (node = tree_first(&table->quests_a); node != table->quests_a.head; node = tree_next(node)) {
-            struct RecommendedQuestEntry *entry = TREE_VALUE(node, struct RecommendedQuestEntry);
-
-            if (entry->quest.base.active == 1)
-                vec_push(list, &entry->id, sizeof(int));
-        }
-        for (node = tree_first(&table->quests_a); node != table->quests_a.head; node = tree_next(node)) {
-            struct RecommendedQuestEntry *entry = TREE_VALUE(node, struct RecommendedQuestEntry);
-
-            if (entry->quest.base.active == 0)
-                vec_push(list, &entry->id, sizeof(int));
-        }
+        if (entry->quest.cool_time_quest == 1 && entry->quest.cool_time_quest_high == 0)
+            tab = QUEST_TAB_OTHER;
+        else if (entry->quest.base.active == 1)
+            tab = QUEST_TAB_ACTIVE;
+        else
+            tab = QUEST_TAB_PAUSED;
+        vec_push(&self->lists[tab], &entry->id, sizeof(int));
     }
 
     if (!quest_id) {
@@ -509,6 +463,7 @@ static void ui_renew_quest_wnd_rebuild_lists(struct UIRenewQuestWnd *self, int w
     count = quest_wnd_count(self, self->tab);
     for (index = 0; index < count && quest_wnd_id(self, self->tab, index) != quest_id; index++)
         ;
+
     self->selected = index;
     if ((int)index >= QUEST_ROWS) {
         self->top = index - (QUEST_ROWS - 1);
@@ -522,13 +477,7 @@ static void quest_wnd_on_row_box(struct UIRenewQuestWnd *self, struct UIWindow *
 {
     int quest_id = quest_wnd_id(self, self->tab, self->top + row);
 
-    if (self->tab == QUEST_TAB_RECOMMENDED) {
-        if (((struct UICheckBox *)(box))->notice_value != QUEST_BOX_LOCK)
-            return;
-        renew_quest_set_recommended_active(g_questTable, quest_id, checked != 0);
-        ui_renew_quest_wnd_send_msg(&self->frame.base, &self->frame.base, QUEST_MSG_REFRESH, QUEST_LISTS_RECOMMENDED, 0, 0, 0);
-        renew_quest_save_recommended_active_list(g_questTable);
-    } else if (((struct UICheckBox *)(box))->notice_value == QUEST_BOX_SHOWN) {
+    if (((struct UICheckBox *)(box))->notice_value == QUEST_BOX_SHOWN) {
         renew_quest_set_shown(g_questTable, quest_id, checked != 0);
         renew_quest_save_simple_view_list(g_questTable);
         if (g_windowMgr.quest_display_wnd)
@@ -545,65 +494,27 @@ static void quest_wnd_on_row_box(struct UIRenewQuestWnd *self, struct UIWindow *
     }
 }
 
-static void quest_wnd_first_recommended_visit(struct UIRenewQuestWnd *self)
-{
-    struct RenewQuestMgr *table = g_questTable;
-    struct Vec *list = &self->lists[QUEST_TAB_RECOMMENDED];
-    struct TreeNode *node;
-
-    if (list->first != list->last) {
-        int *id;
-        struct UIRenewDetailQuestInfoWnd *detail;
-
-        for (id = list->first; id != list->last; id++)
-            if (!renew_quest_recommended_info(g_questTable, *id)->base.active)
-                break;
-        if (id == list->last)
-            id = list->first;
-        detail = (struct UIRenewDetailQuestInfoWnd *)ui_make_window(QUEST_DETAIL_WND_ID);
-        if (detail)
-            ui_renew_detail_quest_info_wnd_show_quest(detail, *id, 1);
-    }
-
-    if (table->quests_a.size) {
-        for (node = tree_first(&table->quests_a); node != table->quests_a.head; node = tree_next(node)) {
-            struct RenewQuestA *info = &TREE_VALUE(node, struct RecommendedQuestEntry)->quest;
-            struct String fitted = {0};
-
-            ui_window_fit_text(&self->frame.base, &fitted, RECOMMENDED_TEXT_WIDTH, string_cstr(&info->base.text[RENEW_QUEST_TEXT_TITLE]), 0, 12,
-                       1);
-            string_assign(&info->base.text[RENEW_QUEST_TEXT_TITLE], string_cstr(&fitted), fitted.size);
-            string_free(&fitted);
-            ui_window_fit_text(&self->frame.base, &fitted, RECOMMENDED_TEXT_WIDTH, string_cstr(&info->base.text[RENEW_QUEST_TEXT_SUMMARY]), 0,
-                       12, 0);
-            string_assign(&info->base.text[RENEW_QUEST_TEXT_SUMMARY], string_cstr(&fitted), fitted.size);
-            string_free(&fitted);
-        }
-    }
-    g_questRecommendedFirstOpen = 0;
-}
-
-static int quest_wnd_refresh(struct UIRenewQuestWnd *self, int which, int quest_id)
+static int quest_wnd_refresh(struct UIRenewQuestWnd *self, int quest_id)
 {
     if (quest_id) {
         int tab;
         unsigned i;
 
-        for (tab = QUEST_TAB_ACTIVE; tab <= QUEST_TAB_RECOMMENDED; tab++) {
+        for (tab = QUEST_TAB_ACTIVE; tab < QUEST_TAB_COUNT; tab++) {
             for (i = 0; i < quest_wnd_count(self, tab); i++)
                 if (quest_wnd_id(self, tab, i) == quest_id)
                     break;
             if (i < quest_wnd_count(self, tab))
                 break;
         }
-        if (tab > QUEST_TAB_RECOMMENDED) {
+        if (tab == QUEST_TAB_COUNT) {
             ui_window_mgr_message_box(&g_windowMgr, "not found quest info", 0, 1, 0, 0,
                                    "메시지", 0x118, 0x78, 0);
             return 0;
         }
         ui_renew_quest_wnd_send_msg(&self->frame.base, &self->frame.base, QUEST_MSG_SET_TAB, tab, 0, 0, 0);
     }
-    ui_renew_quest_wnd_rebuild_lists(self, which, quest_id);
+    ui_renew_quest_wnd_rebuild_lists(self, quest_id);
     ui_renew_quest_wnd_update_scroll(self);
     ui_window_invalidate_base(&self->frame.base);
     return 0;
@@ -614,9 +525,6 @@ int ui_renew_quest_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
 {
     struct UIRenewQuestWnd *self = (struct UIRenewQuestWnd *)window;
     int old_top;
-
-    if (msg == QUEST_MSG_SET_TAB || val1 == QUEST_SIMPLE_VIEW_BOX_ID)
-        ui_window_record_msg(&self->frame.base, msg, val1, val2, val3, val4);
 
     switch (msg) {
     case UI_MSG_COMMAND:
@@ -654,8 +562,6 @@ int ui_renew_quest_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
             self->tab = 0;
         else if (val1 > QUEST_TAB_COUNT - 1)
             self->tab = QUEST_TAB_COUNT - 1;
-        else if (val1 == QUEST_TAB_RECOMMENDED && g_questRecommendedFirstOpen)
-            quest_wnd_first_recommended_visit(self);
         self->selected = 0;
         self->top = 0;
         ui_renew_quest_wnd_update_scroll(self);
@@ -663,7 +569,7 @@ int ui_renew_quest_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
         return 0;
 
     case QUEST_MSG_REFRESH:
-        return quest_wnd_refresh(self, val1, val2);
+        return quest_wnd_refresh(self, val2);
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }

@@ -30,9 +30,8 @@ int main(void)
 
     assert(g_modeMgr.loopCond == 1 && !client_current_mode());
     assert(!game_current_mode() && !game_current_world() && !game_current_player());
-    assert(!game_current_drag() && !game_current_chat_room() && !game_current_trade_partner());
+    assert(!game_current_drag() && !game_current_chat_room());
     assert(!game_inventory_drag_index(&drag_index) && drag_index == -42);
-    game_mark_npc_dialog_open();
     game_get_notice_windows(&windows);
     assert(!windows.notice && !windows.admin_whisper && !windows.achievement);
     assert(!game_battleground_state() && !game_siege_state());
@@ -61,15 +60,12 @@ int main(void)
     assert(game_current_base_mode() == (struct Mode *)&mode);
     assert(game_current_drag() == &mode.drag);
     assert(game_current_chat_room() == &mode.own_chat_room);
-    assert(game_current_trade_partner() == &mode.exchange_partner);
     assert(!game_inventory_drag_index(&drag_index) && drag_index == -42);
     mode.drag.source = 2;
     mode.drag.index = 77;
     assert(!game_inventory_drag_index(&drag_index) && drag_index == -42);
     mode.drag.source = 1;
     assert(game_inventory_drag_index(&drag_index) && drag_index == 77);
-    game_mark_npc_dialog_open();
-    assert(mode.npc_dialog_open == 1);
     mode.notice_wnd = (struct UIWindow *)&notice;
     mode.admin_whisper_balloon = (struct UIWindow *)&whisper;
     mode.achievement_notice = (struct UIWindow *)&achievement;
@@ -142,7 +138,7 @@ int main(void)
     current = NULL;
     g_modeMgr.curMode = NULL;
     assert(!game_current_mode() && !game_current_base_mode());
-    assert(!game_current_drag() && !game_current_chat_room() && !game_current_trade_partner());
+    assert(!game_current_drag() && !game_current_chat_room());
     assert(!game_inventory_drag_index(&drag_index) && drag_index == 77);
     game_get_notice_windows(&windows);
     assert(!windows.notice && !windows.admin_whisper && !windows.achievement);

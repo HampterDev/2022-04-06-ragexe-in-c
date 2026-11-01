@@ -6,7 +6,6 @@
 #include "session/session_options.h"
 #include "session/session_state.h"
 
-const char *g_regSkillUseLevelKey = "\\SkillUseLevelInfo";
 const char *g_regShortcutItemKey = "\\ShortcutItem";
 const char *g_regUIRectInfoKey = "\\UIRectInfo";
 
@@ -77,40 +76,6 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
         RegCloseKey(key);
     }
     g_session1.shortenSkillPage = 0;
-}
-
-static int read_skill_level(HKEY key, int skill_id)
-{
-    char value_name[100];
-    DWORD type = REG_DWORD, size = 4;
-    int level;
-
-    memset(value_name, 0, sizeof value_name);
-    sprintf(value_name, "%s%d", skill_get_id_name(skill_id), g_session1.shortcutCharSlot);
-    if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS
-        && skill_info_is_level_used(skill_id))
-        return level;
-    return 0;
-}
-
-void ui_window_mgr_init_skill_use_level_from_reg(struct UIWindowMgr *self)
-{
-    char path[0x200];
-    HKEY key;
-    int id;
-
-    (void)self;
-    strcpy(path, g_registryKeyPath);
-    strcat(path, g_regSkillUseLevelKey);
-    if (!open_twice(path, &key))
-        return;
-    for (id = 1; id < 0x157c; id++)
-        player_skill_bundle_set_chosen_level(&g_session1.skills, id, read_skill_level(key, id));
-    for (id = 0x1f40; id < 0x1f7d; id++)
-        session_set_homun_skill_use_level(&g_session1, id, read_skill_level(key, id));
-    for (id = 0x2008; id < 0x210a; id++)
-        session_set_merc_skill_use_level(&g_session1, id, read_skill_level(key, id));
-    RegCloseKey(key);
 }
 
 #define GET(name, field) RegQueryValueExA(key, name, NULL, &type, (BYTE *)(field), &size)
@@ -227,7 +192,6 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET_RECT("MERCHANTITEMPURCHASEWNDINFO", &self->merchant_item_purchase_info);
     GET_RECT("ITEMCOLLECTIONWNDINFO", &self->item_collection_info);
     GET_RECT("COMBINEDCARDITEMCOLLECTIONWNDINFO", &self->combined_card_item_collection_info);
-    GET_RECT("ITEMPARAMCHANGEDISPLAYWNDINFO", &self->item_param_change_display_info);
     GET_RECT("PARTYSETTINGWNDINFO", &self->party_setting_info);
     GET_RECT("DETAILLEVELWNDINFO", &self->detail_level_info);
     GET_RECT("WHISPERWNDINFO", &self->whisper_info);
@@ -242,7 +206,6 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET("MEMORIALDUNWND.X", &g_session1.mdWndX);
     GET("MEMORIALDUNWND.Y", &g_session1.mdWndY);
     GET_RECT("QUICKSLOTWNDINFO", &self->quick_slot_info);
-    GET_RECT("BATTLEFIELDWNDINFO", &self->battlefield_info);
     GET_RECT("GUILDHELPERWNDINFO", &self->guild_helper_info);
     GET_RECT("BUYINGSTOREMAKEWNDINFO", &self->buying_store_make_info);
     GET_RECT("BUYINGSTOREMIRRORITEMWNDINFO", &self->buying_store_mirror_item_info);
@@ -250,7 +213,6 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET_RECT("BUYINGSTOREITEMSHOPWNDINFO", &self->buying_store_item_shop_info);
     GET_RECT("BUYINGSTOREITEMSELLWNDINFO", &self->buying_store_item_sell_info);
     GET_RECT("BUYINGSTOREMIRRORSELLLISTWNDINFO", &self->buying_store_mirror_sell_list_info);
-    GET_RECT("REPLAYRECCONTROLWNDINFO", &self->replay_rec_control_info);
     GET_RECT("NAVIGATIONWNDINFO", &self->navigation_info.rect);
     GET("NAVIGATIONWNDINFO.ISSCREEN", &self->navigation_info.is_screen);
     mini_map_info_set_default(&self->minimap_info);
@@ -401,7 +363,6 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET_RECT("MERCHANTITEMPURCHASEWNDINFO", &self->merchant_item_purchase_info);
     SET_RECT("ITEMCOLLECTIONWNDINFO", &self->item_collection_info);
     SET_RECT("COMBINEDCARDITEMCOLLECTIONWNDINFO", &self->combined_card_item_collection_info);
-    SET_RECT("ITEMPARAMCHANGEDISPLAYWNDINFO", &self->item_param_change_display_info);
     SET_RECT("PARTYSETTINGWNDINFO", &self->party_setting_info);
     SET_RECT("DETAILLEVELWNDINFO", &self->detail_level_info);
     SET_RECT("WHISPERWNDINFO", &self->whisper_info);
@@ -416,7 +377,6 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET("MEMORIALDUNWND.X", &g_session1.mdWndX);
     SET("MEMORIALDUNWND.Y", &g_session1.mdWndY);
     SET_RECT("QUICKSLOTWNDINFO", &self->quick_slot_info);
-    SET_RECT("BATTLEFIELDWNDINFO", &self->battlefield_info);
     SET_RECT("GUILDHELPERWNDINFO", &self->guild_helper_info);
     SET_RECT("BUYINGSTOREMAKEWNDINFO", &self->buying_store_make_info);
     SET_RECT("BUYINGSTOREMIRRORITEMWNDINFO", &self->buying_store_mirror_item_info);
@@ -424,7 +384,6 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET_RECT("BUYINGSTOREITEMSHOPWNDINFO", &self->buying_store_item_shop_info);
     SET_RECT("BUYINGSTOREITEMSELLWNDINFO", &self->buying_store_item_sell_info);
     SET_RECT("BUYINGSTOREMIRRORSELLLISTWNDINFO", &self->buying_store_mirror_sell_list_info);
-    SET_RECT("REPLAYRECCONTROLNWNDINFO", &self->replay_rec_control_info);
     SET_RECT("NAVIGATIONWNDINFO", &self->navigation_info.rect);
     SET("NAVIGATIONWNDINFO.ISSCREEN", &self->navigation_info.is_screen);
     SET("MINIMAPWNDINFO.X", &self->minimap_info.x);

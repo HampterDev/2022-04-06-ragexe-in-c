@@ -2,7 +2,6 @@
 #define FILEIO_FILE_H
 
 #include "platform/error_message.h"
-#include "security/gg_hash_mgr.h"
 #include "platform/code_page.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

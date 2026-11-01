@@ -1,4 +1,3 @@
-#include "ui/record_tags.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #ifndef UI_SHOPS_STORAGE_INTERNAL_H
@@ -94,7 +93,7 @@ OFFSET_ASSERT(UIItemStoreWnd, find_wnd, 0x120);
 OFFSET_ASSERT(UIItemStoreWnd, count_text, 0x124);
 
 void storage_draw_items(struct UIItemBaseWnd *base, int x0, int name_width);
-void storage_on_lbtn_down(struct UIItemBaseWnd *base, int x, int y, int left, int replay_stops);
+void storage_on_lbtn_down(struct UIItemBaseWnd *base, int x, int y, int left);
 void storage_on_mouse_hover(struct UIItemBaseWnd *base, int x, int y, int left);
 void storage_on_r_btn_down(struct UIItemBaseWnd *base, int x, int y, int left);
 void storage_on_wheel(struct UIItemBaseWnd *base, int delta);

@@ -1,10 +1,10 @@
 #include "ui/cooldown.h"
-#include "replay/replay.h"
+#include <windows.h>
 #include <mmsystem.h>
 
 unsigned cooldown_clock_now(void)
 {
-    return g_replayPlaying ? replay_recorder_instance()->elapsed : timeGetTime();
+    return timeGetTime();
 }
 
 int skill_cooldown_running(const struct SkillCooldown *cooldown)

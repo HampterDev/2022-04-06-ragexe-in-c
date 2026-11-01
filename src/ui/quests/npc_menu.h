@@ -22,9 +22,6 @@ struct UIChooseWarpWnd {
 };
 SIZE_ASSERT(UIChooseWarpWnd, 0xa8);
 
-int ui_choose_wnd_save_state(struct UIWindow *window, struct ReplayBuffer *out);
-int ui_choose_warp_wnd_save_state(struct UIWindow *window, struct ReplayBuffer *out);
-
 struct UIChooseWarpWnd *ui_choose_warp_wnd_construct(struct UIChooseWarpWnd *self);
 struct UIWindow *ui_choose_warp_wnd_new(void);
 struct UIChooseWnd *ui_choose_wnd_construct(struct UIChooseWnd *self);

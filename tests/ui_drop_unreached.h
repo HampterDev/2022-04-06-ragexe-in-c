@@ -19,10 +19,7 @@ void ui_window_text_out_centred_outlined(struct UIWindow * arg0, int arg1, int a
 int ui_window_text_height(struct UIWindow * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
 int ui_window_text_width(struct UIWindow * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
 struct String * ui_window_fit_text(struct UIWindow * arg0, struct String * arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6) { abort(); }
-int ui_window_records_validate(const void * arg0, size_t arg1) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
-int ui_frame_wnd_get_records(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
-int ui_item_purchase_wnd_get_records(struct UIWindow *arg0, struct ReplayBuffer * arg1) { abort(); }
+
 const char * item_info_get_name(const struct ItemInfo * arg0) { abort(); }
 struct String * item_info_get_display_name(const struct ItemInfo * arg0, struct String * arg1) { abort(); }
 struct ItemInfo * item_info_construct(struct ItemInfo * arg0) { abort(); }
@@ -43,7 +40,7 @@ struct StdBitIter * std_vector_bool_insert(struct StdBitVector * arg0, struct St
 struct UIWindow * ui_window_construct(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_create(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_window_add_child(struct UIWindow * arg0, struct UIWindow * arg1) { abort(); }
-int ui_window_send_edit_fields(struct UIWindow * arg0) { abort(); }
+
 void ui_window_invalidate_base(struct UIWindow * arg0) { abort(); }
 struct UIFrameWnd * ui_frame_wnd_construct(struct UIFrameWnd * arg0, int arg1) { abort(); }
 void ui_frame_wnd_destruct(struct UIFrameWnd * arg0) { abort(); }
@@ -56,8 +53,7 @@ void ui_frame_wnd_on_mouse_move(struct UIWindow *arg0, int arg1, int arg2) { abo
 void ui_frame_wnd_on_mouse_hover(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_l_btn_up(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_snap(struct UIWindow *arg0) { abort(); }
-void ui_window_record_command(struct UIWindow * arg0, int arg1, int arg2, int arg3, int arg4) { abort(); }
-int g_replayPlaying;
+
 char * msg_str(int arg0) { abort(); }
 BYTE ui_window_is_focusable_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
@@ -103,7 +99,7 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int a
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr * arg0, int arg1, int arg2) { abort(); }
 void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 void ui_window_mgr_forget_window(struct UIWindowMgr * arg0, const struct UIWindow * arg1) { abort(); }
-int ui_window_mgr_get_window_flag(struct UIWindowMgr * arg0, int arg1, int arg2) { abort(); }
+
 void ui_window_mgr_set_focus_edit(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 struct UIWindow * ui_window_mgr_get_capture(struct UIWindowMgr * arg0) { abort(); }
 void ui_window_mgr_set_capture(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }

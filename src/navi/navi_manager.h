@@ -8,7 +8,6 @@
 struct SearchResult *search_result_construct(struct SearchResult *self, int kind, void *obj);
 struct SearchResult *search_result_assign(struct SearchResult *self,
         const struct SearchResult *other);
-unsigned char navi_manager_add_place(struct NaviManager *self, const struct Vec *words);
 unsigned char navi_manager_parse_flags(struct NaviManager *self, const char *text,
         unsigned char *useScrolls, unsigned char *useKafra, unsigned char *useAirship);
 struct NaviPoint *navi_manager_parse_pos(struct NaviManager *self,

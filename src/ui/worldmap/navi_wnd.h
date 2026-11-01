@@ -16,14 +16,13 @@ struct UINavigationWnd {
     struct UIWindow *edit;
     struct UIWindow *results;
     struct UIWindow *route;
-    struct UIBitmapButton *buttons[6];
+    struct UIBitmapButton *buttons[5];
     struct UIWindow *check_kafra;
     struct UIWindow *check_scrolls;
     struct UIWindow *check_airship;
     struct UIBitmapButton *help;
     struct NavigationWndInfo *info;
     struct UIResizer *resizer;
-    struct Vec files;
 };
 OFFSET_ASSERT(UINavigationWnd, title, 0x9c);
 
@@ -32,7 +31,6 @@ OFFSET_ASSERT(UINavigationWnd, title, 0x9c);
 #define NAVI_ID_ROUTE 0xb5
 #define NAVI_ID_LIST 0xb6
 #define NAVI_ID_WIDE 0x114
-#define NAVI_ID_FOLDER 0xb7
 #define NAVI_ID_FOLD 0xc2
 #define NAVI_ID_CHECK 0xcd
 #define NAVI_ID_HELP 0x14f
@@ -50,6 +48,5 @@ void ui_navigation_wnd_show_list(struct UINavigationWnd *self);
 void ui_navigation_wnd_set_title(struct UINavigationWnd *self, int state);
 void ui_navigation_wnd_fill_results(struct UINavigationWnd *self);
 void ui_navigation_wnd_fill_route(struct UINavigationWnd *self);
-BYTE ui_navigation_wnd_load_place_file(struct UINavigationWnd *self, int index);
 
 #endif

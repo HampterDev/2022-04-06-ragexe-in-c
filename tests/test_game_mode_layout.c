@@ -161,14 +161,12 @@ static void check_base(struct Mode *base)
     assert(BASE_FIELD(base, cursor_action, cursorAction) == 0);
     assert(BASE_FIELD(base, cursor_motion, cursorMotion) == 0);
     assert(BASE_FIELD(base, fade_in_start, fadeInStart) == 0);
-    assert(BASE_FIELD(base, screenshot_name, screenShotName).size == 0);
 }
 
 static void populate_strings(struct GameMode *mode, int round)
 {
     struct String name;
-    struct String *strings[] = {&BASE_FIELD(GAME_BASE(mode), screenshot_name, screenShotName),
-                                   &mode->whisper_setting_name,
+    struct String *strings[] = {&mode->whisper_setting_name,
                                    &mode->exchange_partner,
                                    &mode->popup_target_name,
                                    &mode->whisper_text,
@@ -238,7 +236,8 @@ int main(int argc, char **argv)
     }
     for (i = 0; i < trace_count * sizeof *trace; ++i)
         digest = (digest ^ ((const unsigned char *)trace)[i]) * UINT32_C(16777619);
-    assert(trace_count == 6722 && digest == UINT32_C(0xcb530c74));
+    /* Removing the screenshot prefix eliminates one allocation/free per round. */
+    assert(trace_count == 6562 && digest == UINT32_C(0x274efe64));
     if (argc == 2) {
         FILE *file = fopen(argv[1], "wb");
         assert(file && fwrite(trace, sizeof *trace, trace_count, file) == trace_count);

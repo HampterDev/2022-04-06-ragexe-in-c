@@ -12,7 +12,6 @@ struct ServerAddress {
 
 char connection_startup(void);
 void connection_shutdown(void);
-char connection_ws2_unhooked(void);
 struct Connection *connection_construct(struct Connection *connection);
 struct RagConnection *rag_connection_construct(struct RagConnection *connection);
 void connection_destruct(struct Connection *connection);
@@ -30,7 +29,7 @@ int connection_is_open(const struct Connection *connection);
 
 struct RagConnection *rag_connection_instance(void);
 struct Connection *rag_connection_transport(struct RagConnection *connection);
-void rag_connection_drop_sends(struct RagConnection *connection, int drop);
+
 int rag_connection_get_packet_length(struct RagConnection *connection, int packet_id);
 unsigned short rag_connection_get_packet_type(const void *packet);
 char rag_connection_get_packet(struct RagConnection *connection, void *buffer,

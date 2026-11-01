@@ -11,7 +11,6 @@
 #include "game/own_states.h"
 
 #include "game/skill_cooldowns.h"
-#include "game/replay.h"
 #include "game/rodex_mail.h"
 #include "game/state_change_helpers.h"
 #include "session/session_items.h"

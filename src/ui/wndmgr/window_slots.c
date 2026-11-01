@@ -1,4 +1,3 @@
-#include "replay/replay.h"
 #include "navi/navi_manager.h"
 #include "ui/misc/snap_mgr.h"
 #include "session/state.h"
@@ -12,14 +11,11 @@
 #include "ui/items/items.h"
 #include "ui/shops/storage.h"
 #include "ui/quests/navigation.h"
-#include "ui/shops/roulette.h"
 
 struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_id)
 {
     struct WmWindowEntry *entry;
 
-    if (g_replayPlaying && window_id == UI_ID_NONE)
-        return self->replay_wnd;
     switch (window_id) {
     case 0x1: return self->new_chat_wnd;
     case 0x3: return self->login_wnd;
@@ -42,13 +38,10 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
     case 0xc4: return self->collection_system_wnd;
     case 0xcb: return self->navigation_v4_wnd;
     case 0xcc: return self->quest_display_wnd;
-    case 0xed: return self->clan_info_manage_wnd;
     case 0xfd: return self->guild_storage_log_wnd;
     case 0x111: return self->mini_map_wnd;
-    case 0x112: return self->editctrl_wnd;
     case 0x113: return self->bank_new_wnd;
     case 0x115: return self->new_select_char_wnd;
-    case 0x11c: return self->captcha_register_wnd;
     case 0x11d: return self->macro_detector_wnd;
     case 0x11e: return self->macro_reporter_wnd;
     case 0x11f: return self->macro_user_info_wnd;
@@ -57,7 +50,6 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
         if (self->plates.size)
             return *LIST_VALUE(self->plates.head->next, struct UIWindow *);
         return self->cash_shop_wnd;
-    case 0x13b: return self->tipbox_wnd;
     case 0x13e: return self->cash_shop_wnd;
     case 0x145: return self->rpimage_wnd2;
     }
@@ -72,7 +64,7 @@ BYTE ui_window_mgr_is_untracked_id(struct UIWindowMgr *self, int window_id)
     (void)self;
     switch (window_id) {
     case 0x0: case 0x1: case 0x2: case 0x3: case 0x4: case 0x6: case 0x7: case 0x9: case 0xe: case 0xf:
-    case 0x10: case 0x11: case 0x12: case 0x14: case 0x15: case 0x16: case 0x17: case 0x18: case 0x1a:
+    case 0x10: case 0x11: case 0x12: case 0x15: case 0x16: case 0x17: case 0x18: case 0x1a:
     case 0x1c: case 0x1d: case 0x1f: case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x27:
     case 0x2a: case 0x2d: case 0x31: case 0x32: case 0x38: case 0x3a: case 0x3c: case 0x3d: case 0x3e:
     case 0x3f: case 0x40: case 0x41: case 0x42: case 0x43: case 0x46: case 0x49: case 0x4a: case 0x4e:
@@ -80,10 +72,10 @@ BYTE ui_window_mgr_is_untracked_id(struct UIWindowMgr *self, int window_id)
     case 0x65: case 0x68: case 0x69: case 0x6b: case 0x6d: case 0x6f: case 0x73: case 0x74: case 0x7b:
     case 0x7c: case 0x7f: case 0x80: case 0x82: case 0x83: case 0x85: case 0x88: case 0x89: case 0x8a:
     case 0x90: case 0x9a: case 0x9c: case 0x9e: case 0x9f: case 0xa0: case 0xa1: case 0xa4: case 0xaf:
-    case 0xb0: case 0xb1: case 0xb3: case 0xb4: case 0xb6: case 0xb7: case 0xba: case 0xbb: case 0xbd:
-    case 0xbe: case 0xc4: case 0xc6: case 0xc7: case 0xc8: case 0xcc: case 0xe3: case 0xfd:
+    case 0xb0: case 0xb1: case 0xb3: case 0xb4: case 0xb6: case 0xb7: case 0xba:  case 0xbd:
+    case 0xbe: case 0xc4:  case 0xc7: case 0xc8: case 0xcc: case 0xe3: case 0xfd:
     case 0x101: case 0x102:
-    case 0x106: case 0x10b: case 0x10c: case 0x10d: case 0x10f: case 0x115: case 0x116: case 0x11c:
+    case 0x106: case 0x10b: case 0x10f: case 0x115: case 0x116:
     case 0x11d: case 0x11e: case 0x121: case 0x127: case 0x133: case 0x145: case 0x14c: case 0x157:
     case UI_ID_NONE:
         return 1;
@@ -172,7 +164,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     struct UIWindow *wnd;
     struct WmClosedRect *saved;
     struct WindowInfo *rect;
-    struct ReplayRecorder *rec;
     int closed = 0;
 
     wnd = ui_window_mgr_get_window(self, window_id);
@@ -201,21 +192,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         return 0;
     if (ui_window_mgr_get_window(self, window_id) == self->active_top_wnd)
         self->active_top_wnd = NULL;
-
-    rec = replay_recorder_instance();
-    if (rec->state == WM_REPLAY_RECORDING && rec->info.options[2] && rec->info.options[0]
-        && rec->info.options[8]
-        && (window_id == 0x13b || window_id == 0x141 || window_id == 0x142)) {
-#pragma pack(push, 1)
-        struct {
-            DWORD tag;
-            WORD len;
-            int window_id;
-        } record = { 0x39208ae, 10, 0 };
-#pragma pack(pop)
-        record.window_id = window_id;
-        replay_recorder_write_packet(replay_recorder_instance(), 10, &record, 0x2a, 0);
-    }
 
     switch (window_id) {
     case 0x0: closed = close_slot(self, &self->basic_info_wnd); break;
@@ -314,7 +290,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = 1;
         }
         break;
-    case 0x26: closed = close_slot(self, &self->tip_of_the_day_wnd); break;
     case 0x27: closed = close_slot(self, &self->choose_warp_wnd); break;
     case 0x28:
         if (close_slot(self, &self->merchant_item_wnd)) {
@@ -339,7 +314,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0x2f: closed = close_slot(self, &self->card_item_illust_wnd); break;
     case 0x30: closed = close_slot(self, &self->quit_wnd); break;
     case 0x31: closed = close_slot(self, &self->notify_job_level_up_wnd); break;
-    case 0x32: closed = close_slot(self, &self->item_param_change_display_wnd); break;
     case 0x33: closed = close_slot(self, &self->candidate_wnd); break;
     case 0x34: closed = close_slot(self, &self->composition_wnd); break;
     case 0x35: closed = close_slot(self, &self->party_setting_wnd); break;
@@ -411,7 +385,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0x67: closed = close_slot(self, &self->prohibit_list_wnd); break;
     case 0x68: closed = close_slot(self, &self->couple_accept_wnd); break;
     case 0x69: closed = close_slot(self, &self->baby_accept_wnd); break;
-    case 0x6a: closed = close_slot(self, &self->book_wnd); break;
     case 0x6d: closed = close_slot(self, &self->join_friend_accept_wnd); break;
     case 0x6e: closed = close_slot(self, &self->baby_accept_wnd2); break;
     case 0x70: closed = close_slot(self, &self->command_list_wnd); break;
@@ -523,14 +496,10 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         }
         break;
     case 0xb8: closed = close_slot(self, &self->n_cash_wnd); break;
-    case 0xbb:
-        ui_window_mgr_post_quit2(self, self->replay_control_wnd);
-        self->replay_control_wnd = NULL;
-        closed = 1;
-        break;
+
     case 0xbe: closed = close_slot(self, &self->n_cash_call_wnd); break;
     case 0xc4: closed = close_slot(self, &self->collection_system_wnd); break;
-    case 0xc6: closed = close_slot(self, &self->replay_reccontrol_wnd); break;
+
     case 0xc7: closed = close_slot(self, &self->second_password_input_wnd); break;
     case 0xc8: closed = close_slot(self, &self->second_password_edit_wnd); break;
     case 0xc9: closed = close_slot(self, &self->monster_display_wnd); break;
@@ -539,9 +508,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0xd0: closed = close_slot(self, &self->party_invitation_to_wnd); break;
     case 0xd4: closed = close_slot_stored(self, &self->guild_helper_wnd); break;
     case 0xd5: closed = close_slot(self, &self->create_guild_wnd); break;
-    case 0xd6: closed = close_slot(self, &self->guild_tip_wnd); break;
     case 0xd7: closed = close_slot(self, &self->disband_guild_wnd); break;
-    case 0xed: closed = close_slot_stored(self, &self->clan_info_manage_wnd); break;
     case 0xfd: closed = close_slot(self, &self->guild_storage_log_wnd); break;
     case 0xfe: closed = close_slot(self, &self->para_item_shop_wnd); break;
     case 0xff:
@@ -585,16 +552,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = close_slot(self, &self->rodex_contents_wnd);
         }
         break;
-    case 0x10c: closed = close_slot(self, &self->open_roullette_wnd); break;
-    case 0x10d:
-        if (self->roullette_wnd) {
-            send_packet_id(0xa1d);
-            roulette_reset(g_roulette);
-            closed = close_slot(self, &self->roullette_wnd);
-        }
-        break;
     case 0x111: closed = close_slot(self, &self->mini_map_wnd); break;
-    case 0x112: closed = close_slot(self, &self->editctrl_wnd); break;
     case 0x113: closed = close_slot(self, &self->bank_new_wnd); break;
     case 0x114:
         if (close_slot(self, &self->round_box_tooltip_wnd)) {
@@ -602,7 +560,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = 1;
         }
         break;
-    case 0x11c: closed = close_slot(self, &self->captcha_register_wnd); break;
     case 0x11d:
         if (close_slot(self, &self->macro_detector_wnd)) {
             self->macro_detector_edit = NULL;
@@ -626,7 +583,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = 1;
         }
         break;
-    case 0x13b: closed = close_slot(self, &self->tipbox_wnd); break;
     case 0x13e:
         if (close_slot(self, &self->cash_shop_wnd)) {
             closed = 1;

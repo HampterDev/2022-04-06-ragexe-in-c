@@ -19,11 +19,9 @@ struct JsonTree *json_value_child(struct JsonTree *parent, size_t index);
 size_t json_value_size(const struct JsonTree *value);
 int json_value_as_int(const struct JsonTree *value);
 double json_value_as_double(const struct JsonTree *value);
-char json_value_as_bool(const struct JsonTree *value);
 struct TextView json_value_text(const struct JsonTree *value);
 char json_value_is_null(const struct JsonTree *value);
 char json_value_is_object(const struct JsonTree *value);
-char json_value_empty(const struct JsonTree *value);
 
 char json_parse_text(struct JsonTree *root, const char *text, size_t length);
 int json_write_request(const struct JsonTree *root, struct OwnedText *out);

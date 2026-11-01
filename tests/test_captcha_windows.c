@@ -20,7 +20,7 @@
 
 static unsigned shown, refreshed, sent;
 static int send_success = 1, sent_size;
-static unsigned char sent_packet[20];
+static unsigned char sent_packet[18];
 static const char *edit_text;
 static void show(struct UIWindow *w, int visible) { w->visible = visible; shown += visible != 0; }
 static void refresh(struct UIWindow *w) { (void)w; ++refreshed; }
@@ -36,14 +36,8 @@ static void control_destroy(struct UIWindow *window)
     ui_window_destruct(window);
     checked_free(window);
 }
-static void text_destroy(struct UIWindow *window)
-{
-    struct UIStaticText *text = (struct UIStaticText *)window;
-    string_free(&text->tooltip);
-    control_destroy(window);
-}
+
 static struct UIWindowOps control_ops = {.destroy = control_destroy, .move = ui_window_move_base, .invalidate = refresh};
-static struct UIWindowOps text_ops = {.destroy = text_destroy, .move = ui_window_move_base, .invalidate = refresh};
 void *window_alloc(size_t bytes) { return checked_malloc(bytes); }
 void *mem_alloc(size_t size) {
     unsigned i;
@@ -104,14 +98,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *w, int id) { (void)w; assert(i
 void ui_window_draw_bitmap(struct UIWindow *w, int x, int y, struct BitmapRes *bitmap, int keyed)
 { assert(w && !x && !y && bitmap); drawn_key = keyed; }
 void ui_window_mgr_set_focus_edit(struct UIWindowMgr *w, struct UIWindow *edit) { (void)w; assert(edit); focused_edit = edit; }
-struct UIWindow *ui_static_text_construct(struct UIWindow *w)
-{
-    ui_window_construct(w, 0); w->ops = &text_ops;
-    string_init(&((struct UIStaticText *)w)->tooltip); return w;
-}
-void ui_static_text_set_text_ellipsis(struct UIWindow *w, const char *text)
-{ string_assign_cstr(&((struct UIStaticText *)w)->tooltip, text); }
-struct UIWindow *ui_combo_box_def_wnd_construct(struct UIWindow *w) { return ui_window_construct(w, 0); }
+
 struct UIWindow *ui_edit_ctrl_construct(struct UIWindow *w) { return ui_window_construct(w, 0); }
 void ui_edit_ctrl_set_back_colour(struct UIWindow *w, int r, int g, int b) { (void)w; (void)r; (void)g; (void)b; }
 void ui_edit_ctrl_set_border_colour(struct UIWindow *w, int r, int g, int b) { (void)w; (void)r; (void)g; (void)b; }
@@ -121,35 +108,14 @@ struct UIBitmapButton *ui_bitmap_button_construct(struct UIBitmapButton *b)
 { ui_window_construct(&b->button.base, 0); b->bitmap_width = b->bitmap_height = 16; return b; }
 BYTE ui_bitmap_button_set_bitmap(struct UIBitmapButton *b, const char *path, int state, int flag)
 { (void)b; (void)path; (void)state; (void)flag; return 1; }
-void list_init(struct List *list)
-{
-    struct ListNode *head = malloc(sizeof *head);
-    assert(head);
-    head->next = head->prev = head;
-    list->head = head;
-    list->size = 0;
-}
-void list_free(struct List *list, ListDestroyFn destroy)
-{
-    assert(destroy);
-    if (!list->head) return;
-    assert(list->head->next == list->head && !list->size);
-    free(list->head);
-    list->head = NULL;
-}
-void dir_list_names_list(struct List *list, const char *folder, const char *pattern)
-{ assert(list->head && folder && !strcmp(pattern, "*.bmp")); }
-char *msg_str(int id) { return id == MSG_CAPTCHA_CONFIRM ? "Send %s?" : "%d"; }
+
+char *msg_str(int id) { (void)id; return "%d"; }
 const char *ui_edit_ctrl_get_text(struct UIWindow *w) { assert(w); return edit_text; }
 int ui_edit_ctrl_get_text_size(struct UIWindow *w) { assert(w); return (int)strlen(edit_text); }
-int ui_window_mgr_message_box(struct UIWindowMgr *w, const char *text, int type, int a, int b, int c,
-                          const char *title, int width, int height, int d)
-{ (void)w; (void)text; (void)type; (void)a; (void)b; (void)c; (void)title; (void)width; (void)height; (void)d; return 0; }
+
 int ui_window_send_msg_base(struct UIWindow *w, struct UIWindow *sender, int msg, int a, int b, int c, int d)
 { (void)w; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
-int ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
-{
-    struct UIFrameWnd *w = (struct UIFrameWnd *)window; return ui_window_send_msg_base(&w->base, sender, msg, a, b, c, d); }
+
 void language_cancel_input(struct Language *language) { (void)language; }
 
 struct BitmapRes *bitmap_resource_init(struct BitmapRes *b)
@@ -160,7 +126,7 @@ char rag_connection_send_packet(struct RagConnection *c, int size, const void *d
 {
     const unsigned char *p = data;
     assert(c == (void *)1 && size <= sizeof sent_packet && p[1] == 0x0a);
-    assert((size == 2 && p[0] == 0x5a) || (size == 18 && p[0] == 0x5c) || (size == 20 && p[0] == 0x52));
+    assert((size == 2 && p[0] == 0x5a) || (size == 18 && p[0] == 0x5c));
     sent_size = size; memcpy(sent_packet, data, size);
     if (!send_success) return 0;
     ++sent; return 1;
@@ -168,37 +134,23 @@ char rag_connection_send_packet(struct RagConnection *c, int size, const void *d
 
 static void test_answers(void)
 {
-    struct UICaptchaRegisterWnd registration = {0};
     struct UIMacroDetectorWnd detector = {0};
-    struct UIBitmapButton button = {0};
     struct UIWindow edit = {0};
-    unsigned char packed = 1;
     unsigned i, before = sent;
-    registration.frame.base.ops = detector.frame.base.ops = button.button.base.ops = &window_ops;
-    registration.answer_edit = detector.answer_edit = &edit;
-    registration.send_button = &button;
-    registration.packed.bytes = &packed; registration.packed.size = 0x1234;
-    string_init(&registration.file); string_assign_cstr(&registration.file, "test.bmp");
+    detector.frame.base.ops = &window_ops;
+    detector.answer_edit = &edit;
     string_init(&detector.last_answer);
-    edit_text = "ABCD"; send_success = 0;
-    captcha_register_send(&registration);
-    assert(!button.button.disabled && sent == before);
-    send_success = 1; captcha_register_send(&registration);
-    assert(button.button.disabled && sent_size == 20 && sent == before + 1);
-    assert(!memcmp(sent_packet + 2, "ABCD", 4) && sent_packet[18] == 0x34 && sent_packet[19] == 0x12);
-    for (i = 6; i < 18; ++i) assert(sent_packet[i] == 0);
-    captcha_register_send(&registration); assert(sent == before + 1);
     edit_text = "A"; send_success = 0;
     ui_macro_detector_wnd_send_msg(&detector.frame.base, NULL, UI_MSG_COMMAND, CAPTCHA_ID_SEND, 0, 0, 0);
-    assert(!detector.last_answer.size && sent == before + 1);
+    assert(!detector.last_answer.size && sent == before);
     send_success = 1;
     ui_macro_detector_wnd_send_msg(&detector.frame.base, NULL, UI_MSG_COMMAND, CAPTCHA_ID_SEND, 0, 0, 0);
     assert(sent_size == 18 && sent_packet[2] == 'A');
     for (i = 3; i < 18; ++i) assert(!sent_packet[i]);
-    assert(detector.last_answer.size == 1 && sent == before + 2);
+    assert(detector.last_answer.size == 1 && sent == before + 1);
     ui_macro_detector_wnd_send_msg(&detector.frame.base, NULL, UI_MSG_COMMAND, CAPTCHA_ID_SEND, 0, 0, 0);
-    assert(sent == before + 2);
-    string_free(&detector.last_answer); string_free(&registration.file);
+    assert(sent == before + 1);
+    string_free(&detector.last_answer);
     assert(!outstanding && !string_blocks);
 }
 
@@ -228,7 +180,7 @@ static void test_windows(int custom, int bits, unsigned palette)
     preview.frame.base.ops = detector.frame.base.ops = image.base.ops = &window_ops;
     preview.image = detector.image = &image;
     bitmap_resource_init(&image.image);
-    assert(captcha_data_pack(&packed, raw, size));
+    packed = compressed_bitmap(raw, size);
     assert(captcha_preview_begin(&preview.frame.base, key, packed.size));
     old_packed = preview.stream.packed.bytes;
     fail_at = allocation_calls + 1;
@@ -273,7 +225,7 @@ static void test_windows(int custom, int bits, unsigned palette)
 int main(void)
 {
     int custom;
-    struct UIWindow *(*factories[])(void) = {captcha_preview_create, captcha_register_create, captcha_detector_create};
+    struct UIWindow *(*factories[])(void) = {captcha_preview_create, captcha_detector_create};
     size_t i;
     for (i = 0; i < sizeof factories / sizeof *factories; ++i) {
         struct UIWindow *w;
@@ -281,10 +233,10 @@ int main(void)
         struct UICaptchaImage *image;
         focused_edit = NULL;
         w = factories[i](); assert(w && edges); count = allocation_calls - before;
-        if (i == 2) assert(focused_edit == captcha_detector_edit(w) && closes == old_closes + 2);
+        if (i == 1) assert(focused_edit == captcha_detector_edit(w) && closes == old_closes + 2);
         image = i == 0 ? ((struct UICaptchaPreviewWnd *)w)->image
-            : i == 1 ? ((struct UICaptchaRegisterWnd *)w)->image : ((struct UIMacroDetectorWnd *)w)->image;
-        ui_window_on_draw(UI_WINDOW(image)); assert(drawn_key == (i != 1));
+            : ((struct UIMacroDetectorWnd *)w)->image;
+        ui_window_on_draw(UI_WINDOW(image)); assert(drawn_key == 1);
         old_closes = closes;
         ui_window_destroy(UI_WINDOW(w)); assert(!edges && !outstanding && !string_blocks);
         for (failure = 1; failure <= count; ++failure) {

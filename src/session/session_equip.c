@@ -30,13 +30,6 @@ static void say_item(const struct ItemInfo *item, int msg, int color)
     string_free(&name);
 }
 
-static void refresh_item_param_change_display(void)
-{
-    struct UIWindow *wnd = g_windowMgr.item_param_change_display_wnd;
-    if (wnd)
-        ui_window_send(wnd, NULL, 0x3c, 0, 0, 0, 0);
-}
-
 static struct Player *mode_player(struct GameMode *gm)
 {
     return gm->world ? gm->world->player : NULL;
@@ -83,7 +76,6 @@ BYTE session_take_off_equip(struct Session *self, unsigned location, int index)
         session_refresh_equip_wnd(self);
     }
     ui_window_mgr_invalidate_once_per_frame(&g_windowMgr);
-    refresh_item_param_change_display();
     return 1;
 }
 
@@ -137,7 +129,6 @@ BYTE session_put_on_equip(struct Session *self, struct ItemInfo *item)
     }
     if (item->worn_location != LOCATION_ARROW)
         session_remove_inventory_item(self, item->index, 1);
-    refresh_item_param_change_display();
     return 1;
 }
 
@@ -243,7 +234,6 @@ BYTE session_take_off_costume(struct Session *self, unsigned location)
         }
     }
     session_invalidate_windows(self);
-    refresh_item_param_change_display();
     return 1;
 }
 

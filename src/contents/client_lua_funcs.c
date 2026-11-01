@@ -1,15 +1,12 @@
 #include "skills/skill_bundle.h"
 #include "session/skill_queries.h"
 #include "skills/skill_info.h"
-#include "ui/social/entry_queue_state.h"
 #include "session/state.h"
 #include "session/chat_tabs_lua.h"
 #include "session/talk_options_lua.h"
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <io.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
@@ -24,16 +21,10 @@
 #include "ui/worldmap/kafra_services.h"
 #include "contents/lapine_box.h"
 #include "contents/lapine_upgrade.h"
-#include "core/file_util.h"
 #include "core/msg_str.h"
-#include "ui/quests/quests.h"
-#include "ui/shops/cash_shop.h"
 
 #define LAPINE_BOX_WINDOW       0x122
 #define LAPINE_UPGRADE_WINDOW   0x12e
-
-#define CASHSHOP_BANNER_WINDOW      0x13e
-#define ATTENDANCE_BANNER_WINDOW    0x148
 
 int lua_trace_value(lua_State *L);
 int lua_get_msg_string(lua_State *L);
@@ -41,11 +32,8 @@ int lua_req_emotion(lua_State *L);
 int lua_add_skill_list(lua_State *L);
 int lua_add_need_skill_list(lua_State *L);
 int lua_rgb(lua_State *L);
-int lua_change_directory_of_datas(lua_State *L);
 int lua_add_ingredient(lua_State *L);
 int lua_add_ingredient_lapine_upgrade_box(lua_State *L);
-int lua_add_cashshop_banner(lua_State *L);
-int lua_add_check_attendance_banner(lua_State *L);
 
 static const struct LuaDataFunction script_functions[] = {
     { "TraceValue", lua_trace_value },
@@ -58,7 +46,6 @@ static const struct LuaDataFunction script_functions[] = {
     { "c_AddSkillList", lua_add_skill_list },
     { "c_AddNeedSkillList", lua_add_need_skill_list },
     { "RGB", lua_rgb },
-    { "c_ChangeDirectoryOfDatas", lua_change_directory_of_datas },
     { "SetEmitterInfo", effect_lua_set_emitter_info },
     { "SetMagicFloorInfo", effect_lua_set_magic_floor_info },
     { "SetEvilsPawInfo", effect_lua_set_evils_paw_info },
@@ -68,11 +55,8 @@ static const struct LuaDataFunction script_functions[] = {
     { "SetWindEffectInfo", effect_lua_set_wind_effect_info },
 };
 static const struct LuaDataFunction late_script_functions[] = {
-    { "AddEntryQueue", entry_queue_lua_add },
     { "add_ingredient", lua_add_ingredient },
     { "add_ingredient_lapine_upgrade_box", lua_add_ingredient_lapine_upgrade_box },
-    { "add_cashshop_banner", lua_add_cashshop_banner },
-    { "add_checkAttendance_banner", lua_add_check_attendance_banner },
 };
 
 static void register_all(lua_State *L, const struct LuaDataFunction *functions, size_t count)
@@ -131,13 +115,13 @@ int lua_req_emotion(lua_State *L)
     int emotion = (int)luaL_checknumber(L, 1);
     int pick;
 
+    /* Legacy Lua catalogs may still register Yut command aliases. */
+    if (emotion >= 0x51 && emotion <= 0x57)
+        emotion = -1;
     if (emotion >= 0) {
         if (emotion == 0x3a) {
             pick = rand() % 6;
             emotion = 0x3a + (pick < 0 ? 0 : pick);
-        } else if (emotion == 0x51) {
-            pick = rand() % 7;
-            emotion = 0x51 + (pick < 0 ? 0 : pick);
         }
         MODE_SEND_MSG((void *)client_current_mode(), 0x1f, emotion, 0, 0, 0);
     }
@@ -209,35 +193,6 @@ int lua_rgb(lua_State *L)
     return 1;
 }
 
-static void path_join(struct String *out, const struct String *dir, const struct String *file)
-{
-    string_copy(out, dir);
-    string_append_cstr(out, "\\");
-    string_append(out, string_cstr(file), file->size);
-}
-
-int lua_change_directory_of_datas(lua_State *L)
-{
-    struct String file, from_dir, to_dir, from, to, dir;
-
-    check_string(&file, L, 1);
-    check_string(&from_dir, L, 2);
-    check_string(&to_dir, L, 3);
-    path_join(&from, &from_dir, &file);
-    path_join(&to, &to_dir, &file);
-    if (_access(string_cstr(&to), 0) != 0 && _access(string_cstr(&from), 0) == 0) {
-        if (_access(string_cstr(&to), 0) == 0
-            || (string_copy(&dir, &to_dir), make_directories(dir)))
-            rename(string_cstr(&from), string_cstr(&to));
-    }
-    string_free(&to);
-    string_free(&from);
-    string_free(&to_dir);
-    string_free(&from_dir);
-    string_free(&file);
-    return 0;
-}
-
 int lua_add_ingredient(lua_State *L)
 {
     int a = (int)luaL_checknumber(L, 1);
@@ -256,41 +211,5 @@ int lua_add_ingredient_lapine_upgrade_box(lua_State *L)
 
     if (wnd)
         lapine_upgrade_add_resource(wnd, a);
-    return 0;
-}
-
-int lua_add_cashshop_banner(lua_State *L)
-{
-    struct String a, b;
-    struct UIWindow *wnd;
-
-    check_string(&a, L, 1);
-    check_string(&b, L, 2);
-    wnd = ui_window_find(CASHSHOP_BANNER_WINDOW);
-    if (wnd)
-        ui_cash_shop_wnd_add_banner(wnd, &a, &b);
-    string_free(&b);
-    string_free(&a);
-    return 0;
-}
-
-int lua_add_check_attendance_banner(lua_State *L)
-{
-    struct String a, b, a_copy, b_copy;
-    int c, d;
-    struct UIWindow *wnd;
-
-    check_string(&a, L, 1);
-    check_string(&b, L, 2);
-    c = (int)luaL_checkinteger(L, 3);
-    d = (int)luaL_checkinteger(L, 4);
-    wnd = ui_window_find(ATTENDANCE_BANNER_WINDOW);
-    if (wnd) {
-        string_copy(&a_copy, &a);
-        string_copy(&b_copy, &b);
-        ui_check_attendance_wnd_add_banner(wnd, a_copy, b_copy, c, d);
-    }
-    string_free(&b);
-    string_free(&a);
     return 0;
 }

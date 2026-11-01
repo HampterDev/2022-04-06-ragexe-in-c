@@ -57,8 +57,6 @@ BYTE *game_file_mgr_read_loose_file(struct GameFileMgr *self, const char *name, 
             *size = (int)count;
     }
     CloseHandle(file);
-    if (data)
-        gg_hash_manager_check_file(g_ggHashMgr, name);
     return data;
 }
 
@@ -87,7 +85,7 @@ BYTE *game_file_mgr_read_from_archives(struct GameFileMgr *self, const char *nam
             data = (BYTE *)VirtualAlloc(NULL, entry.size + 8, MEM_COMMIT, PAGE_READWRITE);
             if (data && grf_archive_read(pak, &entry, data, entry.size)) {
                 *size = (int)entry.size;
-                gg_hash_manager_check_data(g_ggHashMgr, name, data, *size);
+
                 return data;
             }
             VirtualFree(data, 0, MEM_RELEASE);

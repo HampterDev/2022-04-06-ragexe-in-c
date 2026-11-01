@@ -1,5 +1,5 @@
 #include "ui/items/refining_internal.h"
-#include "browser/browser.h"
+#include "ui/draw.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 

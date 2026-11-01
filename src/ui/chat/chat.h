@@ -1,6 +1,5 @@
 #include "ui/items/item_tags.h"
 #include "platform/service.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "session/session_talk.h"
 #include "ui/window_manager_state.h"
@@ -83,9 +82,6 @@ struct UIMacroReporterWnd *ui_macro_reporter_wnd_construct(struct UIMacroReporte
 struct UIWindow *ui_macro_reporter_wnd_new(void);
 struct UIMacroUserInfoWnd *ui_macro_user_info_wnd_construct(struct UIMacroUserInfoWnd *self);
 struct UIWindow *ui_macro_user_info_wnd_new(void);
-
-struct UINoticeConfirmWnd *ui_notice_confirm_wnd_construct(struct UINoticeConfirmWnd *self);
-struct UIWindow *ui_notice_confirm_wnd_new(void);
 
 struct UINoticeWnd *ui_notice_wnd_construct(struct UINoticeWnd *self);
 struct UIWindow *ui_notice_wnd_new(void);

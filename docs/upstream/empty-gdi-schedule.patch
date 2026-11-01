@@ -1,0 +1,108 @@
+diff --git a/src/contents/schedule.c b/src/contents/schedule.c
+index 1038c1e..dff14b5 100644
+--- a/src/contents/schedule.c
++++ b/src/contents/schedule.c
+@@ -30,7 +30,6 @@ static void captcha_job_destroy(struct Schedule *s) { captcha_upload_destroy((st
+ static const struct ScheduleOps plain_ops = {schedule_run, schedule_free};
+ static const struct ScheduleOps partial_ops = {partial_job_run, schedule_free};
+ static const struct ScheduleOps captcha_ops = {captcha_job_run, captcha_job_destroy};
+-static const struct ScheduleOps gdi_ops = {gdi_check_run, schedule_free};
+ 
+ static void chat_line(const char *text, int color)
+ {
+@@ -70,8 +69,6 @@ char schedule_is_due(struct Schedule *self, int now)
+ void schedule_run(struct Schedule *self, int now)
+ {
+     if (self->kind == SCHEDULE_ONCE) { self->alive = 0; return; }
+-    if (self->kind == SCHEDULE_RANDOM)
+-        self->interval = (int)(300.0 * (rand() / (double)RAND_MAX) + 30.0);
+     self->last_run = now;
+ }
+ 
+@@ -267,14 +264,3 @@ void captcha_upload_run(struct CaptchaUploadSchedule *self)
+     }
+     if (self->sent == self->size) self->base.alive = 0;
+ }
+-
+-void gdi_check_run(struct Schedule *self, int now)
+-{
+-     (void)now;
+-    self->alive = 0;
+-}
+-
+-struct Schedule *gdi_check_create(int now, int interval, int kind)
+-{
+-    return schedule_create(now, interval, kind, &gdi_ops);
+-}
+diff --git a/src/contents/schedule.h b/src/contents/schedule.h
+index fdc6f87..b9eda10 100644
+--- a/src/contents/schedule.h
++++ b/src/contents/schedule.h
+@@ -9,7 +9,7 @@ struct ScheduleOps {
+     void (*run)(struct Schedule *job, int now);
+     void (*destroy)(struct Schedule *job);
+ };
+-enum ScheduleKind { SCHEDULE_ONCE, SCHEDULE_REPEAT, SCHEDULE_RANDOM };
++enum ScheduleKind { SCHEDULE_ONCE, SCHEDULE_REPEAT };
+ 
+ struct Schedule {
+     const struct ScheduleOps *ops;
+@@ -71,6 +71,4 @@ void captcha_upload_destruct(struct CaptchaUploadSchedule *job);
+ void captcha_upload_destroy(struct CaptchaUploadSchedule *job);
+ void captcha_upload_run(struct CaptchaUploadSchedule *job);
+ 
+-struct Schedule *gdi_check_create(int now, int interval, int kind);
+-void gdi_check_run(struct Schedule *job, int now);
+ #endif
+diff --git a/src/game/ping_schedule.c b/src/game/ping_schedule.c
+index 6230367..8ee17b7 100644
+--- a/src/game/ping_schedule.c
++++ b/src/game/ping_schedule.c
+@@ -33,8 +33,6 @@ void game_mode_add_schedules(void)
+     __time32_t now;
+     struct Schedule *job;
+     _time32(&now);
+-    job = gdi_check_create(now, 60, SCHEDULE_RANDOM);
+-    if (job && !time_scheduler_add(g_timeScheduler, job)) schedule_free(job);
+     job = schedule_create(now, 5, SCHEDULE_REPEAT, &ping_ops);
+     if (!job) return;
+     if (!time_scheduler_add(g_timeScheduler, job)) { schedule_free(job); return; }
+diff --git a/tests/test_scheduler.c b/tests/test_scheduler.c
+index 341fce0..70951db 100644
+--- a/tests/test_scheduler.c
++++ b/tests/test_scheduler.c
+@@ -191,14 +191,11 @@ static void test_clocks_and_jobs(void)
+ {
+     struct Schedule s;
+     struct PartialShutDownSchedule partial;
+-    unsigned before;
+     schedule_construct(&s, 100, 5, SCHEDULE_ONCE, 1, 0);
+     assert(!schedule_is_due(&s, 105) && schedule_is_due(&s, 106));
+     s.last_run = INT_MAX - 1; assert(!schedule_is_due(&s, INT_MAX));
+     s.interval = 0; assert(!schedule_is_due(&s, INT_MAX));
+     schedule_run(&s, 200); assert(!s.alive && s.last_run == INT_MAX - 1);
+-    schedule_construct(&s, 100, 1, SCHEDULE_RANDOM, 1, 0);
+-    for (before = 0; before < 1000; ++before) { schedule_run(&s, 200); assert(s.interval >= 30 && s.interval <= 330 && s.last_run == 200); }
+ 
+     partial_shutdown_construct(&partial, 100, 3600, SCHEDULE_REPEAT);
+     assert(!partial_shutdown_start(&partial, 50, 100));
+@@ -269,15 +266,15 @@ static void test_consumers(void)
+     assert(!strcmp(notice_text, "2026-01-01 12:00:00") && queue.count == 1);
+     assert(((struct PartialShutDownSchedule *)queue.first->job)->end == end);
+     time_scheduler_clear(&queue);
+-    for (i = 1; i <= 4; ++i) {
++    for (i = 1; i <= 2; ++i) {
+         g_session1.gameModeScheduleId = -1; fail_at = allocation_calls + i;
+         game_mode_add_schedules();
+-        if (i >= 3) assert(g_session1.gameModeScheduleId == -1);
+-        else assert(time_scheduler_find(&queue, g_session1.gameModeScheduleId));
++        assert(g_session1.gameModeScheduleId == -1 && !queue.count);
+         time_scheduler_clear(&queue); assert(!outstanding);
+     }
+     fail_at = 0; game_mode_add_schedules();
+-    ping = time_scheduler_find(&queue, g_session1.gameModeScheduleId); assert(ping && queue.count == 2);
++    ping = time_scheduler_find(&queue, g_session1.gameModeScheduleId);
++    assert(ping && queue.count == 1 && ping->ops == &ping_ops);
+     connected = 1; g_session1.lastPacketTime = UINT_MAX - 100; g_session1.lastSendTime = UINT_MAX - 20000;
+     ticks_ms = 100; packets = packet_bytes = 0; ping_run(ping, 1);
+     assert(packets == 1 && lengths[0] == 2 && wire[0] == 0x1c && wire[1] == 0x0b && ping->alive);

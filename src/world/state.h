@@ -28,7 +28,6 @@ struct World {
     struct SceneGraphNode root;
     const struct RswBounds *prebuilt;
     struct List pendingSkills;
-    struct WorldVideoList *videoList;
     struct Tree idsByCell;
     struct List idsNowhere;
     BYTE nearFlag;

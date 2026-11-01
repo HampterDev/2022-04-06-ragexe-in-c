@@ -66,7 +66,6 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
         return UI_ID_CANCEL;
     }
     box = (struct UIWindow *)ui_message_box_new();
-    self->replay_wnd = box;
     ui_message_box_create((struct UIMessageBox *)box, text, type, arg3, arg5, title, width, height, 1, NULL);
     if ((BYTE)arg9 == 1)
         ui_window_send_msg(box, NULL, 0x9d, 1, 0, 0, 0);

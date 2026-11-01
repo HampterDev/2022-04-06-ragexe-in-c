@@ -62,7 +62,6 @@ struct Session {
     struct Tree abrMaxHp;
     DWORD serverTimeOffset;
     char mapName[16];
-    BYTE map_name_tail[0x74c - 0x748];
     int serverTimeLagCount;
     int timerKind;
     unsigned averagePing;
@@ -128,7 +127,6 @@ struct Session {
     struct List pingSamples;
     struct Vec jobBodyNames;
     struct TextArray chatMacros;
-    struct TextArray chatMacrosLoaded;
     int aid;
     int petModified;
     char petName[32];
@@ -142,9 +140,7 @@ struct Session {
     int petPrevFullness;
     int petEmotion[5][5][7];
     struct String pet_state_texts[25];
-    struct XmlDocument petTalkTable;
     struct XmlDocument monsterSkillTable;
-    struct XmlDocument monsterTalkTable;
     BYTE petAutoFeed;
     int pet_pending_index;
     BYTE mouseExclusiveOption;
@@ -193,7 +189,6 @@ struct Session {
     struct List itemList;
     struct List shopItems;
     struct List purchaseItems;
-    struct List snapshotOnlyItems;
     struct List sellItems;
     struct List storageItems;
     struct List cartItems;
@@ -227,7 +222,6 @@ struct Session {
     struct Vec jobSpriteNames;
     struct Vec sexSpriteNames;
     struct Vec weaponSpriteNames;
-    struct Vec accessoryNames;
     struct Vec shieldSpriteNames;
     struct Vec exceptionMinimapNames;
     struct TalkOptionSettings talkOptionSettings;
@@ -240,9 +234,6 @@ struct Session {
     struct Tree mapPosGroupBoxes;
     int rectMapsScaled;
     int rectMapCount;
-    int rerollValues[5];
-    int rerollZeros[12];
-    BYTE vital_slot_tables[0x500c - 0x4f4c];
     struct TableReader tableReader;
     struct SkillCooldownList skillDelays;
     int fogOn;
@@ -272,7 +263,6 @@ struct Session {
     int autoOpenDetailWindow;
     BYTE showName;
     BYTE loadingScreenRandom;
-    BYTE pcBang;
     int connectionIndex;
     int battle_mode;
     int battleChat;
@@ -335,11 +325,7 @@ struct Session {
     int pinState;
     DWORD pinResultValue;
     DWORD pinAid;
-    BYTE launchArgsSet;
     char ssoToken[0x1f4];
-    char launchArg2[24];
-    char launchArgFlag;
-    char launchArg3[24];
     int renameCharId;
     char renameNewName[0x18];
     int cashPoints;
@@ -361,7 +347,6 @@ struct Session {
     int showStateInfo;
     int charListCounts[7];
     struct ClientLua *luaState;
-    BYTE showBattleFieldIcon;
     int stateIconSlots[100];
     BYTE lockMouse;
     int channelCopId;
@@ -411,17 +396,15 @@ struct Session {
     struct Vec newTitles;
     struct Vec trackedAchievements;
     int ownDressUp;
-    int lastPetTalkTime;
+    int lastPetEmotionTime;
     int showCashShopIcon;
     int showGoldPcIcon;
-    int showRouletteIcon;
     struct Vec doramHairNamesMale;
     struct Vec doramHairNamesFemale;
     int screenShake;
     int skillUseKey;
     int lastKeyDown;
     int loadingAirplane;
-    BYTE snsAuthorised;
     int minimapButtons;
     BYTE guildMemberSort;
     BYTE cameraInfoShown;
@@ -454,7 +437,6 @@ struct Session {
     int zoomFarLimit;
     int emblemFrame;
     int extendDamage;
-    int showMapName;
     int rankingScheduleId;
     struct Tree pendingNameAids;
     int gameModeScheduleId;
@@ -468,12 +450,10 @@ struct Session {
     struct McStoreBackup mcStoreBackup;
     int madogear;
     struct Vec pcNames;
-    char webAuthToken[0x10];
     DWORD saleListSentAt;
     BYTE hideOtherPlayers;
     BYTE userConfigEntry1;
     struct Vec accountCharNames;
-    struct TextArray luaFileNames;
 };
 OFFSET_ASSERT(Session, mapType, 0x0);
 OFFSET_ASSERT(Session, guildSkills, 0x4);

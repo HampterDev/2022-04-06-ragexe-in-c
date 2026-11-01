@@ -1,4 +1,3 @@
-#include "game/replay_actor_events.h"
 #include "ui/window_manager_state.h"
 #include <string.h>
 #include <windows.h>
@@ -56,7 +55,7 @@ static void send_chat_room(struct GameMode *self, const struct ChatRoomInfo *roo
     header.type = (unsigned char)room->type;
     memcpy(packet, &header, sizeof(header));
     memcpy(packet + sizeof(header), string_cstr(&room->title), room->title.size);
-    game_mode_record_own_chat_room(self);
+
     send_raw((short)header.len, packet);
 }
 

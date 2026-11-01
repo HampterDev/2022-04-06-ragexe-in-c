@@ -16,7 +16,6 @@ void session_clear_party_members(struct Session *self);
 int session_remove_friend(struct Session *self, DWORD value);
 void session_remove_party_member(struct Session *self, const char *name);
 DWORD session_get_party_member_aid(struct Session *self, const char *name);
-int session_count_online_party_members(struct Session *self);
 struct PartyMember *session_get_party_member(struct Session *self, struct PartyMember *out,
                                                       DWORD aid);
 struct PartyMember *session_get_party_member_by_name(struct Session *self, struct PartyMember *out,

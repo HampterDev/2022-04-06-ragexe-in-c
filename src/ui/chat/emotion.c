@@ -3,7 +3,7 @@
 #include "session/chat_macros.h"
 #include "session/hotkey_bindings.h"
 #include "contents/client_lua_calls.h"
-#include "platform/client_config.h"
+#include "contents/account_settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -62,7 +62,6 @@ const struct UIWindowOps ui_emotion_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -117,7 +116,6 @@ const struct UIWindowOps ui_emotion_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -145,12 +143,7 @@ SIZE_ASSERT(UIEmotionWnd, 0xf0);
 
 void ui_emotion_wnd_save_macros(struct UIEmotionWnd *self);
 
-static void macro_key_path(char path[0x200])
-{
-    strcpy(path, g_registryKeyPath);
-    strcat(path, g_shortcutListSubkey);
-    strcat(path, "\\");
-}
+
 
 struct UIWindow *ui_emotion_wnd_new(void)
 {
@@ -314,26 +307,13 @@ void ui_emotion_wnd_set_macro_text(struct UIEmotionWnd *self, const char *text, 
 
 void ui_emotion_wnd_save_macros(struct UIEmotionWnd *self)
 {
-    char path[0x200];
-    char name[8];
-    HKEY key;
-    DWORD disposition = 0;
-    const char *text;
     int i;
-
-    macro_key_path(path);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition) != 0)
-        return;
     for (i = 0; i < CHAT_MACRO_COUNT; i++) {
-        _itoa(i, name, 10);
-        text = ui_edit_ctrl_get_text(self->macro_edit[i]);
-        if (*text && !session_set_chat_macro(&g_session1, i, text_view_cstr(text))) {
-            RegCloseKey(key);
+        const char *text = ui_edit_ctrl_get_text(self->macro_edit[i]);
+        if (!session_set_chat_macro(&g_session1, i, text_view_cstr(text)))
             return;
-        }
-        RegSetValueExA(key, name, 0, REG_SZ, (const BYTE *)text, (DWORD)strlen(text) + 1);
     }
-    RegCloseKey(key);
+    account_user_data_save(g_accountUserDataMgr);
 }
 
 #define MSG_EMOTION_LIST_TITLE 0x21e

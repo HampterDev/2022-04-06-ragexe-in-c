@@ -1,5 +1,4 @@
 #include "core/thread_text.h"
-#include "contents/shutdown_notice.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
@@ -9,7 +8,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 #include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_names.h"
@@ -546,8 +544,6 @@ void login_mode_process_packets(struct LoginMode *self)
     unsigned short packet_length;
     void *conn;
 
-    if (g_replayLaunch)
-        return;
     memset(g_packetBuffer, 0, 0x10000);
     if (!connection_poll(rag_connection_transport(rag_connection_instance())))
         CMODE_SENDMSG(client_current_mode(), 1, 0, 0, 0, 0);
@@ -563,7 +559,6 @@ void login_mode_process_packets(struct LoginMode *self)
         case 0x187:
         case 0x283:
         case 0x8e3:
-        case 0x8e4:
         case 0x99d:
         case 0x9c2:
         case 0xa4d:
@@ -634,7 +629,6 @@ void login_mode_process_packets(struct LoginMode *self)
                 box(msg_str(0x7e1), 0, 1, 0, 0);
             break;
         case 0x8fd: login_mode_on_select_wnd_result(self, g_packetBuffer); break;
-        case 0x986: shutdown_notice_receive(g_packetBuffer, packet_length); break;
         case 0x9a0: on_char_list_notify(); break;
         case 0x9a2:
             self->mobile_otp_id = (int)((const struct PACKET_AC_REQ_MOBILE_OTP *)g_packetBuffer)->value;

@@ -1,0 +1,10 @@
+--- a/src/ui/wndmgr/registry.c
++++ b/src/ui/wndmgr/registry.c
+@@ -88,6 +88,7 @@
+     memset(value_name, 0, sizeof value_name);
+     sprintf(value_name, "%s%d", skill_get_id_name(skill_id), g_session1.shortcutCharSlot);
+     if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS
++        && type == REG_DWORD && size == sizeof level && level >= 0 && level <= 65535
+         && skill_info_is_level_used(skill_id))
+         return level;
+     return 0;

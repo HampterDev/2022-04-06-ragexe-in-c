@@ -2,7 +2,6 @@
 #include "render/rp_pool.h"
 #include "iteminfo/item_api.h"
 #include "session/character_name.h"
-#include "ui/record_tags.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -108,7 +107,6 @@ const struct UIWindowOps ui_para_item_shop_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -158,7 +156,6 @@ const struct UIWindowOps ui_para_item_purchase_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_purchase_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -212,7 +209,6 @@ const struct UIWindowOps ui_para_result_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -458,12 +454,8 @@ int ui_para_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(wnd, val1, val2, val3, val4);
+
         if (val1 == UI_ID_CHECKBOX) {
-            if (g_replayPlaying) {
-                shop->check->state = val2;
-                ui_window_invalidate_base(shop->check);
-            }
             g_windowMgr.drag_all = val2;
         }
         return 0;
@@ -657,7 +649,7 @@ int ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         cart_add_dragged(self, val1);
         return 0;
     case UI_MSG_COMMAND:
-        ui_window_record_command(wnd, val1, val2, val3, val4);
+
         if (val1 == UI_ID_CANCEL) {
             mode_send_message(client_current_mode(), MODE_MSG_PARA_CLOSE, 0, 0, 0, 0);
             mode_send_message(client_current_mode(), MODE_MSG_PARA_CLOSE2, 0, 0, 0, 0);
@@ -709,36 +701,6 @@ int ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         ui_window_invalidate_base(wnd);
         ui_item_base_wnd_update_scroll(&self->base);
         return 0;
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const char *buf = (const char *)val1;
-        struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-        unsigned pos = sizeof rec;
-        struct UIWindow *other;
-
-        if (rec.tag != REC_PURCHASE_BEGIN)
-            return 0;
-        while ((unsigned)val2 > pos) {
-            rec = *(const struct UIRecordHeader *)(buf + pos);
-            pos += sizeof rec;
-            if (rec.tag == REC_PURCHASE_END) {
-                other = ui_window_open(CART_LOAD_WND_ID);
-                if (other) {
-                    send_plain(other, PARA_MSG_RESET);
-                    send_plain(other, SHOP_MSG_REFRESH);
-                }
-                send_plain(wnd, PARA_MSG_RESET);
-                send_plain(wnd, SHOP_MSG_REFRESH);
-                return 0;
-            }
-            pos += rec.len;
-        }
-        return 0;
-    }
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
@@ -929,7 +891,7 @@ int ui_para_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
         ui_static_text_set_text_fit(self->total, "Total : 0 Zeny");
         return 0;
     case UI_MSG_COMMAND:
-        ui_window_record_command(wnd, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             mode_send_message(client_current_mode(), MODE_MSG_PARA_CLOSE, 0, 0, 0, 0);
             mode_send_message(client_current_mode(), MODE_MSG_PARA_CLOSE2, 0, 0, 0, 0);

@@ -17,10 +17,7 @@ void session_startup(struct Session *self)
 
     if (!item_info_load())
         MessageBoxA(NULL, "ItemInfo file Init", "Error", 0);
-    if (!tipbox_load())
-        MessageBoxA(NULL, "TipBox file Init", "Error", 0);
     srand((unsigned)_time32(NULL));
-    session_reroll_values(self);
     session_init_table(self);
     map_info_load(g_mapInfo);
     session_load_options(self);

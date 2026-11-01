@@ -3,9 +3,7 @@
 #include "session/csession.h"
 #include "session/session_state.h"
 
-#include <stdlib.h>
 #include <string.h>
-#include "platform/language.h"
 #include "game/chat_room.h"
 
 static const int s_petEmotions[5][5][7] = {
@@ -59,14 +57,9 @@ void session_init_pet_emotions(struct Session *self)
             }
 }
 
-void session_load_talk_tables(struct Session *self)
+void session_load_monster_skill_info(struct Session *self)
 {
-    struct File pet, skills, talk;
-
-    file_construct(&pet);
-    file_open(&pet, language_language_file(g_language, "PetTalkTable.xml"), 0, 1, 0);
-    xml_parse(&self->petTalkTable, (const char *)pet.buffer, (const char *)pet.buffer + pet.size);
-    file_close(&pet);
+    struct File skills;
 
     file_construct(&skills);
     if (file_open(&skills, "MonsterSkillInfo.xml", 0, 1, 0)) {
@@ -75,86 +68,9 @@ void session_load_talk_tables(struct Session *self)
         file_close(&skills);
     }
 
-    file_construct(&talk);
-    if (file_open(&talk, "MonsterTalkTable.xml", 0, 1, 0)) {
-        xml_parse(&self->monsterTalkTable, (const char *)talk.buffer, (const char *)talk.buffer + talk.size);
-        file_close(&talk);
-    }
-
-    file_destruct(&talk);
     file_destruct(&skills);
-    file_destruct(&pet);
 }
 
-void session_load_map_info_table(struct Session *self)
-{
-    struct File file;
-
-    file_construct(&file);
-    if (!file_open(&file, "MapInfoTable.scp", 0, 1, 0)) {
-        if (g_serviceType == 0)
-            error_msg("Load MapInfoTable Failed!", 0);
-        else
-            map_property_mgr_clear(g_mapFlags);
-    } else {
-        int size = file.size;
-        char *text = (char *)mem_alloc(size + 1);
-        int pos = 0, row = 0, column = 0;
-        char c;
-
-        file_read(&file, text, size);
-        text[size] = 0;
-        do {
-            c = text[pos++];
-            if (pos >= size)
-                continue;
-            for (;;) {
-                if (c == '/') {
-                    c = text[pos];
-                    if (c == '/') {
-                        do
-                            c = text[pos++];
-                        while (c != '\n');
-                    } else if (c == '*') {
-                        do {
-                            do
-                                c = text[pos++];
-                            while (c != '*');
-                        } while (text[pos] != '/');
-                    }
-                } else if (c == ' ' || c == '\t') {
-                } else if (c == '\r') {
-                    pos++;
-                } else {
-                    char token[16];
-                    char *p = token;
-
-                    memset(token, 0, sizeof token);
-                    while (c != ' ' && c != '\t') {
-                        *p++ = c;
-                        c = text[pos++];
-                        if (c == '\r') {
-                            pos++;
-                            break;
-                        }
-                    }
-                    map_property_mgr_set(g_mapFlags, row, column, atoi(token));
-                    if (++column >= 27) {
-                        row++;
-                        column = 0;
-                        break;
-                    }
-                }
-                c = text[pos++];
-                if (pos >= size)
-                    break;
-            }
-        } while (row < 30 && pos < size);
-        mem_free(text);
-        file_close(&file);
-    }
-    file_destruct(&file);
-}
 
 static const struct IntIntPair s_skillEffectIds[] = {
     {0x0, -1}, {0x1, -1}, {0x2, -1}, {0x3, -1}, {0x4, -1}, {0x5, -1},

@@ -26,18 +26,13 @@ extern BYTE g_clientInfoRead;
 extern BYTE g_showNameA;
 extern BYTE g_showNameB;
 extern int g_nameFontHeight;
-extern BYTE g_accountOnCmdLine;
 extern char g_accountServerAddr[0x81];
 extern struct Vec g_adminAids;
 extern struct Vec g_yellowAids;
 extern struct Vec g_loadingScreens;
 
-extern struct String g_licenceText;
-extern INIT_ONCE g_licenceTextGuard;
-
 void uint_sort(unsigned *first, unsigned *last);
 struct XmlElement *get_client_info(void);
-const char *get_licence_text_(void);
 void clientinfo_load(const char *xml_name);
 void init_client_info_(void);
 void load_loading_screens(int count);

@@ -2,7 +2,6 @@
 #include "web/name_card_types.h"
 #include <stdlib.h>
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "core/object_type_tables.h"
 #include "core/object_type.h"
 #include "game/context.h"
@@ -56,7 +55,6 @@ const struct UIWindowOps ui_balloon_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -104,7 +102,6 @@ const struct UIWindowOps ui_trans_balloon_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -152,7 +149,6 @@ const struct UIWindowOps ui_ach_balloon_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -199,7 +195,6 @@ const struct UIWindowOps ui_char_info_balloon_text_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -247,7 +242,6 @@ const struct UINameBalloonTextOps ui_name_balloon_text_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -296,7 +290,6 @@ const struct UINameBalloonTextOps ui_vertical_name_balloon_text_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -849,13 +842,10 @@ static const char name_bracket_format[] = "%s『%s』";
 
 #define NAME_TEXT_BUF 0x104
 
-static void name_filtered(char *buf, const struct String *text)
+static void name_copy_text(char *buf, const struct String *text)
 {
     memset(buf, 0, NAME_TEXT_BUF);
     strncpy_s(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
-    if (word_filter_contains(&g_nameFilter, buf) == 1) {
-        word_filter_censor(&g_nameFilter, buf);
-    }
 }
 
 static void name_add_line(struct UIBalloonText *b, const char *text)
@@ -886,7 +876,7 @@ void ui_name_balloon_text_set_name_text(struct UINameBalloonText *self, const st
         if (string_cstr(&info->position)[0] == 0) {
             self->text_length = 0;
         } else {
-            name_filtered(buf, &info->position);
+            name_copy_text(buf, &info->position);
             name_add_line(b, buf);
         }
         name_add_line(b, string_cstr(&name));
@@ -904,14 +894,14 @@ void ui_name_balloon_text_set_name_text(struct UINameBalloonText *self, const st
         if (string_cstr(&info->party)[0] == 0) {
             name_add_line(b, string_cstr(&name));
         } else {
-            name_filtered(buf, &info->party);
+            name_copy_text(buf, &info->party);
             memset(line, 0, sizeof line);
             sprintf_s(line, sizeof line, g_serviceType ? "%s (%s)" : name_bracket_format, string_cstr(&name), buf);
             name_add_line(b, line);
         }
         if (string_cstr(&info->guild)[0]) {
-            name_filtered(buf2, &info->guild);
-            name_filtered(buf, &info->position);
+            name_copy_text(buf2, &info->guild);
+            name_copy_text(buf, &info->position);
             memset(line, 0, sizeof line);
             sprintf_s(line, sizeof line, g_serviceType ? "%s [%s]" : name_bracket_format, buf2, buf);
             name_add_line(b, line);

@@ -5,9 +5,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "render/screen_draw.h"
 #include "ui/character/character.h"
-#include "ui/misc/roulette_state.h"
 #include "ui/worldmap/romap.h"
-#include "ui/shops/roulette.h"
 #include "ui/controls/edit.h"
 #include "ui/draw_key.h"
 
@@ -84,8 +82,6 @@ void ui_window_mgr_render_windows(struct UIWindowMgr *self)
         CHECKPOINT(0xdab);
         icon_sheet_flush_bars(g_stateIconSheet);
         CHECKPOINT(0xdb1);
-        if (w == self->roullette_wnd)
-            roulette_render(g_roulette);
         CHECKPOINT(0xdb8);
         ui_window_render_overlay(w);
         CHECKPOINT(0xdbc);

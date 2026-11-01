@@ -48,15 +48,44 @@ static int script_exists(const char *path, char via_cfile, char disk_only)
     return game_file_mgr_is_file_exist(&g_fileMgr, path, disk_only);
 }
 
+static char load_script(struct ClientLua *self, const char *path, const char *caption,
+                        char via_cfile, char disk_only)
+{
+    struct File file;
+    const unsigned char *text;
+    int base, status;
+    lua_State *state;
+
+    file_construct(&file);
+    status = file_open(&file, path, 0, via_cfile, disk_only);
+    if (!status) {
+        file_destruct(&file);
+        return 0;
+    }
+    text = file_consume(&file, (size_t)file.size, 1);
+    if (!text) {
+        file_destruct(&file);
+        return 0;
+    }
+    state = self->L;
+    base = lua_gettop(state);
+    status = luaL_loadbuffer(state, (const char *)text, (size_t)file.size, "buf");
+    file_destruct(&file);
+    if (!status) status = lua_pcall(state, 0, 0, 0);
+    if (status) {
+        const char *error = lua_type(state, -1) == LUA_TSTRING ? lua_tostring(state, -1) : NULL;
+        client_lua_error_box(self, caption, "%s\n", error ? error : "Lua script failed");
+    }
+    lua_settop(state, base);
+    return status == 0;
+}
+
 char client_lua_load_file(struct ClientLua *self, const char *name, char via_cfile, char disk_only)
 {
     static const char prefix[] = "LuaFiles514\\";
-    struct File file;
-    const unsigned char *text;
     char *path;
     size_t length, start;
-    int base, status;
-    lua_State *state;
+    char result;
 
     if (!self || !self->L || !name) return 0;
     start = disk_only ? 0 : sizeof prefix - 1;
@@ -75,27 +104,13 @@ char client_lua_load_file(struct ClientLua *self, const char *name, char via_cfi
             return 0;
         }
     }
-    file_construct(&file);
-    status = file_open(&file, path, 0, via_cfile, disk_only);
+    result = load_script(self, path, name, via_cfile, disk_only);
     free(path);
-    if (!status) {
-        file_destruct(&file);
-        return 0;
-    }
-    text = file_consume(&file, (size_t)file.size, 1);
-    if (!text) {
-        file_destruct(&file);
-        return 0;
-    }
-    state = self->L;
-    base = lua_gettop(state);
-    status = luaL_loadbuffer(state, (const char *)text, (size_t)file.size, "buf");
-    file_destruct(&file);
-    if (!status) status = lua_pcall(state, 0, 0, 0);
-    if (status) {
-        const char *error = lua_type(state, -1) == LUA_TSTRING ? lua_tostring(state, -1) : NULL;
-        client_lua_error_box(self, name, "%s\n", error ? error : "Lua script failed");
-    }
-    lua_settop(state, base);
-    return status == 0;
+    return result;
+}
+
+char client_lua_load_local_file(struct ClientLua *self, const char *path)
+{
+    if (!self || !self->L || !path || !script_exists(path, 0, 1)) return 0;
+    return load_script(self, path, path, 0, 1);
 }

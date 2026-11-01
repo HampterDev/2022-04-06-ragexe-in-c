@@ -66,6 +66,6 @@ int main(int argc, char **argv)
         first.x = 0;
         assert(!cooldown_timer_layout(&first, 2001, 0, 0, 12, 12, 200, 0, 0));
     }
-    puts("Cooldown geometry: 1600 captured frames match bit for bit, including eight segments, replay/clock wrap, first dimensions, expiry and last-minute transition; value copies are independent");
+    puts("Cooldown geometry: 1600 captured frames match bit for bit, including eight segments, clock wrap, first dimensions, expiry and last-minute transition; value copies are independent");
     return 0;
 }

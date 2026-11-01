@@ -119,7 +119,6 @@ const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -418,8 +417,6 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
     ui_window_add_child(wnd, W(self->box_emblem_frame));
     self->box_extend_damage = make_check_box(self, 0x3c, 0xdf8);
     ui_window_add_child(wnd, W(self->box_extend_damage));
-    self->box_map_name = make_check_box(self, 0x3c, 0xdf9);
-    ui_window_add_child(wnd, W(self->box_map_name));
 
     self->device_box = make_combo(ID_DEVICE, 0xc67);
     ui_window_add_child(wnd, W(self->device_box));
@@ -556,7 +553,6 @@ void ui_graphic_setting_wnd_apply_tab(struct UIGraphicSettingWnd *self)
         move_to(self->box_effect, at->x, at->y + 0x32);
         move_to(self->box_lightmap, at->x + 0x64, at->y + 0x32);
         move_to(self->box_extend_damage, at->x + 0xc8, at->y + 0x32);
-        move_to(self->box_map_name, at->x, at->y + 0x44);
         move_to(self->box_rodex_all, at->x, at->y + 0xd7);
         return;
     }
@@ -579,7 +575,6 @@ void ui_graphic_setting_wnd_apply_tab(struct UIGraphicSettingWnd *self)
     move_to(self->box_sound, OFF_SCREEN, OFF_SCREEN);
     move_to(self->box_zoom, OFF_SCREEN, OFF_SCREEN);
     move_to(self->box_extend_damage, OFF_SCREEN, OFF_SCREEN);
-    move_to(self->box_map_name, OFF_SCREEN, OFF_SCREEN);
     ui_graphic_setting_wnd_check_changed(self);
     move_to(self->device_box, 0x96, 0x2b);
     at = W(self->device_box);
@@ -626,7 +621,6 @@ void ui_graphic_setting_wnd_load_options(struct UIGraphicSettingWnd *self)
     W(self->box_emblem_frame)->state = g_session1.emblemFrame;
     ui_window_invalidate_base(&self->box_emblem_frame->base);
     ui_check_box_set_check(W(self->box_extend_damage), g_session1.extendDamage);
-    ui_check_box_set_check(W(self->box_map_name), g_session1.showMapName);
 }
 
 static void place_list(struct UIGraphicSettingWnd *self, struct UIWindow *list, struct UIWindow *box, int selected,
@@ -724,8 +718,6 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
         } else if (sender == W(self->box_extend_damage)) {
             g_session1.extendDamage = value;
-        } else if (sender == W(self->box_map_name)) {
-            g_session1.showMapName = value;
         } else if (settings_is_display_box(sender, self) || sender == W(self->box_trilinear)) {
             ui_graphic_setting_wnd_check_changed(self);
         } else if (sender == W(self->box_rodex_all)) {
@@ -783,7 +775,6 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             }
             if (apply_display_mode(self) == 1)
                 return 0;
-            g_openLauncherPageAtExit = 1;
             connection_disconnect(rag_connection_transport(rag_connection_instance()));
             mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
             return 0;
@@ -845,8 +836,6 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         mode_send_message(client_current_mode(), 0x5a, 0, 0, 0, 0);
         g_sound_settings.effects_on = session_get_default_option_int(&g_session1, "/sound", 1);
         g_sound_settings.effects_on = value;
-        if (g_sound_settings.effects_on)
-            g_sound_settings.button_sound_only = 0;
         sound_set_bgm_volume(session_get_default_option_int(&g_session1, "Bgm_Volume", 100));
         sound_set_effect_volume(session_get_default_option_int(&g_session1, "Effect_Volume", 100));
         sound_set_effect_volume_3d(session_get_default_option_int(&g_session1, "Effect_Volume", 100));

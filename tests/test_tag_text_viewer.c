@@ -197,8 +197,6 @@ struct UIWindow *ui_window_open(int id)
 struct GameMode *game_current_mode(void) { return (struct GameMode *)&parent; }
 void game_mode_ui_open_v2(struct GameMode *mode, unsigned char kind, int value)
 { assert(mode == (void *)&parent && kind == 6); record(EV_ACTION, 0x213, value, 0, 0); }
-void ui_tipbox_wnd_show_tip(struct UITipboxWnd *window, int value)
-{ assert((void *)window == (void *)&action_window); record(EV_ACTION, 0x1fd, value, 0, 0); }
 int navi_open_search(struct NaviManager *manager, const char *text, size_t length, int kind, unsigned char zero)
 {
     assert(manager == &g_navi && !zero); string_assign(&action_text, text, length);
@@ -307,9 +305,9 @@ static void link_cases(void)
     ui_tag_text_viewer_on_item_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
     assert(events[1].a == 4 && events[1].b == 1);
     ui_tag_text_viewer_on_url_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
-    ui_tag_text_viewer_on_tip_link(NULL, &link); ui_tag_text_viewer_on_quest_link(NULL, &link);
+    ui_tag_text_viewer_on_quest_link(NULL, &link);
     text_array_clear(&link.lines); release_fixture();
-    puts("Tagged text viewer: item, URL, navigation, search, tip and quest actions passed.");
+    puts("Tagged text viewer: item, URL, navigation, search and quest actions passed.");
 }
 
 #ifdef TAG_TEXT_VIEWER_REFERENCE
@@ -451,15 +449,14 @@ static void action_run(struct Snapshot *out, int old, int action, unsigned count
     }
 #define ACTION(name) do { if (old) reference_##name(NULL, &link); else name(NULL, &link); } while (0)
     if (old >= 2) {
-        static const int ids[] = {0x1ae, 0x1c8, 0x1ad, 0x1fd, 0x213};
+        static const int ids[] = {0x1ae, 0x1c8, 0x1ad, 0x213};
         if (old == 3) saved_link_on_link(&link, ids[action]);
         else current_link_on_link(&link, ids[action]);
     } else switch (action) {
     case 0: ACTION(ui_tag_text_viewer_on_navi_link); break;
     case 1: ACTION(ui_tag_text_viewer_on_item_link); break;
     case 2: ACTION(ui_tag_text_viewer_on_url_link); break;
-    case 3: ACTION(ui_tag_text_viewer_on_tip_link); break;
-    case 4: ACTION(ui_tag_text_viewer_on_quest_link); break;
+    case 3: ACTION(ui_tag_text_viewer_on_quest_link); break;
     }
 #undef ACTION
     assert(action_text.size < sizeof out->text);
@@ -473,7 +470,7 @@ static void reference_actions(void)
     static struct Snapshot expected, actual;
     int family, action, count, variant, cases = 0;
     for (family = 0; family < 2; ++family)
-    for (action = 0; action < 5; ++action) for (count = 0; count <= 7; ++count)
+    for (action = 0; action < 4; ++action) for (count = 0; count <= 7; ++count)
         for (variant = 0; variant < 6; ++variant) {
             action_run(&expected, family * 2 + 1, action, count, variant);
             action_run(&actual, family * 2, action, count, variant);

@@ -63,7 +63,6 @@ const struct UIWindowOps ui_ro_map_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -831,10 +830,7 @@ void ui_ro_map_wnd_on_create(struct UIWindow *window, int width, int height)
     if (hint)
         string_assign_cstr(&((struct UIEditCtrl *)edit)->tooltip, hint);
     ui_window_add_child(wnd, edit);
-    if (g_replayPlaying) {
-        ((struct UIEditCtrl *)self->edit)->disabled = 1;
-        ui_window_invalidate(self->edit);
-    }
+
     ui_ro_map_wnd_place_search(self);
     string_free(&unchecked);
     string_free(&checked);

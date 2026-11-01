@@ -15,13 +15,10 @@
 #include "game/packets_macro_detector.h"
 #include "game/party_booking_packets.h"
 #include "game/quest_packets.h"
-#include "game/repute.h"
 #include "platform/error_message.h"
 #include "session/skill_commands.h"
-#include "ui/social/entry_queue_state.h"
 #include "game/skill_cooldowns.h"
 #include "game/gamemode.h"
-#include "game/net.h"
 #include "game/packet_ids.h"
 #include "game/packet_dispatch.h"
 
@@ -410,7 +407,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_NPC_SHOWEFST_UPDATE: game_mode_on_npc_show_efst_update(self, (const struct PacketNpcShowEfstUpdate *)pkt); break;
     case HEADER_ZC_MSG: game_mode_msg(pkt); break;
     case HEADER_ZC_BOSS_INFO: game_mode_zc_boss_info(self, (const struct PACKET_ZC_BOSS_INFO *)pkt); break;
-    case HEADER_ZC_READ_BOOK: game_mode_zc_read_book(self, (const struct PACKET_ZC_READ_BOOK *)pkt); break;
     case HEADER_ZC_EQUIPMENT_ITEMLIST2: game_mode_equipment_item_list2(pkt); break;
     case HEADER_ZC_STORE_EQUIPMENT_ITEMLIST2: game_mode_zc_store_equipment_item_list2(self, (const struct PACKET_STORE_LIST *)pkt); break;
     case HEADER_ZC_CART_EQUIPMENT_ITEMLIST2: game_mode_cart_equipment_item_list2(pkt); break;
@@ -508,7 +504,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_MONSTER_TALK:
     case HEADER_ZC_ACK_ACCOUNTNAME:
     case HEADER_ZC_ADD_MEMBER_TO_GROUP2:
-    case HEADER_ZC_GAME_GUARD:
     case HEADER_ZC_AID:
         break;
     default:

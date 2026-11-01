@@ -221,8 +221,6 @@ static void test_reader_modes_and_lifetime(void)
     struct TableReader reader = {0};
     const char *fields[] = {"a", "", "b", "d"};
     const char *lines[] = {"a", "", "b", "tail", "line", "d"};
-    const char *records[] = {"a", NULL, "", NULL, "b", NULL,
-                             "tail", "line", "d", NULL};
     char *borrowed;
     char large[40001];
     unsigned live, calls, done;
@@ -233,7 +231,6 @@ static void test_reader_modes_and_lifetime(void)
     borrowed = reader.fields[0];
     borrowed[0] = 'A';
     expect_fields(&reader, TABLE_FIELDS_AND_LINES, lines, 6);
-    expect_fields(&reader, TABLE_RECORDS, records, 10);
     assert(!strcmp(borrowed, "A"));
 
     for (i = 0; i < sizeof large - 1; i += 2) {
@@ -241,11 +238,10 @@ static void test_reader_modes_and_lifetime(void)
     }
     large[sizeof large - 1] = 0;
     resource_text = large;
-    assert(table_reader_read(&reader, "msgStringTable.txt", TABLE_RECORDS));
-    assert(reader.count == 40000);
-    for (i = 0; i < reader.count; i += 2) {
+    assert(table_reader_read(&reader, "msgStringTable.txt", TABLE_FIELDS));
+    assert(reader.count == 20000);
+    for (i = 0; i < reader.count; i++) {
         assert(!strcmp(reader.fields[i], "x"));
-        assert(!reader.fields[i + 1]);
     }
     assert(!strcmp(borrowed, "A"));
 

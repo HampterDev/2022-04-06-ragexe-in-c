@@ -1,3 +1,4 @@
+#include "contents/adventurer_agency.h"
 #include "game/gamemode.h"
 #include "world/view_api.h"
 #include "world/lifecycle.h"
@@ -6,7 +7,6 @@
 #include "render/sprite_atlas.h"
 #include "render/texture_cache.h"
 #include "contents/schedule.h"
-#include "game/replay.h"
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
 #include "world/pick_node.h"
@@ -32,10 +32,11 @@ void game_mode_on_exit(struct Mode *mode)
     DWORD disposition;
     struct Schedule *schedule;
 
+    adventurer_agency_reset(g_adventurerAgency);
     schedule = time_scheduler_find(g_timeScheduler, g_session1.gameModeScheduleId);
     if (schedule != 0)
         schedule->alive = 0;
-    game_mode_end_replay(self);
+
     sound_end_samples();
     if (self->world != 0) {
         world_clear_map(self->world);

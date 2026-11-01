@@ -61,7 +61,6 @@ const struct UIWindowOps ui_quest_display_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -414,7 +413,7 @@ static void menu_choice(struct UIQuestDisplay *self, int item)
             struct UIWindow *detail = ui_window_open(QUEST_DETAIL_WND_ID);
 
             if (detail)
-                ui_renew_detail_quest_info_wnd_show_quest((struct UIRenewDetailQuestInfoWnd *)detail, quest_id, 0);
+                ui_renew_detail_quest_info_wnd_show_quest((struct UIRenewDetailQuestInfoWnd *)detail, quest_id);
             break;
         }
         }

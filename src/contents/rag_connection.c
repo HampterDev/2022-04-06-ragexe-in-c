@@ -8,7 +8,6 @@
 
 #include "core/packet_table.h"
 #include "diag/diag.h"
-#include "ui/net/packet_crypt.h"
 #define PACKET_ID_ZC_SRPACKETR2_INIT 0x2bf
 #define PACKET_ID_CZ_SRPACKETR2_START 0x2c0
 
@@ -64,15 +63,10 @@ char rag_connection_send_packet(struct RagConnection *self, int len, const void 
 {
     unsigned short id;
     struct ByteQueue *queue;
-    unsigned short key;
     if (!packet || len < (int)sizeof id)
         return 0;
-    if (self->drop_sends)
-        return 1;
     g_session1.lastSendTime = timeGetTime();
-    key = (unsigned short)packet_keys_next(g_packetKeys, 0);
     memcpy(&id, packet, sizeof id);
-    id ^= key;
     if (self->base.socket == INVALID_SOCKET)
         return 1;
     queue = self->base.hold_sends ? &self->base.held : &self->base.send_queue;
@@ -86,11 +80,6 @@ char rag_connection_send_packet(struct RagConnection *self, int len, const void 
 struct Connection *rag_connection_transport(struct RagConnection *connection)
 {
     return &connection->base;
-}
-
-void rag_connection_drop_sends(struct RagConnection *connection, int drop)
-{
-    connection->drop_sends = drop != 0;
 }
 
 struct RagConnection *rag_connection_instance(void)

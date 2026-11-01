@@ -1,7 +1,6 @@
 #include "ui/controls/listbox.h"
 #include "render/rp_pool.h"
 #include "iteminfo/item_api.h"
-#include "ui/record_tags.h"
 #include "session/map_names.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -70,7 +69,6 @@ const struct UIWindowOps ui_choose_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_choose_wnd_save_state,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -120,7 +118,6 @@ const struct UIWindowOps ui_choose_warp_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_choose_warp_wnd_save_state,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -295,34 +292,6 @@ void ui_choose_warp_wnd_on_draw(struct UIWindow *window)
 
 #define NPC_MENU_RESTORED_MSG 0x20
 
-static int npc_menu_load_records(struct UIWindow *self, const char *buf, unsigned size, short begin, short end,
-                               short line)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = 6;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != begin)
-        return -1;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += 6;
-        if (hdr.tag == end)
-            return 1;
-        if (hdr.tag == line) {
-            char text[0x104];
-
-            memset(text, 0, sizeof text);
-            memcpy(text, buf + pos, hdr.len);
-            pos += hdr.len;
-            ui_window_send_msg(self, NULL, NPC_MENU_MSG_ADD_LINE, (int)text, 0, 0, 0);
-        } else {
-            pos += hdr.len;
-        }
-    }
-    return 0;
-}
-
 void ui_choose_wnd_store_info(struct UIWindow *window)
 {
     struct UIChooseWnd *self = (struct UIChooseWnd *)window;
@@ -346,7 +315,7 @@ int ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
     }
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == NPC_MENU_OK_ID) {
             DWORD now = GetTickCount();
 
@@ -415,17 +384,7 @@ int ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
             npc_menu_info_set_default(NPC_MENU_INFO(self));
         ui_frame_wnd_move(&self->frame.base, NPC_MENU_INFO(self)->x, NPC_MENU_INFO(self)->y);
         return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        if (npc_menu_load_records(&self->frame.base, (const char *)val1, (unsigned)val2, NPC_MENU_STATE_BEGIN,
-                                NPC_MENU_STATE_END, NPC_MENU_STATE_LINE) >= 0
-            && g_windowMgr.say_dialog_wnd)
-            ui_window_send_msg(g_windowMgr.say_dialog_wnd, NULL, NPC_MENU_RESTORED_MSG, 0, 0, 0, 0);
-        return 0;
+
     case NPC_MENU_MSG_ABORT: {
         struct Mode *mode = game_current_base_mode();
 
@@ -444,7 +403,7 @@ int ui_choose_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
     struct UIChooseWarpWnd *self = (struct UIChooseWarpWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == NPC_MENU_OK_ID) {
             int sel = self->list->selected;
             struct Mode *mode;
@@ -496,16 +455,7 @@ int ui_choose_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
     case NPC_MENU_MSG_SET_VALUE:
         self->skill_id = val1;
         return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        if (npc_menu_load_records(&self->frame.base, (const char *)val1, (unsigned)val2, WARP_STATE_BEGIN,
-                                WARP_STATE_END, WARP_STATE_LINE) == 1)
-            ui_choose_warp_wnd_send_msg(&self->frame.base, NULL, NPC_MENU_MSG_ADD_LINE, (int)"cancel", 0, 0, 0);
-        return 0;
+
     default:
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     }

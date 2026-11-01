@@ -1,8 +1,5 @@
 #include "ui/controls/listbox.h"
-#include "ui/window_records.h"
 #include "render/rp_pool.h"
-#include "ui/record_tags.h"
-#include "contents/manner_filter.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
 #include "game/context.h"
@@ -85,7 +82,6 @@ const struct UIWindowOps ui_join_party_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_join_party_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -133,7 +129,6 @@ const struct UIWindowOps ui_couple_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_exchange_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -181,7 +176,6 @@ const struct UIWindowOps ui_baby_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_baby_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -229,7 +223,6 @@ const struct UIWindowOps ui_baby_accept_wnd2_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_baby_accept_wnd2_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -277,7 +270,6 @@ const struct UIWindowOps ui_join_guild_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_join_guild_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -324,7 +316,6 @@ const struct UIWindowOps ui_ally_guild_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_exchange_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -365,39 +356,6 @@ static void accept_answer(struct UIAcceptWnd *self, int id, int wnd_id, int requ
     }
 }
 
-static int accept_records(struct UIAcceptWnd *self, struct ReplayBuffer *out, int tag_begin,
-                          int tag_name, int tag_end, int question)
-{
-    return ui_dialog_records_save(self->text, msg_str(question), (uint16_t)tag_begin,
-                                  (uint16_t)tag_name, (uint16_t)tag_end, out);
-}
-
-static void accept_load_records(struct UIAcceptWnd *self, const char *buf, unsigned size, int tag_begin,
-                                int tag_name, int tag_end, int asker_msg)
-{
-    struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-    unsigned pos = sizeof rec;
-
-    if (rec.tag != tag_begin)
-        return;
-    while (size > pos) {
-        rec = *(const struct UIRecordHeader *)(buf + pos);
-        pos += sizeof rec;
-        if (rec.tag == tag_end)
-            return;
-        if (rec.tag == tag_name) {
-            char name[0x104];
-
-            memset(name, 0, sizeof name);
-            memcpy(name, buf + pos, rec.len);
-            pos += rec.len;
-            ui_window_send_msg(&self->frame.base, NULL, asker_msg, 0, (int)name, 0, 0);
-        } else {
-            pos += rec.len;
-        }
-    }
-}
-
 struct UIAcceptWnd *ui_join_party_accept_wnd_construct(struct UIAcceptWnd *self)
 {
     return accept_construct(self, &ui_join_party_accept_wnd_ops);
@@ -420,34 +378,18 @@ void ui_join_party_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_party_accept_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
-    return accept_records(self, out, JOIN_PARTY_REC_BEGIN, JOIN_PARTY_REC_NAME, JOIN_PARTY_REC_END,
-                          MSG_JOIN_PARTY_QUESTION);
-}
-
 int ui_join_party_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                             int val2, int val3, int val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         accept_answer(self, val1, JOIN_PARTY_ACCEPT_WND_ID, REQ_JOIN_PARTY_ANSWER);
         return 0;
     case MSG_JOIN_PARTY_ASKER:
         self->requester = val1;
         accept_show(self, (const char *)val2, MSG_JOIN_PARTY_QUESTION);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        accept_load_records(self, (const char *)val1, val2, JOIN_PARTY_REC_BEGIN, JOIN_PARTY_REC_NAME,
-                            JOIN_PARTY_REC_END, MSG_JOIN_PARTY_ASKER);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
@@ -475,20 +417,13 @@ void ui_join_guild_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_guild_accept_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
-    return accept_records(self, out, JOIN_GUILD_REC_BEGIN, JOIN_GUILD_REC_NAME, JOIN_GUILD_REC_END,
-                          MSG_JOIN_GUILD_QUESTION);
-}
-
 int ui_join_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                             int val2, int val3, int val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             ui_window_mgr_post_quit1(&g_windowMgr, JOIN_GUILD_ACCEPT_WND_ID);
             ui_window_mgr_post_quit1(&g_windowMgr, JOIN_GUILD_CLOSES_TOO_1);
@@ -505,22 +440,10 @@ int ui_join_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *
 
         memset(name, 0, sizeof name);
         strcpy_s(name, sizeof name, (const char *)val2);
-        if (word_filter_contains(&g_nameFilter, name) == 1) {
-            word_filter_censor(&g_nameFilter, name);
-        }
         self->requester = val1;
         accept_show(self, name, MSG_JOIN_GUILD_QUESTION);
         return 0;
     }
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        accept_load_records(self, (const char *)val1, val2, JOIN_GUILD_REC_BEGIN, JOIN_GUILD_REC_NAME,
-                            JOIN_GUILD_REC_END, MSG_JOIN_GUILD_ASKER);
-        return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }
@@ -623,12 +546,6 @@ void ui_baby_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_baby_accept_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
-    return accept_records(self, out, BABY_REC_BEGIN, BABY_REC_NAME, BABY_REC_END, MSG_BABY_QUESTION);
-}
-
 struct UIAcceptWnd *ui_baby_accept_wnd2_construct(struct UIAcceptWnd *self)
 {
     return accept_construct(self, &ui_baby_accept_wnd2_ops);
@@ -651,48 +568,19 @@ void ui_baby_accept_wnd2_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_baby_accept_wnd2_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, BABY2_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, BABY2_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 int ui_baby_accept_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                         int val2, int val3, int val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         accept_answer(self, val1, BABY_ACCEPT_WND2_ID, REQ_BABY2_ANSWER);
         return 0;
     case MSG_BABY2_ASKER:
         self->requester = val1;
         accept_show(self, NULL, MSG_BABY2_QUESTION);
         return 0;
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const char *buf = (const char *)val1;
-        struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-        unsigned pos = sizeof rec;
-
-        if (rec.tag == BABY2_REC_BEGIN) {
-            while ((unsigned)val2 > pos) {
-                rec = *(const struct UIRecordHeader *)(buf + pos);
-                pos += sizeof rec;
-                if (rec.tag == BABY2_REC_END)
-                    break;
-                pos += rec.len;
-            }
-        }
-        return 0;
-    }
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }
@@ -706,7 +594,7 @@ int ui_baby_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             ui_close_window(BABY_ACCEPT_WND_ID);
             ui_window_send(ui_window_open(BABY_ACCEPT_WND2_ID), NULL, MSG_BABY2_ASKER, UI_ID_OK, val2, 0, 0);
@@ -718,15 +606,6 @@ int ui_baby_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
     case MSG_BABY_ASKER:
         self->requester = val1;
         accept_show(self, (const char *)val2, MSG_BABY_QUESTION);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        accept_load_records(self, (const char *)val1, val2, BABY_REC_BEGIN, BABY_REC_NAME, BABY_REC_END,
-                            MSG_BABY_ASKER);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
@@ -755,16 +634,6 @@ struct UIWindow *ui_star_place_accept_wnd_new(void)
     return (struct UIWindow *)ui_star_place_accept_wnd_construct(mem_alloc(sizeof(struct UIStarPlaceAcceptWnd)));
 }
 
-int ui_star_place_accept_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIStarPlaceAcceptWnd *self = (struct UIStarPlaceAcceptWnd *)window;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, STAR_PLACE_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, STAR_PLACE_REC_KIND, &self->kind, 1);
-    snapshot_write(&writer, STAR_PLACE_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 int ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                                             int val1, int val2, int val3, int val4)
 {
@@ -773,7 +642,7 @@ int ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&accept->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             struct Mode *mode = game_current_base_mode();
 
@@ -787,33 +656,6 @@ int ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *
         self->kind = (char)val1;
         accept_show(accept, NULL, self->kind == 10 ? MSG_STAR_PLACE_GEMSTONE_QUESTION : MSG_STAR_PLACE_QUESTION);
         return 0;
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const char *buf = (const char *)val1;
-        struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-        unsigned pos = sizeof rec;
-
-        if (rec.tag != STAR_PLACE_REC_BEGIN)
-            return 0;
-        while ((unsigned)val2 > pos) {
-            rec = *(const struct UIRecordHeader *)(buf + pos);
-            pos += sizeof rec;
-            if (rec.tag == STAR_PLACE_REC_END)
-                break;
-            if (rec.tag == STAR_PLACE_REC_KIND) {
-                memcpy(&self->kind, buf + pos, rec.len);
-                pos += rec.len;
-                ui_star_place_accept_wnd_send_msg(&accept->frame.base, NULL, MSG_STAR_PLACE_KIND, self->kind, 0, 0, 0);
-            } else {
-                pos += rec.len;
-            }
-        }
-        return 0;
-    }
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&accept->frame), sender, msg, val1, val2, val3, val4);
 }
@@ -860,7 +702,6 @@ const struct UIWindowOps ui_star_place_accept_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_star_place_accept_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

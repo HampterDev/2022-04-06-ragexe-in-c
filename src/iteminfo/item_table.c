@@ -51,7 +51,6 @@ static void *copy_array(const void *source, size_t count, size_t width)
 
 static void entry_clear(struct ItemTableEntry *entry)
 {
-    free(entry->params.data);
     free(entry->unidDesc.data);
     free(entry->desc.data);
     *entry = (struct ItemTableEntry){0};
@@ -67,8 +66,6 @@ static void entry_copy(struct ItemTableEntry *dest, const struct ItemTableEntry 
     copy.desc.capacity = copy.desc.count;
     copy.unidDesc.data = copy_array(source->unidDesc.data, source->unidDesc.count, sizeof *copy.unidDesc.data);
     copy.unidDesc.capacity = copy.unidDesc.count;
-    copy.params.data = copy_array(source->params.data, source->params.count, sizeof *copy.params.data);
-    copy.params.capacity = copy.params.count;
     entry_clear(dest);
     *dest = copy;
 }
@@ -136,25 +133,6 @@ void item_table_append_description(struct ItemTableEntry *entry, int identified,
         abort();
     lines->data = grow_array(lines->data, &lines->capacity, lines->count + 1, sizeof *lines->data);
     lines->data[lines->count++] = line;
-}
-
-void item_table_use_identified_description(struct ItemTableEntry *entry)
-{
-    const char **lines = copy_array(entry->desc.data, entry->desc.count, sizeof *lines);
-    free(entry->unidDesc.data);
-    entry->unidDesc.data = lines;
-    entry->unidDesc.count = entry->unidDesc.capacity = entry->desc.count;
-    entry->unidName = entry->name;
-}
-
-void item_table_append_params(struct ItemTableEntry *entry, int first, int second)
-{
-    struct ItemParameters *params = &entry->params;
-    if (params->count > SIZE_MAX / sizeof *params->data - 2)
-        abort();
-    params->data = grow_array(params->data, &params->capacity, params->count + 2, sizeof *params->data);
-    params->data[params->count++] = first;
-    params->data[params->count++] = second;
 }
 
 void item_table_apply_lua(void)

@@ -2,7 +2,6 @@
 #include "contents/player_names.h"
 #include "session/character_name.h"
 #include "contents/guild_emblem_api.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "core/memory.h"
@@ -28,15 +27,6 @@ static void copy_text(char *out, const char *field, size_t length)
 {
     memcpy(out, field, length);
     out[length] = 0;
-}
-
-static void censor_filtered_words(char *name, int only_one)
-{
-    char found = word_filter_contains(&g_nameFilter, name);
-
-    if (only_one ? found == 1 : found != 0) {
-        word_filter_censor(&g_nameFilter, name);
-    }
 }
 
 static void name_unknown(struct String *name)
@@ -125,7 +115,6 @@ void game_mode_zc_guild_info_del_name(struct GameMode *self, const struct Packet
         name_unknown(&master);
     copy_text(name, packet->name, NAME_LENGTH);
     copy_text(land, packet->managed_land, NAME_LENGTH);
-    censor_filtered_words(name, 0);
     check_master(&master);
     string_assign_cstr(&(g_guildInfo.name), name);
     string_assign(&(g_guildInfo.master_name), string_cstr(&master), master.size);
@@ -149,7 +138,6 @@ void game_mode_zc_guild_info_new(struct GameMode *self, const struct PacketGuild
     check_master(&(g_guildInfo.master_name));
     copy_text(name, info->name, NAME_LENGTH);
     copy_text(land, info->managed_land, NAME_LENGTH);
-    censor_filtered_words(name, 0);
     string_assign_cstr(&(g_guildInfo.name), name);
     guild_info_store(info, land);
 }
@@ -166,7 +154,6 @@ static void notice_echo(struct String *line, char *buf, size_t size, const char 
 {
     memset(buf, 0, size);
     strcpy_s(buf, size, text);
-    censor_filtered_words(buf, 1);
     string_init(line);
     string_assign_cstr(line, "[ ");
     string_append_cstr(line, buf);
@@ -237,7 +224,6 @@ void game_mode_zc_my_guild_basic_info(struct GameMode *self, const struct Packet
         char name[NAME_LENGTH + 1];
 
         copy_text(name, entry->name, NAME_LENGTH);
-        censor_filtered_words(name, 1);
         string_init(&relation.name);
         relation.kind = entry->kind;
         relation.id = entry->guild_id;
@@ -283,7 +269,6 @@ void game_mode_zc_position_id_name_info(struct GameMode *self, const struct Pack
         char title[NAME_LENGTH + 1];
 
         copy_text(title, packet->entries[i].title, NAME_LENGTH);
-        censor_filtered_words(title, 0);
         string_assign_cstr(guild_position_title(packet->entries[i].position_id), title);
     }
     window_mgr_invalidate_guild_wnd(&g_windowMgr);

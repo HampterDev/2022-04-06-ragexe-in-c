@@ -79,7 +79,7 @@ static int load_file(lua_State *L, const char *name)
 #undef luaL_newstate
 
 #include "../src/iteminfo/item_loader.c"
-void client_lua_loadfile_hook(const char *filename) { (void)filename; abort(); }
+
 void *mem_alloc(size_t bytes) { void *p = checked_malloc(bytes); assert(p); return p; }
 void mem_free(void *p)
 {
@@ -133,25 +133,25 @@ static void test_companion_tables(void)
     const struct ItemMoveInfo *move;
     const struct ItemTextLines *lines;
     int i, n;
-    card_affix_table_init(); book_item_table_init(); metal_process_table_init(); item_move_info_table_init();
-    assert(!card_affix_has(42) && !book_item_has(42) && !card_affix_get(42)->illustName);
+    card_affix_table_init(); metal_process_table_init(); item_move_info_table_init();
+    assert(!card_affix_has(42) && !card_affix_get(42)->illustName);
     assert(!metal_process_get(42)->count && !item_move_info_get(42)->item_id);
     for (i = 511; i >= 1; --i) {
         card = card_affix_at(i); card->illustName = "card"; card->prefix = "prefix";
-        book_item_add(i); metal_process_append(i, "first"); item_move_info_add(i, flags);
+        metal_process_append(i, "first"); item_move_info_add(i, flags);
     }
     for (i = 0; i < 4; ++i) {
-        card_affix_at(ids[i]); book_item_add(ids[i]); metal_process_append(ids[i], "limit"); item_move_info_add(ids[i], flags);
+        card_affix_at(ids[i]); metal_process_append(ids[i], "limit"); item_move_info_add(ids[i], flags);
     }
     for (i = 1; i <= 511; ++i) {
         assert(card_affix_has(i) && !strcmp(card_affix_get(i)->prefix, "prefix"));
-        assert(book_item_has(i) && metal_process_get(i)->count == 1);
+        assert(metal_process_get(i)->count == 1);
         move = item_move_info_get(i); assert(move->item_id == i);
         for (n = 0; n < 8; ++n) assert(move->flags[n] == (flags[n] != 0));
-        book_item_add(i); item_move_info_add(i, changed);
+        item_move_info_add(i, changed);
         assert(item_move_info_get(i)->flags[0] == 0);
     }
-    for (i = 0; i < 4; ++i) assert(card_affix_has(ids[i]) && book_item_has(ids[i]) && item_move_info_get(ids[i])->item_id == ids[i]);
+    for (i = 0; i < 4; ++i) assert(card_affix_has(ids[i]) && item_move_info_get(ids[i])->item_id == ids[i]);
     for (i = 0; i < 20; ++i) metal_process_append(42, i % 2 ? "odd" : "even");
     lines = metal_process_get(42); assert(lines->count == 21 && !strcmp(lines->data[0], "first"));
     for (i = 0; i < 20; ++i) assert(!strcmp(lines->data[i+1], i % 2 ? "odd" : "even"));
@@ -160,16 +160,16 @@ static void test_companion_tables(void)
     card_affix_set_unknown();
     assert(!strcmp(card_affix_get(0)->illustName, "sorry") && !strcmp(card_affix_get(-1)->illustName, "sorry"));
     assert(!card_affix_get(-999)->illustName);
-    card_affix_clear(); book_items_clear(); metal_process_clear();
-    assert(!card_affix_has(42) && !book_item_has(42) && !metal_process_get(42)->count);
+    card_affix_clear(); metal_process_clear();
+    assert(!card_affix_has(42) && !metal_process_get(42)->count);
     item_move_info_add(42, changed); assert(item_move_info_get(42)->flags[0] == 0);
     card_affix_set_unknown(); assert(!strcmp(card_affix_get(-999)->illustName, "sorry"));
     card_affix_clear(); assert(!strcmp(card_affix_get(-999)->illustName, "sorry"));
     card = card_affix_at(0); card_affix_set_unknown(); assert(!strcmp(card_affix_get(-999)->illustName, "sorry"));
     card_affix_clear(); card_affix_at(-1); card_affix_set_unknown(); assert(!strcmp(card_affix_get(-1)->illustName, "sorry"));
     item_move_info_clear(); item_move_info_add(42, changed); assert(item_move_info_get(42)->flags[0] == 1);
-    card_affix_clear(); book_items_clear(); metal_process_clear(); item_move_info_clear();
-    card_affix_clear(); book_items_clear(); metal_process_clear(); item_move_info_clear();
+    card_affix_clear(); metal_process_clear(); item_move_info_clear();
+    card_affix_clear(); metal_process_clear(); item_move_info_clear();
     assert(!allocations && !item_move_info_get(42)->item_id);
 }
 
@@ -184,7 +184,7 @@ static void test_item_storage(void)
     id = 73; assert(!item_table_entry_at(0, &id) && id == 73);
     for (i = 256; i >= 1; --i) {
         write = item_table_at(i);
-        item_table_append_params(write, i, ~i);
+        write->class_num = i;
     }
     for (i = 0; i < 4; ++i) item_table_at(special[i]);
     assert(item_table_count() == 260);
@@ -192,34 +192,30 @@ static void test_item_storage(void)
     for (i = 0; i < 260; ++i) {
         entry = item_table_entry_at(i, &id);
         assert(entry == item_table_get(id) && (!i || id > last)); last = id;
-        if (id >= 1 && id <= 256) assert(entry->params.count == 2 && entry->params.data[0] == id && entry->params.data[1] == ~id);
+        if (id >= 1 && id <= 256) assert(entry->class_num == id);
     }
     write = item_table_at(0); assert(item_table_count() == 260);
     write->name = "original"; write->slotCount = 3; write->class_num = 987;
-    item_table_append_params(write, 11, 22);
     for (i = 0; i < 19; ++i) item_table_append_description(write, 1, "line");
-    item_table_append_description(write, 0, "replace this");
-    item_table_use_identified_description(write);
-    assert(write->unidName == write->name && write->unidDesc.count == 19);
-    assert(write->unidDesc.data != write->desc.data && write->unidDesc.data[18] == write->desc.data[18]);
+    item_table_append_description(write, 0, "unidentified line");
     item_table_set_unknown();
     entry = item_table_get(0); copy = item_table_get(-1);
     assert(!strcmp(entry->name, "Unknown Item") && !strcmp(copy->resName, "사과"));
     assert(entry->desc.count == 20 && copy->desc.count == 20 && copy->desc.data != entry->desc.data);
-    assert(copy->unidDesc.data != entry->unidDesc.data && copy->params.data != entry->params.data);
-    assert(copy->slotCount == 3 && copy->class_num == 987 && copy->params.data[1] == 22);
+    assert(copy->unidDesc.data != entry->unidDesc.data);
+    assert(copy->slotCount == 3 && copy->class_num == 987);
     assert(!item_table_get(-999)->name);
     item_table_clear(); item_table_clear(); assert(!allocations && !item_table_count());
     item_table_set_unknown();
     assert(!strcmp(item_table_get(99)->name, "Unknown Item") && item_table_get(99)->desc.count == 1);
     item_table_clear();
-    write = item_table_at(0); item_table_append_params(write, 12, 34);
+    write = item_table_at(0); item_table_append_description(write, 1, "fallback");
     item_table_set_unknown();
-    assert(item_table_get(99)->params.data[1] == 34 && item_table_get(99)->params.data != item_table_get(0)->params.data);
+    assert(!strcmp(item_table_get(99)->desc.data[0], "fallback") && item_table_get(99)->desc.data != item_table_get(0)->desc.data);
     item_table_clear();
-    write = item_table_at(-1); item_table_append_params(write, 56, 78);
+    write = item_table_at(-1); item_table_append_description(write, 1, "replaced");
     item_table_set_unknown();
-    assert(!item_table_get(-1)->params.count && !strcmp(item_table_get(-1)->name, "Unknown Item"));
+    assert(item_table_get(-1)->desc.count == 1 && !strcmp(item_table_get(-1)->desc.data[0], "Unknown Item"));
     item_table_clear(); assert(!allocations);
 }
 
@@ -230,7 +226,6 @@ int main(void)
     const char *name;
     int i, fail, before, last;
     size_t count;
-    const char *event_line = "event description";
     const char *bad[] = {
         "AddItemEffectInfo(9,9);error('chunk failed')",
         "function main() AddItemEffectInfo(9,9);error({}) end",
@@ -267,12 +262,10 @@ int main(void)
     entry = item_table_at(42);
     assert(!entry->name && !entry->desc.data && entry->slotCount == 0);
     assert(item_table_at(42) == entry && item_table_count() == 1);
-    item_table_append_description(entry, 1, event_line);
-    entry->slotTableValue = 123; item_table_append_params(entry, 77, 88);
     item_table_apply_lua(); entry = item_table_at(42); name = entry->name;
     assert(item_table_count() == 14 && strcmp(entry->name,"사과") == 0 && entry->slotCount == 2 && entry->class_num == 500);
-    assert(entry->slotTableValue == 123 && entry->params.data[0] == 77);
-    assert(entry->desc.count == 3 && !strcmp(entry->desc.data[0],"event description"));
+    assert(entry->desc.count == 2 && !strcmp(entry->desc.data[0],"literal\\nline"));
+    assert(entry->unidDesc.count == 1 && !strcmp(entry->unidDesc.data[0],"미확인"));
     assert(item_table_get(42) == entry);
     assert(!strcmp(item_table_resource_name(entry, 1), "id_apple"));
     assert(!strcmp(item_table_resource_name(entry, 0), "apple"));

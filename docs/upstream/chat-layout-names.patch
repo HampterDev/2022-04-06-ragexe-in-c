@@ -1,0 +1,149 @@
+--- a/src/session/chat_tabs_layout.c
++++ b/src/session/chat_tabs_layout.c
+@@ -6,6 +6,32 @@
+ static void write_line(struct File *file, const char *line)
+ {
+     file_write(file, line, (int)strlen(line));
++}
++
++static void write_name(struct File *file, struct TextView name)
++{
++    char buffer[256];
++    size_t i, used = 0;
++
++    write_line(file, "\"");
++    for (i = 0; i < name.size; ++i) {
++        unsigned byte = (unsigned char)name.data[i];
++        if (used > sizeof buffer - 4) {
++            file_write(file, buffer, (int)used);
++            used = 0;
++        }
++        if (byte < 32 || byte > 126 || byte == '"' || byte == '\\') {
++            /* Three decimal digits prevent a following digit joining the escape. */
++            buffer[used++] = '\\';
++            buffer[used++] = (char)('0' + byte / 100);
++            buffer[used++] = (char)('0' + byte / 10 % 10);
++            buffer[used++] = (char)('0' + byte % 10);
++        } else {
++            buffer[used++] = (char)byte;
++        }
++    }
++    if (used) file_write(file, buffer, (int)used);
++    write_line(file, "\"");
+ }
+ 
+ static void write_tab(struct File *file, unsigned number, const struct ChatTabSettings *tab, int in_window)
+@@ -19,9 +45,9 @@
+     write_line(file, line);
+     snprintf(line, sizeof line, "\tWidth = %d,\r\n\tHeight = %d,\r\n", in_window ? 0 : tab->width, in_window ? 0 : tab->height);
+     write_line(file, line);
+-    write_line(file, in_window ? "\tTabState = \"On\",\r\n\tTabName = [[" : "\tTabState = \"Off\",\r\n\tTabName = \"");
+-    write_line(file, owned_text_cstr(&tab->name));
+-    write_line(file, in_window ? "]],\r\n" : "\",\r\n");
++    write_line(file, in_window ? "\tTabState = \"On\",\r\n\tTabName = " : "\tTabState = \"Off\",\r\n\tTabName = ");
++    write_name(file, owned_text_view(&tab->name));
++    write_line(file, ",\r\n");
+     for (i = 1; i <= CHAT_TAB_FLAG_COUNT; i++) {
+         snprintf(line, sizeof line, "\toption%d = %d,\r\n", i, tab->shown[i - 1]);
+         write_line(file, line);
+--- a/tests/test_chat_tabs_layout.c
++++ b/tests/test_chat_tabs_layout.c
+@@ -71,6 +71,82 @@
+         assert(field(L, key) == (i + n) % 3);
+     }
+     lua_pop(L, 1);
++}
++
++static int check_literal_name(const char *label, const char *name, size_t length)
++{
++    struct ChatTabSettings tab = {0};
++    lua_State *L = luaL_newstate();
++    int status, number, failed = 0;
++    assert(L);
++    assert(owned_text_assign(&tab.name, text_view(name, length)));
++    assert(chat_tabs_set(&g_session1.chatWndTabs, 0, &tab));
++    assert(chat_tabs_set(&g_session1.subChatWnds, 0, &tab));
++    chat_tab_settings_clear(&tab);
++    file_state = 0;
++    output_size = 0;
++    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1,
++                         "SaveData\\ChatWndInfo_U.lua");
++    assert(file_state == 4);
++    status = luaL_loadbuffer(L, output, output_size, "literal-layout");
++    if (!status) status = lua_pcall(L, 0, 0, 0);
++    if (status) {
++        fprintf(stderr, "FAIL %s: saved layout is not valid Lua\n", label);
++        failed = 1;
++    } else {
++        for (number = 1; number <= 2; ++number) {
++            char key[32];
++            size_t actual_length;
++            const char *actual;
++            snprintf(key, sizeof key, "ChatSubWnd_%d", number);
++            lua_getglobal(L, key);
++            assert(lua_istable(L, -1));
++            lua_getfield(L, -1, "TabName");
++            actual = lua_tolstring(L, -1, &actual_length);
++            if (!actual || actual_length != length || memcmp(actual, name, length)) {
++                fprintf(stderr, "FAIL %s: %s name changed\n", label,
++                        number == 1 ? "docked" : "detached");
++                failed = 1;
++            }
++            lua_pop(L, 1);
++            lua_getfield(L, -1, "injected");
++            assert(lua_isnil(L, -1));
++            lua_pop(L, 2);
++        }
++        lua_getglobal(L, "injected");
++        assert(lua_isnil(L, -1));
++    }
++    lua_close(L);
++    chat_tabs_clear(&g_session1.chatWndTabs);
++    chat_tabs_clear(&g_session1.subChatWnds);
++    return failed;
++}
++
++static int check_literal_names(void)
++{
++    static const char *const names[] = {
++        "", "Party", "A\"B", "A'B", "A\\B", "A\\nB", "end\\",
++        "A]]B", "[=[brackets]=]", "\nleading", "A\r\nB\n\rC", "A\tB",
++        "한글", "100% %s %n", "A]], injected=true, spare=[[B",
++        "A\", injected=true, spare=\"B"
++    };
++    char bytes[256], long_name[4097], label[32];
++    unsigned i;
++    int failures = 0;
++    for (i = 0; i < sizeof names / sizeof *names; ++i) {
++        snprintf(label, sizeof label, "literal case %u", i);
++        failures += check_literal_name(label, names[i], strlen(names[i]));
++    }
++    for (i = 0; i < sizeof bytes; ++i) bytes[i] = (char)i;
++    failures += check_literal_name("all 256 byte values", bytes, sizeof bytes);
++    memset(long_name, 'x', sizeof long_name);
++    /* Exercise escaping at output-buffer boundaries and before decimal digits. */
++    for (i = 0; i < sizeof long_name; i += 127) long_name[i] = '\\';
++    long_name[255] = '\1'; long_name[256] = '2'; long_name[257] = '3';
++    failures += check_literal_name("long mixed name", long_name, sizeof long_name);
++    if (failures) return 1;
++    puts("Chat names: 18 cases in both docked/detached layouts preserve literal bytes through real Lua.");
++    return 0;
+ }
+ 
+ int main(void)
+@@ -93,7 +169,6 @@
+                           g_session1.canDragWnd == 1, "SaveData\\ChatWndInfo_U.lua");
+     assert(file_state == 4);
+     assert(strstr(output, "CanDragWnd = 1\r\n\r\n") == output);
+-    assert(strstr(output, "TabName = [[한글]],\r\n"));
+     assert(strstr(output, "TabName = \"Window\",\r\n"));
+     assert(luaL_loadbuffer(L, output, output_size, "saved-layout") == 0);
+     assert(lua_pcall(L, 0, 0, 0) == 0);
+@@ -135,6 +210,7 @@
+         chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 0, "SaveData\\ChatWndInfo_U.lua");
+         assert(!strcmp(output, "CanDragWnd = 0\r\n\r\n") && file_state == 4);
+     }
++    if (check_literal_names()) return 1;
+     puts("Chat-tab layout: production writer, ordered main/separate tabs, Korean and 4096-byte names, geometry and all options round-trip through Lua");
+     return 0;
+ }

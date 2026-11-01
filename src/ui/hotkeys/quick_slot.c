@@ -72,7 +72,6 @@ const struct UIWindowOps ui_quik_slot_wnd_ops = {
     .render = ui_quik_slot_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -338,8 +337,7 @@ void ui_quik_slot_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
         return;
     }
-    if (g_replayPlaying)
-        return;
+
     column = ui_quik_slot_wnd_hit_slot(self, x, y);
     if (column == -1)
         return;

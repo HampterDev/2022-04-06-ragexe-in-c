@@ -76,19 +76,6 @@ struct ChatRoomInfo *game_current_chat_room(void)
     return mode ? &mode->own_chat_room : 0;
 }
 
-struct String *game_current_trade_partner(void)
-{
-    struct GameMode *mode = game_current_mode();
-    return mode ? &mode->exchange_partner : 0;
-}
-
-void game_mark_npc_dialog_open(void)
-{
-    struct GameMode *mode = game_current_mode();
-    if (mode)
-        mode->npc_dialog_open = 1;
-}
-
 void game_mark_npc_dialog_closed(void)
 {
     struct GameMode *mode = game_current_mode();

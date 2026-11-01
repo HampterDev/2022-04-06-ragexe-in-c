@@ -2,7 +2,6 @@
 #include "world/actor_lookup.h"
 #include "session/shop_inventory.h"
 #include "session/hotkey_bindings.h"
-#include "session/service_address.h"
 #ifndef CONTENTS_GAME_SESSION_H
 #define CONTENTS_GAME_SESSION_H
 

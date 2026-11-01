@@ -11,11 +11,12 @@
 struct String *session_get_accessory_name(struct Session *self,
                                                      struct String *out, int accessory)
 {
+    const char *name = NULL;
+
     string_init(out);
-    if (accessory >= 0 && (unsigned)accessory < VEC_COUNT(&self->accessoryNames, const char *))
-        string_assign_cstr(out, ((const char **)self->accessoryNames.first)[accessory]);
-    else
-        string_assign(out, "_병아리모자", 11);
+    if (accessory > 0 &&
+        client_lua_call(self->luaState, "ReqAccName", "d>s", accessory, &name) && name)
+        string_assign_cstr(out, name);
     return out;
 }
 

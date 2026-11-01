@@ -1,5 +1,4 @@
 #include "render/rp_pool.h"
-#include "ui/social/entry_queue_state.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -12,7 +11,6 @@
 #include "ui/game.h"
 #include <mmsystem.h>
 
-#include "replay/replay.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 
@@ -28,9 +26,7 @@ enum BasicButtonId {
     BASIC_ID_MAP = 0xd3,
     BASIC_ID_QUEST = 0x161,
     BASIC_ID_GUILD = 0x16d,
-    BASIC_ID_BATTLE_FIELD = 0x170,
     BASIC_ID_BOOKING = 0x173,
-    BASIC_ID_REPLAY = 0x187,
     BASIC_ID_NOT_BUILT_WINDOW = 0x194,
     BASIC_ID_NAVIGATION = 0x1a6,
     BASIC_ID_BANK = 0x1c5,
@@ -48,19 +44,15 @@ enum BasicButtonId {
 #define WND_QUEST 0x141
 #define WND_GUILD 0x3b
 #define WND_GUILD_NONE 0xd4
-#define WND_BATTLE_FIELD 0x9d
 #define WND_BOOKING 0xa9
-#define WND_REPLAY_REC 0xc6
 #define WND_NOT_BUILT 0xbf
 #define WND_NAVIGATION 0xcb
 #define WND_ACHIEVEMENT 0x10e
 #define WND_MAIL 0x107
 #define WND_MAIL_BLOCK_1 0x127
 #define WND_MAIL_BLOCK_2 0x157
-#define WND_MAIL_BLOCK_3 0x15b
 #define MSG_MAIL_BLOCK_1 0xbb0
 #define MSG_MAIL_BLOCK_2 0xe83
-#define MSG_MAIL_BLOCK_3 0xf03
 
 #define PACKET_BANK_OPEN 0x9ab
 #define BASIC_FADE_ALPHA 0x80
@@ -77,8 +69,6 @@ struct UIButtonsOfBasicWnd {
     struct UIBitmapButton *quest;
     struct UIBitmapButton *option;
     struct UIBitmapButton *booking;
-    struct UIBitmapButton *replay;
-    struct UIBitmapButton *battle_field;
     struct UIBitmapButton *navigation;
     struct UIBitmapButton *bank;
     struct UIBitmapButton *status;
@@ -88,8 +78,8 @@ struct UIButtonsOfBasicWnd {
 };
 OFFSET_ASSERT(UIButtonsOfBasicWnd, info, 0x98);
 OFFSET_ASSERT(UIButtonsOfBasicWnd, booking, 0xb8);
-OFFSET_ASSERT(UIButtonsOfBasicWnd, achievement, 0xd4);
-SIZE_ASSERT(UIButtonsOfBasicWnd, 0xdc);
+OFFSET_ASSERT(UIButtonsOfBasicWnd, achievement, 0xcc);
+SIZE_ASSERT(UIButtonsOfBasicWnd, 0xd4);
 
 void ui_buttons_of_basic_wnd_destruct(struct UIButtonsOfBasicWnd *self)
 {
@@ -154,16 +144,11 @@ static void ui_buttons_of_basic_wnd_layout(struct UIButtonsOfBasicWnd *self)
     basic_flow(self, self->booking, &x, &y);
     basic_flow(self, self->party, &x, &y);
     basic_flow(self, self->guild, &x, &y);
-    if (g_session1.showBattleFieldIcon)
-        basic_flow(self, self->battle_field, &x, &y);
-    else
-        ui_window_move_base(&self->battle_field->button.base, -100, -100);
     basic_flow(self, self->quest, &x, &y);
     basic_flow(self, self->map, &x, &y);
     basic_flow(self, self->navigation, &x, &y);
     basic_flow(self, self->option, &x, &y);
     basic_flow(self, self->bank, &x, &y);
-    basic_flow(self, self->replay, &x, &y);
     basic_flow(self, self->mail, &x, &y);
     basic_flow(self, self->achievement, &x, &y);
 }
@@ -190,9 +175,6 @@ void ui_buttons_of_basic_wnd_on_create(struct UIWindow *window, int width, int h
         row[i] = basic_button(self, stem, digits, basic_ids[i]);
     }
     self->booking = basic_button(self, UI_SKIN "basic_interface\\booking", digits, BASIC_ID_BOOKING);
-    self->replay = basic_button(self, UI_SKIN "replay_interface\\rec", digits, BASIC_ID_REPLAY);
-    self->battle_field = basic_button(self, UI_SKIN "basic_interface\\btn_battle_field", digits,
-                                      BASIC_ID_BATTLE_FIELD);
     self->navigation = basic_button(self, UI_SKIN "navigation_interface\\btn_Navigation", letters,
                                     BASIC_ID_NAVIGATION);
     self->bank = basic_button(self, UI_SKIN "basic_interface\\btn_bank", letters, BASIC_ID_BANK);
@@ -211,33 +193,6 @@ static void basic_toggle(int window_id)
         ui_make_window(window_id);
 }
 
-static int basic_replay_allows(int id)
-{
-    const BYTE *options;
-
-    if (!g_replayPlaying || id == 0x107)
-        return 1;
-    options = replay_recorder_instance()->info.options;
-    if (!options[0])
-        return 0;
-    switch (id) {
-    case BASIC_ID_QUEST:
-    case BASIC_ID_MAP:
-        return 1;
-    case BASIC_ID_INFO:
-        return options[1] != 0;
-    case BASIC_ID_ITEM:
-        return options[2] != 0;
-    case BASIC_ID_SKILL:
-        return options[3] != 0;
-    case BASIC_ID_PARTY:
-        return options[5] != 0;
-    case BASIC_ID_STATUS:
-        return options[8] != 0;
-    }
-    return 0;
-}
-
 int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                                            int val1, int val2, int val3, int val4)
 {
@@ -246,7 +201,7 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
         ui_buttons_of_basic_wnd_layout(self);
         return 0;
     }
-    if (msg != UI_MSG_COMMAND || !basic_replay_allows(val1))
+    if (msg != UI_MSG_COMMAND)
         return 0;
 
     switch (val1) {
@@ -277,21 +232,10 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     case BASIC_ID_GUILD:
         basic_toggle(g_guildInfo.guild_id < 1 ? WND_GUILD_NONE : WND_GUILD);
         break;
-    case BASIC_ID_BATTLE_FIELD:
-        if (g_entryQueueMgr && g_entryQueueMgr->in_queue)
-            entry_queue_mgr_request_ranking(g_entryQueueMgr);
-        else
-            basic_toggle(WND_BATTLE_FIELD);
-        break;
     case BASIC_ID_BOOKING:
         basic_toggle(WND_BOOKING);
         break;
-    case BASIC_ID_REPLAY:
-        if (replay_recorder_instance()->state != 1)
-            ui_message_box("REC End please");
-        else
-            basic_toggle(WND_REPLAY_REC);
-        break;
+
     case BASIC_ID_NOT_BUILT_WINDOW:
         basic_toggle(WND_NOT_BUILT);
         break;
@@ -321,8 +265,6 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
             ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1), 0xff, 0, 0);
         else if (ui_get_window(WND_MAIL_BLOCK_2))
             ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2), 0xff, 0, 0);
-        else if (ui_get_window(WND_MAIL_BLOCK_3))
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_3), 0xff, 0, 0);
         else
             basic_toggle(WND_MAIL);
         break;
@@ -347,9 +289,6 @@ void ui_buttons_of_basic_wnd_render_buttons(struct UIButtonsOfBasicWnd *self)
     for (i = 0; i < 8; i++)
         basic_blit(self, first[i], x, y);
     basic_blit(self, self->booking, x, y);
-    basic_blit(self, self->replay, x, y);
-    if (g_session1.showBattleFieldIcon)
-        basic_blit(self, self->battle_field, x, y);
     basic_blit(self, self->navigation, x, y);
     basic_blit(self, self->bank, x, y);
     basic_blit(self, self->status, x, y);
@@ -399,7 +338,6 @@ const struct UIWindowOps ui_buttons_of_basic_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

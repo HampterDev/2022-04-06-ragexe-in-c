@@ -14,23 +14,17 @@
 #include "ui/character/character.h"
 #include "ui/ui_items.h"
 #include <mmsystem.h>
-#include <shellapi.h>
-#include "core/app.h"
+#include "render/renderer.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 
 #define MSGBOX_OK 0
 #define MSGBOX_YES_NO 2
 #define MSGBOX_CANCEL 4
-#define MSGBOX_OK_LINK 5
 #define MSGBOX_ID_OK 0xb0
 #define MSGBOX_ID_CANCEL 0xb1
 #define MSGBOX_ID_YES 0xb3
 #define MSGBOX_ID_NO 0xb4
-#define MSGBOX_ID_LINK 0x1a2
-#define MSG_MSGBOX_LINK 0xd75
-#define MSGBOX_LINK_COLOUR 0xf4934a
-#define MSGBOX_LINK_HOVER 0xff7864
 #define MSGBOX_MSG_SET_TEXT 0x39
 #define MSGBOX_MSG_SET_FORMAT 0x43
 #define MSGBOX_MSG_SET_MODAL 0x9c
@@ -98,7 +92,6 @@ const struct UIWindowOps ui_message_box_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -147,7 +140,6 @@ const struct UIWindowOps ui_message_box_autoreturn_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -324,21 +316,6 @@ void ui_message_box_create(struct UIMessageBox *self, const char *text, int type
         ui_add_named_skin_button(wnd, &skin, msgbox_cancel, width - 0x2e, height - 0x18, MSGBOX_ID_CANCEL);
         self->frame.default_id = MSGBOX_ID_CANCEL;
         break;
-    case MSGBOX_OK_LINK: {
-        struct UITextButton *link;
-
-        ui_add_named_skin_button(wnd, &skin, msgbox_ok, width - 0x2e, height - 0x18, MSGBOX_ID_OK);
-        self->frame.default_id = MSGBOX_ID_OK;
-        link = ui_text_button_create();
-        ui_text_button_set_text(&link->button.base, msg_str(MSG_MSGBOX_LINK), MSGBOX_LINK_COLOUR, 0, 0xc, 0, 0);
-        link->hover_colour = MSGBOX_LINK_HOVER;
-        ui_window_move_base(&link->button.base, 0xe, 0x46);
-        link->button.base.id = MSGBOX_ID_LINK;
-        link->button.disabled = 0;
-        ui_window_invalidate_base(&link->button.base);
-        ui_window_add_child(wnd, &link->button.base);
-        break;
-    }
     }
     string_free(&skin);
 }
@@ -367,7 +344,7 @@ int ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, in
     struct UIMessageBox *self = (struct UIMessageBox *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (self->modal) {
             g_windowMgr.modal_result = val1;
             return 0;
@@ -381,10 +358,6 @@ int ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, in
         return 0;
     case MSGBOX_MSG_SET_FORMAT:
         string_assign_cstr(&self->format, (const char *)val1);
-        return 0;
-    case UI_MSG_TEXT_BUTTON:
-        if (val1 == MSGBOX_ID_LINK)
-            ShellExecuteA(g_hMainWnd, "open", msg_str(MSG_MSGBOX_LINK), NULL, NULL, SW_SHOWNORMAL);
         return 0;
     case MSGBOX_MSG_SET_MODAL:
         self->modal = val1;

@@ -75,39 +75,6 @@ char game_mode_has_resurrection_token(struct GameMode *self)
     return found;
 }
 
-unsigned char game_mode_carries_item(struct GameMode *self, int item_id)
-{
-    struct ItemInfo item;
-    unsigned char carried;
-
-    (void)self;
-    session_get_inventory_item_by_id(&g_session1, &item, item_id, 0);
-    carried = has_item(&item) ? 1 : 0;
-    item_info_destruct(&item);
-    return carried;
-}
-
-struct String *game_mode_location_text(struct GameMode *self, struct String *out)
-{
-    char text[0x78];
-    struct String map;
-    struct Player *player = self->world->player;
-    int x, y;
-
-    memset(text, 0, sizeof text);
-    game_mode_world_to_cell(self, player->pos.x, player->pos.z, &x, &y);
-    string_init(&map);
-    string_assign_cstr(&map, self->map_name);
-    if (map.size > 4) {
-        string_truncate(&map, map.size - 4);
-    }
-    sprintf(text, "Location: %s ( %d , %d )", string_cstr(&map), x, y);
-    string_init(out);
-    string_assign_cstr(out, text);
-    string_free(&map);
-    return out;
-}
-
 void game_mode_mouse_pointer_msg2(struct GameMode *self, int value)
 {
     if (self->mouse_pointer != 0)

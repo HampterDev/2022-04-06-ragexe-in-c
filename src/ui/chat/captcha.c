@@ -7,16 +7,13 @@
 #include "core/memory.h"
 #include "contents/connection_api.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <windows.h>
 #include <mmsystem.h>
 #include "ui/chat/chat.h"
-#include "core/file_util.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
-#include "core/app.h"
 
 struct UICaptchaImage;
 struct UIWindow;
@@ -60,7 +57,6 @@ const struct UIWindowOps ui_captcha_image_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -110,7 +106,6 @@ const struct UIWindowOps ui_captcha_preview_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -118,66 +113,12 @@ const struct UIWindowOps ui_captcha_preview_wnd_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-struct UICaptchaRegisterWnd;
-void ui_captcha_register_wnd_destroy(struct UIWindow *window);
-void ui_captcha_register_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused);
-void ui_captcha_register_wnd_on_draw(struct UIWindow *window);
-int ui_captcha_register_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_captcha_register_wnd_ops = {
-    .destroy = ui_captcha_register_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_captcha_register_wnd_on_create,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_captcha_register_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_frame_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_captcha_register_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
-#define WND_ID_CAPTCHA_REGISTER 0x11c
 #define WND_ID_CAPTCHA_PREVIEW 0x120
 
-#define CAPTCHA_IMAGE_SIZE 0x1bc
 struct UICaptchaImage {
     struct UIWindow base;
     struct BitmapRes image;
     struct String tooltip;
-    int color_keyed;
 };
 OFFSET_ASSERT(UICaptchaImage, tooltip, 0x1a0);
 
@@ -187,7 +128,6 @@ static struct UICaptchaImage *ui_captcha_image_construct(struct UICaptchaImage *
     self->base.ops = &ui_captcha_image_ops;
     bitmap_resource_init(&self->image);
     self->image.width = self->image.height = 0;
-    self->color_keyed = 1;
     string_init(&self->tooltip);
     return self;
 }
@@ -205,7 +145,7 @@ void ui_captcha_image_destroy(struct UIWindow *window)
 void ui_captcha_image_on_draw(struct UIWindow *window)
 {
     struct UICaptchaImage *self = (struct UICaptchaImage *)window;
-    ui_window_draw_bitmap(&self->base, 0, 0, &self->image, self->color_keyed);
+    ui_window_draw_bitmap(&self->base, 0, 0, &self->image, 1);
 }
 
 void ui_captcha_image_on_mouse_hover(struct UIWindow *window, int x_unused, int y_unused)
@@ -318,266 +258,7 @@ int ui_captcha_preview_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
 }
 
 #define CAPTCHA_ID_SEND 0x151
-#define MSG_CAPTCHA_ANSWER_SHORT 0xb38
-#define MSG_CAPTCHA_CONFIRM 0xb39
-#define MSG_CAPTCHA_NO_IMAGE 0xb3a
-#define MSGBOX_ID_NO 0xb4
 #define CAPTCHA_ANSWER_MAX 0x10
-#define PACKET_CAPTCHA_REGISTER 0xa52
-
-struct UICaptchaRegisterWnd {
-    struct UIFrameWnd frame;
-    struct UIWindow *folder_text;
-    struct UIWindow *file_list;
-    struct UICaptchaImage *image;
-    struct UIWindow *answer_edit;
-    struct UIBitmapButton *send_button;
-    struct String file;
-    struct CaptchaData packed;
-};
-OFFSET_ASSERT(UICaptchaRegisterWnd, file, 0xa8);
-
-static struct UICaptchaRegisterWnd *ui_captcha_register_wnd_construct(struct UICaptchaRegisterWnd *self)
-{
-    ui_frame_wnd_construct(&self->frame, 0);
-    self->frame.base.ops = &ui_captcha_register_wnd_ops;
-    self->folder_text = NULL;
-    self->file_list = NULL;
-    self->image = NULL;
-    self->answer_edit = NULL;
-    self->send_button = NULL;
-    string_init(&self->file);
-    memset(&self->packed, 0, sizeof self->packed);
-    return self;
-}
-
-void ui_captcha_register_wnd_destroy(struct UIWindow *window)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    self->frame.base.ops = &ui_captcha_register_wnd_ops;
-    captcha_data_clear(&self->packed);
-    string_free(&self->file);
-    ui_frame_wnd_destruct(&self->frame);
-    free(self);
-}
-
-static void destroy_string(void *value) { string_free(value); }
-
-void ui_captcha_register_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    static const char *const send_bitmaps[4] = {
-        UI_SKIN "btn_ok.bmp", UI_SKIN "btn_ok_a.bmp", UI_SKIN "btn_ok_b.bmp", UI_SKIN "btn_ok_dis.bmp",
-    };
-    struct UIWindow *wnd = &self->frame.base;
-    struct String folder, formatted;
-    struct List files = {0};
-    struct ListNode *node;
-    struct UIWindow *control;
-    struct UIBitmapButton *button;
-    int state;
-
-    ui_window_add_sys_button(wnd);
-    ui_window_add_close_button(wnd, "", 0);
-    string_init(&folder);
-    string_init(&formatted);
-    string_format(&formatted, "%s\\captcha\\", g_clientDir);
-    string_assign(&folder, string_cstr(&formatted), formatted.size);
-    string_free(&formatted);
-
-    control = mem_alloc(sizeof(struct UIStaticText));
-    if (!control) goto cleanup;
-    control = ui_static_text_construct(control);
-    self->folder_text = control;
-    ui_window_create(control, 0xf0, 0x10);
-    ui_window_move(self->folder_text, 0x19, 0x1b);
-    ui_static_text_set_text_ellipsis(self->folder_text, string_cstr(&folder));
-    ui_window_add_child(wnd, self->folder_text);
-
-    list_init(&files);
-    dir_list_names_list(&files, string_cstr(&folder), "*.bmp");
-
-    self->image = malloc(sizeof *self->image);
-    if (!self->image) goto cleanup;
-    ui_captcha_image_construct(self->image);
-    self->image->color_keyed = 0;
-    ui_window_create(&self->image->base, CAPTCHA_WIDTH, CAPTCHA_HEIGHT);
-    ui_window_move_base(&self->image->base, 0x23, 0x51);
-    ui_window_add_child(wnd, &self->image->base);
-
-    control = mem_alloc(sizeof(struct UIComboBoxDefWnd));
-    if (!control) goto cleanup;
-    control = ui_combo_box_def_wnd_construct(control);
-    self->file_list = control;
-    ((struct UIComboBoxDefWnd *)control)->list_height = 0x50;
-    ui_window_create(self->file_list, 0xf0, 0x12);
-    ui_window_move(self->file_list, 0x19, 0x35);
-    ((struct UIComboBoxDefWnd *)self->file_list)->border_r = 0x64;
-    ((struct UIComboBoxDefWnd *)self->file_list)->border_g = 0x64;
-    ((struct UIComboBoxDefWnd *)self->file_list)->border_b = 0x64;
-    ((struct UIComboBoxDefWnd *)self->file_list)->back_r = 0xe8;
-    ((struct UIComboBoxDefWnd *)self->file_list)->back_g = 0xe8;
-    ((struct UIComboBoxDefWnd *)self->file_list)->back_b = 0xe8;
-    ui_window_add_child(wnd, self->file_list);
-    for (node = files.head->next; node != files.head; node = node->next) {
-        struct String name;
-        const char *text = string_cstr(LIST_VALUE(node, struct String));
-
-        string_init(&name);
-        string_assign_cstr(&name, text);
-        ui_combo_box_def2_wnd_add_item(self->file_list, name, 0);
-    }
-
-    control = mem_alloc(sizeof(struct UIEditCtrl));
-    if (!control) goto cleanup;
-    control = ui_edit_ctrl_construct(control);
-    self->answer_edit = control;
-    ui_window_create(control, 0xc8, 0x10);
-    ui_window_move(self->answer_edit, 0x1e, 0xb7);
-    ((struct UIEditCtrl *)self->answer_edit)->max_chars = CAPTCHA_ANSWER_MAX;
-    ui_edit_ctrl_set_back_colour(self->answer_edit, 0xff, 0xff, 0xff);
-    ((struct UIEditCtrl *)self->answer_edit)->no_border = 0;
-    ui_edit_ctrl_set_border_colour(self->answer_edit, 0, 0, 0);
-    ui_edit_ctrl_set_text_colour(self->answer_edit, 0, 0, 0, -1);
-    ((struct UIEditCtrl *)self->answer_edit)->keep_ime_on_enter = 1;
-    ui_window_add_child(wnd, self->answer_edit);
-
-    button = mem_alloc(sizeof(struct UIBitmapButton));
-    if (!button) goto cleanup;
-    button = ui_bitmap_button_construct(button);
-    self->send_button = button;
-    for (state = 0; state < 4; state++)
-        ui_bitmap_button_set_bitmap(self->send_button, send_bitmaps[state], state, 0);
-    ui_window_create(&self->send_button->button.base, self->send_button->bitmap_width,
-                     self->send_button->bitmap_height);
-    ui_window_move_base(&self->send_button->button.base, 0xee, 0xb5);
-    self->send_button->button.base.id = CAPTCHA_ID_SEND;
-    ui_window_add_child(wnd, &self->send_button->button.base);
-
-cleanup:
-    list_free(&files, destroy_string);
-    string_free(&folder);
-}
-
-void ui_captcha_register_wnd_on_draw(struct UIWindow *window)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-
-    ui_window_fill_round_rect(wnd, 0, 0, wnd->width, wnd->height, 0xffffffff);
-    ui_window_draw_title_bar(wnd, 1, "", 0);
-    ui_window_draw_outline(wnd, 0x22, 0x50, 0xde, 0x5c, 0);
-}
-
-static int captcha_register_load(struct UICaptchaRegisterWnd *self, const struct String *name)
-{
-    struct String path;
-    struct File file;
-    struct CaptchaData packed = {0};
-    int loaded = 0;
-    if (!self->folder_text || !self->image) return 0;
-    string_init(&path);
-    string_assign_cstr(&path, string_cstr(&((struct UIStaticText *)self->folder_text)->tooltip));
-    string_append(&path, string_cstr(name), name->size);
-    file_construct(&file);
-    if (file_open(&file, string_cstr(&path), 0, 1, 0)) {
-        if (captcha_data_pack(&packed, file.buffer, file.size)
-            && captcha_bitmap_load(self->image, file.buffer, file.size)) {
-            captcha_data_clear(&self->packed);
-            self->packed = packed;
-            memset(&packed, 0, sizeof packed);
-            ui_window_invalidate_base(&self->frame.base);
-            loaded = 1;
-        } else {
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)"image size error", 0xff, 0, 0);
-        }
-    }
-    captcha_data_clear(&packed);
-    file_destruct(&file);
-    string_free(&path);
-    return loaded;
-}
-
-static void captcha_register_send(struct UICaptchaRegisterWnd *self)
-{
-#pragma pack(push, 1)
-    struct {
-        WORD id;
-        char answer[CAPTCHA_ANSWER_MAX];
-        WORD image_size;
-    } packet;
-#pragma pack(pop)
-    char question[4096];
-    int answer;
-    size_t answer_size;
-
-    if (!self->answer_edit || !self->send_button || self->send_button->button.disabled) return;
-
-    if (ui_edit_ctrl_get_text_size(self->answer_edit) < 4) {
-        ui_message_box(msg_str(MSG_CAPTCHA_ANSWER_SHORT));
-        return;
-    }
-    if (self->file.size == 0) {
-        ui_message_box(msg_str(MSG_CAPTCHA_NO_IMAGE));
-        return;
-    }
-    if (!self->packed.bytes || !self->packed.size || self->packed.size > CAPTCHA_PACKED_LIMIT) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)"compress data size error", 0xff, 0, 0);
-        return;
-    }
-    snprintf(question, sizeof question, msg_str(MSG_CAPTCHA_CONFIRM), ui_edit_ctrl_get_text(self->answer_edit));
-    answer = ui_window_mgr_message_box(&g_windowMgr, question, 2, 0, 0, 0, "메시지", 0x118, 0x78, 0);
-    if (answer == MSGBOX_ID_NO)
-        return;
-    packet.id = PACKET_CAPTCHA_REGISTER;
-    memset(packet.answer, 0, sizeof packet.answer);
-    answer_size = strlen(ui_edit_ctrl_get_text(self->answer_edit));
-    if (answer_size > sizeof packet.answer) answer_size = sizeof packet.answer;
-    memcpy(packet.answer, ui_edit_ctrl_get_text(self->answer_edit), answer_size);
-    packet.image_size = (WORD)self->packed.size;
-    if (rag_connection_send_packet(rag_connection_instance(), sizeof packet, &packet)) {
-        captcha_register_set_send_disabled(&self->frame.base, 1);
-        language_cancel_input(g_language);
-    }
-}
-
-int ui_captcha_register_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    if (msg == UI_MSG_COMMAND) {
-        if (val1 == UI_ID_CLOSE)
-            ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_CAPTCHA_REGISTER);
-        else if (val1 == CAPTCHA_ID_SEND)
-            captcha_register_send(self);
-    } else if (msg == COMBO_MSG_CHOSEN && sender == self->file_list
-               && self->send_button && !self->send_button->button.disabled) {
-        struct String chosen;
-
-        ui_combo_box_def_wnd_get_label_text(self->file_list, &chosen);
-        if (chosen.size && captcha_register_load(self, &chosen)) {
-            string_free(&self->file);
-            string_move(&self->file, &chosen);
-        }
-        string_free(&chosen);
-    }
-    return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-const struct CaptchaData *captcha_register_data(struct UIWindow *window)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    return self ? &self->packed : NULL;
-}
-
-void captcha_register_set_send_disabled(struct UIWindow *window, BYTE disabled)
-{
-    struct UICaptchaRegisterWnd *self = (struct UICaptchaRegisterWnd *)window;
-    if (!self || !self->send_button) return;
-    self->send_button->button.disabled = disabled;
-    ui_window_invalidate_base(&self->send_button->button.base);
-    ui_window_invalidate_base(&self->frame.base);
-}
 
 #define WND_ID_MACRO_DETECTOR_CLOSES1 0x9b
 #define WND_ID_MACRO_DETECTOR_CLOSES2 0x27
@@ -654,7 +335,6 @@ const struct UIWindowOps ui_macro_detector_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -848,9 +528,7 @@ int ui_macro_detector_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
     if (msg == 0) {
         ui_macro_detector_wnd_send_msg(&self->frame.base, &self->frame.base, UI_MSG_COMMAND, CAPTCHA_ID_SEND, 0, 0, 0);
     } else if (msg == UI_MSG_COMMAND) {
-        if (val1 == UI_ID_CLOSE) {
-            ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_CAPTCHA_REGISTER);
-        } else if (val1 == CAPTCHA_ID_SEND && self->answer_edit && ui_edit_ctrl_get_text_size(self->answer_edit) != 0
+        if (val1 == CAPTCHA_ID_SEND && self->answer_edit && ui_edit_ctrl_get_text_size(self->answer_edit) != 0
                    && !string_equal_cstr(&self->last_answer, ui_edit_ctrl_get_text(self->answer_edit))) {
 #pragma pack(push, 1)
             struct {
@@ -880,20 +558,6 @@ struct UIWindow *captcha_preview_create(void)
     ui_window_create(&self->frame.base, CAPTCHA_WIDTH, CAPTCHA_HEIGHT);
     if (!self->image) {
         ui_captcha_preview_wnd_destroy(&self->frame.base);
-        return NULL;
-    }
-    return &self->frame.base;
-}
-
-struct UIWindow *captcha_register_create(void)
-{
-    struct UICaptchaRegisterWnd *self = malloc(sizeof *self);
-    if (!self) return NULL;
-    ui_captcha_register_wnd_construct(self);
-    ui_window_create(&self->frame.base, 290, 211);
-    if (!self->folder_text || !self->file_list || !self->image
-        || !self->answer_edit || !self->send_button) {
-        ui_captcha_register_wnd_destroy(&self->frame.base);
         return NULL;
     }
     return &self->frame.base;

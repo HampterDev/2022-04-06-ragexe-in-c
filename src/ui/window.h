@@ -2,7 +2,6 @@
 #include "render/texture_types.h"
 #include "ui/window_list.h"
 #include "ui/window_paint.h"
-#include "ui/window_records.h"
 #ifndef UI_WINDOW_H
 #define UI_WINDOW_H
 
@@ -45,7 +44,6 @@ void ui_window_create(struct UIWindow *self, int width, int height);
 void ui_window_add_child(struct UIWindow *self, struct UIWindow *child);
 void ui_window_remove_child(struct UIWindow *self,
                                      struct UIWindow *child, BYTE destroy);
-int ui_window_send_edit_fields(struct UIWindow *self);
 
 void ui_window_destruct(struct UIWindow *self);
 void ui_window_destroy_base(struct UIWindow *window);
@@ -76,19 +74,6 @@ void ui_frame_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_frame_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_frame_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_frame_wnd_snap(struct UIWindow *self);
-
-void ui_window_record_command(struct UIWindow *self, int val1, int val2, int val3,
-                                       int val4);
-void ui_window_record_msg(struct UIWindow *self, int msg, int val1, int val2, int val3,
-                                   int val4);
-
-#pragma pack(push, 1)
-struct UIRecordHeader {
-    short tag;
-    int len;
-};
-#pragma pack(pop)
-SIZE_ASSERT(UIRecordHeader, 6);
 
 struct UIEditCtrl;
 BYTE ui_window_query_false(struct UIWindow *self);
@@ -153,11 +138,7 @@ void ui_window_send_msg4_to_tree(struct UIWindow *self);
 void ui_window_flush_quads(struct UIWindow *self);
 BYTE ui_window_render_base(struct UIWindow *self, int force);
 struct TexDrawPrim *ui_window_make_quad_base(struct UIWindow *self);
-void ui_window_record_drag(struct UIWindow *self, int val1, int val2,
-                                    const struct DragInfo *drag, int window_id);
-int ui_window_record_bytes(struct UIWindow *self, int tag, const void *bytes, size_t size);
-void ui_window_record_text(struct UIWindow *self, int val, const char *text);
-int ui_window_read_edit_fields(struct UIWindow *self, const void *data);
+
 struct List *ui_window_wrap_text_plain(struct UIWindow *self,
                                                   struct List *out, struct String text,
                                                   struct List *lines, int width, int font_face,
@@ -171,11 +152,8 @@ void ui_window_parse_tag_links(struct UIWindow *self,
                                        struct String close, struct Vec *out);
 void ui_window_parse_navi_links(struct UIWindow *self,
                                         struct String text, struct Vec *out);
-void ui_window_parse_tipbox_links(struct UIWindow *self,
-                                          struct String text, struct Vec *out);
 void ui_window_parse_url_links(struct UIWindow *self,
                                        struct String text, struct Vec *out);
-
 
 void ui_ondraw(struct UIWindow *self);
 struct Texture;

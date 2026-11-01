@@ -2,7 +2,6 @@
 static unsigned notices, tooltip_calls, mouse_moves, show_calls, cursor_calls;
 static int notice_msg[4], notice_a[4], notice_b[4], tooltip_x, tooltip_y, shown;
 static char tooltip_text[512];
-int g_replayPlaying;
 
 struct Mode *client_current_mode(void) { return (struct Mode *)&parent; }
 void mode_show_tooltip(struct Mode *mode, const char *text, int x, int y, DWORD colour, BYTE flag)
@@ -80,10 +79,6 @@ static void test_native_check_box(void)
     assert(notice_msg[1] == UI_MSG_CHECK_NOTICE && notice_a[1] == 314);
     reset_control_events(); ui_check_box_on_mouse_hover((struct UIWindow *)(box), 0, 0); ui_check_box_on_mouse_shape((struct UIWindow *)(box), 0, 0);
     assert(!strcmp(tooltip_text, "일반 도움말") && cursor_calls == 1);
-    g_replayPlaying = 1;
-    reset_control_events(); ui_check_box_on_l_btn_down((struct UIWindow *)(box), 0, 0);
-    assert(wnd->state == 1 && !notices && !invalidations);
-    g_replayPlaying = 0;
     reset_control_events(); ui_check_box_set_check_quiet(box, 0);
     assert(wnd->state == 0 && !notices && invalidations == 2);
     reset_control_events(); ui_check_box_set_check(wnd, 1);

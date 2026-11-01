@@ -1,5 +1,4 @@
 #include "contents/map_info_api.h"
-#include "contents/map_info.h"
 #include "contents/lua_data.h"
 #include "core/msg_str.h"
 #include <stdint.h>
@@ -9,10 +8,6 @@
 struct MapInfo {
     char *map;
     char *display_name;
-    char *sign_line1;
-    char *sign_line2;
-    char *ornament;
-    char show_banner;
 };
 
 struct MapInfoMgr {
@@ -20,7 +15,6 @@ struct MapInfoMgr {
     size_t count;
     size_t capacity;
     char *default_name;
-    struct MapNameDisplay *banner;
 };
 
 struct MapInfoMgr *g_mapInfo;
@@ -37,15 +31,6 @@ static char *copy_text(const char *text)
     if (copy)
         memcpy(copy, text, size);
     return copy;
-}
-
-static void free_banner(struct MapInfoMgr *self)
-{
-    if (self->banner) {
-        map_name_display_destruct(self->banner);
-        free(self->banner);
-        self->banner = NULL;
-    }
 }
 
 static struct MapInfo *info_at(struct MapInfoMgr *self, const char *map)
@@ -127,7 +112,7 @@ static const struct MapInfo *find_info(const struct MapInfoMgr *self, const char
 }
 
 int map_info_set_display_name(struct MapInfoMgr *self, const char *map,
-                              const char *name, char show_banner)
+                              const char *name)
 {
     char *copy;
     struct MapInfo *info;
@@ -143,50 +128,6 @@ int map_info_set_display_name(struct MapInfoMgr *self, const char *map,
     }
     free(info->display_name);
     info->display_name = copy;
-    info->show_banner = show_banner;
-    return 1;
-}
-
-int map_info_set_sign(struct MapInfoMgr *self, const char *map,
-                      const char *line1, const char *line2)
-{
-    char *first, *second;
-    struct MapInfo *info;
-    if (!self)
-        return 0;
-    first = copy_text(line1);
-    if (!first)
-        return 0;
-    second = copy_text(line2);
-    info = second ? info_at(self, map) : NULL;
-    if (!info) {
-        free(first);
-        free(second);
-        return 0;
-    }
-    free(info->sign_line1);
-    free(info->sign_line2);
-    info->sign_line1 = first;
-    info->sign_line2 = second;
-    return 1;
-}
-
-int map_info_set_ornament(struct MapInfoMgr *self, const char *map, const char *ornament)
-{
-    char *copy;
-    struct MapInfo *info;
-    if (!self)
-        return 0;
-    copy = copy_text(ornament);
-    if (!copy)
-        return 0;
-    info = info_at(self, map);
-    if (!info) {
-        free(copy);
-        return 0;
-    }
-    free(info->ornament);
-    info->ornament = copy;
     return 1;
 }
 
@@ -196,79 +137,29 @@ const char *map_info_display_name(const struct MapInfoMgr *self, const char *map
     return text_or_empty(info ? info->display_name : self ? self->default_name : NULL);
 }
 
-void map_info_show_banner(struct MapInfoMgr *self, const char *map)
-{
-    const struct MapInfo *info = find_info(self, map);
-    if (info && info->show_banner) {
-        const char *ornament = text_or_empty(info->ornament);
-        const char *line1 = text_or_empty(info->sign_line1);
-        const char *line2 = text_or_empty(info->sign_line2);
-        struct MapNameDisplay *banner = malloc(sizeof *banner);
-        if (!banner)
-            return;
-        if (!*ornament)
-            ornament = "noname";
-        if (!*line1 && !*line2)
-            line2 = text_or_empty(self->default_name);
-        if (!map_name_display_construct(banner, line1, line2, ornament)) {
-            free(banner);
-            return;
-        }
-        free_banner(self);
-        self->banner = banner;
-    }
-}
-
-void map_info_render_banner(struct MapInfoMgr *self)
-{
-    if (self && self->banner && !map_name_display_render(self->banner))
-        free_banner(self);
-}
-
 static int lua_add_map_display_name(lua_State *L)
 {
     int ok;
-    if (!lua_isstring(L, -3))
+    if (!lua_isstring(L, 1))
         return lua_data_reply(L, 0, "argument 1st is must string");
-    if (!lua_isstring(L, -2))
+    if (!lua_isstring(L, 2))
         return lua_data_reply(L, 0, "argument 2nd is must string");
-    if (lua_type(L, -1) != LUA_TBOOLEAN)
-        return lua_data_reply(L, 0, "argument 3th is must boolean");
-    ok = map_info_set_display_name(g_mapInfo, lua_tolstring(L, -3, NULL),
-                                  lua_tolstring(L, -2, NULL), lua_toboolean(L, -1) > 0);
+    ok = map_info_set_display_name(g_mapInfo, lua_tolstring(L, 1, NULL),
+                                  lua_tolstring(L, 2, NULL));
     return lua_data_reply(L, ok, ok ? "good" : "out of memory");
 }
 
-static int lua_add_map_sign_name(lua_State *L)
+/* Older name catalogs call these while iterating their map entries. Accept
+ * their obsolete decoration directives so subsequent names still load. */
+static int lua_ignore_map_decoration(lua_State *L)
 {
-    int ok;
-    if (!lua_isstring(L, -3))
-        return lua_data_reply(L, 0, "argument 1st is must string");
-    if (!lua_isstring(L, -2))
-        return lua_data_reply(L, 0, "argument 2nd is must string");
-    if (!lua_isstring(L, -1))
-        return lua_data_reply(L, 0, "argument 3st is must string");
-    ok = map_info_set_sign(g_mapInfo, lua_tolstring(L, -3, NULL),
-                          lua_tolstring(L, -2, NULL), lua_tolstring(L, -1, NULL));
-    return lua_data_reply(L, ok, ok ? "good" : "out of memory");
-}
-
-static int lua_add_map_background_bmp(lua_State *L)
-{
-    int ok;
-    if (!lua_isstring(L, -2))
-        return lua_data_reply(L, 0, "argument 1nd is must string");
-    if (!lua_isstring(L, -1))
-        return lua_data_reply(L, 0, "argument 2st is must string");
-    ok = map_info_set_ornament(g_mapInfo, lua_tolstring(L, -2, NULL),
-                              lua_tolstring(L, -1, NULL));
-    return lua_data_reply(L, ok, ok ? "good" : "out of memory");
+    return lua_data_reply(L, 1, "good");
 }
 
 static const struct LuaDataFunction map_info_functions[] = {
     { "AddMapDisplayName", lua_add_map_display_name },
-    { "AddMapSignName", lua_add_map_sign_name },
-    { "AddMapBackgroundBmp", lua_add_map_background_bmp },
+    { "AddMapSignName", lua_ignore_map_decoration },
+    { "AddMapBackgroundBmp", lua_ignore_map_decoration },
 };
 
 char map_info_load(struct MapInfoMgr *self)
@@ -300,14 +191,10 @@ void map_info_destroy(void)
     if (!self)
         return;
     g_mapInfo = NULL;
-    free_banner(self);
     for (size_t i = 0; i < self->count; ++i) {
         struct MapInfo *info = &self->maps[i];
         free(info->map);
         free(info->display_name);
-        free(info->sign_line1);
-        free(info->sign_line2);
-        free(info->ornament);
     }
     free(self->maps);
     free(self->default_name);

@@ -173,20 +173,6 @@ void ui_window_draw_backdrop_base(struct UIWindow *self)
     (void)self;
 }
 
-int ui_window_get_records_base(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    return snapshot_finish(&writer, out);
-}
-
-int ui_frame_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    return snapshot_finish(&writer, out);
-}
-
 void ui_window_on_hover_enter_base(struct UIWindow *self)
 {
     (void)self;

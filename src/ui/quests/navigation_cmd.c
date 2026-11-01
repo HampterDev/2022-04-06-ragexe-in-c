@@ -1,7 +1,5 @@
 #include "ui/controls/listbox.h"
 #include "ui/window_access.h"
-#include "navi/snapshot.h"
-#include "replay/replay.h"
 #include "ui/window_manager_state.h"
 #include "core/markup_tags.h"
 #include "actor/appearance.h"
@@ -16,16 +14,11 @@
 
 #include <stdio.h>
 #include "ui/chat/chat_window_parts.h"
-#include "core/file_util.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/chat/chat_window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
-
-#define NAVI_FILE_DIR "%s\\Navigationdata\\"
-#define NAVI_FILE_PATH "%s\\Navigationdata\\%s"
-#define NAVI_LINE_MAX 0x400
 
 #define MSG_NAVI_STOP_GUIDE 0x8bf
 #define MSG_NAVI_MOB_VERY_LOW 0x995
@@ -42,10 +35,6 @@
 #define AIRPLANE_MSG_DISABLE_ALL 0x23
 #define AIRPLANE_RESULT_CLOSED 0xb4
 
-#define COMBO_MSG_ADD_LINE 0x1f
-#define COMBO_MSG_SELECT 0x28
-#define COMBO_MSG_OPENER 0x53
-#define COMBO_MSG_REPLAY 0x39
 #define COMBO_MSG_CHOSEN 0x27
 
 #define NAVI_ROUTE_MSG_REFRESH 0x3c
@@ -200,109 +189,6 @@ void ui_navigation_v4_wnd_pick_entry(struct UINavigationV4Wnd *self, int entry)
     if (g_windowMgr.kafra_move_map_service_info_wnd)
         ui_ro_map_wnd_load_guided_map((struct UIRoMapWnd *)g_windowMgr.kafra_move_map_service_info_wnd);
     ui_window_invalidate_base(&self->frame.base);
-}
-
-BYTE ui_navigation_v4_wnd_load_navidata(struct UINavigationV4Wnd *self, int file)
-{
-    static const char delims[] = "\t ,\t\n";
-    struct String name, path, word;
-    struct Vec words;
-    struct String *s;
-    char line[NAVI_LINE_MAX];
-    const char *text;
-    char *token;
-    BYTE ok;
-    FILE *fp;
-
-    if (self->files.first == self->files.last)
-        return 0;
-    if ((unsigned)file > VEC_COUNT(&self->files, struct String) || file < 0)
-        return 0;
-    text = string_cstr((struct String *)self->files.first + file);
-    string_init(&name);
-    string_assign_cstr(&name, text);
-    if (name.size == 0) {
-        ok = 0;
-        goto no_name;
-    }
-    string_init(&path);
-    string_format(&path, NAVI_FILE_PATH, g_clientDir, string_cstr(&name));
-    fp = fopen(string_cstr(&path), "rb");
-    if (!fp) {
-        ok = 0;
-        goto no_file;
-    }
-    navi_manager_clear_results(&g_navi);
-    memset(line, 0, sizeof line);
-    words.first = words.last = words.end = NULL;
-    while (!feof(fp)) {
-        fgets(line, NAVI_LINE_MAX, fp);
-        for (token = strtok(line, delims); token; token = strtok(NULL, delims)) {
-            string_init(&word);
-            string_assign_cstr(&word, token);
-            string_vec_push_move(&words, &word);
-            string_free(&word);
-        }
-        navi_manager_add_place(&g_navi, &words);
-        for (s = words.first; s != words.last; s++)
-            string_free(s);
-        words.last = words.first;
-    }
-    fclose(fp);
-    navi_manager_group_each_result(&g_navi);
-    if (navi_manager_result_count(&g_navi) > 0) {
-        struct ReplayBuffer bytes = {0};
-
-        if (!navi_results_save(&g_navi, &bytes) && replay_recorder_instance()->state == 2)
-            replay_recorder_instance()->writeFailed = 1;
-        ui_window_record_bytes(&self->frame.base, NAVI_RECORD_RESULTS, bytes.data, bytes.size);
-        replay_buffer_destroy(&bytes);
-    }
-    ui_navigation_v4_wnd_fill_results(self);
-    ui_navigation_v4_wnd_send_msg(&self->frame.base, &self->frame.base, UI_MSG_COMMAND, NAVI_ID_NAVIDATA_LOADED, 0, 0, 0);
-    ok = 1;
-    string_vec_free(&words);
-no_file:
-    string_free(&path);
-no_name:
-    string_free(&name);
-    return ok;
-}
-
-static void show_files(struct UINavigationV4Wnd *self)
-{
-    struct String dir, *s;
-    struct UIWindow *combo;
-    int count, height, x, y;
-
-    if (g_windowMgr.combo_box_wnd)
-        ui_close_window(UI_WND_COMBO_BOX);
-    for (s = self->files.first; s != self->files.last; s++) {
-        string_clear(s);
-    }
-    for (s = self->files.first; s != self->files.last; s++)
-        string_free(s);
-    self->files.last = self->files.first;
-    string_init(&dir);
-    string_format(&dir, NAVI_FILE_DIR, g_clientDir);
-    dir_list_names_vector(&self->files, string_cstr(&dir), "*.txt");
-    count = (int)VEC_COUNT(&self->files, struct String);
-    if (count) {
-        combo = ui_make_window(UI_WND_COMBO_BOX);
-        for (s = self->files.first; s != self->files.last; s++)
-            ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(s), 0, 0, 0);
-        height = count * 16;
-        if (height > 0xa0)
-            height = 0xa0;
-        ui_window_send_msg(combo, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
-        ui_window_resize(combo, 0xa0, height);
-        ui_window_send_msg(combo, NULL, COMBO_MSG_OPENER, NAVI_WINDOW_ID, 0, 0, 0);
-        x = self->frame.base.width - 0xa5;
-        y = 0x24;
-        ui_window_to_screen(&self->frame.base, &x, &y);
-        ui_window_move(combo, x, y);
-    }
-    string_free(&dir);
 }
 
 static void find_route(struct UINavigationV4Wnd *self)
@@ -513,15 +399,10 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
 {
     int row;
 
-    if (id != NAVI_ID_RESULTS && id != NAVI_ID_ENTRIES)
-        ui_window_record_command(&self->frame.base, id, val2, val3, val4);
     switch (id) {
     case NAVI_ID_ROAD_ICON:
         if (!ui_close_window(NAVI_ROAD_ICON_WND_ID))
             ui_make_window(NAVI_ROAD_ICON_WND_ID);
-        break;
-    case NAVI_ID_NAVIDATA:
-        show_files(self);
         break;
     case NAVI_ID_MAXIMIZE:
         g_navi.windowCollapsed = 0;
@@ -553,9 +434,7 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
         run_search(self);
         break;
     case NAVI_ID_RESULTS:
-        row = val2;
-        if (!g_replayPlaying)
-            row = self->results->list.selected;
+        row = self->results->list.selected;
         ui_navigation_v4_wnd_fill_entries(self, row);
         if (row != -1) {
             g_navi.selectedMember = 0;
@@ -568,17 +447,13 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
             if (g_windowMgr.kafra_move_map_service_info_wnd)
                 ui_ro_map_wnd_load_guided_map((struct UIRoMapWnd *)g_windowMgr.kafra_move_map_service_info_wnd);
             ui_window_invalidate_base(&self->frame.base);
-            ui_window_record_command(&self->frame.base, id, row, val3, val4);
         }
         ui_window_invalidate_base(&self->frame.base);
         break;
     case NAVI_ID_ENTRIES:
-        row = val2;
-        if (!g_replayPlaying)
-            row = self->entries->list.selected;
+        row = self->entries->list.selected;
         if (row != -1) {
             ui_navigation_v4_wnd_pick_entry(self, row);
-            ui_window_record_command(&self->frame.base, id, row, val3, val4);
         }
         ui_window_invalidate_base(&self->frame.base);
         break;
@@ -626,10 +501,6 @@ int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             navi_manager_build_groups(&g_navi);
             ui_navigation_v4_wnd_fill_results(self);
             ui_window_invalidate_base(&self->frame.base);
-            if (g_replayPlaying)
-                ui_combo_box_def_wnd_send_msg(&self->kind_box->def.base, NULL, COMBO_MSG_REPLAY, val1, 0, 0, 0);
-        } else if (!g_replayPlaying) {
-            ui_navigation_v4_wnd_load_navidata(self, val1);
         }
         break;
     case NAVI_MSG_ROAD_ICON:

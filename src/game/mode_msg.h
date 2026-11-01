@@ -9,12 +9,14 @@
 #include "iteminfo/item_api.h"
 #include "session/character_name.h"
 #include "platform/service.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "contents/connection_api.h"
 #ifndef GAMEMODE_MODE_MSG_H
 #define GAMEMODE_MODE_MSG_H
+
+int game_mode_to_login(void);
+int game_mode_msg_go_to_login(void);
 
 #include "game/gamemode.h"
 #include "game/client.h"
@@ -48,7 +50,6 @@ enum {
     MODE_MSG_STATUS_CHANGE = 0x1e,
     MODE_MSG_EMOTION = 0x1f,
     MODE_MSG_USER_COUNT = 0x20,
-    MODE_MSG_EMOTION_ANSWERED = 0x21,
     MODE_MSG_NPC_BUY = 0x22,
     MODE_MSG_NPC_SELL = 0x23,
     MODE_MSG_NPC_DEAL_SELL = 0x25,
@@ -219,19 +220,10 @@ enum {
     MODE_MSG_OPEN_BUYING_STORE = 0x10f,
     MODE_MSG_CLICK_BUYING_STORE = 0x110,
     MODE_MSG_TRADE_BUYING_STORE = 0x111,
-    MODE_MSG_REPLAY_START = 0x112,
-    MODE_MSG_REPLAY_STOP = 0x113,
-    MODE_MSG_REPLAY_PAUSE = 0x114,
-    MODE_MSG_REPLAY_RESUME = 0x115,
-    MODE_MSG_REPLAY_TO_LOGIN = 0x116,
-    MODE_MSG_REPLAY_SPEED_UP = 0x117,
-    MODE_MSG_REPLAY_SLOW_DOWN = 0x118,
-    MODE_MSG_REPLAY_END = 0x119,
     MODE_MSG_TRY_COLLECTION = 0x11a,
     MODE_MSG_SET_PARTY_NAME_WND = 0x11d,
     MODE_MSG_GUILD_INVITE_BY_NAME = 0x11e,
     MODE_MSG_REQ_RANKING = 0x11f,
-    MODE_MSG_CLAN_CHAT = 0x121,
     MODE_MSG_NPC_TRADE_QUIT = 0x123,
     MODE_MSG_NPC_MARKET_CLOSE = 0x124,
     MODE_MSG_CANCEL_WRITE_RODEX = 0x125,
@@ -263,7 +255,6 @@ enum {
     MODE_MSG_NPC_EXPANDED_BARTER_CLOSE = 0x142,
     MODE_MSG_OPEN_CASH_SHOP = 0x143,
     MODE_MSG_REBUILD_STATUS_BARS = 0x144,
-    MODE_MSG_USE_ITEM_WITH_TARGET = 0x145,
     MODE_MSG_RESET_SKILL = 0x146,
 };
 
@@ -382,11 +373,9 @@ int game_mode_msg_wear_equip(struct GameMode *self, int index, int location);
 int game_mode_msg_wear_equip_direct(struct GameMode *self, int index, int location);
 int game_mode_msg_takeoff_equip(struct GameMode *self, int index, int second_list);
 int game_mode_msg_use_item(struct GameMode *self, int index);
-int game_mode_msg_use_item_with_target(struct GameMode *self, int index, int b, int c);
 int game_mode_msg_chat(struct GameMode *self);
 int game_mode_msg_guild_chat(struct GameMode *self);
 int game_mode_msg_party_chat(struct GameMode *self);
-int game_mode_msg_clan_chat(struct GameMode *self);
 int game_mode_msg_battlefield_chat(struct GameMode *self);
 int game_mode_msg_broadcast(int kind);
 int game_mode_msg_whisper(struct GameMode *self, const char *target);
@@ -452,13 +441,7 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
 int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int level, int quiet);
 int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct GroundSkillUse *use, int b);
 int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struct GroundSkillTalkbox *talkbox);
-int game_mode_msg_replay_start(struct GameMode *self);
-int game_mode_msg_replay_stop(void);
-int game_mode_msg_replay_pause(struct GameMode *self, char pausing);
-int game_mode_msg_replay_to_login(int start_mode, int replay_mode);
-int game_mode_msg_replay_speed(int up);
-int game_mode_to_login(void);
-int game_mode_msg_go_to_login(void);
+
 struct RodexMail;
 int game_mode_msg_send_rodex(const struct RodexMail *mail);
 int game_mode_msg_cancel_write_rodex(void);
@@ -487,7 +470,7 @@ int game_mode_msg_quake(struct GameMode *self, int strength);
 int game_mode_msg_show_illustration(struct GameMode *self, const char *file, int position);
 int game_mode_msg_couple_request(const char *name, int which);
 int game_mode_msg_pet_act(int action);
-int game_mode_msg_command_pet(int command, int feeding);
+int game_mode_msg_command_pet(int command);
 int game_mode_msg_rename(unsigned short id, const char *name);
 int game_mode_msg_create_item(const char *text);
 int game_mode_msg_send_name(unsigned short id, const char *name);

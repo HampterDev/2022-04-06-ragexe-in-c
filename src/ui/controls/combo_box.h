@@ -71,7 +71,6 @@ void ui_combo_box_def2_wnd_add_item(struct UIWindow *self, struct String text,
                                           int value);
 void ui_combo_box_def_wnd_clear_list(struct UIWindow *self);
 void ui_combo_box_def_wnd_select(struct UIWindow *self, int index);
-int ui_combo_box_def_wnd_find_text(struct UIWindow *self, const char *text);
 static __inline void ui_combo_add(struct UIWindow *combo, const char *text)
 {
     struct String item;

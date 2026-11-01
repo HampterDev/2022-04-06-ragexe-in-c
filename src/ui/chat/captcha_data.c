@@ -93,23 +93,6 @@ int captcha_bitmap_valid(const void *bitmap, size_t size)
     return 1;
 }
 
-int captcha_data_pack(struct CaptchaData *out, const void *bitmap, size_t size)
-{
-    struct CaptchaData next;
-    uLongf length = CAPTCHA_PACKED_LIMIT;
-    if (!captcha_bitmap_valid(bitmap, size)) return 0;
-    next.bytes = malloc(CAPTCHA_PACKED_LIMIT);
-    if (!next.bytes) return 0;
-    if (compress(next.bytes, &length, bitmap, (uLong)size) != Z_OK || !length) {
-        free(next.bytes);
-        return 0;
-    }
-    next.size = length;
-    captcha_data_clear(out);
-    *out = next;
-    return 1;
-}
-
 int captcha_data_unpack(struct CaptchaData *out, const struct CaptchaData *packed)
 {
     struct CaptchaData next;

@@ -4,7 +4,6 @@
 #include "platform/code_page.h"
 #include "core/text_format.h"
 #include "session/character_name.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -60,7 +59,6 @@
 #define MSG_CHAT_COLOUR_BLACK 0x55
 #define MSG_CHAT_COLOUR_PURPLE 0x56
 #define MSG_CHAT_COLOUR_TEAL 0x1b5
-#define MSG_CHAT_COLOUR_DEFAULT 0x939
 #define MSG_CHAT_ITEM_LINK 0xbe2
 #define MSG_CHAT_NOT_ASCII 0xbe
 #define MSG_CHAT_NAME_LINK 0xafc
@@ -500,7 +498,6 @@ static void open_colours(struct UINewChatWnd *self)
     ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_BLACK), 0, 0, 0);
     ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_PURPLE), 0, 0, 0);
     ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_TEAL), 0, 0, 0);
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_DEFAULT), 0, 0, 0);
     ui_window_send(combo, NULL, COMBO_MSG_SELECT, g_session1.chatTarget, 0, 0, 0);
     ui_window_resize(combo, CHAT_COMBO_WIDTH, 0x30);
     ui_window_send(combo, NULL, COMBO_MSG_OPENER_ID, WND_ID_CHAT, 0, 0, 0);
@@ -715,8 +712,6 @@ int ui_new_chat_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
     struct ChatTab *node;
     int step, cursor_key;
 
-    if (g_replayPlaying && !replay_recorder_instance()->info.options[6])
-        return 1;
     switch (msg) {
     case CHAT_MSG_STEP_KEY:
         if (!CHAT_LINES_SHOWN)

@@ -110,15 +110,11 @@ struct String *xml_node_text(struct XmlElement *self)
             return &self->text;
         if (c != '\r' && c != '\n') {
             if (c == '&') {
-                if (strcmp(self->name, "registrationweb") != 0) {
-                    xml_entity(self, &decoded, at + 1);
-                    string_append(&self->text, string_cstr(&decoded), decoded.size);
-                    string_free(&decoded);
-                    while (at != end && *at != ';')
-                        at++;
-                } else {
-                    string_append_char(&self->text, '&');
-                }
+                xml_entity(self, &decoded, at + 1);
+                string_append(&self->text, string_cstr(&decoded), decoded.size);
+                string_free(&decoded);
+                while (at != end && *at != ';')
+                    at++;
             } else {
                 string_append_char(&self->text, c);
             }
@@ -201,9 +197,6 @@ char *xml_parse_children(struct XmlDocument *doc, struct XmlElement *parent,
             text = xml_parse_children(doc, element, after, end);
             continue;
         }
-        if (*text == '&' && strcmp(parent->name, "registrationweb") != 0)
-            while (text != end && *text != ';')
-                text++;
         text++;
     }
     return text;

@@ -21,16 +21,3 @@ int session_set_chat_macro(struct Session *session, int index, struct TextView t
     session->chatMacros.items[index] = copy;
     return 1;
 }
-
-int session_chat_macros_changed(const struct Session *session)
-{
-    size_t i;
-    if (!session || session->chatMacros.size != CHAT_MACRO_COUNT
-        || session->chatMacrosLoaded.size != CHAT_MACRO_COUNT) return 1;
-    for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
-        struct TextView current = text_array_at(&session->chatMacros, i);
-        struct TextView saved = text_array_at(&session->chatMacrosLoaded, i);
-        if (current.size != saved.size || memcmp(current.data, saved.data, current.size)) return 1;
-    }
-    return 0;
-}

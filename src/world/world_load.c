@@ -26,8 +26,6 @@ static int world_load_from(struct World *self, struct C3dWorldRes *rsw)
     struct WorldLighting lighting;
     float playerPos[3] = { 0 };
 
-    self->videoList = world_video_list_create();
-    if (!self->videoList) return 0;
     self->prebuilt = rsw->tree;
     game_set_map_bounds(self->mode, rsw->bounds);
     lighting.direction[0] = rsw->lightDir[0];

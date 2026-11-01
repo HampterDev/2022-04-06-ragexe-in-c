@@ -1,7 +1,6 @@
 #include "ui/controls/edit.h"
 #include "ui/shops/merchant_shop_make.h"
 #include "contents/mcstore_backup.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
@@ -324,10 +323,6 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
         ui_message_box(msg_str(MSG_NO_TITLE));
         return;
     }
-    if (!word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(self->shop_name))) {
-        ui_message_box(msg_str(MSG_BAD_TITLE));
-        return;
-    }
     for (i = 0; i < self->slots; i++) {
         int price = 0;
 
@@ -368,7 +363,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
     } else {
         mode_send_message(mode, MODE_REQ_OPEN_VENDING, (int)ui_edit_ctrl_get_text(self->shop_name), 1, 0, 0);
     }
-    ui_window_record_text(&self->frame.base, 0, ui_edit_ctrl_get_text(self->shop_name));
+
     owned_text_assign(&g_session1.mcStoreBackup.title,
         text_view_cstr(ui_edit_ctrl_get_text(self->shop_name)));
 }
@@ -396,36 +391,6 @@ static void msm_cancel(struct UIMerchantShopMakeWnd *self, int val2, int val3, i
         mode_send_message(mode, MODE_REQ_OPEN_VENDING, (int)ui_edit_ctrl_get_text(self->shop_name), 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_VENDING_SETUP);
     }
-    ui_window_record_command(&self->frame.base, UI_ID_CANCEL, val2, val3, val4);
-}
-
-static void msm_load_records(const char *buf, unsigned size)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != REC_VENDING_BEGIN && hdr.tag != REC_BUYING_BEGIN)
-        return;
-    while (size > pos) {
-        int wnd_id;
-        struct UIWindow *wnd;
-
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == REC_VENDING_END)
-            wnd_id = WND_ID_VENDING_ITEMS;
-        else if (hdr.tag == REC_BUYING_END)
-            wnd_id = WND_ID_BUYING_ITEMS;
-        else {
-            pos += hdr.len;
-            continue;
-        }
-        wnd = ui_window_open(wnd_id);
-        if (wnd)
-            ui_window_send_msg(wnd, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-        return;
-    }
 }
 
 int ui_merchant_shop_make_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
@@ -450,11 +415,13 @@ int ui_merchant_shop_make_wnd_send_msg(struct UIWindow *window, struct UIWindow 
                 ui_window_open(WND_ID_SHOP_INFO);
             break;
         case ID_LOAD_BACKUP: {
-            if (mcstore_request_load(&g_session1.mcStoreBackup, g_session1.ownAid,
-                    g_session1.ownGid, string_view(&g_session1.worldName), self->buying)) {
-                self->load_button->button.disabled = 1;
-                ui_window_invalidate_base(&self->load_button->button.base);
-            }
+            int result = mcstore_request_load(&g_session1.mcStoreBackup, g_session1.ownAid,
+                g_session1.ownGid, string_cstr(&g_session1.worldName), self->buying);
+            if (result == 1)
+                ui_merchant_shop_make_wnd_apply_backup(self);
+            else
+                ui_chat_line(result == 2 ? "No local shop setup has been saved yet." :
+                    "Could not load local shop setup. Existing file preserved.", 0xffff);
             break;
         }
         }
@@ -474,14 +441,6 @@ int ui_merchant_shop_make_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         return 0;
     case UI_MSG_ADD_DRAGGED:
         msm_add_dragged(self);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        msm_load_records((const char *)val1, (unsigned)val2);
         return 0;
     }
     return 0;
@@ -613,11 +572,6 @@ void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *self)
     size_t row_count;
     int i, n;
 
-    if (g_session1.mcStoreBackup.title.size == 0) {
-        self->load_button->button.disabled = 0;
-        ui_window_invalidate_base(&self->load_button->button.base);
-        return;
-    }
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->shop_name, owned_text_cstr(&g_session1.mcStoreBackup.title));
     ui_window_invalidate(self->shop_name);
     for (i = 0; i < self->slots; i++) {

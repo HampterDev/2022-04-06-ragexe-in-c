@@ -77,7 +77,7 @@ static void *resize(void *p, size_t size)
 #undef malloc
 #undef realloc
 #undef free
-static unsigned char saved[2048];
+static unsigned char saved[GUILD_EMBLEM_MAX_SIZE];
 static size_t saved_size;
 static unsigned saved_guild;
 static int saved_version, saves, changes;
@@ -143,10 +143,26 @@ int main(void)
     assert(guild_mgr_download_chunk(&manager, 0, 30, 2, NULL, 0));
     assert(guild_mgr_download_chunk(&manager, 1, 30, 2, NULL, 0));
     assert(guild_mgr_download_chunk(&manager, 2, 30, 2, NULL, 0) && saved_size == 0);
+    assert(guild_mgr_download_chunk(&manager, 0, 40, 3, NULL, 0));
+    for (i = 0; i < GUILD_EMBLEM_MAX_SIZE / sizeof data; ++i)
+        assert(guild_mgr_download_chunk(&manager, 1, 40, 3, data, sizeof data));
+    assert(manager.download.size == GUILD_EMBLEM_MAX_SIZE &&
+           manager.download.capacity == GUILD_EMBLEM_MAX_SIZE);
+    assert(guild_mgr_download_chunk(&manager, 2, 40, 3, NULL, 0));
+    assert(saved_size == GUILD_EMBLEM_MAX_SIZE);
+    for (i = 0; i < sizeof saved; ++i)
+        assert(saved[i] == (unsigned char)i);
+    i = saves;
+    assert(!guild_mgr_download_chunk(&manager, 1, 40, 3, data, 1));
+    assert(!manager.download.guild_id && !manager.download.size);
+    assert(!guild_mgr_download_chunk(&manager, 2, 40, 3, NULL, 0));
+    assert((size_t)saves == i);
+    assert(guild_mgr_download_chunk(&manager, 0, 40, 3, NULL, 0));
+    assert(!guild_mgr_download_chunk(&manager, 1, 40, 3, data, GUILD_EMBLEM_MAX_SIZE + 1));
     guild_emblem_download_destroy(&manager.download);
     guild_emblem_download_destroy(&manager.download);
     assert(!allocations && !manager.download.data && !manager.download.capacity);
     puts("emblem downloads: C storage, ordered fragments, guild/version matching, retained "
-         "capacity, failed-fragment cancellation, integer bounds and repeat cleanup passed");
+         "capacity, failed-fragment cancellation, integer/50 KiB bounds and repeat cleanup passed");
     return 0;
 }

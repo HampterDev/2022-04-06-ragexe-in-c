@@ -26,7 +26,7 @@ int main(void)
         "UIShortCutWnd", "UIQuikSlotWnd", "UIMinimapZoomWnd", "UINewChatWnd",
         "UIChatEditCtrl", "UIBitmapButton", "UIMerchantShopTitle",
         "UIPcGage", "UIPlayerGage", "UIMonsterGage", "UIChatRoomTitle",
-        "CBmpObjWnd", "UIBalloonText", "UINameBalloonText",
+        "UIBalloonText", "UINameBalloonText",
         "UICharInfoBalloonText", "UIColorTransBalloonText", "UIAchBalloonText"
     };
     const void *unknown = (const void *)(uintptr_t)1;
@@ -43,10 +43,48 @@ int main(void)
         const char *name = object_type_name(table);
         int is_window = !!(reference_valid_sources[i] & (UINT32_C(1) << OBJECT_FRAME_WINDOW));
         int has_name = is_window;
-        if (i == 524 || i == 219 || i == 252 || i == 588) {
+        if (i == 479 || i == 333 || i == 589 || i == 590 || i == 220 || i == 354 || i == 244 || i == 229 || i == 289 || i == 455 || i == 31 || i == 468 || (i >= 294 && i <= 302) || (i >= 356 && i <= 360) || i == 511 || i == 23 || i == 140 || i == 269 || i == 270 || i == 271 || i == 596 || i == 597 || i == 467 || i == 521 || i == 249 || i == 250 || i == 496 || i == 226 || i == 524 || i == 219 || i == 252 || i == 588 || i == 551 || i == 599 || i == 507 || i == 508 || i == 509 || i == 510 || i == 540 || (i >= 303 && i <= 307)) {
             static const struct { size_t index; const char *name; } retired_types[] = {
+                {479, "UIPetEvolutionWnd@@"},
+                {333, "UIGuildTipWnd@@"},
+                {589, "UITipOfTheDayWnd@@"},
+                {590, "UITipboxWnd@@"},
+                {220, "UIBookWnd@@"},
+                {354, "UIItemParamChangeDisplayWnd@@"},
+                {244, "UICheckAttendanceWnd_Banner@@"},
+                {229, "UICashShopWnd_Banner@@"},
+                {289, "UIEditctrlWnd@@"},
+                {455, "UINoticeConfirmWnd@@"},
+                {31, "CChoicePackageItemBoxWnd@@"}, {468, "UIPackageBoxNameList@@"},
+                {294, "UIEnchantWnd@@"},
+                {295, "UIEnchant_Button@@"},
+                {296, "UIEnchant_Group@@"},
+                {297, "UIEnchant_Info@@"},
+                {298, "UIEnchant_Item@@"},
+                {299, "UIEnchant_List@@"},
+                {300, "UIEnchant_ScrollBar@@"},
+                {301, "UIEnchant_Tab@@"},
+                {302, "UIEnchant_TargetList@@"},
+                {356, "UIItemReformWnd@@"}, {357, "UIItemReformWnd_DetailBtn@@"},
+                {358, "UIItemReformWnd_DetailMsg@@"}, {359, "UIItemReformWnd_Item@@"},
+                {360, "UIItemReformWnd_List@@"},
+                {511, "UIReputeWnd@@"},
+                {23, "CBmpObjWnd@@"}, {140, "CSignBoardWnd@@"},
+                {269, "UIConnectSnsWnd@@"}, {270, "UIConnectTwitterWnd@@"}, {271, "UIControlRectWnd@@"},
+                {596, "UITwitterEditCtrl3@@"}, {597, "UITwitterScrollBar@@"},
+                {467, "UIOpenRoulletteWnd@@"}, {521, "UIRoulletteWnd@@"},
+                {249, "UIClanInfoManageWnd@@"}, {250, "UIClanWnd@@"},
+                {496, "UIRecommededQuestScrollWnd@@"},
+                {226, "UICaptchaRegisterWnd@@"},
                 {524, "UIScroll@TagTextViewer@@"}, {219, "UIBmpTextButton2@@"},
-                {252, "UIColorButton@@"}, {588, "UITextureButton@@"}
+                {252, "UIColorButton@@"}, {588, "UITextureButton@@"},
+                {551, "UISkipButton@@"}, {599, "UIVideoWnd@@"},
+                {507, "UIReplayButton@@"}, {508, "UIReplayControlWnd@@"},
+                {509, "UIReplayListBox@@"}, {510, "UIReplayRECControlWnd@@"},
+                {540, "UISelectReplayDataWnd@@"},
+                {303, "UIEntryQueueHelpWnd@@"}, {304, "UIEntryQueueListBox@@"},
+                {305, "UIEntryQueueRequestWnd@@"}, {306, "UIEntryQueueStandByWnd@@"},
+                {307, "UIEntryQueueWnd@@"}
             };
             size_t entry;
             for (entry = 0; entry < sizeof retired_types / sizeof retired_types[0]; ++entry)
@@ -96,7 +134,7 @@ int main(void)
                        !strcmp(name, policy_names[policy]));
         }
     }
-    assert(named == 461 && windows == 440 && retired == 4);
+    assert(named == 409 && windows == 388 && retired == 56);
     assert(!strcmp(object_type_name(NULL), "?"));
     assert(!strcmp(object_type_name(unknown), "?"));
     assert(!strcmp(object_type_name(pages + system.dwPageSize), "?"));
@@ -105,9 +143,9 @@ int main(void)
         assert(!object_as_type(guarded, (enum ObjectType)kind));
     assert(!object_as_type(guarded, (enum ObjectType)-1));
     assert(!object_as_type(guarded, OBJECT_TYPE_COUNT));
-    assert(comparisons > 2000 && successes > 250);
+    assert(comparisons == 3375 && successes == 250);
     assert(VirtualFree(pages, 0, MEM_RELEASE));
-    printf("PASS: 607 concrete classes and four retired identities, 19 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
+    printf("PASS: 555 concrete classes and fifty-six retired identities, 17 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
     printf("PASS: %u C diagnostic names, %u window names preserve redraw and resize matches\n", named, windows);
     return 0;
 }

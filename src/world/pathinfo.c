@@ -16,13 +16,10 @@ void path_info_destroy(struct PathInfo *path)
 
 void path_info_clear(struct PathInfo *path)
 {
-    path->count = path->current = 0;
+    path->count = 0;
 }
 
-void path_info_rewind(struct PathInfo *path)
-{
-    path->current = 0;
-}
+
 
 int path_info_resize(struct PathInfo *path, size_t count)
 {
@@ -40,7 +37,6 @@ int path_info_resize(struct PathInfo *path, size_t count)
     if (count > path->count)
         memset(path->cells + path->count, 0, (count - path->count) * sizeof *path->cells);
     path->count = count;
-    path->current = 0;
     return 1;
 }
 
@@ -88,43 +84,4 @@ int path_info_next_cell(const struct PathInfo *path, uint32_t time,
     *x = (float)cells[target].x;
     *y = (float)cells[target].y;
     return segment;
-}
-
-int path_info_position_at(struct PathInfo *path, uint32_t time,
-                         float *x, float *y, int *direction)
-{
-    const struct PathCell *cells = path->cells;
-    size_t i, last;
-    float dx, dy, elapsed, duration;
-    if (!path->count) return -1;
-    last = path->count - 1;
-    if (!last) {
-        *x = (float)cells[0].x; *y = (float)cells[0].y; *direction = cells[0].dir;
-        path->current = 0;
-        return -1;
-    }
-    if (time < cells[0].time) {
-        *x = (float)cells[0].x; *y = (float)cells[0].y; *direction = cells[1].dir;
-        path->current = 0;
-        return 0;
-    }
-    i = path->current;
-    if (i > last || time < cells[i].time) i = 0;
-    for (; i < last; ++i)
-        if (cells[i].time <= time && time < cells[i + 1].time)
-            break;
-    path->current = i;
-    if (i == last) {
-        *x = (float)cells[i].x; *y = (float)cells[i].y; *direction = cells[i].dir;
-        return -1;
-    }
-    dx = (float)cells[i + 1].x - (i == 0 ? path->startX : (float)cells[i].x);
-    dy = (float)cells[i + 1].y - (i == 0 ? path->startY : (float)cells[i].y);
-    elapsed = (float)(time - cells[i].time);
-    duration = (float)(cells[i + 1].time - cells[i].time);
-    *x = (i == 0 ? path->startX : (float)cells[i].x) + elapsed * dx / duration;
-    *y = (i == 0 ? path->startY : (float)cells[i].y) + elapsed * dy / duration;
-    *direction = time < cells[i].time + ((cells[i + 1].time - cells[i].time) >> 1)
-                     ? cells[i].dir : cells[i + 1].dir;
-    return (int)i;
 }

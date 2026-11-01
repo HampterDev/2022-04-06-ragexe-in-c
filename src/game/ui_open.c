@@ -1,8 +1,6 @@
 #include "game/actor_packets.h"
 #include "game/gamemode.h"
 #include "game/ground_item_packets.h"
-#include "platform/language.h"
-#include "platform/language_api.h"
 #include "session/state.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
@@ -11,17 +9,14 @@
 #include "game/packet_handlers.h"
 #include "game/client.h"
 #include "game/item_info.h"
-#include "game/net.h"
 #include "core/msg_str.h"
 #include "game/mode_util.h"
 #include "session/session_items.h"
 #include "ui/chat/chat.h"
-#include "ui/tips/tips.h"
 
 enum {
     UI_OPEN_BANK = 0,
     UI_OPEN_STYLIST = 1,
-    UI_OPEN_CAPTCHA = 2,
     UI_OPEN_MACRO = 3,
 };
 #define WINDOW_BANK 0xfb
@@ -47,8 +42,6 @@ void game_mode_ui_open(unsigned char type)
     } else if (type == UI_OPEN_STYLIST) {
         if (ui_window_find(0x119) == 0)
             ui_window_open(0x119);
-    } else if (type == UI_OPEN_CAPTCHA) {
-        ui_window_open(0x11c);
     } else if (type == UI_OPEN_MACRO) {
         ui_window_open(0x11e);
     }
@@ -112,48 +105,9 @@ void game_mode_item_list_win_open(struct GameMode *self, const unsigned char *pk
     UIWINDOW_SENDMSG(w, 0x17, type, 0, 0, 0);
 }
 
-#pragma pack(push, 1)
-struct PACKET_ZC_READ_BOOK {
-    unsigned short id;
-    int book_id;
-    int page;
-};
-#pragma pack(pop)
-
-#define SERVICE_TYPE_GERMANY 10
-#define WINDOW_BOOK 0x6a
-enum { UIM_BOOK_OPEN = 0x5e };
-
-void game_mode_zc_read_book(struct GameMode *self, const struct PACKET_ZC_READ_BOOK *packet)
-{
-    char name[12];
-    char path[0x104];
-    struct File file;
-    struct UIWindow *w;
-
-    (void)self;
-    _itoa(packet->book_id, name, 10);
-    if (g_serviceType == SERVICE_TYPE_GERMANY)
-        sprintf(path, "%sbook\\%s.txt", g_language->folder, name);
-    else
-        sprintf(path, "book\\%s.txt", name);
-    file_construct(&file);
-    if (!file_open(&file, path, 0, 1, 0)) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)"책이 없습니다",
-                            CHAT_COLOR_RED, 0, 0);
-    } else {
-        w = ui_window_open(WINDOW_BOOK);
-        UIWINDOW_SENDMSG(w, UIM_BOOK_OPEN, (int)name, 0x117, packet->page, 0);
-        file_close(&file);
-    }
-    file_destruct(&file);
-}
-
 enum {
     WINDOW_SELECT_CART = 0x5f,
     WINDOW_STYLING_SHOP = 0x119,
-    WINDOW_TIPBOX = 0x13b,
     WINDOW_QUEST = 0x141,
     WINDOW_ATTENDANCE = 0x148,
     WINDOW_GRADE_ENCHANT = 0x157,
@@ -170,11 +124,6 @@ void game_mode_ui_open_v2(struct GameMode *self, unsigned char type, int value)
     switch (type) {
     case 0: case 1: case 2: case 3: case 4:
         game_mode_ui_open(type);
-        break;
-    case 5:
-        w = ui_window_open(WINDOW_TIPBOX);
-        if (w != 0)
-            ui_tipbox_wnd_show_tip((struct UITipboxWnd *)w, value);
         break;
     case 6:
         w = ui_window_open(WINDOW_QUEST);
@@ -298,4 +247,9 @@ void game_mode_ack_player_aid_in_range(struct GameMode *self, int count, const i
         return;
     for (i = 0; i < count; i++)
         ui_macro_reporter_wnd_add_player((struct UIMacroReporterWnd *)w, aids[i]);
+}
+
+void game_mode_zc_dressroom_open(void)
+{
+    ui_window_open(0x103);
 }

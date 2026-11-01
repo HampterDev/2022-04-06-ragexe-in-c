@@ -71,18 +71,6 @@ void game_mode_zc_talkbox_chat_contents(struct GameMode *self,
         render_object_send(talkbox, NULL, AM_TALKBOX_TEXT, (long long)(int)packet->text, 0, 0, 0);
 }
 
-void game_mode_show_actor_text(struct GameMode *self, const struct PACKET_ZC_TALKBOX_CHATCONTENTS *packet)
-{
-    char text[81];
-    struct GameActor *actor;
-
-    strncpy(text, packet->text, 80);
-    text[80] = 0;
-    actor = world_get_game_actor_by_aid(self->world, packet->aid);
-    if (actor != 0)
-        render_object_send(actor, NULL, AM_SHOW_TEXT, (long long)(int)text, 0, 0, 0);
-}
-
 void game_mode_zc_resurrection(struct GameMode *self, const struct PACKET_ZC_RESURRECTION *packet)
 {
     struct GameActor *actor = world_get_game_actor_by_aid(self->world, packet->aid);

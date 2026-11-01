@@ -81,10 +81,6 @@ void sprite_atlas_invalidate_images(struct Renderer *renderer, const struct SprI
 { (void)renderer; (void)images; assert(!count); }
 void sprite_atlas_invalidate_palette(struct Renderer *renderer, const DWORD *palette)
 { (void)renderer; assert(palette); }
-struct WorldVideoList *game_current_video_list(void) { abort(); }
-struct WorldVideo *world_video_list_open(struct WorldVideoList *list, const char *name, int loop)
-{ (void)list; (void)name; (void)loop; abort(); }
-
 static int texture_lock_depth, cache_write_depth;
 void *tex_lock_enter(int operation) { (void)operation; ++texture_lock_depth; return &texture_lock_depth; }
 void tex_lock_leave(void *section)
@@ -233,6 +229,3 @@ static void queued_texture_ownership(void)
     assert(!live_surfaces && !outstanding && !file_borrows && !g_renderer);
     puts("Queued textures: real SPR/cache reload and release, preserved pixels, all primitive queues, actual draw passes after release, duplicate handles, skipped frames and repeated teardown passed.");
 }
-
-int world_video_dimensions(struct WorldVideo *video, int *width, int *height)
-{ (void)video; (void)width; (void)height; abort(); }

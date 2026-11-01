@@ -5,8 +5,6 @@
 #include "ui/ui_std.h"
 #include "ui/chat/sub_chat_map.h"
 #include "ui/controls/listbox.h"
-#include "contents/enchant_ui.h"
-#include "contents/enchant_wnd.h"
 #include "skills/skill_bundle.h"
 #include "ui/window_types.h"
 #define SKILL_FOUND(skill) ((skill)->found)
@@ -191,53 +189,6 @@ static void skill_trees(void)
     assert(live_blocks == 1);
     tree_free(&bundle.tree_tabs, NULL);
     assert(live_blocks == 0);
-}
-
-struct SkillVisit {
-    int ids[8], levels[8];
-    unsigned seen, stop_after;
-};
-
-static unsigned char remember_skill(void *context, const struct SkillInfo *info)
-{
-    struct SkillVisit *visit = context;
-    assert(visit->seen < 8);
-    visit->ids[visit->seen] = info->id;
-    visit->levels[visit->seen++] = info->level;
-    return visit->seen < visit->stop_after ? 2 : 0;
-}
-
-static void skill_tree_walk(void)
-{
-    struct PlayerSkillBundle bundle = {0};
-    struct SkillInfo info = {0};
-    struct SkillVisit visit = {{0}, {0}, 0, 8};
-    unsigned before;
-
-    tree_init(&bundle.tree_tabs);
-    before = allocations;
-    skill_tree_visit(&bundle.tree_tabs, NULL, NULL);
-    skill_tree_visit(&bundle.tree_tabs, remember_skill, &visit);
-    assert(!visit.seen && allocations == before);
-    info.id = 30; info.level = 3;
-    player_skill_bundle_add_tree_skill(&bundle, INT_MAX, &info);
-    info.id = 10; info.level = 1;
-    player_skill_bundle_add_tree_skill(&bundle, INT_MIN, &info);
-    info.id = 20; info.level = 2;
-    player_skill_bundle_add_tree_skill(&bundle, -1, &info);
-    info.id = 21; info.level = 4;
-    player_skill_bundle_add_tree_skill(&bundle, -1, &info);
-    before = allocations;
-    skill_tree_visit(&bundle.tree_tabs, remember_skill, &visit);
-    assert(allocations == before && visit.seen == 4);
-    assert(visit.ids[0] == 10 && visit.ids[1] == 20 && visit.ids[2] == 21 && visit.ids[3] == 30);
-    assert(visit.levels[0] == 1 && visit.levels[1] == 2 && visit.levels[2] == 4 && visit.levels[3] == 3);
-    visit.seen = 0; visit.stop_after = 2;
-    skill_tree_visit(&bundle.tree_tabs, remember_skill, &visit);
-    assert(allocations == before && visit.seen == 2 && visit.ids[1] == 20);
-    player_skill_bundle_clear_trees(&bundle);
-    tree_free(&bundle.tree_tabs, NULL);
-    assert(!live_blocks);
 }
 
 static void skill_values(void)
@@ -625,11 +576,9 @@ int main(void)
     ui_map_entries();
     integer_maps();
     skill_trees();
-    skill_tree_walk();
     skill_values();
     skill_bundle_values();
     puts("skill values: independent copies, capacity reuse/growth, empty/self assignment and cleanup passed");
-    puts("skill traversal: empty trees, borrowed context, key/list order and early stop passed");
     puts("map nodes: signed keys, 64-bit values, owned lists/vectors and skill-tree cleanup passed");
     return 0;
 }

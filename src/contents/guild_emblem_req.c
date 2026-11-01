@@ -3,7 +3,7 @@
 #include <mmsystem.h>
 #include <stdint.h>
 #include <string.h>
-#include "web/emblem.h"
+#include "contents/guild_emblem_transport.h"
 #include "contents/guild_emblem_req.h"
 #include "core/fatal.h"
 #include "core/memory.h"
@@ -131,7 +131,10 @@ void emblem_bundle_process(struct GuildEmblemReqBundle *bundle)
             continue;
         if (!request.guild)
             return;
-        emblem_mgr_download(g_emblemMgr, request.guild, request.version);
+        if (!guild_emblem_request(request.guild, request.version)) {
+            emblem_bundle_queue(bundle, request.guild, request.version);
+            return;
+        }
         sent.request = request;
         sent.sent_at = timeGetTime();
         queue_append(&bundle->sent, &sent, sizeof sent);

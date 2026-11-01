@@ -127,7 +127,6 @@ void navi_manager_reset_guide(struct NaviManager *self)
     self->walkDistance = 0;
     self->routeLinks.last = self->routeLinks.first;
     self->routeStep = -1;
-    path_info_rewind(&self->path);
     self->showPath = 0;
     self->ground = NULL;
     self->pathDots.last = self->pathDots.first;
@@ -326,7 +325,6 @@ void navi_manager_reset(struct NaviManager *self, unsigned char all)
     self->routeLinks.last = self->routeLinks.first;
     self->arriveNearTarget = 0;
     self->routeStep = -1;
-    path_info_rewind(&self->path);
     self->showPath = 0;
     self->ground = NULL;
     self->guideState = NAVI_GUIDE_OFF;

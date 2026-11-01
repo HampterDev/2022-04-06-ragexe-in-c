@@ -1,6 +1,6 @@
 void language_set_selection(struct Language * arg0, int arg1, int arg2) { abort(); }
 void mode_set_cursor_action(struct Mode * arg0, int arg1) { abort(); }
-int renderer_save_jpeg_region(struct Renderer * arg0, const char * arg1, const RECT * arg2) { abort(); }
+
 void * res_mgr_get(struct ResMgr * arg0, const char * arg1) { abort(); }
 int guild_wnd_info_is_valid_info(struct GuildWndInfo * arg0) { abort(); }
 void guild_wnd_info_make_default(struct GuildWndInfo * arg0) { abort(); }
@@ -32,7 +32,7 @@ const char * ui_edit_ctrl_get_text(struct UIWindow * arg0) { abort(); }
 BYTE ui_edit_ctrl_is_focusable(struct UIWindow * arg0) { abort(); }
 struct UIFrameWnd * ui_frame_wnd_construct(struct UIFrameWnd * arg0, int arg1) { abort(); }
 void ui_frame_wnd_destruct(struct UIFrameWnd * arg0) { abort(); }
-int ui_frame_wnd_get_records(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 void ui_frame_wnd_move(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_move_delta(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_l_btn_down(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
@@ -63,10 +63,6 @@ void ui_skin_color_chip(struct SkinMgr * arg0, int arg1, int arg2, int * arg3, i
 const char * ui_skin_path(const char * arg0) { abort(); }
 struct UIWindow * ui_static_text_construct(struct UIWindow * arg0) { abort(); }
 void ui_static_text_set_text_ellipsis(struct UIWindow * arg0, const char * arg1) { abort(); }
-BYTE ui_window_mgr_add_web_browser(struct UIWindowMgr * arg0, HWND arg1, struct WebBrowser * arg2) { abort(); }
-void ui_window_mgr_delete_web_browser(struct UIWindowMgr * arg0, HWND arg1) { abort(); }
-struct WebBrowser * ui_window_mgr_find_web_browser(struct UIWindowMgr * arg0, HWND arg1) { abort(); }
-struct WebBrowser * ui_window_mgr_get_login_browser(struct UIWindowMgr * arg0, int arg1, int arg2) { abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr * arg0, int arg1) { abort(); }
 int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
 void ui_window_mgr_set_focus_edit(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
@@ -84,7 +80,7 @@ void ui_window_fill_canvas(struct UIWindow * arg0, DWORD arg1, const RECT * arg2
 void ui_window_fill_rect(struct UIWindow * arg0, int arg1, int arg2, int arg3, int arg4, COLORREF arg5) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 BYTE ui_window_is_hit_testable_base(struct UIWindow * arg0) { abort(); }
 struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort(); }
@@ -124,23 +120,17 @@ void ui_window_on_hover_enter_base(struct UIWindow * arg0) { abort(); }
 void ui_window_on_hover_leave_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_focusable_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_click_through_base(struct UIWindow * arg0) { abort(); }
-struct WebBrowser * web_browser_construct(struct WebBrowser * arg0) { abort(); }
-int web_browser_create_child(struct WebBrowser * arg0, HWND arg1, HINSTANCE arg2, int arg3, int arg4) { abort(); }
-void web_browser_show(struct WebBrowser * arg0, BYTE arg1) { abort(); }
 struct Mode * client_current_mode(void) { abort(); }
 int crt_snprintf_s(char * arg0, size_t arg1, size_t arg2, const char * arg3, ...) { abort(); }
-struct C3dDevice g_3dDevice;
 char g_clientDir[] = {0};
 struct GuildInfo g_guildInfo;
 HMODULE g_hInstance;
 HWND g_hMainWnd;
 struct Language * g_language;
-struct Mouse g_mouse;
 struct Renderer * g_renderer;
 struct ResMgr * g_resMgr(void) { abort(); }
 struct Session g_session1;
 struct SkinMgr g_skinMgr;
-struct TwitterDataMgr * g_twitterDataMgr;
 struct UIWindowMgr g_windowMgr;
 void * mem_alloc(size_t arg0) { abort(); }
 void mem_free(void * arg0) { abort(); }
@@ -155,11 +145,9 @@ void string_append_cstr(struct String *arg0, const char *arg1) { abort(); }
 void string_format(struct String *arg0, const char *arg1, ...) { abort(); }
 struct TextView text_array_at(const struct TextArray * arg0, size_t arg1) { abort(); }
 void text_array_clear(struct TextArray * arg0) { abort(); }
-const char * twitter_auth_url(const struct TwitterDataMgr * arg0) { abort(); }
-int twitter_has_service(const struct TwitterDataMgr * arg0) { abort(); }
-void twitter_on_sent(struct TwitterDataMgr * arg0, int arg1) { abort(); }
-int twitter_send(struct TwitterDataMgr * arg0, struct TextView arg1, struct TextView arg2) { abort(); }
+
+
+
+
 struct UIWindow * ui_window_find(int arg0) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
-void web_browser_destruct(struct WebBrowser * arg0) { abort(); }
-int web_browser_navigate(struct WebBrowser * arg0, const char * arg1) { abort(); }

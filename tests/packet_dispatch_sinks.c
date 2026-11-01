@@ -10,7 +10,6 @@
 struct AchievementEntry;
 struct BuyingStoreEntry;
 struct Connection;
-struct EntryQueueMgr;
 struct GameMode;
 struct RagConnection;
 struct Session;
@@ -27,22 +26,18 @@ struct PACKET_ZC_ACK_ADD_ITEM_RODEX;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX2;
 struct PACKET_ZC_ACK_ALL_RODEX_LIST;
 struct PACKET_ZC_ACK_CLOSE_GUILD_STORAGE;
-struct PACKET_ZC_ACK_CLOSE_ROULETTE;
 struct PACKET_ZC_ACK_DELETE_RODEX;
 struct PACKET_ZC_ACK_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_ACK_GENERATE_ROULETTE;
 struct PACKET_ZC_ACK_GUILDSTORAGE_LOG;
 struct PACKET_ZC_ACK_GUILDSTORAGE_LOG2;
 struct PACKET_ZC_ACK_MERGE_ITEM;
 struct PACKET_ZC_ACK_OPEN_GUILD_STORAGE;
 struct PACKET_ZC_ACK_OPEN_MSGBOX_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_ACK_OPEN_ROULETTE;
 struct PACKET_ZC_ACK_OPEN_WRITE_RODEX;
 struct PACKET_ZC_ACK_READ_RODEX2;
 struct PACKET_ZC_ACK_REMOVE_RODEX_ITEM;
 struct PACKET_ZC_ACK_REQ_DISCONNECT;
 struct PACKET_ZC_ACK_RODEX_LIST;
-struct PACKET_ZC_ACK_ROULEITTE_INFO;
 struct PACKET_ZC_ACK_SEND_RODEX;
 struct PACKET_ZC_ACK_STATUS_GM;
 struct PACKET_ZC_ACK_TOUSESKILL;
@@ -50,7 +45,6 @@ struct PACKET_ZC_ACK_ZENY_FROM_RODEX;
 struct PACKET_ZC_BOSS_INFO;
 struct PACKET_ZC_CHANGE_GUILD;
 struct PACKET_ZC_CHANGE_ITEM_OPTION3;
-struct PACKET_ZC_CLANINFO;
 struct PACKET_ZC_COMBODELAY;
 struct PACKET_ZC_COUPLESTATUS;
 struct PACKET_ZC_C_MARKERINFO;
@@ -68,13 +62,10 @@ struct PACKET_ZC_HP_INFO_TINY;
 struct PACKET_ZC_HUNTINGLIST;
 struct PACKET_ZC_INFO_REMAINTIME;
 struct PACKET_ZC_MONSTER_INFO;
-struct PACKET_ZC_NOTIFY_CLAN_CHAT;
-struct PACKET_ZC_NOTIFY_CLAN_CONNECTINFO;
 struct PACKET_ZC_NOTIFY_MAPINFO;
 struct PACKET_ZC_PAR_CHANGE;
 struct PACKET_ZC_PCBANG_EFFECT;
 struct PACKET_ZC_QUEST_NOTIFY_EFFECT;
-struct PACKET_ZC_READ_BOOK;
 struct PACKET_ZC_REPLY_REMAINTIME;
 struct PACKET_ZC_REQ_GUILD_INVITE;
 struct PACKET_ZC_RESULT_MAKE_GUILD;
@@ -207,7 +198,6 @@ struct PacketPrNpcState;
 struct PacketPurchaseItemListFromMc4;
 struct PacketPurchaseMyItemList3;
 struct PacketRecoverPenaltyOverweight;
-struct PacketRecvRouletteItem;
 struct PacketRepairItemList;
 struct PacketRepairItemList2;
 struct PacketRoomEntry;
@@ -225,72 +215,14 @@ struct PacketStandEntry5;
 struct PacketStandEntry8;
 struct PacketStandEntryNpc;
 struct PacketTryResult;
-struct PacketUpdateRouletteCoin;
 struct PacketUseSkillAck;
 struct PacketVendingList4;
 struct PacketWarpList;
 struct PacketWarpList2;
 struct PacketWeaponItemList;
 struct PacketWeaponRefine;
-struct ReputeEntry;
 struct UserConfigEntry;
 struct VendingEntry;
-
-void entry_queue_mgr_on_answer_result(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnAnswerResult");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_apply_result(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnApplyResult");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_cancel_result(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnCancelResult");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_forward(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnForward");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_ignored(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnIgnored");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_leave(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnLeave");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_request(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnRequest");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void entry_queue_mgr_on_status(struct EntryQueueMgr *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("CEntryQueueMgr_OnStatus");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
 
 void game_mode_item_composition_list(struct GameMode *arg0, const unsigned char *arg1)
 {
@@ -869,11 +801,6 @@ void game_mode_friends_state(const unsigned char *arg0)
     packet_trace_pointer(arg0);
 }
 
-void game_mode_game_guard_auth(void)
-{
-    packet_trace_call("GameMode_GameGuardAuth");
-}
-
 void game_mode_get_user_config_list(struct GameMode *arg0, int arg1,
                                 const struct UserConfigEntry *arg2)
 {
@@ -1383,13 +1310,7 @@ void game_mode_on_item_pickup_party2(struct GameMode *arg0, const struct PacketI
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_item_reform_ack(struct GameMode *arg0, unsigned char arg1, unsigned short arg2)
-{
-    packet_trace_call("GameMode_OnItemReformAck");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-}
+
 
 void game_mode_on_latest_rodex_list(struct GameMode *arg0, const struct PacketLatestRodexList *arg1)
 {
@@ -1608,12 +1529,7 @@ void game_mode_on_open_limited_sale_tool(struct GameMode *arg0)
     packet_trace_pointer(arg0);
 }
 
-void game_mode_on_open_reform_ui(struct GameMode *arg0, int arg1)
-{
-    packet_trace_call("GameMode_OnOpenReformUi");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
+
 
 void game_mode_on_open_ui_assistant_buying(struct GameMode *arg0, unsigned char arg1)
 {
@@ -1699,13 +1615,6 @@ void game_mode_on_recovery(struct GameMode *arg0, const void *arg1, int arg2)
     packet_trace_value(arg2);
 }
 
-void game_mode_on_recv_roulette_item(struct GameMode *arg0, const struct PacketRecvRouletteItem *arg1)
-{
-    packet_trace_call("GameMode_OnRecvRouletteItem");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_on_refining_material_list(struct GameMode *arg0, short arg1, unsigned char arg2,
                                      const void *arg3, unsigned char arg4)
 {
@@ -1732,22 +1641,7 @@ void game_mode_on_repair_item_list2(struct GameMode *arg0, const struct PacketRe
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_replay_packet(struct GameMode *arg0, char *arg1)
-{
-    packet_trace_call("GameMode_OnReplayPacket");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
 
-void game_mode_on_repute_info(struct GameMode *arg0, unsigned char arg1, unsigned int arg2,
-                           const struct ReputeEntry *arg3)
-{
-    packet_trace_call("GameMode_OnReputeInfo");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-    packet_trace_pointer(arg3);
-}
 
 void game_mode_on_req_ack_agit_investment(struct GameMode *arg0, unsigned char arg1, int arg2, int arg3)
 {
@@ -1772,13 +1666,7 @@ void game_mode_on_req_au_bot(struct GameMode *arg0, int arg1)
     packet_trace_value(arg1);
 }
 
-void game_mode_on_response_enchant(struct GameMode *arg0, int arg1, int arg2)
-{
-    packet_trace_call("GameMode_OnResponseEnchant");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-}
+
 
 void game_mode_on_search_limited_sale_item(struct GameMode *arg0, short arg1, int arg2)
 {
@@ -1914,29 +1802,9 @@ void game_mode_on_try_collection(struct GameMode *arg0, const struct PacketTryRe
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_ui_open_repute(struct GameMode *arg0, uint64_t arg1, uint64_t arg2)
-{
-    packet_trace_call("GameMode_OnUiOpenRepute");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-}
 
-void game_mode_on_ui_open_v3(struct GameMode *arg0, unsigned char arg1, uint64_t arg2)
-{
-    packet_trace_call("GameMode_OnUiOpenV3");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-}
 
-void game_mode_on_update_roulette_coin(struct GameMode *arg0,
-                                   const struct PacketUpdateRouletteCoin *arg1)
-{
-    packet_trace_call("GameMode_OnUpdateRouletteCoin");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
+
 
 void game_mode_on_use_skill_ack(struct GameMode *arg0, const struct PacketUseSkillAck *arg1, int arg2)
 {
@@ -2218,20 +2086,6 @@ void game_mode_zc_ack_change_title(struct GameMode *arg0, unsigned int arg1, int
     packet_trace_value(arg2);
 }
 
-void game_mode_zc_ack_clan_leave(struct GameMode *arg0)
-{
-    packet_trace_call("GameMode_Zc_Ack_Clan_Leave");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_ack_close_roulette(struct GameMode *arg0,
-                                    const struct PACKET_ZC_ACK_CLOSE_ROULETTE *arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Close_Roulette");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_ack_create_chatroom(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Ack_Create_Chatroom");
@@ -2277,14 +2131,6 @@ void game_mode_zc_ack_failed_all_rodex_list(struct GameMode *arg0)
 {
     packet_trace_call("GameMode_Zc_Ack_Failed_All_Rodex_List");
     packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_ack_generate_roulette(struct GameMode *arg0,
-                                       const struct PACKET_ZC_ACK_GENERATE_ROULETTE *arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Generate_Roulette");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
 }
 
 void game_mode_zc_ack_give_manner_point(const unsigned char *arg0)
@@ -2371,14 +2217,6 @@ void game_mode_zc_ack_open_msg_box_extend_body_item_size(
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_ack_open_roulette(struct GameMode *arg0,
-                                   const struct PACKET_ZC_ACK_OPEN_ROULETTE *arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Open_Roulette");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_ack_open_write_rodex(struct GameMode *arg0,
                                       const struct PACKET_ZC_ACK_OPEN_WRITE_RODEX *arg1)
 {
@@ -2457,14 +2295,6 @@ void game_mode_zc_ack_req_join_guild(const unsigned char *arg0)
 void game_mode_zc_ack_rodex_list(struct GameMode *arg0, const struct PACKET_ZC_ACK_RODEX_LIST *arg1)
 {
     packet_trace_call("GameMode_Zc_Ack_Rodex_List");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_ack_roulette_info(struct GameMode *arg0,
-                                   const struct PACKET_ZC_ACK_ROULEITTE_INFO *arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Roulette_Info");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -2805,13 +2635,6 @@ void game_mode_zc_check_receive_character_name2(struct GameMode *arg0, int arg1,
     packet_trace_value(arg2);
     packet_trace_value(arg3);
     packet_trace_pointer(arg4);
-}
-
-void game_mode_zc_clan_info(struct GameMode *arg0, const struct PACKET_ZC_CLANINFO *arg1)
-{
-    packet_trace_call("GameMode_Zc_ClanInfo");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
 }
 
 void game_mode_zc_clear_dialog(struct GameMode *arg0, const unsigned char *arg1)
@@ -3409,18 +3232,6 @@ void game_mode_zc_notify_chat(struct GameMode *arg0, const unsigned char *arg1)
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_notify_clan_chat(const struct PACKET_ZC_NOTIFY_CLAN_CHAT *arg0)
-{
-    packet_trace_call("GameMode_Zc_Notify_Clan_Chat");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_notify_clan_connect_info(const struct PACKET_ZC_NOTIFY_CLAN_CONNECTINFO *arg0)
-{
-    packet_trace_call("GameMode_Zc_Notify_Clan_ConnectInfo");
-    packet_trace_pointer(arg0);
-}
-
 void game_mode_zc_notify_font(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Notify_Font");
@@ -3987,13 +3798,6 @@ void game_mode_zc_pet_act(struct GameMode *arg0, unsigned char *arg1)
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_pet_evolution_result(struct GameMode *arg0, unsigned int arg1)
-{
-    packet_trace_call("GameMode_Zc_Pet_Evolution_Result");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
 void game_mode_zc_play_npc_bgm(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Play_Npc_Bgm");
@@ -4076,13 +3880,6 @@ void game_mode_zc_quest_notify_effect(struct GameMode *arg0,
                                      const struct PACKET_ZC_QUEST_NOTIFY_EFFECT *arg1)
 {
     packet_trace_call("GameMode_Zc_Quest_Notify_Effect");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_read_book(struct GameMode *arg0, const struct PACKET_ZC_READ_BOOK *arg1)
-{
-    packet_trace_call("GameMode_Zc_Read_Book");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -4781,64 +4578,10 @@ void game_mode_zc_whisper_list(struct GameMode *arg0, const unsigned char *arg1)
     packet_trace_pointer(arg1);
 }
 
-void net_send_header_only(unsigned short arg0)
-{
-    packet_trace_call("Net_SendHeaderOnly");
-    packet_trace_value(arg0);
-}
-
-void net_send_header_only2(unsigned short arg0)
-{
-    packet_trace_call("Net_SendHeaderOnly2");
-    packet_trace_value(arg0);
-}
-
 void connection_reset_queues(struct Connection *arg0)
 {
     packet_trace_call("connection_reset_queues");
     packet_trace_pointer(arg0);
-}
-
-int game_replay_chat_room(struct GameMode *arg0, const void *arg1, size_t arg2)
-{
-    packet_trace_call("game_replay_chat_room");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-    packet_trace_value(arg2);
-    return 0;
-}
-
-int game_replay_navigation_map(const void *arg0, size_t arg1)
-{
-    packet_trace_call("game_replay_navigation_map");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    return 0;
-}
-
-int game_replay_navigation_results(const void *arg0, size_t arg1)
-{
-    packet_trace_call("game_replay_navigation_results");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    return 0;
-}
-
-int game_replay_navigation_route(const void *arg0, size_t arg1)
-{
-    packet_trace_call("game_replay_navigation_route");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    return 0;
-}
-
-int game_replay_whisper(struct GameMode *arg0, const void *arg1, size_t arg2)
-{
-    packet_trace_call("game_replay_whisper");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-    packet_trace_value(arg2);
-    return 0;
 }
 
 int ranking_receive_ids(const void *arg0, size_t arg1)
@@ -4896,3 +4639,7 @@ int skill_cooldowns_receive_list2(const void *arg0, size_t arg1)
     packet_trace_value(arg1);
     return 0;
 }
+
+struct AdventurerAgencyMgr *g_adventurerAgency;
+void adventurer_agency_receive(struct AdventurerAgencyMgr *self, const void *p, size_t size)
+{ (void)self; packet_trace_call("adventurer_agency_receive"); packet_trace_pointer(p); packet_trace_value(size); }

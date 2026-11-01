@@ -93,10 +93,8 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_candidate_wnd_ops reference_vtables[223].slots
 #define ui_captcha_image_ops reference_vtables[224].slots
 #define ui_captcha_preview_wnd_ops reference_vtables[225].slots
-#define ui_captcha_register_wnd_ops reference_vtables[226].slots
 #define ui_card_item_illust_wnd_ops reference_vtables[227].slots
 #define ui_cash_shop_wnd_ops reference_vtables[228].slots
-#define ui_cash_shop_wnd_banner_ops reference_vtables[229].slots
 #define ui_cash_shop_wnd_cart_ops reference_vtables[230].slots
 #define ui_cash_shop_wnd_cart_item_ops reference_vtables[231].slots
 #define ui_cash_shop_wnd_item_ops reference_vtables[232].slots
@@ -111,13 +109,10 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_chat_room_title_ops reference_vtables[241].slots
 #define ui_chat_room_wnd_ops reference_vtables[242].slots
 #define ui_check_attendance_wnd_ops reference_vtables[243].slots
-#define ui_check_attendance_wnd_banner_ops reference_vtables[244].slots
 #define ui_check_box_ops reference_vtables[245].slots
 #define ui_choose_sell_buy_wnd_ops reference_vtables[246].slots
 #define ui_choose_warp_wnd_ops reference_vtables[247].slots
 #define ui_choose_wnd_ops reference_vtables[248].slots
-#define ui_clan_info_manage_wnd_ops reference_vtables[249].slots
-#define ui_clan_wnd_ops reference_vtables[250].slots
 #define ui_cnt_wnd_ops reference_vtables[251].slots
 #define UIColorButton_ops reference_vtables[252].slots
 #define ui_color_trans_balloon_text_ops reference_vtables[253].slots
@@ -156,7 +151,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_edit_ctrl_currency_ops reference_vtables[286].slots
 #define ui_edit_ctrl_custom_ops reference_vtables[287].slots
 #define ui_edit_ctrl_old_list_ops reference_vtables[288].slots
-#define ui_editctrl_wnd_ops reference_vtables[289].slots
 #define ui_email_address_wnd_ops reference_vtables[290].slots
 #define ui_emblem_wnd_ops reference_vtables[291].slots
 #define ui_emotion_list_wnd_ops reference_vtables[292].slots
@@ -170,11 +164,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define enchant_scrollbar_ops reference_vtables[300].slots
 #define enchant_tab_ops reference_vtables[301].slots
 #define enchant_target_list_ops reference_vtables[302].slots
-#define ui_entry_queue_help_wnd_ops reference_vtables[303].slots
-#define ui_entry_queue_list_box_ops reference_vtables[304].slots
-#define ui_entry_queue_request_wnd_ops reference_vtables[305].slots
-#define ui_entry_queue_stand_by_wnd_ops reference_vtables[306].slots
-#define ui_entry_queue_wnd_ops reference_vtables[307].slots
 #define ui_equip_wnd_ops reference_vtables[308].slots
 #define ui_esc_option_wnd_ops reference_vtables[309].slots
 #define ui_exchange_accept_wnd_ops reference_vtables[310].slots
@@ -322,7 +311,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_normal_mb_ops reference_vtables[452].slots
 #define ui_note_wnd_ops reference_vtables[453].slots
 #define ui_note_wnd_scroll_ops reference_vtables[454].slots
-#define ui_notice_confirm_wnd_ops reference_vtables[455].slots
 #define ui_notice_message_box_lock_sell_item_ops reference_vtables[456].slots
 #define ui_notice_wnd_ops reference_vtables[457].slots
 #define ui_notify_item_obtain_wnd_ops reference_vtables[458].slots
@@ -334,7 +322,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_npc_text_edit_dialog_wnd_ops reference_vtables[464].slots
 #define ui_ongoing_quest_scroll_wnd_ops reference_vtables[465].slots
 #define ui_open_mail_box_wnd_ops reference_vtables[466].slots
-#define ui_open_roullette_wnd_ops reference_vtables[467].slots
 #define ui_package_box_name_list_ops reference_vtables[468].slots
 #define ui_para_item_purchase_wnd_ops reference_vtables[469].slots
 #define ui_para_item_shop_wnd_ops reference_vtables[470].slots
@@ -346,7 +333,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_password_wnd_ops reference_vtables[476].slots
 #define ui_pc_gage_ops reference_vtables[477].slots
 #define ui_pet_egg_list_wnd_ops reference_vtables[478].slots
-#define ui_pet_evolution_wnd_ops reference_vtables[479].slots
 #define ui_pet_info_bar_graph_ops reference_vtables[480].slots
 #define ui_pet_info_wnd_ops reference_vtables[481].slots
 #define ui_pet_taming_deceive_wnd_ops reference_vtables[482].slots
@@ -363,7 +349,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_radio_btn_ops reference_vtables[493].slots
 #define ui_rebirth_wnd_ops reference_vtables[494].slots
 #define ui_recharge_gage_ops reference_vtables[495].slots
-#define ui_recommeded_quest_scroll_wnd_ops reference_vtables[496].slots
 #define ui_refining_wnd_ops reference_vtables[497].slots
 #define ui_refining_btn_again_ops reference_vtables[498].slots
 #define ui_refining_btn_refining_ops reference_vtables[499].slots
@@ -374,10 +359,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_renew_detail_quest_info_wnd_ops reference_vtables[504].slots
 #define ui_renew_quest_scroll_bar_ops reference_vtables[505].slots
 #define ui_renew_quest_wnd_ops reference_vtables[506].slots
-#define ui_replay_button_ops reference_vtables[507].slots
-#define ui_replay_control_wnd_ops reference_vtables[508].slots
-#define ui_replay_list_box_ops reference_vtables[509].slots
-#define ui_replay_rec_control_wnd_ops reference_vtables[510].slots
 #define repute_wnd_ops reference_vtables[511].slots
 #define ui_request_join_party_wnd_ops reference_vtables[512].slots
 #define ui_resizer_ops reference_vtables[513].slots
@@ -388,7 +369,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_rodex_edit_ctrl3_ops reference_vtables[518].slots
 #define ui_rodex_inbox_wnd_ops reference_vtables[519].slots
 #define ui_rodex_scroll_bar_ops reference_vtables[520].slots
-#define ui_roullette_wnd_ops reference_vtables[521].slots
 #define ui_round_box_tooltip_wnd_ops reference_vtables[522].slots
 #define ui_say_dialog_wnd_ops reference_vtables[523].slots
 #define UITagTextViewer_UIScroll_ops reference_vtables[524].slots
@@ -407,7 +387,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_seek_party_wnd_ops reference_vtables[537].slots
 #define ui_sel_char_for_u_server_wnd_ops reference_vtables[538].slots
 #define ui_select_cart_wnd_ops reference_vtables[539].slots
-#define ui_select_replay_data_wnd_ops reference_vtables[540].slots
 #define ui_select_server_wnd_ops reference_vtables[541].slots
 #define ui_serach_store_info_wnd_ops reference_vtables[542].slots
 #define ui_server_list_box_ops reference_vtables[543].slots
@@ -418,7 +397,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_skill_describe_wnd_ops reference_vtables[548].slots
 #define ui_skill_list_wnd_ops reference_vtables[549].slots
 #define ui_skill_name_change_wnd_ops reference_vtables[550].slots
-#define ui_skip_button_ops reference_vtables[551].slots
 #define ui_slot_bitmap_ops reference_vtables[552].slots
 #define ui_slot_bmp_button_ops reference_vtables[553].slots
 #define ui_slot_for_select_wnd_ops reference_vtables[554].slots
@@ -466,7 +444,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_twitter_edit_ctrl3_ops reference_vtables[596].slots
 #define ui_twitter_scroll_bar_ops reference_vtables[597].slots
 #define ui_vertical_name_balloon_text_ops reference_vtables[598].slots
-#define ui_video_wnd_ops reference_vtables[599].slots
 #define ui_view_camera_info_wnd_ops reference_vtables[600].slots
 #define ui_wait_wnd_ops reference_vtables[601].slots
 #define ui_weapon_refine_wnd_ops reference_vtables[602].slots

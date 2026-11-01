@@ -4,8 +4,6 @@
 #include "session/skill_queries.h"
 #include "skills/skill_info.h"
 #include "contents/client_lua_calls.h"
-#include "game/replay_actor_events.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "game/context.h"
@@ -18,7 +16,6 @@
 #include "game/skill_list.h"
 #include "game/mode_util.h"
 #include "platform/language.h"
-#include "replay/replay.h"
 #include "session/session_jobs.h"
 #include "session/session_state.h"
 
@@ -138,8 +135,6 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
     struct Player *player;
     int skill_id, target;
 
-    if (g_replayPlaying)
-        return 0;
     if (!quiet) {
         player = self->world->player;
         if (player->mounted && !session_is_homunculus_skill(&g_session1, info->id)
@@ -231,7 +226,7 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
     }
     if (game_mode_is_blocking_window_open() == 1)
         return 0;
-    game_mode_record_mode_msg(self, MODE_MSG_USE_SKILL, skill_id, target, level);
+
     switch (skill_id) {
     case 10000:
         if (target == g_session1.aid)
@@ -390,11 +385,6 @@ int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struc
         return 0;
     }
     _snprintf_s(packet.text, 0x15, (size_t)-1, "%s", talkbox->text);
-    if (word_filter_contains(&g_nameFilter, packet.text)) {
-        chat_refresh();
-        chat_print_msg(0x32, COLOR_SKILL_REFUSED);
-        return 0;
-    }
     if (packet.level == 0) {
         packet.level = (unsigned short)skill_table_find(&g_session1.skills, &skill, packet.skill_id)->level;
         skill_info_destruct(&skill);

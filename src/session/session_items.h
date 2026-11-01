@@ -79,7 +79,6 @@ struct Vec *session_inventory_indices(struct Session *self, struct Vec *out, int
                                                        BYTE onlyIdentified);
 struct ItemInfo *session_get_inventory_item_by_id(struct Session *self, struct ItemInfo *out,
                                                           int itemId, BYTE requireIdentified);
-int session_inventory_count(struct Session *self, int itemId);
 DWORD session_get_item_dis_color(const struct ItemInfo *item);
 
 struct ItemInfo *session_get_store_setup_item_by_index(struct Session *self, struct ItemInfo *out, int index);

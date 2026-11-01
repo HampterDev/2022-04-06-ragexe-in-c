@@ -137,8 +137,6 @@ void render_object_set_script_step_frames(struct RenderObject *self, unsigned ch
 
 void render_object_set_motion_delay(struct RenderObject *self, float delay)
 {
-    if (g_replayPlaying)
-        delay = replay_recorder_duration_scale(replay_recorder_instance()) * delay;
     if (delay > 0.0f)
         self->motion_delay = delay;
 }

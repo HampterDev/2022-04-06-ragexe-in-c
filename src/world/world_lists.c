@@ -25,7 +25,6 @@ struct World *world_construct(struct World *self)
     self->prebuilt = NULL;
     self->mode = NULL;
     self->attr = NULL;
-    self->videoList = NULL;
     self->ground = NULL;
     self->player = NULL;
     self->is_pvp = self->is_siege = self->is_battleground = 0;

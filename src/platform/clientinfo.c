@@ -15,8 +15,6 @@ unsigned char g_startupSecondMod4;
 const char *g_serverAddress = "";
 const char *g_serverPort = "";
 const char *g_serverDomain = "";
-const char *g_registrationWeb = "";
-const char *g_licenceFile = "";
 const char *g_windowClassName = "";
 const char *g_registryKeyPath = "";
 
@@ -28,7 +26,6 @@ static BYTE g_extendedSlot = 0;
 
 int g_serviceType = 0;
 
-BYTE g_accountOnCmdLine;
 unsigned char g_useCharsetTag;
 BYTE g_hideAccountList;
 BYTE g_passwordEncrypt;
@@ -52,8 +49,6 @@ static struct Language g_languageTH;
 static INIT_ONCE g_languageTHGuard;
 static struct Language g_languageARB;
 static INIT_ONCE g_languageARBGuard;
-struct String g_licenceText;
-INIT_ONCE g_licenceTextGuard;
 
 #define UI_FOLDER "유저인터페이스"
 
@@ -86,33 +81,6 @@ struct XmlElement *get_client_info(void)
     return xml_find_child(&g_clientInfoDocument.root, "clientinfo");
 }
 
-static void licence_text_destroy(void)
-{
-    string_free(&g_licenceText);
-}
-
-const char *get_licence_text_(void)
-{
-    struct File file;
-
-    if (once_begin(&g_licenceTextGuard)) {
-        string_init(&g_licenceText);
-        atexit(licence_text_destroy);
-        once_complete(&g_licenceTextGuard);
-    }
-    if (g_licenceText.size == 0) {
-        file_construct(&file);
-        if (file_open(&file, g_licenceFile, 0, 1, 0)) {
-            string_replace(&g_licenceText, 0, g_licenceText.size, (const char *)file.buffer, file.size);
-            file_close(&file);
-        } else {
-            string_assign_cstr(&g_licenceText, "No EULA text file. (licence.txt)");
-        }
-        file_destruct(&file);
-    }
-    return string_cstr(&g_licenceText);
-}
-
 void clientinfo_load(const char *xml_name)
 {
     struct File file;
@@ -135,7 +103,6 @@ void clientinfo_load(const char *xml_name)
         g_nameFontHeight = 0xc;
     }
     GetLocalTime(&now);
-    g_licenceFile = "..\\licence.txt";
     g_startupSecondMod4 = (BYTE)now.wSecond & 3;
     g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
     g_windowClassName = "Ragnarok";
@@ -156,9 +123,7 @@ void init_client_info_(void)
     }
     if (xml_find_child(&g_clientInfoDocument.root, "clientinfo"))
         select_client_info2(0);
-    if (!g_accountOnCmdLine) {
-        _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
-    }
+    _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
     init_language_();
 }
 
@@ -356,8 +321,6 @@ static void read_connection(struct XmlElement *node)
         g_clientVersion = atoi(text);
     if ((text = child_text(node, "langtype")) != NULL)
         g_serviceType = atoi(text);
-    if ((text = child_text(node, "registrationweb")) != NULL)
-        g_registrationWeb = text;
     list = xml_find_child(node, "aid");
     if (list)
         read_admins(list, &g_adminAids);
@@ -482,9 +445,6 @@ void set_option(struct XmlElement *node)
             loading_screens_push(name);
         }
     }
-    el = xml_find_child(node, "viewhomepage");
-    if (el)
-        sprintf_s(g_windowMgr.view_homepage, 0x100, "%s", string_cstr(xml_node_text(el)));
     g_clientInfoRead = 1;
 }
 

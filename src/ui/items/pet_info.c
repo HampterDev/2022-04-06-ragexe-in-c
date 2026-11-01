@@ -1,7 +1,6 @@
-#include "contents/pet_evolution.h"
+#include "contents/pet_auto_feed.h"
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -25,7 +24,6 @@
 
 #define UI_WND_PET_INFO 0x58
 #define UI_WND_PET_MENU 0x104
-#define UI_WND_PET_EVOLUTION 0x105
 
 #define PET_ID_RENAME UI_ID_OK
 #define PET_ID_COMMAND 0x104
@@ -39,12 +37,10 @@
 #define PET_MENU_PERFORM 0x1cc
 #define PET_MENU_UNEQUIP 0x1cd
 #define PET_MENU_RETURN_TO_EGG 0x1ce
-#define PET_MENU_EVOLVE 0x1cf
 #define PET_MENU_AUTO_FEED 0x1d0
 #define PET_MENU_ROW_HEIGHT 16
 #define PET_MENU_WIDTH 0x6e
 
-#define UI_MSG_PET_EVOLUTION_EGGS 0x8e
 
 #define REQ_PET_COMMAND 0x96
 #define PET_COMMAND_FEED 1
@@ -54,7 +50,6 @@
 #define REQ_PET_RENAME 0x91
 
 #define PET_NAME_MAX 0x18
-#define PET_EVOLVE_MIN_INTIMACY 900
 #define PET_INFO_MSG_EXTRA_COLOUR 0xff
 
 enum {
@@ -69,9 +64,9 @@ enum {
     MSG_PET_INTIMACY_1 = 0x2a0, MSG_PET_INTIMACY_2 = 0x2a1, MSG_PET_INTIMACY_4 = 0x2a2,
     MSG_PET_INTIMACY_5 = 0x2a3, MSG_PET_OUT_OF_RANGE = 0x2a4,
     MSG_PET_INTIMACY_LOW_A = 0x3fe, MSG_PET_INTIMACY_LOW_B = 0x3fd,
-    MSG_PET_NAME_TOO_LONG = 0x2aa, MSG_PET_EVOLVE_LIST = 0xa08, MSG_PET_EVOLVE_REFUSED = 0xa10,
+    MSG_PET_NAME_TOO_LONG = 0x2aa,
     MSG_PET_AUTO_FEED = 0xa11, MSG_PET_NAME_HAS_LINK = 0xafc, MSG_PET_RENAME_QUESTION = 0xb73,
-    MSG_PET_NAME_FILTERED = 0xb84, MSG_PET_MAIL_OPEN = 0xba9, MSG_PET_FEED_REFUSED = 0xdde,
+    MSG_PET_MAIL_OPEN = 0xba9, MSG_PET_FEED_REFUSED = 0xdde,
 };
 #define PET_RENAME_KEEP 0xb4
 
@@ -121,7 +116,6 @@ const struct UIWindowOps ui_pet_info_bar_graph_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -246,7 +240,6 @@ const struct UIWindowOps ui_pet_info_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -472,7 +465,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     if (!(job > 1000 && job < 0xf9f) && (unsigned)(job - 0x4e35) > 0x2eca)
         return;
     memset(illust, 0, 0x104);
-    session_get_pet_illust_name(&g_session1, job, illust);
+    session_get_pet_illust_name(&g_session1, job, illust, sizeof illust);
     res = object_as_type(res_mgr_get(g_resMgr(), illust), OBJECT_BITMAP_RESOURCE);
     if (res)
         ui_window_draw_bitmap(&self->frame.base, 5, 0x15, res, 0);
@@ -523,14 +516,11 @@ static void pet_rename(struct UIPetInfoWnd *self)
     }
     sprintf(question, msg_str(MSG_PET_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (message_box(question, 2, 0) != PET_RENAME_KEEP) {
-        if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
-            mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
-                          (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-            sprintf(g_session1.petName, ui_edit_ctrl_get_text(self->name_edit));
-            ui_window_invalidate_base(&self->frame.base);
-            return;
-        }
-        message_box(msg_str(MSG_PET_NAME_FILTERED), 0, 1);
+        mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
+                      (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+        sprintf(g_session1.petName, ui_edit_ctrl_get_text(self->name_edit));
+        ui_window_invalidate_base(&self->frame.base);
+        return;
     }
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.petName);
     ui_window_invalidate(self->name_edit);
@@ -546,7 +536,6 @@ static void pet_open_menu(struct UIPetInfoWnd *self)
     struct UIWindow *menu = ui_window_open(UI_WND_PET_MENU);
     struct String feed, perform, back, unequip;
     struct ItemInfo egg;
-    struct PetFoundList evolutions;
     int egg_id, rows, x, y;
 
     string_init(&feed);
@@ -564,28 +553,8 @@ static void pet_open_menu(struct UIPetInfoWnd *self)
 
     egg_id = item_info_get_item_id(session_get_inventory_item(&g_session1, &egg, g_session1.hatchedEggIndex));
     item_info_destruct(&egg);
-    pet_evolution_targets(g_petTable, &evolutions, egg_id);
-    if (evolutions.found == 1) {
-        int *it;
-
-        for (it = evolutions.list.first; it != evolutions.list.last; it++) {
-            struct String line, tmp;
-            int job = session_get_pet_job_by_egg(&g_session1, *it);
-            const char *name = session_get_pet_string(&g_session1, job);
-
-            string_init(&line);
-            if (!name)
-                name = session_get_job_name(&g_session1, job, -1);
-            string_init(&tmp);
-            string_format(&tmp, msg_str(MSG_PET_EVOLVE_LIST), name);
-            string_assign(&line, string_cstr(&tmp), tmp.size);
-            string_free(&tmp);
-            menu_add(menu, string_cstr(&line), PET_MENU_EVOLVE, *it);
-            string_free(&line);
-        }
-    }
-    rows = (int)VEC_COUNT(&evolutions.list, int) + 4;
-    if (pet_evolution_is_auto_feeding(g_petTable, egg_id)) {
+    rows = 4;
+    if (pet_auto_feed_is_allowed(g_petAutoFeed, egg_id)) {
         struct String line;
 
         string_init(&line);
@@ -601,14 +570,13 @@ static void pet_open_menu(struct UIPetInfoWnd *self)
     y = 0x2c;
     ui_window_to_screen(&self->frame.base, &x, &y);
     ui_window_move(menu, x, y);
-    vec_free(&evolutions.list);
     string_free(&unequip);
     string_free(&back);
     string_free(&perform);
     string_free(&feed);
 }
 
-static void pet_menu_choice(struct UIPetInfoWnd *self, int choice, int value)
+static void pet_menu_choice(struct UIPetInfoWnd *self, int choice)
 {
     struct Mode *mode = game_current_base_mode();
 
@@ -632,22 +600,6 @@ static void pet_menu_choice(struct UIPetInfoWnd *self, int choice, int value)
     case PET_MENU_RETURN_TO_EGG:
         mode_send_message(mode, REQ_PET_COMMAND, PET_COMMAND_RETURN_TO_EGG, 0, 0, 0);
         break;
-    case PET_MENU_EVOLVE:
-        if (g_session1.petIntimacy > PET_EVOLVE_MIN_INTIMACY) {
-            struct UIWindow *evolution;
-            struct ItemInfo egg;
-            int egg_id;
-
-            ui_window_mgr_post_quit1(&g_windowMgr, UI_WND_PET_MENU);
-            evolution = ui_window_open(UI_WND_PET_EVOLUTION);
-            egg_id = item_info_get_item_id(session_get_inventory_item(&g_session1, &egg, g_session1.hatchedEggIndex));
-            item_info_destruct(&egg);
-            ui_window_send_msg(evolution, NULL, UI_MSG_PET_EVOLUTION_EGGS, egg_id, value, 0, 0);
-            ui_window_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, UI_ID_CLOSE, 0, 0, 0);
-        } else {
-            chat_refusal(MSG_PET_EVOLVE_REFUSED);
-        }
-        break;
     case PET_MENU_AUTO_FEED:
         session_send_pet_auto_feed(&g_session1, g_session1.petAutoFeed == 1 ? 0 : 1);
         break;
@@ -667,7 +619,7 @@ int ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         return 0;
 
     case UI_MSG_PET_MENU:
-        pet_menu_choice(self, val1, val2);
+        pet_menu_choice(self, val1);
         return 0;
 
     case UI_MSG_SET_INFO:
@@ -678,8 +630,7 @@ int ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         return 0;
 
     case UI_MSG_COMMAND:
-        if (val1 == PET_ID_RENAME || val1 == UI_ID_CLOSE)
-            ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == PET_ID_RENAME) {
             pet_rename(self);
         } else if (val1 == UI_ID_CLOSE) {

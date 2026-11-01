@@ -53,7 +53,6 @@ const struct UIWindowOps ui_item_store_sub_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -131,7 +130,7 @@ void ui_item_store_sub_wnd_on_draw(struct UIWindow *window)
 void ui_item_store_sub_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 {
     struct UIItemStoreSubWnd *self = (struct UIItemStoreSubWnd *)window;
-    storage_on_lbtn_down(&self->base, x, y, 0x14, 0);
+    storage_on_lbtn_down(&self->base, x, y, 0x14);
 }
 
 void ui_item_store_sub_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)

@@ -81,7 +81,6 @@ size_t string_find_first_not_of(const struct String *s, const char *chars, size_
 int string_equal(const struct String *a, const struct String *b);
 int string_equal_cstr(const struct String *s, const char *text);
 int string_compare(const struct String *a, const struct String *b);
-int string_to_int(const struct String *s);
 
 static __inline void wstring_init(struct WString *s)
 {

@@ -155,7 +155,7 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     struct UIWindow *recharge_gage_wnd;        \
     struct UIWindow *buy_shop_title_wnd;       \
     unsigned motion_hold_until;                \
-    unsigned pet_talk_tick;                    \
+    unsigned pet_emotion_tick;                 \
     unsigned cast_end_tick;                    \
     unsigned cast_start_tick;                  \
     int balloon_width;                         \
@@ -188,8 +188,6 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int mark_kind;                             \
     struct UIWindow *monster_gage_wnd;         \
     unsigned char is_boss;                     \
-    unsigned char clan_emblem_shown;           \
-    int clan_emblem;                           \
     struct MercenaryAI *homun_ai;              \
     struct MercenaryAI *merc_ai;               \
     unsigned char object_type;                 \

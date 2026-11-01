@@ -1,7 +1,6 @@
 #include "game/packet_handlers.h"
 #include "session/state.h"
 #include "game/skill_use.h"
-#include "session/session_state.h"
 #include "session/session_windows.h"
 
 enum {
@@ -30,7 +29,6 @@ static void recover(int *value, int amount, struct Player *player, unsigned colo
 {
     unsigned old_value, new_value;
 
-    session_reroll_values(&g_session1);
     old_value = (unsigned)*value;
     new_value = old_value + (unsigned)amount;
     if (old_value != new_value) {

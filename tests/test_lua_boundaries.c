@@ -1,8 +1,6 @@
 #include "contents/client_lua.h"
-#include "contents/item_db_to_id.h"
 #include "fileio/file.h"
 #include "session/state.h"
-#include "session/service_address.h"
 #include "platform/client_config.h"
 #include "std/std.h"
 #include <lauxlib.h>
@@ -67,8 +65,6 @@ static int message_box(HWND window, const char *text, const char *caption, UINT 
     return 0;
 }
 
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
-
 #define malloc owned_malloc
 #define free owned_free
 #define luaL_newstate new_state
@@ -76,17 +72,11 @@ void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
 #undef luaL_newstate
 #include "../src/contents/client_lua_globals.c"
 #include "../src/core/owned_text.c"
-#include "../src/session/service_address.c"
 #undef free
 #undef malloc
 #define MessageBoxA message_box
 #include "../src/contents/lua_calls.c"
 #undef MessageBoxA
-
-void *mem_try_alloc(size_t bytes) { (void)bytes; abort(); }
-struct LuaScript *lua_script_construct(struct LuaScript *self) { (void)self; abort(); }
-void lua_script_destruct(struct LuaScript *self) { (void)self; abort(); }
-char lua_script_run_file(struct LuaScript *self, const char *path) { (void)self; (void)path; abort(); }
 
 static int observe(lua_State *state)
 {
@@ -188,6 +178,58 @@ static void loaders(struct ClientLua *lua)
     assert(!client_lua_load_file(lua, NULL, 0, 0));
 }
 
+static void local_loader(struct ClientLua *lua)
+{
+    const char *path = "SaveData\\ChatWndInfo_U.lua";
+    struct ClientLua closed = {NULL};
+    int before = executions, errors = dialogs;
+    exists_lua = exists_lub = 1;
+    source_text = "assert(observe()==1); ChatSubWnd_1={TabName='saved'}";
+    queries = 0;
+    assert(client_lua_load_local_file(lua, path));
+    assert(queries == 1 && !strcmp(checked_paths[0], path));
+    assert(!strcmp(loaded_path, path) && last_disk_only == 1);
+    assert(executions == before + 1 && !source_allocation && !owned_live);
+    assert(client_lua_has_global_table(lua, "ChatSubWnd_1"));
+    check_stack(lua->L);
+
+    /* A .lub on disk cannot replace a missing saved .lua. */
+    exists_lua = 0; queries = 0;
+    loaded_path[0] = 0;
+    assert(!client_lua_load_local_file(lua, path));
+    assert(queries == 1 && !strcmp(checked_paths[0], path));
+    assert(!loaded_path[0] && executions == before + 1 && dialogs == errors);
+    exists_lua = 1; queries = 0; source_missing = 1;
+    assert(!client_lua_load_local_file(lua, path));
+    source_missing = 0;
+    assert(!source_allocation && dialogs == errors);
+
+    source_text = "this is invalid"; queries = 0;
+    assert(!client_lua_load_local_file(lua, path));
+    assert(queries == 1 && dialogs == errors + 1 && !source_allocation);
+    source_text = "error('bad layout')"; queries = 0;
+    assert(!client_lua_load_local_file(lua, path));
+    assert(queries == 1 && dialogs == errors + 2 && !source_allocation);
+    check_stack(lua->L);
+    source_text = ""; queries = 0;
+    assert(client_lua_load_local_file(lua, path));
+    assert(queries == 1 && !owned_live);
+    queries = 0;
+    assert(!client_lua_load_local_file(NULL, path));
+    assert(!client_lua_load_local_file(&closed, path));
+    assert(!client_lua_load_local_file(lua, NULL));
+    assert(queries == 0);
+
+    /* Other catalog loads still choose .lub, using their resource prefix. */
+    source_text = "assert(observe()==1)";
+    assert(client_lua_load_file(lua, "Lua Files\\ChatWndInfo\\ChatWndInfo", 1, 0));
+    assert(queries == 1 && !strcmp(loaded_path,
+           "data\\LuaFiles514\\Lua Files\\ChatWndInfo\\ChatWndInfo.lub"));
+    assert(!last_disk_only);
+    exists_lub = 0;
+    check_stack(lua->L);
+}
+
 static void globals(struct ClientLua *lua)
 {
     int i;
@@ -208,72 +250,6 @@ static void globals(struct ClientLua *lua)
     assert(client_lua_get_global_int(NULL, "x") == 0);
     assert(!client_lua_has_global_table(NULL, "x"));
     assert(client_lua_get_global_int(lua, NULL) == -1);
-    check_stack(lua->L);
-}
-
-static void item_names(struct ClientLua *lua)
-{
-    struct ItemDbToIdMgr db = {0};
-    int i;
-    db.script.L = lua->L;
-    assert(!luaL_dostring(lua->L, "function ItemDB_To_ItemID(n) if n=='Red_Potion' then return 501 elseif n=='number' then return '-12.5' elseif n=='error' then error('bad') elseif n=='huge' then return 1e100 end end"));
-    for (i = 0; i < 1000; ++i) {
-        assert(item_db_to_id_lookup(&db, "Red_Potion") == 501);
-        assert(item_db_to_id_lookup(&db, "number") == -12);
-        assert(!item_db_to_id_lookup(&db, "missing"));
-        assert(!item_db_to_id_lookup(&db, "error"));
-        assert(!item_db_to_id_lookup(&db, "huge"));
-    }
-    assert(item_db_to_id_lookup(&db, "Red_Potion\0ignored") == 501);
-    assert(!item_db_to_id_lookup(&db, NULL) && !item_db_to_id_lookup(NULL, "x"));
-    assert(!luaL_dostring(lua->L, "ItemDB_To_ItemID=nil"));
-    assert(!item_db_to_id_lookup(&db, "x"));
-    check_stack(lua->L);
-}
-
-static void address(struct ClientLua *lua)
-{
-    static struct Session session;
-    struct OwnedText result = {0}, first = {0}, second = {0};
-    int path, failure;
-    long attempts;
-    session.luaState = lua;
-    assert(!luaL_dostring(lua->L, "AssistAddr='direct'; function GetTableStringValueForC(t,k) assert(t=='AssistAddrTbl'); return k end"));
-    assert(session_assist_addr(&session, &result));
-    assert(!strcmp(owned_text_cstr(&result), "direct"));
-    assert(!luaL_dostring(lua->L, "AssistAddr=''"));
-    assert(session_assist_addr(&session, &result));
-    assert(!strcmp(owned_text_cstr(&result), "server:6900"));
-    g_serverDomain = "complete.example:1234";
-    assert(session_assist_addr(&session, &result));
-    assert(!strcmp(owned_text_cstr(&result), g_serverDomain));
-    g_serverDomain = NULL;
-    for (path = 0; path < 2; ++path) {
-        assert(!luaL_dostring(lua->L, path ? "AssistAddr=''" : "AssistAddr='direct'"));
-        owned_attempts = 0;
-        assert(session_service_urls(&session, &first, "/save", &second, "/load"));
-        attempts = owned_attempts;
-        assert(!strcmp(owned_text_cstr(&first), path ? "server:6900/save" : "direct/save"));
-        assert(!strcmp(owned_text_cstr(&second), path ? "server:6900/load" : "direct/load"));
-        for (failure = 0; failure < attempts; ++failure) {
-            assert(owned_text_assign(&first, text_view_cstr("old-save")));
-            assert(owned_text_assign(&second, text_view_cstr("old-load")));
-            owned_attempts = 0; owned_fail = failure;
-            assert(!session_service_urls(&session, &first, "/save", &second, "/load"));
-            owned_fail = -1;
-            assert(!strcmp(owned_text_cstr(&first), "old-save"));
-            assert(!strcmp(owned_text_cstr(&second), "old-load"));
-            check_stack(lua->L);
-        }
-    }
-    assert(!luaL_dostring(lua->L, "AssistAddr='direct'"));
-    assert(session_service_url(&session, &result, "/party/search"));
-    assert(!strcmp(owned_text_cstr(&result), "direct/party/search"));
-    session.luaState = NULL;
-    assert(!session_assist_addr(&session, &result));
-    assert(!strcmp(owned_text_cstr(&result), "direct/party/search"));
-    owned_text_clear(&result); owned_text_clear(&first); owned_text_clear(&second);
-    assert(!live_blocks && !owned_live);
     check_stack(lua->L);
 }
 
@@ -302,26 +278,23 @@ static long open_case(long failure)
 static long operation_case(int operation, long failure)
 {
     struct ClientLua lua;
-    struct ItemDbToIdMgr db = {0};
-    char name[1025];
     int ok = 0, released = releases;
     long attempts;
     client_lua_construct(&lua);
     client_lua_open(&lua);
     assert(lua.L);
-    assert(!luaL_dostring(lua.L, "Integer=42; Table={}; function ItemDB_To_ItemID(s) return #s end"));
+    assert(!luaL_dostring(lua.L, "Integer=42; Table={}"));
     sentinels(lua.L);
-    memset(name, 'x', sizeof name - 1); name[sizeof name - 1] = 0;
-    db.script.L = lua.L;
     lua_memory.attempts = 0; lua_memory.fail_at = failure;
     switch (operation) {
     case 0: ok = client_lua_get_global_int(&lua, "Integer") == 42; break;
     case 1: ok = client_lua_has_global_table(&lua, "Table"); break;
-    case 2: ok = item_db_to_id_lookup(&db, name) == 1024; break;
+    case 2:
     case 3:
         source_text = "local values={1,2,3}; local function count(v) return #v end; assert(count(values)==3)";
         queries = 0;
-        ok = client_lua_load_file(&lua, "allocation", 0, 0);
+        ok = operation == 2 ? client_lua_load_file(&lua, "allocation", 0, 0)
+                            : client_lua_load_local_file(&lua, "SaveData\\ChatWndInfo_U.lua");
         assert(releases == released + 1 && !source_allocation);
         break;
     }
@@ -344,9 +317,8 @@ int main(void)
     assert(lua.L);
     sentinels(lua.L);
     loaders(&lua);
+    local_loader(&lua);
     globals(&lua);
-    item_names(&lua);
-    address(&lua);
     registration_error = 1;
     client_lua_open(&lua);
     assert(!lua.L && !lua_memory.live);
@@ -365,6 +337,6 @@ int main(void)
         query_allocations += count;
     }
     assert(!owned_live && !source_allocation && !lua_memory.live && !live_blocks);
-    printf("Lua boundaries: typed ownership, guarded loading, globals, item names, service addresses, %ld initialization and %ld query/load allocation failures passed\n", allocations, query_allocations);
+    printf("Lua boundaries: typed ownership, guarded loading, globals, %ld initialization and %ld query/load allocation failures passed\n", allocations, query_allocations);
     return 0;
 }

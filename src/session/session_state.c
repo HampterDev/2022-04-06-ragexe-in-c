@@ -1,6 +1,7 @@
 #include "render/renderer.h"
 #include "session/character_name.h"
 #include "contents/guild_info.h"
+#include "contents/guild_emblem_name.h"
 #include "session/csession.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
@@ -20,54 +21,6 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
 #include "game/store_search_items.h"
-
-static int first_round = 1;
-
-static int rand12(void)
-{
-    int r = rand() % 12;
-    return r < 0 ? 0 : r;
-}
-
-static void set_watched(struct Session *self, int *field, int value)
-{
-    if (*field == value)
-        return;
-    *field = value;
-    session_refresh_basic_info(self);
-}
-
-void session_reroll_values(struct Session *self)
-{
-    int saved_hp, saved_max_hp, saved_sp, saved_max_sp;
-    int i;
-
-    if (first_round) {
-        first_round = 0;
-        self->rerollValues[2] = rand12();
-        self->rerollValues[1] = rand12();
-        self->rerollValues[4] = rand12();
-        self->rerollValues[0] = rand12();
-        self->rerollValues[3] = rand12();
-    }
-    saved_sp = self->sp;
-    saved_max_sp = self->maxSp;
-    saved_hp = self->hp;
-    saved_max_hp = self->maxHp;
-    self->rerollValues[2] = rand12();
-    self->rerollValues[0] = rand12();
-    self->rerollValues[3] = rand12();
-    self->rerollValues[1] = rand12();
-    self->rerollValues[4] = rand12();
-    for (i = 0; i < 12; i++) {
-        rand();
-        self->rerollZeros[i] = 0;
-    }
-    set_watched(self, &self->hp, saved_hp);
-    set_watched(self, &self->maxHp, saved_max_hp);
-    set_watched(self, &self->sp, saved_sp);
-    set_watched(self, &self->maxSp, saved_max_sp);
-}
 
 void session_clear_shorten_item_name(struct Session *self)
 {
@@ -306,7 +259,13 @@ void session_save_emblem(struct Session *self, const void *data, size_t size,
         _chmod(name, 0x80);
         _unlink(name);
     }
-    sprintf(path, "%s%s_%d_%d.ebm", dir, string_cstr(&self->worldName), guildId, version);
+    {
+        struct String name;
+
+        guild_emblem_name(&name, &self->worldName, (unsigned)guildId, version);
+        snprintf(path, sizeof path, "%s%s", dir, string_cstr(&name));
+        string_free(&name);
+    }
     f = fopen(path, "wb");
     if (f) {
         fwrite(data, size, 1, f);

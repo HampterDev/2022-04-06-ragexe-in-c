@@ -1,5 +1,4 @@
 #include "render/renderer.h"
-#include "replay/replay.h"
 #include "navi/navi_manager.h"
 #include "ui/guild_windows.h"
 #include "ui/window_manager_state.h"
@@ -15,7 +14,6 @@
 #include "ui/chat/sub_chat_map.h"
 #include "session/session_party.h"
 #include "ui/quests/navigation.h"
-#include "ui/shops/roulette.h"
 #include "resources/bitmap_types.h"
 
 void ui_window_mgr_add_window(struct UIWindowMgr *self, struct UIWindow *wnd)
@@ -91,17 +89,6 @@ void window_mgr_clear_backdrop(struct UIWindowMgr *self)
         surface_destroy(self->backdrop);
         self->backdrop = NULL;
     }
-}
-
-int ui_window_mgr_get_window_ids(struct UIWindowMgr *self, int *ids)
-{
-    struct ListNode *node;
-
-    if (ids == NULL)
-        return 0;
-    for (node = self->windows.head->next; node != self->windows.head; node = node->next)
-        *ids++ = (*LIST_VALUE(node, struct UIWindow *))->id;
-    return self->windows.size;
 }
 
 void ui_window_mgr_hide_chat_wnd(struct UIWindowMgr *self)
@@ -256,7 +243,7 @@ BYTE ui_window_mgr_drop_on(struct UIWindowMgr *self, int x, int y, struct DragIn
     }
     x -= ox;
     y -= oy;
-    ui_window_record_drag(wnd, x, y, drag, -1);
+
     drag->drop_window = wnd;
     ui_window_drag_and_drop(wnd, x, y, drag);
     return 1;
@@ -382,22 +369,6 @@ static void refresh(struct UIWindow *wnd)
         ui_window_send_msg(wnd, NULL, 0x3c, 0, 0, 0, 0);
 }
 
-void ui_window_mgr_refresh_clan_wnd(struct UIWindowMgr *self)
-{
-    refresh(self->clan_info_manage_wnd);
-}
-
-void session_refresh_merchant_mirror_item_wnd(struct UIWindowMgr *self)
-{
-    refresh(self->roullette_wnd);
-}
-
-void ui_window_mgr_allow_roulette_spin(struct UIWindowMgr *self)
-{
-    if (self->roullette_wnd)
-        ui_roulette_allow_spin(self->roullette_wnd, 1);
-}
-
 void window_mgr_invalidate_guild_wnd(struct UIWindowMgr *self)
 {
     refresh(self->guild_info_manage_wnd);
@@ -414,8 +385,6 @@ static void send_to_text_window(struct UIWindowMgr *self, int msg)
     struct UIWindow *target = self->change_name_wnd;
     struct ListNode *node;
 
-    if (target == NULL)
-        target = self->book_wnd;
     if (target) {
         ui_window_send_msg(target, NULL, msg, 0, 0, 0, 0);
         return;
@@ -587,12 +556,6 @@ void ui_window_mgr_set_backdrop(struct UIWindowMgr *self, struct BitmapRes *bitm
     surface_upload(self->backdrop, 0, 0, bitmap->width, bitmap->height, bitmap->pixels, 0, 0);
 }
 
-void ui_window_mgr_replay_close_window(struct UIWindowMgr *self, int window_id)
-{
-    if (window_id != 0xfb)
-        ui_window_mgr_post_quit1(self, window_id);
-}
-
 static void give_focus(struct UIWindowMgr *self, struct UIWindow *edit)
 {
     if (self->focus_edit)
@@ -723,8 +686,7 @@ BYTE ui_window_mgr_show_option_window(struct UIWindowMgr *self, int window_id, i
 
     switch (window_id) {
     case 0x1:
-        if (g_replayPlaying && !replay_recorder_instance()->info.options[6])
-            return 0;
+
         self->chat_wnd_show = show;
         if (self->new_chat_wnd == NULL)
             ui_window_open(0x1);
@@ -739,8 +701,7 @@ BYTE ui_window_mgr_show_option_window(struct UIWindowMgr *self, int window_id, i
             ui_window_mgr_raise_window(&g_windowMgr, self->item_drop_cnt_wnd);
         return 0;
     case 0x24:
-        if (g_replayPlaying && !replay_recorder_instance()->info.options[7])
-            return 0;
+
         self->shortcut_info.show = show;
         ui_window_open(0x24);
         ui_window_set_show(self->short_cut_wnd, show);

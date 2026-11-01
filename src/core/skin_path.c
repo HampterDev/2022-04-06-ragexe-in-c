@@ -40,7 +40,6 @@ const char *ui_skin_path(const char *path)
         string_init(&full);
         string_assign_cstr(&full, path);
         skin_path_tail(&g_skinPath, &full);
-        skin_mgr_extract_files_if_zip_skin(&g_skinMgr);
         string_insert(&g_skinPath, 0, string_cstr(&skin), skin.size);
         string_assign(&full, string_cstr(&g_skinPath), g_skinPath.size);
         if (res_mgr_is_available(g_resMgr(), string_cstr(&full))) {

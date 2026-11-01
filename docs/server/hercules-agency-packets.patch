@@ -1,0 +1,234 @@
+diff --git a/src/map/clif.c b/src/map/clif.c
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -25941,6 +25941,142 @@
+ 	party->agency_request_join(sd, map->charid2sd(p->GID));
+ #endif
+ }
++
++/* Purist Adventurer's Agency packet extension v1. See client docs/server/agency-packets.md. */
++static uint16 agency_u16(const unsigned char *p) { return p[0] | (uint16)p[1] << 8; }
++static uint32 agency_u32(const unsigned char *p) { return agency_u16(p) | (uint32)agency_u16(p + 2) << 16; }
++static void agency_w16(unsigned char *p, unsigned n) { p[0] = (unsigned char)n; p[1] = (unsigned char)(n >> 8); }
++static void agency_w32(unsigned char *p, uint32 n) { agency_w16(p, n & 65535); agency_w16(p + 2, n >> 16); }
++
++static struct map_session_data *agency_leader(struct party_data *p)
++{
++	int i, members = 0;
++	struct map_session_data *leader = NULL;
++	if (!p || !p->agency.owner) return NULL;
++	for (i = 0; i < MAX_PARTY; ++i) {
++		if (p->party.member[i].account_id) ++members;
++		if (p->party.member[i].leader && p->data[i].sd &&
++		    p->party.member[i].char_id == p->agency.owner &&
++		    p->data[i].sd->status.char_id == p->agency.owner)
++			leader = p->data[i].sd;
++	}
++	if (!leader || members == MAX_PARTY) {
++		memset(&p->agency, 0, sizeof(p->agency));
++		return NULL;
++	}
++	return leader;
++}
++
++static int agency_compare(const void *left, const void *right)
++{
++	const struct party_data *a = *(const struct party_data * const *)left;
++	const struct party_data *b = *(const struct party_data * const *)right;
++	return (a->party.party_id > b->party.party_id) - (a->party.party_id < b->party.party_id);
++}
++
++static size_t agency_entry(unsigned char *out, const struct party_data *p, const struct map_session_data *leader)
++{
++	size_t name_len = strlen(leader->status.name), memo_len = strlen(p->agency.memo);
++	if (name_len > 23) name_len = 23;
++	agency_w32(out, leader->status.account_id); agency_w32(out + 4, leader->status.char_id);
++	agency_w16(out + 8, p->agency.min_level); agency_w16(out + 10, p->agency.max_level);
++	out[12] = p->agency.roles; out[13] = p->agency.purpose;
++	out[14] = (unsigned char)name_len; out[15] = (unsigned char)memo_len;
++	memcpy(out + 16, leader->status.name, name_len); memcpy(out + 16 + name_len, p->agency.memo, memo_len);
++	return 16 + name_len + memo_len;
++}
++
++static bool agency_matches(const struct party_data *p, const struct map_session_data *leader,
++                          unsigned min_level, unsigned max_level, unsigned roles, unsigned purpose, const char *text)
++{
++	return p->agency.max_level >= min_level && p->agency.min_level <= max_level &&
++	       (!roles || (p->agency.roles & roles)) && (!purpose || p->agency.purpose == purpose) &&
++	       (!*text || strstr(leader->status.name, text) || strstr(p->agency.memo, text));
++}
++
++static void clif_parse_agency(int fd, struct map_session_data *sd)
++{
++	const unsigned char *in = RFIFOP(fd, 0);
++	unsigned char out[1906] = {0};
++	unsigned len = RFIFOW(fd, 2), op, status = 0, count = 0, page, pages = 1, min_level, max_level, roles, purpose, text_len;
++	uint32 serial, target;
++	size_t size = 16;
++	char text[151];
++	struct party_data *p;
++	struct map_session_data *leader;
++	int i;
++	if (!sd || len < 24) return;
++	op = in[5]; serial = agency_u32(in + 6); page = agency_u16(in + 10); target = agency_u32(in + 12);
++	min_level = agency_u16(in + 16); max_level = agency_u16(in + 18); roles = in[20]; purpose = in[21]; text_len = agency_u16(in + 22);
++	if (in[4] != 1 || op < 1 || op > 5 || !serial) return;
++	if (!page || min_level > max_level || max_level > 999 || roles > 15 || purpose > 6 || text_len > 150 ||
++	    len != 24 + text_len || (op == 3 ? !target || target > INT32_MAX : target != 0) ||
++	    (op != 2 && page != 1) || (op != 2 && op != 4 && (text_len || roles || purpose || min_level || max_level != 999))) {
++		status = 1; goto reply;
++	}
++	for (i = 0; i < (int)text_len; ++i)
++		if (in[24 + i] < 32 || in[24 + i] == 127) { status = 1; goto reply; }
++	memcpy(text, in + 24, text_len); text[text_len] = 0;
++	if (sd->agency_next[op - 1] && DIFF_TICK(timer->gettick(), sd->agency_next[op - 1]) < 0) {
++		status = 4; goto reply;
++	}
++	sd->agency_next[op - 1] = timer->gettick() + 250;
++	p = party->search(sd->status.party_id);
++	if (op == 1) {
++		if (p && (leader = agency_leader(p)) == sd) {
++			size += agency_entry(out + size, p, sd); count = 1;
++		}
++	} else if (op == 4 || op == 5) {
++		if (!p || !party->is_leader(sd, p)) { status = 2; goto reply; }
++		if (op == 5) memset(&p->agency, 0, sizeof(p->agency));
++		else {
++			int members = 0;
++			for (i = 0; i < MAX_PARTY; ++i) if (p->party.member[i].account_id) ++members;
++			if (members >= MAX_PARTY) { status = 2; goto reply; }
++			p->agency.owner = sd->status.char_id;
++			p->agency.min_level = min_level; p->agency.max_level = max_level;
++			p->agency.roles = roles; p->agency.purpose = purpose;
++			memcpy(p->agency.memo, text, text_len + 1);
++		}
++	} else if (op == 3) {
++		leader = map->id2sd((int)target);
++		p = leader ? party->search(leader->status.party_id) : NULL;
++		if (p && agency_leader(p) == leader) {
++			size += agency_entry(out + size, p, leader); count = 1;
++		} else status = 3;
++	} else {
++		struct DBIterator *iter;
++		struct party_data **matches;
++		size_t capacity = db_size(party->db), total = 0, start, end, at;
++		matches = capacity ? aMalloc(capacity * sizeof(*matches)) : NULL;
++		iter = db_iterator(party->db);
++		for (p = dbi_first(iter); dbi_exists(iter); p = dbi_next(iter)) {
++			leader = agency_leader(p);
++			if (leader && agency_matches(p, leader, min_level, max_level, roles, purpose, text) && total < capacity)
++				matches[total++] = p;
++		}
++		dbi_destroy(iter);
++		if (total) qsort(matches, total, sizeof(*matches), agency_compare);
++		pages = (unsigned)((total + 9) / 10);
++		if (!pages) pages = 1;
++		if (pages > 65535) pages = 65535;
++		if (page > pages) page = pages;
++		start = (page - 1) * 10; end = start + 10;
++		if (end > total) end = total;
++		for (at = start; at < end; ++at) {
++			p = matches[at]; leader = agency_leader(p);
++			if (leader) { size += agency_entry(out + size, p, leader); ++count; }
++		}
++		if (matches) aFree(matches);
++	}
++reply:
++	if (status) { count = 0; size = 16; page = pages = 1; }
++	agency_w16(out, 0x0bf1); agency_w16(out + 2, (unsigned)size); out[4] = 1; out[5] = (unsigned char)op;
++	agency_w32(out + 6, serial); out[10] = (unsigned char)status; out[11] = (unsigned char)count;
++	agency_w16(out + 12, page); agency_w16(out + 14, pages);
++	clif->send(out, (int)size, &sd->bl, SELF);
++}
++
+ 
+ static void clif_adventurerAgencyResult(struct map_session_data *sd, enum adventurer_agency_result result, const char *player_name, const char *party_name)
+ {
+@@ -27601,6 +27737,7 @@
+ 	clif->goldpc_info = clif_goldpc_info;
+ 
+ 	clif->pAdventuterAgencyJoinReq = clif_parse_adventuterAgencyJoinReq;
++	clif->pAgency = clif_parse_agency;
+ 	clif->adventurerAgencyResult = clif_adventurerAgencyResult;
+ 	clif->adventurerAgencyJoinReq = clif_adventurerAgencyJoinReq;
+ 	clif->pAdventuterAgencyJoinResult = clif_parse_adventuterAgencyJoinResult;
+diff --git a/src/map/clif.h b/src/map/clif.h
+--- a/src/map/clif.h
++++ b/src/map/clif.h
+@@ -1984,6 +1984,7 @@
+ 	void (*goldpc_info) (struct map_session_data *sd);
+ 
+ 	void (*pAdventuterAgencyJoinReq) (int fd, struct map_session_data *sd);
++	void (*pAgency) (int fd, struct map_session_data *sd);
+ 	void (*adventurerAgencyResult) (struct map_session_data *sd, enum adventurer_agency_result result, const char *player_name, const char *party_name);
+ 	void (*adventurerAgencyJoinReq) (struct map_session_data *sd, struct map_session_data *tsd);
+ 	void (*pAdventuterAgencyJoinResult) (int fd, struct map_session_data *sd);
+diff --git a/src/map/packets.h b/src/map/packets.h
+--- a/src/map/packets.h
++++ b/src/map/packets.h
+@@ -2063,4 +2063,6 @@
+ 	packet(0x0baf, clif->pUsePackageItem);
+ #endif  // PACKETVER_MAIN_NUM >= 20220216 || PACKETVER_ZERO_NUM >= 20220316
+ 
++packet(0x0bf0, clif->pAgency); // Purist Agency v1
++
+ #endif /* MAP_PACKETS_H */
+diff --git a/src/map/party.h b/src/map/party.h
+--- a/src/map/party.h
++++ b/src/map/party.h
+@@ -46,6 +46,12 @@
+ 
+ struct party_data {
+ 	struct party party;
++	struct {
++		int owner; // Character ID; advertisements live only on this map-server.
++		unsigned short min_level, max_level;
++		unsigned char roles, purpose;
++		char memo[151];
++	} agency;
+ 	struct party_member_data data[MAX_PARTY];
+ 	uint8 itemc; //For item distribution, position of last picker in party
+ 	short *instance;
+diff --git a/src/map/party.c b/src/map/party.c
+--- a/src/map/party.c
++++ b/src/map/party.c
+@@ -806,6 +806,7 @@
+ 	//Update info.
+ 	intif->party_leaderchange(p->party.party_id,p->party.member[tmi].account_id,p->party.member[tmi].char_id);
+ 	clif->party_info(p,NULL);
++	memset(&p->agency, 0, sizeof(p->agency));
+ 	VECTOR_CLEAR(sd->agency_requests);
+ 	return true;
+ }
+@@ -901,6 +902,8 @@
+ 	intif->party_changemap(sd,0);
+ 	p=party->search(sd->status.party_id);
+ 	if(!p) return 0;
++	if (p->agency.owner == sd->status.char_id)
++		memset(&p->agency, 0, sizeof(p->agency));
+ 
+ 	ARR_FIND( 0, MAX_PARTY, i, p->data[i].sd == sd );
+ 	if( i < MAX_PARTY )
+diff --git a/src/map/pc.h b/src/map/pc.h
+--- a/src/map/pc.h
++++ b/src/map/pc.h
+@@ -693,6 +693,7 @@
+ 	} goldpc;
+ 
+ 	VECTOR_DECL(int) agency_requests;
++	int64 agency_next[5]; // Per-operation recruitment request throttles.
+ 
+ 	int last_added_quest_id; ///< Most recent quest id added to quest log in this play session
+ };
+diff --git a/src/common/packets.c b/src/common/packets.c
+--- a/src/common/packets.c
++++ b/src/common/packets.c
+@@ -38,6 +38,8 @@
+ 
+ static void packets_addLens(void)
+ {
++	packets->addLen(0x0bf0, -1);
++	packets->addLen(0x0bf1, -1);
+ #define packetLen(id, len) packets->addLen(id, len);
+ #include "common/packets_len.h"
+ #undef packetLen

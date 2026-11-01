@@ -1,5 +1,5 @@
+#include "contents/adventurer_agency.h"
 #include "skills/skill_bundle.h"
-#include "web/service_managers.h"
 #include "contents/sound.h"
 #include "session/state.h"
 #include <stdlib.h>
@@ -102,9 +102,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         if (g_serviceType == 3 || g_serviceType == 8 || g_serviceType == 9)
             return 0;
         send_id(0xc1);
-        return 0;
-    case MODE_MSG_EMOTION_ANSWERED:
-        self->emotion_pending = 0;
         return 0;
     case MODE_MSG_NPC_BUY:
         return game_mode_msg_npc_buy(self);
@@ -417,7 +414,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         send_u32(0x19f, a);
         return 0;
     case MODE_MSG_COMMAND_PET:
-        return game_mode_msg_command_pet(a, c);
+        return game_mode_msg_command_pet(a);
     case MODE_MSG_PROHIBIT_REMOVE:
         self_msg(self, MODE_MSG_GIVE_MANNER_POINT_BY_AID, self->popup_target_aid, 0, a, 0);
         session_erase_prohibit(&g_session1, self->popup_target_aid, a);
@@ -632,22 +629,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return game_mode_msg_click_buying_store(self, a);
     case MODE_MSG_TRADE_BUYING_STORE:
         return game_mode_msg_trade_buying_store(a, b);
-    case MODE_MSG_REPLAY_START:
-        return game_mode_msg_replay_start(self);
-    case MODE_MSG_REPLAY_STOP:
-        return game_mode_msg_replay_stop();
-    case MODE_MSG_REPLAY_PAUSE:
-        return game_mode_msg_replay_pause(self, 1);
-    case MODE_MSG_REPLAY_RESUME:
-        return game_mode_msg_replay_pause(self, 0);
-    case MODE_MSG_REPLAY_TO_LOGIN:
-        return game_mode_msg_replay_to_login(0x19, 6);
-    case MODE_MSG_REPLAY_SPEED_UP:
-        return game_mode_msg_replay_speed(1);
-    case MODE_MSG_REPLAY_SLOW_DOWN:
-        return game_mode_msg_replay_speed(0);
-    case MODE_MSG_REPLAY_END:
-        return game_mode_msg_replay_to_login(0x1a, 1);
+
     case MODE_MSG_TRY_COLLECTION:
         send_u32(0x8b5, a);
         return 0;
@@ -658,8 +640,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_REQ_RANKING:
         send_u16(0x97c, a);
         return 0;
-    case MODE_MSG_CLAN_CHAT:
-        return game_mode_msg_clan_chat(self);
     case MODE_MSG_NPC_TRADE_QUIT:
         send_id_raw(0x9d4);
         return 0;
@@ -741,8 +721,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return game_mode_msg_open_cash_shop(a);
     case MODE_MSG_REBUILD_STATUS_BARS:
         return game_mode_msg_relayout_player_gauge(self);
-    case MODE_MSG_USE_ITEM_WITH_TARGET:
-        return game_mode_msg_use_item_with_target(self, a, b, c);
     case MODE_MSG_RESET_SKILL: {
         struct PacketU8 packet;
         packet.id = 0xbb1;

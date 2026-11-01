@@ -66,29 +66,13 @@ int session_get_max_job_level(struct Session *self, int job)
     return g_session1.jobLevel2nd;
 }
 
-BYTE session_pet_talk_due(struct Session *self, __int64 interval)
+BYTE session_pet_emotion_due(struct Session *self, __int64 interval)
 {
     DWORD now = timeGetTime();
 
-    if ((__int64)(int)now < (__int64)self->lastPetTalkTime + interval)
+    if ((__int64)(int)now < (__int64)self->lastPetEmotionTime + interval)
         return 0;
-    self->lastPetTalkTime = (int)now;
-    return 1;
-}
-
-BYTE session_reset_for_replay(struct Session *self)
-{
-    self->charListCounts[1] = 1;
-    self->charListCounts[2] = 1;
-    self->charListCounts[3] = 1;
-    self->charListCounts[4] = 1;
-    self->charListCounts[6] = 1;
-    self->charListCounts[0] = 1;
-    self->charCount = 1;
-    self->petJob = -1;
-    self->ownIllusion = 0;
-    self->serverTimeOffset = 0;
-    self->serverTimeLagCount = 0;
+    self->lastPetEmotionTime = (int)now;
     return 1;
 }
 
@@ -107,6 +91,7 @@ static int count_distinct_indexes(const struct ItemInfo *items)
             continue;
         for (p = seen.first; p != seen.last && *p != index; p++)
             ;
+
         if (p != seen.last)
             continue;
         vec_push(&seen, &index, sizeof(int));

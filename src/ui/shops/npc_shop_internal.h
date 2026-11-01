@@ -1,4 +1,3 @@
-#include "ui/record_tags.h"
 #include "ui/window_manager_state.h"
 #ifndef UI_SHOPS_NPC_SHOP_INTERNAL_H
 #define UI_SHOPS_NPC_SHOP_INTERNAL_H
@@ -94,6 +93,5 @@ void npc_shop_list_set_info(struct UIItemBaseWnd *base, struct WindowInfo *info,
                             int (*usable)(struct WindowInfo *),
                             void (*make_default)(struct WindowInfo *));
 int npc_shop_records_reach(const char *buf, unsigned size, short begin_tag, short end_tag);
-void npc_shop_open_shop_list(int wnd_id, int val1);
 
 #endif

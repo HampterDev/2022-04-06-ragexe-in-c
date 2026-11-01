@@ -1,4 +1,3 @@
-#include "replay/replay.h"
 #include "ui/misc/snap_mgr.h"
 #include "session/state.h"
 #include "core/object_type.h"
@@ -7,7 +6,6 @@
 #include "ui/wndmgr/make_window_internal.h"
 #include "ui/character/equip_wnd.h"
 #include "ui/character/skill_list_wnd.h"
-#include "contents/repute_wnd.h"
 #include "session/session_jobs.h"
 #include "ui/character/character.h"
 #include "ui/character/dress_room.h"
@@ -49,12 +47,7 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self)
             wm_move(w, x, wnd->height + y);
         }
     }
-    if (g_replayPlaying) {
-        ui_window_set_show(wnd, replay_recorder_instance()->info.options[0]);
-        w = ui_window_mgr_get_window(self, 0xb6);
-        if (w)
-            ui_window_set_show(w, replay_recorder_instance()->info.options[0]);
-    } else {
+    {
         wm_show(wnd);
     }
     if (self->item_info.show)
@@ -102,7 +95,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
     case 0x8:
         wnd = self->item_wnd;
         if (wnd == NULL) {
-            ui_window_mgr_note_window_opened(self, 0x8);
             wnd = ui_item_wnd_new();
             self->item_wnd = wnd;
             ui_window_create(wnd, 0x118, 0x78);
@@ -145,13 +137,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
         self->status_info.show = 1;
         ui_window_mgr_post_quit1(self, 0x15);
         wm_clear_menu_mark(0xb8);
-        break;
-    case 0x165:
-        ui_window_mgr_post_quit1(self, 0x165);
-        wnd = choice_package_item_box_wnd_new();
-        ui_window_create(wnd, 0x183, 0x11b);
-        wm_move_640(wnd, 0x32, 0x32);
-        ui_window_mgr_add_window(self, wnd);
         break;
     case 0x25:
         wnd = self->new_skill_list_wnd;
@@ -224,18 +209,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
             ui_window_create(wnd, 0x118, 0x78);
             wm_move_640_up(wnd, 0xb9, 0x12c, 0x78);
             ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0x32:
-        wnd = self->item_param_change_display_wnd;
-        if (wnd == NULL) {
-            wnd = ui_item_param_change_display_wnd_new();
-            self->item_param_change_display_wnd = wnd;
-            ui_window_create(wnd, 0x118, 0x22);
-            wm_move_640_up(wnd, 0xb9, 0x12c, 0x22);
-            ui_window_mgr_add_window(self, wnd);
-            wm_set_info(wnd, &self->item_param_change_display_info);
         }
         wm_show(wnd);
         break;
@@ -397,20 +370,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
         }
         wm_show(wnd);
         break;
-    case 0x105:
-        wnd = ui_window_mgr_get_window(self, 0x105);
-        if (wnd == NULL) {
-            wnd = ui_pet_evolution_wnd_new();
-            ui_window_create(wnd, 0x122, 0x190);
-            {
-                int y = wm_times_half(g_renderer->height - 0x190);
-
-                wm_move(wnd, wm_times_half(g_renderer->width - 0x122), y);
-            }
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
     case 0x103:
         wnd = wm_frame_cast(ui_window_mgr_get_window(self, 0x103));
         if (wnd)
@@ -468,19 +427,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
             wm_move(wnd, (int)((float)(g_renderer->width - 0x118) * 0.5f), y);
         }
         wm_set_info(wnd, &self->preview_equip_pos);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x15a:
-        wnd = ui_window_mgr_get_window(self, 0x15a);
-        if (wnd)
-            break;
-        wnd = repute_wnd_new();
-        ui_window_create(wnd, 0x280, 0x1c2);
-        {
-            int y = wm_half_y(0x1c2);
-
-            wm_move(wnd, wm_half_x(0x280), y);
-        }
         ui_window_mgr_add_window(self, wnd);
         break;
     default:

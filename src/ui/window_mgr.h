@@ -19,11 +19,6 @@ int ui_window_mgr_is_friend(struct UIWindowMgr *self, const char *name);
 void ui_window_mgr_set_backdrop(struct UIWindowMgr *self,
                                         struct BitmapRes *res);
 
-int ui_window_mgr_get_window_flag(struct UIWindowMgr *self, int kind,
-                                         int window_id);
-#define UI_WNDFLAG_COMMANDS 3
-#define UI_WNDFLAG_SEND_EDITS 6
-
 static __inline struct UIWindow *ui_make_window(int window_id)
 {
     return ui_window_open(window_id);

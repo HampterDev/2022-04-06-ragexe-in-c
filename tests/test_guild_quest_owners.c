@@ -5,7 +5,7 @@
 #include <string.h>
 #include "contents/guild_mgr.h"
 #include "contents/renew_quest.h"
-#include "web/emblem.h"
+#include "contents/guild_emblem_transport.h"
 #include "fileio/resource_api.h"
 #include "ui/ui_std.h"
 #undef malloc
@@ -18,8 +18,6 @@ static DWORD now, send_delay;
 static unsigned trace_hash = 2166136261u;
 static FILE *trace;
 static int last_guild, last_version;
-int g_replayPlaying;
-struct EmblemMgr *g_emblemMgr = (struct EmblemMgr *)1;
 
 static void record(unsigned tag, unsigned value)
 {
@@ -85,15 +83,15 @@ void fatal_error(const char *message) { fprintf(stderr, "%s\n", message); abort(
 void error_msg(const char *message, int flags) { (void)flags; fatal_error(message); }
 
 DWORD guild_quest_test_time(void) { record(1, now); return now; }
-void emblem_mgr_download(struct EmblemMgr *manager, int guild, int version)
+int guild_emblem_request(int guild, int version)
 {
-    assert(manager == g_emblemMgr);
     ++sends;
     last_guild = guild;
     last_version = version;
     record(2, guild);
     record(3, version);
     now += send_delay;
+    return 1;
 }
 
 void guild_emblem_save(const unsigned char *data, unsigned size, unsigned guild, int version)
@@ -264,25 +262,20 @@ static void fill_quests(void)
 {
     unsigned i, j;
     for (i = 1; i <= 25; ++i) {
-        struct RenewQuestA *a = renew_quest_a_at(&g_questTable->quests_a, i);
         struct RenewQuestB *b = renew_quest_b_at(&g_questTable->quests_b, &i);
         struct String line = text("한국어 퀘스트 긴 설명 ownership test");
         for (j = 0; j < 7; ++j) {
-            string_assign(&a->base.text[j], string_cstr(&line), line.size);
             string_assign(&b->base.text[j], string_cstr(&line), line.size);
         }
-        string_assign(&a->image, string_cstr(&line), line.size);
         string_assign(&b->reward_exp, string_cstr(&line), line.size);
         string_assign(&b->reward_job_exp, string_cstr(&line), line.size);
-        for (j = 0; j < 3; ++j)
-            string_vec_assign(&a->lists[j], &line, &line + 1);
         string_vec_assign(&b->description, &line, &line + 1);
         {
             struct RenewQuestReward reward = {i, 2};
             vec_push(&b->rewards, &reward, sizeof reward);
         }
         b->base.npc_x = i; b->plain.deadline.year = 2030 + i;
-        record(6, a->image.size); record(7, b->plain.deadline.year);
+        record(7, b->plain.deadline.year);
         string_free(&line);
     }
 }
@@ -297,7 +290,7 @@ static void test_quest(void)
         assert(renew_quest_create() && !renew_quest_create());
         assert(g_questTable->hunt_name_length == 24);
         fill_quests();
-        assert(g_questTable->quests_a.size == 25 && g_questTable->quests_b.size == 25);
+        assert(g_questTable->quests_b.size == 25);
         fill_quests();
         renew_quest_destroy(); renew_quest_destroy();
         assert(!g_questTable && !live_blocks);

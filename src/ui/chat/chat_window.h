@@ -1,6 +1,5 @@
 #include "ui/items/item_tags.h"
 #include "session/character_name.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #ifndef UI_CHAT_WINDOW_H
@@ -63,8 +62,6 @@ void ui_new_chat_wnd_show_tab(struct UINewChatWnd *self, BYTE place_boxes);
 
 void ui_window_mgr_no_op(struct UIWindowMgr *self);
 struct UIItemTagCtrl;
-
-struct ReplayRecorder;
 int ui_chat_edit_ctrl_has_item_link(struct UIChatEditCtrl *self, const struct String *text);
 int ui_chat_edit_ctrl_has_navi_link(struct UIChatEditCtrl *self, const struct String *text);
 

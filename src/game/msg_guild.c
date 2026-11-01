@@ -1,4 +1,3 @@
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include <string.h>
@@ -234,22 +233,12 @@ int game_mode_msg_make_guild(const char *name, int b)
     if (strchr(name, ' '))
         goto no_space;
 
-    if (word_filter_contains(&g_nameFilter, name) == 1) {
-        _snprintf_s(text, 0x100, (size_t)-1, msg_str(0xd07));
-        chat_print(text, MAKE_GUILD_REFUSED_COLOR);
-        return 0;
-    }
     if (g_serviceType == 0xc && strchr(name, 0x2323)) {
         message_box_msg(0x464);
         return 0;
     }
     if (strlen(name) >= 0x18) {
         message_box_msg(0x213);
-        return 0;
-    }
-    if (player->clan_emblem_shown == 1) {
-        sprintf(text, msg_str(0xa2d));
-        chat_print(text, MAKE_GUILD_REFUSED_COLOR);
         return 0;
     }
     packet.id = CZ_REQ_MAKE_GUILD;
@@ -279,7 +268,7 @@ int game_mode_msg_guild_invite(struct GameMode *self, int aid)
 #pragma pack(pop)
     struct GameActor *actor = mode_actor(self, aid);
 
-    if (!actor || actor->clan_emblem_shown != 0)
+    if (!actor)
         return 0;
     packet.id = CZ_REQ_JOIN_GUILD;
     packet.aid = aid;

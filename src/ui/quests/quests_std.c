@@ -9,7 +9,6 @@
 #include "game/rodex_mail.h"
 #include "ui/items/styling_shop_std.h"
 #include "ui/quests/achievement.h"
-#include "ui/quests/quests_std.h"
 #include "session/session_achievements.h"
 
 void ach_pairs_clear(struct Vec *v)
@@ -205,15 +204,4 @@ static void ach_sort_unchecked(int *first, int *last, int ideal)
 void ach_sort_ids(int *first, int *last)
 {
     ach_sort_unchecked(first, last, (int)(last - first));
-}
-
-void attendance_banners_free(struct Vec *v)
-{
-    struct StdBanner38 *banner;
-
-    for (banner = v->first; banner != v->last; banner++) {
-        string_free(&banner->second);
-        string_free(&banner->first);
-    }
-    vec_free(v);
 }

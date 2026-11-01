@@ -340,8 +340,3 @@ void mem_free(void *pointer)
 struct ResMgr *g_resMgr(void) { abort(); }
 void *res_mgr_get(struct ResMgr *self, const char *name) { abort(); }
 void res_mgr_release(struct ResMgr *self, struct Res *res) { abort(); }
-struct WorldVideoList *game_current_video_list(void) { abort(); }
-struct WorldVideo *world_video_list_open(struct WorldVideoList *player, const char *name, int one) { abort(); }
-
-int world_video_dimensions(struct WorldVideo *video, int *width, int *height)
-{ (void)video; (void)width; (void)height; abort(); }

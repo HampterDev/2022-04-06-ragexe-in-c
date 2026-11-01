@@ -11,7 +11,7 @@
 static int hotkey_hidden(int id)
 {
     return id == 0x1e || id == 0x21 || id == 0x22 || id == 0x24 || id == 0x35 || id == 0x38 || id == 0x3a
-        || id == 0x2b || id == 0x2d;
+        || id == 0x2b || id == 0x2d || id == 0x36;
 }
 
 int session_get_hot_key_list_size(struct Session *self, int list)
@@ -52,12 +52,6 @@ int session_hot_key_page_slot(struct Session *self, int slot, int bar)
         return slot;
     at = slot + page * 9;
     return at >= 0x24 ? at - 0x24 : at;
-}
-
-void session_reset_the_hot_keys(struct Session *self)
-{
-    client_lua_call(g_session1.luaState, "ResetTheHotKey", "dddd", 1, 0x84, 0xc0, 0x12);
-    client_lua_call(g_session1.luaState, "ResetTheHotKey", "dddd", 1, 0x87, 0x24, 0x12);
 }
 
 int session_get_shorten_skill_id(struct Session *self, int index)

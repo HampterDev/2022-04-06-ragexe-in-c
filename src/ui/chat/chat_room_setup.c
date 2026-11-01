@@ -1,6 +1,5 @@
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
@@ -56,7 +55,6 @@ const struct UIWindowOps ui_chat_room_make_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -103,7 +101,6 @@ const struct UIWindowOps ui_chat_room_change_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -119,7 +116,6 @@ const struct UIWindowOps ui_chat_room_change_wnd_ops = {
 #define MSG_CHAT_ROOM_PRIVATE 0xc8
 #define MSG_CHAT_ROOM_PUBLIC 0xc9
 #define MSG_CHAT_ROOM_NO_TITLE 0xd
-#define MSG_CHAT_ROOM_BAD_TITLE 0xe
 #define MSG_CHAT_ROOM_NO_PASSWORD 0xf
 #define MSG_CHAT_ROOM_SHORT_PASSWORD 0x10
 #define MSG_CHAT_ROOM_NOT_ASCII 0xbe
@@ -365,8 +361,6 @@ static void chat_room_ok(struct UIChatRoomMakeWnd *self, int request, int wnd_id
 
     if (ui_edit_ctrl_get_text_size(self->title_edit) == 0)
         msg = MSG_CHAT_ROOM_NO_TITLE;
-    else if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->title_edit)))
-        msg = MSG_CHAT_ROOM_BAD_TITLE;
     else if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->title_edit)))
         msg = MSG_CHAT_ROOM_NOT_ASCII;
     else if (ui_edit_ctrl_get_text_size(self->password_edit) < 4 && self->is_private == 1)
@@ -464,7 +458,6 @@ int ui_chat_room_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
 }
 
 #define MSG_NO_TITLE 0xd
-#define MSG_BAD_TITLE 0xe
 #define MSG_NO_PASSWORD 0xf
 #define MSG_SHORT_PASSWORD 0x10
 #define MSG_NOT_ASCII 0xbe
@@ -481,8 +474,6 @@ static void make_ok(struct UIChatRoomMakeWnd *self)
 
     if (!ui_edit_ctrl_get_text_size(self->title_edit))
         msg = MSG_NO_TITLE;
-    else if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->title_edit)))
-        msg = MSG_BAD_TITLE;
     else if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->title_edit)))
         msg = MSG_NOT_ASCII;
     else if (ui_edit_ctrl_get_text_size(self->password_edit) < 4 && self->is_private == 1)

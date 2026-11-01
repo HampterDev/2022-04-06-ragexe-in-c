@@ -44,6 +44,7 @@ void game_actor_set_sex(struct GameActor *self, int value);
 #include "actor/tetra_ball.h"
 void game_actor_set_transform_job(struct GameActor *self, int value, int index);
 void game_actor_set_transform_job_override(struct GameActor *self, int value);
+void game_actor_set_pet_accessory(struct GameActor *self, int accessory);
 void game_actor_show_level_aura(struct GameActor *self);
 int game_actor_state_job(int job, int state);
 
@@ -73,7 +74,6 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
 int game_actor_get_height_offset(struct GameActor *self);
 unsigned char game_actor_has_pending_hits(struct GameActor *self);
 int game_actor_is_pc_job(int job);
-void game_actor_set_clan(struct GameActor *self, unsigned char a, int b);
 void game_actor_set_mark_listed(struct GameActor *self, int value);
 void game_actor_show_orbs(struct GameActor *self, int kind, int count);
 int game_actor_get_mount_height(struct GameActor *self);

@@ -5,7 +5,6 @@
 #include "ui/chat/navi_text.h"
 #include "core/text_array.h"
 #include "contents/whisper_block.h"
-#include "contents/manner_filter.h"
 #include "game/broadcast_text.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -42,16 +41,6 @@ static int centred_x(const struct UIWindow *wnd)
 static void chat(int msg, const char *text, unsigned colour, int channel, const char *sender)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, msg, (int)text, colour, channel, (int)sender);
-}
-
-static int filter_text(char *text)
-{
-    if (word_filter_contains(&g_nameFilter, text) != 1)
-        return 0;
-
-    word_filter_censor(&g_nameFilter, text);
-
-    return 1;
 }
 
 static void readable_links(struct String *text)
@@ -108,7 +97,6 @@ void game_mode_broadcast2(struct GameMode *self, const unsigned char *pkt)
         bytes = sizeof text - 1;
     memcpy(text, packet->text, bytes);
     text[bytes] = 0;
-    filter_text(text);
     broadcast_text_strip_annotation(text);
     string_assign_cstr(&line, text);
     self->notice_shown_at = timeGetTime();
@@ -158,7 +146,6 @@ void game_mode_broadcast(struct GameMode *self, const unsigned char *pkt)
     if (parsed.channel == 0) {
         if (sender_blocked(parsed.sender))
             return;
-        filter_text(parsed.text);
     }
     string_assign_cstr(&line, parsed.text);
 

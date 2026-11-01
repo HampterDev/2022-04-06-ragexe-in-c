@@ -1,4 +1,3 @@
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "world/tooltip.h"
 #include "render/rp_pool.h"
@@ -63,7 +62,6 @@ const struct UIWindowOps ui_merchant_item_shop_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_merchant_item_shop_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -118,7 +116,6 @@ const struct UIWindowOps ui_merchant_item_my_shop_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_merchant_item_my_shop_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -381,21 +378,6 @@ void ui_merchant_item_shop_wnd_on_mouse_hover(struct UIWindow *window, int x, in
     item_info_destruct(&info);
 }
 
-int ui_merchant_item_shop_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIMerchantItemShopWnd *self = (struct UIMerchantItemShopWnd *)window;
-    struct SnapshotWriter writer = {0};
-    if (self->variant) {
-        snapshot_write(&writer, REC_SHOP_VARIANT_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_SHOP_VARIANT_VALUE, &self->notice_amount, sizeof self->notice_amount);
-        snapshot_write(&writer, REC_SHOP_VARIANT_END, NULL, 0);
-    } else {
-        snapshot_write(&writer, REC_SHOP_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_SHOP_END, NULL, 0);
-    }
-    return snapshot_finish(&writer, out);
-}
-
 static const char *const close_button[3] = { "btn_close", "btn_close_a", "btn_close_b" };
 
 struct UIMerchantItemMyShopWnd *ui_merchant_item_my_shop_wnd_construct(struct UIMerchantItemMyShopWnd *self,
@@ -540,21 +522,6 @@ void ui_merchant_item_my_shop_wnd_on_mouse_hover(struct UIWindow *window, int x,
         string_free(&text);
     }
     item_info_destruct(&info);
-}
-
-int ui_merchant_item_my_shop_wnd_get_records(struct UIWindow *window,
-                                                                struct ReplayBuffer *out)
-{
-    struct UIMerchantItemMyShopWnd *self = (struct UIMerchantItemMyShopWnd *)window;
-    struct SnapshotWriter writer = {0};
-    if (self->variant) {
-        snapshot_write(&writer, REC_MY_SHOP_VARIANT_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_MY_SHOP_VARIANT_END, NULL, 0);
-    } else {
-        snapshot_write(&writer, REC_MY_SHOP_BEGIN, NULL, 0);
-        snapshot_write(&writer, REC_MY_SHOP_END, NULL, 0);
-    }
-    return snapshot_finish(&writer, out);
 }
 
 #define MSG_ASSISTANT_BUTTON 0xb6d

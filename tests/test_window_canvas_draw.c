@@ -8,7 +8,6 @@
 DWORD g_renderCheckpointLine;
 const char *g_renderCheckpointFile;
 struct StateIconSheet *g_stateIconSheet;
-struct Roulette *g_roulette;
 static struct UIWindow window;
 static struct DcBitmap bitmap;
 static struct Texture texture;
@@ -68,7 +67,6 @@ void draw_box_screen(int x,int y,int w,int h,DWORD tint)
 }
 void ui_ro_map_wnd_render_overlay(struct UIRoMapWnd *w) { (void)w;assert(0); }
 void ui_buttons_of_basic_wnd_render_buttons(struct UIButtonsOfBasicWnd *w) { (void)w;assert(0); }
-void roulette_render(struct Roulette *r) { (void)r;assert(0); }
 
 static void run_cases(void)
 {

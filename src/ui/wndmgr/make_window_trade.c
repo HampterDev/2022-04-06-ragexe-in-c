@@ -3,8 +3,6 @@
 #include "core/memory.h"
 #include "ui/window_access.h"
 #include "ui/wndmgr/make_window_internal.h"
-#include "contents/enchant_wnd.h"
-#include "contents/item_reform_wnd.h"
 #include "contents/lapine_box.h"
 #include "contents/lapine_upgrade.h"
 #include "core/msg_str.h"
@@ -19,7 +17,6 @@
 #include "ui/shops/merchant_shop.h"
 #include "ui/shops/merchant_shop_make_internal.h"
 #include "ui/shops/ncash_wnd.h"
-#include "ui/shops/roulette.h"
 #include "ui/shops/storage.h"
 #include "ui/shops/storage_internal.h"
 #include "ui/social/social.h"
@@ -218,7 +215,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         break;
     case 0x17:
         wnd = WM_OPEN_INFO(item_purchase_wnd, ui_item_purchase_wnd_new, 0x118, 0x78, WM_AT_XY, 0x12c, 0xc8, item_purchase_info);
-        ui_window_mgr_make_window(self, 0x32);
         break;
     case 0x2d:
         wnd = WM_OPEN_INFO1(merchant_item_my_shop_wnd, ui_merchant_item_my_shop_wnd_new, 0, 0x118, 0x78, WM_AT_XY, 0, 0xc8, merchant_item_my_shop_info);
@@ -305,8 +301,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
             return wm_refuse(0xbc6);
         if (ui_window_mgr_get_window(self, 0x157))
             return wm_refuse(0xe85);
-        if (ui_window_mgr_get_window(self, 0x15b))
-            return wm_refuse(0xf05);
         if (ui_window_mgr_get_window(self, 0x155))
             return wm_refuse(0xf7f);
         wnd = self->bank_new_wnd;
@@ -354,32 +348,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
             ui_window_mgr_add_window(self, wnd);
         }
         ui_window_set_show(wnd, g_session1.showGoldPcIcon);
-        break;
-    case 0x10c:
-        wnd = self->open_roullette_wnd;
-        if (wnd == NULL) {
-            wnd = ui_open_roullette_wnd_new();
-            self->open_roullette_wnd = wnd;
-            ui_window_create(wnd, 0x2b, 0x2b);
-            wm_move(wnd, g_renderer->width - 0xbb, 0x47);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        ui_window_set_show(wnd, g_session1.showRouletteIcon);
-        break;
-    case 0x10d:
-        wnd = self->roullette_wnd;
-        if (wnd == NULL) {
-            wnd = ui_roullette_wnd_new();
-            self->roullette_wnd = wnd;
-            ui_window_create(wnd, 0x280, 0x1f1);
-            {
-                int y = (int)((double)g_renderer->height * 0.5 - 240.0);
-
-                wm_move(wnd, (int)((double)g_renderer->width * 0.5 - 320.0), y);
-            }
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
         break;
     case 0x119:
         wnd = ui_window_mgr_get_window(self, 0x119);
@@ -513,35 +481,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         ui_window_mgr_add_window(self, wnd);
         break;
     }
-    case 0x15b:
-    {
-        int x = (int)((float)(g_renderer->width - 0x2b2) * 0.5f);
-        int y = (int)((float)(g_renderer->height - 0x1d6) * 0.5f);
-
-        wnd = ui_window_mgr_get_window(self, 0x15b);
-        if (wnd == NULL) {
-            wnd = enchant_wnd_new();
-            ui_window_create(wnd, 0x2b2, 0x1d6);
-            wm_move(wnd, x, y);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_close_rodex(self, 0xf02);
-        wm_close_bank(self, 0xf04);
-        break;
-    }
-    case 0x15c:
-        wnd = ui_window_mgr_get_window(self, 0x15c);
-        if (wnd)
-            break;
-        wnd = item_reform_wnd_new();
-        ui_window_create(wnd, 0x1b8, 0x104);
-        {
-            int y = wm_half_y(0x104);
-
-            wm_move(wnd, wm_half_x(0x1b8), y);
-        }
-        ui_window_mgr_add_window(self, wnd);
-        break;
     default:
         return WM_NOT_MINE;
     }

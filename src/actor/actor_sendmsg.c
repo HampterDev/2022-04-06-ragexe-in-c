@@ -416,8 +416,6 @@ static void sm_appear_stand(struct GameActor *self, struct GameMode *mode, const
 static void sm_appear_new(struct GameActor *self, struct GameMode *mode, struct ActorEntryInfo *info,
                           long long par2)
 {
-    struct ReplayRecorder *replay;
-
     if (sm_kind_has_owner(self))
         self->owner_aid = info->char_id;
     self->aid = info->aid;
@@ -428,16 +426,7 @@ static void sm_appear_new(struct GameActor *self, struct GameMode *mode, struct 
     self->walk_speed = info->speed;
     self->entry_head = info->head;
     game_actor_set_attr_state(self, info->body_state, info->effect_state, info->health_state, 0);
-    replay = replay_recorder_instance();
-    if (replay->state == REPLAY_STATE_STOPPED) {
-        switch (info->state) {
-        case 1: actor_set_state(self, 3, 1); break;
-        case 2: actor_set_state(self, 6, 1); break;
-        default: actor_set_state(self, 0, 1); break;
-        }
-    } else {
-        actor_set_state(self, 0, 1);
-    }
+    actor_set_state(self, 0, 1);
     self->pk_mode = info->is_pk_mode;
     if (info->job == 0x2d2 || info->job == 0x508)
         game_actor_set_guild(self, info->guild_id, info->emblem_version);
@@ -611,8 +600,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
                 list_push_back(&self->attached, &obj, sizeof obj);
             }
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-        } else {
-            game_send_message(0x21, 0, 0, 0, 0);
         }
         break;
     case 0x1a: case 0x27: case 0x5d: case 0x5e: case 0x6f: case 0x81: case 0x84: case 0x94:

@@ -114,7 +114,6 @@ void session_init_variables_(struct Session *self)
     self->married = 0;
     self->ownIllusion = 0;
     self->showTimeFont = 0;
-    self->showBattleFieldIcon = 1;
     memset(&memory, 0, sizeof(memory));
     memory.dwLength = sizeof(memory);
     GlobalMemoryStatus(&memory);

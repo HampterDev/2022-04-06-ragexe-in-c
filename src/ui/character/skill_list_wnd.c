@@ -160,7 +160,6 @@ const struct UIWindowOps ui_skill_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -884,7 +883,6 @@ static void step_level(struct UISkillListWnd *self, int row, int step)
         if (level > info.level)
             level = info.level;
         if (self->kind == SKILL_LIST_KIND_HOMUN) {
-            session_set_pair(&g_session1, 8, 1);
             session_set_homun_skill_use_level(&g_session1, info.id, level);
         } else if (self->kind == SKILL_LIST_KIND_MERCENARY) {
             session_set_merc_skill_use_level(&g_session1, info.id, level);

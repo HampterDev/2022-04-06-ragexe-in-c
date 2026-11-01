@@ -42,6 +42,5 @@ unsigned char skill_info_may_harm(int skill_id);
 unsigned char skill_info_is_good_skill_for_actor(int skill_id);
 unsigned char skill_info_shows_use_effect(int skill_id);
 unsigned char skill_info_is_level_used(int skill_id);
-void skill_info_nop(void);
 
 #endif

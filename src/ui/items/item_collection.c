@@ -1,6 +1,5 @@
 #include "ui/controls/listbox.h"
 #include "world/tooltip.h"
-#include "platform/language.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
@@ -29,7 +28,7 @@ const struct UIWindowOps ui_item_collection_wnd_ops = {
     .set_show = ui_window_set_show_base,
     .on_create = ui_item_collection_wnd_on_create,
     .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_item_collection_wnd_on_process,
+    .on_process = ui_window_on_process_base,
     .on_draw = ui_item_collection_wnd_on_draw,
     .on_focus = ui_window_on_focus_base,
     .on_focus_lost = ui_window_on_focus_lost_base,
@@ -49,7 +48,6 @@ const struct UIWindowOps ui_item_collection_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -73,7 +71,6 @@ struct UIItemCollectionWnd *ui_item_collection_wnd_construct(struct UIItemCollec
     self->pet_hunger = -1;
     self->pet_intimacy = -1;
     self->pet_accessory = -1;
-    self->book_anim_time = 0;
     self->close_btn = NULL;
     self->show_cards = 0;
     self->option_count = 0;
@@ -136,12 +133,9 @@ void ui_item_collection_wnd_store_info(struct UIWindow *window)
 void ui_item_collection_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UIItemCollectionWnd *self = (struct UIItemCollectionWnd *)window;
-    static const int book_ids[2] = { ID_BOOK_BUTTON_1, ID_BOOK_BUTTON_2 };
     struct UIWindow *wnd = COLLECTION_WND(self);
-    const char *book_tips[2];
     struct UIWindow *text;
     struct UIResizer *resizer;
-    int i;
 
     self->wnd_id = WND_ITEM_COLLECTION;
 
@@ -157,25 +151,6 @@ void ui_item_collection_wnd_on_create(struct UIWindow *window, int width, int he
     self->close_btn = ui_window_add_close_button(wnd, "ESC", 0);
     self->view_btn = ui_add_skin_button(wnd, "btn_view", 6, 6, ID_VIEW_BUTTON);
 
-    book_tips[0] = msg_str(MSG_BOOK_TOOLTIP_1);
-    book_tips[1] = msg_str(MSG_BOOK_TOOLTIP_2);
-    for (i = 0; i < 2; i++) {
-        struct UIWindow *book = mem_alloc(sizeof(struct UISpriteButton));
-        int book_height;
-
-        if (book)
-            book = ui_sprite_button_construct(book);
-        self->book_btn[i] = book;
-        ui_sprite_button_set_sprite(book, "book\\" BOOK_NAME ".spr");
-        ui_sprite_button_set_act(book, "book\\" BOOK_NAME ".act");
-        book_height = ui_sprite_button_frame_height(book, 0, 0);
-        ui_window_create(book, ui_sprite_button_frame_width(book, 0, 0), book_height);
-        ui_window_move(book, -100, -100);
-        book->id = book_ids[i];
-        ui_button_set_tooltip(book, book_tips[i]);
-        ui_window_add_child(wnd, book);
-    }
-
     resizer = mem_alloc(sizeof *resizer);
     if (resizer)
         resizer = ui_resizer_construct(resizer);
@@ -189,7 +164,6 @@ void ui_item_collection_wnd_on_create(struct UIWindow *window, int width, int he
     ui_resizer_set_colours(self->resizer, UI_TRANSPARENT, UI_TRANSPARENT);
     ui_window_move_base(&self->resizer->base, width - 0x11, height - 0x11);
     ui_window_add_child(wnd, &self->resizer->base);
-    self->book_anim_time = 0;
 
     if (!self->move_info) {
         struct UIItemMoveInfo *move_info = mem_alloc(sizeof *move_info);
@@ -205,15 +179,6 @@ void ui_item_collection_wnd_on_create(struct UIWindow *window, int width, int he
                               ui_window_text_width(wnd, msg_str(MSG_MOVE_INFO), 0, 0, 0xc, 0, 0) + 1,
                               text_height);
         ui_window_add_child(wnd, &self->move_info->button.button.base);
-    }
-}
-
-void ui_item_collection_wnd_on_process(struct UIWindow *window)
-{
-    struct UIItemCollectionWnd *self = (struct UIItemCollectionWnd *)window;
-    if (self->book_anim_time && timeGetTime() > self->book_anim_time + 100) {
-        ui_window_invalidate(self->book_btn[1]);
-        self->book_anim_time = timeGetTime();
     }
 }
 
@@ -439,28 +404,6 @@ void ui_item_collection_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     item_info_destruct(&card);
 }
 
-static void collection_open_book(struct UIItemCollectionWnd *self, int button_id)
-{
-    const char *id_text = string_cstr(&self->item.id_text);
-    char path[0x104];
-    struct File file;
-
-    if (g_serviceType == 10)
-        sprintf(path, "%sbook\\%s.txt", g_language->folder, id_text);
-    else
-        sprintf(path, "book\\%s.txt", id_text);
-    file_construct(&file);
-    if (!file_open(&file, path, 0, 1, 0)) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-        ui_chat_line(NO_BOOK_TEXT, RGB(0xff, 0, 0));
-        file_destruct(&file);
-        return;
-    }
-    ui_window_send_msg(ui_make_window(WND_BOOK), NULL, UI_MSG_BOOK_OPEN, (int)id_text, button_id, 0, 0);
-    file_close(&file);
-    file_destruct(&file);
-}
-
 static int collection_info_valid(const struct WindowInfo *info)
 {
     return info->width == 0x118 && info->height == 0x78 && info->x >= 0
@@ -495,10 +438,6 @@ int ui_item_collection_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
         case ID_VIEW_BUTTON:
             ui_window_send_msg(ui_make_window(UI_WND_CARD_ILLUST), NULL, UI_MSG_SHOW_CARD,
                      (int)string_cstr(&self->item.id_text), self->item.identified, 0, 0);
-            break;
-        case ID_BOOK_BUTTON_1:
-        case ID_BOOK_BUTTON_2:
-            collection_open_book(self, val1);
             break;
         case ID_PREVIEW_BUTTON: {
             struct UIWindow *preview = ui_make_window(WND_EQUIP_PREVIEW);

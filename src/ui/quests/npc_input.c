@@ -2,8 +2,6 @@
 #include "ui/chat/markup_links.h"
 #include "ui/items/item_tags.h"
 #include "render/rp_pool.h"
-#include "replay/replay.h"
-#include "contents/manner_filter.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
@@ -79,7 +77,6 @@ const struct UIWindowOps ui_npc_edit_dialog_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -129,7 +126,6 @@ const struct UIWindowOps ui_npc_text_edit_dialog_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -244,7 +240,7 @@ int ui_npc_edit_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
     }
     if (msg != UI_MSG_COMMAND)
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-    ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
     if (val1 == NPC_INPUT_OK_ID && ui_edit_ctrl_get_text_size(&self->edit->base)) {
         int number = atoi(ui_edit_ctrl_get_text(&self->edit->base));
 
@@ -312,7 +308,6 @@ void ui_npc_text_edit_dialog_wnd_on_draw(struct UIWindow *window)
 }
 
 #define MSG_NPC_WHILE_MAIL_OPEN 0xaaa
-#define MSG_NPC_TEXT_REFUSED 0xe
 #define MSG_NPC_TEXT_LINK 0xbe2
 #define NPC_INPUT_OK_ID 0xb0
 #define NPC_INPUT_MSG_NPC_ID 0x1c
@@ -353,9 +348,7 @@ int ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *window,
         }
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->base.frame), sender, msg, val1, val2, val3, val4);
     }
-    ui_window_record_command(&self->base.frame.base, val1, val2, val3, val4);
-    if (replay_recorder_instance()->state == 7)
-        ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, "임시");
+
     if (val1 != NPC_INPUT_OK_ID || !ui_edit_ctrl_get_text_size(edit))
         return 0;
 
@@ -370,11 +363,6 @@ int ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *window,
             string_truncate(&text, (size_t)(nl - s));
             ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, string_cstr(&text));
         }
-    }
-    if (!word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(edit))) {
-        ui_edit_ctrl_set_text_colour(edit, 0xff, 0, 0, -1);
-        ui_chat_line(msg_str(MSG_NPC_TEXT_REFUSED), 0xff);
-        goto done;
     }
     mode = client_current_mode();
     blocked = navi_links_has_link(text_view_cstr(ui_edit_ctrl_get_text(edit)));

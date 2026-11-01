@@ -20,8 +20,7 @@ DWORD session_get_server_time(struct Session *self);
 void session_init_at_startup(struct Session *self);
 
 void session_init_pet_emotions(struct Session *self);
-void session_load_talk_tables(struct Session *self);
-void session_load_map_info_table(struct Session *self);
+void session_load_monster_skill_info(struct Session *self);
 #include "session/chat_macros.h"
 void session_init_skill_effect_id_maps(struct Session *self);
 void session_clear_transform_jobs(struct Session *self, BYTE a, BYTE b, BYTE c);
@@ -30,7 +29,6 @@ void session_reset_pet(struct Session *self);
 void session_startup(struct Session *self);
 void session_pre_load_always_needed_res(struct Session *self);
 
-void session_reroll_values(struct Session *self);
 void session_clear_shorten_item_name(struct Session *self);
 void session_clear_plate_records(struct Session *self);
 void session_clear_stat_bonuses(struct Session *self);
@@ -73,8 +71,8 @@ int session_init_map_pos_table(struct Session *self);
 void session_set_combo_delay(struct Session *self, int key, int value);
 int session_get_max_base_level(struct Session *self, int job);
 int session_get_max_job_level(struct Session *self, int job);
-BYTE session_pet_talk_due(struct Session *self, __int64 interval);
-BYTE session_reset_for_replay(struct Session *self);
+BYTE session_pet_emotion_due(struct Session *self, __int64 interval);
+
 int session_count_worn_costumes(struct Session *self);
 int session_count_worn_equips(struct Session *self);
 const char *session_get_map_display_name(struct Session *self);
@@ -90,9 +88,5 @@ void session_clear_items_and_equipment(struct Session *self);
 void session_clear_character_lists(struct Session *self);
 
 void session_init_variables_(struct Session *self);
-
-struct Vec *session_get_stored_packet(struct Session *self, struct Vec *out,
-                                                      short packetId);
-struct Vec *session_get_stored_packet2(struct Session *self, struct Vec *out);
 
 #endif

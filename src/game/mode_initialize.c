@@ -1,13 +1,11 @@
+#include "contents/account_settings.h"
 #include "game/connection.h"
 #include "game/drag.h"
 #include "core/map_sky.h"
 #include "world/tooltip.h"
-#include "web/service_managers.h"
-#include "replay/replay.h"
 #include "world/view_types.h"
 #include "world/pathfinder_state.h"
 #include "navi/navi_manager.h"
-#include "ui/quests/signboard_list.h"
 #include "contents/sound.h"
 #include "ui/misc/snap_mgr.h"
 #include "world/pick_node.h"
@@ -53,11 +51,9 @@ enum {
 
 enum { UIWM_LOADED = 3, UIWM_CHAT_LINE = 1 };
 
-int g_tipsOffered;
+enum { CZ_NOTIFY_ACTORINIT = 0x7d };
 
-enum { CZ_NOTIFY_ACTORINIT = 0x7d, WID_TIPS = 0x13b };
-
-enum { WID_REPLAY_PLAYER = 0xbb, WID_REPLAY_INDICATOR = 0xc6, WID_PC_CAFE = 0x10b };
+enum { WID_PC_CAFE = 0x10b };
 
 static void clear_lists(struct GameMode *self)
 {
@@ -89,8 +85,7 @@ static void make_windows(void)
         ui_window_open(WID_CASH_SHOP_BUTTON);
     if (g_session1.mdWndShown != 0)
         ui_window_open(0x89);
-    if (g_replayPlaying == 0)
-        ui_window_open(0x9f);
+    ui_window_open(0x9f);
     if (g_session1.partyBooking.window_open != 0)
         ui_window_open(0xa4);
     if (g_session1.storeSearchOpenOnEnter != 0)
@@ -133,23 +128,13 @@ static void greet_after_login(struct GameMode *self)
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);
     if (!account_user_data_is_loaded(g_accountUserDataMgr))
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0xd81), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)"Local account settings could not be loaded. Using initial preferences; existing file preserved.", 0xff, 0, 0);
 }
 
 static void enter_map_server(void)
 {
-    int playing = g_replayPlaying;
     short packet;
 
-    if (playing == 0 && g_tipsOffered == 0) {
-        g_tipsOffered = 1;
-        if (g_showTipsAtStartup != 0) {
-            ui_window_open(WID_TIPS);
-            playing = g_replayPlaying;
-        }
-    }
-    if (playing == 1)
-        return;
     packet = CZ_NOTIFY_ACTORINIT;
     rag_connection_send_packet(rag_connection_instance(), 2, &packet);
     connection_clear_held(rag_connection_transport(rag_connection_instance()));
@@ -176,28 +161,6 @@ static void start_weather(struct GameMode *self)
     string_free(&map);
     if ((g_serviceType == 8 || g_serviceType == 9) && strcmp("comodo.rsw", self->map_name) == 0 && g_session1.effectOn != 0)
         weather_pokjuk(&g_weather);
-}
-
-static void open_replay_windows(void)
-{
-    int state = replay_recorder_instance()->state;
-
-    if (g_replayPlaying != 0) {
-        ui_window_open(WID_REPLAY_PLAYER);
-        if (state == 8) {
-            ui_window_send(g_windowMgr.replay_control_wnd, NULL, 0x23, 0, 0, 0, 0);
-            replay_recorder_set_mode(replay_recorder_instance(), 7);
-            return;
-        }
-    }
-    if (state == 3) {
-        replay_recorder_set_mode(replay_recorder_instance(), 2);
-        ui_window_open(WID_REPLAY_INDICATOR);
-        ui_window_move_safe(g_windowMgr.replay_reccontrol_wnd, replay_recorder_instance()->windowX, replay_recorder_instance()->windowY);
-        ui_window_send(g_windowMgr.replay_reccontrol_wnd, NULL, 0x7b, 0, 0, 0, 0);
-    } else if (state == 8) {
-        replay_recorder_set_mode(replay_recorder_instance(), 7);
-    }
 }
 
 void game_mode_initialize(struct GameMode *self)
@@ -274,7 +237,6 @@ void game_mode_initialize(struct GameMode *self)
 
     mouse_reset_buttons(&g_mouse);
     self->server_time_answered = 1;
-    self->emotion_pending = 0;
     self->server_time_requested_at = timeGetTime();
     self->initialized_at = timeGetTime();
     self->emotion_time = timeGetTime();
@@ -294,7 +256,6 @@ void game_mode_initialize(struct GameMode *self)
         greet_after_login(self);
 
     session_clear_stat_bonuses(&g_session1);
-    session_reroll_values(&g_session1);
     session_clear_storage(&g_session1);
     session_clear_lists(&g_session1);
     session_clear_store_setup(&g_session1);
@@ -311,8 +272,6 @@ void game_mode_initialize(struct GameMode *self)
     g_session1.mercPresent = 0;
     session_clear_merc_commands(&g_session1);
     ui_window_mgr_edit_focus_to_chat_wnd(&g_windowMgr);
-    g_windowMgr.replay_control_wnd = 0;
-    open_replay_windows();
     navi_manager_resume(&g_navi);
     self->admin_whisper_balloon = 0;
     self->admin_whisper_time = 0;
@@ -323,7 +282,6 @@ void game_mode_initialize(struct GameMode *self)
     }
     self->achievement_notice = 0;
     self->achievement_notice_time = 0;
-    signboards_place();
     g_mapPropertyQuiet = 0;
     if (g_session1.loadingAirplane == 1)
         g_session1.loadingAirplane = 0;

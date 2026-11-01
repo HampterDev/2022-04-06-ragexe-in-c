@@ -1,5 +1,4 @@
 #include "ui/window_access.h"
-#include <stdint.h>
 #include "contents/mouse.h"
 #include "world/mode_manager.h"
 #include "ui/wndmgr/wndmgr.h"
@@ -22,8 +21,6 @@ static void destroy_closed_windows(struct UIWindowMgr *self)
     for (node = self->quit_list.head->next; node != self->quit_list.head; node = node->next) {
         struct UIWindow *wnd = *LIST_VALUE(node, struct UIWindow *);
 
-        if (self->replay_wnd == wnd)
-            self->replay_wnd = NULL;
         drop_ref(&self->capture, wnd);
         drop_ref(&self->focus_edit, wnd);
         drop_ref(&self->modal_wnd, wnd);
@@ -31,35 +28,6 @@ static void destroy_closed_windows(struct UIWindowMgr *self)
         ui_window_mgr_destroy_window(self, wnd);
     }
     list_clear(&self->quit_list, NULL);
-}
-
-static void delete_queued_browsers(struct UIWindowMgr *self)
-{
-    struct ListNode *node;
-
-    for (node = self->browsers_to_delete.head->next; node != self->browsers_to_delete.head; node = node->next) {
-        int hwnd = *LIST_VALUE(node, int);
-        struct WmBrowser *entry = tree_find(&self->browsers, &hwnd, tree_less_uint);
-        struct WebBrowser *browser;
-
-        if (entry) {
-            browser = entry->browser;
-            if (browser) {
-                if (browser == self->browser)
-                    self->browser = NULL;
-                wm_destroy_browser(self, browser);
-            }
-            tree_erase(&self->browsers, TREE_NODE_OF(entry), NULL);
-        } else {
-            browser = self->browser;
-            if (browser && (HWND)(intptr_t)hwnd == browser->hwnd) {
-                if (browser)
-                    wm_destroy_browser(self, browser);
-                self->browser = NULL;
-            }
-        }
-    }
-    list_clear(&self->browsers_to_delete, NULL);
 }
 
 static void close_removed_plates(struct UIWindowMgr *self)
@@ -89,11 +57,6 @@ static void raise_on_press(struct UIWindowMgr *self, struct UIWindow *wnd)
         ui_window_mgr_raise_window(self, root);
 }
 
-static int double_click_allowed(void)
-{
-    return !g_replayPlaying || g_modeMgr.curModeType == 0;
-}
-
 static void mouse_to_capture(struct UIWindowMgr *self, int mx, int my)
 {
     int sx = 0, sy = 0, x, y;
@@ -105,7 +68,7 @@ static void mouse_to_capture(struct UIWindowMgr *self, int mx, int my)
         raise_on_press(self, self->capture);
         ui_window_on_l_btn_down(self->capture, x, y);
     }
-    if (g_mouse.button[MOUSE_LEFT] == MOUSE_DOUBLE && double_click_allowed()) {
+    if (g_mouse.button[MOUSE_LEFT] == MOUSE_DOUBLE) {
         ui_window_on_l_btn_down(self->capture, x, y);
         ui_window_on_l_btn_dbl_clk(self->capture, x, y);
     }
@@ -128,7 +91,7 @@ static int mouse_to_window(struct UIWindowMgr *self, struct UIWindow *wnd, int m
     ui_window_to_screen(wnd, &sx, &sy);
     x = mx - sx;
     y = my - sy;
-    if (g_mouse.button[MOUSE_LEFT] == MOUSE_DOUBLE && double_click_allowed())
+    if (g_mouse.button[MOUSE_LEFT] == MOUSE_DOUBLE)
         ui_window_on_l_btn_dbl_clk(wnd, x, y);
     if (g_mouse.button[MOUSE_LEFT] == MOUSE_PRESSED) {
         raise_on_press(self, wnd);
@@ -164,12 +127,9 @@ int ui_window_mgr_process_input(struct UIWindowMgr *self)
     int answer = 0;
     struct UIWindow *wnd;
     struct ListNode *node;
-    struct TreeNode *it;
 
     if (self->modal_wnd == NULL)
         destroy_closed_windows(self);
-    if (self->browsers_to_delete.size)
-        delete_queued_browsers(self);
     close_removed_plates(self);
 
     if (self->capture) {
@@ -204,14 +164,6 @@ int ui_window_mgr_process_input(struct UIWindowMgr *self)
     self->mouse_x_last = mx;
     if (self->modal_wnd)
         answer = 1;
-    for (it = tree_first(&self->browsers); it != self->browsers.head; it = tree_next(it)) {
-        struct WebBrowser *browser = TREE_VALUE(it, struct WmBrowser)->browser;
-
-        if (browser && browser->cursor_shown) {
-            answer = 1;
-            break;
-        }
-    }
     if (self->windows.head->next != self->windows.head) {
         node = self->windows.head->prev;
         for (;;) {
@@ -227,16 +179,7 @@ int ui_window_mgr_process_input(struct UIWindowMgr *self)
 void ui_window_mgr_on_process(struct UIWindowMgr *self)
 {
     struct ListNode *node;
-    struct TreeNode *it;
 
     for (node = self->windows.head->next; node != self->windows.head; node = node->next)
         ui_window_on_process(*LIST_VALUE(node, struct UIWindow *));
-    for (it = tree_first(&self->browsers); it != self->browsers.head; it = tree_next(it)) {
-        struct WebBrowser *browser = TREE_VALUE(it, struct WmBrowser)->browser;
-
-        if (browser)
-            web_browser_update(browser);
-        if (self->browsers.size == 0)
-            break;
-    }
 }

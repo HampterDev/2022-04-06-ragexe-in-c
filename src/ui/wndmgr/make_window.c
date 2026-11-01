@@ -2,7 +2,6 @@
 #include "render/renderer.h"
 #include "ui/chat/captcha.h"
 #include "contents/client_lua_calls.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_access.h"
 #include <string.h>
@@ -12,15 +11,12 @@
 #include "ui/admin/admin.h"
 #include "ui/character/char_preview.h"
 #include "ui/character/character.h"
-#include "ui/character/replay_play.h"
 #include "ui/character/sel_char_userver.h"
 #include "ui/character/select_server.h"
 #include "ui/chat/chat.h"
 #include "ui/hotkeys/hotkey_bars.h"
 #include "ui/quests/quests.h"
 #include "ui/shops/shops.h"
-#include "ui/social/entry_queue_standby_internal.h"
-#include "ui/social/entry_queue_windows.h"
 
 void wm_move(struct UIWindow *wnd, int x, int y)
 {
@@ -91,6 +87,7 @@ struct UIWindow *wm_register(struct UIWindowMgr *self, int window_id, struct UIW
     entry->wnd = wnd;
     for (top = wnd; top->parent; top = top->parent)
         ;
+
     self->active_top_wnd = top;
     return wnd;
 }
@@ -237,9 +234,6 @@ static struct UIWindow *make_lua_window(struct UIWindowMgr *self, int window_id)
         wnd = ui_hot_key_wnd_new();
         self->hot_key_wnd = wnd;
         break;
-    case 0x9d:
-        wnd = ui_entry_queue_wnd_new();
-        break;
     case 0x9f:
         wnd = ui_quik_slot_wnd_new();
         break;
@@ -249,9 +243,6 @@ static struct UIWindow *make_lua_window(struct UIWindowMgr *self, int window_id)
         break;
     case 0xb6:
         wnd = ui_buttons_of_basic_wnd_new();
-        break;
-    case 0xd1:
-        wnd = ui_entry_queue_stand_by_wnd_new();
         break;
     }
     closed = ui_window_mgr_get_closed_rect(self, window_id);
@@ -273,8 +264,6 @@ static struct UIWindow *make_lua_window(struct UIWindowMgr *self, int window_id)
     ui_window_mgr_add_window(self, wnd);
     if (window_id == 0x9f)
         wm_set_info(wnd, &self->quick_slot_info);
-    else if (window_id == 0x9d)
-        wm_set_info(wnd, &self->battlefield_info);
     else if (window_id == 0xd4)
         wm_set_info(wnd, &self->guild_helper_info);
 done:
@@ -382,53 +371,13 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
     case 0x30:
         wnd = WM_OPEN(quit_wnd, ui_quit_wnd_new, 0x118, 0x78, WM_AT_640, 0xb9, 0x12c);
         break;
-    case 0x14:
-        wnd = ui_notice_confirm_wnd_new();
-        ui_window_create(wnd, 0x118, 0x78);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x14c:
         wnd = ui_disconnected_server_msg_wnd_new();
         ui_window_create(wnd, 0x118, 0x78);
         wm_move_login(wnd);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0xba:
-        wnd = ui_select_replay_data_wnd_new();
-        ui_window_create(wnd, 0x118, 0x137);
-        {
-            int y = ui_center_y480(0xf0) - 0xa0;
 
-            wm_move(wnd, ui_center_x640(0x140) - 0x8c, y);
-        }
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0xbb:
-        if (self->replay_control_wnd)
-            return NULL;
-        wnd = ui_replay_control_wnd_new();
-        self->replay_control_wnd = wnd;
-        ui_window_create(wnd, 0xc5, 0x8a);
-        {
-            int y = scale_y_from480(0x1e0) - 0x8a;
-
-            wm_move(wnd, ui_scale_x640(0x280) - 0xc5, y);
-        }
-        wnd->list_rank = 0;
-        wm_window_list_sort(&self->windows);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0xc6:
-        if (self->replay_reccontrol_wnd)
-            return NULL;
-        wnd = ui_replay_rec_control_wnd_new(replay_recorder_instance()->state == WM_REPLAY_RECORDING);
-        self->replay_reccontrol_wnd = wnd;
-        ui_window_create(wnd, 0xc2, 0x22);
-        wm_move_center(wnd, 0x103, 0xe6);
-        ui_window_mgr_add_window(self, wnd);
-        wm_set_info(self->replay_reccontrol_wnd, &self->replay_rec_control_info);
-        break;
     case 0x7f:
     {
         int width = g_session1.charCount > 0xc ? 0x30f : 0x21c;
@@ -461,17 +410,6 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
     case 0x167:
         wnd = make_second_password(self, &self->second_password_edit_wnd, &ui_second_password_edit_wnd_ops);
         ui_second_password_wnd_set_mode((struct UISecondPasswordInputWnd *)self->second_password_edit_wnd, 1);
-        break;
-    case 0x11c:
-        wnd = self->captcha_register_wnd;
-        if (wnd == NULL) {
-            wnd = captcha_register_create();
-            if (!wnd) break;
-            self->captcha_register_wnd = wnd;
-            wm_move(wnd, wm_center_x(0x122), wm_center_y(0xd3));
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
         break;
     case 0x11d:
         wnd = self->macro_detector_wnd;

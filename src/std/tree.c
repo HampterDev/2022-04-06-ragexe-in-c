@@ -477,8 +477,3 @@ int tree_less_int64(const void *a, const void *b)
 {
     return *(const long long *)a < *(const long long *)b;
 }
-
-int tree_less_uint64(const void *a, const void *b)
-{
-    return *(const unsigned long long *)a < *(const unsigned long long *)b;
-}

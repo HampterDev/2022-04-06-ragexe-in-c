@@ -4,7 +4,6 @@
 #include "std/string.h"
 #include "session/character_name.h"
 #include "contents/guild_emblem_api.h"
-#include "contents/manner_filter.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -82,9 +81,6 @@ static void show_guild_invite(const struct PACKET_ZC_REQ_GUILD_INVITE *packet, i
 
     memcpy(guild_name, packet->guild_name, 24);
     guild_name[24] = 0;
-    if (word_filter_contains(&g_nameFilter, guild_name) == 1) {
-        word_filter_censor(&g_nameFilter, guild_name);
-    }
     window = ui_window_open(window_id);  ui_window_send(window, NULL, message, (int)packet->inviter, (int)guild_name, 0, 0);
 }
 
@@ -244,9 +240,6 @@ void game_mode_zc_guild_info2(const struct PACKET_ZC_GUILD_INFO2 *packet)
     master_name[24] = 0;
     memcpy(manage_land, packet->manage_land, 24);
     manage_land[24] = 0;
-    if (word_filter_contains(&g_nameFilter, name)) {
-        word_filter_censor(&g_nameFilter, name);
-    }
     string_assign_cstr(&(g_guildInfo.name), name);
     string_assign_cstr(&(g_guildInfo.master_name), master_name);
     g_guildInfo.is_master = (unsigned char)string_equal_cstr(&(g_guildInfo.master_name), session_character_name(&g_session1));
@@ -356,9 +349,6 @@ void game_mode_zc_guild_info(const unsigned char *pkt)
     master[24] = 0;
     memcpy(land, packet->castle_name, 24);
     land[24] = 0;
-    if (word_filter_contains(&g_nameFilter, name)) {
-        word_filter_censor(&g_nameFilter, name);
-    }
     string_assign_cstr(((&g_guildInfo.name)), name);
     string_assign_cstr(((&g_guildInfo.master_name)), master);
     g_guildInfo.is_master = string_equal_cstr(((&g_guildInfo.master_name)), session_character_name(&g_session1));
@@ -618,9 +608,6 @@ void game_mode_zc_add_related_guild(const unsigned char *pkt)
         return;
     memcpy(name, packet->name, 24);
     name[24] = 0;
-    if (word_filter_contains(&g_nameFilter, name) == 1) {
-        word_filter_censor(&g_nameFilter, name);
-    }
     string_init(&guild.name);
     guild.kind = packet->relation;
     guild.id = packet->guild_id;
@@ -629,4 +616,24 @@ void game_mode_zc_add_related_guild(const unsigned char *pkt)
     list_push_back(&g_guildInfo.relations, &copy, sizeof copy);
     window_mgr_invalidate_guild_wnd(&g_windowMgr);
     string_free(&guild.name);
+}
+
+#pragma pack(push, 1)
+struct PACKET_ZC_GUILD_POSITION {
+    unsigned short id;
+    unsigned short length;
+    unsigned aid;
+    char position[1];
+};
+#pragma pack(pop)
+
+void game_mode_zc_guild_position(struct GameMode *self, const struct PACKET_ZC_GUILD_POSITION *packet)
+{
+    struct String title;
+    size_t length = packet->length - 8;
+
+    string_init(&title);
+    if (length != 0)
+        string_assign(&title, packet->position, length);
+    name_card_holder_set_position(&self->actor_names, packet->aid, title);
 }

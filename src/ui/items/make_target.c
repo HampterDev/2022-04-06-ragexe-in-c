@@ -1,9 +1,7 @@
 #include "ui/controls/listbox.h"
-#include "ui/window_records.h"
 #include "game/drag_info.h"
 #include "render/rp_pool.h"
 #include "iteminfo/item_api.h"
-#include "ui/record_tags.h"
 #include "iteminfo/item_tables.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -124,7 +122,6 @@ const struct UIWindowOps ui_make_target_list_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_make_target_list_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -176,7 +173,6 @@ const struct UIWindowOps ui_make_target_process_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_make_target_process_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -225,7 +221,6 @@ const struct UIWindowOps ui_make_target_result_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -273,29 +268,6 @@ static void target_info(struct ItemInfo *info, int item_id)
     item_info_set_item_id(info, item_id);
     info->identified = 1;
     info->refine = 0;
-}
-
-static void load_id_records(struct UIWindow *self, const char *buf, unsigned size, short begin, short end,
-                            short id_tag, int *id, int msg)
-{
-    struct UIRecordHeader rec = *(const struct UIRecordHeader *)buf;
-    unsigned pos = sizeof rec;
-
-    if (rec.tag != begin)
-        return;
-    while (size > pos) {
-        rec = *(const struct UIRecordHeader *)(buf + pos);
-        pos += sizeof rec;
-        if (rec.tag == end)
-            return;
-        if (rec.tag == id_tag) {
-            memcpy(id, buf + pos, rec.len);
-            pos += rec.len;
-            ui_window_send_msg(self, NULL, msg, *id, 0, 0, 0);
-        } else {
-            pos += rec.len;
-        }
-    }
 }
 
 static void send_make_empty(int item_id)
@@ -354,19 +326,6 @@ void ui_make_target_list_wnd_on_draw(struct UIWindow *window)
     draw_chrome(&self->frame.base, 1, msg_str(MSG_MT_LIST_TITLE));
 }
 
-int ui_make_target_list_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIMakeTargetListWnd *self = (struct UIMakeTargetListWnd *)window;
-    int *id;
-
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, MT_LIST_REC_BEGIN, NULL, 0);
-    for (id = self->ids.first; id != self->ids.last; id++)
-        snapshot_write(&writer, MT_LIST_REC_ID, id, sizeof *id);
-    snapshot_write(&writer, MT_LIST_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 static void list_choose(struct UIMakeTargetListWnd *self)
 {
     int item_id;
@@ -413,15 +372,11 @@ int ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
         ui_window_send_msg(&self->list->base, NULL, msg, 0, 0, 0, 0);
         break;
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, self->list->selected);
+
         if (val1 == UI_ID_CANCEL) {
             send_make_empty(0);
             ui_close_window(MT_LIST_WND_ID);
         } else if (val1 == UI_ID_OK) {
-            if (g_replayPlaying) {
-                self->list->selected = val4;
-                ui_window_invalidate_base(&self->list->base);
-            }
             if (ui_list_box_count(self->list) == 0) {
                 ui_close_window(MT_LIST_WND_ID);
                 ui_close_window(MT_LIST_WND_ID);
@@ -430,15 +385,7 @@ int ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
             }
         }
         break;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        load_id_records(&self->frame.base, (const char *)val1, (unsigned)val2, MT_LIST_REC_BEGIN, MT_LIST_REC_END,
-                        MT_LIST_REC_ID, &id, MT_MSG_ADD_TARGET);
-        break;
+
     default:
         result = ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
         break;
@@ -573,17 +520,6 @@ void ui_make_target_process_wnd_drag_and_drop(struct UIWindow *window, int x, in
     mode_send_message(client_current_mode(), MT_REQ_DRAG_END, 0, 0, 0, 0);
 }
 
-int ui_make_target_process_wnd_get_records(struct UIWindow *window,
-                                                               struct ReplayBuffer *out)
-{
-    struct UIMakeTargetProcessWnd *self = (struct UIMakeTargetProcessWnd *)window;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, MT_PROCESS_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, MT_PROCESS_REC_ID, &self->item_id, sizeof self->item_id);
-    snapshot_write(&writer, MT_PROCESS_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                                               int val1, int val2, int val3, int val4)
 {
@@ -593,7 +529,7 @@ int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_OK) {
             game_send_message(MT_REQ_MAKE, self->item_id, (int)self->stones, 0, 0);
             ui_close_window(MT_PROCESS_WND_ID);
@@ -628,15 +564,6 @@ int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow
                 return 0;
             }
         }
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        load_id_records(&self->frame.base, (const char *)val1, (unsigned)val2, MT_PROCESS_REC_BEGIN,
-                        MT_PROCESS_REC_END, MT_PROCESS_REC_ID, &self->item_id, MT_MSG_SET_TARGET);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

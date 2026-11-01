@@ -1,5 +1,4 @@
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "session/csession.h"
 #include "session/session_items.h"
 #include "session/session_jobs.h"
@@ -213,19 +212,9 @@ struct NamedInts {
 
 void session_reload_texts(struct Session *self)
 {
-    struct TableReader *words = &self->tableReader;
-
     msg_str_load();
-    word_filter_load(&g_nameFilter, "manner.txt");
-    session_load_talk_tables(self);
-    table_reader_read(words, "mapNameTable.txt", TABLE_FIELDS);
-    for (size_t i = 0; i + 2 <= words->count; i += 2) {
-        char **w = words->fields + i;
-        if (!map_info_set_display_name(g_mapInfo, w[0], w[1], 0))
-            break;
-    }
+    session_load_monster_skill_info(self);
     item_tables_load();
-    skill_info_nop();
 }
 
 void session_clear_merc_commands(struct Session *self)
@@ -324,25 +313,16 @@ void session_load_mini_party_info(struct Session *self)
     file_destruct(&file);
 }
 
-int g_initTableRuns;
-
 void session_init_table(struct Session *self)
 {
-    HWND setup;
     int i;
 
-    g_initTableRuns++;
     session_init_job_hit_wave_name(self);
     session_load_mp3_names(self);
     session_load_indoor_rsws(self);
     session_load_view_points(self);
     session_init_skill_effect_id_maps(self);
     session_reload_texts(self);
-    setup = FindWindowA(NULL, "Ragnarok Setup");
-    if (setup) {
-        error_msg(msg_str(0xc7a), 0);
-        SendMessageA(setup, WM_CLOSE, 0, 0);
-    }
     session_load_fog_parameters(self);
     session_init_lua_files(self);
     session_load_weapon_hit_waves(self);

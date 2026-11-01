@@ -45,7 +45,6 @@
 
 #define EMOTION_WAIT 2500
 #define CHAT_COLOR_GM_STATUS 0x6efa9b
-#define CHAT_COLOR_PET_FOOD 0x1e1ef5
 #define CHAT_COLOR_NOTICE 0xffff00
 #define NPC_CLICK_WARP_SERVER 0x2d
 
@@ -150,12 +149,17 @@ int game_mode_msg_req_status(struct GameMode *self)
 
 int game_mode_msg_emotion(struct GameMode *self, int emotion)
 {
-    if (emotion >= 0x5d || self->emotion_pending)
+    DWORD now;
+
+    /* Yut IDs remain supported for received animations, not local requests. */
+    if (emotion >= 0x51 && emotion <= 0x57)
         return 0;
-    if (timeGetTime() <= self->emotion_time + EMOTION_WAIT)
+    if (emotion >= 0x5d)
         return 0;
-    self->emotion_time = timeGetTime();
-    self->emotion_pending = 1;
+    now = timeGetTime();
+    if ((DWORD)(now - self->emotion_time) <= EMOTION_WAIT)
+        return 0;
+    self->emotion_time = now;
     send_u8(CZ_REQ_EMOTION, emotion);
     return 0;
 }
@@ -259,39 +263,14 @@ int game_mode_msg_couple_request(const char *name, int which)
 
 int game_mode_msg_pet_act(int action)
 {
-    if (action == -1)
-        return 0;
-    if (action % 10 < 2 && g_session1.petIntimacy / 10 < 90 && !session_is_admin_option(&g_session1, 3))
+    if (action % 10 != 2)
         return 0;
     send_u32(CZ_PET_ACT, action);
     return 0;
 }
 
-int game_mode_msg_command_pet(int command, int feeding)
+int game_mode_msg_command_pet(int command)
 {
-    struct ItemInfo item, food;
-    struct String line;
-    const char *name;
-    int food_id, count;
-
-    if (feeding == 1) {
-        food_id = session_get_pet_food(&g_session1, g_session1.petJob);
-        count = session_get_inventory_item_by_id(&g_session1, &item, food_id, 0)->count;
-        item_info_destruct(&item);
-        if (count <= 0) {
-            item_info_construct(&food);
-            item_info_set_item_id(&food, food_id);
-
-            name = item_info_get_name(&food);
-            string_init(&line);
-            string_format(&line, msg_str(0x24f), name);
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), CHAT_COLOR_PET_FOOD, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)string_cstr(&line), CHAT_COLOR_PET_FOOD, 0, 0);
-            string_free(&line);
-            item_info_destruct(&food);
-            return 0;
-        }
-    }
     send_u8(CZ_COMMAND_PET, command);
     return 0;
 }

@@ -7,8 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-#include <shellapi.h>
-#include "core/app.h"
+#include "platform/language.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/ui_std.h"
@@ -26,11 +25,6 @@ static void set_formatted(struct String *s, int id, const char *text)
     string_format(&tmp, msg_str(id), text);
     string_assign(s, string_cstr(&tmp), tmp.size);
     string_free(&tmp);
-}
-
-static void open_page(const char *url)
-{
-    ShellExecuteA(g_hMainWnd, "open", url, NULL, NULL, SW_SHOWNORMAL);
 }
 
 static int refuse_box(const struct String *s, int a, int c)
@@ -90,21 +84,7 @@ void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
 
     switch (code) {
     case 0:   set_msg(&s, 6); break;
-    case 1:
-        if (g_serviceType != 0 || (signed char)++g_wrongPasswordCount < 3) {
-            set_msg(&s, 0x10b);
-            break;
-        }
-        string_assign(&s,
-            "비밀번호를 3회 잘못입력하였습니다. "
-            "비밀번호를 확인해주세요.              "
-            "클라이언트 실행을 종료합니다.", 0x66);
-        if (refuse_box(&s, 0, 1) == 0xb0) {
-            open_page(g_session1.channelCopId == 1 ? "http://www.hangame.com" : "http://ragnarok.co.kr");
-            mode_mgr_quit(&g_modeMgr);
-        }
-        string_clear(&s);
-        break;
+    case 1:   set_msg(&s, 0x10b); break;
     case 2:   set_msg(&s, 8); break;
     case 4:   set_msg(&s, 0x10a); break;
     case 5:   set_msg(&s, 0x136); break;
@@ -118,11 +98,6 @@ void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
             break;
         string_assign(&s,
             "비밀 번호 변경 후, 다시 접속 해주시기 바랍니다.", 0x2f);
-        if (refuse_box(&s, 0, 1) == 0xb0) {
-            open_page("http://www.ragnarok.co.kr/setNewPW/password_change_agreement.asp");
-            mode_mgr_quit(&g_modeMgr);
-        }
-        string_clear(&s);
         break;
     case 17:
         set_formatted(&s, 0x564, text);
@@ -160,13 +135,7 @@ void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
     case 106: set_msg(&s, 0x50d); break;
     case 108: set_msg(&s, 0x571); break;
     case 109: set_msg(&s, 0x572); break;
-    case 110:
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x929), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0xb0) {
-            open_page(msg_str(0x92a));
-            mode_mgr_quit(&g_modeMgr);
-        }
-        string_clear(&s);
-        break;
+    case 110: set_msg(&s, 0x929); break;
     case 112: set_msg(&s, 0x96a); break;
     case 242: set_msg(&s, 0xd6f); break;
     case 243: set_msg(&s, 0xe67); break;

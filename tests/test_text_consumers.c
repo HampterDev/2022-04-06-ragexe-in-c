@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-void test_manner_encoding(void);
 static unsigned string_blocks, invalidations;
 
 void *mem_alloc(size_t bytes)
@@ -90,9 +89,8 @@ int main(void)
     assert(invalidations == 3 && !encoding_live);
     string_free(&label.text);
     string_free(&label.tooltip);
-    test_manner_encoding();
     assert(!string_blocks && !encoding_live);
     assert(SetThreadLocale(previous));
-    puts("PASS: ASCII/Korean ellipsis, static labels, conversion-failure fallback, censoring and allocation cleanup");
+    puts("PASS: ASCII/Korean ellipsis, static labels, conversion-failure fallback and allocation cleanup");
     return 0;
 }

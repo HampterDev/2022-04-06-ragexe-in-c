@@ -11,7 +11,6 @@
 #include "ui/character/character.h"
 #include <imm.h>
 #include <mmsystem.h>
-#include <shellapi.h>
 #include "login/otp.h"
 #include "core/app.h"
 #include "core/msg_str.h"
@@ -67,7 +66,6 @@ const struct UIWindowOps ui_login_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -119,7 +117,6 @@ const struct UIWindowOps ui_login_otp_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -164,13 +161,11 @@ static struct UIBmpTextButton *add_text_button(struct UIWindow *parent, const ch
 #define LOGIN_ID_START 0xb2
 #define LOGIN_ID_CLOSE 0xd5
 #define LOGIN_ID_CANCEL 0x115
-#define LOGIN_ID_JOIN 0x103
 #define LOGIN_MAX_CHARS 24
 #define LOGIN_PLACEHOLDER_GREY 0x9c
 
 #define MSG_LOGIN_SAVE_ID 0xd53
 #define MSG_LOGIN_CLOSE 0xd67
-#define MSG_LOGIN_JOIN 0xd56
 #define MSG_ACCOUNT_CLASS_0 0xcb2
 #define MSG_ACCOUNT_CLASS_1 0xcb3
 #define LOGIN_MSG_COMBO_CHANGED 0x27
@@ -247,11 +242,6 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
     }
     RegCloseKey(key);
-}
-
-void ui_login_wnd_open_regist_page(struct UILoginWnd *self)
-{
-    ShellExecuteA(g_hMainWnd, "open", g_registrationWeb, NULL, NULL, SW_SHOWNORMAL);
 }
 
 void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
@@ -352,9 +342,6 @@ void ui_login_wnd_on_create(struct UIWindow *window, int width_unused, int heigh
     add_text_button(wnd, UI_SKIN "login_interface\\bt_close_normal.bmp",
                     UI_SKIN "login_interface\\bt_close_over.bmp", UI_SKIN "login_interface\\bt_close_press.bmp",
                     2, 0xd, 0x68, LOGIN_ID_CANCEL, MSG_LOGIN_CLOSE);
-    add_text_button(wnd, UI_SKIN "login_interface\\bt_join_normal.bmp",
-                    UI_SKIN "login_interface\\bt_join_over.bmp", UI_SKIN "login_interface\\bt_join_press.bmp",
-                    2, 0x57, 0x68, LOGIN_ID_JOIN, MSG_LOGIN_JOIN);
 
     button = ui_bitmap_button(UI_SKIN "login_interface\\bt_start_normal.bmp",
                               UI_SKIN "login_interface\\bt_start_over.bmp",
@@ -509,8 +496,6 @@ void ui_login_wnd_store_info(struct UIWindow *window)
 #define MSG_LOGIN_ID_TOO_SHORT 0xbd5
 #define MSG_LOGIN_PASSWORD_TOO_SHORT 0xbd6
 #define MSG_LOGIN_QUIT_ASK 0x11
-#define MSG_LOGIN_JOIN_ASK 0xd08
-#define LOGIN_JOIN_URL_HANGAME "http://ro.hangame.com/login/loginstep.asp?prevURL=/NHNCommon/NHN/Memberjoin.asp"
 
 static void login_leave(struct UILoginWnd *self)
 {
@@ -527,7 +512,6 @@ static void login_start(struct UILoginWnd *self)
     if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS
         && ui_edit_ctrl_get_text_size(self->id_edit) >= LOGIN_ID_MIN_CHARS) {
         mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
-        _snprintf_s(g_session1.launchArg2, sizeof g_session1.launchArg2, (size_t)-1, "%s", ui_edit_ctrl_get_text(self->id_edit));
         mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
         mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (int)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
         mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (int)self->account_class, 0, 0, 0);
@@ -542,22 +526,6 @@ static void login_start(struct UILoginWnd *self)
         string_format(&text, msg_str(MSG_LOGIN_PASSWORD_TOO_SHORT), LOGIN_PASSWORD_MIN_CHARS);
     ui_message_box(string_cstr(&text));
     string_free(&text);
-}
-
-static void login_join(struct UILoginWnd *self)
-{
-    if (g_serviceType == 0) {
-        if (g_session1.channelCopId == 1) {
-            mode_mgr_quit(&g_modeMgr);
-            ShellExecuteA(g_hMainWnd, "open", LOGIN_JOIN_URL_HANGAME, NULL, NULL, SW_SHOWNORMAL);
-            return;
-        }
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_LOGIN_JOIN_ASK), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
-            return;
-    }
-    mode_mgr_quit(&g_modeMgr);
-    ui_login_wnd_open_regist_page(self);
 }
 
 static void login_show_notices(struct UILoginWnd *self)
@@ -611,9 +579,6 @@ int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             break;
         case LOGIN_ID_NOTICES:
             login_show_notices(self);
-            break;
-        case LOGIN_ID_JOIN:
-            login_join(self);
             break;
         case LOGIN_ID_PORTAL_0:
             g_session1.channelCopId = 0;

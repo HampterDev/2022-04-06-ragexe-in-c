@@ -2,7 +2,7 @@
 #include "actor/map_type_table.h"
 struct EffectMgr *g_effectMgr;
 struct MapPropertyMgr *g_mapFlags;
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+
 struct Effect;
 struct EffectMgr;
 struct GameActor;

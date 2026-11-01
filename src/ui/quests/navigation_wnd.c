@@ -65,7 +65,6 @@ const struct UIWindowOps ui_navigation_v4_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -94,9 +93,6 @@ struct UINavigationV4Wnd *ui_navigation_v4_wnd_construct(struct UINavigationV4Wn
 {
     ui_frame_wnd_construct(&self->frame, 0);
     self->frame.base.ops = &ui_navigation_v4_wnd_ops;
-    self->files.first = NULL;
-    self->files.last = NULL;
-    self->files.end = NULL;
     self->hint_until = 0;
     self->airship = NULL;
     self->anim_period = 2000;
@@ -111,7 +107,6 @@ struct UIWindow *ui_navigation_v4_wnd_new(void)
 void ui_navigation_v4_wnd_destruct(struct UINavigationV4Wnd *self)
 {
     self->frame.base.ops = &ui_navigation_v4_wnd_ops;
-    string_vec_free(&self->files);
     ui_frame_wnd_destruct(&self->frame);
 }
 
@@ -137,7 +132,6 @@ void ui_navigation_v4_wnd_layout_route(struct UINavigationV4Wnd *self)
     MOVE(self->kind_box, 0x1d, 0x15);
     MOVE(self->search, 0x5e, 0x15);
     MOVE(self->search_btn, 0xcf, 0x15);
-    MOVE(self->navidata, 0xec, 0x15);
     MOVE(self->back, 4, 0x15);
     MOVE(self->road_icon, 0xed, 0x13d);
     MOVE(self->minimize_box, 9, 0x141);
@@ -167,7 +161,6 @@ void ui_navigation_v4_wnd_layout_list_page(struct UINavigationV4Wnd *self)
     MOVE(self->kind_box, 0x1d, 0x15);
     MOVE(self->search, 0x5e, 0x15);
     MOVE(self->search_btn, 0xcf, 0x15);
-    MOVE(self->navidata, 0xec, 0x15);
     MOVE(self->back, 4, 0x15);
     MOVE(self->road_icon, 0xed, 0x13d);
     MOVE(self->minimize_box, 9, 0x141);
@@ -196,7 +189,6 @@ void ui_navigation_v4_wnd_relayout(struct UINavigationV4Wnd *self)
         MOVE(self->kind_box, NAVI_HIDE, NAVI_HIDE);
         MOVE(self->search, NAVI_HIDE, NAVI_HIDE);
         MOVE(self->search_btn, NAVI_HIDE, NAVI_HIDE);
-        MOVE(self->navidata, NAVI_HIDE, NAVI_HIDE);
         MOVE(self->back, NAVI_HIDE, NAVI_HIDE);
         MOVE(self->road_icon, NAVI_HIDE, NAVI_HIDE);
         MOVE(self->minimize_box, NAVI_HIDE, NAVI_HIDE);
@@ -360,11 +352,6 @@ void ui_navigation_v4_wnd_on_create(struct UIWindow *window, int width, int heig
     set_bitmaps(self->help, UI_SKIN "navigation_interface\\NaviHelp_off.bmp",
                 UI_SKIN "navigation_interface\\NaviHelp_on.bmp", UI_SKIN "navigation_interface\\NaviHelp_on.bmp");
     place_button(self, self->help, NAVI_ID_HELP, 0x89d);
-
-    self->navidata = new_button();
-    set_bitmaps(self->navidata, NAVI_DIR "btn_Navidata_Open_normal.bmp", NAVI_DIR "btn_Navidata_Open_over.bmp",
-                NAVI_DIR "btn_Navidata_Open_press.bmp");
-    place_button(self, self->navidata, NAVI_ID_NAVIDATA, 0x899);
 
     search = mem_alloc(sizeof *search);
     if (search) {

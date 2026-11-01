@@ -19,8 +19,6 @@ void *res_mgr_get(struct ResMgr *mgr, const char *name)
     assert(mgr == (struct ResMgr *)&resource && strcmp(name, "test.rsm") == 0);
     return missing ? NULL : &resource;
 }
-void model_res_place_videos(const struct C3dModelRes *res, Vec3 pos)
-{ assert(res == &resource && memcmp(&pos, record.pos, sizeof pos) == 0); }
 static void actor_delete(struct C3dActor *actor)
 { ++deleted; free(actor); }
 static void actor_speed(struct C3dActor *actor, float speed)

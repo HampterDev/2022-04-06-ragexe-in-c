@@ -6,7 +6,6 @@
 struct CardRow { int id; struct CardAffix value; };
 struct MetalRow { int id; struct ItemTextLines lines; };
 static struct { struct CardRow *data; size_t count, capacity; } cards;
-static struct { int *data; size_t count, capacity; } books;
 static struct { struct MetalRow *data; size_t count, capacity; } metal;
 static struct { struct ItemMoveInfo *data; size_t count, capacity; } movement;
 static struct CardAffix card_default;
@@ -35,16 +34,6 @@ static size_t card_position(int id)
     while (low < high) {
         size_t mid = low + (high - low) / 2;
         if (cards.data[mid].id < id) low = mid + 1; else high = mid;
-    }
-    return low;
-}
-
-static size_t book_position(int id)
-{
-    size_t low = 0, high = books.count;
-    while (low < high) {
-        size_t mid = low + (high - low) / 2;
-        if (books.data[mid] < id) low = mid + 1; else high = mid;
     }
     return low;
 }
@@ -115,30 +104,6 @@ void card_affix_clear(void)
     memset(&cards, 0, sizeof cards);
 }
 
-unsigned char book_item_has(int id)
-{
-    size_t at = book_position(id);
-    return at < books.count && books.data[at] == id;
-}
-
-void book_item_add(int id)
-{
-    size_t at = book_position(id);
-    if (at < books.count && books.data[at] == id)
-        return;
-    books.data = table_grow(books.data, &books.capacity, books.count, sizeof *books.data);
-    if (at < books.count)
-        memmove(books.data + at + 1, books.data + at, (books.count - at) * sizeof *books.data);
-    books.data[at] = id;
-    books.count++;
-}
-
-void book_items_clear(void)
-{
-    free(books.data);
-    memset(&books, 0, sizeof books);
-}
-
 const struct ItemTextLines *metal_process_get(int id)
 {
     size_t at = metal_position(id);
@@ -198,6 +163,5 @@ void item_move_info_clear(void)
 }
 
 void card_affix_table_init(void) { atexit(card_affix_clear); }
-void book_item_table_init(void) { atexit(book_items_clear); }
 void metal_process_table_init(void) { atexit(metal_process_clear); }
 void item_move_info_table_init(void) { atexit(item_move_info_clear); }

@@ -1,7 +1,6 @@
-#ifndef ASYNCWORK_NAME_CARDS_H
-#define ASYNCWORK_NAME_CARDS_H
+#ifndef WEB_NAME_CARDS_H
+#define WEB_NAME_CARDS_H
 #include "contents/connection_api.h"
-#include "web/asyncwork.h"
 #include "web/name_card_api.h"
 
 struct NameCardEntry {

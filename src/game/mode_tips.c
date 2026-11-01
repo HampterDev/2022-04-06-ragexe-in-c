@@ -4,7 +4,6 @@
 #include "ui/chat/balloon.h"
 #include "contents/client_lua_calls.h"
 #include "game/own_states.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "core/memory.h"
 #include <windows.h>
@@ -12,7 +11,6 @@
 #include <string.h>
 #include "game/tips.h"
 #include "game/quest_info.h"
-#include "game/replay.h"
 #include "game/client.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
@@ -48,10 +46,7 @@ struct String *state_icon_get_time_left_text(struct GameMode *self, struct Strin
     if (entry->end_tick == STATE_ICON_NO_END || entry->end_tick == 0)
         return out;
 
-    if (g_replayPlaying) {
-        seconds = (int)(entry->end_tick - replay_recorder_instance()->elapsed);
-        seconds = seconds < 1000 ? 0 : seconds / 1000;
-    } else {
+    {
         seconds = (int)(entry->end_tick / 1000 - timeGetTime() / 1000);
     }
     hours = seconds / 3600;
@@ -71,12 +66,6 @@ struct String *state_icon_get_time_left_text(struct GameMode *self, struct Strin
         string_append_cstr(out, part);
     }
     return out;
-}
-
-char game_mode_has_state_icon(struct GameMode *self, int icon)
-{
-    (void)self;
-    return !game_mode_is_exception_state(icon) && own_states_find(icon) != NULL;
 }
 
 #define ICON_TOP          0xa8

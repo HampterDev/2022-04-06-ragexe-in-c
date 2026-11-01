@@ -1,6 +1,5 @@
 #include "contents/mcstore_requests.h"
 #include "session/shop_inventory.h"
-#include "ui/record_tags.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
@@ -91,32 +90,6 @@ static void clamp_size(int *width, int *height, int max_width, int max_height)
         h = 0x78;
     *width = (w - 0x118) / ITEM_GRID_CELL * ITEM_GRID_CELL + 0x118;
     *height = (h - 0x78) / ITEM_GRID_CELL * ITEM_GRID_CELL + 0x78;
-}
-
-static int read_records(const char *buf, unsigned size, short begin1, short begin2, short end1, short end2,
-                        short value_tag, int *value, struct UIWindow *notify)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != begin1 && hdr.tag != begin2)
-        return 0;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == end1 || hdr.tag == end2)
-            return 1;
-        if (hdr.tag == value_tag) {
-            memcpy(value, buf + pos, hdr.len);
-            pos += hdr.len;
-            if (notify)
-                ui_window_send_msg(notify, NULL, SHOP_MSG_NOTICE, *value, 0, 0, 0);
-        } else {
-            pos += hdr.len;
-        }
-    }
-    return 0;
 }
 
 static void set_notice(struct UIWindow *wnd, struct UIWindow *notice, int amount, int from_bottom)
@@ -355,16 +328,6 @@ int ui_merchant_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         self->notice_amount = val1;
         set_notice(wnd, self->notice, val1, 0x15);
         return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        read_records((const char *)val1, (unsigned)val2, REC_SHOP_BEGIN, REC_SHOP_VARIANT_BEGIN, REC_SHOP_BEGIN,
-                     REC_SHOP_VARIANT_BEGIN, REC_SHOP_VARIANT_VALUE, &self->notice_amount, NULL);
-        return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
@@ -373,25 +336,32 @@ static void my_shop_close(struct UIMerchantItemMyShopWnd *self)
 {
     struct UIWindow *wnd = &self->base.frame.base;
     struct Mode *mode = client_current_mode();
-    int own_wnd = self->variant ? WND_ID_MY_BUYING : WND_ID_MY_SHOP;
+    int variant = self->variant, assistant = self->assistant;
+    int x = wnd->x, y = wnd->y;
+    int own_wnd = variant ? WND_ID_MY_BUYING : WND_ID_MY_SHOP;
 
-    if (self->assistant == 1) {
+    if (!assistant) {
+        if (mcstore_request_save(&g_session1.mcStoreBackup, variant))
+            ui_chat_line(msg_str(variant ? 0xe66 : 0xe65), 0xffff);
+        else
+            ui_chat_line("Could not save local shop setup. Previous file preserved.", 0xffff);
+    }
+
+    if (assistant == 1) {
         ui_close_window(own_wnd);
         mode_send_message(mode, MODE_REQ_SHOP_CLOSE, 0, 0, 0, 0);
     } else {
         struct UIWindow *setup;
 
-        mode_send_message(mode, self->variant ? MODE_REQ_CLOSE_BUYING : MODE_REQ_CLOSE_SHOP, 0, 0, 0, 0);
+        mode_send_message(mode, variant ? MODE_REQ_CLOSE_BUYING : MODE_REQ_CLOSE_SHOP, 0, 0, 0, 0);
         mode_send_message(mode, MODE_REQ_SHOP_CLOSE, 0, 0, 0, 0);
         ui_close_window(own_wnd);
-        setup = ui_window_open(self->variant ? WND_ID_BUYING_SETUP : WND_ID_SHOP_SETUP);
+        setup = ui_window_open(variant ? WND_ID_BUYING_SETUP : WND_ID_SHOP_SETUP);
         if (setup) {
             ui_window_set_show(setup, 1);
-            ui_window_move(setup, wnd->x, wnd->y);
+            ui_window_move(setup, x, y);
         }
     }
-    if (self->assistant == 0)
-        mcstore_request_save(&g_session1.mcStoreBackup, self->variant);
     session_clear_own_store_items(&g_session1);
 }
 
@@ -405,7 +375,6 @@ int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWind
     case UI_MSG_COMMAND: {
         struct Mode *mode = client_current_mode();
 
-        ui_window_record_command(wnd, val1, val2, val3, val4);
         if (val1 == UI_ID_MY_SHOP_CLOSE) {
             my_shop_close(self);
         } else if (val1 == UI_ID_CHECKBOX) {
@@ -474,19 +443,6 @@ int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWind
     case SHOP_MSG_NOTICE:
         set_notice(wnd, self->notice, val1, 0x1a);
         self->notice_amount = val1;
-        return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        if (read_records((const char *)val1, (unsigned)val2, REC_MY_SHOP_BEGIN, REC_MY_SHOP_VARIANT_BEGIN,
-                         REC_MY_SHOP_END, REC_MY_SHOP_VARIANT_END, REC_MY_SHOP_NOTICE, &self->notice_amount, wnd)) {
-            ui_merchant_item_my_shop_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-            ui_merchant_item_my_shop_wnd_send_msg(&self->base.frame.base, NULL, SHOP_MSG_TITLE, 0, 0, 0, 0);
-        }
         return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);

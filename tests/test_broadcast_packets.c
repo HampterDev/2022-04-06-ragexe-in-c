@@ -66,14 +66,7 @@ char rag_connection_send_packet(struct RagConnection *connection, int length, co
 }
 
 #ifdef BROADCAST_REFERENCE
-struct WordFilter g_nameFilter;
 static unsigned allocations;
-
-int word_filter_is_clean(const struct WordFilter *filter, const char *text)
-{
-    assert(filter == &g_nameFilter && strcmp(text, input) == 0);
-    return cases & 1;
-}
 
 void *mem_alloc(size_t size)
 {

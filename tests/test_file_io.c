@@ -5,17 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-static unsigned errors, archive_queries, archive_reads, loose_checks;
+static unsigned errors, archive_queries, archive_reads;
 static int archive_found, archive_read_ok = 1;
 static unsigned archive_size = 3;
 static struct GrfArchive archive;
 static struct GrfArchive *archives[] = {&archive};
 
-struct GGHashManager *g_ggHashMgr;
-int gg_hash_manager_check_file(struct GGHashManager *self, const char *name)
-{ (void)self; assert(name); ++loose_checks; return 1; }
-int gg_hash_manager_check_data(struct GGHashManager *self, const char *name, const void *data, unsigned size)
-{ (void)self; assert(name && data && size <= UINT_MAX); return 1; }
 void error_msg(const char *text, int flags) { assert(text && !flags); ++errors; }
 
 struct Hash *hash_construct(struct Hash *key, const char *name)
@@ -236,7 +231,6 @@ int main(void)
     memory_file(path);
     empty_and_missing(empty, missing);
     archive_priority(path, empty, missing);
-    assert(loose_checks > 0);
     assert(DeleteFileA(path));
     assert(DeleteFileA(empty));
     puts("file I/O: C ownership, reopen, exact transfers, signed seeks, bounds, empty files and archive fallback passed");

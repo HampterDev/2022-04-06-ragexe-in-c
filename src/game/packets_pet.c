@@ -90,34 +90,14 @@ SIZE_ASSERT(PACKET_ZC_PET_ACT, 10);
 
 void game_mode_zc_pet_act(struct GameMode *self, unsigned char *pkt)
 {
-    struct PACKET_ZC_PET_ACT *packet = (struct PACKET_ZC_PET_ACT *)pkt;
-    unsigned aid = packet->aid;
-    struct GameActor *pet = world_get_game_actor_by_aid(self->world, aid);
-    int value, kind, rest, hundreds;
-    char line[256], said[256];
+    const struct PACKET_ZC_PET_ACT *packet = (const struct PACKET_ZC_PET_ACT *)pkt;
+    struct GameActor *pet;
 
-    if (!pet)
+    if (packet->value % 10 != 2)
         return;
-    value = packet->value;
-    kind = value % 10;
-    rest = value / 10;
-    if (kind == 2) {
-        actor_send(pet, 0x15, rest, 0);
-        return;
-    }
-    hundreds = rest / 10;
-    packet->value = hundreds;
-    memset(line, 0, sizeof line);
-    session_get_pet_speak(&g_session1, hundreds / 10, rest % 10, hundreds % 10, line);
-    if (line[0] == 0)
-        return;
-    session_format_chat_line(&g_session1, line, said, aid, 1 - kind);
-    if (strcmp(said, "") == 0)
-        return;
-    actor_send(pet, 7, (int)said, 0);
-    if (g_session1.hideChat == 1 || g_session1.hideChatAndGuild == 1)
-        return;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)said, 0xfafafa, 0, 0);
+    pet = world_get_game_actor_by_aid(self->world, packet->aid);
+    if (pet)
+        actor_send(pet, 0x15, packet->value / 10, 0);
 }
 
 #pragma pack(push, 1)
@@ -147,15 +127,6 @@ void game_mode_zc_pet_egg_list(struct GameMode *self, const unsigned char *pkt)
         item_info_destruct(&egg);
     }
     wnd_send(wnd, 0x3c, 0, 0, 0, 0);
-}
-
-void game_mode_zc_pet_evolution_result(struct GameMode *self, unsigned result)
-{
-    (void)self;
-    if (result <= 5)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xa0b + result), 0xff, 0, 0);
-    else if (result == 7)
-        session_reset_pet(&g_session1);
 }
 
 static void homun_redraw(void)
@@ -235,7 +206,7 @@ void game_mode_zc_change_state_pet(struct GameMode *self, const unsigned char *p
         if (!pet)
             return;
         if (value != 0) {
-            render_object_load_act_res((struct RenderObject *)pet, session_get_pet_accessory_act(&g_session1, value));
+            game_actor_set_pet_accessory(pet, value);
             g_session1.petAccessory = value;
         } else {
             g_session1.petAccessory = 0;
@@ -343,10 +314,8 @@ void game_mode_zc_feed(struct GameMode *self, const unsigned char *pkt)
         if (packet->fed != 0) {
             int intimacy = session_pet_intimacy_level(g_session1.petIntimacy);
             int hunger = session_pet_hunger_level(g_session1.petPrevFullness);
-            int act = session_make_pet_talk_id(g_session1.petJob, 0, hunger);
             int emotion = session_get_pet_emotion(&g_session1, hunger, intimacy, 0);
 
-            mode_send_msg(self, MODE_MSG_PET_ACT, act, 0, 0, 0);
             mode_send_msg(self, MODE_MSG_PET_ACT, emotion, 0, 0, 0);
             feed_line(&food, food_id, 0xa12);
         } else {

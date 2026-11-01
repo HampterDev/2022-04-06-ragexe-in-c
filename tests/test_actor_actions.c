@@ -1,20 +1,17 @@
 #include "actor/actor_ops.h"
 #include "actor/granny_pc.h"
 #include "resources/animation.h"
-#include "replay/replay.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-int g_replayPlaying;
-static float delay, duration;
+static float delay;
 static unsigned expected_action;
 static size_t action_count;
-static int delay_reads, scale_reads, stops, plays, played_action, played_once;
+static int delay_reads, stops, plays, played_action, played_once;
 static int pc_plays, pc_loop;
 static struct GrannyPc *expected_pc;
-static struct ReplayRecorder recorder;
 static const struct ActRes *resource = (const struct ActRes *)1;
 static struct GrannyPlayback *playback = (struct GrannyPlayback *)2;
 
@@ -29,14 +26,6 @@ size_t animation_action_count(const struct ActRes *r)
 {
     assert(r == resource);
     return action_count;
-}
-
-struct ReplayRecorder *replay_recorder_instance(void) { return &recorder; }
-float replay_recorder_duration_scale(struct ReplayRecorder *r)
-{
-    assert(r == &recorder);
-    ++scale_reads;
-    return duration;
 }
 
 void granny_playback_stop(struct GrannyPlayback *p)
@@ -91,24 +80,6 @@ static void sprite_actions(void)
     actor.motion_delay = 5;
     render_object_set_action(object, 8, 0);
     assert(actor.motion_delay == 5);
-
-    g_replayPlaying = 1;
-    delay = 2;
-    duration = 0.5f;
-    actor.delay_factor = 3;
-    scale_reads = 0;
-    render_object_set_action(object, 8, 1);
-    assert(actor.motion_delay == 1.5f && scale_reads == 2);
-    delay = 0;
-    actor.motion_delay = 0.25f;
-    scale_reads = 0;
-    render_object_set_action(object, 8, 1);
-    assert(actor.motion_delay == 0.25f && scale_reads == 3);
-    duration = 0;
-    actor.motion_delay = 0.75f;
-    render_object_set_action(object, 8, 1);
-    assert(actor.motion_delay == 0.75f);
-    g_replayPlaying = 0;
 
     ops.set_action = game_actor_set_action;
     actor.object_type = 7;
@@ -197,6 +168,6 @@ int main(void)
     sprite_actions();
     model_actions();
     head_extents();
-    puts("Actor actions: sprite timing, replay scaling, pet guards and both model mappings and head extents passed");
+    puts("Actor actions: sprite timing, pet guards and both model mappings and head extents passed");
     return 0;
 }

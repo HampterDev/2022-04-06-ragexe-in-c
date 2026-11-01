@@ -67,7 +67,6 @@ const struct UIWindowOps ui_new_chat_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 1,
     .draw_backdrop = ui_new_chat_wnd_draw_backdrop,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -131,12 +130,17 @@ struct UIWindow *ui_new_chat_wnd_new(void)
 void ui_new_chat_wnd_destroy(struct UIWindow *window)
 {
     struct UINewChatWnd *self = (struct UINewChatWnd *)window;
+    int saved;
     self->frame.base.ops = &ui_new_chat_wnd_ops;
-    chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
-                          g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
+    saved = chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds,
+                                 g_session1.canDragWnd == 1, CHAT_LAYOUT_FILE);
     vec_free(&self->boxes);
     ui_frame_wnd_destruct(&self->frame);
     mem_free(self);
+    if (!saved)
+        MessageBoxA(NULL, "Could not save your chat layout.\n"
+                    "Your latest layout changes will not be restored next time.",
+                    "Chat layout", MB_OK | MB_ICONWARNING | MB_TASKMODAL);
 }
 
 void ui_new_chat_wnd_resize(struct UIWindow *window, int width, int height)

@@ -19,11 +19,6 @@ struct McStoreItem {
 };
 
 struct McStoreBackup {
-    int loaded;
-    int saves_pending;
-    int save_type;
-    struct OwnedText save_url;
-    struct OwnedText load_url;
     struct OwnedText title;
     struct McStoreItem *items;
     size_t item_count;

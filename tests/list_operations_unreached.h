@@ -12,7 +12,7 @@ void ui_window_fill_rect(struct UIWindow * arg0, int arg1, int arg2, int arg3, i
 struct UIWindow * ui_window_get_ancestor(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 BYTE ui_window_is_hit_testable_base(struct UIWindow * arg0) { abort(); }
 struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort(); }
@@ -46,7 +46,7 @@ void * pod_emplace_realloc(struct Vec * arg0, BYTE * arg1, const void * arg2, si
 void * res_mgr_get(struct ResMgr * arg0, const char * arg1) { abort(); }
 struct UIFrameWnd * ui_frame_wnd_construct(struct UIFrameWnd * arg0, int arg1) { abort(); }
 void ui_frame_wnd_destruct(struct UIFrameWnd * arg0) { abort(); }
-int ui_frame_wnd_get_records(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 void ui_frame_wnd_move(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_move_delta(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_l_btn_down(struct UIWindow * arg0, int arg1, int arg2) { abort(); }

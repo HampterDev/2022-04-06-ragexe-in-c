@@ -8,7 +8,6 @@
 #include "owned_storage_test_allocator.h"
 
 struct Session g_session1;
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
 
 #define malloc checked_malloc
 #define free checked_free

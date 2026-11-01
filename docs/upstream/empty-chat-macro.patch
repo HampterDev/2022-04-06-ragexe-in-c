@@ -1,0 +1,40 @@
+--- a/src/ui/chat/emotion.c
++++ b/src/ui/chat/emotion.c
+@@ -327,7 +327,7 @@
+     for (i = 0; i < CHAT_MACRO_COUNT; i++) {
+         _itoa(i, name, 10);
+         text = ui_edit_ctrl_get_text(self->macro_edit[i]);
+-        if (*text && !session_set_chat_macro(&g_session1, i, text_view_cstr(text))) {
++        if (!session_set_chat_macro(&g_session1, i, text_view_cstr(text))) {
+             RegCloseKey(key);
+             return;
+         }
+--- a/src/session/chat_macro_settings.c
++++ b/src/session/chat_macro_settings.c
+@@ -37,7 +37,7 @@
+             if (RegQueryValueExA(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS
+                 && type == REG_SZ) {
+                 value[sizeof value - 1] = 0;
+-                if (*value && !owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;
++                if (!owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;
+             }
+         }
+         RegCloseKey(key);
+--- a/tests/test_session_text.c
++++ b/tests/test_session_text.c
+@@ -74,6 +74,7 @@
+     *type = REG_SZ;
+     switch (atoi(name)) {
+     case 0: text = "custom"; break;
++    case 1: text = ""; break;
+     case 2: text = "/기쁨"; break;
+     case 3: *type = REG_BINARY; text = "ignored"; break;
+     case 4:
+@@ -257,6 +258,7 @@
+     session_init_short_cut_texts(&session);
+     count = attempts;
+     assert(!strcmp(session_chat_macro(&session, 0).data, "custom"));
++    assert(session_chat_macro(&session, 1).size == 0);
+     assert(!strcmp(session_chat_macro(&session, 2).data, "default-222"));
+     assert(!strcmp(session_chat_macro(&session, 3).data, "default-223"));
+     assert(!strcmp(session_chat_macro(&session, 4).data, "unterminated"));

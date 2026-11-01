@@ -1,5 +1,4 @@
 #include "session/character_name.h"
-#include "ui/record_tags.h"
 #ifndef UI_CHAT_CHAT_ROOM_WND_H
 #define UI_CHAT_CHAT_ROOM_WND_H
 

@@ -1,6 +1,5 @@
 #include "ui/controls/buttons.h"
 #include "render/rp_pool.h"
-#include "ui/social/entry_queue_state.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -16,7 +15,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 
-#include "replay/replay.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
@@ -36,20 +34,15 @@ enum MenuIconId {
     MENU_ID_QUEST = 0x161,
     MENU_ID_KEYBOARD = 0x16a,
     MENU_ID_GUILD = 0x16d,
-    MENU_ID_BATTLE = 0x170,
     MENU_ID_BOOKING = 0x173,
-    MENU_ID_REC = 0x187,
     MENU_ID_NAVIGATION = 0x1a6,
     MENU_ID_BANK = 0x1c5,
     MENU_ID_ACHIEVEMENT = 0x1d1,
     MENU_ID_MAIL = 0x1d4,
     MENU_ID_MENU = 0x1f6,
-    MENU_ID_TIP = 0x1f7,
     MENU_ID_SHOP = 0x1f8,
-    MENU_ID_SNS = 0x1fe,
     MENU_ID_ATTENDANCE = 0x214,
     MENU_ID_AGENCY = 0x218,
-    MENU_ID_REPUTE = 0x22f,
 };
 
 #define MENU_MSG_TOGGLE 0x3c
@@ -65,21 +58,15 @@ enum MenuIconId {
 #define WND_KEYBOARD 0x12f
 #define WND_GUILD 0x3b
 #define WND_GUILD_NONE 0xd4
-#define WND_BATTLE 0x9d
-#define WND_REPLAY_REC 0xc6
 #define WND_NAVIGATION 0xcb
 #define WND_ACHIEVEMENT 0x10e
 #define WND_MAIL 0x107
-#define WND_TIP 0x13b
 #define WND_ATTENDANCE 0x148
 #define WND_AGENCY 0x144
-#define WND_REPUTE 0x15a
 #define WND_MAIL_BLOCK_1 0x127
 #define WND_MAIL_BLOCK_2 0x157
-#define WND_MAIL_BLOCK_3 0x15b
 #define MSG_MAIL_BLOCK_1 0xbb0
 #define MSG_MAIL_BLOCK_2 0xe83
-#define MSG_MAIL_BLOCK_3 0xf03
 #define MAIL_BLOCK_COLOUR 0xff
 
 #define MODE_REQ_SHOP 0x143
@@ -94,7 +81,7 @@ enum MenuIconId {
 #define MENU_ICON_Y 0x17
 #define MENU_ICON_NEW_Y 0x11
 #define MENU_BUTTON_Y 4
-#define MENU_ICON_COUNT 23
+#define MENU_ICON_COUNT 18
 #define MENU_BIG_COUNT 0x14
 #define MENU_BIG_WIDTH 0xdc
 #define MENU_BIG_HEIGHT 0xee
@@ -166,7 +153,6 @@ const struct UIWindowOps ui_menu_icon_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -337,19 +323,19 @@ static struct UIBitmapButton *menu_button(struct UIMenuIconWnd *self, const char
 
 static const int menu_icon_ids[MENU_ICON_COUNT] = {
     MENU_ID_STATUS,  MENU_ID_EQUIP,  MENU_ID_ITEM,       MENU_ID_SKILL,
-    MENU_ID_BOOKING, MENU_ID_PARTY,  MENU_ID_GUILD,      MENU_ID_BATTLE,
+    MENU_ID_BOOKING, MENU_ID_PARTY,  MENU_ID_GUILD,
     MENU_ID_QUEST,   MENU_ID_MAP,    MENU_ID_NAVIGATION, MENU_ID_OPTION,
-    MENU_ID_BANK,    MENU_ID_REC,    MENU_ID_MAIL,       MENU_ID_ACHIEVEMENT,
-    MENU_ID_TIP,     MENU_ID_SHOP,   MENU_ID_KEYBOARD,   MENU_ID_SNS,
-    MENU_ID_ATTENDANCE, MENU_ID_AGENCY, MENU_ID_REPUTE,
+    MENU_ID_BANK,    MENU_ID_MAIL,       MENU_ID_ACHIEVEMENT,
+    MENU_ID_SHOP,   MENU_ID_KEYBOARD,
+    MENU_ID_ATTENDANCE, MENU_ID_AGENCY,
 };
 static const char *const menu_icon_names[MENU_ICON_COUNT] = {
     "status",  "equip", "item",       "skill",
-    "booking", "party", "guild",      "battle",
+    "booking", "party", "guild",
     "quest",   "map",   "navigation", "option",
-    "bank",    "rec",   "mail",       "achievement",
-    "tip",     "shop",  "keyboard",   "sns",
-    "attendance", "adventurerAgency", "repute",
+    "bank",    "mail",       "achievement",
+    "shop",  "keyboard",
+    "attendance", "adventurerAgency",
 };
 
 #define MENU_ICON_DIR UI_SKIN "menu_icon\\"
@@ -368,7 +354,7 @@ void ui_menu_icon_wnd_on_create(struct UIWindow *window, int width, int height)
         name = menu_icon_names[i];
         if (id == MENU_ID_STATUS && session_is_doram_job(&g_session1, g_session1.job) == 1)
             name = "status_doram";
-        if (id == MENU_ID_BOOKING || id == MENU_ID_SNS || id == 0x239)
+        if (id == MENU_ID_BOOKING || id == 0x239)
             continue;
         x = (unsigned)placed % MENU_COLUMNS * MENU_ICON_DX + MENU_ICON_X;
         y = (unsigned)placed / MENU_COLUMNS * MENU_ICON_DY;
@@ -467,7 +453,7 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     struct UIMenuIconWnd *self = (struct UIMenuIconWnd *)window;
     if (msg == MENU_MSG_TOGGLE) {
         ui_menu_icon_wnd_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, g_session1.showMenuIcon == 1 ? UI_ID_CLOSE : MENU_ID_MENU, 0, 0, 0);
-    } else if (msg == UI_MSG_COMMAND && !replay_recorder_blocks_action(replay_recorder_instance(), val1)) {
+    } else if (msg == UI_MSG_COMMAND) {
         switch (val1) {
         case MENU_ID_STATUS:
             ui_menu_icon_wnd_toggle(WND_STATUS);
@@ -506,18 +492,6 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
         case MENU_ID_GUILD:
             ui_menu_icon_wnd_toggle(g_guildInfo.guild_id < 1 ? WND_GUILD_NONE : WND_GUILD);
             break;
-        case MENU_ID_BATTLE:
-            if (g_entryQueueMgr && g_entryQueueMgr->in_queue == 1)
-                entry_queue_mgr_request_ranking(g_entryQueueMgr);
-            else
-                ui_menu_icon_wnd_toggle(WND_BATTLE);
-            break;
-        case MENU_ID_REC:
-            if (replay_recorder_instance()->state != 1)
-                ui_message_box("REC End please");
-            else
-                ui_menu_icon_wnd_toggle(WND_REPLAY_REC);
-            break;
         case MENU_ID_NAVIGATION:
             if (g_windowMgr.navigation_v4_wnd)
                 ui_window_send_msg(g_windowMgr.navigation_v4_wnd, NULL, UI_MSG_COMMAND, UI_ID_CLOSE, 0, 0, 0);
@@ -546,18 +520,12 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             else if (ui_get_window(WND_MAIL_BLOCK_2))
                 ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2),
                                       MAIL_BLOCK_COLOUR, 0, 0);
-            else if (ui_get_window(WND_MAIL_BLOCK_3))
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_3),
-                                      MAIL_BLOCK_COLOUR, 0, 0);
             else
                 ui_menu_icon_wnd_toggle(WND_MAIL);
             break;
         case MENU_ID_MENU:
             g_session1.showMenuIcon = 1;
             ui_window_invalidate_base(&self->frame.base);
-            break;
-        case MENU_ID_TIP:
-            ui_menu_icon_wnd_toggle(WND_TIP);
             break;
         case MENU_ID_SHOP:
             game_send_message(MODE_REQ_SHOP, 0, 0, 0, 0);
@@ -579,9 +547,6 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             break;
         case MENU_ID_AGENCY:
             ui_menu_icon_wnd_toggle(WND_AGENCY);
-            break;
-        case MENU_ID_REPUTE:
-            ui_menu_icon_wnd_toggle(WND_REPUTE);
             break;
         }
     }

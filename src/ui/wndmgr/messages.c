@@ -1,6 +1,5 @@
 #include "core/text_array.h"
 #include "core/drive_state.h"
-#include "replay/replay.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
 #include <string.h>
@@ -51,8 +50,6 @@ static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLOR
 {
     struct UIWindow *chat;
 
-    if (g_replayPlaying && !replay_recorder_instance()->info.options[6])
-        return;
     chat = self->new_chat_wnd;
     if (colour == 0)
         colour = WM_COLOUR_WHITE;
@@ -70,7 +67,7 @@ static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLOR
 
 static void show_chat(struct UIWindowMgr *self)
 {
-    if (!g_replayPlaying || replay_recorder_instance()->info.options[6]) {
+    {
         self->chat_wnd_show = 1;
         if (self->new_chat_wnd == NULL)
             ui_window_open(0x1);

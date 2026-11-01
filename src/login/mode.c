@@ -1,8 +1,8 @@
+#include "contents/adventurer_agency.h"
 #include "world/mode_actions.h"
 #include "ui/window_types.h"
 #include "world/tooltip.h"
 #include "render/device.h"
-#include "web/work_manager.h"
 #include "contents/sound.h"
 #include "contents/guild_info.h"
 #include "session/state.h"
@@ -70,7 +70,6 @@ static void login_mode_destruct(struct LoginMode *self)
     login_conn_entries_free(&self->connections);
     vec_free(&self->messageIds);
     string_free(&self->wallpaper);
-    mode_destruct(&self->base);
 }
 
 void login_mode_destroy(struct Mode *mode)
@@ -110,16 +109,13 @@ void login_mode_on_init(struct Mode *mode, const char *name)
 
     session_clear_character_lists(&g_session1);
     guild_info_reset(&g_guildInfo);
+    adventurer_agency_reset(g_adventurerAgency);
     session_pre_load_always_needed_res(&g_session1);
     if (g_sound_settings.bgm_on)
         sound_play_stream("bgm\\01.mp3", 0);
 
     memset(&self->billing, 0, sizeof self->billing);
     session_clear_cash_shop_goods(&g_session1);
-    if (g_entryQueueMgr) {
-        g_entryQueueMgr->in_queue = 0;
-        g_entryQueueMgr->current = NULL;
-    }
     session_clear_hotkey_tab0(&g_session1);
     session_clear_hotkey_tab1(&g_session1);
     (g_session1.ownDressUp) = 0;
@@ -158,7 +154,7 @@ int login_mode_on_run(struct Mode *mode)
             m->next_sub_mode = -1;
             login_mode_on_change_state(m, next);
         }
-        gameguard_has_error(g_gameGuard);
+
         login_mode_on_update(m);
         m->sub_mode_count++;
     }
@@ -180,8 +176,6 @@ void login_mode_on_update(struct Mode *mode)
         mode_process_help_balloon(&self->base);
     }
     time_scheduler_tick(g_timeScheduler);
-    async_work_mgr_process_responses(1000);
-    security_poll(g_ggHashMgr);
 
     if (g_activatedNow) {
         g_activatedNow = 0;
@@ -203,8 +197,7 @@ void login_mode_on_update(struct Mode *mode)
         if (st == 0 || st == 4 || st == 8 || st == 9 || st == 3 || st == 0xa || st == 1 ||
             st == 0xb || st == 0xc || st == 5 || st == 7 || st == 0xe || st == 0x14) {
             ui_window_mgr_draw_login_screen(&g_windowMgr);
-            if (self->base.sub_mode != 0)
-                skipRender = 1;
+            skipRender = 1;
         }
         if (!skipRender)
             ui_window_mgr_render(&g_windowMgr);

@@ -7,11 +7,6 @@ struct ItemTextLines {
     size_t count, capacity;
 };
 
-struct ItemParameters {
-    int *data;
-    size_t count, capacity;
-};
-
 struct ItemTableEntry {
     const char *name;
     const char *resName;
@@ -19,9 +14,7 @@ struct ItemTableEntry {
     const char *unidName;
     const char *unidResName;
     struct ItemTextLines unidDesc;
-    int slotTableValue;
     int slotCount;
-    struct ItemParameters params;
     int class_num;
 };
 

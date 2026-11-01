@@ -13,7 +13,7 @@ static unsigned locks, releases, closes, destructs, errors;
 static int open_failure, bad_texture, parent_case, bad_root;
 static int first_key_offset, blocks_offset, names_offset, nodes_offset, texture_offset;
 static const char *root_name = "root";
-static const char *movie_name = "영화.bik";
+static const char *texture_name = "무늬.bmp";
 
 void *mem_alloc(size_t bytes)
 {
@@ -117,7 +117,7 @@ static void resource_fixture(int major, int minor)
     if (major == 2 || minor >= 4) put(&alpha, 1);
     if (major == 1) put(reserved, sizeof reserved); else put(&fps, sizeof fps);
     names_offset = used;
-    if (major == 1 || minor < 3) { integer(1); name_record(movie_name, major == 1); }
+    if (major == 1 || minor < 3) { integer(1); name_record(texture_name, major == 1); }
     if (major == 2) integer(1);
     name_record(bad_root ? "absent" : root_name, major == 1);
     nodes_offset = used; integer(2);
@@ -127,7 +127,7 @@ static void resource_fixture(int major, int minor)
                     (parent_case == 2 ? "child" : ""), major == 1);
         integer(3);
         for (texture_index = 0; texture_index < 3; ++texture_index) {
-            if (major == 2 && minor >= 3) name_record(movie_name, 0); else {
+            if (major == 2 && minor >= 3) name_record(texture_name, 0); else {
                 if (!node && !texture_index) texture_offset = used;
                 integer(bad_texture ? -1 : 0);
             }
@@ -182,8 +182,6 @@ static void verify_contents(struct C3dModelRes *model, int major, int minor)
     assert(!strcmp(owned_text_cstr(&root->name), root_name));
     if (parent_case == 1) assert(major == 2 && !child->parent && !root->childCount);
     else assert(child->parent == root && root->childCount == 1 && root->children[0] == child);
-    assert(model->videoNames.size == (major == 1 ? 1u : 0u));
-    if (major == 1) assert(!strcmp(owned_text_cstr(&model->videoNames.items[0]), movie_name));
     if (major == 1 && minor < 2) assert(!model->blockCount);
     else {
         assert(model->blockCount == 2 && model->blocks[0].pos[0] == -3);

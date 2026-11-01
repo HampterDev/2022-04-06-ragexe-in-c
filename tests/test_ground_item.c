@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game/ground_item.h"
-#include "replay/snapshot.h"
 
 struct SprClip;
 struct SprImg;

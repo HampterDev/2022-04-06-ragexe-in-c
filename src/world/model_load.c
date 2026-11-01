@@ -4,12 +4,10 @@
 
 static struct C3dModelRes *model_resource(const struct RswModel *m)
 {
-    Vec3 pos = {m->pos[0], m->pos[1], m->pos[2]};
     struct C3dModelRes *res = res_mgr_get(g_resMgr(), m->fileName);
 
     if (!res)
         return NULL;
-    model_res_place_videos(res, pos);
     if (!res->nodeCount)
         return NULL;
     return res;

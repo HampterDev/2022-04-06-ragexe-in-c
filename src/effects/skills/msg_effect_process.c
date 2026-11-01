@@ -1,12 +1,9 @@
 #include "actor/object_ops.h"
 #include "resources/animation.h"
-#include "session/state.h"
-#include "game/context.h"
 #include "effects/skills/msg_effect.h"
 #include "game/mode_callbacks.h"
 
 #define MSG_OWNER_TICK 0x4d
-#define GM_MSG_EMOTION_ANSWERED 0x21
 
 static float frames_now(const struct RenderObject *me)
 {
@@ -88,9 +85,6 @@ static unsigned char step_play_once(struct MsgEffect *self)
     }
     if (!(played / (float)count >= 1.0f))
         return 1;
-    if (self->style == 1 && self->subject_aid == g_session1.ownAid) {
-        game_send_message(GM_MSG_EMOTION_ANSWERED, 0, 0, 0, 0);
-    }
     return 0;
 }
 

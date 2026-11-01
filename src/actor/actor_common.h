@@ -30,7 +30,6 @@
 #include "contents/guild_emblem_api.h"
 #include "actor/job.h"
 #include "world/object_lookup.h"
-#include "replay/replay.h"
 #include "effects/effect_mgr.h"
 #include "effects/effect_controls.h"
 #include "ui/chat/balloon.h"
@@ -84,8 +83,6 @@ struct MercenaryAI;
 
 struct Session;
 struct World;
-
-struct ReplayRecorder;
 extern const char monster_spr_fmt[], monster_act_fmt[];
 extern int g_maxAttackDelayMs;
 

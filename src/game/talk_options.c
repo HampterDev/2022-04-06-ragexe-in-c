@@ -135,11 +135,9 @@ struct TalkOption talk_option_find(const char *text)
         case 0x2e: value = &g_session1.monsterSnapOnNoSkill; break;
         case 0x36: value = &g_isFixedCamera; break;
         case 0x75: value = &g_lightmap; break;
-        case 0xc3: byte = &g_session1.showBattleFieldIcon; break;
         case 0xd3: value = &g_session1.showMonsterHp; break;
         case 0xd8: value = &g_session1.showCashShopIcon; break;
         case 0xd9: value = &g_session1.showGoldPcIcon; break;
-        case 0xda: value = &g_session1.showRouletteIcon; break;
         case 0xdb: value = &g_session1.screenShake; break;
         case 0xdd: value = &g_session1.minimapButtons; break;
         case TALK_SHOW_NAME: value = &g_session1.map_rule_flags[0]; break;

@@ -17,7 +17,6 @@ struct UITextViewer {
     struct UIListBox list;
     struct Vec embeds;
     DWORD background;
-    BYTE split_tipbox_links;
     BYTE coloured;
     BYTE coloured_arg;
 };
@@ -26,8 +25,7 @@ OFFSET_ASSERT(UITextViewer, background, 0xdc);
 #define UI_MSG_ADD_TEXT 0x1d
 #define UI_TEXT_VIEWER_BACKGROUND(viewer) (((struct UITextViewer *)(viewer))->background)
 struct UIWindow *ui_text_viewer_construct(struct UIWindow *self);
-BOOL ui_text_viewer_get_text(struct UIWindow *viewer, char *buf, int count);
-int ui_text_viewer_text_length(struct UIWindow *viewer);
+
 
 void ui_text_view_ex_destroy(struct UIWindow *window);
 int ui_text_view_ex_add_words(struct UITextViewEX *self, struct TextView text, int joined,

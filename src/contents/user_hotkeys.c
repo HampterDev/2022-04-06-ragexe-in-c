@@ -130,54 +130,6 @@ int user_hotkey_mgr_collect(struct UserHotkeyMgr *self)
     return 1;
 }
 
-static char user_hotkeys_any_rebound(void)
-{
-    int tab, group, count, i, id;
-    for (tab = 0; tab < USER_HOTKEY_TABS; ++tab) {
-        group = tab_group(tab);
-        count = session_get_hot_key_list_size(&g_session1, group);
-        for (i = 0; i < count; ++i) {
-            int key1 = 0, key2 = 0;
-            const char *key_name = NULL;
-            id = session_get_original_hot_key_index(&g_session1, group, i);
-            if (id == -1)
-                continue;
-            if (get_hotkey_info("GetUserHotKeyInfo", group, id, &key1, &key2, &key_name)
-                && key_name && *key_name
-                && get_hotkey_info("GetOriginalHotKeyInfo", group, id, &key1, &key2, &key_name)
-                && key_name && *key_name)
-                return 1;
-        }
-    }
-    return 0;
-}
-
-char user_hotkey_mgr_has_keys_to_save(struct UserHotkeyMgr *self)
-{
-    if (self->apply_count > 0)
-        return 1;
-    if (self->lacks_v2_save)
-        return 0;
-    return user_hotkeys_any_rebound() == 1;
-}
-
-static void call_with_user_keys_path(const char *function)
-{
-    client_lua_call(g_session1.luaState, function, "s", "SaveData\\UserKeys.lua");
-}
-
-void user_hotkey_mgr_clear_saved(struct UserHotkeyMgr *self)
-{
-    (void)self;
-    call_with_user_keys_path("ClearUserHotKeys");
-}
-
-void user_hotkey_mgr_save(struct UserHotkeyMgr *self)
-{
-    (void)self;
-    call_with_user_keys_path("SaveUserHotKeys2");
-}
-
 void user_hotkey_mgr_change(struct UserHotkeyMgr *self, int group, int id,
                            int key1, int key2, const char *key_name)
 {

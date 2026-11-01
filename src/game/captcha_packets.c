@@ -7,11 +7,6 @@
 #include "base.h"
 
 #pragma pack(push, 1)
-struct PACKET_ZC_ACK_UPLOAD_MACRO_DETECTOR {
-    unsigned short packet_type;
-    char key[4];
-    int result;
-};
 struct PACKET_ZC_ACK_APPLY_MACRO_DETECTOR {
     unsigned short packet_type;
     int result;
@@ -43,7 +38,6 @@ struct PACKET_ZC_ACK_PREVIEW_MACRO_DETECTOR {
     char key[4];
 };
 #pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ACK_UPLOAD_MACRO_DETECTOR, 10);
 SIZE_ASSERT(PACKET_ZC_ACK_APPLY_MACRO_DETECTOR, 6);
 SIZE_ASSERT(PACKET_ZC_APPLY_MACRO_DETECTOR, 8);
 SIZE_ASSERT(PACKET_ZC_APPLY_MACRO_DETECTOR_CAPTCHA, 8);
@@ -57,15 +51,6 @@ void game_mode_dispatch_captcha_packet(struct GameMode *game, int id, const void
     unsigned length;
     if (!p || size < 2) return;
     switch (id) {
-    case HEADER_ZC_ACK_UPLOAD_MACRO_DETECTOR: {
-        const struct PACKET_ZC_ACK_UPLOAD_MACRO_DETECTOR *upload = packet;
-
-        if (size >= 10) game_mode_zc_ack_upload_macro_detector(game, upload->key, upload->result);
-        break;
-    }
-    case HEADER_ZC_COMPLETE_UPLOAD_MACRO_DETECTOR_CAPTCHA:
-        game_mode_zc_complete_upload_macro_detector_captcha(game);
-        break;
     case HEADER_ZC_ACK_APPLY_MACRO_DETECTOR: {
         const struct PACKET_ZC_ACK_APPLY_MACRO_DETECTOR *apply = packet;
 

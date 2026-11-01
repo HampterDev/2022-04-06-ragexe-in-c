@@ -41,7 +41,7 @@
 
 #define MM_ACTOR_GONE           0xd
 #define MM_VENDOR_GONE          0xf5
-#define MM_PET_TALK             0x94
+#define MM_PET_ACT             0x94
 
 #define WND_RESURRECTION        0x9b
 #define SERVICE_TYPE_TAIWAN          4
@@ -69,11 +69,9 @@ static void we_died(struct GameMode *self)
     if (world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.aid))) {
         int hunger = session_pet_hunger_level(g_session1.petFullness);
         int intimacy = session_pet_intimacy_level(g_session1.petIntimacy);
-        int hungry_talk = session_get_pet_emotion(&g_session1, hunger, intimacy, 3);
-        int talk = session_make_pet_talk_id(g_session1.petJob, 3, hunger);
+        int emotion = session_get_pet_emotion(&g_session1, hunger, intimacy, 3);
 
-        mode_send_msg(self, MM_PET_TALK, talk, 0, 0, 0);
-        mode_send_msg(self, MM_PET_TALK, hungry_talk, 0, 0, 0);
+        mode_send_msg(self, MM_PET_ACT, emotion, 0, 0, 0);
     }
     if (g_serviceType == SERVICE_TYPE_TAIWAN) {
         message_box(0x2b7);

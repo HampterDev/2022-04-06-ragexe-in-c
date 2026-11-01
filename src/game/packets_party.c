@@ -2,8 +2,6 @@
 #include "contents/party_booking.h"
 #include "game/party_booking_packets.h"
 #include "ui/window_types.h"
-#include "web/service_managers.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/memory.h"
@@ -262,7 +260,6 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
         break;
     case 9:
         ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xda6), 0xff, 0, 0);
-        adventurer_agency_stop_recruiting(g_adventurerAgency, packet->aid);
         return;
     case 10: text = msg_str(0xd73); break;
     case 11: text = msg_str(0xda7); break;
@@ -320,9 +317,6 @@ void game_mode_zc_req_join_group(const unsigned char *pkt)
 
     strncpy(name, packet->party_name, 24);
     name[24] = 0;
-    if (word_filter_contains(&g_nameFilter, name)) {
-        word_filter_censor(&g_nameFilter, name);
-    }
     string_assign_cstr(&g_session1.partyName, name);
     wnd = ui_window_open(WND_PARTY_INVITATION);
     wnd_send(wnd, 0x38, packet->party_id, (int)name, 0, 0);

@@ -16,8 +16,6 @@
 #include "session/session_talk.h"
 #include "ui/character/character.h"
 
-BYTE g_wrongPasswordCount = 0;
-
 #define SUBMODE_SERVER_SELECT   6
 
 int login_mode_client_type(void)
@@ -124,7 +122,7 @@ void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt)
         memcpy(login.userId, self->userId, 24);
         md5ctx_final(&md5, login.digest);
         login.clientType = (BYTE)login_mode_client_type();
-        login.clientInfo = g_session1.pcBang ? g_session1.connectionIndex + 10 : g_session1.connectionIndex;
+        login.clientInfo = g_session1.connectionIndex;
         login_send_packet(login.id, &login);
     } else if (g_serviceType == 2) {
         login4.id = 0x27c;
@@ -193,16 +191,12 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
         n = (len - 0x40) / 160;
         self->numServer = n;
         memcpy(self->servers, keyed->servers, n * 160);
-        memcpy(g_session1.webAuthToken, keyed->session_key, 16);
-        g_session1.snsAuthorised = keyed->session_flag;
         break;
     case 6:
         break;
     }
 
-    gameguard_set_account(g_gameGuard);
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-    g_wrongPasswordCount = 0;
     self->base.next_sub_mode = SUBMODE_SERVER_SELECT;
 }
 

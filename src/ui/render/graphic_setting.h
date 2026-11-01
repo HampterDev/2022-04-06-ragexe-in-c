@@ -49,7 +49,6 @@ struct UIGraphicSettingWnd {
     struct UICheckBox *box_zoom;
     struct UICheckBox *box_emblem_frame;
     struct UICheckBox *box_extend_damage;
-    struct UICheckBox *box_map_name;
     struct UINoneVisibleButton *device_box;
     struct UINoneVisibleButton *mode_box;
     int sprite_mode;

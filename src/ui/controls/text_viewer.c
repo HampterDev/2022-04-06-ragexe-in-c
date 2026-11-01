@@ -48,7 +48,6 @@ const struct UIListBoxOps ui_text_viewer_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -74,7 +73,6 @@ struct UIWindow *ui_text_viewer_construct(struct UIWindow *wnd)
     self->embeds.first = NULL;
     self->embeds.last = NULL;
     self->embeds.end = NULL;
-    self->split_tipbox_links = 0;
     self->coloured = 0;
     self->coloured_arg = 0;
     self->list.line_height = 0x12;
@@ -158,37 +156,7 @@ void ui_text_viewer_clear_items(struct UIListBox *base_list)
     ui_window_invalidate_base(&self->list.base);
 }
 
-BOOL ui_text_viewer_get_text(struct UIWindow *wnd, char *buf, int count)
-{
-    struct UITextViewer *self = (struct UITextViewer *)wnd;
-    struct String all;
-    unsigned i;
 
-    if (!buf)
-        return FALSE;
-    string_init(&all);
-    for (i = 0; i < LINE_COUNT(self); i++) {
-        const char *text = string_cstr(LINE(self, i));
-
-        string_append_cstr(&all, text);
-    }
-    if (!count)
-        count = ui_text_viewer_text_length(wnd);
-    memcpy(buf, string_cstr(&all), count);
-    string_free(&all);
-    return TRUE;
-}
-
-int ui_text_viewer_text_length(struct UIWindow *wnd)
-{
-    struct UITextViewer *self = (struct UITextViewer *)wnd;
-    int total = 0;
-    unsigned i;
-
-    for (i = 0; i < LINE_COUNT(self); i++)
-        total += (int)LINE(self, i)->size;
-    return total;
-}
 
 void ui_text_viewer_on_create(struct UIWindow *window, int width, int height)
 {

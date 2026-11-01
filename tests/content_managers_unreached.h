@@ -3,7 +3,7 @@
 struct Renderer *g_renderer;
 struct EffectMgr *g_effectMgr;
 struct Weather g_weather;
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+
 struct Effect;
 struct EffectMgr;
 struct GameFileMgr;

@@ -49,6 +49,7 @@ struct NamedText {
     const char *name;
     const char *text;
 };
+/* Borrowed configured path, or NULL when the map has no music entry. */
 const char *session_get_mp3_name(struct Session *self, const char *mapName);
 int session_lookup_talk_type(struct Session *self, const char *name);
 BYTE session_is_fixed_view_map(struct Session *self, const char *mapName);

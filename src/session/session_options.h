@@ -28,7 +28,6 @@ void session_clear_quick_slots(struct Session *self);
 void session_refresh_guild_skill_hotkeys(struct Session *self);
 
 int session_hot_key_page_slot(struct Session *self, int slot, int bar);
-void session_reset_the_hot_keys(struct Session *self);
 int session_get_shorten_skill_id(struct Session *self, int index);
 void session_set_shorten_skill_id(struct Session *self, int level, int index);
 void session_set_shorten_skill_name(struct Session *self, const char *name, int level, int slot);

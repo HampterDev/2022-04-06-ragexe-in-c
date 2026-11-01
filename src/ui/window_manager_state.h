@@ -10,7 +10,6 @@
 #include "ui/window_info.h"
 
 struct UIWindow;
-struct WebBrowser;
 struct Surface;
 
 enum { ITEM_STORE_SUB_WNDS = 8 };
@@ -39,7 +38,6 @@ struct UIWindowMgr {
     int drag_all;
     int candidate_box;
     char arabic_text;
-    char view_homepage[256];
     struct UIWindow *capture_root;
     BYTE close_capture_root;
     struct List windows;
@@ -79,7 +77,6 @@ struct UIWindowMgr {
     struct UIWindow *item_collection_comparison_wnd;
     struct UIWindow *combined_card_item_collection_comparison_wnd;
     struct UIWindow *combined_card_item_collection_wnd;
-    struct UIWindow *item_param_change_display_wnd;
     struct UIWindow *skill_describe_wnd;
     struct UIWindow *quit_wnd;
     struct UIWindow *restart_wnd;
@@ -122,7 +119,6 @@ struct UIWindowMgr {
     struct UIWindow *baby_accept_wnd2;
     struct UIWindow *join_guild_accept_wnd;
     struct UIWindow *ally_guild_accept_wnd;
-    struct UIWindow *tip_of_the_day_wnd;
     struct UIWindow *merchant_item_wnd;
     struct UIWindow *merchant_mirror_item_wnd;
     struct UIWindow *merchant_shop_make_wnd;
@@ -160,7 +156,6 @@ struct UIWindowMgr {
     struct UIWindow *candidate_wnd;
     struct UIWindow *composition_wnd;
     struct UIWindow *key_stroke_wnd;
-    struct UIWindow *book_wnd;
     struct UIWindow *join_friend_accept_wnd;
     struct UIWindow *command_list_wnd;
     struct UIWindow *second_password_input_wnd;
@@ -196,20 +191,15 @@ struct UIWindowMgr {
     struct UIWindow *quest_display_wnd;
     struct UIWindow *party_invitation_to_wnd;
     struct UIWindow *guild_helper_wnd;
-    struct UIWindow *guild_tip_wnd;
     struct UIWindow *create_guild_wnd;
     struct UIWindow *disband_guild_wnd;
     struct UIWindow *orphan_guild_wnd;
-    struct UIWindow *clan_info_manage_wnd;
     struct UIWindow *bank_new_wnd;
     struct UIWindow *guild_storage_log_wnd;
     struct UIWindow *open_mail_box_wnd;
     struct UIWindow *rodex_inbox_wnd;
     struct UIWindow *rodex_compose_wnd;
     struct UIWindow *rodex_contents_wnd;
-    struct UIWindow *open_roullette_wnd;
-    struct UIWindow *roullette_wnd;
-    struct UIWindow *tipbox_wnd;
     int mouse_x_last;
     int mouse_y_last;
     int modal_result;
@@ -271,7 +261,6 @@ struct UIWindowMgr {
     struct WindowInfo merchant_item_purchase_info;
     struct WindowInfo item_collection_info;
     struct WindowInfo combined_card_item_collection_info;
-    struct WindowInfo item_param_change_display_info;
     struct WindowInfo party_setting_info;
     struct WindowInfo detail_level_info;
     struct GuildWndInfo guild_info;
@@ -289,7 +278,6 @@ struct UIWindowMgr {
     struct WindowInfo sub_chat_st_info;
     struct WindowInfo sub_chat_bt_info;
     struct WindowInfo quick_slot_info;
-    struct WindowInfo battlefield_info;
     struct WindowInfo buying_store_make_info;
     struct WindowInfo buying_store_mirror_item_info;
     struct WindowInfo buying_store_item_my_shop_info;
@@ -297,21 +285,12 @@ struct UIWindowMgr {
     struct WindowInfo buying_store_item_sell_info;
     struct WindowInfo buying_store_mirror_sell_list_info;
     struct WindowInfo n_cash_info;
-    struct Tree browsers;
-    struct WebBrowser *active_web_browser;
-    struct WebBrowser *browser;
     struct WindowInfo guild_helper_info;
     struct Vec message_boxes;
-    struct WindowInfo clan_info;
     struct WindowInfo graphic_setting_info;
     struct WindowInfo adven_register_info;
     struct WindowInfo adven_join_info;
     struct WindowInfo adven_party_board_info;
-    int window_flags[0x166][8];
-    struct WindowInfo replay_rec_control_info;
-    struct UIWindow *replay_reccontrol_wnd;
-    struct UIWindow *replay_control_wnd;
-    struct UIWindow *replay_wnd;
     struct UIWindow *second_costume_wnd;
     struct UIWindow *navigation_v4_wnd;
     struct NavigationWndInfo navigation_info;
@@ -321,12 +300,10 @@ struct UIWindowMgr {
     int hover_serial;
     struct MiniMapWndInfo minimap_info;
     struct UIWindow *mini_map_wnd;
-    struct UIWindow *editctrl_wnd;
     struct UIWindow *active_top_wnd;
     POINT ach_tracing_pos;
     int round_box_tooltip_show;
     struct UIWindow *round_box_tooltip_wnd;
-    struct UIWindow *captcha_register_wnd;
     struct UIWindow *macro_detector_wnd;
     struct UIWindow *macro_reporter_wnd;
     struct UIWindow *macro_user_info_wnd;
@@ -340,7 +317,6 @@ struct UIWindowMgr {
     struct List plates;
     struct List plate_ids;
     struct UIWindow *drag_plate;
-    struct List browsers_to_delete;
     struct UIWindow *cash_shop_wnd;
     struct UIWindow *private_airplane_wnd;
     struct UIWindow *rpimage_wnd2;

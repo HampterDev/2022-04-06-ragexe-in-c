@@ -14,7 +14,5 @@ const struct String text_tag_QUEST = STRING_LITERAL("<QUEST>");
 const struct String text_tag_QUEST_END = STRING_LITERAL("</QUEST>");
 const struct String text_tag_INFO = STRING_LITERAL("<INFO>");
 const struct String text_tag_INFO_END = STRING_LITERAL("</INFO>");
-const struct String text_tag_TIPBOX = STRING_LITERAL("<TIPBOX>");
-const struct String text_tag_TIPBOX_END = STRING_LITERAL("</TIPBOX>");
 const struct String text_tag_URL = STRING_LITERAL("<URL>");
 const struct String text_tag_URL_END = STRING_LITERAL("</URL>");

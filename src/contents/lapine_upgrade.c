@@ -16,7 +16,6 @@
 #include "std/vec.h"
 #include "contents/lapine_box.h"
 #include "contents/lapine_upgrade.h"
-#include "contents/lua_script.h"
 #include "std/std.h"
 #include "ui/controls/buttons.h"
 #include "ui/controls/combo_box.h"

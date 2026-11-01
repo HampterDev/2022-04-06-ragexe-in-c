@@ -77,7 +77,6 @@ void session_load_options(struct Session *self)
     if (self->monsterSnapOnNoSkill != 0)
         self->monsterSnapInEffect = 1;
 
-    g_session1.showBattleFieldIcon = session_get_option_int(self, "ShowBattleFieldIcon", 1) != 0;
     g_session1.mouseExclusiveOption = session_get_option_int(self, "MouseExclusive", 1) != 0;
     g_fullscreenMode = read_display_options(self, "ISFULLSCREENMODE", 0);
     g_displayWidth = session_get_option_int(self, "WIDTH", 0x400);
@@ -134,5 +133,4 @@ void session_load_options(struct Session *self)
     self->showMenuIcon = session_get_option_int(self, "bShowMenuIcon", 1) != 0;
     self->emblemFrame = session_get_option_int(self, msg_str(0xdc6), 0);
     self->extendDamage = session_get_option_int(self, "bExtendDamage", 1);
-    self->showMapName = session_get_option_int(self, "bShowMapName", 1);
 }

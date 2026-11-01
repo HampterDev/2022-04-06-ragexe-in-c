@@ -765,15 +765,6 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             ef_spawn_at(self->aid, 0x449, &self->pos, -1);
         break;
     case 0x2a4: ef_toggle(self, 0x3fb, on); break;
-    case 0x2b8:
-        if (par4 != 0) {
-            self->clan_emblem_shown = 1;
-            self->clan_emblem = (int)par4;
-        } else {
-            self->clan_emblem_shown = 0;
-            self->clan_emblem = 0;
-        }
-        break;
     case 0x2c6:
         if (on)
             render_object_send(self, NULL, 0x7f, 0x32, 0x96, 0xff, 0);

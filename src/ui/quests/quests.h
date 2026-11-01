@@ -25,22 +25,17 @@ struct UINpcSprWnd *ui_npc_spr_wnd_new(void);
 void ui_npc_spr_wnd_create(struct UINpcSprWnd *self, int width, int height, struct String name);
 void ui_npc_spr_wnd_set_target(struct UINpcSprWnd *self, struct String map, int x, int y);
 struct UIOngoingQuestScrollWnd;
-struct UIRecommededQuestScrollWnd;
 struct UIOngoingQuestScrollWnd *ui_ongoing_quest_scroll_wnd_new(int width, int height);
 void ui_ongoing_quest_scroll_wnd_set_quest(struct UIOngoingQuestScrollWnd *self, int quest_id);
-struct UIRecommededQuestScrollWnd *ui_recommeded_quest_scroll_wnd_new(int width, int height);
-void ui_recommeded_quest_scroll_wnd_set_quest(struct UIRecommededQuestScrollWnd *self, int quest_id);
 struct UIScrollBar *ui_renew_quest_scroll_bar_construct(struct UIScrollBar *self);
 struct UIRenewDetailQuestInfoWnd;
 void ui_renew_detail_quest_info_wnd_show_quest(struct UIRenewDetailQuestInfoWnd *self,
-                                                    int quest_id, BYTE recommended);
+                                                    int quest_id);
 #define QUEST_DETAIL_WND_ID 0x142
 
 int say_dialog_info_is_valid(struct WindowInfo *self);
 void say_dialog_info_set_default(struct WindowInfo *self);
 
-void ui_check_attendance_wnd_add_banner(struct UIWindow *window, struct String bitmap, struct String url,
-                                        int window_id, int value);
 struct UICheckAttendanceWnd *ui_check_attendance_wnd_construct(struct UICheckAttendanceWnd *self);
 struct UIWindow *ui_check_attendance_wnd_new(void);
 
@@ -74,8 +69,5 @@ void ui_quest_display_create(struct UIQuestDisplay *self, int width, int height)
 
 struct UIRenewQuestWnd *ui_renew_quest_wnd_construct(struct UIRenewQuestWnd *self);
 struct UIWindow *ui_renew_quest_wnd_new(void);
-
-struct SignBoardWnd;
-void sign_board_wnd_apply_text_colour(struct SignBoardWnd *self);
 
 #endif

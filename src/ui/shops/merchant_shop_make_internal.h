@@ -1,4 +1,3 @@
-#include "ui/record_tags.h"
 #ifndef UI_SHOPS_MERCHANT_SHOP_MAKE_INTERNAL_H
 #define UI_SHOPS_MERCHANT_SHOP_MAKE_INTERNAL_H
 
@@ -70,7 +69,6 @@
 #define MSG_PRICE_CHECK 0x9af
 #define MSG_EMPTY_LIST 0x9be
 #define MSG_NO_TITLE 0xe1
-#define MSG_BAD_TITLE 0xe
 #define MSG_WITH_COMMISSION 0xc96
 #define MSG_VENDING_FOOTER 0xc97
 #define MSG_BUYING_FOOTER 0xc98

@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-extern uint32_t g_showTipsAtStartup;
 extern uint32_t g_soundMode;
 
 #endif

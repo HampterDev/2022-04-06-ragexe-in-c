@@ -55,7 +55,6 @@ struct C3dModelRes {
     struct OwnedText fileName;
     int shadeType;
     unsigned char alpha;
-    struct TextArray videoNames;
     float fps;
     int frameCount;
 };
@@ -64,7 +63,6 @@ void model_res_init(struct C3dModelRes *model);
 void model_res_clear(struct C3dModelRes *model);
 struct ModelResNode *model_res_node_create(int version);
 struct ModelResNode *model_res_find_node(const struct C3dModelRes *model, const char *name);
-void model_res_place_videos(const struct C3dModelRes *model, Vec3 position);
 BYTE model_resource_load_v1(struct C3dModelRes *model, const char *name);
 BYTE model_resource_load_v2(struct C3dModelRes *model, const char *name);
 void model_res_node_v1_destroy(struct ModelResNode *node);

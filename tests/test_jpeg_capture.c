@@ -3,11 +3,9 @@
 
 struct C3dDevice g_3dDevice;
 static struct Renderer renderer;
-static struct BitmapRes logo;
-static DWORD logo_pixels[4];
 static unsigned char frame[1024];
 static struct gfx_lock frame_lock;
-static int surface_token, resource_token;
+static int surface_token;
 static int locks, unlocks, held, fail_lock, destroyed_strings;
 
 int gfx_lock(gfx_surface *handle, const RECT *rect, int flags, struct gfx_lock *out)
@@ -27,11 +25,11 @@ int gfx_unlock(gfx_surface *handle)
     held = 0;
     return 0;
 }
-struct ResMgr *g_resMgr(void) { return (struct ResMgr *)&resource_token; }
+struct ResMgr *g_resMgr(void) { abort(); }
 void *res_mgr_get(struct ResMgr *manager, const char *name)
 {
-    assert(manager == g_resMgr() && !strcmp(name, "scr_logo.bmp"));
-    return &logo;
+    /* Capturing the framebuffer must not depend on logo resources. */
+    abort();
 }
 void string_free(struct String *name)
 {
@@ -45,7 +43,6 @@ static void reset_capture(int bits)
     int x, y;
     jpeg_fixture_reset();
     memset(&renderer, 0, sizeof renderer);
-    memset(&logo, 0, sizeof logo);
     memset(&g_3dDevice, 0, sizeof g_3dDevice);
     memset(frame, 0xef, sizeof frame);
     locks = unlocks = held = fail_lock = destroyed_strings = 0;
@@ -72,16 +69,13 @@ static void reset_capture(int bits)
     }
 }
 
-static int save(int mode, const RECT *region)
+static int save(void)
 {
     char file[] = "capture.jpg";
     struct String name;
     name.data = file;
     name.size = name.capacity = sizeof file - 1;
-    switch (mode) {
-    case 1: return renderer_save_jpeg_region(&renderer, "capture.jpg", region);
-    default: return renderer_screenshot(&renderer, name);
-    }
+    return renderer_screenshot(&renderer, name);
 }
 
 static void expected_pixel(unsigned char out[3], int x, int y, int bits)
@@ -97,33 +91,31 @@ static void expected_pixel(unsigned char out[3], int x, int y, int bits)
 
 static void check_pixels(void)
 {
-    const RECT region = {1, 1, 4, 3};
-    int mode, bits, x, y;
-    for (mode = 1; mode <= 2; ++mode) for (bits = 16; bits <= 32; bits += 16) {
-        int width = mode == 1 ? 3 : 5, height = mode == 1 ? 2 : 4;
+    int bits, x, y;
+    for (bits = 16; bits <= 32; bits += 16) {
+        int width = 5, height = 4;
         reset_capture(bits);
-        assert(save(mode, &region));
+        assert(save());
         assert(jpeg_written_width == width && jpeg_written_height == height);
         for (y = 0; y < height; ++y) {
             const unsigned char *row = jpeg_written + (size_t)y * jpeg_written_stride;
             size_t pad;
             for (x = 0; x < width; ++x) {
                 unsigned char expected[3];
-                expected_pixel(expected, x + (mode == 1), y + (mode == 1), bits);
+                expected_pixel(expected, x, y, bits);
                 assert(!memcmp(row + 3*x, expected, 3));
             }
             for (pad = (size_t)width * 3; pad < jpeg_written_stride; ++pad) assert(row[pad] == 0);
         }
         assert(locks == 1 && unlocks == 1 && !held && !jpeg_live && jpeg_frees == 1);
-        assert(destroyed_strings == (mode >= 2));
+        assert(destroyed_strings == 1);
     }
 }
 
 static void check_failures(void)
 {
-    const RECT region = {1, 1, 4, 3};
-    int mode, failure;
-    for (mode = 1; mode <= 2; ++mode) for (failure = 0; failure < 6; ++failure) {
+    int failure;
+    for (failure = 0; failure < 6; ++failure) {
         reset_capture(32);
         if (failure == 0) fail_lock = 1;
         if (failure == 1) jpeg_fail_allocation = 1;
@@ -131,43 +123,19 @@ static void check_failures(void)
         if (failure == 3) jpeg_fail_write = 1;
         if (failure == 4) frame_lock.pitch = 1;
         if (failure == 5) frame_lock.bpp = 24;
-        assert(!save(mode, &region));
+        assert(!save());
         assert(locks == 1 && unlocks == (failure != 0) && !held && !jpeg_live && !jpeg_active);
         assert(jpeg_frees == (failure == 3));
-        assert(destroyed_strings == (mode >= 2));
+        assert(destroyed_strings == 1);
     }
-    reset_capture(32);
-    {
-        const RECT invalid[] = {{-1,0,2,2},{0,-1,2,2},{0,0,6,2},{0,0,2,5},{2,0,2,1},{0,2,1,1},{INT_MIN,0,INT_MAX,1}};
-        size_t i;
-        for (i = 0; i < sizeof invalid/sizeof invalid[0]; ++i) assert(!save(1, &invalid[i]));
-        assert(!renderer_save_jpeg_region(&renderer, "capture.jpg", NULL));
-        assert(!locks && !jpeg_allocations);
-    }
-}
 
-static void check_logo(void)
-{
-    unsigned char expected[3];
-    const RECT region = {1, 1, 4, 3};
-    reset_capture(32);
-    logo.width = logo.height = 2;
-    logo.pixels = logo_pixels;
-    logo_pixels[0] = 0xff00ff; logo_pixels[1] = 0x112233;
-    logo_pixels[2] = 0x445566; logo_pixels[3] = 0xff00ff;
-    assert(save(2, &region));
-    expected_pixel(expected, 3, 2, 32);
-    assert(!memcmp(jpeg_written + 2*jpeg_written_stride + 3*3, expected, 3));
-    assert(!memcmp(jpeg_written + 2*jpeg_written_stride + 4*3, "\x33\x22\x11", 3));
-    assert(!memcmp(jpeg_written + 3*jpeg_written_stride + 3*3, "\x66\x55\x44", 3));
 }
 
 int main(void)
 {
     check_pixels();
     check_failures();
-    check_logo();
     jpeg_fixture_reset();
-    puts("Frame capture: two JPEG writers, 16/32-bit pixels, independent pitches, crop edges, logos, failure cleanup and unlocks passed");
+    puts("Frame capture: normal JPEG screenshots, 16/32-bit pixels, independent pitches, no resource lookups, failure cleanup and unlocks passed");
     return 0;
 }

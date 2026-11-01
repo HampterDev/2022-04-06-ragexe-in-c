@@ -48,7 +48,6 @@ const struct UIListBoxExOps ui_list_box_ex_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -359,17 +358,4 @@ void ui_list_box_ex_update_scroll_bar(struct UIListBoxEx *self)
     if (bar->pos > bar->max_pos)
         bar->pos = bar->max_pos;
     ui_window_invalidate_base(&self->vbar->base);
-}
-
-int ui_list_box_ex_find_text(struct UIListBoxEx *self, const struct String *text)
-{
-    struct TreeNode *node;
-
-    for (node = tree_first(&self->rows); node != self->rows.head; node = tree_next(node)) {
-        const struct UIListBoxExPair *pair = TREE_VALUE(node, struct UIListBoxExPair);
-
-        if (string_equal(text, &pair->row.text))
-            return pair->key;
-    }
-    return -1;
 }

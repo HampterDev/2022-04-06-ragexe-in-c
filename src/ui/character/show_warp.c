@@ -51,7 +51,6 @@ const struct UIWindowOps ui_show_warp_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -167,7 +166,7 @@ int ui_show_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
+
         if (val1 == UI_ID_CLOSE)
             ui_window_mgr_post_quit1(&g_windowMgr, SHOW_WARP_WND_ID);
         return 0;

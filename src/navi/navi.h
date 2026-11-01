@@ -232,9 +232,7 @@ struct NaviObject *navi_map_npc(struct NaviMap *self, int key, unsigned char byI
 struct NaviLink *navi_map_link(struct NaviMap *self, int key, unsigned char byId);
 struct NaviObject *navi_map_npc_at(struct NaviMap *self, int x, int y);
 struct NaviObject *navi_map_mob_by_sprite(struct NaviMap *self, int sprite);
-struct NaviLink *navi_map_find_link_route(struct NaviMap *map, int x, int y,
-        const struct NaviMap *destination, int destination_x, int destination_y);
-struct NaviObject *navi_map_mob_by_name(struct NaviMap *map, const char *name, size_t size);
+
 int navi_map_map_type(struct NaviMap *self);
 int navi_map_width(struct NaviMap *self);
 int navi_map_height(struct NaviMap *self);

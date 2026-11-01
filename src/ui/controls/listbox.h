@@ -221,7 +221,6 @@ void ui_list_box_ex_create(struct UIListBoxEx *self, int x, int y, int width, in
 void ui_list_box_ex_add_item(struct UIListBoxEx *self, const char *text, COLORREF colour);
 void ui_list_box_ex_clear_items(struct UIListBoxEx *self);
 void ui_list_box_ex_update_scroll_bar(struct UIListBoxEx *self);
-int ui_list_box_ex_find_text(struct UIListBoxEx *self, const struct String *text);
 
 void ui_list_box_id_destroy(struct UIWindow *window);
 void ui_list_box_id_on_draw(struct UIWindow *self);

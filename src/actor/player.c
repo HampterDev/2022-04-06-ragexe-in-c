@@ -3,7 +3,6 @@
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
 #include "game/ground_item_state.h"
-#include "actor/player_state.h"
 #include "navi/navi_manager.h"
 #include "contents/sound.h"
 #include "game/client_state.h"
@@ -912,12 +911,4 @@ void player_deleting_destruct(struct GameObject *object)
     self->ops = &player_ops.base.base;
     pc_destruct((struct Pc *)self);
     mem_free(self);
-}
-
-void player_restore_madogear(struct Player *player, int state)
-{
-    if (!player)
-        return;
-    pc_set_sprite_variant((struct GameActor *)player, state);
-    player_send_msg((struct GameObject *)player, (struct GameObject *)NULL, state ? 0x69 : 0x6a, 0, 0, 0, 0);
 }

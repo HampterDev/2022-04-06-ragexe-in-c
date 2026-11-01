@@ -25,4 +25,15 @@ static unsigned char *make_bitmap(int custom, int bits, unsigned palette_count, 
     return data;
 }
 
+static struct CaptchaData compressed_bitmap(const void *raw, size_t size)
+{
+    struct CaptchaData packed;
+    uLongf length = compressBound((uLong)size);
+    packed.bytes = checked_malloc(length);
+    assert(packed.bytes);
+    assert(compress(packed.bytes, &length, raw, (uLong)size) == Z_OK);
+    packed.size = length;
+    return packed;
+}
+
 #endif

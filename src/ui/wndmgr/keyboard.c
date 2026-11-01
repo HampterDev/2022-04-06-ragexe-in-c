@@ -1,7 +1,6 @@
 #include "ui/controls/edit.h"
 #include "ui/window_keyboard.h"
 #include "contents/client_lua_calls.h"
-#include "replay/replay.h"
 #include "actor/render_object.h"
 #include "session/state.h"
 #include "world/mode_manager.h"
@@ -88,28 +87,18 @@ int ui_window_mgr_classify_key(struct UIWindowMgr *self, int vk, int lparam)
     return WM_KEY_PLAIN;
 }
 
-static void send_edits_when_recording(struct UIWindow *wnd)
-{
-    if (replay_recorder_instance()->state == WM_REPLAY_RECORDING)
-        ui_window_send_edit_fields(wnd);
-}
-
 BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
 {
     struct UIWindow *wnd, *chat;
     struct ListNode *node;
 
-    if (g_replayPlaying)
-        return 0;
     wnd = self->modal_wnd;
     if (wnd == NULL)
         wnd = self->quit_wnd;
     if (wnd == NULL && self->npc_edit_dialog_wnd) {
-        send_edits_when_recording(self->npc_edit_dialog_wnd);
         wnd = self->npc_edit_dialog_wnd;
     }
     if (wnd == NULL && self->npc_text_edit_dialog_wnd) {
-        send_edits_when_recording(self->npc_text_edit_dialog_wnd);
         wnd = self->npc_text_edit_dialog_wnd;
     }
     if (wnd == NULL)
@@ -139,8 +128,7 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
         struct UIWindow *parent = self->focus_edit->parent;
 
         chat = self->new_chat_wnd;
-        if (replay_recorder_instance()->state == WM_REPLAY_RECORDING && parent != chat)
-            ui_window_send_edit_fields(ui_window_get_ancestor(self->focus_edit));
+
         if (g_windowMgr.chat_bar_toggleable && parent == chat)
             return 0;
         ui_window_send_msg(self->focus_edit, NULL, UI_MSG_DEFAULT_BUTTON, 0, 0, 0, 0);
@@ -151,7 +139,6 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
         return 1;
     }
     if (self->new_chat_wnd && g_windowMgr.chat_bar_shown == 1) {
-        ui_window_send_edit_fields(self->new_chat_wnd);
         ui_window_send_msg(self->new_chat_wnd, NULL, UI_MSG_DEFAULT_BUTTON, 0, 0, 0, 0);
         return 0;
     }
@@ -159,8 +146,7 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
         wnd = *LIST_VALUE(node, struct UIWindow *);
         if (!wnd->ops->is_frame)
             continue;
-        if (!g_replayPlaying)
-            ui_window_send_edit_fields(ui_window_get_ancestor(wnd));
+
         ui_window_send_msg(wnd, NULL, UI_MSG_DEFAULT_BUTTON, 0, 0, 0, 0);
     }
     return 0;

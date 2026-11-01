@@ -4,18 +4,12 @@
 #include "platform/code_page.h"
 #include "ui/window_manager_lifecycle.h"
 #include "render/device.h"
-#include "security/gameguard.h"
-#include "security/gg_hash_mgr.h"
 #include "render/sprite_atlas.h"
 #include "contents/schedule.h"
 #include "session/option_pairs.h"
 #include "contents/mcstore_backup.h"
 #include "ui/window_messages.h"
 #include "session/character_name.h"
-#include "web/work_manager.h"
-#include "web/service_managers.h"
-#include "ui/social/entry_queue_state.h"
-#include "replay/replay.h"
 #include "contents/quest.h"
 #include "session/map_names.h"
 #include "game/client_state.h"
@@ -121,8 +115,6 @@ struct LoginConnEntry {
 #define UIWND_SENDMSG(w, a, msg, b, c, d, e) \
     ui_window_send((struct UIWindow *)(w), (struct UIWindow *)(a), (msg), (b), (c), (d), (e))
 
-extern BYTE g_replayLaunch;
-
 extern int g_exchangeGiveBack;
 
 #include "contents/guild_emblem_api.h"
@@ -138,7 +130,6 @@ static __inline void login_send_packet(int id, const void *buf)
 }
 
 extern const char *g_loginBackgroundName;
-extern BYTE g_wrongPasswordCount;
 extern int g_mapServerAidPending;
 extern struct ServerAddress g_charServerAddr;
 extern DWORD g_charServerIp;
@@ -152,8 +143,6 @@ void login_mode_send_keep_alive(struct LoginMode *self);
 
 void login_mode_process_packets(struct LoginMode *self);
 
-void login_mode_show_warning(struct LoginMode *self);
-void login_mode_show_license(struct LoginMode *self);
 
 int login_mode_client_type(void);
 void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt);

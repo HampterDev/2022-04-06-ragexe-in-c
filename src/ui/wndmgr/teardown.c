@@ -31,7 +31,6 @@ static void destroy_plates(struct UIWindowMgr *self)
 void ui_window_mgr_close_all_windows(struct UIWindowMgr *self)
 {
     struct ListNode *node;
-    struct TreeNode *it;
 
     if (self->modal_wnd)
         self->modal_result = WM_MODAL_END_TEARDOWN;
@@ -44,18 +43,6 @@ void ui_window_mgr_close_all_windows(struct UIWindowMgr *self)
         }
         destroy_window(*wnd);
         *wnd = NULL;
-    }
-    for (it = tree_first(&self->browsers); it != self->browsers.head; it = tree_next(it)) {
-        struct WmBrowser *entry = TREE_VALUE(it, struct WmBrowser);
-
-        if (entry->browser)
-            wm_destroy_browser(self, entry->browser);
-        entry->browser = NULL;
-    }
-    tree_clear(&self->browsers, NULL);
-    if (self->browser) {
-        wm_destroy_browser(self, self->browser);
-        self->browser = NULL;
     }
     list_clear(&self->windows, NULL);
     list_clear(&self->quit_list, NULL);
@@ -176,7 +163,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->combo_box_idwnd = NULL;
     self->item_collection_comparison_wnd = NULL;
     self->combined_card_item_collection_wnd = NULL;
-    self->item_param_change_display_wnd = NULL;
     self->skill_describe_wnd = NULL;
     self->quit_wnd = NULL;
     self->restart_wnd = NULL;
@@ -219,7 +205,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->baby_accept_wnd2 = NULL;
     self->join_guild_accept_wnd = NULL;
     self->ally_guild_accept_wnd = NULL;
-    self->tip_of_the_day_wnd = NULL;
     self->merchant_item_wnd = NULL;
     self->merchant_mirror_item_wnd = NULL;
     self->merchant_shop_make_wnd = NULL;
@@ -254,7 +239,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->candidate_wnd = NULL;
     self->composition_wnd = NULL;
     self->key_stroke_wnd = NULL;
-    self->book_wnd = NULL;
     self->join_friend_accept_wnd = NULL;
     self->command_list_wnd = NULL;
     self->second_password_input_wnd = NULL;
@@ -286,27 +270,19 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->quest_display_wnd = NULL;
     self->party_invitation_to_wnd = NULL;
     self->guild_helper_wnd = NULL;
-    self->guild_tip_wnd = NULL;
     self->create_guild_wnd = NULL;
     self->orphan_guild_wnd = NULL;
-    self->clan_info_manage_wnd = NULL;
     self->bank_new_wnd = NULL;
     self->guild_storage_log_wnd = NULL;
     self->open_mail_box_wnd = NULL;
     self->rodex_inbox_wnd = NULL;
     self->rodex_compose_wnd = NULL;
     self->rodex_contents_wnd = NULL;
-    self->open_roullette_wnd = NULL;
-    self->roullette_wnd = NULL;
-    self->tipbox_wnd = NULL;
-    self->replay_reccontrol_wnd = NULL;
     self->second_costume_wnd = NULL;
     self->navigation_v4_wnd = NULL;
     self->collection_system_wnd = NULL;
     self->mini_map_wnd = NULL;
-    self->editctrl_wnd = NULL;
     self->active_top_wnd = NULL;
-    self->captcha_register_wnd = NULL;
     self->macro_reporter_wnd = NULL;
     self->macro_user_info_wnd = NULL;
     self->macro_detector_edit = NULL;

@@ -396,7 +396,7 @@ void game_actor_on_init(struct GameActor *self)
     self->path_cell = -1;
     self->pickable = 1;
     self->start_tick = timeGetTime();
-    self->pet_talk_tick = 0;
+    self->pet_emotion_tick = 0;
     self->cast_end_tick = timeGetTime() - 5000;
     self->efst_effect_frames = 3600;
     self->cast_start_tick = timeGetTime() - 10000;
@@ -447,8 +447,6 @@ void game_actor_on_init(struct GameActor *self)
     self->mark_kind = 0;
     self->monster_gage_wnd = NULL;
     self->is_boss = 0;
-    self->clan_emblem_shown = 0;
-    self->clan_emblem = 0;
     self->mount_look = 0;
     self->is_store_assistant = 0;
     self->not_pickable = 0;

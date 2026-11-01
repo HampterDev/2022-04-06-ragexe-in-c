@@ -40,14 +40,12 @@
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mouse_camera.h"
-#include "contents/clan_info.h"
 #include "core/app.h"
 
 enum {
     MODE_MSG_CHAT = 6,
     MODE_MSG_PARTY_CHAT = 0x42,
     MODE_MSG_GUILD_CHAT = 0x81,
-    MODE_MSG_CLAN_CHAT = 0x121,
     MODE_MSG_CHAT_FE = 0xfe,
 };
 
@@ -94,11 +92,6 @@ void talk_cmd_send_chat(struct GameMode *self, int type)
         else
             mode_send_msg(self, MODE_MSG_PARTY_CHAT, 0, 0, 0, 0);
         return;
-    } else if (target == 3) {
-        if (g_clanInfo->in_clan == 1) {
-            mode_send_msg(self, MODE_MSG_CLAN_CHAT, 0, 0, 0, 0);
-            return;
-        }
     }
     if (party && session_get_party_member_count(&g_session1)) {
         mode_send_msg(self, MODE_MSG_PARTY_CHAT, 0, 0, 0, 0);
@@ -373,15 +366,11 @@ void talk_cmd_sound(struct GameMode *self, int type)
     } else if (type == 0xb) {
         g_sound_settings.effects_on = g_sound_settings.effects_on == 0;
         if (g_sound_settings.effects_on) {
-            g_sound_settings.button_sound_only = 0;
             talk_print_msg(0x1b, TALK_COLOR_NOTICE);
         } else {
             talk_print_msg(0x1c, TALK_COLOR_NOTICE);
         }
         talk_refresh_option_window();
-    } else {
-        g_sound_settings.button_sound_only = g_sound_settings.button_sound_only == 0;
-        talk_print_msg(g_sound_settings.button_sound_only ? 0x5da : 0x5db, TALK_COLOR_NOTICE);
     }
 }
 

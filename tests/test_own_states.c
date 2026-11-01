@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game/own_states.h"
-#include "replay/snapshot.h"
-#include "fixtures/own_states_wire.h"
 
 static struct Block { unsigned char *base; size_t size; } blocks[32];
 static int allocations, attempts, fail_at;
@@ -57,74 +55,17 @@ static void *resize(void *p, size_t size)
 #define malloc allocate
 #define realloc resize
 #define free release
-#include "../src/replay/snapshot.c"
 #include "../src/game/own_states.c"
 #undef malloc
 #undef realloc
 #undef free
 
-#include "../src/game/own_states_replay.c"
-static struct ReplayRecorder recorder;
-static struct SnapshotSpan input;
-static int read_ok = 1, timer_calls;
-unsigned char g_mapPropertyQuiet;
-struct StateIconSheet *g_stateIconSheet = (struct StateIconSheet *)1;
-int replay_read_chunk(struct ReplayRecorder *self, int id, struct ReplayBuffer *out)
-{
-    assert(self == &recorder && id == 0x11);
-    if (!read_ok) return 0;
-    if (input.size) {
-        out->data = allocate(input.size);
-        if (!out->data) return 0;
-        memcpy(out->data, input.data, input.size); out->size = input.size;
-    }
-    return 1;
-}
-void icon_sheet_set_timer(struct StateIconSheet *sheet, unsigned index, unsigned total, unsigned start, unsigned offset)
-{
-    static const int ids[] = {0x37f, 0x37f, -1, 0x4dc, 0x37f};
-    static const int totals[] = {8000, 0, INT_MIN, 1000, 7000};
-    static const uint32_t starts[] = {0xfffffd78u, 0, 0x7ffff002u, 0xffffeed3u, 96};
-    static const int offsets[] = {3000, 0, 1, 700, 3000};
-    assert(sheet == g_stateIconSheet && timer_calls < 5 && own_states_count() == 6);
-    assert(index == (unsigned)ids[timer_calls] && total == (unsigned)totals[timer_calls]);
-    assert((uint32_t)start == starts[timer_calls] && offset == (unsigned)offsets[timer_calls]);
-    ++timer_calls;
-}
-
-static const struct OwnStateEntry original[] = {
-    {0xb8, 999999, 0, 9999, 9999},
-    {0x37f, 0x2100, 7, 8000, 5000},
-    {0x37f, 0, 8, 0, 0},
-    {-1, 1, -3, INT_MIN, INT_MAX},
-    {0x4dc, UINT32_MAX, 5, 1000, 300},
-    {0x37f, 0x2000, 7, 7000, 4000}
-};
-static void seed(void)
-{
-    size_t i;
-    own_states_clear();
-    for (i = 0; i < sizeof original / sizeof *original; ++i)
-        assert(own_states_push(&original[i]));
-}
 static void same(const struct OwnStateEntry *a, const struct OwnStateEntry *b)
 {
     assert(a && b && a->index == b->index && a->end_tick == b->end_tick);
     assert(a->value == b->value && a->total_ms == b->total_ms && a->remain_ms == b->remain_ms);
 }
-static void invalid(const void *bytes, size_t size)
-{
-    struct OwnStateEntry before[6];
-    const struct OwnStateEntry *first = own_states_at(0);
-    size_t i;
-    int live = allocations;
-    assert(own_states_count() == 6);
-    for (i = 0; i < 6; ++i) before[i] = *own_states_at(i);
-    assert(own_states_load(bytes, size) == -1);
-    assert(own_states_count() == 6 && own_states_at(0) == first && allocations == live);
-    for (i = 0; i < 6; ++i) same(own_states_at(i), &before[i]);
-    check_guards();
-}
+
 static void storage(void)
 {
     struct OwnStateEntry entry = {17, 23, 45, 67, 89};
@@ -164,92 +105,10 @@ static void storage(void)
     own_states_clear(); own_states_destroy(); own_states_destroy();
     assert(!allocations);
 }
-static void wire(void)
-{
-    struct ReplayBuffer out = {0}, custom = {0};
-    struct SnapshotWriter writer = {0};
-    unsigned char unaligned[sizeof expected_states + 2], payload[25] = {0};
-    size_t i;
-    seed();
-    assert(own_states_save(0x1000, &out));
-    assert(out.size == sizeof expected_states && !memcmp(out.data, expected_states, out.size));
-    for (i = 0; i < 6; ++i) same(own_states_at(i), &original[i]);
-    for (i = 0; i < sizeof expected_states; ++i) invalid(expected_states, i);
-    invalid(NULL, 0); invalid(NULL, 10); invalid(expected_states, SIZE_MAX);
-    for (i = 0; i <= sizeof payload; ++i) if (i != 20) {
-        snapshot_write(&writer, 0x4a38, NULL, 0);
-        snapshot_write(&writer, 0x4a43, payload, i);
-        snapshot_write(&writer, 0x4a39, NULL, 0);
-        assert(snapshot_finish(&writer, &custom)); invalid(custom.data, custom.size);
-    }
-    for (i = 0; i < 3; ++i) {
-        snapshot_write(&writer, 0x4a38, payload, i == 0 ? 1 : 0);
-        if (i == 1) snapshot_write(&writer, 0x4a38, NULL, 0);
-        snapshot_write(&writer, 0x4a39, payload, i == 2 ? 1 : 0);
-        assert(snapshot_finish(&writer, &custom)); invalid(custom.data, custom.size);
-    }
-    memcpy(unaligned + 1, expected_states, sizeof expected_states);
-    unaligned[sizeof unaligned - 1] = 0xff;
-    assert(own_states_load(unaligned + 1, sizeof unaligned - 1) == sizeof expected_states);
-    assert(own_states_count() == 6 && own_states_at(1)->end_tick == 0x1100);
-    assert(own_states_at(2)->end_tick == 0 && own_states_at(3)->end_tick == 0xfffff001u);
-    assert(own_states_at(4)->end_tick == 0xffffefffu && own_states_at(5)->end_tick == 0x1000);
-    assert(own_states_save(0, &out) && !memcmp(out.data, expected_states, out.size));
-    snapshot_write(&writer, 0x4a38, NULL, 0);
-    snapshot_write(&writer, 0x8888, payload, sizeof payload);
-    snapshot_write(&writer, 0x4a43, expected_states + 12, 20);
-    snapshot_write(&writer, 0x4a39, NULL, 0);
-    assert(snapshot_finish(&writer, &custom));
-    assert(own_states_load(custom.data, custom.size) == (int)custom.size && own_states_count() == 1);
-    same(own_states_at(0), &original[0]);
-    snapshot_write(&writer, 0x4a38, NULL, 0); snapshot_write(&writer, 0x4a39, NULL, 0);
-    assert(snapshot_finish(&writer, &custom));
-    assert(own_states_load(custom.data, custom.size) == 12 && !own_states_count());
-    replay_buffer_destroy(&out); replay_buffer_destroy(&custom); own_states_destroy();
-    assert(!allocations);
-}
-static void failures_and_hooks(void)
-{
-    struct ReplayBuffer out = {0};
-    unsigned char *old;
-    int i, needed, live;
-    seed(); attempts = 0; fail_at = 1;
-    invalid(expected_states, sizeof expected_states); fail_at = 0;
-    for (i = 0; i < 100; ++i) assert(own_states_push(&original[i % 6]));
-    assert(!own_states_save(0, NULL));
-    attempts = 0; assert(own_states_save(0x1000, &out)); needed = attempts;
-    assert(needed > 1); replay_buffer_destroy(&out);
-    out.data = allocate(3); out.size = 3; memcpy(out.data, "old", 3); old = out.data;
-    live = allocations;
-    for (i = 1; i <= needed; ++i) {
-        attempts = 0; fail_at = i;
-        assert(!own_states_save(0x1000, &out));
-        assert(out.data == old && out.size == 3 && !memcmp(out.data, "old", 3) && allocations == live);
-        check_guards();
-    }
-    fail_at = 0; replay_buffer_destroy(&out); seed();
-    input.data = expected_states;
-    for (i = 1; i < sizeof expected_states; ++i) {
-        input.size = (size_t)i;
-        assert(!own_states_restore(&recorder) && own_states_count() == 6 && !timer_calls && !g_mapPropertyQuiet);
-    }
-    input.size = sizeof expected_states;
-    for (i = 1; i <= 2; ++i) {
-        attempts = 0; fail_at = i;
-        assert(!own_states_restore(&recorder) && !timer_calls && !g_mapPropertyQuiet);
-        same(own_states_at(1), &original[1]);
-    }
-    fail_at = 0; read_ok = 0;
-    assert(!own_states_restore(&recorder) && !timer_calls); read_ok = 1;
-    assert(own_states_restore(&recorder) && timer_calls == 5 && g_mapPropertyQuiet == 1);
-    input.size = 0; timer_calls = 0; g_mapPropertyQuiet = 0;
-    assert(own_states_restore(&recorder) && own_states_count() == 6 && !timer_calls && !g_mapPropertyQuiet);
-    assert(!memcmp(input.data, expected_states, sizeof expected_states));
-    own_states_destroy(); assert(!allocations);
-}
+
 int main(void)
 {
-    storage(); wire(); failures_and_hooks(); check_guards();
-    puts("player statuses: C ownership, stable ordering, duplicates, initialized entries, frozen replay bytes, every truncation, allocation rollback and deferred timers passed");
+    storage(); check_guards();
+    puts("player statuses: C ownership, stable ordering, duplicates, initialized entries and allocation rollback passed");
     return 0;
 }

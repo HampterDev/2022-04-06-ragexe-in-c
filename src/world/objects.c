@@ -28,9 +28,6 @@ void world_process_actors(struct World *self)
     void *obj, *skill;
     int id;
 
-    if (self->videoList)
-        world_video_list_update(self->videoList);
-
     world_models_process(self);
 
     for (n = self->gameObjects.head->next; n != self->gameObjects.head; n = next) {

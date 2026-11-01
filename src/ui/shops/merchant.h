@@ -1,7 +1,5 @@
 #include "game/drag.h"
 #include "session/shop_inventory.h"
-#include "ui/record_tags.h"
-#include "replay/replay.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #ifndef UI_SHOPS_MERCHANT_H
@@ -53,7 +51,6 @@
 #define EDIT_ID_CHAT_ROOM 0x1e6
 
 void merchant_store_info(struct UIWindow *wnd, struct WindowInfo *info);
-struct ReplayRecorder;
 
 struct UIMerchantItemWnd {
     struct UIItemBaseWnd base;

@@ -1,7 +1,6 @@
 #include "ui/controls/listbox.h"
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
 #include "core/object_type_tables.h"
@@ -73,7 +72,6 @@ const struct UIWindowOps ui_whisper_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 1,
     .draw_backdrop = ui_whisper_wnd_draw_backdrop,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -403,9 +401,6 @@ static void add_line(struct UIWhisperWnd *self, char *text, int own)
 {
     COLORREF colour;
 
-    if (word_filter_contains(&g_nameFilter, text) == 1) {
-        word_filter_censor(&g_nameFilter, text);
-    }
     colour = own == WHISPER_OWN_LINE ? WHISPER_OWN_COLOUR : WHISPER_OTHER_COLOUR;
     if (_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML)))
         ui_chat_his_box_add_line(&self->box->box, text, colour, NULL);

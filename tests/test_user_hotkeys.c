@@ -59,13 +59,13 @@ static void *checked_realloc(void *pointer, size_t size)
 #undef free
 
 struct Session g_session1;
-static int generation = 1, empty_lists, nil_names, rebound_id = -1;
-static int groups[4], group_calls, lua_calls, original_calls, actions;
+static int generation = 1, empty_lists, nil_names;
+static int groups[4], group_calls, lua_calls, actions;
 static char borrowed_name[80];
 
 static void reset_calls(void)
 {
-    group_calls = lua_calls = original_calls = 0;
+    group_calls = lua_calls = 0;
 }
 
 int session_get_hot_key_list_size(struct Session *session, int group)
@@ -93,12 +93,6 @@ int client_lua_call(struct ClientLua *lua, const char *function, const char *for
     const char **unused, **name;
     assert(lua == g_session1.luaState);
     va_start(args, format);
-    if (!strcmp(format, "s")) {
-        const char *path = va_arg(args, const char *);
-        assert(!strcmp(path, "SaveData\\UserKeys.lua"));
-        assert(!strcmp(function, actions == 0 ? "ClearUserHotKeys" : "SaveUserHotKeys2"));
-        ++actions; va_end(args); return 1;
-    }
     group = va_arg(args, int); id = va_arg(args, int);
     assert(group >= 1 && group <= 4);
     if (!strcmp(format, "ddsdd")) {
@@ -112,12 +106,6 @@ int client_lua_call(struct ClientLua *lua, const char *function, const char *for
     key1 = va_arg(args, int *); key2 = va_arg(args, int *);
     unused = va_arg(args, const char **); name = va_arg(args, const char **);
     va_end(args); ++lua_calls;
-    if (!strcmp(function, "GetOriginalHotKeyInfo")) {
-        assert(*key1 == id * 2 && *key2 == id * 2 + 1);
-        assert(!*unused && *name == borrowed_name && **name);
-        strcpy(borrowed_name, id == rebound_id ? "original binding" : "");
-        *name = borrowed_name; ++original_calls; return 1;
-    }
     assert(!strcmp(function, "GetUserHotKeyInfo"));
     assert(!*key1 && !*key2 && !*unused && !*name);
     if (id % 100 == 2) return 0;
@@ -152,10 +140,9 @@ static void test_collect(void)
     struct UserHotkeyMgr manager = {0};
     struct UserHotkey *previous;
     int failure, baseline, collected = 0;
-    manager.settings_read = 1; manager.apply_count = 9; manager.lacks_v2_save = 1;
     reset_calls(); assert(user_hotkey_mgr_collect(&manager));
     assert(group_calls == 4 && groups[0] == 0 && groups[1] == 3 && groups[2] == 1 && groups[3] == 2);
-    assert(lua_calls == 36 && !original_calls);
+    assert(lua_calls == 36);
     memset(borrowed_name, 'x', sizeof borrowed_name);
     expect_snapshot(&manager, 1);
     previous = manager.keys.items; baseline = live;
@@ -166,43 +153,16 @@ static void test_collect(void)
         if (collected) break;
         assert(manager.keys.items == previous && live == baseline);
         expect_snapshot(&manager, 1);
-        assert(manager.settings_read == 1 && manager.apply_count == 9 && manager.lacks_v2_save == 1);
     }
     fail_at = 0; assert(collected && failure == 27);
     expect_snapshot(&manager, 2);
-    assert(live == baseline && manager.apply_count == 9);
+    assert(live == baseline);
     empty_lists = 1; reset_calls(); assert(user_hotkey_mgr_collect(&manager));
-    assert(!manager.keys.size && !manager.keys.items && !live && manager.apply_count == 9);
+    assert(!manager.keys.size && !manager.keys.items && !live);
     empty_lists = 0; nil_names = 1; reset_calls(); assert(user_hotkey_mgr_collect(&manager));
     assert(!manager.keys.size && !live);
     nil_names = 0;
     user_hotkey_mgr_reset(&manager); user_hotkey_mgr_reset(&manager);
-    assert(!manager.settings_read && !manager.apply_count && !manager.lacks_v2_save && !live);
-}
-
-static void test_save_rules(void)
-{
-    struct UserHotkeyMgr manager = {0};
-    reset_calls(); manager.apply_count = 1; manager.lacks_v2_save = 1;
-    assert(user_hotkey_mgr_has_keys_to_save(&manager)); assert(!lua_calls && !group_calls);
-    manager.apply_count = 0;
-    assert(!user_hotkey_mgr_has_keys_to_save(&manager)); assert(!lua_calls && !group_calls);
-    manager.lacks_v2_save = 0;
-    rebound_id = -1; reset_calls();
-    assert(!user_hotkey_mgr_has_keys_to_save(&manager) && original_calls == 24);
-    rebound_id = 0; reset_calls();
-    assert(user_hotkey_mgr_has_keys_to_save(&manager) && original_calls == 1 && group_calls == 1);
-    nil_names = 1; reset_calls();
-    assert(!user_hotkey_mgr_has_keys_to_save(&manager) && !original_calls);
-    nil_names = 0;
-    attempts = 0; fail_at = 1;
-    user_hotkey_mgr_clear_saved(&manager); user_hotkey_mgr_save(&manager);
-    user_hotkey_mgr_change(&manager, 3, 17, 3, 4, "binding\0ignored");
-    assert(actions == 3 && !attempts && !live);
-    fail_at = 0;
-    assert(user_hotkey_tab_group(&manager, 0) == 0 && user_hotkey_tab_group(&manager, 1) == 3);
-    assert(user_hotkey_tab_group(&manager, 2) == 1 && user_hotkey_tab_group(&manager, 3) == 2);
-    assert(user_hotkey_tab_group(&manager, -1) == 0 && user_hotkey_tab_group(&manager, 99) == 0);
 }
 
 static void test_lifetime(void)
@@ -218,7 +178,9 @@ static void test_lifetime(void)
 
 int main(void)
 {
-    test_collect(); test_save_rules(); test_lifetime();
-    puts("User hotkeys: Lua order, owned Korean names, all 26 allocation failures, nil outputs, save rules, literal paths and lifetime passed");
+    test_collect(); test_lifetime();
+    user_hotkey_mgr_change(NULL, 3, 17, 3, 4, "binding");
+    assert(actions == 1);
+    puts("User hotkeys: Lua order, owned Korean names, all 26 allocation failures, nil outputs, lifetime passed");
     return 0;
 }

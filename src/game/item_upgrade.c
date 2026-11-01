@@ -1,4 +1,3 @@
-#include "contents/enchant_window_api.h"
 #include "session/state.h"
 #include "game/item_upgrade.h"
 #include "contents/lapine_box.h"
@@ -9,11 +8,9 @@ enum {
     WID_REPAIR = 0x6b,
     WID_RANDOM_COMBINE = 0x122,
     WID_RANDOM_UPGRADE = 0x12e,
-    WID_ENCHANT = 0x15b,
     WM_RANDOM_UPGRADE_OPEN = 0x17,
     WM_REPAIR_ADD_ITEM = 0x1f,
     MSG_NOTHING_TO_REPAIR = 0x1a8,
-    UI_TYPE_ENCHANT = 10,
 };
 
 void game_mode_on_random_combine_item_ui_open(struct GameMode *self, int value)
@@ -76,32 +73,4 @@ void game_mode_on_repair_item_list2(struct GameMode *self, const struct PacketRe
         return;
     for (i = 0; i < count; i++, item++)
         ui_window_send(wnd, NULL, WM_REPAIR_ADD_ITEM, (int)item, 0, 0, 0);
-}
-
-void game_mode_on_ui_open_v3(struct GameMode *self, unsigned char ui_type, uint64_t table_id)
-{
-    float ratio;
-    struct UIWindow *wnd;
-
-    (void)self;
-    if (ui_type != UI_TYPE_ENCHANT)
-        return;
-    ratio = (float)g_session1.weight / (float)g_session1.maxWeight;
-    if ((double)ratio >= 0.7) {
-        if (ui_get_window(WID_ENCHANT))
-            ui_close_window(WID_ENCHANT);
-        return;
-    }
-    wnd = ui_make_window(WID_ENCHANT);
-    if (wnd)
-        enchant_wnd_open((struct UIEnchantWnd *)wnd, table_id);
-}
-
-void game_mode_on_response_enchant(struct GameMode *self, int result, int item_id)
-{
-    struct UIWindow *wnd = ui_get_window(WID_ENCHANT);
-
-    (void)self;
-    if (wnd)
-        enchant_wnd_result((struct UIEnchantWnd *)wnd, result, item_id);
 }

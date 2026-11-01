@@ -38,7 +38,7 @@ static void test_stream(void)
     captcha_stream_clear(&stream); captcha_stream_clear(&stream); assert(!outstanding);
 }
 
-static void roundtrip(int custom, int bits, unsigned palette)
+static void test_decode(int custom, int bits, unsigned palette)
 {
     struct CaptchaData packed = {0}, decoded = {0};
     size_t size, i, old_size;
@@ -46,13 +46,10 @@ static void roundtrip(int custom, int bits, unsigned palette)
     assert(captcha_bitmap_valid(raw, size));
     for (i = 0; i < size; ++i) assert(!captcha_bitmap_valid(raw, i));
     assert(!captcha_bitmap_valid(NULL, size));
-    assert(captcha_data_pack(&packed, raw, size));
+    packed = compressed_bitmap(raw, size);
     assert(packed.size && packed.size <= CAPTCHA_PACKED_LIMIT);
     assert(captcha_data_unpack(&decoded, &packed));
     assert(decoded.size == size && !memcmp(decoded.bytes, raw, size));
-    old = packed.bytes; old_size = packed.size;
-    fail_at = allocation_calls + 1; assert(!captcha_data_pack(&packed, raw, size)); fail_at = 0;
-    assert(packed.bytes == old && packed.size == old_size);
     old = decoded.bytes; old_size = decoded.size;
     fail_at = allocation_calls + 1; assert(!captcha_data_unpack(&decoded, &packed)); fail_at = 0;
     assert(decoded.bytes == old && decoded.size == old_size);
@@ -106,9 +103,9 @@ int main(void)
 {
     assert(sizeof BMP_CLIENT_MAGIC == 13);
     test_stream();
-    roundtrip(0, 24, 0); roundtrip(0, 8, 0); roundtrip(0, 8, 16);
-    roundtrip(1, 24, 0); roundtrip(1, 8, 0); roundtrip(1, 8, 16);
+    test_decode(0, 24, 0); test_decode(0, 8, 0); test_decode(0, 8, 16);
+    test_decode(1, 24, 0); test_decode(1, 8, 0); test_decode(1, 8, 16);
     test_invalid();
-    puts("Captcha data: bounded chunks, rollback, six bitmap forms, real zlib roundtrips, truncation/corruption and decode limits passed");
+    puts("Captcha data: bounded chunks, rollback, six bitmap forms, real zlib decoding, truncation/corruption and decode limits passed");
     return 0;
 }

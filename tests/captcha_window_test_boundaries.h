@@ -1,16 +1,9 @@
 #include "world/tooltip.h"
 #include "render/rp_pool.h"
-struct File *file_construct(struct File *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-void file_destruct(struct File *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-unsigned char file_open(struct File *self, const char *name, int mode,
-                        unsigned char resolve, unsigned char diskOnly) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
+
 void mode_show_tooltip(struct Mode *self, const char *text, int x, int y,
                                   DWORD colour, BYTE flag) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-void ui_combo_box_def2_wnd_add_item(struct UIWindow *self, struct String text,
-                                          int value) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-struct String *ui_combo_box_def_wnd_get_label_text(struct UIWindow *wnd,
-                                                           struct String *out) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-int ui_frame_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
+
 void ui_frame_wnd_move_delta(struct UIWindow *self, int dx, int dy) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_frame_wnd_on_l_btn_down(struct UIWindow *self, int x, int y) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_frame_wnd_on_l_btn_up(struct UIWindow *self, int x, int y) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
@@ -33,7 +26,7 @@ void ui_window_fill_rect(struct UIWindow *self, int x, int y, int width,
 void ui_window_fill_round_rect(struct UIWindow *self, int x, int y, int width,
                                        int height, COLORREF colour) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 DWORD ui_window_get_color(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-int ui_window_get_records_base(struct UIWindow *self, struct ReplayBuffer *out) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
+
 struct UIWindow *ui_window_hit_test_base(struct UIWindow *self, int x, int y) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 BYTE ui_window_is_hit_testable_base(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 struct TexDrawPrim *ui_window_make_quad_base(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
@@ -69,7 +62,6 @@ void ui_window_on_hover_leave_base(struct UIWindow *self) { fprintf(stderr, "Une
 BYTE ui_window_is_focusable_base(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow *self, struct UIBackdropBox *arg) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 BYTE ui_window_is_click_through_base(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-char g_clientDir[136] = "";
 struct Language *g_language;
 struct ModeMgr g_modeMgr;
 struct UIWindowMgr g_windowMgr;

@@ -5,7 +5,6 @@
 
 struct SoundSettings {
     int effects_on;
-    int button_sound_only;
     int bgm_on;
     int bgm_overridden;
 };
@@ -14,6 +13,7 @@ extern struct SoundSettings g_sound_settings;
 int sound_mgr_create(void);
 void sound_mgr_destroy(void);
 void sound_play_stream(const char *name, int loop_count);
+/* NULL or an empty path stops playback and clears the remembered map track. */
 void sound_play_bgm(const char *name);
 void sound_stop_stream(void);
 int sound_stream_playing(void);
@@ -34,10 +34,6 @@ void sound_set_effect_volume_3d(int volume);
 void sound_set_listener_angle(float angle);
 void sound_set_room_type(int room_type);
 
-extern int g_sound_bits_type;
-extern char g_sound_provider_name[1024];
-extern int g_sound_rate_type;
-extern int g_sound_sample_type;
 extern int g_sound_speaker_type;
 
 #endif

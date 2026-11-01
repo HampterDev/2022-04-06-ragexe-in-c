@@ -29,7 +29,6 @@ int main(void)
     mgr->capture_root = gone;
     mgr->focus_edit = gone;
     mgr->mouse_wnd = gone;
-    mgr->replay_wnd = gone;
     mgr->active_top_wnd = gone;
     mgr->login_wnd = kept;
     mgr->item_store_sub_wnd[4] = kept;
@@ -40,7 +39,7 @@ int main(void)
     assert(mgr->loading_wnd == NULL && mgr->apply_for_party_wnd == NULL && mgr->quit_wnd == NULL);
     assert(mgr->item_store_sub_wnd[3] == NULL);
     assert(mgr->modal_wnd == NULL && mgr->capture == NULL && mgr->capture_root == NULL);
-    assert(mgr->focus_edit == NULL && mgr->mouse_wnd == NULL && mgr->replay_wnd == NULL);
+    assert(mgr->focus_edit == NULL && mgr->mouse_wnd == NULL);
     assert(mgr->active_top_wnd == NULL);
     assert(mgr->login_wnd == kept && mgr->item_store_sub_wnd[4] == kept && mgr->choose_wnd == kept);
     assert(actors_told == gone && actors_calls == 1);

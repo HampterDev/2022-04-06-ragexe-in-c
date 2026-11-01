@@ -136,10 +136,6 @@ void game_mode_reset_drag(struct GameMode *arg0)
 {
     abort();
 }
-int session_get_pet_food(struct Session *arg0, int arg1)
-{
-    abort();
-}
 struct ItemInfo *session_get_inventory_item_by_id(struct Session *arg0, struct ItemInfo *arg1,
                                                int arg2, unsigned char arg3)
 {

@@ -117,8 +117,6 @@ static void check_reset(int populated, int reverse)
         model.blocks = model_test_calloc(1, sizeof *model.blocks); model.blockCount = 1;
         assert(text_array_resize(&model.mainNodes, 1));
         assert(owned_text_assign(&model.mainNodes.items[0], text_view_cstr("root")));
-        assert(text_array_resize(&model.videoNames, 1));
-        assert(owned_text_assign(&model.videoNames.items[0], text_view_cstr("movie.bik")));
         assert(owned_text_assign(&model.fileName, text_view_cstr("model.rsm")));
     }
     model_res_clear(&model);
@@ -126,7 +124,7 @@ static void check_reset(int populated, int reverse)
     assert(releases == before_releases + (populated ? 4 : 0));
     assert(meshes == before_meshes + (populated ? 2 : 0));
     assert(!model.nodeCount && !model.nodes && !model.blockCount && !model.blocks);
-    assert(!model.mainNodes.size && !model.videoNames.size && !model.fileName.data);
+    assert(!model.mainNodes.size && !model.fileName.data);
     assert(!outstanding);
     model_res_clear(&model);
     assert(!outstanding && nodes_deleted == before_deleted + 2);

@@ -4,11 +4,7 @@
 struct GameMode;
 struct String;
 
-unsigned char game_mode_carries_item(struct GameMode *self, int item_id);
-
 struct String *game_mode_get_map_name(struct GameMode *self, struct String *out);
-
-struct String *game_mode_location_text(struct GameMode *self, struct String *out);
 
 void game_mode_add_world_object(struct GameMode *self, void *object);
 

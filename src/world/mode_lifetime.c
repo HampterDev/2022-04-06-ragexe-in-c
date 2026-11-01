@@ -3,7 +3,6 @@
 
 struct Mode *mode_construct(struct Mode *self)
 {
-    string_init(&self->screenshot_name);
     self->loop_cond = 1;
     self->next_sub_mode = -1;
     self->connected = 1;
@@ -18,9 +17,4 @@ struct Mode *mode_construct(struct Mode *self)
     self->cursor_offset_y = 0;
     self->fade_in_start = 0;
     return self;
-}
-
-void mode_destruct(struct Mode *self)
-{
-    string_free(&self->screenshot_name);
 }

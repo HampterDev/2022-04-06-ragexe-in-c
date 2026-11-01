@@ -3,8 +3,6 @@
 #include "core/text_array.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"
-#include "contents/sound.h"
-#include "contents/manner_filter.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
 #include "core/object_type_tables.h"
@@ -65,7 +63,6 @@ const struct UIWindowOps ui_chat_room_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_chat_room_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -320,9 +317,6 @@ static void add_line(struct UIChatRoomWnd *self, char *text, COLORREF colour)
     int width, in, out, colon;
     unsigned i;
 
-    if (word_filter_contains(&g_nameFilter, text) == 1) {
-        word_filter_censor(&g_nameFilter, text);
-    }
     memset(name, 0, sizeof name);
     width = self->frame.base.width * 80 / 640;
     string_init(&line);
@@ -377,9 +371,6 @@ static void set_room(struct UIChatRoomWnd *self, const struct ChatRoomInfo *room
                            msg_str(mine->type == CHAT_ROOM_PRIVATE ? MSG_ROOM_PRIVATE_LABEL : MSG_ROOM_PUBLIC_LABEL));
     sprintf(line, "%s%s (%d/%d)", string_cstr(&label), string_cstr(&mine->title), mine->users,
                 mine->max_users);
-    if (word_filter_contains(&g_nameFilter, line) == 1) {
-        word_filter_censor(&g_nameFilter, line);
-    }
     ui_static_text_set_text_ellipsis(self->title, line);
     ui_window_invalidate_base(&self->frame.base);
     string_free(&label);
@@ -419,13 +410,8 @@ static void add_member(struct UIChatRoomWnd *self, const char *name, int value)
     *members_at(&self->members, &key, 1) = value;
     string_free(&key);
     colour = MEMBER_COLOUR;
-    if (value == MEMBER_OWNER_VALUE) {
+    if (value == MEMBER_OWNER_VALUE)
         colour = MEMBER_OWNER_COLOUR;
-    } else {
-        if (g_sound_settings.effects_on && g_sound_settings.button_sound_only)
-            sound_play_wave("버튼소리.wav"  , 0.0f, 0.0f,
-                            0.0f, 0xfa, 0x28, 1.0f);
-    }
     ui_chat_his_box_add_line(&self->member_list->box, name, colour, NULL);
 }
 
@@ -647,74 +633,6 @@ static void resize(struct UIChatRoomWnd *self, int width, int height)
     ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
 }
 
-static void load_records(struct UIChatRoomWnd *self, const BYTE *data, unsigned size)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    struct ChatRoomInfo *mode_room;
-    char text[0x104];
-    struct SnapshotReader reader;
-    struct SnapshotRecord record;
-
-    if (!game_current_mode() || ui_window_records_open(&reader, data, size, CHAT_ROOM_REC_BEGIN) < 0)
-        return;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-    ui_chat_line(msg_str(MSG_ROOM_RESTORED), 0xffff00);
-    mode_room = game_current_chat_room();
-    if (!mode_room)
-        return;
-    while (snapshot_next(&reader, &record) == 1) {
-        const unsigned char *value = record.value.data;
-        size_t length = record.value.size;
-        switch (record.tag) {
-        case CHAT_ROOM_REC_END:
-            return;
-        case CHAT_ROOM_REC_FRAME:
-            memcpy(self->info, value, sizeof *self->info);
-            break;
-        case CHAT_ROOM_REC_TITLE:
-            memset(text, 0, sizeof text);
-            memcpy(text, value, length);
-            string_assign_cstr(&self->room.title, text);
-            string_assign(&mode_room->title, string_cstr(&self->room.title), self->room.title.size);
-            break;
-        case CHAT_ROOM_REC_PASSWORD:
-            memset(text, 0, sizeof text);
-            memcpy(text, value, length);
-            string_assign_cstr(&self->room.password, text);
-            string_assign(&mode_room->password, string_cstr(&self->room.password), self->room.password.size);
-            break;
-        case CHAT_ROOM_REC_TYPE:
-            memcpy(&self->room.type, value, sizeof self->room.type);
-            mode_room->type = self->room.type;
-            break;
-        case CHAT_ROOM_REC_USERS:
-            memcpy(&self->room.users, value, sizeof self->room.users);
-            mode_room->users = self->room.users;
-            break;
-        case CHAT_ROOM_REC_LIMIT:
-            memcpy(&self->room.max_users, value, sizeof self->room.max_users);
-            mode_room->max_users = self->room.max_users;
-            break;
-        case CHAT_ROOM_REC_ROOM_ID:
-            memcpy(&self->room.room_id, value, sizeof self->room.room_id);
-            mode_room->room_id = self->room.room_id;
-            ui_chat_room_wnd_send_msg(wnd, NULL, CHAT_ROOM_MSG_SET_ROOM, (int)mode_room, 0, 0, 0);
-            break;
-        case CHAT_ROOM_REC_MEMBER:
-            memset(text, 0, sizeof text);
-            memcpy(text, value, length);
-            ui_chat_room_wnd_send_msg(wnd, NULL, CHAT_ROOM_MSG_CLEAR_MEMBERS, 0, 0, 0, 0);
-            ui_chat_room_wnd_send_msg(wnd, NULL, CHAT_ROOM_MSG_ADD_MEMBER, (int)text, 0, 0, 0);
-            break;
-        case CHAT_ROOM_REC_MEMBER_SET:
-            memset(text, 0, sizeof text);
-            memcpy(text, value, length);
-            ui_chat_room_wnd_send_msg(wnd, NULL, CHAT_ROOM_MSG_ADD_MEMBER, (int)text, 1, 0, 0);
-            break;
-        }
-    }
-}
-
 int ui_chat_room_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                      int val2, int val3, int val4)
 {
@@ -770,14 +688,6 @@ int ui_chat_room_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             chat_room_info_set_default(self->info);
         ui_chat_room_wnd_send_msg(wnd, NULL, UI_MSG_RESIZE, CHAT_ROOM_GRIP_EDGE, self->info->width, self->info->height, 0);
         ui_chat_room_wnd_move(wnd, self->info->x, self->info->y);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        load_records(self, (const BYTE *)val1, (unsigned)val2);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

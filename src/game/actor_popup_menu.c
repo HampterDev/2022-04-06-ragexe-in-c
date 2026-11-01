@@ -14,7 +14,6 @@
 #include "game/input.h"
 #include "game/party_member.h"
 #include "game/popup_entries.h"
-#include "replay/replay.h"
 #include "actor/actor_common.h"
 #include "core/msg_str.h"
 #include "game/store_search_items.h"
@@ -260,8 +259,6 @@ void game_mode_open_actor_popup_menu(struct GameMode *self, struct PickInfo *pic
     char we_are_gm, nameless;
     int job;
 
-    if (g_replayPlaying)
-        return;
     if (g_mouse.button[MOUSE_LEFT] == BUTTON_HELD)
         return;
     if ((unsigned char)((unsigned)GetAsyncKeyState(VK_SHIFT) >> 8))

@@ -1,5 +1,4 @@
 #include "std/string.h"
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -351,21 +350,6 @@ int string_compare(const struct String *a, const struct String *b)
     if (cmp)
         return cmp < 0 ? -1 : 1;
     return a->size < b->size ? -1 : a->size > b->size;
-}
-
-int string_to_int(const struct String *s)
-{
-    const char *text = string_cstr(s);
-    char *end;
-    long value;
-
-    errno = 0;
-    value = strtol(text, &end, 10);
-    if (text == end)
-        fatal_error("invalid stoi argument");
-    if (errno == ERANGE)
-        fatal_error("stoi argument out of range");
-    return (int)value;
 }
 
 void wstring_free(struct WString *s)

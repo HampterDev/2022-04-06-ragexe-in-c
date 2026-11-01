@@ -1,7 +1,6 @@
 #include "game/gamemode.h"
 #include "ui/window_types.h"
 #include "effects/rag/rag_effect.h"
-#include "contents/map_info_api.h"
 #include "render/sprite_atlas.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -73,8 +72,7 @@ char item_id_is990_to993(int id)
 
 char game_mode_is_blocking_window_open(void)
 {
-    if (ui_window_find(0x122) || ui_window_find(0x12e)
-        || ui_window_find(0x15c) || ui_window_find(0x15b))
+    if (ui_window_find(0x122) || ui_window_find(0x12e))
         return 1;
     return 0;
 }
@@ -112,14 +110,4 @@ void game_mode_on_own_aid(struct GameMode *self, int aid)
     if (g_windowMgr.hide_ui_state == 2 || aid != g_session1.ownAid)
         return;
     rag_effect_send_msg(self->world->player->status_icons, NULL, 0x2c, 1, 0, 0);
-}
-
-void game_mode_pass_map_rsw(void)
-{
-    char rsw[sizeof g_session1.mapName + sizeof ".rsw"];
-    if (!g_session1.showMapName)
-        return;
-    strcpy(rsw, g_session1.mapName);
-    strcat(rsw, ".rsw");
-    map_info_show_banner(g_mapInfo, rsw);
 }

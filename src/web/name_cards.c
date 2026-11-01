@@ -1,5 +1,3 @@
-#include "web/name_card_snapshot.h"
-#include "replay/snapshot.h"
 #include <limits.h>
 #include <stdint.h>
 #include "contents/connection_api.h"
@@ -7,6 +5,8 @@
 #include <string.h>
 #include "web/name_cards.h"
 #include "std/tree.h"
+#include "std/vec.h"
+#include <mmsystem.h>
 
 struct ActorNameCard g_emptyNameCard;
 INIT_ONCE g_emptyNameCardGuard;
@@ -14,8 +14,6 @@ INIT_ONCE g_emptyNameCardGuard;
 #define REQ_NAME_PACKET                                                                            \
     0x368
 #define REQUEST_TIMEOUT 10000
-
-#define NAME_CARD_SNAPSHOT_MAX 0x1745d16u
 
 #pragma pack(push, 1)
 struct ReqNameByAid {
@@ -59,17 +57,6 @@ void name_card_copy_init(struct ActorNameCard *self, const struct ActorNameCard 
     self->complete = from->complete;
 }
 
-static void name_card_clear(struct ActorNameCard *card)
-{
-    string_clear(&card->name);
-    string_clear(&card->party);
-    string_clear(&card->guild);
-    string_clear(&card->position);
-    string_clear(&card->achievement_title);
-    string_clear(&card->npc_title);
-    card->group_id = 0;
-}
-
 static void destroy_entry(void *value)
 {
     name_card_destroy(&((struct NameCardEntry *)value)->card);
@@ -80,20 +67,6 @@ static struct ActorNameCard *name_card_at(struct Tree *map, unsigned aid)
     struct NameCardEntry *entry = tree_get(map, &aid, sizeof aid, sizeof *entry, tree_less_uint);
 
     return &entry->card;
-}
-
-const char *name_card_name_text(const struct ActorNameCardHolder *self, unsigned aid,
-                                size_t *length)
-{
-    const struct String *name = NULL;
-    if (self && self->cards.head) {
-        struct NameCardEntry *entry = tree_find(&self->cards, &aid, tree_less_uint);
-        if (entry)
-            name = &entry->card.name;
-    }
-    if (length)
-        *length = name ? name->size : 0;
-    return name ? string_cstr(name) : "";
 }
 
 static void want(struct ActorNameCardHolder *self, unsigned aid)
@@ -184,132 +157,7 @@ unsigned name_card_holder_find_id(struct ActorNameCardHolder *self, struct Strin
     return aid;
 }
 
-struct NameSnapshotCursor {
-    const unsigned char *data;
-    size_t size, offset;
-};
-
-static int name_snapshot_word(struct NameSnapshotCursor *cursor, uint32_t *value)
-{
-    const unsigned char *p;
-    if (cursor->offset > cursor->size || cursor->size - cursor->offset < 4)
-        return 0;
-    p = cursor->data + cursor->offset;
-    *value = (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-    cursor->offset += 4;
-    return 1;
-}
-
-static void name_snapshot_put(unsigned char **position, uint32_t value)
-{
-    unsigned char *p = *position;
-    p[0] = (unsigned char)value;
-    p[1] = (unsigned char)(value >> 8);
-    p[2] = (unsigned char)(value >> 16);
-    p[3] = (unsigned char)(value >> 24);
-    *position += 4;
-}
-
-int name_cards_snapshot_valid(const void *data, size_t size)
-{
-    struct NameSnapshotCursor cursor = {data, size, 0};
-    uint32_t count, i, aid, length;
-    int field;
-    if (!size)
-        return 1;
-    if (!data || size > INT_MAX || !name_snapshot_word(&cursor, &count) ||
-        count > NAME_CARD_SNAPSHOT_MAX || count > (size - 4) / 20)
-        return 0;
-    for (i = 0; i < count; ++i) {
-        if (!name_snapshot_word(&cursor, &aid))
-            return 0;
-        for (field = 0; field < 4; ++field) {
-            if (!name_snapshot_word(&cursor, &length) || length > cursor.size - cursor.offset)
-                return 0;
-            cursor.offset += length;
-        }
-    }
-    return cursor.offset == size;
-}
-
-int name_cards_snapshot_save(const struct ActorNameCardHolder *holder, struct ReplayBuffer *out)
-{
-    struct ReplayBuffer result = {0};
-    struct TreeNode *node, *head;
-    unsigned char *position;
-    size_t size = 4, count = 0;
-    if (!holder || !out || !(head = holder->cards.head))
-        return 0;
-    for (node = head->left; node != head; node = tree_next(node)) {
-        const struct ActorNameCard *card = &TREE_VALUE(node, struct NameCardEntry)->card;
-        const struct String *fields[] = {&card->name, &card->party, &card->guild,
-                                            &card->position};
-        size_t i;
-        if (size > INT_MAX - 20 || ++count > NAME_CARD_SNAPSHOT_MAX)
-            return 0;
-        size += 20;
-        for (i = 0; i < 4; ++i) {
-            if (fields[i]->size > INT_MAX - size)
-                return 0;
-            size += fields[i]->size;
-        }
-    }
-    if (count != holder->cards.size)
-        return 0;
-    result.data = malloc(size);
-    if (!result.data)
-        return 0;
-    result.size = size;
-    position = result.data;
-    name_snapshot_put(&position, (uint32_t)count);
-    for (node = head->left; node != head; node = tree_next(node)) {
-        const struct NameCardEntry *entry = TREE_VALUE(node, struct NameCardEntry);
-        const struct ActorNameCard *card = &entry->card;
-        const struct String *fields[] = {&card->name, &card->party, &card->guild,
-                                            &card->position};
-        size_t i;
-        name_snapshot_put(&position, entry->aid);
-        for (i = 0; i < 4; ++i) {
-            name_snapshot_put(&position, fields[i]->size);
-            if (fields[i]->size)
-                memcpy(position, string_cstr(fields[i]), fields[i]->size);
-            position += fields[i]->size;
-        }
-    }
-    replay_buffer_destroy(out);
-    *out = result;
-    return 1;
-}
-
-int name_cards_snapshot_load(struct ActorNameCardHolder *holder, const void *data, size_t size)
-{
-    struct NameSnapshotCursor cursor = {data, size, 0};
-    uint32_t count, i, aid, length;
-    if (!holder || !holder->cards.head || !name_cards_snapshot_valid(data, size))
-        return 0;
-    if (!size)
-        return 1;
-    tree_clear(&holder->cards, destroy_entry);
-    name_snapshot_word(&cursor, &count);
-    for (i = 0; i < count; ++i) {
-        struct ActorNameCard *card;
-        struct String *fields[4];
-        size_t field;
-        name_snapshot_word(&cursor, &aid);
-        card = name_card_at(&holder->cards, aid);
-        name_card_clear(card);
-        fields[0] = &card->name;
-        fields[1] = &card->party;
-        fields[2] = &card->guild;
-        fields[3] = &card->position;
-        for (field = 0; field < 4; ++field) {
-            name_snapshot_word(&cursor, &length);
-            string_assign(fields[field], (const char *)cursor.data + cursor.offset, length);
-            cursor.offset += length;
-        }
-    }
-    return 1;
-}
+void name_card_empty_atexit(void);
 
 struct ActorNameCard *name_card_holder_get(struct ActorNameCardHolder *self, unsigned aid)
 {

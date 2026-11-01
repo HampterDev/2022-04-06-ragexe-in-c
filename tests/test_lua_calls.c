@@ -10,7 +10,7 @@
 
 static int errors;
 static char last_error[500];
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+
 static int message_box(HWND window, const char *text, const char *caption, UINT flags)
 {
     assert(!window && !flags && caption && strlen(text) < sizeof last_error);

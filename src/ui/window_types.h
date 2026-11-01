@@ -10,7 +10,6 @@
 
 struct UIWindow;
 struct DragInfo;
-struct ReplayBuffer;
 struct UIWindowMgr;
 struct DcBitmap;
 struct Texture;
@@ -71,7 +70,6 @@ struct UIWindowOps {
     UI_METHOD(BYTE, render, int force);
     BYTE has_custom_backdrop;
     UI_METHOD(void, draw_backdrop);
-    UI_METHOD(int, get_records, struct ReplayBuffer *out);
     enum UIWindowType type;
     UI_METHOD(void, on_hover_enter);
     UI_METHOD(void, on_hover_leave);
@@ -85,7 +83,6 @@ enum UIMsg {
     UI_MSG_CANCEL_BUTTON = 1,
     UI_MSG_COMMAND = 6,
     UI_MSG_SET_INFO = 0x22,
-    UI_MSG_LOAD_RECORDS = 0x7b,
 };
 
 enum UIControlId {
@@ -278,11 +275,6 @@ static __inline BYTE ui_window_render(struct UIWindow *self, int force)
 static __inline void ui_window_draw_backdrop(struct UIWindow *self)
 {
     self->ops->draw_backdrop(self);
-}
-
-static __inline int ui_window_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    return self->ops->get_records(self, out);
 }
 
 static __inline void ui_window_on_hover_enter(struct UIWindow *self)

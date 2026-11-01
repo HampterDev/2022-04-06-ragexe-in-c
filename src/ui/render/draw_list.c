@@ -49,29 +49,6 @@ static struct TexDrawPrim *borrow_quad(void)
     return renderer_new_prim(g_renderer);
 }
 
-static void map_whole_image(struct TexDrawPrim *quad, const struct Texture *tex)
-{
-    float tw = (float)tex->base.width, th = (float)tex->base.height;
-
-    quad_map(quad, g_texelOffsetU / tw, g_texelOffsetV / th, ((float)((unsigned)tex->reqWidth) + g_texelOffsetU) / tw,
-             ((float)((unsigned)tex->reqHeight) + g_texelOffsetU) / th);
-}
-
-void ui_window_queue_texture_stretched(struct UIWindow *self, int x, int y,
-                                              struct Texture *tex, DWORD argb, int width, int height)
-{
-    struct TexDrawPrim *quad;
-
-    if (!tex)
-        return;
-    quad = borrow_quad();
-    quad->base.texture = tex;
-    quad_place(quad, (float)x, (float)y, (float)(x + width), (float)(y + height));
-    map_whole_image(quad, tex);
-    quad_finish(quad, argb);
-    list_push_back(&self->draws, &quad, sizeof quad);
-}
-
 void ui_window_queue_bitmap(struct UIWindow *self, int x, int y, struct String name,
                                      DWORD argb, int width, int height)
 {

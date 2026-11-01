@@ -1,4 +1,3 @@
-#include "ui/window_records.h"
 #include "ui/window_types.h"
 #include "render/rp_pool.h"
 #include <stdlib.h>
@@ -51,7 +50,6 @@ const struct UIWindowOps ui_item_identify_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_identify_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -184,8 +182,7 @@ void ui_item_identify_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
         return;
     }
-    if (g_replayPlaying)
-        return;
+
     if (x <= wnd->width - 0xe && x >= 4 && y >= LIST_TOP && y < self->rows * LIST_ROW_HEIGHT + LIST_TOP) {
         int row = (y - LIST_TOP) / LIST_ROW_HEIGHT;
         struct ListNode *node;
@@ -316,71 +313,13 @@ void item_list_add_inventory_item(struct UIItemIdentifyWnd *self, int index)
     item_info_destruct(&info);
 }
 
-int item_list_packet_records(struct UIItemIdentifyWnd *self, struct ReplayBuffer *out,
-                             int begin, int end, int tag, int packet_id)
-{
-    struct SnapshotWriter writer = {0};
-    struct ListNode *node, *head;
-    struct PACKET_ZC_ITEMIDENTIFY_LIST *packet;
-    size_t count, size, at = 0;
-    if (!self || !out || !(head = self->items.head) || self->items.size > (UINT16_MAX - 4) / 2)
-        return 0;
-    count = self->items.size;
-    size = sizeof *packet + count * sizeof *packet->indexes;
-    packet = malloc(size);
-    if (!packet) return 0;
-    packet->packet_type = (unsigned short)packet_id;
-    packet->packet_length = (unsigned short)size;
-    for (node = head->next; node != head; node = node->next) {
-        if (at == count) { free(packet); return 0; }
-        packet->indexes[at++] = (short)LIST_VALUE(node, struct ItemInfo)->index;
-    }
-    if (at != count) { free(packet); return 0; }
-    snapshot_write(&writer, (uint16_t)begin, NULL, 0);
-    snapshot_write(&writer, (uint16_t)tag, packet, size);
-    snapshot_write(&writer, (uint16_t)end, NULL, 0);
-    free(packet);
-    return snapshot_finish(&writer, out);
-}
-
-int ui_item_identify_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIItemIdentifyWnd *self = (struct UIItemIdentifyWnd *)window;
-    return item_list_packet_records(self, out, REC_IDENTIFY_BEGIN, REC_IDENTIFY_END, REC_IDENTIFY_PACKET,
-                                    PACKET_ITEM_IDENTIFY_LIST);
-}
-
-void item_list_load_packets(const char *data, unsigned size, int begin, int end, int tag,
-                            void (*handler)(struct GameMode *, const unsigned char *))
-{
-    struct SnapshotReader reader;
-    struct SnapshotRecord record;
-    struct GameMode *mode = game_current_mode();
-    unsigned char *copy = NULL;
-    size_t largest = 0;
-    int used = ui_window_records_open(&reader, data, size, (uint16_t)begin);
-    if (!mode || !handler || used < 0) return;
-    while (snapshot_next(&reader, &record) == 1 && record.tag != end)
-        if (record.tag == tag && record.value.size > largest) largest = record.value.size;
-    if (largest && !(copy = malloc(largest))) return;
-    snapshot_open(&reader, data, (size_t)used, (uint16_t)begin);
-    while (snapshot_next(&reader, &record) == 1 && record.tag != end)
-        if (record.tag == tag) {
-            memcpy(copy, record.value.data, record.value.size);
-            handler(mode, copy);
-        }
-    free(copy);
-}
-
 int ui_item_identify_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
                                          int val2, int val3, int val4)
 {
     struct UIItemIdentifyWnd *self = (struct UIItemIdentifyWnd *)window;
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(&self->frame.base, val1, val2, self->selected, val4);
-        if (g_replayPlaying)
-            self->selected = val3;
+
         if (val1 == UI_ID_OK) {
             if (self->selected != -1) {
                 struct ItemInfo info;
@@ -413,15 +352,6 @@ int ui_item_identify_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         return 0;
     case UI_MSG_LIST_CLEAR:
         list_clear(&self->items, item_info_destroy);
-        return 0;
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        item_list_load_packets((const char *)val1, (unsigned)val2, REC_IDENTIFY_BEGIN, REC_IDENTIFY_END,
-                               REC_IDENTIFY_PACKET, game_mode_item_identify_list);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

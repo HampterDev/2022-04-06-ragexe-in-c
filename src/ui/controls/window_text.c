@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #include "render/textdc.h"
-#include "browser/browser.h"
 #include "ui/ui_std.h"
 
 #define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)

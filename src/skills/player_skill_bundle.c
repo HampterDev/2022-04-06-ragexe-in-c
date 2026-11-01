@@ -289,25 +289,6 @@ void player_skill_bundle_zero_first_level_before(struct PlayerSkillBundle *self)
         TREE_VALUE(first, struct LevelChange)->info.level_before = 0;
 }
 
-void skill_tree_visit(const struct Tree *tabs, SkillInfoVisitor visit, void *context)
-{
-    struct TreeNode *lists;
-    struct ListNode *node;
-    unsigned char go_on = 1;
-
-    for (lists = tree_first(tabs); go_on && lists != tabs->head; lists = tree_next(lists)) {
-        struct List *skills = &TREE_VALUE(lists, struct TreeTab)->skills;
-
-        for (node = skills->head->next; go_on && node != skills->head; node = node->next) {
-            struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo);
-
-            if (!visit)
-                fatal_error("invalid function call");
-            go_on = visit(context, info);
-        }
-    }
-}
-
 void player_skill_bundle_add_tree_skill(struct PlayerSkillBundle *self, int key,
                                      const struct SkillInfo *info)
 {

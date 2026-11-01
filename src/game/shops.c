@@ -12,7 +12,6 @@
 #include "game/store_entries.h"
 #include "game/client.h"
 #include "game/item_info.h"
-#include "replay/replay.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_items.h"
@@ -184,8 +183,7 @@ void game_mode_my_buying_store_list(struct GameMode *self, const unsigned char *
     struct UIWindow *w;
     int i;
 
-    if (g_replayPlaying == 0)
-        ui_merchant_shop_make_wnd_print_buy_list((struct UIMerchantShopMakeWnd *)g_windowMgr.buying_store_make_wnd);
+    ui_merchant_shop_make_wnd_print_buy_list((struct UIMerchantShopMakeWnd *)g_windowMgr.buying_store_make_wnd);
     session_clear_store_setup(&g_session1);
     ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_BUYING_STORE_MAKE);
     ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_BUYING_STORE_MAKE2);
@@ -455,6 +453,7 @@ void game_mode_shop_not_movable_items(const unsigned char *pkt)
     d = text;
     while ((*d++ = *s++) != 0)
         ;
+
     id++;
     if (n > 1) {
         for (n--; n != 0; n--, id++)

@@ -1,0 +1,340 @@
+diff --git a/src/render/frame_capture.c b/src/render/frame_capture.c
+--- a/src/render/frame_capture.c
++++ b/src/render/frame_capture.c
+@@ -94,7 +94,7 @@
+     (void)self;
+ 
+     logo = (struct BitmapRes *)res_mgr_get(g_resMgr(), "scr_logo.bmp");
+-    if (logo && gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lock) >= 0) {
++    if (gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lock) >= 0) {
+         if (lock.bits && lock.width && lock.height &&
+             lock.width <= INT_MAX && lock.height <= INT_MAX &&
+             (lock.bpp == 16 || lock.bpp == 32) && lock.pitch > 0 &&
+diff --git a/src/world/mode_mgr.c b/src/world/mode_mgr.c
+--- a/src/world/mode_mgr.c
++++ b/src/world/mode_mgr.c
+@@ -4,6 +4,7 @@
+ #include "contents/sound.h"
+ #include "session/state.h"
+ #include "ui/window_manager_state.h"
++#include "ui/window_mgr.h"
+ #include "contents/mouse.h"
+ #include "world/mode.h"
+ 
+@@ -157,6 +158,15 @@
+     } while (divisor > 0);
+ }
+ 
++static void screenshot_save_error(const char *path)
++{
++    struct String message;
++    string_init(&message);
++    string_format(&message, "Could not save screenshot:\n%s", path);
++    ui_message_box(string_cstr(&message));
++    string_free(&message);
++}
++
+ void mode_screen_shot(struct Mode *self)
+ {
+     static const char *const weekdays[7] = {
+@@ -191,6 +201,8 @@
+     string_init(&dir);
+     string_format(&dir, "%s\\ScreenShot", g_clientDir);
+     if (_access(string_cstr(&dir), 0) != 0 && _mkdir(string_cstr(&dir)) != 0) {
++        screenshot_save_error(string_cstr(&dir));
++        string_clear(&self->screenshot_name);
+         string_free(&dir);
+         return;
+     }
+@@ -222,9 +234,12 @@
+     }
+ 
+     string_copy(&arg, &path);
+-    renderer_screenshot(g_renderer, arg);
+-    string_append_cstr(&path, " is Saved.");
+-    ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (int)string_cstr(&path), 0xff00, 0, 0);
++    if (renderer_screenshot(g_renderer, arg)) {
++        string_append_cstr(&path, " is Saved.");
++        ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (int)string_cstr(&path), 0xff00, 0, 0);
++    } else {
++        screenshot_save_error(string_cstr(&path));
++    }
+     string_clear(&self->screenshot_name);
+ 
+     string_free(&path);
+diff --git a/tests/test_jpeg_capture.c b/tests/test_jpeg_capture.c
+--- a/tests/test_jpeg_capture.c
++++ b/tests/test_jpeg_capture.c
+@@ -9,6 +9,7 @@
+ static struct gfx_lock frame_lock;
+ static int surface_token, resource_token;
+ static int locks, unlocks, held, fail_lock, destroyed_strings;
++static int missing_logo;
+ 
+ int gfx_lock(gfx_surface *handle, const RECT *rect, int flags, struct gfx_lock *out)
+ {
+@@ -31,7 +32,7 @@
+ void *res_mgr_get(struct ResMgr *manager, const char *name)
+ {
+     assert(manager == g_resMgr() && !strcmp(name, "scr_logo.bmp"));
+-    return &logo;
++    return missing_logo ? NULL : &logo;
+ }
+ void string_free(struct String *name)
+ {
+@@ -49,6 +50,7 @@
+     memset(&g_3dDevice, 0, sizeof g_3dDevice);
+     memset(frame, 0xef, sizeof frame);
+     locks = unlocks = held = fail_lock = destroyed_strings = 0;
++    missing_logo = 0;
+     renderer.width = 5;
+     renderer.height = 4;
+     g_3dDevice.target = (gfx_surface *)&surface_token;
+@@ -99,9 +101,11 @@
+ {
+     const RECT region = {1, 1, 4, 3};
+     int mode, bits, x, y;
+-    for (mode = 1; mode <= 2; ++mode) for (bits = 16; bits <= 32; bits += 16) {
++    /* Mode 3 covers screenshots with a missing optional logo. */
++    for (mode = 1; mode <= 3; ++mode) for (bits = 16; bits <= 32; bits += 16) {
+         int width = mode == 1 ? 3 : 5, height = mode == 1 ? 2 : 4;
+         reset_capture(bits);
++        missing_logo = mode == 3;
+         assert(save(mode, &region));
+         assert(jpeg_written_width == width && jpeg_written_height == height);
+         for (y = 0; y < height; ++y) {
+@@ -168,6 +172,6 @@
+     check_failures();
+     check_logo();
+     jpeg_fixture_reset();
+-    puts("Frame capture: two JPEG writers, 16/32-bit pixels, independent pitches, crop edges, logos, failure cleanup and unlocks passed");
++    puts("Frame capture: two JPEG writers, 16/32-bit pixels, independent pitches, crop edges, present/absent logos, failure cleanup and unlocks passed");
+     return 0;
+ }
+diff --git a/tests/extract_screenshot_save.py b/tests/extract_screenshot_save.py
+new file mode 100644
+--- /dev/null
++++ b/tests/extract_screenshot_save.py
+@@ -0,0 +1,14 @@
++"""Compile the screenshot handler from production source, without unrelated modes."""
++from pathlib import Path
++import re
++import sys
++
++source = Path(sys.argv[1]).read_text(encoding="utf-8")
++parts = ["static int g_screenShotCounter = 0;\n"]
++for name in ("file_name_sanitize", "watermark_code", "screenshot_save_error", "mode_screen_shot"):
++    match = re.search(r"^(?:static )?void " + name + r"\([^;{]*\{.*?^\}", source, re.M | re.S)
++    if match:
++        parts.append(match.group() + "\n")
++    elif name in ("file_name_sanitize", "mode_screen_shot"):
++        raise SystemExit("Missing production function: " + name)
++Path(sys.argv[2]).write_text("\n".join(parts), encoding="utf-8")
+diff --git a/tests/test_screenshot_save.c b/tests/test_screenshot_save.c
+new file mode 100644
+--- /dev/null
++++ b/tests/test_screenshot_save.c
+@@ -0,0 +1,173 @@
++/* Exercise the production screenshot request handler; replace only its I/O. */
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <io.h>
++#include <direct.h>
++#include "ui/window_mgr.h"
++#include "core/fatal.h"
++#include "core/app.h"
++#include "world/mode.h"
++#include "session/state.h"
++#include "render/frame_capture.h"
++#include "platform/language.h"
++
++static int screenshot_access(const char *path, int mode);
++static int screenshot_mkdir(const char *path);
++#define _access screenshot_access
++#define _mkdir screenshot_mkdir
++#include "screenshot_save.inc"
++#undef _access
++#undef _mkdir
++
++struct Session g_session1;
++struct UIWindowMgr g_windowMgr;
++static struct Renderer renderer;
++struct Renderer *g_renderer = &renderer;
++char g_clientDir[0x88] = "C:\\screenshot-test";
++int g_serviceType = 1;
++static const char directory[] = "C:\\screenshot-test\\ScreenShot";
++static int directory_exists, mkdir_ok, capture_ok, collisions;
++static int accesses, mkdirs, captures, notices, errors;
++static char captured_path[512], notice[640], error[640];
++
++__declspec(noreturn) void fatal_error(const char *message)
++{
++    fprintf(stderr, "Unexpected fatal error: %s\n", message);
++    abort();
++}
++
++static int screenshot_access(const char *path, int mode)
++{
++    assert(mode == 0);
++    ++accesses;
++    if (!strcmp(path, directory)) return directory_exists ? 0 : -1;
++    assert(strstr(path, directory) == path);
++    if (collisions) { --collisions; return 0; }
++    return -1;
++}
++
++static int screenshot_mkdir(const char *path)
++{
++    assert(!strcmp(path, directory));
++    ++mkdirs;
++    return mkdir_ok ? 0 : -1;
++}
++
++char renderer_screenshot(struct Renderer *self, struct String filename)
++{
++    assert(self == g_renderer);
++    ++captures;
++    strcpy(captured_path, string_cstr(&filename));
++    string_free(&filename);
++    return (char)capture_ok;
++}
++
++int renderer_text_out(struct Renderer *self, int x, int y, const char *text, COLORREF colour)
++{
++    /* Foundation still draws its timestamp before capturing. */
++    assert(self == g_renderer && text);
++    return 1;
++}
++
++int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int a, int b, int c, int d)
++{
++    assert(self == &g_windowMgr && msg == WM_MSG_CHAT_LINE);
++    ++notices;
++    strcpy(notice, (const char *)a);
++    return 0;
++}
++
++int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type,
++                             int a, int b, int c, const char *title, int w, int h, int d)
++{
++    assert(self == &g_windowMgr && type == UI_MSGBOX_OK);
++    ++errors;
++    strcpy(error, text);
++    return 0;
++}
++
++static void reset(struct Mode *mode)
++{
++    memset(mode, 0, sizeof *mode);
++    mode->screenshot_pending = 1;
++    string_init(&mode->screenshot_name);
++    string_assign_cstr(&mode->screenshot_name, "Trade:Joe_");
++    directory_exists = mkdir_ok = capture_ok = 1;
++    collisions = accesses = mkdirs = captures = notices = errors = 0;
++    captured_path[0] = notice[0] = error[0] = 0;
++    g_screenShotCounter = 0;
++}
++
++static void assert_consumed(struct Mode *mode)
++{
++    int calls = accesses + mkdirs + captures + notices + errors;
++    assert(!mode->screenshot_pending && !mode->screenshot_name.size);
++    mode_screen_shot(mode);
++    assert(calls == accesses + mkdirs + captures + notices + errors);
++    string_free(&mode->screenshot_name);
++}
++
++static void check_directory_failure(void)
++{
++    struct Mode mode;
++    reset(&mode);
++    directory_exists = mkdir_ok = 0;
++    mode_screen_shot(&mode);
++    assert(mkdirs == 1 && !captures && !notices && errors == 1);
++    assert(strstr(error, directory));
++    assert_consumed(&mode);
++}
++
++static void check_capture_failure(void)
++{
++    struct Mode mode;
++    reset(&mode);
++    capture_ok = 0;
++    mode_screen_shot(&mode);
++    assert(captures == 1 && !notices && errors == 1);
++    assert(strstr(error, captured_path));
++    assert_consumed(&mode);
++    /* A subsequent manual request must work without the failed trade prefix. */
++    mode.screenshot_pending = capture_ok = 1;
++    mode_screen_shot(&mode);
++    assert(captures == 2 && notices == 1 && errors == 1);
++    assert(!strcmp(captured_path, "C:\\screenshot-test\\ScreenShot\\screenTest_Realm001.jpg"));
++    assert_consumed(&mode);
++}
++
++static void check_success(void)
++{
++    struct Mode mode;
++    reset(&mode);
++    directory_exists = 0;
++    collisions = 2;
++    mode_screen_shot(&mode);
++    assert(mkdirs == 1 && captures == 1 && notices == 1 && !errors);
++    assert(!strcmp(captured_path, "C:\\screenshot-test\\ScreenShot\\Trade_Joe_screenTest_Realm002.jpg"));
++    assert(strstr(notice, captured_path) && strstr(notice, " is Saved."));
++    assert_consumed(&mode);
++    reset(&mode);
++    mode.screenshot_pending = 0;
++    mode_screen_shot(&mode);
++    assert(!accesses && !mkdirs && !captures && !notices && !errors);
++    string_free(&mode.screenshot_name);
++}
++
++int main(int argc, char **argv)
++{
++    string_init(&g_session1.serverName);
++    string_assign_cstr(&g_session1.serverName, "Test/Realm");
++    renderer.height = 480;
++    if (argc > 1 && !strcmp(argv[1], "directory")) {
++        check_directory_failure();
++    } else {
++        check_capture_failure();
++        check_directory_failure();
++        check_success();
++    }
++    string_free(&g_session1.serverName);
++    puts("Screenshot requests: honest notifications, directory failures, one-shot cleanup, naming and collisions passed");
++    return 0;
++}
+diff --git a/tests/build_screenshot_save.bat b/tests/build_screenshot_save.bat
+new file mode 100644
+--- /dev/null
++++ b/tests/build_screenshot_save.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++if not exist "%ROOT%\build\tests\screenshot_save" mkdir "%ROOT%\build\tests\screenshot_save"
++pushd "%ROOT%\build\tests\screenshot_save" || exit /b 1
++python "%ROOT%\tests\extract_screenshot_save.py" "%ROOT%\src\world\mode_mgr.c" screenshot_save.inc
++if errorlevel 1 (popd & exit /b 1)
++cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I. /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_screenshot_save.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\memory.c" /Fe:test_screenshot_save.exe /link /OPT:REF
++if errorlevel 1 (popd & exit /b 1)
++test_screenshot_save.exe %*
++if not "%errorlevel%"=="0" (popd & exit /b 1)
++popd
++exit /b 0
+diff --git a/tests/build.bat b/tests/build.bat
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -822,3 +822,6 @@
+ 
+ call "%~dp0build_emblem_cache.bat"
+ if errorlevel 1 exit /b 1
++
++call "%~dp0build_screenshot_save.bat"
++if not "%errorlevel%"=="0" exit /b 1

@@ -1,0 +1,54 @@
+--- a/src/core/xml.c
++++ b/src/core/xml.c
+@@ -201,9 +201,6 @@
+             text = xml_parse_children(doc, element, after, end);
+             continue;
+         }
+-        if (*text == '&' && strcmp(parent->name, "registrationweb") != 0)
+-            while (text != end && *text != ';')
+-                text++;
+         text++;
+     }
+     return text;
+--- a/tests/test_xml.c
++++ b/tests/test_xml.c
+@@ -46,11 +46,38 @@
+     xml_element_destruct(&doc.root);
+ }
+ 
++static void read_ignored_url(const char *tag)
++{
++    char source[512];
++    struct XmlDocument doc;
++    struct XmlElement *info, *connection;
++    int length = snprintf(source, sizeof source,
++        "<clientinfo><connection><%s>https://example.invalid/?a=1&b=2</%s>"
++        "<address>127.0.0.1</address><description>One &amp; Two</description>"
++        "<port>6900</port></connection></clientinfo>", tag, tag);
++
++    assert(length > 0 && (size_t)length < sizeof source);
++    xml_element_construct(&doc.root, "XMLDocument");
++    doc.copy = NULL;
++    assert(xml_parse(&doc, source, source + length));
++    info = xml_find_child(&doc.root, "clientinfo");
++    assert(info);
++    connection = xml_find_child(info, "connection");
++    assert(connection && xml_find_child(connection, tag));
++    assert(!strcmp(text_of(connection, "address"), "127.0.0.1"));
++    assert(!strcmp(text_of(connection, "description"), "One & Two"));
++    assert(!strcmp(text_of(connection, "port"), "6900"));
++    xml_document_release(&doc);
++    xml_element_destruct(&doc.root);
++}
++
+ int main(void)
+ {
+     read_clientinfo("<readfolder/>");
+     read_clientinfo("<readfolder />");
+     read_clientinfo("<readfolder></readfolder>");
+-    puts("XML: empty elements with and without a space, nested elements and texts passed");
++    read_ignored_url("registrationweb");
++    read_ignored_url("unused");
++    puts("XML: empty/nested elements, ignored URLs and entity-decoded text passed");
+     return 0;
+ }

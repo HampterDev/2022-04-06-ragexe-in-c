@@ -61,13 +61,6 @@ SIZE_ASSERT(UIBarGraph4, 0x88);
 struct UIBarGraph3 *ui_bar_graph3_construct(struct UIBarGraph3 *self);
 void ui_bar_graph3_set_values(struct UIBarGraph3 *self, int *current, int *maximum);
 
-struct UIReplayButton {
-    struct UIBitmapButton bmp;
-};
-#define UI_MSG_REPLAY_BUTTON 0x23
-struct UIReplayButton *ui_replay_button_construct(struct UIReplayButton *self);
-void ui_replay_button_bitmaps(struct UIBitmapButton *button, const char *name);
-
 struct UIJobListWnd;
 void ui_job_list_wnd_show_jobs(struct UIJobListWnd *self);
 
@@ -114,9 +107,6 @@ struct UIWindow *ui_monster_info_wnd_new(void);
 struct UIEmailAddressWnd *ui_email_address_wnd_new(void);
 struct UIPasswordWnd *ui_password_wnd_construct(struct UIPasswordWnd *self);
 struct UIWindow *ui_password_wnd_new(void);
-
-struct UIReplayRECControlWnd *ui_replay_rec_control_wnd_construct(struct UIReplayRECControlWnd *self, int state);
-struct UIWindow *ui_replay_rec_control_wnd_new(int arg);
 
 struct UIDisconnectedServerMsgWnd *ui_disconnected_server_msg_wnd_construct(
     struct UIDisconnectedServerMsgWnd *self);

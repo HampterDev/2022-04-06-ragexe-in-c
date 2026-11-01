@@ -1,4 +1,3 @@
-#include "ui/browser_windows.h"
 #include "actor/weather.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -146,7 +145,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0x06: mode_msg(self, 0x20, 0); break;
     case 0x07:
     case 0x0b:
-    case 0xc1:
         talk_cmd_sound(self, type);
         break;
     case 0x08: talk_cmd_snow(self); break;
@@ -222,7 +220,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         emote(self, type - 0x6f);
         break;
 
-    case 0x2a: toggle_window(0x13b); break;
     case 0x2b: mode_msg(self, 0x4b, 0); break;
     case 0x2c: talk_cmd_on_off(self, args); break;
     case 0x30: mode_msg(self, 0x5b, (int)ARG(0)); break;
@@ -383,29 +380,13 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
             talk_print_msg(0x6a7, TALK_COLOR_NOTICE);
         }
         break;
-    case 0xcb:
-        if (g_windowMgr.active_web_browser)
-            web_browser_show_address_bar(g_windowMgr.active_web_browser,
-                                         !g_windowMgr.active_web_browser->address_bar);
-        break;
     case 0xcd: talk_cmd_build_info(self); break;
-    case 0xce: {
-        struct WebBrowser *browser = ui_window_mgr_get_login_browser(&g_windowMgr,
-                                               g_renderer->width, g_renderer->height);
-        if (browser) web_browser_navigate(browser, ARG(0));
-        break;
-    }
     case 0xcf: talk_cmd_navigate(self, args, 0); break;
     case 0xd0: talk_cmd_navigate(self, args, 1); break;
     case 0xd1: mode_msg(self, 0x11e, (int)ARG(0)); break;
-    case 0xd4:
-        ui_window_mgr_set_chat_line(&g_windowMgr, ARG(0));
-        mode_msg(self, 0x121, 0);
-        break;
     case 0xd7: ui_window_open(0xcb); break;
     case 0xd8: toggle_window_option(0xbe, &g_session1.showCashShopIcon); break;
     case 0xd9: toggle_window_option(0x10b, &g_session1.showGoldPcIcon); break;
-    case 0xda: toggle_window_option(0x10c, &g_session1.showRouletteIcon); break;
     case 0xdd:
         w = g_windowMgr.minimap_zoom_wnd;
         g_session1.minimapButtons = g_session1.minimapButtons == 0;

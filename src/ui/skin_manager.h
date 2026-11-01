@@ -8,14 +8,11 @@ struct SkinMgr {
     int current;
     struct Vec names;
     struct Vec paths;
-    struct Vec extracted;
-    struct Vec is_zip;
 };
 
 extern struct SkinMgr g_skinMgr;
 
 void skin_mgr_destruct(struct SkinMgr *self);
-void skin_mgr_extract_files_if_zip_skin(struct SkinMgr *self);
 const char *skin_mgr_get_current_name(struct SkinMgr *self);
 const char *skin_mgr_get_current_path(struct SkinMgr *self);
 const char *skin_mgr_get_name(struct SkinMgr *self, int index);

@@ -37,7 +37,6 @@ int session_get_talk_type(struct Session *session, const char *text, int *type, 
     else *type = TALK_UNKNOWN;
     return -1;
 }
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
 
 #define malloc checked_malloc
 #define free checked_free
@@ -78,17 +77,15 @@ int main(void)
     struct TalkOption option;
     char long_command[2048];
     assert(L);
-    g_session1.loadingScreenRandom = 0xa5; g_session1.pcBang = 0xb6;
+    g_session1.loadingScreenRandom = 0xa5; g_session1.connectionIndex = 0x12345678;
     for (i = 0; i < sizeof values / sizeof values[0]; ++i) {
         unsigned before = parses;
         set(L, "/byte", values[i]);
         assert(parses == before + 1 && g_session1.showName == (unsigned char)values[i]);
         assert(query(L, "/byte") == (unsigned char)values[i]);
-        set(L, "/icon", values[i]);
-        assert(query(L, "/icon") == (unsigned char)values[i]);
         set(L, "/integer", values[i]);
         assert(g_session1.noShift == values[i] && query(L, "/integer") == (unsigned char)values[i]);
-        assert(g_session1.loadingScreenRandom == 0xa5 && g_session1.pcBang == 0xb6);
+        assert(g_session1.loadingScreenRandom == 0xa5 && g_session1.connectionIndex == 0x12345678);
     }
     set(L, "/mirror", 345);
     assert(g_session1.map_rule_flags[0] == 345 && g_session1.map_rule_flags[1] == 345 && query(L, "/mirror") == 89);
@@ -97,7 +94,8 @@ int main(void)
     assert(query(L, "/sound") == 253 && query(L, "/global") == 2);
     size = g_session1.talkOptionSettings.size; calls = allocation_calls;
     assert(!talk_option_set(NULL, 2) && !talk_option_set("", 2));
-    set(L, "/unknown", 2); set(L, "/known-unbound", 2);
+    set(L, "/unknown", 2); set(L, "/known-unbound", 2); set(L, "/icon", 2);
+    assert(query(L, "/icon") == -1);
     assert(query(L, "/unknown") == -1 && query(L, "/known-unbound") == -1);
     assert(g_session1.talkOptionSettings.size == size && allocation_calls == calls);
     option = talk_option_find("/known-unbound");

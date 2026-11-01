@@ -27,7 +27,6 @@ struct Connection {
 
 struct RagConnection {
     struct Connection base;
-    char drop_sends;
 };
 
 OFFSET_ASSERT(ServerAddress, port, 0x10);

@@ -6,9 +6,6 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "web/name_cards.h"
-#include "web/name_card_snapshot.h"
-#include "replay/snapshot.h"
-#include "fixtures/name_cards_wire.h"
 
 #ifdef NAME_CARD_OWNERS_REFERENCE
 #define name_card_init name_card_construct
@@ -103,7 +100,6 @@ static unsigned test_time = 100;
 #define realloc resize
 #define free release
 #define timeGetTime() test_time
-#include <replay/snapshot.c>
 #include <web/name_cards.c>
 
 #define ASKED(h) vec_count(&(h)->asked, sizeof(struct NameCardRequest))
@@ -187,92 +183,6 @@ static void values(struct ActorNameCardHolder *holder)
     assert(name_card_holder_find_id(holder, owned("alpha_actor")) == 11);
     assert(!name_card_holder_find_id(holder, owned("missing")));
 }
-static void snapshots(struct ActorNameCardHolder *holder)
-{
-    struct ReplayBuffer out = {0};
-    unsigned char damaged[sizeof expected_names + 1];
-    struct ActorNameCard *before;
-    unsigned char *old;
-    size_t i;
-    int alive;
-    name_card_holder_clear(holder);
-    seed(holder);
-    assert(name_cards_snapshot_save(holder, &out));
-    assert(out.size == sizeof expected_names && !memcmp(out.data, expected_names, out.size));
-    note(5);
-    note((unsigned)out.size);
-    for (i = 0; i < out.size; ++i)
-        note(out.data[i]);
-    assert(name_cards_snapshot_valid(out.data, out.size));
-    before = name_card_holder_get(holder, 11);
-    alive = allocations;
-    for (i = 1; i < out.size; ++i) {
-        assert(!name_cards_snapshot_valid(out.data, i));
-        assert(!name_cards_snapshot_load(holder, out.data, i));
-        assert(holder->cards.size == 2 && before == name_card_holder_get(holder, 11) &&
-               before->complete);
-        assert(allocations == alive);
-    }
-    assert(name_cards_snapshot_load(holder, NULL, 0) && before == name_card_holder_get(holder, 11));
-    assert(!name_cards_snapshot_valid(NULL, 1));
-    assert(!name_cards_snapshot_valid(out.data, (size_t)INT_MAX + 1));
-    memcpy(damaged, out.data, out.size);
-    memset(damaged, 0xff, 4);
-    assert(!name_cards_snapshot_load(holder, damaged, out.size));
-    memcpy(damaged, out.data, out.size);
-    memset(damaged + 8, 0xff, 4);
-    assert(!name_cards_snapshot_load(holder, damaged, out.size));
-    memcpy(damaged, out.data, out.size);
-    damaged[out.size] = 0;
-    assert(!name_cards_snapshot_load(holder, damaged, out.size + 1));
-    old = out.data;
-    attempts = 0;
-    fail_at = 1;
-    assert(!name_cards_snapshot_save(holder, &out));
-    fail_at = 0;
-    assert(out.data == old && out.size == sizeof expected_names &&
-           !memcmp(out.data, expected_names, out.size));
-    assert(allocations == alive);
-    name_card_holder_get(holder, 42);
-    name_card_holder_update(holder);
-    assert(requests == 1 && requested == 42 && ASKED(holder) == 1);
-    assert(name_cards_snapshot_load(holder, out.data, out.size));
-    before = name_card_at(&holder->cards, 11);
-    assert(holder->cards.size == 2 && ASKED(holder) == 1 && !before->complete);
-    assert(before->achievement_title.size == 0 && before->npc_title.size == 0 &&
-           before->group_id == 0);
-    assert(!strcmp(string_cstr(&before->position), "Officer"));
-    memcpy(damaged, out.data, out.size);
-    i = 4 + 20 + strlen("alpha_actor") + strlen("Alpha party") + strlen("Alpha guild") +
-        strlen("Officer");
-    damaged[i] = 11;
-    damaged[i + 1] = damaged[i + 2] = damaged[i + 3] = 0;
-    assert(name_cards_snapshot_load(holder, damaged, out.size) && holder->cards.size == 1);
-    before = name_card_at(&holder->cards, 11);
-    assert(!strcmp(string_cstr(&before->name), "beta_actor_with_long_name"));
-    memset(damaged, 0, 4);
-    assert(name_cards_snapshot_load(holder, damaged, 4) && holder->cards.size == 0 &&
-           ASKED(holder) == 1);
-    assert(name_cards_snapshot_save(holder, &out) && out.size == 4 &&
-           !memcmp(out.data, damaged, 4));
-    replay_buffer_destroy(&out);
-    replay_buffer_destroy(&out);
-}
-static void borrowed_names(struct ActorNameCardHolder *holder)
-{
-    size_t length = 99;
-    int before = attempts;
-    unsigned aid = 11;
-    struct ActorNameCardHolder saved = *holder;
-    const char *name = name_card_name_text(holder, 11, &length);
-    const struct NameCardEntry *entry = tree_find(&holder->cards, &aid, tree_less_uint);
-    assert(length == strlen("alpha_actor") && !strcmp(name, "alpha_actor"));
-    assert(entry && name == string_cstr(&entry->card.name));
-    assert(!strcmp(name_card_name_text(holder, 999, &length), "") && length == 0);
-    assert(!strcmp(name_card_name_text(NULL, 11, &length), "") && length == 0);
-    assert(!strcmp(name_card_name_text(holder, 11, NULL), "alpha_actor"));
-    assert(attempts == before && !memcmp(holder, &saved, sizeof saved));
-}
 
 static void trace_card(const struct ActorNameCard *card)
 {
@@ -352,9 +262,8 @@ int main(int argc, char **argv)
     name_card_holder_init(&state.holder);
     assert(state.guard == 0xa5a5a5a5u);
     seed(&state.holder);
-    borrowed_names(&state.holder);
+
     values(&state.holder);
-    snapshots(&state.holder);
     name_card_holder_clear(&state.holder);
     name_card_holder_clear(&state.holder);
     name_card_holder_destroy(&state.holder);
@@ -366,11 +275,9 @@ int main(int argc, char **argv)
         assert(fwrite(trace, sizeof trace[0], trace_count, file) == trace_count);
         assert(fclose(file) == 0);
     }
-    printf("Name-card owners: 16 request/expiry/lifecycle rounds and guarded value/snapshot tests "
+    printf("Name-card owners: 16 request/expiry/lifecycle rounds and guarded value tests "
            "passed; %u trace words.\n",
            trace_count);
-    puts("actor names: authoritative fields, deep copies, owned arguments, frozen wire bytes, "
-         "every truncation, validation before mutation, duplicate ids, retained requests and "
-         "output allocation rollback passed");
+    puts("actor names: authoritative fields, deep copies, owned arguments and request lifetimes passed");
     return 0;
 }

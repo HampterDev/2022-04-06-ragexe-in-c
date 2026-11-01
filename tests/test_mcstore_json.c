@@ -52,12 +52,12 @@ int main(void)
     assert(owned_text_assign(&shop.title, text_view("test shop", 9)));
     json_tree_init(&root);
     json_tree_init(&decoded);
-    mcstore_write_items(&shop, &root);
+    assert(mcstore_write_items(&shop, &root));
     assert(json_write_request(&root, &text));
     assert(json_parse_text(&decoded, owned_text_cstr(&text), text.size));
     assert(json_value_size(json_value_member(&decoded, "Item")) == 1);
     memset(&guarded.value, 0xa5, sizeof guarded.value);
-    mcstore_read_item(&guarded.value, json_value_at(json_value_member(&decoded, "Item"), 0));
+    assert(mcstore_read_item(&guarded.value, json_value_at(json_value_member(&decoded, "Item"), 0)));
     assert(guarded.value.id == 501);
     assert(guarded.value.count == 10 && guarded.value.price == 100 && guarded.value.identified == 1);
     assert(guarded.value.option_count == 2 && guarded.value.options[0].id == 2 && guarded.value.options[0].value == 3 && guarded.value.options[0].param == 4);
@@ -65,7 +65,7 @@ int main(void)
     {
         struct JsonTree *options = json_value_member(json_value_at(json_value_member(&decoded, "Item"), 0), "RandomOptionList");
         struct JsonTree *option = json_value_at(options, 1);
-        assert(json_value_as_int(json_value_member(option, "OptIndex")) == -14);
+        assert(json_value_as_int(json_value_member(option, "OptIndex")) == 65522);
         assert(json_value_as_int(json_value_member(option, "Value")) == -5);
     }
     owned_text_clear(&text);
@@ -74,14 +74,12 @@ int main(void)
     assert(owned_text_assign(&text, text_view_cstr("{\"RandomOptionCount\":6,\"RandomOptionList\":[{},{},{},{},{},{}]}")));
     assert(json_parse_text(&root, owned_text_cstr(&text), text.size));
     memset(guarded.guard, 0xa5, sizeof guarded.guard);
-    mcstore_read_item(&guarded.value, &root);
+    assert(!mcstore_read_item(&guarded.value, &root));
     for (i = 0; i < sizeof guarded.guard; ++i) assert(guarded.guard[i] == 0xa5);
-    assert(guarded.value.option_count == 5);
-    for (i = 0; i < MCSTORE_OPTION_COUNT; ++i)
-        assert(guarded.value.options[i].id == 0);
+    assert(guarded.value.option_count == 2 && guarded.value.id == 501);
     owned_text_clear(&text);
     owned_text_clear(&shop.title);
     json_tree_free(&root);
-    puts("merchant JSON: real writer/reader round trip and six-option bounds passed");
+    puts("merchant JSON: real writer/reader round trip and invalid-record rollback passed");
     return 0;
 }

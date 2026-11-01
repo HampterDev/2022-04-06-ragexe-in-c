@@ -44,12 +44,10 @@ int main(void)
     static struct View camera;
     float matrix[12], saved[12];
     float eye[3] = {10, 20, 30};
-    int video_list, i;
-    struct WorldVideoList *video_owner = (struct WorldVideoList *)&video_list;
+    int i;
 
     for (i = 0; i < 12; ++i)
         matrix[i] = saved[i] = (float)(i * 3 - 9);
-    assert(!game_current_video_list());
     assert(!game_current_object_list());
     assert(!game_current_scene_root());
     assert(!game_current_actor_list());
@@ -80,9 +78,6 @@ int main(void)
     game_remove_object(&object);
     game_remove_object(NULL);
     assert(remove_calls == 1);
-    assert(!game_current_video_list());
-    map.videoList = video_owner;
-    assert(game_current_video_list() == video_owner);
     view = &camera;
     camera.from[0] = 1;
     camera.from[1] = 2;
@@ -109,10 +104,9 @@ int main(void)
     assert(!game_current_actor_list());
     assert(!game_copy_camera_position(eye) && eye[0] == 1 && eye[1] == 2 && eye[2] == 3);
     memcpy(saved, matrix, sizeof saved);
-    assert(!game_current_video_list());
     assert(!game_copy_view_matrix(matrix));
     assert(!game_copy_view_matrix_at(matrix, 0.0f) && matrix_at_calls == 1);
     assert(memcmp(matrix, saved, sizeof matrix) == 0);
-    puts("world context: absent world/camera, video list and current view matrix passed");
+    puts("world context: absent world/camera, object lists and current view matrix passed");
     return 0;
 }

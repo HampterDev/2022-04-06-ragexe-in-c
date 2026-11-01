@@ -4,7 +4,6 @@
 #include "session/state.h"
 #include "skills/skill_bundle.h"
 #include "skills/skill_action.h"
-#include "contents/lua_script.h"
 
 static const char k_unknownSkillName[] = "Unknown-Skill";
 static const char k_zeroSkillIdName[] = "Zero Skill";
@@ -139,10 +138,6 @@ const char *skill_name(int skill_id)
     if (client_lua_call(g_session1.luaState, "GetSkillName", "d>s", id, &name) == 1)
         return name;
     return k_unknownSkillName;
-}
-
-void skill_info_nop(void)
-{
 }
 
 static unsigned char skill_id_listed(int id, const int (*ranges)[2], size_t count)

@@ -148,8 +148,6 @@ static void check_operations(void)
     string_copy(&copy, &other);
     assert(string_equal(&copy, &other) && string_equal_cstr(&copy, "x y") && !string_equal_cstr(&copy, "x"));
     assert(string_compare(&copy, &other) == 0 && string_compare(&text, &other) < 0);
-    string_assign_cstr(&other, "-123");
-    assert(string_to_int(&other) == -123);
     string_free(&copy);
     copy = string_from_cstr("from");
     equal(&copy, "from", 4);

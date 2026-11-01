@@ -5,7 +5,6 @@
 #include "game/quest_packets.h"
 #include "game/actor_marks.h"
 #include "ui/window_access.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include <string.h>
@@ -162,9 +161,6 @@ void game_mode_zc_battlefield_chat(struct GameMode *self, const unsigned char *p
     vec_init(&text);
     vec_resize(&text, length, 1);
     memcpy(text.first, packet->text, (char *)text.last - (char *)text.first);
-    if (word_filter_contains(&g_nameFilter, text.first) == 1) {
-        word_filter_censor(&g_nameFilter, text.first);
-    }
     if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1)
         ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text.first, BATTLEGROUND_CHAT_COLOR, 1, 0);
     speaker = world_get_game_actor_by_aid(self->world, aid);

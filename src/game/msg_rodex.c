@@ -1,5 +1,4 @@
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "game/context.h"
 #include <string.h>
 #include "game/mode_msg.h"
@@ -40,11 +39,6 @@ int game_mode_msg_send_rodex(const struct RodexMail *mail)
     struct RodexWriteHeader header;
     struct Vec packet;
 
-    if (word_filter_contains(&g_nameFilter, string_cstr(&mail->title)) == 1
-            || word_filter_contains(&g_nameFilter, string_cstr(&mail->body)) == 1) {
-        message_box_msg(0xbd4);
-        return 0;
-    }
     session_reset_mail_items(&g_session1);
     session_clear_mail_item_counts(&g_session1);
     header.id = CZ_REQ_WRITE_MAIL;

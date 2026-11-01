@@ -56,7 +56,6 @@ struct UINavigationV4Wnd {
     struct UIBitmapButton *help;
     struct UIBitmapButton *maximize;
     struct UIBitmapButton *road_icon;
-    struct UIBitmapButton *navidata;
     struct UIBitmapButton *back;
     struct UIWindow *minimize_box;
     struct UIBitmapButton *route_list;
@@ -70,20 +69,16 @@ struct UINavigationV4Wnd {
     struct UIBitmapButton *share;
     struct UIBitmapButton *find;
     struct UIBitmapButton *airship;
-    struct Vec files;
     struct NavigationWndInfo *info;
     DWORD hint_until;
     int anim_period;
 };
 OFFSET_ASSERT(UINavigationV4Wnd, close_button, 0x94);
-OFFSET_ASSERT(UINavigationV4Wnd, results, 0xcc);
-OFFSET_ASSERT(UINavigationV4Wnd, files, 0xe4);
+OFFSET_ASSERT(UINavigationV4Wnd, results, 0xc8);
 
 #define NAVI_MSG_ROAD_ICON 0x28
 
 #define NAVI_ID_ROAD_ICON 0xb5
-#define NAVI_ID_NAVIDATA_LOADED 0xb6
-#define NAVI_ID_NAVIDATA 0xb7
 #define NAVI_ID_MAXIMIZE 0xc0
 #define NAVI_ID_MINIMIZE 0xc2
 #define NAVI_ID_SERVICE 0xcd
@@ -101,7 +96,6 @@ OFFSET_ASSERT(UINavigationV4Wnd, files, 0xe4);
 #define NAVI_ROUTE_WND_ID 0x13a
 #define NAVI_HELP_WND_ID 0xe5
 #define NAVI_AIRSHIP_WND_ID 6
-#define NAVI_RECORD_RESULTS 0x38f
 
 #define NAVI_VIEW_SEARCH 0
 #define NAVI_VIEW_ROUTE 1
@@ -121,7 +115,6 @@ void ui_navigation_v4_wnd_draw_guided_npc(struct UINavigationV4Wnd *self, int x,
 void ui_navigation_v4_wnd_set_road_icon(struct UINavigationV4Wnd *self, int icon);
 void ui_navigation_v4_wnd_put_link(struct UINavigationV4Wnd *self, struct String map, int x, int y);
 void ui_navigation_v4_wnd_pick_entry(struct UINavigationV4Wnd *self, int entry);
-BYTE ui_navigation_v4_wnd_load_navidata(struct UINavigationV4Wnd *self, int file);
 struct String *ui_navigation_v4_wnd_result_name(struct UINavigationV4Wnd *self, struct String *out, int kind,
                                                          void *obj);
 struct String *ui_navigation_v4_wnd_member_text(struct UINavigationV4Wnd *self, struct String *out, int kind,

@@ -5,7 +5,6 @@
 #include "login/loginmode.h"
 
 #include <string.h>
-#include <shellapi.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
 
@@ -92,9 +91,8 @@ void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt)
     case 700: assign_msg(&s, 0xcb4); break;
     case 900:
         error_msg(msg_str(0xd86), 0);
-        ShellExecuteA(NULL, "OPEN", "iexplore.exe", "http://ro.gnjoy.com/", NULL, SW_SHOW);
-        CMODE_SENDMSG(client_current_mode(), 2, 0, 0, 0, 0);
-        goto out;
+        after_message(self, packet->code);
+        break;
     default:  assign_msg(&s, 0x718); break;
     }
 
@@ -107,10 +105,9 @@ void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt)
         string_format(&tmp, " [%s]", packet->text);
         string_append(&s, string_cstr(&tmp), tmp.size);
         string_free(&tmp);
-        ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 5, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
         after_message(self, code);
     }
-out:
     string_free(&s);
 }
 
@@ -140,13 +137,13 @@ void login_mode_on_auth_result2(struct LoginMode *self, const BYTE *pkt)
     if (s.size) {
         code = packet->code;
         if (code == 800) {
-            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 5, 1, 1, 0, "메세지", 0x118, 0x78, 1);
+            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 0, 1, 1, 0, "메세지", 0x118, 0x78, 1);
         } else {
             string_init(&tmp);
             string_format(&tmp, "(%d)", code);
             string_append(&s, string_cstr(&tmp), tmp.size);
             string_free(&tmp);
-            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 5, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
         }
         after_message(self, code);
     }

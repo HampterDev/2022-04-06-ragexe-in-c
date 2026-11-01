@@ -3,7 +3,6 @@
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include "game/context.h"
 #include "ui/items/item_collection_internal.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
@@ -167,30 +166,13 @@ static void collection_add_line(struct UIItemCollectionWnd *self, const char *li
     }
 }
 
-static void collection_place_buttons(struct UIItemCollectionWnd *self, int hide_view, BYTE animate)
+static void collection_place_card_button(struct UIItemCollectionWnd *self, int hide_view)
 {
-    struct GameMode *game;
-    int y, i;
+    int y = card_affix_has(COLLECTION_ITEM_ID(self)) * 100 - 0x5e;
 
-    y = card_affix_has(COLLECTION_ITEM_ID(self)) * 100 - 0x5e;
     if (hide_view)
         y = -100;
     ui_window_move_base(&self->view_btn->button.base, 6, y);
-    game = game_current_mode();
-    if (!game_mode_carries_item(game, COLLECTION_ITEM_ID(self)))
-        return;
-    y = book_item_has(COLLECTION_ITEM_ID(self)) * 100 - 0x5e;
-    for (i = 0; i < 2; i++)
-        ui_window_move(self->book_btn[i], 6 + ui_sprite_button_frame_width(self->book_btn[i], 0, 0) * i, y);
-    if (!animate)
-        return;
-    if (book_item_has(COLLECTION_ITEM_ID(self))) {
-        ((struct UISpriteButton *)self->book_btn[1])->animating = 1;
-        self->book_anim_time = timeGetTime();
-    } else {
-        ((struct UISpriteButton *)self->book_btn[1])->animating = 0;
-        self->book_anim_time = 0;
-    }
 }
 
 static void collection_add_expiry(struct UIItemCollectionWnd *self)
@@ -298,7 +280,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
     }
 
     desc = item_info_get_description(&self->item);
-    collection_place_buttons(self, toggle, 1);
+    collection_place_card_button(self, toggle);
     ui_list_box_clear((struct UIListBox *)self->text);
     if (self->item.expire_time)
         collection_add_expiry(self);
@@ -319,9 +301,6 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
     ui_window_invalidate_base(wnd);
     ui_window_mgr_raise_window(&g_windowMgr, wnd);
 
-    if (toggle && g_windowMgr.item_param_change_display_wnd)
-        ui_window_send_msg(g_windowMgr.item_param_change_display_wnd, NULL, UI_MSG_PARAM_ITEM, (int)string_cstr(&self->item.id_text),
-                 self->item.identified, 0, 0);
     if (self->wnd_id == WND_ITEM_COLLECTION) {
         struct ItemInfo *worn = session_get_worn_counterpart(&g_session1, &self->item);
 
@@ -415,7 +394,7 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
         string_vec_push_move(&lines, &text);
         string_free(&text);
     }
-    collection_place_buttons(self, 0, 0);
+    collection_place_card_button(self, 0);
     ui_list_box_clear((struct UIListBox *)self->text);
     for (i = 0; i < VEC_COUNT(&lines, struct String); i++)
         ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT,

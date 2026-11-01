@@ -11,6 +11,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "core/app.h"
+#include "contents/guild_emblem_transport.h"
 
 #define INFO_TAB_WND_ID (GUILD_TAB_WND_ID_FIRST + GUILD_TAB_INFO)
 
@@ -273,9 +274,8 @@ static void browse_emblems(struct UIGuildInfoManageWnd *self)
 
 static void emblem_chosen(struct UIGuildInfoManageWnd *self, int index)
 {
-    struct String name, path;
+    struct String name;
     struct ListNode *node;
-    struct EmblemRes *res;
     int i = 0;
 
     string_init(&name);
@@ -289,18 +289,7 @@ static void emblem_chosen(struct UIGuildInfoManageWnd *self, int index)
         string_free(&name);
         return;
     }
-    string_init(&path);
-    string_format(&path, "..\\..\\emblem\\%s", string_cstr(&name));
     {
-        struct String copy;
-
-        string_copy(&copy, &path);
-        res = res_mgr_get_string(g_resMgr(), copy);
-    }
-    if (!res || res->picture.bmp.width != EMBLEM_SIZE
-        || res->picture.bmp.height != EMBLEM_SIZE) {
-        ui_message_box(msg_str(MSG_EMBLEM_BAD));
-    } else {
         struct File file;
         struct String file_name;
         BYTE opened;
@@ -314,15 +303,12 @@ static void emblem_chosen(struct UIGuildInfoManageWnd *self, int index)
             if (g_guildMgr->emblem_max_size < (unsigned)file.size) {
                 ui_message_box(msg_str(MSG_EMBLEM_BAD));
             } else {
-                string_format(&file_name, "emblem\\%s", string_cstr(&name));
-                if (!emblem_mgr_upload(g_emblemMgr, self->guild_id, string_view(&file_name)))
+                if (!guild_emblem_upload(file.buffer, (size_t)file.size))
                     ui_message_box(msg_str(MSG_EMBLEM_REFUSED));
-                string_free(&file_name);
             }
         }
         file_destruct(&file);
     }
-    string_free(&path);
     string_free(&name);
 }
 

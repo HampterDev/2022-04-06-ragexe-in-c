@@ -20,7 +20,6 @@
 #define WND_ID_ESC_MENU 0x9b
 #define WND_ID_NAVI_GUIDE 0x13a
 #define WND_ID_NEW_SELECT_CHAR 0x115
-#define WND_ID_MAX 0x165
 #define MSG_ESC_QUIT_ASK 0x11
 #define MSG_NAVI_STOP_GUIDE 0x8bf
 #define MSG_BACK_TO_LOGIN_ASK 0xd68
@@ -63,8 +62,6 @@ static int escape_chat_edit(struct UIWindowMgr *self)
 
 static void escape_menu(struct UIWindowMgr *self)
 {
-    if (g_replayPlaying)
-        return;
     if (ui_window_mgr_post_quit1(self, WND_ID_ESC_MENU))
         return;
     ui_window_mgr_make_window(self, WND_ID_ESC_MENU);
@@ -118,8 +115,7 @@ static void escape(struct UIWindowMgr *self)
     }
 
     id = self->id_list.head->next != self->id_list.head ? *LIST_VALUE(self->id_list.head->next, int) : WND_ID_NONE;
-    if (g_replayPlaying && ((unsigned)id > WND_ID_MAX || !self->window_flags[id][UI_WNDFLAG_COMMANDS]))
-        return;
+
     wnd = ui_window_find(id);
     if (wnd) {
         switch (id) {
@@ -127,8 +123,7 @@ static void escape(struct UIWindowMgr *self)
             click(wnd, UI_ID_CLOSE);
             return;
         case 0x16: case 0x17: case 0x18: case 0x19: case 0x29: case 0x2c: case 0xa1: case 0xae: case 0xb2:
-            if (!g_replayPlaying)
-                click(wnd, UI_ID_CANCEL);
+            click(wnd, UI_ID_CANCEL);
             return;
         }
     }

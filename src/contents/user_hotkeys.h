@@ -14,9 +14,6 @@ struct UserHotkeyList {
 };
 
 struct UserHotkeyMgr {
-    int settings_read;
-    int apply_count;
-    int lacks_v2_save;
     struct UserHotkeyList keys;
 };
 
@@ -28,12 +25,11 @@ int user_hotkey_mgr_create(void);
 void user_hotkey_mgr_release(void);
 
 int user_hotkey_tab_group(struct UserHotkeyMgr *self, int tab);
-void user_hotkey_mgr_clear_saved(struct UserHotkeyMgr *self);
-void user_hotkey_mgr_save(struct UserHotkeyMgr *self);
 void user_hotkey_mgr_change(struct UserHotkeyMgr *self, int group, int id,
                            int key1, int key2, const char *key_name);
 
+int user_hotkey_mgr_apply(const struct UserHotkeyList *keys);
+
 int user_hotkey_mgr_collect(struct UserHotkeyMgr *self);
-char user_hotkey_mgr_has_keys_to_save(struct UserHotkeyMgr *self);
 
 #endif

@@ -47,9 +47,9 @@ SIZE_ASSERT(PacketEfstSetEnter2, 28);
 SIZE_ASSERT(PacketStoreAssistantEntryV2, 63);
 
 void game_mode_zc_room_newentry(struct GameMode *mode, const struct PacketRoomEntry *packet);
-void game_mode_show_actor_text(struct GameMode *mode, const struct PACKET_ZC_TALKBOX_CHATCONTENTS *packet);
+
 void game_mode_buying_store_entry(struct GameMode *mode, const struct PACKET_ZC_TALKBOX_CHATCONTENTS *packet);
-void game_mode_player_progress(struct GameMode *mode, const struct PacketActorProgress *packet);
+
 void game_mode_on_efst_set_enter2(struct GameMode *mode, const struct PacketEfstSetEnter2 *packet);
 int game_store_assistant_restore(struct GameMode *mode, const struct PacketStoreAssistantEntryV2 *packet);
 

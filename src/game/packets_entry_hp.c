@@ -7,7 +7,6 @@
 #include <mmsystem.h>
 #include "game/packets_entry.h"
 #include "game/packet_data.h"
-#include "replay/replay.h"
 #include "actor/actor_common.h"
 #include "actor/game_actor.h"
 #include "effects/rag/rag_effect.h"
@@ -70,7 +69,7 @@ static void entry_hp_tail(struct GameMode *self, struct GameActor *actor, unsign
         if (session_is_own_aid(&g_session1, (int)aid))
             g_session1.petAccessory = accessory;
         if (accessory != 0 && !game_actor_get_guild_id(actor))
-            render_object_load_act_res((struct RenderObject *)actor, session_get_pet_accessory_act(&g_session1, accessory));
+            game_actor_set_pet_accessory(actor, accessory);
     } else if (type == ENTRY_OBJ_HOMUN && session_is_homunculus_aid(&g_session1, aid)) {
         g_session1.homun_ai_flags[0] = 1;
     } else if (type == ENTRY_OBJ_MERC && session_is_mercenary_aid(&g_session1, aid)) {
@@ -330,8 +329,6 @@ static void moveentry10(struct GameMode *self, const struct PacketMoveEntry10 *p
     unsigned char type = pkt->object_type;
     int msg;
 
-    if (g_replayPlaying && name->size == 0)
-        goto done;
     entry_keep_names(self, type, pkt->aid, pkt->char_id, name, 1);
     info.robe = pkt->robe;
     info.job = pkt->job;

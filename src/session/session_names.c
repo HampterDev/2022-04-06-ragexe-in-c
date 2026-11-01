@@ -382,7 +382,7 @@ const char *session_get_mp3_name(struct Session *self, const char *mapName)
     if (at != (const struct NamedText *)self->mp3Names.last && strcmp(at->name, string_cstr(&key)) == 0)
         result = at->text;
     else
-        result = "bgm\\01.mp3";
+        result = NULL;
     string_free(&key);
     return result;
 }

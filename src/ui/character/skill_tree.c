@@ -72,7 +72,6 @@ const struct UIWindowOps ui_new_skill_list_wnd_ops = {
     .render = ui_new_skill_list_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -669,7 +668,7 @@ void ui_new_skill_list_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->hover = cell_at(self, x, y);
     if (old != self->hover)
         ui_window_invalidate_base(WND(self));
-    if (in_cells(self, x, y) && !self->pending && self->hover != -1 && !g_replayPlaying) {
+    if (in_cells(self, x, y) && !self->pending && self->hover != -1) {
         struct SkillInfo info;
 
         skill_tree_skill_at(self, &info, self->hover, 0);
@@ -880,7 +879,6 @@ static int on_command(struct UINewSkillListWnd *self, int id)
     {
         unsigned raise = id - ID_RAISE_FIRST;
 
-        session_set_pair(&g_session1, 7, 1);
         skill_tree_skill_at(self, &info,
                             self->columns * self->top + (raise > SKILL_TREE_CELLS - 1 ? id : (int)raise), 0);
         if (info.found) {

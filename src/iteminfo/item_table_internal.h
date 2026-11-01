@@ -4,8 +4,6 @@
 
 struct ItemTableEntry *item_table_at(int id);
 void item_table_append_description(struct ItemTableEntry *entry, int identified, const char *line);
-void item_table_use_identified_description(struct ItemTableEntry *entry);
-void item_table_append_params(struct ItemTableEntry *entry, int first, int second);
 void item_table_apply_lua(void);
 void item_table_set_unknown(void);
 void item_table_clear(void);

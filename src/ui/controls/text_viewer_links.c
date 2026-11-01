@@ -8,7 +8,6 @@
 #include "platform/code_page.h"
 #include "core/text_format.h"
 #include "core/text_markup.h"
-#include "platform/language.h"
 #include "iteminfo/item_api.h"
 #include "navi/navi_manager.h"
 #include "ui/window_manager_state.h"
@@ -25,7 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
-#include "ui/tips/tips.h"
 
 struct TagLink {
     int pos;
@@ -36,7 +34,6 @@ struct TagLink {
 #define LINK_URL 0x1ad
 #define LINK_NAVI 0x1ae
 #define LINK_ITEM 0x1c8
-#define LINK_TIPBOX 0x1fd
 #define LINK_QUEST 0x213
 #define LINK_COLOUR 0xf4934a
 #define LINK_HOVER 0xff7864
@@ -44,14 +41,12 @@ struct TagLink {
 #define URL_HOVER 0xefb700
 #define LINK_FONT_HEIGHT 0xc
 #define LINK_HIDDEN_Y (-100)
-#define TIPBOX_PIECE 0x20
 #define LAYOUT_DEFAULT 0x23
 #define LAYOUT_AMPERSAND 0x8a
 #define VIEWER_MSG_LINE_UP 0x12
 #define VIEWER_MSG_LINE_DOWN 0x13
 #define NAVI_DB_SEARCH (-0xde)
 #define WND_ITEM 0xc
-#define WND_TIPBOX 0x13b
 #define UI_MSG_SHOW_ITEM 0x18
 
 #define LINE_COUNT(tv) ((int)VEC_COUNT(&(tv)->list.items, struct String))
@@ -277,93 +272,6 @@ static BYTE add_quest_links(struct UITextViewer *self, struct String text, int l
     return added;
 }
 
-static void tipbox_pieces(const char *label, int pos, struct Vec *pieces)
-{
-    const char *start = label, *p = label, *brk = label, *end = label + strlen(label);
-    const char *limit = label + (TIPBOX_PIECE - pos);
-    struct String piece;
-
-    while (p < end) {
-        p = language_char_next(p);
-        if (*p == ' ') {
-            do
-                brk = ++p;
-            while (*p == ' ');
-        }
-        if (p < limit && *p != '\n')
-            continue;
-        if (*p == '\n') {
-            brk = p;
-            p++;
-        }
-        string_init(&piece);
-        if (brk > start) {
-            string_assign(&piece, start, brk - start);
-            start = brk;
-        } else {
-            if (start != p)
-                string_assign(&piece, start, p - start);
-            start = p;
-        }
-        string_vec_push_copy(pieces, &piece);
-        string_free(&piece);
-        limit = start + TIPBOX_PIECE;
-    }
-    if (start < p) {
-        string_init(&piece);
-        string_assign(&piece, start, p - start);
-        string_vec_push_copy(pieces, &piece);
-        string_free(&piece);
-    }
-}
-
-static void add_tipbox_links(struct UITextViewer *self, struct String text, int lines)
-{
-    struct String s;
-    struct Vec links = { 0 };
-    struct TagLink *link;
-
-    plain_text(&s, &text);
-    apply(&s, "<URL>", "</URL>");
-    apply(&s, "<NAVI>", "</NAVI>");
-    apply(&s, "<ITEM>", "</ITEM>");
-    apply(&s, "<QUEST>", "</QUEST>");
-    apply_chat(&s);
-    apply_navil(&s);
-    ui_window_parse_tipbox_links(&self->list.base, string_from(string_cstr(&s), s.size), &links);
-    if (links.first != links.last) {
-        for (link = links.first; link != (struct TagLink *)links.last; link++) {
-            if (self->split_tipbox_links == 1) {
-                struct Vec pieces = { 0 };
-                unsigned j;
-
-                tipbox_pieces(string_cstr(&link->label), link->pos, &pieces);
-                for (j = 0; j < VEC_COUNT(&pieces, struct String); j++) {
-                    struct String *piece = &((struct String *)pieces.first)[j];
-                    struct UITextButton *btn = new_link(self, piece, LINK_COLOUR);
-
-                    fit_link(self, btn, piece);
-                    btn->hover_colour = LINK_HOVER;
-                    btn->button.base.id = LINK_TIPBOX;
-                    link_args_split(btn, &link->args);
-                    if (j == 0)
-                        place_link(self, btn, link->pos, lines);
-                    else
-                        place_link(self, btn, 0, lines - j);
-                    add_embed(self, btn);
-                }
-                string_vec_free(&pieces);
-            } else {
-                add_link(self, link, LINK_TIPBOX, lines);
-            }
-        }
-        ui_window_send_msg(&self->list.base, NULL, UI_MSG_SCROLL_V, 0, 0, 0, 0);
-    }
-    tag_links_free(&links);
-    string_free(&s);
-    string_free(&text);
-}
-
 static void add_url_links(struct UITextViewer *self, struct String text, int lines)
 {
     struct String s;
@@ -456,7 +364,6 @@ static void add_text(struct UITextViewer *self, char *text, int val2, int val3, 
             add_item_links(self, string_from_cstr(text), count);
             add_url_links(self, string_from_cstr(text), count);
             add_navi_links(self, string_from_cstr(text), count);
-            add_tipbox_links(self, string_from_cstr(text), count);
             add_quest_links(self, string_from_cstr(text), count);
             string_free(&s);
             string_free(&unescaped);
@@ -544,15 +451,6 @@ static void on_link(struct UITextButton *link, int id)
     case LINK_ITEM:
         if (link && ui_text_button_line_count(link))
             item_link(link);
-        break;
-    case LINK_TIPBOX:
-        if (link && ui_text_button_line_count(link)) {
-            struct UIWindow *wnd;
-            int value = link_arg_number(link, 0);
-            wnd = ui_window_open(WND_TIPBOX);
-            if (wnd)
-                ui_tipbox_wnd_show_tip((struct UITipboxWnd *)wnd, value);
-        }
         break;
     case LINK_QUEST:
         if (link)

@@ -1,6 +1,7 @@
+#include "contents/adventurer_agency.h"
+#include "contents/character_settings.h"
 #include "game/mode_misc.h"
 #include "render/rp_pool.h"
-#include "web/service_managers.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include "ui/character/character.h"
@@ -93,7 +94,6 @@ const struct UIWindowOps ui_esc_option_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -234,7 +234,6 @@ int ui_esc_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         mode_send_message(mode, MODE_MSG_RESTART, 1, 0, 0, 0);
         ui_close_window(WND_ESC_MENU);
         ui_close_window(0xa4);
-        ui_close_window(0x10d);
         break;
     case ESC_ID_SAVE_POINT:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_ASK_SAVE_POINT), UI_MSGBOX_QUESTION, 0, 0, 0,

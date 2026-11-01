@@ -68,7 +68,6 @@ static void basic_skill_failed(struct GameMode *self, const struct PACKET_ZC_ACK
         switch (packet->number) {
         case 0: fail_line(0x9f); break;
         case 1:
-            self->emotion_pending = 0;
             fail_line(0xa0);
             break;
         case 2: fail_line(0xa1); break;

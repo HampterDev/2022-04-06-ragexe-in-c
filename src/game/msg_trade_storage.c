@@ -1,4 +1,3 @@
-#include "replay/replay.h"
 #include "game/mode_msg.h"
 #include "platform/language.h"
 #include "session/session_items.h"
@@ -7,9 +6,6 @@
 #define CZ_REQ_EXCHANGE_ITEM        0xe4
 #define CZ_ACK_EXCHANGE_ITEM        0xe6
 #define CZ_ADD_EXCHANGE_ITEM        0xe8
-
-struct ReplayRecorder;
-#define REPLAY_RECORDING 2
 
 int game_mode_msg_req_exchange(struct GameMode *self, int aid)
 {
@@ -49,14 +45,8 @@ int game_mode_msg_add_exchange_item(struct GameMode *self, int index, int count)
         unsigned short index;
         int count;
     } packet;
-    struct {
-        unsigned short id;
-        unsigned short kind;
-        unsigned short len;
-        int count;
-    } record;
+
 #pragma pack(pop)
-    struct ReplayRecorder *recorder;
 
     if (session_is_exist_index_in_my_change_list(&g_session1, index)) {
         chat_refresh();
@@ -76,14 +66,6 @@ int game_mode_msg_add_exchange_item(struct GameMode *self, int index, int count)
     packet.id = CZ_ADD_EXCHANGE_ITEM;
     self->trade_add_amount = count;
     send_packet(CZ_ADD_EXCHANGE_ITEM, &packet);
-    if (replay_recorder_instance()->state != REPLAY_RECORDING)
-        return 0;
-    record.len = 10;
-    record.id = 0x8ae;
-    record.kind = 0x387;
-    record.count = self->trade_add_amount;
-    recorder = replay_recorder_instance();
-    replay_recorder_write_packet(recorder, 10, &record, REPLAY_TIME_NOW, 0);
     return 0;
 }
 

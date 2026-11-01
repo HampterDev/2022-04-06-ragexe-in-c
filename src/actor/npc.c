@@ -253,35 +253,24 @@ static void npc_drop_state2(struct Npc *self)
     }
 }
 
-static void npc_idle_talk(struct Npc *self, int state)
+static void npc_pet_performance(struct Npc *self)
 {
-    int hunger = session_pet_hunger_level(g_session1.petFullness);
-    int talk;
-
     switch (self->pk_mode - 1) {
     case 0:
-        talk = session_make_pet_talk_id(game_actor_get_job((struct GameActor *)self), 7, hunger);
         render_object_set_action((struct RenderObject *)self, 0x28, 1);
         break;
     case 1:
-        talk = session_make_pet_talk_id(game_actor_get_job((struct GameActor *)self), 8, hunger);
         render_object_set_action((struct RenderObject *)self, 0x30, 1);
         break;
     case 2:
-        talk = session_make_pet_talk_id(game_actor_get_job((struct GameActor *)self), 9, hunger);
         render_object_set_action((struct RenderObject *)self, 0x38, 1);
         break;
     case 3:
-        talk = session_make_pet_talk_id(game_actor_get_job((struct GameActor *)self), 5, hunger);
         render_object_set_action((struct RenderObject *)self, 0x40, 1);
         break;
     default:
         render_object_set_action((struct RenderObject *)self, 0x28, 1);
-        talk = state;
         break;
-    }
-    if (self->aid == g_session1.aid) {
-        game_send_message(0x94, talk, 0, 0, 0);
     }
     self->pk_mode = 0;
     self->motion_finished = 0;
@@ -349,10 +338,10 @@ static void npc_set_state_general(struct Npc *self, int state)
         self->pickable = 1;
         render_object_set_action((struct RenderObject *)self, 0, 0);
         if (self->pk_mode) {
-            npc_idle_talk(self, state);
+            npc_pet_performance(self);
         } else {
             if (self->state != 0)
-                self->pet_talk_tick = timeGetTime();
+                self->pet_emotion_tick = timeGetTime();
             if (g_session1.homun_command[3]) {
                 g_session1.homun_command[1] = 0;
                 g_session1.homun_command[2] = 0;

@@ -161,16 +161,6 @@ unsigned char navi_map_add_mob(struct NaviMap *self, struct NaviObject *mob)
     return ptrs_push(&self->mobs, mob);
 }
 
-struct NaviObject *navi_map_mob_by_name(struct NaviMap *self, const char *name, size_t size)
-{
-    struct NaviObject **it;
-    if (!self || !name) return NULL;
-    for (it = (struct NaviObject **)self->mobs.first; it != (struct NaviObject **)self->mobs.last; ++it)
-        if ((*it)->name.size == size && !memcmp(string_cstr(&(*it)->name), name, size))
-            return *it;
-    return NULL;
-}
-
 struct NaviObject *navi_map_mob_by_sprite(struct NaviMap *self, int sprite)
 {
     struct NaviObject **it;
@@ -188,30 +178,6 @@ unsigned char navi_map_add_link(struct NaviMap *self, struct NaviLink *link)
 struct NaviLink *navi_map_link(struct NaviMap *self, int key, unsigned char byId)
 {
     return (struct NaviLink *)ptrs_get(&self->links, key, byId);
-}
-
-struct NaviLink *navi_map_find_link_route(struct NaviMap *self, int x, int y,
-        const struct NaviMap *destination, int destination_x, int destination_y)
-{
-    struct NaviLink **it;
-
-    if (!self || !destination) return NULL;
-    for (it = (struct NaviLink **)self->links.first; it != (struct NaviLink **)self->links.last; it++) {
-        struct NaviLink *l = *it;
-        if (l->base.x != x || l->base.y != y)
-            continue;
-        if (l->destX != destination_x || l->destY != destination_y)
-            continue;
-        if (!l->base.map)
-            continue;
-        if (strcmp(string_cstr(&l->base.map->name), string_cstr(&self->name)) != 0)
-            continue;
-        if (!l->destMap)
-            continue;
-        if (strcmp(string_cstr(&l->destMap->name), string_cstr(&destination->name)) == 0)
-            return l;
-    }
-    return NULL;
 }
 
 struct NaviLink ***navi_map_links_begin(struct NaviMap *self, struct NaviLink ***out)

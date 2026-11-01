@@ -58,7 +58,6 @@ const struct UIButtonOps ui_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -108,7 +107,6 @@ const struct UIButtonOps ui_none_visible_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -158,7 +156,6 @@ const struct UIButtonOps ui_bitmap_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -208,7 +205,6 @@ const struct UIButtonOps ui_basic_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -258,7 +254,6 @@ const struct UIButtonOps ui_bmp_text_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -307,7 +302,6 @@ const struct UIButtonOps ui_bitmap_button2_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -357,7 +351,6 @@ const struct UIButtonOps uitv_bitmap_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -529,9 +522,7 @@ void ui_button_on_l_btn_up(struct UIWindow *window, int x, int y)
     if (x >= 0 && x < wnd->width && y >= 0 && y < wnd->height) {
         wnd->state = UI_BTN_HOVER;
         if (wnd->parent) {
-            if (ui_window_mgr_get_window_flag(&g_windowMgr, UI_WNDFLAG_COMMANDS, wnd->parent->id)) {
-                if (wnd->id == UI_ID_SEND_EDITS_A || wnd->id == UI_ID_SEND_EDITS_B)
-                    ui_window_send_edit_fields(wnd->parent);
+            {
                 ui_window_send_msg(wnd->parent, wnd, UI_MSG_COMMAND, wnd->id, self->cmd_value, 0, 0);
             }
         } else {

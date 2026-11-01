@@ -1,6 +1,5 @@
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/character/gauge.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -67,7 +66,6 @@ const struct UIWindowOps ui_frame_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -104,7 +102,6 @@ const struct UIWindowOps ui_frame_wnd_ops = {
 #define MSG_HOMUN_NAME_TOO_LONG 0x3aa
 #define MSG_HOMUN_NAME_HAS_TAG 0xafc
 #define MSG_HOMUN_RENAME_QUESTION 0xba1
-#define MSG_HOMUN_NAME_REFUSED 0xb84
 #define MSG_HOMUN_DELETE_QUESTION 0x3bb
 #define MSG_HOMUN_FEED_QUESTION 0x259
 #define MSG_HOMUN_FEED_BLOCKED 0xddf
@@ -152,7 +149,6 @@ const struct UIWindowOps ui_homun_info_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -418,14 +414,11 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     }
     sprintf(question, msg_str(MSG_HOMUN_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (ask(question) != UI_MSGBOX_ANSWER_NO) {
-        if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
-            mode = game_current_base_mode();
-            mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-            sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
-            ui_window_invalidate_base(&self->frame.base);
-            return;
-        }
-        ui_message_box(msg_str(MSG_HOMUN_NAME_REFUSED));
+        mode = game_current_base_mode();
+        mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+        sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
+        ui_window_invalidate_base(&self->frame.base);
+        return;
     }
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.homunName);
     ui_window_invalidate(self->name_edit);
@@ -454,7 +447,6 @@ int ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     }
 
-    ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
     switch (val1) {
     case UI_ID_CHECKBOX:
         if (sender == self->auto_feed)
@@ -560,7 +552,6 @@ const struct UIWindowOps ui_mer_info_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -719,7 +710,6 @@ int ui_mer_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     }
 
-    ui_window_record_command(&self->frame.base, val1, val2, val3, val4);
     switch (val1) {
     case UI_ID_OK:
         ui_window_invalidate_base(&self->frame.base);

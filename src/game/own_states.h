@@ -11,8 +11,6 @@ struct OwnStateEntry {
     int32_t total_ms;
     int32_t remain_ms;
 };
-struct ReplayBuffer;
-struct ReplayRecorder;
 
 size_t own_states_count(void);
 const struct OwnStateEntry *own_states_at(size_t position);
@@ -25,7 +23,4 @@ int own_states_set_present(int index, int present);
 void own_states_clear(void);
 void own_states_destroy(void);
 
-int own_states_save(uint32_t now, struct ReplayBuffer *out);
-int own_states_load(const void *data, size_t size);
-int own_states_restore(struct ReplayRecorder *recorder);
 #endif

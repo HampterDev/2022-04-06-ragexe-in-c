@@ -48,7 +48,6 @@ const struct UIButtonOps ui_styling_shop_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -100,7 +99,6 @@ const struct UIButtonOps ui_acc_bitmap_button_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -162,11 +160,7 @@ void ui_styling_shop_button_on_l_btn_up(struct UIWindow *window, int x, int y)
     parent = wnd->parent;
     wnd->state = UI_BTN_DOWN;
     if (parent) {
-        if (ui_window_mgr_get_window_flag(&g_windowMgr, 3, parent->id)) {
-            if (wnd->id == UI_ID_SEND_EDITS_A || wnd->id == UI_ID_SEND_EDITS_B)
-                ui_window_send_edit_fields(wnd->parent);
-            ui_window_send_msg(wnd->parent, wnd, UI_MSG_COMMAND, wnd->id, self->button.cmd_value, 0, 0);
-        }
+        ui_window_send_msg(wnd->parent, wnd, UI_MSG_COMMAND, wnd->id, self->button.cmd_value, 0, 0);
     } else {
         mode_send_message(client_current_mode(), MODE_MSG_UI_COMMAND, wnd->id, self->button.cmd_value, 0, 0);
     }

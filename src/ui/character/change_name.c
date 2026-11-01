@@ -2,7 +2,6 @@
 #include "ui/window_access.h"
 #include "ui/chat/markup_links.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
@@ -28,7 +27,6 @@
 #define PACKET_CHANGE_NAME 0x8fc
 #define CHAR_NAME_LEN 24
 
-#define MSG_NAME_REFUSED 0x14
 #define MSG_NAME_TOO_SHORT 0x15
 #define MSG_NAME_BLANK_EDGE 0xc7
 #define MSG_NAME_TOO_LONG 0x213
@@ -100,7 +98,6 @@ const struct UIWindowOps ui_change_name_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -209,7 +206,7 @@ static void change_name_submit(struct UIChangeNameWnd *self)
     struct String text, arg;
     char lower[CHAR_NAME_LEN] = {0};
     char question[0x12c];
-    BYTE passes, blank_edge;
+    BYTE blank_edge;
 
     if (navi_links_has_link(text_view_cstr(ui_edit_ctrl_get_text(edit)))) {
         change_name_refuse(self, MSG_NAME_NAVI_LINK);
@@ -229,15 +226,7 @@ static void change_name_submit(struct UIChangeNameWnd *self)
         ui_message_box(msg_str(MSG_NAME_TOO_SHORT));
         goto done;
     }
-    passes = word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(edit));
     blank_edge = np_dect(ui_edit_ctrl_get_text(edit));
-    if (!passes) {
-        ui_message_box(msg_str(MSG_NAME_REFUSED));
-        if (!blank_edge)
-            goto done;
-        ui_message_box(msg_str(MSG_NAME_BLANK_EDGE));
-        goto done;
-    }
     if (blank_edge) {
         ui_message_box(msg_str(MSG_NAME_BLANK_EDGE));
         goto done;

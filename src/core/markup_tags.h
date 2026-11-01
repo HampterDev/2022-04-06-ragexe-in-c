@@ -17,8 +17,6 @@ extern const struct String text_tag_QUEST;
 extern const struct String text_tag_QUEST_END;
 extern const struct String text_tag_INFO;
 extern const struct String text_tag_INFO_END;
-extern const struct String text_tag_TIPBOX;
-extern const struct String text_tag_TIPBOX_END;
 extern const struct String text_tag_URL;
 extern const struct String text_tag_URL_END;
 

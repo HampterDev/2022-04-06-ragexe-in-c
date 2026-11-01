@@ -416,7 +416,6 @@ const struct UIWindowOps ui_equip_wnd_ops = {
     .render = ui_equip_wnd_render,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -1091,8 +1090,7 @@ static void equip_on_command(struct UIEquipWnd *self, struct UIWindow *sender, i
         equip_on_off_button(self);
         break;
     case ID_CART_ITEMS:
-        if (g_replayPlaying && !replay_recorder_instance()->info.options[2])
-            break;
+
         if (ui_get_window(MERGE_ITEM_WND_ID))
             break;
         if (ui_close_window(CART_ITEMS_WND_ID))

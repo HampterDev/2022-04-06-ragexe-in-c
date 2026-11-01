@@ -1,3 +1,4 @@
+#include "contents/account_settings.h"
 #include "ui/controls/edit.h"
 #include "ui/controls/buttons.h"
 #include "world/tooltip.h"
@@ -673,9 +674,9 @@ static void hotkey_wnd_apply(struct UIHotKeyWnd *self)
                                    change->key.modifier, string_cstr(&change->key.action));
         }
     }
-    user_hotkey_mgr_save(g_userHotkeyMgr);
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s", msg_str(MSG_HOTKEY_SAVED));
+    _snprintf_s(text, sizeof text, (size_t)-1, "%s", account_user_data_save(g_accountUserDataMgr)
+        ? msg_str(MSG_HOTKEY_SAVED) : "Could not save local account settings.");
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, HOTKEY_WARN_COLOUR, 1, 0);
 }
 
@@ -731,7 +732,6 @@ int ui_hot_key_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, in
     if (msg == UI_MSG_COMMAND) {
         switch (val1) {
         case UI_ID_OK:
-            g_userHotkeyMgr->apply_count++;
             hotkey_wnd_apply(self);
             ui_close_window(WND_HOTKEY);
             break;
@@ -861,7 +861,6 @@ const struct UIWindowOps ui_hot_key_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

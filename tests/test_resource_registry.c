@@ -77,6 +77,7 @@ int main(void)
     assert(resource_type_index(NULL) == -1);
     assert(resource_type_index("") == -1);
     assert(resource_type_index("unknown") == -1);
+    assert(resource_type_index("bik") == -1);
     assert(resource_type_index("BMP") == -1);
     assert(resource_type_index(".bmp") == -1);
     assert(resource_type_index("rsm2extra") == -1);

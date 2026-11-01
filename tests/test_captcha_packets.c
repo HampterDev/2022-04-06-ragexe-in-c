@@ -12,10 +12,7 @@ static void record(int id, int a, int b, const void *key, const void *chunk)
     if (key) memcpy(seen_key, key, 4);
     if (chunk) { assert(b > 0 && b <= 1024); memcpy(seen_chunk, chunk, b); }
 }
-void game_mode_zc_ack_upload_macro_detector(struct GameMode *g, const char *key, int result)
-{ (void)g; record(0xa53, result, 0, key, NULL); }
-void game_mode_zc_complete_upload_macro_detector_captcha(struct GameMode *g)
-{ (void)g; record(0xa55, 0, 0, NULL, NULL); }
+
 void game_mode_zc_ack_apply_macro_detector(struct GameMode *g, int result)
 { (void)g; record(0xa57, result, 0, NULL, NULL); }
 void game_mode_zc_apply_macro_detector(struct GameMode *g, int size, const char *key)
@@ -34,7 +31,7 @@ void game_mode_zc_ack_preview_macro_detector(struct GameMode *g, int result, int
 int main(void)
 {
     static const struct { int id; size_t size; } fixed[] = {
-        {0xa53, 10}, {0xa55, 2}, {0xa57, 6}, {0xa58, 8},
+        {0xa57, 6}, {0xa58, 8},
         {0xa5b, 7}, {0xa5d, 6}, {0xa6a, 12}
     };
     unsigned char p[1033];
@@ -50,10 +47,10 @@ int main(void)
         game_mode_dispatch_captcha_packet(NULL, fixed[i].id, p, fixed[i].size);
         assert(calls == 1 && seen_id == fixed[i].id);
     }
-    p[2] = 0; p[3] = 0xfe; p[4] = 0; p[5] = 0x80;
-    memset(p + 6, 0xff, 4);
-    game_mode_dispatch_captcha_packet(NULL, 0xa53, p, 10);
-    assert(seen_a == -1 && !memcmp(seen_key, p + 2, 4));
+    calls = 0;
+    game_mode_dispatch_captcha_packet(NULL, 0xa53, p, sizeof p);
+    game_mode_dispatch_captcha_packet(NULL, 0xa55, p, sizeof p);
+    assert(!calls);
     p[2] = 3; p[3] = 0x78; p[4] = 0x56; p[5] = 0x34; p[6] = 0x12;
     game_mode_dispatch_captcha_packet(NULL, 0xa5b, p, 7);
     assert(seen_a == 3 && seen_b == 0x12345678);
@@ -80,6 +77,6 @@ int main(void)
         game_mode_dispatch_captcha_packet(NULL, id, p, sizeof p);
         assert(!calls);
     }
-    puts("Captcha packets: all nine messages, every truncation and chunk boundary passed");
+    puts("Captcha packets: all seven retained messages, every truncation and chunk boundary passed");
     return 0;
 }

@@ -7,7 +7,6 @@
 #include "resources/palette.h"
 #include "resources/sprite.h"
 #include "session/number_codec.h"
-#include "contents/manner_filter.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
 #include "core/markup_tags.h"
@@ -104,7 +103,6 @@ const struct UIWindowOps ui_new_make_char_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -504,7 +502,7 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
 {
     struct String arg;
     struct NewCharLooks looks;
-    BYTE service_ok, filter_ok, blank_edge;
+    BYTE service_ok, control_chars_ok, blank_edge;
     int i;
 
     for (i = 0; i < 2; i++)
@@ -524,14 +522,12 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
     service_ok = 1;
     if (g_serviceType == 1)
         service_ok = session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->name_edit)) ? 1 : 0;
-    filter_ok = word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit));
     string_init(&arg);
     string_assign_cstr(&arg, ui_edit_ctrl_get_text(self->name_edit));
-    if (session_has_control_char(&g_session1, arg))
-        filter_ok = 0;
+    control_chars_ok = !session_has_control_char(&g_session1, arg);
     blank_edge = np_dect(ui_edit_ctrl_get_text(self->name_edit));
 
-    if (filter_ok == 1 && service_ok == 1 && !blank_edge) {
+    if (control_chars_ok == 1 && service_ok == 1 && !blank_edge) {
         char name[25];
 
         if (ui_edit_ctrl_get_text_size(self->name_edit) >= 0x18) {
@@ -551,11 +547,11 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         mode_send_message(client_current_mode(), LOGIN_REQ_MAKE, 0, 0, 0, 0);
         ui_window_mgr_post_quit2(&g_windowMgr, WND(self));
     } else {
-        if (filter_ok != 1) {
-            if (!filter_ok)
+        if (control_chars_ok != 1) {
+            if (!control_chars_ok)
                 box(0x14);
         }
-        if (filter_ok != 1 || service_ok != 1) {
+        if (control_chars_ok != 1 || service_ok != 1) {
             if (!service_ok)
                 box(0xbe);
         }

@@ -97,10 +97,6 @@ static void *checked_realloc(void *p, size_t size)
 void *mem_alloc(size_t n) { (void)n; abort(); }
 void mem_free(void *p)
 { (void)p; abort(); }
-struct GGHashManager *g_ggHashMgr;
-int gg_hash_manager_check_file(struct GGHashManager *p, const char *name) { (void)p; assert(name); return 1; }
-int gg_hash_manager_check_data(struct GGHashManager *p, const char *name, const void *data, unsigned size)
-{ (void)p; assert(name && data && size <= UINT_MAX); return 1; }
 
 static void write_fixture(const char *path)
 {

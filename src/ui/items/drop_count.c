@@ -61,7 +61,6 @@ const struct UIWindowOps ui_item_drop_cnt_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -195,7 +194,6 @@ void ui_item_drop_cnt_wnd_on_draw(struct UIWindow *window)
 
 #define DROP_MSG_SET_PURPOSE 0xd
 #define DROP_MSG_SET_NAME 0x1d
-#define DROP_REPLAY_COMMAND 0x64
 #define DROP_PURPOSE_SET_COUNT 0x14
 #define MODE_MSG_DRAG_DONE 0x12
 #define MODE_MSG_DROP_COUNT 0x15
@@ -319,12 +317,6 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         return 0;
     game = game_current_mode();
     count = atoi(ui_edit_ctrl_get_text(self->edit));
-    ui_window_record_command(wnd, UI_ID_OK, DROP_REPLAY_COMMAND, count, wnd->state);
-    if (g_replayPlaying && val2 == DROP_REPLAY_COMMAND) {
-        count = val3;
-        wnd->state = val4;
-        game->replay_drop_taken = 0;
-    }
 
     switch (wnd->state) {
     case 0:

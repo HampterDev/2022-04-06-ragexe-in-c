@@ -1,8 +1,5 @@
 #ifdef EZ2STR_MANAGER_REFERENCE
-void *g_enchantMgr, *g_item_db, *g_itemReformMgr, *g_mapSkyMgrInstance;
-void *enchant_mgr_construct(void *self) { abort(); }
-void *item_db_to_id_construct(void *self) { abort(); }
-void *item_reform_mgr_construct(void *self) { abort(); }
+void *g_mapSkyMgrInstance;
 void *map_sky_mgr_construct(void *self) { abort(); }
 #endif
 struct ItemInfo;

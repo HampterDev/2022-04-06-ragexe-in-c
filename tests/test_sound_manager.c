@@ -85,7 +85,7 @@ static int started, driver_open, provider_open, listener_open, stream_open;
 static int fail_driver, fail_provider, fail_listener, fail_stream, no_provider;
 static int sample_limit, sample_allocated, sample_3d_allocated, enumerations, provider_index;
 static int stream_attempts, stream_starts, sample_starts, sample_3d_starts;
-static int volume_2d, volume_3d, loop_count, expected_rate, expected_bits, expected_channels;
+static int volume_2d, volume_3d, loop_count, expected_channels;
 static int release_count, shutdown_count, room_type, wave_missing, reject_3d;
 static int sample_storage[48], sample_3d_storage[48], driver_token, provider_token, listener_token, stream_token;
 static float last_position[3], last_orientation[3], distances[2];
@@ -117,7 +117,7 @@ void __stdcall _AIL_shutdown(void)
 int __stdcall _AIL_set_preference(unsigned n, int value) { assert(n == 15 && value == 0); return 0; }
 void *__stdcall _AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
 {
-    assert(started && rate == (unsigned)expected_rate && bits == expected_bits);
+    assert(started && rate == 22050 && bits == 16);
     assert(channels == expected_channels && flags == 1);
     driver_open = !fail_driver;
     return driver_open ? &driver_token : NULL;
@@ -171,7 +171,7 @@ void __stdcall _AIL_set_stream_volume(void *stream, int volume)
 void __stdcall _AIL_set_stream_loop_count(void *stream, int count)
 { assert(stream == &stream_token && stream_open); loop_count = count; }
 int __stdcall _AIL_stream_status(void *stream)
-{ assert(stream == &stream_token && stream_open); return 2; }
+{ assert(stream == &stream_token && stream_open); return 4; }
 int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
 {
     int index = (int)(INT_PTR)*next;
@@ -228,8 +228,8 @@ static void reset(int mode)
     stream_attempts = stream_starts = sample_starts = sample_3d_starts = 0;
     enumerations = release_count = shutdown_count = room_type = wave_missing = reject_3d = 0;
     provider_index = 0; sample_limit = 48;
-    g_soundMode = mode; g_sound_sample_type = g_sound_rate_type = g_sound_bits_type = 0;
-    expected_rate = 22050; expected_bits = 16; expected_channels = mode == 1 ? 1 : 2;
+    g_soundMode = mode;
+    expected_channels = mode == 1 ? 1 : 2;
     wave_resource.data = &wave_resource;
 }
 
@@ -250,6 +250,7 @@ static void test_failures(void)
 static void test_streams(void)
 {
     char name[] = "bgm/borrowed.mp3";
+    int attempts;
     reset(1); assert(sound_mgr_create()); assert(!sound_mgr_create());
     fail_stream = 1; sound_play_stream("bgm/retry.mp3", 1);
     assert(!sound_stream_playing() && !stream_starts && stream_attempts == 1);
@@ -266,6 +267,17 @@ static void test_streams(void)
     sound_set_bgm_fade_target(999); assert(sound_bgm_fade_target() == 127);
     sound_set_effect_volume(-1); assert(sound_effect_volume() == 0);
     sound_set_effect_volume(999); assert(sound_effect_volume() == 127);
+    attempts = stream_attempts;
+    allocation_failure = 1;
+    sound_play_bgm(NULL);
+    assert(!sound_stream_playing() && !sound_manager->bgm_name && !sound_manager->stream_name);
+    sound_play_stream(NULL, 0);
+    assert(stream_attempts == attempts);
+    allocation_failure = 0; g_sound_settings.bgm_on = 1;
+    sound_play_bgm("bgm/restored.mp3");
+    assert(sound_stream_playing() && stream_attempts == attempts + 1 && loop_count == 0);
+    sound_play_bgm("");
+    assert(!sound_stream_playing() && !sound_manager->bgm_name && !sound_manager->stream_name);
     g_soundMode = 0; sound_mgr_destroy(); assert(shutdown_count == 1 && !allocations);
     cleanup(); assert(shutdown_count == 1 && registrations == 1);
 }
@@ -278,10 +290,10 @@ static void test_effects(void)
     sound_play_wave("one.wav", 250, 0, 0, 250, 40, 1); assert(sample_starts == 1);
     g_sound_settings.effects_on = 0;
     sound_play_wave("one.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 1);
-    g_sound_settings.effects_on = 1; g_sound_settings.button_sound_only = 1;
-    sound_play_wave("one.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 1);
-    sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 2);
-    wave_missing = 1; sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 2);
+    g_sound_settings.effects_on = 1;
+    sound_play_wave("one.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 2);
+    sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 3);
+    wave_missing = 1; sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 3);
     sound_end_samples(); sound_mgr_destroy(); assert(release_count == 3 && !allocations);
     reset(2); provider_index = 130; sample_limit = 2; assert(sound_mgr_create());
     assert(enumerations == 131 && sample_3d_allocated == 2);
@@ -340,17 +352,15 @@ static void test_fades(void)
 
 int main(void)
 {
-    int mode, type, cycle;
+    int mode, limit, cycle;
     test_failures(); test_streams(); test_effects(); test_fades();
     for (mode = 0; mode <= 2; ++mode) {
-        for (type = 0; type < 3; ++type) {
-            reset(mode); g_sound_sample_type = g_sound_rate_type = type;
-            g_sound_bits_type = type != 0;
-            expected_rate = type == 0 ? 22050 : type == 1 ? 11025 : 8000;
-            expected_bits = type == 0 ? 16 : 8;
+        for (limit = 0; limit <= 48; limit += 16) {
+            reset(mode); sample_limit = limit;
             assert(sound_mgr_create());
-            if (mode) assert(sample_allocated + sample_3d_allocated == (type == 0 ? 48 : type == 1 ? 32 : 16));
-            sound_mgr_destroy(); assert(!allocations);
+            assert(sample_allocated + sample_3d_allocated == (mode ? limit : 0));
+            sound_mgr_destroy();
+            assert(!allocations && release_count == (mode ? limit : 0));
         }
     }
     for (cycle = 0; cycle < 20; ++cycle) {

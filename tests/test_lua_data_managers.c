@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include "contents/champion_monster.h"
 #include "contents/check_attendance.h"
-#include "contents/pet_evolution.h"
+#include "contents/pet_auto_feed.h"
 #include "contents/private_airplane.h"
 #include "session/state.h"
 #include <lauxlib.h>
@@ -77,11 +77,9 @@ const char *thread_text_format(const char *format, ...)
 
 #ifdef LUA_DATA_MANAGERS_REFERENCE
 struct CheckAttendanceMgr *g_attendanceTable;
-struct PetEvolutionMgr *g_petTable;
 struct PrivateAirplaneMgr *g_airshipTickets;
 const void *const champion_monster_ops[1] = {champion_monster_delete};
 const void *const check_attendance_ops[1] = {check_attendance_delete};
-const void *const pet_evolution_ops[1] = {pet_evolution_delete};
 const void *const private_airplane_ops[1] = {private_airplane_delete};
 #endif
 
@@ -103,13 +101,13 @@ static const char attendance_script[] =
     "return true,'good' end";
 static const char pet_script[] =
     "function main() "
-    "assert(not InsertEvolutionRecipeLGU(1,9002,501,1)); "
-    "assert(not InsertEvolutionRecipeLGU(9001,2,501,1)); "
-    "assert(not InsertEvolutionRecipeLGU(9001,9002,501,0)); "
+    "assert(InsertEvolutionRecipeLGU(1,9002,501,1)); "
+    "assert(InsertEvolutionRecipeLGU(9001,2,501,1)); "
+    "assert(InsertEvolutionRecipeLGU(9001,9002,501,0)); "
     "for target=9002,9004 do for material=501,503 do "
     "assert(InsertEvolutionRecipeLGU(9001,target,material,material-500)) end end "
-    "assert(not InsertEvolutionRecipeLGU(9001,9002,501,5)); "
-    "assert(not InsertPetAutoFeeding(9000)); "
+    "assert(InsertEvolutionRecipeLGU(9001,9002,501,5)); "
+    "assert(not InsertPetAutoFeeding(false)); assert(not InsertPetAutoFeeding(9000)); "
     "assert(InsertPetAutoFeeding(9001)); assert(InsertPetAutoFeeding(9001)); "
     "assert(InsertPetAutoFeeding(9499)); return true,'good' end";
 static const char airplane_script[] =
@@ -162,12 +160,12 @@ static void emit(unsigned value)
 }
 static void empty(void)
 {
-    assert(!g_championMonster && !g_attendanceTable && !g_petTable && !g_airshipTickets);
+    assert(!g_championMonster && !g_attendanceTable && !g_petAutoFeed && !g_airshipTickets);
     assert(!live_blocks && !lua_bytes);
 }
 static void destroy_all(void)
 {
-    pet_evolution_destroy(); private_airplane_destroy(); check_attendance_destroy(); champion_monster_destroy();
+    pet_auto_feed_destroy(); private_airplane_destroy(); check_attendance_destroy(); champion_monster_destroy();
     empty();
 }
 static struct String text(const char *value)
@@ -177,17 +175,15 @@ static struct String text(const char *value)
 static void populated(void)
 {
     struct AttendanceItem reward;
-    struct PetFoundList found;
-    struct PetMaterial *material;
     struct ChampionMonster *node;
     unsigned before;
     int i,job;
     script_mode=SCRIPT_VALID;
     assert(champion_monster_create()); assert(champion_monster_load()); assert(!lua_bytes);
-    assert(check_attendance_create()); assert(pet_evolution_create()); assert(private_airplane_create());
+    assert(check_attendance_create()); assert(pet_auto_feed_create()); assert(private_airplane_create());
     assert(!lua_bytes && live_blocks && !message_count);
     before=allocation_count;
-    assert(!champion_monster_create() && !check_attendance_create() && !pet_evolution_create() && !private_airplane_create());
+    assert(!champion_monster_create() && !check_attendance_create() && !pet_auto_feed_create() && !private_airplane_create());
     assert(allocation_count==before);
     for(job=1001;job<=1003;++job) {
         assert(champion_monster_is_champion(g_championMonster,job));
@@ -206,22 +202,12 @@ static void populated(void)
         assert(reward.count==(i>=1 && i<=3 ? i*2 : 0));
         emit(reward.item_id);emit(reward.count);
     }
-    assert(pet_evolution_is_auto_feeding(g_petTable,9001) && pet_evolution_is_auto_feeding(g_petTable,9499));
-    assert(!pet_evolution_is_auto_feeding(g_petTable,9002));
-    pet_evolution_targets(g_petTable,&found,9001); assert(found.found && VEC_COUNT(&found.list,int)==3);
-    for(i=0;i<3;++i) { assert(((int *)found.list.first)[i]==9002+i); emit(((int *)found.list.first)[i]); }
-    vec_free(&found.list);
-    for(i=9002;i<=9004;++i) {
-        pet_evolution_materials(g_petTable,&found,9001,i); assert(found.found && VEC_COUNT(&found.list,struct PetMaterial)==3);
-        for(material=found.list.first;material!=found.list.last;++material) {
-            assert(material->count==material->item_id-500);emit(material->item_id);emit(material->count);
-        }
-        ((struct PetMaterial *)found.list.first)->count=999;
-        vec_free(&found.list);
-    }
-    pet_evolution_materials(g_petTable,&found,9001,9002);assert(((struct PetMaterial *)found.list.first)->count==1);vec_free(&found.list);
-    pet_evolution_targets(g_petTable,&found,9009); assert(!found.found && !found.list.first); vec_free(&found.list);
-    pet_evolution_materials(g_petTable,&found,9001,9010);assert(!found.found && !found.list.first);vec_free(&found.list);
+    assert(pet_auto_feed_is_allowed(g_petAutoFeed,9001) && pet_auto_feed_is_allowed(g_petAutoFeed,9499));
+    assert(!pet_auto_feed_is_allowed(g_petAutoFeed,9002));
+    assert(VEC_COUNT(&g_petAutoFeed->auto_feeding,int)==2);
+    assert(((int *)g_petAutoFeed->auto_feeding.first)[0]==9001);
+    assert(((int *)g_petAutoFeed->auto_feeding.first)[1]==9499);
+    emit(9001);emit(9499);
     assert(g_airshipTickets->need_items.size==3);
     for(i=0;i<3;++i) { assert(private_airplane_need_item(g_airshipTickets,i)==501+i); emit(private_airplane_need_item(g_airshipTickets,i)); }
     assert(private_airplane_can_start(g_airshipTickets,text("prontera.gat")));
@@ -241,14 +227,14 @@ static void failed_loads(void)
     for(mode=SCRIPT_MISSING;mode<=SCRIPT_NO_MAIN;++mode) {
         script_mode=mode;message_count=0;
         assert(champion_monster_create());assert(!champion_monster_load());champion_monster_destroy();empty();
-        assert(!check_attendance_create());empty();assert(!pet_evolution_create());empty();assert(!private_airplane_create());empty();
+        assert(!check_attendance_create());empty();assert(!pet_auto_feed_create());empty();assert(!private_airplane_create());empty();
         assert(message_count==4);emit(message_count);
     }
     message_count=0;script_mode=SCRIPT_VALID;fail_state=1;
     assert(champion_monster_create());assert(!champion_monster_load());champion_monster_destroy();empty();
-    assert(!check_attendance_create() && !pet_evolution_create() && !private_airplane_create());empty();
+    assert(!check_attendance_create() && !pet_auto_feed_create() && !private_airplane_create());empty();
     assert(!message_count);fail_state=0;fail_manager=1;
-    assert(!champion_monster_create() && !check_attendance_create() && !pet_evolution_create() && !private_airplane_create());empty();
+    assert(!champion_monster_create() && !check_attendance_create() && !pet_auto_feed_create() && !private_airplane_create());empty();
     fail_manager=0;emit(0);
 }
 static void duplicate_reward(void)
@@ -273,7 +259,7 @@ int main(int argc,char **argv)
     duplicate_reward();
 #endif
     if(trace) assert(fclose(trace)==0);
-    assert(trace_hash==0x3269b995u);
+    assert(trace_hash==0x756fb6edu);
     printf("Lua data managers: real loaders, populated queries, owned results, failures and repeated cleanup passed; digest %08x.\n",trace_hash);
     return 0;
 }

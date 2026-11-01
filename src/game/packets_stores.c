@@ -8,7 +8,6 @@
 #include <time.h>
 #include "game/packets.h"
 #include "game/store_entries.h"
-#include "replay/replay.h"
 #include "core/text_util.h"
 #include "game/store_search_items.h"
 #include "session/session_items.h"
@@ -341,8 +340,6 @@ void game_mode_zc_pc_purchase_my_itemlist(struct GameMode *self, const unsigned 
     const struct MyVendingEntry *entry = packet->entries;
     unsigned count;
 
-    if (g_replayPlaying != 0)
-        game_send_message(MM_VENDING_OPENED, 0, 0, 0, 0);
     session_clear_own_store_items(&g_session1);
     count = (unsigned)(packet->packet_length - 8) / sizeof *entry;
     if (count == 0) {

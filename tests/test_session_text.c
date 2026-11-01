@@ -74,6 +74,7 @@ static LSTATUS WINAPI read_value(HKEY key, LPCSTR name, LPDWORD reserved, LPDWOR
     *type = REG_SZ;
     switch (atoi(name)) {
     case 0: text = "custom"; break;
+    case 1: text = ""; break;
     case 2: text = "/기쁨"; break;
     case 3: *type = REG_BINARY; text = "ignored"; break;
     case 4:
@@ -106,7 +107,6 @@ char *msg_str(int id)
 static void clear_macros(struct Session *session)
 {
     text_array_clear(&session->chatMacros);
-    text_array_clear(&session->chatMacrosLoaded);
     assert(!live);
 }
 static void old_macros(struct Session *session)
@@ -176,76 +176,35 @@ static void test_arrays(void)
     text_array_clear(&array); text_array_clear(&array);
     assert(!live);
 }
+
 static int test_json_macros(void)
 {
     static struct Session session;
-    struct JsonTree root, data, roundtrip, scalar;
+    struct JsonTree data, roundtrip;
     struct OwnedText encoded = {0};
-    struct TextArray previous, snapshot;
-    char input[4096], large[4097];
-    int i, count, failures = 0;
-    size_t used = 0;
-    assert(session_chat_macros_changed(&session));
+    struct TextArray previous;
+    const struct JsonTree *list;
+    char large[4097];
     assert(!session_chat_macro(&session, -1).size && !session_chat_macro(&session, 10).size);
-    attempts = 0;
-    assert(!session_set_chat_macro(&session, -1, text_view_cstr("x")) && !attempts);
-    assert(!session_set_chat_macro(&session, 10, text_view_cstr("x")) && !attempts);
+    assert(!session_set_chat_macro(&session, -1, text_view_cstr("x")));
     old_macros(&session);
     previous = session.chatMacros;
     attempts = 0; fail_at = 1;
     assert(!session_set_chat_macro(&session, 0, text_view_cstr("replacement")));
     fail_at = 0;
-    assert(session.chatMacros.items == previous.items && !strcmp(session_chat_macro(&session, 0).data, "old-0"));
-    json_tree_init(&root);
-    used += sprintf(input + used, "[");
-    for (i = 0; i < 64; ++i) used += sprintf(input + used, "%s\"slot-%d\"", i ? "," : "", i);
-    used += sprintf(input + used, "]");
-    assert(json_parse_text(&root, input, used));
-    attempts = 0;
-    assert(session_read_chat_macros(&session, &root));
-    count = attempts;
-    assert(session.chatMacros.size == 10 && session.chatMacrosLoaded.size == 10);
-    assert(!strcmp(session_chat_macro(&session, 9).data, "slot-9") && !session_chat_macros_changed(&session));
-    for (i = 1; i <= count; ++i) {
-        old_macros(&session);
-        previous = session.chatMacros; snapshot = session.chatMacrosLoaded;
-        attempts = 0; fail_at = i;
-        assert(!session_read_chat_macros(&session, &root));
-        fail_at = 0; ++failures;
-        assert(previous.items == session.chatMacros.items && snapshot.items == session.chatMacrosLoaded.items);
-        assert(!strcmp(session_chat_macro(&session, 0).data, "old-0"));
-        assert(!strcmp(text_array_at(&session.chatMacrosLoaded, 9).data, "slot-9"));
-    }
-    json_tree_free(&root);
-    assert(json_parse_text(&root, "[\"head\\u0000tail\",true,false,7,null]", strlen("[\"head\\u0000tail\",true,false,7,null]")));
-    assert(session_read_chat_macros(&session, &root));
-    assert(session_chat_macro(&session, 0).size == 9 && !memcmp(session_chat_macro(&session, 0).data, "head\0tail", 9));
-    assert(!strcmp(session_chat_macro(&session, 1).data, "true"));
-    assert(!strcmp(session_chat_macro(&session, 2).data, "false"));
-    assert(!session_chat_macro(&session, 3).size && !session_chat_macro(&session, 4).size);
-    assert(!strcmp(session_chat_macro(&session, 5).data, "old-5"));
-    assert(!text_array_at(&session.chatMacrosLoaded, 5).size && session_chat_macros_changed(&session));
-    memset(large, 'L', sizeof large - 1); large[sizeof large - 1] = 0;
+    assert(previous.items == session.chatMacros.items && !strcmp(session_chat_macro(&session, 0).data, "old-0"));
+    memset(large, 'z', sizeof large - 1); large[sizeof large - 1] = 0;
     assert(session_set_chat_macro(&session, 9, text_view_cstr(large)));
-    assert(session_chat_macro(&session, 9).size == 4096);
     json_tree_init(&data); json_tree_init(&roundtrip);
     session_write_chat_macros(&session, &data);
     assert(json_write_request(&data, &encoded));
-    assert(json_parse_text(&roundtrip, owned_text_cstr(&encoded), encoded.size));
-    assert(session_read_chat_macros(&session, json_tree_find(&roundtrip, "EmotionHotkey", 13)));
-    assert(!session_chat_macros_changed(&session) && session_chat_macro(&session, 9).size == 4096);
-    assert(session_chat_macro(&session, 0).size == 9);
-    owned_text_clear(&encoded); json_tree_free(&roundtrip); json_tree_free(&data);
-    json_value_from_int(&scalar, 4);
-    previous = session.chatMacros;
-    assert(!session_read_chat_macros(&session, &scalar) && previous.items == session.chatMacros.items);
-    json_tree_free(&scalar); json_tree_free(&root);
-    assert(session_read_chat_macros(&session, NULL) && session_chat_macros_changed(&session));
-    assert(text_array_resize(&session.chatMacrosLoaded, 3) && session_chat_macros_changed(&session));
+    assert(json_parse_text(&roundtrip, encoded.data, encoded.size));
+    list = json_tree_find(&roundtrip, "EmotionHotkey", 13);
+    assert(list && list->count == CHAT_MACRO_COUNT && list->u.items[9].count == 4096);
+    assert(!memcmp(list->u.items[9].u.text, large, 4096));
+    json_tree_free(&data); json_tree_free(&roundtrip); owned_text_clear(&encoded);
     clear_macros(&session);
-    assert(session_read_chat_macros(&session, NULL) && !session_chat_macros_changed(&session));
-    clear_macros(&session);
-    return failures;
+    return 1;
 }
 static int test_defaults(void)
 {
@@ -257,6 +216,7 @@ static int test_defaults(void)
     session_init_short_cut_texts(&session);
     count = attempts;
     assert(!strcmp(session_chat_macro(&session, 0).data, "custom"));
+    assert(session_chat_macro(&session, 1).size == 0);
     assert(!strcmp(session_chat_macro(&session, 2).data, "default-222"));
     assert(!strcmp(session_chat_macro(&session, 3).data, "default-223"));
     assert(!strcmp(session_chat_macro(&session, 4).data, "unterminated"));

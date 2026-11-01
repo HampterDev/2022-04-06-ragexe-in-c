@@ -1,5 +1,4 @@
 #include "game/item_list_packets.h"
-#include "ui/record_tags.h"
 #ifndef UI_ITEM_LIST_H
 #define UI_ITEM_LIST_H
 
@@ -69,10 +68,6 @@ void item_list_update_scroll(struct UIItemIdentifyWnd *self);
 int item_list_scroll(struct UIItemIdentifyWnd *self, int msg, int rows);
 void item_list_set_info(struct UIItemIdentifyWnd *self, struct WindowInfo **slot, struct WindowInfo *info);
 void item_list_add_inventory_item(struct UIItemIdentifyWnd *self, int index);
-int item_list_packet_records(struct UIItemIdentifyWnd *self, struct ReplayBuffer *out, int begin,
-                                           int end, int tag, int packet_id);
-void item_list_load_packets(const char *buf, unsigned size, int begin, int end, int tag,
-                            void(*handler)(struct GameMode *, const unsigned char *));
 
 void ui_item_identify_wnd_store_info(struct UIWindow *window);
 void ui_item_identify_wnd_on_l_btn_down(struct UIWindow *window, int x, int y);

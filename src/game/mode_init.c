@@ -11,18 +11,6 @@
 #include "session/option_pairs.h"
 #include "game/talk_type.h"
 #include "session/character_name.h"
-#include "navi/snapshot.h"
-#include "game/actor_snapshot.h"
-#include "ui/window_records.h"
-#include "game/emblem_snapshot.h"
-#include "game/world_snapshot.h"
-#include "session/snapshot_party.h"
-#include "session/snapshot_items.h"
-#include "session/snapshot_values.h"
-#include "replay/replay.h"
-#include "ui/social/entry_queue_snapshot.h"
-#include "ui/social/entry_queue_state.h"
-#include "contents/quest_blob.h"
 #include "contents/quest.h"
 #include "navi/navi_manager.h"
 #include "contents/sound.h"
@@ -40,7 +28,6 @@
 #include <time.h>
 #include "game/gamemode.h"
 #include "game/client.h"
-#include "game/replay.h"
 #include "game/ui_bridge.h"
 #include "game/session_bridge.h"
 #include "game/own_states.h"
@@ -65,73 +52,6 @@ enum { CZ_REQ_SCHEDULER_CASHITEM = 0x8c9 };
 
 enum { UIWM_CHAT_LINE = 1 };
 
-static int load_quest_snapshot(struct ReplayRecorder *rec)
-{
-    struct ReplayBuffer chunk = {0};
-    int loaded = replay_read_chunk(rec, 6, &chunk) &&
-                 quest_blob_load(g_questTable, chunk.data, chunk.size) >= 0;
-    replay_buffer_destroy(&chunk);
-    return loaded;
-}
-
-static int load_queue_snapshot(struct ReplayRecorder *rec)
-{
-    struct ReplayBuffer chunk = {0};
-    int loaded = replay_read_chunk(rec, 0xc, &chunk) &&
-                 entry_queue_snapshot_load(g_entryQueueMgr, chunk.data, chunk.size) >= 0;
-    replay_buffer_destroy(&chunk);
-    return loaded;
-}
-
-typedef int (*SessionSnapshotLoader)(struct Session *, const void *, size_t);
-static int load_session_snapshot(struct ReplayRecorder *rec, int id, SessionSnapshotLoader load)
-{
-    struct ReplayBuffer chunk = {0};
-    int loaded = replay_read_chunk(rec, id, &chunk) &&
-                 load(&g_session1, chunk.data, chunk.size) >= 0;
-    replay_buffer_destroy(&chunk);
-    return loaded;
-}
-
-static int load_session_values(struct ReplayRecorder *rec, int id, enum SessionValueSnapshot kind)
-{
-    struct ReplayBuffer chunk = {0};
-    int loaded = replay_read_chunk(rec, id, &chunk) &&
-                 session_values_load(&g_session1, kind, chunk.data, chunk.size) >= 0;
-    replay_buffer_destroy(&chunk);
-    return loaded;
-}
-
-static int load_replay_state(struct GameMode *self)
-{
-    struct ReplayRecorder *rec;
-
-    replay_recorder_instance()->speed = 1.0f;
-    rec = replay_recorder_instance();
-    if (!load_quest_snapshot(rec)) goto invalid_snapshot;
-    if (!load_session_values(replay_recorder_instance(), 4, SESSION_VALUES_CHARACTER)) goto invalid_snapshot;
-    if (!load_session_snapshot(rec, 8, session_items_load)) goto invalid_snapshot;
-    if (!load_session_values(replay_recorder_instance(), 9, SESSION_VALUES_COMPANIONS)) goto invalid_snapshot;
-    if (!load_session_snapshot(rec, 7, session_party_load)) goto invalid_snapshot;
-    if (!load_session_values(replay_recorder_instance(), 0xa, SESSION_VALUES_DUNGEON)) goto invalid_snapshot;
-    if (!load_queue_snapshot(rec)) goto invalid_snapshot;
-    if (!load_session_values(replay_recorder_instance(), 0xd, SESSION_VALUES_HOTKEYS)) goto invalid_snapshot;
-    if (!game_emblems_restore(self, rec)) goto invalid_snapshot;
-    if (!game_actors_restore(self, rec)) goto invalid_snapshot;
-    if (!game_world_snapshot_restore(self, rec)) goto invalid_snapshot;
-    if (!navi_state_restore(&g_navi, rec)) goto invalid_snapshot;
-    if (!ui_window_snapshots_restore(&g_windowMgr, rec)) goto invalid_snapshot;
-    replay_recorder_rewind(replay_recorder_instance());
-    self->replay_paused_at = 0;
-    ui_window_mgr_show_option_window(&g_windowMgr, 1, replay_recorder_instance()->info.options[6]);
-    return 1;
-
-invalid_snapshot:
-    replay_recorder_close(rec);
-    game_mode_msg_replay_to_login(0x1a, REPLAY_STATE_IDLE);
-    return 0;
-}
-
 static void store_own_names(struct GameMode *self)
 {
     struct String name;
@@ -147,17 +67,7 @@ static void store_own_names(struct GameMode *self)
 
 static void play_map_bgm(struct GameMode *self)
 {
-    struct String map, bgm;
-    const char *name;
-
-    string_init(&map);
-    string_assign_cstr(&map, self->map_name);
-    name = session_get_mp3_name(&g_session1, string_cstr(&map));
-    string_init(&bgm);
-    string_assign_cstr(&bgm, name);
-    sound_play_bgm(string_cstr(&bgm));
-    string_free(&bgm);
-    string_free(&map);
+    sound_play_bgm(session_get_mp3_name(&g_session1, self->map_name));
 }
 
 void game_mode_on_init(struct Mode *mode, const char *map)
@@ -177,12 +87,7 @@ void game_mode_on_init(struct Mode *mode, const char *map)
     self->boss_y = -1;
     self->boss_shown = 0;
     self->copy_name = 0;
-    if (replay_recorder_instance()->state == REPLAY_STATE_STOPPED &&
-        !own_states_restore(replay_recorder_instance())) {
-        replay_recorder_close(replay_recorder_instance());
-        game_mode_msg_replay_to_login(0x1a, REPLAY_STATE_IDLE);
-        return;
-    }
+
     session_clear_transform_jobs(&g_session1, 1, 0, 0);
 
     world = mem_alloc(sizeof *world);
@@ -229,11 +134,9 @@ void game_mode_on_init(struct Mode *mode, const char *map)
     play_map_bgm(self);
     g_weather.ground_lighting = 0;
     game_mode_apply_fog(self, g_session1.fogOn);
-    replay_recorder_reset_clock(replay_recorder_instance());
     session_reset_mail_items(&g_session1);
     session_clear_mail_item_counts(&g_session1);
     game_mode_initialize(self);
-    game_mode_pass_map_rsw();
 
     frame_timer_reset();
     self->attack_repeat = 0;
@@ -245,15 +148,10 @@ void game_mode_on_init(struct Mode *mode, const char *map)
         sprintf(line, "Now Auto chat Save System is ENABLED.");
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)line, 0xffff, 0, 0);
     }
-    if (g_replayPlaying == 0)
-        game_mode_add_schedules();
+    game_mode_add_schedules();
     if (session_cash_shop_goods_empty(&g_session1)) {
         packet = CZ_REQ_SCHEDULER_CASHITEM;
         send_packet(CZ_REQ_SCHEDULER_CASHITEM, &packet);
-    }
-    if (replay_recorder_instance()->state == REPLAY_STATE_STOPPED && !load_replay_state(self)) {
-        string_free(&minimap);
-        return;
     }
 
     if (g_wobbleMode == 2) {

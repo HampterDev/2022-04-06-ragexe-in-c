@@ -1,0 +1,217 @@
+--- a/src/session/pet.c
++++ b/src/session/pet.c
+@@ -2,7 +2,6 @@
+ #include "session/csession.h"
+ #include "session/session_talk.h"
+ 
+-#include <stdio.h>
+ #include <string.h>
+ 
+ static int pet_level(int value)
+@@ -137,14 +136,27 @@
+     return text;
+ }
+ 
+-void session_get_pet_illust_name(struct Session *self, int petJob, char *out)
+-{
++void session_get_pet_illust_name(struct Session *self, int petJob, char *out, size_t outSize)
++{
++    static const char fallback[] = "UserInterface\\illust\\PET_NOIMAGE.bmp";
+     const char *name = NULL;
+-
+-    if (client_lua_call(self->luaState, "GetPetIllustName_V3", "db>s", petJob, 1, &name))
+-        sprintf(out, name);
+-    else
+-        sprintf(out, "UserInterface\\illust\\PET_NOIMAGE.bmp");
++    size_t length;
++
++    if (outSize == 0)
++        return;
++    if (!client_lua_call(self->luaState, "GetPetIllustName_V3", "db>s", petJob, 1, &name)
++        || name == NULL)
++        name = fallback;
++    length = strlen(name);
++    if (length >= outSize) {
++        name = fallback;
++        length = sizeof fallback - 1;
++    }
++    if (length >= outSize) {
++        out[0] = '\0';
++        return;
++    }
++    memcpy(out, name, length + 1);
+ }
+ 
+ const char *session_get_pet_accessory_act(struct Session *self, int accessory)
+--- a/src/session/session_talk.h
++++ b/src/session/session_talk.h
+@@ -1,5 +1,7 @@
+ #ifndef SESSION_SESSION_TALK_H
+ #define SESSION_SESSION_TALK_H
++
++#include <stddef.h>
+ 
+ struct Session;
+ struct String;
+@@ -42,7 +44,7 @@
+ int session_get_pet_food(struct Session *self, int petJob);
+ int session_get_pet_job_by_egg(struct Session *self, int eggItemId);
+ const char *session_get_pet_string(struct Session *self, int petJob);
+-void session_get_pet_illust_name(struct Session *self, int petJob, char *out);
++void session_get_pet_illust_name(struct Session *self, int petJob, char *out, size_t outSize);
+ const char *session_get_pet_accessory_act(struct Session *self, int accessory);
+ const char *session_get_pet_name(int petJob);
+ 
+--- a/src/ui/items/pet_info.c
++++ b/src/ui/items/pet_info.c
+@@ -472,7 +472,7 @@
+     if (!(job > 1000 && job < 0xf9f) && (unsigned)(job - 0x4e35) > 0x2eca)
+         return;
+     memset(illust, 0, 0x104);
+-    session_get_pet_illust_name(&g_session1, job, illust);
++    session_get_pet_illust_name(&g_session1, job, illust, sizeof illust);
+     res = object_as_type(res_mgr_get(g_resMgr(), illust), OBJECT_BITMAP_RESOURCE);
+     if (res)
+         ui_window_draw_bitmap(&self->frame.base, 5, 0x15, res, 0);
+--- a/src/ui/character/pet_evolution_wnd.c
++++ b/src/ui/character/pet_evolution_wnd.c
+@@ -142,7 +142,7 @@
+     memset(path, 0, sizeof path);
+     if (job == -1)
+         return;
+-    session_get_pet_illust_name(&g_session1, job, path);
++    session_get_pet_illust_name(&g_session1, job, path, sizeof path);
+     illust = load_bitmap(path);
+     if (!illust)
+         illust = load_bitmap("userinterface\\illust\\pet_noimage.bmp");
+--- /dev/null
++++ b/tests/build_pet_portrait.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\pet_portrait"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_pet_portrait.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /std:c11 /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%OUT%" "%ROOT%\tests\test_pet_portrait.c" /Fe:test_pet_portrait.exe
++if errorlevel 1 (popd & exit /b 1)
++test_pet_portrait.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+--- /dev/null
++++ b/tests/extract_pet_portrait.py
+@@ -0,0 +1,12 @@
++"""Compile the production portrait filename helper with a controlled Lua boundary."""
++from pathlib import Path
++import sys
++
++source, output = map(Path, sys.argv[1:])
++output.mkdir(parents=True, exist_ok=True)
++text = (source / 'src/session/pet.c').read_text(encoding='utf-8')
++signature = 'void session_get_pet_illust_name('
++assert text.count(signature) == 1
++start = text.index(signature)
++function = text[start:text.index('\n}', start) + 2]
++(output / 'pet_portrait.inc').write_text(function + '\n', encoding='utf-8')
+--- /dev/null
++++ b/tests/test_pet_portrait.c
+@@ -0,0 +1,95 @@
++#include "session/session_talk.h"
++#include "contents/client_lua_calls.h"
++
++#include <assert.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Extract the production helper; substitute only its Lua lookup boundary. */
++struct Session { struct ClientLua *luaState; };
++static struct Session session;
++static const char *lua_name;
++static int lua_success, lua_calls, cases;
++static const char fallback[] = "UserInterface\\illust\\PET_NOIMAGE.bmp";
++
++int client_lua_call(struct ClientLua *lua, const char *function, const char *format, ...)
++{
++    va_list args;
++    const char **result;
++    assert(lua == session.luaState);
++    assert(!strcmp(function, "GetPetIllustName_V3"));
++    assert(!strcmp(format, "db>s"));
++    va_start(args, format);
++    assert(va_arg(args, int) == 1002);
++    assert(va_arg(args, int) == 1);
++    result = va_arg(args, const char **);
++    *result = lua_name;
++    va_end(args);
++    ++lua_calls;
++    return lua_success;
++}
++
++#include "pet_portrait.inc"
++
++static void check_name(const char *name, int success, size_t capacity, const char *expected)
++{
++    unsigned char memory[512];
++    size_t i, written = capacity ? strlen(expected) + 1 : 0;
++    int previous_calls = lua_calls;
++    assert(capacity <= sizeof memory - 16);
++    memset(memory, 0xa5, sizeof memory);
++    lua_name = name;
++    lua_success = success;
++    session_get_pet_illust_name(&session, 1002, (char *)memory + 8, capacity);
++    assert(lua_calls == previous_calls + (capacity != 0));
++    assert(written <= capacity);
++    if (capacity)
++        assert(!memcmp(memory + 8, expected, written));
++    for (i = 0; i < 8; ++i)
++        assert(memory[i] == 0xa5);
++    for (i = 8 + written; i < sizeof memory; ++i)
++        assert(memory[i] == 0xa5);
++    ++cases;
++}
++
++int main(void)
++{
++    char long_name[1024];
++    size_t capacities[] = {260, 264};
++    size_t i;
++    int previous_calls;
++
++    check_name("UserInterface\\illust\\PET_PORING.bmp", 1, 260,
++               "UserInterface\\illust\\PET_PORING.bmp");
++    check_name("UserInterface\\illust\\100%%_%s_%n.bmp", 1, 260,
++               "UserInterface\\illust\\100%%_%s_%n.bmp");
++    check_name("UserInterface\\illust\\\xb8\xf3.bmp", 1, 264,
++               "UserInterface\\illust\\\xb8\xf3.bmp");
++    check_name("", 1, 260, "");
++    check_name(NULL, 1, 260, fallback);
++    check_name("ignored.bmp", 0, 260, fallback);
++    check_name(NULL, 0, sizeof fallback, fallback);
++    check_name(NULL, 0, sizeof fallback - 1, "");
++    check_name("x", 1, 2, "x");
++    check_name("x", 1, 1, "");
++    check_name(NULL, 0, 0, "");
++    previous_calls = lua_calls;
++    session_get_pet_illust_name(&session, 1002, NULL, 0);
++    assert(lua_calls == previous_calls);
++    ++cases;
++    for (i = 0; i < sizeof capacities / sizeof *capacities; ++i) {
++        size_t capacity = capacities[i];
++        memset(long_name, 'x', sizeof long_name);
++        long_name[capacity - 1] = '\0';
++        check_name(long_name, 1, capacity, long_name);
++        long_name[capacity - 1] = 'x';
++        long_name[capacity] = '\0';
++        check_name(long_name, 1, capacity, fallback);
++        long_name[capacity] = 'x';
++        long_name[sizeof long_name - 1] = '\0';
++        check_name(long_name, 1, capacity, fallback);
++    }
++    printf("Pet portraits: %d cases passed (literal bytes, Lua failures, exact fit, overflow fallback and buffer guards).\n", cases);
++    return 0;
++}

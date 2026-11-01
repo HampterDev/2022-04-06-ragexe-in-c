@@ -1,0 +1,320 @@
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -35,6 +35,7 @@
+ #include "map/goldpc.h"
+ #include "map/grader.h"
+ #include "map/guild.h"
++#include "map/emblem_gif.h"
+ #include "map/homunculus.h"
+ #include "map/instance.h"
+ #include "map/intif.h"
+@@ -8726,7 +8727,19 @@
+ 	const int fd = sd->fd;
+ 
+ #if PACKETVER_MAIN_NUM >= 20190821 || PACKETVER_RE_NUM >= 20190807 || PACKETVER_ZERO_NUM >= 20190710
+-	WFIFO_CLIENT_CHUNKED_INIT(p, fd, HEADER_ZC_GUILD_EMBLEM_IMG, PACKET_ZC_GUILD_EMBLEM_IMG, g->emblem_data, g->emblem_len) {
++	const char *image = g->emblem_data;
++	int image_len = g->emblem_len;
++	unsigned char legacy[1800];
++	unsigned long legacy_size = sizeof legacy;
++	if (!(image_len >= 2 && memcmp(image, "BM", 2) == 0) &&
++	    !(image_len >= 6 && (memcmp(image, "GIF87a", 6) == 0 || memcmp(image, "GIF89a", 6) == 0))) {
++		if (grfio->decode_zip(legacy, &legacy_size, image, image_len) != 0 ||
++		    !clif->validate_emblem((const uint8 *)image, image_len))
++			return;
++		image = (const char *)legacy;
++		image_len = (int)legacy_size;
++	}
++	WFIFO_CLIENT_CHUNKED_INIT(p, fd, HEADER_ZC_GUILD_EMBLEM_IMG, PACKET_ZC_GUILD_EMBLEM_IMG, image, image_len) {
+ 		WFIFO_CLIENT_CHUNKED_BLOCK_START(p, emblem_data);
+ 		p->guild_id = g->guild_id;
+ 		p->emblem_id = g->emblem_id;
+@@ -15620,18 +15633,6 @@
+ 		BITMAPFILEHEADER_SIZE = 14, // sizeof(BITMAPFILEHEADER)
+ 		BITMAPINFOHEADER_SIZE = 40, // sizeof(BITMAPINFOHEADER)
+ 	};
+-#if !defined(sun) && (!defined(__NETBSD__) || __NetBSD_Version__ >= 600000000) // NetBSD 5 and Solaris don't like pragma pack but accept the packed attribute
+-#pragma pack(push, 1)
+-#endif // not NetBSD < 6 / Solaris
+-	struct s_bitmaptripple {
+-		//uint8 b;
+-		//uint8 g;
+-		//uint8 r;
+-		uint32 rgb:24;
+-	} __attribute__((packed));
+-#if !defined(sun) && (!defined(__NETBSD__) || __NetBSD_Version__ >= 600000000) // NetBSD 5 and Solaris don't like pragma pack but accept the packed attribute
+-#pragma pack(pop)
+-#endif // not NetBSD < 6 / Solaris
+ 	uint8 buf[1800]; // no well-formed emblem bitmap is larger than 1782 (24 bit) / 1654 (8 bit) bytes
+ 	unsigned long buf_len = sizeof(buf);
+ 	int header = 0, bitmap = 0, offbits = 0, palettesize = 0;
+@@ -15714,11 +15715,12 @@
+ 			}
+ 			case 24: // full colors
+ 			{
+-				const struct s_bitmaptripple *pixels = RBUFP(buf,offbits);
++				const uint8 *pixels = RBUFP(buf,offbits);
+ 
+ 				for (i = 0; i < extraconf->emblems->guild_emblem_width * extraconf->emblems->guild_emblem_height; i++) {
+ 					// if( pixels[i].r < 0xF8 || pixels[i].g > 0x07 || pixels[i].b < 0xF8 )
+-					if( ( pixels[i].rgb&0xF8F8F8 ) != 0xF800F8 ) {
++					const uint32 rgb = pixels[i * 3] | ((uint32)pixels[i * 3 + 1] << 8) | ((uint32)pixels[i * 3 + 2] << 16);
++					if( ( rgb&0xF8F8F8 ) != 0xF800F8 ) {
+ 						if( ++found_pixels >= required_pixels ) {
+ 							// Enough valid pixels were found
+ 							return true;
+@@ -15744,13 +15746,32 @@
+ 	if (sd->state.trading || pc_isdead(sd) || pc_isvending(sd))
+ 		return;
+ 
++	if (RFIFOW(fd, 2) < 4)
++		return;
+ 	unsigned int emblem_len = RFIFOW(fd, 2) - 4;
+ 	const uint8* emblem = RFIFOP(fd, 4);
+ 
+ 	if (!emblem_len || !sd->state.gmaster_flag)
+ 		return;
+ 
++#if PACKETVER_MAIN_NUM >= 20190821 || PACKETVER_RE_NUM >= 20190807 || PACKETVER_ZERO_NUM >= 20190710
++	bool valid = false;
++	if (emblem_len <= 51200 && emblem_len >= 6 && memcmp(emblem, "GIF", 3) == 0) {
++		valid = emblem_len <= extraconf->emblems->max_gif_guild_emblem_size &&
++			emblem_gif_valid(emblem, emblem_len, extraconf->emblems->guild_emblem_width,
++				extraconf->emblems->guild_emblem_height, extraconf->emblems->min_guild_emblem_frames,
++				extraconf->emblems->max_guild_emblem_frames);
++	} else if (emblem_len >= 54 && emblem_len <= 1800 &&
++	           emblem_len <= extraconf->emblems->max_bmp_guild_emblem_size && memcmp(emblem, "BM", 2) == 0) {
++		unsigned char packed[2048];
++		unsigned long packed_size = sizeof packed;
++		valid = grfio->encode_zip(packed, &packed_size, emblem, emblem_len) == 0 &&
++			clif->validate_emblem(packed, packed_size);
++	}
++	if (!valid) {
++#else
+ 	if (!clif->validate_emblem(emblem, emblem_len)) {
++#endif
+ 		ShowWarning("clif_parse_GuildChangeEmblem: Rejected malformed guild emblem (size=%u, accound_id=%d, char_id=%d, guild_id=%d).\n",
+ 		            emblem_len, sd->status.account_id, sd->status.char_id, sd->status.guild_id);
+ 		return;
+--- /dev/null
++++ b/src/map/emblem_gif.c
+@@ -0,0 +1,95 @@
++#include "map/emblem_gif.h"
++#include <libgif/gif_lib.h>
++#include <stdlib.h>
++#include <string.h>
++
++struct EmblemGifInput {
++    const unsigned char *next;
++    size_t remaining;
++};
++
++static int emblem_gif_read(GifFileType *gif, GifByteType *out, int count)
++{
++    struct EmblemGifInput *input = gif->UserData;
++    if (count < 0 || (size_t)count > input->remaining)
++        return 0;
++    memcpy(out, input->next, (size_t)count);
++    input->next += count;
++    input->remaining -= count;
++    return count;
++}
++
++int emblem_gif_valid(const void *data, size_t size, int width, int height,
++                     int min_frames, int max_frames)
++{
++    struct EmblemGifInput input;
++    GifFileType *gif;
++    GifRecordType record;
++    GifByteType row[24];
++    int error, frames = 0, valid = 0, transparent = NO_TRANSPARENT_COLOR;
++    if (!data || size < 13 || size > 51200 || width != 24 || height != 24 ||
++        (memcmp(data, "GIF87a", 6) && memcmp(data, "GIF89a", 6)))
++        return 0;
++    input.next = data;
++    input.remaining = size;
++    gif = DGifOpen(&input, emblem_gif_read, &error);
++    if (!gif)
++        return 0;
++    if (gif->SWidth != width || gif->SHeight != height ||
++        (gif->SColorMap && gif->SBackGroundColor >= gif->SColorMap->ColorCount))
++        goto done;
++    while (DGifGetRecordType(gif, &record) != GIF_ERROR) {
++        if (record == TERMINATE_RECORD_TYPE) {
++            valid = frames > 0 && frames >= min_frames && input.remaining == 0;
++            break;
++        }
++        if (record == EXTENSION_RECORD_TYPE) {
++            GifByteType *block;
++            int label;
++            if (DGifGetExtension(gif, &label, &block) == GIF_ERROR)
++                goto done;
++            if (label == GRAPHICS_EXT_FUNC_CODE) {
++                GraphicsControlBlock control;
++                if (!block || block[0] != 4 ||
++                    DGifExtensionToGCB(block[0], block + 1, &control) == GIF_ERROR ||
++                    control.DisposalMode > DISPOSE_PREVIOUS)
++                    goto done;
++                transparent = control.TransparentColor;
++            }
++            while (block) {
++                if (DGifGetExtensionNext(gif, &block) == GIF_ERROR ||
++                    (label == GRAPHICS_EXT_FUNC_CODE && block))
++                    goto done;
++            }
++            if (label == PLAINTEXT_EXT_FUNC_CODE)
++                transparent = NO_TRANSPARENT_COLOR;
++        } else if (record == IMAGE_DESC_RECORD_TYPE) {
++            const GifImageDesc *image;
++            const ColorMapObject *palette;
++            int x, y;
++            if (frames >= max_frames || DGifGetImageHeader(gif) == GIF_ERROR)
++                goto done;
++            image = &gif->Image;
++            if (image->Width <= 0 || image->Height <= 0 || image->Left < 0 || image->Top < 0 ||
++                image->Width > width - image->Left || image->Height > height - image->Top)
++                goto done;
++            palette = image->ColorMap ? image->ColorMap : gif->SColorMap;
++            if (!palette || transparent >= palette->ColorCount)
++                goto done;
++            for (y = 0; y < image->Height; ++y) {
++                if (DGifGetLine(gif, row, image->Width) == GIF_ERROR)
++                    goto done;
++                for (x = 0; x < image->Width; ++x)
++                    if (row[x] >= palette->ColorCount)
++                        goto done;
++            }
++            ++frames;
++            transparent = NO_TRANSPARENT_COLOR;
++        } else {
++            goto done;
++        }
++    }
++done:
++    DGifCloseFile(gif, &error);
++    return valid;
++}
+--- /dev/null
++++ b/src/map/emblem_gif.h
+@@ -0,0 +1,6 @@
++#ifndef MAP_EMBLEM_GIF_H
++#define MAP_EMBLEM_GIF_H
++#include <stddef.h>
++int emblem_gif_valid(const void *data, size_t size, int width, int height,
++                     int min_frames, int max_frames);
++#endif
+--- a/src/map/Makefile.in
++++ b/src/map/Makefile.in
+@@ -53,14 +53,18 @@
+ MT19937AR_OBJ = $(MT19937AR_D)/mt19937ar.o
+ MT19937AR_H = $(MT19937AR_D)/mt19937ar.h
+ 
+-MAP_C = achievement.c atcommand.c battle.c battleground.c buyingstore.c channel.c chat.c \
++LIBGIF_D = ../../3rdparty/libgif
++LIBGIF_OBJ = $(addprefix $(LIBGIF_D)/, dgif_lib.o gifalloc.o gif_err.o openbsd-reallocarray.o)
++LIBGIF_H = $(addprefix $(LIBGIF_D)/, gif_lib.h gif_lib_private.h)
++
++MAP_C = emblem_gif.c achievement.c atcommand.c battle.c battleground.c buyingstore.c channel.c chat.c \
+         chrif.c clan.c clif.c date.c duel.c elemental.c enchantui.c goldpc.c grader.c guild.c homunculus.c HPMmap.c \
+         instance.c intif.c irc-bot.c itemdb.c log.c macro.c mail.c map.c mapiif.c mapreg_sql.c \
+         mercenary.c mob.c npc.c npc_chat.c party.c path.c pc.c pc_groups.c \
+         pet.c quest.c refine.c rodex.c script.c searchstore.c skill.c status.c storage.c \
+         stylist.c trade.c unit.c vending.c
+ MAP_OBJ = $(addprefix obj_sql/, $(patsubst %c,%o,$(MAP_C)))
+-MAP_H = achievement.h apipackets.h atcommand.h battle.h battleground.h buyingstore.h channel.h \
++MAP_H = emblem_gif.h achievement.h apipackets.h atcommand.h battle.h battleground.h buyingstore.h channel.h \
+         chat.h chrif.h clan.h clif.h date.h duel.h elemental.h enchantui.h goldpc.h grader.h guild.h homunculus.h \
+         HPMmap.h instance.h intif.h irc-bot.h itemdb.h log.h macro.h mail.h map.h mapiif.h \
+         mapreg.h mercenary.h messages.h messages_ad.h messages_main.h messages_re.h \
+@@ -73,7 +77,7 @@
+ 
+ HAVE_MYSQL=@HAVE_MYSQL@
+ ifeq ($(HAVE_MYSQL),yes)
+-	MAP_SERVER_SQL_DEPENDS=$(MAP_OBJ) $(COMMON_D)/obj_all/common.a $(COMMON_D)/obj_sql/common_sql.a $(MT19937AR_OBJ) $(LIBCONFIG_OBJ) $(LIBBACKTRACE_OBJ) $(SYSINFO_INC)
++	MAP_SERVER_SQL_DEPENDS=$(MAP_OBJ) $(COMMON_D)/obj_all/common.a $(COMMON_D)/obj_sql/common_sql.a $(MT19937AR_OBJ) $(LIBCONFIG_OBJ) $(LIBGIF_OBJ) $(LIBBACKTRACE_OBJ) $(SYSINFO_INC)
+ else
+ 	MAP_SERVER_SQL_DEPENDS=needs_mysql
+ endif
+@@ -112,7 +116,7 @@
+ Makefile: Makefile.in
+ 	@$(MAKE) -C ../.. src/map/Makefile
+ 
+-$(SYSINFO_INC): $(MAP_C) $(MAP_PH) $(MAP_H) $(COMMON_H) $(CONFIG_H) $(MT19937AR_H) $(LIBCONFIG_H) $(LIBBACKTRACE_H)
++$(SYSINFO_INC): $(MAP_C) $(MAP_PH) $(MAP_H) $(COMMON_H) $(CONFIG_H) $(MT19937AR_H) $(LIBCONFIG_H) $(LIBGIF_H) $(LIBBACKTRACE_H)
+ 	@echo "	MAKE	$@"
+ 	@$(MAKE) -C ../.. sysinfo
+ 
+@@ -133,7 +137,7 @@
+ ../../map-server@EXEEXT@: $(MAP_SERVER_SQL_DEPENDS) Makefile
+ 	@echo "	LD	$(notdir $@)"
+ 	@$(CC) @STATIC@ @LDFLAGS@ -o ../../map-server@EXEEXT@ $(MAP_OBJ) $(COMMON_D)/obj_all/common.a $(COMMON_D)/obj_sql/common_sql.a \
+-		$(MT19937AR_OBJ) $(LIBCONFIG_OBJ) $(LIBBACKTRACE_OBJ) @LIBS@ @MYSQL_LIBS@
++		$(MT19937AR_OBJ) $(LIBCONFIG_OBJ) $(LIBGIF_OBJ) $(LIBBACKTRACE_OBJ) @LIBS@ @MYSQL_LIBS@
+ 
+ # missing object files
+ $(COMMON_D)/obj_all/common.a:
+@@ -156,10 +160,14 @@
+ 	@echo "	MAKE	$@"
+ 	@$(MAKE) -C $(LIBBACKTRACE_D)
+ 
++$(LIBGIF_OBJ):
++	@echo "\tMAKE\t$@"
++	@$(MAKE) -C $(LIBGIF_D)
++
+ .SECONDEXPANSION:
+ 
+ # map object files
+ 
+-obj_sql/%.o: %.c $$(filter %.p.h, $(MAP_PH)) $(MAP_H) $(COMMON_H) $(CONFIG_H) $(MT19937AR_H) $(LIBCONFIG_H) $(LIBBACKTRACE_H) | obj_sql
++obj_sql/%.o: %.c $$(filter %.p.h, $(MAP_PH)) $(MAP_H) $(COMMON_H) $(CONFIG_H) $(MT19937AR_H) $(LIBCONFIG_H) $(LIBGIF_H) $(LIBBACKTRACE_H) | obj_sql
+ 	@echo "	CC	$<"
+ 	@$(CC) @CFLAGS@ @DEFS@ $(COMMON_INCLUDE) $(THIRDPARTY_INCLUDE) @MYSQL_CFLAGS@ @CPPFLAGS@ -c $(OUTPUT_OPTION) $<
+--- a/src/char/mapif.c
++++ b/src/char/mapif.c
+@@ -840,7 +840,7 @@
+ 	RFIFO_CHUNKED_COMPLETE(p) {
+ 		inter_guild->update_emblem(mapif->emblem_tmp.data_size,
+ 			p->guild_id,
+-			p->data);
++			mapif->emblem_tmp.data);
+ 		fifo_chunk_buf_clear(mapif->emblem_tmp);
+ 	}
+ 
+--- a/vcproj/map-server.vcxproj
++++ b/vcproj/map-server.vcxproj
+@@ -186,6 +186,7 @@
+     <ClInclude Include="..\src\map\chrif.h" />
+     <ClInclude Include="..\src\map\clan.h" />
+     <ClInclude Include="..\src\map\clif.h" />
++    <ClInclude Include="..\src\map\emblem_gif.h" />
+     <ClInclude Include="..\src\map\date.h" />
+     <ClInclude Include="..\src\map\duel.h" />
+     <ClInclude Include="..\src\map\elemental.h" />
+@@ -284,6 +285,12 @@
+     <ClCompile Include="..\src\map\chrif.c" />
+     <ClCompile Include="..\src\map\clan.c" />
+     <ClCompile Include="..\src\map\clif.c" />
++    <ClCompile Include="..\src\map\emblem_gif.c" />
++    <ClCompile Include="..\3rdparty\libgif\dgif_lib.c" />
++    <ClCompile Include="..\3rdparty\libgif\gifalloc.c" />
++    <ClCompile Include="..\3rdparty\libgif\gif_err.c" />
++    <ClCompile Include="..\3rdparty\libgif\openbsd-reallocarray.c" />
++
+     <ClCompile Include="..\src\map\date.c" />
+     <ClCompile Include="..\src\map\duel.c" />
+     <ClCompile Include="..\src\map\elemental.c" />
+--- a/vcproj/map-server.vcxproj.filters
++++ b/vcproj/map-server.vcxproj.filters
+@@ -576,4 +576,12 @@
+       <UniqueIdentifier>{d7d16c66-c973-45d7-b47f-a1f80a898b9b}</UniqueIdentifier>
+     </Filter>
+   </ItemGroup>
++  <ItemGroup>
++    <ClCompile Include="..\src\map\emblem_gif.c" />
++    <ClCompile Include="..\3rdparty\libgif\dgif_lib.c" />
++    <ClCompile Include="..\3rdparty\libgif\gifalloc.c" />
++    <ClCompile Include="..\3rdparty\libgif\gif_err.c" />
++    <ClCompile Include="..\3rdparty\libgif\openbsd-reallocarray.c" />
++    <ClInclude Include="..\src\map\emblem_gif.h" />
++  </ItemGroup>
+ </Project>

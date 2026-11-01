@@ -1,3 +1,4 @@
+#include "contents/adventurer_agency.h"
 #include "game/actor_packets.h"
 #include "game/barter_packets.h"
 #include "game/chat_room.h"
@@ -14,21 +15,16 @@
 #include "game/packets_macro_detector.h"
 #include "game/party_booking_packets.h"
 #include "game/quest_packets.h"
-#include "game/repute.h"
 #include "platform/error_message.h"
 #include "session/skill_commands.h"
-#include "ui/social/entry_queue_state.h"
 #include <string.h>
 #include "game/captcha_packets.h"
 #include "game/store_entries.h"
 #include "game/user_config.h"
 #include "game/ranking_packets.h"
 #include "game/skill_cooldowns.h"
-#include "game/replay_navigation.h"
-#include "game/replay_actor_events.h"
 #include "contents/connection_api.h"
 #include "game/gamemode.h"
-#include "game/net.h"
 #include "game/packet_ids.h"
 #include "game/packet_dispatch.h"
 #include "game/client.h"
@@ -36,12 +32,6 @@
 #include "core/packet_table.h"
 
 #define WID_REFINING_UI     0x127
-
-static void answer_reassembly(short packet_id)
-{
-    short packet = packet_id;
-    rag_connection_send_packet(rag_connection_instance(), sizeof packet, &packet);
-}
 
 #pragma pack(push, 1)
 struct PACKET_ZC_NOTIFY_ACT3 {
@@ -111,14 +101,6 @@ struct PACKET_ZC_ACK_WHISPER02 {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_ACK_WHISPER02, 7);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_PET_EVOLUTION_RESULT {
-    unsigned short packet_type;
-    int result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_PET_EVOLUTION_RESULT, 6);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_ALL_ACH_LIST {
@@ -639,42 +621,6 @@ struct PACKET_ZC_SE_CASHSHOP_OPEN_V2 {
 SIZE_ASSERT(PACKET_ZC_SE_CASHSHOP_OPEN_V2, 14);
 
 #pragma pack(push, 1)
-struct PACKET_ZC_REPUTE_INFO {
-    unsigned short packet_type;
-    short packet_length;
-    unsigned char success;
-    struct ReputeEntry entries[];
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_REPUTE_INFO, 5);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_UI_OPEN_REPUTE {
-    unsigned short packet_type;
-    uint64_t group_id;
-    uint64_t info_id;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_UI_OPEN_REPUTE, 18);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_OPEN_REFORM_UI {
-    unsigned short packet_type;
-    int item_id;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_OPEN_REFORM_UI, 6);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_ITEM_REFORM_ACK {
-    unsigned short packet_type;
-    unsigned short index;
-    unsigned char result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ITEM_REFORM_ACK, 5);
-
-#pragma pack(push, 1)
 struct PACKET_ZC_SET_USERCONFIG_ACK {
     unsigned short packet_type;
     int type;
@@ -701,24 +647,6 @@ struct PACKET_ZC_RODEX_RETURN_ACK {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_RODEX_RETURN_ACK, 10);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_UI_OPEN_V3 {
-    unsigned short packet_type;
-    unsigned char ui_type;
-    uint64_t table_id;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_UI_OPEN_V3, 11);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_RESPONSE_ENCHANT {
-    unsigned short packet_type;
-    int result;
-    int item_id;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_RESPONSE_ENCHANT, 10);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_DIALOG_TEXT_ALIGN {
@@ -767,6 +695,7 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         return;
 
     switch (packet_id) {
+    case 0x0bf1: adventurer_agency_receive(g_adventurerAgency, pkt, packet_size); break;
     case HEADER_ZC_PARTY_BOOKING_ACK_REGISTER: if (packet_size >= 4) game_mode_zc_party_booking_ack_register(pkt); break;
     case HEADER_ZC_PARTY_BOOKING_ACK_SEARCH: game_mode_zc_party_booking_ack_search(pkt, packet_size); break;
     case HEADER_ZC_PARTY_BOOKING_ACK_DELETE: if (packet_size >= 4) game_mode_zc_party_booking_ack_delete(pkt); break;
@@ -797,65 +726,7 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_SE_CASHSHOP_OPEN2: game_mode_zc_se_cashshop_open(self, pkt); break;
     case HEADER_ZC_SE_PC_BUY_CASHITEM_RESULT: game_mode_zc_se_pc_buy_cashitem_result(self, pkt); break;
     case HEADER_ZC_ITEM_FALL_ENTRY4: game_mode_item_fall_entry4(self, (const struct PacketGroundItemFall4 *)pkt); break;
-    case HEADER_ZC_REASSEMBLY_AUTH01: answer_reassembly(0x884); break;
-    case HEADER_ZC_REASSEMBLY_AUTH02: net_send_header_only(0x885); break;
-    case HEADER_ZC_REASSEMBLY_AUTH03: answer_reassembly(0x886); break;
-    case HEADER_ZC_REASSEMBLY_AUTH04: answer_reassembly(0x887); break;
-    case HEADER_ZC_REASSEMBLY_AUTH05: answer_reassembly(0x888); break;
-    case HEADER_ZC_REASSEMBLY_AUTH06: net_send_header_only(0x889); break;
-    case HEADER_ZC_REASSEMBLY_AUTH07: answer_reassembly(0x88a); break;
-    case HEADER_ZC_REASSEMBLY_AUTH08: net_send_header_only2(0x88b); break;
-    case HEADER_ZC_REASSEMBLY_AUTH09: answer_reassembly(0x88c); break;
-    case HEADER_ZC_REASSEMBLY_AUTH10: net_send_header_only2(0x88d); break;
-    case HEADER_ZC_REASSEMBLY_AUTH11: answer_reassembly(0x88e); break;
-    case HEADER_ZC_REASSEMBLY_AUTH12: net_send_header_only(0x88f); break;
-    case HEADER_ZC_REASSEMBLY_AUTH13: answer_reassembly(0x890); break;
-    case HEADER_ZC_REASSEMBLY_AUTH14: net_send_header_only2(0x891); break;
-    case HEADER_ZC_REASSEMBLY_AUTH15: net_send_header_only2(0x892); break;
-    case HEADER_ZC_REASSEMBLY_AUTH16: answer_reassembly(0x893); break;
-    case HEADER_ZC_REASSEMBLY_AUTH17: net_send_header_only(0x894); break;
-    case HEADER_ZC_REASSEMBLY_AUTH18: answer_reassembly(0x895); break;
-    case HEADER_ZC_REASSEMBLY_AUTH19: answer_reassembly(0x896); break;
-    case HEADER_ZC_REASSEMBLY_AUTH20: answer_reassembly(0x897); break;
-    case HEADER_ZC_REASSEMBLY_AUTH21: answer_reassembly(0x898); break;
-    case HEADER_ZC_REASSEMBLY_AUTH22: answer_reassembly(0x899); break;
-    case HEADER_ZC_REASSEMBLY_AUTH23: net_send_header_only2(0x89a); break;
-    case HEADER_ZC_REASSEMBLY_AUTH24: answer_reassembly(0x89b); break;
-    case HEADER_ZC_REASSEMBLY_AUTH25: net_send_header_only(0x89c); break;
-    case HEADER_ZC_REASSEMBLY_AUTH26: answer_reassembly(0x89d); break;
-    case HEADER_ZC_REASSEMBLY_AUTH27: net_send_header_only(0x89e); break;
-    case HEADER_ZC_REASSEMBLY_AUTH28: answer_reassembly(0x89f); break;
-    case HEADER_ZC_REASSEMBLY_AUTH29: net_send_header_only2(0x8a0); break;
-    case HEADER_ZC_REASSEMBLY_AUTH30: net_send_header_only2(0x8a1); break;
-    case HEADER_ZC_REASSEMBLY_AUTH31: net_send_header_only(0x8a2); break;
-    case HEADER_ZC_REASSEMBLY_AUTH32: answer_reassembly(0x8a3); break;
-    case HEADER_ZC_REASSEMBLY_AUTH33: answer_reassembly(0x8a4); break;
-    case HEADER_ZC_REASSEMBLY_AUTH34: net_send_header_only2(0x8a5); break;
-    case HEADER_ZC_REASSEMBLY_AUTH35: answer_reassembly(0x8a6); break;
-    case HEADER_ZC_REASSEMBLY_AUTH36: answer_reassembly(0x8a7); break;
-    case HEADER_ZC_REASSEMBLY_AUTH37: net_send_header_only(0x8a8); break;
-    case HEADER_ZC_REASSEMBLY_AUTH38: net_send_header_only2(0x8a9); break;
-    case HEADER_ZC_REASSEMBLY_AUTH39: answer_reassembly(0x8aa); break;
-    case HEADER_ZC_REASSEMBLY_AUTH40: net_send_header_only2(0x8ab); break;
-    case HEADER_ZC_REASSEMBLY_AUTH41: net_send_header_only(0x8ac); break;
-    case HEADER_ZC_REASSEMBLY_AUTH42: answer_reassembly(0x8ad); break;
-    case HEADER_CC_REPLAYPACKET:
-        if (packet_size >= sizeof(struct ReplayEventHeader)) {
-            const struct ReplayEventHeader *header = (const void *)pkt;
-            if (header->kind == 0x388)
-                game_replay_chat_room(self, pkt, packet_size);
-            else if (header->kind == 0x38f)
-                game_replay_navigation_results(pkt, packet_size);
-            else if (header->kind == 0x38e)
-                game_replay_navigation_route(pkt, packet_size);
-            else if (header->kind == 0x390)
-                game_replay_navigation_map(pkt, packet_size);
-            else if (header->kind == 0x38a)
-                game_replay_whisper(self, pkt, packet_size);
-            else
-                game_mode_on_replay_packet(self, (char *)pkt);
-        }
-        break;
+
     case HEADER_ZC_MCSTORE_NOTMOVEITEM_LIST: game_mode_shop_not_movable_items(pkt); break;
     case HEADER_ZC_SHOWSCRIPT: game_mode_on_show_script(self, (const struct PacketShowScript *)pkt); break;
     case HEADER_ZC_START_COLLECTION: game_mode_on_start_collection(self, pkt); break;
@@ -885,13 +756,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_FASTMOVE: game_mode_zc_fast_move(self, pkt); break;
     case HEADER_ZC_SE_CASHSHOP_UPDATE: game_mode_zc_se_cashshop_points(self, pkt); break;
     case HEADER_ZC_CLEAR_DIALOG: game_mode_zc_clear_dialog(self, pkt); break;
-    case HEADER_ZC_ACK_ENTRY_QUEUE_APPLY: entry_queue_mgr_on_apply_result(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_NOTIFY_ENTRY_QUEUE_APPLY: entry_queue_mgr_on_status(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_ACK_ENTRY_QUEUE_CANCEL: entry_queue_mgr_on_cancel_result(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_NOTIFY_ENTRY_QUEUE_ADMISSION: entry_queue_mgr_on_ignored(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_REPLY_ACK_ENTRY_QUEUE_ADMISSION: entry_queue_mgr_on_answer_result(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_NOTIFY_LOBBY_ADMISSION: entry_queue_mgr_on_request(g_entryQueueMgr, pkt); break;
-    case HEADER_ZC_REPLY_ACK_LOBBY_ADMISSION: entry_queue_mgr_on_forward(g_entryQueueMgr, pkt); break;
     case HEADER_ZC_NAVIGATION_ACTIVE:
         if (packet_size >= sizeof(struct PacketNavigationActive))
             game_mode_on_navigation_active(self, (const struct PacketNavigationActive *)pkt);
@@ -906,52 +770,9 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_STORE_ITEMLIST_EQUIP: game_mode_zc_store_item_list_equip(pkt); break;
     case HEADER_ZC_MICROSCOPE: game_mode_equip_win_microscope4(pkt); break;
     case HEADER_ZC_INVENTORY_TAB: game_mode_inventory_tab(pkt); break;
-    case HEADER_ZC_ENTRY_QUEUE_INIT: entry_queue_mgr_on_leave(g_entryQueueMgr, pkt); break;
     case HEADER_ZC_NOTIFY_NEWENTRY7: game_mode_zc_notify_newentry7(self, (const struct PacketNewEntry7 *)pkt); break;
     case HEADER_ZC_NOTIFY_MOVEENTRY9: game_mode_zc_notify_moveentry9(self, (const struct PacketMoveEntry9 *)pkt); break;
     case HEADER_ZC_NOTIFY_STANDENTRY8: game_mode_zc_notify_standentry8(self, (const struct PacketStandEntry8 *)pkt); break;
-    case HEADER_ZC_REASSEMBLY_AUTH43: net_send_header_only2(0x941); break;
-    case HEADER_ZC_REASSEMBLY_AUTH44: net_send_header_only2(0x942); break;
-    case HEADER_ZC_REASSEMBLY_AUTH45: answer_reassembly(0x943); break;
-    case HEADER_ZC_REASSEMBLY_AUTH46: net_send_header_only2(0x944); break;
-    case HEADER_ZC_REASSEMBLY_AUTH47: net_send_header_only2(0x945); break;
-    case HEADER_ZC_REASSEMBLY_AUTH48: net_send_header_only(0x946); break;
-    case HEADER_ZC_REASSEMBLY_AUTH49: answer_reassembly(0x947); break;
-    case HEADER_ZC_REASSEMBLY_AUTH50: answer_reassembly(0x948); break;
-    case HEADER_ZC_REASSEMBLY_AUTH51: answer_reassembly(0x949); break;
-    case HEADER_ZC_REASSEMBLY_AUTH52: answer_reassembly(0x94a); break;
-    case HEADER_ZC_REASSEMBLY_AUTH53: net_send_header_only(0x94b); break;
-    case HEADER_ZC_REASSEMBLY_AUTH54: answer_reassembly(0x94c); break;
-    case HEADER_ZC_REASSEMBLY_AUTH55: answer_reassembly(0x94d); break;
-    case HEADER_ZC_REASSEMBLY_AUTH56: net_send_header_only(0x94e); break;
-    case HEADER_ZC_REASSEMBLY_AUTH57: net_send_header_only2(0x94f); break;
-    case HEADER_ZC_REASSEMBLY_AUTH58: answer_reassembly(0x950); break;
-    case HEADER_ZC_REASSEMBLY_AUTH59: answer_reassembly(0x951); break;
-    case HEADER_ZC_REASSEMBLY_AUTH60: net_send_header_only(0x952); break;
-    case HEADER_ZC_REASSEMBLY_AUTH61: answer_reassembly(0x953); break;
-    case HEADER_ZC_REASSEMBLY_AUTH62: answer_reassembly(0x954); break;
-    case HEADER_ZC_REASSEMBLY_AUTH63: net_send_header_only(0x955); break;
-    case HEADER_ZC_REASSEMBLY_AUTH64: answer_reassembly(0x956); break;
-    case HEADER_ZC_REASSEMBLY_AUTH65: net_send_header_only2(0x957); break;
-    case HEADER_ZC_REASSEMBLY_AUTH66: answer_reassembly(0x958); break;
-    case HEADER_ZC_REASSEMBLY_AUTH67: net_send_header_only(0x959); break;
-    case HEADER_ZC_REASSEMBLY_AUTH68: answer_reassembly(0x95a); break;
-    case HEADER_ZC_REASSEMBLY_AUTH69: net_send_header_only2(0x95b); break;
-    case HEADER_ZC_REASSEMBLY_AUTH70: answer_reassembly(0x95c); break;
-    case HEADER_ZC_REASSEMBLY_AUTH71: net_send_header_only2(0x95d); break;
-    case HEADER_ZC_REASSEMBLY_AUTH72: net_send_header_only2(0x95e); break;
-    case HEADER_ZC_REASSEMBLY_AUTH73: answer_reassembly(0x95f); break;
-    case HEADER_ZC_REASSEMBLY_AUTH74: net_send_header_only(0x960); break;
-    case HEADER_ZC_REASSEMBLY_AUTH75: answer_reassembly(0x961); break;
-    case HEADER_ZC_REASSEMBLY_AUTH76: answer_reassembly(0x962); break;
-    case HEADER_ZC_REASSEMBLY_AUTH77: answer_reassembly(0x963); break;
-    case HEADER_ZC_REASSEMBLY_AUTH78: net_send_header_only(0x964); break;
-    case HEADER_ZC_REASSEMBLY_AUTH79: net_send_header_only(0x965); break;
-    case HEADER_ZC_REASSEMBLY_AUTH80: answer_reassembly(0x966); break;
-    case HEADER_ZC_REASSEMBLY_AUTH81: answer_reassembly(0x967); break;
-    case HEADER_ZC_REASSEMBLY_AUTH82: answer_reassembly(0x968); break;
-    case HEADER_ZC_REASSEMBLY_AUTH83: answer_reassembly(0x969); break;
-    case HEADER_ZC_REASSEMBLY_AUTH84: answer_reassembly(0x96a); break;
     case HEADER_ZC_PRNPC_STATE: game_mode_on_pr_npc_state(self, (const struct PacketPrNpcState *)pkt); break;
     case HEADER_ZC_MERGE_ITEM_OPEN: game_mode_on_merge_item_open(self, (const struct PacketMergeItemOpen *)pkt); break;
     case HEADER_ZC_ACK_MERGE_ITEM: game_mode_zc_ack_merge_item(self, (const struct PACKET_ZC_ACK_MERGE_ITEM *)pkt); break;
@@ -964,10 +785,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_MSG_STATE_CHANGE3: game_mode_on_msg_state_change3(self, (const struct PacketMsgStateChange3 *)pkt); break;
     case HEADER_ZC_EFST_SET_ENTER2: game_mode_on_efst_set_enter2(self, (const struct PacketEfstSetEnter2 *)pkt); break;
     case HEADER_ZC_SKILL_POSTDELAY_LIST2: skill_cooldowns_receive_list2(pkt, packet_size); break;
-    case HEADER_ZC_NOTIFY_CLAN_CONNECTINFO: game_mode_zc_notify_clan_connect_info((const struct PACKET_ZC_NOTIFY_CLAN_CONNECTINFO *)pkt); break;
-    case HEADER_ZC_ACK_CLAN_LEAVE: game_mode_zc_ack_clan_leave(self); break;
-    case HEADER_ZC_CLANINFO: game_mode_zc_clan_info(self, (const struct PACKET_ZC_CLANINFO *)pkt); break;
-    case HEADER_ZC_NOTIFY_CLAN_CHAT: game_mode_zc_notify_clan_chat((const struct PACKET_ZC_NOTIFY_CLAN_CHAT *)pkt); break;
     case HEADER_ZC_ITEM_PICKUP_ACK_V5: game_mode_zc_item_pickup_ack_v5(self, pkt); break;
     case HEADER_ZC_INVENTORY_ITEMLIST_NORMAL_V5: game_mode_inventory_item_list_normal_v5(pkt); break;
     case HEADER_ZC_INVENTORY_ITEMLIST_EQUIP_V5: game_mode_equipment_item_list_v5(pkt); break;
@@ -1005,7 +822,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_MSG_COLOR: game_mode_msg_color(pkt); break;
-    case HEADER_ZC_NPROTECTGAMEGUARDCSAUTH: game_mode_game_guard_auth(); break;
     case HEADER_ZC_PROGRESS_ACTOR: game_mode_zc_progress_actor(self, pkt); break;
     case HEADER_ZC_GUILDSTORAGE_ITEMLIST_NORMAL_V5: game_mode_store_item_list_normal_v5(pkt); break;
     case HEADER_ZC_GUILDSTORAGE_ITEMLIST_EQUIP_V5: game_mode_store_item_list_equip_v5(pkt); break;
@@ -1032,12 +848,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_ALL_QUEST_LIST3: game_mode_all_quest_list3(self, pkt, packet_size); break;
     case HEADER_ZC_ADD_QUEST_EX: game_mode_zc_add_quest_ex(self, pkt, packet_size); break;
     case HEADER_ZC_UPDATE_MISSION_HUNT_EX: game_mode_zc_update_mission_hunt_ex(self, pkt, packet_size); break;
-    case HEADER_ZC_PET_EVOLUTION_RESULT: {
-        const struct PACKET_ZC_PET_EVOLUTION_RESULT *packet = (const struct PACKET_ZC_PET_EVOLUTION_RESULT *)pkt;
-
-        game_mode_zc_pet_evolution_result(self, packet->result);
-        break;
-    }
     case HEADER_ZC_NOTIFY_MOVEENTRY11: game_mode_zc_notify_moveentry11(self, (const struct PacketMoveEntry11 *)pkt); break;
     case HEADER_ZC_NOTIFY_NEWENTRY11: game_mode_zc_notify_newentry11(self, (const struct PacketNewEntry11 *)pkt); break;
     case HEADER_ZC_NOTIFY_STANDENTRY11: game_mode_zc_notify_standentry11(self, (const struct PacketStandEntry11 *)pkt); break;
@@ -1056,11 +866,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_ACK_OPEN_WRITE_RODEX: game_mode_zc_ack_open_write_rodex(self, (const struct PACKET_ZC_ACK_OPEN_WRITE_RODEX *)pkt); break;
     case HEADER_ZC_GOLDPCCAFE_POINT: game_mode_gold_pc_cafe_point(self, pkt); break;
     case HEADER_ZC_DYNAMICNPC_CREATE_RESULT: game_mode_zc_dynamic_npc_create_result(self, pkt); break;
-    case HEADER_ZC_ACK_OPEN_ROULETTE: game_mode_zc_ack_open_roulette(self, (const struct PACKET_ZC_ACK_OPEN_ROULETTE *)pkt); break;
-    case HEADER_ZC_ACK_ROULEITTE_INFO: game_mode_zc_ack_roulette_info(self, (const struct PACKET_ZC_ACK_ROULEITTE_INFO *)pkt); break;
-    case HEADER_ZC_ACK_CLOSE_ROULETTE: game_mode_zc_ack_close_roulette(self, (const struct PACKET_ZC_ACK_CLOSE_ROULETTE *)pkt); break;
-    case HEADER_ZC_ACK_GENERATE_ROULETTE: game_mode_zc_ack_generate_roulette(self, (const struct PACKET_ZC_ACK_GENERATE_ROULETTE *)pkt); break;
-    case HEADER_ZC_RECV_ROULETTE_ITEM: game_mode_on_recv_roulette_item(self, (const struct PacketRecvRouletteItem *)pkt); break;
     case HEADER_ZC_ALL_ACH_LIST: {
         const struct PACKET_ZC_ALL_ACH_LIST *packet = (const struct PACKET_ZC_ALL_ACH_LIST *)pkt;
 
@@ -1104,7 +909,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     }
     case HEADER_ZC_ACK_REQNAMEALL2: game_mode_on_ack_req_name_all2(self, (const struct PacketAckReqNameAll2 *)pkt); break;
     case HEADER_ZC_RESULT_PACKAGE_ITEM_TEST: game_mode_zc_result_package_item_test(self, pkt); break;
-    case HEADER_ZC_UPDATE_ROULETTE_COIN: game_mode_on_update_roulette_coin(self, (const struct PacketUpdateRouletteCoin *)pkt); break;
     case HEADER_ZC_HP_INFO_TINY: game_mode_zc_hp_info_tiny(self, (const struct PACKET_ZC_HP_INFO_TINY *)pkt); break;
     case HEADER_ZC_ITEM_PICKUP_ACK_V7: game_mode_item_pickup_ack_v7(self, pkt); break;
     case HEADER_ZC_UI_OPEN: {
@@ -1162,8 +966,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_zc_check_receive_character_name2(self, packet->char_id, packet->job, packet->level, packet->name);
         break;
     }
-    case HEADER_ZC_ACK_UPLOAD_MACRO_DETECTOR:
-    case HEADER_ZC_COMPLETE_UPLOAD_MACRO_DETECTOR_CAPTCHA:
     case HEADER_ZC_ACK_APPLY_MACRO_DETECTOR:
     case HEADER_ZC_APPLY_MACRO_DETECTOR:
     case HEADER_ZC_APPLY_MACRO_DETECTOR_CAPTCHA:
@@ -1517,30 +1319,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_BAN_LIST_NEW: game_mode_zc_ban_list_new(self, (const struct PacketBanList *)pkt); break;
     case HEADER_ZC_MEMBERMGR_INFO_NEW: game_mode_zc_member_mgr_info_new(self, (const struct PacketMemberList *)pkt); break;
     case HEADER_ZC_MEMBER_ADD_NEW: game_mode_zc_member_add_new(self, (const struct PacketMemberNamed *)pkt); break;
-    case HEADER_ZC_REPUTE_INFO: {
-        const struct PACKET_ZC_REPUTE_INFO *packet = (const struct PACKET_ZC_REPUTE_INFO *)pkt;
-
-        game_mode_on_repute_info(self, packet->success, (unsigned)(packet->packet_length - 5) >> 4, packet->entries);
-        break;
-    }
-    case HEADER_ZC_UI_OPEN_REPUTE: {
-        const struct PACKET_ZC_UI_OPEN_REPUTE *packet = (const struct PACKET_ZC_UI_OPEN_REPUTE *)pkt;
-
-        game_mode_on_ui_open_repute(self, packet->group_id, packet->info_id);
-        break;
-    }
-    case HEADER_ZC_OPEN_REFORM_UI: {
-        const struct PACKET_ZC_OPEN_REFORM_UI *packet = (const struct PACKET_ZC_OPEN_REFORM_UI *)pkt;
-
-        game_mode_on_open_reform_ui(self, packet->item_id);
-        break;
-    }
-    case HEADER_ZC_ITEM_REFORM_ACK: {
-        const struct PACKET_ZC_ITEM_REFORM_ACK *packet = (const struct PACKET_ZC_ITEM_REFORM_ACK *)pkt;
-
-        game_mode_on_item_reform_ack(self, packet->result, packet->index);
-        break;
-    }
     case HEADER_ZC_SET_USERCONFIG_ACK: {
         const struct PACKET_ZC_SET_USERCONFIG_ACK *packet = (const struct PACKET_ZC_SET_USERCONFIG_ACK *)pkt;
 
@@ -1558,18 +1336,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         const struct PACKET_ZC_RODEX_RETURN_ACK *packet = (const struct PACKET_ZC_RODEX_RETURN_ACK *)pkt;
 
         game_mode_zc_rodex_return_ack(self, packet->mail_id, packet->result);
-        break;
-    }
-    case HEADER_ZC_UI_OPEN_V3: {
-        const struct PACKET_ZC_UI_OPEN_V3 *packet = (const struct PACKET_ZC_UI_OPEN_V3 *)pkt;
-
-        game_mode_on_ui_open_v3(self, packet->ui_type, packet->table_id);
-        break;
-    }
-    case HEADER_ZC_RESPONSE_ENCHANT: {
-        const struct PACKET_ZC_RESPONSE_ENCHANT *packet = (const struct PACKET_ZC_RESPONSE_ENCHANT *)pkt;
-
-        game_mode_on_response_enchant(self, packet->result, packet->item_id);
         break;
     }
     case HEADER_ZC_DIALOG_TEXT_ALIGN: {

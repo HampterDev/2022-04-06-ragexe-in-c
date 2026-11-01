@@ -3,7 +3,6 @@
 #include "world/tooltip.h"
 #include "world/model_types.h"
 #include "render/projection.h"
-#include "replay/replay.h"
 #include "world/ground_api.h"
 #include "resources/attr_queries.h"
 #include "world/pick_node.h"
@@ -17,7 +16,6 @@
 #include "game/mouse_camera.h"
 #include "game/client.h"
 #include "game/camera.h"
-#include "game/replay.h"
 #include "game/tips.h"
 #include "actor/actor_common.h"
 #include "game/mode_msg.h"
@@ -33,7 +31,6 @@ int g_shiftDown;
 enum { WID_RELEASE_CLOSE = 0x12 };
 
 enum { SKILL_AM_POTIONPITCHER = 0xe7 };
-
 
 enum { CURSOR_NORMAL = 0, CURSOR_SKILL_TARGET = 0xa, CURSOR_NO_WALK = 0xd };
 
@@ -214,7 +211,7 @@ void game_mode_process_input(struct GameMode *self)
         self->click_repeat_time = timeGetTime();
     }
 
-    if (replay_recorder_instance()->state != REPLAY_STATE_STOPPED && g_session1.showStateInfo != 0)
+    if (g_session1.showStateInfo != 0)
         game_mode_update_state_icon_tip(self, g_mouse.x, g_mouse.y);
 
     if (verdict == 0) {

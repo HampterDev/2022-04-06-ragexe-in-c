@@ -1,0 +1,19 @@
+--- a/src/ui/quests/quest_window.c
++++ b/src/ui/quests/quest_window.c
+@@ -589,14 +589,14 @@
+         int tab;
+         unsigned i;
+ 
+-        for (tab = QUEST_TAB_ACTIVE; tab <= QUEST_TAB_RECOMMENDED; tab++) {
++        for (tab = QUEST_TAB_ACTIVE; tab < QUEST_TAB_COUNT; tab++) {
+             for (i = 0; i < quest_wnd_count(self, tab); i++)
+                 if (quest_wnd_id(self, tab, i) == quest_id)
+                     break;
+             if (i < quest_wnd_count(self, tab))
+                 break;
+         }
+-        if (tab > QUEST_TAB_RECOMMENDED) {
++        if (tab == QUEST_TAB_COUNT) {
+             ui_window_mgr_message_box(&g_windowMgr, "not found quest info", 0, 1, 0, 0,
+                                    "메시지", 0x118, 0x78, 0);
+             return 0;

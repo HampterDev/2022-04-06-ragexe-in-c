@@ -44,6 +44,13 @@ int ui_window_draw_button_bar(struct UIWindow *self, int variant,
 void ui_window_draw_sys_box(struct UIWindow *self, int x, int y,
                                     int width, int height);
 
+void ui_window_draw_text_aligned(struct UIWindow *self, int x, int y, struct String text,
+                                        int width, int align, COLORREF colour, COLORREF outline, int face,
+                                        int height, int arg3, BYTE outlined);
+void ui_window_text_out_line(struct UIWindow *self, int x, int y,
+                                     const struct String *text, int width, int align, int face, int height,
+                                     COLORREF colour, BYTE bold);
+
 void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char *text,
                                          int len, COLORREF colour, COLORREF outline, int font_face, int font_height,
                                          int font_arg3, int font_arg4);

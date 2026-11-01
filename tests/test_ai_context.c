@@ -78,7 +78,7 @@ void mem_free(void *memory)
 { (void)memory;  assert(!"unexpected actor deletion"); }
 void *mem_alloc(size_t bytes)
 { (void)bytes; assert(!"unexpected option insertion"); return NULL; }
-void client_lua_loadfile_hook(const char *filename) { (void)filename; }
+
 int merc_ai_trace(lua_State *L) { (void)L; return 0; }
 int merc_ai_trace_ai(lua_State *L) { (void)L; return 0; }
 int merc_ai_trace_value(lua_State *L) { (void)L; return 0; }

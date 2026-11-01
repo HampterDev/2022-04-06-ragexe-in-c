@@ -23,10 +23,6 @@ static void world_destruct(struct World *self)
     world_models_clear(self);
     if (self->ground)
         ground_free(self->ground);
-    if (self->videoList) {
-        world_video_list_destroy(self->videoList);
-        self->videoList = NULL;
-    }
     list_free(&self->idsNowhere, NULL);
     tree_free(&self->idsByCell, cell_ids_destroy);
     list_free(&self->pendingSkills, NULL);

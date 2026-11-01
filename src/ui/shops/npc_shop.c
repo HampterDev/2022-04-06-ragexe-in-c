@@ -328,7 +328,7 @@ void npc_shop_pass_on(struct UIItemBaseWnd *base, int x, int y, struct UIWindow 
     drag = game_current_drag();
     if (!drag)
         return;
-    ui_window_record_drag(&base->frame.base, x, y, drag, target_id);
+
     ui_window_drag_and_drop(target, x, y, drag);
 }
 
@@ -343,8 +343,7 @@ void npc_shop_list_press(struct UIItemBaseWnd *base, int *hover, int x, int y, i
     *hover = ui_item_base_wnd_index_at(base, x, y);
     if (old != *hover)
         ui_window_invalidate_base(&base->frame.base);
-    if (g_replayPlaying)
-        return;
+
     ui_item_base_wnd_item_at(base, &info, x, y);
     if (!info.index) {
         struct ItemInfo hovered;
@@ -463,34 +462,6 @@ void npc_shop_list_set_info(struct UIItemBaseWnd *base, struct WindowInfo *info,
         make_default(info);
     ui_window_send_msg(&base->frame.base, NULL, UI_MSG_RESIZE, edge, info->width, info->height, 0);
     ui_frame_wnd_move(&base->frame.base, info->x, info->y);
-}
-
-int npc_shop_records_reach(const char *buf, unsigned size, short begin_tag, short end_tag)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = sizeof hdr;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != begin_tag)
-        return 0;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += sizeof hdr;
-        if (hdr.tag == end_tag)
-            return 1;
-        pos += hdr.len;
-    }
-    return 0;
-}
-
-void npc_shop_open_shop_list(int wnd_id, int val1)
-{
-    struct UIWindow *wnd = ui_window_open(wnd_id);
-
-    if (wnd) {
-        ui_window_send_msg(wnd, NULL, SHOP_MSG_SET_MODE, val1, 0, 0, 0);
-        ui_window_send_msg(wnd, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-    }
 }
 
 static int list_info_fits(const struct WindowInfo *info)

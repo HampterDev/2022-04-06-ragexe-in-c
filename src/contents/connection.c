@@ -16,25 +16,6 @@ Ws2TransferFn g_ws2_recv;
 WSADATA g_wsa_data;
 #define RECV_CHUNK 0x800
 
-static const char *const ws2_checked[4] = { "connect", "closesocket", "send", "select" };
-
-char connection_ws2_unhooked(void)
-{
-    HMODULE module = LoadLibraryA("ws2_32.dll");
-    unsigned i;
-
-    if (!module)
-        return 1;
-    for (i = 0; i < 4; i++) {
-        if (GetProcAddress(module, ws2_checked[i]) != GetProcAddress(g_ws2_32, ws2_checked[i])) {
-            FreeLibrary(module);
-            return 0;
-        }
-    }
-    FreeLibrary(module);
-    return 1;
-}
-
 char connection_startup(void)
 {
     if (WSAStartup(0x101, &g_wsa_data) != 0) {
@@ -54,7 +35,6 @@ char connection_startup(void)
         MessageBoxA(0, "GetProcAddress(\"recv\") Failed.", "Module Hooking Error", 0);
     }
     rag_connection_instance();
-    connection_ws2_unhooked();
     return 1;
 }
 
@@ -82,7 +62,6 @@ struct Connection *connection_construct(struct Connection *self)
 struct RagConnection *rag_connection_construct(struct RagConnection *self)
 {
     connection_construct(&self->base);
-    self->drop_sends = 0;
     return self;
 }
 

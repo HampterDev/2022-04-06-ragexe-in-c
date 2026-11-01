@@ -8,7 +8,7 @@ void ui_window_drag_and_drop_base(struct UIWindow *arg0, int arg1, int arg2, con
 void ui_window_draw_bitmap(struct UIWindow * arg0, int arg1, int arg2, struct BitmapRes * arg3, int arg4) { abort(); }
 void ui_window_draw_text_outlined_vertical(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, COLORREF arg5, COLORREF arg6, int arg7, int arg8, int arg9) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort(); }
 void ui_window_move_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
@@ -41,7 +41,6 @@ void ui_window_on_hover_leave_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_focusable_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
 BYTE ui_window_is_click_through_base(struct UIWindow * arg0) { abort(); }
-struct WordFilter g_nameFilter;
 int g_serviceType;
 struct Mode * game_current_base_mode(void) { abort(); }
 void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }

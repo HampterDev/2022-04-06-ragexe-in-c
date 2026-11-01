@@ -1,7 +1,6 @@
 #include "ui/window_access.h"
 #include "ui/quests/say_dialog.h"
 #include "render/rp_pool.h"
-#include "ui/record_tags.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
@@ -58,7 +57,6 @@ const struct UIWindowOps ui_say_dialog_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_say_dialog_wnd_save_state,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -213,35 +211,6 @@ static void say_remove_button(struct UISayDialogWnd *self, int id)
     }
 }
 
-static void say_load_records(struct UISayDialogWnd *self, const char *buf, unsigned size)
-{
-    struct UIRecordHeader hdr;
-    unsigned pos = 6;
-
-    memcpy(&hdr, buf, sizeof hdr);
-    if (hdr.tag != SAY_STATE_BEGIN)
-        return;
-    while (size > pos) {
-        memcpy(&hdr, buf + pos, sizeof hdr);
-        pos += 6;
-        if (hdr.tag == SAY_STATE_END)
-            return;
-        if (hdr.tag == SAY_STATE_LINE) {
-            char text[0x104];
-
-            memset(text, 0, sizeof text);
-            memcpy(text, buf + pos, hdr.len);
-            pos += hdr.len;
-            ui_say_dialog_wnd_send_msg(&self->frame.base, NULL, SAY_MSG_TEXT, (int)text, 0, 0, 0);
-        } else if (hdr.tag == SAY_STATE_CLEAR) {
-            memcpy(&self->clear_on_text, buf + pos, hdr.len);
-            pos += hdr.len;
-        } else {
-            pos += hdr.len;
-        }
-    }
-}
-
 static void say_show_button(struct UISayDialogWnd *self, int default_id, int cmd_id, const char *name)
 {
     UI_FRAME_DEFAULT_ID(&self->frame) = default_id;
@@ -262,9 +231,7 @@ int ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
     }
     switch (msg) {
     case UI_MSG_COMMAND:
-        ui_window_record_command(wnd, val1, val2, val3, self->cmd_id);
-        if (g_replayPlaying)
-            self->cmd_id = val4;
+
         if (val1 == SAY_ID_NEXT) {
             DWORD now = GetTickCount();
 
@@ -332,15 +299,6 @@ int ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
 
     case SAY_MSG_REMOVE_BUTTON:
         say_remove_button(self, val1);
-        return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        say_load_records(self, (const char *)val1, (unsigned)val2);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

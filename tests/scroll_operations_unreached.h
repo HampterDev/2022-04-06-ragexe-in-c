@@ -19,7 +19,7 @@ void ui_window_draw_bitmap(struct UIWindow * arg0, int arg1, int arg2, struct Bi
 void ui_window_fill_rect(struct UIWindow * arg0, int arg1, int arg2, int arg3, int arg4, COLORREF arg5) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }
-int ui_window_get_records_base(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 BYTE ui_window_is_hit_testable_base(struct UIWindow * arg0) { abort(); }
 struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort(); }

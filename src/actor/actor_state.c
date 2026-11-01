@@ -55,22 +55,20 @@ unsigned char game_actor_process_fade_out(struct GameActor *self)
     return (unsigned char)fade(self);
 }
 
-static void pet_talk(struct GameActor *self, struct GameMode *mode)
+static void pet_idle_emotion(struct GameActor *self, struct GameMode *mode)
 {
-    if (self->object_type != 7 || self->aid != g_session1.aid || !self->pet_talk_tick)
+    if (self->object_type != 7 || self->aid != g_session1.aid || !self->pet_emotion_tick)
         return;
-    if (timeGetTime() - self->pet_talk_tick <= 3000)
+    if (timeGetTime() - self->pet_emotion_tick <= 3000)
         return;
     if (rand() % 100 < 25) {
         int hunger = session_pet_hunger_level(g_session1.petFullness);
         int intimacy = session_pet_intimacy_level(g_session1.petIntimacy);
         int emotion = session_get_pet_emotion(&g_session1, hunger, intimacy, 4);
-        int talk = session_make_pet_talk_id(g_session1.petJob, 4, hunger);
 
-        GAME_MODE_SEND(mode, 0x94, talk, 0, 0, 0);
         GAME_MODE_SEND(mode, 0x94, emotion, 0, 0, 0);
     }
-    self->pet_talk_tick = 0;
+    self->pet_emotion_tick = 0;
 }
 
 unsigned char game_actor_process_state(struct GameActor * self)
@@ -95,7 +93,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
         if (self->play_mode == 1 && self->motion_finished)
             actor_set_state(self, 0, 1);
         else
-            pet_talk(self, mode);
+            pet_idle_emotion(self, mode);
         render_object_update_motion((struct RenderObject *)self);
         break;
 

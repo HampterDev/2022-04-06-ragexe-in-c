@@ -42,44 +42,6 @@ struct SearchResult *search_result_assign(struct SearchResult *self,
     return self;
 }
 
-unsigned char navi_manager_add_place(struct NaviManager *self, const struct Vec *words)
-{
-    const struct String *w = (const struct String *)words->first;
-    struct NaviMap *map;
-    struct NaviPoint pos;
-    struct String title, copy;
-    struct SearchResult place;
-    unsigned i;
-
-    if (VEC_COUNT(words, struct String) < 2)
-        return 0;
-    map = navi_manager_map_by_name(self, string_cstr(&w[0]));
-    if (!map)
-        return 0;
-    navi_manager_parse_pos(self, &pos, string_cstr(&w[1]));
-    if (pos.x == -1 || pos.y == -1)
-        return 0;
-
-    string_init(&title);
-    for (i = 2; i < VEC_COUNT(words, struct String); i++) {
-        w = (const struct String *)words->first;
-        string_append_cstr(&title, " ");
-        string_append(&title, string_cstr(&w[i]), w[i].size);
-    }
-    string_copy(&copy, &title);
-    string_init(&place.name);
-    place.obj = map;
-    place.x = pos.x;
-    place.y = pos.y;
-    place.kind = NAVI_RESULT_PLACE;
-    string_assign(&place.name, string_cstr(&copy), copy.size);
-    string_free(&copy);
-    search_results_push_copy(&self->results, &place);
-    search_result_destroy(&place);
-    string_free(&title);
-    return 1;
-}
-
 unsigned char navi_manager_parse_flags(struct NaviManager *self, const char *text,
         unsigned char *useScrolls, unsigned char *useKafra, unsigned char *useAirship)
 {

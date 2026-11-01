@@ -49,7 +49,6 @@ const struct UIListBoxExOps ui_combo_box_ex_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -101,7 +100,6 @@ const struct UIListBoxExOps ui_combo_box_ex2_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -152,7 +150,6 @@ const struct UIListBoxExOps ui_combo_box_id_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -202,7 +199,6 @@ const struct UIWindowOps ui_combo_box_def_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -249,7 +245,6 @@ const struct UIWindowOps ui_combo_box_def2_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -296,7 +291,6 @@ const struct UIWindowOps ui_combo_box_bmp_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -343,7 +337,6 @@ const struct UIWindowOps ui_combo_box_v2_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -891,7 +884,7 @@ int ui_combo_box_def_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             ui_window_send_msg(wnd->parent, NULL, COMBO_MSG_TOGGLED, 0, 0, 0, 0);
         return 0;
     case COMBO_MSG_CHOSEN:
-        if (!ui_window_mgr_get_window_flag(&g_windowMgr, UI_WNDFLAG_COMMANDS, wnd->parent->id) || val1 < 0)
+        if (val1 < 0)
             return 0;
         show_row(self, val1);
         ui_window_send_msg(&self->base, NULL, UI_MSG_COMMAND, UI_ID_COMBO_BUTTON, 0, 0, 0);
@@ -913,20 +906,6 @@ void ui_combo_box_def_wnd_clear_list(struct UIWindow *wnd)
     struct UIComboBoxDefWnd *self = (struct UIComboBoxDefWnd *)wnd;
 
     ui_list_box_ex_clear((struct UIListBoxEx *)self->list);
-}
-
-int ui_combo_box_def_wnd_find_text(struct UIWindow *wnd, const char *text)
-{
-    struct UIComboBoxDefWnd *self = (struct UIComboBoxDefWnd *)wnd;
-    struct UIComboBoxEx *list = (struct UIComboBoxEx *)self->list;
-    struct String label;
-    int index;
-
-    string_init(&label);
-    string_assign_cstr(&label, text);
-    index = ui_list_box_ex_find_text(&list->list, &label);
-    string_free(&label);
-    return index;
 }
 
 void ui_combo_box_def_wnd_select(struct UIWindow *wnd, int index)
@@ -1188,8 +1167,6 @@ int ui_combo_box_v2_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
         ui_window_invalidate_base(&self->base);
         return 0;
     case COMBO_MSG_CHOSEN:
-        if (!ui_window_mgr_get_window_flag(&g_windowMgr, UI_WNDFLAG_COMMANDS, wnd->parent->id))
-            return 0;
         ui_window_send_msg(&self->base, NULL, UI_MSG_COMMAND, UI_ID_COMBO_BUTTON, 0, 0, 0);
         self->selected = val1;
         if (wnd->parent)

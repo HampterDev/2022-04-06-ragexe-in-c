@@ -16,7 +16,7 @@ int mail_id_greater(const void * arg0, const void * arg1) { abort(); }
 struct RagConnection * rag_connection_instance(void) { abort(); }
 struct UIFrameWnd * ui_frame_wnd_construct(struct UIFrameWnd * arg0, int arg1) { abort(); }
 void ui_frame_wnd_destruct(struct UIFrameWnd * arg0) { abort(); }
-int ui_frame_wnd_get_records(struct UIWindow * arg0, struct ReplayBuffer * arg1) { abort(); }
+
 void ui_frame_wnd_move(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_move_delta(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_l_btn_down(struct UIWindow *arg0, int arg1, int arg2) { abort(); }

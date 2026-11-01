@@ -158,7 +158,6 @@ struct GameMode {
     unsigned chat_room_enter_time;
     unsigned
         store_browse_time;
-    int emotion_pending;
     float yaw_centre;
     unsigned family_request_aid;
     unsigned family_request_char_id;
@@ -217,9 +216,6 @@ struct GameMode {
     struct UIWindow *admin_whisper_balloon;
     unsigned admin_whisper_time;
     unsigned throttle_time;
-    unsigned
-        replay_paused_at;
-    char replay_drop_taken;
     unsigned char stat_raises[6];
     int wheel_count;
     int wheel_count_max;

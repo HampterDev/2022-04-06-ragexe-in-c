@@ -9,15 +9,11 @@
 #include "game/packet_ids.h"
 #include "game/navigation.h"
 #include "contents/connection_api.h"
-#include "ui/social/entry_queue_state.h"
 #include "ui/window_access.h"
-#include "replay/event.h"
 
 #include "diag/diag.h"
 
 struct Session g_session1;
-static struct EntryQueueMgr entry_queue;
-struct EntryQueueMgr *g_entryQueueMgr = &entry_queue;
 static struct GameMode mode, expected_mode;
 static unsigned char packet[4096], expected_packet[4096];
 static int connection_token, transport_token;
@@ -58,8 +54,6 @@ void packet_trace_pointer(const void *pointer)
         packet_trace_value(1);
     else if (pointer == &g_session1)
         packet_trace_value(2);
-    else if (pointer == g_entryQueueMgr)
-        packet_trace_value(3);
     else if (pointer == &connection_token)
         packet_trace_value(4);
     else if (pointer == &transport_token)
@@ -81,18 +75,6 @@ struct Connection *rag_connection_transport(struct RagConnection *connection)
     packet_trace_call("rag_connection_transport");
     packet_trace_pointer(connection);
     return (struct Connection *)&transport_token;
-}
-
-char rag_connection_send_packet(struct RagConnection *connection, int size, const void *bytes)
-{
-    int i;
-    packet_trace_call("CRagConnection_SendPacket");
-    packet_trace_pointer(connection);
-    packet_trace_value(size);
-    assert(size == 2);
-    for (i = 0; i < size; ++i)
-        packet_trace_value(((const unsigned char *)bytes)[i]);
-    return 1;
 }
 
 void error_msg(const char *text, int flags)
@@ -127,6 +109,17 @@ static void run_case(int second, int id, size_t size, int null_packet)
         expected_mode.server_move_pending = 0;
     if (null_packet || size < 2)
         assert(trace_count == 4);
+    if (!null_packet && size >= 2 && (id == 0x09fc || id == 0x0294 || id == 0x0227 || id == 0x08ae || id == 0x09cf ||
+            (id >= 0x085a && id <= 0x0883) || (id >= 0x0917 && id <= 0x0940) ||
+            id == 0x08d8 || id == 0x08d9 || id == 0x08db || id == 0x08dc ||
+            id == 0x08de || id == 0x08df || id == 0x08e1 || id == 0x090e || id == 0x0a53 || id == 0x0a55 || id == 0x0b8d || id == 0x0b8e || id == 0x0b8f || id == 0x0b92 || id == 0x0b9a || id == 0x0b9f))
+        assert(trace_count == 12);
+    if (second && id == 0x0bf1 && !null_packet && size >= 2) {
+        assert(trace_count == 8);
+        assert(trace[4] == UINT64_MAX);
+        assert(trace[5] == hash_bytes(UINT64_C(14695981039346656037), "adventurer_agency_receive", strlen("adventurer_agency_receive")));
+        assert(trace[6] == 0x10000 && trace[7] == size);
+    }
     assert(!memcmp(&mode, &expected_mode, sizeof mode));
     assert(!memcmp(packet, expected_packet, sizeof packet));
     packet_trace_value(mode.server_move_pending);
@@ -142,7 +135,7 @@ static void run_case(int second, int id, size_t size, int null_packet)
 
 int main(int argc, char **argv)
 {
-    static const unsigned short replay_kinds[] = {0x388, 0x38f, 0x38e, 0x390, 0x38a, 0, 0xffff};
+    static const unsigned short retired_packet_kinds[] = {0x388, 0x38f, 0x38e, 0x390, 0x38a, 0, 0xffff};
     int pattern, second, id;
     size_t i, size;
     if (argc == 2) {
@@ -169,18 +162,18 @@ int main(int argc, char **argv)
     for (second = 0; second < 2; ++second) {
         for (size = 2; size <= sizeof(struct PacketNavigationActive) + 1; ++size)
             run_case(second, HEADER_ZC_NAVIGATION_ACTIVE, size, 0);
-        for (i = 0; i < sizeof replay_kinds / sizeof *replay_kinds; ++i) {
-            memcpy(packet + 2, &replay_kinds[i], sizeof replay_kinds[i]);
+        for (i = 0; i < sizeof retired_packet_kinds / sizeof *retired_packet_kinds; ++i) {
+            memcpy(packet + 2, &retired_packet_kinds[i], sizeof retired_packet_kinds[i]);
             memcpy(expected_packet, packet, sizeof packet);
-            for (size = 2; size <= sizeof(struct ReplayEventHeader) + 1; ++size)
-                run_case(second, HEADER_CC_REPLAYPACKET, size, 0);
-            run_case(second, HEADER_CC_REPLAYPACKET, sizeof packet, 0);
+            for (size = 2; size <= 6 + 1; ++size)
+                run_case(second, 0x08ae, size, 0);
+            run_case(second, 0x08ae, sizeof packet, 0);
         }
     }
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0x32d81ae6406478e3));
+    assert(digest == UINT64_C(0x0e20d9f11f3d4d93));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

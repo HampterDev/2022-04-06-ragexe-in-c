@@ -297,7 +297,16 @@ static void expected_cases(void)
     assert(actual.windows[0].font_height == 20 && actual.windows[1].font_height == 8);
     assert(actual.windows[2].font_height == 20 && actual.windows[3].font_height == 12);
     assert(actual.windows[1].y == 12 && actual.windows[3].y == 8);
-    puts("Line layout: expected text, fonts, colours, outlines, links, alignment and line spacing passed.");
+    run_layout(&actual, "<TIPBOX>Guide label<INFO>42</INFO></TIPBOX>", 1000, 4, style, 0, 0);
+    assert(actual.count == 1 && !actual.windows[0].kind && !actual.windows[0].args);
+    assert(!strcmp(actual.windows[0].text, "Guide label") && actual.windows[0].colour == style.colour);
+    run_layout(&actual, "<URL>Site<INFO>https://example.test</INFO></URL><TIPBOX>한글<INFO>42</INFO></TIPBOX><QUEST>Quest<INFO>7</INFO></QUEST>", 1000, 4, style, 0, 0);
+    assert(actual.count == 3 && actual.windows[0].kind == 0x1ad && actual.windows[2].kind == 0x213);
+    assert(!actual.windows[1].kind && !actual.windows[1].args && !strcmp(actual.windows[1].text, "한글"));
+    assert(!strcmp(actual.windows[0].arguments, "https://example.test|") && !strcmp(actual.windows[2].arguments, "7|"));
+    run_layout(&actual, "<TIPBOX>plain label</TIPBOX>", 1000, 4, style, 0, 0);
+    assert(actual.count == 1 && !actual.windows[0].kind && !strcmp(actual.windows[0].text, "plain label"));
+    puts("Line layout: text, fonts, colours, outlines, active links, retired guide labels, alignment and line spacing passed.");
 }
 static void compare_cases(void)
 {
@@ -310,7 +319,7 @@ static void compare_cases(void)
         "<FONT SIZE=bad>x</FONT>", "<FONT COLOR=123456>x</FONT>z", "<unknown>text</unknown>",
         "<URL>Link<INFO>https://example.test,a,,c,</INFO></URL> tail",
         "<ITEM>한글 무기<INFO>62</INFO></ITEM>", "<NAVI>A long route name<INFO>prontera,1,2,3</INFO></NAVI>",
-        "<QUEST>Quest<INFO>1</INFO></QUEST><TIPBOX>Tip<INFO>2</INFO></TIPBOX>",
+        "<QUEST>Quest<INFO>1</INFO></QUEST>",
         "<ITEML>ignored</ITEML><NAVIL>ignored</NAVIL>", "<URL>broken</URL>tail", "<URL>unclosed",
         "<URL><INFO>1</INFO></URL>", "<URL>empty<INFO></INFO></URL>",
         "<URL>^123456coloured link<INFO>a,b</INFO></URL>", "^nItemID^62 tail ^nItemID^63 끝",

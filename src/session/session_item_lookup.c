@@ -192,17 +192,6 @@ struct ItemInfo *session_get_inventory_item_by_id(struct Session *self,
     return item_info_construct_with_arg(out);
 }
 
-int session_inventory_count(struct Session *self, int itemId)
-{
-    struct ListNode *node;
-    int total = 0;
-
-    for (node = self->itemList.head->next; node != self->itemList.head; node = node->next)
-        if (item_id(LIST_VALUE(node, struct ItemInfo)) == itemId)
-            total += LIST_VALUE(node, struct ItemInfo)->count;
-    return total;
-}
-
 DWORD session_get_item_dis_color(const struct ItemInfo *item)
 {
     DWORD color;

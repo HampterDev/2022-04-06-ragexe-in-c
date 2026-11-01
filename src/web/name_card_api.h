@@ -1,5 +1,5 @@
-#ifndef ASYNCWORK_NAME_CARD_API_H
-#define ASYNCWORK_NAME_CARD_API_H
+#ifndef WEB_NAME_CARD_API_H
+#define WEB_NAME_CARD_API_H
 #include "web/name_card_types.h"
 
 void name_card_init(struct ActorNameCard *card);
@@ -26,8 +26,7 @@ void name_card_holder_set_title(struct ActorNameCardHolder *self, unsigned aid,
 struct ActorNameCard *name_card_holder_get(struct ActorNameCardHolder *self, unsigned aid);
 struct String *name_card_holder_name(struct ActorNameCardHolder *self, struct String *out,
                                         unsigned aid);
-const char *name_card_name_text(const struct ActorNameCardHolder *self, unsigned aid,
-                                size_t *length);
+
 char name_card_holder_has(struct ActorNameCardHolder *self, unsigned aid);
 void name_card_holder_update(struct ActorNameCardHolder *self);
 #endif

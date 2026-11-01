@@ -1,8 +1,6 @@
 #include "render/rp_pool.h"
 #include "resources/state_icon_sheet.h"
 #include "game/own_states.h"
-#include "replay/replay.h"
-
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
@@ -15,25 +13,19 @@ static void update_state_seconds(struct PrimStateIcon *icon)
 {
     const struct OwnStateEntry *t = own_states_find(icon->state_id);
     unsigned end, now;
-    int replay;
 
     icon->seconds_left = STATE_SECONDS_NONE;
     if (!t)
         return;
     end = t->end_tick;
     now = timeGetTime();
-    replay = g_replayPlaying;
-    if (end <= now && !replay)
+    if (end <= now)
         return;
     if (end == 0 || end == STATE_END_NEVER) {
         icon->seconds_left = STATE_SECONDS_NONE;
         return;
     }
-    if (replay)
-        end -= replay_recorder_instance()->elapsed;
-    else
-        end -= now;
-    icon->seconds_left = (int)(end / 1000);
+    icon->seconds_left = (int)((end - now) / 1000);
 }
 
 static void draw_state_timers(struct EffectPrim *self, const struct PrimStateIcon *icon)
@@ -45,11 +37,7 @@ static void draw_state_timers(struct EffectPrim *self, const struct PrimStateIco
         if (t->index != icon->state_id)
             continue;
         if (!(t->end_tick > timeGetTime() && t->end_tick != STATE_END_NEVER && t->end_tick != 0)) {
-            if (!g_replayPlaying)
-                continue;
-            if (t->end_tick <= replay_recorder_instance()->elapsed || t->end_tick == STATE_END_NEVER ||
-                t->end_tick == 0)
-                continue;
+            continue;
         }
         icon_sheet_queue_state(g_stateIconSheet, (unsigned)t->index,
                                (int)self->base.pos.x, (int)self->base.pos.y);

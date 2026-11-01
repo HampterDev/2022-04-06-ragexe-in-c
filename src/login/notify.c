@@ -5,8 +5,7 @@
 #include "game/connection.h"
 
 #include <string.h>
-#include <shellapi.h>
-#include "core/app.h"
+#include "platform/language.h"
 #include "core/msg_str.h"
 
 #pragma pack(push, 1)
@@ -68,26 +67,6 @@ show:
     ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
 }
 
-static void open_account_page(void)
-{
-    switch (g_serviceType) {
-    case 0:
-        ShellExecuteA(g_hMainWnd, "open", msg_str(g_session1.channelCopId == 1 ? 0x51c : 0x210), NULL, NULL, SW_SHOWNORMAL);
-        return;
-    case 1:
-        ShellExecuteA(g_hMainWnd, "open", "https://iro.ragnarokonline.com/member/memberjoin1.asp?mNum=1", NULL, NULL, SW_SHOWNORMAL);
-        return;
-    case 2:
-        return;
-    case 3:
-        ShellExecuteA(g_hMainWnd, "open", "http://t.kunlun.com/?act=voucher.main&cid=1000&pid=61", NULL, NULL, SW_SHOWNORMAL);
-        return;
-    default:
-        ShellExecuteA(g_hMainWnd, "open", msg_str(0x210), NULL, NULL, SW_SHOWNORMAL);
-        return;
-    }
-}
-
 void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
 {
     const struct PACKET_SC_NOTIFY_BAN *packet = (const struct PACKET_SC_NOTIFY_BAN *)pkt;
@@ -105,14 +84,7 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
     case 3:   id = 0xf1; break;
     case 4:   id = 0x108; break;
     case 5:   id = 0x131; break;
-    case 6:
-        strcpy(text, msg_str(0x1b6));
-        if (ui_window_mgr_message_box(&g_windowMgr, text, 2, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0xb3) {
-            mode_mgr_quit(&g_modeMgr);
-            open_account_page();
-        }
-        text[0] = 0;
-        goto show;
+    case 6:   id = 3; break;
     case 7:   id = 0x1b7; break;
     case 8:   id = 0x1b8; break;
     case 9:   id = 0x211; break;

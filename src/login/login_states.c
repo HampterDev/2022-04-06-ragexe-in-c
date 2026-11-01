@@ -1,9 +1,8 @@
+#include "contents/character_settings.h"
+#include "contents/account_settings.h"
 #include "ui/window_types.h"
 #include "contents/player_names.h"
 #include "session/character_name.h"
-#include "web/service_managers.h"
-#include "session/snapshot_values.h"
-#include "replay/replay.h"
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -19,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ui/character/select_server.h"
-#include "ui/character/replay_play.h"
 #include "render/render_api.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
@@ -32,14 +30,10 @@
 #include "session/session_windows.h"
 #include "ui/character/character.h"
 #include "ui/mail/rodex_box.h"
-#include "ui/net/packet_crypt.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/character/skill_list_wnd.h"
 #include "game/rodex_mail.h"
-
-static const char warning2_bmp[] = "유저인터페이스\\login_interface\\warning2.bmp";
-
 
 static int box(const char *text, int a, int b, int c, int d)
 {
@@ -98,37 +92,6 @@ static void session_reset_achievements(struct Session *session)
     session->newTitles.last = session->newTitles.first;
     session->ownTitleId = 0;
     tracked_achievements_clear(&session->trackedAchievements);
-}
-
-void login_mode_show_warning(struct LoginMode *self)
-{
-    void *w;
-
-    if (g_serviceType == 0)
-        string_assign(&self->wallpaper, warning2_bmp, 0x2b);
-    else
-        string_assign(&self->wallpaper, "유저인터페이스\\login_interface\\warning.bmp", 0x2a);
-    show_wallpaper(self);
-    w = ui_window_open(0x14);
-    UIWND_SENDMSG(w, 0, 0x50, 0x2722, 0, 0, 0);
-}
-
-void login_mode_show_license(struct LoginMode *self)
-{
-    void *w;
-    int x, y;
-
-    show_wallpaper(self);
-    string_assign_cstr(&self->wallpaper, g_loginBackgroundName);
-    w = ui_window_open(0x10);
-    ui_window_resize(w, 0x190, 0x12c);
-    y = (g_renderer->height - 0x1e0) / 2 + 0x5a;
-    x = (g_renderer->width - 0x280) / 2 + 0x78;
-    ui_window_move(w, x, y);
-    UIWND_SENDMSG(w, 0, 0x55, 0xc1, (int)"btn_disagree", 0, 0);
-    UIWND_SENDMSG(w, 0, 0x55, 0xd2, (int)"btn_agree", 0, 0);
-    UIWND_SENDMSG(w, 0, 0x1a, (int)get_licence_text_(), 0, g_serviceType == 6 ? 0x35 : 0x3a, 0);
-    UIWND_SENDMSG(w, 0, 0x50, 0x2722, 0, 0, 0);
 }
 
 static void connection_list(struct LoginMode *self, struct Vec *list, int msg)
@@ -197,7 +160,6 @@ static void login_screen(struct LoginMode *self)
     char_user_data_reset(g_charUserDataMgr);
     mcstore_reset(&g_session1.mcStoreBackup);
     guild_mgr_clear_versions(g_guildMgr);
-    emblem_mgr_build_urls(g_emblemMgr);
     default_wallpaper(self);
     if (g_session1.canBackToLogin == 1) {
         self->stateTick = timeGetTime();
@@ -210,11 +172,6 @@ static void login_screen(struct LoginMode *self)
         g_session1.canBackToLogin = 1;
         if (!ui_window_find(3))
             ui_window_open(3);
-        return;
-    }
-    if ((g_session1.launchArgsSet) == 1) {
-        (g_session1.launchArgsSet) = 0;
-        self->base.next_sub_mode = 4;
         return;
     }
     mode_mgr_quit(&g_modeMgr);
@@ -230,7 +187,6 @@ static void server_list(struct LoginMode *self)
     struct UIWindow *wnd;
     int i, k;
 
-    replay_recorder_set_mode(replay_recorder_instance(), 1);
     default_wallpaper(self);
     wnd = ui_window_open(2);
     if (!wnd)
@@ -282,14 +238,12 @@ static void char_select(struct LoginMode *self)
     (g_session1.ownIllusion) = 0;
     renew_quest_clear_ongoing(g_questTable);
     session_reset_achievements(&g_session1);
-    gameguard_on_connect(g_gameGuard);
+
     default_wallpaper(self);
     rodex_clear(g_rodex);
     ui_window_open(0x115);
     session_reset_store_search(&g_session1);
     session_clear_transform_jobs(&g_session1, 1, 1, 1);
-    ui_window_mgr_post_quit1(&g_windowMgr, 0xc6);
-    ui_window_mgr_post_quit1(&g_windowMgr, 0x10d);
     reset_session_items();
     switch ((g_session1.pinState)) {
     case 2:
@@ -338,25 +292,11 @@ static void char_server(struct LoginMode *self)
     strcpy(addr.ip, g_serverAddress);
     addr.port = atoi(g_serverPort);
     _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_serverDomain);
-    if (g_serverType == 0xd) {
-        if (g_serviceType == 1) {
-            memset(&addr, 0, sizeof addr);
-            _snprintf_s(addr.ip, 0x10, (size_t)-1,
-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "128.241.92.211" : "128.241.92.212");
-            addr.port = 0x1a90;
-        } else if (g_serviceType == 5) {
-            memset(&addr, 0, sizeof addr);
-            _snprintf_s(addr.host, 0x81, (size_t)-1,
-                           session_get_instant_var(&g_session1, 0x12) == 1 ? "thro-zone01c.gnjoy.in.th:50001"
-                                                                         : "thro-zone-t1.gnjoy.in.th:50001");
-        }
-    }
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connect_failed(self);
         return;
     }
-    packet_keys_next(g_packetKeys, 2);
     login_mode_send_exe_digest(self);
     if (g_passwordEncrypt) {
         hashed = 0x1db;
@@ -409,7 +349,6 @@ static void map_server(struct LoginMode *self)
         connect_failed(self);
         return;
     }
-    packet_keys_next(g_packetKeys, 2);
     g_mapServerAidPending = 1;
     pkt.id = 0x65;
     pkt.client_type = 0;
@@ -519,8 +458,7 @@ static void enter_map(struct LoginMode *self)
         connect_failed(self);
         return;
     }
-    gameguard_on_connect(g_gameGuard);
-    packet_keys_next(g_packetKeys, 1);
+
     strcpy(path, g_registryKeyPath);
     strcat(path, "\\NeoCash");
     disposition = 0;
@@ -551,108 +489,6 @@ static void char_select_userver(struct LoginMode *self)
     session_set_arrow(&g_session1, 0);
     default_wallpaper(self);
     ui_window_open(0x7f);
-}
-
-static void replay_entry(struct LoginMode *self)
-{
-    BYTE type;
-    void *rec, *w;
-
-    if (g_serviceType == 6 || g_serviceType == 0xc || g_serviceType == 0xa) {
-        type = 0;
-        (g_session1.showName) = 0;
-    } else {
-        type = (g_session1.showName);
-    }
-    session_set_text_type(type, type);
-    rec = replay_recorder_instance();
-    replay_file_list_set_recorder(replay_file_list_instance(), rec);
-    string_assign(&self->wallpaper, warning2_bmp, 0x2b);
-    show_wallpaper(self);
-    w = ui_window_open(0x14);
-    UIWND_SENDMSG(w, 0, 0x50, 0x272a, 0, 0, 0);
-}
-
-static void replay_open(struct LoginMode *self)
-{
-    if (replay_file_list_open_selected(replay_file_list_instance(), 0x20) == 1) {
-        self->base.next_sub_mode = 0x1c;
-        return;
-    }
-    box(msg_str(0xc4e), 4, 1, 1, 0);
-    self->base.next_sub_mode = 0x1a;
-}
-
-static void replay_list(struct LoginMode *self)
-{
-    struct UIWindow *wnd;
-    struct ReplayFileList *list;
-    int n, i;
-
-    string_assign_cstr(&self->wallpaper, g_loginBackgroundName);
-    show_wallpaper(self);
-    wnd = ui_window_open(0xba);
-    replay_file_list_scan(replay_file_list_instance());
-    list = replay_file_list_instance();
-    n = (int)list->count;
-    for (i = 0; wnd && i < n; i++) {
-        ui_list_box_add_item(ui_select_replay_list(wnd), replay_file_list_get_name(replay_file_list_instance(), i));
-    }
-    UIWND_SENDMSG(wnd, 0, 0x28, 0, 0, 0, 0);
-    replay_file_list_instance()->serverCount = self->numServer;
-    if ((unsigned)self->numServer > 100) {
-        self->numServer = 0;
-        replay_file_list_instance()->serverCount = 0;
-    }
-    for (i = 0; i < self->numServer; i++) {
-        list->servers[i] = self->servers[i];
-    }
-}
-
-static void replay_back(struct LoginMode *self)
-{
-    int i;
-
-    self->numServer = replay_file_list_instance()->serverCount;
-    if ((unsigned)self->numServer > 100) {
-        self->numServer = 0;
-        replay_file_list_instance()->serverCount = 0;
-    }
-    for (i = 0; i < self->numServer; i++)
-        self->servers[i] = replay_file_list_instance()->servers[i];
-    login_mode_send_msg(&self->base, 0x272a, 0, 0, 0, 0);
-}
-
-static void replay_start(struct LoginMode *self)
-{
-    struct ReplaySessionInfo info;
-    struct ReplayBuffer chunk = {0};
-    char map[0x40];
-
-    if (!replay_read_chunk(replay_recorder_instance(), 3, &chunk) ||
-        session_values_validate(SESSION_VALUES_IDENTITY, chunk.data, chunk.size) < 0) {
-        replay_buffer_destroy(&chunk);
-        replay_recorder_close(replay_recorder_instance());
-        self->base.next_sub_mode = 0x1b;
-        return;
-    }
-    ui_window_mgr_post_quit1(&g_windowMgr, 0x10d);
-    reset_session_items();
-    replay_recorder_set_mode(replay_recorder_instance(), 6);
-    info = replay_recorder_instance()->info;
-    session_set_character_name(&g_session1, text_view((const char *)info.name, sizeof info.name));
-    memcpy(g_session1.map_name_tail, info.mapData + sizeof g_session1.mapName, sizeof g_session1.map_name_tail);
-    g_session1.mapType = info.mapType;
-    g_session1.playerPosX = info.playerX;
-    g_session1.playerPosY = info.playerY;
-    g_session1.playerDir = info.playerDirection;
-    memcpy(g_session1.mapName, info.mapData, sizeof g_session1.mapName);
-    ui_window_mgr_reset_shown_infos(&g_windowMgr, info.options);
-    session_reset_for_replay(&g_session1);
-    session_values_load(&g_session1, SESSION_VALUES_IDENTITY, chunk.data, chunk.size);
-    replay_buffer_destroy(&chunk);
-    sprintf(map, "%s.rsw", (const char *)g_session1.mapName);
-    mode_mgr_switch(&g_modeMgr, 1, map);
 }
 
 static void zone_list(struct LoginMode *self)
@@ -693,8 +529,6 @@ void login_mode_on_change_state(struct Mode *mode, int state)
     (g_session1.battle_mode) = 0;
     self->base.connected = 1;
     switch (state) {
-    case 0: login_mode_show_warning(self); return;
-    case 1: login_mode_show_license(self); return;
     case 2:
         if (!login_mode_load_connections(self)) {
             login_mode_send_msg(&self->base, 0x1c, 0, 0, 0, 0);
@@ -724,12 +558,7 @@ void login_mode_on_change_state(struct Mode *mode, int state)
         return;
     case 0x13: char_select_userver(self); return;
     case 0x18: ui_window_open(0xb4); return;
-    case 0x19: replay_open(self); return;
-    case 0x1a:
-        replay_back(self);
-    case 0x1b: replay_list(self); return;
-    case 0x1c: replay_start(self); return;
-    case 0x1d: replay_entry(self); return;
+
     case 0x1e: zone_list(self); return;
     case 0x1f: select_zone(self); return;
     case 0x26: login_acf(self); return;

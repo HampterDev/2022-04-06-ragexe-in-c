@@ -1,6 +1,6 @@
 #include "game/packet_handlers.h"
 #include "session/item_predicates.h"
-#include "contents/pet_evolution.h"
+#include "contents/pet_auto_feed.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
@@ -158,7 +158,7 @@ static void inventory_put_equip(struct ItemInfo *item)
         session_get_inventory_item(&g_session1, &egg, g_session1.hatchedEggIndex);
         id = atoi(string_cstr(&egg.id_text));
         item_info_destruct(&egg);
-        if (!pet_evolution_is_auto_feeding(g_petTable, id) && g_session1.petAutoFeed == 1)
+        if (!pet_auto_feed_is_allowed(g_petAutoFeed, id) && g_session1.petAutoFeed == 1)
             session_send_pet_auto_feed(&g_session1, 0);
     }
 }

@@ -33,8 +33,7 @@ int game_player_is_dead(void);
 struct DragInfo *game_current_drag(void);
 int game_take_item_move(void);
 struct ChatRoomInfo *game_current_chat_room(void);
-struct String *game_current_trade_partner(void);
-void game_mark_npc_dialog_open(void);
+
 void game_mark_npc_dialog_closed(void);
 void game_set_map_bounds(struct GameMode *mode, const int bounds[4]);
 int game_inventory_drag_index(int *index);
@@ -48,8 +47,6 @@ int game_map_dimensions(int *width, int *height);
 int game_copy_view_matrix(float matrix[12]);
 int game_copy_view_matrix_at(float matrix[12], float heading);
 int game_copy_camera_position(float position[3]);
-struct WorldVideoList;
-struct WorldVideoList *game_current_video_list(void);
 struct C3dGround15;
 struct C3dGround15 *game_current_ground(void);
 struct List *game_current_object_list(void);

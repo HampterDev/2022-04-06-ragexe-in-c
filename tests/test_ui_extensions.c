@@ -5,7 +5,6 @@
 #include <string.h>
 #include "core/fatal.h"
 #include "../src/ui/social/guild_wnd.c"
-#include "../src/ui/media/connect_sns.c"
 
 static jmp_buf abstract_failure;
 static int expect_abstract, switched_to = -1;
@@ -48,27 +47,11 @@ static void guild_tab_cases(void)
     }
     expect_abstract = 0;
 }
-static void image_dimensions(void)
-{
-    static const struct { int width, height, fitted_width, fitted_height; } cases[] = {
-        {0, 0, 0, 0}, {100, 80, 100, 80}, {582, 436, 582, 436},
-        {1164, 872, 582, 436}, {1164, 436, 582, 218}, {582, 872, 291, 436},
-        {1200, 1200, 436, 436}, {1, 1000, 0, 436}, {-1, 5, -1, 5},
-    };
-    unsigned i;
-    for (i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
-        int width = cases[i].width, height = cases[i].height;
-        ui_connect_twitter_wnd_fit_image( &width, &height);
-        assert(width == cases[i].fitted_width && height == cases[i].fitted_height);
-        ui_connect_twitter_wnd_min_size( &width, &height);
-        assert(width == (cases[i].fitted_width < 300 ? 300 : cases[i].fitted_width));
-        assert(height == (cases[i].fitted_height < 226 ? 226 : cases[i].fitted_height));
-    }
-}
+
 int main(void)
 {
-    guild_tab_cases(); image_dimensions();
-    puts("UI extensions: saved guild tabs, tab selection, abstract-base failure and screenshot fit/minimum dimensions passed.");
+    guild_tab_cases();
+    puts("UI extensions: saved guild tabs, tab selection, abstract-base failure passed.");
     return 0;
 }
 

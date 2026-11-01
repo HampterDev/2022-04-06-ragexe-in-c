@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_items.h"
-#include "browser/browser.h"
+#include "ui/draw.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
@@ -178,7 +178,6 @@ const struct UIWindowOps ui_grade_enchant_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -225,7 +224,6 @@ const struct UIButtonOps ui_grade_enchant_btn_start_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -273,7 +271,6 @@ const struct UIButtonOps ui_grade_enchant_btn_enhanced_up_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -321,7 +318,6 @@ const struct UIButtonOps ui_grade_enchant_btn_enhanced_down_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_WINDOW,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,

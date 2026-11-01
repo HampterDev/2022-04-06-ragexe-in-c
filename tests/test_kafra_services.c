@@ -44,7 +44,6 @@ static void *checked_realloc(void *pointer, size_t size)
 #undef realloc
 #undef free
 
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
 void client_lua_error_box(struct ClientLua *lua, const char *caption, const char *format, ...)
 { assert(lua && lua->L && caption && format); ++diagnostics; }
 static int recursive_load(lua_State *L)

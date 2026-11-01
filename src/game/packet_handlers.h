@@ -16,21 +16,17 @@ struct PACKET_ZC_ACK_ADD_ITEM_RODEX;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX2;
 struct PACKET_ZC_ACK_ALL_RODEX_LIST;
 struct PACKET_ZC_ACK_CLOSE_GUILD_STORAGE;
-struct PACKET_ZC_ACK_CLOSE_ROULETTE;
 struct PACKET_ZC_ACK_DELETE_RODEX;
 struct PACKET_ZC_ACK_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_ACK_GENERATE_ROULETTE;
 struct PACKET_ZC_ACK_GUILDSTORAGE_LOG;
 struct PACKET_ZC_ACK_GUILDSTORAGE_LOG2;
 struct PACKET_ZC_ACK_MERGE_ITEM;
 struct PACKET_ZC_ACK_OPEN_GUILD_STORAGE;
 struct PACKET_ZC_ACK_OPEN_MSGBOX_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_ACK_OPEN_ROULETTE;
 struct PACKET_ZC_ACK_OPEN_WRITE_RODEX;
 struct PACKET_ZC_ACK_READ_RODEX2;
 struct PACKET_ZC_ACK_REMOVE_RODEX_ITEM;
 struct PACKET_ZC_ACK_RODEX_LIST;
-struct PACKET_ZC_ACK_ROULEITTE_INFO;
 struct PACKET_ZC_ACK_SEND_RODEX;
 struct PACKET_ZC_ACK_STATUS_GM;
 struct PACKET_ZC_ACK_TOUSESKILL;
@@ -38,7 +34,6 @@ struct PACKET_ZC_ACK_ZENY_FROM_RODEX;
 struct PACKET_ZC_BOSS_INFO;
 struct PACKET_ZC_CHANGE_GUILD;
 struct PACKET_ZC_CHANGE_ITEM_OPTION3;
-struct PACKET_ZC_CLANINFO;
 struct PACKET_ZC_COMBODELAY;
 struct PACKET_ZC_COUPLESTATUS;
 struct PACKET_ZC_C_MARKERINFO;
@@ -56,13 +51,10 @@ struct PACKET_ZC_HUNTINGLIST;
 struct PACKET_ZC_INFO_REMAINTIME;
 struct PACKET_ZC_MONSTER_INFO;
 struct PACKET_ZC_NOTIFY_ACT_POSITION;
-struct PACKET_ZC_NOTIFY_CLAN_CHAT;
-struct PACKET_ZC_NOTIFY_CLAN_CONNECTINFO;
 struct PACKET_ZC_NOTIFY_MAPINFO;
 struct PACKET_ZC_PAR_CHANGE;
 struct PACKET_ZC_PCBANG_EFFECT;
 struct PACKET_ZC_QUEST_NOTIFY_EFFECT;
-struct PACKET_ZC_READ_BOOK;
 struct PACKET_ZC_REPLY_REMAINTIME;
 struct PACKET_ZC_REQ_GUILD_INVITE;
 struct PACKET_ZC_RESULT_MAKE_GUILD;
@@ -175,7 +167,6 @@ struct PacketPrNpcState;
 struct PacketPurchaseItemListFromMc4;
 struct PacketPurchaseMyItemList3;
 struct PacketRecoverPenaltyOverweight;
-struct PacketRecvRouletteItem;
 struct PacketRepairItemList;
 struct PacketShowScript;
 struct PacketShowWarpList;
@@ -183,7 +174,6 @@ struct PacketSoulEnergy;
 struct PacketSpirits2;
 struct PacketSpiritsAttribute;
 struct PacketTryResult;
-struct PacketUpdateRouletteCoin;
 struct PacketUseSkillAck;
 struct PacketVendingList4;
 struct PacketWarpList;
@@ -381,22 +371,14 @@ void game_mode_on_cash_shop_open(struct GameMode *self, int cash_points, int kaf
 void game_mode_on_open_limited_sale_tool(struct GameMode *self);
 void game_mode_on_search_limited_sale_item(struct GameMode *self, short result, int item);
 
-void game_mode_game_guard_auth(void);
 void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_restart_ack(const unsigned char *pkt);
 
-void game_mode_on_item_reform_ack(struct GameMode *self, unsigned char result, unsigned short index);
-void game_mode_on_open_reform_ui(struct GameMode *self, int item_id);
 
 void game_mode_memorial_dungeon_info(const unsigned char *pkt);
 void game_mode_memorial_dungeon_notify(const unsigned char *pkt);
 void game_mode_memorial_dungeon_subscription_info(const unsigned char *pkt);
 void game_mode_memorial_dungeon_subscription_notify(const unsigned char *pkt);
-
-void game_mode_on_recv_roulette_item(struct GameMode *self,
-                                 const struct PacketRecvRouletteItem *packet);
-void game_mode_on_update_roulette_coin(struct GameMode *self,
-                                   const struct PacketUpdateRouletteCoin *packet);
 
 void game_mode_ack_add_exchange_item(struct GameMode *self, const unsigned char *pkt);
 void game_mode_ack_exchange_item(struct GameMode *self, const unsigned char *pkt);
@@ -469,13 +451,9 @@ void game_mode_zc_setting_whisper_pc2(struct GameMode *self, const unsigned char
 void game_mode_zc_setting_whisper_state(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_whisper_list(struct GameMode *self, const unsigned char *pkt);
 
-void game_mode_zc_ack_clan_leave(struct GameMode *self);
-void game_mode_zc_clan_info(struct GameMode *self, const struct PACKET_ZC_CLANINFO *packet);
 void game_mode_zc_dressroom_open(void);
 void game_mode_zc_guild_position(struct GameMode *self,
                                 const struct PACKET_ZC_GUILD_POSITION *packet);
-void game_mode_zc_notify_clan_chat(const struct PACKET_ZC_NOTIFY_CLAN_CHAT *packet);
-void game_mode_zc_notify_clan_connect_info(const struct PACKET_ZC_NOTIFY_CLAN_CONNECTINFO *packet);
 
 void game_mode_ack_takeoff_equip_v5(struct GameMode *self, unsigned char result, int wear_location,
                                 unsigned short index);
@@ -651,7 +629,6 @@ void game_mode_zc_ho_par_change(const unsigned char *pkt);
 void game_mode_zc_ho_par_change2(const unsigned char *pkt);
 void game_mode_zc_pet_egg_list(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_pet_act(struct GameMode *self, unsigned char *pkt);
-void game_mode_zc_pet_evolution_result(struct GameMode *self, unsigned result);
 void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt);
 
 void game_mode_on_recovery(struct GameMode *self, const void *packet, int version);
@@ -685,15 +662,6 @@ void game_mode_zc_ack_remove_rodex_item(struct GameMode *self,
                                        const struct PACKET_ZC_ACK_REMOVE_RODEX_ITEM *packet);
 void game_mode_zc_ack_send_rodex(struct GameMode *self,
                                 const struct PACKET_ZC_ACK_SEND_RODEX *packet);
-
-void game_mode_zc_ack_close_roulette(struct GameMode *self,
-                                    const struct PACKET_ZC_ACK_CLOSE_ROULETTE *packet);
-void game_mode_zc_ack_generate_roulette(struct GameMode *self,
-                                       const struct PACKET_ZC_ACK_GENERATE_ROULETTE *packet);
-void game_mode_zc_ack_open_roulette(struct GameMode *self,
-                                   const struct PACKET_ZC_ACK_OPEN_ROULETTE *packet);
-void game_mode_zc_ack_roulette_info(struct GameMode *self,
-                                   const struct PACKET_ZC_ACK_ROULEITTE_INFO *packet);
 
 void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_pc_cash_point_update(struct GameMode *self, const unsigned char *pkt);
@@ -787,8 +755,6 @@ void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *m
                                        unsigned short x, unsigned short y);
 void game_mode_on_server_move_private_airplane(struct GameMode *self, const char *map_name, short x,
                                           short y, int ip, short port);
-
-void game_mode_on_replay_packet(struct GameMode *self, char *pkt);
 
 void game_mode_on_latest_rodex_list(struct GameMode *self, const struct PacketLatestRodexList *packet);
 void game_mode_on_notify_unread_rodex(struct GameMode *self,
@@ -952,7 +918,6 @@ void game_mode_item_list_win_open(struct GameMode *self, const unsigned char *pk
 void game_mode_select_cart(struct GameMode *self, const unsigned char *pkt);
 void game_mode_ui_open(unsigned char type);
 void game_mode_ui_open_v2(struct GameMode *self, unsigned char type, int value);
-void game_mode_zc_read_book(struct GameMode *self, const struct PACKET_ZC_READ_BOOK *packet);
 
 void game_mode_config_notify2(struct GameMode *self, unsigned char open_equip_window,
                             unsigned char call_allowed);

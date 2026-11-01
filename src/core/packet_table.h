@@ -10,9 +10,8 @@
 struct PacketLength {
     int size;
     int min_size;
-    int recorded;
 };
-SIZE_ASSERT(PacketLength, 0x0c);
+SIZE_ASSERT(PacketLength, 8);
 
 struct PacketLengthEntry {
     int id;
@@ -43,7 +42,6 @@ struct PacketTable *packet_table_construct(struct PacketTable *self);
 void packet_table_destruct(struct PacketTable *self);
 struct PacketLengthInfo *packet_table_get_length(struct PacketTable *self,
                                                           struct PacketLengthInfo *out, int id);
-int packet_length_lookup(struct PacketTable *self, int id);
 
 #pragma pack(push, 1)
 struct PACKET_HEADER {

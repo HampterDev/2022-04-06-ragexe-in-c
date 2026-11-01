@@ -13,14 +13,12 @@
 #define RODEX_INBOX_WND_ID 0x107
 #define REFINING_WND_ID 0x127
 #define GRADE_ENCHANT_WND_ID 0x157
-#define ENCHANT_WND_ID 0x15b
 
 #define NOTIFY_ICON_BUTTON_ID 0xb8
 #define NOTIFY_ICON_BMP_DIR UI_SKIN "basic_interface\\"
 
 #define MSG_MAIL_BLOCKED_BY_REFINING 0xbb0
 #define MSG_MAIL_BLOCKED_BY_GRADE_ENCHANT 0xe83
-#define MSG_MAIL_BLOCKED_BY_ENCHANT 0xf03
 
 #define MAIL_ICON_BMP UI_SKIN "basic_interface\\rodexsystem\\renewal\\icon_noti_gotmail.bmp"
 
@@ -68,7 +66,6 @@ const struct UIWindowOps ui_open_mail_box_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -138,8 +135,6 @@ int ui_open_mail_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         ui_chat_line(msg_str(MSG_MAIL_BLOCKED_BY_REFINING), RGB(0xff, 0, 0));
     else if (ui_get_window(GRADE_ENCHANT_WND_ID))
         ui_chat_line(msg_str(MSG_MAIL_BLOCKED_BY_GRADE_ENCHANT), RGB(0xff, 0, 0));
-    else if (ui_get_window(ENCHANT_WND_ID))
-        ui_chat_line(msg_str(MSG_MAIL_BLOCKED_BY_ENCHANT), RGB(0xff, 0, 0));
     else if (!ui_close_window(RODEX_INBOX_WND_ID))
         ui_make_window(RODEX_INBOX_WND_ID);
     return 0;
@@ -191,7 +186,6 @@ const struct UIWindowOps ui_notify_level_up_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -319,7 +313,6 @@ const struct UIWindowOps ui_notify_quest_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -407,7 +400,6 @@ const struct UIWindowOps ui_notify_job_level_up_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,

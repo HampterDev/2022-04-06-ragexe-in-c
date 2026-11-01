@@ -1,5 +1,5 @@
-#ifndef ASYNCWORK_NAME_CARD_TYPES_H
-#define ASYNCWORK_NAME_CARD_TYPES_H
+#ifndef WEB_NAME_CARD_TYPES_H
+#define WEB_NAME_CARD_TYPES_H
 #include "base.h"
 #include "std/container_types.h"
 

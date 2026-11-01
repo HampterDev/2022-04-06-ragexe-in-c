@@ -1,7 +1,6 @@
 #include "render/rp_pool.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
-#include "contents/tips.h"
 #include "game/context.h"
 #include "core/markup_tags.h"
 #include <mbstring.h>
@@ -13,7 +12,6 @@
 
 #define GUILD_HELPER_WND_ID 0xd4
 #define CREATE_GUILD_WND_ID 0xd5
-#define GUILD_TIP_WND_ID 0xd6
 #define DISBAND_GUILD_WND_ID 0xd7
 
 #define MSG_GUILD_HELPER_TITLE 0x81a
@@ -24,9 +22,7 @@
 #define MSG_DISBAND_GUILD_TITLE 0x828
 #define MSG_DISBAND_GUILD_TEXT 0x829
 #define MSG_CREATE_GUILD_ITEM_LINK 0xafc
-#define MSG_GUILD_TIP_TITLE 0x81e
 
-#define GUILD_HELPER_ID_HELP 0x14f
 #define GUILD_HELPER_ID_CREATE 0x1b8
 
 #define REQ_CREATE_GUILD 0x70
@@ -86,7 +82,6 @@ const struct UIWindowOps ui_guild_helper_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -125,17 +120,16 @@ void ui_guild_helper_wnd_destroy(struct UIWindow *window)
 void ui_guild_helper_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UIGuildHelperWnd *self = (struct UIGuildHelperWnd *)window;
-    static const char *const bitmaps[3][3] = {
-        { GUILD_HELPER "btn_help.bmp", GUILD_HELPER "btn_help_a.bmp", GUILD_HELPER "btn_help_b.bmp" },
+    static const char *const bitmaps[2][3] = {
         { GUILD_HELPER "create_guild.bmp", GUILD_HELPER "create_guild_a.bmp", GUILD_HELPER "create_guild_b.bmp" },
         { GUILD_HELPER "btn_ok.bmp", GUILD_HELPER "btn_ok_a.bmp", GUILD_HELPER "btn_ok_b.bmp" },
     };
-    static const int ids[3] = { GUILD_HELPER_ID_HELP, GUILD_HELPER_ID_CREATE, UI_ID_OK };
-    int i, x = 8;
+    static const int ids[2] = { GUILD_HELPER_ID_CREATE, UI_ID_OK };
+    int i;
 
-    for (i = 0; i < 3; i++, x += 0x3e)
+    for (i = 0; i < 2; i++)
         self->button = ui_add_bitmap_button(&self->frame.base, bitmaps[i][0], bitmaps[i][1], bitmaps[i][2],
-                                            i < 2 ? x : width - 0x34, height - 0x18, ids[i]);
+                                            i == 0 ? 8 : width - 0x34, height - 0x18, ids[i]);
 }
 
 void ui_guild_helper_wnd_on_draw(struct UIWindow *window)
@@ -215,13 +209,8 @@ int ui_guild_helper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     if (msg == UI_MSG_COMMAND) {
         switch (val1) {
         case UI_ID_OK:
-            ui_window_mgr_post_quit1(&g_windowMgr, GUILD_TIP_WND_ID);
             ui_window_mgr_post_quit1(&g_windowMgr, CREATE_GUILD_WND_ID);
             ui_window_mgr_post_quit1(&g_windowMgr, GUILD_HELPER_WND_ID);
-            break;
-        case GUILD_HELPER_ID_HELP:
-            if (!ui_close_window(GUILD_TIP_WND_ID))
-                ui_make_window(GUILD_TIP_WND_ID);
             break;
         case GUILD_HELPER_ID_CREATE:
             if (!ui_close_window(CREATE_GUILD_WND_ID)) {
@@ -296,7 +285,6 @@ const struct UIWindowOps ui_create_guild_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -419,131 +407,5 @@ int ui_create_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
         ui_window_mgr_post_quit1(&g_windowMgr, DISBAND_GUILD_WND_ID);
     }
     string_free(&name);
-    return 0;
-}
-
-struct UIGuildTipWnd {
-    struct UIFrameWnd frame;
-    struct UIWindow *text;
-    struct UIBitmapButton *close;
-};
-SIZE_ASSERT(UIGuildTipWnd, 0x9c);
-void ui_guild_tip_wnd_destroy(struct UIWindow *window);
-void ui_guild_tip_wnd_on_create(struct UIWindow *self, int width, int height);
-void ui_guild_tip_wnd_on_draw(struct UIWindow *self);
-int ui_guild_tip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_guild_tip_wnd_ops = {
-    .destroy = ui_guild_tip_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_guild_tip_wnd_on_create,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_guild_tip_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_frame_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_guild_tip_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
-struct UIGuildTipWnd *ui_guild_tip_wnd_construct(struct UIGuildTipWnd *self)
-{
-    ui_frame_wnd_construct(&self->frame, 0);
-    self->frame.base.ops = &ui_guild_tip_wnd_ops;
-    return self;
-}
-
-struct UIWindow *ui_guild_tip_wnd_new(void)
-{
-    return (struct UIWindow *)ui_guild_tip_wnd_construct(mem_alloc(sizeof(struct UIGuildTipWnd)));
-}
-
-static void ui_guild_tip_wnd_destruct(struct UIGuildTipWnd *self)
-{
-    self->frame.base.ops = &ui_guild_tip_wnd_ops;
-    ui_frame_wnd_destruct(&self->frame);
-}
-
-void ui_guild_tip_wnd_destroy(struct UIWindow *window)
-{
-    struct UIGuildTipWnd *self = (struct UIGuildTipWnd *)window;
-    ui_guild_tip_wnd_destruct(self);
-    mem_free(self);
-}
-
-void ui_guild_tip_wnd_on_create(struct UIWindow *window, int width, int height)
-{
-    struct UIGuildTipWnd *self = (struct UIGuildTipWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-
-    self->text = ui_add_text_viewer(wnd, 0xa, 0x16, width - 0xf, height - 0x37);
-    if (!g_guildTips.loaded)
-        guild_tips_read(&g_guildTips);
-    if (VEC_COUNT(&g_guildTips.tips, struct Vec)) {
-        struct Vec pages, *page;
-
-        guild_tips_copy(&g_guildTips, &pages);
-        for (page = pages.first; page != pages.last; page++) {
-            unsigned i;
-
-            for (i = 0; i < VEC_COUNT(page, struct String); i++) {
-                struct String *line = (struct String *)page->first + i;
-
-                ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(line), 0x32, 0, 0);
-            }
-        }
-        tip_list_free(&pages);
-    }
-    self->close = ui_add_bitmap_button(wnd, UI_SKIN "btn_close.bmp", UI_SKIN "btn_close_a.bmp",
-                                       UI_SKIN "btn_close_b.bmp", width - 0x32, height - 0x18, UI_ID_CLOSE);
-}
-
-void ui_guild_tip_wnd_on_draw(struct UIWindow *window)
-{
-    struct UIGuildTipWnd *self = (struct UIGuildTipWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-
-    ui_window_draw_title_bar(wnd, 1, msg_str(MSG_GUILD_TIP_TITLE), 0);
-    ui_window_draw_body(wnd, 0x11, 0, "");
-    ui_window_draw_button_bar(wnd, 2, 0, 1);
-}
-
-int ui_guild_tip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
-{
-    if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
-        ui_window_mgr_post_quit1(&g_windowMgr, GUILD_TIP_WND_ID);
     return 0;
 }

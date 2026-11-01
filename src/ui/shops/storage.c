@@ -1,7 +1,6 @@
 #include "core/thread_text.h"
 #include "ui/controls/edit.h"
 #include "ui/controls/buttons.h"
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "render/rp_pool.h"
 #include "session/state.h"
@@ -72,7 +71,6 @@ const struct UIWindowOps ui_item_store_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_store_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -119,7 +117,6 @@ const struct UIEditCtrlOps ui_bitmap_edit_ctrl_ops = {
         .render = ui_window_render_base,
         .has_custom_backdrop = 0,
         .draw_backdrop = ui_window_draw_backdrop_base,
-        .get_records = ui_window_get_records_base,
         .type = UI_TYPE_EDIT,
         .on_hover_enter = ui_window_on_hover_enter_base,
         .on_hover_leave = ui_window_on_hover_leave_base,
@@ -373,7 +370,7 @@ void ui_item_store_wnd_on_draw(struct UIWindow *window)
 void ui_item_store_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 {
     struct UIItemStoreWnd *self = (struct UIItemStoreWnd *)window;
-    storage_on_lbtn_down(&self->base, x, y, ITEM_GRID_X, 1);
+    storage_on_lbtn_down(&self->base, x, y, ITEM_GRID_X);
 }
 
 void ui_item_store_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
@@ -386,15 +383,6 @@ void ui_item_store_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
 {
     struct UIItemStoreWnd *self = (struct UIItemStoreWnd *)window;
     storage_on_r_btn_down(&self->base, x, y, ITEM_GRID_X);
-}
-
-int ui_item_store_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, STORE_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, STORE_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
 }
 
 static void store_tell_lists(int msg)
@@ -647,30 +635,6 @@ int ui_item_store_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         text = thread_text_format("%d/%d", val1, val2);
         string_assign_cstr(&self->count_text, text);
         ui_window_invalidate_base(wnd);
-        return 0;
-    }
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        const BYTE *buf = (const BYTE *)val1;
-        unsigned size = (unsigned)val2, pos;
-        struct UIRecordHeader rec;
-
-        memcpy(&rec, buf, sizeof rec);
-        if (rec.tag != STORE_REC_BEGIN)
-            return 0;
-        for (pos = sizeof rec; size > pos;) {
-            memcpy(&rec, buf + pos, sizeof rec);
-            pos += sizeof rec;
-            if (rec.tag == STORE_REC_END) {
-                ui_item_store_wnd_send_msg(wnd, NULL, STORE_MSG_REFILL, 0, 0, 0, 0);
-                break;
-            }
-            pos += rec.len;
-        }
         return 0;
     }
     }

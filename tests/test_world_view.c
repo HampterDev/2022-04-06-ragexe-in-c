@@ -86,7 +86,7 @@ void texture_draw_surface_stretch(struct Texture *image, int x, int y, int width
     assert(image == &texture && x == 0 && y == WORLD_VIEW_TOP && width > 0 && height > 0);
     ++draws;
 }
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
+
 void client_lua_error_box(struct ClientLua *lua, const char *caption, const char *format, ...)
 {
     assert(lua && lua->L && caption && format);

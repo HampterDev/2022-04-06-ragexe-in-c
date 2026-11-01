@@ -1,4 +1,3 @@
-#include "replay/replay.h"
 #include "ui/window_manager_state.h"
 #include "session/session_items_priv.h"
 #include "session/session_items.h"
@@ -257,8 +256,6 @@ BYTE session_add_storage_item(struct Session *self,
 {
     struct ItemInfo *have;
 
-    if (g_replayPlaying && !replay_recorder_instance()->info.options[2])
-        return 1;
     have = find_by_index(&self->storageItems, item->index);
     if (have) {
         have->count += item->count;

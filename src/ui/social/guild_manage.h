@@ -8,7 +8,6 @@
 #include "ui/social/guild_windows.h"
 #include "session/session_party.h"
 #include "contents/guild_mgr.h"
-#include "web/emblem.h"
 #include "resources/emblem_types.h"
 #include "contents/guild_info.h"
 #include "session/state.h"

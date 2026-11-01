@@ -7,7 +7,6 @@
 #include "resources/palette.h"
 #include "resources/sprite.h"
 #include "session/number_codec.h"
-#include "contents/manner_filter.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
 #include "core/memory.h"
@@ -99,7 +98,6 @@ const struct UIWindowOps ui_make_char_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -424,7 +422,7 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     struct Mode *mode;
     char name[MAKE_CHAR_NAME_MAX];
     struct NewCharLooks looks;
-    int filtered, service, blank, i;
+    int control_chars_ok, service, blank, i;
 
     if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
                 (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
@@ -438,16 +436,14 @@ static int make_char_ok(struct UIMakeCharWnd *self)
         name_box(MSG_NAME_SHORT);
         goto send;
     }
-    filtered = word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit));
     service = 1;
     if (g_serviceType == 1)
         service = session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->name_edit)) ? 1 : 0;
     string_init(&copy);
     string_assign_cstr(&copy, ui_edit_ctrl_get_text(self->name_edit));
-    if (session_has_control_char(&g_session1, copy))
-        filtered = 0;
+    control_chars_ok = !session_has_control_char(&g_session1, copy);
     blank = np_dect(ui_edit_ctrl_get_text(self->name_edit));
-    if (!filtered) {
+    if (!control_chars_ok) {
         name_box(MSG_NAME_FILTERED);
         if (!service)
             name_box(MSG_NAME_SERVICE);

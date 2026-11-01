@@ -343,10 +343,6 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case 0x2720: return (int)&self->new_char;
     case 0x2721: self->new_char = *(const struct NewCharLooks *)a; return 0;
     case 0x2722:
-        if (b == 0xc1) {
-            CMODE_SENDMSG(client_current_mode(), 2, 0, 0, 0, 0);
-            return 0;
-        }
         self->base.next_sub_mode = 2;
         return 0;
     case 0x2723: return select_connection(self, a);
@@ -360,14 +356,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case 0x2726: return select_sub_connection(self, a);
     case 0x2728: login_set_otp_code(self, (const char *)a); return 0;
     case 0x2729: return 0;
-    case 0x272a:
-        rag_connection_drop_sends(rag_connection_instance(), 1);
-        self->base.next_sub_mode = 0x1b;
-        return 0;
-    case 0x272b:
-        session_set_sex(&g_session1, (int)replay_recorder_instance()->info.sex);
-        self->base.next_sub_mode = 0x1c;
-        return 0;
+
     case 0x272c: return select_zone(self, a);
     case 0x2735:
         self->base.next_sub_mode = a;

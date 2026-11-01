@@ -7,9 +7,7 @@
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
-struct WordFilter g_nameFilter;
 static unsigned sent, closed, reset_items, reset_counts, alerts;
-static int reject_text;
 static unsigned char packet_bytes[8192];
 static size_t packet_size;
 
@@ -38,8 +36,6 @@ void session_reset_mail_items(struct Session *session)
 { assert(session == &g_session1); ++reset_items; }
 void session_clear_mail_item_counts(struct Session *session)
 { assert(session == &g_session1); ++reset_counts; }
-int word_filter_contains(const struct WordFilter *filter, const char *text)
-{ assert(filter == &g_nameFilter && text); return reject_text; }
 unsigned char ui_window_mgr_post_quit1(struct UIWindowMgr *manager, int id)
 { assert(manager == &g_windowMgr && id == WID_WRITE_MAIL); ++closed; return 1; }
 char *msg_str(int id) { assert(id == 0xbd4); return "Rejected"; }
@@ -101,19 +97,13 @@ static void check_mail(const char *title, const char *body, int zeny)
 int main(void)
 {
     char body[5001];
-    struct RodexMail rejected = {0};
-    unsigned before;
     check_mail("", "", 0);
     check_mail("Title", "Body", 100);
     check_mail("A title stored outside the inline buffer", "Korean bytes: \xb0\xa1\xb3\xaa", -10);
     memset(body, 'x', sizeof body - 1); body[sizeof body - 1] = 0;
     check_mail("Large body", body, 2147483647);
-    before = sent;
-    rejected.title = borrowed("Blocked"); rejected.body = borrowed("Body");
-    reject_text = 1;
-    assert(game_mode_msg_send_rodex(&rejected) == 0);
-    assert(alerts == 1 && sent == before && closed == before);
-    assert(reset_items == before && reset_counts == before && !outstanding);
-    puts("RODEX send: actual packet header, title/body terminators, inline/heap text, growth, rejection and allocation cleanup passed.");
+    check_mail("Blocked BAD title", "Bad words keep Their CASE", 0);
+    assert(!alerts && !outstanding);
+    puts("RODEX send: actual packet header, title/body terminators, inline/heap text, growth, unchanged text and allocation cleanup passed.");
     return 0;
 }

@@ -18,8 +18,6 @@
 #include "game/context.h"
 #include "ui/ui_std.h"
 #include "ui/map/map_std.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
@@ -28,7 +26,6 @@
 #include "session/session_state.h"
 #include "ui/social/guild_member_sort.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "core/app.h"
 
 struct UIMiniMapWnd;
 void ui_mini_map_wnd_destroy(struct UIWindow *window);
@@ -36,7 +33,6 @@ void ui_mini_map_wnd_store_info(struct UIWindow *self);
 void ui_mini_map_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_mini_map_wnd_on_draw(struct UIWindow *self);
 void ui_mini_map_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-void ui_mini_map_wnd_on_mouse_shape(struct UIWindow *self, int x_unused, int y_unused);
 int ui_mini_map_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
 const struct UIWindowOps ui_mini_map_wnd_ops = {
     .destroy = ui_mini_map_wnd_destroy,
@@ -64,7 +60,7 @@ const struct UIWindowOps ui_mini_map_wnd_ops = {
     .on_mouse_move = ui_frame_wnd_on_mouse_move,
     .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
     .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_mini_map_wnd_on_mouse_shape,
+    .on_mouse_shape = ui_window_on_mouse_shape_base,
     .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
     .on_r_btn_down = ui_window_on_r_btn_down_base,
     .on_r_btn_up = ui_window_on_r_btn_up_base,
@@ -75,7 +71,6 @@ const struct UIWindowOps ui_mini_map_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -83,70 +78,14 @@ const struct UIWindowOps ui_mini_map_wnd_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-struct UIEditctrlWnd;
-void ui_editctrl_wnd_destroy(struct UIWindow *window);
-void ui_editctrl_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
-void ui_editctrl_wnd_on_draw(struct UIWindow *self);
-int ui_editctrl_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_editctrl_wnd_ops = {
-    .destroy = ui_editctrl_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_editctrl_wnd_on_create,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_editctrl_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_frame_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_editctrl_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_frame_wnd_get_records,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
 #define MINIMAP_WND 0x111
-#define MEMO_EDIT_WND 0x112
-#define MEMO_MAX 20
-#define MEMO_ID_FIRST 0x23a
 #define TOWN_ID_FIRST 1000
 #define QUEST_ID_FIRST 0x7d1
 #define OUT_OF_SIGHT -100
 
 #define CMD_SHOW_TOWNS 0xba
-#define CMD_MEMO 0x15c
 #define CMD_SHOW_QUESTS 0x161
 #define CMD_SHOW_MEMBERS 0x16d
-#define CMD_MEMO_OK 0xb0
 
 #define MSG_PLAYER_CELL 0x1d9
 #define MSG_BOSS_CELL 0x1da
@@ -157,9 +96,6 @@ const struct UIWindowOps ui_editctrl_wnd_ops = {
 
 enum { MARK_PARTY, MARK_GUILD, MARK_WARP, MARK_KINDS };
 
-#define MEMO_PATH_FORMAT "%s\\Memo\\$$%s.txt"
-#define MEMO_LINE_FORMAT "%d\t%d\t%s\r\n"
-
 #define MINIMAP_SKIN "유저인터페이스\\"
 
 struct UIMiniMapWnd {
@@ -167,9 +103,6 @@ struct UIMiniMapWnd {
     struct MiniMapWndInfo *info;
     float scale;
     float origin_x, origin_y;
-    struct UIBitmapButton *memos[MEMO_MAX];
-    int memo_count;
-    BYTE memo_armed;
     struct UIWindow *show_quests;
     struct UIWindow *show_towns;
     struct UIWindow *show_members;
@@ -180,10 +113,10 @@ struct UIMiniMapWnd {
     struct Tree quest_cells;
     struct Vec marks[MARK_KINDS];
 };
-OFFSET_ASSERT(UIMiniMapWnd, memos, 0xa4);
-OFFSET_ASSERT(UIMiniMapWnd, town_icons, 0x110);
-OFFSET_ASSERT(UIMiniMapWnd, marks, 0x128);
-SIZE_ASSERT(UIMiniMapWnd, 0x14c);
+OFFSET_ASSERT(UIMiniMapWnd, show_quests, 0xa4);
+OFFSET_ASSERT(UIMiniMapWnd, town_icons, 0xb8);
+OFFSET_ASSERT(UIMiniMapWnd, marks, 0xd0);
+SIZE_ASSERT(UIMiniMapWnd, 0xf4);
 
 struct MapIcon {
     int id;
@@ -220,8 +153,6 @@ struct UIMiniMapWnd *ui_mini_map_wnd_construct(struct UIMiniMapWnd *self)
     tree_init(&self->quest_cells);
     for (i = 0; i < MARK_KINDS; i++)
         self->marks[i].first = self->marks[i].last = self->marks[i].end = NULL;
-    self->memo_armed = 0;
-    self->memo_count = 0;
     self->show_quests = NULL;
     self->show_towns = NULL;
     return self;
@@ -326,111 +257,6 @@ static void minimap_load_towns(struct UIMiniMapWnd *self)
     string_free(&map);
 }
 
-static void memo_path(struct String *out)
-{
-    string_init(out);
-    string_format(out, MEMO_PATH_FORMAT, g_clientDir, g_session1.mapName);
-}
-
-static int minimap_load_memos(struct UIMiniMapWnd *self)
-{
-    static const char delims[] = "\t ,\t\r\n";
-    struct UIWindow *wnd = &self->frame.base;
-    struct String path, token, text;
-    struct Vec tokens;
-    const struct String *got;
-    char line[0x400];
-    const char *word;
-    int lines, count, x, y;
-    size_t i;
-    FILE *file;
-
-    for (i = 0; i < MEMO_MAX; i++) {
-        ui_window_move_base(&self->memos[i]->button.base, OUT_OF_SIGHT, OUT_OF_SIGHT);
-        ui_bitmap_button_set_tool_tip(self->memos[i], "");
-    }
-    count = 0;
-    memo_path(&path);
-    file = fopen(string_cstr(&path), "rb");
-    if (file == NULL) {
-        string_free(&path);
-        return 0;
-    }
-    memset(line, 0, sizeof line);
-    tokens.first = tokens.last = tokens.end = NULL;
-    lines = 0;
-    if (!feof(file)) {
-        for (;;) {
-            lines++;
-            if (lines >= 40 || count >= MEMO_MAX)
-                break;
-            fgets(line, sizeof line, file);
-            for (word = strtok(line, delims); word != NULL; word = strtok(NULL, delims)) {
-                string_init(&token);
-                string_assign_cstr(&token, word);
-                string_vec_push_move(&tokens, &token);
-                string_free(&token);
-            }
-            if (VEC_COUNT(&tokens, struct String) >= 2) {
-                got = (const struct String *)tokens.first;
-                x = atoi(string_cstr(&got[0]));
-                y = atoi(string_cstr(&got[1]));
-                if (x <= 0 || wnd->width < x || y <= 0 || wnd->height < y)
-                    break;
-                string_init(&text);
-                for (i = 2; i < VEC_COUNT(&tokens, struct String); i++) {
-                    if (text.size > 0x1e)
-                        break;
-                    string_append_cstr(&text, " ");
-                    got = (const struct String *)tokens.first;
-                    string_append(&text, string_cstr(&got[i]), got[i].size);
-                }
-                string_vec_clear(&tokens);
-                ui_window_move_base(&self->memos[count]->button.base, x, y);
-                ui_bitmap_button_set_tool_tip(self->memos[count], string_cstr(&text));
-                count++;
-                string_free(&text);
-            }
-            if (feof(file))
-                break;
-        }
-    }
-    fclose(file);
-    ui_window_invalidate_base(wnd);
-    string_vec_free(&tokens);
-    string_free(&path);
-    return count;
-}
-
-static int minimap_save_memos(struct UIMiniMapWnd *self)
-{
-    struct String path, tooltip, line;
-    int i, saved = 0;
-    FILE *file;
-
-    memo_path(&path);
-    file = fopen(string_cstr(&path), "wb");
-    if (file != NULL) {
-        for (i = 0; i < MEMO_MAX; i++) {
-            struct UIWindow *memo = &self->memos[i]->button.base;
-
-            if (memo->x <= 0 || memo->y <= 0)
-                continue;
-            string_copy(&tooltip, &self->memos[i]->button.tooltip);
-            string_init(&line);
-            string_format(&line, MEMO_LINE_FORMAT, memo->x, memo->y, string_cstr(&tooltip));
-            string_assign(&path, string_cstr(&line), line.size);
-            string_free(&line);
-            string_free(&tooltip);
-            fwrite(string_cstr(&path), path.size, 1, file);
-            saved++;
-        }
-        fclose(file);
-    }
-    string_free(&path);
-    return saved;
-}
-
 static void minimap_dress_player(struct UIMiniMapWnd *self)
 {
     struct String path;
@@ -466,7 +292,7 @@ void ui_mini_map_wnd_on_create(struct UIWindow *window, int width_unused, int he
     struct UIMiniMapWnd *self = (struct UIMiniMapWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
     struct UISpriteButton *player;
-    int height = wnd->height, row, i;
+    int height = wnd->height, row;
 
     minimap_fit(self);
     row = height - 0x13;
@@ -477,16 +303,10 @@ void ui_mini_map_wnd_on_create(struct UIWindow *window, int width_unused, int he
     self->show_members = ui_window_add_check_box_plain(wnd, CMD_SHOW_MEMBERS, 0x64, 0xc, msg_str(0xaba), 0xdc,
                                                    row, 1, msg_str(0xabb));
     ui_window_add_close_button(wnd, msg_str(0xab5), 0);
-    ui_window_add_numbered_button(wnd, CMD_MEMO, wnd->width - 0x78, height - 0x17, "minimap\\memo_ready",
-                               msg_str(0xabc), 1);
     minimap_load_towns(self);
     self->boss = ui_window_add_numbered_button(wnd, 0xc5, OUT_OF_SIGHT, OUT_OF_SIGHT, "minimap\\boss",
                                             msg_str(0xabd), 1);
     game_mode_send_quest_marks(game_current_mode());
-    for (i = 0; i < MEMO_MAX; i++)
-        self->memos[i] = ui_window_add_numbered_button(wnd, MEMO_ID_FIRST + i, OUT_OF_SIGHT, OUT_OF_SIGHT,
-                                                    "minimap\\memopoint", NULL, 1);
-    minimap_load_memos(self);
 
     self->player = mem_alloc(sizeof(struct UISpriteButton));
     if (self->player != NULL)
@@ -549,25 +369,8 @@ void ui_mini_map_wnd_on_draw(struct UIWindow *window)
 
 void ui_mini_map_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
 {
-    struct UIMiniMapWnd *self = (struct UIMiniMapWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-
-    if (y <= 0x11) {
-        ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
-        return;
-    }
-    if (x < 2 || y < 0x13 || wnd->width - 2 < x || wnd->height - 0x13 < y || !self->memo_armed)
-        return;
-    self->memo_armed = 0;
-    g_windowMgr.minimap_info.memo_y = y - 6;
-    g_windowMgr.minimap_info.memo_x = x - 6 < 0 ? 0 : x - 6;
-    ui_window_open(MEMO_EDIT_WND);
-}
-
-void ui_mini_map_wnd_on_mouse_shape(struct UIWindow *window, int x_unused, int y_unused)
-{
-    struct UIMiniMapWnd *self = (struct UIMiniMapWnd *)window;
-    mode_set_cursor_action(client_current_mode(), self->memo_armed ? 1 : 0);
+    if (y <= 0x11)
+        ui_frame_wnd_on_l_btn_down(window, x, y);
 }
 
 void ui_mini_map_wnd_store_info(struct UIWindow *window)
@@ -637,23 +440,6 @@ static int minimap_command(struct UIMiniMapWnd *self, int id)
         return 0;
     case UI_ID_CLOSE:
         ui_window_mgr_post_quit1(&g_windowMgr, MINIMAP_WND);
-        return 0;
-    case CMD_MEMO:
-        self->memo_armed = 1;
-        return 0;
-    }
-
-    if (id >= MEMO_ID_FIRST && id < MEMO_ID_FIRST + MEMO_MAX) {
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xabf), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
-                                   0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
-            struct UIBitmapButton *memo = self->memos[id - MEMO_ID_FIRST];
-
-            ui_bitmap_button_set_tool_tip(memo, "");
-            ui_window_move_base(&memo->button.base, OUT_OF_SIGHT, OUT_OF_SIGHT);
-            minimap_save_memos(self);
-            self->memo_count = minimap_load_memos(self);
-            ui_window_invalidate_base(wnd);
-        }
         return 0;
     }
 
@@ -772,107 +558,6 @@ int ui_mini_map_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         ui_window_invalidate_base(wnd);
         return 0;
     }
-    }
-    return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-struct UIEditctrlWnd {
-    struct UIFrameWnd frame;
-    struct UIWindow *edit;
-};
-SIZE_ASSERT(UIEditctrlWnd, 0x98);
-
-struct UIEditctrlWnd *ui_editctrl_wnd_construct(struct UIEditctrlWnd *self)
-{
-    ui_frame_wnd_construct(&self->frame, 0);
-    self->frame.base.ops = &ui_editctrl_wnd_ops;
-    return self;
-}
-
-struct UIWindow *ui_editctrl_wnd_new(void)
-{
-    return (struct UIWindow *)ui_editctrl_wnd_construct(mem_alloc(sizeof(struct UIEditctrlWnd)));
-}
-
-void ui_editctrl_wnd_destroy(struct UIWindow *window)
-{
-    struct UIEditctrlWnd *self = (struct UIEditctrlWnd *)window;
-    self->frame.base.ops = &ui_editctrl_wnd_ops;
-    ui_frame_wnd_destruct(&self->frame);
-    mem_free(self);
-}
-
-void ui_editctrl_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused)
-{
-    struct UIEditctrlWnd *self = (struct UIEditctrlWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-    struct UIEditCtrl *edit;
-    const char *hint;
-
-    ui_window_add_close_button(wnd, msg_str(0xab5), 0);
-    ui_window_add_numbered_button(wnd, CMD_MEMO_OK, 0xcd, 0x13, "minimap\\memo_ok", msg_str(0xac2), 1);
-    self->edit = mem_alloc(sizeof(struct UIEditCtrl));
-    if (self->edit != NULL)
-        self->edit = ui_edit_ctrl_construct(self->edit);
-    ui_window_create(self->edit, 0xc8, 0x12);
-    ui_window_move(self->edit, 5, 0x13);
-    edit = (struct UIEditCtrl *)self->edit;
-    edit->max_chars = 0x14;
-    ui_edit_ctrl_set_back_colour(self->edit, 0xe8, 0xe8, 0xe8);
-    ui_edit_ctrl_set_border_colour(self->edit, 0xc8, 0x64, 0x64);
-    ((struct UIEditCtrl *)self->edit)->no_border = 0;
-    hint = msg_str(0xac1);
-    if (hint != NULL)
-        string_assign_cstr(&((struct UIEditCtrl *)self->edit)->tooltip, hint);
-    ui_window_add_child(wnd, self->edit);
-    ui_window_mgr_set_focus_edit(&g_windowMgr, self->edit);
-}
-
-void ui_editctrl_wnd_on_draw(struct UIWindow *window)
-{
-    struct UIEditctrlWnd *self = (struct UIEditctrlWnd *)window;
-    ui_window_clear_canvas(&self->frame.base, 0xffffffff);
-    ui_window_draw_title_bar(&self->frame.base, 1, msg_str(0xac3), 0);
-}
-
-static void memo_save(struct UIEditctrlWnd *self)
-{
-    struct String path, line;
-    FILE *file;
-
-    memo_path(&path);
-    file = fopen(string_cstr(&path), "ab");
-    if (file != NULL) {
-        fseek(file, 0, SEEK_END);
-        string_init(&line);
-        string_format(&line, MEMO_LINE_FORMAT, g_windowMgr.minimap_info.memo_x, g_windowMgr.minimap_info.memo_y,
-                      ui_edit_ctrl_get_text(self->edit));
-        string_assign(&path, string_cstr(&line), line.size);
-        string_free(&line);
-        fwrite(string_cstr(&path), path.size, 1, file);
-        fclose(file);
-        if (g_windowMgr.mini_map_wnd != NULL)
-            minimap_load_memos((struct UIMiniMapWnd *)g_windowMgr.mini_map_wnd);
-        ui_window_mgr_post_quit1(&g_windowMgr, MEMO_EDIT_WND);
-    }
-    string_free(&path);
-}
-
-int ui_editctrl_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
-{
-    struct UIEditctrlWnd *self = (struct UIEditctrlWnd *)window;
-    if (msg == 0) {
-        if (self->edit == sender && ui_edit_ctrl_get_text_size(self->edit) > 0) {
-            ui_editctrl_wnd_send_msg(&self->frame.base, self->edit, UI_MSG_COMMAND, CMD_MEMO_OK, 0, 0, 0);
-            return 0;
-        }
-    } else if (msg == UI_MSG_COMMAND) {
-        if (val1 == CMD_MEMO_OK)
-            memo_save(self);
-        else if (val1 == UI_ID_CLOSE)
-            ui_window_mgr_post_quit1(&g_windowMgr, MEMO_EDIT_WND);
-        return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }

@@ -1,6 +1,4 @@
-#include "ui/window_records.h"
 #include "render/rp_pool.h"
-#include "contents/manner_filter.h"
 #include "ui/actor_labels.h"
 #include "core/object_type_tables.h"
 #include "game/context.h"
@@ -66,7 +64,6 @@ const struct UIWindowOps ui_chat_room_title_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_window_get_records_base,
     .type = UI_TYPE_WINDOW,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -265,9 +262,6 @@ int ui_chat_room_title_send_msg(struct UIWindow *window, struct UIWindow *sender
     ((struct UIStaticText *)text)->font_arg3 = 0;
     ((struct UIStaticText *)text)->font_arg4 = 0;
     ((struct UIStaticText *)text)->font_height = 0xc;
-    if (word_filter_contains(&g_nameFilter, line) == 1) {
-        word_filter_censor(&g_nameFilter, line);
-    }
     ui_static_text_set_text_ellipsis(self->text, line);
     ui_window_invalidate_base(&self->base);
     return 0;
@@ -324,37 +318,6 @@ void ui_chat_room_wnd_on_draw(struct UIWindow *window)
     ui_window_fill_rect(wnd, talk_width(wnd->width) - 2, 0x11, 1, wnd->height - 0x26,
                       RGB(red, (BYTE)green, (BYTE)blue));
     ui_window_draw_button_bar(wnd, 0, 0, 1);
-}
-
-static void put_members(struct SnapshotWriter *out, struct Tree *members, int with_value)
-{
-    struct TreeNode *node;
-
-    for (node = tree_first(members); node != members->head; node = tree_next(node)) {
-        struct ChatRoomMember *member = TREE_VALUE(node, struct ChatRoomMember);
-
-        if ((member->value != 0) == with_value)
-            snapshot_write(out, with_value ? CHAT_ROOM_REC_MEMBER_SET : CHAT_ROOM_REC_MEMBER,
-                             string_cstr(&member->name), member->name.size);
-    }
-}
-
-int ui_chat_room_wnd_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIChatRoomWnd *self = (struct UIChatRoomWnd *)window;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, CHAT_ROOM_REC_BEGIN, NULL, 0);
-    snapshot_write(&writer, CHAT_ROOM_REC_FRAME, self->info, sizeof *self->info);
-    snapshot_write(&writer, CHAT_ROOM_REC_TITLE, string_cstr(&self->room.title), self->room.title.size);
-    snapshot_write(&writer, CHAT_ROOM_REC_PASSWORD, string_cstr(&self->room.password), self->room.password.size);
-    snapshot_write(&writer, CHAT_ROOM_REC_TYPE, &self->room.type, sizeof self->room.type);
-    snapshot_write(&writer, CHAT_ROOM_REC_USERS, &self->room.users, sizeof self->room.users);
-    snapshot_write(&writer, CHAT_ROOM_REC_LIMIT, &self->room.max_users, sizeof self->room.max_users);
-    snapshot_write(&writer, CHAT_ROOM_REC_ROOM_ID, &self->room.room_id, sizeof self->room.room_id);
-    put_members(&writer, &self->members, 0);
-    put_members(&writer, &self->members, 1);
-    snapshot_write(&writer, CHAT_ROOM_REC_END, NULL, 0);
-    return snapshot_finish(&writer, out);
 }
 
 #define UIWM_MSG_SHOW_CHAT 3

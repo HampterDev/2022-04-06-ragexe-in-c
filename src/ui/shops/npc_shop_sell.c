@@ -1,4 +1,3 @@
-#include "ui/window_records.h"
 #include "ui/shops/shops.h"
 #include "render/rp_pool.h"
 #include "ui/window_manager_state.h"
@@ -64,7 +63,6 @@ const struct UIWindowOps ui_item_sell_wnd_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_sell_wnd_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -122,7 +120,6 @@ const struct UIWindowOps ui_item_sell_wnd2_ops = {
     .render = ui_window_render_base,
     .has_custom_backdrop = 0,
     .draw_backdrop = ui_window_draw_backdrop_base,
-    .get_records = ui_item_sell_wnd2_get_records,
     .type = UI_TYPE_FRAME,
     .on_hover_enter = ui_window_on_hover_enter_base,
     .on_hover_leave = ui_window_on_hover_leave_base,
@@ -255,15 +252,6 @@ void ui_item_sell_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
     npc_shop_show_price_tooltip(&self->base, x, y, NULL, 1, 1);
 }
 
-int ui_item_sell_wnd_get_records(struct UIWindow *self, struct ReplayBuffer *out)
-{
-    (void)self;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_SELL_BEGIN, NULL, 0);
-    snapshot_write(&writer, REC_SELL_END, NULL, 0);
-    return snapshot_finish(&writer, out);
-}
-
 struct UIItemSellWnd2 *ui_item_sell_wnd2_construct(struct UIItemSellWnd2 *self)
 {
     ui_item_base_wnd_construct(&self->sell.base);
@@ -321,16 +309,6 @@ void ui_item_sell_wnd2_on_mouse_hover(struct UIWindow *window, int x, int y)
 {
     struct UIItemSellWnd2 *self = (struct UIItemSellWnd2 *)window;
     npc_shop_show_price_tooltip(&self->sell.base, x, y, NULL, 1, 0);
-}
-
-int ui_item_sell_wnd2_get_records(struct UIWindow *window, struct ReplayBuffer *out)
-{
-    struct UIItemSellWnd2 *self = (struct UIItemSellWnd2 *)window;
-    struct SnapshotWriter writer = {0};
-    snapshot_write(&writer, REC_SELL2_BEGIN, NULL, 0);
-    snapshot_write(&writer, REC_SELL2_DC, &self->window_type, sizeof self->window_type);
-    snapshot_write(&writer, REC_SELL2_END, NULL, 0);
-    return snapshot_finish(&writer, out);
 }
 
 void ui_item_sell_wnd2_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
@@ -404,7 +382,6 @@ int ui_item_sell_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     case UI_MSG_COMMAND: {
         struct Mode *mode;
 
-        ui_window_record_command(wnd, val1, val2, val3, val4);
         mode = client_current_mode();
         if (val1 != UI_ID_OK && val1 != UI_ID_CANCEL)
             return 0;
@@ -444,18 +421,6 @@ int ui_item_sell_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 
     case UI_MSG_ADD_DRAGGED:
         sell_add_dragged(&self->base, g_windowMgr.item_shop_wnd);
-        return 0;
-
-    case UI_MSG_LOAD_RECORDS:
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        if (npc_shop_records_reach((const char *)val1, (unsigned)val2, REC_SELL_BEGIN, REC_SELL_END)) {
-            npc_shop_open_shop_list(WND_ID_SHOP2, 1);
-            ui_window_send_msg(&self->base.frame.base, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-        }
         return 0;
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
@@ -516,35 +481,6 @@ int ui_item_sell_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender,
     case UI_MSG_ADD_DRAGGED:
         sell_add_dragged(base, g_windowMgr.item_shop_wnd2);
         return 0;
-
-    case UI_MSG_LOAD_RECORDS: {
-        {
-            int record_bytes = ui_window_records_validate((const void *)val1, (size_t)(unsigned)val2);
-            if (record_bytes <= 0) return 0;
-            val2 = record_bytes;
-        }
-        struct SnapshotReader reader;
-        struct SnapshotRecord record;
-        struct UIWindow *shop;
-
-        if (ui_window_records_open(&reader, (const void *)val1, (size_t)val2, REC_SELL2_BEGIN) < 0)
-            return 0;
-        shop = ui_window_open(WND_ID_SELL2_SHOP);
-        if (shop) {
-            ui_window_send_msg(shop, NULL, SHOP_MSG_SET_MODE, 1, 0, 0, 0);
-            ui_window_send_msg(shop, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
-        }
-        while (snapshot_next(&reader, &record) == 1) {
-            if (record.tag == REC_SELL2_END)
-                break;
-            if (record.tag == REC_SELL2_DC) {
-                memcpy(&self->window_type, record.value.data, sizeof self->window_type);
-                if (shop)
-                    ui_window_send_msg(shop, NULL, SHOP_MSG_REFRESH, self->window_type, 0, 0, 0);
-            }
-        }
-        return 0;
-    }
     }
     return ui_item_base_wnd_send_msg((struct UIWindow *)(base), sender, msg, val1, val2, val3, val4);
 }

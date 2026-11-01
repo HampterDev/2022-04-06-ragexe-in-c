@@ -5,7 +5,6 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "game/mode_msg.h"
-#include "replay/replay.h"
 #include "session/session_items.h"
 #include "ui/ui_std.h"
 #include "ui/shops/merchant_shop_make.h"
@@ -61,8 +60,7 @@ int game_mode_msg_open_vending(const char *title, int open)
         packet.title[0] = 0;
         packet.open = 0;
     }
-    if (!g_replayPlaying)
-        string_assign_cstr(&g_session1.shopTitle, packet.title);
+    string_assign_cstr(&g_session1.shopTitle, packet.title);
     out = packet.entries;
     for (i = 0; i < count; i++) {
         session_get_store_setup_item_at(&g_session1, &item, i);
@@ -180,8 +178,7 @@ int game_mode_msg_open_buying_store(const char *title, int open, int limit)
         packet.title[0] = 0;
         packet.limit = 0;
     }
-    if (!g_replayPlaying)
-        string_assign_cstr(&g_session1.shopTitle, packet.title);
+    string_assign_cstr(&g_session1.shopTitle, packet.title);
     out = packet.entries;
     for (i = 0; i < count; i++) {
         session_get_store_setup_item_at(&g_session1, &item, i);
@@ -328,8 +325,7 @@ int game_mode_msg_create_assistant_buying(const char *title, int limit)
         packet.cell_x = (unsigned short)x;
         packet.cell_y = (unsigned short)y;
     }
-    if (!g_replayPlaying)
-        string_assign_cstr(&g_session1.shopTitle, packet.title);
+    string_assign_cstr(&g_session1.shopTitle, packet.title);
     out = packet.entries;
     for (i = 0; i < count; i++) {
         session_get_store_setup_item_at(&g_session1, &item, i);

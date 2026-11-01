@@ -122,8 +122,6 @@ void session_load_transparent_items(struct Session *self)
 
 void session_init_lua_files(struct Session *self)
 {
-    WIN32_FIND_DATAA found;
-    HANDLE find;
     int hatEffects;
     if (!self->luaState) {
         self->luaState = malloc(sizeof *self->luaState);
@@ -132,18 +130,10 @@ void session_init_lua_files(struct Session *self)
     }
     if (!self->luaState->L) client_lua_open(self->luaState);
     if (!self->luaState->L) return;
-    run_lua(self, "Lua Files\\DataInfo\\ChangeDirectoryList");
     run_lua(self, "Lua Files\\MsgString_KR");
     run_lua(self, "Lua Files\\Common");
     run_lua(self, "Lua Files\\wndInfo");
     run_lua(self, "Lua Files\\HotKey");
-    find = FindFirstFileA("data", &found);
-    if (find == INVALID_HANDLE_VALUE)
-        CreateDirectoryA("data", NULL);
-    else
-        FindClose(find);
-    run_saved(self, "SaveData\\UserKeys");
-    session_reset_the_hot_keys(self);
     run_lua(self, "Lua Files\\Emotion\\EmotionList_F");
     run_lua(self, "Lua Files\\Emotion\\EmotionList");
     run_lua(self, "Lua Files\\DataInfo\\NPCIdentity");
@@ -153,9 +143,8 @@ void session_init_lua_files(struct Session *self)
     run_lua(self, "Lua Files\\DataInfo\\AccessoryId");
     run_lua(self, "Lua Files\\DataInfo\\accName_F");
     run_lua(self, "Lua Files\\DataInfo\\accName");
-    run_lua(self, "xofyldas");
 
-    if (!run_saved(self, "SaveData\\ChatWndInfo_U")
+    if (!client_lua_load_local_file(self->luaState, "SaveData\\ChatWndInfo_U.lua")
         || !client_lua_has_global_table(self->luaState, "ChatSubWnd_1"))
         run_lua(self, "Lua Files\\ChatWndInfo\\ChatWndInfo");
     run_lua(self, "Lua Files\\ChatWndInfo\\ChatWndInfo_F");
@@ -208,7 +197,6 @@ void session_init_lua_files(struct Session *self)
     run_lua(self, "Lua Files\\DataInfo\\KafraMoveMapServiceList_F");
     session_load_navigation_lua(self);
     run_lua(self, "Lua Files\\DataInfo\\HelpMsgStr");
-    run_lua(self, "Lua Files\\EntryQueue\\EntryQueueList");
     run_lua(self, "Lua Files\\DataInfo\\WeaponTable");
     run_lua(self, "Lua Files\\DataInfo\\WeaponTable_F");
     run_lua(self, "Lua Files\\DataInfo\\JobIdentity");
@@ -226,8 +214,6 @@ void session_init_lua_files(struct Session *self)
     hatEffects = 0;
     client_lua_call(self->luaState, "GetTableSizeForC", "s>d", "hatEffectTable", &hatEffects);
 
-    run_lua(self, "Lua Files\\SignBoardList_F");
-    run_lua(self, "Lua Files\\SignBoardList");
     run_lua(self, "Lua Files\\StylingShop\\StylingShopInfo_F");
     run_lua(self, "Lua Files\\StylingShop\\StylingShopInfo");
     run_lua(self, "Lua Files\\EffectTool\\ForceRenderEffect");
@@ -242,10 +228,8 @@ void session_init_lua_files(struct Session *self)
 
     session_load_external_settings(self);
     run_lua(self, "Lua Files\\DataInfo\\TB_Layer_Priority");
-    run_lua(self, "Lua Files\\datainfo\\tb_cashshop_banner");
     run_lua(self, "Lua Files\\Agit\\AgitConfig");
     run_lua(self, "Lua Files\\Agit\\AgitConfig_F");
-    run_lua(self, "Lua Files\\datainfo\\tb_checkAttendance_banner");
 }
 
 void session_load_shadow_factors(struct Session *self)
@@ -302,12 +286,9 @@ void session_load_external_settings(struct Session *self)
     switch (g_serviceType) {
     case 0:
         if (g_serverType == 1)
-            file = strstr(g_session1.launchArg3, "QmSakray") ? "Lua Files\\service_korea\\ExternalSettings_kr_sak_qm"
-                                                    : "Lua Files\\service_korea\\ExternalSettings_kr_sak";
+            file = "Lua Files\\service_korea\\ExternalSettings_kr_sak";
         else if (g_serverType == 2)
             file = "Lua Files\\service_korea\\ExternalSettings_kr_indoor";
-        else if (g_serverType == 0 && strstr(g_session1.launchArg3, "Dev"))
-            file = "Lua Files\\service_korea\\ExternalSettings_kr_qm";
         else
             file = "Lua Files\\service_korea\\ExternalSettings_kr";
         break;

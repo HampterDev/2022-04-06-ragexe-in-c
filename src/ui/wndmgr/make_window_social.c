@@ -1,6 +1,5 @@
 #include "render/renderer.h"
 #include "ui/social/party_booking.h"
-#include "replay/replay.h"
 #include "ui/social/guild_windows.h"
 #include "session/state.h"
 #include "ui/window_access.h"
@@ -13,8 +12,6 @@
 #include "ui/mail/rodex_compose.h"
 #include "ui/mail/rodex_ui.h"
 #include "ui/quests/quests.h"
-#include "ui/social/entry_queue_standby_internal.h"
-#include "ui/social/entry_queue_windows.h"
 #include "ui/social/guild_requests.h"
 #include "ui/social/party_board.h"
 #include "ui/social/party_windows.h"
@@ -135,8 +132,7 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
         ui_window_send_msg(wnd, NULL, UI_MSG_COMMAND, 0xcf, self->messenger_group_info.radio ? 2 : 1, 0, 0);
         return NULL;
     case 0x22:
-        if (g_replayPlaying && !replay_recorder_instance()->info.options[5])
-            return NULL;
+
         ui_window_mgr_post_quit1(self, 0x45);
         wnd = self->messenger_group_wnd;
         if (wnd == NULL) {
@@ -159,16 +155,6 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
             wm_move_center(wnd, 0xdc, 0x78);
             ui_window_mgr_add_window(self, wnd);
             wm_set_info(wnd, &self->guild_helper_info);
-        }
-        wm_show(wnd);
-        break;
-    case 0xd6:
-        wnd = self->guild_tip_wnd;
-        if (wnd == NULL) {
-            wnd = ui_guild_tip_wnd_new();
-            self->guild_tip_wnd = wnd;
-            ui_window_create(wnd, 0x14a, 0xe6);
-            ui_window_mgr_add_window(self, wnd);
         }
         wm_show(wnd);
         break;
@@ -314,55 +300,6 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
     case 0x6d:
         wnd = WM_OPEN(join_friend_accept_wnd, ui_join_friend_accept_wnd_new, 0x118, 0x78, WM_AT_640, 0xc8, 0xc8);
         break;
-    case 0x9d:
-        wnd = ui_window_mgr_get_window(self, 0x9d);
-        if (wnd == NULL) {
-            wnd = ui_entry_queue_wnd_new();
-            ui_window_create(wnd, 0x15e, 0x15e);
-            ui_window_mgr_add_window(self, wnd);
-            wm_set_info(wnd, &self->battlefield_info);
-        }
-        wm_show(wnd);
-        break;
-    case 0xd1:
-        wnd = ui_window_mgr_get_window(self, 0xd1);
-        if (wnd == NULL) {
-            wnd = ui_entry_queue_stand_by_wnd_new();
-            ui_entry_queue_stand_by_wnd_init((struct UIEntryQueueStandByWnd *)wnd);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0xd2:
-        wnd = ui_window_mgr_get_window(self, 0xd2);
-        if (wnd == NULL) {
-            wnd = ui_entry_queue_request_wnd_new();
-            ui_entry_queue_request_wnd_init((struct UIEntryQueueRequestWnd *)wnd);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0xd3:
-        wnd = ui_window_mgr_get_window(self, 0xd3);
-        if (wnd == NULL) {
-            wnd = ui_entry_queue_help_wnd_new();
-            ui_window_create(wnd, 0x64, 0x64);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0xed:
-        wnd = self->clan_info_manage_wnd;
-        if (wnd == NULL) {
-            wnd = ui_clan_info_manage_wnd_new();
-            self->clan_info_manage_wnd = wnd;
-            ui_window_create(wnd, 0x190, 0x13d);
-            wm_move(wnd, ui_scale_x640(0), 0x93);
-            ui_window_mgr_add_window(self, wnd);
-            wm_set_info(wnd, &self->clan_info);
-        }
-        wm_show(wnd);
-        break;
     case 0xfd:
         wnd = self->guild_storage_log_wnd;
         if (wnd == NULL) {
@@ -397,15 +334,6 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
         break;
     case 0x109:
         wnd = WM_OPEN(rodex_contents_wnd, ui_rodex_contents_wnd_new, 0x12c, 0x190, WM_AT_640, 0x78, 0x78);
-        break;
-    case 0x11a:
-        wnd = ui_window_mgr_get_window(self, 0x11a);
-        if (wnd)
-            break;
-        wnd = ui_connect_twitter_wnd_new();
-        ui_window_create(wnd, 0x13e, 0x17e);
-        wm_move(wnd, wm_center_x(0x13e), wm_center_y(0x17e));
-        ui_window_mgr_add_window(self, wnd);
         break;
     case 0x144:
         wnd = self->adven_party_board_wnd;
