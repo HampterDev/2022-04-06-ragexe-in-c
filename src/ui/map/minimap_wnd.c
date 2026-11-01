@@ -332,6 +332,45 @@ static void memo_path(struct String *out)
     string_format(out, MEMO_PATH_FORMAT, g_clientDir, g_session1.mapName);
 }
 
+static void memo_save_error(const struct String *path)
+{
+    struct String message;
+
+    string_init(&message);
+    string_format(&message, "Could not save minimap notes to:\n%s\n\n"
+                  "Check that the folder exists, is writable, and has free disk space.",
+                  string_cstr(path));
+    ui_message_box(string_cstr(&message));
+    string_free(&message);
+}
+
+/* Hand-edited files may lack the newline normally written by the client. */
+static int memo_append_separator(FILE *file)
+{
+    long size;
+    int last;
+    const char *separator;
+    size_t length;
+
+    if (fseek(file, 0, SEEK_END) != 0)
+        return 0;
+    size = ftell(file);
+    if (size < 0)
+        return 0;
+    if (size == 0)
+        return 1;
+    if (fseek(file, -1, SEEK_END) != 0)
+        return 0;
+    last = fgetc(file);
+    if (last == EOF || fseek(file, 0, SEEK_END) != 0)
+        return 0;
+    if (last == '\n')
+        return 1;
+    separator = last == '\r' ? "\n" : "\r\n";
+    length = strlen(separator);
+    return fwrite(separator, 1, length, file) == length;
+}
+
 static int minimap_load_memos(struct UIMiniMapWnd *self)
 {
     static const char delims[] = "\t ,\t\r\n";
@@ -402,33 +441,37 @@ static int minimap_load_memos(struct UIMiniMapWnd *self)
     return count;
 }
 
-static int minimap_save_memos(struct UIMiniMapWnd *self)
+static int minimap_save_memos(struct UIMiniMapWnd *self, int omitted)
 {
-    struct String path, tooltip, line;
-    int i, saved = 0;
+    struct String path, line;
+    int i, failed, saved = 0;
     FILE *file;
 
     memo_path(&path);
     file = fopen(string_cstr(&path), "wb");
+    failed = file == NULL;
     if (file != NULL) {
         for (i = 0; i < MEMO_MAX; i++) {
             struct UIWindow *memo = &self->memos[i]->button.base;
 
-            if (memo->x <= 0 || memo->y <= 0)
+            if (i == omitted || memo->x <= 0 || memo->y <= 0)
                 continue;
-            string_copy(&tooltip, &self->memos[i]->button.tooltip);
             string_init(&line);
-            string_format(&line, MEMO_LINE_FORMAT, memo->x, memo->y, string_cstr(&tooltip));
-            string_assign(&path, string_cstr(&line), line.size);
+            string_format(&line, MEMO_LINE_FORMAT, memo->x, memo->y,
+                          string_cstr(&self->memos[i]->button.tooltip));
+            failed = fwrite(string_cstr(&line), 1, line.size, file) != line.size;
             string_free(&line);
-            string_free(&tooltip);
-            fwrite(string_cstr(&path), path.size, 1, file);
+            if (failed)
+                break;
             saved++;
         }
-        fclose(file);
+        if (fclose(file) != 0)
+            failed = 1;
     }
+    if (failed)
+        memo_save_error(&path);
     string_free(&path);
-    return saved;
+    return failed ? -1 : saved;
 }
 
 static void minimap_dress_player(struct UIMiniMapWnd *self)
@@ -646,13 +689,10 @@ static int minimap_command(struct UIMiniMapWnd *self, int id)
     if (id >= MEMO_ID_FIRST && id < MEMO_ID_FIRST + MEMO_MAX) {
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xabf), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
                                    0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
-            struct UIBitmapButton *memo = self->memos[id - MEMO_ID_FIRST];
-
-            ui_bitmap_button_set_tool_tip(memo, "");
-            ui_window_move_base(&memo->button.base, OUT_OF_SIGHT, OUT_OF_SIGHT);
-            minimap_save_memos(self);
-            self->memo_count = minimap_load_memos(self);
-            ui_window_invalidate_base(wnd);
+            if (minimap_save_memos(self, id - MEMO_ID_FIRST) >= 0) {
+                self->memo_count = minimap_load_memos(self);
+                ui_window_invalidate_base(wnd);
+            }
         }
         return 0;
     }
@@ -839,18 +879,26 @@ static void memo_save(struct UIEditctrlWnd *self)
 {
     struct String path, line;
     FILE *file;
+    int failed;
 
     memo_path(&path);
-    file = fopen(string_cstr(&path), "ab");
+    file = fopen(string_cstr(&path), "a+b");
+    failed = file == NULL;
     if (file != NULL) {
-        fseek(file, 0, SEEK_END);
-        string_init(&line);
-        string_format(&line, MEMO_LINE_FORMAT, g_windowMgr.minimap_info.memo_x, g_windowMgr.minimap_info.memo_y,
-                      ui_edit_ctrl_get_text(self->edit));
-        string_assign(&path, string_cstr(&line), line.size);
-        string_free(&line);
-        fwrite(string_cstr(&path), path.size, 1, file);
-        fclose(file);
+        failed = !memo_append_separator(file);
+        if (!failed) {
+            string_init(&line);
+            string_format(&line, MEMO_LINE_FORMAT, g_windowMgr.minimap_info.memo_x, g_windowMgr.minimap_info.memo_y,
+                          ui_edit_ctrl_get_text(self->edit));
+            failed = fwrite(string_cstr(&line), 1, line.size, file) != line.size;
+            string_free(&line);
+        }
+        if (fclose(file) != 0)
+            failed = 1;
+    }
+    if (failed) {
+        memo_save_error(&path);
+    } else {
         if (g_windowMgr.mini_map_wnd != NULL)
             minimap_load_memos((struct UIMiniMapWnd *)g_windowMgr.mini_map_wnd);
         ui_window_mgr_post_quit1(&g_windowMgr, MEMO_EDIT_WND);

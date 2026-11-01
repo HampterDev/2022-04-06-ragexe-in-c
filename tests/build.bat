@@ -826,3 +826,6 @@ popd
 
 call "%~dp0build_emblem_cache.bat"
 if errorlevel 1 exit /b 1
+
+call "%~dp0build_minimap_memos.bat"
+if not "%errorlevel%"=="0" exit /b 1
