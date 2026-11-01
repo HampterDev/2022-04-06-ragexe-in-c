@@ -259,9 +259,6 @@ void game_mode_on_update(struct Mode *mode)
     adventurer_agency_tick(g_adventurerAgency);
     check_system_message();
     game_mode_poll_network_msg(self);
-    if (!self->base.loop_cond)
-        return;
-
     if (self->base.loop_cond != 0) {
         time_scheduler_tick(g_timeScheduler);
         player_names_update();
