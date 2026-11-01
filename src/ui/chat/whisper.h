@@ -25,7 +25,7 @@ struct UIWhisperWnd *ui_whisper_wnd_construct(struct UIWhisperWnd *self);
 struct UIWindowMgr;
 
 /* g_windowMgrHandlers.open_whisper for UIWM_MSG_WHISPER: opens the whisper window for
-   `name`, titled "name (title) *^_^*" when `title` is given and carrying `code`, unless
+   `name`, titled "name  (title)  *^_^*" when `title` is given and carrying `code`, unless
    one is open. Returns 1 when it opened one. */
 int ui_whisper_wnd_open(struct UIWindowMgr *mgr, const char *name, const char *title, const char *code);
 
