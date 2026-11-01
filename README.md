@@ -203,6 +203,9 @@ Markup, links and wrapping:
 
 Data, time and leaks:
 
+- A vending request keeps its setup items until the next setup starts. If the server
+  refuses the request and leaves the window open, retrying still sends the chosen items,
+  quantities and prices instead of an empty list.
 - A reputation or EZ2STR effect table that is not a JSON object fails the
   read instead of throwing an exception out of the loader.
 - GRF, SPR, IMF, GND and EZ effect files and the
