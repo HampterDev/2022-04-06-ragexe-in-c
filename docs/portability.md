@@ -28,6 +28,8 @@ Test assertions stay enabled even in Release configurations.
 The zlib 1.2.11 `zutil.h` classic-Mac branch excludes modern `__APPLE__` targets:
 current SDKs define `TARGET_OS_MAC`, but macOS provides POSIX `fdopen`. Treating it
 as classic Mac OS rewrites the SDK's function declaration and prevents compilation.
+The matching classic-Mac branch in libpng's `pngpriv.h` also excludes `__APPLE__`,
+so current macOS uses `<math.h>` rather than the removed `<fp.h>`.
 
 The initial CTest set covers the real string, container, numeric and XML modules,
 Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
