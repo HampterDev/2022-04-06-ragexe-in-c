@@ -9,9 +9,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-struct IProcess g_process;
-INIT_ONCE g_processGuard;
-
 static void remove_if_present(const char *name)
 {
     if (_access(name, 6) == 0)

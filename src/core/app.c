@@ -166,20 +166,6 @@ int app_create_window(HINSTANCE instance)
     return 1;
 }
 
-unsigned char app_is_win9x(void)
-{
-    OSVERSIONINFOEXA info;
-
-    memset(&info, 0, sizeof info);
-    info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXA);
-    if (!GetVersionExA((OSVERSIONINFOA *)&info)) {
-        info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-        if (!GetVersionExA((OSVERSIONINFOA *)&info))
-            return 0;
-    }
-    return info.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS;
-}
-
 HANDLE app_run(const char *cmd)
 {
     char line[0x400];

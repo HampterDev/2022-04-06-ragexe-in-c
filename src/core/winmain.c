@@ -222,12 +222,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     }
 
     session_startup(&g_session1);
-    if (g_serviceType == 0) {
-        if (app_is_win9x())
-            create_depends_dll_msg();
-        else
-            i_process_construct();
-    }
 
     res_mgr_read_res_name_table(g_resMgr());
     if (app_create_window(instance) == 0) {

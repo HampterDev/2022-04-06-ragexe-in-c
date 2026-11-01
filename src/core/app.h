@@ -31,7 +31,6 @@ extern GUID g_deviceGuid;
 void check_system_message(void);
 void app_last_pump(void);
 int app_create_window(HINSTANCE instance);
-unsigned char app_is_win9x(void);
 HANDLE app_run(const char *cmd);
 void app_swap_ai_folder(void);
 void app_destroy_singletons(void);
@@ -43,8 +42,6 @@ struct InitResult {
 };
 
 int read_registry(void);
-char create_depends_dll_msg(void);
-char i_process_construct(void);
 void app_activate(int active);
 int app_init_3d(void);
 struct InitResult *app_init_managers(struct InitResult *out);

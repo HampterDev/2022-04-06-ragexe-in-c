@@ -28,10 +28,8 @@
 #include "session/state.h"
 #include "contents/connection_api.h"
 #include <windows.h>
-#include <tlhelp32.h>
 #include <shellapi.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdio.h>
 #include "std/std.h"
 #include "render/render_api.h"
@@ -123,125 +121,6 @@ int read_registry(void)
         RegCloseKey(key);
     }
     return 1;
-}
-
-static void upper_ascii(char *name)
-{
-    char *p;
-
-    for (p = name; *p; p++)
-        if ((islower)(*p))
-            *p += 0xe0;
-}
-
-static void unknown_name(char name[0x104])
-{
-    memcpy(name, "unknown", 8);
-    memset(name + 8, 0, 0xfc);
-}
-
-typedef HANDLE (WINAPI *SnapshotFn)(DWORD flags, DWORD pid);
-typedef BOOL (WINAPI *ProcessWalkFn)(HANDLE snapshot, PROCESSENTRY32 *entry);
-
-char create_depends_dll_msg(void)
-{
-    static const char *const exes[] = {
-        "RAGEXE.EXE", "SAKEXE.EXE", "RAGEXERE.EXE", "RAGTESTEXE.EXE", "SAKTESTEXE.EXE",
-        "ADTESTEXE.EXE", "RAGEXE_M.EXE", "SAKEXE_M.EXE"
-    };
-    HMODULE kernel;
-    SnapshotFn snapshot;
-    ProcessWalkFn first, next;
-    HANDLE snap;
-    PROCESSENTRY32 entry;
-    char name[0x104];
-    BOOL more;
-    int i;
-    unsigned k;
-
-    kernel = LoadLibraryA("kernel32.dll");
-    if (!kernel)
-        return 0;
-    snapshot = (SnapshotFn)GetProcAddress(kernel, "CreateToolhelp32Snapshot");
-    first = (ProcessWalkFn)GetProcAddress(kernel, "Process32First");
-    next = (ProcessWalkFn)GetProcAddress(kernel, "Process32Next");
-    if (!snapshot || !first || !next) {
-        FreeLibrary(kernel);
-        return 0;
-    }
-    snap = snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap == INVALID_HANDLE_VALUE) {
-        FreeLibrary(kernel);
-        FreeLibrary(kernel);
-        return 0;
-    }
-    unknown_name(name);
-    if (first(snap, &entry)) {
-        do {
-            more = next(snap, &entry);
-            for (i = (int)strlen(entry.szExeFile) - 1; i > 0; i--)
-                if (entry.szExeFile[i] == '\\') {
-                    i++;
-                    break;
-                }
-            strcpy(name, entry.szExeFile + i);
-            upper_ascii(name);
-            puts(name);
-            for (k = 0; k < sizeof exes / sizeof exes[0]; k++)
-                if (strcmp(name, exes[k]) == 0) {
-                    FreeLibrary(kernel);
-                    return 1;
-                }
-        } while (more);
-    }
-    CloseHandle(snap);
-    FreeLibrary(kernel);
-    return 0;
-}
-
-typedef BOOL (WINAPI *EnumProcessesFn)(DWORD *pids, DWORD bytes, DWORD *needed);
-typedef BOOL (WINAPI *EnumProcessModulesFn)(HANDLE process, HMODULE *modules, DWORD bytes, DWORD *needed);
-typedef DWORD (WINAPI *GetModuleBaseNameFn)(HANDLE process, HMODULE module, char *name, DWORD size);
-
-char i_process_construct(void)
-{
-    HMODULE psapi;
-    EnumProcessesFn enum_processes;
-    EnumProcessModulesFn enum_modules;
-    GetModuleBaseNameFn base_name;
-    DWORD pids[0x400], needed, count, i;
-    HMODULE module;
-    HANDLE process;
-    char name[0x104];
-
-    psapi = LoadLibraryA("psapi.dll");
-    if (!psapi)
-        return 0;
-    unknown_name(name);
-    enum_processes = (EnumProcessesFn)GetProcAddress(psapi, "EnumProcesses");
-    enum_modules = (EnumProcessModulesFn)GetProcAddress(psapi, "EnumProcessModules");
-    base_name = (GetModuleBaseNameFn)GetProcAddress(psapi, "GetModuleBaseNameA");
-    if (!enum_processes || !enum_modules || !base_name || !enum_processes(pids, sizeof pids, &needed)) {
-        FreeLibrary(psapi);
-        return 0;
-    }
-    count = needed >> 2;
-    for (i = 0; i < count; i++) {
-        process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pids[i]);
-        if (process && enum_modules(process, &module, 4, &needed)) {
-            base_name(process, module, name, 0x104);
-            upper_ascii(name);
-            puts(name);
-            if (strcmp(name, "RAGEXE.EXE") == 0 || strcmp(name, "SAKEXE.EXE") == 0
-                || strcmp(name, "RAGEXERE.EXE") == 0) {
-                FreeLibrary(psapi);
-                return 1;
-            }
-        }
-        CloseHandle(process);
-    }
-    FreeLibrary(psapi);
-    return 0;
 }
 
 HWND g_hMainWnd;
