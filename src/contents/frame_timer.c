@@ -1,28 +1,28 @@
 #include "contents/frame_timer.h"
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/clock.h"
 
-static DWORD frameFreq = 0;
+static uint32_t frameFreq = 1;
 
-static DWORD frameTime = 0;
+static uint32_t frameTime = 0;
 
 int g_frameskip = 1;
 
 void frame_timer_start(unsigned rate)
 {
-    frameTime = timeGetTime();
-    frameFreq = 1000 / rate;
+    frameTime = platform_ticks_ms();
+    if (!rate)
+        rate = 1;
+    frameFreq = rate > 1000 ? 1 : 1000 / rate;
 }
 
 void frame_timer_reset(void)
 {
-    frameTime = timeGetTime();
+    frameTime = platform_ticks_ms();
 }
 
 int frame_timer_step_count(void)
 {
-    DWORD steps = (timeGetTime() - frameTime) / frameFreq;
+    uint32_t steps = (platform_ticks_ms() - frameTime) / frameFreq;
 
     frameTime += frameFreq * steps;
     return g_frameskip ? (int)steps : 1;

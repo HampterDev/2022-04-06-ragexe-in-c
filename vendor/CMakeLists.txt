@@ -1,0 +1,28 @@
+file(GLOB LUA_SOURCES CONFIGURE_DEPENDS lua-5.1.4/src/*.c)
+add_library(rage_lua STATIC ${LUA_SOURCES})
+target_include_directories(rage_lua PUBLIC lua-5.1.4/src)
+if(UNIX)
+    target_compile_definitions(rage_lua PRIVATE LUA_USE_POSIX LUA_USE_DLOPEN)
+    target_link_libraries(rage_lua PUBLIC m ${CMAKE_DL_LIBS})
+endif()
+
+file(GLOB ZLIB_SOURCES CONFIGURE_DEPENDS zlib-1.2.11/*.c)
+add_library(rage_zlib STATIC ${ZLIB_SOURCES})
+target_include_directories(rage_zlib PUBLIC zlib-1.2.11)
+
+file(GLOB PNG_SOURCES CONFIGURE_DEPENDS libpng-1.6.36/*.c)
+add_library(rage_png STATIC ${PNG_SOURCES})
+target_include_directories(rage_png PUBLIC libpng-1.6.36)
+target_compile_definitions(rage_png PRIVATE PNG_ARM_NEON_OPT=0)
+target_link_libraries(rage_png PUBLIC rage_zlib)
+if(UNIX)
+    target_link_libraries(rage_png PUBLIC m)
+endif()
+
+file(GLOB GIF_SOURCES CONFIGURE_DEPENDS giflib/*.c)
+add_library(rage_gif STATIC ${GIF_SOURCES})
+target_include_directories(rage_gif PUBLIC giflib)
+
+add_library(rage_json STATIC yyjson-0.13.0/yyjson.c)
+target_include_directories(rage_json PUBLIC yyjson-0.13.0)
+target_compile_definitions(rage_json PRIVATE YYJSON_READER_DEPTH_LIMIT=256 YYJSON_WRITER_DEPTH_LIMIT=256)

@@ -1,0 +1,36 @@
+name: Portable foundations
+
+on:
+  push:
+    branches: [codex/mac-port]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            configure: -A Win32
+          - os: windows-2022
+            configure: -A x64
+          - os: ubuntu-24.04
+            configure: -DCMAKE_C_COMPILER=clang -DRAGE_SANITIZERS=ON
+          - os: macos-15
+            configure: -DCMAKE_OSX_ARCHITECTURES=arm64 -DRAGE_SANITIZERS=ON -DRAGE_PLATFORM_PROBE=ON
+    runs-on: ${{ matrix.os }}
+    env:
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build/portable -DCMAKE_BUILD_TYPE=Debug ${{ matrix.configure }}
+      - name: Build
+        run: cmake --build build/portable --config Debug --parallel 4
+      - name: Test
+        run: ctest --test-dir build/portable -C Debug --output-on-failure

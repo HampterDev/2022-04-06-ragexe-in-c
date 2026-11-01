@@ -1,6 +1,7 @@
 #include "std/string.h"
 #include <string.h>
 #include "core/xml.h"
+#include "core/memory.h"
 
 struct XmlElement *xml_element_construct(struct XmlElement *self, const char *name)
 {

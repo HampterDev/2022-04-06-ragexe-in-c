@@ -401,7 +401,7 @@ cl /nologo /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_bitmap_png.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_c_output.c" "%ROOT%\src\core\unique_file.c" "%ROOT%\src\game\box_report.c" /Fe:test_c_output.exe
+cl /nologo /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_c_output.c" "%ROOT%\src\core\unique_file.c" "%ROOT%\src\platform\filesystem.c" "%ROOT%\src\game\box_report.c" /Fe:test_c_output.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_c_output.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )

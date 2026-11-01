@@ -1,11 +1,12 @@
 #include "core/xml.h"
+#include "core/fatal.h"
 #include "std/string.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-__declspec(noreturn) void fatal_error(const char *message)
+RAGE_NORETURN void fatal_error(const char *message)
 {
     puts(message);
     exit(1);

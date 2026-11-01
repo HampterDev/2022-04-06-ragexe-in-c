@@ -19,12 +19,7 @@
 
 #include "std/string.h"
 
-struct Vec {
-    void *first, *last, *end;
-};
-SIZE_ASSERT(Vec, 12);
-#define VEC_COUNT(v, type) ((size_t)((type *)(v)->last - (type *)(v)->first))
-#define VEC_AT(v, type, i) (((type *)(v)->first)[i])
+#include "std/container_types.h"
 
 #include "fileio/file_api.h"
 
