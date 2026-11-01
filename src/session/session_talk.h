@@ -1,6 +1,8 @@
 #ifndef SESSION_SESSION_TALK_H
 #define SESSION_SESSION_TALK_H
 
+#include <stddef.h>
+
 struct Session;
 struct String;
 struct Vec;
@@ -42,7 +44,7 @@ void session_get_pet_hunger_text(int fullness, char *out);
 int session_get_pet_food(struct Session *self, int petJob);
 int session_get_pet_job_by_egg(struct Session *self, int eggItemId);
 const char *session_get_pet_string(struct Session *self, int petJob);
-void session_get_pet_illust_name(struct Session *self, int petJob, char *out);
+void session_get_pet_illust_name(struct Session *self, int petJob, char *out, size_t outSize);
 const char *session_get_pet_accessory_act(struct Session *self, int accessory);
 const char *session_get_pet_name(int petJob);
 

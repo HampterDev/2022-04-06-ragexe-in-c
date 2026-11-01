@@ -2,7 +2,6 @@
 #include "session/csession.h"
 #include "session/session_talk.h"
 
-#include <stdio.h>
 #include <string.h>
 
 static int pet_level(int value)
@@ -137,14 +136,27 @@ const char *session_get_pet_string(struct Session *self, int petJob)
     return text;
 }
 
-void session_get_pet_illust_name(struct Session *self, int petJob, char *out)
+void session_get_pet_illust_name(struct Session *self, int petJob, char *out, size_t outSize)
 {
+    static const char fallback[] = "UserInterface\\illust\\PET_NOIMAGE.bmp";
     const char *name = NULL;
+    size_t length;
 
-    if (client_lua_call(self->luaState, "GetPetIllustName_V3", "db>s", petJob, 1, &name))
-        sprintf(out, name);
-    else
-        sprintf(out, "UserInterface\\illust\\PET_NOIMAGE.bmp");
+    if (outSize == 0)
+        return;
+    if (!client_lua_call(self->luaState, "GetPetIllustName_V3", "db>s", petJob, 1, &name)
+        || name == NULL)
+        name = fallback;
+    length = strlen(name);
+    if (length >= outSize) {
+        name = fallback;
+        length = sizeof fallback - 1;
+    }
+    if (length >= outSize) {
+        out[0] = '\0';
+        return;
+    }
+    memcpy(out, name, length + 1);
 }
 
 const char *session_get_pet_accessory_act(struct Session *self, int accessory)

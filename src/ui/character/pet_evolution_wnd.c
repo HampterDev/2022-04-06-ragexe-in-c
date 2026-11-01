@@ -142,7 +142,7 @@ static void draw_pet(struct UIWindow *wnd, int egg, int right)
     memset(path, 0, sizeof path);
     if (job == -1)
         return;
-    session_get_pet_illust_name(&g_session1, job, path);
+    session_get_pet_illust_name(&g_session1, job, path, sizeof path);
     illust = load_bitmap(path);
     if (!illust)
         illust = load_bitmap("userinterface\\illust\\pet_noimage.bmp");

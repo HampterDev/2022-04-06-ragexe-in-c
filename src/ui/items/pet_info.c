@@ -472,7 +472,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     if (!(job > 1000 && job < 0xf9f) && (unsigned)(job - 0x4e35) > 0x2eca)
         return;
     memset(illust, 0, 0x104);
-    session_get_pet_illust_name(&g_session1, job, illust);
+    session_get_pet_illust_name(&g_session1, job, illust, sizeof illust);
     res = object_as_type(res_mgr_get(g_resMgr(), illust), OBJECT_BITMAP_RESOURCE);
     if (res)
         ui_window_draw_bitmap(&self->frame.base, 5, 0x15, res, 0);
