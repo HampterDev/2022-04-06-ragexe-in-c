@@ -268,8 +268,6 @@ void game_mode_on_update(struct Mode *mode)
     }
     check_system_message();
     game_mode_poll_network_msg(self);
-    if (!self->base.loop_cond)
-        return;
     if (replay_recorder_tick(replay_recorder_instance()) == 0)
         ui_window_send_msg(g_windowMgr.replay_control_wnd, 0, REPLAY_WND_MSG_STOPPED,
                                                                   0, 0, 0, 0);
