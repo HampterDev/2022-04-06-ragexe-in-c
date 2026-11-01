@@ -273,7 +273,7 @@ static void read_cur_slot(struct UINewSelectCharWnd *self)
 {
     struct PlatformSettingsKey *key;
     uint32_t type = PLATFORM_SETTING_DWORD, size = 4;
-    DWORD slot;
+    DWORD slot = 0;
 
     int failed = !platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key);
 
