@@ -1,5 +1,7 @@
 #include "contents/settings_file.h"
+#include "platform/filesystem.h"
 #include <wincrypt.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +15,7 @@ int settings_file_path(char out[MAX_PATH], const char *root, const char *address
     HCRYPTHASH hash = 0;
     BYTE digest[32];
     DWORD size = sizeof digest;
-    char hex[65];
+    char hex[65], relative[MAX_PATH];
     const char *parts[] = {address, port, world};
     int ok = 0, i, count;
     out[0] = 0;
@@ -32,10 +34,10 @@ int settings_file_path(char out[MAX_PATH], const char *root, const char *address
     for (i = 0; i < 32; ++i)
         sprintf(hex + i * 2, "%02x", digest[i]);
     if (gid)
-        count = snprintf(out, MAX_PATH, "%s\\SaveData\\Accounts\\%s\\%u\\Characters\\%u.json", root, hex, aid, gid);
+        count = snprintf(relative, sizeof relative, "SaveData\\Accounts\\%s\\%u\\Characters\\%u.json", hex, aid, gid);
     else
-        count = snprintf(out, MAX_PATH, "%s\\SaveData\\Accounts\\%s\\%u.json", root, hex, aid);
-    ok = count > 0 && count < MAX_PATH;
+        count = snprintf(relative, sizeof relative, "SaveData\\Accounts\\%s\\%u.json", hex, aid);
+    ok = count > 0 && count < MAX_PATH && platform_path_join(out, MAX_PATH, root, relative);
 done:
     if (hash) CryptDestroyHash(hash);
     if (provider) CryptReleaseContext(provider, 0);
@@ -43,64 +45,54 @@ done:
     return ok;
 }
 
+static char *last_separator(char *path)
+{
+    char *backslash = strrchr(path, '\\'), *slash = strrchr(path, '/');
+    return slash > backslash ? slash : backslash;
+}
+
 int settings_file_read(const char *path, struct OwnedText *out)
 {
-    HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL, NULL);
-    LARGE_INTEGER size;
-    DWORD count;
+    struct PlatformFile *file = platform_file_open_read(path);
+    int64_t size;
+    size_t count;
     char *text;
     int ok = 0;
-    if (file == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
-        return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND ? 2 : 0;
-    }
-    if (!GetFileSizeEx(file, &size) || size.QuadPart <= 0 || size.QuadPart > SETTINGS_FILE_LIMIT)
+    if (!file)
+        return errno == ENOENT ? 2 : 0;
+    if (!platform_file_size(file, &size) || size <= 0 || size > SETTINGS_FILE_LIMIT)
         goto done;
-    text = malloc((size_t)size.QuadPart + 1);
+    count = (size_t)size;
+    text = malloc(count + 1);
     if (!text) goto done;
-    if (ReadFile(file, text, (DWORD)size.QuadPart, &count, NULL) && count == size.QuadPart &&
-        !memchr(text, 0, count)) {
+    if (platform_file_read(file, text, count) && !memchr(text, 0, count)) {
         text[count] = 0;
         ok = owned_text_assign(out, text_view(text, count));
     }
     free(text);
 done:
-    CloseHandle(file);
+    platform_file_close(file);
     return ok;
 }
 
 int settings_file_write(const char *path, struct TextView text)
 {
     char directory[MAX_PATH], temporary[MAX_PATH] = {0}, *p;
-    HANDLE file = INVALID_HANDLE_VALUE;
-    DWORD count;
-    int ok = 0;
+    struct PlatformFile *file;
     if (!text.data || !text.size || text.size > SETTINGS_FILE_LIMIT || strlen(path) >= MAX_PATH)
         return 0;
     strcpy(directory, path);
-    p = strrchr(directory, '\\');
+    p = last_separator(directory);
     if (!p) return 0;
     *p = 0;
-    for (p = directory + 3; *p; ++p) {
-        if (*p != '\\') continue;
-        *p = 0;
-        if (!CreateDirectoryA(directory, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
-            return 0;
-        *p = '\\';
-    }
-    if ((!CreateDirectoryA(directory, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) ||
-        !GetTempFileNameA(directory, "acc", 0, temporary))
+    if (!platform_directory_create_all(directory))
         return 0;
-    file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL, NULL);
-    if (file != INVALID_HANDLE_VALUE) {
-        ok = WriteFile(file, text.data, (DWORD)text.size, &count, NULL) && count == text.size &&
-             FlushFileBuffers(file);
-        if (!CloseHandle(file)) ok = 0;
+    file = platform_file_create_temporary(directory, "acc", temporary, sizeof temporary);
+    if (!file)
+        return 0;
+    if (!platform_file_write(file, text.data, text.size)) {
+        platform_file_discard(file, temporary);
+        return 0;
     }
-    if (ok)
-        ok = MoveFileExA(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
-    if (!ok) DeleteFileA(temporary);
-    return ok;
+    return platform_file_replace(file, temporary, path);
 }
