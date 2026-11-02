@@ -1176,7 +1176,7 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     p_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
     out->zbufferless = 0;
     out->vertexFog = 1;
-    out->mipNearest = 1;
+    out->trilinear = 1;
     out->bumpEnv = 1;
     out->bumpEnvLuminance = 1;
     out->waterBump = 1;

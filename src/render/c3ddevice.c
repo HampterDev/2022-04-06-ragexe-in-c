@@ -249,7 +249,7 @@ int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, const GUID *ada
 void c3d_device_enable_mipmap(struct C3dDevice *self)
 {
     (void)self;
-    gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.mipNearest);
+    gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.trilinear);
 }
 
 struct Renderer *c3d_device_create_renderer(struct C3dDevice *self)
@@ -270,7 +270,7 @@ struct Renderer *c3d_device_create_renderer(struct C3dDevice *self)
         self->maxTexH = g_gfxCaps.maxTexH;
         self->texAspect = g_gfxCaps.texAspect;
         g_waterBumpSupported = (BYTE)g_gfxCaps.waterBump;
-        gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.mipNearest);
+        gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.trilinear);
     }
     self->bltStretch = g_gfxCaps.bltStretch;
     self->tex1024 = (self->maxTexW >= 0x400 && self->maxTexH >= 0x400) ? 1 : 0;

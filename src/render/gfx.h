@@ -45,7 +45,7 @@ struct GfxMatrix {
 
 struct gfx_caps {
     int zbufferless;
-    int mipNearest;
+    int trilinear;
     int vertexFog;
     int bumpEnv;
     int bumpEnvLuminance;
