@@ -209,7 +209,8 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
 
 void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const WORD *indices, DWORD nindices);
 
-int gfx_ddraw_enumerate(BOOL (WINAPI *callback)(GUID *, LPSTR, LPSTR, LPVOID, HMONITOR), void *ctx, DWORD flags);
+typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, HMONITOR monitor);
+int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);
 
 unsigned gfx_content_version(gfx_surface *s);
 

@@ -2007,7 +2007,7 @@ void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const
     }
 }
 
-int gfx_ddraw_enumerate(BOOL (WINAPI *callback)(GUID *, LPSTR, LPSTR, LPVOID, HMONITOR), void *ctx, DWORD flags)
+int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
 {
     UINT n, i;
     (void)flags;

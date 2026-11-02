@@ -38,6 +38,18 @@ typedef DWORD COLORREF;
 typedef void *HANDLE;
 typedef struct PlatformWindowHandle *HWND;
 typedef struct PlatformModuleHandle *HINSTANCE;
+typedef struct PlatformMonitorHandle *HMONITOR;
+typedef struct PlatformDcHandle *HDC;
+typedef struct PlatformGdiObject *HGDIOBJ;
+typedef struct PlatformBitmapHandle *HBITMAP;
+typedef struct PlatformFontHandle *HFONT;
+
+typedef struct _GUID {
+    DWORD Data1;
+    WORD Data2;
+    WORD Data3;
+    BYTE Data4[8];
+} GUID;
 
 typedef struct tagRECT {
     LONG left;

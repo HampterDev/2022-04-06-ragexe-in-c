@@ -7,7 +7,7 @@
 
 RECT g_monitorRect;
 
-static BOOL WINAPI ddraw_enum_adapter_callback(GUID *guid, LPSTR desc, LPSTR name, LPVOID ctx, HMONITOR monitor)
+static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx, HMONITOR monitor)
 {
     (void)name;
     (void)ctx;
