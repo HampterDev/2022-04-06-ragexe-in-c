@@ -358,6 +358,22 @@ from the command line tools, MacPorts for cmake, ninja, freetype and fontconfig)
 built in the same machine: `ragexe.app` opened from the game folder, logged in, created a
 character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well.
 
+## Scene captures
+
+`ragexe_scenes` (built with the POSIX client) is the client with the clock, the sockets, the
+threads and the per-frame driver hook replaced: a Lua script enters a map from the login screen,
+spawns monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless
+through SDL's offscreen driver. `tests/scenes/run.py` runs every script and compares the captures
+with golden images (`tests/scenes/README.md`). On the Mint VM each of the three scenes takes 3–4 s
+and repeats bit for bit.
+
+Making the captures repeat showed three draw orders that depended on heap addresses, which ASLR
+and allocation timing change from run to run: the render queues sorted by texture pointer
+(now by a texture serial assigned at creation), tied queue keys broken by primitive pointer (now
+by submission order), and emitter particles reused in address order from a pointer-keyed map
+(now in the order they were added). The multitexture sort also compared the first texture with
+the other entry's second one, which is not an ordering; it compares like with like now.
+
 ## Remaining work
 
 1. macOS: check Hangul composition through the macOS input method and Retina scaling on
@@ -369,6 +385,7 @@ character, entered `iz_int03`, walked and chatted. The 21 tests pass there as we
 4. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
 5. Expand CMake to the remaining test suites.
+6. Scenes: keyboard input does not open the chat line yet (`tests/scenes/README.md`).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

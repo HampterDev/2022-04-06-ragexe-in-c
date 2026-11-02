@@ -3,6 +3,8 @@
 
 void drive_state_tick(void);
 
+void drive_state_frame_shown(void);
+
 void drive_state_note_chat(const char *text);
 
 #endif

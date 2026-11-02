@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "core/app.h"
+#include "core/drive_state.h"
 #include "ui/render/graphic_setting.h"
 #include "platform/window.h"
 
@@ -323,6 +324,7 @@ void c3d_device_on_surfaces_lost(struct C3dDevice *self)
 int c3d_device_show_frame(struct C3dDevice *self, char vsync)
 {
     RECT rc;
+    drive_state_frame_shown();
     if (!self->primary)
         return GFX_E_NO_PRIMARY;
     if (!self->back)

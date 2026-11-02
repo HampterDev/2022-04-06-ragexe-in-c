@@ -112,6 +112,10 @@ static void write_windows(FILE *f)
     fprintf(f, "chat_focus=%d\n", g_windowMgr.chat_bar_shown && ui_window_mgr_is_chat_edit_focused(&g_windowMgr));
 }
 
+void drive_state_frame_shown(void)
+{
+}
+
 void drive_state_tick(void)
 {
     const char *path = state_path();
