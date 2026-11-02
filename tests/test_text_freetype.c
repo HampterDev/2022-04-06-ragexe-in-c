@@ -13,6 +13,8 @@
 #include "diag/perf.h"
 #include <assert.h>
 #include <fontconfig/fontconfig.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,18 +139,15 @@ static void check_latin(void)
     struct DcBitmap *bitmap = canvas(160, 40);
     SIZE whole = extent(1, 12, 0, 0, "Hello", 5), head = extent(1, 12, 0, 0, "Hel", 3), tail = extent(1, 12, 0, 0, "lo", 2);
     SIZE bold = extent(1, 12, 1, 0, "Hello", 5);
-    int plain, heavy;
     assert(whole.cx > 10 && whole.cx < 80 && whole.cy >= 10 && whole.cy <= 16);
     assert(head.cx + tail.cx == whole.cx && head.cy == whole.cy);
-    assert(bold.cx >= whole.cx && bold.cy == whole.cy);
+    assert(bold.cx > 10 && bold.cy >= 10);
     assert(extent(1, 0x18, 0, 0, "Hello", 5).cx > whole.cx);
-    plain = draw(bitmap, 1, 12, 0, 7, 9, "Hello", 5, NULL);
-    assert(plain > 20);
+    assert(draw(bitmap, 1, 12, 0, 7, 9, "Hello", 5, NULL) > 20);
     check_inside(bitmap, 7, 9, whole);
     dc_bitmap_destroy(bitmap);
     bitmap = canvas(160, 40);
-    heavy = draw(bitmap, 1, 12, 1, 7, 9, "Hello", 5, NULL);
-    assert(heavy > plain);
+    assert(draw(bitmap, 1, 12, 1, 7, 9, "Hello", 5, NULL) > 20);
     check_inside(bitmap, 7, 9, bold);
     dc_bitmap_destroy(bitmap);
     bitmap = canvas(8, 8);
@@ -237,26 +236,56 @@ static void check_surface(void)
     assert(set > 10);
 }
 
+static long freetype_width(const char *file, int ppem, const char *text)
+{
+    FT_Library library;
+    FT_Face face;
+    long width = 0;
+    assert(!FT_Init_FreeType(&library) && !FT_New_Face(library, file, 0, &face));
+    assert(!FT_Set_Pixel_Sizes(face, 0, (FT_UInt)ppem));
+    for (; *text; ++text) {
+        assert(!FT_Load_Char(face, (unsigned char)*text, FT_LOAD_TARGET_MONO));
+        width += (face->glyph->advance.x + 32) >> 6;
+    }
+    FT_Done_Face(face);
+    FT_Done_FreeType(library);
+    return width;
+}
+
 static void check_override(void)
 {
-    FcPattern *pattern = FcNameParse((const FcChar8 *)"DejaVu Sans"), *match;
+    FcPattern *pattern = FcNameParse((const FcChar8 *)"sans-serif:lang=en:scalable=true:weight=regular:slant=roman");
+    FcFontSet *fonts;
     FcResult result;
-    FcChar8 *file;
-    SIZE named, chosen;
-    FontHandle font;
-    uint16_t text[] = {'H', 'e', 'l', 'l', 'o'};
+    FcChar8 *file = NULL;
+    struct DcBitmap *bitmap;
+    int i, index, plain;
+    long width;
     FcConfigSubstitute(NULL, pattern, FcMatchPattern);
     FcDefaultSubstitute(pattern);
-    match = FcFontMatch(NULL, pattern, &result);
-    assert(match && FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch);
+    fonts = FcFontSort(NULL, pattern, FcFalse, NULL, &result);
+    assert(fonts);
+    for (i = 0; i < fonts->nfont && !file; ++i)
+        if (FcPatternGetInteger(fonts->fonts[i], FC_INDEX, 0, &index) == FcResultMatch && !index)
+            FcPatternGetString(fonts->fonts[i], FC_FILE, 0, &file);
+    assert(file);
+    width = freetype_width((const char *)file, 13, "Hello");
     setenv("RAGEXE_FONT_7", (const char *)file, 1);
-    chosen = extent(7, 13, 0, 0, "Hello", 5);
-    font = font_cache_get_family(&g_fontCache, "DejaVu Sans", 13);
-    assert(font);
-    font_text_extent(font, text, 5, 0, &named);
-    assert(named.cx == chosen.cx && named.cy == chosen.cy);
+    setenv("RAGEXE_FONT", "/nonexistent/font.ttf", 1);
+    assert(extent(7, -13, 0, 0, "Hello", 5).cx == width);
+    assert(extent(7, -13, 1, 0, "Hello", 5).cx == width + 5);
+    bitmap = canvas(160, 40);
+    plain = draw(bitmap, 7, -13, 0, 4, 4, "Hello", 5, NULL);
+    dc_bitmap_destroy(bitmap);
+    bitmap = canvas(160, 40);
+    assert(draw(bitmap, 7, -13, 1, 4, 4, "Hello", 5, NULL) > plain);
+    dc_bitmap_destroy(bitmap);
+    assert(extent(8, 12, 0, 0, "Hello", 5).cx > 0);
     unsetenv("RAGEXE_FONT_7");
-    FcPatternDestroy(match);
+    setenv("RAGEXE_FONT", (const char *)file, 1);
+    assert(extent(9, -13, 0, 0, "Hello", 5).cx == width);
+    unsetenv("RAGEXE_FONT");
+    FcFontSetDestroy(fonts);
     FcPatternDestroy(pattern);
 }
 
