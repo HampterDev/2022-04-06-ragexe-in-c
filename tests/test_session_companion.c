@@ -141,6 +141,14 @@ int main(void)
     game_mode_zc_property_homun_no_accessory2(NULL, NULL);
     game_mode_zc_property_homun_no_accessory3(NULL, NULL);
     assert(skill_updates == 2 && redraws == 14 && g_session1.mercAid == 4567);
-    puts("session companion: real packets, 64-bit experience, signed legacy values and adjacent fields passed");
+    make_packet(packet);
+    memcpy(packet + 2, "Pet%s%n%%", sizeof "Pet%s%n%%");
+    game_mode_zc_property_homun(NULL, packet);
+    assert(strcmp(g_session1.homunName, "Pet%s%n%%") == 0);
+    make_packet(packet);
+    memcpy(packet + 2, "ABCDEFGHIJKLMNOPQRSTUVWX", 24);
+    game_mode_zc_property_homun(NULL, packet);
+    assert(strcmp(g_session1.homunName, "ABCDEFGHIJKLMNOPQRSTUVWX") == 0);
+    puts("session companion: real packets, 64-bit experience, signed legacy values, adjacent fields and names as text passed");
     return 0;
 }

@@ -47,7 +47,7 @@ void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
     (void)self;
     g_session1.petJob = packet->job;
     if (packet->level < PET_LEVEL_OTHER) {
-        sprintf(g_session1.petName, name);
+        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s", (int)sizeof packet->name, name);
         g_session1.petPrevFullness = g_session1.petFullness;
         g_session1.petFullness = packet->fullness;
         g_session1.petIntimacy = packet->intimacy;

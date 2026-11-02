@@ -177,6 +177,10 @@ Format strings:
 
 - The collection window copies the pet's name into its field. The
   original passed the name to `sprintf` as the format.
+- Pet, homunculus and partner names from the server, the names typed in
+  the pet and homunculus rename boxes and the default names taken from
+  the job-name table are copied as text. The original passed each name to
+  `sprintf` as the format, so a `%` in a name read arguments nobody passed.
 - The renamed-pet prefix from the message table is printed as text, not
   used as a format; only `%%` still becomes `%`.
 - The OTP text is sent as it is, not used as a `printf` format.

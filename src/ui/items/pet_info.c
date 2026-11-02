@@ -369,7 +369,7 @@ void ui_pet_info_wnd_on_create(struct UIWindow *window, int width, int height)
     self->name_edit = edit;
     ui_window_create(edit, 0x50, 0x10);
     if (strcmp(g_session1.petName, "") == 0)
-        sprintf(g_session1.petName, session_get_job_name(&g_session1, g_session1.petJob, -1));
+        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s", session_get_job_name(&g_session1, g_session1.petJob, -1));
     ui_window_move(self->name_edit, 0x87, 0x18);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.petName);
     ((struct UIEditCtrl *)self->name_edit)->max_chars = 0x32;
@@ -526,7 +526,7 @@ static void pet_rename(struct UIPetInfoWnd *self)
         if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
             mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
                           (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-            sprintf(g_session1.petName, ui_edit_ctrl_get_text(self->name_edit));
+            _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s", ui_edit_ctrl_get_text(self->name_edit));
             ui_window_invalidate_base(&self->frame.base);
             return;
         }
