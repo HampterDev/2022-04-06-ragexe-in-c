@@ -3,10 +3,10 @@
 #include "fileio/resource_path.h"
 #include <stdint.h>
 
-#include <mmsystem.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "platform/clock.h"
 
 unsigned g_resPurgeAgeMs = 15000;
 
@@ -68,7 +68,7 @@ static BYTE is_available(struct ResMgr *self, const char *name)
         return 0;
     res = res_mgr_find(self, type, path);
     if (res) {
-        res->lastUse = timeGetTime();
+        res->lastUse = platform_ticks_ms();
         return 1;
     }
     return file_make_file_name(path, 0);
@@ -187,7 +187,7 @@ void res_mgr_release(struct ResMgr *self, struct Res *res)
 
 void res_mgr_purge_stale(struct ResMgr *self)
 {
-    unsigned cutoff = timeGetTime() - g_resPurgeAgeMs;
+    unsigned cutoff = platform_ticks_ms() - g_resPurgeAgeMs;
     int type;
     for (type = 0; type < RESOURCE_TYPE_COUNT; ++type) {
         struct ResourceList *cache = &self->resources[type];
@@ -271,7 +271,7 @@ void res_lock(struct Res *self)
 
 void res_unlock(struct Res *self)
 {
-    self->lastUse = timeGetTime();
+    self->lastUse = platform_ticks_ms();
     self->lockCount--;
 }
 

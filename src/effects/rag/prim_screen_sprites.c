@@ -5,6 +5,7 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 #include "actor/attr_state.h"
+#include "platform/clock.h"
 
 #define STATE_END_NEVER 999999
 #define STATE_SECONDS_NONE 999
@@ -18,7 +19,7 @@ static void update_state_seconds(struct PrimStateIcon *icon)
     if (!t)
         return;
     end = t->end_tick;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (end <= now)
         return;
     if (end == 0 || end == STATE_END_NEVER) {
@@ -36,7 +37,7 @@ static void draw_state_timers(struct EffectPrim *self, const struct PrimStateIco
         const struct OwnStateEntry *t = own_states_at(i);
         if (t->index != icon->state_id)
             continue;
-        if (!(t->end_tick > timeGetTime() && t->end_tick != STATE_END_NEVER && t->end_tick != 0)) {
+        if (!(t->end_tick > platform_ticks_ms() && t->end_tick != STATE_END_NEVER && t->end_tick != 0)) {
             continue;
         }
         icon_sheet_queue_state(g_stateIconSheet, (unsigned)t->index,

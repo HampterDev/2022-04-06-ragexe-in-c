@@ -10,8 +10,7 @@
 #include "ui/window_access.h"
 #include "ui/shops/merchant_shop_make.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/world_pick.h"
 #include "ui/chat/macro_reporter.h"
 #include "actor/job.h"
@@ -21,6 +20,7 @@
 #include "session/session_state.h"
 #include "ui/chat/chat.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 int g_hoverCellX = 0;
 
@@ -378,7 +378,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
         g_hoverCellHidden = show;
     }
 
-    due = timeGetTime() > self->click_repeat_time + 600;
+    due = platform_ticks_ms() > self->click_repeat_time + 600;
     if (self->world->player->pending == 0 && g_mouse.button[MOUSE_LEFT] == BUTTON_HELD) {
         if (!due || self->held_walk_allowed == 0)
             return picked;
@@ -390,7 +390,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
     }
 
     ui_window_mgr_navigation_help(&g_windowMgr);
-    self->click_repeat_time = timeGetTime();
+    self->click_repeat_time = platform_ticks_ms();
     if (key_down(VK_SHIFT) || g_windowMgr.chat_room_wnd != 0 || self->world->player->state == PLAYER_STATE_SIT) {
         render_object_send(self->world->player, NULL, ACTOR_MSG_WALK, (long long)x, (long long)y, 0, 0);
         return picked;

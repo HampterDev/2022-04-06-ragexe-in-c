@@ -3,13 +3,13 @@
 #include "session/state.h"
 #include "core/memory.h"
 #include "game/context.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/skill_use.h"
 #include "effects/rag/rag_effect.h"
 #include "effects/skills/skill_view.h"
 #include "std/std.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     ACTOR_MSG_CAST_EFFECT = 0x55,
@@ -61,7 +61,7 @@ static void cast_ground_scope(struct GameActor *caster, int skill_id, unsigned c
     game_mode_world_to_cell(mode, caster->pos.x, caster->pos.z, &cell_x, &cell_y);
     render_object_send(scope, NULL, 0x16, (unsigned)caster->aid, 0, 0, 0);
     render_object_send(scope, NULL, 0xe, cell_x, cell_y, 0, 0);
-    render_object_send(scope, NULL, 0x73, (unsigned)(timeGetTime() + cast_time), 0, 0, 0);
+    render_object_send(scope, NULL, 0x73, (unsigned)(platform_ticks_ms() + cast_time), 0, 0, 0);
     render_object_send(scope, NULL, 0x75, (unsigned short)skill_id, 0, 0, 0);
     list_push_back(&mode->world->gameObjects, &scope, sizeof scope);
 }

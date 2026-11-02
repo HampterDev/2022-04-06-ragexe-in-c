@@ -9,7 +9,7 @@
 #include "ui/window_access.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "contents/client_lua.h"
 #include "contents/client_res.h"
 #include "contents/game_session.h"

@@ -3,11 +3,11 @@
 #include "render/math3d.h"
 #include <math.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/vec.h"
+#include "platform/clock.h"
 
 #define CANE_LIST 5
 #define CANE_COUNT 8
@@ -132,7 +132,7 @@ struct CaneOfEvilEyeEffect *cane_of_evil_eye_effect_construct(struct CaneOfEvilE
     self->base.ops = &cane_of_evil_eye_effect_ops;
     self->canes.first = self->canes.last = self->canes.end = 0;
     self->lights.first = self->lights.last = self->lights.end = 0;
-    self->last_lights_ms = timeGetTime();
+    self->last_lights_ms = platform_ticks_ms();
     return self;
 }
 
@@ -360,7 +360,7 @@ void cane_of_evil_eye_effect_process(struct Effect *effect)
     struct CaneOfEvilEyeEffect *self = (struct CaneOfEvilEyeEffect *)effect;
     cane_of_evil_eye_effect_sweep(self);
     cane_of_evil_eye_effect_step_canes(self);
-    if (self->last_lights_ms + LIGHT_PERIOD_MS <= timeGetTime()) {
+    if (self->last_lights_ms + LIGHT_PERIOD_MS <= platform_ticks_ms()) {
         cane_of_evil_eye_effect_add_lights(self);
         self->last_lights_ms += LIGHT_PERIOD_MS;
     }

@@ -14,7 +14,7 @@
 
 #define MODEL_TL_VERTS      30000
 
-extern INIT_ONCE g_nodeV1TlVertsGuard;
+extern struct Once g_nodeV1TlVertsGuard;
 extern DWORD g_nodeCornerColours[];
 struct ModeMgr;
 

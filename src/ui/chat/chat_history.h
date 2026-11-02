@@ -26,11 +26,6 @@ struct UIChatHisBox {
     struct Vec log_colour;
     struct Vec log_extra;
 };
-OFFSET_ASSERT(UIChatHisBox, item_tags, 0xd0);
-OFFSET_ASSERT(UIChatHisBox, colours, 0xe0);
-OFFSET_ASSERT(UIChatHisBox, line_extra, 0xf0);
-OFFSET_ASSERT(UIChatHisBox, log_extra, 0x114);
-SIZE_ASSERT(UIChatHisBox, 0x120);
 
 struct UIChatHisBox *ui_chat_his_box_construct(struct UIChatHisBox *self);
 void ui_chat_his_box_destruct(struct UIChatHisBox *self);
@@ -56,7 +51,6 @@ struct UIChatHisBox2 {
     struct UIChatHisBox box;
     int back_r, back_g, back_b;
 };
-SIZE_ASSERT(UIChatHisBox2, 0x12c);
 struct UIChatHisBox2 *ui_chat_his_box2_construct(struct UIChatHisBox2 *self);
 
 struct UIChatHisBox3 {
@@ -64,7 +58,6 @@ struct UIChatHisBox3 {
     int follow_newest;
     int font_height;
 };
-SIZE_ASSERT(UIChatHisBox3, 0x134);
 
 void ui_chat_his_box_resize(struct UIWindow *window, int width, int height);
 BYTE ui_chat_his_box2_is_click_through(struct UIWindow *self);

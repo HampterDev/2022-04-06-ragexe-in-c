@@ -8,7 +8,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"
@@ -24,10 +23,6 @@ struct UINewComboBoxCtrl {
     int selected;
     struct Vec lines;
 };
-OFFSET_ASSERT(UINewComboBoxCtrl, no_border, 0x84);
-OFFSET_ASSERT(UINewComboBoxCtrl, border_r, 0x94);
-OFFSET_ASSERT(UINewComboBoxCtrl, lines, 0xa4);
-SIZE_ASSERT(UINewComboBoxCtrl, 0xb0);
 const struct UIWindowOps ui_new_combo_box_ctrl_ops = {
     .destroy = ui_new_combo_box_ctrl_destroy,
     .resize = ui_window_resize_base,

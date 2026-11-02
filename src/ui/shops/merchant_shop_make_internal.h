@@ -4,6 +4,7 @@
 #include "ui/shops/shops.h"
 #include "ui/shops/merchant_shop_make.h"
 #include "ui/controls/controls.h"
+#include <stdint.h>
 
 #define ROW_HEIGHT 42
 #define ROW_FIRST_Y 0x36
@@ -126,7 +127,7 @@ struct ItemInfo *ui_merchant_shop_make_wnd_item_at(struct UIMerchantShopMakeWnd 
 int merchant_shop_make_info_is_valid(struct WindowInfo *self);
 void merchant_shop_make_info_set_default(struct WindowInfo *self);
 
-void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, __int64 amount);
+void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, int64_t amount);
 void msm_edit_reset(struct UIWindow *edit, const char *text);
 int msm_question_box(const char *text);
 void msm_item_message_box(int msg, const struct ItemInfo *info);

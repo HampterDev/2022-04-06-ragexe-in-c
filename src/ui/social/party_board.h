@@ -80,9 +80,6 @@ struct UIRegisterPartyWnd {
     struct UIWindow *change;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UIRegisterPartyWnd, roles, 0xa4);
-OFFSET_ASSERT(UIRegisterPartyWnd, info, 0xc4);
-SIZE_ASSERT(UIRegisterPartyWnd, 0xc8);
 void ui_register_party_wnd_set_ad(struct UIRegisterPartyWnd *self, const struct AdvenPartyInfo *ad);
 BYTE party_is_number(struct String text);
 

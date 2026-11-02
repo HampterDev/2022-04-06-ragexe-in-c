@@ -8,8 +8,7 @@
 #include "contents/connection_api.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "platform/language.h"
 #include "core/text_util.h"
@@ -24,6 +23,7 @@
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "world/camera.h"
+#include "platform/clock.h"
 
 #define CZ_CONTACTNPC               0x90
 #define CZ_STATUS_CHANGE            0xbb
@@ -52,7 +52,7 @@
 int game_mode_msg_connection_lost(struct GameMode *self)
 {
     self->server_move_pending = 1;
-    self->server_move_time = timeGetTime();
+    self->server_move_time = platform_ticks_ms();
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     if (ui_window_mgr_message_box(&g_windowMgr, msg_str(2), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0x105)
         return 0;
@@ -83,7 +83,7 @@ int game_mode_msg_contact_npc(struct GameMode *self, const struct NpcClick *clic
         if (self->server_move_pending == 1)
             return 0;
         self->server_move_pending = 1;
-        self->server_move_time = timeGetTime();
+        self->server_move_time = platform_ticks_ms();
     }
     packet.id = CZ_CONTACTNPC;
     packet.npc_id = click->npc_id;
@@ -156,7 +156,7 @@ int game_mode_msg_emotion(struct GameMode *self, int emotion)
         return 0;
     if (emotion >= 0x5d)
         return 0;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if ((DWORD)(now - self->emotion_time) <= EMOTION_WAIT)
         return 0;
     self->emotion_time = now;

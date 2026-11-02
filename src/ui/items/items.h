@@ -18,7 +18,6 @@
 #include "ui/ui_items.h"
 #include "iteminfo/item_tables.h"
 #include "ui/character/character_draw.h"
-#include <mmsystem.h>
 
 static __inline struct UIBitmapButton *ui_add_skin_button(struct UIWindow *parent, const char *name, int x, int y,
                                                           int id)

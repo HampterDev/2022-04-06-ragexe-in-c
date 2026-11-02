@@ -1,10 +1,9 @@
 #include <stdlib.h>
 #include "fileio/res_mgr.h"
-#include <mmsystem.h>
 #include "core/res_mgr.h"
 
 struct ResMgr g_resMgrObject;
-INIT_ONCE g_resMgrGuard;
+struct Once g_resMgrGuard;
 
 void res_mgr_atexit(void);
 

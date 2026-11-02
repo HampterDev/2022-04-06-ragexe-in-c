@@ -3,7 +3,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include "render/math3d.h"
-#include <windows.h>
+#include "platform/win_types.h"
 struct C3dAttr;
 
 float c3d_attr_get_height(struct C3dAttr *self, float x, float z);

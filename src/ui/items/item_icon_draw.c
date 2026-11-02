@@ -8,7 +8,6 @@
 #include "ui/game.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "ui/runtime.h"
 #include "session/session_names.h"

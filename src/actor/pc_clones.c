@@ -4,6 +4,7 @@
 #include "actor/pc.h"
 #include "actor/sprite_render.h"
 #include "session/session_party.h"
+#include "platform/clock.h"
 
 #define PC_LAYERS 9
 
@@ -46,7 +47,7 @@ static void pc_copy_look_head(struct Pc *self, struct Pc *src)
 {
     self->visible = 1;
     self->has_shadow = 0;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     game_actor_set_sex((struct GameActor *)self, src->sex);
     game_actor_set_job((struct GameActor *)self, game_actor_get_job((struct GameActor *)src));
     pc_set_riding((struct GameActor *)self, src->mounted);
@@ -157,7 +158,7 @@ struct Npc *npc_construct(struct Npc *self)
     self->player_gage = NULL;
     self->pc_gage = NULL;
     self->player_in_area = 0;
-    self->last_effect_tick = timeGetTime();
+    self->last_effect_tick = platform_ticks_ms();
     self->area_effect_launched = 0;
     self->mark = NULL;
     self->mark_effect = 9999;
@@ -184,7 +185,7 @@ struct HalluNPC *hallu_npc_construct(struct HalluNPC *self, struct GameActor *sr
     self->ops = &hallu_npc_ops.base.base;
     self->visible = 1;
     self->has_shadow = 0;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     game_actor_set_sex((struct GameActor *)self, src->sex);
     game_actor_set_job((struct GameActor *)self, game_actor_get_job(src));
     self->mounted = src->mounted;
@@ -225,7 +226,7 @@ struct HalluPlant *hallu_plant_construct(struct HalluPlant *self)
     self->ops = &hallu_plant_ops.base.base;
     self->visible = 1;
     self->has_shadow = 0;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     game_actor_set_sex((struct GameActor *)self, 0);
     game_actor_set_job((struct GameActor *)self, 0x437);
     self->mounted = 0;
@@ -265,7 +266,7 @@ struct Corpse *corpse_construct(struct Corpse *self)
     self->visible = 1;
     self->slant_depth = 1;
     self->extra_scale = 0.0f;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     return self;
 }
 
@@ -279,6 +280,6 @@ struct SoundMaker *world_sound_construct(struct SoundMaker *self)
     self->area_w = 3;
     self->area_h = 3;
     self->area_reach = float_sqrt(18.0f);
-    self->last_play = timeGetTime() - 4000;
+    self->last_play = platform_ticks_ms() - 4000;
     return self;
 }

@@ -1,7 +1,7 @@
 #ifndef GAMEMODE_MODE_INITIALIZE_H
 #define GAMEMODE_MODE_INITIALIZE_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 extern int g_isStopByLogin;
 

@@ -13,6 +13,7 @@
 #include "game/skill_use.h"
 #include "game/item_list_packets.h"
 #include "session/session_items.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_ZC_ACK_MERGE_ITEM {
@@ -169,7 +170,7 @@ static void notice_open(struct GameMode *self)
 {
     struct UIWindow *wnd;
 
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd != 0)
         return;
     wnd = mem_alloc(sizeof(struct UITransBalloonText));

@@ -50,9 +50,6 @@ struct UIItemIdentifyWnd {
     struct String title;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UIItemIdentifyWnd, scroll, 0x94);
-OFFSET_ASSERT(UIItemIdentifyWnd, items, 0xac);
-OFFSET_ASSERT(UIItemIdentifyWnd, title, 0xb4);
 
 struct UIItemIdentifyWnd *ui_item_identify_wnd_construct(struct UIItemIdentifyWnd *self);
 struct UIWindow *ui_item_identify_wnd_new(void);

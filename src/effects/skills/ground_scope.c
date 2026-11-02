@@ -11,6 +11,7 @@
 #include "effects/skills/skill_view.h"
 #include "actor/game_actor.h"
 #include "game/mode_callbacks.h"
+#include "platform/clock.h"
 
 #define MSG_SET_CELL 0xe
 #define MSG_SET_CASTER 0x16
@@ -78,7 +79,7 @@ unsigned char ground_scope_on_process(struct GameObject *object)
 {
     struct GroundScope *self = (struct GroundScope *)object;
 
-    return self->end_tick >= timeGetTime();
+    return self->end_tick >= platform_ticks_ms();
 }
 
 static int ground_scope_area_cells(int skill_id)

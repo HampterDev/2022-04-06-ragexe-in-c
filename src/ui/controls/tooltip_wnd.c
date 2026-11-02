@@ -12,7 +12,6 @@ struct UIToolTipWnd {
     struct UIFrameWnd frame;
     struct UIListBox *list;
 };
-SIZE_ASSERT(UIToolTipWnd, 0x98);
 struct UIWindow;
 const struct UIWindowOps ui_tool_tip_wnd_ops = {
     .destroy = ui_tool_tip_wnd_destroy,

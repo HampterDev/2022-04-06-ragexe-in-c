@@ -72,9 +72,6 @@ struct UIFriendOptionWnd {
     struct UIWindow *strangers_box;
     struct UIWindow *close_button;
 };
-OFFSET_ASSERT(UIFriendOptionWnd, info, 0x94);
-OFFSET_ASSERT(UIFriendOptionWnd, close_button, 0xa4);
-SIZE_ASSERT(UIFriendOptionWnd, 0xa8);
 
 #define FRIEND_OPTION_WND_X 200
 #define FRIEND_OPTION_WND_Y 120

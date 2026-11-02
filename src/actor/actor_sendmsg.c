@@ -26,6 +26,7 @@
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/shops/shops.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 static const char deft_stab_wave[] = "effect\\ABC_DEFT_STAB2.wav";
 
@@ -135,7 +136,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
         self->miss_count = 0;
     else
         self->own_hit_damage = damage;
-    self->hit_tick = timeGetTime();
+    self->hit_tick = platform_ticks_ms();
 
     if (info->hit_effect == -2) {
         self->hit_flash = 0;
@@ -316,7 +317,7 @@ static void sm_chat_balloon(struct GameActor *self, const char *text, long long 
     if (s.size)
         text = string_cstr(&s);
     if (strlen(text) != 0) {
-        self->balloon_tick = timeGetTime();
+        self->balloon_tick = platform_ticks_ms();
         w = self->balloon_wnd;
         if (w == NULL) {
             void *mem = mem_alloc(sizeof(struct UITransBalloonText));
@@ -804,7 +805,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
             ui_window_move(self->recharge_gage_wnd, self->screen_x - 0x1e, (int)((float)self->screen_y - self->scale * raise));
             ui_window_mgr_add_to_window_list(&g_windowMgr, self->recharge_gage_wnd);
         }
-        now = timeGetTime();
+        now = platform_ticks_ms();
         self->cast_end_tick = (int)par1 + now;
         self->cast_start_tick = now;
         break;
@@ -860,7 +861,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         self->aid = -1;
         self->aura_level = 0;
         self->has_shadow = 0;
-        until = timeGetTime() + 0x1fe;
+        until = platform_ticks_ms() + 0x1fe;
         self->fade_until = until;
         if (until == 0)
             self->fade_until = 1;
@@ -899,7 +900,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         actor_set_state(self, 2, 1);
         self->attack_motion_count = (float)actor_get_attack_motion(self);
         actor_set_unit_cell(self);
-        self->start_tick = timeGetTime();
+        self->start_tick = platform_ticks_ms();
         self->motion = 4;
         render_object_set_motion_delay((struct RenderObject *)self, 1.0f);
         self->action += game_actor_dir_of((struct GameObject *)self, self->roty);

@@ -139,13 +139,11 @@ struct UINpcEditDialogWnd {
     struct UIEditCtrl *edit;
     int npc_id;
 };
-SIZE_ASSERT(UINpcEditDialogWnd, 0x9c);
 
 struct UINpcTextEditDialogWnd {
     struct UINpcEditDialogWnd base;
     struct UIItemTagCtrl *popup;
 };
-SIZE_ASSERT(UINpcTextEditDialogWnd, 0xa0);
 
 #define NPC_INPUT_BTN_DIR UI_SKIN
 

@@ -20,7 +20,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "ui/character/character.h"
 #include "core/msg_str.h"
@@ -29,6 +28,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_party.h"
+#include "platform/clock.h"
 
 #define MAKE_DIR UI_SKIN "make_character_ver2\\"
 
@@ -209,7 +209,7 @@ struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd 
     load_sprites(self, 1);
 
     self->anim_action = 0;
-    self->created_time = timeGetTime();
+    self->created_time = platform_ticks_ms();
     self->anim_frame = 0;
     self->anim_elapsed = 0;
     memset(self->hair, 0, 6 * sizeof self->hair[0]);

@@ -25,6 +25,8 @@
 #include "ui/window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "session/session_skills.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 unsigned char granny_pc_on_process(struct GameObject *object)
 {
@@ -43,7 +45,7 @@ unsigned char granny_pc_on_process(struct GameObject *object)
         ui_window_move(self->hp_gage_wnd, self->screen_x - 30, (int)((float)raise * self->scale + (float)self->screen_y));
     }
     game_actor_place_hp_gage(actor);
-    if (self->hit_flash && timeGetTime() > self->hit_tick + 100) {
+    if (self->hit_flash && platform_ticks_ms() > self->hit_tick + 100) {
         self->hit_argb = 0xffff0000;
         self->hit_flash = 0;
     }
@@ -100,7 +102,7 @@ unsigned char granny_pc_process_state(struct GameActor * base_actor)
 
     struct GameActor *actor = (struct GameActor *)self;
 
-    if (self->motion_hold_until && timeGetTime() > self->motion_hold_until) {
+    if (self->motion_hold_until && platform_ticks_ms() > self->motion_hold_until) {
         self->motion_held = 0;
         self->motion_hold_until = 0;
     }
@@ -126,7 +128,7 @@ unsigned char granny_pc_process_state(struct GameActor * base_actor)
         int frame;
 
         granny_pc_update_motion((struct RenderObject *)self);
-        frame = (int)((float)(timeGetTime() - self->start_tick) / 24.0f);
+        frame = (int)((float)(platform_ticks_ms() - self->start_tick) / 24.0f);
         if (self->attack_target_aid && frame % 34 == 0) {
             struct GameActor *target = game_find_actor(self->attack_target_aid);
 
@@ -148,7 +150,7 @@ static unsigned char granny_pc_attack_state(struct GrannyPc *self, unsigned char
     if (self->body_state != 1 && self->body_state != 2)
         self->motion_held = 0;
     accepts = session_job_accepts_weapon(&g_session1, game_actor_get_job((struct GameActor *)self),
-                                        self->sex, (unsigned __int64)self->weapon);
+                                        self->sex, (uint64_t)self->weapon);
     game_actor_set_state((struct GameActor *)self, accepts ? 9 : 2, snap);
     return accepts;
 }
@@ -252,7 +254,7 @@ void granny_pc_set_state(struct GameActor * base_actor, int state, unsigned char
     self->model_action = game_actor_dir_of((struct GameObject *)self, self->roty)
                     + self->model_base_action;
     self->state = state;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
 }
 
 static int granny_pc_packet_state(int v)

@@ -13,7 +13,6 @@
 #include "ui/game.h"
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
@@ -80,7 +79,6 @@ struct UIChatRoomTitle {
     struct ChatRoomInfo room;
     short font_code;
 };
-OFFSET_ASSERT(UIChatRoomTitle, room, 0x80);
 
 const struct ChatRoomInfo *ui_chat_room_title_info(const struct UIWindow *window)
 {

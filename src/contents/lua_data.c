@@ -1,6 +1,6 @@
 #include "core/thread_text.h"
 #include <string.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "contents/lua_data.h"
 #include "std/std.h"
 #include <lauxlib.h>

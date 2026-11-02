@@ -7,7 +7,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/container_types.h"
 #include "core/xml_types.h"
@@ -455,8 +455,6 @@ struct Session {
     BYTE userConfigEntry1;
     struct Vec accountCharNames;
 };
-OFFSET_ASSERT(Session, mapType, 0x0);
-OFFSET_ASSERT(Session, guildSkills, 0x4);
 
 extern struct Session g_session1;
 

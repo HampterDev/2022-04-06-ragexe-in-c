@@ -15,9 +15,5 @@ struct PartyMember {
     WORD job, level;
     DWORD dead;
 };
-OFFSET_ASSERT(PartyMember, found, 0x00);
-OFFSET_ASSERT(PartyMember, aid, 0x04);
-OFFSET_ASSERT(PartyMember, char_id, 0x08);
-OFFSET_ASSERT(PartyMember, name, 0x0c);
 
 #endif

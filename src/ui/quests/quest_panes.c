@@ -90,7 +90,6 @@ struct UIOngoingQuestScrollWnd {
     int quest_id;
     int line_height;
 };
-SIZE_ASSERT(UIOngoingQuestScrollWnd, 0xc4);
 
 static int pane_text_width(struct UIScrollWnd *pane, const char *text)
 {

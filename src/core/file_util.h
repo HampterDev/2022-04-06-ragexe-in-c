@@ -1,7 +1,7 @@
 #ifndef CORE_FILE_UTIL_H
 #define CORE_FILE_UTIL_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
 

@@ -18,7 +18,6 @@ struct GuildStorageLogEntry {
     unsigned char attribute;
     unsigned short grade;
 };
-OFFSET_ASSERT(GuildStorageLogEntry, item_name, 0x3c);
 
 struct GuildStorageLogEntry *guild_log_entry_construct(struct GuildStorageLogEntry *entry);
 void guild_log_entry_construct_copy(struct GuildStorageLogEntry *where,

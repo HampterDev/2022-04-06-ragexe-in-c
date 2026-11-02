@@ -17,6 +17,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "std/tree.h"
+#include "platform/clock.h"
 
 #define MEMBER_TAB_WND_ID (GUILD_TAB_WND_ID_FIRST + GUILD_TAB_MEMBERS)
 
@@ -475,7 +476,7 @@ void ui_guild_member_manage_wnd_on_wheel(struct UIWindow *window, int delta)
 void ui_guild_member_manage_wnd_on_process(struct UIWindow *window)
 {
     struct UIGuildMemberManageWnd *self = (struct UIGuildMemberManageWnd *)window;
-    if (self->ok_time && timeGetTime() > self->ok_time + GUILD_OK_REENABLE_MS) {
+    if (self->ok_time && platform_ticks_ms() > self->ok_time + GUILD_OK_REENABLE_MS) {
         self->ok_time = 0;
         self->ok_button->button.disabled = 0;
         ui_window_invalidate_base(&self->ok_button->button.base);
@@ -494,7 +495,7 @@ static void send_changes(struct UIGuildMemberManageWnd *self)
     tree_clear(&self->changes, NULL);
     self->ok_button->button.disabled = 1;
     ui_window_invalidate_base(&self->ok_button->button.base);
-    self->ok_time = timeGetTime();
+    self->ok_time = platform_ticks_ms();
 }
 
 static void open_positions(struct UIGuildMemberManageWnd *self, struct UIWindow *sender)

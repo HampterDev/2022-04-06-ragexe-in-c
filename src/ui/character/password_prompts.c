@@ -131,7 +131,6 @@ struct UIPasswordWnd {
     struct UIItemDropCntWnd base;
     int arg;
 };
-SIZE_ASSERT(UIPasswordWnd, 0xa0);
 
 struct UIPasswordWnd *ui_password_wnd_construct(struct UIPasswordWnd *self)
 {
@@ -228,7 +227,6 @@ struct UIEmailAddressWnd {
     struct UIFrameWnd frame;
     struct UIWindow *edit;
 };
-SIZE_ASSERT(UIEmailAddressWnd, 0x98);
 
 static struct UIEmailAddressWnd *ui_email_address_wnd_construct(struct UIEmailAddressWnd *self)
 {

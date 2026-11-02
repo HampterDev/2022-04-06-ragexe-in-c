@@ -2,6 +2,7 @@
 #include <string.h>
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
+#include <stdint.h>
 
 #define EFFECT_SECOND_FAITH_HIT 0x820
 #define EFFECT_SECOND_JUDGEMENT 0x822
@@ -44,7 +45,7 @@ static const struct EffectOps random_hit_effect_ops = {
     .destroy = random_hit_effect_destroy,
     .fade_out = effect_fade_out,
 };
-__int64 g_randomHitSpot;
+int64_t g_randomHitSpot;
 
 static const Vec3 no_offset = { 0, 0, 0 };
 

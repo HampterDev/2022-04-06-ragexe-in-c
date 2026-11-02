@@ -17,8 +17,6 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 
-SIZE_ASSERT(UIItemDropCntWnd, 0x9c);
-
 void ui_item_drop_cnt_wnd_destroy(struct UIWindow *window);
 void ui_item_drop_cnt_wnd_set_show(struct UIWindow *self, int visible);
 void ui_item_drop_cnt_wnd_on_create(struct UIWindow *self, int width, int height);

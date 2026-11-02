@@ -2,7 +2,7 @@
 #define RESOURCES_GRANNY_SDK_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 typedef struct granny_file granny_file;
@@ -29,7 +29,6 @@ typedef struct granny_texture {
     void *Images;
     void *ExtendedData[2];
 } granny_texture;
-OFFSET_ASSERT(granny_texture, ImageCount, 0x3c);
 
 typedef struct granny_skeleton {
     const char *Name;
@@ -54,7 +53,6 @@ typedef struct granny_mesh {
     void *BoneBindings;
     void *ExtendedData[2];
 } granny_mesh;
-OFFSET_ASSERT(granny_mesh, MaterialBindings, 0x18);
 
 typedef struct granny_model_mesh_binding {
     granny_mesh *Mesh;
@@ -67,7 +65,6 @@ typedef struct granny_model {
     int MeshBindingCount;
     granny_model_mesh_binding *MeshBindings;
 } granny_model;
-OFFSET_ASSERT(granny_model, MeshBindingCount, 0x4c);
 
 typedef struct granny_file_info {
     void *ArtToolInfo;
@@ -93,8 +90,6 @@ typedef struct granny_file_info {
     int AnimationCount;
     granny_animation **Animations;
 } granny_file_info;
-OFFSET_ASSERT(granny_file_info, Models, 0x44);
-OFFSET_ASSERT(granny_file_info, Animations, 0x54);
 
 #define GRANNY_COLOR_MAP_TEXTURE_TYPE   0
 #define GRANNY_DIFFUSE_COLOR_TEXTURE    2

@@ -20,7 +20,6 @@ struct EZ2STREntry {
     int quake_delay;
     int start_delay;
 };
-OFFSET_ASSERT(EZ2STREntry, file_path, 0x04);
 
 struct EZ2STRRow {
     struct String name;

@@ -21,7 +21,6 @@
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
 #include "ui/render/render_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"

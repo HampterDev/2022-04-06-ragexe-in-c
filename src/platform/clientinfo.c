@@ -42,13 +42,13 @@ struct Vec g_loadingScreens;
 struct Vec g_adminAids;
 BYTE g_clientInfoRead;
 static struct Language g_languageDefault;
-static INIT_ONCE g_languageDefaultGuard;
+static struct Once g_languageDefaultGuard;
 static struct LanguageTC g_languageTC;
-static INIT_ONCE g_languageTCGuard;
+static struct Once g_languageTCGuard;
 static struct Language g_languageTH;
-static INIT_ONCE g_languageTHGuard;
+static struct Once g_languageTHGuard;
 static struct Language g_languageARB;
-static INIT_ONCE g_languageARBGuard;
+static struct Once g_languageARBGuard;
 
 #define UI_FOLDER "유저인터페이스"
 

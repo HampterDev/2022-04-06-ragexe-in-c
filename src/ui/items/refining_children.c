@@ -6,6 +6,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/controls/static.h"
+#include "platform/clock.h"
 
 const struct UIButtonOps ui_refining_btn_refining_ops = {
     .base = {
@@ -243,7 +244,7 @@ void ui_refining_notice_set_text(struct UIRefining_Notice *self, const char *tex
         string_assign_cstr(&self->next_text, text);
         self->next_red = red;
     } else {
-        self->due = timeGetTime() + delay;
+        self->due = platform_ticks_ms() + delay;
         if (!self->base.base.visible) {
             self->hide_when_due = 1;
             self->base.base.visible = 1;

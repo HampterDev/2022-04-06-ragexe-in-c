@@ -2,8 +2,7 @@
 #include "resources/state_icon_sheet.h"
 #include "contents/sound.h"
 #include "session/state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packet_handlers.h"
 #include "game/actor_packets.h"
@@ -19,6 +18,7 @@
 #include "session/session_items.h"
 #include "session/session_party.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     EFST_ATTACK_COOLDOWN = 0x40,
@@ -120,7 +120,7 @@ static void own_state_list(int index, int remain_ms, int val1, int val2, int tot
     entry.index = index;
     if (remain_ms == STATE_NO_TIME)
         end = STATE_END_NEVER;
-    else end = timeGetTime() + remain_ms;
+    else end = platform_ticks_ms() + remain_ms;
     entry.end_tick = end;
 
     if ((unsigned)(index - EFST_TIMER_KIND_FIRST) <= 4)
@@ -389,7 +389,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
         }
         break;
     case 0x175:
-        g_session1.overheatStart = timeGetTime();
+        g_session1.overheatStart = platform_ticks_ms();
         g_session1.overheatValue = val2 == 0 ? val1 : 0;
         if (val1 == 0 && own_states_count() != 0)
             own_states_remove(0x175, 0x175);

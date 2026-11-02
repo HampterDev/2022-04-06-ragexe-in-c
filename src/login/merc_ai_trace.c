@@ -5,7 +5,7 @@
 #include <string.h>
 
 struct String g_traceAiLast;
-INIT_ONCE g_traceAiLastGuard;
+struct Once g_traceAiLastGuard;
 
 int merc_ai_trace(lua_State *L)
 {

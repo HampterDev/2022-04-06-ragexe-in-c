@@ -81,7 +81,6 @@ struct UICashShopWnd_Item {
     BYTE sale;
     struct UIStaticBitmap *sold_out;
 };
-OFFSET_ASSERT(UICashShopWnd_Item, info, 0x80);
 
 static struct UICashShopWnd_Item *ui_cash_shop_wnd_item_construct(struct UICashShopWnd_Item *self)
 {

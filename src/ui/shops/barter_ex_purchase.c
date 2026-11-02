@@ -13,6 +13,7 @@
 #include "session/session_jobs.h"
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 struct DragInfo;
 void ui_expanded_barter_item_purchase_wnd_destroy(struct UIWindow *window);
@@ -158,7 +159,7 @@ void ui_expanded_barter_purchase_button_on_mouse_hover(struct UIWindow *window, 
     int n = (int)vec_count(pays, sizeof(struct BarterExPay)), lines = 0, tip_x, tip_y;
     const struct BarterExPay *pay;
     struct String text;
-    __int64 amount;
+    int64_t amount;
 
     (void)x, (void)y;
     string_init(&text);
@@ -441,8 +442,8 @@ static void exb_add_dragged(struct UIExpandedBarterItemPurchaseWnd *self)
             goto done;
         }
     }
-    if ((__int64)(int)((unsigned)drag->drop_count * (unsigned)listed.goods.price) + expanded_barter_total(g_expandedBarter)
-        > (__int64)g_session1.zeny) {
+    if ((int64_t)(int)((unsigned)drag->drop_count * (unsigned)listed.goods.price) + expanded_barter_total(g_expandedBarter)
+        > (int64_t)g_session1.zeny) {
         exb_drag_refusal(mode, MSG_EXB_NO_ZENY);
         goto done;
     }

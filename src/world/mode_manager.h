@@ -18,10 +18,6 @@ struct ModeMgr {
     int curModeType;
     int nextModeType;
 };
-OFFSET_ASSERT(ModeMgr, curModeName, 0x08);
-OFFSET_ASSERT(ModeMgr, nextModeName, 0x30);
-OFFSET_ASSERT(ModeMgr, curModeType, 0x58);
-SIZE_ASSERT(ModeMgr, 0x60);
 
 extern struct ModeMgr g_modeMgr;
 

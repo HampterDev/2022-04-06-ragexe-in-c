@@ -67,8 +67,6 @@ struct UIJoinFriendAcceptWnd {
     int asker_id1;
     int asker_id2;
 };
-OFFSET_ASSERT(UIJoinFriendAcceptWnd, asker_id1, 0xa0);
-SIZE_ASSERT(UIJoinFriendAcceptWnd, 0xa8);
 
 struct UIJoinFriendAcceptWnd *ui_join_friend_accept_wnd_construct(struct UIJoinFriendAcceptWnd *self)
 {

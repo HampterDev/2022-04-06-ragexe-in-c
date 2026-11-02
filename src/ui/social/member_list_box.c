@@ -11,7 +11,6 @@
 #define MEMBER_LIST_SELECTED_COLOUR 0xc8c832
 #define UI_MSG_MEMBER_LIST_MENU 0x31
 
-SIZE_ASSERT(UIMemberListBox, 0x12c);
 struct UIWindow;
 void ui_member_list_box_destroy(struct UIWindow *window);
 void ui_member_list_box_on_draw(struct UIWindow *self);

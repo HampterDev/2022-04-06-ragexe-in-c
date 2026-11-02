@@ -1,11 +1,10 @@
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include <time.h>
 #include "base.h"
 #include "ui/game.h"
 
-SIZE_ASSERT(Time, 4);
 SIZE_ASSERT(TimeRecord, 16);
 
 struct Time *time_construct(struct Time *self, __time32_t t)

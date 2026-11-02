@@ -23,6 +23,7 @@
 #include "ui/draw_key.h"
 #include "ui/quests/npc_input.h"
 #include "ui/shops/merchant.h"
+#include "platform/clock.h"
 
 #define SWAP_SKIN UI_SKIN "swap_equipment\\"
 #define SWAP_BTN_NORMAL SWAP_SKIN "btn_change2_normal.bmp"
@@ -187,7 +188,7 @@ struct UISwapEquipmentWnd *ui_swap_equipment_wnd_construct(struct UISwapEquipmen
     self->frame.base.ops = &ui_swap_equipment_wnd_ops;
     self->swap = NULL;
     self->kind = 0;
-    self->made_at = timeGetTime();
+    self->made_at = platform_ticks_ms();
     ui_animation_reset(&self->animation);
     self->hover[0] = SWAP_SLOT_NONE;
     self->hover[1] = SWAP_SLOT_NONE;
@@ -758,7 +759,7 @@ void ui_swap_bitmap_button_on_draw(struct UIWindow *window)
     DWORD elapsed;
 
     ui_bitmap_button_on_draw((struct UIWindow *)(&self->btn));
-    elapsed = timeGetTime() - g_session1.equipSwapSentAt;
+    elapsed = platform_ticks_ms() - g_session1.equipSwapSentAt;
     ui_bitmap_button_set_bitmap(&self->btn, elapsed < SWAP_COOLDOWN ? SWAP_BTN_DISABLE : SWAP_BTN_NORMAL,
                              UI_BTN_UP, 0);
     ui_bitmap_button_set_bitmap(&self->btn, elapsed < SWAP_COOLDOWN ? SWAP_BTN_DISABLE : SWAP_BTN_OVER,

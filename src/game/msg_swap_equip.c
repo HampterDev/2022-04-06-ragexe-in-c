@@ -1,12 +1,12 @@
 #include "iteminfo/item_api.h"
 #include "ui/window_manager_state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "game/item_info.h"
 #include "core/text_util.h"
 #include "session/session_items.h"
 #include "session/session_jobs.h"
+#include "platform/clock.h"
 
 #define CZ_REQ_ADD_SWAP_EQUIP       0xa97
 #define CZ_REQ_REMOVE_SWAP_EQUIP    0xa99
@@ -94,7 +94,7 @@ int game_mode_msg_add_swap_equip(struct GameMode *self, int index, unsigned loca
             item_info_destruct(&info);
         }
     }
-    self->wear_ack_time = timeGetTime();
+    self->wear_ack_time = platform_ticks_ms();
     packet.id = CZ_REQ_ADD_SWAP_EQUIP;
     packet.index = (unsigned short)index;
     packet.location = location;
@@ -134,7 +134,7 @@ static void print_wait(unsigned sent_at, unsigned wait_s, int channel)
 {
     struct String line;
     const char *text = msg_str(0xc9e);
-    unsigned now = timeGetTime();
+    unsigned now = platform_ticks_ms();
 
     string_init(&line);
     string_format(&line, "%d%s", wait_s - (now - sent_at) / 1000, text);
@@ -146,11 +146,11 @@ int game_mode_msg_do_swap_equip(void)
 {
     unsigned sent_at = g_session1.equipSwapSentAt;
 
-    if (timeGetTime() - sent_at < SWAP_WAIT) {
+    if (platform_ticks_ms() - sent_at < SWAP_WAIT) {
         print_wait(g_session1.equipSwapSentAt, SWAP_WAIT / 1000, 6);
         return 0;
     }
-    g_session1.equipSwapSentAt = timeGetTime();
+    g_session1.equipSwapSentAt = platform_ticks_ms();
     send_id(CZ_REQ_DO_SWAP_EQUIP);
     return 0;
 }
@@ -159,7 +159,7 @@ int game_mode_msg_swap_equip1_on1(const struct ItemInfo *item)
 {
     unsigned sent_at = g_session1.equipSwapSentAt;
 
-    if (timeGetTime() - sent_at < SWAP_WAIT) {
+    if (platform_ticks_ms() - sent_at < SWAP_WAIT) {
         print_wait(g_session1.equipSwapSentAt, SWAP_WAIT / 1000, 6);
         return 0;
     }
@@ -171,11 +171,11 @@ int game_mode_msg_limited_sale_list(void)
 {
     unsigned sent_at = g_session1.saleListSentAt;
 
-    if (timeGetTime() - sent_at < SALE_LIST_WAIT) {
+    if (platform_ticks_ms() - sent_at < SALE_LIST_WAIT) {
         print_wait(g_session1.saleListSentAt, SALE_LIST_WAIT / 1000, 0);
         return 0;
     }
-    g_session1.saleListSentAt = timeGetTime();
+    g_session1.saleListSentAt = platform_ticks_ms();
     send_id(CZ_REQ_LIMITED_SALE_LIST);
     return 0;
 }

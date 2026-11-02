@@ -19,7 +19,7 @@
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <shellapi.h>
 #include "std/std.h"
 #include "render/render_api.h"

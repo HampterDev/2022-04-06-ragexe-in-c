@@ -1,10 +1,10 @@
 #include "ui/cooldown.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
+#include "platform/clock.h"
 
 unsigned cooldown_clock_now(void)
 {
-    return timeGetTime();
+    return platform_ticks_ms();
 }
 
 int skill_cooldown_running(const struct SkillCooldown *cooldown)

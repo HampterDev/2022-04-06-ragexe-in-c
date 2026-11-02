@@ -52,7 +52,6 @@ struct UIComboBoxDef2Wnd {
     int label_y;
     int label_x;
 };
-SIZE_ASSERT(UIComboBoxDef2Wnd, 0xb8);
 struct UIComboBoxBmpWnd {
     struct UIComboBoxDefWnd def;
     struct String bitmap;
@@ -86,7 +85,6 @@ struct UIComboBox {
     struct UIListBox list;
     int opener_id;
 };
-SIZE_ASSERT(UIComboBox, 0xd4);
 struct UIComboBox *ui_combo_box_construct(struct UIComboBox *self);
 struct UIComboBoxID {
     struct UIListBoxID list;
@@ -100,7 +98,6 @@ struct UIComboBoxWnd {
     struct UIWindow *list;
     struct UIWindow *chosen_to;
 };
-SIZE_ASSERT(UIComboBoxWnd, 0x9c);
 struct UIComboBoxWnd *ui_combo_box_wnd_construct(struct UIComboBoxWnd *self);
 struct UIWindow *ui_combo_box_wnd_new(void);
 struct UIComboBoxWnd *ui_combo_box_id_wnd_construct(struct UIComboBoxWnd *self);

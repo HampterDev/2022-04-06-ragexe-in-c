@@ -12,6 +12,7 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_names.h"
+#include <stdint.h>
 
 #define UIM_CHAT_LINE 1
 #define QUEST_CHAT_COLOR 0xffff
@@ -54,7 +55,7 @@ static void quest_info_set(struct RenewQuestB *info, unsigned char active, int e
     info->plain.hunt_count = hunts;
 }
 
-static void quest_info_set_hunt(struct RenewQuestB *info, int i, __int64 hunt_id, int mob_type, int mob_id,
+static void quest_info_set_hunt(struct RenewQuestB *info, int i, int64_t hunt_id, int mob_type, int mob_id,
                                 short killed, short to_kill, short min_level, short max_level)
 {
     if ((unsigned)i >= RENEW_QUEST_HUNT_MAX)
@@ -120,7 +121,7 @@ struct PacketQuestHunt3 {
     char mob_name[24];
 };
 struct PacketQuestHunt4 {
-    __int64 hunt_id;
+    int64_t hunt_id;
     int mob_type;
     int mob_id;
     short min_level, max_level;
@@ -232,7 +233,7 @@ struct PacketAddQuestHunt {
     char mob_name[24];
 };
 struct PacketAddQuestHunt2 {
-    __int64 hunt_id;
+    int64_t hunt_id;
     int mob_type;
     int mob_id;
     short min_level, max_level;

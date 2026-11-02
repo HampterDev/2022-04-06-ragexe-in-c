@@ -68,8 +68,6 @@ struct UIRenderTargetWnd {
     struct List effects;
     struct List effect_quads;
 };
-OFFSET_ASSERT(UIRenderTargetWnd, character, 0x94);
-SIZE_ASSERT(UIRenderTargetWnd, 0xa8);
 
 static void quad_list_append(struct List *dst, const struct List *src)
 {

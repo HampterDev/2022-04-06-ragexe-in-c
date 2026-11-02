@@ -4,6 +4,7 @@
 #include "session/csession.h"
 #include "session/item_predicates.h"
 #include "session/party_queries.h"
+#include <stdint.h>
 
 int session_get_drawn_job(struct Session *self);
 float session_get_job_float(struct Session *self, int job, int b, int c, int mode);
@@ -14,9 +15,9 @@ void session_init_job_name_tables(struct Session *self);
 void ui_window_mgr_render_menu(struct Session *self);
 
 BYTE session_job_allows_level(struct Session *self, int job, int level);
-BYTE session_job_accepts_value(struct Session *self, int job, unsigned __int64 value);
+BYTE session_job_accepts_value(struct Session *self, int job, uint64_t value);
 BYTE session_get_pet_acc_act_name(struct Session *self, int job);
-BYTE session_job_accepts_weapon(struct Session *self, int job, int mode, unsigned __int64 item);
+BYTE session_job_accepts_weapon(struct Session *self, int job, int mode, uint64_t item);
 int session_is_third_job(struct Session *self, int job);
 BYTE session_is_fourth_job(struct Session *self, int job);
 int session_is_pc_job(struct Session *self, int job);

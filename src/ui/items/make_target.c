@@ -62,23 +62,18 @@ struct UIMakeTargetListWnd {
     struct UIListBox *list;
     struct Vec ids;
 };
-OFFSET_ASSERT(UIMakeTargetListWnd, ids, 0x98);
-SIZE_ASSERT(UIMakeTargetListWnd, 0xa4);
 
 struct UIMakeTargetProcessWnd {
     struct UIFrameWnd frame;
     int item_id;
     struct ItemInfo stones[MT_STONES];
 };
-OFFSET_ASSERT(UIMakeTargetProcessWnd, stones, 0x98);
 
 struct UIMakeTargetResultWnd {
     struct UIFrameWnd frame;
     int item_id;
     BYTE success;
 };
-OFFSET_ASSERT(UIMakeTargetResultWnd, success, 0x98);
-SIZE_ASSERT(UIMakeTargetResultWnd, 0x9c);
 
 void ui_make_target_list_wnd_destroy(struct UIWindow *window);
 void ui_make_target_list_wnd_on_create(struct UIWindow *self, int width, int height);

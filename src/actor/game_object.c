@@ -17,6 +17,7 @@
 #include "session/session_names.h"
 #include "session/session_state.h"
 #include "effects/rag/rag_effect.h"
+#include "platform/clock.h"
 
 static uint64_t g_gameObjectSerial;
 
@@ -173,7 +174,7 @@ void render_object_on_init(struct RenderObject *self)
     self->motion_held = 0;
     self->shift_x = 0;
     self->spr_angle = 0;
-    self->hit_tick = timeGetTime();
+    self->hit_tick = platform_ticks_ms();
     self->hit_flash = 0;
     self->slant_depth = 0;
     self->argb_locked = 0;
@@ -381,7 +382,7 @@ void game_actor_on_init(struct GameActor *self)
     self->walked = 0;
     self->aid = -1;
     self->process_server_time = session_get_server_time(&g_session1);
-    self->process_tick = timeGetTime();
+    self->process_tick = platform_ticks_ms();
     self->screen_x = 0;
     self->screen_y = 0;
     self->balloon_wnd = NULL;
@@ -395,11 +396,11 @@ void game_actor_on_init(struct GameActor *self)
     self->attack_motion_count = -1.0f;
     self->path_cell = -1;
     self->pickable = 1;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     self->pet_emotion_tick = 0;
-    self->cast_end_tick = timeGetTime() - 5000;
+    self->cast_end_tick = platform_ticks_ms() - 5000;
     self->efst_effect_frames = 3600;
-    self->cast_start_tick = timeGetTime() - 10000;
+    self->cast_start_tick = platform_ticks_ms() - 10000;
     self->argb = 0xffffffff;
     self->visible = 1;
     self->fixed_depth = 0;
@@ -555,7 +556,7 @@ static void mouse_pointer_init(struct MousePointer *self)
     self->countdown = 0;
     self->fixed_depth = 1;
     self->visible = 0;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
     render_object_load_spr((struct RenderObject *)self, "cursors.spr");
     render_object_load_act((struct RenderObject *)self, "cursors.act");
     render_object_set_action_base((struct RenderObject *)self, 3, 0);
@@ -582,7 +583,7 @@ unsigned char mouse_pointer_on_process(struct GameObject *object)
 {
     struct MousePointer *self = (struct MousePointer *)object;
 
-    unsigned elapsed = timeGetTime() - self->start_tick;
+    unsigned elapsed = platform_ticks_ms() - self->start_tick;
     float frames = (float)(double)elapsed / 24.0f;
     int count;
 

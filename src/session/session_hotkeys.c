@@ -7,7 +7,6 @@
 #include "session/session_options.h"
 
 #include <string.h>
-#include <mmsystem.h>
 
 #define GUILD_SKILL_FIRST   10000
 #define GUILD_SKILL_LAST    10019

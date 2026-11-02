@@ -5,7 +5,6 @@
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "ui/ui_std.h"
 #include "diag/perf.h"
@@ -120,6 +119,7 @@ const struct UIEditCtrlOps ui_edit_ctrl_currency_ops = {
 #define UI_MSG_KEY 0x100
 
 #include "render/textdc.h"
+#include "platform/clock.h"
 
 static int text_width(struct UIEditCtrlCustom *self, const char *text, int len, int font_flag)
 {
@@ -209,12 +209,12 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_candidate_wnd(edit, lo_x);
             ui_edit_ctrl_place_key_stroke_wnd(edit, hi_x);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1))
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1))
                 ui_edit_ctrl_draw_highlight(edit, lo_x + x, max(hi_x - lo_x, 2));
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
         } else {
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
-            if (ui_edit_ctrl_caret_shown() == 1 && !((timeGetTime() / CARET_BLINK_MS) & 1))
+            if (ui_edit_ctrl_caret_shown() == 1 && !((platform_ticks_ms() / CARET_BLINK_MS) & 1))
                 ui_window_text_out(wnd, lo_x + x - 2, y, "|", 0, 0, EDIT_FONT_HEIGHT, edit->text_colour, 0, 0);
         }
     }

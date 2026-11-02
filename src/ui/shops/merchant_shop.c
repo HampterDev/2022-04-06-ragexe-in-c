@@ -6,7 +6,6 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/shops/merchant.h"
-#include <mmsystem.h>
 #include "ui/shops/merchant_shop.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
@@ -14,6 +13,7 @@
 #include "session/session_items.h"
 #include "ui/items/items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 struct UIMerchantItemShopWnd;
 struct UIWindow;
@@ -210,7 +210,7 @@ static int shop_time_left(DWORD timer_start, DWORD timer_length)
 {
     if (!timer_length)
         return 0;
-    return (int)(timer_start - timeGetTime() + timer_length);
+    return (int)(timer_start - platform_ticks_ms() + timer_length);
 }
 
 static void shop_draw_item(struct UIMerchantItemShopWnd *self, const struct ItemInfo *info, int col_x, int row_y)
@@ -558,13 +558,13 @@ void ui_merchant_item_my_shop_wnd_add_assistant_bar(struct UIMerchantItemMyShopW
 
 void ui_merchant_item_my_shop_wnd_set_timer(struct UIMerchantItemMyShopWnd *self, DWORD length)
 {
-    self->timer_start = timeGetTime();
+    self->timer_start = platform_ticks_ms();
     self->timer_length = length;
 }
 
 void ui_merchant_item_shop_wnd_set_timer(struct UIMerchantItemShopWnd *self, DWORD length)
 {
-    self->timer_start = timeGetTime();
+    self->timer_start = platform_ticks_ms();
     self->timer_length = length;
     shop_grow_to_bar(&self->base.frame.base, &self->bottom, SHOP_RESIZE_EDGE);
 }

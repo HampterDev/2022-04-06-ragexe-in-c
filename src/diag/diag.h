@@ -3,7 +3,7 @@
 
 #ifndef _WINDOWS_
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #endif
 
 DWORD image_timestamp(void);

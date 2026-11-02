@@ -15,6 +15,7 @@
 #include "core/msg_str.h"
 #include "session/session_talk.h"
 #include "ui/character/character.h"
+#include "platform/clock.h"
 
 #define SUBMODE_SERVER_SELECT   6
 
@@ -153,7 +154,7 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
     BYTE sex;
     BYTE textType;
 
-    g_session1.loginTick = timeGetTime();
+    g_session1.loginTick = platform_ticks_ms();
     text = msg_str(0x3ac);
     string_assign_cstr(&g_session1.autoMessage, text);
     g_session1.authCode = packet->head.auth_code;

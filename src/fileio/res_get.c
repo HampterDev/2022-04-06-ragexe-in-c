@@ -3,8 +3,8 @@
 #include "fileio/resource_errors.h"
 #include "diag/perf.h"
 
-#include <mmsystem.h>
 #include <string.h>
+#include "platform/clock.h"
 
 #define KEY_SLOTS 4096
 #define KEY_MAXLEN 119
@@ -100,7 +100,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
 
     res = res_find_capturing(self, type, path);
     if (res) {
-        res->lastUse = timeGetTime();
+        res->lastUse = platform_ticks_ms();
         goto leave;
     }
     res = resource_create(type);
@@ -110,7 +110,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
         int inserted;
         hash_set_string(&res->name, path);
         res->typeIndex = type;
-        res->lastUse = timeGetTime();
+        res->lastUse = platform_ticks_ms();
         cache_lock_write_begin();
         inserted = resource_cache_insert(&self->resources[type], res);
         cache_lock_write_end();
@@ -154,7 +154,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
     if (e) {
         res = res_mgr_find(self, e->typeIdx, e->key);
         if (res) {
-            res->lastUse = timeGetTime();
+            res->lastUse = platform_ticks_ms();
             e->tick = ++key_tick;
             g_perf.resHits++;
             LeaveCriticalSection(&self->lock);

@@ -4,7 +4,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct C3dDevice;
 void c3d_device_convert_palette(struct C3dDevice *device, DWORD *dst,

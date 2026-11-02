@@ -2,7 +2,7 @@
 #include "ui/navigation_view.h"
 #include "ui/quests/navigation.h"
 #include "ui/worldmap/route_view.h"
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 int ui_navigation_is_open(void) { return g_windowMgr.navigation_v4_wnd != NULL; }
 void ui_navigation_open(void) { ui_window_open(NAVI_WINDOW_ID); }
@@ -46,7 +46,7 @@ void ui_navigation_show_map(void)
     window = g_windowMgr.navigation_v4_wnd;
     if (!window) return;
     window->alpha_target = 0xff;
-    window->alpha_time = timeGetTime();
+    window->alpha_time = platform_ticks_ms();
     ui_navigation_v4_wnd_relayout((struct UINavigationV4Wnd *)window);
     ui_navigation_v4_wnd_layout_list_page((struct UINavigationV4Wnd *)window);
     ui_window_invalidate(window);

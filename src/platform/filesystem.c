@@ -8,7 +8,7 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include <wchar.h>
 
 static wchar_t *native_path(const char *path)

@@ -1,11 +1,12 @@
 #include "effects/effect_allocator.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <math.h>
 #include <string.h>
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/list.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 static const double k_twoPiAsFloat = 6.2831840515136719;
 
@@ -13,7 +14,7 @@ struct HawkVumerangEffect {
     struct Effect base;
     struct List trail;
     struct List landed;
-    __int64 copies;
+    int64_t copies;
     double full_turn;
     Vec3 offset;
     unsigned start_ms;
@@ -136,9 +137,9 @@ void hawk_vumerang_effect_init(struct Effect *effect)
 {
     struct HawkVumerangEffect *self = (struct HawkVumerangEffect *)effect;
     float dx, dy, dz;
-    __int64 i;
+    int64_t i;
 
-    self->start_ms = timeGetTime();
+    self->start_ms = platform_ticks_ms();
     self->from = self->base.pos;
     self->to = self->base.target_pos;
     self->centre.y = (self->from.y + self->to.y) * 0.5f;
@@ -175,12 +176,12 @@ void hawk_vumerang_effect_process(struct Effect *effect)
     struct Ez2StrParticle *p;
     struct ListNode *node;
     double turned, angle;
-    __int64 n;
+    int64_t n;
 
     if (self->trail.size == 0)
         return;
     p = pop_last_particle(&self->trail);
-    turned = (double)(unsigned)(timeGetTime() - self->start_ms) / (double)(self->base.duration * 2) * self->full_turn;
+    turned = (double)(unsigned)(platform_ticks_ms() - self->start_ms) / (double)(self->base.duration * 2) * self->full_turn;
     if (self->full_turn > turned) {
         float a, x, z;
 
@@ -199,7 +200,7 @@ void hawk_vumerang_effect_process(struct Effect *effect)
         list_push_back(&self->landed, &p, sizeof p);
     }
 
-    n = self->copies - (__int64)self->trail.size;
+    n = self->copies - (int64_t)self->trail.size;
     for (node = self->trail.head->next; node != self->trail.head; node = node->next, n++) {
         struct Ez2StrParticle *copy = *LIST_VALUE(node, struct Ez2StrParticle *);
         Vec3 zero = { 0.0f, 0.0f, 0.0f };

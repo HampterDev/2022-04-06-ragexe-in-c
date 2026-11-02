@@ -1,10 +1,11 @@
 #include "effects/effect_allocator.h"
 #include "render/math3d.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #define BLAST_FORGE_LIST 5
 #define MARK_LIST 0xd
@@ -17,7 +18,7 @@ struct BlastForge {
     struct Ez2StrParticle *burst;
     struct Ez2StrParticle *burst_mark;
     unsigned char loop_parity;
-    __int64 last_burst_ms;
+    int64_t last_burst_ms;
 };
 
 #define PARTICLE_LIFE(p) ((p)->base.life_seconds)
@@ -67,7 +68,7 @@ struct BlastForge *blast_forge_construct(struct BlastForge *self)
     effect_construct(&self->base, -1);
     self->base.ops = &blast_forge_ops;
     self->loop_parity = 0;
-    self->last_burst_ms = (__int64)timeGetTime();
+    self->last_burst_ms = (int64_t)platform_ticks_ms();
     self->loop = 0;
     self->loop_mark = 0;
     self->burst = 0;
@@ -164,8 +165,8 @@ void blast_forge_step_burst(struct BlastForge *self)
             self->burst_mark = 0;
         }
     }
-    if ((__int64)timeGetTime() - self->last_burst_ms >= BURST_PERIOD_MS) {
-        self->last_burst_ms = (__int64)timeGetTime();
+    if ((int64_t)platform_ticks_ms() - self->last_burst_ms >= BURST_PERIOD_MS) {
+        self->last_burst_ms = (int64_t)platform_ticks_ms();
         blast_forge_burst(self);
     }
 }

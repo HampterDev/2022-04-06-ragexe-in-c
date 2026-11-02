@@ -19,7 +19,7 @@
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <shellapi.h>
 #include <stdlib.h>
 #include <string.h>

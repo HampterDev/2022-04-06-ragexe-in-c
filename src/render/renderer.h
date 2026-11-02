@@ -4,7 +4,7 @@
 #include "render/projection.h"
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "render/draw_queue.h"
 

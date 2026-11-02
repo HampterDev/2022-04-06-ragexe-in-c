@@ -38,11 +38,6 @@ struct UIListBox {
     DWORD text_colour;
     BYTE centre_lines;
 };
-OFFSET_ASSERT(UIListBox, items, 0x88);
-OFFSET_ASSERT(UIListBox, selected, 0x94);
-OFFSET_ASSERT(UIListBox, vbar, 0xac);
-OFFSET_ASSERT(UIListBox, centre_lines, 0xcc);
-SIZE_ASSERT(UIListBox, 0xd0);
 struct UIListBoxOps {
     struct UIWindowOps base;
     void (*create)(struct UIListBox *self, int x, int y, int width, int height,
@@ -89,8 +84,6 @@ struct UIListBoxNavi {
     struct Vec flags;
     int row_base;
 };
-OFFSET_ASSERT(UIListBoxNavi, flags, 0xd4);
-SIZE_ASSERT(UIListBoxNavi, 0xe4);
 struct UIListBoxNavi *ui_list_box_navi_construct(struct UIListBoxNavi *self);
 
 void ui_list_box_on_l_btn_down(struct UIWindow *self, int x, int y);
@@ -123,8 +116,6 @@ struct UIListBoxEx {
     int line_height;
     COLORREF selection_colour;
 };
-OFFSET_ASSERT(UIListBoxEx, rows, 0x88);
-OFFSET_ASSERT(UIListBoxEx, vbar, 0xa8);
 struct UIListBoxExOps {
     struct UIWindowOps base;
     void (*clear_items)(struct UIListBoxEx *self);

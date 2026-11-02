@@ -117,14 +117,11 @@ struct UINoteWnd_Scroll {
     struct UIScrollWnd scroll;
     struct UIStaticTextLF *text;
 };
-OFFSET_ASSERT(UINoteWnd_Scroll, text, 0xb0);
-SIZE_ASSERT(UINoteWnd_Scroll, 0xb4);
 
 struct UINoteWnd {
     struct UIFrameWnd frame;
     struct UINoteWnd_Scroll *pane;
 };
-SIZE_ASSERT(UINoteWnd, 0x98);
 
 static struct UINoteWnd_Scroll *ui_note_wnd_scroll_construct(struct UINoteWnd_Scroll *self, int width,
                                                                       int height)

@@ -305,7 +305,7 @@ struct ActorStates {
     int head_dir;                              \
     int head;                                  \
     int head_palette;                          \
-    __int64 weapon;                            \
+    int64_t weapon;                            \
     int accessory[3];                          \
     int shield;                                \
     int shoes;                                 \

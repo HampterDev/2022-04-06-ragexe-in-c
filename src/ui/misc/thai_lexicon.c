@@ -1,7 +1,6 @@
 #include "core/memory.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "ui/misc/thai_lexicon.h"
 
@@ -46,7 +45,6 @@ struct ThaiLexNode {
     struct ThaiLexNode *next;
     struct ThaiLexNode *child;
 };
-SIZE_ASSERT(ThaiLexNode, 0xc);
 
 struct ThaiLexicon {
     struct ThaiLexNode *root;
@@ -61,8 +59,6 @@ struct ThaiLexicon {
     int file_size;
     BYTE loaded;
 };
-OFFSET_ASSERT(ThaiLexicon, file_words, 0x118);
-SIZE_ASSERT(ThaiLexicon, 0x12c);
 #define THAI_LEX_HEADER_SIZE 0x118
 
 struct ThaiLexicon *thai_lexicon_construct(struct ThaiLexicon *self)

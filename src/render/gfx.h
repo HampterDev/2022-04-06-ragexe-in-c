@@ -2,7 +2,7 @@
 #define GFX_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 
 typedef struct gfx_surface gfx_surface;
 typedef struct gfx_vbuffer gfx_vbuffer;

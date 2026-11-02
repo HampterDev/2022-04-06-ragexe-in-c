@@ -14,6 +14,7 @@
 #include "session/session_names.h"
 #include "session/session_skills.h"
 #include "session/session_talk.h"
+#include <stdint.h>
 
 #define ACTOR_SEND(self, sender, msg, par1) render_object_send((self), (sender), (msg), (par1), 0, 0, 0)
 
@@ -138,7 +139,7 @@ void game_actor_forget_handle(struct GameActor *self, int handle)
 int game_actor_action_of(struct GameActor *self, unsigned motion)
 {
     int mode;
-    unsigned __int64 weapon;
+    uint64_t weapon;
 
     switch (motion) {
     case 0x01:

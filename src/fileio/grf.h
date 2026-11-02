@@ -2,7 +2,7 @@
 #define FILEIO_GRF_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 struct Dec {

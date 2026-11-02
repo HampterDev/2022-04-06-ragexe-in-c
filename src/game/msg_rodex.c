@@ -3,6 +3,7 @@
 #include <string.h>
 #include "game/mode_msg.h"
 #include "session/session_items.h"
+#include <stdint.h>
 
 #define CZ_REQ_OPEN_WRITE_MAIL      0xa08
 #define CZ_REQ_ADD_ITEM_TO_MAIL     0xa04
@@ -27,7 +28,7 @@ struct RodexWriteHeader {
     unsigned short len;
     char receiver[24];
     char sender[24];
-    __int64 zeny;
+    int64_t zeny;
     unsigned short title_len;
     unsigned short body_len;
     int receiver_char_id;
@@ -100,7 +101,7 @@ int game_mode_msg_rodex_mail(unsigned short id, int mail_id, int type)
     struct {
         unsigned short id;
         unsigned char type;
-        __int64 mail_id;
+        int64_t mail_id;
     } packet;
 #pragma pack(pop)
 

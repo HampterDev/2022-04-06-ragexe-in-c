@@ -10,14 +10,14 @@
 #include "ui/window_access.h"
 #include "skills/attack_range.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "game/skill_list.h"
 #include "game/mode_util.h"
 #include "platform/language.h"
 #include "session/session_jobs.h"
 #include "session/session_state.h"
+#include "platform/clock.h"
 
 #define CZ_USE_SKILL2                   0x438
 #define CZ_USE_SKILL_TOGROUND2          0xaf4
@@ -61,7 +61,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
     struct String name;
     int shout;
 
-    self->skill_shout_time = timeGetTime();
+    self->skill_shout_time = platform_ticks_ms();
     shout = 1;
     if (level < 0 || skill_id < 0)
         shout = 0;

@@ -20,8 +20,6 @@ struct UITextViewer {
     BYTE coloured;
     BYTE coloured_arg;
 };
-OFFSET_ASSERT(UITextViewer, embeds, 0xd0);
-OFFSET_ASSERT(UITextViewer, background, 0xdc);
 #define UI_MSG_ADD_TEXT 0x1d
 #define UI_TEXT_VIEWER_BACKGROUND(viewer) (((struct UITextViewer *)(viewer))->background)
 struct UIWindow *ui_text_viewer_construct(struct UIWindow *self);

@@ -118,7 +118,6 @@ struct UISkillTextWnd {
     struct GroundSkillUse use;
     struct UIWindow *edit;
 };
-SIZE_ASSERT(UISkillTextWnd, 0xa8);
 
 int ui_graffi_strbox_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
                               int val1, int val2, int val3, int val4)

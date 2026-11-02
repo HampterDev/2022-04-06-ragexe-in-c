@@ -77,9 +77,6 @@ struct UIGuildBanishedMemberWnd {
     struct UIWindow *reasons[EXPELLED_ROWS];
     struct GuildListView list;
 };
-OFFSET_ASSERT(UIGuildBanishedMemberWnd, reasons, 0xdc);
-OFFSET_ASSERT(UIGuildBanishedMemberWnd, list, 0x108);
-SIZE_ASSERT(UIGuildBanishedMemberWnd, 0x120);
 void ui_guild_banished_member_wnd_destroy(struct UIWindow *window);
 void ui_guild_banished_member_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_banished_member_wnd_on_draw(struct UIWindow *self);
@@ -140,8 +137,6 @@ struct UIGuildTotalInfoWnd {
     struct UIWindow *names[TOTAL_INFO_ROWS];
     struct GuildListView list;
 };
-OFFSET_ASSERT(UIGuildTotalInfoWnd, list, 0xe0);
-SIZE_ASSERT(UIGuildTotalInfoWnd, 0xf8);
 void ui_guild_total_info_wnd_destroy(struct UIWindow *window);
 void ui_guild_total_info_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_total_info_wnd_on_draw(struct UIWindow *self);

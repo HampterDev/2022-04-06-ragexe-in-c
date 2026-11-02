@@ -10,6 +10,7 @@
 #include "diag/perf.h"
 #include "session/session_jobs.h"
 #include "session/session_talk.h"
+#include "platform/clock.h"
 
 struct UIDisplayCharacter;
 struct UIWindow;
@@ -288,7 +289,7 @@ void ui_display_character_on_create(struct UIWindow *window, int width, int heig
 {
     struct UIDisplayCharacter *self = (struct UIDisplayCharacter *)window;
     ui_window_resize_base(&self->base, width, height);
-    self->start_time = timeGetTime();
+    self->start_time = platform_ticks_ms();
     if (!self->no_buttons)
         display_add_buttons(self);
     display_wear_my_look(self);

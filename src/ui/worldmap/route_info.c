@@ -11,6 +11,7 @@
 #include "std/tree.h"
 #include "ui/character/character.h"
 #include "render/screen_draw.h"
+#include "platform/clock.h"
 
 #define KAFRA_SPRITE "npc\\4_f_kafra6.spr"
 #define KAFRA_ACT "npc\\4_f_kafra6.act"
@@ -296,7 +297,7 @@ static void route_draw_kafra(struct UIRoMapWnd *wnd, float x, float y)
     count = (int)motions->motion_count;
     if (count == 0)
         return;
-    ms = (int)(timeGetTime() % KAFRA_CYCLE_MS);
+    ms = (int)(platform_ticks_ms() % KAFRA_CYCLE_MS);
     frame = ms == 0 ? 0 : (count <= KAFRA_CYCLE_MS ? ms / (KAFRA_CYCLE_MS / count) : (int)((unsigned long long)ms * (unsigned)count / KAFRA_CYCLE_MS));
     frame = count > frame ? frame : count - 1;
     if (frame < 0)

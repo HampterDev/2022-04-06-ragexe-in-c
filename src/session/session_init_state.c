@@ -7,10 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <mmsystem.h>
+#include "platform/clock.h"
 
 DWORD session_get_server_time(struct Session *self)
 {
-    return timeGetTime() + (0xffffffb8u - self->serverTimeOffset);
+    return platform_ticks_ms() + (0xffffffb8u - self->serverTimeOffset);
 }
 
 void session_init_at_startup(struct Session *self)
@@ -29,7 +30,7 @@ void session_init_at_startup(struct Session *self)
     base += (DWORD)(BYTE)st.wYear * 0x7bbdb000u;
     base -= (DWORD)st.wMonth * 0x605adc00u;
     base += st.wMilliseconds;
-    base -= timeGetTime();
+    base -= platform_ticks_ms();
     self->showGuildEmblems = 1;
     self->timeStampOffset = base;
     self->guildLeaveGid = 0;
@@ -165,7 +166,7 @@ void session_init_at_startup(struct Session *self)
     tracked_achievements_clear(&self->trackedAchievements);
     self->ownDressUp = 0;
     self->body = 0;
-    self->lastPetEmotionTime = timeGetTime();
+    self->lastPetEmotionTime = platform_ticks_ms();
     self->showCashShopIcon = 1;
     self->showGoldPcIcon = 1;
     self->screenShake = 1;

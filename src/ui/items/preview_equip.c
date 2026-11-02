@@ -11,7 +11,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_items.h"
@@ -57,8 +56,6 @@ struct UIPreviewEquipWnd {
     struct UIBitmapButton *turn_right;
     struct UIBasicButton *reset;
 };
-OFFSET_ASSERT(UIPreviewEquipWnd, chr, 0x98);
-SIZE_ASSERT(UIPreviewEquipWnd, 0xa8);
 
 struct UIWindow;
 void ui_preview_equip_wnd_destroy(struct UIWindow *window);

@@ -10,7 +10,6 @@
 #include "ui/skin.h"
 #include "ui/ui_std.h"
 
-#include <mmsystem.h>
 
 #include <stdio.h>
 #include "ui/chat/chat_window_parts.h"
@@ -19,6 +18,7 @@
 #include "ui/chat/chat_window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 #define MSG_NAVI_STOP_GUIDE 0x8bf
 #define MSG_NAVI_MOB_VERY_LOW 0x995
@@ -282,7 +282,7 @@ static void share(struct UINavigationV4Wnd *self)
     if (kind <= 1) {
         ui_navigation_v4_wnd_layout_route(self);
         g_navi.windowPage = NAVI_VIEW_TARGET;
-        self->hint_until = timeGetTime() + 5000;
+        self->hint_until = platform_ticks_ms() + 5000;
         return;
     }
     navi_manager_guided(&g_navi, &result);
@@ -407,7 +407,7 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     case NAVI_ID_MAXIMIZE:
         g_navi.windowCollapsed = 0;
         self->frame.base.alpha_target = 0xff;
-        self->frame.base.alpha_time = timeGetTime();
+        self->frame.base.alpha_time = platform_ticks_ms();
         g_navi.windowHidden = 0;
         ui_navigation_v4_wnd_relayout(self);
         break;
@@ -417,7 +417,7 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     case NAVI_ID_MINIMIZE:
         g_navi.windowCollapsed = 1;
         self->frame.base.alpha_target = 0xaa;
-        self->frame.base.alpha_time = timeGetTime();
+        self->frame.base.alpha_time = platform_ticks_ms();
         if (g_windowMgr.kafra_move_map_service_info_wnd)
             ui_ro_map_wnd_place_search((struct UIRoMapWnd *)g_windowMgr.kafra_move_map_service_info_wnd);
         ui_navigation_v4_wnd_relayout(self);

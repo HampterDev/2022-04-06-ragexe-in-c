@@ -3,7 +3,7 @@
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "base.h"
 #include "core/app.h"

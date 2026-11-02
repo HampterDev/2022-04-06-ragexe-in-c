@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "json/json_tree.h"
+#include <stdint.h>
 
 enum {
     BSON_MAX_NESTING_DEPTH = 1024,
@@ -95,7 +96,7 @@ static int read_int32(struct BsonSource *src, int *v)
     return read_bytes(src, v, 4);
 }
 
-static int read_int64(struct BsonSource *src, __int64 *v)
+static int read_int64(struct BsonSource *src, int64_t *v)
 {
     return read_bytes(src, v, 8);
 }

@@ -7,7 +7,7 @@
 #include "session/state.h"
 #include "world/mode_dispatch.h"
 #include "game/context.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
 #include <string.h>
 #include "actor/actor.h"
@@ -22,6 +22,7 @@
 #include "session/session_names.h"
 #include "session/session_party.h"
 #include "session/session_talk.h"
+#include "platform/clock.h"
 
 const char monster_spr_fmt[] = "몬스터\\%s.spr";
 const char monster_act_fmt[] = "몬스터\\%s.act";
@@ -125,13 +126,13 @@ unsigned char npc_on_process(struct GameObject *object)
 
     if (!game_actor_process_fade_out(actor))
         return 0;
-    if (self->hit_flash && timeGetTime() > self->hit_tick + 100) {
+    if (self->hit_flash && platform_ticks_ms() > self->hit_tick + 100) {
         self->hit_argb = 0xffff0000;
         self->hit_flash = 0;
     }
     job = game_actor_get_job(actor);
-    if (job == 0x68 && timeGetTime() > self->last_effect_tick + self->xsize * 1000) {
-        self->last_effect_tick = timeGetTime();
+    if (job == 0x68 && platform_ticks_ms() > self->last_effect_tick + self->xsize * 1000) {
+        self->last_effect_tick = platform_ticks_ms();
         npc_launch(self, self->walk_speed);
     }
     if (job == 0x2d || job == 0x8b || job == 0x68) {
@@ -341,7 +342,7 @@ static void npc_set_state_general(struct Npc *self, int state)
             npc_pet_performance(self);
         } else {
             if (self->state != 0)
-                self->pet_emotion_tick = timeGetTime();
+                self->pet_emotion_tick = platform_ticks_ms();
             if (g_session1.homun_command[3]) {
                 g_session1.homun_command[1] = 0;
                 g_session1.homun_command[2] = 0;
@@ -446,7 +447,7 @@ void npc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         npc_set_state_general(self, state);
     self->action = game_actor_dir_of((struct GameObject *)self, self->roty) + self->base_action;
     self->state = state;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
 }
 
 void npc_set_unit_cell(struct GameActor * base_actor)

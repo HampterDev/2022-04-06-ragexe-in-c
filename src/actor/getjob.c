@@ -2,7 +2,7 @@
 #include "actor/render_ops.h"
 #include "actor/job.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 
 #include "actor/types.h"
 

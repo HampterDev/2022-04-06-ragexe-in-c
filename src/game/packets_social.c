@@ -4,7 +4,7 @@
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packets.h"
 #include "platform/clientinfo.h"

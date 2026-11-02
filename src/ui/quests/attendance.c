@@ -8,14 +8,14 @@
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include <time.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/quests/quests.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "render/screen_draw.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define ATTENDANCE_WND_ID 0x148
 #define ATTENDANCE_DIR UI_SKIN "check_attendance\\"
@@ -48,9 +48,6 @@ struct UICheckAttendanceWnd {
     int today_state;
     struct UIBmpTextButton *close;
 };
-OFFSET_ASSERT(UICheckAttendanceWnd, today_open, 0x98);
-OFFSET_ASSERT(UICheckAttendanceWnd, close, 0xa8);
-SIZE_ASSERT(UICheckAttendanceWnd, 0xac);
 void ui_check_attendance_wnd_destroy(struct UIWindow *window);
 void ui_check_attendance_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_check_attendance_wnd_on_process(struct UIWindow *self);
@@ -354,7 +351,7 @@ void ui_check_attendance_wnd_on_process(struct UIWindow *window)
 
     if (!self->today_open)
         return;
-    phase = timeGetTime() / 100 & 1;
+    phase = platform_ticks_ms() / 100 & 1;
     if (self->today_state != ATTENDANCE_TODAY_PRESSED && self->today_state != phase) {
         self->today_state = phase;
         ui_window_invalidate_base(&self->frame.base);

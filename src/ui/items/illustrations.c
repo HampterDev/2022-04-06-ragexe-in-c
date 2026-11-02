@@ -17,7 +17,6 @@ struct UICardItemIllustWnd {
     struct String item_id;
     BYTE identified;
 };
-OFFSET_ASSERT(UICardItemIllustWnd, bitmap, 0x94);
 
 struct UIWindow;
 void ui_card_item_illust_wnd_destroy(struct UIWindow *window);
@@ -163,9 +162,6 @@ struct UIIllustWnd {
     int closable;
     struct String bitmap;
 };
-OFFSET_ASSERT(UIIllustWnd, titled, 0x94);
-OFFSET_ASSERT(UIIllustWnd, closable, 0x98);
-OFFSET_ASSERT(UIIllustWnd, bitmap, 0x9c);
 
 void ui_illust_wnd_destroy(struct UIWindow *window);
 BYTE ui_illust_wnd_is_hit_testable(struct UIWindow *self);

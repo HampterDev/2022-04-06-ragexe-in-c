@@ -34,6 +34,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/character/skill_list_wnd.h"
 #include "game/rodex_mail.h"
+#include "platform/clock.h"
 
 static int box(const char *text, int a, int b, int c, int d)
 {
@@ -150,7 +151,7 @@ static void login_acf(struct LoginMode *self)
     }
     _snprintf_s(pkt.code, 5, (size_t)-1, "%s", (const char *)self->account_class);
     rag_connection_send_packet(rag_connection_instance(), 0x44, &pkt);
-    self->stateTick = timeGetTime();
+    self->stateTick = platform_ticks_ms();
     self->waitWnd = wait_window(0x7a, 0x10);
 }
 
@@ -162,7 +163,7 @@ static void login_screen(struct LoginMode *self)
     guild_mgr_clear_versions(g_guildMgr);
     default_wallpaper(self);
     if (g_session1.canBackToLogin == 1) {
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         g_mapServerAidPending = 0;
         self->auth_answered = 0;
         self->auth_waiting = 0;
@@ -469,7 +470,7 @@ static void enter_map(struct LoginMode *self)
         RegCloseKey(key);
     }
     pkt.id = 0x436;
-    pkt.clientTime = timeGetTime();
+    pkt.clientTime = platform_ticks_ms();
     pkt.aid = g_session1.ownAid;
     pkt.gid = ((DWORD)g_session1.ownGid);
     pkt.authCode = (g_session1.authCode);
@@ -523,7 +524,7 @@ static void select_zone(struct LoginMode *self)
 void login_mode_on_change_state(struct Mode *mode, int state)
 {
     struct LoginMode *self = (struct LoginMode *)mode;
-    self->stateTick = timeGetTime();
+    self->stateTick = platform_ticks_ms();
     ui_window_mgr_close_all_windows(&g_windowMgr);
     self->base.help_balloon = NULL;
     (g_session1.battle_mode) = 0;

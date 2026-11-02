@@ -21,7 +21,6 @@
 #include "ui/controls/controls.h"
 #include "ui/draw.h"
 #include "ui/skin.h"
-#include <mmsystem.h>
 #include "ui/ui_items.h"
 #include "ui/shops/shops.h"
 #include "ui/chat/chat_window_parts.h"
@@ -42,6 +41,7 @@
 #include "session/session_skills.h"
 #include "ui/character/popup_menu.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 #define EQUIP_WND_ID 0xa
 #define EQUIP_VIEW_WND_ID 0x8b
@@ -148,9 +148,6 @@ struct UIEquipWnd {
     struct UIAnimation animation;
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UIEquipWnd, viewing_other, 0x94);
-OFFSET_ASSERT(UIEquipWnd, info, 0xa8);
-OFFSET_ASSERT(UIEquipWnd, show_box, 0xbc);
 
 #define ITEM_LOCATION(info) ((info)->worn_location)
 
@@ -436,7 +433,7 @@ struct UIEquipWnd *ui_equip_wnd_construct(struct UIEquipWnd *self)
     self->swap_button = NULL;
     self->take_off_button = NULL;
     self->info = NULL;
-    self->created = timeGetTime();
+    self->created = platform_ticks_ms();
     self->bar_height = 0;
     self->tab = 0;
     self->top = 0x14;

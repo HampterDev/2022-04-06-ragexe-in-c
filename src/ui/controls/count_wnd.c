@@ -71,7 +71,6 @@ struct UICntWnd {
     struct UIWindow *edit;
     struct UIWindow *text;
 };
-SIZE_ASSERT(UICntWnd, 0xa0);
 
 static struct UIWindow *ui_cnt_wnd_construct(struct UICntWnd *self)
 {

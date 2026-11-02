@@ -27,6 +27,7 @@
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mode_initialize.h"
+#include "platform/clock.h"
 
 const char *g_loginBackgroundName = "";
 
@@ -41,7 +42,7 @@ static struct LoginMode *login_mode_construct(struct LoginMode *self)
     string_init(&self->exit_cleared_text);
     self->zones.first = self->zones.last = self->zones.end = NULL;
     self->base.fade_in_start = 1;
-    self->nextKeepAlive = timeGetTime() + 12000;
+    self->nextKeepAlive = platform_ticks_ms() + 12000;
     self->savedFlag = g_useCharsetTag;
     g_useCharsetTag = 0;
     self->connectionIndex = -1;
@@ -222,9 +223,9 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
 
     switch (subMode) {
     case 4:
-        if (timeGetTime() > self->stateTick + timeout)
+        if (platform_ticks_ms() > self->stateTick + timeout)
             login_mode_send_msg(&self->base, 0x2725, 0, 0, 0, 0);
-        if ((g_serviceType == 5 || g_serviceType == 7) && timeGetTime() > self->stateTick + 15000) {
+        if ((g_serviceType == 5 || g_serviceType == 7) && platform_ticks_ms() > self->stateTick + 15000) {
             void *wnd = self->waitWnd;
             if (!wnd) {
                 wnd = ui_window_open(6);
@@ -239,29 +240,29 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
         return;
 
     case 5:
-        if (timeGetTime() <= self->stateTick + 80000)
+        if (platform_ticks_ms() <= self->stateTick + 80000)
             return;
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (timeout_box(1) == 0x105)
             return;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         g_mapServerAidPending = 0;
         self->base.next_sub_mode = 3;
         return;
 
     case 0xc:
-        if (timeGetTime() <= self->stateTick + 15000)
+        if (platform_ticks_ms() <= self->stateTick + 15000)
             return;
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (timeout_box(1) == 0x105)
             return;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         g_mapServerAidPending = 0;
         self->base.next_sub_mode = 3;
         return;
 
     case 6:
-        if (timeGetTime() <= self->stateTick + 15000)
+        if (platform_ticks_ms() <= self->stateTick + 15000)
             return;
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (timeout_box(1) == 0x105)
@@ -271,7 +272,7 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
 
     case 0x26:
         if (self->auth_waiting == 1) {
-            if (timeGetTime() < self->stateTick + 60000)
+            if (platform_ticks_ms() < self->stateTick + 60000)
                 return;
             connection_disconnect(rag_connection_transport(rag_connection_instance()));
             if (self->auth_answered != 1 || self->auth_waiting != 1)
@@ -284,7 +285,7 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
             self->auth_waiting = 0;
             self->auth_timed_out = 0;
         } else {
-            if (timeGetTime() <= self->stateTick + 80000)
+            if (platform_ticks_ms() <= self->stateTick + 80000)
                 return;
             connection_disconnect(rag_connection_transport(rag_connection_instance()));
             if (self->auth_answered != 0)
@@ -293,7 +294,7 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
                 return;
         }
         self->auth_answered = 0;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         self->base.next_sub_mode = 3;
         return;
     }
@@ -308,9 +309,9 @@ void login_mode_send_keep_alive(struct LoginMode *self)
 
     if (m != 7 && m != 8 && m != 0xb && m != 0x13)
         return;
-    if (timeGetTime() <= self->nextKeepAlive)
+    if (platform_ticks_ms() <= self->nextKeepAlive)
         return;
-    self->nextKeepAlive = timeGetTime() + 12000;
+    self->nextKeepAlive = platform_ticks_ms() + 12000;
     pkt.id = 0x187;
     pkt.aid = g_session1.ownAid;
     login_send_packet(0x187, &pkt);

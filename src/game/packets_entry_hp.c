@@ -3,8 +3,7 @@
 #include "contents/champion_monster_effects.h"
 #include "contents/player_names.h"
 #include "session/state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/packets_entry.h"
 #include "game/packet_data.h"
 #include "actor/actor_common.h"

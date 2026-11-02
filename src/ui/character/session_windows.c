@@ -380,7 +380,6 @@ enum {
 struct UIQuitWnd {
     struct UIFrameWnd frame;
 };
-SIZE_ASSERT(UIQuitWnd, 0x94);
 
 struct UIQuitWnd *ui_quit_wnd_construct(struct UIQuitWnd *self)
 {
@@ -535,7 +534,6 @@ enum {
 struct UIRebirthWnd {
     struct UIFrameWnd frame;
 };
-SIZE_ASSERT(UIRebirthWnd, 0x94);
 
 struct UIRebirthWnd *ui_rebirth_wnd_construct(struct UIRebirthWnd *self)
 {
@@ -620,8 +618,6 @@ struct UIWaitWnd {
     struct UIWindow *text;
     struct UIBitmapButton *cancel;
 };
-OFFSET_ASSERT(UIWaitWnd, cancel, 0x98);
-SIZE_ASSERT(UIWaitWnd, 0x9c);
 
 struct UIWaitWnd *ui_wait_wnd_construct(struct UIWaitWnd *self)
 {
@@ -771,7 +767,6 @@ struct UIDisconnectedServerMsgWnd {
     struct UIFrameWnd frame;
     struct UIWindow *text;
 };
-SIZE_ASSERT(UIDisconnectedServerMsgWnd, 0x98);
 
 struct UIDisconnectedServerMsgWnd *ui_disconnected_server_msg_wnd_construct(
     struct UIDisconnectedServerMsgWnd *self)

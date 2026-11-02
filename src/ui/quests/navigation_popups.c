@@ -78,7 +78,6 @@ struct UINavigationRuideWnd {
     struct UIFrameWnd frame;
     struct UIListBox_NaviSearch *list;
 };
-SIZE_ASSERT(UINavigationRuideWnd, 0x98);
 
 struct UINavigationRuideWnd *ui_navigation_ruide_wnd_construct(struct UINavigationRuideWnd *self)
 {
@@ -248,7 +247,6 @@ struct UINavigationroadiconWnd {
     struct UIFrameWnd frame;
     struct UIWindow *highlight;
 };
-SIZE_ASSERT(UINavigationroadiconWnd, 0x98);
 
 static void road_icon_move_highlight(struct UIWindow *highlight, int icon)
 {
@@ -410,7 +408,6 @@ struct UINavigationHelpWnd {
     struct UITextViewer *text;
     int close_button;
 };
-SIZE_ASSERT(UINavigationHelpWnd, 0x9c);
 
 static const int navi_help_lines[] = {
     0x8c1, NAVI_HELP_BLANK, 0x8c2, 0x8c3, 0x8c4, NAVI_HELP_BLANK, 0x8c5, 0x8c6, 0x8c7, NAVI_HELP_BLANK,

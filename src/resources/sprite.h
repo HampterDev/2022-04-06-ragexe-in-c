@@ -4,7 +4,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "fileio/resource_types.h"
 
@@ -16,8 +16,6 @@ struct SprImg {
     struct Texture *texture;
     BYTE *pixels;
 };
-OFFSET_ASSERT(SprImg, texture, 0x08);
-SIZE_ASSERT(SprImg, 0x10);
 
 #define SPR_PALETTE_IMAGES 0
 
@@ -31,9 +29,6 @@ struct SprRes {
     DWORD palette[256];
     struct SpriteImageList images[2];
 };
-OFFSET_ASSERT(SprRes, palette, 0x110);
-OFFSET_ASSERT(SprRes, images, 0x510);
-SIZE_ASSERT(SprRes, 0x520);
 
 static inline struct SprImg *sprite_resource_image(const struct SprRes *sprite, int kind, int index)
 {

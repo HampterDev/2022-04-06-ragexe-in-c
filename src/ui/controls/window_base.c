@@ -6,8 +6,8 @@
 #include "render/texture.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 struct UIWindow;
 const struct UIWindowOps ui_window_ops = {
@@ -133,13 +133,13 @@ DWORD ui_window_get_color(struct UIWindow *self)
     unsigned target = w->alpha_target;
 
     if (alpha < target) {
-        if (target >= w->alpha + ((timeGetTime() - w->alpha_time) >> 4))
-            target = w->alpha + ((timeGetTime() - w->alpha_time) >> 4);
+        if (target >= w->alpha + ((platform_ticks_ms() - w->alpha_time) >> 4))
+            target = w->alpha + ((platform_ticks_ms() - w->alpha_time) >> 4);
         w->alpha = target;
         alpha = target;
     } else if (alpha > target) {
-        if (target <= w->alpha - ((timeGetTime() - w->alpha_time) >> 4))
-            target = w->alpha - ((timeGetTime() - w->alpha_time) >> 4);
+        if (target <= w->alpha - ((platform_ticks_ms() - w->alpha_time) >> 4))
+            target = w->alpha - ((platform_ticks_ms() - w->alpha_time) >> 4);
         w->alpha = target;
         alpha = target;
     }

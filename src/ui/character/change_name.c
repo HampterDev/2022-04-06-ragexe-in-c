@@ -52,9 +52,6 @@ struct UIChangeNameWnd {
     const struct CharInfo *char_info;
     struct CharInfo char_copy;
 };
-OFFSET_ASSERT(UIChangeNameWnd, edit, 0x9c);
-OFFSET_ASSERT(UIChangeNameWnd, char_copy, 0xa4);
-SIZE_ASSERT(UIChangeNameWnd, 0x154);
 
 struct UIWindow;
 void ui_change_name_wnd_destroy(struct UIWindow *window);

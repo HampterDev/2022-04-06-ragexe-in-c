@@ -27,12 +27,12 @@
 #include "ui/controls/edit_types.h"
 #include "contents/ui_window.h"
 #include "contents/ui_window_mgr.h"
-#include <mmsystem.h>
 #include "core/object_type_tables.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_items.h"
 #include "ui/ui_items.h"
+#include "platform/clock.h"
 
 #define LAPINE_TABLE     "tblLapineDdukddakBox"
 
@@ -387,7 +387,7 @@ void lapine_box_on_frame(struct UIWindow *window)
             ui_window_invalidate_base(&self->frame.base);
         }
     }
-    if (self->notice_time + self->notice_duration < timeGetTime())
+    if (self->notice_time + self->notice_duration < platform_ticks_ms())
         string_clear(&self->notice);
 }
 
@@ -424,7 +424,7 @@ void lapine_box_on_draw(struct UIWindow *window)
         ui_window_draw_item_icon_count(&self->frame.base, pos.x, pos.y, (struct ItemInfo *)&chosen[i], 0, 0);
     }
 
-    if (self->notice_time + self->notice_duration > timeGetTime()) {
+    if (self->notice_time + self->notice_duration > platform_ticks_ms()) {
         ui_window_draw_bitmap(&self->frame.base, 6, 0xe5, res_mgr_get(g_resMgr(), LAPINE_BMP("icon_notify.bmp")), 1);
         ui_window_text_out(&self->frame.base, 0x19, 0xe6, string_cstr(&self->notice), 0, 0, 0xc, 0xff0000, 0, 0);
     }
@@ -514,7 +514,7 @@ int lapine_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int ms
         remove_chosen(self, a);
         return 0;
     case LAPINE_MSG_NOTICE:
-        self->notice_time = timeGetTime();
+        self->notice_time = platform_ticks_ms();
         string_assign_cstr(&self->notice, (const char *)a);
         ui_window_invalidate_base(&self->frame.base);
         return 0;

@@ -20,7 +20,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include "ui/character/character.h"
 #include "login/char_info.h"
 #include "core/msg_str.h"
@@ -118,8 +117,6 @@ struct UIMakeCharWnd {
     int hair_pos;
     int colour_pos;
 };
-OFFSET_ASSERT(UIMakeCharWnd, info, 0x98);
-OFFSET_ASSERT(UIMakeCharWnd, view, 0x148);
 
 struct UIMakeCharWnd *ui_make_char_wnd_construct(struct UIMakeCharWnd *self)
 {

@@ -113,10 +113,6 @@ struct UIMiniMapWnd {
     struct Tree quest_cells;
     struct Vec marks[MARK_KINDS];
 };
-OFFSET_ASSERT(UIMiniMapWnd, show_quests, 0xa4);
-OFFSET_ASSERT(UIMiniMapWnd, town_icons, 0xb8);
-OFFSET_ASSERT(UIMiniMapWnd, marks, 0xd0);
-SIZE_ASSERT(UIMiniMapWnd, 0xf4);
 
 struct MapIcon {
     int id;

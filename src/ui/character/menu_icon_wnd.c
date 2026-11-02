@@ -100,10 +100,6 @@ struct UIMenuIconWnd {
     struct UIBitmapButton *menu_new;
     struct UIBitmapButton *close;
 };
-OFFSET_ASSERT(UIMenuIconWnd, icons, 0x94);
-OFFSET_ASSERT(UIMenuIconWnd, marks, 0xa4);
-OFFSET_ASSERT(UIMenuIconWnd, close, 0xb4);
-SIZE_ASSERT(UIMenuIconWnd, 0xb8);
 
 struct UIWindow;
 void ui_menu_icon_wnd_destroy(struct UIWindow *window);

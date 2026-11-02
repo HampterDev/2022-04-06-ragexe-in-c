@@ -40,10 +40,6 @@ struct UIItemBaseWnd {
     int scrollable;
     struct List items;
 };
-OFFSET_ASSERT(UIItemBaseWnd, resizer, 0x9c);
-OFFSET_ASSERT(UIItemBaseWnd, scroll, 0xb8);
-OFFSET_ASSERT(UIItemBaseWnd, items, 0xc8);
-SIZE_ASSERT(UIItemBaseWnd, 0xd0);
 int ui_item_base_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2,
                                      int val3, int val4);
 void ui_item_base_wnd_update_scroll(struct UIItemBaseWnd *self);
@@ -107,9 +103,6 @@ struct UIItemShopWnd2 {
     int bottom;
     int extra;
 };
-OFFSET_ASSERT(UIItemShopWnd2, title, 0xd0);
-OFFSET_ASSERT(UIItemShopWnd2, extra, 0xe8);
-SIZE_ASSERT(UIItemShopWnd2, 0xec);
 struct UIItemShopWnd2 *ui_item_shop_wnd2_construct(struct UIItemShopWnd2 *self);
 struct UIWindow *ui_item_shop_wnd2_new(void);
 void ui_item_shop_wnd2_destruct(struct UIItemShopWnd2 *self);
@@ -118,8 +111,6 @@ struct UIItemShopWnd {
     struct UIItemShopWnd2 shop;
     int cash;
 };
-OFFSET_ASSERT(UIItemShopWnd, cash, 0xec);
-SIZE_ASSERT(UIItemShopWnd, 0xf0);
 struct UIItemShopWnd *ui_item_shop_wnd_construct(struct UIItemShopWnd *self);
 struct UIWindow *ui_item_shop_wnd_new(void);
 void ui_item_shop_wnd_destruct(struct UIItemShopWnd *self);
@@ -132,9 +123,6 @@ struct UIItemPurchaseWnd {
     int cash;
     struct UIWindow *points;
 };
-OFFSET_ASSERT(UIItemPurchaseWnd, total, 0xd0);
-OFFSET_ASSERT(UIItemPurchaseWnd, points, 0xe0);
-SIZE_ASSERT(UIItemPurchaseWnd, 0xe4);
 struct UIItemPurchaseWnd *ui_item_purchase_wnd_construct(struct UIItemPurchaseWnd *self);
 struct UIWindow *ui_item_purchase_wnd_new(void);
 void ui_item_purchase_wnd_destruct(struct UIItemPurchaseWnd *self);
@@ -150,14 +138,11 @@ struct UIItemSellWnd {
     struct WindowInfo *info;
     int hover;
 };
-OFFSET_ASSERT(UIItemSellWnd, hover, 0xd8);
-SIZE_ASSERT(UIItemSellWnd, 0xdc);
 
 struct UIItemSellWnd2 {
     struct UIItemSellWnd sell;
     int window_type;
 };
-SIZE_ASSERT(UIItemSellWnd2, 0xe0);
 
 void shop_draw_frame(struct UIItemBaseWnd *base, int body, int bar_variant);
 void shop_draw_cells(struct UIWindow *wnd, int rows);

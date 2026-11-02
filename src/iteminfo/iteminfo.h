@@ -7,7 +7,7 @@
 #include "std/std.h"
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 
 #define ITEM_SLOT_COUNT     4

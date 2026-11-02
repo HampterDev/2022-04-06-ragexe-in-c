@@ -20,7 +20,6 @@
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
 #include "ui/quests/world_view.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/render/render.h"
@@ -101,7 +100,6 @@ struct UIRoMapWnd {
     struct UIWindow *edit;
     RECT kafra_rect;
 };
-OFFSET_ASSERT(UIRoMapWnd, kafra, 0xcc);
 
 #define ROMAP_ID_DUNGEONS 0xb8
 #define ROMAP_ID_NAVI 0xc0

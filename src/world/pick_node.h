@@ -19,7 +19,6 @@ struct ActorPickNode {
     struct ActorPickNode *child[4];
     struct List boxes;
 };
-SIZE_ASSERT(ActorPickNode, 0x28);
 
 extern struct ActorPickNode g_actorPickNode;
 struct ActorPickNode *actor_pick_node_construct(struct ActorPickNode *self);

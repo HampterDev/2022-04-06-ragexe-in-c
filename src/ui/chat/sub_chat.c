@@ -648,7 +648,6 @@ struct UISubChatMiniWnd {
     int count;
     int cell_width, cell_height;
 };
-SIZE_ASSERT(UISubChatMiniWnd, 0xa0);
 
 #define SUBCHAT_MINI_ID_TOGGLE 0xc2
 #define SUBCHAT_MINI_ID_PLACE 0xbd

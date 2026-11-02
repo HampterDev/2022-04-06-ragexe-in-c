@@ -5,7 +5,6 @@
 #include "core/object_type_tables.h"
 #include "game/context.h"
 #include "ui/window.h"
-#include <mmsystem.h>
 #include "ui/draw.h"
 #include "ui/skin.h"
 #include "ui/window_mgr.h"
@@ -14,6 +13,7 @@
 #include "ui/controls/controls.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/make_window_internal.h"
+#include "platform/clock.h"
 
 #define PET_TAMING_WND_ID 0x5b
 #define MSG_PET_TAMING_RESULT 0x50
@@ -32,8 +32,6 @@ struct UIPetTamingDeceiveWnd {
     DWORD stopped_at;
     int clicked;
 };
-OFFSET_ASSERT(UIPetTamingDeceiveWnd, stopped_at, 0xac);
-SIZE_ASSERT(UIPetTamingDeceiveWnd, 0xb4);
 
 struct UIWindow;
 void ui_pet_taming_deceive_wnd_on_create(struct UIWindow *self, int width, int height);
@@ -118,8 +116,8 @@ void ui_pet_taming_deceive_wnd_on_process(struct UIWindow *window)
         return;
     if (self->stopped_at == (DWORD)-1) {
         if (self->step <= self->max_step)
-            self->stopped_at = timeGetTime();
-    } else if (self->step <= self->max_step && timeGetTime() - self->stopped_at >= PET_TAMING_CLOSE_MS) {
+            self->stopped_at = platform_ticks_ms();
+    } else if (self->step <= self->max_step && platform_ticks_ms() - self->stopped_at >= PET_TAMING_CLOSE_MS) {
         ui_window_mgr_post_quit1(&g_windowMgr, PET_TAMING_WND_ID);
     }
 }

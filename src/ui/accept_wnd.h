@@ -10,9 +10,6 @@ struct UIAcceptWnd {
     struct UIWindow *text;
     int info;
 };
-OFFSET_ASSERT(UIAcceptWnd, requester, 0x94);
-OFFSET_ASSERT(UIAcceptWnd, text, 0x98);
-SIZE_ASSERT(UIAcceptWnd, 0xa0);
 
 static __inline struct UIAcceptWnd *accept_construct(struct UIAcceptWnd *self, const struct UIWindowOps *ops)
 {

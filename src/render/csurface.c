@@ -5,12 +5,12 @@
 #include "render/render_api.h"
 #include "diag/perf.h"
 #include "render/cdc.h"
-#include <mmsystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
 #include <math.h>
+#include "platform/clock.h"
 
 static const char unsupported_caption[] = "notsuppot";
 
@@ -329,7 +329,7 @@ int texture_create_bump(struct Texture *self, int width, int height)
 
 void texture_lock(struct Texture *self)
 {
-    self->lastUse = timeGetTime();
+    self->lastUse = platform_ticks_ms();
     self->lockCount++;
 }
 

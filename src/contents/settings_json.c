@@ -1,7 +1,7 @@
 #include "contents/settings_json.h"
 #include "json/service_json.h"
 #include "core/text_encoding.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 

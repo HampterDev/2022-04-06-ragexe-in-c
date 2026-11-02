@@ -4,6 +4,7 @@
 #include <string.h>
 #include "ui/worldmap/romap.h"
 #include "render/screen_draw.h"
+#include "platform/clock.h"
 
 #define WORLDMAP_DIR UI_SKIN "worldview_interface\\"
 #define MINIMAP_SIZE 0x82
@@ -200,10 +201,10 @@ float ui_ro_map_wnd_frame_seconds(struct UIRoMapWnd *self)
     DWORD now, elapsed;
 
     if (self->first_frame == 1) {
-        self->frame_time = timeGetTime();
+        self->frame_time = platform_ticks_ms();
         self->first_frame = 0;
     }
-    now = timeGetTime();
+    now = platform_ticks_ms();
     elapsed = now - self->frame_time;
     self->frame_time = now;
     return (float)elapsed / 1000.0f;

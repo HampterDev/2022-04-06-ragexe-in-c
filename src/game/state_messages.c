@@ -3,7 +3,7 @@
 #include "game/actor_packets.h"
 #include "contents/sound.h"
 #include "session/state.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/ui_bridge.h"

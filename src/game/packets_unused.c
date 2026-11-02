@@ -7,7 +7,7 @@
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/packets.h"
 #include "session/session_jobs.h"
 #include "core/app.h"

@@ -5,6 +5,7 @@
 
 #include "game/skill_use.h"
 #include "ui/misc/rolling_cutter.h"
+#include <stdint.h>
 
 enum {
     ACTOR_VALUE_FACING = 0,
@@ -434,7 +435,7 @@ void skill_use_counted_effect(struct GameActor *actor)
         return;
     if (game_actor_get_counter(actor, ACTOR_VALUE_COUNT) <= 0) {
         game_actor_set_counter(actor, ACTOR_VALUE_COUNT, 0);
-        game_actor_set_counter(actor, ACTOR_VALUE_FACING, (__int64)(actor->roty * 1000.0f));
+        game_actor_set_counter(actor, ACTOR_VALUE_FACING, (int64_t)(actor->roty * 1000.0f));
     }
     game_actor_set_counter(actor, ACTOR_VALUE_COUNT,
                  (int)((unsigned)game_actor_get_counter(actor, ACTOR_VALUE_COUNT) + 1));

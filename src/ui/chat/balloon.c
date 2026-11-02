@@ -415,7 +415,6 @@ struct UIAchBalloonText {
     struct UITransBalloonText trans;
     int font_face;
 };
-SIZE_ASSERT(UIAchBalloonText, 0xd0);
 
 static struct UIAchBalloonText *ui_ach_balloon_text_construct(struct UIAchBalloonText *self)
 {

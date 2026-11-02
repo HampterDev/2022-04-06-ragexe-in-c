@@ -7,9 +7,9 @@
 #include "platform/language.h"
 
 struct String g_skinPath;
-INIT_ONCE g_skinPathGuard;
+struct Once g_skinPathGuard;
 struct String g_uiFolderPath;
-INIT_ONCE g_uiFolderPathGuard;
+struct Once g_uiFolderPathGuard;
 
 static void skin_path_tail(struct String *out, struct String *path)
 {

@@ -10,6 +10,7 @@
 #include "iteminfo/item_types.h"
 #include "iteminfo/item_table.h"
 #include "ui/window.h"
+#include <stdint.h>
 
 struct Session;
 
@@ -27,7 +28,7 @@ struct UIRefiningWnd;
 struct UIGradeEnchantWnd;
 void ui_grade_enchant_wnd_reset(struct UIGradeEnchantWnd *self);
 
-int zeny_fee_percent(__int64 price);
+int zeny_fee_percent(int64_t price);
 
 struct McStoreBackup;
 

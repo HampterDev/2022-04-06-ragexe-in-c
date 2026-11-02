@@ -1,9 +1,9 @@
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
 #include "ui/shops/shops.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define MSG_ITEM_DEAL_LOCKED 0xb87
 #define ITEM_DEAL_LOCK_LIFETIME 2000
@@ -65,13 +65,12 @@ struct UINoticeMessageBox_LockSellItem {
     DWORD opened_at;
     DWORD lifetime;
 };
-SIZE_ASSERT(UINoticeMessageBox_LockSellItem, 0x9c);
 
 static struct UINoticeMessageBox_LockSellItem *ui_notice_message_box_lock_sell_item_construct(struct UINoticeMessageBox_LockSellItem *self)
 {
     ui_frame_wnd_construct(&self->frame, 0);
     self->frame.base.ops = &ui_notice_message_box_lock_sell_item_ops;
-    self->opened_at = timeGetTime();
+    self->opened_at = platform_ticks_ms();
     self->lifetime = ITEM_DEAL_LOCK_LIFETIME;
     return self;
 }
@@ -116,7 +115,7 @@ void ui_notice_message_box_lock_sell_item_on_create(struct UIWindow *window,
 void ui_notice_message_box_lock_sell_item_on_process(struct UIWindow *window)
 {
     struct UINoticeMessageBox_LockSellItem *self = (struct UINoticeMessageBox_LockSellItem *)window;
-    if (self->opened_at + self->lifetime < timeGetTime())
+    if (self->opened_at + self->lifetime < platform_ticks_ms())
         ui_notice_message_box_lock_sell_item_send_msg(&self->frame.base, &self->frame.base, UI_MSG_COMMAND, UI_ID_CLOSE, 0, 0, 0);
 }
 

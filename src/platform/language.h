@@ -4,7 +4,7 @@
 #include "platform/language_api.h"
 #include "platform/code_page.h"
 #include "core/text_view.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <imm.h>
 
 enum LanguageInputMethod { LANGUAGE_INPUT_DEFAULT, LANGUAGE_INPUT_ZHUYIN };

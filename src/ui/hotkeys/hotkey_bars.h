@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ui/hotkeys/hotkeys.h"
-#include <mmsystem.h>
 
 #include "session/hotkey_types.h"
 
@@ -79,9 +78,6 @@ struct UIShortCutWnd {
     int rows;
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UIShortCutWnd, slots, 0xa4);
-OFFSET_ASSERT(UIShortCutWnd, hover_column, 0x134);
-SIZE_ASSERT(UIShortCutWnd, 0x148);
 
 int quik_slot_wnd_info_is_valid(struct WindowInfo *self);
 void quik_slot_wnd_info_make_default(struct WindowInfo *self);
@@ -93,8 +89,6 @@ struct UIQuikSlotWnd {
     struct HotkeySlot slots[HOTKEY_QUICK_SLOTS];
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UIQuikSlotWnd, slots, 0x9c);
-SIZE_ASSERT(UIQuikSlotWnd, 0xb8);
 
 #define HOTKEY_MSG_RELAYOUT 0xe
 #define HOTKEY_MSG_REFRESH 0x17

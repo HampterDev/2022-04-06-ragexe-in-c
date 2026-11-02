@@ -4,11 +4,12 @@
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/vec.h"
+#include <stdint.h>
 
 struct GaleStorm {
     struct Effect base;
     struct Vec anims;
-    __int64 side;
+    int64_t side;
 };
 
 #define EFFECT_GALE_STORM 0x7b5
@@ -133,7 +134,7 @@ void gale_storm_spawn_gust(struct GaleStorm *self)
 
 void gale_storm_spawn(struct GaleStorm *self)
 {
-    __int64 frame;
+    int64_t frame;
 
     if (self->base.frame > self->base.duration)
         return;
@@ -158,7 +159,7 @@ void gale_storm_init(struct Effect *effect)
 {
     struct GaleStorm *self = (struct GaleStorm *)effect;
     static const int sides[10] = { 5, 5, 5, 5, 7, 7, 7, 9, 9, 11 };
-    __int64 side_by_level[11];
+    int64_t side_by_level[11];
     unsigned level = (unsigned)EFFECT_LEVEL(&self->base), i;
 
     for (i = 0; i < 10; i++)

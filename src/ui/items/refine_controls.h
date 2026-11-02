@@ -1,7 +1,7 @@
 #ifndef UI_ITEMS_REFINE_CONTROLS_H
 #define UI_ITEMS_REFINE_CONTROLS_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct UIWindow;
 struct UIButton;

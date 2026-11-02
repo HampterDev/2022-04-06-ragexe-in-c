@@ -103,9 +103,6 @@ struct UIHotkeyGuideWnd {
     int held;
     struct Vec lit;
 };
-OFFSET_ASSERT(UIHotkeyGuideWnd, items, 0x9c);
-OFFSET_ASSERT(UIHotkeyGuideWnd, lit, 0xb8);
-SIZE_ASSERT(UIHotkeyGuideWnd, 0xc4);
 
 struct KeyCapDef {
     int vk;

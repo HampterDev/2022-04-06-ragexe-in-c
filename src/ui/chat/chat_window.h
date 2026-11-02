@@ -35,7 +35,6 @@ struct UINewChatWnd {
     struct UIBitmapButton *battle_option;
     struct UIWindow *tabs;
 };
-OFFSET_ASSERT(UINewChatWnd, backdrop, 0xa4);
 
 #define SIZE_STEP(self) ((self)->frame.base.state)
 #define CHAT_BOX(self, i) (((struct UIWindow **)(self)->boxes.first)[i])

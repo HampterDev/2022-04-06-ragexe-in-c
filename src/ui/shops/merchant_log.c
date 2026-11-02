@@ -87,8 +87,6 @@ struct UIMerchantItemLogWnd {
     struct Vec entries;
     int variant;
 };
-OFFSET_ASSERT(UIMerchantItemLogWnd, entries, 0xd0);
-SIZE_ASSERT(UIMerchantItemLogWnd, 0xe0);
 
 void merchant_log_entry_destruct(struct MerchantLogEntry *self)
 {

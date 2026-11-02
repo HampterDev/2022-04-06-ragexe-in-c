@@ -1,8 +1,8 @@
 #include "resources/bitmap_internal.h"
 #include <gif_lib.h>
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
 
 struct GifInput { const BYTE *next; size_t remaining; };
 
@@ -159,7 +159,7 @@ done:
     self->bmp.hasAlpha = 1;
     self->bmp.pixels = frames.data[0].pixels;
     self->loopCount = loops;
-    self->lastTime = timeGetTime();
+    self->lastTime = platform_ticks_ms();
     self->animated = 1;
     return 1;
 }

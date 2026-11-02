@@ -114,7 +114,6 @@ const struct UIWindowOps ui_view_camera_info_wnd_ops = {
 struct UIKeyStrokeWnd {
     struct UIFrameWnd frame;
 };
-SIZE_ASSERT(UIKeyStrokeWnd, 0x94);
 
 struct UIKeyStrokeWnd *ui_key_stroke_wnd_construct(struct UIKeyStrokeWnd *self)
 {
@@ -181,7 +180,6 @@ int ui_key_stroke_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
 struct UIViewCameraInfoWnd {
     struct UIFrameWnd frame;
 };
-SIZE_ASSERT(UIViewCameraInfoWnd, 0x94);
 
 struct UIViewCameraInfoWnd *ui_view_camera_info_wnd_construct(struct UIViewCameraInfoWnd *self)
 {

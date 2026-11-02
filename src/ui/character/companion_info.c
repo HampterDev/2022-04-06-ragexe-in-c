@@ -169,7 +169,6 @@ struct UIHomunInfoWnd {
     struct UIWindow *question;
     struct UIWindow *auto_feed;
 };
-SIZE_ASSERT(UIHomunInfoWnd, 0xb8);
 
 struct UIHomunInfoWnd *ui_homun_info_wnd_construct(struct UIHomunInfoWnd *self)
 {

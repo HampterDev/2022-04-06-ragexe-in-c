@@ -3,6 +3,7 @@
 #define SESSION_SESSION_ITEMS_H
 
 #include "session/csession.h"
+#include <stdint.h>
 
 unsigned equip_location_to_base(unsigned location);
 int *equip_location_slots(int *out, unsigned location);
@@ -98,7 +99,7 @@ struct ItemInfo *session_purchase_item_by_id(struct Session *self, struct ItemIn
 struct ItemInfo *session_purchase_item(struct Session *self, struct ItemInfo *out, int n);
 int session_get_store_purchase_count_by_name(struct Session *self, const char *name);
 int session_get_store_purchase_count(struct Session *self, int index);
-__int64 session_purchase_total(struct Session *self);
+int64_t session_purchase_total(struct Session *self);
 struct ItemInfo *session_get_sent_store_purchase_item(struct Session *self, struct ItemInfo *out, int index);
 struct ItemInfo *session_shop_list_item(struct Session *self, struct ItemInfo *out, int n);
 struct ItemInfo *session_find_purchase_item(struct Session *self, struct ItemInfo *out,

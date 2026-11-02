@@ -6,6 +6,7 @@
 #include "actor/actor.h"
 #include "session/session_jobs.h"
 #include "actor/actor_msg.h"
+#include "platform/clock.h"
 
 int g_multiHitInterval = 200;
 
@@ -140,7 +141,7 @@ void game_actor_msg_attack(struct GameActor *self,
     hit.target_aid = self->attack_target_aid;
     hit.kind = kind;
     hit.damage = damage;
-    hit.tick = timeGetTime() + delay;
+    hit.tick = platform_ticks_ms() + delay;
     hit.attacker_aid = self->aid;
     hit.cell_x = cell_x;
     hit.cell_y = cell_y;

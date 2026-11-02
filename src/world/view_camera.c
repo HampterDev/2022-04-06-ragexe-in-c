@@ -9,12 +9,12 @@
 
 #include <math.h>
 #include <stdlib.h>
-#include <mmsystem.h>
 #include "actor/types.h"
 #include "game/talk_type.h"
 #include "actor/sprite_quad.h"
 #include "game/camera.h"
 #include "game/mode_callbacks.h"
+#include "platform/clock.h"
 
 float g_depthPerPixelCot = 0.159999996f;
 
@@ -26,17 +26,17 @@ int g_drawnCellMinX = 0;
 
 int g_drawnCellMinY = 0;
 
-static INIT_ONCE g_quakeDistanceGuard = INIT_ONCE_STATIC_INIT;
+static struct Once g_quakeDistanceGuard;
 
 static float g_quakeDistanceOffset = 0;
 
 static int g_quakeFrameDrawn = 0;
 
-static INIT_ONCE g_quakeLatitudeGuard = INIT_ONCE_STATIC_INIT;
+static struct Once g_quakeLatitudeGuard;
 
 static float g_quakeLatitudeOffset = 0;
 
-static INIT_ONCE g_quakeSidewaysGuard = INIT_ONCE_STATIC_INIT;
+static struct Once g_quakeSidewaysGuard;
 
 static float g_quakeSidewaysOffset = 0;
 static void view_process_quake(struct View *self);
@@ -193,7 +193,7 @@ void view_set_quake(struct View *self, int on, int duration, float sideways,
     DWORD now;
 
     self->quaking = on;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     self->quakeDistance = distance;
     self->quakeStart = now;
     self->quakeSideways = sideways;
@@ -226,7 +226,7 @@ static void view_process_quake(struct View *self)
 
     if (!self->quaking)
         return;
-    if (timeGetTime() >= self->quakeDuration + self->quakeStart) {
+    if (platform_ticks_ms() >= self->quakeDuration + self->quakeStart) {
         self->at[0] = self->destAt[0];
         self->at[1] = self->destAt[1];
         self->at[2] = self->destAt[2];

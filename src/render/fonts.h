@@ -1,7 +1,7 @@
 #ifndef RENDER_FONTS_H
 #define RENDER_FONTS_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stddef.h>
 #include <stdint.h>
 

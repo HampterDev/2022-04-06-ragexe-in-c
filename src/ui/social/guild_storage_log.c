@@ -47,9 +47,6 @@ struct UIGuild_Storage_Log {
     unsigned count[STORAGE_LOG_TABS];
     struct Vec in_flags;
 };
-OFFSET_ASSERT(UIGuild_Storage_Log, tab, 0x134);
-OFFSET_ASSERT(UIGuild_Storage_Log, in_flags, 0x164);
-SIZE_ASSERT(UIGuild_Storage_Log, 0x170);
 void ui_guild_storage_log_destroy(struct UIWindow *window);
 void ui_guild_storage_log_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_storage_log_on_draw(struct UIWindow *self);

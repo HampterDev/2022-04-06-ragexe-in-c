@@ -5,9 +5,8 @@
 #include "contents/sound.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "core/fatal.h"
-#include <mmsystem.h>
 #include "game/packets_entry.h"
 #include "game/packet_data.h"
 #include "actor/actor_common.h"
@@ -19,6 +18,7 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 struct ActorEntryInfo *actor_entry_info_construct(struct ActorEntryInfo *info)
 {
@@ -1019,7 +1019,7 @@ void game_mode_zc_notify_ranking(struct GameMode *self, const struct PacketNotif
 
         if (pkt->rank == 1) {
             if (player->pvp_rank != 1)
-                g_session1.pvpFirstPlaceTime = timeGetTime();
+                g_session1.pvpFirstPlaceTime = platform_ticks_ms();
         } else {
             g_session1.pvpFirstPlaceTime = 0;
         }

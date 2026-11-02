@@ -12,10 +12,10 @@
 #include "ui/controls/controls.h"
 #include "ui/draw.h"
 #include "ui/skin.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/make_window_internal.h"
+#include "platform/clock.h"
 
 struct UIStorePasswordInputWnd {
     struct UIFrameWnd frame;
@@ -204,7 +204,7 @@ void ui_second_password_wnd_shuffle_keys(struct UISecondPasswordInputWnd *self)
 
     for (i = 0; i < 10; i++)
         order[i] = (BYTE)i;
-    rng.state = timeGetTime();
+    rng.state = platform_ticks_ms();
     rng.mul = 0x3498;
     rng.add = 0x881234;
     pwd_shuffle(order, order + 10, &rng);

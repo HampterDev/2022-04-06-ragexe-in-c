@@ -1,5 +1,5 @@
 #include "core/text_encoding.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdint.h>
 #include <stdlib.h>
 

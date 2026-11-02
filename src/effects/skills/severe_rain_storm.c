@@ -8,6 +8,7 @@
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/list.h"
+#include <stdint.h>
 
 enum {
     EFFECT_SEVERE_RAINSTORM = 0x4fc,
@@ -66,9 +67,9 @@ static int random_below(int span)
     return r < 0 ? 0 : r;
 }
 
-static __int64 level_width(const struct SevereRainStorm *self, const int *table, unsigned count)
+static int64_t level_width(const struct SevereRainStorm *self, const int *table, unsigned count)
 {
-    __int64 widths[11];
+    int64_t widths[11];
     unsigned level = (unsigned)EFFECT_LEVEL(&self->base), i;
     for (i = 0; i < count; i++)
         widths[i + 1] = table[i];
@@ -79,7 +80,7 @@ struct Scatter {
     int span;
     float half;
 };
-static struct Scatter scatter_for(__int64 width)
+static struct Scatter scatter_for(int64_t width)
 {
     struct Scatter s;
     s.span = (int)width + 1;

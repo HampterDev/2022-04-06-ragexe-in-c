@@ -1,6 +1,7 @@
 #include "effects/rag/rag_effect.h"
 #include "game/skill_use.h"
 #include "effects/effect_controls.h"
+#include <stdint.h>
 
 enum {
     EF_SERVANT_WEAPON = 0x69e,
@@ -266,7 +267,7 @@ int skill_use_late(const struct SkillCast *cast)
         at = actor_pos(caster);
         effect = actor_launch_effect(caster, 0x439);
         if (effect)
-            rag_effect_send_msg(effect, NULL, EFFECT_MSG_PRESET, 0xffff, 0x422, (__int64)(int)&at);
+            rag_effect_send_msg(effect, NULL, EFFECT_MSG_PRESET, 0xffff, 0x422, (int64_t)(int)&at);
         return 1;
     }
 

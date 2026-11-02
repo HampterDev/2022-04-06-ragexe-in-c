@@ -22,8 +22,7 @@
 #include "ui/window_access.h"
 #include "game/context.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <winsock.h>
 #include <string.h>
 #include "game/gamemode.h"
@@ -40,6 +39,7 @@
 #include "game/mode_initialize.h"
 #include "actor/attr_state.h"
 #include "game/mode_msg.h"
+#include "platform/clock.h"
 
 int g_isStopByLogin = 0;
 
@@ -217,8 +217,8 @@ void game_mode_initialize(struct GameMode *self)
     self->held_walk_allowed = 1;
     self->chat_room_pending = 0;
     self->exchange_add_pending = 0;
-    self->wear_ack_time = timeGetTime() - 2000;
-    self->takeoff_ack_time = timeGetTime() - 2000;
+    self->wear_ack_time = platform_ticks_ms() - 2000;
+    self->takeoff_ack_time = platform_ticks_ms() - 2000;
     self->skill_upgrade_pending = 0;
     self->trade_add_amount = 0;
     self->exchange_open = 0;
@@ -237,15 +237,15 @@ void game_mode_initialize(struct GameMode *self)
 
     mouse_reset_buttons(&g_mouse);
     self->server_time_answered = 1;
-    self->server_time_requested_at = timeGetTime();
-    self->initialized_at = timeGetTime();
-    self->emotion_time = timeGetTime();
-    self->server_move_time = timeGetTime();
-    self->ui_tick_time = timeGetTime();
-    self->notice_shown_at = timeGetTime();
-    self->skill_shout_time = timeGetTime();
-    self->chat_room_enter_time = timeGetTime();
-    self->store_browse_time = timeGetTime();
+    self->server_time_requested_at = platform_ticks_ms();
+    self->initialized_at = platform_ticks_ms();
+    self->emotion_time = platform_ticks_ms();
+    self->server_move_time = platform_ticks_ms();
+    self->ui_tick_time = platform_ticks_ms();
+    self->notice_shown_at = platform_ticks_ms();
+    self->skill_shout_time = platform_ticks_ms();
+    self->chat_room_enter_time = platform_ticks_ms();
+    self->store_browse_time = platform_ticks_ms();
     self->item_move_ready = 1;
     memset(self->stat_raises, 0, sizeof self->stat_raises);
     self->wheel_count = 0;

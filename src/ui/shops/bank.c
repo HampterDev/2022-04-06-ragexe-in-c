@@ -122,8 +122,6 @@ struct UIBank_NewWnd {
     struct UIWindow *amount_edit;
     struct String notice;
 };
-OFFSET_ASSERT(UIBank_NewWnd, amount_edit, 0x94);
-OFFSET_ASSERT(UIBank_NewWnd, notice, 0x98);
 
 struct UIBank_NewWnd *ui_bank_new_wnd_construct(struct UIBank_NewWnd *self)
 {

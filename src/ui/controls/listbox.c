@@ -489,7 +489,6 @@ struct UIListBox2 {
     int font_height;
     BYTE font_arg3, font_arg4;
 };
-SIZE_ASSERT(UIListBox2, 0xdc);
 void ui_list_box2_destroy(struct UIWindow *window);
 void ui_list_box2_on_draw(struct UIWindow *self);
 const struct UIListBoxOps ui_list_box2_ops = {

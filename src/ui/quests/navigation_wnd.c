@@ -13,11 +13,11 @@
 #include "ui/skin.h"
 #include "ui/ui_std.h"
 
-#include <mmsystem.h>
 #include <math.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 struct Vec;
 struct UINavigationV4Wnd;
@@ -413,7 +413,7 @@ void ui_navigation_v4_wnd_draw_picture(struct UINavigationV4Wnd *self, int x, in
                          UI_TEXTURE_H(picture), scale, scale, 0xffffffff);
 }
 
-static INIT_ONCE s_body_guard, s_acc_guard[3];
+static struct Once s_body_guard, s_acc_guard[3];
 static DWORD s_body_time, s_acc_time[3];
 static int s_body_frame, s_acc_frame[3];
 
@@ -514,7 +514,7 @@ void ui_navigation_v4_wnd_draw_guided_npc(struct UINavigationV4Wnd *self, int x,
     motions = act_res_get_action(acts[0], 0);
     if (!motions)
         goto done;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (once_begin(&s_body_guard)) {
         s_body_time = now;
         once_complete(&s_body_guard);
@@ -631,7 +631,7 @@ static void draw_target(struct UINavigationV4Wnd *self)
         ui_window_text_out_outlined(wnd, 9, 0x32, navi_map_display_name(map), 0, 0xffffff, 0, 0, 0xb, 1, 0);
         ui_window_text_out_outlined(wnd, 9, 0x41, navi_map_name(map), 0, 0xffffff, 0, 0, 0xb, 1, 0);
     }
-    if (self->hint_until > timeGetTime()) {
+    if (self->hint_until > platform_ticks_ms()) {
         struct String hint;
         struct TextArray lines = {0};
         void *tex;
@@ -795,7 +795,7 @@ void ui_navigation_v4_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
     ui_frame_wnd_on_l_btn_up((struct UIWindow *)(&self->frame), x, y);
     if (g_navi.windowCollapsed) {
         self->frame.base.alpha_target = 0xaa;
-        self->frame.base.alpha_time = timeGetTime();
+        self->frame.base.alpha_time = platform_ticks_ms();
         return;
     }
     py = y - 0x2e;

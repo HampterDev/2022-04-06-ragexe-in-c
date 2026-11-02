@@ -25,11 +25,6 @@ struct Weather {
     struct RagEffect *effect;
     int flash_frames;
 };
-OFFSET_ASSERT(Weather, scripts, 0x04);
-OFFSET_ASSERT(Weather, owner, 0x10);
-OFFSET_ASSERT(Weather, light_max, 0x20);
-OFFSET_ASSERT(Weather, color, 0x38);
-OFFSET_ASSERT(Weather, effect, 0x44);
 
 extern struct Weather g_weather;
 

@@ -5,9 +5,9 @@
 #include "ui/ui_std.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
 
 #define EDIT3_FONT_HEIGHT 0xc
 #define EDIT3_MARGIN 3
@@ -54,7 +54,7 @@ static int text_width(struct UIEditCtrl3 *self, const char *text, int len)
 
 static int caret_blink_on(void)
 {
-    return !((timeGetTime() / CARET_BLINK_MS) & 1);
+    return !((platform_ticks_ms() / CARET_BLINK_MS) & 1);
 }
 
 static void draw_caret(struct UIEditCtrl3 *self, int x, int y, COLORREF colour)

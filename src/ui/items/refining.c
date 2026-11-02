@@ -9,6 +9,7 @@
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_items.h"
+#include "platform/clock.h"
 
 void ui_refining_wnd_destroy(struct UIWindow *window);
 void ui_refining_wnd_on_create(struct UIWindow *self, int width, int height);
@@ -179,7 +180,7 @@ void ui_refining_wnd_reset(struct UIRefiningWnd *self)
     ui_window_invalidate_base(&self->btn_refine->button.button.base);
     self->state = REFINE_WAIT;
     self->result = REFINE_NO_RESULT;
-    self->frame_start = timeGetTime();
+    self->frame_start = platform_ticks_ms();
     self->anim_frame = 0;
     self->result = REFINE_NO_RESULT;
     show_ready_buttons(self);
@@ -413,7 +414,7 @@ void ui_refining_wnd_set_item(struct UIRefiningWnd *self, int index, int count, 
             ui_refining_notice_set_text(self->notice, "", 0, 0);
             self->state = REFINE_READY;
             self->result = REFINE_NO_RESULT;
-            self->frame_start = timeGetTime();
+            self->frame_start = platform_ticks_ms();
             self->anim_frame = 0;
             self->result = REFINE_NO_RESULT;
             show_ready_buttons(self);
@@ -446,7 +447,7 @@ void ui_refining_wnd_set_state(struct UIRefiningWnd *self, int state, int result
 
     self->state = state;
     self->result = result;
-    self->frame_start = timeGetTime();
+    self->frame_start = platform_ticks_ms();
     self->anim_frame = 0;
     switch (state) {
     case REFINE_WAIT:
@@ -491,7 +492,7 @@ void ui_refining_wnd_on_process(struct UIWindow *window)
         ui_window_invalidate_base(&self->frame.base);
         state = self->state;
     }
-    if (last_frame[state] <= self->anim_frame || timeGetTime() <= (DWORD)(self->frame_time + self->frame_start))
+    if (last_frame[state] <= self->anim_frame || platform_ticks_ms() <= (DWORD)(self->frame_time + self->frame_start))
         return;
 
     self->anim_frame++;
@@ -532,7 +533,7 @@ void ui_refining_wnd_on_process(struct UIWindow *window)
             return;
         }
     }
-    self->frame_start = timeGetTime();
+    self->frame_start = platform_ticks_ms();
     ui_window_invalidate_base(&self->frame.base);
 }
 
@@ -576,7 +577,7 @@ int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
             }
             self->state = REFINE_READY;
             self->result = REFINE_NO_RESULT;
-            self->frame_start = timeGetTime();
+            self->frame_start = platform_ticks_ms();
             self->anim_frame = 0;
             self->result = REFINE_NO_RESULT;
             show_ready_buttons(self);

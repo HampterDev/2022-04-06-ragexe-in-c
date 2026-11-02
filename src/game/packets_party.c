@@ -6,7 +6,7 @@
 #include "ui/window_manager_state.h"
 #include "core/memory.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packets.h"
 #include "ui/social/seek_party_mb.h"

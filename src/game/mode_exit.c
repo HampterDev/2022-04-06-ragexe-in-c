@@ -13,7 +13,7 @@
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "game/mode_callbacks.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/camera.h"
 #include "game/client.h"

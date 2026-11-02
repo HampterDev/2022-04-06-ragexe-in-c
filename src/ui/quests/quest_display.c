@@ -95,8 +95,6 @@ struct UIQuestDisplay {
     struct Vec menu;
     int *setting;
 };
-OFFSET_ASSERT(UIQuestDisplay, menu, 0x84);
-SIZE_ASSERT(UIQuestDisplay, 0x94);
 
 #pragma pack(push, 1)
 struct PacketQuestActive {

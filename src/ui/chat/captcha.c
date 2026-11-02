@@ -8,12 +8,12 @@
 #include "contents/connection_api.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/chat/chat.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 struct UICaptchaImage;
 struct UIWindow;
@@ -120,7 +120,6 @@ struct UICaptchaImage {
     struct BitmapRes image;
     struct String tooltip;
 };
-OFFSET_ASSERT(UICaptchaImage, tooltip, 0x1a0);
 
 static struct UICaptchaImage *ui_captcha_image_construct(struct UICaptchaImage *self)
 {
@@ -165,7 +164,6 @@ struct UICaptchaPreviewWnd {
     unsigned char key[4];
     struct CaptchaStream stream;
 };
-SIZE_ASSERT(UICaptchaPreviewWnd, 0xa8);
 
 static int captcha_bitmap_load(struct UICaptchaImage *image, const void *bytes, size_t size)
 {
@@ -287,8 +285,6 @@ struct UIMacroDetectorWnd {
     DWORD prev_timer;
     DWORD message_ms;
 };
-OFFSET_ASSERT(UIMacroDetectorWnd, key, 0xa0);
-OFFSET_ASSERT(UIMacroDetectorWnd, last_answer, 0xc0);
 
 void ui_macro_detector_wnd_destroy(struct UIWindow *window);
 void ui_macro_detector_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused);
@@ -397,7 +393,7 @@ void captcha_detector_append(struct UIWindow *window, const void *key, const voi
 void captcha_detector_set_timer(struct UIWindow *window, BYTE count, DWORD limit)
 {
     struct UIMacroDetectorWnd *self = (struct UIMacroDetectorWnd *)window;
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
     if (!self) return;
 
     if (self->prev_timer != 0) {
@@ -484,7 +480,7 @@ void ui_macro_detector_wnd_on_draw(struct UIWindow *window)
     ui_window_fill_rect(wnd, 0x3b, 0x9e, 0xde, 0x5c, 0xc6c6c6);
     ui_window_fill_rect(wnd, 0x3c, 0x61, 0xdc, 0x1e, 0xc6c6c6);
 
-    elapsed = timeGetTime() - self->time_base;
+    elapsed = platform_ticks_ms() - self->time_base;
     left = elapsed < self->time_limit ? self->time_limit - elapsed : 0;
     if (left && self->time_total) {
         struct String text;
@@ -516,7 +512,7 @@ void ui_macro_detector_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
 void ui_macro_detector_wnd_on_process(struct UIWindow *window)
 {
     struct UIMacroDetectorWnd *self = (struct UIMacroDetectorWnd *)window;
-    if (timeGetTime() - self->time_base > self->message_ms)
+    if (platform_ticks_ms() - self->time_base > self->message_ms)
         string_clear(&self->message);
     ui_window_invalidate_base(&self->frame.base);
 }

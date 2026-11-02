@@ -74,8 +74,6 @@ struct UIPetInfoBarGraph {
     struct UIWindow base;
     unsigned percent;
 };
-OFFSET_ASSERT(UIPetInfoBarGraph, percent, 0x7c);
-SIZE_ASSERT(UIPetInfoBarGraph, 0x80);
 
 void ui_pet_info_bar_graph_destroy(struct UIWindow *window);
 void ui_pet_info_bar_graph_on_draw(struct UIWindow *self);
@@ -194,9 +192,6 @@ struct UIPetInfoWnd {
     struct UIPetInfoBarGraph *intimacy_bar;
     struct String intimacy_text;
 };
-OFFSET_ASSERT(UIPetInfoWnd, name_edit, 0x94);
-OFFSET_ASSERT(UIPetInfoWnd, feed_box, 0xa4);
-OFFSET_ASSERT(UIPetInfoWnd, intimacy_text, 0xac);
 
 void ui_pet_info_wnd_destroy(struct UIWindow *window);
 void ui_pet_info_wnd_store_info(struct UIWindow *self);

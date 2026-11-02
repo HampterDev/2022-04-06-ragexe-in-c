@@ -1,5 +1,5 @@
 #include "session/chat_tabs_layout.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
 #include <string.h>
 

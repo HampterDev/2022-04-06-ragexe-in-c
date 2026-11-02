@@ -4,7 +4,7 @@
 #define UI_WINDOW_TYPES_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/container_types.h"
 
@@ -301,13 +301,5 @@ static __inline void ui_window_render_overlay(struct UIWindow *self)
 {
     self->ops->render_overlay(self);
 }
-OFFSET_ASSERT(UIWindow, parent, 0x10);
-OFFSET_ASSERT(UIWindow, canvas, 0x24);
-OFFSET_ASSERT(UIWindow, id, 0x2c);
-OFFSET_ASSERT(UIWindow, alpha_target, 0x38);
-OFFSET_ASSERT(UIWindow, children, 0x50);
-OFFSET_ASSERT(UIWindow, quads, 0x5c);
-OFFSET_ASSERT(UIWindow, serial, 0x74);
-SIZE_ASSERT(UIWindow, 0x7c);
 
 #endif

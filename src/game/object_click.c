@@ -3,7 +3,7 @@
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "contents/mouse.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/world_pick.h"
 #include "game/cells.h"
 #include "actor/actor_common.h"

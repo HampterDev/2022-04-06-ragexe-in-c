@@ -1,4 +1,4 @@
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "ui/misc/snap_mgr.h"
 

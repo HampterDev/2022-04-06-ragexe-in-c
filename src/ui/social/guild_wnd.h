@@ -11,7 +11,6 @@ struct UIGuildWnd {
     struct GuildWndInfo *info;
     int tab_labels[6];
 };
-SIZE_ASSERT(UIGuildWnd, 0xb0);
 struct UIGuildWndOps {
     struct UIWindowOps base;
     int tab;

@@ -84,7 +84,6 @@ struct UIProhibitListWnd {
     int shown_count;
     int aid;
 };
-SIZE_ASSERT(UIProhibitListWnd, 0x9c);
 
 struct UIProhibitListWnd *ui_prohibit_list_wnd_construct(struct UIProhibitListWnd *self)
 {

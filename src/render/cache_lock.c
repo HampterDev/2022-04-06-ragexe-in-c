@@ -2,7 +2,7 @@
 #include "render/texture_cache.h"
 #include "fileio/res_mgr.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/render_api.h"
 
 enum {

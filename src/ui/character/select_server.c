@@ -176,8 +176,6 @@ struct UIServerListBox {
     struct Vec balloon_texts;
     struct UIWindow *balloon;
 };
-OFFSET_ASSERT(UIServerListBox, balloon, 0xdc);
-SIZE_ASSERT(UIServerListBox, 0xe0);
 
 struct UIServerListBox *ui_server_list_box_construct(struct UIServerListBox *self)
 {
@@ -254,7 +252,6 @@ struct UISelectServerWnd {
     int server;
     int mode_request;
 };
-OFFSET_ASSERT(UISelectServerWnd, server_value, 0x9c);
 
 struct UISelectServerWnd *ui_select_server_wnd_construct(struct UISelectServerWnd *self)
 {

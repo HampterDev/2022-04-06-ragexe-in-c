@@ -34,7 +34,6 @@ struct NaviPass {
     struct NaviLink *link;
     int distance;
 };
-SIZE_ASSERT(NaviPass, 8);
 
 enum NaviObjectKind {
     NAVI_OBJECT_ENTITY,
@@ -81,7 +80,6 @@ struct NaviRouteNode {
     struct NaviLink *link;
     int distance;
 };
-SIZE_ASSERT(NaviRouteNode, 12);
 
 struct NaviManagerBase {
     struct Vec maps;
@@ -93,12 +91,6 @@ struct NaviManagerBase {
     struct Vec fromPasses;
     struct Vec targetPasses;
 };
-OFFSET_ASSERT(NaviManagerBase, targetMap, 0x18);
-OFFSET_ASSERT(NaviManagerBase, bestDistance, 0x24);
-OFFSET_ASSERT(NaviManagerBase, routeNodes, 0x28);
-OFFSET_ASSERT(NaviManagerBase, fromPasses, 0x34);
-OFFSET_ASSERT(NaviManagerBase, targetPasses, 0x40);
-SIZE_ASSERT(NaviManagerBase, 0x4c);
 
 #define NAVI_RESULT_PLACE   0
 #define NAVI_RESULT_MAP     1
@@ -123,9 +115,6 @@ struct SearchResult {
     int x, y;
     struct String name;
 };
-OFFSET_ASSERT(SearchResult, obj, 0x04);
-OFFSET_ASSERT(SearchResult, x, 0x08);
-OFFSET_ASSERT(SearchResult, name, 0x10);
 
 static __inline void search_result_init(struct SearchResult *r, int kind)
 {

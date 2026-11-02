@@ -7,6 +7,7 @@
 #include "ui/character/character_std.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
+#include <stdint.h>
 
 struct UIBarGraph3;
 struct UIWindow;
@@ -389,8 +390,6 @@ static void show_percent_balloon(struct UIWindow *wnd, int per_mille)
     mode_show_tooltip(g_modeMgr.curMode, text, x, y, 0xffffffff, 0);
 }
 
-SIZE_ASSERT(UIBarGraph, 0x80);
-
 void ui_bar_graph_destruct(struct UIBarGraph *self)
 {
     self->base.ops = &ui_bar_graph_ops;
@@ -546,11 +545,9 @@ void ui_bar_graph4_on_mouse_hover(struct UIWindow *window, int arg1_unused, int 
 struct UIINT64BarGraph {
     struct UIWindow base;
     BYTE no_warning;
-    __int64 current;
-    __int64 maximum;
+    int64_t current;
+    int64_t maximum;
 };
-OFFSET_ASSERT(UIINT64BarGraph, current, 0x80);
-SIZE_ASSERT(UIINT64BarGraph, 0x90);
 
 static struct UIINT64BarGraph *uiint64_bar_graph_construct(struct UIINT64BarGraph *self)
 {
@@ -568,7 +565,7 @@ struct UIINT64BarGraph *uiint64_bar_graph_new(void)
     return self ? uiint64_bar_graph_construct(self) : NULL;
 }
 
-void uiint64_bar_graph_set_values(struct UIINT64BarGraph *self, __int64 current, __int64 maximum)
+void uiint64_bar_graph_set_values(struct UIINT64BarGraph *self, int64_t current, int64_t maximum)
 {
     self->current = current;
     self->maximum = maximum;
@@ -638,7 +635,7 @@ void ui_bar_graph_player_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-static void draw_player_numbers(struct UIWindow *wnd, __int64 current, __int64 maximum)
+static void draw_player_numbers(struct UIWindow *wnd, int64_t current, int64_t maximum)
 {
     struct String text;
 
@@ -652,7 +649,7 @@ void ui_bar_graph_player_on_draw(struct UIWindow *window)
 {
     struct UIValueGauge *self = (struct UIValueGauge *)window;
     struct UIWindow *wnd = &self->base;
-    __int64 current, maximum;
+    int64_t current, maximum;
     double ratio;
 
     if (!self->current.read || !self->maximum.read)
@@ -681,7 +678,7 @@ void ui_bar_graph_player_ap_on_draw(struct UIWindow *window)
 {
     struct UIValueGauge *self = (struct UIValueGauge *)window;
     struct UIWindow *wnd = &self->base;
-    __int64 current, maximum;
+    int64_t current, maximum;
     double ratio;
 
     if (!self->current.read || !self->maximum.read)

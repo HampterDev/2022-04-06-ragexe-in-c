@@ -13,7 +13,7 @@ static struct TexDrawVertex g_nodeV1TlVerts[30000] = { 0 };
 
 static struct TexDrawVertex g_nodeV2TlVerts[30000] = { 0 };
 
-static INIT_ONCE g_nodeV2TlVertsGuard = INIT_ONCE_STATIC_INIT;
+static struct Once g_nodeV2TlVertsGuard;
 
 static void face_colours(struct C3dNode *node, struct TexDrawVertex *out, const struct FaceInfo *info,
                          const struct FaceInfo *infoBase, BYTE alpha, const float *tint, const float *scale)

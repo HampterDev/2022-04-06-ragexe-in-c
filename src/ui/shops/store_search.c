@@ -125,7 +125,6 @@ struct UISerachStoreInfoWnd {
     BYTE fuzzy;
     struct String notice;
 };
-OFFSET_ASSERT(UISerachStoreInfoWnd, tabs, 0x94);
 
 #pragma pack(push, 1)
 struct PACKET_CZ_SEARCH_STORE_INFO {

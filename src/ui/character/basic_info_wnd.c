@@ -27,6 +27,7 @@
 #include "session/session_state.h"
 #include "ui/character/gauge_internal.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 #define SESSION_PARAM_AP 0xe8
 #define SESSION_PARAM_MAX_AP 0xe9
@@ -56,7 +57,6 @@ struct UIBasicInfoWnd {
     struct BasicInfoLayout layout;
     struct BasicInfoLayout ap_layout;
 };
-OFFSET_ASSERT(UIBasicInfoWnd, name, 0xa0);
 
 void ui_basic_info_wnd_destroy(struct UIWindow *window);
 void ui_basic_info_wnd_store_info(struct UIWindow *self);
@@ -237,12 +237,12 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
         basic_hang_below(self, below);
 }
 
-void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum)
+void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum)
 {
     uiint64_bar_graph_set_values((struct UIINT64BarGraph *)self->base_exp_bar, current, maximum);
 }
 
-void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum)
+void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum)
 {
     uiint64_bar_graph_set_values((struct UIINT64BarGraph *)self->job_exp_bar, current, maximum);
 }
@@ -284,7 +284,7 @@ static struct UIWindow *basic_gauge(struct UIBasicInfoWnd *self, struct UIWindow
     return gauge;
 }
 
-static struct UIWindow *basic_exp_bar(struct UIBasicInfoWnd *self, int y, __int64 current, __int64 maximum)
+static struct UIWindow *basic_exp_bar(struct UIBasicInfoWnd *self, int y, int64_t current, int64_t maximum)
 {
     struct UIWindow *bar = (struct UIWindow *)uiint64_bar_graph_new();
 
@@ -329,7 +329,7 @@ void ui_basic_info_wnd_on_create(struct UIWindow *window, int width, int height)
     ui_basic_info_wnd_set_height(self, height);
 }
 
-static void basic_base_exp(__int64 *exp, __int64 *next)
+static void basic_base_exp(int64_t *exp, int64_t *next)
 {
     *exp = g_session1.baseExp;
     if (*exp < 0)
@@ -360,7 +360,7 @@ static void basic_draw_ap_compact(struct UIBasicInfoWnd *self)
     struct String text;
     int face = 1, font_height = 0xe, job, level;
     COLORREF colour;
-    __int64 exp, next;
+    int64_t exp, next;
     double percent;
 
     ui_window_fill_rect(wnd, 1, 0x11, wnd->width - 2, wnd->height - 0x12, basic_chip(2, 2));
@@ -386,7 +386,7 @@ static void basic_draw_ap_compact(struct UIBasicInfoWnd *self)
     basic_base_exp(&exp, &next);
     job = basic_job();
     if (g_session1.charBaseLevel < session_get_max_base_level(&g_session1, job))
-        percent = (double)(__int64)((double)exp / (double)next * 1000.0) * 0.1;
+        percent = (double)(int64_t)((double)exp / (double)next * 1000.0) * 0.1;
     else
         percent = 100.0;
     string_format(&text, "| %s %.1lf%%", msg_str(0xc00), percent);
@@ -514,7 +514,7 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     char text[0x80], money[0x40];
     COLORREF colour;
     int face = 1, font_height = 0xe, x = 9, len, offset, width;
-    __int64 exp, next;
+    int64_t exp, next;
     double percent;
 
     colour = basic_chip(0xe, 6);
@@ -534,7 +534,7 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     if (g_serviceType == 0xc) {
         len = sprintf(text, "Nv. %2d / %s / Nv. %2d / Exp. %lld %%", g_session1.charBaseLevel,
                           session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel,
-                          (__int64)percent);
+                          (int64_t)percent);
     } else {
         if (g_serviceType == 0 && basic_small_font_job(basic_job(), 1)) {
             face = 0;

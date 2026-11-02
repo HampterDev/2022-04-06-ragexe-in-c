@@ -4,6 +4,7 @@
 #include "actor/actor.h"
 #include "actor/render_ops.h"
 #include "actor/game_actor.h"
+#include "platform/clock.h"
 
 void game_actor_walk_motion(struct GameActor * self)
 {
@@ -74,7 +75,7 @@ void render_object_process_sound(struct RenderObject *self)
 
 static void script_timer(struct RenderObject *self, int timed, int duration)
 {
-    self->script_end_tick = timed ? timeGetTime() + duration : 0;
+    self->script_end_tick = timed ? platform_ticks_ms() + duration : 0;
     self->script_frame = 1;
 }
 
@@ -127,7 +128,7 @@ void render_object_play_motion_range(struct RenderObject *self, unsigned char ac
 
 void render_object_set_force_anim_end_tick(struct RenderObject *self, int ms)
 {
-    self->script_end_tick = timeGetTime() + ms;
+    self->script_end_tick = platform_ticks_ms() + ms;
 }
 
 void render_object_set_script_step_frames(struct RenderObject *self, unsigned char frames)

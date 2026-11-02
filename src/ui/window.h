@@ -6,7 +6,7 @@
 #define UI_WINDOW_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
 #include "base.h"
 #include "ui/ui_std.h"

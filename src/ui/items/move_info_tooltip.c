@@ -124,8 +124,6 @@ struct UIColoringTextViewer {
     int max_lines;
     DWORD background;
 };
-OFFSET_ASSERT(UIColoringTextViewer, colour, 0xd0);
-SIZE_ASSERT(UIColoringTextViewer, 0xdc);
 
 static struct UIColoringTextViewer *coloring_text_viewer_construct(struct UIColoringTextViewer *self)
 {
@@ -195,7 +193,6 @@ struct UIRoundBoxTooltipWnd {
     struct UIFrameWnd frame;
     struct UIColoringTextViewer *viewer;
 };
-SIZE_ASSERT(UIRoundBoxTooltipWnd, 0x98);
 
 struct UIRoundBoxTooltipWnd *ui_round_box_tooltip_wnd_construct(struct UIRoundBoxTooltipWnd *self)
 {

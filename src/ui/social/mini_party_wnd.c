@@ -8,6 +8,7 @@
 #include "session/session_items.h"
 #include "session/session_state.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 struct UIMiniPartyWnd;
 struct UIWindow;
@@ -177,7 +178,7 @@ void ui_mini_party_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->frame.press_y = sy;
     self->frame.saved_x = wnd->x;
     self->frame.saved_y = wnd->y;
-    wnd->alpha_time = timeGetTime();
+    wnd->alpha_time = platform_ticks_ms();
     snap_mgr_save_group_positions(&g_snapMgr, wnd);
 }
 

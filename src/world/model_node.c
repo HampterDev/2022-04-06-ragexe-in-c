@@ -6,7 +6,7 @@
 #include "world/model_node_util.h"
 
 DWORD g_nodeCornerColours[0x15f90];
-INIT_ONCE g_nodeV1TlVertsGuard;
+struct Once g_nodeV1TlVertsGuard;
 int g_isVoodooInUse;
 
 static struct C3dNode *model_node_allocate(int version)

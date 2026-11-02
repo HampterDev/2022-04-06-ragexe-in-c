@@ -19,7 +19,7 @@
 #include "diag/crash_report.h"
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <objbase.h>
 #include <mmsystem.h>
 #include <float.h>

@@ -13,6 +13,7 @@
 #include "session/session_skills.h"
 #include "ui/character/gauge.h"
 #include "actor/attr_state.h"
+#include <stdint.h>
 
 static const char blind_wave[] = "effect\\_blind.wav";
 static const char manhole_wave[] = "effect\\manhole.wav";
@@ -391,7 +392,7 @@ static void ef_charging_pierce(struct GameActor *self, struct GameMode *mode, lo
         if (!e)
             return;
     }
-    charging_pierce_effect_set_charges(e, (unsigned __int64)par3);
+    charging_pierce_effect_set_charges(e, (uint64_t)par3);
 }
 
 void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long par1, long long par2, long long par3,

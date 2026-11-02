@@ -19,7 +19,7 @@
 #include "session/state.h"
 #include "core/memory.h"
 #include "core/fatal.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "std/std.h"
 #include "core/app.h"

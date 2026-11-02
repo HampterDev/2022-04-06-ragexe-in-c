@@ -9,6 +9,7 @@
 #include "render/render_api.h"
 #include "actor/actor_ops.h"
 #include "actor/game_actor.h"
+#include <stdint.h>
 
 #define CLIP_MIRRORED 1
 #define SPR_PALETTE(spr) (((struct SprRes *)(spr))->palette)
@@ -365,7 +366,7 @@ void prim_orbit_launcher_render(struct EffectPrim *self)
         effect_id = rec->style == 0 ? 850 : 932;
         actor = own_aid == rec->owner
             ? (void *)game_current_player()
-            : (void *)game_find_actor((int)(__int64)rec->owner);
+            : (void *)game_find_actor((int)(int64_t)rec->owner);
         if (!actor)
             continue;
         {

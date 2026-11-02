@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "render/rp_pool.h"
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 struct RPQuad *rp_quad_construct(struct RPQuad *self)
 {
@@ -236,7 +236,7 @@ struct Renderer *renderer_construct(struct Renderer *self)
     }
     self->clearColor = 0;
     self->frame = self->fpsCount = self->fps = 0;
-    self->fpsTick = timeGetTime();
+    self->fpsTick = platform_ticks_ms();
     self->boundTextures[0] = self->boundTextures[1] = NULL;
     self->fogEnable = self->fogVertexCaps = 0;
     self->clipLeft = self->clipRight = self->clipTop = self->clipBottom = 0.0f;

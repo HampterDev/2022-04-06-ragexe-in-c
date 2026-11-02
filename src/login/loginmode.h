@@ -27,9 +27,8 @@
 #include "fileio/resource_api.h"
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
-#include <mmsystem.h>
 
 #include "base.h"
 #include "std/std.h"

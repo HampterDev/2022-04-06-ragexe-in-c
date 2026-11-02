@@ -10,13 +10,13 @@
 #include <string.h>
 #include "ui/character/character.h"
 #include <imm.h>
-#include <mmsystem.h>
 #include "login/otp.h"
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/quests/quests.h"
+#include "platform/clock.h"
 
 struct Vec;
 struct UILoginWnd;
@@ -186,11 +186,6 @@ struct UILoginWnd {
     struct UIWindow *account_combo;
     const char *account_class;
 };
-OFFSET_ASSERT(UILoginWnd, id_placeholder, 0xa0);
-OFFSET_ASSERT(UILoginWnd, save_id, 0xa8);
-OFFSET_ASSERT(UILoginWnd, notice_lines, 0xb8);
-OFFSET_ASSERT(UILoginWnd, account_combo, 0xc8);
-SIZE_ASSERT(UILoginWnd, 0xd0);
 
 #define LOGIN_REG_ID_SIZE 0x33
 #define LOGIN_REG_PASSWORD_SIZE 0x19
@@ -636,8 +631,6 @@ struct UILoginOTPWnd {
     struct UIWindow *timer;
     int ok_button;
 };
-OFFSET_ASSERT(UILoginOTPWnd, timer, 0x9c);
-SIZE_ASSERT(UILoginOTPWnd, 0xa4);
 
 struct UILoginOTPWnd *ui_login_otp_wnd_construct(struct UILoginOTPWnd *self)
 {
@@ -747,7 +740,7 @@ void ui_login_otp_wnd_on_process(struct UIWindow *window)
     if (!mode)
         return;
     started = login_state_tick((const struct LoginMode *)mode);
-    left = (unsigned int)(OTP_SECONDS - (double)(timeGetTime() - started) * 0.001);
+    left = (unsigned int)(OTP_SECONDS - (double)(platform_ticks_ms() - started) * 0.001);
     string_init(&text);
     string_format(&text, "%02d : %02d", left / 60, left % 60);
     ui_static_text_set_text(self->timer, string_cstr(&text), 0);

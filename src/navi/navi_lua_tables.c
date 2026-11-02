@@ -12,7 +12,6 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <mmsystem.h>
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "navi/navi_manager.h"
@@ -21,7 +20,7 @@
 #include <stdlib.h>
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "core/app.h"
 
 #define NAVI_MAX_MAPS       0x270f

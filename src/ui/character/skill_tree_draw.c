@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/character/skill_tree_internal.h"
 #include "core/msg_str.h"
 #include "session/session_jobs.h"
@@ -18,6 +17,7 @@
 #include "session/session_talk.h"
 #include "session/skill_levels.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 #define MSG_SKILL_TREE_TITLE 0x11b
 #define MSG_POINTS_LEFT_LIST 0x11c
@@ -52,7 +52,7 @@ static struct String *required_level_text(struct UINewSkillListWnd *self, struct
 
 static int character_frame(DWORD anim_time, int frame_count)
 {
-    return (int)((float)(double)(DWORD)(timeGetTime() - anim_time) / 300.0f) / frame_count;
+    return (int)((float)(double)(DWORD)(platform_ticks_ms() - anim_time) / 300.0f) / frame_count;
 }
 
 static int character_due(struct UINewSkillListWnd *self)
@@ -136,7 +136,7 @@ static void draw_character(struct UINewSkillListWnd *self)
         frame = character_frame(self->anim_time, self->anim_frame_counts[i]);
         if (frame >= 3) {
             frame = 0;
-            self->anim_time = timeGetTime();
+            self->anim_time = platform_ticks_ms();
         }
         self->anim_frames[i] = frame;
         motion = act_res_get_motion(act, 0x17, frame);

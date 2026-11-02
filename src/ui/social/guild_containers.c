@@ -1,7 +1,7 @@
 #include "skills/skill_info.h"
 #include "std/list.h"
 #include "session/state.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "core/fatal.h"
 #include "contents/guild_info.h"
 #include "ui/social/guild_member_sort.h"

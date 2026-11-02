@@ -1,7 +1,7 @@
 #ifndef EFFECTS_SKILLS_MANDRA_ATTACK_EFFECT_H
 #define EFFECTS_SKILLS_MANDRA_ATTACK_EFFECT_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct MandraAttackEffect;
 

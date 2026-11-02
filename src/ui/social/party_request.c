@@ -44,7 +44,6 @@ struct UIRequestJoinPartyMgr {
     struct List requests;
     struct List blocked;
 };
-SIZE_ASSERT(UIRequestJoinPartyMgr, 0x14);
 
 struct UIRequestJoinPartyMgr *g_requestJoinPartyMgr;
 

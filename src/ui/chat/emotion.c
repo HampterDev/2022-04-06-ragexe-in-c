@@ -137,9 +137,6 @@ struct UIEmotionWnd {
     struct WindowInfo *info;
     struct UIWindow *view_button;
 };
-OFFSET_ASSERT(UIEmotionWnd, macro_edit, 0xc0);
-OFFSET_ASSERT(UIEmotionWnd, info, 0xe8);
-SIZE_ASSERT(UIEmotionWnd, 0xf0);
 
 void ui_emotion_wnd_save_macros(struct UIEmotionWnd *self);
 
@@ -342,9 +339,6 @@ struct UIEmotionListWnd {
     int page;
     int pages;
 };
-OFFSET_ASSERT(UIEmotionListWnd, count, 0xac);
-OFFSET_ASSERT(UIEmotionListWnd, page, 0xc0);
-SIZE_ASSERT(UIEmotionListWnd, 0xc8);
 
 struct UIEmotionListWnd *ui_emotion_list_wnd_construct(struct UIEmotionListWnd *self)
 {

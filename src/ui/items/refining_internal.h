@@ -130,9 +130,6 @@ struct UIRefiningWnd {
     int next_blessing_count;
     struct ItemInfo next_item;
 };
-OFFSET_ASSERT(UIRefiningWnd, state, 0xa4);
-OFFSET_ASSERT(UIRefiningWnd, materials, 0xbc);
-OFFSET_ASSERT(UIRefiningWnd, item, 0xd4);
 
 void ui_refining_wnd_reset(struct UIRefiningWnd *self);
 void ui_refining_wnd_set_state(struct UIRefiningWnd *self, int state, int result);

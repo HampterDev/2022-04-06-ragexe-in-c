@@ -2,13 +2,13 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "session/session_items.h"
 #include "session/session_skills.h"
 #include "ui/items/refining_internal.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define CZ_REQ_TAKEOFF_EQUIP    0xab
 #define CZ_ITEM_THROW           0x363
@@ -112,7 +112,7 @@ int game_mode_msg_drop_dragged(struct GameMode *self, int x, int y)
         return 0;
     if (source == DRAG_FROM_INVENTORY) {
         if (!session_has_inventory_index(&g_session1, self->drag.index)
-            || self->wear_ack_time + ACK_WAIT > timeGetTime()) {
+            || self->wear_ack_time + ACK_WAIT > platform_ticks_ms()) {
             self->drag.source = 0;
             return 0;
         }
@@ -195,7 +195,7 @@ int game_mode_msg_throw_item(struct GameMode *self, int index, int count)
     struct { unsigned short id, index, count; } packet;
 #pragma pack(pop)
 
-    if (game_mode_is_blocking_window_open() != 1 && self->wear_ack_time + ACK_WAIT <= timeGetTime()
+    if (game_mode_is_blocking_window_open() != 1 && self->wear_ack_time + ACK_WAIT <= platform_ticks_ms()
         && !self->use_item_pending && !self->throw_item_pending && index != 0 && !self->player_dead) {
         self->throw_item_pending = 1;
         packet.index = (unsigned short)index;
@@ -223,7 +223,7 @@ int game_mode_msg_wear_equip(struct GameMode *self, int index, int location)
         chat_print_msg(0xe68, CHAT_COLOR_RED);
         return 0;
     }
-    if (self->wear_ack_time + ACK_WAIT > timeGetTime())
+    if (self->wear_ack_time + ACK_WAIT > platform_ticks_ms())
         return 0;
     if (self->player_dead)
         return 0;
@@ -239,10 +239,10 @@ int game_mode_msg_wear_equip(struct GameMode *self, int index, int location)
     session_get_inventory_item(&g_session1, &item, index);
     if (item.bind_on_equip_type == 1) {
         w = ui_window_open(WID_YOUR_ITEM);
-        self->wear_ack_time = timeGetTime();
+        self->wear_ack_time = platform_ticks_ms();
         ui_window_send(w, NULL, 0x5b, index, location, 0, 0);
     } else {
-        self->wear_ack_time = timeGetTime();
+        self->wear_ack_time = platform_ticks_ms();
         packet.id = CZ_REQ_WEAR_EQUIP_V5;
         packet.index = (unsigned short)index;
         packet.location = location;
@@ -261,11 +261,11 @@ int game_mode_msg_wear_equip_direct(struct GameMode *self, int index, int locati
 
     if (game_mode_is_blocking_window_open() == 1)
         return 0;
-    if (self->wear_ack_time + ACK_WAIT > timeGetTime())
+    if (self->wear_ack_time + ACK_WAIT > platform_ticks_ms())
         return 0;
     if (self->player_dead)
         return 0;
-    self->wear_ack_time = timeGetTime();
+    self->wear_ack_time = platform_ticks_ms();
     packet.id = CZ_REQ_WEAR_EQUIP_V5;
     packet.index = (unsigned short)index;
     packet.location = location;
@@ -284,7 +284,7 @@ int game_mode_msg_takeoff_equip(struct GameMode *self, int index, int second_lis
         return refuse_pressed();
     if (game_mode_is_blocking_window_open() == 1)
         return 0;
-    if (self->takeoff_ack_time + ACK_WAIT > timeGetTime())
+    if (self->takeoff_ack_time + ACK_WAIT > platform_ticks_ms())
         return 0;
     if (self->player_dead)
         return 0;
@@ -298,7 +298,7 @@ int game_mode_msg_takeoff_equip(struct GameMode *self, int index, int second_lis
         item_info_destruct(&item);
         return 0;
     }
-    self->takeoff_ack_time = timeGetTime();
+    self->takeoff_ack_time = platform_ticks_ms();
     packet.id = CZ_REQ_TAKEOFF_EQUIP;
     packet.index = (unsigned short)item.index;
     send_packet(CZ_REQ_TAKEOFF_EQUIP, &packet);

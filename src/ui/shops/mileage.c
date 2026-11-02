@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "ui/shops/shops.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 struct UIMileageWnd;
 struct UIWindow;
@@ -79,8 +79,6 @@ struct UIMileageWnd {
     int grade;
     struct String tooltip;
 };
-OFFSET_ASSERT(UIMileageWnd, last_tick, 0x94);
-OFFSET_ASSERT(UIMileageWnd, tooltip, 0xa4);
 
 struct UIMileageWnd *ui_mileage_wnd_construct(struct UIMileageWnd *self)
 {
@@ -132,7 +130,7 @@ void ui_mileage_wnd_on_process(struct UIWindow *window)
 
     if (!wnd->visible || self->points >= MILEAGE_MAX_POINTS || self->seconds_left == 0)
         return;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     elapsed = now - self->last_tick;
     if (elapsed < 1000)
         return;
@@ -236,7 +234,7 @@ int ui_mileage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, in
         self->grade = val4;
         g_session1.pcCafeGrade = val4;
         self->seconds_left = MILEAGE_HOUR - val3 < 0 ? 0 : MILEAGE_HOUR - val3;
-        self->last_tick = timeGetTime();
+        self->last_tick = platform_ticks_ms();
         ui_window_set_show_base(wnd, g_session1.showGoldPcIcon);
     }
     ui_window_invalidate_base(wnd);

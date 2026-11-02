@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "ui/worldmap/navi_wnd.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/wndmgr/wndmgr.h"

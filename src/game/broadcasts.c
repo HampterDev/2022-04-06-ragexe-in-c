@@ -7,8 +7,7 @@
 #include "contents/whisper_block.h"
 #include "game/broadcast_text.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/client.h"
 #include "game/gamemode.h"
@@ -16,6 +15,7 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/draw.h"
+#include "platform/clock.h"
 
 
 #define UIM_LOG_LINE 0x13
@@ -99,7 +99,7 @@ void game_mode_broadcast2(struct GameMode *self, const unsigned char *pkt)
     text[bytes] = 0;
     broadcast_text_strip_annotation(text);
     string_assign_cstr(&line, text);
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0)
         make_text_window(&self->notice_wnd);
     colour = (unsigned)packet->red << 16 | (unsigned)packet->green << 8 | packet->blue;
@@ -155,7 +155,7 @@ void game_mode_broadcast(struct GameMode *self, const unsigned char *pkt)
         chat(UIM_LOG_LINE, string_cstr(&line), parsed.colour, parsed.channel, parsed.sender);
 
     if (parsed.balloon) {
-        self->admin_whisper_time = timeGetTime();
+        self->admin_whisper_time = platform_ticks_ms();
         if (self->admin_whisper_balloon == 0)
             make_text_window(&self->admin_whisper_balloon);
         readable_links(&line);
@@ -166,7 +166,7 @@ void game_mode_broadcast(struct GameMode *self, const unsigned char *pkt)
         if (notice != 0)
             ui_window_move_safe(notice, notice->x, balloon->y + balloon->height + 0x11);
     } else {
-        self->notice_shown_at = timeGetTime();
+        self->notice_shown_at = platform_ticks_ms();
         if (self->notice_wnd == 0)
             make_text_window(&self->notice_wnd);
         readable_links(&line);
@@ -270,7 +270,7 @@ void game_mode_broadcast_special_item_obtain(struct GameMode *self, const unsign
     string_free(&formatted);
     string_free(&item_name);
     chat(UIM_CHAT_LINE, string_cstr(&line), 0xffff, 0, 0);
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0)
         make_text_window(&self->notice_wnd);
     ui_balloon_text_set_text((struct UIBalloonText *)self->notice_wnd, string_cstr(&line), TEXT_WIDTH);

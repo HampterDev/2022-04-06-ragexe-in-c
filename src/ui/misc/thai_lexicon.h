@@ -1,7 +1,7 @@
 #ifndef UI_MISC_THAI_LEXICON_H
 #define UI_MISC_THAI_LEXICON_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct ThaiLexicon;
 

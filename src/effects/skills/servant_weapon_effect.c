@@ -5,6 +5,7 @@
 #include "effects/skills/skill_view.h"
 #include "effects/effect_controls.h"
 #include "std/list.h"
+#include <stdint.h>
 
 struct Effect;
 struct ServantWeaponEffect;
@@ -137,7 +138,7 @@ void servant_weapon_effect_shoot(struct ServantWeaponEffect *self, int i)
     self->shots[i] = p;
 }
 
-void servant_weapon_effect_phantom_shot(struct ServantWeaponEffect *self, __int64 i)
+void servant_weapon_effect_phantom_shot(struct ServantWeaponEffect *self, int64_t i)
 {
     struct Ez2StrParticle *p;
 

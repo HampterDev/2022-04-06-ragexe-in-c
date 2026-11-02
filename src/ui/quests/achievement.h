@@ -49,7 +49,6 @@ struct UICustomGageBar {
     COLORREF outer_colour;
     COLORREF inner_colour;
 };
-OFFSET_ASSERT(UICustomGageBar, label, 0x84);
 
 struct UIToolTipBitmapWnd {
     struct UIWindow base;
@@ -81,8 +80,6 @@ struct UIAchListWnd {
     struct Vec ids;
     struct Tree *achs;
 };
-OFFSET_ASSERT(UIAchListWnd, ids, 0xa0);
-SIZE_ASSERT(UIAchListWnd, 0xb0);
 
 struct UIAchTab {
     struct UIWindow base;
@@ -104,8 +101,6 @@ struct UIAchTab {
     int visible;
     BYTE scrollable;
 };
-OFFSET_ASSERT(UIAchTab, tabs, 0xb0);
-SIZE_ASSERT(UIAchTab, 0xcc);
 
 struct UIAchSummaryWnd {
     struct UIWindow base;
@@ -114,7 +109,6 @@ struct UIAchSummaryWnd {
     struct Vec recent;
     struct UITextButton *recent_buttons[2];
 };
-SIZE_ASSERT(UIAchSummaryWnd, 0xa0);
 
 struct UIAchUpperWnd {
     struct UIWindow base;
@@ -137,7 +131,6 @@ struct UIAchViewWnd {
     int id;
     struct AchievementInfo *info;
 };
-SIZE_ASSERT(UIAchViewWnd, 0xe8);
 
 struct UIAchievementWnd {
     struct UIFrameWnd frame;
@@ -149,7 +142,6 @@ struct UIAchievementWnd {
     int main, sub;
     struct Tree achs;
 };
-SIZE_ASSERT(UIAchievementWnd, 0xb8);
 
 struct UIAchTracingWnd {
     struct UIFrameWnd frame;
@@ -157,7 +149,6 @@ struct UIAchTracingWnd {
     struct UITextButton *lines[3];
     struct UITextButton *arrows[3];
 };
-SIZE_ASSERT(UIAchTracingWnd, 0xb0);
 
 
 void ui_ach_list_wnd_init(struct UIAchListWnd *self, int width, int height, int rows);

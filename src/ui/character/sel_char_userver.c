@@ -21,6 +21,7 @@
 #include "session/session_names.h"
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 static int g_selCharHeadOffsetX = 0;
 
@@ -552,7 +553,7 @@ struct UISelCharForUServerWnd *ui_sel_char_for_u_server_wnd_construct(struct UIS
     self->ok = NULL;
     for (i = 0; i < g_session1.charCount; i++)
         self->hidden[i] = 1;
-    self->start_time = timeGetTime();
+    self->start_time = platform_ticks_ms();
     self->frame.base.redraws_tree = 1;
     ui_animation_reset(&self->animation);
     self->drawn_key = 0;

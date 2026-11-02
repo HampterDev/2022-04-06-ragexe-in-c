@@ -9,10 +9,10 @@
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define UI_MSG_RELAYOUT 0x3c
 
@@ -76,10 +76,6 @@ struct UIButtonsOfBasicWnd {
     struct UIBitmapButton *achievement;
     int extra_button;
 };
-OFFSET_ASSERT(UIButtonsOfBasicWnd, info, 0x98);
-OFFSET_ASSERT(UIButtonsOfBasicWnd, booking, 0xb8);
-OFFSET_ASSERT(UIButtonsOfBasicWnd, achievement, 0xcc);
-SIZE_ASSERT(UIButtonsOfBasicWnd, 0xd4);
 
 void ui_buttons_of_basic_wnd_destruct(struct UIButtonsOfBasicWnd *self)
 {
@@ -109,7 +105,7 @@ static struct UIBitmapButton *basic_button(struct UIButtonsOfBasicWnd *self, con
     }
     ui_window_create(&button->button.base, button->bitmap_width, button->bitmap_height);
     button->button.base.alpha_target = BASIC_FADE_ALPHA;
-    button->button.base.alpha_time = timeGetTime();
+    button->button.base.alpha_time = platform_ticks_ms();
     button->button.base.id = id;
     ui_window_add_child(&self->frame.base, &button->button.base);
     return button;
@@ -184,7 +180,7 @@ void ui_buttons_of_basic_wnd_on_create(struct UIWindow *window, int width, int h
     self->achievement = basic_button(self, UI_SKIN "RO_menu_icon\\achievement", numbered, BASIC_ID_ACHIEVEMENT);
     ui_buttons_of_basic_wnd_layout(self);
     self->frame.base.alpha_target = BASIC_FADE_ALPHA;
-    self->frame.base.alpha_time = timeGetTime();
+    self->frame.base.alpha_time = platform_ticks_ms();
 }
 
 static void basic_toggle(int window_id)

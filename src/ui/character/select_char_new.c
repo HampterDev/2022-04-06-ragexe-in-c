@@ -23,7 +23,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/msg_str.h"
@@ -34,6 +33,7 @@
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
 #include "ui/character/selection_buttons.h"
+#include "platform/clock.h"
 
 #define SELECT_DIR UI_SKIN "select_character_ver3\\"
 #define COLUMNS 5
@@ -338,7 +338,7 @@ struct UIWindow *ui_new_select_char_wnd_create(void)
     self->busy = 0;
     self->page = 0;
     self->cur = 0;
-    self->created_time = timeGetTime();
+    self->created_time = platform_ticks_ms();
     self->move_from = -1;
     return WND(self);
 }

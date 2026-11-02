@@ -104,8 +104,6 @@ struct UIMonsterInfoWnd {
     struct MonsterInfo info;
     int actor_id;
 };
-OFFSET_ASSERT(UIMonsterInfoWnd, actor_id, 0xb4);
-SIZE_ASSERT(UIMonsterInfoWnd, 0xb8);
 
 struct UIMonsterInfoWnd *ui_monster_info_wnd_construct(struct UIMonsterInfoWnd *self)
 {

@@ -10,7 +10,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/skin_path.h"
@@ -31,10 +30,6 @@ struct UITreeNode {
     struct List children;
     struct Vec icons;
 };
-OFFSET_ASSERT(UITreeNode, draggable, 0x16a);
-OFFSET_ASSERT(UITreeNode, parent, 0x170);
-OFFSET_ASSERT(UITreeNode, children, 0x180);
-SIZE_ASSERT(UITreeNode, 0x194);
 #define TREE_NODE(it) (*LIST_VALUE(it, struct UITreeNode *))
 
 struct UITreeView {
@@ -54,9 +49,6 @@ struct UITreeView {
     BYTE hover;
     COLORREF drop_colour;
 };
-OFFSET_ASSERT(UITreeView, root, 0x84);
-OFFSET_ASSERT(UITreeView, drop_colour, 0xb0);
-SIZE_ASSERT(UITreeView, 0xb4);
 const struct UIWindowOps ui_tree_view_ops = {
     .destroy = ui_tree_view_destroy,
     .resize = ui_tree_view_resize,

@@ -5,7 +5,7 @@
 #include "ui/window_manager_state.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include "game/character_stats.h"
 #include "game/session_bridge.h"

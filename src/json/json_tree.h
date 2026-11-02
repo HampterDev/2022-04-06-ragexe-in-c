@@ -2,6 +2,7 @@
 #define JSON_TREE_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 enum JsonTreeType {
     JSON_TREE_NULL = 0,
@@ -30,8 +31,8 @@ struct JsonTree {
     unsigned char subtype;
     size_t count;
     union {
-        __int64 i64;
-        unsigned __int64 u64;
+        int64_t i64;
+        uint64_t u64;
         double dbl;
         char *text;
         unsigned char *bytes;

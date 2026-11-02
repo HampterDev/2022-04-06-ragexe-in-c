@@ -10,7 +10,7 @@
 #include "core/fatal.h"
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 
 #include "std/std.h"
 #include "session/session_imports.h"

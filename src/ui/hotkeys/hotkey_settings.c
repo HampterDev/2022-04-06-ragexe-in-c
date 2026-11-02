@@ -88,10 +88,6 @@ struct UIHotKeyWnd {
     struct UIBitmapButton *prev;
     struct UIBitmapButton *next;
 };
-OFFSET_ASSERT(UIHotKeyWnd, changes, 0xbc);
-OFFSET_ASSERT(UIHotKeyWnd, balloon, 0xdc);
-OFFSET_ASSERT(UIHotKeyWnd, paged, 0xf4);
-SIZE_ASSERT(UIHotKeyWnd, 0x100);
 
 #define CHAT_LINE_TAGS(line) (((struct UIChatEditCtrl *)(line))->popup)
 

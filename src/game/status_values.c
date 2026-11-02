@@ -10,6 +10,7 @@
 #include "session/session_windows.h"
 #include "ui/character/gauge.h"
 #include "ui/character/status_wnd.h"
+#include <stdint.h>
 
 enum {
     SP_BASEEXP = 1,
@@ -27,7 +28,7 @@ enum { OPTION_SHOW_EXP_GAIN = 2 };
 struct PacketLongLongParChange {
     unsigned short packet_type;
     unsigned short var_id;
-    __int64 value;
+    int64_t value;
 };
 #pragma pack(pop)
 
@@ -36,12 +37,12 @@ void game_mode_on_long_long_par_change(struct GameMode *self, const struct Packe
     switch (packet->var_id) {
     case SP_BASEEXP:
         if (session_is_admin_option(&g_session1, OPTION_SHOW_EXP_GAIN) != 0) {
-            __int64 value = packet->value;
+            int64_t value = packet->value;
             int gained = (int)value - (int)g_session1.baseExp;
 
             if (value != 0 && gained != 0) {
                 char line[0x100];
-                int kills_left = (int)((g_session1.nextBaseExp - g_session1.baseExp) / (__int64)gained);
+                int kills_left = (int)((g_session1.nextBaseExp - g_session1.baseExp) / (int64_t)gained);
 
                 _snprintf_s(line, 0x100, (size_t)-1, "%lld : %lld/%lld More : %d",
                                value - g_session1.baseExp, value, g_session1.nextBaseExp, kills_left);
@@ -91,8 +92,8 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
     case SP_BASEEXP:
         if (session_is_admin_option(&g_session1, OPTION_SHOW_EXP_GAIN) != 0) {
             char line[0x100];
-            __int64 value = packet->value;
-            __int64 gained = value - g_session1.baseExp;
+            int64_t value = packet->value;
+            int64_t gained = value - g_session1.baseExp;
 
             memset(line, 0, sizeof line);
             if (packet->value != 0 && gained != 0) {
@@ -136,7 +137,7 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
 struct PacketNotifyExp2 {
     unsigned short packet_type;
     int aid;
-    __int64 amount;
+    int64_t amount;
     unsigned short var_id;
     unsigned short exp_type;
 };

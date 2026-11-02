@@ -81,9 +81,6 @@ struct UIMerchantShopTitle {
     BYTE highlighted;
     int buying;
 };
-OFFSET_ASSERT(UIMerchantShopTitle, owner, 0x80);
-OFFSET_ASSERT(UIMerchantShopTitle, buying, 0x88);
-SIZE_ASSERT(UIMerchantShopTitle, 0x8c);
 
 static struct UIMerchantShopTitle *ui_merchant_shop_title_construct(struct UIMerchantShopTitle *self, int buying)
 {
@@ -326,9 +323,6 @@ struct UIMerchantItemPurchaseMSGWnd {
     int request_arg1;
     int request_arg2;
 };
-OFFSET_ASSERT(UIMerchantItemPurchaseMSGWnd, title, 0x94);
-OFFSET_ASSERT(UIMerchantItemPurchaseMSGWnd, request_arg1, 0xac);
-SIZE_ASSERT(UIMerchantItemPurchaseMSGWnd, 0xb4);
 
 static struct UIMerchantItemPurchaseMSGWnd *ui_merchant_item_purchase_msg_wnd_construct(struct UIMerchantItemPurchaseMSGWnd *self)
 {

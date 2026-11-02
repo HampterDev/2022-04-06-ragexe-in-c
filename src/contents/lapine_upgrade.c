@@ -27,10 +27,10 @@
 #include "ui/controls/edit_types.h"
 #include "contents/ui_window.h"
 #include "contents/ui_window_mgr.h"
-#include <mmsystem.h>
 #include "core/object_type_tables.h"
 #include "core/msg_str.h"
 #include "session/session_items.h"
+#include "platform/clock.h"
 
 #define UPGRADE_TABLE           "tblLapineUpgradeBox"
 
@@ -242,7 +242,7 @@ void lapine_upgrade_on_frame(struct UIWindow *window)
             ui_window_invalidate_base(&self->frame.base);
         }
     }
-    if (self->notice_time + self->notice_duration < timeGetTime())
+    if (self->notice_time + self->notice_duration < platform_ticks_ms())
         string_clear(&self->notice);
 }
 
@@ -256,7 +256,7 @@ void lapine_upgrade_on_draw(struct UIWindow *window)
     ui_window_text_out_centred(&self->frame.base, 0x23, 0x3f, string_cstr(&self->need_source), 0x9c, 0, 0xb, 0x844a42, 0);
     if ((unsigned)self->target.index > 0)
         ui_window_draw_item_icon(&self->frame.base, TARGET_X, TARGET_Y, &self->target, 0);
-    if (self->notice_time + self->notice_duration > timeGetTime()) {
+    if (self->notice_time + self->notice_duration > platform_ticks_ms()) {
         ui_window_draw_bitmap(&self->frame.base, 6, 0xe5, res_mgr_get(g_resMgr(), LAPINE_BMP("icon_notify.bmp")), 1);
         ui_window_text_out(&self->frame.base, 0x19, 0xe6, string_cstr(&self->notice), 0, 0, 0xc, 0xff0000, 0, 0);
     }
@@ -332,7 +332,7 @@ int lapine_upgrade_send_msg(struct UIWindow *window, struct UIWindow *sender, in
         }
         return 0;
     case LAPINE_MSG_NOTICE:
-        self->notice_time = timeGetTime();
+        self->notice_time = platform_ticks_ms();
         string_assign_cstr(&self->notice, (const char *)a);
         ui_window_invalidate_base(&self->frame.base);
         return 0;

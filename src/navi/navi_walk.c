@@ -15,13 +15,13 @@
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "fileio/resource_api.h"
 #include "fileio/res_mgr.h"
 #include "ui/navigation_view.h"
 
 #include <string.h>
+#include "platform/clock.h"
 
 const float g_naviCellUVs[8] = {0, 0, 1, 0, 0, 1, 1, 1};
 
@@ -151,7 +151,7 @@ static int draw_path_cells(struct NaviManager *self, void *view, int px, int py)
 {
     const struct PathCell *cells = self->path.cells;
     int last = ((int)self->path.count) - 1;
-    unsigned phase = timeGetTime() % 1000 / 100;
+    unsigned phase = platform_ticks_ms() % 1000 / 100;
     int drawn = 0, i;
 
     for (i = 1; i < last; i += 2) {
@@ -174,7 +174,7 @@ static int draw_path_cells(struct NaviManager *self, void *view, int px, int py)
 
 static void draw_marker(struct NaviManager *self, void *view)
 {
-    unsigned now = timeGetTime();
+    unsigned now = platform_ticks_ms();
     char file[100];
     int frame = g_naviMarkerFrame;
     struct C3dGround15 *ground;

@@ -4,6 +4,7 @@
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/vec.h"
+#include <stdint.h>
 
 #define ASTRAL_STRIKE_TYPE 0x6e8
 #define STRIKE_LIST 5
@@ -63,9 +64,9 @@ static const char *const sub_mark_str[3] = {
     "astralstrike\\astralstrike_sub_3_bottom\\astralstrike_sub_3_bottom.str",
 };
 
-static __int64 level_entry(const struct AstralStrikeEffect *self, const int *table)
+static int64_t level_entry(const struct AstralStrikeEffect *self, const int *table)
 {
-    __int64 by_level[LEVELS + 1];
+    int64_t by_level[LEVELS + 1];
     unsigned level = (unsigned)EFFECT_LEVEL(&self->base), i;
     for (i = 0; i < LEVELS; i++)
         by_level[i + 1] = table[i];
@@ -150,7 +151,7 @@ static void astral_strike_effect_destroy(struct Effect *effect)
 
 void astral_strike_effect_spawn_sub_strike(struct AstralStrikeEffect *self)
 {
-    __int64 width = level_entry(self, sub_area_cells) * 50;
+    int64_t width = level_entry(self, sub_area_cells) * 50;
     Vec3 pos = self->base.pos;
     int r, variant;
     float half;
@@ -196,8 +197,8 @@ void astral_strike_effect_process(struct Effect *effect)
     struct AstralStrikeEffect *self = (struct AstralStrikeEffect *)effect;
     particles_step(&self->strike);
     if (effect_is_owner_alive(&self->base) == 1 && self->strike.first == self->strike.last) {
-        __int64 interval = level_entry(self, sub_interval);
-        if ((__int64)self->base.frame % interval == 0)
+        int64_t interval = level_entry(self, sub_interval);
+        if ((int64_t)self->base.frame % interval == 0)
             astral_strike_effect_spawn_sub_strike(self);
     }
     particles_step(&self->sub_strikes);

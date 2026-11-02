@@ -8,6 +8,7 @@
 #include "platform/language.h"
 #include "core/msg_str.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 enum {
     SERVICE_TYPE_CHINA = 3,
@@ -39,7 +40,7 @@ void game_mode_zc_pc_bang_effect(struct GameMode *self, const struct PACKET_ZC_P
     struct UIBalloonText *balloon;
     int x;
 
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0) {
         wnd = mem_alloc(sizeof(struct UITransBalloonText));
         if (wnd != 0)

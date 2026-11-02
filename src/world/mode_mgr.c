@@ -13,11 +13,11 @@
 #include <stdlib.h>
 #include <io.h>
 #include <direct.h>
-#include <mmsystem.h>
 #include "core/app.h"
 #include "platform/language.h"
 #include "core/text_util.h"
 #include "render/screen_draw.h"
+#include "platform/clock.h"
 
 static int g_screenShotCounter = 0;
 
@@ -51,11 +51,11 @@ void mode_process_fade_in(struct Mode *self)
     DWORD elapsed;
 
     if (self->fade_in_start) {
-        g_fadeStart = timeGetTime();
+        g_fadeStart = platform_ticks_ms();
         sound_bgm_fade_in();
         self->fade_in_start = 0;
     }
-    elapsed = timeGetTime() - g_fadeStart;
+    elapsed = platform_ticks_ms() - g_fadeStart;
     if (elapsed < 0xff)
         draw_box_screen(0, 0, g_renderer->width, g_renderer->height, (0xff - elapsed) << 24);
 }
@@ -73,7 +73,7 @@ void mode_draw_mouse_cursor(struct Mode *self)
 {
     void *act = res_mgr_get(g_resMgr(), "cursors.act");
     void *spr = res_mgr_get(g_resMgr(), "cursors.spr");
-    unsigned frame = (timeGetTime() - self->cursor_anim_start) / 24;
+    unsigned frame = (platform_ticks_ms() - self->cursor_anim_start) / 24;
     unsigned divisor;
     int action;
 
@@ -95,7 +95,7 @@ void mode_draw_mouse_cursor(struct Mode *self)
         if (g_mouse.button[MOUSE_LEFT]) {
             cursor_play_once(self, act, frame, divisor, self->cursor_action);
         } else {
-            self->cursor_anim_start = timeGetTime();
+            self->cursor_anim_start = platform_ticks_ms();
             self->cursor_motion = 0;
         }
     } else {

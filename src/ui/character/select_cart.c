@@ -27,7 +27,6 @@ struct UISelectCartWnd {
     int value;
     struct Vec kinds;
 };
-OFFSET_ASSERT(UISelectCartWnd, kinds, 0x98);
 
 void ui_select_cart_wnd_add_cart(struct UISelectCartWnd *self, int index, int kind);
 

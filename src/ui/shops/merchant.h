@@ -58,15 +58,12 @@ struct UIMerchantItemWnd {
     struct UIWindow *close;
     struct UIWindow *status;
 };
-OFFSET_ASSERT(UIMerchantItemWnd, status, 0xd8);
-SIZE_ASSERT(UIMerchantItemWnd, 0xdc);
 
 struct UIMerchantMirrorItemWnd {
     struct UIItemBaseWnd base;
     struct WindowInfo *info;
     int variant;
 };
-SIZE_ASSERT(UIMerchantMirrorItemWnd, 0xd8);
 
 struct UIMerchantItemShopWnd {
     struct UIItemBaseWnd base;
@@ -82,9 +79,6 @@ struct UIMerchantItemShopWnd {
     DWORD timer_length;
     int bottom;
 };
-OFFSET_ASSERT(UIMerchantItemShopWnd, info, 0xd8);
-OFFSET_ASSERT(UIMerchantItemShopWnd, variant, 0xec);
-SIZE_ASSERT(UIMerchantItemShopWnd, 0xfc);
 
 #define MSG_PURCHASE_TITLE 0xe4
 #define MSG_PURCHASE_TITLE_VARIANT 0xa8
@@ -127,8 +121,6 @@ struct UIMerchantItemPurchaseWnd {
     int request_arg2;
     int variant;
 };
-OFFSET_ASSERT(UIMerchantItemPurchaseWnd, info, 0xdc);
-SIZE_ASSERT(UIMerchantItemPurchaseWnd, 0xec);
 
 #define MSG_MY_SHOP_TITLE 0xca5
 #define MSG_MY_SHOP_TITLE_VARIANT 0x6c6
@@ -153,9 +145,6 @@ struct UIMerchantItemMyShopWnd {
     DWORD timer_length;
     int bottom;
 };
-OFFSET_ASSERT(UIMerchantItemMyShopWnd, check, 0xe4);
-OFFSET_ASSERT(UIMerchantItemMyShopWnd, timer_start, 0xf0);
-SIZE_ASSERT(UIMerchantItemMyShopWnd, 0xfc);
 
 void ui_merchant_item_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
 void ui_merchant_item_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);

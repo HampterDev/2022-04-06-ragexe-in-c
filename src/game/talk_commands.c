@@ -16,8 +16,7 @@
 #include "ui/window_manager_state.h"
 #include "game/context.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -41,6 +40,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mouse_camera.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 enum {
     MODE_MSG_CHAT = 6,
@@ -229,7 +229,7 @@ void talk_cmd_sit_or_stand(struct GameMode *self)
     self->sit_times[2] = self->sit_times[3];
     self->sit_times[3] = self->sit_times[4];
     self->sit_times[4] = self->sit_times[5];
-    now = timeGetTime();
+    now = platform_ticks_ms();
     self->sit_times[5] = now;
     if (now - self->sit_times[0] - 1501 <= 1498) {
         mode_send_msg(self, 0xa9, 0, 0, 0, 0);

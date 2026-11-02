@@ -7,8 +7,8 @@
 #include "ui/window.h"
 #include "ui/window_access.h"
 #include "ui/window_manager_state.h"
-#include <mmsystem.h>
 #include <string.h>
+#include "platform/clock.h"
 
 void mode_show_tooltip(struct Mode *self, const char *text, int x, int y,
                                       DWORD colour, BYTE flag)
@@ -22,7 +22,7 @@ void mode_show_tooltip(struct Mode *self, const char *text, int x, int y,
     if (strlen(text) == 0)
         return;
     session_remove_underbar(text, buf);
-    self->help_balloon_tick = timeGetTime();
+    self->help_balloon_tick = platform_ticks_ms();
     if (!self->help_balloon) {
         void *p = mem_alloc(sizeof(struct UITransBalloonText));
         self->help_balloon = p ? ui_trans_balloon_text_construct(p) : NULL;
@@ -56,13 +56,13 @@ void mode_hide_help_balloon(struct Mode *self)
     if (self->help_balloon) {
         ui_window_mgr_post_quit2(&g_windowMgr, self->help_balloon);
         self->help_balloon = NULL;
-        self->help_balloon_tick = timeGetTime();
+        self->help_balloon_tick = platform_ticks_ms();
     }
 }
 
 void mode_process_help_balloon(struct Mode *self)
 {
-    if (self->help_balloon && timeGetTime() >= self->help_balloon_tick + 100) {
+    if (self->help_balloon && platform_ticks_ms() >= self->help_balloon_tick + 100) {
         ui_window_mgr_post_quit2(&g_windowMgr, self->help_balloon);
         self->help_balloon = NULL;
     }

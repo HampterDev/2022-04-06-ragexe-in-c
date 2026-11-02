@@ -9,8 +9,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/input.h"
 #include "game/cells.h"
 #include "game/mouse_camera.h"
@@ -38,6 +37,7 @@ enum { ACTORMSG_RELEASE = 0xf };
 
 #include "world/ray_picker.h"
 #include "ui/character/popup_menu.h"
+#include "platform/clock.h"
 
 #define NO_HIT 999999.0f
 
@@ -146,9 +146,9 @@ void game_mode_process_input(struct GameMode *self)
     game_mode_process_right_button(self);
     game_mode_process_wheel(self, verdict);
     mode_nothing(&self->base);
-    if (timeGetTime() > self->ui_tick_time + 1000) {
+    if (platform_ticks_ms() > self->ui_tick_time + 1000) {
         ui_window_mgr_tick(&g_windowMgr);
-        self->ui_tick_time = timeGetTime();
+        self->ui_tick_time = platform_ticks_ms();
     }
 
     if (verdict == 2)
@@ -206,9 +206,9 @@ void game_mode_process_input(struct GameMode *self)
 
     if (g_mouse.button[MOUSE_LEFT] == BUTTON_PRESSED) {
         mode_send_msg(self, MODE_MSG_CANCEL_SKILL_AIM, 0, 0, 0, 0);
-        if (timeGetTime() > self->server_move_time + 5000)
+        if (platform_ticks_ms() > self->server_move_time + 5000)
             self->server_move_pending = 0;
-        self->click_repeat_time = timeGetTime();
+        self->click_repeat_time = platform_ticks_ms();
     }
 
     if (g_session1.showStateInfo != 0)

@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "base.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_CZ_REQNAME_BYGID2 {
@@ -147,7 +147,7 @@ int player_names_set(unsigned char_id, struct TextView name)
         cache.names[at].char_id = char_id;
     }
     cache.names[at].name = copy;
-    cache.names[at].time = timeGetTime();
+    cache.names[at].time = platform_ticks_ms();
     request = find_request(char_id);
     if (request < cache.asked_count) {
         --cache.asked_count;
@@ -179,7 +179,7 @@ void player_names_update(void)
     uint32_t now;
 
     if (!cache.active) return;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     while (expired < cache.asked_count &&
            (uint32_t)(now - cache.asked[expired].sent) >= REQUEST_TIMEOUT) ++expired;
     if (expired) {
@@ -206,7 +206,7 @@ void player_names_update(void)
         pop_wanted();
         packet.char_id = char_id;
         rag_connection_send_packet(rag_connection_instance(), sizeof packet, &packet);
-        cache.asked[cache.asked_count++] = (struct NameRequest){char_id, timeGetTime()};
+        cache.asked[cache.asked_count++] = (struct NameRequest){char_id, platform_ticks_ms()};
         return;
     }
 }

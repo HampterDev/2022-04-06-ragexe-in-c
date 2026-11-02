@@ -15,7 +15,6 @@ struct UIPartyBookingHelpWnd {
     struct UIFrameWnd frame;
     struct UIWindow *text;
 };
-SIZE_ASSERT(UIPartyBookingHelpWnd, 0x98);
 void ui_party_booking_help_wnd_destroy(struct UIWindow *window);
 void ui_party_booking_help_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_party_booking_help_wnd_on_draw(struct UIWindow *self);

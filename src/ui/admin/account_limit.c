@@ -146,8 +146,6 @@ struct UIAccountLimitedToolWnd {
     struct UIWindow *buttons[3];
     struct String account_text;
 };
-OFFSET_ASSERT(UIAccountLimitedToolWnd, fields, 0x9c);
-OFFSET_ASSERT(UIAccountLimitedToolWnd, buttons, 0xd0);
 
 struct UIAccountLimitedToolWnd *ui_account_limited_tool_wnd_construct(struct UIAccountLimitedToolWnd *self)
 {

@@ -8,14 +8,14 @@
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/gamemode.h"
 #include "game/client.h"
 #include "game/packet_dispatch.h"
 #include "login/loginmode.h"
 #include "ui/window.h"
 #include "core/unknown_packet.h"
+#include "platform/clock.h"
 
 int g_playTimeHoursNoticed;
 
@@ -26,14 +26,14 @@ int g_playTimeHoursNoticed;
 static void notice_play_time(struct GameMode *self)
 {
     char text[100];
-    int hours = (int)((timeGetTime() - g_session1.loginTick) / MS_PER_HOUR);
+    int hours = (int)((platform_ticks_ms() - g_session1.loginTick) / MS_PER_HOUR);
     struct UIWindow *wnd;
     struct UIBalloonText *balloon;
     int x;
 
     if (hours <= 0 || g_playTimeHoursNoticed == hours)
         return;
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0) {
         void *block = mem_alloc(sizeof(struct UITransBalloonText));
         self->notice_wnd = block ? ui_trans_balloon_text_construct(block) : 0;
@@ -75,7 +75,7 @@ void game_mode_poll_network_msg(struct GameMode *self)
         if (!rag_connection_get_packet(rag_connection_instance(), g_packetBuffer, &packet_len))
             return;
         packet_id = rag_connection_get_packet_type(g_packetBuffer);
-        g_session1.lastPacketTime = timeGetTime();
+        g_session1.lastPacketTime = platform_ticks_ms();
         game_mode_dispatch_packet(self, (short)packet_id, g_packetBuffer, packet_len);
         if (!self->base.loop_cond)
             return;

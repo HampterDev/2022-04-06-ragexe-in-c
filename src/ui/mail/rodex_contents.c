@@ -14,6 +14,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "session/session_items.h"
+#include <stdint.h>
 
 #define ID_TAKE_ITEMS 0xb5
 #define ID_TAKE_ZENY 0xb6
@@ -53,7 +54,7 @@ struct UIRodexContentsWnd {
     struct UIEditCtrl3 *body;
     struct String sender;
     struct String title;
-    __int64 zeny;
+    int64_t zeny;
     struct List items;
     int hover;
     struct UIBitmapButton *btn_items;
@@ -241,7 +242,7 @@ static struct UIBitmapButton *receive_button(struct UIRodexContentsWnd *self, in
 
 void ui_rodex_contents_wnd_set_mail(struct UIRodexContentsWnd *self, struct String sender,
                                            struct String title, struct String text, BYTE item_count,
-                                           __int64 zeny, BYTE type)
+                                           int64_t zeny, BYTE type)
 {
     struct String nr = {0};
     struct String body_text;

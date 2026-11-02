@@ -6,6 +6,7 @@
 #include "actor/actor.h"
 #include "actor/granny_actor.h"
 #include "actor/game_actor.h"
+#include <stdint.h>
 
 struct GrannyPc {
     CGAMEACTOR_MEMBERS
@@ -15,7 +16,7 @@ struct GrannyPc {
     int head_dir;
     int head;
     int head_palette;
-    __int64 weapon;
+    int64_t weapon;
     int accessory;
     int accessory2;
     int accessory3;

@@ -11,7 +11,7 @@
 #include "ui/window_manager_state.h"
 #include "platform/client_config.h"
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
 #include "core/xml.h"

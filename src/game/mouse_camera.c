@@ -6,8 +6,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mouse_camera.h"
 #include "skills/skill_info.h"
 #include "game/client.h"
@@ -19,6 +18,7 @@
 #include "session/hotkey_types.h"
 #include "ui/hotkeys/hotkeys.h"
 #include "world/camera.h"
+#include "platform/clock.h"
 
 float g_maxViewDistance = 400.0f;
 
@@ -253,9 +253,9 @@ __declspec(noinline) void game_mode_process_wheel(struct GameMode *self, int ver
 {
     struct SkillInfo skill;
 
-    if (timeGetTime() - self->throttle_time <= 15)
+    if (platform_ticks_ms() - self->throttle_time <= 15)
         return;
-    self->throttle_time = timeGetTime();
+    self->throttle_time = platform_ticks_ms();
     if (g_mouse.wheel == 0 || self->skill_use.type != 0)
         return;
 

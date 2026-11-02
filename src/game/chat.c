@@ -6,7 +6,7 @@
 #include "ui/window_manager_state.h"
 #include "world/actor_lookup.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/chat.h"
 #include "game/client.h"

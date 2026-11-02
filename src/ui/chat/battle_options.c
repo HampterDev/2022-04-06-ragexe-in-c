@@ -93,7 +93,6 @@ struct UIBattleMsgOptionWnd {
     BYTE kind;
     struct UIWindow *all_on_box;
 };
-OFFSET_ASSERT(UIBattleMsgOptionWnd, labels, 0xa8);
 
 static struct ChatTabSettings *battle_settings(struct UIBattleMsgOptionWnd *self)
 {

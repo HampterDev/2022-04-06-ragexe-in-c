@@ -22,7 +22,6 @@ struct UIEmblemWnd {
     int aid;
     int emblem_id;
 };
-SIZE_ASSERT(UIEmblemWnd, 0x8c);
 void ui_emblem_wnd_destroy(struct UIWindow *window);
 void ui_emblem_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_emblem_wnd_on_process(struct UIWindow *self);

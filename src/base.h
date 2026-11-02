@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <intrin.h>
 
 #include "core/layout.h"
 
@@ -18,6 +17,7 @@
 
 #include "fileio/file_api.h"
 
+#include "platform/win_types.h"
 #include "core/once.h"
 
 #endif

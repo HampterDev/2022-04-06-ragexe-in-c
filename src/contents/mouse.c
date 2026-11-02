@@ -2,7 +2,7 @@
 #include "render/device.h"
 #include "core/app.h"
 #include <string.h>
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 struct Mouse g_mouse = {
     .double_click_ms = 500,
@@ -20,7 +20,7 @@ void mouse_read_state(struct Mouse *self)
     self->dy = self->cur_y - self->y;
     self->x = self->cur_x;
     self->y = self->cur_y;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     for (i = 0; i < 2; i++) {
         if (self->dx != 0 || self->dy != 0)
             self->press_time[i] = now - self->double_click_ms;

@@ -7,7 +7,7 @@
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "iteminfo/item_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "actor/render_object.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -87,7 +87,7 @@ struct ShortNameBuffer {
 };
 
 struct Tree g_shortNameBuffers;
-INIT_ONCE g_shortNameBuffersGuard;
+struct Once g_shortNameBuffersGuard;
 void name_buffers_atexit(void);
 
 char *game_mode_short_name(struct String name)

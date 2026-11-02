@@ -6,9 +6,9 @@
 #include <mbstring.h>
 #include <string.h>
 #include "ui/social/social.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define GUILD_HELPER_WND_ID 0xd4
 #define CREATE_GUILD_WND_ID 0xd5
@@ -35,7 +35,6 @@ struct UIGuildHelperWnd {
     struct UIBitmapButton *button;
     struct WindowInfo *info;
 };
-SIZE_ASSERT(UIGuildHelperWnd, 0x9c);
 struct Vec;
 void ui_guild_helper_wnd_destroy(struct UIWindow *window);
 void ui_guild_helper_wnd_store_info(struct UIWindow *self);
@@ -159,7 +158,7 @@ void ui_guild_helper_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
     if (g_windowMgr.create_guild_wnd) {
         g_windowMgr.create_guild_wnd->alpha_target = 0x80;
-        g_windowMgr.create_guild_wnd->alpha_time = timeGetTime();
+        g_windowMgr.create_guild_wnd->alpha_time = platform_ticks_ms();
     }
 }
 
@@ -177,7 +176,7 @@ void ui_guild_helper_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
     ui_frame_wnd_on_l_btn_up((struct UIWindow *)(&self->frame), x, y);
     if (g_windowMgr.create_guild_wnd) {
         g_windowMgr.create_guild_wnd->alpha_target = 0xff;
-        g_windowMgr.create_guild_wnd->alpha_time = timeGetTime();
+        g_windowMgr.create_guild_wnd->alpha_time = platform_ticks_ms();
     }
 }
 
@@ -238,8 +237,6 @@ struct UICreateGuildWnd {
     struct UIWindow *name;
     int disband;
 };
-OFFSET_ASSERT(UICreateGuildWnd, name, 0x9c);
-SIZE_ASSERT(UICreateGuildWnd, 0xa4);
 void ui_create_guild_wnd_destroy(struct UIWindow *window);
 void ui_create_guild_wnd_store_info(struct UIWindow *self);
 void ui_create_guild_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);

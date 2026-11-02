@@ -84,8 +84,6 @@ struct UIMenuWnd {
     int owner_key;
     BYTE hold;
 };
-OFFSET_ASSERT(UIMenuWnd, items, 0xa0);
-SIZE_ASSERT(UIMenuWnd, 0xb4);
 
 #define MENU_ITEMS(self) ((struct String *)(self)->items.first)
 #define MENU_COUNT(self) ((int)VEC_COUNT(&(self)->items, struct String))

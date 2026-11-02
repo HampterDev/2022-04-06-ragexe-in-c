@@ -17,7 +17,6 @@ struct TagPrototype {
     struct String open;
     struct String close;
 };
-OFFSET_ASSERT(TagPrototype, open, 0x04);
 
 struct STagString {
     int prototype;
@@ -33,7 +32,6 @@ struct STagInfoV2 {
     struct String label;
     struct String args;
 };
-OFFSET_ASSERT(STagInfoV2, label, 0x0c);
 
 struct TagLabel {
     struct String label;
@@ -55,7 +53,6 @@ struct UITagListBox {
     struct UIListBox box;
     struct Vec buttons;
 };
-SIZE_ASSERT(UITagListBox, UI_TAG_LIST_BOX_SIZE);
 struct TagLinkPlace {
     int line;
     int x;

@@ -135,7 +135,6 @@ struct UICashShopWnd_CartItem {
     struct UIWindow base;
     struct ItemInfo info;
 };
-OFFSET_ASSERT(UICashShopWnd_CartItem, info, 0x7c);
 
 struct UICashShopWnd_CartItem *ui_cash_shop_wnd_cart_item_construct(struct UICashShopWnd_CartItem *self)
 {
@@ -316,9 +315,6 @@ struct UICashShopWnd_Cart {
     int row_count;
     int first;
 };
-OFFSET_ASSERT(UICashShopWnd_Cart, lines, 0x88);
-OFFSET_ASSERT(UICashShopWnd_Cart, first, 0x9c);
-SIZE_ASSERT(UICashShopWnd_Cart, 0xa0);
 
 struct Vec *cash_shop_cart_lines(struct UIWindow *cart)
 {

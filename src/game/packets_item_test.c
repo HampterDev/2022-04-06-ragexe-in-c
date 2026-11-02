@@ -1,6 +1,6 @@
 #include "game/packet_handlers.h"
 #include "std/tree.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
 #include <string.h>
 #include <io.h>

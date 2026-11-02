@@ -3,7 +3,7 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
 #include "game/context.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include <time.h>
 #include "game/packets.h"

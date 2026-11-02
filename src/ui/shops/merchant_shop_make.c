@@ -19,6 +19,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 struct DragInfo;
 void ui_merchant_shop_make_wnd_destroy(struct UIWindow *window);
@@ -76,14 +77,14 @@ const struct UIWindowOps ui_merchant_shop_make_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-static __int64 price_with_commission(__int64 price, double sign)
+static int64_t price_with_commission(int64_t price, double sign)
 {
     double rate = (double)zeny_fee_percent(price) * (sign * 0.01);
 
-    return price + (__int64)((double)price * rate);
+    return price + (int64_t)((double)price * rate);
 }
 
-void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, __int64 amount)
+void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, int64_t amount)
 {
     struct AmountColours c;
 
@@ -419,7 +420,7 @@ int ui_merchant_shop_make_wnd_commit_price(struct UIMerchantShopMakeWnd *self, i
 {
     struct UIWindow *edit;
     char buf[0x18];
-    __int64 price;
+    int64_t price;
 
     if (self->focused == -1 || !g_session1.noPriceCheckWarning) {
         self->focused = next_row;
@@ -449,7 +450,7 @@ too_high:
     ui_window_invalidate_base(&self->frame.base);
 
 checked:
-    if (price >= (__int64)atoi(msg_str(MSG_PRICE_UNIT_SMALL))) {
+    if (price >= (int64_t)atoi(msg_str(MSG_PRICE_UNIT_SMALL))) {
         struct ItemInfo item;
         struct String text, part;
         const char *name;
@@ -510,7 +511,7 @@ static void draw_price_with_commission(struct UIWindow *wnd, struct UIWindow *ed
     struct AmountColours c;
     const char *word;
     int w;
-    __int64 price;
+    int64_t price;
 
     strcpy(buf, ui_edit_ctrl_get_text(edit));
     if (session_is_number_text(&g_session1, buf) != 1)
@@ -650,11 +651,11 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *edit;
     char buf[0x18];
-    __int64 price;
+    int64_t price;
     int row;
 
     if (self->total && self->buying) {
-        __int64 total = 0;
+        int64_t total = 0;
         char text[0x80];
         unsigned i;
 
@@ -664,7 +665,7 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
             _snprintf_s(price_text, sizeof price_text, (size_t)-1, "%s",
                            ui_edit_ctrl_get_text(self->prices[i]));
             if (session_is_number_text(&g_session1, price_text) == 1) {
-                __int64 count;
+                int64_t count;
 
                 price = _atoi64(price_text);
                 count = _atoi64(ui_edit_ctrl_get_text(self->counts[i]));

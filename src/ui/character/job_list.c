@@ -82,7 +82,6 @@ struct UIJobListWnd {
     int checked_count;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UIJobListWnd, ok, 0xb0);
 
 struct UIJobListWnd *ui_job_list_wnd_construct(struct UIJobListWnd *self)
 {

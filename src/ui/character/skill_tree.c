@@ -8,8 +8,7 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/character/skill_tree_internal.h"
 #include "ui/chat/chat_window_parts.h"
 #include "core/msg_str.h"
@@ -19,6 +18,7 @@
 #include "session/skill_levels.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 int g_skillWndHeadDx;
 int g_skillWndHeadDy;
@@ -126,7 +126,7 @@ struct UINewSkillListWnd *ui_new_skill_list_wnd_construct(struct UINewSkillListW
     self->tab = 0;
     self->dirty = 1;
     self->hover = -1;
-    self->anim_time = timeGetTime();
+    self->anim_time = platform_ticks_ms();
     self->anim_frame_counts[0] = self->anim_frame_counts[1] = 0;
     self->anim_frames[0] = self->anim_frames[1] = 0;
     self->drawn_key = 0;

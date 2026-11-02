@@ -3,7 +3,7 @@
 #include "session/state.h"
 #include "session/session_talk.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/talk_type.h"
 #include "game/client.h"
 #include "core/msg_str.h"

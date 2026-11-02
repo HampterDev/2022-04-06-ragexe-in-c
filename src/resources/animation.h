@@ -3,7 +3,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stddef.h>
 
 struct SprClip {

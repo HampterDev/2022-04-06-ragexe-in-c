@@ -5,13 +5,14 @@
 #include "effects/skills/skill_view.h"
 #include "effects/effect_controls.h"
 #include "std/tree.h"
+#include <stdint.h>
 
 struct BallSlot {
     float zoom;
     Vec3 offset;
 };
 struct SlotEntry {
-    __int64 key;
+    int64_t key;
     struct BallSlot slot;
 };
 
@@ -22,15 +23,15 @@ enum BallState {
     BALL_DYING = 3,
 };
 struct Ball {
-    __int64 key;
+    int64_t key;
     int state;
     struct Ez2StrParticle *anim;
 };
 
 struct FromTheAbyssEffect {
     struct Effect base;
-    __int64 max_balls;
-    __int64 ball_count;
+    int64_t max_balls;
+    int64_t ball_count;
     struct Tree slots;
     struct Tree balls;
 };
@@ -94,14 +95,14 @@ static struct Ez2StrParticle *open_anim(struct FromTheAbyssEffect *self, const c
     return p;
 }
 
-static struct BallSlot *slot_at(struct FromTheAbyssEffect *self, __int64 key)
+static struct BallSlot *slot_at(struct FromTheAbyssEffect *self, int64_t key)
 {
     struct SlotEntry *entry = tree_get(&self->slots, &key, sizeof key, sizeof *entry, tree_less_int64);
 
     return &entry->slot;
 }
 
-static struct Ball *ball_at(struct FromTheAbyssEffect *self, __int64 key)
+static struct Ball *ball_at(struct FromTheAbyssEffect *self, int64_t key)
 {
     return tree_get(&self->balls, &key, sizeof key, sizeof(struct Ball), tree_less_int64);
 }
@@ -115,7 +116,7 @@ struct FromTheAbyssEffect *from_the_abyss_effect_construct(struct FromTheAbyssEf
         { 0.7f, { 2.7f, -14.0f, 0.0f } },
         { 0.4f, { 4.3f, -10.0f, 0.0f } },
     };
-    __int64 key;
+    int64_t key;
 
     effect_construct(&self->base, -1);
     self->base.ops = &from_the_abyss_effect_ops;
@@ -150,7 +151,7 @@ static void from_the_abyss_effect_destroy(struct Effect *effect)
     mem_free(self);
 }
 
-void from_the_abyss_effect_create_ball(struct FromTheAbyssEffect *self, __int64 key)
+void from_the_abyss_effect_create_ball(struct FromTheAbyssEffect *self, int64_t key)
 {
     struct Ball *ball = tree_find(&self->balls, &key, tree_less_int64);
     struct Ez2StrParticle *p;
@@ -167,7 +168,7 @@ void from_the_abyss_effect_create_ball(struct FromTheAbyssEffect *self, __int64 
     ball->anim = p;
 }
 
-void from_the_abyss_effect_kill_ball(struct FromTheAbyssEffect *self, __int64 key)
+void from_the_abyss_effect_kill_ball(struct FromTheAbyssEffect *self, int64_t key)
 {
     struct Ball *ball = tree_find(&self->balls, &key, tree_less_int64);
     struct Ez2StrParticle *old, *p;
@@ -189,10 +190,10 @@ void from_the_abyss_effect_kill_ball(struct FromTheAbyssEffect *self, __int64 ke
     ball->anim = p;
 }
 
-void from_the_abyss_effect_set_ball_count(struct Effect *effect, __int64 count)
+void from_the_abyss_effect_set_ball_count(struct Effect *effect, int64_t count)
 {
     struct FromTheAbyssEffect *self = (struct FromTheAbyssEffect *)effect;
-    __int64 key;
+    int64_t key;
 
     if (count < 0 || count > self->max_balls)
         return;
@@ -225,7 +226,7 @@ void from_the_abyss_effect_place_ball(struct FromTheAbyssEffect *self, struct Ez
     ez2_str_particle_process(p, zero);
 }
 
-void from_the_abyss_effect_update_ball(struct FromTheAbyssEffect *self, __int64 key, int state,
+void from_the_abyss_effect_update_ball(struct FromTheAbyssEffect *self, int64_t key, int state,
                                                 struct Ez2StrParticle *anim)
 {
     struct Ez2StrParticle *p;

@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <mmsystem.h>
 #include "fileio/res_mgr.h"
+#include "platform/clock.h"
 
 struct TextureCacheStorage {
     struct Texture **textures;
@@ -206,7 +206,7 @@ struct Texture *texture_cache_get(struct TexCache *cache, const char *name,
     ++cache->storage->count;
     cache_write_end();
 found:
-    texture->lastUse = timeGetTime();
+    texture->lastUse = platform_ticks_ms();
 done:
     cache_leave(section);
     return texture;
@@ -272,7 +272,7 @@ void texcache_evict(struct TexCache *cache)
 {
     void *section = cache_enter(TEXTURE_CACHE_PURGE);
     struct TextureCacheStorage *storage = cache ? cache->storage : NULL;
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
     size_t i = 0;
     while (storage && i < storage->count) {
         struct Texture *texture = storage->textures[i];

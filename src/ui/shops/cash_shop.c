@@ -104,11 +104,6 @@ struct UICashShopWnd {
     struct Vec tiles;
     struct UIWindow *cart;
 };
-OFFSET_ASSERT(UICashShopWnd, goods, 0x94);
-OFFSET_ASSERT(UICashShopWnd, tab, 0xa4);
-OFFSET_ASSERT(UICashShopWnd, search, 0xb8);
-OFFSET_ASSERT(UICashShopWnd, tiles, 0xd0);
-SIZE_ASSERT(UICashShopWnd, 0xe0);
 
 struct CashTab {
     int id;

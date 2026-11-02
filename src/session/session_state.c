@@ -14,7 +14,6 @@
 #include <direct.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mmsystem.h>
 #include "render/render_api.h"
 #include "platform/language.h"
 #include "core/file_util.h"
@@ -22,6 +21,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
 #include "game/store_search_items.h"
+#include "platform/clock.h"
 
 void session_clear_shorten_item_name(struct Session *self)
 {
@@ -152,7 +152,7 @@ int session_get_transparent_item_alpha(struct Session *self, int key)
         return p->hi;
     base = p->hi >= p->lo ? p->lo : p->hi;
     half = (int)((float)(int)p->period * 0.5f);
-    t = timeGetTime() % p->period;
+    t = platform_ticks_ms() % p->period;
     if ((int)t > half)
         t = p->period - t;
     value = (int)((float)(int)t / (float)half * (float)range + (float)base);
@@ -298,20 +298,20 @@ void session_set_plate_cell(struct Session *self, int memberId, int value)
 
 void session_set_server_time(struct Session *self, DWORD serverTime)
 {
-    self->serverTimeOffset = timeGetTime() - serverTime;
+    self->serverTimeOffset = platform_ticks_ms() - serverTime;
     self->serverTimeLagCount = 0;
 }
 
 void session_sync_server_time(struct Session *self, DWORD serverTime)
 {
-    DWORD now = timeGetTime() - 72 - self->serverTimeOffset;
+    DWORD now = platform_ticks_ms() - 72 - self->serverTimeOffset;
 
     if (now + 72 < serverTime) {
-        self->serverTimeOffset = timeGetTime() - serverTime;
+        self->serverTimeOffset = platform_ticks_ms() - serverTime;
     } else if (now + 72 > serverTime + 0x90) {
         if (++self->serverTimeLagCount < 4)
             return;
-        self->serverTimeOffset = timeGetTime() + (72 - now);
+        self->serverTimeOffset = platform_ticks_ms() + (72 - now);
     }
     self->serverTimeLagCount = 0;
 }

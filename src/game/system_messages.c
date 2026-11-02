@@ -3,7 +3,7 @@
 #include "iteminfo/item_api.h"
 #include "session/state.h"
 #include "core/memory.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/system_messages.h"

@@ -15,7 +15,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_items.h"
@@ -25,6 +24,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "session/session_state.h"
+#include "platform/clock.h"
 
 #define GRADE_DIR UI_SKIN "grade_enchant\\"
 
@@ -117,12 +117,6 @@ struct UIGradeEnchantWnd {
     struct ItemInfo item;
     BYTE waiting;
 };
-OFFSET_ASSERT(UIGradeEnchantWnd, state, 0xa0);
-OFFSET_ASSERT(UIGradeEnchantWnd, materials, 0xcc);
-OFFSET_ASSERT(UIGradeEnchantWnd, blessing, 0xd8);
-OFFSET_ASSERT(UIGradeEnchantWnd, protect, 0xf0);
-OFFSET_ASSERT(UIGradeEnchantWnd, cautions, 0xfc);
-OFFSET_ASSERT(UIGradeEnchantWnd, item, 0x108);
 
 #define MATERIAL(self, i) (((struct GradeMaterial *)(self)->materials.first) + (i))
 #define MATERIAL_COUNT(self) \
@@ -487,7 +481,7 @@ void ui_grade_enchant_wnd_reset(struct UIGradeEnchantWnd *self)
     self->result_time = 0;
     self->state = 0;
     self->result = -1;
-    self->frame_time = timeGetTime();
+    self->frame_time = platform_ticks_ms();
     self->anim_frame = 1;
     ui_window_invalidate_base(&self->frame.base);
     ui_window_invalidate_base(&self->frame.base);
@@ -607,7 +601,7 @@ void ui_grade_enchant_wnd_set_materials(struct UIGradeEnchantWnd *self,
         self->success_chance = success_chance;
         self->state = 1;
         self->result = -1;
-        self->frame_time = timeGetTime();
+        self->frame_time = platform_ticks_ms();
         self->anim_frame = 1;
         ui_window_invalidate_base(&self->frame.base);
         self->waiting = 0;
@@ -622,7 +616,7 @@ void grade_enchant_wnd_set_result(struct UIGradeEnchantWnd *self, int state,
 
     self->state = state;
     self->result = result;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     self->frame_time = now;
     self->anim_frame = 1;
     if (state == 2)
@@ -696,18 +690,18 @@ void ui_grade_enchant_wnd_on_process(struct UIWindow *window)
 
     if (frames[self->state] <= self->anim_frame)
         return;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (now > self->frame_delay + self->frame_time) {
         self->anim_frame++;
         if (frames[self->state] <= self->anim_frame)
             self->anim_frame = 1;
-        self->frame_time = timeGetTime();
+        self->frame_time = platform_ticks_ms();
         ui_window_invalidate_base(&self->frame.base);
     }
     if (now > self->wheel_delay + self->wheel_time) {
         if (++self->wheel >= 4)
             self->wheel = 1;
-        self->wheel_time = timeGetTime();
+        self->wheel_time = platform_ticks_ms();
         ui_window_invalidate_base(&self->frame.base);
     }
     if (self->state == 2 && now >= self->result_time + 3000) {

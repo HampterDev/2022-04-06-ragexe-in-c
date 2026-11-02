@@ -1,6 +1,7 @@
 #include <string.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
+#include <stdint.h>
 
 #define MONSTER_DIR "몬스터\\"
 
@@ -545,7 +546,7 @@ void rag_ice_shards_150(struct RagEffect *self)
             RAG_MSG_F(self, 0) = 10.0f;
         rec->size10 = (short)(int)RAG_MSG_F(self, 0);
         k = (float)rec->size10 / 10.0f;
-        n = (unsigned)(__int64)RAG_MSG_F(self, 2);
+        n = (unsigned)(int64_t)RAG_MSG_F(self, 2);
         m = n % 1000000;
         rec->tint[0] = (unsigned char)(m / 10000);
         rec->tint[1] = (unsigned char)((m - rec->tint[2] * 10000) / 100);

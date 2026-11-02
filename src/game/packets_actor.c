@@ -10,11 +10,10 @@
 #include "std/integer_map.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include <mmsystem.h>
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/packets.h"
@@ -32,6 +31,7 @@
 #include "ui/misc/rolling_cutter.h"
 #include "world/world.h"
 #include "session/session_skills.h"
+#include "platform/clock.h"
 
 #define ACTOR_MSG_DEAD          0x1c
 #define ACTOR_MSG_OUT_OF_SIGHT  0x63
@@ -788,5 +788,5 @@ void game_mode_zc_equip_arrow(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_EQUIP_ARROW *packet = (const struct PACKET_ZC_EQUIP_ARROW *)pkt;
     session_set_arrow(&g_session1, packet->index);
-    self->wear_ack_time = timeGetTime() - 2000;
+    self->wear_ack_time = platform_ticks_ms() - 2000;
 }

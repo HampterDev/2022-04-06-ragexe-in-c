@@ -15,6 +15,7 @@
 #include "actor/game_actor.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "std/list.h"
+#include <stdint.h>
 
 static void world_destruct(struct World *self)
 {
@@ -151,14 +152,14 @@ void world_send_msg_to_object(struct World *self, void *sender, int key1, int ke
                                        int a, int b, int c, int d, int e)
 {
     struct ListNode *head, *n;
-    unsigned __int64 serial;
+    uint64_t serial;
     void *obj;
 
     if (!self)
         return;
     if (key1 == 0 && key2 == 0)
         return;
-    serial = (unsigned __int64)(unsigned)key2 << 32 | (unsigned)key1;
+    serial = (uint64_t)(unsigned)key2 << 32 | (unsigned)key1;
     head = self->gameObjects.head;
     for (n = head->next; n != head; n = n->next)
         if ((*LIST_VALUE(n, struct GameObject *))->serial == serial)

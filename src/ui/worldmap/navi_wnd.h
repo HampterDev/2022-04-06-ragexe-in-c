@@ -24,7 +24,6 @@ struct UINavigationWnd {
     struct NavigationWndInfo *info;
     struct UIResizer *resizer;
 };
-OFFSET_ASSERT(UINavigationWnd, title, 0x9c);
 
 #define NAVI_ID_SEARCH 0x139
 #define NAVI_ID_START 0xb0

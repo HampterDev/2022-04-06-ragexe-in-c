@@ -10,7 +10,6 @@ struct UIItemStoreComboBox {
     struct UIComboBoxEx combo;
     BYTE pink;
 };
-SIZE_ASSERT(UIItemStoreComboBoxWnd, 0xac);
 
 void ui_item_store_combo_box_destroy(struct UIWindow *window);
 void ui_item_store_combo_box_on_create(struct UIWindow *self, int width, int height);

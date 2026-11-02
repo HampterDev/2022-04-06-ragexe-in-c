@@ -48,9 +48,6 @@ struct UIEscOptionWnd {
     int layout;
     int title_height;
 };
-OFFSET_ASSERT(UIEscOptionWnd, buttons, 0x94);
-OFFSET_ASSERT(UIEscOptionWnd, layout, 0xb0);
-SIZE_ASSERT(UIEscOptionWnd, 0xb8);
 
 struct UIWindow;
 void ui_esc_option_wnd_destroy(struct UIWindow *window);

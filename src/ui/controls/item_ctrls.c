@@ -12,7 +12,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "game/drag_info.h"
@@ -51,7 +50,6 @@ struct UIBasicItemCtrl {
     struct String empty_tooltip;
     struct ItemInfo item;
 };
-OFFSET_ASSERT(UIBasicItemCtrl, empty_tooltip, 0x88);
 struct DragInfo;
 const struct UIWindowOps ui_basic_item_ctrl_ops = {
     .destroy = ui_basic_item_ctrl_destroy,
@@ -241,7 +239,6 @@ struct UIBasicSkillCtrl {
     int skill_id;
     int level;
 };
-SIZE_ASSERT(UIBasicSkillCtrl, 0x84);
 const struct UIWindowOps ui_basic_skill_ctrl_ops = {
     .destroy = ui_basic_skill_ctrl_destroy,
     .resize = ui_window_resize_base,

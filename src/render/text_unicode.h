@@ -1,7 +1,7 @@
 #ifndef RENDER_TEXT_UNICODE_H
 #define RENDER_TEXT_UNICODE_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct TextUnicode {
     WCHAR local[512];

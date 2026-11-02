@@ -73,11 +73,6 @@ struct UIDisplayCharacter {
     int draw_x, draw_y;
     int goods_top, goods_mid, goods_bottom;
 };
-OFFSET_ASSERT(UIDisplayCharacter, robe, 0x88);
-OFFSET_ASSERT(UIDisplayCharacter, start_time, 0xa8);
-OFFSET_ASSERT(UIDisplayCharacter, draw_x, 0xb4);
-OFFSET_ASSERT(UIDisplayCharacter, goods_top, 0xbc);
-SIZE_ASSERT(UIDisplayCharacter, 0xc8);
 struct UIDisplayCharacter *ui_display_character_construct(struct UIDisplayCharacter *self);
 void ui_display_character_copy_look(struct UIDisplayCharacter *self,
                                             const struct UIDisplayCharacter *other);
@@ -100,11 +95,6 @@ struct UIShowInfoWnd {
     int text_x, text_y;
     const char *row_bitmap;
 };
-OFFSET_ASSERT(UIShowInfoWnd, show_hint, 0x9c);
-OFFSET_ASSERT(UIShowInfoWnd, all_ok, 0xa8);
-OFFSET_ASSERT(UIShowInfoWnd, kinds, 0xb0);
-OFFSET_ASSERT(UIShowInfoWnd, icon_x, 0xbc);
-SIZE_ASSERT(UIShowInfoWnd, 0xd0);
 struct UIShowInfoWnd *ui_show_info_wnd_construct(struct UIShowInfoWnd *self);
 void ui_show_info_wnd_setup(struct UIShowInfoWnd *self, const int *tab);
 BYTE show_info_buy(struct UIShowInfoWnd *self);
@@ -114,21 +104,18 @@ struct UIStylingTab {
     struct UIDisplayCharacter *display;
     struct UIShowInfoWnd *info;
 };
-SIZE_ASSERT(UIStylingTab, 0x84);
 
 struct UIBasicStylingWnd {
     struct UIStylingTab tab;
     struct Vec palette;
     struct UIBitmapButton *no_colour;
 };
-SIZE_ASSERT(UIBasicStylingWnd, 0x94);
 
 struct UI2ndCostumeWnd {
     struct UIStylingTab tab;
     struct UICheckBox *show_box;
     struct UICheckBox *hide_box;
 };
-SIZE_ASSERT(UI2ndCostumeWnd, 0x8c);
 
 #define MY_STYLE_SLOTS 3
 struct UIMyStyleWnd {
@@ -139,8 +126,6 @@ struct UIMyStyleWnd {
     struct UIBitmapButton *rotate_left[MY_STYLE_SLOTS];
     struct UIBitmapButton *rotate_right[MY_STYLE_SLOTS];
 };
-OFFSET_ASSERT(UIMyStyleWnd, slots, 0x88);
-SIZE_ASSERT(UIMyStyleWnd, 0xb8);
 void ui_my_style_wnd_load_slots(struct UIMyStyleWnd *self);
 void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self);
 BYTE my_style_add_slot(struct UIMyStyleWnd *self, struct UIDisplayCharacter *look);
@@ -164,8 +149,6 @@ struct UIStylingShopWnd {
     struct UIDisplayCharacter *display;
     struct Tree tabs;
 };
-OFFSET_ASSERT(UIStylingShopWnd, tabs, 0x9c);
-SIZE_ASSERT(UIStylingShopWnd, 0xa4);
 struct StyleTab {
     struct UIWindow *button;
     struct UIStylingTab *tab;

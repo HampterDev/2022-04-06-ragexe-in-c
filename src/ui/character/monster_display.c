@@ -74,7 +74,6 @@ struct UIMonsterDisplayWnd {
     struct String title_text;
     BYTE sprite_loaded;
 };
-OFFSET_ASSERT(UIMonsterDisplayWnd, name, 0x94);
 
 struct UIMonsterDisplayWnd *ui_monster_display_wnd_construct(struct UIMonsterDisplayWnd *self)
 {

@@ -11,7 +11,7 @@
 #include "ui/ui_std.h"
 
 struct RenewQuestB g_questEmptyOngoing;
-INIT_ONCE g_questEmptyOngoingGuard;
+struct Once g_questEmptyOngoingGuard;
 void renew_quest_empty_ongoing_atexit(void);
 
 #define TITLE_WIDTH 0xfa

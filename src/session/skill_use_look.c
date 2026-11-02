@@ -8,6 +8,7 @@
 #include "game/skill_use.h"
 #include "effects/effect_controls.h"
 #include "session/session_skills.h"
+#include <stdint.h>
 
 static void on(struct GameActor *actor, int effect_id)
 {
@@ -28,7 +29,7 @@ static struct RagEffect *on_placed(struct GameActor *actor, int effect_id, const
 
 static void effect_set_level(struct RagEffect *effect, int level)
 {
-    rag_effect_send_msg(effect, NULL, 0x2c, (__int64)level, 0, 0);
+    rag_effect_send_msg(effect, NULL, 0x2c, (int64_t)level, 0, 0);
 }
 
 static void on_target_with_level(struct GameActor *target, int effect_id, int level)

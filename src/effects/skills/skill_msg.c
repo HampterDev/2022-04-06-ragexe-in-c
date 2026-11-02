@@ -26,6 +26,7 @@
 #include "session/session_names.h"
 #include "session/session_party.h"
 #include "actor/actor_msg.h"
+#include "platform/clock.h"
 
 #define MSG_BALLOON 0x07
 #define MSG_SKILL_ATTACK 0x25
@@ -111,7 +112,7 @@ static void show_balloon(struct Skill *self, const char *text)
 
     if (strlen(text) == 0)
         return;
-    BALLOON_TICK(me) = timeGetTime();
+    BALLOON_TICK(me) = platform_ticks_ms();
     if (!self->base.balloon_wnd) {
         void *p = mem_alloc(sizeof(struct UITransBalloonText));
         wnd = p ? ui_trans_balloon_text_construct(p) : 0;
@@ -169,7 +170,7 @@ static void skill_attack(struct Skill *self, const struct ActorSkillUse *attack)
     if (target) {
         hit.attacker_aid = self->unit_aid;
         hit.target_aid = self->base.attack_target_aid;
-        hit.tick = timeGetTime();
+        hit.tick = platform_ticks_ms();
         hit.cell_x = attack->cell_x;
         hit.cell_y = attack->cell_y;
         hit.value = attack->level;

@@ -8,7 +8,7 @@
 #include "contents/mouse.h"
 #include "core/object_type.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/mode_msg.h"
 #include "game/input.h"

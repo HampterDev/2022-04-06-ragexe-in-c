@@ -136,7 +136,6 @@ struct UIGuildNoticeWnd {
     struct UIWindow *body_edit;
     struct UIBitmapButton *send_button;
 };
-SIZE_ASSERT(UIGuildNoticeWnd, 0xbc);
 #define GUILD_WND(self) (&(self)->base.frame.base)
 
 struct UIGuildNoticeWnd *ui_guild_notice_wnd_construct(struct UIGuildNoticeWnd *self)

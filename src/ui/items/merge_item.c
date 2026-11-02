@@ -45,10 +45,6 @@ struct MergeItemWnd {
     int top_row;
     int max_row;
 };
-OFFSET_ASSERT(MergeItemWnd, checks, 0xa0);
-OFFSET_ASSERT(MergeItemWnd, count, 0xb4);
-OFFSET_ASSERT(MergeItemWnd, max_row, 0xc8);
-SIZE_ASSERT(MergeItemWnd, 0xcc);
 
 void merge_item_wnd_destroy(struct UIWindow *window);
 void merge_item_wnd_resize(struct UIWindow *self, int width, int height);

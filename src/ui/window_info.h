@@ -1,7 +1,7 @@
 #ifndef UI_WINDOW_INFO_H
 #define UI_WINDOW_INFO_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 struct WindowInfo {

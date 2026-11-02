@@ -1,7 +1,7 @@
 #ifndef RENDER_TEXTDC_H
 #define RENDER_TEXTDC_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 struct DcBitmap;
 struct gfx_surface;
 

@@ -8,6 +8,7 @@
 #include "actor/job.h"
 #include "session/session_jobs.h"
 #include "session/session_skills.h"
+#include "platform/clock.h"
 
 static DWORD arg_id(lua_State *L, int n)
 {
@@ -72,11 +73,11 @@ int merc_ai_homun_attack(lua_State *L)
         return 0;
     if (actor_hidden(target))
         return 0;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if ((DWORD)g_session1.homunStats[7] + g_homunLastAttackTick >= now)
         return 0;
     send_attack(aid, tid);
-    g_homunLastAttackTick = timeGetTime();
+    g_homunLastAttackTick = platform_ticks_ms();
     return 0;
 }
 
@@ -97,11 +98,11 @@ int merc_ai_merc_attack(lua_State *L)
         return 0;
     if (actor_hidden(target))
         return 0;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if ((DWORD)g_session1.mercStats[7] + g_mercLastAttackTick >= now)
         return 0;
     send_attack(aid, tid);
-    g_mercLastAttackTick = timeGetTime();
+    g_mercLastAttackTick = platform_ticks_ms();
     return 0;
 }
 

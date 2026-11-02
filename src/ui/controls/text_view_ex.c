@@ -9,7 +9,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"

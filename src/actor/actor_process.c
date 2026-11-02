@@ -24,9 +24,10 @@
 #include "game/mode_callbacks.h"
 #include "game/input.h"
 #include "game/mode_msg.h"
+#include "platform/clock.h"
 
 static float g_actorBalloonScale;
-static INIT_ONCE g_actorBalloonScaleGuard;
+static struct Once g_actorBalloonScaleGuard;
 
 static void actor_forget_window(struct GameActor *actor, const struct UIWindow *wnd)
 {
@@ -74,7 +75,7 @@ void game_actor_process_chat_balloon_(struct GameActor *self)
     }
 
     if (self->balloon_wnd) {
-        if (timeGetTime() >= self->balloon_tick + 5000) {
+        if (platform_ticks_ms() >= self->balloon_tick + 5000) {
             ui_window_mgr_post_quit2(&g_windowMgr, self->balloon_wnd);
             self->balloon_wnd = NULL;
         } else {
@@ -105,8 +106,8 @@ void game_actor_process_chat_balloon_(struct GameActor *self)
     if (self->recharge_gage_wnd) {
         unsigned now;
 
-        timeGetTime();
-        now = timeGetTime();
+        platform_ticks_ms();
+        now = platform_ticks_ms();
         if (now > self->cast_end_tick) {
             render_object_send(self, NULL, 0x53, 0, 0, 0, 0);
             if (self->state == 8)
@@ -118,7 +119,7 @@ void game_actor_process_chat_balloon_(struct GameActor *self)
             total = (int)(self->cast_end_tick - self->cast_start_tick);
             if (total < 0)
                 total = 1;
-            done = (int)timeGetTime() + (total - (int)self->cast_end_tick);
+            done = (int)platform_ticks_ms() + (total - (int)self->cast_end_tick);
             ui_recharge_gage_set_amount((struct UIRechargeGage *)self->recharge_gage_wnd, done <= total ? done : total, total);
         }
     }
@@ -143,13 +144,13 @@ void game_actor_process_effect_state(struct GameActor *self)
         self->efst_effect_frames = 0;
         effect = game_actor_launch_effect(self, 0x16, zero, 0.0f);
         if (effect)
-            rag_effect_send_msg(effect, NULL, 0x2c, (timeGetTime() >> 4) % 10 + 1, 0, 0);
+            rag_effect_send_msg(effect, NULL, 0x2c, (platform_ticks_ms() >> 4) % 10 + 1, 0, 0);
     }
     if (effect_state_bit13(self->effect_state) && (unsigned)self->efst_effect_frames >= (unsigned)g_effectDurations[0x21]) {
         self->efst_effect_frames = 0;
         effect = game_actor_launch_effect(self, 0x21, zero, 0.0f);
         if (effect)
-            rag_effect_send_msg(effect, NULL, 0x2c, (timeGetTime() >> 4) % 10 + 1, 0, 0);
+            rag_effect_send_msg(effect, NULL, 0x2c, (platform_ticks_ms() >> 4) % 10 + 1, 0, 0);
     }
     self->efst_effect_frames++;
 }
@@ -221,7 +222,7 @@ static void name_fill(struct String *s, struct GameMode *mode, int aid)
 
 void game_actor_process_will_be_attacked(struct GameActor *self)
 {
-    unsigned now = timeGetTime();
+    unsigned now = platform_ticks_ms();
     struct ListNode *node = self->hit_queue.head->next;
 
     while (node != self->hit_queue.head) {
@@ -281,7 +282,7 @@ void game_actor_set_unit_cell(struct GameActor * self)
 }
 
 static int g_actorPickLeast;
-static INIT_ONCE g_actorPickLeastGuard;
+static struct Once g_actorPickLeastGuard;
 
 #define ACTOR_JOB_IS(fn, self) (fn(&g_session1, game_actor_get_job((self))))
 

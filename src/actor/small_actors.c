@@ -17,6 +17,7 @@
 #include "platform/clientinfo.h"
 #include "session/session_skills.h"
 #include "actor/clone_owner.h"
+#include "platform/clock.h"
 
 const struct RenderObjectOps sound_maker_ops = {
     .base = {
@@ -493,7 +494,7 @@ void hallu_plant_delete(struct GameObject *object)
 
 static float frames_since_start(const struct RenderObject *self)
 {
-    unsigned elapsed = timeGetTime() - self->start_tick;
+    unsigned elapsed = platform_ticks_ms() - self->start_tick;
 
     return (float)(double)elapsed / 24.0f;
 }
@@ -682,8 +683,8 @@ unsigned char sound_maker_on_process(struct GameObject *object)
         return 1;
     if (self->wave.size == 0)
         return 1;
-    if (timeGetTime() > self->interval + self->last_play) {
-        self->last_play = timeGetTime();
+    if (platform_ticks_ms() > self->interval + self->last_play) {
+        self->last_play = platform_ticks_ms();
         sound_play_wave(string_cstr(&self->wave), at_x - player->pos.x, 0.0f,
                         at_z - player->pos.z, (int)self->range, (int)(self->range / 6.0f), self->volume);
     }

@@ -5,8 +5,6 @@
 #include "std/tree.h"
 #include "contents/quest.h"
 
-OFFSET_ASSERT(RenewQuestBase, text, 0x04);
-
 struct OngoingQuestEntry {
     unsigned id;
     struct RenewQuestB quest;

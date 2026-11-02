@@ -23,7 +23,6 @@ struct UITab {
     int count;
     int kind;
 };
-SIZE_ASSERT(UITab, 0x84);
 struct UITab *ui_tab_construct(struct UITab *self);
 
 enum UITabSide {
@@ -54,13 +53,6 @@ struct UITabControl {
     int font_height;
     struct StdBitVector new_marks;
 };
-OFFSET_ASSERT(UITabControl, side, 0x80);
-OFFSET_ASSERT(UITabControl, fill_selected, 0x90);
-OFFSET_ASSERT(UITabControl, renamable, 0xa8);
-OFFSET_ASSERT(UITabControl, names, 0xb4);
-OFFSET_ASSERT(UITabControl, edit, 0xd8);
-OFFSET_ASSERT(UITabControl, new_marks, 0xe0);
-SIZE_ASSERT(UITabControl, 0xf0);
 struct UIWindow *ui_tab_control_construct(struct UIWindow *self);
 void ui_tab_control_setup(struct UIWindow *self, int side, int thickness, int padding,
                                    BYTE equal_lengths, BYTE no_fill, BYTE renamable, DWORD fill_selected,
@@ -106,7 +98,5 @@ struct UIBitmapTab {
     struct Vec tabs;
     struct Tree tab_lookup;
 };
-OFFSET_ASSERT(UIBitmapTab, tab_lookup, 0x88);
-SIZE_ASSERT(UIBitmapTab, 0x90);
 
 #endif

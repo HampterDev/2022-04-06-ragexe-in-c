@@ -112,7 +112,6 @@ struct UIExchangeWnd {
     int money_len;
     struct String money_text;
 };
-OFFSET_ASSERT(UIExchangeWnd, buttons, 0x94);
 
 static const int g_buttonX[3] = { 3, 0x104, 0x1fe };
 

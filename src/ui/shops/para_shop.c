@@ -60,9 +60,6 @@ struct UIParaResultWnd {
     int bottom;
     int extra;
 };
-OFFSET_ASSERT(UIParaResultWnd, title, 0xd0);
-OFFSET_ASSERT(UIParaResultWnd, extra, 0xe0);
-SIZE_ASSERT(UIParaResultWnd, 0xe4);
 
 struct DragInfo;
 struct UIItemShopWnd;

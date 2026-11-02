@@ -3,8 +3,7 @@
 #include "actor/actor_ops.h"
 #include "effects/rag/rag_effect.h"
 #include "contents/client_lua_calls.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "actor/render_object.h"
 #include "resources/attr_queries.h"
 #include "session/state.h"
@@ -21,6 +20,8 @@
 #include "session/session_state.h"
 #include "session/session_windows.h"
 #include "world/world.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PacketNotifyEffect {
@@ -141,12 +142,12 @@ enum {
     ACTOR_MSG_SHOW_NUMBER = 0x58,
 };
 
-static void show_number(struct GameActor *actor, __int64 num, unsigned color)
+static void show_number(struct GameActor *actor, int64_t num, unsigned color)
 {
     render_object_send(actor, NULL, ACTOR_MSG_SHOW_NUMBER, num, color, 0x72, 0);
 }
 
-void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect_id, __int64 num)
+void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect_id, int64_t num)
 {
     static const unsigned number_colors[EF_NUMBER_LAST - EF_NUMBER_FIRST + 1] = {
         0xff00ff00, 0xff0000ff, 0xffff0000, 0xffff00ff, 0xff000000, 0xffffffff, 0xffffff00, 0xffff55b1,
@@ -212,7 +213,7 @@ struct PacketNotifyEffect4 {
     unsigned short packet_type;
     int aid;
     int effect_id;
-    __int64 num;
+    int64_t num;
 };
 #pragma pack(pop)
 
@@ -301,7 +302,7 @@ void game_mode_on_ef_warning_plane(struct GameMode *self, int aid, unsigned shor
             at.y = c3d_attr_get_height(self->world->attr, wx, wz);
             at.z = wz;
             warning_plane_effect_add_plane(effect, at);
-            warning_plane_effect_set_end_time(effect, timeGetTime() + duration);
+            warning_plane_effect_set_end_time(effect, platform_ticks_ms() + duration);
         }
     }
 }

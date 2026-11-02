@@ -36,7 +36,7 @@ const char *luaL_checklstring(lua_State *L, int narg, size_t *len);
 #include "actor/types.h"
 
 extern struct String g_traceAiLast;
-extern INIT_ONCE g_traceAiLastGuard;
+extern struct Once g_traceAiLastGuard;
 
 struct MercenaryAI *merc_ai_construct(struct MercenaryAI *self, int kind);
 void merc_ai_close(struct MercenaryAI *self);

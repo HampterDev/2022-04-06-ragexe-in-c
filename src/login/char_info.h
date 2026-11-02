@@ -1,7 +1,7 @@
 #ifndef LOGINMODE_CHAR_INFO_H
 #define LOGINMODE_CHAR_INFO_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 #pragma pack(push, 1)

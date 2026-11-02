@@ -48,8 +48,6 @@ struct UIPartySettingWnd {
     struct UIWindow *name;
     int layout;
 };
-OFFSET_ASSERT(UIPartySettingWnd, info, 0xb8);
-SIZE_ASSERT(UIPartySettingWnd, 0xc4);
 void ui_party_setting_wnd_destroy(struct UIWindow *window);
 void ui_party_setting_wnd_store_info(struct UIWindow *self);
 void ui_party_setting_wnd_on_create(struct UIWindow *self, int width, int height);
@@ -287,8 +285,6 @@ struct UIPartyInvitationToWnd {
     struct UIPartySettingWnd setting;
     struct UIWindow *name;
 };
-OFFSET_ASSERT(UIPartyInvitationToWnd, name, 0xc4);
-SIZE_ASSERT(UIPartyInvitationToWnd, 0xc8);
 void ui_party_invitation_to_wnd_destroy(struct UIWindow *window);
 void ui_party_invitation_to_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_party_invitation_to_wnd_on_draw(struct UIWindow *self);

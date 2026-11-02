@@ -1,6 +1,6 @@
 #ifndef RENDER_CDC_H
 #define RENDER_CDC_H
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stddef.h>
 
 struct Texture;

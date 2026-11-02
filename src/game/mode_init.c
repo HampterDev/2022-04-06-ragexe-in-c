@@ -23,7 +23,7 @@
 #include "game/mode_callbacks.h"
 #include "game/mode_msg.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include <time.h>
 #include "game/gamemode.h"

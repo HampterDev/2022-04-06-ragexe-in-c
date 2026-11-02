@@ -16,6 +16,7 @@
 #include "session/session_windows.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define LMSG_SERVICE            0x00
 #define LMSG_DISCONNECT_BOX     0x01
@@ -351,7 +352,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0) == 0x105)
             return 0;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         return back_to_login(self);
     case 0x2726: return select_sub_connection(self, a);
     case 0x2728: login_set_otp_code(self, (const char *)a); return 0;

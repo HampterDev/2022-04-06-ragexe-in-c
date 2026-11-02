@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "platform/language.h"
 #include "ui/render/graphic_setting.h"
 

@@ -9,10 +9,10 @@
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "diag/perf.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 struct UIEditCtrl;
 struct UIWindow;
@@ -272,13 +272,13 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_candidate_wnd(self, lo_x);
             ui_edit_ctrl_place_key_stroke_wnd(self, hi_x);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1))
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1))
                 ui_edit_ctrl_draw_highlight(self, lo_x + x, max(hi_x - lo_x, 2));
             draw_string(self, x, &shown);
             plain = 0;
         } else {
             draw_string(self, x, &shown);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1) && ui_edit_ctrl_caret_shown())
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1) && ui_edit_ctrl_caret_shown())
                 ui_window_text_out(wnd, lo_x + x - 2, self->text_y, "|", 0, 0, EDIT_FONT_HEIGHT,
                                  self->text_colour, 0, 0);
         }
@@ -393,7 +393,7 @@ unsigned long long ui_edit_ctrl_focus_key(void)
     key = draw_key_int(key, language->candidate_selection);
     key = draw_key_int(key, language->masked);
     key = draw_key_text(key, language_charset_tag(language, 0));
-    key = draw_key_int(key, (int)((timeGetTime() / CARET_BLINK_MS) & 1));
+    key = draw_key_int(key, (int)((platform_ticks_ms() / CARET_BLINK_MS) & 1));
     key = draw_key_int(key, g_windowMgr.chat_bar_shown);
     return draw_key_int(key, ui_edit_ctrl_caret_shown());
 }

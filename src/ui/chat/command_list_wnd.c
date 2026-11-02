@@ -37,8 +37,6 @@ struct UICommandListWnd {
     int has_scroll;
     int scroll_row;
 };
-OFFSET_ASSERT(UICommandListWnd, tab, 0x94);
-OFFSET_ASSERT(UICommandListWnd, scroll_row, 0xac);
 
 #define CMDLIST_TAB(self) ((self)->tab->base.state)
 

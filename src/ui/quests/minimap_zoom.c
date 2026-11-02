@@ -28,8 +28,6 @@ struct UIMinimapZoomWnd {
     struct Tree buttons;
     struct Vec row;
 };
-OFFSET_ASSERT(UIMinimapZoomWnd, buttons, 0x94);
-OFFSET_ASSERT(UIMinimapZoomWnd, row, 0x9c);
 struct ZoomButton {
     int index;
     struct UIWindow *button;

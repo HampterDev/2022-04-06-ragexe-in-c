@@ -13,10 +13,10 @@
 #include "ui/controls/controls.h"
 #include "ui/character/character.h"
 #include "ui/ui_items.h"
-#include <mmsystem.h>
 #include "render/renderer.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define MSGBOX_OK 0
 #define MSGBOX_YES_NO 2
@@ -48,7 +48,6 @@ struct UIMessageBox {
     int modal;
     BYTE keep_text;
 };
-OFFSET_ASSERT(UIMessageBox, format, 0xb0);
 
 void ui_message_box_destroy(struct UIWindow *window);
 void ui_message_box_on_destroy(struct UIWindow *self);
@@ -170,8 +169,8 @@ static void msgbox_start(struct UIMessageBox *self, const char *text, DWORD dura
 {
     string_assign_cstr(&self->text, text);
     string_assign_cstr(&self->format, text);
-    self->start = timeGetTime();
-    self->end = timeGetTime() + duration;
+    self->start = platform_ticks_ms();
+    self->end = platform_ticks_ms() + duration;
     self->shown = msgbox_seconds(self->start, self->end);
 }
 
@@ -211,14 +210,14 @@ static int msgbox_tick(struct UIMessageBox *self)
     char buf[0x200];
     int last, secs, round_up;
 
-    if (timeGetTime() > self->end) {
+    if (platform_ticks_ms() > self->end) {
         g_windowMgr.modal_result = MSGBOX_TIMEOUT_RESULT;
         self->counting = 0;
         return 0;
     }
     last = self->shown;
-    round_up = (self->end - timeGetTime()) % 1000 != 0;
-    secs = (int)((self->end - timeGetTime()) / 1000) + round_up;
+    round_up = (self->end - platform_ticks_ms()) % 1000 != 0;
+    secs = (int)((self->end - platform_ticks_ms()) / 1000) + round_up;
     self->shown = secs;
     if (last != secs) {
         sprintf(buf, string_cstr(&self->format), secs);
@@ -395,7 +394,7 @@ void ui_message_box_autoreturn_on_process(struct UIWindow *window)
     if (!self->counting || !msgbox_tick(self))
         return;
     total_ms = (unsigned)self->total * 1000;
-    gone = timeGetTime() + (total_ms - self->end);
+    gone = platform_ticks_ms() + (total_ms - self->end);
     ui_bar_graph_set_pos(self->gauge, (float)(double)(gone * 100 / total_ms));
 }
 

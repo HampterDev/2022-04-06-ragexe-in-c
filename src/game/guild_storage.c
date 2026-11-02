@@ -9,6 +9,7 @@
 #include "game/guild_storage.h"
 #include "core/msg_str.h"
 #include "session/session_items.h"
+#include <stdint.h>
 
 enum {
     WID_GUILD_STORAGE = 0x21,
@@ -95,7 +96,7 @@ struct GuildStorageLogRecord {
     int amount;
     unsigned char action;
     int refine;
-    __int64 unique_id;
+    int64_t unique_id;
     unsigned char identified;
     short item_type;
     int cards[4];
@@ -210,7 +211,7 @@ struct GuildStorageLogRecord2 {
     int item_id;
     int amount;
     unsigned char action;
-    __int64 unique_id;
+    int64_t unique_id;
     unsigned char identified;
     short item_type;
     int cards[4];

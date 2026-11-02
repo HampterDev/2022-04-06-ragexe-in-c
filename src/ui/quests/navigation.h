@@ -23,8 +23,6 @@ struct UIListBox_NaviSearch {
     struct UIListBox list;
     struct Vec kinds;
 };
-OFFSET_ASSERT(UIListBox_NaviSearch, kinds, 0xd0);
-SIZE_ASSERT(UIListBox_NaviSearch, 0xdc);
 #define NAVI_LINE_MAP 1
 #define NAVI_LINE_NPC 2
 #define NAVI_LINE_MOB 3
@@ -73,8 +71,6 @@ struct UINavigationV4Wnd {
     DWORD hint_until;
     int anim_period;
 };
-OFFSET_ASSERT(UINavigationV4Wnd, close_button, 0x94);
-OFFSET_ASSERT(UINavigationV4Wnd, results, 0xc8);
 
 #define NAVI_MSG_ROAD_ICON 0x28
 

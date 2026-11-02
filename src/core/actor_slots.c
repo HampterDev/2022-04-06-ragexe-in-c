@@ -3,7 +3,7 @@
 #include "actor/appearance.h"
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
 #include "actor/job.h"

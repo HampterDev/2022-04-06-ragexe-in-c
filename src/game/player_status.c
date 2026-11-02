@@ -3,8 +3,7 @@
 #include "ui/chat/balloon.h"
 #include "session/state.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/gamemode.h"
 #include "game/ui_bridge.h"
 #include "game/session_bridge.h"
@@ -13,6 +12,7 @@
 #include "core/text_util.h"
 #include "session/session_jobs.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 enum { PLAYER_MSG_SYNC_ATTACKED_POS = 0x95 };
 
@@ -95,7 +95,7 @@ void game_mode_on_personal_info(struct GameMode *self, const struct PacketPerson
             cafe = *d;
     }
 
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (!self->notice_wnd) {
         void *block = mem_alloc(sizeof(struct UITransBalloonText));
         self->notice_wnd = block ? ui_trans_balloon_text_construct(block) : 0;

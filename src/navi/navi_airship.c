@@ -12,8 +12,7 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "fileio/res_mgr.h"

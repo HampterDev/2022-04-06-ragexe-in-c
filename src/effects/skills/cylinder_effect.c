@@ -1,9 +1,9 @@
 #include "effects/effect_allocator.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/vec.h"
+#include "platform/clock.h"
 
 #define EFFECT_NIPELHEIM_CAST 0x81d
 #define NIPELHEIM_CAST_TGA "effect\\nipelheim\\nipelheim_cast\\nip_cast.tga"
@@ -198,7 +198,7 @@ void cylinder_effect_add_segments(struct CylinderEffect *self)
 void cylinder_effect_init(struct Effect *effect)
 {
     struct CylinderEffect *self = (struct CylinderEffect *)effect;
-    self->start_ms = timeGetTime();
+    self->start_ms = platform_ticks_ms();
     cylinder_effect_add_segments(self);
 }
 
@@ -206,7 +206,7 @@ unsigned char cylinder_effect_is_alive(struct Effect *effect)
 {
     struct CylinderEffect *self = (struct CylinderEffect *)effect;
     int duration = self->base.duration;
-    return self->start_ms + (unsigned)duration >= timeGetTime();
+    return self->start_ms + (unsigned)duration >= platform_ticks_ms();
 }
 
 void cylinder_effect_process(struct Effect *effect)

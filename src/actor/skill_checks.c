@@ -11,6 +11,8 @@
 #include "session/session_names.h"
 #include "session/session_skills.h"
 #include "actor/actor_msg.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 struct World;
 
@@ -50,7 +52,7 @@ static int skill_skips_attack_speed(int skill)
 
 static int skill_msg_delay(const struct GameActor *self)
 {
-    return (int)(__int64)(self->attack_motion_count * self->motion_delay * 24.0f);
+    return (int)(int64_t)(self->attack_motion_count * self->motion_delay * 24.0f);
 }
 
 static int skill_msg_band(int skill)
@@ -84,7 +86,7 @@ static int send_skill_hit_60(struct GameActor *self, struct GameObject *target,
     hit.target_aid = self->attack_target_aid;
     hit.kind = 0x60;
     hit.damage = damage;
-    hit.tick = timeGetTime() + skill_msg_delay(self);
+    hit.tick = platform_ticks_ms() + skill_msg_delay(self);
     hit.attacker_aid = self->aid;
     hit.cell_x = use->cell_x;
     hit.cell_y = use->cell_y;
@@ -109,7 +111,7 @@ static int send_skill_hit_61(struct GameActor *self, struct GameObject *target,
     hit.target_aid = self->attack_target_aid;
     hit.kind = 0x61;
     hit.damage = damage;
-    hit.tick = timeGetTime() + skill_msg_delay(self);
+    hit.tick = platform_ticks_ms() + skill_msg_delay(self);
     hit.attacker_aid = self->aid;
     hit.cell_x = use->cell_x;
     hit.cell_y = use->cell_y;
@@ -317,7 +319,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     msg.target_aid = self->attack_target_aid;
     msg.kind = kind;
     msg.damage = per_hit;
-    msg.tick = timeGetTime() + delay;
+    msg.tick = platform_ticks_ms() + delay;
     msg.attacker_aid = self->aid;
     msg.cell_x = rec->cell_x;
     msg.cell_y = rec->cell_y;

@@ -1,6 +1,6 @@
 #include "core/text_format.h"
 #include "core/hex.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 

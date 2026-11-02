@@ -14,12 +14,11 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <mmsystem.h>
 #include "fileio/resource_api.h"
 #include "fileio/res_mgr.h"
 #include "ui/navigation_view.h"
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include <wchar.h>
 #include "core/msg_str.h"

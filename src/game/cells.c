@@ -4,10 +4,10 @@
 #include "world/actor_lookup.h"
 #include <stdlib.h>
 #include <math.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/cells.h"
 #include "session/session_skills.h"
+#include "platform/clock.h"
 
 static const struct { int dx, dy; } kNeighbours[9] = {
     { 0, 0 },
@@ -91,7 +91,7 @@ char game_mode_can_find_path(struct GameMode *self, int from_x, int from_y, int 
 
     (void)self;
     path_info_init(&path);
-    found = path_finder_find_path(&g_pathFinder, timeGetTime(), from_x, from_y, from_sub_x, from_sub_y,
+    found = path_finder_find_path(&g_pathFinder, platform_ticks_ms(), from_x, from_y, from_sub_x, from_sub_y,
                                   to_x, to_y, 150, &path, 15);
     path_info_destroy(&path);
     return found;

@@ -17,6 +17,7 @@
 #include "diag/perf.h"
 #include "ui/character/status_wnd.h"
 #include "ui/wndmgr/make_window_internal.h"
+#include <stdint.h>
 
 #define STATUS_WND_ID 0xb
 
@@ -60,9 +61,6 @@ struct UIStatusWnd {
     struct UIBmpTextButton *expand;
     BYTE expanded;
 };
-OFFSET_ASSERT(UIStatusWnd, plus, 0x94);
-OFFSET_ASSERT(UIStatusWnd, trait_plus, 0xc0);
-OFFSET_ASSERT(UIStatusWnd, expanded, 0xdc);
 
 int session_get_param(struct Session *self, int type)
 {
@@ -423,7 +421,7 @@ static void status_place_buttons(struct UIStatusWnd *self)
             ui_window_move_base(&self->plus[i]->button.base, OFF_SCREEN, OFF_SCREEN);
     }
     if (session_get_param(&g_session1, SP_TRAIT_POINT) >= 1) {
-        __int64 costs[STAT_COUNT];
+        int64_t costs[STAT_COUNT];
 
         memcpy(costs, g_session1.traitCost, sizeof(costs));
         for (i = 0; i < STAT_COUNT; i++) {

@@ -1,7 +1,7 @@
 #ifndef CORE_TEXT_UTIL_H
 #define CORE_TEXT_UTIL_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "std/std.h"
 
 struct String *text_utf8_to_codepage(struct String *out, const struct String *utf8, UINT code_page);

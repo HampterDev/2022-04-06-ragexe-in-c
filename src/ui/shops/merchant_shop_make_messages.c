@@ -13,6 +13,7 @@
 #include "iteminfo/iteminfo.h"
 #include "session/session_items.h"
 #include "session/session_windows.h"
+#include <stdint.h>
 
 static void msm_add_dragged(struct UIMerchantShopMakeWnd *self)
 {
@@ -226,7 +227,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
 
     node = self->items.head->next;
     for (i = 0; i < self->slots; i++) {
-        __int64 price;
+        int64_t price;
 
         if (!edit_number(self->prices[i], buf)) {
             ui_message_box(msg_str(MSG_NOT_A_NUMBER));
@@ -285,7 +286,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
             return;
     }
     if (self->buying) {
-        __int64 total;
+        int64_t total;
 
         node = self->items.head->next;
         for (i = 0; i < self->slots; i++) {
@@ -309,7 +310,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
             node = node->next;
         }
         total = _atoi64(ui_edit_ctrl_get_text(self->total));
-        if (total > (__int64)g_session1.zeny) {
+        if (total > (int64_t)g_session1.zeny) {
             ui_chat_line(msg_str(MSG_TOTAL_OVER_ZENY), CHAT_RED);
             return;
         }
@@ -353,7 +354,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
         if (self->assistant == 1) {
             ui_merchant_shop_make_wnd_set_waiting(self, 1);
         } else {
-            __int64 total = _atoi64(ui_edit_ctrl_get_text(self->total));
+            int64_t total = _atoi64(ui_edit_ctrl_get_text(self->total));
 
             mode_send_message(mode, MODE_REQ_OPEN_BUYING, (int)ui_edit_ctrl_get_text(self->shop_name), 1, (int)total,
                           0);
@@ -457,7 +458,7 @@ void ui_merchant_shop_make_wnd_print_sale_list(struct UIMerchantShopMakeWnd *sel
         (int)"======================  SALE LIST  ======================", CHAT_SALE_FRAME, 0, 0);
     for (i = 0; i < self->items.size; i++, node = node->next) {
         const struct ItemInfo *info = LIST_VALUE(node, struct ItemInfo);
-        __int64 fee;
+        int64_t fee;
 
         string_clear(&name);
         if (info->refine) item_name_append_refine(info, &name);
@@ -483,7 +484,7 @@ void ui_merchant_shop_make_wnd_print_sale_list(struct UIMerchantShopMakeWnd *sel
             strcpy(money, format_money(atoi(number.data), money2));
         string_format(&line, "    %s  :  %s  Zeny", string_cstr(&name), money);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
-        fee = (__int64)((double)_atoi64(number.data) * ((double)zeny_fee_percent(_atoi64(number.data)) * 0.01));
+        fee = (int64_t)((double)_atoi64(number.data) * ((double)zeny_fee_percent(_atoi64(number.data)) * 0.01));
         format_money64(fee, commission, sizeof commission);
         string_format(&line, "Commission : 1 EA = %s Zeny", commission);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
@@ -645,7 +646,7 @@ void ui_merchant_shop_make_wnd_print_buy_list(struct UIMerchantShopMakeWnd *self
         (int)"======================  BUY LIST  ======================", CHAT_SALE_FRAME, 0, 0);
     for (i = 0; i < self->items.size; i++, node = node->next) {
         const char *name = item_info_get_name(LIST_VALUE(node, struct ItemInfo));
-        __int64 fee;
+        int64_t fee;
         double rate;
 
         string_format(&number, "%s ", ui_edit_ctrl_get_text(self->prices[i]));
@@ -655,7 +656,7 @@ void ui_merchant_shop_make_wnd_print_buy_list(struct UIMerchantShopMakeWnd *self
         else
             strcpy(price_text, format_money(atoi(number.data), money2));
         rate = (double)zeny_fee_percent(_atoi64(number.data)) * 0.01;
-        fee = (__int64)((double)_atoi64(number.data) * rate);
+        fee = (int64_t)((double)_atoi64(number.data) * rate);
 
         string_format(&number, "%s ", ui_edit_ctrl_get_text(self->counts[i]));
         session_is_number_text(&g_session1, number.data);

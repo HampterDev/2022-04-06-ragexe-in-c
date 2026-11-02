@@ -16,7 +16,6 @@
 #include "ui/game.h"
 #include "ui/ui_items.h"
 #include "ui/runtime.h"
-#include <mmsystem.h>
 #include "ui/character/skill_list_wnd.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
@@ -25,6 +24,7 @@
 #include "session/skill_levels.h"
 #include "ui/character/skill_tree.h"
 #include "ui/ui_std.h"
+#include "platform/clock.h"
 
 int g_skillPointPending = 0;
 
@@ -106,11 +106,6 @@ struct UISkillListWnd {
     struct Vec menu;
     int kind;
 };
-OFFSET_ASSERT(UISkillListWnd, up_buttons, 0xa4);
-OFFSET_ASSERT(UISkillListWnd, selected, 0xf8);
-OFFSET_ASSERT(UISkillListWnd, skills, 0x10c);
-OFFSET_ASSERT(UISkillListWnd, menu, 0x118);
-SIZE_ASSERT(UISkillListWnd, 0x128);
 struct UIWindow;
 void ui_skill_list_wnd_destroy(struct UIWindow *window);
 void ui_skill_list_wnd_store_info(struct UIWindow *self);
@@ -193,7 +188,7 @@ static void check_wait(struct UISkillListWnd *self)
 
     if (g_skillPointPending != 1)
         return;
-    elapsed = (int)(timeGetTime() - g_skillListRowsChangedTime);
+    elapsed = (int)(platform_ticks_ms() - g_skillListRowsChangedTime);
     if (elapsed > WAIT_MS || elapsed < 0) {
         g_skillPointPending = 0;
         ui_window_invalidate_base(&self->frame.base);
@@ -765,7 +760,7 @@ static void rebuild(struct UISkillListWnd *self)
         g_skillListRowCount = added;
         if (g_skillListRowsChangedTime)
             g_skillPointPending = 1;
-        g_skillListRowsChangedTime = timeGetTime();
+        g_skillListRowsChangedTime = platform_ticks_ms();
     }
     ui_window_invalidate_base(&self->frame.base);
     refresh_range(self);

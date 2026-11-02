@@ -7,6 +7,7 @@
 #include <string.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
+#include "platform/clock.h"
 
 static void reopen_wait_window(void)
 {
@@ -57,7 +58,7 @@ static void after_message(struct LoginMode *self, int code)
     if (self->auth_timed_out == 1)
         return;
     if (code == 500) {
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         reopen_wait_window();
         return;
     }
@@ -66,7 +67,7 @@ static void after_message(struct LoginMode *self, int code)
     self->auth_answered = 0;
     self->auth_waiting = 0;
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-    self->stateTick = timeGetTime();
+    self->stateTick = platform_ticks_ms();
     self->base.next_sub_mode = 3;
 }
 
@@ -84,7 +85,7 @@ void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt)
     case 400:
         reopen_wait_window();
         self->auth_waiting = 1;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         break;
     case 0:   keep_token(pkt, offsetof(struct PACKET_AC_AUTH_RESULT, token)); break;
     case 600: assign_msg(&s, 7); break;
@@ -125,7 +126,7 @@ void login_mode_on_auth_result2(struct LoginMode *self, const BYTE *pkt)
     case 400:
         reopen_wait_window();
         self->auth_waiting = 1;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         break;
     case 0:   keep_token(pkt, offsetof(struct PACKET_AC_AUTH_RESULT2, token)); break;
     case 600: assign_msg(&s, 7); break;

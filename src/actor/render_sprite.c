@@ -4,7 +4,7 @@
 #include "resources/palette.h"
 #include "session/state.h"
 #include <stdio.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "contents/body_layer.h"
 #include "actor/sprite_render.h"
 #include "session/session_names.h"

@@ -261,7 +261,7 @@ static void put_memory(void)
 {
     MEMORYSTATUSEX ms;
     MEMORY_BASIC_INFORMATION mbi;
-    unsigned __int64 priv = 0, image = 0, mapped = 0, reserved = 0, freeTotal = 0;
+    uint64_t priv = 0, image = 0, mapped = 0, reserved = 0, freeTotal = 0;
     DWORD a = 0, largest = 0, freeBlocks = 0, bigBlocks = 0, regions = 0;
     int capped = 0;
     ms.dwLength = sizeof(ms);

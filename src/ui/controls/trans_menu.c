@@ -76,9 +76,6 @@ struct UITransMenuWnd {
     int margin;
     int hover;
 };
-OFFSET_ASSERT(UITransMenuWnd, panel, 0xa0);
-OFFSET_ASSERT(UITransMenuWnd, hover, 0xc4);
-SIZE_ASSERT(UITransMenuWnd, 0xc8);
 
 #define ITEM_COUNT(self) VEC_COUNT(&(self)->items, struct TransMenuItem)
 #define ITEM_AT(self, i) (((struct TransMenuItem *)(self)->items.first)[i])

@@ -5,7 +5,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packets.h"
 #include "ui/items/pet_windows.h"

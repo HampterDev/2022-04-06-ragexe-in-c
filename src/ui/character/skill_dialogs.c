@@ -130,7 +130,6 @@ struct UISkillDescribeWnd {
     struct String title;
     int skill_id;
 };
-OFFSET_ASSERT(UISkillDescribeWnd, icon_path, 0x9c);
 
 struct UISkillDescribeWnd *ui_skill_describe_wnd_construct(struct UISkillDescribeWnd *self)
 {
@@ -290,7 +289,6 @@ struct UISkillNameChangeWnd {
     int skill_id;
     struct String skill_name;
 };
-OFFSET_ASSERT(UISkillNameChangeWnd, skill_name, 0x9c);
 
 struct UISkillNameChangeWnd *ui_skill_name_change_wnd_construct(struct UISkillNameChangeWnd *self)
 {

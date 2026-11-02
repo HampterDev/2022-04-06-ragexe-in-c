@@ -3,11 +3,11 @@
 #include "render/texture.h"
 #include "core/client.h"
 #include "fileio/res_mgr.h"
-#include <mmsystem.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "platform/language.h"
+#include "platform/clock.h"
 
 #define ATLAS_BUCKETS 25
 #define ATLAS_SPARES 50
@@ -155,7 +155,7 @@ struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct Spr
     struct SpriteAtlasCell *available = NULL;
     size_t i;
     int bucket;
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
     if (!region) return NULL;
     memset(region, 0, sizeof *region);
     if (!image || !palette || !image->pixels || image->width <= 0 || image->height <= 0)
@@ -275,7 +275,7 @@ void sprite_atlas_finish_frame(struct Renderer *renderer)
 void sprite_atlas_purge(struct Renderer *renderer)
 {
     struct SpriteAtlasCache *cache = renderer ? renderer->sprite_atlas : NULL;
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
     unsigned bucket;
     if (!cache) return;
     for (bucket = 0; bucket < ATLAS_BUCKETS; ++bucket) {

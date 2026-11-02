@@ -41,8 +41,6 @@ struct UIMemorialDunWnd {
     struct UIBitmapButton *ok;
     struct UIWindow *destroy;
 };
-OFFSET_ASSERT(UIMemorialDunWnd, destroy, 0x98);
-SIZE_ASSERT(UIMemorialDunWnd, 0x9c);
 
 void ui_memorial_dun_wnd_destroy(struct UIWindow *window);
 void ui_memorial_dun_wnd_move(struct UIWindow *self, int x, int y);

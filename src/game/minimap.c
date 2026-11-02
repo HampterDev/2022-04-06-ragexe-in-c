@@ -9,14 +9,14 @@
 #include "ui/window_access.h"
 #include <math.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/minimap.h"
 #include "game/cells.h"
 #include "actor/game_actor.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/ui_std.h"
+#include "platform/clock.h"
 
 enum {
     MSG_MARK_COUNT = 0x1dc,
@@ -276,7 +276,7 @@ static void draw_ping_marks(struct GameMode *self, const struct TextureUV *uv)
     for (it = tree_first(&self->ping_marks); it != self->ping_marks.head; ) {
         const struct PingMark *mark = TREE_VALUE(it, const struct PingMark);
         unsigned set_at = mark->time;
-        if (mark->sticky == 0 && timeGetTime() > set_at + 15000)
+        if (mark->sticky == 0 && platform_ticks_ms() > set_at + 15000)
             it = tree_erase(&self->ping_marks, it, NULL);
         else
             it = tree_next(it);
@@ -284,7 +284,7 @@ static void draw_ping_marks(struct GameMode *self, const struct TextureUV *uv)
     for (it = self->ping_marks.head->left; it != self->ping_marks.head; it = tree_next(it)) {
         const struct PingMark *mark = TREE_VALUE(it, const struct PingMark);
         unsigned set_at = mark->time;
-        if ((int)(timeGetTime() - set_at) % 1000 < 500)
+        if ((int)(platform_ticks_ms() - set_at) % 1000 < 500)
             game_mode_draw_minimap_mark(self, uv, mark->x, mark->y, 1, string_from("", 0), MARK_CROSS, mark->color, 0);
     }
 }
@@ -589,5 +589,5 @@ void game_mode_zc_compass(struct GameMode *self, const unsigned char *pkt)
     mark->y = packet->y;
     mark->color = packet->color | 0xff000000;
     mark->sticky = packet->type;
-    mark->time = timeGetTime();
+    mark->time = platform_ticks_ms();
 }

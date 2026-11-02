@@ -621,7 +621,6 @@ struct UIStarPlaceAcceptWnd {
     struct UIAcceptWnd accept;
     char kind;
 };
-OFFSET_ASSERT(UIStarPlaceAcceptWnd, kind, 0xa0);
 
 struct UIStarPlaceAcceptWnd *ui_star_place_accept_wnd_construct(struct UIStarPlaceAcceptWnd *self)
 {

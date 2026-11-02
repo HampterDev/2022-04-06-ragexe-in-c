@@ -1,9 +1,9 @@
 #include "resources/bitmap_internal.h"
 #include "fileio/res_mgr.h"
 #include "resources/resource_factories.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
 
 struct BitmapRes *bitmap_resource_init(struct BitmapRes *self)
 {
@@ -109,7 +109,7 @@ BYTE gif_res_animate(struct GifRes *self)
     self->changed = 0;
     if (self->frames.count <= 1 || self->curFrame >= self->frames.count)
         return 0;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if ((DWORD)(now - self->lastTime) < self->frames.data[self->curFrame].delay * 10u)
         return 0;
     self->lastTime = now;

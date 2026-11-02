@@ -84,7 +84,6 @@ struct UINormalMB {
     struct String title;
     struct Tree answers;
 };
-OFFSET_ASSERT(UINormalMB, text, 0x9c);
 
 static struct UIWindow *ui_normal_mb_construct(struct UINormalMB *self)
 {

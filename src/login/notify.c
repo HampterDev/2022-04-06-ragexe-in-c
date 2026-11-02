@@ -7,6 +7,7 @@
 #include <string.h>
 #include "platform/language.h"
 #include "core/msg_str.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_AC_PLAY_TIME {
@@ -63,7 +64,7 @@ void login_mode_on_play_time(struct LoginMode *self, const BYTE *pkt)
     }
 
 show:
-    self->stateTick = timeGetTime() + 90000;
+    self->stateTick = platform_ticks_ms() + 90000;
     ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
 }
 

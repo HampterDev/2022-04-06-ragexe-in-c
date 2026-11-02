@@ -8,8 +8,7 @@
 #include "session/state.h"
 #include "core/memory.h"
 #include "game/context.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/skill_use.h"
 #include "effects/effect_controls.h"
@@ -20,6 +19,7 @@
 #include "session/session_skills.h"
 #include "session/session_talk.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     ACTOR_MSG_CAST_TIME = 0x52,
@@ -83,7 +83,7 @@ void skill_cast_caster_tint(struct GameActor *caster, int skill_id, unsigned cas
     case 0x3e:
     case 0x154b:
         caster->motion_held = 1;
-        caster->motion_hold_until = timeGetTime() + cast_time;
+        caster->motion_hold_until = platform_ticks_ms() + cast_time;
         break;
     case 0x105:
     case 0x3f7:
@@ -122,7 +122,7 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
             return;
         render_object_send(scope, NULL, GROUND_MSG_OWNER, (unsigned)caster->aid, 0, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_CELL, (short)x, (short)y, 0, 0);
-        render_object_send(scope, NULL, GROUND_MSG_END_TIME, (unsigned)(timeGetTime() + cast_time), 0, 0, 0);
+        render_object_send(scope, NULL, GROUND_MSG_END_TIME, (unsigned)(platform_ticks_ms() + cast_time), 0, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_SKILL, skill, 0, 0, 0);
         list_push_back(&mode->world->gameObjects, &scope, sizeof scope);
         return;

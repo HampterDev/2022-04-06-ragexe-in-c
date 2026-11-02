@@ -7,9 +7,9 @@
 #include "ui/skin.h"
 #include "ui/character/character.h"
 #include "ui/render/render.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
 
 static void fill_clipped(struct UIWindow *self, int left, int top, int right, int bottom, COLORREF colour)
 {
@@ -339,7 +339,7 @@ void ui_window_draw_actor_sprite(struct UIWindow *self, void *spr, void *act, in
     if (period <= 0) {
         frame = 0;
     } else {
-        unsigned t = timeGetTime() % (unsigned)period;
+        unsigned t = platform_ticks_ms() % (unsigned)period;
         int i = (int)((float)t * ((float)count / (float)period));
 
         if (i < 0)

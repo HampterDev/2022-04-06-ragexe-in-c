@@ -7,6 +7,7 @@
 #include "iteminfo/item_api.h"
 #include "std/vec.h"
 #include "std/container_types.h"
+#include <stdint.h>
 
 struct RefineItemPair {
     int refine;
@@ -17,7 +18,7 @@ struct ExpandedBarter {
     struct Vec cart;
     struct Vec pay;
     struct Tree inventory;
-    __int64 total;
+    int64_t total;
 };
 extern struct ExpandedBarter *g_expandedBarter;
 
@@ -45,7 +46,7 @@ struct BarterExFound *expanded_barter_find_in_cart(struct ExpandedBarter *self, 
 float expanded_barter_goods_weight(struct ExpandedBarter *self, int key);
 unsigned expanded_barter_cart_size(struct ExpandedBarter *self);
 int expanded_barter_cart_count(struct ExpandedBarter *self, int key);
-__int64 expanded_barter_total(const struct ExpandedBarter *self);
+int64_t expanded_barter_total(const struct ExpandedBarter *self);
 float expanded_barter_cart_weight(struct ExpandedBarter *self);
 char expanded_barter_can_pay(struct ExpandedBarter *self);
 void expanded_barter_goods_push(struct ExpandedBarter *self, const struct BarterGoodsEx *src);

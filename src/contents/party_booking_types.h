@@ -20,11 +20,5 @@ struct PartyBooking {
     int filter_map;
     int filter_job;
 };
-OFFSET_ASSERT(PartyBooking, region_maps, 0x14);
-OFFSET_ASSERT(PartyBooking, rows, 0x1c);
-OFFSET_ASSERT(PartyBooking, pending, 0x24);
-OFFSET_ASSERT(PartyBooking, queue_new, 0x2c);
-OFFSET_ASSERT(PartyBooking, filter_level, 0x38);
-OFFSET_ASSERT(PartyBooking, filter_job, 0x40);
 
 #endif

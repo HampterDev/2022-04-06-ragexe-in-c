@@ -1,10 +1,10 @@
 #include "game/packet_handlers.h"
 #include "ui/window_manager_state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/packets.h"
 #include "session/session_items.h"
 #include "session/session_jobs.h"
+#include "platform/clock.h"
 
 #define EQUIP_ACK_TIME_BACK     2000
 #define CHAT_COLOR_RED          0xff
@@ -59,7 +59,7 @@ void game_mode_zc_req_takeoff_equip_ack2(struct GameMode *self, const unsigned c
 {
     const struct PACKET_ZC_REQ_TAKEOFF_EQUIP_ACK *packet = (const struct PACKET_ZC_REQ_TAKEOFF_EQUIP_ACK *)pkt;
 
-    self->takeoff_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->takeoff_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     switch (packet->result) {
     case 0:
         take_off(packet->wear_location);
@@ -73,7 +73,7 @@ void game_mode_zc_req_takeoff_equip_ack2(struct GameMode *self, const unsigned c
 void game_mode_ack_takeoff_equip_v5(struct GameMode *self, unsigned char result, int wear_location,
                                            unsigned short index)
 {
-    self->takeoff_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->takeoff_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     switch (result) {
     case 0:
         if (wear_location == 0)
@@ -93,7 +93,7 @@ void game_mode_zc_req_takeoff_equip_ack(struct GameMode *self, const unsigned ch
 {
     const struct PACKET_ZC_REQ_TAKEOFF_EQUIP_ACK *packet = (const struct PACKET_ZC_REQ_TAKEOFF_EQUIP_ACK *)pkt;
 
-    self->takeoff_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->takeoff_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     if (packet->result != 0)
         take_off(packet->wear_location);
 }
@@ -102,7 +102,7 @@ void game_mode_zc_req_wear_equip_ack2(struct GameMode *self, const unsigned char
 {
     const struct PACKET_ZC_REQ_WEAR_EQUIP_ACK *packet = (const struct PACKET_ZC_REQ_WEAR_EQUIP_ACK *)pkt;
 
-    self->wear_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->wear_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     switch (packet->result) {
     case 0:
         wear(packet);
@@ -117,7 +117,7 @@ void game_mode_zc_req_wear_equip_ack(struct GameMode *self, const unsigned char 
 {
     const struct PACKET_ZC_REQ_WEAR_EQUIP_ACK *packet = (const struct PACKET_ZC_REQ_WEAR_EQUIP_ACK *)pkt;
 
-    self->wear_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->wear_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     switch (packet->result) {
     case 0:
     case 2:
@@ -134,7 +134,7 @@ void game_mode_zc_ack_wear_equip_v5(struct GameMode *self, unsigned char result,
 {
     struct ItemInfo item;
 
-    self->wear_ack_time = timeGetTime() - EQUIP_ACK_TIME_BACK;
+    self->wear_ack_time = platform_ticks_ms() - EQUIP_ACK_TIME_BACK;
     switch (result) {
     case 0:
         session_get_inventory_item(&g_session1, &item, index);

@@ -22,6 +22,7 @@ void session_init_at_startup(struct Session *self);
 void session_init_pet_emotions(struct Session *self);
 void session_load_monster_skill_info(struct Session *self);
 #include "session/chat_macros.h"
+#include <stdint.h>
 void session_init_skill_effect_id_maps(struct Session *self);
 void session_clear_transform_jobs(struct Session *self, BYTE a, BYTE b, BYTE c);
 void session_reset_pet(struct Session *self);
@@ -71,7 +72,7 @@ int session_init_map_pos_table(struct Session *self);
 void session_set_combo_delay(struct Session *self, int key, int value);
 int session_get_max_base_level(struct Session *self, int job);
 int session_get_max_job_level(struct Session *self, int job);
-BYTE session_pet_emotion_due(struct Session *self, __int64 interval);
+BYTE session_pet_emotion_due(struct Session *self, int64_t interval);
 
 int session_count_worn_costumes(struct Session *self);
 int session_count_worn_equips(struct Session *self);

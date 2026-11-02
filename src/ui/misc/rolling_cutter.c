@@ -10,6 +10,7 @@
 #include "ui/misc/rolling_cutter.h"
 #include "actor/game_actor.h"
 #include "game/mode_callbacks.h"
+#include <stdint.h>
 
 struct GameObject;
 struct RenderObject;
@@ -45,14 +46,14 @@ int game_actor_get_counter(struct GameActor *self, int key)
     return (int)var->value;
 }
 
-static __int64 *actor_counter_at(void *actor, int key)
+static int64_t *actor_counter_at(void *actor, int key)
 {
     struct IntInt64Pair *var = tree_get(actor_counters(actor), &key, sizeof key, sizeof *var, tree_less_int);
 
     return &var->value;
 }
 
-void game_actor_set_counter(struct GameActor *self, int key, __int64 value)
+void game_actor_set_counter(struct GameActor *self, int key, int64_t value)
 {
     *actor_counter_at(self, key) = value;
 }
@@ -91,7 +92,7 @@ unsigned char rolling_cutter_rag_effect_on_process(struct GameObject *object)
 
     struct RenderObject *master = self->base.master;
     struct GameActor *actor;
-    __int64 left;
+    int64_t left;
 
     if (!master)
         return 0;
@@ -112,7 +113,7 @@ unsigned char rolling_cutter_rag_effect_on_process(struct GameObject *object)
         return 1;
     actor = object_as_type(self->base.master, OBJECT_GAME_ACTOR);
     if (actor) {
-        left = (__int64)(game_actor_get_counter(actor, COUNTER_ROLLING_CUTTER) - 1);
+        left = (int64_t)(game_actor_get_counter(actor, COUNTER_ROLLING_CUTTER) - 1);
         *actor_counter_at(actor, COUNTER_ROLLING_CUTTER) = left;
         if (game_actor_get_counter(actor, COUNTER_ROLLING_CUTTER) <= 0)
             actor->roty = (float)game_actor_get_counter(actor, COUNTER_FACING) / 1000.0f;

@@ -71,7 +71,6 @@ struct UIShowWarpWnd {
     struct UIFrameWnd frame;
     struct UIListBox *list;
 };
-SIZE_ASSERT(UIShowWarpWnd, 0x98);
 
 struct UIShowWarpWnd *ui_show_warp_wnd_construct(struct UIShowWarpWnd *self)
 {

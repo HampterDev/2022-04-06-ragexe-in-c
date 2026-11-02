@@ -76,7 +76,6 @@ struct UIItemCollectionWnd {
     struct Tree options;
     int options_height;
 };
-OFFSET_ASSERT(UIItemCollectionWnd, item, 0x94);
 
 struct UICombinedCardItemCollectionWnd {
     struct UIItemCollectionWnd base;

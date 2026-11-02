@@ -12,13 +12,13 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/character/character.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 #define RACE_HUMAN 0
 #define RACE_DORAM 1
@@ -176,13 +176,13 @@ static void draw_race(struct UIDescriptRace *self)
         }
 
         if (self->animating) {
-            if (self->frame_time + FRAME_MS <= timeGetTime()) {
+            if (self->frame_time + FRAME_MS <= platform_ticks_ms()) {
                 int next = self->frame + 1;
 
                 if (next >= (int)actres_frame_count(act, action))
                     next = 0;
                 self->frame = next;
-                self->frame_time = timeGetTime();
+                self->frame_time = platform_ticks_ms();
             }
             frame = self->frame;
         }
@@ -268,7 +268,7 @@ static struct UIDescriptRace *ui_descript_race_construct(struct UIDescriptRace *
     self->base.button.base.ops = &ui_descript_race_ops.base;
     self->race = race;
     self->frame = 0;
-    self->frame_time = timeGetTime();
+    self->frame_time = platform_ticks_ms();
     self->animating = race == RACE_HUMAN;
     return self;
 }

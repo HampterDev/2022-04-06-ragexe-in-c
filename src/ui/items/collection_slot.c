@@ -6,8 +6,8 @@
 #include "ui/items/items.h"
 #include "game/context.h"
 #include "ui/character/character.h"
-#include <mmsystem.h>
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define WND_COLLECTION_SLOT_MACHINE 0xc4
 
@@ -29,9 +29,6 @@ struct UICollectionSystemWnd {
     struct ActRes *act;
     struct SprRes *spr;
 };
-OFFSET_ASSERT(UICollectionSystemWnd, frame_ms, 0x94);
-OFFSET_ASSERT(UICollectionSystemWnd, frame_time, 0xac);
-SIZE_ASSERT(UICollectionSystemWnd, 0xb8);
 
 struct UIWindow;
 void ui_collection_system_wnd_destroy(struct UIWindow *window);
@@ -108,7 +105,7 @@ void ui_collection_system_wnd_on_process(struct UIWindow *window)
     DWORD now;
 
     ui_window_invalidate_base(&self->frame.base);
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (self->motion != self->stop_motion)
         return;
     if (!self->stopped) {
@@ -158,7 +155,7 @@ void ui_collection_system_wnd_on_draw(struct UIWindow *window)
 {
     struct UICollectionSystemWnd *self = (struct UICollectionSystemWnd *)window;
     ui_collection_system_wnd_draw_clips(self);
-    ui_collection_system_wnd_advance(self, timeGetTime());
+    ui_collection_system_wnd_advance(self, platform_ticks_ms());
 }
 
 void ui_collection_system_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)

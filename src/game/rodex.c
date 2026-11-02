@@ -6,12 +6,13 @@
 #include "game/ui_bridge.h"
 #include "game/rodex_mail.h"
 #include "ui/mail/rodex_ui.h"
+#include <stdint.h>
 
 struct UIRodexInboxWnd;
 
 #pragma pack(push, 1)
 struct MailEntry {
-    __int64 mail_id;
+    int64_t mail_id;
     unsigned char is_read;
     unsigned char type;
     char sender[24];

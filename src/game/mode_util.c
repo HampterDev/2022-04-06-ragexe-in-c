@@ -7,11 +7,10 @@
 #include "core/memory.h"
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
 #include <errno.h>
 #include <stdlib.h>
-#include <mmsystem.h>
 #include <string.h>
 #include "game/mode_util.h"
 #include "game/client.h"
@@ -20,12 +19,13 @@
 #include "ui/ui_std.h"
 #include "world/world.h"
 #include "game/mode_callbacks.h"
+#include "platform/clock.h"
 
 unsigned g_rendererTickNext;
 
 void renderer_run_every15s(void)
 {
-    unsigned now = timeGetTime();
+    unsigned now = platform_ticks_ms();
     if (now > g_rendererTickNext) {
         g_rendererTickNext = now + 15000;
         sprite_atlas_purge(g_renderer);

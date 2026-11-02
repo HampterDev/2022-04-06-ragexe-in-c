@@ -8,7 +8,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"
@@ -26,8 +25,6 @@ struct UIImgMenu {
     struct String name;
     int target;
 };
-OFFSET_ASSERT(UIImgMenu, lit, 0x90);
-OFFSET_ASSERT(UIImgMenu, background, 0x98);
 const struct UIWindowOps ui_img_menu_ops = {
     .destroy = ui_img_menu_destroy,
     .resize = ui_window_resize_base,

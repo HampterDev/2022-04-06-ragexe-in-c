@@ -5,8 +5,7 @@
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "actor/sprite_draw.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "actor/render_object.h"
 #include "resources/attr_queries.h"
 #include "contents/item_info_mgr.h"
@@ -22,6 +21,7 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 #define ITEM_FRAME_MS 24.0f
 #define ITEM_BLINK_PERIOD 0x5c
@@ -80,7 +80,7 @@ unsigned char item_on_process(struct GameObject *object)
 {
     struct Item *self = (struct Item *)object;
 
-    float frames = (float)(unsigned)(timeGetTime() - self->base.start_tick) / ITEM_FRAME_MS;
+    float frames = (float)(unsigned)(platform_ticks_ms() - self->base.start_tick) / ITEM_FRAME_MS;
 
     self->base.hit_flash = (int)frames % ITEM_BLINK_PERIOD >= ITEM_BLINK_FROM;
     if (self->falling) {
@@ -190,7 +190,7 @@ void item_place(struct Item *self, struct GameMode *mode, const struct ItemDropI
     string_free(&display);
 
     render_object_get_act_res((struct RenderObject *)self);
-    self->base.start_tick = timeGetTime();
+    self->base.start_tick = platform_ticks_ms();
 
     if (info->show_drop_effect == 1) {
         Vec3 at;
@@ -228,7 +228,7 @@ void item_send_msg(struct GameObject *object, struct GameObject *source,
 }
 
 int g_minPickBoxSide;
-INIT_ONCE g_minPickBoxSideGuard;
+struct Once g_minPickBoxSideGuard;
 
 static __inline void widen_to(float *lo, float *hi, int min_side)
 {

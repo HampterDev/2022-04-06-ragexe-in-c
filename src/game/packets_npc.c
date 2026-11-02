@@ -14,8 +14,7 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/packets.h"
@@ -28,6 +27,7 @@
 #include "session/session_talk.h"
 #include "ui/character/character.h"
 #include "ui/shops/shops.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_ZC_NPCSPRITE_CHANGE {
@@ -627,7 +627,7 @@ void game_mode_zc_sound(struct GameMode *self, const unsigned char *pkt)
         string_init(&sound.name);
         string_assign_cstr(&sound.name, name);
         sound.interval = interval;
-        sound.next_tick = timeGetTime() + interval;
+        sound.next_tick = platform_ticks_ms() + interval;
         sound.npc_aid = npc_aid;
         string_copy(&copy.name, &sound.name);
         copy.npc_aid = sound.npc_aid;

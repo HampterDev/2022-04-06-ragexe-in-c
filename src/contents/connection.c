@@ -6,7 +6,7 @@
 #include "contents/connection.h"
 #include "std/std.h"
 #include "contents/ui_window_mgr.h"
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 typedef int (__stdcall *Ws2TransferFn)(SOCKET s, char *buf, int len, int flags);
 
@@ -90,7 +90,7 @@ void connection_disconnect(struct Connection *self)
 
 char connection_flush(struct Connection *self)
 {
-    while (self->send_after < timeGetTime()) {
+    while (self->send_after < platform_ticks_ms()) {
         fd_set writable;
         struct timeval no_wait = { 0, 0 };
         int ready, sent, err;
@@ -253,7 +253,7 @@ void connection_reset_queues(struct Connection *self)
 
 void connection_delay_sends(struct Connection *connection, unsigned milliseconds)
 {
-    connection->send_after = timeGetTime() + milliseconds;
+    connection->send_after = platform_ticks_ms() + milliseconds;
 }
 
 int connection_is_open(const struct Connection *connection)

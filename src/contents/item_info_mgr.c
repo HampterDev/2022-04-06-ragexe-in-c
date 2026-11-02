@@ -1,5 +1,5 @@
 #include "contents/item_info_mgr.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>

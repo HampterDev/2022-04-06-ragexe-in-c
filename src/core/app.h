@@ -8,7 +8,7 @@
 
 #include "platform/client_config.h"
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "std/std.h"
 #include "core/client.h"
 

@@ -91,7 +91,7 @@ const struct GameActorOps skill_ops = {
 };
 
 int g_skillPickMinSize;
-INIT_ONCE g_skillPickMinSizeGuard;
+struct Once g_skillPickMinSizeGuard;
 
 #include "world/scene_objects.h"
 #include "effects/rag/rag_effect_types.h"

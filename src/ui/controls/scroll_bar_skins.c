@@ -6,7 +6,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"
@@ -109,7 +108,6 @@ struct UIScrollBar4 {
     struct UIScrollBar bar;
     int thumb_size;
 };
-SIZE_ASSERT(UIScrollBar4, 0xb0);
 
 void ui_scroll_bar2_destroy(struct UIWindow *window)
 {

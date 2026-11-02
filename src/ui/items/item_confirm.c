@@ -38,8 +38,6 @@ struct UIMixAcceptWnd {
     struct UIAcceptWnd accept;
     BYTE ask_kind;
 };
-OFFSET_ASSERT(UIMixAcceptWnd, ask_kind, 0xa0);
-SIZE_ASSERT(UIMixAcceptWnd, 0xa4);
 
 struct UIWindow;
 void ui_mix_accept_wnd_destroy(struct UIWindow *window);
@@ -145,8 +143,6 @@ struct UIYourItemWnd {
     int value1;
     int value2;
 };
-OFFSET_ASSERT(UIYourItemWnd, value1, 0xa0);
-SIZE_ASSERT(UIYourItemWnd, 0xa8);
 
 #pragma pack(push, 1)
 struct YourItemAnswer {

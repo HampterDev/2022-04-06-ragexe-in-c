@@ -3,7 +3,7 @@
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include "game/talk_type.h"
 #include "game/client.h"

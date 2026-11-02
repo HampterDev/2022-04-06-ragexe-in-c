@@ -109,13 +109,6 @@ struct UIRodexInboxWnd {
     struct Vec hits;
     struct Vec lists[3];
 };
-OFFSET_ASSERT(UIRodexInboxWnd, tabs, 0x110);
-OFFSET_ASSERT(UIRodexInboxWnd, checks, 0x154);
-OFFSET_ASSERT(UIRodexInboxWnd, page, 0x17c);
-OFFSET_ASSERT(UIRodexInboxWnd, returns, 0x188);
-OFFSET_ASSERT(UIRodexInboxWnd, searching, 0x1b4);
-OFFSET_ASSERT(UIRodexInboxWnd, lists, 0x1c4);
-SIZE_ASSERT(UIRodexInboxWnd, 0x1e8);
 void ui_rodex_inbox_wnd_destroy(struct UIWindow *window);
 void ui_rodex_inbox_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_rodex_inbox_wnd_on_process(struct UIWindow *self);

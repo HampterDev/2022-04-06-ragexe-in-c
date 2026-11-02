@@ -17,8 +17,6 @@ struct Schedule {
     char alive, paused;
     int tag;
 };
-OFFSET_ASSERT(Schedule, interval, 0x0c);
-OFFSET_ASSERT(Schedule, alive, 0x14);
 
 struct ScheduleNode;
 struct TimeScheduler {

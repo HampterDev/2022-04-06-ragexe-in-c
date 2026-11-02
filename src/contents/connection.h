@@ -7,7 +7,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 #include "contents/byte_queue.h"

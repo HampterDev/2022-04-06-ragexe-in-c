@@ -15,7 +15,7 @@ struct NameCardRequest {
 SIZE_ASSERT(NameCardRequest, 8);
 
 extern struct ActorNameCard g_emptyNameCard;
-extern INIT_ONCE g_emptyNameCardGuard;
+extern struct Once g_emptyNameCardGuard;
 void name_card_empty_atexit(void);
 
 #endif

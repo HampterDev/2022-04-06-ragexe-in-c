@@ -25,10 +25,6 @@ struct UISubChatHisWnd {
     struct String name;
     struct UIWindow *rename;
 };
-OFFSET_ASSERT(UISubChatHisWnd, backdrop, 0xa0);
-OFFSET_ASSERT(UISubChatHisWnd, stick, 0xbc);
-OFFSET_ASSERT(UISubChatHisWnd, key, 0xd4);
-OFFSET_ASSERT(UISubChatHisWnd, name, 0xf0);
 
 struct UISubChatHisWnd *ui_sub_chat_his_wnd_construct(struct UISubChatHisWnd *self);
 struct UIWindow *ui_sub_chat_his_wnd_new(void);

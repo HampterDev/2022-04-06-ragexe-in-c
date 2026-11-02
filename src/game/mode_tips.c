@@ -6,8 +6,7 @@
 #include "game/own_states.h"
 #include "session/state.h"
 #include "core/memory.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/tips.h"
 #include "game/quest_info.h"
@@ -17,6 +16,7 @@
 #include "session/session_items.h"
 #include "ui/ui_std.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 #define STATE_ICON_NO_END 999999
 #define EFST_MOVHASTE_INFINITY 0x2a
@@ -47,7 +47,7 @@ struct String *state_icon_get_time_left_text(struct GameMode *self, struct Strin
         return out;
 
     {
-        seconds = (int)(entry->end_tick / 1000 - timeGetTime() / 1000);
+        seconds = (int)(entry->end_tick / 1000 - platform_ticks_ms() / 1000);
     }
     hours = seconds / 3600;
     if (hours) {
@@ -219,7 +219,7 @@ void game_mode_update_state_icon_tip(struct GameMode *self, int x, int y)
                 string_free(&text);
             }
             if (icon == ICON_OVERHEAT) {
-                if (timeGetTime() - g_session1.overheatStart > 10000) {
+                if (platform_ticks_ms() - g_session1.overheatStart > 10000) {
                     g_session1.overheatValue = 0;
                 } else if (g_session1.overheatValue) {
                     struct String note;
@@ -290,7 +290,7 @@ void game_mode_show_quest_hunt_list(struct GameMode *self, const struct Vec *lin
     struct UITransBalloonText *list;
     const struct String *line;
 
-    self->notice_shown_at = timeGetTime() - 15000;
+    self->notice_shown_at = platform_ticks_ms() - 15000;
     list = (struct UITransBalloonText *)self->notice_wnd;
     if (!list) {
         list = mem_alloc(sizeof(struct UITransBalloonText));

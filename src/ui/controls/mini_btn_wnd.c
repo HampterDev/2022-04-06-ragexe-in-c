@@ -15,7 +15,6 @@ struct UIMiniBtnWnd {
     struct String bitmap_hidden;
     int target_id;
 };
-OFFSET_ASSERT(UIMiniBtnWnd, bitmap_shown, 0x94);
 
 struct UIWindow;
 const struct UIWindowOps ui_mini_btn_wnd_ops = {

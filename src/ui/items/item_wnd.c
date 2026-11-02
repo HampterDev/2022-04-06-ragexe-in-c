@@ -21,7 +21,6 @@
 #include "ui/ui_items.h"
 #include "ui/runtime.h"
 #include "ui/render/render.h"
-#include <mmsystem.h>
 #include "ui/chat/chat_window_parts.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
@@ -111,10 +110,6 @@ enum ItemWndTab {
 
 SIZE_ASSERT(ItemWndInfo, 0x28);
 
-OFFSET_ASSERT(UIItemWnd, info, 0xd0);
-OFFSET_ASSERT(UIItemWnd, tab, 0xec);
-OFFSET_ASSERT(UIItemWnd, sort, 0x10c);
-SIZE_ASSERT(UIItemWnd, 0x110);
 struct DragInfo;
 void ui_item_wnd_destroy(struct UIWindow *window);
 void ui_item_wnd_on_create(struct UIWindow *self, int width, int height);

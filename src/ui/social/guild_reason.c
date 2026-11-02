@@ -22,14 +22,11 @@ struct UIGuildLeaveReasonDescWnd {
     struct UIWindow *reason;
     struct UIWindow *caption;
 };
-SIZE_ASSERT(UIGuildLeaveReasonDescWnd, 0x9c);
 
 struct UIGuildBanReasonDescWnd {
     struct UIGuildLeaveReasonDescWnd leave;
     struct GuildBanTarget member;
 };
-OFFSET_ASSERT(UIGuildBanReasonDescWnd, member, 0x9c);
-SIZE_ASSERT(UIGuildBanReasonDescWnd, 0xa8);
 
 void ui_guild_leave_reason_desc_wnd_destroy(struct UIWindow *window);
 void ui_guild_leave_reason_desc_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);

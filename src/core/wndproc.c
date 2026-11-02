@@ -12,7 +12,7 @@
 #include "contents/mouse.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"

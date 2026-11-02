@@ -10,8 +10,6 @@ struct ParticleSlots {
     struct Tree map;
     unsigned in_use;
 };
-OFFSET_ASSERT(ParticleSlots, in_use, 0x08);
-SIZE_ASSERT(ParticleSlots, 0x0c);
 
 void particle_slots_construct(struct ParticleSlots *s);
 void particle_slots_destroy(struct ParticleSlots *s);

@@ -1,5 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "diag/crash_report.h"
 

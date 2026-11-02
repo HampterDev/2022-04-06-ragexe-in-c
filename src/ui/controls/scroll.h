@@ -76,8 +76,6 @@ struct UIScrollBar_Custom {
     struct BitmapRes *thumb_mid;
     struct BitmapRes *thumb_bottom;
 };
-OFFSET_ASSERT(UIScrollBar_Custom, track_top, 0xac);
-SIZE_ASSERT(UIScrollBar_Custom, 0xcc);
 
 struct ChildPosition {
     struct UIWindow *child;

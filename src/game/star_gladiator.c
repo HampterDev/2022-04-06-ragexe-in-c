@@ -10,6 +10,7 @@
 #include "core/msg_str.h"
 #include "session/session_names.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_ZC_STARSKILL {
@@ -67,7 +68,7 @@ void game_mode_zc_star_skill(struct GameMode *self, struct PACKET_ZC_STARSKILL *
     struct UIBalloonText *balloon;
     int x;
 
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0) {
         wnd = mem_alloc(sizeof(struct UITransBalloonText));
         if (wnd != 0)

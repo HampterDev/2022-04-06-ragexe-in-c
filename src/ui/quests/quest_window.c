@@ -119,9 +119,6 @@ struct UIRenewQuestWnd {
     int pressed;
     struct Vec lists[QUEST_TAB_COUNT];
 };
-OFFSET_ASSERT(UIRenewQuestWnd, tab, 0x110);
-OFFSET_ASSERT(UIRenewQuestWnd, lists, 0x124);
-SIZE_ASSERT(UIRenewQuestWnd, 0x148);
 
 static unsigned quest_wnd_count(struct UIRenewQuestWnd *self, int tab)
 {

@@ -13,9 +13,9 @@
 #include "ui/ui_std.h"
 
 struct Tree g_healthStateIcons;
-INIT_ONCE g_healthStateIconsGuard;
+struct Once g_healthStateIconsGuard;
 struct Tree g_bodyStateIcons;
-INIT_ONCE g_bodyStateIconsGuard;
+struct Once g_bodyStateIconsGuard;
 void health_state_icons_atexit(void);
 void body_state_icons_atexit(void);
 

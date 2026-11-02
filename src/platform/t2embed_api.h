@@ -2,7 +2,7 @@
 #define PLATFORM_T2EMBED_API_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include <t2embapi.h>
 
 typedef LONG (WINAPI *EmbeddedFontLoadFn)(HANDLE *, ULONG, ULONG *, ULONG,

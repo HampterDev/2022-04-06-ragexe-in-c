@@ -10,6 +10,7 @@
 #include "game/client.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
+#include <stdint.h>
 
 #pragma pack(push, 1)
 struct HuntUpdateEx {
@@ -20,7 +21,7 @@ struct HuntUpdateEx {
 };
 struct HuntUpdateEx2 {
     unsigned quest_id;
-    __int64 hunt_id;
+    int64_t hunt_id;
     short needed;
     short hunted;
 };
@@ -181,7 +182,7 @@ void game_mode_zc_update_mission_hunt_ex(struct GameMode *self, const void *pack
             continue;
         quest_hunt_copy(&quest, found);
         for (slot = 0; slot < QUEST_HUNT_SLOTS && slot < quest.plain.hunt_count; slot++) {
-            if (quest.plain.hunt_id[slot] == (__int64)(int)e->hunt_id)
+            if (quest.plain.hunt_id[slot] == (int64_t)(int)e->hunt_id)
                 break;
         }
         if (slot < QUEST_HUNT_SLOTS && slot < quest.plain.hunt_count)

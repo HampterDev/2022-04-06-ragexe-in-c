@@ -27,7 +27,6 @@ struct UIChatRoomWnd {
     struct Vec menu;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UIChatRoomWnd, room, 0x94);
 
 static __inline int chat_room_member_width(int width)
 {

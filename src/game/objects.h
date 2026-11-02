@@ -10,8 +10,7 @@
 #ifndef GAMEMODE_OBJECTS_H
 #define GAMEMODE_OBJECTS_H
 
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 
 #include "game/gamemode.h"
 #include "render/renderer.h"

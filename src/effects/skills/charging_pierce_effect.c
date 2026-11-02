@@ -7,6 +7,7 @@
 #include "effects/effect_controls.h"
 #include "render/render_api.h"
 #include "actor/game_actor.h"
+#include <stdint.h>
 
 struct ChargingPierceEffect;
 struct Effect;
@@ -139,19 +140,19 @@ void charging_pierce_effect_add_orb(struct ChargingPierceEffect *self, int i)
 }
 
 void charging_pierce_effect_set_charges(struct Effect *effect,
-                                                  unsigned __int64 count)
+                                                  uint64_t count)
 {
     struct ChargingPierceEffect *self = (struct ChargingPierceEffect *)effect;
     int i;
 
     if (count > MAX_CHARGES)
         return;
-    if ((unsigned __int64)(__int64)charging_pierce_effect_count_charges(self) > count)
+    if ((uint64_t)(int64_t)charging_pierce_effect_count_charges(self) > count)
         charging_pierce_effect_release(&self->base);
     i = charging_pierce_effect_count_charges(self);
-    if ((unsigned __int64)(__int64)i >= count)
+    if ((uint64_t)(int64_t)i >= count)
         return;
-    for (; (unsigned __int64)(__int64)i < count; i++) {
+    for (; (uint64_t)(int64_t)i < count; i++) {
         if (!self->orbs[i] && !self->casts[i]) {
             struct Ez2StrParticle *cast = ez2str_particle_new(self->base.pos, LIST_WORLD);
             ez2_str_particle_load(cast, CAST_STR);

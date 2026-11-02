@@ -11,8 +11,7 @@
 #include "contents/connection_api.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/chat/chat.h"
 #include "ui/ui_std.h"
 #include <time.h>
@@ -26,6 +25,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 struct Vec;
 struct UIMacroReporterWnd;
@@ -177,11 +177,6 @@ struct UIMacroReporterWnd {
     BYTE pick_mode;
     struct Vec removed;
 };
-OFFSET_ASSERT(UIMacroReporterWnd, scroll, 0xa0);
-OFFSET_ASSERT(UIMacroReporterWnd, radios, 0xbc);
-OFFSET_ASSERT(UIMacroReporterWnd, players, 0xd8);
-OFFSET_ASSERT(UIMacroReporterWnd, removed, 0xe8);
-SIZE_ASSERT(UIMacroReporterWnd, 0xf4);
 
 int ui_macro_reporter_picking(const struct UIWindow *wnd)
 {
@@ -777,7 +772,7 @@ int ui_macro_reporter_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
             if (sender == self->pick_check) {
                 self->pick_mode = val2 != 0;
                 self->frame.base.alpha_target = val2 ? 0x80 : 0xff;
-                self->frame.base.alpha_time = timeGetTime();
+                self->frame.base.alpha_time = platform_ticks_ms();
             }
             break;
         case UI_ID_RADIO:

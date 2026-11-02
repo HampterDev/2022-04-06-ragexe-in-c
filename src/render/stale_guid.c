@@ -1,6 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform/client_config.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "render/gfx.h"
 #include "core/app.h"

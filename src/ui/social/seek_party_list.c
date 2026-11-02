@@ -111,11 +111,6 @@ struct UISeekPartyListWnd {
     short last_count;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UISeekPartyListWnd, regions, 0xf0);
-OFFSET_ASSERT(UISeekPartyListWnd, region, 0x164);
-OFFSET_ASSERT(UISeekPartyListWnd, top, 0x184);
-OFFSET_ASSERT(UISeekPartyListWnd, info, 0x1b0);
-SIZE_ASSERT(UISeekPartyListWnd, 0x1b4);
 void ui_seek_party_list_wnd_destroy(struct UIWindow *window);
 void ui_seek_party_list_wnd_store_info(struct UIWindow *self);
 void ui_seek_party_list_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);

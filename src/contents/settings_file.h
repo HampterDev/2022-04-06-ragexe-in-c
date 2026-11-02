@@ -2,7 +2,7 @@
 #define CONTENTS_SETTINGS_FILE_H
 
 #include "core/owned_text.h"
-#include <windows.h>
+#include "platform/win_types.h"
 
 int settings_file_path(char out[MAX_PATH], const char *root, const char *address,
                        const char *port, const char *world, unsigned aid, unsigned gid);

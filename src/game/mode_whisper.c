@@ -17,13 +17,13 @@
 signed char g_silentWhisperAcks;
 #define WIN32_LEAN_AND_MEAN
 #include "core/markup_tags.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
-#include <mmsystem.h>
 #include <string.h>
 #include "game/whisper.h"
 #include "game/client.h"
 #include "ui/chat/balloon.h"
+#include "platform/clock.h"
 
 #define COLOUR_WHISPER   0xffff
 #define COLOUR_WHISPER_WND 0x7800
@@ -184,7 +184,7 @@ static void open_admin_balloon(struct GameMode *self)
 {
     struct UIWindow *w;
 
-    self->admin_whisper_time = timeGetTime();
+    self->admin_whisper_time = platform_ticks_ms();
     if (self->admin_whisper_balloon == 0) {
         w = (struct UIWindow *)mem_alloc(sizeof(struct UITransBalloonText));
         w = w ? ui_trans_balloon_text_construct(w) : 0;

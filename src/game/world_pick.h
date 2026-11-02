@@ -7,7 +7,7 @@
 #ifndef GAMEMODE_WORLD_PICK_H
 #define GAMEMODE_WORLD_PICK_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/input.h"
 #include "game/mode_msg.h"
 
