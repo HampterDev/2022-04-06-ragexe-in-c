@@ -237,10 +237,17 @@ int main(void)
         resource.waters = &water; resource.waterCount = 1;
     }
     resource.zoom = NAN;
-    assert(!c3d_ground15_load(ground, &resource, direction, diffuse, ambient));
+    assert(c3d_ground15_load(ground, &resource, direction, diffuse, ambient) && isnan(ground->zoom));
+    c3d_ground15_clear(ground);
     empty_map(ground, &attr);
     resource.zoom = 0;
-    assert(!c3d_ground15_load(ground, &resource, direction, diffuse, ambient));
+    assert(c3d_ground15_load(ground, &resource, direction, diffuse, ambient) && ground->zoom == 0);
+    c3d_ground15_clear(ground);
+    empty_map(ground, &attr);
+    resource.zoom = -10;
+    assert(c3d_ground15_load(ground, &resource, direction, diffuse, ambient) && ground->zoom == -10);
+    c3d_ground15_clear(ground);
+    empty_map(ground, &attr);
     resource.zoom = 10; resource.cubes = NULL;
     assert(!c3d_ground15_load(ground, &resource, direction, diffuse, ambient));
     resource.cubes = cells; resource.surfaces = NULL;
