@@ -796,6 +796,9 @@ if not "%errorlevel%"=="0" exit /b 1
 call "%~dp0build_max_job_level.bat"
 if not "%errorlevel%"=="0" exit /b 1
 
+call "%~dp0build_gfx_batch.bat"
+if not "%errorlevel%"=="0" exit /b 1
+
 REM The library table (tools\libraries.txt): include check, and link check on build.bat's
 REM release objects (built first when they are missing or older than src).
 call "%~dp0..\tools\check_libraries.bat"

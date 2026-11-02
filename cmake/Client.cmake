@@ -123,7 +123,8 @@ if(APPLE)
 endif()
 
 if(BUILD_TESTING AND NOT ANDROID)
-    add_executable(test_gfx_gl tests/test_gfx_gl.c src/render/gfx_gl.c src/render/gfx_batch.c src/render/display_devices.c)
+    add_executable(test_gfx_gl tests/test_gfx_gl.c src/render/gfx_gl.c src/render/gfx_batch.c src/render/display_devices.c
+        src/platform/thread_posix.c)
     target_include_directories(test_gfx_gl PRIVATE ${PROJECT_SOURCE_DIR}/src)
     target_compile_definitions(test_gfx_gl PRIVATE _DEFAULT_SOURCE)
     target_link_libraries(test_gfx_gl PRIVATE SDL3::SDL3 m)

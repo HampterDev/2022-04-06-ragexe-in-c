@@ -1,5 +1,6 @@
 #include "render/gfx.h"
 #include "render/gfx_batch.h"
+#include "platform/thread.h"
 #include <string.h>
 
 #define BATCH_VERTS   8192
@@ -14,8 +15,16 @@ static struct {
     WORD indices[BATCH_INDICES];
 } B;
 
+static uint32_t owner;
+
+static int foreign_thread(void)
+{
+    return owner && platform_thread_id() != owner;
+}
+
 void batch_init(batch_drawfn rawDraw)
 {
+    owner = platform_thread_id();
     B.draw = rawDraw;
     B.nverts = 0;
     B.nindices = 0;
@@ -23,12 +32,16 @@ void batch_init(batch_drawfn rawDraw)
 
 void batch_drop(void)
 {
+    if (foreign_thread())
+        return;
     B.nverts = 0;
     B.nindices = 0;
 }
 
 void batch_flush(void)
 {
+    if (foreign_thread())
+        return;
     if (B.nindices && B.draw)
         B.draw(GFX_PT_TRIANGLELIST, B.kind, B.verts, B.nverts, B.indices, B.nindices);
     B.nverts = 0;
