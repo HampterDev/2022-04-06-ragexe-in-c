@@ -195,7 +195,7 @@ void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt)
     case 9:   id = 0xf47; break;
     case 101:
         memset(name, 0, sizeof name);
-        memcpy_s(name, 0x14, packet->name, 0x14);
+        memcpy(name, packet->name, 0x14);
         snprintf(text, sizeof text, msg_str(0x1c1), name);
         goto show;
     default:  goto show;

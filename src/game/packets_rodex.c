@@ -322,7 +322,7 @@ void game_mode_zc_ack_read_rodex2(struct GameMode *self, const struct PACKET_ZC_
     for (i = 0; i < packet->item_count; i++) {
         dst = node->mail.items[i];
         src = (const unsigned char *)packet->text + (short)packet->text_length + i * MAIL_ITEM_SIZE;
-        memcpy_s(dst, MAIL_ITEM_SIZE, src, MAIL_ITEM_SIZE);
+        memcpy(dst, src, MAIL_ITEM_SIZE);
         a = (const struct RodexItem *)node->mail.items[i];
         item_info_construct(&item);
         item.type = a->type;

@@ -394,7 +394,7 @@ void game_mode_notify_chat_party(struct GameMode *self, const unsigned char *pkt
     vec_init(&text);
     vec_resize(&text, len + 1, 1);
     line = text.first;
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, len);
+    memcpy(text.first, packet->text, len);
     if (packet->aid == g_session1.ownAid) {
         chat_line(line, 0xc8ff, 3);
         render_object_send(self->world->player, NULL, ACTOR_MSG_CHAT, (int)line, 0, 0, 0);

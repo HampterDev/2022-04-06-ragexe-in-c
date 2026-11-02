@@ -538,7 +538,7 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         memset(name, 0, sizeof name);
         strcpy(name, ui_edit_ctrl_get_text(self->name_edit));
         memcpy(self->info.name, name, sizeof self->info.name);
-        memcpy_s(&g_loginCharInfo, sizeof g_loginCharInfo, &self->info, sizeof self->info);
+        memcpy(&g_loginCharInfo, &self->info, sizeof self->info);
         if (strstr(g_loginCharInfo.name, "그라비티"))
             return;
         _strlwr(name);

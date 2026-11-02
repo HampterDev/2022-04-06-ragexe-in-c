@@ -380,7 +380,7 @@ void game_mode_zc_notify_chat(struct GameMode *self, const unsigned char *pkt)
     vec_init(&text);
     vec_resize(&text, len + 1, 1);
     line = text.first;
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, len);
+    memcpy(text.first, packet->text, len);
     speaker = world_get_game_actor_by_aid(self->world, aid);
     if (g_windowMgr.chat_room_wnd != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ROOM_LINE, (int)line, CHAT_COLOR_ROOM, 0, 0);

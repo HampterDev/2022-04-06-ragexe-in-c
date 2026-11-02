@@ -41,8 +41,8 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
     addr.s_addr = ip;
     strcpy(g_mapServerIp.ip, inet_ntoa(addr));
     g_mapServerIp.port = port;
-    memcpy_s(g_mapServerIp.host, sizeof g_mapServerIp.host, string_cstr(&host),
-               host.size + 1 > 0x81 ? 0x81 : host.size + 1);
+    memcpy(g_mapServerIp.host, string_cstr(&host),
+             host.size + 1 > 0x81 ? 0x81 : host.size + 1);
 
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     self->base.next_sub_mode = 0xc;

@@ -155,7 +155,7 @@ void game_mode_zc_notify_player_chat(struct GameMode *self, const unsigned char 
         return;
     vec_init(&text);
     vec_resize(&text, length + 1, 1);
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length);
+    memcpy(text.first, packet->text, length);
     chars = text.first == text.last ? 0 : text.first;
     if (g_windowMgr.chat_room_wnd != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE_ALT, (int)chars, 0x7800, 0, 0);
@@ -191,7 +191,7 @@ void game_mode_zc_guild_chat(struct GameMode *self, const unsigned char *pkt)
         return;
     vec_init(&text);
     vec_resize(&text, length - 3, 1);
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length - 4);
+    memcpy(text.first, packet->text, length - 4);
     if (g_session1.hideChatAndGuild == 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text.first, GUILD_CHAT_COLOR, CHAT_CHANNEL_GUILD, 0);
         if (g_session1.autoSaveChat != 0)

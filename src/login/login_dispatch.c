@@ -14,6 +14,7 @@
 #include "ui/character/select_char_new.h"
 #include "core/unknown_packet.h"
 #include "core/packet_table.h"
+#include "core/memory.h"
 
 int g_mapServerAidPending = 0;
 
@@ -285,7 +286,7 @@ static void on_char_list_userver(struct LoginMode *self)
     len = (unsigned)packet->packet_length - 0x18;
     self->numChar = (int)(len / 0xaf);
     (g_session1.charCount) = self->numChar;
-    memcpy_s(self->chars, 0x2e7c, packet->chars + len % 0xaf, self->numChar * 0xaf);
+    mem_copy_checked(self->chars, 0x2e7c, packet->chars + len % 0xaf, self->numChar * 0xaf);
     self->base.next_sub_mode = 0x13;
 }
 
@@ -533,7 +534,7 @@ static void on_char_updated(struct LoginMode *self)
 
     if (!c || c->gid != ((DWORD)g_session1.renameCharId))
         return;
-    memcpy_s(c, 0xaf, &packet->chara, 0xaf);
+    memcpy(c, &packet->chara, 0xaf);
     char_map_display_name(c->map_name);
     self->base.next_sub_mode = 7;
 }

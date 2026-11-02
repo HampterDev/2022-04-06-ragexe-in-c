@@ -347,7 +347,7 @@ void game_mode_on_purchase_item_list_from_mc4(struct GameMode *self,
         struct VendingEntry4 e;
         struct ItemInfo item;
 
-        memcpy_s(&e, sizeof e, &packet->items[i], sizeof e);
+        memcpy(&e, &packet->items[i], sizeof e);
         vending_entry4_to_item(&item, &e);
         items_push_copy(&items, &item);
         item_info_destruct(&item);
@@ -367,7 +367,7 @@ void game_mode_on_purchase_my_item_list3(struct GameMode *self, const struct Pac
         struct MyVendingEntry3 e;
         struct ItemInfo item;
 
-        memcpy_s(&e, sizeof e, &packet->items[i], sizeof e);
+        memcpy(&e, &packet->items[i], sizeof e);
         item_info_construct(&item);
         item.index = e.index;
         item.price = e.price;

@@ -111,7 +111,7 @@ void ranking_run(struct RankingSchedule *self, int now)
 
 void ranking_set(struct RankingSchedule *self, const struct RankPacket *packet)
 {
-    memcpy_s(&self->rank, sizeof self->rank, packet, sizeof self->rank);
+    memcpy(&self->rank, packet, sizeof self->rank);
 }
 
 void ranking_print(struct RankingSchedule *self)

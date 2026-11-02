@@ -150,7 +150,7 @@ int game_mode_msg_open_write_rodex(const char *receiver)
             string_free(&name);
             return 0;
         }
-        memcpy_s(packet.receiver, 0x18, string_cstr(&name), 0x18);
+        memcpy(packet.receiver, string_cstr(&name), 0x18);
         string_free(&name);
     }
     send_packet(packet.id, &packet);

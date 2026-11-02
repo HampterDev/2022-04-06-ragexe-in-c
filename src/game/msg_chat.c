@@ -82,7 +82,7 @@ static int send_chat_line(int packet_id)
     len = strlen(text);
     packet.id = (unsigned short)packet_id;
     packet.len = (unsigned short)(len + 4);
-    memcpy_s(packet.text, len, text, len);
+    memcpy(packet.text, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }
@@ -323,8 +323,8 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
 
     packet.id = CZ_WHISPER;
     packet.len = (unsigned short)(len + 0x1c);
-    memcpy_s(packet.text, 0x18, name, 0x18);
-    memcpy_s(packet.text + 0x18, len, text, len);
+    memcpy(packet.text, name, 0x18);
+    memcpy(packet.text + 0x18, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }

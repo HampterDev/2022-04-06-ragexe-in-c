@@ -112,14 +112,14 @@ static void send_make_packet(struct LapineBox *self)
     head->len = (short)(chosen_count(self) * sizeof(struct LapineMakeEntry) + sizeof *head);
     head->box_item = self->box_item;
     buf = (unsigned char *)mem_try_alloc(head->len);
-    memcpy_s(buf, head->len, head, sizeof *head);
+    mem_copy_checked(buf, head->len, head, sizeof *head);
     for (i = 0; i < chosen_count(self); i++) {
         struct LapineMakeEntry entry;
 
         chosen = (const struct ItemInfo *)self->chosen.first;
         entry.index = (unsigned short)chosen[i].index;
         entry.count = (unsigned short)chosen[i].count;
-        memcpy_s(buf + sizeof *head + i * sizeof entry, head->len, &entry, sizeof entry);
+        mem_copy_checked(buf + sizeof *head + i * sizeof entry, head->len, &entry, sizeof entry);
     }
     rag_connection_send_packet(rag_connection_instance(), head->len, buf);
     self->waiting = 1;
