@@ -191,8 +191,8 @@ static void pane_on_draw(struct UIScrollWnd *pane)
         ui_window_invalidate(pane->base.parent);
 }
 
-static int pane_send_msg(struct UIScrollWnd *pane, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                        int val4)
+static intptr_t pane_send_msg(struct UIScrollWnd *pane, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                        intptr_t val4)
 {
     if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
         ui_close_window(QUEST_DETAIL_WND_ID);

@@ -213,7 +213,8 @@ intptr_t ui_normal_mb_send_msg(struct UIWindow *window, struct UIWindow *sender,
 {
     struct UINormalMB *self = (struct UINormalMB *)window;
     if (msg == UI_MSG_COMMAND) {
-        struct NormalMBAnswer *answer = tree_find(&self->answers, &val1, tree_less_int);
+        int id = (int)val1;
+        struct NormalMBAnswer *answer = tree_find(&self->answers, &id, tree_less_int);
 
         if (answer)
             answer->run();

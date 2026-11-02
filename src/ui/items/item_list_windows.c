@@ -437,8 +437,9 @@ intptr_t ui_spell_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
         return 0;
     case UI_MSG_LIST_ADD: {
         struct ItemInfo row;
+        int skill_id = (int)val1;
 
-        vec_push(&self->skill_ids, &val1, sizeof val1);
+        vec_push(&self->skill_ids, &skill_id, sizeof skill_id);
         item_info_construct(&row);
         item_info_copy(list_push_back(&list->items, NULL, sizeof(struct ItemInfo)), &row);
         ui_spell_list_wnd_send_msg(&list->frame.base, NULL, UI_MSG_LIST_CHANGED, 0, 0, 0, 0);

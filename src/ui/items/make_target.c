@@ -349,12 +349,14 @@ intptr_t ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWind
     struct UIMakeTargetListWnd *self = (struct UIMakeTargetListWnd *)window;
     struct ItemInfo info;
     struct String name = {0};
-    int result = 0, id;
+    intptr_t result = 0;
+    int id;
 
     item_info_construct(&info);
     switch (msg) {
     case MT_MSG_ADD_TARGET:
-        vec_push(&self->ids, &val1, sizeof val1);
+        id = (int)val1;
+        vec_push(&self->ids, &id, sizeof id);
         item_info_set_item_id(&info, val1);
         info.refine = 0;
         info.identified = 1;

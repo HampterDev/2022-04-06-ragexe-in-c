@@ -525,8 +525,8 @@ static void second_pwd_digit(struct UISecondPasswordInputWnd *self, int key)
     s->star_x += 5;
 }
 
-static int second_pwd_send_msg(struct UISecondPasswordInputWnd *self, struct UIWindow *sender, int msg, int val1,
-                               int val2, int val3, int val4, int input)
+static intptr_t second_pwd_send_msg(struct UISecondPasswordInputWnd *self, struct UIWindow *sender, int msg, intptr_t val1,
+                               intptr_t val2, intptr_t val3, intptr_t val4, int input)
 {
     struct UIStorePasswordInputWnd *s = &self->base;
     struct UIWindow *wnd = &s->frame.base;

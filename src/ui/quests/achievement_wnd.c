@@ -310,8 +310,9 @@ intptr_t ui_achievement_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     case ACH_MSG_SHOW: {
         struct AchievementInfoEntry *found;
         struct UIAchViewWnd *view;
+        int id = (int)val1;
 
-        found = tree_find(&self->achs, &val1, tree_less_int);
+        found = tree_find(&self->achs, &id, tree_less_int);
         view = self->view;
         if (!found) {
             view->id = -1;
