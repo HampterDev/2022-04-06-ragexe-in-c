@@ -1056,17 +1056,29 @@ void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
     }
 }
 
+static HRESULT present_without_wait(void)
+{
+    IDirect3DSwapChain9 *chain = NULL;
+    HRESULT hr = IDirect3DDevice9_GetSwapChain(d9.dev, 0, &chain);
+    if (FAILED(hr))
+        return IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL);
+    hr = IDirect3DSwapChain9_Present(chain, NULL, NULL, NULL, NULL, D3DPRESENT_DONOTWAIT);
+    IDirect3DSwapChain9_Release(chain);
+    return hr;
+}
+
 int gfx_present(struct C3dDevice *d, int vsync, int whole)
 {
     HRESULT hr;
     batch_flush();
     (void)d;
     (void)whole;
-    (void)vsync;
     if (!d9.dev)
         return -1;
     resolve_ms();
-    hr = IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL);
+    hr = vsync ? IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL) : present_without_wait();
+    if (hr == D3DERR_WASSTILLDRAWING)
+        return 0;
     if (hr == D3DERR_DEVICELOST)
         return GFX_E_SURFACELOST;
     if (hr == D3DERR_DEVICEHUNG || hr == D3DERR_DEVICEREMOVED) {

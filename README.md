@@ -257,7 +257,9 @@ Data, time and leaks:
   off. `RAGEXE_MSAA_ALPHA=0|ssaa|atoc` controls the transparency anti-aliasing.
 - The wait for the vertical blank is the swap chain's, so `Present`
   blocks without spinning and the frame rate is the display's refresh rate.
-  `RAGEXE_VSYNC=0` turns vsync off.
+  `RAGEXE_VSYNC=0` turns vsync off. The map-loading progress frames, which the original
+  shows without waiting for the vertical blank, are presented without waiting too; one that
+  finds the previous frame still queued is skipped.
 - A device the driver reports as hung or removed, or one whose reset fails 8
   times in a row, is replaced by a new device on the same adapter, with the textures copied
   over. If the new device refuses the exclusive mode, the client falls back to windowed.
