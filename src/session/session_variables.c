@@ -3,6 +3,7 @@
 #include "session/csession.h"
 #include "session/session_state.h"
 #include "session/session_windows.h"
+#include "platform/system_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,6 @@ static const int s_zeroedStatusKeys[] = {
 
 void session_init_variables_(struct Session *self)
 {
-    MEMORYSTATUS memory;
     int value, r, key;
     size_t i;
 
@@ -114,10 +114,7 @@ void session_init_variables_(struct Session *self)
     self->married = 0;
     self->ownIllusion = 0;
     self->showTimeFont = 0;
-    memset(&memory, 0, sizeof(memory));
-    memory.dwLength = sizeof(memory);
-    GlobalMemoryStatus(&memory);
-    self->lowMemory = memory.dwTotalPhys < 0x9b72ec0;
+    self->lowMemory = platform_physical_memory() < 0x9b72ec0;
     memset(self->blockedChars, 0, sizeof self->blockedChars);
     self->cartType = 0;
     for (i = 0; i < sizeof(s_zeroedStatusKeys) / sizeof(s_zeroedStatusKeys[0]); i++) {

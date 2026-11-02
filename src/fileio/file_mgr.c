@@ -1,4 +1,5 @@
 #include "fileio/file.h"
+#include "platform/system_memory.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -48,9 +49,9 @@ BYTE *game_file_mgr_read_loose_file(struct GameFileMgr *self, const char *name, 
         return NULL;
     if (GetFileSizeEx(file, &length) && length.QuadPart >= 0 && length.QuadPart <= INT_MAX) {
         DWORD count = (DWORD)length.QuadPart;
-        data = VirtualAlloc(NULL, count ? count : 1, MEM_COMMIT, PAGE_READWRITE);
+        data = platform_pages_alloc(count ? count : 1);
         if (data && count && (!ReadFile(file, data, count, &read, NULL) || read != count)) {
-            VirtualFree(data, 0, MEM_RELEASE);
+            platform_pages_free(data);
             data = NULL;
         }
         if (data)
@@ -82,13 +83,13 @@ BYTE *game_file_mgr_read_from_archives(struct GameFileMgr *self, const char *nam
 
             if (entry.size > INT_MAX)
                 continue;
-            data = (BYTE *)VirtualAlloc(NULL, entry.size + 8, MEM_COMMIT, PAGE_READWRITE);
+            data = platform_pages_alloc(entry.size + 8);
             if (data && grf_archive_read(pak, &entry, data, entry.size)) {
                 *size = (int)entry.size;
 
                 return data;
             }
-            VirtualFree(data, 0, MEM_RELEASE);
+            platform_pages_free(data);
         }
     }
     return NULL;
@@ -152,5 +153,5 @@ void game_file_mgr_release_data(struct GameFileMgr *self, void *data)
 {
     (void)self;
 
-    VirtualFree(data, 0, MEM_RELEASE);
+    platform_pages_free(data);
 }

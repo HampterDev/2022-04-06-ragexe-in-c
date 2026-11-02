@@ -9,6 +9,7 @@
 #include <string.h>
 #include "fileio/res_mgr.h"
 #include "platform/clock.h"
+#include "platform/system_memory.h"
 
 struct TextureCacheStorage {
     struct Texture **textures;
@@ -281,7 +282,7 @@ void texcache_evict(struct TexCache *cache)
         else
             ++i;
     }
-    HeapCompact(GetProcessHeap(), 0);
+    platform_heap_compact();
     gfx_evict_managed_textures(&g_3dDevice);
     cache_leave(section);
 }
