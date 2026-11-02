@@ -162,9 +162,8 @@ static void empty_and_missing(const char *empty, const char *missing)
     struct File file;
     char invalid[512];
     file_construct(&file);
-    assert(file_open(&file, empty, CFILE_MODE_READ, 0, 1));
-    assert(file.buffer && file.size == 0);
-    assert(file_read(&file, NULL, 0));
+    assert(!file_open(&file, empty, CFILE_MODE_READ, 0, 1));
+    assert(!file.buffer && file.size == 0 && file.position == 0);
     assert(!file_read(&file, invalid, 1));
     assert(file_make_file_name(empty, 1));
     assert(!file_open(&file, missing, CFILE_MODE_READ, 0, 1));
@@ -196,7 +195,10 @@ static void archive_priority(const char *path, const char *empty, const char *mi
     assert(file_open(&file, path, CFILE_MODE_READ, 0, 0));
     assert(file.size == 6 && archive_queries == queries);
     assert(file_open(&file, empty, CFILE_MODE_READ, 0, 0));
-    assert(file.size == 0 && archive_queries == queries);
+    assert(file.size == 3 && memcmp(file.buffer, "pak", 3) == 0 && archive_queries == queries + 1);
+    archive_found = 0;
+    assert(!file_open(&file, empty, CFILE_MODE_READ, 0, 0));
+    archive_found = 1;
     g_readFolderFirst = 0;
     archive_read_ok = 0;
     assert(file_open(&file, path, CFILE_MODE_READ, 0, 0) && file.size == 6);
@@ -239,6 +241,6 @@ int main(void)
     assert(loose_checks > 0);
     assert(DeleteFileA(path));
     assert(DeleteFileA(empty));
-    puts("file I/O: C ownership, reopen, exact transfers, signed seeks, bounds, empty files and archive fallback passed");
+    puts("file I/O: C ownership, reopen, exact transfers, signed seeks, bounds, empty loose files read as absent and archive fallback passed");
     return 0;
 }
