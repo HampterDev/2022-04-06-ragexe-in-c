@@ -95,9 +95,16 @@ void mat_rotate_x(float *m, float rad)
     mat34_post_multiply(m, &b);
 }
 
-static uint32_t sincos_last_angle;
-static float sincos_last_sin, sincos_last_cos;
-static int sincos_valid;
+/* Thread-local in every MSVC mode (the tests compile this file without /std:c11) and in C11. */
+#ifdef _MSC_VER
+#define MATH3D_THREAD_LOCAL __declspec(thread)
+#else
+#define MATH3D_THREAD_LOCAL _Thread_local
+#endif
+
+static MATH3D_THREAD_LOCAL uint32_t sincos_last_angle;
+static MATH3D_THREAD_LOCAL float sincos_last_sin, sincos_last_cos;
+static MATH3D_THREAD_LOCAL int sincos_valid;
 
 static void cached_sincos(float rad, float *s, float *c)
 {
