@@ -61,7 +61,7 @@ unsigned char pc_on_process(struct GameObject *object)
         self->wave_pending = 0;
     }
     show = game_actor_get_transform_job(actor) > 0;
-    if (is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_burrow(self->effect_state))
+    if (is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_hiding(self->effect_state))
         show = 0;
     if (show) {
         if (!self->costume_body_obj) {

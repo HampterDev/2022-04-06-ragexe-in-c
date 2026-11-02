@@ -21,7 +21,7 @@
 #define WND_MSG_SHOW            0x17
 
 #define CHAT_COLOR_RED          0xff
-#define CHAT_COLOR_YELLOW       0xffff00
+#define CHAT_COLOR_CYAN       0xffff00
 
 static void chat_result(int msg, int color)
 {
@@ -137,14 +137,14 @@ void game_mode_zc_pc_purchase_result(struct GameMode *self, const unsigned char 
 
     (void)self;
     switch (packet->result) {
-    case 0: chat_result(0x36, CHAT_COLOR_YELLOW); break;
+    case 0: chat_result(0x36, CHAT_COLOR_CYAN); break;
     case 1: chat_result(0x37, CHAT_COLOR_RED); break;
     case 2: chat_result(0x38, CHAT_COLOR_RED); break;
     case 3: chat_result(0xdd, CHAT_COLOR_RED); break;
     case 9: chat_result(0x794, CHAT_COLOR_RED); break;
-    case 10: chat_result(0xb65, CHAT_COLOR_YELLOW); break;
+    case 10: chat_result(0xb65, CHAT_COLOR_CYAN); break;
     case 11: chat_result(0xde2, CHAT_COLOR_RED); break;
-    case 12: chat_result(0xde3, CHAT_COLOR_YELLOW); break;
+    case 12: chat_result(0xde3, CHAT_COLOR_CYAN); break;
     case 13: chat_result(0xde5, CHAT_COLOR_RED); break;
     case 14: chat_result(0xde4, CHAT_COLOR_RED); break;
     }
@@ -220,7 +220,7 @@ void game_mode_zc_pc_sell_result(struct GameMode *self, const unsigned char *pkt
 
     (void)self;
     if (packet->result == 0)
-        chat_result(0x36, CHAT_COLOR_YELLOW);
+        chat_result(0x36, CHAT_COLOR_CYAN);
     else if (packet->result == 1)
         chat_result(0x39, CHAT_COLOR_RED);
     session_clear_lists(&g_session1);
@@ -309,7 +309,7 @@ void game_mode_zc_pc_cash_point_update(struct GameMode *self, const unsigned cha
             text = msg_str(0x716);
         } else {
             text = msg_str(0x36);
-            color = CHAT_COLOR_YELLOW;
+            color = CHAT_COLOR_CYAN;
         }
         break;
     case 1: text = msg_str(0x4cb); break;

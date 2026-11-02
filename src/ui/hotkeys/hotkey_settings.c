@@ -49,7 +49,7 @@
 #define MSG_HOTKEY_NO_KEY 0x5ee
 #define MSG_HOTKEY_UNNAMED_KEY 0x6a4
 #define MSG_HOTKEY_SAVED 0xdf4
-#define MSG_HOTKEY_CHAT_BAR 0x6ef
+#define MSG_HOTKEY_CHAT_MODE_TOGGLE 0x6ef
 #define MSG_HOTKEY_PREV 0x41d
 #define MSG_HOTKEY_NEXT 0x41e
 static const int hotkey_tab_names[HOTKEY_GROUPS] = { 0x5d3, 0xe0b, 0x5d4, 0x5d5 };
@@ -305,7 +305,7 @@ void ui_hot_key_wnd_on_create(struct UIWindow *window, int width, int height)
     self->chat_bar = check;
     ui_window_create(check, 0x96, 0xc);
     ui_check_box_set_bitmaps(self->chat_bar, UI_SKIN "checkbox_1.bmp", UI_SKIN "checkbox_0.bmp",
-                          msg_str(MSG_HOTKEY_CHAT_BAR));
+                          msg_str(MSG_HOTKEY_CHAT_MODE_TOGGLE));
     ui_window_move_base(self->chat_bar, 0x50, wnd->height - 0x16);
     ui_check_box_set_check(self->chat_bar, g_windowMgr.chat_bar_toggleable);
     ui_window_add_child(wnd, self->chat_bar);

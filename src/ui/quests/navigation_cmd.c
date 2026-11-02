@@ -26,7 +26,7 @@
 #define MSG_NAVI_MOB_HIGH 0x992
 #define MSG_NAVI_MOB_AVERAGE 0x993
 #define MSG_NAVI_MOB_LOW 0x994
-#define MSG_AIRPLANE_GUIDED_MOB 0xd3b
+#define MSG_AIRPLANE_NPC_RANDOM_SPOT 0xd3b
 #define MSG_AIRPLANE_BAD_START 0xd03
 #define MSG_AIRPLANE_BAD_END 0xd04
 #define MSG_AIRPLANE_SAME_MAP 0xd19
@@ -359,7 +359,7 @@ static void open_airship(struct UINavigationV4Wnd *self)
              (int)((double)(g_renderer->height - 0x6e) * 0.5));
     ui_window_mgr_add_window(&g_windowMgr, wnd);
     if (navi_manager_guided_kind(&g_navi) == 2)
-        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(MSG_AIRPLANE_GUIDED_MOB), 0, 0, 0);
+        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(MSG_AIRPLANE_NPC_RANDOM_SPOT), 0, 0, 0);
 
     map_name = game_current_map_name();
     string_init(&here);

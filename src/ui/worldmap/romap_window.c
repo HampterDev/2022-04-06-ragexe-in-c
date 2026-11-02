@@ -71,7 +71,7 @@ const struct UIWindowOps ui_ro_map_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-#define MSG_ROMAP_DUNGEONS 0x988
+#define MSG_ROMAP_MONSTERS 0x988
 #define MSG_ROMAP_SEARCH_TIP 0x894
 #define MSG_ROMAP_NAVI_TIP 0xc8d
 #define MSG_ROMAP_EDIT_HINT 0x8a2
@@ -802,7 +802,7 @@ void ui_ro_map_wnd_on_create(struct UIWindow *window, int width, int height)
     self->dungeon_check = check;
     ui_window_create(check, 0x50, 0xc);
     ui_check_box_set_bitmaps(self->dungeon_check, string_cstr(&checked), string_cstr(&unchecked),
-                          msg_str(MSG_ROMAP_DUNGEONS));
+                          msg_str(MSG_ROMAP_MONSTERS));
     self->dungeon_check->id = ROMAP_ID_DUNGEONS;
     ui_window_move(self->dungeon_check, right - 0x52, 3);
     ui_check_box_set_check(self->dungeon_check, self->show_dungeons);

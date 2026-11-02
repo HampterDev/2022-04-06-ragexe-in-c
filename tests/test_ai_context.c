@@ -95,8 +95,8 @@ int session_is_party_member_aid(struct Session *s, int aid, unsigned char flag) 
 int game_actor_get_job(void *a) { (void)a; return 1001; }
 BYTE skill_info_is_good_skill_for_actor(int skill) { return skill == 100; }
 BYTE effect_state_bit6(DWORD state) { return state != 0; }
-BYTE is_effect_state_burrow(int state) { (void)state; return 0; }
-BYTE is_effect_state_star2(int state) { (void)state; return 0; }
+BYTE is_effect_state_hiding(int state) { (void)state; return 0; }
+BYTE is_effect_state_cloaking(int state) { (void)state; return 0; }
 
 struct SkillInfo *session_get_skill_info(struct SkillInfo *out, int skill)
 {

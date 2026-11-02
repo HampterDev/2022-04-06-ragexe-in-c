@@ -217,11 +217,11 @@ static void player_menu(struct GameMode *self, const struct PickInfo *pick, stru
         menu_row_printf(self, menu, line, POPUP_DISCONNECT, 0x1ca, string_cstr(&name));
 
     player = self->world->player;
-    if (player && !is_effect_state_burrow(actor_get_effect_state(player))
-        && !is_effect_state_star2(actor_get_effect_state(player)))
+    if (player && !is_effect_state_hiding(actor_get_effect_state(player))
+        && !is_effect_state_cloaking(actor_get_effect_state(player)))
         menu_row_printf(self, menu, line, POPUP_VIEW_EQUIPMENT, 0x550, string_cstr(&name));
-    if (player && !is_effect_state_burrow(actor_get_effect_state(player))
-        && !is_effect_state_star2(actor_get_effect_state(player)))
+    if (player && !is_effect_state_hiding(actor_get_effect_state(player))
+        && !is_effect_state_cloaking(actor_get_effect_state(player)))
         menu_row_printf(self, menu, line, POPUP_TRADE, 0x187, string_cstr(&name));
     if (may_invite_to_party(string_cstr(&name)))
         menu_row_printf(self, menu, line, POPUP_PARTY_INVITE, 0x188, string_cstr(&name));

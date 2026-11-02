@@ -71,8 +71,8 @@
 #define MSG_TIP_WRITE 0x402
 #define MSG_TIP_PREV 0x511
 #define MSG_TIP_NEXT 0x512
-#define MSG_TIP_SENDER 0xa8d
-#define MSG_TIP_TITLE 0xa8e
+#define MSG_TIP_WRITE_REPLY 0xa8d
+#define MSG_TIP_READ_MAIL 0xa8e
 
 #define COLOUR_TAB 0xccb5ad
 #define COLOUR_TAB_CHOSEN 0x9c3e1f
@@ -369,7 +369,7 @@ static void make_row(struct UIRodexInboxWnd *self, int row, int y)
     text->hover_colour = COLOUR_HOVER;
     ui_window_move_base(BTN(text), 0x45, y);
     BTN(text)->id = ID_TITLE;
-    ui_button_set_tooltip(text, msg_str(MSG_TIP_TITLE));
+    ui_button_set_tooltip(text, msg_str(MSG_TIP_READ_MAIL));
     ui_button_set_show((struct UIButton *)(BTN(text)), 0);
     ui_window_add_child(WND(self), BTN(text));
 
@@ -379,7 +379,7 @@ static void make_row(struct UIRodexInboxWnd *self, int row, int y)
     text->hover_colour = COLOUR_HOVER;
     ui_window_move_base(BTN(text), 0x47, y + 0x10);
     BTN(text)->id = ID_SENDER;
-    ui_button_set_tooltip(text, msg_str(MSG_TIP_SENDER));
+    ui_button_set_tooltip(text, msg_str(MSG_TIP_WRITE_REPLY));
     ui_button_set_show((struct UIButton *)(BTN(text)), 0);
     ui_window_add_child(WND(self), BTN(text));
 

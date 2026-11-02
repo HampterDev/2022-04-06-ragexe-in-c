@@ -218,7 +218,7 @@ int game_mode_msg_show_illustration(struct GameMode *self, const char *file, int
     return 0;
 }
 
-int game_mode_msg_couple_request(const char *name, int which)
+int game_mode_msg_guild_member_status(const char *name, int which)
 {
     char line[0x800];
     int id;

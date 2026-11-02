@@ -8,7 +8,7 @@
 #include <time.h>
 #include "platform/clock.h"
 
-#define WND_ACHIEVEMENT     0xa
+#define WND_EQUIP           0xa
 
 static void local_date(int t, WORD *year, WORD *month, WORD *day)
 {
@@ -91,7 +91,7 @@ int session_add_title(struct Session *self, int id)
             return -1;
     vec_push(titles, &title, sizeof(int));
     std_sort(titles->first, titles->last, sizeof(int), title_name_less, NULL);
-    wnd = ui_window_find(WND_ACHIEVEMENT);
+    wnd = ui_window_find(WND_EQUIP);
     if (wnd)
         ui_window_send(wnd, NULL, 0x3c, 0, 0, 0, 0);
     return title;

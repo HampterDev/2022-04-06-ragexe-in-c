@@ -42,7 +42,7 @@
 #define MM_VENDOR_GONE          0xf5
 #define MM_PET_ACT             0x94
 
-#define WND_RESURRECTION        0x9b
+#define WND_ID_ESC_MENU        0x9b
 
 enum { VANISH_OUT_OF_SIGHT = 0, VANISH_DIED = 1, VANISH_LOGGED_OUT = 2, VANISH_TELEPORT = 3 };
 
@@ -71,8 +71,8 @@ static void we_died(struct GameMode *self)
 
         mode_send_msg(self, MM_PET_ACT, emotion, 0, 0, 0);
     }
-    if (!ui_window_mgr_post_quit1(&g_windowMgr, WND_RESURRECTION))
-        ui_window_open(WND_RESURRECTION);
+    if (!ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_ESC_MENU))
+        ui_window_open(WND_ID_ESC_MENU);
     session_notify_messenger_group_and_plates(&g_session1);
 }
 

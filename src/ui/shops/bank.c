@@ -93,7 +93,7 @@ enum {
 #define MSG_BANK_NOTE_FULL 0xadf
 #define MSG_BANK_EMPTY 0xad2
 #define MSG_BANK_NOTE_EMPTY 0xadc
-#define MSG_BANK_NOTHING_LEFT 0x9a1
+#define MSG_BANK_STORE_LIMIT 0x9a1
 #define MSG_BANK_NO_AMOUNT 0xadb
 #define MSG_BANK_NOTE_NO_AMOUNT 0xadd
 #define MSG_BANK_NOT_A_NUMBER 0x9b8
@@ -280,7 +280,7 @@ static long long bank_checked_amount(struct UIBank_NewWnd *self, BYTE deposit)
             else if (g_session1.zeny == 0)
                 refuse(self, MSG_BANK_EMPTY, MSG_BANK_NOTE_EMPTY);
             else if (purse - over < 0)
-                refuse(self, MSG_BANK_NOTHING_LEFT, MSG_BANK_NOTE_EMPTY);
+                refuse(self, MSG_BANK_STORE_LIMIT, MSG_BANK_NOTE_EMPTY);
             else
                 amount = purse - over;
         } else {

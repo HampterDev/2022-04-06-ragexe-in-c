@@ -15,7 +15,7 @@ void mat_set_rotate_x(float *m, float rad) { abort(); }
 void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags) { abort(); }
 float get_cos_deg(int deg) { abort(); }
 float get_sin_deg(int deg) { abort(); }
-unsigned char is_effect_state_star2(unsigned long state) { abort(); }
+unsigned char is_effect_state_cloaking(unsigned long state) { abort(); }
 void *effect_find_actor(int aid) { abort(); }
 void effect_play_wave_at(const char *wave, const Vec3 *position, float height) { abort(); }
 Vec3 *effect_player_position(Vec3 *out) { abort(); }

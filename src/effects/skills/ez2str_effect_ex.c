@@ -186,7 +186,7 @@ void ez2_str_effect_ex_render(struct Effect *effect)
         return;
     actor = effect_find_actor(self->base.owner_aid);
     if (actor) {
-        if (is_effect_state_star2(actor_get_effect_state(actor)) == 1)
+        if (is_effect_state_cloaking(actor_get_effect_state(actor)) == 1)
             return;
         if (!ACTOR_REVEALED(actor))
             return;

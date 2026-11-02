@@ -602,7 +602,7 @@ void hallu_pc_render(struct GameObject *object, const float *matrix)
     struct RenderObject *ro = (struct RenderObject *)self;
 
     mirror_owner_flag((struct GameActor *)self, &self->owner);
-    if (is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_burrow(self->effect_state))
+    if (is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_hiding(self->effect_state))
         return;
     rand();
     rand();

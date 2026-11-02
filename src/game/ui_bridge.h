@@ -16,6 +16,6 @@ enum {
     UIM_CLOSE_DIALOG = 3,
 };
 
-#define CHAT_COLOR_YELLOW 0x00ffff00
+#define CHAT_COLOR_CYAN 0x00ffff00
 
 #endif

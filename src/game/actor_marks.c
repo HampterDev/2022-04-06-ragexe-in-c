@@ -18,7 +18,7 @@ static int actor_hidden(struct GameActor *actor)
 {
     if (clientinfo_is_admin_aid(((unsigned)g_session1.ownAid)))
         return 0;
-    return is_effect_state_star2(actor_get_effect_state(actor)) || is_effect_state_burrow(actor_get_effect_state(actor))
+    return is_effect_state_cloaking(actor_get_effect_state(actor)) || is_effect_state_hiding(actor_get_effect_state(actor))
            || effect_state_bit6(actor_get_effect_state(actor));
 }
 

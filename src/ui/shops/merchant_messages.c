@@ -28,8 +28,8 @@
 #define WND_ID_CART 0x28
 #define WND_ID_MY_SHOP 0x2d
 #define WND_ID_MY_BUYING 0xb0
-#define WND_ID_SHOP_SETUP 0x101
-#define WND_ID_BUYING_SETUP 0x102
+#define WND_ID_SELL_LOG 0x101
+#define WND_ID_BUY_LOG 0x102
 #define UI_ID_MY_SHOP_END 0x1f2
 #define MSG_MY_SHOP_END 0xb6e
 #define MSG_MY_SHOP_TITLE_PLAIN 0xe2
@@ -352,15 +352,15 @@ static void my_shop_close(struct UIMerchantItemMyShopWnd *self)
         ui_close_window(own_wnd);
         mode_send_message(mode, MODE_REQ_SHOP_CLOSE, 0, 0, 0, 0);
     } else {
-        struct UIWindow *setup;
+        struct UIWindow *log_wnd;
 
         mode_send_message(mode, variant ? MODE_REQ_CLOSE_BUYING : MODE_REQ_CLOSE_SHOP, 0, 0, 0, 0);
         mode_send_message(mode, MODE_REQ_SHOP_CLOSE, 0, 0, 0, 0);
         ui_close_window(own_wnd);
-        setup = ui_window_open(variant ? WND_ID_BUYING_SETUP : WND_ID_SHOP_SETUP);
-        if (setup) {
-            ui_window_set_show(setup, 1);
-            ui_window_move(setup, x, y);
+        log_wnd = ui_window_open(variant ? WND_ID_BUY_LOG : WND_ID_SELL_LOG);
+        if (log_wnd) {
+            ui_window_set_show(log_wnd, 1);
+            ui_window_move(log_wnd, x, y);
         }
     }
     session_clear_own_store_items(&g_session1);

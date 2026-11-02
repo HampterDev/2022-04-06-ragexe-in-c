@@ -12,7 +12,7 @@ static void destroy_champion(void *value);
 
 struct ChampionMonsterMgr *g_championMonster;
 
-#define ACTOR_MSG_EFFECT 0x6d
+#define ACTOR_MSG_REMOVE_EFFECT 0x6d
 
 static struct ChampionMonsterMgr *champion_monster_construct(struct ChampionMonsterMgr *self)
 {
@@ -72,7 +72,7 @@ int champion_monster_apply_effects(struct ChampionMonsterMgr *self, int job,
         return -1;
     effects = &node->data.effects;
     if (actor->visible && actor->revealed
-        && !is_effect_state_star2(render_object_ops_of((struct RenderObject *)actor)->get_effect_state((struct RenderObject *)actor))) {
+        && !is_effect_state_cloaking(render_object_ops_of((struct RenderObject *)actor)->get_effect_state((struct RenderObject *)actor))) {
         for (i = 0; i < VEC_COUNT(effects, int); i++) {
             int effect = ((int *)effects->first)[i];
             Vec3 at;
@@ -92,7 +92,7 @@ int champion_monster_apply_effects(struct ChampionMonsterMgr *self, int job,
         return -1;
     }
     for (i = 0; i < VEC_COUNT(effects, int); i++)
-        render_object_send(actor, actor, ACTOR_MSG_EFFECT, ((int *)effects->first)[i], 0, 0, 0);
+        render_object_send(actor, actor, ACTOR_MSG_REMOVE_EFFECT, ((int *)effects->first)[i], 0, 0, 0);
     return -1;
 }
 

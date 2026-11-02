@@ -21,8 +21,8 @@
 #include "platform/clock.h"
 
 enum {
-    EFST_ATTACK_COOLDOWN = 0x40,
-    EFST_TIMER_KIND_FIRST = 0x16b,
+    EFST_WEAPONPROPERTY = 0x40,
+    EFST_SUMMON1 = 0x16b,
     STATE_NO_TIME = 9999,
     STATE_END_NEVER = 999999,
     MSG_STATE_CHANGE = 0x6e,
@@ -122,7 +122,7 @@ static void own_state_list(int index, int remain_ms, int val1, int val2, int tot
     else end = platform_ticks_ms() + remain_ms;
     entry.end_tick = end;
 
-    if ((unsigned)(index - EFST_TIMER_KIND_FIRST) <= 4)
+    if ((unsigned)(index - EFST_SUMMON1) <= 4)
         entry.value = val1 & 3;
     else if (index == 0x153 || index == EFST_EQUIPMENT_EFFECT)
         entry.value = val1;
@@ -616,7 +616,7 @@ void game_mode_zc_msg_state_change(struct GameMode *mode, int aid, int state,
     char prefix[0x100], text[0x100], line[0x200];
     int color, how;
 
-    if (index == EFST_ATTACK_COOLDOWN)
+    if (index == EFST_WEAPONPROPERTY)
         index = val1 + 0x381;
     if (aid != g_session1.ownAid) {
         actor = world_get_game_actor_by_aid(mode->world, aid);

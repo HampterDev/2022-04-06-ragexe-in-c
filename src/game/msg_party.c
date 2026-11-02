@@ -9,7 +9,7 @@
 #include "ui/ui_std.h"
 
 #define CZ_PARTY_LEAVE              0x100
-#define CZ_REQ_EXPEL_MEMBER         0x103
+#define CZ_REQ_EXPEL_GROUP_MEMBER   0x103
 #define CZ_MAKE_GROUP2              0x1e8
 #define CZ_PARTY_JOIN_REQ           0x2c4
 #define CZ_PARTY_JOIN_REQ_ACK       0x2c7
@@ -180,11 +180,11 @@ int game_mode_msg_expel_party_member(const char *name)
 
     if (!g_session1.partyLeader)
         return 0;
-    packet.id = CZ_REQ_EXPEL_MEMBER;
+    packet.id = CZ_REQ_EXPEL_GROUP_MEMBER;
     strncpy(packet.name, name, 0x18);
     session_get_party_member_by_name(&g_session1, &member, name);
     packet.aid = member.aid;
-    send_packet(CZ_REQ_EXPEL_MEMBER, &packet);
+    send_packet(CZ_REQ_EXPEL_GROUP_MEMBER, &packet);
     party_member_info_destroy(&member);
     return 0;
 }

@@ -15,7 +15,7 @@ unsigned char g_mapPropertyQuiet;
 #include "game/packet_handlers.h"
 #include "game/client.h"
 
-#define CZ_REQUEST_AFTER_MAPPROPERTY 0x447
+#define CZ_BLOCKING_PLAY_CANCEL 0x447
 #define COLOUR_NOTICE 0xffff64
 
 static const int kR2Flags[] = { 7, 8, 9, 0xf, 0x10, 0x11, 0x12, 0x13, 0x14, 0x28, 0x29 };
@@ -138,9 +138,9 @@ void game_mode_map_property_r2(struct GameMode *self, const struct PacketMapProp
     if (map_property_mgr_get(g_mapFlags, p->type, 0x14))
         say_notice(0x6ec);
 
-    request = CZ_REQUEST_AFTER_MAPPROPERTY;
+    request = CZ_BLOCKING_PLAY_CANCEL;
     conn = rag_connection_instance();
-    len = rag_connection_get_packet_length(conn, CZ_REQUEST_AFTER_MAPPROPERTY);
+    len = rag_connection_get_packet_length(conn, CZ_BLOCKING_PLAY_CANCEL);
     rag_connection_send_packet(rag_connection_instance(), len, &request);
 }
 

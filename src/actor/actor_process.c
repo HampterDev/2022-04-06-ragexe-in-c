@@ -160,8 +160,8 @@ void game_actor_place_hp_gage(struct GameActor *self)
 
     if (!gage)
         return;
-    if (!g_session1.showMonsterHp || !ui_monster_gauge_two_bars(gage) || is_effect_state_burrow(self->effect_state)
-        || is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || g_windowMgr.hide_ui_state == 2) {
+    if (!g_session1.showMonsterHp || !ui_monster_gauge_two_bars(gage) || is_effect_state_hiding(self->effect_state)
+        || is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || g_windowMgr.hide_ui_state == 2) {
         ui_window_set_show(self->monster_gage_wnd, 0);
         return;
     }

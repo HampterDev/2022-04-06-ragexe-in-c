@@ -27,9 +27,9 @@ static int actor_hidden(void *actor)
 {
     if (effect_state_bit6(actor_get_effect_state(actor)))
         return 1;
-    if (is_effect_state_burrow(actor_get_effect_state(actor)))
+    if (is_effect_state_hiding(actor_get_effect_state(actor)))
         return 1;
-    return is_effect_state_star2(actor_get_effect_state(actor)) != 0;
+    return is_effect_state_cloaking(actor_get_effect_state(actor)) != 0;
 }
 
 #pragma pack(push, 1)

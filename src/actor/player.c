@@ -457,7 +457,7 @@ void player_process_proceed(struct Player *self)
 
 static int player_busy(const struct Player *self)
 {
-    return self->state == 6 || is_effect_state_burrow(self->effect_state);
+    return self->state == 6 || is_effect_state_hiding(self->effect_state);
 }
 
 static int player_burrow_skill(int skill, int hi, int with_250)
@@ -667,7 +667,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x1e:
     case 0x1f:
-        if (is_effect_state_burrow(self->effect_state))
+        if (is_effect_state_hiding(self->effect_state))
             break;
         if (self->state == 0)
             MODE_SEND(mode, 0x89, 2, self->target_aid, 0);
@@ -683,7 +683,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x29:
         if (self->state == 6)
             break;
-        if (is_effect_state_burrow(self->effect_state) && !player_burrow_skill(p2, p2_hi, 1))
+        if (is_effect_state_hiding(self->effect_state) && !player_burrow_skill(p2, p2_hi, 1))
             break;
         self->pending = 3;
         self->target_aid = p1;
@@ -706,7 +706,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x41:
         if (self->state == 6)
             break;
-        if (is_effect_state_burrow(self->effect_state) && !player_burrow_skill(p1, p1_hi, 0))
+        if (is_effect_state_hiding(self->effect_state) && !player_burrow_skill(p1, p1_hi, 0))
             break;
         self->pending = 4;
         self->skill_id = p1;
@@ -748,7 +748,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
 
 void player_process_costume_body(struct Player *self, unsigned char show)
 {
-    if (is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_burrow(self->effect_state))
+    if (is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_hiding(self->effect_state))
         show = 0;
     if (show) {
         if (!self->costume_body_obj) {

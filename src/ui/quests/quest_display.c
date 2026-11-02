@@ -79,7 +79,7 @@ const struct UIWindowOps ui_quest_display_ops = {
 #define QUEST_DISPLAY_MSG_CLICKED 0x31
 #define QUEST_MENU_TOGGLE 0x30
 #define QUEST_MENU_DETAILS 0x31
-#define MSG_QUEST_MENU_TOGGLE 0x15f
+#define MSG_QUEST_MENU_DELETE 0x15f
 #define MSG_QUEST_MENU_DETAILS 0x656
 #define MSG_QUEST_HUNT_DONE 0x7ee
 #define WND_ID_MENU 0x12
@@ -355,7 +355,7 @@ static void open_menu(struct UIQuestDisplay *self)
         ui_window_set_show_base(&self->base, 0);
     if (self->hover != -1) {
         add_entry(self, MSG_QUEST_MENU_DETAILS, QUEST_MENU_DETAILS);
-        add_entry(self, MSG_QUEST_MENU_TOGGLE, QUEST_MENU_TOGGLE);
+        add_entry(self, MSG_QUEST_MENU_DELETE, QUEST_MENU_TOGGLE);
     }
     if (!MENU_ENTRY_COUNT(&self->menu))
         return;

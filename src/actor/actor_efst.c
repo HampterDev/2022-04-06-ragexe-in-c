@@ -615,7 +615,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             if (self->mark_kind == par3)
                 break;
             self->mark_kind = value;
-            if (is_effect_state_burrow(self->effect_state) || is_effect_state_star2(self->effect_state)
+            if (is_effect_state_hiding(self->effect_state) || is_effect_state_cloaking(self->effect_state)
                 || effect_state_bit6(self->effect_state))
                 break;
             render_object_send(self, NULL, 0x34, 0, 0, 0, 0);

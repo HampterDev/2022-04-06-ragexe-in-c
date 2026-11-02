@@ -159,7 +159,7 @@ enum { JOB_WARP_PORTAL = 0x2d };
 
 static int actor_on_screen(struct GameActor *actor)
 {
-    return actor->visible == 1 && actor->revealed == 1 && !is_effect_state_star2(actor_get_effect_state(actor));
+    return actor->visible == 1 && actor->revealed == 1 && !is_effect_state_cloaking(actor_get_effect_state(actor));
 }
 
 void game_mode_point_at_target(struct GameMode *self)
@@ -170,7 +170,7 @@ void game_mode_point_at_target(struct GameMode *self)
         actor = (struct GameActor *)world_find_pc_by_char_id(self->world, g_followActorGid);
         if (actor == 0)
             return;
-        if (actor->visible == 1 && actor->revealed == 1 && !is_effect_state_star2(actor_get_effect_state(actor)))
+        if (actor->visible == 1 && actor->revealed == 1 && !is_effect_state_cloaking(actor_get_effect_state(actor)))
             game_mode_show_name_balloon2(self, actor);
     } else {
         if (self->base.attack_in_progress == 0) {

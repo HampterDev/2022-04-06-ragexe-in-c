@@ -37,13 +37,13 @@
 #define CHAT_CMD_SHOW_LINES 0x15d
 
 #define CHAT_COMBO_WHISPER_NAMES 0
-#define CHAT_COMBO_COLOUR 1
+#define CHAT_COMBO_TARGET 1
 #define CHAT_COMBO_ROW_HEIGHT 0x10
 #define CHAT_COMBO_MAX_HEIGHT 0x50
 #define CHAT_COMBO_WIDTH 0x70
-#define CHAT_COLOUR_BLACK 0
-#define CHAT_COLOUR_PURPLE 1
-#define CHAT_COLOUR_TEAL 2
+#define CHAT_TARGET_ALL 0
+#define CHAT_TARGET_PARTY 1
+#define CHAT_TARGET_GUILD 2
 
 #define CHAT_KIND_ALL 0x16
 #define CHAT_KIND_PLAIN 0
@@ -55,9 +55,9 @@
 
 #define MSG_CHAT_TAB_TOO_LONG 0x6f0
 #define MSG_CHAT_NO_WHISPER_NAMES 0xc0
-#define MSG_CHAT_COLOUR_BLACK 0x55
-#define MSG_CHAT_COLOUR_PURPLE 0x56
-#define MSG_CHAT_COLOUR_TEAL 0x1b5
+#define MSG_SEND_TO_ALL 0x55
+#define MSG_SEND_TO_PARTY 0x56
+#define MSG_SEND_TO_GUILD 0x1b5
 #define MSG_CHAT_ITEM_LINK 0xbe2
 #define MSG_CHAT_NAME_LINK 0xafc
 #define MSG_CHAT_TOO_MANY_TABS 0x62a
@@ -478,20 +478,20 @@ static void open_whisper_names(struct UINewChatWnd *self)
     ui_window_move(combo, x + 1, y - height + 1);
 }
 
-static void open_colours(struct UINewChatWnd *self)
+static void open_targets(struct UINewChatWnd *self)
 {
     struct UIWindow *combo;
     int x, y;
 
-    self->combo_kind = CHAT_COMBO_COLOUR;
+    self->combo_kind = CHAT_COMBO_TARGET;
     if (g_windowMgr.combo_box_wnd)
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_COMBO_BOX);
     combo = ui_window_open(WND_ID_COMBO_BOX);
     if (!combo)
         return;
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_BLACK), 0, 0, 0);
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_PURPLE), 0, 0, 0);
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_TEAL), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_SEND_TO_ALL), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_SEND_TO_PARTY), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_SEND_TO_GUILD), 0, 0, 0);
     ui_window_send(combo, NULL, COMBO_MSG_SELECT, g_session1.chatTarget, 0, 0, 0);
     ui_window_resize(combo, CHAT_COMBO_WIDTH, 0x30);
     ui_window_send(combo, NULL, COMBO_MSG_OPENER_ID, WND_ID_CHAT, 0, 0, 0);
@@ -506,15 +506,15 @@ static void combo_chosen(struct UINewChatWnd *self, int line)
     struct UIWhisperEditCtrl *whisper;
     int count;
 
-    if (self->combo_kind == CHAT_COMBO_COLOUR) {
+    if (self->combo_kind == CHAT_COMBO_TARGET) {
         struct UIWindow *edit = &self->edit->edit.base;
 
         g_session1.chatTarget = line;
-        if (line == CHAT_COLOUR_BLACK)
+        if (line == CHAT_TARGET_ALL)
             ui_edit_ctrl_set_text_colour(edit, 0, 0, 0, -1);
-        else if (line == CHAT_COLOUR_PURPLE)
+        else if (line == CHAT_TARGET_PARTY)
             ui_edit_ctrl_set_text_colour(edit, 0x80, 0, 0x80, -1);
-        else if (line == CHAT_COLOUR_TEAL)
+        else if (line == CHAT_TARGET_GUILD)
             ui_edit_ctrl_set_text_colour(edit, 0, 0x80, 0x80, -1);
         ui_window_invalidate_base(&self->frame.base);
         return;
@@ -673,7 +673,7 @@ static void command(struct UINewChatWnd *self, int id, intptr_t val2)
         open_whisper_names(self);
         return;
     case CHAT_ID_BAR_SYS_2:
-        open_colours(self);
+        open_targets(self);
         return;
     case CHAT_CMD_SET_WHISPER_NAME:
         ui_window_mgr_set_whisper_name(&g_windowMgr, (const char *)val2);

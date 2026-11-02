@@ -607,7 +607,7 @@ void ez2_str_effect_render(struct Effect *effect)
 
     if (actor) {
         if (ez2_str_effect_is_headgear_type(self)) {
-            if (is_effect_state_star2(actor_get_effect_state(actor)))
+            if (is_effect_state_cloaking(actor_get_effect_state(actor)))
                 return;
         }
         if (ez2_str_effect_is_headgear_type(self) && !ACTOR_REVEALED(actor))

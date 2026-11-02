@@ -20,7 +20,7 @@
 
 static int draw_hidden(const struct GameActor *self)
 {
-    return is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_burrow(self->effect_state);
+    return is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || is_effect_state_hiding(self->effect_state);
 }
 
 static void draw_rand4(void)

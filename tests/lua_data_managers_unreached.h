@@ -33,7 +33,7 @@ struct PartyMember *session_get_party_member_by_name(struct Session *self, struc
                                                                  const char *name) { abort(); }
 BYTE session_get_pet_acc_act_name(struct Session *self, int job) { abort(); }
 int session_is_pc_job(void *self, int job) { abort(); }
-unsigned char is_effect_state_star2(int state) { abort(); }
+unsigned char is_effect_state_cloaking(int state) { abort(); }
 struct ItemInfo *item_info_copy(struct ItemInfo *self, const struct ItemInfo *src) { abort(); }
 void store_search_item_copy(void *self, const void *src) { abort(); }
 void store_search_items_destroy(void *first, void *last) { abort(); }

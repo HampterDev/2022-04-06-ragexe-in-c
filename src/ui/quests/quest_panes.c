@@ -17,7 +17,7 @@
 
 #define MSG_QUEST_DESCRIPTION 0xd49
 #define MSG_QUEST_HUNTS 0xd4a
-#define MSG_QUEST_NPC 0xd4b
+#define MSG_QUEST_REWARD_HEADING 0xd4b
 #define MSG_QUEST_BASE_EXP 0xd4c
 #define MSG_QUEST_JOB_EXP 0xd4d
 #define MSG_QUEST_REWARDS 0xd4e
@@ -373,7 +373,7 @@ void ui_ongoing_quest_scroll_wnd_set_quest(struct UIOngoingQuestScrollWnd *self,
         ui_window_move_base(spr, pane->base.width - spr->width - 0x1e, y);
         pane_set_npc_target(pane, spr, &info->base);
     }
-    y = pane_add_heading(pane, MSG_QUEST_NPC, y);
+    y = pane_add_heading(pane, MSG_QUEST_REWARD_HEADING, y);
     pane_add_label(pane, msg_str(MSG_QUEST_BASE_EXP), 0x20, y);
     pane_add_blue_label(pane, string_cstr(&info->reward_exp), 0x6d, y);
     y += 0x14;

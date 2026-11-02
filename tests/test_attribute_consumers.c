@@ -37,7 +37,7 @@ void path_info_init(struct PathInfo *p) { abort(); }
 void path_info_destroy(struct PathInfo *p) { abort(); }
 unsigned char path_finder_find_path(struct PathFinder *p, unsigned long time, int sx, int sy,
     int subx, int suby, int tx, int ty, int speed, struct PathInfo *path, int kind) { abort(); }
-char is_effect_state_burrow(unsigned state) { abort(); }
+char is_effect_state_hiding(unsigned state) { abort(); }
 int ray_triangle_hit(const struct Ray3 *ray, const Vec3 *v0, const Vec3 *v1, const Vec3 *v2,
                      float *u, float *v, float *t) { abort(); }
 

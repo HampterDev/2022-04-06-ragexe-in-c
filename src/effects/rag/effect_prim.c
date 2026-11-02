@@ -454,7 +454,7 @@ unsigned char prim_is_visible(struct EffectPrim *self)
         return 1;
     if (actor->visible == 0 || actor->revealed == 0)
         return 0;
-    if (is_effect_state_star2(actor_state(actor)))
+    if (is_effect_state_cloaking(actor_state(actor)))
         return 0;
 
     if (self->master->effect_id != 0xe8)
@@ -469,5 +469,5 @@ unsigned char prim_is_visible(struct EffectPrim *self)
         return 1;
     if (actor->visible == 0 || actor->revealed == 0)
         return 0;
-    return is_effect_state_star2(actor_state(actor)) ? 0 : 1;
+    return is_effect_state_cloaking(actor_state(actor)) ? 0 : 1;
 }
