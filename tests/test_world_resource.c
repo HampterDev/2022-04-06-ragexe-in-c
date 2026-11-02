@@ -86,6 +86,8 @@ static void put_int(int value) { put(&value, sizeof value); }
 static void put_float(float value) { put(&value, sizeof value); }
 static void text_field(char byte, size_t width)
 { char text[80]; assert(width <= sizeof text); memset(text, byte, width); put(text, width); }
+static int at_least(int major, int minor, int wanted)
+{ return major == 1 ? minor >= wanted : major >= 2; }
 static void fixture(BYTE major, BYTE minor, int build, int models)
 {
     struct RswModelRec model = {0};
@@ -99,18 +101,18 @@ static void fixture(BYTE major, BYTE minor, int build, int models)
     if (major == 2 && minor >= 5) put_int(build);
     if (major == 2 && minor >= 2) put(&flag, 1);
     text_field('I', 40); text_field('G', 40);
-    if (major >= 2 || minor >= 4) text_field('A', 40);
+    if (at_least(major, minor, 4)) text_field('A', 40);
     text_field('S', 40);
     if (!(major == 2 && minor >= 6)) {
-        if (major >= 2 || minor >= 3) put_float(7);
-        if (major >= 2 || minor >= 8) { put_int(4); put_float(3); put_float(2.5f); put_float(15.5f); }
-        if (major >= 2 || minor >= 9) put_int(9);
+        if (at_least(major, minor, 3)) put_float(7);
+        if (at_least(major, minor, 8)) { put_int(4); put_float(3); put_float(2.5f); put_float(15.5f); }
+        if (at_least(major, minor, 9)) put_int(9);
     }
-    if (major >= 2 || minor >= 5) {
+    if (at_least(major, minor, 5)) {
         put_int(30); put_int(60); put(diffuse, sizeof diffuse); put(ambient, sizeof ambient);
     }
-    if (major >= 2 || minor >= 7) put_int(0);
-    if (major >= 2 || minor >= 6) { put_int(-10); put_int(20); put_int(-30); put_int(40); }
+    if (at_least(major, minor, 7)) put_int(0);
+    if (at_least(major, minor, 6)) { put_int(-10); put_int(20); put_int(-30); put_int(40); }
     count_offset = input_size; put_int(models + 3); first_type_offset = input_size;
     memset(model.fileName, 'M', sizeof model.fileName); memset(model.nodeName, 'N', sizeof model.nodeName);
     model.pos[0] = 1; model.pos[1] = 2; model.pos[2] = 3;
@@ -118,7 +120,7 @@ static void fixture(BYTE major, BYTE minor, int build, int models)
     model.scale[0] = model.scale[1] = model.scale[2] = 1;
     for (i = 0; i < models; ++i) {
         put_int(1);
-        if (major >= 2 || minor >= 3) {
+        if (at_least(major, minor, 3)) {
             text_field('R', 40); put_int(2); put_float(1.5f); put_int(3);
             if (major == 2 && minor >= 6 && build >= 186) put(&flag, 1);
         }
@@ -157,9 +159,9 @@ static void verify(const struct C3dWorldRes *res, int major, int minor, int buil
 {
     assert(!buffers && res->modelCount == models && res->effectCount == 1 && res->soundCount == 1);
     assert(strlen(res->gndFile) == 40 && strlen(res->srcFile) == 40);
-    assert(strlen(res->gatFile) == (size_t)(major >= 2 || minor >= 4 ? 40 : 0));
+    assert(strlen(res->gatFile) == (size_t)(at_least(major, minor, 4) ? 40 : 0));
     assert(strlen(res->models[0].fileName) == 80 && strlen(res->models[0].nodeName) == 80);
-    assert(strlen(res->models[0].name) == (size_t)(major >= 2 || minor >= 3 ? 40 : 0));
+    assert(strlen(res->models[0].name) == (size_t)(at_least(major, minor, 3) ? 40 : 0));
     assert(res->models[0].pos[2] == 3 && res->models[0].rot[1] == 5 && res->models[0].scale[0] == 1);
     assert(res->models[0].flag == (major == 2 && minor >= 6 && build >= 186));
     assert(strlen(res->sounds[0].waveName) == 80 && res->sounds[0].pos[0] == 11);
@@ -171,14 +173,14 @@ static void verify(const struct C3dWorldRes *res, int major, int minor, int buil
         assert(res->tree && res->tree[0].max[0] == 100);
         assert(res->tree[RSW_TREE_NODE_COUNT - 1].centre[0] == (RSW_TREE_NODE_COUNT - 1) * 2);
     } else assert(!res->tree);
-    if ((major == 1 && minor < 3) || (major == 2 && minor >= 6))
+    if (!at_least(major, minor, 3) || (major == 2 && minor >= 6))
         assert(res->waterLevel == 0 && res->waterAnimSpeed == 3);
     else assert(res->waterLevel == 7);
 }
 int main(void)
 {
     struct C3dWorldRes resource, *owned;
-    const int versions[][3] = {{1,0,0}, {1,9,0}, {2,0,0}, {2,6,185}, {2,6,186}};
+    const int versions[][3] = {{0,0,0}, {0,9,0}, {1,0,0}, {1,9,0}, {2,0,0}, {2,6,185}, {2,6,186}};
     unsigned i, failures;
     size_t complete, length;
     world_res_init(&resource); empty_resource(&resource, 0);
@@ -198,14 +200,20 @@ int main(void)
     { int bad = -1; memcpy(input + count_offset, &bad, 4); }
     assert(!c3d_world_res_load(&resource, "negative-count.rsw")); empty_resource(&resource, 0);
     fixture(2,6,186,1);
-    { int bad = 99; memcpy(input + first_type_offset, &bad, 4); }
-    assert(!c3d_world_res_load(&resource, "unknown-object.rsw")); empty_resource(&resource, 0);
+    memmove(input + first_type_offset + 4, input + first_type_offset, input_size - first_type_offset);
+    input_size += 4;
+    { int bad = 99, objects = 5; memcpy(input + first_type_offset, &bad, 4); memcpy(input + count_offset, &objects, 4); }
+    assert(c3d_world_res_load(&resource, "unknown-object.rsw")); verify(&resource,2,6,186,1);
     fixture(2,6,186,1);
     { float bad = NAN; memcpy(input + first_model_offset + offsetof(struct RswModelRec, pos), &bad, 4); }
-    assert(!c3d_world_res_load(&resource, "nan-model.rsw")); empty_resource(&resource, 0);
+    assert(c3d_world_res_load(&resource, "nan-model.rsw")); verify(&resource,2,6,186,1);
+    assert(isnan(resource.models[0].pos[0]));
     fixture(2,6,186,1);
     { float bad = INFINITY; memcpy(input + tree_offset, &bad, 4); }
-    assert(!c3d_world_res_load(&resource, "infinite-bounds.rsw")); empty_resource(&resource, 0);
+    assert(c3d_world_res_load(&resource, "infinite-bounds.rsw")); assert(resource.tree[0].max[0] == INFINITY);
+    fixture(1,9,0,1);
+    { float bad = NAN; memcpy(input + 4 + 2 + 160, &bad, 4); }
+    assert(c3d_world_res_load(&resource, "nan-water.rsw")); assert(isnan(resource.waterLevel));
     fixture(2,6,186,33); allocation_calls = 0;
     assert(c3d_world_res_load(&resource, "growth.rsw")); verify(&resource,2,6,186,33);
     failures = allocation_calls; assert(failures == 6);
@@ -218,6 +226,6 @@ int main(void)
     resource_destroy(&owned->res); assert(!live && !buffers);
     assert(c3d_world_res_load(&resource, "direct-destruct.rsw"));
     world_resource_finish(&resource); empty_resource(&resource, 0);
-    puts("scene resource: versions, full-width names, typed ownership, reloads, every-byte truncation, array failures and flat bounds passed");
+    puts("scene resource: versions 0.x to 2.6, full-width names, unknown objects skipped, non-finite values kept, typed ownership, reloads, every-byte truncation, array failures and flat bounds passed");
     return 0;
 }
