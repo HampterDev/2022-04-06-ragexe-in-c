@@ -66,17 +66,40 @@ IJL; visual comparison of full in-game screenshots is still pending.
   the existing `timeGetTime` epoch; macOS and Linux use `CLOCK_MONOTONIC`. Absolute
   values must not be persisted or compared across processes/platforms. The frame
   timer is the first migrated caller; other clock calls still need migration.
-- `platform/filesystem.h` takes **CP949 game paths**, converts at the disk boundary
-  to Windows UTF-16 or POSIX UTF-8, and normalizes backslashes. It does not change
-  GRF keys or lowercase names. Invalid encodings fail instead of substituting
-  characters. `platform_file_open` returns a normal `FILE *`, owned by the caller;
-  close it with `fclose`. The mode is the usual ASCII stdio mode. Exclusive `x`
-  creation remains atomic. Ping logs and the relative mini-party settings path
-  are the first migrated consumers.
-- Native paths from an OS file picker are a separate input domain: do not pass
-  UTF-8 strings to the CP949 interface. A future native-path API must preserve
-  characters outside CP949. Exact case is currently required on case-sensitive
-  filesystems; a game-data case lookup has not been implemented.
+- `platform/filesystem.h` owns the client's file, directory and path calls. Its paths come
+  in two forms. A **game path** is relative, CP949, with `\` or `/` separators.
+  A **native path** is absolute and in the OS encoding (the system code page on
+  Windows, UTF-8 on POSIX). Native paths only come from `platform_current_directory`,
+  `platform_module_path`, `platform_path_full` and `platform_path_join(native
+  directory, game path)`, which converts the game part. `client_path(out, size,
+  format, ...)` in `core/client_path.h` formats a game path and joins it onto
+  `g_clientDir`; never concatenate the client directory and a game name by hand.
+  A native path can be passed to the C library (`fopen`) directly.
+- On Windows every function that replaced an ANSI call passes the string unchanged
+  to the same ANSI API (`CreateFileA`, `FindFirstFileA`, `_access`, ...), so the
+  client keeps its system-code-page behaviour. `platform_file_open`,
+  `platform_file_remove` and `platform_path_is_directory` decode a game path as CP949
+  for the UTF-16 API and pass a native path to the ANSI CRT. Directory creation uses
+  `_mkdir` everywhere; the former `CreateDirectoryA` callers get the same result.
+- On POSIX a native path (leading `/`) is used verbatim. A game path is converted
+  to UTF-8, `\` becomes `/`, and `.`/`..` are resolved lexically as Win32 does.
+  When the exact path does not exist, each missing component is matched
+  case-insensitively (ASCII folding) against its directory. Directory listings for
+  this lookup are cached per directory (32 slots, mutex protected), revalidated by
+  device, inode and modification time, and reread while the directory changed
+  within the last second. Invalid encodings fail instead of substituting characters.
+- `platform_find_*` lists a pattern with `*` and `?` (case-insensitive; `*.*` also
+  matches names without a dot, as on Win32) and returns names as game strings: on
+  POSIX they are converted back to CP949 and names CP949 cannot represent are
+  skipped. `platform_file_open` returns a normal `FILE *`, owned by the caller;
+  `struct PlatformFile` is the unbuffered handle used by CFile, the GRF reader and
+  the settings writers. `platform_file_create_temporary` with
+  `platform_file_replace` or `platform_file_discard` is the atomic replace
+  (`GetTempFileNameA` and write-through `MoveFileExA` on Windows; `mkstemp`, `fsync`,
+  `rename` and a directory `fsync` on POSIX). GRF archives are mapped through
+  `platform_file_map` (file mappings on Windows, `mmap` on POSIX).
+- CFile names that are native paths skip the `data\` prefix. GRF keys and loose
+  names are not lowercased; only the disk lookup ignores case.
 - Public platform headers contain no Win32, AppKit, Metal or SDL types. Keep
   renderer-specific objects inside each backend. Shared POSIX behavior serves
   both macOS and Linux; use Apple-specific code only for Apple-specific services.
@@ -161,9 +184,7 @@ the workflow actually completes.
 5. Implement the Metal backend behind a platform-neutral graphics seam. Linux
    will need its own graphics backend; it must not inherit Metal-specific types.
 
-Absolute paths assembled from `g_clientDir` are still Windows system-code-page
-paths, sometimes mixed with CP949 filenames. Their existing Windows I/O is
-preserved. Migrating them requires separating the native directory from the
-game-encoded filename; passing the mixed string to the CP949 API is incorrect.
+`g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
+before; a longer client directory leaves it empty on every platform.
 
 No renderer, font, audio or gameplay parity claim is made by these foundation tests.
