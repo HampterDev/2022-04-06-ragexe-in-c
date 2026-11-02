@@ -14,6 +14,7 @@
 #include "core/msg_str.h"
 #include "session/session_options.h"
 #include "ui/render/graphic_setting.h"
+#include "platform/window.h"
 
 
 #define MSG_APPLY_AGREE    0xc5f
@@ -124,32 +125,16 @@ static void relaunch_state_icons(void)
     }
 }
 
-#define WINDOWED_STYLE   (WS_CAPTION | WS_MINIMIZEBOX | WS_CLIPCHILDREN)
-#define FULLSCREEN_STYLE WS_POPUP
-
 static HMONITOR target_monitor(HWND hwnd, const GUID *adapter)
 {
     HMONITOR m = gfx_adapter_monitor(adapter);
-    return m ? m : MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-}
-
-static void monitor_rects(HMONITOR m, RECT *mon, RECT *work)
-{
-    MONITORINFO mi;
-    mi.cbSize = sizeof(mi);
-    if (m && GetMonitorInfoA(m, &mi)) {
-        *mon = mi.rcMonitor;
-        *work = mi.rcWork;
-    } else {
-        *mon = (RECT){0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
-        *work = *mon;
-    }
+    return m ? m : platform_window_monitor(hwnd);
 }
 
 static void monitor_size(HMONITOR m, int *w, int *h)
 {
     RECT mon, work;
-    monitor_rects(m, &mon, &work);
+    platform_monitor_rects(m, &mon, &work);
     *w = mon.right - mon.left;
     *h = mon.bottom - mon.top;
 }
@@ -160,7 +145,7 @@ int borderless_rect(const GUID *adapter, RECT *rc)
     HMONITOR m = gfx_adapter_monitor(adapter);
     if (!m || !borderless_setting)
         return 0;
-    monitor_rects(m, rc, &work);
+    platform_monitor_rects(m, rc, &work);
     return 1;
 }
 
@@ -175,36 +160,7 @@ static int current_kind(const struct C3dDevice *d)
 {
     if (d->fullscreen)
         return KIND_EXCLUSIVE;
-    return (GetWindowLongA(d->hwnd, GWL_STYLE) & WS_CAPTION) == WS_CAPTION ? KIND_WINDOWED : KIND_BORDERLESS;
-}
-
-static void place_windowed(HWND hwnd, HMONITOR on, int x, int y, int clientW, int clientH, int centre)
-{
-    RECT rc, mon, work;
-    int fw, fh;
-    monitor_rects(on, &mon, &work);
-    SetWindowLongA(hwnd, GWL_STYLE, WINDOWED_STYLE | (GetWindowLongA(hwnd, GWL_STYLE) & WS_VISIBLE));
-    rc = (RECT){0, 0, clientW, clientH};
-    AdjustWindowRect(&rc, WINDOWED_STYLE, FALSE);
-    fw = rc.right - rc.left;
-    fh = rc.bottom - rc.top;
-    if (centre) {
-        x = work.left + (work.right - work.left - fw) / 2;
-        y = work.top + (work.bottom - work.top - fh) / 2;
-    }
-    if (x + fw > work.right)  x = work.right - fw;
-    if (y + fh > work.bottom) y = work.bottom - fh;
-    if (x < work.left) x = work.left;
-    if (y < work.top)  y = work.top;
-    SetWindowPos(hwnd, NULL, x, y, fw, fh, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
-}
-
-static void place_frameless(HWND hwnd, HMONITOR on, int w, int h)
-{
-    RECT mon, work;
-    monitor_rects(on, &mon, &work);
-    SetWindowLongA(hwnd, GWL_STYLE, FULLSCREEN_STYLE | WS_VISIBLE);
-    SetWindowPos(hwnd, HWND_TOP, mon.left, mon.top, w, h, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    return platform_window_has_caption(d->hwnd) ? KIND_WINDOWED : KIND_BORDERLESS;
 }
 
 static void read_geometry(struct C3dDevice *d, int fullscreen, int w, int h)
@@ -216,7 +172,7 @@ static void read_geometry(struct C3dDevice *d, int fullscreen, int w, int h)
         d->height = h;
         d->rcClient = d->rcWindow;
     } else {
-        GetClientRect(d->hwnd, &d->rcWindow);
+        platform_client_rect(d->hwnd, &d->rcWindow);
         d->width = d->rcWindow.right;
         d->height = d->rcWindow.bottom;
         d->rcClient = *window_client_rect_on_monitor(&rc, d->hwnd);
@@ -238,7 +194,7 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     wasKind = current_kind(d);
     devFull = kind == KIND_EXCLUSIVE;
     wasDevFull = d->fullscreen != 0;
-    GetWindowRect(d->hwnd, &old);
+    platform_window_rect(d->hwnd, &old);
     was = target_monitor(d->hwnd, &init_adapter);
     on = target_monitor(d->hwnd, adapter ? adapter : &init_adapter);
     if (kind == KIND_BORDERLESS)
@@ -246,22 +202,22 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     if (w == oldW && h == oldH && kind == wasKind && !moving)
         return 1;
     if (devFull) {
-        place_frameless(d->hwnd, on, w, h);
+        platform_window_place_frameless(d->hwnd, on, w, h);
         read_geometry(d, 1, w, h);
     } else if (!wasDevFull) {
         if (kind == KIND_BORDERLESS)
-            place_frameless(d->hwnd, on, w, h);
+            platform_window_place_frameless(d->hwnd, on, w, h);
         else
-            place_windowed(d->hwnd, on, old.left, old.top, w, h, moving || wasKind == KIND_BORDERLESS);
+            platform_window_place_windowed(d->hwnd, on, old.left, old.top, w, h, moving || wasKind == KIND_BORDERLESS);
         read_geometry(d, 0, w, h);
     } else {
         read_geometry(d, 1, w, h);
     }
     if (gfx_set_mode(d, adapter, d->width, d->height, devFull) != 0) {
         if (wasDevFull || wasKind == KIND_BORDERLESS)
-            place_frameless(d->hwnd, was, oldW, oldH);
+            platform_window_place_frameless(d->hwnd, was, oldW, oldH);
         else
-            place_windowed(d->hwnd, was, old.left, old.top, oldW, oldH, 0);
+            platform_window_place_windowed(d->hwnd, was, old.left, old.top, oldW, oldH, 0);
         read_geometry(d, wasDevFull, oldW, oldH);
         return 0;
     }
@@ -272,18 +228,18 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
         int modeW = d->width, modeH = d->height;
         if (kind == KIND_BORDERLESS) {
             monitor_size(on, &w, &h);
-            place_frameless(d->hwnd, on, w, h);
+            platform_window_place_frameless(d->hwnd, on, w, h);
         } else {
-            place_windowed(d->hwnd, on, 0, 0, w, h, 1);
+            platform_window_place_windowed(d->hwnd, on, 0, 0, w, h, 1);
         }
         read_geometry(d, 0, w, h);
         if (d->width != modeW || d->height != modeH)
             gfx_set_mode(d, NULL, d->width, d->height, 0);
     }
     if (devFull && !wasDevFull)
-        ShowCursor(FALSE);
+        platform_show_cursor(0);
     else if (!devFull && wasDevFull)
-        ShowCursor(TRUE);
+        platform_show_cursor(1);
     if (r) {
         renderer_set_projection(r, d->width, d->height);
         if (r->clipLeft == -40.0f) {
@@ -293,17 +249,8 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     }
     relayout_ui(d->width, d->height);
     relaunch_state_icons();
-    if (g_session1.mouseExclusiveOption && GetForegroundWindow() == d->hwnd) {
-        RECT rc;
-        POINT p0 = { 0, 0 }, p1;
-        GetClientRect(d->hwnd, &rc);
-        p1.x = rc.right;
-        p1.y = rc.bottom;
-        ClientToScreen(d->hwnd, &p0);
-        ClientToScreen(d->hwnd, &p1);
-        rc = (RECT){p0.x, p0.y, p1.x, p1.y};
-        ClipCursor(&rc);
-    }
+    if (g_session1.mouseExclusiveOption && platform_window_is_foreground(d->hwnd))
+        platform_clip_cursor_to_client(d->hwnd, 1);
     return 1;
 }
 

@@ -65,10 +65,16 @@ struct Language *language_tc_construct(struct LanguageTC *self)
         self->table[i].kind = ZHUYIN_UNKNOWN;
     for (i = 0; i < sizeof zhuyin_keys / sizeof zhuyin_keys[0]; ++i) {
         struct ZhuyinKey *key = &self->table[zhuyin_keys[i].key];
+#ifdef _WIN32
         BOOL used_default = FALSE;
         int bytes = WideCharToMultiByte(950, WC_NO_BEST_FIT_CHARS,
             &zhuyin_keys[i].symbol, 1, (char *)key->symbol, sizeof key->symbol,
             NULL, &used_default);
+#else
+        int used_default = 0;
+        uint16_t symbol = zhuyin_keys[i].symbol;
+        int bytes = platform_code_page_from_utf16(950, &symbol, 1, (char *)key->symbol, sizeof key->symbol);
+#endif
 
         if (bytes != sizeof key->symbol || used_default)
             fatal_error("Cannot encode Zhuyin symbols as CP950");

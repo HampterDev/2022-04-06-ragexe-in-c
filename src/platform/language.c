@@ -35,7 +35,7 @@ struct Language *language_construct(struct Language *self)
 {
     memset(self, 0, sizeof *self);
     self->input_method = LANGUAGE_INPUT_DEFAULT;
-    self->keyboard_lang = LOWORD(GetKeyboardLayout(0));
+    self->keyboard_lang = platform_keyboard_language();
     self->code_page = g_useCharsetTag ? code_page_from_lang(self->keyboard_lang) : g_codePage;
     switch (platform_user_language() & 0x3ff) {
     case LANGUAGE_ID_GERMAN:     self->folder_lang = LANGUAGE_ID_GERMAN;     self->folder = "german\\";     break;
@@ -164,7 +164,7 @@ void language_caret_back(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharPrevExA((WORD)self->code_page, s, s + self->caret, 0) - s);
+    self->caret = (int)(platform_code_page_prev(self->code_page, s, s + self->caret) - s);
 }
 
 void language_caret_forward(struct Language *self)
@@ -179,7 +179,7 @@ void language_caret_forward(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharNextExA((WORD)self->code_page, s + self->caret, 0) - s);
+    self->caret = (int)(platform_code_page_next(self->code_page, s + self->caret) - s);
 }
 
 #ifdef _WIN32
@@ -418,7 +418,7 @@ void language_get_selection(struct Language *self, int *anchor, int *caret)
 
 const char *language_char_next(const char *p)
 {
-    return CharNextExA((WORD)g_codePage, p, 0);
+    return platform_code_page_next(g_codePage, p);
 }
 
 void language_set_masked(struct Language *self, BYTE masked)

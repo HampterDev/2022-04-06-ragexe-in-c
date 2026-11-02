@@ -15,9 +15,20 @@ int platform_show_cursor(int show);
 void platform_clip_cursor_to_client(HWND window, int clip);
 void platform_client_screen_rect(HWND window, RECT *out);
 void platform_client_rect(HWND window, RECT *out);
+void platform_window_rect(HWND window, RECT *out);
+void platform_monitor_rect(HMONITOR monitor, RECT *out);
+void platform_monitor_rects(HMONITOR monitor, RECT *mon, RECT *work);
+HMONITOR platform_window_monitor(HWND window);
+int platform_window_has_caption(HWND window);
+int platform_window_is_foreground(HWND window);
+void platform_window_place_windowed(HWND hwnd, HMONITOR on, int x, int y, int clientW, int clientH, int centre);
+void platform_window_place_frameless(HWND hwnd, HMONITOR on, int w, int h);
 void platform_screen_size(int *width, int *height);
 void platform_focus_window(HWND window);
+void platform_window_frameless(HWND window, const RECT *area);
+void platform_window_fullscreen(HWND window);
 void platform_ime_cancel(HWND window);
+WORD platform_keyboard_language(void);
 void platform_ime_alphanumeric(HWND window);
 
 #ifndef _WIN32

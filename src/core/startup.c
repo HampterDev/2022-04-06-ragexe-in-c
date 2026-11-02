@@ -40,24 +40,10 @@ void app_activate(int active)
 {
     g_windowActive = active;
     if (active) {
-        RECT client, clip;
-        POINT top_left, bottom_right;
-
         platform_set_background_priority(0);
         if (g_session1.mouseExclusiveOption != 1)
             return;
-        GetClientRect(g_hMainWnd, &client);
-        top_left.x = client.left;
-        top_left.y = client.top;
-        bottom_right.x = client.right;
-        bottom_right.y = client.bottom;
-        ClientToScreen(g_hMainWnd, &top_left);
-        ClientToScreen(g_hMainWnd, &bottom_right);
-        clip.left = top_left.x;
-        clip.top = top_left.y;
-        clip.right = bottom_right.x;
-        clip.bottom = bottom_right.y;
-        ClipCursor(&clip);
+        platform_clip_cursor_to_client(g_hMainWnd, 1);
     } else {
         struct IntInt64Pair *var;
         DWORD packet;

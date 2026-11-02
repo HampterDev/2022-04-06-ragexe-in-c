@@ -45,6 +45,7 @@ RECT g_windowDragRect;
 POINT g_windowDragCursor;
 HWND g_windowDragHwnd;
 
+#ifdef _WIN32
 static void window_drag_follow(void)
 {
     POINT cursor;
@@ -151,6 +152,7 @@ int app_create_window(HINSTANCE instance)
     platform_current_directory(g_clientDir, 0x80);
     return 1;
 }
+#endif
 
 void app_destroy_singletons(void)
 {

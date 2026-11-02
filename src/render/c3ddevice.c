@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include "core/app.h"
 #include "ui/render/graphic_setting.h"
+#include "platform/window.h"
 
 const char g_msgBgr565NotSupported[] = "BGR 565 MODE. NOT SUPPORTED";
 const char g_msgModeNotSupported[] = "NOT SUPPORTED MODE";
@@ -115,18 +116,11 @@ int c3d_device_clear_z(struct C3dDevice *self)
 
 RECT *window_client_rect_on_monitor(RECT *out, HWND hwnd)
 {
-    POINT p;
-    GetClientRect(hwnd, out);
-    p.x = out->left;
-    p.y = out->top;
-    ClientToScreen(hwnd, &p);
-    out->left = p.x - g_monitorRect.left;
-    out->top = p.y - g_monitorRect.top;
-    p.x = out->right;
-    p.y = out->bottom;
-    ClientToScreen(hwnd, &p);
-    out->right = p.x - g_monitorRect.left;
-    out->bottom = p.y - g_monitorRect.top;
+    platform_client_screen_rect(hwnd, out);
+    out->left -= g_monitorRect.left;
+    out->top -= g_monitorRect.top;
+    out->right -= g_monitorRect.left;
+    out->bottom -= g_monitorRect.top;
     return out;
 }
 
@@ -163,14 +157,12 @@ int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc
         self->rcClient = self->rcWindow;
     } else {
         RECT rc;
-        GetClientRect(self->hwnd, &self->rcWindow);
+        platform_client_rect(self->hwnd, &self->rcWindow);
         self->width = self->rcWindow.right;
         self->height = self->rcWindow.bottom;
         self->rcClient = *window_client_rect_on_monitor(&rc, self->hwnd);
-        if (!(flags & 2)) {
-            ClientToScreen(self->hwnd, (POINT *)&self->rcWindow.left);
-            ClientToScreen(self->hwnd, (POINT *)&self->rcWindow.right);
-        }
+        if (!(flags & 2))
+            platform_client_screen_rect(self->hwnd, &self->rcWindow);
     }
     hr = gfx_create_screen(self, mode, flags);
     if (self->primary) {
@@ -225,12 +217,9 @@ int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, cons
     if (self->fullscreen && mode && borderless_rect(adapter, &rcMon)) {
         self->fullscreen = 0;
         flags &= ~1;
-        SetWindowLongA(g_hMainWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-        SetWindowPos(g_hMainWnd, HWND_TOP, rcMon.left, rcMon.top, rcMon.right - rcMon.left, rcMon.bottom - rcMon.top,
-                     SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+        platform_window_frameless(g_hMainWnd, &rcMon);
     } else if (self->fullscreen) {
-        SetWindowLongA(g_hMainWnd, GWL_STYLE, WS_POPUP);
-        ShowWindow(g_hMainWnd, SW_MAXIMIZE);
+        platform_window_fullscreen(g_hMainWnd);
     }
     hr = c3d_device_create_environment(self, adapter, device, mode, flags);
     if (hr < 0) {
@@ -340,17 +329,13 @@ int c3d_device_show_frame(struct C3dDevice *self, char vsync)
         return gfx_is_lost(self->primary);
     if (vsync) {
         if (self->fullscreen && !self->bltToClient) {
-            GetClientRect(self->hwnd, &self->rcClient);
-            ClientToScreen(self->hwnd, (POINT *)&self->rcClient.left);
-            ClientToScreen(self->hwnd, (POINT *)&self->rcClient.right);
+            platform_client_screen_rect(self->hwnd, &self->rcClient);
             return gfx_present(self, 1, 1);
         }
         self->rcClient = *window_client_rect_on_monitor(&rc, self->hwnd);
         return gfx_present(self, 1, 0);
     }
-    GetClientRect(self->hwnd, &self->rcClient);
-    ClientToScreen(self->hwnd, (POINT *)&self->rcClient.left);
-    ClientToScreen(self->hwnd, (POINT *)&self->rcClient.right);
+    platform_client_screen_rect(self->hwnd, &self->rcClient);
     return gfx_present(self, 0, 0);
 }
 

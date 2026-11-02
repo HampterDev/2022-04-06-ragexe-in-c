@@ -37,7 +37,7 @@ void winmain_on_crash(void)
 {
 }
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
+static int client_run(HINSTANCE instance)
 {
     struct InitResult init;
     struct PlatformFind *find;
@@ -66,7 +66,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
         platform_directory_create("savedata");
     else
         platform_find_close(find);
+#ifdef _WIN32
     _controlfp(0x20000, 0x30000);
+#endif
 
     period = platform_timer_period_begin();
     frame_timer_reset();
@@ -105,9 +107,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     }
 
     frame_timer_start(0x3c);
-    SetFocus(g_hMainWnd);
+    platform_focus_window(g_hMainWnd);
     if (g_3dDevice.fullscreen != 0)
-        ShowCursor(FALSE);
+        platform_show_cursor(0);
 
     ui_window_mgr_set_screen_size(&g_windowMgr, g_renderer->width,
                g_renderer->height);
@@ -144,3 +146,18 @@ com_done:
         platform_desktop_stop();
     return result;
 }
+
+#ifdef _WIN32
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
+{
+    (void)prev_unused;
+    (void)cmd_unused;
+    (void)show;
+    return client_run(instance);
+}
+#else
+int main(void)
+{
+    return client_run(NULL);
+}
+#endif

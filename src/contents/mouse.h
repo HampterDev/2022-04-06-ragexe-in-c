@@ -36,7 +36,12 @@ void mouse_reset_buttons(struct Mouse *self);
 void mouse_center(struct Mouse *self);
 void mouse_set_x(struct Mouse *self, int x);
 void mouse_set_y(struct Mouse *self, int y);
+void mouse_on_move(struct Mouse *self);
+void mouse_on_button(struct Mouse *self, HWND wnd, int button, int down);
+void mouse_on_wheel(struct Mouse *self, int delta);
+#ifdef _WIN32
 void mouse_on_message(struct Mouse *self, HWND wnd, UINT msg, WPARAM wparam,
                       LPARAM lparam);
+#endif
 
 #endif

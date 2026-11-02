@@ -120,6 +120,19 @@ void platform_client_rect(HWND window, RECT *out)
     GetClientRect(window, out);
 }
 
+void platform_window_rect(HWND window, RECT *out)
+{
+    GetWindowRect(window, out);
+}
+
+void platform_monitor_rect(HMONITOR monitor, RECT *out)
+{
+    MONITORINFOEXA info;
+    info.cbSize = sizeof(info);
+    GetMonitorInfoA(monitor, (MONITORINFO *)&info);
+    *out = info.rcMonitor;
+}
+
 void platform_screen_size(int *width, int *height)
 {
     *width = GetSystemMetrics(SM_CXSCREEN);
@@ -131,6 +144,19 @@ void platform_focus_window(HWND window)
     SetFocus(window);
 }
 
+void platform_window_frameless(HWND window, const RECT *area)
+{
+    SetWindowLongA(window, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+    SetWindowPos(window, HWND_TOP, area->left, area->top, area->right - area->left, area->bottom - area->top,
+                 SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+}
+
+void platform_window_fullscreen(HWND window)
+{
+    SetWindowLongA(window, GWL_STYLE, WS_POPUP);
+    ShowWindow(window, SW_MAXIMIZE);
+}
+
 void platform_ime_cancel(HWND window)
 {
     HIMC imc = ImmGetContext(window);
@@ -138,6 +164,11 @@ void platform_ime_cancel(HWND window)
         ImmNotifyIME(imc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
         ImmReleaseContext(window, imc);
     }
+}
+
+WORD platform_keyboard_language(void)
+{
+    return LOWORD(GetKeyboardLayout(0));
 }
 
 void platform_ime_alphanumeric(HWND window)
@@ -149,8 +180,71 @@ void platform_ime_alphanumeric(HWND window)
     ImmReleaseContext(window, imc);
 }
 
+
+#define WINDOWED_STYLE   (WS_CAPTION | WS_MINIMIZEBOX | WS_CLIPCHILDREN)
+#define FULLSCREEN_STYLE WS_POPUP
+
+void platform_monitor_rects(HMONITOR m, RECT *mon, RECT *work)
+{
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    if (m && GetMonitorInfoA(m, &mi)) {
+        *mon = mi.rcMonitor;
+        *work = mi.rcWork;
+    } else {
+        *mon = (RECT){0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+        *work = *mon;
+    }
+}
+
+
+HMONITOR platform_window_monitor(HWND window)
+{
+    return MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+}
+
+int platform_window_has_caption(HWND window)
+{
+    return (GetWindowLongA(window, GWL_STYLE) & WS_CAPTION) == WS_CAPTION;
+}
+
+int platform_window_is_foreground(HWND window)
+{
+    return GetForegroundWindow() == window;
+}
+
+void platform_window_place_windowed(HWND hwnd, HMONITOR on, int x, int y, int clientW, int clientH, int centre)
+{
+    RECT rc, mon, work;
+    int fw, fh;
+    platform_monitor_rects(on, &mon, &work);
+    SetWindowLongA(hwnd, GWL_STYLE, WINDOWED_STYLE | (GetWindowLongA(hwnd, GWL_STYLE) & WS_VISIBLE));
+    rc = (RECT){0, 0, clientW, clientH};
+    AdjustWindowRect(&rc, WINDOWED_STYLE, FALSE);
+    fw = rc.right - rc.left;
+    fh = rc.bottom - rc.top;
+    if (centre) {
+        x = work.left + (work.right - work.left - fw) / 2;
+        y = work.top + (work.bottom - work.top - fh) / 2;
+    }
+    if (x + fw > work.right)  x = work.right - fw;
+    if (y + fh > work.bottom) y = work.bottom - fh;
+    if (x < work.left) x = work.left;
+    if (y < work.top)  y = work.top;
+    SetWindowPos(hwnd, NULL, x, y, fw, fh, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+}
+
+void platform_window_place_frameless(HWND hwnd, HMONITOR on, int w, int h)
+{
+    RECT mon, work;
+    platform_monitor_rects(on, &mon, &work);
+    SetWindowLongA(hwnd, GWL_STYLE, FULLSCREEN_STYLE | WS_VISIBLE);
+    SetWindowPos(hwnd, HWND_TOP, mon.left, mon.top, w, h, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+}
+
 #else
 #include "platform/vk.h"
+#include "platform/system.h"
 #include <SDL3/SDL.h>
 #include <iconv.h>
 
@@ -296,6 +390,32 @@ void platform_client_rect(HWND window, RECT *out)
     out->bottom = h;
 }
 
+void platform_window_rect(HWND window, RECT *out)
+{
+    int x = 0, y = 0, w = 0, h = 0, top = 0, left = 0, bottom = 0, right = 0;
+    (void)window;
+    if (g_window) {
+        SDL_GetWindowPosition(g_window, &x, &y);
+        SDL_GetWindowSize(g_window, &w, &h);
+        SDL_GetWindowBordersSize(g_window, &top, &left, &bottom, &right);
+    }
+    out->left = x - left;
+    out->top = y - top;
+    out->right = x + w + right;
+    out->bottom = y + h + bottom;
+}
+
+void platform_monitor_rect(HMONITOR monitor, RECT *out)
+{
+    SDL_Rect bounds = {0, 0, 0, 0};
+    (void)monitor;
+    SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
+    out->left = bounds.x;
+    out->top = bounds.y;
+    out->right = bounds.x + bounds.w;
+    out->bottom = bounds.y + bounds.h;
+}
+
 void platform_client_screen_rect(HWND window, RECT *out)
 {
     int x = 0, y = 0;
@@ -322,6 +442,26 @@ void platform_focus_window(HWND window)
         SDL_RaiseWindow(g_window);
 }
 
+void platform_window_frameless(HWND window, const RECT *area)
+{
+    (void)window;
+    if (!g_window)
+        return;
+    SDL_SetWindowBordered(g_window, false);
+    SDL_SetWindowPosition(g_window, area->left, area->top);
+    SDL_SetWindowSize(g_window, area->right - area->left, area->bottom - area->top);
+    SDL_SyncWindow(g_window);
+}
+
+void platform_window_fullscreen(HWND window)
+{
+    (void)window;
+    if (!g_window)
+        return;
+    SDL_SetWindowFullscreen(g_window, true);
+    SDL_SyncWindow(g_window);
+}
+
 void platform_ime_cancel(HWND window)
 {
     (void)window;
@@ -332,5 +472,75 @@ void platform_ime_cancel(HWND window)
 void platform_ime_alphanumeric(HWND window)
 {
     (void)window;
+}
+
+WORD platform_keyboard_language(void)
+{
+    return (WORD)platform_user_language();
+}
+void platform_monitor_rects(HMONITOR monitor, RECT *mon, RECT *work)
+{
+    SDL_Rect bounds = {0, 0, 1024, 768}, usable;
+    SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    (void)monitor;
+    SDL_GetDisplayBounds(display, &bounds);
+    if (!SDL_GetDisplayUsableBounds(display, &usable))
+        usable = bounds;
+    *mon = (RECT){bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h};
+    *work = (RECT){usable.x, usable.y, usable.x + usable.w, usable.y + usable.h};
+}
+
+HMONITOR platform_window_monitor(HWND window)
+{
+    (void)window;
+    return NULL;
+}
+
+int platform_window_has_caption(HWND window)
+{
+    (void)window;
+    return g_window && !(SDL_GetWindowFlags(g_window) & SDL_WINDOW_BORDERLESS);
+}
+
+int platform_window_is_foreground(HWND window)
+{
+    (void)window;
+    return g_window && (SDL_GetWindowFlags(g_window) & SDL_WINDOW_INPUT_FOCUS);
+}
+
+void platform_window_place_windowed(HWND hwnd, HMONITOR on, int x, int y, int clientW, int clientH, int centre)
+{
+    RECT mon, work;
+    (void)hwnd;
+    if (!g_window)
+        return;
+    platform_monitor_rects(on, &mon, &work);
+    SDL_SetWindowFullscreen(g_window, false);
+    SDL_SetWindowBordered(g_window, true);
+    SDL_SetWindowSize(g_window, clientW, clientH);
+    if (centre) {
+        x = work.left + (work.right - work.left - clientW) / 2;
+        y = work.top + (work.bottom - work.top - clientH) / 2;
+    }
+    if (x + clientW > work.right)  x = work.right - clientW;
+    if (y + clientH > work.bottom) y = work.bottom - clientH;
+    if (x < work.left) x = work.left;
+    if (y < work.top)  y = work.top;
+    SDL_SetWindowPosition(g_window, x, y);
+    SDL_SyncWindow(g_window);
+}
+
+void platform_window_place_frameless(HWND hwnd, HMONITOR on, int w, int h)
+{
+    RECT mon, work;
+    (void)hwnd;
+    if (!g_window)
+        return;
+    platform_monitor_rects(on, &mon, &work);
+    SDL_SetWindowFullscreen(g_window, false);
+    SDL_SetWindowBordered(g_window, false);
+    SDL_SetWindowPosition(g_window, mon.left, mon.top);
+    SDL_SetWindowSize(g_window, w, h);
+    SDL_SyncWindow(g_window);
 }
 #endif
