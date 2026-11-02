@@ -12,6 +12,18 @@ static int is_word_char(char c)
     return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
 }
 
+static void assign_directory(struct String *out, const char *path)
+{
+    const char *start = path[0] && path[1] == ':' ? path + 2 : path;
+    const char *end = start;
+    const char *p;
+
+    for (p = start; *p; p++)
+        if (*p == '\\' || *p == '/')
+            end = p + 1;
+    string_assign(out, start, (size_t)(end - start));
+}
+
 static int split_str_path(const char *text, size_t length, size_t *folder_length)
 {
     size_t slash = length, i, word;
@@ -59,18 +71,14 @@ struct String *ez2str_min_path(struct String *out, const char *path)
 
 void ez2_str_particle_load(struct Ez2StrParticle *self, const char *path)
 {
-    char dir[256];
-
     if (self->res)
         res_unlock(&self->res->res);
     self->res = res_mgr_get(g_resMgr(), path);
     self->anim = self->res ? &self->res->anim : NULL;
     if (self->res)
         res_lock(&self->res->res);
-    memset(dir, 0, sizeof dir);
-    _splitpath(path, NULL, dir, NULL, NULL);
+    assign_directory(&self->texture_set, path);
     string_assign_cstr(&self->path, path);
-    string_assign_cstr(&self->texture_set, dir);
     ez2_str_particle_rewind(self);
 }
 
