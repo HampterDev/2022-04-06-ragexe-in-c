@@ -160,7 +160,7 @@ static void check_malformed(void)
     BYTE copy[2048]; size_t position;
     unsigned i;
     bitmap_resource_init(&image); assert(blank_bitmap(&image,1,1));before=image;
-    for(i=0;i<7;++i) {
+    for(i=0;i<6;++i) {
         memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);
         if(i==0)copy[26]=2;
         if(i==1)copy[30]=1;
@@ -168,9 +168,16 @@ static void check_malformed(void)
         if(i==3)memset(copy+18,255,4);
         if(i==4){memset(copy+22,0,4);copy[25]=128;}
         if(i==5)memset(copy+10,255,4);
-        if(i==6)copy[70]=4;
         assert(!bitmap_res_load_bmp_data(&image,copy,sizeof bmp8_short_data,0));
         assert(!memcmp(&before,&image,sizeof image));
+    }
+    {
+        struct BitmapRes indexed;
+        bitmap_resource_init(&indexed);
+        memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);copy[70]=4;
+        assert(bitmap_res_load_bmp_data(&indexed,copy,sizeof bmp8_short_data,0));
+        assert(indexed.pixels[3]==0xff000000u && indexed.pixels[4]==bmp8_short_pixels[4]);
+        bitmap_resource_finish(&indexed);
     }
     memcpy(copy,tga_rle_data,sizeof tga_rle_data);copy[18]=0xff;
     assert(!bitmap_res_load_tga_data(&image,copy,sizeof tga_rle_data));
