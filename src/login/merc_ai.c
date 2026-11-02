@@ -8,6 +8,7 @@
 #include "session/session_jobs.h"
 #include "platform/window.h"
 #include "platform/clock.h"
+#include "contents/lua_file.h"
 
 struct MercenaryAI *merc_ai_construct(struct MercenaryAI *self, int kind)
 {
@@ -87,7 +88,7 @@ int merc_ai_load(struct MercenaryAI *self, const char *file)
         return 2;
     luaL_openlibs(self->L);
     register_functions(self);
-    if (luaL_loadfile(self->L, file) == 0 && lua_pcall(self->L, 0, 0, 0) == 0)
+    if (lua_load_disk_file(self->L, file) == 0 && lua_pcall(self->L, 0, 0, 0) == 0)
         return 0;
     lua_error_box(self->L);
     return 3;

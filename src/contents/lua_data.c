@@ -7,6 +7,7 @@
 #include <lualib.h>
 #include "core/text_util.h"
 #include "platform/window.h"
+#include "contents/lua_file.h"
 
 static char main_result_ok(lua_State *L, const char *owner, enum LuaDataCheck check)
 {
@@ -52,7 +53,7 @@ char lua_data_run(const char *path, const char *owner,
         lua_pushcclosure(L, functions[i].function, 0);
         lua_setfield(L, LUA_GLOBALSINDEX, functions[i].name);
     }
-    if (luaL_loadfile(L, path) != 0 || lua_pcall(L, 0, 0, 0) != 0) {
+    if (lua_load_disk_file(L, path) != 0 || lua_pcall(L, 0, 0, 0) != 0) {
         ok = 0;
     } else {
         lua_getfield(L, LUA_GLOBALSINDEX, "main");
