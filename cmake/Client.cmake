@@ -22,3 +22,13 @@ target_compile_options(ragexe PRIVATE -finput-charset=UTF-8 -fexec-charset=CP949
 target_compile_definitions(ragexe PRIVATE _DEFAULT_SOURCE _GNU_SOURCE)
 target_link_libraries(ragexe PRIVATE SDL3::SDL3 Freetype::Freetype Fontconfig::Fontconfig Threads::Threads
     rage_lua rage_png rage_zlib rage_gif rage_json rage_stb m ${CMAKE_DL_LIBS})
+
+if(BUILD_TESTING)
+    add_executable(test_gfx_gl tests/test_gfx_gl.c src/render/gfx_gl.c src/render/gfx_batch.c src/render/display_devices.c)
+    target_include_directories(test_gfx_gl PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    target_compile_definitions(test_gfx_gl PRIVATE _DEFAULT_SOURCE)
+    target_link_libraries(test_gfx_gl PRIVATE SDL3::SDL3 m)
+    rage_enable_assertions(test_gfx_gl)
+    add_test(NAME gfx_gl COMMAND test_gfx_gl)
+    set_tests_properties(gfx_gl PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+endif()

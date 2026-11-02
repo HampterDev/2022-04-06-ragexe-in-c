@@ -28,10 +28,6 @@ endif()
 
 add_subdirectory(vendor)
 
-if(RAGE_CLIENT)
-    include(cmake/Client.cmake)
-endif()
-
 add_library(rage_platform STATIC src/platform/clock.c src/platform/code_page.c src/platform/filesystem.c src/platform/net.c
     src/platform/settings.c src/platform/sha256.c src/platform/thread.c)
 target_include_directories(rage_platform PUBLIC src)
@@ -118,4 +114,8 @@ if(BUILD_TESTING)
         target_compile_options(test_crash_dump PRIVATE /Oy-)
         target_link_libraries(test_crash_dump PRIVATE dbghelp)
     endif()
+endif()
+
+if(RAGE_CLIENT)
+    include(cmake/Client.cmake)
 endif()

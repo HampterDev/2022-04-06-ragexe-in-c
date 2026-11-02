@@ -506,7 +506,6 @@ static void bind_target(struct gfx_surface *s)
     if (!s || !s->fbo)
         return;
     if (gl.boundTarget != (int)s->fbo) {
-        batch_flush();
         p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
         p_glViewport(0, 0, s->width, s->height);
         p_glUniform2f(gl.uniforms[U_VIEWPORT], (float)s->width, (float)s->height);
