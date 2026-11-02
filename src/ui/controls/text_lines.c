@@ -5,7 +5,6 @@
 #include "ui/controls/item_id_tag.h"
 #include "iteminfo/item_api.h"
 #include "std/vec.h"
-#include <mbstring.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,8 +116,7 @@ void text_wrap_bytes(const char *text, struct TextArray *lines, int width, int s
         }
         while (text[pos] == ']') brk = ++pos;
         while (text[pos] == '[') {
-            const char *close = (const char *)_mbsstr((const unsigned char *)text + pos,
-                                                     (const unsigned char *)"]");
+            const char *close = platform_code_page_find(text + pos, "]");
             size_t count;
             if (!close) break;
             count = (size_t)(close - text) - pos + 1;

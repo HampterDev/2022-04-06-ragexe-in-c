@@ -2,7 +2,7 @@
 #include "session/state.h"
 #include "world/mode_manager.h"
 #include <string.h>
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include "game/mode_msg.h"
 #include "game/session_bridge.h"
 #include "session/session_items.h"
@@ -30,7 +30,7 @@ int game_mode_msg_make_party(const char *name)
     }
     if (session_get_party_member_count(&g_session1) != 0)
         return 0;
-    if (_mbsstr((const unsigned char *)name, (const unsigned char *)"#")) {
+    if (platform_code_page_find(name, "#")) {
         message_box_msg(0xb17);
         return 0;
     }

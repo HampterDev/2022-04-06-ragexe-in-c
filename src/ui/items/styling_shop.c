@@ -11,7 +11,7 @@
 #include "contents/connection_api.h"
 #include "ui/items/styling_shop.h"
 #include <stdlib.h>
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_items.h"
@@ -403,11 +403,10 @@ static void style_format_record(char *buf, const char *name, int slot, int head_
 
 static void style_parse_field(struct StyleRecord *rec, char *name, char *buf, int *i, const char *line)
 {
-    const unsigned char *key = (const unsigned char *)line;
     int *field;
 
     buf[*i] = 0;
-    if (_mbsstr((const unsigned char *)"characterName", key)) {
+    if (strstr("characterName", line)) {
         char text[0x18];
         unsigned n = 0;
         char c = buf[*i + 1];
@@ -428,23 +427,23 @@ static void style_parse_field(struct StyleRecord *rec, char *name, char *buf, in
         strcpy_s(name, 0x18, text);
         return;
     }
-    if (_mbsstr((const unsigned char *)"slotNum", key))
+    if (strstr("slotNum", line))
         field = &rec->slot;
-    else if (_mbsstr((const unsigned char *)"headPaletteNum", key))
+    else if (strstr("headPaletteNum", line))
         field = &rec->head_palette;
-    else if (_mbsstr((const unsigned char *)"headStyle", key))
+    else if (strstr("headStyle", line))
         field = &rec->head_style;
-    else if (_mbsstr((const unsigned char *)"bodyPaletteNum", key))
+    else if (strstr("bodyPaletteNum", line))
         field = &rec->body_palette;
-    else if (_mbsstr((const unsigned char *)"topAccNum", key))
+    else if (strstr("topAccNum", line))
         field = &rec->top;
-    else if (_mbsstr((const unsigned char *)"midAccNum", key))
+    else if (strstr("midAccNum", line))
         field = &rec->mid;
-    else if (_mbsstr((const unsigned char *)"bottomAccNum", key))
+    else if (strstr("bottomAccNum", line))
         field = &rec->bottom;
-    else if (_mbsstr((const unsigned char *)"Robe", key))
+    else if (strstr("Robe", line))
         field = &rec->robe;
-    else if (_mbsstr((const unsigned char *)"bodyStyle", key))
+    else if (strstr("bodyStyle", line))
         field = &rec->body_style;
     else
         return;
@@ -502,8 +501,8 @@ void ui_my_style_wnd_load_slots(struct UIMyStyleWnd *self)
                 line = &buf[i + 1];
                 break;
             case '*':
-                if (_mbsstr((const unsigned char *)name,
-                            (const unsigned char *)session_character_name(&g_session1))
+                if (platform_code_page_find(name,
+                                            session_character_name(&g_session1))
                     && rec.slot <= 3) {
                     struct UIDisplayCharacter *look = mem_alloc(sizeof *look);
                     struct UIStylingTab *slot;
@@ -571,8 +570,8 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
                 line = &buf[i + 1];
                 break;
             case '*':
-                if (!_mbsstr((const unsigned char *)name,
-                             (const unsigned char *)session_character_name(&g_session1))
+                if (!platform_code_page_find(name,
+                                             session_character_name(&g_session1))
                     && rec.slot <= 3) {
                     memset(record, 0, sizeof record);
                     style_format_record(record, name, rec.slot, rec.head_palette, rec.head_style, rec.body_style,

@@ -1,6 +1,4 @@
-#include <mbctype.h>
 #include "core/fatal.h"
-#include <mbstring.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_std.h"
