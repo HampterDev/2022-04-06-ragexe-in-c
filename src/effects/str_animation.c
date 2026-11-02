@@ -69,20 +69,16 @@ void str_key_apply_morph(struct StrKeyState *state, const struct StrKeyState *de
 int str_animation_rewind(const struct StrAnim *anim, int key_index[STR_LAYERS],
                          struct StrKeyState state[STR_LAYERS], unsigned char drawn[STR_LAYERS])
 {
-    int i, count = 0;
+    int i;
     memset(state, 0, STR_LAYERS * sizeof *state);
     memset(drawn, 0, STR_LAYERS * sizeof *drawn);
     for (i = 0; i < STR_LAYERS; ++i)
         key_index[i] = -1;
-    if (!anim || anim->layer_count < 0 || anim->layer_count > STR_LAYERS)
+    if (!anim || anim->layer_count <= 0 || anim->layer_count > STR_LAYERS)
         return 0;
-    for (i = 0; i < anim->layer_count; ++i) {
-        if (anim->layers[i].key_count > 0 && anim->layers[i].keys) {
-            key_index[i] = 0;
-            ++count;
-        }
-    }
-    return count;
+    for (i = 0; i < anim->layer_count; ++i)
+        key_index[i] = 0;
+    return anim->layer_count - (anim->layers[0].key_count <= 0);
 }
 
 int str_animation_step(const struct StrAnim *anim, int frame, int key_index[STR_LAYERS],
@@ -97,35 +93,28 @@ int str_animation_step(const struct StrAnim *anim, int frame, int key_index[STR_
         const struct StrKey *key;
         int index = key_index[i];
         int64_t elapsed;
-        if (index < 0)
+        if (index < 0 || index >= layer->key_count || !layer->keys)
             continue;
-        if (!layer->keys || index >= layer->key_count) {
-            key_index[i] = -1;
-            ++finished;
-            continue;
-        }
         key = &layer->keys[index];
         elapsed = (int64_t)frame - key->frame;
         if (elapsed < 0)
             continue;
         if (elapsed && index < layer->key_count - 1 && key[1].frame == frame) {
-            ++index;
             ++key;
-            elapsed = (int64_t)frame - key->frame;
+            key_index[i] = ++index;
+            if (index == layer->key_count - 1) {
+                key_index[i] = -1;
+                ++finished;
+            }
         }
-        if (key->type == 0)
+        if (key->type == 0) {
             state[i] = key->s;
-        else
-            str_key_apply_morph(&state[i], &key->s, layer->texture_count, elapsed);
-        drawn[i] = 1;
-        if (index == layer->key_count - 1) {
-            key_index[i] = -1;
-            ++finished;
+            if (key_index[i] >= 0 && index < layer->key_count - 1 && key[1].frame == key->frame)
+                key_index[i] = index + 1;
         } else {
-            if (key->type == 0 && key[1].frame == key->frame)
-                ++index;
-            key_index[i] = index;
+            str_key_apply_morph(&state[i], &key->s, layer->texture_count, elapsed);
         }
+        drawn[i] = 1;
     }
     return finished;
 }
