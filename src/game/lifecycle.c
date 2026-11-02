@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "std/list.h"
 #include "game/lifecycle.h"
 #include "game/mode_callbacks.h"
@@ -77,7 +78,7 @@ static void loop_sounds_free(struct Vec *v)
     vec_free(v);
 }
 
-__declspec(noinline) void game_mode_destruct(struct GameMode *self)
+RAGE_NOINLINE void game_mode_destruct(struct GameMode *self)
 {
     int i;
 

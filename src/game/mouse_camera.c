@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "world/mode_actions.h"
 #include "game/gamemode.h"
 #include "session/option_pairs.h"
@@ -194,7 +195,7 @@ static void right_button_double(struct GameMode *self)
         self->view->destLongitude = 0.0f;
 }
 
-__declspec(noinline) void game_mode_process_right_button(struct GameMode *self)
+RAGE_NOINLINE void game_mode_process_right_button(struct GameMode *self)
 {
     switch (g_mouse.button[MOUSE_RIGHT]) {
     case BUTTON_PRESSED:
@@ -249,7 +250,7 @@ static void wheel_zoom(struct GameMode *self)
     skill_info_destruct(&skill);
 }
 
-__declspec(noinline) void game_mode_process_wheel(struct GameMode *self, int verdict)
+RAGE_NOINLINE void game_mode_process_wheel(struct GameMode *self, int verdict)
 {
     struct SkillInfo skill;
 

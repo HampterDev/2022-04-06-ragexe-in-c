@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "game/gamemode.h"
 #include "actor/actor_ops.h"
 #include "world/pathfinder_state.h"
@@ -59,12 +60,12 @@ char game_mode_is_within_cells(const int *a_x, const int *a_y, const int *b_x, c
     return abs(*a_x - *b_x) <= range && abs(*a_y - *b_y) <= range;
 }
 
-__declspec(noinline) char game_mode_is_cell_blocked(struct GameMode *self, int x, int y)
+RAGE_NOINLINE char game_mode_is_cell_blocked(struct GameMode *self, int x, int y)
 {
     return !cell_is_walkable(self->world->attr, x, y);
 }
 
-__declspec(noinline) char game_mode_is_cell_occupied(struct GameMode *self, int x, int y)
+RAGE_NOINLINE char game_mode_is_cell_occupied(struct GameMode *self, int x, int y)
 {
     struct TreeNode *node;
     const struct UnitCell *cell;

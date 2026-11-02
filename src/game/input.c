@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "world/mode_actions.h"
 #include "game/gamemode.h"
 #include "world/tooltip.h"
@@ -41,7 +42,7 @@ enum { ACTORMSG_RELEASE = 0xf };
 
 #define NO_HIT 999999.0f
 
-__declspec(noinline) char game_mode_pick_ground_cell(struct GameMode *self, int *cell_x, int *cell_y)
+RAGE_NOINLINE char game_mode_pick_ground_cell(struct GameMode *self, int *cell_x, int *cell_y)
 {
     struct RayPicker blocks;
     struct Ray3 ray;

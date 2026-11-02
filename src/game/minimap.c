@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "game/packet_handlers.h"
 #include "game/gamemode.h"
 #include "game/quest_marks.h"
@@ -40,7 +41,7 @@ enum { MINIMAP_SIZE = 128, MINIMAP_RIGHT_MARGIN = 144, MINIMAP_TOP = 16 };
 #define MARK_Z 0.0999f
 #define MAP_Z 0.0998f
 
-__declspec(noinline) void game_mode_draw_minimap_triangle(float x, float y, float r, unsigned color)
+RAGE_NOINLINE void game_mode_draw_minimap_triangle(float x, float y, float r, unsigned color)
 {
     struct TexDrawPrim *prim = renderer_new_prim(g_renderer);
     struct TexDrawVertex *v = prim->base.verts;
@@ -215,14 +216,14 @@ static void draw_mark(struct GameMode *self, const struct TextureUV *uv, int x, 
                       texture_cache_get(&g_textureCache, string_cstr(texture), 0, 0), g_fullUV);
 }
 
-__declspec(noinline) void game_mode_draw_minimap_mark(struct GameMode *self, const struct TextureUV *uv, int x, int y, int size,
+RAGE_NOINLINE void game_mode_draw_minimap_mark(struct GameMode *self, const struct TextureUV *uv, int x, int y, int size,
                                          struct String texture, int kind, unsigned color, char clamp)
 {
     draw_mark(self, uv, x, y, size, &texture, kind, color, clamp);
     string_free(&texture);
 }
 
-__declspec(noinline) void game_mode_draw_member_marks(struct GameMode *self, const struct TextureUV *uv)
+RAGE_NOINLINE void game_mode_draw_member_marks(struct GameMode *self, const struct TextureUV *uv)
 {
     struct TreeNode *it;
     int index = 0;
