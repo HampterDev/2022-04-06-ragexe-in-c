@@ -146,7 +146,7 @@ const struct UIEditCtrl3Ops ui_rodex_edit_ctrl3_ops = {
 
 #define MSG_NO_RECEIVER 0xa23
 #define MSG_BAD_TITLE 0xa24
-#define MSG_NAME_TOO_LONG 0xa27
+#define MSG_NO_RECEIVER_INFO 0xa27
 #define MSG_NOT_CONFIRMED 0xa33
 #define MSG_NO_ZENY 0xa35
 #define MSG_BODY_TOO_LONG 0xa44
@@ -817,7 +817,7 @@ static void check_receiver(struct UIRodexComposeWnd *self)
         return;
     }
     if (ui_edit_ctrl_get_text_size(receiver) >= RECEIVER_MAX)
-        rodex_chat(MSG_NAME_TOO_LONG);
+        rodex_chat(MSG_NO_RECEIVER_INFO);
     rodex_chat(navi_links_has_link(text_view_cstr(ui_edit_ctrl_get_text(receiver))) ? MSG_NAVI_LINK : MSG_NO_RECEIVER);
 }
 

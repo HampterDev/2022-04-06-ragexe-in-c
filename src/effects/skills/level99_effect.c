@@ -310,7 +310,7 @@ void level99_effect_render(struct Effect *effect)
     struct Particle **it;
 
     if (owner && self->base.type == LEVEL99_TYPE) {
-        if (is_effect_state_star2(actor_get_effect_state(owner)) || !owner->revealed || !owner->visible)
+        if (is_effect_state_cloaking(actor_get_effect_state(owner)) || !owner->revealed || !owner->visible)
             return;
     }
     for (it = self->flares.first; it != (struct Particle **)self->flares.last; it++)

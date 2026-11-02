@@ -17,9 +17,9 @@
 #include "world/world.h"
 
 enum {
-    EF_MILLENNIUMSHIELD = 0xe4,
-    EF_SPHERES_BABY_MONK = 0x1f8,
-    EF_COINS = 0x275,
+    EF_SPIRIT_SPHERES = 0xe4,
+    EF_SPIRIT_SPHERES_BABY = 0x1f8,
+    EF_COIN_SPHERES = 0x275,
     EF_TARGET_SPIRITS = 0x2a5,
     EF_REBELLION_COINS = 0x46f,
     EF_SOUL_ENERGY = 0x4c9,
@@ -38,8 +38,8 @@ enum {
     JOB_BABY_SOUL_REAPER = 4242,
     JOB_DRAGON_KNIGHT = 4252,
     JOB_ABYSS_CHASER = 4260,
-    JOB_DRAGON_KNIGHT_RIDING = 4265,
-    JOB_DRAGON_KNIGHT_CHICKEN = 4280,
+    JOB_DRAGON_KNIGHT_OUTFIT = 4265,
+    JOB_DRAGON_KNIGHT_RIDING = 4280,
     JOB_SOUL_ASCETIC = 4303,
     JOB_NIGHT_WATCH = 4306,
 };
@@ -72,19 +72,19 @@ void game_mode_on_millennium_shield(struct GameMode *self, const struct PacketMi
         actor = (struct GameActor *)self->world->player;
     if (actor == 0)
         return;
-    if (is_effect_state_burrow(actor_get_effect_state(actor)) == 1 || is_effect_state_star2(actor_get_effect_state(actor)) == 1)
-        render_object_send(actor, NULL, ACTOR_MSG_REMOVE_EFFECT, EF_MILLENNIUMSHIELD, 0, 0, 0);
+    if (is_effect_state_hiding(actor_get_effect_state(actor)) == 1 || is_effect_state_cloaking(actor_get_effect_state(actor)) == 1)
+        render_object_send(actor, NULL, ACTOR_MSG_REMOVE_EFFECT, EF_SPIRIT_SPHERES, 0, 0, 0);
 
     if (packet->state == 0) {
-        render_object_send(actor, NULL, ACTOR_MSG_REMOVE_EFFECT, EF_MILLENNIUMSHIELD, 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_REMOVE_EFFECT, EF_SPIRIT_SPHERES, 0, 0, 0);
     } else if (packet->state == 1) {
-        if (able_to_make_effect_is_effect_exist(actor, EF_MILLENNIUMSHIELD))
+        if (able_to_make_effect_is_effect_exist(actor, EF_SPIRIT_SPHERES))
             return;
     } else {
         return;
     }
     at.x = at.y = at.z = 0.0f;
-    effect = game_actor_launch_effect(actor, EF_MILLENNIUMSHIELD, at, 0.0f);
+    effect = game_actor_launch_effect(actor, EF_SPIRIT_SPHERES, at, 0.0f);
     if (effect == 0)
         return;
     count[0] = (float)packet->num;
@@ -100,7 +100,7 @@ static void remove_effect(struct GameActor *actor, int effect_id)
 
 static int is_hidden(struct GameActor *actor)
 {
-    return is_effect_state_burrow(actor_get_effect_state(actor)) || is_effect_state_star2(actor_get_effect_state(actor));
+    return is_effect_state_hiding(actor_get_effect_state(actor)) || is_effect_state_cloaking(actor_get_effect_state(actor));
 }
 
 static struct Effect *running_effect(int aid, int effect_id)
@@ -122,8 +122,8 @@ static void launch_spheres(struct GameActor *actor, int effect_id, short num)
 
     if (effect == 0)
         return;
-    if (effect->effect_id != EF_MILLENNIUMSHIELD && effect->effect_id != EF_SPHERES_BABY_MONK
-        && effect->effect_id != EF_COINS)
+    if (effect->effect_id != EF_SPIRIT_SPHERES && effect->effect_id != EF_SPIRIT_SPHERES_BABY
+        && effect->effect_id != EF_COIN_SPHERES)
         return;
     count[0] = (float)num;
     count[1] = 0.0f;
@@ -135,7 +135,7 @@ enum { EFST_ABYSSFORCEWEAPON = 0x4dc };
 
 static int has_servant_weapons(int job)
 {
-    return job == JOB_DRAGON_KNIGHT || job == JOB_DRAGON_KNIGHT_RIDING || job == JOB_DRAGON_KNIGHT_CHICKEN;
+    return job == JOB_DRAGON_KNIGHT || job == JOB_DRAGON_KNIGHT_OUTFIT || job == JOB_DRAGON_KNIGHT_RIDING;
 }
 
 static void show_servant_weapons(struct GameMode *mode, struct GameActor *actor, short num)
@@ -212,11 +212,11 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
     } else if (!has_servant_weapons(job)) {
         switch (job) {
         case JOB_BABY_MONK:
-            remove_effect(actor, EF_SPHERES_BABY_MONK);
+            remove_effect(actor, EF_SPIRIT_SPHERES_BABY);
             break;
         case JOB_GUNSLINGER:
         case JOB_BABY_GUNSLINGER:
-            remove_effect(actor, EF_COINS);
+            remove_effect(actor, EF_COIN_SPHERES);
             break;
         case JOB_REBELLION:
         case JOB_BABY_REBELLION:
@@ -224,7 +224,7 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
             effect_mgr_remove_type(g_effectMgr, actor->aid, EF_REBELLION_COINS);
             break;
         default:
-            remove_effect(actor, EF_MILLENNIUMSHIELD);
+            remove_effect(actor, EF_SPIRIT_SPHERES);
             break;
         }
         if (num == 0)
@@ -241,11 +241,11 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
     }
     switch (job) {
     case JOB_BABY_MONK:
-        launch_spheres(actor, EF_SPHERES_BABY_MONK, num);
+        launch_spheres(actor, EF_SPIRIT_SPHERES_BABY, num);
         break;
     case JOB_GUNSLINGER:
     case JOB_BABY_GUNSLINGER:
-        launch_spheres(actor, EF_COINS, num);
+        launch_spheres(actor, EF_COIN_SPHERES, num);
         break;
     case JOB_REBELLION:
     case JOB_BABY_REBELLION:
@@ -253,15 +253,15 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
         show_rebellion_coins(actor, num);
         break;
     case JOB_DRAGON_KNIGHT:
+    case JOB_DRAGON_KNIGHT_OUTFIT:
     case JOB_DRAGON_KNIGHT_RIDING:
-    case JOB_DRAGON_KNIGHT_CHICKEN:
         show_servant_weapons(self, actor, num);
         break;
     case JOB_ABYSS_CHASER:
         show_spheres_4260(actor, num);
         break;
     default:
-        launch_spheres(actor, EF_MILLENNIUMSHIELD, num);
+        launch_spheres(actor, EF_SPIRIT_SPHERES, num);
         break;
     }
 }
@@ -295,25 +295,25 @@ void game_mode_on_spirits2(struct GameMode *self, const struct PacketSpirits2 *p
         int job = game_actor_get_job(actor);
 
         if (job == JOB_BABY_MONK)
-            effect_id = EF_SPHERES_BABY_MONK;
+            effect_id = EF_SPIRIT_SPHERES_BABY;
         else if (job == JOB_GUNSLINGER || job == JOB_REBELLION || job == JOB_BABY_GUNSLINGER
                  || job == JOB_BABY_REBELLION || job == JOB_NIGHT_WATCH)
-            effect_id = EF_COINS;
+            effect_id = EF_COIN_SPHERES;
         else
-            effect_id = EF_MILLENNIUMSHIELD;
+            effect_id = EF_SPIRIT_SPHERES;
         remove_effect(actor, effect_id);
         return;
     }
 
     if (game_actor_get_job(actor) == JOB_BABY_MONK)
-        effect_id = EF_SPHERES_BABY_MONK;
+        effect_id = EF_SPIRIT_SPHERES_BABY;
     else if (game_actor_get_job(actor) == JOB_GUNSLINGER || game_actor_get_job(actor) == JOB_REBELLION
              || game_actor_get_job(actor) == JOB_BABY_GUNSLINGER
              || game_actor_get_job(actor) == JOB_BABY_REBELLION
              || game_actor_get_job(actor) == JOB_NIGHT_WATCH)
-        effect_id = EF_COINS;
+        effect_id = EF_COIN_SPHERES;
     else
-        effect_id = EF_MILLENNIUMSHIELD;
+        effect_id = EF_SPIRIT_SPHERES;
     if (able_to_make_effect_is_effect_exist(actor, effect_id))
         return;
     if (packet->aid == 0)

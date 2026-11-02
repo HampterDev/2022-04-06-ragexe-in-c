@@ -64,7 +64,7 @@ const struct UIWindowOps ui_mini_party_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-#define MSG_NO_CELL_THERE 0xc49
+#define MSG_LAST_LINE 0xc49
 
 struct UIMiniPartyWnd *ui_mini_party_wnd_construct(struct UIMiniPartyWnd *self)
 {
@@ -202,7 +202,7 @@ void ui_mini_party_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
         } else {
             grid = mini_party_area_mgr_instance();
             if (cell < 0 || cell >= grid->rows * grid->cols) {
-                ui_message_box(msg_str(MSG_NO_CELL_THERE));
+                ui_message_box(msg_str(MSG_LAST_LINE));
                 ok = 0;
             }
         }

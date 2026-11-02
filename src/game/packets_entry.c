@@ -1048,7 +1048,7 @@ void game_mode_zc_notify_ranking(struct GameMode *self, const struct PacketNotif
 
         actor = world_get_game_actor_by_aid(self->world, pkt->aid);
         effect_state = actor_get_effect_state(actor);
-        if (is_effect_state_star2(effect_state) || is_effect_state_burrow(effect_state) || effect_state_bit6(effect_state))
+        if (is_effect_state_cloaking(effect_state) || is_effect_state_hiding(effect_state) || effect_state_bit6(effect_state))
             return;
     }
 

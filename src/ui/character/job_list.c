@@ -70,8 +70,8 @@ static struct Tree job_map;
 #define JOB_LIST_SLOTS 6
 #define PACKET_PARTY_JOBS 0x808
 #define MSG_JOB_LIST_NONE_CHECKED 0x6e7
-#define MSG_JOB_NAME_FIRST 0x6af
-#define MSG_JOB_NAME_FIRST_5 0x658
+#define MSG_ROLE_NAME_BASE 0x6af
+#define MSG_JOB_NAME_BASE 0x658
 #define UI_MSG_RESIZE 0xe
 #define UI_MSG_REBUILD 0x17
 
@@ -188,7 +188,7 @@ void ui_job_list_wnd_show_jobs(struct UIJobListWnd *self)
             continue;
         ui_check_box_set_bitmaps(*slot, UI_SKIN "basic_interface\\grp_online.bmp",
                               UI_SKIN "basic_interface\\grp_offline.bmp",
-                              msg_str(wanted->job + (wanted->job - 1 < 4 ? MSG_JOB_NAME_FIRST : MSG_JOB_NAME_FIRST_5)));
+                              msg_str(wanted->job + (wanted->job - 1 < 4 ? MSG_ROLE_NAME_BASE : MSG_JOB_NAME_BASE)));
         ui_window_move(*slot, 0xa, y);
         ui_check_box_set_check(*slot, wanted->checked);
         ui_window_add_child(wnd, *slot);

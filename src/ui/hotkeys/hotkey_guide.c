@@ -79,15 +79,15 @@ const struct UIWindowOps ui_hotkey_guide_wnd_ops = {
 #define HOTKEY_GUIDE_ROW 0x1e
 
 #define MSG_HOTKEY_GUIDE_TITLE 0xc38
-#define MSG_HOTKEY_GUIDE_KEY 0xc39
+#define MSG_HOTKEY_GUIDE_OPTION 0xc39
 #define MSG_HOTKEY_GUIDE_CLOSE 0xbe5
 #define MSG_HOTKEY_GUIDE_KEYBOARD 0xc3a
-#define MSG_HOTKEY_GUIDE_WINDOWS 0xc3b
-#define MSG_HOTKEY_GUIDE_SETTINGS_A 0xc3c
-#define MSG_HOTKEY_GUIDE_SETTINGS_B 0xc3d
+#define MSG_HOTKEY_GUIDE_SCREENSHOT 0xc3b
+#define MSG_HOTKEY_GUIDE_ZOOM_IN 0xc3c
+#define MSG_HOTKEY_GUIDE_ZOOM_OUT 0xc3d
 #define MSG_HOTKEY_GUIDE_SETTINGS 0xc4c
-#define MSG_HOTKEY_GUIDE_NOTE_A 0xc43
-#define MSG_HOTKEY_GUIDE_NOTE_B 0xc44
+#define MSG_HOTKEY_GUIDE_MOVE 0xc43
+#define MSG_HOTKEY_GUIDE_ROTATE 0xc44
 
 struct HotkeyGuideItem {
     int msg;
@@ -464,21 +464,21 @@ void ui_hotkey_guide_wnd_on_draw(struct UIWindow *window)
     }
 
     string_init(&header);
-    string_format(&header, "%s / %s", msg_str(MSG_HOTKEY_GUIDE_KEY), msg_str(MSG_HOTKEY_GUIDE_CLOSE));
+    string_format(&header, "%s / %s", msg_str(MSG_HOTKEY_GUIDE_OPTION), msg_str(MSG_HOTKEY_GUIDE_CLOSE));
     ui_window_text_out_centred(wnd, 4, 0x20, string_cstr(&header), 0x4b, 0, HOTKEY_GUIDE_FONT,
                             HOTKEY_GUIDE_TEXT, 0);
     string_free(&header);
     ui_window_text_out_centred(wnd, 0xcf, 0x22, msg_str(MSG_HOTKEY_GUIDE_KEYBOARD), 0x9f, 0, 0xb,
                             HOTKEY_GUIDE_HEADER, 0);
-    ui_window_text_out_centred(wnd, 0x25c, 0x20, msg_str(MSG_HOTKEY_GUIDE_WINDOWS), 0x4b, 0, HOTKEY_GUIDE_FONT,
+    ui_window_text_out_centred(wnd, 0x25c, 0x20, msg_str(MSG_HOTKEY_GUIDE_SCREENSHOT), 0x4b, 0, HOTKEY_GUIDE_FONT,
                             HOTKEY_GUIDE_TEXT, 0);
-    string_format(&header, "%s / %s", msg_str(MSG_HOTKEY_GUIDE_SETTINGS_A), msg_str(MSG_HOTKEY_GUIDE_SETTINGS_B));
+    string_format(&header, "%s / %s", msg_str(MSG_HOTKEY_GUIDE_ZOOM_IN), msg_str(MSG_HOTKEY_GUIDE_ZOOM_OUT));
     ui_window_text_out_centred(wnd, 0x317, 0x139, string_cstr(&header), 0x66, 0, HOTKEY_GUIDE_FONT,
                             HOTKEY_GUIDE_TEXT, 0);
     string_free(&header);
-    ui_window_text_out_centred(wnd, 0x302, 0x15a, msg_str(MSG_HOTKEY_GUIDE_NOTE_A), 0x37, 0, HOTKEY_GUIDE_FONT,
+    ui_window_text_out_centred(wnd, 0x302, 0x15a, msg_str(MSG_HOTKEY_GUIDE_MOVE), 0x37, 0, HOTKEY_GUIDE_FONT,
                             HOTKEY_GUIDE_TEXT, 0);
-    ui_window_text_out_centred(wnd, 0x35b, 0x15a, msg_str(MSG_HOTKEY_GUIDE_NOTE_B), 0x37, 0, HOTKEY_GUIDE_FONT,
+    ui_window_text_out_centred(wnd, 0x35b, 0x15a, msg_str(MSG_HOTKEY_GUIDE_ROTATE), 0x37, 0, HOTKEY_GUIDE_FONT,
                             HOTKEY_GUIDE_TEXT, 0);
 }
 

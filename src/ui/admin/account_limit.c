@@ -79,11 +79,11 @@ const struct UIWindowOps ui_account_limited_tool_wnd_ops = {
 
 #define MSG_ACCOUNT_LIMIT_TITLE 0xe42
 #define MSG_ACCOUNT_LIMIT_NAME 0xe43
-#define MSG_ACCOUNT_LIMIT_ACCOUNT 0xe44
+#define MSG_ACCOUNT_LIMIT_ITEM_ID 0xe44
 #define MSG_ACCOUNT_LIMIT_ROW1 0xe45
 #define MSG_ACCOUNT_LIMIT_START 0xe46
 #define MSG_ACCOUNT_LIMIT_END 0xe47
-#define MSG_ACCOUNT_LIMIT_DAILY 0xf4c
+#define MSG_ACCOUNT_LIMIT_RENTAL_PERIOD 0xf4c
 #define MSG_ACCOUNT_LIMIT_ADDED_FMT 0xe4c
 #define MSG_ACCOUNT_LIMIT_NO_NAME 0x9d0
 #define MSG_ACCOUNT_LIMIT_NO_VALUE 0x9cc
@@ -309,7 +309,7 @@ void ui_account_limited_tool_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_title_bar(wnd, 0, msg_str(MSG_ACCOUNT_LIMIT_TITLE), 0);
     ui_window_draw_body(wnd, 0x11, 0, "");
     LABEL(5, 0x1c, msg_str(MSG_ACCOUNT_LIMIT_NAME));
-    LABEL(5, 0x32, msg_str(MSG_ACCOUNT_LIMIT_ACCOUNT));
+    LABEL(5, 0x32, msg_str(MSG_ACCOUNT_LIMIT_ITEM_ID));
     ui_window_fill_rect(wnd, 3, 0x46, wnd->width - 6, 2, ACCOUNT_LIMIT_RULE);
     LABEL(5, 0x50, msg_str(MSG_ACCOUNT_LIMIT_ROW1));
     LABEL(5, 0x66, msg_str(MSG_ACCOUNT_LIMIT_START));
@@ -323,7 +323,7 @@ void ui_account_limited_tool_wnd_on_draw(struct UIWindow *window)
     LABEL(0x116, 0x7c, ":");
     LABEL(0x142, 0x7c, "(HH:MM)");
     ui_window_fill_rect(wnd, 3, 0x90, wnd->width - 6, 2, ACCOUNT_LIMIT_RULE);
-    LABEL(5, 0x9a, msg_str(MSG_ACCOUNT_LIMIT_DAILY));
+    LABEL(5, 0x9a, msg_str(MSG_ACCOUNT_LIMIT_RENTAL_PERIOD));
     LABEL(0xac, 0x9a, "(DD)");
     LABEL(0x116, 0x9a, ":");
     LABEL(0x142, 0x9a, "(HH:MM)");

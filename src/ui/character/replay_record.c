@@ -96,8 +96,8 @@ enum {
 
 #define MSG_REC_OPTIONS_TITLE 0x7b3
 #define MSG_REC_NAME_HINT 0x7b4
-#define MSG_REC_RECORDED 0x7b5
-#define MSG_REC_FILE_NAME 0x7b6
+#define MSG_REC_SET_SAVE_DATA 0x7b5
+#define MSG_REC_SET_OPTION 0x7b6
 #define MSG_REC_NAME_HAS_LINK 0xafc
 
 #define REC_FRAMES 5
@@ -425,8 +425,8 @@ void ui_replay_rec_control_wnd_on_draw(struct UIWindow *window)
     ui_window_fill_round_rect(wnd, 0, 0x22, wnd->width, wnd->height - 0x22, 0xdedede);
     ui_window_fill_round_rect(wnd, 4, 0x26, wnd->width - 8, 0x5f, 0xffffff);
     ui_window_fill_round_rect(wnd, 4, 0x8a, wnd->width - 8, 0x39, 0xffffff);
-    ui_window_text_out_outlined(wnd, 10, 0x2a, msg_str(MSG_REC_RECORDED), 0, 0x7f3c00, 0xffffff, 0, 12, 1, 0);
-    ui_window_text_out_outlined(wnd, 10, 0x8e, msg_str(MSG_REC_FILE_NAME), 0, 0x7f3c00, 0xffffff, 0, 12, 1, 0);
+    ui_window_text_out_outlined(wnd, 10, 0x2a, msg_str(MSG_REC_SET_SAVE_DATA), 0, 0x7f3c00, 0xffffff, 0, 12, 1, 0);
+    ui_window_text_out_outlined(wnd, 10, 0x8e, msg_str(MSG_REC_SET_OPTION), 0, 0x7f3c00, 0xffffff, 0, 12, 1, 0);
 }
 
 static void rec_update(struct UIReplayRECControlWnd *self)

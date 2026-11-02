@@ -146,7 +146,7 @@ enum {
     MODE_MSG_REQUEST_ACT = 0x89,
     MODE_MSG_REQUEST_MOVE = 0x8a,
     MODE_MSG_CHANGE_DIRECTION = 0x8b,
-    MODE_MSG_COUPLE_REQUEST = 0x8c,
+    MODE_MSG_GUILD_MEMBER_STATUS = 0x8c,
     MODE_MSG_GO_TO_LOGIN = 0x8d,
     MODE_MSG_RESET_STATUS = 0x8e,
     MODE_MSG_CHANGE_MAP_TYPE = 0x8f,
@@ -485,7 +485,7 @@ int game_mode_msg_request_act(struct GameMode *self, int action, int target);
 int game_mode_msg_drag_by_name(struct GameMode *self, const char *name);
 int game_mode_msg_quake(struct GameMode *self, int strength);
 int game_mode_msg_show_illustration(struct GameMode *self, const char *file, int position);
-int game_mode_msg_couple_request(const char *name, int which);
+int game_mode_msg_guild_member_status(const char *name, int which);
 int game_mode_msg_pet_act(int action);
 int game_mode_msg_command_pet(int command, int feeding);
 int game_mode_msg_rename(unsigned short id, const char *name);

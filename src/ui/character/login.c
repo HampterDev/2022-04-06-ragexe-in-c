@@ -169,7 +169,7 @@ static struct UIBmpTextButton *add_text_button(struct UIWindow *parent, const ch
 #define LOGIN_PLACEHOLDER_GREY 0x9c
 
 #define MSG_LOGIN_SAVE_ID 0xd53
-#define MSG_LOGIN_CLOSE 0xd67
+#define MSG_LOGIN_OPENING 0xd67
 #define MSG_LOGIN_JOIN 0xd56
 #define MSG_ACCOUNT_CLASS_0 0xcb2
 #define MSG_ACCOUNT_CLASS_1 0xcb3
@@ -351,7 +351,7 @@ void ui_login_wnd_on_create(struct UIWindow *window, int width_unused, int heigh
 
     add_text_button(wnd, UI_SKIN "login_interface\\bt_close_normal.bmp",
                     UI_SKIN "login_interface\\bt_close_over.bmp", UI_SKIN "login_interface\\bt_close_press.bmp",
-                    2, 0xd, 0x68, LOGIN_ID_CANCEL, MSG_LOGIN_CLOSE);
+                    2, 0xd, 0x68, LOGIN_ID_CANCEL, MSG_LOGIN_OPENING);
     add_text_button(wnd, UI_SKIN "login_interface\\bt_join_normal.bmp",
                     UI_SKIN "login_interface\\bt_join_over.bmp", UI_SKIN "login_interface\\bt_join_press.bmp",
                     2, 0x57, 0x68, LOGIN_ID_JOIN, MSG_LOGIN_JOIN);

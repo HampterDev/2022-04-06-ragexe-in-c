@@ -373,8 +373,8 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         send_packet(0x361, &packet);
         return 0;
     }
-    case MODE_MSG_COUPLE_REQUEST:
-        return game_mode_msg_couple_request((const char *)a, b);
+    case MODE_MSG_GUILD_MEMBER_STATUS:
+        return game_mode_msg_guild_member_status((const char *)a, b);
     case MODE_MSG_GO_TO_LOGIN:
         return game_mode_msg_go_to_login();
     case MODE_MSG_RESET_STATUS: {

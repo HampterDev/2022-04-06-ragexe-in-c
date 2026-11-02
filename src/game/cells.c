@@ -77,7 +77,7 @@ __declspec(noinline) char game_mode_is_cell_occupied(struct GameMode *self, int 
         actor = world_get_game_actor_by_aid(self->world, (unsigned)cell->aid);
         if (actor == 0)
             return 1;
-        if (!is_effect_state_burrow(actor_get_effect_state(actor)))
+        if (!is_effect_state_hiding(actor_get_effect_state(actor)))
             return 1;
     }
     return 0;

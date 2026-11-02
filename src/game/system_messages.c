@@ -15,7 +15,7 @@
 enum {
     MSG_CALL_BLOCKED = 0xb92,
     CHAT_CHANNEL_CALL_NOTICE = 0x15,
-    MSG_ITEM_VALUE = 0xcce,
+    MSG_ITEM_RESTRICTED_ON_MAP = 0xcce,
 };
 
 #define UIM_REFRESH  3
@@ -97,11 +97,11 @@ void game_mode_msg_value(const unsigned char *pkt)
     unsigned short msg_id = packet->msg_id;
 
     memset(line, 0, sizeof line);
-    if (msg_id == MSG_ITEM_VALUE) {
+    if (msg_id == MSG_ITEM_RESTRICTED_ON_MAP) {
         item_info_construct(&item);
         item_info_set_item_id(&item, packet->value);
         name = item_info_get_name(&item);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(MSG_ITEM_VALUE), name);
+        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(MSG_ITEM_RESTRICTED_ON_MAP), name);
         item_info_destruct(&item);
     } else {
         sprintf(line, msg_str(msg_id), packet->value);

@@ -19,8 +19,8 @@
 #include "session/session_talk.h"
 #include "session/session_windows.h"
 #include "ui/items/item_list.h"
+#include "ui/items/item_collection_internal.h"
 
-#define WND_PET_INFO_OTHER      0xc
 #define WND_PET_EGG_LIST        0x5a
 #define PET_LEVEL_OTHER         10000
 
@@ -62,7 +62,7 @@ void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
         return;
     }
     packet->level -= PET_LEVEL_OTHER;
-    wnd = ui_window_open(WND_PET_INFO_OTHER);
+    wnd = ui_window_open(WND_ITEM_COLLECTION);
     if (!wnd)
         return;
     {

@@ -219,7 +219,7 @@ void game_mode_select_cart(struct GameMode *self, const unsigned char *pkt)
     vec_free(&carts);
 }
 
-#define HEADER_CZ_STYLINGSHOP_OK 0xa48
+#define HEADER_CZ_CLOSE_UI_STYLINGSHOP 0xa48
 
 #pragma pack(push, 1)
 struct PACKET_ZC_ACK_BUY_STYLINGSHOP {
@@ -237,8 +237,8 @@ void game_mode_ack_buy_styling_shop(struct GameMode *self, const unsigned char *
     (void)self;
     switch (packet->result) {
     case 0:
-        header = HEADER_CZ_STYLINGSHOP_OK;
-        send_packet(HEADER_CZ_STYLINGSHOP_OK, &header);
+        header = HEADER_CZ_CLOSE_UI_STYLINGSHOP;
+        send_packet(HEADER_CZ_CLOSE_UI_STYLINGSHOP, &header);
         ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb14), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_STYLING_SHOP);
         break;

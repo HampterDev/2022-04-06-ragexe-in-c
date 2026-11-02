@@ -162,8 +162,8 @@ void ui_entry_queue_list_box_on_l_btn_up(struct UIWindow *window, int x, int y)
 #define MSG_ENTRY_QUEUE_ROW_KIND2 0x868
 #define MSG_ENTRY_QUEUE_ROW_KIND3 0x869
 #define MSG_ENTRY_QUEUE_ROW_KIND_OTHER 0x86a
-#define MSG_ENTRY_REFUSED_SESSION 0x86b
-#define MSG_ENTRY_REFUSED_HERE 0x86c
+#define MSG_ENTRY_REFUSED_MAP 0x86b
+#define MSG_ENTRY_REFUSED_DELAY 0x86c
 #define MSG_ENTRY_REFUSED_NO_PARTY 0x86d
 #define MSG_ENTRY_REFUSED_PARTY_FLAG 0x86e
 #define MSG_ENTRY_REFUSED_PARTY_SIZE 0x86f
@@ -274,9 +274,9 @@ static BYTE may_apply(void)
 {
     if (!g_entryQueueMgr || !g_entryQueueMgr->current) return 0;
     if (session_map_is_battlefield(&g_session1) == 1)
-        return refuse(MSG_ENTRY_REFUSED_SESSION);
+        return refuse(MSG_ENTRY_REFUSED_MAP);
     if (game_mode_has_state_icon(game_current_mode(), EFST_ENTRY_QUEUE_APPLY_DELAY))
-        return refuse(MSG_ENTRY_REFUSED_HERE);
+        return refuse(MSG_ENTRY_REFUSED_DELAY);
     return 1;
 }
 

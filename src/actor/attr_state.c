@@ -112,7 +112,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
 
     if (effect_state_bit1_changed(self->effect_state, old_effect)) {
         game_actor_stop_aura_effects(self);
-        if (is_effect_state_burrow(self->effect_state)) {
+        if (is_effect_state_hiding(self->effect_state)) {
             if (sound) {
                 AS_SEND0(self, 0x3f);
                 if (game_actor_get_job(self) != 0x19 && game_actor_get_job(self) != 0x107e)
@@ -139,7 +139,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
 
     if (effect_state_bit2_changed(self->effect_state, old_effect)) {
         game_actor_stop_aura_effects(self);
-        if (is_effect_state_star2(self->effect_state)) {
+        if (is_effect_state_cloaking(self->effect_state)) {
             self->visible = 0;
             self->revealed = 0;
             if (self->aid != g_session1.ownAid && session_is_admin_option(&g_session1, 7) == 0) {
@@ -157,7 +157,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
         }
     }
 
-    if (!is_effect_state_burrow(self->effect_state) && !is_effect_state_star2(self->effect_state) &&
+    if (!is_effect_state_hiding(self->effect_state) && !is_effect_state_cloaking(self->effect_state) &&
         !effect_state_bit6(self->effect_state)) {
         if (effect_state_bit4_changed(self->effect_state, old_effect))
             AS_SEND0(self, effect_state_bit4(self->effect_state) ? 0x65 : 0x66);
