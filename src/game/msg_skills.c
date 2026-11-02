@@ -89,7 +89,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         return 0;
     }
     if (skill_id == 0x150) {
-        wsprintfA(line, "%s", self->couple_name);
+        snprintf(line, sizeof line, "%s", self->couple_name);
         strcpy(skill, skill_name(skill_id));
         if (g_serviceType == 0)
             strcat(skill, " ♡");

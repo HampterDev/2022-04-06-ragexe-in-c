@@ -159,7 +159,7 @@ static void property_box(struct UIWindow *wnd, int x, int y, const char *name, i
     char text[0x40];
     int red, green, blue;
 
-    wsprintfA(text, "%s:%d", name, value);
+    snprintf(text, sizeof text, "%s:%d", name, value);
     ui_skin_color_chip(&g_skinMgr, 0x16, 2, &red, &green, &blue);
     ui_window_fill_rect(wnd, x, y, 0x46, 0x10, frame);
     ui_window_fill_rect(wnd, x + 1, y + 1, 0x44, 0xe, fill);
