@@ -1,4 +1,6 @@
 #include "game/broadcast_text.h"
+#include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 static size_t bounded_length(const char *text, size_t bytes)
@@ -7,22 +9,20 @@ static size_t bounded_length(const char *text, size_t bytes)
     return end ? (size_t)(end - text) : bytes;
 }
 
-static int read_colour(const char *text, unsigned *colour)
+static unsigned long separator_index(const char *text, size_t length, int separator)
 {
-    unsigned rgb = 0;
-    int i;
+    const char *found = memchr(text, separator, length);
+    return found ? (unsigned long)(found - text) : ULONG_MAX;
+}
 
-    for (i = 0; i < 6; ++i) {
-        unsigned char c = (unsigned char)text[i];
-        unsigned digit;
-        if (c >= '0' && c <= '9') digit = c - '0';
-        else if (c >= 'a' && c <= 'f') digit = c - 'a' + 10;
-        else if (c >= 'A' && c <= 'F') digit = c - 'A' + 10;
-        else return 0;
-        rgb = (rgb << 4) | digit;
-    }
-    *colour = (rgb & 0xff) << 16 | (rgb & 0xff00) | (rgb >> 16);
-    return 1;
+static unsigned read_colour(const char *text, unsigned long value)
+{
+    char hex[7];
+
+    memcpy(hex, text, 6);
+    hex[6] = 0;
+    sscanf_s(hex, "%lx", &value);
+    return (unsigned)((value & 0xff) << 16 | (value & 0xff00) | (value >> 16 & 0xff));
 }
 
 int broadcast_text_strip_annotation(char *text, size_t capacity)
@@ -47,7 +47,7 @@ int broadcast_text_strip_annotation(char *text, size_t capacity)
 int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t bytes)
 {
     char tag[5] = {0};
-    size_t offset = 0, length, i;
+    size_t offset = 0, whole, length, i;
 
     memset(out, 0, sizeof *out);
     out->colour = 0xffff;
@@ -57,20 +57,23 @@ int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t 
         return 0;
     if (bytes > sizeof out->text - 1)
         bytes = sizeof out->text - 1;
+    whole = bytes ? bounded_length(payload, bytes) : 0;
     for (i = 0; i < 4 && i < bytes; ++i) {
         unsigned char c = (unsigned char)payload[i];
         tag[i] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
     }
     if (strcmp(tag, "tool") == 0) {
-        if (bytes < 10 || !read_colour(payload + 4, &out->colour))
+        if (bytes < 10)
             return 0;
+        out->colour = read_colour(payload + 4, separator_index(payload, whole, ':'));
         offset = 10;
     } else if (strcmp(tag, "blue") == 0 || strcmp(tag, "블루") == 0) {
         out->colour = 0xffff00;
         offset = 4;
     } else if (strcmp(tag, "micc") == 0) {
-        if (bytes < 34 || !read_colour(payload + 28, &out->colour))
+        if (bytes < 34)
             return 0;
+        out->colour = read_colour(payload + 28, separator_index(payload, whole, '#'));
         memcpy(out->sender, payload + 4, 24);
         offset = 34;
         if (bounded_length(payload + offset, bytes - offset) >= 392)

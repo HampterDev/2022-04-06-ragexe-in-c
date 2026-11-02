@@ -33,8 +33,13 @@ int main(void)
     plain("#tag: hello", "#tag: hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
     plain("Bob: Event in #main", "Bob: Event in : Event in #main", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain(":lead#tag", ":lead", 0xffff, 0, 1, BROADCAST_CHANNEL);
+    plain("tool12345xhello", "hello", 0x452301, 1, 1, BROADCAST_CHANNEL);
+    plain("tool 0x1fFhi", "hi", 0xff0100, 1, 1, BROADCAST_CHANNEL);
+    plain("tool-00001hi", "hi", 0xffffff, 1, 1, BROADCAST_CHANNEL);
+    plain("toolzzzzzzhi: there", "hi: there", 0x0c0000, 1, 1, BROADCAST_CHANNEL);
+    plain("toolzzzzzzhi", "hi", 0xffffff, 1, 1, BROADCAST_CHANNEL);
     assert(!broadcast_text_parse(&result, "tool", 4));
-    assert(!broadcast_text_parse(&result, "tool12345xhello", 15));
+    assert(!broadcast_text_parse(&result, "tool12345", 9));
     assert(!broadcast_text_parse(&result, "micc", 4));
     assert(broadcast_text_parse(&result, NULL, 0) && !result.text[0]);
     assert(!broadcast_text_parse(&result, NULL, 1));
@@ -48,6 +53,10 @@ int main(void)
     assert(!broadcast_text_parse(&result, micc, 34 + 392));
     micc[34 + 3] = 0;
     assert(broadcast_text_parse(&result, micc, sizeof micc) && strlen(result.text) == 3);
+    memcpy(micc + 28, "zz#zzz", 6);
+    assert(broadcast_text_parse(&result, micc, sizeof micc) && result.colour == 0xffffff);
+    memset(micc + 4, 's', 24);
+    assert(broadcast_text_parse(&result, micc, sizeof micc) && result.colour == 0x1e0000);
 
     GetSystemInfo(&info);
     pages = VirtualAlloc(NULL, 2 * info.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
