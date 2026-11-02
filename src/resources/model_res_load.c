@@ -236,7 +236,11 @@ static BYTE load_model_resource(struct C3dModelRes *model, const char *name, int
         error_msg("지원되지 않는 버젼입니다. 내용물이 깨져있을 수 있습니다", 0);
         goto close;
     }
-    if (family == 2 && (major != 2 || minor < 1 || minor > 3)) goto close;
+    if (family == 2 && (minor < 1 || minor > 3)) {
+        success = 1;
+        goto close;
+    }
+    if (family == 2 && major != 2) goto close;
     success = read_model_body(model, &file, family, minor);
 close:
     file_close(&file);
