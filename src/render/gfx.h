@@ -163,6 +163,8 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_E_DISPLAY_MODE      0x82000009
 #define GFX_E_NO_PRIMARY        0x8200000e
 #define GFX_E_SURFACELOST        ((int)0x887601c2)
+#define GFX_E_FAIL               ((int)0x80004005)
+#define GFX_E_INVALIDARG         ((int)0x80070057)
 
 int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags);
 int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int flags);

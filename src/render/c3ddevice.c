@@ -206,9 +206,9 @@ int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, cons
     RECT rcMon;
     self->hwnd = hwnd;
     if (!hwnd || !device)
-        return E_INVALIDARG;
+        return GFX_E_INVALIDARG;
     if (!mode && (flags & 1))
-        return E_INVALIDARG;
+        return GFX_E_INVALIDARG;
     self->fullscreen = flags & 1;
     if (adapter)
         init_adapter = *adapter;
@@ -224,7 +224,7 @@ int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, cons
     hr = c3d_device_create_environment(self, adapter, device, mode, flags);
     if (hr < 0) {
         gfx_close(self);
-        if (hr == E_FAIL)
+        if (hr == GFX_E_FAIL)
             return GFX_E_INIT;
     }
     if (self->dev)

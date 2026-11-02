@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "render/rp_pool.h"
 #include "contents/party_booking_regions.h"
 #include "contents/client_lua_calls.h"
@@ -134,7 +135,6 @@ const short *ui_seek_party_mb_jobs(const struct UIWindow *wnd)
     return ((const struct UISeekPartyMBWnd *)wnd)->form.jobs;
 }
 
-extern int(*_imp__atoi)(const char *text);
 
 static void combo_add(struct UIWindow *combo, const char *text, int value)
 {
@@ -515,7 +515,7 @@ static void submit(struct UISeekPartyMBWnd *self)
             return;
         }
     }
-    self->form.level = (short)_imp__atoi(ui_edit_ctrl_get_text(self->level));
+    self->form.level = (short)atoi(ui_edit_ctrl_get_text(self->level));
     g_session1.partyBookingSearchLevel = self->form.level;
     if (self->form.level < 1 || self->form.level > g_session1.baseLevel3rd) {
         char buf[0x104];

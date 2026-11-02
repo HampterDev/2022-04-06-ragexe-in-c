@@ -26,6 +26,7 @@ if(RAGE_PLATFORM_PROBE)
     include(cmake/PlatformProbe.cmake)
 endif()
 if(RAGE_CLIENT)
+    enable_language(CXX)
     include(cmake/SDL3.cmake)
 endif()
 

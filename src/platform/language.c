@@ -337,6 +337,11 @@ void language_read_candidates(struct Language *self)
     self->candidate_count = self->candidate_selection = self->candidate_page = 0;
 }
 
+void language_read_composition(struct Language *self)
+{
+    (void)self;
+}
+
 void language_set_composition(struct Language *self, const char *text, int cursor)
 {
     size_t length = strlen(text);

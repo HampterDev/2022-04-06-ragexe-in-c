@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "render/rp_pool.h"
 #include "session/state.h"
 #include "core/object_type_tables.h"
@@ -93,7 +94,6 @@ const struct UIWindowOps ui_seek_party_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-extern int(*_imp__rand)(void);
 
 struct UISeekPartyWnd *ui_seek_party_wnd_construct(struct UISeekPartyWnd *self)
 {
@@ -165,7 +165,7 @@ void ui_seek_party_wnd_on_create(struct UIWindow *window, int width_unused, int 
                                          UI_SKIN "btn_rewrite_b.bmp", wnd->width - 0x5c, wnd->height - 0x18,
                                          SEEK_PARTY_ID_REWRITE);
 
-    self->type = _imp__rand() % 5;
+    self->type = rand() % 5;
     self->frame_ms = SEEK_PARTY_FRAME_MS;
 }
 

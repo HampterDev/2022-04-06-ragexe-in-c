@@ -42,3 +42,8 @@ if(NOT WIN32)
     target_compile_definitions(rage_dr_mp3 PUBLIC DR_MP3_NO_STDIO)
     target_link_libraries(rage_dr_mp3 PUBLIC m)
 endif()
+
+if(RAGE_CLIENT)
+    add_library(rage_crijndael STATIC crijndael/Rijndael.cpp crijndael/rijndael_api.cpp)
+    target_include_directories(rage_crijndael PRIVATE ${PROJECT_SOURCE_DIR}/src)
+endif()
