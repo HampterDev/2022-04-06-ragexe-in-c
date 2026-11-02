@@ -8,6 +8,7 @@
 #include "session/character_name.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -78,8 +79,6 @@
 #define NOTICE_CAN_RENAME 0x2f
 
 #define SOUND_BUTTON "버튼소리.wav"
-
-#define CURSLOT_ROOT HKEY_CURRENT_USER
 
 struct UINewSelectCharWnd;
 struct UIWindow;
@@ -280,20 +279,21 @@ static void set_page_label(struct UINewSelectCharWnd *self)
 
 static void read_cur_slot(struct UINewSelectCharWnd *self)
 {
-    HKEY key;
-    DWORD type = REG_DWORD, size = 4, slot;
+    struct PlatformSettingsKey *key;
+    uint32_t type = PLATFORM_SETTING_DWORD, size = 4;
+    DWORD slot;
 
-    LONG failed = RegOpenKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key);
+    int failed = !platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key);
 
     self->page = 0;
     self->cur = 0;
     if (failed)
         return;
-    RegCloseKey(key);
-    if (RegOpenKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key))
+    platform_settings_close(key);
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
-    RegQueryValueExA(key, "CURSLOT", NULL, &type, (BYTE *)&slot, &size);
-    RegCloseKey(key);
+    platform_settings_read(key, "CURSLOT", &type, &slot, &size);
+    platform_settings_close(key);
     self->page = slot / (unsigned)self->storage.per_page;
     self->cur = slot % (unsigned)self->storage.per_page;
     if (self->page >= self->storage.page_count || self->page < 0)
@@ -302,14 +302,14 @@ static void read_cur_slot(struct UINewSelectCharWnd *self)
 
 void ui_new_select_char_wnd_write_to_reg(struct UINewSelectCharWnd *self)
 {
-    HKEY key;
-    DWORD disposition = 0, slot;
+    struct PlatformSettingsKey *key;
+    DWORD slot;
 
-    if (RegCreateKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition))
+    if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
         return;
     slot = self->storage.per_page * self->page + self->cur;
-    RegSetValueExA(key, "CURSLOT", 0, REG_DWORD, (const BYTE *)&slot, 4);
-    RegCloseKey(key);
+    platform_settings_write(key, "CURSLOT", PLATFORM_SETTING_DWORD, &slot, 4);
+    platform_settings_close(key);
 }
 
 static void store_selected_slot(struct UINewSelectCharWnd *self)

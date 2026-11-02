@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
+#include "platform/display_depth.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
 #include "core/text_util.h"
@@ -181,13 +182,10 @@ void ui_graphic_setting_wnd_destroy(struct UIWindow *window)
 
 void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
 {
-    OSVERSIONINFOA version;
     const struct DisplayDevice *rec;
     unsigned count, i, hw, m;
+    int has_16bit_modes = platform_display_has_16bit_modes();
 
-    memset(&version, 0, sizeof version);
-    version.dwOSVersionInfoSize = sizeof version;
-    GetVersionExA(&version);
     count = (unsigned)display_devices_count();
     self->modes.last = self->modes.first;
     string_vec_clear(&self->mode_names);
@@ -211,7 +209,7 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
             const struct DisplayMode *mode = &rec->modes[m];
             int width = (int)mode->width, height = (int)mode->height, bpp = (int)mode->bpp;
 
-            if (version.dwMajorVersion == 6 && version.dwMinorVersion == 2) {
+            if (!has_16bit_modes) {
                 if ((unsigned)height >= 0x298 && bpp == 32 && (unsigned)width <= 0x2000
                     && (unsigned)height <= 0x1000) {
                     struct String text;

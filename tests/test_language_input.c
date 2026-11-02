@@ -155,6 +155,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #define malloc test_malloc
 #define realloc test_realloc
 #define free test_free
+#include "../src/platform/system.c"
 #include "../src/platform/language.c"
 #include "../src/platform/language_tc.c"
 #include "../src/platform/window.c"

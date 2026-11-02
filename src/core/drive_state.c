@@ -29,9 +29,11 @@ static int g_chatNext;
 static const char *state_path(void)
 {
     if (!g_stateChecked) {
-        DWORD n = GetEnvironmentVariableA("RAGEXE_DRIVE_STATE", g_statePath, sizeof g_statePath);
+        const char *path = getenv("RAGEXE_DRIVE_STATE");
 
-        if (n == 0 || n >= sizeof g_statePath)
+        if (path && strlen(path) < sizeof g_statePath)
+            strcpy(g_statePath, path);
+        else
             g_statePath[0] = '\0';
         g_stateChecked = 1;
     }

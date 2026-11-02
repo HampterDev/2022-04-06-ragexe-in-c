@@ -4,6 +4,7 @@
 #include "render/rp_pool.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "contents/mouse.h"
 #include "core/object_type_tables.h"
@@ -356,8 +357,8 @@ intptr_t ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow 
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *list = &self->list->list.base;
     const char *value;
-    HKEY probe, key;
-    DWORD type, size, disposition;
+    struct PlatformSettingsKey *probe, *key;
+    uint32_t type, size;
 
     switch (msg) {
     case UI_MSG_COMMAND:
@@ -371,12 +372,10 @@ intptr_t ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow 
                             0.0f, 0xfa, 0x28, 1.0f);
             value = string_cstr(&self->server_value);
             self->server = self->list->list.selected;
-            disposition = 0;
-            if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
-                                &disposition) != ERROR_SUCCESS)
+            if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
                 return 0;
-            RegSetValueExA(key, value, 0, REG_DWORD, (const BYTE *)&self->server, 4);
-            RegCloseKey(key);
+            platform_settings_write(key, value, PLATFORM_SETTING_DWORD, &self->server, 4);
+            platform_settings_close(key);
             return 0;
         case SELECT_SERVER_ID_CANCEL:
             ui_window_mgr_post_quit2(&g_windowMgr, wnd);
@@ -403,15 +402,15 @@ intptr_t ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         string_assign_cstr(&self->server_value, (const char *)val2);
         value = string_cstr(&self->server_value);
         self->server = g_serviceType;
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
+        if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &probe))
             return 0;
-        RegCloseKey(probe);
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+        platform_settings_close(probe);
+        if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
             return 0;
         size = 4;
         type = 4;
-        RegQueryValueExA(key, value, NULL, &type, (BYTE *)&self->server, &size);
-        RegCloseKey(key);
+        platform_settings_read(key, value, &type, &self->server, &size);
+        platform_settings_close(key);
         return 0;
     case SELECT_SERVER_MSG_PLACE_EXIT:
         ui_window_move_base(self->exit_button, SELECT_SERVER_EXIT_X, self->exit_button->y);

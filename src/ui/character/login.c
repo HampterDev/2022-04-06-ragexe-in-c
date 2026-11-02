@@ -2,6 +2,7 @@
 #include "render/rp_pool.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -194,32 +195,33 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
 {
     char id[0x34];
     char password[0x1a];
-    HKEY probe, key;
-    DWORD type, size, check_save, bitwise;
+    struct PlatformSettingsKey *probe, *key;
+    uint32_t type, size;
+    DWORD check_save, bitwise;
     int colour;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &probe)) {
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->id_edit, "");
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
         return;
     }
-    RegCloseKey(probe);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    platform_settings_close(probe);
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
     size = 4;
     type = 4;
-    RegQueryValueExA(key, "CHECKSAVE", NULL, &type, (BYTE *)&check_save, &size);
+    platform_settings_read(key, "CHECKSAVE", &type, &check_save, &size);
     check_save = check_save == 1 ? 1 : 0;
-    RegQueryValueExA(key, "BITWISE", NULL, &type, (BYTE *)&bitwise, &size);
+    platform_settings_read(key, "BITWISE", &type, &bitwise, &size);
     memset(id, 0, sizeof id);
     memset(password, 0, sizeof password);
-    type = REG_SZ;
+    type = PLATFORM_SETTING_STRING;
     size = LOGIN_REG_PASSWORD_SIZE;
-    RegQueryValueExA(key, "PASSWORD", NULL, &type, (BYTE *)password, &size);
+    platform_settings_read(key, "PASSWORD", &type, password, &size);
     password[0x18] = 0;
-    type = REG_SZ;
+    type = PLATFORM_SETTING_STRING;
     size = LOGIN_REG_ID_SIZE;
-    RegQueryValueExA(key, "ID", NULL, &type, (BYTE *)id, &size);
+    platform_settings_read(key, "ID", &type, id, &size);
     id[0x32] = 0;
     password[0x18] = 0;
     self->save_id = check_save;
@@ -236,18 +238,16 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->id_edit, id);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
     }
-    RegCloseKey(key);
+    platform_settings_close(key);
 }
 
 void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
 {
     char id[0x34];
-    HKEY key;
-    DWORD disposition = 0;
+    struct PlatformSettingsKey *key;
     DWORD check_save, bitwise;
 
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition) !=
-        ERROR_SUCCESS)
+    if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
         return;
     if (self->save_id)
         strcpy(id, ui_edit_ctrl_get_text(self->id_edit));
@@ -255,11 +255,11 @@ void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
         memset(id, 0, sizeof id);
     id[0x32] = 0;
     check_save = self->save_id ? 1 : 0;
-    RegSetValueExA(key, "ID", 0, REG_SZ, (const BYTE *)id, 0x33);
-    RegSetValueExA(key, "CHECKSAVE", 0, REG_DWORD, (const BYTE *)&check_save, 4);
+    platform_settings_write(key, "ID", PLATFORM_SETTING_STRING, id, 0x33);
+    platform_settings_write(key, "CHECKSAVE", PLATFORM_SETTING_DWORD, &check_save, 4);
     bitwise = 1;
-    RegSetValueExA(key, "BITWISE", 0, REG_DWORD, (const BYTE *)&bitwise, 4);
-    RegCloseKey(key);
+    platform_settings_write(key, "BITWISE", PLATFORM_SETTING_DWORD, &bitwise, 4);
+    platform_settings_close(key);
 }
 
 struct UILoginWnd *ui_login_wnd_construct(struct UILoginWnd *self)

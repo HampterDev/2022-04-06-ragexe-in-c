@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "platform/win_types.h"
 #include <string.h>
 #include "render/gfx.h"
@@ -27,11 +28,10 @@ int stale_guid(void)
         if (!guid_attached) {
             memset(&g_driverGuid, 0, sizeof(GUID));
             {
-                HKEY key;
-                if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, REG_OPTION_NON_VOLATILE,
-                                    KEY_SET_VALUE, NULL, &key, NULL) == ERROR_SUCCESS) {
-                    RegSetValueExA(key, "GUIDDRIVER", 0, REG_BINARY, (const BYTE *)&g_driverGuid, sizeof(GUID));
-                    RegCloseKey(key);
+                struct PlatformSettingsKey *key;
+                if (platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_SET, &key)) {
+                    platform_settings_write(key, "GUIDDRIVER", PLATFORM_SETTING_BINARY, &g_driverGuid, sizeof(GUID));
+                    platform_settings_close(key);
                 }
             }
             platform_message_box(NULL,

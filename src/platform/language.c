@@ -12,6 +12,7 @@
 #ifdef _WIN32
 #include <imm.h>
 #endif
+#include "platform/system.h"
 #include "core/app.h"
 #include "ui/misc/thai_lexicon.h"
 #include "platform/window.h"
@@ -22,18 +23,26 @@ struct Language *g_language;
 
 #define KEY_DOWN(vk)  ((platform_key_state(vk) & 0xff00) != 0)
 
+enum {
+    LANGUAGE_ID_GERMAN = 0x07,
+    LANGUAGE_ID_ENGLISH = 0x09,
+    LANGUAGE_ID_ITALIAN = 0x10,
+    LANGUAGE_ID_PORTUGUESE = 0x16,
+    LANGUAGE_ID_TURKISH = 0x1f
+};
+
 struct Language *language_construct(struct Language *self)
 {
     memset(self, 0, sizeof *self);
     self->input_method = LANGUAGE_INPUT_DEFAULT;
     self->keyboard_lang = LOWORD(GetKeyboardLayout(0));
     self->code_page = g_useCharsetTag ? code_page_from_lang(self->keyboard_lang) : g_codePage;
-    switch (GetUserDefaultLangID() & 0x3ff) {
-    case LANG_GERMAN:     self->folder_lang = LANG_GERMAN;     self->folder = "german\\";     break;
-    case LANG_ITALIAN:    self->folder_lang = LANG_ITALIAN;    self->folder = "italian\\";    break;
-    case LANG_PORTUGUESE: self->folder_lang = LANG_PORTUGUESE; self->folder = "portuguese\\"; break;
-    case LANG_TURKISH:    self->folder_lang = LANG_TURKISH;    self->folder = "turkish\\";    break;
-    default:             self->folder_lang = LANG_ENGLISH;    self->folder = "english\\";    break;
+    switch (platform_user_language() & 0x3ff) {
+    case LANGUAGE_ID_GERMAN:     self->folder_lang = LANGUAGE_ID_GERMAN;     self->folder = "german\\";     break;
+    case LANGUAGE_ID_ITALIAN:    self->folder_lang = LANGUAGE_ID_ITALIAN;    self->folder = "italian\\";    break;
+    case LANGUAGE_ID_PORTUGUESE: self->folder_lang = LANGUAGE_ID_PORTUGUESE; self->folder = "portuguese\\"; break;
+    case LANGUAGE_ID_TURKISH:    self->folder_lang = LANGUAGE_ID_TURKISH;    self->folder = "turkish\\";    break;
+    default:                    self->folder_lang = LANGUAGE_ID_ENGLISH;    self->folder = "english\\";    break;
     }
     if (g_serviceType == 0xf)
         self->code_page = 1258;

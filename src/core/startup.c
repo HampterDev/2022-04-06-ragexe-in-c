@@ -19,8 +19,8 @@
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "contents/connection_api.h"
+#include "platform/system.h"
 #include "platform/win_types.h"
-#include <shellapi.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
@@ -43,7 +43,7 @@ void app_activate(int active)
         RECT client, clip;
         POINT top_left, bottom_right;
 
-        SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+        platform_set_background_priority(0);
         if (g_session1.mouseExclusiveOption != 1)
             return;
         GetClientRect(g_hMainWnd, &client);
@@ -63,7 +63,7 @@ void app_activate(int active)
         DWORD packet;
         int key = 2, flag;
 
-        SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+        platform_set_background_priority(1);
         var = tree_find(&g_session1.instantVars, &key, tree_less_int);
         flag = var ? (int)var->value : 0;
         if (flag) {

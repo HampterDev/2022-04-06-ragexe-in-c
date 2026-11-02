@@ -1,5 +1,6 @@
 #include "core/app.h"
 #include "contents/sound.h"
+#include "platform/settings.h"
 #include "render/render_api.h"
 #include "ui/render/graphic_setting.h"
 #include "world/world_imports.h"
@@ -11,24 +12,25 @@ uint32_t g_soundMode;
 DWORD g_isVoodoo;
 GUID g_deviceGuid;
 
-static void read_startup_value(HKEY key, const char *name, DWORD kind, void *value, DWORD capacity)
+static void read_startup_value(struct PlatformSettingsKey *key, const char *name, enum PlatformSettingType kind,
+                               void *value, uint32_t capacity)
 {
     BYTE bytes[sizeof g_deviceName];
-    DWORD type = 0, size = capacity;
+    uint32_t type = 0, size = capacity;
 
     if (capacity > sizeof bytes)
         return;
-    if (RegQueryValueExA(key, name, NULL, &type, bytes, &size) != ERROR_SUCCESS
-        || type != kind || size > capacity || (kind != REG_SZ && size != capacity))
+    if (!platform_settings_read(key, name, &type, bytes, &size)
+        || type != kind || size > capacity || (kind != PLATFORM_SETTING_STRING && size != capacity))
         return;
     memcpy(value, bytes, size);
-    if (kind == REG_SZ)
+    if (kind == PLATFORM_SETTING_STRING)
         ((char *)value)[capacity - 1] = 0;
 }
 
 void read_startup_settings(void)
 {
-    HKEY key;
+    struct PlatformSettingsKey *key;
 
     g_isVoodoo = 0;
     g_isVoodooInUse = 0;
@@ -39,17 +41,17 @@ void read_startup_settings(void)
     g_soundMode = 2;
     g_sound_speaker_type = 0;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
 
-    read_startup_value(key, "ISVOODOO", REG_DWORD, &g_isVoodoo, sizeof g_isVoodoo);
-    read_startup_value(key, "TRILINEARFILTER", REG_DWORD, &g_trilinearFilter, sizeof g_trilinearFilter);
-    read_startup_value(key, "DEVICENAME", REG_SZ, g_deviceName, sizeof g_deviceName);
-    read_startup_value(key, "GUIDDEVICE", REG_BINARY, &g_deviceGuid, sizeof g_deviceGuid);
-    read_startup_value(key, "GUIDDRIVER", REG_BINARY, &g_driverGuid, sizeof g_driverGuid);
-    read_startup_value(key, "SOUNDMODE", REG_DWORD, &g_soundMode, sizeof g_soundMode);
-    read_startup_value(key, "SPEAKERTYPE", REG_DWORD, &g_sound_speaker_type, sizeof g_sound_speaker_type);
-    RegCloseKey(key);
+    read_startup_value(key, "ISVOODOO", PLATFORM_SETTING_DWORD, &g_isVoodoo, sizeof g_isVoodoo);
+    read_startup_value(key, "TRILINEARFILTER", PLATFORM_SETTING_DWORD, &g_trilinearFilter, sizeof g_trilinearFilter);
+    read_startup_value(key, "DEVICENAME", PLATFORM_SETTING_STRING, g_deviceName, sizeof g_deviceName);
+    read_startup_value(key, "GUIDDEVICE", PLATFORM_SETTING_BINARY, &g_deviceGuid, sizeof g_deviceGuid);
+    read_startup_value(key, "GUIDDRIVER", PLATFORM_SETTING_BINARY, &g_driverGuid, sizeof g_driverGuid);
+    read_startup_value(key, "SOUNDMODE", PLATFORM_SETTING_DWORD, &g_soundMode, sizeof g_soundMode);
+    read_startup_value(key, "SPEAKERTYPE", PLATFORM_SETTING_DWORD, &g_sound_speaker_type, sizeof g_sound_speaker_type);
+    platform_settings_close(key);
 
     g_isVoodooInUse = stale_guid();
 }

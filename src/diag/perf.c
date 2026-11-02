@@ -3,6 +3,7 @@
 #include "diag/perf.h"
 #include "ui/window_types.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "platform/window.h"
 #include "platform/clock.h"
@@ -70,10 +71,10 @@ static int ms10_of(LONGLONG ticks)
 
 static void init(void)
 {
-    char buf[MAX_PATH];
+    const char *overlay = getenv("RAGEXE_OVERLAY");
     P.inited = 1;
     P.freq = platform_perf_frequency();
-    if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
+    if (overlay && overlay[0] && overlay[0] != '0')
         P.shown = 1;
     P.lastScroll = platform_key_state(VK_SCROLL) & 1;
     P.start = now();

@@ -1,6 +1,7 @@
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -611,15 +612,15 @@ static void place_scroll(struct UInCashWnd *self)
 static void open_shop(struct UInCashWnd *self, int cash, int points)
 {
     char key[0x200];
-    HKEY hkey = NULL;
-    DWORD type = REG_DWORD, size = 4;
+    struct PlatformSettingsKey *hkey = NULL;
+    uint32_t type = PLATFORM_SETTING_DWORD, size = 4;
     struct UIWindow *button;
 
     reg_key_path(key);
     self->tab = 0;
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, key, 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
-        RegQueryValueExA(hkey, REG_TAB_VALUE, NULL, &type, (BYTE *)&self->tab, &size);
-    RegCloseKey(hkey);
+    if (platform_settings_open(key, PLATFORM_SETTINGS_QUERY, &hkey))
+        platform_settings_read(hkey, REG_TAB_VALUE, &type, &self->tab, &size);
+    platform_settings_close(hkey);
     if (self->tab > 10)
         self->tab = 10;
     else if (self->tab < 0)
@@ -635,8 +636,7 @@ static void open_shop(struct UInCashWnd *self, int cash, int points)
 static void select_tab(struct UInCashWnd *self, int id)
 {
     char key[0x200];
-    HKEY hkey;
-    DWORD disposition = 0;
+    struct PlatformSettingsKey *hkey;
     struct UIWindow *button;
 
     if ((unsigned)self->tab <= 10 && self->buttons[self->tab]) {
@@ -651,11 +651,10 @@ static void select_tab(struct UInCashWnd *self, int id)
     ui_window_invalidate(button);
     place_scroll(self);
     reg_key_path(key);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, key, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hkey, &disposition)
-        != ERROR_SUCCESS)
+    if (!platform_settings_create(key, PLATFORM_SETTINGS_ALL, &hkey))
         return;
-    RegSetValueExA(hkey, REG_TAB_VALUE, 0, REG_DWORD, (const BYTE *)&self->tab, 4);
-    RegCloseKey(hkey);
+    platform_settings_write(hkey, REG_TAB_VALUE, PLATFORM_SETTING_DWORD, &self->tab, 4);
+    platform_settings_close(hkey);
 }
 
 static void clear_cart(struct UInCashWnd *self)

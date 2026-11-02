@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <shellapi.h>
+#include "platform/desktop.h"
 #include "core/app.h"
 #include "diag/perf.h"
 
@@ -161,7 +161,7 @@ void ui_tag_text_viewer_on_url_link(struct UITagTextViewer *self, struct UITextB
     (void)self;
     if (!link || !link_arg_count(link)) return;
     url = link_arg(link, 0);
-    if (url.size) ShellExecuteA(g_hMainWnd, "open", url.data, NULL, NULL, SW_SHOWNORMAL);
+    if (url.size) platform_open_with_desktop(url.data);
 }
 
 void ui_tag_text_viewer_on_item_link(struct UITagTextViewer *self, struct UITextButton *link)

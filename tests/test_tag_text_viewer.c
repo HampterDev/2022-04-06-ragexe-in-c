@@ -54,6 +54,7 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
 #undef malloc
 #define malloc checked_malloc
 #define ShellExecuteA test_open_url
+#include "../src/platform/desktop.c"
 #include "../src/ui/quests/tag_text_viewer.c"
 #ifdef TAG_TEXT_VIEWER_REFERENCE
 static struct String *reference_button_get_line(struct UITextButton *link, struct String *out, unsigned i);

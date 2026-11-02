@@ -23,7 +23,7 @@ static int run_startup(void)
 {
     struct InitResult init = {0, -1};
     HINSTANCE instance = NULL;
-    HRESULT com_result;
+    int desktop_started;
     UINT period = 0;
     int result;
 """
