@@ -21,6 +21,13 @@ void platform_ime_cancel(HWND window);
 void platform_ime_alphanumeric(HWND window);
 
 #ifndef _WIN32
+#define MB_OK 0x0
+#define MB_ICONERROR 0x10
+#define MB_ICONEXCLAMATION 0x30
+#define MB_ICONWARNING 0x30
+#define MB_ICONINFORMATION 0x40
+#define MB_TASKMODAL 0x2000
+
 void platform_note_key(int vk, int down);
 void platform_note_cursor(int x, int y);
 void platform_set_main_window(void *window);

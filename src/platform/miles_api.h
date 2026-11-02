@@ -1,7 +1,11 @@
 #ifndef PLATFORM_MILES_API_H
 #define PLATFORM_MILES_API_H
 #ifndef MSS_IMPORT
+#ifdef _WIN32
 #define MSS_IMPORT __declspec(dllimport)
+#else
+#define MSS_IMPORT
+#endif
 #endif
 #define MSS_SAMPLE_DONE 2
 #define MSS_STREAM_PLAYING 4

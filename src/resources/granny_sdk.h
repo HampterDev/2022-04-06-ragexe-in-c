@@ -99,7 +99,11 @@ typedef struct GrannyClock { unsigned char bytes[16]; } GrannyClock;
 SIZE_ASSERT(GrannyClock, 16);
 
 #ifndef GRANNY_IMPORT
+#ifdef _WIN32
 #define GRANNY_IMPORT __declspec(dllimport)
+#else
+#define GRANNY_IMPORT
+#endif
 #endif
 GRANNY_IMPORT GrannyClock __stdcall _GrannyGetSystemSeconds(void);
 GRANNY_IMPORT float __stdcall _GrannyGetSecondsElapsed(const GrannyClock *start, const GrannyClock *end);

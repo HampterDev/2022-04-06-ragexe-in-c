@@ -74,6 +74,8 @@ typedef struct tagSIZE {
 
 #define WINAPI
 #define CALLBACK
+#define __stdcall
+#define __cdecl
 
 #define LOBYTE(w) ((BYTE)((DWORD_PTR)(w) & 0xff))
 #define HIBYTE(w) ((BYTE)(((DWORD_PTR)(w) >> 8) & 0xff))
