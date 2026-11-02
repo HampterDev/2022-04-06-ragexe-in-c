@@ -64,7 +64,7 @@ static void eot_logfont(LOGFONTA *lf, const char *name)
     lf->lfOutPrecision = 6;
     lf->lfQuality = 2;
     strcpy(lf->lfFaceName, name);
-    lf->lfHeight = -MulDiv(13, 72, 72);
+    lf->lfHeight = -13;
 }
 
 static const char *const eot_names[] = {
@@ -89,7 +89,7 @@ static HFONT file_font(const struct FontEntry *entry, int backend_active)
 {
     LOGFONTA lf = {0};
     char *name = backend_active ? font_file_family_name(entry->resource_path) : NULL;
-    lf.lfHeight = -MulDiv(entry->size, 72, 72);
+    lf.lfHeight = -entry->size;
     lf.lfWeight = entry->bold ? 700 : 400;
     lf.lfItalic = entry->italic;
     lf.lfCharSet = (BYTE)entry->charset;
