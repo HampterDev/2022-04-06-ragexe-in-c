@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
+#include "core/cstr.h"
 
 struct TagLink {
     int pos;
@@ -345,7 +346,7 @@ static void add_text(struct UITextViewer *self, char *text, int val2, int val3, 
             in = string_from_cstr(text);
             unescape_newlines(&unescaped, &in);
             string_free(&in);
-            strcpy_s(text, strlen(text) + 1, string_cstr(&unescaped));
+            cstr_copy(text, strlen(text) + 1, string_cstr(&unescaped));
             s = string_from_cstr(text);
             apply(&s, "<URL>", "</URL>");
             apply(&s, "<NAVI>", "</NAVI>");

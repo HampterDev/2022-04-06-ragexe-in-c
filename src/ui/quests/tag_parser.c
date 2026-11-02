@@ -3,6 +3,7 @@
 #include "core/markup_tags.h"
 #include "ui/quests/tag_list_box.h"
 #include "core/text_util.h"
+#include "core/cstr.h"
 
 struct Vec g_tagPrototypes;
 
@@ -345,7 +346,7 @@ static int item_link_base62(const struct String *text)
     unsigned value = 0;
     int count, i;
 
-    strcpy_s(buf, size, string_cstr(text));
+    cstr_copy(buf, size, string_cstr(text));
     count = (int)size - 1;
     for (i = 0; i < count; i++) {
         unsigned place = 1;
@@ -432,7 +433,7 @@ void tag_item_link_decode(const struct String *code, struct Vec *vals)
     if ((int)size < 6)
         return;
     buf = mem_alloc(size);
-    strcpy_s(buf, size, string_cstr(code));
+    cstr_copy(buf, size, string_cstr(code));
     string_init(&field);
     vec_resize(vals, ITEM_LINK_VALUES, sizeof(int));
     ((int *)vals->first)[ITEM_LINK_CARDS] = -1;

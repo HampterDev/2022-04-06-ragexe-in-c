@@ -10,6 +10,7 @@
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include <stdint.h>
+#include "core/cstr.h"
 
 enum {
     WID_GUILD_STORAGE = 0x21,
@@ -269,8 +270,8 @@ void game_mode_enter_guild_storage_log(int result, const struct Vec *items)
         entry.id = it->item.guild_log.id;
         entry.amount = it->item.guild_log.amount;
         entry.action = it->item.guild_log.action;
-        strncpy_s(entry.name, sizeof entry.name, it->item.guild_log.name, _TRUNCATE);
-        strncpy_s(entry.time, sizeof entry.time, it->item.guild_log.time, _TRUNCATE);
+        cstr_copy(entry.name, sizeof entry.name, it->item.guild_log.name);
+        cstr_copy(entry.time, sizeof entry.time, it->item.guild_log.time);
         item_info_get_display_name(&it->item, &display_name);
         string_assign(&entry.item_name, string_cstr(&display_name), display_name.size);
         string_free(&display_name);
@@ -326,8 +327,8 @@ void game_mode_ack_guild_storage_log2(const struct PACKET_ZC_ACK_GUILDSTORAGE_LO
             item.guild_log.id = record->id;
             item.guild_log.amount = record->amount;
             item.guild_log.action = record->action;
-            strncpy_s(item.guild_log.name, sizeof item.guild_log.name, record->name, _TRUNCATE);
-            strncpy_s(item.guild_log.time, sizeof item.guild_log.time, record->time, _TRUNCATE);
+            cstr_copy(item.guild_log.name, sizeof item.guild_log.name, record->name);
+            cstr_copy(item.guild_log.time, sizeof item.guild_log.time, record->time);
             memset(digits, 0, sizeof digits);
             id_text = _itoa(record->item_id, digits, 10);
             string_assign_cstr(&item.id_text, id_text);

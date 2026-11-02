@@ -13,6 +13,7 @@
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/store_entries.h"
+#include "core/cstr.h"
 
 #define WND_SHOP_BUY            0x16
 #define WND_SHOP_BUY_CART       0x17
@@ -190,7 +191,7 @@ void game_mode_zc_pc_sell_itemlist(struct GameMode *self, const unsigned char *p
 
             item_record_a_clear(&item);
             item.index = copy.index;
-            strcpy_s(item.id_text, sizeof item.id_text, string_cstr(&owned.id_text));
+            cstr_copy(item.id_text, sizeof item.id_text, string_cstr(&owned.id_text));
             item.price = copy.price;
             item.charged_price = copy.overcharge_price;
             item.type = owned.type;

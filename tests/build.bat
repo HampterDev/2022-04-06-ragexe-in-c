@@ -216,6 +216,10 @@ cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_numeric.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_cstr.c" "%ROOT%\src\core\cstr.c" /Fe:test_cstr.exe
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+test_cstr.exe
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W3 /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\src\std\string.c" /Fo:string.obj
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_string_move.c" string.obj /Fe:test_string_move.exe

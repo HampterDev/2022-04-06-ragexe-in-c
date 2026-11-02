@@ -35,6 +35,7 @@
 #include "ui/character/skill_list_wnd.h"
 #include "game/rodex_mail.h"
 #include "platform/clock.h"
+#include "core/cstr.h"
 
 static int box(const char *text, int a, int b, int c, int d)
 {
@@ -217,7 +218,7 @@ static void server_list(struct LoginMode *self)
         case 4: string_append_cstr(&label, msg_str(0xcbc)); break;
         }
         if (label.size)
-            strcpy_s(text, 0x40, string_cstr(&label));
+            cstr_copy(text, 0x40, string_cstr(&label));
         for (k = 3; k >= 0; k--)
             string_free(&colour[k]);
         string_free(&label);

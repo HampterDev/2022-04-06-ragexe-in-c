@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "fileio/res_mgr.h"
 #include "diag/perf.h"
+#include "core/cstr.h"
 
 struct UIBalloonText;
 struct UIWindow;
@@ -844,7 +845,7 @@ static const char name_bracket_format[] = "%s『%s』";
 static void name_copy_text(char *buf, const struct String *text)
 {
     memset(buf, 0, NAME_TEXT_BUF);
-    strncpy_s(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
+    cstr_copy_n(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
 }
 
 static void name_add_line(struct UIBalloonText *b, const char *text)

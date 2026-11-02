@@ -10,6 +10,7 @@
 #include "diag/perf.h"
 #include "iteminfo/iteminfo.h"
 #include "std/tree.h"
+#include "core/cstr.h"
 
 const struct UIWindowOps ui_item_collection_wnd_ops = {
     .destroy = ui_item_collection_wnd_destroy,
@@ -514,5 +515,5 @@ void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails
     self->pet_intimacy = pet->intimacy;
     self->pet_accessory = pet->accessory;
     self->pet_renamed = pet->renamed;
-    strncpy_s(self->pet_name, sizeof self->pet_name, pet->name, _TRUNCATE);
+    cstr_copy(self->pet_name, sizeof self->pet_name, pet->name);
 }

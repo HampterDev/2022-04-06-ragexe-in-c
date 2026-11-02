@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 struct UIAccountLimitedToolWnd;
 struct UIWindow;
@@ -446,7 +447,7 @@ static void send_search(struct UIAccountLimitedToolWnd *self)
     } else if (name.size < ACCOUNT_LIMIT_NAME_LEN) {
         packet.id = PACKET_ACCOUNT_LIMIT_SEARCH;
         memset(packet.name, 0, sizeof packet.name);
-        strncpy_s(packet.name, sizeof packet.name, string_cstr(&name), name.size);
+        cstr_copy_n(packet.name, sizeof packet.name, string_cstr(&name), name.size);
         send_packet(&packet, packet.id);
     }
     string_free(&name);

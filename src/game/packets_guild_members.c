@@ -11,6 +11,7 @@
 #include "session/session_options.h"
 #include "std/tree.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 enum { MSG_UNKNOWN_MEMBER = 0x245 };
 
@@ -291,7 +292,7 @@ void game_mode_zc_ack_leave_guild_del_name(struct GameMode *self, const struct P
     struct String name;
     struct GameActor *actor;
 
-    strcpy_s(reason, 40, packet->reason);
+    cstr_copy(reason, 40, packet->reason);
     reason[40] = 0;
     if (packet->gid == (unsigned)g_session1.ownGid) {
         session_refresh_guild_skill_hotkeys(&g_session1);

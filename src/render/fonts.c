@@ -4,6 +4,7 @@
 #include "core/text_encoding.h"
 #include <stdlib.h>
 #include <string.h>
+#include "core/cstr.h"
 
 #define FONT_SCDREAM_BOLD "system\\font\\SCDream6.otf"
 #define FONT_SCDREAM      "system\\font\\SCDream4.otf"
@@ -93,7 +94,7 @@ static HFONT file_font(const struct FontEntry *entry, int backend_active)
     lf.lfItalic = entry->italic;
     lf.lfCharSet = (BYTE)entry->charset;
     if (name) {
-        strncpy_s(lf.lfFaceName, sizeof(lf.lfFaceName), name, _TRUNCATE);
+        cstr_copy(lf.lfFaceName, sizeof(lf.lfFaceName), name);
         free(name);
     }
     return CreateFontIndirectA(&lf);

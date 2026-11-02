@@ -2,6 +2,7 @@
 #include "session/state.h"
 #include "platform/client_config.h"
 #include "contents/client_res.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/msg_str.h"
@@ -26,9 +27,7 @@ void session_init_short_cut_texts(struct Session *self)
     for (i = 0; i < CHAT_MACRO_COUNT; ++i)
         if (!owned_text_assign(&replacement.items[i], text_view_cstr(msg_str(s_shortcutMsg[i])))) goto failed;
 
-    strcpy_s(path, sizeof path, g_registryKeyPath);
-    strcat_s(path, sizeof path, g_shortcutListSubkey);
-    strcat_s(path, sizeof path, "\\");
+    snprintf(path, sizeof path, "%s%s\\", g_registryKeyPath, g_shortcutListSubkey);
     if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
         for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
             _itoa(i, name, 10);

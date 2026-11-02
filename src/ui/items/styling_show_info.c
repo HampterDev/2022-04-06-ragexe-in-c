@@ -9,6 +9,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "session/session_names.h"
+#include "core/cstr.h"
 
 struct UIShowInfoWnd;
 void ui_show_info_wnd_destroy(struct UIWindow *window);
@@ -306,7 +307,7 @@ static void show_info_draw_icon(struct UIShowInfoWnd *self, const int *kind, con
             sprintf(id_text, "%d", style_kind_value(self->display, *kind));
             session_get_item_bitmap_file_name(id_text, path, 1);
         } else {
-            strcpy_s(path, sizeof path, STYLE_SKIN "icon_zeny.bmp");
+            cstr_copy(path, sizeof path, STYLE_SKIN "icon_zeny.bmp");
         }
         bitmap = ui_skin_bitmap(path);
     } else if (item_id) {
