@@ -154,6 +154,8 @@ static void on_key(const SDL_KeyboardEvent *key, int down)
         window_events_key_up(vk, lparam | (int)0xc0000000u);
         return;
     }
+    if (vk == VK_SNAPSHOT)
+        return;
     g_compositionEnded = 0;
     if ((key->mod & SDL_KMOD_ALT) || vk == VK_F10) {
         ui_window_mgr_on_key_down(&g_windowMgr, vk, lparam, !key->repeat);
