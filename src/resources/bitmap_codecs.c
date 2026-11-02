@@ -42,7 +42,8 @@ BYTE bitmap_res_load_bmp_data(struct BitmapRes *self, const BYTE *data, int size
         uint32_t header, compression, raw_height;
         if (size < 54 || data[0] != 'B' || data[1] != 'M') return 0;
         header = image_u32(data + 14);
-        if (header < 40 || !image_span(size, 14, header)) return 0;
+        if (header < 40) header = 40;
+        if (!image_span(size, 14, header)) return 0;
         width = (int32_t)image_u32(data + 18);
         raw_height = image_u32(data + 22);
         if (raw_height == 0x80000000u) return 0;
@@ -50,7 +51,7 @@ BYTE bitmap_res_load_bmp_data(struct BitmapRes *self, const BYTE *data, int size
         height = bottom_up ? (int)raw_height : -(int32_t)raw_height;
         bits = image_u16(data + 28);
         compression = image_u32(data + 30);
-        if (image_u16(data + 26) != 1 || compression || (bits != 8 && bits != 24)) return 0;
+        if (compression || (bits != 8 && bits != 24)) return 0;
         offset = image_u32(data + 10);
         if (bits == 8) {
             colors = image_u32(data + 46);
@@ -58,12 +59,13 @@ BYTE bitmap_res_load_bmp_data(struct BitmapRes *self, const BYTE *data, int size
             if (colors > 256 || !image_span(size, 14 + (size_t)header, colors * 4)) return 0;
             palette = data + 14 + header;
         }
-        if (offset < 14 + (size_t)header + colors * 4) return 0;
     }
     count = bitmap_pixel_count(width, height);
     if (!count || (need24 && (width != 24 || height != 24))) return 0;
     stride = ((size_t)width * (bits / 8) + 3) & ~(size_t)3;
-    if (!image_span(size, offset, custom && bits == 24 ? count * 3 : stride * height)) return 0;
+    if (!image_span(size, offset, custom && bits == 24 ? count * 3
+                              : bits == 24 ? stride * (height - 1) + (size_t)width * 3
+                              : stride * height)) return 0;
     pixels = bitmap_allocate_pixels(width, height);
     if (!pixels) return 0;
     if (custom && bits == 24) {

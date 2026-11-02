@@ -140,6 +140,12 @@ static void check_formats(void)
         for (prefix=0;prefix<f->size;++prefix) {
             BYTE *at=pages+system.dwPageSize-prefix;
             memcpy(at,f->data,prefix);
+            if(!f->kind&&f->data[0]=='B'&&f->data[28]==24&&prefix>=f->size-(((size_t)f->width*3+3)&~(size_t)3)+(size_t)f->width*3){
+                struct GifRes cut; gif_resource_init(&cut);
+                assert(decode(&cut,f,at,(int)prefix)); match(&cut,f);
+                gif_resource_finish(&cut); assert(outstanding==2);
+                continue;
+            }
             assert(!decode(&image,f,at,(int)prefix));
             assert(!memcmp(&image,&before,sizeof image) && outstanding==2);
             ++boundaries;
@@ -166,9 +172,8 @@ static void check_malformed(void)
     BYTE copy[2048]; size_t position;
     unsigned i;
     bitmap_resource_init(&image); assert(blank_bitmap(&image,1,1));before=image;
-    for(i=0;i<6;++i) {
+    for(i=1;i<6;++i) {
         memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);
-        if(i==0)copy[26]=2;
         if(i==1)copy[30]=1;
         if(i==2)copy[28]=16;
         if(i==3)memset(copy+18,255,4);
@@ -183,6 +188,12 @@ static void check_malformed(void)
         memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);copy[70]=4;
         assert(bitmap_res_load_bmp_data(&indexed,copy,sizeof bmp8_short_data,0));
         assert(indexed.pixels[3]==0xff000000u && indexed.pixels[4]==bmp8_short_pixels[4]);
+        memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);copy[26]=2;copy[14]=12;
+        assert(bitmap_res_load_bmp_data(&indexed,copy,sizeof bmp8_short_data,0));
+        for(i=0;i<6;++i)assert(indexed.pixels[i]==bmp8_short_pixels[i]);
+        memcpy(copy,bmp8_short_data,sizeof bmp8_short_data);copy[10]=66;
+        assert(bitmap_res_load_bmp_data(&indexed,copy,sizeof bmp8_short_data,0));
+        assert(indexed.pixels[0]==0xffff0000u && indexed.pixels[2]==0xff0000ffu && indexed.pixels[3]==0xff000000u);
         bitmap_resource_finish(&indexed);
     }
     memcpy(copy,tga_rle_data,sizeof tga_rle_data);copy[18]=0xff;
