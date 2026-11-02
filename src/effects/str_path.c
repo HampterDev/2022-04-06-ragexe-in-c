@@ -57,6 +57,21 @@ struct String *ez2str_min_path(struct String *out, const char *path)
     return out;
 }
 
+static void directory_part(char *out, size_t size, const char *path)
+{
+    const char *start = path[0] && path[1] == ':' ? path + 2 : path, *end = start, *at;
+    size_t length;
+
+    for (at = start; *at; ++at)
+        if (*at == '\\' || *at == '/')
+            end = at + 1;
+    length = (size_t)(end - start);
+    if (length >= size)
+        length = size - 1;
+    memcpy(out, start, length);
+    out[length] = 0;
+}
+
 void ez2_str_particle_load(struct Ez2StrParticle *self, const char *path)
 {
     char dir[256];
@@ -67,8 +82,7 @@ void ez2_str_particle_load(struct Ez2StrParticle *self, const char *path)
     self->anim = self->res ? &self->res->anim : NULL;
     if (self->res)
         res_lock(&self->res->res);
-    memset(dir, 0, sizeof dir);
-    _splitpath(path, NULL, dir, NULL, NULL);
+    directory_part(dir, sizeof dir, path);
     string_assign_cstr(&self->path, path);
     string_assign_cstr(&self->texture_set, dir);
     ez2_str_particle_rewind(self);

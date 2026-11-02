@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/drive_state.h"
+#include "platform/filesystem.h"
 #include "world/mode_manager.h"
 #include "world/mode_types.h"
 #include "world/state.h"
@@ -148,5 +149,5 @@ void drive_state_tick(void)
             fprintf(f, "chat%d=%s\n", i, line);
     }
     fclose(f);
-    MoveFileExA(temp, path, MOVEFILE_REPLACE_EXISTING);
+    platform_file_move(temp, path);
 }

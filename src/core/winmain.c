@@ -20,6 +20,7 @@
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include "platform/win_types.h"
+#include "platform/filesystem.h"
 #include <objbase.h>
 #include <mmsystem.h>
 #include <float.h>
@@ -38,8 +39,7 @@ void winmain_on_crash(void)
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
 {
     struct InitResult init;
-    WIN32_FIND_DATAA found;
-    HANDLE find;
+    struct PlatformFind *find;
     TIMECAPS caps;
     HRESULT com_result;
     UINT period;
@@ -61,11 +61,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
 
     if (render_enum_adapters() < 0)
         MessageBoxA(0, "d3denum init", "Error", 0);
-    find = FindFirstFileA("savedata", &found);
-    if (find == INVALID_HANDLE_VALUE)
-        CreateDirectoryA("savedata", 0);
+    find = platform_find_first("savedata");
+    if (!find)
+        platform_directory_create("savedata");
     else
-        FindClose(find);
+        platform_find_close(find);
     _controlfp(0x20000, 0x30000);
 
     period = 0;

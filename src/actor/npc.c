@@ -8,6 +8,7 @@
 #include "world/mode_dispatch.h"
 #include "game/context.h"
 #include "platform/win_types.h"
+#include "platform/filesystem.h"
 #include <stdio.h>
 #include <string.h>
 #include "actor/actor.h"
@@ -90,8 +91,7 @@ void npc_update_quest_mark(struct Npc *self)
 static void npc_run_ai(struct Npc *self, struct MercenaryAI **slot, int kind, int user_ai, const char *stock,
                        const char *user)
 {
-    WIN32_FIND_DATAA found;
-    HANDLE h;
+    struct PlatformFind *find;
 
     if (!*slot) {
         struct MercenaryAI *ai = mem_alloc(sizeof *ai);
@@ -104,11 +104,11 @@ static void npc_run_ai(struct Npc *self, struct MercenaryAI **slot, int kind, in
         return;
     }
     if (user_ai) {
-        h = FindFirstFileA(".\\AI\\USER_AI", &found);
-        if (h == INVALID_HANDLE_VALUE)
-            CreateDirectoryA(".\\AI\\USER_AI", NULL);
-        FindClose(h);
-        CopyFileA(stock, user, TRUE);
+        find = platform_find_first(".\\AI\\USER_AI");
+        if (!find)
+            platform_directory_create(".\\AI\\USER_AI");
+        platform_find_close(find);
+        platform_file_copy(stock, user);
         merc_ai_load(*slot, user);
     } else {
         merc_ai_load(*slot, stock);
