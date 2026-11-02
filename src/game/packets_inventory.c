@@ -132,7 +132,7 @@ void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result
 
     (void)self;
     if ((unsigned short)result != 0) {
-        wnd = ui_window_find(WID_RANDOM_COMBINE);
+        wnd = ui_window_find(WID_RANDOM_UPGRADE);
         if (wnd != 0)
             lapine_upgrade_set_waiting(wnd, 0);
     } else if (ui_window_find(WID_RANDOM_UPGRADE) != 0) {
