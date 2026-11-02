@@ -10,9 +10,11 @@ struct Texture;
 
 struct DcBitmap {
     int width, height;
+#ifdef _WIN32
     HDC hdc;
     HBITMAP dib;
     HGDIOBJ oldBitmap;
+#endif
     DWORD *bits;
     BYTE changed;
     struct Texture **textures;
@@ -24,7 +26,9 @@ struct DcBitmap *dc_bitmap_create(int width, int height);
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h);
 void dc_bitmap_destruct(struct DcBitmap *self);
 void dc_bitmap_destroy(struct DcBitmap *self);
+#ifdef _WIN32
 char dc_bitmap_get_dc(struct DcBitmap *self, HDC *out);
+#endif
 void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h,
                                  const DWORD *src, char keyed);
 void dc_bitmap_copy_scaled(struct DcBitmap *self, int x, int y, int sw, int sh, int dw, int dh,
@@ -32,6 +36,7 @@ void dc_bitmap_copy_scaled(struct DcBitmap *self, int x, int y, int sw, int sh, 
 void dc_bitmap_copy_bitmap(struct DcBitmap *self, unsigned dx, unsigned dy, unsigned w, unsigned h,
                                       struct DcBitmap *src);
 void dc_bitmap_fill(struct DcBitmap *self, const RECT *r, DWORD colour);
+void dc_bitmap_fill_triangle(struct DcBitmap *self, const POINT points[3], COLORREF colour);
 void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD colour);
 void dc_bitmap_draw_sprite(struct DcBitmap *self, int a, int b, int c, int d, void *spr, void *motion,
                                       int x, int y, float scale, DWORD *palette);
