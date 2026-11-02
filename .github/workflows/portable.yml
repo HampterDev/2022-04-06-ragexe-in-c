@@ -42,3 +42,21 @@ jobs:
         if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
         shell: cmd
         run: tests\build.bat
+
+  linux-client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libfreetype-dev libfontconfig-dev fonts-dejavu-core fonts-nanum \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
+            libasound2-dev libpulse-dev libibus-1.0-dev libdbus-1-dev libudev-dev xvfb mesa-utils
+      - name: Configure
+        run: cmake -S . -B build/client -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DRAGE_CLIENT=ON
+      - name: Build
+        run: cmake --build build/client --parallel 4
+      - name: Test
+        run: xvfb-run -a ctest --test-dir build/client --output-on-failure
