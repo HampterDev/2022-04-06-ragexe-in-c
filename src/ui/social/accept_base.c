@@ -349,7 +349,7 @@ intptr_t ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindo
             else
                 string_append_cstr(&line, "     Lv.");
             memset(level, 0, sizeof level);
-            sprintf(level, "%d", val3);
+            sprintf(level, "%d", (int)val3);
             string_append_cstr(&line, level);
             ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&line), 0x8a, 0, 0);
             string_free(&line);

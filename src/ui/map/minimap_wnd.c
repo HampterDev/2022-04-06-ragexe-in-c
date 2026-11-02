@@ -527,7 +527,7 @@ intptr_t ui_mini_map_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
 
         id = (int)self->quest_icons.size + QUEST_ID_FIRST;
         string_init(&path);
-        string_format(&path, MINIMAP_SKIN "minimap\\Quest_%d_%d.bmp", val1, val2);
+        string_format(&path, MINIMAP_SKIN "minimap\\Quest_%d_%d.bmp", (int)val1, (int)val2);
         button = icon_button(string_cstr(&path));
         button->button.base.id = id;
         ui_bitmap_button_set_tool_tip(button, msg_str(0xac0));

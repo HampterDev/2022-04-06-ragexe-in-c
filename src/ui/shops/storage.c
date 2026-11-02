@@ -632,7 +632,7 @@ intptr_t ui_item_store_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
 
         self->count = val1;
         self->capacity = val2;
-        text = thread_text_format("%d/%d", val1, val2);
+        text = thread_text_format("%d/%d", (int)val1, (int)val2);
         string_assign_cstr(&self->count_text, text);
         ui_window_invalidate_base(wnd);
         return 0;

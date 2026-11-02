@@ -292,11 +292,11 @@ intptr_t ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         wnd->state = val1;
         if (val1 != DROP_PURPOSE_SET_COUNT)
             return 0;
-        sprintf(buf, "%d", val2);
+        sprintf(buf, "%d", (int)val2);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, buf);
         if (wnd->state == DROP_PURPOSE_SET_COUNT) {
             string_init(&text);
-            string_format(&text, "%d", val2);
+            string_format(&text, "%d", (int)val2);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, string_cstr(&text));
             string_free(&text);
         }

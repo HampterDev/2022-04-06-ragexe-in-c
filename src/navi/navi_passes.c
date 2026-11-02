@@ -120,7 +120,7 @@ static unsigned char map_target_passes(struct NaviManager *self, struct NaviMap 
     distance = 0;
     path_info_init(&path);
     it = (struct NaviLink **)links.first;
-    count = (void *)it > links.last ? 0 : (unsigned)((char *)links.last - (char *)it + 3) >> 2;
+    count = (void *)it > links.last ? 0 : (unsigned)((struct NaviLink **)links.last - it);
     for (i = 0; i != count; i++, it++) {
         if (self->destination.kind == NAVI_RESULT_PLACE) {
             struct NaviPoint a, b;
