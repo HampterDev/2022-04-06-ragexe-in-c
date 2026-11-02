@@ -838,3 +838,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_name_plate_lookup.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_window_defaults.bat"
+if not "%errorlevel%"=="0" exit /b 1

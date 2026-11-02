@@ -361,10 +361,8 @@ void wnd_info_make_default140x30(struct WindowInfo *self)
     frame_set(self, 0xb9, 0x12c, 0x8c, 0x1e);
 }
 
-void swap_equipment_wnd_info_make_default(struct WindowInfo *self)
+void swap_equipment_wnd_info_make_default(POINT *self)
 {
-    self->width = 0x118;
-    self->height = 0xa7;
     self->x = (g_renderer->width - 0x118) / 2;
     self->y = (g_renderer->height - 0xb1) / 2;
 }
@@ -497,7 +495,7 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     self->macro_reporter_info.x = g_renderer->width - 0x103;
     self->macro_reporter_info.y = (g_renderer->height - 0x134) / 2;
     preview_equip_info_set_default(&self->preview_equip_pos);
-    swap_equipment_wnd_info_make_default((struct WindowInfo *)&self->swap_equipment_pos);
+    swap_equipment_wnd_info_make_default(&self->swap_equipment_pos);
 
     graphic_setting_wnd_info_make_default(&self->graphic_setting_info);
     self->quest_display = 1;
