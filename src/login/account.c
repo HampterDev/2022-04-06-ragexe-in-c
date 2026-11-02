@@ -178,7 +178,7 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
     }
     session_set_text_type(textType, textType);
     g_session1.lastLoginIp = packet->head.last_login_ip;
-    memcpy_s(g_session1.lastLoginTime, 26, packet->head.last_login_time, 26);
+    memcpy(g_session1.lastLoginTime, packet->head.last_login_time, 26);
     g_session1.lastLoginTime[26] = 0;
 
     len = packet->head.packet_length;

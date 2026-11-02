@@ -542,8 +542,8 @@ static void render_layer(struct BodyLayerDraw *self, int order, int layer)
         self->pc->wave_pending = 1;
         string_copy(&text, &event.name);
         pc = self->pc;
-        _snprintf_s((char *)pc->wave_name, sizeof pc->wave_name, (size_t)-1, "%s",
-                       text.size ? string_cstr(&text) : (const char *)pc->wave_name);
+        snprintf((char *)pc->wave_name, sizeof pc->wave_name, "%s",
+                    text.size ? string_cstr(&text) : (const char *)pc->wave_name);
         string_free(&text);
     }
     body_layer_motion_for(self, &pick, layer, act);

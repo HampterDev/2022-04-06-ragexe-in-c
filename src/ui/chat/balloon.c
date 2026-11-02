@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "fileio/res_mgr.h"
 #include "diag/perf.h"
+#include "core/cstr.h"
 
 struct UIBalloonText;
 struct UIWindow;
@@ -844,7 +845,7 @@ static const char name_bracket_format[] = "%s『%s』";
 static void name_copy_text(char *buf, const struct String *text)
 {
     memset(buf, 0, NAME_TEXT_BUF);
-    strncpy_s(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
+    cstr_copy_n(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
 }
 
 static void name_add_line(struct UIBalloonText *b, const char *text)
@@ -895,14 +896,14 @@ void ui_name_balloon_text_set_name_text(struct UINameBalloonText *self, const st
         } else {
             name_copy_text(buf, &info->party);
             memset(line, 0, sizeof line);
-            sprintf_s(line, sizeof line, g_serviceType ? "%s (%s)" : name_bracket_format, string_cstr(&name), buf);
+            snprintf(line, sizeof line, g_serviceType ? "%s (%s)" : name_bracket_format, string_cstr(&name), buf);
             name_add_line(b, line);
         }
         if (string_cstr(&info->guild)[0]) {
             name_copy_text(buf2, &info->guild);
             name_copy_text(buf, &info->position);
             memset(line, 0, sizeof line);
-            sprintf_s(line, sizeof line, g_serviceType ? "%s [%s]" : name_bracket_format, buf2, buf);
+            snprintf(line, sizeof line, g_serviceType ? "%s [%s]" : name_bracket_format, buf2, buf);
             name_add_line(b, line);
         }
     }

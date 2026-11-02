@@ -121,7 +121,7 @@ void game_mode_send_npc_input_text(struct GameMode *self, int npc_id, const char
     if (npc_id && !world_get_game_actor_by_aid(self->world, npc_id))
         return;
     memset(typed, 0, sizeof typed);
-    _snprintf_s(typed, sizeof typed, _TRUNCATE, "%s", override ? override : text);
+    snprintf(typed, sizeof typed, "%s", override ? override : text);
     if (chat_filter_is_blocked(text_view_cstr(typed)))
         return;
     len = strlen(typed);
@@ -155,7 +155,7 @@ void game_mode_zc_notify_player_chat(struct GameMode *self, const unsigned char 
         return;
     vec_init(&text);
     vec_resize(&text, length + 1, 1);
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length);
+    memcpy(text.first, packet->text, length);
     chars = text.first == text.last ? 0 : text.first;
     if (g_windowMgr.chat_room_wnd != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE_ALT, (int)chars, 0x7800, 0, 0);
@@ -191,7 +191,7 @@ void game_mode_zc_guild_chat(struct GameMode *self, const unsigned char *pkt)
         return;
     vec_init(&text);
     vec_resize(&text, length - 3, 1);
-    memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length - 4);
+    memcpy(text.first, packet->text, length - 4);
     if (g_session1.hideChatAndGuild == 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text.first, GUILD_CHAT_COLOR, CHAT_CHANNEL_GUILD, 0);
         if (g_session1.autoSaveChat != 0)

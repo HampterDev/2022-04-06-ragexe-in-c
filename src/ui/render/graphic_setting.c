@@ -763,8 +763,8 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
 
                 g_displayDeviceIndex = self->device;
                 g_displayModeIndex = self->mode;
-                _snprintf_s(g_deviceName, sizeof(g_deviceName), (size_t)-1, "%s",
-                               string_cstr(&self->device_name));
+                snprintf(g_deviceName, sizeof(g_deviceName), "%s",
+                            string_cstr(&self->device_name));
                 g_deviceGuid = self->device_guid;
                 g_driverGuid = self->adapter_guid;
                 mode = MODE_AT(&self->modes, self->mode);

@@ -361,8 +361,7 @@ static void quest_wnd_set_icon(struct UIWindow *icon, const struct RenewQuestBas
     if (!info->text[RENEW_QUEST_TEXT_ICON].size) {
         strcpy(path, QUEST_ICON_NONE);
     } else {
-        _snprintf(path, sizeof path, QUEST_UI_DIR "%s", string_cstr(&info->text[RENEW_QUEST_TEXT_ICON]));
-        path[sizeof path - 1] = 0;
+        snprintf(path, sizeof path, QUEST_UI_DIR "%s", string_cstr(&info->text[RENEW_QUEST_TEXT_ICON]));
     }
     ui_static_bitmap_set_bitmap((struct UIStaticBitmap *)icon, path);
     ui_static_bitmap_set_tool_tip(icon, string_cstr(&info->text[RENEW_QUEST_TEXT_ICON_TIP]));

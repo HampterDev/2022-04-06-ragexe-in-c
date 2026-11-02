@@ -54,7 +54,7 @@ void game_mode_friends_list(const unsigned char *pkt)
     for (i = 0; i < count; i++) {
         memcpy(&entry, &packet->friends[(int)i], sizeof entry);
         memset(name, 0, sizeof name);
-        _snprintf_s(name, sizeof name, (size_t)-1, "%s", entry.name);
+        snprintf(name, sizeof name, "%s", entry.name);
         if (!player_names_has(entry.char_id)) {
             string_init(&text);
             string_assign(&text, name, sizeof name);

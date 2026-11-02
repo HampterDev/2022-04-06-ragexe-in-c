@@ -77,12 +77,12 @@ static int send_chat_line(int packet_id)
     memset(text, 0, sizeof text);
     line = chat_line();
     charset = language_charset_tag(g_language, 0);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s : %s%s", session_character_name(&g_session1), charset, line);
+    snprintf(text, sizeof text, "%s : %s%s", session_character_name(&g_session1), charset, line);
     window_mgr_clear_chat_line(&g_windowMgr);
     len = strlen(text);
     packet.id = (unsigned short)packet_id;
     packet.len = (unsigned short)(len + 4);
-    memcpy_s(packet.text, len, text, len);
+    memcpy(packet.text, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }
@@ -323,8 +323,8 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
 
     packet.id = CZ_WHISPER;
     packet.len = (unsigned short)(len + 0x1c);
-    memcpy_s(packet.text, 0x18, name, 0x18);
-    memcpy_s(packet.text + 0x18, len, text, len);
+    memcpy(packet.text, name, 0x18);
+    memcpy(packet.text + 0x18, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }

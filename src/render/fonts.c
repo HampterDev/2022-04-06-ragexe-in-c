@@ -4,6 +4,7 @@
 #include "core/text_encoding.h"
 #include <stdlib.h>
 #include <string.h>
+#include "core/cstr.h"
 
 #define FONT_SCDREAM_BOLD "system\\font\\SCDream6.otf"
 #define FONT_SCDREAM      "system\\font\\SCDream4.otf"
@@ -28,7 +29,7 @@ static int CALLBACK font_enum_match(const LOGFONTA *font, const TEXTMETRICA *met
     struct FontSearch *search = (struct FontSearch *)context;
     (void)metric;
     (void)type;
-    search->found = _stricmp(search->name, font->lfFaceName) == 0;
+    search->found = cstr_compare_nocase(search->name, font->lfFaceName) == 0;
     return !search->found;
 }
 
@@ -63,7 +64,7 @@ static void eot_logfont(LOGFONTA *lf, const char *name)
     lf->lfOutPrecision = 6;
     lf->lfQuality = 2;
     strcpy(lf->lfFaceName, name);
-    lf->lfHeight = -MulDiv(13, 72, 72);
+    lf->lfHeight = -13;
 }
 
 static const char *const eot_names[] = {
@@ -88,12 +89,12 @@ static HFONT file_font(const struct FontEntry *entry, int backend_active)
 {
     LOGFONTA lf = {0};
     char *name = backend_active ? font_file_family_name(entry->resource_path) : NULL;
-    lf.lfHeight = -MulDiv(entry->size, 72, 72);
+    lf.lfHeight = -entry->size;
     lf.lfWeight = entry->bold ? 700 : 400;
     lf.lfItalic = entry->italic;
     lf.lfCharSet = (BYTE)entry->charset;
     if (name) {
-        strncpy_s(lf.lfFaceName, sizeof(lf.lfFaceName), name, _TRUNCATE);
+        cstr_copy(lf.lfFaceName, sizeof(lf.lfFaceName), name);
         free(name);
     }
     return CreateFontIndirectA(&lf);

@@ -9,6 +9,7 @@
 #include "ui/social/guild_wnd.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "core/cstr.h"
 
 struct UIGuildWnd;
 struct UIWindow;
@@ -409,7 +410,7 @@ void ui_guild_banished_member_wnd_on_draw(struct UIWindow *window)
         ui_static_text_set_text_ellipsis(self->names[drawn], string_cstr(&name));
         ui_window_move(self->names[drawn], 8, y);
         memset(reason, 0, sizeof reason);
-        strncpy_s(reason, sizeof reason, string_cstr(&LIST_VALUE(node, struct GuildExpelled)->reason), LIST_VALUE(node, struct GuildExpelled)->reason.size);
+        cstr_copy_n(reason, sizeof reason, string_cstr(&LIST_VALUE(node, struct GuildExpelled)->reason), LIST_VALUE(node, struct GuildExpelled)->reason.size);
         ui_static_text_set_text_ellipsis(self->reasons[drawn], reason);
         ui_window_move(self->reasons[drawn], g_guildLayout.expelled_cols[0] + 9, y);
         string_free(&name);

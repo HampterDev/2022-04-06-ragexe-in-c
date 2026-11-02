@@ -30,7 +30,7 @@ void game_mode_on_item_fall_entry5(struct GameMode *self, const struct PacketIte
     struct Item *item;
 
     memset(&info, 0, sizeof info);
-    _itoa(packet->item_id, info.item_id_text, 10);
+    snprintf(info.item_id_text, sizeof info.item_id_text, "%d", packet->item_id);
     info.x = packet->x;
     info.y = packet->y;
     info.sub_x = packet->sub_x;

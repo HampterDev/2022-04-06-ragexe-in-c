@@ -43,8 +43,8 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
         game_mode_get_actor_name(game_current_mode(), &name, caster->aid);
         someone = msg_str(MSG_CAST_SOMEONE);
         string_assign_cstr(&name, someone);
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_CAST_BY_PARTY),
-                       string_cstr(&name));
+        snprintf(buf, sizeof buf, msg_str(MSG_CAST_BY_PARTY),
+                    string_cstr(&name));
         string_append_cstr(&line, buf);
         string_free(&name);
     }
@@ -76,7 +76,7 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
             string_assign(&name, string_cstr(&other), other.size);
             string_free(&other);
         }
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_CAST_ON), string_cstr(&name));
+        snprintf(buf, sizeof buf, msg_str(MSG_CAST_ON), string_cstr(&name));
         string_append_cstr(&line, buf);
         string_free(&name);
     }
@@ -86,7 +86,7 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
         string_init(&skill);
         string_assign_cstr(&skill, text);
     }
-    _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_CAST_SKILL), string_cstr(&skill));
+    snprintf(buf, sizeof buf, msg_str(MSG_CAST_SKILL), string_cstr(&skill));
     string_append_cstr(&line, buf);
     if (line.size)
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), 0xffff,

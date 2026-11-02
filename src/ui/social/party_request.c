@@ -327,21 +327,21 @@ static void request_show(struct UIRequestJoinPartyWnd *self, const struct PartyJ
     self->aid = request->char_id;
 
     memset(icon, 0, sizeof icon);
-    _snprintf_s(icon, sizeof icon, (size_t)-1, (RENEWAL_PARTY "icon_jobs_%lu.bmp"),
-                    (int)self->job);
+    snprintf(icon, sizeof icon, (RENEWAL_PARTY "icon_jobs_%lu.bmp"),
+                 (int)self->job);
     for (i = UI_BTN_UP; i <= UI_BTN_DOWN; i++)
         ui_bitmap_button_set_bitmap(self->job_icon, icon, i, 0);
     ui_bitmap_button_set_tool_tip(self->job_icon, session_get_job_name(&g_session1, self->job, -1));
 
     memset(level, 0, sizeof level);
-    _snprintf_s(level, sizeof level, (size_t)-1, "%d", (int)self->level);
+    snprintf(level, sizeof level, "%d", (int)self->level);
     ui_static_text_set_text(self->level_text, level, 0);
     ui_window_move(self->level_text, 0x19 - ui_window_text_width(wnd, level, 0, 0, 0xc, 0, 0) / 2, 0x38);
 
     ui_list_box_clear((struct UIListBox *)self->text);
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_REQUEST_TEXT),
-                    request->name);
+    snprintf(text, sizeof text, msg_str(MSG_REQUEST_TEXT),
+                 request->name);
     ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)text, 0, 0, 1);
     ui_window_move(self->text, 0x2b, VEC_COUNT(&((struct UITextViewer *)self->text)->list.items, struct String) == 3 ? 0x14 : 0x1e);
     ui_window_invalidate_children(wnd);
@@ -387,7 +387,7 @@ void ui_request_join_party_mgr_add_request(struct UIRequestJoinPartyMgr *self, i
     if (request_mgr_is_blocked(self, char_id))
         return;
     request.aid = aid;
-    _snprintf_s(request.name, sizeof request.name, (size_t)-1, "%s", name);
+    snprintf(request.name, sizeof request.name, "%s", name);
     request.char_id = char_id;
     request.level = (short)level;
     request.job = (short)job;

@@ -146,10 +146,10 @@ static void msm_refresh(struct UIMerchantShopMakeWnd *self, int removed)
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->prices[i + 1], "0");
             sprintf(buf, "%s ", ui_edit_ctrl_get_text(self->prices[i]));
             session_is_number_text(&g_session1, buf);
-            msm_edit_amount_colour(wnd, self->prices[i], _atoi64(buf));
+            msm_edit_amount_colour(wnd, self->prices[i], strtoll(buf, NULL, 10));
             sprintf(buf, "%s ", ui_edit_ctrl_get_text(self->prices[i + 1]));
             session_is_number_text(&g_session1, buf);
-            msm_edit_amount_colour(wnd, self->prices[i + 1], _atoi64(buf));
+            msm_edit_amount_colour(wnd, self->prices[i + 1], strtoll(buf, NULL, 10));
         }
         ui_window_invalidate_children(wnd);
     }
@@ -233,11 +233,11 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
             ui_message_box(msg_str(MSG_NOT_A_NUMBER));
             return;
         }
-        price = _atoi64(buf);
+        price = strtoll(buf, NULL, 10);
         if (price >= 0x7fffffff) {
             price = 0x7fffffff;
         } else {
-            price = _atoi64(buf);
+            price = strtoll(buf, NULL, 10);
             if (price <= 0)
                 price = 0;
         }
@@ -309,7 +309,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
             }
             node = node->next;
         }
-        total = _atoi64(ui_edit_ctrl_get_text(self->total));
+        total = strtoll(ui_edit_ctrl_get_text(self->total), NULL, 10);
         if (total > (int64_t)g_session1.zeny) {
             ui_chat_line(msg_str(MSG_TOTAL_OVER_ZENY), CHAT_RED);
             return;
@@ -354,7 +354,7 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
         if (self->assistant == 1) {
             ui_merchant_shop_make_wnd_set_waiting(self, 1);
         } else {
-            int64_t total = _atoi64(ui_edit_ctrl_get_text(self->total));
+            int64_t total = strtoll(ui_edit_ctrl_get_text(self->total), NULL, 10);
 
             mode_send_message(mode, MODE_REQ_OPEN_BUYING, (int)ui_edit_ctrl_get_text(self->shop_name), 1, (int)total,
                           0);
@@ -484,7 +484,7 @@ void ui_merchant_shop_make_wnd_print_sale_list(struct UIMerchantShopMakeWnd *sel
             strcpy(money, format_money(atoi(number.data), money2));
         string_format(&line, "    %s  :  %s  Zeny", string_cstr(&name), money);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
-        fee = (int64_t)((double)_atoi64(number.data) * ((double)zeny_fee_percent(_atoi64(number.data)) * 0.01));
+        fee = (int64_t)((double)strtoll(number.data, NULL, 10) * ((double)zeny_fee_percent(strtoll(number.data, NULL, 10)) * 0.01));
         format_money64(fee, commission, sizeof commission);
         string_format(&line, "Commission : 1 EA = %s Zeny", commission);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
@@ -607,7 +607,7 @@ void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *self)
         int price = rows[i].price;
         char text[0x18];
 
-        _itoa(price, text, 10);
+        snprintf(text, sizeof text, "%d", price);
         ((struct UIEditCtrl *)self->prices[i])->disabled = 0;
         ui_window_invalidate(self->prices[i]);
         ui_edit_ctrl_set_back_colour(self->prices[i], EDIT_LIGHT, EDIT_LIGHT, EDIT_LIGHT);
@@ -616,7 +616,7 @@ void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *self)
         if (self->buying && i < BUYING_SLOTS_MAX) {
             char count[0x18];
 
-            _itoa(rows[i].count, count, 10);
+            snprintf(count, sizeof count, "%d", rows[i].count);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->counts[i], count);
             ui_window_invalidate_base(self->counts[i]);
         } else {
@@ -655,8 +655,8 @@ void ui_merchant_shop_make_wnd_print_buy_list(struct UIMerchantShopMakeWnd *self
             strcpy(price_text, "99,990,000");
         else
             strcpy(price_text, format_money(atoi(number.data), money2));
-        rate = (double)zeny_fee_percent(_atoi64(number.data)) * 0.01;
-        fee = (int64_t)((double)_atoi64(number.data) * rate);
+        rate = (double)zeny_fee_percent(strtoll(number.data, NULL, 10)) * 0.01;
+        fee = (int64_t)((double)strtoll(number.data, NULL, 10) * rate);
 
         string_format(&number, "%s ", ui_edit_ctrl_get_text(self->counts[i]));
         session_is_number_text(&g_session1, number.data);

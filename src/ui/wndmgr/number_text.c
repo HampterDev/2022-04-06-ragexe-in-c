@@ -20,7 +20,7 @@ void number_text(struct String *out, int value)
     char digits[16], text[40];
     unsigned magnitude = value < 0 ? 0u - (unsigned)value : (unsigned)value;
 
-    _itoa((int)magnitude, digits, 10);
+    snprintf(digits, sizeof digits, "%d", (int)magnitude);
     text[0] = value < 0 ? '-' : '\0';
     group_thousands(text + (text[0] != '\0'), digits);
     string_init(out);

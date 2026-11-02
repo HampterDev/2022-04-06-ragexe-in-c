@@ -179,7 +179,7 @@ void game_mode_zc_property_homun_no_accessory(struct GameMode *self, const unsig
 
 static void homun_v2_head(const struct PACKET_ZC_PROPERTY_HOMUN_NO_ACCESSORY2 *packet)
 {
-    _snprintf_s(g_session1.homunName, 0x20, (size_t)-1, "%s", packet->head.name);
+    snprintf(g_session1.homunName, 0x20, "%s", packet->head.name);
     g_session1.homunRenamed = packet->head.renamed;
     g_session1.homunLevel = packet->head.level;
     g_session1.homunFullness = packet->head.fullness;

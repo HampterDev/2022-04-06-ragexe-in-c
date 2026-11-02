@@ -177,7 +177,7 @@ void ui_apply_for_party_wnd_on_draw(struct UIWindow *window)
     ui_window_fit_plain_text(wnd, &name, owned_text_view(&self->ad.name), 0x77);
     draw_label(wnd, 0x3c, 0x19, string_cstr(&name));
     draw_label(wnd, 0xa, 0x31, msg_str(MSG_APPLY_LABEL_LEVEL));
-    _snprintf_s(levels, 0xa, (size_t)-1, "%d~%d", self->ad.min_level, self->ad.max_level);
+    snprintf(levels, 0xa, "%d~%d", self->ad.min_level, self->ad.max_level);
     draw_label(wnd, 0x3c, 0x31, levels);
     draw_label(wnd, 0xa, 0x49, msg_str(MSG_APPLY_LABEL_PURPOSE));
     draw_label(wnd, 0x3c, 0x49, party_purpose_name(self->ad.purpose));

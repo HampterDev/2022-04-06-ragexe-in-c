@@ -2,6 +2,7 @@
 #include "render/render_api.h"
 #include "diag/perf.h"
 #include "ui/window_types.h"
+#include <stdio.h>
 #include <string.h>
 #include "platform/window.h"
 
@@ -83,7 +84,7 @@ static const char *tenths(char *buf, int v10)
 {
     if (v10 < 0)
         v10 = 0;
-    wsprintfA(buf, "%d.%d", v10 / 10, v10 % 10);
+    sprintf(buf, "%d.%d", v10 / 10, v10 % 10);
     return buf;
 }
 
@@ -95,15 +96,15 @@ static void build_lines(void)
     int order[PERF_N], nl = 0, i, j, k;
     char *s;
 
-    wsprintfA(P.lines[0], "Direct3D 9  FPS %s  frame %s ms (max %s)  frames %u",
-              tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
-              tenths(b3, P.snap.frameMax10), P.snap.frames);
-    wsprintfA(P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
-              tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
-              tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
-    wsprintfA(P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
-              tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
-              tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
+    snprintf(P.lines[0], sizeof P.lines[0], "Direct3D 9  FPS %s  frame %s ms (max %s)  frames %u",
+             tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
+             tenths(b3, P.snap.frameMax10), P.snap.frames);
+    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
+             tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
+             tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
+    snprintf(P.lines[2], sizeof P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
+             tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
+             tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
     for (i = PERF_L_GROUND; i < PERF_N; i++)
         order[nl++] = i;
     for (i = 0; i < nl; i++)
@@ -112,21 +113,21 @@ static void build_lines(void)
                 k = order[i]; order[i] = order[j]; order[j] = k;
             }
     s = P.lines[3];
-    lstrcpyA(s, "lists:");
+    strcpy(s, "lists:");
     for (i = 0; i < 5 && i < nl; i++) {
-        wsprintfA(s + lstrlenA(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
+        snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    wsprintfA(P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
-              c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
-              c->locks / f, c->targetLocks / f);
-    wsprintfA(P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
-              c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
-              (c->textMeasured + c->textHits) / f,
-              c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
-              c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
-    wsprintfA(P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
-              c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
-              c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
+    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
+             c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
+             c->locks / f, c->targetLocks / f);
+    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
+             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
+             (c->textMeasured + c->textHits) / f,
+             c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
+             c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
+    snprintf(P.lines[6], sizeof P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
+             c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
+             c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
     P.nlines = 7;
     P.dirty = 1;
 }
@@ -220,7 +221,7 @@ static void rasterize(void)
         P.usedH = OV_TEX_H;
     memset(P.bits, 0, OV_TEX_W * OV_TEX_H * 4);
     for (i = 0; i < P.nlines; i++) {
-        int len = lstrlenA(P.lines[i]);
+        int len = (int)strlen(P.lines[i]);
         TextOutA(P.dc, 4, 3 + i * P.lineH, P.lines[i], len);
         w = len * P.charW + 8;
         if (w > P.usedW)

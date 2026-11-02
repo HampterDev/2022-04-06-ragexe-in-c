@@ -153,8 +153,8 @@ void pneumaticus_procella_effect_init(struct Effect *effect)
         look = rand() % 4;
         if (look < 1)
             look = 1;
-        _snprintf_s(name, sizeof name, _TRUNCATE,
-                    "pneumaticusprocella\\pneumaticusprocella\\pneumaticusprocella_%d.str", look);
+        snprintf(name, sizeof name,
+                 "pneumaticusprocella\\pneumaticusprocella\\pneumaticusprocella_%d.str", look);
         ez2_str_particle_open(blade, name);
 
         blade->start_delay = delay;

@@ -214,7 +214,7 @@ void ui_mileage_wnd_on_l_btn_up(struct UIWindow *self, int x, int y)
 
     pkt.id = PKT_CZ_DYNAMICNPC_CREATE_REQUEST;
     memset(pkt.npc_name, 0, sizeof pkt.npc_name);
-    _snprintf_s(pkt.npc_name, sizeof pkt.npc_name, _TRUNCATE, "GOLDPCCAFE");
+    snprintf(pkt.npc_name, sizeof pkt.npc_name, "GOLDPCCAFE");
     send_packet(&pkt, sizeof pkt);
 }
 

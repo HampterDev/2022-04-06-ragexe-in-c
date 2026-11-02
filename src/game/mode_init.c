@@ -162,7 +162,7 @@ void game_mode_on_init(struct Mode *mode, const char *map)
     if (session_get_instant_var(&g_session1, 6) > 0) {
         session_set_pair(&g_session1, 6, 0);
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdfa), g_windowMgr.show_shop_titles == 1 ? "ON" : "OFF");
+        snprintf(line, sizeof line, msg_str(0xdfa), g_windowMgr.show_shop_titles == 1 ? "ON" : "OFF");
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)line, 0xff, 0, 0);
     }
     if (session_get_instant_var(&g_session1, 0xb) == 1) {

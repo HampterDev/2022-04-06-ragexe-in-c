@@ -229,18 +229,18 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     case 0:
         memset(line, 0, sizeof line);
         if (g_session1.partyLeader == 1)
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdad), player_name);
+            snprintf(line, sizeof line, msg_str(0xdad), player_name);
         else
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdaa), party_name);
+            snprintf(line, sizeof line, msg_str(0xdaa), party_name);
         text = line;
         color = 0xffff64;
         break;
     case 1:
         memset(line, 0, sizeof line);
         if (g_session1.partyLeader == 1)
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdae), player_name);
+            snprintf(line, sizeof line, msg_str(0xdae), player_name);
         else
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdab), party_name);
+            snprintf(line, sizeof line, msg_str(0xdab), party_name);
         text = line;
         break;
     case 2: text = msg_str(0xda9); break;
@@ -250,12 +250,12 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     case 6: text = msg_str(0xda4); break;
     case 7:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdac), player_name);
+        snprintf(line, sizeof line, msg_str(0xdac), player_name);
         text = line;
         break;
     case 8:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdaf), player_name);
+        snprintf(line, sizeof line, msg_str(0xdaf), player_name);
         text = line;
         break;
     case 9:
@@ -265,7 +265,7 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     case 11: text = msg_str(0xda7); break;
     case 12:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0x260), player_name);
+        snprintf(line, sizeof line, msg_str(0x260), player_name);
         text = line;
         break;
     case 13: text = msg_str(0x718); break;
@@ -585,7 +585,7 @@ void game_mode_zc_group_info_change(const unsigned char *pkt)
         how = msg_str(0x120);
         what = msg_str(0x124);
         setting = msg_str(0x175);
-        _snprintf_s(line, sizeof line, (size_t)-1, setting, what, how);
+        snprintf(line, sizeof line, setting, what, how);
         break;
     default:
         return;

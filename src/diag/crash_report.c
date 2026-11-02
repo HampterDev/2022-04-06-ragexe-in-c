@@ -89,7 +89,7 @@ static void put_raw(const char *s, DWORD n)
 
 static void put(const char *s)
 {
-    put_raw(s, lstrlenA(s));
+    put_raw(s, (DWORD)strlen(s));
 }
 
 static void put_line(const char *s)
@@ -152,7 +152,7 @@ static void snapshot_modules(void)
         modules[i].size = entry.modBaseSize;
         if (!WideCharToMultiByte(CP_UTF8, 0, entry.szModule, -1, modules[i].name,
                                  sizeof(modules[i].name), NULL, NULL))
-            lstrcpyA(modules[i].name, "(unknown)");
+            strcpy(modules[i].name, "(unknown)");
     } while (module_count < MODULE_LIMIT && Module32NextW(snapshot, &entry));
     module_error = 0;
     CloseHandle(snapshot);

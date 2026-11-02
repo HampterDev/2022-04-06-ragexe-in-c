@@ -17,6 +17,7 @@
 #include "session/session_items.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
+#include "core/cstr.h"
 
 struct UIStylingTab;
 struct UIWindow;
@@ -395,10 +396,10 @@ struct StyleRecord {
 static void style_format_record(char *buf, const char *name, int slot, int head_palette, int head_style,
                                 int body_style, int body_palette, int top, int mid, int bottom, int robe)
 {
-    sprintf_s(buf, 0x200,
-                  "characterName:%s\nslotNum:%d\nheadPaletteNum:%d\nheadStyle:%d\nbodyStyle:%d\n"
-                  "bodyPaletteNum:%d\ntopAccNum:%d\nmidAccNum:%d\nbottomAccNum:%d\nRobe:%d\n*\n",
-                  name, slot, head_palette, head_style, body_style, body_palette, top, mid, bottom, robe);
+    snprintf(buf, 0x200,
+                 "characterName:%s\nslotNum:%d\nheadPaletteNum:%d\nheadStyle:%d\nbodyStyle:%d\n"
+                 "bodyPaletteNum:%d\ntopAccNum:%d\nmidAccNum:%d\nbottomAccNum:%d\nRobe:%d\n*\n",
+                 name, slot, head_palette, head_style, body_style, body_palette, top, mid, bottom, robe);
 }
 
 static void style_parse_field(struct StyleRecord *rec, char *name, char *buf, int *i, const char *line)
@@ -425,7 +426,7 @@ static void style_parse_field(struct StyleRecord *rec, char *name, char *buf, in
                     break;
             }
         }
-        strcpy_s(name, 0x18, text);
+        cstr_copy(name, 0x18, text);
         return;
     }
     if (_mbsstr((const unsigned char *)"slotNum", key))
@@ -602,7 +603,7 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
         style_format_record(record, session_character_name(&g_session1), d->slot, d->head_palette,
                             d->head_style, d->body_style, d->body_palette, d->accessory_top, d->accessory_mid,
                             d->accessory_bottom, d->robe);
-        strcpy_s(copy, sizeof copy, record);
+        cstr_copy(copy, sizeof copy, record);
         string_append_cstr(&content, copy);
     }
     out = fopen(STYLE_SAVE_FILE, "w");
@@ -736,11 +737,11 @@ static void show_case_part_name(char *buf, int kind)
 {
     memset(buf, 0, 0x40);
     if (kind == 0)
-        strcpy_s(buf, 0x40, "TopAccessory");
+        cstr_copy(buf, 0x40, "TopAccessory");
     else if (kind == 1)
-        strcpy_s(buf, 0x40, "MidAccessory");
+        cstr_copy(buf, 0x40, "MidAccessory");
     else if (kind == 2)
-        strcpy_s(buf, 0x40, "BottomAccessory");
+        cstr_copy(buf, 0x40, "BottomAccessory");
 }
 
 int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,

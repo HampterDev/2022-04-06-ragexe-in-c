@@ -84,7 +84,7 @@ char *format_money(int value, char *buf)
 
 char *format_money64(long long value, char *buf, int size)
 {
-    _i64toa_s(value, buf, size, 10);
+    snprintf(buf, (size_t)size, "%lld", value);
     money_commas(buf);
     return buf;
 }

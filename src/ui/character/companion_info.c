@@ -365,7 +365,7 @@ void ui_homun_info_wnd_on_draw(struct UIWindow *window)
     stat_cell(wnd, 0x84, g_session1.homunStats[6]);
     len = sprintf(cell, "%d", (2000 - g_session1.homunStats[7]) / 10);
     ui_window_text_out_right(wnd, 0x4f, 0x96, cell, len, 1, 0xe, 0, 0);
-    _itoa(g_session1.homunLevel, cell, 10);
+    snprintf(cell, sizeof cell, "%d", g_session1.homunLevel);
     caption(wnd, 0x87, 0x2f, cell);
     if (g_session1.homunJob == -1)
         return;
@@ -668,7 +668,7 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out_right(wnd, 0x4f, 0x96, cell, len, 1, 0xe, 0, 0);
     ui_window_text_out(wnd, 0x88, 0x18, g_session1.mercName, 0, 0, 0xc, 0x646464, 0, 0);
     caption(wnd, 0x87, 0x18, g_session1.mercName);
-    _itoa(g_session1.mercLevel, level, 10);
+    snprintf(level, sizeof level, "%d", g_session1.mercLevel);
     caption(wnd, 0x87, 0x2f, level);
     if (g_session1.mercJob == -1)
         return;

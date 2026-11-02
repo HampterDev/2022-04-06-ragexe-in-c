@@ -129,7 +129,7 @@ static struct BarterFound *goods_or_pay_at(struct UIItemBaseWnd *base, const str
 
         barter_goods_construct(&pay);
         memset(id, 0, sizeof id);
-        _itoa(LIST_VALUE(node, const struct BarterGoods)->pay_id, id, 10);
+        snprintf(id, sizeof id, "%d", LIST_VALUE(node, const struct BarterGoods)->pay_id);
         string_assign_cstr(&pay.id_text, id);
         pay.type = BARTER_PAY_ITEM_TYPE;
         barter_goods_copy(&out->goods, &pay);
@@ -199,12 +199,12 @@ void barter_draw_pay(struct UIWindow *wnd, int row_y, const struct BarterGoods *
 
     if (clear)
         memset(id, 0, sizeof id);
-    _snprintf_s(id, sizeof id, (size_t)-1, "%d", goods->pay_id);
+    snprintf(id, sizeof id, "%d", goods->pay_id);
     ui_window_draw_item_icon_by_name(wnd, wnd->width - 0x46, row_y + 0x15, id, 1);
     if (clear)
         memset(number, 0, sizeof number);
     if (goods->pay_count > 0) {
-        int len = _snprintf_s(number, sizeof number, (size_t)-1, "%d", goods->pay_count * count);
+        int len = snprintf(number, sizeof number, "%d", goods->pay_count * count);
 
         ui_window_text_out_right(wnd, wnd->width - 0x19, row_y + 0x1d, number, len, 0, 12, 0, 0);
     }

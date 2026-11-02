@@ -89,13 +89,13 @@ static void quest_hunt_name(char *out, int mob_id, const char *packet_name)
         string_init(&rsw);
         string_format(&rsw, "%s.rsw", packet_name);
         name = session_map_display_name(string_cstr(&rsw));
-        _snprintf_s(out, QUEST_HUNT_NAME, (size_t)-1, "%s", name);
+        snprintf(out, QUEST_HUNT_NAME, "%s", name);
         string_free(&rsw);
         return;
     } else {
         name = session_get_job_name(&g_session1, mob_id, 0x63);
     }
-    _snprintf_s(out, QUEST_HUNT_NAME, (size_t)-1, "%s", name);
+    snprintf(out, QUEST_HUNT_NAME, "%s", name);
 }
 
 #pragma pack(push, 1)

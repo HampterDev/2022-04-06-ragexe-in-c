@@ -3,6 +3,7 @@
 #include "render/textdc.h"
 #include <string.h>
 #include <stdlib.h>
+#include "core/cstr.h"
 
 static struct TextDC *dc_open(struct TextDC *dc, struct UIWindow *self, int face, int height, int arg3)
 {
@@ -218,7 +219,7 @@ void ui_window_text_out_line(struct UIWindow *self, int x, int y,
                 continue;
             }
             memset(hex, 0, sizeof hex);
-            strncpy_s(hex, 7, p + 1, 6);
+            cstr_copy_n(hex, 7, p + 1, 6);
             hex_end = NULL;
             value = strtol(hex, &hex_end, 16);
             if (hex_end - hex == 6) {

@@ -225,7 +225,7 @@ void session_save_mini_party_info(struct Session *self)
         char line[0x200];
 
         memset(line, 0, sizeof line);
-        sprintf_s(line, 0x200, "{%s,%d,%d,%d}\n", session_character_name(&g_session1), v->found, v->id, v->cell);
+        snprintf(line, 0x200, "{%s,%d,%d,%d}\n", session_character_name(&g_session1), v->found, v->id, v->cell);
         string_append_cstr(&text, line);
     }
     f = platform_file_open("savedata\\MiniPartyInfo.lua", "w");

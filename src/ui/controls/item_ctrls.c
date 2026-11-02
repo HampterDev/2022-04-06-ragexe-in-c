@@ -757,7 +757,7 @@ void ui_slot_bmp_button_on_draw(struct UIWindow *window)
         if (self->style == 0 && self->selected == 1) {
             path = ui_skin_path(SLOT_DIR "img_slot2_select.bmp");
         } else if (self->style == 1 && self->selected == 1) {
-            _snprintf(name, (size_t)-1, SLOT_DIR "img_slot_select%d.bmp", self->anim_tick / self->anim_divisor);
+            snprintf(name, sizeof name, SLOT_DIR "img_slot_select%d.bmp", self->anim_tick / self->anim_divisor);
             path = ui_skin_path(name);
         }
         if (path) {

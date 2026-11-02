@@ -80,7 +80,7 @@ static const char *item_name(int item_id)
 {
     char text[12];
 
-    _itoa(item_id, text, 10);
+    snprintf(text, sizeof text, "%d", item_id);
     return item_table_get(atoi(text))->name;
 }
 

@@ -141,7 +141,7 @@ static void monitor_rects(HMONITOR m, RECT *mon, RECT *work)
         *mon = mi.rcMonitor;
         *work = mi.rcWork;
     } else {
-        SetRect(mon, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+        *mon = (RECT){0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
         *work = *mon;
     }
 }
@@ -184,7 +184,7 @@ static void place_windowed(HWND hwnd, HMONITOR on, int x, int y, int clientW, in
     int fw, fh;
     monitor_rects(on, &mon, &work);
     SetWindowLongA(hwnd, GWL_STYLE, WINDOWED_STYLE | (GetWindowLongA(hwnd, GWL_STYLE) & WS_VISIBLE));
-    SetRect(&rc, 0, 0, clientW, clientH);
+    rc = (RECT){0, 0, clientW, clientH};
     AdjustWindowRect(&rc, WINDOWED_STYLE, FALSE);
     fw = rc.right - rc.left;
     fh = rc.bottom - rc.top;
@@ -211,7 +211,7 @@ static void read_geometry(struct C3dDevice *d, int fullscreen, int w, int h)
 {
     RECT rc;
     if (fullscreen) {
-        SetRect(&d->rcWindow, 0, 0, w, h);
+        d->rcWindow = (RECT){0, 0, w, h};
         d->width = w;
         d->height = h;
         d->rcClient = d->rcWindow;
@@ -301,7 +301,7 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
         p1.y = rc.bottom;
         ClientToScreen(d->hwnd, &p0);
         ClientToScreen(d->hwnd, &p1);
-        SetRect(&rc, p0.x, p0.y, p1.x, p1.y);
+        rc = (RECT){p0.x, p0.y, p1.x, p1.y};
         ClipCursor(&rc);
     }
     return 1;

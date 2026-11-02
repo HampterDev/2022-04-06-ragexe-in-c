@@ -35,6 +35,7 @@
 #include "ui/character/skill_list_wnd.h"
 #include "game/rodex_mail.h"
 #include "platform/clock.h"
+#include "core/cstr.h"
 
 static int box(const char *text, int a, int b, int c, int d)
 {
@@ -130,7 +131,7 @@ static void login_acf(struct LoginMode *self)
     char password[0x21];
 
     memset(&addr, 0, sizeof addr);
-    _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_accountServerAddr);
+    snprintf(addr.host, 0x81, "%s", g_accountServerAddr);
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
@@ -142,14 +143,14 @@ static void login_acf(struct LoginMode *self)
     memset(&pkt, 0, sizeof pkt);
     pkt.tag = 0x31313030;
     pkt.id = 0xacf;
-    _snprintf_s(pkt.userId, 0x19, (size_t)-1, "%s", self->userId);
+    snprintf(pkt.userId, 0x19, "%s", self->userId);
     memset(password, 0, sizeof password);
-    _snprintf_s(password, 0x21, (size_t)-1, "%s", self->password);
+    snprintf(password, 0x21, "%s", self->password);
     if (!login_password_encode(LOGIN_PASSWORD_ACF, password, sizeof password, pkt.hash, sizeof pkt.hash)) {
         connect_failed(self);
         return;
     }
-    _snprintf_s(pkt.code, 5, (size_t)-1, "%s", (const char *)self->account_class);
+    snprintf(pkt.code, 5, "%s", (const char *)self->account_class);
     rag_connection_send_packet(rag_connection_instance(), 0x44, &pkt);
     self->stateTick = platform_ticks_ms();
     self->waitWnd = wait_window(0x7a, 0x10);
@@ -217,7 +218,7 @@ static void server_list(struct LoginMode *self)
         case 4: string_append_cstr(&label, msg_str(0xcbc)); break;
         }
         if (label.size)
-            strcpy_s(text, 0x40, string_cstr(&label));
+            cstr_copy(text, 0x40, string_cstr(&label));
         for (k = 3; k >= 0; k--)
             string_free(&colour[k]);
         string_free(&label);
@@ -292,7 +293,7 @@ static void char_server(struct LoginMode *self)
     default_wallpaper(self);
     strcpy(addr.ip, g_serverAddress);
     addr.port = atoi(g_serverPort);
-    _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_serverDomain);
+    snprintf(addr.host, 0x81, "%s", g_serverDomain);
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connect_failed(self);

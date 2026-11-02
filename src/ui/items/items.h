@@ -30,7 +30,7 @@ static __inline struct UIBitmapButton *ui_add_skin_button(struct UIWindow *paren
     if (btn)
         btn = ui_bitmap_button_construct(btn);
     for (state = UI_BTN_UP; state <= UI_BTN_DOWN; state++) {
-        _snprintf(path, sizeof path, UI_SKIN "%s%s.bmp", name, suffix[state]);
+        snprintf(path, sizeof path, UI_SKIN "%s%s.bmp", name, suffix[state]);
         ui_bitmap_button_set_bitmap(btn, path, state, 0);
     }
     ui_window_create(&btn->button.base, btn->bitmap_width, btn->bitmap_height);

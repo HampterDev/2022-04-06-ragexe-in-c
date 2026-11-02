@@ -21,6 +21,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/items/item_tags_internal.h"
 #include <stdint.h>
+#include "core/cstr.h"
 
 int g_rodexBodyMaxChars = 500;
 
@@ -516,9 +517,9 @@ int64_t ui_rodex_compose_wnd_get_zeny(struct UIRodexComposeWnd *self)
     char buf[0x104];
 
     memset(buf, 0, sizeof buf);
-    strcpy_s(buf, sizeof buf, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
+    cstr_copy(buf, sizeof buf, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, buf);
-    return _atoi64(buf);
+    return strtoll(buf, NULL, 10);
 }
 
 struct ItemInfo *ui_rodex_compose_wnd_item_at(struct UIRodexComposeWnd *self, struct ItemInfo *out, int x, int y)
@@ -663,9 +664,9 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
     memset(fee_text, 0, sizeof fee_text);
     item_tax = session_count_mail_items(&g_session1) * 2500;
     memset(zeny_text, 0, sizeof zeny_text);
-    strcpy_s(zeny_text, sizeof zeny_text, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
+    cstr_copy(zeny_text, sizeof zeny_text, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, zeny_text);
-    zeny = _atoi64(zeny_text);
+    zeny = strtoll(zeny_text, NULL, 10);
     if (ui_edit_ctrl_get_text(&self->zeny->custom.edit.base)) {
         self->fee = zeny * 2 / 100 + item_tax;
         format_money64(self->fee, fee_text, sizeof fee_text);
@@ -794,7 +795,7 @@ static void check_receiver(struct UIRodexComposeWnd *self)
         }
         memset(&packet, 0, sizeof packet);
         packet.id = PACKET_CZ_CHECK_NAME;
-        strcpy_s(packet.name, sizeof packet.name, ui_edit_ctrl_get_text(receiver));
+        cstr_copy(packet.name, sizeof packet.name, ui_edit_ctrl_get_text(receiver));
         string_init(&name);
         string_assign_cstr(&name, packet.name);
         if (session_is_account_char_name(&g_session1, name)) {

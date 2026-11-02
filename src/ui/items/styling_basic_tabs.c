@@ -180,9 +180,9 @@ void ui_basic_styling_wnd_on_create(struct UIWindow *window, int width, int heig
     for (i = 0; i < count; i++) {
         char off[0x40], off_over[0x40], on[0x40];
 
-        sprintf_s(off, sizeof off, STYLE_SKIN "color%02d_off.bmp", i + 1);
-        sprintf_s(off_over, sizeof off_over, STYLE_SKIN "color%02d_off_over.bmp", i + 1);
-        sprintf_s(on, sizeof on, STYLE_SKIN "color%02d_on.bmp", i + 1);
+        snprintf(off, sizeof off, STYLE_SKIN "color%02d_off.bmp", i + 1);
+        snprintf(off_over, sizeof off_over, STYLE_SKIN "color%02d_off_over.bmp", i + 1);
+        snprintf(on, sizeof on, STYLE_SKIN "color%02d_on.bmp", i + 1);
         btn = style_new_shop_button();
         ui_bitmap_button_set_bitmap(btn, off, UI_BTN_UP, 0);
         ui_bitmap_button_set_bitmap(btn, off_over, UI_BTN_HOVER, 0);

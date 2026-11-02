@@ -5,6 +5,7 @@
 #include "game/gamemode.h"
 #include "game/client.h"
 #include "core/msg_str.h"
+#include "core/cstr.h"
 
 #pragma pack(push, 1)
 struct PacketNpcAckMapMove {
@@ -23,7 +24,7 @@ void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *m
 
     g_session1.loadingAirplane = 1;
     move.packet_type = HEADER_ZC_NPCACK_MAPMOVE;
-    strcpy_s(move.map_name, sizeof move.map_name, map_name);
+    cstr_copy(move.map_name, sizeof move.map_name, map_name);
     move.x = x;
     move.y = y;
     game_mode_zc_npcack_mapmove(self, (const unsigned char *)&move);

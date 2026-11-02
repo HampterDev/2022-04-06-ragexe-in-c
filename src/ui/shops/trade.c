@@ -313,7 +313,7 @@ void ui_exchange_wnd_on_process(struct UIWindow *window)
         ui_window_mgr_set_focus_edit(&g_windowMgr, self->money_edit);
         return;
     }
-    amount = _atoi64(buf);
+    amount = strtoll(buf, NULL, 10);
     if (amount <= 0) {
         amount = 0;
         format_money64(amount, buf, sizeof buf);
@@ -511,7 +511,7 @@ static int on_command(struct UIExchangeWnd *self, int id)
                 bad_amount_box();
                 return 0;
             }
-            typed = _atoi64(buf);
+            typed = strtoll(buf, NULL, 10);
             amount = typed >= 0x7fffffff ? 0x7fffffff : typed > 0 ? (int)typed : 0;
             if (amount < 0)
                 amount = 0;

@@ -433,10 +433,10 @@ int ui_merchant_shop_make_wnd_commit_price(struct UIMerchantShopMakeWnd *self, i
         ui_message_box(msg_str(MSG_NOT_A_NUMBER));
         goto refused;
     }
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price >= 0x7fffffff)
         goto too_high;
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price <= 0)
         price = 0;
     else if (price > PRICE_MAX)
@@ -447,7 +447,8 @@ too_high:
     if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) != UI_MSGBOX_ANSWER_YES)
         goto refused;
     price = PRICE_MAX;
-    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+    snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
     ui_window_invalidate_base(&self->frame.base);
 
 checked:
@@ -517,7 +518,7 @@ static void draw_price_with_commission(struct UIWindow *wnd, struct UIWindow *ed
     strcpy(buf, ui_edit_ctrl_get_text(edit));
     if (session_is_number_text(&g_session1, buf) != 1)
         return;
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price <= 0)
         return;
     ui_window_text_out(wnd, x, y, msg_str(MSG_WITH_COMMISSION), 0, 0, 0xc, 0, 0, 0);
@@ -663,18 +664,18 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
         for (i = 0; i < self->items.size; i++) {
             char price_text[0x18] = { 0 };
 
-            _snprintf_s(price_text, sizeof price_text, (size_t)-1, "%s",
-                           ui_edit_ctrl_get_text(self->prices[i]));
+            snprintf(price_text, sizeof price_text, "%s",
+                        ui_edit_ctrl_get_text(self->prices[i]));
             if (session_is_number_text(&g_session1, price_text) == 1) {
                 int64_t count;
 
-                price = _atoi64(price_text);
-                count = _atoi64(ui_edit_ctrl_get_text(self->counts[i]));
+                price = strtoll(price_text, NULL, 10);
+                count = strtoll(ui_edit_ctrl_get_text(self->counts[i]), NULL, 10);
                 total += price_with_commission(price, 1.0) * count;
             }
         }
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "%lld", total);
+        snprintf(text, sizeof text, "%lld", total);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->total, text);
         ui_window_invalidate_children(wnd);
         return;
@@ -716,14 +717,15 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
         ui_window_mgr_set_focus_edit(&g_windowMgr, edit);
         return;
     }
-    if (_atoi64(buf) <= 0) {
+    if (strtoll(buf, NULL, 10) <= 0) {
         price = 0;
     } else {
-        price = _atoi64(buf);
+        price = strtoll(buf, NULL, 10);
         if (price > PRICE_MAX) {
             if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) == UI_MSGBOX_ANSWER_YES) {
                 price = PRICE_MAX;
-                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+                snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
             } else {
                 ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, string_cstr(&self->last_text));
                 ui_window_mgr_set_focus_edit(&g_windowMgr, edit);

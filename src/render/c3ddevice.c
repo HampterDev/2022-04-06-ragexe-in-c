@@ -157,7 +157,7 @@ int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc
 {
     int hr;
     if (flags & 1) {
-        SetRect(&self->rcWindow, 0, 0, mode->width, mode->height);
+        self->rcWindow = (RECT){0, 0, mode->width, mode->height};
         self->width = self->rcWindow.right;
         self->height = self->rcWindow.bottom;
         self->rcClient = self->rcWindow;

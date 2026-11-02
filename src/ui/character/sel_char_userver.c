@@ -376,16 +376,21 @@ static void show_balloon(struct UISelCharForUServerWnd *self, int x, int y, DWOR
     push_line(&self->lines, "Job");
     push_line(&self->lines, session_get_job_name(&g_session1, info->job, -1));
     push_line(&self->lines, "Lv. ");
-    push_line(&self->lines, _itoa(info->level, num, 10));
+    snprintf(num, sizeof num, "%d", info->level);
+    push_line(&self->lines, num);
     push_line(&self->lines, "EXP");
-    push_line(&self->lines, _itoa((int)info->exp, num, 10));
+    snprintf(num, sizeof num, "%d", (int)info->exp);
+    push_line(&self->lines, num);
     push_line(&self->lines, "HP");
-    push_line(&self->lines, _i64toa(info->hp, num, 10));
+    snprintf(num, sizeof num, "%lld", info->hp);
+    push_line(&self->lines, num);
     push_line(&self->lines, "SP");
-    push_line(&self->lines, _i64toa(info->sp, num, 10));
+    snprintf(num, sizeof num, "%lld", info->sp);
+    push_line(&self->lines, num);
     for (i = 0; i < 6; i++) {
         push_line(&self->lines, stats[i]);
-        push_line(&self->lines, _itoa(info->stats[i], num, 10));
+        snprintf(num, sizeof num, "%d", info->stats[i]);
+        push_line(&self->lines, num);
     }
 
     ui_trans_balloon_text_resize(self->balloon, width < 0x8c ? 0x8c : width, 0xc8);

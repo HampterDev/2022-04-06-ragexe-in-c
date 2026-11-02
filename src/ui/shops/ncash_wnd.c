@@ -710,10 +710,10 @@ static void buy(struct UInCashWnd *self)
     header.id = PACKET_NCASH_BUY;
     header.points = atoi(ui_edit_ctrl_get_text(self->count));
     if (header.points)
-        _snprintf(text, 0x800, msg_str(MSG_NCASH_CONFIRM_POINTS), self->cart_total - header.points,
-                     header.points);
+        snprintf(text, 0x800, msg_str(MSG_NCASH_CONFIRM_POINTS), self->cart_total - header.points,
+                    header.points);
     else
-        _snprintf(text, 0x800, msg_str(MSG_NCASH_CONFIRM), self->cart_total);
+        snprintf(text, 0x800, msg_str(MSG_NCASH_CONFIRM), self->cart_total);
     if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 1, 0, "메시지", 0x118, 0x78,
                                0) != UI_MSGBOX_ANSWER_YES)
         return;

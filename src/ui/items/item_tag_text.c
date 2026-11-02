@@ -9,6 +9,7 @@
 
 #include "platform/clientinfo.h"
 #include "ui/mail/rodex_compose.h"
+#include "core/cstr.h"
 
 #define TAG_FONT_HEIGHT 0xc
 #define TAG_BUTTON_ID 0x1c8
@@ -148,11 +149,11 @@ void ui_item_tag_ctrl_add_item(struct UIItemTagCtrl *self, const struct ItemInfo
     memset(id_code, 0, sizeof id_code);
     tag.button = &btn->text.button.base;
     to_base62(&digits, atoi(string_cstr(&info->id_text)));
-    strcpy_s(id_code, sizeof id_code, string_cstr(&digits));
-    strcpy_s(tag.code, sizeof tag.code, id_code);
-    strcpy_s(tag.name, sizeof tag.name, string_cstr(item_info_get_display_name(info, &name)));
+    cstr_copy(id_code, sizeof id_code, string_cstr(&digits));
+    cstr_copy(tag.code, sizeof tag.code, id_code);
+    cstr_copy(tag.name, sizeof tag.name, string_cstr(item_info_get_display_name(info, &name)));
     string_free(&name);
-    strcpy_s(tag.link, sizeof tag.link, string_cstr(&code));
+    cstr_copy(tag.link, sizeof tag.link, string_cstr(&code));
     if (item_tag_list_append(&self->tags, &tag))
         self->actions->attach(self, tag.button);
     else

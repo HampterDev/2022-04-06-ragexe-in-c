@@ -6,7 +6,7 @@
 #include "core/skin_path.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
-#include <stdint.h>
+#include <inttypes.h>
 
 void ui_bar_graph_homun_destroy(struct UIWindow *window);
 void ui_bar_graph_homun_on_draw(struct UIWindow *self);
@@ -136,7 +136,7 @@ void ui_bar_graph_homun_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->base, fill + GAUGE_INSET, 0, skin_bitmap(path), 1);
 
     string_init(&text);
-    string_format(&text, "%3I64d  /  %3I64d", value, maximum);
+    string_format(&text, "%3" PRId64 "  /  %3" PRId64, value, maximum);
     ui_window_text_out_centred(&self->base, 0, -2, string_cstr(&text), self->base.width, 1, 0xd, 0, 0);
     string_free(&text);
 }

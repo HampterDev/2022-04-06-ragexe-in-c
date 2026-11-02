@@ -8,6 +8,7 @@
 
 #include "render/textdc.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 #define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)
 
@@ -327,7 +328,7 @@ int ui_window_markup_text_width(struct UIWindow *self, struct String text, int f
                 continue;
             }
             memset(digits, 0, sizeof digits);
-            strncpy_s(digits, 7, p + 1, 6);
+            cstr_copy_n(digits, 7, p + 1, 6);
             strtol(digits, &stop, 16);
             if (stop - digits == 6) {
                 p += 7;

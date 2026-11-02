@@ -474,11 +474,11 @@ void talk_cmd_build_info(struct GameMode *self)
 
     (void)self;
     memset(line, 0, sizeof line);
-    sprintf_s(line, sizeof line, "build : %s - %s", "Mar 31 2022", "14:22:14");
+    snprintf(line, sizeof line, "build : %s - %s", "Mar 31 2022", "14:22:14");
     talk_print(line, TALK_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, "ver : %d.%d.%d", 0xe, 2, 3);
+    snprintf(line, sizeof line, "ver : %d.%d.%d", 0xe, 2, 3);
     talk_print(line, TALK_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, "s/n : %s", "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX");
+    snprintf(line, sizeof line, "s/n : %s", "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX");
     talk_print(line, TALK_COLOR_YELLOW);
 }
 

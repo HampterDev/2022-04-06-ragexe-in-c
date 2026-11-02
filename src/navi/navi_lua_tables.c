@@ -176,7 +176,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         if (!client_lua_call(lua, "queryNavi_PickNpc", "d>sddddddddddd",
                                i, &mapName, &x, &y, &pick[0], &pick[1], &pick[2], &pick[3],
                                &pick[4], &pick[5], &pick[6], &pick[7], &pick[8])) {
-            _snprintf_s(message, 0x104, (size_t)-1, "Failed to read Link lua %d", i);
+            snprintf(message, 0x104, "Failed to read Link lua %d", i);
             error_box(message, "Error queryNavi_PickNpc ");
             break;
         }

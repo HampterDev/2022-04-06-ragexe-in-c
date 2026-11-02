@@ -259,7 +259,7 @@ static void set_total(struct UIWindow *total, int zeny)
 
     memset(line, 0, sizeof line);
     memset(money, 0, sizeof money);
-    sprintf_s(line, sizeof line, "Total : %s Zeny", format_money(zeny, money));
+    snprintf(line, sizeof line, "Total : %s Zeny", format_money(zeny, money));
     ui_static_text_set_text_fit(total, line);
 }
 
@@ -589,7 +589,7 @@ static void cart_add_dragged(struct UIItemPurchaseWnd *self, int wanted)
     if (in_cart + info.count > PARA_MAX_COUNT) {
         info.count = PARA_MAX_COUNT - in_cart;
         memset(text, 0, sizeof text);
-        sprintf_s(text, sizeof text, msg_str(MSG_PARA_MAX_COUNT), PARA_MAX_COUNT);
+        snprintf(text, sizeof text, msg_str(MSG_PARA_MAX_COUNT), PARA_MAX_COUNT);
         refusal(text);
     }
     by_index = info.by_index == 1;

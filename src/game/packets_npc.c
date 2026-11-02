@@ -145,7 +145,7 @@ void game_mode_zc_npc_market_open2(struct GameMode *self, const unsigned char *p
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(entry.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", entry.item_id);
         item.price = entry.price;
         item.charged_price = entry.price;
         item.type = entry.type;
@@ -176,7 +176,7 @@ void game_mode_zc_npc_market_open(struct GameMode *self, const unsigned char *pk
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.price;
         item.type = copy.type;
@@ -227,7 +227,7 @@ void game_mode_zc_npc_market_purchase_result_v2(struct GameMode *self, const uns
             struct ItemRecordA item;
 
             item_record_a_clear(&item);
-            _itoa(copy.item_id, item.id_text, 10);
+            snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
             item.price = copy.price;
             item.charged_price = copy.price;
             item.index = -1;
@@ -482,10 +482,10 @@ void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigne
     }
     if (result == 2) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc not found ");
+        snprintf(text, sizeof text, "dynamic npc not found ");
     } else if (result == 1) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc create error found(unknown) ");
+        snprintf(text, sizeof text, "dynamic npc create error found(unknown) ");
     } else {
         return;
     }

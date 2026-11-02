@@ -779,10 +779,10 @@ static void buy_cart(struct UICashShopWnd *self)
         return;
     }
     if (header.points > 0)
-        _snprintf(text, 0x800, msg_str(MSG_CASH_CONFIRM_POINTS), self->cart_total - header.points,
-                     header.points);
+        snprintf(text, 0x800, msg_str(MSG_CASH_CONFIRM_POINTS), self->cart_total - header.points,
+                    header.points);
     else
-        _snprintf(text, 0x800, msg_str(MSG_CASH_CONFIRM), self->cart_total);
+        snprintf(text, 0x800, msg_str(MSG_CASH_CONFIRM), self->cart_total);
     if (self->cart_total > self->cash + header.points) {
         ui_message_box(msg_str(MSG_CASH_NOT_ENOUGH));
         return;

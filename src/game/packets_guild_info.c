@@ -13,6 +13,7 @@
 #include "std/std.h"
 #include "ui/social/guild_member_sort.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 enum {
     MSG_UNKNOWN_MEMBER = 0x245,
@@ -153,7 +154,7 @@ struct PacketGuildNotice {
 static void notice_echo(struct String *line, char *buf, size_t size, const char *text)
 {
     memset(buf, 0, size);
-    strcpy_s(buf, size, text);
+    cstr_copy(buf, size, text);
     string_init(line);
     string_assign_cstr(line, "[ ");
     string_append_cstr(line, buf);

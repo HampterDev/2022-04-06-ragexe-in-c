@@ -147,10 +147,10 @@ struct String *navi_manager_target_label(struct NaviManager *self, struct String
         if (navi_manager_target_pos(self, &a)->x > 0) {
             navi_manager_target_pos(self, &a);
             navi_manager_target_pos(self, &b);
-            _snprintf_s(buf, 0x32, (size_t)-1, "[%s] -> %s %d %d", msg_str(0xe01), navi_map_name(map),
-                           b.x, a.y);
+            snprintf(buf, 0x32, "[%s] -> %s %d %d", msg_str(0xe01), navi_map_name(map),
+                        b.x, a.y);
         } else {
-            _snprintf_s(buf, 0x32, (size_t)-1, "[%s] %s", msg_str(0xe01), navi_map_name(map));
+            snprintf(buf, 0x32, "[%s] %s", msg_str(0xe01), navi_map_name(map));
         }
     }
     return keep_text(self, 2, out, buf);

@@ -123,7 +123,7 @@ void init_client_info_(void)
     }
     if (xml_find_child(&g_clientInfoDocument.root, "clientinfo"))
         select_client_info2(0);
-    _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
+    snprintf(g_accountServerAddr, 0x81, "%s:%s", g_serverAddress, g_serverPort);
     init_language_();
 }
 

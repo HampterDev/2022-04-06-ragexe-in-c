@@ -12,6 +12,7 @@
 #include "ui/controls/controls.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "core/cstr.h"
 
 #define JOIN_PARTY_ACCEPT_WND_ID 0x23
 #define JOIN_GUILD_ACCEPT_WND_ID 0x46
@@ -439,7 +440,7 @@ int ui_join_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *
         char name[0x104];
 
         memset(name, 0, sizeof name);
-        strcpy_s(name, sizeof name, (const char *)val2);
+        cstr_copy(name, sizeof name, (const char *)val2);
         self->requester = val1;
         accept_show(self, name, MSG_JOIN_GUILD_QUESTION);
         return 0;

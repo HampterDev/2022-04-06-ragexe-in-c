@@ -256,7 +256,7 @@ void ui_item_purchase_wnd_on_draw(struct UIWindow *window)
                                 res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
             string_free(&path);
         }
-        _snprintf_s(unit, 10, (size_t)-1, "Z");
+        snprintf(unit, 10, "Z");
         if (self->cash) {
             if (g_serviceType == 6)
                 sprintf(unit, "Koin");
@@ -334,7 +334,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
     points = purchase_points(self);
     if (points > session_get_shop_buy_total(&g_session1))
         points = session_get_shop_buy_total(&g_session1);
-    _itoa(points, buf, 10);
+    snprintf(buf, sizeof buf, "%d", points);
     ui_window_mgr_set_focus_edit(&g_windowMgr, self->points);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, buf);
     ui_window_mgr_set_focus_edit(&g_windowMgr, NULL);
@@ -450,7 +450,7 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         } else if (val1 == PURCHASE_DEFAULT_ID && self->cash) {
             char buf[0x10];
 
-            _itoa(purchase_points(self), buf, 10);
+            snprintf(buf, sizeof buf, "%d", purchase_points(self));
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, buf);
             ui_window_mgr_set_focus_edit(&g_windowMgr, NULL);
         }

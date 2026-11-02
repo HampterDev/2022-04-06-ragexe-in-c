@@ -144,7 +144,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xc;
         if ((BYTE *)tokens->last - (BYTE *)tokens->first >= 0x30)
             return first_arg(out, tokens);
-        _itoa(sound_effect_volume(), number, 10);
+        snprintf(number, sizeof number, "%d", sound_effect_volume());
         string_assign_cstr(out, number);
         return -1;
     }
@@ -154,7 +154,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xd;
         if ((BYTE *)tokens->last - (BYTE *)tokens->first >= 0x30)
             return first_arg(out, tokens);
-        _itoa(sound_bgm_volume(), number, 10);
+        snprintf(number, sizeof number, "%d", sound_bgm_volume());
         string_assign_cstr(out, number);
         return -1;
     }

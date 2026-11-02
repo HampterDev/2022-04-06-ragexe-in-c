@@ -4,6 +4,7 @@
 #include "game/mode_msg.h"
 #include "session/session_items.h"
 #include <stdint.h>
+#include "core/cstr.h"
 
 #define CZ_REQ_OPEN_WRITE_MAIL      0xa08
 #define CZ_REQ_ADD_ITEM_TO_MAIL     0xa04
@@ -45,8 +46,8 @@ int game_mode_msg_send_rodex(const struct RodexMail *mail)
     header.id = CZ_REQ_WRITE_MAIL;
     header.receiver_char_id = mail->receiver_char_id;
     header.zeny = mail->zeny;
-    strcpy_s(header.receiver, 0x18, string_cstr(&mail->receiver));
-    strcpy_s(header.sender, 0x18, session_character_name(&g_session1));
+    cstr_copy(header.receiver, 0x18, string_cstr(&mail->receiver));
+    cstr_copy(header.sender, 0x18, session_character_name(&g_session1));
     header.title_len = (unsigned short)(mail->title.size + 1);
     header.body_len = (unsigned short)(mail->body.size + 1);
     packet.first = packet.last = packet.end = 0;
@@ -149,7 +150,7 @@ int game_mode_msg_open_write_rodex(const char *receiver)
             string_free(&name);
             return 0;
         }
-        memcpy_s(packet.receiver, 0x18, string_cstr(&name), 0x18);
+        memcpy(packet.receiver, string_cstr(&name), 0x18);
         string_free(&name);
     }
     send_packet(packet.id, &packet);

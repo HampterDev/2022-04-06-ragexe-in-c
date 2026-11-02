@@ -8,6 +8,7 @@
 #include <time.h>
 #include <winsock2.h>
 #include "session/session_names.h"
+#include "core/memory.h"
 
 struct CharInfo g_loginCharInfo;
 
@@ -61,7 +62,7 @@ static void billing_swap(struct LoginMode *self)
 
 static void map_display_name(char *mapName)
 {
-    _snprintf_s(mapName, 16, _TRUNCATE, "%s", session_get_rsw_name(mapName));
+    snprintf(mapName, 16, "%s", session_get_rsw_name(mapName));
 }
 
 int login_mode_max_char_slot(struct LoginMode *self)
@@ -92,12 +93,12 @@ void login_mode_remove_deleted_char(struct LoginMode *self)
     for (i = 0, j = 0; i < self->numChar; i++) {
         if (self->chars[i].slot == g_loginCharInfo.slot)
             continue;
-        memcpy_s(&kept[j], sizeof(struct CharInfo), &self->chars[i], sizeof(struct CharInfo));
+        memcpy(&kept[j], &self->chars[i], sizeof(struct CharInfo));
         j++;
     }
     self->numChar--;
     g_session1.charListCounts[0]--;
-    memcpy_s(self->chars, sizeof self->chars, kept, self->numChar * sizeof(struct CharInfo));
+    mem_copy_checked(self->chars, sizeof self->chars, kept, self->numChar * sizeof(struct CharInfo));
     mem_free(kept);
     self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
 }
@@ -132,12 +133,12 @@ void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
     body = (unsigned)packet->packet_length - 0x1b;
     self->numChar = body / sizeof(struct CharInfo);
     rest = body % sizeof(struct CharInfo);
-    memcpy_s(self->chars, sizeof self->chars, packet->chars, self->numChar * sizeof(struct CharInfo));
+    mem_copy_checked(self->chars, sizeof self->chars, packet->chars, self->numChar * sizeof(struct CharInfo));
     if (rest > 0) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE,
-                    "CHARACTER_INFO2 size error!! character num : %d  CHARACTER_INFO2 size : %d",
-                    self->numChar, (int)sizeof(struct CharInfo));
+        snprintf(text, sizeof text,
+                 "CHARACTER_INFO2 size error!! character num : %d  CHARACTER_INFO2 size : %d",
+                 self->numChar, (int)sizeof(struct CharInfo));
         list_error_box(text);
     }
     g_session1.charListCounts[0] = self->numChar;
@@ -150,8 +151,8 @@ void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
 
 void login_mode_on_accept_make_char(struct LoginMode *self, const struct CharInfo *chara)
 {
-    memcpy_s(&g_loginCharInfo, sizeof g_loginCharInfo, chara, sizeof g_loginCharInfo);
-    memcpy_s(&self->chars[self->numChar], sizeof(struct CharInfo), chara, sizeof(struct CharInfo));
+    memcpy(&g_loginCharInfo, chara, sizeof g_loginCharInfo);
+    memcpy(&self->chars[self->numChar], chara, sizeof(struct CharInfo));
     map_display_name(self->chars[self->numChar].map_name);
     self->numChar++;
     g_session1.charListCounts[0]++;
@@ -170,20 +171,20 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
 
     if (body % sizeof(struct CharInfo)) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE, "CHARACTER_INFO2 size error!! CHARACTER_INFO2 size : %d",
-                    (int)sizeof(struct CharInfo));
+        snprintf(text, sizeof text, "CHARACTER_INFO2 size error!! CHARACTER_INFO2 size : %d",
+                 (int)sizeof(struct CharInfo));
         list_error_box(text);
         return;
     }
     base = self->chars_received;
     if ((unsigned)(base + count) > LOGIN_MAX_CHARS) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE, "CHARACTER_INFO2 Cnt Over %d / %d", base + count, LOGIN_MAX_CHARS);
+        snprintf(text, sizeof text, "CHARACTER_INFO2 Cnt Over %d / %d", base + count, LOGIN_MAX_CHARS);
         list_error_box(text);
         return;
     }
-    memcpy_s(&self->chars[base], sizeof self->chars - base * sizeof(struct CharInfo),
-               packet->chars, count * sizeof(struct CharInfo));
+    mem_copy_checked(&self->chars[base], sizeof self->chars - base * sizeof(struct CharInfo),
+                       packet->chars, count * sizeof(struct CharInfo));
     _time32(&now);
     for (i = 0; i < count; i++) {
         struct CharInfo *c = &self->chars[self->chars_received + i];
@@ -212,6 +213,6 @@ void login_mode_on_char_list(struct LoginMode *self, const BYTE *pkt)
 
     self->numChar = ((unsigned)packet->packet_length - 4) / sizeof(struct CharInfo);
     g_session1.charListCounts[0] = self->numChar;
-    memcpy_s(self->chars, sizeof self->chars, packet->chars, self->numChar * sizeof(struct CharInfo));
+    mem_copy_checked(self->chars, sizeof self->chars, packet->chars, self->numChar * sizeof(struct CharInfo));
     self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
 }

@@ -596,7 +596,7 @@ static void send_line(struct UINewChatWnd *self)
         string_free(&text);
         return;
     }
-    _snprintf_s(line, sizeof line, (size_t)-1, "%s", string_cstr(&text));
+    snprintf(line, sizeof line, "%s", string_cstr(&text));
     ui_chat_edit_ctrl_commit(self->edit);
     self->focus_edit = &self->edit->edit.base;
     ui_window_mgr_set_focus_edit(&g_windowMgr, &self->edit->edit.base);

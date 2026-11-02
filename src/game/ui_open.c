@@ -13,6 +13,7 @@
 #include "game/mode_util.h"
 #include "session/session_items.h"
 #include "ui/chat/chat.h"
+#include "core/cstr.h"
 
 enum {
     UI_OPEN_BANK = 0,
@@ -89,7 +90,7 @@ void game_mode_item_list_win_open(struct GameMode *self, const unsigned char *pk
         if (item_listed(type, &item)) {
             item_record_a_clear(&entry);
             entry.index = item.index;
-            strcpy_s(entry.id_text, sizeof entry.id_text, string_cstr(&item.id_text));
+            cstr_copy(entry.id_text, sizeof entry.id_text, string_cstr(&item.id_text));
             entry.type = item.type;
             entry.identified = item.identified;
             entry.price = 1;

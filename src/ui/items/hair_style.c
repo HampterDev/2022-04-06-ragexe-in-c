@@ -235,15 +235,15 @@ static void hair_style_refresh(struct UIHairStyleButton *self)
     }
     if (self->doram == 0) {
         ui_button_set_show((struct UIButton *)(self->picture), 1);
-        sprintf_s(path, sizeof path,
-                  self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
-                  self->style + 1);
+        snprintf(path, sizeof path,
+                 self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
+                 self->style + 1);
     } else if (self->doram == 1) {
         ui_button_set_show((struct UIButton *)(self->picture), 1);
-        sprintf_s(path, sizeof path,
-                  self->male == 0 ? MAKER_SKIN "img_hairStyle_doramGirl%02d.bmp"
-                                  : MAKER_SKIN "img_hairStyle_doramBoy%02d.bmp",
-                  self->style + 1);
+        snprintf(path, sizeof path,
+                 self->male == 0 ? MAKER_SKIN "img_hairStyle_doramGirl%02d.bmp"
+                                 : MAKER_SKIN "img_hairStyle_doramBoy%02d.bmp",
+                 self->style + 1);
     }
     if (self->picture) {
         ui_bitmap_button_set_bitmap(&self->picture->button, path, UI_BTN_UP, 0);

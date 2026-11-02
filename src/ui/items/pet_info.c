@@ -379,7 +379,7 @@ void ui_pet_info_wnd_on_create(struct UIWindow *window, int width, int height)
     if (arrow_btn)
         arrow_btn = ui_bitmap_button_construct(arrow_btn);
     for (state = UI_BTN_UP; state <= UI_BTN_DOWN; state++) {
-        _snprintf(path, sizeof path, UI_SKIN "basic_interface\\%s.bmp", arrow[state]);
+        snprintf(path, sizeof path, UI_SKIN "basic_interface\\%s.bmp", arrow[state]);
         ui_bitmap_button_set_bitmap(arrow_btn, path, state, 0);
     }
     ui_window_create(&arrow_btn->button.base, arrow_btn->bitmap_width, arrow_btn->bitmap_height);
@@ -428,7 +428,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->frame.base, self->frame.base.width - res->width,
                         self->frame.base.height - res->height, res, 0);
 
-    _snprintf_s(title, sizeof title, (size_t)-1, "%s", msg_str(MSG_PET_TITLE));
+    snprintf(title, sizeof title, "%s", msg_str(MSG_PET_TITLE));
     draw_label(self, 5, 2, title);
     draw_label(self, 0x64, 0x18, msg_str(MSG_PET_NAME));
     draw_label(self, 0x64, 0x2c, msg_str(MSG_PET_LEVEL));
@@ -449,7 +449,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     else
         msg = MSG_PET_OUT_OF_RANGE;
     strcpy(fullness, msg_str(msg));
-    _itoa(g_session1.petLevel, level, 10);
+    snprintf(level, sizeof level, "%d", g_session1.petLevel);
     draw_label(self, 0x87, 0x2c, level);
     draw_label(self, 0x91, 0x45, fullness);
     draw_label(self, 0x91, 0x59, string_cstr(&self->intimacy_text));

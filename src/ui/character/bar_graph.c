@@ -7,7 +7,7 @@
 #include "ui/character/character_std.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
-#include <stdint.h>
+#include <inttypes.h>
 
 struct UIBarGraph3;
 struct UIWindow;
@@ -640,7 +640,7 @@ static void draw_player_numbers(struct UIWindow *wnd, int64_t current, int64_t m
     struct String text;
 
     string_init(&text);
-    string_format(&text, "%3I64d  /  %3I64d", current, maximum);
+    string_format(&text, "%3" PRId64 "  /  %3" PRId64, current, maximum);
     ui_window_text_out_centred(wnd, 0, -2, string_cstr(&text), wnd->width, 1, 13, 0, 0);
     string_free(&text);
 }
