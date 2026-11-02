@@ -643,6 +643,38 @@ static void place_list(struct UIGraphicSettingWnd *self, struct UIWindow *list, 
     ui_window_move(list, x + 1, y + 1);
 }
 
+static void store_quality_settings(struct UIGraphicSettingWnd *self)
+{
+    int detail;
+    BYTE refresh = 0;
+
+    g_spriteMode = self->sprite_mode;
+    if (self->sprite_mode == 0) {
+        g_sprHalfWidth = 1;
+        g_sprHalfHeight = 1;
+    } else {
+        g_sprHalfWidth = 0;
+        g_sprHalfHeight = self->sprite_mode == 1;
+    }
+    g_textureMode = self->texture_detail;
+    detail = self->texture_detail == 0 ? 4 : self->texture_detail == 1 ? 2 : 1;
+    if (detail != g_textureDivisor) {
+        g_textureDivisor = detail;
+        refresh = 1;
+    }
+    if (g_trilinearFilter != W(self->box_trilinear)->state) {
+        g_trilinearFilter = W(self->box_trilinear)->state;
+        c3d_device_enable_mipmap(&g_3dDevice);
+        texcache_reload_all(&g_textureCache);
+    } else if (refresh) {
+        texcache_reload_all(&g_textureCache);
+    }
+    if (W(self->box_mouse)->state != (g_session1.mouseExclusiveOption != 0))
+        g_session1.mouseExclusiveOption = W(self->box_mouse)->state != 0;
+    ui_graphic_setting_wnd_check_changed(self);
+    ui_window_invalidate_base(WND(self));
+}
+
 static void open_string_list(struct UIGraphicSettingWnd *self, int id, struct Vec *names, int selected,
                              struct UIWindow *box)
 {
@@ -781,47 +813,21 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
                 g_displayHeight = mode->height;
                 g_bitsPerPixel = mode->bpp;
             }
-            if (apply_display_mode(self) == 1)
+            if (apply_display_mode(self) == 1) {
+                store_quality_settings(self);
                 return 0;
+            }
             g_openLauncherPageAtExit = 1;
             connection_disconnect(rag_connection_transport(rag_connection_instance()));
             mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
             return 0;
-        case 1: {
-            int detail;
-            BYTE refresh = 0;
-
+        case 1:
             answer = ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_APPLY), UI_MSGBOX_QUESTION, 1, 0,
                                             0, "메시지", 0x118, 0x78, 0);
             if (answer == UI_MSGBOX_ANSWER_NO)
                 return 0;
-            g_spriteMode = self->sprite_mode;
-            if (self->sprite_mode == 0) {
-                g_sprHalfWidth = 1;
-                g_sprHalfHeight = 1;
-            } else {
-                g_sprHalfWidth = 0;
-                g_sprHalfHeight = self->sprite_mode == 1;
-            }
-            g_textureMode = self->texture_detail;
-            detail = self->texture_detail == 0 ? 4 : self->texture_detail == 1 ? 2 : 1;
-            if (detail != g_textureDivisor) {
-                g_textureDivisor = detail;
-                refresh = 1;
-            }
-            if (g_trilinearFilter != W(self->box_trilinear)->state) {
-                g_trilinearFilter = W(self->box_trilinear)->state;
-                c3d_device_enable_mipmap(&g_3dDevice);
-                texcache_reload_all(&g_textureCache);
-            } else if (refresh) {
-                texcache_reload_all(&g_textureCache);
-            }
-            if (W(self->box_mouse)->state != (g_session1.mouseExclusiveOption != 0))
-                g_session1.mouseExclusiveOption = W(self->box_mouse)->state != 0;
-            ui_graphic_setting_wnd_check_changed(self);
-            ui_window_invalidate_base(WND(self));
+            store_quality_settings(self);
             return 0;
-        }
         default:
             return 0;
         }
