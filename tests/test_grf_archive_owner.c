@@ -79,6 +79,7 @@ static void *checked_realloc(void *p, size_t size)
 #include "../src/fileio/grf_mapfile.c"
 #include "../src/fileio/grf_pak.c"
 #include "../src/fileio/file_mgr.c"
+#include "../src/platform/filesystem.c"
 #undef malloc
 #undef calloc
 #undef realloc

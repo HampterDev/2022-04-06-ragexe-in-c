@@ -2,6 +2,7 @@
 #include "fileio/resource_api.h"
 #include "ui/skin.h"
 #include "ui/ui_std.h"
+#include "platform/filesystem.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -86,10 +87,9 @@ static void push_string(struct Vec *v, const char *text)
 
 void skin_mgr_scan(struct SkinMgr *self)
 {
-    WIN32_FIND_DATAA fd;
     struct String dot, dotdot, path;
     struct String *s;
-    HANDLE find;
+    struct PlatformFind *find;
     int count = 0;
 
     for (s = self->paths.first; s != self->paths.last; s++)
@@ -99,33 +99,32 @@ void skin_mgr_scan(struct SkinMgr *self)
         string_free(s);
     self->names.last = self->names.first;
     self->current = -1;
-    memset(&fd, 0, sizeof fd);
-    find = FindFirstFileA(".\\skin\\*.*", &fd);
-    if (find == INVALID_HANDLE_VALUE) {
-        FindClose(find);
+    find = platform_find_first(".\\skin\\*.*");
+    if (!find)
         return;
-    }
     string_init(&dot);
     string_assign_cstr(&dot, ".");
     string_init(&dotdot);
     string_assign_cstr(&dotdot, "..");
     do {
-        if (string_equal_cstr(&dot, fd.cFileName) || string_equal_cstr(&dotdot, fd.cFileName))
+        const char *name = platform_find_name(find);
+
+        if (string_equal_cstr(&dot, name) || string_equal_cstr(&dotdot, name))
             continue;
-        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        if (platform_find_is_directory(find)) {
             string_init(&path);
             string_assign_cstr(&path, "..\\..\\skin\\");
-            string_append_cstr(&path, fd.cFileName);
+            string_append_cstr(&path, name);
             string_append_cstr(&path, "\\");
             push_string(&self->paths, string_cstr(&path));
-            push_string(&self->names, fd.cFileName);
-            if (string_equal_cstr(&self->name, fd.cFileName))
+            push_string(&self->names, name);
+            if (string_equal_cstr(&self->name, name))
                 self->current = count;
             count++;
             string_free(&path);
         }
-    } while (FindNextFileA(find, &fd));
-    FindClose(find);
+    } while (platform_find_next(find));
+    platform_find_close(find);
     string_free(&dotdot);
     string_free(&dot);
 }

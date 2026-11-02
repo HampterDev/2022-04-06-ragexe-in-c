@@ -3,23 +3,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
 #include "ui/window_mgr.h"
 #include "core/fatal.h"
 #include "core/app.h"
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "world/mode.h"
 #include "session/state.h"
 #include "render/frame_capture.h"
 #include "platform/language.h"
 
-static int screenshot_access(const char *path, int mode);
+static int screenshot_exists(const char *path);
 static int screenshot_mkdir(const char *path);
-#define _access screenshot_access
-#define _mkdir screenshot_mkdir
+#define platform_path_exists screenshot_exists
+#define platform_directory_create screenshot_mkdir
 #include "screenshot_save.inc"
-#undef _access
-#undef _mkdir
+#undef platform_path_exists
+#undef platform_directory_create
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
@@ -38,14 +38,13 @@ __declspec(noreturn) void fatal_error(const char *message)
     abort();
 }
 
-static int screenshot_access(const char *path, int mode)
+static int screenshot_exists(const char *path)
 {
-    assert(mode == 0);
     ++accesses;
-    if (!strcmp(path, directory)) return directory_exists ? 0 : -1;
+    if (!strcmp(path, directory)) return directory_exists;
     assert(strstr(path, directory) == path);
-    if (collisions) { --collisions; return 0; }
-    return -1;
+    if (collisions) { --collisions; return 1; }
+    return 0;
 }
 
 static int screenshot_mkdir(const char *path)

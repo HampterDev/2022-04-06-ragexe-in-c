@@ -4,8 +4,8 @@
 #include "game/context.h"
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/ui_std.h"
 #include <time.h>
@@ -328,8 +328,8 @@ void ui_chat_room_wnd_save_talk(struct UIChatRoomWnd *self)
     unsigned i;
     int number = 0;
 
-    sprintf(path, "%s\\Chat", g_clientDir);
-    if (_access(path, 0) != 0 && _mkdir(path) != 0)
+    client_path(path, sizeof path, "Chat");
+    if (!platform_path_exists(path) && platform_directory_create(path) != 0)
         return;
     string_copy(&name, &self->room.title);
     for (i = 0; i < name.size; i++) {
@@ -339,10 +339,10 @@ void ui_chat_room_wnd_save_talk(struct UIChatRoomWnd *self)
             break;
         }
     }
-    sprintf(path, "%s\\Chat\\%s.txt", g_clientDir, string_cstr(&name));
-    while (_access(path, 0) == 0) {
+    client_path(path, sizeof path, "Chat\\%s.txt", string_cstr(&name));
+    while (platform_path_exists(path)) {
         number++;
-        sprintf(path, "%s\\Chat\\%s%03d.txt", g_clientDir, string_cstr(&name), number);
+        client_path(path, sizeof path, "Chat\\%s%03d.txt", string_cstr(&name), number);
     }
     if (ui_chat_his_box_save_to_file(&self->talk->box, path)) {
         string_init(&line);

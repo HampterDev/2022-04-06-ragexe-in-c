@@ -1,5 +1,6 @@
 #include "ui/window_manager_state.h"
 #include "login/merc_ai.h"
+#include "platform/filesystem.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +31,7 @@ int merc_ai_trace_ai(lua_State *L)
     struct String line;
     struct File f;
     SYSTEMTIME st;
-    char dir[0x100];
+    char dir[0x100], directory[0x100];
     char stamp[0x100];
     const char *text, *p;
     BYTE *old;
@@ -59,12 +60,12 @@ int merc_ai_trace_ai(lua_State *L)
     time = ((((DWORD)st.wHour << 8) | (short)st.wMinute) << 8) | (short)st.wSecond;
 
     file_construct(&f);
-    GetCurrentDirectoryA(0x100, dir);
-    p = strstr(dir, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    p = strstr(directory, "\\data");
     size = 0;
     if (p)
-        memcpy(dir, dir, p - dir);
-    strcat(dir, "\\TraceAI.txt");
+        memcpy(directory, directory, p - directory);
+    platform_path_join(dir, sizeof dir, directory, "TraceAI.txt");
     if (file_open(&f, dir, 0, 1, 0)) {
         size = f.size;
         old = mem_alloc(size);

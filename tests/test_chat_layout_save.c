@@ -85,6 +85,7 @@ static BOOL WINAPI delete_temp(LPCSTR path)
 #define MoveFileExA replace_temp
 #define DeleteFileA delete_temp
 #include "../src/session/chat_tabs_layout.c"
+#include "../src/platform/filesystem.c"
 #undef GetFullPathNameA
 #undef GetTempFileNameA
 #undef CreateFileA

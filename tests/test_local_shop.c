@@ -24,6 +24,7 @@ static BOOL WINAPI move_file(LPCSTR a, LPCSTR b, DWORD flags)
 #define FlushFileBuffers flush_file
 #define MoveFileExA move_file
 #include "../src/contents/settings_file.c"
+#include "../src/platform/filesystem.c"
 #undef WriteFile
 #undef FlushFileBuffers
 #undef MoveFileExA

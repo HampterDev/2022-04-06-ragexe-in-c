@@ -10,6 +10,7 @@
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
 #include "ui/items/styling_shop.h"
+#include "platform/filesystem.h"
 #include <stdlib.h>
 #include <mbstring.h>
 #include "core/msg_str.h"
@@ -606,7 +607,7 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
         cstr_copy(copy, sizeof copy, record);
         string_append_cstr(&content, copy);
     }
-    out = fopen(STYLE_SAVE_FILE, "w");
+    out = platform_file_open(STYLE_SAVE_FILE, "w");
     if (out) {
         fprintf(out, string_cstr(&content));
         fclose(out);

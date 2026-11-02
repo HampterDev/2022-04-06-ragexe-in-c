@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "core/app.h"
+#include "platform/filesystem.h"
 #include "contents/md5ctx.h"
 #include "core/msg_str.h"
 #include "session/session_talk.h"
@@ -213,7 +214,7 @@ void login_mode_send_exe_digest(struct LoginMode *self)
 
     pkt.id = 0x204;
     md5ctx_init(&md5);
-    GetModuleFileNameA(g_hInstance, path, MAX_PATH);
+    platform_module_path(path, MAX_PATH);
     f = fopen(path, "rb");
     if (!f)
         return;

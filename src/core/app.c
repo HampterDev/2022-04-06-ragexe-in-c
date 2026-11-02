@@ -23,6 +23,7 @@
 #include <string.h>
 #include "std/std.h"
 #include "core/app.h"
+#include "platform/filesystem.h"
 #include "contents/guild_mgr.h"
 #include "contents/quest.h"
 #include "core/text_util.h"
@@ -147,7 +148,7 @@ int app_create_window(HINSTANCE instance)
     }
     ShowWindow(g_hMainWnd, SW_SHOW);
     UpdateWindow(g_hMainWnd);
-    GetCurrentDirectoryA(0x80, g_clientDir);
+    platform_current_directory(g_clientDir, 0x80);
     return 1;
 }
 

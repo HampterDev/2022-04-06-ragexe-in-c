@@ -1,12 +1,11 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include <io.h>
-#include <direct.h>
 #include <stdio.h>
 #include <string.h>
 #include "ui/chat/chat_window.h"
 #include "ui/chat/sub_chat.h"
-#include "core/app.h"
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 
 #define CHAT_SAVED_COLOUR 0xff00
 #define CHAT_PATH_SIZE 0x800
@@ -16,12 +15,12 @@ static void save_box(struct UIChatHisBox *box, const struct String *name)
     char path[CHAT_PATH_SIZE];
     int number = 0;
 
-    sprintf(path, "%s\\Chat\\Chat_%s.txt", g_clientDir, string_cstr(name));
-    if (_access(path, 0) == 0) {
+    client_path(path, sizeof path, "Chat\\Chat_%s.txt", string_cstr(name));
+    if (platform_path_exists(path)) {
         do {
             number++;
-            sprintf(path, "%s\\Chat\\Chat_%s_%03d.txt", g_clientDir, string_cstr(name), number);
-        } while (_access(path, 0) == 0);
+            client_path(path, sizeof path, "Chat\\Chat_%s_%03d.txt", string_cstr(name), number);
+        } while (platform_path_exists(path));
     }
     if (ui_chat_his_box_save_to_file(box, path)) {
         struct String line;
@@ -42,8 +41,8 @@ void ui_chat_wnd_write_chat_to_file(struct UINewChatWnd *self)
     struct TreeNode *node;
     int i;
 
-    sprintf(path, "%s\\Chat", g_clientDir);
-    if (_access(path, 0) != 0 && _mkdir(path) != 0)
+    client_path(path, sizeof path, "Chat");
+    if (!platform_path_exists(path) && platform_directory_create(path) != 0)
         return;
     string_init(&name);
     for (i = 0; i < CHAT_BOX_COUNT(self); i++) {

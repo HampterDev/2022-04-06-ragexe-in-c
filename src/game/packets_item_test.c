@@ -3,8 +3,8 @@
 #include "platform/win_types.h"
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "game/gamemode.h"
 #include "game/item_info.h"
 #include "core/unique_file.h"
@@ -46,21 +46,20 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     item_info_construct(&item);
     item_info_set_item_id(&item, packet->package_item_id);
     package_name = item_info_get_name(&item);
-    written = snprintf(path, sizeof path, "%s\\PackageItemTest", g_clientDir);
-    if (written < 0 || (size_t)written >= sizeof path) goto done;
-    if (_access(path, 0) && _mkdir(path))
+    if (!client_path(path, sizeof path, "PackageItemTest")) goto done;
+    if (!platform_path_exists(path) && platform_directory_create(path))
         goto done;
     GetLocalTime(&now);
-    written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d).txt", g_clientDir, package_name, now.wYear, now.wMonth,
-                now.wDay);
-    if (written < 0 || (size_t)written >= sizeof path) goto done;
-    if (!_access(path, 0)) {
+    if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d).txt", package_name, now.wYear, now.wMonth,
+                     now.wDay))
+        goto done;
+    if (platform_path_exists(path)) {
         do {
             n++;
-            written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d)_%d.txt", g_clientDir, package_name, now.wYear,
-                        now.wMonth, now.wDay, n);
-            if (written < 0 || (size_t)written >= sizeof path) goto done;
-        } while (!_access(path, 0));
+            if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d)_%d.txt", package_name, now.wYear,
+                             now.wMonth, now.wDay, n))
+                goto done;
+        } while (platform_path_exists(path));
     }
     f = fopen(path, "w");
     if (!f)
@@ -331,14 +330,12 @@ void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *
     item_info_set_item_id(&box, packet->box_item_id);
     box_name = item_info_get_name(&box);
     GetLocalTime(&now);
-    written = snprintf(folder, sizeof folder, "%s\\DdukddakBoxTest", g_clientDir);
-    if (written < 0 || (size_t)written >= sizeof folder)
+    if (!client_path(folder, sizeof folder, "DdukddakBoxTest"))
         goto cleanup;
-    if (_mkdir(folder) != 0 && errno != EEXIST)
+    if (platform_directory_create(folder) != 0 && errno != EEXIST)
         goto cleanup;
-    written = snprintf(path, sizeof path, "%s\\%d%02d%02d_(%s).txt",
-                       folder, now.wYear, now.wMonth, now.wDay, box_name);
-    if (written < 0 || (size_t)written >= sizeof path)
+    if (!client_path(path, sizeof path, "DdukddakBoxTest\\%d%02d%02d_(%s).txt",
+                     now.wYear, now.wMonth, now.wDay, box_name))
         goto cleanup;
     file = file_open_unique(path);
     if (!file)

@@ -1,4 +1,5 @@
 #include "fileio/file.h"
+#include "platform/filesystem.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -33,30 +34,29 @@ int game_file_manager_add_archive(struct GameFileMgr *self, const char *name)
 
 BYTE *game_file_mgr_read_loose_file(struct GameFileMgr *self, const char *name, int *size)
 {
-    HANDLE file;
-    LARGE_INTEGER length;
+    struct PlatformFile *file;
+    int64_t length;
     BYTE *data = NULL;
-    DWORD read = 0;
     (void)self;
     if (!size)
         return NULL;
     *size = 0;
     if (!name)
         return NULL;
-    file = CreateFileA(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (file == INVALID_HANDLE_VALUE)
+    file = platform_file_open_read(name);
+    if (!file)
         return NULL;
-    if (GetFileSizeEx(file, &length) && length.QuadPart >= 0 && length.QuadPart <= INT_MAX) {
-        DWORD count = (DWORD)length.QuadPart;
-        data = VirtualAlloc(NULL, count ? count : 1, MEM_COMMIT, PAGE_READWRITE);
-        if (data && count && (!ReadFile(file, data, count, &read, NULL) || read != count)) {
-            VirtualFree(data, 0, MEM_RELEASE);
+    if (platform_file_size(file, &length) && length >= 0 && length <= INT_MAX) {
+        size_t count = (size_t)length;
+        data = platform_file_buffer_alloc(count ? count : 1);
+        if (data && count && !platform_file_read(file, data, count)) {
+            platform_file_buffer_free(data);
             data = NULL;
         }
         if (data)
             *size = (int)count;
     }
-    CloseHandle(file);
+    platform_file_close(file);
     return data;
 }
 
@@ -82,13 +82,13 @@ BYTE *game_file_mgr_read_from_archives(struct GameFileMgr *self, const char *nam
 
             if (entry.size > INT_MAX)
                 continue;
-            data = (BYTE *)VirtualAlloc(NULL, entry.size + 8, MEM_COMMIT, PAGE_READWRITE);
+            data = platform_file_buffer_alloc((size_t)entry.size + 8);
             if (data && grf_archive_read(pak, &entry, data, entry.size)) {
                 *size = (int)entry.size;
 
                 return data;
             }
-            VirtualFree(data, 0, MEM_RELEASE);
+            platform_file_buffer_free(data);
         }
     }
     return NULL;
@@ -120,12 +120,11 @@ BYTE *game_file_mgr_get_data(struct GameFileMgr *self, const char *name,
 
 static BYTE exists_on_disk(const char *name)
 {
-    WIN32_FIND_DATAA found;
-    HANDLE find = FindFirstFileA(name, &found);
+    struct PlatformFind *find = platform_find_first(name);
 
-    if (find == INVALID_HANDLE_VALUE)
+    if (!find)
         return 0;
-    FindClose(find);
+    platform_find_close(find);
     return 1;
 }
 
@@ -152,5 +151,5 @@ void game_file_mgr_release_data(struct GameFileMgr *self, void *data)
 {
     (void)self;
 
-    VirtualFree(data, 0, MEM_RELEASE);
+    platform_file_buffer_free(data);
 }

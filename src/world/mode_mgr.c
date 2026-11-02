@@ -11,9 +11,9 @@
 #include "world/mode.h"
 
 #include <stdlib.h>
-#include <io.h>
-#include <direct.h>
 #include "core/app.h"
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "platform/language.h"
 #include "core/text_util.h"
 #include "render/screen_draw.h"
@@ -130,16 +130,15 @@ static void screenshot_save_error(const char *path)
 
 void mode_screen_shot(struct Mode *self)
 {
-    struct String dir, name, prefix, ext, number, path, arg;
+    struct String name, prefix, ext, number, path, arg;
+    char native[0x800];
 
     if (!self->screenshot_pending)
         return;
     self->screenshot_pending = 0;
-    string_init(&dir);
-    string_format(&dir, "%s\\ScreenShot", g_clientDir);
-    if (_access(string_cstr(&dir), 0) != 0 && _mkdir(string_cstr(&dir)) != 0) {
-        screenshot_save_error(string_cstr(&dir));
-        string_free(&dir);
+    client_path(native, sizeof native, "ScreenShot");
+    if (!platform_path_exists(native) && platform_directory_create(native) != 0) {
+        screenshot_save_error(native);
         return;
     }
 
@@ -147,8 +146,7 @@ void mode_screen_shot(struct Mode *self)
     file_name_sanitize(&name);
 
     string_init(&prefix);
-    string_append(&prefix, string_cstr(&dir), dir.size);
-    string_append_cstr(&prefix, "\\");
+    string_append_cstr(&prefix, "ScreenShot\\");
     string_append_cstr(&prefix, "screen");
     string_append(&prefix, string_cstr(&name), name.size);
     string_init(&ext);
@@ -157,15 +155,14 @@ void mode_screen_shot(struct Mode *self)
     for (;;) {
         string_init(&number);
         string_format(&number, "%03d", g_screenShotCounter++);
-        string_init(&path);
-        string_append(&path, string_cstr(&prefix), prefix.size);
-        string_append(&path, string_cstr(&number), number.size);
-        string_append(&path, string_cstr(&ext), ext.size);
+        client_path(native, sizeof native, "%s%s%s", string_cstr(&prefix), string_cstr(&number),
+                    string_cstr(&ext));
         string_free(&number);
-        if (_access(string_cstr(&path), 0) != 0)
+        if (!platform_path_exists(native))
             break;
-        string_free(&path);
     }
+    string_init(&path);
+    string_assign_cstr(&path, native);
 
     string_copy(&arg, &path);
     if (renderer_screenshot(g_renderer, arg)) {
@@ -179,7 +176,6 @@ void mode_screen_shot(struct Mode *self)
     string_free(&ext);
     string_free(&prefix);
     string_free(&name);
-    string_free(&dir);
 }
 
 void mode_mgr_quit(struct ModeMgr *self)

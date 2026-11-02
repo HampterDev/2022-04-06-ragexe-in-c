@@ -11,6 +11,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "core/app.h"
+#include "core/client_path.h"
 #include "contents/guild_emblem_transport.h"
 
 #define INFO_TAB_WND_ID (GUILD_TAB_WND_ID_FIRST + GUILD_TAB_INFO)
@@ -235,7 +236,7 @@ static void list_emblem_files(struct UIGuildInfoManageWnd *self)
     char folder[0x100];
 
     list_clear(&self->emblem_files, destroy_string);
-    sprintf(folder, "%s\\emblem\\", g_clientDir);
+    client_path(folder, sizeof folder, "emblem\\");
     dir_list_names_list(&self->emblem_files, folder, "*.bmp");
     dir_list_names_list(&self->emblem_files, folder, "*.gif");
 }
