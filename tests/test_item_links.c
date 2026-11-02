@@ -179,7 +179,11 @@ int main(void)
     table.name = "한국 아이템";
     rejection(text_view("00001", 5));
     rejection(text_view("000011\0ab", 9));
-    rejection(text_view_cstr("00001110)1)2)3)4)5"));
+    item_info_construct(&item);
+    assert(item_link_read(&item, text_view_cstr("00001110)1)2)3)4)5)6+7,8-9")));
+    for (i = 0; i < 4; ++i) assert(item.slot[i] == (int)i + 1);
+    assert(item.option_count == 1 && item.options[0].id == 7 && item.options[0].param == 8 && item.options[0].value == 9);
+    item_info_destruct(&item);
     rejection(text_view_cstr("00001110)1+1,2"));
     rejection(text_view_cstr("00001110)1+1,2-3,4"));
     rejection(text_view_cstr("00001110)1+1,2-3+1,2-3+1,2-3+1,2-3+1,2-3+1,2-3"));
@@ -198,6 +202,6 @@ int main(void)
 #ifdef ITEM_LINK_REFERENCE
     puts("Item link reference: 6000 archived chat/edit comparisons passed.");
 #endif
-    puts("Item links: four cards/five options, Korean names, guarded prefixes, bounded rejection and atomic output passed.");
+    puts("Item links: four cards/five options, extra cards ignored, Korean names, guarded prefixes, bounded rejection and atomic output passed.");
     return 0;
 }

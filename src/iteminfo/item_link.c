@@ -8,7 +8,7 @@
 enum {
     LINK_LOCATION, LINK_EQUIPMENT, LINK_ID, LINK_REFINE, LINK_VIEW, LINK_GRADE,
     LINK_CARD_COUNT, LINK_FIRST_CARD,
-    LINK_FIELDS = LINK_FIRST_CARD + ITEM_CARD_SLOTS + 2 + ITEM_OPTION_SLOTS * 3
+    LINK_FIELDS = 0x104
 };
 
 static uint32_t base62_digit(unsigned char c)
@@ -83,7 +83,8 @@ static int decode_fields(struct TextView text, int fields[LINK_FIELDS])
         accumulated = 0;
         current = (int)(separator - separators);
         if (c == ')') {
-            card_count = read_values(text, &at, ')', ')', fields + LINK_FIRST_CARD, ITEM_CARD_SLOTS);
+            card_count = read_values(text, &at, ')', ')', fields + LINK_FIRST_CARD,
+                                     LINK_FIELDS - LINK_FIRST_CARD);
             if (card_count < 0) return 0;
             fields[LINK_CARD_COUNT] = card_count;
         } else if (c == '+') {
@@ -98,6 +99,7 @@ static int decode_fields(struct TextView text, int fields[LINK_FIELDS])
         }
     }
     if (option_count) {
+        if ((size_t)card_count + 9 + option_values > LINK_FIELDS) return 0;
         fields[card_count + 8] = option_count;
         memcpy(fields + card_count + 9, options, option_values * sizeof *options);
     }
@@ -130,9 +132,9 @@ int item_link_read(struct ItemInfo *item, struct TextView text)
 
     if (!decode_fields(text, fields)) return 0;
     cards = fields[LINK_CARD_COUNT];
-    if (cards < -1 || cards > ITEM_CARD_SLOTS) return 0;
-    count = fields[cards + 8];
-    if (count < 0 || count > ITEM_OPTION_SLOTS) return 0;
+    if (cards < -1 || cards > LINK_FIELDS - LINK_FIRST_CARD) return 0;
+    count = cards + 8 < LINK_FIELDS ? fields[cards + 8] : 0;
+    if (count < 0 || count > ITEM_OPTION_SLOTS || cards + 9 + count * 3 > LINK_FIELDS) return 0;
     options = fields + cards + 9;
     entry = item_table_get(fields[LINK_ID]);
     if (!entry || !entry->name || unknown_item_name(entry->name)) return 0;
@@ -143,7 +145,7 @@ int item_link_read(struct ItemInfo *item, struct TextView text)
     if (fields[LINK_EQUIPMENT]) item->type = 4;
     item->refine = fields[LINK_REFINE];
     item->view = fields[LINK_VIEW];
-    for (i = 0; i < cards; ++i) item->slot[i] = fields[LINK_FIRST_CARD + i];
+    for (i = 0; i < cards && i < ITEM_CARD_SLOTS; ++i) item->slot[i] = fields[LINK_FIRST_CARD + i];
     item->option_count = count;
     for (i = 0; i < count; ++i, options += 3) {
         item->options[i].id = (unsigned short)options[0];
