@@ -101,7 +101,7 @@ static void numeric_cases(void)
     struct GndWaterRec records[2] = {{7, 2, 3, 1.25f, 30, 3}, {7, 2, 3, 1, 30, 3}};
     struct GroundWaterSettings scene = {7, 2, 3, 1.75f, 30.75f, 3};
     const float invalid[] = {NAN, INFINITY, -INFINITY};
-    const int invalid_delays[] = {0, -1, INT_MIN};
+    const int static_delays[] = {-1, INT_MIN};
     struct GndWater *previous;
     int delay, tick, field;
     unsigned i;
@@ -138,10 +138,22 @@ static void numeric_cases(void)
 
     previous = ground.waters;
     resource.waterCount = 2; resource.waterSplitW = 2; resource.water.type = 99;
-    for (i = 0; i < sizeof invalid_delays / sizeof *invalid_delays; ++i) {
-        records[1].animSpeed = invalid_delays[i];
-        assert(!c3d_ground15_load_water(&ground, &resource, NULL));
-        assert(ground.waters == previous && ground.waterCount == 1 && ground.waterType == 4);
+    records[1].animSpeed = 0;
+    assert(!c3d_ground15_load_water(&ground, &resource, NULL));
+    assert(ground.waters == previous && ground.waterCount == 1 && ground.waterType == 4);
+    resource.waterCount = (size_t)-1;
+    assert(!c3d_ground15_load_water(&ground, &resource, NULL));
+    assert(!c3d_ground15_load_water(&ground, NULL, &scene));
+    assert(ground.waters == previous);
+    resource.waterCount = 2;
+    for (i = 0; i < sizeof static_delays / sizeof *static_delays; ++i) {
+        records[1].animSpeed = static_delays[i];
+        assert(c3d_ground15_load_water(&ground, &resource, NULL));
+        assert(ground.waterCount == 2 && ground.waterType == 99);
+        for (tick = 0; tick < 70; ++tick) {
+            c3d_ground15_update_water(&ground);
+            assert(!ground.waters[1].picture && !ground.waters[1].step && !selected_picture);
+        }
     }
     records[1].animSpeed = 3;
     for (field = 0; field < 4; ++field) {
@@ -151,18 +163,16 @@ static void numeric_cases(void)
             if (field == 1) records[1].waveHeight = invalid[i];
             if (field == 2) records[1].waveSpeed = invalid[i];
             if (field == 3) records[1].wavePitch = invalid[i];
-            assert(!c3d_ground15_load_water(&ground, &resource, NULL));
-            assert(ground.waters == previous && ground.waterType == 4);
+            assert(c3d_ground15_load_water(&ground, &resource, NULL) && ground.waterCount == 2);
+            c3d_ground15_update_water(&ground);
+            (void)ground_water_height(&ground.waters[1], 5);
+            (void)ground_water_height(&ground.waters[1], INT64_MIN);
             records[1] = valid;
         }
     }
     records[1].level = records[1].waveHeight = FLT_MAX;
-    assert(!c3d_ground15_load_water(&ground, &resource, NULL));
-    assert(ground.waters == previous);
-    resource.waterCount = (size_t)-1;
-    assert(!c3d_ground15_load_water(&ground, &resource, NULL));
-    assert(!c3d_ground15_load_water(&ground, NULL, &scene));
-    assert(ground.waters == previous);
+    assert(c3d_ground15_load_water(&ground, &resource, NULL));
+    assert(ground.waters[1].level == FLT_MAX && ground.waters[1].waveHeight == FLT_MAX);
 
     resource.waterCount = resource.waterSplitW = 1;
     records[0].animSpeed = 3; records[0].type = 2;
@@ -202,9 +212,10 @@ static void numeric_cases(void)
     assert(ground.waters[0].phaseStep == 1 && ground.waters[0].wavePitch == 30);
     previous = ground.waters;
     assert(!c3d_ground15_load_water(&ground, &resource, NULL));
-    scene.waveSpeed = NAN;
-    assert(!c3d_ground15_load_water(&ground, &resource, &scene));
     assert(ground.waters == previous);
+    scene.waveSpeed = NAN;
+    assert(c3d_ground15_load_water(&ground, &resource, &scene));
+    assert(isnan(ground.waters[0].phaseStep));
     scene.waveSpeed = FLT_MAX; scene.wavePitch = -FLT_MAX;
     assert(c3d_ground15_load_water(&ground, &resource, &scene));
     c3d_ground15_update_water(&ground);
@@ -288,7 +299,7 @@ int main(void)
     resource_destroy(&resource->res);
     assert(!live_blocks && !buffers);
     numeric_cases();
-    puts("water numeric: atomic settings, frame limits, phase wrapping, bounded angles and finite heights passed");
+    puts("water numeric: atomic settings, a zero frame delay refused, negative delays static, non-finite values kept, phase wrapping and bounded angles passed");
     puts("ground water tests passed");
     return 0;
 }
