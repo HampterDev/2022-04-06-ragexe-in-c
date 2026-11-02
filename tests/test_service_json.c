@@ -141,7 +141,6 @@ int main(void)
     fields();
     invalid_input();
     borrowed_input();
-    puts("Party booking JSON: defaults, all fields, counted strings and atomic allocation failures passed");
     puts("service JSON: ownership, counted text, numbers, duplicate keys and parse failures passed");
     return 0;
 }

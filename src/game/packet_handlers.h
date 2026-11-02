@@ -533,7 +533,6 @@ void game_mode_zc_use_item_ack(struct GameMode *self, const struct PACKET_ZC_USE
 void game_mode_zc_use_item_ack2(struct GameMode *self,
                                const struct PACKET_ZC_USE_ITEM_ACK2 *packet);
 
-void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned char *pkt);
 
 void game_mode_zc_change_item_option2_packet(struct GameMode *self, const unsigned char *pkt);

@@ -397,10 +397,6 @@ cl /nologo /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_bitmap_png.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_c_output.c" "%ROOT%\src\core\unique_file.c" "%ROOT%\src\game\box_report.c" /Fe:test_c_output.exe
-if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-test_c_output.exe
-if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_password_encode.c" "%ROOT%\src\login\password_encode.c"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W4 /WX /O2 /MD /EHsc /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\vendor\crijndael\rijndael_api.cpp" test_password_encode.obj password_encode.obj "%ROOT%\build\vendor\crijndael.lib" /Fe:test_password_encode.exe

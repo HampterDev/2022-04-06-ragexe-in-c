@@ -1511,13 +1511,6 @@ void game_mode_on_req_ack_move_guild_agit(struct GameMode *arg0, short arg1)
     packet_trace_value(arg1);
 }
 
-void game_mode_on_req_au_bot(struct GameMode *arg0, int arg1)
-{
-    packet_trace_call("GameMode_OnReqAuBot");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
 
 
 void game_mode_on_server_move_private_airplane(struct GameMode *arg0, const char *arg1, short arg2,
@@ -2524,13 +2517,6 @@ void game_mode_zc_couple_name(struct GameMode *arg0, const unsigned char *arg1)
 void game_mode_zc_couple_status(struct GameMode *arg0, const struct PACKET_ZC_COUPLESTATUS *arg1)
 {
     packet_trace_call("GameMode_Zc_CoupleStatus");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_ddukddak_box_test(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Ddukddak_Box_Test");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }

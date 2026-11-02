@@ -91,13 +91,14 @@ prefixes (`cash-shop-`, `party-booking-`, `fourth-class-`, `item-systems-`,
 
 - AU-bot auto-reply (`0x0a29`/`0x0a2a`), formerly in `macro_detector.c`, has no UI
   and was moved unchanged to `src/game/au_bot.c`. Neither Hercules nor rAthena sends
-  it. Pending.
+  it. Removed, 2026-11-02 (Patrick): [AU-bot, DdukDdak and Party Recruit removal](#au-bot-reply-ddukddak-box-test-and-party-recruit-removal-2026-11-02).
 - DdukDdak box test (`0x0bb3`), a GM-only statistics report independent of the
-  Lapine windows. Pending.
+  Lapine windows. Removed, 2026-11-02 (Patrick): [AU-bot, DdukDdak and Party Recruit removal](#au-bot-reply-ddukddak-box-test-and-party-recruit-removal-2026-11-02).
 - Grade-enchant effects `0x647`-`0x649` and 4th-class status visuals, ABR/Bionic
   summons and shared effect data remain because server packets can still request
   them or because they are woven into shared summon code. Pending.
-- Party Recruit packet rows (`0x08e5`-`0x0971`) have no client code. Pending.
+- Party Recruit packet rows (`0x08e5`-`0x0971`) have no client code. Removed,
+  2026-11-02 (Patrick): [AU-bot, DdukDdak and Party Recruit removal](#au-bot-reply-ddukddak-box-test-and-party-recruit-removal-2026-11-02).
 
 ### Foundation-fix candidates found during removal
 
@@ -7632,3 +7633,89 @@ Independent rerun on the final tree: the release build (no warnings), the full
 suite (dispatch digest `a3fd444e45d2becf`; 475 classes, 136 retired identities)
 and the seven standalone suites passed: `build/final-build.log`,
 `build/final-full-tests.log`, `build/final-<suite>.log`.
+
+## AU-bot reply, DdukDdak box test and Party Recruit removal (2026-11-02)
+
+Patrick decided to remove three follow-up items left pending by the size-ranked
+review: the AU-bot auto-reply, the DdukDdak box test and the Party Recruit packet
+rows. The stale "Party booking JSON" line in `tests/test_service_json.c` went in
+the same change.
+
+What the client did before this removal:
+
+- `ZC_REQ_AU_BOT` (`0x0a29`, 6 bytes: AID) made the second game dispatcher answer
+  immediately with `CZ_ACK_AU_BOT` (`0x0a2a`) carrying the same AID. There was no UI,
+  state or log. The code lived in `src/game/au_bot.c`, where the macro-detector
+  removal had moved it unchanged.
+- `ZC_DDUKDDAK_BOX_TEST` (`0x0bb3`, variable, minimum 8 bytes: box item ID and
+  `{item ID, count}` records) is a GM statistics report. The client merged the
+  records by item ID, sorted them by count, resolved item names and wrote
+  `DdukddakBoxTest\<date>_(<box name>).txt` under the client directory with
+  per-item percentages. It never touched the Lapine windows or catalogs.
+- Party Recruit (the 2012-04 RE recruitment UI) had 28 packet-name rows
+  (`0x08e5`-`0x08fb`, `0x0909`, `0x090b`, `0x090c`, `0x096c`, `0x0971`) and two
+  fixed 6-byte length rows (`0x096c`, `0x0971`). No handler, sender, ID constant or
+  UI existed, and the name table is only filled in, never read.
+
+Removed:
+
+- AU bot: the dispatch case, `PACKET_ZC_REQ_AU_BOT`, `HEADER_ZC_REQ_AU_BOT`,
+  `src/game/au_bot.c` and `au_bot.h`, and the length and name rows of `0x0a29` and
+  `0x0a2a`.
+- DdukDdak box test: the dispatch case, `HEADER_ZC_DDUKDDAK_BOX_TEST`, the handler
+  and its declaration, its private sort (introsort, heap and insertion sort over the
+  merged records) and the `0x0bb3` length row (it had no name row). The handler was the
+  only user of the report writer `src/game/box_report.{c,h}` and of
+  `src/core/unique_file.{c,h}` (`file_open_unique`, the numbered "name(1).txt"
+  opener), so both pairs were deleted along with the includes only the handler used.
+  `tests/test_c_output.c`, which tested only those two helpers, and its four
+  `tests/build.bat` lines went too. The neighbouring package-item test report
+  (`0x0a31`) in `src/game/packets_item_test.c` is unchanged.
+- Party Recruit: the 28 name rows and 2 length rows.
+- `tests/test_service_json.c` no longer prints "Party booking JSON: ...", a leftover of
+  the Agency's former JSON decoder. The service-JSON line remains.
+
+Kept: the `0x0a31` package-item test report, and every other row of the packet table.
+Two includes in `packets_item_test.c` (`ui/items/styling_shop.h`, `ui/ui_std.h`) were
+already unnecessary before this change; they were left as found.
+
+Server implications:
+
+- `0x0a29` and `0x0bb3` now take the existing unknown-packet path, which resets
+  connection queues. Neither Hercules nor rAthena sends them. Hercules has only a
+  `packetLen` row for `0x0bb3` and accepts `0x0a2a` with `clif->pDull`, so nothing is
+  lost when the client stops answering. rAthena defines neither.
+- Hercules sends Party Recruit packets only when `PARTY_RECRUIT` is defined, which
+  `mmo.h` limits to 2012-04-10/2012-04-18 RE clients. A `PACKETVER=20220406` build
+  never does. `0x096c`/`0x0971` already reached the unknown-packet reset before; they
+  are now framed as unknown packets too.
+- No server checkout was modified.
+
+Tests changed: the packet-dispatch test lists `0x0a29` and `0x0bb3` among the IDs that
+must take the 12-entry unknown-packet trace, its sink file loses the two handler
+sinks, and the digest moves to the derived value. `test_c_output` was removed with its
+helpers.
+
+Validation:
+
+- Release build passed without compiler or linker warnings:
+  `build/packet-only-build.log`. The link map and `src`/`tests` contain no AU-bot,
+  DdukDdak, box-report, unique-file or Party Recruit names; the only `recruit` hits are
+  the Agency's `adventurer_agency_is_recruiting` and its board bitmap.
+- Packet dispatch: all 1,179,800 cases passed, digest `45cac67ceea7fb03` (before:
+  `a3fd444e45d2becf`). `build/derive_packet_only_dispatch.py` derives the expectation
+  from the regenerated baseline trace (`build/packet-dispatch-before-packet-only.bin`,
+  SHA-256 `44404caa...25123d0`). It changes exactly 24 cases: 12 each for `0x0a29` and
+  `0x0bb3`, the full-size non-null calls in all six packet patterns, direct and
+  forwarded from the first dispatcher. Each formerly called its handler sink
+  (`GameMode_OnReqAuBot`, `GameMode_Zc_Ddukddak_Box_Test`) and now resets the queues.
+  The actual trace matches byte for byte (SHA-256 `84adb52d...4ab35686`):
+  `build/packet-only-dispatch.log`, `build/packet-only-dispatch-expectation.log`.
+- Packet table: 1,247 -> 1,242 length rows and 1,315 -> 1,285 name rows; every retained
+  row keeps its ID, size, minimum size, name and order:
+  `build/audit_packet_only_packet_table.py`, `build/packet-only-packet-table-audit.log`.
+- Full suite `tests\build.bat` passed: `build/packet-only-full-tests.log`.
+- `git diff --check` passed.
+
+The pre-removal tree is in `build/before-packet-only-removals`. No live client/server
+smoke test was run.

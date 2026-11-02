@@ -8,7 +8,6 @@
 #include "game/ground_item_packets.h"
 #include "game/item_list_packets.h"
 #include "game/item_upgrade.h"
-#include "game/au_bot.h"
 #include "game/navigation.h"
 #include "game/packet_data.h"
 #include "game/packet_handlers.h"
@@ -145,14 +144,6 @@ struct PACKET_ZC_ACK_OPENSTORE2 {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_ACK_OPENSTORE2, 3);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_REQ_AU_BOT {
-    unsigned short packet_type;
-    int aid;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_REQ_AU_BOT, 6);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_ACK_CHANGE_TITLE {
@@ -792,12 +783,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_shop_open_result(self, packet->result);
         break;
     }
-    case HEADER_ZC_REQ_AU_BOT: {
-        const struct PACKET_ZC_REQ_AU_BOT *packet = (const struct PACKET_ZC_REQ_AU_BOT *)pkt;
-
-        game_mode_on_req_au_bot(self, packet->aid);
-        break;
-    }
     case HEADER_ZC_EQUIPWIN_MICROSCOPE_V6: game_mode_equip_win_microscope_v6(pkt); break;
     case HEADER_ZC_ACK_CHANGE_TITLE: {
         const struct PACKET_ZC_ACK_CHANGE_TITLE *packet = (const struct PACKET_ZC_ACK_CHANGE_TITLE *)pkt;
@@ -1184,7 +1169,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_zc_ack_take_off_equip_all(self, packet->result);
         break;
     }
-    case HEADER_ZC_DDUKDDAK_BOX_TEST: game_mode_zc_ddukddak_box_test(self, pkt); break;
     case HEADER_ZC_GPK_DYNCODE:
     case HEADER_ZC_GPK_AUTH:
     case HEADER_ZC_MACRO_ITEMPICKUP_FAIL:
