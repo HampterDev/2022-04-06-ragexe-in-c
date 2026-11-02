@@ -221,10 +221,9 @@ void session_destruct(struct Session *self)
         tree_clear(&self->rectMaps[i], named_map_rect_destroy);
     maps = self->rectMaps;
     if (maps) {
-        int *block = (int *)maps - 1;
-        for (i = *block; i-- > 0;)
+        for (i = self->rectMapCount; i-- > 0;)
             tree_free(&maps[i], named_map_rect_destroy);
-        mem_free(block);
+        mem_free(maps);
     }
 
     embedded_fonts_clear();
