@@ -843,7 +843,7 @@ void ui_combo_box_def_wnd_on_draw(struct UIWindow *window)
     rect.right = self->base.width;
     rect.bottom = self->base.height;
     ui_window_fill_canvas(&self->base, RGB(self->border_r, self->border_g, self->border_b), &rect);
-    SetRect(&rect, 1, 1, self->base.width - 1, self->base.height - 1);
+    rect = (RECT){1, 1, self->base.width - 1, self->base.height - 1};
     ui_window_fill_canvas(&self->base, RGB(self->back_r, self->back_g, self->back_b), &rect);
 }
 

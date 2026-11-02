@@ -35,7 +35,7 @@ int mini_party_area_mgr_find_free_cell(struct MiniPartyWndAreaMgr *self)
     area = *ui_window_mgr_mini_party_area(&g_windowMgr, &tmp);
 
     list_init(&sort.cells);
-    SetRect(&sort.area, 0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height);
+    sort.area = (RECT){0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height};
     sort.cols = (sort.area.right - sort.area.left) / g_miniPartyCellWidth;
     sort.rows = (sort.area.bottom - sort.area.top) / g_miniPartyCellHeight;
     for (i = 0; i < sort.cols * sort.rows; i++) {
