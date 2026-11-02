@@ -145,7 +145,7 @@ void game_mode_zc_npc_market_open2(struct GameMode *self, const unsigned char *p
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(entry.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", entry.item_id);
         item.price = entry.price;
         item.charged_price = entry.price;
         item.type = entry.type;
@@ -176,7 +176,7 @@ void game_mode_zc_npc_market_open(struct GameMode *self, const unsigned char *pk
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.price;
         item.type = copy.type;
@@ -227,7 +227,7 @@ void game_mode_zc_npc_market_purchase_result_v2(struct GameMode *self, const uns
             struct ItemRecordA item;
 
             item_record_a_clear(&item);
-            _itoa(copy.item_id, item.id_text, 10);
+            snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
             item.price = copy.price;
             item.charged_price = copy.price;
             item.index = -1;

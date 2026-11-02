@@ -30,7 +30,7 @@ void session_init_short_cut_texts(struct Session *self)
     snprintf(path, sizeof path, "%s%s\\", g_registryKeyPath, g_shortcutListSubkey);
     if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
         for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
-            _itoa(i, name, 10);
+            snprintf(name, sizeof name, "%d", i);
             size = sizeof value;
             memset(value, 0, sizeof value);
             if (RegQueryValueExA(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS

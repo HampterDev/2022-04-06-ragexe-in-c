@@ -41,7 +41,7 @@ static struct String *required_level_text(struct UINewSkillListWnd *self, struct
     char buf[0x10];
 
     if (required && required->level > 0) {
-        _itoa(required->level, buf, 10);
+        snprintf(buf, sizeof buf, "%d", required->level);
         string_init(out);
         string_assign_cstr(out, buf);
         return out;

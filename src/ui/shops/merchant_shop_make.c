@@ -446,7 +446,8 @@ too_high:
     if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) != UI_MSGBOX_ANSWER_YES)
         goto refused;
     price = PRICE_MAX;
-    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+    snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
     ui_window_invalidate_base(&self->frame.base);
 
 checked:
@@ -722,7 +723,8 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
         if (price > PRICE_MAX) {
             if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) == UI_MSGBOX_ANSWER_YES) {
                 price = PRICE_MAX;
-                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+                snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
             } else {
                 ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, string_cstr(&self->last_text));
                 ui_window_mgr_set_focus_edit(&g_windowMgr, edit);

@@ -291,7 +291,7 @@ void game_mode_item_name_msg(const unsigned char *pkt)
     struct String line;
     struct String name = {0};
 
-    _itoa(packet->item_id, id_text, 10);
+    snprintf(id_text, sizeof id_text, "%d", packet->item_id);
     id_text[24] = 0;
     item_info_construct(&item);
     string_assign_cstr(&item.id_text, id_text);

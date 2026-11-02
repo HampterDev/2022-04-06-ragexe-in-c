@@ -233,7 +233,7 @@ static void storage_log_fill(struct UIGuild_Storage_Log *self)
         line = first + self->index;
         in = line->action;
         vec_push(&self->in_flags, &in, sizeof in);
-        _itoa(line->amount, number, 10);
+        snprintf(number, sizeof number, "%d", line->amount);
         r = (int)self->row - 1;
         for (c = 0; c < STORAGE_LOG_COLUMNS; c++)
             ui_static_text_set_text_colour(self->texts[c][r], line->attribute == 1 ? 0xff : 0, 0, 0);

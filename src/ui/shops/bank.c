@@ -375,7 +375,7 @@ static void bank_show_amount(struct UIBank_NewWnd *self, long long amount)
     char text[0x104];
 
     memset(text, 0, sizeof text);
-    _i64toa(amount, text, 10);
+    snprintf(text, sizeof text, "%lld", amount);
     if (!self->amount_edit)
         return;
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->amount_edit, text);

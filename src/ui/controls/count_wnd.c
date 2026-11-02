@@ -163,7 +163,8 @@ int ui_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int ms
         self->request = val1;
         return 0;
     case CNT_MSG_SET_COUNT:
-        ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, _itoa(val1, digits, 10));
+        snprintf(digits, sizeof digits, "%d", val1);
+        ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, digits);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

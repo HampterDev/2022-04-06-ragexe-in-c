@@ -80,7 +80,7 @@ void game_mode_zc_pc_purchase_itemlist2(struct GameMode *self, const unsigned ch
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(entry.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", entry.item_id);
         item.price = entry.price;
         item.charged_price = entry.discount_price;
         item.type = entry.type;
@@ -121,7 +121,7 @@ void game_mode_zc_pc_purchase_itemlist(struct GameMode *self, const unsigned cha
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.discount_price;
         item.type = copy.type;
@@ -265,7 +265,7 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.discount_price;
         item.type = copy.type;

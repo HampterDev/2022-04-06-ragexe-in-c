@@ -129,7 +129,6 @@ static void log_append(const struct GuildStorageLogRecord *record)
     struct GuildStorageLogEntry entry;
     struct String display_name = {0};
     char digits[16];
-    const char *id_text;
 
     item_info_construct(&item);
     staged.id = record->id;
@@ -138,8 +137,8 @@ static void log_append(const struct GuildStorageLogRecord *record)
     strcpy(staged.name, record->name);
     strcpy(staged.time, record->time);
     memset(digits, 0, sizeof digits);
-    id_text = _itoa(record->item_id, digits, 10);
-    string_assign_cstr(&item.id_text, id_text);
+    snprintf(digits, sizeof digits, "%d", record->item_id);
+    string_assign_cstr(&item.id_text, digits);
     item.identified = record->identified;
     item.type = record->item_type;
     item.refine = record->refine;
@@ -321,7 +320,6 @@ void game_mode_ack_guild_storage_log2(const struct PACKET_ZC_ACK_GUILDSTORAGE_LO
             struct ItemInfo item;
             struct GuildLogItem staged;
             char digits[16];
-            const char *id_text;
 
             item_info_construct(&item);
             item.guild_log.id = record->id;
@@ -330,8 +328,8 @@ void game_mode_ack_guild_storage_log2(const struct PACKET_ZC_ACK_GUILDSTORAGE_LO
             cstr_copy(item.guild_log.name, sizeof item.guild_log.name, record->name);
             cstr_copy(item.guild_log.time, sizeof item.guild_log.time, record->time);
             memset(digits, 0, sizeof digits);
-            id_text = _itoa(record->item_id, digits, 10);
-            string_assign_cstr(&item.id_text, id_text);
+            snprintf(digits, sizeof digits, "%d", record->item_id);
+            string_assign_cstr(&item.id_text, digits);
             item.identified = record->identified;
             item.type = record->item_type;
             item.refine = record->refine;

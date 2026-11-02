@@ -449,7 +449,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     else
         msg = MSG_PET_OUT_OF_RANGE;
     strcpy(fullness, msg_str(msg));
-    _itoa(g_session1.petLevel, level, 10);
+    snprintf(level, sizeof level, "%d", g_session1.petLevel);
     draw_label(self, 0x87, 0x2c, level);
     draw_label(self, 0x91, 0x45, fullness);
     draw_label(self, 0x91, 0x59, string_cstr(&self->intimacy_text));

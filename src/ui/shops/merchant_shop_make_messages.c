@@ -607,7 +607,7 @@ void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *self)
         int price = rows[i].price;
         char text[0x18];
 
-        _itoa(price, text, 10);
+        snprintf(text, sizeof text, "%d", price);
         ((struct UIEditCtrl *)self->prices[i])->disabled = 0;
         ui_window_invalidate(self->prices[i]);
         ui_edit_ctrl_set_back_colour(self->prices[i], EDIT_LIGHT, EDIT_LIGHT, EDIT_LIGHT);
@@ -616,7 +616,7 @@ void ui_merchant_shop_make_wnd_apply_backup(struct UIMerchantShopMakeWnd *self)
         if (self->buying && i < BUYING_SLOTS_MAX) {
             char count[0x18];
 
-            _itoa(rows[i].count, count, 10);
+            snprintf(count, sizeof count, "%d", rows[i].count);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->counts[i], count);
             ui_window_invalidate_base(self->counts[i]);
         } else {

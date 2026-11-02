@@ -91,7 +91,7 @@ static struct BarterExFound *exb_goods_or_pay_at(const struct ExpandedBarterWnd 
                     item.type = pay->type;
                     item.refine = pay->refine;
                     memset(id, 0, sizeof id);
-                    _itoa(pay->id, id, 10);
+                    snprintf(id, sizeof id, "%d", pay->id);
                     string_assign_cstr(&item.id_text, id);
                     out->found = 1;
                     barter_goods_ex_copy(&out->goods, &item);
@@ -115,7 +115,7 @@ void exb_append_refine(struct String *text, int refine)
 {
     char number[0xc];
 
-    _itoa(refine, number, 10);
+    snprintf(number, sizeof number, "%d", refine);
     string_append_cstr(text, "+");
     string_append_cstr(text, number);
     string_append_cstr(text, " ");
@@ -186,7 +186,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
 
         item_info_construct(&item);
         item.count = market ? pay->count : pay->count * goods->count;
-        _itoa(pay->id, id, 10);
+        snprintf(id, sizeof id, "%d", pay->id);
         string_assign_cstr(&item.id_text, id);
         item.refine = pay->refine;
         if (market && goods->count == 0)

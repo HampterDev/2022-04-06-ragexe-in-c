@@ -129,7 +129,7 @@ static struct BarterFound *goods_or_pay_at(struct UIItemBaseWnd *base, const str
 
         barter_goods_construct(&pay);
         memset(id, 0, sizeof id);
-        _itoa(LIST_VALUE(node, const struct BarterGoods)->pay_id, id, 10);
+        snprintf(id, sizeof id, "%d", LIST_VALUE(node, const struct BarterGoods)->pay_id);
         string_assign_cstr(&pay.id_text, id);
         pay.type = BARTER_PAY_ITEM_TYPE;
         barter_goods_copy(&out->goods, &pay);

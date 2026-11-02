@@ -365,7 +365,7 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
             string_assign(&line, "이름 변경되지않음",
                               0x11);
         string_vec_push_copy(&lines, &line);
-        _itoa(self->pet_level, number, 10);
+        snprintf(number, sizeof number, "%d", self->pet_level);
         string_assign(&line, "레벨 : ", 7);
         string_append_cstr(&line, number);
         string_vec_push_copy(&lines, &line);
