@@ -55,7 +55,7 @@ static ULONG read_font(void *stream, void *buffer, ULONG size)
     return (ULONG)fread(buffer, 1, size, stream);
 }
 
-static int load_one_font(size_t index, const char **missing_file)
+static int load_one_font(size_t index)
 {
     char family[LF_FACESIZE];
     wchar_t wide_family[LF_FACESIZE], path[64];
@@ -68,28 +68,23 @@ static int load_one_font(size_t index, const char **missing_file)
     int length;
 
     if (strlen(font_files[index]) >= sizeof family)
-        return 0;
+        return 1;
     strcpy(family, font_files[index]);
     if (!MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, family, -1,
                             wide_family, sizeof wide_family / sizeof wide_family[0]))
-        return 0;
+        return 1;
     length = swprintf(path, sizeof path / sizeof path[0], L"System\\Font\\%ls", wide_family);
     if (length < 0 || (size_t)length >= sizeof path / sizeof path[0])
-        return 0;
+        return 1;
     file = _wfopen(path, L"rb");
-    if (!file) {
-        if (missing_file)
-            *missing_file = font_files[index];
+    if (!file)
         return 0;
-    }
     result = load_font(&font, TTLOAD_PRIVATE, &privileges, LICENSE_EDITABLE,
                        &status, read_font, file, wide_family, family, &info);
     fclose(file);
-    if (result == E_NONE && font) {
+    if (result == E_NONE && font)
         fonts[index] = font;
-        return 1;
-    }
-    return result == E_FONTALREADYEXISTS || result == E_FONTNAMEALREADYEXISTS;
+    return 1;
 }
 
 int embedded_fonts_load(const char **missing_file)
@@ -102,7 +97,9 @@ int embedded_fonts_load(const char **missing_file)
     if (!open_font_service())
         return 0;
     for (i = 0; i < FONT_COUNT; ++i) {
-        if (!load_one_font(i, missing_file)) {
+        if (!load_one_font(i)) {
+            if (missing_file)
+                *missing_file = font_files[i];
             embedded_fonts_clear();
             return 0;
         }
