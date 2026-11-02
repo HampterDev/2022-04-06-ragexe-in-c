@@ -1,5 +1,5 @@
 #include "contents/settings_file.h"
-#include <wincrypt.h>
+#include "platform/sha256.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,27 +9,19 @@
 int settings_file_path(char out[MAX_PATH], const char *root, const char *address,
                       const char *port, const char *world, unsigned aid, unsigned gid)
 {
-    HCRYPTPROV provider = 0;
-    HCRYPTHASH hash = 0;
-    BYTE digest[32];
-    DWORD size = sizeof digest;
-    char hex[65];
-    const char *parts[] = {address, port, world};
+    uint8_t digest[PLATFORM_SHA256_SIZE];
+    char hex[PLATFORM_SHA256_SIZE * 2 + 1];
+    const void *parts[] = {address, port, world};
+    size_t sizes[3];
     int ok = 0, i, count;
     out[0] = 0;
     if (!root || !*root || !address || !*address || !port || !*port || !world || !aid)
         return 0;
-    if (!CryptAcquireContextA(&provider, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT) ||
-        !CryptCreateHash(provider, CALG_SHA_256, 0, 0, &hash))
+    for (i = 0; i < 3; ++i)
+        sizes[i] = strlen(parts[i]) + 1;
+    if (!platform_sha256(parts, sizes, 3, digest))
         goto done;
-    for (i = 0; i < 3; ++i) {
-        size_t length = strlen(parts[i]);
-        if (length >= MAXDWORD || !CryptHashData(hash, (const BYTE *)parts[i], (DWORD)length + 1, 0))
-            goto done;
-    }
-    if (!CryptGetHashParam(hash, HP_HASHVAL, digest, &size, 0) || size != sizeof digest)
-        goto done;
-    for (i = 0; i < 32; ++i)
+    for (i = 0; i < PLATFORM_SHA256_SIZE; ++i)
         sprintf(hex + i * 2, "%02x", digest[i]);
     if (gid)
         count = snprintf(out, MAX_PATH, "%s\\SaveData\\Accounts\\%s\\%u\\Characters\\%u.json", root, hex, aid, gid);
@@ -37,8 +29,6 @@ int settings_file_path(char out[MAX_PATH], const char *root, const char *address
         count = snprintf(out, MAX_PATH, "%s\\SaveData\\Accounts\\%s\\%u.json", root, hex, aid);
     ok = count > 0 && count < MAX_PATH;
 done:
-    if (hash) CryptDestroyHash(hash);
-    if (provider) CryptReleaseContext(provider, 0);
     if (!ok) out[0] = 0;
     return ok;
 }
