@@ -311,7 +311,10 @@ backend is usable there until a Metal backend exists). All client geometry arriv
 test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on
 horizontal edges the other way from D3D's top-left rule, so a quad on whole-pixel
 coordinates covered the rows one lower (the menu icons lost their top border, and the
-startup texel-offset probe, which draws on whole pixels, measured against that). Blend, depth and cull state map directly; the y flip
+startup texel-offset probe, which draws on whole pixels, measured against that). The fragment
+shader takes that 1/128 pixel back out of the texture coordinates (with their screen derivatives),
+so filtered textures are still read where Direct3D reads them; otherwise 1:1 UI art picks up a
+little of each neighbouring texel. Blend, depth and cull state map directly; the y flip
 keeps the on-screen winding, so `GFX_CULL_CW` culls GL back faces. Samplers carry the address, border and filter state.
 The scene is drawn into an offscreen framebuffer that the present call blits to the window, so locks,
 captures and render-target textures all work on ordinary textures. Texture creation, locking and
