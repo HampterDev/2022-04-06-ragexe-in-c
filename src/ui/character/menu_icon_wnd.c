@@ -79,6 +79,7 @@ enum MenuIconId {
 #define MENU_ICON_DY 0x2b
 #define MENU_ICON_X 9
 #define MENU_ICON_Y 0x17
+#define MENU_BG_Y 0xd
 #define MENU_ICON_NEW_Y 0x11
 #define MENU_BUTTON_Y 4
 #define MENU_ICON_COUNT 18
@@ -421,7 +422,8 @@ void ui_menu_icon_wnd_on_draw(struct UIWindow *window)
         }
         string_init(&bg);
         string_assign_cstr(&bg, MENU_ICON_DIR "bg_menu.tga");
-        ui_window_queue_bitmap(&self->frame.base, 0, 0xd, bg, 0xffffffff, 0, 0);
+        ui_window_queue_bitmap_bottom(&self->frame.base, 0, MENU_BG_Y, bg, 0xffffffff,
+                                      self->frame.base.height - MENU_BG_Y);
         marked = menu_marked(self, icon->id);
         ui_button_show((struct UIButton *)(icon->button), !marked);
         variant = tree_find(&self->new_icons, &icon->id, tree_less_int);

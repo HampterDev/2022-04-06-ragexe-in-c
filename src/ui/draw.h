@@ -36,6 +36,7 @@ void ui_window_reset_draws(struct UIWindow *self, int width, int height,
                                     DWORD argb);
 void ui_window_queue_bitmap(struct UIWindow *self, int x, int y, struct String name,
                                      DWORD argb, int width, int height);
+void ui_window_queue_bitmap_bottom(struct UIWindow *self, int x, int y, struct String name, DWORD argb, int height);
 
 void ui_window_draw_body(struct UIWindow *self, int top, int width,
                                   const char *bitmap);
