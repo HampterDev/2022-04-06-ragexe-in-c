@@ -23,7 +23,6 @@
 #include "game/context.h"
 #include "contents/connection_api.h"
 #include "platform/win_types.h"
-#include <winsock.h>
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/client.h"

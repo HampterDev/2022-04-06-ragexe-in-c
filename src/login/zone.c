@@ -9,7 +9,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include "session/session_state.h"
@@ -17,6 +16,7 @@
 #include "game/connection.h"
 #include "login/zone.h"
 #include "platform/filesystem.h"
+#include "platform/net.h"
 #include "platform/clock.h"
 
 struct ServerAddress g_mapServerIp;
@@ -25,7 +25,6 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
                                      struct String host)
 {
     struct String map;
-    struct in_addr addr;
     size_t len;
 
     g_session1.ownGid = gid;
@@ -38,8 +37,7 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
     string_resize(&map, len, 0);
     strcpy(g_session1.mapName, string_cstr(&map));
 
-    addr.s_addr = ip;
-    strcpy(g_mapServerIp.ip, inet_ntoa(addr));
+    strcpy(g_mapServerIp.ip, platform_net_ipv4_text(ip));
     g_mapServerIp.port = port;
     memcpy_s(g_mapServerIp.host, sizeof g_mapServerIp.host, string_cstr(&host),
                host.size + 1 > 0x81 ? 0x81 : host.size + 1);

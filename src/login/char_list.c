@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-#include <winsock2.h>
+#include "platform/net.h"
 #include "session/session_names.h"
 #include "platform/clock.h"
 
@@ -54,9 +54,9 @@ static void list_error_box(const char *text)
 
 static void billing_swap(struct LoginMode *self)
 {
-    self->billing.value1 = ntohl(self->billing.value1);
-    self->billing.value5 = ntohl(self->billing.value5);
-    self->billing.value9 = ntohl(self->billing.value9);
+    self->billing.value1 = platform_net_to_host32(self->billing.value1);
+    self->billing.value5 = platform_net_to_host32(self->billing.value5);
+    self->billing.value9 = platform_net_to_host32(self->billing.value9);
 }
 
 static void map_display_name(char *mapName)

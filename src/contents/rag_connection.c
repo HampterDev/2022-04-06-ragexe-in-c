@@ -67,7 +67,7 @@ char rag_connection_send_packet(struct RagConnection *self, int len, const void 
         return 0;
     g_session1.lastSendTime = platform_ticks_ms();
     memcpy(&id, packet, sizeof id);
-    if (self->base.socket == INVALID_SOCKET)
+    if (!self->base.socket)
         return 1;
     queue = self->base.hold_sends ? &self->base.held : &self->base.send_queue;
     byte_queue_write(queue, sizeof id, &id);

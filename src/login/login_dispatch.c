@@ -8,7 +8,7 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <winsock2.h>
+#include "platform/net.h"
 #include "core/msg_str.h"
 #include "session/session_names.h"
 #include "ui/character/select_char_new.h"
@@ -166,9 +166,9 @@ static void disconnect(void)
 static void read_billing(struct LoginMode *self, const struct LoginBillingInfo *src)
 {
     self->billing = *src;
-    self->billing.value1 = ntohl(self->billing.value1);
-    self->billing.value5 = ntohl(self->billing.value5);
-    self->billing.value9 = ntohl(self->billing.value9);
+    self->billing.value1 = platform_net_to_host32(self->billing.value1);
+    self->billing.value5 = platform_net_to_host32(self->billing.value5);
+    self->billing.value9 = platform_net_to_host32(self->billing.value9);
 }
 
 static void enter_zone(struct LoginMode *self, struct String host)
