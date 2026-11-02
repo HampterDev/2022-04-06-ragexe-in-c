@@ -58,6 +58,27 @@ static void reject(const BYTE *data, int size)
     assert(old_pixels == 0x12345678 && !allocations);
 }
 
+static void accept(const struct PngFixture *f, const BYTE *data, int size)
+{
+    struct BitmapRes bitmap = {0};
+
+    assert(bitmap_res_load_png_data(&bitmap, data, size));
+    assert(bitmap.width == f->width && bitmap.height == f->height);
+    assert(memcmp(bitmap.pixels, f->pixels, f->width * f->height * sizeof(DWORD)) == 0);
+    bitmap_resource_clear(&bitmap);
+    assert(!allocations);
+}
+
+static size_t image_end(const struct PngFixture *f)
+{
+    size_t i;
+
+    for (i = 8; i + 4 <= f->size; ++i)
+        if (!memcmp(f->data + i, "IEND", 4))
+            return i - 4;
+    return f->size;
+}
+
 int main(void)
 {
     SYSTEM_INFO info;
@@ -88,7 +109,10 @@ int main(void)
         for (n = 0; n < f->size; ++n) {
             BYTE *at = pages + info.dwPageSize - n;
             memcpy(at, f->data, n);
-            reject(at, (int)n);
+            if (n < image_end(f))
+                reject(at, (int)n);
+            else
+                accept(f, at, (int)n);
             ++boundaries;
         }
         memcpy(copy, f->data, f->size);
@@ -96,7 +120,7 @@ int main(void)
         reject(copy, (int)f->size);
         memcpy(copy, f->data, f->size);
         copy[f->size - 1] ^= 0x80;
-        reject(copy, (int)f->size);
+        accept(f, copy, (int)f->size);
         free(copy);
     }
     reject(png_oversized, sizeof png_oversized);
