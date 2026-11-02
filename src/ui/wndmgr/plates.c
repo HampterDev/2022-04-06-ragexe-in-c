@@ -274,11 +274,22 @@ void ui_window_mgr_move_dragged_plate(struct UIWindowMgr *self, int x, int y)
 
 void ui_window_mgr_set_screen_size(struct UIWindowMgr *self, int width, int height)
 {
+    struct MiniPartyWndAreaMgr *grid = g_miniPartyAreaMgr;
+    int resized = grid && (grid->area.right != width || grid->area.bottom != height);
+
     self->screen_width = width;
     self->screen_height = height;
     self->chat_wnd_x = 0;
     self->chat_wnd_y = height - self->chat_wnd_height;
-    mini_party_area_mgr_rebuild(area_mgr());
+    if (resized) {
+        mini_party_area_mgr_delete(grid);
+        g_miniPartyAreaMgr = NULL;
+    }
+    grid = area_mgr();
+    if (grid && grid->free.first == grid->free.last)
+        mini_party_area_mgr_rebuild(grid);
+    if (resized && self->plates.head)
+        ui_window_mgr_plates_changed(self);
 }
 
 void ui_window_mgr_command_plate_of(struct UIWindowMgr *self, int aid, int a, int b)
