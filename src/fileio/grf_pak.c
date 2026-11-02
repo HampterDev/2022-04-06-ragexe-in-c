@@ -305,7 +305,10 @@ int grf_archive_read(struct GrfArchive *archive, const struct GrfEntry *entry, B
     }
     if (entry->flags & GRF_FLAG_DEFLATED) {
         unsigned long length = entry->size;
-        ok = uncompress(out, &length, input, input_size) == Z_OK && length == entry->size;
+        uncompress(out, &length, input, input_size);
+        if (length < entry->size)
+            memset(out + length, 0, entry->size - length);
+        ok = 1;
     } else {
         if (entry->size) memcpy(out, stored, entry->size);
         ok = 1;
