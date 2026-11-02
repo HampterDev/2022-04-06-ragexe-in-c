@@ -5,7 +5,6 @@
 
 typedef int64_t RenderMsgArg;
 #define MSG_PTR(arg) ((void *)(intptr_t)(arg))
-#define MSG_ARG_PTR(p) ((RenderMsgArg)(intptr_t)(p))
 
 struct GameObjectOps {
     void (*destroy)(struct GameObject *);

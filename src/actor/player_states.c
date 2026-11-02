@@ -243,7 +243,7 @@ void player_refresh_status_effects(struct Player *self)
                 scale[1] = 0.0f;
                 scale[2] = 0.0f;
                 if (effect)
-                    rag_effect_send_msg(effect, NULL, 0xe, MSG_ARG_PTR(scale), 0, 0);
+                    rag_effect_send_msg(effect, NULL, 0xe, (intptr_t)scale, 0, 0);
             }
             break;
         case 0x15f:                 ps_launch(self, 0x315); break;

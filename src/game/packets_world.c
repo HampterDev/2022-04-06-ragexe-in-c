@@ -68,7 +68,7 @@ void game_mode_zc_talkbox_chat_contents(struct GameMode *self,
     void *talkbox = world_get_skill_by_aid(self->world, packet->aid);
 
     if (talkbox != 0)
-        render_object_send(talkbox, NULL, AM_TALKBOX_TEXT, (long long)(int)packet->text, 0, 0, 0);
+        render_object_send(talkbox, NULL, AM_TALKBOX_TEXT, (intptr_t)packet->text, 0, 0, 0);
 }
 
 void game_mode_zc_resurrection(struct GameMode *self, const struct PACKET_ZC_RESURRECTION *packet)

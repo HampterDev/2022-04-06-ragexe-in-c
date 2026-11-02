@@ -150,7 +150,7 @@ void sound_maker_send_msg(struct GameObject *object, struct GameObject *source,
         render_object_send_msg(object, source, msg, par1, par2, par3, par4);
         return;
     }
-    rec = (const struct RswSound *)LO(par1);
+    rec = MSG_PTR(par1);
     string_assign_cstr(&self->wave, rec->waveName);
     self->volume = rec->volume;
     self->area_w = rec->width;

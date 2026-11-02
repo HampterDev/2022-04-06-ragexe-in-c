@@ -165,7 +165,7 @@ int skill_use_basic(const struct SkillCast *cast)
             return 1;
         actor_launch_effect(unit, 0x6f);
         if (caster->falcon)
-            render_object_send((void *)caster->falcon, NULL, MSG_EFFECT_MOVE_TO, (int)&unit->pos.x, 0, 0, 0);
+            render_object_send(caster->falcon, NULL, MSG_EFFECT_MOVE_TO, (intptr_t)&unit->pos.x, 0, 0, 0);
         return 1;
     }
 

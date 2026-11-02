@@ -148,7 +148,7 @@ unsigned long long game_mode_launch_dummy_effect(struct GameMode *self, const Ve
         return 0;
     able_to_make_effect_construct(launcher);
     launcher->ops = &dummy_effect_launcher_ops.base;
-    render_object_send(launcher, NULL, DUMMY_LAUNCHER_MSG_START, MSG_ARG_PTR(at), effect_id, frames, value);
+    render_object_send(launcher, NULL, DUMMY_LAUNCHER_MSG_START, (intptr_t)at, effect_id, frames, value);
     list_push_back(&self->world->gameObjects, &launcher, sizeof launcher);
     return launcher->serial;
 }

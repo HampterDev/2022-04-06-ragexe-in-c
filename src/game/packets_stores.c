@@ -489,7 +489,7 @@ void game_mode_zc_store_entry(struct GameMode *self, const unsigned char *pkt)
     title[STORE_TITLE_MAX] = 0;
     actor = world_get_game_actor_by_aid(self->world, packet->aid);
     if (actor)
-        actor_send(actor, ACTOR_MSG_STORE_SIGN, (int)title, 0);
+        actor_send(actor, ACTOR_MSG_STORE_SIGN, (intptr_t)title, 0);
 }
 
 #pragma pack(push, 1)

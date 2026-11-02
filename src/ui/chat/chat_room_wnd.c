@@ -299,7 +299,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
             type = TALK_TYPE_PLAIN;
         else if (type == TALK_TYPE_SAVE)
             type = TALK_TYPE_SAVE_ROOM;
-        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (int)(INT_PTR)parts, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (intptr_t)parts, 0, 0);
         for (i = 3; i-- > 0;)
             string_free(&parts[i]);
     }

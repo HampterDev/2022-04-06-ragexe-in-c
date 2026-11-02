@@ -262,7 +262,7 @@ static void check_multiline(void)
 }
 static void parse(struct UIEditCtrl *edit, const char *text)
 {
-    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (int)text, 0, 0, 0);
+    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (intptr_t)text, 0, 0, 0);
 }
 static void check_replace(void)
 {

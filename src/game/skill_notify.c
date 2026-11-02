@@ -22,21 +22,21 @@ static struct GameActor *tell_caster(struct GameMode *mode, int aid, const struc
     *job = -1;
     *other_actor = 0;
     if ((unsigned)aid == (unsigned)g_session1.ownAid) {
-        render_object_send(mode->world->player, NULL, ACTOR_MSG_SKILL_HIT, MSG_ARG_PTR(info), 0, 0, 0);
+        render_object_send(mode->world->player, NULL, ACTOR_MSG_SKILL_HIT, (intptr_t)info, 0, 0, 0);
         actor = (struct GameActor *)mode->world->player;
         *job = game_actor_get_job(actor);
         return actor;
     }
     actor = world_get_game_actor_by_aid(mode->world, aid);
     if (actor) {
-        render_object_send(actor, NULL, ACTOR_MSG_SKILL_HIT, MSG_ARG_PTR(info), 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_SKILL_HIT, (intptr_t)info, 0, 0, 0);
         *other_actor = actor;
         *job = game_actor_get_job(actor);
         return actor;
     }
     unit = (struct GameActor *)world_get_skill_by_aid(mode->world, aid);
     if (unit)
-        render_object_send(unit, NULL, ACTOR_MSG_SKILL_HIT, MSG_ARG_PTR(info), 0, 0, 0);
+        render_object_send(unit, NULL, ACTOR_MSG_SKILL_HIT, (intptr_t)info, 0, 0, 0);
     return 0;
 }
 

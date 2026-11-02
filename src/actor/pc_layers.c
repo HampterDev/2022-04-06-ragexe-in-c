@@ -686,7 +686,7 @@ void pc_render_event_account(struct Pc *pc, const float *matrix)
             palette = palette_resource_colors(res_mgr_get(g_resMgr(), string_cstr(&pc->body_pal_name)), spr->palette);
         else
             palette = spr->palette;
-        render_object_send(pc, NULL, 0x78, MSG_ARG_PTR(&effect_query), 0, 0, 0);
+        render_object_send(pc, NULL, 0x78, (intptr_t)&effect_query, 0, 0, 0);
         QUAD_BUILDER(pc, &quad, palette, 0x101, 0.0f, 0.0f);
     }
     if (drawn)

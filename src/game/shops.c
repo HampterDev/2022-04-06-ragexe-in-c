@@ -257,7 +257,7 @@ void game_mode_buying_store_entry(struct GameMode *self, const struct PACKET_ZC_
     title[80] = 0;
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor != 0)
-        render_object_send(actor, NULL, ACTOR_MSG_BUYING_STORE_TITLE, MSG_ARG_PTR(title), 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_BUYING_STORE_TITLE, (intptr_t)title, 0, 0, 0);
 }
 
 #pragma pack(push, 1)

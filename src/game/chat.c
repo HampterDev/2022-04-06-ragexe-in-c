@@ -162,7 +162,7 @@ void game_mode_zc_notify_player_chat(struct GameMode *self, const unsigned char 
     } else {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)chars, 0xff00, 1, 0);
         chars = text.first == text.last ? 0 : text.first;
-        render_object_send((struct GameActor *)self->world->player, NULL, ACTOR_MSG_SAY, MSG_ARG_PTR(chars), 0, 0, 0);
+        render_object_send((struct GameActor *)self->world->player, NULL, ACTOR_MSG_SAY, (intptr_t)chars, 0, 0, 0);
     }
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, text.first == text.last ? 0 : text.first);

@@ -70,7 +70,7 @@ enum {
 };
 static __inline void effect_set_pos(struct RagEffect *effect, const Vec3 *at)
 {
-    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_POS, (int64_t)(int)at, 0, 0);
+    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_POS, (intptr_t)at, 0, 0);
 }
 
 static __inline float actor_screen_heading(struct GameMode *mode, struct GameActor *actor)

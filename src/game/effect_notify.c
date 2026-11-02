@@ -559,7 +559,7 @@ void game_mode_zc_devotion_list(struct GameMode *self, const struct PacketDevoti
             continue;
         line = game_actor_launch_effect(actor, EF_DEVOTION_LINE, here, 0.0f);
         if (line)
-            rag_effect_send_msg(line, NULL, EFFECT_MSG_SET_ENDS, (int)ends, 0, 0);
+            rag_effect_send_msg(line, NULL, EFFECT_MSG_SET_ENDS, (intptr_t)ends, 0, 0);
     }
 }
 

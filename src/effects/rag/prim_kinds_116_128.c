@@ -280,7 +280,7 @@ void prim_spawn_effects_render(struct EffectPrim *self)
         if (!effect)
             return;
         at = sp->at;
-        rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, MSG_ARG_PTR(&at), 0, 0);
+        rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, (intptr_t)&at, 0, 0);
         return;
     }
     if (sp->mode == SPAWN_EVERY_8)
@@ -302,7 +302,7 @@ void prim_spawn_effects_render(struct EffectPrim *self)
     beat.x = (float)sp->frame;
     beat.y = sp->frame % 16 != 0 ? 1.0f : 0.0f;
     beat.z = 0.0f;
-    rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, MSG_ARG_PTR(&at), MSG_ARG_PTR(&beat), 0);
+    rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, (intptr_t)&at, (intptr_t)&beat, 0);
 }
 
 void prim_arc_wall_render(struct EffectPrim *self, const float *view)

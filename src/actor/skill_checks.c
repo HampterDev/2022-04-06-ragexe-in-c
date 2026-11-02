@@ -94,7 +94,7 @@ static int send_skill_hit_60(struct GameActor *self, struct GameObject *target,
     hit.motion = (float)use->attacked_mt / 288.0f;
     hit.is_sp_damage = 0;
     hit.skill_id = skill;
-    render_object_send(target, self, 0x1b, MSG_ARG_PTR(&hit), 0, 0, 0);
+    render_object_send(target, self, 0x1b, (intptr_t)&hit, 0, 0, 0);
     return 1;
 }
 
@@ -121,7 +121,7 @@ static int send_skill_hit_61(struct GameActor *self, struct GameObject *target,
     hit.motion = (float)use->attacked_mt / 288.0f;
     hit.is_sp_damage = 0;
     hit.skill_id = skill;
-    render_object_send(target, self, 0x1b, MSG_ARG_PTR(&hit), 0, 0, 0);
+    render_object_send(target, self, 0x1b, (intptr_t)&hit, 0, 0, 0);
     return 1;
 }
 
@@ -149,7 +149,7 @@ static int sot_attack_duration(const struct GameActor *self)
 
 static void sot_effect_at(struct RagEffect *e, const Vec3 *pos)
 {
-    rag_effect_send_msg(e, NULL, 0xe, MSG_ARG_PTR(pos), 0, 0);
+    rag_effect_send_msg(e, NULL, 0xe, (intptr_t)pos, 0, 0);
 }
 
 void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillUse *rec)
@@ -179,11 +179,11 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         target = world_get_game_actor_by_aid(world, rec->target_aid);
     if (target != NULL || g_session1.ownAid == rec->target_aid) {
         if ((skill == 0x81 || skill == 0x17d) && self->falcon != 0)
-            render_object_send((void *)self->falcon, NULL, 0x1d, MSG_ARG_PTR(&target->pos), 0, 0, 0);
+            render_object_send(self->falcon, NULL, 0x1d, (intptr_t)&target->pos, 0, 0, 0);
         if ((skill == 0x8c3 || skill == 0x8c4) && self->cart != 0)
-            render_object_send((void *)self->cart, NULL, 0x1d, MSG_ARG_PTR(&target->pos), 0, 0, 0);
+            render_object_send(self->cart, NULL, 0x1d, (intptr_t)&target->pos, 0, 0, 0);
         if ((skill == 0x14ce || skill == 0x14d1) && self->falcon != 0)
-            render_object_send((void *)self->falcon, NULL, 0x1d, MSG_ARG_PTR(&target->pos), 0, 0, 0);
+            render_object_send(self->falcon, NULL, 0x1d, (intptr_t)&target->pos, 0, 0, 0);
     } else {
         target = (struct GameActor *)world_get_skill_by_aid(mode->world, self->attack_target_aid);
     }
@@ -349,9 +349,9 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         break;
     }
     if (with_damage)
-        render_object_send(target, self, hit_msg, MSG_ARG_PTR(&msg), per_hit, 0, 0);
+        render_object_send(target, self, hit_msg, (intptr_t)&msg, per_hit, 0, 0);
     else
-        render_object_send(target, self, hit_msg, MSG_ARG_PTR(&msg), 0, 0, 0);
+        render_object_send(target, self, hit_msg, (intptr_t)&msg, 0, 0, 0);
     msg.hit_effect = -1;
 
     switch (skill) {
@@ -476,7 +476,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
                 msg.hit_effect = 0x7a;
             } else if (skill == 0x174) {
                 msg.kind = 0x6c;
-                render_object_send(self, self, 0x1b, MSG_ARG_PTR(&msg), 0, 0, 0);
+                render_object_send(self, self, 0x1b, (intptr_t)&msg, 0, 0, 0);
             } else if (skill == 0x8a3) {
                 msg.hit_effect = g_session1.map_rule_flags[0] == 1 ? -1 : 0x512;
             } else if (skill == 0x8a5) {
@@ -515,10 +515,10 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
             switch (skill) {
             case 0x19d: case 0x19f: case 0x1a1: case 0x1a3: case 0x1a5:
             case 0x91c: case 0x920: case 0x926: case 0xa10: case 0xa14: case 0xa20: case 0xa21:
-                render_object_send(target, self, 0x85, MSG_ARG_PTR(&msg), total, 0, 0);
+                render_object_send(target, self, 0x85, (intptr_t)&msg, total, 0, 0);
                 break;
             default:
-                render_object_send(target, self, 0x1b, MSG_ARG_PTR(&msg), total, 0, 0);
+                render_object_send(target, self, 0x1b, (intptr_t)&msg, total, 0, 0);
                 break;
             }
         }

@@ -45,17 +45,17 @@ static struct GameObject *sm_msg_effect(struct GameActor *self, struct GameMode 
     return obj;
 }
 
-static void sm_hold(struct GameActor *self, struct GameMode *mode, int *slot, int kind)
+static void sm_hold(struct GameActor *self, struct GameMode *mode, struct GameObject **slot, int kind)
 {
     if (*slot == 0)
-        *slot = (int)sm_msg_effect(self, mode, kind, 1);
+        *slot = sm_msg_effect(self, mode, kind, 1);
 }
 
-static void sm_drop(int *slot)
+static void sm_drop(struct GameObject **slot)
 {
     if (*slot == 0)
         return;
-    render_object_send((void *)*slot, NULL, 0x35, 0, 0, 0, 0);
+    render_object_send(*slot, NULL, 0x35, 0, 0, 0, 0);
     *slot = 0;
 }
 
@@ -211,9 +211,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
             if (e) {
                 rag_effect_send_msg(e, NULL, 0x2c, 1, 0, 0);
                 if ((hit_effect == 0xd8 || hit_effect == 0xd9) && attacker) {
-                    int at = (int)&attacker->pos;
-
-                    rag_effect_send_msg(e, NULL, 0xe, at, 0, 0);
+                    rag_effect_send_msg(e, NULL, 0xe, (intptr_t)&attacker->pos, 0, 0);
                 }
             }
         }
@@ -593,9 +591,9 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
             if (par1 == 0x22) {
                 if (self->emotion_mute)
                     break;
-                self->emotion_mute = (int)game_mode_make_emotion_effect(mode, &self->pos.x, 0x22, self->aid);
+                self->emotion_mute = game_mode_make_emotion_effect(mode, &self->pos.x, 0x22, self->aid);
                 list_push_back(&self->attached, &self->emotion_mute, sizeof self->emotion_mute);
-                obj = (struct GameObject *)self->emotion_mute;
+                obj = self->emotion_mute;
             } else {
                 obj = game_mode_make_emotion_effect(mode, &self->pos.x, (int)par1, self->aid);
                 list_push_back(&self->attached, &obj, sizeof obj);
@@ -703,14 +701,14 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     }
     case 0x30: {
         struct ListNode *head = self->attached.head;
-        int value;
+        struct GameObject *value;
 
         for (node = head->next; node != head; node = node->next)
-            if (*LIST_VALUE(node, int) == (int)sender)
+            if (*LIST_VALUE(node, struct GameObject *) == source)
                 break;
         if (node == head)
             break;
-        value = *LIST_VALUE(node, int);
+        value = *LIST_VALUE(node, struct GameObject *);
         if (self->cart == value) self->cart = 0;
         else if (self->falcon == value) self->falcon = 0;
         else if (self->emotion_mark == value) self->emotion_mark = 0;
@@ -735,7 +733,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         if (session_is_any_super_novice_job(&g_session1, game_actor_get_job(self)))
             kind = 0;
         plus = session_is_baby_job(&g_session1, game_actor_get_job(self)) ? 1 : 0;
-        self->cart = (int)sm_msg_effect(self, mode, sm_cart_kinds[plus + kind * 2], 1);
+        self->cart = sm_msg_effect(self, mode, sm_cart_kinds[plus + kind * 2], 1);
         break;
     }
     case 0x34: case 0x8a:
@@ -751,7 +749,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x39: sm_drop(&self->emotion_mark); break;
     case 0x3a:
         if (self->frozen_mark == 0)
-            self->frozen_mark = (int)sm_msg_effect(self, mode, 3, shown);
+            self->frozen_mark = sm_msg_effect(self, mode, 3, shown);
         break;
     case 0x3b: case 0x6b: sm_drop(&self->frozen_mark); break;
     case 0x3d:
@@ -765,13 +763,13 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x44: sm_drop(&self->curse_mark); break;
     case 0x45:
         if (self->sleep_mark == 0) {
-            self->sleep_mark = (int)sm_msg_effect(self, mode, 7, 1);
+            self->sleep_mark = sm_msg_effect(self, mode, 7, 1);
             actor_set_state(self, 0xa, 1);
         }
         break;
     case 0x46:
         if (self->sleep_mark) {
-            render_object_send((void *)self->sleep_mark, NULL, 0x35, 0, 0, 0, 0);
+            render_object_send(self->sleep_mark, NULL, 0x35, 0, 0, 0, 0);
             self->sleep_mark = 0;
             actor_set_state(self, self->resume_state, 1);
         }
@@ -886,12 +884,12 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         }
         obj = sm_msg_effect(self, mode, kind, 1);
         render_object_set_motion_delay((struct RenderObject *)obj, 6.0f);
-        self->falcon = (int)obj;
+        self->falcon = obj;
         break;
     }
     case 0x66:
         if (self->falcon) {
-            render_object_send((void *)self->falcon, NULL, 0x35, 0, 0, 0, 0);
+            render_object_send(self->falcon, NULL, 0x35, 0, 0, 0, 0);
             ((struct MsgEffect *)self->falcon)->drawn = 0;
             self->falcon = 0;
         }
@@ -910,7 +908,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     }
     case 0x76:
         if (self->emotion_mute)
-            game_remove_object((void *)self->emotion_mute);
+            game_remove_object(self->emotion_mute);
         break;
     case 0x7d: {
         int first, second;
@@ -983,7 +981,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         default: kind = 0; break;
         }
         if (kind)
-            self->cart = (int)sm_msg_effect(self, mode, kind, 1);
+            self->cart = sm_msg_effect(self, mode, kind, 1);
         break;
     }
     case 0x8b:

@@ -157,7 +157,7 @@ static void view_cases(void)
             record_view(&view);
             words = view.words.first;
             alias = words != view.words.last ? string_cstr(&words[0]->text) : "";
-            ui_text_view_ex_send_msg(&view.viewer.list.base, NULL, UI_MSG_ADD_TEXT, (int)alias, 0, 0, 0);
+            ui_text_view_ex_send_msg(&view.viewer.list.base, NULL, UI_MSG_ADD_TEXT, (intptr_t)alias, 0, 0, 0);
             record_view(&view);
 #ifdef UI_STRING_REFERENCE
             ui_text_view_ex_clear(&view);

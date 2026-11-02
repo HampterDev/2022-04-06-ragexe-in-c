@@ -167,7 +167,7 @@ void game_mode_zc_notify_newentry7(struct GameMode *self, const struct PacketNew
 
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor) {
-        actor_send(actor, pkt->object_type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (int)&info, 0);
+        actor_send(actor, pkt->object_type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (intptr_t)&info, 0);
     } else {
         actor = entry_new_actor(self, pkt->object_type, pkt->job);
         if (!actor)
@@ -177,10 +177,10 @@ void game_mode_zc_notify_newentry7(struct GameMode *self, const struct PacketNew
         if (pkt->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &pkt->aid))
                 game_actor_set_mark_listed(actor, 1);
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (int)&info, ENTRY_PAR_NEW_PC);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, ENTRY_PAR_NEW_PC);
         } else {
             info.sex = 0;
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (int)&info, ENTRY_PAR_NEW_UNIT);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, ENTRY_PAR_NEW_UNIT);
         }
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
@@ -233,7 +233,7 @@ void game_mode_zc_notify_standentry8(struct GameMode *self, const struct PacketS
 
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor) {
-        actor_send(actor, pkt->object_type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (int)&info, 0);
+        actor_send(actor, pkt->object_type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (intptr_t)&info, 0);
     } else {
         actor = entry_new_actor(self, pkt->object_type, pkt->job);
         if (!actor)
@@ -243,10 +243,10 @@ void game_mode_zc_notify_standentry8(struct GameMode *self, const struct PacketS
         if (pkt->object_type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &pkt->aid))
                 game_actor_set_mark_listed(actor, 1);
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (int)&info, 0);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0);
         } else {
             info.sex = 0;
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (int)&info, 0);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 0);
         }
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
@@ -299,7 +299,7 @@ void game_mode_zc_notify_moveentry9(struct GameMode *self, const struct PacketMo
     if (actor) {
         if (actor->mark_listed)
             entry_mark_moved(self, actor, info.dst_x, info.dst_y);
-        actor_send(actor, ACTOR_MSG_MOVE_ENTRY, (int)&info, 0);
+        actor_send(actor, ACTOR_MSG_MOVE_ENTRY, (intptr_t)&info, 0);
     } else {
         actor = entry_new_actor(self, pkt->object_type, pkt->job);
         if (!actor)
@@ -313,7 +313,7 @@ void game_mode_zc_notify_moveentry9(struct GameMode *self, const struct PacketMo
             info.sex = 0;
         }
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
-        actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (int)&info, 0);
+        actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (intptr_t)&info, 0);
     }
     entry_hp_tail(self, actor, pkt->object_type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version,
                   pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->aid);
@@ -378,7 +378,7 @@ static void moveentry10(struct GameMode *self, const struct PacketMoveEntry10 *p
         }
         msg = ACTOR_MSG_NEW_MOVE_ENTRY;
     }
-    actor_send(actor, msg, (int)&info, 0);
+    actor_send(actor, msg, (intptr_t)&info, 0);
     champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     entry_hp_tail(self, actor, type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version, pkt->clevel,
                   pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->char_id);
@@ -456,7 +456,7 @@ static void newentry10(struct GameMode *self, const struct PacketNewEntry10 *pkt
 
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor) {
-        actor_send(actor, type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (int)&info, 0);
+        actor_send(actor, type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (intptr_t)&info, 0);
     } else {
         unsigned aid = pkt->aid;
 
@@ -468,11 +468,11 @@ static void newentry10(struct GameMode *self, const struct PacketNewEntry10 *pkt
         if (type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &aid))
                 game_actor_set_mark_listed(actor, 1);
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (int)&info, ENTRY_PAR_NEW_PC);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, ENTRY_PAR_NEW_PC);
         } else {
             if (!entry_unit_keeps_sex(type, pkt->job, 5))
                 info.sex = 0;
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (int)&info, ENTRY_PAR_NEW_UNIT);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, ENTRY_PAR_NEW_UNIT);
         }
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
@@ -543,7 +543,7 @@ static void standentry10(struct GameMode *self, const struct PacketStandEntry10 
 
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor) {
-        actor_send(actor, type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (int)&info, 0);
+        actor_send(actor, type == ENTRY_OBJ_PC ? ACTOR_MSG_ENTRY : ACTOR_MSG_ENTRY_OLD, (intptr_t)&info, 0);
     } else {
         unsigned aid = pkt->aid;
 
@@ -555,11 +555,11 @@ static void standentry10(struct GameMode *self, const struct PacketStandEntry10 
         if (type == ENTRY_OBJ_PC) {
             if (entry_aid_listed(self, &aid))
                 game_actor_set_mark_listed(actor, 1);
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (int)&info, 0);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0);
         } else {
             if (!entry_unit_keeps_sex(type, pkt->job, 12))
                 info.sex = 0;
-            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (int)&info, 0);
+            actor_send(actor, ACTOR_MSG_NEW_ENTRY_OLD, (intptr_t)&info, 0);
         }
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }

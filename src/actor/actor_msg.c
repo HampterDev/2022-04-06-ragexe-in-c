@@ -13,7 +13,7 @@ int g_multiHitInterval = 200;
 int g_maxAttackDelayMs = 432;
 
 #define SEND_HIT(target, self, hit, total) \
-    render_object_send((target), (self), 0x1b, MSG_ARG_PTR(hit), (total), 0, 0)
+    render_object_send((target), (self), 0x1b, (intptr_t)hit, (total), 0, 0)
 
 static int hit_job_mark(int job)
 {

@@ -511,7 +511,7 @@ static int store_assistant_enter(struct GameMode *self, struct ActorEntryInfo *i
     }
     actor = world_get_game_actor_by_aid(self->world, info->aid);
     if (actor) {
-        render_object_send(actor, NULL, ACTOR_MSG_ENTRY, (int)info, 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_ENTRY, (intptr_t)info, 0, 0, 0);
     } else {
         void *block = mem_alloc(sizeof(struct Pc));
         struct Pc *pc = block ? pc_construct((struct Pc *)block) : 0;
@@ -521,7 +521,7 @@ static int store_assistant_enter(struct GameMode *self, struct ActorEntryInfo *i
         actor = (struct GameActor *)pc;
         list_push_back(&self->world->gameObjects, &pc, sizeof pc);
         actor_list_push_back(&self->world->actors, pc);
-        render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (int)info, 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (intptr_t)info, 0, 0, 0);
     }
     actor->is_store_assistant = 1;
     return 1;

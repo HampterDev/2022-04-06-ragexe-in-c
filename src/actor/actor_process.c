@@ -267,7 +267,7 @@ void game_actor_process_will_be_attacked(struct GameActor *self)
             string_free(&attacker_name);
             string_free(&target_name);
         }
-        render_object_send(self, NULL, hit->kind, MSG_ARG_PTR(hit), 0, 0, 0);
+        render_object_send(self, NULL, hit->kind, (intptr_t)hit, 0, 0, 0);
         node = list_erase(&self->hit_queue, node, NULL);
     }
 }

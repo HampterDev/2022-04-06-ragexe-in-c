@@ -564,7 +564,7 @@ void game_mode_zc_notify_move(struct GameMode *self, const unsigned char *pkt)
     actor = world_get_game_actor_by_aid(self->world, packet->aid);
     session_sync_server_time(&g_session1, move.start_tick);
     if (actor)
-        actor_send(actor, ACTOR_MSG_MOVE, (int)&move, 0);
+        actor_send(actor, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
 }
 
 void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char *pkt)
@@ -575,7 +575,7 @@ void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char 
     move.start_tick = packet->start_tick;
     packet_decode_move_data(packet->move_data, &move.src_x, &move.src_y, &move.dst_x, &move.dst_y, &move.sub_x, &move.sub_y);
     session_sync_server_time(&g_session1, move.start_tick);
-    actor_send((struct GameActor *)self->world->player, ACTOR_MSG_MOVE, (int)&move, 0);
+    actor_send((struct GameActor *)self->world->player, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
 }
 
 void game_mode_zc_change_direction(struct GameMode *self, const unsigned char *pkt)

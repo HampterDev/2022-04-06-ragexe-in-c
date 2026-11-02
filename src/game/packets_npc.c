@@ -68,7 +68,7 @@ void game_mode_zc_npc_chat(struct GameMode *self, const unsigned char *pkt)
     ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, color, 0, 0);
     npc = world_get_game_actor_by_aid(self->world, aid);
     if (npc)
-        actor_send(npc, 7, (int)text, color);
+        actor_send(npc, 7, (intptr_t)text, color);
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, text);
 }

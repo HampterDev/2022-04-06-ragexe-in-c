@@ -181,14 +181,14 @@ static void skill_attack(struct Skill *self, const struct ActorSkillUse *attack)
         hit.is_sp_damage = 0;
         hit.motion = (float)attack->attacked_mt / 288.0f;
         so_far = per_hit;
-        render_object_send(target, me, ACTOR_MSG_HIT, MSG_ARG_PTR(&hit), so_far, 0, 0);
+        render_object_send(target, me, ACTOR_MSG_HIT, (intptr_t)&hit, so_far, 0, 0);
         for (i = 1; i < count; i++) {
             target = effect_find_actor(attack->target_aid);
             if (!target)
                 break;
             hit.tick += g_multiHitInterval;
             so_far += per_hit;
-            render_object_send(target, me, ACTOR_MSG_HIT, MSG_ARG_PTR(&hit), so_far, 0, 0);
+            render_object_send(target, me, ACTOR_MSG_HIT, (intptr_t)&hit, so_far, 0, 0);
         }
     }
     if (self->model)
@@ -460,7 +460,7 @@ static void set_type(struct Skill *self, int type)
         if (self->effect_id != -1 && !effect_mgr_spawn(g_effectMgr, 0, self->effect_id, me->pos, 0, -1, 0, 0)) {
             struct RagEffect *effect = game_actor_launch_effect((struct GameActor *)me, self->effect_id, vec_zero(), 0);
             if (effect)
-                rag_effect_send_msg(effect, 0, EFFECT_MSG_START, MSG_ARG_PTR(&me->pos), 0, 0);
+                rag_effect_send_msg(effect, 0, EFFECT_MSG_START, (intptr_t)&me->pos, 0, 0);
         }
         break;
     }

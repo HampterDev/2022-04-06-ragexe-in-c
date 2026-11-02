@@ -267,7 +267,7 @@ int skill_use_late(const struct SkillCast *cast)
         at = actor_pos(caster);
         effect = actor_launch_effect(caster, 0x439);
         if (effect)
-            rag_effect_send_msg(effect, NULL, EFFECT_MSG_PRESET, 0xffff, 0x422, (int64_t)(int)&at);
+            rag_effect_send_msg(effect, NULL, EFFECT_MSG_PRESET, 0xffff, 0x422, (intptr_t)&at);
         return 1;
     }
 

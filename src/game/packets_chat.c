@@ -47,7 +47,7 @@ void game_mode_zc_room_newentry(struct GameMode *self, const struct PacketRoomEn
     if (room.title.size > CHAT_ROOM_TITLE_MAX) {
         string_truncate(&room.title, CHAT_ROOM_TITLE_MAX);
     }
-    actor_send(owner, ACTOR_MSG_CHAT_ROOM, (int)&room, 0);
+    actor_send(owner, ACTOR_MSG_CHAT_ROOM, (intptr_t)&room, 0);
     string_free(&room.password);
     string_free(&room.title);
 }
@@ -395,7 +395,7 @@ void game_mode_zc_notify_chat(struct GameMode *self, const unsigned char *pkt)
         }
         speaker = world_get_game_actor_by_aid(self->world, aid);
         if (speaker)
-            actor_send(speaker, ACTOR_MSG_TALK, (int)line, 0);
+            actor_send(speaker, ACTOR_MSG_TALK, (intptr_t)line, 0);
     }
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, line);

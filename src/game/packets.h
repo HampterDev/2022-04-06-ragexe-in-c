@@ -11,7 +11,7 @@
 #include "actor/render_ops.h"
 #include "core/msg_str.h"
 
-static __inline void actor_send(struct GameActor *actor, int msg, long long par1, long long par2)
+static __inline void actor_send(struct GameActor *actor, int msg, RenderMsgArg par1, RenderMsgArg par2)
 {
     render_object_send(actor, NULL, msg, par1, par2, 0, 0);
 }

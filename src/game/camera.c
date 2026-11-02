@@ -134,7 +134,7 @@ void game_mode_point_mouse_at(struct GameMode *self, float x, float z, int red)
 
     position[0] = x;
     position[1] = z;
-    render_object_send(pointer, NULL, MOUSE_POINTER_MSG_SHOW_MARKER, MSG_ARG_PTR(position), red, 0, 0);
+    render_object_send(pointer, NULL, MOUSE_POINTER_MSG_SHOW_MARKER, (intptr_t)position, red, 0, 0);
 }
 
 #define WID_CAMERA_INFO 0x121

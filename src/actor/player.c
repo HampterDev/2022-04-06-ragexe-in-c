@@ -71,7 +71,7 @@ unsigned char player_on_process(struct GameObject *object)
         req.start_tick = session_get_server_time(&g_session1);
         req.dst_x = self->requested_cell_x;
         req.dst_y = self->requested_cell_y;
-        render_object_send(self, NULL, 0, MSG_ARG_PTR(&req), 0, 0, 0);
+        render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
     }
     player_process_proceed(self);
     result = actor_process_state(self);
@@ -758,10 +758,10 @@ void player_process_costume_body(struct Player *self, unsigned char show)
 
             list_push_back(&self->attached, &obj, sizeof obj);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-            self->costume_body_obj = (int)obj;
+            self->costume_body_obj = obj;
         }
     } else if (self->costume_body_obj) {
-        render_object_send((void *)self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
+        render_object_send(self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
         self->costume_body_obj = 0;
     }
 }

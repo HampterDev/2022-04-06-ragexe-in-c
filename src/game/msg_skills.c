@@ -84,7 +84,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
             strcat(skill, " ♡");
         strcat(line, " !!  ");
         strcat(line, msg_str(0x2f7));
-        render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);
+        render_object_send(actor, NULL, 7, (intptr_t)line, 0, 0, 0);
         string_free(&name);
         return 0;
     }
@@ -95,7 +95,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
             strcat(skill, " ♡");
         strcat(line, " !!  ");
         strcat(line, skill);
-        render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);
+        render_object_send(actor, NULL, 7, (intptr_t)line, 0, 0, 0);
         return 0;
     }
     if (skill_id == 0x146 || skill_id == 0x13e || skill_id == 0x1ec)
@@ -104,7 +104,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         return 0;
     strcpy(skill, skill_name(skill_id));
     strcat(skill, " !!");
-    render_object_send(actor, NULL, 7, MSG_ARG_PTR(skill), 0, 0, 0);
+    render_object_send(actor, NULL, 7, (intptr_t)skill, 0, 0, 0);
     return 0;
 }
 
