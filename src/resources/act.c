@@ -6,7 +6,6 @@
 #include "fileio/resource_api.h"
 #include "fileio/file.h"
 #include <limits.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,20 +64,10 @@ static int animation_count(struct File *file, size_t *out, size_t minimum_record
     return 1;
 }
 
-static int animation_center(int value, int size, float scale, int *out)
+static int animation_center(int value, int size, float scale)
 {
-    float result;
-    if (size < 0 || !isfinite(scale))
-        return 0;
-    if (scale == 0.0f) {
-        *out = 0;
-        return 1;
-    }
-    result = ((float)value - (float)(size / 2 + size % 2) * scale) / scale;
-    if (!isfinite(result) || result < (float)INT_MIN || result >= 2147483648.0f)
-        return 0;
-    *out = (int)result;
-    return 1;
+    float result = ((float)value - (float)(size / 2 + size % 2) * scale) / scale;
+    return result >= (float)INT_MIN && result < 2147483648.0f ? (int)result : INT_MIN;
 }
 
 static int animation_read_clip(struct ActReader *reader, struct SprClip *clip)
@@ -105,14 +94,14 @@ static int animation_read_clip(struct ActReader *reader, struct SprClip *clip)
         memcpy(&clip->zoomY, &values[6], 4);
         clip->angle = values[7]; clip->clipType = values[8];
     }
-    if (!isfinite(clip->zoomX) || !isfinite(clip->zoomY))
-        return 0;
-    if (clip->sprIndex < 0)
-        return 1;
     if (reader->version >= 0x205) {
+        if (clip->sprIndex == -1)
+            return 1;
         width = values[9]; height = values[10];
     } else {
         struct SprImg *image;
+        if (clip->sprIndex < 0)
+            return 1;
         if (!reader->sprite_queried) {
             reader->sprite = res_mgr_get(g_resMgr(), reader->sprite_name);
             reader->sprite_queried = 1;
@@ -123,8 +112,9 @@ static int animation_read_clip(struct ActReader *reader, struct SprClip *clip)
         width = image->width * (image->widthHalved ? 2 : 1);
         height = image->height * (image->heightHalved ? 2 : 1);
     }
-    return animation_center(clip->x, width, clip->zoomX, &clip->x)
-        && animation_center(clip->y, height, clip->zoomY, &clip->y);
+    clip->x = animation_center(clip->x, width, clip->zoomX);
+    clip->y = animation_center(clip->y, height, clip->zoomY);
+    return 1;
 }
 
 static int animation_read_motion(struct ActReader *reader, struct Motion *motion)
@@ -180,7 +170,7 @@ static int animation_parse(struct AnimationData *data, struct File *file, const 
         error_msg("Illegal file format", 0); error_msg(name, 0);
         return 0;
     }
-    if (header[1] < 0x100 || header[1] > 0x205) {
+    if (header[1] > 0x205) {
         error_msg("Unsupported Version. Content may be corrupted", 0);
         return 0;
     }
@@ -226,8 +216,8 @@ static int animation_parse(struct AnimationData *data, struct File *file, const 
     if (reader.version >= 0x202) {
         for (a = 0; a < data->action_count; ++a) {
             float delay;
-            if (!file_read(file, &delay, 4) || !isfinite(delay) || delay <= 0) goto done;
-            data->actions[a].delay = delay;
+            if (file_read(file, &delay, 4))
+                data->actions[a].delay = delay;
         }
     }
     ok = 1;
