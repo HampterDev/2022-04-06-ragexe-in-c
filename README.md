@@ -281,7 +281,8 @@ Data, time and leaks:
 - The frame no longer locks the render target for values nothing reads.
   The lock made the CPU wait for the GPU every frame.
 - The game loop yields (`Sleep(0)`) after each frame instead of sleeping a
-  millisecond.
+  millisecond. It still sleeps a millisecond while it draws nothing (alt-tabbed out of
+  exclusive fullscreen), when no present waits for the display.
 - Text measurements are cached, keyed on the font, the charset and the
   string.
 - The lookup key prepared from a resource name is remembered, so per-frame
