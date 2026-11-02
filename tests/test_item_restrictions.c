@@ -126,7 +126,6 @@ static void run(const char *text, int expected_rows)
         assert(read_count == (text && !negative_size ? 1 : 0));
         for (i = 0; i < 32; ++i) assert(!allocations[i].pointer);
     } else {
-        /* A failing pre-fix traversal cannot unwind its temporary vector. */
         for (i = 0; i < 32; ++i) if (allocations[i].pointer) mem_free(allocations[i].pointer);
     }
 }
@@ -137,37 +136,37 @@ static void expect_first(void)
     assert(row_count && rows[0].id == 501 && !memcmp(rows[0].flags, flags, sizeof flags));
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
-    if (argc == 2 && !strcmp(argv[1], "newline")) {
-        run("501 1 0 1 0 1 0 1 0\n", 1);
-    } else if (argc == 2 && !strcmp(argv[1], "incomplete")) {
-        run("501 1 ", 0);
-    } else {
-        run("501 1 0 1 0 1 0 1 0 \r\n", 1); expect_first();
-        run("501 1 0 1 0 1 0 1 0\n", 1); expect_first();
-        run("501 1 0 1 0 1 0 1 0", 1); expect_first();
-        run(" \t501\t1  0\t1 0 1 0 1 0\r\n\r\n502 0 1 0 1 0 1 0 1", 2); expect_first();
-        assert(rows[1].id == 502 && rows[1].flags[7] == 1);
-        run("// 10 20\r\n501 1 0 1 0 1 0 1 0 // 99 88\n//end", 1); expect_first();
-        run("501 1 ", 0);
-        run("501 1 0 1 0 1 0 1 0\n502 1", 1); expect_first();
-        run("", 0);
-        run(" \r\n\t// no records", 0);
-        run("501 1 0 broken 0 1 0 1 0", 0);
-        run("501 1 0 1x 0 1 0 1 0", 0);
-        run("501 2147483648 0 1 0 1 0 1 0", 0);
-        run("501 -2147483649 0 1 0 1 0 1 0", 0);
-        run("501 -2147483648 2147483647 +1 0 1 0 1 0", 1);
-        assert(rows[0].flags[0] == INT_MIN && rows[0].flags[1] == INT_MAX && rows[0].flags[2] == 1);
-        failed_read = 1; run("501 1 0 1 0 1 0 1 0 ", 0); failed_read = 0;
-        negative_size = 1; run("501 ", 0); negative_size = 0;
-        run(NULL, 0); assert(warning_count == 1);
-        g_language = (struct Language *)&localized;
-        run("501 1 0 1 0 1 0 1 0", 1); expect_first();
-        assert(localized == 1);
-    }
+    run("501 1 0 1 0 1 0 1 0 \r\n", 1); expect_first();
+    run("501\t1\t0\t1\t0\t1\t0\t1\t0\t// Red_Potion\r\n502\t0\t1\t0\t1\t0\t1\t0\t1\t//\r\n", 2); expect_first();
+    assert(rows[1].id == 502 && rows[1].flags[7] == 1);
+    run("501 1 0 1 0 1 0 1 0\n", 0);
+    run("501 1 0 1 0 1 0 1 0", 0);
+    run("501 1 0 1 0 1 0 1 0\t\n502 0 1 0 1 0 1 0 1", 1); expect_first();
+    run("501\t1  0\t1 0 1 0 1 0\t", 1);
+    assert(rows[0].id == 501 && rows[0].flags[0] == 1 && rows[0].flags[1] == 0 && rows[0].flags[2] == 0 && rows[0].flags[3] == 1);
+    run(" 501 1 0 1 0 1 0 1 ", 1);
+    assert(rows[0].id == 0 && rows[0].flags[0] == 501 && rows[0].flags[7] == 1);
+    run("// 10 20\r\n501 1 0 1 0 1 0 1 0 // 99 88\n//end", 1); expect_first();
+    run("\xef\xbb\xbf// ItemMoveInfoV5\r\n501\t1\t0\t1\t0\t1\t0\t1\t0\t//\r\n", 1); expect_first();
+    run("501 1 0 broken 0 1 0 1 0 ", 1);
+    assert(rows[0].flags[0] == 1 && rows[0].flags[2] == 0 && rows[0].flags[4] == 1);
+    run("501 1 0 1x 0 1 0 1 0 # note\r\n", 1);
+    assert(rows[0].flags[2] == 1 && rows[0].flags[7] == 0);
+    run("501 1 ", 0);
+    run("501 1 0 1 0 1 0 1 0 \n502 1 ", 1); expect_first();
+    run("", 0);
+    run(" \r\n\t// no records", 0);
+    run("501 -2147483648 2147483647 +1 0 1 0 1 0 ", 1);
+    assert(rows[0].flags[0] == INT_MIN && rows[0].flags[1] == INT_MAX && rows[0].flags[2] == 1);
+    failed_read = 1; run("501 1 0 1 0 1 0 1 0 ", 0); failed_read = 0;
+    negative_size = 1; run("501 ", 0); negative_size = 0;
+    run(NULL, 0); assert(warning_count == 1);
+    g_language = (struct Language *)&localized;
+    run("501 1 0 1 0 1 0 1 0 ", 1); expect_first();
+    assert(localized == 1);
     if (failed) return 1;
-    puts("Item restrictions: actual numeric reader/startup traversal, whitespace, EOF/comments, partial records, invalid/overflow values, read failures, localization and cleanup passed.");
+    puts("Item restrictions: the original's tab and space tokenizer with atoi, // comments, line ends, stray words and a BOM, partial records, read failures, localization and cleanup passed.");
     return 0;
 }
