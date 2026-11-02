@@ -835,3 +835,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_max_job_level.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_gfx_batch.bat"
+if not "%errorlevel%"=="0" exit /b 1
