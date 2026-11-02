@@ -282,8 +282,11 @@ activation, and feeds them to the same handlers the Windows window procedure cal
 (`core/window_events.c`). Composition events go to `language_set_composition` and committed text
 to `language_commit`, converted from UTF-8 to the client code page. The window sets
 `SDL_HINT_IME_IMPLEMENTED_UI` to `composition`: without it SDL does not report the preedit text
-and the IME draws its own window. With IBus and `ibus-hangul`, Hangul composition was verified
-character by character (ㅎ → 하 → 한 → commit) against the SDL probe on Linux Mint 22.3.
+and the IME draws its own window. SDL reports the end of a composition (an empty editing event)
+before the committed text, and the key that caused the commit never arrives as a key event, so a
+commit right after a composition is taken as IME text whatever the key-as-text state of the
+window manager. With IBus and `ibus-hangul`, Hangul chat was typed, corrected with Backspace
+through and past the composition, and sent in game (`SDL_IM_MODULE=ibus`, `XMODIFIERS=@im=ibus`).
 
 `platform/window.h` holds the remaining window services: message boxes, key and mouse state,
 clipboard text, cursor visibility and clipping, window and monitor rectangles, window placement
@@ -312,7 +315,7 @@ target orientation and system-surface blits. The client has no vertex-buffer mes
 On Linux Mint 22.3 (a Hyper-V VM with Mesa llvmpipe) against rAthena built for packet version
 20220406 and the kRO data the Windows client uses: service and server selection, login, the PIN
 dialog, character creation, entering `iz_int03`, walking, chat, the inventory, equipment and skill
-windows, and an active audio stream. The frame overlay (`RAGEXE_OVERLAY=1`) showed about 90 fps at
+windows, Hangul chat through IBus, and an active audio stream. The frame overlay (`RAGEXE_OVERLAY=1`) showed about 90 fps at
 1024×768 on llvmpipe. A `-DRAGE_SANITIZERS=ON` build reached the same points; the misaligned
 packet-key loads and the null `memmove` it reported are fixed.
 
