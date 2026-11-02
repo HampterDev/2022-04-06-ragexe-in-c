@@ -1377,6 +1377,13 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
 }
 
 /* One adapter, the GL context's: which display it shows on is the window's, so no adapter names one. */
+/* The GL backend draws on whatever device it has and resizes in place: any adapter is live. */
+int gfx_can_set_mode_live(const GUID *adapter)
+{
+    (void)adapter;
+    return gl.context != 0;
+}
+
 PlatformDisplay gfx_adapter_monitor(const GUID *adapter)
 {
     (void)adapter;
