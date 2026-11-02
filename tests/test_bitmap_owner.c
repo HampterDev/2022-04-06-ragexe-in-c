@@ -90,7 +90,7 @@ static BYTE blank_bitmap(struct BitmapRes *self, int width, int height)
     return 1;
 }
 
-struct BitmapFixture { const char *name; int kind; const BYTE *data; size_t size; int width, height, frames; const DWORD *pixels; };
+struct BitmapFixture { const char *name; int kind; const BYTE *data; size_t size; int width, height, frames; const DWORD *pixels; const unsigned short *delays; };
 #include "bitmap_format_fixtures.h"
 static BYTE decode(struct GifRes *image, const struct BitmapFixture *f, const BYTE *data, int size)
 {
@@ -103,7 +103,9 @@ static void match(const struct GifRes *image, const struct BitmapFixture *f)
     int i; size_t pixels = (size_t)f->width * f->height;
     assert(image->bmp.width == f->width && image->bmp.height == f->height);
     assert(f->kind != 2 || image->frames.count == (size_t)f->frames);
+    assert(f->kind != 2 || (!image->bmp.hasAlpha && image->animated && image->bmp.pixels == image->frames.data[0].pixels));
     for (i = 0; i < f->frames; ++i) {
+        assert(!f->delays || image->frames.data[i].delay == f->delays[i]);
         const DWORD *p = f->kind == 2 ? image->frames.data[i].pixels : image->bmp.pixels;
         size_t j;
         for (j=0;j<pixels;++j) if (p[j] != f->pixels[i*pixels+j]) {
@@ -153,7 +155,8 @@ static void check_formats(void)
         gif_resource_clear(&image); gif_resource_finish(&image); assert(!outstanding);
     }
     VirtualFree(pages,0,MEM_RELEASE);
-    printf("PASS: 23 real image fixtures, %u guarded prefixes and every owned/giflib allocation failure\n",(unsigned)boundaries);
+    printf("PASS: %u image fixtures, %u guarded prefixes and every owned allocation failure\n",
+           (unsigned)(sizeof bitmap_fixtures/sizeof bitmap_fixtures[0]),(unsigned)boundaries);
 }
 
 static void check_malformed(void)
@@ -188,17 +191,23 @@ static void check_malformed(void)
     assert(!bitmap_res_load_bmp_data(&image,bmp24_1_data,sizeof bmp24_1_data,1));
     bitmap_resource_finish(&image);assert(!outstanding);
     gif_resource_init(&gif);assert(gif_res_add_blank_frame(&gif,1,1));gif_before=gif;
+    assert(!gif_res_load_gif_data(&gif,gif_simple_data,sizeof gif_simple_data,1));
+    assert(!gif_res_load_gif_data(&gif,gif_no_lzw_data,sizeof gif_no_lzw_data,0));
+    assert(!gif_res_load_gif_data(&gif,gif_no_trailer_data,sizeof gif_no_trailer_data,0));
+    assert(!gif_res_load_gif_data(&gif,gif_no_frame_data,sizeof gif_no_frame_data,0));
+    assert(!memcmp(&gif,&gif_before,sizeof gif));
     memcpy(copy,gif_simple_data,sizeof gif_simple_data);
     position=25;assert(copy[position]==',');copy[position+1]=255;copy[position+2]=255;
-    assert(!gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data,0));
-    memcpy(copy,gif_simple_data,sizeof gif_simple_data);copy[position+10]=12;
-    assert(!gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data,0));
+    assert(gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data,0) && gif.frames.count==1);
+    for(i=0;i<6;++i)assert(gif.bmp.pixels[i]==0);
     memcpy(copy,gif_simple_data,sizeof gif_simple_data);copy[10]=0x80;
     memmove(copy+19,copy+25,sizeof gif_simple_data-25);
-    assert(!gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data-6,0));
-    assert(!gif_res_load_gif_data(&gif,gif_simple_data,sizeof gif_simple_data,1));
-    assert(!memcmp(&gif,&gif_before,sizeof gif));gif_resource_finish(&gif);assert(!outstanding);
-    puts("PASS: malformed dimensions, spans, palettes, RLE packets, GIF rectangles/LZW and emblem restrictions");
+    assert(gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data-6,0));
+    for(i=0;i<6;++i)assert(gif.bmp.pixels[i]==(i==0||i==5?0xffff0000u:0));
+    memcpy(copy,gif_simple_data,sizeof gif_simple_data);copy[position+10]=12;
+    assert(gif_res_load_gif_data(&gif,copy,sizeof gif_simple_data,0) && gif.frames.count==1);
+    gif_resource_finish(&gif);assert(!outstanding);
+    puts("PASS: malformed dimensions, spans, palettes, RLE packets, GIF refusals, off-screen frames, short palettes and wide codes");
 }
 
 static void check_lifecycle(void)
@@ -207,6 +216,8 @@ static void check_lifecycle(void)
     struct Res *res;
     unsigned fail;
     gif_resource_init(&gif);
+    assert(gif_res_load_from_buffer(&gif,"image.gif",gif_animexts_data,sizeof gif_animexts_data,0) && !gif.loopCount);
+    assert(gif_res_load_from_buffer(&gif,"image.gif",gif_loop_wrap_data,sizeof gif_loop_wrap_data,0) && !gif.loopCount);
     assert(gif_res_load_from_buffer(&gif,"image.gif",gif_disposal_data,sizeof gif_disposal_data,0));
     assert(gif.loopCount==3 && gif.frames.data[0].delay==10 && gif.animated);
     gif.lastTime=0xfffffff0u;clock_now=0x54;
@@ -261,8 +272,13 @@ static void check_emblems(void)
     assert(!emblem_res_load(&emblem,"bad.ebm") && !memcmp(&before,&emblem,sizeof emblem));fail_at=0;
     bad_emblem=0;assert(!emblem_res_load(&emblem,"missing.ebm"));
     guild.emblem_max_size=UINT_MAX;assert(!emblem_res_load(&emblem,"large.ebm"));
+    guild.emblem_max_size=GUILD_EMBLEM_MAX_SIZE;packed_size=sizeof packed;bad_marks=0;
+    assert(compress(packed,&packed_size,gif_emblem_data,sizeof gif_emblem_data)==Z_OK);
+    file_bytes=packed;file_size=(int)packed_size;
+    assert(emblem_res_load(&emblem,"gif.ebm") && !bad_marks && emblem.picture.frames.count==1);
+    assert(emblem.picture.bmp.pixels[575]==0xff00ff00u && !emblem.picture.bmp.hasAlpha && emblem.picture.animated);
     emblem_resource_finish(&emblem);assert(!outstanding);
-    puts("PASS: real zlib emblem loads, fallback, bounded sizes, failure preservation and cleanup");
+    puts("PASS: real zlib emblem loads, GIF emblems, fallback, bounded sizes, failure preservation and cleanup");
 }
 int main(void)
 {

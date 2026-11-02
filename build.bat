@@ -76,7 +76,7 @@ for /r "%ROOT%src" %%f in (*.c) do (
 )
 >> "%BUILD%\sources%SUFFIX%.rsp" echo "%GEN%\effect_data_embedded.c"
 >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\effect_data_embedded.obj"
-set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\giflib""
+set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0""
 if "%ARCH%"=="x64" set "INC=%INC% /I"%ROOT%vendor\stb" /I"%ROOT%vendor\cgltf" /I"%ROOT%vendor\dr_libs" /I"%BUILD%\vendor_x64\sdl3-src\include" /DDR_MP3_NO_STDIO"
 set "TEXTLIB="
 if defined TEXT (

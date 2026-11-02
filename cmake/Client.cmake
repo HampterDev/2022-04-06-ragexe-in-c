@@ -97,7 +97,7 @@ foreach(target IN LISTS RAGE_CLIENT_TARGETS)
     target_compile_options(${target} PRIVATE -fno-strict-aliasing -fwrapv
         -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -Wno-error=format-security)
     target_compile_definitions(${target} PRIVATE _DEFAULT_SOURCE _GNU_SOURCE)
-    target_link_libraries(${target} PRIVATE ${RAGE_CLIENT_LIBRARIES} rage_lua rage_png rage_zlib rage_gif rage_json
+    target_link_libraries(${target} PRIVATE ${RAGE_CLIENT_LIBRARIES} rage_lua rage_png rage_zlib rage_json
         rage_stb rage_cgltf rage_dr_mp3 rage_crijndael m ${CMAKE_DL_LIBS})
     if(RAGE_FONT_SCAN)
         target_compile_definitions(${target} PRIVATE RAGE_FONT_SCAN)

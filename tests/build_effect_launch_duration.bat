@@ -14,7 +14,7 @@ cl /nologo /O2 /MD "%ROOT%\tools\bin2c.c" /Fe:bin2c.exe
 if errorlevel 1 (popd & exit /b 1)
 bin2c.exe effect_data_embedded.c g_effectData "%ROOT%\data\effects\effects.json"
 if errorlevel 1 (popd & exit /b 1)
-cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_effect_launch_duration.c" "%ROOT%\src\effects\durations.c" "%ROOT%\src\effects\effect_data.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" effect_data_embedded.c /Fe:test_effect_launch_duration.exe /link "%ROOT%\build\vendor\yyjson.lib" user32.lib
+cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_effect_launch_duration.c" "%ROOT%\src\effects\durations.c" "%ROOT%\src\effects\effect_data.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" effect_data_embedded.c /Fe:test_effect_launch_duration.exe /link "%ROOT%\build\vendor\yyjson.lib" user32.lib
 if errorlevel 1 (popd & exit /b 1)
 test_effect_launch_duration.exe
 set "CODE=%errorlevel%"

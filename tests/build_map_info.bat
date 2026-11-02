@@ -16,7 +16,7 @@ lib /nologo /OUT:"%OUT%\lua_test.lib" @"%OUT%\runtime\objects.rsp"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 popd
 pushd "%OUT%" || exit /b 1
-cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_map_info_owner.c" lua_test.lib /Fe:test_map_info_owner.exe
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_map_info_owner.c" lua_test.lib /Fe:test_map_info_owner.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_map_info_owner.exe
 set "CODE=%errorlevel%"

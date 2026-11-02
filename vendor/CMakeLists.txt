@@ -24,13 +24,6 @@ if(UNIX)
     target_link_libraries(rage_png PUBLIC m)
 endif()
 
-file(GLOB GIF_SOURCES CONFIGURE_DEPENDS giflib/*.c)
-add_library(rage_gif STATIC ${GIF_SOURCES})
-target_include_directories(rage_gif PUBLIC giflib)
-if(UNIX)
-    target_compile_definitions(rage_gif PRIVATE _POSIX_C_SOURCE=200809L)
-endif()
-
 add_library(rage_json STATIC yyjson-0.13.0/yyjson.c)
 target_include_directories(rage_json PUBLIC yyjson-0.13.0)
 target_compile_definitions(rage_json PRIVATE YYJSON_READER_DEPTH_LIMIT=256 YYJSON_WRITER_DEPTH_LIMIT=256)
