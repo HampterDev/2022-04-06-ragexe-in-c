@@ -3,8 +3,10 @@
 
 #include <stddef.h>
 
+struct PlatformFile;
+
 struct File {
-    void *handle;
+    struct PlatformFile *handle;
     unsigned char *buffer;
     int position;
     int size;

@@ -18,9 +18,13 @@ BYTE dec_decode(struct Dec *self, const BYTE *src, int len, BYTE *dst,
 BYTE dec_decode_header(struct Dec *self, const BYTE *src, int len, BYTE *dst,
                                   int *outLen);
 
+struct PlatformFile;
+struct PlatformFileMapping;
+
 struct GrfFile {
-    HANDLE file, mapping;
-    BYTE *view;
+    struct PlatformFile *file;
+    struct PlatformFileMapping *mapping;
+    const BYTE *view;
     unsigned file_size, view_offset, view_size, map_chunk, granularity;
     BYTE *buffer;
     size_t buffer_capacity;
