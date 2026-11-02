@@ -96,9 +96,9 @@ void mat_rotate_x(float *m, float rad)
     mat34_post_multiply(m, &b);
 }
 
-static DWORD sincos_last_angle;
-static float sincos_last_sin, sincos_last_cos;
-static int sincos_valid;
+static __declspec(thread) DWORD sincos_last_angle;
+static __declspec(thread) float sincos_last_sin, sincos_last_cos;
+static __declspec(thread) int sincos_valid;
 
 static void cached_sincos(float rad, float *s, float *c)
 {
