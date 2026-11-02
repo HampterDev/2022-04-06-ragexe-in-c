@@ -3,6 +3,7 @@
 #include "contents/settings_json.h"
 #include "session/state.h"
 #include "platform/client_config.h"
+#include "platform/system.h"
 #include "platform/language.h"
 #include "core/app.h"
 #include <stdlib.h>
@@ -77,7 +78,7 @@ void account_user_data_load(struct AccountUserDataMgr *self, int aid, const char
     }
     owned_text_clear(&text);
     if (!self->loaded)
-        OutputDebugStringA("Account settings could not be loaded; using initial preferences and preserving the file.\n");
+        platform_debug_output("Account settings could not be loaded; using initial preferences and preserving the file.\n");
 }
 
 int account_user_data_save(struct AccountUserDataMgr *self)
@@ -92,6 +93,6 @@ int account_user_data_save(struct AccountUserDataMgr *self)
         ok = settings_file_write(self->path, owned_text_view(&text));
     owned_text_clear(&text);
     json_tree_free(&data);
-    if (!ok) OutputDebugStringA("Account settings could not be saved; previous file preserved.\n");
+    if (!ok) platform_debug_output("Account settings could not be saved; previous file preserved.\n");
     return ok;
 }

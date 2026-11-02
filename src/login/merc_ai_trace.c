@@ -1,5 +1,6 @@
 #include "ui/window_manager_state.h"
 #include "login/merc_ai.h"
+#include "platform/system.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -53,7 +54,7 @@ int merc_ai_trace_ai(lua_State *L)
     string_init(&line);
     string_assign_cstr(&line, text);
     string_append_cstr(&line, "\n");
-    OutputDebugStringA(string_cstr(&line));
+    platform_debug_output(string_cstr(&line));
     GetLocalTime(&st);
     date = ((((DWORD)st.wYear << 8) | (short)st.wMonth) << 8) | (short)st.wDay;
     time = ((((DWORD)st.wHour << 8) | (short)st.wMinute) << 8) | (short)st.wSecond;
