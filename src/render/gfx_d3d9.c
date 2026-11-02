@@ -950,7 +950,8 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     if (hr == D3D_OK) {
         out->zbufferless = 0;
         out->vertexFog = (caps.RasterCaps & D3DPRASTERCAPS_FOGVERTEX) != 0;
-        out->mipNearest = (caps.TextureFilterCaps & D3DPTFILTERCAPS_MIPFPOINT) != 0;
+        out->trilinear = (caps.TextureFilterCaps & (D3DPTFILTERCAPS_MINFLINEAR | D3DPTFILTERCAPS_MIPFLINEAR))
+                         == (D3DPTFILTERCAPS_MINFLINEAR | D3DPTFILTERCAPS_MIPFLINEAR);
         out->bumpEnv = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAP) != 0;
         out->bumpEnvLuminance = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAPLUMINANCE) != 0;
         out->waterBump = (caps.MaxTextureBlendStages >= 2 && (caps.TextureOpCaps & D3DTEXOPCAPS_MODULATEALPHA_ADDCOLOR)) ? 1 : 0;
