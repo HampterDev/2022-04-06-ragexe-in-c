@@ -1,102 +1,38 @@
-# Purist client
+# Portable client
 
-The `codex/mac-port` branch adds [portable build and platform foundations](docs/portability.md)
-and a native client for 64-bit Linux and macOS arm64 (SDL3, OpenGL, FreeType). It plays on both.
+`purist-portable` is a long-lived deviation branch on top of
+[`purist`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/purist): the purist client,
+playable natively on 64-bit Linux and macOS as well as on Windows. It is not meant to be merged
+back or deleted; `purist` is merged into it as it moves. Purist's own deviations from `main` are
+listed in [its README](https://github.com/HampterDev/2022-04-06-ragexe-in-c/blob/purist/README.md)
+and still apply here. These are the deviations from `purist`:
 
-`purist` is the permanent reduced base for our custom client. These are its intentional deviations from [`main`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/main).
+- Build the client for 64-bit Linux and macOS (x86_64 and arm64) with CMake
+  (`-DRAGE_CLIENT=ON`); on macOS as `ragexe.app`. Windows still builds with `build.bat`.
+- Run on an SDL3 application layer off Windows: window, input, IME text, clipboard and cursor.
+- Draw with an OpenGL 3.3 core (macOS: 4.1) backend behind `render/gfx.h` off Windows; Direct3D 9
+  stays the Windows backend.
+- Draw text with FreeType and Fontconfig off Windows, sized and placed as GDI does.
+- Play sound through an SDL3 implementation of the Miles subset the client uses off Windows.
+- Reach files, threads, sockets, time, settings, memory, crash reports and the desktop through a
+  platform layer; Windows keeps its registry, CryptoAPI hashes, minidumps and Win32 calls.
+- Keep settings in `client_settings.ini` in the game folder off Windows.
+- Replace IJL with a portable JPEG codec for screenshots and JPEG textures on every platform.
+- Build 64-bit clean: pointer-width UI and game-object message arguments, standard formatting,
+  string and integer functions instead of MSVC ones.
+- Draw in an order that does not depend on heap addresses (texture serials, submission order,
+  emitter particles in insertion order); the multitexture sort compares like with like.
+- Keep `rand()` to the 15 bits the client expects where it divides or rejects by that range.
+- Show the icon menu's bottom border and corner with fewer than 21 icons.
+- Add the scene harness for pixel tests on every platform ([tests/scenes](tests/scenes/README.md)).
+- Build and test Windows, Linux and macOS in CI (`.github/workflows/portable.yml`).
 
-The [review ledger](docs/purist-review.md) records decisions and validation; [shared correctness fixes](docs/upstream/README.md) belong on `main` and are excluded from this list.
+How it is built, what each platform layer does, how it was verified and what is left:
+[docs/portability.md](docs/portability.md).
 
-- Remove automatic creation of an empty `data.grf`.
-- Remove Bink, opening videos, the video window and video textures on world models.
-- Remove replay recording, playback, files, controls and session snapshots.
-- Ignore launcher arguments and start directly from `clientinfo.xml`.
-- Remove Dev/Sakray launcher modes, official server overrides and alternate config selection.
-- Remove launcher-token login, command-line PC-cafe mode and launcher handoff.
-- Remove GameGuard/nProtect and GGHash state, checks, Lua hooks, packets and helper cleanup.
-- Remove automatic `AI_patch` installation and `AI_backup` replacement.
-- Remove the `RagPath` installation-directory registry write.
-- Remove the `Setup.exe` dependency and retry loop; use saved settings or built-in defaults.
-- Remove the empty Themida protection wrapper.
-- Remove inactive packet-ID obfuscation, key state and reset calls.
-- Remove the legacy `REASSEMBLY_AUTH` challenge/reply handshake.
-- Remove battleground entry queues, applications, admission prompts and queue rankings.
-- Remove server-shutdown countdown popups and scheduled reminders.
-- Remove the CAPTCHA image registration and upload tool.
-- Remove the Recommended quest tab, guide catalog and saved checkmarks.
-- Always load `OngoingQuestInfoList_True`; remove alternate Sakray quest data selection.
-- Remove clans, clan emblems, clan chat and the clan information window.
-- Remove `MapInfoTable.scp`; rely on server map flags supplied by packet `0x099b`.
-- Remove roulette, its launcher, prize board, balances and spin/claim requests.
-- Remove shared HTTP services, the web worker machinery and the `libcurl.dll` dependency.
-- Transfer guild emblems through game packets while retaining BMP and animated GIF support; [matching server patch](docs/server/README.md).
-- Save hotkeys, chat/emotion macros and blocked-whisper names locally per server/account.
-- Save selected player and homunculus skill levels locally per server/account/character.
-- Save merchant shop presets locally instead of through HTTP.
-- Move Adventurer's Agency recruitment to game packets; [matching server patch](docs/server/agency-packets.md).
-- Remove Twitter authorization, posting and screenshot sharing.
-- Remove the embedded Internet Explorer browser, popups and `/web` command.
-- Remove local map pictures, animated signs and text signboards from `SignBoardList`.
-- Remove reputation scores, progress windows, filters and change notices.
-- Remove equipment reforming, its window, recipes and protocol handlers.
-- Remove the dedicated enchanting window, catalog and requests.
-- Remove the now-unused `ItemDBNameTbl.lub` item-name lookup.
-- Remove selectable item-package windows, reward catalogs and selection requests.
-- Remove the unused Winsock function-address self-check.
-- Support folder skins only; remove ZIP extraction, `runzip.exe` and temporary-skin cleanup.
-- Remove regional warning images and licence agreement screens before login.
-- Remove personal minimap notes, their editor, placement control and `Memo` files support.
-- Remove local `Navigationdata` destination-list imports and directory creation.
-- Remove automatic official-website launches on exit.
-- Remove the configured `<viewhomepage>` launch on exit.
-- Remove character-ID stamps from screenshots.
-- Remove visible date/time stamps from screenshots.
-- Remove screenshot logos and the `scr_logo.bmp` dependency.
-- Remove the trade-window screenshot checkbox and automatic trade captures.
-- Remove the three-wrong-password counter, website redirect and forced exit.
-- Remove the Korean password-change webpage redirect and extra forced exit.
-- Remove the message-table password-change redirect and extra forced exit.
-- Remove the GNJOY authentication-error redirect and forced exit.
-- Remove unpaid-account payment prompts, billing redirects and their extra exit path.
-- Remove the login Join/Register button and registration URL setup.
-- Remove the cash shop's Charge button and webpage launch.
-- Remove cash-shop promotional banners and their catalog.
-- Remove attendance-window banners and their catalog.
-- Remove extra website buttons from authentication-error dialogs.
-- Remove the unused `PROVIDERNAME` audio setting and buffer.
-- Default to positional audio when no sound mode is saved.
-- Use fixed 22,050 Hz, 16-bit audio output; remove lower-quality registry choices.
-- Request up to 48 sound-effect channels; remove the 16/32/48 selector.
-- Remove `/tingonly` and its chat-room join ding.
-- Remove the unused wave-output flag while preserving its zero-valued behavior.
-- Remove `item.txt`/`eventItem.txt` loading; always import the Lua item catalog.
-- Remove supplemental `Event*` item-name and description text tables.
-- Remove `Event*ItemResNameTable.txt` artwork overrides; use Lua resource names.
-- Remove the NPC-shop ATK/DEF estimate bar and its two local tables.
-- Remove readable books, bookmarks and automatic line-by-line book displays.
-- Remove the illustrated Tip Box guide, catalogs, startup opening and topic requests.
-- Remove the legacy Tip of the Day window, catalog and startup preference.
-- Remove the guildless panel's Help button and `GuildTip.txt` manual.
-- Remove unused random-value bookkeeping from startup, map entry and healing events.
-- Remove the unused session-table initialization counter.
-- Use silence on maps without a music entry; remove the `bgm\01.mp3` fallback.
-- Remove the `manner.txt` word blacklist, local masking and blacklist-based input rejection.
-- Remove local pet dialogue from `PetTalkTable.xml`.
-- Remove local monster attack chatter from `MonsterTalkTable.xml`.
-- Load readable map names only from `System/mapInfo_true.lub`; [migrate text catalogs](docs/map-name-migration.md).
-- Remove map-entry title banners and their graphics preference.
-- Remove the empty skill-info initialization hook.
-- Remove the check that warns about and closes an open Ragnarok Setup window.
-- Remove automatic font/settings relocation through `ChangeDirectoryList`.
-- Remove automatic creation of an empty `data` folder.
-- Remove the shared `SaveData/UserKeys` import; use defaults and local account bindings.
-- Remove forced startup hotkey resets for Alt+grave and Alt+Home.
-- Remove Yut-emote requests, including `/dbc`; retain received emotion rendering.
-- Remove the pending-animation emote lock; retain the 2.5-second cooldown.
-- Remove the unused pet-food precheck and its Lua lookup.
-- Use normal pet artwork for unknown/missing accessories instead of the Chonchon gas mask.
-- Remove pet evolution menus, previews, recipes and requests.
-- Display no headgear for unresolved appearance IDs instead of substituting a Chick Hat.
-- Resolve headgear names on demand; remove the fixed 2,999-ID catalog limit.
-- Remove the optional `xofyldas` startup script load.
-- Load saved chat layouts from `.lua` only; remove the competing `.lub` import.
+To take in new purist work:
+
+```sh
+git fetch origin
+git merge origin/purist
+```

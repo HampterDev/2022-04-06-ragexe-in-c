@@ -1,13 +1,13 @@
 # Portable client foundations
 
-Work starts at `purist` commit `d725b49`. The original [macOS plan](../plans/mac-port.md)
+This is the `purist-portable` branch, started from `purist` commit `d725b49` and kept current by
+merging `purist` into it. The original [macOS plan](../plans/mac-port.md)
 was written against the older `herc-client/client` tree. Here its paths are relative
 to the repository root. Purist has already removed Bink, embedded browsing, HTTP
 services and several startup checks. Those features must not be reintroduced.
 
-The complete client builds and plays on 64-bit Linux (see *Linux client*). macOS has
-the foundations but no renderer or literal transcoding yet. The Windows x86 client
-still builds with `build.bat` and stays the reference.
+The complete client builds and plays on 64-bit Linux (see *Linux client*) and macOS (see
+*macOS client*). The Windows x86 client still builds with `build.bat` and stays the reference.
 
 ## Build and test
 

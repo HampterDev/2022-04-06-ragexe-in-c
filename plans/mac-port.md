@@ -1,10 +1,10 @@
 # Native macOS port
 
-Status: implementation started on `codex/mac-port`, 2026-11-01, from `purist` commit `d725b49`.
+Status: implemented on `purist-portable` (first named `codex/mac-port`), started 2026-11-01 from `purist` commit `d725b49`.
 See [portable foundations](../docs/portability.md) for implemented boundaries, commands and validation.
 The original assessment below predates this branch. Its `client/` prefix is absent in this repository;
 work belongs in the root `src/`, `tests/` and `vendor/`. Purist already removed Bink, embedded browsing
-and HTTP services. The full client has not yet run on a Mac; it runs natively on 64-bit Linux.
+and HTTP services. The full client runs natively on 64-bit Linux and on macOS.
 
 Implemented so far:
 
