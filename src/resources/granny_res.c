@@ -81,9 +81,10 @@ static int c3d_granny_model_res_create_texture(struct GrannyResTexture *out, gra
     int w, h, alpha;
     if (!texture || !texture->FromFileName)
         return 0;
+    out->name = texture->FromFileName;
     if (texture->TextureType != GRANNY_COLOR_MAP_TEXTURE_TYPE || texture->ImageCount != 1) {
         error_msg("This sample only works with single-image : ColorMapTextureType textures", 0);
-        return 0;
+        return 1;
     }
     w = texture->Width; h = texture->Height;
     if (w <= 0 || h <= 0 || w > INT_MAX / 4 || (size_t)w > SIZE_MAX / 4 / (size_t)h)
@@ -102,7 +103,6 @@ static int c3d_granny_model_res_create_texture(struct GrannyResTexture *out, gra
     }
     out->texture = texture_from_pixels(w, h, (const DWORD *)pixels, alpha, 0, 0);
     free(pixels);
-    out->name = texture->FromFileName;
     return out->texture != NULL;
 }
 
@@ -132,7 +132,7 @@ static int c3d_granny_model_res_create_model(struct C3dGrannyModelRes *self, gra
         out->mesh = mesh;
         indices = _GrannyGetMeshIndexCount(mesh);
         vertices = _GrannyGetMeshVertexCount(mesh);
-        if (indices < 0 || indices % 3 || vertices < 0 || (indices && !vertices) ||
+        if (indices < 0 || vertices < 0 || (indices && !vertices) ||
             (size_t)indices > SIZE_MAX / sizeof *out->indices ||
             (size_t)vertices > SIZE_MAX / sizeof *out->rigidVerts ||
             mesh->MaterialBindingCount < 0 || (mesh->MaterialBindingCount && !mesh->MaterialBindings) ||
@@ -155,10 +155,8 @@ static int c3d_granny_model_res_create_model(struct C3dGrannyModelRes *self, gra
         } else if (vertices) {
             out->deformer = _GrannyNewMeshDeformer(_GrannyGetMeshVertexType(mesh), GrannyPNT332VertexType,
                                                  GRANNY_DEFORM_POSITION_NORMAL);
-            if (!out->deformer) {
+            if (!out->deformer)
                 error_msg("Granny didn't find a matching deformer for the vertex format used by mesh", 0);
-                return 0;
-            }
         }
         out->materialCount = mesh->MaterialBindingCount;
         if (out->materialCount) {

@@ -170,7 +170,13 @@ static void test_create_failures(void)
     fixtures[0].data[0].index_count = -1;
     assert(!granny_model_state_create(&fixtures[0].resource, NULL));
     fixtures[0].data[0].index_count = 1;
-    assert(!granny_model_state_create(&fixtures[0].resource, NULL));
+    model = granny_model_state_create(&fixtures[0].resource, NULL);
+    assert(model && !model->meshes[0].projection && model->meshes[0].binding);
+    granny_model_state_destroy(model); assert_clean();
+    fixtures[0].data[0].index_count = 5;
+    model = granny_model_state_create(&fixtures[0].resource, NULL);
+    assert(model && model->meshes[0].projection);
+    granny_model_state_destroy(model); assert_clean();
     fixtures[0].data[0].index_count = 0; fixtures[0].data[0].vertex_count = 0;
     model = granny_model_state_create(&fixtures[0].resource, NULL); assert(model);
     assert(!model->meshes[0].projection && !model->meshes[0].vertices && !model->meshes[0].binding);
