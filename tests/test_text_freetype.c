@@ -130,6 +130,9 @@ static void check_inside(const struct DcBitmap *bitmap, int x, int y, SIZE box)
         for (px = 0; px < bitmap->width; ++px) {
             DWORD pixel = bitmap->bits[py * bitmap->width + px];
             int inside = px >= x && px < x + box.cx && py >= y && py < y + box.cy;
+            if (pixel != BACKGROUND && !(pixel == INK_PIXEL && inside))
+                fprintf(stderr, "pixel %06lx at %d,%d outside the box %d,%d %dx%d\n", (unsigned long)pixel, px, py,
+                        x, y, (int)box.cx, (int)box.cy);
             assert(pixel == BACKGROUND || (pixel == INK_PIXEL && inside));
         }
 }
@@ -334,8 +337,25 @@ static void check_triangle(void)
     dc_bitmap_destroy(bitmap);
 }
 
+static void print_match(const char *pattern_text)
+{
+    FcPattern *pattern = FcNameParse((const FcChar8 *)pattern_text), *match;
+    FcResult result;
+    FcChar8 *file = NULL;
+    FcConfigSubstitute(NULL, pattern, FcMatchPattern);
+    FcDefaultSubstitute(pattern);
+    match = FcFontMatch(NULL, pattern, &result);
+    if (match && FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch)
+        fprintf(stderr, "%s -> %s\n", pattern_text, (const char *)file);
+    if (match)
+        FcPatternDestroy(match);
+    FcPatternDestroy(pattern);
+}
+
 int main(void)
 {
+    print_match("Arial");
+    print_match("Gulim:lang=ko");
     fonts_init();
     check_latin();
     check_korean();
