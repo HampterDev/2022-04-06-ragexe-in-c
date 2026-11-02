@@ -18,7 +18,7 @@ struct UIPartyBookingHelpWnd {
 void ui_party_booking_help_wnd_destroy(struct UIWindow *window);
 void ui_party_booking_help_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_party_booking_help_wnd_on_draw(struct UIWindow *self);
-int ui_party_booking_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_party_booking_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_party_booking_help_wnd_ops = {
     .destroy = ui_party_booking_help_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -115,7 +115,7 @@ void ui_party_booking_help_wnd_on_create(struct UIWindow *window, int width, int
             char *line = mem_alloc(help.size + 4);
 
             sprintf(line, "%s%s", language_charset_tag(g_language, 1), string_cstr(&help));
-            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, 0, 1, 1);
+            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)line, 0, 1, 1);
         }
     }
     string_free(&help);
@@ -130,8 +130,8 @@ void ui_party_booking_help_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_body(wnd, 0x11, 0, "");
 }
 
-int ui_party_booking_help_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_party_booking_help_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPartyBookingHelpWnd *self = (struct UIPartyBookingHelpWnd *)window;
     if (msg != UI_MSG_COMMAND)

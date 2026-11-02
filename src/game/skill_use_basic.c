@@ -73,7 +73,7 @@ static void steal_coin_look(const struct SkillCast *cast, struct GameActor *targ
         got = game_mode_get_actor_name(game_current_mode(), &name, target->aid);
         sprintf(line, msg_str(MSG_COINS_STOLEN), string_cstr(got), cast->level);
         string_free(&name);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)line, 0xc8c8ff, 0xf, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)line, 0xc8c8ff, 0xf, 0);
     }
     effect = actor_launch_effect(target, 0x112);
     if (effect) {
@@ -165,7 +165,7 @@ int skill_use_basic(const struct SkillCast *cast)
             return 1;
         actor_launch_effect(unit, 0x6f);
         if (caster->falcon)
-            render_object_send((void *)caster->falcon, NULL, MSG_EFFECT_MOVE_TO, (int)&unit->pos.x, 0, 0, 0);
+            render_object_send(caster->falcon, NULL, MSG_EFFECT_MOVE_TO, (intptr_t)&unit->pos.x, 0, 0, 0);
         return 1;
     }
 

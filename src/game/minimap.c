@@ -493,8 +493,8 @@ enum {
 static void boss_line(const char *text)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, BOSS_COLOR, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (int)text, BOSS_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, BOSS_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (intptr_t)text, BOSS_COLOR, 0, 0);
 }
 
 void game_mode_zc_boss_info(struct GameMode *self, const struct PACKET_ZC_BOSS_INFO *packet)
@@ -507,8 +507,8 @@ void game_mode_zc_boss_info(struct GameMode *self, const struct PACKET_ZC_BOSS_I
     switch (packet->type) {
     case BOSS_INFO_NONE:
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (int)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (intptr_t)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
         return;
     case BOSS_INFO_ALIVE:
     case BOSS_INFO_ALIVE_SAY:

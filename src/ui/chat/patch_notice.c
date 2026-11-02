@@ -15,7 +15,7 @@ void ui_notice_wnd_on_destroy(struct UIWindow *self);
 void ui_notice_wnd_on_draw(struct UIWindow *self);
 void ui_notice_wnd_on_mouse_hover(struct UIWindow *self, int unused1, int unused2);
 void ui_notice_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_notice_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notice_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notice_wnd_ops = {
     .destroy = ui_notice_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -424,8 +424,8 @@ static BYTE notice_read_mark(struct UINoticeWnd *self)
     return last_top < 0 ? 0 : (BYTE)last_top;
 }
 
-int ui_notice_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_notice_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UINoticeWnd *self = (struct UINoticeWnd *)window;
     int old_top, top;

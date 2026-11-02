@@ -29,7 +29,7 @@ void ui_cash_shop_wnd_item_on_draw(struct UIWindow *self);
 void ui_cash_shop_wnd_item_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_cash_shop_wnd_item_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_cash_shop_wnd_item_show_info(struct UIWindow *self, int x, int y);
-int ui_cash_shop_wnd_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_cash_shop_wnd_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_cash_shop_wnd_item_ops = {
     .destroy = ui_cash_shop_wnd_item_destroy,
     .resize = ui_window_resize_base,
@@ -277,11 +277,11 @@ void ui_cash_shop_wnd_item_show_info(struct UIWindow *window, int x, int y)
         return;
     wnd = ui_make_window(ITEM_WND_ID);
     if (wnd)
-        ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&self->info, 0, 0, 0);
+        ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&self->info, 0, 0, 0);
 }
 
-int ui_cash_shop_wnd_item_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_cash_shop_wnd_item_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICashShopWnd_Item *self = (struct UICashShopWnd_Item *)window;
     if (msg == CASH_MSG_SET_GOODS) {
@@ -309,7 +309,7 @@ int ui_cash_shop_wnd_item_send_msg(struct UIWindow *window, struct UIWindow *sen
         }
         ui_window_invalidate_base(&self->base);
     } else if (msg == UI_MSG_COMMAND && val1 == CASH_ID_ADD && self->base.parent) {
-        ui_window_send_msg(self->base.parent, &self->base, CASH_MSG_ADD, (int)&self->info, 0, 0, 0);
+        ui_window_send_msg(self->base.parent, &self->base, CASH_MSG_ADD, (intptr_t)&self->info, 0, 0, 0);
     }
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);
 }

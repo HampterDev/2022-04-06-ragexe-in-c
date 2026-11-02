@@ -135,7 +135,7 @@ void ui_window_destruct(struct UIWindow *window)
 {
     while (child_count) ui_window_remove_child(window, children[0], 1);
 }
-int ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     (void)window; (void)sender; (void)b; (void)c; (void)d;
     if (window == &action_window) {
@@ -379,9 +379,9 @@ static void comparison_run(struct Snapshot *out, int old, int size, int align,
     snapshot_save(out, old, base, 1);
     WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (int)"", 0, 0, 0);
     snapshot_save(out, old, base, 0);
-    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (int)input, 0, 0, 0);
+    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (intptr_t)input, 0, 0, 0);
     text = old ? string_cstr((struct String *)saved->lines.first) : string_cstr(&current->text);
-    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (int)text, 0, 0, 0);
+    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (intptr_t)text, 0, 0, 0);
     snapshot_save(out, old, base, 123);
     for (i = 0; i < 6; ++i) {
         int delta = WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, messages[i], values[i], 0, 0, 0);
@@ -392,7 +392,7 @@ static void comparison_run(struct Snapshot *out, int old, int size, int align,
     snapshot_save(out, old, base, -1);
     CALL0(ui_tag_text_viewer_remove_all);
     snapshot_save(out, old, base, 0);
-    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (int)input, 0, 0, 0);
+    WINDOW_CALL(ui_tag_text_viewer_send_msg, NULL, UI_MSG_TAG_ADD_LINE, (intptr_t)input, 0, 0, 0);
     snapshot_save(out, old, base, 1);
     out->height = CALL0(ui_tag_text_viewer_content_height);
     if (old) {

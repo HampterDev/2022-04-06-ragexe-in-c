@@ -117,6 +117,6 @@ void game_mode_on_npc_market_purchase_result(struct GameMode *self, unsigned cha
     ui_window_send(wnd, NULL, MARKET_MSG_RESIZE, rows * 32 + 0x78, 0, 0, 0);
     ui_window_send(wnd, NULL, MARKET_MSG_REFRESH, 0, 0, 0, 0);
     if (result == 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(MSG_MARKET_PURCHASE_FAILED),
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(MSG_MARKET_PURCHASE_FAILED),
                             CHAT_COLOR_RED, 0, 0);
 }

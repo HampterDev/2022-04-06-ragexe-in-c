@@ -344,7 +344,7 @@ static int open_menu(struct UIMessengerGroupWnd *self)
     menu = ui_window_open(POPUP_MENU_WND);
     for (i = 0; i < VEC_COUNT(&self->menu, struct UIMenuEntry); i++)
         ui_window_send_msg(menu, NULL, MENU_MSG_ADD,
-                 (int)string_cstr(&VEC_AT(&self->menu, struct UIMenuEntry, i).text), 0, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(&self->menu, struct UIMenuEntry, i).text), 0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_OWNER, 0x22, 0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
     x = g_mouse.x + 1;
@@ -391,7 +391,7 @@ static int menu_choice(struct UIMessengerGroupWnd *self, int index)
             break;
         ui_messenger_group_wnd_get_member(self, &m2, self->hover);
         if (m2.found)
-            mode_send_message(client_current_mode(), 0x3b, (int)string_cstr(&m2.name), 0, 0, 0);
+            mode_send_message(client_current_mode(), 0x3b, (intptr_t)string_cstr(&m2.name), 0, 0, 0);
         party_member_destroy(&m2);
         break;
     case 6:
@@ -415,14 +415,14 @@ static int menu_choice(struct UIMessengerGroupWnd *self, int index)
                 mode_send_message(client_current_mode(), 0x104, m2.aid, 0, 0, 0);
         } else {
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(0x5fe), 0xff, 3, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(0x5fe), 0xff, 3, 0);
         }
         party_member_destroy(&m2);
         break;
     case PARTY_MENU_EQUIPMENT:
         ui_messenger_group_wnd_get_member(self, &m2, self->hover);
         if (m2.found)
-            mode_send_message(client_current_mode(), 0x10c, (int)string_cstr(&m2.name), 0, 0, 0);
+            mode_send_message(client_current_mode(), 0x10c, (intptr_t)string_cstr(&m2.name), 0, 0, 0);
         party_member_destroy(&m2);
         break;
     case PARTY_MENU_PLATE:
@@ -550,8 +550,8 @@ static int command(struct UIMessengerGroupWnd *self, struct UIWindow *sender, in
             else
                 note = session_is_guild_member_char_id(&g_session1, m.char_id) ? "GuildMember" : NULL;
             session_scramble_number(&g_session1, &number, m.char_id);
-            ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (int)string_cstr(&m.name), (int)note,
-                                  (int)string_cstr(&number), 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (intptr_t)string_cstr(&m.name), (intptr_t)note,
+                                  (intptr_t)string_cstr(&number), 0);
             string_free(&number);
         }
         party_member_destroy(&m);
@@ -594,7 +594,7 @@ static int command(struct UIMessengerGroupWnd *self, struct UIWindow *sender, in
                 if (party_ask(0x164))
                     mode_send_message(client_current_mode(), 0xb0, m.aid, m.char_id, 0, 0);
             } else if (!is_own_name(&m) && party_ask(0x16b)) {
-                mode_send_message(client_current_mode(), 0x3e, (int)string_cstr(&m.name), 0, 0, 0);
+                mode_send_message(client_current_mode(), 0x3e, (intptr_t)string_cstr(&m.name), 0, 0, 0);
             }
         }
         party_member_destroy(&m);
@@ -682,8 +682,8 @@ static int command(struct UIMessengerGroupWnd *self, struct UIWindow *sender, in
     return 0;
 }
 
-int ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                           int val2, int val3, int val4)
+intptr_t ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                           intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMessengerGroupWnd *self = (struct UIMessengerGroupWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

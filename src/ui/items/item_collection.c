@@ -378,7 +378,7 @@ void item_collection_show_card(int wnd_id, struct ItemInfo *card, int past_slots
     struct UIWindow *wnd = ui_make_window(wnd_id);
 
     ui_window_send_msg(wnd, NULL, UI_MSG_COLLECTION_IDENTIFIED, card->identified, 0, 0, 0);
-    ui_window_send_msg(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)card, past_slots, 0, 0);
+    ui_window_send_msg(wnd, NULL, UI_MSG_COLLECTION_ITEM, (intptr_t)card, past_slots, 0, 0);
 }
 
 void ui_item_collection_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
@@ -426,8 +426,8 @@ void item_collection_take_info(struct UIWindow *wnd, struct WindowInfo *info, in
              info->y * g_renderer->width / 640);
 }
 
-int ui_item_collection_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_item_collection_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemCollectionWnd *self = (struct UIItemCollectionWnd *)window;
     switch (msg) {
@@ -438,13 +438,13 @@ int ui_item_collection_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
             break;
         case ID_VIEW_BUTTON:
             ui_window_send_msg(ui_make_window(UI_WND_CARD_ILLUST), NULL, UI_MSG_SHOW_CARD,
-                     (int)string_cstr(&self->item.id_text), self->item.identified, 0, 0);
+                     (intptr_t)string_cstr(&self->item.id_text), self->item.identified, 0, 0);
             break;
         case ID_PREVIEW_BUTTON: {
             struct UIWindow *preview = ui_make_window(WND_EQUIP_PREVIEW);
 
             if (preview)
-                ui_window_send_msg(preview, COLLECTION_WND(self), UI_MSG_PREVIEW_ITEM, (int)&self->item, 0, 0, 0);
+                ui_window_send_msg(preview, COLLECTION_WND(self), UI_MSG_PREVIEW_ITEM, (intptr_t)&self->item, 0, 0, 0);
             break;
         }
         }

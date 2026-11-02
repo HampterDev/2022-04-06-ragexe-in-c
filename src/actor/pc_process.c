@@ -70,10 +70,10 @@ unsigned char pc_on_process(struct GameObject *object)
 
             list_push_back(&self->attached, &obj, sizeof obj);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-            self->costume_body_obj = (int)obj;
+            self->costume_body_obj = obj;
         }
     } else if (self->costume_body_obj) {
-        render_object_send((void *)self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
+        render_object_send(self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
         self->costume_body_obj = 0;
     }
     return result;

@@ -32,7 +32,7 @@ void game_mode_zc_ack_preview_macro_detector(struct GameMode *self, int result, 
             ui_window_mgr_post_quit1(&g_windowMgr, WID_CAPTCHA_PREVIEW);
         break;
     case 1:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)"wrong captcha ID.", 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)"wrong captcha ID.", 0xff, 0, 0);
         break;
     }
 }
@@ -93,5 +93,5 @@ void game_mode_zc_ack_apply_macro_detector(struct GameMode *self, int result)
     case 2: msg = 0xb3f; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }

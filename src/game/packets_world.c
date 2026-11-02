@@ -68,7 +68,7 @@ void game_mode_zc_talkbox_chat_contents(struct GameMode *self,
     void *talkbox = world_get_skill_by_aid(self->world, packet->aid);
 
     if (talkbox != 0)
-        render_object_send(talkbox, NULL, AM_TALKBOX_TEXT, (long long)(int)packet->text, 0, 0, 0);
+        render_object_send(talkbox, NULL, AM_TALKBOX_TEXT, (intptr_t)packet->text, 0, 0, 0);
 }
 
 void game_mode_zc_resurrection(struct GameMode *self, const struct PACKET_ZC_RESURRECTION *packet)
@@ -101,7 +101,7 @@ static void show_image(struct GameMode *self, const char *image, int length, uns
 
     strncpy(name, image, length);
     name[length] = 0;
-    mode_send_msg(self, MM_SHOW_IMAGE, (int)name, type == 0xff ? -1 : type, 0, 0);
+    mode_send_msg(self, MM_SHOW_IMAGE, (intptr_t)name, type == 0xff ? -1 : type, 0, 0);
 }
 
 void game_mode_zc_show_image2(struct GameMode *self, const struct PACKET_ZC_SHOW_IMAGE2 *packet)
@@ -151,29 +151,29 @@ void game_mode_update_cut_in(struct GameMode *self)
     ui_window_send(wnd, NULL, WMSG_CUTIN_LAYOUT, -1, 0, 0, 0);
     switch (self->illust_position) {
     case 0:
-        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (int)image, 0, 0, 0);
+        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (intptr_t)image, 0, 0, 0);
         x = 200;
         y = g_renderer->height - wnd->height;
         break;
     case 1:
-        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (int)image, 0, 0, 0);
+        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (intptr_t)image, 0, 0, 0);
         y = g_renderer->height - wnd->height;
         x = g_renderer->centreX;
         break;
     case 2:
-        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (int)image, 0, 0, 0);
+        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (intptr_t)image, 0, 0, 0);
         x = g_renderer->width - 200;
         y = g_renderer->height - wnd->height;
         break;
     case 3:
         ui_window_send(wnd, NULL, WMSG_CUTIN_LAYOUT, -2, 0, 0, 0);
-        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (int)image, 0, 0, 0);
+        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (intptr_t)image, 0, 0, 0);
         ui_window_send(wnd, NULL, WMSG_CUTIN_LAYOUT, 3, 0, 0, 0);
         x = g_renderer->centreX;
         y = g_renderer->centreY - wnd->height / 2;
         break;
     case 4:
-        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (int)image, 0, 0, 0);
+        ui_window_send(wnd, NULL, WMSG_CUTIN_IMAGE, (intptr_t)image, 0, 0, 0);
         ui_window_send(wnd, NULL, WMSG_CUTIN_LAYOUT, 4, 0, 0, 0);
         x = g_renderer->centreX;
         y = g_renderer->centreY - wnd->height / 2;
@@ -204,7 +204,7 @@ void game_mode_zc_monster_info(struct GameMode *self, const struct PACKET_ZC_MON
         return;
     }
     wnd = ui_window_open(WID_MONSTER_INFO);
-    ui_window_send(wnd, NULL, WMSG_MONSTER_INFO, (int)packet, 0, 0, 0);
+    ui_window_send(wnd, NULL, WMSG_MONSTER_INFO, (intptr_t)packet, 0, 0, 0);
 }
 
 #define WND_STAR_PLACE          0x77

@@ -374,7 +374,7 @@ void prim_orbit_launcher_render(struct EffectPrim *self)
             effect = game_actor_launch_effect((struct GameActor *)(struct RenderObject *)actor, effect_id, zero, 0);
         }
         if (effect)
-            rag_effect_send_msg(effect, 0, RAG_MSG_SET_OFFSETS, (RenderMsgArg)(int)&at, 0, 0);
+            rag_effect_send_msg(effect, 0, RAG_MSG_SET_OFFSETS, (intptr_t)&at, 0, 0);
     }
 }
 

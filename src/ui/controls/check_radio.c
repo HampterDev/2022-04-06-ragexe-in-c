@@ -289,8 +289,8 @@ void ui_radio_btn_on_mouse_hover(struct UIWindow *window, int x, int y)
     mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
 }
 
-int ui_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UIRadioBtn *self = (struct UIRadioBtn *)window;
     if (msg == UI_MSG_SET_STATE) {

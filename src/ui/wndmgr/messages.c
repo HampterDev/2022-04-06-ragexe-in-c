@@ -61,7 +61,7 @@ static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLOR
     if (strcmp(text, "No Msg") == 0 || strcmp(text, "NO MSG") == 0)
         return;
     drive_state_note_chat(text);
-    ui_window_send_msg(chat, NULL, msg == UIWM_MSG_CHAT_LINE_ALT ? 0x73 : 0x25, (int)(INT_PTR)text, (int)colour,
+    ui_window_send_msg(chat, NULL, msg == UIWM_MSG_CHAT_LINE_ALT ? 0x73 : 0x25, (intptr_t)text, (int)colour,
              val3, val4);
 }
 
@@ -111,7 +111,7 @@ static int open_whisper(struct UIWindowMgr *self, const char *name, const char *
     wnd = mem ? (struct UIWindow *)ui_whisper_wnd_construct(mem) : NULL;
     ui_window_create(wnd, 0x118, 0x78);
     ui_window_mgr_add_window(self, wnd);
-    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (int)(INT_PTR)&self->whisper_info, 0, 0, 0);
+    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (intptr_t)&self->whisper_info, 0, 0, 0);
     ui_window_set_show_base(wnd, 1);
     string_assign(&((struct UIWhisperWnd *)wnd)->name, string_cstr(&key), key.size);
     wnd->id = WHISPER_WND_ID;
@@ -152,7 +152,7 @@ static int open_whisper(struct UIWindowMgr *self, const char *name, const char *
     return 1;
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct TreeNode *node;
 

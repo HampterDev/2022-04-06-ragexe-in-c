@@ -15,14 +15,14 @@ static void ae_release(struct AbleToMakeEffect *self, struct RagEffect *e)
     rag_effect_send_msg(e, (struct RenderObject *)self, 0x18, 0, 0, 0);
 }
 
-static void ae_drop_held(struct AbleToMakeEffect *self, int *slot)
+static void ae_drop_held(struct AbleToMakeEffect *self, struct RagEffect **slot)
 {
     struct ListNode *node;
 
     if (*slot == 0)
         return;
     for (node = self->effects.head->next; node != self->effects.head; node = node->next)
-        if (*LIST_VALUE(node, int) == *slot)
+        if (*LIST_VALUE(node, struct RagEffect *) == *slot)
             break;
     if (node != self->effects.head) {
         ae_release(self, *LIST_VALUE(node, struct RagEffect *));
@@ -31,20 +31,20 @@ static void ae_drop_held(struct AbleToMakeEffect *self, int *slot)
     *slot = 0;
 }
 
-static void ae_hold(struct AbleToMakeEffect *self, int *slot, long long par1, long long par2, int relaunch)
+static void ae_hold(struct AbleToMakeEffect *self, struct RagEffect **slot, long long par1, long long par2, int relaunch)
 {
-    struct RagEffect *e = (struct RagEffect *)*slot;
+    struct RagEffect *e = *slot;
 
     if (e == NULL) {
         e = ae_launch(self, (int)par1);
-        *slot = (int)e;
+        *slot = e;
         if (e == NULL)
             return;
     }
     if (relaunch && par1 > 0) {
         render_object_send(self, NULL, 0x6d, par1, 0, 0, 0);
         e = ae_launch(self, (int)par1);
-        *slot = (int)e;
+        *slot = e;
     }
     if (e != NULL)
         rag_effect_send_msg(e, NULL, 0x50, par2, 0, 0);
@@ -89,9 +89,9 @@ void able_to_make_effect_send_msg(struct GameObject *object, struct GameObject *
         if (node == self->effects.head)
             break;
         node = list_erase(&self->effects, node, NULL);
-        if (self->held_effect == (int)sender)
+        if (self->held_effect == (struct RagEffect *)sender)
             self->held_effect = 0;
-        else if (self->held_effect2 == (int)sender)
+        else if (self->held_effect2 == (struct RagEffect *)sender)
             self->held_effect2 = 0;
         break;
     case 0x18:
@@ -119,8 +119,8 @@ void able_to_make_effect_send_msg(struct GameObject *object, struct GameObject *
         break;
     case 0x78: {
         int *type = MSG_PTR(par1);
-        if (effect_mgr_is_registered(g_effectMgr, (int)type) == 1 && sender != NULL) {
-            if (effect_mgr_has_effect(g_effectMgr, sender->aid, (int)type) == 1)
+        if (effect_mgr_is_registered(g_effectMgr, (int)(intptr_t)type) == 1 && sender != NULL) {
+            if (effect_mgr_has_effect(g_effectMgr, sender->aid, (int)(intptr_t)type) == 1)
                 *type = -1;
             break;
         }

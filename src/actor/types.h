@@ -117,8 +117,8 @@ struct MousePointer {
     int effect_id;                             \
     int effect_skill_level;                    \
     struct List effects;                       \
-    int held_effect;                           \
-    int held_effect2;
+    struct RagEffect *held_effect;             \
+    struct RagEffect *held_effect2;
 struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
 
 #define CGAMEACTOR_MEMBERS                     \
@@ -193,26 +193,26 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     unsigned char object_type;                 \
     int requests[24];                          \
     float attack_motion_count;                 \
-    int falcon;                                \
-    int cart;                                  \
-    int emotion_mark;                          \
-    int frozen_mark;                           \
-    int curse_mark;                            \
-    int sleep_mark;                            \
-    int stun_mark;                             \
-    int emotion_mark_a;                        \
-    int msg_mark_1;                            \
-    int msg_mark_2;                            \
-    int emotion_mute;                            \
-    int cursor_mark;                           \
-    int lassitude_mark;                        \
+    struct GameObject *falcon;                 \
+    struct GameObject *cart;                   \
+    struct GameObject *emotion_mark;           \
+    struct GameObject *frozen_mark;            \
+    struct GameObject *curse_mark;             \
+    struct GameObject *sleep_mark;             \
+    struct GameObject *stun_mark;              \
+    struct GameObject *emotion_mark_a;         \
+    struct GameObject *msg_mark_1;             \
+    struct GameObject *msg_mark_2;             \
+    struct GameObject *emotion_mute;             \
+    struct GameObject *cursor_mark;            \
+    struct GameObject *lassitude_mark;         \
     struct List attached;                      \
     int transform_jobs[4];                     \
     int sprite_height;                         \
     int orb_kind;                              \
     int orb_count;                             \
-    int misfortune_mark;                       \
-    int handicap_dots_mark;                       \
+    struct GameObject *misfortune_mark;        \
+    struct GameObject *handicap_dots_mark;        \
     int mount_look;                            \
     unsigned char is_store_assistant;          \
     unsigned char not_pickable;                \
@@ -297,7 +297,7 @@ struct ActorStates {
 
 #define CPC_MEMBERS                            \
     CGAMEACTOR_MEMBERS                         \
-    int costume_body_obj;                      \
+    struct GameObject *costume_body_obj;       \
     struct String imf_name;                 \
     int honor;                                 \
     unsigned virtue;                           \

@@ -90,7 +90,7 @@ static void homun_hunger_warning(const struct HomunPropertyHead *head)
     short fullness = head->fullness;
 
     if ((fullness == 1 || fullness == 5 || fullness == 10) && g_session1.homun_ai_state[1] != fullness) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x3fa), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x3fa), 0xff, 0, 0);
         g_session1.homun_ai_state[1] = head->fullness;
     }
 }

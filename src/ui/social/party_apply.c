@@ -16,7 +16,7 @@ void ui_apply_for_party_wnd_destroy(struct UIWindow *window);
 void ui_apply_for_party_wnd_store_info(struct UIWindow *self);
 void ui_apply_for_party_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_apply_for_party_wnd_on_draw(struct UIWindow *self);
-int ui_apply_for_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_apply_for_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_apply_for_party_wnd_ops = {
     .destroy = ui_apply_for_party_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -258,13 +258,13 @@ void party_booking_send_name(const struct AdvenPartyInfo *ad)
     string_free(&id_text);
     string_move(&id_text, session_scramble_number(&g_session1, &id_tmp, ad->gid));
     string_free(&id_tmp);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (int)owned_text_cstr(&ad->name), (int)kind,
-                        (int)string_cstr(&id_text), 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (intptr_t)owned_text_cstr(&ad->name), (intptr_t)kind,
+                        (intptr_t)string_cstr(&id_text), 0);
     string_free(&id_text);
 }
 
-int ui_apply_for_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_apply_for_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIApplyForPartyWnd *self = (struct UIApplyForPartyWnd *)window;
     if (msg == UI_MSG_COMMAND) {

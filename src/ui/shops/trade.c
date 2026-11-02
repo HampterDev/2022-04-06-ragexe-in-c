@@ -27,7 +27,7 @@ void ui_exchange_wnd_on_draw(struct UIWindow *self);
 void ui_exchange_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_exchange_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_exchange_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_exchange_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_exchange_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_exchange_wnd_ops = {
     .destroy = ui_exchange_wnd_destroy,
@@ -482,7 +482,7 @@ void ui_exchange_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (item.index != 0) {
         info_wnd = ui_window_open(0xc);
         if (info_wnd)
-            ui_window_send_msg(info_wnd, NULL, 0x18, (int)&item, 0, 0, 0);
+            ui_window_send_msg(info_wnd, NULL, 0x18, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
@@ -554,8 +554,8 @@ static int on_command(struct UIExchangeWnd *self, int id)
     return 0;
 }
 
-int ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIExchangeWnd *self = (struct UIExchangeWnd *)window;
     switch (msg) {

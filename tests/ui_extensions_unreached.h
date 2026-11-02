@@ -18,7 +18,7 @@ void ui_edit_ctrl3_draw_text(struct UIEditCtrl * arg0) { abort(); }
 void ui_edit_ctrl3_on_draw(struct UIWindow * arg0) { abort(); }
 void ui_edit_ctrl3_on_wheel(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_edit_ctrl3_resize(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
-int ui_edit_ctrl3_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_edit_ctrl3_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_edit_ctrl3_set_text(struct UIEditCtrl * arg0, const char * arg1) { abort(); }
 int ui_edit_ctrl_get_text_size(struct UIWindow * arg0) { abort(); }
 void ui_edit_ctrl_on_focus(struct UIWindow * arg0) { abort(); }
@@ -40,7 +40,7 @@ void ui_frame_wnd_on_l_btn_up(struct UIWindow * arg0, int arg1, int arg2) { abor
 void ui_frame_wnd_on_mouse_hover(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_mouse_move(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_save_pos(struct UIWindow * arg0) { abort(); }
-int ui_frame_wnd_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_frame_wnd_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_frame_wnd_snap(struct UIWindow * arg0) { abort(); }
 const struct UIGuildWndOps ui_guild_wnd_ops;
 struct UIScrollBar * ui_scroll_bar_construct(struct UIScrollBar * arg0) { abort(); }
@@ -64,7 +64,7 @@ const char * ui_skin_path(const char * arg0) { abort(); }
 struct UIWindow * ui_static_text_construct(struct UIWindow * arg0) { abort(); }
 void ui_static_text_set_text_ellipsis(struct UIWindow * arg0, const char * arg1) { abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr * arg0, int arg1) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 void ui_window_mgr_set_focus_edit(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 void ui_window_add_child(struct UIWindow * arg0, struct UIWindow * arg1) { abort(); }
 struct UIWindow * ui_window_add_close_button(struct UIWindow * arg0, const char * arg1, int arg2) { abort(); }
@@ -99,7 +99,7 @@ void ui_window_on_wheel_base(struct UIWindow * arg0, int arg1) { abort(); }
 BYTE ui_window_render_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_resize_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_window_save_pos_base(struct UIWindow * arg0) { abort(); }
-int ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_window_set_show_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_render_overlay_base(struct UIWindow * arg0) { abort(); }
 void ui_window_snap_base(struct UIWindow * arg0) { abort(); }
@@ -135,7 +135,7 @@ struct UIWindowMgr g_windowMgr;
 void * mem_alloc(size_t arg0) { abort(); }
 void mem_free(void * arg0) { abort(); }
 void * mem_try_alloc(size_t arg0) { abort(); }
-int mode_send_message(struct Mode * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t mode_send_message(struct Mode * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 void string_append(struct String *arg0, const char *arg1, size_t arg2) { abort(); }
 void string_assign(struct String *arg0, const char *arg1, size_t arg2) { abort(); }
 void string_free(struct String *arg0) { abort(); }

@@ -38,7 +38,7 @@ void ui_pet_taming_deceive_wnd_on_create(struct UIWindow *self, int width, int h
 void ui_pet_taming_deceive_wnd_on_process(struct UIWindow *self);
 void ui_pet_taming_deceive_wnd_on_draw(struct UIWindow *self);
 void ui_pet_taming_deceive_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_pet_taming_deceive_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_pet_taming_deceive_wnd_ops = {
     .destroy = ui_pet_taming_deceive_wnd_destroy,
@@ -168,8 +168,8 @@ void ui_pet_taming_deceive_wnd_on_l_btn_down(struct UIWindow *window, int x, int
     game_send_message(REQ_PET_TAMING, self->item, 0, 0, 0);
 }
 
-int ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPetTamingDeceiveWnd *self = (struct UIPetTamingDeceiveWnd *)window;
     if (msg == MSG_PET_TAMING_RESULT) {

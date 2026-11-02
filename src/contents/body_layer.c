@@ -485,7 +485,7 @@ void body_layer_draw_layer(struct BodyLayerDraw *self, int order, int layer, str
         palette = body_layer_palette(self, layer, pair);
         {
             int msg_arg = 0xa6;
-            render_object_send(self->pc, NULL, 0x78, MSG_ARG_PTR(&msg_arg), 0, 0, 0);
+            render_object_send(self->pc, NULL, 0x78, (intptr_t)&msg_arg, 0, 0, 0);
         }
         flags = body_layer_flags(self, layer, quad.color);
         body_layer_grow_bounds(self, layer, &quad);

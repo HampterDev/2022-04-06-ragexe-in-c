@@ -83,7 +83,7 @@ void ui_guild_banished_member_wnd_on_create(struct UIWindow *self, int width_unu
 void ui_guild_banished_member_wnd_on_draw(struct UIWindow *self);
 void ui_guild_banished_member_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_banished_member_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_guild_banished_member_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_banished_member_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIGuildWndOps ui_guild_banished_member_wnd_ops = {
     .base = {
@@ -143,7 +143,7 @@ void ui_guild_total_info_wnd_on_create(struct UIWindow *self, int width_unused, 
 void ui_guild_total_info_wnd_on_draw(struct UIWindow *self);
 void ui_guild_total_info_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_total_info_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_guild_total_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_total_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIGuildWndOps ui_guild_total_info_wnd_ops = {
     .base = {
@@ -570,8 +570,8 @@ static int guild_list_move_top(struct GuildListView *list, int msg, int val1)
     return old;
 }
 
-int ui_guild_banished_member_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_guild_banished_member_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildBanishedMemberWnd *self = (struct UIGuildBanishedMemberWnd *)window;
     int old;
@@ -598,8 +598,8 @@ int ui_guild_banished_member_wnd_send_msg(struct UIWindow *window, struct UIWind
     return ui_guild_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
 
-int ui_guild_total_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_guild_total_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildTotalInfoWnd *self = (struct UIGuildTotalInfoWnd *)window;
     int old;

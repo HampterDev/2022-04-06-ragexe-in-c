@@ -21,9 +21,9 @@ struct RenewQuestMgr *g_questTable;
 void string_free(struct String *s) { abort(); }
 struct TreeNode *tree_next(struct TreeNode *node) { (void)node; abort(); }
 int crt_sprintf(char *buffer, const char *format, ...) { abort(); }
-int game_mode_send_msg(struct Mode *m, int message, int a, int b, int c, int d) { abort(); }
+intptr_t game_mode_send_msg(struct Mode *m, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 struct UIWindow *ui_window_open(int id) { abort(); }
-int ui_window_send(struct UIWindow *w, struct UIWindow *s, int message, int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_send(struct UIWindow *w, struct UIWindow *s, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 void ui_window_move_safe(struct UIWindow *w, int x, int y) { abort(); }
 struct GameActor *world_get_game_actor_by_aid(struct World *w, unsigned aid) { abort(); }
 unsigned char ui_window_mgr_post_quit1(struct UIWindowMgr *m, int id) { abort(); }

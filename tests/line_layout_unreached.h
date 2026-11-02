@@ -11,8 +11,8 @@ void ui_window_on_mouse_hover_base(struct UIWindow *self, int x, int y) { abort(
 void ui_window_on_process_base(struct UIWindow *self) { abort(); }
 BYTE ui_window_render_base(struct UIWindow *self, int force) { abort(); }
 void ui_window_save_pos_base(struct UIWindow *self) { abort(); }
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2,
-                                int val3, int val4) { abort(); }
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                intptr_t val3, intptr_t val4) { abort(); }
 void ui_window_set_show_base(struct UIWindow *self, int visible) { abort(); }
 void ui_window_render_overlay_base(struct UIWindow *self) { abort(); }
 void ui_window_snap_base(struct UIWindow *self) { abort(); }

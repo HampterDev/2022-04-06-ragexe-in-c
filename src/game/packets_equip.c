@@ -11,7 +11,7 @@
 
 static void equip_failed(int msg)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), CHAT_COLOR_RED, 6, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), CHAT_COLOR_RED, 6, 0);
 }
 
 static void take_off(int wear_location)

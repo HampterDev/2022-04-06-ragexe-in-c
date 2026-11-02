@@ -165,7 +165,7 @@ void game_mode_select_cart(struct GameMode *self, const unsigned char *pkt)
     vec_insert_range(&carts, carts.last, packet->types, packet->types + count, 1);
     w = ui_window_open(WINDOW_SELECT_CART);
     if (w != 0)
-        UIWINDOW_SENDMSG(w, 0x22, (int)carts.first, count, packet->value, 0);
+        UIWINDOW_SENDMSG(w, 0x22, (intptr_t)carts.first, count, packet->value, 0);
     vec_free(&carts);
 }
 
@@ -209,7 +209,7 @@ void game_mode_ack_check_attendance(struct GameMode *self, int result, int day)
         if (w != 0)
             UIWINDOW_SENDMSG(w, 0x22, day * 10 + 1, 0, 0, 0);
     } else if (result == 1) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xd90), CHAT_COLOR_SYSTEM_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0xd90), CHAT_COLOR_SYSTEM_RED, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_ATTENDANCE);
     }
 }

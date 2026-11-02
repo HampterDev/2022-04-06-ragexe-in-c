@@ -272,7 +272,7 @@ static int select_zone(struct LoginMode *self, int zone)
     return 0;
 }
 
-int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
+intptr_t login_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LoginMode *self = (struct LoginMode *)mode;
     int i;
@@ -301,7 +301,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case LMSG_CHAR_BY_SLOT:
         for (i = 0; i < self->numChar; i++)
             if (self->chars[i].slot == a)
-                return (int)&self->chars[i];
+                return (intptr_t)&self->chars[i];
         return 0;
     case LMSG_SEND_MOBILE_OTP:
         return login_send_mobile_otp(self);
@@ -314,7 +314,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case LMSG_LAST_CHAR:
         if (!self->numChar)
             return 0;
-        return (int)&self->chars[self->numChar - 1];
+        return (intptr_t)&self->chars[self->numChar - 1];
     case LMSG_TO_SUBMODE_4:
         self->base.next_sub_mode = 4;
         return 0;
@@ -338,10 +338,10 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         ui_window_mgr_invalidate_all(&g_windowMgr);
         strcpy(self->email, (const char *)a);
         return 0;
-    case 0x271d: return (int)self->email;
-    case 0x271e: return (int)self->new_char_name;
+    case 0x271d: return (intptr_t)self->email;
+    case 0x271e: return (intptr_t)self->new_char_name;
     case 0x271f: strcpy(self->new_char_name, (const char *)a); return 0;
-    case 0x2720: return (int)&self->new_char;
+    case 0x2720: return (intptr_t)&self->new_char;
     case 0x2721: self->new_char = *(const struct NewCharLooks *)a; return 0;
     case 0x2722:
         self->base.next_sub_mode = 2;
@@ -361,7 +361,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case 0x272c: return select_zone(self, a);
     case 0x2735:
         self->base.next_sub_mode = a;
-        return (int)self->email;
+        return (intptr_t)self->email;
     case 0x2736: strcpy((char *)self->account_class, (const char *)a); return 0;
     }
     return mode_send_msg_base(&self->base, msg, a, b, c, 0);

@@ -17,8 +17,8 @@ void ui_agit_message_box_create(struct UIAgitMessageBox *self, const char *text,
 void ui_agit_message_box_destruct(struct UIAgitMessageBox *self);
 void ui_agit_message_box_destroy(struct UIWindow *window);
 void ui_agit_message_box_on_draw(struct UIWindow *self);
-int ui_agit_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                            int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_agit_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                            int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void agit_message_box_open(WORD agit_id, const char *text);
 
 #endif

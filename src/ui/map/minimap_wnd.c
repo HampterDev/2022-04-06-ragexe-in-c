@@ -33,7 +33,7 @@ void ui_mini_map_wnd_store_info(struct UIWindow *self);
 void ui_mini_map_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_mini_map_wnd_on_draw(struct UIWindow *self);
 void ui_mini_map_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_mini_map_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mini_map_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mini_map_wnd_ops = {
     .destroy = ui_mini_map_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -470,8 +470,8 @@ static int minimap_command(struct UIMiniMapWnd *self, int id)
     return 0;
 }
 
-int ui_mini_map_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_mini_map_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIMiniMapWnd *self = (struct UIMiniMapWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -527,7 +527,7 @@ int ui_mini_map_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
 
         id = (int)self->quest_icons.size + QUEST_ID_FIRST;
         string_init(&path);
-        string_format(&path, MINIMAP_SKIN "minimap\\Quest_%d_%d.bmp", val1, val2);
+        string_format(&path, MINIMAP_SKIN "minimap\\Quest_%d_%d.bmp", (int)val1, (int)val2);
         button = icon_button(string_cstr(&path));
         button->button.base.id = id;
         ui_bitmap_button_set_tool_tip(button, msg_str(0xac0));

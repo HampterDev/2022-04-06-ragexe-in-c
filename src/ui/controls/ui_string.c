@@ -287,7 +287,7 @@ void ui_string_on_l_btn_up(struct UIWindow *window, int x, int y)
 
         if (!display)
             return;
-        ui_window_send_msg(display, NULL, MSG_MONSTER_DISPLAY_NAME, (int)string_cstr(&self->link), 1, 0, 0);
+        ui_window_send_msg(display, NULL, MSG_MONSTER_DISPLAY_NAME, (intptr_t)string_cstr(&self->link), 1, 0, 0);
         quest = ui_window_find(WND_QUEST);
         parent = self->base.parent;
         if (quest && parent)
@@ -299,13 +299,13 @@ void ui_string_on_l_btn_up(struct UIWindow *window, int x, int y)
         item_info_construct(&info);
         string_assign(&info.id_text, string_cstr(&self->image), self->image.size);
         wnd = ui_window_open(WND_ITEM_INFO);
-        ui_window_send(wnd, NULL, MSG_ITEM_INFO_SHOW, (int)&info, 0, 0, 0);
+        ui_window_send(wnd, NULL, MSG_ITEM_INFO_SHOW, (intptr_t)&info, 0, 0, 0);
         item_info_destruct(&info);
     }
 }
 
-int ui_string_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                int val4)
+intptr_t ui_string_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                intptr_t val4)
 {
     struct UIString *self = (struct UIString *)window;
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);

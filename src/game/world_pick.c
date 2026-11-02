@@ -53,7 +53,7 @@ char game_mode_too_heavy_to_attack(void)
     if (g_session1.weight * 100 / max < 90)
         return 0;
     ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CLEAR_CHAT, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CHAT_LINE, (int)msg_str(MSG_TOO_HEAVY_TO_ATTACK), 0xff, 0,
+    ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_TOO_HEAVY_TO_ATTACK), 0xff, 0,
                           0);
     return 1;
 }

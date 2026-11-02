@@ -76,8 +76,8 @@ void ui_list_box_resize(struct UIWindow *self, int width, int height);
 int ui_list_box_hit_line(struct UIListBox *self, int x, int y);
 void ui_list_box_add_item(struct UIListBox *self, const char *text);
 void ui_list_box_clear_items(struct UIListBox *self);
-int ui_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                 int val1, int val2, int val3, int val4);
+intptr_t ui_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                 intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 struct UIListBoxNavi {
     struct UIListBox list;
     COLORREF flag_colour;
@@ -134,8 +134,8 @@ static inline void ui_list_box_ex_refresh_scroll(struct UIListBoxEx *list)
 }
 
 struct UIListBoxEx *ui_list_box_ex_construct(struct UIListBoxEx *self);
-int ui_list_box_ex_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4);
+intptr_t ui_list_box_ex_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4);
 void ui_list_box_ex_resize(struct UIWindow *self, int width, int height);
 
 struct UIListBoxIDRow {
@@ -177,8 +177,8 @@ void ui_list_box_agit_menu_destroy(struct UIWindow *window);
 void ui_list_box_agit_menu_on_draw(struct UIWindow *self);
 void ui_list_box_agit_menu_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_list_box_agit_menu_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_list_box_agit_menu_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4);
+intptr_t ui_list_box_agit_menu_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_list_box_destroy(struct UIWindow *window);
 void ui_list_box_on_create(struct UIWindow *self, int width, int height);
@@ -243,8 +243,8 @@ void ui_tree_view_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_tree_view_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_tree_view_on_wheel(struct UIWindow *self, int delta);
 void ui_tree_view_update_scroll_bar(struct UITreeView *self);
-int ui_tree_view_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                  int val2, int val3, int val4);
+intptr_t ui_tree_view_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1,
+                                  intptr_t val2, intptr_t val3, intptr_t val4);
 
 struct UIComboBoxWnd;
 void ui_combo_box_wnd_set_chosen_to(struct UIComboBoxWnd *self, struct UIWindow *chosen_to);

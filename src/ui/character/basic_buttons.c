@@ -189,8 +189,8 @@ static void basic_toggle(int window_id)
         ui_make_window(window_id);
 }
 
-int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIButtonsOfBasicWnd *self = (struct UIButtonsOfBasicWnd *)window;
     if (msg == UI_MSG_RELAYOUT) {
@@ -258,9 +258,9 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
         break;
     case BASIC_ID_MAIL:
         if (ui_get_window(WND_MAIL_BLOCK_1))
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1), 0xff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_MAIL_BLOCK_1), 0xff, 0, 0);
         else if (ui_get_window(WND_MAIL_BLOCK_2))
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2), 0xff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_MAIL_BLOCK_2), 0xff, 0, 0);
         else
             basic_toggle(WND_MAIL);
         break;
@@ -296,7 +296,7 @@ struct UIButtonsOfBasicWnd;
 struct UIWindow;
 void ui_buttons_of_basic_wnd_destroy(struct UIWindow *window);
 void ui_buttons_of_basic_wnd_on_create(struct UIWindow *self, int width, int height);
-int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_buttons_of_basic_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_buttons_of_basic_wnd_ops = {
     .destroy = ui_buttons_of_basic_wnd_destroy,
     .resize = ui_window_resize_base,

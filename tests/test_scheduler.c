@@ -85,7 +85,7 @@ char *msg_str(int id)
     last_msg = id;
     return "message";
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *w, int msg, int text, int color, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *w, int msg, intptr_t text, intptr_t color, intptr_t c, intptr_t d)
 {
     assert(w == &g_windowMgr && msg == 1 && text && !c && !d);
     (void)color; ++chat_lines; return 0;

@@ -355,7 +355,7 @@ void ui_window_mgr_send_chat_macro(int index)
     at = session_get_talk_type(&g_session1, text, &type, parts);
     if (at != -1)
         string_assign_cstr(&g_windowMgr.chat_line, text + at);
-    mode_send_message(client_current_mode(), MODE_MSG_TALK_COMMAND, type, (int)(INT_PTR)parts, 0, 0);
+    mode_send_message(client_current_mode(), MODE_MSG_TALK_COMMAND, type, (intptr_t)parts, 0, 0);
     for (i = 3; i-- > 0;)
         string_free(&parts[i]);
 }

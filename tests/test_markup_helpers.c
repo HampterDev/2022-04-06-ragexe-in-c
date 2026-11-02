@@ -62,7 +62,7 @@ BYTE session_is_wearing_item_id(struct Session *session, int id)
 { assert(session == &g_session1); return id >= 100 && id < 200 && id % 3 == 1; }
 BYTE session_has_cart_item_id(struct Session *session, int id)
 { assert(session == &g_session1); return id >= 100 && id < 200 && id % 3 == 2; }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int text, int colour, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t text, intptr_t colour, intptr_t c, intptr_t d)
 {
     assert(self == &g_windowMgr && msg == UIWM_MSG_CHAT_LINE && colour == 0xff && !c && !d);
     assert(!strcmp((const char *)text, "item not owned"));

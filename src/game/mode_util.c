@@ -86,7 +86,7 @@ void session_clear_rolling_cutter_one_shot(int msg)
 void game_mode_confirm_feed_homun(void)
 {
     if (g_windowMgr.exchange_wnd)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xddf), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0xddf), CHAT_COLOR_RED, 0, 0);
     else
         mode_send_message(client_current_mode(), 0xb8, 1, 0, 0, 0);
 }
@@ -94,7 +94,7 @@ void game_mode_confirm_feed_homun(void)
 void game_mode_confirm_feed_pet(void)
 {
     if (g_windowMgr.exchange_wnd)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xdde), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0xdde), CHAT_COLOR_RED, 0, 0);
     else
         mode_send_message(client_current_mode(), 0x96, 1, 0, 0, 0);
 }

@@ -17,7 +17,7 @@ void ui_battle_msg_option_wnd_on_l_btn_down(struct UIWindow *self, int x, int y)
 void ui_battle_msg_option_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_battle_msg_option_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_battle_msg_option_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_battle_msg_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_battle_msg_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 static void ui_battle_msg_option_wnd_update_scroll(struct UIBattleMsgOptionWnd *self);
 const struct UIWindowOps ui_battle_msg_option_wnd_ops = {
     .destroy = ui_battle_msg_option_wnd_destroy,
@@ -365,8 +365,8 @@ static void show_tab(struct UIBattleMsgOptionWnd *self, int key, int kind, int h
     chat_tab_settings_clear(&tab);
 }
 
-int ui_battle_msg_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_battle_msg_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIBattleMsgOptionWnd *self = (struct UIBattleMsgOptionWnd *)window;
     int old_top, i;

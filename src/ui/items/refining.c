@@ -14,7 +14,7 @@
 void ui_refining_wnd_destroy(struct UIWindow *window);
 void ui_refining_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_refining_wnd_on_process(struct UIWindow *self);
-int ui_refining_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_refining_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_refining_wnd_ops = {
     .destroy = ui_refining_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -470,7 +470,7 @@ void ui_refining_wnd_set_state(struct UIRefiningWnd *self, int state, int result
         ui_window_invalidate_base(&self->frame.base);
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(msg), COLOUR_CHAT, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(msg), COLOUR_CHAT, 0, 0);
     ui_window_invalidate_base(&self->frame.base);
 }
 
@@ -537,8 +537,8 @@ void ui_refining_wnd_on_process(struct UIWindow *window)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIRefiningWnd *self = (struct UIRefiningWnd *)window;
     if (msg == UI_MSG_COMMAND) {

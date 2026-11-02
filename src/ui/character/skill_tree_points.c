@@ -88,7 +88,7 @@ BYTE skill_tree_raise_skill(struct UINewSkillListWnd *self, int skill_id)
             continue;
         if (SKILL_INFO_LEVEL_LIMIT(info) <= 0) {
             ui_window_mgr_send_msg_(&g_windowMgr, 1,
-                                (int)thread_text_format(msg_str(MSG_CANNOT_RAISE), skill_info_get_name(info)),
+                                (intptr_t)thread_text_format(msg_str(MSG_CANNOT_RAISE), skill_info_get_name(info)),
                                 0xff, 0, 0);
             return 0;
         }

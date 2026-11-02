@@ -70,7 +70,7 @@ static void clear_visited(struct NaviManager *self)
 {
     struct NaviMap **it = (struct NaviMap **)self->base.maps.first;
     struct NaviMap **end = (struct NaviMap **)self->base.maps.last;
-    unsigned count = ((unsigned)((char *)end - (char *)it) + 3) >> 2;
+    unsigned count = (unsigned)(end - it);
     unsigned i;
 
     if (it > end)

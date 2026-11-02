@@ -84,8 +84,8 @@ static void show_actor_info(struct GameMode *self)
         string_move(&char_code, session_scramble_number(&g_session1, &tmp, cid));
         string_free(&tmp);
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (int)string_cstr(&name), (int)relation,
-                        (int)string_cstr(&char_code), 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (intptr_t)string_cstr(&name), (intptr_t)relation,
+                        (intptr_t)string_cstr(&char_code), 0);
     string_free(&char_code);
     string_free(&name);
 }
@@ -120,7 +120,7 @@ static void open_gm_window(BYTE (*allowed)(int), int kind, int text_id)
     ui_window_move_safe(w, ui_center_x640(200), y);
     ui_window_mgr_add_window(&g_windowMgr, w);
     ui_window_send(w, NULL, 0x50, kind, 0, 0, 0);
-    ui_window_send(w, NULL, 0x1d, (int)msg_str(text_id), 0, 0, 0);
+    ui_window_send(w, NULL, 0x1d, (intptr_t)msg_str(text_id), 0, 0, 0);
     ui_window_send(w, NULL, 0x51, 1, 0, 0, 0);
 }
 
@@ -138,7 +138,7 @@ static void self_msg_with_name(struct GameMode *self, int msg)
     struct String name;
 
     game_mode_get_actor_name(self, &name, self->popup_target_aid);
-    self_msg(self, msg, (int)string_cstr(&name), 0, 0, 0);
+    self_msg(self, msg, (intptr_t)string_cstr(&name), 0, 0, 0);
     string_free(&name);
 }
 

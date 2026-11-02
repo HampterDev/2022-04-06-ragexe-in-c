@@ -512,7 +512,7 @@ void ui_agit_message_box_create(struct UIAgitMessageBox *self, const char *text,
     UI_TEXT_VIEWER_BACKGROUND(viewer) = ui_skin_argb(2, 2);
     ui_window_invalidate(viewer);
     ui_window_add_child(wnd, viewer);
-    ui_window_send_msg(viewer, NULL, UI_MSG_ADD_TEXT, (int)text, width / 6, 0, 0);
+    ui_window_send_msg(viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)text, width / 6, 0, 0);
 
     ui_skin_dir(&dir);
     for (i = 0; i < 2; i++) {

@@ -76,8 +76,8 @@ static void chat_show_line(struct UIChatEditCtrl *self)
     ui_edit_ctrl_on_focus(&self->edit.base);
 }
 
-int ui_chat_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_chat_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChatEditCtrl *self = (struct UIChatEditCtrl *)window;
     unsigned count;
@@ -226,8 +226,8 @@ static void whisper_show_line(struct UIWhisperEditCtrl *self)
     ui_whisper_edit_ctrl_on_focus(&self->edit.base);
 }
 
-int ui_whisper_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_whisper_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIWhisperEditCtrl *self = (struct UIWhisperEditCtrl *)window;
     unsigned count;

@@ -58,8 +58,8 @@ void ui_item_identify_wnd_on_create(struct UIWindow *self, int width_unused, int
 void ui_item_identify_wnd_on_draw(struct UIWindow *self);
 struct ItemInfo *ui_item_identify_wnd_get_item(struct UIItemIdentifyWnd *self, struct ItemInfo *out, int n,
                                                       int *found);
-int ui_item_identify_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4);
+intptr_t ui_item_identify_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4);
 
 void item_list_update_scroll(struct UIItemIdentifyWnd *self);
 int item_list_scroll(struct UIItemIdentifyWnd *self, int msg, int rows);

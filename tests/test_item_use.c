@@ -31,8 +31,8 @@ struct ItemInfo *item_info_construct_with_arg(struct ItemInfo *self) { abort(); 
 struct ItemInfo *item_info_assign(struct ItemInfo *self, const struct ItemInfo *src) { abort(); }
 struct UIWindow *ui_window_find(int id) { abort(); }
 struct UIWindow *ui_window_open(int id) { abort(); }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d) { abort(); }
-int game_mode_send_msg(struct Mode *mode, int message, int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
+intptr_t game_mode_send_msg(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int a, int b, int c,
                               const char *title, int width, int height, int d) { abort(); }
 int *session_equip_slots_of(int *out, unsigned location) { abort(); }
@@ -73,7 +73,7 @@ char rag_connection_send_packet(struct RagConnection *connection, int length, co
     ++sends;
     return 1;
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mgr == &g_windowMgr && msg == UIM_CHAT_LINE);
     assert(!strcmp((const char *)a, "refused") && (unsigned)b == CHAT_COLOR_RED && !c && !d);

@@ -25,7 +25,7 @@ void mode_nothing(struct Mode *self)
 {
 }
 
-int mode_send_msg_base(struct Mode *self, int msg, int a, int b, int c, int d)
+intptr_t mode_send_msg_base(struct Mode *self, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     switch (msg) {
     case MODE_MSG_QUIT:
@@ -167,7 +167,7 @@ void mode_screen_shot(struct Mode *self)
     string_copy(&arg, &path);
     if (renderer_screenshot(g_renderer, arg)) {
         string_append_cstr(&path, " is Saved.");
-        ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (int)string_cstr(&path), 0xff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, WM_MSG_CHAT_LINE, (intptr_t)string_cstr(&path), 0xff00, 0, 0);
     } else {
         screenshot_save_error(string_cstr(&path));
     }

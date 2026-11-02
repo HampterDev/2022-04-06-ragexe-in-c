@@ -426,7 +426,7 @@ static void item_link(struct UITextButton *link)
     info.refine = 0;
     string_assign(&info.id_text, name.data, name.size);
     wnd = ui_window_open(WND_ITEM);
-    if (wnd) ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+    if (wnd) ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     item_info_destruct(&info);
 }
 
@@ -482,8 +482,8 @@ static void place_embeds(struct UITextViewer *self, int old_scroll_x)
     }
 }
 
-int ui_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UITextViewer *self = (struct UITextViewer *)window;
     switch (msg) {

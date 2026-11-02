@@ -21,7 +21,7 @@ void ui_item_drop_cnt_wnd_destroy(struct UIWindow *window);
 void ui_item_drop_cnt_wnd_set_show(struct UIWindow *self, int visible);
 void ui_item_drop_cnt_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_item_drop_cnt_wnd_on_draw(struct UIWindow *self);
-int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_drop_cnt_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_drop_cnt_wnd_ops = {
     .destroy = ui_item_drop_cnt_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -251,7 +251,7 @@ static void add_dragged(struct UIWindow *wnd, int val1)
 static void chat_red(const char *text)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, CHAT_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)text, CHAT_RED, 0, 0);
 }
 
 static struct UIWindow *para_window(int id, enum ObjectType type)
@@ -275,8 +275,8 @@ static void cap_count(struct GameMode *game, int count, int limit)
         game->drag.drop_count = count <= limit ? count : limit;
 }
 
-int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemDropCntWnd *self = (struct UIItemDropCntWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -292,11 +292,11 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         wnd->state = val1;
         if (val1 != DROP_PURPOSE_SET_COUNT)
             return 0;
-        sprintf(buf, "%d", val2);
+        sprintf(buf, "%d", (int)val2);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, buf);
         if (wnd->state == DROP_PURPOSE_SET_COUNT) {
             string_init(&text);
-            string_format(&text, "%d", val2);
+            string_format(&text, "%d", (int)val2);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->edit, string_cstr(&text));
             string_free(&text);
         }

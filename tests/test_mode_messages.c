@@ -12,7 +12,7 @@ static void update_mode(struct Mode *mode)
     ++updates;
 }
 
-static int receive_message(struct Mode *mode, int message, int a, int b, int c, int d)
+static intptr_t receive_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == expected);
     assert(message == 17 && a == -1 && b == 2 && c == 3 && d == 4);

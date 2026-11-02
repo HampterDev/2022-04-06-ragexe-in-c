@@ -71,7 +71,7 @@ unsigned char player_on_process(struct GameObject *object)
         req.start_tick = session_get_server_time(&g_session1);
         req.dst_x = self->requested_cell_x;
         req.dst_y = self->requested_cell_y;
-        render_object_send(self, NULL, 0, MSG_ARG_PTR(&req), 0, 0, 0);
+        render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
     }
     player_process_proceed(self);
     result = actor_process_state(self);
@@ -560,11 +560,11 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
     cast.level = self->skill_level;
     if (cast.skill_id == 0x7d || cast.skill_id == 0xdc) {
         wnd = ui_window_open(cast.skill_id == 0x7d ? 0x54 : 0x65);
-        ui_window_send(wnd, NULL, 0x44, (int)&cast, 0, 0, 0);
+        ui_window_send(wnd, NULL, 0x44, (intptr_t)&cast, 0, 0, 0);
         return;
     }
     if (cast.skill_id != 0x108 && cast.skill_id != 0xa04) {
-        MODE_SEND(mode, 0x46, (int)&cast, 0, 0);
+        MODE_SEND(mode, 0x46, (intptr_t)&cast, 0, 0);
         return;
     }
     x = y = sub_x = sub_y = 0;
@@ -575,7 +575,7 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
     if (path_finder_find_path(&g_pathFinder, platform_ticks_ms(), x, y, sub_x, sub_y, self->skill_cell_x,
                               self->skill_cell_y, 0x96, &path, 0xf) == 1)
         dir = path_info_end_direction(&path);
-    MODE_SEND(mode, 0x46, (int)&cast, dir, 0);
+    MODE_SEND(mode, 0x46, (intptr_t)&cast, dir, 0);
     path_info_destroy(&path);
 }
 
@@ -758,10 +758,10 @@ void player_process_costume_body(struct Player *self, unsigned char show)
 
             list_push_back(&self->attached, &obj, sizeof obj);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-            self->costume_body_obj = (int)obj;
+            self->costume_body_obj = obj;
         }
     } else if (self->costume_body_obj) {
-        render_object_send((void *)self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
+        render_object_send(self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
         self->costume_body_obj = 0;
     }
 }

@@ -160,9 +160,9 @@ static void collection_add_line(struct UIItemCollectionWnd *self, const char *li
         if (tag_test_is_one)
             memset(buf, 0, sizeof buf);
         sprintf(buf, "%s%s", language_charset_tag(g_language, 1), line);
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, TEXT_LAYOUT, 0, 0);
+        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)buf, TEXT_LAYOUT, 0, 0);
     } else {
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line,
+        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)line,
                  g_serviceType == 6 ? TEXT_LAYOUT_SERVICE_6 : TEXT_LAYOUT, 0, 0);
     }
 }
@@ -198,7 +198,7 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
     if (self->item.expire_in_hours)
         snprintf(buf, sizeof buf, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
                     expire % hours_per_day);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, layout, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)buf, layout, 0, 0);
 }
 
 static void collection_fit_text(struct UIItemCollectionWnd *self)
@@ -309,7 +309,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
             struct UIWindow *cmp = ui_make_window(WND_ITEM_COLLECTION_CMP);
 
             if (cmp)
-                ui_window_send_msg(cmp, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
+                ui_window_send_msg(cmp, NULL, UI_MSG_COLLECTION_ITEM, (intptr_t)worn, 1, 0, 0);
         } else {
             ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);
         }
@@ -399,7 +399,7 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
     ui_list_box_clear((struct UIListBox *)self->text);
     for (i = 0; i < VEC_COUNT(&lines, struct String); i++)
         ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT,
-                 (int)string_cstr(&VEC_AT(&lines, struct String, i)), TEXT_LAYOUT, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(&lines, struct String, i)), TEXT_LAYOUT, 0, 0);
     ui_window_invalidate_base(wnd);
     ui_window_mgr_raise_window(&g_windowMgr, wnd);
     string_free(&line);

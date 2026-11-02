@@ -106,7 +106,7 @@ static void connection_list(struct LoginMode *self, struct Vec *list, int msg)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, msg, (int)"NUMACCOUNT", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, msg, (intptr_t)"NUMACCOUNT", 0, 0);
     for (e = (struct LoginConnEntry *)list->first; e != (struct LoginConnEntry *)list->last; e++) {
         ui_list_box_add_item(ui_select_server_list(wnd), string_cstr(&e->display));
         balloons = ui_server_list_balloons(ui_select_server_list(wnd));
@@ -193,7 +193,7 @@ static void server_list(struct LoginMode *self)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (int)"NUMSERVER", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (intptr_t)"NUMSERVER", 0, 0);
     for (i = 0; i < self->numServer; i++) {
         e = &self->servers[i];
         memset(text, 0, sizeof text);
@@ -502,7 +502,7 @@ static void zone_list(struct LoginMode *self)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, 0x272c, (int)"NUMZONE", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, 0x272c, (intptr_t)"NUMZONE", 0, 0);
     for (i = 0; i < (unsigned)(((BYTE *)self->zones.last - (BYTE *)self->zones.first) / 0x14); i++) {
         strncpy(name, session_get_rsw_name((const char *)((struct LoginZoneEntry *)self->zones.first)[i].data), 0x10);
         ui_list_box_add_item(ui_select_server_list(wnd), session_map_display_name(name));

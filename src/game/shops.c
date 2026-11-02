@@ -41,7 +41,7 @@ static void refresh_window(struct UIWindow *w)
 
 static void chat_line(const char *text, unsigned colour)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, colour, 0, 0);
 }
 
 static void chat_msg(int msg_id, unsigned colour)
@@ -68,7 +68,7 @@ void game_mode_shop_item_sold(int date, unsigned short index, unsigned short amo
     item.index = i;
     item.price = zeny;
     w = ui_window_open(0x101);
-    UIWINDOW_SENDMSG(w, UIWM_REFRESH, (int)&item, buyer_cid, date, 0);
+    UIWINDOW_SENDMSG(w, UIWM_REFRESH, (intptr_t)&item, buyer_cid, date, 0);
     session_remove_own_store_item(&g_session1, &item);
     chat_refresh();
     item_info_get_display_name(&item, &name);
@@ -124,7 +124,7 @@ void game_mode_buying_store_bought(int time, int item_id, int count, int zeny, i
     item.count = count;
     item.price = zeny;
     w = ui_window_open(0x102);
-    UIWINDOW_SENDMSG(w, UIWM_REFRESH, (int)&item, seller_cid, time, 0);
+    UIWINDOW_SENDMSG(w, UIWM_REFRESH, (intptr_t)&item, seller_cid, time, 0);
     session_remove_own_store_item_by_id(&g_session1, &item);
     buying = g_windowMgr.item_wnd;
     store = g_windowMgr.buying_store_item_my_shop_wnd;
@@ -257,7 +257,7 @@ void game_mode_buying_store_entry(struct GameMode *self, const struct PACKET_ZC_
     title[80] = 0;
     actor = world_get_game_actor_by_aid(self->world, pkt->aid);
     if (actor != 0)
-        render_object_send(actor, NULL, ACTOR_MSG_BUYING_STORE_TITLE, MSG_ARG_PTR(title), 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_BUYING_STORE_TITLE, (intptr_t)title, 0, 0, 0);
 }
 
 #pragma pack(push, 1)

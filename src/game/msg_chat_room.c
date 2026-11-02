@@ -15,7 +15,7 @@
 
 #define CHAT_ROOM_PACKET_MAX 0x400
 
-int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, int arg)
+int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, intptr_t arg)
 {
     struct UIWindow *log;
 

@@ -213,8 +213,8 @@ void ui_candidate_wnd_on_draw(struct UIWindow *window)
     }
 }
 
-int ui_candidate_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_candidate_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICandidateWnd *self = (struct UICandidateWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -287,8 +287,8 @@ void ui_composition_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out(wnd, 0xa, 0xc, string_cstr(&self->text), 0, 0, IME_FONT_HEIGHT, 0, 0, 0);
 }
 
-int ui_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICompositionWnd *self = (struct UICompositionWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

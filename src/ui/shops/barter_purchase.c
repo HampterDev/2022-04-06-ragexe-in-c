@@ -80,7 +80,7 @@ void ui_barter_item_purchase_wnd_on_draw(struct UIWindow *self);
 void ui_barter_item_purchase_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_barter_item_purchase_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_barter_item_purchase_wnd_show_item_at(struct UIWindow *self, int x, int y);
-int ui_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_barter_item_purchase_wnd_ops = {
     .destroy = ui_barter_item_purchase_wnd_destroy,
@@ -588,8 +588,8 @@ static void purchase_resize(struct UIItemPurchaseWnd *self, int width, int heigh
     ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
 }
 
-int ui_barter_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_barter_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemPurchaseWnd *self = (struct UIItemPurchaseWnd *)window;
     switch (msg) {

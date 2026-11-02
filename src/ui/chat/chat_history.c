@@ -583,15 +583,15 @@ void ui_chat_his_box_on_l_btn_dbl_clk(struct UIWindow *window, int x_unused, int
         return;
     parent = self->list.base.parent;
     ui_window_send_msg(parent, &self->list.base, UI_MSG_COMMAND, UI_ID_HISTORY_LINE,
-             (int)ui_chat_his_box_get_line_extra(self, (unsigned)self->list.selected), 0, 0);
+             (intptr_t)ui_chat_his_box_get_line_extra(self, (unsigned)self->list.selected), 0, 0);
 }
 
 void ui_chat_his_box_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused)
 {
 }
 
-int ui_chat_his_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_chat_his_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIChatHisBox *self = (struct UIChatHisBox *)window;
     return ui_list_box_send_msg((struct UIWindow *)(&self->list), sender, msg, val1, val2, val3, val4);

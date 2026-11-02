@@ -41,7 +41,7 @@ void game_actor_show_number(struct GameActor *self, int value, unsigned argb, in
         while (node != self->attached.head) {
             struct MsgEffect *obj = *LIST_VALUE(node, struct MsgEffect *);
             if (obj->style == 0x16) {
-                game_actor_forget_handle(self, (int)obj);
+                game_actor_forget_handle(self, (struct GameObject *)obj);
                 msg_effect_send_msg((struct GameObject *)obj, (struct GameObject *)self, 0x18, 0, 0, 0, 0);
                 node = list_erase(&self->attached, node, NULL);
                 game_remove_object(obj);
@@ -59,7 +59,7 @@ void game_actor_show_number(struct GameActor *self, int value, unsigned argb, in
             break;
         e->argb = argb;
         render_object_send(e, NULL, 0x16, self->aid, style, 0, 0);
-        render_object_send(e, NULL, 0x40, MSG_ARG_PTR(&self->pos), *d, (count - 2 * i) * 4 - 4, 0);
+        render_object_send(e, NULL, 0x40, (intptr_t)&self->pos, *d, (count - 2 * i) * 4 - 4, 0);
         render_object_send(e, self, 0x32, 0, 0, 0, 0);
         e->cell_lit = 0;
         if (style == 0x16)

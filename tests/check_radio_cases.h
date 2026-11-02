@@ -22,7 +22,7 @@ void ui_window_on_mouse_move_base(struct UIWindow *wnd, int x, int y)
 void ui_window_on_l_btn_dbl_clk_base(struct UIWindow *wnd, int x, int y) { abort(); }
 void ui_window_track_mouse_base(struct UIWindow *wnd, int x, int y) { abort(); }
 void ui_window_on_l_btn_up_base(struct UIWindow *wnd, int x, int y) { abort(); }
-static int receive_notice(struct UIWindow *wnd, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+static intptr_t receive_notice(struct UIWindow *wnd, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(wnd == &parent && sender && notices < 4 && !c && !d);
     notice_msg[notices] = msg; notice_a[notices] = a; notice_b[notices] = b;

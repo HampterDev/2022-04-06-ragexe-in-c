@@ -15,13 +15,13 @@ struct UIWindow *ui_window_find(int id)
     if (id == 0x159 && apply_visible) return &apply.frame.base;
     return NULL;
 }
-static int on_board_message(struct UIWindow *w, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+static intptr_t on_board_message(struct UIWindow *w, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     (void)sender; (void)b; (void)c; (void)d;
     assert(w == &board.frame.base && (msg == 0x3c || (msg == 6 && a == 0x197)));
     ++refreshes; return 0;
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)a; (void)b; (void)c; (void)d; assert(mgr == &g_windowMgr && msg == 1); ++chats; return 0; }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *mgr, int id)
 { assert(mgr == &g_windowMgr && id == 0x159); ++quits; return 1; }
@@ -35,7 +35,7 @@ int ui_apply_for_party_wnd_set_ad(struct UIApplyForPartyWnd *w, const struct Adv
 int session_get_party_member_count(struct Session *s) { assert(s == &g_session1); return members; }
 void ui_button_set_show(struct UIButton *button, BYTE show) { (void)button; assert(show == 0); }
 struct Mode *client_current_mode(void) { return (struct Mode *)&mode_cookie; }
-int mode_send_message(struct Mode *mode, int msg, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == (struct Mode *)&mode_cookie && msg == 0x109 && c == 0 && d == 0);
     assert(*(int *)a == expected_aid && *(int *)b == expected_gid); ++joins; return 1;

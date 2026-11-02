@@ -47,7 +47,7 @@ void game_mode_zc_room_newentry(struct GameMode *self, const struct PacketRoomEn
     if (room.title.size > CHAT_ROOM_TITLE_MAX) {
         string_truncate(&room.title, CHAT_ROOM_TITLE_MAX);
     }
-    actor_send(owner, ACTOR_MSG_CHAT_ROOM, (int)&room, 0);
+    actor_send(owner, ACTOR_MSG_CHAT_ROOM, (intptr_t)&room, 0);
     string_free(&room.password);
     string_free(&room.title);
 }
@@ -70,7 +70,7 @@ void game_mode_zc_refuse_enter_room(struct GameMode *self, const unsigned char *
     if (reason > 7 || reason == 3)
         return;
     ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str(reason_text[reason]), CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str(reason_text[reason]), CHAT_COLOR_RED, 0, 0);
 }
 
 #define WND_CHAT_ROOM           0x1c
@@ -104,20 +104,20 @@ void game_mode_zc_ack_create_chatroom(struct GameMode *self, const unsigned char
     switch (packet->result) {
     case 0:
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str(0x40), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str(0x40), 0xffff00, 0, 0);
         wnd = ui_window_open(WND_CHAT_ROOM);
         self->own_chat_room.users = 1;
-        wnd_send(wnd, ROOM_WND_SET_INFO, (int)&self->own_chat_room, 0, 0, 0);
+        wnd_send(wnd, ROOM_WND_SET_INFO, (intptr_t)&self->own_chat_room, 0, 0, 0);
         wnd_send(wnd, ROOM_WND_OWN, 0, 0, 0, 0);
-        wnd_send(wnd, ROOM_WND_MEMBER_ADD, (int)session_character_name(&g_session1), 0, 0, 0);
+        wnd_send(wnd, ROOM_WND_MEMBER_ADD, (intptr_t)session_character_name(&g_session1), 0, 0, 0);
         break;
     case 1:
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str(0x41), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str(0x41), CHAT_COLOR_RED, 0, 0);
         break;
     case 2:
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str(0x42), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str(0x42), CHAT_COLOR_RED, 0, 0);
         break;
     }
 }
@@ -173,10 +173,10 @@ void game_mode_zc_member_newentry(struct GameMode *self, const unsigned char *pk
     wnd = ui_window_open(WND_CHAT_ROOM);
     chat_room_info_copy(&room, &((struct UIChatRoomWnd *)wnd)->room);
     room.users = packet->users;
-    wnd_send(wnd, ROOM_WND_SET_INFO, (int)&room, 0, 0, 0);
-    wnd_send(wnd, ROOM_WND_MEMBER_ADD, (int)name, 1, 0, 0);
+    wnd_send(wnd, ROOM_WND_SET_INFO, (intptr_t)&room, 0, 0, 0);
+    wnd_send(wnd, ROOM_WND_MEMBER_ADD, (intptr_t)name, 1, 0, 0);
     sprintf(line, msg_str(0xb3), name);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_ROOM_LINE, (int)line, CHAT_COLOR_ROOM_JOIN, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_ROOM_LINE, (intptr_t)line, CHAT_COLOR_ROOM_JOIN, 0, 0);
     string_free(&room.password);
     string_free(&room.title);
 }
@@ -209,11 +209,11 @@ void game_mode_zc_member_exit(struct GameMode *self, const unsigned char *pkt)
     wnd = ui_window_open(WND_CHAT_ROOM);
     chat_room_info_copy(&room, &((struct UIChatRoomWnd *)wnd)->room);
     room.users = packet->users;
-    wnd_send(wnd, ROOM_WND_SET_INFO, (int)&room, 0, 0, 0);
-    wnd_send(wnd, ROOM_WND_MEMBER_REMOVE, (int)name, 0, 0, 0);
+    wnd_send(wnd, ROOM_WND_SET_INFO, (intptr_t)&room, 0, 0, 0);
+    wnd_send(wnd, ROOM_WND_MEMBER_REMOVE, (intptr_t)name, 0, 0, 0);
     if (packet->type <= 1) {
         sprintf(line, msg_str(packet->type == 0 ? 0xb4 : 0xb5), name);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_ROOM_LINE, (int)line, CHAT_COLOR_ROOM_LEAVE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_ROOM_LINE, (intptr_t)line, CHAT_COLOR_ROOM_LEAVE, 0, 0);
     }
     string_free(&room.password);
     string_free(&room.title);
@@ -237,7 +237,7 @@ void game_mode_zc_role_change(struct GameMode *self, const unsigned char *pkt)
     (void)self;
     memcpy(name, packet->name, 24);
     name[24] = 0;
-    wnd_send(wnd, ROOM_WND_ROLE, (int)name, packet->role, 0, 0);
+    wnd_send(wnd, ROOM_WND_ROLE, (intptr_t)name, packet->role, 0, 0);
 }
 
 void game_mode_zc_change_chatroom(struct GameMode *self, const unsigned char *pkt)
@@ -263,7 +263,7 @@ void game_mode_zc_change_chatroom(struct GameMode *self, const unsigned char *pk
         string_truncate(&room.title, CHAT_ROOM_TITLE_MAX);
     }
     wnd = ui_window_open(WND_CHAT_ROOM);
-    wnd_send(wnd, ROOM_WND_SET_INFO, (int)&room, 0, 0, 0);
+    wnd_send(wnd, ROOM_WND_SET_INFO, (intptr_t)&room, 0, 0, 0);
     string_free(&room.password);
     string_free(&room.title);
 }
@@ -275,7 +275,7 @@ static void whisper_setting_line(const struct String *name, int msg)
 
     string_copy(&line, name);
     string_append_cstr(&line, text);
-    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)string_cstr(&line), CHAT_COLOR_YELLOW, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)string_cstr(&line), CHAT_COLOR_YELLOW, 0, 0);
     string_free(&line);
 }
 
@@ -342,7 +342,7 @@ void game_mode_zc_setting_whisper_state(struct GameMode *self, const unsigned ch
     (void)self;
     ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
     if (type <= 1 && result <= 1)
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str((type == 0 ? 0xd63 : 0xd65) + result),
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str((type == 0 ? 0xd63 : 0xd65) + result),
                               CHAT_COLOR_YELLOW, 0, 0);
 }
 
@@ -383,19 +383,19 @@ void game_mode_zc_notify_chat(struct GameMode *self, const unsigned char *pkt)
     memcpy(text.first, packet->text, len);
     speaker = world_get_game_actor_by_aid(self->world, aid);
     if (g_windowMgr.chat_room_wnd != 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ROOM_LINE, (int)line, CHAT_COLOR_ROOM, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ROOM_LINE, (intptr_t)line, CHAT_COLOR_ROOM, 0, 0);
     } else {
         if (clientinfo_is_yellow_aid(aid)) {
             int color = g_serviceType == SERVICE_TYPE_THAI ? CHAT_COLOR_GM_SVC5
                       : g_serviceType == SERVICE_TYPE_GERMANY ? CHAT_COLOR_GM_SVC10 : CHAT_COLOR_GM;
 
-            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)line, color, 1, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)line, color, 1, 0);
         } else if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1) {
-            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)line, CHAT_COLOR_PLAYER, 1, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)line, CHAT_COLOR_PLAYER, 1, 0);
         }
         speaker = world_get_game_actor_by_aid(self->world, aid);
         if (speaker)
-            actor_send(speaker, ACTOR_MSG_TALK, (int)line, 0);
+            actor_send(speaker, ACTOR_MSG_TALK, (intptr_t)line, 0);
     }
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, line);
@@ -420,11 +420,11 @@ void game_mode_zc_whisper_list(struct GameMode *self, const unsigned char *pkt)
     (void)self;
     ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_CLEAR, 0, 0, 0, 0);
     name[24] = 0;
-    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)msg_str(count != 0 ? 0xd44 : 0xd43), 0xffff00, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)msg_str(count != 0 ? 0xd44 : 0xd43), 0xffff00, 0, 0);
     for (i = 0; i < count; i++) {
         if (24 * i + 4 > packet->length)
             return;
         memcpy(name, packet->names[i], 24);
-        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)name, 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (intptr_t)name, 0xffff00, 0, 0);
     }
 }

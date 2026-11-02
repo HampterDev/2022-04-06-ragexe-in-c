@@ -517,8 +517,8 @@ void ui_tree_view_update_scroll_bar(struct UITreeView *self)
     ui_window_invalidate_base(&self->vbar->base);
 }
 
-int ui_tree_view_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_tree_view_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UITreeView *self = (struct UITreeView *)window;
     struct UITreeNode *node;
@@ -612,7 +612,7 @@ int ui_tree_view_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             ui_window_invalidate_base(&self->base);
         }
         if (msg == TV_MSG_TOGGLE)
-            ui_window_send_msg(self->base.parent, &self->base, TV_MSG_TOGGLE, (int)self->selected, sender->x + val2,
+            ui_window_send_msg(self->base.parent, &self->base, TV_MSG_TOGGLE, (intptr_t)self->selected, sender->x + val2,
                      sender->height / 2 + sender->y, 0);
         self->dragged = NULL;
         self->drop = NULL;
@@ -661,8 +661,8 @@ int ui_tree_view_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             list_push_back(list, &self->dragged, sizeof self->dragged);
             self->dragged->label = label;
             if (self->base.parent)
-                ui_window_send_msg(self->base.parent, &self->base, TV_MSG_DROP, (int)self->dragged, (int)self->drop,
-                         (int)old_parent, 0);
+                ui_window_send_msg(self->base.parent, &self->base, TV_MSG_DROP, (intptr_t)self->dragged, (intptr_t)self->drop,
+                         (intptr_t)old_parent, 0);
             ui_tree_view_hide_rows(self, &self->root->children);
         }
         self->selected = NULL;
@@ -689,7 +689,7 @@ int ui_tree_view_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             len = strlen(ui_edit_ctrl_get_text(edit));
             if (self->base.parent)
                 ui_window_send_msg(self->base.parent, &self->base, TV_MSG_RENAME,
-                         (int)ui_edit_ctrl_get_text(self->edit), (int)len + 1, 0, 0);
+                         (intptr_t)ui_edit_ctrl_get_text(self->edit), (int)len + 1, 0, 0);
         } else {
             int x = self->edit->x, y = self->edit->y;
 

@@ -45,7 +45,7 @@ void game_mode_zc_req_exchange_item2(struct GameMode *self, const unsigned char 
     memcpy(name, packet->name, NAME_LENGTH);
     name[NAME_LENGTH] = 0;
     wnd = ui_window_open(WND_EXCHANGE_REQUEST);
-    wnd_send(wnd, 0x32, (int)name, packet->char_id, packet->level, 0);
+    wnd_send(wnd, 0x32, (intptr_t)name, packet->char_id, packet->level, 0);
     string_assign_cstr(&self->exchange_partner, name);
 }
 
@@ -70,7 +70,7 @@ void game_mode_zc_req_exchange_item(struct GameMode *self, const unsigned char *
     memcpy(name, packet->name, NAME_LENGTH);
     name[NAME_LENGTH] = 0;
     wnd = ui_window_open(WND_EXCHANGE_REQUEST);
-    wnd_send(wnd, 0x32, (int)name, 0, 0, 0);
+    wnd_send(wnd, 0x32, (intptr_t)name, 0, 0, 0);
     string_assign_cstr(&self->exchange_partner, name);
 }
 
@@ -113,7 +113,7 @@ void game_mode_zc_cancel_exchange_item(struct GameMode *self, const unsigned cha
     self->exchange_open = 0;
     session_end_exchange(&g_session1);
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4a), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4a), 0xff, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -131,11 +131,11 @@ void game_mode_zc_exec_exchange_item(struct GameMode *self, const unsigned char 
     ui_window_mgr_post_quit1(&g_windowMgr, WND_TRADE);
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     if (packet->result == 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4b), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4b), 0xffff00, 0, 0);
     } else if (packet->result == 1) {
         self->exchange_open = 0;
         session_end_exchange(&g_session1);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4c), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4c), 0xff, 0, 0);
     }
 }
 
@@ -169,7 +169,7 @@ void game_mode_zc_req_add_friends(struct GameMode *self, const unsigned char *pk
     } else {
         void *wnd = ui_window_open(WND_FRIEND_REQUEST);
 
-        wnd_send(wnd, 0x5f, packet->aid, packet->char_id, (int)name, 0);
+        wnd_send(wnd, 0x5f, packet->aid, packet->char_id, (intptr_t)name, 0);
     }
 }
 
@@ -212,7 +212,7 @@ static void family_request(struct GameMode *self, const unsigned char *pkt, int 
     self->family_request_char_id = packet->char_id;
     name[NAME_LENGTH] = 0;
     wnd = ui_window_open(wnd_id);
-    wnd_send(wnd, msg, (int)packet->char_id, (int)name, 0, 0);
+    wnd_send(wnd, msg, (int)packet->char_id, (intptr_t)name, 0, 0);
 }
 
 void game_mode_zc_req_baby(struct GameMode *self, const unsigned char *pkt)
@@ -363,7 +363,7 @@ void game_mode_zc_divorce(struct GameMode *self, const struct PACKET_ZC_DIVORCE 
     our_name = session_character_name(&g_session1);
     sprintf(line, msg_str(MSG_DIVORCED), our_name, packet->name);
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_DIALOG_CLOSE, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, DIVORCE_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, DIVORCE_COLOR, 0, 0);
 }
 
 #define BABY_MSG_COLOR          0x9b9bff
@@ -382,7 +382,7 @@ void game_mode_zc_baby_msg(const unsigned char *pkt)
     unsigned result = packet->result;
 
     if (result <= 2)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(text[result]), BABY_MSG_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(text[result]), BABY_MSG_COLOR, 0, 0);
 }
 
 #define CHAT_COLOR_YELLOW       0xffff
@@ -408,7 +408,7 @@ void game_mode_zc_ack_give_manner_point(const unsigned char *pkt)
     case 4: text = 0x341; color = CHAT_COLOR_YELLOW; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(text), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(text), color, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -430,5 +430,5 @@ void game_mode_zc_notify_manner_point_given(const unsigned char *pkt)
     if (packet->type != 0)
         return;
     sprintf(line, msg_str(0x183), name);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_CYAN, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_CYAN, 0, 0);
 }

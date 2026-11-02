@@ -25,15 +25,15 @@ struct UIWhisperEditCtrl *ui_whisper_edit_ctrl_construct(struct UIWhisperEditCtr
 
 void ui_chat_edit_ctrl_destruct(struct UIChatEditCtrl *self);
 void ui_chat_edit_ctrl_destroy(struct UIWindow *window);
-int ui_chat_edit_ctrl_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                          int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_chat_edit_ctrl_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                          int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_chat_edit_ctrl_commit(struct UIChatEditCtrl *self);
 void ui_whisper_edit_ctrl_destruct(struct UIWhisperEditCtrl *self);
 void ui_whisper_edit_ctrl_destroy(struct UIWindow *window);
 void ui_whisper_edit_ctrl_on_focus(struct UIWindow *self);
 void ui_whisper_edit_ctrl_on_focus_lost(struct UIWindow *self);
-int ui_whisper_edit_ctrl_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                             int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_whisper_edit_ctrl_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                             int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_whisper_edit_ctrl_set_text(struct UIEditCtrl *base_edit, const char *text);
 
 #endif

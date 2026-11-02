@@ -182,7 +182,7 @@ void talk_cmd_where(struct GameMode *self)
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     talk_print(line, TALK_COLOR_NOTICE);
     if (g_serviceType != 10)
-        ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)line, TALK_COLOR_NOTICE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (intptr_t)line, TALK_COLOR_NOTICE, 0, 0);
     string_free(&map);
 }
 

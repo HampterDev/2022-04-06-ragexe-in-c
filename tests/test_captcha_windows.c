@@ -113,7 +113,7 @@ char *msg_str(int id) { (void)id; return "%d"; }
 const char *ui_edit_ctrl_get_text(struct UIWindow *w) { assert(w); return edit_text; }
 int ui_edit_ctrl_get_text_size(struct UIWindow *w) { assert(w); return (int)strlen(edit_text); }
 
-int ui_window_send_msg_base(struct UIWindow *w, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *w, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)w; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
 
 void language_cancel_input(struct Language *language) { (void)language; }

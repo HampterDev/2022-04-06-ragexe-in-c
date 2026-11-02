@@ -309,7 +309,7 @@ void exb_show_item_at(const struct ExpandedBarterWnd *self, int x, int y)
             struct ItemInfo info;
 
             barter_goods_ex_to_item_info(&at.goods, &info);
-            ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+            ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
             item_info_destruct(&info);
         }
     }

@@ -16,7 +16,7 @@ struct UINormalMB;
 struct UIWindow;
 void ui_normal_mb_destroy(struct UIWindow *window);
 void ui_normal_mb_on_draw(struct UIWindow *self);
-int ui_normal_mb_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_normal_mb_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_normal_mb_ops = {
     .destroy = ui_normal_mb_destroy,
     .resize = ui_window_resize_base,
@@ -143,10 +143,10 @@ static struct UIBitmapButton *add_button(struct UINormalMB *self, const char *no
 #define BTN_CANCEL UI_SKIN "btn_cancel.bmp", UI_SKIN "btn_cancel_a.bmp", UI_SKIN "btn_cancel_b.bmp"
 
 void ui_normal_mb_create(struct UIWindow *wnd, struct UIWindow *owner, const char *text,
-                                  int type, int default_no, int title, int width, int height, int picture)
+                                  int type, int default_no, const char *title, int width, int height, const char *picture)
 {
     struct UINormalMB *self = (struct UINormalMB *)wnd;
-    const char *title_text = (const char *)title;
+    const char *title_text = title;
     struct UIWindow *viewer;
     int text_x = 0;
 
@@ -165,7 +165,7 @@ void ui_normal_mb_create(struct UIWindow *wnd, struct UIWindow *owner, const cha
 
         if (bitmap)
             bitmap = ui_static_bitmap_construct(bitmap);
-        ui_static_bitmap_set_bitmap(bitmap, (const char *)picture);
+        ui_static_bitmap_set_bitmap(bitmap, picture);
         ui_window_create(&bitmap->base, bitmap->base.width, bitmap->base.height);
         ui_window_move_base(&bitmap->base, 10, 0x16);
         ui_window_add_child(wnd, &bitmap->base);
@@ -180,7 +180,7 @@ void ui_normal_mb_create(struct UIWindow *wnd, struct UIWindow *owner, const cha
     UI_TEXT_VIEWER_BACKGROUND(self->viewer) = ui_skin_argb(2, 2);
     ui_window_invalidate(self->viewer);
     ui_window_add_child(wnd, self->viewer);
-    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->text), (int)(width / 7.5),
+    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->text), (int)(width / 7.5),
              0, 0);
 
     switch (type) {
@@ -208,12 +208,13 @@ void ui_normal_mb_on_draw(struct UIWindow *window)
     ui_window_draw_body(&self->frame.base, 0x11, 0, "");
 }
 
-int ui_normal_mb_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_normal_mb_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UINormalMB *self = (struct UINormalMB *)window;
     if (msg == UI_MSG_COMMAND) {
-        struct NormalMBAnswer *answer = tree_find(&self->answers, &val1, tree_less_int);
+        int id = (int)val1;
+        struct NormalMBAnswer *answer = tree_find(&self->answers, &id, tree_less_int);
 
         if (answer)
             answer->run();

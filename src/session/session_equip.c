@@ -25,7 +25,7 @@ static void say_item(const struct ItemInfo *item, int msg, int color)
     item_info_get_display_name(item, &name);
     string_init(&line);
     string_format(&line, "%s%s", string_cstr(&name), msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), color, 6, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), color, 6, 0);
     string_free(&line);
     string_free(&name);
 }

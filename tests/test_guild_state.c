@@ -79,7 +79,7 @@ struct UIWindow *window_mgr_guild_window(struct UIWindowMgr *self)
 { assert(self == &g_windowMgr); return window_present ? (struct UIWindow *)&window : NULL; }
 char *msg_str(int id) { assert(id == 0x245); return "unknown"; }
 struct Mode *client_current_mode(void) { return (struct Mode *)&mode; }
-int mode_send_message(struct Mode *self, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *self, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(self == (struct Mode *)&mode && message == 0x6b);
     assert(!b && !c && !d && sends < 32);

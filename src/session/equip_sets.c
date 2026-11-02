@@ -192,7 +192,7 @@ void session_take_out_switch_equip(struct Session *self, const struct ItemInfo *
             item_info_get_display_name(&found, &name);
             string_init(&line);
             string_format(&line, "%s%s", string_cstr(&name), msg_str(0xab));
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), 0xff, 6, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), 0xff, 6, 0);
             string_free(&line);
             string_free(&name);
         }

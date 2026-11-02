@@ -193,7 +193,7 @@ static struct LapineIngredient **find_row(struct LapineIngredientList *self, int
 
 static void notice(struct LapineIngredientList *self, const char *text)
 {
-    ui_window_send(self->scroll.base.parent, &self->scroll.base, LAPINE_MSG_NOTICE, (int)text, 0, 0, 0);
+    ui_window_send(self->scroll.base.parent, &self->scroll.base, LAPINE_MSG_NOTICE, (intptr_t)text, 0, 0, 0);
 }
 
 static void notice_too_few(struct LapineIngredientList *self, int count)
@@ -484,8 +484,8 @@ void lapine_list_wheel(struct UIWindow *window, int delta)
         ui_window_send(&self->scroll.base, &self->scroll.vbar->base, UI_MSG_SCROLL_BY, delta < 0 ? 15 : -15, 0, 0, 0);
 }
 
-int lapine_list_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                    int a, int b, int c, int d)
+intptr_t lapine_list_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                    intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LapineIngredientList *self = (struct LapineIngredientList *)window;
     struct LapineIngredient **it;
@@ -620,7 +620,7 @@ void lapine_row_show_info(struct UIWindow *window, int x, int y)
     if ((unsigned)self->item.index > 0) {
         struct UIWindow *desc = ui_window_open(ITEM_DESC_WND_ID);
 
-        ui_window_send(desc, &self->frame.base, UI_MSG_SHOW_ITEM, (int)&self->item, 0, 0, 0);
+        ui_window_send(desc, &self->frame.base, UI_MSG_SHOW_ITEM, (intptr_t)&self->item, 0, 0, 0);
     }
 }
 

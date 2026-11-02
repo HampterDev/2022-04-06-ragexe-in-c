@@ -109,7 +109,7 @@ struct Skill *world_get_skill_by_aid(struct World *w, int aid)
     assert(w == &world);
     return aid == UNIT_AID ? (struct Skill *)&unit : NULL;
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct Sent *s = record(SENT_CHAT, self);
 
@@ -118,7 +118,7 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
     s->value[0] = val2;
     return 0;
 }
-int game_mode_send_msg(struct Mode *m, int message, int a, int b, int c, int d)
+intptr_t game_mode_send_msg(struct Mode *m, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct Sent *s = record(SENT_MODE, m);
 

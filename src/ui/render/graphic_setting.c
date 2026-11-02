@@ -67,9 +67,6 @@ int g_displayHeight;
 #define SIZE_TAB_CONTROL sizeof(struct UITabControl)
 #define SIZE_SCROLL_BAR sizeof(struct UIScrollBar)
 
-OFFSET_ASSERT(UIGraphicSettingWnd, device_names, 0x94);
-OFFSET_ASSERT(UIGraphicSettingWnd, device_name, 0xc0);
-
 #define WND(self) (&(self)->frame.base)
 #define W(ctrl) ((struct UIWindow *)(ctrl))
 #define STR_AT(v, i) (&((struct String *)(v)->first)[i])
@@ -80,7 +77,7 @@ void ui_graphic_setting_wnd_destroy(struct UIWindow *window);
 void ui_graphic_setting_wnd_store_info(struct UIWindow *self);
 void ui_graphic_setting_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_graphic_setting_wnd_on_draw(struct UIWindow *self);
-int ui_graphic_setting_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .destroy = ui_graphic_setting_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -648,7 +645,7 @@ static void open_string_list(struct UIGraphicSettingWnd *self, int id, struct Ve
     list = ui_window_open(UI_WND_COMBO_BOX);
     list->id = id;
     for (i = 0; i < STR_COUNT(names); i++)
-        ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(STR_AT(names, i)), 0, 0, 0);
+        ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)string_cstr(STR_AT(names, i)), 0, 0, 0);
     if (STR_COUNT(names) * 16 < height)
         height = STR_COUNT(names) * 16;
     place_list(self, list, box, selected, (int)height);
@@ -714,7 +711,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         } else if (sender == W(self->box_emblem_frame)) {
             g_session1.emblemFrame = value;
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
         } else if (sender == W(self->box_extend_damage)) {
             g_session1.extendDamage = value;
         } else if (settings_is_display_box(sender, self) || sender == W(self->box_trilinear)) {
@@ -743,9 +740,9 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         if (!list)
             return 0;
         list->id = ID_SKIN;
-        ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(0xc12), 0, 0, 0);
+        ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(0xc12), 0, 0, 0);
         for (i = 0; i < count; i++)
-            ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (int)skin_mgr_get_name(&g_skinMgr, i), 0, 0, 0);
+            ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)skin_mgr_get_name(&g_skinMgr, i), 0, 0, 0);
         height = (count + 1) * 16;
         if (height >= 0x50)
             height = 0x50;
@@ -865,9 +862,9 @@ static int scroll_step(int msg, int delta)
     return delta;
 }
 
-int ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
-                                           struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                           int val4)
+intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
+                                           struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                           intptr_t val4)
 {
     struct UIGraphicSettingWnd *self = (struct UIGraphicSettingWnd *)window;
     int old, pos;

@@ -17,7 +17,7 @@ void ui_window_on_wheel_base(struct UIWindow * arg0, int arg1) { abort(); }
 BYTE ui_window_render_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_save_pos_base(struct UIWindow * arg0) { abort(); }
 
-int ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_window_render_overlay_base(struct UIWindow * arg0) { abort(); }
 void ui_window_snap_base(struct UIWindow * arg0) { abort(); }
 void ui_window_store_info_base(struct UIWindow * arg0) { abort(); }
@@ -34,7 +34,7 @@ BYTE ui_window_is_click_through_base(struct UIWindow * arg0) { abort(); }
 int client_lua_call(struct ClientLua * arg0, const char * arg1, const char * arg2, ...) { abort(); }
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
-int mode_send_message(struct Mode * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t mode_send_message(struct Mode * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 struct UIWindow * ui_window_find(int arg0) { abort(); }
 
 const struct UIButtonOps ui_refining_btn_refining_ops;

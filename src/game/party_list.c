@@ -154,7 +154,7 @@ void game_mode_on_notify_member_info_to_groupm(struct GameMode *self,
 
 static void chat_line(const char *text, int colour, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, colour, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, colour, channel, 0);
 }
 
 static void chat_close_dialog(void)
@@ -397,13 +397,13 @@ void game_mode_notify_chat_party(struct GameMode *self, const unsigned char *pkt
     memcpy(text.first, packet->text, len);
     if (packet->aid == g_session1.ownAid) {
         chat_line(line, 0xc8ff, 3);
-        render_object_send(self->world->player, NULL, ACTOR_MSG_CHAT, (int)line, 0, 0, 0);
+        render_object_send(self->world->player, NULL, ACTOR_MSG_CHAT, (intptr_t)line, 0, 0, 0);
     } else {
         chat_close_dialog();
         chat_line(line, 0xc8c8ff, 3);
         speaker = world_get_game_actor_by_aid(self->world, packet->aid);
         if (speaker != 0)
-            render_object_send(speaker, NULL, ACTOR_MSG_CHAT, (int)line, 0, 0, 0);
+            render_object_send(speaker, NULL, ACTOR_MSG_CHAT, (intptr_t)line, 0, 0, 0);
     }
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, line);

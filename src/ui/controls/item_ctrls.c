@@ -230,7 +230,7 @@ void ui_basic_item_ctrl_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (ITEM_ID(self) > 0) {
         struct UIWindow *wnd = ui_window_open(ITEM_WND_ID);
 
-        ui_window_send(wnd, NULL, ITEM_WND_MSG_SHOW, (int)&self->item, 0, 0, 0);
+        ui_window_send(wnd, NULL, ITEM_WND_MSG_SHOW, (intptr_t)&self->item, 0, 0, 0);
     }
 }
 
@@ -577,7 +577,7 @@ void ui_static_item_on_r_btn_down(struct UIWindow *window, int x, int y)
     struct UIStaticItem *self = (struct UIStaticItem *)window;
     struct UIWindow *wnd = ui_window_open(ITEM_WND_ID);
 
-    ui_window_send(wnd, NULL, ITEM_WND_MSG_SHOW, (int)&self->item, 0, 0, 0);
+    ui_window_send(wnd, NULL, ITEM_WND_MSG_SHOW, (intptr_t)&self->item, 0, 0, 0);
 }
 
 #define SLOT_MSG_SET_STYLE 0x1a7
@@ -848,8 +848,8 @@ void ui_slot_bmp_button_on_r_btn_down(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd->parent, wnd, UI_MSG_COMMAND, wnd->id, SLOT_VAL_R_BTN_DOWN, 0, 0);
 }
 
-int ui_slot_bmp_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_slot_bmp_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISlotBmpButton *self = (struct UISlotBmpButton *)window;
     if (msg == UI_MSG_SET_STATE) {

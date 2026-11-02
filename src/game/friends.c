@@ -16,7 +16,7 @@
 
 static void chat(const char *text, unsigned colour)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, colour, 0, 0);
 }
 
 #pragma pack(push, 1)

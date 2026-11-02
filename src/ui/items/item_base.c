@@ -199,8 +199,8 @@ void ui_item_base_wnd_on_draw(struct UIWindow *window)
     }
 }
 
-int ui_item_base_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_item_base_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIItemBaseWnd *self = (struct UIItemBaseWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

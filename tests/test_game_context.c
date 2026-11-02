@@ -9,7 +9,7 @@
 static struct GameMode *current;
 static int messages;
 
-int game_mode_send_msg(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t game_mode_send_msg(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == (struct Mode *)current);
     assert(message == 7 && a == 1 && b == 2 && c == 3 && d == 4);

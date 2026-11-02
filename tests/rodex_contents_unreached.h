@@ -23,12 +23,12 @@ void ui_frame_wnd_on_l_btn_down(struct UIWindow *arg0, int arg1, int arg2) { abo
 void ui_frame_wnd_on_l_btn_up(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_mouse_move(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_save_pos(struct UIWindow *arg0) { abort(); }
-int ui_frame_wnd_send_msg(struct UIWindow *arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_frame_wnd_snap(struct UIWindow *arg0) { abort(); }
 const char * ui_skin_path(const char * arg0) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, const char * arg6, int arg7, int arg8, int arg9) { abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr * arg0, int arg1) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 struct UIWindow * ui_window_add_close_button(struct UIWindow * arg0, const char * arg1, int arg2) { abort(); }
 struct UIWindow * ui_window_add_sys_button(struct UIWindow * arg0) { abort(); }
 void ui_window_clear_canvas(struct UIWindow * arg0, DWORD arg1) { abort(); }
@@ -67,7 +67,7 @@ struct ResMgr * g_resMgr(void) { abort(); }
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 struct Mode * game_current_base_mode(void) { abort(); }
-int game_send_message(int arg0, int arg1, int arg2, int arg3, int arg4) { abort(); }
-int mode_send_message(struct Mode * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t game_send_message(int arg0, intptr_t arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4) { abort(); }
+intptr_t mode_send_message(struct Mode * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
-int ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }

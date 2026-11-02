@@ -91,13 +91,13 @@ void ui_edit_ctrl_on_focus(struct UIWindow *window)
 void ui_edit_ctrl_on_focus_lost(struct UIWindow *window)
 {
     struct UIEditCtrl *edit = (struct UIEditCtrl *)window; ++lost_calls; ui_edit_ctrl_sync_from_ime(edit); }
-int ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                       int msg, int a, int b, int c, int d)
+intptr_t ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                       int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct UIEditCtrl *edit = (struct UIEditCtrl *)window; assert(edit && sender == &parent && msg == 999 && a == 1 && b == 2 && c == 3 && d == 4); return 123; }
 static void destroy_popup(struct UIWindow *window)
 { (void)window; ++popup_destroyed; }
-static int chat_message(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+static intptr_t chat_message(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window == g_windowMgr.new_chat_wnd && msg == COMBO_MSG_CHOSEN && !b && !c && !d);
     chosen = a; chosen_sender = sender; return 0;

@@ -119,7 +119,7 @@ void ui_item_wnd_on_draw(struct UIWindow *self);
 void ui_item_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_wnd_ops = {
     .destroy = ui_item_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -701,8 +701,8 @@ static void item_wnd_place_children(struct UIItemWnd *self)
     ui_window_move_base(&self->sort->button.base, 0x9d, wnd->height - 0x13);
 }
 
-int ui_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIItemWnd *self = (struct UIItemWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -872,7 +872,7 @@ void ui_item_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const stru
         return;
     case 0xe:
         if (g_windowMgr.make_target_process_wnd) {
-            ui_window_send_msg(g_windowMgr.make_target_process_wnd, NULL, 0x4b, (int)string_cstr(&drag->name),
+            ui_window_send_msg(g_windowMgr.make_target_process_wnd, NULL, 0x4b, (intptr_t)string_cstr(&drag->name),
                      0, 0, 0);
         }
         break;
@@ -1107,7 +1107,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
                 }
             }
         } else {
-            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
         }
     }
     item_info_destruct(&item);

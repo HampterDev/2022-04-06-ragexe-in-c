@@ -338,7 +338,7 @@ void ui_merchant_shop_make_wnd_set_waiting(struct UIMerchantShopMakeWnd *self, B
         self->waiting = 1;
         ui_window_set_show_base(&self->frame.base, 0);
         ui_window_set_show(items, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_WAITING), 0xffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_WAITING), 0xffff, 0, 0);
     } else {
         self->waiting = 0;
         ui_window_set_show_base(&self->frame.base, 1);
@@ -789,7 +789,7 @@ void ui_merchant_shop_make_wnd_on_r_btn_down(struct UIWindow *window, int x, int
                 ui_window_send_msg(g_windowMgr.buying_store_mirror_item_wnd, NULL, UI_MSG_ADD_DRAGGED, 0, 0, 0, 0);
             }
         } else {
-            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
         }
     }
     item_info_destruct(&item);

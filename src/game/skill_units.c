@@ -82,7 +82,7 @@ static void add_text_object(struct GameMode *self, unsigned aid, const char *tex
     list_push_back(&self->world->gameObjects, &obj, sizeof obj);
     list_push_back(&self->world->skills, &obj, sizeof obj);
     render_object_send(obj, NULL, OBJ_MSG_SET_AID, aid, 0, 0, 0);
-    render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (long long)(int)text, x, y, 0);
+    render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (intptr_t)text, x, y, 0);
 }
 
 static struct Skill *add_unit_inline(struct GameMode *self, void *block, unsigned aid)
@@ -270,7 +270,7 @@ void game_mode_zc_skill_entry5(struct GameMode *self, const struct PACKET_ZC_SKI
             return;
         obj = (struct AbleToMakeEffect *)graffi_skill_new();
         render_object_send(obj, NULL, OBJ_MSG_SET_AID, packet->aid, 0, 0, 0);
-        render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (long long)(int)packet->text, (short)packet->x, (short)packet->y, 0);
+        render_object_send(obj, NULL, OBJ_MSG_SET_TEXT, (intptr_t)packet->text, (short)packet->x, (short)packet->y, 0);
         list_push_back(&self->world->gameObjects, &obj, sizeof obj);
         list_push_back(&self->world->skills, &obj, sizeof obj);
         return;
@@ -345,7 +345,7 @@ void game_mode_spawn_unit_double(struct GameMode *self, unsigned aid, unsigned c
             info.dir = 0xb4;
             block = mem_alloc(sizeof(struct Pc));
             actor = block ? (struct GameActor *)pc_construct(block) : 0;
-            render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (long long)(int)&info, 0, 0, 0);
+            render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (intptr_t)&info, 0, 0, 0);
             actor->object_type = 7;
             game_actor_launch_effect(actor, 0x3c3, (Vec3){ 0.0f, 0.0f, 0.0f }, 0.0f);
             list_push_back(&self->world->gameObjects, &actor, sizeof actor);

@@ -152,7 +152,7 @@ struct GuildExpelled *guild_ban_construct(struct GuildExpelled *ban)
 
 static void guild_chat(const char *text, int color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, color, CHAT_CHANNEL_GUILD, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, color, CHAT_CHANNEL_GUILD, 0);
 }
 
 static char is_our_name(const char *name)

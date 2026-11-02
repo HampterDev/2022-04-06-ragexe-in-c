@@ -5,7 +5,7 @@
 
 extern const struct ModeOps g_gameModeVtable_ops;
 void game_mode_on_update(struct Mode *mode);
-int game_mode_send_msg(struct Mode *mode, int message, int a, int b, int c, int d);
+intptr_t game_mode_send_msg(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 void game_mode_on_change_state(struct Mode *mode, int state);
 
 extern unsigned g_followLastMoveTick;

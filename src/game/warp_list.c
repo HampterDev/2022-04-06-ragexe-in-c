@@ -39,7 +39,7 @@ static void add_maps(struct UIWindow *wnd, int msg, struct WarpMapName *map, int
     for (; count > 0; count--, map++) {
         map->name[15] = 0;
         if (strlen(map->name) != 0)
-            ui_window_send(wnd, NULL, msg, (int)map->name, 0, 0, 0);
+            ui_window_send(wnd, NULL, msg, (intptr_t)map->name, 0, 0, 0);
     }
 }
 
@@ -53,7 +53,7 @@ void game_mode_on_warp_list2(struct GameMode *self, struct PacketWarpList2 *pack
     wnd = ui_make_window(WID_WARP_PORTAL);
     ui_window_send(wnd, NULL, WM_WARP_PORTAL_SKILL, packet->skill_id, 0, 0, 0);
     add_maps(wnd, WM_WARP_PORTAL_ADD, packet->maps, count);
-    ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (int)"cancel", 0, 0, 0);
+    ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (intptr_t)"cancel", 0, 0, 0);
 }
 
 void game_mode_on_show_warp_list(struct GameMode *self, struct PacketShowWarpList *packet)
@@ -78,9 +78,9 @@ void game_mode_on_warp_list(struct GameMode *self, const struct PacketWarpList *
     ui_window_send(wnd, NULL, WM_WARP_PORTAL_SKILL, packet->skill_id, 0, 0, 0);
     for (i = 0; i < 4; i++) {
         if (strlen(packet->maps[i].name) != 0)
-            ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (int)packet->maps[i].name, 0, 0, 0);
+            ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (intptr_t)packet->maps[i].name, 0, 0, 0);
     }
-    ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (int)"cancel", 0, 0, 0);
+    ui_window_send(wnd, NULL, WM_WARP_PORTAL_ADD, (intptr_t)"cancel", 0, 0, 0);
 }
 
 #define UIM_LOG_LINE           0x13
@@ -103,8 +103,8 @@ void game_mode_zc_ack_remember_warppoint(const unsigned char *pkt)
 
     if (result > 3)
         return;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(results[result].msg), results[result].color,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(results[result].msg), results[result].color,
                         0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_LOG_LINE, (int)msg_str(results[result].msg),
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_LOG_LINE, (intptr_t)msg_str(results[result].msg),
                         results[result].color, 0, 0);
 }

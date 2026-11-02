@@ -250,24 +250,24 @@ void game_actor_process_will_be_attacked(struct GameActor *self)
             if (session_is_pc_job(&g_session1, game_actor_get_job(self))) {
                 if (g_session1.ownAid == target)
                     sprintf(own, msg_str(0x645), string_cstr(&attacker_name), hit->damage);
-                else if (session_is_party_member_aid(&g_session1, (unsigned long)target, 1))
+                else if (session_is_party_member_aid(&g_session1, (unsigned)target, 1))
                     sprintf(party, msg_str(0x646), string_cstr(&target_name), string_cstr(&attacker_name),
                                 hit->damage);
             } else {
                 if (g_session1.ownAid == attacker)
                     sprintf(own, msg_str(0x647), string_cstr(&target_name), hit->damage);
-                else if (session_is_party_member_aid(&g_session1, (unsigned long)attacker, 1))
+                else if (session_is_party_member_aid(&g_session1, (unsigned)attacker, 1))
                     sprintf(party, msg_str(0x648), string_cstr(&attacker_name), string_cstr(&target_name),
                                 hit->damage);
             }
             if (strlen(own))
-                ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)own, 0xffff, 0xf, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)own, 0xffff, 0xf, 0);
             if (strlen(party))
-                ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)party, 0xc8c8ff, 0x10, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)party, 0xc8c8ff, 0x10, 0);
             string_free(&attacker_name);
             string_free(&target_name);
         }
-        render_object_send(self, NULL, hit->kind, MSG_ARG_PTR(hit), 0, 0, 0);
+        render_object_send(self, NULL, hit->kind, (intptr_t)hit, 0, 0, 0);
         node = list_erase(&self->hit_queue, node, NULL);
     }
 }

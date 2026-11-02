@@ -70,9 +70,9 @@ void sound_play_wave(const char *name, float x, float y, float z, int max_distan
     assert(max_distance == 250 && full_distance == 40 && volume == 1);
     ++wave_count;
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int v1, int v2, int v3, int v4)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t v1, intptr_t v2, intptr_t v3, intptr_t v4)
 {
-    assert(self == &g_windowMgr && msg == 1 && v1 == (int)job_name && v2 == 0xffff00 && v3 == 0xe && v4 == 0);
+    assert(self == &g_windowMgr && msg == 1 && v1 == (intptr_t)job_name && v2 == 0xffff00 && v3 == 0xe && v4 == 0);
     ++notice_count;
     return 0;
 }

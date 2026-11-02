@@ -68,7 +68,7 @@ void ui_adven_party_board_wnd_destroy(struct UIWindow *window);
 void ui_adven_party_board_wnd_store_info(struct UIWindow *self);
 void ui_adven_party_board_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_adven_party_board_wnd_on_draw(struct UIWindow *self);
-int ui_adven_party_board_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_adven_party_board_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_adven_party_board_wnd_ops = {
     .destroy = ui_adven_party_board_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -749,8 +749,8 @@ static void board_page_buttons(struct UIAdvenPartyBoardWnd *self)
     button_enable(self->refresh, 0);
 }
 
-int ui_adven_party_board_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_adven_party_board_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAdvenPartyBoardWnd *self = (struct UIAdvenPartyBoardWnd *)window;
     switch (msg) {

@@ -14,7 +14,7 @@ void ui_notice_message_box_lock_sell_item_destroy(struct UIWindow *window);
 void ui_notice_message_box_lock_sell_item_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_notice_message_box_lock_sell_item_on_process(struct UIWindow *self);
 void ui_notice_message_box_lock_sell_item_on_draw(struct UIWindow *self);
-int ui_notice_message_box_lock_sell_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notice_message_box_lock_sell_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notice_message_box_lock_sell_item_ops = {
     .destroy = ui_notice_message_box_lock_sell_item_destroy,
     .resize = ui_window_resize_base,
@@ -129,9 +129,9 @@ void ui_notice_message_box_lock_sell_item_on_draw(struct UIWindow *window)
     ui_window_text_out_centred(wnd, 0, 5, msg_str(MSG_ITEM_DEAL_LOCKED), wnd->width, 0, 12, 0xffffff, 0);
 }
 
-int ui_notice_message_box_lock_sell_item_send_msg(struct UIWindow *window,
-                                                       struct UIWindow *sender, int msg, int val1, int val2,
-                                                       int val3, int val4)
+intptr_t ui_notice_message_box_lock_sell_item_send_msg(struct UIWindow *window,
+                                                       struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                                       intptr_t val3, intptr_t val4)
 {
     struct UINoticeMessageBox_LockSellItem *self = (struct UINoticeMessageBox_LockSellItem *)window;
     struct UIWindow *wnd = &self->frame.base;

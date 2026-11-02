@@ -61,7 +61,7 @@ void ui_serach_store_info_wnd_on_draw(struct UIWindow *self);
 void ui_serach_store_info_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_serach_store_info_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_serach_store_info_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_serach_store_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_serach_store_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_serach_store_info_wnd_ops = {
     .destroy = ui_serach_store_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -440,8 +440,8 @@ static int on_find(struct UISerachStoreInfoWnd *self)
     return 1;
 }
 
-int ui_serach_store_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_serach_store_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISerachStoreInfoWnd *self = (struct UISerachStoreInfoWnd *)window;
     switch (msg) {
@@ -783,7 +783,7 @@ void ui_serach_store_info_wnd_on_r_btn_down(struct UIWindow *window, int x, int 
     ui_serach_store_info_wnd_item_at(self, &info, x, y);
     if (info.id_text.size && ((x > 0xa0 && x < 0x14a) || (unsigned)(x - 6) <= 0x2b)) {
         game_current_base_mode();
-        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     }
     item_info_destruct(&info);
 }

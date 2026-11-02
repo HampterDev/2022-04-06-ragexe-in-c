@@ -64,8 +64,8 @@ void renew_quest_remove(struct RenewQuestMgr *mgr, unsigned id)
 void renew_quest_refresh_windows(void) { ++events; }
 struct UIWindow *ui_window_open(int id) { ++events; return NULL; }
 struct UIWindow *ui_window_find(int id) { ++events; return NULL; }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, int a, int b, int c, int d) { ++events; return 0; }
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { ++events; return 0; }
 char *msg_str(int id) { return id == 0x64a ? "%s %s %d %d" : "%s"; }
 const char *session_get_job_name(struct Session *s, int job, int max_len) { return "monster"; }
 const char *session_map_display_name(const char *name)

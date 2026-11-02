@@ -48,7 +48,7 @@ void game_mode_on_search_limited_sale_item(struct GameMode *self, short result, 
         if (wnd)
             ui_window_send(wnd, NULL, LIMITED_SALE_MSG_FOUND, 0, item, 0, 0);
     } else if (result == 1) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(MSG_LIMITED_SALE_NOT_FOUND),
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(MSG_LIMITED_SALE_NOT_FOUND),
                             CHAT_COLOR_RED, 0, 0);
     }
 }

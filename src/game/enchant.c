@@ -31,7 +31,7 @@ void game_mode_on_grade_enchant_material_list(struct GameMode *self,
 
     (void)self;
     if (packet->index == 0xffff) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(MSG_GRADE_ENCHANT_NOT_POSSIBLE),
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(MSG_GRADE_ENCHANT_NOT_POSSIBLE),
                             CHAT_COLOR_ENCHANT, 0, 0);
         return;
     }

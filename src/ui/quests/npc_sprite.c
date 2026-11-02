@@ -17,7 +17,7 @@ void ui_npc_spr_wnd_destroy(struct UIWindow *window);
 void ui_npc_spr_wnd_on_draw(struct UIWindow *self);
 void ui_npc_spr_wnd_on_mouse_shape(struct UIWindow *self, int x_unused, int y_unused);
 void ui_npc_spr_wnd_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
-int ui_npc_spr_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_npc_spr_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_npc_spr_wnd_ops = {
     .destroy = ui_npc_spr_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -206,8 +206,8 @@ void ui_npc_spr_wnd_on_l_btn_up(struct UIWindow *window, int x_unused, int y_unu
     navi_navigate(&g_navi, string_cstr(&self->map), 0, 5, 0, self->x, self->y, 0x3ea);
 }
 
-int ui_npc_spr_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_npc_spr_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UINpcSprWnd *self = (struct UINpcSprWnd *)window;
     ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);

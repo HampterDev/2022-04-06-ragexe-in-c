@@ -89,7 +89,7 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
     snprintf(buf, sizeof buf, msg_str(MSG_CAST_SKILL), string_cstr(&skill));
     string_append_cstr(&line, buf);
     if (line.size)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), 0xffff,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&line), 0xffff,
                               color, 0);
     string_free(&skill);
     string_free(&line);

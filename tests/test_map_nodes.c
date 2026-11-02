@@ -408,8 +408,8 @@ static void skill_observe(unsigned value)
     }
 }
 
-static int skill_notify(struct UIWindow *self, struct UIWindow *sender, int msg,
-                        int a, int b, int c, int d)
+static intptr_t skill_notify(struct UIWindow *self, struct UIWindow *sender, int msg,
+                        intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(self == map_nodes_test_window && !sender);
     assert(msg == 0xa1 && !a && !b && !c && !d);

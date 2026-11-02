@@ -128,7 +128,7 @@ struct UISwapEquipmentWnd {
 
 struct UISwapEquipmentWnd *ui_swap_equipment_wnd_construct(struct UISwapEquipmentWnd *self);
 unsigned long long ui_swap_equipment_wnd_key(struct UISwapEquipmentWnd *self, unsigned long long key);
-int ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4);
+intptr_t ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4);
 
 #endif

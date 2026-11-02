@@ -118,7 +118,7 @@ void game_actor_drop_siege_window(struct GameActor *self)
     }
 }
 
-void game_actor_forget_handle(struct GameActor *self, int handle)
+void game_actor_forget_handle(struct GameActor *self, struct GameObject *handle)
 {
     if (self->cart == handle) { self->cart = 0; return; }
     if (self->falcon == handle) { self->falcon = 0; return; }
@@ -585,7 +585,7 @@ void game_actor_show_orbs(struct GameActor *self, int kind, int count)
         n.y = 0.0f;
         n.z = 0.0f;
         if (effect)
-            rag_effect_send_msg(effect, NULL, 0xe, MSG_ARG_PTR(&n), 0, 0);
+            rag_effect_send_msg(effect, NULL, 0xe, (intptr_t)&n, 0, 0);
     }
 }
 

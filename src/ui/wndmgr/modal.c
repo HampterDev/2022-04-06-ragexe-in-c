@@ -63,7 +63,7 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
 
     if (self->modal_wnd) {
         if (ui_window_send_msg(self->modal_wnd, NULL, 0x9e, 0, 0, 0, 0) != 1 && arg4)
-            ui_window_send_msg(self->modal_wnd, NULL, 0x39, (int)text, 0, 0, 0);
+            ui_window_send_msg(self->modal_wnd, NULL, 0x39, (intptr_t)text, 0, 0, 0);
         return UI_ID_CANCEL;
     }
     box = (struct UIWindow *)ui_message_box_new();

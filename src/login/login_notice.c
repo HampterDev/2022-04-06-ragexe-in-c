@@ -10,7 +10,7 @@
 
 static void notice_show(void *wnd, int id)
 {
-    UIWND_SENDMSG(wnd, 0, 0x1f, (int)msg_str(id), 0, 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x1f, (intptr_t)msg_str(id), 0, 0, 0);
     UIWND_SENDMSG(wnd, 0, 0x1e, 0, 0, 0, 0);
 }
 

@@ -84,7 +84,7 @@ char *msg_str(int id)
     assert(id == 0x385 || id == 0x386 || id == 0x39e || id == 0x3b9);
     return "points %d total %d";
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *s, int msg, int a, int color, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *s, int msg, intptr_t a, intptr_t color, intptr_t c, intptr_t d)
 {
     const char *text = (const char *)a;
     assert(s == &g_windowMgr && msg == 1 && !c && !d && line_count < 32);

@@ -10,7 +10,7 @@
 
 int game_actor_get_job(struct GameActor *self)
 {
-    DWORD st = ((unsigned long)game_actor_get_effect_state((struct RenderObject *)self));
+    DWORD st = ((DWORD)game_actor_get_effect_state((struct RenderObject *)self));
     int job;
 
     if (BIT(12))

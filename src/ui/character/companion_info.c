@@ -112,7 +112,7 @@ void ui_homun_info_wnd_destroy(struct UIWindow *window);
 void ui_homun_info_wnd_store_info(struct UIWindow *self);
 void ui_homun_info_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_homun_info_wnd_on_draw(struct UIWindow *self);
-int ui_homun_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_homun_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_homun_info_wnd_ops = {
     .destroy = ui_homun_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -415,7 +415,7 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     sprintf(question, msg_str(MSG_HOMUN_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (ask(question) != UI_MSGBOX_ANSWER_NO) {
         mode = game_current_base_mode();
-        mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+        mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
         sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
         ui_window_invalidate_base(&self->frame.base);
         return;
@@ -424,8 +424,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     ui_window_invalidate(self->name_edit);
 }
 
-int ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                      int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                      int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIHomunInfoWnd *self = (struct UIHomunInfoWnd *)window;
     struct Mode *mode;
@@ -482,7 +482,7 @@ int ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         mode = game_current_base_mode();
         if (sender == self->question && val2 == UI_MSGBOX_ANSWER_YES) {
             if (g_windowMgr.exchange_wnd != 0)
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_HOMUN_FEED_BLOCKED),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_HOMUN_FEED_BLOCKED),
                                       0xff, 0, 0);
             else
                 mode_send_message(mode, MODE_REQ_HOMUN_COMMAND, HOMUN_COMMAND_FEED, 0, 0, 0);
@@ -514,7 +514,7 @@ void ui_mer_info_wnd_destroy(struct UIWindow *window);
 void ui_mer_info_wnd_store_info(struct UIWindow *self);
 void ui_mer_info_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_mer_info_wnd_on_draw(struct UIWindow *self);
-int ui_mer_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mer_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mer_info_wnd_ops = {
     .destroy = ui_mer_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -687,8 +687,8 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     mer_number(wnd, 0xf5, 0x9d, text, len);
 }
 
-int ui_mer_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4)
+intptr_t ui_mer_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerInfoWnd *self = (struct UIMerInfoWnd *)window;
     struct Mode *mode;

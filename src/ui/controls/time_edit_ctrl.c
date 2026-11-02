@@ -104,8 +104,8 @@ void ui_show_and_edit_time_ctrl_on_draw(struct UIWindow *window)
     ui_window_text_out(&self->base, 0x3c, 3, "s", 0, 0, 0xc, 0, 0, 0);
 }
 
-int ui_show_and_edit_time_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_show_and_edit_time_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIShowAndEditTimeCtrl *self = (struct UIShowAndEditTimeCtrl *)window;
     int i;

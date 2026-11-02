@@ -249,7 +249,7 @@ void session_hi_friends(struct Session *self, const char *text)
 
         string_assign_cstr(&g_windowMgr.chat_line, string_cstr(&hi));
         mode = client_current_mode();
-        mode_send_message(mode, 0xb, (int)string_cstr(&m->name), 0, 0, 0);
+        mode_send_message(mode, 0xb, (intptr_t)string_cstr(&m->name), 0, 0, 0);
         n = (signed char)(g_silentWhisperAcks + 1);
         g_silentWhisperAcks = n > 0x28 ? 0x28 : n;
     }
@@ -309,7 +309,7 @@ int session_set_friend_state(struct Session *self, int aid, int char_id,
             }
         }
         sprintf(line, msg_str(m->state == 0 ? MSG_FRIEND_LOGGED_IN : MSG_FRIEND_LOGGED_OUT), string_cstr(&m->name));
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, 0xffff00, 0, 0);
     }
     return 1;
 }

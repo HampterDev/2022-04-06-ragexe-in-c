@@ -499,7 +499,7 @@ void prim_billboards_fly_process(struct EffectPrim *self)
         struct RagEffect *e = player ? game_actor_launch_effect((struct GameActor *)player, EFFECT_ID_AIRTEXTURE, none, 0) : NULL;
         if (e) {
             Vec3 at = bb->pos;
-            rag_effect_send_msg(e, NULL, RAG_MSG_SET_OFFSETS, MSG_ARG_PTR(&at), 0, 0);
+            rag_effect_send_msg(e, NULL, RAG_MSG_SET_OFFSETS, (intptr_t)&at, 0, 0);
         }
     }
 }

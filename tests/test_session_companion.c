@@ -50,7 +50,7 @@ char *msg_str(int id)
     return "Hungry";
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(manager == &g_windowMgr && msg == 1 && b == 0xff && c == 0 && d == 0);
     assert(strcmp((const char *)a, "Hungry") == 0);
@@ -58,8 +58,8 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, int a, int b, 
     return 0;
 }
 
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-                   int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+                   intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(!"The skill window is absent in this fixture");
     return 0;

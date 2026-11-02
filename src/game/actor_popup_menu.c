@@ -56,7 +56,7 @@ static void menu_entry(struct GameMode *self, int entry)
 
 static void menu_item(struct UIWindow *menu, const char *text)
 {
-    ui_window_send(menu, NULL, MSG_MENU_ADD_ITEM, (int)text, 0, 0, 0);
+    ui_window_send(menu, NULL, MSG_MENU_ADD_ITEM, (intptr_t)text, 0, 0, 0);
 }
 
 static void menu_row(struct GameMode *self, struct UIWindow *menu, int entry, int text_id)

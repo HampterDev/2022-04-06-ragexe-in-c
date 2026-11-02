@@ -21,7 +21,7 @@ struct UIWindow;
 void ui_account_limited_tool_wnd_destroy(struct UIWindow *window);
 void ui_account_limited_tool_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_account_limited_tool_wnd_on_draw(struct UIWindow *self);
-int ui_account_limited_tool_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_account_limited_tool_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_account_limited_tool_wnd_ops = {
     .destroy = ui_account_limited_tool_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -332,7 +332,7 @@ void ui_account_limited_tool_wnd_on_draw(struct UIWindow *window)
 
 static void log_add(struct UIAccountLimitedToolWnd *self, const char *text)
 {
-    ui_window_send_msg(&self->log->base, NULL, UI_MSG_ADD_TEXT, (int)text, ACCOUNT_LIMIT_LOG_ARG, 0, 0);
+    ui_window_send_msg(&self->log->base, NULL, UI_MSG_ADD_TEXT, (intptr_t)text, ACCOUNT_LIMIT_LOG_ARG, 0, 0);
 }
 static void log_follow(struct UIAccountLimitedToolWnd *self)
 {
@@ -454,8 +454,8 @@ static void send_search(struct UIAccountLimitedToolWnd *self)
     string_free(&name);
 }
 
-int ui_account_limited_tool_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_account_limited_tool_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAccountLimitedToolWnd *self = (struct UIAccountLimitedToolWnd *)window;
     struct String line;
@@ -522,7 +522,7 @@ int ui_account_limited_tool_wnd_send_msg(struct UIWindow *window, struct UIWindo
         string_init(&line);
         string_format(&line, msg_str(MSG_ACCOUNT_LIMIT_REMOVED_FMT),
                       ui_edit_ctrl_get_text(self->fields[FIELD_NAME]));
-        ui_window_send_msg(&self->log->base, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&line), ACCOUNT_LIMIT_LOG_ARG,
+        ui_window_send_msg(&self->log->base, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&line), ACCOUNT_LIMIT_LOG_ARG,
                  0, 0);
         string_free(&line);
         log_follow(self);

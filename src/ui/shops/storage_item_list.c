@@ -127,7 +127,7 @@ void storage_on_r_btn_down(struct UIItemBaseWnd *base, int x, int y, int left)
         } else {
             struct UIWindow *wnd = ui_window_open(ITEM_WND_ID);
 
-            ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+            ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
         }
     }
     item_info_destruct(&info);

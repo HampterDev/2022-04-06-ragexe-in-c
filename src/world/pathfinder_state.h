@@ -2,6 +2,7 @@
 #define WORLD_PATHFINDER_STATE_H
 
 #include <stddef.h>
+#include "platform/win_types.h"
 #include "world/path_info.h"
 
 struct C3dAttr;
@@ -17,7 +18,7 @@ struct PathFinder {
 
 void path_finder_construct(struct PathFinder *self);
 void path_finder_destruct(struct PathFinder *self);
-unsigned char path_finder_find_path(struct PathFinder *self, unsigned long startTime,
+unsigned char path_finder_find_path(struct PathFinder *self, DWORD startTime,
     int sx, int sy, int subX, int subY, int tx, int ty, int speed,
     struct PathInfo *info, int kind);
 void path_finder_clear_search(struct PathFinder *self);

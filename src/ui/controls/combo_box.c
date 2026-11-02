@@ -461,8 +461,8 @@ void ui_combo_box_ex_on_l_btn_up(struct UIWindow *window, int x, int y)
     ui_close_window(UI_WND_COMBO_BOX);
 }
 
-int ui_combo_box_ex_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_combo_box_ex_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIComboBoxEx *self = (struct UIComboBoxEx *)window;
     struct UIListBoxEx *lb = &self->list;
@@ -620,8 +620,8 @@ void ui_combo_box_id_on_l_btn_up(struct UIWindow *window, int x, int y)
     ui_close_window(UI_WND_COMBO_BOX);
 }
 
-int ui_combo_box_id_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_combo_box_id_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIComboBoxID *self = (struct UIComboBoxID *)window;
     struct UIListBoxEx *lb = &self->list.list;
@@ -860,8 +860,8 @@ static void show_row(struct UIComboBoxDefWnd *self, int row)
     ui_static_text_set_text(self->label, string_cstr(&list_box_ex_entry_at(&lb->rows, &row)->text), 0);
 }
 
-int ui_combo_box_def_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_combo_box_def_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIComboBoxDefWnd *self = (struct UIComboBoxDefWnd *)window;
     struct UIWindow *wnd = &self->base;
@@ -920,7 +920,7 @@ void ui_combo_box_def2_wnd_add_item(struct UIWindow *wnd, struct String text, in
 {
     struct UIComboBoxDefWnd *self = (struct UIComboBoxDefWnd *)wnd;
 
-    ui_window_send_msg(self->list, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(&text), value, 0, 0);
+    ui_window_send_msg(self->list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)string_cstr(&text), value, 0, 0);
     string_free(&text);
 }
 
@@ -1147,8 +1147,8 @@ void ui_combo_box_v2_wnd_on_wheel(struct UIWindow *window, int delta)
     ui_window_invalidate_base(&self->base);
 }
 
-int ui_combo_box_v2_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_combo_box_v2_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIComboBoxV2Wnd *self = (struct UIComboBoxV2Wnd *)window;
     struct UIWindow *wnd = &self->base;

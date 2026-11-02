@@ -95,12 +95,12 @@ void ui_window_remove_child(struct UIWindow *self, struct UIWindow *button, BYTE
         heap_button = NULL;
     }
 }
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)self; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
 struct ItemInfo *session_get_worn_counterpart(struct Session *self, const struct ItemInfo *item)
 { (void)self; (void)item; abort(); }
 struct UIWindow *ui_window_open(int id) { (void)id; abort(); }
-int ui_window_send(struct UIWindow *w, struct UIWindow *s, int m, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *w, struct UIWindow *s, int m, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)w; (void)s; (void)m; (void)a; (void)b; (void)c; (void)d; abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int id) { (void)self; (void)id; abort(); }
 
@@ -262,7 +262,7 @@ static void check_multiline(void)
 }
 static void parse(struct UIEditCtrl *edit, const char *text)
 {
-    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (int)text, 0, 0, 0);
+    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (intptr_t)text, 0, 0, 0);
 }
 static void check_replace(void)
 {

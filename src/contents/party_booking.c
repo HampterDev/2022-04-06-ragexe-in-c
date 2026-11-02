@@ -228,7 +228,7 @@ void party_booking_on_new(struct PartyBooking *self, struct PartyBookingPost pos
             return;
         if (self->alarm) {
             sound_play_wave("party_alarm.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(MSG_PARTY_BOOKING_NEW), 0xffff00, 0xe, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(MSG_PARTY_BOOKING_NEW), 0xffff00, 0xe, 0);
         }
         return;
     }

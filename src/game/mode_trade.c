@@ -21,7 +21,7 @@
 static void chat_msg(int msg_id)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(msg_id), COLOUR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(msg_id), COLOUR_RED, 0, 0);
 }
 
 static void open_trade(struct GameMode *self, int cid, int level)
@@ -34,7 +34,7 @@ static void open_trade(struct GameMode *self, int cid, int level)
     session_clear_their_trade(&g_session1);
     ui_window_mgr_post_quit1(&g_windowMgr, WND_TRADE);
     wnd = ui_window_open(WND_TRADE);
-    wnd_send(wnd, 0x32, (int)string_cstr(&self->exchange_partner), cid, level, 0);
+    wnd_send(wnd, 0x32, (intptr_t)string_cstr(&self->exchange_partner), cid, level, 0);
 }
 
 #pragma pack(push, 1)
@@ -83,7 +83,7 @@ void game_mode_ack_exchange_item2(struct GameMode *self, const unsigned char *pk
         string_init(&line);
         string_format(&line, msg_str(0x6ac), string_cstr(&self->exchange_partner));
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), COLOUR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&line), COLOUR_RED, 0, 0);
         string_free(&line);
         break;
     }

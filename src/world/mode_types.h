@@ -24,7 +24,7 @@ struct Mode {
 
 struct ModeOps {
     void (*on_update)(struct Mode *mode);
-    int (*send_message)(struct Mode *mode, int message, int a, int b, int c, int d);
+    intptr_t (*send_message)(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 };
 
 #endif

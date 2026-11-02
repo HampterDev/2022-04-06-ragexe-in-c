@@ -31,7 +31,7 @@ void ui_guild_info_manage_wnd_on_draw(struct UIWindow *self);
 void ui_guild_info_manage_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_info_manage_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_info_manage_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_guild_info_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_info_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 struct UIGuildMemberManageWnd {
     struct UIGuildWnd base;
@@ -68,7 +68,7 @@ void ui_guild_member_manage_wnd_on_l_btn_down(struct UIWindow *self, int x, int 
 void ui_guild_member_manage_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_member_manage_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
 void ui_guild_member_manage_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_guild_member_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_member_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 struct UIGuildPositionManageWnd {
     struct UIGuildWnd base;
@@ -100,7 +100,7 @@ void ui_guild_position_manage_wnd_on_draw(struct UIWindow *self);
 void ui_guild_position_manage_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_position_manage_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_position_manage_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_guild_position_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_position_manage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_guild_position_manage_wnd_invalidate(struct UIWindow *self);
 
 #endif

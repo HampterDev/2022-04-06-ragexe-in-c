@@ -18,7 +18,7 @@ void error_msg(const char *text, int flags)
     assert(flags == 0 && strlen(text) < sizeof resource_test_error);
     strcpy(resource_test_error, text);
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 void fatal_error(const char *text) { abort(); }
 
 void std_vector_bytes_resize(struct Vec *v, size_t count) { abort(); }

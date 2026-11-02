@@ -22,7 +22,7 @@ int merc_ai_trace_value(lua_State *L)
 
     string_init(&s);
     string_assign_cstr(&s, text);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&s), 0xffff, 4, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&s), 0xffff, 4, 0);
     string_free(&s);
     return 1;
 }

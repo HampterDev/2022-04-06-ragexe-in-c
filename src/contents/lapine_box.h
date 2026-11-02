@@ -90,8 +90,8 @@ void lapine_box_press(struct UIWindow *self, int x, int y);
 void lapine_box_double_click(struct UIWindow *self, int x, int y);
 void lapine_box_hover(struct UIWindow *self, int x, int y);
 void lapine_box_show_info(struct UIWindow *self, int x, int y);
-int lapine_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                   int a, int b, int c, int d);
+intptr_t lapine_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                   intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 
 struct LapineIngredientList *lapine_list_new(void);
 struct LapineIngredientList *lapine_list_construct(struct LapineIngredientList *self, int w, int h);
@@ -105,8 +105,8 @@ void lapine_list_drop(struct UIWindow *window, int x, int y, const struct DragIn
 void lapine_list_on_create(struct UIWindow *self, int w, int h);
 void lapine_list_on_draw(struct UIWindow *self);
 void lapine_list_wheel(struct UIWindow *window, int delta);
-int lapine_list_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int a, int b, int c, int d);
+intptr_t lapine_list_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 
 void lapine_row_delete(struct UIWindow *window);
 void lapine_row_move(struct UIWindow *self, int x, int y);

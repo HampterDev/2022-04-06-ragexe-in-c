@@ -64,8 +64,8 @@ struct UIItemTagCtrl;
 int ui_chat_edit_ctrl_has_item_link(struct UIChatEditCtrl *self, const struct String *text);
 int ui_chat_edit_ctrl_has_navi_link(struct UIChatEditCtrl *self, const struct String *text);
 
-int ui_new_chat_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4);
+intptr_t ui_new_chat_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4);
 
 struct UINewChatWnd *ui_new_chat_wnd_construct(struct UINewChatWnd *self);
 struct UIWindow *ui_new_chat_wnd_new(void);

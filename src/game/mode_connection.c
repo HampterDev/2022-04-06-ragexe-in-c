@@ -277,7 +277,7 @@ void game_mode_ack_req_disconnect(struct GameMode *self, const struct PACKET_ZC_
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         mode_send_msg(self, MODE_REQ_QUIT, 0, 0, 0, 0);
     } else if (packet->result == 1) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(MSG_CANNOT_QUIT_NOW), CHAT_COLOR_RED,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(MSG_CANNOT_QUIT_NOW), CHAT_COLOR_RED,
                               0, 0);
     }
 }

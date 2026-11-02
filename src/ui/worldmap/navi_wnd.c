@@ -22,7 +22,7 @@ void ui_navigation_wnd_store_info(struct UIWindow *self);
 void ui_navigation_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_navigation_wnd_on_draw(struct UIWindow *self);
 void ui_navigation_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_navigation_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_navigation_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_navigation_wnd_ops = {
     .destroy = ui_navigation_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -518,7 +518,7 @@ void ui_navigation_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
 
 static void add_line(struct UINavigationWnd *self, int list, const char *text)
 {
-    ui_window_send_msg(&self->frame.base, NULL, NAVI_MSG_ADD_LINE, list, (int)text, 0, 0);
+    ui_window_send_msg(&self->frame.base, NULL, NAVI_MSG_ADD_LINE, list, (intptr_t)text, 0, 0);
 }
 
 void ui_navigation_wnd_fill_results(struct UINavigationWnd *self)
@@ -897,8 +897,8 @@ static void enter_or_resize(struct UINavigationWnd *self, struct UIWindow *sende
     }
 }
 
-int ui_navigation_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_navigation_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINavigationWnd *self = (struct UINavigationWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

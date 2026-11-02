@@ -89,7 +89,7 @@ static void update_target(struct Vec *lines, struct RenewQuestB *quest, unsigned
                (int)quest->plain.hunt_done[slot], (int)needed);
     string_assign(&text, string_cstr(&part), part.size);
     string_free(&part);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&text), HUNT_CHAT_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&text), HUNT_CHAT_COLOR,
                         CHAT_CHANNEL_QUEST, 0);
     quest_hunt_assign(quest_slot(quest_id), quest);
     string_free(&text);

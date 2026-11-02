@@ -10,7 +10,7 @@
 #include "core/msg_str.h"
 
 static void chat_line(int id, int color)
-{ ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(id), color, 0, 0); }
+{ ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(id), color, 0, 0); }
 static void board_message(struct UIWindow *w, int msg, int arg)
 { if (w) ui_window_send_msg(w, NULL, msg, arg, 0, 0, 0); }
 
@@ -55,7 +55,7 @@ void agency_present(struct AdventurerAgencyMgr *self, int op, int status,
             chat_line(0xd58, 0xff);
         else if (session_get_party_member_count(&g_session1)) chat_line(0x4f, 0xff);
         else {
-            mode_send_message(client_current_mode(), 0x109, (int)&ad->aid, (int)&ad->gid, 0, 0);
+            mode_send_message(client_current_mode(), 0x109, (intptr_t)&ad->aid, (intptr_t)&ad->gid, 0, 0);
             ui_window_mgr_post_quit1(&g_windowMgr, 0x159);
         }
         break;

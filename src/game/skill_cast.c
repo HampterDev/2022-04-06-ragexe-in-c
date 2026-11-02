@@ -61,7 +61,7 @@ char skill_cast_special(struct GameActor *caster, struct GameActor *target, int 
     if (skill == 0x49) {
         if (target && caster != target)
             render_object_turn_toward((struct RenderObject *)caster, target->pos.x, target->pos.z);
-        game_send_message(MODE_MSG_SKILL_CAST, 0x49, (int)caster, 0, 0);
+        game_send_message(MODE_MSG_SKILL_CAST, 0x49, (intptr_t)caster, 0, 0);
         id = 0x49;
     } else {
         id = skill;
@@ -216,9 +216,9 @@ void game_mode_zc_useskill_ack(struct GameMode *mode, unsigned src_aid,
         struct GameMode *gm = game_current_mode();
 
         if (skill == 0x14e || skill == 0x14f)
-            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (int)caster, (int)target_aid, 0);
+            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (intptr_t)caster, (int)target_aid, 0);
         else
-            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (int)caster, 0, 0);
+            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (intptr_t)caster, 0, 0);
     }
     if (skill_cast_special(caster, target, skill_id, delay_ms, attack_motion) == 1)
         return;

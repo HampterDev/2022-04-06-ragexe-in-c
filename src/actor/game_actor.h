@@ -35,7 +35,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
 
 void game_actor_stop_aura_effects(struct GameActor *self);
 void game_actor_drop_siege_window(struct GameActor *self);
-void game_actor_forget_handle(struct GameActor *self, int handle);
+void game_actor_forget_handle(struct GameActor *self, struct GameObject *handle);
 int game_actor_get_transform_job(struct GameActor *self);
 void game_actor_launch_ranged_attack(struct GameActor *self, int id, float height);
 void game_actor_raise_body_quarter_height(struct GameActor *self, int value);

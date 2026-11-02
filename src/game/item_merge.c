@@ -35,6 +35,6 @@ void game_mode_on_merge_item_open(struct GameMode *self, const struct PacketMerg
     vec_insert_range(&indexes, indexes.last, packet->indexes, packet->indexes + count, 1);
     wnd = ui_make_window(WID_ITEM_MERGE);
     if (wnd)
-        ui_window_send(wnd, NULL, MERGE_MSG_SET_ITEMS, (int)indexes.first, count, 0, 0);
+        ui_window_send(wnd, NULL, MERGE_MSG_SET_ITEMS, (intptr_t)indexes.first, count, 0, 0);
     vec_free(&indexes);
 }

@@ -63,7 +63,7 @@ void ui_preview_equip_wnd_store_info(struct UIWindow *self);
 void ui_preview_equip_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_preview_equip_wnd_on_process(struct UIWindow *self);
 void ui_preview_equip_wnd_on_draw(struct UIWindow *self);
-int ui_preview_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_preview_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_preview_equip_wnd_ops = {
     .destroy = ui_preview_equip_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -414,8 +414,8 @@ static void try_on(struct UIPreviewEquipWnd *self, const struct ItemInfo *item)
     }
 }
 
-int ui_preview_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_preview_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPreviewEquipWnd *self = (struct UIPreviewEquipWnd *)window;
     if (msg == UI_MSG_COMMAND) {

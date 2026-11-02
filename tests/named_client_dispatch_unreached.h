@@ -12,7 +12,7 @@ void ui_frame_wnd_on_l_btn_up(struct UIWindow *arg0, int arg1, int arg2) { abort
 void ui_frame_wnd_on_mouse_hover(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_on_mouse_move(struct UIWindow *arg0, int arg1, int arg2) { abort(); }
 void ui_frame_wnd_save_pos(struct UIWindow *arg0) { abort(); }
-int ui_frame_wnd_send_msg(struct UIWindow *arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_frame_wnd_snap(struct UIWindow *arg0) { abort(); }
 void ui_window_drag_and_drop_base(struct UIWindow *arg0, int arg1, int arg2, const struct DragInfo *arg3) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }

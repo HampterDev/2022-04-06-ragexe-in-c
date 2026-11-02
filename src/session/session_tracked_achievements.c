@@ -152,7 +152,7 @@ BYTE session_toggle_tracked_achievement(struct Session *self, int id)
         size_t i, count;
 
         if (VEC_COUNT(tracked, struct TrackedAchievement) >= 3) {
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xa78), 0x64ffff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xa78), 0x64ffff, 0, 0);
             return 0;
         }
         achievement_info_init(&info);

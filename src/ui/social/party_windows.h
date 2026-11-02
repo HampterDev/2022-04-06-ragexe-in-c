@@ -113,13 +113,13 @@ struct UIMiniPartyInfoWnd {
 struct UIMiniPartyWnd *ui_mini_party_wnd_construct(struct UIMiniPartyWnd *self);
 struct PartyMember *ui_mini_party_wnd_get_member(struct UIMiniPartyWnd *self, struct PartyMember *out);
 void ui_mini_party_wnd_set_display_mode(struct UIMiniPartyWnd *self, int mode);
-int ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4);
+intptr_t ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_mini_party_wnd_on_l_btn_up(struct UIWindow *window, int x, int y);
 void ui_mini_party_wnd_on_l_btn_down(struct UIWindow *window, int x, int y);
 struct UIMiniPartyInfoWnd *ui_mini_party_info_wnd_construct(struct UIMiniPartyInfoWnd *self);
-int ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4);
+intptr_t ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4);
 
 #define RENEWAL_PARTY UI_SKIN "renewalparty\\"
 #define PLATE_BG RENEWAL_PARTY "img_partymini_bg.tga"
@@ -210,8 +210,8 @@ void ui_window_mgr_sort_plates(struct UIWindowMgr *self);
 #include <stdlib.h>
 
 void ui_messenger_group_wnd_on_draw(struct UIWindow *window);
-int ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                           int val2, int val3, int val4);
+intptr_t ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                           intptr_t val2, intptr_t val3, intptr_t val4);
 
 struct UIMessengerGroupWnd *ui_messenger_group_wnd_construct(struct UIMessengerGroupWnd *self);
 struct UIWindow *ui_messenger_group_wnd_new(void);

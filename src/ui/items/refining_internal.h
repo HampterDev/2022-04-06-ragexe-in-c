@@ -133,8 +133,8 @@ struct UIRefiningWnd {
 
 void ui_refining_wnd_reset(struct UIRefiningWnd *self);
 void ui_refining_wnd_set_state(struct UIRefiningWnd *self, int state, int result);
-int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4);
+intptr_t ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4);
 void ui_refining_wnd_refresh(struct UIRefiningWnd *self);
 void ui_refining_btn_again_set_bitmaps(struct UIRefining_BtnAgain *self);
 void ui_refining_btn_return_set_bitmaps(struct UIRefining_BtnReturn *self);

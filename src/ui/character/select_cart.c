@@ -113,7 +113,7 @@ static void select_cart_add_all(struct UISelectCartWnd *self)
 void ui_select_cart_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_select_cart_wnd_on_draw(struct UIWindow *self);
 void ui_select_cart_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_select_cart_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_select_cart_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_select_cart_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_select_cart_wnd_ops = {
     .destroy = ui_select_cart_wnd_destroy,
@@ -211,8 +211,8 @@ void ui_select_cart_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
 }
 
-int ui_select_cart_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_select_cart_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISelectCartWnd *self = (struct UISelectCartWnd *)window;
     if (msg == MSG_SELECT_CART_SET) {

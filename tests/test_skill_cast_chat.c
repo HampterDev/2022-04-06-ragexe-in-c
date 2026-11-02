@@ -107,7 +107,7 @@ int crt_snprintf_s(char *out, size_t size, size_t count, const char *format, ...
     return result;
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int message, int text, int a, int color, int b)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int message, intptr_t text, intptr_t a, intptr_t color, intptr_t b)
 {
     assert(self == &g_windowMgr && message == UIM_CHAT_LINE && a == 0xffff && b == 0);
     assert(strlen((const char *)text) < sizeof line);

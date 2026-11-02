@@ -67,7 +67,7 @@ const struct UIListBoxExOps ui_item_store_combo_box_ops = {
 void ui_item_store_combo_box_wnd_destroy(struct UIWindow *window);
 void ui_item_store_combo_box_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_item_store_combo_box_wnd_on_draw(struct UIWindow *self);
-int ui_item_store_combo_box_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_store_combo_box_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_store_combo_box_wnd_ops = {
     .destroy = ui_item_store_combo_box_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -316,8 +316,8 @@ static void toggle_list(struct UIItemStoreComboBoxWnd *self)
     ui_window_invalidate_base(wnd);
 }
 
-int ui_item_store_combo_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_item_store_combo_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemStoreComboBoxWnd *self = (struct UIItemStoreComboBoxWnd *)window;
     struct UIWindow *wnd = &self->def.base;

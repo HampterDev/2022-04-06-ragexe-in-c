@@ -168,7 +168,7 @@ void ui_navigation_v4_wnd_put_link(struct UINavigationV4Wnd *self, struct String
         ui_window_mgr_set_focus_edit(&g_windowMgr, ui_chat_window_edit(g_windowMgr.new_chat_wnd));
     }
     focus = ui_window_mgr_get_focus_edit(&g_windowMgr);
-    ui_window_send_msg(focus, NULL, NAVI_CHAT_MSG_LINK, (int)string_cstr(&link), 0, 0, 0);
+    ui_window_send_msg(focus, NULL, NAVI_CHAT_MSG_LINK, (intptr_t)string_cstr(&link), 0, 0, 0);
     string_free(&link);
     string_free(&ys);
     string_free(&xs);
@@ -340,7 +340,7 @@ static unsigned find_rsw(const struct String *s)
 
 static void airship_refuse(struct UIWindow *wnd, int msg)
 {
-    ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (int)msg_str(msg), 0, 0, 0);
+    ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(msg), 0, 0, 0);
     ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_DISABLE_ALL, 0, 0, 0, 0);
 }
 
@@ -359,7 +359,7 @@ static void open_airship(struct UINavigationV4Wnd *self)
              (int)((double)(g_renderer->height - 0x6e) * 0.5));
     ui_window_mgr_add_window(&g_windowMgr, wnd);
     if (navi_manager_guided_kind(&g_navi) == 2)
-        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (int)msg_str(MSG_AIRPLANE_GUIDED_MOB), 0, 0, 0);
+        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(MSG_AIRPLANE_GUIDED_MOB), 0, 0, 0);
 
     map_name = game_current_map_name();
     string_init(&here);
@@ -477,8 +477,8 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     }
 }
 
-int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINavigationV4Wnd *self = (struct UINavigationV4Wnd *)window;
     switch (msg) {

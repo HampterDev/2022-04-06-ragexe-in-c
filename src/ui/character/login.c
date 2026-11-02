@@ -28,7 +28,7 @@ void ui_login_wnd_on_destroy(struct UIWindow *self);
 void ui_login_wnd_on_process(struct UIWindow *self);
 void ui_login_wnd_on_draw(struct UIWindow *self);
 void ui_login_wnd_on_mouse_move(struct UIWindow *self, int arg1_unused, int arg2_unused);
-int ui_login_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_login_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_login_wnd_ops = {
     .destroy = ui_login_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -79,7 +79,7 @@ void ui_login_otp_wnd_on_create(struct UIWindow *self, int width_unused, int hei
 void ui_login_otp_wnd_on_destroy(struct UIWindow *self);
 void ui_login_otp_wnd_on_process(struct UIWindow *self);
 void ui_login_otp_wnd_on_draw(struct UIWindow *self);
-int ui_login_otp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_login_otp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_login_otp_wnd_ops = {
     .destroy = ui_login_otp_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -502,9 +502,9 @@ static void login_start(struct UILoginWnd *self)
     if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS
         && ui_edit_ctrl_get_text_size(self->id_edit) >= LOGIN_ID_MIN_CHARS) {
         mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (int)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (int)self->account_class, 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (intptr_t)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (intptr_t)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (intptr_t)self->account_class, 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, 3);
         ui_login_wnd_store_saved_id(self);
         return;
@@ -531,7 +531,7 @@ static void login_show_notices(struct UILoginWnd *self)
     count = VEC_COUNT(&self->notice_lines, struct String);
     for (i = 0; i < VEC_COUNT(&self->notice_lines, struct String); i++)
         ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE,
-                 (int)string_cstr((struct String *)self->notice_lines.first + i), 0, 0, 0);
+                 (intptr_t)string_cstr((struct String *)self->notice_lines.first + i), 0, 0, 0);
     ui_window_send_msg(list, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
     ui_window_resize(list, 0x4a, (int)(count * 16) < 0x30 ? (int)(count * 16) : 0x30);
     ui_window_send_msg(list, NULL, COMBO_MSG_OPENER_ID, 3, 0, 0, 0);
@@ -547,8 +547,8 @@ static void login_close(struct UILoginWnd *self)
         login_leave(self);
 }
 
-int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UILoginWnd *self = (struct UILoginWnd *)window;
     switch (msg) {
@@ -750,8 +750,8 @@ void ui_login_otp_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_title_bar(&self->frame.base, 1, msg_str(MSG_OTP_TITLE), 0x118);
 }
 
-int ui_login_otp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_login_otp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UILoginOTPWnd *self = (struct UILoginOTPWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -765,7 +765,7 @@ int ui_login_otp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             sound_play_wave("버튼소리.wav"  , 0.0f, 0.0f, 0.0f,
                      0xfa, 0x28, 1.0f);
             if (ui_edit_ctrl_get_text_size(self->edit) == OTP_CODE_LENGTH) {
-                mode_send_message(g_modeMgr.curMode, LOGIN_REQ_OTP_CODE, (int)ui_edit_ctrl_get_text(self->edit), 0, 0, 0);
+                mode_send_message(g_modeMgr.curMode, LOGIN_REQ_OTP_CODE, (intptr_t)ui_edit_ctrl_get_text(self->edit), 0, 0, 0);
                 mode_send_message(g_modeMgr.curMode, LOGIN_REQ_SEND_OTP, 0, 0, 0, 0);
                 ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_LOGIN_OTP);
             } else {

@@ -65,10 +65,10 @@ void game_mode_zc_npc_chat(struct GameMode *self, const unsigned char *pkt)
     struct GameActor *npc;
 
     memcpy(text, packet->text, packet->length - 12);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, color, 0, 0);
     npc = world_get_game_actor_by_aid(self->world, aid);
     if (npc)
-        actor_send(npc, 7, (int)text, color);
+        actor_send(npc, 7, (intptr_t)text, color);
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, text);
 }
@@ -207,7 +207,7 @@ void game_mode_zc_npc_market_purchase_result_v2(struct GameMode *self, const uns
     }
     if (msg) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), color, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), color, 0, 0);
     }
     if (count <= 0) {
         mode = game_current_mode();
@@ -424,7 +424,7 @@ void game_mode_zc_say_dialog(struct GameMode *self, const unsigned char *pkt)
     }
     text[length] = 0;
     wnd = ui_window_open(WND_NPC_DIALOG);
-    wnd_send(wnd, 0x1a, (int)text, (int)packet->aid, 0, 0);
+    wnd_send(wnd, 0x1a, (intptr_t)text, (int)packet->aid, 0, 0);
 }
 
 void game_mode_zc_select_dealtype(struct GameMode *self, const unsigned char *pkt)
@@ -477,7 +477,7 @@ void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigne
 
     (void)self;
     if (result == 3) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xa47), DYNAMIC_NPC_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xa47), DYNAMIC_NPC_COLOR, 0, 0);
         return;
     }
     if (result == 2) {
@@ -489,7 +489,7 @@ void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigne
     } else {
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, DYNAMIC_NPC_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, DYNAMIC_NPC_COLOR, 0, 0);
 }
 
 #define WND_NPC_MENU            0x11
@@ -558,7 +558,7 @@ void game_mode_zc_menu_list(struct GameMode *self, const unsigned char *pkt)
     ui_window_mgr_post_quit1(&g_windowMgr, WND_NPC_MENU);
     wnd = ui_window_open(WND_NPC_MENU);
     for (choice = strtok(text, ":"); choice; choice = strtok(0, ":"))
-        wnd_send(wnd, NPC_WND_MENU_ITEM, (int)choice, 0, 0, 0);
+        wnd_send(wnd, NPC_WND_MENU_ITEM, (intptr_t)choice, 0, 0, 0);
     wnd_send(wnd, NPC_WND_MENU_NPC, packet->aid, 0, 0, 0);
     if (g_windowMgr.say_dialog_wnd)
         wnd_send(g_windowMgr.say_dialog_wnd, NPC_HELPER_DIALOG_EVENT, 0, 0, 0, 0);

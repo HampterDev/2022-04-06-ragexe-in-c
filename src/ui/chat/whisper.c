@@ -34,7 +34,7 @@ void ui_whisper_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_whisper_wnd_on_draw(struct UIWindow *self);
 void ui_whisper_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_whisper_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_whisper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_whisper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_whisper_wnd_draw_backdrop(struct UIWindow *window);
 const struct UIWindowOps ui_whisper_wnd_ops = {
     .destroy = ui_whisper_wnd_destroy,
@@ -201,7 +201,7 @@ void ui_whisper_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
     if (!platform_clipboard_set(g_hMainWnd, string_cstr(&self->code), self->code.size))
         return;
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)"C-Code copied to clipboard",
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)"C-Code copied to clipboard",
                         WHISPER_COPIED_COLOUR, 0, 0);
 }
 
@@ -275,7 +275,7 @@ static void save_conversation(struct UIWhisperWnd *self)
         string_assign_cstr(&said, path);
         string_append_cstr(&said, " is Saved.");
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&said), 0xff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&said), 0xff00, 0, 0);
         string_free(&said);
     }
     string_free(&name);
@@ -309,13 +309,13 @@ static void open_menu(struct UIWhisperWnd *self)
     add_menu_entry(self, MSG_WHISPER_MENU_SAVE, WHISPER_MENU_SAVE);
     if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&self->name)) && g_serverType != 3)
         add_menu_entry(self, MSG_WHISPER_MENU_ADD_FRIEND, WHISPER_MENU_ADD_FRIEND);
-    mode_send_message(client_current_mode(), MODE_REQ_MENU_NAME, (int)string_cstr(&self->name), 0, 0, 0);
+    mode_send_message(client_current_mode(), MODE_REQ_MENU_NAME, (intptr_t)string_cstr(&self->name), 0, 0, 0);
     if (self->menu.first == self->menu.last)
         return;
 
     menu = ui_window_open(WND_ID_MENU);
     for (i = 0; i < MENU_ENTRY_COUNT(&self->menu); i++)
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (int)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (intptr_t)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
                  0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
     x = g_mouse.x + 1;
@@ -367,7 +367,7 @@ static void send_line(struct UIWhisperWnd *self)
         } else {
             string_assign_cstr(&g_windowMgr.chat_line, line);
         }
-        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (int)string_cstr(&self->name), 0, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (intptr_t)string_cstr(&self->name), 0, 0, 0);
         return;
     }
 
@@ -385,7 +385,7 @@ static void send_line(struct UIWhisperWnd *self)
         else if (type == TALK_TYPE_SAVE)
             save_conversation(self);
         else
-            mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (int)parts, 0, 0);
+            mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (intptr_t)parts, 0, 0);
         for (i = 3; i-- > 0;)
             string_free(&parts[i]);
     }
@@ -429,8 +429,8 @@ static void resize(struct UIWhisperWnd *self, int width, int height)
     ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
 }
 
-int ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIWhisperWnd *self = (struct UIWhisperWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

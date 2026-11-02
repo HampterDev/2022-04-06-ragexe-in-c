@@ -1,7 +1,7 @@
 #include "world/mode_types.h"
 #include "world/mode_dispatch.h"
 
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     const struct ModeOps *methods;
     if (!mode || !mode->ops)

@@ -35,5 +35,5 @@ char *std_copy_memmove(const char *first, const char *last,
                                   char *dest) { abort(); }
 struct UIWindow *ui_window_find(int id) { abort(); }
 struct UIWindow *ui_window_open(int id) { abort(); }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-                   int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+                   intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }

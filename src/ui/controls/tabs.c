@@ -105,8 +105,8 @@ void ui_tab_on_l_btn_down(struct UIWindow *window, int x_unused, int y)
     ui_window_send_msg(self->base.parent, &self->base, UI_MSG_TAB_CHANGED, self->base.state, 0, 0, 0);
 }
 
-int ui_tab_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg, int val1,
-                             int val2_unused, int val3_unused, int val4_unused)
+intptr_t ui_tab_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg, intptr_t val1,
+                             intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused)
 {
     struct UITab *self = (struct UITab *)window;
     if (msg == UI_MSG_SET_STATE) {

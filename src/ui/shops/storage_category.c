@@ -15,7 +15,7 @@ void ui_item_store_sub_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y)
 void ui_item_store_sub_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_store_sub_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_store_sub_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_item_store_sub_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_store_sub_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_store_sub_wnd_ops = {
     .destroy = ui_item_store_sub_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -158,8 +158,8 @@ void ui_item_store_sub_wnd_on_wheel(struct UIWindow *window, int delta)
     storage_on_wheel(&self->base, delta);
 }
 
-int ui_item_store_sub_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_item_store_sub_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemStoreSubWnd *self = (struct UIItemStoreSubWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

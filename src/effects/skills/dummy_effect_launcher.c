@@ -53,6 +53,6 @@ void dummy_effect_launcher_send_msg(struct GameObject *object, struct GameObject
         offset.y = 0.0f;
         offset.z = 0.0f;
         if (own)
-            rag_effect_send_msg(own, 0, MSG_START, MSG_ARG_PTR(&offset), 0, 0);
+            rag_effect_send_msg(own, 0, MSG_START, (intptr_t)&offset, 0, 0);
     }
 }

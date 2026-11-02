@@ -81,7 +81,7 @@ static void show_guild_invite(const struct PACKET_ZC_REQ_GUILD_INVITE *packet, i
 
     memcpy(guild_name, packet->guild_name, 24);
     guild_name[24] = 0;
-    window = ui_window_open(window_id);  ui_window_send(window, NULL, message, (int)packet->inviter, (int)guild_name, 0, 0);
+    window = ui_window_open(window_id);  ui_window_send(window, NULL, message, (int)packet->inviter, (intptr_t)guild_name, 0, 0);
 }
 
 void game_mode_zc_req_ally_guild(const struct PACKET_ZC_REQ_GUILD_INVITE *packet)
@@ -100,7 +100,7 @@ void game_mode_zc_result_make_guild(const struct PACKET_ZC_RESULT_MAKE_GUILD *pa
 
     switch (packet->result) {
     case 0:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0x176), CHAT_COLOR_CYAN, 4, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0x176), CHAT_COLOR_CYAN, 4, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, 0xd6);
         ui_window_mgr_post_quit1(&g_windowMgr, 0xd5);
         ui_window_mgr_post_quit1(&g_windowMgr, 0xd4);
@@ -111,14 +111,14 @@ void game_mode_zc_result_make_guild(const struct PACKET_ZC_RESULT_MAKE_GUILD *pa
     case 4: msg = 0xa7f; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), CHAT_COLOR_YELLOW, 4, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), CHAT_COLOR_YELLOW, 4, 0);
 }
 
 static void report_member_status(struct GameMode *self, unsigned aid, unsigned gid, int status)
 {
     struct TextView name = player_name_lookup(gid);
     if (name.size != 0)
-        mode_send_msg(self, MM_GUILD_MEMBER_STATUS, (int)name.data, status, 0, 0);
+        mode_send_msg(self, MM_GUILD_MEMBER_STATUS, (intptr_t)name.data, status, 0, 0);
     if (status == 0)
         mode_send_msg(self, MM_GUILD_MEMBER_LEFT, (int)aid, 0, 0, 0);
 }
@@ -314,7 +314,7 @@ void game_mode_zc_guild_member_map_change(struct GameMode *self, const unsigned 
 
 static void guild_line(int msg, unsigned color, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), color, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), color, channel, 0);
 }
 
 #pragma pack(push, 1)
@@ -520,7 +520,7 @@ void game_mode_zc_ack_disorganize_guild(const unsigned char *pkt)
     memcpy(reason, packet->reason, 40);
     reason[40] = 0;
     sprintf(line, msg_str(0x16f), reason);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, CHAT_COLOR_YELLOW, CHAT_CHANNEL_GUILD, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_YELLOW, CHAT_CHANNEL_GUILD, 0);
 }
 
 #pragma pack(push, 1)

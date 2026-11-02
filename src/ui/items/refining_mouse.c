@@ -193,7 +193,7 @@ static void describe_carried(int item_id)
     if (inv.index) {
         describe = ui_window_open(WID_ITEM_DESCRIBE);
         if (describe)
-            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (int)&inv, 0, 0, 0);
+            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (intptr_t)&inv, 0, 0, 0);
     }
     item_info_destruct(&inv);
 }
@@ -215,7 +215,7 @@ void ui_refining_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
                 return;
             session_get_inventory_item_by_id(&g_session1, &inv,
                                           MATERIAL(&self->materials, self->selected)->item_id, 0);
-            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (int)&inv, 0, 0, 0);
+            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (intptr_t)&inv, 0, 0, 0);
             item_info_destruct(&inv);
             return;
         }
@@ -226,7 +226,7 @@ void ui_refining_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
             if (!describe)
                 return;
             session_get_inventory_item_by_id(&g_session1, &inv, self->blessing_item, 0);
-            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (int)&inv, 0, 0, 0);
+            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (intptr_t)&inv, 0, 0, 0);
             item_info_destruct(&inv);
             return;
         }
@@ -246,6 +246,6 @@ void ui_refining_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
     if (self->item.index && in_item_box(x, y)) {
         describe = ui_window_open(WID_ITEM_DESCRIBE);
         if (describe)
-            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (int)&self->item, 0, 0, 0);
+            ui_window_send_msg(describe, NULL, MSG_DESCRIBE_ITEM, (intptr_t)&self->item, 0, 0, 0);
     }
 }

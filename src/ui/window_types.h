@@ -6,6 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform/win_types.h"
 #include "base.h"
+#include <stdint.h>
 #include "std/container_types.h"
 
 struct UIWindow;
@@ -65,7 +66,7 @@ struct UIWindowOps {
     UI_METHOD(void, on_r_btn_up, int x, int y);
     UI_METHOD(void, on_wheel, int delta);
     UI_METHOD(void, snap);
-    UI_METHOD(int, send_msg, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+    UI_METHOD(intptr_t, send_msg, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
     UI_METHOD(void, invalidate);
     UI_METHOD(BYTE, render, int force);
     BYTE has_custom_backdrop;
@@ -257,7 +258,7 @@ static __inline void ui_window_snap(struct UIWindow *self)
     self->ops->snap(self);
 }
 
-static __inline int ui_window_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4)
+static __inline intptr_t ui_window_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     return self->ops->send_msg(self, sender, msg, val1, val2, val3, val4);
 }

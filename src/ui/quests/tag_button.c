@@ -98,7 +98,7 @@ void ui_tag_button_on_l_btn_up(struct UIWindow *window, int x, int y)
         if (!ui_window_mgr_get_focus_edit(&g_windowMgr) || !self->item.identified)
             return;
         edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
-        ui_window_send_msg(edit, NULL, UI_MSG_EDIT_INSERT_ITEM, (int)&self->item, 0, 0, 0);
+        ui_window_send_msg(edit, NULL, UI_MSG_EDIT_INSERT_ITEM, (intptr_t)&self->item, 0, 0, 0);
         return;
     }
     if (ui_window_mgr_get_capture(&g_windowMgr) != wnd)

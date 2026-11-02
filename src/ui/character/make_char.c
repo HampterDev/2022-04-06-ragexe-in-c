@@ -60,7 +60,7 @@ void ui_make_char_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_make_char_wnd_on_destroy(struct UIWindow *self);
 void ui_make_char_wnd_on_process(struct UIWindow *self);
 void ui_make_char_wnd_on_draw(struct UIWindow *self);
-int ui_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_make_char_wnd_ops = {
     .destroy = ui_make_char_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -479,12 +479,12 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     ui_window_mgr_post_quit2(&g_windowMgr, &self->frame.base);
 send:
     mode = client_current_mode();
-    mode_send_message(mode, MODE_REQ_MAKE_CHAR_NAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+    mode_send_message(mode, MODE_REQ_MAKE_CHAR_NAME, (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
     for (i = 0; i < 6; i++)
         looks.stats[i] = self->info.stats[i];
     looks.head_palette = self->info.head_palette;
     looks.head = self->info.head;
-    mode_send_message(mode, MODE_REQ_MAKE_CHAR_STATS, (int)&looks, 0, 0, 0);
+    mode_send_message(mode, MODE_REQ_MAKE_CHAR_STATS, (intptr_t)&looks, 0, 0, 0);
     return 0;
 }
 
@@ -497,8 +497,8 @@ static int bar_step(int pos, int msg, int val1)
     return val1 + pos;
 }
 
-int ui_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                     int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                     int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMakeCharWnd *self = (struct UIMakeCharWnd *)window;
     struct CharPreview *view = &self->view;
