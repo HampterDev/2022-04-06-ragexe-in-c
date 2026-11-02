@@ -48,13 +48,13 @@ void ui_edit_ctrl_truncate_text(struct UIEditCtrl *self, int to_language)
     if ((int)size <= self->max_chars)
         return;
     start = string_cstr(&self->text);
-    p = CharNextExA((WORD)g_codePage, start, 0);
+    p = platform_code_page_next(g_codePage, start);
     if (size - strlen(p) <= (unsigned)self->max_chars) {
         do
-            p = CharNextExA((WORD)g_codePage, p, 0);
+            p = platform_code_page_next(g_codePage, p);
         while (size - strlen(p) <= (unsigned)self->max_chars);
     }
-    keep_end = CharPrevExA((WORD)g_codePage, string_cstr(&self->text), p, 0);
+    keep_end = platform_code_page_prev(g_codePage, string_cstr(&self->text), p);
     keep = size - strlen(keep_end);
     string_truncate(&self->text, keep);
     if (to_language) {
@@ -120,10 +120,10 @@ void ui_edit_ctrl_sync_from_ime_with(struct UIEditCtrl *self, int font_flag, int
         if (text_width_flag(self, font_flag, text, self->sel_end) - scrolled + 3 <= view)
             return;
         end = text + self->text.size;
-        p = CharNextExA((WORD)g_codePage, text, 0);
+        p = platform_code_page_next(g_codePage, text);
         if (text_width_flag(self, font_flag, p, 0) + 3 > view) {
             while (p < end) {
-                p = CharNextExA((WORD)g_codePage, p, 0);
+                p = platform_code_page_next(g_codePage, p);
                 if (text_width_flag(self, font_flag, p, 0) + 3 <= view)
                     break;
             }

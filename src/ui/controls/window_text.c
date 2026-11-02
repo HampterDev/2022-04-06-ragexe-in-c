@@ -9,7 +9,7 @@
 #include "render/textdc.h"
 #include "ui/ui_std.h"
 
-#define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)
+#define NEXT_CHAR(p) platform_code_page_next(g_codePage, (p))
 
 #define TEXT_BK_ON(w) ((w)->text_bk_on)
 #define TEXT_BK_COLOUR(w) ((COLORREF)(w)->text_bk_colour)

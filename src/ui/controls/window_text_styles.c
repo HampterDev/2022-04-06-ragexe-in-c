@@ -72,7 +72,7 @@ void ui_window_draw_text_aligned(struct UIWindow *self, int x, int y, struct Str
     p = string_cstr(&text);
     end = p + strlen(p);
     while (p != end) {
-        next = CharNextExA((WORD)g_codePage, p, 0);
+        next = platform_code_page_next(g_codePage, p);
         w = char_width(self, p, next, face, height, arg3);
         if (outlined == 1) {
             char_draw(self, x + advance + 1, y, p, next, face, height, arg3, outline);
@@ -228,7 +228,7 @@ void ui_window_text_out_line(struct UIWindow *self, int x, int y,
                 continue;
             }
         }
-        next = CharNextExA((WORD)g_codePage, p, 0);
+        next = platform_code_page_next(g_codePage, p);
         w = char_width(self, p, next, face, height, bold_now);
         char_draw(self, x + advance, y, p, next, face, height, bold_now, colour);
         advance += w;

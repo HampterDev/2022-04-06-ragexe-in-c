@@ -150,7 +150,7 @@ static size_t first_char_size(struct TextView text)
     size_t count;
     if (!text.size) return 0;
     memcpy(bytes, text.data, text.size < 2 ? text.size : 2);
-    count = (size_t)(CharNextExA((WORD)g_codePage, bytes, 0) - bytes);
+    count = (size_t)(platform_code_page_next(g_codePage, bytes) - bytes);
     return count && count <= text.size ? count : 1;
 }
 

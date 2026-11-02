@@ -1,6 +1,6 @@
 #include "core/text_format.h"
 #include "core/hex.h"
-#include "platform/win_types.h"
+#include "platform/code_page.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,7 +15,7 @@ static size_t character_size(const char *text, size_t length, unsigned code_page
     size_t step;
     bytes[0] = text[0];
     if (length > 1) bytes[1] = text[1];
-    step = (size_t)(CharNextExA((WORD)code_page, bytes, 0) - bytes);
+    step = (size_t)(platform_code_page_next(code_page, bytes) - bytes);
     return step ? step : 1;
 }
 
