@@ -259,17 +259,22 @@ ctest --test-dir build/client --output-on-failure
 cd /path/to/game/data && /path/to/build/client/ragexe
 ```
 
-GCC is required: it compiles the narrow string literals as CP949 with `-fexec-charset=CP949`,
-which is what MSVC's `/execution-charset:.949` does. Clang has no equivalent; a clang or macOS
-build needs the literal transcoding described under *Korean source literals* applied to the whole
-tree first. The client links SDL3 (found or fetched as above), FreeType, Fontconfig and the C++
+GCC compiles the narrow string literals as CP949 itself with `-fexec-charset=CP949`, as MSVC's
+`/execution-charset:.949` does. Clang has no such option, so with any other compiler CMake builds
+a mirror of `src/` in the build directory whose narrow literals are CP949 octal escapes
+(`tools/source_encoding.py --tree`, see *Korean source literals*). The mirror is refreshed before
+every build and only changed files are rewritten, so incremental builds stay incremental. A clang 18
+build played the same as the GCC build in the VM. The client links SDL3 (found or fetched as
+above), FreeType, Fontconfig, iconv (part of glibc, a library of its own on macOS) and the C++
 runtime (the vendored CRijndael is C++). SDL needs the usual X11/Wayland, ALSA/PulseAudio and IBus
 development packages; the CI job in `.github/workflows/portable.yml` lists them for Ubuntu 24.04.
 Files that only make sense on Windows are listed in `tools/posix_excluded.txt`; files that only
 make sense elsewhere are wrapped in `#ifndef _WIN32` and compile to nothing in `build.bat`.
 
-Run it from the game folder (the one with `data.grf` and `System`), like the Windows client. Loose
-files are found case-insensitively. Settings that Windows keeps in the registry go to
+Run it from the game folder (the one with `DATA.INI`, the GRF files and `System`), like the Windows
+client. When the current directory has no `DATA.INI`, the client changes to its executable's folder,
+or, inside a macOS app bundle, to the folder that holds `ragexe.app`. Loose files are found
+case-insensitively; on a case-insensitive volume, finds still report the stored spelling. Settings that Windows keeps in the registry go to
 `client_settings.ini` in that folder. Lua scripts open files themselves (the option scripts write
 `SaveData\OptionInfo.lua` with `io.open`), so every client Lua state is opened with
 `lua_open_client_libs`: on POSIX it passes the path arguments of `io.open`, `io.lines`,
@@ -331,11 +336,31 @@ Mesa, the client DLLs next to it) against the same data and server. It drew `iz_
 way as the GL backend, including the black outside of the cabin's south wall that hides the lower
 half of the room from the default camera.
 
+## macOS client
+
+The same CMake build makes `ragexe.app` with Apple clang (Homebrew `ninja freetype fontconfig`):
+
+```sh
+cmake -S . -B build/client -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64 -DRAGE_CLIENT=ON
+cmake --build build/client
+ctest --test-dir build/client --output-on-failure
+```
+
+Put `ragexe.app` in the game folder and open it. Everything in *Linux client* applies: the GL backend
+asks for a forward-compatible core context, which macOS serves as OpenGL 4.1; SDL provides CoreAudio
+and Cocoa text input; Fontconfig finds the system fonts. Arial is Apple's own copy and keeps its
+hinting; Gulim is replaced by Apple SD Gothic Neo, whose last glyph can overhang the text box by a
+pixel. The `macos-client` CI job builds the bundle on GitHub's macOS 15 arm64 runners and runs the
+tests there, the GL backend test included, against a real macOS OpenGL context. The game itself has
+not run on a Mac yet: that needs a Mac with the game data, not a CI runner, and a macOS virtual
+machine on non-Apple hardware is ruled out by Apple's licence.
+
 ## Remaining work
 
-1. macOS: transcode the Korean literals so clang can build the client, then run the
-   GL backend on 4.1 core or write the Metal backend behind `render/gfx.h`; validate
-   Hangul composition and Retina on a real Mac.
+1. macOS: play on a real Mac with game data; check Hangul composition through the macOS
+   input method and Retina scaling (the window does not ask for a high-density drawable,
+   so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
+   deprecated OpenGL later.
 2. Granny models off Windows (`resources/granny_posix.c` loads none).
 3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
 4. Keep auditing pointer-width message arguments, raw strides and packed packet
