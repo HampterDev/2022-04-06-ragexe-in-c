@@ -56,7 +56,7 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
     case 0x12d:
         if (self->plates.size)
             return *LIST_VALUE(self->plates.head->next, struct UIWindow *);
-        return self->cash_shop_wnd;
+        return NULL;
     case 0x13b: return self->tipbox_wnd;
     case 0x13e: return self->cash_shop_wnd;
     case 0x145: return self->rpimage_wnd2;
