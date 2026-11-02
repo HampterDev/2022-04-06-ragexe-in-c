@@ -89,9 +89,6 @@ const struct GameActorOps skill_ops = {
     .get_head_extent = game_actor_get_head_extent,
 };
 
-int g_skillPickMinSize;
-struct Once g_skillPickMinSizeGuard;
-
 #include "world/scene_objects.h"
 #include "effects/rag/rag_effect_types.h"
 #include "effects/rag/rag_effect.h"
@@ -474,10 +471,6 @@ void skill_render_body(struct RenderObject *object, const struct ScreenBounds *r
         struct PickInfo *pick;
         int least, w, h;
 
-        if (once_begin(&g_skillPickMinSizeGuard)) {
-            g_skillPickMinSize = (int)(renderer_scale_x(g_renderer) * 34.0f);
-            once_complete(&g_skillPickMinSizeGuard);
-        }
         pick = mem_alloc(sizeof *pick);
         if (pick) {
             pick->left = 0.0f;
@@ -497,7 +490,7 @@ void skill_render_body(struct RenderObject *object, const struct ScreenBounds *r
         pick->job = game_actor_get_job((struct GameActor *)me);
         pick->attackable_as_pvp = 0;
         pick->kind = 2;
-        least = g_skillPickMinSize;
+        least = (int)(renderer_scale_x(g_renderer) * 34.0f);
         w = (int)(pick->right - pick->left);
         if (w < least) {
             float grow = (float)((least - w) / 2);

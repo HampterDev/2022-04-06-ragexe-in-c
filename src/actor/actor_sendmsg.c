@@ -777,21 +777,15 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         self->attack_target_aid = (int)par1;
         break;
     case 0x52: {
-        static int raise_done;
-        static float raise;
         unsigned now;
 
         if (self->recharge_gage_wnd == NULL) {
             struct UIWindow *w;
 
-            if (!raise_done) {
-                raise = (float)(g_renderer->height * 0x51 / 480);
-                raise_done = 1;
-            }
             w = (struct UIWindow *)ui_recharge_gage_new();
             self->recharge_gage_wnd = w;
             ui_window_create(w, 0x3c, 6);
-            ui_window_move(self->recharge_gage_wnd, self->screen_x - 0x1e, (int)((float)self->screen_y - self->scale * raise));
+            ui_window_move(self->recharge_gage_wnd, self->screen_x - 0x1e, (int)((float)self->screen_y - self->scale * (float)(g_renderer->height * 0x51 / 480)));
             ui_window_mgr_add_to_window_list(&g_windowMgr, self->recharge_gage_wnd);
         }
         now = platform_ticks_ms();
