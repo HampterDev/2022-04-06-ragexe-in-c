@@ -109,6 +109,11 @@ void platform_thread_yield(void)
     Sleep(0);
 }
 
+void platform_thread_sleep(unsigned milliseconds)
+{
+    Sleep(milliseconds);
+}
+
 uint32_t platform_thread_id(void)
 {
     return GetCurrentThreadId();

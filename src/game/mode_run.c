@@ -72,7 +72,11 @@ int game_mode_on_run(struct Mode *mode)
         }
 
         game_mode_on_update(mode);
-        platform_thread_yield();
+        /* Drawing nothing (inactive in exclusive fullscreen), nothing waits for the display. */
+        if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
+            platform_thread_sleep(1);
+        else
+            platform_thread_yield();
     }
     mode_run_fade_out(&self->base, 0);
 

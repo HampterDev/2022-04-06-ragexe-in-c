@@ -23,6 +23,7 @@ struct PlatformThread *platform_thread_create(void (*entry)(void *context), void
 void platform_thread_join(struct PlatformThread *thread);
 void platform_thread_raise_priority(void);
 void platform_thread_yield(void);
+void platform_thread_sleep(unsigned milliseconds);
 uint32_t platform_thread_id(void);
 
 int32_t platform_atomic_increment(volatile int32_t *value);

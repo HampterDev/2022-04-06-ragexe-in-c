@@ -160,6 +160,14 @@ void platform_thread_yield(void)
     sched_yield();
 }
 
+void platform_thread_sleep(unsigned milliseconds)
+{
+    struct timespec wait = { (time_t)(milliseconds / 1000), (long)(milliseconds % 1000) * 1000000L };
+
+    while (nanosleep(&wait, &wait) == -1 && errno == EINTR)
+        ;
+}
+
 uint32_t platform_thread_id(void)
 {
     static uint32_t next_id;
