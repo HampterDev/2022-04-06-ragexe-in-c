@@ -1,6 +1,7 @@
 #include "ui/draw.h"
 #include "core/utf8.h"
 #include "core/text_format.h"
+#include "core/hex.h"
 #include "platform/language.h"
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,18 @@
 static int width12(struct UIWindow *self, const char *text, int length)
 {
     return ui_window_text_width(self, text, length, 0, 12, 0, 0);
+}
+
+static int measured_as_colour_code(const char *p, const char *end)
+{
+    unsigned value = 0;
+    int i;
+
+    if (*p != '^')
+        return 0;
+    for (i = 1; i <= 6; ++i)
+        value = value << 4 | (p + i < end ? hex_digit_value((unsigned char)p[i]) : 0);
+    return value != 0 || (end - p >= 7 && memcmp(p, "^000000", 7) == 0);
 }
 
 void ui_window_break_lines(struct UIWindow *self, const char *text,
@@ -37,7 +50,7 @@ void ui_window_break_lines(struct UIWindow *self, const char *text,
                 break;
             }
             measured += width12(self, p, count);
-            if (text_is_colour_code(p, end))
+            if (measured_as_colour_code(p, end))
                 measured -= width12(self, "^000000", 7);
             if (*p == '[') {
                 const char *close = strstr(p, "]");
