@@ -175,7 +175,7 @@ the workflow actually completes.
 
 ## Audio
 
-Windows keeps Miles Sound System. Off Windows, `src/platform/miles_posix.c`
+Windows keeps Miles Sound System. Off Windows, `src/platform/miles_sdl.c`
 implements the Miles subset declared in `platform/miles_api.h` on SDL3: one device
 stream per digital driver at the requested rate and channels (22050 Hz, 16-bit; mono
 in 2D mode, stereo in 3D mode), mixed in the device callback. Samples are converted
@@ -193,7 +193,7 @@ header, freed by `_AIL_mem_free_lock`. Microsoft and IMA ADPCM both decode; the 
 decoder is the Intel/DVI reference algorithm (FFmpeg rounds differently). Every ADPCM
 file in `data.grf` (five IMA, one Microsoft) decoded identically to the reference
 decoders, and all 64 BGM tracks of the local game data played through.
-`test_miles_posix` (built when SDL is part of the build, e.g. with
+`test_miles_sdl` (built when SDL is part of the build, e.g. with
 `RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
 `tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
 
@@ -368,6 +368,24 @@ The game was played on macOS 12.7 (x86_64, VMware, Apple's software OpenGL rende
 from the command line tools, MacPorts for cmake, ninja, freetype and fontconfig) against rAthena
 built in the same machine: `ragexe.app` opened from the game folder, logged in, created a
 character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well.
+
+## 64-bit Windows client
+
+`build.bat x64` builds `build\main_rebuild_x64.exe` (`build.bat x64 dbg`: `main_dbg_x64.exe`) with
+the same Win32 window, GDI text and Direct3D 9 renderer as the 32-bit client. The only 32-bit parts
+of the 32-bit client are RAD's `granny2.dll` and `mss32.dll`, so the 64-bit build swaps them
+(`PLATFORM_RAD_DLLS` in `platform/win_types.h` is set only for 32-bit Windows):
+
+- sound goes through `platform/miles_sdl.c`, the Miles subset the POSIX builds use, on an
+  audio-only static SDL3 that `vendor\build_vendor.bat x64` downloads (the commit
+  `cmake/SDL3.cmake` pins, hash-checked) and builds with CMake;
+- Granny models come from the converted glTF files (`tools/granny_export`), as off Windows;
+- `cps.dll`, which the client never calls, is no longer linked.
+
+The crash report prints full-width addresses. `tests\scenes\build.bat x64` builds the scene
+harness; every non-Granny scene captures bit for bit what the 32-bit client captures, and the
+Granny scenes differ from `granny2.dll` only along edges, as on Linux. The `-A x64` CI job builds
+both.
 
 ## Scene captures
 

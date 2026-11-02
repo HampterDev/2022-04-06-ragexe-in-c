@@ -1,4 +1,4 @@
-#include "platform/miles_posix.c"
+#include "platform/miles_sdl.c"
 #include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -99,19 +99,19 @@ static void test_wave_parsing(void)
     assert(wave_parse(image, &wave));
     assert(wave.format == WAVE_FORMAT_PCM && wave.channels == 2 && wave.rate == 22050 && wave.bits == 16);
     assert(wave.block_size == 4 && wave.length == 8 && !memcmp(wave.data, pcm, 8));
-    assert(_AIL_file_type(image, 64) == FILE_TYPE_PCM_WAV);
-    assert(_AIL_file_type(image, 40) == FILE_TYPE_UNKNOWN);
+    assert(_AIL_file_type(image, 64) == AIL_FILE_PCM_WAV);
+    assert(_AIL_file_type(image, 40) == AIL_FILE_UNKNOWN);
     assert(_AIL_WAV_info(image, &info) && info.samples == 2 && info.dataLen == 8 && info.initial == image);
     assert(!_AIL_decompress_ADPCM(&info, &out, &out_size) && !out && !out_size);
     put_u16(image + 20, 0x55);
-    assert(_AIL_file_type(image, 64) == FILE_TYPE_OTHER_WAV);
+    assert(_AIL_file_type(image, 64) == AIL_FILE_OTHER_WAV);
     put_u32(image + 52, 9);
     assert(!wave_parse(image, &wave));
     free(image);
-    assert(_AIL_file_type(garbage, sizeof garbage) == FILE_TYPE_UNKNOWN);
+    assert(_AIL_file_type(garbage, sizeof garbage) == AIL_FILE_UNKNOWN);
     assert(_AIL_file_type(frame, sizeof frame) == AIL_FILE_ASI);
     frame[1] = 0xfd;
-    assert(_AIL_file_type(frame, sizeof frame) == FILE_TYPE_UNKNOWN);
+    assert(_AIL_file_type(frame, sizeof frame) == AIL_FILE_UNKNOWN);
     assert(!_AIL_WAV_info(garbage, &info));
 }
 
@@ -132,7 +132,7 @@ static void check_adpcm(const char *wav_name, const char *pcm_name, int format, 
     per_block = info.samples / blocks;
     assert(_AIL_decompress_ADPCM(&info, &decoded, &decoded_size));
     assert(decoded_size == WAV_HEADER_SIZE + pcm_size);
-    assert(_AIL_file_type(decoded, decoded_size) == FILE_TYPE_PCM_WAV);
+    assert(_AIL_file_type(decoded, decoded_size) == AIL_FILE_PCM_WAV);
     assert(wave_parse(decoded, &out));
     assert(out.format == WAVE_FORMAT_PCM && out.channels == channels && out.rate == 22050 && out.bits == 16);
     assert(out.length == pcm_size && !memcmp(out.data, reference, pcm_size));
@@ -511,6 +511,6 @@ int main(int argc, char **argv)
     test_streams();
     _AIL_shutdown();
     test_device();
-    puts("miles_posix: ok");
+    puts("miles_sdl: ok");
     return 0;
 }

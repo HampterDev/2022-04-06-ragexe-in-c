@@ -99,7 +99,7 @@ typedef struct GrannyClock { unsigned char bytes[16]; } GrannyClock;
 SIZE_ASSERT(GrannyClock, 16);
 
 #ifndef GRANNY_IMPORT
-#ifdef _WIN32
+#ifdef PLATFORM_RAD_DLLS
 #define GRANNY_IMPORT __declspec(dllimport)
 #else
 #define GRANNY_IMPORT

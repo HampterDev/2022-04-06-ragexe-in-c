@@ -6,6 +6,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include <tlhelp32.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -118,8 +119,10 @@ static void put_fmt(const char *fmt, ...)
 }
 
 #define MODULE_LIMIT 512
+#define ADDRESS_DIGITS ((int)sizeof(void *) * 2)
 static struct {
-    DWORD base, size;
+    uintptr_t base;
+    DWORD size;
     char name[MAX_PATH * 3];
 } modules[MODULE_LIMIT];
 static unsigned module_count;
@@ -148,7 +151,7 @@ static void snapshot_modules(void)
     }
     do {
         unsigned i = module_count++;
-        modules[i].base = (DWORD)(UINT_PTR)entry.modBaseAddr;
+        modules[i].base = (uintptr_t)entry.modBaseAddr;
         modules[i].size = entry.modBaseSize;
         if (!WideCharToMultiByte(CP_UTF8, 0, entry.szModule, -1, modules[i].name,
                                  sizeof(modules[i].name), NULL, NULL))
@@ -158,24 +161,25 @@ static void snapshot_modules(void)
     CloseHandle(snapshot);
 }
 
-static void put_module_tag(DWORD a)
+static void put_module_tag(uintptr_t a)
 {
     unsigned i;
     for (i = 0; i < module_count; ++i) {
-        if (modules[i].base == (DWORD)(UINT_PTR)image_base)
+        if (modules[i].base == (uintptr_t)image_base)
             continue;
         if (a >= modules[i].base && a - modules[i].base < modules[i].size) {
-            put_fmt(" [%s+%08X]", modules[i].name, a - modules[i].base);
+            put_fmt(" [%s+%08X]", modules[i].name, (unsigned)(a - modules[i].base));
             return;
         }
     }
 }
 
-static void put_addr(DWORD a)
+static void put_addr(uintptr_t a)
 {
-    put_fmt("%08X", a);
-    if (image_size && a >= (DWORD)image_base && a - (DWORD)image_base < image_size)
-        put_fmt(" [exe+%08X]", a - (DWORD)image_base);
+    uintptr_t base = (uintptr_t)image_base;
+    put_fmt("%0*" PRIXPTR, ADDRESS_DIGITS, a);
+    if (image_size && a >= base && a - base < image_size)
+        put_fmt(" [exe+%08X]", (unsigned)(a - base));
     else
         put_module_tag(a);
 }
@@ -239,15 +243,16 @@ static void put_exception(const EXCEPTION_RECORD *er)
         put_fmt("%s%08X %s  flags %08X  params %u", depth ? "Nested:     " : "Exception:  ", er->ExceptionCode,
                 code_name(er->ExceptionCode), er->ExceptionFlags, er->NumberParameters);
         for (i = 0; i < er->NumberParameters && i < 4; i++)
-            put_fmt("  [%u] %08X", i, er->ExceptionInformation[i]);
+            put_fmt("  [%u] %0*" PRIXPTR, i, ADDRESS_DIGITS, (uintptr_t)er->ExceptionInformation[i]);
         put("\r\n");
         put("At:         ");
-        put_addr((DWORD)er->ExceptionAddress);
+        put_addr((uintptr_t)er->ExceptionAddress);
         put("\r\n");
         if ((er->ExceptionCode == 0xc0000005 || er->ExceptionCode == 0xc0000006) && er->NumberParameters >= 2) {
-            DWORD kind = er->ExceptionInformation[0];
-            put_fmt("Access:     %s %08X", kind == 0 ? "reading" : kind == 1 ? "writing" : kind == 8 ? "executing" : "touching",
-                    er->ExceptionInformation[1]);
+            DWORD kind = (DWORD)er->ExceptionInformation[0];
+            put_fmt("Access:     %s %0*" PRIXPTR,
+                    kind == 0 ? "reading" : kind == 1 ? "writing" : kind == 8 ? "executing" : "touching",
+                    ADDRESS_DIGITS, (uintptr_t)er->ExceptionInformation[1]);
             if (er->ExceptionInformation[1] < 0x10000)
                 put("  (a null pointer plus a field offset)");
             put("\r\n");
@@ -262,7 +267,9 @@ static void put_memory(void)
     MEMORYSTATUSEX ms;
     MEMORY_BASIC_INFORMATION mbi;
     uint64_t priv = 0, image = 0, mapped = 0, reserved = 0, freeTotal = 0;
-    DWORD a = 0, largest = 0, freeBlocks = 0, bigBlocks = 0, regions = 0;
+    uintptr_t a = 0, end;
+    SIZE_T largest = 0;
+    DWORD freeBlocks = 0, bigBlocks = 0, regions = 0;
     int capped = 0;
     ms.dwLength = sizeof(ms);
     if (GlobalMemoryStatusEx(&ms)) {
@@ -300,14 +307,16 @@ static void put_memory(void)
         } else {
             priv += mbi.RegionSize;
         }
-        if ((DWORD)mbi.BaseAddress + mbi.RegionSize < a || (DWORD)mbi.BaseAddress + mbi.RegionSize >= 0xffff0000)
+        end = (uintptr_t)mbi.BaseAddress + mbi.RegionSize;
+        if (end < a || end >= UINTPTR_MAX - 0xffff)
             break;
-        a = (DWORD)mbi.BaseAddress + mbi.RegionSize;
+        a = end;
     }
     put_fmt("VA map:     commit private %u MB  image %u MB  mapped %u MB  reserved %u MB\r\n", (DWORD)(priv >> 20),
             (DWORD)(image >> 20), (DWORD)(mapped >> 20), (DWORD)(reserved >> 20));
-    put_fmt("            free %u MB in %u block(s), %u of them 1 MB or more, largest %08X, over %u region(s)%s\r\n",
-            (DWORD)(freeTotal >> 20), freeBlocks, bigBlocks, largest, regions, capped ? " (the walk was cut short)" : "");
+    put_fmt("            free %u MB in %u block(s), %u of them 1 MB or more, largest %u MB, over %u region(s)%s\r\n",
+            (DWORD)(freeTotal >> 20), freeBlocks, bigBlocks, (DWORD)(largest >> 20), regions,
+            capped ? " (the walk was cut short)" : "");
 }
 
 static void put_modules(void)
@@ -319,7 +328,8 @@ static void put_modules(void)
         return;
     }
     for (i = 0; i < module_count; ++i)
-        put_fmt("            %08X  %08X  %s\r\n", modules[i].base, modules[i].size, modules[i].name);
+        put_fmt("            %0*" PRIXPTR "  %08X  %s\r\n", ADDRESS_DIGITS, modules[i].base, modules[i].size,
+                modules[i].name);
     if (module_count == MODULE_LIMIT)
         put_line("            (512 entries: the list was cut short)");
 }
@@ -375,7 +385,7 @@ static LONG WINAPI crash_filter(EXCEPTION_POINTERS *exception)
     put_line("==================== crash report ====================");
     put_fmt("Build:      image %08X  (crash_report.c compiled %s %s)\r\n",
             image_timestamp(), __DATE__, __TIME__);
-    put_fmt("Image:      base %08X  size %08X\r\n", (DWORD)image_base, image_size);
+    put_fmt("Image:      base %0*" PRIXPTR "  size %08X\r\n", ADDRESS_DIGITS, (uintptr_t)image_base, image_size);
     GetLocalTime(&time);
     put_fmt("Time:       %04u-%02u-%02u %02u:%02u:%02u  uptime %lu s\r\n",
             time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond,

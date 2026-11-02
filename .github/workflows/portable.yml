@@ -38,6 +38,10 @@ jobs:
         if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
         shell: cmd
         run: build.bat
+      - name: Build 64-bit Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A x64'
+        shell: cmd
+        run: build.bat x64 && tests\scenes\build.bat x64
       - name: Test Windows client
         if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
         shell: cmd

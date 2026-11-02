@@ -8,7 +8,9 @@ listed in [its README](https://github.com/HampterDev/2022-04-06-ragexe-in-c/blob
 and still apply here. These are the deviations from `purist`:
 
 - Build the client for 64-bit Linux and macOS (x86_64 and arm64) with CMake
-  (`-DRAGE_CLIENT=ON`); on macOS as `ragexe.app`. Windows still builds with `build.bat`.
+  (`-DRAGE_CLIENT=ON`); on macOS as `ragexe.app`. Windows still builds with `build.bat`, and
+  `build.bat x64` builds a 64-bit Windows client (Direct3D 9; sound through SDL3; Granny models
+  from converted glTF).
 - Run on an SDL3 application layer off Windows: window, input, IME text, clipboard and cursor.
 - Draw with an OpenGL 3.3 core (macOS: 4.1) backend behind `render/gfx.h` off Windows; Direct3D 9
   stays the Windows backend.

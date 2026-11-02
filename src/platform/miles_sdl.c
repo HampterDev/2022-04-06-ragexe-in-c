@@ -1,4 +1,5 @@
-#ifndef _WIN32
+#include "platform/win_types.h"
+#ifndef PLATFORM_RAD_DLLS
 #include "platform/miles_api.h"
 #include "platform/filesystem.h"
 #include "platform/thread.h"
@@ -17,9 +18,9 @@
 #define WAVE_FORMAT_PCM 1
 #define WAVE_FORMAT_MS_ADPCM 2
 #define WAVE_FORMAT_IMA_ADPCM 17
-#define FILE_TYPE_UNKNOWN 0
-#define FILE_TYPE_PCM_WAV 1
-#define FILE_TYPE_OTHER_WAV 3
+#define AIL_FILE_UNKNOWN 0
+#define AIL_FILE_PCM_WAV 1
+#define AIL_FILE_OTHER_WAV 3
 #define PROVIDER_OK 0
 #define PROVIDER_ERROR 3
 #define PROVIDER_FEATURE_UNSUPPORTED (-1)
@@ -998,18 +999,18 @@ int __stdcall _AIL_file_type(const void *data, unsigned size)
     struct WaveFormat wave;
     if (size >= 12 && !memcmp(bytes, "RIFF", 4) && !memcmp(bytes + 8, "WAVE", 4)) {
         if (get_u32(bytes + 4) > size - 8 || !wave_parse(bytes, &wave))
-            return FILE_TYPE_UNKNOWN;
+            return AIL_FILE_UNKNOWN;
         if (wave.format == WAVE_FORMAT_PCM)
-            return FILE_TYPE_PCM_WAV;
+            return AIL_FILE_PCM_WAV;
         if (wave.format == WAVE_FORMAT_IMA_ADPCM || wave.format == WAVE_FORMAT_MS_ADPCM)
             return AIL_FILE_ADPCM;
-        return FILE_TYPE_OTHER_WAV;
+        return AIL_FILE_OTHER_WAV;
     }
     if (size >= 3 && !memcmp(bytes, "ID3", 3))
         return AIL_FILE_ASI;
     if (size >= 2 && bytes[0] == 0xff && (bytes[1] & 0xe6) == 0xe2)
         return AIL_FILE_ASI;
-    return FILE_TYPE_UNKNOWN;
+    return AIL_FILE_UNKNOWN;
 }
 
 int __stdcall _AIL_WAV_info(const void *data, struct AilSoundInfo *info)

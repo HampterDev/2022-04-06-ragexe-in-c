@@ -72,6 +72,8 @@ static void scene_defaults(void)
 {
     if (!getenv("RAGEXE_VSYNC"))
         _putenv_s("RAGEXE_VSYNC", "0");
+    if (!getenv("SDL_AUDIODRIVER"))
+        _putenv_s("SDL_AUDIODRIVER", "dummy");
 }
 #pragma section(".CRT$XCU", read)
 __declspec(allocate(".CRT$XCU")) void (*scene_defaults_entry)(void) = scene_defaults;

@@ -1,4 +1,5 @@
-#ifndef _WIN32
+#include "platform/win_types.h"
+#ifndef PLATFORM_RAD_DLLS
 #include "resources/granny_sdk.h"
 #include "fileio/file_api.h"
 #include "platform/clock.h"

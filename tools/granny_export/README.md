@@ -2,8 +2,8 @@
 
 The client draws the emperium, the WoE guardians, the guild flag and the treasure box as
 Granny 2.1 models (`data\model\3dmob\*.gr2`) with animations from `data\model\3dmob_bone\*.gr2`.
-Windows decodes them with the game's `granny2.dll`. There is no Granny for 64-bit Linux, macOS or
-Android, so those builds read the same models from glTF 2.0 files that this tool writes once
+Windows decodes them with the game's `granny2.dll`. There is no Granny for 64-bit Windows, Linux, macOS
+or Android, so those builds read the same models from glTF 2.0 files that this tool writes once
 per game installation, using `granny2.dll` to do the decoding.
 
 ```bat

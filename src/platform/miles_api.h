@@ -2,7 +2,7 @@
 #define PLATFORM_MILES_API_H
 #include "platform/win_types.h"
 #ifndef MSS_IMPORT
-#ifdef _WIN32
+#ifdef PLATFORM_RAD_DLLS
 #define MSS_IMPORT __declspec(dllimport)
 #else
 #define MSS_IMPORT
