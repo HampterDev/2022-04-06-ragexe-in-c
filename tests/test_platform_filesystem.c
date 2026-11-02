@@ -9,6 +9,8 @@
 #include <direct.h>
 #define remove_directory _rmdir
 #else
+#include <strings.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #define remove_directory rmdir
 #endif
@@ -136,7 +138,14 @@ static void case_and_lexical_lookup(void)
     assert(name && !strcmp(name, "Alpha.TXT") && platform_path_is_native(full));
     assert(platform_module_path(full, sizeof full) && platform_path_is_native(full));
 #ifndef _WIN32
-    assert(!strcmp(joined + strlen(directory), "/port-dir/Alpha.TXT"));
+    {
+        /* A case-insensitive volume (the macOS default) finds the requested spelling directly. */
+        struct stat status;
+        if (stat("PORT-DIR/ALPHA.TXT", &status) == 0)
+            assert(!strcasecmp(joined + strlen(directory), "/port-dir/Alpha.TXT"));
+        else
+            assert(!strcmp(joined + strlen(directory), "/port-dir/Alpha.TXT"));
+    }
     assert(!platform_path_join(joined, sizeof joined, directory, "\xff"));
 #else
     assert(!strcmp(joined + strlen(directory), "\\PORT-DIR\\alpha.txt"));
