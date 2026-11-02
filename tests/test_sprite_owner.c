@@ -178,9 +178,9 @@ static void check_rgba(const struct SprImg *image, unsigned width, unsigned heig
 }
 static void test_versions(void)
 {
-    const unsigned versions[] = {0x100,0x101,0x200,0x201};
+    const unsigned versions[] = {0,0xff,0x100,0x101,0x200,0x201};
     BYTE data[1200]; unsigned v, half;
-    for (v = 0; v < 4; ++v) for (half = 0; half < 4; ++half) {
+    for (v = 0; v < sizeof versions / sizeof *versions; ++v) for (half = 0; half < 4; ++half) {
         size_t size = fixture(data, versions[v]);
         struct Res *base = sprite_resource_create(); struct SprRes *sprite = (struct SprRes *)base;
         assert(base && base->ops == &sprite_resource_ops); set_half(half); set_input(data, size);
@@ -201,8 +201,8 @@ static void test_rejected_replacement(void)
 {
     BYTE good[1200], bad[1200]; size_t size = fixture(good, 0x201); unsigned k;
     struct Res *base = sprite_resource_create(); struct SprRes saved;
-    const unsigned offsets[] = {0,2,4,6,8,10,12};
-    const unsigned values[] = {0,0x202,65535,65535,0,0x8000,65535};
+    const unsigned offsets[] = {0,2,4,6,10,12,30};
+    const unsigned values[] = {0,0x202,65535,65535,0x8000,65535,0x8000};
     set_half(0); set_input(good,size); assert(resource_load(base,"old.spr")); saved = *(struct SprRes *)base;
     for (k = 0; k < sizeof offsets / sizeof *offsets; ++k) {
         memcpy(bad,good,size); put_word(bad+offsets[k],values[k]); set_input(bad,size);
@@ -218,6 +218,28 @@ static void test_rejected_replacement(void)
     assert(!resource_load(base,"upload-failure.spr")); fail_upload = 0;
     assert(!memcmp(base,&saved,sizeof saved) && outstanding == 5);
     check_indexed(saved.images[0].items,5,3,indexed_pixels); check_rgba(saved.images[1].items,3,2,rgba_pixels);
+    resource_destroy(base); clean();
+}
+static void test_empty_frames(void)
+{
+    BYTE data[1200]; size_t size = fixture(data, 0x201); unsigned v;
+    struct Res *base = sprite_resource_create(); struct SprRes *sprite = (struct SprRes *)base;
+    set_half(0);
+    put_word(data+8,0); set_input(data,size); assert(resource_load(base,"narrow.spr"));
+    assert(sprite->images[0].items[0].width == 0 && sprite->images[0].items[0].height == 3);
+    assert(sprite->images[0].items[0].pixels); check_rgba(sprite->images[1].items,3,2,rgba_pixels);
+    size = fixture(data, 0x201); put_word(data+12,0); memmove(data+14,data+30,size-30); size -= 16;
+    put_word(data+8,0); put_word(data+10,0); set_input(data,size); assert(resource_load(base,"empty-frame.spr"));
+    assert(!sprite->images[0].items[0].width && !sprite->images[0].items[0].height);
+    check_rgba(sprite->images[1].items,3,2,rgba_pixels); check_palette(sprite,data+size-1024);
+    size = fixture(data, 0x201); put_word(data+30,0); put_word(data+32,0); set_input(data,size);
+    assert(resource_load(base,"empty-rgba.spr"));
+    assert(!sprite->images[1].items[0].width && !sprite->images[1].items[0].texture);
+    for (v = 0x100; v <= 0x200; v += 0x100) {
+        size = fixture(data, v); put_word(data+(v>=0x200?8:6),0); put_word(data+(v>=0x200?10:8),0);
+        set_input(data,size); assert(resource_load(base,"raw-empty.spr"));
+        assert(!sprite->images[0].items[0].width && sprite->images[0].items[0].pixels);
+    }
     resource_destroy(base); clean();
 }
 static size_t uneven(BYTE *data, const BYTE *code, unsigned size)
@@ -259,6 +281,12 @@ static void test_prefixes(void)
         set_input(data,size); assert(resource_load(base,"old.spr")); saved = *(struct SprRes *)base;
         for (n = 0; n < size; ++n) {
             memcpy(guard-n,data,n); set_input(guard-n,n);
+            if (versions[v] >= 0x101 && n >= size - 1024) {
+                assert(resource_load(base,"short-palette.spr") && !borrowed_buffers);
+                check_palette((struct SprRes *)base, n >= 1024u + (versions[v] >= 0x200 ? 8u : 6u) ? guard - 1024 : NULL);
+                check_indexed(sprite_resource_image((struct SprRes *)base,0,0),5,3,indexed_pixels);
+                continue;
+            }
             assert(!resource_load(base,"prefix.spr") && !memcmp(base,&saved,sizeof saved));
             assert(!borrowed_buffers); ++guarded_prefixes;
         }
@@ -384,7 +412,7 @@ int main(int argc, char **argv)
 {
     g_3dDevice.colorKeyPixel = 0x15ab;
     if (argc == 2) return corpus(argv[1]);
-    test_versions(); test_rejected_replacement(); test_uneven_streams(); test_prefixes();
+    test_versions(); test_rejected_replacement(); test_empty_frames(); test_uneven_streams(); test_prefixes();
     test_allocation_failures(); test_empty_and_large(); clean();
     test_atlas_resource_lifetime();
     printf("SPR owner: versions, pixels, %u guarded prefixes, replacement and allocation failures pass (%u uploads).\n",guarded_prefixes,uploads);
