@@ -19,7 +19,7 @@
 #include <string.h>
 
 static SDL_Window *g_sdlWindow;
-static int g_composing;
+static int g_composing, g_compositionEnded;
 
 static const unsigned short g_scanCodes[SDL_SCANCODE_RGUI + 1] = {
     [SDL_SCANCODE_A] = 0x1e, [SDL_SCANCODE_B] = 0x30, [SDL_SCANCODE_C] = 0x2e, [SDL_SCANCODE_D] = 0x20,
@@ -154,6 +154,7 @@ static void on_key(const SDL_KeyboardEvent *key, int down)
         window_events_key_up(vk, lparam | (int)0xc0000000u);
         return;
     }
+    g_compositionEnded = 0;
     if ((key->mod & SDL_KMOD_ALT) || vk == VK_F10) {
         ui_window_mgr_on_key_down(&g_windowMgr, vk, lparam, !key->repeat);
         return;
@@ -166,12 +167,14 @@ static void on_key(const SDL_KeyboardEvent *key, int down)
 static void on_text(const char *utf8)
 {
     char *text;
-    if (!g_language || (!g_windowMgr.key_as_text && !g_composing))
+    int composed = g_composing || g_compositionEnded;
+    g_compositionEnded = 0;
+    if (!g_language || (!g_windowMgr.key_as_text && !composed))
         return;
     text = client_text(utf8);
     if (!text)
         return;
-    if (!g_composing && text[0] && !text[1])
+    if (!composed && text[0] && !text[1])
         window_events_char((unsigned char)text[0]);
     else
         language_commit(g_language, text);
@@ -190,6 +193,7 @@ static void on_editing(const char *utf8, int start)
         return;
     if (text[0] && !g_composing)
         language_delete_selection(g_language);
+    g_compositionEnded = g_composing && !text[0];
     g_composing = text[0] != 0;
     language_set_composition(g_language, text, start);
     free(text);
