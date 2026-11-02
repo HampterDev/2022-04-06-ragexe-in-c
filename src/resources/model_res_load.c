@@ -229,7 +229,11 @@ static BYTE load_model_resource(struct C3dModelRes *model, const char *name, int
         error_msg("\xec\xa7\x80\xec\x9b\x90\xeb\x90\x98\xec\xa7\x80 \xec\x95\x8a\xeb\x8a\x94 \xeb\xb2\x84\xec\xa0\xbc\xec\x9e\x85\xeb\x8b\x88\xeb\x8b\xa4. \xeb\x82\xb4\xec\x9a\xa9\xeb\xac\xbc\xec\x9d\xb4 \xea\xb9\xa8\xec\xa0\xb8\xec\x9e\x88\xec\x9d\x84 \xec\x88\x98 \xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4" /* "지원되지 않는 버젼입니다. 내용물이 깨져있을 수 있습니다" */, 0);
         goto close;
     }
-    if (family == 2 && (major != 2 || minor < 1 || minor > 3)) goto close;
+    if (family == 2 && (minor < 1 || minor > 3)) {
+        success = 1;
+        goto close;
+    }
+    if (family == 2 && major != 2) goto close;
     success = read_model_body(model, &file, family, minor);
 close:
     file_close(&file);
