@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "ui/ui_std.h"
 #include "diag/perf.h"
+#include "core/numeric.h"
 
 struct UIEditCtrlCustom;
 struct UIWindow;
@@ -190,15 +191,15 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
         sync_from_ime(self);
         if (edit->mask_char) {
             string_resize(&shown, edit->text.size, (char)edit->mask_char);
-            lo = min(edit->sel_start, edit->sel_end);
-            hi = max(edit->sel_start, edit->sel_end);
+            lo = int_min(edit->sel_start, edit->sel_end);
+            hi = int_max(edit->sel_start, edit->sel_end);
         } else {
             const char *tag = language_charset_tag(g_language, 0);
 
             string_assign_cstr(&shown, tag);
             string_append(&shown, string_cstr(&edit->text), edit->text.size);
-            lo = min(edit->sel_start, edit->sel_end) + (int)strlen(tag);
-            hi = max(edit->sel_start, edit->sel_end) + (int)strlen(tag) + (int)g_language->composition_length;
+            lo = int_min(edit->sel_start, edit->sel_end) + (int)strlen(tag);
+            hi = int_max(edit->sel_start, edit->sel_end) + (int)strlen(tag) + (int)g_language->composition_length;
         }
         x = aligned_x(self, &shown);
         lo_x = lo ? text_width(self, string_cstr(&shown), lo, 0) : 0;
@@ -210,7 +211,7 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
             ui_edit_ctrl_place_candidate_wnd(edit, lo_x);
             ui_edit_ctrl_place_key_stroke_wnd(edit, hi_x);
             if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1))
-                ui_edit_ctrl_draw_highlight(edit, lo_x + x, max(hi_x - lo_x, 2));
+                ui_edit_ctrl_draw_highlight(edit, lo_x + x, int_max(hi_x - lo_x, 2));
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
         } else {
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
