@@ -20,8 +20,8 @@ extern struct FontCache g_fontCache;
 
 struct FontCache *font_cache_construct(struct FontCache *self);
 void font_cache_destruct(struct FontCache *self);
-void gdiplus_init(void);
-void gdiplus_destroy(void);
+void fonts_init(void);
+void fonts_shutdown(void);
 HFONT font_cache_get_font(struct FontCache *self, int face, int size, int charset,
                        int bold, int italic);
 
