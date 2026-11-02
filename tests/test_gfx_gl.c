@@ -101,6 +101,29 @@ static void check_texture(struct C3dDevice *d, int fmt)
     gfx_release(t);
 }
 
+/* A texture drawn one texel per pixel with bilinear filtering reads each texel at its centre, as
+   Direct3D does: the edge nudge that breaks coverage ties must not move the samples. */
+static void check_texel_centres(struct C3dDevice *d)
+{
+    static const DWORD texels[4] = { 0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff };
+    struct Vertex v[4];
+    gfx_surface *t = texture_2x2(GFX_FMT_8888, texels);
+    gfx_clear(GFX_CLEAR_TARGET | GFX_CLEAR_ZBUFFER, 0, 1.0f, NULL);
+    stage(GFX_TOP_SELECTARG1, GFX_TA_TEXTURE, GFX_TOP_SELECTARG1, GFX_TA_TEXTURE);
+    gfx_set_stage_state(0, GFX_TSS_MINFILTER, GFX_FILTER_LINEAR);
+    gfx_set_stage_state(0, GFX_TSS_MAGFILTER, GFX_FILTER_LINEAR);
+    gfx_set_texture(0, t);
+    quad(v, 10, 10, 12, 12, 0xffffffff, 0);
+    gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
+    gfx_end_scene();
+    assert(screen_pixel(d, 10, 10) == 0xff0000);
+    assert(screen_pixel(d, 11, 10) == 0x00ff00);
+    assert(screen_pixel(d, 10, 11) == 0x0000ff);
+    assert(screen_pixel(d, 11, 11) == 0xffffff);
+    gfx_set_texture(0, NULL);
+    gfx_release(t);
+}
+
 int main(void)
 {
     struct C3dDevice *d = &g_3dDevice;
@@ -155,6 +178,7 @@ int main(void)
     check_texture(d, GFX_FMT_565);
     check_texture(d, GFX_FMT_1555);
     check_texture(d, GFX_FMT_4444);
+    check_texel_centres(d);
 
     {
         static const DWORD keyed[4] = { 0x00ff0000, 0xff00ff00, 0xff00ff00, 0x00ff0000 };
@@ -235,6 +259,6 @@ int main(void)
     gfx_close(d);
     SDL_DestroyWindow((SDL_Window *)d->hwnd);
     SDL_Quit();
-    puts("gfx gl: clear, untextured, 8888/565/1555/4444 textures, alpha test, vertex fog, blending, render targets and system surface blits passed");
+    puts("gfx gl: clear, untextured, 8888/565/1555/4444 textures, texel centres, alpha test, vertex fog, blending, render targets and system surface blits passed");
     return 0;
 }
