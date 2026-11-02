@@ -97,11 +97,6 @@ static int read_name(struct File *file, char *out, int width)
     return 1;
 }
 
-static int finite3(const float *values)
-{
-    return isfinite(values[0]) && isfinite(values[1]) && isfinite(values[2]);
-}
-
 BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
 {
     struct File fp;
@@ -121,7 +116,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
     }
     if (!file_read(&fp, &major, 1) || !file_read(&fp, &minor, 1))
         goto fail;
-    if (major < 1 || major > 2 || (major == 2 && minor > 6)) {
+    if (major > 2 || (major == 2 && minor > 6)) {
         snprintf(message, sizeof message,
             "Unsupported Version\n current version: %d.%d < %d.%d", 2, 6, major, minor);
         error_msg(message, 0);
@@ -152,16 +147,11 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
         if (RSW_AT_LEAST_1(major, minor, 9) && !file_read(&fp, &self->waterAnimSpeed, 4))
             goto fail;
     }
-    if (!isfinite(self->waterLevel) || !isfinite(self->waveHeight)
-            || !isfinite(self->waveSpeed) || !isfinite(self->wavePitch))
-        goto fail;
     if (RSW_AT_LEAST_1(major, minor, 5)
             && (!file_read(&fp, &self->lightLatitude, 4)
                 || !file_read(&fp, &self->lightLongitude, 4)
                 || !file_read(&fp, self->diffuse, sizeof self->diffuse)
                 || !file_read(&fp, self->ambient, sizeof self->ambient)))
-        goto fail;
-    if (!finite3(self->diffuse) || !finite3(self->ambient))
         goto fail;
     mat_set_rotate_x(matrix, (float)self->lightLongitude / 180.0f * 3.141592f);
     mat_rotate_y(matrix, (float)self->lightLatitude / 180.0f * 3.141592f);
@@ -195,8 +185,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
                 if (!isfinite(model.animSpeed) || model.animSpeed > 100 || model.animSpeed <= 0)
                     model.animSpeed = 1;
             }
-            if (!file_read(&fp, &record, sizeof record)
-                    || !finite3(record.pos) || !finite3(record.rot) || !finite3(record.scale))
+            if (!file_read(&fp, &record, sizeof record))
                 goto fail;
             copy_text(model.fileName, record.fileName, sizeof record.fileName);
             copy_text(model.nodeName, record.nodeName, sizeof record.nodeName);
@@ -221,9 +210,6 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
             if (!file_read(&fp, &record, major >= 2 ? sizeof record : offsetof(struct RswSoundRec, cycle)))
                 goto fail;
             if (major < 2) record.cycle = 4;
-            if (!finite3(record.pos) || !isfinite(record.volume)
-                    || !isfinite(record.range) || !isfinite(record.cycle))
-                goto fail;
             copy_text(sound.name, record.name, sizeof record.name);
             copy_text(sound.waveName, record.waveName, sizeof record.waveName);
             memcpy(sound.pos, record.pos, sizeof sound.pos);
@@ -241,8 +227,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
         case 4: {
             struct RswEffect effect;
             struct RswEffectRec record;
-            if (!file_read(&fp, &record, sizeof record) || !finite3(record.pos)
-                    || !isfinite(record.emitSpeed) || !finite3(record.param) || !isfinite(record.param[3]))
+            if (!file_read(&fp, &record, sizeof record))
                 goto fail;
             copy_text(effect.name, record.name, sizeof record.name);
             memcpy(effect.pos, record.pos, sizeof effect.pos);
@@ -257,7 +242,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
             break;
         }
         default:
-            goto fail;
+            break;
         }
     }
     if (major == 2 && minor >= 1) {
@@ -268,11 +253,6 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
         if (!self->tree)
             goto fail;
         memcpy(self->tree, boxes, RSW_TREE_NODE_COUNT * sizeof *self->tree);
-        for (i = 0; i < RSW_TREE_NODE_COUNT; ++i) {
-            const struct RswBounds *box = &self->tree[i];
-            if (!finite3(box->max) || !finite3(box->min) || !finite3(box->half) || !finite3(box->centre))
-                goto fail;
-        }
     }
     file_destruct(&fp);
     if (g_worldResLight)
