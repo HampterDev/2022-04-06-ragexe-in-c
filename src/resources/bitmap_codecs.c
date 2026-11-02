@@ -19,7 +19,7 @@ BYTE bitmap_res_load_bmp_data(struct BitmapRes *self, const BYTE *data, int size
     unsigned bits, colors = 0;
     size_t offset, stride, count, x, y;
     const BYTE *palette = NULL;
-    DWORD *pixels;
+    DWORD *pixels, table[256];
     if (!self || !data || size < 17)
         return 0;
     custom = !memcmp(data, BMP_CLIENT_MAGIC, 12);
@@ -71,19 +71,18 @@ BYTE bitmap_res_load_bmp_data(struct BitmapRes *self, const BYTE *data, int size
         for (x = 0; x < count; ++x)
             pixels[x] = 0xff000000u | (DWORD)gr[2 * x + 1] << 16 | (DWORD)gr[2 * x] << 8 | blue[x];
     } else {
+        if (bits == 8)
+            for (x = 0; x < 256; ++x)
+                table[x] = x >= colors ? 0xff000000u
+                         : custom ? 0xff000000u | (DWORD)palette[colors * 2 + x * 2 + 1] << 16 |
+                                    (DWORD)palette[x * 2] << 8 | palette[x * 2 + 1]
+                         : image_bgr(palette + x * 4);
         for (y = 0; y < (size_t)height; ++y) {
             const BYTE *row = data + offset + y * stride;
             DWORD *out = pixels + (bottom_up ? height - 1 - y : y) * width;
             for (x = 0; x < (size_t)width; ++x) {
                 if (bits == 24) out[x] = image_bgr(row + x * 3);
-                else {
-                    unsigned index = row[x];
-                    if (index >= colors) { free(pixels); return 0; }
-                    if (custom)
-                        out[x] = 0xff000000u | (DWORD)palette[colors * 2 + index * 2 + 1] << 16 |
-                                 (DWORD)palette[index * 2] << 8 | palette[index * 2 + 1];
-                    else out[x] = image_bgr(palette + index * 4);
-                }
+                else out[x] = table[row[x]];
             }
         }
     }
