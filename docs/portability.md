@@ -279,8 +279,16 @@ case-insensitively; on a case-insensitive volume, finds still report the stored 
 `SaveData\OptionInfo.lua` with `io.open`), so every client Lua state is opened with
 `lua_open_client_libs`: on POSIX it passes the path arguments of `io.open`, `io.lines`,
 `os.remove`, `os.rename`, `dofile` and `loadfile` through `platform_path_full`; on Windows it is
-`luaL_openlibs`. Granny models are not available off Windows: `resources/granny_posix.c` loads
-no model, so objects that only exist as Granny files are not drawn.
+`luaL_openlibs`.
+
+**Granny models** (the emperium, the guardians, the guild flag and the treasure box) have no
+Granny runtime off Windows. `tools/granny_export` converts the game's `.gr2` files once, with
+`granny2.dll` on Windows or under Wine, to glTF 2.0 files in `data\model\gltf`, named by the CRC-32
+of the `.gr2` they came from; `resources/granny_gltf.c` implements the Granny calls the client
+makes (file info, poses, controls, skinning, textures) on those files, found by the CRC of the
+bytes the client loads. Without them the models are not drawn and stderr says so once. The
+scenes `granny_models` and `granny_dead`, with the Windows scene harness on the same clock, match
+`granny2.dll` except for single pixels along edges ([tools/granny_export](../tools/granny_export/README.md)).
 
 ### Window, input and IME
 
@@ -403,7 +411,7 @@ the other entry's second one, which is not an ordering; it compares like with li
    Apple hardware (the window does not ask for a high-density drawable,
    so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
    deprecated OpenGL later.
-2. Granny models off Windows (`resources/granny_posix.c` loads none).
+2. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
 3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
 4. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.

@@ -18,6 +18,8 @@ and still apply here. These are the deviations from `purist`:
   platform layer; Windows keeps its registry, CryptoAPI hashes, minidumps and Win32 calls.
 - Keep settings in `client_settings.ini` in the game folder off Windows.
 - Replace IJL with a portable JPEG codec for screenshots and JPEG textures on every platform.
+- Draw the Granny models off Windows from glTF files that `tools/granny_export` converts once from
+  the game's `.gr2` files ([tools/granny_export](tools/granny_export/README.md)).
 - Build 64-bit clean: pointer-width UI and game-object message arguments, standard formatting,
   string and integer functions instead of MSVC ones.
 - Draw in an order that does not depend on heap addresses (texture serials, submission order,
