@@ -1,153 +1,45 @@
-#include "core/thread_text.h"
 #include "skills/skill_info.h"
 #include "world/mode_manager.h"
 #include "ui/character/skill_tree_internal.h"
-#include "core/msg_str.h"
 
 #define MODE_REQ_SKILL_UP 0x43
-#define MSG_CANNOT_RAISE 0xdcb
 
-int skill_tree_planned_level(struct UINewSkillListWnd *self, int skill_id)
+static BYTE prerequisites_met(struct SkillInfo *skill)
 {
-    struct SkillRequirement *planned = skill_tree_level_list_find(&self->planned, skill_id);
+    const struct Vec *reqs = SKILL_INFO_REQUIREMENTS(skill);
+    unsigned k;
 
-    return planned ? planned->level : 0;
-}
+    for (k = 0; k < VEC_COUNT(reqs, struct SkillRequirement); k++) {
+        const struct SkillRequirement *req = &((const struct SkillRequirement *)reqs->first)[k];
 
-void skill_tree_reset_points(struct UINewSkillListWnd *self)
-{
-    unsigned i;
-
-    self->pending = 0;
-    self->points_left = g_session1.skillPoints;
-    for (i = 0; i < SKILL_TREE_TABS; i++) {
-        struct List *src = player_skill_bundle_tree_tab(&g_session1.skills, i);
-        struct ListNode *node;
-
-        if (&self->tab_skills[i] == src)
-            continue;
-        list_clear(&self->tab_skills[i], skill_info_destroy);
-        for (node = src->head->next; node != src->head; node = node->next) {
-            struct SkillInfo copy;
-
-            skill_info_copy(&copy, LIST_VALUE(node, struct SkillInfo));
-            list_push_back(&self->tab_skills[i], &copy, sizeof copy);
-        }
-    }
-    list_clear(&self->planned, NULL);
-    player_skill_bundle_flag_all_level_changes(&g_session1.skills);
-}
-
-BYTE skill_tree_raise_skill(struct UINewSkillListWnd *self, int skill_id)
-{
-    struct ListNode *it;
-
-    if (self->points_left <= 0 || self->show_required)
-        return 0;
-    if (g_session1.simpleSkillWnd) {
-        struct List *list = skill_tree_shown_list(self);
-        struct ListNode *node;
-
-        for (node = list->head->next; node != list->head; node = node->next) {
-            struct SkillInfo *skill = LIST_VALUE(node, struct SkillInfo);
-
-            if (skill->id == skill_id) {
-                if (skill->level >= SKILL_INFO_MAX_LEVEL(skill))
-                    return 0;
-                skill->level++;
-                self->points_left--;
-                return 1;
-            }
-        }
-        return 0;
-    }
-    for (it = self->required.head->next; it != self->required.head; it = it->next) {
-        const struct SkillRequirement *req = LIST_VALUE(it, struct SkillRequirement);
-        int id, target, base, have;
-        struct SkillInfo *info;
-
-        if (self->points_left <= 0)
-            return 1;
-        id = req->skill_id;
-        info = player_skill_bundle_find_tree_skill(&g_session1.skills, id);
-        if (!info || !info->found)
-            continue;
-        if (id == skill_id) {
-            base = SKILL_INFO_BASE_LEVEL(info);
-            target = (base > skill_tree_planned_level(self, id) ? base : skill_tree_planned_level(self, id)) + 1;
-            if (SKILL_INFO_BASE_LEVEL(info) >= SKILL_INFO_MAX_LEVEL(info))
-                return 0;
-        } else {
-            target = req->level;
-        }
-        if (target > SKILL_INFO_MAX_LEVEL(info))
-            continue;
-        base = SKILL_INFO_BASE_LEVEL(info);
-        have = base > skill_tree_planned_level(self, id) ? base : skill_tree_planned_level(self, id);
-        if (have >= target)
-            continue;
-        if (SKILL_INFO_LEVEL_LIMIT(info) <= 0) {
-            ui_window_mgr_send_msg_(&g_windowMgr, 1,
-                                (int)thread_text_format(msg_str(MSG_CANNOT_RAISE), skill_info_get_name(info)),
-                                0xff, 0, 0);
+        if (player_skill_bundle_tree_skill_level(&g_session1.skills, req->skill_id) < req->level)
             return 0;
-        }
-        {
-            int n = target - have < self->points_left ? target - have : self->points_left;
-            struct SkillRequirement *planned;
-            struct SkillRequirement value;
-
-            self->points_left -= n;
-            planned = skill_tree_level_list_find(&self->planned, id);
-            if (planned) {
-                planned->level = n + have;
-            } else {
-                value.skill_id = id;
-                value.level = n + have;
-                list_push_back(&self->planned, &value, sizeof value);
-            }
-        }
     }
     return 1;
 }
 
-void skill_tree_apply_points(struct UINewSkillListWnd *self)
+/* Sends one ordinary upgrade request when the skill can be raised now: skill points
+ * remain, it is below its maximum level and the session already has every prerequisite
+ * level. Pinned prerequisites (right-click) block the raise. */
+BYTE skill_tree_raise_skill(struct UINewSkillListWnd *self, int skill_id)
 {
-    if (!g_session1.simpleSkillWnd) {
-        struct ListNode *node;
+    struct List *list;
+    struct ListNode *node;
 
-        for (node = self->planned.head->next; node != self->planned.head; node = node->next) {
-            int id = LIST_VALUE(node, struct SkillRequirement)->skill_id;
-            int level = LIST_VALUE(node, struct SkillRequirement)->level;
-            struct SkillInfo *info = player_skill_bundle_find_tree_skill(&g_session1.skills, id);
-            int n;
+    if (g_session1.skillPoints <= 0 || self->show_required)
+        return 0;
+    list = skill_tree_shown_list(self);
+    for (node = list->head->next; node != list->head; node = node->next) {
+        struct SkillInfo *skill = LIST_VALUE(node, struct SkillInfo);
 
-            if (!info || !info->found || SKILL_INFO_BASE_LEVEL(info) + 1 > level)
-                continue;
-            for (n = level - SKILL_INFO_BASE_LEVEL(info); n; n--)
-                mode_send_message(client_current_mode(), MODE_REQ_SKILL_UP, id, 0, 0, 0);
-        }
-        list_clear(&self->planned, NULL);
-    } else {
-        struct List *ours, *theirs;
-        struct ListNode *mine, *session;
-
-        theirs = skill_tree_tab_count(self) - 1 == self->tab ? &g_session1.skills.extra_skills : player_skill_bundle_tree_tab(&g_session1.skills, self->tab);
-        ours = skill_tree_shown_list(self);
-        session = theirs->head->next;
-        for (mine = ours->head->next; mine != ours->head; mine = mine->next, session = session->next) {
-            const struct SkillInfo *want = LIST_VALUE(mine, struct SkillInfo);
-            const struct SkillInfo *have = LIST_VALUE(session, struct SkillInfo);
-            int i;
-
-            if (!have->found || have->id != want->id || have->level >= want->level)
-                continue;
-            for (i = 0; i < want->level - have->level; i++)
-                mode_send_message(client_current_mode(), MODE_REQ_SKILL_UP, have->id, 0, 0, 0);
-        }
+        if (skill->id != skill_id)
+            continue;
+        if (!skill->found || skill->level >= SKILL_INFO_MAX_LEVEL(skill) || !prerequisites_met(skill))
+            return 0;
+        mode_send_message(client_current_mode(), MODE_REQ_SKILL_UP, skill_id, 0, 0, 0);
+        return 1;
     }
-    self->pending = 0;
-    skill_tree_layout_buttons(self);
+    return 0;
 }
 
 static void mark_required_tabs(struct UINewSkillListWnd *self, int skill_id)
@@ -161,7 +53,7 @@ static void mark_required_tabs(struct UINewSkillListWnd *self, int skill_id)
         if (tab == self->tab)
             continue;
         /* Match the displayed lists: the final tab contains extra skills. */
-        list = tab == count - 1 ? &g_session1.skills.extra_skills : &self->tab_skills[tab];
+        list = tab == count - 1 ? &g_session1.skills.extra_skills : player_skill_bundle_tree_tab(&g_session1.skills, tab);
         for (node = list->head->next; node != list->head; node = node->next) {
             if (LIST_VALUE(node, struct SkillInfo)->id == skill_id) {
                 ((int *)self->tabs->colours.first)[tab] = 0xe1e7fc;
@@ -189,7 +81,7 @@ void skill_tree_mark_required(struct UINewSkillListWnd *self)
         ui_window_invalidate_base(&tabs->base);
         tabs = self->tabs;
     }
-    list = skill_tree_tab_count(self) - 1 == self->tab ? &g_session1.skills.extra_skills : &self->tab_skills[self->tab];
+    list = skill_tree_shown_list(self);
     for (node = list->head->next; node != list->head; node = node->next) {
         int slot = SKILL_INFO_SLOT(LIST_VALUE(node, struct SkillInfo));
 
@@ -203,20 +95,19 @@ void skill_tree_mark_required(struct UINewSkillListWnd *self)
     list_push_back(&self->required, &value, sizeof value);
     reqs = SKILL_INFO_REQUIREMENTS(LIST_VALUE(node, struct SkillInfo));
     for (k = 0; k < VEC_COUNT(reqs, struct SkillRequirement); k++) {
-        struct SkillRequirement *req = &((struct SkillRequirement *)reqs->first)[k];
-        int id = req->skill_id, level;
+        const struct SkillRequirement *req = &((const struct SkillRequirement *)reqs->first)[k];
         struct SkillRequirement *have;
 
-        mark_required_tabs(self, id);
-        level = req->level;
-        have = skill_tree_level_list_find(&self->required, id);
+        mark_required_tabs(self, req->skill_id);
+        value = *req;
+        have = skill_tree_level_list_find(&self->required, value.skill_id);
         if (have) {
             int had = have->level;
 
             list_erase(&self->required, LIST_NODE_OF(have), NULL);
-            level = level > had ? level : had;
+            value.level = value.level > had ? value.level : had;
         }
-        req->level = level;
-        list_push_back(&self->required, req, sizeof *req);
+        /* The skill lists are session state; the window keeps the merged level itself. */
+        list_push_back(&self->required, &value, sizeof value);
     }
 }

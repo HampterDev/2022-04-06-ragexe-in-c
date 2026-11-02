@@ -39,8 +39,6 @@ struct UINewSkillListWnd {
     struct UIBitmapButton *up_buttons[SKILL_TREE_UP_BUTTONS];
     struct UIBitmapButton *lower_buttons[SKILL_TREE_CELLS];
     struct UIBitmapButton *raise_buttons[SKILL_TREE_CELLS];
-    struct UIBitmapButton *apply_button;
-    struct UIBitmapButton *reset_button;
     struct UIWindow *info_check;
     struct UIResizer *resizer;
     struct WindowInfo *info;
@@ -51,14 +49,10 @@ struct UINewSkillListWnd {
     int rows;
     int top_margin;
     int bottom_margin;
-    int points_left;
     BYTE scrollable;
     BYTE dirty;
-    BYTE pending;
     DWORD anim_time;
-    struct List tab_skills[SKILL_TREE_TABS];
     struct List required;
-    struct List planned;
     BYTE show_required;
     int required_cell;
     int anim_frame_counts[2];
@@ -67,13 +61,10 @@ struct UINewSkillListWnd {
 };
 OFFSET_ASSERT(UINewSkillListWnd, up_buttons, 0xa8);
 OFFSET_ASSERT(UINewSkillListWnd, raise_buttons, 0x178);
-OFFSET_ASSERT(UINewSkillListWnd, apply_button, 0x220);
-OFFSET_ASSERT(UINewSkillListWnd, info, 0x230);
-OFFSET_ASSERT(UINewSkillListWnd, points_left, 0x250);
-OFFSET_ASSERT(UINewSkillListWnd, tab_skills, 0x25c);
-OFFSET_ASSERT(UINewSkillListWnd, required, 0x27c);
-OFFSET_ASSERT(UINewSkillListWnd, required_cell, 0x290);
-SIZE_ASSERT(UINewSkillListWnd, 0x2b0);
+OFFSET_ASSERT(UINewSkillListWnd, info, 0x228);
+OFFSET_ASSERT(UINewSkillListWnd, required, 0x250);
+OFFSET_ASSERT(UINewSkillListWnd, required_cell, 0x25c);
+SIZE_ASSERT(UINewSkillListWnd, 0x278);
 
 void ui_new_skill_list_wnd_on_draw(struct UIWindow *window);
 

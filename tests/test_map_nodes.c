@@ -532,7 +532,6 @@ static void skill_bundle_values(void)
         player_skill_bundle_level_before_change(&bundle, &answer, 42);
         assert(answer.found && answer.value == 2);
         skill_observe(answer.found); skill_observe(answer.value);
-        player_skill_bundle_flag_all_level_changes(&bundle);
         incoming = (int)(iteration % 4);
         info.level = incoming == 0 ? 2 : incoming == 1 ? 4 : incoming == 2 ? 7 : 8;
         player_skill_bundle_reconcile_level(&bundle, &info);

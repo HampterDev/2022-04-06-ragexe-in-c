@@ -1,4 +1,3 @@
-#include "core/thread_text.h"
 #include "ui/character/skill_tree.h"
 #include "render/sprite_atlas.h"
 #include "resources/palette.h"
@@ -229,8 +228,7 @@ static void draw_rows(struct UINewSkillListWnd *self)
     for (node = list->head->next; node != list->head; node = node->next, row++) {
         struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo);
         struct BitmapRes *icon;
-        struct SkillInfo at;
-        int level, x, y, text_x, grey = 0, blue, red_green, known_level, sp;
+        int level, x, y, text_x, grey = 0, sp;
         BYTE level_use;
 
         if (row < self->top * self->columns)
@@ -257,25 +255,20 @@ static void draw_rows(struct UINewSkillListWnd *self)
                 ui_window_draw_bitmap(wnd, x + 0x2c, y + 0x22, icon, 1);
             }
         }
-        skill_tree_skill_at(self, &at, row, 1);
-        known_level = at.level;
-        skill_info_destruct(&at);
-        blue = info->level > known_level ? 0xff : grey;
-        red_green = info->level <= known_level ? grey : 0;
         text_x = x + 0x70;
         level_use = skill_info_is_level_used(info->id);
         if (level) {
             int lx;
 
             sprintf(buf, g_serviceType == 0xc ? "Nv :" : "Lv :");
-            lx = !self->pending && level_use ? text_x + 0xc : text_x + 1;
+            lx = level_use ? text_x + 0xc : text_x + 1;
             ui_window_text_out(wnd, lx, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
             if (level_use) {
                 int chosen = session_get_skill_table_value(&g_session1, info->id), cx;
 
                 if (chosen <= 0 || chosen > info->level)
                     chosen = info->level;
-                cx = text_x + (self->pending == 0 ? 0x25 : 0x19);
+                cx = text_x + 0x25;
                 sprintf(buf, "%2d", chosen);
                 ui_window_text_out(wnd, cx, y + 0x2f, buf, 0, 0, 0xc, chosen != info->level ? 0xff : GREY(grey),
                                  0, 0);
@@ -283,11 +276,10 @@ static void draw_rows(struct UINewSkillListWnd *self)
                 ui_window_text_out(wnd, cx, y + 0x2f, "/ ", 0, 0, 0xc, GREY(grey), 0, 0);
                 cx += ui_window_text_width(wnd, "/ ", 0, 0, 0xc, 0, 0);
                 sprintf(buf, "%2d", info->level);
-                ui_window_text_out(wnd, cx, y + 0x2f, buf, 0, 0, 0xc, RGB(red_green, red_green, blue), 0, 0);
+                ui_window_text_out(wnd, cx, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
             } else {
                 sprintf(buf, "%d", info->level);
-                ui_window_text_out(wnd, text_x + 0x19, y + 0x2f, buf, 0, 0, 0xc,
-                                 RGB(red_green, red_green, blue), 0, 0);
+                ui_window_text_out(wnd, text_x + 0x19, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
             }
         }
         if (level) {
@@ -346,10 +338,10 @@ static void draw_cells(struct UINewSkillListWnd *self)
         ui_window_draw_bitmap(wnd, i % self->columns * CELL_W + 0x4c, i / self->columns * CELL_H + 0x2c, frame, 1);
     list = skill_tree_shown_list(self);
     for (node = list->head->next; node != list->head; node = node->next) {
-        struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo), *known, at;
+        struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo);
         struct BitmapRes *icon;
-        int slot = SKILL_INFO_SLOT(info), first, cell, x, y, level, grey = 0x66, max_level;
-        int red, green, blue, icon_x, text_y, w, offset;
+        int slot = SKILL_INFO_SLOT(info), first, cell, x, y, level, grey = 0x66;
+        int icon_x, text_y, w, offset;
         int marked = 0;
         BYTE level_use;
 
@@ -365,7 +357,7 @@ static void draw_cells(struct UINewSkillListWnd *self)
         if (marked) {
             ui_window_fill_rect(wnd, x + 3, y + 0x2b, 0x1a, 0x1a, 0xccc0ff);
             ui_window_draw_round_frame(wnd, x + 2, y + 0x2a, 0x1c, 0x1c, 0xc1b6ff);
-        } else if (self->points_left && info->found && SKILL_INFO_UPGRADABLE(info)) {
+        } else if (g_session1.skillPoints > 0 && info->found && SKILL_INFO_UPGRADABLE(info)) {
             ui_window_fill_rect(wnd, x + 3, y + 0x2b, 0x1a, 0x1a, 0xf0c4af);
             ui_window_draw_round_frame(wnd, x + 2, y + 0x2a, 0x1c, 0x1c, 0xf0c4af);
         } else {
@@ -384,7 +376,7 @@ static void draw_cells(struct UINewSkillListWnd *self)
                     ui_window_text_out_outlined(wnd, x + 0x1e, y + 0x3a, string_cstr(&need), 0, 0xffffff, 0, 0,
                                              0xb, 1, 0);
                 string_free(&need);
-            } else if (self->points_left && info->found && SKILL_INFO_UPGRADABLE(info)) {
+            } else if (g_session1.skillPoints > 0 && info->found && SKILL_INFO_UPGRADABLE(info)) {
                 ui_window_draw_bitmap_tinted(wnd, TINT_BLUE, icon_x, y + 0x2c, icon, 1, 1);
             } else if (level == 0) {
                 grey = 0x78;
@@ -392,28 +384,6 @@ static void draw_cells(struct UINewSkillListWnd *self)
             } else {
                 ui_window_draw_bitmap(wnd, icon_x, y + 0x2c, icon, 1);
             }
-            {
-                int planned = skill_tree_planned_level(self, info->id);
-
-                known = player_skill_bundle_find_tree_skill(&g_session1.skills, info->id);
-                if (known) {
-                    int extra = planned - SKILL_INFO_BASE_LEVEL(known);
-
-                    extra = extra >= 0 ? extra : 0;
-                    if (extra > 0)
-                        ui_window_text_out(wnd, x + 0x1e, y + 0x2c, thread_text_format("+%d", extra), 0, 0, 0xb,
-                                         0xff, 0, 0);
-                }
-            }
-        }
-        skill_tree_skill_at(self, &at, slot, 1);
-        max_level = at.level;
-        skill_info_destruct(&at);
-        red = green = blue = grey;
-        if (info->level > max_level) {
-            red = 0x7f;
-            blue = 0xff;
-            green = 0x3c;
         }
         icon_x = x + 4;
         text_y = y + 0x46;
@@ -434,20 +404,17 @@ static void draw_cells(struct UINewSkillListWnd *self)
                 tx += ui_window_text_width(wnd, buf, 0, 0, 0xb, 1, 0);
                 ui_window_text_out_outlined(wnd, tx, text_y, " / ", 0, GREY(grey), 0xffffff, 0, 0xb, 1, 0);
                 tx += ui_window_text_width(wnd, " / ", 0, 0, 0xb, 1, 0);
-                shown = skill_tree_planned_level(self, info->id);
-                if (shown <= player_skill_bundle_tree_skill_level(&g_session1.skills, info->id))
-                    shown = player_skill_bundle_tree_skill_level(&g_session1.skills, info->id);
+                shown = player_skill_bundle_tree_skill_level(&g_session1.skills, info->id);
                 last = player_skill_bundle_find_extra_skill(&g_session1.skills, info->id);
                 if (last && shown <= last->level)
                     shown = last->level;
                 _snprintf_s(buf, 0x50, (size_t)-1, "%d", shown);
-                ui_window_text_out_outlined(wnd, tx, text_y, buf, 0, RGB(red, green, blue), 0xffffff, 0, 0xb, 1,
-                                         0);
+                ui_window_text_out_outlined(wnd, tx, text_y, buf, 0, GREY(grey), 0xffffff, 0, 0xb, 1, 0);
             } else {
                 sprintf(buf, "%d", info->level);
                 w = ui_window_text_width(wnd, buf, 0, 0, 0xb, 1, 0);
-                ui_window_text_out_outlined(wnd, (0x18 - w) / 2 + icon_x, text_y, buf, 0, RGB(red, green, blue),
-                                         0xffffff, 0, 0xb, 1, 0);
+                ui_window_text_out_outlined(wnd, (0x18 - w) / 2 + icon_x, text_y, buf, 0, GREY(grey), 0xffffff, 0,
+                                         0xb, 1, 0);
             }
         }
         w = ui_window_text_width(wnd, skill_info_get_name(info), 0, 0, 0xb, 0, 0);
@@ -481,8 +448,6 @@ static unsigned long long skill_tree_key(struct UINewSkillListWnd *self)
     key = draw_key_int(key, self->columns);
     key = draw_key_int(key, self->rows);
     key = draw_key_int(key, self->hover);
-    key = draw_key_int(key, self->pending);
-    key = draw_key_int(key, self->points_left);
     key = draw_key_int(key, g_session1.skillPoints);
     key = draw_key_int(key, g_session1.job);
     key = draw_key_int(key, session_get_sex(&g_session1));
@@ -491,7 +456,7 @@ static unsigned long long skill_tree_key(struct UINewSkillListWnd *self)
     key = draw_key_int(key, g_session1.clothesColor);
     key = draw_key_int(key, g_session1.hairColor);
     for (node = list->head->next; node != list->head; node = node->next) {
-        struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo), *known, *extra, at;
+        struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo), *known, *extra;
         struct SkillRequirement *required;
         int slot = SKILL_INFO_SLOT(info);
 
@@ -502,15 +467,11 @@ static unsigned long long skill_tree_key(struct UINewSkillListWnd *self)
         extra = player_skill_bundle_find_extra_skill(&g_session1.skills, info->id);
         key = draw_key_skill(key, info);
         key = draw_key_int(key, required ? required->level : -1);
-        key = draw_key_int(key, skill_tree_planned_level(self, info->id));
         key = draw_key_int(key, known ? SKILL_INFO_BASE_LEVEL(known) : -1);
         key = draw_key_int(key, extra ? extra->level : -1);
         key = draw_key_int(key, player_skill_bundle_tree_skill_level(&g_session1.skills, info->id));
         key = draw_key_int(key, session_get_skill_table_value(&g_session1, info->id));
         key = draw_key_int(key, player_skill_bundle_is_level_boosted(&g_session1.skills, info->id));
-        skill_tree_skill_at(self, &at, slot, 1);
-        key = draw_key_int(key, at.level);
-        skill_info_destruct(&at);
     }
     return draw_key_children(key, wnd);
 }
@@ -556,19 +517,14 @@ void ui_new_skill_list_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out(wnd, 0x28, 5, msg_str(MSG_SKILL_TREE_TITLE), 0, 0, 0xc, 0, 0, 0);
     memset(buf, 0, sizeof buf);
     if (g_session1.simpleSkillWnd) {
-        sprintf(buf, msg_str(MSG_POINTS_LEFT_LIST), self->points_left);
+        sprintf(buf, msg_str(MSG_POINTS_LEFT_LIST), g_session1.skillPoints);
         ui_window_text_width(wnd, buf, 0, 0, 0xc, 0, 0);
         ui_window_text_out(wnd, 0x1e, wnd->height - 0x17, buf, 0, 0, 0xc, 0, 0, 0);
         draw_rows(self);
     } else {
         struct String text;
-        int total = g_session1.skillPoints, left_points = self->points_left;
 
-        if (left_points < total)
-            _snprintf_s(buf, 0x50, (size_t)-1, "%s^0000ff%d^000000(^ff0000%d^000000) / %d",
-                           msg_str(MSG_POINTS_LEFT), left_points, total - left_points, total);
-        else
-            _snprintf_s(buf, 0x50, (size_t)-1, "%s%d", msg_str(MSG_POINTS_LEFT), total);
+        _snprintf_s(buf, 0x50, (size_t)-1, "%s%d", msg_str(MSG_POINTS_LEFT), g_session1.skillPoints);
         string_init(&text);
         string_assign_cstr(&text, buf);
         ui_window_text_out_wrapped(wnd, 0x50, wnd->height - 0x17, &text, 0, 0, 0, 0, 0xc, 0, 0);

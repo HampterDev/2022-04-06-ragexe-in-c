@@ -1,4 +1,4 @@
-"""Use actual window list/pinning helpers without linking the full UI renderer."""
+"""Use actual window list/pinning/raise helpers without linking the full UI renderer."""
 from pathlib import Path
 import sys
 import re
@@ -20,7 +20,9 @@ for signature in signatures:
     start = matches[0].start()
     parts.append(source[start:source.index('\n}', start) + 2])
 points = (root / 'src/ui/character/skill_tree_points.c').read_text(encoding='utf-8')
-for signature in ['static void mark_required_tabs(', 'void skill_tree_mark_required(']:
+parts += re.findall(r'^#define MODE_REQ_SKILL_UP [^\r\n]*', points, re.M)
+for signature in ['static BYTE prerequisites_met(', 'BYTE skill_tree_raise_skill(',
+                  'static void mark_required_tabs(', 'void skill_tree_mark_required(']:
     matches = list(re.finditer(r'^' + re.escape(signature) + r'[^\n]*\n\{', points, re.M))
     if not matches and signature.startswith('static '):
         continue  # The pre-fix source has no helper; run the same regression test.

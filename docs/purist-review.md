@@ -7,8 +7,10 @@ what stays. Future composer and gameplay deviations start from this base.
 ## Commit checkpoint (2026-11-01)
 
 The accumulated purist changes are captured together through START-180. START-181
-(skill-point preview and Apply/Reset) remains undecided and unchanged. The branch
-README now lists 93 brief deviations from `main`; this ledger retains the detail.
+(skill-point preview and Apply/Reset) was undecided and unchanged at this checkpoint;
+Patrick later removed it ([skill-point preview removal](#skill-point-preview-removal-start-181-2026-11-02)).
+The branch README then listed 93 brief deviations from `main`; this ledger retains the
+detail.
 
 The [foundation index](upstream/README.md) links the 27 separately committed fixes
 and the emblem-cache fix already on `main`. A follow-up merchant regression update
@@ -30,7 +32,8 @@ checkout was modified. Resume the feature review at START-181 after this checkpo
 Patrick replaced the sequential walk with a size-ranked triage: Claude measured the
 remaining optional systems (own source/header lines, including UI, packet, session
 and Lua files), skipped everything already decided above, and presented the largest
-first so that removed systems need no detailed review. START-181 remains pending.
+first so that removed systems need no detailed review. START-181, pending at first,
+was removed on 2026-11-02 ([skill-point preview removal](#skill-point-preview-removal-start-181-2026-11-02)).
 
 | ID | System (approx. lines) | Recommendation | Patrick's decision | Implementation |
 | --- | --- | --- | --- | --- |
@@ -342,7 +345,7 @@ The first four operations are at lines 133-139.
 | START-178 | Skill prerequisite highlighting: hovering a skill marks required skills and displays their required levels in the tree grid. `src/ui/character/skill_tree_points.c`, `src/ui/character/skill_tree_draw.c`. | Keep prerequisite guidance; review right-click pinning and tab-selection assumptions separately. | Keep, 2026-11-01 | Prerequisite highlighting and required-level labels retained. Ledger-only decision. |
 | START-179 | Right-click prerequisite pinning: freezes the highlighted prerequisite selection across hover/tab changes and blocks adding planned skill points while pinned. `src/ui/character/skill_tree.c`, `src/ui/character/skill_tree_points.c`. | Remove this hidden pinning mode and its point-allocation lock; keep ordinary hover highlighting. | Keep prerequisite pinning, 2026-11-01 | Pinning, cross-tab persistence and its point-add lock retained per Patrick. Ledger-only decision. |
 | START-180 | Prerequisite tab hints: hardcoded skill-ID ranges choose which class tab to color, without checking its skill list. `src/ui/character/skill_tree_points.c`. | Keep the hints but resolve tabs from their actual displayed skill lists; prepare a separate foundation correctness fix. | Use actual tab contents; prepare foundation fix, approved 2026-11-01 | Actual displayed lists now select tab hints. Release build and 17 regression checks passed; standalone four-file foundation patch prepared and tested. |
-| START-181 | Skill-point preview: stage level increases locally, Apply confirms and sends upgrade requests, Reset discards unsubmitted changes. `src/ui/character/skill_tree_points.c`, `src/ui/character/skill_tree.c`. | Keep preview and Apply/Reset controls; review automatic prerequisite allocation separately. | Pending decision, 2026-11-01 | Existing planning behavior retained pending decision. |
+| START-181 | Skill-point preview: stage level increases locally, Apply confirms and sends upgrade requests, Reset discards unsubmitted changes. `src/ui/character/skill_tree_points.c`, `src/ui/character/skill_tree.c`. | Keep preview and Apply/Reset controls; review automatic prerequisite allocation separately. | Removed, 2026-11-02 (Patrick): raise immediately with one ordinary upgrade request | Preview, planned levels, working copies, pending display, Apply/Reset, confirmation and automatic prerequisite planning removed; the raise control sends `0x0112` when points and session prerequisite levels allow; START-179/180 kept. [Skill-point preview removal](#skill-point-preview-removal-start-181-2026-11-02) |
 
 ## Review position
 
@@ -6626,7 +6629,7 @@ Artifacts: `build/before-skill-prerequisite-tab-hints`,
 `build/purist-skill-prerequisite-tab-hints.diff`. The scoped audit covers one
 source file, three new test files, this ledger and the new foundation patch.
 
-## Skill-point preview and Apply/Reset (START-181, decision pending)
+## Skill-point preview and Apply/Reset (START-181, removed)
 
 The skill window stages level increases locally before sending upgrade
 requests. The tree view keeps a planned-level list; the compact view changes
@@ -6643,7 +6646,9 @@ request ordering and other allocation policies should be reviewed separately.
 Sources: `src/ui/character/skill_tree.c`,
 `src/ui/character/skill_tree_points.c`, `src/ui/character/skill_tree_draw.c`,
 `src/game/mode_msg.c` and `src/game/skill_list.c`.
-No change pending Patrick's decision.
+Patrick decided on 2026-11-02 to remove the preview and its Apply/Reset controls and to
+raise skills immediately with one ordinary upgrade request:
+[Skill-point preview removal](#skill-point-preview-removal-start-181-2026-11-02).
 
 
 ## Cash shop removal (2026-11-02)
@@ -7917,3 +7922,121 @@ scripts are `build/edit_fourth_class_effect_data.py`,
 `build/derive_fourth_class_leftovers_dispatch.py` and
 `build/derive_fourth_class_leftovers_effect_factories.py`. No live client/server smoke
 test was run.
+
+## Skill-point preview removal (START-181, 2026-11-02)
+
+Patrick decided to remove the skill-point preview and its Apply/Reset controls and to
+restore the classic behavior: activating a skill's raise control sends one ordinary
+upgrade request at once.
+
+What the window did before this removal (`UINewSkillListWnd`, window `0x25`):
+
+- Every refresh (`MSG_REFRESH`, sent on skill lists, skill updates and skill-point
+  changes) copied the session's class-tab skill lists into four window-owned working
+  lists (`tab_skills`), reset a local `points_left` from `g_session1.skillPoints` and
+  cleared the plan. The class tabs displayed those copies; the extra-skills tab showed
+  the session list directly.
+- Tree view: left-clicking a skill cell planned levels in a `planned` list instead of
+  sending anything. It walked the hovered skill's prerequisite list and also planned
+  every missing prerequisite level (the tree's automatic prerequisite inclusion),
+  showing "cannot raise %s" (`0xdcb`) for a prerequisite with no level limit.
+- Compact view: the up buttons incremented the level in the working copy.
+- Pending changes showed as a `+N` label on tree icons, purple/blue planned levels,
+  the "left(spent) / total" points text, hidden level-selection arrows and blocked
+  skill dragging. Apply (`0x107`) asked for confirmation (`0x561`) and then sent the
+  planned increases as `0x0112` requests through mode message `0x43`; Reset (`0x163`)
+  discarded the plan.
+
+Now:
+
+- `skill_tree_raise_skill` sends one `0x0112` request (mode message `0x43`) for the
+  activated skill when it can be raised now: the session has skill points left, the
+  skill is on the displayed tab, below its maximum level, and every prerequisite in its
+  Lua requirement list already has at least the required level in the session's skill
+  trees (a prerequisite missing from the session counts as level 0). Levels are the
+  session's displayed `level` values; the removed tree planner had used the separate
+  `level2` field, which a `0x010e` skill update leaves stale. Otherwise nothing is
+  sent. Nothing changes locally; levels and points move only when the server's skill
+  and point updates arrive, which refresh the window as before.
+- The existing controls are unchanged: the tree view raises on a left click of a cell
+  with a level limit, the compact view through the up buttons of upgradable skills.
+  Repeated activations before the server answers send one request each.
+- START-179 pinning stays. Its lock now refuses the immediate raise while prerequisites
+  are pinned (`show_required`) instead of refusing planned points.
+- START-180 tab hints stay. They now search the session's class-tab lists, which are
+  exactly what the window displays. `skill_tree_mark_required` keeps the merged
+  required level in the window's own list instead of writing it back into the skill's
+  requirement entries, which are now session data rather than a window copy; the
+  highlighted levels are unchanged.
+- Displayed levels and remaining points come only from session state: the class tabs
+  show `player_skill_bundle_tree_tab`, both points texts show `g_session1.skillPoints`,
+  and the tree's "can be learned" highlight and the compact up buttons use it too.
+
+Removed:
+
+- The `planned`, `tab_skills`, `points_left` and `pending` members, the Apply and Reset
+  buttons (`btn_apply*`/`btn_reset*` bitmaps, IDs `0x107`/`0x163`), the confirmation
+  (`0x561`), the "cannot raise" notice (`0xdcb`), `skill_tree_planned_level`,
+  `skill_tree_reset_points`, `skill_tree_apply_points` and the automatic prerequisite
+  planning.
+- The pending-change display: the `+N` labels, planned-level colors, the
+  "left(spent) / total" points format, and the `pending` gates on the level-selection
+  arrows and skill dragging.
+- `skill_tree_skill_at`'s session/copy switch (both lookups now read the same session
+  list) and the comparisons against the session level that only highlighted planned
+  differences.
+- `player_skill_bundle_flag_all_level_changes`, whose only production caller was the
+  refresh copy; it set flags nothing reads. `tests/test_map_nodes.c` no longer calls it.
+- Two includes left unused (`ui/chat/chat_window_parts.h` for the post-Apply chat focus,
+  `core/msg_str.h` in the points file) and the redundant `core/thread_text.h` include
+  of the draw file.
+- `UINewSkillListWnd` shrinks from `0x2b0` to `0x278` bytes; its layout assertions
+  follow the new offsets.
+
+No saved setting belonged to the removed controls: the compact-view
+(`Simplicity_SkillList`) and hover-description (`Show_SkillDescript`) options keep
+their meaning, and no plan was ever stored. The window-position record is unchanged.
+
+Server implications: none. The client sends the same `0x0112` request as before, one
+per activation and only for skills it believes can be raised; the server remains the
+authority and replies with the usual skill and point updates. Raising a skill whose
+prerequisites are missing now needs the prerequisites raised first.
+
+Bug found (removed with the feature, not fixed separately): on the compact view's
+extra-skills tab, the up button incremented the session's own extra-skill level, since
+that tab showed the session list rather than a copy. Apply compared the list with
+itself and sent nothing, and Reset did not restore it, so the displayed level stayed
+wrong until the next server update.
+
+Observation (not changed): `GameMode.skill_upgrade_pending` is set by mode message
+`0x43` and cleared by skill updates but never read.
+
+Tests changed: `tests/test_skill_tree_hints.c` now builds its tabs as session lists (the
+session's tree-tab lookup, tree-skill level lookup and the mode-message sender are
+fixture boundaries) and adds 11 checks of the production `skill_tree_raise_skill`,
+extracted verbatim with its prerequisite helper and message constant: one request when
+prerequisites are met, one per activation without local changes, nothing for a
+prerequisite one level short or missing, at maximum level, for a skill on another tab,
+an unknown skill, no points or pinned prerequisites, and a raise from the extra tab.
+The duplicate-requirement case now also checks that requirement entries are not
+rewritten. 28 checks in all.
+
+Validation:
+
+- Release build passed without compiler or linker warnings (the `UINewSkillListWnd`
+  layout assertions included): `build/skill-point-preview-build.log`.
+- `tests\build_skill_tree_hints.bat`: 28 checks, 0 failures, no outstanding allocations
+  (`build/skill-point-preview-skill_tree_hints.log`). The 17 earlier START-179/180 checks
+  are unchanged apart from reading the session lists. A mutation run that dropped the
+  prerequisite check and the pin lock from a scratch copy of `skill_tree_points.c`
+  failed at the "prerequisite one level short" check, so the new checks detect the
+  removed automatic prerequisite inclusion.
+- Full suite `tests\build.bat` passed in 6 min 5 s: `build/skill-point-preview-full-tests.log`.
+  Packet dispatch stays `679cf1c915cfe60f`; skill values (`test_map_nodes`) digest
+  `f620423f` is unchanged.
+- The seven standalone suites passed: `build/skill-point-preview-<suite>.log`.
+  `build_agency_server.bat` was not run (it needs the patched Hercules checkout).
+- `git diff --check` passed.
+
+The pre-removal tree is in `build/before-skill-point-preview-removal`. No live
+client/server smoke test was run.

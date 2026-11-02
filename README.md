@@ -112,3 +112,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Remove 508 unreferenced functions and data definitions, plus the write-only `jobIdNames` table and sub-chat settings.
 - Remove the AU-bot auto-reply (`0x0a29`/`0x0a2a`), the GM DdukDdak box-test report (`0x0bb3`) and the unused Party Recruit packet rows.
 - Remove the remaining 4th-class status visuals and effect data, ABR/Bionic summons (`0x0b6b`/`0x0b6c`) and grade-enchant effects; requests for retired effect IDs launch nothing.
+- Remove the skill-point preview and its Apply/Reset controls; a skill's raise control sends one upgrade request at once when points and prerequisites allow.

@@ -11,7 +11,6 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "ui/character/skill_tree_internal.h"
-#include "ui/chat/chat_window_parts.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_jobs.h"
@@ -86,8 +85,6 @@ const struct UIWindowOps ui_new_skill_list_wnd_ops = {
 #define ID_INFO_CHECK 0xcd
 #define ID_NEXT_TAB 0xd0
 #define ID_UP_FIRST 0xe7
-#define ID_APPLY 0x107
-#define ID_RESET 0x163
 #define ID_RAISE_FIRST SKILL_TREE_CELLS
 #define MSG_TAB_SELECTED 0x16
 #define MSG_REFRESH 0x17
@@ -99,7 +96,6 @@ const struct UIWindowOps ui_new_skill_list_wnd_ops = {
 
 #define MSG_NO_TABS 0x445
 #define MSG_SHOW_INFO 0x560
-#define MSG_APPLY_QUESTION 0x561
 
 int skill_tree_tab_count(const struct UINewSkillListWnd *self)
 {
@@ -110,19 +106,14 @@ struct List *skill_tree_shown_list(struct UINewSkillListWnd *self)
 {
     if (skill_tree_tab_count(self) - 1 == self->tab)
         return &g_session1.skills.extra_skills;
-    return &self->tab_skills[self->tab];
+    return player_skill_bundle_tree_tab(&g_session1.skills, self->tab);
 }
 
 struct UINewSkillListWnd *ui_new_skill_list_wnd_construct(struct UINewSkillListWnd *self)
 {
-    int i;
-
     ui_frame_wnd_construct(&self->frame, 0);
     WND(self)->ops = &ui_new_skill_list_wnd_ops;
-    for (i = 0; i < SKILL_TREE_TABS; i++)
-        list_init(&self->tab_skills[i]);
     list_init(&self->required);
-    list_init(&self->planned);
     self->tab = 0;
     self->dirty = 1;
     self->hover = -1;
@@ -147,13 +138,8 @@ struct UIWindow *ui_new_skill_list_wnd_new(void)
 
 static void destruct(struct UINewSkillListWnd *self)
 {
-    int i;
-
     WND(self)->ops = &ui_new_skill_list_wnd_ops;
-    list_free(&self->planned, NULL);
     list_free(&self->required, NULL);
-    for (i = SKILL_TREE_TABS - 1; i >= 0; i--)
-        list_free(&self->tab_skills[i], skill_info_destroy);
     ui_frame_wnd_destruct(&self->frame);
 }
 
@@ -174,13 +160,11 @@ struct SkillRequirement *skill_tree_level_list_find(struct List *list, int skill
     return NULL;
 }
 
-static struct List *tab_list(struct UINewSkillListWnd *self, int tab, BYTE session)
+static struct List *tab_list(struct UINewSkillListWnd *self, int tab)
 {
     if (skill_tree_tab_count(self) - 1 == tab)
         return &g_session1.skills.extra_skills;
-    if (session)
-        return player_skill_bundle_tree_tab(&g_session1.skills, tab);
-    return &self->tab_skills[tab];
+    return player_skill_bundle_tree_tab(&g_session1.skills, tab);
 }
 
 BYTE skill_tree_is_last_tab(struct UINewSkillListWnd *self, int tab)
@@ -188,14 +172,14 @@ BYTE skill_tree_is_last_tab(struct UINewSkillListWnd *self, int tab)
     return skill_tree_tab_count(self) - 1 == tab;
 }
 
-struct SkillInfo *skill_tree_skill_at(struct UINewSkillListWnd *self, struct SkillInfo *out, int cell, BYTE session)
+struct SkillInfo *skill_tree_skill_at(struct UINewSkillListWnd *self, struct SkillInfo *out, int cell)
 {
     struct List *list;
     struct ListNode *node;
     int row = 0;
 
     skill_info_construct_unknown(out);
-    list = tab_list(self, self->tab, session);
+    list = tab_list(self, self->tab);
     for (node = list->head->next; node != list->head;) {
         struct SkillInfo *skill = LIST_VALUE(node, struct SkillInfo);
         int key = g_session1.simpleSkillWnd ? row : SKILL_INFO_SLOT(skill);
@@ -333,16 +317,6 @@ void skill_tree_layout_buttons(struct UINewSkillListWnd *self)
     }
     ui_window_move_base(self->mini_button, wnd->width - 0x1e, 5);
     ui_window_move_base(self->close_button, wnd->width - 0x10, 5);
-    ui_window_move_base(&self->apply_button->button.base, wnd->width - inset - 0x64, wnd->height - 0x1b);
-    ui_window_move_base(&self->reset_button->button.base, wnd->width - inset - 0x32, wnd->height - 0x1b);
-    self->apply_button->button.disabled = self->pending == 0;
-    ui_window_invalidate_base(&self->apply_button->button.base);
-    self->reset_button->button.disabled = self->pending == 0;
-    ui_window_invalidate_base(&self->reset_button->button.base);
-    if (!self->pending) {
-        ui_window_set_state(&self->apply_button->button.base, 0);
-        ui_window_set_state(&self->reset_button->button.base, 0);
-    }
     ui_window_move_base(self->info_check, wnd->width - 0x82, 5);
     for (i = 0; i < SKILL_TREE_UP_BUTTONS; i++)
         HIDE(self->up_buttons[i]);
@@ -359,10 +333,10 @@ void skill_tree_layout_buttons(struct UINewSkillListWnd *self)
 
             list_row(self, &info, i);
             if (info.level < SKILL_INFO_MAX_LEVEL(&info) && i < self->rows
-                && (unsigned)(self->top + i) < list->size && self->points_left && info.found
+                && (unsigned)(self->top + i) < list->size && g_session1.skillPoints > 0 && info.found
                 && SKILL_INFO_UPGRADABLE(&info))
                 ui_window_move_base(&self->up_buttons[i]->button.base, 0x4e, y - 0xe);
-            if (!self->pending && i < self->rows && (unsigned)(self->top + i) < list->size && info.found
+            if (i < self->rows && (unsigned)(self->top + i) < list->size && info.found
                 && info.level && skill_info_is_level_used(info.id)) {
                 ui_window_move_base(&self->lower_buttons[i]->button.base, 0x70, y);
                 ui_window_move_base(&self->raise_buttons[i]->button.base, 0xc0, y);
@@ -371,7 +345,7 @@ void skill_tree_layout_buttons(struct UINewSkillListWnd *self)
         }
         return;
     }
-    if (!self->pending) {
+    {
         struct ListNode *node;
 
         for (node = list->head->next; node != list->head; node = node->next) {
@@ -456,17 +430,13 @@ static void setup_tabs(struct UINewSkillListWnd *self)
 void ui_new_skill_list_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused)
 {
     struct UINewSkillListWnd *self = (struct UINewSkillListWnd *)window;
-    static const char *const names[2][3] = {
-        { "btn_apply", "btn_apply_a", "btn_apply_b" },
-        { "btn_reset", "btn_reset_a", "btn_reset_b" },
-    };
     struct UIWindow *wnd = WND(self);
     struct UIWindow *tabs, *check;
     struct UIScrollBar *scroll;
     struct UIResizer *resizer;
     struct UIWindow **title_buttons;
-    struct String tooltip, up_a, up_b, up_c, arrow, prefix;
-    int xs[3], pos[2][2], ids[2], i, k, y;
+    struct String tooltip, up_a, up_b, up_c, arrow;
+    int xs[3], i, y;
 
     tabs = mem_alloc(sizeof(struct UITabControl));
     if (tabs)
@@ -561,41 +531,6 @@ void ui_new_skill_list_wnd_on_create(struct UIWindow *window, int width_unused, 
     }
     string_free(&arrow);
 
-    string_init(&prefix);
-    string_assign(&prefix, UI_SKIN, 0xf);
-    pos[0][0] = wnd->width - 0x64;
-    pos[0][1] = wnd->height - 0x1b;
-    pos[1][0] = wnd->width - 0x32;
-    pos[1][1] = wnd->height - 0x1b;
-    ids[0] = ID_APPLY;
-    ids[1] = ID_RESET;
-    for (k = 0; k < 2; k++) {
-        struct UIBitmapButton **slot = k ? &self->reset_button : &self->apply_button;
-        struct UIBitmapButton *btn = mem_alloc(sizeof(struct UIBitmapButton));
-        int state;
-
-        if (btn)
-            btn = ui_bitmap_button_construct(btn);
-        *slot = btn;
-        for (state = UI_BTN_UP; state <= UI_BTN_DOWN; state++) {
-            struct String path;
-
-            string_copy(&path, &prefix);
-            string_append_cstr(&path, names[k][state]);
-            string_append_cstr(&path, ".bmp");
-            ui_bitmap_button_set_bitmap(*slot, string_cstr(&path), state, 0);
-            string_free(&path);
-        }
-        btn = *slot;
-        ui_window_create(&btn->button.base, btn->bitmap_width, btn->bitmap_height);
-        ui_window_move_base(&(*slot)->button.base, pos[k][0], pos[k][1]);
-        (*slot)->button.base.id = ids[k];
-        (*slot)->button.disabled = 1;
-        ui_window_invalidate_base(&(*slot)->button.base);
-        ui_window_add_child(wnd, &(*slot)->button.base);
-    }
-    string_free(&prefix);
-
     check = mem_alloc(sizeof(struct UICheckBox));
     if (check)
         check = &ui_check_box_construct(check)->base;
@@ -637,7 +572,7 @@ void ui_new_skill_list_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
     }
     if (self->hover == -1)
         return;
-    skill_tree_skill_at(self, &info, self->hover, 0);
+    skill_tree_skill_at(self, &info, self->hover);
     if (info.found && info.level) {
         if (info.id == 0x7f4) {
             int count = session_get_instant_var(&g_session1, 4) + 1;
@@ -664,10 +599,10 @@ void ui_new_skill_list_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->hover = cell_at(self, x, y);
     if (old != self->hover)
         ui_window_invalidate_base(WND(self));
-    if (in_cells(self, x, y) && !self->pending && self->hover != -1) {
+    if (in_cells(self, x, y) && self->hover != -1) {
         struct SkillInfo info;
 
-        skill_tree_skill_at(self, &info, self->hover, 0);
+        skill_tree_skill_at(self, &info, self->hover);
         if (info.found && info.level && info.type) {
             struct GameMode *mode = game_current_mode();
 
@@ -694,13 +629,9 @@ void ui_new_skill_list_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
     }
     if (g_session1.simpleSkillWnd || !in_cells(self, x, y))
         return;
-    skill_tree_skill_at(self, &info, self->hover, 0);
-    if (SKILL_INFO_LEVEL_LIMIT(&info) && info.found && skill_tree_raise_skill(self, info.id)) {
-        self->dirty = 1;
-        self->pending = 1;
-        skill_tree_layout_buttons(self);
-        ui_window_invalidate_base(WND(self));
-    }
+    skill_tree_skill_at(self, &info, self->hover);
+    if (SKILL_INFO_LEVEL_LIMIT(&info) && info.found)
+        skill_tree_raise_skill(self, info.id);
     skill_info_destruct(&info);
 }
 
@@ -725,7 +656,7 @@ void ui_new_skill_list_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
     if (self->hover != -1 && g_session1.showSkillDescript) {
         struct SkillInfo info;
 
-        skill_tree_skill_at(self, &info, self->hover, 0);
+        skill_tree_skill_at(self, &info, self->hover);
         if (info.found) {
             describe = ui_window_open(WND_ID_SKILL_DESCRIBE);
             if (describe) {
@@ -845,30 +776,11 @@ static int on_command(struct UINewSkillListWnd *self, int id)
         ui_tab_control_select_tab(&self->tabs->base, next != ui_tab_control_tab_count(self->tabs) ? next : 0);
         return 0;
     }
-    case ID_APPLY:
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_APPLY_QUESTION), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
-            return 0;
-        skill_tree_apply_points(self);
-        ui_new_skill_list_wnd_send_msg(wnd, NULL, MSG_REFRESH, 0, 0, 0, 0);
-        if (g_windowMgr.new_chat_wnd)
-            ui_window_mgr_set_focus_edit(&g_windowMgr, ui_chat_window_focus_edit(g_windowMgr.new_chat_wnd));
-        return 0;
-    case ID_RESET:
-        skill_tree_reset_points(self);
-        ui_new_skill_list_wnd_send_msg(wnd, NULL, MSG_REFRESH, 0, 0, 0, 0);
-        return 0;
     }
     if (id >= ID_UP_FIRST && id < ID_UP_FIRST + SKILL_TREE_UP_BUTTONS) {
-        if (!self->points_left)
-            return 0;
-        skill_tree_skill_at(self, &info, self->columns * self->top + id - ID_UP_FIRST, 0);
-        if (info.found && SKILL_INFO_UPGRADABLE(&info) && skill_tree_raise_skill(self, info.id)) {
-            self->dirty = 1;
-            self->pending = 1;
-            skill_tree_layout_buttons(self);
-            ui_window_invalidate_base(wnd);
-        }
+        skill_tree_skill_at(self, &info, self->columns * self->top + id - ID_UP_FIRST);
+        if (info.found && SKILL_INFO_UPGRADABLE(&info))
+            skill_tree_raise_skill(self, info.id);
         skill_info_destruct(&info);
         return 0;
     }
@@ -876,7 +788,7 @@ static int on_command(struct UINewSkillListWnd *self, int id)
         unsigned raise = id - ID_RAISE_FIRST;
 
         skill_tree_skill_at(self, &info,
-                            self->columns * self->top + (raise > SKILL_TREE_CELLS - 1 ? id : (int)raise), 0);
+                            self->columns * self->top + (raise > SKILL_TREE_CELLS - 1 ? id : (int)raise));
         if (info.found) {
             int level = session_get_skill_table_value(&g_session1, info.id);
 
@@ -941,7 +853,7 @@ int ui_new_skill_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
         return 0;
     }
     case MSG_TAB_SELECTED: {
-        struct List *list = tab_list(self, val1, 0);
+        struct List *list = tab_list(self, val1);
 
         if (!skill_tree_is_last_tab(self, val1) && list->size == 0) {
             self->tabs->selected = self->tab;
@@ -960,7 +872,6 @@ int ui_new_skill_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
         return 0;
     }
     case MSG_REFRESH:
-        skill_tree_reset_points(self);
         player_skill_bundle_number_extra_skills(&g_session1.skills);
         relayout(self);
         return 0;

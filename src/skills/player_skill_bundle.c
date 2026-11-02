@@ -263,14 +263,6 @@ struct SkillInfo *player_skill_bundle_copy_autorun_skill(struct PlayerSkillBundl
     return skill_list_copy_out(&self->autorun_skills, out, skill_list_find(&self->autorun_skills, skill_id));
 }
 
-void player_skill_bundle_flag_all_level_changes(struct PlayerSkillBundle *self)
-{
-    struct TreeNode *node;
-
-    for (node = tree_first(&self->level_change_flags); node != self->level_change_flags.head; node = tree_next(node))
-        TREE_VALUE(node, struct LevelFlag)->flag = 1;
-}
-
 unsigned char player_skill_bundle_is_level_boosted(struct PlayerSkillBundle *self, int skill_id)
 {
     struct SkillInfo *skill = player_skill_bundle_find_tree_skill(self, skill_id);

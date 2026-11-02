@@ -48,7 +48,6 @@ struct SkillActionAnswer *player_skill_bundle_level_before_change(struct PlayerS
 unsigned char player_skill_bundle_is_level_boosted(struct PlayerSkillBundle *self,
                                                            int skill_id);
 void player_skill_bundle_clear_level_changes(struct PlayerSkillBundle *self);
-void player_skill_bundle_flag_all_level_changes(struct PlayerSkillBundle *self);
 void player_skill_bundle_zero_first_level_before(struct PlayerSkillBundle *self);
 
 void player_skill_bundle_set_chosen_level(struct PlayerSkillBundle *self, int skill_id,
