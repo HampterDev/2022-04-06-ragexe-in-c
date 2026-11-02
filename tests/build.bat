@@ -377,7 +377,7 @@ call "%ROOT%\tests\build_memory.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 call "%ROOT%\tests\build_containers.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_broadcast_text.c" "%ROOT%\src\game\broadcast_text.c" /Fe:test_broadcast_text.exe
+cl /nologo /W4 /WX /O2 /MD /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_broadcast_text.c" "%ROOT%\src\game\broadcast_text.c" "%ROOT%\src\core\utf8.c" /Fe:test_broadcast_text.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_broadcast_text.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )

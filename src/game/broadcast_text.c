@@ -1,4 +1,5 @@
 #include "game/broadcast_text.h"
+#include "core/utf8.h"
 #include <string.h>
 
 static size_t bounded_length(const char *text, size_t bytes)
@@ -25,18 +26,22 @@ static int read_colour(const char *text, unsigned *colour)
     return 1;
 }
 
-int broadcast_text_strip_annotation(char *text)
+int broadcast_text_strip_annotation(char *text, size_t capacity)
 {
     char *hash = strchr(text, '#');
-    char *colon;
+    char *colon = strchr(text, ':');
+    size_t kept, tail = 0;
 
     if (!hash || hash == text)
         return 0;
-    colon = strchr(hash, ':');
-    if (colon)
-        memmove(hash, colon, strlen(colon) + 1);
-    else
-        *hash = 0;
+    kept = (size_t)(hash - text);
+    if (colon && colon != text) {
+        tail = strlen(colon);
+        if (tail > capacity - 1 - kept)
+            tail = utf8_prefix(colon, tail, capacity - 1 - kept);
+        memmove(hash, colon, tail);
+    }
+    text[kept + tail] = 0;
     return 1;
 }
 
@@ -89,7 +94,7 @@ int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t 
     if (length)
         memcpy(out->text, payload + offset, length);
     out->text[length] = 0;
-    if (!offset && broadcast_text_strip_annotation(out->text))
+    if (!offset && broadcast_text_strip_annotation(out->text, sizeof out->text))
         out->balloon = 0;
     return 1;
 }

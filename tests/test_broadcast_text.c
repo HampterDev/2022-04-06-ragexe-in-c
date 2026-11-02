@@ -35,6 +35,15 @@ int main(void)
     plain("name#tag: hello", "name: hello", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain("name#tag", "name", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain("#tag: hello", "#tag: hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
+    plain("Bob: Event in #main", "Bob: Event in : Event in #main", 0xffff, 0, 1, BROADCAST_CHANNEL);
+    plain(":lead#tag", ":lead", 0xffff, 0, 1, BROADCAST_CHANNEL);
+    {
+        /* The repeated text is cut to the buffer on a character boundary: 6 bytes are left for
+           ":" BLUE_KR "#x", so it keeps ":" and the first character only. */
+        char cut[15] = "a:" BLUE_KR "#x";
+        assert(broadcast_text_strip_annotation(cut, sizeof cut));
+        assert(strcmp(cut, "a:" BLUE_KR ":\xeb\xb8\x94") == 0);
+    }
     assert(!broadcast_text_parse(&result, "tool", 4));
     assert(!broadcast_text_parse(&result, "tool12345xhello", 15));
     assert(!broadcast_text_parse(&result, "micc", 4));

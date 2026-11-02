@@ -97,7 +97,7 @@ void game_mode_broadcast2(struct GameMode *self, const unsigned char *pkt)
         bytes = sizeof text - 1;
     memcpy(text, packet->text, bytes);
     text[bytes] = 0;
-    broadcast_text_strip_annotation(text);
+    broadcast_text_strip_annotation(text, sizeof text);
     string_assign_cstr(&line, text);
     self->notice_shown_at = platform_ticks_ms();
     if (self->notice_wnd == 0)
