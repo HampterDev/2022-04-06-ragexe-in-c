@@ -105,7 +105,6 @@ BYTE bitmap_res_load_png_data(struct BitmapRes *self, const BYTE *data, int size
     for (y = 0; y < height; ++y)
         decode->rows[y] = decode->rgba + (size_t)y * row_bytes;
     png_read_image(decode->png, decode->rows);
-    png_read_end(decode->png, NULL);
     decode->pixels = malloc(pixel_count * sizeof *decode->pixels);
     if (!decode->pixels)
         png_error(decode->png, "Cannot allocate PNG pixels");
