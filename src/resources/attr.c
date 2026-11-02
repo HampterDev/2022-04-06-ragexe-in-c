@@ -66,6 +66,7 @@ unsigned char c3d_attr_load(struct C3dAttr *self, const char *name)
         goto done;
     if (version[0] != 1 || version[1] > 3) {
         error_msg("C3dAttr::Unsupported Version", 0);
+        ok = 1;
         goto done;
     }
     if (!file_read(&file, &width, sizeof width)
