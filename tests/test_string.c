@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 #include "../src/std/string.c"
 
 static unsigned live_blocks, allocations;
@@ -123,6 +122,8 @@ static void check_aliases(void)
 static void check_operations(void)
 {
     struct String text, other, copy;
+    static const uint16_t wide_text[] = {'w', 'i', 'd', 'e', 0}, wide_middle[] = {'i', 'd', 0};
+    static const uint16_t wide_high[] = {0xac00, 0};
     struct WString wide;
 
     string_init(&text);
@@ -160,11 +161,15 @@ static void check_operations(void)
     equal(&other, "a\0b", 3);
     equal(&copy, "", 0);
     wstring_init(&wide);
-    assert(!wcscmp(wstring_cstr(&wide), L""));
-    wstring_assign(&wide, L"wide", 4);
-    assert(wide.size == 4 && !wcscmp(wstring_cstr(&wide), L"wide"));
+    assert(!utf16_compare(wstring_cstr(&wide), wide_text + 4));
+    wstring_assign(&wide, wide_text, 4);
+    assert(wide.size == 4 && !utf16_compare(wstring_cstr(&wide), wide_text));
     wstring_assign(&wide, wide.data + 1, 2);
-    assert(wide.size == 2 && !wcscmp(wstring_cstr(&wide), L"id"));
+    assert(wide.size == 2 && !utf16_compare(wstring_cstr(&wide), wide_middle));
+    assert(utf16_length(wide_text) == 4 && utf16_length(wide_text + 4) == 0);
+    assert(utf16_length_limit(wide_text, 2) == 2 && utf16_length_limit(wide_text, 9) == 4);
+    assert(utf16_compare(wide_middle, wide_text) < 0 && utf16_compare(wide_text, wide_middle) > 0);
+    assert(utf16_compare(wide_text, wide_text + 4) > 0 && utf16_compare(wide_high, wide_text) > 0);
     wstring_free(&wide);
     string_free(&text);
     string_free(&other);
