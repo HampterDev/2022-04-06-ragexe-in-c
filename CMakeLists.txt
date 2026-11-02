@@ -9,6 +9,7 @@ find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 include(cmake/SourceEncoding.cmake)
 option(RAGE_SANITIZERS "Enable address and undefined-behavior checks" OFF)
 option(RAGE_PLATFORM_PROBE "Build the optional SDL3 window, IME and Metal bring-up probe" OFF)
+option(RAGE_CLIENT "Build the full client on Linux (GCC)" OFF)
 
 if(MSVC)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
@@ -26,6 +27,10 @@ if(RAGE_PLATFORM_PROBE)
 endif()
 
 add_subdirectory(vendor)
+
+if(RAGE_CLIENT)
+    include(cmake/Client.cmake)
+endif()
 
 add_library(rage_platform STATIC src/platform/clock.c src/platform/filesystem.c)
 target_include_directories(rage_platform PUBLIC src)

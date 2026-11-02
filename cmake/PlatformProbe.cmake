@@ -1,15 +1,4 @@
-find_package(SDL3 3.4 CONFIG QUIET)
-if(NOT SDL3_FOUND)
-    include(FetchContent)
-    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-    set(SDL_STATIC ON CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(SDL3
-        URL https://codeload.github.com/libsdl-org/SDL/tar.gz/829a65d769d935c4852f8159e964312c0957260a
-        URL_HASH SHA256=48e15cf1a6928453d77afa955d1fdfbbca9169e2bc3d76d111acb9b8bb076d66)
-    FetchContent_MakeAvailable(SDL3)
-endif()
+include(${CMAKE_CURRENT_LIST_DIR}/SDL3.cmake)
 
 add_executable(platform_probe tools/platform_probe.c)
 target_link_libraries(platform_probe PRIVATE SDL3::SDL3)
