@@ -236,7 +236,11 @@ font has them, missing bold is a one-pixel overstrike with one extra pixel of
 advance and missing italic is a shear. On the Windows fonts available for the
 comparison (Arial, Tahoma, Lucida Console, MS Gothic, Malgun Gothic, SimSun, at
 12 to 16 pixels, regular and bold) the extents, black-box widths and pixels match
-GDI; italic text differs by a few pixels.
+GDI; italic text differs by a few pixels. Those fonts are hinted by their own
+TrueType instructions. Substitutes and fallback faces are hinted by FreeType's
+autohinter instead: the instructions of Liberation Sans and NanumGothic are made for
+grayscale and give 1-bit digits such as 0 a stray pixel on each side, and text set
+in them comes out a few pixels wider than before.
 
 Not covered: the embedded EOT fonts (MicroType Express compressed; faces 20 to 28
 use the charset's substitute at 13 pixels), the serial-number text, which GDI
@@ -299,8 +303,11 @@ backend is usable there until a Metal backend exists). All client geometry arriv
 (D3D `XYZRHW`), so one vertex shader maps D3D9 pixel centres to GL clip space with the vertex's
 `1/rhw` as `w`, and one fragment shader evaluates the two fixed-function texture stages
 (`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
-test. Blend, depth and cull state map directly; the y flip keeps the on-screen winding, so
-`GFX_CULL_CW` culls GL back faces. Samplers carry the address, border and filter state.
+test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on
+horizontal edges the other way from D3D's top-left rule, so a quad on whole-pixel
+coordinates covered the rows one lower (the menu icons lost their top border, and the
+startup texel-offset probe, which draws on whole pixels, measured against that). Blend, depth and cull state map directly; the y flip
+keeps the on-screen winding, so `GFX_CULL_CW` culls GL back faces. Samplers carry the address, border and filter state.
 The scene is drawn into an offscreen framebuffer that the present call blits to the window, so locks,
 captures and render-target textures all work on ordinary textures. Texture creation, locking and
 unlocking never touch GL: pixels live in a CPU copy in the client's 1555/4444/565/8888/V8U8 layout
