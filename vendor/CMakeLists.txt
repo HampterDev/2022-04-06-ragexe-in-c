@@ -31,6 +31,8 @@ target_include_directories(rage_json PUBLIC yyjson-0.13.0)
 target_compile_definitions(rage_json PRIVATE YYJSON_READER_DEPTH_LIMIT=256 YYJSON_WRITER_DEPTH_LIMIT=256)
 
 add_library(rage_stb STATIC stb/stb_impl.c)
+add_library(rage_cgltf INTERFACE)
+target_include_directories(rage_cgltf INTERFACE cgltf)
 target_include_directories(rage_stb PUBLIC stb)
 if(UNIX)
     target_link_libraries(rage_stb PUBLIC m)

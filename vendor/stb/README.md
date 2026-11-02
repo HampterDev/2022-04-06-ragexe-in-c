@@ -9,7 +9,8 @@ Original upstream SHA-256:
 - `stb_image.h`: `cbd5f0ad7a9cf4468affb36354a1d2338034f2c12473cf1a8e32053cb6914a05`
 - `stb_image_write.h`: `594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3`
 
-`stb_impl.c` enables only JPEG decoding and callback-based writing. Filename
+`stb_impl.c` enables JPEG and PNG decoding (PNG for the textures of converted Granny models,
+`src/resources/granny_gltf.c`) and callback-based writing. Filename
 encoding and file ownership belong to callers. The client's padded BGR image
 representation is converted at the codec boundary; stb uses packed RGB.
 
