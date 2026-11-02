@@ -5,6 +5,7 @@
 #include "ui/skin.h"
 #include "session/state.h"
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -98,7 +99,7 @@ int crt_sprintf(char *out, const char *format, ...)
 void string_format(struct String *out, const char *format, ...)
 {
     va_list args;
-    assert(strcmp(format, "%3I64d  /  %3I64d") == 0 && !out->data);
+    assert(strcmp(format, "%3" PRId64 "  /  %3" PRId64) == 0 && !out->data);
     va_start(args, format);
     shown_current = va_arg(args, long long);
     shown_maximum = va_arg(args, long long);
