@@ -104,24 +104,44 @@ static int link_model_nodes(struct C3dModelRes *model, int family)
 
 static int read_model_blocks(struct File *file, struct C3dModelRes *model, int family, int minor)
 {
+    struct {
+        float size[3], pos[3], rot[3];
+        int flags;
+    } record = {0};
+    int value = 0;
     size_t count, i;
     if (family == 1 && minor < 2) {
         int ignored;
         file_read(file, &ignored, 4);
         return 1;
     }
-    if (!read_model_count(file, &count, sizeof *model->blocks)) return 0;
-    model->blocks = count ? calloc(count, sizeof *model->blocks) : NULL;
-    if (count && !model->blocks) return 0;
+    file_read(file, &value, sizeof value);
+    if (value <= 0)
+        return 1;
+    if ((size_t)value > SIZE_MAX / sizeof *model->blocks) return 0;
+    count = (size_t)value;
+    model->blocks = calloc(count, sizeof *model->blocks);
+    if (!model->blocks) return 0;
     model->blockCount = count;
     for (i = 0; i < count; ++i) {
         struct VolumeBox *box = &model->blocks[i];
         if (family == 2) {
-            if (!file_read(file, box, sizeof *box)) return 0;
+            struct VolumeBox read = {0};
+            if (file_read(file, &read, sizeof read))
+                *box = read;
         } else {
-            if (!file_read(file, box->size, 0x24)) return 0;
+            int flags = record.flags;
+            memset(&record, 0, sizeof record);
+            record.flags = flags;
+            if (!file_read(file, &record, minor >= 3 ? (int)sizeof record : 0x24)) {
+                memset(&record, 0, 0x24);
+                record.flags = flags;
+            }
+            memcpy(box->size, record.size, sizeof record.size);
+            memcpy(box->pos, record.pos, sizeof record.pos);
+            memcpy(box->rot, record.rot, sizeof record.rot);
             if (minor >= 3) {
-                if (!file_read(file, &box->flags, 4)) return 0;
+                box->flags = record.flags;
                 if (!box->flags) { box->size[0] += 3.0f; box->size[2] += 3.0f; }
             }
         }
