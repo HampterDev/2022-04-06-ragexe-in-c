@@ -397,7 +397,7 @@ static void test_atlas_resource_lifetime(void)
     set_input(colors, sizeof colors); assert(resource_load(pal_base, "palette.pal"));
     assert(sprite_atlas_resolve(&renderer, sprite->images[0].items, pal->palette, &old_region) == texture);
     old_pixel = atlas_pixel(texture, &old_region); before = atlas_uploads;
-    set_input(colors, 10); assert(!resource_load(pal_base, "short.pal"));
+    set_input(colors, 10); assert(resource_load(pal_base, "short.pal"));
     assert(sprite_atlas_resolve(&renderer, sprite->images[0].items, pal->palette, &new_region) == texture);
     assert(atlas_uploads == before);
     memset(colors, 0x39, sizeof colors); set_input(colors, sizeof colors);

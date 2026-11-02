@@ -189,7 +189,7 @@ static void test_palette(void)
     assert(palette_resource_colors(palette, fallback) == palette->palette);
     assert(palette_resource_colors(NULL, fallback) == fallback && !palette_resource_colors(NULL, NULL));
     saved = *palette; memset(raw, 0xff, sizeof raw); fail_read = 1;
-    assert(!resource_load(base, "test.pal") && !memcmp(palette, &saved, sizeof saved));
+    assert(resource_load(base, "test.pal") && !memcmp(palette, &saved, sizeof saved));
     fail_read = 0; file_present = 0;
     assert(!resource_load(base, "missing.pal") && !memcmp(palette, &saved, sizeof saved));
     file_present = 1; assert(!resource_load(base, NULL) && !memcmp(palette, &saved, sizeof saved));
@@ -207,12 +207,18 @@ static unsigned test_guarded_prefixes(const BYTE *data, unsigned size, int palet
     guard = pages + sys.dwPageSize; assert(VirtualProtect(guard, sys.dwPageSize, PAGE_NOACCESS, &old));
     for (n = 0; n < size; ++n) {
         at = guard - n; memcpy(at, data, n); set_input(at, n);
-        if (!palette && n >= 12 && file_kind == AIL_FILE_WAV) {
+        if (palette) {
+            static const BYTE zeros[1024];
+            assert(resource_load(resource, "test.pal") && !borrowed_buffers);
+            palette_matches((struct PaletteRes *)resource, zeros);
+            continue;
+        }
+        if (n >= 12 && file_kind == AIL_FILE_WAV) {
             assert(resource_load(resource, "test.wav") && !borrowed_buffers);
             assert(!memcmp(((struct Wave *)resource)->data, data, n) && type_calls == ++before);
             continue;
         }
-        assert(!resource_load(resource, palette ? "test.pal" : "test.wav"));
+        assert(!resource_load(resource, "test.wav"));
         assert(!borrowed_buffers && outstanding == 1 && info_calls == info_before);
         if (n < 12) assert(type_calls == before);
         else before = type_calls;

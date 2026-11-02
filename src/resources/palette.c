@@ -25,17 +25,19 @@ static int palette_resource_load(struct Res *resource, const char *name)
     struct PaletteRes *palette = (struct PaletteRes *)resource;
     struct File file;
     BYTE raw[sizeof palette->raw];
-    DWORD colors[256];
     int ok = 0;
     if (!name)
         return 0;
     file_construct(&file);
-    if (file_open(&file, name, CFILE_MODE_READ, 1, 0) &&
-        file.size >= (int)sizeof raw && file_read(&file, raw, sizeof raw)) {
-        c3d_device_convert_palette(&g_3dDevice, colors, raw, 256);
-        sprite_atlas_invalidate_palette(g_renderer, palette->palette);
-        memcpy(palette->raw, raw, sizeof raw);
-        memcpy(palette->palette, colors, sizeof colors);
+    if (file_open(&file, name, CFILE_MODE_READ, 1, 0)) {
+        DWORD colors[256];
+        if (file_read(&file, raw, sizeof raw))
+            memcpy(palette->raw, raw, sizeof raw);
+        c3d_device_convert_palette(&g_3dDevice, colors, palette->raw, 256);
+        if (memcmp(colors, palette->palette, sizeof colors)) {
+            sprite_atlas_invalidate_palette(g_renderer, palette->palette);
+            memcpy(palette->palette, colors, sizeof colors);
+        }
         ok = 1;
     }
     file_destruct(&file);
