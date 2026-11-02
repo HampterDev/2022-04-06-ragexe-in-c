@@ -63,7 +63,7 @@ void json_loader_set_error(struct JsonCppLoader *self, const char *fmt, ...)
 
     memset(text, 0, sizeof(text));
     va_start(args, fmt);
-    _vsnprintf_s(text, sizeof(text), (size_t)-1, fmt, args);
+    vsnprintf(text, sizeof(text), fmt, args);
     va_end(args);
     string_assign_cstr(&self->error, text);
     self->ok = 0;

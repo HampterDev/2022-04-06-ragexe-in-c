@@ -256,7 +256,7 @@ void ui_item_purchase_wnd_on_draw(struct UIWindow *window)
                                 res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
             string_free(&path);
         }
-        _snprintf_s(unit, 10, (size_t)-1, "Z");
+        snprintf(unit, 10, "Z");
         if (self->cash) {
             if (g_serviceType == 6)
                 sprintf(unit, "Koin");

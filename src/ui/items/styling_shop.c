@@ -395,10 +395,10 @@ struct StyleRecord {
 static void style_format_record(char *buf, const char *name, int slot, int head_palette, int head_style,
                                 int body_style, int body_palette, int top, int mid, int bottom, int robe)
 {
-    sprintf_s(buf, 0x200,
-                  "characterName:%s\nslotNum:%d\nheadPaletteNum:%d\nheadStyle:%d\nbodyStyle:%d\n"
-                  "bodyPaletteNum:%d\ntopAccNum:%d\nmidAccNum:%d\nbottomAccNum:%d\nRobe:%d\n*\n",
-                  name, slot, head_palette, head_style, body_style, body_palette, top, mid, bottom, robe);
+    snprintf(buf, 0x200,
+                 "characterName:%s\nslotNum:%d\nheadPaletteNum:%d\nheadStyle:%d\nbodyStyle:%d\n"
+                 "bodyPaletteNum:%d\ntopAccNum:%d\nmidAccNum:%d\nbottomAccNum:%d\nRobe:%d\n*\n",
+                 name, slot, head_palette, head_style, body_style, body_palette, top, mid, bottom, robe);
 }
 
 static void style_parse_field(struct StyleRecord *rec, char *name, char *buf, int *i, const char *line)

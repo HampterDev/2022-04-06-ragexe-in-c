@@ -85,7 +85,7 @@ static int select_server(struct LoginMode *self, int server)
     ip = self->servers[self->selectedServer].ip;
     wsprintfA(info.ip, "%d.%d.%d.%d", ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, ip >> 24);
     info.port = (short)self->servers[self->selectedServer].port;
-    _snprintf_s(info.name, 0x81, (size_t)-1, "%s", (const char *)self->servers[self->selectedServer].host);
+    snprintf(info.name, 0x81, "%s", (const char *)self->servers[self->selectedServer].host);
     memcpy(&g_charServerAddr, &info, sizeof info);
     g_charServerIp = self->servers[self->selectedServer].ip;
     string_assign_cstr(&g_session1.serverName,

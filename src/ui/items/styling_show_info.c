@@ -437,7 +437,7 @@ static void show_info_draw_rows(struct UIShowInfoWnd *self)
             ui_window_draw_bitmap(wnd, self->icon_x, wnd->height / 7 * i + self->icon_y,
                                 ui_skin_bitmap(STYLE_SKIN "icon_color_off.bmp"), 0);
             memset(buf, 0, sizeof buf);
-            _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(0xf48));
+            snprintf(buf, sizeof buf, msg_str(0xf48));
             show_info_text(self, x, y, buf, STYLE_ZENY_COLOUR);
         }
     }

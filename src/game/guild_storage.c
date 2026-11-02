@@ -241,7 +241,7 @@ static void storage_line_s(int msg)
     char text[0x100];
 
     memset(text, 0, 0xfa);
-    sprintf_s(text, 0xfa, msg_str(msg));
+    snprintf(text, 0xfa, msg_str(msg));
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, 0, 0);
 }
 

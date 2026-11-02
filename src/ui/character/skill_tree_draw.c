@@ -448,7 +448,7 @@ static void draw_cells(struct UINewSkillListWnd *self)
                 last = player_skill_bundle_find_extra_skill(&g_session1.skills, info->id);
                 if (last && shown <= last->level)
                     shown = last->level;
-                _snprintf_s(buf, 0x50, (size_t)-1, "%d", shown);
+                snprintf(buf, 0x50, "%d", shown);
                 ui_window_text_out_outlined(wnd, tx, text_y, buf, 0, RGB(red, green, blue), 0xffffff, 0, 0xb, 1,
                                          0);
             } else {
@@ -573,10 +573,10 @@ void ui_new_skill_list_wnd_on_draw(struct UIWindow *window)
         int total = g_session1.skillPoints, left_points = self->points_left;
 
         if (left_points < total)
-            _snprintf_s(buf, 0x50, (size_t)-1, "%s^0000ff%d^000000(^ff0000%d^000000) / %d",
-                           msg_str(MSG_POINTS_LEFT), left_points, total - left_points, total);
+            snprintf(buf, 0x50, "%s^0000ff%d^000000(^ff0000%d^000000) / %d",
+                        msg_str(MSG_POINTS_LEFT), left_points, total - left_points, total);
         else
-            _snprintf_s(buf, 0x50, (size_t)-1, "%s%d", msg_str(MSG_POINTS_LEFT), total);
+            snprintf(buf, 0x50, "%s%d", msg_str(MSG_POINTS_LEFT), total);
         string_init(&text);
         string_assign_cstr(&text, buf);
         ui_window_text_out_wrapped(wnd, 0x50, wnd->height - 0x17, &text, 0, 0, 0, 0, 0xc, 0, 0);

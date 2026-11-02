@@ -121,7 +121,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
     if (!file_read(&fp, &major, 1) || !file_read(&fp, &minor, 1))
         goto fail;
     if (major < 1 || major > 2 || (major == 2 && minor > 6)) {
-        _snprintf_s(message, sizeof message, _TRUNCATE,
+        snprintf(message, sizeof message,
             "Unsupported Version\n current version: %d.%d < %d.%d", 2, 6, major, minor);
         error_msg(message, 0);
         goto fail;

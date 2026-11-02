@@ -309,7 +309,7 @@ static void chat_red(int msg)
     char line[0x100];
 
     memset(line, 0, sizeof line);
-    _snprintf_s(line, sizeof line, (size_t)-1, msg_str(msg));
+    snprintf(line, sizeof line, msg_str(msg));
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)line, CHAT_RED, 0, 0);
 }
 

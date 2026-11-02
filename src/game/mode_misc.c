@@ -115,7 +115,7 @@ char *game_mode_short_name(struct String name)
             string_erase(&name, at - 4, 3);
     }
 copy:
-    _snprintf_s(buf, sizeof buffer->text, (size_t)-1, "%s", string_cstr(&name));
+    snprintf(buf, sizeof buffer->text, "%s", string_cstr(&name));
     string_free(&name);
     return buf;
 }

@@ -521,8 +521,8 @@ static void submit(struct UISeekPartyMBWnd *self)
         char buf[0x104];
 
         memset(buf, 0, sizeof buf);
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_SEEK_PARTY_MB_LEVEL_RANGE),
-                        g_session1.baseLevel3rd);
+        snprintf(buf, sizeof buf, msg_str(MSG_SEEK_PARTY_MB_LEVEL_RANGE),
+                     g_session1.baseLevel3rd);
         message_box(buf);
         string_free(&text);
         return;

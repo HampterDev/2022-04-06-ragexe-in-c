@@ -185,8 +185,8 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
     strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), _localtime32((__time32_t *)&expire));
     memset(buf, 0, sizeof buf);
     if (g_useCharsetTag) {
-        _snprintf_s(buf, sizeof buf, (size_t)-1, "%s%s", language_charset_tag(g_language, 1), time_text);
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_LINE), buf);
+        snprintf(buf, sizeof buf, "%s%s", language_charset_tag(g_language, 1), time_text);
+        snprintf(buf, sizeof buf, msg_str(MSG_EXPIRE_LINE), buf);
         hours_per_day = 24;
     } else {
         sprintf(buf, msg_str(MSG_EXPIRE_LINE), time_text);
@@ -195,8 +195,8 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
             layout = TEXT_LAYOUT_SERVICE_6;
     }
     if (self->item.expire_in_hours)
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
-                       expire % hours_per_day);
+        snprintf(buf, sizeof buf, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
+                    expire % hours_per_day);
     ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, layout, 0, 0);
 }
 

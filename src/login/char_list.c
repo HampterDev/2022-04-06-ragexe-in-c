@@ -61,7 +61,7 @@ static void billing_swap(struct LoginMode *self)
 
 static void map_display_name(char *mapName)
 {
-    _snprintf_s(mapName, 16, _TRUNCATE, "%s", session_get_rsw_name(mapName));
+    snprintf(mapName, 16, "%s", session_get_rsw_name(mapName));
 }
 
 int login_mode_max_char_slot(struct LoginMode *self)
@@ -135,9 +135,9 @@ void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
     memcpy_s(self->chars, sizeof self->chars, packet->chars, self->numChar * sizeof(struct CharInfo));
     if (rest > 0) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE,
-                    "CHARACTER_INFO2 size error!! character num : %d  CHARACTER_INFO2 size : %d",
-                    self->numChar, (int)sizeof(struct CharInfo));
+        snprintf(text, sizeof text,
+                 "CHARACTER_INFO2 size error!! character num : %d  CHARACTER_INFO2 size : %d",
+                 self->numChar, (int)sizeof(struct CharInfo));
         list_error_box(text);
     }
     g_session1.charListCounts[0] = self->numChar;
@@ -170,15 +170,15 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
 
     if (body % sizeof(struct CharInfo)) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE, "CHARACTER_INFO2 size error!! CHARACTER_INFO2 size : %d",
-                    (int)sizeof(struct CharInfo));
+        snprintf(text, sizeof text, "CHARACTER_INFO2 size error!! CHARACTER_INFO2 size : %d",
+                 (int)sizeof(struct CharInfo));
         list_error_box(text);
         return;
     }
     base = self->chars_received;
     if ((unsigned)(base + count) > LOGIN_MAX_CHARS) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, _TRUNCATE, "CHARACTER_INFO2 Cnt Over %d / %d", base + count, LOGIN_MAX_CHARS);
+        snprintf(text, sizeof text, "CHARACTER_INFO2 Cnt Over %d / %d", base + count, LOGIN_MAX_CHARS);
         list_error_box(text);
         return;
     }

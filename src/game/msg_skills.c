@@ -384,7 +384,7 @@ int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struc
         skill_not_usable(packet.skill_id);
         return 0;
     }
-    _snprintf_s(packet.text, 0x15, (size_t)-1, "%s", talkbox->text);
+    snprintf(packet.text, 0x15, "%s", talkbox->text);
     if (packet.level == 0) {
         packet.level = (unsigned short)skill_table_find(&g_session1.skills, &skill, packet.skill_id)->level;
         skill_info_destruct(&skill);

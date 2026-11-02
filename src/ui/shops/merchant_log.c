@@ -243,7 +243,7 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     x = wnd->width - 0x172;
                     y += 0x1d;
                     memset(name, 0, sizeof name);
-                    _snprintf_s(name, sizeof name, (size_t)-1, "%s", string_cstr(&entry->name));
+                    snprintf(name, sizeof name, "%s", string_cstr(&entry->name));
                     ui_window_text_out(wnd, x, y, name, (int)strlen(name), 0, 12, 0, 0, 0);
                     x += 0x96;
                     memset(money, 0, sizeof money);
@@ -253,8 +253,8 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     x += 0x6e;
                     memset(when, 0, sizeof when);
                     tm = _localtime32(&entry->time);
-                    _snprintf_s(when, sizeof when, (size_t)-1, "%02d/%02d - %02d:%02d:%02d", tm->tm_mon + 1,
-                                   tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+                    snprintf(when, sizeof when, "%02d/%02d - %02d:%02d:%02d", tm->tm_mon + 1,
+                                tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
                     ui_window_text_out(wnd, x, y, when, (int)strlen(when), 0, 12, 0, 0, 0);
                     shown++;
                 }

@@ -521,7 +521,7 @@ static void add_listed(struct UIItemPurchaseWnd *self, struct Mode *mode, struct
         char text[0xc8];
 
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_BARTER_OVER_MAX), BARTER_MAX_COUNT);
+        snprintf(text, sizeof text, msg_str(MSG_BARTER_OVER_MAX), BARTER_MAX_COUNT);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
         ui_chat_line(text, BARTER_REFUSAL_COLOUR);
         return;

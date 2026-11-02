@@ -63,8 +63,6 @@ const struct UIWindowOps ui_monster_info_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-#define CRT_TRUNCATE ((size_t)-1)
-
 #define MONSTER_INFO_ID_OK 0xb0
 #define MSG_MONSTER_INFO 0x4f
 #define MONSTER_NAME_WIDTH 100
@@ -198,24 +196,24 @@ void ui_monster_info_wnd_on_draw(struct UIWindow *window)
     string_free(&name);
     text_at(wnd, 0xa0, 0x1e, string_cstr(&fitted), 0);
 
-    _snprintf_s(number, sizeof number, CRT_TRUNCATE, "%d", info->level);
+    snprintf(number, sizeof number, "%d", info->level);
     text_at(wnd, 0x78, 0x32, msg_str(MSG_MONSTER_LABEL_LEVEL), 0);
     text_at(wnd, 0xa0, 0x32, number, 0);
-    _snprintf_s(number, sizeof number, CRT_TRUNCATE, "%d", info->hp);
+    snprintf(number, sizeof number, "%d", info->hp);
     text_at(wnd, 0x78, 0x46, msg_str(MSG_MONSTER_LABEL_HP), 0);
     text_at(wnd, 0xa0, 0x46, number, 0);
-    _snprintf_s(number, sizeof number, CRT_TRUNCATE, "%d", info->def);
+    snprintf(number, sizeof number, "%d", info->def);
     text_at(wnd, 0x78, 0x5a, msg_str(MSG_MONSTER_LABEL_DEF), 0);
     text_at(wnd, 0xa0, 0x5a, number, 0);
 
     text_at(wnd, 0x104, 0x1e, msg_str(MSG_MONSTER_LABEL_SIZE), 0);
     if (info->size >= 0 && info->size <= 2)
         text_at(wnd, 0x12c, 0x1e, msg_str(MSG_MONSTER_SIZE_FIRST + info->size), 0);
-    _snprintf_s(number, sizeof number, CRT_TRUNCATE, "%d", info->race);
+    snprintf(number, sizeof number, "%d", info->race);
     text_at(wnd, 0x104, 0x32, msg_str(MSG_MONSTER_LABEL_RACE), 0);
     if ((unsigned)info->race <= 9)
         text_at(wnd, 0x12c, 0x32, msg_str(MSG_MONSTER_RACE_FIRST + info->race), 0);
-    _snprintf_s(number, sizeof number, CRT_TRUNCATE, "%d", info->mdef);
+    snprintf(number, sizeof number, "%d", info->mdef);
     text_at(wnd, 0x104, 0x5a, msg_str(MSG_MONSTER_LABEL_MDEF), 0);
     text_at(wnd, 0x12c, 0x5a, number, 0);
     text_at(wnd, 0x104, 0x46, msg_str(MSG_MONSTER_LABEL_PROPERTY), 0);
@@ -227,10 +225,10 @@ void ui_monster_info_wnd_on_draw(struct UIWindow *window)
         property_box(wnd, 0x78 + i / 3 * 0x50, 0x6e + i % 3 * 0x12, msg_str(MSG_MONSTER_PROPERTY_FIRST + 1 + i),
                      info->element_values[i], frame, back);
 
-    _snprintf_s(spr_path, sizeof spr_path, CRT_TRUNCATE, MONSTER_SPRITE_DIR "%s.spr",
-                   session_get_job_name(&g_session1, info->job, -1));
-    _snprintf_s(act_path, sizeof act_path, CRT_TRUNCATE, MONSTER_SPRITE_DIR "%s.act",
-                   session_get_job_name(&g_session1, info->job, -1));
+    snprintf(spr_path, sizeof spr_path, MONSTER_SPRITE_DIR "%s.spr",
+                session_get_job_name(&g_session1, info->job, -1));
+    snprintf(act_path, sizeof act_path, MONSTER_SPRITE_DIR "%s.act",
+                session_get_job_name(&g_session1, info->job, -1));
     if (res_mgr_is_available(g_resMgr(), act_path) && res_mgr_is_available(g_resMgr(), spr_path)) {
         void *act = res_mgr_get(g_resMgr(), act_path);
         void *spr = res_mgr_get(g_resMgr(), spr_path);

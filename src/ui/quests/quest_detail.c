@@ -200,9 +200,8 @@ void ui_renew_detail_quest_info_wnd_show_quest(struct UIRenewDetailQuestInfoWnd 
     ui_ongoing_quest_scroll_wnd_set_quest((struct UIOngoingQuestScrollWnd *)self->ongoing, self->quest_id);
     if (info->plain.deadline.year > 1970) {
         char text[MAX_PATH];
-        _snprintf(text, sizeof text, "%s [%02d/%02d/%02d %02d:%02d]", msg_str(MSG_QUEST_END_TIME),
-                  info->plain.deadline.year, info->plain.deadline.month, info->plain.deadline.day, info->plain.deadline.hour, info->plain.deadline.minute);
-        text[sizeof text - 1] = 0;
+        snprintf(text, sizeof text, "%s [%02d/%02d/%02d %02d:%02d]", msg_str(MSG_QUEST_END_TIME),
+                 info->plain.deadline.year, info->plain.deadline.month, info->plain.deadline.day, info->plain.deadline.hour, info->plain.deadline.minute);
         string_assign_cstr(&self->end_time, text);
     }
     ui_window_invalidate_base(&self->frame.base);

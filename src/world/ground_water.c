@@ -83,7 +83,7 @@ void c3d_ground15_update_water(struct C3dGround15 *self)
         } else {
             ++water->step;
         }
-        _snprintf_s(name, sizeof name, _TRUNCATE, "워터\\water%d%02d.jpg", water->type, water->picture);
+        snprintf(name, sizeof name, "워터\\water%d%02d.jpg", water->type, water->picture);
         water->texture = texture_cache_get(&g_textureCache, name, 0, 0);
         water->phase += water->phaseStep;
         if (water->phase > 180.0f)

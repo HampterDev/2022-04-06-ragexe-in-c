@@ -185,7 +185,7 @@ static void report_expelled(const char *name, const char *reason)
     sprintf(line, msg_str(MSG_MEMBER_EXPELLED), name);
     guild_chat(line, CHAT_COLOR_YELLOW);
     memset(line, 0, sizeof line);
-    sprintf_s(line, sizeof line, msg_str(MSG_EXPEL_REASON), reason);
+    snprintf(line, sizeof line, msg_str(MSG_EXPEL_REASON), reason);
     guild_chat(line, CHAT_COLOR_YELLOW);
     guild_ban_construct(&ban);
     string_assign_cstr(&ban.name, name);
@@ -202,7 +202,7 @@ static void report_left(const char *name, const char *reason)
 
     sprintf(line, msg_str(MSG_MEMBER_LEFT), name);
     guild_chat(line, CHAT_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, msg_str(MSG_LEAVE_REASON), reason);
+    snprintf(line, sizeof line, msg_str(MSG_LEAVE_REASON), reason);
     guild_chat(line, CHAT_COLOR_YELLOW);
 }
 

@@ -248,7 +248,7 @@ void party_level_text(struct UIWindow *edit, int level)
     char text[10];
 
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%d", level);
+    snprintf(text, sizeof text, "%d", level);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, text);
 }
 
@@ -503,7 +503,7 @@ void ui_adven_party_board_wnd_on_create(struct UIWindow *window, int width_unuse
     }
 
     memset(pages, 0, sizeof pages);
-    _snprintf_s(pages, sizeof pages, (size_t)-1, "%d / %d", self->page, self->pages);
+    snprintf(pages, sizeof pages, "%d / %d", self->page, self->pages);
 
     self->own_row = new_row();
     add_bitmap_button(&self->own_row->button, own_bmp, 1, 0x31, BOARD_ID_OWN_AD);
@@ -723,7 +723,7 @@ static void board_refresh(struct UIAdvenPartyBoardWnd *self)
         ui_window_invalidate_base(&self->rows[i]->button.button.base);
     }
     memset(line, 0, sizeof line);
-    _snprintf_s(line, sizeof line, (size_t)-1, "%d / %d", self->page, self->pages);
+    snprintf(line, sizeof line, "%d / %d", self->page, self->pages);
     half = ui_window_text_width(wnd, line, 0, 0, 0xc, 0, 0);
     ui_window_resize(self->page_text, half + 1, 0x10);
     ui_static_text_set_text(self->page_text, line, 0);

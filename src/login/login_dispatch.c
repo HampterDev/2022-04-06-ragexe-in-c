@@ -185,7 +185,7 @@ static void enter_zone(struct LoginMode *self, struct String host)
 
 static void char_map_display_name(char *mapName)
 {
-    _snprintf_s(mapName, 0x10, (size_t)-1, "%s", session_get_rsw_name(mapName));
+    snprintf(mapName, 0x10, "%s", session_get_rsw_name(mapName));
 }
 
 static void on_refuse_char_server(struct LoginMode *self)

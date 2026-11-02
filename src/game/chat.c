@@ -121,7 +121,7 @@ void game_mode_send_npc_input_text(struct GameMode *self, int npc_id, const char
     if (npc_id && !world_get_game_actor_by_aid(self->world, npc_id))
         return;
     memset(typed, 0, sizeof typed);
-    _snprintf_s(typed, sizeof typed, _TRUNCATE, "%s", override ? override : text);
+    snprintf(typed, sizeof typed, "%s", override ? override : text);
     if (chat_filter_is_blocked(text_view_cstr(typed)))
         return;
     len = strlen(typed);

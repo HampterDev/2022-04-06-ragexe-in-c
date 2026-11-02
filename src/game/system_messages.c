@@ -101,7 +101,7 @@ void game_mode_msg_value(const unsigned char *pkt)
         item_info_construct(&item);
         item_info_set_item_id(&item, packet->value);
         name = item_info_get_name(&item);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(MSG_ITEM_VALUE), name);
+        snprintf(line, sizeof line, msg_str(MSG_ITEM_VALUE), name);
         item_info_destruct(&item);
     } else {
         sprintf(line, msg_str(msg_id), packet->value);
@@ -154,19 +154,19 @@ void game_mode_format_string_msg(const unsigned char *pkt)
     arg1 = packet->strings;
     switch (count) {
     case 0:
-        _snprintf(line, 0x104, fmt);
+        snprintf(line, sizeof line, fmt);
         break;
     case 1:
-        _snprintf(line, 0x104, fmt, arg1);
+        snprintf(line, sizeof line, fmt, arg1);
         break;
     case 2:
         arg2 = arg1 + strlen(arg1) + 1;
-        _snprintf(line, 0x104, fmt, arg1, arg2);
+        snprintf(line, sizeof line, fmt, arg1, arg2);
         break;
     case 3:
         arg2 = arg1 + strlen(arg1) + 1;
         arg3 = arg2 + strlen(arg2) + 1;
-        _snprintf(line, 0x104, fmt, arg1, arg2, arg3);
+        snprintf(line, sizeof line, fmt, arg1, arg2, arg3);
         break;
     default:
         sprintf(line, "unknown argment list");
@@ -320,7 +320,7 @@ void game_mode_zc_mvp_getting_special_exp(const unsigned char *pkt)
     memset(line, 0, sizeof line);
     second = msg_str(0x92);
     first = msg_str(0x91);
-    _snprintf_s(line, sizeof line, (size_t)-1, "%s%s", first, second);
+    snprintf(line, sizeof line, "%s%s", first, second);
     chat(UIM_REFRESH, 0, 0, 0);
     chat(UIM_PUSH_INTO_CHAT, line, COLOUR_YELLOW, 0);
 }

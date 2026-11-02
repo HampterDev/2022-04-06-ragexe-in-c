@@ -259,26 +259,24 @@ static void ongoing_hunt_text(const struct RenewQuestB *info, int i, char *out, 
     if (info->plain.hunt_mob[i] == QUEST_HUNT_ANY_MOB) {
         struct String kinds;
         renew_quest_condition_text(g_questTable, &kinds, info->plain.hunt_flags[i], min, max);
-        _snprintf(what, sizeof what, "%s", string_cstr(&kinds));
+        snprintf(what, sizeof what, "%s", string_cstr(&kinds));
         string_free(&kinds);
     } else if (min < 0 || max < 0 || (min == 0 && max == 0)) {
-        _snprintf(what, sizeof what, "%s", info->plain.hunt_name[i]);
+        snprintf(what, sizeof what, "%s", info->plain.hunt_name[i]);
     } else if (min == 0) {
-        _snprintf(what, sizeof what, HUNT_UP_TO_FMT, info->plain.hunt_name[i], max);
+        snprintf(what, sizeof what, HUNT_UP_TO_FMT, info->plain.hunt_name[i], max);
     } else if (max == 0) {
-        _snprintf(what, sizeof what, HUNT_FROM_FMT, info->plain.hunt_name[i], min);
+        snprintf(what, sizeof what, HUNT_FROM_FMT, info->plain.hunt_name[i], min);
     } else {
-        _snprintf(what, sizeof what, "%s Lv.%d~Lv.%d", info->plain.hunt_name[i], min, max);
+        snprintf(what, sizeof what, "%s Lv.%d~Lv.%d", info->plain.hunt_name[i], min, max);
     }
-    what[sizeof what - 1] = 0;
 
     if (info->plain.hunt_goal[i] <= 0)
-        _snprintf(out, size, "%s", what);
+        snprintf(out, size, "%s", what);
     else if (info->plain.hunt_done[i] != info->plain.hunt_goal[i])
-        _snprintf(out, size, "%s ( %d / %d )", what, info->plain.hunt_done[i], info->plain.hunt_goal[i]);
+        snprintf(out, size, "%s ( %d / %d )", what, info->plain.hunt_done[i], info->plain.hunt_goal[i]);
     else
-        _snprintf(out, size, "%s ( %s )", what, msg_str(MSG_QUEST_HUNT_DONE));
-    out[size - 1] = 0;
+        snprintf(out, size, "%s ( %s )", what, msg_str(MSG_QUEST_HUNT_DONE));
 }
 
 void ui_ongoing_quest_scroll_wnd_update_hunts(struct UIOngoingQuestScrollWnd *self)
@@ -321,14 +319,12 @@ static int ongoing_add_reward(struct UIOngoingQuestScrollWnd *self, const struct
     if (!reward->item_id)
         return y;
     item = item_table_get(reward->item_id);
-    _snprintf(text, sizeof text, ITEM_BMP_FMT, item->resName ? item->resName : ITEM_FALLBACK_RESOURCE);
-    text[sizeof text - 1] = 0;
+    snprintf(text, sizeof text, ITEM_BMP_FMT, item->resName ? item->resName : ITEM_FALLBACK_RESOURCE);
     pane_add_bitmap(pane, text, 0x74, y + 7);
 
     name = pane_add_label(pane, item->name, 0x9a, y + 5);
     ui_static_text_set_text_colour(name, 0, 0, 0);
-    _snprintf(text, sizeof text, msg_str(MSG_REWARD_COUNT), reward->count);
-    text[sizeof text - 1] = 0;
+    snprintf(text, sizeof text, msg_str(MSG_REWARD_COUNT), reward->count);
     pane_add_blue_label(pane, text, 0x9a, y + 0x14);
     return y + 3 + box->height;
 }

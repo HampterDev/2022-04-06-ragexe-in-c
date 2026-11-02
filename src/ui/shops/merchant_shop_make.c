@@ -662,8 +662,8 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
         for (i = 0; i < self->items.size; i++) {
             char price_text[0x18] = { 0 };
 
-            _snprintf_s(price_text, sizeof price_text, (size_t)-1, "%s",
-                           ui_edit_ctrl_get_text(self->prices[i]));
+            snprintf(price_text, sizeof price_text, "%s",
+                        ui_edit_ctrl_get_text(self->prices[i]));
             if (session_is_number_text(&g_session1, price_text) == 1) {
                 int64_t count;
 
@@ -673,7 +673,7 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
             }
         }
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "%lld", total);
+        snprintf(text, sizeof text, "%lld", total);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->total, text);
         ui_window_invalidate_children(wnd);
         return;

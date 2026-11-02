@@ -536,8 +536,8 @@ static int hotkey_wnd_take_key(struct UIHotKeyWnd *self)
             }
             stays = 1;
             if (n != self->selected || group != self->group) {
-                _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_HOTKEY_ASK_REPLACE),
-                               string_cstr(&key.action));
+                snprintf(text, sizeof text, msg_str(MSG_HOTKEY_ASK_REPLACE),
+                            string_cstr(&key.action));
                 if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
                                            0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                     key.code = 0;
@@ -671,7 +671,7 @@ static void hotkey_wnd_apply(struct UIHotKeyWnd *self)
         }
     }
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s", account_user_data_save(g_accountUserDataMgr)
+    snprintf(text, sizeof text, "%s", account_user_data_save(g_accountUserDataMgr)
         ? msg_str(MSG_HOTKEY_SAVED) : "Could not save local account settings.");
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, HOTKEY_WARN_COLOUR, 1, 0);
 }

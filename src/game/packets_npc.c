@@ -482,10 +482,10 @@ void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigne
     }
     if (result == 2) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc not found ");
+        snprintf(text, sizeof text, "dynamic npc not found ");
     } else if (result == 1) {
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc create error found(unknown) ");
+        snprintf(text, sizeof text, "dynamic npc create error found(unknown) ");
     } else {
         return;
     }

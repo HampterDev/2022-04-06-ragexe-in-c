@@ -524,7 +524,7 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         game->drag.drop_count = n;
         if (n == COUNT_CAP) {
             memset(buf, 0, sizeof buf);
-            sprintf_s(buf, sizeof buf, msg_str(MSG_COUNT_CAPPED), COUNT_CAP);
+            snprintf(buf, sizeof buf, msg_str(MSG_COUNT_CAPPED), COUNT_CAP);
             chat_red(buf);
         }
         add_dragged(para_window(WND_ID_PARA_PURCHASE, OBJECT_PARA_PURCHASE_WINDOW), count);

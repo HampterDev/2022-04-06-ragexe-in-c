@@ -198,7 +198,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
             char text[0x10];
 
             memset(text, 0, sizeof text);
-            _snprintf_s(text, sizeof text, (size_t)-1, "+%d", item.refine);
+            snprintf(text, sizeof text, "+%d", item.refine);
             ui_window_text_out_outlined_ptr(wnd, x + 8, y + 0x1c, text, strlen(text), &colour,
                                         EXB_REFINE_OUTLINE, 0, 12, 1);
         }
@@ -206,7 +206,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
     }
 
     memset(price, 0, sizeof price);
-    _snprintf_s(price, sizeof price, (size_t)-1, "%d z", market ? goods->price : goods->price * goods->count);
+    snprintf(price, sizeof price, "%d z", market ? goods->price : goods->price * goods->count);
     ui_window_text_out_right(wnd, wnd->width - 0x14, y + 0x27, price, 0, 0, 12, 0, 0);
 }
 

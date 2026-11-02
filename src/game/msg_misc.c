@@ -311,7 +311,7 @@ int game_mode_msg_create_item(const char *text)
         debug_divide_by_zero();
     memset(packet.text, 0, sizeof packet.text);
     packet.id = CZ_ITEM_CREATE_EX;
-    _snprintf_s(packet.text, sizeof packet.text, (size_t)-1, "%s", text);
+    snprintf(packet.text, sizeof packet.text, "%s", text);
     send_raw(sizeof packet, &packet);
     return 0;
 }

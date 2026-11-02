@@ -35,7 +35,7 @@ void talk_cmd_whisper_block(struct GameMode *self, const struct String *name, in
     else if (!whisper_block_add(g_whisperBlockMgr, string_cstr(&self->whisper_setting_name)))
         return;
     packet.id = CZ_SETTING_WHISPER_PC;
-    _snprintf_s(packet.name, sizeof packet.name, (size_t)-1, "%s", string_cstr(&self->whisper_setting_name));
+    snprintf(packet.name, sizeof packet.name, "%s", string_cstr(&self->whisper_setting_name));
     packet.unblock = (unsigned char)unblock;
     send_packet(packet.id, &packet);
 }
