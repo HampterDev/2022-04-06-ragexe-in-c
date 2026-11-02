@@ -196,6 +196,53 @@ decoders, and all 64 BGM tracks of the local game data played through.
 `RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
 `tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
 
+## Text on Linux and macOS
+
+Windows keeps GDI. Elsewhere a `DcBitmap` is a heap buffer with the same top-down
+BGRA layout and no device context, and `TextDC` draws with FreeType into that
+buffer, or into a 32-bit surface it locks with `gfx_lock` on its first draw
+(`renderer_text_out`). `render/fonts_ft.c` replaces `render/fonts.c`; the client
+calls the same `text_dc_*` and `font_cache_get_font` functions on every platform.
+
+**Choosing the font file** for a face index (the index into
+`g_3dDevice.faceNamesB`: 0 Gulim, 1 Arial, 2 MS Gothic, 3 SimSun, 4 MingLiU,
+5 Tahoma, 6 Arial, 7 and 8 Verdana, 9 and 10 Arial, 11 Tahoma; 20 to 28 the
+embedded EOT faces; 29 SCDream):
+
+1. `RAGEXE_FONT_<n>=<file>` loads face `n` from that file (the first face of a
+   collection), for example `RAGEXE_FONT_0=/home/me/fonts/gulim.ttc`.
+2. Face 29 loads `System/font/SCDream4.otf` (`SCDream6.otf` for bold) from the
+   client directory, as on Windows.
+3. `RAGEXE_FONT=<file>` loads every other face from one file.
+4. Otherwise Fontconfig matches the Windows family name followed by substitutes
+   for the run's charset (Korean: NanumGothic, Noto Sans CJK KR, UnDotum, Baekmuk;
+   Japanese and Chinese: Noto Sans CJK JP/SC/TC and others; Latin: Liberation
+   Sans, DejaVu Sans). As GDI does, the charset wins over the name: the first
+   candidate that covers the charset's language is used. A font installed in
+   `~/.local/share/fonts` (for example the player's own `gulim.ttc`) is found by
+   its family name without any variable.
+
+Characters missing from the chosen file come from the next Fontconfig candidate
+that has them, at the same size; otherwise the file's missing-glyph box is drawn.
+
+**Sizes and rendering** follow GDI's `CreateFont`: a positive height is the cell
+height, matched through the font's VDMX table or its OS/2 Windows ascent and
+descent; a negative height is the em size. When a CJK face is drawn with a
+substitute (NanumGothic for Gulim), the em is made equal to the cell, as it is
+for Gulim, MS Gothic, SimSun and MingLiU, so Hangul keeps Gulim's size. Glyphs
+are 1-bit like `NONANTIALIASED_QUALITY`, embedded bitmaps are used at sizes the
+font has them, missing bold is a one-pixel overstrike with one extra pixel of
+advance and missing italic is a shear. On the Windows fonts available for the
+comparison (Arial, Tahoma, Lucida Console, MS Gothic, Malgun Gothic, SimSun, at
+12 to 16 pixels, regular and bold) the extents, black-box widths and pixels match
+GDI; italic text differs by a few pixels.
+
+Not covered: the embedded EOT fonts (MicroType Express compressed; faces 20 to 28
+use the charset's substitute at 13 pixels), the serial-number text, which GDI
+draws in the device's default font and FreeType in face 0, and the performance
+overlay, which uses Fontconfig's `monospace` instead of Lucida Console. Invalid
+code-page bytes make a run disappear instead of drawing replacement characters.
+
 ## Remaining work
 
 1. Validate the probe on macOS, especially real Hangul composition and Retina.

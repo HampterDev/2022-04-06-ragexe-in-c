@@ -34,6 +34,7 @@ static void opaque(struct DcBitmap *self)
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h)
 {
     memset(self, 0, sizeof *self);
+#ifdef _WIN32
     self->hdc = CreateCompatibleDC(NULL);
     if (!self->hdc)
         return NULL;
@@ -43,6 +44,11 @@ struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h)
         self->hdc = NULL;
         return NULL;
     }
+#else
+    dc_bitmap_alloc(self, w, h);
+    if (!self->bits)
+        return NULL;
+#endif
     return self;
 }
 
@@ -61,6 +67,7 @@ struct DcBitmap *dc_bitmap_create(int w, int h)
 void dc_bitmap_destruct(struct DcBitmap *self)
 {
     delete_textures(self);
+#ifdef _WIN32
     if (self->hdc) {
         if (self->oldBitmap) SelectObject(self->hdc, self->oldBitmap);
         if (self->dib) DeleteObject(self->dib);
@@ -69,6 +76,9 @@ void dc_bitmap_destruct(struct DcBitmap *self)
     self->hdc = NULL;
     self->dib = NULL;
     self->oldBitmap = NULL;
+#else
+    free(self->bits);
+#endif
     self->bits = NULL;
     self->width = self->height = 0;
     self->changed = 0;
@@ -81,6 +91,7 @@ void dc_bitmap_destroy(struct DcBitmap *self)
     free(self);
 }
 
+#ifdef _WIN32
 void dc_bitmap_alloc(struct DcBitmap *self, int w, int h)
 {
     BITMAPINFO info = {0};
@@ -121,6 +132,22 @@ char dc_bitmap_get_dc(struct DcBitmap *self, HDC *out)
     *out = self->hdc;
     return 1;
 }
+#else
+void dc_bitmap_alloc(struct DcBitmap *self, int w, int h)
+{
+    DWORD *bits;
+    if (w <= 0 || h <= 0 || (size_t)w > (size_t)INT_MAX / 4 / (size_t)h)
+        return;
+    bits = calloc((size_t)w * (size_t)h, sizeof *bits);
+    if (!bits) return;
+    delete_textures(self);
+    free(self->bits);
+    self->bits = bits;
+    self->width = w;
+    self->height = h;
+    self->changed = 1;
+}
+#endif
 
 void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h, const DWORD *src, char keyed)
 {
@@ -297,6 +324,67 @@ void dc_bitmap_fill(struct DcBitmap *self, const RECT *r, DWORD colour)
         for (ux = 0; ux < (unsigned)self->width; ux++)
             self->bits[self->width * uy + ux] = c;
 }
+
+#ifdef _WIN32
+void dc_bitmap_fill_triangle(struct DcBitmap *self, const POINT points[3], COLORREF colour)
+{
+    HDC dc;
+    HRGN region;
+    HBRUSH brush;
+
+    if (!dc_bitmap_get_dc(self, &dc))
+        return;
+    region = CreatePolygonRgn(points, 3, WINDING);
+    brush = CreateSolidBrush(colour);
+    FillRgn(dc, region, brush);
+    DeleteObject(region);
+    DeleteObject(brush);
+}
+#else
+static long long ceil_div(long long numerator, long long denominator)
+{
+    long long quotient = numerator / denominator;
+    return quotient + (numerator % denominator > 0);
+}
+
+void dc_bitmap_fill_triangle(struct DcBitmap *self, const POINT points[3], COLORREF colour)
+{
+    DWORD pixel = (DWORD)GetRValue(colour) << 16 | (DWORD)GetGValue(colour) << 8 | GetBValue(colour);
+    int y, i;
+
+    if (!self || !self->bits)
+        return;
+    self->changed = 1;
+    for (y = 0; y < self->height; y++) {
+        long long cross[3];
+        int count = 0, x, left, right;
+        for (i = 0; i < 3; i++) {
+            const POINT *a = &points[i], *b = &points[(i + 1) % 3];
+            if (a->y == b->y)
+                continue;
+            if (a->y > b->y) {
+                const POINT *t = a;
+                a = b;
+                b = t;
+            }
+            if (y < a->y || y >= b->y)
+                continue;
+            cross[count++] = ceil_div((long long)a->x * (b->y - a->y) + (long long)(b->x - a->x) * (y - a->y),
+                                      b->y - a->y);
+        }
+        if (count != 2)
+            continue;
+        left = (int)(cross[0] < cross[1] ? cross[0] : cross[1]);
+        right = (int)(cross[0] < cross[1] ? cross[1] : cross[0]);
+        if (left < 0)
+            left = 0;
+        if (right > self->width)
+            right = self->width;
+        for (x = left; x < right; x++)
+            self->bits[self->width * y + x] = pixel;
+    }
+}
+#endif
 
 void dc_bitmap_upload(struct DcBitmap *self)
 {

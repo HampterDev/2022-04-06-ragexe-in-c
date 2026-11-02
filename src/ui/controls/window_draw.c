@@ -69,9 +69,6 @@ void ui_window_fill_triangle(struct UIWindow *self, int x1, int y1, int x2, int 
                                       int x3, int y3, COLORREF colour)
 {
     POINT pts[3];
-    HDC dc;
-    HRGN region;
-    HBRUSH brush;
 
     pts[0].x = x1;
     pts[0].y = y1;
@@ -79,13 +76,7 @@ void ui_window_fill_triangle(struct UIWindow *self, int x1, int y1, int x2, int 
     pts[1].y = y2;
     pts[2].x = x3;
     pts[2].y = y3;
-    if (!dc_bitmap_get_dc(self->canvas, &dc))
-        return;
-    region = CreatePolygonRgn(pts, 3, WINDING);
-    brush = CreateSolidBrush(colour);
-    FillRgn(dc, region, brush);
-    DeleteObject(region);
-    DeleteObject(brush);
+    dc_bitmap_fill_triangle(self->canvas, pts, colour);
 }
 
 void ui_window_draw_bitmap(struct UIWindow *self, int x, int y, struct BitmapRes *bitmap,

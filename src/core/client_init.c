@@ -76,7 +76,7 @@ void client_init(void)
     msg_strings_init();
     packet_table_construct(&g_packetLengthMap);
     atexit(release_packet_table);
-    gdiplus_init();
+    fonts_init();
     texture_cache_init();
     g_whiteTexture = (struct Texture){
         .base = {.ops = &texture_surface_ops, .width = 1, .height = 1},

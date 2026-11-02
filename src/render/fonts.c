@@ -186,13 +186,13 @@ void font_cache_destruct(struct FontCache *self)
     self->token = 0;
 }
 
-void gdiplus_destroy(void)
+void fonts_shutdown(void)
 {
     font_cache_destruct(&g_fontCache);
 }
 
-void gdiplus_init(void)
+void fonts_init(void)
 {
     font_cache_construct(&g_fontCache);
-    atexit(gdiplus_destroy);
+    atexit(fonts_shutdown);
 }
