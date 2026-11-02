@@ -13,5 +13,5 @@ struct BroadcastText {
 };
 
 int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t bytes);
-int broadcast_text_strip_annotation(char *text);
+int broadcast_text_strip_annotation(char *text, size_t capacity);
 #endif

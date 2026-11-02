@@ -31,6 +31,8 @@ int main(void)
     plain("name#tag: hello", "name: hello", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain("name#tag", "name", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain("#tag: hello", "#tag: hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
+    plain("Bob: Event in #main", "Bob: Event in : Event in #main", 0xffff, 0, 1, BROADCAST_CHANNEL);
+    plain(":lead#tag", ":lead", 0xffff, 0, 1, BROADCAST_CHANNEL);
     assert(!broadcast_text_parse(&result, "tool", 4));
     assert(!broadcast_text_parse(&result, "tool12345xhello", 15));
     assert(!broadcast_text_parse(&result, "micc", 4));

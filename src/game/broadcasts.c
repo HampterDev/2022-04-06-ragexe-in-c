@@ -109,7 +109,7 @@ void game_mode_broadcast2(struct GameMode *self, const unsigned char *pkt)
     memcpy(text, packet->text, bytes);
     text[bytes] = 0;
     filter_text(text);
-    broadcast_text_strip_annotation(text);
+    broadcast_text_strip_annotation(text, sizeof text);
     string_assign_cstr(&line, text);
     self->notice_shown_at = timeGetTime();
     if (self->notice_wnd == 0)
