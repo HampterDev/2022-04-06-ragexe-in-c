@@ -156,8 +156,36 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     return client_run(instance);
 }
 #else
+#include <unistd.h>
+
+/* Like a double-clicked Windows exe, run in the game folder: the current directory when it holds
+   DATA.INI, otherwise the executable's folder, or the folder holding a macOS app bundle. */
+static void enter_game_directory(void)
+{
+    static const char bundle[] = ".app/Contents/MacOS";
+    char path[4096], *slash;
+    size_t length;
+    if (platform_path_exists("DATA.INI") || !platform_module_path(path, sizeof path))
+        return;
+    slash = strrchr(path, '/');
+    if (!slash)
+        return;
+    *slash = 0;
+    length = strlen(path);
+    if (length > sizeof bundle - 1 && !strcmp(path + length - (sizeof bundle - 1), bundle)) {
+        path[length - (sizeof bundle - 1)] = 0;
+        slash = strrchr(path, '/');
+        if (!slash)
+            return;
+        *slash = 0;
+    }
+    if (path[0] && chdir(path) != 0)
+        return;
+}
+
 int main(void)
 {
+    enter_game_directory();
     return client_run(NULL);
 }
 #endif
