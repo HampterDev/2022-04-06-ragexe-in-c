@@ -6,25 +6,25 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <wctype.h>
-#include <oleauto.h>
 #include "base.h"
 #include "game/client.h"
 
 static void text_to_wide(struct WString *out, UINT code_page, const struct String *src)
 {
-    BSTR wide;
+    wchar_t *wide;
     int count;
 
     wstring_init(out);
     count = MultiByteToWideChar(code_page, 0, string_cstr(src), src->size, NULL, 0);
     if (count == 0)
         return;
-    wide = SysAllocStringLen(NULL, count);
+    wide = malloc(((size_t)count + 1) * sizeof *wide);
     if (!wide)
         return;
+    wide[count] = 0;
     if (MultiByteToWideChar(code_page, 0, string_cstr(src), src->size, wide, count) != 0)
         wstring_assign(out, wide, wcslen(wide));
-    SysFreeString(wide);
+    free(wide);
 }
 
 static void wide_to_text(struct String *out, UINT code_page, const struct WString *src)
