@@ -206,7 +206,6 @@ void game_mode_zc_search_store_info_ack2(struct GameMode *self, const unsigned c
         result.item.identified = 1;
         store_search_options(&result.item, entry.options);
         memcpy(result.item.slot, entry.cards, sizeof result.item.slot);
-        result.item.grade = entry.grade;
         store_search_add(&result);
     }
     if (wnd)

@@ -298,18 +298,6 @@ static int price_text(char *text, const struct ItemInfo *info, const char *unit)
     return sprintf(text, " %s %s", format_money(info->price, money), unit);
 }
 
-static void draw_grade(struct UIWindow *wnd, const struct ItemInfo *info, int x, int y)
-{
-    struct String path;
-
-    if (info->grade <= 0)
-        return;
-    string_init(&path);
-    string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-    ui_window_draw_bitmap(wnd, x, y, res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-    string_free(&path);
-}
-
 static void draw_strips(struct UIWindow *wnd, const char *path, int right, int top, int body, int bar)
 {
     struct BitmapRes *strip = ui_skin_bitmap(path);
@@ -400,7 +388,6 @@ void ui_para_item_shop_wnd_on_draw(struct UIWindow *window)
         else
             ui_window_draw_item_icon_count(wnd, 0x22, y, info, 0, 0);
         ui_window_draw_item_name_short(wnd, 0x46, y + 8, 0x78, info, 0xc);
-        draw_grade(wnd, info, 0x22, y + 0xc);
         if (!self->cash)
             unit = "Z";
         else if (g_serviceType == 6)
@@ -808,7 +795,6 @@ void ui_para_result_wnd_on_draw(struct UIWindow *window)
             ui_window_fill_rect(wnd, col_x + 0x48, row_y + 0x13, 0xbf, 0x1c, ui_skin_colour(6, 2));
         ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0, 0);
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, 0x6e, info, 0xc);
-        draw_grade(wnd, info, col_x + 0x2c, row_y + 0x21);
         memset(price, 0, sizeof price);
         len = price_text(price, info, "Z");
         ui_window_text_out_right(wnd, wnd->width - 0x12, row_y + 0x1d, price, len, 0, 0xc, 0, 0);

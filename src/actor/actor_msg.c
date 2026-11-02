@@ -16,11 +16,8 @@ int g_maxAttackDelayMs = 432;
 
 static int hit_job_mark(int job)
 {
-    if (job > 0x1093) {
-        if (job >= 0x10ce && (job <= 0x10cf || job == 0x10dc))
-            return 0x1b2;
+    if (job > 0x1093)
         return 0;
-    }
     if (job >= 0x108e)
         return 0x1b2;
     if ((unsigned)(job - 0xfce) > 0xb4)

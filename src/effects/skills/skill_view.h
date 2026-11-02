@@ -30,9 +30,6 @@ void show_effect_add(struct ShowEffect *self, int show_id, int effect_type);
 int show_effect_count(struct ShowEffect *self);
 void show_effect_remove(struct ShowEffect *self, int show_id);
 
-struct TalismanMarkEffect;
-void talisman_mark_effect_finish(struct TalismanMarkEffect *self);
-
 struct TetraBallEffect;
 void tetra_ball_effect_add_ball(struct TetraBallEffect *self, int element, int slot);
 int tetra_ball_effect_count(struct TetraBallEffect *self);

@@ -112,7 +112,14 @@ static void run_case(int second, int id, size_t size, int null_packet)
     if (!null_packet && size >= 2 && (id == 0x09fc || id == 0x0294 || id == 0x0227 || id == 0x08ae || id == 0x09cf ||
             (id >= 0x085a && id <= 0x0883) || (id >= 0x0917 && id <= 0x0940) ||
             id == 0x08d8 || id == 0x08d9 || id == 0x08db || id == 0x08dc ||
-            id == 0x08de || id == 0x08df || id == 0x08e1 || id == 0x090e || id == 0x0a53 || id == 0x0a55 || id == 0x0b8d || id == 0x0b8e || id == 0x0b8f || id == 0x0b92 || id == 0x0b9a || id == 0x0b9f))
+            id == 0x08de || id == 0x08df || id == 0x08e1 || id == 0x090e || id == 0x0a53 || id == 0x0a55 || id == 0x0a57 || id == 0x0a58 || id == 0x0a59 || id == 0x0a5b || id == 0x0a5d || id == 0x0a6a || id == 0x0a6b || id == 0x0a6d || id == 0x0b8d || id == 0x0b8e || id == 0x0b8f || id == 0x0b92 || id == 0x0b9a || id == 0x0b9f ||
+            id == 0x07dd || id == 0x0803 || id == 0x0805 || id == 0x0807 || id == 0x0809 || id == 0x080a || id == 0x080b ||
+            id == 0x0845 || id == 0x0849 || id == 0x08ca || id == 0x08d3 || id == 0x0a15 || id == 0x0a17 ||
+            id == 0x0a2b || id == 0x0b49 || id == 0x0b4b || id == 0x0b4d || id == 0x0b50 || id == 0x0b52 ||
+            id == 0x0b54 || id == 0x0b6e ||
+            id == 0x0a4e || id == 0x0a50 || id == 0x0ab4 || id == 0x0ab7 ||
+            id == 0x0b5a || id == 0x0b5d || id == 0x0b5e ||
+            id == 0x0a98 || id == 0x0a9a || id == 0x0a9b || id == 0x0a9d || id == 0x0ac8))
         assert(trace_count == 12);
     if (second && id == 0x0bf1 && !null_packet && size >= 2) {
         assert(trace_count == 8);
@@ -173,7 +180,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0x0e20d9f11f3d4d93));
+    assert(digest == UINT64_C(0xa3fd444e45d2becf));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

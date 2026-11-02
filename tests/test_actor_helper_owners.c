@@ -170,10 +170,7 @@ static void registry(void)
 }
 
 #else
-static const struct SkillAction shared_skill = { .cast_action = 8, .use_action = 7, .area = 42 };
 static const struct StatusAction shared_status = {0};
-static void record_object(int level, SkillActor *unit, SkillActor *owner) { record(4, 42); }
-static const struct SkillObjectAction shared_object = { .appear = record_object };
 
 static void registry(void)
 {
@@ -184,37 +181,27 @@ static void registry(void)
     assert(!skill_action_mgr_instance() && !live_blocks);
     for (cycle = 0; cycle < 3; ++cycle) {
         struct SkillActionMgr *manager = skill_action_mgr_instance();
-        const struct SkillAction *retained;
-        assert(manager && live_blocks == 4);
+        const struct StatusAction *retained;
+        assert(manager && live_blocks == 2);
         before = allocations;
         assert(skill_action_mgr_instance() == manager && allocations == before);
-        assert(!skill_action_mgr_find_skill(manager, 22));
         assert(!skill_action_mgr_find_efst(manager, 22));
-        assert(!skill_action_mgr_find_object(manager, 22));
         assert(!skill_action_mgr_has_efst_action(manager, 22));
         for (i = 0; i < sizeof ids / sizeof ids[0]; ++i) {
-            skill_action_mgr_add_skill(manager, ids[i], &shared_skill);
             skill_action_mgr_add_efst(manager, ids[i], &shared_status);
-            skill_action_mgr_add_object_action(manager, ids[i], &shared_object);
             before = allocations;
-            skill_action_mgr_add_skill(manager, ids[i], NULL);
             skill_action_mgr_add_efst(manager, ids[i], NULL);
-            skill_action_mgr_add_object_action(manager, ids[i], NULL);
             assert(allocations == before);
         }
         before = allocations;
         for (i = 0; i < sizeof ids / sizeof ids[0]; ++i) {
-            const struct SkillAction *skill = skill_action_mgr_find_skill(manager, ids[i]);
-            const struct SkillObjectAction *object = skill_action_mgr_find_object(manager, ids[i]);
-            assert(skill == &shared_skill && skill->area == 42); record(3, skill->area);
             assert(skill_action_mgr_has_efst_action(manager, ids[i]));
-            assert(skill_action_mgr_find_efst(manager, ids[i]) == &shared_status);
-            assert(object == &shared_object); object->appear(0, NULL, NULL);
+            assert(skill_action_mgr_find_efst(manager, ids[i]) == &shared_status); record(3, ids[i]);
         }
-        retained = skill_action_mgr_find_skill(manager, 0);
+        retained = skill_action_mgr_find_efst(manager, 0);
         assert(allocations == before);
         skill_action_mgr_destroy_instance();
-        assert(!live_blocks && retained == &shared_skill && retained->area == 42);
+        assert(!live_blocks && retained == &shared_status);
     }
     assert(!factory_calls);
 }

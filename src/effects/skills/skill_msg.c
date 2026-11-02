@@ -1,5 +1,4 @@
 #include "game/cells.h"
-#include "skills/skill_action.h"
 #include "effects/rag/rag_effect.h"
 #include "actor/object_ops.h"
 #include "ui/window_access.h"
@@ -9,7 +8,6 @@
 #include "world/object_lookup.h"
 #include "resources/attr_queries.h"
 #include "contents/sound.h"
-#include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/actor_lookup.h"
@@ -66,30 +64,6 @@ static struct Effect *spawn(struct Skill *self, int type, Vec3 pos, int level)
     return effect_mgr_spawn(g_effectMgr, self->base.aid, type, pos, 0, level, 0, 0);
 }
 
-static void remove_if_absent(struct Skill *self, int type)
-{
-    int aid = self->base.aid;
-
-    if (!effect_mgr_has_effect(g_effectMgr, aid, type))
-        effect_mgr_remove_type(g_effectMgr, aid, type);
-}
-
-static void spawn_delayed(struct Skill *self, int type)
-{
-    struct Ez2StrEffect *e = (struct Ez2StrEffect *)spawn(self, type, vec_zero(), -1);
-
-    if (e)
-        e->base.ops->set_start_delay(&e->base, 10);
-}
-
-static void spawn_four(struct Skill *self, int first)
-{
-    spawn(self, first, vec_zero(), -1);
-    spawn(self, first + 1, vec_zero(), -1);
-    spawn_delayed(self, first + 2);
-    spawn_delayed(self, first + 3);
-}
-
 static void show_trap_model(struct Skill *self)
 {
     skill_load_model(self, skill_trap_model(self));
@@ -141,16 +115,7 @@ static int skill_hit_effect(int skill_id)
     case 0x55: case 0xa1b: return 0x34;
     case 0x59: case 0x2d3: return 0x33;
     case 0x1ac: case 0x1ad: case 0x1ae: return 0x247;
-    case 0x1461: return 0x6ef;
-    case 0x1463: case 0x1465: return 0x764;
-    case 0x1467: case 0x1468: return 0x707;
-    case 0x146b: return 0x6f4;
-    case 0x146d: return 0x70f;
-    case 0x14d3: return 0x753;
-    case 0x14d4: return 0x75b;
-    case 0x14d5: return 0x757;
-    case 0x14d7: return 0x782;
-    case 0x14c9: case 0x14fa: case 0x14fb: case 0x14fc: case 0x1f6c:
+    case 0x1f6c:
         return session_get_skill_hit_effect_id(&g_session1, skill_id);
     }
     return none;
@@ -240,18 +205,6 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
         if (me->revealed)
             trap_glow(self);
         break;
-    case 0x5174:
-    case 0x5175:
-    case 0x5176:
-    case 0x5177:
-        me->pickable = 1;
-        show_trap_model(self);
-        if (me->revealed) {
-            static const int ids[4] = { 0x752, 0x75a, 0x756, 0x77f };
-            spawn(self, ids[type - 0x5174], me->pos, -1);
-        }
-        break;
-
     case 0xbc: case 0xdc: case 0xdd: case 0xeb:
         me->pickable = 0;
         break;
@@ -318,106 +271,15 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
         spawn(self, 0x4b0, me->pos, -1);
         play_at_unit(self, "effect\\g카트토네이도.wav");
         break;
-    case 0x10a:
-        remove_if_absent(self, 0x6d8);
-        spawn(self, 0x6d8, me->pos, entry->level);
-        break;
-    case 0x10b:
-        remove_if_absent(self, 0x6ec);
-        spawn(self, 0x6ec, me->pos, entry->level);
-        break;
     case 0x10c:
         if (entry->level >= 1 && entry->level <= 5)
             self->effect_id = 0x641 + entry->level;
-        break;
-    case 0x10d:
-        {
-            int t;
-
-            for (t = 0x765; t <= 0x766; t++) {
-                struct Ez2StrEffect *e;
-
-                remove_if_absent(self, t);
-                e = (struct Ez2StrEffect *)spawn(self, t, me->pos, entry->level);
-                if (e) {
-                    ez2_str_effect_set_spin(&e->base, 90.0f);
-                    e->turn_with_camera = 1;
-                }
-            }
-        }
-        break;
-    case 0x10e:
-        effect_mgr_remove_type(g_effectMgr, me->aid, 0x701);
-        spawn(self, 0x701, me->pos, entry->level);
-        break;
-    case 0x10f:
-        effect_mgr_remove_type(g_effectMgr, me->aid, 0x702);
-        spawn(self, 0x702, me->pos, entry->level);
-        effect_mgr_remove_type(g_effectMgr, me->aid, 0x703);
-        spawn(self, 0x703, me->pos, entry->level);
-        break;
-    case 0x110:
-        remove_if_absent(self, 0x6f0);
-        spawn(self, 0x6f0, me->pos, entry->level);
-        remove_if_absent(self, 0x6f1);
-        spawn(self, 0x6f1, me->pos, entry->level);
-        break;
-    case 0x111:
-        effect_mgr_remove_type(g_effectMgr, me->aid, 0x70c);
-        spawn(self, 0x70c, me->pos, entry->level);
-        break;
-    case 0x112:
-        remove_if_absent(self, 0x6e8);
-        spawn(self, 0x6e8, me->pos, entry->level);
-        break;
-    case 0x113:
-        {
-            const struct RenderObject *player;
-
-            spawn(self, 0x876, vec_zero(), -1);
-            spawn(self, 0x875, me->pos, entry->level);
-            player = (struct RenderObject *)game_current_player();
-            if (player)
-                sound_play_wave("effect\\IG_CROSS_RAIN.wav", player->pos.x - me->pos.x, 0.0f,
-                                player->pos.z - me->pos.z, 250, 40, 1.0f);
-        }
-        break;
-    case 0x114:
-        spawn(self, 0x7a5, me->pos, entry->level);
-        break;
-    case 0x115:
-        spawn(self, 0x852, vec_zero(), -1);
-        spawn(self, 0x851, vec_zero(), -1);
-        break;
-    case 0x116: spawn_four(self, 0x8a8); break;
-    case 0x117: spawn_four(self, 0x8b8); break;
-    case 0x118: spawn_four(self, 0x8b0); break;
-    case 0x119: spawn_four(self, 0x8a0); break;
-    case 0x11a:
-        remove_if_absent(self, 0x7fa);
-        spawn(self, 0x7fa, vec_zero(), -1);
-        remove_if_absent(self, 0x7f9);
-        spawn(self, 0x7f9, vec_zero(), -1);
-        break;
-    case 0x11b:
-        remove_if_absent(self, 0x7ef);
-        spawn(self, 0x7ef, vec_zero(), -1);
-        break;
-    case 0x11c:
-        remove_if_absent(self, 0x808);
-        spawn(self, 0x808, vec_zero(), -1);
-        remove_if_absent(self, 0x807);
-        spawn(self, 0x807, vec_zero(), -1);
         break;
     case 0x11d:
         spawn(self, 0x903, vec_zero(), -1);
         break;
     case 0x532c:
         spawn(self, 0x925, vec_zero(), -1);
-        break;
-
-    default:
-        skill_action_mgr_on_object_appear(skill_action_mgr_instance(), type, entry->level, (SkillActor *)(self), (SkillActor *)(self->creator_aid == g_session1.ownAid ? (void *)game_current_player() : (void *)game_find_actor(self->creator_aid)));
         break;
     }
 }
@@ -477,8 +339,6 @@ static void leave(struct Skill *self)
         struct Effect *effect = effect_mgr_find_effect(g_effectMgr, me->aid, 0x903);
         if (effect)
             cane_of_evil_eye_effect_end((struct CaneOfEvilEyeEffect *)effect);
-    } else {
-        skill_action_mgr_on_object_leave(skill_action_mgr_instance(), game_actor_get_job((struct GameActor *)me), (SkillActor *)(self));
     }
 }
 
@@ -492,12 +352,6 @@ static void reveal(struct Skill *self)
     show_trap_model(self);
     if (game_actor_get_job((struct GameActor *)me) == 0x94)
         trap_glow(self);
-    switch (game_actor_get_job((struct GameActor *)me)) {
-    case 0x5174: spawn(self, 0x752, vec_zero(), -1); break;
-    case 0x5175: spawn(self, 0x75a, vec_zero(), -1); break;
-    case 0x5176: spawn(self, 0x756, vec_zero(), -1); break;
-    case 0x5177: spawn(self, 0x77f, vec_zero(), -1); break;
-    }
 }
 
 void skill_send_msg(struct GameObject *object, struct GameObject *source,

@@ -589,11 +589,6 @@ int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
         struct ItemInfo inv;
 
         session_get_inventory_item(&g_session1, &inv, val1);
-        if (session_is_in_switch_sets(&g_session1, inv.index) == 1) {
-            game_send_message(MODE_MSG_DRAG_END, 0, 0, 0, 0);
-            item_info_destruct(&inv);
-            return -1;
-        }
         if (inv.index) {
             if (inv.identified == 1) {
                 struct PacketRefiningSelectItem packet;

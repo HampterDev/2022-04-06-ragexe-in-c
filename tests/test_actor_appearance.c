@@ -73,7 +73,7 @@ static void sprite_look(void)
     static const int full[] = {22,23,25,26,27,28,30,31,33,32};
     static const int plain[] = {22,24,25,26,27,28,30,31,32};
     static const int transformed[] = {22,25,26,27,30,31,32};
-    static const int dual_jobs[] = {0xc,0xfad,0xfc3,0xfdb,0xfe1,0x1005,0x109e};
+    static const int dual_jobs[] = {0xc,0xfad,0xfc3,0xfdb,0xfe1,0x1005};
     static const int ids[] = {INT_MIN,-1,0,1,INT_MAX};
     static const int states[] = {1 << 12,1 << 16,1 << 18,1 << 27,1 << 28};
     static const int drawn[] = {0x16,0x1a,0x1b,0x1c,0x1d};
@@ -211,7 +211,7 @@ static void query_appearance(void)
     assert(!player_get_appearance(NULL, &appearance));
     assert(memcmp(&appearance, &untouched, sizeof appearance) == 0);
     assert(job_queries == 0);
-    assert(player_state(NULL) == -1 && !player_has_cast_gauge(NULL));
+    assert(player_state(NULL) == -1);
     assert(!actor_get_screen_position(NULL, &screen));
     assert(screen.x == -1 && screen.y == -2 && screen.scale == -3.0f);
 
@@ -238,9 +238,6 @@ static void query_appearance(void)
     assert(appearance.accessory[0] == 1001 && appearance.accessory[1] == 1002 && appearance.accessory[2] == 1003);
     assert(appearance.robe == 15 && appearance.body_style == 4 && appearance.mounted == 2);
     assert(job_queries == 1 && player_state(&player) == 3);
-    assert(!player_has_cast_gauge(&player));
-    player.recharge_gage_wnd = (struct UIWindow *)&job_queries;
-    assert(player_has_cast_gauge(&player));
     assert(actor_get_screen_position((struct GameActor *)&player, &screen));
     assert(screen.x == 320 && screen.y == 200 && screen.scale == 1.25f);
 
@@ -249,7 +246,7 @@ static void query_appearance(void)
     assert(appearance.head == 34 && appearance.accessory[1] == 1002);
     assert(player_get_appearance(&player, &appearance));
     assert(appearance.head == 99 && appearance.accessory[1] == 2002);
-    puts("actor presentation: absent actors, appearance copies, screen position and cast gauge passed");
+    puts("actor presentation: absent actors, appearance copies and screen position passed");
 }
 
 int main(void)

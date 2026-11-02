@@ -99,16 +99,6 @@ void ui_window_draw_bitmap(struct UIWindow *self, int x, int y, struct BitmapRes
     dc_bitmap_update(self->canvas, x, y, bitmap->width, bitmap->height, bitmap->pixels, keep_alpha);
 }
 
-void ui_window_draw_bitmap_scaled(struct UIWindow *self, int x, int y, int width,
-                                          int height, struct BitmapRes *bitmap)
-{
-    struct DcBitmap *canvas = self->canvas;
-
-    if (!canvas || !bitmap)
-        return;
-    dc_bitmap_copy_scaled(canvas, x, y, bitmap->width, bitmap->height, width, height, bitmap->pixels);
-}
-
 void ui_window_draw_bitmap_tinted(struct UIWindow *self, int tint, int x, int y,
                                           struct BitmapRes *bitmap, int keep_alpha, BYTE remake)
 {

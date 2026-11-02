@@ -153,7 +153,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
             int aj = attacker ? game_actor_get_job(attacker) : 0;
 
             if (attacker && (aj == 0xc || aj == 0xfad || aj == 0xfc3 || aj == 0xfdb || aj == 0xfe1
-                             || aj == 0x1005 || aj == 0x109e || aj == 0x10a4)) {
+                             || aj == 0x1005)) {
                 if (w > 1000)
                     w = session_get_weapon_view_id(w);
             } else if (weapon > 1000) {
@@ -201,7 +201,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
         self->roty = roty;
         if (roty > 360.0f)
             self->roty = roty - 360.0f;
-    } else if (!skill_action_mgr_damage_hit(skill_action_mgr_instance(), info->skill_id, (SkillActor *)(attacker), (SkillActor *)(self))) {
+    } else {
         Vec3 zero = { 0.0f, 0.0f, 0.0f };
 
         if (!effect_mgr_spawn(g_effectMgr, self->aid, hit_effect, zero, 0, -1, 0, 0)) {
@@ -880,7 +880,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         case 0xfd3: kind = 0x21; break;
         case 0xfd4: kind = 0x22; break;
         case 0xfd8: case 0xfde: case 0x1002: kind = 0x35; break;
-        case 0x10a1: case 0x10b6: kind = 0x45; break;
         default: kind = 0xe; break;
         }
         obj = sm_msg_effect(self, mode, kind, 1);
@@ -978,7 +977,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         switch (job) {
         case 0xfd8: case 0xfde: case 0xff4: case 0xff5: kind = 0x23; break;
         case 0x1002: case 0x100f: kind = 0x2a; break;
-        case 0x10a1: case 0x10b6: kind = 0x46; break;
         default: kind = 0; break;
         }
         if (kind)
@@ -1071,14 +1069,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         sm_level_effects(self, first, second);
         break;
     }
-    case 0x97:
-        self->aura_on = 1;
-        if (g_session1.baseLevel == (signed char)self->aura_level || effect_state_bit6(self->effect_state) == 1
-            || is_effect_state_burrow(self->effect_state) == 1 || is_effect_state_star2(self->effect_state) == 1)
-            break;
-        self->aura_level = (unsigned char)g_session1.baseLevel;
-        sm_level_effects(self, g_session1.maxLevelEffect4th, g_session1.maxLevelEffect4thSub);
-        break;
     case 0x98: sm_hold(self, mode, &self->lassitude_mark, 0x43); break;
     case 0x99: sm_drop(&self->lassitude_mark); break;
     case 0x9a: sm_hold(self, mode, &self->misfortune_mark, 0x44); break;

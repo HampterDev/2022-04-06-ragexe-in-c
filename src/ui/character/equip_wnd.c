@@ -54,14 +54,12 @@
 #define ID_OFF 0xf0
 #define ID_CART_ITEMS 0xf1
 #define ID_TITLE_LIST 0x1d8
-#define ID_SWAP 0x1f4
 #define ID_TAKE_OFF_ALL 0x237
 
 #define EQUIP_MSG_TAB 0x16
 #define EQUIP_MSG_RELEASE 0x30
 #define EQUIP_MSG_REFRESH 0x3c
 #define EQUIP_MSG_UPDATE_BUTTON 0x6a
-#define SWAP_MSG_REFRESH 0x3c
 
 #define EQUIP_TAB_EQUIPMENT 0
 #define EQUIP_TAB_COSTUME 1
@@ -102,7 +100,6 @@
 #define MSG_RELEASE_CART 0xdf
 #define MSG_RELEASE_BOTH 0xe34
 #define MSG_CART_ITEMS 0xed
-#define MSG_SWAP 0xbaa
 #define MSG_TAKE_OFF_ALL 0xf73
 #define MSG_CANNOT_NOW 0x20d
 #define MSG_ITEM_TIP 0xb7
@@ -141,9 +138,6 @@ struct UIEquipWnd {
     int garment;
     int body;
     struct UIWindow *title_list;
-    struct UISwapEquipmentWnd *swap_wnd;
-    int swap_mode;
-    struct UIBitmapButton *swap_button;
     struct UIBitmapButton *take_off_button;
     struct UIAnimation animation;
     unsigned long long drawn_key;
@@ -170,7 +164,7 @@ static BYTE equip_nothing_to_release(void)
 
 static int ruwach_doram_job(int job)
 {
-    return job == 0xff2 || job == 0xff3 || job == 0x100e || job == 0x10b9;
+    return job == 0xff2 || job == 0xff3 || job == 0x100e;
 }
 
 static int transformed(void)
@@ -431,9 +425,6 @@ struct UIEquipWnd *ui_equip_wnd_construct(struct UIEquipWnd *self)
     self->frame.base.redraws_tree = 1;
     ui_animation_reset(&self->animation);
     self->drawn_key = 0;
-    self->swap_wnd = NULL;
-    self->swap_mode = 0;
-    self->swap_button = NULL;
     self->take_off_button = NULL;
     self->info = NULL;
     self->created = timeGetTime();
@@ -449,7 +440,6 @@ struct UIEquipWnd *ui_equip_wnd_construct(struct UIEquipWnd *self)
     self->body_palette = 0;
     self->hair_palette = 0;
     self->body = 0;
-    self->swap_button = NULL;
     return self;
 }
 
@@ -571,23 +561,6 @@ void ui_equip_wnd_on_create(struct UIWindow *window, int width, int height)
         ui_window_add_child(wnd, list);
     }
 
-    if (self->viewing_other == 0) {
-        if (!self->swap_button) {
-            self->swap_button = equip_new_button();
-            ui_bitmap_button_set_bitmap(self->swap_button, UI_SKIN "basic_interface\\btn_e_change_a.bmp", 0, 0);
-            ui_bitmap_button_set_bitmap(self->swap_button, UI_SKIN "basic_interface\\btn_e_change_b.bmp", 1, 0);
-            ui_bitmap_button_set_bitmap(self->swap_button, UI_SKIN "basic_interface\\btn_e_change_b.bmp", 2, 0);
-            ui_window_create(&self->swap_button->button.base, self->swap_button->bitmap_width,
-                             self->swap_button->bitmap_height);
-            ui_window_move_base(&self->swap_button->button.base, 0xc1, 0xa7);
-            self->swap_button->button.base.id = ID_SWAP;
-            ui_bitmap_button_set_tool_tip(self->swap_button, msg_str(MSG_SWAP));
-            ui_window_add_child(wnd, &self->swap_button->button.base);
-        }
-        if (g_session1.equipSwapOpen == 1)
-            ui_equip_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_SWAP, 0, 0, 0);
-    }
-
     self->take_off_button = equip_new_button();
     ui_bitmap_button_set_bitmap(self->take_off_button, UI_SKIN "basic_interface\\btn_e_off_a.bmp", 0, 0);
     ui_bitmap_button_set_bitmap(self->take_off_button, UI_SKIN "basic_interface\\btn_e_off_b.bmp", 1, 0);
@@ -655,8 +628,6 @@ static unsigned long long equip_key(struct UIEquipWnd *self)
         key = draw_key_item(key, &item);
         item_info_destruct(&item);
     }
-    if (self->swap_wnd && self->swap_wnd->frame.base.state)
-        key = ui_swap_equipment_wnd_key(self->swap_wnd, key);
     return draw_key_children(key, wnd);
 }
 
@@ -664,8 +635,7 @@ BYTE ui_equip_wnd_render(struct UIWindow *window, int force)
 {
     struct UIEquipWnd *self = (struct UIEquipWnd *)window;
 
-    if (equip_key(self) != self->drawn_key || ui_animation_due(&self->animation)
-        || (self->swap_wnd && self->swap_wnd->frame.base.state && ui_animation_due(&self->swap_wnd->animation)))
+    if (equip_key(self) != self->drawn_key || ui_animation_due(&self->animation))
         ui_window_invalidate_base(window);
     return ui_window_render_base(window, force);
 }
@@ -768,8 +738,6 @@ static void equip_draw(struct UIEquipWnd *self)
             }
         }
     }
-    if (self->swap_wnd)
-        ui_swap_equipment_wnd_send_msg(&self->swap_wnd->frame.base, NULL, SWAP_MSG_REFRESH, 0, 0, 0, 0);
 }
 
 void ui_equip_wnd_on_draw(struct UIWindow *window)
@@ -1022,36 +990,6 @@ static void equip_on_off_button(struct UIEquipWnd *self)
     string_free(&what);
 }
 
-static void equip_on_swap_button(struct UIEquipWnd *self, struct UIWindow *sender)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    int height = self->bar_height + 0xa7;
-
-    ui_window_resize_base(wnd, wnd->width, height + 0x9e);
-    if (!self->swap_wnd) {
-        struct UISwapEquipmentWnd *swap = mem_try_alloc(sizeof(struct UISwapEquipmentWnd));
-
-        swap = swap ? ui_swap_equipment_wnd_construct(swap) : NULL;
-        self->swap_wnd = swap;
-        ui_window_create(&swap->frame.base, 0x118, 0xb3);
-        if (self->tab == EQUIP_TAB_EQUIPMENT)
-            self->swap_wnd->kind = 1;
-        else if (self->tab == EQUIP_TAB_COSTUME)
-            self->swap_wnd->kind = 2;
-        ui_window_add_child(wnd, &self->swap_wnd->frame.base);
-    }
-    if (self->swap_wnd->frame.base.state == 0) {
-        ui_frame_wnd_move(&self->swap_wnd->frame.base, 0, 0xa7);
-        self->swap_wnd->frame.base.state = 1;
-        if (sender == &self->swap_button->button.base)
-            g_session1.equipSwapOpen = 1;
-    } else {
-        ui_frame_wnd_move(&self->swap_wnd->frame.base, -1000, -1000);
-        self->swap_wnd->frame.base.state = 0;
-        ui_window_resize_base(wnd, wnd->width, height);
-    }
-}
-
 #pragma pack(push, 1)
 struct EquipPacketTitle {
     short id;
@@ -1059,7 +997,7 @@ struct EquipPacketTitle {
 };
 #pragma pack(pop)
 
-static void equip_on_command(struct UIEquipWnd *self, struct UIWindow *sender, int id, int val2)
+static void equip_on_command(struct UIEquipWnd *self, int id, int val2)
 {
     struct UIWindow *wnd = &self->frame.base;
 
@@ -1108,9 +1046,6 @@ static void equip_on_command(struct UIEquipWnd *self, struct UIWindow *sender, i
                                   &packet);
         break;
     }
-    case ID_SWAP:
-        equip_on_swap_button(self, sender);
-        break;
     case ID_TAKE_OFF_ALL: {
         short packet = PACKET_TAKE_OFF_ALL;
 
@@ -1132,7 +1067,7 @@ int ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
 
     switch (msg) {
     case UI_MSG_COMMAND:
-        equip_on_command(self, sender, val1, val2);
+        equip_on_command(self, val1, val2);
         return 0;
 
     case EQUIP_MSG_TAB:
@@ -1142,24 +1077,6 @@ int ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             equip_fill_titles(self);
         } else {
             ui_window_set_show_base(self->title_list, 0);
-        }
-        if (self->tab == EQUIP_TAB_TITLE) {
-            if (self->swap_wnd && self->swap_wnd->frame.base.state)
-                ui_equip_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_SWAP, 0, 0, 0);
-            if (self->swap_button) {
-                ui_window_set_state(&self->swap_button->button.base, 0);
-                ui_button_set_show(&self->swap_button->button, 0);
-            }
-        } else if (self->swap_button) {
-            ui_button_set_show(&self->swap_button->button, 1);
-            if (self->swap_wnd) {
-                if (g_session1.equipSwapOpen == 1) {
-                    self->swap_wnd->frame.base.state = 0;
-                    ui_equip_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_SWAP, 0, 0, 0);
-                }
-                self->swap_wnd->kind = self->tab + 1;
-                ui_window_invalidate_base(&self->swap_wnd->frame.base);
-            }
         }
         ui_window_invalidate_base(wnd);
         return 0;
@@ -1171,7 +1088,7 @@ int ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
         if (!equip_wnd_info_is_valid((struct WndInfoTall *)info))
             equip_wnd_info_set_default(self->info);
         info = self->info;
-        if (info->rect.height != info->org_height && g_session1.equipSwapOpen == 0) {
+        if (info->rect.height != info->org_height) {
             ui_equip_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         } else {
             info->org_height = wnd->height + 0x14;
@@ -1221,7 +1138,6 @@ void ui_equip_wnd_destroy(struct UIWindow *window)
 #define EQUIP_PAGE(wnd) (((struct UIEquipWnd *)(wnd))->tab)
 #define EQUIP_TOP(wnd) (((struct UIEquipWnd *)(wnd))->top)
 #define SPECIAL_BMP UI_SKIN "basic_interface\\equipwin_special.bmp"
-#define GRADE_ICON UI_SKIN "grade_enchant\\grade_icon%d.bmp"
 #define SLOT_PITCH 0x1a
 #define NAME_WIDTH 0x46
 
@@ -1265,28 +1181,12 @@ void ui_equip_wnd_draw_special_slots(struct UIWindow *self)
                                                &info, 0xc);
                 }
             }
-            if (info.grade > 0) {
-                struct String path;
-
-                string_init(&path);
-                string_format(&path, GRADE_ICON, (int)info.grade);
-                if (i < 8)
-                    ui_window_draw_bitmap(self, icon_x[i >> 2], EQUIP_TOP(self) + 0x38 + row * SLOT_PITCH,
-                                        res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-                else
-                    ui_window_draw_bitmap(self, icon_x[i & 3], EQUIP_TOP(self) + 0x1e,
-                                        res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-                string_free(&path);
-            }
         }
         item_info_destruct(&info);
     }
 }
 
-#define DRAG_EQUIP_SET_A 0x11
-#define DRAG_EQUIP_SET_B 0x12
 #define MODE_REQ_WEAR_AMMO 0x57
-#define MODE_REQ_WEAR_FROM_SET 0x131
 #define MODE_REQ_WEAR 0x13
 
 static int worn_as_ammo(int type)
@@ -1300,7 +1200,6 @@ void ui_equip_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const struc
 {
     struct Mode *mode;
     struct ItemInfo info, tmp;
-    BYTE from_set = 0;
 
     if (EQUIP_OTHERS(self))
         return;
@@ -1315,22 +1214,10 @@ void ui_equip_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const struc
         item_info_assign(&info, session_get_inventory_item(&g_session1, &tmp, drag->index));
         item_info_destruct(&tmp);
         break;
-    case DRAG_EQUIP_SET_A:
-        from_set = 1;
-        item_info_assign(&info, session_get_switch_equip(&g_session1, &tmp, drag->count));
-        item_info_destruct(&tmp);
-        break;
-    case DRAG_EQUIP_SET_B:
-        from_set = 1;
-        item_info_assign(&info, session_get_switch_costume(&g_session1, &tmp, drag->count));
-        item_info_destruct(&tmp);
-        break;
     }
     if (info.index) {
         if (worn_as_ammo(info.type))
             mode_send_message(mode, MODE_REQ_WEAR_AMMO, drag->index, info.equip_location, 0, 0);
-        else if (from_set == 1)
-            mode_send_message(mode, MODE_REQ_WEAR_FROM_SET, (int)&info, 0, 0, 0);
         else if (info.identified && info.equip_location && !info.worn_location)
             mode_send_message(mode, MODE_REQ_WEAR, drag->index, info.equip_location, 0, 0);
     }
@@ -1341,12 +1228,4 @@ void ui_equip_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const struc
 void ui_equip_wnd_set_viewing_other(struct UIWindow *wnd, int other)
 {
     ((struct UIEquipWnd *)wnd)->viewing_other = other;
-}
-
-void ui_equip_wnd_refresh_swap_wnd(struct UIWindow *wnd)
-{
-    struct UIWindow *swap = (struct UIWindow *)((struct UIEquipWnd *)wnd)->swap_wnd;
-
-    if (swap)
-        ui_swap_equipment_wnd_send_msg(swap, NULL, 0x3c, 0, 0, 0, 0);
 }

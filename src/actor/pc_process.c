@@ -366,7 +366,7 @@ void pc_render(struct GameObject *object, const float *matrix)
     if (self->state == 6) {
         int job = game_actor_get_job((struct GameActor *)self);
 
-        if (job == 0xfd0 || job == 0x108e || job == 0x1093 || job == 0x1094 || job == 0x10dc)
+        if (job == 0xfd0 || job == 0x108e || job == 0x1093 || job == 0x1094)
             render_object_render_shadow((struct RenderObject *)self, matrix, self->zoom);
     }
     if (!self->revealed) {
@@ -389,9 +389,9 @@ static int pc_hit_action(int job)
     switch (job) {
     case 0xe: case 0x13: case 0x14: case 0x18:
     case 0xfc5: case 0xfca: case 0xfcb: case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082:
-    case 0x1084: case 0x108e: case 0x108f: case 0x1091: case 0x1093: case 0x1094: case 0x10ce: case 0x10dc:
+    case 0x1084: case 0x108e: case 0x108f: case 0x1091: case 0x1093: case 0x1094:
         return 0x20;
-    case 0x107a: case 0x107b: case 0x107c: case 0x107d: case 0x10d4: case 0x10db:
+    case 0x107a: case 0x107b: case 0x107c: case 0x107d:
         return 0x50;
     default:
         return 0x60;
@@ -442,7 +442,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         case 8: {
             int job = game_actor_get_job(actor);
 
-            action = job == 0x107a || job == 0x107c || job == 0x10d4 ? 0x28 : 0x60;
+            action = job == 0x107a || job == 0x107c ? 0x28 : 0x60;
             break;
         }
         }
@@ -480,7 +480,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
                                             (unsigned __int64)self->weapon);
         switch (game_actor_get_job(actor)) {
         case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e: case 0x108f: case 0x1091:
-        case 0x1093: case 0x1094: case 0x10ce: case 0x10dc: {
+        case 0x1093: case 0x1094: {
             int r = rand() % 10;
 
             if (r < 0)
@@ -527,7 +527,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         job = game_actor_get_job(actor);
         switch (job) {
         case 0xfb4: case 0xfb5: case 0xfaf: case 0xfe2: case 0xfe9: case 0xf: case 0xfb0: case 0xfc6:
-        case 0xfe6: case 0xfed: case 0x100a: case 0x10a6:
+        case 0xfe6: case 0xfed: case 0x100a:
             render_object_set_script_step_frames((struct RenderObject *)self, 4);
             render_object_play_motion_range((struct RenderObject *)self, 0x60, 0, 0, 0x60, 0, 1, 0x190, 0);
             break;

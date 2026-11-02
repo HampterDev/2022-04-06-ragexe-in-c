@@ -15,7 +15,7 @@ static const BYTE low_jobs[0x18] = {
     0, 1, 0, 0, 2, 2, 2, 1, 2, 0, 2, 0, 2, 3, 1, 3, 0, 2, 2, 0,
     0, 3, 3, 0
 };
-static const BYTE high_jobs[0x13b] = {
+static const BYTE high_jobs[0xfa] = {
     0, 1, 1, 2, 2, 2, 0, 2, 1, 2, 1, 2, 4, 0, 4, 1, 2, 2, 1, 1,
     4, 1, 0, 1, 1, 2, 2, 2, 0, 2, 1, 2, 1, 2, 4, 0, 4, 1, 2, 2,
     1, 1, 4, 1, 3, 3, 3, 3, 3, 3, 3, 4, 0, 1, 1, 2, 2, 2, 0, 1,
@@ -28,15 +28,12 @@ static const BYTE high_jobs[0x13b] = {
     4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 4,
     4, 4, 4, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3,
-    3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 0, 2, 2, 1, 2, 1, 0, 4, 2, 1,
-    4, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 0, 0,
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-    3, 3, 4, 4, 4, 1, 0, 4, 4, 4, 4, 4, 4, 4, 3
+    3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
 };
 static const BYTE low_jobs_2000[18] = {
     0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0
 };
-static const BYTE high_jobs_2000[0xe8] = {
+static const BYTE high_jobs_2000[0xca] = {
     0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
@@ -47,8 +44,7 @@ static const BYTE high_jobs_2000[0xe8] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0
+    1, 1,
 };
 
 static BYTE level_rule(int rule, int level)
@@ -65,7 +61,7 @@ BYTE session_job_allows_level(struct Session *self, int job, int level)
 {
     if (level > 2000) {
         if (job > 0xfcc) {
-            if ((unsigned)(job - 0xfd2) > 0xe7)
+            if ((unsigned)(job - 0xfd2) > 0xc9)
                 return 1;
             return high_jobs_2000[job - 0xfd2];
         }
@@ -80,7 +76,7 @@ BYTE session_job_allows_level(struct Session *self, int job, int level)
         return low_jobs_2000[job - 0xd];
     }
     if (job > 0xfa1) {
-        if ((unsigned)(job - 0xfa2) > 0x13a)
+        if ((unsigned)(job - 0xfa2) > 0xf9)
             return 0;
         return level_rule(high_case[high_jobs[job - 0xfa2]], level);
     }
@@ -121,7 +117,7 @@ static const DWORD high_job_sets[20] = {
     SET_B, SET_C, SET_D, SET_E, SET_F, SET_G, SET_H, SET_F, SET_J, SET_K,
     SET_L, SET_M, SET_N, SET_O, SET_A, SET_T, SET_ALL, SET_S, SET_Q, SET_P,
 };
-static const BYTE high_job_case[0x13b] = {
+static const BYTE high_job_case[0xfa] = {
     0, 1, 2, 3, 4, 5, 0, 6, 1, 7, 2, 8, 0, 9, 10, 11, 5, 12, 13, 19,
     9, 14, 0, 1, 2, 3, 4, 5, 0, 6, 1, 7, 2, 8, 0, 9, 10, 11, 5, 12,
     13, 19, 9, 14, 19, 15, 15, 1, 16, 16, 16, 19, 0, 1, 2, 6, 7, 8, 0, 1,
@@ -134,10 +130,7 @@ static const BYTE high_job_case[0x13b] = {
     19, 19, 19, 19, 19, 19, 19, 19, 14, 14, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     17, 19, 19, 19, 15, 1, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 15, 15, 1, 15,
-    1, 15, 15, 19, 19, 19, 19, 19, 19, 19, 0, 7, 8, 1, 6, 2, 9, 12, 19, 11,
-    10, 13, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 7, 0, 9,
-    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
-    15, 1, 19, 19, 19, 14, 19, 19, 19, 19, 19, 19, 19, 19, 15
+    1, 15, 15, 19, 19, 19, 19, 19, 19, 19,
 };
 
 BYTE session_job_accepts_value(struct Session *self, int job,
@@ -146,7 +139,7 @@ BYTE session_job_accepts_value(struct Session *self, int job,
     DWORD set;
 
     if (job > 0xfa1)
-        set = (unsigned)(job - 0xfa2) > 0x13a ? SET_P : high_job_sets[high_job_case[job - 0xfa2]];
+        set = (unsigned)(job - 0xfa2) > 0xf9 ? SET_P : high_job_sets[high_job_case[job - 0xfa2]];
     else if (job == 0xfa1)
         set = SET_A;
     else if ((unsigned)job > 0x19)
@@ -227,7 +220,7 @@ static const BYTE low_job_weapons[0x1a] = {
     WT_2_6_8, WT_11, WT_16_25_30, WT_4_5, WT_4_5, WT_0_12, WT_5_10_15_23, WT_11, WT_2_6_8, WT_11,
     WT_11, WT_4_5, WT_NONE, WT_BY_MODE, WT_18_21, WT_22,
 };
-static const BYTE high_job_weapons[0x132] = {
+static const BYTE high_job_weapons[0xfa] = {
     WT_4_5, WT_1, WT_NOT_11, WT_NONE, WT_1, WT_11, WT_4_5, WT_15,
     WT_1_10_23, WT_2_6_8, WT_11, WT_16_25_30, WT_4_5, WT_4_5, WT_0_12, WT_5_10_15_23,
     WT_11, WT_2_6_8, WT_11, WT_11, WT_4_5, WT_BY_MODE, WT_4_5, WT_1,
@@ -259,14 +252,7 @@ static const BYTE high_job_weapons[0x132] = {
     WT_NONE, WT_1_10_23, WT_18_21, WT_18_21, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_1_10_23, WT_NONE,
     WT_1_10_23, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_4_5, WT_2_6_8, WT_16_25_30, WT_1_10_23, WT_15, WT_11,
-    WT_4_5, WT_2_6_8, WT_11, WT_5_10_15_23, WT_0_12, WT_11, WT_11, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_11, WT_2_6_8, WT_4_5, WT_4_5,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_1_10_23, WT_22, WT_22,
-    WT_18_21, WT_BY_MODE,
+    WT_NONE, WT_NONE,
 };
 
 static int weapon_rule(int rule, int type, int mode)
@@ -308,7 +294,7 @@ BYTE session_job_accepts_weapon(struct Session *self, int job, int mode,
 
     if (hi > 0 || (hi == 0 && (unsigned)lo >= 0x69)) {
         if ((job == 0xc || job == 0xfad || job == 0xfc3 || job == 0xfdb || job == 0xfe1
-             || job == 0x1005 || job == 0x109e)
+             || job == 0x1005)
             && session_get_weapon_view_id(hi) > 0)
             id = dual_wield_type(lo, hi);
         else
@@ -316,7 +302,7 @@ BYTE session_job_accepts_weapon(struct Session *self, int job, int mode,
     }
     type = session_get_real_weapon_id(id);
     if (job > 0xfa1) {
-        if ((unsigned)(job - 0xfa2) > 0x131)
+        if ((unsigned)(job - 0xfa2) > 0xf9)
             return 0;
         rule = high_job_weapons[job - 0xfa2];
     } else if (job == 0xfa1) {
@@ -351,11 +337,6 @@ int session_is_third_job(struct Session *self, int job)
     if ((unsigned)(job - 0xfd6) <= 0x3a)
         return 1;
     return in_ranges(job, jobs, sizeof jobs / sizeof jobs[0]);
-}
-
-BYTE session_is_fourth_job(struct Session *self, int job)
-{
-    return (unsigned)(job - 0x109c) <= 0x2f || (unsigned)(job - 0x10ce) <= 0x1b;
 }
 
 int session_is_pc_job(struct Session *self, int job)

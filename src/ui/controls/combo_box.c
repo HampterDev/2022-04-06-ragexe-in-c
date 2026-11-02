@@ -924,17 +924,6 @@ void ui_combo_box_def2_wnd_add_item(struct UIWindow *wnd, struct String text, in
     string_free(&text);
 }
 
-struct String *ui_combo_box_def_wnd_get_label_text(struct UIWindow *wnd,
-                                                          struct String *out)
-{
-    struct UIComboBoxDefWnd *self = (struct UIComboBoxDefWnd *)wnd;
-    const char *text = string_cstr(&((struct UIStaticText *)self->label)->tooltip);
-
-    string_init(out);
-    string_assign_cstr(out, text);
-    return out;
-}
-
 struct UIWindow *ui_combo_box_def2_wnd_construct(struct UIWindow *wnd)
 {
     struct UIComboBoxDef2Wnd *self = (struct UIComboBoxDef2Wnd *)wnd;

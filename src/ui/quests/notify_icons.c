@@ -12,13 +12,11 @@
 
 #define RODEX_INBOX_WND_ID 0x107
 #define REFINING_WND_ID 0x127
-#define GRADE_ENCHANT_WND_ID 0x157
 
 #define NOTIFY_ICON_BUTTON_ID 0xb8
 #define NOTIFY_ICON_BMP_DIR UI_SKIN "basic_interface\\"
 
 #define MSG_MAIL_BLOCKED_BY_REFINING 0xbb0
-#define MSG_MAIL_BLOCKED_BY_GRADE_ENCHANT 0xe83
 
 #define MAIL_ICON_BMP UI_SKIN "basic_interface\\rodexsystem\\renewal\\icon_noti_gotmail.bmp"
 
@@ -133,8 +131,6 @@ int ui_open_mail_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         return 0;
     if (ui_get_window(REFINING_WND_ID))
         ui_chat_line(msg_str(MSG_MAIL_BLOCKED_BY_REFINING), RGB(0xff, 0, 0));
-    else if (ui_get_window(GRADE_ENCHANT_WND_ID))
-        ui_chat_line(msg_str(MSG_MAIL_BLOCKED_BY_GRADE_ENCHANT), RGB(0xff, 0, 0));
     else if (!ui_close_window(RODEX_INBOX_WND_ID))
         ui_make_window(RODEX_INBOX_WND_ID);
     return 0;

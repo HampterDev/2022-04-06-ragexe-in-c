@@ -391,7 +391,7 @@ void skill_tree_layout_buttons(struct UINewSkillListWnd *self)
     }
 }
 
-static const BYTE g_jobTabIndex[0x133] = {
+static const BYTE g_jobTabIndex[0xfa] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 27, 12, 13, 14,
     15, 16, 17, 18, 27, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
     10, 11, 27, 12, 13, 14, 15, 16, 17, 18, 27, 20, 21, 22, 27, 23,
@@ -407,11 +407,7 @@ static const BYTE g_jobTabIndex[0x133] = {
     27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
     27, 24, 24, 27, 27, 25, 27, 27, 26, 27, 26, 27, 24, 24, 24, 21,
     22, 23, 25, 25, 27, 27, 27, 27, 27, 27, 27, 27, 27, 22, 23, 22,
-    23, 27, 27, 27, 27, 27, 27, 27, 27, 27, 6, 9, 11, 8, 7, 10,
-    12, 16, 15, 14, 13, 17, 18, 27, 27, 27, 27, 27, 27, 27, 27, 27,
-    27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
-    27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 22, 23, 24, 24,
-    25, 20, 26,
+    23, 27, 27, 27, 27, 27, 27, 27, 27, 27,
 };
 #define JOB_TAB_KEEP 27
 static const int g_jobTabValue[JOB_TAB_KEEP] = {
@@ -424,7 +420,7 @@ static int job_tab_table(int job)
     if (job > 0xfa1) {
         unsigned i = job - 0xfa2;
 
-        if (i <= 0x132 && g_jobTabIndex[i] != JOB_TAB_KEEP)
+        if (i <= 0xf9 && g_jobTabIndex[i] != JOB_TAB_KEEP)
             return g_jobTabValue[g_jobTabIndex[i]];
         return job;
     }

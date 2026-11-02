@@ -83,8 +83,6 @@ int game_mode_msg_rodex_item(int add, int index, int count)
     } packet;
 #pragma pack(pop)
 
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     packet.id = add ? CZ_REQ_ADD_ITEM_TO_MAIL : CZ_REQ_REMOVE_ITEM_MAIL;
     packet.index = (unsigned short)index;
     packet.count = (unsigned short)count;

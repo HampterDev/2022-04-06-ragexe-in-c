@@ -36,15 +36,6 @@ struct StatusWndInfo {
     struct WindowInfo rect;
     int org_height;
     int show;
-    int expanded;
-};
-
-struct MacroReporterInfo {
-    int width, height;
-    int x, y;
-    BYTE open;
-    BYTE pick_mode;
-    struct Vec players;
 };
 
 struct ItemWndInfo {

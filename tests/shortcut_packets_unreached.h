@@ -95,10 +95,6 @@ int crt_snprintf_s(char *arg0, size_t arg1, size_t arg2, const char *arg3, ...)
 {
     abort();
 }
-char game_mode_is_blocking_window_open(void)
-{
-    abort();
-}
 int g_serviceType;
 void string_assign_cstr(struct String *arg0, const char *arg1)
 {
@@ -162,10 +158,6 @@ unsigned char clientinfo_is_admin_aid(int arg0)
     abort();
 }
 unsigned char clientinfo_is_yellow_aid(int arg0)
-{
-    abort();
-}
-unsigned char ui_window_mgr_is_barter_open(struct UIWindowMgr *arg0)
 {
     abort();
 }

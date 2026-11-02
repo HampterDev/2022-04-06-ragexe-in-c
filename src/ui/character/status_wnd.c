@@ -15,38 +15,23 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
-#include "ui/character/status_wnd.h"
 #include "ui/wndmgr/make_window_internal.h"
 
 #define STATUS_WND_ID 0xb
 
 #define ID_PLUS_STR 0xc5
-#define ID_EXPAND 0x21e
-#define ID_TRAIT_PLUS_POW 0x21f
 
 #define STATUS_MSG_REFRESH 0x23
 
 #define REQ_STATUS_CHANGE 0x1e
-#define REQ_TRAIT_CHANGE 0x13a
-
-#define SP_POW 0xdb
-#define SP_PATK 0xe1
-#define SP_SMATK 0xe2
-#define SP_RES 0xe3
-#define SP_MRES 0xe4
-#define SP_HPLUS 0xe5
-#define SP_CRATE 0xe6
-#define SP_TRAIT_POINT 0xe7
 
 #define STAT_COUNT 6
 #define TITLE_HEIGHT 0x11
 #define STATUS_WIDTH 0x118
 #define STATUS_HEIGHT 0x8d
-#define STATUS_HEIGHT_EXPANDED 0xf1
 #define OFF_SCREEN (-100)
 
 #define MSG_STATUS_TITLE 0x69
-#define MSG_EXPAND 0xe1d
 
 struct UIStatusWnd {
     struct UIFrameWnd frame;
@@ -56,20 +41,8 @@ struct UIStatusWnd {
     int title_height;
     int tip_dy;
     int tip_dx;
-    struct UIBitmapButton *trait_plus[STAT_COUNT];
-    struct UIBmpTextButton *expand;
-    BYTE expanded;
 };
 OFFSET_ASSERT(UIStatusWnd, plus, 0x94);
-OFFSET_ASSERT(UIStatusWnd, trait_plus, 0xc0);
-OFFSET_ASSERT(UIStatusWnd, expanded, 0xdc);
-
-int session_get_param(struct Session *self, int type)
-{
-    struct IntIntPair *pair = tree_get(&self->statusValues, &type, sizeof type, sizeof *pair, tree_less_int);
-
-    return pair->value;
-}
 
 void ui_status_wnd_store_info(struct UIWindow *window)
 {
@@ -83,7 +56,6 @@ void ui_status_wnd_store_info(struct UIWindow *window)
     self->info->rect.x = self->frame.base.x;
     self->info->rect.y = self->frame.base.y;
     self->info->org_height = self->full_height;
-    self->info->expanded = self->expanded == 1;
 }
 
 static struct UIBitmapButton *status_make_plus(struct UIStatusWnd *self, struct UIBitmapButton **slot,
@@ -177,13 +149,8 @@ void ui_status_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UIStatusWnd *self = (struct UIStatusWnd *)window;
     static const char arrow[] = UI_SKIN "basic_interface\\arw_right.bmp";
-    const char *expand_normal = UI_SKIN "statuswnd\\expand_on_normal.bmp";
-    const char *expand_press = UI_SKIN "statuswnd\\expand_on_press.bmp";
     struct UIWindow *wnd = &self->frame.base;
-    struct UIBmpTextButton *expand;
-    const char *caption;
-    void *mem;
-    int i, state;
+    int i;
 
     (void)width;
     (void)height;
@@ -193,25 +160,6 @@ void ui_status_wnd_on_create(struct UIWindow *window, int width, int height)
 
     for (i = 0; i < STAT_COUNT; i++)
         status_make_plus(self, &self->plus[i], self->plus, arrow, 0x18 + 0x10 * i, ID_PLUS_STR + i);
-    for (i = 0; i < STAT_COUNT; i++)
-        status_make_plus(self, &self->trait_plus[i], self->trait_plus, arrow, 0x91 + 0x10 * i,
-                         ID_TRAIT_PLUS_POW + i);
-
-    mem = mem_alloc(sizeof(struct UIBmpTextButton));
-    self->expand = expand = mem ? ui_bmp_text_button_construct(mem) : NULL;
-    ui_bitmap_button_set_bitmap(&expand->bmp, expand_normal, 0, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, expand_normal, 1, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, expand_press, 2, 0);
-    for (state = 0; state < 3; state++)
-        ui_bmp_text_button_set_text_style(self->expand, state, 0xc, 0, 0, 1, 0x10, 3);
-    expand = self->expand;
-    ui_window_create(&expand->bmp.button.base, expand->bmp.bitmap_width, expand->bmp.bitmap_height);
-    caption = msg_str(MSG_EXPAND);
-    string_assign_cstr(&self->expand->caption, caption);
-    ui_window_invalidate_base(&self->expand->bmp.button.base);
-    ui_window_move_base(&self->expand->bmp.button.base, 2, 0x79);
-    self->expand->bmp.button.base.id = ID_EXPAND;
-    ui_window_add_child(wnd, &self->expand->bmp.button.base);
     self->full_height = wnd->height;
 }
 
@@ -269,10 +217,7 @@ void ui_status_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_title_bar(wnd, 1, msg_str(MSG_STATUS_TITLE), 0);
     if (wnd->height == self->title_height || wnd->state != 0)
         return;
-    if (self->expanded == 1)
-        background = UI_SKIN "statuswnd\\w_ex_statwin_bg.bmp";
-    else
-        background = UI_SKIN "statuswnd\\w_statwin_bg.bmp";
+    background = UI_SKIN "statuswnd\\w_statwin_bg.bmp";
     ui_window_draw_bitmap(wnd, 0, self->title_height, ui_skin_bitmap(background), 1);
 
     for (i = 0; i < STAT_COUNT; i++) {
@@ -308,33 +253,6 @@ void ui_status_wnd_on_draw(struct UIWindow *window)
     status_text_right(self, 0x113, 0x56, "%d", g_session1.statusPoints);
     if (g_guildInfo.name.size)
         ui_window_text_out_right(wnd, 0x113, 0x66, string_cstr(&g_guildInfo.name), 0, 0, 0xc, 0, 0);
-
-    if (self->expanded != 1)
-        return;
-
-    for (i = 0, y = 0x90; y < 0xf0; i++, y += 0x10) {
-        int value = session_get_param(&g_session1, SP_POW + i);
-        int bonus = g_session1.traitBonus[i];
-
-        status_text(self, 0x24, y, 0xe, 0, "%d", value);
-        string_format(&text, "%lld", g_session1.traitCost[i]);
-        ui_window_text_out_right(wnd, 0x65, y, string_cstr(&text), 0, 1, 0xe, 0, 0);
-        string_free(&text);
-        if (bonus > 0)
-            status_bonus(self, y, value, bonus, "+%d");
-    }
-    status_text_right(self, 0xbd, 0x8f, "%d", session_get_param(&g_session1, SP_PATK));
-    status_text_right(self, 0xbd, 0x9f, "%d", session_get_param(&g_session1, SP_SMATK));
-    status_text_right(self, 0xbd, 0xaf, "%d", session_get_param(&g_session1, SP_HPLUS));
-    status_text_right(self, 0xbd, 0xbf, "%d", session_get_param(&g_session1, SP_CRATE));
-    status_text_right(self, 0x113, 0x8f, "%d",
-                      session_get_param(&g_session1, SP_RES) > 0 ? session_get_param(&g_session1, SP_RES)
-                                                                      : 0);
-    status_text_right(self, 0x113, 0x9f, "%d",
-                      session_get_param(&g_session1, SP_MRES) > 0
-                          ? session_get_param(&g_session1, SP_MRES)
-                          : 0);
-    status_text_right(self, 0x113, 0xcf, "%d", session_get_param(&g_session1, SP_TRAIT_POINT));
 }
 
 void ui_status_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
@@ -389,12 +307,6 @@ void ui_status_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
     };
     static const int stat_msgs[16] = { 0xc28, 0xc29, 0xc2a, 0xc2b, 0xc2c, 0xc2d, 0xc2e, 0xc34,
                                        0xc30, 0xc31, 0xc33, 0xc32, 0xc2f, 0xc35, 0xc36, 0xc37 };
-    static const struct StatusTipCell trait_cells[13] = {
-        { 6, 0x92 },    { 6, 0xa2 },    { 6, 0xb2 },    { 6, 0xc2 },    { 6, 0xd2 },    { 6, 0xe2 },   { 0x6c, 0x91 },
-        { 0x6c, 0xa1 }, { 0x6c, 0xb1 }, { 0x6c, 0xc1 }, { 0x6c, 0xd1 }, { 0xc2, 0x91 }, { 0xc2, 0xa1 },
-    };
-    static const int trait_msgs[13] = { 0xe1e, 0xe1f, 0xe20, 0xe21, 0xe22, 0xe23, 0xe24,
-                                        0xe25, 0xe28, 0xe29, 0xe2a, 0xe26, 0xe27 };
     const char *texts[16];
     int i;
 
@@ -403,11 +315,6 @@ void ui_status_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
     for (i = 0; i < 16; i++)
         texts[i] = msg_str(stat_msgs[i]);
     status_tip(self, stat_cells, texts, 16, x, y, 1);
-    if (self->expanded != 1)
-        return;
-    for (i = 0; i < 13; i++)
-        texts[i] = msg_str(trait_msgs[i]);
-    status_tip(self, trait_cells, texts, 13, x, y, 0);
 }
 
 static void status_place_buttons(struct UIStatusWnd *self)
@@ -422,43 +329,7 @@ static void status_place_buttons(struct UIStatusWnd *self)
         else
             ui_window_move_base(&self->plus[i]->button.base, OFF_SCREEN, OFF_SCREEN);
     }
-    if (session_get_param(&g_session1, SP_TRAIT_POINT) >= 1) {
-        __int64 costs[STAT_COUNT];
-
-        memcpy(costs, g_session1.traitCost, sizeof(costs));
-        for (i = 0; i < STAT_COUNT; i++) {
-            if (costs[i] != 0)
-                ui_window_move_base(&self->trait_plus[i]->button.base, 0x4e, 0x91 + 0x10 * i);
-            else
-                ui_window_move_base(&self->trait_plus[i]->button.base, OFF_SCREEN, OFF_SCREEN);
-        }
-    } else {
-        for (i = 0; i < STAT_COUNT; i++)
-            ui_window_move_base(&self->trait_plus[i]->button.base, OFF_SCREEN, OFF_SCREEN);
-    }
     ui_window_invalidate_base(&self->frame.base);
-}
-
-static void status_toggle_expand(struct UIStatusWnd *self)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    const char *normal, *press;
-
-    if (self->expanded == 1) {
-        self->expanded = 0;
-        ui_window_resize_base(wnd, STATUS_WIDTH, STATUS_HEIGHT);
-        normal = UI_SKIN "statuswnd\\expand_on_normal.bmp";
-        press = UI_SKIN "statuswnd\\expand_on_press.bmp";
-    } else {
-        self->expanded = 1;
-        ui_window_resize_base(wnd, STATUS_WIDTH, STATUS_HEIGHT_EXPANDED);
-        normal = UI_SKIN "statuswnd\\expand_off_normal.bmp";
-        press = UI_SKIN "statuswnd\\expand_off_press.bmp";
-    }
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, normal, 0, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, normal, 1, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, press, 2, 0);
-    self->full_height = wnd->height;
 }
 
 static void status_plus(struct UIStatusWnd *self, int stat)
@@ -473,22 +344,6 @@ static void status_on_command(struct UIStatusWnd *self, int id)
 {
     struct UIWindow *wnd = &self->frame.base;
 
-    if (id > ID_EXPAND) {
-        int trait = id - ID_TRAIT_PLUS_POW;
-
-        if ((unsigned)trait > 5)
-            return;
-        if (session_get_param(&g_session1, SP_TRAIT_POINT) <= 0)
-            return;
-        if (g_session1.traitCost[trait] <= 0)
-            return;
-        mode_send_message(client_current_mode(), REQ_TRAIT_CHANGE, SP_POW + trait, 1, 0, 0);
-        return;
-    }
-    if (id == ID_EXPAND) {
-        status_toggle_expand(self);
-        return;
-    }
     switch (id) {
     case UI_ID_CLOSE:
         ui_close_window(STATUS_WND_ID);
@@ -545,8 +400,8 @@ int ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
             ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         ui_status_wnd_send_msg(wnd, NULL, STATUS_MSG_REFRESH, 0, 0, 0, 0);
         ui_frame_wnd_move(wnd, self->info->rect.x, self->info->rect.y);
-        self->expanded = self->info->expanded != 1;
-        ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_EXPAND, 0, 0, 0);
+        ui_window_resize_base(wnd, STATUS_WIDTH, STATUS_HEIGHT);
+        self->full_height = wnd->height;
         return 0;
 
     case STATUS_MSG_REFRESH:
@@ -555,19 +410,6 @@ int ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-void ui_status_wnd_restore_frame(struct UIStatusWnd *self)
-{
-    struct UIWindow *wnd = &self->frame.base;
-
-    if (!status_wnd_info_is_valid(self->info)) {
-        status_wnd_info_make_default(self->info);
-        self->full_height = self->info->org_height;
-        if (wnd->height != TITLE_HEIGHT)
-            ui_window_resize_base(wnd, wnd->width, self->full_height);
-    }
-    ui_status_wnd_send_msg(wnd, NULL, STATUS_MSG_REFRESH, 0, 0, 0, 0);
 }
 
 void ui_status_wnd_destroy(struct UIWindow *window)

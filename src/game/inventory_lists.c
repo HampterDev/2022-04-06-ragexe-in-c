@@ -66,11 +66,10 @@ void storage_wnd_set_name(struct UIWindow *wnd, struct String name)
     string_free(&name);
 }
 
-static void set_options(struct ItemInfo *item, const struct ItemOption *options, unsigned short grade)
+static void set_options(struct ItemInfo *item, const struct ItemOption *options)
 {
     int i;
 
-    item->grade = grade;
     item->option_count = item_option_count(options);
     for (i = 0; i < item->option_count; i++)
         item->options[i] = options[i];
@@ -93,7 +92,7 @@ void item_list_decode_equip_v7(struct ItemInfo *item, const struct EquipItemV7 *
     item->bind_on_equip_type = e->bind_on_equip_type;
     item->view = e->sprite_number;
     item->favorite = (e->flags >> 2) & 1;
-    set_options(item, e->options, 0);
+    set_options(item, e->options);
 }
 
 static void equip_v8_to_item(struct ItemInfo *item, const struct EquipItemV8 *e)
@@ -113,7 +112,7 @@ static void equip_v8_to_item(struct ItemInfo *item, const struct EquipItemV8 *e)
     item->bind_on_equip_type = e->bind_on_equip_type;
     item->view = e->sprite_number;
     item->favorite = (e->flags >> 2) & 1;
-    set_options(item, e->options, e->grade);
+    set_options(item, e->options);
 }
 
 void item_list_decode_normal(struct ItemInfo *item, const struct NormalItem *e)

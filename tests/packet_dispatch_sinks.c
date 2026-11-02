@@ -52,8 +52,6 @@ struct PACKET_ZC_DIVORCE;
 struct PACKET_ZC_ENTER_ROOM;
 struct PACKET_ZC_EQUIPITEM_DAMAGED;
 struct PACKET_ZC_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_GRADE_ENCHANT_ACK;
-struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT;
 struct PACKET_ZC_GUILD_INFO2;
 struct PACKET_ZC_GUILD_POSITION;
 struct PACKET_ZC_GUILD_SKILLINFO;
@@ -107,9 +105,6 @@ struct PacketAddExchangeItemGrade;
 struct PacketAddExchangeItemOpt;
 struct PacketAddMemberToGroup;
 struct PacketAddMemberToGroup2;
-struct PacketAltEquipment;
-struct PacketAltEquipmentItems;
-struct PacketAltEquipmentSwitchAck;
 struct PacketBanList;
 struct PacketBankingAck;
 struct PacketBankingCheck;
@@ -120,7 +115,6 @@ struct PacketDispel;
 struct PacketEfstSetEnter;
 struct PacketEfstSetEnter2;
 struct PacketEquipmentEffect;
-struct PacketGradeEnchantMaterialList;
 struct PacketGroundItemEntry;
 struct PacketGroundItemFall;
 struct PacketGroundItemFall4;
@@ -141,7 +135,6 @@ struct PacketItemPickupParty2;
 struct PacketItemRefining;
 struct PacketItemRepair;
 struct PacketLatestRodexList;
-struct PacketLimitedSaleList;
 struct PacketListFlagClear;
 struct PacketLongLongParChange;
 struct PacketLongParChange;
@@ -351,14 +344,6 @@ void game_mode_ack_open_guild_storage(const struct PACKET_ZC_ACK_OPEN_GUILD_STOR
     packet_trace_pointer(arg0);
 }
 
-void game_mode_ack_player_aid_in_range(struct GameMode *arg0, int arg1, const int *arg2)
-{
-    packet_trace_call("GameMode_AckPlayerAidInRange");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_pointer(arg2);
-}
-
 void game_mode_ack_req_disconnect(struct GameMode *arg0,
                                const struct PACKET_ZC_ACK_REQ_DISCONNECT *arg1)
 {
@@ -477,13 +462,6 @@ void game_mode_add_item_to_store4(const unsigned char *arg0)
 {
     packet_trace_call("GameMode_AddItemToStore4");
     packet_trace_pointer(arg0);
-}
-
-void game_mode_add_limited_sale_item(struct GameMode *arg0, unsigned short arg1)
-{
-    packet_trace_call("GameMode_AddLimitedSaleItem");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
 }
 
 void game_mode_add_member_to_group(struct GameMode *arg0, const unsigned char *arg1)
@@ -612,12 +590,6 @@ void game_mode_change_group_master(const unsigned char *arg0)
     packet_trace_pointer(arg0);
 }
 
-void game_mode_close_limited_sale_tool(struct GameMode *arg0)
-{
-    packet_trace_call("GameMode_CloseLimitedSaleTool");
-    packet_trace_pointer(arg0);
-}
-
 void game_mode_config_notify2(struct GameMode *arg0, unsigned char arg1, unsigned char arg2)
 {
     packet_trace_call("GameMode_ConfigNotify2");
@@ -647,13 +619,6 @@ void game_mode_config_notify4(struct GameMode *arg0, unsigned char arg1, unsigne
     packet_trace_value(arg4);
 }
 
-void game_mode_del_limited_sale_item(struct GameMode *arg0, unsigned short arg1)
-{
-    packet_trace_call("GameMode_DelLimitedSaleItem");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
 void game_mode_del_quest(struct GameMode *arg0, const void *arg1, size_t arg2)
 {
     packet_trace_call("GameMode_DelQuest");
@@ -681,15 +646,6 @@ void game_mode_disappear_buying_store_entry(struct GameMode *arg0, const unsigne
     packet_trace_call("GameMode_DisappearBuyingStoreEntry");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
-}
-
-void game_mode_dispatch_captcha_packet(struct GameMode *arg0, int arg1, const void *arg2, size_t arg3)
-{
-    packet_trace_call("GameMode_DispatchCaptchaPacket");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_pointer(arg2);
-    packet_trace_value(arg3);
 }
 
 void game_mode_equip_win_microscope2(const unsigned char *arg0)
@@ -810,13 +766,6 @@ void game_mode_get_user_config_list(struct GameMode *arg0, int arg1,
     packet_trace_pointer(arg2);
 }
 
-void game_mode_gold_pc_cafe_point(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_GoldPcCafePoint");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_group_list(const unsigned char *arg0)
 {
     packet_trace_call("GameMode_GroupList");
@@ -866,12 +815,6 @@ void game_mode_item_fall_entry4(struct GameMode *arg0, const struct PacketGround
     packet_trace_call("GameMode_ItemFallEntry4");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
-}
-
-void game_mode_item_list_by_kind(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_ItemListByKind");
-    packet_trace_pointer(arg0);
 }
 
 void game_mode_item_list_win_open(struct GameMode *arg0, const unsigned char *arg1)
@@ -933,13 +876,6 @@ void game_mode_item_pickup_party(const unsigned char *arg0)
 {
     packet_trace_call("GameMode_ItemPickupParty");
     packet_trace_pointer(arg0);
-}
-
-void game_mode_limited_sale_list(struct GameMode *arg0, const struct PacketLimitedSaleList *arg1)
-{
-    packet_trace_call("GameMode_LimitedSaleList");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
 }
 
 void game_mode_map_property_r2(struct GameMode *arg0, const struct PacketMapPropertyR2 *arg1)
@@ -1117,53 +1053,6 @@ void game_mode_on_add_member_to_group2(struct GameMode *arg0,
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_advanced_status_change_ack(struct GameMode *arg0, unsigned char arg1,
-                                        unsigned short arg2, unsigned char arg3)
-{
-    packet_trace_call("GameMode_OnAdvancedStatusChangeAck");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-    packet_trace_value(arg3);
-}
-
-void game_mode_on_alt_equipment_clear(struct GameMode *arg0, const void *arg1)
-{
-    packet_trace_call("GameMode_OnAltEquipmentClear");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_alt_equipment_equip(struct GameMode *arg0, const struct PacketAltEquipment *arg1)
-{
-    packet_trace_call("GameMode_OnAltEquipmentEquip");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_alt_equipment_items(struct GameMode *arg0,
-                                  const struct PacketAltEquipmentItems *arg1)
-{
-    packet_trace_call("GameMode_OnAltEquipmentItems");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_alt_equipment_remove(struct GameMode *arg0, const struct PacketAltEquipment *arg1)
-{
-    packet_trace_call("GameMode_OnAltEquipmentRemove");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_alt_equipment_switch_ack(struct GameMode *arg0,
-                                      const struct PacketAltEquipmentSwitchAck *arg1)
-{
-    packet_trace_call("GameMode_OnAltEquipmentSwitchAck");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_on_autospell_list2(int arg0, const int *arg1)
 {
     packet_trace_call("GameMode_OnAutospellList2");
@@ -1183,15 +1072,6 @@ void game_mode_on_buying_store_item_list(struct GameMode *arg0, int arg1, int ar
     packet_trace_value(arg5);
     packet_trace_pointer(arg6);
     packet_trace_value(arg7);
-}
-
-void game_mode_on_cash_shop_open(struct GameMode *arg0, int arg1, int arg2, int arg3)
-{
-    packet_trace_call("GameMode_OnCashShopOpen");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-    packet_trace_value(arg3);
 }
 
 void game_mode_on_change_agit_owner(struct GameMode *arg0, unsigned char arg1, int arg2, int arg3)
@@ -1257,14 +1137,6 @@ void game_mode_on_emblem_download(int arg0, int arg1, int arg2, const char *arg3
 void game_mode_on_equipment_effect(struct GameMode *arg0, const struct PacketEquipmentEffect *arg1)
 {
     packet_trace_call("GameMode_OnEquipmentEffect");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_grade_enchant_material_list(struct GameMode *arg0,
-                                         const struct PacketGradeEnchantMaterialList *arg1)
-{
-    packet_trace_call("GameMode_OnGradeEnchantMaterialList");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -1523,12 +1395,6 @@ void game_mode_on_npc_show_efst_update(struct GameMode *arg0,
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_open_limited_sale_tool(struct GameMode *arg0)
-{
-    packet_trace_call("GameMode_OnOpenLimitedSaleTool");
-    packet_trace_pointer(arg0);
-}
-
 
 
 void game_mode_on_open_ui_assistant_buying(struct GameMode *arg0, unsigned char arg1)
@@ -1583,20 +1449,6 @@ void game_mode_on_purchase_my_item_list3(struct GameMode *arg0,
     packet_trace_call("GameMode_OnPurchaseMyItemList3");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
-}
-
-void game_mode_on_random_combine_item_ui_open(struct GameMode *arg0, int arg1)
-{
-    packet_trace_call("GameMode_OnRandomCombineItemUiOpen");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
-void game_mode_on_random_upgrade_item_ui_open(struct GameMode *arg0, int arg1)
-{
-    packet_trace_call("GameMode_OnRandomUpgradeItemUiOpen");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
 }
 
 void game_mode_on_recover_penalty_overweight(struct GameMode *arg0,
@@ -1667,14 +1519,6 @@ void game_mode_on_req_au_bot(struct GameMode *arg0, int arg1)
 }
 
 
-
-void game_mode_on_search_limited_sale_item(struct GameMode *arg0, short arg1, int arg2)
-{
-    packet_trace_call("GameMode_OnSearchLimitedSaleItem");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-    packet_trace_value(arg2);
-}
 
 void game_mode_on_server_move_private_airplane(struct GameMode *arg0, const char *arg1, short arg2,
                                           short arg3, int arg4, short arg5)
@@ -2223,20 +2067,6 @@ void game_mode_zc_ack_open_write_rodex(struct GameMode *arg0,
     packet_trace_call("GameMode_Zc_Ack_Open_Write_Rodex");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_ack_random_combine_item(struct GameMode *arg0, unsigned int arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Random_Combine_Item");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
-void game_mode_zc_ack_random_upgrade_item(struct GameMode *arg0, unsigned int arg1)
-{
-    packet_trace_call("GameMode_Zc_Ack_Random_Upgrade_Item");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
 }
 
 void game_mode_zc_ack_read_rodex2(struct GameMode *arg0,
@@ -2791,13 +2621,6 @@ void game_mode_zc_dressroom_open(void)
     packet_trace_call("GameMode_Zc_Dressroom_Open");
 }
 
-void game_mode_zc_dynamic_npc_create_result(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_DynamicNpc_Create_Result");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_el_init(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_El_Init");
@@ -2886,22 +2709,6 @@ void game_mode_zc_fast_move(struct GameMode *arg0, const unsigned char *arg1)
 void game_mode_zc_feed(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Feed");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_grade_enchant_ack(struct GameMode *arg0,
-                                   const struct PACKET_ZC_GRADE_ENCHANT_ACK *arg1)
-{
-    packet_trace_call("GameMode_Zc_Grade_Enchant_Ack");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_grade_enchant_broadcast_result(
-    struct GameMode *arg0, const struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT *arg1)
-{
-    packet_trace_call("GameMode_Zc_Grade_Enchant_Broadcast_Result");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -3652,43 +3459,6 @@ void game_mode_zc_par_change_user(struct GameMode *arg0, const unsigned char *ar
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_party_booking_ack_delete(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Ack_Delete");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_party_booking_ack_register(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Ack_Register");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_party_booking_ack_search(const unsigned char *arg0, size_t arg1)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Ack_Search");
-    packet_trace_pointer(arg0);
-    packet_trace_value(arg1);
-}
-
-void game_mode_zc_party_booking_notify_delete(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Notify_Delete");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_party_booking_notify_insert(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Notify_Insert");
-    packet_trace_pointer(arg0);
-}
-
-void game_mode_zc_party_booking_notify_update(const unsigned char *arg0)
-{
-    packet_trace_call("GameMode_Zc_Party_Booking_Notify_Update");
-    packet_trace_pointer(arg0);
-}
-
 void game_mode_zc_party_config(const unsigned char *arg0)
 {
     packet_trace_call("GameMode_Zc_Party_Config");
@@ -4063,27 +3833,6 @@ void game_mode_zc_say_dialog(struct GameMode *arg0, const unsigned char *arg1)
     packet_trace_pointer(arg1);
 }
 
-void game_mode_zc_se_cashshop_open(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Se_Cashshop_Open");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_se_cashshop_points(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Se_Cashshop_Points");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_se_pc_buy_cashitem_result(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Se_Pc_Buy_Cashitem_Result");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_search_store_info_ack(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Search_Store_Info_Ack");
@@ -4101,13 +3850,6 @@ void game_mode_zc_search_store_info_ack2(struct GameMode *arg0, const unsigned c
 void game_mode_zc_search_store_info_failed(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Search_Store_Info_Failed");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_seek_party(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_Seek_Party");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }

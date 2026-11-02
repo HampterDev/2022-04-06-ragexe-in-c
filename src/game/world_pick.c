@@ -13,13 +13,11 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "game/world_pick.h"
-#include "ui/chat/macro_reporter.h"
 #include "actor/job.h"
 #include "game/name_balloon.h"
 #include "session/session_jobs.h"
 #include "session/session_skills.h"
 #include "session/session_state.h"
-#include "ui/chat/chat.h"
 #include "ui/wndmgr/wndmgr.h"
 
 int g_hoverCellX = 0;
@@ -79,21 +77,13 @@ void game_mode_proceed_attack(struct GameMode *self, unsigned aid, int once)
     }
 }
 
-enum { WND_MACRO_REPORTER = 0x11e, WND_COLLECTION_SLOT_MACHINE = 0xc4 };
+enum { WND_COLLECTION_SLOT_MACHINE = 0xc4 };
 enum { PICK_PET = 3, PICK_COMPANION = 4 };
 
 int game_mode_process_actor_pick(struct GameMode *self, int verdict, struct PickInfo *pick)
 {
-    struct UIWindow *wnd;
     struct GameActor *actor;
 
-    if (g_mouse.button[MOUSE_LEFT] == BUTTON_PRESSED && pick != 0) {
-        wnd = ui_window_find(WND_MACRO_REPORTER);
-        if (wnd != 0 && ui_macro_reporter_picking(wnd) && ui_macro_reporter_area(wnd) == 0) {
-            ui_macro_reporter_wnd_add_player((struct UIMacroReporterWnd *)wnd, pick->aid);
-            return -1;
-        }
-    }
     if (ui_window_find(WND_COLLECTION_SLOT_MACHINE) != 0 || self->skill_use.type == 1)
         return verdict;
 
@@ -225,20 +215,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
     struct UIMerchantShopMakeWnd *shop;
     struct GameActor *pet;
     struct Player *player;
-    int x = -1, y = -1, i, j, radius, placing, due;
-
-    wnd = ui_window_find(WND_MACRO_REPORTER);
-    if (wnd != 0 && ui_macro_reporter_picking(wnd) && ui_macro_reporter_area(wnd) == 1) {
-        game_mode_pick_ground_cell(self, &x, &y);
-        radius = ui_macro_reporter_radius(wnd);
-        for (i = -radius; i <= radius; i++)
-            for (j = -radius; j <= radius; j++)
-                draw_cell(self, x + i, y + j, 0x660000ff);
-        if (g_mouse.button[MOUSE_RIGHT] == BUTTON_PRESSED) {
-            macro_reporter_request_players_in_range((WORD)x, (WORD)y, (BYTE)radius);
-            return -1;
-        }
-    }
+    int x = -1, y = -1, placing, due;
 
     wnd = g_windowMgr.merchant_shop_make_wnd;
     if (wnd == 0 && g_windowMgr.buying_store_make_wnd != 0)

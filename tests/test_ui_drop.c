@@ -11,12 +11,9 @@
 #include "session/state.h"
 
 typedef void (*DropCase)(int, int, const struct DragInfo *, int);
-void test_grade_drop(int, int, const struct DragInfo *, int);
 void test_refine_drop(int, int, const struct DragInfo *, int);
 void test_bitmap_tab_drop(int, int, const struct DragInfo *, int);
 void test_tab_drop(int, int, const struct DragInfo *, int);
-void test_cart_drop(int, int, const struct DragInfo *, int);
-void test_goods_drop(int, int, const struct DragInfo *, int);
 void test_button_drop(int, int, const struct DragInfo *, int);
 void test_window_drop(int, int, const struct DragInfo *, int);
 void test_item_base_drop(int, int, const struct DragInfo *, int);
@@ -47,20 +44,6 @@ static int on_message(struct UIWindow *window, struct UIWindow *sender, int mess
     assert(message == 0x17 && a == expected_drag->index && !b && !c && !d);
     assert(!completions && !forwards);
     ++messages;
-    return 0;
-}
-struct ItemInfo *session_get_inventory_item(struct Session *session, struct ItemInfo *out, int index)
-{
-    assert(session == &g_session1 && active);
-    assert(index == expected_drag->index);
-    assert(!completions && !forwards);
-    ++messages;
-    memset(out, 0, sizeof *out);
-    return out;
-}
-int session_is_in_switch_sets(struct Session *session, int index)
-{
-    assert(session == &g_session1 && !index);
     return 0;
 }
 void string_free(struct String *text) { assert(text && !text->data); }
@@ -127,10 +110,9 @@ int main(void)
 {
     struct DragInfo drag = {0};
     static const DropCase forwarding[] = {test_bitmap_tab_drop, test_tab_drop,
-        test_cart_drop, test_goods_drop, test_button_drop};
+        test_button_drop};
     size_t i;
     int parent;
-    item_box(test_grade_drop, 53, 114);
     item_box(test_refine_drop, 109, 201);
     for (i = 0; i < sizeof forwarding / sizeof forwarding[0]; ++i)
         for (parent = 0; parent < 2; ++parent) {

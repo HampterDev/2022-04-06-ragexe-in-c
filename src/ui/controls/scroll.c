@@ -100,52 +100,6 @@ const struct UIWindowOps ui_scroll_bar3_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-struct UIScrollBar_Custom;
-const struct UIWindowOps ui_scroll_bar_custom_ops = {
-    .destroy = ui_scroll_bar_custom_destroy,
-    .resize = ui_scroll_bar_resize,
-    .is_frame = 0,
-    .refreshes_children = 0,
-    .move = ui_window_move_base,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_scroll_bar_is_click_through,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_window_save_pos_base,
-    .move_delta = ui_window_move_delta_base,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_scroll_bar_custom_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_scroll_bar_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_scroll_bar_on_l_btn_dbl_clk,
-    .on_mouse_move = ui_scroll_bar_on_mouse_move,
-    .on_mouse_hover = ui_window_on_mouse_hover_base,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_scroll_bar_on_mouse_shape,
-    .on_l_btn_up = ui_scroll_bar_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_scroll_bar_on_r_btn_up,
-    .on_wheel = ui_scroll_bar_on_wheel,
-    .snap = ui_window_snap_base,
-    .send_msg = ui_window_send_msg_base,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_WINDOW,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
 const struct UIWindowOps ui_scroll_bar_navi_ops = {
     .destroy = ui_scroll_bar_navi_destroy,
     .resize = ui_scroll_bar_resize,
@@ -565,76 +519,6 @@ void ui_scroll_bar3_on_draw(struct UIWindow *window)
     self->min_thumb = 0;
 }
 
-struct UIScrollBar_Custom *ui_scroll_bar_custom_construct(struct UIScrollBar_Custom *self)
-{
-    ui_scroll_bar_construct(&self->bar);
-    self->bar.base.ops = &ui_scroll_bar_custom_ops;
-    self->track_top = NULL;
-    self->track_mid = NULL;
-    self->track_bottom = NULL;
-    self->arrow_up = NULL;
-    self->arrow_down = NULL;
-    self->thumb_top = NULL;
-    self->thumb_mid = NULL;
-    self->thumb_bottom = NULL;
-    return self;
-}
-
-void ui_scroll_bar_custom_destroy(struct UIWindow *window)
-{
-    struct UIScrollBar_Custom *self = (struct UIScrollBar_Custom *)window;
-    self->bar.base.ops = &ui_scroll_bar_custom_ops;
-    ui_scroll_bar_destruct(&self->bar);
-    mem_free(self);
-}
-
-void ui_scroll_bar_custom_on_draw(struct UIWindow *window)
-{
-    struct UIScrollBar_Custom *self = (struct UIScrollBar_Custom *)window;
-    struct UIScrollBar *bar = &self->bar;
-    struct UIWindow *wnd = &bar->base;
-    int top_h, mid_h, i, y, thumb_top, thumb_size, n;
-
-    ui_window_clear_canvas(wnd, UI_TRANSPARENT);
-    if (!bar->max_pos || bar->orientation != UI_SCROLL_VERT)
-        return;
-
-    top_h = 0;
-    if (self->track_top) {
-        top_h = self->track_top->height;
-        ui_window_draw_bitmap(wnd, 0, 0, self->track_top, 0);
-    }
-    mid_h = 0;
-    if (self->track_mid) {
-        mid_h = self->track_mid->height;
-        for (i = 0, y = top_h; i < (wnd->height - top_h) / mid_h; i++, y += mid_h)
-            ui_window_draw_bitmap(wnd, 0, y, self->track_mid, 0);
-    }
-    if (self->track_bottom && (wnd->height - top_h) % mid_h > 0)
-        ui_window_draw_bitmap(wnd, 0, wnd->height - self->track_bottom->height, self->track_bottom, 0);
-    if (self->arrow_up)
-        ui_window_draw_bitmap(wnd, 0, 0, self->arrow_up, 1);
-    if (self->arrow_down)
-        ui_window_draw_bitmap(wnd, 0, wnd->height - self->arrow_down->height, self->arrow_down, 1);
-
-    thumb_top = ui_scroll_bar_thumb_pos(bar) + bar->button_size;
-    thumb_size = ui_scroll_bar_get_thumb_size(bar);
-    top_h = 0;
-    if (self->thumb_top) {
-        top_h = self->thumb_top->height;
-        ui_window_draw_bitmap(wnd, 0, thumb_top, self->thumb_top, 1);
-    }
-    if (self->thumb_mid) {
-        mid_h = self->thumb_mid->height;
-        n = (thumb_size - top_h) / mid_h;
-        for (i = 0, y = thumb_top + top_h; i < n; i++, y += mid_h)
-            ui_window_draw_bitmap(wnd, 0, y, self->thumb_mid, 1);
-    }
-    if (self->thumb_bottom)
-        ui_window_draw_bitmap(wnd, 0, thumb_size - self->thumb_bottom->height + thumb_top,
-                            self->thumb_bottom, 1);
-}
-
 struct UIScrollBar *ui_scroll_bar_navi_construct(struct UIScrollBar *self)
 {
     ui_scroll_bar_construct(self);
@@ -689,56 +573,6 @@ void ui_scroll_bar_navi_on_draw(struct UIWindow *window)
     }
     self->min_thumb = 0;
     ui_window_invalidate(self->base.parent);
-}
-
-void ui_scroll_bar_create_sized(struct UIScrollBar *self, int x, int y, int length,
-                                        int orientation, int button_size, int thickness)
-{
-    int width = 0, height = 0;
-
-    self->orientation = orientation;
-    self->button_size = button_size;
-    self->thickness = thickness;
-    if (orientation == UI_SCROLL_HORZ) {
-        width = length;
-        height = thickness;
-    } else if (orientation == UI_SCROLL_VERT) {
-        width = thickness;
-        height = length;
-    }
-    ui_window_resize_base(&self->base, width, height);
-    ui_window_move_base(&self->base, x, y);
-    ui_window_on_create_base(&self->base, width, height);
-}
-
-static struct BitmapRes *bitmap_of(const struct String *path)
-{
-    struct String copy;
-
-    string_copy(&copy, path);
-    return (struct BitmapRes *)res_mgr_get_string(g_resMgr(), copy);
-}
-
-void ui_scroll_bar_custom_set_arrows(struct UIScrollBar_Custom *self, struct String up,
-                                             struct String down)
-{
-    self->arrow_up = bitmap_of(&up);
-    self->arrow_down = bitmap_of(&down);
-    ui_window_invalidate_base(&self->bar.base);
-    string_free(&up);
-    string_free(&down);
-}
-
-void ui_scroll_bar_custom_set_thumb(struct UIScrollBar_Custom *self, struct String top,
-                                            struct String mid, struct String bottom)
-{
-    self->thumb_top = bitmap_of(&top);
-    self->thumb_mid = bitmap_of(&mid);
-    self->thumb_bottom = bitmap_of(&bottom);
-    ui_window_invalidate_base(&self->bar.base);
-    string_free(&top);
-    string_free(&mid);
-    string_free(&bottom);
 }
 
 void ui_scroll_bar_set_pos(struct UIScrollBar *self, int pos)

@@ -169,10 +169,6 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     }
     GET("ITEMSTOREWNDINFO.findWnd", &self->item_store_info.find_wnd);
     GET_RECT("ITEMSTOREFINDWNDINFO", &self->item_store_find_info);
-    GET_RECT("BOOKINGLISTWNDINFO", &self->booking_list_info);
-    GET_RECT("BOOKINGMBWNDINFO", &self->booking_mb_info);
-    GET_RECT("BOOKINGWNDINFO", &self->booking_info);
-    GET_RECT("BOOKINGMBCHECKWNDINFO", &self->booking_mb_check_info);
     GET_RECT("ITEMSHOPWNDINFO", &self->item_shop_info);
     GET_RECT("ITEMSELLWNDINFO", &self->item_sell_info);
     GET_RECT("ITEMPURCHASEWNDINFO", &self->item_purchase_info);
@@ -225,8 +221,6 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET("ACHTRACINGWNDINFO.Y", &self->ach_tracing_pos.y);
     GET("PREVIEWEQUIPWNDINFO.X", &self->preview_equip_pos.x);
     GET("PREVIEWEQUIPWNDINFO.Y", &self->preview_equip_pos.y);
-    GET("SWAPEQUIPMENTWNDINFO.X", &self->swap_equipment_pos.x);
-    GET("SWAPEQUIPMENTWNDINFO.Y", &self->swap_equipment_pos.y);
     GET_RECT("DETAILLEVELWNDINFO", &self->graphic_setting_info);
     GET_RECT("PETINFOWNDINFO", &self->pet_info_info);
     GET_RECT("HOMUNINFOWNDINFO", &self->homun_info_info);
@@ -340,10 +334,6 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     }
     SET("ITEMSTOREWNDINFO.findWnd", &self->item_store_info.find_wnd);
     SET_RECT("ITEMSTOREFINDWNDINFO", &self->item_store_find_info);
-    SET_RECT("BOOKINGLISTWNDINFO", &self->booking_list_info);
-    SET_RECT("BOOKINGMBWNDINFO", &self->booking_mb_info);
-    SET_RECT("BOOKINGWNDINFO", &self->booking_info);
-    SET_RECT("BOOKINGMBCHECKWNDINFO", &self->booking_mb_check_info);
     SET_RECT("ITEMSHOPWNDINFO", &self->item_shop_info);
     SET_RECT("ITEMSELLWNDINFO", &self->item_sell_info);
     SET_RECT("ITEMPURCHASEWNDINFO", &self->item_purchase_info);
@@ -395,8 +385,6 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET("ACHTRACINGWNDINFO.Y", &self->ach_tracing_pos.y);
     SET("PREVIEWEQUIPWNDINFO.X", &self->preview_equip_pos.x);
     SET("PREVIEWEQUIPWNDINFO.Y", &self->preview_equip_pos.y);
-    SET("SWAPEQUIPMENTWNDINFO.X", &self->swap_equipment_pos.x);
-    SET("SWAPEQUIPMENTWNDINFO.Y", &self->swap_equipment_pos.y);
     SET_RECT("DETAILLEVELWNDINFO", &self->graphic_setting_info);
     SET_RECT("PETINFOWNDINFO", &self->pet_info_info);
     SET_RECT("HOMUNINFOWNDINFO", &self->homun_info_info);

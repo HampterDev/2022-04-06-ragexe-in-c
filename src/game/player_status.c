@@ -172,7 +172,6 @@ enum {
     JOB_GUILLOTINE_CROSS_T = 4065,
     JOB_BABY_GUILLOTINE_CROSS = 4101,
     JOB_BABY_NINJA = 4222,
-    JOB_SHADOW_CROSS = 4254,
 };
 
 static void action_failure_line(int msg, unsigned color)
@@ -194,7 +193,6 @@ static int ammo_kind_message(int job)
     case JOB_GUILLOTINE_CROSS:
     case JOB_GUILLOTINE_CROSS_T:
     case JOB_BABY_GUILLOTINE_CROSS:
-    case JOB_SHADOW_CROSS:
         return MSG_AMMO_KIND_ASSASSIN;
     default:
         return MSG_AMMO_KIND;

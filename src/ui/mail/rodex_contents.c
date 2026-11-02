@@ -362,12 +362,6 @@ void ui_rodex_contents_wnd_on_draw(struct UIWindow *window)
         ui_window_draw_bitmap(wnd, x - 4, 0x13f, res_mgr_get(g_resMgr(), RODEX_DIR "shadow_item_on.bmp"),
                             1);
         ui_window_draw_item_icon_count(wnd, x, ITEM_ROW_TOP, item, 0, 0);
-        if (item->grade > 0) {
-            string_init(&text);
-            string_format(&text, UI_SKIN "grade_enchant\\grade_icon%d.bmp", item->grade);
-            ui_window_draw_bitmap(wnd, x, 0x141, res_mgr_get(g_resMgr(), string_cstr(&text)), 1);
-            string_free(&text);
-        }
     }
 }
 
@@ -420,12 +414,9 @@ void ui_rodex_contents_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
 
 static void take(struct UIRodexContentsWnd *self, WORD id, struct UIBitmapButton *btn)
 {
-    struct Mode *mode = game_current_base_mode();
     struct PacketRodexTake packet;
     int len;
 
-    if (mode && game_mode_is_blocking_window_open() == 1)
-        return;
     packet.id = id;
     packet.mail_id = g_rodex->open_mail_id;
     packet.open_type = g_rodex->open_type;

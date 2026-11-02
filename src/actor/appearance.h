@@ -29,7 +29,6 @@ struct PlayerAppearance {
 
 int player_get_appearance(struct Player *player, struct PlayerAppearance *appearance);
 int player_state(const struct Player *player);
-int player_has_cast_gauge(const struct Player *player);
 
 struct ActorLook {
     int job, sex, head;

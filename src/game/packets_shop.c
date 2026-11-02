@@ -3,7 +3,6 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
-#include "contents/connection_api.h"
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +16,6 @@
 #define WND_SHOP_BUY            0x16
 #define WND_SHOP_BUY_CART       0x17
 #define WND_SHOP_SELL           0x18
-#define WND_CASH_SHOP           0x13e
 #define SHOP_MSG_SET_MODE         0x24
 #define WND_MSG_SHOW            0x17
 
@@ -247,8 +245,6 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
     int count;
     void *wnd;
 
-    if (g_windowMgr.n_cash_wnd != 0 || ui_window_find(WND_CASH_SHOP))
-        return;
     session_clear_lists(&g_session1);
     if (g_session1.channelCopId == 1) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
@@ -331,105 +327,4 @@ void game_mode_zc_pc_cash_point_update(struct GameMode *self, const unsigned cha
         ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), color, 0, 0);
     }
     string_free(&line);
-}
-
-static void cash_error_line(struct String *line, int code, int msg)
-{
-    string_format(line, "- %d : %s", code, msg_str(msg));
-}
-
-#pragma pack(push, 1)
-struct PACKET_ZC_SE_PC_BUY_CASHITEM_RESULT {
-    unsigned short packet_type;
-    int item_id;
-    short result;
-    int cash_points;
-    int kafra_points;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_SE_PC_BUY_CASHITEM_RESULT, 16);
-
-void game_mode_zc_se_pc_buy_cashitem_result(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_SE_PC_BUY_CASHITEM_RESULT *packet = (const struct PACKET_ZC_SE_PC_BUY_CASHITEM_RESULT *)pkt;
-    struct String line;
-    int result = packet->result;
-
-    (void)self;
-    string_init(&line);
-    if (result == 0 || result == 8) {
-        void *shop = ui_window_find(WND_CASH_SHOP);
-
-        if (shop)
-            wnd_send(shop, 0x7a, packet->cash_points, packet->kafra_points, 0, 0);
-        if (packet->result == 8) {
-            const char *text = msg_str(0x716);
-
-            string_assign_cstr(&line, text);
-        }
-    } else if (result >= 9 && result <= 12) {
-        string_assign_cstr(&line, msg_str(0x798 + (result - 9)));
-    } else if (result == 0x12f || result == 0x130) {
-        cash_error_line(&line, result, result == 0x12f ? 0xf64 : 0xf65);
-        ui_window_mgr_message_box(&g_windowMgr, string_cstr(&line), 0, 0, 0, 0, "Error", 0x118, 0x78, 0);
-    } else {
-        const char *text = msg_str(0x39);
-
-        string_assign_cstr(&line, text);
-    }
-    if (line.size != 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), CHAT_COLOR_RED, 0, 0);
-    }
-    string_free(&line);
-}
-
-#define CZ_SE_CASHSHOP_CLOSE    0x844
-
-#pragma pack(push, 1)
-struct PACKET_ZC_SE_CASHSHOP_OPEN {
-    unsigned short packet_type;
-    int cash_points;
-    int kafra_points;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_SE_CASHSHOP_OPEN, 10);
-
-void game_mode_zc_se_cashshop_open(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_SE_CASHSHOP_OPEN *packet = (const struct PACKET_ZC_SE_CASHSHOP_OPEN *)pkt;
-    void *shop;
-    unsigned short close_packet;
-    int length;
-
-    (void)self;
-    if (ui_window_mgr_post_quit1(&g_windowMgr, WND_CASH_SHOP))
-        return;
-    shop = ui_window_open(WND_CASH_SHOP);
-    if (shop) {
-        wnd_send(shop, 0x78, packet->cash_points, packet->kafra_points, 0, 0);
-        return;
-    }
-    close_packet = CZ_SE_CASHSHOP_CLOSE;
-    length = rag_connection_get_packet_length(rag_connection_instance(), CZ_SE_CASHSHOP_CLOSE);
-    rag_connection_send_packet(rag_connection_instance(), length, &close_packet);
-}
-
-#pragma pack(push, 1)
-struct PACKET_ZC_SE_CASHSHOP_POINTS {
-    unsigned short packet_type;
-    int cash_points;
-    int kafra_points;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_SE_CASHSHOP_POINTS, 10);
-
-void game_mode_zc_se_cashshop_points(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_SE_CASHSHOP_POINTS *packet = (const struct PACKET_ZC_SE_CASHSHOP_POINTS *)pkt;
-    void *shop = ui_window_find(WND_CASH_SHOP);
-
-    (void)self;
-    if (shop)
-        wnd_send(shop, 0x7a, packet->cash_points, packet->kafra_points, 0, 0);
 }

@@ -40,7 +40,6 @@ enum {
     JOB_MINSTREL = 4068, JOB_WANDERER = 4069,
     JOB_MINSTREL_H = 4075, JOB_WANDERER_H = 4076,
     JOB_BABY_MINSTREL = 4104, JOB_BABY_WANDERER = 4105,
-    JOB_TROUBADOUR = 4263, JOB_TROUVERE = 4264,
     SEX_FEMALE = 0, SEX_MALE = 1,
 };
 
@@ -49,10 +48,10 @@ int game_mode_job_sex(struct GameMode *self, int job, int sex)
     (void)self;
     switch (job) {
     case JOB_BARD: case JOB_CLOWN: case JOB_BABY_BARD: case JOB_MINSTREL: case JOB_MINSTREL_H:
-    case JOB_BABY_MINSTREL: case JOB_TROUBADOUR:
+    case JOB_BABY_MINSTREL:
         return SEX_MALE;
     case JOB_DANCER: case JOB_GYPSY: case JOB_BABY_DANCER: case JOB_WANDERER: case JOB_WANDERER_H:
-    case JOB_BABY_WANDERER: case JOB_TROUVERE:
+    case JOB_BABY_WANDERER:
         return SEX_FEMALE;
     default:
         return sex;

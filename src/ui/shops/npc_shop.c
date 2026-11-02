@@ -195,15 +195,6 @@ void shop_draw_lines(struct UIItemBaseWnd *base, int hover, int priced, const ch
         } else {
             ui_window_draw_item_name(wnd, col_x + 0x4c, row_y + 0x1d, info, 0, 0);
         }
-        if (info->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-            ui_window_draw_bitmap(wnd, col_x + 0x2c, row_y + 0x21,
-                                res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
         if (priced) {
             char text[0x40], money[0x40];
             int len;

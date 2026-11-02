@@ -207,7 +207,6 @@ enum {
     MODE_MSG_SKILL_SELECT_RESPONSE = 0x100,
     MODE_MSG_GROUP_INFO_CHANGE = 0x103,
     MODE_MSG_CHANGE_GROUP_MASTER = 0x104,
-    MODE_MSG_OPEN_SEEK_PARTY_MB_WND = 0x105,
     MODE_MSG_NPC_MARKET_PURCHASE = 0x106,
     MODE_MSG_NPC_MARKETGEAR_PURCHASE = 0x107,
     MODE_MSG_PARTY_JOIN_MASTER_ACK = 0x108,
@@ -215,7 +214,6 @@ enum {
     MODE_MSG_ITEMLISTWIN_SEND = 0x10a,
     MODE_MSG_ITEMLISTWIN_CANCEL = 0x10b,
     MODE_MSG_OPEN_WRITE_RODEX = 0x10c,
-    MODE_MSG_OPEN_SEEK_PARTY_LIST_WND = 0x10d,
     MODE_MSG_CLOSE_BUYING_STORE = 0x10e,
     MODE_MSG_OPEN_BUYING_STORE = 0x10f,
     MODE_MSG_CLICK_BUYING_STORE = 0x110,
@@ -233,10 +231,6 @@ enum {
     MODE_MSG_CREATE_ASSISTANT_BUYING = 0x12a,
     MODE_MSG_CANCEL_ASSISTANT_BUYING = 0x12b,
     MODE_MSG_DESTROY_STORE_ASSISTANT = 0x12d,
-    MODE_MSG_ADD_SWAP_EQUIP = 0x12e,
-    MODE_MSG_REMOVE_SWAP_EQUIP = 0x12f,
-    MODE_MSG_DO_SWAP_EQUIP = 0x130,
-    MODE_MSG_SWAP_EQUIP_1_ON_1 = 0x131,
     MODE_MSG_MEMORIAL_DUNGEON_COMMAND = 0x132,
     MODE_MSG_NPC_BARTER_PURCHASE = 0x134,
     MODE_MSG_NPC_BARTER_CLOSE = 0x135,
@@ -244,17 +238,11 @@ enum {
     MODE_MSG_EXTEND_BODYITEM = 0x137,
     MODE_MSG_CLOSE_EXTEND_BODYITEM = 0x138,
     MODE_MSG_SHORTCUT_KEY_CHANGE = 0x139,
-    MODE_MSG_ADVANCED_STATUS_CHANGE = 0x13a,
     MODE_MSG_MOVE_GUILD_AGIT = 0x13b,
     MODE_MSG_AGIT_INVESTMENT = 0x13c,
     MODE_MSG_PRISON = 0x13d,
-    MODE_MSG_OPEN_LIMITED_SALE_TOOL = 0x13e,
-    MODE_MSG_CLOSE_LIMITED_SALE_TOOL = 0x13f,
-    MODE_MSG_LIMITED_SALE_LIST = 0x140,
     MODE_MSG_NPC_EXPANDED_BARTER_PURCHASE = 0x141,
     MODE_MSG_NPC_EXPANDED_BARTER_CLOSE = 0x142,
-    MODE_MSG_OPEN_CASH_SHOP = 0x143,
-    MODE_MSG_REBUILD_STATUS_BARS = 0x144,
     MODE_MSG_RESET_SKILL = 0x146,
 };
 
@@ -449,18 +437,11 @@ int game_mode_msg_rodex_item(int add, int index, int count);
 int game_mode_msg_rodex_mail(unsigned short id, int mail_id, int type);
 int game_mode_msg_return_mail(int mail_id, const char *name);
 int game_mode_msg_open_write_rodex(const char *receiver);
-int game_mode_msg_add_swap_equip(struct GameMode *self, int index, unsigned location);
-int game_mode_msg_remove_swap_equip(struct GameMode *self, int slot, int swap_set);
-int game_mode_msg_do_swap_equip(void);
-int game_mode_msg_swap_equip1_on1(const struct ItemInfo *item);
-int game_mode_msg_limited_sale_list(void);
 int game_mode_msg_toggle_player_gauge(struct GameMode *self);
-int game_mode_msg_relayout_player_gauge(struct GameMode *self);
 struct NpcClick;
 int game_mode_msg_connection_lost(struct GameMode *self);
 int game_mode_msg_contact_npc(struct GameMode *self, const struct NpcClick *click);
 int game_mode_msg_status_change(struct GameMode *self, int status, int amount);
-int game_mode_msg_advanced_status_change(struct GameMode *self, int status, int amount);
 int game_mode_msg_req_status(struct GameMode *self);
 int game_mode_msg_emotion(struct GameMode *self, int emotion);
 int game_mode_msg_request_move(struct GameMode *self, int x, int y);
@@ -480,7 +461,6 @@ int game_mode_msg_make_item(int item_id, const struct ItemInfo *stones);
 int game_mode_msg_repair_item(const void *item);
 int game_mode_msg_add_friend_answer(int aid, int char_id, int answer);
 int game_mode_msg_shortcut_key_change(int index, int page);
-int game_mode_msg_open_cash_shop(int tab);
 int game_mode_msg_scream_line(int which);
 
 struct PickInfo;

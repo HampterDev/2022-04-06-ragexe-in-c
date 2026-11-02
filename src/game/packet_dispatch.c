@@ -8,12 +8,9 @@
 #include "game/ground_item_packets.h"
 #include "game/item_list_packets.h"
 #include "game/item_upgrade.h"
-#include "game/macro_detector.h"
 #include "game/navigation.h"
 #include "game/packet_data.h"
 #include "game/packet_handlers.h"
-#include "game/packets_macro_detector.h"
-#include "game/party_booking_packets.h"
 #include "game/quest_packets.h"
 #include "platform/error_message.h"
 #include "session/skill_commands.h"
@@ -471,7 +468,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_QUEST_NOTIFY_EFFECT: game_mode_zc_quest_notify_effect(self, (const struct PACKET_ZC_QUEST_NOTIFY_EFFECT *)pkt); break;
     case HEADER_ZC_REQ_GROUPINFO_CHANGE_V2: game_mode_zc_req_groupinfo_change_v2(pkt); break;
     case HEADER_ZC_HO_PAR_CHANGE: game_mode_zc_ho_par_change(pkt); break;
-    case HEADER_ZC_SEEK_PARTY: game_mode_zc_seek_party(self, pkt); break;
     case HEADER_ZC_SKILLINFO_UPDATE2:
     {
         const struct PACKET_ZC_SKILLINFO_UPDATE2 *packet = (const struct PACKET_ZC_SKILLINFO_UPDATE2 *)pkt;

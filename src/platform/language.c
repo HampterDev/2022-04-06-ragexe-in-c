@@ -110,7 +110,7 @@ void language_paste(struct Language *self)
     HANDLE data;
     const char *text;
 
-    if (g_windowMgr.macro_detector_edit == ui_window_mgr_get_focus_edit(&g_windowMgr))
+    if (ui_window_mgr_get_focus_edit(&g_windowMgr) == NULL)
         return;
     if (!OpenClipboard(g_hMainWnd))
         return;

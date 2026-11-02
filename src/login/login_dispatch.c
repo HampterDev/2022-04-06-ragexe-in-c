@@ -11,7 +11,6 @@
 #include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_names.h"
-#include "ui/character/select_char_new.h"
 #include "core/unknown_packet.h"
 #include "core/packet_table.h"
 
@@ -88,11 +87,6 @@ struct PACKET_HC_MAP_STATES {
     WORD packet_length;
     struct PACKET_MAP_STATE_ENTRY entries[];
 };
-struct PACKET_HC_SECOND_PASSWD_ACK {
-    WORD packet_type;
-    WORD result;
-    DWORD value;
-};
 struct PACKET_HC_RESULT_SHORT {
     WORD packet_type;
     WORD packet_length;
@@ -136,7 +130,6 @@ SIZE_ASSERT(PACKET_HC_NOTIFY_ZONESVR2, 28 + 0x80);
 SIZE_ASSERT(PACKET_HC_ACCEPT_ENTER2, 0x18);
 SIZE_ASSERT(PACKET_MAP_STATE_ENTRY, 0x14);
 SIZE_ASSERT(PACKET_HC_MAP_STATES, 4);
-SIZE_ASSERT(PACKET_HC_SECOND_PASSWD_ACK, 8);
 SIZE_ASSERT(PACKET_HC_RESULT_SHORT, 6);
 SIZE_ASSERT(PACKET_AC_REFUSE_LOGIN3, 7);
 SIZE_ASSERT(PACKET_HC_UPDATE_CHARINFO, 0xb1);
@@ -391,84 +384,6 @@ static void on_map_states(struct LoginMode *self)
     self->base.next_sub_mode = 0x1e;
 }
 
-static void pin_box(struct LoginMode *self, int wnd, int msg, int toSelect)
-{
-    ui_window_mgr_post_quit1(&g_windowMgr, wnd);
-    notice(msg);
-    if (toSelect)
-        self->base.next_sub_mode = 7;
-}
-
-static void on_pin_make_result(struct LoginMode *self)
-{
-    const struct PACKET_HC_SECOND_PASSWD_ACK *packet = (const struct PACKET_HC_SECOND_PASSWD_ACK *)g_packetBuffer;
-
-    (g_session1.pinResultValue) = packet->value;
-    switch (packet->result) {
-    case 0: pin_box(self, 0xc8, 0x761, 0); break;
-    case 1: pin_box(self, 0xc8, 0x76a, 1); break;
-    case 2: pin_box(self, 0xc8, 0x768, 1); break;
-    case 3: pin_box(self, 0xc8, 0x769, 1); break;
-    case 4: pin_box(self, 0xc8, 0x765, 1); break;
-    }
-}
-
-static void on_pin_delete_result(struct LoginMode *self)
-{
-    const struct PACKET_HC_SECOND_PASSWD_ACK *packet = (const struct PACKET_HC_SECOND_PASSWD_ACK *)g_packetBuffer;
-
-    (g_session1.pinResultValue) = packet->value;
-    switch (packet->result) {
-    case 0: pin_box(self, 0xc8, 0x762, 0); break;
-    case 1: pin_box(self, 0xc8, 0x766, 1); break;
-    }
-}
-
-static void on_pin_edit_result(struct LoginMode *self)
-{
-    const struct PACKET_HC_SECOND_PASSWD_ACK *packet = (const struct PACKET_HC_SECOND_PASSWD_ACK *)g_packetBuffer;
-
-    (g_session1.pinResultValue) = packet->value;
-    switch (packet->result) {
-    case 0: pin_box(self, 0xc7, 0x763, 0); break;
-    case 1: pin_box(self, 0xc7, 0x767, 1); break;
-    case 2: pin_box(self, 0xc7, 0x768, 1); break;
-    case 3: pin_box(self, 0xc7, 0x769, 1); break;
-    }
-}
-
-static void on_pin_disable_result(struct LoginMode *self)
-{
-    const struct PACKET_HC_SECOND_PASSWD_ACK *packet = (const struct PACKET_HC_SECOND_PASSWD_ACK *)g_packetBuffer;
-
-    (g_session1.pinResultValue) = packet->value;
-    switch (packet->result) {
-    case 0:
-        pin_box(self, 0xc7, 0x76d, 0);
-        ui_new_select_char_wnd_show_button((struct UINewSelectCharWnd *)g_windowMgr.new_select_char_wnd, 0x19a);
-        (g_session1.pinState) = 1;
-        break;
-    case 1:
-        pin_box(self, 0xc7, 0x76e, 1);
-        break;
-    }
-}
-
-static void on_pin_enable_result(struct LoginMode *self)
-{
-    const struct PACKET_HC_SECOND_PASSWD_ACK *packet = (const struct PACKET_HC_SECOND_PASSWD_ACK *)g_packetBuffer;
-
-    switch (packet->result) {
-    case 0:
-        pin_box(self, 0xc7, 0x76f, 0);
-        ui_new_select_char_wnd_hide_button((struct UINewSelectCharWnd *)g_windowMgr.new_select_char_wnd, 0x19a);
-        break;
-    case 1:
-        pin_box(self, 0xc7, 0x770, 1);
-        break;
-    }
-}
-
 static void on_char_list_notify(void)
 {
     const struct PACKET_HC_CHARLIST_NOTIFY *packet = (const struct PACKET_HC_CHARLIST_NOTIFY *)g_packetBuffer;
@@ -617,12 +532,7 @@ void login_mode_process_packets(struct LoginMode *self)
         }
         case 0x840: on_map_states(self); break;
         case 0x851: game_mode_ignore_packet(g_packetBuffer); break;
-        case 0x8b9: login_mode_on_pin_state2(self, g_packetBuffer); break;
-        case 0x8bb: on_pin_make_result(self); break;
-        case 0x8bd: on_pin_delete_result(self); break;
-        case 0x8bf: on_pin_edit_result(self); break;
-        case 0x8c4: on_pin_disable_result(self); break;
-        case 0x8c6: on_pin_enable_result(self); break;
+        case 0x8b9: login_mode_on_pin_state(self, g_packetBuffer); break;
         case 0x8d5:
         case 0xb70:
             if (((const struct PACKET_HC_RESULT_SHORT *)g_packetBuffer)->result == 1)

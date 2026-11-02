@@ -42,15 +42,10 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
     case 0x111: return self->mini_map_wnd;
     case 0x113: return self->bank_new_wnd;
     case 0x115: return self->new_select_char_wnd;
-    case 0x11d: return self->macro_detector_wnd;
-    case 0x11e: return self->macro_reporter_wnd;
-    case 0x11f: return self->macro_user_info_wnd;
-    case 0x120: return self->captcha_preview_wnd;
     case 0x12d:
         if (self->plates.size)
             return *LIST_VALUE(self->plates.head->next, struct UIWindow *);
-        return self->cash_shop_wnd;
-    case 0x13e: return self->cash_shop_wnd;
+        return NULL;
     case 0x145: return self->rpimage_wnd2;
     }
     entry = tree_find(&self->windows_by_id, &window_id, tree_less_int);
@@ -71,12 +66,12 @@ BYTE ui_window_mgr_is_untracked_id(struct UIWindowMgr *self, int window_id)
     case 0x4f: case 0x50: case 0x51: case 0x5a: case 0x5b: case 0x5e: case 0x5f: case 0x63: case 0x64:
     case 0x65: case 0x68: case 0x69: case 0x6b: case 0x6d: case 0x6f: case 0x73: case 0x74: case 0x7b:
     case 0x7c: case 0x7f: case 0x80: case 0x82: case 0x83: case 0x85: case 0x88: case 0x89: case 0x8a:
-    case 0x90: case 0x9a: case 0x9c: case 0x9e: case 0x9f: case 0xa0: case 0xa1: case 0xa4: case 0xaf:
+    case 0x90: case 0x9a: case 0x9c: case 0x9e: case 0x9f: case 0xa0: case 0xa1: case 0xaf:
     case 0xb0: case 0xb1: case 0xb3: case 0xb4: case 0xb6: case 0xb7: case 0xba:  case 0xbd:
-    case 0xbe: case 0xc4:  case 0xc7: case 0xc8: case 0xcc: case 0xe3: case 0xfd:
+    case 0xc4:  case 0xcc: case 0xe3: case 0xfd:
     case 0x101: case 0x102:
-    case 0x106: case 0x10b: case 0x10f: case 0x115: case 0x116:
-    case 0x11d: case 0x11e: case 0x121: case 0x127: case 0x133: case 0x145: case 0x14c: case 0x157:
+    case 0x106: case 0x10f: case 0x115: case 0x116:
+    case 0x121: case 0x127: case 0x133: case 0x145: case 0x14c: case 0x157:
     case UI_ID_NONE:
         return 1;
     case 0x91:
@@ -468,16 +463,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0xa0: closed = close_slot(self, &self->item_shop_wnd2); break;
     case 0xa1: closed = close_slot(self, &self->item_sell_wnd2); break;
     case 0xa3: closed = close_slot(self, &self->mix_accept_wnd); break;
-    case 0xa4:
-        if (close_slot(self, &self->seek_party_wnd)) {
-            g_session1.partyBooking.window_open = 0;
-            closed = 1;
-        }
-        break;
-    case 0xa8: closed = close_slot(self, &self->seek_party_mbwnd); break;
-    case 0xa9: closed = close_slot(self, &self->seek_party_list_wnd); break;
-    case 0xaa: closed = close_slot(self, &self->job_list_wnd); break;
-    case 0xad: closed = close_slot(self, &self->party_booking_help_wnd); break;
     case 0xae:
         ui_window_mgr_post_quit1(self, 0xaf);
         closed = close_slot(self, &self->buying_store_make_wnd);
@@ -495,13 +480,9 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = 1;
         }
         break;
-    case 0xb8: closed = close_slot(self, &self->n_cash_wnd); break;
 
-    case 0xbe: closed = close_slot(self, &self->n_cash_call_wnd); break;
     case 0xc4: closed = close_slot(self, &self->collection_system_wnd); break;
 
-    case 0xc7: closed = close_slot(self, &self->second_password_input_wnd); break;
-    case 0xc8: closed = close_slot(self, &self->second_password_edit_wnd); break;
     case 0xc9: closed = close_slot(self, &self->monster_display_wnd); break;
     case 0xcb: closed = close_slot(self, &self->navigation_v4_wnd); break;
     case 0xcc: closed = close_slot(self, &self->quest_display_wnd); break;
@@ -560,20 +541,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
             closed = 1;
         }
         break;
-    case 0x11d:
-        if (close_slot(self, &self->macro_detector_wnd)) {
-            self->macro_detector_edit = NULL;
-            closed = 1;
-        }
-        break;
-    case 0x11e:
-        if (close_slot(self, &self->macro_reporter_wnd)) {
-            self->macro_reporter_info.open = 0;
-            closed = 1;
-        }
-        break;
-    case 0x11f: closed = close_slot(self, &self->macro_user_info_wnd); break;
-    case 0x120: closed = close_slot(self, &self->captcha_preview_wnd); break;
     case 0x131:
         wnd = ui_window_mgr_get_window(self, 0x131);
         if (wnd) {
@@ -581,12 +548,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
                 ui_window_mgr_post_quit1(&g_windowMgr, 0x1a);
             ui_window_mgr_post_quit2(self, wnd);
             closed = 1;
-        }
-        break;
-    case 0x13e:
-        if (close_slot(self, &self->cash_shop_wnd)) {
-            closed = 1;
-            send_packet_id(0x84a);
         }
         break;
     case 0x141:

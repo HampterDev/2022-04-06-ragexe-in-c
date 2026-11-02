@@ -158,14 +158,6 @@ void ui_item_identify_wnd_on_draw(struct UIWindow *window)
             ui_window_fill_rect(wnd, 5, y - 3, wnd->width - 0x18, 0x1e, ui_skin_colour(6, 2));
         ui_window_draw_item_icon(wnd, 8, y, item, 0);
         ui_window_draw_item_name(wnd, 0x28, y, item, 0, 0);
-        if (item->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", item->grade);
-            ui_window_draw_bitmap(wnd, 8, y + 0xc, res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
         if (++drawn == self->rows * self->columns)
             break;
     }

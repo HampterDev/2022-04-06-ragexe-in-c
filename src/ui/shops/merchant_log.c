@@ -233,15 +233,6 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     y = shown / self->base.columns * ITEM_GRID_CELL;
                     x = shown % self->base.columns * ITEM_GRID_CELL + 0x2c;
                     ui_window_draw_item_icon_count(wnd, x, y + 0x15, item, 0, 0);
-                    if (item->grade > 0) {
-                        struct String path;
-
-                        string_init(&path);
-                        string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)item->grade);
-                        ui_window_draw_bitmap(wnd, x, y + 0x21,
-                                            res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-                        string_free(&path);
-                    }
                     x = wnd->width - 0x172;
                     y += 0x1d;
                     memset(name, 0, sizeof name);

@@ -43,7 +43,8 @@ int main(void)
         const char *name = object_type_name(table);
         int is_window = !!(reference_valid_sources[i] & (UINT32_C(1) << OBJECT_FRAME_WINDOW));
         int has_name = is_window;
-        if (i == 479 || i == 333 || i == 589 || i == 590 || i == 220 || i == 354 || i == 244 || i == 229 || i == 289 || i == 455 || i == 31 || i == 468 || (i >= 294 && i <= 302) || (i >= 356 && i <= 360) || i == 511 || i == 23 || i == 140 || i == 269 || i == 270 || i == 271 || i == 596 || i == 597 || i == 467 || i == 521 || i == 249 || i == 250 || i == 496 || i == 226 || i == 524 || i == 219 || i == 252 || i == 588 || i == 551 || i == 599 || i == 507 || i == 508 || i == 509 || i == 510 || i == 540 || (i >= 303 && i <= 307)) {
+        if (i == 479 || i == 333 || i == 589 || i == 590 || i == 220 || i == 354 || i == 244 || i == 229 || i == 289 || i == 455 || i == 31 || i == 468 || (i >= 294 && i <= 302) || (i >= 356 && i <= 360) || i == 511 || i == 23 || i == 140 || i == 269 || i == 270 || i == 271 || i == 596 || i == 597 || i == 467 || i == 521 || i == 249 || i == 250 || i == 496 || i == 226 || i == 524 || i == 219 || i == 252 || i == 588 || i == 551 || i == 599 || i == 507 || i == 508 || i == 509 || i == 510 || i == 540 || (i >= 303 && i <= 307) || i == 378 || i == 472 || (i >= 535 && i <= 537) || i == 224 || i == 225 || (i >= 402 && i <= 404) || i == 533 || i == 534 || i == 566 || i == 178 || i == 228 || (i >= 230 && i <= 232) || i == 428 || i == 609 || i == 610 || i == 529 ||
+                i == 346 || (i >= 384 && i <= 389) || (i >= 318 && i <= 321) || i == 573 || i == 574 || i == 204) {
             static const struct { size_t index; const char *name; } retired_types[] = {
                 {479, "UIPetEvolutionWnd@@"},
                 {333, "UIGuildTipWnd@@"},
@@ -84,7 +85,27 @@ int main(void)
                 {540, "UISelectReplayDataWnd@@"},
                 {303, "UIEntryQueueHelpWnd@@"}, {304, "UIEntryQueueListBox@@"},
                 {305, "UIEntryQueueRequestWnd@@"}, {306, "UIEntryQueueStandByWnd@@"},
-                {307, "UIEntryQueueWnd@@"}
+                {307, "UIEntryQueueWnd@@"},
+                {378, "UIJobListWnd@@"}, {472, "UIPartyBookingHelpWnd@@"},
+                {535, "UISeekPartyListWnd@@"}, {536, "UISeekPartyMBWnd@@"}, {537, "UISeekPartyWnd@@"},
+                {224, "UICaptchaImage@@"}, {225, "UICaptchaPreviewWnd@@"},
+                {402, "UIMacroDetectorWnd@@"}, {403, "UIMacroReporterWnd@@"},
+                {404, "UIMacroUserInfoWnd@@"},
+                {533, "UISecondPasswordEditWnd@@"}, {534, "UISecondPasswordInputWnd@@"},
+                {566, "UIStorePasswordInputWnd@@"},
+                {178, "UIAccountLimitedToolWnd@@"}, {228, "UICashShopWnd@@"},
+                {230, "UICashShopWnd_Cart@@"}, {231, "UICashShopWnd_CartItem@@"},
+                {232, "UICashShopWnd_Item@@"}, {428, "UIMileageWnd@@"},
+                {609, "UInCashWnd@@"}, {610, "UInCash_CallWnd@@"},
+                {529, "UIScrollBar_Custom@@"},
+                {346, "UIIngredientInfoWnd@@"}, {384, "UILapineBoxWnd@@"},
+                {385, "UILapineBox_IngredientListWnd@@"}, {386, "UILapineScrollBar@@"},
+                {387, "UILapineUpgradeBoxWnd@@"}, {388, "UILapineUpgradeBox_IngredientInfoWnd@@"},
+                {389, "UILapineUpgradeBox_IngredientListWnd@@"},
+                {318, "UIGradeEnchantWnd@@"}, {319, "UIGradeEnchant_BtnEnhancedDown@@"},
+                {320, "UIGradeEnchant_BtnEnhancedUp@@"}, {321, "UIGradeEnchant_BtnStart@@"},
+                {573, "UISwapBitmapButton@@"}, {574, "UISwapEquipmentWnd@@"},
+                {204, "UIBarGraphPlayerAP@@"}
             };
             size_t entry;
             for (entry = 0; entry < sizeof retired_types / sizeof retired_types[0]; ++entry)
@@ -134,7 +155,7 @@ int main(void)
                        !strcmp(name, policy_names[policy]));
         }
     }
-    assert(named == 409 && windows == 388 && retired == 56);
+    assert(named == 373 && windows == 352 && retired == 92);
     assert(!strcmp(object_type_name(NULL), "?"));
     assert(!strcmp(object_type_name(unknown), "?"));
     assert(!strcmp(object_type_name(pages + system.dwPageSize), "?"));
@@ -143,9 +164,9 @@ int main(void)
         assert(!object_as_type(guarded, (enum ObjectType)kind));
     assert(!object_as_type(guarded, (enum ObjectType)-1));
     assert(!object_as_type(guarded, OBJECT_TYPE_COUNT));
-    assert(comparisons == 3375 && successes == 250);
+    assert(comparisons == 3087 && successes == 227);
     assert(VirtualFree(pages, 0, MEM_RELEASE));
-    printf("PASS: 555 concrete classes and fifty-six retired identities, 17 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
+    printf("PASS: 519 concrete classes and ninety-two retired identities, 17 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
     printf("PASS: %u C diagnostic names, %u window names preserve redraw and resize matches\n", named, windows);
     return 0;
 }

@@ -10,8 +10,8 @@ int ui_monster_gauge_hp(const struct UIWindow *window);
 int ui_monster_gauge_max_hp(const struct UIWindow *window);
 int ui_monster_gauge_two_bars(const struct UIWindow *window);
 
-enum PlayerGaugeBar { PLAYER_GAUGE_HP, PLAYER_GAUGE_SP, PLAYER_GAUGE_FOOD, PLAYER_GAUGE_AP };
-enum ValueGaugeStyle { VALUE_GAUGE_PLAYER, VALUE_GAUGE_AP, VALUE_GAUGE_HOMUN };
+enum PlayerGaugeBar { PLAYER_GAUGE_HP, PLAYER_GAUGE_SP, PLAYER_GAUGE_FOOD };
+enum ValueGaugeStyle { VALUE_GAUGE_PLAYER, VALUE_GAUGE_HOMUN };
 
 struct UIWindow *ui_player_gauge_create(void);
 void ui_player_gauge_set(struct UIWindow *window, enum PlayerGaugeBar bar,
@@ -23,7 +23,6 @@ void ui_value_gauge_set(struct UIWindow *window,
     struct GaugeValue current, struct GaugeValue maximum);
 
 struct UIBasicInfoWnd;
-void ui_basic_info_wnd_apply_job_layout(struct UIBasicInfoWnd *self);
 struct UIBasicInfoWnd *ui_basic_info_wnd_construct(struct UIBasicInfoWnd *self);
 struct UIWindow *ui_basic_info_wnd_new(void);
 void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height);
@@ -42,9 +41,9 @@ struct UIGage {
     COLORREF bar_colour;
     COLORREF second_colour;
     COLORREF low_colour;
-    COLORREF food_colour, food_low_colour, ap_colour;
+    COLORREF food_colour, food_low_colour;
 };
-SIZE_ASSERT(UIGage, 0x9c);
+SIZE_ASSERT(UIGage, 0x98);
 
 struct UIPcGage {
     struct UIGage gage;
@@ -52,7 +51,7 @@ struct UIPcGage {
     int hp, max_hp;
     int sp, max_sp;
 };
-SIZE_ASSERT(UIPcGage, 0xb0);
+SIZE_ASSERT(UIPcGage, 0xac);
 
 void ui_gage_set_back_colour(struct UIGage *self, COLORREF colour);
 struct UIMonsterGage *ui_monster_gage_new(void);

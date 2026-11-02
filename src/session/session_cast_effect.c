@@ -1,4 +1,3 @@
-#include "skills/skill_answer.h"
 #include "contents/sound.h"
 #include "session/state.h"
 #include "session/csession.h"
@@ -31,7 +30,6 @@ static void effect_by_level_if_unset(int level, int *effect)
 void session_get_cast_effect(struct Session *self, int skill, int *effect, int *action,
                                        int level, int job)
 {
-    struct SkillActionAnswer action_answer;
     int begin;
 
     *effect = 0x10;
@@ -60,7 +58,7 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
     case 0x39:
         *effect = 0x90;
     case 0x5: case 0x7: case 0x2a: case 0x2e: case 0x6e: case 0x1f3:
-    case 0x3f1: case 0x1453:
+    case 0x3f1:
         *action = 0x2;
         effect_by_level_if_unset(level, effect);
         return;
@@ -119,8 +117,7 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
     case 0x7f8: case 0x7fb: case 0x7fc: case 0x7fe: case 0x803: case 0x805:
     case 0x806: case 0x809: case 0x8fd: case 0x9e5: case 0x9e6: case 0x9e8:
     case 0x9e9: case 0xa13: case 0xa18: case 0x138c: case 0x13a4: case 0x13b2:
-    case 0x1454: case 0x1456: case 0x145a: case 0x145b: case 0x1494: case 0x201e:
-    case 0x20fd: case 0x2100: case 0x2103: case 0x2106: case 0x2109:
+    case 0x201e:
         *effect = 0xc;
         effect_by_level(level, effect);
         return;
@@ -147,7 +144,6 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
     case 0x132: case 0x134: case 0x137: case 0x169: case 0x16a: case 0x16f:
     case 0x17f: case 0x1e0: case 0x1e3: case 0x1e9: case 0x2b3: case 0x7dd:
     case 0x802: case 0x9d3: case 0xa16: case 0xa19: case 0xa1b: case 0x13d1:
-    case 0x1505:
         *effect = 0x3a;
         return;
     case 0x18d:
@@ -351,24 +347,7 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
     case 0x297: case 0x29a: case 0x29b: case 0x29c: case 0x2a3: case 0x2a4:
     case 0x2a6: case 0x2d1: case 0x2d4: case 0x2f5: case 0x2f6: case 0x2f7:
     case 0x2f8: case 0x2fa: case 0x30e: case 0x30f: case 0x3f8: case 0x7d5:
-    case 0x7f6: case 0x8e6: case 0x145e: case 0x145f: case 0x1460: case 0x1461:
-    case 0x1462: case 0x1464: case 0x1465: case 0x1466: case 0x1469: case 0x146b:
-    case 0x146d: case 0x146e: case 0x1470: case 0x1471: case 0x1472: case 0x1473:
-    case 0x1475: case 0x1479: case 0x147c: case 0x147e: case 0x147f: case 0x1486:
-    case 0x1487: case 0x1489: case 0x148c: case 0x148e: case 0x148f: case 0x1490:
-    case 0x1492: case 0x1493: case 0x1495: case 0x1497: case 0x1498: case 0x1499:
-    case 0x149b: case 0x149e: case 0x14a0: case 0x14a1: case 0x14a2: case 0x14a5:
-    case 0x14a6: case 0x14ad: case 0x14c1: case 0x14c3: case 0x14c4: case 0x14c6:
-    case 0x14c7: case 0x14d0: case 0x14d1: case 0x14d2: case 0x14d4: case 0x14d6:
-    case 0x14da: case 0x14db: case 0x14dc: case 0x14dd: case 0x14de: case 0x14df:
-    case 0x14e0: case 0x14e1: case 0x14e2: case 0x14e3: case 0x14e4: case 0x14e7:
-    case 0x14e8: case 0x14e9: case 0x14ea: case 0x14eb: case 0x14ed: case 0x14ee:
-    case 0x14ef: case 0x14f0: case 0x14f1: case 0x14f2: case 0x14f4: case 0x14f7:
-    case 0x14f8: case 0x14f9: case 0x14fa: case 0x14fb: case 0x14fc: case 0x14fd:
-    case 0x14ff: case 0x1500: case 0x1501: case 0x1502: case 0x1503: case 0x1504:
-    case 0x1506: case 0x150d: case 0x150e: case 0x150f: case 0x1510: case 0x1511:
-    case 0x20fc: case 0x20ff: case 0x2102: case 0x2105: case 0x2108: case 0x219b:
-    case 0x219c: case 0x219d:
+    case 0x7f6: case 0x8e6:
         *effect = -1;
         return;
     case 0x2e0: case 0x2e3: case 0x2e6: case 0x8d0: case 0x8d2: case 0x8d4:
@@ -515,68 +494,9 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
         *action = 0x7;
         effect_by_level_if_unset(level, effect);
         return;
-    case 0x149f:
-        *effect = 0x7a7;
-        return;
-    case 0x14a4:
-        *effect = 0x78c;
-        return;
-    case 0x14d7:
-        *effect = 0x783;
-        return;
-    case 0x14b9:
-        *effect = 0x776;
-        return;
-    case 0x14b6:
-        *effect = 0x792;
-        return;
-    case 0x14b7:
-        *effect = 0x77e;
-        return;
-    case 0x14b8:
-        *effect = 0x76e;
-        return;
-    case 0x14d3:
-        *effect = 0x750;
-        return;
-    case 0x14d5:
-        *effect = 0x754;
-        return;
-    case 0x147a:
-        *effect = 0x7ab;
-        return;
-    case 0x1476:
-        *effect = 0x7c2;
-        return;
-    case 0x1477:
-        *effect = 0x7ce;
-        return;
-    case 0x14c9:
-        *effect = -1;
-        *action = -1;
     case 0x7f0: case 0x8ba: case 0x138a:
         begin_wave("effect\\EF_BeginSpell.wav");
         effect_by_level_if_unset(level, effect);
-        return;
-    case 0x14ae:
-        begin_wave("effect\\EF_BeginSpell.wav");
-        *effect = -1;
-        return;
-    case 0x1491:
-        *effect = 0x888;
-        return;
-    case 0x150b:
-        *effect = 0x8c0;
-        return;
-    case 0x1508: case 0x1509:
-        *effect = 0x8c9;
-        return;
-    case 0x150c:
-        *effect = 0x8cf;
-        return;
-    case 0x1488: case 0x148d:
-        begin_wave("effect\\EF_BeginSpell.wav");
-        *effect = 0x3a;
         return;
     case 0xc4: case 0xd1: case 0xf9: case 0x10e: case 0x15d: case 0x201c:
         *action = 0x0;
@@ -600,11 +520,6 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
         *effect = 0x38;
         return;
     default:
-        if ((unsigned)(skill - 0x1519) <= 0x61)
-            *effect = -1;
-        skill_action_mgr_cast_action(skill_action_mgr_instance(), &action_answer, skill);
-        if (action_answer.found == 1)
-            *action = action_answer.value;
     case 0x1: case 0x2: case 0x3: case 0x4: case 0x6: case 0x8:
     case 0x24: case 0x25: case 0x26: case 0x27: case 0x28: case 0x29:
     case 0x2b: case 0x2c: case 0x30: case 0x31: case 0x32: case 0x34:

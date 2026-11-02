@@ -854,9 +854,6 @@ static void take_mail(struct UIRodexInboxWnd *self, int type, long long id)
     struct MailPair *node;
     BYTE flags = 0;
 
-    if (game_current_base_mode()
-        && game_mode_is_blocking_window_open() == 1)
-        return;
     if (map && (node = find_mail(map, id)))
         flags = node->mail.type;
     packet.mail_id = id;

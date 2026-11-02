@@ -147,7 +147,6 @@ static void log_append(const struct GuildStorageLogRecord *record)
     entry.id = 0;
     entry.amount = 0;
     entry.action = 0;
-    entry.grade = 0;
     entry.identified = 0;
     entry.item_type = 0;
     entry.refine = 0;
@@ -256,7 +255,6 @@ void game_mode_enter_guild_storage_log(int result, const struct Vec *items)
         entry.id = 0;
         entry.amount = 0;
         entry.action = 0;
-        entry.grade = 0;
         entry.identified = 0;
         entry.item_type = 0;
         entry.refine = 0;
@@ -278,7 +276,6 @@ void game_mode_enter_guild_storage_log(int result, const struct Vec *items)
         entry.refine = it->item.refine;
         entry.attribute = it->attribute;
         memcpy(entry.cards, it->item.slot, sizeof entry.cards);
-        entry.grade = ((unsigned short)it->item.grade);
         log_push_copy(&g_session1.guildStorageLog, &entry);
         string_free(&entry.item_name);
     }
@@ -334,7 +331,6 @@ void game_mode_ack_guild_storage_log2(const struct PACKET_ZC_ACK_GUILDSTORAGE_LO
             item.type = record->item_type;
             item.refine = record->refine;
             memcpy(item.slot, record->cards, sizeof item.slot);
-            item.grade = record->grade;
             item_info_copy(&staged.item, &item);
             staged.attribute = record->attribute;
             vec_push(&items, &staged, sizeof staged);

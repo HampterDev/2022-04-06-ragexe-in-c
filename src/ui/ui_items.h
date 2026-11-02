@@ -24,8 +24,6 @@ void ui_chat_edit_ctrl_add_item_link(struct UIWindow *self,
                                            const struct ItemInfo *info);
 void ui_rodex_compose_wnd_add_item_link(struct UIWindow *self, const struct ItemInfo *info);
 struct UIRefiningWnd;
-struct UIGradeEnchantWnd;
-void ui_grade_enchant_wnd_reset(struct UIGradeEnchantWnd *self);
 
 int zeny_fee_percent(__int64 price);
 

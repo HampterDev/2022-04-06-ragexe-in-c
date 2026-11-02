@@ -42,33 +42,14 @@ char skill_cast_special(struct GameActor *caster, struct GameActor *target, int 
                                unsigned cast_time, int attack_motion)
 {
     unsigned short skill = (unsigned short)skill_id;
-    int id;
 
     if (skill == 0x10f)
         return 0;
-    if (skill == 0x1453) {
-        struct Effect *weapon = effect_mgr_find_effect(g_effectMgr, caster->aid, 0x69e);
-
-        if (weapon)
-            servant_weapon_effect_fire(weapon, 0x1453);
-        if (target) {
-            spawn_on_delayed(target->aid, 0x6af, 600);
-            spawn_on_delayed(target->aid, 0x6b0, 600);
-        }
-        actor_set_attack_speed(caster, attack_motion);
-        return 0;
-    }
     if (skill == 0x49) {
         if (target && caster != target)
             render_object_turn_toward((struct RenderObject *)caster, target->pos.x, target->pos.z);
         game_send_message(MODE_MSG_SKILL_CAST, 0x49, (int)caster, 0, 0);
-        id = 0x49;
-    } else {
-        id = skill;
-        if (skill == 0x1479 && caster)
-            spawn_on(caster->aid, 0x7c4);
     }
-    skill_action_mgr_cast_on_target(skill_action_mgr_instance(), id, (SkillActor *)(target));
     return cast_time ? 0 : 1;
 }
 
@@ -81,7 +62,6 @@ void skill_cast_caster_tint(struct GameActor *caster, int skill_id, unsigned cas
         break;
     case 0x39:
     case 0x3e:
-    case 0x154b:
         caster->motion_held = 1;
         caster->motion_hold_until = timeGetTime() + cast_time;
         break;
@@ -91,9 +71,6 @@ void skill_cast_caster_tint(struct GameActor *caster, int skill_id, unsigned cas
         break;
     case 0x10c:
         render_object_play_motion_range((struct RenderObject *)caster, 0x60, 0, 0, 0x60, 0, 1, cast_time + 1000, 0);
-        break;
-    case 0x14c4:
-        render_object_play_motion_range((struct RenderObject *)caster, 0x58, 0, 0, 0x58, 0, 0, 0, 0);
         break;
     case 0x8a9:
         render_object_send(caster, NULL, ACTOR_MSG_EFFECT_STAGE, 0x2df, 1, 0, 0);
@@ -110,7 +87,6 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
     unsigned short skill = (unsigned short)skill_id;
     struct Effect *effect;
 
-    skill_action_mgr_cast_at_cell(skill_action_mgr_instance(), skill, cast_time, x, y);
     if (target_aid == 0) {
         float world_x = 0.0f, world_z = 0.0f;
         void *scope;
@@ -136,12 +112,6 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
             render_object_send(caster, NULL, ACTOR_MSG_ATTACK_TARGET, (unsigned)target->aid, 0, 0, 0);
     }
     render_object_turn_toward((struct RenderObject *)caster, target->pos.x, target->pos.z);
-    if (skill == 0x14a4) {
-        effect = spawn_on(target->aid, 0x78a);
-        if (effect)
-            effect_set_time(effect, (float)cast_time);
-        return;
-    }
     render_object_send(target, NULL, ACTOR_MSG_TARGET_EFFECT, 0x3c, cast_time >> 4, 0, 0);
     switch (skill) {
     case 0x1ea:

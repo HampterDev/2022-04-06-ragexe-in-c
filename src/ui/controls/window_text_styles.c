@@ -53,42 +53,6 @@ static void char_draw(struct UIWindow *self, int x, int y, const char *p, const 
     string_free(&ch);
 }
 
-void ui_window_draw_text_aligned(struct UIWindow *self, int x, int y, struct String text,
-                                        int width, int align, COLORREF colour, COLORREF outline, int face,
-                                        int height, int arg3, BYTE outlined)
-{
-    const char *p, *end, *next;
-    int text_width, advance = 0, w;
-
-    text_width = ui_window_text_width(self, string_cstr(&text), (int)text.size, face, height, arg3, 0);
-    switch (align) {
-    case 2:
-        x -= text_width;
-        break;
-    case 6:
-        x = (int)((float)(width - text_width) * 0.5f + (float)x);
-        break;
-    }
-    p = string_cstr(&text);
-    end = p + strlen(p);
-    while (p != end) {
-        next = CharNextExA((WORD)g_codePage, p, 0);
-        w = char_width(self, p, next, face, height, arg3);
-        if (outlined == 1) {
-            char_draw(self, x + advance + 1, y, p, next, face, height, arg3, outline);
-            char_draw(self, x + advance - 1, y, p, next, face, height, arg3, outline);
-            char_draw(self, x + advance, y + 1, p, next, face, height, arg3, outline);
-            char_draw(self, x + advance, y - 1, p, next, face, height, arg3, outline);
-        }
-        char_draw(self, x + advance, y, p, next, face, height, arg3, colour);
-        advance += w;
-        if (advance > width)
-            break;
-        p = next;
-    }
-    string_free(&text);
-}
-
 static void outlined_draw(struct TextDC *dc, int x, int y, const char *text, int len, COLORREF colour,
                           COLORREF outline)
 {
@@ -99,23 +63,6 @@ static void outlined_draw(struct TextDC *dc, int x, int y, const char *text, int
     text_dc_text_out(dc, x, y + 1, text, len);
     text_dc_set_text_color(dc, colour);
     text_dc_text_out(dc, x, y, text, len);
-}
-
-void ui_window_text_out_centred_outlined(struct UIWindow *self, int x, int y,
-                                                const char *text, int width, int len, COLORREF colour,
-                                                COLORREF outline, int face, int height, int bold)
-{
-    struct TextDC dc;
-    SIZE size;
-    int cx;
-
-    if (!len)
-        len = (int)strlen(text);
-    dc_open(&dc, self, face, height, bold);
-    text_dc_text_extent(&dc, text, (int)strlen(text), &size);
-    cx = (int)((float)(width - size.cx) * 0.5f + (float)x);
-    outlined_draw(&dc, cx, y, text, len, colour, outline);
-    text_dc_destruct(&dc);
 }
 
 void ui_window_text_out_outlined_right(struct UIWindow *self, int x, int y,

@@ -229,15 +229,6 @@ static void shop_draw_item(struct UIMerchantItemShopWnd *self, const struct Item
     } else {
         ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0, 0);
     }
-    if (info->grade > 0) {
-        struct String path;
-
-        string_init(&path);
-        string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-        ui_window_draw_bitmap(wnd, col_x + 0x2c, row_y + 0x21,
-                            res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-        string_free(&path);
-    }
     z_width = ui_window_text_width(wnd, "Z", 0, 0, 12, 0, 0);
     ui_window_text_out(wnd, wnd->width - z_width - 0x12, row_y + 0x1d, "Z", 0, 0, 12, 0, 0, 0);
     if (info->price != info->charged_price)

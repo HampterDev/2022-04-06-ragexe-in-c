@@ -189,16 +189,6 @@ const char *skill_trap_model(struct Skill *self)
 #define TRAP3_DIR "event\\3차트랩_"
     int job = game_actor_get_job((struct GameActor *)&self->base);
 
-    if (job > 0x5174) {
-        switch (job) {
-        case 0x5175: return "effect\\solidtrap\\sol_trap.rsm2";
-        case 0x5176: return "effect\\swifttrap\\swi_trap.rsm2";
-        case 0x5177: return "effect\\flametrap\\fla_trap.rsm2";
-        }
-        return 0;
-    }
-    if (job == 0x5174)
-        return "effect\\deepblindtrap\\deep_trap.rsm2";
     switch (job) {
     case 0x8f: case 0xda: case 0xde: case 0xe6:
         return TRAP_DIR "03_3.rsm";

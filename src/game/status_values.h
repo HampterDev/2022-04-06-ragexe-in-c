@@ -12,7 +12,6 @@ struct PacketLongParChange;
 
 struct PacketNotifyExp;
 
-void session_set_advanced_status(struct Session *session, int status, int value);
 struct PacketNotifyExp2;
 
 #endif

@@ -32,8 +32,7 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self)
     if (wnd == NULL) {
         wnd = ui_basic_info_wnd_new();
         self->basic_info_wnd = wnd;
-        ui_window_create(wnd, 0xdc,
-                         session_is_fourth_job(&g_session1, session_get_drawn_job(&g_session1)) == 1 ? 0x47 : 0x37);
+        ui_window_create(wnd, 0xdc, 0x37);
         wm_move(wnd, 0, 0);
         ui_window_mgr_add_window(self, wnd);
         ui_window_send_msg(self->basic_info_wnd, self->basic_info_wnd, UI_MSG_SET_INFO,
@@ -73,8 +72,6 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self)
         ui_window_mgr_make_window(self, 0x131);
     if (session_has_tracked_achievements(&g_session1) == 1)
         ui_window_mgr_make_window(self, 0x10f);
-    if (self->macro_reporter_info.open == 1)
-        ui_window_mgr_make_window(self, 0x11e);
     ui_window_mgr_restore_plates(self);
     return wnd;
 }
@@ -152,16 +149,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
         self->skill_list_info.show = 1;
         ui_window_mgr_post_quit1(self, 0x31);
         wm_clear_menu_mark(0xbc);
-        break;
-    case 0xaa:
-        if (self->job_list_wnd)
-            return NULL;
-        wnd = ui_job_list_wnd_new();
-        self->job_list_wnd = wnd;
-        ui_window_create(wnd, 0x98, 0xc7);
-        wm_move_640(wnd, 0xc8, 0xc8);
-        ui_window_mgr_add_window(self, wnd);
-        wm_set_info(self->job_list_wnd, &self->booking_mb_check_info);
         break;
     case 0x3a:
         wnd = self->notify_item_obtain_wnd;

@@ -42,10 +42,6 @@ void ui_window_text_out(struct UIWindow *self, int x, int y, const char *text, i
 void ui_window_text_out_right(struct UIWindow *self, int x, int y, const char *text,
                                       int len, int font_face, int font_height, COLORREF colour, int font_arg);
 
-void ui_window_text_out_centred_outlined(struct UIWindow *self, int x, int y,
-                                                const char *text, int width, int len, COLORREF colour,
-                                                COLORREF outline, int font_face, int font_height, int font_arg);
-
 void ui_window_draw_shadow_text(struct UIWindow *self, int x, int y, const char *text,
                                         int len, COLORREF colour, COLORREF shadow, int font_face, int font_height,
                                         int font_arg);

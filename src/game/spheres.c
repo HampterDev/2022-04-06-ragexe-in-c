@@ -1,13 +1,11 @@
 #include "game/packet_handlers.h"
 #include "effects/rag/rag_effect.h"
 #include "actor/render_object.h"
-#include "contents/sound.h"
 #include "session/state.h"
 #include "game/gamemode.h"
 #include "game/session_bridge.h"
 #include "game/actor_packets.h"
 #include "game/ui_bridge.h"
-#include "game/own_states.h"
 #include "effects/effect_controls.h"
 #include "effects/rag/rag_effect_types.h"
 #include "actor/actor_common.h"
@@ -23,8 +21,6 @@ enum {
     EF_TARGET_SPIRITS = 0x2a5,
     EF_REBELLION_COINS = 0x46f,
     EF_SOUL_ENERGY = 0x4c9,
-    EF_SERVANT_WEAPON = 0x69e,
-    EF_FROM_THE_ABYSS = 0x83d,
     EFFECT_MSG_SET_COUNT = 0x0e,
 };
 
@@ -36,12 +32,6 @@ enum {
     JOB_BABY_REBELLION = 4229,
     JOB_SOUL_REAPER = 4240,
     JOB_BABY_SOUL_REAPER = 4242,
-    JOB_DRAGON_KNIGHT = 4252,
-    JOB_ABYSS_CHASER = 4260,
-    JOB_DRAGON_KNIGHT_RIDING = 4265,
-    JOB_DRAGON_KNIGHT_CHICKEN = 4280,
-    JOB_SOUL_ASCETIC = 4303,
-    JOB_NIGHT_WATCH = 4306,
 };
 
 static void effect_refresh(struct Effect *effect)
@@ -131,52 +121,6 @@ static void launch_spheres(struct GameActor *actor, int effect_id, short num)
     rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, MSG_ARG_PTR(count), 0, 0);
 }
 
-enum { EFST_ABYSSFORCEWEAPON = 0x4dc };
-
-static int has_servant_weapons(int job)
-{
-    return job == JOB_DRAGON_KNIGHT || job == JOB_DRAGON_KNIGHT_RIDING || job == JOB_DRAGON_KNIGHT_CHICKEN;
-}
-
-static void show_servant_weapons(struct GameMode *mode, struct GameActor *actor, short num)
-{
-    struct Player *player = mode->world->player;
-    struct Effect *effect;
-    int shown, i, diff;
-
-    sound_play_wave("effect\\DK_SERVANTWEAPON.wav", actor->pos.x - player->pos.x, 0.0f,
-             actor->pos.z - player->pos.z, 0xfa, 0x28, 1.0f);
-    effect = effect_mgr_find_effect(g_effectMgr, actor->aid, EF_SERVANT_WEAPON);
-    if (effect == 0) {
-        Vec3 at = { 0.0f, 0.0f, 0.0f };
-
-        if (num <= 0)
-            return;
-        effect = effect_mgr_spawn(g_effectMgr, actor->aid, EF_SERVANT_WEAPON, at, 0, -1, 0, 0);
-        if (effect == 0)
-            return;
-    }
-    shown = servant_weapon_effect_count_armed(effect);
-    if (num < shown) {
-        diff = (int)((unsigned)shown - (unsigned)num);
-        for (i = 0; i < diff; i++)
-            servant_weapon_effect_fire(effect, 0x1452);
-    } else if (num > shown) {
-        diff = (int)((unsigned)num - (unsigned)shown);
-        for (i = 0; i < diff; i++)
-            servant_weapon_effect_add_cast(effect);
-    }
-}
-
-static void show_spheres_4260(struct GameActor *actor, short num)
-{
-    struct Effect *effect = running_effect(actor->aid, EF_FROM_THE_ABYSS);
-
-    if (effect)
-        from_the_abyss_effect_set_ball_count(effect, num);
-    own_states_set_value(EFST_ABYSSFORCEWEAPON, num);
-}
-
 static void show_rebellion_coins(struct GameActor *actor, short num)
 {
     Vec3 at;
@@ -204,41 +148,25 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
         return;
     job = game_actor_get_job(actor);
 
-    if (job == JOB_ABYSS_CHASER) {
-        if (num == 0) {
-            effect_mgr_remove_type(g_effectMgr, actor->aid, EF_FROM_THE_ABYSS);
-            return;
-        }
-    } else if (!has_servant_weapons(job)) {
-        switch (job) {
-        case JOB_BABY_MONK:
-            remove_effect(actor, EF_SPHERES_BABY_MONK);
-            break;
-        case JOB_GUNSLINGER:
-        case JOB_BABY_GUNSLINGER:
-            remove_effect(actor, EF_COINS);
-            break;
-        case JOB_REBELLION:
-        case JOB_BABY_REBELLION:
-        case JOB_NIGHT_WATCH:
-            effect_mgr_remove_type(g_effectMgr, actor->aid, EF_REBELLION_COINS);
-            break;
-        default:
-            remove_effect(actor, EF_MILLENNIUMSHIELD);
-            break;
-        }
-        if (num == 0)
-            return;
+    switch (job) {
+    case JOB_BABY_MONK:
+        remove_effect(actor, EF_SPHERES_BABY_MONK);
+        break;
+    case JOB_GUNSLINGER:
+    case JOB_BABY_GUNSLINGER:
+        remove_effect(actor, EF_COINS);
+        break;
+    case JOB_REBELLION:
+    case JOB_BABY_REBELLION:
+        effect_mgr_remove_type(g_effectMgr, actor->aid, EF_REBELLION_COINS);
+        break;
+    default:
+        remove_effect(actor, EF_MILLENNIUMSHIELD);
+        break;
     }
+    if (num == 0)
+        return;
 
-    if (is_hidden(actor)) {
-        if (has_servant_weapons(job)) {
-            effect_mgr_remove(g_effectMgr, effect_mgr_find_effect(g_effectMgr, actor->aid, EF_SERVANT_WEAPON), 1);
-            return;
-        }
-        if (job == JOB_ABYSS_CHASER)
-            effect_mgr_remove_type(g_effectMgr, actor->aid, EF_FROM_THE_ABYSS);
-    }
     switch (job) {
     case JOB_BABY_MONK:
         launch_spheres(actor, EF_SPHERES_BABY_MONK, num);
@@ -249,16 +177,7 @@ void game_mode_on_spirits(struct GameMode *self, int aid, short num)
         break;
     case JOB_REBELLION:
     case JOB_BABY_REBELLION:
-    case JOB_NIGHT_WATCH:
         show_rebellion_coins(actor, num);
-        break;
-    case JOB_DRAGON_KNIGHT:
-    case JOB_DRAGON_KNIGHT_RIDING:
-    case JOB_DRAGON_KNIGHT_CHICKEN:
-        show_servant_weapons(self, actor, num);
-        break;
-    case JOB_ABYSS_CHASER:
-        show_spheres_4260(actor, num);
         break;
     default:
         launch_spheres(actor, EF_MILLENNIUMSHIELD, num);
@@ -297,7 +216,7 @@ void game_mode_on_spirits2(struct GameMode *self, const struct PacketSpirits2 *p
         if (job == JOB_BABY_MONK)
             effect_id = EF_SPHERES_BABY_MONK;
         else if (job == JOB_GUNSLINGER || job == JOB_REBELLION || job == JOB_BABY_GUNSLINGER
-                 || job == JOB_BABY_REBELLION || job == JOB_NIGHT_WATCH)
+                 || job == JOB_BABY_REBELLION)
             effect_id = EF_COINS;
         else
             effect_id = EF_MILLENNIUMSHIELD;
@@ -309,8 +228,7 @@ void game_mode_on_spirits2(struct GameMode *self, const struct PacketSpirits2 *p
         effect_id = EF_SPHERES_BABY_MONK;
     else if (game_actor_get_job(actor) == JOB_GUNSLINGER || game_actor_get_job(actor) == JOB_REBELLION
              || game_actor_get_job(actor) == JOB_BABY_GUNSLINGER
-             || game_actor_get_job(actor) == JOB_BABY_REBELLION
-             || game_actor_get_job(actor) == JOB_NIGHT_WATCH)
+             || game_actor_get_job(actor) == JOB_BABY_REBELLION)
         effect_id = EF_COINS;
     else
         effect_id = EF_MILLENNIUMSHIELD;
@@ -350,7 +268,7 @@ void game_mode_on_soul_energy(struct GameMode *self, const struct PacketSoulEner
     if (actor == 0)
         return;
     job = game_actor_get_job(actor);
-    if (job != JOB_SOUL_REAPER && job != JOB_BABY_SOUL_REAPER && job != JOB_SOUL_ASCETIC)
+    if (job != JOB_SOUL_REAPER && job != JOB_BABY_SOUL_REAPER)
         return;
     if (is_hidden(actor))
         effect_mgr_remove_type(g_effectMgr, actor->aid, EF_SOUL_ENERGY);

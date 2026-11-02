@@ -132,7 +132,6 @@ void game_mode_zc_ack_add_item_rodex2(struct GameMode *self,
         for (k = 0; k < (unsigned)item.option_count; k++)
             item.options[k] = packet->options[k];
         item.favorite = packet->favorite;
-        item.grade = packet->grade;
     }
     weight = packet->weight;
     item_info_copy(&copy, &item);

@@ -67,7 +67,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         shout = 0;
     switch (skill_id) {
     case 0x28: case 0x29: case 0x33: case 0x87: case 0x185: case 0x7f1:
-    case 0x8c7: case 0x8f2: case 0x926: case 0x9e7: case 0xbb9: case 0x1506: case 0x1507:
+    case 0x8c7: case 0x8f2: case 0x926: case 0x9e7: case 0xbb9:
         shout = 0;
         break;
     }
@@ -224,8 +224,6 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
                             CHAT_CHANNEL_SKILL, 0);
         goto done;
     }
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
 
     switch (skill_id) {
     case 10000:
@@ -337,8 +335,6 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct Ground
         chat_print_msg(0x75e, COLOR_SKILL_REFUSED);
         return 0;
     }
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     skill_id = use->skill_id;
     x = use->x;
     y = use->y;

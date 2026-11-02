@@ -30,12 +30,6 @@ static struct RagEffect *gs_launch(struct GameActor *self, int effect)
     return game_actor_launch_effect(self, effect, zero, 0.0f);
 }
 
-static void gs_motion(struct GameActor *self, int action, int motion, int last)
-{
-    render_object_play_motion_range((struct RenderObject *)self, (unsigned char)action, (unsigned char)motion,
-                                   (unsigned char)last, 0x60, (unsigned char)last, 1, 500, 0);
-}
-
 static void gs_min_or_dummy(struct GameMode *mode, Vec3 *at, int min_type, int kind)
 {
     if (g_session1.map_rule_flags[0] != 0)
@@ -61,7 +55,6 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
 
     switch (skill) {
     case 0x53: case 0x301: case 0x306: case 0x13a4: case 0x13b2:
-    case 0x1463: case 0x1467: case 0x1468: case 0x146f: case 0x1474:
         forced = 1;
         break;
     default:
@@ -72,12 +65,6 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
         void *act = render_object_get_act_res((struct RenderObject *)self);
         self->action = 0x58;
         self->motion = actres_frame_count(act, 0x58) - 1;
-    } else if (skill_action_mgr_holds_ground_pose(skill_action_mgr_instance(), skill) == 1) {
-        void *act;
-        self->action = 0x58;
-        act = render_object_get_act_res((struct RenderObject *)self);
-        if (act != NULL)
-            self->motion = actres_frame_count(act, 0x58) - 1;
     } else {
         render_object_turn_toward((struct RenderObject *)self, x, z);
         actor_set_state(self, state, 1);
@@ -186,29 +173,6 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     case 0xa0b:  gs_spawn(at, 0x426, -1); break;
     case 0x13a4: gs_spawn(at, 0x452, -1); break;
     case 0x13b2: gs_spawn(at, 0x458, -1); break;
-    case 0x1463: gs_spawn(at, 0x6e0, -1); break;
-    case 0x1465:
-    case 0x146b:
-    case 0x146d: gs_motion(self, 0x60, 1, 3); break;
-    case 0x1467: gs_spawn(at, 0x706, -1); break;
-    case 0x14c7: {
-        struct Effect *e;
-
-        gs_spawn(at, 0x827, -1);
-        gs_spawn(at, 0x828, -1);
-        e = gs_spawn(at, 0x82b, -1);
-        if (e != NULL)
-            e->ops->set_start_delay(e, 0x370);
-        e = gs_spawn(at, 0x82c, -1);
-        if (e != NULL)
-            e->ops->set_start_delay(e, 0x370);
-        break;
-    }
-    case 0x14c9: gs_motion(self, 0x60, 0, 0); break;
-    case 0x14d3:
-    case 0x14d4:
-    case 0x14d5:
-    case 0x14d7: gs_motion(self, 0x18, 0, 2); break;
     default:
         break;
     }

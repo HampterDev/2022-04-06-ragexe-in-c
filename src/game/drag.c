@@ -16,24 +16,6 @@
 
 #define WND_ITEM_TOOLTIP 0xf
 
-void drag_info_copy(struct DragInfo *dst, const struct DragInfo *src)
-{
-    memcpy(dst, src, offsetof(struct DragInfo, display_name));
-    string_copy(&dst->display_name, &src->display_name);
-    string_copy(&dst->name, &src->name);
-    string_copy(&dst->name2, &src->name2);
-    memcpy(&dst->level, &src->level, sizeof *dst - offsetof(struct DragInfo, level));
-}
-
-void drag_info_assign(struct DragInfo *dst, const struct DragInfo *src)
-{
-    memcpy(dst, src, offsetof(struct DragInfo, display_name));
-    string_assign(&dst->display_name, string_cstr(&src->display_name), src->display_name.size);
-    string_assign(&dst->name, string_cstr(&src->name), src->name.size);
-    string_assign(&dst->name2, string_cstr(&src->name2), src->name2.size);
-    memcpy(&dst->level, &src->level, sizeof *dst - offsetof(struct DragInfo, level));
-}
-
 void drag_info_destroy(struct DragInfo *drag)
 {
     string_free(&drag->name2);
@@ -60,7 +42,6 @@ void game_mode_reset_drag(struct GameMode *self)
     drag->slots[2] = 0;
     drag->slots[3] = 0;
     drag->shop_index = -1;
-    drag->grade = 0;
 }
 
 void game_mode_set_drag_source(struct GameMode *self, int source, int index)
@@ -142,7 +123,6 @@ void game_mode_drag_item(struct GameMode *self, int source, const struct ItemInf
     drag->option_count = item->option_count;
     for (i = 0; i < drag->option_count; i++)
         drag->options[i] = item->options[i];
-    drag->grade = ((unsigned short)item->grade);
     drag->by_index = item->by_index;
     drag->equip_location = item->equip_location;
     drag->view = item->view;

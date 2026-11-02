@@ -38,45 +38,45 @@ int job_get_base_job(int job)
         return 5;
     case 4007: case 4029:
         return 6;
-    case 4008: case 4030: case 4054: case 4060: case 4096: case 4252:
+    case 4008: case 4030: case 4054: case 4060: case 4096:
         return 7;
-    case 4009: case 4031: case 4057: case 4063: case 4099: case 4256:
+    case 4009: case 4031: case 4057: case 4063: case 4099:
         return 8;
-    case 4010: case 4032: case 4055: case 4061: case 4097: case 4255:
+    case 4010: case 4032: case 4055: case 4061: case 4097:
         return 9;
-    case 4011: case 4033: case 4058: case 4064: case 4100: case 4253:
+    case 4011: case 4033: case 4058: case 4064: case 4100:
         return 10;
-    case 4012: case 4034: case 4056: case 4062: case 4098: case 4257:
+    case 4012: case 4034: case 4056: case 4062: case 4098:
         return 11;
-    case 4013: case 4035: case 4059: case 4065: case 4101: case 4254:
+    case 4013: case 4035: case 4059: case 4065: case 4101:
         return 12;
-    case 4015: case 4037: case 4066: case 4073: case 4102: case 4258:
+    case 4015: case 4037: case 4066: case 4073: case 4102:
         return 14;
-    case 4016: case 4038: case 4070: case 4077: case 4106: case 4262:
+    case 4016: case 4038: case 4070: case 4077: case 4106:
         return 15;
-    case 4017: case 4039: case 4067: case 4074: case 4103: case 4261:
+    case 4017: case 4039: case 4067: case 4074: case 4103:
         return 16;
-    case 4018: case 4040: case 4072: case 4079: case 4108: case 4260:
+    case 4018: case 4040: case 4072: case 4079: case 4108:
         return 17;
-    case 4019: case 4041: case 4071: case 4078: case 4107: case 4259:
+    case 4019: case 4041: case 4071: case 4078: case 4107:
         return 18;
-    case 4020: case 4042: case 4068: case 4075: case 4104: case 4263:
+    case 4020: case 4042: case 4068: case 4075: case 4104:
         return 19;
-    case 4021: case 4043: case 4069: case 4076: case 4105: case 4264:
+    case 4021: case 4043: case 4069: case 4076: case 4105:
         return 20;
-    case 4045: case 4190: case 4191: case 4307:
+    case 4045: case 4190: case 4191:
         return 23;
-    case 4215: case 4228: case 4229: case 4306:
+    case 4215: case 4228: case 4229:
         return 24;
-    case 4211: case 4212: case 4222: case 4223: case 4224: case 4304: case 4305:
+    case 4211: case 4212: case 4222: case 4223: case 4224:
         return 25;
     case 4225:
         return 4046;
-    case 4226: case 4239: case 4241: case 4302:
+    case 4226: case 4239: case 4241:
         return 4047;
-    case 4227: case 4240: case 4242: case 4303:
+    case 4227: case 4240: case 4242:
         return 4049;
-    case 4220: case 4308:
+    case 4220:
         return 4218;
     default:
         return job;
@@ -133,7 +133,6 @@ void client_add_skill(unsigned short id, short level, int type, unsigned char up
     info.sp_cost = sp_cost;
     info.range = range;
     info.level2 = level2;
-    info.ap_amount = skill_info_get_ap_amount(&info, level);
     player_skill_bundle_note_level_raise(&g_session1.skills, &info);
     if (info.id == 0x150)
         g_session1.married = 1;

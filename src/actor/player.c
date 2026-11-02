@@ -378,8 +378,7 @@ static int player_unit_attackable(struct GameActor *unit)
 {
     int job = game_actor_get_job(unit);
 
-    return job == 0x8d || job == 0x8f || job == 0x98 || job == 0xda || job == 0xde || job == 0xe6
-           || (unsigned)(job - 0x5174) <= 3;
+    return job == 0x8d || job == 0x8f || job == 0x98 || job == 0xda || job == 0xde || job == 0xe6;
 }
 
 static int player_proceed_skill_unit(struct Player *self, struct GameMode *mode)

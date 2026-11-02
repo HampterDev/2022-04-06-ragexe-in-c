@@ -20,7 +20,6 @@
 #include "session/hotkey_types.h"
 #include "session/character_slots.h"
 #include "ui/cooldown.h"
-#include "contents/party_booking_types.h"
 #include "contents/mcstore_backup_types.h"
 
 #define EQUIP_SLOT_COUNT 10
@@ -199,7 +198,6 @@ struct Session {
     struct List storeSetupItems;
     struct List storePurchaseSent;
     struct Vec buyingStoreItems;
-    struct List cashShopGoods[11];
     struct List partyMembers;
     struct List friendList;
     struct ItemInfo equipSlots[EQUIP_SLOT_COUNT];
@@ -320,11 +318,6 @@ struct Session {
     int mercOrder;
     BYTE autoMessageOn;
     struct String autoMessage;
-    int pinRequest;
-    BYTE pinChangeOnly;
-    int pinState;
-    DWORD pinResultValue;
-    DWORD pinAid;
     char ssoToken[0x1f4];
     int renameCharId;
     char renameNewName[0x18];
@@ -350,8 +343,6 @@ struct Session {
     int stateIconSlots[100];
     BYTE lockMouse;
     int channelCopId;
-    struct PartyBooking partyBooking;
-    int partyBookingSearchLevel;
     int elementalAid;
     int elementalHp;
     int elementalSp;
@@ -369,10 +360,6 @@ struct Session {
     BYTE noPriceCheckWarning;
     BYTE itemCompare;
     int showMonsterHp;
-    int pcCafeActive;
-    int pcCafePoints;
-    int pcCafeSecondsServed;
-    int pcCafeGrade;
     BYTE noSellWndSound;
     int senseTargetAid;
     int cartType;
@@ -397,8 +384,6 @@ struct Session {
     struct Vec trackedAchievements;
     int ownDressUp;
     int lastPetEmotionTime;
-    int showCashShopIcon;
-    int showGoldPcIcon;
     struct Vec doramHairNamesMale;
     struct Vec doramHairNamesFemale;
     int screenShake;
@@ -411,13 +396,9 @@ struct Session {
     BYTE blockPrivateTab;
     BYTE itemSort[3];
     int call_allowed;
-    struct ItemInfo switchEquips[10];
-    struct ItemInfo switchCostumes[10];
-    int switchArrowIndex;
     BYTE favouritesSorted;
     int overheatValue;
     DWORD overheatStart;
-    int equipSwapOpen;
     BYTE showMenuIcon;
     struct Tree transparentItemPulses;
     int baseLevel, baseLevel3rd, baseLevelExtend2, baseLevelUpperJob, baseLevelHomun;
@@ -425,10 +406,7 @@ struct Session {
     int jobLevelExtend2, jobLevelUpperJob;
     int baseLevelDoram, jobLevelDoram;
     int auras[17];
-    int baseLevel4th, jobLevel4th;
-    int maxLevelEffect4th, maxLevelEffect4thSub;
     BYTE doramMakeable;
-    DWORD equipSwapSentAt;
     BYTE homunAutoFeed;
     int homun_pending_index;
     int weightPenaltyPercent;
@@ -444,13 +422,9 @@ struct Session {
     DWORD lastSendTime;
     struct Tree instantVars;
     int inventoryExtension;
-    struct Tree statusValues;
-    int traitBonus[6];
-    long long traitCost[6];
     struct McStoreBackup mcStoreBackup;
     int madogear;
     struct Vec pcNames;
-    DWORD saleListSentAt;
     BYTE hideOtherPlayers;
     BYTE userConfigEntry1;
     struct Vec accountCharNames;

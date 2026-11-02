@@ -40,6 +40,3 @@ struct UIWindow * ui_window_find(int arg0) { abort(); }
 const struct UIButtonOps ui_refining_btn_refining_ops;
 const struct UIButtonOps ui_refining_btn_again_ops;
 const struct UIButtonOps ui_refining_btn_return_ops;
-const struct UIButtonOps ui_grade_enchant_btn_start_ops;
-const struct UIButtonOps ui_grade_enchant_btn_enhanced_up_ops;
-const struct UIButtonOps ui_grade_enchant_btn_enhanced_down_ops;

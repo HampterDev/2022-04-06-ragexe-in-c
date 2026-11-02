@@ -44,9 +44,6 @@ int ui_window_draw_button_bar(struct UIWindow *self, int variant,
 void ui_window_draw_sys_box(struct UIWindow *self, int x, int y,
                                     int width, int height);
 
-void ui_window_draw_text_aligned(struct UIWindow *self, int x, int y, struct String text,
-                                        int width, int align, COLORREF colour, COLORREF outline, int face,
-                                        int height, int arg3, BYTE outlined);
 void ui_window_text_out_line(struct UIWindow *self, int x, int y,
                                      const struct String *text, int width, int align, int face, int height,
                                      COLORREF colour, BYTE bold);
@@ -83,8 +80,6 @@ struct String;
 struct Vec;
 struct UIBitmapButton;
 struct UIWindow;
-void ui_window_draw_bitmap_scaled(struct UIWindow *self, int x, int y,
-                                          int width, int height, struct BitmapRes *bitmap);
 void ui_window_draw_spr_clip(struct UIWindow *self, int x, int y, struct SprImg *img,
                                      struct SprClip *clip, float scale, float angle, DWORD colour,
                                      DWORD *palette, float zoom2);

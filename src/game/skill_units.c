@@ -310,8 +310,6 @@ void game_mode_zc_skill_update(struct GameMode *self, const struct PACKET_ZC_SKI
         return;
     if (game_actor_get_job(unit) > 0x8a && game_actor_get_job(unit) <= 0x99)
         render_object_send(unit, NULL, OBJ_MSG_SKILL_UPDATE, 0, 0, 0, 0);
-    if ((unsigned)(game_actor_get_job(unit) - 20852) <= 3)
-        render_object_send(unit, NULL, OBJ_MSG_SKILL_UPDATE, 0, 0, 0, 0);
 }
 
 void game_mode_spawn_unit_double(struct GameMode *self, unsigned aid, unsigned creator_aid,

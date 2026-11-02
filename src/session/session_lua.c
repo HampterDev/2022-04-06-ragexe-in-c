@@ -160,9 +160,6 @@ void session_init_lua_files(struct Session *self)
     run_lua(self, "Lua Files\\StateIcon\\StateIconInfo");
     run_lua(self, "Lua Files\\StateIcon\\StateIconInfo_F");
     run_lua(self, "Lua Files\\StateIcon\\StateIconImgInfo");
-    run_lua(self, "lua files\\seekparty\\party_booking_config");
-    run_lua(self, "lua files\\seekparty\\party_booking_function");
-    party_booking_load_regions(&self->partyBooking);
     run_saved(self, "System\\LuaFiles514\\OptionInfo");
     run_lua(self, "Lua Files\\OptionInfo\\CmdInfo");
     run_lua(self, "Lua Files\\OptionInfo\\OptionInfo_F");
@@ -219,8 +216,6 @@ void session_init_lua_files(struct Session *self)
     run_lua(self, "Lua Files\\EffectTool\\ForceRenderEffect");
     run_lua(self, "Lua Files\\OffsetItemPos\\OffsetItemPos_F");
     run_lua(self, "Lua Files\\OffsetItemPos\\OffsetItemPos");
-    run_lua(self, "Lua Files\\datainfo\\LapineDdukDDakBox");
-    run_lua(self, "Lua Files\\datainfo\\LapineUpgradeBox");
     run_lua(self, "Lua Files\\transparentItem\\transparentItem");
     run_lua(self, "Lua Files\\transparentItem\\transparentItem_f");
 
@@ -368,10 +363,6 @@ void session_load_external_settings(struct Session *self)
           || self->jobLevelSuperNovice == -1 || self->jobLevelBase == -1 || self->jobLevel2nd == -1
           || self->jobLevel3rd == -1 || self->jobLevelExtend2 == -1 || self->jobLevelUpperJob == -1);
 
-    table_int(self, "MaxLevelTable", "BaseLevel4th", &self->baseLevel4th);
-    table_int(self, "MaxLevelTable", "JobLevel4th", &self->jobLevel4th);
-    check(self->baseLevel4th == -1 || self->jobLevel4th == -1);
-
     table_int(self, "MaxLevelTable", "BaseLevelDoram", &self->baseLevelDoram);
     table_int(self, "MaxLevelTable", "JobLevelDoram", &self->jobLevelDoram);
     check(self->jobLevelDoram == -1);
@@ -396,7 +387,4 @@ void session_load_external_settings(struct Session *self)
     table_int(self, "MaxLevelAuraTable", "HomunMaxLvAura_sub", &self->auras[14]);
     table_int(self, "MaxLevelAuraTable", "Default185LvAura", &self->auras[15]);
     table_int(self, "MaxLevelAuraTable", "Default185LvAura_sub", &self->auras[16]);
-    table_int(self, "MaxLevelAuraTable", "MaxLevelEffect4th", &self->maxLevelEffect4th);
-    table_int(self, "MaxLevelAuraTable", "MaxLevelEffect4th_sub", &self->maxLevelEffect4thSub);
-    check(self->maxLevelEffect4th == -1 || self->maxLevelEffect4thSub == -1);
 }

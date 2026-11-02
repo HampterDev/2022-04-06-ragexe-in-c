@@ -354,29 +354,20 @@ void ui_basic_skill_ctrl_on_mouse_hover(struct UIWindow *window, int x_unused, i
     struct UIBasicSkillCtrl *self = (struct UIBasicSkillCtrl *)window;
     struct SkillInfo info;
     struct String text, line;
-    int x = 0, y = 0, sp, ap;
+    int x = 0, y = 0, sp;
 
     if (self->skill_id < 0)
         return;
     ui_window_to_screen(&self->base, &x, &y);
     session_get_skill_info(&info, self->skill_id);
     sp = skill_info_get_sp_amount(&info, info.level);
-    ap = skill_info_get_ap_amount(&info, info.level);
     string_init(&text);
     if (session_is_space(&g_session1, info.id)) {
         string_init(&line);
-        if (ap)
-            string_format(&line, "%s Use Lv %d (Sp : %d%%, Ap : %d)", skill_info_get_name(&info),
-                          info.level, sp, ap);
-        else
-            string_format(&line, "%s Use Lv %d (Sp : %d%%)", skill_info_get_name(&info), info.level, sp);
+        string_format(&line, "%s Use Lv %d (Sp : %d%%)", skill_info_get_name(&info), info.level, sp);
     } else {
         string_init(&line);
-        if (ap)
-            string_format(&line, "%s Use Lv %d (Sp : %d, Ap : %d)", skill_info_get_name(&info),
-                          info.level, sp, ap);
-        else
-            string_format(&line, "%s Use Lv %d (Sp : %d)", skill_info_get_name(&info), info.level, sp);
+        string_format(&line, "%s Use Lv %d (Sp : %d)", skill_info_get_name(&info), info.level, sp);
     }
     string_assign(&text, string_cstr(&line), line.size);
     string_free(&line);

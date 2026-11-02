@@ -35,13 +35,11 @@
 #define CZ_ACK_REQ_ADD_FRIENDS      0x208
 #define CZ_REQMAKINGITEM            0x18e
 #define CZ_REQ_ITEMREPAIR2          0xb66
-#define CZ_ADVANCED_STATUS_CHANGE   0xb24
 #define CZ_REQUEST_ACT2             0x437
 #define CZ_REQUEST_MOVE2            0x35f
 #define CZ_ITEM_CREATE_EX           0x9ce
 #define CZ_SHORTCUTKEYBAR_ROTATE    0xb21
 #define CZ_PRISON                   0xb34
-#define CZ_CASH_SHOP_OPEN           0xb6d
 
 #define EMOTION_WAIT 2500
 #define CHAT_COLOR_GM_STATUS 0x6efa9b
@@ -114,28 +112,6 @@ int game_mode_msg_status_change(struct GameMode *self, int status, int amount)
     return 0;
 }
 
-int game_mode_msg_advanced_status_change(struct GameMode *self, int status, int amount)
-{
-#pragma pack(push, 1)
-    struct {
-        unsigned short id;
-        unsigned short status;
-        unsigned short amount;
-    } packet;
-#pragma pack(pop)
-
-    if (self->status_request_pending)
-        return 0;
-    packet.status = (unsigned short)status;
-    packet.id = CZ_ADVANCED_STATUS_CHANGE;
-    packet.amount = (unsigned short)amount;
-    if (self->player_dead)
-        return 0;
-    self->status_request_pending = 1;
-    send_packet(CZ_ADVANCED_STATUS_CHANGE, &packet);
-    return 0;
-}
-
 int game_mode_msg_req_status(struct GameMode *self)
 {
     if (self->status_request_pending)
@@ -173,8 +149,6 @@ int game_mode_msg_request_move(struct GameMode *self, int x, int y)
     } packet;
 #pragma pack(pop)
 
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     packet.id = CZ_REQUEST_MOVE2;
     packet.cell[0] = (unsigned char)(x >> 2);
     packet.cell[1] = (unsigned char)(((y >> 4) & 0x3f) | (x << 6));
@@ -469,16 +443,6 @@ int game_mode_msg_shortcut_key_change(int index, int page)
         memcpy(packet.key, key, sizeof *key);
     packet.index = (unsigned short)index;
     send_packet(CZ_SHORTCUTKEYBAR_ROTATE, &packet);
-    return 0;
-}
-
-int game_mode_msg_open_cash_shop(int tab)
-{
-    if (g_windowMgr.item_shop_wnd || ui_window_mgr_is_barter_open(&g_windowMgr) == 1 || g_windowMgr.n_cash_wnd)
-        return 0;
-    if (tab < 0 || tab >= 0xb)
-        tab = 0;
-    send_u32(CZ_CASH_SHOP_OPEN, tab);
     return 0;
 }
 

@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 struct Session g_session1;
-static int manager, doram, fourth_job, allowed = 1;
+static int manager, doram, allowed = 1;
 static int probes, available_from = 1, mounted_job;
 static const char *robe_text = "cape";
 static const char *body_text = "novice";
@@ -36,8 +36,6 @@ unsigned __int64 *crt_printf_options(void)
 { static unsigned __int64 options; return &options; }
 BYTE session_is_doram_job(struct Session *self, int job)
 { assert(self == &g_session1); (void)job; return (BYTE)doram; }
-BYTE session_is_fourth_job(struct Session *self, int job)
-{ assert(self == &g_session1); (void)job; return (BYTE)fourth_job; }
 int session_remap_job(struct Session *self, int job)
 { assert(self == &g_session1); return job; }
 int session_get_mounted_job(int job)
@@ -119,13 +117,9 @@ int main(void)
     resource_path_body_palette(&out, 1, 1, 3, 0, 0); check(&out, "몸\\novice_남_3.pal");
     resource_path_body_palette(&out, 0xfa1, 1, 0, 0, 0); check(&out, "몸\\novice_남_1.pal");
     resource_path_body_palette(&out, 0xfa8, 1, 1, 0, 0); check(&out, "몸\\novice_남_0.pal");
-    body_text = "MEISTER_MADOGEAR1";
-    resource_path_job_body_sprite(&out, 1, 1, 1, 0, 2); check(&out, "인간족\\몸통\\남\\MEISTER_MADOGEAR2_남.spr");
     body_text = "마도기어_test";
     resource_path_job_body_sprite(&out, 0, 1, 1, 0, 2); check(&out, "인간족\\몸통\\남\\마도아머_test_남.act");
-    body_text = "novice"; fourth_job = 1;
-    resource_path_job_body_sprite(&out, 1, 1, 1, 1, 0); check(&out, "인간족\\몸통\\남\\novice_남.spr");
-    fourth_job = 0;
+    body_text = "novice";
 
     hair = 99;
     resource_path_head_sprite(&out, 0, 1, 1, &hair);

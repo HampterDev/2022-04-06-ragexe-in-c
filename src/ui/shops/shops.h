@@ -173,23 +173,6 @@ void shop_add_resizer(struct UIItemBaseWnd *base, int edge);
 void shop_add_scroll_bar(struct UIItemBaseWnd *base, int length);
 void shop_tooltip_cell(struct UIWindow *wnd, int x, int y, int *tip_x, int *tip_y);
 
-#define CASH_GOODS_PRICE(info) ((info)->price)
-#define CASH_GOODS_START(info) ((info)->sale_start_time)
-#define CASH_GOODS_END(info) ((info)->sale_end_time)
-#define CASH_GOODS_STOCK(info) ((info)->sale_remaining)
-
-#define CASH_TAB_SALE 9
-#define CASH_MSG_SET_GOODS 0x17
-#define CASH_MSG_ADD 0x1f
-#define CASH_MSG_REMOVE 0x68
-#define CASH_MSG_CART_TOTAL 0x9b
-#define CASH_ID_ADD 0xd8
-#define CASH_ID_REMOVE 0xcb
-#define CASH_ID_PLUS 0x10f
-#define CASH_ID_MINUS 0x110
-#define COUNT_FOR_CASH_CART 0x13
-#define COUNT_FOR_CASH_SHOP 0x14
-
 static __inline void send_packet(const void *buf, int len)
 {
     rag_connection_send_packet(rag_connection_instance(), len, buf);
@@ -221,17 +204,12 @@ struct UIWindow *ui_bartermarket_wnd_new(void);
 struct UIItemPurchaseWnd *ui_barter_item_purchase_wnd_construct(struct UIItemPurchaseWnd *self);
 struct UIWindow *ui_barter_item_purchase_wnd_new(void);
 
-struct UICashShopWnd_Item *ui_cash_shop_wnd_item_new(void);
-
 struct UIMerchantItemLogWnd *ui_merchant_item_log_wnd_construct(struct UIMerchantItemLogWnd *self, int variant);
 struct UIWindow *ui_merchant_item_log_wnd_new(int arg);
 
 struct UIMerchantItemPurchaseWnd *ui_merchant_item_purchase_wnd_construct(struct UIMerchantItemPurchaseWnd *self,
                                                                                  int variant);
 struct UIWindow *ui_merchant_item_purchase_wnd_new(int arg);
-
-struct UIMileageWnd *ui_mileage_wnd_construct(struct UIMileageWnd *self);
-struct UIWindow *ui_mileage_wnd_new(void);
 
 struct UIItemSellWnd2 *ui_item_sell_wnd2_construct(struct UIItemSellWnd2 *self);
 struct UIWindow *ui_item_sell_wnd2_new(void);

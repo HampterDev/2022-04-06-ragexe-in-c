@@ -439,7 +439,6 @@ void session_clear_purchase_lists(struct Session *self)
     list_clear(&self->otherStoreItems, item_info_destroy);
 }
 
-void session_clear_shop_buy_list(struct Session *self) { list_clear(&self->purchaseItems, item_info_destroy); }
 void session_clear_storage(struct Session *self) { list_clear(&self->storageItems, item_info_destroy); }
 void session_clear_cart(struct Session *self) { list_clear(&self->cartItems, item_info_destroy); }
 void session_clear_other_store_items(struct Session *self) { list_clear(&self->otherStoreItems, item_info_destroy); }
@@ -447,20 +446,6 @@ void session_clear_store_candidates(struct Session *self) { list_clear(&self->st
 void session_clear_own_store_items(struct Session *self) { list_clear(&self->ownStoreItems, item_info_destroy); }
 void session_clear_purchase_list(struct Session *self) { list_clear(&self->storePurchaseItems, item_info_destroy); }
 void session_clear_store_setup(struct Session *self) { list_clear(&self->storeSetupItems, item_info_destroy); }
-
-void session_clear_item_list(struct Session *self, int which)
-{
-    if (which < 0 || (unsigned)which >= 11)
-        return;
-    list_clear(&self->cashShopGoods[which], item_info_destroy);
-}
-
-void session_clear_cash_shop_goods(struct Session *self)
-{
-    int i;
-    for (i = 0; i < 11; i++)
-        list_clear(&self->cashShopGoods[i], item_info_destroy);
-}
 
 static void copy_list(struct List *dest, struct List *src)
 {

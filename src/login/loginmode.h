@@ -87,7 +87,6 @@ struct LoginMode {
     struct LoginBillingInfo billing;
     DWORD nextKeepAlive;
     void *waitWnd;
-    int pin_failures;
     struct Vec messageIds;
     int mobile_otp_id;
     struct Vec connections;
@@ -118,8 +117,6 @@ struct LoginConnEntry {
 extern int g_exchangeGiveBack;
 
 #include "contents/guild_emblem_api.h"
-
-#include "contents/party_booking.h"
 
 void game_mode_ignore_packet(const unsigned char *pkt);
 
@@ -165,7 +162,6 @@ void login_mode_on_select_wnd_result2(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_delete_result(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_delete_reserved(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_pin_state(struct LoginMode *self, const BYTE *pkt);
-void login_mode_on_pin_state2(struct LoginMode *self, const BYTE *pkt);
 
 void login_mode_refuse_login(struct LoginMode *self, int code, const char *text);
 void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt);

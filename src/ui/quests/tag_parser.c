@@ -505,7 +505,6 @@ BYTE tag_item_link_fill_item(const struct Vec *vals, struct ItemInfo *item)
         if (n > 3)
             item->refine = v[3];
         item->view = v[4];
-        item->grade = (short)v[5];
         if (n > ITEM_LINK_CARDS) {
             card_count = v[ITEM_LINK_CARDS];
             for (i = 1; i < card_count + 1; i++) {

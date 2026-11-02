@@ -16,9 +16,9 @@ BYTE session_is_bard_or_dancer(struct Session *self, int job, int female)
 {
     if (!female)
         return job == JOB_BARD || job == 0xfb4 || job == 0xfca || job == 0xfe4 || job == 0xfeb
-            || job == 0x1008 || job == 0x10a7;
+            || job == 0x1008;
     return job == JOB_DANCER || job == 0xfb5 || job == 0xfcb || job == 0xfe5 || job == 0xfec
-        || job == 0x1009 || job == 0x10a8;
+        || job == 0x1009;
 }
 
 float session_get_baby_job_scale(struct Session *self, int job)

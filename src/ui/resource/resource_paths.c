@@ -73,9 +73,6 @@ static void madogear_names(struct String *path)
 
     if (at != (size_t)-1)
         string_replace(path, at, 9, MADOARMOR, 9);
-    at = string_rfind(path, "MEISTER_MADOGEAR1");
-    if (at != (size_t)-1)
-        string_replace(path, at, 0x11, "MEISTER_MADOGEAR2", 0x11);
 }
 
 static struct String *race_folder(struct String *out, int job)
@@ -144,8 +141,6 @@ struct String *resource_path_body_palette(struct String *out, int job, int sex, 
     int index;
 
     costume = costume == 1 ? 1 : 0;
-    if (session_is_fourth_job(&g_session1, job) == 1)
-        costume = 0;
     if (palette < 2 && costume == 0) {
         if ((unsigned)(job - 0xfa1) <= 0x15)
             palette = job <= 0xfa7;
@@ -211,8 +206,6 @@ struct String *resource_path_job_body_sprite(struct String *out, int ext, int jo
 
     string_init(out);
     costume = costume == 1 ? 1 : 0;
-    if (session_is_fourth_job(&g_session1, job) == 1)
-        costume = 0;
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);
     session_get_job_sprite_name(&g_session1, &body_name, base);
     string_init(&tail);

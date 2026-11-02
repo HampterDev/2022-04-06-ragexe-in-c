@@ -1,8 +1,6 @@
 #define TEST_EFFECT_FACTORIES(X) \
     X(AMachineEffect, 0x0d4, a_machine_effect_construct, a_machine_effect_new) \
-    X(AcidifiedThrow, 0x0ec, acidified_throw_construct, acidified_throw_new) \
     X(AnimatedEmitterEffect, 0x1a0, animated_emitter_effect_construct, animated_emitter_effect_new) \
-    X(AstralStrikeEffect, 0x0e0, astral_strike_effect_construct, astral_strike_effect_new) \
     X(AxeBoomerang, 0x0f0, axe_boomerang_construct, axe_boomerang_new) \
     X(BindTrapEffect, 0x0d4, bind_trap_effect_construct, bind_trap_effect_new) \
     X(BlastForge, 0x0e8, blast_forge_construct, blast_forge_new) \
@@ -17,32 +15,23 @@
     X(CloudKillEffect, 0x0e4, cloud_kill_effect_construct, cloud_kill_effect_new) \
     X(CommonFloorEffect, 0x0d4, common_floor_effect_construct, common_floor_effect_new) \
     X(Competentia, 0x0d4, competentia_construct, competentia_new) \
-    X(CresciveBolt, 0x0cc, crescive_bolt_construct, crescive_bolt_new) \
-    X(CrimsonArrowEffect, 0x0cc, crimson_arrow_effect_construct, crimson_arrow_effect_new) \
     X(CurseOfCubeEffect, 0x0e4, curse_of_cube_effect_construct, curse_of_cube_effect_new) \
-    X(CylinderEffect, 0x0d8, cylinder_effect_construct, cylinder_effect_new) \
     X(DancingKnifeEffect, 0x0e4, dancing_knife_effect_construct, dancing_knife_effect_new) \
     X(Ez2StrEffect, 0x100, ez2_str_effect_construct, ez2_str_effect_new) \
     X(Ez2StrEffectEx, 0x0d4, ez2_str_effect_ex_construct, ez2_str_effect_ex_new) \
     X(EmitterEffect, 0x188, emitter_effect_construct, emitter_effect_new) \
     X(EnergyOrbEffect, 0x0dc, energy_orb_effect_construct, energy_orb_effect_new) \
-    X(EternalSlashAttackEffect, 0x0d4, eternal_slash_attack_effect_construct, eternal_slash_attack_effect_new) \
     X(EternalSlashCountEffect, 0x0cc, eternal_slash_count_effect_construct, eternal_slash_count_effect_new) \
     X(EvilLandEffect, 0x0d4, evil_land_effect_construct, evil_land_effect_new) \
     X(EvilsPawEffect, 0x0fc, evils_paw_effect_construct, evils_paw_effect_new) \
     X(FallenAngelEffect, 0x0d8, fallen_angel_effect_construct, fallen_angel_effect_new) \
-    X(FloralFlareRoad, 0x0d8, floral_flare_road_construct, floral_flare_road_new) \
     X(FriggSongEffect, 0x0ec, frigg_song_effect_construct, frigg_song_effect_new) \
     X(FromTheAbyssEffect, 0x0e8, from_the_abyss_effect_construct, from_the_abyss_effect_new) \
     X(FullScreenEffect, 0x0d8, full_screen_effect_construct, full_screen_effect_new) \
-    X(FuumaShouakuEffect, 0x0e0, fuuma_shouaku_effect_construct, fuuma_shouaku_effect_new) \
-    X(GaleStorm, 0x0e0, gale_storm_construct, gale_storm_new) \
     X(GravityControlEffect, 0x0d0, gravity_control_effect_construct, gravity_control_effect_new) \
-    X(HawkVumerangEffect, 0x130, hawk_vumerang_effect_construct, hawk_vumerang_effect_new) \
     X(HealEffect, 0x128, heal_effect_construct, heal_effect_new) \
     X(ItemDropEffect, 0x118, item_drop_effect_construct, item_drop_effect_new) \
     X(JupitelThunderHit, 0x0ec, jupitel_thunder_hit_construct, jupitel_thunder_hit_new) \
-    X(JupitelThunderStormEffect, 0x0e8, jupitel_thunder_storm_effect_construct, jupitel_thunder_storm_effect_new) \
     X(Level150Effect, 0x0f8, level150_effect_construct, level150_effect_new) \
     X(Level150SubEffect, 0x0d4, level150_sub_effect_construct, level150_sub_effect_new) \
     X(Level99Effect, 0x0f8, level99_effect_construct, level99_effect_new) \
@@ -54,17 +43,13 @@
     X(MeteorEffect, 0x0dc, meteor_effect_construct, meteor_effect_new) \
     X(NewCloudKillEffect, 0x0f8, new_cloud_kill_effect_construct, new_cloud_kill_effect_new) \
     X(NyanggrassEffect, 0x0d8, nyanggrass_effect_construct, nyanggrass_effect_new) \
-    X(PetitioEffect, 0x0d4, petitio_effect_construct, petitio_effect_new) \
-    X(PneumaticusProcellaEffect, 0x0d8, pneumaticus_procella_effect_construct, pneumaticus_procella_effect_new) \
     X(PowderingEffect, 0x0e4, powdering_effect_construct, powdering_effect_new) \
-    X(RandomHitEffect, 0x0cc, random_hit_effect_construct, random_hit_effect_new) \
     X(RandomOptEffect, 0x0ec, random_opt_effect_construct, random_opt_effect_new) \
     X(RectUpEffect, 0x0f0, rect_up_effect_construct, rect_up_effect_new) \
     X(RichsCoinEffect, 0x0e4, richs_coin_effect_construct, richs_coin_effect_new) \
     X(RootTwistEffect, 0x0d4, root_twist_effect_construct, root_twist_effect_new) \
     X(RotateItemEffect, 0x0dc, rotate_item_effect_construct, rotate_item_effect_new) \
     X(RotateLineEffect, 0x100, rotate_line_effect_construct, rotate_line_effect_new) \
-    X(SavageImpactEffect, 0x0d8, savage_impact_effect_construct, savage_impact_effect_new) \
     X(ScatterEffect, 0x0d4, scatter_effect_construct, scatter_effect_new) \
     X(ServantWeaponEffect, 0x140, servant_weapon_effect_construct, servant_weapon_effect_new) \
     X(SevereRainStorm, 0x0d4, severe_rain_storm_construct, severe_rain_storm_new) \
@@ -78,15 +63,12 @@
     X(SquareRangeEffect, 0x0dc, square_range_effect_construct, square_range_effect_new) \
     X(StarEmperorEffect, 0x0e0, star_emperor_effect_construct, star_emperor_effect_new) \
     X(StemSpearEffect, 0x0d4, stem_spear_effect_construct, stem_spear_effect_new) \
-    X(StormCannonEffect, 0x100, storm_cannon_effect_construct, storm_cannon_effect_new) \
     X(StormKickEffect, 0x0f8, storm_kick_effect_construct, storm_kick_effect_new) \
     X(SunStanceEffect, 0x0d0, sun_stance_effect_construct, sun_stance_effect_new) \
     X(SvgSpiritEffect, 0x0cc, svg_spirit_effect_construct, svg_spirit_effect_new) \
-    X(TalismanMarkEffect, 0x0d4, talisman_mark_effect_construct, talisman_mark_effect_new) \
     X(TetraBallEffect, 0x0dc, tetra_ball_effect_construct, tetra_ball_effect_new) \
     X(ThrowItemEffect, 0x100, throw_item_effect_construct, throw_item_effect_new) \
     X(TriangleShotArrow, 0x0fc, triangle_shot_arrow_construct, triangle_shot_arrow_new) \
     X(TunaPartyEffect, 0x0d4, tuna_party_effect_construct, tuna_party_effect_new) \
-    X(ViolentQuakeEffect, 0x0d4, violent_quake_effect_construct, violent_quake_effect_new) \
     X(WarningPlaneEffect, 0x0dc, warning_plane_effect_construct, warning_plane_effect_new) \
     X(WindEffect, 0x134, wind_effect_construct, wind_effect_new)

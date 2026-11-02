@@ -121,7 +121,6 @@ unsigned char player_skill_bundle_put_autorun_skill(struct PlayerSkillBundle *se
     skill->id = info->id;
     skill->sp_cost = info->sp_cost;
     skill->upgradable = info->upgradable;
-    skill->ap_amount = info->ap_amount;
     return 0;
 }
 

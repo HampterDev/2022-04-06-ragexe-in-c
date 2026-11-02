@@ -3,8 +3,6 @@
 #include "core/memory.h"
 #include "ui/window_access.h"
 #include "ui/wndmgr/make_window_internal.h"
-#include "contents/lapine_box.h"
-#include "contents/lapine_upgrade.h"
 #include "core/msg_str.h"
 #include "ui/items/item_list.h"
 #include "ui/items/refine_controls.h"
@@ -12,11 +10,9 @@
 #include "ui/items/styling_shop.h"
 #include "ui/quests/quests.h"
 #include "ui/shops/barter_ex_internal.h"
-#include "ui/shops/cash_shop.h"
 #include "ui/shops/merchant.h"
 #include "ui/shops/merchant_shop.h"
 #include "ui/shops/merchant_shop_make_internal.h"
-#include "ui/shops/ncash_wnd.h"
 #include "ui/shops/storage.h"
 #include "ui/shops/storage_internal.h"
 #include "ui/social/social.h"
@@ -103,19 +99,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
     struct UIWindow *wnd = NULL;
 
     switch (window_id) {
-    case 0xb8:
-        wnd = self->n_cash_wnd;
-        if (wnd == NULL) {
-            wnd = u_in_cash_wnd_new();
-            self->n_cash_wnd = wnd;
-            ui_window_create(wnd, 0x280, 0x21c);
-            wm_move_640(wnd, 0, 0x1e);
-            ui_window_mgr_add_window(self, wnd);
-            wm_set_info(wnd, &self->n_cash_info);
-            snap_mgr_register(&g_snapMgr, wnd);
-        }
-        wm_show(wnd);
-        break;
     case 0x21:
         wnd = self->item_store_wnd;
         if (wnd == NULL) {
@@ -328,27 +311,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         ui_window_set_show(wnd, 0);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0x10b:
-        wnd = ui_window_mgr_get_window(self, 0x10b);
-        if (wnd == NULL) {
-            struct BitmapRes *res;
-
-            wnd = ui_mileage_wnd_new();
-            res = ui_skin_bitmap(UI_SKIN "basic_interface\\mileage_bg1.bmp");
-            if (res == NULL) {
-                ui_window_create(wnd, 0x96, 0x46);
-                wm_move(wnd, g_renderer->width - 0x1e0, 0xc);
-            } else {
-                ui_window_create(wnd, res->width, res->height);
-                if (self->n_cash_call_wnd)
-                    wm_move(wnd, g_renderer->width - 0x124, 0xb);
-                else
-                    wm_move(wnd, g_renderer->width - res->width - 0x154, 0xc);
-            }
-            ui_window_mgr_add_window(self, wnd);
-        }
-        ui_window_set_show(wnd, g_session1.showGoldPcIcon);
-        break;
     case 0x119:
         wnd = ui_window_mgr_get_window(self, 0x119);
         if (wnd == NULL) {
@@ -359,40 +321,8 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         }
         wm_show(wnd);
         break;
-    case 0x122:
-        if (ui_window_mgr_get_window(self, 0x122))
-            return NULL;
-        wnd = lapine_box_new();
-        ui_window_create(wnd, 0x190, 0xfa);
-        wm_move(wnd, wm_center_x(0x190), wm_center_y(0xfa));
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x127:
         wnd = make_refining_wnd(self);
-        break;
-    case 0x12e:
-        wnd = ui_window_mgr_get_window(self, 0x12e);
-        if (wnd)
-            break;
-        wnd = lapine_upgrade_new();
-        ui_window_create(wnd, 0x190, 0xfa);
-        wm_move(wnd, wm_center_x(0x190), wm_center_y(0xfa));
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x13e:
-        wnd = ui_window_mgr_get_window(self, 0x13e);
-        if (wnd)
-            break;
-        wnd = ui_cash_shop_wnd_new();
-        self->cash_shop_wnd = wnd;
-        ui_window_create(wnd, 0x2d3, 0x21c);
-        {
-            int y = wm_times_half(g_renderer->height - 0x21c);
-
-            wm_move(wnd, wm_times_half(g_renderer->width - 0x2d3), y);
-        }
-        wm_set_info(wnd, NULL);
-        ui_window_mgr_add_window(self, wnd);
         break;
     case 0x14e:
         wnd = ui_window_mgr_get_window(self, 0x14e);
@@ -462,25 +392,6 @@ struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id)
         ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, 0xc95, 0, 0, 0);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0x157:
-    {
-        int x = (int)((float)(g_renderer->width - 0x190) * 0.5f - 100.0f);
-        int y = (int)((float)(g_renderer->height - 0x14a) * 0.5f);
-
-        ui_window_mgr_make_window(self, 0x8);
-        if (self->item_wnd)
-            wm_move(self->item_wnd, x + 0x190, y - self->item_wnd->height + 0x14a);
-        wm_close_rodex(self, 0xe82);
-        wm_close_bank(self, 0xe84);
-        wnd = ui_window_mgr_get_window(self, 0x157);
-        if (wnd)
-            break;
-        wnd = ui_grade_enchant_wnd_new();
-        ui_window_create(wnd, 0x190, 0x14a);
-        wm_move(wnd, x, y);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    }
     default:
         return WM_NOT_MINE;
     }

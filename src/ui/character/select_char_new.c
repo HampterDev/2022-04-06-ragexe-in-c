@@ -52,9 +52,6 @@
 #define ID_NAME_CHANGED 0x158
 #define ID_DELETE_RESERVE 0x18f
 #define ID_DELETE_CANCEL 0x190
-#define ID_MAKE 0x198
-#define ID_DEL 0x199
-#define ID_PIN_ENABLE 0x19a
 #define ID_MOVE_FROM 0x1a8
 #define ID_MOVE_TO 0x1a9
 #define ID_PRESS_SLOT_0 0x1aa
@@ -138,8 +135,6 @@ const struct UIWindowOps ui_new_select_char_wnd_ops = {
 struct UINewSelectCharWnd {
     struct UIFrameWnd frame;
     struct UIBmpTextButton *info_button;
-    struct UIBitmapButton *make_button;
-    struct UIBitmapButton *del_button;
     struct UIBmpTextButton *reserve_button;
     struct UIBmpTextButton *cancel_button;
     struct Tree gids;
@@ -331,8 +326,6 @@ struct UIWindow *ui_new_select_char_wnd_create(void)
         login_mode_max_char_slot((struct LoginMode *)login_mode()));
     self->delete_button = NULL;
     self->info_button = NULL;
-    self->make_button = NULL;
-    self->del_button = NULL;
     self->reserve_button = NULL;
     self->cancel_button = NULL;
     self->busy = 0;
@@ -566,26 +559,6 @@ void ui_new_select_char_wnd_on_create(struct UIWindow *window, int width_unused,
     self->info_button->bmp.button.base.id = 0x116;
     ui_button_set_show((struct UIButton *)(self->info_button), 0);
     ui_window_add_child(wnd, &self->info_button->bmp.button.base);
-
-    self->make_button = new_bitmap_button();
-    set_bitmaps(self->make_button, UI_SKIN "btn_make.bmp", UI_SKIN "btn_make_a.bmp", UI_SKIN "btn_make_b.bmp");
-    ui_window_create(&self->make_button->button.base, self->make_button->bitmap_width,
-                     self->make_button->bitmap_height);
-    ui_window_move_base(&self->make_button->button.base, 0xc8, 0x14e);
-    self->make_button->button.base.id = ID_MAKE;
-    ui_button_show((struct UIButton *)(self->make_button), 0);
-    ui_window_add_child(wnd, &self->make_button->button.base);
-
-    self->del_button = new_bitmap_button();
-    set_bitmaps(self->del_button, UI_SKIN "btn_del.bmp", UI_SKIN "btn_del_a.bmp", UI_SKIN "btn_del_b.bmp");
-    ui_window_create(&self->del_button->button.base, self->del_button->bitmap_width,
-                     self->del_button->bitmap_height);
-    ui_window_move_base(&self->del_button->button.base, 0xc8, 0x14e);
-    self->del_button->button.base.id = ID_DEL;
-    ui_button_show((struct UIButton *)(self->del_button), 0);
-    ui_window_add_child(wnd, &self->del_button->button.base);
-    ui_button_show((struct UIButton *)(self->make_button), 0);
-    ui_button_show((struct UIButton *)(self->del_button), 0);
 
     self->reserve_button = add_info_button(0x33e, 0x142, 0xd0b, 1);
     ui_bmp_text_button_set_text_style(self->reserve_button, 3, 0xc, 0x909090, 0, 0, UI_TEXT_CENTRED,
@@ -928,22 +901,6 @@ void ui_new_select_char_wnd_on_process(struct UIWindow *window)
     button = SLOT_BUTTON(self, self->cur);
     if (button)
         ui_window_on_process(button);
-}
-
-void ui_new_select_char_wnd_hide_button(struct UINewSelectCharWnd *self, int id)
-{
-    if (id == ID_MAKE)
-        ui_button_show((struct UIButton *)(self->make_button), 0);
-    else if (id == ID_DEL)
-        ui_button_show((struct UIButton *)(self->del_button), 0);
-}
-
-void ui_new_select_char_wnd_show_button(struct UINewSelectCharWnd *self, int id)
-{
-    if (id == ID_MAKE)
-        ui_button_show((struct UIButton *)(self->make_button), 1);
-    else if (id == ID_DEL)
-        ui_button_show((struct UIButton *)(self->del_button), 1);
 }
 
 static void send_packet(int id, const void *packet)
@@ -1319,19 +1276,6 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
         send_packet(0x82b, &packet);
         break;
     }
-    case ID_MAKE:
-        ui_make_window(0xc8);
-        ui_window_send_msg(g_windowMgr.second_password_edit_wnd, NULL, UI_MSG_COMMAND, 0x11c, 0, 0, 0);
-        ui_window_send_msg(g_windowMgr.second_password_edit_wnd, NULL, UI_MSG_COMMAND, UI_ID_OK, 1, 0, 0);
-        break;
-    case ID_DEL:
-        ui_make_window(0xc8);
-        break;
-    case ID_PIN_ENABLE:
-        packet.id = 0x8c5;
-        packet.value = g_session1.ownAid;
-        send_packet(0x8c5, &packet);
-        break;
     case ID_MOVE_FROM:
         self->move_from = g_loginCharInfo.slot;
         break;
@@ -1351,7 +1295,7 @@ int ui_new_select_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
                                           int msg, int val1, int val2, int val3, int val4)
 {
     struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
-    if (g_windowMgr.second_password_edit_wnd || g_windowMgr.second_password_input_wnd || ui_get_window(0x116))
+    if (ui_get_window(0x116))
         return 0;
     switch (msg) {
     case UI_MSG_COMMAND:

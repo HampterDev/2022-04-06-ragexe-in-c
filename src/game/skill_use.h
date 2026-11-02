@@ -24,7 +24,6 @@ int skill_use_extra(const struct SkillCast *cast);
 int skill_use_third(const struct SkillCast *cast);
 int skill_use_third2(const struct SkillCast *cast);
 int skill_use_late(const struct SkillCast *cast);
-int skill_use_fourth(const struct SkillCast *cast);
 int skill_use_companion(const struct SkillCast *cast);
 
 enum {

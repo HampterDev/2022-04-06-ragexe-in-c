@@ -116,7 +116,7 @@ static void registry_case(int which)
     unsigned before, registered;
     hat_count = which == 1 ? 3 : 0;
     extra_count = which == 1 ? 3 : which == 2 ? 1 : 0;
-    extra_ids[0] = which == 2 ? 0x93e : 0xc8;
+    extra_ids[0] = which == 2 ? 0x943 : 0xc8;
     extra_ids[1] = extra_ids[2] = 45000;
     lua_calls = 0;
     effect_mgr_construct(&manager);
@@ -220,7 +220,7 @@ static void singleton_lifetime_cases(void)
     reset_allocations();
 
     extra_count = 1;
-    extra_ids[0] = 0x93e;
+    extra_ids[0] = 0x943;
     assert(!effect_mgr_create() && !g_effectMgr);
     reset_allocations();
     extra_count = 0;
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
     int i;
     if (argc > 1) { trace = fopen(argv[1], "wb"); assert(trace); }
     for (i = 0; i < 3; ++i) registry_case(i);
-    assert(trace_hash == 0x9455ba96u);
+    assert(trace_hash == 0x274deebau);
     shown_effect_map_case();
     effect_maps_case();
     singleton_lifetime_cases();

@@ -8,7 +8,6 @@
 #include "core/text_util.h"
 #include "session/session_items.h"
 #include "session/session_party.h"
-#include "ui/items/refine_controls.h"
 #include "ui/ui_std.h"
 
 #pragma pack(push, 1)
@@ -18,12 +17,6 @@ struct PACKET_ZC_UPDATE_CARDSLOT {
     short slot;
     int card;
     unsigned char action;
-};
-struct PACKET_ZC_GRADE_ENCHANT_ACK {
-    unsigned short id;
-    short index;
-    unsigned short grade;
-    int result;
 };
 struct PACKET_ZC_CHANGE_ITEM_OPTION3 {
     unsigned short id;
@@ -38,17 +31,10 @@ struct PACKET_ZC_CHANGE_ITEM_OPTION3 {
 STATIC_ASSERT(change_item_option3_grade, offsetof(struct PACKET_ZC_CHANGE_ITEM_OPTION3, grade) == 0x2f);
 
 enum { CARDSLOT_INSERT = 1, CARDSLOT_REMOVE = 2, CARDSLOT_REMOVE2 = 3 };
-enum { GRADE_SUCCESS = 0, GRADE_DOWNGRADE = 2 };
 enum {
     WID_ITEM_COLLECTION = 0x0c,
-    WID_GRADE_ENCHANT = 0x157,
 };
 enum { UIM_SHOW_ITEM = 0x18 };
-enum {
-    EF_GRADE_ENCHANT = 0x647,
-    EF_GRADE_ENCHANT_SUCCESS = 0x648,
-    EF_GRADE_ENCHANT_FAILURE = 0x649,
-};
 
 enum { IN_INVENTORY = 0, IN_EQUIP_SLOTS = 1, IN_COSTUME_SLOTS = 2 };
 
@@ -66,47 +52,6 @@ void game_mode_zc_update_card_slot(struct GameMode *self, const struct PACKET_ZC
         else if ((unsigned char)(packet->action - CARDSLOT_REMOVE) <= 1)
             item.slot[packet->slot] = 0;
         session_set_equip_slot(&g_session1, slots[2], &item);
-    }
-    item_info_destruct(&item);
-}
-
-static void play_grade_effects(int result_effect)
-{
-    struct Vec3 at = { 0, 0, 0 };
-    struct Effect *effect;
-
-    effect_mgr_spawn(g_effectMgr, ((unsigned)g_session1.ownAid), EF_GRADE_ENCHANT, at, 0, -1, 0, 0);
-    effect = effect_mgr_spawn(g_effectMgr, ((unsigned)g_session1.ownAid), result_effect, at, 0, -1, 0, 0);
-    effect->ops->set_start_delay(effect, 0xaf0);
-}
-
-void game_mode_zc_grade_enchant_ack(struct GameMode *self, const struct PACKET_ZC_GRADE_ENCHANT_ACK *packet)
-{
-    struct ItemInfo item;
-    void *wnd;
-    int result;
-
-    (void)self;
-    session_get_inventory_item(&g_session1, &item, packet->index);
-    if (item.index != 0) {
-        result = packet->result;
-        if (result == GRADE_SUCCESS)
-            item.refine = result;
-        if (result == GRADE_SUCCESS || result == GRADE_DOWNGRADE) {
-            item.grade = packet->grade;
-            session_inventory_update(&g_session1, &item, 1);
-        }
-    }
-    wnd = ui_window_find(WID_GRADE_ENCHANT);
-    if (wnd != 0) {
-        result = packet->result;
-        if (result == GRADE_SUCCESS) {
-            grade_enchant_wnd_set_result(wnd, 2, result);
-            play_grade_effects(EF_GRADE_ENCHANT_SUCCESS);
-        } else if ((unsigned)(result - 1) <= 3) {
-            grade_enchant_wnd_set_result(wnd, 2, result);
-            play_grade_effects(EF_GRADE_ENCHANT_FAILURE);
-        }
     }
     item_info_destruct(&item);
 }
@@ -199,7 +144,6 @@ void game_mode_zc_change_item_option3(struct GameMode *self, const struct PACKET
     for (i = 0; i < ITEM_CARD_SLOTS; i++)
         item.slot[i] = packet->cards[i];
     set_options(&item, packet->options);
-    item.grade = packet->grade;
     put_item(where, slot, &item);
     show_item(ui_window_find(WID_ITEM_COLLECTION), &item);
     item_info_destruct(&item);

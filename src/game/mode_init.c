@@ -48,8 +48,6 @@
 
 enum { UIWM_LOADING = 4, WID_LOADING = 7 };
 
-enum { CZ_REQ_SCHEDULER_CASHITEM = 0x8c9 };
-
 enum { UIWM_CHAT_LINE = 1 };
 
 static void store_own_names(struct GameMode *self)
@@ -77,7 +75,6 @@ void game_mode_on_init(struct Mode *mode, const char *map)
     struct World *world;
     struct View *view;
     char line[0x100];
-    short packet;
     size_t size;
     int short_wobble;
 
@@ -149,10 +146,6 @@ void game_mode_on_init(struct Mode *mode, const char *map)
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)line, 0xffff, 0, 0);
     }
     game_mode_add_schedules();
-    if (session_cash_shop_goods_empty(&g_session1)) {
-        packet = CZ_REQ_SCHEDULER_CASHITEM;
-        send_packet(CZ_REQ_SCHEDULER_CASHITEM, &packet);
-    }
 
     if (g_wobbleMode == 2) {
         short_wobble = g_wobbleFramesLeft <= 10000 && g_wobbleFramesLeft != 0;

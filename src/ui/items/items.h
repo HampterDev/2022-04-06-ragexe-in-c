@@ -112,24 +112,4 @@ struct UIWindow *ui_item_repair_wnd_new(void);
 struct UIWeaponRefineWnd *ui_weapon_refine_wnd_construct(struct UIWeaponRefineWnd *self);
 struct UIWindow *ui_weapon_refine_wnd_new(void);
 
-struct UISwapBitmapButton;
-
-struct UISwapEquipmentWnd {
-    struct UIFrameWnd frame;
-    struct UISwapBitmapButton *swap;
-    int kind;
-    DWORD made_at;
-    int accessory_bottom;
-    int accessory_top;
-    int accessory_mid;
-    int robe;
-    int hover[3];
-    struct UIAnimation animation;
-};
-
-struct UISwapEquipmentWnd *ui_swap_equipment_wnd_construct(struct UISwapEquipmentWnd *self);
-unsigned long long ui_swap_equipment_wnd_key(struct UISwapEquipmentWnd *self, unsigned long long key);
-int ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4);
-
 #endif

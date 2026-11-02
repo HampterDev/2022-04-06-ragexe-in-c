@@ -1,7 +1,5 @@
 #include "game/packet_handlers.h"
-#include "skills/skill_action.h"
 #include "actor/render_object.h"
-#include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "game/skill_use.h"
@@ -26,7 +24,6 @@ static int keeps_its_state(int skill_id)
     switch (skill_id) {
     case 0x107: case 0x110: case 0x111: case 0x173:
     case 0x917: case 0x918: case 0x919: case 0xa13:
-    case 0x1453: case 0x14c4: case 0x14ca: case 0x14cf:
         return 1;
     }
     return 0;
@@ -107,7 +104,6 @@ static void face_the_target(struct GameMode *mode, unsigned short skill_id, int 
 static void play_table_look(const struct SkillCast *cast)
 {
     skill_effect_on_caster(cast->skill_id, cast->caster, cast->target);
-    skill_action_mgr_use(skill_action_mgr_instance(), cast->skill_id, cast->level, (SkillActor *)(cast->caster), (SkillActor *)(cast->target));
 }
 
 static int play_known_look(const struct SkillCast *cast)
@@ -126,8 +122,6 @@ static int play_known_look(const struct SkillCast *cast)
         return skill_use_third2(cast);
     if (id <= 0x146e)
         return skill_use_late(cast);
-    if (id <= 0x1511)
-        return skill_use_fourth(cast);
     return skill_use_companion(cast);
 }
 

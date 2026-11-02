@@ -230,7 +230,7 @@ static void draw_rows(struct UINewSkillListWnd *self)
         struct SkillInfo *info = LIST_VALUE(node, struct SkillInfo);
         struct BitmapRes *icon;
         struct SkillInfo at;
-        int level, x, y, text_x, grey = 0, blue, red_green, known_level, sp, ap;
+        int level, x, y, text_x, grey = 0, blue, red_green, known_level, sp;
         BYTE level_use;
 
         if (row < self->top * self->columns)
@@ -320,18 +320,10 @@ static void draw_rows(struct UINewSkillListWnd *self)
                 } else {
                     sp = skill_info_get_sp_amount(info, info->level);
                 }
-                ap = skill_info_get_ap_amount(info, info->level);
-                if (session_is_space(&g_session1, info->id)) {
-                    if (ap)
-                        sprintf(buf, "Sp : %d%%, Ap : %d", sp, ap);
-                    else
-                        sprintf(buf, "Sp : %d%%", sp);
-                } else {
-                    if (ap)
-                        sprintf(buf, "Sp : %d, Ap : %d", sp, ap);
-                    else
-                        sprintf(buf, "Sp : %d", sp);
-                }
+                if (session_is_space(&g_session1, info->id))
+                    sprintf(buf, "Sp : %d%%", sp);
+                else
+                    sprintf(buf, "Sp : %d", sp);
             }
             ui_window_text_out(wnd, text_x + 0x64, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
         }

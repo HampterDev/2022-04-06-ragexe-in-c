@@ -29,6 +29,8 @@ int session_get_talk_type(struct Session *session, const char *text, int *type, 
     if (!strncmp(text, "/integer", 8)) *type = 0x67;
     else if (!strcmp(text, "/byte")) *type = 0x6a;
     else if (!strcmp(text, "/icon")) *type = 0xc3;
+    else if (!strcmp(text, "/cashshop")) *type = 0xd8;
+    else if (!strcmp(text, "/goldpc")) *type = 0xd9;
     else if (!strcmp(text, "/mirror")) *type = TALK_SHOW_NAME;
     else if (!strcmp(text, "/music")) *type = 7;
     else if (!strcmp(text, "/sound")) *type = 11;
@@ -95,7 +97,8 @@ int main(void)
     size = g_session1.talkOptionSettings.size; calls = allocation_calls;
     assert(!talk_option_set(NULL, 2) && !talk_option_set("", 2));
     set(L, "/unknown", 2); set(L, "/known-unbound", 2); set(L, "/icon", 2);
-    assert(query(L, "/icon") == -1);
+    set(L, "/cashshop", 2); set(L, "/goldpc", 2);
+    assert(query(L, "/icon") == -1 && query(L, "/cashshop") == -1 && query(L, "/goldpc") == -1);
     assert(query(L, "/unknown") == -1 && query(L, "/known-unbound") == -1);
     assert(g_session1.talkOptionSettings.size == size && allocation_calls == calls);
     option = talk_option_find("/known-unbound");

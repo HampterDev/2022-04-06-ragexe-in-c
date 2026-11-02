@@ -26,15 +26,12 @@ struct DragInfo {
     int option_count;
     struct ItemOption options[5];
     int shop_index;
-    short grade;
     char by_index;
     int equip_location;
     __int64 view;
 };
 OFFSET_ASSERT(DragInfo, display_name, 0x24);
 
-void drag_info_copy(struct DragInfo *dst, const struct DragInfo *src);
-void drag_info_assign(struct DragInfo *dst, const struct DragInfo *src);
 void drag_info_destroy(struct DragInfo *drag);
 
 #endif

@@ -3,7 +3,6 @@
 #include "session/character_name.h"
 #include "ui/misc/snap_mgr.h"
 #include "ui/character/gauge.h"
-#include "ui/character/gauge_sources.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -28,17 +27,8 @@
 #include "ui/character/gauge_internal.h"
 #include "ui/wndmgr/wndmgr.h"
 
-#define SESSION_PARAM_AP 0xe8
-#define SESSION_PARAM_MAX_AP 0xe9
-
 #define BASIC_INFO_SIZE 0xf8
 #define BASIC_OFFSCREEN (-100)
-
-struct BasicInfoLayout {
-    int row_y;
-    int compact_height;
-    int expanded_height;
-};
 
 struct UIBasicInfoWnd {
     struct UIFrameWnd frame;
@@ -52,9 +42,6 @@ struct UIBasicInfoWnd {
     struct UIWindow *base_exp_bar;
     struct UIWindow *job_exp_bar;
     int row_y;
-    struct UIWindow *ap_gauge;
-    struct BasicInfoLayout layout;
-    struct BasicInfoLayout ap_layout;
 };
 OFFSET_ASSERT(UIBasicInfoWnd, name, 0xa0);
 
@@ -158,17 +145,6 @@ struct UIBasicInfoWnd *ui_basic_info_wnd_construct(struct UIBasicInfoWnd *self)
     self->row_y = 0xd;
     self->compact_height = 0x37;
     self->expanded_height = 0x86;
-    self->ap_layout.row_y = 0x1c;
-    self->ap_layout.compact_height = 0x47;
-    self->ap_layout.expanded_height = 0x95;
-    self->layout.row_y = 0xd;
-    self->layout.compact_height = 0x37;
-    self->layout.expanded_height = 0x86;
-    if (session_is_fourth_job(&g_session1, basic_job()) == 1) {
-        self->row_y = self->ap_layout.row_y;
-        self->compact_height = self->ap_layout.compact_height;
-        self->expanded_height = self->ap_layout.expanded_height;
-    }
     return self;
 }
 
@@ -206,7 +182,6 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
         ui_window_move(self->name, 0x11, 3);
         ui_window_move_base(self->hp_gauge, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
         ui_window_move_base(self->sp_gauge, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
-        ui_window_move_base(self->ap_gauge, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
         ui_window_move_base(self->base_exp_bar, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
         ui_window_move_base(self->job_exp_bar, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
     } else if (height == self->expanded_height) {
@@ -218,8 +193,6 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
         }
         ui_window_move_base(self->hp_gauge, 0x23, 0x35);
         ui_window_move_base(self->sp_gauge, 0x23, 0x44);
-        if (session_is_fourth_job(&g_session1, basic_job()) == 1)
-            ui_window_move_base(self->ap_gauge, 0x23, 0x53);
         ui_window_resize(self->name, wnd->width - 0x14, 0xf);
         ui_static_text_set_text_ellipsis(self->name, session_character_name(&g_session1));
         ui_window_move(self->name, 9, 0x16);
@@ -245,33 +218,6 @@ void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, __int64 current
 void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum)
 {
     uiint64_bar_graph_set_values((struct UIINT64BarGraph *)self->job_exp_bar, current, maximum);
-}
-
-static void basic_use_layout(struct UIBasicInfoWnd *self, const struct BasicInfoLayout *layout, int expanded)
-{
-    self->row_y = layout->row_y;
-    self->compact_height = layout->compact_height;
-    self->expanded_height = layout->expanded_height;
-    ui_basic_info_wnd_set_height(self, expanded ? layout->expanded_height : layout->compact_height);
-}
-
-void ui_basic_info_wnd_apply_job_layout(struct UIBasicInfoWnd *self)
-{
-    int height = basic_wnd(self)->height;
-
-    if (session_is_fourth_job(&g_session1, basic_job())) {
-        if (height == self->compact_height)
-            basic_use_layout(self, &self->ap_layout, 0);
-        else if (height == self->expanded_height)
-            basic_use_layout(self, &self->ap_layout, 1);
-    } else {
-        if (height == self->compact_height)
-            basic_use_layout(self, &self->layout, 0);
-        else if (height == self->expanded_height)
-            basic_use_layout(self, &self->layout, 1);
-        ui_window_move_base(self->ap_gauge, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
-    }
-    ui_window_invalidate_base(&self->frame.base);
 }
 
 static struct UIWindow *basic_gauge(struct UIBasicInfoWnd *self, struct UIWindow *gauge,
@@ -321,9 +267,6 @@ void ui_basic_info_wnd_on_create(struct UIWindow *window, int width, int height)
     self->sp_gauge = ui_value_gauge_create(VALUE_GAUGE_PLAYER);
     basic_gauge(self, self->sp_gauge, gauge_value_from_int(&g_session1.sp), gauge_value_from_int(&g_session1.maxSp));
 
-    self->ap_gauge = ui_value_gauge_create(VALUE_GAUGE_AP);
-    basic_gauge(self, self->ap_gauge, gauge_ap_source(), gauge_max_ap_source());
-
     self->base_exp_bar = basic_exp_bar(self, self->row_y + 0x4c, g_session1.baseExp, g_session1.nextBaseExp);
     self->job_exp_bar = basic_exp_bar(self, self->row_y + 0x56, g_session1.jobExp, g_session1.nextJobExp);
     ui_basic_info_wnd_set_height(self, height);
@@ -350,144 +293,7 @@ static int basic_small_font_job(int job, int with_17)
 {
     if (with_17 && job == 0x17)
         return 1;
-    return (job >= 0xfce && job <= 0xfd1) || (job >= 0x108f && job <= 0x1094) || job == 0x10ce || job == 0x10cf ||
-           job == 0x10dc;
-}
-
-static void basic_draw_ap_compact(struct UIBasicInfoWnd *self)
-{
-    struct UIWindow *wnd = basic_wnd(self);
-    struct String text;
-    int face = 1, font_height = 0xe, job, level;
-    COLORREF colour;
-    __int64 exp, next;
-    double percent;
-
-    ui_window_fill_rect(wnd, 1, 0x11, wnd->width - 2, wnd->height - 0x12, basic_chip(2, 2));
-    ui_window_draw_round_frame(wnd, 0, 0xe, wnd->width, wnd->height - 0xe, basic_chip(0xe, 6));
-    ui_window_draw_title_bar(wnd, 0, "", 0);
-    if (g_serviceType == 0 && basic_small_font_job(basic_job(), 0)) {
-        font_height = 0xb;
-        face = 0;
-    }
-
-    level = g_session1.charBaseLevel;
-    string_init(&text);
-    string_format(&text, "%s %d / %s / %s %d", msg_str(0xbfe), level,
-                  session_get_job_name(&g_session1, basic_job(), -1), msg_str(0xe2b), g_session1.jobLevel);
-    ui_window_text_out(wnd, 8, 0x14, string_cstr(&text), 0, face, font_height, 0, 0, 0);
-    string_free(&text);
-
-    colour = basic_low_colour(g_session1.hp, g_session1.maxHp);
-    string_format(&text, "%s %d / %d", msg_str(0xbfc), g_session1.hp, g_session1.maxHp);
-    ui_window_text_out(wnd, 8, 0x24, string_cstr(&text), 0, face, font_height, colour, 0, 0);
-    string_free(&text);
-
-    basic_base_exp(&exp, &next);
-    job = basic_job();
-    if (g_session1.charBaseLevel < session_get_max_base_level(&g_session1, job))
-        percent = (double)(__int64)((double)exp / (double)next * 1000.0) * 0.1;
-    else
-        percent = 100.0;
-    string_format(&text, "| %s %.1lf%%", msg_str(0xc00), percent);
-    ui_window_text_out(wnd, 0x88, 0x24, string_cstr(&text), 0, face, font_height, 0, 0, 0);
-    string_free(&text);
-
-    colour = basic_low_colour(g_session1.sp, g_session1.maxSp);
-    string_format(&text, "%s %d / %d", msg_str(0xbfd), g_session1.sp, g_session1.maxSp);
-    ui_window_text_out(wnd, 8, 0x34, string_cstr(&text), 0, face, font_height, colour, 0, 0);
-    string_free(&text);
-
-    string_format(&text, "| %s %d / %d", msg_str(0xe2c), session_get_param(&g_session1, SESSION_PARAM_AP),
-                  session_get_param(&g_session1, SESSION_PARAM_MAX_AP));
-    ui_window_text_out(wnd, 0x88, 0x34, string_cstr(&text), 0, face, font_height, 0, 0, 0);
-    string_free(&text);
-}
-
-static void basic_draw_percent(struct UIBasicInfoWnd *self, int y, int value, int maximum)
-{
-    struct String text;
-
-    string_init(&text);
-    string_format(&text, "%d%%", value * 100 / maximum);
-    ui_window_text_out(basic_wnd(self), 0xad, y, string_cstr(&text), 0, 1, 0xe, 0, 0, 0);
-    string_free(&text);
-}
-
-static void basic_draw_ap_expanded(struct UIBasicInfoWnd *self)
-{
-    struct UIWindow *wnd = basic_wnd(self);
-    struct String text, joined, zeny, weight;
-    char money[0x40];
-    int face, font_height, zeny_width, max_ap, divisor;
-
-    ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\w_basewin_bg2.bmp"), 0);
-    ui_window_text_out(wnd, 0x12, 3, msg_str(0xee), 0, 0, 0xc, 0xffffff, 0, 0);
-    ui_window_text_out(wnd, 0x11, 2, msg_str(0xee), 0, 0, 0xc, 0, 0, 0);
-    if (g_serviceType == 0 || g_serviceType == 0xe) {
-        face = 0;
-        font_height = 0xc;
-    } else {
-        face = 1;
-        font_height = 0xe;
-    }
-    ui_window_text_out(wnd, 9, 0x24, session_get_job_name(&g_session1, basic_job(), -1), 0, face,
-                     font_height, 0, 0, 0);
-    ui_window_text_out(wnd, 9, 0x33, msg_str(0xbfc), 0, 1, 0xe, 0, 0, 0);
-    ui_window_text_out(wnd, 9, 0x41, msg_str(0xbfd), 0, 1, 0xe, 0, 0, 0);
-    ui_window_text_out(wnd, 9, 0x50, msg_str(0xe2c), 0, 1, 0xe, 0, 0, 0);
-    if (g_session1.maxHp > 0)
-        basic_draw_percent(self, 0x33, g_session1.hp, g_session1.maxHp);
-    if (g_session1.maxSp > 0)
-        basic_draw_percent(self, 0x41, g_session1.sp, g_session1.maxSp);
-    if (session_get_param(&g_session1, SESSION_PARAM_MAX_AP) > 0) {
-        int ap = session_get_param(&g_session1, SESSION_PARAM_AP);
-
-        max_ap = session_get_param(&g_session1, SESSION_PARAM_MAX_AP);
-        basic_draw_percent(self, 0x50, ap, max_ap);
-    }
-
-    string_init(&text);
-    string_format(&text, msg_str(0x7cb), g_session1.charBaseLevel);
-    ui_window_text_out(wnd, 0x11, self->row_y + 0x47, string_cstr(&text), 0, 1, 0xe, 0, 0, 0);
-    string_free(&text);
-
-    string_format(&text, msg_str(0x7cc), g_session1.jobLevel);
-    if (g_serviceType == 0xc) {
-        struct String brazil;
-
-        string_init(&brazil);
-        string_format(&brazil, "Classe. %d", g_session1.jobLevel);
-        string_assign(&text, string_cstr(&brazil), brazil.size);
-        string_free(&brazil);
-    }
-    ui_window_text_out(wnd, 0x11, self->row_y + 0x53, string_cstr(&text), 0, 1, 0xe, 0, 0, 0);
-    string_free(&text);
-
-    memset(money, 0, sizeof money);
-    format_money(g_session1.zeny, money);
-    string_init(&zeny);
-    string_format(&zeny, msg_str(0x7cd), money);
-    string_init(&joined);
-    string_assign_cstr(&joined, " | ");
-    string_append(&joined, string_cstr(&zeny), zeny.size);
-    string_free(&zeny);
-    zeny = joined;
-    ui_window_text_out_right(wnd, wnd->width - 5, self->row_y + 0x67, string_cstr(&zeny), 0, 1, 0xe, 0, 0);
-    zeny_width = ui_window_text_width(wnd, string_cstr(&zeny), 0, 1, 0xe, 0, 0);
-
-    string_init(&weight);
-    if (g_serviceType == 0xc)
-        string_format(&text, "Peso : %3d / %3d", g_session1.weight, g_session1.maxWeight);
-    else
-        string_format(&text, msg_str(0x7c8), g_session1.weight, g_session1.maxWeight);
-    string_assign(&weight, string_cstr(&text), text.size);
-    string_free(&text);
-    divisor = g_session1.maxWeight > 1 ? g_session1.maxWeight : 1;
-    ui_window_text_out_right(wnd, wnd->width - zeny_width - 5, self->row_y + 0x67, string_cstr(&weight), 0, 1,
-                          0xe, g_session1.weight * 100 / divisor >= g_session1.weightPenaltyPercent ? BASIC_RED : 0, 0);
-    string_free(&weight);
-    string_free(&zeny);
+    return (job >= 0xfce && job <= 0xfd1) || (job >= 0x108f && job <= 0x1094);
 }
 
 static int basic_max_level(void)
@@ -627,13 +433,6 @@ void ui_basic_info_wnd_on_draw(struct UIWindow *window)
     struct UIBasicInfoWnd *self = (struct UIBasicInfoWnd *)window;
     int height = basic_wnd(self)->height;
 
-    if (session_is_fourth_job(&g_session1, basic_job()) == 1) {
-        if (height == self->compact_height)
-            basic_draw_ap_compact(self);
-        else if (height == self->expanded_height)
-            basic_draw_ap_expanded(self);
-        return;
-    }
     if (height == self->compact_height)
         basic_draw_compact(self);
     else if (height == self->expanded_height)

@@ -75,14 +75,6 @@ struct UIWindow *ui_join_friend_accept_wnd_new(void);
 struct UIGuildNoticeWnd *ui_guild_notice_wnd_construct(struct UIGuildNoticeWnd *self);
 struct UIWindow *ui_guild_notice_wnd_new(void);
 
-void macro_reporter_request_players_in_range(WORD x, WORD y, BYTE radius);
-struct UIMacroReporterWnd;
-void ui_macro_reporter_wnd_add_player(struct UIMacroReporterWnd *self, int aid);
-struct UIMacroReporterWnd *ui_macro_reporter_wnd_construct(struct UIMacroReporterWnd *self);
-struct UIWindow *ui_macro_reporter_wnd_new(void);
-struct UIMacroUserInfoWnd *ui_macro_user_info_wnd_construct(struct UIMacroUserInfoWnd *self);
-struct UIWindow *ui_macro_user_info_wnd_new(void);
-
 struct UINoticeWnd *ui_notice_wnd_construct(struct UINoticeWnd *self);
 struct UIWindow *ui_notice_wnd_new(void);
 

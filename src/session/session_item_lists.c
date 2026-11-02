@@ -313,23 +313,6 @@ WORD session_shop_buy_weight_by_index(struct Session *self)
     return sum;
 }
 
-struct ItemInfo *session_get_cash_goods(struct Session *self,
-                                                       struct ItemInfo *out, int k, int n)
-{
-    if (k >= 0 && (unsigned)k < 11)
-        copy_nth(out, &self->cashShopGoods[k], n);
-    else
-        item_info_construct_with_arg(out);
-    return out;
-}
-
-int session_cash_goods_count(struct Session *self, int k)
-{
-    if (k < 0 || (unsigned)k >= 11)
-        return 0;
-    return (int)self->cashShopGoods[k].size;
-}
-
 int session_get_friend_count(struct Session *self) { return (int)self->friendList.size; }
 int session_get_inventory_count(struct Session *self) { return (int)self->itemList.size; }
 int session_get_store_setup_size(struct Session *self) { return (int)self->storeSetupItems.size; }
@@ -397,19 +380,6 @@ int session_get_storage_item_count(struct Session *self, int index)
 BYTE session_has_shop_goods(struct Session *self, int index)
 {
     return find_node_by_index(&self->shopItems, index) != NULL;
-}
-
-BYTE session_has_cash_search_result(struct Session *self, int itemId)
-{
-    struct List *list = &self->cashShopGoods[10];
-    struct ListNode *node;
-
-    if (list->size == 0)
-        return 0;
-    for (node = list->head->next; node != list->head; node = node->next)
-        if (item_id(LIST_VALUE(node, struct ItemInfo)) == itemId)
-            return 1;
-    return 0;
 }
 
 BYTE session_has_cart_item_id(struct Session *self, int itemId)
@@ -586,7 +556,7 @@ void session_fill_buying_store_list_priced(struct Session *self)
             continue;
         }
         value = LIST_VALUE(other, struct ItemInfo)->price;
-        if (value == -1 || session_is_in_switch_sets(&g_session1, item->index) == 1) {
+        if (value == -1) {
             node = list_erase(&self->storeCandidateItems, node, item_info_destroy);
             continue;
         }

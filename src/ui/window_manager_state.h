@@ -60,7 +60,6 @@ struct UIWindowMgr {
     struct UIWindow *orphan_char_wnd;
     struct UIWindow *basic_info_wnd;
     struct UIWindow *equip_wnd;
-    struct UIWindow *n_cash_wnd;
     struct UIWindow *short_cut_wnd;
     struct UIWindow *item_drop_cnt_wnd;
     struct UIWindow *say_dialog_wnd;
@@ -84,7 +83,6 @@ struct UIWindowMgr {
     struct UIWindow *notify_level_up_wnd;
     struct UIWindow *notify_job_level_up_wnd;
     struct UIWindow *notify_quest_wnd;
-    struct UIWindow *n_cash_call_wnd;
     struct UIWindow *item_shop_wnd;
     struct UIWindow *item_shop_wnd2;
     struct UIWindow *item_purchase_wnd;
@@ -103,11 +101,6 @@ struct UIWindowMgr {
     struct UIWindow *item_store_wnd;
     struct UIWindow *item_store_sub_wnd[ITEM_STORE_SUB_WNDS];
     struct UIWindow *item_store_find_wnd;
-    struct UIWindow *seek_party_wnd;
-    struct UIWindow *seek_party_mbwnd;
-    struct UIWindow *job_list_wnd;
-    struct UIWindow *seek_party_list_wnd;
-    struct UIWindow *party_booking_help_wnd;
     struct UIWindow *new_skill_list_wnd;
     struct UIWindow *messenger_group_wnd;
     struct UIWindow *join_party_accept_wnd;
@@ -158,8 +151,6 @@ struct UIWindowMgr {
     struct UIWindow *key_stroke_wnd;
     struct UIWindow *join_friend_accept_wnd;
     struct UIWindow *command_list_wnd;
-    struct UIWindow *second_password_input_wnd;
-    struct UIWindow *second_password_edit_wnd;
     struct UIWindow *homun_info_wnd;
     struct UIWindow *homun_skill_list_wnd;
     struct UIWindow *mer_info_wnd;
@@ -242,10 +233,6 @@ struct UIWindowMgr {
     struct WindowInfo chat_room_info;
     struct ItemStoreWndInfo item_store_info;
     struct WindowInfo item_store_find_info;
-    struct WindowInfo booking_list_info;
-    struct WindowInfo booking_mb_info;
-    struct WindowInfo booking_info;
-    struct WindowInfo booking_mb_check_info;
     struct WindowInfo item_shop_info;
     struct WindowInfo item_sell_info;
     struct WindowInfo item_purchase_info;
@@ -284,7 +271,6 @@ struct UIWindowMgr {
     struct WindowInfo buying_store_item_shop_info;
     struct WindowInfo buying_store_item_sell_info;
     struct WindowInfo buying_store_mirror_sell_list_info;
-    struct WindowInfo n_cash_info;
     struct WindowInfo guild_helper_info;
     struct Vec message_boxes;
     struct WindowInfo graphic_setting_info;
@@ -304,20 +290,12 @@ struct UIWindowMgr {
     POINT ach_tracing_pos;
     int round_box_tooltip_show;
     struct UIWindow *round_box_tooltip_wnd;
-    struct UIWindow *macro_detector_wnd;
-    struct UIWindow *macro_reporter_wnd;
-    struct UIWindow *macro_user_info_wnd;
-    struct UIWindow *captcha_preview_wnd;
-    struct UIWindow *macro_detector_edit;
-    struct MacroReporterInfo macro_reporter_info;
     POINT preview_equip_pos;
-    POINT swap_equipment_pos;
     int plate_width;
     int plate_height;
     struct List plates;
     struct List plate_ids;
     struct UIWindow *drag_plate;
-    struct UIWindow *cash_shop_wnd;
     struct UIWindow *private_airplane_wnd;
     struct UIWindow *rpimage_wnd2;
     struct UIWindow *bartermarket_wnd;

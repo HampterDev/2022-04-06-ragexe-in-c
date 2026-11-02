@@ -34,13 +34,11 @@ enum MenuIconId {
     MENU_ID_QUEST = 0x161,
     MENU_ID_KEYBOARD = 0x16a,
     MENU_ID_GUILD = 0x16d,
-    MENU_ID_BOOKING = 0x173,
     MENU_ID_NAVIGATION = 0x1a6,
     MENU_ID_BANK = 0x1c5,
     MENU_ID_ACHIEVEMENT = 0x1d1,
     MENU_ID_MAIL = 0x1d4,
     MENU_ID_MENU = 0x1f6,
-    MENU_ID_SHOP = 0x1f8,
     MENU_ID_ATTENDANCE = 0x214,
     MENU_ID_AGENCY = 0x218,
 };
@@ -64,12 +62,9 @@ enum MenuIconId {
 #define WND_ATTENDANCE 0x148
 #define WND_AGENCY 0x144
 #define WND_MAIL_BLOCK_1 0x127
-#define WND_MAIL_BLOCK_2 0x157
 #define MSG_MAIL_BLOCK_1 0xbb0
-#define MSG_MAIL_BLOCK_2 0xe83
 #define MAIL_BLOCK_COLOUR 0xff
 
-#define MODE_REQ_SHOP 0x143
 #define PACKET_BANK_OPEN 0x9ab
 #define PACKET_ATTENDANCE 0xa68
 #define ATTENDANCE_ARG 5
@@ -81,7 +76,7 @@ enum MenuIconId {
 #define MENU_ICON_Y 0x17
 #define MENU_ICON_NEW_Y 0x11
 #define MENU_BUTTON_Y 4
-#define MENU_ICON_COUNT 18
+#define MENU_ICON_COUNT 17
 #define MENU_BIG_COUNT 0x14
 #define MENU_BIG_WIDTH 0xdc
 #define MENU_BIG_HEIGHT 0xee
@@ -323,18 +318,18 @@ static struct UIBitmapButton *menu_button(struct UIMenuIconWnd *self, const char
 
 static const int menu_icon_ids[MENU_ICON_COUNT] = {
     MENU_ID_STATUS,  MENU_ID_EQUIP,  MENU_ID_ITEM,       MENU_ID_SKILL,
-    MENU_ID_BOOKING, MENU_ID_PARTY,  MENU_ID_GUILD,
+    MENU_ID_PARTY,  MENU_ID_GUILD,
     MENU_ID_QUEST,   MENU_ID_MAP,    MENU_ID_NAVIGATION, MENU_ID_OPTION,
     MENU_ID_BANK,    MENU_ID_MAIL,       MENU_ID_ACHIEVEMENT,
-    MENU_ID_SHOP,   MENU_ID_KEYBOARD,
+    MENU_ID_KEYBOARD,
     MENU_ID_ATTENDANCE, MENU_ID_AGENCY,
 };
 static const char *const menu_icon_names[MENU_ICON_COUNT] = {
     "status",  "equip", "item",       "skill",
-    "booking", "party", "guild",
+    "party", "guild",
     "quest",   "map",   "navigation", "option",
     "bank",    "mail",       "achievement",
-    "shop",  "keyboard",
+    "keyboard",
     "attendance", "adventurerAgency",
 };
 
@@ -354,7 +349,7 @@ void ui_menu_icon_wnd_on_create(struct UIWindow *window, int width, int height)
         name = menu_icon_names[i];
         if (id == MENU_ID_STATUS && session_is_doram_job(&g_session1, g_session1.job) == 1)
             name = "status_doram";
-        if (id == MENU_ID_BOOKING || id == 0x239)
+        if (id == 0x239)
             continue;
         x = (unsigned)placed % MENU_COLUMNS * MENU_ICON_DX + MENU_ICON_X;
         y = (unsigned)placed / MENU_COLUMNS * MENU_ICON_DY;
@@ -517,18 +512,12 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             if (ui_get_window(WND_MAIL_BLOCK_1))
                 ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1),
                                       MAIL_BLOCK_COLOUR, 0, 0);
-            else if (ui_get_window(WND_MAIL_BLOCK_2))
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2),
-                                      MAIL_BLOCK_COLOUR, 0, 0);
             else
                 ui_menu_icon_wnd_toggle(WND_MAIL);
             break;
         case MENU_ID_MENU:
             g_session1.showMenuIcon = 1;
             ui_window_invalidate_base(&self->frame.base);
-            break;
-        case MENU_ID_SHOP:
-            game_send_message(MODE_REQ_SHOP, 0, 0, 0, 0);
             break;
         case MENU_ID_ATTENDANCE:
             if (ui_get_window(WND_ATTENDANCE)) {

@@ -165,7 +165,6 @@ static int unit_is_attackable(int unit)
 {
     switch (unit) {
     case 0x8d: case 0x8f: case 0x98: case 0xda: case 0xde: case 0xe6:
-    case 0x5174: case 0x5175: case 0x5176: case 0x5177:
         return 1;
     }
     return 0;
@@ -178,7 +177,6 @@ static int unit_is_attackable_in_siege(int unit)
     case 0x99: case 0xbe: case 0xbf: case 0xc0: case 0xc1: case 0xc2: case 0xcb: case 0xd2: case 0xd3: case 0xd4:
     case 0xd5: case 0xd6: case 0xd7: case 0xd8: case 0xd9: case 0xda: case 0xde: case 0xe5: case 0xe6: case 0xe7:
     case 0xe8: case 0xe9: case 0xf0: case 0x108:
-    case 0x5174: case 0x5175: case 0x5176: case 0x5177:
         return 1;
     }
     return 0;
@@ -244,8 +242,6 @@ static void talk_to_npc(struct GameMode *self, struct PickInfo *pick)
 
     state = self->world->player->state;
     if (state != 0 && state != PLAYER_STATE_SIT)
-        return;
-    if (game_mode_is_blocking_window_open() == 1)
         return;
     npc = world_get_game_actor_by_aid(self->world, pick->aid);
     game_mode_world_to_cell(self, npc->pos.x, npc->pos.z, &x, &y);

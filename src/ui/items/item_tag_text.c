@@ -123,7 +123,7 @@ void ui_item_tag_ctrl_add_item(struct UIItemTagCtrl *self, const struct ItemInfo
     string_append_char(&code, sep[4]);
     append_base62(&code, info->view);
     string_append_char(&code, sep[5]);
-    append_base62(&code, info->grade);
+    append_base62(&code, 0); /* grade field kept in the link format; items have no grade */
     cards = item_info_get_slot_count(info);
     if (cards == 0)
         cards = 4;

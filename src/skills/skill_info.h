@@ -22,7 +22,6 @@ struct SkillInfo {
     int max_level;
     int level_limit;
     unsigned short level2;
-    int ap_amount;
     struct Vec requirements;
 };
 
@@ -35,7 +34,6 @@ void skill_info_destroy(void *skill);
 const char *skill_info_get_id_name(struct SkillInfo *skill);
 const char *skill_info_get_name(struct SkillInfo *skill);
 int skill_info_get_sp_amount(struct SkillInfo *skill, int level);
-int skill_info_get_ap_amount(struct SkillInfo *skill, int level);
 const char *skill_get_id_name(int skill_id);
 const char *skill_name(int skill_id);
 unsigned char skill_info_may_harm(int skill_id);

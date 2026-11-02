@@ -88,9 +88,6 @@ void game_mode_zc_status_change(struct GameMode *self, const struct PACKET_ZC_ST
     if (sp >= SP_USTR && sp < SP_USTR + 6) {
         STAT_COST(sp - SP_USTR) = packet->value;
         session_invalidate_windows(&g_session1);
-    } else if (sp >= SP_UPOW && sp < SP_UPOW + 6) {
-        TRAIT_COST(sp - SP_UPOW) = packet->value;
-        session_invalidate_windows(&g_session1);
     }
     refresh_status_window();
 }
@@ -201,10 +198,7 @@ struct PACKET_ZC_COUPLESTATUS {
 };
 #pragma pack(pop)
 
-enum { SP_POW = 219 };
-
 #define STAT_BONUS(i)       (g_session1.statBonus[i])
-#define TRAIT_BONUS(i)      (g_session1.traitBonus[i])
 
 void game_mode_zc_couple_status(struct GameMode *self, const struct PACKET_ZC_COUPLESTATUS *packet)
 {
@@ -215,10 +209,6 @@ void game_mode_zc_couple_status(struct GameMode *self, const struct PACKET_ZC_CO
         STAT_BASE(sp - SP_STR) = packet->value;
         session_invalidate_windows(&g_session1);
         STAT_BONUS(sp - SP_STR) = packet->bonus;
-        session_invalidate_windows(&g_session1);
-    } else if (sp >= SP_POW && sp < SP_POW + 6) {
-        session_set_advanced_status(&g_session1, (int)sp, packet->value);
-        TRAIT_BONUS(sp - SP_POW) = packet->bonus;
         session_invalidate_windows(&g_session1);
     }
 }

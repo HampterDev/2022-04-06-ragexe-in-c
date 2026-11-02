@@ -31,7 +31,6 @@ void session_remove_inventory_filter_types(struct Session *self);
 void session_clear_inventory(struct Session *self);
 void session_clear_lists(struct Session *self);
 void session_clear_purchase_lists(struct Session *self);
-void session_clear_shop_buy_list(struct Session *self);
 void session_clear_storage(struct Session *self);
 void session_clear_cart(struct Session *self);
 void session_clear_other_store_items(struct Session *self);
@@ -39,8 +38,6 @@ void session_clear_store_candidates(struct Session *self);
 void session_clear_own_store_items(struct Session *self);
 void session_clear_purchase_list(struct Session *self);
 void session_clear_store_setup(struct Session *self);
-void session_clear_item_list(struct Session *self, int which);
-void session_clear_cash_shop_goods(struct Session *self);
 void session_mirror_from_cart(struct Session *self);
 void session_copy_store_purchase_to_sent(struct Session *self);
 void session_clear_worn_items(struct Session *self);
@@ -75,8 +72,6 @@ struct ItemInfo *session_get_inventory_item_at(struct Session *self, struct Item
 struct PartyMember *session_party_member_at(struct Session *self, struct PartyMember *out, int n);
 struct PartyMember *session_get_friend_by_index(struct Session *self, struct PartyMember *out, int n);
 WORD session_get_inventory_index_by_id(struct Session *self, int itemId);
-struct Vec *session_inventory_indices(struct Session *self, struct Vec *out, int itemId,
-                                                       BYTE onlyIdentified);
 struct ItemInfo *session_get_inventory_item_by_id(struct Session *self, struct ItemInfo *out,
                                                           int itemId, BYTE requireIdentified);
 DWORD session_get_item_dis_color(const struct ItemInfo *item);
@@ -116,8 +111,6 @@ WORD session_get_shop_goods_weight_by_id(struct Session *self, const struct Item
 WORD session_get_shop_goods_weight_by_index(struct Session *self, const struct ItemInfo *item);
 WORD session_shop_buy_weight_by_id(struct Session *self);
 WORD session_shop_buy_weight_by_index(struct Session *self);
-struct ItemInfo *session_get_cash_goods(struct Session *self, struct ItemInfo *out, int k, int n);
-int session_cash_goods_count(struct Session *self, int k);
 int session_get_friend_count(struct Session *self);
 int session_get_inventory_count(struct Session *self);
 int session_get_store_setup_size(struct Session *self);
@@ -139,7 +132,6 @@ struct ItemInfo *session_get_storage_item(struct Session *self, struct ItemInfo 
 struct ItemInfo *session_storage_item_at(struct Session *self, struct ItemInfo *out, int n);
 int session_get_storage_item_count(struct Session *self, int index);
 BYTE session_has_shop_goods(struct Session *self, int index);
-BYTE session_has_cash_search_result(struct Session *self, int itemId);
 BYTE session_has_cart_item_id(struct Session *self, int itemId);
 int session_has_shop_sell_items(struct Session *self);
 BYTE session_is_worn_index(struct Session *self, int index);
@@ -169,7 +161,6 @@ void session_clear_worn_costumes(struct Session *self);
 void session_clear_viewed_costumes(struct Session *self);
 struct ItemInfo *session_get_worn_costume(struct Session *self, struct ItemInfo *out, int slot);
 BYTE session_take_off_costume(struct Session *self, unsigned location);
-void session_set_arrow_status(struct Session *self, int index);
 
 void session_end_exchange(struct Session *self);
 void session_end_exchange2(struct Session *self);
@@ -189,18 +180,6 @@ void session_reset_mail_items(struct Session *self);
 void session_clear_mail_item_counts(struct Session *self);
 int session_count_mail_items(struct Session *self);
 struct ItemInfo *session_get_mail_item(struct Session *self, struct ItemInfo *out, int index);
-
-BYTE session_put_switch_costume(struct Session *self, const struct ItemInfo *item);
-BYTE session_put_switch_equip(struct Session *self, const struct ItemInfo *item);
-void session_clear_switch_costumes(struct Session *self);
-void session_clear_switch_equips(struct Session *self);
-struct ItemInfo *session_get_switch_costume(struct Session *self, struct ItemInfo *out, int slot);
-struct ItemInfo *session_get_switch_equip(struct Session *self, struct ItemInfo *out, int slot);
-struct ItemInfo *session_find_item_for_switch(struct Session *self, struct ItemInfo *out, int index,
-                                                       unsigned location);
-int session_is_in_switch_sets(struct Session *self, int index);
-void session_take_out_switch_costume(struct Session *self, const struct ItemInfo *item);
-void session_take_out_switch_equip(struct Session *self, const struct ItemInfo *item);
 
 struct PartyMember *party_member_info_copy(struct PartyMember *self,
                                                     const struct PartyMember *src);

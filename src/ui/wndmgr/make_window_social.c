@@ -15,8 +15,6 @@
 #include "ui/social/guild_requests.h"
 #include "ui/social/party_board.h"
 #include "ui/social/party_windows.h"
-#include "ui/social/seek_party.h"
-#include "ui/social/seek_party_mb.h"
 
 static struct UIWindow *make_guild_tab(struct UIWindowMgr *self, int window_id)
 {
@@ -78,55 +76,6 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
     struct UIWindow *wnd = NULL;
 
     switch (window_id) {
-    case 0xad:
-        if (self->party_booking_help_wnd)
-            return NULL;
-        wnd = ui_party_booking_help_wnd_new();
-        self->party_booking_help_wnd = wnd;
-        ui_window_create(wnd, 0x140, 0xc7);
-        wm_move_640(wnd, 0xc8, 0xc8);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0xa4:
-        wnd = self->seek_party_wnd;
-        if (wnd == NULL) {
-            wnd = ui_seek_party_wnd_new();
-            self->seek_party_wnd = wnd;
-            ui_window_create(wnd, 0x98, 0xc7);
-            wm_move_640(wnd, 0xc8, 0xc8);
-            ui_window_mgr_add_window(self, wnd);
-            wm_set_info(self->seek_party_wnd, &self->booking_info);
-        }
-        wm_show(wnd);
-        g_session1.partyBooking.window_open = 1;
-        break;
-    case 0xa8:
-        if (self->seek_party_mbwnd) {
-            if (self->seek_party_wnd == NULL)
-                ui_window_mgr_post_quit1(&g_windowMgr, 0xa8);
-            return NULL;
-        }
-        if (self->seek_party_wnd)
-            return NULL;
-        wnd = ui_seek_party_mb_wnd_new();
-        self->seek_party_mbwnd = wnd;
-        ui_window_create(wnd, 0x168, 0x15e);
-        wm_move_640(wnd, 0xc8, 0xc8);
-        ui_window_mgr_add_window(self, wnd);
-        wm_set_info(self->seek_party_mbwnd, &self->booking_mb_info);
-        break;
-    case 0xa9:
-        if (self->seek_party_list_wnd) {
-            ui_window_mgr_post_quit1(&g_windowMgr, 0xa9);
-            return NULL;
-        }
-        wnd = ui_seek_party_list_wnd_new();
-        self->seek_party_list_wnd = wnd;
-        ui_window_create(wnd, 0x226, 0x15e);
-        wm_move_640(wnd, 0xc8, 0xc8);
-        ui_window_mgr_add_window(self, wnd);
-        wm_set_info(self->seek_party_list_wnd, &self->booking_list_info);
-        break;
     case 0x45:
         wnd = ui_window_mgr_make_window(self, 0x22);
         ui_window_send_msg(wnd, NULL, UI_MSG_COMMAND, 0xcf, self->messenger_group_info.radio ? 2 : 1, 0, 0);

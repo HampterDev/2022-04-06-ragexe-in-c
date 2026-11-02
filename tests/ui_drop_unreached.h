@@ -1,5 +1,4 @@
-#if UI_DROP_OWNER == 1
-void ui_refine_button_set_show(struct UIButton *button, BYTE show) { abort(); }
+#if UI_DROP_OWNER == 2
 void * mem_alloc(size_t arg0) { abort(); }
 void mem_free(void * arg0) { abort(); }
 void string_assign(struct String *arg0, const char *arg1, size_t arg2) { abort(); }
@@ -15,7 +14,6 @@ int ui_window_draw_title_bar(struct UIWindow * arg0, int arg1, const char * arg2
 void ui_window_text_out_centred(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6, COLORREF arg7, int arg8) { abort(); }
 void ui_window_text_out(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6, COLORREF arg7, int arg8, int arg9) { abort(); }
 void ui_window_text_out_right(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6, COLORREF arg7, int arg8) { abort(); }
-void ui_window_text_out_centred_outlined(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, int arg5, COLORREF arg6, COLORREF arg7, int arg8, int arg9, int arg10) { abort(); }
 int ui_window_text_height(struct UIWindow * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
 int ui_window_text_width(struct UIWindow * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
 struct String * ui_window_fit_text(struct UIWindow * arg0, struct String * arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6) { abort(); }
@@ -23,7 +21,6 @@ struct String * ui_window_fit_text(struct UIWindow * arg0, struct String * arg1,
 const char * item_info_get_name(const struct ItemInfo * arg0) { abort(); }
 struct String * item_info_get_display_name(const struct ItemInfo * arg0, struct String * arg1) { abort(); }
 struct ItemInfo * item_info_construct(struct ItemInfo * arg0) { abort(); }
-struct ItemInfo * item_info_construct_with_arg(struct ItemInfo * arg0) { abort(); }
 struct ItemInfo * item_info_copy(struct ItemInfo * arg0, const struct ItemInfo * arg1) { abort(); }
 struct ItemInfo * item_info_assign(struct ItemInfo * arg0, const struct ItemInfo * arg1) { abort(); }
 struct ItemInfo * item_info_assign_from_record_a(struct ItemInfo * arg0, const struct ItemRecordA * arg1) { abort(); }
@@ -90,11 +87,7 @@ int ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int
 struct Mode * game_current_base_mode(void) { abort(); }
 struct GameMode *game_current_mode(void) { abort(); }
 struct DragInfo * game_current_drag(void) { abort(); }
-struct RagConnection * rag_connection_instance(void) { abort(); }
-int rag_connection_get_packet_length(struct RagConnection * arg0, int arg1) { abort(); }
-char rag_connection_send_packet(struct RagConnection * arg0, int arg1, const void * arg2) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, const char * arg6, int arg7, int arg8, int arg9) { abort(); }
-BYTE ui_window_mgr_post_quit1(struct UIWindowMgr * arg0, int arg1) { abort(); }
 int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr * arg0, int arg1, int arg2) { abort(); }
 void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
@@ -116,10 +109,8 @@ void dc_bitmap_fill(struct DcBitmap * arg0, const RECT * arg1, DWORD arg2) { abo
 int ui_window_draw_button_bar(struct UIWindow * arg0, int arg1, int arg2, int arg3) { abort(); }
 int ui_window_vertical_text_length(struct UIWindow * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
 char * format_money(int arg0, char * arg1) { abort(); }
-void ui_window_draw_bitmap_scaled(struct UIWindow * arg0, int arg1, int arg2, int arg3, int arg4, struct BitmapRes * arg5) { abort(); }
 void ui_window_text_out_down(struct UIWindow * arg0, int arg1, int arg2, const char * arg3, int arg4, int arg5, int arg6, COLORREF arg7) { abort(); }
 const char * ui_window_shorten_text(struct UIWindow * arg0, struct String * arg1, const char * arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
-struct UIWindow * ui_window_add_close_button(struct UIWindow * arg0, const char * arg1, int arg2) { abort(); }
 struct ResMgr * g_resMgr(void) { abort(); }
 void * res_mgr_get(struct ResMgr * arg0, const char * arg1) { abort(); }
 void * res_mgr_get_string(struct ResMgr * arg0, struct String arg1) { abort(); }
@@ -128,7 +119,6 @@ void ui_skin_color_chip(struct SkinMgr * arg0, int arg1, int arg2, int * arg3, i
 const char * ui_skin_path(const char * arg0) { abort(); }
 void ui_bmp_text_button_set_text_style(struct UIBmpTextButton * arg0, int arg1, int arg2, COLORREF arg3, char arg4, char arg5, int arg6, int arg7) { abort(); }
 void ui_bmp_text_button_on_draw(struct UIWindow *arg0) { abort(); }
-void ui_window_set_state(struct UIWindow * arg0, int arg1) { abort(); }
 struct UIWindow * ui_static_text_construct(struct UIWindow * arg0) { abort(); }
 struct UIStaticBitmap * ui_static_bitmap_construct(struct UIStaticBitmap * arg0) { abort(); }
 void ui_static_bitmap_set_bitmap(struct UIStaticBitmap * arg0, const char * arg1) { abort(); }
@@ -138,10 +128,6 @@ const char * ui_edit_ctrl_get_text(struct UIWindow * arg0) { abort(); }
 void ui_window_mgr_focus_edit_lost(struct UIWindowMgr * arg0) { abort(); }
 void ui_scroll_bar_set_range(struct UIScrollBar * arg0, int arg1, int arg2, int arg3) { abort(); }
 void ui_scroll_bar_set_pos(struct UIScrollBar * arg0, int arg1) { abort(); }
-struct UIScrollBar_Custom * ui_scroll_bar_custom_construct(struct UIScrollBar_Custom * arg0) { abort(); }
-void ui_scroll_bar_create_sized(struct UIScrollBar * arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
-void ui_scroll_bar_custom_set_arrows(struct UIScrollBar_Custom * arg0, struct String arg1, struct String arg2) { abort(); }
-void ui_scroll_bar_custom_set_thumb(struct UIScrollBar_Custom * arg0, struct String arg1, struct String arg2, struct String arg3) { abort(); }
 void ui_window_draw_item_win_mid(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_window_draw_item_icon(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4) { abort(); }
 void ui_window_draw_item_icon_count(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4, BYTE arg5) { abort(); }
@@ -149,24 +135,14 @@ void ui_window_draw_item_icon_count_grey(struct UIWindow * arg0, int arg1, int a
 int ui_window_draw_item_name_short(struct UIWindow * arg0, int arg1, int arg2, int arg3, const struct ItemInfo * arg4, int arg5) { abort(); }
 COLORREF session_get_item_dis_color(const struct ItemInfo * arg0) { abort(); }
 void ui_refining_wnd_reset(struct UIRefiningWnd * arg0) { abort(); }
-int session_get_inventory_count(struct Session * arg0) { abort(); }
 struct ItemInfo * session_get_inventory_item_by_id(struct Session * arg0, struct ItemInfo * arg1, int arg2, BYTE arg3) { abort(); }
-int session_count_worn_equips(struct Session * arg0) { abort(); }
-int session_count_worn_costumes(struct Session * arg0) { abort(); }
 int session_get_shop_buy_total(struct Session * arg0) { abort(); }
 int session_get_shop_buy_list_size(struct Session * arg0) { abort(); }
 struct ItemInfo * session_get_shop_buy_item_at(struct Session * arg0, struct ItemInfo * arg1, int arg2) { abort(); }
 int session_get_shop_buy_count_by_name(struct Session * arg0, const char * arg1) { abort(); }
 void session_add_shop_buy_item(struct Session * arg0, const struct ItemInfo * arg1) { abort(); }
 void item_info_vec_free(struct Vec * arg0) { abort(); }
-void ui_grade_enchant_btn_start_destroy(struct UIWindow *window) { abort(); }
-void ui_grade_enchant_btn_start_on_draw(struct UIWindow *arg0) { abort(); }
-void ui_grade_enchant_btn_enhanced_up_destroy(struct UIWindow *window) { abort(); }
-void ui_grade_enchant_btn_enhanced_up_on_draw(struct UIWindow *arg0) { abort(); }
-void ui_grade_enchant_btn_enhanced_down_destroy(struct UIWindow *window) { abort(); }
-void ui_grade_enchant_btn_enhanced_down_on_draw(struct UIWindow *arg0) { abort(); }
 void game_mode_drag_item(struct GameMode *arg0, int arg1, const struct ItemInfo *arg2, int arg3, int arg4) { abort(); }
-void ui_window_draw_text_aligned(struct UIWindow * arg0, int arg1, int arg2, struct String arg3, int arg4, int arg5, COLORREF arg6, COLORREF arg7, int arg8, int arg9, int arg10, BYTE arg11) { abort(); }
 #endif
 
 #if UI_DROP_OWNER == 2
@@ -184,7 +160,20 @@ int refining_carried(int arg0) { abort(); }
 struct StdBitIter * std_vector_bool_erase_at(struct StdBitVector * arg0, struct StdBitIter * arg1, unsigned int * arg2, unsigned int arg3) { abort(); }
 #endif
 
-#if UI_DROP_OWNER == 5
+#if UI_DROP_OWNER == 7
+void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }
+#endif
+
+#if UI_DROP_OWNER == 8
+void ui_window_on_draw_base(struct UIWindow * arg0) { abort(); }
+void surface_destroy(struct Surface * arg0) { abort(); }
+#endif
+
+#if UI_DROP_OWNER == 9
+
+#endif
+
+#if UI_DROP_OWNER == 10
 int ui_item_base_wnd_index_at(struct UIItemBaseWnd * arg0, int arg1, int arg2) { abort(); }
 struct ItemInfo * ui_item_base_wnd_get_item(struct UIItemBaseWnd * arg0, struct ItemInfo * arg1, int arg2) { abort(); }
 struct ItemInfo * ui_item_base_wnd_item_at(struct UIItemBaseWnd * arg0, struct ItemInfo * arg1, int arg2, int arg3) { abort(); }
@@ -203,27 +192,6 @@ struct UIWindow * shop_add_title(struct UIWindow * arg0, int arg1, int arg2) { a
 void shop_add_resizer(struct UIItemBaseWnd * arg0, int arg1) { abort(); }
 void shop_add_scroll_bar(struct UIItemBaseWnd * arg0, int arg1) { abort(); }
 void shop_tooltip_cell(struct UIWindow * arg0, int arg1, int arg2, int * arg3, int * arg4) { abort(); }
-void ** cash_shop_window_vector_emplace_realloc(struct Vec * arg0, void ** arg1, void *const * arg2) { abort(); }
-#endif
-
-#if UI_DROP_OWNER == 6
-
-#endif
-
-#if UI_DROP_OWNER == 7
-void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }
-#endif
-
-#if UI_DROP_OWNER == 8
-void ui_window_on_draw_base(struct UIWindow * arg0) { abort(); }
-void surface_destroy(struct Surface * arg0) { abort(); }
-#endif
-
-#if UI_DROP_OWNER == 9
-
-#endif
-
-#if UI_DROP_OWNER == 10
 int purchase_info_usable(struct WindowInfo * arg0) { abort(); }
 void purchase_info_default(struct WindowInfo * arg0) { abort(); }
 int session_get_shop_buy_count(struct Session * arg0, int arg1) { abort(); }

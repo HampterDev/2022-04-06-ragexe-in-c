@@ -52,12 +52,6 @@ static const struct StatCommand s_statCommands[] = {
     { "/int+", 0x1e, 0x10 },
     { "/vit+", 0x1e, 0xf },
     { "/dex+", 0x1e, 0x11 },
-    { "/pow+", 0x13a, 0xdb },
-    { "/sta+", 0x13a, 0xdc },
-    { "/wis+", 0x13a, 0xdd },
-    { "/spl+", 0x13a, 0xde },
-    { "/con+", 0x13a, 0xdf },
-    { "/crt+", 0x13a, 0xe0 },
 };
 
 #define TOK(i)  tokens_at(tokens, (i))
@@ -402,34 +396,8 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xd6;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/cashshop")) {
-        *type = 0xd8;
-        return -1;
-    }
-    if (string_equal_cstr(TOK(0), "/goldpc")) {
-        *type = 0xd9;
-        return -1;
-    }
     if (string_equal_cstr(TOK(0), "/quake")) {
         *type = 0xdb;
-        return -1;
-    }
-    if (string_equal_cstr(TOK(0), "/매크로등록")
-        || string_equal_cstr(TOK(0), "/macro_register") || string_equal_cstr(TOK(0), "/mr")) {
-        *type = 0xde;
-        return -1;
-    }
-    if (string_equal_cstr(TOK(0), "/매크로확인")
-        || string_equal_cstr(TOK(0), "/macro_preview") || string_equal_cstr(TOK(0), "/mp")) {
-        *type = 0xdf;
-        at = -1;
-        if (COUNT() >= 2)
-            assign_token(out, tokens, 1);
-        return at;
-    }
-    if (string_equal_cstr(TOK(0), "/매크로신고")
-        || string_equal_cstr(TOK(0), "/macro_detector") || string_equal_cstr(TOK(0), "/md")) {
-        *type = 0xe0;
         return -1;
     }
     if (string_equal_cstr(TOK(0), "/setcamera") && COUNT() > 2) {
@@ -464,11 +432,6 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         if (COUNT() < 2)
             return -1;
         return first_arg(out, tokens);
-    }
-    if (string_equal_cstr(TOK(0), "/계정한정")
-        || string_equal_cstr(TOK(0), "/accountlimitedtool")) {
-        *type = 0xfa;
-        return -1;
     }
     if (string_equal_cstr(TOK(0), "/모험가중개소")
         || string_equal_cstr(TOK(0), "/중개소")

@@ -245,7 +245,7 @@ static void test_add_failure(void)
     string_init(&item.id_text); string_init(&item.name);
     string_assign_cstr(&item.id_text, "62"); string_assign_cstr(&item.name, "한국 Sword");
     item_heap = heap_live;
-    item.type = 4; item.equip_location = 1; item.refine = 2; item.view = 3; item.grade = 4;
+    item.type = 4; item.equip_location = 1; item.refine = 2; item.view = 3;
     item.slot[0] = 5; item.option_count = 1;
     item.options[0].id = 6; item.options[0].param = 7; item.options[0].value = 8;
     fail_button = 1;
@@ -260,7 +260,7 @@ static void test_add_failure(void)
     assert(ctrl.tags.size == 1 && attached == 1 && heap_live == item_heap + 1);
     assert(!strcmp(ctrl.tags.head->tag.name, "한국 Sword"));
     assert(!strcmp(ctrl.tags.head->tag.code, "10"));
-    assert(!strcmp(ctrl.tags.head->tag.link, "00001110%02&03'04)05)00)00)00+06,07-08"));
+    assert(!strcmp(ctrl.tags.head->tag.link, "00001110%02&03'00)05)00)00)00+06,07-08"));
     button = ctrl.tags.head->tag.button;
     ui_item_tag_ctrl_clear_tags(&ctrl);
     assert(detached == 1 && detach_order[0] == button && destroyed == 1);

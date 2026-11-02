@@ -130,8 +130,6 @@ void ui_combo_box_def_wnd_on_draw(struct UIWindow *self);
 void ui_combo_box_def_wnd_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
 int ui_combo_box_def_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
                                         int msg, int val1, int val2, int val3, int val4);
-struct String *ui_combo_box_def_wnd_get_label_text(struct UIWindow *wnd,
-                                                           struct String *out);
 void ui_combo_box_def2_wnd_destroy(struct UIWindow *window);
 void ui_combo_box_def2_wnd_on_create(struct UIWindow *self, int width, int height_unused);
 void ui_combo_box_def2_wnd_on_draw(struct UIWindow *self);

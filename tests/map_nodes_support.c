@@ -23,7 +23,6 @@ struct UIWindow;
 
 const char * session_get_job_name(struct Session * arg0, int arg1, int arg2) { abort(); }
 struct SkillActionMgr * skill_action_mgr_instance(void) { abort(); }
-unsigned char skill_action_mgr_is_good_for_actor(struct SkillActionMgr * arg0, int arg1) { abort(); }
 struct ItemInfo * item_info_copy(struct ItemInfo * arg0, const struct ItemInfo * arg1) { abort(); }
 int client_lua_call(struct ClientLua *arg0, const char *arg1, const char * arg2, ...) { abort(); }
 void store_search_item_copy(void * arg0, const void * arg1) { abort(); }

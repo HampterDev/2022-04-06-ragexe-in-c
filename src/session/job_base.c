@@ -234,46 +234,6 @@ int session_get_job_without_mount(struct Session *self, int job)
         return 0x1091;
     case 0x1098:
         return 0x1092;
-    case 0x10a9: case 0x10b8:
-        return 0x109c;
-    case 0x10aa: case 0x10b7:
-        return 0x109d;
-    case 0x10ab:
-        return 0x109e;
-    case 0x10ac:
-        return 0x109f;
-    case 0x10ad:
-        return 0x10a0;
-    case 0x10ae: case 0x10b6:
-        return 0x10a1;
-    case 0x10af: case 0x10b9:
-        return 0x10a2;
-    case 0x10b0:
-        return 0x10a3;
-    case 0x10b1:
-        return 0x10a4;
-    case 0x10b2:
-        return 0x10a5;
-    case 0x10b3:
-        return 0x10a6;
-    case 0x10b4:
-        return 0x10a7;
-    case 0x10b5:
-        return 0x10a8;
-    case 0x10d5:
-        return 0x10ce;
-    case 0x10d6:
-        return 0x10cf;
-    case 0x10d7:
-        return 0x10d0;
-    case 0x10d8:
-        return 0x10d1;
-    case 0x10d9:
-        return 0x10d2;
-    case 0x10da:
-        return 0x10d3;
-    case 0x10db:
-        return 0x10d4;
     default:
         return job;
     }

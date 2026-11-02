@@ -203,7 +203,7 @@ static void skill_values(void)
     source.sp_cost = 12; source.upgradable = 1; source.range = 9;
     source.id_name = "skill-name";
     source.cell_index = 7; source.max_level = 10; source.level_limit = 8;
-    source.level2 = 2; source.ap_amount = 5;
+    source.level2 = 2;
     requirements = std_allocate_bytes(8 * sizeof *requirements);
     for (i = 0; i < 8; ++i) {
         requirements[i].skill_id = (int)i + 100;
@@ -220,7 +220,7 @@ static void skill_values(void)
     assert(copy.sp_cost == 12 && copy.upgradable == 1 && copy.range == 9);
     assert(copy.id_name == source.id_name && copy.cell_index == 7);
     assert(copy.max_level == 10 && copy.level_limit == 8);
-    assert(copy.level2 == 2 && copy.ap_amount == 5);
+    assert(copy.level2 == 2);
     assert(copy.requirements.first != source.requirements.first);
     assert(vec_count(&copy.requirements, sizeof *requirements) == 2);
     assert(vec_capacity(&copy.requirements, sizeof *requirements) == 2);
@@ -428,7 +428,6 @@ static void observe_skill_list(const struct List *list)
         skill_observe(info->id);
         skill_observe(info->level);
         skill_observe(info->sp_cost);
-        skill_observe(info->ap_amount);
         skill_observe(info->cell_index);
         skill_observe(vec_count(&info->requirements, sizeof *requirement));
         for (requirement = info->requirements.first; requirement != info->requirements.last;
@@ -498,7 +497,7 @@ static void skill_bundle_values(void)
         skill_info_construct(&info);
         info.id = 42; info.level = 2; info.level2 = 1;
         info.id_name = "owned-requirements";
-        info.sp_cost = 3; info.ap_amount = 4; info.cell_index = 5;
+        info.sp_cost = 3; info.cell_index = 5;
         requirement = mem_alloc(sizeof *requirement);
         requirement->skill_id = 100; requirement->level = 1;
         info.requirements.first = requirement;
@@ -508,11 +507,11 @@ static void skill_bundle_values(void)
         assert(player_skill_bundle_is_level_boosted(&bundle, 42));
         assert(!player_skill_bundle_is_level_boosted(&bundle, 43));
         assert(player_skill_bundle_put_autorun_skill(&bundle, &info) == 1);
-        info.level = 7; info.sp_cost = 11; info.ap_amount = 12;
+        info.level = 7; info.sp_cost = 11;
         requirement->level = 99;
         assert(player_skill_bundle_put_autorun_skill(&bundle, &info) == 0);
         player_skill_bundle_copy_autorun_skill(&bundle, &copy, 42);
-        assert(copy.level == 7 && copy.sp_cost == 11 && copy.ap_amount == 12);
+        assert(copy.level == 7 && copy.sp_cost == 11);
         assert(((struct SkillRequirement *)copy.requirements.first)->level == 1);
         skill_info_destruct(&copy);
         map_nodes_test_window = iteration & 1 ? &window : NULL;

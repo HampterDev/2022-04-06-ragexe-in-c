@@ -1,5 +1,4 @@
 #include "ui/character/gauge.h"
-#include "ui/character/gauge_sources.h"
 #include "ui/window.h"
 #include "ui/draw.h"
 #include "ui/skin.h"
@@ -112,12 +111,6 @@ void ui_window_text_out_centred(struct UIWindow *window, int x, int y, const cha
     assert(window == allocation);
     numbers++;
 }
-int session_get_param(struct Session *session, int type)
-{
-    assert(session == &g_session1 && (type == 0xe8 || type == 0xe9));
-    return type == 0xe8 ? -27 : 68;
-}
-
 static long long read_wide(const void *context) { return *(const long long *)context; }
 static void draw(struct UIWindow *window)
 {
@@ -137,8 +130,6 @@ static void test_values(void)
     assert(gauge_value_read(&custom) == LLONG_MIN);
     wide = LLONG_MAX;
     assert(gauge_value_read(&custom) == LLONG_MAX);
-    source = gauge_ap_source(); copy = gauge_max_ap_source();
-    assert(gauge_value_read(&source) == -27 && gauge_value_read(&copy) == 68);
     assert(allocations == 0);
 }
 
@@ -196,16 +187,16 @@ static void test_value_gauge(enum ValueGaugeStyle style)
     assert(shown_current == current && shown_maximum == maximum);
     current = maximum;
     draw(window);
-    assert(numbers == 1 && bitmap_colour == (style == VALUE_GAUGE_AP ? 1 : 2));
+    assert(numbers == 1 && bitmap_colour == 2);
     current = 1; maximum = 10;
     draw(window);
-    assert(numbers == 1 && bitmap_colour == (style == VALUE_GAUGE_AP ? 2 : 1));
+    assert(numbers == 1 && bitmap_colour == 1);
     current = 11;
     draw(window);
     assert(numbers == 0 && bitmaps == 0);
     current = maximum = 0;
     draw(window);
-    assert(numbers == (style == VALUE_GAUGE_AP));
+    assert(numbers == 0);
     assert(allocations == count);
     window->ops->destroy(window);
     assert(!allocation);
@@ -216,9 +207,8 @@ int main(void)
     test_values();
     test_player_gauge();
     test_value_gauge(VALUE_GAUGE_PLAYER);
-    test_value_gauge(VALUE_GAUGE_AP);
     test_value_gauge(VALUE_GAUGE_HOMUN);
-    assert(allocations == 4 && destructions == 4);
+    assert(allocations == 3 && destructions == 3);
     puts("gauges: live borrowed values, signed/64-bit reads, drawing decisions and owned window cleanup passed");
     return 0;
 }

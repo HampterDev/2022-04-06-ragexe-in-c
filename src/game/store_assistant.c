@@ -272,7 +272,6 @@ static void vending_entry4_to_item(struct ItemInfo *item, const struct VendingEn
     copy_options(item, e->options);
     item->equip_location = e->equip_location;
     item->view = e->view;
-    item->grade = e->grade;
 }
 
 void game_mode_on_vending_store_item_list4(struct GameMode *self, const struct PacketVendingList4 *packet)
@@ -384,7 +383,6 @@ void game_mode_on_purchase_my_item_list3(struct GameMode *self, const struct Pac
         item.slot[3] = e.slot[3];
         item.option_count = item_option_count(e.options);
         copy_options(&item, e.options);
-        item.grade = e.grade;
         items_push_copy(&items, &item);
         item_info_destruct(&item);
     }

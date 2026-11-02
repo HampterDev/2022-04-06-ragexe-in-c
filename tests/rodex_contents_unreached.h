@@ -6,7 +6,6 @@ void * res_mgr_get(struct ResMgr * arg0, const char * arg1) { abort(); }
 COLORREF session_get_item_dis_color(const struct ItemInfo * arg1) { abort(); }
 struct ItemInfo * session_get_mail_item(struct Session * arg0, struct ItemInfo * arg1, int arg2) { abort(); }
 char * format_money64(long long arg0, char * arg1, int arg2) { abort(); }
-char game_mode_is_blocking_window_open(void) { abort(); }
 void item_info_destroy(void *item) { abort(); }
 struct ItemInfo * item_info_construct_with_arg(struct ItemInfo * arg0) { abort(); }
 struct ItemInfo * item_info_copy(struct ItemInfo * arg0, const struct ItemInfo * arg1) { abort(); }

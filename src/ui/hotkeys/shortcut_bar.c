@@ -92,7 +92,6 @@ const struct UIWindowOps ui_short_cut_wnd_ops = {
 #define SHORTCUT_FONT_HEIGHT 0xb
 #define SHORTCUT_ICON_FALLBACK UI_SKIN "item\\am_berserkpitcher.bmp"
 #define SHORTCUT_FRAME UI_SKIN "Shortcut\\shortcut_frame.bmp"
-#define GRADE_ICON UI_SKIN "grade_enchant\\grade_icon%d.bmp"
 #define DRAG_FROM_STORAGE 6
 
 void ui_short_cut_wnd_destruct(struct UIShortCutWnd *self)
@@ -441,15 +440,6 @@ void ui_short_cut_wnd_on_draw(struct UIWindow *window)
                         ui_window_text_out_outlined_right(wnd, x + 0x1b, y + 0x11, count, 0, 0, 0xffffff, 0,
                                                       SHORTCUT_FONT_HEIGHT, 0);
                     }
-                    if (item.grade > 0) {
-                        struct String path;
-
-                        string_init(&path);
-                        string_format(&path, GRADE_ICON, (int)item.grade);
-                        ui_window_draw_bitmap(wnd, x, y + 0xc,
-                                            res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-                        string_free(&path);
-                    }
                 }
                 item_info_destruct(&item);
             }
@@ -578,25 +568,16 @@ void ui_short_cut_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
         if (info.level >= level && info.found) {
             struct String line;
             int sp = skill_info_get_sp_amount(&info, level);
-            int ap = skill_info_get_ap_amount(&info, level);
             const char *prefix = string_cstr(&label);
 
             if (session_is_space(&g_session1, info.id)) {
                 string_init(&line);
-                if (ap)
-                    string_format(&line, "%s %s Use Lv %d (Sp : %d%%, Ap : %d)", prefix,
-                                  skill_info_get_name(&info), level, sp, ap);
-                else
-                    string_format(&line, "%s %s Use Lv %d (Sp : %d%%)", prefix, skill_info_get_name(&info),
-                                  level, sp);
+                string_format(&line, "%s %s Use Lv %d (Sp : %d%%)", prefix, skill_info_get_name(&info),
+                              level, sp);
             } else {
                 string_init(&line);
-                if (ap)
-                    string_format(&line, "%s %s Use Lv %d (Sp : %d, Ap : %d)", prefix,
-                                  skill_info_get_name(&info), level, sp, ap);
-                else
-                    string_format(&line, "%s %s Use Lv %d (Sp : %d)", prefix, skill_info_get_name(&info),
-                                  level, sp);
+                string_format(&line, "%s %s Use Lv %d (Sp : %d)", prefix, skill_info_get_name(&info),
+                              level, sp);
             }
             string_assign(&text, string_cstr(&line), line.size);
             string_free(&line);

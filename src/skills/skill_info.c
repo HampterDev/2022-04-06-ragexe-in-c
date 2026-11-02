@@ -3,7 +3,6 @@
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
 #include "skills/skill_bundle.h"
-#include "skills/skill_action.h"
 
 static const char k_unknownSkillName[] = "Unknown-Skill";
 static const char k_zeroSkillIdName[] = "Zero Skill";
@@ -23,7 +22,6 @@ struct SkillInfo *skill_info_construct_unknown(struct SkillInfo *skill)
     skill->level = 0;
     skill->id_name = k_unknownSkillName;
     skill->level2 = 0;
-    skill->ap_amount = 0;
     memset(&skill->requirements, 0, sizeof skill->requirements);
     return skill;
 }
@@ -35,7 +33,6 @@ struct SkillInfo *skill_info_construct(struct SkillInfo *skill)
     skill->level = 0;
     skill->id_name = NULL;
     skill->level2 = 0;
-    skill->ap_amount = 0;
     memset(&skill->requirements, 0, sizeof skill->requirements);
     return skill;
 }
@@ -54,7 +51,6 @@ static void skill_copy_fields(struct SkillInfo *dst, const struct SkillInfo *src
     dst->max_level = src->max_level;
     dst->level_limit = src->level_limit;
     dst->level2 = src->level2;
-    dst->ap_amount = src->ap_amount;
 }
 
 struct SkillInfo *skill_info_copy(struct SkillInfo *dst, const struct SkillInfo *src)
@@ -84,14 +80,6 @@ void skill_info_destruct(struct SkillInfo *skill)
 void skill_info_destroy(void *skill)
 {
     skill_info_destruct(skill);
-}
-
-int skill_info_get_ap_amount(struct SkillInfo *skill, int level)
-{
-    int amount = 0;
-
-    client_lua_call(g_session1.luaState, "GetLevelUseApAmount", "dd>d", skill->id, level, &amount);
-    return amount;
 }
 
 int skill_info_get_sp_amount(struct SkillInfo *skill, int level)
@@ -175,9 +163,7 @@ static const int skill_list_good[][2] = {
     {0x929, 0x929},   {0x92b, 0x92c},   {0x94f, 0x94f},   {0x975, 0x975},   {0x979, 0x979},
     {0x993, 0x993},   {0x9b0, 0x9b0},   {0x9b2, 0x9b2},   {0x9d3, 0x9d3},   {0x9e9, 0x9e9},
     {0xa24, 0xa27},   {0xa30, 0xa30},   {0xa34, 0xa34},   {0xbd1, 0xbd3},   {0xbd7, 0xbda},
-    {0x13ab, 0x13ab}, {0x13ae, 0x13b1}, {0x13c8, 0x13c8}, {0x1494, 0x1495}, {0x1497, 0x1498},
-    {0x149b, 0x149b},
-    {0x14a0, 0x14a2}, {0x14b2, 0x14b3}, {0x14db, 0x14db}, {0x14f6, 0x14f6}, {0x14f8, 0x14f8},
+    {0x13ab, 0x13ab}, {0x13ae, 0x13b1}, {0x13c8, 0x13c8},
     {0x1f55, 0x1f55}, {0x2022, 0x2027}, {0x202e, 0x2030},
 };
 
@@ -185,7 +171,7 @@ unsigned char skill_info_is_good_skill_for_actor(int skill_id)
 {
     if (skill_id_listed(skill_id, skill_list_good, sizeof skill_list_good / sizeof skill_list_good[0]))
         return 1;
-    return skill_action_mgr_is_good_for_actor(skill_action_mgr_instance(), skill_id);
+    return 0;
 }
 
 unsigned char skill_info_is_level_used(int skill_id)

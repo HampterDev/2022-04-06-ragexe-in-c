@@ -36,7 +36,6 @@ struct Session;
 
 struct Language;
 
-int session_get_param(struct Session *self, int type);
 
 struct Time {
     __time32_t t;

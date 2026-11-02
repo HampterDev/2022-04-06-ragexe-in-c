@@ -44,13 +44,6 @@ static __inline struct UIWindow *ui_add_text_viewer(struct UIWindow *parent, int
     return text;
 }
 
-static __inline void ui_send_packet(const void *packet)
-{
-    int len = rag_connection_get_packet_length(rag_connection_instance(), *(const short *)packet);
-
-    rag_connection_send_packet(rag_connection_instance(), len, packet);
-}
-
 #define SKILL_INFO_UPGRADABLE(info) ((info)->upgradable)
 #define SKILL_INFO_NAME(info) ((info)->id_name)
 
@@ -95,9 +88,6 @@ struct UIWindow *ui_guild_storage_log_new(void);
 
 struct UIMemorialDunWnd *ui_memorial_dun_wnd_construct(struct UIMemorialDunWnd *self);
 struct UIWindow *ui_memorial_dun_wnd_new(void);
-
-struct UIPartyBookingHelpWnd *ui_party_booking_help_wnd_construct(struct UIPartyBookingHelpWnd *self);
-struct UIWindow *ui_party_booking_help_wnd_new(void);
 
 struct UIPartyInvitationToWnd *ui_party_invitation_to_wnd_construct(struct UIPartyInvitationToWnd *self);
 struct UIWindow *ui_party_invitation_to_wnd_new(void);

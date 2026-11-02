@@ -16,7 +16,6 @@ struct GuildStorageLogEntry {
     int refine;
     int cards[4];
     unsigned char attribute;
-    unsigned short grade;
 };
 OFFSET_ASSERT(GuildStorageLogEntry, item_name, 0x3c);
 

@@ -23,7 +23,6 @@ enum {
     DRAG_FROM_SHORTCUT = 7,
     DRAG_FROM_QUICK_SLOT = 0x10,
     DRAG_FROM_REFINING = 0x1c,
-    DRAG_FROM_GRADE_ENCHANT = 0x21,
 };
 
 enum {
@@ -31,11 +30,7 @@ enum {
     WID_SHORTCUT = 0x24,
     WID_YOUR_ITEM = 0x8a,
     WID_QUICK_SLOT = 0x9f,
-    WID_RANDOM_COMBINE = 0x122,
-    WID_SWAP_EQUIPMENT = 0x128,
-    WID_RANDOM_UPGRADE = 0x12e,
     WID_BARTER_MARKET = 0x14e,
-    WID_GRADE_ENCHANT = 0x157,
 };
 
 static int refuse_pressed(void)
@@ -62,8 +57,6 @@ static int cancel_drag(struct GameMode *self)
 static int drop_refused(struct GameMode *self)
 {
     cancel_drag(self);
-    if (ui_window_find(WID_SWAP_EQUIPMENT))
-        return 0;
     if (g_windowMgr.equip_wnd) {
         chat_refresh();
         chat_print_msg(0xbd, CHAT_COLOR_RED);
@@ -143,18 +136,10 @@ int game_mode_msg_drop_dragged(struct GameMode *self, int x, int y)
         if (w)
             ui_refining_wnd_reset((struct UIRefiningWnd *)w);
         cancel_drag(self);
-        source = self->drag.source;
-    }
-    if (source == DRAG_FROM_GRADE_ENCHANT) {
-        w = ui_window_find(WID_GRADE_ENCHANT);
-        if (w)
-            ui_grade_enchant_wnd_reset((struct UIGradeEnchantWnd *)w);
-        cancel_drag(self);
     }
 
     if (self->npc_dialog_open || g_windowMgr.exchange_wnd || g_windowMgr.equip_wnd || g_windowMgr.item_store_wnd || g_windowMgr.rodex_compose_wnd
-        || ui_window_find(WID_RANDOM_COMBINE) || ui_window_find(WID_RANDOM_UPGRADE) || ui_window_find(WID_REFINE)
-        || ui_window_find(WID_SWAP_EQUIPMENT) || ui_window_find(WID_BARTER_MARKET) || ui_window_find(WID_GRADE_ENCHANT))
+        || ui_window_find(WID_REFINE) || ui_window_find(WID_BARTER_MARKET))
         return drop_refused(self);
 
     if (self->drag.source != DRAG_FROM_INVENTORY) {
@@ -195,7 +180,7 @@ int game_mode_msg_throw_item(struct GameMode *self, int index, int count)
     struct { unsigned short id, index, count; } packet;
 #pragma pack(pop)
 
-    if (game_mode_is_blocking_window_open() != 1 && self->wear_ack_time + ACK_WAIT <= timeGetTime()
+    if (self->wear_ack_time + ACK_WAIT <= timeGetTime()
         && !self->use_item_pending && !self->throw_item_pending && index != 0 && !self->player_dead) {
         self->throw_item_pending = 1;
         packet.index = (unsigned short)index;
@@ -217,8 +202,6 @@ int game_mode_msg_wear_equip(struct GameMode *self, int index, int location)
 
     if (g_windowMgr.exchange_wnd)
         return refuse_pressed();
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     if (g_windowMgr.bartermarket_wnd || g_windowMgr.expanded_bartermarket_wnd) {
         chat_print_msg(0xe68, CHAT_COLOR_RED);
         return 0;
@@ -259,8 +242,6 @@ int game_mode_msg_wear_equip_direct(struct GameMode *self, int index, int locati
     struct { unsigned short id, index; int location; } packet;
 #pragma pack(pop)
 
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     if (self->wear_ack_time + ACK_WAIT > timeGetTime())
         return 0;
     if (self->player_dead)
@@ -282,8 +263,6 @@ int game_mode_msg_takeoff_equip(struct GameMode *self, int index, int second_lis
 
     if (g_windowMgr.exchange_wnd)
         return refuse_pressed();
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     if (self->takeoff_ack_time + ACK_WAIT > timeGetTime())
         return 0;
     if (self->player_dead)
@@ -317,8 +296,6 @@ int game_mode_msg_use_item(struct GameMode *self, int index)
 
     if (g_windowMgr.exchange_wnd)
         return refuse_pressed();
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     if (self->use_item_pending || self->throw_item_pending || index == 0 || self->player_dead)
         return 0;
     session_get_inventory_item(&g_session1, &item, index);

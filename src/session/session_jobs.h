@@ -18,7 +18,6 @@ BYTE session_job_accepts_value(struct Session *self, int job, unsigned __int64 v
 BYTE session_get_pet_acc_act_name(struct Session *self, int job);
 BYTE session_job_accepts_weapon(struct Session *self, int job, int mode, unsigned __int64 item);
 int session_is_third_job(struct Session *self, int job);
-BYTE session_is_fourth_job(struct Session *self, int job);
 int session_is_pc_job(struct Session *self, int job);
 
 int session_get_job_without_mount(struct Session *self, int job);

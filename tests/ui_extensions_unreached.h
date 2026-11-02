@@ -73,7 +73,6 @@ void ui_window_clear_canvas(struct UIWindow * arg0, DWORD arg1) { abort(); }
 void ui_window_drag_and_drop_base(struct UIWindow * arg0, int arg1, int arg2, const struct DragInfo * arg3) { abort(); }
 void ui_window_draw_backdrop_base(struct UIWindow * arg0) { abort(); }
 void ui_window_draw_bitmap(struct UIWindow * arg0, int arg1, int arg2, struct BitmapRes * arg3, int arg4) { abort(); }
-void ui_window_draw_bitmap_scaled(struct UIWindow * arg0, int arg1, int arg2, int arg3, int arg4, struct BitmapRes * arg5) { abort(); }
 int ui_window_draw_button_bar(struct UIWindow * arg0, int arg1, int arg2, int arg3) { abort(); }
 int ui_window_draw_title_bar(struct UIWindow * arg0, int arg1, const char * arg2, int arg3) { abort(); }
 void ui_window_fill_canvas(struct UIWindow * arg0, DWORD arg1, const RECT * arg2) { abort(); }

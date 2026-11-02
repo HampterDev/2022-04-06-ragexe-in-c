@@ -1,6 +1,4 @@
 #include "game/packet_handlers.h"
-#include "skills/skill_action.h"
-#include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include "game/skill_fx.h"
 #include "actor/job.h"
@@ -161,7 +159,6 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
 {
     struct ActorSkillUse info;
     struct GameActor *caster, *target, *other_actor;
-    void *target_unit;
     int job;
 
     info.skill_id = packet->skill_id;
@@ -183,9 +180,6 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
     else
         target = world_get_game_actor_by_aid(self->world, packet->target_aid);
     caster = tell_caster(self, packet->src_aid, &info, &job, &other_actor);
-
-    target_unit = target ? 0 : (struct GameActor *)world_get_skill_by_aid(self->world, packet->target_aid);
-    skill_action_mgr_hit(skill_action_mgr_instance(), packet->skill_id, (SkillActor *)(caster), (SkillActor *)(target), (SkillActor *)(target_unit));
 
     if (target && caster)
         skill_hit_caster_effects(self, packet->skill_id, caster, target);

@@ -44,8 +44,6 @@ static void face_target_effect(struct GameActor *caster, struct GameActor *targe
 void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameActor *caster,
                               struct GameActor *target)
 {
-    int delay;
-
     switch (skill_id) {
     case 0x296:
     case 0x300:
@@ -99,45 +97,6 @@ void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameAc
             spawn_on_delayed(target->aid, 0x54f, 400);
         }
         break;
-    case 0x1452:
-        spawn_on(target->aid, 0x6a1);
-        break;
-    case 0x1454: {
-        struct Effect *running = effect_mgr_find_effect(g_effectMgr, target->aid, 0x6ae);
-
-        delay = caster_hit_delay(caster);
-        if (running) {
-            spawn_on(target->aid, 0x6b1);
-            spawn_on_delayed(target->aid, 0x69f, delay);
-            spawn_on_delayed(target->aid, 0x6a0, delay);
-        } else {
-            spawn_on_delayed(target->aid, 0x6b4, delay);
-            spawn_on_delayed(target->aid, 0x6b5, delay);
-        }
-        break;
-    }
-    case 0x1455:
-        spawn_on(target->aid, rand_below(2) ? 0x6b9 : 0x6b8);
-        delay = caster_hit_delay(caster);
-        spawn_on_delayed(caster->aid, 0x6b6, delay);
-        spawn_on_delayed(target->aid, 0x69f, delay);
-        spawn_on_delayed(target->aid, 0x6a0, delay);
-        break;
-    case 0x145b:
-        delay = caster_hit_delay(caster);
-        spawn_on_delayed(target->aid, 0x6c0, delay);
-        spawn_on_delayed(target->aid, 0x6c1, delay);
-        break;
-    case 0x14c3:
-    case 0x14eb: {
-        Vec3 at;
-
-        at.x = caster->pos.x;
-        at.y = caster->pos.y;
-        at.z = caster->pos.z;
-        effect_mgr_spawn(g_effectMgr, caster->aid, skill_id == 0x14c3 ? 0x86a : 0x81a, at, target->aid, -1, 0, 0);
-        break;
-    }
     case 0x1f78:
         face_target_effect(caster, target);
         break;
@@ -268,21 +227,11 @@ static const struct {
     unsigned short effects[3];
 } target_effects[] = {
     { 0x9d5, { 0x62c } },
-    { 0x1499, { 0x720, 0x721 } },
-    { 0x14ae, { 0x748, 0x749 } },
     { 0x1f6f, { 0x919 } },
     { 0x1f70, { 0x916, 0x917 } },
     { 0x1f72, { 0x921 } },
     { 0x1f75, { 0x912 } },
     { 0x1f76, { 0x913, 0x914 } },
-    { 0x20fd, { 0x7f3, 0x7f4 } },
-    { 0x2100, { 0x7e3, 0x7e4 } },
-    { 0x2103, { 0x832, 0x833 } },
-    { 0x2106, { 0x838 } },
-    { 0x2109, { 0x7d9 } },
-    { 0x2199, { 0x78e, 0x791 } },
-    { 0x219a, { 0x77b, 0x77d } },
-    { 0x219d, { 0x772, 0x773, 0x775 } },
 };
 
 void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster, struct GameActor *target)
@@ -352,15 +301,6 @@ void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster,
         spawn_on(target->aid, 0x551);
         play_skill_wave("spore_attack.wav");
         return;
-    case 0x14d2: {
-        Vec3 at;
-
-        at.x = target->pos.x;
-        at.y = target->pos.y;
-        at.z = target->pos.z;
-        effect_mgr_spawn(g_effectMgr, target->aid, 0x7b5, at, 0, level, 0, 0);
-        return;
-    }
     }
     for (i = 0; i < sizeof target_effects / sizeof target_effects[0]; i++) {
         if (target_effects[i].skill_id != skill_id)

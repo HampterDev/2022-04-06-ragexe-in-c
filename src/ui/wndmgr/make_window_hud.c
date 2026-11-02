@@ -8,7 +8,6 @@
 #include "ui/character/character.h"
 #include "ui/character/popup_menu.h"
 #include "ui/chat/chat.h"
-#include "ui/shops/cash_shop.h"
 #include "ui/chat/chat_window.h"
 #include "ui/chat/sub_chat.h"
 #include "ui/hotkeys/hotkey_bars.h"
@@ -182,17 +181,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         }
         wm_show(wnd);
         break;
-    case 0xbe:
-        wnd = self->n_cash_call_wnd;
-        if (wnd == NULL) {
-            wnd = u_in_cash_call_wnd_new();
-            self->n_cash_call_wnd = wnd;
-            ui_window_create(wnd, 0x2b, 0x2b);
-            wm_move(wnd, g_renderer->width - 0xbb, 0x10);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        ui_window_set_show(wnd, g_session1.showCashShopIcon);
-        break;
     case 0x54:
         wnd = ui_talkbox_trap_input_wnd_new();
         ui_window_create(wnd, 0x118, 0x78);
@@ -337,8 +325,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         ui_window_mgr_raise_window(&g_windowMgr, self->navigation_v4_wnd);
         break;
     case 0x9b:
-        if (self->macro_detector_wnd)
-            return NULL;
         wnd = WM_OPEN(esc_option_wnd, ui_esc_option_wnd_new, 0x118, 0x8f, WM_AT_640, 0xb9, 0x12c);
         break;
     case 0x111:

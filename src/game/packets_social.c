@@ -323,7 +323,6 @@ void game_mode_on_add_exchange_item_grade(struct GameMode *self, const struct Pa
     exchange_options(&item, packet->options);
     item.equip_location = packet->location;
     item.view = packet->look;
-    item.grade = packet->grade;
     item_info_copy(&arg, &item);
     session_add_their_trade_item(&g_session1, arg);
     item_info_destruct(&item);

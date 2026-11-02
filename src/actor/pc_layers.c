@@ -59,7 +59,7 @@ static int job_has_layer_motions(int job)
     case 0xfce: case 0xfcf: case 0xfd0:
     case 0x1081: case 0x1082: case 0x108e: case 0x108f:
     case 0x1091:
-    case 0x1093: case 0x1094: case 0x10ce: case 0x10dc:
+    case 0x1093: case 0x1094:
         return 1;
     }
     return 0;

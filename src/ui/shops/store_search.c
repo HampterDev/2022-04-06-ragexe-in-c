@@ -684,15 +684,6 @@ static void draw_row(struct UISerachStoreInfoWnd *self, int row, struct StoreSea
                           SEARCH_GRID);
 
     ui_window_draw_item_icon(wnd, 0xd, top, &result->item, 0);
-    if (result->item.grade > 0) {
-        struct String path;
-
-        string_init(&path);
-        string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", result->item.grade);
-        ui_window_draw_bitmap(wnd, 0xd, y + 5,
-                            (struct BitmapRes *)res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-        string_free(&path);
-    }
 
     string_init(&title);
     string_assign_cstr(&title, result->store_name);

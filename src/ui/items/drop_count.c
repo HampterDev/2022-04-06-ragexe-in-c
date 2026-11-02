@@ -199,7 +199,6 @@ void ui_item_drop_cnt_wnd_on_draw(struct UIWindow *window)
 #define MODE_MSG_DROP_COUNT 0x15
 #define UI_MSG_ADD_DRAGGED 0x26
 #define COUNT_CAP 30000
-#define COUNT_CAP_CASH_CART 100
 #define MSG_COUNT_CAPPED 0x6a8
 #define MSG_COUNT_TOO_MANY 0x327
 #define UIWM_MSG_SHOW_CHAT 3
@@ -210,7 +209,6 @@ void ui_item_drop_cnt_wnd_on_draw(struct UIWindow *window)
 
 #define WND_ID_PARA_SHOP 0xfe
 #define WND_ID_PARA_PURCHASE 0xff
-#define WND_ID_CASH_SHOP 0x13e
 #define WND_ID_BARTER_CART 0x14e
 #define WND_ID_BARTER_GOODS 0x14f
 #define WND_ID_EX_BARTER_CART 0x155
@@ -494,30 +492,6 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             count = 1;
         game->drag.drop_count = count > n ? n : count;
         add_dragged(g_windowMgr.buying_store_mirror_sell_list_wnd, 0);
-        break;
-    case 0x13:
-        if (count <= 0)
-            goto refuse;
-        if (count > COUNT_CAP_CASH_CART)
-            count = COUNT_CAP_CASH_CART;
-        game->drag.drop_count = count;
-        if (count >= COUNT_CAP_CASH_CART) {
-            string_init(&text);
-            string_format(&text, msg_str(MSG_COUNT_CAPPED), COUNT_CAP_CASH_CART);
-            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_OK, 1, 0, 0, "메시지",
-                                   0x118, 0x78, 0);
-            string_free(&text);
-            break;
-        }
-        add_dragged(ui_window_find(WND_ID_CASH_SHOP), 0);
-        break;
-    case 0x14:
-        n = game->drag.drop_count;
-        if (n <= 0 && count <= 0)
-            goto refuse;
-        if (n)
-            game->drag.drop_count = count > n ? n : count;
-        add_dragged(ui_window_find(WND_ID_CASH_SHOP), 0);
         break;
     case 0x15:
         if (count <= 0)

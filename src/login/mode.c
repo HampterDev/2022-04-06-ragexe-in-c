@@ -46,7 +46,6 @@ static struct LoginMode *login_mode_construct(struct LoginMode *self)
     g_useCharsetTag = 0;
     self->connectionIndex = -1;
     self->waitWnd = NULL;
-    self->pin_failures = 0;
     memset(self->chars, 0, sizeof self->chars);
     self->chars_received = 0;
     self->char_list_pages = 0;
@@ -115,7 +114,6 @@ void login_mode_on_init(struct Mode *mode, const char *name)
         sound_play_stream("bgm\\01.mp3", 0);
 
     memset(&self->billing, 0, sizeof self->billing);
-    session_clear_cash_shop_goods(&g_session1);
     session_clear_hotkey_tab0(&g_session1);
     session_clear_hotkey_tab1(&g_session1);
     (g_session1.ownDressUp) = 0;

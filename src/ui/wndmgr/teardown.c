@@ -81,8 +81,7 @@ void ui_window_mgr_close_all_but_chat(struct UIWindowMgr *self)
         struct UIWindow *wnd = *LIST_VALUE(node, struct UIWindow *);
 
         next = node->next;
-        if (!not_a_tab(self, wnd) || wnd == self->new_chat_wnd || wnd == self->macro_detector_wnd ||
-            wnd->id == WHISPER_WND_ID)
+        if (!not_a_tab(self, wnd) || wnd == self->new_chat_wnd || wnd->id == WHISPER_WND_ID)
             continue;
         if (wnd == self->memorial_dun_wnd && g_session1.mdWndShown) {
             g_session1.mdWndX = wnd->x;
@@ -147,7 +146,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->orphan_char_wnd = NULL;
     self->basic_info_wnd = NULL;
     self->equip_wnd = NULL;
-    self->n_cash_wnd = NULL;
     self->short_cut_wnd = NULL;
     self->item_drop_cnt_wnd = NULL;
     self->say_dialog_wnd = NULL;
@@ -170,7 +168,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->notify_level_up_wnd = NULL;
     self->notify_job_level_up_wnd = NULL;
     self->notify_quest_wnd = NULL;
-    self->n_cash_call_wnd = NULL;
     self->item_shop_wnd = NULL;
     self->item_shop_wnd2 = NULL;
     self->item_purchase_wnd = NULL;
@@ -189,11 +186,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     for (i = 0; i < ITEM_STORE_SUB_WNDS; i++)
         self->item_store_sub_wnd[i] = NULL;
     self->item_store_find_wnd = NULL;
-    self->seek_party_wnd = NULL;
-    self->seek_party_mbwnd = NULL;
-    self->job_list_wnd = NULL;
-    self->seek_party_list_wnd = NULL;
-    self->party_booking_help_wnd = NULL;
     self->new_skill_list_wnd = NULL;
     self->messenger_group_wnd = NULL;
     self->join_party_accept_wnd = NULL;
@@ -241,8 +233,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->key_stroke_wnd = NULL;
     self->join_friend_accept_wnd = NULL;
     self->command_list_wnd = NULL;
-    self->second_password_input_wnd = NULL;
-    self->second_password_edit_wnd = NULL;
     self->homun_info_wnd = NULL;
     self->homun_skill_list_wnd = NULL;
     self->mer_info_wnd = NULL;
@@ -283,11 +273,7 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->collection_system_wnd = NULL;
     self->mini_map_wnd = NULL;
     self->active_top_wnd = NULL;
-    self->macro_reporter_wnd = NULL;
-    self->macro_user_info_wnd = NULL;
-    self->macro_detector_edit = NULL;
     self->drag_plate = NULL;
-    self->cash_shop_wnd = NULL;
     self->private_airplane_wnd = NULL;
     self->rpimage_wnd2 = NULL;
     self->bartermarket_wnd = NULL;

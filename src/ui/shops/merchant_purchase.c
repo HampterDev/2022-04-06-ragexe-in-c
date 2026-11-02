@@ -208,15 +208,6 @@ void ui_merchant_item_purchase_wnd_on_draw(struct UIWindow *window)
             ui_window_fill_rect(wnd, col_x + 0x48, row_y + 0x13, 0xbf, 0x1c, ui_skin_colour(6, 2));
         ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0, 0);
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, 0x5a, info, 12);
-        if (info->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-            ui_window_draw_bitmap(wnd, col_x + 0x2c, row_y + 0x21,
-                                res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
         if (info->price != info->charged_price)
             len = sprintf(text, " %d -> %s Zeny", info->price, format_money(info->charged_price, money));
         else

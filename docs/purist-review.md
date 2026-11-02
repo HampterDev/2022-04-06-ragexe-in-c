@@ -25,6 +25,102 @@ purist headgear/accessory and foundation attendance-banner checks also passed.
 Matching server changes remain separate patch files under `docs/server`; no server
 checkout was modified. Resume the feature review at START-181 after this checkpoint.
 
+## Size-ranked review (2026-11-02)
+
+Patrick replaced the sequential walk with a size-ranked triage: Claude measured the
+remaining optional systems (own source/header lines, including UI, packet, session
+and Lua files), skipped everything already decided above, and presented the largest
+first so that removed systems need no detailed review. START-181 remains pending.
+
+| ID | System (approx. lines) | Recommendation | Patrick's decision | Implementation |
+| --- | --- | --- | --- | --- |
+| SIZE-01 | Navigation: route window, `/navigation`, navi Lua tables, airship (9.3k) | Keep; quest NPC navigation and facility buttons use it | Keep, 2026-11-02 | Unchanged |
+| SIZE-02 | Achievements: window, tracker, rewards, catalog (4.0k) | Patrick's call | Keep, 2026-11-02 | Unchanged |
+| SIZE-03 | Styling shop (3.8k) | Patrick's call | Keep, 2026-11-02 | Unchanged |
+| SIZE-04 | Barter and expanded barter shops (3.6k) | Keep | Keep, 2026-11-02 | Unchanged |
+| SIZE-05 | Cash shop and mileage (3.4k) | Patrick's call | Remove, 2026-11-02 | [Cash shop removal](#cash-shop-removal-2026-11-02) |
+| SIZE-06 | Party Booking and Seek Party (2.8k) | Remove; the Agency replaces them | Remove, 2026-11-02 | [Party Booking and Seek Party removal](#party-booking-and-seek-party-removal-2026-11-02) |
+| SIZE-07 | 4th-class skill handlers, with their effects and job tables (2.7k) | Patrick's call | Remove 4th classes, 2026-11-02 | [4th-class removal](#4th-class-removal-2026-11-02) |
+| SIZE-08 | Lapine synthesis/upgrade (2.3k) | Remove | Remove, 2026-11-02 | [Lapine removal](#lapine-removal-2026-11-02) |
+| SIZE-09 | Refine window (2.5k) | Keep | Keep, 2026-11-02 | Unchanged |
+| SIZE-10 | Macro detector, reporter and captcha (2.0k) | Lean remove | Remove, 2026-11-02 | [Macro detector and captcha removal](#macro-detector-and-captcha-removal-2026-11-02) |
+| SIZE-11 | Store search (2.0k) | Keep | Keep, 2026-11-02 | Unchanged |
+| SIZE-12 | World map (1.7k) | Keep | Keep, 2026-11-02 | Unchanged |
+| SIZE-13 | "Item collection" (1.6k) | Remove | Remove, 2026-11-02 | Not applicable: the files are the core item-description window and monster-capture slot animation; [review](#item-collection-review-2026-11-02-not-removed) |
+| SIZE-14 | Second password (PIN) (1.3k) | Keep if the server uses PINs | Remove, 2026-11-02 | [Second password removal](#second-password-removal-2026-11-02) |
+| SIZE-15 | Grade enchant and item grades (1.0k, read in 39 files) | Remove | Remove, 2026-11-02 | [Grade removal](#grade-enchanting-and-item-grade-removal-2026-11-02) |
+| SIZE-16 | Dress room / equipment preview (1.0k) | Patrick's call | Keep, 2026-11-02 | Unchanged |
+| SIZE-17 | Swap equipment (1.0k) | Patrick's call | Remove, 2026-11-02 | [Swap equipment removal](#swap-equipment-removal-2026-11-02) |
+| SIZE-18 | Dead code paths: unreachable windows, unreferenced functions/data, dead branches | Remove | Remove, 2026-11-02 | [Dead-code sweep](#dead-code-sweep-2026-11-02) |
+
+SIZE-13 was mislabeled in the presentation: `item_collection*.c` is the ordinary
+right-click item description window, not the 2021 collection book, which this
+client does not contain. Nothing was removed under it.
+
+### Implementation and merge
+
+The eight approved feature removals were implemented as five independent changes
+on isolated copies of `d725b49`, each with its own release build, packet-dispatch
+derivation and full behavioral suite (sections below), then merged into `purist`.
+Conflicts were confined to shared tables, window-ID lists and test expectations;
+every conflict was a pair of independent deletions and was resolved by keeping
+both. One semantic overlap: the cash-shop removal deleted the limited-sale list
+request (`0x0b4c`) from `src/game/msg_swap_equip.c`, so the swap-equipment
+removal's relocation of that request to a new file was dropped and the file is
+deleted outright.
+
+Merged validation, before the dead-code sweep:
+
+- Release build passed without compiler or linker warnings:
+  `build/session2-merge5-build.log`.
+- Packet dispatch: all 1,179,800 cases; digest `a3fd444e45d2becf`. A comparison
+  of the merged trace with the baseline (`build/packet-dispatch-before-session2.bin`)
+  and the five per-removal traces shows 498 changed cases, each identical to the
+  removal that owns it, and no other differences:
+  `build/session2-merged-dispatch-combination.log`.
+- Object types: 519 concrete classes and 92 retired identities; 3,087 prior-runtime
+  comparisons and 227 accepted casts; 373 C diagnostic names and 352 window names.
+- The complete behavioral suite `tests/build.bat` passed:
+  `build/session2-merged-full-tests.log`.
+
+The five pre-removal trees are under `build/before-*`; per-removal logs keep their
+prefixes (`cash-shop-`, `party-booking-`, `fourth-class-`, `item-systems-`,
+`no-lapine-`, `no-grade-`, `antibot-pin-`). No live client/server smoke test was run.
+
+### Follow-up decisions surfaced during removal
+
+- AU-bot auto-reply (`0x0a29`/`0x0a2a`), formerly in `macro_detector.c`, has no UI
+  and was moved unchanged to `src/game/au_bot.c`. Neither Hercules nor rAthena sends
+  it. Pending.
+- DdukDdak box test (`0x0bb3`), a GM-only statistics report independent of the
+  Lapine windows. Pending.
+- Grade-enchant effects `0x647`-`0x649` and 4th-class status visuals, ABR/Bionic
+  summons and shared effect data remain because server packets can still request
+  them or because they are woven into shared summon code. Pending.
+- Party Recruit packet rows (`0x08e5`-`0x0971`) have no client code. Pending.
+
+### Foundation-fix candidates found during removal
+
+Not changed on either branch; each needs its own fix for `main`.
+
+- `rag_connection_get_packet` accepts a variable or unknown packet length below 4.
+  A length of 0 makes the receive loop re-read the same bytes forever (client hang);
+  1 desynchronizes framing. Treat lengths below 4 as a protocol error.
+- `enter_map` in `src/login/login_states.c` leaves the 4-byte `unset` field of map
+  entry `0x0436` uninitialized, sending stack bytes.
+- On `main`, `ui_window_mgr_get_window(0x12d)` falls back to the cash-shop window
+  when no name plate exists, apparently a decompiled fall-through.
+- On `main`, the swap-equipment window's default position writes a 16-byte
+  rectangle into an 8-byte point, overwriting the friend-list drag plate size.
+- On `main`, a Lapine upgrade failure checks the synthesis window (`0x122`) instead
+  of the upgrade window (`0x12e`), leaving the upgrade box waiting.
+- `jobIdNames` is filled at startup but never read (removed on `purist` by the
+  [dead-code sweep](#dead-code-sweep-2026-11-02)).
+- A saved `OPTIONWNDINFO.SHOW` makes `make_basic_info` request window `0xd`, which no
+  factory creates; ESC then opens the ESC menu instead of cancelling navigation
+  guidance. ESC menu button `ESC_ID_1C1` toggles nonexistent window `0xec`.
+- A status window saved minimized is restored at full height (pre-existing).
+
 ## Starting point
 
 - Repository: https://github.com/HampterDev/2022-04-06-ragexe-in-c
@@ -6546,3 +6642,782 @@ Sources: `src/ui/character/skill_tree.c`,
 `src/ui/character/skill_tree_points.c`, `src/ui/character/skill_tree_draw.c`,
 `src/game/mode_msg.c` and `src/game/skill_list.c`.
 No change pending Patrick's decision.
+
+
+## Cash shop removal (2026-11-02)
+
+Patrick approved removing the in-game item mall entirely, including the Gold PC
+cafe mileage display. The Charge button and promotional banners were already
+removed under START-082/083; this removes everything that remained.
+
+What the client did before this removal:
+
+- Three entry points sent mode message `0x143`, which requested the shop with
+  `CZ_SE_CASHSHOP_OPEN_V2` (`0x0b6d`, tab number): the menu-icon "shop" button,
+  the Lua-bindable hotkey behavior `0x89`, and a floating call button (window
+  `0xbe`, opened at every map entry except `new_event.rsw`, shown or hidden with
+  `/cashshop`). The replies `0x0845`, `0x0a2b` and `0x0b6e` opened the shop window
+  (`0x13e`) with cash and free-point balances. If the window could not be made,
+  the client answered with `0x0844`.
+- On every map entry with empty goods lists, the client requested the goods
+  schedule (`0x08c9`) and stored each `0x08ca` reply in one of eleven session
+  lists. Opening or refreshing the shop also requested the account-limited sale
+  list (`0x0b4c`, five-second throttle); `0x0b4d` filled the Sale tab.
+- The shop had tabs, a name search across tabs, nine goods tiles per page (six
+  taller ones with sale-period and stock details on the Sale tab), a cart of up
+  to eight lines (100 per line) with drag-and-drop through the count-input
+  window, optional free-point use and a confirmation prompt. Purchases sent `0x0848`; `0x0849` returned results and
+  balances, `0x08d3` updated balances and closing the window sent `0x084a`. The
+  selected tab was saved in the registry, and every map-server connection reset
+  `HKCU\<client key>\NeoCash\CASH_CATEGORY` to 0.
+- An older NCash item-mall window (`UInCashWnd`, window `0xb8`) was still built in,
+  with its own cart, search, buy request and a bargain-sale count request
+  (`0x09c3`). Nothing in this client opened window `0xb8`.
+- A GM account-limited sale tool (`UIAccountLimitedToolWnd`, window `0x154`)
+  managed the shop's Sale tab: `/계정한정` or `/accountlimitedtool` sent `0x0b4f`,
+  the server opened it with `0x0b50`, and add/delete/search sent
+  `0x0bac`/`0x0b4a`/`0x0b53` with results `0x0b49`/`0x0b4b`/`0x0b54`. Closing sent
+  `0x0b51`; `0x0b52` closed it from the server.
+- Gold PC cafe mileage (`UIMileageWnd`, window `0x10b`): `ZC_GOLDPCCAFE_POINT`
+  (`0x0a15`) showed points (up to 300), an hourly countdown and a grade-specific
+  `mileage_bg%d.bmp` background. The state was kept in the session and restored at
+  each map entry; `/goldpc` toggled it. Clicking it sent
+  `CZ_DYNAMICNPC_CREATE_REQUEST` (`0x0a16`, NPC name `GOLDPCCAFE`); `0x0a17`
+  printed the creation result. This window was the only sender of `0x0a16`.
+
+Removed:
+
+- Ten files: `src/ui/shops/cash_shop.c`, `cash_shop.h`, `cash_shop_cart.c`,
+  `cash_shop_goods.c`, `mileage.c`, `ncash_wnd.c`, `ncash_wnd.h`,
+  `src/game/mode_cash_shop.c`, and the item mall's GM tool
+  `src/ui/admin/account_limit.c` with its only header `src/ui/admin/admin.h`.
+- Incoming handlers, dispatch cases, header IDs and packet-table rows for the
+  fourteen previously handled messages: `0x0845`, `0x0849`, `0x08ca`, `0x08d3`,
+  `0x0a15`, `0x0a17`, `0x0a2b`, `0x0b49`, `0x0b4b`, `0x0b4d`, `0x0b50`, `0x0b52`,
+  `0x0b54`, `0x0b6e`.
+- Every outgoing request: `0x0844`, `0x0848`, `0x084a`, `0x08c9`, `0x09c3`,
+  `0x0a16`, `0x0b4a`, `0x0b4c`, `0x0b4f`, `0x0b51`, `0x0b53`, `0x0b6d`, `0x0bac`.
+- The whole item-mall protocol family from the packet table: 54 length rows and
+  54 names. Besides the IDs above, this includes the never-handled tab-list
+  replies (`0x0846`, `0x0847`, `0x08c0`), the older simple cash shop and its button
+  toggle (`0x035c`, `0x035d`, `0x0444`, `0x0445`, `0x044b`, `0x080c`, `0x080d`),
+  the bargain-sale tool (`0x09ac`-`0x09b5`, `0x09bc`, `0x09bd`, `0x09c4`,
+  `0x0a3d`), the Taiwan purchase result/balance (`0x0a2c`, `0x0a34`) and the
+  remaining limited-sale request `0x0b48`.
+- Session goods lists and their accessors, the limited-sale throttle, the PC-cafe
+  mileage fields and both icon-visibility settings; window-manager slots, the
+  NCash window rectangle and their teardown/forget/close/untracked/Escape entries;
+  the menu-icon shop button (the keyboard, attendance and agency icons each move
+  one grid position earlier), hotkey behavior `0x89`, `/cashshop`, `/goldpc` and
+  `/accountlimitedtool` with their talk types and saved talk options; the count
+  window's two cart/shop purposes; the `NeoCash` registry write; the shop
+  constants in `shops.h`; and the guard that refused NPC cash-point shops while
+  either removed shop window was open. With no plate windows, window ID `0x12d`
+  used to fall back to the cash-shop window; it now returns NULL, as it did
+  whenever that window was closed.
+- Helpers left without callers, after checking every caller: the custom-skinned
+  scroll bar (`UIScrollBar_Custom`, used only by the cart) with its sizing,
+  arrow/thumb setters and bitmap helper; `ui_static_text_set_number`,
+  `ui_window_draw_bitmap_scaled`, `ui_window_text_out_centred_outlined`,
+  `drag_info_copy`/`drag_info_assign`, `session_clear_shop_buy_list` and the
+  talk-type `toggle_window_option` helper. A whole-source reachability audit from
+  `WinMain` (registry references excluded) finds no other newly orphaned names.
+- Nine UI type identities are retired: `UIAccountLimitedToolWnd`, `UICashShopWnd`,
+  `UICashShopWnd_Cart`, `UICashShopWnd_CartItem`, `UICashShopWnd_Item`,
+  `UIMileageWnd`, `UInCashWnd`, `UInCash_CallWnd` and `UIScrollBar_Custom`.
+  Historical type fixtures keep their names solely to verify that they are rejected.
+
+Kept on purpose:
+
+- NPC cash-point shops (`0x0287`/`0x0288`/`0x0289`): the ordinary NPC shop and
+  NPC market windows sell for cash or free points (server `cashshop`-type NPCs).
+  Their balances, purchase request and messages remain. Rental-item timers and
+  expiry (`0x0298`/`0x0299`), the cash item type (barter windows still refuse it),
+  the cash-item open confirmation and the `ASPDCASH` status icon are generic item
+  behavior.
+- Cash-password rows `0x02aa`-`0x02ac` and `0x0a8b` stay in the packet table. No
+  handler or sender exists, and the name alone does not show that they belong only
+  to the item mall.
+- Drag sources `DRAG_CASH_CART` (4) and `DRAG_CASH_GOODS` (6) keep their misleading
+  names; the NPC market and storage windows use those values. `ItemInfo`'s sale
+  fields stay because the shared item record still copies and hashes them.
+- `drag_info_destroy`, `ui_bmp_radio_btn_set_tool_tip` and `dc_bitmap_copy_scaled`
+  no longer have production callers, but retained barter-record, radio-button and
+  canvas tests use or exercise them, so they remain part of those APIs.
+
+Server implications: servers must stop sending the fourteen incoming messages.
+They now take the existing unknown-packet path, which resets connection queues.
+The shop, schedule, sale list and limited-sale tool replies were request-driven,
+so ordinary servers send nothing once the client stops asking; script- or
+GM-triggered shop openings must be disabled. Gold PC points are pushed unsolicited
+when enabled: keep Hercules `feature.goldpc.enable` false (the default in the local
+checkout's `conf/map/battle/feature.conf`). Never-handled item-mall rows already
+reset the queues when received; they are now also framed as unknown packets. NPC
+cash-point shops keep working. No server checkout was modified.
+
+Validation:
+
+- Release build passed without compiler or linker warnings:
+  `build/cash-shop-build.log` (baseline `build/cash-shop-baseline-build.log`).
+  Every modified unit compiled at `/W4` before and after with no new diagnostics:
+  `build/cash-shop-w4-compare.log`.
+- All 1,179,800 packet-dispatch cases passed, digest `6165394e1e38d7ff`. An
+  independently derived trace replaces only the 168 cases for the fourteen retired
+  incoming packets with the existing unknown-packet result; the actual trace
+  matches it byte for byte (SHA-256 `699e4058...2c912e06`). The test asserts the
+  retired IDs take the unknown path: `build/cash-shop-dispatch-trace.log`,
+  `build/derive_cash_shop_dispatch.py`.
+- Exactly 54 length rows and 54 names were removed; all 1,312 surviving length rows
+  and 1,380 names keep their IDs, sizes, minimum sizes, names and order:
+  `build/cash-shop-packet-table-audit.log`.
+- Type checks passed for 546 classes and 65 retired identities, 3,303 prior-runtime
+  comparisons and 245 accepted casts: `build/cash-shop-object-type.log`.
+- Content managers passed with the unchanged digest `f0fa1aba`; the trace is
+  byte-identical to the pre-removal trace: `build/cash-shop-content-managers.log`.
+- Talk options now also check that the former `/cashshop` and `/goldpc` options are
+  unbound. UI drop (cart and goods owners removed; their shared shop stubs moved to
+  the NPC-market owner), forget-window, emblem-cache, shortcut-packet, scroll,
+  animation-owner and barter-record checks passed: `build/cash-shop-*.log`.
+- Full suite `tests\build.bat` passed to the final screenshot check:
+  `build/cash-shop-full-tests.log`. The COM, emote-timing, headgear-name, NPC-music,
+  pet-accessory, pet-portrait and skill-tab suites outside it also passed:
+  `build/cash-shop-extra-*.log`. The agency-server check needs a patched Hercules
+  checkout and was not run.
+- Function audit: 20,750 surviving functions are byte-identical. The 26 changed
+  production functions only lose removed cases, calls, state and guards; the six
+  changed test functions update expectations or add the unbound-option checks. No
+  function was added: `build/cash-shop-function-audit.log`. Reachability:
+  `build/cash-shop-reachability-audit.log`.
+- No item-mall, mileage, limited-sale or retired-helper references remain in
+  application sources, build inputs or the final link map; `git diff --check`
+  passed.
+
+Foundation candidates (not changed here):
+
+- `enter_map` in `src/login/login_states.c` never assigns the 4-byte field after
+  `authCode` in the `0x0436` map-enter packet, so stack bytes are sent. The same
+  code is on `main`.
+- On `main`, `ui_window_mgr_get_window(0x12d)` returns the open cash-shop window
+  when no name plate exists, which looks like a decompiled fall-through; a lookup
+  for the plate owner could then reach the shop. Not verified against the original
+  executable.
+
+The pre-removal tree is in `build/before-cash-shop-removal`; the full diff is
+`build/cash-shop.diff`. No live client/server smoke test was run.
+
+
+## Party Booking and Seek Party removal (2026-11-02)
+
+Patrick approved removing the two older party-recruitment systems on 2026-11-02.
+The Adventurer's Agency (START-041) and ordinary party features remain.
+
+- Removed Party Booking state and logic: the session's listing rows, pending
+  queue, filters, alarm flags and answer tick; row formatting, search decoding,
+  insert/update/delete notifications and the new-listing alarm; sorted row and
+  region/map storage; and the `queryRegionInfo`/`queryMapInfo` region catalog with
+  startup loading of `lua files\seekparty\party_booking_config` and
+  `party_booking_function` (which also provided `GetPartyBookingHelp`). Session
+  construction/destruction and the login reset no longer own it.
+- Removed the five Booking windows and identities: list `0xa9`
+  (`UISeekPartyListWnd`), registration form `0xa8` (`UISeekPartyMBWnd`), own-listing
+  status `0xa4` (`UISeekPartyWnd`), wanted-job selector `0xaa` (`UIJobListWnd`) and
+  Lua help `0xad` (`UIPartyBookingHelpWnd`). Removed their factories, manager slots,
+  close/forget/teardown paths, the `0xa4` untracked-ID entry, four registry window
+  rectangles (`BOOKINGLISTWNDINFO`, `BOOKINGMBWNDINFO`, `BOOKINGWNDINFO`,
+  `BOOKINGMBCHECKWNDINFO`) and their defaults, map-entry reopening of the status
+  window and the job-selector startup map. Fifteen source/header files were deleted.
+- Removed the entry points: the Basic window's live Booking button (later buttons
+  flow one slot earlier; its layout assertions were updated), the already-skipped
+  Booking menu icon, mode messages `0x105`/`0x10d` and talk types `0xc2`/`0xc6`. No
+  chat command produced those talk types; this client has no `/booking` command.
+- Removed incoming handlers, IDs, dispatch cases and packet-table rows for the
+  booking replies/notifications `0x0803`, `0x0805`, `0x0807`, `0x0809`, `0x080a`,
+  `0x080b` and for `0x07dd` (`ZC_SEEK_PARTY`), plus the rows of unhandled `0x07df`.
+  Removed outgoing register/search/delete/job-update `0x0802`/`0x0804`/`0x0806`/
+  `0x0808` and the rows of never-sent `0x07dc`/`0x07de`. The seven incoming messages
+  now take the existing unknown-packet path, which resets connection queues.
+- Removed two newly orphaned helpers after checking every caller: the `social.h`
+  inline `ui_send_packet` and `ui_combo_box_def_wnd_get_label_text`. Removed the
+  dedicated storage/catalog tests and their suite. Historical type fixtures retain
+  all five retired UI names solely for rejection checks.
+- No longer referenced: `party_alarm.wav`, `basic_interface\booking*.bmp`,
+  `basic_interface\seekparty\` artwork, `btn_rewrite*.bmp` and the `seekparty` Lua
+  files. Stale registry values written by earlier runs are simply ignored.
+
+Kept:
+
+- The Agency board, registration, application, information and result windows,
+  `adventurer_agency.c`, `agency_transport.c`, `0x0bf0`/`0x0bf1` and the server
+  patch. The Agency still uses `AdvenPartyInfo`, `PartyBookingList` and their owned
+  text helpers in `src/contents/party_booking_data.{c,h}` (covered by
+  `tests/test_owned_booking.c`), plus `src/ui/social/party_booking.h` (Agency
+  information/application windows, role icons and `party_booking_send_name`). Their
+  historical names were kept to avoid churn in shared files.
+- Normal party invitations, joins, master-to-join requests, settings, the party and
+  member windows and mini party information. All Agency and ordinary party files are
+  byte-identical to the backup; `packets_party.c` lost only the seven removed
+  handlers and two includes.
+- Party Recruit (`0x08e5`-`0x0971`: name rows plus `0x096c`/`0x0971` length rows) is
+  a separate, unimplemented family outside this decision and remains for review.
+  `tests/test_service_json.c` still prints a stale "Party booking JSON" line left by
+  the Agency's former JSON decoder; it is unrelated to this removal.
+
+Server implications: Hercules built for `PACKETVER=20220406` keeps Party Booking
+enabled (`PARTY_RECRUIT` applies only to 2012-04 RE clients) and maps `0x0802` to
+its booking-register handler. This client no longer sends booking requests, so the
+direct replies stop. The server still broadcasts `0x0809`/`0x080a`/`0x080b` to all
+clients whenever any session registers, updates or deletes an advertisement,
+including the deletion sent when a player with an advertisement logs out. Another
+client build or a crafted request would therefore reset every purist client's
+queues; the server fork should disable the four booking request handlers. Hercules
+neither sends `0x07dd` nor handles `0x07dc`/`0x07de`. No server checkout was
+modified.
+
+Foundation-fix candidate: `rag_connection_get_packet` frames variable-length
+packets and IDs without a length row by the 16-bit field at offset 2, accepting
+values below the header size. With 0 it consumes nothing, the game dispatcher
+ignores packets shorter than two bytes, and `game_mode_poll_network_msg` repeats the
+same zero-length read indefinitely, hanging the client; with 1 it consumes one byte
+and desynchronizes framing. The login loop shares the framing, and `main` has the
+same code. For the retired IDs, `0x0803`/`0x0807` success replies carry 0 there (they
+only answer the removed requests) and the notifications carry the advertisement
+index (a hang when its low 16 bits are zero, otherwise misframing before the reset).
+Not changed here: the removal does not depend on it. Suggested fix: treat a framed
+length below 4 for variable/unknown packets as a protocol error.
+
+Validation:
+
+- Full release build passed without compiler/linker warnings:
+  `build/party-booking-build.log` (pre-removal: `build/party-booking-baseline-build.log`).
+- All 1,179,800 packet-dispatch cases passed, digest `59a0b17fc30022df` (previously
+  `0e20d9f11f3d4d93`). The actual trace's SHA-256 matches an independently derived
+  baseline in which only 78 cases change to the unknown-packet result: 12 each for
+  the six booking replies (direct and forwarded) and 6 for `0x07dd`, whose direct
+  second-dispatcher cases were already unknown. The test now asserts the
+  unknown-packet trace length for all seven IDs. Logs:
+  `build/party-booking-dispatch-tests.log`, `build/party-booking-dispatch-expectation.log`.
+- All 1,352 retained packet-length rows and 1,420 name rows match the pre-removal
+  table in order; only the 28 rows for the 14 IDs were removed:
+  `build/party-booking-packet-table.log`.
+- Type checks passed for 550 concrete classes and 61 retired identities, including
+  the five Booking types, with 3,335 prior-runtime comparisons, 245 accepted casts,
+  404 diagnostic names and 383 window names: `build/party-booking-object-type-tests.log`.
+- Content managers (digest `f0fa1aba`), game-mode layout (digest `274efe64`), owned
+  booking text, Agency packets/UI, the patched-Hercules Agency handler fixture and
+  forget-window checks passed: `build/party-booking-*-tests.log`.
+- The complete behavioral suite `tests/build.bat` passed through its final step:
+  `build/party-booking-full-tests.log`.
+- No Booking/Seek Party code, build inputs or link-map symbols remain. The map diff
+  removes 133 symbols from the eight deleted objects plus the seven handlers, the
+  orphaned combo-box helper and feature strings only:
+  `build/party-booking-map-diff.log`, audit `build/party-booking-audit.log`.
+  `git diff --check` passed.
+
+The pre-removal tree is in `build/before-party-booking-removal`; logs use
+`build/party-booking-*.log`. No live client/server smoke test was run.
+
+
+## 4th-class removal (2026-11-02)
+
+Patrick approved removing 4th classes; his server will not offer them. Job IDs and
+skill ranges were taken from the client's own tables and predicates.
+
+- **Jobs.** Removed every C entry for the client's 4th-class range
+  (`session_is_fourth_job`: `0x109c`–`0x10cb` = 4252–4299 and `0x10ce`–`0x10e9` =
+  4302–4329). Named IDs:
+  - 4252–4264: Dragon Knight, Meister, Shadow Cross, Arch Mage, Cardinal, Windhawk,
+    Imperial Guard, Biolo, Abyss Chaser, Elemental Master, Inquisitor, Troubadour
+    and Trouvere.
+  - 4265–4277: their riding variants.
+  - 4278–4281: Windhawk wolf, Meister madogear, Dragon Knight chicken and Imperial
+    Guard chicken.
+  - 4302–4308: Sky Emperor, Soul Ascetic, Shinkiro, Shiranui, Night Watch, Hyper
+    Novice and Spirit Handler.
+  - 4309–4315: their riding variants; 4316: Sky Emperor 2.
+
+  Removed:
+  - The predicate itself.
+  - Name, sprite, IMF, body and sprite-path rows: four `.def` tables using the
+    compact `job - 0xf6e` index, `pc_names.c` paths and their 44 now-unused string
+    constants, and the write-only `jobIdNames` rows.
+  - Mount and alternate-sprite mappings.
+  - Membership in the Doram, any-Super-Novice and expanded-job predicates.
+  - Weapon, dual-wield, equip-level and equip-value rules.
+  - Skill-tree tab inheritance and tab kinds.
+  - Hit sounds, spheres and servant weapons, palettes and costume suppression.
+  - Max-level aura and level caps, Lua reads of `BaseLevel4th`/`JobLevel4th`/
+    `MaxLevelEffect4th(_sub)`, the related session state, and the 4th-job
+    basic-info/gauge layouts.
+
+  Job-indexed rule tables now end before `0x109c`. Their dropped non-4th slots
+  (`0x10cc`/`0x10cd`) already held fallback-equivalent values, so every removed ID
+  takes each function's existing out-of-table fallback. For example, unknown names
+  become "Poring" and unknown sprites the Novice sprite.
+- **Skills.** Removed:
+  - The six expanded-4th handler files and `skill_use_fourth.c`.
+  - Every special case for player skills `0x1451`–`0x157a` (5201–5498). The
+    expanded range `0x1519`–`0x157a` is the client's own check.
+  - Elemental Master spirit skills `0x20fb`–`0x2109` and Meister ABR skills
+    `0x2199`–`0x219d`.
+  - These cases covered cast/use motions and effects, hit effects, cast looks,
+    ground/unit looks, chat shouts, good-skill lists and targeting/turning.
+  - Skill-unit handling for `0x10a`, `0x10b`, `0x10d`–`0x11c` and `0x11e`–`0x12a`.
+    The `npc_fuuma` action at `0x122` was Shinkiro/Shiranui's Fuuma Shouaku; its
+    only effect loads `SHINKIRO_SHIRANUI` resources.
+  - Windhawk trap units `0x5174`–`0x5177`.
+  - The skill and object halves of the skill-action manager. All 121 of their
+    registrations were expanded-4th, so every lookup would always miss; each call
+    site now takes its former not-found path. The status half and its five generic
+    entries (size change and three show-effects) remain.
+  - Newly orphaned helpers, including `skill_shuffled_indices`, the named-spawn
+    helpers, `effect_screen_angle(_quadrant)`, `gs_motion`, the companion summon and
+    ABR looks, and `MODE_MSG_REBUILD_STATUS_BARS`.
+- **Traits and AP.** Removed:
+  - The status window's trait section and expand toggle. The window is always the
+    collapsed 0x8d layout; the former final toggle step is reproduced for that
+    layout.
+  - The AP bar, its layouts and draw paths, gauge sources and the `ap_colour`
+    member. Five pinned gauge layouts shrink by 4 bytes.
+  - The `UIBarGraphPlayerAP` type, AP cost text in seven places, and
+    `SkillInfo.ap_amount` with `GetLevelUseApAmount`.
+  - `/pow+`…`/crt+`, the trait state `statusValues`, `traitBonus` and `traitCost`,
+    and the trait sub-ranges of `0x00b0` (params `0xdb`–`0xe9`), `0x00be` (sp
+    247–252) and `0x0141` (sp 219–224). Those fields are now ignored; wire sizes are
+    unchanged.
+  - Incoming `0x0b25` and outgoing `0x0b24` (definitions, dispatch, handler, sink,
+    packet-table rows).
+- **Effects.** Removed 18 effect classes whose only client triggers were removed
+  4th-class code, together with their 27 registry IDs: Storm Cannon, Crimson Arrow,
+  Violent Quake, Astral Strike, Floral Flare Road, Savage Impact, Petitio, Eternal
+  Slash attack, Pneumaticus Procella, Crescive Bolt, Hawk Boomerang, Gale Storm,
+  random hit, cylinder, Acidified throw, Fuuma Shouaku, Talisman mark and Jupitel
+  Thunderstorm.
+
+Kept, and why:
+
+- **Server-driven status visuals.** Visual handlers in `actor_efst.c`,
+  `player_states.c` and `state_messages.c` that still spawn 4th-class effects stay.
+  The status IDs come from the server, are unnamed in C and are mixed with monster
+  statuses. Status icons come from Lua `GetEFSTImgFileName`; the C fallbacks stop
+  at `0x461`.
+- **Effect classes those handlers spawn.** These are servant weapon, Charging
+  Pierce, Climax, A-Machine, Dancing Knife, Eternal Slash count, From the Abyss,
+  Shadow Exceed, full-screen and Curse of Cube. Their unused fire/attack controls
+  stay with them.
+- **Shared data with 4th-class branches.** This covers the `severe_rain_storm`
+  branches for `0x6d8`, `0x7ea`, `0x875`, `0x92c`–`0x92f` and `0x932`, the generic
+  STR/sound/duration rows and the RagEffect per-ID processes. Their client triggers
+  are gone, but packet `0x01f3` can still name them.
+- **ABR/Bionic summons.** Packets `0x0b6b`/`0x0b6c`, ABR HP state and object types
+  13/14 stay. They are woven into the shared summon ownership, targeting and
+  HP-bar code. This is a clean boundary and a follow-up candidate.
+- **Shared limits and catalogs.** Skill capacity bounds `0x157b`/`0x157c` (local
+  settings format), Lua catalogs and the reference-only `ACTOR_HELPER_REFERENCE`
+  test branch stay.
+
+Server implications:
+
+- Do not offer 4th-class jobs or skills. Removed job and skill IDs take the client's
+  generic fallbacks.
+- `0x0b25` now uses the existing unknown-packet path, which resets connection
+  queues.
+- Trait and AP fields in `0x00b0`, `0x00be` and `0x0141` are ignored.
+- `0x01f3` special effects naming the 27 removed effect IDs fall back to the legacy
+  RagEffect launch.
+- The 4th-class keys in `MaxLevelTable` and `MaxLevelAuraTable` are no longer
+  required.
+- Saved 4th-job basic-info heights (`0x47`/`0x95`) reset to the default size.
+
+Validation:
+
+- **Release build.** Passed without compiler or linker warnings:
+  `build/fourth-class-build.log`. The final link map has no removed symbols.
+  Remaining hits are retained `severe_rain_storm`, RagEffect and STR data strings.
+- **Packet dispatch.** All 1,179,800 cases passed, digest `48e08ef549dd6cdf`. An
+  independently derived trace (`build/derive_fourth_class_dispatch.py`) replaces
+  only the 12 cases for `0x0b25` with unknown-packet handling. Its SHA-256 matches
+  the new trace. All 1,364 retained size rows and 1,432 retained name rows are
+  unchanged. Logs: `build/fourth-class-packet-dispatch.log` and
+  `build/fourth-class-dispatch-expectation.log`.
+- **Effect factories.** Digest `274deeba`, which matches an independently derived
+  trace (`build/derive_fourth_class_effect_factories.py`). The derivation drops 80
+  nodes for the 27 IDs across three cases and renumbers fixture indices. Its
+  deliberate failure-case collision moved from removed `0x93e` to the next row,
+  `0x943`. Log: `build/fourth-class-effect-factories.log`.
+- **Type checks.** Passed for 554 classes and 57 retired identities, including
+  `UIBarGraphPlayerAP`: `build/fourth-class-object-type.log`.
+- **Skill-action registry.** Rewritten for the status half; passed with 5 startup
+  bindings: `build/fourth-class-skill-actions.log`.
+- **Full suite.** All commands in `tests\build.bat` passed. The run resumed from the
+  first failure after correcting two stale 4th-class expectations:
+  - The appearance test listed Shadow Cross as a dual-wield job.
+  - The resource-path test's removed 4th-job case had also reset its sprite stub
+    for later cases; the reset is kept.
+
+  Logs: `build/fourth-class-tests.log` (to line 310),
+  `build/fourth-class-tests-resume-311.log` and
+  `build/fourth-class-tests-resume-512.log` (to the end). Content managers passed
+  with digest `f0fa1aba`, unchanged.
+- **Adjusted tests.** The dedicated `test_skill_effect_calls` test and its
+  unreached-symbol header were removed. Gauge, session-field, map-node, resource-path,
+  appearance, hit-sound fixture and helper-owner tests drop only their 4th-class/AP
+  cases.
+- **Diff check.** `git diff --check` passed.
+
+Foundation-fix candidates (not changed):
+
+- `jobIdNames` is filled at startup but never read.
+- `UI_MSG_SET_INFO` for the status window minimizes a saved title-only window and
+  then resizes it to full height. As a result, the minimized state is never
+  restored. This behavior is preserved.
+
+The pre-removal tree is in `build/before-fourth-class-removal`. No live
+client/server smoke test was run.
+
+
+## Lapine removal (2026-11-02)
+
+Patrick approved removing Lapine synthesis and Lapine upgrade.
+
+- Removed both Lapine windows (synthesis box and upgrade box), their ingredient
+  lists, rows and scroll bar, seven UI identities, the `LapineDdukDDakBox` and
+  `LapineUpgradeBox` Lua catalog loading, the `add_ingredient` and
+  `add_ingredient_lapine_upgrade_box` Lua callbacks, the `0x122`/`0x12e`
+  window-factory cases, the open and result handlers, and the drop-refusal check.
+  Seven source/header files were deleted, including `contents_vtables.c`, which
+  held only the two Lapine window tables.
+- Removed incoming `0x0a4e`/`0x0a50` (synthesis open/result) and `0x0ab4`/`0x0ab7`
+  (upgrade open/result), and outgoing `0x0a4f`/`0x0a70` (synthesis
+  request/close) and `0x0ab5`/`0x0ab6` (upgrade close/request). This covers
+  dispatch cases, handlers, IDs and packet-table size and name rows. Servers must
+  stop sending the four incoming messages: they now take the existing
+  unknown-packet path, which resets connection queues. No server checkout was
+  modified.
+- `game_mode_is_blocking_window_open` checked only the two Lapine windows.
+  START-049 already dropped the enchanting windows from it, so it could only
+  return 0. Removed it and its 19 dead checks in 10 files: item use, wear, take
+  off and throw; walking; mail item add/take; skills; trade, storage and cart
+  moves; NPC clicks; and the bank. The bank's `bank_busy` wrapper and its unused
+  busy notice went with it.
+- Removed newly orphaned helpers after checking every caller:
+  `session_inventory_indices`, `ui_scroll_wnd_place_child`, and two unused
+  macros in `contents/ui_window.h`. The repair-list and refining-material
+  handlers that share `item_upgrade.c` remain.
+- Kept the GM-only `ZC_DDUKDDAK_BOX_TEST` (`0x0bb3`) report writer. It records
+  box-roll statistics to `DdukddakBoxTest` and uses neither the Lapine windows nor
+  their catalogs. It is a separate decision if Patrick wants it gone.
+
+Foundation fix candidate for `main`: on a failed upgrade (`0x0ab7`, result ≠ 0),
+`game_mode_zc_ack_random_upgrade_item` looks up the synthesis window `0x122`
+instead of the upgrade window `0x12e`, then calls `lapine_upgrade_set_waiting`
+on it. With only the upgrade box open, which is the normal case, it never leaves
+its waiting state. If a synthesis box were open, a `LapineBox` would be written
+through the `LapineUpgradeBox` layout. Purist no longer has the code.
+
+Validation:
+
+- Full release build passed without compiler/linker warnings:
+  `build/no-lapine-build.log`.
+- All 1,179,800 packet-dispatch cases passed, digest `aa19d1111ec36dc7`. The actual
+  trace's SHA-256 matches an independently derived trace with only the 48 cases
+  for the four retired incoming packets changed to unknown-packet handling
+  (`build/no-lapine-dispatch-expectation.log`).
+- Type checks passed for 548 classes and 63 retired identities
+  (`build/no-lapine-object-type.log`). The content-manager digest is unchanged at
+  `f0fa1aba`. Item use, RoDEX, shortcut, barter, local-shop, list, scroll, tag
+  viewer and UI-drop suites passed: `build/no-lapine-build_*.log`.
+
+## Item collection review (2026-11-02, not removed)
+
+The approved "2021 collection book" does not exist in this client. The named files
+are retained core item features, so nothing was removed under this item.
+
+- `item_collection*.c` (`UIItemCollectionWnd`, window `0xc`) is the right-click
+  item description window: picture, description, card slots, illustration
+  button, equipment preview button, pet-egg details and random-option lines. It
+  is opened from inventory, storage, shop and list right-clicks, chat item links,
+  mail and item updates. `UICombinedCardItemCollectionWnd` (`0x52`) shows a
+  slotted card's description. The two `_ComparisonWnd` types (`0xea`/`0xfa`)
+  compare against worn equipment.
+- `collection_slot.c` (`CUICollectionSystemWnd`, window `0xc4`) is the slot-machine
+  animation of the monster-capture "collection" flow: `ZC_START_COLLECTION`
+  `0x08b4`, `CZ_TRYCOLLECTION` `0x08b5` and `ZC_TRYCOLLECTION` `0x08b6`.
+- No collection-book packets, catalogs, windows, menu entries or hotkeys exist.
+  Grade-only drawing was removed from the description window under the grade
+  removal below.
+
+## Grade enchanting and item-grade removal (2026-11-02)
+
+Patrick approved removing 2021 item grades. Grades can no longer exist, so grade
+display was removed everywhere along with the enchanting window.
+
+- Removed the grade-enchant window, its three button types (four UI identities),
+  material list and result handling, success/failure notices, server broadcast
+  notice, and the window-factory case `0x157`. Also removed `ZC_UI_OPEN_V2`
+  type 8 (now ignored like other unknown types), the drag source `0x21` and
+  double-click forwarding, the drop refusal while open, and the three
+  mail-button blocks that refused mail while it was open. Deleted
+  `grade_enchant.c` and `game/enchant.c`.
+- Removed incoming `0x0b5a` (material list), `0x0b5d` (enchant result) and
+  `0x0b5e` (broadcast), and outgoing `0x0b59` (select equipment), `0x0b5b`
+  (request) and `0x0b5c` (close). Servers must stop sending the three incoming
+  messages: they now take the existing unknown-packet path.
+- Removed the `grade` member from `ItemInfo`, `DragInfo` and the guild-storage
+  log entry, its 35 assignments, two helper parameters and the redraw key.
+  Removed grade icons from inventory, equipment, quick slot, shortcut bar, item
+  lists, identify, refine, both mail windows, merchant log/purchase/shop/setup,
+  NPC shop/purchase, para shop, storage, store search and trade. Also removed the
+  graded background in the item description window.
+- Retained packets keep their exact wire layouts. Grade bytes in item lists,
+  ground items, pickups, storage/cart adds, RoDEX, exchange
+  (`ZC_ADD_EXCHANGE_ITEM5`), store search, vending entries,
+  `ZC_CHANGE_ITEM_OPTION3`, the guild-storage log and the repair list are now
+  ignored. No struct size or offset assertion changed. The exchange handler keeps
+  its packet-version name.
+- Item links keep their format. Both parsers still read past the grade field at
+  its position but no longer store it. The encoder still writes the grade field,
+  always as `0`, so links stay byte-identical for every item that can now exist.
+- Removed the orphaned helper `ui_window_draw_text_aligned`.
+- Kept STR effects `0x647`–`0x649` (`grade_enchant\new_*`), which START-048 and
+  START-049 kept for grade enchanting. They no longer have a client-side
+  spawner, but `ZC_NOTIFY_EFFECT2`/`3`/`4` can still request any effect ID from
+  the server. START-049 kept its window's effects in the shared catalog on the
+  same basis. Removing them would change the retained server-effect behavior, so
+  it is left for Patrick to decide.
+- Tests: the UI-drop harness lost its grade owner and the stubs only that owner
+  needed (link-verified). Item-info, item-link and item-tag tests now expect no
+  stored grade and an encoded grade of `'00`.
+
+Validation:
+
+- Full release build passed: `build/no-grade-build.log`.
+- All 1,179,800 packet-dispatch cases passed, digest `9850f5fcccf5423f`. The actual
+  trace matches the derived trace with only the 84 cases for the seven retired
+  incoming packets changed. Retained handlers that stopped storing grades are
+  outside the dispatcher (the test uses sinks), so no other case changed.
+- The type-check harness (count assertions printed instead of asserted) reported
+  544 classes and 67 retired identities with every other check passing; the
+  real test ran in the final suite.
+- Item links, item tags, item names, item use, UI drops, button drawing, canvas,
+  RoDEX, shortcut, inventory match, merchant backup, barter, readable links, tag
+  viewer and quest suites passed: `build/no-grade-build_*.log`.
+
+## Swap equipment removal (2026-11-02)
+
+Patrick approved removing the second (swap) equipment set.
+
+- Removed the swap panel and button from the equipment window (tab handling,
+  height adjustment and redraw keys), dragging from either set, the Ctrl+double-
+  click shortcut, the inventory "in set" overlay, hotkey action `0x98`, mode
+  messages `0x12e`–`0x131`, and the session sets, swap arrow, open flag and
+  cooldown. Also removed the login reset, the refining and buying-store
+  exclusions for set items, the saved `SWAPEQUIPMENTWNDINFO.X/Y` registry
+  values, the default and the extra equipment-window height, and two UI
+  identities.
+- Deleted `swap_equipment.c`, `equip_sets.c`, `packets_equip_switch.c` and
+  `msg_swap_equip.c`. That last file also held the unrelated limited-sale list
+  request, so it moved unchanged to the new `msg_limited_sale.c` (its wait-notice
+  colour constant was renamed, value unchanged). In the merge the cash-shop removal
+  already deleted that request, so `msg_limited_sale.c` was not added.
+- Removed incoming `0x0a98`, `0x0a9a`, `0x0a9b`, `0x0a9d` and `0x0ac8` and their
+  handlers, plus the table rows of unhandled `0x0a9e`/`0x0a9f`. Removed outgoing
+  `0x0a97`, `0x0a99`, `0x0a9c` and `0x0ace`. Servers must stop sending the
+  swap messages. A server with equipment switching enabled may send the set list
+  (`0x0a9b`) when a character loads; that must be disabled server-side,
+  otherwise the client resets connection queues.
+- Removed newly orphaned helpers: `session_set_arrow_status` (which existed only
+  for the swap set's arrow), the write-only `hideui_skip_count`,
+  `player_has_cast_gauge` and its test assertions, the inventory texture
+  helper, and an unused command parameter.
+
+Foundation fix candidate for `main`: `swap_equipment_wnd_info_make_default` writes
+a 16-byte `WindowInfo` through `(struct WindowInfo *)&swap_equipment_pos`, a
+`POINT`. When no saved UI rect info exists (first run), it overwrites the
+following `plate_width`/`plate_height` (`0x97`/`0x25`) with `0x118`/`0xa7`. That
+corrupts friend-list drag hit-testing in `messenger_group_wnd.c`. On `main` it
+should set only `x`/`y`. Purist no longer has the code.
+
+Validation:
+
+- Full release build passed without compiler/linker warnings:
+  `build/item-systems-build.log`.
+- All 1,179,800 packet-dispatch cases passed, digest `add09bb5a3f3a577`. The actual
+  trace's SHA-256 matches the derived trace with exactly 144 cases changed for the
+  12 retired incoming packets across all three removals
+  (`build/item-systems-dispatch-expectation.log`). All 1,341 retained size rows and
+  1,409 retained name rows are identical and in order
+  (`build/item-systems-packet-table.log`).
+- Type checks passed for 542 classes and 69 retired identities (396 named, 375
+  windows; `build/item-systems-object-type.log`). Content managers: digest
+  `f0fa1aba`, unchanged from the baseline.
+- The full behavioral suite `tests/build.bat` passed end to end in 6 m 45 s:
+  `build/item-systems-full-suite.log`.
+- COM, emote timing, headgear names, NPC music, pet accessory/portrait and skill-tab
+  suites passed. The agency-server check needs a patched Hercules checkout and
+  was not run.
+- `/W4` builds of all 78 modified implementation files show the same 92
+  unused-variable/parameter/function warnings before and after
+  (`build/item-systems-w4-*.log`). `git diff --check` passed. The final link map
+  contains none of the removed symbols. Only the kept effect paths and
+  limited-sale functions match the search terms.
+
+The pre-removal tree is in `build/before-item-systems-removal`. No live
+client/server smoke test was run.
+
+
+## Macro detector and captcha removal (2026-11-02)
+
+Patrick approved removing the server-driven anti-bot captcha challenge, the GM
+macro reporter and its reported-player list. The CAPTCHA registration/upload tool
+was already removed (see "CAPTCHA registration/upload removal validation").
+
+- Removed the challenge window (`UIMacroDetectorWnd`, window `0x11d`) with its
+  image control, answer box, countdown/retry display and answer request, the GM
+  captcha preview window (`UICaptchaPreviewWnd`, `0x120`), chunked image assembly,
+  zlib unpacking and BMP validation, and their window-manager slots, edit focus,
+  paste block, ESC-menu block and close-all exception.
+- Removed the macro reporter (`UIMacroReporterWnd`, `0x11e`) and its user-info
+  popup (`UIMacroUserInfoWnd`, `0x11f`): reported-player rows and list storage,
+  saved position/pick mode/players (`MacroReporterInfo`), restore on entering the
+  map, actor picking and ground-area selection in `world_pick.c`, and opening by
+  `ZC_UI_OPEN` (`0x0a38`) type 3, which is now ignored like other unknown types.
+- Removed the chat commands `/매크로등록`/`/macro_register`/`/mr`,
+  `/매크로확인`/`/macro_preview`/`/mp` and `/매크로신고`/`/macro_detector`/`/md`.
+  `/mr` was a leftover of the registration removal: it still sent `CZ_UI_OPEN`
+  type 2, whose reply had already been ignored.
+- Removed eight incoming packets with their definitions, dispatch cases, handlers
+  and table rows: `0x0a57` ACK_APPLY, `0x0a58` APPLY, `0x0a59` APPLY_CAPTCHA,
+  `0x0a5b` REQ_ANSWER, `0x0a5d` CLOSE, `0x0a6a` ACK_PREVIEW,
+  `0x0a6b` PREVIEW_CAPTCHA (all `*_MACRO_DETECTOR*`) and `0x0a6d`
+  ZC_ACK_PLAYER_AID_IN_RANGE. Removed five outgoing packets and rows: `0x0a56`
+  report, `0x0a5a` image received, `0x0a5c` answer, `0x0a69` preview request and
+  `0x0a6c` players-in-range request. The incoming IDs now take the existing
+  unknown-packet path, which resets connection queues.
+- Deleted 15 source/header files (`captcha_packets`, `macro_detector`,
+  `packets_macro_detector`, `ui/chat/captcha`, `captcha_data`, `macro_report.c`,
+  `macro_reporter.h`, `reported_players`, `reporter_controls.h`) and the dedicated
+  tests (`build_captcha.bat`, `build_reported_players.bat`, three captcha tests,
+  the reported-players test and `captcha_test_bitmap.h`). Orphaned local
+  definitions (`PacketInt`, `CZ_UI_OPEN` in `talk_type.c`, the reporter-only
+  `ui/chat/chat.h` includes) went with them; the caller audit found no orphaned
+  shared helpers. Historical type fixtures retain the five retired class names
+  solely to verify that their identities are rejected.
+
+Kept on purpose:
+
+- The `ZC_REQ_AU_BOT` (`0x0a29`) automatic reply `CZ_ACK_AU_BOT` (`0x0a2a`). It
+  lived in `macro_detector.c` but has no UI and is not part of the captcha
+  challenge; removing it would turn a harmless echo into a queue reset. Its code
+  moved unchanged to `src/game/au_bot.c`; the dispatch trace is unchanged.
+  Neither checked server sends it. Decide separately whether to retire it.
+- `CZ_UI_OPEN` (`0x0a68`), still used by the attendance button.
+- Account-server captcha rows `0x0a71`/`0x0a72` and the `0x0a7a` name: a separate
+  login captcha that this client never implemented.
+- `language_paste()` refused to paste when the focused edit equalled the captcha
+  answer box. With no challenge window both are null, so this also suppressed
+  Ctrl+V/Shift+Insert while no edit has focus. The check is now
+  `focus edit == NULL`, preserving that behavior exactly.
+
+Server implications: servers must not start the macro detector for this client.
+rAthena triggers it through the `macro_detector` script command and GM reports;
+Hercules through the macro reporter. GMs on other clients can still report a
+purist player. The challenge packets would then reset this client's queues, and
+the server's unanswered-challenge timeout applies its configured penalty.
+Disable the feature server-side. The client no longer sends report, preview or
+answer packets. No server checkout was modified.
+
+Validation:
+
+- Release build passed without compiler/linker warnings:
+  `build/antibot-pin-no-antibot-build.log`.
+- All 1,179,800 packet-dispatch cases passed, digest `d85abd95e90ee207`
+  (before: `0e20d9f11f3d4d93`). An independently derived trace replaces only the
+  96 cases for the eight retired incoming packets with the existing unknown-packet
+  result; its SHA-256 matches the new executable's trace byte for byte
+  (`build/derive_antibot_dispatch.py`,
+  `build/antibot-pin-no-antibot-dispatch-expectation.log`,
+  `build/antibot-pin-no-antibot-dispatch.log`).
+- Object-type checks passed for 550 classes and 61 retired identities
+  (`build/antibot-pin-no-antibot-object-type.log`). Content-manager traces are
+  byte-identical to the baseline, digest `f0fa1aba`. Scheduler, window
+  forgetting, language input, talk options, whisper blocks, object operations,
+  named dispatch and login OTP suites passed (`build/antibot-pin-no-antibot-*.log`).
+  No scheduler job belonged to the challenge; the upload job was removed earlier.
+
+## Second password removal (2026-11-02)
+
+Patrick approved removing second-password (PIN code) support.
+
+- Deleted `src/ui/character/second_password.c`: PIN entry, creation, change and
+  deletion windows (`UISecondPasswordInputWnd`, `UISecondPasswordEditWnd`;
+  windows `0xc7`, `0xc8`/`0x167`) and their storage-password base class
+  `UIStorePasswordInputWnd`. That class was only constructed as the PIN windows'
+  base; the storage-password window has no factory or packet handler on either
+  branch.
+- Removed PIN state (`pinState`, `pinAid`, `pinRequest`, `pinChangeOnly`,
+  `pinResultValue`, `pin_failures`), the window slots, the character-selection
+  PIN window switch, the hidden character-select PIN make/delete buttons
+  (`0x198`/`0x199`), the "enable PIN" command (`0x19a`), and the input block while
+  PIN windows were open. The unused button show/hide helpers went with them.
+- Removed five incoming result packets with their handlers and table rows:
+  `0x08bb` make, `0x08bd` delete, `0x08bf` edit, `0x08c4` not-available,
+  `0x08c6` available. Removed six outgoing PIN packets and rows: `0x08b8` entry,
+  `0x08ba` make, `0x08bc` delete, `0x08be` edit, `0x08c3` disable, `0x08c5`
+  enable. The incoming IDs take the existing unknown-packet path.
+- Kept the login-state notices `HC_SECOND_PASSWD_LOGIN` (`0x08b9`, 12 bytes) and
+  `HC_SECOND_PASSWD_LOGIN2` (`0x0ae9`, 13 bytes) with their rows and dispatch;
+  both now use one handler. Kept `password_prompts.c` unchanged (generic password
+  window and character-deletion e-mail window).
+- Kept the never-implemented name/length rows `0x08b7` HC_SECOND_PASSWD_REQ,
+  `0x02ad` AC_REQUEST_SECOND_PASSWORD and storage-password
+  `0x023a`-`0x023c`/`0x0a8e`; removing them would be unrelated cleanup.
+
+PIN-state behavior after the character list:
+
+| State | Meaning (Hercules / rAthena) | Before | Now |
+|---|---|---|---|
+| 0 | OK or PIN disabled | Character selection | Character selection, unchanged |
+| 7 | Unused; pre-2018 rAthena "passed" | Character selection | Character selection, unchanged |
+| 1-4 | Ask, not set, expired, create | PIN window over selection | Disconnect, message, login screen |
+| 5, 6, 8-11 | Rejected or wrong PIN, errors | PIN messages; third failure quit the client | Disconnect, message, login screen |
+| > 11 | Undefined | Ignored | Ignored |
+
+The message is "PIN codes are not supported by this client. Please ask the server
+administrator to disable PIN codes." The client then returns to the login screen
+the same way as other refusals: disconnect, modal notice, then sub-mode 3.
+
+Server implications: servers must disable PIN codes. Hercules
+`conf/char/char-server.conf` `pincode: { enabled: false }` and rAthena
+`char_athena.conf` `pincode_enabled: no` both send state 0. With PIN codes enabled
+the player cannot reach character selection. No server checkout was modified.
+
+Validation:
+
+- Release build passed without compiler/linker warnings:
+  `build/antibot-pin-no-pin-build.log`; final rebuild `build/antibot-pin-build.log`.
+- New `tests/build_login_pin_state.bat` drives the real character-server packet
+  loop and PIN handler. It checks all 65,536 states for both notices, the
+  disconnect-before-message order, message text, login sub-mode and pending-AID
+  reset. Session and window-manager state stay byte-identical. The retired PIN IDs
+  reset queues. The same harness on the pre-removal sources confirms states 0 and
+  7 already selected characters
+  (`build/antibot-pin-no-pin-login_pin_state.log`,
+  `build/antibot-pin-before-login-pin-harness.log`).
+- Packet dispatch digest stays `d85abd95e90ee207`; the trace is byte-identical
+  (`build/antibot-pin-no-pin-dispatch.log`). The game dispatcher never handled PIN
+  packets.
+- Object-type checks passed for 547 classes and 64 retired identities, including
+  the three PIN/storage-password types (`build/antibot-pin-no-pin-object-type.log`).
+  The packet-table audit confirms 1,366 -> 1,342 length rows: exactly the 13
+  removal-1 and 11 PIN IDs disappeared; all retained rows keep IDs, sizes,
+  minimum sizes and order (`build/audit_antibot_pin_packet_table.py`,
+  `build/antibot-pin-packet-table-audit.log`).
+- Focused suites passed again (`build/antibot-pin-no-pin-*.log`). The full `tests/build.bat`
+  suite passed in 6 min 51 s (`build/antibot-pin-full-suite.log`).
+- Source and final link-map audits found no macro-detector, captcha-challenge,
+  reporter, PIN-window or PIN-state code; only the retained rows above, the AU-bot
+  reply and `login_mode_on_pin_state` remain (`build/antibot-pin-source-audit.log`).
+  `git diff --check` passed.
+
+The pre-removal tree is in `build/before-antibot-pin`. No live client/server smoke
+test was run.

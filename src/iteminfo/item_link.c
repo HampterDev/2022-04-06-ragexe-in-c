@@ -143,7 +143,6 @@ int item_link_read(struct ItemInfo *item, struct TextView text)
     if (fields[LINK_EQUIPMENT]) item->type = 4;
     item->refine = fields[LINK_REFINE];
     item->view = fields[LINK_VIEW];
-    item->grade = (short)fields[LINK_GRADE];
     for (i = 0; i < cards; ++i) item->slot[i] = fields[LINK_FIRST_CARD + i];
     item->option_count = count;
     for (i = 0; i < count; ++i, options += 3) {

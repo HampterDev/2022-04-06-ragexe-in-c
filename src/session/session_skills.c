@@ -38,7 +38,6 @@ static BYTE list_put_skill(struct Session *self, struct List *list, const struct
             copy_skill_fields(have, skill);
             if (copyType)
                 have->type = skill->type;
-            have->ap_amount = skill->ap_amount;
             if (notify)
                 refresh(self);
             return 0;
@@ -79,14 +78,12 @@ BYTE session_put_skill(struct Session *self, const struct SkillInfo *skill,
         copy_skill_fields(have, &copy);
         have->type = copy.type;
         have->level2 = copy.level2;
-        have->ap_amount = copy.ap_amount;
         sync_table_level(self, &copy);
     } else if (copy.found != 0) {
         have = player_skill_bundle_find_extra_skill(&self->skills, copy.id);
         if (have) {
             copy_skill_fields(have, &copy);
             have->type = copy.type;
-            have->ap_amount = copy.ap_amount;
         } else if (copy.found != 0) {
             copy.cell_index = -1;
             copy.level_limit = 0;
@@ -101,7 +98,6 @@ BYTE session_put_skill(struct Session *self, const struct SkillInfo *skill,
         copy_skill_fields(have, skill);
         have->type = keepType == 1 ? skill->type : have->type;
         have->level2 = skill->level2;
-        have->ap_amount = skill->ap_amount;
         if (notify == 1)
             session_refresh_skill_wnds(self);
         return 0;

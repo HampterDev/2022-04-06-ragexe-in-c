@@ -74,7 +74,6 @@ struct ItemInfo {
     int sale_start_time;
     int sale_end_time;
     int sale_remaining;
-    short grade;
     int option_count;
     struct ItemOption options[ITEM_OPTION_SLOTS];
     struct ItemLogLine guild_log;

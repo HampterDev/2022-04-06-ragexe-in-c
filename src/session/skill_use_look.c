@@ -6,7 +6,6 @@
 #include <stdlib.h>
 
 #include "game/skill_use.h"
-#include "effects/effect_controls.h"
 #include "session/session_skills.h"
 
 static void on(struct GameActor *actor, int effect_id)
@@ -365,15 +364,6 @@ static void look_rampage_blaster(struct GameActor *caster)
     }
     on(caster, effect_id);
     play_skill_wave("effect\\SR_RAMPAGEBLASTER.wav");
-}
-
-static void wave_at_target_from_player(const char *wave, struct GameActor *target)
-{
-    struct Player *player = own_player();
-
-    if (!player)
-        return;
-    play_skill_wave_at(wave, target->pos.x - player->pos.x, 0.0f, target->pos.z - player->pos.z);
 }
 
 void game_mode_zc_use_skill_(void *session, int skill, int level,
@@ -786,18 +776,6 @@ void game_mode_zc_use_skill_(void *session, int skill, int level,
         spawn_at(caster->aid, 0x468, actor_pos(caster), target->aid, -1);
         spawn_at(target->aid, 0x469, actor_pos(target), target->aid, -1);
         break;
-    case 0x1491:
-        spawn_at(caster->aid, 0x887, actor_pos(caster), target->aid, -1);
-        wave_at_target_from_player("effect\\IG_SHIELD_SHOOTING.wav", target);
-        break;
-    case 0x14b2: {
-        struct Effect *machine = effect_mgr_find_effect(g_effectMgr, caster->aid, 0x72f);
-
-        if (machine)
-            a_machine_effect_play_attack(machine);
-        wave_at_target_from_player("effect\\MT_A_MACHINE.wav", target);
-        break;
-    }
     case 0x1f49:
         if (level == 1)
             on(target, 0x235);

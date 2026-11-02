@@ -23,14 +23,12 @@ const char *job_hit_sound(const struct JobHitSounds *sounds, unsigned index)
     case 92: case 93: case 96: case 100: case 106: case 109: case 112:
     case 115: case 118: case 119: case 122: case 125: case 126: case 129:
     case 261: case 262: case 272: case 273: case 274: case 275: case 278:
-    case 279: case 304: case 307: case 310: case 313: case 314: case 354:
-    case 355: case 356:
+    case 279:
         return sounds->wooden;
     case 1: case 7: case 14: case 15: case 52: case 58: case 65:
     case 66: case 74: case 80: case 87: case 88: case 97: case 98:
     case 101: case 104: case 110: case 116: case 120: case 123: case 127:
-    case 276: case 288: case 289: case 291: case 302: case 305: case 308:
-    case 312: case 330: case 331: case 352: case 366:
+    case 276: case 288: case 289: case 291:
         return sounds->metal;
     default:
         return sounds->clothes;

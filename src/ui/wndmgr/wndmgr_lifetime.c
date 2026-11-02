@@ -5,7 +5,6 @@
 #include "ui/social/party_windows.h"
 #include "platform/clientinfo.h"
 #include "ui/chat/sub_chat_map.h"
-#include "ui/chat/reported_players.h"
 #include "ui/ui_std.h"
 
 struct UIWindowMgr g_windowMgr;
@@ -43,11 +42,6 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->message_boxes.last = NULL;
     self->message_boxes.end = NULL;
     tree_init(&self->closed_rects);
-    self->macro_reporter_info.open = 0;
-    self->macro_reporter_info.pick_mode = 0;
-    self->macro_reporter_info.players.first = NULL;
-    self->macro_reporter_info.players.last = NULL;
-    self->macro_reporter_info.players.end = NULL;
     list_init(&self->plates);
     list_init(&self->plate_ids);
 
@@ -94,7 +88,6 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->hover_serial = 0;
     self->hover_prev = 0;
     self->round_box_tooltip_show = 0;
-    self->macro_detector_wnd = NULL;
     self->drag_plate = NULL;
     self->item_store_wnd_num = 0;
     self->plate_width = 0x97;
@@ -128,7 +121,6 @@ void ui_window_mgr_destroy(struct UIWindowMgr *self)
 
     list_free(&self->plate_ids, NULL);
     list_free(&self->plates, NULL);
-    reported_players_free(&self->macro_reporter_info.players);
     tree_free(&self->closed_rects, NULL);
     vec_free(&self->message_boxes);
     list_free(&self->hidden_wnds, NULL);

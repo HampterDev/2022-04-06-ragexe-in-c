@@ -2,19 +2,14 @@
 #include "game/drag_info.h"
 #include "ui/window.h"
 #ifndef UI_DROP_OWNER
-#define UI_DROP_OWNER 1
+#define UI_DROP_OWNER 2
 #endif
 
 void test_drop_invoke(struct UIWindow *window, size_t size,
                      void (*callback)(struct UIWindow *, int, int, const struct DragInfo *),
                      int x, int y, const struct DragInfo *drag, int parent);
 
-#if UI_DROP_OWNER == 1
-#include "../src/ui/items/grade_enchant.c"
-#define DROP_OWNER UIGradeEnchantWnd
-#define DROP_CALLBACK ui_grade_enchant_wnd_drag_and_drop
-#define DROP_TEST test_grade_drop
-#elif UI_DROP_OWNER == 2
+#if UI_DROP_OWNER == 2
 #include "../src/ui/items/refining_mouse.c"
 #define DROP_OWNER UIRefiningWnd
 #define DROP_CALLBACK ui_refining_wnd_drag_and_drop
@@ -29,16 +24,6 @@ void test_drop_invoke(struct UIWindow *window, size_t size,
 #define DROP_OWNER UITabControl
 #define DROP_CALLBACK ui_tab_control_drag_and_drop
 #define DROP_TEST test_tab_drop
-#elif UI_DROP_OWNER == 5
-#include "../src/ui/shops/cash_shop_cart.c"
-#define DROP_OWNER UICashShopWnd_CartItem
-#define DROP_CALLBACK ui_cash_shop_wnd_cart_item_drag_and_drop
-#define DROP_TEST test_cart_drop
-#elif UI_DROP_OWNER == 6
-#include "../src/ui/shops/cash_shop_goods.c"
-#define DROP_OWNER UICashShopWnd_Item
-#define DROP_CALLBACK ui_cash_shop_wnd_item_drag_and_drop
-#define DROP_TEST test_goods_drop
 #elif UI_DROP_OWNER == 7
 #include "../src/ui/controls/button.c"
 #define DROP_OWNER UIBitmapButton

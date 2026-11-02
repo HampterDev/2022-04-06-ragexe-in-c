@@ -630,15 +630,6 @@ void ui_merchant_shop_make_wnd_on_draw(struct UIWindow *window)
         x = shown % self->columns * ROW_HEIGHT;
         ui_window_draw_item_icon_count(wnd, x + 7, row_y + 0x30, info, 0, 0);
         ui_window_draw_item_name_short(wnd, x + 0x27, row_y + 0x39, 0x64, info, 0xc);
-        if (info->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-            ui_window_draw_bitmap(wnd, x + 7, row_y + 0x3c, res_mgr_get(g_resMgr(), string_cstr(&path)),
-                                1);
-            string_free(&path);
-        }
         if (++shown == self->shown_rows * self->columns)
             break;
     }

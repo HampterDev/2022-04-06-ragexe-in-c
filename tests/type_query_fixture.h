@@ -45,7 +45,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_acc_bitmap_button_ops reference_vtables[175].slots
 #define ui_accessory_cus_wnd_ops reference_vtables[176].slots
 #define ui_accessory_show_case_ops reference_vtables[177].slots
-#define ui_account_limited_tool_wnd_ops reference_vtables[178].slots
 #define ui_ach_balloon_text_ops reference_vtables[179].slots
 #define ui_ach_list_wnd_ops reference_vtables[180].slots
 #define ui_ach_scroll_bar_ops reference_vtables[181].slots
@@ -94,10 +93,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_captcha_image_ops reference_vtables[224].slots
 #define ui_captcha_preview_wnd_ops reference_vtables[225].slots
 #define ui_card_item_illust_wnd_ops reference_vtables[227].slots
-#define ui_cash_shop_wnd_ops reference_vtables[228].slots
-#define ui_cash_shop_wnd_cart_ops reference_vtables[230].slots
-#define ui_cash_shop_wnd_cart_item_ops reference_vtables[231].slots
-#define ui_cash_shop_wnd_item_ops reference_vtables[232].slots
 #define ui_change_name_wnd_ops reference_vtables[233].slots
 #define ui_char_info_balloon_text_ops reference_vtables[234].slots
 #define ui_chat_edit_ctrl_ops reference_vtables[235].slots
@@ -284,7 +279,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_message_box_ops reference_vtables[425].slots
 #define ui_message_box_autoreturn_ops reference_vtables[426].slots
 #define ui_messenger_group_wnd_ops reference_vtables[427].slots
-#define ui_mileage_wnd_ops reference_vtables[428].slots
 #define ui_mini_btn_wnd_ops reference_vtables[429].slots
 #define ui_mini_map_wnd_ops reference_vtables[430].slots
 #define ui_mini_party_info_wnd_ops reference_vtables[431].slots
@@ -376,7 +370,6 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_scroll_bar2_ops reference_vtables[526].slots
 #define ui_scroll_bar3_ops reference_vtables[527].slots
 #define ui_scroll_bar4_ops reference_vtables[528].slots
-#define ui_scroll_bar_custom_ops reference_vtables[529].slots
 #define ui_scroll_bar_navi_ops reference_vtables[530].slots
 #define ui_scroll_wnd_ops reference_vtables[531].slots
 #define ui_second_costume_wnd_ops reference_vtables[532].slots
@@ -453,7 +446,5 @@ extern const uint32_t reference_valid_sources[REFERENCE_VTABLE_COUNT];
 #define ui_word_display_wnd_ops reference_vtables[606].slots
 #define ui_your_item_wnd_ops reference_vtables[607].slots
 #define ui_zero_quest_scroll_bar_ops reference_vtables[608].slots
-#define u_in_cash_wnd_ops reference_vtables[609].slots
-#define u_in_cash_call_wnd_ops reference_vtables[610].slots
 #endif
 #endif

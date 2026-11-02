@@ -95,7 +95,6 @@ void game_mode_on_item_pickup_party2(struct GameMode *self, const struct PacketI
         item.identified = packet->is_identified;
         item.damaged = packet->is_damaged;
         item.refine = packet->refining_level;
-        item.grade = packet->grade;
 
         name = item_info_get_display_name(&item, &item_name);
         string_init(&line);

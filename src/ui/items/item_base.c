@@ -185,15 +185,6 @@ void ui_item_base_wnd_on_draw(struct UIWindow *window)
             ui_window_draw_item_icon_count(wnd, x + 0x2c, y + 0x15, info, 0, 0);
         else
             ui_window_draw_item_icon(wnd, x + 0x2c, y + 0x15, info, 0);
-        if (info->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-            ui_window_draw_bitmap(wnd, x + 0x2c, y + 0x21,
-                                res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
         if (++cell == self->rows * self->columns)
             break;
     }

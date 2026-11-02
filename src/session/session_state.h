@@ -32,7 +32,6 @@ void session_pre_load_always_needed_res(struct Session *self);
 void session_clear_shorten_item_name(struct Session *self);
 void session_clear_plate_records(struct Session *self);
 void session_clear_stat_bonuses(struct Session *self);
-BYTE session_cash_shop_goods_empty(struct Session *self);
 void scale_rect_to_screen(RECT *r);
 struct PlateRecord *session_get_plate_record(struct Session *self, struct PlateRecord *out, int key);
 int session_get_transparent_item_alpha(struct Session *self, int key);

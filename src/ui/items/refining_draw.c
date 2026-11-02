@@ -116,12 +116,6 @@ void ui_refining_wnd_on_draw(struct UIWindow *window)
 
     if (self->item.index) {
         ui_window_draw_item_icon(wnd, 0x78, 0xd4, &self->item, 0);
-        if (self->item.grade > 0) {
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", self->item.grade);
-            ui_window_draw_bitmap(wnd, 0x78, 0xe0, res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
     }
 
     switch (self->state) {

@@ -462,18 +462,6 @@ void ui_static_text_set_text_fit(struct UIWindow *wnd, const char *text)
              height);
 }
 
-void ui_static_text_set_number(struct UIWindow *wnd, int value)
-{
-    struct UIStaticText *self = (struct UIStaticText *)wnd;
-    char text[0x28];
-
-    sprintf(text, "%d", value);
-    string_assign_cstr(&self->text, text);
-    string_assign_cstr(&self->tooltip, text);
-    self->has_tooltip = 0;
-    ui_window_invalidate(wnd);
-}
-
 void ui_static_text_set_text_ellipsis(struct UIWindow *wnd, const char *text)
 {
     struct UIStaticText *self = (struct UIStaticText *)wnd;

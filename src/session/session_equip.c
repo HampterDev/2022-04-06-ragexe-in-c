@@ -236,22 +236,3 @@ BYTE session_take_off_costume(struct Session *self, unsigned location)
     session_invalidate_windows(self);
     return 1;
 }
-
-void session_set_arrow_status(struct Session *self, int index)
-{
-    struct GameMode *gm;
-    struct Player *player;
-
-    self->switchArrowIndex = index;
-    session_invalidate_windows(self);
-    gm = game_current_mode();
-    if (!gm)
-        return;
-    own_states_set_present(STATUS_ARROW, index != 0);
-    player = mode_player(gm);
-    if (!player || !player->status_icons) {
-        hideui_skip_count++;
-        return;
-    }
-    rag_effect_send_msg(player->status_icons, NULL, 0x2c, 1, 0, 0);
-}

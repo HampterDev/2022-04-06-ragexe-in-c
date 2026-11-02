@@ -12,12 +12,10 @@
 #include "core/msg_str.h"
 #include "game/mode_util.h"
 #include "session/session_items.h"
-#include "ui/chat/chat.h"
 
 enum {
     UI_OPEN_BANK = 0,
     UI_OPEN_STYLIST = 1,
-    UI_OPEN_MACRO = 3,
 };
 #define WINDOW_BANK 0xfb
 #define HEADER_CZ_REQ_BANKING_CHECK 0x9ab
@@ -42,8 +40,6 @@ void game_mode_ui_open(unsigned char type)
     } else if (type == UI_OPEN_STYLIST) {
         if (ui_window_find(0x119) == 0)
             ui_window_open(0x119);
-    } else if (type == UI_OPEN_MACRO) {
-        ui_window_open(0x11e);
     }
 }
 
@@ -110,9 +106,6 @@ enum {
     WINDOW_STYLING_SHOP = 0x119,
     WINDOW_QUEST = 0x141,
     WINDOW_ATTENDANCE = 0x148,
-    WINDOW_GRADE_ENCHANT = 0x157,
-    WINDOW_GOLD_PC_CAFE = 0x10b,
-    WINDOW_MACRO_REPORTER = 0x11e,
 };
 #define CHAT_COLOR_SYSTEM_RED 0xff
 
@@ -134,9 +127,6 @@ void game_mode_ui_open_v2(struct GameMode *self, unsigned char type, int value)
         w = ui_window_open(WINDOW_ATTENDANCE);
         if (w != 0)
             UIWINDOW_SENDMSG(w, 0x22, value, 0, 0, 0);
-        break;
-    case 8:
-        ui_window_open(WINDOW_GRADE_ENCHANT);
         break;
     }
 }
@@ -211,42 +201,6 @@ void game_mode_ack_check_attendance(struct GameMode *self, int result, int day)
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xd90), CHAT_COLOR_SYSTEM_RED, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_ATTENDANCE);
     }
-}
-
-#pragma pack(push, 1)
-struct PACKET_ZC_GOLDPCCAFE_POINT {
-    unsigned short packet_type;
-    unsigned char active;
-    signed char mode;
-    int point;
-    int playtime;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_GOLDPCCAFE_POINT, 12);
-
-void game_mode_gold_pc_cafe_point(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_GOLDPCCAFE_POINT *packet = (const struct PACKET_ZC_GOLDPCCAFE_POINT *)pkt;
-    struct UIWindow *w = ui_window_open(WINDOW_GOLD_PC_CAFE);
-
-    (void)self;
-    if (w != 0)
-        UIWINDOW_SENDMSG(w, 0x22, packet->active != 0, packet->point, packet->playtime, packet->mode);
-}
-
-void game_mode_ack_player_aid_in_range(struct GameMode *self, int count, const int *aids)
-{
-    struct UIWindow *w;
-    int i;
-
-    (void)self;
-    if (count <= 0)
-        return;
-    w = ui_window_find(WINDOW_MACRO_REPORTER);
-    if (w == 0)
-        return;
-    for (i = 0; i < count; i++)
-        ui_macro_reporter_wnd_add_player((struct UIMacroReporterWnd *)w, aids[i]);
 }
 
 void game_mode_zc_dressroom_open(void)

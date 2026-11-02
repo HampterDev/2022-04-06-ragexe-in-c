@@ -157,26 +157,6 @@ WORD session_get_inventory_index_by_id(struct Session *self, int itemId)
     return 0xffff;
 }
 
-struct Vec *session_inventory_indices(struct Session *self,
-                                                              struct Vec *out, int itemId, BYTE onlyIdentified)
-{
-    struct ListNode *node;
-
-    out->first = out->last = out->end = NULL;
-    for (node = self->itemList.head->next; node != self->itemList.head; node = node->next) {
-        const struct ItemInfo *item = LIST_VALUE(node, struct ItemInfo);
-        int index;
-
-        if (item_id(item) != itemId)
-            continue;
-        if (onlyIdentified == 1 && item->identified != 1)
-            continue;
-        index = item->index;
-        vec_push(out, &index, sizeof(int));
-    }
-    return out;
-}
-
 struct ItemInfo *session_get_inventory_item_by_id(struct Session *self,
                                                           struct ItemInfo *out, int itemId, BYTE requireIdentified)
 {

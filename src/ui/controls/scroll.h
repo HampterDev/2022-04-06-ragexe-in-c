@@ -65,20 +65,6 @@ void ui_scroll_bar_set_range(struct UIScrollBar *self, int max_pos,
                                      int page, int total);
 void ui_scroll_bar_set_pos(struct UIScrollBar *self, int pos);
 
-struct UIScrollBar_Custom {
-    struct UIScrollBar bar;
-    struct BitmapRes *track_top;
-    struct BitmapRes *track_mid;
-    struct BitmapRes *track_bottom;
-    struct BitmapRes *arrow_up;
-    struct BitmapRes *arrow_down;
-    struct BitmapRes *thumb_top;
-    struct BitmapRes *thumb_mid;
-    struct BitmapRes *thumb_bottom;
-};
-OFFSET_ASSERT(UIScrollBar_Custom, track_top, 0xac);
-SIZE_ASSERT(UIScrollBar_Custom, 0xcc);
-
 struct ChildPosition {
     struct UIWindow *child;
     POINT cell;
@@ -122,21 +108,9 @@ void ui_scroll_bar_on_draw(struct UIWindow *self);
 struct UIScrollBar *ui_scroll_bar3_construct(struct UIScrollBar *self);
 void ui_scroll_bar3_destroy(struct UIWindow *window);
 void ui_scroll_bar3_on_draw(struct UIWindow *self);
-struct UIScrollBar_Custom *ui_scroll_bar_custom_construct(struct UIScrollBar_Custom *self);
-void ui_scroll_bar_custom_destroy(struct UIWindow *window);
-void ui_scroll_bar_custom_on_draw(struct UIWindow *self);
 struct UIScrollBar *ui_scroll_bar_navi_construct(struct UIScrollBar *self);
 void ui_scroll_bar_navi_destroy(struct UIWindow *window);
 void ui_scroll_bar_navi_on_draw(struct UIWindow *self);
-
-void ui_scroll_bar_create_sized(struct UIScrollBar *self, int x, int y,
-                                        int length, int orientation, int button_size,
-                                        int thickness);
-void ui_scroll_bar_custom_set_arrows(struct UIScrollBar_Custom *self,
-                                             struct String up, struct String down);
-void ui_scroll_bar_custom_set_thumb(struct UIScrollBar_Custom *self,
-                                            struct String top, struct String mid,
-                                            struct String bottom);
 
 void ui_scroll_bar2_destroy(struct UIWindow *window);
 void ui_scroll_bar2_on_draw(struct UIWindow *self);
@@ -144,8 +118,6 @@ void ui_scroll_bar4_destroy(struct UIWindow *window);
 void ui_scroll_bar4_on_draw(struct UIWindow *self);
 
 void ui_scroll_wnd_destroy(struct UIWindow *window);
-void ui_scroll_wnd_place_child(struct UIScrollWnd *self,
-                                       struct UIWindow *child, int x, int y);
 void ui_scroll_wnd_remove_child(struct UIScrollWnd *self,
                                         struct UIWindow *child, int destroy);
 void ui_scroll_wnd_resize(struct UIWindow *self, int width, int height);

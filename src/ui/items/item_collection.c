@@ -204,13 +204,6 @@ void ui_item_collection_wnd_on_draw(struct UIWindow *window)
                                 1);
         ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\collection_Comparison_bg.bmp"),
                             1);
-    } else if (self->item.grade > 0) {
-        char path[MAX_PATH];
-
-        sprintf(path, UI_SKIN "sysbox_g%d_", self->item.grade);
-        ui_window_draw_box_bitmaps(wnd, path, 0, 0, wnd->width, base, 0);
-        sprintf(path, UI_SKIN "basic_interface\\collection_bg_g%d.bmp", self->item.grade);
-        ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(path), 1);
     } else {
         ui_window_draw_box_bitmaps(wnd, UI_SKIN "sysbox_", 0, 0, wnd->width, base, 1);
         ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\collection_bg.bmp"), 1);

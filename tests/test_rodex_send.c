@@ -48,7 +48,6 @@ int ui_window_mgr_message_box(struct UIWindowMgr *manager, const char *text, int
     return 0;
 }
 struct GameMode *game_current_mode(void) { abort(); }
-char game_mode_is_blocking_window_open(void) {  abort(); }
 
 struct ItemInfo *item_info_copy(struct ItemInfo *a, const struct ItemInfo *b)
 { (void)a; (void)b; abort(); }

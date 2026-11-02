@@ -1,4 +1,3 @@
-#include "game/mode_util.h"
 #include "ui/controls/edit.h"
 #include "render/rp_pool.h"
 #include "session/state.h"
@@ -85,7 +84,6 @@ enum {
 #define MSG_BANK_STEP_UP 0xad8
 #define MSG_BANK_STEP_DOWN 0xad9
 #define MSG_BANK_MAX 0xada
-#define MSG_BANK_BUSY 0x9b9
 #define MSG_BANK_NOT_ENOUGH_ZENY 0x998
 #define MSG_BANK_NOTE_NOT_ENOUGH_ZENY 0xae1
 #define MSG_BANK_NOT_ENOUGH_BANKED 0x997
@@ -313,13 +311,6 @@ static long long bank_checked_amount(struct UIBank_NewWnd *self, BYTE deposit)
     return amount;
 }
 
-static BYTE bank_busy(void)
-{
-    struct Mode *game_mode = game_current_base_mode();
-
-    return game_mode && game_mode_is_blocking_window_open() == 1;
-}
-
 static void send_banking(int packet_id, int money)
 {
     struct PacketBanking pkt;
@@ -334,10 +325,6 @@ static void bank_deposit(struct UIBank_NewWnd *self)
 {
     long long amount;
 
-    if (bank_busy()) {
-        ui_chat_line(msg_str(MSG_BANK_BUSY), CHAT_RED);
-        return;
-    }
     amount = bank_checked_amount(self, 1);
     if (amount == 0)
         return;
@@ -355,10 +342,6 @@ static void bank_withdraw(struct UIBank_NewWnd *self)
 {
     long long amount;
 
-    if (bank_busy()) {
-        ui_chat_line(msg_str(MSG_BANK_BUSY), CHAT_RED);
-        return;
-    }
     amount = bank_checked_amount(self, 0);
     if (amount == 0)
         return;

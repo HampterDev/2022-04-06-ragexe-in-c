@@ -12,9 +12,6 @@ void session_get_monster_skill_info(struct Session *session, const char *monster
 { (void)session; (void)monster_name; (void)skill_id; *action = -1; *loop_type = 0; }
 
 struct SkillActionMgr *skill_action_mgr_instance(void) { return NULL; }
-unsigned char skill_action_mgr_hit(struct SkillActionMgr *self, int skill_id, SkillActor *caster, SkillActor *target,
-                                  SkillActor *target_unit)
-{ (void)self; (void)skill_id; (void)caster; (void)target; (void)target_unit; return 0; }
 void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameActor *caster, struct GameActor *target)
 { (void)mode; (void)skill_id; (void)caster; (void)target; }
 void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster, struct GameActor *target)

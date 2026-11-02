@@ -61,9 +61,6 @@ SIZE_ASSERT(UIBarGraph4, 0x88);
 struct UIBarGraph3 *ui_bar_graph3_construct(struct UIBarGraph3 *self);
 void ui_bar_graph3_set_values(struct UIBarGraph3 *self, int *current, int *maximum);
 
-struct UIJobListWnd;
-void ui_job_list_wnd_show_jobs(struct UIJobListWnd *self);
-
 struct ActRes;
 static __inline struct SprImg *spr_res_image(struct SprRes *spr, const struct SprClip *clip)
 {
@@ -84,11 +81,6 @@ struct UIKeyStrokeWnd *ui_key_stroke_wnd_construct(struct UIKeyStrokeWnd *self);
 struct UIWindow *ui_key_stroke_wnd_new(void);
 struct UIViewCameraInfoWnd *ui_view_camera_info_wnd_construct(struct UIViewCameraInfoWnd *self);
 struct UIWindow *ui_view_camera_info_wnd_new(void);
-
-void job_list_set_wanted_jobs(const short *jobs);
-void job_map_init(void);
-struct UIJobListWnd *ui_job_list_wnd_construct(struct UIJobListWnd *self);
-struct UIWindow *ui_job_list_wnd_new(void);
 
 struct UILoginOTPWnd *ui_login_otp_wnd_construct(struct UILoginOTPWnd *self);
 struct UIWindow *ui_login_otp_wnd_new(void);

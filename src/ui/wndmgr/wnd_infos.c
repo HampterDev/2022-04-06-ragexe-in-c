@@ -37,13 +37,6 @@ static void frame_set(struct WindowInfo *info, int x, int y, int width, int heig
 #define BASIC_INFO_WIDTH 0xdc
 #define BASIC_INFO_SHORT 0x37
 #define BASIC_INFO_TALL 0x86
-#define BASIC_INFO_SHORT_ALT 0x47
-#define BASIC_INFO_TALL_ALT 0x95
-
-static int basic_info_alt_job(void)
-{
-    return session_is_fourth_job(&g_session1, session_get_drawn_job(&g_session1)) == 1;
-}
 
 int basic_info_wnd_info_is_on_screen(struct BasicInfoWndInfo *self)
 {
@@ -52,28 +45,19 @@ int basic_info_wnd_info_is_on_screen(struct BasicInfoWndInfo *self)
     if (self->rect.width != BASIC_INFO_WIDTH)
         return 0;
     height = self->rect.height;
-    if (height == BASIC_INFO_SHORT || height == BASIC_INFO_SHORT_ALT)
+    if (height == BASIC_INFO_SHORT)
         self->tall = 0;
-    else if (height == BASIC_INFO_TALL || height == BASIC_INFO_TALL_ALT)
+    else if (height == BASIC_INFO_TALL)
         self->tall = 1;
     else
         return 0;
-    if (basic_info_alt_job()) {
-        if (height != BASIC_INFO_SHORT_ALT && height != BASIC_INFO_TALL_ALT)
-            return 0;
-    } else if (height != BASIC_INFO_SHORT && height != BASIC_INFO_TALL) {
-        return 0;
-    }
     return frame_inside(&self->rect);
 }
 
 void basic_info_wnd_info_set_default(struct BasicInfoWndInfo *self)
 {
     frame_set(&self->rect, 0, 0, BASIC_INFO_WIDTH, BASIC_INFO_TALL);
-    if (basic_info_alt_job())
-        self->rect.height = self->tall == 1 ? BASIC_INFO_TALL_ALT : BASIC_INFO_SHORT_ALT;
-    else
-        self->rect.height = self->tall == 1 ? BASIC_INFO_TALL : BASIC_INFO_SHORT;
+    self->rect.height = self->tall == 1 ? BASIC_INFO_TALL : BASIC_INFO_SHORT;
     self->expanded = 0;
 }
 
@@ -118,24 +102,13 @@ void say_dialog_info_set_default(struct WindowInfo *self)
     frame_set(self, 200, 100, 0x118, 0xb4);
 }
 
-int n_cash_info_is_on_screen(struct WindowInfo *self)
-{
-    return ui_info_on_screen(self);
-}
-
-void n_cash_info_set_default(struct WindowInfo *self)
-{
-    frame_set(self, 0, 0x1e, 0x280, 0x1fc);
-}
-
 int equip_wnd_info_is_valid(struct WndInfoTall *self)
 {
-    int swap = g_session1.equipSwapOpen == 1 ? 0x9e : 0;
     int height = self->rect.height;
 
     if (self->rect.width != 0x118)
         return 0;
-    if (height != 0xa7 && height != 0x11 && height != 0xbb && height != 0xbb + swap)
+    if (height != 0xa7 && height != 0x11 && height != 0xbb)
         return 0;
     if (self->org_height != 0xa7 && self->org_height != 0xbb)
         return 0;
@@ -253,7 +226,6 @@ void status_wnd_info_make_default(struct StatusWndInfo *self)
     self->show = 0;
     self->rect.height = 0x8d;
     self->org_height = 0x8d;
-    self->expanded = 1;
 }
 
 int graphic_setting_wnd_info_is_valid(struct WindowInfo *self)
@@ -359,14 +331,6 @@ void wnd_info_make_default140x30(struct WindowInfo *self)
     frame_set(self, 0xb9, 0x12c, 0x8c, 0x1e);
 }
 
-void swap_equipment_wnd_info_make_default(struct WindowInfo *self)
-{
-    self->width = 0x118;
-    self->height = 0xa7;
-    self->x = (g_renderer->width - 0x118) / 2;
-    self->y = (g_renderer->height - 0xb1) / 2;
-}
-
 void item_sell_wnd_info_make_default(struct WindowInfo *self)
 {
     frame_set(self, 0x118, 0x118, 0x118, 0x98);
@@ -425,7 +389,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     frame_set(&self->status_info.rect, 0xb9, 0x12c, 0x118, 0x8d);
     self->status_info.org_height = 0x8d;
     self->status_info.show = 0;
-    self->status_info.expanded = 1;
 
     equip_wnd_info_set_default(&self->equip_info);
     option_wnd_info_make_default(&self->option_info);
@@ -440,11 +403,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
         item_store_sub_info_set_default(&self->item_store_info.sub_info[i], i);
     self->item_store_wnd_num = ITEM_STORE_SUB_WNDS;
     frame_set(&self->item_store_find_info, 0x1fe, 0x168, 0x118, 0x138);
-
-    frame_set(&self->booking_list_info, 0x1fe, 0x168, 0x226, 0x15e);
-    frame_set(&self->booking_mb_info, 0x1fe, 0x168, 0x168, 0x15e);
-    frame_set(&self->booking_info, 0x1fe, 0x168, 0x98, 0xc7);
-    frame_set(&self->booking_mb_check_info, 0x1fe, 0x168, 0x98, 0xc7);
 
     frame_set(&self->item_shop_info, 0, 0x78, 0x118, 0x138);
     item_sell_wnd_info_make_default(&self->item_sell_info);
@@ -482,17 +440,11 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     frame_set(&self->buying_store_item_shop_info, 0, 0x78, 0x15e, 0x138);
     frame_set(&self->buying_store_item_sell_info, 0x118, 0x118, 0x118, 0x98);
     frame_set(&self->buying_store_mirror_sell_list_info, 0, 0x78, 0x118, 0x78);
-    n_cash_info_set_default(&self->n_cash_info);
 
     navigation_wnd_info_make_default(&self->navigation_info);
     mini_map_info_set_default(&self->minimap_info);
     ach_tracing_info_set_default(&self->ach_tracing_pos);
-    self->macro_reporter_info.width = 0xd1;
-    self->macro_reporter_info.height = 0x134;
-    self->macro_reporter_info.x = g_renderer->width - 0x103;
-    self->macro_reporter_info.y = (g_renderer->height - 0x134) / 2;
     preview_equip_info_set_default(&self->preview_equip_pos);
-    swap_equipment_wnd_info_make_default((struct WindowInfo *)&self->swap_equipment_pos);
 
     graphic_setting_wnd_info_make_default(&self->graphic_setting_info);
     self->quest_display = 1;

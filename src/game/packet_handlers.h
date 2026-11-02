@@ -40,8 +40,6 @@ struct PACKET_ZC_C_MARKERINFO;
 struct PACKET_ZC_DIVORCE;
 struct PACKET_ZC_EQUIPITEM_DAMAGED;
 struct PACKET_ZC_EXTEND_BODYITEM_SIZE;
-struct PACKET_ZC_GRADE_ENCHANT_ACK;
-struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT;
 struct PACKET_ZC_GUILD_INFO2;
 struct PACKET_ZC_GUILD_POSITION;
 struct PACKET_ZC_GUILD_SKILLINFO;
@@ -96,9 +94,6 @@ struct PacketAddExchangeItemGrade;
 struct PacketAddExchangeItemOpt;
 struct PacketAddMemberToGroup;
 struct PacketAddMemberToGroup2;
-struct PacketAltEquipment;
-struct PacketAltEquipmentItems;
-struct PacketAltEquipmentSwitchAck;
 struct PacketBanList;
 struct PacketBankingAck;
 struct PacketBankingCheck;
@@ -108,7 +103,6 @@ struct PacketDevotionList;
 struct PacketDispel;
 struct PacketEfstSetEnter;
 struct PacketEquipmentEffect;
-struct PacketGradeEnchantMaterialList;
 struct PacketGroupList2;
 struct PacketGroupList3;
 struct PacketGuildAgitInfo;
@@ -126,7 +120,6 @@ struct PacketItemPickupParty2;
 struct PacketItemRefining;
 struct PacketItemRepair;
 struct PacketLatestRodexList;
-struct PacketLimitedSaleList;
 struct PacketListFlagClear;
 struct PacketLongLongParChange;
 struct PacketLongParChange;
@@ -249,8 +242,6 @@ void game_mode_on_npc_show_efst_update(struct GameMode *self,
 void game_mode_zc_devotion_list(struct GameMode *self, const struct PacketDevotionList *packet);
 void game_mode_zc_dispel(struct GameMode *self, const struct PacketDispel *packet);
 
-void game_mode_on_grade_enchant_material_list(struct GameMode *self,
-                                         const struct PacketGradeEnchantMaterialList *packet);
 
 void game_mode_accept_enter(const unsigned char *pkt);
 void game_mode_accept_enter2(const unsigned char *pkt);
@@ -311,11 +302,6 @@ void game_mode_zc_makable_item_list(struct GameMode *self,
 void game_mode_zc_notify_weapon_item_list(struct GameMode *self,
                                        const struct PacketWeaponItemList *packet);
 
-void game_mode_add_limited_sale_item(struct GameMode *self, unsigned short result);
-void game_mode_close_limited_sale_tool(struct GameMode *self);
-void game_mode_del_limited_sale_item(struct GameMode *self, unsigned short result);
-void game_mode_item_list_by_kind(const unsigned char *pkt);
-void game_mode_limited_sale_list(struct GameMode *self, const struct PacketLimitedSaleList *packet);
 void game_mode_zc_ack_add_item_to_cart(const unsigned char *pkt);
 void game_mode_zc_ack_item_identify(const unsigned char *pkt);
 void game_mode_zc_add_item_to_cart(const unsigned char *pkt);
@@ -367,9 +353,6 @@ void game_mode_zc_compass(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_quest_notify_effect(struct GameMode *self,
                                      const struct PACKET_ZC_QUEST_NOTIFY_EFFECT *packet);
 
-void game_mode_on_cash_shop_open(struct GameMode *self, int cash_points, int kafra_points, int tab);
-void game_mode_on_open_limited_sale_tool(struct GameMode *self);
-void game_mode_on_search_limited_sale_item(struct GameMode *self, short result, int item);
 
 void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_restart_ack(const unsigned char *pkt);
@@ -464,13 +447,6 @@ void game_mode_zc_req_takeoff_equip_ack2(struct GameMode *self, const unsigned c
 void game_mode_zc_req_wear_equip_ack(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_req_wear_equip_ack2(struct GameMode *self, const unsigned char *pkt);
 
-void game_mode_on_alt_equipment_clear(struct GameMode *self, const void *packet);
-void game_mode_on_alt_equipment_equip(struct GameMode *self, const struct PacketAltEquipment *packet);
-void game_mode_on_alt_equipment_items(struct GameMode *self,
-                                  const struct PacketAltEquipmentItems *packet);
-void game_mode_on_alt_equipment_remove(struct GameMode *self, const struct PacketAltEquipment *packet);
-void game_mode_on_alt_equipment_switch_ack(struct GameMode *self,
-                                      const struct PacketAltEquipmentSwitchAck *packet);
 
 void game_mode_on_actor_guild(struct GameMode *self, int aid, int guild_id, int emblem_version);
 void game_mode_on_emblem_download(int part, int guild_id, int version, const char *data, int size);
@@ -545,16 +521,12 @@ void game_mode_zc_ack_merge_item(struct GameMode *self,
                                 const struct PACKET_ZC_ACK_MERGE_ITEM *packet);
 void game_mode_zc_ack_open_msg_box_extend_body_item_size(
     struct GameMode *self, const struct PACKET_ZC_ACK_OPEN_MSGBOX_EXTEND_BODYITEM_SIZE *packet);
-void game_mode_zc_ack_random_combine_item(struct GameMode *self, unsigned result);
-void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result);
 void game_mode_zc_ack_take_off_equip_all(struct GameMode *self, unsigned result);
 void game_mode_zc_broadcast_item_refining_result(struct GameMode *self, const char *name24,
                                                int item_id, unsigned refine, unsigned success);
 void game_mode_zc_extend_body_item_size(struct GameMode *self,
                                       const struct PACKET_ZC_EXTEND_BODYITEM_SIZE *packet);
 void game_mode_zc_failed_get_item_from_zone_da(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_grade_enchant_broadcast_result(
-    struct GameMode *self, const struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT *packet);
 void game_mode_zc_item_throw_ack(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_notify_bind_on_equip(const unsigned char *pkt);
 void game_mode_zc_use_item_ack(struct GameMode *self, const struct PACKET_ZC_USE_ITEM_ACK *packet);
@@ -570,8 +542,6 @@ void game_mode_zc_change_item_option3(struct GameMode *self,
 void game_mode_zc_change_item_option_packet(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_equip_item_damaged(struct GameMode *self,
                                    const struct PACKET_ZC_EQUIPITEM_DAMAGED *packet);
-void game_mode_zc_grade_enchant_ack(struct GameMode *self,
-                                   const struct PACKET_ZC_GRADE_ENCHANT_ACK *packet);
 void game_mode_zc_update_card_slot(struct GameMode *self,
                                  const struct PACKET_ZC_UPDATE_CARDSLOT *packet);
 
@@ -583,7 +553,6 @@ void game_mode_zc_mer_par_change(const unsigned char *pkt);
 void game_mode_zc_clear_dialog(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_close_dialog(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_dialog_text_align(struct GameMode *self, unsigned char align);
-void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_menu_list(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_npc_sprite_change(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_npc_chat(struct GameMode *self, const unsigned char *pkt);
@@ -612,7 +581,6 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt);
 void game_mode_zc_party_req_master_to_join(const unsigned char *pkt);
 void game_mode_zc_req_groupinfo_change_v2(const unsigned char *pkt);
 void game_mode_zc_req_join_group(const unsigned char *pkt);
-void game_mode_zc_seek_party(struct GameMode *self, const unsigned char *pkt);
 
 void game_mode_on_add_member_to_group(struct GameMode *self,
                                  const struct PacketAddMemberToGroup *packet);
@@ -670,9 +638,6 @@ void game_mode_zc_pc_purchase_itemlist2(struct GameMode *self, const unsigned ch
 void game_mode_zc_pc_purchase_result(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_pc_sell_itemlist(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_pc_sell_result(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_se_cashshop_open(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_se_cashshop_points(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_se_pc_buy_cashitem_result(struct GameMode *self, const unsigned char *pkt);
 
 void game_mode_on_add_exchange_item_grade(struct GameMode *self,
                                      const struct PacketAddExchangeItemGrade *packet);
@@ -837,8 +802,6 @@ void game_mode_zc_state_change(struct GameMode *self, const struct PACKET_ZC_STA
 void game_mode_zc_state_change3(struct GameMode *self,
                                const struct PACKET_ZC_STATE_CHANGE3 *packet);
 
-void game_mode_on_advanced_status_change_ack(struct GameMode *self, unsigned char result,
-                                        unsigned short status, unsigned char value);
 void game_mode_on_long_long_par_change(struct GameMode *self,
                                   const struct PacketLongLongParChange *packet);
 void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLongParChange *packet);
@@ -912,8 +875,6 @@ void game_mode_on_try_collection(struct GameMode *self, const struct PacketTryRe
 
 void game_mode_ack_buy_styling_shop(struct GameMode *self, const unsigned char *pkt);
 void game_mode_ack_check_attendance(struct GameMode *self, int result, int day);
-void game_mode_ack_player_aid_in_range(struct GameMode *self, int count, const int *aids);
-void game_mode_gold_pc_cafe_point(struct GameMode *self, const unsigned char *pkt);
 void game_mode_item_list_win_open(struct GameMode *self, const unsigned char *pkt);
 void game_mode_select_cart(struct GameMode *self, const unsigned char *pkt);
 void game_mode_ui_open(unsigned char type);

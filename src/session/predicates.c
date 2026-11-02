@@ -128,7 +128,7 @@ BYTE session_is_super_novice_job(struct Session *self, int id)
 BYTE session_is_any_super_novice_job(struct Session *self, int id)
 {
     return id == 0x17 || id == 0xfcd || id == 0x1020 || id == 0x104c || id == 0x105e || id == 0x105f ||
-           id == 0x1060 || id == 0x1061 || id == 0x10d3 || id == 0x10da;
+           id == 0x1060 || id == 0x1061;
 }
 
 BYTE session_is_expanded_job(struct Session *self, int id)
@@ -141,8 +141,6 @@ BYTE session_is_expanded_job(struct Session *self, int id)
     case 0x108d:
     case 0x108f: case 0x1090: case 0x1091: case 0x1092: case 0x1093: case 0x1094: case 0x1095: case 0x1096:
     case 0x1097: case 0x1098:
-    case 0x10ce: case 0x10cf: case 0x10d0: case 0x10d1: case 0x10d2: case 0x10d3: case 0x10d4: case 0x10d5:
-    case 0x10d6: case 0x10d7: case 0x10d8: case 0x10d9: case 0x10da: case 0x10db: case 0x10dc:
         return 1;
     default:
         return 0;
@@ -284,7 +282,7 @@ int session_map_uses_simple_effect(struct Session *self) { return map_property_m
 BYTE session_is_doram_job(struct Session *self, int job)
 {
     switch (job) {
-    case 0x1079: case 0x107a: case 0x107b: case 0x107c: case 0x107d: case 0x10d4: case 0x10db:
+    case 0x1079: case 0x107a: case 0x107b: case 0x107c: case 0x107d:
         return 1;
     default:
         return 0;

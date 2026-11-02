@@ -134,8 +134,6 @@ void session_init_at_startup(struct Session *self)
     self->storeSearchClickedAid = -1;
     session_clear_transform_jobs(self, 1, 1, 1);
     self->itemDropLock = 0;
-    for (i = 0; i < 11; i++)
-        list_clear(&self->cashShopGoods[i], item_info_destroy);
     self->cartType = 0;
     self->showMonsterHp = 1;
     self->noPriceCheckWarning = 1;
@@ -149,10 +147,6 @@ void session_init_at_startup(struct Session *self)
     for (i = 0; i < 5; i++)
         item_info_clear(&self->mailItems[i]);
     self->mailWeight = 0;
-    self->pcCafeActive = 0;
-    self->pcCafePoints = 0;
-    self->pcCafeSecondsServed = 0;
-    self->pcCafeGrade = 1;
     self->noSellWndSound = 1;
     tree_clear(&self->achievements, NULL);
     self->achTotalPoints = 0;
@@ -166,8 +160,6 @@ void session_init_at_startup(struct Session *self)
     self->ownDressUp = 0;
     self->body = 0;
     self->lastPetEmotionTime = timeGetTime();
-    self->showCashShopIcon = 1;
-    self->showGoldPcIcon = 1;
     self->screenShake = 1;
     self->skillUseKey = 0;
     self->lastKeyDown = 0;

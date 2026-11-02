@@ -188,7 +188,6 @@ static void decode_equip5(struct ItemInfo *item, const struct StoreEquip5 *e)
     item->view = e->sprite_number;
     item->favorite = (e->flags >> 2) & 1;
     item->option_count = 0;
-    item->grade = 0;
 }
 
 void game_mode_zc_store_equipment_item_list(struct GameMode *self, const struct PACKET_STORE_LIST *packet)

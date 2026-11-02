@@ -8,15 +8,10 @@
 #include <string.h>
 #include "game/chat_room.h"
 
-static const int s_zeroedStatusKeys[] = {
-    0xe7, 0xdb, 0xdc, 0xdd, 0xde, 0xdf, 0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6,
-};
-
 void session_init_variables_(struct Session *self)
 {
     MEMORYSTATUS memory;
-    int value, r, key;
-    size_t i;
+    int value, r;
 
     self->decoy_sqrt50 = float_sqrt(50.0f);
     r = rand() % 1024;
@@ -120,11 +115,4 @@ void session_init_variables_(struct Session *self)
     self->lowMemory = memory.dwTotalPhys < 0x9b72ec0;
     memset(self->blockedChars, 0, sizeof self->blockedChars);
     self->cartType = 0;
-    for (i = 0; i < sizeof(s_zeroedStatusKeys) / sizeof(s_zeroedStatusKeys[0]); i++) {
-        struct IntIntPair *pair;
-
-        key = s_zeroedStatusKeys[i];
-        pair = tree_get(&self->statusValues, &key, sizeof key, sizeof *pair, tree_less_int);
-        pair->value = 0;
-    }
 }

@@ -78,14 +78,11 @@ enum ItemWndTab {
 #define MODE_REQ_ITEM_FROM_CART 0x4d
 #define MODE_REQ_WEAR_EQUIP_DIRECT 0x57
 #define MODE_REQ_ITEM_COMPOSITION_LIST 0x7b
-#define MODE_REQ_SWAP_EQUIP 0x12e
-#define MODE_REQ_REMOVE_SWAP_EQUIP 0x12f
 #define MODE_REQ_ITEM_NUMBER 0x136
 #define RODEX_MSG_ADD_ITEM 0x68
 
 #define WND_ID_INVENTORY 8
 #define WND_ID_REFINING 0x127
-#define WND_ID_GRADE_ENCHANT 0x157
 
 #define CZ_INVENTORY_TAB 0x907
 #define CZ_ONECLICK_IDENTIFY 0xa35
@@ -380,13 +377,6 @@ void ui_item_wnd_on_process(struct UIWindow *window)
         ui_notice_message_box_lock_sell_item_on_process(self->deal_lock_notice);
 }
 
-static void item_wnd_draw_texture(struct UIWindow *wnd, int x, int y, int w, int h, struct Texture *tex,
-                                  DWORD argb)
-{
-    dc_bitmap_draw_texels_scaled(wnd->canvas, x, y, w, h, tex, ((unsigned)tex->reqWidth), ((unsigned)tex->reqHeight), 1.0f, 1.0f, argb, 0,
-                                  0, 0, 0, 0);
-}
-
 void ui_item_wnd_on_draw(struct UIWindow *window)
 {
     struct UIItemWnd *self = (struct UIItemWnd *)window;
@@ -476,24 +466,6 @@ void ui_item_wnd_on_draw(struct UIWindow *window)
         x = cell % self->base.columns * GRID_CELL + 0x2c;
         y = cell / self->base.columns * GRID_CELL;
         ui_window_draw_item_icon_count(wnd, x, y + 0x15, info, 0, 0);
-        if (info->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", (int)info->grade);
-            ui_window_draw_bitmap(wnd, x, y + 0x21, res_mgr_get(g_resMgr(), string_cstr(&path)), 1);
-            string_free(&path);
-        }
-        if (session_is_in_switch_sets(&g_session1, info->index)) {
-            struct Texture *tex;
-
-            tex = texture_cache_get(&g_textureCache, UI_SKIN "swap_equipment\\bg_change.bmp", 0, 0);
-            if (tex)
-                item_wnd_draw_texture(wnd, x, y + 0x15, 0x18, 0x18, tex, 0x22ffffff);
-            tex = texture_cache_get(&g_textureCache, UI_SKIN "swap_equipment\\ico_change.bmp", 0, 0);
-            if (tex)
-                item_wnd_draw_texture(wnd, x, y + 0x15, ((unsigned)tex->reqWidth), ((unsigned)tex->reqHeight), tex, 0xffffffff);
-        }
         if (++cell == self->base.rows * self->base.columns)
             break;
     }
@@ -592,12 +564,6 @@ static void item_wnd_take_drag(void)
         if (g_windowMgr.rodex_compose_wnd)
             ui_window_send_msg(g_windowMgr.rodex_compose_wnd, NULL, RODEX_MSG_ADD_ITEM, drag->index,
                      drag->drop_count, 0, 0);
-        break;
-    case 0x11:
-        mode_send_message(game, MODE_REQ_REMOVE_SWAP_EQUIP, drag->count, 0, 0, 0);
-        break;
-    case 0x12:
-        mode_send_message(game, MODE_REQ_REMOVE_SWAP_EQUIP, drag->count, 1, 0, 0);
         break;
     }
     mode_send_message(game, MODE_REQ_DRAG_END, 0, 0, 0, 0);
@@ -887,13 +853,6 @@ void ui_item_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const stru
             ui_refining_wnd_reset((struct UIRefiningWnd *)target);
         break;
     }
-    case 0x21: {
-        struct UIWindow *target = ui_window_find(WND_ID_GRADE_ENCHANT);
-
-        if (target)
-            ui_grade_enchant_wnd_reset((struct UIGradeEnchantWnd *)target);
-        break;
-    }
     }
     game_send_message(MODE_REQ_DRAG_END, 0, 0, 0, 0);
 }
@@ -994,12 +953,8 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
             if (!(item.index > 0 && item.equip_location && !item.worn_location) &&
                 !session_is_pet_accessory(&g_session1, item_info_get_item_id(&item)))
                 break;
-            if (GetAsyncKeyState(VK_CONTROL) && g_session1.equipSwapOpen) {
-                mode_send_message(game, MODE_REQ_SWAP_EQUIP, item.index, item.equip_location, 0, 0);
-            } else if (ui_window_find(WND_ID_REFINING)) {
+            if (ui_window_find(WND_ID_REFINING)) {
                 ui_window_send(ui_window_find(WND_ID_REFINING), wnd, SWAP_MSG_SET_ITEM, item.index, 0, 0, 0);
-            } else if (ui_window_find(WND_ID_GRADE_ENCHANT)) {
-                ui_window_send(ui_window_find(WND_ID_GRADE_ENCHANT), wnd, SWAP_MSG_SET_ITEM, item.index, 0, 0, 0);
             } else {
                 mode_send_message(game, MODE_REQ_EQUIP, item.index, item.equip_location, 0, 0);
             }
@@ -1011,12 +966,8 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
         case 0x10:
         case 0x11:
         case 0x13:
-            if (item.index > 0 && !item.worn_location) {
-                if (GetAsyncKeyState(VK_CONTROL) && g_session1.equipSwapOpen)
-                    mode_send_message(game, MODE_REQ_SWAP_EQUIP, item.index, item.equip_location, 0, 0);
-                else
-                    mode_send_message(game, MODE_REQ_WEAR_EQUIP_DIRECT, item.index, item.equip_location, 0, 0);
-            }
+            if (item.index > 0 && !item.worn_location)
+                mode_send_message(game, MODE_REQ_WEAR_EQUIP_DIRECT, item.index, item.equip_location, 0, 0);
             break;
         }
     }

@@ -180,7 +180,6 @@ static void v6_items(const unsigned char *pkt, int look_size)
     clear();
     for (n = record_count(pkt, look_size, 67); n > 0; n--, r += 67) {
         item_from_v6_record(&item, r);
-        item.grade = 0;
         view_checking_eggs(&item);
         item_info_destruct(&item);
     }

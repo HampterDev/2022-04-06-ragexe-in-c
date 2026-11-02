@@ -219,14 +219,6 @@ void ui_scroll_wnd_add_child(struct UIScrollWnd *self, struct UIWindow *child)
     list_free(&children, NULL);
 }
 
-void ui_scroll_wnd_place_child(struct UIScrollWnd *self, struct UIWindow *child, int x, int y)
-{
-    ui_window_move(child, x, y);
-    child_cell(self, child)->x = x;
-    child_cell(self, child)->y = y;
-    ui_scroll_wnd_update_bars(self);
-}
-
 void ui_scroll_wnd_remove_child(struct UIScrollWnd *self, struct UIWindow *child, int destroy)
 {
     if (self->hbar && self->vbar)

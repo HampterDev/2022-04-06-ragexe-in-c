@@ -44,15 +44,6 @@ void session_clear_stat_bonuses(struct Session *self)
     self->statBonus[3] = 0;
 }
 
-BYTE session_cash_shop_goods_empty(struct Session *self)
-{
-    int i;
-    for (i = 0; i < 11; i++)
-        if (self->cashShopGoods[i].size != 0)
-            return 0;
-    return 1;
-}
-
 int session_get_homun_skill_use_level(struct Session *self, int skillId)
 {
     int i = skillId - 8000;

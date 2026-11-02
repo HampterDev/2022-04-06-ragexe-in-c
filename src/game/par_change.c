@@ -17,7 +17,6 @@
 #include "session/session_talk.h"
 #include "session/session_windows.h"
 #include "ui/character/gauge.h"
-#include "ui/character/status_wnd.h"
 #include "ui/ui_std.h"
 
 enum ParType {
@@ -34,8 +33,6 @@ enum ParType {
     SP_WEIGHT = 0x18,
     SP_MAXWEIGHT = 0x19,
     SP_PKHONOR = 0x3c,
-    SP_POW = 0xdb,
-    SP_TRAIT_LAST = 0xe9,
 };
 
 enum {
@@ -139,7 +136,7 @@ static int level_up_effect(void)
     if (session_is_any_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
         return EF_LEVEL_UP_SUPER;
     job = session_get_drawn_job(&g_session1);
-    if ((job >= 0x108e && job <= 0x1094) || job == 0x10ce || job == 0x10cf || job == 0x10dc)
+    if (job >= 0x108e && job <= 0x1094)
         return EF_LEVEL_UP_STAR;
     if ((job >= 0xfce && job <= 0xfd1) || (job >= 0x1081 && job <= 0x1083))
         return EF_LEVEL_UP_STAR;
@@ -367,13 +364,6 @@ void game_mode_zc_par_change(struct GameMode *self, struct PACKET_ZC_PAR_CHANGE 
             chat_line(msg_str(MSG_CHAT_SKILL_ITEM_BLOCKED), CHAT_COLOR_MANNER, 0);
         break;
     default:
-        if (type >= SP_POW && type <= SP_TRAIT_LAST) {
-            session_set_advanced_status(&g_session1, type, value);
-            if (g_windowMgr.status_wnd)
-                ui_status_wnd_restore_frame((struct UIStatusWnd *)g_windowMgr.status_wnd);
-            session_invalidate_windows(&g_session1);
-            break;
-        }
         stat = stat_field(type);
         if (stat) {
             *stat = value;

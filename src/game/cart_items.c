@@ -63,7 +63,6 @@ void game_mode_cart_item_list_equip_v5(const unsigned char *pkt)
 
     for (; n > 0; n--, r += 41) {
         item_from_v5_record_full(&item, r);
-        item.grade = 0;
         add_to_cart(&item);
     }
     session_refresh_party_ui(&g_session1);
@@ -78,7 +77,6 @@ void game_mode_cart_item_list_equip_v6(const unsigned char *pkt)
 
     for (; n > 0; n--, r += 67) {
         item_from_v6_record(&item, r);
-        item.grade = 0;
         add_to_cart(&item);
     }
     session_refresh_party_ui(&g_session1);
@@ -109,7 +107,6 @@ void game_mode_add_item_to_cart2(const unsigned char *pkt)
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
     item_set_options(&item, none);
-    item.grade = 0;
     add_to_cart(&item);
 }
 
@@ -124,7 +121,6 @@ void game_mode_zc_add_item_to_cart3(const unsigned char *pkt)
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
     item_set_options(&item, options);
-    item.grade = 0;
     add_to_cart(&item);
 }
 
@@ -139,6 +135,5 @@ void game_mode_add_item_to_cart4(const unsigned char *pkt)
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
     item_set_options(&item, options);
-    item.grade = packet->grade;
     add_to_cart(&item);
 }

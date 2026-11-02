@@ -34,7 +34,6 @@ void item_info_clear(struct ItemInfo *self)
     self->sale_start_time = 0;
     self->sale_end_time = 0;
     self->sale_remaining = 0;
-    self->grade = 0;
 }
 
 struct ItemInfo *item_info_construct(struct ItemInfo *self)
@@ -83,7 +82,6 @@ struct ItemInfo *item_info_assign(struct ItemInfo *self, const struct ItemInfo *
     self->sale_remaining = src->sale_remaining;
     self->sale_start_time = src->sale_start_time;
     self->sale_end_time = src->sale_end_time;
-    self->grade = ((unsigned short)src->grade);
     return self;
 }
 
@@ -127,7 +125,6 @@ struct ItemInfo *item_info_assign_from_drag(struct ItemInfo *self, const struct 
     self->option_count = count <= ITEM_OPTION_COUNT ? count : 0;
     for (i = 0; i < self->option_count; i++)
         memcpy(&self->options[i], &drag->options[i], sizeof self->options[i]);
-    self->grade = drag->grade;
     self->by_index = drag->by_index;
     self->equip_location = drag->equip_location;
     self->view = (int)drag->view;
@@ -253,7 +250,6 @@ struct ItemInfo *item_info_copy(struct ItemInfo *self, const struct ItemInfo *sr
     self->sale_start_time = src->sale_start_time;
     self->sale_end_time = src->sale_end_time;
     self->sale_remaining = src->sale_remaining;
-    self->grade = src->grade;
     self->option_count = src->option_count;
     memcpy(self->options, src->options, sizeof self->options);
     self->guild_log = src->guild_log;

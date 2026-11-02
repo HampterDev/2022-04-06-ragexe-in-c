@@ -330,8 +330,6 @@ void ui_display_character_on_draw(struct UIWindow *window)
 
 static BYTE style_three_colours(const char *name)
 {
-    if (session_is_fourth_job(&g_session1, session_get_drawn_job(&g_session1)))
-        return 0;
     return strcmp(name, "BodyPalette") == 0 || strcmp(name, "DoramBodyPalette") == 0;
 }
 

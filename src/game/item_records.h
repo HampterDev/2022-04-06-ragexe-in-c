@@ -132,7 +132,6 @@ static __inline void item_from_v7_record(struct ItemInfo *item, const unsigned c
     item->view = rec->view;
     item->favorite = ITEM_FLAG_FAVORITE(rec->flags);
     item_set_options(item, options);
-    item->grade = rec->grade;
 }
 
 static __inline void item_from_normal_record(struct ItemInfo *item, const unsigned char *r, int v5)

@@ -341,7 +341,6 @@ void game_mode_zc_ack_read_rodex2(struct GameMode *self, const struct PACKET_ZC_
         item.option_count = item_option_count(a->options);
         for (k = 0; k < item.option_count; k++)
             item.options[k] = a->options[k];
-        item.grade = a->grade;
         item_copy_inline(&arg, &item);
         session_put_mail_item(&g_session1, arg);
         item_info_destruct(&item);

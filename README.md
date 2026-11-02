@@ -97,3 +97,14 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Resolve headgear names on demand; remove the fixed 2,999-ID catalog limit.
 - Remove the optional `xofyldas` startup script load.
 - Load saved chat layouts from `.lua` only; remove the competing `.lub` import.
+- Remove the item mall: shop windows, cart, goods schedules, purchases, balances, entry points and protocol.
+- Remove the Gold PC cafe mileage window, `/goldpc` and its dynamic-NPC request.
+- Remove the GM account-limited sale tool and `/accountlimitedtool`.
+- Remove Party Booking and Seek Party windows, region catalogs and booking/seek packets.
+- Remove 4th classes: jobs 4252–4299/4302–4329, their skills, units and dedicated effects, and per-job tables.
+- Remove trait stats, trait points, AP bars and AP skill costs, including packets `0x0b24`/`0x0b25`.
+- Remove Lapine synthesis and upgrade boxes, their catalogs, windows and requests.
+- Remove grade enchanting and all item-grade display; item links keep a zero grade field.
+- Remove the second equipment set, its swap panel, hotkey, saved position and requests.
+- Remove the macro-detector captcha challenge, GM macro reporter, reported-player list and `/mr`, `/mp`, `/md`.
+- Remove second-password (PIN) windows and requests; servers must disable PIN codes.

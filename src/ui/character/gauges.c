@@ -252,7 +252,6 @@ struct UIGage *ui_gage_construct(struct UIGage *self)
     self->low_colour = 0x1616ea;
     self->food_colour = 0xe1e4ff;
     self->food_low_colour = 0x1616ea;
-    self->ap_colour = 0x60c0ff;
     return self;
 }
 
@@ -341,7 +340,7 @@ struct UIMonsterGage {
     struct UIPcGage pc;
     int low_percent;
 };
-SIZE_ASSERT(UIMonsterGage, 0xb4);
+SIZE_ASSERT(UIMonsterGage, 0xb0);
 
 int ui_monster_gauge_hp(const struct UIWindow *window)
 {
@@ -396,7 +395,7 @@ struct UIRechargeGage {
     int value;
     int maximum;
 };
-SIZE_ASSERT(UIRechargeGage, 0xa4);
+SIZE_ASSERT(UIRechargeGage, 0xa0);
 
 void ui_recharge_gage_destroy(struct UIWindow *window)
 {
@@ -427,7 +426,6 @@ enum {
     PLAYER_GAGE_HP, PLAYER_GAGE_MAX_HP,
     PLAYER_GAGE_SP, PLAYER_GAGE_MAX_SP,
     PLAYER_GAGE_FOOD, PLAYER_GAGE_MAX_FOOD,
-    PLAYER_GAGE_AP, PLAYER_GAGE_MAX_AP,
     PLAYER_GAGE_GETTERS
 };
 
@@ -436,7 +434,7 @@ struct UIPlayerGage {
     int layout;
     struct GaugeValue getters[PLAYER_GAGE_GETTERS];
 };
-OFFSET_ASSERT(UIPlayerGage, getters, 0xa0);
+OFFSET_ASSERT(UIPlayerGage, getters, 0x9c);
 
 static struct UIPlayerGage *ui_player_gage_construct(struct UIPlayerGage *self)
 {
@@ -541,8 +539,6 @@ void ui_player_gage_on_draw(struct UIWindow *window)
             break;
         player_hp_bar(self, 1);
         player_bar(self, 5, player_ratio(self, PLAYER_GAGE_SP, 1), self->gage.second_colour);
-        if (player_has(self, PLAYER_GAGE_AP, PLAYER_GAGE_MAX_AP))
-            player_bar(self, 9, player_ratio(self, PLAYER_GAGE_AP, 1), self->gage.ap_colour);
         break;
     }
 }

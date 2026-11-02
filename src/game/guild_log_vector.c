@@ -18,7 +18,6 @@ static void copy_tail_fields(struct GuildStorageLogEntry *to, const struct Guild
     to->refine = from->refine;
     memcpy(to->cards, from->cards, sizeof to->cards);
     to->attribute = from->attribute;
-    to->grade = from->grade;
 }
 
 struct GuildStorageLogEntry *guild_log_entry_construct(struct GuildStorageLogEntry *entry)
@@ -27,7 +26,6 @@ struct GuildStorageLogEntry *guild_log_entry_construct(struct GuildStorageLogEnt
     entry->amount = 0;
     entry->action = 0;
     string_init(&entry->item_name);
-    entry->grade = 0;
     entry->identified = 0;
     entry->item_type = 0;
     entry->refine = 0;

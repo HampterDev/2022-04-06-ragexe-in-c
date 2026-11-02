@@ -45,15 +45,12 @@ int g_isStopByLogin = 0;
 
 enum {
     MODE_MSG_MAP_NAME = 9,
-    WID_CASH_SHOP_BUTTON = 0xbe,
     WND_MSG_MARK_MIRROR_RESET = 0x1de,
 };
 
 enum { UIWM_LOADED = 3, UIWM_CHAT_LINE = 1 };
 
 enum { CZ_NOTIFY_ACTORINIT = 0x7d };
-
-enum { WID_PC_CAFE = 0x10b };
 
 static void clear_lists(struct GameMode *self)
 {
@@ -70,8 +67,6 @@ static void clear_lists(struct GameMode *self)
 
 static void make_windows(void)
 {
-    const char *map;
-
     if (g_windowMgr.mini_map_wnd != 0)
         ui_window_send(g_windowMgr.mini_map_wnd, NULL, WND_MSG_MARK_MIRROR_RESET, 0, 0, 0, 0);
     snap_mgr_clear(&g_snapMgr);
@@ -80,14 +75,9 @@ static void make_windows(void)
     ui_window_open(0);
     ui_window_mgr_show_windows(&g_windowMgr, 0x43, 1);
     ui_window_open(0xcc);
-    map = game_current_map_name();
-    if (*map && strcmp(map, "new_event.rsw") != 0)
-        ui_window_open(WID_CASH_SHOP_BUTTON);
     if (g_session1.mdWndShown != 0)
         ui_window_open(0x89);
     ui_window_open(0x9f);
-    if (g_session1.partyBooking.window_open != 0)
-        ui_window_open(0xa4);
     if (g_session1.storeSearchOpenOnEnter != 0)
         ui_window_open(0xb5);
     if (g_session1.cameraInfoShown != 0)
@@ -165,8 +155,6 @@ static void start_weather(struct GameMode *self)
 
 void game_mode_initialize(struct GameMode *self)
 {
-    struct UIWindow *w;
-
     mode_hide_help_balloon(&self->base);
     clear_lists(self);
     make_windows();
@@ -275,11 +263,6 @@ void game_mode_initialize(struct GameMode *self)
     navi_manager_resume(&g_navi);
     self->admin_whisper_balloon = 0;
     self->admin_whisper_time = 0;
-    if (g_session1.pcCafeActive != 0) {
-        w = ui_window_open(WID_PC_CAFE);
-        if (w != 0)
-            ui_window_send(w, NULL, 0x22, g_session1.pcCafeActive, g_session1.pcCafePoints, g_session1.pcCafeSecondsServed, g_session1.pcCafeGrade);
-    }
     self->achievement_notice = 0;
     self->achievement_notice_time = 0;
     g_mapPropertyQuiet = 0;

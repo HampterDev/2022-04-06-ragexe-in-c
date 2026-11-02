@@ -107,8 +107,6 @@ call "%ROOT%\tests\build_resource_lifecycle.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_bitmap.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%ROOT%\tests\build_captcha.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_scheduler.bat"
 if not "%errorlevel%"=="0" exit /b 1
 call "%ROOT%\tests\build_ranking.bat"
@@ -118,8 +116,6 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_talk_options.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_session_scalar.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%ROOT%\tests\build_party_search.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_chat_tabs.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -264,7 +260,7 @@ test_traversal_callbacks.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 call "%~dp0build_skill_actions.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_gauge_sources.c" "%ROOT%\src\ui\character\gauge_value.c" "%ROOT%\src\ui\character\gauge_sources.c" "%ROOT%\src\ui\character\gauges.c" "%ROOT%\src\ui\character\bar_graph.c" "%ROOT%\src\ui\items\homun_bar.c" "%ROOT%\tests\gauge_sources_support.c" /Fe:test_gauge_sources.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_gauge_sources.c" "%ROOT%\src\ui\character\gauge_value.c" "%ROOT%\src\ui\character\gauges.c" "%ROOT%\src\ui\character\bar_graph.c" "%ROOT%\src\ui\items\homun_bar.c" "%ROOT%\tests\gauge_sources_support.c" /Fe:test_gauge_sources.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_gauge_sources.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -415,8 +411,6 @@ call "%~dp0build_failures.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 call "%~dp0build_character_preview.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-call "%~dp0build_reported_players.bat"
-if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\core\text_encoding.c" /Fo:text_encoding_test.obj
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_code_page_conversion.c" "%ROOT%\tests\encoding_fixture.c" text_encoding_test.obj /Fe:test_code_page_conversion.exe
@@ -440,6 +434,8 @@ if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 call "%ROOT%\tests\build_font_cache.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_login_auth.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%ROOT%\tests\build_login_pin_state.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 cl /nologo /c /W4 /WX /O2 /MD /DTYPE_QUERY_FIXTURE /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\type_query_fixture.h" "%ROOT%\src\core\object_type.c" /Fo:object_type_test.obj
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -677,8 +673,6 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_ez2str_manager.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_content_managers.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%~dp0build_skill_effect_calls.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_actor_helper_owners.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)

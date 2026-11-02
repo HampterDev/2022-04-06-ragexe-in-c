@@ -1,8 +1,6 @@
 #include "effects/effect_allocator.h"
 #include "actor/actor_ops.h"
-#include "render/projection.h"
 #include "render/math3d.h"
-#include <math.h>
 #include <string.h>
 #include "effects/skills/ez2str_effect_ex.h"
 #include "effects/skills/skill_view.h"
@@ -249,54 +247,4 @@ void ez2_str_effect_ex_fade_out(struct Effect *effect)
 {
     struct Ez2StrEffectEx *self = (struct Ez2StrEffectEx *)effect;
     self->fading = 1;
-}
-
-static float line_angle(const Vec3 *from, const Vec3 *to, const float *view, int *found)
-{
-    float x1, y1, rhw1 = 0.0f, x2, y2, rhw2 = 0.0f;
-    float dx, dy, dist2, degrees;
-    double cosine;
-
-    renderer_project_point(g_renderer, from, view, &x1, &y1, &rhw1);
-    renderer_project_point(g_renderer, to, view, &x2, &y2, &rhw2);
-    dx = x2 - x1;
-    dy = y2 - y1;
-    dist2 = dy * dy + dx * dx;
-    if (float_sqrt(dist2) == 0.0f) {
-        *found = 0;
-        return 0.0f;
-    }
-    *found = 1;
-    cosine = (double)dx / (double)float_sqrt(dist2);
-    degrees = (float)acos(cosine) / g_pi * g_halfTurnDegrees;
-    if (y1 > y2)
-        return 360.0f - degrees;
-    return degrees;
-}
-
-float effect_screen_angle(Vec3 from, Vec3 to, const float *view)
-{
-    int found;
-    float angle = line_angle(&from, &to, view, &found);
-
-    return found ? angle : 0.0f;
-}
-
-float effect_screen_angle_quadrant(Vec3 from, Vec3 to)
-{
-    float unturned_view[12];
-    float angle = 0.0f, snapped;
-    int found;
-
-    if (!game_copy_view_matrix_at(unturned_view, 0.0f))
-        return 0.0f;
-    angle = line_angle(&from, &to, unturned_view, &found);
-    if (!found)
-        angle = 0.0f;
-
-    snapped = (float)(((int)(angle + 45.0f) / 90) * 90);
-    snapped -= game_camera_heading();
-    if (360.0f > snapped)
-        snapped += 360.0f;
-    return snapped;
 }

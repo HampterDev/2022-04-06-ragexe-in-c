@@ -198,8 +198,6 @@ static struct MissileSprite missile_for_job(__int64 job64)
     case 0x9ab: return corruption_root;
     case 0xf2a: return nyailo;
     case 0x1079: case 0x107a: case 0x107b: case 0x107c: case 0x107d: return soul_attack;
-    case 0x10d4: return soul_attack;
-    case 0x10db: return soul_attack;
     case 0x4f32: return stone_shooter;
     case 0x4f33: return wootan_shooter;
     case 0x4f37: return wootan_shooter;

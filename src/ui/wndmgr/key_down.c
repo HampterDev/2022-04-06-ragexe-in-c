@@ -265,14 +265,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
     case 0x87:
         g_session1.showCellInfo = 1 - g_session1.showCellInfo;
         return 1;
-    case 0x89:
-        if (self->basic_info_wnd == NULL)
-            return 1;
-        if (ui_window_find(0x13e) == NULL)
-            game_send_message(0x143, 0, 0, 0, 0);
-        else
-            ui_window_mgr_post_quit1(&g_windowMgr, 0x13e);
-        return 1;
 
     case 0x8e:
         if (g_windowMgr.navigation_v4_wnd)
@@ -297,9 +289,6 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
         command(ui_window_find(0x133), 0x1d4);
         return command((struct UIWindow *)object_as_type(ui_window_find(0xb6), OBJECT_BASIC_BUTTONS_WINDOW),
                        0x1d4);
-    case 0x98:
-        game_send_message(0x130, 0, 0, 0, 0);
-        return 1;
     case 0x9b: return command(ui_window_find(0x24), 0x21d);
     case 0x9d: return toggle(&g_windowMgr, 0x144);
     case 0x9f:

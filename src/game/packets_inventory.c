@@ -6,8 +6,7 @@
 #include "ui/window_access.h"
 #include <stdlib.h>
 #include "game/packets_inventory.h"
-#include "contents/lapine_box.h"
-#include "contents/lapine_upgrade.h"
+#include "ui/window.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "game/skill_use.h"
@@ -20,13 +19,6 @@ struct PACKET_ZC_ACK_MERGE_ITEM {
     unsigned short index;
     unsigned short count;
     unsigned char result;
-};
-struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT {
-    unsigned short id;
-    char name[24];
-    int item_id;
-    unsigned short grade;
-    unsigned char status;
 };
 struct PACKET_ZC_EXTEND_BODYITEM_SIZE {
     unsigned short id;
@@ -42,14 +34,11 @@ struct PACKET_ZC_ACK_OPEN_MSGBOX_EXTEND_BODYITEM_SIZE {
     int item_id;
 };
 #pragma pack(pop)
-OFFSET_ASSERT(PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT, status, 0x20);
 
-enum { UIM_EQUIP_REFRESH = 0x6a, UIM_INVENTORY_REFRESH = 0x17, UIM_RANDOM_COMBINE_TEXT = 0x6f,
+enum { UIM_EQUIP_REFRESH = 0x6a, UIM_INVENTORY_REFRESH = 0x17,
        UIM_MERGE_ITEM_DONE = 0x3c };
 enum {
     WID_MERGE_ITEM = 0xe3,
-    WID_RANDOM_COMBINE = 0x122,
-    WID_RANDOM_UPGRADE = 0x12e,
 };
 enum {
     MM_EXTEND_BODYITEM_ACCEPT = 0x137,
@@ -126,45 +115,6 @@ void game_mode_zc_ack_open_msg_box_extend_body_item_size(
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), 0xff, 0, 0);
 }
 
-void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result)
-{
-    void *wnd;
-
-    (void)self;
-    if ((unsigned short)result != 0) {
-        wnd = ui_window_find(WID_RANDOM_COMBINE);
-        if (wnd != 0)
-            lapine_upgrade_set_waiting(wnd, 0);
-    } else if (ui_window_find(WID_RANDOM_UPGRADE) != 0) {
-        ui_window_mgr_post_quit1(&g_windowMgr, WID_RANDOM_UPGRADE);
-    }
-}
-
-void game_mode_zc_ack_random_combine_item(struct GameMode *self, unsigned result)
-{
-    struct UIWindow *wnd;
-    unsigned short r = (unsigned short)result;
-
-    (void)self;
-    if (r != 0) {
-        wnd = ui_window_find(WID_RANDOM_COMBINE);
-        if (wnd != 0)
-            lapine_box_set_waiting((struct LapineBox *)wnd, 0);
-    }
-    switch (r) {
-    case 0:
-        if (ui_window_find(WID_RANDOM_COMBINE) != 0)
-            ui_window_mgr_post_quit1(&g_windowMgr, WID_RANDOM_COMBINE);
-        break;
-    case 5:
-    case 7:
-        wnd = ui_window_find(WID_RANDOM_COMBINE);
-        if (wnd != 0)
-            ui_window_send(wnd, NULL, UIM_RANDOM_COMBINE_TEXT, (int)msg_str(0xb51), 0, 0, 0);
-        break;
-    }
-}
-
 static void notice_open(struct GameMode *self)
 {
     struct UIWindow *wnd;
@@ -222,35 +172,6 @@ void game_mode_zc_broadcast_item_refining_result(struct GameMode *self, const ch
     notice_show(self, string_cstr(&text));
 
     string_free(&text);
-    item_info_destruct(&item);
-    string_free(&item_name);
-    string_free(&name);
-}
-
-void game_mode_zc_grade_enchant_broadcast_result(
-    struct GameMode *self, const struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT *packet)
-{
-    static const char *const grade_letters[] = { 0, "D", "C", "B", "A", "R", "S", "SS" };
-    struct String name, grade, text;
-    struct String item_name = {0};
-    struct ItemInfo item;
-
-    string_init(&name);
-    string_assign(&name, packet->name, 24);
-    string_clear(&item_name);
-    broadcast_item_name(&item_name, &item, packet->item_id);
-    notice_open(self);
-
-    string_init(&grade);
-    if (packet->grade >= 1 && packet->grade <= 7)
-        string_assign(&grade, grade_letters[packet->grade], packet->grade == 7 ? 2 : 1);
-    string_init(&text);
-    string_format(&text, msg_str(packet->status == 1 ? 0xe86 : 0xe87), string_cstr(&name),
-                  string_cstr(&grade), string_cstr(&item_name));
-    notice_show(self, string_cstr(&text));
-
-    string_free(&text);
-    string_free(&grade);
     item_info_destruct(&item);
     string_free(&item_name);
     string_free(&name);

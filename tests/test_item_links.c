@@ -59,7 +59,7 @@ static void equal_item(const struct ItemInfo *a, const struct ItemInfo *b)
     assert(a->type == b->type && a->equip_location == b->equip_location);
     assert(!strcmp(string_cstr(&a->name), string_cstr(&b->name)));
     assert(!strcmp(string_cstr(&a->id_text), string_cstr(&b->id_text)));
-    assert(a->refine == b->refine && a->view == b->view && a->grade == b->grade);
+    assert(a->refine == b->refine && a->view == b->view);
     assert(a->identified == b->identified && a->option_count == b->option_count);
     assert(!memcmp(a->slot, b->slot, sizeof a->slot));
     assert(!memcmp(a->options, b->options, sizeof a->options));
@@ -152,7 +152,7 @@ int main(void)
     assert(item.equip_location == 1 && item.type == 4 && item.identified == 1);
     assert(!strcmp(string_cstr(&item.id_text), "62"));
     assert(!strcmp(string_cstr(&item.name), "한국 아이템"));
-    assert(item.refine == 2 && item.view == 3 && item.grade == 4);
+    assert(item.refine == 2 && item.view == 3); /* the grade field ('04) is read past and ignored */
     assert(item.slot[0] == 5 && !item.slot[1] && !item.slot[2] && !item.slot[3]);
     assert(item.option_count == 1 && item.options[0].id == 6 && item.options[0].param == 7 && item.options[0].value == 8);
     item_info_destruct(&item);

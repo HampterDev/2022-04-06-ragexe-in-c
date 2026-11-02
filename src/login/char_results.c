@@ -1,4 +1,4 @@
-#include "core/thread_text.h"
+#include "contents/connection_api.h"
 #include "ui/window_manager_state.h"
 #include "login/loginmode.h"
 
@@ -8,7 +8,13 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 
+#define SUBMODE_LOGIN           3
 #define SUBMODE_SELECT_CHAR     7
+
+/* HC_SECOND_PASSWD_LOGIN states that need no PIN code: accepted/disabled and unused. */
+#define PIN_STATE_OK            0
+#define PIN_STATE_UNUSED        7
+#define PIN_STATE_LAST_KNOWN    0xb
 
 #pragma pack(push, 1)
 struct PACKET_HC_SELECT_WND_RESULT {
@@ -193,116 +199,21 @@ void login_mode_on_delete_reserved(struct LoginMode *self, const BYTE *pkt)
     string_free(&text);
 }
 
-static void pin_error_box(int code)
-{
-    result_box(thread_text_format("%s(%d)", msg_str(0xc81), code));
-}
-
-static void pin_state_common(struct LoginMode *self, const struct PACKET_HC_SECOND_PASSWD_LOGIN *packet, int state)
-{
-    switch (state) {
-    case 0:
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
-        g_session1.pinState = 0;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 1:
-        g_session1.pinAid = packet->aid;
-        g_session1.pinState = 2;
-        self->pin_failures = 0;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 2:
-        g_session1.pinAid = packet->aid;
-        g_session1.pinState = 4;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 3:
-        g_session1.pinAid = packet->aid;
-        g_session1.pinState = 3;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 4:
-        g_session1.pinAid = packet->aid;
-        g_session1.pinState = 5;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 5:
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        result_box(msg_str(0x768));
-        return;
-    case 6:
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        result_box(msg_str(0x769));
-        return;
-    case 7:
-        g_session1.pinState = 1;
-        self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        return;
-    case 9:
-    case 10:
-    case 11:
-        pin_error_box(state);
-        return;
-    }
-}
-
+/* PIN codes are unsupported: continue only when the server requires none, otherwise leave. */
 void login_mode_on_pin_state(struct LoginMode *self, const BYTE *pkt)
 {
     const struct PACKET_HC_SECOND_PASSWD_LOGIN *packet = (const struct PACKET_HC_SECOND_PASSWD_LOGIN *)pkt;
-    struct String text;
-    WORD state;
+    WORD state = packet->state;
 
-    g_session1.pinResultValue = packet->seed;
-    state = packet->state;
-    if (state > 0xb)
+    if (state > PIN_STATE_LAST_KNOWN)
         return;
-    if (state != 8) {
-        pin_state_common(self, packet, state);
-        return;
-    }
-    if (packet->tries_left > 0) {
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
+    if (state == PIN_STATE_OK || state == PIN_STATE_UNUSED) {
         self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-        string_init(&text);
-        string_format(&text, msg_str(0x764), packet->tries_left);
-        result_box(string_cstr(&text));
-        string_free(&text);
-    } else {
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
-        result_box(msg_str(0xd7e));
-        login_mode_send_msg(&self->base, 2, 0, 0, 0, 0);
-    }
-}
-
-void login_mode_on_pin_state2(struct LoginMode *self, const BYTE *pkt)
-{
-    const struct PACKET_HC_SECOND_PASSWD_LOGIN *packet = (const struct PACKET_HC_SECOND_PASSWD_LOGIN *)pkt;
-    struct String text;
-    WORD state;
-    int left;
-
-    g_session1.pinResultValue = packet->seed;
-    state = packet->state;
-    if (state > 0xb)
-        return;
-    if (state != 8) {
-        pin_state_common(self, packet, state);
         return;
     }
-    ui_window_mgr_post_quit1(&g_windowMgr, 0xc7);
-    self->pin_failures++;
-    left = 3 - self->pin_failures;
-    self->base.next_sub_mode = SUBMODE_SELECT_CHAR;
-    if (left > 0) {
-        string_init(&text);
-        string_format(&text, msg_str(0x764), left);
-        result_box(string_cstr(&text));
-        string_free(&text);
-    } else {
-        result_box(msg_str(0x773));
-        login_mode_send_msg(&self->base, 2, 0, 0, 0, 0);
-    }
+    connection_disconnect(rag_connection_transport(rag_connection_instance()));
+    result_box("PIN codes are not supported by this client. "
+               "Please ask the server administrator to disable PIN codes.");
+    g_mapServerAidPending = 0;
+    self->base.next_sub_mode = SUBMODE_LOGIN;
 }

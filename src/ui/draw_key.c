@@ -71,7 +71,6 @@ unsigned long long draw_key_item(unsigned long long key, const struct ItemInfo *
     key = draw_key_int(key, item->sale_start_time);
     key = draw_key_int(key, item->sale_end_time);
     key = draw_key_int(key, item->sale_remaining);
-    key = draw_key_int(key, item->grade);
     key = draw_key_int(key, item->option_count);
     return draw_key_bytes(key, item->options, sizeof item->options);
 }
@@ -89,8 +88,7 @@ unsigned long long draw_key_skill(unsigned long long key, const struct SkillInfo
     key = draw_key_int(key, skill->cell_index);
     key = draw_key_int(key, skill->max_level);
     key = draw_key_int(key, skill->level_limit);
-    key = draw_key_int(key, skill->level2);
-    return draw_key_int(key, skill->ap_amount);
+    return draw_key_int(key, skill->level2);
 }
 
 unsigned long long draw_key_children(unsigned long long key, const struct UIWindow *window)

@@ -77,8 +77,6 @@ static void reset_session_items(void)
     session_clear_worn_items(&g_session1);
     session_clear_worn_costumes(&g_session1);
     session_clear_cart(&g_session1);
-    session_clear_switch_equips(&g_session1);
-    session_clear_switch_costumes(&g_session1);
 }
 
 static void session_reset_achievements(struct Session *session)
@@ -245,31 +243,6 @@ static void char_select(struct LoginMode *self)
     session_reset_store_search(&g_session1);
     session_clear_transform_jobs(&g_session1, 1, 1, 1);
     reset_session_items();
-    switch ((g_session1.pinState)) {
-    case 2:
-        (g_session1.pinChangeOnly) = 0;
-        show_wallpaper(self);
-        ui_window_open(0xc7);
-        break;
-    case 3:
-        (g_session1.pinChangeOnly) = 0;
-        show_wallpaper(self);
-        ui_window_open(0xc7);
-        UIWND_SENDMSG(g_windowMgr.second_password_input_wnd, 0, 6, 0x11c, 0, 0, 0);
-        break;
-    case 4:
-        (g_session1.pinChangeOnly) = 1;
-        show_wallpaper(self);
-        ui_window_open(0xc8);
-        UIWND_SENDMSG(g_windowMgr.second_password_edit_wnd, 0, 6, 0x11c, 0, 0, 0);
-        UIWND_SENDMSG(g_windowMgr.second_password_edit_wnd, 0, 6, 0xb0, 1, 0, 0);
-        break;
-    case 5:
-        (g_session1.pinChangeOnly) = 1;
-        show_wallpaper(self);
-        ui_window_open(0xc8);
-        break;
-    }
 }
 
 static void char_server(struct LoginMode *self)
@@ -342,7 +315,6 @@ static void map_server(struct LoginMode *self)
 #pragma pack(pop)
 
     default_wallpaper(self);
-    party_booking_reset(&g_session1.partyBooking);
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &g_charServerAddr);
     if (!self->base.connected) {
@@ -446,9 +418,6 @@ static void enter_map(struct LoginMode *self)
         BYTE sex;
     } pkt;
 #pragma pack(pop)
-    char path[0x58];
-    HKEY key;
-    DWORD disposition, value;
 
     char_user_data_load(g_charUserDataMgr, g_session1.ownAid, g_session1.ownGid, string_cstr(&g_session1.worldName));
     (g_session1.mdWndShown) = 0;
@@ -459,15 +428,6 @@ static void enter_map(struct LoginMode *self)
         return;
     }
 
-    strcpy(path, g_registryKeyPath);
-    strcat(path, "\\NeoCash");
-    disposition = 0;
-    value = 0;
-    if (RegCreateKeyExA((HKEY)0x80000001,
-                        path, 0, NULL, 0, 0xf003f, NULL, &key, &disposition) == 0) {
-        RegSetValueExA(key, "CASH_CATEGORY", 0, REG_DWORD, (const BYTE *)&value, 4);
-        RegCloseKey(key);
-    }
     pkt.id = 0x436;
     pkt.clientTime = timeGetTime();
     pkt.aid = g_session1.ownAid;

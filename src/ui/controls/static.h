@@ -114,7 +114,6 @@ void ui_static_text_lf_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_static_text_lf_on_wheel(struct UIWindow *self, int delta);
 
 void ui_static_text_set_text_fit(struct UIWindow *wnd, const char *text);
-void ui_static_text_set_number(struct UIWindow *wnd, int value);
 void ui_static_text_set_text_ellipsis_wide(struct UIWindow *wnd,
                                                  const char *text);
 void ui_static_text3_destruct(struct UIStaticText3 *self);

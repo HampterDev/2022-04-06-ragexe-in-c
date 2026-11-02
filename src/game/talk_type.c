@@ -49,16 +49,6 @@ static void toggle_window(int id)
         ui_window_open(id);
 }
 
-static void toggle_window_option(int id, int *value)
-{
-    struct UIWindow *w = ui_window_find(id);
-
-    if (w) {
-        *value = *value == 0;
-        ui_window_show(w, *value);
-    }
-}
-
 #pragma pack(push, 1)
 struct PacketId {
     unsigned short id;
@@ -66,10 +56,6 @@ struct PacketId {
 struct PacketByte {
     unsigned short id;
     unsigned char value;
-};
-struct PacketInt {
-    unsigned short id;
-    int value;
 };
 struct PacketConfig {
     unsigned short id;
@@ -81,8 +67,6 @@ struct PacketConfig {
 #define CZ_REQ_WHISPER_LIST 0xd3
 #define CZ_PARTY_CONFIG 0x2c8
 #define CZ_CONFIG 0x2d8
-#define CZ_UI_OPEN 0xa68
-#define CZ_REQ_PREVIEW_MACRO_DETECTOR 0xa69
 #define CZ_CMD_RESETCOOLTIME 0xa88
 #define CZ_NOCOSPLAY 0xae8
 
@@ -367,8 +351,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         break;
     case 0xb6: mode_msg(self, 0x3b, (int)ARG(0)); break;
     case 0xb7: mode_msg(self, 0xfd, g_session1.equipOpenToOthers == 0); break;
-    case 0xc2: mode_msg(self, 0x105, (int)ARG(0)); break;
-    case 0xc6: mode_msg(self, 0x10d, (int)ARG(0)); break;
     case 0xc7:
         g_session1.showStateInfo = g_session1.showStateInfo == 0;
         if (g_session1.showStateInfo) {
@@ -385,8 +367,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0xd0: talk_cmd_navigate(self, args, 1); break;
     case 0xd1: mode_msg(self, 0x11e, (int)ARG(0)); break;
     case 0xd7: ui_window_open(0xcb); break;
-    case 0xd8: toggle_window_option(0xbe, &g_session1.showCashShopIcon); break;
-    case 0xd9: toggle_window_option(0x10b, &g_session1.showGoldPcIcon); break;
     case 0xdd:
         w = g_windowMgr.minimap_zoom_wnd;
         g_session1.minimapButtons = g_session1.minimapButtons == 0;
@@ -395,16 +375,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
         talk_print_msg(g_session1.minimapButtons ? 0xb2e : 0xb2f, TALK_COLOR_NOTICE);
         break;
-    case 0xde: send_byte(CZ_UI_OPEN, 2); break;
-    case 0xe0: send_byte(CZ_UI_OPEN, 3); break;
-    case 0xdf: {
-        struct PacketInt packet;
-
-        packet.id = CZ_REQ_PREVIEW_MACRO_DETECTOR;
-        packet.value = atoi(ARG(0));
-        send_packet(packet.id, &packet);
-        break;
-    }
     case 0xe1: talk_cmd_send_camera(self, args, 1); break;
     case 0xe2: talk_cmd_send_camera(self, args, 0); break;
     case TALK_SHOW_NAME:
@@ -428,7 +398,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0xef: talk_cmd_zoom_range(self); break;
     case 0xf8: ui_window_mgr_set_shop_titles_shown(&g_windowMgr, g_windowMgr.show_shop_titles == 0); break;
     case 0xf9: mode_msg(self, 0x13d, (int)ARG(0)); break;
-    case 0xfa: mode_msg(self, 0x13e, 0); break;
 
     case 0x2d: case 0x2e: case 0x2f: case 0x35: case 0x36: case 0x67: case 0x6b: case 0x6f:
     case 0x70: case 0x76: case 0x77: case 0x86: case 0x8b: case 0x92: case 0xa2: case 0xa3:

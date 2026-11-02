@@ -26,7 +26,6 @@ enum BasicButtonId {
     BASIC_ID_MAP = 0xd3,
     BASIC_ID_QUEST = 0x161,
     BASIC_ID_GUILD = 0x16d,
-    BASIC_ID_BOOKING = 0x173,
     BASIC_ID_NOT_BUILT_WINDOW = 0x194,
     BASIC_ID_NAVIGATION = 0x1a6,
     BASIC_ID_BANK = 0x1c5,
@@ -44,15 +43,12 @@ enum BasicButtonId {
 #define WND_QUEST 0x141
 #define WND_GUILD 0x3b
 #define WND_GUILD_NONE 0xd4
-#define WND_BOOKING 0xa9
 #define WND_NOT_BUILT 0xbf
 #define WND_NAVIGATION 0xcb
 #define WND_ACHIEVEMENT 0x10e
 #define WND_MAIL 0x107
 #define WND_MAIL_BLOCK_1 0x127
-#define WND_MAIL_BLOCK_2 0x157
 #define MSG_MAIL_BLOCK_1 0xbb0
-#define MSG_MAIL_BLOCK_2 0xe83
 
 #define PACKET_BANK_OPEN 0x9ab
 #define BASIC_FADE_ALPHA 0x80
@@ -68,7 +64,6 @@ struct UIButtonsOfBasicWnd {
     struct UIBitmapButton *guild;
     struct UIBitmapButton *quest;
     struct UIBitmapButton *option;
-    struct UIBitmapButton *booking;
     struct UIBitmapButton *navigation;
     struct UIBitmapButton *bank;
     struct UIBitmapButton *status;
@@ -77,9 +72,8 @@ struct UIButtonsOfBasicWnd {
     int extra_button;
 };
 OFFSET_ASSERT(UIButtonsOfBasicWnd, info, 0x98);
-OFFSET_ASSERT(UIButtonsOfBasicWnd, booking, 0xb8);
-OFFSET_ASSERT(UIButtonsOfBasicWnd, achievement, 0xcc);
-SIZE_ASSERT(UIButtonsOfBasicWnd, 0xd4);
+OFFSET_ASSERT(UIButtonsOfBasicWnd, achievement, 0xc8);
+SIZE_ASSERT(UIButtonsOfBasicWnd, 0xd0);
 
 void ui_buttons_of_basic_wnd_destruct(struct UIButtonsOfBasicWnd *self)
 {
@@ -141,7 +135,6 @@ static void ui_buttons_of_basic_wnd_layout(struct UIButtonsOfBasicWnd *self)
     basic_flow(self, self->info, &x, &y);
     basic_flow(self, self->skill, &x, &y);
     basic_flow(self, self->item, &x, &y);
-    basic_flow(self, self->booking, &x, &y);
     basic_flow(self, self->party, &x, &y);
     basic_flow(self, self->guild, &x, &y);
     basic_flow(self, self->quest, &x, &y);
@@ -174,7 +167,6 @@ void ui_buttons_of_basic_wnd_on_create(struct UIWindow *window, int width, int h
         sprintf(stem, UI_SKIN "basic_interface\\%s", basic_names[i]);
         row[i] = basic_button(self, stem, digits, basic_ids[i]);
     }
-    self->booking = basic_button(self, UI_SKIN "basic_interface\\booking", digits, BASIC_ID_BOOKING);
     self->navigation = basic_button(self, UI_SKIN "navigation_interface\\btn_Navigation", letters,
                                     BASIC_ID_NAVIGATION);
     self->bank = basic_button(self, UI_SKIN "basic_interface\\btn_bank", letters, BASIC_ID_BANK);
@@ -232,9 +224,6 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     case BASIC_ID_GUILD:
         basic_toggle(g_guildInfo.guild_id < 1 ? WND_GUILD_NONE : WND_GUILD);
         break;
-    case BASIC_ID_BOOKING:
-        basic_toggle(WND_BOOKING);
-        break;
 
     case BASIC_ID_NOT_BUILT_WINDOW:
         basic_toggle(WND_NOT_BUILT);
@@ -263,8 +252,6 @@ int ui_buttons_of_basic_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     case BASIC_ID_MAIL:
         if (ui_get_window(WND_MAIL_BLOCK_1))
             ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1), 0xff, 0, 0);
-        else if (ui_get_window(WND_MAIL_BLOCK_2))
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2), 0xff, 0, 0);
         else
             basic_toggle(WND_MAIL);
         break;
@@ -288,7 +275,6 @@ void ui_buttons_of_basic_wnd_render_buttons(struct UIButtonsOfBasicWnd *self)
     ui_window_to_screen(&self->frame.base, &x, &y);
     for (i = 0; i < 8; i++)
         basic_blit(self, first[i], x, y);
-    basic_blit(self, self->booking, x, y);
     basic_blit(self, self->navigation, x, y);
     basic_blit(self, self->bank, x, y);
     basic_blit(self, self->status, x, y);

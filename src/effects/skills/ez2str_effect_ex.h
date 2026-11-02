@@ -24,8 +24,4 @@ void ez2_str_effect_ex_set_zoom(struct Effect *self, float zoom);
 void ez2_str_effect_ex_set_alpha_scale(struct Effect *self, float scale);
 void ez2_str_effect_ex_fade_out(struct Effect *self);
 
-float effect_screen_angle(Vec3 from, Vec3 to, const float *view);
-
-float effect_screen_angle_quadrant(Vec3 from, Vec3 to);
-
 #endif

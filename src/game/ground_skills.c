@@ -1,7 +1,5 @@
 #include "game/packet_handlers.h"
-#include "skills/skill_action.h"
 #include "render/math3d.h"
-#include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include "game/context.h"
 #include <stdlib.h>
@@ -50,8 +48,6 @@ enum {
     SKILL_GN_CRAZYWEED = 0x9b3,
     SKILL_RIDE_IN_LIGHTNING = 0x9d6,
     SKILL_SJ_BOOKOFCREATINGSTAR = 0xa1b,
-    SKILL_EM_DIAMOND_STORM = 0x14f9,
-    SKILL_EM_TERRA_DRIVE = 0x14fd,
 };
 
 static const char WAVE_THORN_TRAP[] = "effect\\G가시나무덫.wav";
@@ -307,18 +303,5 @@ void game_mode_on_notify_ground_skill(struct GameMode *self, const struct Packet
         spawn_effect(caster->aid, 0x4d0, at);
         break;
     }
-    case SKILL_EM_DIAMOND_STORM:
-        at = cell_on_ground(self, packet->x, packet->y);
-        spawn_effect(0, 0x7eb, at);
-        spawn_effect(0, 0x7ea, at);
-        break;
-    case SKILL_EM_TERRA_DRIVE:
-        at = cell_on_ground(self, packet->x, packet->y);
-        spawn_effect(0, 0x856, at);
-        spawn_effect(0, 0x855, at);
-        break;
-    default:
-        skill_action_mgr_use_on_ground(skill_action_mgr_instance(), packet->skill_id, packet->x, packet->y, packet->level, (SkillActor *)(caster));
-        break;
     }
 }

@@ -116,7 +116,6 @@ int main(void)
     pair.item[0].bind_on_equip_type = 258;
     pair.item[0].expire_time = 123456;
     pair.item[0].view = 42;
-    pair.item[0].grade = -1;
     pair.item[0].option_count = 1;
     pair.item[0].options[0].id = 0xfff2;
     pair.item[0].options[0].value = -5;
@@ -136,7 +135,6 @@ int main(void)
     assert(pair.item[1].name.data != pair.item[0].name.data);
     assert(copy.name.data != pair.item[0].name.data);
     assert(copy.id_text.data != pair.item[0].id_text.data);
-    assert(pair.item[1].grade == -1 && copy.grade == -1);
     assert(copy.options[0].id == 0xfff2 && copy.options[0].value == -5);
     assert(copy.options[0].param == 255);
     assert(copy.guild_log.id == pair.item[0].guild_log.id);

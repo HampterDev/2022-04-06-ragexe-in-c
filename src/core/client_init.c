@@ -92,7 +92,6 @@ void client_init(void)
     basic_skin_name_init();
     snap_mgr_construct(&g_snapMgr);
     atexit(release_snap_mgr);
-    job_map_init();
     atexit(kafra_destinations_clear);
     atexit(kafra_positions_clear);
     window_mgr_construct(&g_windowMgr);

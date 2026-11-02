@@ -144,7 +144,6 @@ void game_mode_equipment_item_list_v5(const unsigned char *pkt)
     clear(1);
     for (n = record_count(packet, 41); n > 0; n--, r += 41) {
         item_from_v5_record_full(&item, r);
-        item.grade = 0;
         game_mode_note_hatched_egg(&item);
         store(&item);
         game_mode_check_pet_auto_feed(&item);
@@ -163,7 +162,6 @@ void game_mode_equipment_item_list_v6(const unsigned char *pkt)
     clear(1);
     for (n = record_count(packet, 67); n > 0; n--, r += 67) {
         item_from_v6_record(&item, r);
-        item.grade = 0;
         game_mode_note_hatched_egg(&item);
         store(&item);
         game_mode_check_pet_auto_feed(&item);

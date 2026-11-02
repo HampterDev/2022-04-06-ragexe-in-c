@@ -13,9 +13,6 @@ extern int g_guildWndWidth, g_guildWndHeight;
 
 int guild_wnd_info_is_valid_info(struct GuildWndInfo *self);
 void guild_wnd_info_make_default(struct GuildWndInfo *self);
-struct UISecondPasswordInputWnd;
-void ui_second_password_wnd_setup(struct UISecondPasswordInputWnd *self, DWORD seed);
-void ui_second_password_wnd_set_mode(struct UISecondPasswordInputWnd *self, int mode);
 void wm_window_list_sort(struct List *windows);
 struct UIAutoMessageWnd *ui_auto_message_wnd_construct(struct UIAutoMessageWnd *self);
 struct UIWindow *ui_auto_message_wnd_new(void);
@@ -29,8 +26,6 @@ struct UIMakeTargetResultWnd *ui_make_target_result_wnd_construct(struct UIMakeT
 struct UIWindow *ui_make_target_result_wnd_new(void);
 struct UIPetTamingDeceiveWnd *ui_pet_taming_deceive_wnd_construct(struct UIPetTamingDeceiveWnd *self);
 struct UIWindow *ui_pet_taming_deceive_wnd_new(void);
-struct UISecondPasswordInputWnd *ui_second_password_input_wnd_construct(struct UISecondPasswordInputWnd *self);
-struct UIWindow *ui_second_password_input_wnd_new(void);
 struct UISelectCartWnd *ui_select_cart_wnd_construct(struct UISelectCartWnd *self);
 struct UIWindow *ui_select_cart_wnd_new(void);
 struct UIStatusWnd *ui_status_wnd_construct(struct UIStatusWnd *self);

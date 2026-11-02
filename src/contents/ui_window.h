@@ -11,8 +11,6 @@
 struct ItemInfo;
 
 #define UI_MSG_BUTTON           6
-#define UI_MSG_SCROLL_BY        7
 #define UI_MSG_SHOW_ITEM        0x18
-#define ITEM_DESC_WND_ID        0xc
 
 #endif

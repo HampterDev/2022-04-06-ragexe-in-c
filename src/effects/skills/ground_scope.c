@@ -1,11 +1,9 @@
-#include "skills/skill_action.h"
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
 #include "render/texture_cache.h"
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "world/ground_api.h"
-#include "skills/skill_action_registry.h"
 #include "session/state.h"
 #include "effects/render_object.h"
 #include "effects/skills/skill_view.h"
@@ -19,7 +17,6 @@
 
 #define SKILL_POISON_SMOKE 0x7f0
 #define SKILL_COMET 0x8a5
-#define SKILL_COMPETENTIA 0x149e
 
 struct GroundScope {
     struct AbleToMakeEffect base;
@@ -93,20 +90,16 @@ static int ground_scope_area_cells(int skill_id)
     case 0x7fc:
         return 5;
     case 0x4f: case 0x1de: case 0x2dd: case 0x2e3: case 0x8bd: case 0x992: case 0x994: case 0x995: case 0x996:
-    case 0x138e: case 0x1395: case 0x13a4: case 0x13b2: case 0x146b: case 0x146d: case 0x146e: case 0x149f:
+    case 0x138e: case 0x1395: case 0x13a4: case 0x13b2:
         return 7;
     case 0x53: case 0x59: case 0x2d3: case 0x2db: case 0x301: case 0x7d8: case 0x8d4: case 0x98e: case 0x138c:
-    case 0x1462: case 0x1466: case 0x1493: case 0x14c7: case 0x14f9: case 0x14fa: case 0x14fb: case 0x14fc:
-    case 0x14fd:
         return 9;
-    case 0x55: case 0x1461:
+    case 0x55:
         return 11;
     case 0x2c4: case 0x8a5:
         return 18;
-    case 0x149e:
-        return 19;
     }
-    return skill_action_mgr_get_skill_area(skill_action_mgr_instance(), skill_id);
+    return 0;
 }
 
 void ground_scope_send_msg(struct GameObject *object, struct GameObject *source,
@@ -182,9 +175,6 @@ void ground_scope_render(struct GameObject *object, const float *view)
                            : "effect\\new_poisonsmoke\\new_poisonsmoke_cast\\poi_magic_circle_1.tga";
             } else if (self->skill_id == SKILL_COMET) {
                 name = "effect\\new_comet\\new_comet_cast_magicrune\\new_comet_cast_magicrune.tga";
-            } else if (self->skill_id == SKILL_COMPETENTIA) {
-                name = "effect\\competentia\\competentia_cast_bottom\\com_rune_01.tga";
-                cell_color = (unsigned)(unsigned char)(int)((float)(double)(color >> 24) * 0.6f) << 24 | 0xffffff;
             } else {
                 name = "effect\\magic_target.tga";
             }

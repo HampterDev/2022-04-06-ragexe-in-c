@@ -1,6 +1,5 @@
 #include "ui/character/select_char_new.h"
 #include "render/renderer.h"
-#include "ui/chat/captcha.h"
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
 #include "ui/window_access.h"
@@ -8,7 +7,6 @@
 #include "ui/wndmgr/make_window_internal.h"
 #include "core/object_type_tables.h"
 #include "session/session_options.h"
-#include "ui/admin/admin.h"
 #include "ui/character/char_preview.h"
 #include "ui/character/character.h"
 #include "ui/character/sel_char_userver.h"
@@ -112,13 +110,6 @@ static struct UIWindow *make_select_char(struct UIWindowMgr *self)
     }
     own_states_clear();
     skill_cooldowns_clear(&g_session1.skillDelays);
-    if (g_session1.pinState == 1) {
-        ui_new_select_char_wnd_show_button((struct UINewSelectCharWnd *)self->new_select_char_wnd, 0x19a);
-    } else {
-        ui_new_select_char_wnd_hide_button((struct UINewSelectCharWnd *)self->new_select_char_wnd, 0x19a);
-        ui_new_select_char_wnd_hide_button((struct UINewSelectCharWnd *)self->new_select_char_wnd, 0x198);
-        ui_new_select_char_wnd_hide_button((struct UINewSelectCharWnd *)self->new_select_char_wnd, 0x199);
-    }
     return wnd;
 }
 
@@ -177,36 +168,6 @@ int wm_times_half(int v)
     return (int)((double)v * 0.5);
 }
 
-static struct UIWindow *make_second_password(struct UIWindowMgr *self, struct UIWindow **slot,
-                                             const struct UIWindowOps *ops)
-{
-    int room_x = g_renderer->width - 0x21c, room_y = g_renderer->height - 0x16d;
-    int half_x = room_x / 2, half_y = room_y / 2;
-    struct UIWindow *wnd = *slot;
-
-    if (wnd == NULL) {
-        int x, y;
-
-        wnd = ui_second_password_input_wnd_new();
-        if (wnd && ops)
-            wnd->ops = ops;
-        *slot = wnd;
-        ui_window_create(wnd, 0x21c, 0x16d);
-        for (;;) {
-            x = rand() % room_x;
-            y = rand() % room_y;
-            if (x > half_x && x < room_x && y > half_y && y < room_y)
-                break;
-            rand();
-            rand();
-        }
-        wm_move(wnd, x, y);
-        ui_window_mgr_add_window(self, wnd);
-    }
-    wm_show(wnd);
-    ui_second_password_wnd_setup((struct UISecondPasswordInputWnd *)*slot, g_session1.pinResultValue);
-    return wnd;
-}
 void wm_move_on_centre(struct UIWindow *wnd)
 {
     wm_move(wnd, g_renderer->centreX - wnd->width / 2, g_renderer->centreY - wnd->height / 2);
@@ -401,72 +362,6 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
         if (wnd == NULL)
             return NULL;
         wm_show(wnd);
-        break;
-    case 0xc7:
-        wnd = make_second_password(self, &self->second_password_input_wnd, NULL);
-        ui_second_password_wnd_set_mode((struct UISecondPasswordInputWnd *)self->second_password_input_wnd, 0);
-        break;
-    case 0xc8:
-    case 0x167:
-        wnd = make_second_password(self, &self->second_password_edit_wnd, &ui_second_password_edit_wnd_ops);
-        ui_second_password_wnd_set_mode((struct UISecondPasswordInputWnd *)self->second_password_edit_wnd, 1);
-        break;
-    case 0x11d:
-        wnd = self->macro_detector_wnd;
-        if (wnd == NULL) {
-            wnd = captcha_detector_create();
-            if (!wnd) break;
-            self->macro_detector_wnd = wnd;
-            wm_move(wnd, wm_center_x(0x154), wm_center_y(0x138));
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        self->macro_detector_edit = captcha_detector_edit(self->macro_detector_wnd);
-        break;
-    case 0x11e:
-        wnd = self->macro_reporter_wnd;
-        if (wnd == NULL) {
-            wnd = ui_macro_reporter_wnd_new();
-            self->macro_reporter_wnd = wnd;
-            ui_window_create(wnd, 0xd1, 0x134);
-            wm_move(wnd, g_renderer->width - 0x103, wm_center_y(0x134));
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        wm_set_info(wnd, &self->macro_reporter_info);
-        self->macro_reporter_info.open = 1;
-        break;
-    case 0x11f:
-        wnd = self->macro_user_info_wnd;
-        if (wnd == NULL) {
-            wnd = ui_macro_user_info_wnd_new();
-            self->macro_user_info_wnd = wnd;
-            ui_window_create(wnd, 0xc8, 0x25);
-            wm_move(wnd, wm_center_x(0xc8), wm_center_y(0x25));
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0x120:
-        wnd = self->captcha_preview_wnd;
-        if (wnd == NULL) {
-            wnd = captcha_preview_create();
-            if (!wnd) break;
-            self->captcha_preview_wnd = wnd;
-            wm_move(wnd, wm_center_x(0xdc), wm_center_y(0x5a));
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0x154:
-        wnd = ui_window_mgr_get_window(self, 0x154);
-        if (wnd)
-            break;
-        wnd = ui_account_limited_tool_wnd_new();
-        ui_window_create(wnd, 0x186, 0x15e);
-        wm_move_on_centre(wnd);
-        wm_show(wnd);
-        ui_window_mgr_add_window(self, wnd);
         break;
     default:
         wnd = wm_make_character(self, window_id);

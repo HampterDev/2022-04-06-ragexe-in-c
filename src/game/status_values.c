@@ -9,7 +9,6 @@
 #include "session/session_state.h"
 #include "session/session_windows.h"
 #include "ui/character/gauge.h"
-#include "ui/character/status_wnd.h"
 
 enum {
     SP_BASEEXP = 1,
@@ -223,22 +222,4 @@ void game_mode_on_notify_exp(struct GameMode *self, const struct PacketNotifyExp
         }
     }
     string_free(&line);
-}
-
-void session_set_advanced_status(struct Session *session, int status, int value)
-{
-    struct IntIntPair *pair = tree_get(&session->statusValues, &status, sizeof status, sizeof *pair, tree_less_int);
-
-    pair->value = value;
-}
-
-void game_mode_on_advanced_status_change_ack(struct GameMode *self, unsigned char result,
-                                                   unsigned short status, unsigned char value)
-{
-    self->status_request_pending = 0;
-    if (result != 1)
-        return;
-    session_set_advanced_status(&g_session1, status, value);
-    if (g_windowMgr.status_wnd != 0)
-        ui_status_wnd_restore_frame((struct UIStatusWnd *)g_windowMgr.status_wnd);
 }

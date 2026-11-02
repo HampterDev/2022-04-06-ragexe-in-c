@@ -218,10 +218,7 @@ static int show_skill(struct UISkillDescribeWnd *self, int skill_id, int short_f
 
     session_get_skill_info(&known, skill_id);
     if (known.found && known.sp_cost && known.level) {
-        if (skill_info_get_ap_amount(&info, known.level))
-            sprintf(costs, " (Sp : %d, Ap : %d)", known.sp_cost, known.ap_amount);
-        else
-            sprintf(costs, " (Sp : %d)", known.sp_cost);
+        sprintf(costs, " (Sp : %d)", known.sp_cost);
         string_append_cstr(&self->title, costs);
     }
     skill_info_destruct(&known);

@@ -215,13 +215,10 @@ void granny_pc_set_state(struct GameActor * base_actor, int state, unsigned char
             || job == 0xfca || job == 0xfcb || job == 0xfc5 || job == 0xfe4 || job == 0xfeb || job == 0xfe5
             || job == 0xfec || job == 0xfe9 || job == 0xfe2) {
             granny_pc_set_action((struct RenderObject *)self, 0x20, 1);
-        } else if (job == 0xf || job == 0xfb0 || job == 0xfc6 || job == 0xfe6 || job == 0xfed || job == 0x100a
-                   || job == 0x10a6) {
+        } else if (job == 0xf || job == 0xfb0 || job == 0xfc6 || job == 0xfe6 || job == 0xfed || job == 0x100a) {
             granny_pc_set_action((struct RenderObject *)self, 0x60, 1);
             render_object_set_script_step_frames((struct RenderObject *)self, 4);
             render_object_play_motion_range((struct RenderObject *)self, 0x60, 0, 0, 0x60, 0, 1, 0x190, 0);
-        } else if (job == 0x10a7 || job == 0x10a8) {
-            granny_pc_set_action((struct RenderObject *)self, 0x20, 1);
         } else {
             granny_pc_set_action((struct RenderObject *)self, 0x60, 1);
         }

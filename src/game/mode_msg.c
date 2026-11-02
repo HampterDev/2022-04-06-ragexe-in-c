@@ -600,9 +600,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         adventurer_agency_cancel_own_booking(g_adventurerAgency);
         send_u32(0x7da, a);
         return 0;
-    case MODE_MSG_OPEN_SEEK_PARTY_MB_WND:
-        ui_window_open(0xa8);
-        return 0;
     case MODE_MSG_NPC_MARKET_PURCHASE:
         return game_mode_msg_market_purchase(self);
     case MODE_MSG_NPC_MARKETGEAR_PURCHASE:
@@ -617,9 +614,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return game_mode_msg_item_list_win_cancel(a);
     case MODE_MSG_OPEN_WRITE_RODEX:
         return game_mode_msg_open_write_rodex((const char *)a);
-    case MODE_MSG_OPEN_SEEK_PARTY_LIST_WND:
-        ui_window_open(0xa9);
-        return 0;
     case MODE_MSG_CLOSE_BUYING_STORE:
         send_id(0x815);
         return 0;
@@ -663,14 +657,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_DESTROY_STORE_ASSISTANT:
         send_u32(0xa80, a);
         return 0;
-    case MODE_MSG_ADD_SWAP_EQUIP:
-        return game_mode_msg_add_swap_equip(self, a, b);
-    case MODE_MSG_REMOVE_SWAP_EQUIP:
-        return game_mode_msg_remove_swap_equip(self, a, b);
-    case MODE_MSG_DO_SWAP_EQUIP:
-        return game_mode_msg_do_swap_equip();
-    case MODE_MSG_SWAP_EQUIP_1_ON_1:
-        return game_mode_msg_swap_equip1_on1((const struct ItemInfo *)a);
     case MODE_MSG_MEMORIAL_DUNGEON_COMMAND:
         send_u32(0x2cf, 3);
         return 0;
@@ -690,8 +676,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return 0;
     case MODE_MSG_SHORTCUT_KEY_CHANGE:
         return game_mode_msg_shortcut_key_change(a, b);
-    case MODE_MSG_ADVANCED_STATUS_CHANGE:
-        return game_mode_msg_advanced_status_change(self, a, b);
     case MODE_MSG_MOVE_GUILD_AGIT:
         if (a == 0)
             return 0;
@@ -704,23 +688,11 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return 0;
     case MODE_MSG_PRISON:
         return game_mode_msg_prison((const char *)a);
-    case MODE_MSG_OPEN_LIMITED_SALE_TOOL:
-        send_id(0xb4f);
-        return 0;
-    case MODE_MSG_CLOSE_LIMITED_SALE_TOOL:
-        send_id(0xb51);
-        return 0;
-    case MODE_MSG_LIMITED_SALE_LIST:
-        return game_mode_msg_limited_sale_list();
     case MODE_MSG_NPC_EXPANDED_BARTER_PURCHASE:
         return game_mode_msg_expanded_barter_purchase(self);
     case MODE_MSG_NPC_EXPANDED_BARTER_CLOSE:
         send_id_raw(0xb58);
         return 0;
-    case MODE_MSG_OPEN_CASH_SHOP:
-        return game_mode_msg_open_cash_shop(a);
-    case MODE_MSG_REBUILD_STATUS_BARS:
-        return game_mode_msg_relayout_player_gauge(self);
     case MODE_MSG_RESET_SKILL: {
         struct PacketU8 packet;
         packet.id = 0xbb1;

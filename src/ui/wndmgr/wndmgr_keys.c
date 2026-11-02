@@ -119,7 +119,7 @@ static void escape(struct UIWindowMgr *self)
     wnd = ui_window_find(id);
     if (wnd) {
         switch (id) {
-        case 0x84: case 0xb5: case 0xb8: case 0xcb: case 0x119: case 0x146:
+        case 0x84: case 0xb5: case 0xcb: case 0x119: case 0x146:
             click(wnd, UI_ID_CLOSE);
             return;
         case 0x16: case 0x17: case 0x18: case 0x19: case 0x29: case 0x2c: case 0xa1: case 0xae: case 0xb2:

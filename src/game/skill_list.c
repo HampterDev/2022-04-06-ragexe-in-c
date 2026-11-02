@@ -43,7 +43,6 @@ void game_mode_skill_list(int packet_id, const struct Vec *entries)
         skill.range = e->range;
         skill.id_name = skill_info_get_id_name(&skill);
         skill.level2 = e->level2;
-        skill.ap_amount = skill_info_get_ap_amount(&skill, e->level);
         player_skill_bundle_reconcile_level(&g_session1.skills, &skill);
 
         if (packet_id == HEADER_ZC_SKILLINFO_LIST || packet_id == HEADER_ZC_SKILLINFO_LIST3)
@@ -149,7 +148,6 @@ void game_mode_zc_skill_info_update(struct GameMode *self, const struct PACKET_Z
     skill.sp_cost = packet->sp;
     skill.upgradable = packet->upgradable;
     skill.range = packet->range;
-    skill.ap_amount = skill_info_get_ap_amount(&skill, packet->level);
     player_skill_bundle_reconcile_level(&g_session1.skills, &skill);
     if (packet->id == HEADER_ZC_SKILLINFO_UPDATE)
         session_put_skill(&g_session1, &skill, 1, 0);
@@ -333,7 +331,6 @@ void game_mode_zc_guild_skill_info(struct GameMode *self, const struct PACKET_ZC
         skill.type = e->type;
         skill.upgradable = e->upgradable;
         skill.id_name = skill_info_get_id_name(&skill);
-        skill.ap_amount = skill_info_get_ap_amount(&skill, e->level);
         if ((unsigned)(skill.id - GUILD_SKILL_FIRST) < GUILD_SKILL_COUNT)
             session_put_skill4(&g_session1, &skill);
         skill_info_destruct(&skill);
@@ -444,7 +441,6 @@ void game_mode_zc_autorun_skill(struct GameMode *self, const unsigned char *pkt)
     skill.id_name = skill_info_get_id_name(&skill);
     skill.sp_cost = packet->sp_cost;
     skill.range = packet->range;
-    skill.ap_amount = skill_info_get_ap_amount(&skill, packet->level);
     player_skill_bundle_put_autorun_skill(&g_session1.skills, &skill);
     mode_send_msg(self, MM_AUTORUN_SKILL, (int)&skill, skill.level, 1, -1);
     skill_info_destruct(&skill);

@@ -14,7 +14,7 @@ struct UIWindowMgr g_windowMgr;
 static struct GameMode mode;
 static struct World world;
 static struct Player player;
-static int item_id, inventory_index, effect_state, blocked;
+static int item_id, inventory_index, effect_state;
 static int sends, reads, releases, notices;
 static unsigned char sent[8];
 static int connection_token;
@@ -40,13 +40,11 @@ struct ItemInfo *session_get_equipped_item(struct Session *self, struct ItemInfo
 BYTE session_is_worn_index(struct Session *self, int index) { abort(); }
 BYTE session_has_inventory_index(struct Session *self, int index) { abort(); }
 struct ItemInfo *session_get_worn_costume(struct Session *self, struct ItemInfo *out, int slot) { abort(); }
-void ui_grade_enchant_wnd_reset(struct UIGradeEnchantWnd *self) { abort(); }
 void ui_refining_wnd_reset(struct UIRefiningWnd *self) { abort(); }
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr *self, int window_id, int show) { abort(); }
 void ui_window_mgr_close_drag_plate(struct UIWindowMgr *self) { abort(); }
 BYTE ui_window_mgr_drop_on(struct UIWindowMgr *self, int x, int y, struct DragInfo *drag) { abort(); }
 
-char game_mode_is_blocking_window_open(void) { return (char)blocked; }
 struct ItemInfo *session_get_inventory_item(struct Session *session, struct ItemInfo *out, int index)
 {
     assert(session == &g_session1 && index == inventory_index);
@@ -93,7 +91,7 @@ static void reset(int id)
     g_session1.ownAid = 0x12345678;
     item_id = id;
     inventory_index = 0x1234;
-    effect_state = blocked = sends = reads = releases = notices = 0;
+    effect_state = sends = reads = releases = notices = 0;
     memset(sent, 0, sizeof sent);
 }
 
@@ -117,7 +115,6 @@ int main(void)
         assert(sends == 1 && reads == 1 && releases == 2);
     }
     reset(501); g_windowMgr.exchange_wnd = (void *)&mode; use(0, 0, 1);
-    reset(501); blocked = 1; use(0, 0, 0);
     reset(501); mode.use_item_pending = 1; use(0, 0, 0);
     reset(501); mode.throw_item_pending = 1; use(0, 0, 0);
     reset(501); mode.player_dead = 1; use(0, 0, 0);

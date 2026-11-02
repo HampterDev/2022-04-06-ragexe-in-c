@@ -46,15 +46,6 @@ void storage_draw_items(struct UIItemBaseWnd *base, int x0, int name_width)
         ui_window_draw_item_icon_count(wnd, x + 4, y + 0x15, item, 0, 0);
         ui_window_draw_item_name_short(wnd, x + 0x28, y + 0x1d, name_width ? name_width : wnd->width - x - 0x42,
                                    item, 0xc);
-        if (item->grade > 0) {
-            struct String path;
-
-            string_init(&path);
-            string_format(&path, UI_SKIN "grade_enchant\\grade_icon%d.bmp", item->grade);
-            ui_window_draw_bitmap(wnd, x + 4, y + 0x21, res_mgr_get(g_resMgr(), string_cstr(&path)),
-                                1);
-            string_free(&path);
-        }
         if (++drawn == base->rows * base->columns)
             break;
     }

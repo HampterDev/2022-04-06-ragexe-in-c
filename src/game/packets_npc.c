@@ -459,39 +459,6 @@ void game_mode_zc_dialog_text_align(struct GameMode *self, unsigned char align)
         ui_say_dialog_wnd_set_text_align((struct UISayDialogWnd *)wnd, align);
 }
 
-#define DYNAMIC_NPC_COLOR 0x64ffff
-
-#pragma pack(push, 1)
-struct PACKET_ZC_DYNAMICNPC_CREATE_RESULT {
-    unsigned short packet_type;
-    int result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_DYNAMICNPC_CREATE_RESULT, 6);
-
-void game_mode_zc_dynamic_npc_create_result(struct GameMode *self, const unsigned char *pkt)
-{
-    const struct PACKET_ZC_DYNAMICNPC_CREATE_RESULT *packet = (const struct PACKET_ZC_DYNAMICNPC_CREATE_RESULT *)pkt;
-    char text[0x400];
-    int result = packet->result;
-
-    (void)self;
-    if (result == 3) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xa47), DYNAMIC_NPC_COLOR, 0, 0);
-        return;
-    }
-    if (result == 2) {
-        memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc not found ");
-    } else if (result == 1) {
-        memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "dynamic npc create error found(unknown) ");
-    } else {
-        return;
-    }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, DYNAMIC_NPC_COLOR, 0, 0);
-}
-
 #define WND_NPC_MENU            0x11
 #define WND_NPC_ILLUST          0xe2
 #define NPC_MENU_TEXT_MAX       0x800

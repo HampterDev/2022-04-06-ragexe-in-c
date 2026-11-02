@@ -70,13 +70,6 @@ char item_id_is990_to993(int id)
     return (unsigned)(id - 990) <= 3;
 }
 
-char game_mode_is_blocking_window_open(void)
-{
-    if (ui_window_find(0x122) || ui_window_find(0x12e))
-        return 1;
-    return 0;
-}
-
 void session_clear_rolling_cutter_one_shot(int msg)
 {
     if (msg == 0x7f4)

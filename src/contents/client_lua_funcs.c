@@ -19,12 +19,7 @@
 #include <lauxlib.h>
 
 #include "ui/worldmap/kafra_services.h"
-#include "contents/lapine_box.h"
-#include "contents/lapine_upgrade.h"
 #include "core/msg_str.h"
-
-#define LAPINE_BOX_WINDOW       0x122
-#define LAPINE_UPGRADE_WINDOW   0x12e
 
 int lua_trace_value(lua_State *L);
 int lua_get_msg_string(lua_State *L);
@@ -32,8 +27,6 @@ int lua_req_emotion(lua_State *L);
 int lua_add_skill_list(lua_State *L);
 int lua_add_need_skill_list(lua_State *L);
 int lua_rgb(lua_State *L);
-int lua_add_ingredient(lua_State *L);
-int lua_add_ingredient_lapine_upgrade_box(lua_State *L);
 
 static const struct LuaDataFunction script_functions[] = {
     { "TraceValue", lua_trace_value },
@@ -54,10 +47,6 @@ static const struct LuaDataFunction script_functions[] = {
     { "SetEZ2STRInfo", effect_lua_set_ez2str_info },
     { "SetWindEffectInfo", effect_lua_set_wind_effect_info },
 };
-static const struct LuaDataFunction late_script_functions[] = {
-    { "add_ingredient", lua_add_ingredient },
-    { "add_ingredient_lapine_upgrade_box", lua_add_ingredient_lapine_upgrade_box },
-};
 
 static void register_all(lua_State *L, const struct LuaDataFunction *functions, size_t count)
 {
@@ -73,7 +62,6 @@ void client_lua_register_functions(struct ClientLua *self)
 {
     register_all(self->L, script_functions, sizeof script_functions / sizeof *script_functions);
     map_list_register_lua_functions(self->L);
-    register_all(self->L, late_script_functions, sizeof late_script_functions / sizeof *late_script_functions);
 }
 
 static void check_string(struct String *out, lua_State *L, int arg)
@@ -154,7 +142,6 @@ int lua_add_skill_list(lua_State *L)
         info.max_level = b;
         info.id = (int)skill_id;
         info.level_limit = (int)c;
-        info.ap_amount = 0;
         player_skill_bundle_add_tree_skill(&g_session1.skills, (int)key, &info);
     }
     skill_info_destruct(&info);
@@ -191,25 +178,4 @@ int lua_rgb(lua_State *L)
 
     lua_pushnumber(L, (double)color);
     return 1;
-}
-
-int lua_add_ingredient(lua_State *L)
-{
-    int a = (int)luaL_checknumber(L, 1);
-    int b = (int)luaL_checknumber(L, 2);
-    void *wnd = ui_window_find(LAPINE_BOX_WINDOW);
-
-    if (wnd)
-        lapine_box_add_ingredient(wnd, a, b);
-    return 0;
-}
-
-int lua_add_ingredient_lapine_upgrade_box(lua_State *L)
-{
-    int a = (int)luaL_checknumber(L, 1);
-    void *wnd = ui_window_find(LAPINE_UPGRADE_WINDOW);
-
-    if (wnd)
-        lapine_upgrade_add_resource(wnd, a);
-    return 0;
 }

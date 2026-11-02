@@ -6,7 +6,6 @@
 #include "game/world_objects.h"
 #include "contents/player_names.h"
 #include "contents/map_info_api.h"
-#include "contents/party_booking.h"
 #include "contents/user_hotkeys.h"
 #include "resources/animation.h"
 #include "std/list.h"
@@ -98,7 +97,6 @@ extern int g_displayModeIndex;
 
 extern int g_displayDeviceIndex;
 
-extern int hideui_skip_count;
 int read_display_options(void *session, const char *name, int def);
 void write_display_options(void *session, void *stream, const char *name, int value);
 

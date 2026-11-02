@@ -20,8 +20,6 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, int a, int b, 
 { (void)manager; (void)msg; (void)a; (void)b; (void)c; (void)d; abort(); }
 int crt_sprintf(char *buffer, const char *format, ...)
 { (void)buffer; (void)format; abort(); }
-void session_set_advanced_status(struct Session *session, int status, int value)
-{ (void)session; (void)status; (void)value; abort(); }
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
                    int a, int b, int c, int d)
 {
@@ -133,30 +131,27 @@ static void shortcut_records(void)
     free(expected);
 }
 
-static void trait_costs(void)
+static void retired_trait_costs(void)
 {
+    enum { RETIRED_SP_UPOW = 247 };
     struct PACKET_ZC_STATUS_CHANGE packet = {0};
     struct Session *expected = malloc(sizeof *expected);
-    int i;
+    int sp;
     assert(expected);
     memset(&g_session1, 0xc7, sizeof g_session1);
     memset(&g_windowMgr, 0, sizeof g_windowMgr);
     memcpy(expected, &g_session1, sizeof *expected);
-    for (i = 0; i < 6; ++i) {
-        packet.sp = (unsigned short)(SP_UPOW + i); packet.value = (unsigned char)(200 + i);
-        expected->traitCost[i] = packet.value;
+    for (sp = RETIRED_SP_UPOW - 1; sp <= RETIRED_SP_UPOW + 6; ++sp) {
+        packet.sp = (unsigned short)sp; packet.value = (unsigned char)sp;
         game_mode_zc_status_change(NULL, &packet);
-        assert(notifications == i + 1 && !memcmp(expected, &g_session1, sizeof *expected));
+        assert(notifications == 0 && !memcmp(expected, &g_session1, sizeof *expected));
     }
-    packet.sp = SP_UPOW - 1; game_mode_zc_status_change(NULL, &packet);
-    packet.sp = SP_UPOW + 6; game_mode_zc_status_change(NULL, &packet);
-    assert(notifications == 6 && !memcmp(expected, &g_session1, sizeof *expected));
     free(expected);
 }
 
 int main(void)
 {
-    blocked_characters(); shortcut_records(); trait_costs();
-    puts("Session fields: bounded blocked characters, full-width Korean names, packed hotkeys, six 64-bit costs passed");
+    blocked_characters(); shortcut_records(); retired_trait_costs();
+    puts("Session fields: bounded blocked characters, full-width Korean names, packed hotkeys, retired trait costs ignored passed");
     return 0;
 }

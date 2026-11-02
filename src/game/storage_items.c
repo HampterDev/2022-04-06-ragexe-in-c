@@ -77,10 +77,9 @@ void game_mode_store_item_list_normal_v5(const unsigned char *pkt)
     session_refresh_friend_ui(&g_session1);
 }
 
-static void add_stored(struct ItemInfo *item, const struct ItemOption *options, int grade)
+static void add_stored(struct ItemInfo *item, const struct ItemOption *options)
 {
     item_set_options(item, options);
-    item->grade = (unsigned short)grade;
     session_add_storage_item(&g_session1, item, 1);
     item_info_destruct(item);
 }
@@ -95,7 +94,7 @@ void game_mode_add_item_to_store2(const unsigned char *pkt)
     item_from_added_record(&item, pkt);
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
-    add_stored(&item, none, 0);
+    add_stored(&item, none);
 }
 
 void game_mode_add_item_to_store3(const unsigned char *pkt)
@@ -108,7 +107,7 @@ void game_mode_add_item_to_store3(const unsigned char *pkt)
     item_from_added_record(&item, pkt);
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
-    add_stored(&item, options, 0);
+    add_stored(&item, options);
 }
 
 void game_mode_add_item_to_store4(const unsigned char *pkt)
@@ -121,5 +120,5 @@ void game_mode_add_item_to_store4(const unsigned char *pkt)
     item_from_added_record(&item, pkt);
     item.refine = packet->refine;
     memcpy(item.slot, packet->cards, sizeof item.slot);
-    add_stored(&item, options, packet->grade);
+    add_stored(&item, options);
 }

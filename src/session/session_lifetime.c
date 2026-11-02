@@ -91,8 +91,6 @@ struct Session *session_construct(struct Session *self)
             list_init(lists[i]);
     }
     vec_init(&self->buyingStoreItems);
-    for (i = 0; i < 11; i++)
-        list_init(&self->cashShopGoods[i]);
     list_init(&self->partyMembers);
     list_init(&self->friendList);
     for (i = 0; i < 10; i++)
@@ -136,7 +134,6 @@ struct Session *session_construct(struct Session *self)
     string_init(&self->autoMessage);
     string_init(&self->mdName);
     self->channelCopId = 0;
-    party_booking_construct(&self->partyBooking);
     vec_init(&self->storeSearchResults);
     tree_init(&self->memberPings);
     vec_init(&self->guildStorageLog);
@@ -151,10 +148,6 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->doramHairNamesMale);
     vec_init(&self->doramHairNamesFemale);
     self->cameraInfoShown = 0;
-    for (i = 0; i < 10; i++)
-        item_info_construct(self->switchEquips + i);
-    for (i = 0; i < 10; i++)
-        item_info_construct(self->switchCostumes + i);
     tree_init(&self->transparentItemPulses);
     self->zoomFarLimit = 0;
     self->emblemFrame = 0;
@@ -164,7 +157,6 @@ struct Session *session_construct(struct Session *self)
     self->lastPacketTime = 0;
     self->lastSendTime = 0;
     tree_init(&self->instantVars);
-    tree_init(&self->statusValues);
     mcstore_init(&self->mcStoreBackup);
     vec_init(&self->pcNames);
     self->hideOtherPlayers = self->userConfigEntry1 = 0;
@@ -183,9 +175,7 @@ struct Session *session_construct(struct Session *self)
     self->new_layer_table_loaded = 0;
     self->loadingAirplane = 0;
     self->call_allowed = 0;
-    self->equipSwapOpen = 0;
     self->doramMakeable = 1;
-    self->equipSwapSentAt = 0;
     private_airplane_create();
     check_attendance_create();
     self->showSpiritMarbles = 1;
@@ -193,10 +183,7 @@ struct Session *session_construct(struct Session *self)
     self->inventoryExtension = 0;
     map_info_create();
     self->madogear = 0;
-    self->baseLevel4th = 0;
-    self->jobLevel4th = 0;
     tree_clear(&self->instantVars, NULL);
-    self->saleListSentAt = 0;
     return self;
 }
 
@@ -241,14 +228,9 @@ void session_destruct(struct Session *self)
     string_vec_free(&self->accountCharNames);
     vec_free(&self->pcNames);
     mcstore_destroy(&self->mcStoreBackup);
-    tree_free(&self->statusValues, NULL);
     tree_free(&self->instantVars, NULL);
     tree_free(&self->pendingNameAids, NULL);
     tree_free(&self->transparentItemPulses, NULL);
-    for (i = 10; i-- > 0;)
-        item_info_destruct(self->switchCostumes + i);
-    for (i = 10; i-- > 0;)
-        item_info_destruct(self->switchEquips + i);
     vec_free(&self->doramHairNamesFemale);
     vec_free(&self->doramHairNamesMale);
     tracked_achievements_free(&self->trackedAchievements);
@@ -263,7 +245,6 @@ void session_destruct(struct Session *self)
     tree_free(&self->memberPings, NULL);
     store_search_items_destroy(self->storeSearchResults.first, self->storeSearchResults.last);
     vec_free(&self->storeSearchResults);
-    party_booking_destruct(&self->partyBooking);
     string_free(&self->mdName);
     string_free(&self->autoMessage);
     string_free(&self->serverName);
@@ -306,8 +287,6 @@ void session_destruct(struct Session *self)
         item_info_destruct(&self->equipSlots[i]);
     list_free(&self->friendList, destroy_party_member);
     list_free(&self->partyMembers, destroy_party_member);
-    for (i = 11; i-- > 0;)
-        list_free(&self->cashShopGoods[i], item_info_destroy);
     vec_free(&self->buyingStoreItems);
     {
         struct List *lists[12];

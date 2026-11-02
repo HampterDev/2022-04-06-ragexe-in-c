@@ -8,17 +8,14 @@
 #include "game/ground_item_packets.h"
 #include "game/item_list_packets.h"
 #include "game/item_upgrade.h"
-#include "game/macro_detector.h"
+#include "game/au_bot.h"
 #include "game/navigation.h"
 #include "game/packet_data.h"
 #include "game/packet_handlers.h"
-#include "game/packets_macro_detector.h"
-#include "game/party_booking_packets.h"
 #include "game/quest_packets.h"
 #include "platform/error_message.h"
 #include "session/skill_commands.h"
 #include <string.h>
-#include "game/captcha_packets.h"
 #include "game/store_entries.h"
 #include "game/user_config.h"
 #include "game/ranking_packets.h"
@@ -218,22 +215,6 @@ struct PACKET_ZC_SERVERMOVE_PRIVATE_AIRPLANE {
 SIZE_ASSERT(PACKET_ZC_SERVERMOVE_PRIVATE_AIRPLANE, 28);
 
 #pragma pack(push, 1)
-struct PACKET_ZC_RANDOM_COMBINE_ITEM_UI_OPEN {
-    unsigned short packet_type;
-    int value;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_RANDOM_COMBINE_ITEM_UI_OPEN, 6);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_ACK_RANDOM_COMBINE_ITEM {
-    unsigned short packet_type;
-    unsigned short result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ACK_RANDOM_COMBINE_ITEM, 4);
-
-#pragma pack(push, 1)
 struct PACKET_ZC_CHECK_RECEIVE_CHARACTER_NAME2 {
     unsigned short packet_type;
     int char_id;
@@ -243,15 +224,6 @@ struct PACKET_ZC_CHECK_RECEIVE_CHARACTER_NAME2 {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_CHECK_RECEIVE_CHARACTER_NAME2, 34);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_ACK_PLAYER_AID_IN_RANGE {
-    unsigned short packet_type;
-    short packet_length;
-    int aids[];
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ACK_PLAYER_AID_IN_RANGE, 4);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_MSG_VALUE_STRING {
@@ -377,22 +349,6 @@ struct PACKET_ZC_NPC_MARKETGEAR_PURCHASE_RESULT {
 SIZE_ASSERT(PACKET_ZC_NPC_MARKETGEAR_PURCHASE_RESULT, 5);
 
 #pragma pack(push, 1)
-struct PACKET_ZC_RANDOM_UPGRADE_ITEM_UI_OPEN {
-    unsigned short packet_type;
-    int value;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_RANDOM_UPGRADE_ITEM_UI_OPEN, 6);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_ACK_RANDOM_UPGRADE_ITEM {
-    unsigned short packet_type;
-    unsigned short result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ACK_RANDOM_UPGRADE_ITEM, 4);
-
-#pragma pack(push, 1)
 struct PACKET_ZC_BROADCAST_ITEMREFINING_RESULT {
     unsigned short packet_type;
     char name[24];
@@ -477,16 +433,6 @@ struct PACKET_ZC_SPLIT_SEND_ITEMLIST_RESULT {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_SPLIT_SEND_ITEMLIST_RESULT, 4);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_ADVANCED_STATUS_CHANGE_ACK {
-    unsigned short packet_type;
-    unsigned short status;
-    unsigned char result;
-    unsigned char value;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ADVANCED_STATUS_CHANGE_ACK, 6);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_CHANGE_AGIT_OWNER {
@@ -576,31 +522,6 @@ struct PACKET_ZC_ACK_ADD_NEW_EMBLEM {
 SIZE_ASSERT(PACKET_ZC_ACK_ADD_NEW_EMBLEM, 14);
 
 #pragma pack(push, 1)
-struct PACKET_ZC_ADD_ACCOUNT_LIMTIED_SALE_ITEM {
-    unsigned short packet_type;
-    unsigned short result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_ADD_ACCOUNT_LIMTIED_SALE_ITEM, 4);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_DEL_ACCOUNT_LIMTIED_SALE_ITEM {
-    unsigned short packet_type;
-    unsigned short result;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_DEL_ACCOUNT_LIMTIED_SALE_ITEM, 4);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_SEARCH_ACCOUNT_LIMTIED_SALE_ITEM {
-    unsigned short packet_type;
-    unsigned short result;
-    int item;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_SEARCH_ACCOUNT_LIMTIED_SALE_ITEM, 8);
-
-#pragma pack(push, 1)
 struct PACKET_ZC_TARGET_SPIRITS {
     unsigned short packet_type;
     int aid;
@@ -609,16 +530,6 @@ struct PACKET_ZC_TARGET_SPIRITS {
 };
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_TARGET_SPIRITS, 12);
-
-#pragma pack(push, 1)
-struct PACKET_ZC_SE_CASHSHOP_OPEN_V2 {
-    unsigned short packet_type;
-    int cash_points;
-    int kafra_points;
-    int tab;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_ZC_SE_CASHSHOP_OPEN_V2, 14);
 
 #pragma pack(push, 1)
 struct PACKET_ZC_SET_USERCONFIG_ACK {
@@ -696,12 +607,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
 
     switch (packet_id) {
     case 0x0bf1: adventurer_agency_receive(g_adventurerAgency, pkt, packet_size); break;
-    case HEADER_ZC_PARTY_BOOKING_ACK_REGISTER: if (packet_size >= 4) game_mode_zc_party_booking_ack_register(pkt); break;
-    case HEADER_ZC_PARTY_BOOKING_ACK_SEARCH: game_mode_zc_party_booking_ack_search(pkt, packet_size); break;
-    case HEADER_ZC_PARTY_BOOKING_ACK_DELETE: if (packet_size >= 4) game_mode_zc_party_booking_ack_delete(pkt); break;
-    case HEADER_ZC_PARTY_BOOKING_NOTIFY_INSERT: if (packet_size >= 50) game_mode_zc_party_booking_notify_insert(pkt); break;
-    case HEADER_ZC_PARTY_BOOKING_NOTIFY_UPDATE: if (packet_size >= 18) game_mode_zc_party_booking_notify_update(pkt); break;
-    case HEADER_ZC_PARTY_BOOKING_NOTIFY_DELETE: if (packet_size >= 6) game_mode_zc_party_booking_notify_delete(pkt); break;
     case HEADER_ZC_NOTIFY_HP_TO_GROUPM_R2: game_mode_zc_notify_hp_to_group_m_r2(self, pkt); break;
     case HEADER_ZC_ADD_EXCHANGE_ITEM2: game_mode_add_exchange_item2(pkt); break;
     case HEADER_ZC_OPEN_BUYING_STORE: game_mode_zc_open_buying_store(self, pkt); break;
@@ -722,9 +627,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_ACK_BAN_GUILD_SSO: game_mode_zc_ack_ban_guild_sso(self, (const struct PacketGuildLeave *)pkt); break;
     case HEADER_ZC_OPEN_SEARCH_STORE_INFO: game_mode_zc_open_search_store_info(self, pkt); break;
     case HEADER_ZC_SSILIST_ITEM_CLICK_ACK: game_mode_set_search_store_pos((const struct PACKET_ZC_SEARCH_STORE_POS *)pkt); break;
-    case HEADER_ZC_SE_CASHSHOP_OPEN:
-    case HEADER_ZC_SE_CASHSHOP_OPEN2: game_mode_zc_se_cashshop_open(self, pkt); break;
-    case HEADER_ZC_SE_PC_BUY_CASHITEM_RESULT: game_mode_zc_se_pc_buy_cashitem_result(self, pkt); break;
     case HEADER_ZC_ITEM_FALL_ENTRY4: game_mode_item_fall_entry4(self, (const struct PacketGroundItemFall4 *)pkt); break;
 
     case HEADER_ZC_MCSTORE_NOTMOVEITEM_LIST: game_mode_shop_not_movable_items(pkt); break;
@@ -740,7 +642,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
                            packet->is_sp_damage);
         break;
     }
-    case HEADER_ZC_ACK_SCHEDULER_CASHITEM: game_mode_item_list_by_kind(pkt); break;
     case HEADER_ZC_PERSONAL_INFOMATION:
     case HEADER_ZC_PERSONAL_INFOMATION2: game_mode_on_personal_info(self, (const struct PacketPersonalInfo *)pkt); break;
     case HEADER_ZC_STOPMOVE_FORCE: {
@@ -754,7 +655,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_REQ_WEAR_EQUIP_ACK2: game_mode_zc_req_wear_equip_ack2(self, pkt); break;
     case HEADER_ZC_REQ_TAKEOFF_EQUIP_ACK2: game_mode_zc_req_takeoff_equip_ack2(self, pkt); break;
     case HEADER_ZC_FASTMOVE: game_mode_zc_fast_move(self, pkt); break;
-    case HEADER_ZC_SE_CASHSHOP_UPDATE: game_mode_zc_se_cashshop_points(self, pkt); break;
     case HEADER_ZC_CLEAR_DIALOG: game_mode_zc_clear_dialog(self, pkt); break;
     case HEADER_ZC_NAVIGATION_ACTIVE:
         if (packet_size >= sizeof(struct PacketNavigationActive))
@@ -864,8 +764,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_STORE_ITEMLIST_EQUIP_V6: game_mode_zc_store_item_list_equip_v6(self, (const struct PACKET_STORE_LIST_NAMED *)pkt); break;
     case HEADER_ZC_GUILDSTORAGE_ITEMLIST_EQUIP_V6: game_mode_store_item_list_equip_v6(pkt); break;
     case HEADER_ZC_ACK_OPEN_WRITE_RODEX: game_mode_zc_ack_open_write_rodex(self, (const struct PACKET_ZC_ACK_OPEN_WRITE_RODEX *)pkt); break;
-    case HEADER_ZC_GOLDPCCAFE_POINT: game_mode_gold_pc_cafe_point(self, pkt); break;
-    case HEADER_ZC_DYNAMICNPC_CREATE_RESULT: game_mode_zc_dynamic_npc_create_result(self, pkt); break;
     case HEADER_ZC_ALL_ACH_LIST: {
         const struct PACKET_ZC_ALL_ACH_LIST *packet = (const struct PACKET_ZC_ALL_ACH_LIST *)pkt;
 
@@ -948,37 +846,10 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_on_server_move_private_airplane(self, packet->map_name, packet->x, packet->y, packet->ip, packet->port);
         break;
     }
-    case HEADER_ZC_RANDOM_COMBINE_ITEM_UI_OPEN: {
-        const struct PACKET_ZC_RANDOM_COMBINE_ITEM_UI_OPEN *packet = (const struct PACKET_ZC_RANDOM_COMBINE_ITEM_UI_OPEN *)pkt;
-
-        game_mode_on_random_combine_item_ui_open(self, packet->value);
-        break;
-    }
-    case HEADER_ZC_ACK_RANDOM_COMBINE_ITEM: {
-        const struct PACKET_ZC_ACK_RANDOM_COMBINE_ITEM *packet = (const struct PACKET_ZC_ACK_RANDOM_COMBINE_ITEM *)pkt;
-
-        game_mode_zc_ack_random_combine_item(self, packet->result);
-        break;
-    }
     case HEADER_ZC_CHECK_RECEIVE_CHARACTER_NAME2: {
         const struct PACKET_ZC_CHECK_RECEIVE_CHARACTER_NAME2 *packet = (const struct PACKET_ZC_CHECK_RECEIVE_CHARACTER_NAME2 *)pkt;
 
         game_mode_zc_check_receive_character_name2(self, packet->char_id, packet->job, packet->level, packet->name);
-        break;
-    }
-    case HEADER_ZC_ACK_APPLY_MACRO_DETECTOR:
-    case HEADER_ZC_APPLY_MACRO_DETECTOR:
-    case HEADER_ZC_APPLY_MACRO_DETECTOR_CAPTCHA:
-    case HEADER_ZC_REQ_ANSWER_MACRO_DETECTOR:
-    case HEADER_ZC_CLOSE_MACRO_DETECTOR:
-    case HEADER_ZC_ACK_PREVIEW_MACRO_DETECTOR:
-    case HEADER_ZC_PREVIEW_MACRO_DETECTOR_CAPTCHA:
-        game_mode_dispatch_captcha_packet(self, packet_id, pkt, packet_size);
-        break;
-    case HEADER_ZC_ACK_PLAYER_AID_IN_RANGE: {
-        const struct PACKET_ZC_ACK_PLAYER_AID_IN_RANGE *packet = (const struct PACKET_ZC_ACK_PLAYER_AID_IN_RANGE *)pkt;
-
-        game_mode_ack_player_aid_in_range(self, (unsigned)(packet->packet_length - 4) >> 2, packet->aids);
         break;
     }
     case HEADER_ZC_MSG_VALUE_STRING: {
@@ -1044,10 +915,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_ADD_EXCHANGE_ITEM4: game_mode_on_add_exchange_item_opt(self, (const struct PacketAddExchangeItemOpt *)pkt); break;
-    case HEADER_ZC_ACK_ADD_SWAP_EQUIPITEM: game_mode_on_alt_equipment_equip(self, (const struct PacketAltEquipment *)pkt); break;
-    case HEADER_ZC_ACK_REMOVE_SWQP_EQUIPITEM: game_mode_on_alt_equipment_remove(self, (const struct PacketAltEquipment *)pkt); break;
-    case HEADER_ZC_SEND_SWAP_EQUIPITEM_INFO: game_mode_on_alt_equipment_items(self, (const struct PacketAltEquipmentItems *)pkt); break;
-    case HEADER_ZC_ACK_DO_SWAP_EQUIPITEM: game_mode_on_alt_equipment_switch_ack(self, (const struct PacketAltEquipmentSwitchAck *)pkt); break;
     case HEADER_ZC_OPEN_REFINING_UI: ui_window_open(WID_REFINING_UI); break;
     case HEADER_ZC_REFINING_MATERIAL_LIST: {
         const struct PACKET_ZC_REFINING_MATERIAL_LIST *packet = (const struct PACKET_ZC_REFINING_MATERIAL_LIST *)pkt;
@@ -1080,18 +947,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_NOTIFY_DEATH_TO_GROUPM: game_mode_on_party_member_state(self, (const struct PacketPartyMemberState *)pkt); break;
-    case HEADER_ZC_RANDOM_UPGRADE_ITEM_UI_OPEN: {
-        const struct PACKET_ZC_RANDOM_UPGRADE_ITEM_UI_OPEN *packet = (const struct PACKET_ZC_RANDOM_UPGRADE_ITEM_UI_OPEN *)pkt;
-
-        game_mode_on_random_upgrade_item_ui_open(self, packet->value);
-        break;
-    }
-    case HEADER_ZC_ACK_RANDOM_UPGRADE_ITEM: {
-        const struct PACKET_ZC_ACK_RANDOM_UPGRADE_ITEM *packet = (const struct PACKET_ZC_ACK_RANDOM_UPGRADE_ITEM *)pkt;
-
-        game_mode_zc_ack_random_upgrade_item(self, packet->result);
-        break;
-    }
     case HEADER_ZC_SYNC_ATTACKED_POS: game_mode_on_sync_attacked_pos(self, pkt); break;
     case HEADER_ZC_CHANGE_ITEM_OPTION: game_mode_zc_change_item_option_packet(self, pkt); break;
     case HEADER_ZC_NOTIFY_MEMBERINFO_TO_GROUPM: game_mode_on_notify_member_info_to_groupm(self, (const struct PacketNotifyMemberInfoToGroupm *)pkt); break;
@@ -1100,7 +955,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_ACK_ALL_RODEX_LIST: game_mode_zc_ack_all_rodex_list(self, (const struct PACKET_ZC_ACK_ALL_RODEX_LIST *)pkt); break;
     case HEADER_ZC_ACK_FAILED_ALL_RODEX_LIST: game_mode_zc_ack_failed_all_rodex_list(self); break;
     case HEADER_ZC_NPCACK_SERVERMOVE_DOMAIN: game_mode_zc_npcack_servermove_domain(self, pkt); break;
-    case HEADER_ZC_CLEAR_SWAP_EQUIPITEM_LIST: game_mode_on_alt_equipment_clear(self, pkt); break;
     case HEADER_ZC_LONGLONGPAR_CHANGE: game_mode_on_long_long_par_change(self, (const struct PacketLongLongParChange *)pkt); break;
     case HEADER_ZC_NOTIFY_EXP2: game_mode_on_notify_exp2(self, (const struct PacketNotifyExp2 *)pkt); break;
     case HEADER_ZC_BROADCAST_ITEMREFINING_RESULT: {
@@ -1190,12 +1044,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_USESKILL_ACK3: game_mode_on_use_skill_ack3(self, (const struct PacketUseSkillAck *)pkt); break;
     case HEADER_ZC_NOTIFY_ACTORINIT: game_mode_zc_notify_actor_init(self, pkt); break;
     case HEADER_ZC_SHORTCUT_KEY_LIST_V4: game_mode_zc_short_cut_key_list_v4(self, (const struct PACKET_ZC_SHORTCUT_KEY_LIST_V4 *)pkt); break;
-    case HEADER_ZC_ADVANCED_STATUS_CHANGE_ACK: {
-        const struct PACKET_ZC_ADVANCED_STATUS_CHANGE_ACK *packet = (const struct PACKET_ZC_ADVANCED_STATUS_CHANGE_ACK *)pkt;
-
-        game_mode_on_advanced_status_change_ack(self, packet->result, packet->status, packet->value);
-        break;
-    }
     case HEADER_ZC_GUILD_AGIT_INFO: game_mode_on_guild_agit_info(self, (const struct PacketGuildAgitInfo *)pkt); break;
     case HEADER_ZC_CHANGE_AGIT_OWNER: {
         const struct PACKET_ZC_CHANGE_AGIT_OWNER *packet = (const struct PACKET_ZC_CHANGE_AGIT_OWNER *)pkt;
@@ -1262,33 +1110,9 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_on_actor_guild(self, packet->aid, packet->guild_id, packet->emblem_version);
         break;
     }
-    case HEADER_ZC_ADD_ACCOUNT_LIMTIED_SALE_ITEM: {
-        const struct PACKET_ZC_ADD_ACCOUNT_LIMTIED_SALE_ITEM *packet = (const struct PACKET_ZC_ADD_ACCOUNT_LIMTIED_SALE_ITEM *)pkt;
-
-        game_mode_add_limited_sale_item(self, packet->result);
-        break;
-    }
-    case HEADER_ZC_DEL_ACCOUNT_LIMTIED_SALE_ITEM: {
-        const struct PACKET_ZC_DEL_ACCOUNT_LIMTIED_SALE_ITEM *packet = (const struct PACKET_ZC_DEL_ACCOUNT_LIMTIED_SALE_ITEM *)pkt;
-
-        game_mode_del_limited_sale_item(self, packet->result);
-        break;
-    }
-    case HEADER_ZC_GET_ACCOUNT_LIMTIED_SALE_LIST: game_mode_limited_sale_list(self, (const struct PacketLimitedSaleList *)pkt); break;
     case HEADER_ZC_NPC_MARKET_PURCHASE_RESULT_V2: game_mode_zc_npc_market_purchase_result_v2(self, pkt); break;
-    case HEADER_ZC_OPEN_ACCOUNT_LIMTIED_SALE_TOOL: game_mode_on_open_limited_sale_tool(self); break;
-    case HEADER_ZC_CLOSE_ACCOUNT_LIMTIED_SALE_TOOL: game_mode_close_limited_sale_tool(self); break;
-    case HEADER_ZC_SEARCH_ACCOUNT_LIMTIED_SALE_ITEM: {
-        const struct PACKET_ZC_SEARCH_ACCOUNT_LIMTIED_SALE_ITEM *packet = (const struct PACKET_ZC_SEARCH_ACCOUNT_LIMTIED_SALE_ITEM *)pkt;
-
-        game_mode_on_search_limited_sale_item(self, packet->result, packet->item);
-        break;
-    }
     case HEADER_ZC_NORMAL_SYSTEM_MSG: game_mode_zc_normal_system_msg(pkt); break;
     case HEADER_ZC_NPC_EXPANDED_BARTER_MARKET_ITEMINFO: game_mode_zc_npc_expanded_barter_market_item_info(self, pkt); break;
-    case HEADER_ZC_GRADE_ENCHANT_MATERIAL_LIST: game_mode_on_grade_enchant_material_list(self, (const struct PacketGradeEnchantMaterialList *)pkt); break;
-    case HEADER_ZC_GRADE_ENCHANT_ACK: game_mode_zc_grade_enchant_ack(self, (const struct PACKET_ZC_GRADE_ENCHANT_ACK *)pkt); break;
-    case HEADER_ZC_GRADE_ENCHANT_BROADCAST_RESULT: game_mode_zc_grade_enchant_broadcast_result(self, (const struct PACKET_ZC_GRADE_ENCHANT_BROADCAST_RESULT *)pkt); break;
     case HEADER_ZC_ITEMLIST_FROM_ASSISTANT_VENDING4: game_mode_on_vending_store_item_list4(self, (const struct PacketVendingList4 *)pkt); break;
     case HEADER_ZC_ACK_READ_RODEX2: game_mode_zc_ack_read_rodex2(self, (const struct PACKET_ZC_ACK_READ_RODEX2 *)pkt); break;
     case HEADER_ZC_SEARCH_STORE_INFO_ACK2: game_mode_zc_search_store_info_ack2(self, pkt); break;
@@ -1303,12 +1127,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_NOTIFY_EFFECT4: game_mode_on_notify_effect4(self, (const struct PacketNotifyEffect4 *)pkt); break;
     case HEADER_ZC_ABR_INIT: game_mode_zc_abr_init(self, (const struct PACKET_ZC_ABR_INIT *)pkt); break;
     case HEADER_ZC_ABR_PAR_CHANGE: game_mode_zc_abr_par_change(self, (const struct PACKET_ZC_ABR_PAR_CHANGE *)pkt); break;
-    case HEADER_ZC_SE_CASHSHOP_OPEN_V2: {
-        const struct PACKET_ZC_SE_CASHSHOP_OPEN_V2 *packet = (const struct PACKET_ZC_SE_CASHSHOP_OPEN_V2 *)pkt;
-
-        game_mode_on_cash_shop_open(self, packet->cash_points, packet->kafra_points, packet->tab);
-        break;
-    }
     case HEADER_ZC_SOULENERGY: game_mode_on_soul_energy(self, (const struct PacketSoulEnergy *)pkt); break;
     case HEADER_ZC_PROPERTY_HOMUN_NO_ACCESSORY2: game_mode_zc_property_homun_no_accessory2(self, pkt); break;
     case HEADER_ZC_PC_PURCHASE_ITEMLIST2: game_mode_zc_pc_purchase_itemlist2(self, pkt); break;

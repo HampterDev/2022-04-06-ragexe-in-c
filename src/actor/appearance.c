@@ -41,11 +41,6 @@ int player_state(const struct Player *player)
     return player ? player->state : -1;
 }
 
-int player_has_cast_gauge(const struct Player *player)
-{
-    return player && player->recharge_gage_wnd != 0;
-}
-
 struct ActorLook actor_look_from_entry(const struct ActorEntryInfo *entry)
 {
     struct ActorLook look = {
@@ -160,7 +155,7 @@ void pc_set_spr_act_with_state(struct GameActor * actor, const struct ActorLook 
         __int64 w;
 
         switch (game_actor_get_job((struct GameActor *)self)) {
-        case 0xc: case 0xfad: case 0xfc3: case 0xfdb: case 0xfe1: case 0x1005: case 0x109e:
+        case 0xc: case 0xfad: case 0xfc3: case 0xfdb: case 0xfe1: case 0x1005:
             w = look->weapon;
             break;
         default:

@@ -71,13 +71,6 @@ void session_init_skill_tree_view(struct Session *self)
         else if (session_is_third_job(self, job) == 1 || job == 0x108f || job == 0x1090 || job == 0x1091 ||
                  job == 0x1092)
             kind = 2;
-        else if (session_is_fourth_job(self, job) == 1)
-            kind = 3;
-        switch (job) {
-        case 0x10ce: case 0x10cf: kind = 3; break;
-        case 0x10d0: case 0x10d1: case 0x10d2: case 0x10d3: kind = 2; break;
-        case 0x10d4: kind = 1; break;
-        }
         client_lua_call(self->luaState, "InitSkillTreeView", "dd", job, kind);
     }
 }

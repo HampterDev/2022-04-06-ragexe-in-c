@@ -11,8 +11,6 @@ int game_mode_msg_req_exchange(struct GameMode *self, int aid)
 {
     struct String name;
 
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     if (g_serviceType == 6 && g_windowMgr.exchange_accept_wnd) {
         chat_refresh();
         chat_print_msg(0x48, CHAT_COLOR_RED);
@@ -103,8 +101,6 @@ int game_mode_msg_item_from_storage(int index, int count)
 
 int game_mode_msg_item_to_cart(struct GameMode *self, int index, int count)
 {
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     session_set_inventory_move_pending(&g_session1, index);
     send_move_item(0x126, index, count);
     return 0;
@@ -112,8 +108,6 @@ int game_mode_msg_item_to_cart(struct GameMode *self, int index, int count)
 
 int game_mode_msg_item_from_cart(struct GameMode *self, int index, int count)
 {
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     session_set_cart_move_pending(&g_session1, index);
     send_move_item(0x127, index, count);
     return 0;
@@ -121,8 +115,6 @@ int game_mode_msg_item_from_cart(struct GameMode *self, int index, int count)
 
 int game_mode_msg_storage_to_cart(struct GameMode *self, int index, int count)
 {
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     session_set_storage_move_pending(&g_session1, index);
     send_move_item(g_session1.guildStorageOpen ? 0x9e4 : 0x128, index, count);
     return 0;
@@ -130,8 +122,6 @@ int game_mode_msg_storage_to_cart(struct GameMode *self, int index, int count)
 
 int game_mode_msg_cart_to_storage(struct GameMode *self, int index, int count)
 {
-    if (game_mode_is_blocking_window_open() == 1)
-        return 0;
     session_set_cart_move_pending(&g_session1, index);
     send_move_item(g_session1.guildStorageOpen ? 0x9e3 : 0x129, index, count);
     return 0;

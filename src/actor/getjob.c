@@ -55,17 +55,12 @@ int game_actor_get_job(struct GameActor *self)
     case 0xfd8:  if (BIT(21)) return 0xff4; break;
     case 0xfde:  if (BIT(21)) return 0xff5; break;
     case 0x1002: if (BIT(21)) return 0x100f; break;
-    case 0x109c: if (BIT(19)) return 0x10b8; break;
-    case 0x10a2: if (BIT(5)) return 0x10b9; break;
     case 0xfda:  if (actor_get_sprite_variant(self)) return 0xff6; break;
     case 0xfe0:  if (actor_get_sprite_variant(self)) return 0xff7; break;
     case 0x1004: if (actor_get_sprite_variant(self)) return 0x1010; break;
-    case 0x109d: if (actor_get_sprite_variant(self)) return 0x10b7; break;
     case 0x1082: if (BIT(15)) return 0x108e; break;
     case 0x108f: if (BIT(15)) return 0x1093; break;
     case 0x1091: if (BIT(15)) return 0x1094; break;
-    case 0x10a1: if (BIT(21)) return 0x10b6; break;
-    case 0x10ce: if (BIT(15)) return 0x10dc; break;
     default:
         break;
     }

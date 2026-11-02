@@ -696,11 +696,6 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
             ui_window_draw_item_icon_count_grey(wnd, 1, x, ITEM_ROW_TOP, item, (BYTE)item->bind_on_equip_type, 0);
         else
             ui_window_draw_item_icon_count(wnd, x, ITEM_ROW_TOP, item, 0, 0);
-        if (item->grade > 0) {
-            string_format(&text, UI_SKIN "grade_enchant\\grade_icon%d.bmp", item->grade);
-            ui_window_draw_bitmap(wnd, x, 0x141, res_mgr_get(g_resMgr(), string_cstr(&text)), 1);
-            string_free(&text);
-        }
     }
 
     if (self->tags) {

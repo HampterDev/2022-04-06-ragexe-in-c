@@ -520,7 +520,6 @@ void game_mode_item_pickup_ack_v7(struct GameMode *self, const unsigned char *pk
         set_options(&item, packet->v6.options);
         item.favorite = packet->favorite;
         item.view = packet->view;
-        item.grade = 0;
         if (v5->result == 0)
             picked_up(self, &item, &p);
         else
@@ -554,7 +553,6 @@ void game_mode_item_pickup_ack_v8(struct GameMode *self, const unsigned char *pk
         set_options(&item, packet->options);
         item.favorite = packet->favorite;
         item.view = packet->view;
-        item.grade = packet->grade;
         if (packet->result == 0)
             picked_up(self, &item, &p);
         else

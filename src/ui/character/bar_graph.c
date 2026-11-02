@@ -295,52 +295,6 @@ const struct UIWindowOps ui_bar_graph_player_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-void ui_bar_graph_player_ap_destroy(struct UIWindow *window);
-void ui_bar_graph_player_ap_on_draw(struct UIWindow *self);
-const struct UIWindowOps ui_bar_graph_player_ap_ops = {
-    .destroy = ui_bar_graph_player_ap_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 0,
-    .refreshes_children = 0,
-    .move = ui_window_move_base,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_window_save_pos_base,
-    .move_delta = ui_window_move_delta_base,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_bar_graph_player_ap_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_window_on_l_btn_down_base,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_window_on_mouse_move_base,
-    .on_mouse_hover = ui_window_on_mouse_hover_base,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_window_on_l_btn_up_base,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_window_snap_base,
-    .send_msg = ui_window_send_msg_base,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_WINDOW,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
 
 #define GAUGE_LOW_PERCENT 25.0f
 #define GAUGE_RED RGB(0xff, 0, 0)
@@ -669,36 +623,6 @@ void ui_bar_graph_player_on_draw(struct UIWindow *window)
     draw_player_numbers(wnd, current, maximum);
 }
 
-void ui_bar_graph_player_ap_destroy(struct UIWindow *window)
-{
-    struct UIValueGauge *self = (struct UIValueGauge *)window;
-    self->base.ops = &ui_bar_graph_player_ap_ops;
-    ui_bar_graph_player_destruct(self);
-    mem_free(self);
-}
-
-void ui_bar_graph_player_ap_on_draw(struct UIWindow *window)
-{
-    struct UIValueGauge *self = (struct UIValueGauge *)window;
-    struct UIWindow *wnd = &self->base;
-    __int64 current, maximum;
-    double ratio;
-
-    if (!self->current.read || !self->maximum.read)
-        return;
-    current = gauge_value_read(&self->current);
-    maximum = gauge_value_read(&self->maximum);
-    if (maximum < current)
-        return;
-    ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\gze_bg1.bmp"), 0);
-    if (maximum > 0) {
-        ratio = (double)current / (double)maximum;
-        if (ratio > 0.0)
-            draw_gze_bar(wnd, ratio == 1.0 ? "red" : "blue", (int)((double)(wnd->width - 8) * ratio));
-    }
-    draw_player_numbers(wnd, current, maximum);
-}
-
 struct UIWindow *ui_value_gauge_create(enum ValueGaugeStyle style)
 {
     struct UIValueGauge *self = mem_alloc(sizeof(*self));
@@ -708,8 +632,6 @@ struct UIWindow *ui_value_gauge_create(enum ValueGaugeStyle style)
         ui_bar_graph_homun_construct(self);
     } else {
         ui_bar_graph_player_construct(self);
-        if (style == VALUE_GAUGE_AP)
-            self->base.ops = &ui_bar_graph_player_ap_ops;
     }
     return &self->base;
 }

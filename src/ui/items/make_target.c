@@ -45,7 +45,6 @@
 #define JOB_RUNE_KNIGHT 4054
 #define JOB_RUNE_KNIGHT_H 4060
 #define JOB_BABY_RUNE_KNIGHT 4096
-#define JOB_DRAGON_KNIGHT 4252
 
 #define MSG_MT_LIST_TITLE 0x1a9
 #define MSG_MT_PROCESS_LINE1 0x1aa
@@ -336,7 +335,6 @@ static void list_choose(struct UIMakeTargetListWnd *self)
     case JOB_RUNE_KNIGHT:
     case JOB_RUNE_KNIGHT_H:
     case JOB_BABY_RUNE_KNIGHT:
-    case JOB_DRAGON_KNIGHT:
         send_make_empty(item_id);
         break;
     default:

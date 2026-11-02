@@ -560,8 +560,6 @@ void ui_skill_list_wnd_on_draw(struct UIWindow *window)
             if (info->type == 0) {
                 sprintf(buf, msg_str(MSG_PASSIVE), MSG_PASSIVE);
             } else {
-                int ap;
-
                 sp = info->sp_cost;
                 if (skill_info_is_level_used(info->id)) {
                     int amount;
@@ -571,11 +569,7 @@ void ui_skill_list_wnd_on_draw(struct UIWindow *window)
                     if (amount && level <= info->level)
                         sp = amount;
                 }
-                ap = skill_info_get_ap_amount(info, info->level);
-                if (ap)
-                    sprintf(buf, "Sp : %d , Ap : %d", sp, ap);
-                else
-                    sprintf(buf, "Sp : %d", sp);
+                sprintf(buf, "Sp : %d", sp);
             }
             ui_window_text_out(wnd, x + 0xd4, y + 0x22, buf, 0, 0, 0xc, 0, 0, 0);
             grey = 0;
