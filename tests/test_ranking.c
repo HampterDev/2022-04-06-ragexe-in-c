@@ -29,11 +29,11 @@ static void *checked_realloc(void *old, size_t size)
 #undef realloc
 #undef malloc
 
-static __time32_t ticks = 100;
-static __time32_t fixture_time(__time32_t *out) { if (out) *out = ticks; return ticks; }
-#define _time32 fixture_time
+static int32_t ticks = 100;
+static int32_t fixture_time(void) { return ticks; }
+#define platform_time_now fixture_time
 #include "../src/session/session_ranking.c"
-#undef _time32
+#undef platform_time_now
 #include "../src/game/mode_ranking.c"
 
 struct Session g_session1;

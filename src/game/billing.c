@@ -26,7 +26,7 @@ struct PACKET_ZC_PCBANG_EFFECT {
 struct PACKET_ZC_REPLY_REMAINTIME {
     unsigned short id;
     int result;
-    __time32_t expiration_date;
+    int32_t expiration_date;
     int remain_time;
 };
 #pragma pack(pop)
@@ -88,7 +88,7 @@ void game_mode_zc_reply_remain_time(struct GameMode *self, const struct PACKET_Z
 {
     char text[0x200];
     char tail[0x100];
-    __time32_t now;
+    int32_t now;
     struct tm *end;
     int result, remain;
 
@@ -102,9 +102,9 @@ void game_mode_zc_reply_remain_time(struct GameMode *self, const struct PACKET_Z
             sprintf(text, msg_str(0x465), remain / 3600, remain % 3600 / 60, remain % 60);
         }
     } else {
-        _time32(&now);
-        _localtime32(&now);
-        end = _localtime32(&packet->expiration_date);
+        now = platform_time_now();
+        platform_time_local(now);
+        end = platform_time_local(packet->expiration_date);
         result = packet->result;
         if (result >= REMAIN_PCBANG_FIRST && result <= REMAIN_PCBANG_LAST) {
             if (result & PLAN_CAFE_SILVER)

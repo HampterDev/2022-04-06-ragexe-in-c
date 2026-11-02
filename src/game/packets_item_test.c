@@ -13,6 +13,7 @@
 #include "ui/items/styling_shop.h"
 #include "ui/ui_std.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PackageItemTestEntry {
@@ -36,7 +37,7 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     const char *package_name;
     char path[0x800];
     struct ItemInfo item;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     FILE *f;
     const struct PackageItemTestEntry *entry = packet->records;
     int n = 0, records, total, written;
@@ -50,15 +51,15 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     if (written < 0 || (size_t)written >= sizeof path) goto done;
     if (_access(path, 0) && _mkdir(path))
         goto done;
-    GetLocalTime(&now);
-    written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d).txt", g_clientDir, package_name, now.wYear, now.wMonth,
-                now.wDay);
+    platform_date_time_local(&now);
+    written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d).txt", g_clientDir, package_name, now.year, now.month,
+                now.day);
     if (written < 0 || (size_t)written >= sizeof path) goto done;
     if (!_access(path, 0)) {
         do {
             n++;
-            written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d)_%d.txt", g_clientDir, package_name, now.wYear,
-                        now.wMonth, now.wDay, n);
+            written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d)_%d.txt", g_clientDir, package_name, now.year,
+                        now.month, now.day, n);
             if (written < 0 || (size_t)written >= sizeof path) goto done;
         } while (!_access(path, 0));
     }
@@ -307,7 +308,7 @@ void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *
     char folder[0x800], path[0x800];
     int written, ok;
     const char *box_name, *item_name;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     unsigned n;
     int total = 0;
 
@@ -330,14 +331,14 @@ void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *
     item_info_construct(&box);
     item_info_set_item_id(&box, packet->box_item_id);
     box_name = item_info_get_name(&box);
-    GetLocalTime(&now);
+    platform_date_time_local(&now);
     written = snprintf(folder, sizeof folder, "%s\\DdukddakBoxTest", g_clientDir);
     if (written < 0 || (size_t)written >= sizeof folder)
         goto cleanup;
     if (_mkdir(folder) != 0 && errno != EEXIST)
         goto cleanup;
     written = snprintf(path, sizeof path, "%s\\%d%02d%02d_(%s).txt",
-                       folder, now.wYear, now.wMonth, now.wDay, box_name);
+                       folder, now.year, now.month, now.day, box_name);
     if (written < 0 || (size_t)written >= sizeof path)
         goto cleanup;
     file = file_open_unique(path);

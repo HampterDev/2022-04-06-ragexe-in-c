@@ -5,13 +5,14 @@
 
 #include <string.h>
 #include "actor/types.h"
+#include "platform/clock.h"
 
 void session_append_prohibit(struct Session *self, int aid, unsigned minutes)
 {
     struct ProhibitionRecord record;
     struct String name;
     struct File file;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     char path[0x100], *data;
     void *actor;
     unsigned char *old = NULL;
@@ -28,9 +29,9 @@ void session_append_prohibit(struct Session *self, int aid, unsigned minutes)
     record.minutes = minutes;
     record.aid = aid;
     record.actor_id = actorId;
-    GetLocalTime(&now);
-    record.date = (((now.wYear << 8) | (short)now.wMonth) << 8) | (short)now.wDay;
-    record.time = (((now.wHour << 8) | (short)now.wMinute) << 8) | (short)now.wSecond;
+    platform_date_time_local(&now);
+    record.date = (((now.year << 8) | (short)now.month) << 8) | (short)now.day;
+    record.time = (((now.hour << 8) | (short)now.minute) << 8) | (short)now.second;
     vec_push(&self->prohibitionLog, &record, sizeof record);
 
     file_construct(&file);

@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "session/session_names.h"
 #include <stdint.h>
+#include "platform/clock.h"
 
 #define UIM_CHAT_LINE 1
 #define QUEST_CHAT_COLOR 0xffff
@@ -33,19 +34,18 @@ static void quest_info_destroy(struct RenewQuestB *info)
 
 static void quest_info_set_end_time(struct RenewQuestB *info, int seconds, int has_time)
 {
-    __time32_t timestamp = seconds;
-    struct tm local;
+    const struct tm *local = platform_time_local(seconds);
 
-    if (_localtime32_s(&local, &timestamp) != 0) {
+    if (!local) {
         info->plain.deadline.year = info->plain.deadline.month = info->plain.deadline.day = 0;
         info->plain.deadline.hour = info->plain.deadline.minute = 0;
         return;
     }
-    info->plain.deadline.year = (unsigned short)(local.tm_year + 1900);
-    info->plain.deadline.month = (unsigned short)(local.tm_mon + 1);
-    info->plain.deadline.day = (unsigned short)local.tm_mday;
-    info->plain.deadline.hour = has_time ? (unsigned short)local.tm_hour : 0;
-    info->plain.deadline.minute = has_time ? (unsigned short)local.tm_min : 0;
+    info->plain.deadline.year = (unsigned short)(local->tm_year + 1900);
+    info->plain.deadline.month = (unsigned short)(local->tm_mon + 1);
+    info->plain.deadline.day = (unsigned short)local->tm_mday;
+    info->plain.deadline.hour = has_time ? (unsigned short)local->tm_hour : 0;
+    info->plain.deadline.minute = has_time ? (unsigned short)local->tm_min : 0;
 }
 
 static void quest_info_set(struct RenewQuestB *info, unsigned char active, int end_time, unsigned char hunts)

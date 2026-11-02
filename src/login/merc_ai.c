@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "session/session_jobs.h"
+#include "platform/clock.h"
 
 struct MercenaryAI *merc_ai_construct(struct MercenaryAI *self, int kind)
 {
@@ -118,7 +119,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
         else
             goto run;
         if (order != 0 && kind == 0) {
-            self->startTick = GetTickCount();
+            self->startTick = platform_coarse_ticks_ms();
             if (order == 0x1d) {
                 render_object_set_action((struct RenderObject *)actor,
                     (unsigned)(g_session1.homunJob - 0x17a0) <= 4 ? 0x30 : 0x38, 0);
@@ -126,7 +127,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
             }
             return 0;
         }
-    } else if (GetTickCount() - self->startTick > self->duration) {
+    } else if (platform_coarse_ticks_ms() - self->startTick > self->duration) {
         actor_set_state(actor, 0, 1);
         if (self->kind == 0) {
             g_session1.homun_ai_state[0] = 0;
@@ -140,7 +141,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
     }
 
 run:
-    now = GetTickCount();
+    now = platform_coarse_ticks_ms();
     if (now - self->lastRun < 0x8c)
         return 0;
     self->lastRun = now;
@@ -251,6 +252,6 @@ int merc_ai_get_actors(lua_State *L)
 
 int merc_ai_get_tick(lua_State *L)
 {
-    lua_pushnumber(L, (double)(DWORD)(GetTickCount()));
+    lua_pushnumber(L, (double)platform_coarse_ticks_ms());
     return 1;
 }

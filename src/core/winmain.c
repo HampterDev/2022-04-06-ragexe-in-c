@@ -21,13 +21,13 @@
 #include "contents/connection_api.h"
 #include "platform/win_types.h"
 #include <objbase.h>
-#include <mmsystem.h>
 #include <float.h>
 #include <string.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
 #include "core/client_init.h"
+#include "platform/clock.h"
 
 int g_loginStartMode = 2;
 
@@ -40,7 +40,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     struct InitResult init;
     WIN32_FIND_DATAA found;
     HANDLE find;
-    TIMECAPS caps;
     HRESULT com_result;
     UINT period;
     int result;
@@ -68,15 +67,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
         FindClose(find);
     _controlfp(0x20000, 0x30000);
 
-    period = 0;
-    if (timeGetDevCaps(&caps, sizeof caps) == 0) {
-        UINT p = caps.wPeriodMin > 1 ? caps.wPeriodMin : 1;
-
-        period = caps.wPeriodMax;
-        if (p < period)
-            period = p;
-        timeBeginPeriod(period);
-    }
+    period = platform_timer_period_begin();
     frame_timer_reset();
     com_result = CoInitialize(0);
     if (!sound_mgr_create()) {
@@ -141,7 +132,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     app_destroy_singletons();
     sound_mgr_destroy();
     if (period != 0)
-        timeEndPeriod(period);
+        platform_timer_period_end(period);
     crash_report_uninstall();
 
     result = 0;

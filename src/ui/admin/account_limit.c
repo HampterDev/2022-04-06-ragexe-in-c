@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/ui_std.h"
+#include "platform/clock.h"
 
 struct UIAccountLimitedToolWnd;
 struct UIWindow;
@@ -118,9 +119,9 @@ struct PacketAccountLimitAdd {
     short id;
     int account;
     int value;
-    __time32_t start;
-    __time32_t end;
-    __time32_t daily;
+    int32_t start;
+    int32_t end;
+    int32_t daily;
 };
 #pragma pack(pop)
 SIZE_ASSERT(PacketAccountLimitDelete, 6);
@@ -366,24 +367,24 @@ static void send_packet(const void *packet, short id)
     rag_connection_send_packet(rag_connection_instance(), len, packet);
 }
 
-static __time32_t time_this_month(int month, int day, int hour, int minute)
+static int32_t time_this_month(int month, int day, int hour, int minute)
 {
-    __time32_t now = _time32(NULL);
-    struct tm *t = _localtime32(&now);
+    int32_t now = platform_time_now();
+    struct tm *t = platform_time_local(now);
 
     t->tm_mon = month - 1;
     t->tm_mday = day;
     t->tm_hour = hour;
     t->tm_min = minute;
     t->tm_sec = 0;
-    return _mktime32(t);
+    return platform_time_make(t);
 }
 
 static void send_add(struct UIAccountLimitedToolWnd *self)
 {
     static const int ranges[4][2] = { { 1, 12 }, { 1, 31 }, { 0, 23 }, { 0, 59 } };
     struct PacketAccountLimitAdd packet;
-    __time32_t now;
+    int32_t now;
     struct tm *t;
     int i, value, day;
 
@@ -417,14 +418,14 @@ static void send_add(struct UIAccountLimitedToolWnd *self)
                                    field_int(self, FIELD_START + 2), field_int(self, FIELD_START + 3));
     packet.end = time_this_month(field_int(self, FIELD_END), field_int(self, FIELD_END + 1),
                                  field_int(self, FIELD_END + 2), field_int(self, FIELD_END + 3));
-    now = _time32(NULL);
-    t = _localtime32(&now);
+    now = platform_time_now();
+    t = platform_time_local(now);
     day = field_int(self, FIELD_DAILY_DAY);
     t->tm_mday = day == 0 ? 15 : day;
     t->tm_hour = field_int(self, FIELD_DAILY_HOUR);
     t->tm_min = field_int(self, FIELD_DAILY_MINUTE);
     t->tm_sec = 0;
-    packet.daily = _mktime32(t);
+    packet.daily = platform_time_make(t);
 
     packet.id = PACKET_ACCOUNT_LIMIT_ADD;
     packet.account = shown_account(self);

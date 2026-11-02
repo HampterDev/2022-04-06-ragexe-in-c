@@ -9,6 +9,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define MSG_CASH_ADD 0x6f3
 #define MSG_CASH_SOLD_OUT 0xe4d
@@ -190,7 +191,7 @@ void ui_cash_shop_wnd_item_on_draw(struct UIWindow *window)
     struct UICashShopWnd_Item *self = (struct UICashShopWnd_Item *)window;
     struct ItemInfo *info = &self->info;
     struct String text, from, until;
-    __time32_t now;
+    int32_t now;
     struct tm start, end;
     int x;
 
@@ -227,9 +228,9 @@ void ui_cash_shop_wnd_item_on_draw(struct UIWindow *window)
         string_free(&text);
     }
 
-    _time32(&now);
-    start = *_localtime32(&CASH_GOODS_START(info));
-    end = *_localtime32(&CASH_GOODS_END(info));
+    now = platform_time_now();
+    start = *platform_time_local(CASH_GOODS_START(info));
+    end = *platform_time_local(CASH_GOODS_END(info));
     string_init(&from);
     string_format(&from, msg_str(MSG_CASH_START_FMT), start.tm_mon + 1, start.tm_mday, start.tm_hour,
                   start.tm_min);

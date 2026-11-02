@@ -1,5 +1,4 @@
 #include "platform/win_types.h"
-#include <time.h>
 #include "contents/schedule.h"
 #include "contents/connection_api.h"
 #include "session/state.h"
@@ -30,9 +29,9 @@ static const struct ScheduleOps ping_ops = {ping_run, schedule_free};
 
 void game_mode_add_schedules(void)
 {
-    __time32_t now;
+    int32_t now;
     struct Schedule *job;
-    _time32(&now);
+    now = platform_time_now();
     job = schedule_create(now, 5, SCHEDULE_REPEAT, &ping_ops);
     if (!job) return;
     if (!time_scheduler_add(g_timeScheduler, job)) { schedule_free(job); return; }

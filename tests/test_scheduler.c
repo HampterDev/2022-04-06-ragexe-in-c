@@ -10,13 +10,13 @@
 #include <mmsystem.h>
 #include "owned_storage_test_allocator.h"
 #include "contents/schedule.h"
+#include "platform/clock.h"
 
-static __time32_t clock_seconds = 100;
+static int32_t clock_seconds = 100;
 static unsigned clock_reads, ticks_ms;
-static __time32_t fixture_time(__time32_t *out)
+static int32_t fixture_time(void)
 {
     ++clock_reads;
-    if (out) *out = clock_seconds;
     return clock_seconds;
 }
 static uint32_t fixture_ticks(void) { return ticks_ms; }
@@ -34,7 +34,7 @@ static void *checked_realloc(void *old, size_t size)
 #define malloc checked_malloc
 #define free checked_free
 #define realloc checked_realloc
-#define _time32 fixture_time
+#define platform_time_now fixture_time
 #define timeGetTime fixture_ticks
 #define platform_ticks_ms fixture_ticks
 #include "../src/contents/schedule.c"
@@ -45,7 +45,7 @@ static void *checked_realloc(void *old, size_t size)
 #include "../src/session/session_ranking.c"
 #undef timeGetTime
 #undef platform_ticks_ms
-#undef _time32
+#undef platform_time_now
 #undef free
 #undef malloc
 #undef realloc

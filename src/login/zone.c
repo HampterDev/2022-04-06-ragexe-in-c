@@ -9,7 +9,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 #include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_items.h"
@@ -18,6 +17,7 @@
 #include "game/connection.h"
 #include "login/zone.h"
 #include "platform/filesystem.h"
+#include "platform/clock.h"
 
 struct ServerAddress g_mapServerIp;
 void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
@@ -76,16 +76,16 @@ static void zone_switch(void)
 static void zone_ping_log(void)
 {
     FILE *f;
-    __time32_t t;
+    int32_t t;
 
     f = platform_file_open("PingLog.txt", "at");
     if (f) {
-        _time32(&t);
+        t = platform_time_now();
         fprintf(f, "\n");
         fprintf(f, "server:%s\n", string_cstr(&g_session1.worldName));
         fprintf(f, "ip:%s\n", g_mapServerIp.ip);
         fprintf(f, "map:%s.gat\n", g_session1.mapName);
-        fprintf(f, "time:%s\n\n", _ctime32(&t));
+        fprintf(f, "time:%s\n\n", platform_time_text(t));
         fclose(f);
     }
     list_clear(&g_keepAliveTimes, NULL);

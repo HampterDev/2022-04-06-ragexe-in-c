@@ -6,13 +6,13 @@
 
 #include <string.h>
 #include <time.h>
+#include "platform/clock.h"
 
 #define WND_ACHIEVEMENT     0xa
 
 static void local_date(int t, WORD *year, WORD *month, WORD *day)
 {
-    __time32_t when = t < 0 ? 0 : t;
-    struct tm *tm = _localtime32(&when);
+    struct tm *tm = platform_time_local(t < 0 ? 0 : t);
 
     *year = (WORD)(tm->tm_year + 1900);
     *month = (WORD)(tm->tm_mon + 1);

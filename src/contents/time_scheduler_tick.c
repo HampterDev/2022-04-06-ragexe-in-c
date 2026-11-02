@@ -1,6 +1,6 @@
 #include <stdlib.h>
-#include <time.h>
 #include "contents/schedule_storage.h"
+#include "platform/clock.h"
 
 void time_scheduler_tick(struct TimeScheduler *self)
 {
@@ -9,7 +9,7 @@ void time_scheduler_tick(struct TimeScheduler *self)
     self->ticking = 1;
     for (node = self->first; node && !self->clear_requested;) {
         struct Schedule *job = node->job;
-        __time32_t now;
+        int32_t now;
         if (!job->alive) {
             next = node->next;
             if (node->prev) node->prev->next = next;
@@ -22,7 +22,7 @@ void time_scheduler_tick(struct TimeScheduler *self)
             node = next;
             continue;
         }
-        _time32(&now);
+        now = platform_time_now();
         if (!job->paused && schedule_is_due(job, now)) job->ops->run(job, now);
         node = node->next;
     }

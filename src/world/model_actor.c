@@ -5,6 +5,7 @@
 #include <math.h>
 #include "base.h"
 #include "world/model.h"
+#include "platform/clock.h"
 
 static const struct ModelActorOps model_actor_v1_ops = {
     .destroy = model_actor_v1_destroy,
@@ -47,7 +48,7 @@ struct C3dActor *model_actor_create(int version)
     actor->dirty = 1;
     actor->alpha = 255;
     actor->animType = 2;
-    if (version == 2) ((struct C3dActorV2 *)actor)->startTick = GetTickCount();
+    if (version == 2) ((struct C3dActorV2 *)actor)->startTick = platform_coarse_ticks_ms();
     return actor;
 }
 
@@ -343,7 +344,7 @@ void c3d_actor_v1_tick(struct C3dActor *base)
 
     switch (self->base.animType) {
     case 1:
-        now = GetTickCount();
+        now = platform_coarse_ticks_ms();
         if (now == self->lastTick)
             return;
         frame = (int)(self->base.speed * 100.0f + (float)self->frame);
@@ -354,7 +355,7 @@ void c3d_actor_v1_tick(struct C3dActor *base)
         }
         break;
     case 2:
-        now = GetTickCount();
+        now = platform_coarse_ticks_ms();
         if (now == self->lastTick)
             return;
         frame = (int)(self->base.speed * 100.0f + (float)self->frame);
@@ -378,13 +379,13 @@ void c3d_actor_v2_tick(struct C3dActor *base)
 
     switch (self->base.animType) {
     case 1:
-        t = number_truncate_low32((float)unsigned_to_double(GetTickCount() - self->startTick) * self->base.speed);
+        t = number_truncate_low32((float)unsigned_to_double(platform_coarse_ticks_ms() - self->startTick) * self->base.speed);
         if (!(unsigned_to_double(t) < self->duration))
             t = number_truncate_low32(self->duration - 1.0);
         c3d_actor_v2_animate(&self->base, unsigned_to_double(t));
         break;
     case 2:
-        now = GetTickCount();
+        now = platform_coarse_ticks_ms();
         t = number_truncate_low32((float)unsigned_to_double(now - self->startTick) * self->base.speed);
         if (!(unsigned_to_double(t) < self->duration)) {
             self->startTick = now;

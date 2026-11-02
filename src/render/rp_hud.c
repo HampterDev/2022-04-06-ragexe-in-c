@@ -1,27 +1,28 @@
 #include "render/texture_cache.h"
 #include "session/state.h"
 #include "render/render_api.h"
+#include "platform/clock.h"
 
 #define BADGE_DEPTH 0.0999f
 
 void renderer_draw_game_grade_badge(struct Renderer *self)
 {
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     struct Texture *tex;
     RECT rc;
     int ramp;
     signed char state;
 
-    GetLocalTime(&now);
+    platform_date_time_local(&now);
     state = (signed char)g_gradeBadgeState;
-    if (now.wMinute == 0) {
-        if (now.wSecond == 0) {
+    if (now.minute == 0) {
+        if (now.second == 0) {
             if (state == 0) {
                 g_gradeBadgeState = 1;
                 g_gradeBadgeAlpha = 0;
                 goto draw;
             }
-        } else if (now.wSecond >= 10) {
+        } else if (now.second >= 10) {
             if (state == 1) {
                 g_gradeBadgeState = 2;
                 goto draw;

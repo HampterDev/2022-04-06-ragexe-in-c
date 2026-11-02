@@ -4,10 +4,11 @@
 #include <time.h>
 #include "base.h"
 #include "ui/game.h"
+#include "platform/clock.h"
 
 SIZE_ASSERT(TimeRecord, 16);
 
-struct Time *time_construct(struct Time *self, __time32_t t)
+struct Time *time_construct(struct Time *self, int32_t t)
 {
     self->t = t;
     return self;
@@ -25,7 +26,7 @@ struct TimeRecord *time_get_as_record(struct Time *self, struct TimeRecord *out)
     memset(out, 0, sizeof *out);
     if (self->t < 0)
         self->t = 0;
-    tm = _localtime32(&self->t);
+    tm = platform_time_local(self->t);
     out->fraction = 0;
     out->year = (WORD)(tm->tm_year + 1900);
     out->month = (WORD)(tm->tm_mon + 1);
@@ -38,8 +39,7 @@ struct TimeRecord *time_get_as_record(struct Time *self, struct TimeRecord *out)
 
 BYTE time_is_past(struct Time *self)
 {
-    __time32_t now;
+    int32_t now = platform_time_now();
 
-    _time32(&now);
-    return 0.0 > _difftime32(self->t, now);
+    return 0.0 > platform_time_diff(self->t, now);
 }

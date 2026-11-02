@@ -14,6 +14,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "ui/items/items.h"
+#include "platform/clock.h"
 
 #define LOG_WND_ID_0 0x101
 #define LOG_WND_ID_1 0x102
@@ -252,7 +253,7 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     ui_window_text_out(wnd, x, y, money, len, 0, 12, 0, 0, 0);
                     x += 0x6e;
                     memset(when, 0, sizeof when);
-                    tm = _localtime32(&entry->time);
+                    tm = platform_time_local(entry->time);
                     _snprintf_s(when, sizeof when, (size_t)-1, "%02d/%02d - %02d:%02d:%02d", tm->tm_mon + 1,
                                    tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
                     ui_window_text_out(wnd, x, y, when, (int)strlen(when), 0, 12, 0, 0, 0);
@@ -375,7 +376,7 @@ int ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *
             struct TextView name = player_name_lookup(val2);
             string_assign(&entry.name, name.data, name.size);
         }
-        entry.time = (__time32_t)val3;
+        entry.time = (int32_t)val3;
         item_info_get_display_name(&info, &text);
         string_assign(&entry.item, string_cstr(&text), text.size);
         string_free(&text);

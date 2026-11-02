@@ -5,9 +5,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-#include <time.h>
 #include <winsock2.h>
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 struct CharInfo g_loginCharInfo;
 
@@ -163,7 +163,7 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
     const struct PACKET_HC_ACCEPT_ENTER_NEO_UNION_LIST *packet =
         (const struct PACKET_HC_ACCEPT_ENTER_NEO_UNION_LIST *)pkt;
     char text[256];
-    __time32_t now;
+    int32_t now;
     unsigned body = (unsigned)(packet->packet_length - 4);
     int count = body / sizeof(struct CharInfo);
     int base, i;
@@ -184,7 +184,7 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
     }
     memcpy_s(&self->chars[base], sizeof self->chars - base * sizeof(struct CharInfo),
                packet->chars, count * sizeof(struct CharInfo));
-    _time32(&now);
+    now = platform_time_now();
     for (i = 0; i < count; i++) {
         struct CharInfo *c = &self->chars[self->chars_received + i];
         if (c->sex == 0x63)

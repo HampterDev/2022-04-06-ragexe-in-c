@@ -16,7 +16,7 @@ DWORD session_get_server_time(struct Session *self)
 
 void session_init_at_startup(struct Session *self)
 {
-    SYSTEMTIME st;
+    struct PlatformDateTime st;
     DWORD base;
     int i;
 
@@ -25,11 +25,11 @@ void session_init_at_startup(struct Session *self)
     self->showCellInfo = 1;
     self->ownAid = 0;
     self->effectOn = 1;
-    GetSystemTime(&st);
-    base = (((((DWORD)st.wDay * 24 + st.wHour + 9) * 60 + st.wMinute) * 60 + st.wSecond) * 1000);
-    base += (DWORD)(BYTE)st.wYear * 0x7bbdb000u;
-    base -= (DWORD)st.wMonth * 0x605adc00u;
-    base += st.wMilliseconds;
+    platform_date_time_utc(&st);
+    base = (((((DWORD)st.day * 24 + st.hour + 9) * 60 + st.minute) * 60 + st.second) * 1000);
+    base += (DWORD)(BYTE)st.year * 0x7bbdb000u;
+    base -= (DWORD)st.month * 0x605adc00u;
+    base += st.milliseconds;
     base -= platform_ticks_ms();
     self->showGuildEmblems = 1;
     self->timeStampOffset = base;
@@ -100,7 +100,7 @@ void session_init_at_startup(struct Session *self)
     self->mercOrder = 0;
     self->merc_command[4] = 0;
     self->autoMessageOn = 0;
-    self->npcDialogTick = GetTickCount();
+    self->npcDialogTick = platform_coarse_ticks_ms();
 
     self->renameCharId = 0;
     sprintf(self->renameNewName, "");

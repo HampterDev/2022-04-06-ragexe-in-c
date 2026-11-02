@@ -3,6 +3,7 @@
 #include "diag/perf.h"
 #include "ui/window_types.h"
 #include <string.h>
+#include "platform/clock.h"
 
 struct perf_counters g_perf;
 
@@ -20,8 +21,8 @@ static const char *const phase_name[PERF_N] = {
 
 static struct {
     int inited, shown, lastScroll;
-    LARGE_INTEGER freq;
-    LARGE_INTEGER t0[PERF_N];
+    LONGLONG freq;
+    LONGLONG t0[PERF_N];
     LONGLONG acc[PERF_N];
     LONGLONG frameMax;
     LONGLONG lastFrameEnd, intervalStart, start;
@@ -47,31 +48,29 @@ static struct {
 
 static LONGLONG now(void)
 {
-    LARGE_INTEGER t;
-    QueryPerformanceCounter(&t);
-    return t.QuadPart;
+    return platform_perf_counter();
 }
 
 void perf_begin(int phase)
 {
-    QueryPerformanceCounter(&P.t0[phase]);
+    P.t0[phase] = now();
 }
 
 void perf_end(int phase)
 {
-    P.acc[phase] += now() - P.t0[phase].QuadPart;
+    P.acc[phase] += now() - P.t0[phase];
 }
 
 static int ms10_of(LONGLONG ticks)
 {
-    return (int)((double)ticks * 10000.0 / (double)P.freq.QuadPart);
+    return (int)((double)ticks * 10000.0 / (double)P.freq);
 }
 
 static void init(void)
 {
     char buf[MAX_PATH];
     P.inited = 1;
-    QueryPerformanceFrequency(&P.freq);
+    P.freq = platform_perf_frequency();
     if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
         P.shown = 1;
     P.lastScroll = GetKeyState(VK_SCROLL) & 1;
@@ -136,9 +135,9 @@ static void roll(LONGLONG t)
     unsigned f = P.frames ? P.frames : 1;
     int i, logic;
     for (i = 0; i < PERF_N; i++)
-        P.snap.ms10[i] = (int)((double)P.acc[i] * 10000.0 / (double)P.freq.QuadPart / (double)f);
+        P.snap.ms10[i] = (int)((double)P.acc[i] * 10000.0 / (double)P.freq / (double)f);
     P.snap.frameMax10 = ms10_of(P.frameMax);
-    P.snap.fps10 = span > 0 ? (int)((double)P.frames * 10.0 * (double)P.freq.QuadPart / (double)span) : 0;
+    P.snap.fps10 = span > 0 ? (int)((double)P.frames * 10.0 * (double)P.freq / (double)span) : 0;
     P.snap.frames = P.frames;
     P.snap.per = g_perf;
     logic = P.snap.ms10[PERF_FRAME] - P.snap.ms10[PERF_SCENE] - P.snap.ms10[PERF_DESTROY] - P.snap.ms10[PERF_ENDSCENE]
@@ -170,7 +169,7 @@ void perf_frame_end(struct Renderer *r)
     P.lastFrameEnd = t;
     if (!P.intervalStart)
         P.intervalStart = t;
-    else if (t - P.intervalStart >= (P.freq.QuadPart >> 1))
+    else if (t - P.intervalStart >= (P.freq >> 1))
         roll(t);
 }
 
