@@ -29,7 +29,7 @@ static int CALLBACK font_enum_match(const LOGFONTA *font, const TEXTMETRICA *met
     struct FontSearch *search = (struct FontSearch *)context;
     (void)metric;
     (void)type;
-    search->found = _stricmp(search->name, font->lfFaceName) == 0;
+    search->found = cstr_compare_nocase(search->name, font->lfFaceName) == 0;
     return !search->found;
 }
 

@@ -20,6 +20,7 @@
 #include "diag/perf.h"
 #include "session/session_party.h"
 #include "ui/character/character_std.h"
+#include "core/cstr.h"
 
 #define UI_MSG_CHANGE_NAME_CHAR 0x22
 #define MODE_MSG_GET_NEW_CHAR_NAME 0x271e
@@ -244,7 +245,7 @@ static void change_name_submit(struct UIChangeNameWnd *self)
     memcpy(self->char_copy.name, lower, CHAR_NAME_LEN);
     if (strstr(self->char_copy.name, "그라비티"))
         goto done;
-    _strlwr(lower);
+    cstr_lower(lower);
     if (strstr(lower, "gravity") || change_name_has_gm_tag(lower))
         goto done;
 

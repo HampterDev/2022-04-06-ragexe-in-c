@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "core/cstr.h"
 
 static struct {
     CRITICAL_SECTION lock;
@@ -72,7 +73,7 @@ void resource_error_report(const char *name, const char *path)
     if (!name || !path)
         return;
     extension = strrchr(path, '.');
-    if (extension && _stricmp(extension, ".ebm") == 0)
+    if (extension && cstr_compare_nocase(extension, ".ebm") == 0)
         return;
     EnterCriticalSection(&errors.lock);
     first = remember_path(path);

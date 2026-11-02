@@ -24,6 +24,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "world/camera.h"
 #include "platform/clock.h"
+#include "core/cstr.h"
 
 #define CZ_CONTACTNPC               0x90
 #define CZ_STATUS_CHANGE            0xbb
@@ -307,7 +308,7 @@ int game_mode_msg_create_item(const char *text)
 
     if (!text)
         return 0;
-    if (_stricmp(text, "divide by zero") == 0)
+    if (cstr_compare_nocase(text, "divide by zero") == 0)
         debug_divide_by_zero();
     memset(packet.text, 0, sizeof packet.text);
     packet.id = CZ_ITEM_CREATE_EX;

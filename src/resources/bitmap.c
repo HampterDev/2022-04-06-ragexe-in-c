@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "platform/clock.h"
+#include "core/cstr.h"
 
 struct BitmapRes *bitmap_resource_init(struct BitmapRes *self)
 {
@@ -51,10 +52,10 @@ BYTE bitmap_res_load_from_buffer(struct BitmapRes *self, const char *name,
     const char *ext;
     if (!self || !name || !data || size <= 0 || !(ext = strrchr(name, '.')))
         return 0;
-    if (!lstrcmpiA(ext, ".bmp")) return bitmap_res_load_bmp_data(self, data, size, need24);
-    if (!lstrcmpiA(ext, ".tga")) return bitmap_res_load_tga_data(self, data, size);
-    if (!lstrcmpiA(ext, ".jpg")) return bitmap_res_load_jpg_data(self, data, size);
-    if (!lstrcmpiA(ext, ".png")) return bitmap_res_load_png_data(self, data, size);
+    if (!cstr_compare_nocase(ext, ".bmp")) return bitmap_res_load_bmp_data(self, data, size, need24);
+    if (!cstr_compare_nocase(ext, ".tga")) return bitmap_res_load_tga_data(self, data, size);
+    if (!cstr_compare_nocase(ext, ".jpg")) return bitmap_res_load_jpg_data(self, data, size);
+    if (!cstr_compare_nocase(ext, ".png")) return bitmap_res_load_png_data(self, data, size);
     return 0;
 }
 

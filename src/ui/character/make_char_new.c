@@ -29,6 +29,7 @@
 #include "session/session_names.h"
 #include "session/session_party.h"
 #include "platform/clock.h"
+#include "core/cstr.h"
 
 #define MAKE_DIR UI_SKIN "make_character_ver2\\"
 
@@ -541,7 +542,7 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         memcpy(&g_loginCharInfo, &self->info, sizeof self->info);
         if (strstr(g_loginCharInfo.name, "그라비티"))
             return;
-        _strlwr(name);
+        cstr_lower(name);
         if (strstr(name, "gravity") || has_gm_tag(name))
             return;
         mode_send_message(client_current_mode(), LOGIN_REQ_MAKE, 0, 0, 0, 0);

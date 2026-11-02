@@ -3,6 +3,7 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 static char *node_text(struct XmlElement *node)
 {
@@ -30,7 +31,7 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
     snprintf(number, sizeof number, "%d", skillId);
     sprintf(skillKey, "_%s", number);
     strcpy(name, monsterName);
-    _strlwr(name);
+    cstr_lower(name);
     node = xml_find_child(node, text_decode(name));
     if (!node)
         return;

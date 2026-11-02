@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "core/cstr.h"
 
 static unsigned name_hash(const char *name)
 {
@@ -20,7 +21,7 @@ static unsigned name_hash(const char *name)
 void hash_set_string(struct Hash *self, const char *name)
 {
     strcpy(self->name, name);
-    _strlwr(self->name);
+    cstr_lower(self->name);
     self->hash = name_hash(self->name);
 }
 
@@ -63,7 +64,7 @@ static int is_header_only_ext(const char *name)
     const char *ext = strrchr(name, '.');
     unsigned i;
     if (!ext) return 0;
-    for (i = 0; i < 4; ++i) if (!_stricmp(ext, extensions[i])) return 1;
+    for (i = 0; i < 4; ++i) if (!cstr_compare_nocase(ext, extensions[i])) return 1;
     return 0;
 }
 

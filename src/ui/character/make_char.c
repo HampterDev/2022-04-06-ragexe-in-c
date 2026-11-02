@@ -26,6 +26,7 @@
 #include "diag/perf.h"
 #include "session/session_names.h"
 #include "session/session_party.h"
+#include "core/cstr.h"
 
 #define MAKE_CHAR_ID_LEFT 0xdb
 #define MAKE_CHAR_ID_RIGHT 0xda
@@ -469,7 +470,7 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     g_loginCharInfo = self->info;
     if (strstr(g_loginCharInfo.name, "그라비티"))
         return 0;
-    _strlwr(name);
+    cstr_lower(name);
     if (strstr(name, "gravity"))
         return 0;
     if (has_gm_tag(name))
