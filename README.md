@@ -204,6 +204,9 @@ Markup, links and wrapping:
 - Wrapping text into
   a box narrower than one character no longer loops forever. Every line takes at least one
   character.
+- A description line that starts with one character and a `[...]` group that just misses the
+  line no longer loops forever, and a step back before a group that does not fit moves one
+  character, not one byte, so it no longer splits a double-byte character.
 
 Data, time and leaks:
 

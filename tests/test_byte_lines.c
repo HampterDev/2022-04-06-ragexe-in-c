@@ -75,6 +75,12 @@ int main(void)
     text_wrap_bytes("bcabc한국[abcd]", &lines, 12, 0);
     assert(lines.size == 2); check(&lines, 0, "bcabc한"); check(&lines, 1, "국[abcd]");
     text_array_clear(&lines);
+    text_wrap_bytes("bb[bc", &lines, 2, 0);
+    assert(lines.size == 2); check(&lines, 0, "bb["); check(&lines, 1, "bc");
+    text_array_clear(&lines);
+    text_wrap_bytes("[ab]][]de", &lines, 3, 0);
+    assert(lines.size == 3); check(&lines, 0, "[ab]]"); check(&lines, 1, "[]d"); check(&lines, 2, "e");
+    text_array_clear(&lines);
     roundtrip("a[b]", 4, 1); roundtrip("가[ab]", 5, 1); roundtrip("ab[broken", 4, 1);
     for (i = 0; i < 1000; ++i) {
         char text[256] = "";
