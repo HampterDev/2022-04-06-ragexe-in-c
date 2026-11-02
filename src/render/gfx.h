@@ -214,6 +214,7 @@ int gfx_ddraw_enumerate(BOOL (WINAPI *callback)(GUID *, LPSTR, LPSTR, LPVOID, HM
 unsigned gfx_content_version(gfx_surface *s);
 
 int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int fullscreen);
+int gfx_can_set_mode_live(const GUID *adapter);
 HMONITOR gfx_adapter_monitor(const GUID *adapter);
 
 int stale_guid(void);

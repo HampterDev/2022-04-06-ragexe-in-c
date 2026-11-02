@@ -1291,6 +1291,15 @@ static int same_gpu(UINT a, UINT b)
     return ia.VendorId == ib.VendorId && ia.DeviceId == ib.DeviceId;
 }
 
+int gfx_can_set_mode_live(const GUID *adapter)
+{
+    UINT ordinal;
+    if (!d9.d3d || !d9.dev)
+        return 0;
+    ordinal = adapter ? adapter_ordinal(adapter) : d9.adapter;
+    return ordinal == d9.adapter || same_gpu(d9.adapter, ordinal);
+}
+
 static int copy_surface(IDirect3DSurface9 *dst, IDirect3DSurface9 *src)
 {
     D3DLOCKED_RECT dl, sl;
