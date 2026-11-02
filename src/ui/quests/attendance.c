@@ -135,7 +135,7 @@ void ui_check_attendance_wnd_on_create(struct UIWindow *window, int width_unused
     struct UIWindow *wnd = &self->frame.base;
     int date = g_attendanceTable->end_date;
     struct tm end;
-    __time32_t now, left;
+    int32_t now, left;
     struct UIBmpTextButton *close;
 
     end.tm_sec = 0;
@@ -144,10 +144,10 @@ void ui_check_attendance_wnd_on_create(struct UIWindow *window, int width_unused
     end.tm_mday = date % 100;
     end.tm_mon = date % 10000 / 100 - 1;
     end.tm_year = date / 10000 - 1900;
-    _time32(&now);
-    left = _mktime32(&end) - now;
+    now = platform_time_now();
+    left = platform_time_make(&end) - now;
     if (left > 0)
-        self->days_left = _localtime32(&left)->tm_yday;
+        self->days_left = platform_time_local(left)->tm_yday;
     else
         self->days_left = 0;
 

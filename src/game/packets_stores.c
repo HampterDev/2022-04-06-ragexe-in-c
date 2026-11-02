@@ -5,13 +5,13 @@
 #include "game/context.h"
 #include "platform/win_types.h"
 #include <string.h>
-#include <time.h>
 #include "game/packets.h"
 #include "game/store_entries.h"
 #include "core/text_util.h"
 #include "game/store_search_items.h"
 #include "session/session_items.h"
 #include "ui/shops/merchant_shop_make.h"
+#include "platform/clock.h"
 
 #define WND_BUYING_STORE_OPEN   0xae
 #define MM_STORE_REFUSED        0x51
@@ -63,7 +63,7 @@ void game_mode_zc_update_item_from_buying_store(struct GameMode *self, const uns
 {
     const struct PACKET_ZC_UPDATE_ITEM_FROM_BUYING_STORE *packet =
         (const struct PACKET_ZC_UPDATE_ITEM_FROM_BUYING_STORE *)pkt;
-    int now = (int)_time32(NULL);
+    int now = platform_time_now();
 
     (void)self;
     game_mode_buying_store_bought(now, packet->item_id, packet->count, packet->zeny, 0, 0);
@@ -521,7 +521,7 @@ SIZE_ASSERT(PACKET_ZC_DELETEITEM_FROM_MCSTORE, 6);
 void game_mode_zc_delete_item_from_mc_store(const unsigned char *pkt)
 {
     const struct PACKET_ZC_DELETEITEM_FROM_MCSTORE *packet = (const struct PACKET_ZC_DELETEITEM_FROM_MCSTORE *)pkt;
-    int now = (int)_time32(NULL);
+    int now = platform_time_now();
 
     game_mode_shop_item_sold(now, packet->index, packet->amount, 0, 0);
 }

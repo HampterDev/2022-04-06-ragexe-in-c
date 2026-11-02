@@ -57,14 +57,14 @@ void res_mgr_purge_stale(struct ResMgr *unused) { (void)unused; abort(); }
 void *res_mgr_get(struct ResMgr *self, const char *name)
 {
     assert(self == &manager && loads < 8192);
-    cache_section_enter(&manager.lock, -1, -1);
+    cache_section_enter(manager.lock, -1, -1);
     strcpy(loaded_names[loads++], name);
     if (resource_delay) Sleep(1);
     if (recurse) {
         recurse = 0;
         assert(texture_cache_get(recursive_cache, name, 0, 1) != &g_whiteTexture);
     }
-    cache_section_leave(&manager.lock);
+    cache_section_leave(manager.lock);
     return missing_bitmap ? NULL : &bitmap;
 }
 void res_mgr_release(struct ResMgr *self, struct Res *res)
@@ -236,12 +236,12 @@ static void parallel_lookup(void)
 int main(void)
 {
     struct TexCache final_cache = {0};
-    InitializeCriticalSection(&manager.lock);
+    manager.lock = platform_mutex_create();
     bitmap.width = bitmap.height = 16; bitmap.pixels = pixels; pixels[0] = 7;
     ownership_and_failures(); lookup_reload_and_recursion(); time_and_missing_textures();
     parallel_lookup(); assert(!write_depth && cache_stat[S_TEX_PURGES] == purges);
     assert(texture_cache_get(&final_cache, "shutdown.bmp", 0, 1) != &g_whiteTexture);
-    DeleteCriticalSection(&manager.lock); manager_live = 0;
+    platform_mutex_destroy(manager.lock); manager_live = 0;
     tex_cache_destruct(&final_cache); tex_cache_destruct(&final_cache);
     assert(!outstanding && !live_textures && !live_handles);
     puts("Texture cache: C ownership, guarded allocation failures, stable textures, ordered reload, names, recursive loads, wraparound eviction and shutdown passed.");

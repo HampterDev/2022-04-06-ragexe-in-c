@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "game/packets_rodex.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
@@ -12,6 +11,7 @@
 #include "session/session_party.h"
 #include "ui/mail/rodex_compose.h"
 #include "ui/mail/rodex_ui.h"
+#include "platform/clock.h"
 
 struct Rodex *g_rodex;
 
@@ -205,7 +205,7 @@ void game_mode_zc_ack_all_rodex_list(struct GameMode *self, const struct PACKET_
         mail.type = e->type;
         set_sender(&mail, e->sender);
         check_sender(&mail, e->open_type);
-        mail.expire_time = e->expire_seconds + _time32(0);
+        mail.expire_time = e->expire_seconds + platform_time_now();
         string_assign(&mail.title, e->title, (size_t)(int)e->title_length);
         if (!tree_find(map, &e->mail_id, mail_id_greater) && !mail.is_read)
             g_rodex->unread++;
@@ -242,7 +242,7 @@ void game_mode_zc_ack_rodex_list(struct GameMode *self, const struct PACKET_ZC_A
             mail_init(&mail);
             mail.is_read = e->is_read;
             mail.type = e->type;
-            mail.expire_time = e->expire_seconds + _time32(0);
+            mail.expire_time = e->expire_seconds + platform_time_now();
             set_sender(&mail, e->sender);
             check_sender(&mail, packet->open_type);
             string_replace(&mail.title, mail.title.size, 0, e->title, e->title_length);

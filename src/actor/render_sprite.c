@@ -9,6 +9,7 @@
 #include "actor/sprite_render.h"
 #include "session/session_names.h"
 #include "session/session_state.h"
+#include "platform/clock.h"
 
 struct Effect;
 
@@ -32,11 +33,11 @@ void render_object_render_sprite(struct RenderObject *self, const float *matrix,
     unsigned char drew;
 
     if (g_session1.ownIllusion == 1 && look == 1) {
-        SYSTEMTIME now;
+        struct PlatformDateTime now;
         int job;
 
-        GetLocalTime(&now);
-        switch (now.wDay % 3) {
+        platform_date_time_local(&now);
+        switch (now.day % 3) {
         case 0: job = 0x520; break;
         case 1: job = 0x56d; break;
         default: job = 0x4f8; break;

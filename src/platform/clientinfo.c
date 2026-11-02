@@ -11,6 +11,7 @@ unsigned char g_startupSecondMod4;
 #include <stdlib.h>
 #include <string.h>
 #include "platform/clientinfo.h"
+#include "platform/clock.h"
 
 const char *g_serverAddress = "";
 const char *g_serverPort = "";
@@ -84,7 +85,7 @@ struct XmlElement *get_client_info(void)
 void clientinfo_load(const char *xml_name)
 {
     struct File file;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
 
     file_construct(&file);
     if (file_open(&file, xml_name, 0, 1, 0)) {
@@ -102,8 +103,8 @@ void clientinfo_load(const char *xml_name)
         g_showNameB = 0;
         g_nameFontHeight = 0xc;
     }
-    GetLocalTime(&now);
-    g_startupSecondMod4 = (BYTE)now.wSecond & 3;
+    platform_date_time_local(&now);
+    g_startupSecondMod4 = (BYTE)now.second & 3;
     g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
     g_windowClassName = "Ragnarok";
     file_destruct(&file);

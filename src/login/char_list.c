@@ -5,10 +5,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-#include <time.h>
-#include <winsock2.h>
+#include "platform/net.h"
 #include "session/session_names.h"
 #include "core/memory.h"
+#include "platform/clock.h"
 
 struct CharInfo g_loginCharInfo;
 
@@ -55,9 +55,9 @@ static void list_error_box(const char *text)
 
 static void billing_swap(struct LoginMode *self)
 {
-    self->billing.value1 = ntohl(self->billing.value1);
-    self->billing.value5 = ntohl(self->billing.value5);
-    self->billing.value9 = ntohl(self->billing.value9);
+    self->billing.value1 = platform_net_to_host32(self->billing.value1);
+    self->billing.value5 = platform_net_to_host32(self->billing.value5);
+    self->billing.value9 = platform_net_to_host32(self->billing.value9);
 }
 
 static void map_display_name(char *mapName)
@@ -164,7 +164,7 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
     const struct PACKET_HC_ACCEPT_ENTER_NEO_UNION_LIST *packet =
         (const struct PACKET_HC_ACCEPT_ENTER_NEO_UNION_LIST *)pkt;
     char text[256];
-    __time32_t now;
+    int32_t now;
     unsigned body = (unsigned)(packet->packet_length - 4);
     int count = body / sizeof(struct CharInfo);
     int base, i;
@@ -185,7 +185,7 @@ void login_mode_on_char_list_page(struct LoginMode *self, const BYTE *pkt)
     }
     mem_copy_checked(&self->chars[base], sizeof self->chars - base * sizeof(struct CharInfo),
                        packet->chars, count * sizeof(struct CharInfo));
-    _time32(&now);
+    now = platform_time_now();
     for (i = 0; i < count; i++) {
         struct CharInfo *c = &self->chars[self->chars_received + i];
         if (c->sex == 0x63)

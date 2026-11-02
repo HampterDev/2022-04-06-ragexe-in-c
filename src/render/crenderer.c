@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "ui/render/graphic_setting.h"
+#include "platform/clock.h"
 
 DWORD g_renderCheckpointLine = 0;
 const char *g_renderCheckpointFile = "";
@@ -682,8 +683,8 @@ void renderer_flip(struct Renderer *self, char vsync)
 {
     int hr;
     self->frame++;
-    if ((float)(unsigned)(GetTickCount() - self->fpsTick) >= 1000.0f) {
-        self->fpsTick = GetTickCount();
+    if ((float)(unsigned)(platform_coarse_ticks_ms() - self->fpsTick) >= 1000.0f) {
+        self->fpsTick = platform_coarse_ticks_ms();
         self->fps = self->fpsCount;
         self->fpsCount = 0;
     } else {

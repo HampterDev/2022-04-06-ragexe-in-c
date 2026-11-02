@@ -2,10 +2,7 @@
 #define WORLD_MODELS_H
 
 #include <stddef.h>
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include "platform/win_types.h"
+#include <stdint.h>
 
 struct World;
 struct C3dActor;
@@ -19,7 +16,7 @@ struct WorldLighting {
 struct WorldModels {
     struct C3dActor **data;
     size_t count, capacity, inserted;
-    volatile LONG pending;
+    volatile int32_t pending;
 };
 
 int world_models_prepare(struct World *world, size_t maximum,

@@ -80,7 +80,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
 
     if (!name)
         return NULL;
-    EnterCriticalSection(&self->lock);
+    platform_mutex_lock(self->lock);
     if (!resource_normalize_name(lowered, sizeof lowered, name)) {
         res = NULL;
         goto leave;
@@ -125,12 +125,12 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
     }
 
     resource_destroy(res);
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     resource_error_report(name, path);
     return NULL;
 
 leave:
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     return res;
 }
 
@@ -144,7 +144,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
 
     if (!name)
         return NULL;
-    EnterCriticalSection(&self->lock);
+    platform_mutex_lock(self->lock);
     g_perf.resGets++;
     len = strlen(name);
     if (len <= KEY_MAXLEN && keys_on()) {
@@ -157,7 +157,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
             res->lastUse = platform_ticks_ms();
             e->tick = ++key_tick;
             g_perf.resHits++;
-            LeaveCriticalSection(&self->lock);
+            platform_mutex_unlock(self->lock);
             return res;
         }
     }
@@ -176,7 +176,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
         memcpy(e->key, pend.key, strlen(pend.key) + 1);
     }
     pend = save;
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     return res;
 }
 

@@ -11,6 +11,7 @@
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "ui/quests/tag_text_viewer.h"
+#include "platform/clock.h"
 
 struct UISayDialogWnd;
 struct UIWindow;
@@ -233,7 +234,7 @@ int ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
     case UI_MSG_COMMAND:
 
         if (val1 == SAY_ID_NEXT) {
-            DWORD now = GetTickCount();
+            DWORD now = platform_coarse_ticks_ms();
 
             if (now - g_session1.npcDialogTick < SAY_NEXT_GAP_MS)
                 return 0;

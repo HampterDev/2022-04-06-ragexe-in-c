@@ -17,6 +17,7 @@
 #include "ui/social/party_board.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define WND_BOOKING             0xa4
 #define WND_BOOKING_REGISTER    0xa8
@@ -76,7 +77,7 @@ void game_mode_zc_party_booking_ack_register(const unsigned char *pkt)
         message_box(result == 2 ? 0x795 : 0x722);
         return;
     }
-    g_session1.partyBooking.answer_tick = (int)GetTickCount();
+    g_session1.partyBooking.answer_tick = (int)platform_coarse_ticks_ms();
     ui_window_open(WND_BOOKING);
     booking = ui_window_find(WND_BOOKING);
     if (!booking)

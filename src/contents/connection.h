@@ -5,9 +5,8 @@
 
 #include "std/tree.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
 #include "platform/win_types.h"
+#include "platform/net.h"
 #include "base.h"
 
 #include "contents/byte_queue.h"
@@ -15,8 +14,7 @@
 #define CONNECTION_QUEUE_SIZE 0xa000
 
 struct Connection {
-    SOCKET socket;
-    struct sockaddr_in addr;
+    struct PlatformSocket *socket;
     char hold_sends;
     DWORD send_after;
     int failed;

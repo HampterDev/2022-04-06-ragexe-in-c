@@ -4,7 +4,7 @@
 #include "platform/client_options.h"
 #include "platform/miles_api.h"
 #include "render/math3d.h"
-#include <process.h>
+#include "platform/thread.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,9 +13,9 @@
 #define FADE_STEP_MS 10
 
 struct SoundManager {
-    CRITICAL_SECTION stream_lock;
-    HANDLE fade_thread;
-    HANDLE fade_cancel;
+    struct PlatformMutex *stream_lock;
+    struct PlatformThread *fade_thread;
+    struct PlatformEvent *fade_cancel;
     int fade_in;
     int miles_started;
     void *driver;
@@ -92,31 +92,29 @@ static void set_bgm_volume(struct SoundManager *mgr, int volume)
         _AIL_set_stream_volume(mgr->stream, mgr->bgm_volume);
 }
 
-static unsigned __stdcall sound_fade_thread(void *context)
+static void sound_fade_thread(void *context)
 {
     struct SoundManager *mgr = context;
     int step;
     for (step = 0; step < FADE_STEPS; ++step) {
         int done;
-        if (WaitForSingleObject(mgr->fade_cancel, 0) == WAIT_OBJECT_0)
+        if (platform_event_wait(mgr->fade_cancel, 0))
             break;
-        EnterCriticalSection(&mgr->stream_lock);
+        platform_mutex_lock(mgr->stream_lock);
         done = mgr->fade_in ? mgr->bgm_volume >= mgr->bgm_fade_target : mgr->bgm_volume <= 0;
         if (!done)
             set_bgm_volume(mgr, mgr->bgm_volume + (mgr->fade_in ? 1 : -1));
-        LeaveCriticalSection(&mgr->stream_lock);
-        if (done || WaitForSingleObject(mgr->fade_cancel, FADE_STEP_MS) == WAIT_OBJECT_0)
+        platform_mutex_unlock(mgr->stream_lock);
+        if (done || platform_event_wait(mgr->fade_cancel, FADE_STEP_MS))
             break;
     }
-    return 0;
 }
 
 static void stop_fade(struct SoundManager *mgr)
 {
     if (mgr->fade_thread) {
-        SetEvent(mgr->fade_cancel);
-        WaitForSingleObject(mgr->fade_thread, INFINITE);
-        CloseHandle(mgr->fade_thread);
+        platform_event_set(mgr->fade_cancel);
+        platform_thread_join(mgr->fade_thread);
         mgr->fade_thread = NULL;
     }
 }
@@ -127,9 +125,9 @@ static void start_fade(int fade_in)
     if (!mgr)
         return;
     stop_fade(mgr);
-    ResetEvent(mgr->fade_cancel);
+    platform_event_reset(mgr->fade_cancel);
     mgr->fade_in = fade_in;
-    mgr->fade_thread = (HANDLE)_beginthreadex(NULL, 0, sound_fade_thread, mgr, 0, NULL);
+    mgr->fade_thread = platform_thread_create(sound_fade_thread, mgr);
 }
 
 static void destroy_manager(struct SoundManager *mgr)
@@ -152,8 +150,8 @@ static void destroy_manager(struct SoundManager *mgr)
     if (mgr->miles_started)
         _AIL_shutdown();
     if (mgr->fade_cancel)
-        CloseHandle(mgr->fade_cancel);
-    DeleteCriticalSection(&mgr->stream_lock);
+        platform_event_destroy(mgr->fade_cancel);
+    platform_mutex_destroy(mgr->stream_lock);
     free(mgr->bgm_name);
     free(mgr);
 }
@@ -210,8 +208,8 @@ int sound_mgr_create(void)
     mgr = calloc(1, sizeof *mgr);
     if (!mgr)
         return 0;
-    InitializeCriticalSection(&mgr->stream_lock);
-    mgr->fade_cancel = CreateEventW(NULL, TRUE, FALSE, NULL);
+    mgr->stream_lock = platform_mutex_create();
+    mgr->fade_cancel = platform_event_create();
     mgr->bgm_fade_target = mgr->bgm_volume = 100;
     mgr->effect_volume = mgr->effect_volume_3d = 100;
     if (!mgr->fade_cancel || !open_manager(mgr)) {
@@ -244,9 +242,9 @@ void sound_play_stream(const char *name, int loop_count)
     struct SoundManager *mgr = sound_manager;
     if (!mgr || !g_soundMode)
         return;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     play_stream(mgr, name ? name : mgr->bgm_name, loop_count);
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
 }
 
 void sound_play_bgm(const char *name)
@@ -260,14 +258,14 @@ void sound_play_bgm(const char *name)
         if (!copy)
             return;
     }
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     free(mgr->bgm_name);
     mgr->bgm_name = copy;
     if (!copy)
         close_stream(mgr);
     else if (g_sound_settings.bgm_on && g_soundMode)
         play_stream(mgr, copy, 0);
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
     sound_set_room_type(0);
 }
 
@@ -276,9 +274,9 @@ void sound_stop_stream(void)
     struct SoundManager *mgr = sound_manager;
     if (!mgr)
         return;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     close_stream(mgr);
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
 }
 
 int sound_stream_playing(void)
@@ -287,9 +285,9 @@ int sound_stream_playing(void)
     int playing;
     if (!mgr || !g_soundMode)
         return 0;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     playing = mgr->stream && _AIL_stream_status(mgr->stream) == MSS_STREAM_PLAYING;
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
     return playing;
 }
 
@@ -389,9 +387,9 @@ int sound_bgm_volume(void)
     int volume;
     if (!mgr)
         return 0;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     volume = mgr->bgm_volume;
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
     return volume;
 }
 
@@ -410,9 +408,9 @@ void sound_set_bgm_volume(int volume)
     struct SoundManager *mgr = sound_manager;
     if (!mgr)
         return;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     set_bgm_volume(mgr, volume);
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
 }
 
 void sound_set_bgm_fade_target(int volume)
@@ -420,9 +418,9 @@ void sound_set_bgm_fade_target(int volume)
     struct SoundManager *mgr = sound_manager;
     if (!mgr)
         return;
-    EnterCriticalSection(&mgr->stream_lock);
+    platform_mutex_lock(mgr->stream_lock);
     mgr->bgm_fade_target = clamp_volume(volume);
-    LeaveCriticalSection(&mgr->stream_lock);
+    platform_mutex_unlock(mgr->stream_lock);
 }
 
 void sound_set_effect_volume(int volume)

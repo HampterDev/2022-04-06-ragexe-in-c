@@ -1,12 +1,13 @@
 #include "fileio/resource_errors.h"
 #include "ui/window_mgr.h"
+#include "platform/thread.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/cstr.h"
 
 static struct {
-    CRITICAL_SECTION lock;
+    struct PlatformMutex *lock;
     char **paths;
     size_t count, capacity;
 } errors;
@@ -14,7 +15,7 @@ static struct {
 void resource_errors_init(void)
 {
     memset(&errors, 0, sizeof errors);
-    InitializeCriticalSection(&errors.lock);
+    errors.lock = platform_mutex_create();
 }
 
 void resource_errors_destroy(void)
@@ -23,7 +24,7 @@ void resource_errors_destroy(void)
     for (i = 0; i < errors.count; ++i)
         free(errors.paths[i]);
     free(errors.paths);
-    DeleteCriticalSection(&errors.lock);
+    platform_mutex_destroy(errors.lock);
     memset(&errors, 0, sizeof errors);
 }
 
@@ -75,9 +76,9 @@ void resource_error_report(const char *name, const char *path)
     extension = strrchr(path, '.');
     if (extension && cstr_compare_nocase(extension, ".ebm") == 0)
         return;
-    EnterCriticalSection(&errors.lock);
+    platform_mutex_lock(errors.lock);
     first = remember_path(path);
-    LeaveCriticalSection(&errors.lock);
+    platform_mutex_unlock(errors.lock);
     if (first) {
         ui_chat_line("Resource File Loading fail", 0xff);
         ui_chat_line(name, 0xff);

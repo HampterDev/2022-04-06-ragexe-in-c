@@ -78,9 +78,9 @@ BYTE res_mgr_is_available(struct ResMgr *self, const char *name)
 {
     BYTE found;
 
-    cache_section_enter(&self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
+    cache_section_enter(self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
     found = name ? is_available(self, name) : 0;
-    cache_section_leave(&self->lock);
+    cache_section_leave(self->lock);
     return found;
 }
 
@@ -89,10 +89,10 @@ BYTE res_mgr_exists(struct ResMgr *self, struct String name)
     const char *text = string_cstr(&name);
     BYTE found;
 
-    cache_section_enter(&self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
+    cache_section_enter(self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
     found = text ? is_available(self, text) : 0;
     string_free(&name);
-    cache_section_leave(&self->lock);
+    cache_section_leave(self->lock);
     return found;
 }
 
@@ -168,7 +168,7 @@ void res_mgr_release(struct ResMgr *self, struct Res *res)
     size_t index;
     if (!res)
         return;
-    cache_section_enter(&self->lock, CACHE_S_RELEASES, CACHE_S_CONTENDED);
+    cache_section_enter(self->lock, CACHE_S_RELEASES, CACHE_S_CONTENDED);
     resource_list_remove(&self->resident, res);
     if (res->typeIndex >= 0 && res->typeIndex < RESOURCE_TYPE_COUNT) {
         cache = &self->resources[res->typeIndex];
@@ -180,9 +180,9 @@ void res_mgr_release(struct ResMgr *self, struct Res *res)
         delete_resource(cache_take(cache, index));
     }
     else {
-        InterlockedIncrement((LONG *)&cache_stat[CACHE_S_SKIPPED]);
+        platform_atomic_increment((volatile int32_t *)&cache_stat[CACHE_S_SKIPPED]);
     }
-    cache_section_leave(&self->lock);
+    cache_section_leave(self->lock);
 }
 
 void res_mgr_purge_stale(struct ResMgr *self)
@@ -205,7 +205,7 @@ void res_mgr_purge_stale(struct ResMgr *self)
 void res_mgr_purge_by_extension(struct ResMgr *self, const char *ext)
 {
     int type;
-    cache_section_enter(&self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
+    cache_section_enter(self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
     type = res_mgr_get_type_index(ext);
     if (type >= 0) {
         struct ResourceList *cache = &self->resources[type];
@@ -213,20 +213,20 @@ void res_mgr_purge_by_extension(struct ResMgr *self, const char *ext)
         while (i < cache->count)
             i = cache->items[i]->lockCount == 0 ? purge_resource(self, cache, i) : i + 1;
     }
-    cache_section_leave(&self->lock);
+    cache_section_leave(self->lock);
 }
 
 void res_mgr_purge_unlocked(struct ResMgr *self)
 {
     int type;
-    cache_section_enter(&self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
+    cache_section_enter(self->lock, CACHE_S_LOOKUP_CALLS, CACHE_S_LOOKUP_CONTENDED);
     for (type = 0; type < RESOURCE_TYPE_COUNT; ++type) {
         struct ResourceList *cache = &self->resources[type];
         size_t i = 0;
         while (i < cache->count)
             i = cache->items[i]->lockCount == 0 ? purge_resource(self, cache, i) : i + 1;
     }
-    cache_section_leave(&self->lock);
+    cache_section_leave(self->lock);
 }
 
 struct ResMgr *res_mgr_construct(struct ResMgr *self)
@@ -234,7 +234,7 @@ struct ResMgr *res_mgr_construct(struct ResMgr *self)
     memset(self->resources, 0, sizeof self->resources);
     memset(&self->aliases, 0, sizeof self->aliases);
     memset(&self->resident, 0, sizeof self->resident);
-    InitializeCriticalSection(&self->lock);
+    self->lock = platform_mutex_create();
     return self;
 }
 
@@ -242,7 +242,7 @@ void res_mgr_destruct(struct ResMgr *self)
 {
     int type;
     res_mgr_delete_all(self);
-    DeleteCriticalSection(&self->lock);
+    platform_mutex_destroy(self->lock);
     resource_list_release(&self->resident);
     resource_alias_release(&self->aliases);
     for (type = 0; type < RESOURCE_TYPE_COUNT; ++type)

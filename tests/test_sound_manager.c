@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "fileio/res_mgr.h"
+#include "platform/thread.h"
 #include <process.h>
 #include <assert.h>
 #include <math.h>
@@ -55,14 +56,13 @@ static int register_cleanup(void (*function)(void))
     ++registrations;
     return 0;
 }
-static HANDLE WINAPI create_event(LPSECURITY_ATTRIBUTES attributes, BOOL manual, BOOL state, LPCWSTR name)
+static struct PlatformEvent *create_event(void)
 {
-    return event_failure ? NULL : CreateEventW(attributes, manual, state, name);
+    return event_failure ? NULL : platform_event_create();
 }
-static uintptr_t begin_thread(void *security, unsigned size, unsigned (__stdcall *entry)(void *),
-                              void *argument, unsigned flags, unsigned *id)
+static struct PlatformThread *begin_thread(void (*entry)(void *context), void *context)
 {
-    return thread_failure ? 0 : _beginthreadex(security, size, entry, argument, flags, id);
+    return thread_failure ? NULL : platform_thread_create(entry, context);
 }
 
 #define MSS_IMPORT
@@ -70,15 +70,15 @@ static uintptr_t begin_thread(void *security, unsigned size, unsigned (__stdcall
 #define calloc guard_calloc
 #define free guard_free
 #define atexit register_cleanup
-#define CreateEventW create_event
-#define _beginthreadex begin_thread
+#define platform_event_create create_event
+#define platform_thread_create begin_thread
 #include "../src/contents/sound.c"
 #undef malloc
 #undef calloc
 #undef free
 #undef atexit
-#undef CreateEventW
-#undef _beginthreadex
+#undef platform_event_create
+#undef platform_thread_create
 
 uint32_t g_soundMode;
 static int started, driver_open, provider_open, listener_open, stream_open;

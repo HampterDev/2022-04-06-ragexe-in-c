@@ -13,6 +13,7 @@
 #include "ui/items/styling_shop.h"
 #include "ui/ui_std.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PackageItemTestEntry {
@@ -36,7 +37,7 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     const char *package_name;
     char path[0x800];
     struct ItemInfo item;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     FILE *f;
     const struct PackageItemTestEntry *entry = packet->records;
     int n = 0, records, total, written;
@@ -49,15 +50,15 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     if (!client_path(path, sizeof path, "PackageItemTest")) goto done;
     if (!platform_path_exists(path) && platform_directory_create(path))
         goto done;
-    GetLocalTime(&now);
-    if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d).txt", package_name, now.wYear, now.wMonth,
-                     now.wDay))
+    platform_date_time_local(&now);
+    if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d).txt", package_name, now.year, now.month,
+                     now.day))
         goto done;
     if (platform_path_exists(path)) {
         do {
             n++;
-            if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d)_%d.txt", package_name, now.wYear,
-                             now.wMonth, now.wDay, n))
+            if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d)_%d.txt", package_name, now.year,
+                             now.month, now.day, n))
                 goto done;
         } while (platform_path_exists(path));
     }
@@ -306,7 +307,7 @@ void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *
     char folder[0x800], path[0x800];
     int written, ok;
     const char *box_name, *item_name;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     unsigned n;
     int total = 0;
 
@@ -329,13 +330,13 @@ void game_mode_zc_ddukddak_box_test(struct GameMode *self, const unsigned char *
     item_info_construct(&box);
     item_info_set_item_id(&box, packet->box_item_id);
     box_name = item_info_get_name(&box);
-    GetLocalTime(&now);
+    platform_date_time_local(&now);
     if (!client_path(folder, sizeof folder, "DdukddakBoxTest"))
         goto cleanup;
     if (platform_directory_create(folder) != 0 && errno != EEXIST)
         goto cleanup;
     if (!client_path(path, sizeof path, "DdukddakBoxTest\\%d%02d%02d_(%s).txt",
-                     now.wYear, now.wMonth, now.wDay, box_name))
+                     now.year, now.month, now.day, box_name))
         goto cleanup;
     file = file_open_unique(path);
     if (!file)

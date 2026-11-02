@@ -8,6 +8,7 @@
 #include "resources/animation.h"
 #include "iteminfo/item_api.h"
 #include "platform/win_types.h"
+#include "platform/thread.h"
 #include "actor/render_object.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -103,7 +104,7 @@ char *game_mode_short_name(struct String name)
         atexit(name_buffers_atexit);
         once_complete(&g_shortNameBuffersGuard);
     }
-    thread = (int)GetCurrentThread();
+    thread = (int)platform_thread_id();
     buffer = tree_get(&g_shortNameBuffers, &thread, sizeof thread, sizeof *buffer, tree_less_int);
     buf = buffer->text;
     text = string_cstr(&name);

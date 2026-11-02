@@ -27,6 +27,7 @@
 #include "ui/character/gauge_internal.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 struct UIWindow;
 const struct UIWindowOps ui_frame_wnd_ops = {
@@ -645,7 +646,6 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     char cell[0x18] = { 0 };
     char level[12] = { 0 };
     int len;
-    __time32_t expires;
 
     ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\homuninfo_bg.bmp"), 0);
     memset(title, 0, sizeof title);
@@ -677,8 +677,7 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     mer_number(wnd, 0xda, 0x46, text, len);
     len = sprintf(text, "%d / %d", g_session1.mercSp, g_session1.mercMaxSp);
     mer_number(wnd, 0xda, 0x55, text, len);
-    expires = g_session1.merc_contract_stats[4];
-    strftime(text, 0x80, msg_str(MSG_MER_EXPIRE_FORMAT), _localtime32(&expires));
+    strftime(text, 0x80, msg_str(MSG_MER_EXPIRE_FORMAT), platform_time_local(g_session1.merc_contract_stats[4]));
     ui_window_text_out(wnd, 0x9b, 0x6f, text, strlen(text), 0, 0xc, 0xff, 0, 0);
     len = sprintf(text, "%d", g_session1.merc_contract_stats[0]);
     mer_number(wnd, 0xaa, 0x85, text, len);

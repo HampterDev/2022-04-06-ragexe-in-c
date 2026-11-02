@@ -16,6 +16,7 @@
 #include "diag/perf.h"
 #include "session/session_names.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 static int g_npcMenuCount = 0;
 
@@ -317,7 +318,7 @@ int ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
     case UI_MSG_COMMAND:
 
         if (val1 == NPC_MENU_OK_ID) {
-            DWORD now = GetTickCount();
+            DWORD now = platform_coarse_ticks_ms();
 
             if (now - g_session1.npcDialogTick < NPC_MENU_OK_DELAY_MS)
                 return 0;

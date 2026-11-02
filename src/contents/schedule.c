@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include <time.h>
 #include <stdint.h>
 #include "contents/schedule_storage.h"
+#include "platform/clock.h"
 
 struct TimeScheduler *g_timeScheduler;
 
@@ -95,13 +95,13 @@ struct Schedule *time_scheduler_find(struct TimeScheduler *self, int id)
 struct Schedule *time_scheduler_add(struct TimeScheduler *self, struct Schedule *job)
 {
     struct ScheduleNode *node;
-    __time32_t now;
+    int32_t now;
     if (!self || !job || self->clearing || self->clear_requested || self->count == (size_t)-1) return NULL;
     for (node = self->first; node; node = node->next)
         if (node->job == job) return NULL;
     node = malloc(sizeof *node);
     if (!node) return NULL;
-    _time32(&now);
+    now = platform_time_now();
     job->last_run = now;
     node->job = job;
     node->next = NULL;

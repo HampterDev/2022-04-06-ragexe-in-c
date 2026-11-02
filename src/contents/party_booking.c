@@ -11,6 +11,7 @@
 #include <string.h>
 #include <time.h>
 #include "core/msg_str.h"
+#include "platform/clock.h"
 
 #define PARTY_BOOKING_WINDOW 0xa9
 #define MSG_PARTY_BOOKING_NEW 0x6d9
@@ -102,7 +103,6 @@ int party_booking_make_row(struct PartyBooking *self, struct PartySearchRow *out
     const struct PartySearchMaps *maps;
     const struct PartySearchMap *map;
     const struct tm *posted;
-    __time32_t timestamp = post.posted_at;
     int region = post.map >> 8, level_top = post.level + LEVEL_SPAN;
     size_t name_index = region ? (size_t)(region - 1) : 0;
     size_t leader_size = 0;
@@ -114,7 +114,7 @@ int party_booking_make_row(struct PartyBooking *self, struct PartySearchRow *out
     map = party_search_map_at(maps, post.map & 0xff);
     if (!map)
         return 0;
-    posted = _localtime32(&timestamp);
+    posted = platform_time_local(post.posted_at);
     if (!posted)
         return 0;
     sprintf(text, " %02d : %02d ", posted->tm_hour, posted->tm_min);

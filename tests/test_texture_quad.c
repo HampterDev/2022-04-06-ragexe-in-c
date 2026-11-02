@@ -3,6 +3,7 @@
 #include "session/state.h"
 #include "render/screen_prim.h"
 #include "render/math3d.h"
+#include "platform/clock.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@ static struct Texture texture;
 static struct TexDrawPrim primitive;
 static int allocations, submissions, projections, fail_allocation;
 static float expected_rhw;
-static SYSTEMTIME test_time;
+static struct PlatformDateTime test_time;
 static int texture_queries, missing_texture;
 struct TexCache g_textureCache;
 BYTE g_gradeBadgeState;
@@ -36,10 +37,10 @@ void screen_sprite_frame(struct Renderer *renderer, int x, int y, struct ActRes 
     assert(0);
 }
 
-static void test_local_time(SYSTEMTIME *time) { *time = test_time; }
-#define GetLocalTime test_local_time
+static void test_local_time(struct PlatformDateTime *time) { *time = test_time; }
+#define platform_date_time_local test_local_time
 #include "../src/render/rp_hud.c"
-#undef GetLocalTime
+#undef platform_date_time_local
 
 struct Texture *texture_cache_get(struct TexCache *cache,
                                              const char *name, int a, int b)
@@ -138,10 +139,10 @@ int main(void)
 
     fail_allocation = 0;
     renderer.width = 800;
-    test_time.wMinute = 5;
+    test_time.minute = 5;
     renderer_draw_game_grade_badge(&renderer);
     assert(texture_queries == 0 && submissions == 3);
-    test_time.wMinute = test_time.wSecond = 0;
+    test_time.minute = test_time.second = 0;
     renderer_draw_game_grade_badge(&renderer);
     assert(texture_queries == 1 && submissions == 4);
     assert(g_gradeBadgeState == 1 && g_gradeBadgeAlpha == 1);
@@ -151,10 +152,10 @@ int main(void)
         check_quad(badge, 0x01ffffff, full);
     }
     g_gradeBadgeAlpha = 220;
-    test_time.wSecond = 5;
+    test_time.second = 5;
     renderer_draw_game_grade_badge(&renderer);
     assert(g_gradeBadgeAlpha == 220 && primitive.base.verts[0].diffuse == 0xdcffffff);
-    test_time.wSecond = 10;
+    test_time.second = 10;
     renderer_draw_game_grade_badge(&renderer);
     assert(g_gradeBadgeState == 2 && g_gradeBadgeAlpha == 219);
     assert(primitive.base.verts[0].diffuse == 0xdbffffff);

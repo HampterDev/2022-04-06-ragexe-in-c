@@ -11,6 +11,7 @@
 #include "ui/ui_std.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 enum MemorialState {
     MEMORIAL_WAITING = 0,
@@ -203,9 +204,9 @@ static void draw_wrapped(struct UIWindow *wnd, struct TextArray *lines, const ch
         draw_line(wnd, x, y, LINE(*lines, i), colour);
 }
 
-static void format_time(char *buf, __time32_t timestamp)
+static void format_time(char *buf, int32_t timestamp)
 {
-    const struct tm *local = _localtime32(&timestamp);
+    const struct tm *local = platform_time_local(timestamp);
     buf[0] = 0;
     if (local)
         strftime(buf, 0x80, msg_str(MSG_TIME_FORMAT), local);
@@ -242,7 +243,7 @@ void ui_memorial_dun_wnd_on_draw(struct UIWindow *window)
     case MEMORIAL_ENTER_BY:
         if (g_session1.mdEnterLimit == 0)
             break;
-        format_time(when, (__time32_t)g_session1.mdEnterLimit);
+        format_time(when, (int32_t)g_session1.mdEnterLimit);
         sprintf(text, msg_str(MSG_MEMORIAL_ENTER_BY), when);
         memset(&lines, 0, sizeof lines);
         ui_window_break_lines(wnd, text, &lines, wnd->width - 0x14);
@@ -263,7 +264,7 @@ void ui_memorial_dun_wnd_on_draw(struct UIWindow *window)
             break;
         ui_window_text_out(wnd, 0xa, 0x37, msg_str(MSG_MEMORIAL_DESTROY_AT), 0, 0, MEMORIAL_FONT_HEIGHT, 0, 0,
                          0);
-        format_time(when, (__time32_t)g_session1.mdDestroyTime);
+        format_time(when, (int32_t)g_session1.mdDestroyTime);
         sprintf(text, "^ff0000%s^ffffff", when);
         draw_centred(wnd, 0x4b, text, &colour);
         break;

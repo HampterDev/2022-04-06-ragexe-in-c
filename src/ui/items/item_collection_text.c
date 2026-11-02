@@ -9,6 +9,7 @@
 #include "session/session_items.h"
 #include "session/session_talk.h"
 #include "std/tree.h"
+#include "platform/clock.h"
 
 static void destroy_string(void *value) { string_free(value); }
 
@@ -182,7 +183,7 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
     int layout = TEXT_LAYOUT_EXPIRE;
     int hours_per_day;
 
-    strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), _localtime32((__time32_t *)&expire));
+    strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), platform_time_local(expire));
     memset(buf, 0, sizeof buf);
     if (g_useCharsetTag) {
         snprintf(buf, sizeof buf, "%s%s", language_charset_tag(g_language, 1), time_text);

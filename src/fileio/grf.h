@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform/win_types.h"
 #include "base.h"
+#include "platform/thread.h"
 
 struct Dec {
     BYTE subkey[16][8];
@@ -56,7 +57,7 @@ struct GrfArchive {
     BYTE *scratch;
     size_t scratch_size;
     unsigned version;
-    CRITICAL_SECTION lock;
+    struct PlatformMutex *lock;
 };
 struct GrfArchive *grf_archive_create(const char *name);
 void grf_archive_destroy(struct GrfArchive *archive);

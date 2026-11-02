@@ -9,8 +9,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
-#include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include "session/session_state.h"
@@ -18,6 +16,8 @@
 #include "game/connection.h"
 #include "login/zone.h"
 #include "platform/filesystem.h"
+#include "platform/net.h"
+#include "platform/clock.h"
 
 struct ServerAddress g_mapServerIp;
 void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
@@ -25,7 +25,6 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
                                      struct String host)
 {
     struct String map;
-    struct in_addr addr;
     size_t len;
 
     g_session1.ownGid = gid;
@@ -38,8 +37,7 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
     string_resize(&map, len, 0);
     strcpy(g_session1.mapName, string_cstr(&map));
 
-    addr.s_addr = ip;
-    strcpy(g_mapServerIp.ip, inet_ntoa(addr));
+    strcpy(g_mapServerIp.ip, platform_net_ipv4_text(ip));
     g_mapServerIp.port = port;
     memcpy(g_mapServerIp.host, string_cstr(&host),
              host.size + 1 > 0x81 ? 0x81 : host.size + 1);
@@ -76,16 +74,16 @@ static void zone_switch(void)
 static void zone_ping_log(void)
 {
     FILE *f;
-    __time32_t t;
+    int32_t t;
 
     f = platform_file_open("PingLog.txt", "at");
     if (f) {
-        _time32(&t);
+        t = platform_time_now();
         fprintf(f, "\n");
         fprintf(f, "server:%s\n", string_cstr(&g_session1.worldName));
         fprintf(f, "ip:%s\n", g_mapServerIp.ip);
         fprintf(f, "map:%s.gat\n", g_session1.mapName);
-        fprintf(f, "time:%s\n\n", _ctime32(&t));
+        fprintf(f, "time:%s\n\n", platform_time_text(t));
         fclose(f);
     }
     list_clear(&g_keepAliveTimes, NULL);

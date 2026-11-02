@@ -14,6 +14,7 @@
 #include "ui/window_types.h"
 #include "ui/window_keyboard.h"
 #include "world/pick_node.h"
+#include "platform/clock.h"
 
 #define DRIVE_STATE_INTERVAL_MS 250
 #define CHAT_KEPT 8
@@ -119,7 +120,7 @@ void drive_state_tick(void)
 
     if (!path[0])
         return;
-    now = GetTickCount();
+    now = platform_coarse_ticks_ms();
     if (now - g_stateLastWrite < DRIVE_STATE_INTERVAL_MS)
         return;
     g_stateLastWrite = now;

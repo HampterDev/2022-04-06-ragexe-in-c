@@ -9,6 +9,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/social/seek_party.h"
+#include "platform/clock.h"
 
 #define JOB_LIST_WND_ID 0xaa
 
@@ -111,7 +112,7 @@ struct UISeekPartyWnd *ui_seek_party_wnd_construct(struct UISeekPartyWnd *self)
     self->full_height = 0;
     self->minimised = 0;
     start = ((DWORD)g_session1.partyBooking.answer_tick);
-    self->clock_ms = GetTickCount() - start;
+    self->clock_ms = platform_coarse_ticks_ms() - start;
     return self;
 }
 
@@ -172,7 +173,7 @@ void ui_seek_party_wnd_on_process(struct UIWindow *window)
 {
     struct UISeekPartyWnd *self = (struct UISeekPartyWnd *)window;
     static const int last_frame[6] = { 5, 5, 0x11, 0xb, 0xb, 0xb };
-    DWORD now = GetTickCount();
+    DWORD now = platform_coarse_ticks_ms();
 
     self->since_frame = now - self->frame_tick;
     if (self->since_frame <= self->frame_ms)

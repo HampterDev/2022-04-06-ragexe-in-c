@@ -7,7 +7,6 @@
 #include "game/context.h"
 #include "contents/connection_api.h"
 #include <string.h>
-#include <time.h>
 #include "ui/mail/rodex_ui.h"
 #include "ui/ui_std.h"
 #include "game/rodex_mail.h"
@@ -15,6 +14,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define ROWS 6
 #define ROW_STEP 0x2c
@@ -507,14 +507,14 @@ static void draw_row_icons(struct UIRodexInboxWnd *self, int row, BYTE type, BYT
     ui_window_draw_bitmap(wnd, 0xdb, y + 0x7f, res_mgr_get(g_resMgr(), attached), 1);
 }
 
-static void draw_time_left(struct UIRodexInboxWnd *self, int row, __time32_t since, __time32_t expire, BYTE returned)
+static void draw_time_left(struct UIRodexInboxWnd *self, int row, int32_t since, int32_t expire, BYTE returned)
 {
     struct UIWindow *wnd = WND(self);
     struct String text;
     int left, n;
 
-    (void)_difftime32(_time32(NULL), since);
-    left = (int)_difftime32(expire, _time32(NULL));
+    (void)platform_time_diff(platform_time_now(), since);
+    left = (int)platform_time_diff(expire, platform_time_now());
     if (left <= 0) {
         self->expired = 1;
         return;

@@ -13,7 +13,7 @@
 #include "contents/connection_api.h"
 #include <stdio.h>
 #include "platform/win_types.h"
-#include <winsock.h>
+#include "platform/net.h"
 #include "game/connection.h"
 #include "game/client.h"
 #include "login/zone_addr.h"
@@ -166,7 +166,7 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
     snprintf((*(char (*)[20])&g_session1.mapName), 0x14, string_cstr(&name));
     g_session1.playerPosX = x;
     g_session1.playerPosY = y;
-    snprintf(g_mapServerIp.ip, sizeof g_mapServerIp.ip, inet_ntoa(*(struct in_addr *)&ip));
+    snprintf(g_mapServerIp.ip, sizeof g_mapServerIp.ip, platform_net_ipv4_text(ip));
     g_mapServerIp.port = port;
     snprintf(g_mapServerIp.host, sizeof g_mapServerIp.host, "%s", string_cstr(&server_map_name));
     connection_disconnect(rag_connection_transport(rag_connection_instance()));

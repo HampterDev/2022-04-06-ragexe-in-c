@@ -118,7 +118,7 @@ static void fake_shell(void)
 #define texcache_clear(...) ((void)0)
 #define c3d_device_delete_renderer(...) ((void)0)
 #define c3d_device_release_all(...) ((void)0)
-#define timeEndPeriod(...) ((void)0)
+#define platform_timer_period_end(...) ((void)0)
 #define crash_report_uninstall() ((void)0)
 #define g_serviceType 1
 #define app_is_win9x() 0
