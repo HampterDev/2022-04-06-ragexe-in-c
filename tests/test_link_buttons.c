@@ -31,7 +31,9 @@ static void *moving_realloc(void *old, size_t size)
 #include "../src/core/text_array.c"
 #include "../src/ui/controls/text_button.c"
 #include "../src/ui/controls/navi_link_button.c"
+#include "platform/window.h"
 #define GetAsyncKeyState fixture_key_state
+#define platform_async_key_state fixture_key_state
 #include "../src/ui/quests/tag_button.c"
 #include "../src/ui/quests/tag_list_box.c"
 #undef free
@@ -41,6 +43,7 @@ static void *moving_realloc(void *old, size_t size)
 #include "link_buttons_reference.c"
 #endif
 #undef GetAsyncKeyState
+#undef platform_async_key_state
 
 void *mem_alloc(size_t size) { return checked_malloc(size); }
 void mem_free(void *p)

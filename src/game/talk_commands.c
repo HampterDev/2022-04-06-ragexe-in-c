@@ -41,6 +41,7 @@
 #include "game/mouse_camera.h"
 #include "core/app.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 enum {
     MODE_MSG_CHAT = 6,
@@ -67,9 +68,9 @@ void talk_cmd_send_chat(struct GameMode *self, int type)
         ui_window_mgr_set_chat_line(&g_windowMgr, line + 1);
         guild = 1;
     }
-    if ((GetAsyncKeyState(VK_CONTROL) >> 8) & 0xff)
+    if ((platform_async_key_state(VK_CONTROL) >> 8) & 0xff)
         party = 1;
-    if ((GetAsyncKeyState(VK_MENU) >> 8) & 0xff)
+    if ((platform_async_key_state(VK_MENU) >> 8) & 0xff)
         guild = 1;
 
     if (type == TALK_CHAT_TO_GUILD) {

@@ -12,6 +12,7 @@
 #include "render/screen_draw.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 DWORD g_fadeStart = 0;
 
@@ -125,7 +126,7 @@ void screen_sprite_frame(struct Renderer *renderer, int x, int y, struct ActRes 
 void error_msg(const char *text, int flags)
 {
     device_flip_to_gdi();
-    MessageBoxA(NULL, text, "Error", (UINT)flags);
+    platform_message_box(NULL, text, "Error", (UINT)flags);
 }
 
 void mode_run_fade_out(struct Mode *self, int logo)

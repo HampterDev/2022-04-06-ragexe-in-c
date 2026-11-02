@@ -12,15 +12,17 @@ static struct Session g_session1;
 static int normal_loads, accessory_loads, errors, resource_checks;
 static char last_act[260];
 
-static int message_box(HWND window, const char *text, const char *caption, UINT flags)
+static void message_box(HWND window, const char *text, const char *caption, unsigned flags)
 {
     assert(!window && !flags && text && caption);
     ++errors;
-    return 0;
 }
+#include "platform/window.h"
 #define MessageBoxA message_box
+#define platform_message_box message_box
 #include "../src/contents/lua_calls.c"
 #undef MessageBoxA
+#undef platform_message_box
 
 static void *g_resMgr(void) { return &resource_checks; }
 static int res_mgr_is_available(void *mgr, const char *name)

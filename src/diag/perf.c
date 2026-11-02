@@ -3,6 +3,7 @@
 #include "diag/perf.h"
 #include "ui/window_types.h"
 #include <string.h>
+#include "platform/window.h"
 
 struct perf_counters g_perf;
 
@@ -74,7 +75,7 @@ static void init(void)
     QueryPerformanceFrequency(&P.freq);
     if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
         P.shown = 1;
-    P.lastScroll = GetKeyState(VK_SCROLL) & 1;
+    P.lastScroll = platform_key_state(VK_SCROLL) & 1;
     P.start = now();
 }
 
@@ -337,7 +338,7 @@ void perf_overlay_draw(struct Renderer *r)
     int visible;
     if (!P.inited)
         init();
-    visible = GetKeyState(VK_SCROLL) & 1;
+    visible = platform_key_state(VK_SCROLL) & 1;
     if (visible != P.lastScroll) {
         P.lastScroll = visible;
         P.shown = !P.shown;

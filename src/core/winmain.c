@@ -28,6 +28,7 @@
 #include "render/render_api.h"
 #include "core/app.h"
 #include "core/client_init.h"
+#include "platform/window.h"
 
 int g_loginStartMode = 2;
 
@@ -60,7 +61,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     read_startup_settings();
 
     if (render_enum_adapters() < 0)
-        MessageBoxA(0, "d3denum init", "Error", 0);
+        platform_message_box(0, "d3denum init", "Error", 0);
     find = FindFirstFileA("savedata", &found);
     if (find == INVALID_HANDLE_VALUE)
         CreateDirectoryA("savedata", 0);
@@ -94,7 +95,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     }
     app_init_managers(&init);
     if (!init.ok) {
-        MessageBoxA(0, string_cstr(&init.what), "ERROR", 0);
+        platform_message_box(0, string_cstr(&init.what), "ERROR", 0);
         result = 1;
         goto done;
     }

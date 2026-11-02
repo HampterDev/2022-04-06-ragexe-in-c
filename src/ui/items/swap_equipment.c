@@ -24,6 +24,7 @@
 #include "ui/quests/npc_input.h"
 #include "ui/shops/merchant.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 #define SWAP_SKIN UI_SKIN "swap_equipment\\"
 #define SWAP_BTN_NORMAL SWAP_SKIN "btn_change2_normal.bmp"
@@ -525,7 +526,7 @@ void ui_swap_equipment_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         game_mode_drag_item(game_current_mode(),
                           self->kind == SWAP_KIND_SPECIAL ? DRAG_SWAP_SPECIAL : DRAG_SWAP_EQUIP, &item, item.count,
                           slots[2]);
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff)
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff)
             swap_link_item(&item);
     }
     item_info_destruct(&item);
@@ -545,7 +546,7 @@ void ui_swap_equipment_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
 
         session_equip_slots_of(slots, item.worn_location);
         mode = client_current_mode();
-        if (GetAsyncKeyState(VK_CONTROL))
+        if (platform_async_key_state(VK_CONTROL))
             mode_send_message(mode, MODE_REQ_SET_ITEM, (int)&item, 0, 0, 0);
         else
             mode_send_message(mode, MODE_REQ_SET_TAKE, slots[2], self->kind == SWAP_KIND_SPECIAL, 0, 0);

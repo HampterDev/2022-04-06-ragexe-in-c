@@ -18,6 +18,7 @@
 #include "session/session_items.h"
 #include "ui/items/items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/window.h"
 
 struct UIMerchantItemWnd;
 void ui_merchant_item_wnd_destroy(struct UIWindow *window);
@@ -185,7 +186,7 @@ static void merchant_link_item(const struct ItemInfo *info)
 {
     struct UIWindow *edit;
 
-    if (!(GetAsyncKeyState(VK_SHIFT) & 0xff00))
+    if (!(platform_async_key_state(VK_SHIFT) & 0xff00))
         return;
     edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
     if (!edit || !info->identified)

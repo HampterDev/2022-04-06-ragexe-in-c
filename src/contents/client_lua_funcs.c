@@ -22,6 +22,7 @@
 #include "contents/lapine_box.h"
 #include "contents/lapine_upgrade.h"
 #include "core/msg_str.h"
+#include "platform/window.h"
 
 #define LAPINE_BOX_WINDOW       0x122
 #define LAPINE_UPGRADE_WINDOW   0x12e
@@ -89,7 +90,7 @@ int lua_trace_value(lua_State *L)
     struct String text;
 
     check_string(&text, L, 1);
-    MessageBoxA(0, string_cstr(&text), "Lua error", 0);
+    platform_message_box(0, string_cstr(&text), "Lua error", 0);
     string_free(&text);
     return 1;
 }

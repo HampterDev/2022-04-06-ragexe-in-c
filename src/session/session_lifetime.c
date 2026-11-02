@@ -18,6 +18,7 @@
 #include "game/guild_storage.h"
 #include "game/party_member.h"
 #include "session/session_achievements.h"
+#include "platform/window.h"
 
 struct Session g_session1;
 
@@ -171,15 +172,15 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->accountCharNames);
 
     if (!user_hotkey_mgr_create())
-        MessageBoxA(NULL, "CUserHotkeyMgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "CUserHotkeyMgr::CreateInstance()", "Error", MB_OK);
     if (!barter_market_create())
-        MessageBoxA(NULL, "InstanceCBarterMarketItemMgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "InstanceCBarterMarketItemMgr::CreateInstance()", "Error", MB_OK);
     if (!expanded_barter_create())
-        MessageBoxA(NULL, "InstanceCBarterMarketItem2Mgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "InstanceCBarterMarketItem2Mgr::CreateInstance()", "Error", MB_OK);
     if (!pet_auto_feed_create())
-        MessageBoxA(NULL, "Pet auto-feeding data initialization", "Error", MB_OK);
+        platform_message_box(NULL, "Pet auto-feeding data initialization", "Error", MB_OK);
     if (!achievement_create())
-        MessageBoxA(NULL, "CAchievementMgr file init", "Error", MB_OK);
+        platform_message_box(NULL, "CAchievementMgr file init", "Error", MB_OK);
     self->new_layer_table_loaded = 0;
     self->loadingAirplane = 0;
     self->call_allowed = 0;

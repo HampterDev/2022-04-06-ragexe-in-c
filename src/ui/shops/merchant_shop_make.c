@@ -20,6 +20,7 @@
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
 #include <stdint.h>
+#include "platform/window.h"
 
 struct DragInfo;
 void ui_merchant_shop_make_wnd_destroy(struct UIWindow *window);
@@ -772,7 +773,7 @@ void ui_merchant_shop_make_wnd_on_r_btn_down(struct UIWindow *window, int x, int
     ui_merchant_shop_make_wnd_item_at(self, &item, x, y);
     if ((unsigned)item.index > 0) {
         mode = game_current_mode();
-        if ((BYTE)(GetAsyncKeyState(VK_MENU) >> 8)) {
+        if ((BYTE)(platform_async_key_state(VK_MENU) >> 8)) {
             if (g_windowMgr.merchant_mirror_item_wnd) {
                 item_info_assign(&item, session_get_store_setup_item_by_index(&g_session1, &entry, item.index));
                 item_info_destruct(&entry);

@@ -9,7 +9,9 @@ end = source.index("\n}\n", start) + 3
 startup = source[source.index("    moveInfo.first = moveInfo.last = moveInfo.end = NULL;", end):]
 assert startup.endswith("}\n") and startup.count("read_int_file(") == 1
 out = prefix + """
-int WINAPI restriction_error_box(HWND, LPCSTR, LPCSTR, UINT);
+void restriction_error_box(HWND, const char *, const char *, unsigned);
+#include "platform/window.h"
 #define MessageBoxA restriction_error_box
+#define platform_message_box restriction_error_box
 """ + source[start:end] + "void exercise_item_restrictions(void)\n{\n    struct Vec moveInfo;\n" + startup
 Path(sys.argv[2]).write_text(out, encoding="utf-8")

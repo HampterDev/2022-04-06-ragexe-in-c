@@ -29,6 +29,7 @@
 #include "session/session_options.h"
 #include "ui/mail/rodex_box.h"
 #include "ui/social/party_board.h"
+#include "platform/window.h"
 
 HINSTANCE g_hInstance;
 int g_quitRequested;
@@ -57,7 +58,7 @@ static void window_drag_follow(void)
         MoveWindow(g_windowDragHwnd, g_windowDragRect.left + dx, g_windowDragRect.top + dy,
                    g_windowDragRect.right - g_windowDragRect.left, g_windowDragRect.bottom - g_windowDragRect.top,
                    TRUE);
-    if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0)
+    if ((platform_async_key_state(VK_LBUTTON) & 0x8000) == 0)
         g_windowDragging = 0;
 }
 
@@ -141,7 +142,7 @@ int app_create_window(HINSTANCE instance)
     g_hMainWnd = CreateWindowExA(0, wc.lpszClassName, g_windowClassName, 0x2c20000, x, y,
                                    rect.right - rect.left, rect.bottom - rect.top, 0, 0, instance, 0);
     if (!g_hMainWnd) {
-        MessageBoxA(0, "Window Creation Failed", "ERROR", 0);
+        platform_message_box(0, "Window Creation Failed", "ERROR", 0);
         return 0;
     }
     ShowWindow(g_hMainWnd, SW_SHOW);

@@ -5,6 +5,7 @@
 #include "core/object_type_tables.h"
 #include "ui/quests/tag_list_box.h"
 #include "diag/perf.h"
+#include "platform/window.h"
 
 #define UI_MSG_TAG_BUTTON_CLICK 0x62
 #define UI_MSG_EDIT_INSERT_ITEM 0x94
@@ -91,7 +92,7 @@ void ui_tag_button_on_l_btn_up(struct UIWindow *window, int x, int y)
 
     if (self->button.button.disabled)
         return;
-    if (GetAsyncKeyState(VK_SHIFT) & 0xff00) {
+    if (platform_async_key_state(VK_SHIFT) & 0xff00) {
         struct UIWindow *edit;
 
         if (!ui_window_mgr_get_focus_edit(&g_windowMgr) || !self->item.identified)

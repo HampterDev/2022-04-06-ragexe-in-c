@@ -10,6 +10,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "std/vec.h"
+#include "platform/window.h"
 
 #define UI_WND_MERGE_ITEM 0xe3
 
@@ -351,7 +352,7 @@ static void click_follow_kind(struct MergeItemWnd *self, int index)
     int kind, mark = 0;
     size_t k;
 
-    if (!((GetAsyncKeyState(VK_CONTROL) >> 8) & 0xff))
+    if (!((platform_async_key_state(VK_CONTROL) >> 8) & 0xff))
         return;
     kind = item_id_at(index);
     for (k = 0; k < CHECK_COUNT(self); k++) {

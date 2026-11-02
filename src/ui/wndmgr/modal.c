@@ -3,6 +3,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
 #include "ui/character/character.h"
+#include "platform/window.h"
 
 int ui_window_mgr_modal_loop(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
@@ -80,7 +81,7 @@ void ui_window_mgr_modeless_message_box(struct UIWindowMgr *self, const char *te
     struct UIWindow *box;
 
     if (VEC_COUNT(&self->message_boxes, struct UIWindow *) > WM_MESSAGE_BOX_MAX) {
-        MessageBoxA(g_hMainWnd, "Max MessageBox Count", "ERROR", MB_OK);
+        platform_message_box(g_hMainWnd, "Max MessageBox Count", "ERROR", MB_OK);
         return;
     }
     box = (struct UIWindow *)ui_message_box_new();

@@ -4,6 +4,7 @@
 #include <string.h>
 #include "render/gfx.h"
 #include "core/app.h"
+#include "platform/window.h"
 
 GUID g_driverGuid;
 
@@ -33,7 +34,7 @@ int stale_guid(void)
                     RegCloseKey(key);
                 }
             }
-            MessageBoxA(NULL,
+            platform_message_box(NULL,
                         "The display device this client had saved is no longer available, so it has "
                         "been reset to your primary display.\r\n\r\n"
                         "Choose a display device in the in-game graphics settings.",

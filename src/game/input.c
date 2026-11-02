@@ -39,6 +39,7 @@ enum { ACTORMSG_RELEASE = 0xf };
 #include "world/ray_picker.h"
 #include "ui/character/popup_menu.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 #define NO_HIT 999999.0f
 
@@ -176,7 +177,7 @@ void game_mode_process_input(struct GameMode *self)
         self->held_walk_allowed = 1;
     }
 
-    g_shiftDown = (unsigned char)((unsigned)GetAsyncKeyState(VK_SHIFT) >> 8);
+    g_shiftDown = (unsigned char)((unsigned)platform_async_key_state(VK_SHIFT) >> 8);
     pick = actor_pick_node_find_pick_info(&g_actorPickNode, (float)g_mouse.x, (float)g_mouse.y);
     taken = g_windowMgr.exchange_wnd != NULL;
     if (taken == 0)

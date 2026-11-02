@@ -8,6 +8,7 @@
 #include "ui/character/character.h"
 #include "ui/chat/chat_window_parts.h"
 #include "ui/character/select_char_new.h"
+#include "platform/window.h"
 
 #define WM_KEY_NONE 0
 #define WM_KEY_MODAL 1
@@ -61,13 +62,13 @@ int ui_window_mgr_classify_key(struct UIWindowMgr *self, int vk, int lparam)
     self->key_modifier = 0;
     if (key == VK_ESCAPE)
         return WM_KEY_NONE;
-    if ((GetAsyncKeyState(VK_MENU) >> 8 & 0xff) && self->last_key != VK_MENU)
+    if ((platform_async_key_state(VK_MENU) >> 8 & 0xff) && self->last_key != VK_MENU)
         self->key_modifier = VK_MENU;
-    else if ((GetAsyncKeyState(VK_SHIFT) >> 8 & 0xff) && self->last_key != VK_SHIFT)
+    else if ((platform_async_key_state(VK_SHIFT) >> 8 & 0xff) && self->last_key != VK_SHIFT)
         self->key_modifier = VK_SHIFT;
-    else if ((GetAsyncKeyState(VK_CONTROL) >> 8 & 0xff) && self->last_key != VK_CONTROL)
+    else if ((platform_async_key_state(VK_CONTROL) >> 8 & 0xff) && self->last_key != VK_CONTROL)
         self->key_modifier = VK_CONTROL;
-    else if ((GetAsyncKeyState(VK_TAB) >> 8 & 0xff) && self->last_key != VK_TAB)
+    else if ((platform_async_key_state(VK_TAB) >> 8 & 0xff) && self->last_key != VK_TAB)
         self->key_modifier = VK_TAB;
     mod = self->key_modifier;
     key = self->last_key;

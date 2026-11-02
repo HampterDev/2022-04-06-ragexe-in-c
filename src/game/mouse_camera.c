@@ -20,6 +20,7 @@
 #include "ui/hotkeys/hotkeys.h"
 #include "world/camera.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 float g_maxViewDistance = 400.0f;
 
@@ -42,7 +43,7 @@ enum { GMMSG_CANCEL_DRAG = 0x12, GMMSG_CANCEL_SKILL_AIM = 0x47 };
 
 static int key_down(int vk)
 {
-    return (unsigned char)((unsigned)GetAsyncKeyState(vk) >> 8) != 0;
+    return (unsigned char)((unsigned)platform_async_key_state(vk) >> 8) != 0;
 }
 
 static void set_pitch(struct GameMode *self, float pitch, float range)

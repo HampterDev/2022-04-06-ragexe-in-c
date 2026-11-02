@@ -15,6 +15,7 @@
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/window.h"
 
 #define MODE_REQ_CART_TO_STORAGE 0x4f
 #define MODE_REQ_CART_TO_INVENTORY 0x4d
@@ -149,7 +150,7 @@ void ui_merchant_item_purchase_wnd_on_r_btn_down(struct UIWindow *window, int x,
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (g_windowMgr.merchant_item_shop_wnd) {
                 struct ItemInfo listed;
 
@@ -175,7 +176,7 @@ void ui_merchant_item_shop_wnd_on_r_btn_down(struct UIWindow *window, int x, int
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (g_windowMgr.merchant_item_purchase_wnd) {
                 game_mode_drag_item(mode, DRAG_SHOP_ITEM, &info, info.count, -1);
                 ui_window_send_msg(g_windowMgr.merchant_item_purchase_wnd, NULL, UI_MSG_ADD_DRAGGED, 0, 0, 0, 0);
@@ -196,7 +197,7 @@ void ui_merchant_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if ((unsigned)info.index > 0) {
         struct Mode *mode = game_current_base_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (!g_windowMgr.exchange_wnd && !g_windowMgr.merchant_shop_make_wnd) {
                 if (g_windowMgr.item_store_wnd) {
                     if (game_take_item_move())
@@ -221,7 +222,7 @@ void ui_merchant_mirror_item_wnd_on_r_btn_down(struct UIWindow *window, int x, i
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             struct UIWindow *target = g_windowMgr.merchant_shop_make_wnd ? g_windowMgr.merchant_shop_make_wnd : g_windowMgr.buying_store_make_wnd;
 
             if (target) {

@@ -42,6 +42,7 @@
 #include "ui/character/popup_menu.h"
 #include "ui/draw_key.h"
 #include "platform/clock.h"
+#include "platform/window.h"
 
 #define EQUIP_WND_ID 0xa
 #define EQUIP_VIEW_WND_ID 0x8b
@@ -782,7 +783,7 @@ static void equip_link_item(const struct ItemInfo *info)
 {
     struct UIWindow *edit;
 
-    if (!((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff))
+    if (!((platform_async_key_state(VK_SHIFT) >> 8) & 0xff))
         return;
     if (!ui_window_mgr_get_focus_edit(&g_windowMgr) || !info->identified)
         return;

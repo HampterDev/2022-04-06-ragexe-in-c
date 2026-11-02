@@ -34,6 +34,7 @@
 #include "ui/shops/merchant.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/controls/popups.h"
+#include "platform/window.h"
 
 #define GRID_LEFT 0x28
 #define GRID_TOP 0x11
@@ -911,7 +912,7 @@ void ui_item_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
             item_info_assign(&item, &current);
             item_info_destruct(&current);
             game_mode_drag_item(game, 1, &item, item.count, -1);
-            if ((BYTE)(GetAsyncKeyState(VK_SHIFT) >> 8) && ui_window_mgr_get_focus_edit(&g_windowMgr) &&
+            if ((BYTE)(platform_async_key_state(VK_SHIFT) >> 8) && ui_window_mgr_get_focus_edit(&g_windowMgr) &&
                 item.identified) {
                 edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
                 if (edit->id == ITEM_LINK_EDIT_MEGAPHONE) {
@@ -942,7 +943,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd, wnd, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         return;
     }
-    if (GetAsyncKeyState(VK_SHIFT))
+    if (platform_async_key_state(VK_SHIFT))
         return;
     ui_item_wnd_item_at(self, &item, x, y);
     if (item.index > 0) {
@@ -989,7 +990,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
             if (!(item.index > 0 && item.equip_location && !item.worn_location) &&
                 !session_is_pet_accessory(&g_session1, item_info_get_item_id(&item)))
                 break;
-            if (GetAsyncKeyState(VK_CONTROL) && g_session1.equipSwapOpen) {
+            if (platform_async_key_state(VK_CONTROL) && g_session1.equipSwapOpen) {
                 mode_send_message(game, MODE_REQ_SWAP_EQUIP, item.index, item.equip_location, 0, 0);
             } else if (ui_window_find(WND_ID_REFINING)) {
                 ui_window_send(ui_window_find(WND_ID_REFINING), wnd, SWAP_MSG_SET_ITEM, item.index, 0, 0, 0);
@@ -1007,7 +1008,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
         case 0x11:
         case 0x13:
             if (item.index > 0 && !item.worn_location) {
-                if (GetAsyncKeyState(VK_CONTROL) && g_session1.equipSwapOpen)
+                if (platform_async_key_state(VK_CONTROL) && g_session1.equipSwapOpen)
                     mode_send_message(game, MODE_REQ_SWAP_EQUIP, item.index, item.equip_location, 0, 0);
                 else
                     mode_send_message(game, MODE_REQ_WEAR_EQUIP_DIRECT, item.index, item.equip_location, 0, 0);
@@ -1061,7 +1062,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     ui_item_wnd_item_at(self, &item, x, y);
     if (item.index > 0) {
         game = game_current_mode();
-        if ((BYTE)(GetAsyncKeyState(VK_MENU) >> 8)) {
+        if ((BYTE)(platform_async_key_state(VK_MENU) >> 8)) {
             if (!g_windowMgr.say_dialog_wnd && !g_windowMgr.choose_wnd) {
                 struct ItemInfo current;
 
@@ -1081,7 +1082,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
                     }
                 }
             }
-        } else if ((BYTE)(GetAsyncKeyState(VK_CONTROL) >> 8)) {
+        } else if ((BYTE)(platform_async_key_state(VK_CONTROL) >> 8)) {
             if (item.index > 0 && !session_is_pet_egg_id(&g_session1, atoi(string_cstr(&item.id_text)))) {
                 struct ItemInfo magnifier, magnifier2;
                 int count;

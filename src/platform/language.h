@@ -5,12 +5,11 @@
 #include "platform/code_page.h"
 #include "core/text_view.h"
 #include "platform/win_types.h"
-#include <imm.h>
 
 enum LanguageInputMethod { LANGUAGE_INPUT_DEFAULT, LANGUAGE_INPUT_ZHUYIN };
 struct Language {
     enum LanguageInputMethod input_method;
-    CANDIDATELIST *candidates;
+    struct tagCANDIDATELIST *candidates;
     int candidate_count;
     int candidate_page;
     int candidate_selection;
@@ -75,8 +74,13 @@ void language_move_caret_forward(struct Language *self, int count);
 void language_move_caret_back(struct Language *self, int count);
 void language_on_char(struct Language *self, int ch);
 void language_on_key_down(struct Language *self, int key);
+#ifdef _WIN32
 int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM wparam,
                                       LPARAM lparam, BYTE *handled);
+#else
+void language_set_composition(struct Language *self, const char *text, int cursor);
+void language_commit(struct Language *self, const char *text);
+#endif
 void language_cancel_input(struct Language *self);
 void language_set_selection(struct Language *self, int anchor, int caret);
 

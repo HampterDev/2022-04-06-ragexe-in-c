@@ -9,7 +9,7 @@
 #include "ui/window_access.h"
 #include <string.h>
 #include "ui/character/character.h"
-#include <imm.h>
+#include "platform/window.h"
 #include "login/otp.h"
 #include "core/app.h"
 #include "core/msg_str.h"
@@ -429,12 +429,7 @@ void ui_login_wnd_on_process(struct UIWindow *window)
     }
 
     if (ui_window_mgr_get_focus_edit(&g_windowMgr) == self->password_edit) {
-        HIMC imc = ImmGetContext(g_hMainWnd);
-        DWORD conversion, sentence;
-
-        ImmGetConversionStatus(imc, &conversion, &sentence);
-        ImmSetConversionStatus(imc, 0, sentence);
-        ImmReleaseContext(g_hMainWnd, imc);
+        platform_ime_alphanumeric(g_hMainWnd);
         ui_edit_ctrl_set_text_colour(self->password_edit, 0, 0, 0, -1);
         if (self->password_placeholder == 1
             && strcmp("PASSWORD", ui_edit_ctrl_get_text(self->password_edit)) == 0) {

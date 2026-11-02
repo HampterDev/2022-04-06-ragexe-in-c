@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <math.h>
 #include "platform/clock.h"
+#include "platform/window.h"
 
 static const char unsupported_caption[] = "notsuppot";
 
@@ -267,9 +268,9 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
 static void bump_caps_check(void)
 {
     if (!g_gfxCaps.bumpEnv)
-        MessageBoxA(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
+        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
     if (!g_gfxCaps.bumpEnvLuminance)
-        MessageBoxA(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
+        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
 }
 
 int texture_create_bump(struct Texture *self, int width, int height)

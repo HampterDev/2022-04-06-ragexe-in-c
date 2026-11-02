@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "platform/clock.h"
+#include "platform/window.h"
 
 #define EDIT3_FONT_HEIGHT 0xc
 #define EDIT3_MARGIN 3
@@ -443,7 +444,7 @@ int ui_edit_ctrl3_send_msg(struct UIWindow *window, struct UIWindow *sender, int
     struct UIEditCtrl3 *self = (struct UIEditCtrl3 *)window;
     switch (msg) {
     case 0:
-        if (self->extra_line && !(BYTE)(GetKeyState(VK_SHIFT) >> 8)) {
+        if (self->extra_line && !(BYTE)(platform_key_state(VK_SHIFT) >> 8)) {
             ui_window_send_msg_base(&self->edit.base, sender, 0, val1, val2, val3, val4);
         } else {
             char crlf[3] = "\r\n";

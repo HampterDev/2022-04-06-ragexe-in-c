@@ -92,7 +92,9 @@ static void fake_shell(void)
 #define string_cstr(...) "startup failure"
 #define msg_str(...) "https://example.com"
 #define error_msg(...) ((void)0)
+#include "platform/window.h"
 #define MessageBoxA(...) ((void)0)
+#define platform_message_box(...) ((void)0)
 #define frame_timer_reset() ((void)0)
 #define frame_timer_start(...) ((void)0)
 #define session_startup(...) ((void)0)

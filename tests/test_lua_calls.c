@@ -11,14 +11,15 @@
 static int errors;
 static char last_error[500];
 
-static int message_box(HWND window, const char *text, const char *caption, UINT flags)
+static void message_box(HWND window, const char *text, const char *caption, unsigned flags)
 {
     assert(!window && !flags && caption && strlen(text) < sizeof last_error);
     strcpy(last_error, text);
     ++errors;
-    return 0;
 }
+#include "platform/window.h"
 #define MessageBoxA message_box
+#define platform_message_box message_box
 #ifdef LUA_CALL_ORACLE
 #include "std/string.h"
 #include "world_state_memory.h"
@@ -39,6 +40,7 @@ static struct String old_name(const char *text)
 #define TABLE(lua, table, name, ...) client_lua_call_table(lua, table, name, __VA_ARGS__)
 #endif
 #undef MessageBoxA
+#undef platform_message_box
 
 static const char script[] =
     "function mixed(b,d,l,s) return b,d+3,l*2,s end\n"

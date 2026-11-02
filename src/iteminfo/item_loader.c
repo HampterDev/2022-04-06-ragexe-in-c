@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <limits.h>
 #include "ui/ui_std.h"
+#include "platform/window.h"
 
 static struct TableReader item_table_reader;
 
@@ -51,7 +52,7 @@ unsigned char read_int_file(struct Vec *out, const char *name)
     if (g_language)
         name = language_language_file(g_language, name);
     if (!file_open(&file, name, 0, 1, 0)) {
-        MessageBoxA(NULL, "Can't open file", "ErrorMessage", MB_OK);
+        platform_message_box(NULL, "Can't open file", "ErrorMessage", MB_OK);
         file_destruct(&file);
         return 0;
     }

@@ -11,6 +11,7 @@
 #undef luaL_newstate
 #undef luaL_loadfile
 #undef MessageBoxA
+#undef platform_message_box
 
 static struct Block { unsigned char *raw; size_t size; } blocks[2048];
 static unsigned live_blocks, allocation_count, message_count, load_count;
@@ -126,11 +127,10 @@ int test_lua_loadfile(lua_State *L, const char *filename)
     return luaL_loadstring(L, source);
 }
 
-int WINAPI test_message_box(HWND window, LPCSTR message, LPCSTR caption, UINT flags)
+void test_message_box(HWND window, const char *message, const char *caption, unsigned flags)
 {
     assert(!window && !flags && message && !strcmp(caption, "CTownInfoMgr"));
     ++message_count;
-    return IDOK;
 }
 
 static void emit_bytes(const void *data, size_t size)

@@ -23,6 +23,7 @@
 #include "session/session_windows.h"
 #include "ui/chat/chat_window.h"
 #include "ui/hotkeys/hotkeys.h"
+#include "platform/window.h"
 
 #define MODE_MSG_CHAT_LINE 6
 #define MODE_MSG_PARTY_LINE 0x42
@@ -381,7 +382,7 @@ static int edit_lets_through(int vk)
 
 static int altgr_down(void)
 {
-    return (GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000);
+    return (platform_key_state(VK_CONTROL) & 0x8000) && (platform_key_state(VK_MENU) & 0x8000);
 }
 
 BYTE ui_window_mgr_on_key_down(struct UIWindowMgr *self, int vk, int lparam, int first_press)

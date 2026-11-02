@@ -82,11 +82,10 @@ unsigned char file_read(struct File *file, void *out, int size)
 void file_close(struct File *file) { (void)file; ++closed; }
 void file_destruct(struct File *file) { (void)file; ++destroyed; }
 
-int WINAPI restriction_error_box(HWND window, LPCSTR text, LPCSTR caption, UINT type)
+void restriction_error_box(HWND window, const char *text, const char *caption, unsigned type)
 {
     assert(!window && !strcmp(text, "Can't open file") && !strcmp(caption, "ErrorMessage") && type == MB_OK);
     ++warning_count;
-    return 0;
 }
 
 void item_move_info_add(int id, const int flags[8])

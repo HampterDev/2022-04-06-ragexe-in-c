@@ -6,6 +6,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 #include "core/text_util.h"
+#include "platform/window.h"
 
 static char main_result_ok(lua_State *L, const char *owner, enum LuaDataCheck check)
 {
@@ -13,24 +14,24 @@ static char main_result_ok(lua_State *L, const char *owner, enum LuaDataCheck ch
     struct String text;
 
     if (!lua_isstring(L, -1)) {
-        MessageBoxA(0, "second return value is not string...", owner, 0);
+        platform_message_box(0, "second return value is not string...", owner, 0);
         return 0;
     }
     if (lua_toboolean(L, -2))
         return 1;
     message = lua_tolstring(L, -1, 0);
     if (check == LUA_DATA_ERROR_FORMAT) {
-        MessageBoxA(0, thread_text_format("error : %s", message), owner, 0);
+        platform_message_box(0, thread_text_format("error : %s", message), owner, 0);
     } else if (check == LUA_DATA_ERROR_STRING) {
         string_init(&text);
         string_format(&text, "error : %s", message);
-        MessageBoxA(0, string_cstr(&text), owner, 0);
+        platform_message_box(0, string_cstr(&text), owner, 0);
         string_free(&text);
     } else {
         string_init(&text);
         string_assign_cstr(&text, "error found :");
         string_append_cstr(&text, message);
-        MessageBoxA(0, string_cstr(&text), owner, 0);
+        platform_message_box(0, string_cstr(&text), owner, 0);
         string_free(&text);
     }
     return 0;
@@ -58,7 +59,7 @@ char lua_data_run(const char *path, const char *owner,
         ok = lua_pcall(L, 0, 2, 0) == 0;
     }
     if (!ok)
-        MessageBoxA(0, lua_tolstring(L, -1, 0), owner, 0);
+        platform_message_box(0, lua_tolstring(L, -1, 0), owner, 0);
     else if (check != LUA_DATA_IGNORE_RESULT)
         ok = main_result_ok(L, owner, check);
     lua_close(L);

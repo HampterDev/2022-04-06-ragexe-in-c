@@ -103,18 +103,20 @@ static void vec_free(int *boxes) { (void)boxes; assert(cleanup == 0); cleanup = 
 static void ui_frame_wnd_destruct(struct UIFrameWnd *frame)
 { assert(frame->base.ops == &ui_new_chat_wnd_ops && cleanup == 1); cleanup = 2; }
 static void mem_free(void *memory) { assert(cleanup == 2); cleanup = 3; free(memory); }
-static int WINAPI warn(HWND owner, LPCSTR text, LPCSTR title, UINT flags)
+static void warn(HWND owner, const char *text, const char *title, unsigned flags)
 {
     assert(!owner && cleanup == 3 && !live_handles);
     assert(strstr(text, "Could not save") && strstr(text, "not be restored"));
     assert(!strcmp(title, "Chat layout") && flags == (MB_OK | MB_ICONWARNING | MB_TASKMODAL));
     ++warnings;
-    return IDOK;
 }
 #define CHAT_LAYOUT_FILE target
+#include "platform/window.h"
 #define MessageBoxA warn
+#define platform_message_box warn
 #include "chat_layout_destroy.inc"
 #undef MessageBoxA
+#undef platform_message_box
 
 static void reset(int failure, int at)
 {

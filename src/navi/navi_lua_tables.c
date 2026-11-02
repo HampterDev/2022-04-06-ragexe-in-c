@@ -22,6 +22,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include "platform/win_types.h"
 #include "core/app.h"
+#include "platform/window.h"
 
 #define NAVI_MAX_MAPS       0x270f
 #define NAVI_MAX_OBJECTS    0x1869f
@@ -30,7 +31,7 @@
 
 static void error_box(char *text, const char *title)
 {
-    MessageBoxA(g_hMainWnd, text, title, 0);
+    platform_message_box(g_hMainWnd, text, title, 0);
 }
 
 unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)

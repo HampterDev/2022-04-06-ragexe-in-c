@@ -24,6 +24,7 @@
 #include "session/session_talk.h"
 #include "ui/ui_std.h"
 #include "ui/window_mgr.h"
+#include "platform/window.h"
 
 #define WID_POPUP_MENU          0x12
 #define MSG_MENU_FIT            0x1e
@@ -261,7 +262,7 @@ void game_mode_open_actor_popup_menu(struct GameMode *self, struct PickInfo *pic
 
     if (g_mouse.button[MOUSE_LEFT] == BUTTON_HELD)
         return;
-    if ((unsigned char)((unsigned)GetAsyncKeyState(VK_SHIFT) >> 8))
+    if ((unsigned char)((unsigned)platform_async_key_state(VK_SHIFT) >> 8))
         return;
     we_are_gm = clientinfo_is_admin_aid(g_session1.ownAid);
     if (!pick || verdict != 0 || g_mouse.button[MOUSE_RIGHT] != BUTTON_RELEASED || g_windowMgr.item_store_wnd)

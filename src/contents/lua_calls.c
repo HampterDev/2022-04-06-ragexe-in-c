@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include "platform/window.h"
 
 struct LuaCallArguments {
     const char *table;
@@ -21,7 +22,7 @@ void client_lua_error_box(struct ClientLua *lua, const char *caption, const char
     va_start(values, format);
     vsnprintf(text, sizeof text, format, values);
     va_end(values);
-    MessageBoxA(NULL, text, caption, 0);
+    platform_message_box(NULL, text, caption, 0);
 }
 
 static int parse_format(const char *format, int *inputs, int *outputs)

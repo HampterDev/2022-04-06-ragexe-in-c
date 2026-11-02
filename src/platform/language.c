@@ -8,14 +8,19 @@
 #include <stdint.h>
 #include <limits.h>
 #include "platform/language.h"
+#include "platform/window.h"
+#ifdef _WIN32
+#include <imm.h>
+#endif
 #include "core/app.h"
 #include "ui/misc/thai_lexicon.h"
+#include "platform/window.h"
 
 struct ThaiBreakIterator g_thaiBreakIterator;
 
 struct Language *g_language;
 
-#define KEY_DOWN(vk)  ((GetKeyState(vk) & 0xff00) != 0)
+#define KEY_DOWN(vk)  ((platform_key_state(vk) & 0xff00) != 0)
 
 struct Language *language_construct(struct Language *self)
 {
@@ -107,22 +112,15 @@ const char *language_input_text(const struct Language *self)
 
 void language_paste(struct Language *self)
 {
-    HANDLE data;
-    const char *text;
+    char *text;
 
     if (g_windowMgr.macro_detector_edit == ui_window_mgr_get_focus_edit(&g_windowMgr))
         return;
-    if (!OpenClipboard(g_hMainWnd))
-        return;
-    data = GetClipboardData(CF_TEXT);
-    if (data) {
-        text = (const char *)GlobalLock(data);
-        if (text) {
-            language_replace_selection(self, text);
-            GlobalUnlock(data);
-        }
+    text = platform_clipboard_get(g_hMainWnd);
+    if (text) {
+        language_replace_selection(self, text);
+        free(text);
     }
-    CloseClipboard();
 }
 
 void language_copy(struct Language *self)
@@ -130,31 +128,20 @@ void language_copy(struct Language *self)
     int first = self->anchor < self->caret ? self->anchor : self->caret;
     int last = self->anchor < self->caret ? self->caret : self->anchor;
     size_t length;
-    HGLOBAL block;
     char *text;
 
     if (first < 0 || (unsigned)last > self->input_length || first == last)
         return;
     length = (size_t)(last - first);
-    if (!OpenClipboard(g_hMainWnd))
+    text = malloc(length);
+    if (!text)
         return;
-    block = GlobalAlloc(GMEM_MOVEABLE, length + 1);
-    if (block) {
-        text = GlobalLock(block);
-        if (text) {
-            if (self->masked)
-                memset(text, '*', length);
-            else
-                memcpy(text, language_input_text(self) + first, length);
-            text[length] = 0;
-            GlobalUnlock(block);
-            if (EmptyClipboard() && SetClipboardData(CF_TEXT, block))
-                block = NULL;
-        }
-        if (block)
-            GlobalFree(block);
-    }
-    CloseClipboard();
+    if (self->masked)
+        memset(text, '*', length);
+    else
+        memcpy(text, language_input_text(self) + first, length);
+    platform_clipboard_set(g_hMainWnd, text, length);
+    free(text);
 }
 
 void language_caret_back(struct Language *self)
@@ -186,6 +173,7 @@ void language_caret_forward(struct Language *self)
     self->caret = (int)(CharNextExA((WORD)self->code_page, s + self->caret, 0) - s);
 }
 
+#ifdef _WIN32
 const char *language_candidate_text(struct Language *self, int index)
 {
     int length;
@@ -326,6 +314,39 @@ void language_insert_result(struct Language *self)
     ImmReleaseContext(g_hMainWnd, imc);
     language_replace_selection(self, text);
 }
+
+#else
+const char *language_candidate_text(struct Language *self, int index)
+{
+    (void)index;
+    self->candidate_text[0] = 0;
+    return self->candidate_text;
+}
+
+void language_read_candidates(struct Language *self)
+{
+    self->candidate_count = self->candidate_selection = self->candidate_page = 0;
+}
+
+void language_set_composition(struct Language *self, const char *text, int cursor)
+{
+    size_t length = strlen(text);
+    if (length >= sizeof self->composition)
+        length = sizeof self->composition - 1;
+    memcpy(self->composition, text, length);
+    self->composition[length] = 0;
+    self->composition_length = length;
+    self->composition_cursor = cursor;
+}
+
+void language_commit(struct Language *self, const char *text)
+{
+    self->composition[0] = 0;
+    self->composition_length = 0;
+    language_replace_selection(self, text);
+}
+
+#endif
 
 const char *language_reading(struct Language *self)
 {
@@ -547,6 +568,7 @@ void language_on_key_down(struct Language *self, int key)
         plain_key(self, key);
 }
 
+#ifdef _WIN32
 int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM wparam,
                                       LPARAM lparam, BYTE *handled)
 {
@@ -591,15 +613,11 @@ int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM w
     *handled = 1;
     return 0;
 }
+#endif
 
 void language_cancel_input(struct Language *self)
 {
-    HIMC imc = ImmGetContext(g_hMainWnd);
-
-    if (imc) {
-        ImmNotifyIME(imc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
-        ImmReleaseContext(g_hMainWnd, imc);
-    }
+    platform_ime_cancel(g_hMainWnd);
     self->input_length = 0;
     if (self->input) self->input[0] = 0;
     self->caret = self->input_length;

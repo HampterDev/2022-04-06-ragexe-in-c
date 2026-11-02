@@ -133,6 +133,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
     strcpy(clipboard_text,(char*)clip_bytes); clip_system_owned=1; ++published; return block;
 }
 
+#include "platform/window.h"
 #define GetKeyState test_key_state
 #define WideCharToMultiByte test_wide_to_multi
 #define GetKeyboardLayout test_keyboard
@@ -156,6 +157,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #define free test_free
 #include "../src/platform/language.c"
 #include "../src/platform/language_tc.c"
+#include "../src/platform/window.c"
 #undef malloc
 #undef realloc
 #undef free

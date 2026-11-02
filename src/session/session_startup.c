@@ -10,13 +10,14 @@
 #include "platform/win_types.h"
 #include "platform/language.h"
 #include "ui/render/graphic_setting.h"
+#include "platform/window.h"
 
 void session_startup(struct Session *self)
 {
     const char *missing_font;
 
     if (!item_info_load())
-        MessageBoxA(NULL, "ItemInfo file Init", "Error", 0);
+        platform_message_box(NULL, "ItemInfo file Init", "Error", 0);
     srand((unsigned)_time32(NULL));
     session_init_table(self);
     map_info_load(g_mapInfo);
