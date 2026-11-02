@@ -46,10 +46,10 @@ BYTE *game_file_mgr_read_loose_file(struct GameFileMgr *self, const char *name, 
     file = platform_file_open_read(name);
     if (!file)
         return NULL;
-    if (platform_file_size(file, &length) && length >= 0 && length <= INT_MAX) {
+    if (platform_file_size(file, &length) && length > 0 && length <= INT_MAX) {
         size_t count = (size_t)length;
-        data = platform_file_buffer_alloc(count ? count : 1);
-        if (data && count && !platform_file_read(file, data, count)) {
+        data = platform_file_buffer_alloc(count);
+        if (data && !platform_file_read(file, data, count)) {
             platform_file_buffer_free(data);
             data = NULL;
         }
