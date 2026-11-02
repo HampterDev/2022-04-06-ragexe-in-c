@@ -120,7 +120,7 @@ static void run_case(int second, int id, size_t size, int null_packet)
             id == 0x0a4e || id == 0x0a50 || id == 0x0ab4 || id == 0x0ab7 ||
             id == 0x0b5a || id == 0x0b5d || id == 0x0b5e ||
             id == 0x0a98 || id == 0x0a9a || id == 0x0a9b || id == 0x0a9d || id == 0x0ac8 ||
-            id == 0x0a29 || id == 0x0bb3))
+            id == 0x0a29 || id == 0x0bb3 || id == 0x0b6b || id == 0x0b6c))
         assert(trace_count == 12);
     if (second && id == 0x0bf1 && !null_packet && size >= 2) {
         assert(trace_count == 8);
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0x45cac67ceea7fb03));
+    assert(digest == UINT64_C(0x679cf1c915cfe60f));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

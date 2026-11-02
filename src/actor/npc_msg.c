@@ -16,24 +16,6 @@
 
 struct UIWindow;
 
-static long long npc_gauge_value(const void *context)
-{
-    const struct Npc *actor = context;
-    return session_find_abr_hp(&g_session1, (unsigned)actor->aid);
-}
-
-static long long npc_gauge_maximum(const void *context)
-{
-    const struct Npc *actor = context;
-    return session_find_abr(&g_session1, (unsigned)actor->aid);
-}
-
-static struct GaugeValue npc_gauge_source(struct Npc *actor, int maximum)
-{
-    struct GaugeValue source = {maximum ? npc_gauge_maximum : npc_gauge_value, actor};
-    return source;
-}
-
 static void npc_build_player_gage(struct Npc *self, struct UIWindow *g)
 {
     switch (self->object_type) {
@@ -59,16 +41,6 @@ static void npc_build_player_gage(struct Npc *self, struct UIWindow *g)
         ui_player_gauge_set(g, PLAYER_GAUGE_SP, gauge_value_from_int(&g_session1.elementalSp), gauge_value_from_int(&g_session1.elementalMaxSp));
         ui_window_create(g, 0x3c, 9);
         break;
-    case 13:
-        ui_player_gauge_set(g, PLAYER_GAUGE_HP, npc_gauge_source(self, 0), npc_gauge_source(self, 1));
-        ui_window_create(g, 0x3c, 5);
-        ui_player_gauge_set_layout(g, 0xd);
-        break;
-    case 14:
-        ui_player_gauge_set(g, PLAYER_GAUGE_HP, npc_gauge_source(self, 0), npc_gauge_source(self, 1));
-        ui_window_create(g, 0x3c, 5);
-        ui_player_gauge_set_layout(g, 0xe);
-        break;
     }
 }
 
@@ -82,7 +54,7 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
 
         game_actor_send_msg(object, source, 4, par1, par2, par3, par4);
         switch (self->object_type) {
-        case 8: case 9: case 10: case 13: case 14:
+        case 8: case 9: case 10:
             self->owner_aid = info->char_id;
             break;
         }
@@ -107,8 +79,6 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
             ui_window_move(g, self->screen_x - 30, g_renderer->height * 12 / 480 + self->screen_y);
             return;
         }
-        if (self->object_type == 0xd || self->object_type == 0xe)
-            return;
         g = self->pc_gage;
         if (!g) {
             g = (struct UIWindow *)ui_pc_gage_new();

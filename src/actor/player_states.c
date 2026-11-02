@@ -81,12 +81,6 @@ static void ps_spawn_once(struct Player *self, int type)
         ps_spawn(self, type);
 }
 
-static void ps_spawn_once_here(struct Player *self, int type, int value)
-{
-    if (!effect_mgr_has_effect(g_effectMgr, self->aid, type))
-        ps_spawn_here(self, type, value);
-}
-
 static void ps_play_wave(const char *name, float y)
 {
     sound_play_wave(name, 0.0f, y, 0.0f, 250, 40, 1.0f);
@@ -336,88 +330,10 @@ void player_refresh_status_effects(struct Player *self)
         case 0x466:                 ps_respawn(self, 0x66c); break;
         case 0x47e:                 ps_spawn_once(self, 0x6cd); break;
 
-        case 0x480:                 ps_spawn_once_here(self, 0x708, value); break;
         case 0x48d:
             if (!able_to_make_effect_is_effect_exist(self, 0x64a))
                 ps_launch(self, 0x64a);
             break;
-        case 0x494:                 ps_respawn(self, 0x69e); break;
-        case 0x495:
-            ps_respawn(self, 0x6ae);
-            ps_respawn(self, 0x8e8);
-            break;
-        case 0x498:
-            effect_mgr_remove_type(g_effectMgr, self->aid, 0x6be);
-            effect_mgr_remove_type(g_effectMgr, self->aid, 0x6bf);
-            ps_spawn(self, 0x6be);
-            ps_spawn(self, 0x6bf);
-            break;
-        case 0x49a:                 ps_respawn(self, 0x6d7); break;
-        case 0x4a6: case 0x4ce: case 0x4cf: break;
-        case 0x4a8:
-            while (able_to_make_effect_is_effect_exist(self, 0x3ec) == 1)
-                render_object_send(self, NULL, 0x6d, 0x3ec, 0, 0, 0);
-            ps_launch(self, 0x3ec);
-            break;
-        case 0x4a9:                 ps_spawn_once(self, 0x725); break;
-        case 0x4ac:                 ps_spawn_once_here(self, 0x779, value); break;
-        case 0x4ad:
-            if (g_session1.map_rule_flags[0] == 0)
-                ps_spawn_once(self, 0x712);
-            break;
-        case 0x4b1:
-            if (g_session1.map_rule_flags[0] == 0)
-                ps_spawn_once(self, 0x73c);
-            ps_spawn_once(self, 0x73d);
-            break;
-        case 0x4b5:
-            ps_relaunch(self, 0x14e);
-            g_playerBlind = 1;
-            render_object_send(self, NULL, 0x6d, 0xa4, 0, 0, 0);
-            self->status_icons = ps_launch(self, 0xa4);
-            break;
-        case 0x4b6: case 0x4b9:     render_object_send(self, NULL, 0x9c, 0, 0, 0, 0); break;
-        case 0x4b7:                 render_object_send(self, NULL, 0x98, 0, 0, 0, 0); break;
-        case 0x4b8:
-            ps_spawn(self, 0x8de);
-            ps_spawn(self, 0x8e0);
-            break;
-        case 0x4ba:                 ps_respawn(self, 0x8dc); break;
-        case 0x4bb:                 ps_spawn(self, 0x8e1); break;
-        case 0x4bc:
-            render_object_send(self, NULL, 0x7f, 0xff, 0, 0, 0);
-            ps_respawn(self, 0x8dd);
-            break;
-        case 0x4bd:                 render_object_send(self, NULL, 0x9a, 0, 0, 0, 0); break;
-        case 0x4be:                 render_object_send(self, NULL, 0x7f, 0xaa, 0, 0xaa, 0); break;
-        case 0x4bf:                 render_object_send(self, NULL, 0x7f, 0, 0, 0xff, 0); break;
-        case 0x4c0:                 render_object_send(self, NULL, 0x7f, 0xff, 0, 0, 0); break;
-        case 0x4c4:                 ps_spawn_once(self, 0x886); break;
-        case 0x4c6:                 ps_spawn(self, 0x881); break;
-        case 0x4d0:
-            ps_spawn(self, 0x7ba);
-            ps_spawn(self, 0x7bd);
-            break;
-        case 0x4d1:
-            ps_spawn(self, 0x7be);
-            ps_spawn(self, 0x7c1);
-            break;
-        case 0x4d2:                 ps_spawn(self, 0x7b7); break;
-        case 0x4d4:                 ps_spawn_here(self, 0x72f, value); break;
-        case 0x4d5:                 ps_spawn_once_here(self, 0x719, value); break;
-        case 0x4dc:
-            if (!effect_mgr_has_effect(g_effectMgr, self->aid, 0x83d)) {
-                void *abyss = ps_spawn(self, 0x83d);
-
-                if (abyss)
-                    from_the_abyss_effect_set_ball_count(abyss, value);
-            }
-            break;
-        case 0x4dd:                 ps_spawn_once_here(self, 0x84e, value); break;
-        case 0x4e2:                 ps_spawn_once(self, 0x76c); break;
-        case 0x4e4:                 ps_spawn_once_here(self, 0x7aa, value); break;
-        case 0x4e8:                 ps_spawn_once(self, 0x7d2); break;
-        case 0x4ea:                 ps_spawn_once(self, 0x80c); break;
         default:
             ps_other(self, id, value);
             break;

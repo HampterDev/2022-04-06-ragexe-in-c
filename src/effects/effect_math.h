@@ -12,6 +12,4 @@ float effect_random_tenths(float lo, float hi);
 
 float effect_heading_deg(float x, float z);
 
-double effect_screen_heading(Vec3 from, Vec3 to);
-
 #endif

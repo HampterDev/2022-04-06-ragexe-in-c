@@ -68,26 +68,6 @@ int session_count_hidden_hotkeys_below(struct Session *self, int list, int index
     return n;
 }
 
-void session_erase_abr(struct Session *self, long long key)
-{
-    tree_erase_key(&self->abrHp, &key, tree_less_int64, NULL);
-    tree_erase_key(&self->abrMaxHp, &key, tree_less_int64, NULL);
-}
-
-long long session_find_abr_hp(struct Session *self, long long key)
-{
-    struct Int64Pair *entry = tree_find(&self->abrHp, &key, tree_less_int64);
-
-    return entry ? entry->value : -1;
-}
-
-long long session_find_abr(struct Session *self, long long key)
-{
-    struct Int64Pair *entry = tree_find(&self->abrMaxHp, &key, tree_less_int64);
-
-    return entry ? entry->value : -1;
-}
-
 int session_find_combo_delay(struct Session *self, int key)
 {
     const int *pairs = self->comboDelays.first;

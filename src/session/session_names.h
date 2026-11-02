@@ -74,7 +74,6 @@ BYTE session_is_bard_or_dancer(struct Session *self, int job, int female);
 float session_get_baby_job_scale(struct Session *self, int job);
 int session_remap_job(struct Session *self, int job);
 int session_count_hidden_hotkeys_below(struct Session *self, int list, int index);
-#include "session/abr.h"
 int session_find_combo_delay(struct Session *self, int key);
 void *session_get_actor_by_aid(struct Session *self, DWORD aid);
 int session_get_default_option_int(struct Session *self, const char *name, int def);

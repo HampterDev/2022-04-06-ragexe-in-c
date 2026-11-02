@@ -857,70 +857,6 @@ unsigned char rag_process_800(struct RagEffect *self)
         rag_spell_rings(self, g_session1.map_rule_flags[0] == 1 ? "effect\\mineffect\\new_earthdrive\\ring_brown.tga"
                                             : "effect\\new_earthdrive\\ring_brown.tga", 33);
         break;
-    case 1872:
-        rag_spell_circles(self, "effect\\ring_white.tga", 42); break;
-    case 1876:
-        rag_spell_circles(self, "effect\\ring_white.tga", 43); break;
-    case 1902:
-        rag_spell_circles(self, "effect\\new_abr_mother\\abr_mother.tga", 0); break;
-    case 1910:
-        if (self->master == NULL)
-            break;
-        rag_spell_circles(self, "effect\\new_abr_infinity\\ring_infinty.tga", 0);
-        break;
-    case 1918:
-        rag_spell_circles(self, "effect\\new_d_cannon\\ABR_DUAL_CANNON.tga", 0); break;
-    case 1923:
-        rag_spell_circles_low(self, "effect\\ring_red.tga", 44, 44); break;
-    case 1932:
-        rag_follow_master(self);
-        if (self->frame == 0) {
-            rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
-            rag_casting_circle(self, 90, "effect\\new_pramen\\ring_blue.tga", 5);
-        }
-        break;
-    case 1938:
-        rag_spell_circles(self, "effect\\new_battle_w\\ABR_BATTLE_WARIOR.tga", 0); break;
-    case 1959:
-        rag_spell_circles(self, "effect\\pneumaticusprocella\\pneumaticusprocella_cast\\ring_yellow.tga", 0); break;
-    case 1963:
-        rag_spell_circles(self, "effect\\ring_white.tga", 45); break;
-    case 1986:
-        rag_spell_circles(self, "effect\\ring_white.tga", 46); break;
-    case 1998:
-        rag_spell_circles(self, "effect\\ring_white.tga", 47); break;
-    case 2240:
-        rag_spell_circles(self, "effect\\ring_white.tga", 48); break;
-    case 2249:
-        rag_spell_circles(self, "effect\\ring_white.tga", 49); break;
-    case 2255:
-        rag_spell_circles(self, "effect\\ring_white.tga", 50); break;
-    case 2288:
-        return rag_status_icon(self, 1, "effect\\status_effect\\C_rate_Up.bmp");
-    case 2289:
-        return rag_status_icon(self, 0, "effect\\status_effect\\C_rate_Down.bmp");
-    case 2290:
-        return rag_status_icon(self, 1, "effect\\status_effect\\H_plus_Up.bmp");
-    case 2291:
-        return rag_status_icon(self, 0, "effect\\status_effect\\H_plus_Down.bmp");
-    case 2292:
-        return rag_status_icon(self, 1, "effect\\status_effect\\Mres_Up.bmp");
-    case 2293:
-        return rag_status_icon(self, 0, "effect\\status_effect\\Mres_Down.bmp");
-    case 2294:
-        return rag_status_icon(self, 1, "effect\\status_effect\\P_atk_Up.bmp");
-    case 2295:
-        return rag_status_icon(self, 0, "effect\\status_effect\\P_atk_Down.bmp");
-    case 2296:
-        return rag_status_icon(self, 1, "effect\\status_effect\\Res_Up.bmp");
-    case 2297:
-        return rag_status_icon(self, 0, "effect\\status_effect\\Res_Down.bmp");
-    case 2298:
-        return rag_status_icon(self, 1, "effect\\status_effect\\S_matk_Up.bmp");
-    case 2299:
-        return rag_status_icon(self, 0, "effect\\status_effect\\S_matk_Down.bmp");
-    case 2300:
-        return rag_status_icon(self, 1, "effect\\status_effect\\P_atk_S_matk_Up.bmp");
     case 2338:
         rag_follow_master(self);
         if (self->frame == 0)
@@ -950,18 +886,6 @@ unsigned char rag_process_800(struct RagEffect *self)
         rag_msg_sprite(self, 0x68); break;
     case 2365:
         rag_msg_sprite(self, 0x69); break;
-    case 2367:
-        rag_spell_circles(self, "effect\\ring_yellow.tga", 0); break;
-    case 2368:
-        rag_cast_bubbles_149(self, 11); break;
-    case 2369:
-        if (self->frame == 0)
-            rag_wave_plain("effect\\EF_BeginSpell.wav");
-        rag_four_rings_139(self, 25, "effect\\ring_white.tga", 0);
-        rag_four_rings_139(self, 45, "effect\\ring_white.tga", 0);
-        break;
-    case 2373:
-        rag_tinted_rings(self, "effect\\ring_black.tga", 4, 255, 0, 0); break;
     default:
         break;
     }

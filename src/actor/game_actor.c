@@ -121,8 +121,6 @@ void game_actor_forget_handle(struct GameActor *self, int handle)
     if (self->emotion_mark_a == handle) { self->emotion_mark_a = 0; return; }
     if (self->emotion_mute == handle) { self->emotion_mute = 0; return; }
     if (self->cursor_mark == handle) { self->cursor_mark = 0; return; }
-    if (self->lassitude_mark == handle)
-        self->lassitude_mark = 0;
 }
 
 int game_actor_action_of(struct GameActor *self, unsigned motion)
@@ -376,7 +374,7 @@ void game_actor_launch_ranged_attack(struct GameActor *self, int id, float heigh
     case 0x682: case 0x683: case 0x698: case 0x749: case 0x7e5: case 0x93c: case 0x9ab:
     case 0xf2a: case 0x1781: case 0x1782: case 0x1783: case 0x1784: case 0x1785: case 0x1786:
     case 0x1787: case 0x1788: case 0x1789: case 0x178a: case 0x4f32: case 0x4f33: case 0x4f37:
-    case 0x4f90: case 0x505f: case 0x5062: case 0x5069: case 0x5173: case 0x5410: case 0x5455:
+    case 0x4f90: case 0x505f: case 0x5062: case 0x5069: case 0x5410: case 0x5455:
         game_mode_launch_arrow(mode, &self->pos, id, height, game_actor_get_job(self));
         break;
     }

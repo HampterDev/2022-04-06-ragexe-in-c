@@ -106,6 +106,16 @@ int main(void)
     assert(!game_actor_launch_effect(&actor, 60001, offset, 90));
     assert(!game_actor_launch_effect(&actor, 0xa6, offset, 90));
     assert(allocations == 0 && initializations == 0 && actor_insertions == 0);
+    actor.is_pc = 1;
+    /* Retired 4th-class and grade-enchant effect IDs: first, last and inner members. */
+    assert(!game_actor_launch_effect(&actor, 0x647, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x649, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x6e4, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x8f0, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x8fc, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x945, offset, 90));
+    assert(allocations == 0 && initializations == 0 && g_launchedEffectIds[0] == 0);
+    actor.is_pc = 0;
 
     fail_allocation = 1;
     assert(!game_actor_launch_effect(&actor, 1, offset, 90));

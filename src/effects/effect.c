@@ -39,8 +39,6 @@ static const struct EffectOps effect_ops = {
 
 #define GAME_MSG_QUAKE 0x7a
 
-#define EFFECT_TYPE_WIND_SIGN_LOOP 0x76c
-
 #define ACTOR_IS_PC(actor) ((actor)->is_pc)
 
 static void sound_cues_free(struct Vec *cues)
@@ -216,7 +214,7 @@ void effect_render_if_visible(struct Effect *self)
     if (!g_session1.effectOn && !self->always_draw)
         return;
     owner = effect_find_actor(self->owner_aid);
-    if (owner && self->owner_aid != g_session1.ownAid && ACTOR_IS_PC(owner) == 1 && self->type != EFFECT_TYPE_WIND_SIGN_LOOP) {
+    if (owner && self->owner_aid != g_session1.ownAid && ACTOR_IS_PC(owner) == 1) {
         if (!owner->visible || !owner->revealed)
             return;
         if (is_effect_state_star2(actor_get_effect_state(owner)))

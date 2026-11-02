@@ -71,21 +71,17 @@ static void instant_values(void)
     assert(session_get_instant_var(&session, 42) == 0);
     for (i = 0; i < sizeof keys / sizeof keys[0]; ++i) {
         session_set_pair(&session, keys[i], values[i]);
-        game_actor_set_instant_var(&actor, keys[i], values[i + 1]);
     }
     before = allocations;
     for (j = 0; j < sizeof values / sizeof values[0]; ++j) {
         for (i = 0; i < sizeof keys / sizeof keys[0]; ++i) {
-            long long actor_value = values[(j + 1) % (sizeof values / sizeof values[0])];
             session_set_pair(&session, keys[i], values[j]);
-            game_actor_set_instant_var(&actor, keys[i], actor_value);
             assert(((struct IntInt64Pair *)tree_find(&session.instantVars, &keys[i], tree_less_int))->value
                    == values[j]);
-            assert(((struct IntInt64Pair *)tree_find(&actor.vars, &keys[i], tree_less_int))->value == actor_value);
             assert(session_get_instant_var(&session, keys[i]) == (int)values[j]);
         }
     }
-    assert(allocations == before && session.instantVars.size == 5 && actor.vars.size == 5);
+    assert(allocations == before && session.instantVars.size == 5 && actor.vars.size == 0);
     for (i = 0; i < sizeof values / sizeof values[0]; ++i) {
         for (j = 0; j < sizeof values / sizeof values[0]; ++j) {
             actor.sphere_count = values[i];

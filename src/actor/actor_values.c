@@ -8,10 +8,3 @@ unsigned char game_actor_update_sphere_count(struct GameActor *self, int64_t cou
     self->sphere_count = count;
     return above;
 }
-
-void game_actor_set_instant_var(struct GameActor *self, int key, long long value)
-{
-    struct IntInt64Pair *var = tree_get(&self->vars, &key, sizeof key, sizeof *var, tree_less_int);
-
-    var->value = value;
-}

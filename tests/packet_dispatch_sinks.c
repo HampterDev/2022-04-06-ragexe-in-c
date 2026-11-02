@@ -20,8 +20,6 @@ struct NpcMarketEntry;
 struct PACKET_SC_NOTIFY_BAN;
 struct PACKET_STORE_LIST;
 struct PACKET_STORE_LIST_NAMED;
-struct PACKET_ZC_ABR_INIT;
-struct PACKET_ZC_ABR_PAR_CHANGE;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX2;
 struct PACKET_ZC_ACK_ALL_RODEX_LIST;
@@ -1829,20 +1827,6 @@ void game_mode_ui_open_v2(struct GameMode *arg0, unsigned char arg1, int arg2)
 void game_mode_zc_config_notify(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_ZcConfigNotify");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_abr_init(struct GameMode *arg0, const struct PACKET_ZC_ABR_INIT *arg1)
-{
-    packet_trace_call("GameMode_Zc_Abr_Init");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_abr_par_change(struct GameMode *arg0, const struct PACKET_ZC_ABR_PAR_CHANGE *arg1)
-{
-    packet_trace_call("GameMode_Zc_Abr_Par_Change");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }

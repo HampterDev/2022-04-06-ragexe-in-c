@@ -1,5 +1,4 @@
 #define TEST_EFFECT_FACTORIES(X) \
-    X(AMachineEffect, 0x0d4, a_machine_effect_construct, a_machine_effect_new) \
     X(AnimatedEmitterEffect, 0x1a0, animated_emitter_effect_construct, animated_emitter_effect_new) \
     X(AxeBoomerang, 0x0f0, axe_boomerang_construct, axe_boomerang_new) \
     X(BindTrapEffect, 0x0d4, bind_trap_effect_construct, bind_trap_effect_new) \
@@ -8,26 +7,19 @@
     X(CartCannon, 0x0fc, cart_cannon_construct, cart_cannon_new) \
     X(CellRangeEffect, 0x0d8, cell_range_effect_construct, cell_range_effect_new) \
     X(ChangeSizeEffect, 0x0c8, change_size_effect_construct, change_size_effect_new) \
-    X(ChargingPierceEffect, 0x190, charging_pierce_effect_construct, charging_pierce_effect_new) \
     X(CherryBlossomEffect, 0x194, cherry_blossom_effect_construct, cherry_blossom_effect_new) \
-    X(ClimaxEffect, 0x0d0, climax_effect_construct, climax_effect_new) \
     X(Cloud, 0x124, cloud_construct, cloud_new) \
     X(CloudKillEffect, 0x0e4, cloud_kill_effect_construct, cloud_kill_effect_new) \
     X(CommonFloorEffect, 0x0d4, common_floor_effect_construct, common_floor_effect_new) \
-    X(Competentia, 0x0d4, competentia_construct, competentia_new) \
     X(CurseOfCubeEffect, 0x0e4, curse_of_cube_effect_construct, curse_of_cube_effect_new) \
-    X(DancingKnifeEffect, 0x0e4, dancing_knife_effect_construct, dancing_knife_effect_new) \
     X(Ez2StrEffect, 0x100, ez2_str_effect_construct, ez2_str_effect_new) \
     X(Ez2StrEffectEx, 0x0d4, ez2_str_effect_ex_construct, ez2_str_effect_ex_new) \
     X(EmitterEffect, 0x188, emitter_effect_construct, emitter_effect_new) \
     X(EnergyOrbEffect, 0x0dc, energy_orb_effect_construct, energy_orb_effect_new) \
-    X(EternalSlashCountEffect, 0x0cc, eternal_slash_count_effect_construct, eternal_slash_count_effect_new) \
     X(EvilLandEffect, 0x0d4, evil_land_effect_construct, evil_land_effect_new) \
     X(EvilsPawEffect, 0x0fc, evils_paw_effect_construct, evils_paw_effect_new) \
     X(FallenAngelEffect, 0x0d8, fallen_angel_effect_construct, fallen_angel_effect_new) \
     X(FriggSongEffect, 0x0ec, frigg_song_effect_construct, frigg_song_effect_new) \
-    X(FromTheAbyssEffect, 0x0e8, from_the_abyss_effect_construct, from_the_abyss_effect_new) \
-    X(FullScreenEffect, 0x0d8, full_screen_effect_construct, full_screen_effect_new) \
     X(GravityControlEffect, 0x0d0, gravity_control_effect_construct, gravity_control_effect_new) \
     X(HealEffect, 0x128, heal_effect_construct, heal_effect_new) \
     X(ItemDropEffect, 0x118, item_drop_effect_construct, item_drop_effect_new) \
@@ -51,9 +43,7 @@
     X(RotateItemEffect, 0x0dc, rotate_item_effect_construct, rotate_item_effect_new) \
     X(RotateLineEffect, 0x100, rotate_line_effect_construct, rotate_line_effect_new) \
     X(ScatterEffect, 0x0d4, scatter_effect_construct, scatter_effect_new) \
-    X(ServantWeaponEffect, 0x140, servant_weapon_effect_construct, servant_weapon_effect_new) \
     X(SevereRainStorm, 0x0d4, severe_rain_storm_construct, severe_rain_storm_new) \
-    X(ShadowExceed, 0x0d8, shadow_exceed_construct, shadow_exceed_new) \
     X(ShowEffect, 0x0d0, show_effect_construct, show_effect_new) \
     X(SmokeEffect, 0x0d8, smoke_effect_construct, smoke_effect_new) \
     X(SoulCollectEffect, 0x0d0, soul_collect_effect_construct, soul_collect_effect_new) \

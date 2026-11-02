@@ -167,8 +167,6 @@ static int picked_is_foe(struct GameMode *self, struct PickInfo *pick, struct Ga
     case OBJECT_TYPE_HOMUNCULUS:
     case OBJECT_TYPE_MERCENARY:
     case OBJECT_TYPE_ELEMENTAL:
-    case OBJECT_TYPE_ABR:
-    case OBJECT_TYPE_BIONIC:
         owner = world_get_game_actor_by_aid(self->world, actor->owner_aid);
         if (owner != 0)
             judged = owner;

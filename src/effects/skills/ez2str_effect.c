@@ -82,29 +82,15 @@ static const struct TypeRange HEAD_TYPES[] = {
     {0x46d, 0x46e}, {0x470, 0x470}, {0x472, 0x473}, {0x475, 0x476}, {0x4c2, 0x4c5}, {0x4cc, 0x4ce},
     {0x4d6, 0x4d7}, {0x4db, 0x4db}, {0x4ea, 0x4fb}, {0x4fd, 0x4fd}, {0x522, 0x522}, {0x543, 0x54a},
     {0x552, 0x552}, {0x590, 0x593}, {0x5c5, 0x5c5}, {0x5ce, 0x5d1}, {0x62d, 0x62f}, {0x631, 0x639},
-    {0x63b, 0x63f}, {0x64b, 0x650}, {0x657, 0x660}, {0x663, 0x676}, {0x686, 0x68a}, {0x6a2, 0x6a9},
-    {0x6ac, 0x6ac}, {0x6ae, 0x6d7}, {0x6d9, 0x6da}, {0x6dd, 0x6df}, {0x6e1, 0x6e3}, {0x6e9, 0x705},
-    {0x707, 0x707}, {0x709, 0x70b}, {0x70d, 0x712}, {0x714, 0x714}, {0x716, 0x716}, {0x718, 0x724},
-    {0x726, 0x72c}, {0x72e, 0x730}, {0x732, 0x732}, {0x736, 0x73a}, {0x73c, 0x74a}, {0x751, 0x753},
-    {0x755, 0x768}, {0x76a, 0x76d}, {0x76f, 0x775}, {0x77a, 0x77d}, {0x77f, 0x77f}, {0x782, 0x782},
-    {0x784, 0x78b}, {0x78e, 0x791}, {0x793, 0x79e}, {0x7a0, 0x7a3}, {0x7ac, 0x7af}, {0x7b1, 0x7b4},
-    {0x7b6, 0x7c1}, {0x7c3, 0x7cd}, {0x7cf, 0x7e9}, {0x7eb, 0x819}, {0x81b, 0x81c}, {0x81e, 0x81f},
-    {0x821, 0x821}, {0x823, 0x83c}, {0x83e, 0x841}, {0x843, 0x869}, {0x86b, 0x874}, {0x876, 0x886},
-    {0x888, 0x892}, {0x894, 0x89a}, {0x89c, 0x89d}, {0x89f, 0x8a5}, {0x8a7, 0x8ad}, {0x8af, 0x8b5},
-    {0x8b7, 0x8bf}, {0x8c1, 0x8c8}, {0x8ca, 0x8ce}, {0x8d0, 0x8df}, {0x8e1, 0x8e2}, {0x8e7, 0x8e8},
-    {0x900, 0x900}, {0x904, 0x904}, {0x910, 0x921}, {0x923, 0x924}, {0x926, 0x926}, {0x943, 0x944},
+    {0x63b, 0x63f}, {0x64b, 0x650}, {0x657, 0x660}, {0x663, 0x676}, {0x6a2, 0x6a9}, {0x6ac, 0x6ac},
+    {0x6c2, 0x6c3}, {0x6cd, 0x6cd}, {0x900, 0x900}, {0x904, 0x904}, {0x910, 0x921}, {0x923, 0x924},
+    {0x926, 0x926}, {0x943, 0x944},
 };
 
 static const struct TypeRange OWNER_BOUND_TYPES[] = {
     {0x08d, 0x08d}, {0x3e6, 0x3e6}, {0x45f, 0x45f}, {0x470, 0x470}, {0x473, 0x473}, {0x4c5, 0x4c5},
     {0x4ee, 0x4f1}, {0x514, 0x51d}, {0x552, 0x552}, {0x5bb, 0x5c4}, {0x63f, 0x63f}, {0x64b, 0x650},
-    {0x676, 0x676}, {0x6ae, 0x6ae}, {0x6be, 0x6bf}, {0x6cd, 0x6cd}, {0x6d7, 0x6d7}, {0x6eb, 0x6ec},
-    {0x6f0, 0x6f1}, {0x701, 0x703}, {0x719, 0x719}, {0x72f, 0x72f}, {0x752, 0x752}, {0x756, 0x756},
-    {0x75a, 0x75a}, {0x765, 0x766}, {0x76c, 0x76c}, {0x77f, 0x77f}, {0x7aa, 0x7aa}, {0x7b7, 0x7b7},
-    {0x7ba, 0x7ba}, {0x7bd, 0x7be}, {0x7c1, 0x7c1}, {0x7c7, 0x7c7}, {0x7d2, 0x7d2}, {0x7ef, 0x7ef},
-    {0x7f9, 0x7fa}, {0x803, 0x804}, {0x807, 0x808}, {0x80c, 0x80c}, {0x81e, 0x81f}, {0x84e, 0x84e},
-    {0x851, 0x852}, {0x876, 0x876}, {0x881, 0x881}, {0x886, 0x886}, {0x8a2, 0x8a3}, {0x8aa, 0x8ab},
-    {0x8b2, 0x8b3}, {0x8ba, 0x8bb}, {0x8dc, 0x8de}, {0x8e1, 0x8e1}, {0x8e8, 0x8e8}, {0x8fe, 0x8fe},
+    {0x676, 0x676}, {0x6cd, 0x6cd}, {0x8fe, 0x8fe},
 };
 
 static const struct TypeRange LOOPING_TYPES[] = {
@@ -114,14 +100,7 @@ static const struct TypeRange LOOPING_TYPES[] = {
 
 static const struct TypeRange KEYED_LOOPING_TYPES[] = {
     {0x552, 0x552}, {0x584, 0x584}, {0x5a6, 0x5a6}, {0x607, 0x607}, {0x63f, 0x63f}, {0x64b, 0x650},
-    {0x676, 0x676}, {0x6ae, 0x6ae}, {0x6be, 0x6bf}, {0x6cd, 0x6cd}, {0x6d7, 0x6d7}, {0x6eb, 0x6ec},
-    {0x6f0, 0x6f1}, {0x701, 0x703}, {0x712, 0x712}, {0x719, 0x719}, {0x72f, 0x72f}, {0x73c, 0x73d},
-    {0x752, 0x752}, {0x756, 0x756}, {0x75a, 0x75a}, {0x765, 0x766}, {0x76c, 0x76c}, {0x77f, 0x77f},
-    {0x7aa, 0x7aa}, {0x7b7, 0x7b7}, {0x7ba, 0x7ba}, {0x7bd, 0x7be}, {0x7c1, 0x7c1}, {0x7c7, 0x7c7},
-    {0x7d2, 0x7d2}, {0x7ef, 0x7ef}, {0x7f9, 0x7fa}, {0x803, 0x804}, {0x807, 0x808}, {0x80c, 0x80c},
-    {0x81e, 0x81f}, {0x84e, 0x84e}, {0x851, 0x852}, {0x876, 0x876}, {0x881, 0x881}, {0x886, 0x886},
-    {0x8a2, 0x8a3}, {0x8aa, 0x8ab}, {0x8b2, 0x8b3}, {0x8ba, 0x8bb}, {0x8dc, 0x8de}, {0x8e1, 0x8e1},
-    {0x8e8, 0x8e8}, {0x8fe, 0x8fe},
+    {0x676, 0x676}, {0x6cd, 0x6cd}, {0x8fe, 0x8fe},
 };
 
 static const struct TypeRange BEFORE_ACTORS_TYPES[] = {
@@ -137,72 +116,32 @@ static const struct TypeRange BEFORE_ACTORS_TYPES[] = {
     {0x62e, 0x62e}, {0x632, 0x632}, {0x634, 0x634}, {0x636, 0x636}, {0x63c, 0x63c}, {0x63e, 0x63e},
     {0x655, 0x656}, {0x659, 0x659}, {0x65c, 0x65c}, {0x65e, 0x65e}, {0x660, 0x660}, {0x662, 0x662},
     {0x664, 0x665}, {0x668, 0x668}, {0x66b, 0x66b}, {0x675, 0x675}, {0x67b, 0x67b}, {0x682, 0x682},
-    {0x684, 0x684}, {0x68c, 0x68c}, {0x698, 0x698}, {0x69b, 0x69c}, {0x6a0, 0x6a1}, {0x6a8, 0x6a8},
-    {0x6ab, 0x6ab}, {0x6b3, 0x6b3}, {0x6b5, 0x6b5}, {0x6bb, 0x6bb}, {0x6bd, 0x6bd}, {0x6bf, 0x6bf},
-    {0x6c1, 0x6c1}, {0x6c3, 0x6c3}, {0x6c5, 0x6c5}, {0x6d2, 0x6d2}, {0x6e6, 0x6e6}, {0x6ec, 0x6ec},
-    {0x6f1, 0x6f1}, {0x701, 0x701}, {0x703, 0x703}, {0x70b, 0x70b}, {0x71b, 0x71b}, {0x71f, 0x71f},
-    {0x73d, 0x73d}, {0x741, 0x741}, {0x747, 0x747}, {0x768, 0x768}, {0x773, 0x774}, {0x786, 0x786},
-    {0x78a, 0x78a}, {0x790, 0x790}, {0x7b7, 0x7b7}, {0x7ba, 0x7ba}, {0x7bd, 0x7be}, {0x7c1, 0x7c1},
-    {0x7df, 0x7df}, {0x7e4, 0x7e4}, {0x7f4, 0x7f4}, {0x7fa, 0x7fa}, {0x7ff, 0x7ff}, {0x804, 0x804},
-    {0x808, 0x808}, {0x80e, 0x80e}, {0x813, 0x813}, {0x816, 0x816}, {0x818, 0x818}, {0x81f, 0x81f},
-    {0x828, 0x828}, {0x82a, 0x82a}, {0x82c, 0x82c}, {0x830, 0x830}, {0x833, 0x833}, {0x846, 0x846},
-    {0x849, 0x849}, {0x850, 0x850}, {0x852, 0x852}, {0x856, 0x856}, {0x85c, 0x85c}, {0x85f, 0x85f},
-    {0x862, 0x862}, {0x865, 0x865}, {0x868, 0x868}, {0x86e, 0x86e}, {0x872, 0x872}, {0x874, 0x874},
-    {0x876, 0x876}, {0x878, 0x878}, {0x880, 0x880}, {0x88d, 0x88d}, {0x890, 0x890}, {0x892, 0x892},
-    {0x895, 0x895}, {0x897, 0x897}, {0x899, 0x899}, {0x89d, 0x89d}, {0x8a1, 0x8a1}, {0x8a3, 0x8a3},
-    {0x8a5, 0x8a5}, {0x8a9, 0x8a9}, {0x8ab, 0x8ab}, {0x8ad, 0x8ad}, {0x8b1, 0x8b1}, {0x8b3, 0x8b3},
-    {0x8b5, 0x8b5}, {0x8b9, 0x8b9}, {0x8bb, 0x8bb}, {0x8c3, 0x8c3}, {0x8d3, 0x8d3}, {0x8d5, 0x8d5},
-    {0x8d7, 0x8d7}, {0x8d9, 0x8d9}, {0x8db, 0x8db}, {0x8e7, 0x8e8}, {0x8fe, 0x8fe}, {0x911, 0x911},
-    {0x914, 0x914}, {0x917, 0x917}, {0x91c, 0x91d}, {0x923, 0x923},
+    {0x684, 0x684}, {0x68c, 0x68c}, {0x698, 0x698}, {0x69b, 0x69c}, {0x6a8, 0x6a8}, {0x6ab, 0x6ab},
+    {0x6c3, 0x6c3}, {0x8fe, 0x8fe}, {0x911, 0x911}, {0x914, 0x914}, {0x917, 0x917}, {0x91c, 0x91d},
+    {0x923, 0x923},
 };
 
 struct TypeShift { short first, last; signed char shift; };
 static const struct TypeShift HEAD_HEIGHT_SHIFTS[] = {
-    {0x40b, 0x40b, 5}, {0x45f, 0x45f, 5}, {0x7d6, 0x7d6, 5},
+    {0x40b, 0x40b, 5}, {0x45f, 0x45f, 5},
     {0x425, 0x425, -6}, {0x46d, 0x46d, -6}, {0x476, 0x476, -6}, {0x4c2, 0x4c2, -6}, {0x4c5, 0x4c5, -6},
     {0x4cd, 0x4ce, -6}, {0x4d6, 0x4d6, -6}, {0x545, 0x548, -6}, {0x5cf, 0x5d0, -6}, {0x63f, 0x63f, -6},
-    {0x64b, 0x650, -6}, {0x6c9, 0x6c9, -6}, {0x6cc, 0x6cc, -6}, {0x6d0, 0x6d0, -6}, {0x6f8, 0x6f8, -6},
-    {0x722, 0x722, -6}, {0x726, 0x726, -6}, {0x752, 0x752, -6}, {0x756, 0x756, -6}, {0x75a, 0x75a, -6},
-    {0x77a, 0x77a, -6}, {0x7b2, 0x7b2, -6}, {0x802, 0x802, -6}, {0x859, 0x859, -6}, {0x86c, 0x86c, -6},
-    {0x870, 0x870, -6},
+    {0x64b, 0x650, -6},
     {0x42c, 0x42c, -8}, {0x43b, 0x43b, -8}, {0x442, 0x442, -8}, {0x44a, 0x44a, -8}, {0x44e, 0x44f, -8},
     {0x451, 0x451, -8}, {0x453, 0x455, -8}, {0x45c, 0x45c, -8}, {0x463, 0x463, -8}, {0x46e, 0x46e, -8},
-    {0x470, 0x470, -8}, {0x472, 0x473, -8}, {0x765, 0x766, -8},
-    {0x43c, 0x43c, -7}, {0x7e2, 0x7e2, -7},
+    {0x470, 0x470, -8}, {0x472, 0x473, -8},
+    {0x43c, 0x43c, -7},
     {0x43d, 0x43d, -5}, {0x441, 0x441, -5}, {0x443, 0x443, -5}, {0x447, 0x447, -5}, {0x4ed, 0x4ed, -5},
-    {0x552, 0x552, -5}, {0x75e, 0x75e, -5}, {0x803, 0x803, -5}, {0x805, 0x806, -5}, {0x81e, 0x81e, -5},
-    {0x821, 0x821, -5}, {0x83e, 0x83f, -5}, {0x853, 0x853, -5},
+    {0x552, 0x552, -5},
     {0x464, 0x464, 8}, {0x467, 0x467, 8},
     {0x475, 0x475, -4}, {0x4c3, 0x4c3, -4}, {0x522, 0x522, -4}, {0x543, 0x544, -4}, {0x549, 0x54a, -4},
-    {0x5c5, 0x5c5, -4}, {0x5ce, 0x5ce, -4}, {0x5d1, 0x5d1, -4}, {0x6d5, 0x6d5, -4}, {0x6df, 0x6df, -4},
-    {0x6e3, 0x6e3, -4}, {0x6ef, 0x6ef, -4}, {0x6f4, 0x6f4, -4}, {0x707, 0x707, -4}, {0x72e, 0x72e, -4},
-    {0x736, 0x738, -4}, {0x742, 0x742, -4}, {0x74a, 0x74a, -4}, {0x753, 0x753, -4}, {0x757, 0x757, -4},
-    {0x75b, 0x75b, -4}, {0x76a, 0x76a, -4}, {0x771, 0x771, -4}, {0x77f, 0x77f, -4}, {0x782, 0x782, -4},
-    {0x79e, 0x79e, -4}, {0x7a0, 0x7a0, -4}, {0x7a2, 0x7a3, -4}, {0x7af, 0x7af, -4}, {0x7b6, 0x7b6, -4},
-    {0x7ca, 0x7ca, -4}, {0x7d5, 0x7d5, -4}, {0x7d9, 0x7d9, -4}, {0x7db, 0x7db, -4}, {0x7e0, 0x7e1, -4},
-    {0x7eb, 0x7eb, -4}, {0x800, 0x800, -4}, {0x827, 0x828, -4}, {0x82b, 0x82d, -4}, {0x843, 0x843, -4},
-    {0x889, 0x889, -4}, {0x900, 0x900, -4}, {0x904, 0x904, -4}, {0x913, 0x921, -4}, {0x923, 0x924, -4},
-    {0x926, 0x926, -4}, {0x943, 0x944, -4},
+    {0x5c5, 0x5c5, -4}, {0x5ce, 0x5ce, -4}, {0x5d1, 0x5d1, -4}, {0x900, 0x900, -4}, {0x904, 0x904, -4},
+    {0x913, 0x921, -4}, {0x923, 0x924, -4}, {0x926, 0x926, -4}, {0x943, 0x944, -4},
     {0x4c4, 0x4c4, -10}, {0x4d7, 0x4d7, -10}, {0x4db, 0x4db, -10}, {0x4ee, 0x4f1, -10},
     {0x4cc, 0x4cc, -16},
     {0x4ec, 0x4ec, -2}, {0x4f2, 0x4f4, -2}, {0x4f6, 0x4f9, -2}, {0x4fd, 0x4fd, -2}, {0x63b, 0x63e, -2},
-    {0x686, 0x68a, -2}, {0x6ae, 0x6c8, -2}, {0x6ca, 0x6cb, -2}, {0x6cd, 0x6cf, -2}, {0x6d1, 0x6d4, -2},
-    {0x6d9, 0x6da, -2}, {0x6dd, 0x6de, -2}, {0x6e1, 0x6e2, -2}, {0x6e9, 0x6ee, -2}, {0x6f0, 0x6f3, -2},
-    {0x701, 0x705, -2}, {0x709, 0x70b, -2}, {0x70d, 0x70f, -2}, {0x747, 0x749, -2}, {0x755, 0x755, -2},
-    {0x758, 0x759, -2}, {0x762, 0x764, -2}, {0x767, 0x768, -2}, {0x76b, 0x76c, -2}, {0x7a1, 0x7a1, -2},
-    {0x7b1, 0x7b1, -2}, {0x7b3, 0x7b3, -2}, {0x7c8, 0x7c9, -2}, {0x7d3, 0x7d4, -2}, {0x7da, 0x7da, -2},
-    {0x7dc, 0x7dd, -2}, {0x7e3, 0x7e9, -2}, {0x7ec, 0x7fd, -2}, {0x807, 0x816, -2}, {0x81b, 0x81c, -2},
-    {0x829, 0x82a, -2}, {0x832, 0x83c, -2}, {0x844, 0x84d, -2}, {0x854, 0x858, -2}, {0x85a, 0x869, -2},
-    {0x86d, 0x86f, -2}, {0x871, 0x874, -2}, {0x876, 0x886, -2}, {0x888, 0x888, -2}, {0x88a, 0x892, -2},
-    {0x894, 0x89a, -2}, {0x8bc, 0x8bf, -2}, {0x8c1, 0x8c8, -2}, {0x8ca, 0x8cd, -2}, {0x8d2, 0x8df, -2},
-    {0x8e1, 0x8e2, -2}, {0x8e8, 0x8e8, -2},
+    {0x6c2, 0x6c3, -2}, {0x6cd, 0x6cd, -2},
     {0x639, 0x639, -3}, {0x657, 0x657, -3}, {0x672, 0x673, -3}, {0x676, 0x676, -3}, {0x6a7, 0x6a9, -3},
-    {0x71a, 0x71b, -3}, {0x72f, 0x730, -3}, {0x732, 0x732, -3}, {0x774, 0x774, -3}, {0x89c, 0x89d, -3},
-    {0x89f, 0x8a5, -3}, {0x8a7, 0x8ad, -3}, {0x8af, 0x8b5, -3}, {0x8b7, 0x8bb, -3},
-    {0x6f5, 0x6f7, -1}, {0x739, 0x73a, -1}, {0x73c, 0x73d, -1}, {0x746, 0x746, -1}, {0x75f, 0x75f, -1},
-    {0x7ac, 0x7ad, -1}, {0x7b4, 0x7b4, -1}, {0x7c3, 0x7c3, -1}, {0x7cf, 0x7d2, -1}, {0x851, 0x852, -1},
-    {0x743, 0x743, 4},
-    {0x788, 0x788, 1}, {0x7de, 0x7df, 1},
 };
 
 static void lua_ask_hat(const char *func, const char *fmt, int hat, void *out)
@@ -323,8 +262,6 @@ int ez2str_head_height(int type, void *actor)
 
     if (type >= HAT_FIRST)
         lua_ask_hat("IsIgnoredRidingState_Include_AttachedToHead", "d>b", type - HAT_FIRST, &ignore_riding);
-    if (type == 0x719)
-        ignore_riding = 1;
 
     if (actor) {
         if (session_is_baby_job(&g_session1, game_actor_get_job(actor))) {
@@ -430,28 +367,11 @@ void ez2_str_effect_init(struct Effect *effect)
     }
 
     type = self->base.type;
-    switch (type) {
-    case 0x6ec:
-        cue(self, "effect\\AG_MYSTERY_ILLUSION.wav", 0);
+    if (TYPE_IN(LOOPING_TYPES, type)) {
+        p->loop_forever = 1;
+    } else if (TYPE_IN(KEYED_LOOPING_TYPES, type)) {
         self->base.has_instance_key = 1;
         p->loop_forever = 1;
-        break;
-    case 0x6f0:
-        cue(self, "effect\\AG_TORNADO_STORM.wav", 0);
-        self->base.has_instance_key = 1;
-        p->loop_forever = 1;
-        break;
-    case 0x710:
-        cue(self, "effect\\CD_MEDIALE_VOTUM.wav", 0);
-        break;
-    default:
-        if (TYPE_IN(LOOPING_TYPES, type)) {
-            p->loop_forever = 1;
-        } else if (TYPE_IN(KEYED_LOOPING_TYPES, type)) {
-            self->base.has_instance_key = 1;
-            p->loop_forever = 1;
-        }
-        break;
     }
     if (self->base.instance_key > 0)
         p->loop_forever = 1;
@@ -511,18 +431,6 @@ void ez2_str_effect_process(struct Effect *effect)
     ez2_str_effect_step_particle(self, self->particle);
     self->particle->base.age++;
 
-    if (self->base.type == 0x851) {
-        int since = self->particle->base.age - 30;
-        if (since >= 0 && since % 64 == 0) {
-            struct RenderObject *player;
-            pos = self->base.pos;
-            player = (struct RenderObject *)game_current_player();
-            if (player)
-                sound_play_wave("effect\\ABC_ABYSS_SQUARE.wav",
-                                player->pos.x - pos.x, 0.0f, player->pos.z - pos.z, 250, 40, 1.0f);
-        }
-    }
-
     actor = effect_find_actor(self->base.owner_aid);
     if (!actor)
         return;
@@ -547,7 +455,7 @@ void ez2_str_effect_draw_particle(struct Ez2StrEffect *self, struct Ez2StrPartic
     if (!p)
         return;
     type = self->base.type;
-    if (type == 0x647 || type == 0x907 || type == 0x90a || type == 0x90d) {
+    if (type == 0x907 || type == 0x90a || type == 0x90d) {
         self->screen_shade += 0x2000000;
         if (self->screen_shade >= 0xaa000000u)
             self->screen_shade = 0xaa000000u;
@@ -595,28 +503,6 @@ unsigned char ez2_str_effect_is_alive(struct Effect *effect)
     return limit * 60.0f > (float)self->particle->base.age;
 }
 
-static double screen_angle_reversed(const struct Ez2StrEffect *self)
-{
-    float view[12];
-    float x1, y1, rhw1 = 0.0f, x2, y2, rhw2 = 0.0f;
-    float dx, dy, cosine, degrees;
-    double angle;
-
-    if (!game_copy_view_matrix(view))
-        return 0;
-    renderer_project_point(g_renderer, &self->base.pos, view, &x1, &y1, &rhw1);
-
-    renderer_project_point(g_renderer, &self->base.target_pos, view, &x2, &y2, &rhw2);
-    dx = x2 - x1;
-    dy = y2 - y1;
-    cosine = (float)((double)dx / (double)float_sqrt(dy * dy + dx * dx));
-    degrees = (float)acos((double)-cosine) / g_pi * g_halfTurnDegrees;
-    angle = (double)degrees;
-    if (y2 > y1)
-        angle = 360.0 - angle;
-    return angle;
-}
-
 static void hat_render_order(struct Ez2StrEffect *self)
 {
     unsigned char before = 0;
@@ -629,14 +515,11 @@ static void hat_render_order(struct Ez2StrEffect *self)
 }
 
 #define WAVE_BEGIN_SPELL "effect\\EF_BeginSpell.wav"
-#define WAVE_BEGIN_SPELL_LC "effect\\ef_beginspell.wav"
 
 void ez2_str_effect_after_init(struct Effect *effect)
 {
     struct Ez2StrEffect *self = (struct Ez2StrEffect *)effect;
     int type = self->base.type;
-    double angle;
-    int i;
 
     switch (type) {
     case 0xcc: case 0xcd: case 0xce: case 0xcf: case 0xd2:
@@ -735,12 +618,8 @@ void ez2_str_effect_after_init(struct Effect *effect)
         cue(self, "effect\\매직 크래쉬.wav", 0);
         set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
         break;
-    case 0x647: case 0x648: case 0x907: case 0x908: case 0x90a: case 0x90b: case 0x90d: case 0x90e:
+    case 0x907: case 0x908: case 0x90a: case 0x90b: case 0x90d: case 0x90e:
         set_list(self, EZ2STR_LIST_SCREEN_FILL);
-        break;
-    case 0x649:
-        set_list(self, EZ2STR_LIST_SCREEN_FILL);
-        cue_message(self, 180);
         break;
     case 0x666:
         cue(self, "chainlight.wav", 0);
@@ -751,21 +630,10 @@ void ez2_str_effect_after_init(struct Effect *effect)
     case 0x676:
         cue(self, "effect\\EF_GlassWall.wav", 30);
         break;
-    case 0x67e:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\DK_HACKANDSLASHER.wav", 0);
-        break;
-    case 0x686: case 0x687: case 0x688: case 0x689: case 0x68a:
-        for (i = 0; i < type - 0x686 + 1; i++) {
-            char wave[64];
-            sprintf(wave, "effect\\DK_STORMSLASH%d.wav", rand() % 4 + 1);
-            cue(self, wave, i * 15);
-        }
-        break;
     case 0x69a:
         cue(self, "effect\\wl_siennaexecrate.wav", 0);
         break;
-    case 0x6a6: case 0x75d:
+    case 0x6a6:
         set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
         cue(self, "effect\\wizard_fire_pillar_b.wav", 15);
         cue_message(self, 20);
@@ -773,232 +641,6 @@ void ez2_str_effect_after_init(struct Effect *effect)
     case 0x6aa:
         cue(self, "effect\\wizard_earthspike.wav", 20);
         cue_message(self, 20);
-        break;
-    case 0x6b0:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\DK_SERVANT_W_SIGN.wav", 40);
-        break;
-    case 0x6b2: cue(self, "effect\\DK_SERVANT_W_PHANTOM.wav", 0); break;
-    case 0x6b7: cue(self, "effect\\DK_SERVANT_W_DEMOL.wav", 0); break;
-    case 0x6ba: cue(self, "effect\\DK_DRAGONIC_AURA1.wav", 0); break;
-    case 0x6bc: cue(self, "effect\\DK_DRAGONIC_AURA2.wav", 1); break;
-    case 0x6c0: cue(self, "effect\\DK_MADNESS_CRUSHER.wav", 1); break;
-    case 0x6c4: cue(self, "effect\\AG_DESTRUCTIVE_HURRICANE.wav", 0); break;
-    case 0x6cc: {
-        const struct GameActor *owner = effect_find_actor(self->base.owner_aid);
-        if (owner && owner->body_state == 0 && owner->health_state == 0)
-            cue(self, "effect\\AG_DEADLY_PROJECTION.wav", 0);
-        break;
-    }
-    case 0x6d1: cue(self, "effect\\AG_ROCK_DOWN.wav", 0); break;
-    case 0x6d6: cue(self, "effect\\DK_VIGOR.wav", 0); break;
-    case 0x6e7: cue(self, "effect\\DK_CHARGINGPIERCE1.wav", 0); break;
-    case 0x6f5: cue(self, "effect\\AG_FROZEN_SLASH.wav", 0); break;
-    case 0x713: case 0x715: cue(self, "effect\\CD_ARGUTUS_VITA.wav", 0); break;
-    case 0x717: cue(self, "effect\\CD_PRESENS_ACIES.wav", 0); break;
-    case 0x71c:
-        cue(self, "effect\\MT_D_MACHINE.wav", 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x721:
-        cue(self, "effect\\CD_ARBITRIUM.wav", 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x737: cue(self, "effect\\CD_EFFLIGO.wav", 0); break;
-    case 0x73a:
-        cue(self, "effect\\CD_COMPETENTIA.wav", 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x73e: cue(self, "effect\\AG_CRYSTAL_IMPACT.wav", 0); break;
-    case 0x744: cue(self, "effect\\CD_RELIGIO.wav", 0); break;
-    case 0x748: cue(self, "effect\\SHC_FATAL_SHADOW_CROW.wav", 0); break;
-    case 0x752: case 0x756: case 0x75a: case 0x77f:
-        cue(self, "effect\\WH_TRAP.wav", 0);
-        break;
-    case 0x753: cue(self, "effect\\WH_DEEP_BLIND_TRAP_HIT.wav", 0); break;
-    case 0x757: cue(self, "effect\\WH_SWIFT_TRAP_HIT.wav", 0); break;
-    case 0x75b: cue(self, "effect\\WH_SOLID_TRAP_HIT.wav", 0); break;
-    case 0x75e: cue(self, "effect\\MT_RUSH_QUAKE.wav", 0); break;
-    case 0x75f: cue(self, "effect\\CD_BENEDICTUM.wav", 0); break;
-    case 0x765:
-        cue(self, "effect\\AG_STRANTUM_TREMOR1.wav", 0);
-    case 0x766:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        if (self->base.level == 1)
-            ez2_str_effect_set_zoom(&self->base, 0.7f);
-        else if ((unsigned)(self->base.level - 2) <= 3)
-            ez2_str_effect_set_zoom(&self->base, 1.25f);
-        break;
-    case 0x76a: cue(self, "effect\\SHC_IMPACT_CRATER.wav", 0); break;
-    case 0x76b: cue(self, "effect\\WH_WIND_SIGN.wav", 0); break;
-    case 0x76f:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\MT_ABR_NET_REPAIR.wav", 0);
-        break;
-    case 0x770:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\MT_ABR_NET_SUPPORT.wav", 0);
-        break;
-    case 0x771: cue(self, "effect\\WH_HAWKRUSH.wav", 0); break;
-    case 0x77a: cue(self, "effect\\SHC_ETERNAL_SLASH.wav", 0); break;
-    case 0x782: cue(self, "effect\\WH_FLAMETRAP_HIT.wav", 0); break;
-    case 0x788:
-        cue(self, "effect\\CD_DILECTIO_HEAL.wav", 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x789: cue(self, "effect\\CD_FRAMEN.wav", 0); break;
-    case 0x78d: cue(self, "effect\\SHC_POTENT_VENOM.wav", 0); break;
-    case 0x794:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue_message(self, 20);
-        break;
-    case 0x795: cue(self, "effect\\MT_AXE_STOMP.wav", 0); break;
-    case 0x7a1:
-        angle = effect_screen_heading(self->base.pos, self->base.target_pos);
-        if (self->particle)
-            self->particle->spin_degrees = (float)angle;
-        break;
-    case 0x7a2: cue(self, "effect\\SHC_SHADOW_STAB.wav", 0); break;
-    case 0x7a8: cue(self, "effect\\WH_CALAMITYGALE.wav", 0); break;
-    case 0x7ac:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\IQ_FAITH.wav", 0);
-        break;
-    case 0x7ae: cue(self, "effect\\ABC_ABYSS_DAGGER.wav", 0); break;
-    case 0x7b9: cue(self, "effect\\IQ_FIRST_FAITH_POWER.wav", 0); break;
-    case 0x7bc: cue(self, "effect\\IQ_JUDGE.wav", 0); break;
-    case 0x7c0: cue(self, "effect\\IQ_THIRD_EXOR_FLAME.wav", 0); break;
-    case 0x7c3: case 0x7cf: cue(self, "effect\\IQ_FAITH.wav", 0); break;
-    case 0x7c4: cue(self, "effect\\IQ_OLEUM_SANCTUM.wav", 50); break;
-    case 0x7c8:
-        self->particle->loops = 2;
-        cue(self, "effect\\EM_INCREASING_ACTIVITY.wav", 0);
-        break;
-    case 0x7cb: cue(self, "effect\\IQ_EXPOSION_BLASTER.wav", 0); break;
-    case 0x7d0: cue(self, "effect\\TR_MYSTIC_SYMPHONY.wav", 0); break;
-    case 0x7d3: cue(self, "effect\\EM_ACTIVITY_BURN.wav", 0); break;
-    case 0x7d8:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\TR_KVASIR_SONATA.wav", 0);
-        break;
-    case 0x7d9:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\EM_SUMMON_ELEMENTAL_SERPENS_2.wav", 0);
-        break;
-    case 0x7e2:
-        angle = screen_angle_reversed(self);
-        if (self->particle)
-            self->particle->spin_degrees = (float)angle;
-        break;
-    case 0x7e3: cue(self, "effect\\EM_SUMMON_ELEMENTAL_DILUVIO_2.wav", 0); break;
-    case 0x7e9: cue(self, "effect\\EM_SPELL_ENCHANTING.wav", 0); break;
-    case 0x7eb:
-        PARTICLE_LIFETIME(self->particle) = (float)g_effectDurations[0x7eb] / 60.0f;
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\EM_DIAMOND_STORM.wav", 0);
-        break;
-    case 0x7ef:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\EM_VENOM_SWAMP.wav", 0);
-        break;
-    case 0x7f3: cue(self, "effect\\EM_SUMMON_ELEMENTAL_ARDOR_2.wav", 0); break;
-    case 0x7f9: cue(self, "effect\\EM_LIGHTNING_LAND.wav", 0); break;
-    case 0x801: cue(self, "effect\\TR_ROSEBLOSSOM_ROSE.wav", 0); break;
-    case 0x802:
-        angle = screen_angle_reversed(self);
-        if (self->particle)
-            self->particle->spin_degrees = (float)angle;
-        cue(self, "effect\\TR_ROSEBLOSSOM_SHOT.wav", 0);
-        break;
-    case 0x806: cue(self, "effect\\IQ_FIRST_BRAND.wav", 0); break;
-    case 0x807: cue(self, "effect\\EM_CONFLAGRATION.wav", 0); break;
-    case 0x80c: cue(self, "effect\\TR_SOUNDBLEND_SHOT.wav", 0); break;
-    case 0x80f: cue(self, "effect\\TR_SOUNDBLEND_HIT.wav", 0); break;
-    case 0x810: cue(self, "effect\\TR_METALIC_FURY.wav", 0); break;
-    case 0x811:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\TR_JAWAII_SERENADE.wav", 0);
-        break;
-    case 0x814: cue(self, "effect\\TR_PRON_MARCH.wav", 0); break;
-    case 0x81b: cue(self, "effect\\TR_NIPELHEIM_REQUIEM.wav", 0); break;
-    case 0x81e: cue(self, "effect\\IQ_SECOND_FAITH.wav", 20); break;
-    case 0x823: cue(self, "effect\\IQ_SECOND_FLAME.wav", 0); break;
-    case 0x824:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\wizard_fire_pillar_b.wav", 15);
-        cue_message(self, 40);
-        break;
-    case 0x826:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\IQ_THIRD_FLAME_BOMB.wav", 0);
-        break;
-    case 0x827: cue(self, "effect\\ABC_ABYSS_STRIKE.wav", 0); break;
-    case 0x82e:
-        cue(self, "effect\\IQ_MASSIVE_F_BLASTER.wav", 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x831: cue(self, "effect\\IQ_THIRD_CONSECRATION.wav", 0); break;
-    case 0x832: cue(self, "effect\\EM_SUMMON_ELEMENTAL_PROCELLA_2.wav", 0); break;
-    case 0x838: cue(self, "effect\\EM_SUMMON_ELEMENTAL_TERREMOTUS_2.wav", 0); break;
-    case 0x83e:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\ABC_FROM_THE_ABYSS.wav", 0);
-        break;
-    case 0x841:
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        cue(self, "effect\\IQ_THIRD_PUNISH.wav", 0);
-        break;
-    case 0x844: cue(self, "effect\\TR_GEF_NOCTURN.wav", 0); break;
-    case 0x847: cue(self, "effect\\TR_ROKI_CAPRICCIO.wav", 0); break;
-    case 0x84a: cue(self, "effect\\TR_MUSICAL_INTERLUDE.wav", 0); break;
-    case 0x84c: cue(self, "effect\\TR_AIN_RHAPSODY.wav", 0); break;
-    case 0x854: cue(self, "effect\\ABC_DEFT_STAB1.wav", 0); break;
-    case 0x855: cue(self, "effect\\EM_TERRA_DRIVE.wav", 0); break;
-    case 0x85b: cue(self, "effect\\EM_ELEMETAL_BUSTER_FIRE.wav", 0); break;
-    case 0x85e: cue(self, "effect\\EM_ELEMETAL_BUSTER_GROUND.wav", 0); break;
-    case 0x861: cue(self, "effect\\EM_ELEMETAL_BUSTER_POISON.wav", 0); break;
-    case 0x864: cue(self, "effect\\EM_ELEMETAL_BUSTER_WATER.wav", 0); break;
-    case 0x867: cue(self, "effect\\EM_ELEMETAL_BUSTER_WIND.wav", 0); break;
-    case 0x86d: cue(self, "effect\\IG_OVERSLASH.wav", 0); break;
-    case 0x871: cue(self, "effect\\BO_ADVANCE_PROTECTION.wav", 0); break;
-    case 0x879: case 0x87c: cue(self, "effect\\IG_GUARD_STANCE.wav", 0); break;
-    case 0x87f: cue(self, "effect\\IG_GRAND_JUDGEMENT.wav", 0); break;
-    case 0x885: cue(self, "effect\\IG_HOLY_SHIELD1.wav", 0); break;
-    case 0x886: cue(self, "effect\\IG_HOLY_SHIELD2.wav", 34); break;
-    case 0x88a: cue(self, "apocalips_attack.wav", 0); break;
-    case 0x88e: cue(self, "effect\\IG_GUARDIAN_SHIELD.wav", 0); break;
-    case 0x894: cue(self, "effect\\IG_REBOUND_SHIELD.wav", 0); break;
-    case 0x898: cue(self, "effect\\IG_ULTIMATE_SACRIFICE.wav", 0); break;
-    case 0x8bf: cue(self, "effect\\BO_HELL_HOWLING.wav", 0); break;
-    case 0x8c1: cue(self, "effect\\BO_RESEARCHREPORT.wav", 0); break;
-    case 0x8ca:
-        self->particle->spin_degrees = (float)(effect_screen_heading(self->base.pos, self->base.target_pos) + 180.0);
-        cue(self, "effect\\BO_WOODEN_ATTACK.wav", 0);
-        break;
-    case 0x8cc:
-        self->particle->spin_degrees = (float)(effect_screen_heading(self->base.pos, self->base.target_pos) + 180.0);
-        cue(self, "effect\\BO_THROWROCK.wav", 0);
-        break;
-    case 0x8d1: cue(self, "effect\\BO_FAIRY_DUSTY.wav", 0); break;
-    case 0x8d2:
-        cue(self, "effect\\ef_detoxication.wav", 0);
-        cue_message(self, 0);
-        break;
-    case 0x8d4:
-        cue(self, "effect\\EF_IceArrow1.wav", 0);
-        cue_message(self, 0);
-        break;
-    case 0x8d6:
-        cue(self, "effect\\EF_FireArrow1.wav", 0);
-        cue_message(self, 0);
-        break;
-    case 0x8d8:
-        cue(self, "effect\\EF_LightBolt3.wav", 0);
-        cue_message(self, 0);
-        break;
-    case 0x8da:
-        cue(self, "effect\\wizard_earthspike.wav", 0);
-        cue_message(self, 0);
         break;
     case 0x909: case 0x90c: case 0x90f:
         set_list(self, EZ2STR_LIST_SCREEN_FILL);
@@ -1008,28 +650,11 @@ void ez2_str_effect_after_init(struct Effect *effect)
     case 0x944: cue(self, "effect\\drop_effect_2.wav", 0); break;
 
     case 0x625: case 0x62a: case 0x62d: case 0x633: case 0x654: case 0x65d: case 0x663: case 0x669:
-    case 0x66a: case 0x681: case 0x683: case 0x685: case 0x711: case 0x714: case 0x716: case 0x718:
-    case 0x71e: case 0x723: case 0x745: case 0x746: case 0x74c: case 0x758: case 0x760: case 0x785:
-    case 0x79e: case 0x7a6: case 0x7b1: case 0x7b4: case 0x7b8: case 0x7bb: case 0x7bf: case 0x86f:
-    case 0x877: case 0x884: case 0x888: case 0x891: case 0x896:
+    case 0x66a: case 0x681: case 0x683: case 0x685:
         cue(self, WAVE_BEGIN_SPELL, 0);
         break;
-    case 0x58f: case 0x592: case 0x5dc: case 0x610: case 0x6c7: case 0x6d4: case 0x6e2: case 0x6ee:
-    case 0x6f3: case 0x705: case 0x70a: case 0x740: case 0x763: case 0x7e6: case 0x7f1: case 0x7fc:
-    case 0x85a:
-    case 0x671: case 0x6cb: case 0x6cf: case 0x6da: case 0x6de: case 0x6ea: case 0x6f7: case 0x70e:
-    case 0x7a9: case 0x7ca: case 0x7d5: case 0x7db: case 0x7f6: case 0x835: case 0x83a: case 0x858:
-    case 0x87b: case 0x87e: case 0x883: case 0x8bd: case 0x8c8: case 0x8d0:
+    case 0x58f: case 0x592: case 0x5dc: case 0x610: case 0x671:
         cue(self, WAVE_BEGIN_SPELL, 0);
-        set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
-        break;
-    case 0x7d7: case 0x7de: case 0x7fe: case 0x80d: case 0x812: case 0x815: case 0x817: case 0x81c:
-    case 0x829: case 0x845: case 0x848: case 0x84b: case 0x84d: case 0x84f: case 0x86b: case 0x873:
-    case 0x88b: case 0x89c: case 0x8a4: case 0x8ac: case 0x8b4: case 0x8c2:
-        cue(self, WAVE_BEGIN_SPELL_LC, 0);
-        break;
-    case 0x7d1: case 0x7ed: case 0x80a:
-        cue(self, WAVE_BEGIN_SPELL_LC, 0);
         set_list(self, EZ2STR_LIST_BEFORE_ACTORS);
         break;
 

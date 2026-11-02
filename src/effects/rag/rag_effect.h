@@ -565,8 +565,6 @@ void rag_green_rocket_punches(struct RagEffect *self);
 void rag_white_rings_63(struct RagEffect *self, signed char style);
 void rag_sonic_waves_146(struct RagEffect *self, const char *tex, signed char style);
 void rag_digital_space_168(struct RagEffect *self, int effect_id);
-unsigned char rag_status_arrow(struct RagEffect *self, unsigned char up,
-                                          const struct String *icon);
 void rag_cloud_dash_2(struct RagEffect *self);
 void rag_hallu_walk(struct RagEffect *self);
 void rag_fighter_rings_31(struct RagEffect *self, const char *tex);

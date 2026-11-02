@@ -144,18 +144,6 @@ void rag_spell_rings(struct RagEffect *self, const char *texture, char style)
     rag_casting_rings(self, texture, style);
 }
 
-unsigned char rag_status_icon(struct RagEffect *self, unsigned char up, const char *icon)
-{
-    struct String name;
-    unsigned char alive;
-
-    string_init(&name);
-    string_assign_cstr(&name, icon);
-    alive = rag_status_arrow(self, up, &name);
-    string_free(&name);
-    return alive;
-}
-
 void rag_plant_actor(struct RagEffect *self)
 {
     struct World *world = game_current_world();

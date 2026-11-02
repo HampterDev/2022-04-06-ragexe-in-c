@@ -11,9 +11,4 @@ struct IntInt64Pair {
     long long value;
 };
 
-struct Int64Pair {
-    long long key;
-    long long value;
-};
-
 #endif

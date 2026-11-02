@@ -111,3 +111,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Remove unreachable windows (pre-renewal character creation, quit/restart/rebirth, tooltip, IME composition, patch notice, make-target result, mix accept, basic buttons, trans-menu, render target, monster display, sub-chat mini/ST/BT) and 30 classes nothing constructs.
 - Remove 508 unreferenced functions and data definitions, plus the write-only `jobIdNames` table and sub-chat settings.
 - Remove the AU-bot auto-reply (`0x0a29`/`0x0a2a`), the GM DdukDdak box-test report (`0x0bb3`) and the unused Party Recruit packet rows.
+- Remove the remaining 4th-class status visuals and effect data, ABR/Bionic summons (`0x0b6b`/`0x0b6c`) and grade-enchant effects; requests for retired effect IDs launch nothing.

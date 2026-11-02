@@ -57,8 +57,6 @@ struct Session {
     struct Vec prohibitionLog;
     struct String worldName;
     struct Vec comboDelays;
-    struct Tree abrHp;
-    struct Tree abrMaxHp;
     DWORD serverTimeOffset;
     char mapName[16];
     int serverTimeLagCount;

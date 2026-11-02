@@ -21,7 +21,6 @@ static const char word_atk_up[] = "ATK UP!";
 static const char word_dex_up[] = "DEX UP!";
 static const char word_hp_up[] = "HP UP!";
 static const char word_sp_up[] = "SP UP!";
-static const char charging_pierce_wave[] = "effect\\DK_CHARGINGPIERCE3.wav";
 
 static struct RagEffect *ef_launch(struct GameActor *a, int id)
 {
@@ -84,14 +83,6 @@ static void ef_remove_type(int aid, int type)
     effect_mgr_remove_type(g_effectMgr, aid, type);
 }
 
-static void ef_spawn_or_remove(int aid, int type, int on)
-{
-    if (on)
-        ef_spawn(aid, type);
-    else
-        ef_remove_type(aid, type);
-}
-
 static void ef_end(int aid, int type)
 {
     struct Effect *e = effect_mgr_find_effect(g_effectMgr, aid, type);
@@ -106,16 +97,6 @@ static void ef_spawn_or_end(int aid, int type, int on)
         ef_spawn(aid, type);
     else
         ef_end(aid, type);
-}
-
-static void ef_spawn_once_or_end(int aid, int type, int on)
-{
-    if (on) {
-        if (!effect_mgr_find_effect(g_effectMgr, aid, type))
-            ef_spawn(aid, type);
-    } else {
-        ef_end(aid, type);
-    }
 }
 
 static void ef_respawn(int aid, int type, int on)
@@ -271,7 +252,7 @@ static int ef_quiet(unsigned state)
         || state == 0x97 || state == 0x10a || state == 0x129 || state == 0x12b || state == 0x13a || state == 0x161
         || state == 0x165 || state == 0x191 || state == 0x19e || state == 0x207 || state == 0x241 || state == 0x244
         || state == 0x245 || state == 0x248 || state == 0x25d || state == 0x25f || state == 0x260 || state == 0x26a
-        || state == 0x288 || state == 0x289 || state == 0x494;
+        || state == 0x288 || state == 0x289;
 }
 
 static void ef_blind(struct GameActor *self, int level)
@@ -348,34 +329,6 @@ static void ef_47d(struct GameActor *self, struct GameMode *mode, long long par2
             g_session1.madogear = 0;
         render_object_send(who, NULL, 0x6a, 0, 0, 0, 0);
     }
-}
-
-static void ef_charging_pierce(struct GameActor *self, struct GameMode *mode, long long par3, long long par4)
-{
-    struct Effect *e = effect_mgr_find_effect(g_effectMgr, self->aid, 0x6e4);
-
-    if (par4 != 0) {
-        struct World *world = mode->world;
-        struct GameActor *target;
-
-        if (e)
-            effect_mgr_remove(g_effectMgr, e, 1);
-        if (par4 == (long long)(unsigned)g_session1.ownAid)
-            target = (struct GameActor *)world->player;
-        else
-            target = world_get_game_actor_by_aid(world, (int)par4);
-        if (!target)
-            return;
-        ef_spawn((int)par4, 0x6e7);
-        ef_wave(charging_pierce_wave, target, (struct GameActor *)mode->world->player);
-        return;
-    }
-    if (!e) {
-        e = ef_spawn(self->aid, 0x6e4);
-        if (!e)
-            return;
-    }
-    charging_pierce_effect_set_charges(e, (unsigned __int64)par3);
 }
 
 void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long par1, long long par2, long long par3,
@@ -927,13 +880,6 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
         break;
     case 0x47d: ef_47d(self, mode, par2, par3); break;
     case 0x47e: ef_spawn_or_end(self->aid, 0x6cd, on); break;
-    case 0x480:
-        ef_remove_type(self->aid, 0x708);
-        if (on)
-            ef_spawn_at(self->aid, 0x708, &self->pos, value);
-        break;
-    case 0x488: if (on) ef_launch(self, 0x8f6); break;
-    case 0x48a: case 0x4ed: if (on) ef_launch(self, 0x8f8); break;
     case 0x48d: case 0x48f: {
         struct GameActor *who = ef_actor(self, mode);
 
@@ -941,240 +887,6 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             ef_toggle_once(who, state == 0x48d ? 0x64a : 0x641, on);
         break;
     }
-    case 0x495:
-        if (on) {
-            struct Effect *e = ef_spawn(self->aid, 0x6ae);
-
-            if (e)
-                e->ops->set_start_delay(e, 700);
-            e = ef_spawn(self->aid, 0x8e8);
-            if (e)
-                e->ops->set_start_delay(e, 700);
-        } else {
-            ef_remove_type(self->aid, 0x6ae);
-            ef_remove_type(self->aid, 0x8e8);
-        }
-        break;
-    case 0x496: {
-        struct Effect *e = effect_mgr_find_effect(g_effectMgr, self->aid, 0x6e4);
-
-        if (on) {
-            if (!e)
-                ef_spawn(self->aid, 0x6e4);
-        } else {
-            effect_mgr_remove(g_effectMgr, e, 1);
-        }
-        break;
-    }
-    case 0x497: ef_charging_pierce(self, mode, par3, par4); break;
-    case 0x498: {
-        struct GameActor *who = ef_actor(self, mode);
-
-        if (!who)
-            break;
-        ef_remove_type(who->aid, 0x6be);
-        ef_remove_type(who->aid, 0x6bf);
-        if (on) {
-            ef_spawn(who->aid, 0x6be);
-            ef_spawn(who->aid, 0x6bf);
-        }
-        break;
-    }
-    case 0x49a: ef_spawn_or_remove(self->aid, 0x6d7, on); break;
-    case 0x4a0:
-        if (on) {
-            if (!effect_mgr_find_effect(g_effectMgr, self->aid, 0x743))
-                ef_spawn(self->aid, 0x743);
-        } else {
-            ef_remove_type(self->aid, 0x743);
-        }
-        break;
-    case 0x4a6: ef_spawn_or_remove(self->aid, 0x7c7, on); break;
-    case 0x4a9: ef_spawn_once_or_end(self->aid, 0x725, on); break;
-    case 0x4ac:
-        if (on)
-            ef_spawn_at(self->aid, 0x779, &self->pos, value);
-        else
-            ef_remove_type(self->aid, 0x779);
-        break;
-    case 0x4ad:
-        if (on) {
-            if (g_session1.map_rule_flags[0] != 0 || effect_mgr_find_effect(g_effectMgr, self->aid, 0x712))
-                break;
-            ef_spawn(self->aid, 0x712);
-        } else {
-            ef_remove_type(self->aid, 0x712);
-        }
-        break;
-    case 0x4b0: if (on) ef_launch(self, 0x8f0); break;
-    case 0x4b1:
-        if (on) {
-            if (!effect_mgr_find_effect(g_effectMgr, self->aid, 0x73d))
-                ef_spawn(self->aid, 0x73d);
-            if (g_session1.map_rule_flags[0] == 0 && !effect_mgr_find_effect(g_effectMgr, self->aid, 0x73c))
-                ef_spawn(self->aid, 0x73c);
-            ef_launch(self, 0x8fc);
-        } else {
-            ef_end(self->aid, 0x73d);
-            if (g_session1.map_rule_flags[0] == 0)
-                ef_end(self->aid, 0x73c);
-        }
-        break;
-    case 0x4b4: if (on) ef_spawn(self->aid, 0x88e); break;
-    case 0x4b5:
-        if (self->aid != g_session1.ownAid)
-            break;
-        if (par2 == 1) {
-            if (!able_to_make_effect_is_effect_exist(self, 0x14e))
-                ef_launch(self, 0x14e);
-            g_playerBlind = 1;
-            render_object_send(self, NULL, 0x6d, 0xa4, 0, 0, 0);
-            ef_player_darkness(self);
-        } else {
-            ef_remove_once(self, 0x14e);
-            g_playerBlind = 0;
-        }
-        game_actor_set_instant_var(self, 0x10, on);
-        break;
-    case 0x4b6: render_object_send(self, NULL, par2 == 1 ? 0x9c : 0x9d, 0, 0, 0, 0); break;
-    case 0x4b7:
-        if (par2 == 1) {
-            render_object_send(self, NULL, 0x98, 0, 0, 0, 0);
-            ef_spawn(self->aid, 0x8c4);
-        } else {
-            render_object_send(self, NULL, 0x99, 0, 0, 0, 0);
-        }
-        break;
-    case 0x4b8:
-        if (on) {
-            ef_spawn(self->aid, 0x8de);
-        } else if (effect_mgr_has_effect(g_effectMgr, self->aid, 0x8de)) {
-            ef_remove_type(self->aid, 0x8de);
-            ef_spawn(self->aid, 0x8df);
-        }
-        if (self->aid == g_session1.ownAid)
-            ef_spawn_or_remove(self->aid, 0x8e0, on);
-        break;
-    case 0x4b9:
-        if (par2 == 1) {
-            render_object_send(self, NULL, 0x9c, 0, 0, 0, 0);
-            ef_remove_type(self->aid, 0x8c5);
-            ef_spawn(self->aid, 0x8c5);
-        } else {
-            render_object_send(self, NULL, 0x9d, 0, 0, 0, 0);
-            ef_remove_type(self->aid, 0x8c5);
-        }
-        break;
-    case 0x4ba:
-        ef_remove_type(self->aid, 0x8dc);
-        if (on)
-            ef_spawn(self->aid, 0x8dc);
-        break;
-    case 0x4bb: ef_spawn_or_remove(self->aid, 0x8e1, on); break;
-    case 0x4bc:
-        if (on) {
-            render_object_send(self, NULL, 0x7f, 0xff, 0, 0, 0);
-            ef_remove_type(self->aid, 0x8dd);
-            ef_spawn(self->aid, 0x8dd);
-        } else {
-            render_object_send(self, NULL, 0x80, 0, 0, 0, 0);
-            ef_remove_type(self->aid, 0x8dd);
-        }
-        game_actor_set_instant_var(self, 0xd, on);
-        break;
-    case 0x4bd: render_object_send(self, NULL, on ? 0x9a : 0x9b, 0, 0, 0, 0); break;
-    case 0x4be:
-        if (on) {
-            render_object_send(self, NULL, 0x7f, 0xaa, 0, 0xaa, 0);
-            ef_spawn(self->aid, 0x8e2);
-        } else {
-            render_object_send(self, NULL, 0x80, 0, 0, 0, 0);
-            ef_remove_type(self->aid, 0x8e2);
-        }
-        game_actor_set_instant_var(self, 0xe, on);
-        break;
-    case 0x4bf:
-        if (on)
-            render_object_send(self, NULL, 0x7f, 0, 0, 0xff, 0);
-        else
-            render_object_send(self, NULL, 0x80, 0, 0, 0, 0);
-        game_actor_set_instant_var(self, 0xf, on);
-        break;
-    case 0x4c0:
-        if (on) {
-            render_object_send(self, NULL, 0x7f, 0xff, 0, 0, 0);
-            ef_spawn(self->aid, 0x8c6);
-        } else {
-            render_object_send(self, NULL, 0x80, 0, 0, 0, 0);
-        }
-        game_actor_set_instant_var(self, 0xc, on);
-        break;
-    case 0x4c4:
-        if (on) {
-            struct Effect *e;
-
-            ef_spawn(self->aid, 0x885);
-            e = ef_spawn(self->aid, 0x886);
-            if (e)
-                e->ops->set_start_delay(e, 0x220);
-        } else {
-            ef_remove_type(self->aid, 0x886);
-        }
-        break;
-    case 0x4c5: if (on) ef_spawn(self->aid, 0x89a); break;
-    case 0x4c6: ef_spawn_or_remove(self->aid, 0x881, on); break;
-    case 0x4ce: case 0x4cf:
-        if (on) {
-            struct Effect *e1, *e2;
-
-            ef_spawn(self->aid, state == 0x4ce ? 0x806 : 0x821);
-            e1 = ef_spawn(self->aid, state == 0x4ce ? 0x803 : 0x81e);
-            e2 = ef_spawn(self->aid, state == 0x4ce ? 0x804 : 0x81f);
-            if (e1)
-                e1->ops->set_start_delay(e1, 1000);
-            if (e2)
-                e2->ops->set_start_delay(e2, 1000);
-        } else {
-            ef_remove_type(self->aid, state == 0x4ce ? 0x803 : 0x81e);
-            ef_remove_type(self->aid, state == 0x4ce ? 0x804 : 0x81f);
-        }
-        break;
-    case 0x4d0: case 0x4d1:
-        if (on) {
-            ef_spawn(self->aid, state == 0x4d0 ? 0x7ba : 0x7be);
-            ef_spawn(self->aid, state == 0x4d0 ? 0x7bd : 0x7c1);
-        } else {
-            ef_remove_type(self->aid, state == 0x4d0 ? 0x7ba : 0x7be);
-            ef_remove_type(self->aid, state == 0x4d0 ? 0x7bd : 0x7c1);
-        }
-        break;
-    case 0x4d2: ef_spawn_or_remove(self->aid, 0x7b7, on); break;
-    case 0x4d4: ef_spawn_or_remove(self->aid, 0x72f, on); break;
-    case 0x4d5:
-        if (on) {
-            ef_spawn(self->aid, 0x719);
-            ef_launch(self, 0x8f8);
-        } else {
-            ef_end(self->aid, 0x719);
-        }
-        break;
-    case 0x4dd: ef_spawn_or_remove(self->aid, 0x84e, on); break;
-    case 0x4e1: if (on) ef_spawn(self->aid, 0x8be); break;
-    case 0x4e2: ef_spawn_or_remove(self->aid, 0x76c, on); break;
-    case 0x4e4: ef_spawn_or_end(self->aid, 0x7aa, on); break;
-    case 0x4e8: ef_spawn_or_remove(self->aid, 0x7d2, on); break;
-    case 0x4ea: ef_spawn_or_end(self->aid, 0x80c, on); break;
-    case 0x4eb: if (on) ef_launch(self, 0x8f5); break;
-    case 0x4ec: if (on) ef_launch(self, 0x8f9); break;
-    case 0x4ee: if (on) ef_launch(self, 0x8fa); break;
-    case 0x4ef: if (on) ef_launch(self, 0x8f6); break;
-    case 0x4f7: if (on) ef_launch(self, 0x8fa); break;
-    case 0x515:
-        if (on)
-            ef_launch(self, 0x2e8);
-        else
-            ef_remove_once(self, 0x2e8);
-        break;
     case 0x539: case 0x53a: {
         int type = state == 0x539 ? 0x901 : 0x902;
 

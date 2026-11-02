@@ -363,7 +363,6 @@ void game_actor_on_init(struct GameActor *self)
     self->emotion_mark_a = 0;
     self->msg_mark_1 = 0;
     self->emotion_mute = 0;
-    self->lassitude_mark = 0;
     self->pos.x = 0;
     self->pos.y = 0;
     self->pos.z = 0;
@@ -451,8 +450,6 @@ void game_actor_on_init(struct GameActor *self)
     self->is_store_assistant = 0;
     self->not_pickable = 0;
     self->owner_aid = 0;
-    self->misfortune_mark = 0;
-    self->handicap_dots_mark = 0;
     self->sphere_count = 0;
 }
 

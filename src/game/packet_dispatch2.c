@@ -1110,8 +1110,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_NOTIFY_EFFECT4: game_mode_on_notify_effect4(self, (const struct PacketNotifyEffect4 *)pkt); break;
-    case HEADER_ZC_ABR_INIT: game_mode_zc_abr_init(self, (const struct PACKET_ZC_ABR_INIT *)pkt); break;
-    case HEADER_ZC_ABR_PAR_CHANGE: game_mode_zc_abr_par_change(self, (const struct PACKET_ZC_ABR_PAR_CHANGE *)pkt); break;
     case HEADER_ZC_SOULENERGY: game_mode_on_soul_energy(self, (const struct PacketSoulEnergy *)pkt); break;
     case HEADER_ZC_PROPERTY_HOMUN_NO_ACCESSORY2: game_mode_zc_property_homun_no_accessory2(self, pkt); break;
     case HEADER_ZC_PC_PURCHASE_ITEMLIST2: game_mode_zc_pc_purchase_itemlist2(self, pkt); break;

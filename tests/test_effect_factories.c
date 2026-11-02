@@ -235,7 +235,7 @@ int main(int argc, char **argv)
     int i;
     if (argc > 1) { trace = fopen(argv[1], "wb"); assert(trace); }
     for (i = 0; i < 3; ++i) registry_case(i);
-    assert(trace_hash == 0x274deebau);
+    assert(trace_hash == 0x616ea281u);
     shown_effect_map_case();
     effect_maps_case();
     singleton_lifetime_cases();

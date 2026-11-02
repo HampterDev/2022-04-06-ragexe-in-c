@@ -15,7 +15,6 @@
 #include "session/session_talk.h"
 #include "world/world.h"
 
-#define ACTOR_MSG_HP_GAUGE          0x22
 #define ACTOR_MSG_HP            0x91
 #define ENTRY_PAR_NEW_PC        2
 #define ENTRY_PAR_NEW_UNIT      1
@@ -55,7 +54,7 @@ static void entry_mark_moved(struct GameMode *self, struct GameActor *actor, int
 
 static void entry_hp_tail(struct GameMode *self, struct GameActor *actor, unsigned char type, unsigned aid,
                           int accessory, unsigned guild_id, short emblem_version, short clevel, short font,
-                          int hp, int max_hp, unsigned char is_boss, unsigned id_0x22)
+                          int hp, int max_hp, unsigned char is_boss)
 {
     long long boss = 0;
 
@@ -80,9 +79,6 @@ static void entry_hp_tail(struct GameMode *self, struct GameActor *actor, unsign
     switch (actor->object_type) {
     case 0: case 5: case 8: case 9: case 10:
         render_object_send(actor, NULL, ACTOR_MSG_HP, hp, max_hp, boss, 0);
-        break;
-    case 13: case 14:
-        render_object_send(actor, NULL, ACTOR_MSG_HP_GAUGE, id_0x22, 0, 0, 0);
         break;
     }
 }
@@ -186,7 +182,7 @@ void game_mode_zc_notify_newentry7(struct GameMode *self, const struct PacketNew
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
     entry_hp_tail(self, actor, pkt->object_type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version,
-                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->aid);
+                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     entry_hp_unit_value(actor, pkt->object_type, pkt->accessory2, pkt->accessory3, pkt->emblem_version);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
 }
@@ -252,7 +248,7 @@ void game_mode_zc_notify_standentry8(struct GameMode *self, const struct PacketS
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
     entry_hp_tail(self, actor, pkt->object_type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version,
-                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->aid);
+                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     entry_hp_unit_value(actor, pkt->object_type, pkt->accessory2, pkt->accessory3, pkt->emblem_version);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
 }
@@ -317,7 +313,7 @@ void game_mode_zc_notify_moveentry9(struct GameMode *self, const struct PacketMo
         actor_send(actor, ACTOR_MSG_NEW_MOVE_ENTRY, (int)&info, 0);
     }
     entry_hp_tail(self, actor, pkt->object_type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version,
-                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->aid);
+                  pkt->clevel, pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
 }
 
@@ -382,7 +378,7 @@ static void moveentry10(struct GameMode *self, const struct PacketMoveEntry10 *p
     actor_send(actor, msg, (int)&info, 0);
     champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     entry_hp_tail(self, actor, type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version, pkt->clevel,
-                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->char_id);
+                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
     if (type == ENTRY_OBJ_PC) {
         float pos[2];
@@ -478,7 +474,7 @@ static void newentry10(struct GameMode *self, const struct PacketNewEntry10 *pkt
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
     entry_hp_tail(self, actor, type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version, pkt->clevel,
-                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->char_id);
+                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     entry_hp_unit_value(actor, type, pkt->accessory2, pkt->accessory3, pkt->emblem_version);
     game_mode_game_mode_show_efst(self, pkt->aid, pkt->effect_state, pkt->clevel, pkt->virtue);
     if (type == ENTRY_OBJ_PC) {
@@ -565,7 +561,7 @@ static void standentry10(struct GameMode *self, const struct PacketStandEntry10 
         champion_monster_apply_effects(g_championMonster, info.job, actor, (int)info.aid);
     }
     entry_hp_tail(self, actor, type, pkt->aid, info.accessory, pkt->guild_id, pkt->emblem_version, pkt->clevel,
-                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss, pkt->char_id);
+                  pkt->font, pkt->hp, pkt->max_hp, pkt->is_boss);
     if (type != ENTRY_OBJ_PC && pkt->job == ENTRY_JOB_GUILD_FLAG) {
         short emblem_version = pkt->emblem_version;
         int value = game_actor_get_guild_id(actor);

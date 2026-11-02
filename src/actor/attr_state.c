@@ -341,7 +341,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
                 !able_to_make_effect_is_effect_exist((struct GameActor *)mode->world->player, 0x14e))
                 as_launch(self, 0x14e);
         }
-    } else if (self->aid == g_session1.ownAid && game_actor_get_counter(self, 0x10) == 0) {
+    } else if (self->aid == g_session1.ownAid) {
         if (g_playerBlind == 1)
             AS_SEND(self, 0x6d, 0x14e);
         g_playerBlind = 0;
@@ -349,9 +349,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
     if (self->body_state == 0)
         self->motion_held = 0;
     if (!(self->health_state & 0x83) && self->body_state != 2 && self->body_state != 1 && self->body_state != 6 &&
-        game_actor_get_counter(self, 3) != 1 && game_actor_get_counter(self, 0xc) != 1 &&
-        game_actor_get_counter(self, 0xd) != 1 && game_actor_get_counter(self, 0xe) != 1 &&
-        game_actor_get_counter(self, 0xf) != 1) {
+        game_actor_get_counter(self, 3) != 1) {
         self->argb_locked = 0;
         as_rgb(self, 0xff, 0xff, 0xff);
     }

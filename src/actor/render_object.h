@@ -9,7 +9,6 @@ struct AbleToMakeEffect *able_to_make_effect_construct(struct AbleToMakeEffect *
 void able_to_make_effect_dc_able_to_make_effect(struct AbleToMakeEffect *self);
 struct GameActor *game_actor_construct(struct GameActor *self);
 unsigned char game_actor_update_sphere_count(struct GameActor *self, int64_t count);
-void game_actor_set_instant_var(struct GameActor *self, int key, long long value);
 struct Corpse *corpse_construct(struct Corpse *self);
 void game_actor_dc_game_actor(struct GameActor *self);
 

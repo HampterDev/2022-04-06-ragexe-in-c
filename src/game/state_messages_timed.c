@@ -127,11 +127,7 @@ static void own_state_list(int index, int remain_ms, int val1, int val2, int tot
         entry.value = val1 & 3;
     else if (index == 0x153 || index == EFST_EQUIPMENT_EFFECT || index == 0x47d)
         entry.value = val1;
-    if (index == 0x480 || index == 0x4ac)
-        entry.value = val1;
-    else if (index == 0x4dc)
-        entry.value = val2;
-    else if (state_known(index))
+    if (state_known(index))
         entry.value = val1;
 
     for (i = 0; i < own_states_count(); ) {
@@ -199,17 +195,14 @@ static int change_begins_quietly(int index)
     case 0x2f3: case 0x2f8: case 0x30b: case 0x336: case 0x337: case 0x339: case 0x33a: case 0x351:
     case 0x358: case 0x359: case 0x35b: case 0x35f: case 0x360: case 0x368: case 0x37f: case 0x380:
     case 0x395: case 0x397: case 0x3a9: case 0x3d6: case 0x3f6: case 0x413: case 0x41a: case 0x41f:
-    case 0x466: case 0x473: case 0x475: case 0x476: case 0x47c: case 0x47e: case 0x49a: case 0x4a0:
-    case 0x4a6: case 0x4a9: case 0x4ac: case 0x4ad: case 0x4c6: case 0x4ea:
+    case 0x466: case 0x473: case 0x475: case 0x476: case 0x47c: case 0x47e:
         return 1;
     }
     return (index >= 0x46 && index <= 0x54) || (index >= 0x16b && index <= 0x16f) ||
         (index >= 0x1c4 && index <= 0x1c6) || (index >= 0x28f && index <= 0x291) ||
         (index >= 0x2cc && index <= 0x2d2) || (index >= 0x2de && index <= 0x2e1) ||
         (index >= 0x3f8 && index <= 0x401) || (index >= 0x40e && index <= 0x411) ||
-        (index >= 0x48d && index <= 0x48f) || (index >= 0x494 && index <= 0x498) ||
-        (index >= 0x4b5 && index <= 0x4c0) || (index >= 0x4ce && index <= 0x4d2) ||
-        (index >= 0x539 && index <= 0x53b);
+        (index >= 0x48d && index <= 0x48f) || (index >= 0x539 && index <= 0x53b);
 }
 
 static int change_ends_without_line(int index)
@@ -251,7 +244,6 @@ static int change_ends_quietly(int index)
     case 0x339: case 0x33a: case 0x351: case 0x358: case 0x359: case 0x35b: case 0x35f: case 0x360:
     case 0x368: case 0x37f: case 0x380: case 0x395: case 0x397: case 0x3a9: case 0x3d6: case 0x3f6:
     case 0x413: case 0x41a: case 0x41f: case 0x466: case 0x473: case 0x475: case 0x476: case 0x47d:
-    case 0x494: case 0x495: case 0x498: case 0x4a0: case 0x4a9: case 0x4ad: case 0x4b4: case 0x4cb:
         return 1;
     }
     return (index >= 0x46 && index <= 0x54) || (index >= 0x1c4 && index <= 0x1c6) ||
@@ -478,55 +470,6 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
             actor_msg(actor, ACTOR_MSG_FORM_ON, 0);
         }
         break;
-    case 0x480: *color = STATE_COLOR_ALERT; say_n(text, 0xeb0); break;
-    case 0x488: *color = STATE_COLOR_ALERT; say_n(text, 0xe8e); break;
-    case 0x489: *color = STATE_COLOR_ALERT; say_n(text, 0xe92); break;
-    case 0x48a: *color = STATE_COLOR_ALERT; say_n(text, 0xe90); break;
-    case 0x4a8:
-        *color = STATE_COLOR_ALERT;
-        say_n(text, 0xeb2);
-        if (aid == g_session1.ownAid) {
-            effect_mgr_remove_type(g_effectMgr, aid, 0x74b);
-            if (state == 1) {
-                if (from_entry == 1) {
-                    if (mode->world->player)
-                        launch(mode->world->player, 0x3ec);
-                } else {
-                    spawn(aid, 0x74b);
-                }
-            }
-        }
-        break;
-    case 0x4aa: *color = STATE_COLOR_ALERT; say_n(text, 0xeb4); break;
-    case 0x4ab: *color = STATE_COLOR_ALERT; say_n(text, 0xeb6); break;
-    case 0x4ae: *color = STATE_COLOR_ALERT; say_n(text, 0xe9e); break;
-    case 0x4af: *color = STATE_COLOR_ALERT; say_n(text, 0xe9c); break;
-    case 0x4b0: *color = STATE_COLOR_ALERT; say_n(text, 0xe9a); break;
-    case 0x4b1: *color = STATE_COLOR_ALERT; say_n(text, 0xe98); break;
-    case 0x4b2: *color = STATE_COLOR_ALERT; say_n(text, 0xea6); break;
-    case 0x4b3: *color = STATE_COLOR_ALERT; say_n(text, 0xea4); break;
-    case 0x4b4: *color = STATE_COLOR_ALERT; say_n(text, 0xea8); break;
-    case 0x4c1: *color = STATE_COLOR_ALERT; say_n(text, 0xeaa); break;
-    case 0x4c4: *color = STATE_COLOR_ALERT; say_n(text, 0xeac); break;
-    case 0x4c5: *color = STATE_COLOR_ALERT; say_n(text, 0xeae); break;
-    case 0x4cb: *color = STATE_COLOR_ALERT; say_n(text, 0xe96); break;
-    case 0x4cc: *color = STATE_COLOR_ALERT; say_n(text, 0xe94); break;
-    case 0x4d4: *color = STATE_COLOR_ALERT; say_s(text, 0xeca); break;
-    case 0x4d5: *color = STATE_COLOR_ALERT; say_s(text, 0xecc); break;
-    case 0x4dd: *color = STATE_COLOR_ALERT; say_s(text, 0xee7); break;
-    case 0x4df: *color = STATE_COLOR_ALERT; say_n(text, 0xec6); break;
-    case 0x4e0: *color = STATE_COLOR_ALERT; say_n(text, 0xec2); break;
-    case 0x4e1: *color = STATE_COLOR_ALERT; say_n(text, 0xec8); break;
-    case 0x4e2: *color = STATE_COLOR_END; say_s(text, 0xedf); break;
-    case 0x4e4: *color = STATE_COLOR_ALERT; say_s(text, 0xedd); break;
-    case 0x4e8: *color = STATE_COLOR_ALERT; say_s(text, 0xed1); break;
-    case 0x4e9: *color = STATE_COLOR_ALERT; say_s(text, 0xecf); break;
-    case 0x4eb: *color = STATE_COLOR_END; say_s(text, 0xed3); break;
-    case 0x4ec: *color = STATE_COLOR_END; say_s(text, 0xed5); break;
-    case 0x4ed: *color = STATE_COLOR_ALERT; say_s(text, 0xed7); break;
-    case 0x4ee: *color = STATE_COLOR_ALERT; say_s(text, 0xed9); break;
-    case 0x4ef: *color = STATE_COLOR_ALERT; say_s(text, 0xedb); break;
-    case 0x4f7: *color = STATE_COLOR_ALERT; say_s(text, 0xee4); break;
     default:
         if (change_begins_without_line(index))
             no_line(text);

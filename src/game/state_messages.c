@@ -224,14 +224,12 @@ static int ends_quietly(int index)
     case 0x339: case 0x33a: case 0x351: case 0x358: case 0x359: case 0x35b: case 0x35f: case 0x360:
     case 0x368: case 0x37f: case 0x380: case 0x395: case 0x397: case 0x3a9: case 0x3d6: case 0x3f6:
     case 0x413: case 0x41a: case 0x41f: case 0x473: case 0x475: case 0x476: case 0x47c: case 0x47e:
-    case 0x495: case 0x497: case 0x4a0: case 0x4a6: case 0x4a9: case 0x4ac: case 0x4ad: case 0x4c6:
-    case 0x4e2: case 0x4ea: case 0x539: case 0x53a: case 0x53b:
+    case 0x539: case 0x53a: case 0x53b:
         return 1;
     }
     return (index >= 0x46 && index <= 0x54) || (index >= 0x2cc && index <= 0x2d2)
         || (index >= 0x2de && index <= 0x2e1) || (index >= 0x3f8 && index <= 0x401)
-        || (index >= 0x40e && index <= 0x411) || (index >= 0x4b5 && index <= 0x4c0)
-        || (index >= 0x4ce && index <= 0x4d2);
+        || (index >= 0x40e && index <= 0x411);
 }
 
 static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange *packet, char *text, int *color)
@@ -372,10 +370,6 @@ static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange 
             actor_msg(actor, ACTOR_MSG_FORM_OFF, 0);
         }
         break;
-    case 0x480: end_effect(packet, 0x708); say_n(text, 0xeb1); break;
-    case 0x488: say_n(text, 0xe8f); break;
-    case 0x489: say_n(text, 0xe93); break;
-    case 0x48a: say_n(text, 0xe91); break;
     case 0x48d:
         actor = state_actor(mode, packet);
         if (actor)
@@ -387,61 +381,6 @@ static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange 
         if (actor)
             actor_msg(actor, ACTOR_MSG_REMOVE_EFFECT, 0x641);
         break;
-    case 0x494: end_effect(packet, 0x69e); say_n(text, 0xea1); break;
-    case 0x496: say_n(text, 0xea2); break;
-    case 0x498: end_effect(packet, 0x6be); end_effect(packet, 0x6bf); break;
-    case 0x49a: say_n(text, 0xea3); break;
-    case 0x4a8:
-        say_n(text, 0xeb3);
-        if (is_own(packet)) {
-            struct GameActor *player = (struct GameActor *)own_player(mode);
-            if (able_to_make_effect_is_effect_exist(player, 0x3ec) == 1) {
-                do
-                    actor_msg(player, ACTOR_MSG_REMOVE_EFFECT, 0x3ec);
-                while (able_to_make_effect_is_effect_exist(player, 0x3ec) == 1);
-            }
-            effect_mgr_remove_type(g_effectMgr, packet->aid, 0x74b);
-        }
-        break;
-    case 0x4aa: say_n(text, 0xeb5); break;
-    case 0x4ab: say_n(text, 0xeb7); break;
-    case 0x4ae: say_n(text, 0xe9f); break;
-    case 0x4af: say_n(text, 0xe9d); break;
-    case 0x4b0: say_n(text, 0xe9b); break;
-    case 0x4b1: say_n(text, 0xe99); break;
-    case 0x4b2: say_n(text, 0xea7); break;
-    case 0x4b3: say_n(text, 0xea5); break;
-    case 0x4b4: say_n(text, 0xea9); break;
-    case 0x4c1: say_n(text, 0xeab); break;
-    case 0x4c4: say_n(text, 0xead); break;
-    case 0x4c5: say_n(text, 0xeaf); break;
-    case 0x4cb: say_n(text, 0xe97); break;
-    case 0x4cc: say_n(text, 0xe95); break;
-    case 0x4d4: say_s(text, 0xecb); break;
-    case 0x4d5:
-        if (end_effect(packet, 0x719)) {
-            Vec3 at = { 0.0f, 0.0f, 0.0f };
-            effect_mgr_spawn(g_effectMgr, packet->aid, 0x71d, at, 0, -1, 0, 0);
-        }
-        say_s(text, 0xecd);
-        break;
-    case 0x4dc: say_s(text, 0xee6); break;
-    case 0x4dd: say_s(text, 0xee8); break;
-    case 0x4df: say_n(text, 0xec7); break;
-    case 0x4e0: say_n(text, 0xec3); break;
-    case 0x4e1: say_n(text, 0xec9); break;
-    case 0x4e4: end_effect(packet, 0x7aa); say_s(text, 0xede); break;
-    case 0x4e8: say_s(text, 0xed2); break;
-    case 0x4e9: say_s(text, 0xed0); break;
-    case 0x4eb:
-        *color = STATE_COLOR_ALERT;
-        say_s(text, 0xed4);
-        break;
-    case 0x4ec: say_s(text, 0xed6); break;
-    case 0x4ed: say_s(text, 0xed8); break;
-    case 0x4ee: say_s(text, 0xeda); break;
-    case 0x4ef: say_s(text, 0xedc); break;
-    case 0x4f7: say_s(text, 0xee5); break;
     default:
         if (ends_without_line(packet->index))
             no_line(text);

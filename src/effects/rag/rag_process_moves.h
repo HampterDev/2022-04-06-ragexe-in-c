@@ -43,7 +43,6 @@ void rag_spell_circles_low(struct RagEffect *self, const char *texture, char sty
 
 void rag_spell_rings(struct RagEffect *self, const char *texture, char style);
 
-unsigned char rag_status_icon(struct RagEffect *self, unsigned char up, const char *icon);
 
 void rag_plant_actor(struct RagEffect *self);
 

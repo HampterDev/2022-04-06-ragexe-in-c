@@ -124,8 +124,6 @@ void login_mode_on_init(struct Mode *mode, const char *name)
     self->auth_timed_out = 0;
     self->refuse_seconds_left = 0;
     g_session1.madogear = 0;
-    tree_clear(&g_session1.abrHp, NULL);
-    tree_clear(&g_session1.abrMaxHp, NULL);
 }
 
 void login_mode_on_exit(struct Mode *mode)

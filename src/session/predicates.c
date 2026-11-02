@@ -195,17 +195,9 @@ int session_is_own_aid(struct Session *self, int aid)
 
 int session_is_own_unit_aid(struct Session *self, int aid)
 {
-    long long key = (unsigned)aid;
-    struct Int64Pair *hp;
-
     if (aid == -1)
         return 0;
-    if (aid == self->homunAid || aid == self->mercAid || aid == self->aid || aid == self->elementalAid)
-        return 1;
-    hp = tree_find(&self->abrHp, &key, tree_less_int64);
-    if (!hp)
-        return 0;
-    return hp->value != -1;
+    return aid == self->homunAid || aid == self->mercAid || aid == self->aid || aid == self->elementalAid;
 }
 
 int session_is_party_member_aid(struct Session *self, int aid, BYTE onlyIfClear)

@@ -65,8 +65,6 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->prohibitionLog);
     string_init(&self->worldName);
     vec_init(&self->comboDelays);
-    tree_init(&self->abrHp);
-    tree_init(&self->abrMaxHp);
     vec_init(&self->maleHairNames);
     vec_init(&self->femaleHairNames);
     vec_init(&self->jobImfNames);
@@ -309,8 +307,6 @@ void session_destruct(struct Session *self)
     vec_free(&self->jobImfNames);
     vec_free(&self->femaleHairNames);
     vec_free(&self->maleHairNames);
-    tree_free(&self->abrMaxHp, NULL);
-    tree_free(&self->abrHp, NULL);
     vec_free(&self->comboDelays);
     string_free(&self->worldName);
     vec_free(&self->prohibitionLog);

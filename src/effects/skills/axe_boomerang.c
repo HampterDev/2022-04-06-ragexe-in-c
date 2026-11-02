@@ -6,8 +6,6 @@
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 
-#define EFFECT_SHIELD_SHOOTING 2183
-
 struct AxeBoomerang {
     struct Effect base;
     struct Ez2StrParticle *axe;
@@ -106,18 +104,12 @@ void axe_boomerang_init(struct Effect *effect)
     struct Ez2StrParticle *axe = ez2str_particle_new(self->axe_pos, 5);
     const char *name;
 
-    if (self->base.type == EFFECT_SHIELD_SHOOTING) {
-        name = "shield_shooting\\shield_shooting\\shield_shooting.str";
+    if (g_session1.map_rule_flags[0] == 1)
+        name = "mineffect\\new_axeboomerang\\new_axeboomerang\\new_axeboomerang.str";
+    else
+        name = "new_axeboomerang\\new_axeboomerang\\new_axeboomerang.str";
 
-        ez2_str_particle_open(axe, name);
-    } else {
-        if (g_session1.map_rule_flags[0] == 1)
-            name = "mineffect\\new_axeboomerang\\new_axeboomerang\\new_axeboomerang.str";
-        else
-            name = "new_axeboomerang\\new_axeboomerang\\new_axeboomerang.str";
-
-        ez2_str_particle_load(axe, name);
-    }
+    ez2_str_particle_load(axe, name);
     axe->loop_forever = 1;
     self->axe = axe;
     self->alive = 1;

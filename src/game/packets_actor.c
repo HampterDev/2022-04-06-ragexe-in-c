@@ -2,7 +2,6 @@
 #include "game/cells.h"
 #include "game/actor_packets.h"
 #include "actor/actor_ops.h"
-#include "session/abr.h"
 #include "game/world_objects.h"
 #include "world/object_lookup.h"
 #include "actor/render_object.h"
@@ -196,7 +195,6 @@ void game_mode_zc_notify_vanish(struct GameMode *self, const unsigned char *pkt)
     struct GameActor *actor;
 
     name_card_holder_erase(&self->actor_names, aid);
-    session_erase_abr(&g_session1, aid);
     switch (packet->type) {
     case VANISH_OUT_OF_SIGHT:
         actor = world_get_game_actor_by_aid(self->world, aid);

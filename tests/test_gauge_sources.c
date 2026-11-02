@@ -156,13 +156,6 @@ static void test_player_gauge(void)
     ui_player_gauge_set_layout(window, 8);
     draw(window);
     assert(fills == 6);
-    ui_player_gauge_set_layout(window, 13);
-    ui_player_gauge_set(window, PLAYER_GAUGE_HP, large, large_max);
-    draw(window);
-    assert(fills == 2 && fill_width[1] == 29);
-    wide *= 2;
-    draw(window);
-    assert(fill_width[1] == 58);
     for (i = 0; i < 100; ++i)
         ui_player_gauge_set(window, PLAYER_GAUGE_HP, large, large_max);
     assert(allocations == count);

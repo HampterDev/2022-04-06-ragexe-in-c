@@ -529,11 +529,6 @@ void ui_player_gage_on_draw(struct UIWindow *window)
         player_hp_bar(self, 0);
         player_bar(self, 5, player_ratio(self, PLAYER_GAGE_SP, 1), self->gage.second_colour);
         break;
-    case 13:
-    case 14:
-        if (player_has(self, PLAYER_GAGE_HP, PLAYER_GAGE_MAX_HP))
-            player_hp_bar(self, 0);
-        break;
     default:
         if (!player_has(self, PLAYER_GAGE_HP, PLAYER_GAGE_MAX_SP))
             break;

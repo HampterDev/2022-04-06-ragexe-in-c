@@ -205,14 +205,11 @@ struct AbleToMakeEffect { CABLETOMAKEEFFECT_MEMBERS };
     int msg_mark_2;                            \
     int emotion_mute;                            \
     int cursor_mark;                           \
-    int lassitude_mark;                        \
     struct List attached;                      \
     int transform_jobs[4];                     \
     int sprite_height;                         \
     int orb_kind;                              \
     int orb_count;                             \
-    int misfortune_mark;                       \
-    int handicap_dots_mark;                       \
     int mount_look;                            \
     unsigned char is_store_assistant;          \
     unsigned char not_pickable;                \

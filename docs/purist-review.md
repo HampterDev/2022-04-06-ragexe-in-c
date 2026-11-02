@@ -96,7 +96,8 @@ prefixes (`cash-shop-`, `party-booking-`, `fourth-class-`, `item-systems-`,
   Lapine windows. Removed, 2026-11-02 (Patrick): [AU-bot, DdukDdak and Party Recruit removal](#au-bot-reply-ddukddak-box-test-and-party-recruit-removal-2026-11-02).
 - Grade-enchant effects `0x647`-`0x649` and 4th-class status visuals, ABR/Bionic
   summons and shared effect data remain because server packets can still request
-  them or because they are woven into shared summon code. Pending.
+  them or because they are woven into shared summon code. Removed, 2026-11-02
+  (Patrick): [remaining 4th-class content and grade-effect removal](#remaining-4th-class-content-and-grade-effect-removal-2026-11-02).
 - Party Recruit packet rows (`0x08e5`-`0x0971`) have no client code. Removed,
   2026-11-02 (Patrick): [AU-bot, DdukDdak and Party Recruit removal](#au-bot-reply-ddukddak-box-test-and-party-recruit-removal-2026-11-02).
 
@@ -7719,3 +7720,200 @@ Validation:
 
 The pre-removal tree is in `build/before-packet-only-removals`. No live client/server
 smoke test was run.
+
+## Remaining 4th-class content and grade-effect removal (2026-11-02)
+
+Patrick decided to remove the content the 4th-class and grade removals had kept: the
+grade-enchant effects `0x647`-`0x649`, the 4th-class status visuals, the ABR/Bionic
+summons and the effect data shared only with them. A server request for a removed
+effect or status is ignored.
+
+What remained before this removal:
+
+- **Status visuals.** `actor_effect_state` (`actor_efst.c`), the map-entry refresh
+  `player_refresh_status_effects` (`player_states.c`) and the begin/end handlers in
+  `state_messages.c`/`state_messages_timed.c` spawned, removed and tinted effects and
+  printed begin/end lines for 4th-class statuses the server can still send. These
+  included Climax, Charging Pierce, Servant Weapon, Dragonic Aura, Vigor, Dancing Knife,
+  Eternal Slash, Shadow Exceed, Competentia, the Inquisitor brands and faiths, A/D Machine,
+  Abyss Slayer and From the Abyss, Windhawk signs, the Troubadour songs, Spell Enchanting,
+  Elemental Veil and the twelve handicap states (lassitude, misfortune and dot marks,
+  colour tints and instant-variable flags).
+- **Effect data.** The 4th-class removal deleted the client triggers but kept the data
+  that packet `0x01f3` can still name: effect-factory rows, `ez2str` STR files and their
+  sound/list/height tables, RagEffect per-ID processes (spell circles, ABR circles,
+  trait-stat icons), the `severe_rain_storm` branches for `0x6d8`, `0x7ea`, `0x875`,
+  `0x92c`-`0x92f` and `0x932`, and ten effect classes spawned only by the status
+  visuals. Grade enchanting kept `0x647`-`0x649` on the same basis.
+- **ABR/Bionic summons.** `ZC_ABR_INIT` (`0x0b6b`) and `ZC_ABR_PAR_CHANGE` (`0x0b6c`)
+  filled two session HP trees that made the summon an own unit, gave object types 13/14
+  an owner, an HP-only player gauge and an entry HP message. The types were also treated
+  as summons for picking, siege targeting, the skill-used notice, the action-7 motion and
+  the homunculus/mercenary AI `IsMonster`. The Biolo Hell Tree (job `0x5173`) fired a
+  `SUMMON_HELLTREE_FRUIT` missile.
+
+How statuses were attributed: a status counts as 4th-class when rAthena's
+`db/re/status.yml`, `db/re/skill_db.yml` and its skill sources apply it only from
+4th-class job skills (DK, MT, SHC, AG, CD, WH, IG, BO, ABC, EM, IQ, TR), or when it belongs
+to the 4th-class handicap-state family. 67 status IDs qualify: `0x480`, `0x488`-`0x48a`,
+`0x494`-`0x498`, `0x49a`, `0x4a0`, `0x4a6`, `0x4a8`-`0x4c1`, `0x4c4`-`0x4c6`, `0x4cb`, `0x4cc`,
+`0x4ce`-`0x4d2`, `0x4d4`, `0x4d5`, `0x4dc`, `0x4dd`, `0x4df`-`0x4e2`, `0x4e4`, `0x4e8`-`0x4ef`,
+`0x4f7` and `0x515`.
+
+Removed:
+
+- **Status handling.** All cases for those 67 IDs in the four status files: 51 labels in
+  `actor_effect_state`, 38 in the map-entry refresh, 39 end cases in `state_messages.c`
+  and 35 begin cases in `state_messages_timed.c`, plus their entries in the quiet-status
+  lists and the own-state value capture for `0x480`/`0x4ac`/`0x4dc`. The statuses are now
+  unknown to the client: the generic status icon from Lua `GetEFSTImgFileName` remains,
+  nothing else is drawn or printed. Removed with them: `ef_charging_pierce`,
+  `ef_spawn_or_remove`, `ef_spawn_once_or_end`, `ps_spawn_once_here`, `say_n`, `say_s`
+  and `STATE_COLOR_ALERT`; the handicap marks (actor messages `0x98`-`0x9d`, fields
+  `lassitude_mark`, `misfortune_mark`, `handicap_dots_mark`); and
+  `game_actor_set_instant_var`, whose only writes were the handicap flags `0xc`-`0x10`,
+  together with the always-true checks of those flags in `attr_state.c`.
+- **Effect data.** 566 effect IDs (`build/fourth-class-leftovers-effect-ids.json`):
+  - The 553 found by tracing: effects referenced only by the removed status cases;
+    effects whose only triggers were deleted by the 4th-class removal (found by diffing
+    `build/before-fourth-class-removal` against `src`, including computed IDs such as
+    `0x6f9+i` and `0x796+dir`); the severe-rainstorm IDs; and grade `0x647`-`0x649`.
+  - 13 untriggered assets named for 4th-class skills or trait stats: `0x6b2`, `0x6b3`,
+    `0x6b7` (servant phantom/demolition), `0x6e3` (violent quake), `0x6eb` (mystery
+    illusion), `0x72c` (reparatio), `0x790` (ABR battle warrior), and the other six trait
+    icons `0x8f1`-`0x8f4`, `0x8f7`, `0x8fb`.
+  - This removed 534 factory registrations (1,186 -> 652), 515 STR file rows, their
+    entries in five `ez2str` type tables, 219 `ez2str` case labels with their sound,
+    list and angle code, 32 RagEffect per-ID cases, and the eight `severe_rain_storm`
+    branches (only Severe Rainstorm `0x4fc` stays).
+  - Ten effect classes were deleted with their declarations: `servant_weapon_effect`,
+    `charging_pierce_effect`, `climax_effect`, `a_machine_effect`, `dancing_knife_effect`,
+    `eternal_slash_count_effect`, `from_the_abyss_effect`, `shadow_exceed`,
+    `full_screen_effect` and `competentia`.
+  - Other special cases went too: the Wind Sign render exemption (`0x76c`), the Deft Stab
+    sound (`0x854`) and the Shield Shooting branch of the axe boomerang (`0x887`).
+  - Newly orphaned helpers went with them: `rag_status_icon`, `rag_status_arrow`, the
+    casting-circle styles `0x2a`-`0x32`, `effect_screen_heading` (with its dedicated
+    test), `tree_less_int64` and `struct Int64Pair`.
+- **Clean ignore.** `game_actor_launch_effect` returns NULL for the 593 retired effect
+  IDs (these 566 plus the 27 the 4th-class removal deleted), merged into 20 ranges.
+  Without it, `0x01f3`/`0x0284`/`0x0b69`, show-effect statuses and Lua lists naming a
+  retired ID would fall through to an inert RagEffect, as the 27 earlier IDs did: it is
+  allocated and recorded, asks Lua `IsForceRenderEffect`, lives for
+  `g_effectDurations[id]` steps (about the ID value) and draws nothing. Now nothing is
+  created.
+- **ABR/Bionic summons.** Incoming `0x0b6b`/`0x0b6c`: handlers, IDs, declarations,
+  dispatch cases and both packet-table rows. `session/abr.h` and the `abrHp`/`abrMaxHp`
+  session trees with their lifetime, login and vanish handling. The ABR term of
+  `session_is_own_unit_aid`; the type 13/14 gauge source, layouts and entry HP message
+  (dropping the now unused `id_0x22` parameter of `entry_hp_tail`); the owner assignment;
+  `OBJECT_TYPE_ABR`/`OBJECT_TYPE_BIONIC`; and the 13/14 terms in siege targeting,
+  `sm_kind_has_owner`, the pick helper (renamed `is_merc_or_elemental`), the action-7
+  motion, the skill-used notice and `IsMonster`. Also the Hell Tree missile mapping.
+
+Kept, and why:
+
+- **Statuses shared with monsters or 3rd classes:** `0x47e` (Deadly Projection and
+  `NPC_DEADLYCURSE`), `0x48d` (Genetic Hell's Plant), `0x48e` (`NPC_RELIEVE_ON`),
+  `0x48f` (`NPC_LOCKON_LASER`), `0x53b` (`NPC_KILLING_AURA`), and the Curse of Red/Blue
+  Cube statuses `0x539`/`0x53a`, which no checked server applies and which are not
+  attributable to a 4th class. Their effects stay too: the `curse_of_cube_effect` class
+  (`0x901`/`0x902`), `0x6cd` for Deadly Projection, and `0x63f`/`0x641`/`0x64a` for
+  `0x48d`-`0x48f`. Every other effect that kept code still triggers stays, for example
+  the item-use effects `0x63b`-`0x63f` and the ground-item drops `0x74d`-`0x74f`.
+- **Effect IDs with no 4th-class link:** `0x642`-`0x646` (skill unit `0x10c`),
+  `0x907`-`0x90f` (enchanting-window effects kept by START-049), `0x67a`, `0x67b`,
+  `0x92a`, `0x92b`, `0x934`-`0x93d` and `0x943`/`0x944`, none of which had a client
+  trigger; and the level-150 aura pair `0x8e3`/`0x8e4`, which the Lua aura tables may
+  still name. The locally available `skilleffectinfo` Lua data names effect IDs only up
+  to 1242, below every retired ID.
+- **`durations.c`.** It is the original executable's dense positional table, not
+  per-effect rows. With the factories, STR rows, per-ID cases and the launch guard gone,
+  its retired slots are never read, so it stays byte-identical (the durations test still
+  asserts the original digest).
+- **Shared summon code.** Homunculus, mercenary, elemental and pet ownership, gauges,
+  `session_is_own_unit_aid`, picking, targeting and AI handling are unchanged apart from
+  dropping the 13/14 terms.
+
+Server implications:
+
+- `0x0b6b`/`0x0b6c` take the existing unknown-packet path, which resets connection
+  queues. rAthena sends them only for summons with `AI_ABR`/`AI_BIONIC`, which only
+  4th-class skills create; Hercules does not send them.
+- An actor of object type 13/14 is now an ordinary monster-type unit: no owner, owner
+  name colour or player gauge, no entry HP message, and siege checks judge the unit
+  itself.
+- The 67 statuses are unknown to the client: icons still come from Lua, but no effect,
+  tint or chat line appears and no own-state value is kept for them.
+- Effect requests for the 593 retired IDs show nothing and allocate nothing.
+- No server checkout was modified.
+
+Tests changed:
+
+- The packet-dispatch test adds `0x0b6b`/`0x0b6c` to the unknown-packet IDs and loses
+  their sinks.
+- The effect-factory fixture loses the ten classes; its digest moves to the derived value.
+- `test_effect_launch` checks that six retired IDs, at range edges and inside ranges,
+  allocate and record nothing.
+- `test_gauge_sources` drops its layout-13 case; the 64-bit source checks remain.
+- `test_map_nodes` keeps its session instant-variable checks without the deleted actor
+  setter.
+- `test_effect_heading` was removed with `effect_screen_heading`.
+- Object-type counts are unchanged (475 / 136 / 329 / 309 / 2,741 / 208): none of the
+  deleted effect classes was in the object-type registry, whose only effect class is
+  `CTetraBallEffect`.
+
+Validation:
+
+- Release build passed without compiler or linker warnings:
+  `build/fourth-class-leftovers-build.log`.
+- Packet dispatch: all 1,179,800 cases passed, digest `679cf1c915cfe60f` (before:
+  `45cac67ceea7fb03`). `build/derive_fourth_class_leftovers_dispatch.py` changes exactly
+  24 cases of the regenerated baseline (`build/packet-dispatch-before-fourth-class-leftovers.bin`):
+  12 each for `0x0b6b` and `0x0b6c`, full-size non-null calls in all six patterns, direct
+  and forwarded. Each formerly called `game_mode_zc_abr_init`/`_par_change` and now
+  resets the queues. The actual trace matches byte for byte (SHA-256 `2edd6f23...3d5ea14`):
+  `build/fourth-class-leftovers-dispatch.log`,
+  `build/fourth-class-leftovers-dispatch-expectation.log`.
+- Effect factories: digest `616ea281` (before: `274deeba`).
+  `build/derive_fourth_class_leftovers_effect_factories.py` drops the 1,602 registered
+  nodes of the 534 retired IDs across the three registry cases and renumbers the
+  fixture for the ten deleted classes; the deliberate failure case still collides on
+  `0x943`. The real trace (`build/effect-factories-after-fourth-class-leftovers.bin`)
+  matches the derivation byte for byte:
+  `build/fourth-class-leftovers-effect-factories-expectation.log`.
+- Edits were made by scripts that verify every non-retired ID keeps its factory, STR
+  row, table membership and case body (`build/fourth-class-leftovers-effect-data.log`,
+  `-status-cases.log`, `-status-lists.log`). `build/audit_fourth_class_leftovers.py`
+  confirms that only the two ABR rows left the packet table (1,242 -> 1,240 length rows,
+  1,285 -> 1,283 name rows); that no retired ID remains in the registry, STR rows,
+  `ez2str` cases or RagEffect cases; and that none of 32 removed functions remains in
+  the link map: `build/fourth-class-leftovers-audit.log`.
+- Full suite `tests\build.bat` passed in 5 min 40 s:
+  `build/fourth-class-leftovers-full-tests.log`. Unchanged digests: content managers
+  `f0fa1aba`, effect operations `a5ab8449`, EZ2STR `817beee3`, particle pools `eca892c6`,
+  skill values `f620423f`; object types 475 classes and 136 retired identities; effect
+  durations unchanged.
+- The seven standalone suites passed: `build/fourth-class-leftovers-<suite>.log`.
+  `build_agency_server.bat` was not run (it needs the patched Hercules checkout).
+- `git diff --check` passed.
+
+Bugs found (not fixed):
+
+- `rag_effect_init` reads `g_effectDurations[effect_id]` for any ID up to 60000, but the
+  table has 2,385 entries, so a server effect ID from 2385 to 60000 without a factory
+  reads past its end (`rag_str_anim.c`). Foundation candidate.
+- Removed with the feature: the ABR handlers keyed the HP trees with a sign-extended AID
+  while vanish and the readers used the zero-extended one, so AIDs of `0x80000000` and
+  above never matched. The trees were also cleared only on vanish and at the login
+  screen, not on map change.
+- Dead branches left as found: `ui_player_gage_on_draw`'s `case 9`/`case 10` (no code
+  sets those layouts; mercenary and elemental use the default layout), and the
+  non-own-unit `pc_gage` block of `npc_send_msg` message `0x22`, which no sender reaches.
+
+The pre-removal tree is in `build/before-fourth-class-leftovers`. The edit and derivation
+scripts are `build/edit_fourth_class_effect_data.py`,
+`build/edit_fourth_class_status_cases.py`, `build/edit_fourth_class_status_lists.py`,
+`build/derive_fourth_class_leftovers_dispatch.py` and
+`build/derive_fourth_class_leftovers_effect_factories.py`. No live client/server smoke
+test was run.

@@ -546,15 +546,6 @@ void rag_casting_circle(struct RagEffect *self, int alpha, const char *texture,
     case 0x16: p->scale = 26.0f; break;
     case 0x17: p->scale = 27.0f; break;
     case 0x1f: p->scale = 31.0f; break;
-    case 0x2a: p->scale = 42.0f; break;
-    case 0x2b: p->scale = 43.0f; break;
-    case 0x2c: p->scale = 44.0f; break;
-    case 0x2d: p->scale = 45.0f; break;
-    case 0x2e: p->scale = 46.0f; break;
-    case 0x2f: p->scale = 47.0f; break;
-    case 0x30: p->scale = 48.0f; break;
-    case 0x31: p->scale = 49.0f; break;
-    case 0x32: p->scale = 50.0f; break;
     default:   p->scale = 5.0f; break;
     }
     height = style == 2 ? 25 : style == 0x16 ? 15 : 20;

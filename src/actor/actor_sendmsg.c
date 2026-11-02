@@ -27,7 +27,6 @@
 #include "ui/shops/shops.h"
 #include "ui/wndmgr/wndmgr.h"
 
-static const char deft_stab_wave[] = "effect\\ABC_DEFT_STAB2.wav";
 
 static struct RagEffect *sm_launch(struct GameActor *self, int effect)
 {
@@ -178,12 +177,6 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
         }
         e = (struct Effect *)effect_mgr_spawn(g_effectMgr, 0, 0x61f, at, 0, -1, 0, 0);
         e->ops->set_spin(e, (float)(rand() % 360));
-    } else if (effect == 0x854) {
-        struct GameActor *player = (struct GameActor *)game_current_player();
-
-        if (player)
-            sound_play_wave(deft_stab_wave, player->pos.x - self->pos.x, 0.0f,
-                            player->pos.z - self->pos.z, 250, 40, 1.0f);
     } else {
         Vec3 zero = { 0.0f, 0.0f, 0.0f };
 
@@ -370,7 +363,7 @@ static int sm_kind_has_owner(const struct GameActor *self)
 {
     unsigned kind = self->object_type - 8u;
 
-    return kind <= 6 && kind != 3 && kind != 4;
+    return kind <= 2;
 }
 
 static int sm_walk(struct GameActor *self, const struct ActorMoveEntryInfo *info)
@@ -722,7 +715,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         else if (self->emotion_mark_a == value) self->emotion_mark_a = 0;
         else if (self->emotion_mute == value) self->emotion_mute = 0;
         else if (self->cursor_mark == value) self->cursor_mark = 0;
-        else if (self->lassitude_mark == value) self->lassitude_mark = 0;
         list_erase(&self->attached, node, NULL);
         break;
     }
@@ -1069,12 +1061,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         sm_level_effects(self, first, second);
         break;
     }
-    case 0x98: sm_hold(self, mode, &self->lassitude_mark, 0x43); break;
-    case 0x99: sm_drop(&self->lassitude_mark); break;
-    case 0x9a: sm_hold(self, mode, &self->misfortune_mark, 0x44); break;
-    case 0x9b: sm_drop(&self->misfortune_mark); break;
-    case 0x9c: sm_hold(self, mode, &self->handicap_dots_mark, 9); break;
-    case 0x9d: sm_drop(&self->handicap_dots_mark); break;
     case 0x6e:
         actor_effect_state(self, mode, par1, par2, par3, par4);
         break;

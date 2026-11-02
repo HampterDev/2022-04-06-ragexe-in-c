@@ -174,7 +174,6 @@ static struct MissileSprite missile_for_job(__int64 job64)
     static const struct MissileSprite nyailo = BULLET("e_nyailo_ammo");
     static const struct MissileSprite soul_attack = BULLET("su_soulattack");
     static const struct MissileSprite corruption_root_2 = BULLET("mg_corruption_root_bullet");
-    static const struct MissileSprite helltree_fruit = BULLET("SUMMON_HELLTREE_FRUIT");
     static const struct MissileSprite limacina = BULLET("EP19_LIMACINA_BULLET");
     int job;
 
@@ -202,7 +201,6 @@ static struct MissileSprite missile_for_job(__int64 job64)
     case 0x4f33: return wootan_shooter;
     case 0x4f37: return wootan_shooter;
     case 0x505f: return corruption_root_2;
-    case 0x5173: return helltree_fruit;
     case 0x5410: return limacina;
     case 0x5455: return limacina;
     }

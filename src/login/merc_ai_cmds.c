@@ -345,7 +345,7 @@ int merc_ai_is_monster(lua_State *L)
         c = ACTOR(actor)->object_type;
         if (c != 7) {
             switch (c) {
-            case 9: case 10: case 13: case 14:
+            case 9: case 10:
                 r = 0.0;
                 goto push;
             }

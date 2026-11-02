@@ -416,7 +416,7 @@ static void npc_set_state_general(struct Npc *self, int state)
         break;
     case 7:
         switch (self->object_type) {
-        case 8: case 10: case 13: case 14:
+        case 8: case 10:
             render_object_set_action((struct RenderObject *)self, 0x28, 1);
             break;
         case 9:

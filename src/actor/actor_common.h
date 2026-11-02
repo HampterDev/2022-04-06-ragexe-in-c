@@ -13,7 +13,6 @@
 #include "skills/skill_action.h"
 #include "game/world_objects.h"
 #include "actor/render_ops.h"
-#include "session/abr.h"
 #include "ui/chat/readable_links.h"
 #include "ui/chat/navi_text.h"
 #include "std/string.h"

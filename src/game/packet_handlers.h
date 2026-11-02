@@ -10,8 +10,6 @@ struct NormalItem;
 struct NpcMarketEntry;
 struct PACKET_STORE_LIST;
 struct PACKET_STORE_LIST_NAMED;
-struct PACKET_ZC_ABR_INIT;
-struct PACKET_ZC_ABR_PAR_CHANGE;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX;
 struct PACKET_ZC_ACK_ADD_ITEM_RODEX2;
 struct PACKET_ZC_ACK_ALL_RODEX_LIST;
@@ -505,9 +503,6 @@ void game_mode_zc_member_add(struct GameMode *self, const struct PacketMemberFul
 void game_mode_zc_member_add_del_name(struct GameMode *self, const struct PacketMemberMemo *packet);
 void game_mode_zc_member_add_new(struct GameMode *self, const struct PacketMemberNamed *packet);
 
-void game_mode_zc_abr_init(struct GameMode *self, const struct PACKET_ZC_ABR_INIT *packet);
-void game_mode_zc_abr_par_change(struct GameMode *self,
-                                const struct PACKET_ZC_ABR_PAR_CHANGE *packet);
 int game_mode_zc_battlefield_notify_hp_sp(struct GameMode *self, int aid, int hp, int max_hp, int sp,
                                         int max_sp);
 void game_mode_zc_hp_info(struct GameMode *self, const struct PACKET_ZC_HP_INFO *packet);

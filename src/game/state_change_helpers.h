@@ -46,7 +46,6 @@ enum {
     MSG_PARTY_MEMBER_PREFIX = 0x4fb,
     STATE_COLOR_BEGIN = 0x00ffff00,
     STATE_COLOR_END = 0x000000ff,
-    STATE_COLOR_ALERT = 0x00ff0000,
     CHAT_CHANNEL_OWN_STATE = 7,
     CHAT_CHANNEL_MEMBER_STATE = 9,
 };
@@ -54,16 +53,6 @@ enum {
 static void say(char *text, int msg_id)
 {
     sprintf(text, msg_str(msg_id));
-}
-
-static void say_n(char *text, int msg_id)
-{
-    _snprintf_s(text, 0x100, 0x100, msg_str(msg_id));
-}
-
-static void say_s(char *text, int msg_id)
-{
-    _snprintf_s(text, 0x100, (size_t)-1, "%s", msg_str(msg_id));
 }
 
 static void no_line(char *text)
