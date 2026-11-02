@@ -129,7 +129,8 @@ static void check_inside(const struct DcBitmap *bitmap, int x, int y, SIZE box)
     for (py = 0; py < bitmap->height; ++py)
         for (px = 0; px < bitmap->width; ++px) {
             DWORD pixel = bitmap->bits[py * bitmap->width + px];
-            int inside = px >= x && px < x + box.cx && py >= y && py < y + box.cy;
+            /* The last glyph may overhang its advance by a pixel, as in GDI (Apple SD Gothic Neo does). */
+            int inside = px >= x && px <= x + box.cx && py >= y && py < y + box.cy;
             if (pixel != BACKGROUND && !(pixel == INK_PIXEL && inside))
                 fprintf(stderr, "pixel %06lx at %d,%d outside the box %d,%d %dx%d\n", (unsigned long)pixel, px, py,
                         x, y, (int)box.cx, (int)box.cy);
