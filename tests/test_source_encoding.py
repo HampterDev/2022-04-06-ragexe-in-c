@@ -1,5 +1,7 @@
 import importlib.util
+import os
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -30,9 +32,29 @@ class SourceEncodingTests(unittest.TestCase):
         with self.assertRaises(UnicodeEncodeError):
             encoding.encode_literals('"😀"')
 
+    def test_tree_mirrors_sources_and_keeps_unchanged_outputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source, output = Path(temp, "src"), Path(temp, "out")
+            (source / "core").mkdir(parents=True)
+            (source / "core" / "a.c").write_text('const char *s = "한글";\n', encoding="utf-8")
+            (source / "b.h").write_text("int b;\n", encoding="utf-8")
+            (source / "notes.txt").write_text("x\n", encoding="utf-8")
+            (output / "gone").mkdir(parents=True)
+            (output / "gone" / "old.c").write_text("int old;\n", encoding="utf-8")
+            encoding.encode_tree(source, output)
+            self.assertEqual((output / "core" / "a.c").read_text(encoding="utf-8"),
+                             'const char *s = "\\307\\321\\261\\333";\n')
+            self.assertEqual((output / "b.h").read_text(encoding="utf-8"), "int b;\n")
+            self.assertFalse((output / "notes.txt").exists())
+            self.assertFalse((output / "gone" / "old.c").exists())
+            before = (output / "b.h").stat().st_mtime_ns
+            os.utime(output / "b.h", ns=(before - 10**9, before - 10**9))
+            encoding.encode_tree(source, output)
+            self.assertEqual((output / "b.h").stat().st_mtime_ns, before - 10**9)
+
     def test_all_production_sources_can_be_transformed(self):
         for path in (ROOT / "src").rglob("*"):
-            if path.suffix in (".c", ".h"):
+            if path.suffix in encoding.SOURCE_SUFFIXES:
                 with self.subTest(path=path.relative_to(ROOT)):
                     encoding.encode_literals(path.read_text(encoding="utf-8-sig"))
 
