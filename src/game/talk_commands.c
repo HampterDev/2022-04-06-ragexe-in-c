@@ -20,8 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "game/talk_type.h"
 #include "game/client.h"
 #include "game/cells.h"
@@ -149,13 +149,13 @@ void talk_cmd_chat_auto_save(struct GameMode *self)
     mode = game_current_mode();
     if (session_is_admin_option(&g_session1, 7)) {
         mode->whispers_logged = 0;
-        sprintf(dir, "%s\\Chat", g_clientDir);
+        client_path(dir, sizeof dir, "Chat");
         n = 0;
-        if (_access(dir, 0) == 0 || _mkdir(dir) == 0) {
-            sprintf(g_whisperLogPath, "%s\\Chat\\Chat.txt", g_clientDir);
-            while (_access(g_whisperLogPath, 0) == 0) {
+        if (platform_path_exists(dir) || platform_directory_create(dir) == 0) {
+            client_path(g_whisperLogPath, sizeof g_whisperLogPath, "Chat\\Chat.txt");
+            while (platform_path_exists(g_whisperLogPath)) {
                 n++;
-                sprintf(g_whisperLogPath, "%s\\Chat\\Chat%03d.txt", g_clientDir, n);
+                client_path(g_whisperLogPath, sizeof g_whisperLogPath, "Chat\\Chat%03d.txt", n);
             }
         }
     }
@@ -309,7 +309,7 @@ void talk_cmd_help(struct GameMode *self)
 
 void talk_cmd_trace_ai(struct GameMode *self)
 {
-    char path[0x100];
+    char path[0x100], directory[0x100];
     char *data;
     struct File file;
 
@@ -320,11 +320,11 @@ void talk_cmd_trace_ai(struct GameMode *self)
         talk_print_msg(0x3bd, TALK_COLOR_NOTICE);
         return;
     }
-    GetCurrentDirectoryA(sizeof path, path);
-    data = strstr(path, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    data = strstr(directory, "\\data");
     if (data)
-        memcpy(path, path, data - path);
-    strcat(path, "\\TraceAI.txt");
+        memcpy(directory, directory, data - directory);
+    platform_path_join(path, sizeof path, directory, "TraceAI.txt");
     file_construct(&file);
     file_open(&file, path, FILE_MODE_WRITE, 1, 0);
     file_write(&file, "", 0);

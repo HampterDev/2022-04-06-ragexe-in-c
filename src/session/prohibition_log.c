@@ -1,18 +1,19 @@
 #include "session/csession.h"
 #include "session/session_talk.h"
+#include "platform/filesystem.h"
 
 #include <stdio.h>
 #include <string.h>
 
 static void log_path(char *path, const char *name)
 {
-    char *data;
+    char directory[0x100], *data;
 
-    GetCurrentDirectoryA(0x100, path);
-    data = strstr(path, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    data = strstr(directory, "\\data");
     if (data)
-        memcpy(path, path, data - path);
-    strcat(path, name);
+        memcpy(directory, directory, data - directory);
+    platform_path_join(path, 0x100, directory, name);
 }
 
 void session_load_prohibition_log(struct Session *self)
@@ -23,7 +24,7 @@ void session_load_prohibition_log(struct Session *self)
     int count, length, i;
 
     file_construct(&file);
-    log_path(path, "\\ProhibitionLog.gd");
+    log_path(path, "ProhibitionLog.gd");
     if (file_open(&file, path, 0, 1, 0)) {
         count = 0;
         file_read(&file, &count, 4);

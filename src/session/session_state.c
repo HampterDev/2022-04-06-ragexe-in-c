@@ -1,4 +1,5 @@
 #include "platform/filesystem.h"
+#include "core/client_path.h"
 #include "render/renderer.h"
 #include "session/character_name.h"
 #include "contents/guild_info.h"
@@ -249,22 +250,23 @@ void session_save_emblem(struct Session *self, const void *data, size_t size,
 
     if (guildId == g_guildInfo.guild_id)
         guild_mgr_set_emblem_version(g_guildMgr, guildId, version);
-    sprintf(dir, "%s\\_tmpEmblem\\", g_clientDir);
-    if (_access(dir, 0) != 0 && _mkdir(dir) == -1)
+    client_path(dir, sizeof dir, "_tmpEmblem\\");
+    if (!platform_path_exists(dir) && platform_directory_create(dir) == -1)
         return;
     sprintf(name, "%s_%d_*.ebm", string_cstr(&self->worldName), guildId);
     list_init(&files);
     dir_list_names_list(&files, dir, name);
     for (node = files.head->next; node != files.head; node = node->next) {
-        sprintf(name, "%s%s", dir, string_cstr(LIST_VALUE(node, struct String)));
-        _chmod(name, 0x80);
-        _unlink(name);
+        if (!platform_path_join(name, sizeof name, dir, string_cstr(LIST_VALUE(node, struct String))))
+            continue;
+        platform_file_make_writable(name);
+        platform_file_remove(name);
     }
     {
         struct String name;
 
         guild_emblem_name(&name, &self->worldName, (unsigned)guildId, version);
-        snprintf(path, sizeof path, "%s%s", dir, string_cstr(&name));
+        platform_path_join(path, sizeof path, dir, string_cstr(&name));
         string_free(&name);
     }
     f = fopen(path, "wb");

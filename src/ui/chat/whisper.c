@@ -9,8 +9,8 @@
 #include "core/markup_tags.h"
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include <mbstring.h>
 #include "ui/chat/chat.h"
 #include "ui/chat/chat_history.h"
@@ -257,8 +257,8 @@ static void save_conversation(struct UIWhisperWnd *self)
     unsigned i;
     int n = 0;
 
-    sprintf(path, "%s\\Whisper", g_clientDir);
-    if (_access(path, 0) && _mkdir(path))
+    client_path(path, sizeof path, "Whisper");
+    if (!platform_path_exists(path) && platform_directory_create(path))
         return;
     string_copy(&name, &self->name);
     for (i = 0; i < name.size; i++) {
@@ -267,12 +267,12 @@ static void save_conversation(struct UIWhisperWnd *self)
         if (strchr("\\/:*?\"<>|", *c) && *c)
             *c = '_';
     }
-    sprintf(path, "%s\\Whisper\\%s.txt", g_clientDir, string_cstr(&name));
-    if (!_access(path, 0)) {
+    client_path(path, sizeof path, "Whisper\\%s.txt", string_cstr(&name));
+    if (platform_path_exists(path)) {
         do {
             n++;
-            sprintf(path, "%s\\Whisper\\%s%03d.txt", g_clientDir, string_cstr(&name), n);
-        } while (!_access(path, 0));
+            client_path(path, sizeof path, "Whisper\\%s%03d.txt", string_cstr(&name), n);
+        } while (platform_path_exists(path));
     }
     if (ui_chat_his_box_save_to_file(&self->box->box, path)) {
         struct String said;
