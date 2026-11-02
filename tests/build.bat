@@ -844,3 +844,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_lapine_upgrade_result.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_status_wnd_info.bat"
+if not "%errorlevel%"=="0" exit /b 1
