@@ -63,8 +63,6 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self)
         ui_window_mgr_make_window(self, 0xa);
     if (self->status_info.show)
         ui_window_mgr_make_window(self, 0xb);
-    if (self->option_info.show)
-        ui_window_mgr_make_window(self, 0xd);
     if (self->skill_list_info.show)
         ui_window_mgr_make_window(self, 0x25);
     if (self->quest_info.show)
