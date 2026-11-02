@@ -25,6 +25,9 @@ endif()
 if(RAGE_PLATFORM_PROBE)
     include(cmake/PlatformProbe.cmake)
 endif()
+if(RAGE_CLIENT)
+    include(cmake/SDL3.cmake)
+endif()
 
 add_subdirectory(vendor)
 
