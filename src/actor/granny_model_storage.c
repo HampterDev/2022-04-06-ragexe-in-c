@@ -41,8 +41,7 @@ struct GrannyModelState *granny_model_state_create(struct C3dGrannyModelRes *res
             goto fail;
         vertices = _GrannyGetMeshVertexCount(source->mesh);
         indices = _GrannyGetMeshIndexCount(source->mesh);
-        if (vertices < 0 || indices < 0 || indices % 3 ||
-            (indices && (!vertices || !source->indices)))
+        if (vertices < 0 || indices < 0 || (indices && (!vertices || !source->indices)))
             goto fail;
         if (!vertices)
             continue;
@@ -50,7 +49,7 @@ struct GrannyModelState *granny_model_state_create(struct C3dGrannyModelRes *res
                                               base ? base->skeleton : resource->skeleton);
         if (!mesh->binding)
             goto fail;
-        if (indices) {
+        if (indices >= 3) {
             mesh->projection = granny_projection_create(indices / 3);
             if (!mesh->projection)
                 goto fail;

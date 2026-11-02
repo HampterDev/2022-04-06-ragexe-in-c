@@ -26,7 +26,8 @@ static void *lifecycle_calloc(size_t count, size_t size)
 static unsigned sdk_handles, file_closes, errors, wave_frees;
 static int file_available = 1, sdk_version = 1, sdk_read = 1, sdk_info = 1;
 static int wave_kind = AIL_FILE_WAV, rigid = 1, has_alpha = 1;
-static int vertex_count = 3, index_count = 3, invalid_index;
+static int vertex_count = 3, index_count = 3, invalid_index, fail_deformer;
+static unsigned deformer_call;
 static unsigned texture_copies;
 static int path_available = 1;
 static unsigned last_lookup_job;
@@ -139,7 +140,11 @@ const granny_data_type_definition *__stdcall _GrannyGetMeshVertexType(granny_mes
 { assert(m == &mesh); return GrannyPNT332VertexType; }
 granny_mesh_deformer *__stdcall _GrannyNewMeshDeformer(const granny_data_type_definition *a,
     const granny_data_type_definition *b, int kind)
-{ assert(a == b && kind == GRANNY_DEFORM_POSITION_NORMAL); return sdk_alloc(); }
+{
+    assert(a == b && kind == GRANNY_DEFORM_POSITION_NORMAL);
+    deformer_call = allocation_calls + 1;
+    return fail_deformer ? NULL : sdk_alloc();
+}
 void __stdcall _GrannyFreeMeshDeformer(granny_mesh_deformer *p) { sdk_free(p); }
 granny_texture *__stdcall _GrannyGetMaterialTextureByType(granny_material *material, int kind)
 { (void)material; assert(kind == GRANNY_DIFFUSE_COLOR_TEXTURE); return &texture; }
@@ -278,7 +283,7 @@ static void test_granny_failures(void)
 {
     struct C3dGrannyModelRes *resource;
     struct C3dGrannyModelRes prior;
-    unsigned calls, start, live, i, copies;
+    unsigned calls, start, live, i, copies, deformer;
     int kind, invalid;
     fail_at = allocation_calls + 1;
     assert(!granny_model_resource_create()); fail_at = 0;
@@ -288,7 +293,10 @@ static void test_granny_failures(void)
         start = allocation_calls;
         assert(c3d_granny_model_res_load(resource, "model_7.gr2"));
         calls = allocation_calls - start; prior = *resource; live = outstanding;
+        deformer = rigid ? 0 : deformer_call - start;
         for (i = 1; i <= calls; i++) {
+            if (i == deformer)
+                continue;
             fail_at = allocation_calls + i;
             assert(!c3d_granny_model_res_load(resource, "model_8.gr2")); fail_at = 0;
             assert(!memcmp(resource, &prior, sizeof prior) && outstanding == live);
@@ -298,7 +306,7 @@ static void test_granny_failures(void)
         assert(!c3d_granny_model_res_load(resource, "model_8.gr2") && start == allocation_calls);
         resource->res.lockCount = 0;
         assert(!memcmp(resource, &prior, sizeof prior));
-        for (invalid = 0; invalid < 15; invalid++) {
+        for (invalid = 0; invalid < 14; invalid++) {
             fixture();
             switch (invalid) {
             case 0: model.MeshBindingCount = -1; break;
@@ -306,21 +314,20 @@ static void test_granny_failures(void)
             case 2: mesh_binding.Mesh = NULL; break;
             case 3: vertex_count = -1; break;
             case 4: index_count = -1; break;
-            case 5: index_count = 1; break;
-            case 6: invalid_index = 1; break;
-            case 7: mesh.MaterialBindingCount = -1; break;
-            case 8: mesh.MaterialBindings = NULL; break;
-            case 9: texture.Width = 0; break;
-            case 10: texture.Height = -1; break;
-            case 11: texture.Width = INT_MAX; break;
-            case 12: texture.Width = texture.Height = 65536; break;
-            case 13: textures[0] = NULL; break;
-            case 14: skeleton.BoneCount = -1; break;
+            case 5: invalid_index = 1; break;
+            case 6: mesh.MaterialBindingCount = -1; break;
+            case 7: mesh.MaterialBindings = NULL; break;
+            case 8: texture.Width = 0; break;
+            case 9: texture.Height = -1; break;
+            case 10: texture.Width = INT_MAX; break;
+            case 11: texture.Width = texture.Height = 65536; break;
+            case 12: textures[0] = NULL; break;
+            case 13: skeleton.BoneCount = -1; break;
             }
             copies = texture_copies;
             assert(!c3d_granny_model_res_load(resource, "model_9.gr2"));
             assert(!memcmp(resource, &prior, sizeof prior) && outstanding == live);
-            if (invalid >= 9 && invalid <= 12) assert(copies == texture_copies);
+            if (invalid >= 8 && invalid <= 11) assert(copies == texture_copies);
             vertex_count = index_count = 3; invalid_index = 0; textures[0] = &texture;
         }
         fixture();
@@ -328,6 +335,33 @@ static void test_granny_failures(void)
         resource_destroy(&resource->res); assert(!outstanding && !sdk_handles);
     }
     fixture(); has_alpha = 1;
+}
+
+static void test_granny_partial_models(void)
+{
+    struct Res *res;
+    struct C3dGrannyModelRes *granny;
+    unsigned before, copies;
+    int part;
+    for (part = 0; part < 4; part++) {
+        res = granny_model_resource_create(); granny = (struct C3dGrannyModelRes *)res;
+        fixture(); rigid = part != 2; before = errors; copies = texture_copies;
+        if (part == 0) texture.TextureType = 1;
+        if (part == 1) texture.ImageCount = 2;
+        if (part == 2) fail_deformer = 1;
+        if (part == 3) index_count = 4;
+        assert(resource_load(res, "model_5.gr2") && granny->model && granny->model->meshCount == 1);
+        assert(errors == before + (part < 3) && granny->textureCount == 1);
+        assert(!strcmp(granny->textures[0].name, "texture"));
+        assert(granny->model->meshes[0].textures[0] == &granny->textures[0]);
+        if (part < 2) assert(!granny->textures[0].texture && copies == texture_copies);
+        else assert(granny->textures[0].texture);
+        if (part == 2) assert(!granny->model->meshes[0].deformer && !granny->model->meshes[0].rigidVerts);
+        if (part == 3) assert(granny->model->meshes[0].indices);
+        resource_destroy(res); assert(!outstanding && !sdk_handles);
+        fail_deformer = 0; index_count = 3;
+    }
+    rigid = 1;
 }
 
 static void test_animation_files(void)
@@ -423,10 +457,10 @@ int main(void)
     memcpy(file_data, wave_bytes, sizeof file_data);
     resource_destroy(NULL);
     test_wave(); test_granny(); test_granny_animation_bounds();
-    test_granny_failures(); test_animation_files(); test_animation_lookup();
+    test_granny_failures(); test_granny_partial_models(); test_animation_files(); test_animation_lookup();
     assert(!outstanding && !sdk_handles && file_closes && errors);
     puts("resource lifecycle: typed dispatch, wave allocator ownership, Granny load failures, replacement and complete/repeated cleanup passed");
-    puts("Granny resources: every allocation failure preserves the old model, pinned reload rejected, invalid geometry bounded, RGBA converted, 50 animation files owned and released exactly once");
+    puts("Granny resources: every allocation failure preserves the old model, pinned reload rejected, invalid geometry bounded, a bad texture, a missing deformer or a partial triangle loaded without that part, RGBA converted, 50 animation files owned and released exactly once");
     puts("Guild flag: lazy loading, job-722 lookup, missing-file retry, cache reuse and reload after clear passed");
     return 0;
 }
