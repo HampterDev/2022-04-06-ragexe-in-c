@@ -59,7 +59,7 @@ account or registry settings.
 | `src\contents`, `src\web`, `src\navi` | game systems, web services, navigation |
 | `src\std` | containers and strings |
 | `src\platform`, `src\security`, `src\diag` | Windows integration, checks, the crash report and the in-game overlay |
-| `vendor` | zlib, libpng, giflib, Lua 5.1.4, yyjson, Rijndael and the font backend (C++), curl headers |
+| `vendor` | zlib, libpng, Lua 5.1.4, yyjson, Rijndael and the font backend (C++), curl headers |
 | `lib`, `res` | prebuilt import libraries (Granny, Bink, Miles, IJL, ...), the compiled resources (`app.res`) and the client's icon (`app.ico`, `icon.png`) |
 | `tests` | the behavioral tests and their fixtures |
 
@@ -226,6 +226,12 @@ Data, time and leaks:
   sprite still loads. A GRF record that points outside the archive
   (the kRO `data.grf` has such a deleted-file record) is left out, and the other files stay
   readable.
+- A GIF (a guild emblem or a `.gif` texture) is decoded as the original does, but never read
+  or written past its buffers: bytes after the end of the file read as zero, a colour index
+  past the palette as 0, an LZW stream stops at the end of its data, a code chain that loops
+  skips its frame, and LZW table entries past 4096 or pixels past the frame are dropped. A GIF
+  that would need more than 256 MB for its frames or for one image's pixels is refused instead
+  of running out of memory.
 - An empty XML element written without a space before the slash, such as `<readfolder/>`
   in `clientinfo.xml`, is read as empty. The original cut the tag name at the slash before
   checking for it, so the element swallowed the rest of the file and the connections in it.

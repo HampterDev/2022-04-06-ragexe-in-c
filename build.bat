@@ -37,7 +37,7 @@ for /r "%ROOT%src" %%f in (*.c) do (
   >> "%BUILD%\sources.rsp" echo "%%f"
   >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\%%~nf.obj"
 )
-set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\giflib" /I"%ROOT%vendor\curl-7.46.0\include""
+set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\curl-7.46.0\include""
 cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources.rsp" /Fo:"%OBJ%\\"
 if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
 >> "%BUILD%\%OUT%.objs.rsp" echo "%ROOT%res\app.res"

@@ -6,7 +6,7 @@ set "OUT=%~dp0..\build\vendor"
 if not exist "%OUT%" mkdir "%OUT%"
 set "CFLAGS=/nologo /c /O2 /MD /MP4 /DNDEBUG /D_CRT_SECURE_NO_WARNINGS"
 
-call :library imglibs "/Izlib-1.2.11" zlib-1.2.11\*.c libpng-1.6.36\*.c giflib\*.c
+call :library imglibs "/Izlib-1.2.11" zlib-1.2.11\*.c libpng-1.6.36\*.c
 if errorlevel 1 goto failed
 call :library lua514 "" lua-5.1.4\src\*.c
 if errorlevel 1 goto failed
