@@ -156,6 +156,10 @@ Uninitialized values:
 - A button in an unknown state draws no
   bitmap. An unknown on-screen timer kind is hidden; the original showed a pointer as the
   timer's value.
+- An STR texture animation playing in reverse wraps to the end of its textures when it
+  passes frame 0. The original took the wrap from an uninitialised value, so the layer stuck
+  on its first texture or showed the white one (kRO `hogg.str`, `ssnnnn2.str`,
+  `fullmoon_kick.str`).
 
 Overruns and bad table indexes:
 
@@ -219,11 +223,19 @@ Data, time and leaks:
   quantities and prices instead of an empty list.
 - A reputation or EZ2STR effect table that is not a JSON object fails the
   read instead of throwing an exception out of the loader.
-- GRF, SPR, IMF, GND and EZ effect files and the
-  water settings are checked (counts, sizes, names) before use. A short or malformed file fails
-  to load instead of being read past its end. A sprite frame whose pixel stream is shorter or
-  longer than the frame is cut at the frame's end or filled with transparent pixels, and the
-  sprite still loads. A GRF record that points outside the archive
+- GRF, ACT, SPR, IMF, GND, GAT, RSW, RSM and EZ effect files are read within their own size.
+  A file cut short, or whose counts or indexes do not fit the file or the tables they point
+  into, fails to load. The original read such a file as far as it went: its reads past the
+  end failed and left zeros or earlier values, and the counts and offsets it took from the
+  file read past the end or outside its tables. An ACT that ends inside its delay table and
+  a PAL or SPR too short for its palette still load, as in the original. An EZ effect file
+  with a negative frame or texture count, or a 128-byte texture name with no NUL, fails as
+  well. An RSM2 model of minor version 1 to 3 whose major version is not 2 fails; the
+  original loaded it and then made the kind of model actor that major version names. A water
+  animation speed of 0 fails the map; the original divided by it. A sprite frame whose pixel
+  stream is shorter or longer than the frame is cut at the frame's end or filled with
+  transparent pixels, and the sprite still loads. A GRF record that points outside the
+  archive
   (the kRO `data.grf` has such a deleted-file record) is left out, and the other files stay
   readable.
 - A GIF (a guild emblem or a `.gif` texture) is decoded as the original does, but never read
