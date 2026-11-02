@@ -181,7 +181,7 @@ void ui_merchant_item_shop_wnd_on_create(struct UIWindow *window, int width, int
             notice = ui_static_text_construct(notice);
         self->notice = notice;
         ui_window_create(notice, 0xa0, 0xf);
-        sprintf(text, msg_str(MSG_SHOP_NOTICE));
+        sprintf(text, msg_str(MSG_SHOP_NOTICE), (const char *)NULL);
         ui_static_text_set_text_fit(self->notice, text);
         ui_window_move(self->notice, 0xc, wnd->height - 0x15);
         ui_window_add_child(wnd, self->notice);
@@ -452,7 +452,7 @@ void ui_merchant_item_my_shop_wnd_on_create(struct UIWindow *window, int width, 
             notice = ui_static_text_construct(notice);
         self->notice = notice;
         ui_window_create(notice, 0xa0, 0xf);
-        sprintf(text, msg_str(MSG_SHOP_NOTICE));
+        sprintf(text, msg_str(MSG_SHOP_NOTICE), (const char *)NULL);
         ui_static_text_set_text_fit(self->notice, text);
         ui_window_move(self->notice, 0xc, wnd->height - 0x1a);
         ui_window_add_child(wnd, self->notice);
