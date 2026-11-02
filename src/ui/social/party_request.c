@@ -327,8 +327,8 @@ static void request_show(struct UIRequestJoinPartyWnd *self, const struct PartyJ
     self->aid = request->char_id;
 
     memset(icon, 0, sizeof icon);
-    snprintf(icon, sizeof icon, (RENEWAL_PARTY "icon_jobs_%lu.bmp"),
-                 (int)self->job);
+    snprintf(icon, sizeof icon, (RENEWAL_PARTY "icon_jobs_%u.bmp"),
+                 (unsigned)self->job);
     for (i = UI_BTN_UP; i <= UI_BTN_DOWN; i++)
         ui_bitmap_button_set_bitmap(self->job_icon, icon, i, 0);
     ui_bitmap_button_set_tool_tip(self->job_icon, session_get_job_name(&g_session1, self->job, -1));

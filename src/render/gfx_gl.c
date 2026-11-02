@@ -10,78 +10,82 @@
 #include <string.h>
 
 #define GL_FUNCTIONS(X) \
-    X(PFNGLGENTEXTURESPROC, glGenTextures) \
-    X(PFNGLDELETETEXTURESPROC, glDeleteTextures) \
-    X(PFNGLBINDTEXTUREPROC, glBindTexture) \
-    X(PFNGLTEXIMAGE2DPROC, glTexImage2D) \
-    X(PFNGLTEXSUBIMAGE2DPROC, glTexSubImage2D) \
-    X(PFNGLTEXPARAMETERIPROC, glTexParameteri) \
-    X(PFNGLPIXELSTOREIPROC, glPixelStorei) \
-    X(PFNGLREADPIXELSPROC, glReadPixels) \
-    X(PFNGLVIEWPORTPROC, glViewport) \
-    X(PFNGLSCISSORPROC, glScissor) \
-    X(PFNGLENABLEPROC, glEnable) \
-    X(PFNGLDISABLEPROC, glDisable) \
-    X(PFNGLCLEARPROC, glClear) \
-    X(PFNGLCLEARCOLORPROC, glClearColor) \
-    X(PFNGLCLEARDEPTHPROC, glClearDepth) \
-    X(PFNGLDEPTHFUNCPROC, glDepthFunc) \
-    X(PFNGLDEPTHMASKPROC, glDepthMask) \
-    X(PFNGLCOLORMASKPROC, glColorMask) \
-    X(PFNGLBLENDFUNCPROC, glBlendFunc) \
-    X(PFNGLCULLFACEPROC, glCullFace) \
-    X(PFNGLFRONTFACEPROC, glFrontFace) \
-    X(PFNGLDRAWARRAYSPROC, glDrawArrays) \
-    X(PFNGLDRAWELEMENTSPROC, glDrawElements) \
-    X(PFNGLGETINTEGERVPROC, glGetIntegerv) \
-    X(PFNGLGETERRORPROC, glGetError) \
-    X(PFNGLACTIVETEXTUREPROC, glActiveTexture) \
-    X(PFNGLGENBUFFERSPROC, glGenBuffers) \
-    X(PFNGLDELETEBUFFERSPROC, glDeleteBuffers) \
-    X(PFNGLBINDBUFFERPROC, glBindBuffer) \
-    X(PFNGLBUFFERDATAPROC, glBufferData) \
-    X(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays) \
-    X(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray) \
-    X(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays) \
-    X(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray) \
-    X(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer) \
-    X(PFNGLCREATESHADERPROC, glCreateShader) \
-    X(PFNGLSHADERSOURCEPROC, glShaderSource) \
-    X(PFNGLCOMPILESHADERPROC, glCompileShader) \
-    X(PFNGLGETSHADERIVPROC, glGetShaderiv) \
-    X(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog) \
-    X(PFNGLDELETESHADERPROC, glDeleteShader) \
-    X(PFNGLCREATEPROGRAMPROC, glCreateProgram) \
-    X(PFNGLATTACHSHADERPROC, glAttachShader) \
-    X(PFNGLLINKPROGRAMPROC, glLinkProgram) \
-    X(PFNGLGETPROGRAMIVPROC, glGetProgramiv) \
-    X(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) \
-    X(PFNGLDELETEPROGRAMPROC, glDeleteProgram) \
-    X(PFNGLUSEPROGRAMPROC, glUseProgram) \
-    X(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) \
-    X(PFNGLUNIFORM1IPROC, glUniform1i) \
-    X(PFNGLUNIFORM1FPROC, glUniform1f) \
-    X(PFNGLUNIFORM2FPROC, glUniform2f) \
-    X(PFNGLUNIFORM4FPROC, glUniform4f) \
-    X(PFNGLUNIFORM4IPROC, glUniform4i) \
-    X(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers) \
-    X(PFNGLDELETEFRAMEBUFFERSPROC, glDeleteFramebuffers) \
-    X(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer) \
-    X(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D) \
-    X(PFNGLFRAMEBUFFERRENDERBUFFERPROC, glFramebufferRenderbuffer) \
-    X(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus) \
-    X(PFNGLGENRENDERBUFFERSPROC, glGenRenderbuffers) \
-    X(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers) \
-    X(PFNGLBINDRENDERBUFFERPROC, glBindRenderbuffer) \
-    X(PFNGLRENDERBUFFERSTORAGEPROC, glRenderbufferStorage) \
-    X(PFNGLBLITFRAMEBUFFERPROC, glBlitFramebuffer) \
-    X(PFNGLGENSAMPLERSPROC, glGenSamplers) \
-    X(PFNGLDELETESAMPLERSPROC, glDeleteSamplers) \
-    X(PFNGLBINDSAMPLERPROC, glBindSampler) \
-    X(PFNGLSAMPLERPARAMETERIPROC, glSamplerParameteri) \
-    X(PFNGLSAMPLERPARAMETERFVPROC, glSamplerParameterfv)
+    X(void, glGenTextures, (GLsizei n, GLuint *textures)) \
+    X(void, glDeleteTextures, (GLsizei n, const GLuint *textures)) \
+    X(void, glBindTexture, (GLenum target, GLuint texture)) \
+    X(void, glTexImage2D, (GLenum target, GLint level, GLint internal, GLsizei width, GLsizei height, GLint border, \
+                           GLenum format, GLenum type, const void *pixels)) \
+    X(void, glTexSubImage2D, (GLenum target, GLint level, GLint x, GLint y, GLsizei width, GLsizei height, \
+                              GLenum format, GLenum type, const void *pixels)) \
+    X(void, glTexParameteri, (GLenum target, GLenum name, GLint value)) \
+    X(void, glPixelStorei, (GLenum name, GLint value)) \
+    X(void, glReadPixels, (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void *pixels)) \
+    X(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height)) \
+    X(void, glScissor, (GLint x, GLint y, GLsizei width, GLsizei height)) \
+    X(void, glEnable, (GLenum cap)) \
+    X(void, glDisable, (GLenum cap)) \
+    X(void, glClear, (GLbitfield mask)) \
+    X(void, glClearColor, (GLfloat r, GLfloat g, GLfloat b, GLfloat a)) \
+    X(void, glClearDepth, (GLdouble depth)) \
+    X(void, glDepthFunc, (GLenum func)) \
+    X(void, glDepthMask, (GLboolean flag)) \
+    X(void, glColorMask, (GLboolean r, GLboolean g, GLboolean b, GLboolean a)) \
+    X(void, glBlendFunc, (GLenum src, GLenum dst)) \
+    X(void, glCullFace, (GLenum mode)) \
+    X(void, glFrontFace, (GLenum mode)) \
+    X(void, glDrawArrays, (GLenum mode, GLint first, GLsizei count)) \
+    X(void, glDrawElements, (GLenum mode, GLsizei count, GLenum type, const void *indices)) \
+    X(void, glGetIntegerv, (GLenum name, GLint *value)) \
+    X(GLenum, glGetError, (void)) \
+    X(void, glActiveTexture, (GLenum texture)) \
+    X(void, glGenBuffers, (GLsizei n, GLuint *buffers)) \
+    X(void, glDeleteBuffers, (GLsizei n, const GLuint *buffers)) \
+    X(void, glBindBuffer, (GLenum target, GLuint buffer)) \
+    X(void, glBufferData, (GLenum target, GLsizeiptr size, const void *data, GLenum usage)) \
+    X(void, glGenVertexArrays, (GLsizei n, GLuint *arrays)) \
+    X(void, glBindVertexArray, (GLuint array)) \
+    X(void, glDeleteVertexArrays, (GLsizei n, const GLuint *arrays)) \
+    X(void, glEnableVertexAttribArray, (GLuint index)) \
+    X(void, glVertexAttribPointer, (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, \
+                                    const void *pointer)) \
+    X(GLuint, glCreateShader, (GLenum type)) \
+    X(void, glShaderSource, (GLuint shader, GLsizei count, const GLchar *const *source, const GLint *length)) \
+    X(void, glCompileShader, (GLuint shader)) \
+    X(void, glGetShaderiv, (GLuint shader, GLenum name, GLint *value)) \
+    X(void, glGetShaderInfoLog, (GLuint shader, GLsizei size, GLsizei *length, GLchar *log)) \
+    X(void, glDeleteShader, (GLuint shader)) \
+    X(GLuint, glCreateProgram, (void)) \
+    X(void, glAttachShader, (GLuint program, GLuint shader)) \
+    X(void, glLinkProgram, (GLuint program)) \
+    X(void, glGetProgramiv, (GLuint program, GLenum name, GLint *value)) \
+    X(void, glGetProgramInfoLog, (GLuint program, GLsizei size, GLsizei *length, GLchar *log)) \
+    X(void, glDeleteProgram, (GLuint program)) \
+    X(void, glUseProgram, (GLuint program)) \
+    X(GLint, glGetUniformLocation, (GLuint program, const GLchar *name)) \
+    X(void, glUniform1i, (GLint location, GLint value)) \
+    X(void, glUniform1f, (GLint location, GLfloat value)) \
+    X(void, glUniform2f, (GLint location, GLfloat a, GLfloat b)) \
+    X(void, glUniform4f, (GLint location, GLfloat a, GLfloat b, GLfloat c, GLfloat d)) \
+    X(void, glUniform4i, (GLint location, GLint a, GLint b, GLint c, GLint d)) \
+    X(void, glGenFramebuffers, (GLsizei n, GLuint *framebuffers)) \
+    X(void, glDeleteFramebuffers, (GLsizei n, const GLuint *framebuffers)) \
+    X(void, glBindFramebuffer, (GLenum target, GLuint framebuffer)) \
+    X(void, glFramebufferTexture2D, (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)) \
+    X(void, glFramebufferRenderbuffer, (GLenum target, GLenum attachment, GLenum rbtarget, GLuint renderbuffer)) \
+    X(GLenum, glCheckFramebufferStatus, (GLenum target)) \
+    X(void, glGenRenderbuffers, (GLsizei n, GLuint *renderbuffers)) \
+    X(void, glDeleteRenderbuffers, (GLsizei n, const GLuint *renderbuffers)) \
+    X(void, glBindRenderbuffer, (GLenum target, GLuint renderbuffer)) \
+    X(void, glRenderbufferStorage, (GLenum target, GLenum format, GLsizei width, GLsizei height)) \
+    X(void, glBlitFramebuffer, (GLint sx0, GLint sy0, GLint sx1, GLint sy1, GLint dx0, GLint dy0, GLint dx1, GLint dy1, \
+                                GLbitfield mask, GLenum filter)) \
+    X(void, glGenSamplers, (GLsizei n, GLuint *samplers)) \
+    X(void, glDeleteSamplers, (GLsizei n, const GLuint *samplers)) \
+    X(void, glBindSampler, (GLuint unit, GLuint sampler)) \
+    X(void, glSamplerParameteri, (GLuint sampler, GLenum name, GLint value)) \
+    X(void, glSamplerParameterfv, (GLuint sampler, GLenum name, const GLfloat *value))
 
-#define GL_DECLARE(type, name) static type p_##name;
+#define GL_DECLARE(ret, name, params) static ret (APIENTRY *p_##name) params;
 GL_FUNCTIONS(GL_DECLARE)
 #undef GL_DECLARE
 
@@ -254,8 +258,8 @@ static const char fragment_source[] =
 
 static int load_functions(void)
 {
-#define GL_LOAD(type, name) \
-    if (!(p_##name = (type)SDL_GL_GetProcAddress(#name))) return 0;
+#define GL_LOAD(ret, name, params) \
+    if (!(p_##name = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#name))) return 0;
     GL_FUNCTIONS(GL_LOAD)
 #undef GL_LOAD
     return 1;
@@ -763,11 +767,11 @@ static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, co
         apply_state();
     p_glBindBuffer(GL_ARRAY_BUFFER, gl.vbo);
     p_glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)nverts * stride, verts, GL_STREAM_DRAW);
-    p_glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, (const void *)0);
-    p_glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)16);
-    p_glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)20);
-    p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (const void *)24);
-    p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, stride, (const void *)(vertexKind == GFX_VTX_TEX2 ? 32 : 24));
+    p_glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)0);
+    p_glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)16);
+    p_glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)20);
+    p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)24);
+    p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)(vertexKind == GFX_VTX_TEX2 ? 32 : 24));
     if (nindices) {
         p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.ibo);
         p_glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)nindices * 2, indices, GL_STREAM_DRAW);

@@ -1,6 +1,5 @@
 #include <errno.h>
 #include "core/fatal.h"
-#include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

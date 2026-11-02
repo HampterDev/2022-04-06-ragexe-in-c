@@ -45,7 +45,8 @@ void game_mode_on_long_long_par_change(struct GameMode *self, const struct Packe
                 int kills_left = (int)((g_session1.nextBaseExp - g_session1.baseExp) / (int64_t)gained);
 
                 snprintf(line, 0x100, "%lld : %lld/%lld More : %d",
-                            value - g_session1.baseExp, value, g_session1.nextBaseExp, kills_left);
+                            (long long)(value - g_session1.baseExp), (long long)value, (long long)g_session1.nextBaseExp,
+                            kills_left);
                 ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }
@@ -98,7 +99,8 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
             memset(line, 0, sizeof line);
             if (packet->value != 0 && gained != 0) {
                 snprintf(line, 0x100, "%lld : %lld/%lld More : %lld",
-                            gained, value, g_session1.nextBaseExp, (g_session1.nextBaseExp - g_session1.baseExp) / gained);
+                            (long long)gained, (long long)value, (long long)g_session1.nextBaseExp,
+                            (long long)((g_session1.nextBaseExp - g_session1.baseExp) / gained));
                 ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }

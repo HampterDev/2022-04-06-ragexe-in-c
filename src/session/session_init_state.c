@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <mmsystem.h>
 #include "platform/clock.h"
 
 DWORD session_get_server_time(struct Session *self)

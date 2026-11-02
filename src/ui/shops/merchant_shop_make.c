@@ -675,7 +675,7 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
             }
         }
         memset(text, 0, sizeof text);
-        snprintf(text, sizeof text, "%lld", total);
+        snprintf(text, sizeof text, "%lld", (long long)total);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->total, text);
         ui_window_invalidate_children(wnd);
         return;

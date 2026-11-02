@@ -11,8 +11,6 @@
 #include "session/session_windows.h"
 
 #include <stdio.h>
-#include <io.h>
-#include <direct.h>
 #include <stdlib.h>
 #include <string.h>
 #include "render/render_api.h"
