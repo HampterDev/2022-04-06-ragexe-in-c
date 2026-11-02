@@ -109,8 +109,6 @@ static int wave_resource_load(struct Res *resource, const char *name)
     encoded = malloc((size_t)file.size);
     if (!encoded || !file_read(&file, encoded, file.size))
         goto done;
-    if (!memcmp(encoded, "RIFF", 4) && !wave_riff_valid(encoded, (size_t)file.size))
-        goto done;
     kind = _AIL_file_type(encoded, (unsigned)file.size);
     switch (kind) {
     case AIL_FILE_ADPCM: {
