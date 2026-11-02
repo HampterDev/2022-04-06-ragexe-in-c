@@ -2,8 +2,14 @@
    and the wall clock is a fixed date in UTC, so every run sees the same times. */
 #include "platform/clock.h"
 #include "scene.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define gmtime_r(stamp, out) (gmtime_s((out), (stamp)) == 0 ? (out) : NULL)
+#define timegm _mkgmtime
+#endif
 
 #define SCENE_EPOCH 1767268800 /* 2026-01-01 12:00:00 UTC */
 
@@ -51,7 +57,7 @@ int32_t platform_time_now(void)
 
 struct tm *platform_time_local(int32_t seconds)
 {
-    static _Thread_local struct tm local;
+    static struct tm local;
     time_t stamp = seconds;
     return seconds >= 0 && gmtime_r(&stamp, &local) ? &local : NULL;
 }
@@ -73,7 +79,7 @@ const char *platform_time_text(int32_t seconds)
     static const char months[12][4] = {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     };
-    static _Thread_local char text[64];
+    static char text[64];
     struct tm *local = platform_time_local(seconds);
     if (!local)
         return NULL;

@@ -1,22 +1,26 @@
 # Scene harness
 
-`ragexe_scenes` is the POSIX client with four files swapped, so a Lua script can put it into any
-state without a server or a login and capture the frame as a PNG:
+`ragexe_scenes` is the client with a few files swapped, so a Lua script can put it into any state
+without a server or a login and capture the frame as a PNG. It builds on Linux, macOS and Windows:
 
-| replaced                 | by                 | what changes                                                        |
-|--------------------------|--------------------|---------------------------------------------------------------------|
-| `src/platform/clock.c`   | `scene_clock.c`    | time moves one frame (16 ms) per shown frame; the date is fixed     |
-| `src/platform/net.c`     | `scene_net.c`      | sockets stay in the process; the driver plays the map server        |
-| `src/platform/thread.c`  | `scene_thread.c`   | no client threads: models load in order on the main thread          |
-| `src/core/drive_state.c` | `scene_driver.c`   | runs the scene script, answers the map server packets, captures     |
+| replaced                    | by                   | what changes                                                     |
+|-----------------------------|----------------------|------------------------------------------------------------------|
+| `src/platform/clock.c`      | `scene_clock.c`      | time moves one frame (16 ms) per shown frame; the date is fixed  |
+| `src/platform/net.c`        | `scene_net.c`        | sockets stay in the process; the driver plays the map server     |
+| `src/platform/thread.c`     | `scene_thread.c`     | no client threads: models load in order on the main thread       |
+| `src/platform/settings.c`   | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
+| `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
+| (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
+| `src/platform/window.c` (Windows) | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
-produces the same pixels every run.
+produces the same pixels every run, and the same random effects on every platform.
 
 ## Running
 
-Build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`), then run every script in
-`scripts/` from the game directory:
+Linux and macOS: build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`). Windows: run
+`build.bat`, then `tests\scenes\build.bat`, which links `build\ragexe_scenes.exe` from the same
+objects. Then run every script in `scripts/` from the game directory:
 
 ```sh
 python3 tests/scenes/run.py --exe build/ragexe_scenes --game ~/ro --out /tmp/scenes
@@ -39,13 +43,29 @@ cd <game dir>
 RAGEXE_SCENE=<repo>/tests/scenes/scripts/prontera_crowd.lua RAGEXE_SCENE_OUT=/tmp/out <build>/ragexe_scenes
 ```
 
-The harness defaults to `SDL_VIDEODRIVER=offscreen` (an EGL context, no window) and
-`SDL_AUDIODRIVER=dummy`; set either to watch or hear a scene. SDL's offscreen driver needs EGL,
-which macOS does not have, so on a Mac set `SDL_VIDEODRIVER=cocoa`. `RAGEXE_SCENE_TRACE=1` logs
-the packets the client sends and the mode changes.
+On Linux and macOS the harness defaults to `SDL_VIDEODRIVER=offscreen` (an EGL context, no
+window) and `SDL_AUDIODRIVER=dummy`; set either to watch or hear a scene. SDL's offscreen driver
+needs EGL, which macOS does not have, so on a Mac set `SDL_VIDEODRIVER=cocoa`. On Windows the
+client window shows while the client starts and is hidden on the first frame. Every platform
+gets `RAGEXE_VSYNC=0`. `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
+changes.
 
-The captures read the game directory's own `SaveData` and `DATA.INI`; account settings are not
-read or written (every scene starts from the initial preferences).
+The game directory's `SaveData` (resolution, options, chat windows) and data files are read as
+usual; settings and account settings start empty and are never written.
+
+## Comparing platforms
+
+Capture on one platform with `--golden <dir> --update`, copy the directory, and run the other
+with `--golden <dir> --tolerance 3`. The Direct3D 9 backend multisamples by default (4x MSAA with
+transparency supersampling), and on the GPU that result varies a few pixels from run to run, so
+set `RAGEXE_MSAA=1` on Windows for a repeatable capture. What is left between the Windows and the
+Linux captures of these scenes:
+
+- text: GDI and FreeType draw different fonts unless the same font file is installed on both
+  (a Windows without Gulim falls back to Ebrima for Korean-charset text; Linux substitutes
+  Noto Sans CJK KR or NanumGothic at Gulim's size);
+- single pixels along triangle edges, where the GPU's and llvmpipe's subpixel precision decide a
+  pixel centre differently, and colour rounding of one or two steps in blending.
 
 ## Writing a scene
 

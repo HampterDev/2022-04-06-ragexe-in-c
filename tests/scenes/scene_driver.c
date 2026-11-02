@@ -38,8 +38,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include "stb_image_write.h"
+#ifdef _WIN32
+#include <direct.h>
+#define make_directory(path) _mkdir(path)
+#else
+#include <sys/stat.h>
+#define make_directory(path) mkdir((path), 0777)
+#endif
 
 #define SCENE_AID 2000000
 #define SCENE_GID 150000
@@ -59,13 +65,24 @@ static struct {
     int enter_x, enter_y, enter_dir, traced_mode;
 } S;
 
+/* Headless, silent and without vsync unless the caller says otherwise; set before the client
+   reads them. */
+#ifdef _WIN32
+static void scene_defaults(void)
+{
+    if (!getenv("RAGEXE_VSYNC"))
+        _putenv_s("RAGEXE_VSYNC", "0");
+}
+#pragma section(".CRT$XCU", read)
+__declspec(allocate(".CRT$XCU")) void (*scene_defaults_entry)(void) = scene_defaults;
+#else
 __attribute__((constructor)) static void scene_defaults(void)
 {
-    /* Headless and silent unless the caller says otherwise. */
     setenv("SDL_VIDEODRIVER", "offscreen", 0);
     setenv("SDL_AUDIODRIVER", "dummy", 0);
     setenv("RAGEXE_VSYNC", "0", 0);
 }
+#endif
 
 void drive_state_note_chat(const char *text)
 {
@@ -496,7 +513,12 @@ static void start(void)
         finish(1);
     }
     snprintf(S.out, sizeof S.out, "%s", out ? out : ".");
-    mkdir(S.out, 0777);
+    make_directory(S.out);
+#ifdef _WIN32
+    /* The Windows client has a real window: hidden, the desktop's mouse cannot reach it and
+       focus goes back where it was. */
+    ShowWindow(g_hMainWnd, SW_HIDE);
+#endif
     S.L = luaL_newstate();
     luaL_openlibs(S.L);
     luaL_register(S.L, "scene", scene_api);

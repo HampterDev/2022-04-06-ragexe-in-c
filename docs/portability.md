@@ -360,12 +360,32 @@ character, entered `iz_int03`, walked and chatted. The 21 tests pass there as we
 
 ## Scene captures
 
-`ragexe_scenes` (built with the POSIX client) is the client with the clock, the sockets, the
-threads and the per-frame driver hook replaced: a Lua script enters a map from the login screen,
-spawns monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless
-through SDL's offscreen driver. `tests/scenes/run.py` runs every script and compares the captures
-with golden images (`tests/scenes/README.md`). On the Mint VM each of the three scenes takes 3–4 s
-and repeats bit for bit.
+`ragexe_scenes` is the client with the clock, the sockets, the threads, the settings store and
+the per-frame driver hook replaced: a Lua script enters a map from the login screen, spawns
+monsters, NPCs and players, makes them talk, clicks windows open and captures PNGs, headless
+through SDL's offscreen driver on Linux and with a hidden window on Windows
+(`tests\scenes\build.bat`). `tests/scenes/run.py` runs every script and compares the captures
+with golden images (`tests/scenes/README.md`). On the Mint VM each of the three scenes takes 3–4 s,
+on Windows 2 s, and both repeat bit for bit (Windows with `RAGEXE_MSAA=1`).
+
+Comparing the Windows (Direct3D 9) and Linux (GL on llvmpipe) captures of the same scenes and data:
+
+- **Text** is the largest difference. GDI and FreeType draw different fonts unless the same file
+  is on both machines; a Windows without the Korean supplemental fonts has no Gulim, and GDI then
+  draws Korean-charset text in Ebrima, which is much narrower than Gulim, while Linux uses
+  Noto Sans CJK KR or NanumGothic at Gulim's size.
+- **Edges and foliage**: Direct3D 9 renders the world with 4x MSAA and transparency
+  supersampling by default; the GL backend does not multisample, so model edges and alpha-tested
+  foliage (Prontera's flower beds) are aliased on Linux and macOS. Sprites and UI are drawn
+  without MSAA on both.
+- **Random effects** (level 99 auras, clouds, particles) took other paths because glibc's and
+  Microsoft's `rand()` are different generators; the scene harness uses Microsoft's on POSIX,
+  after which they match. Two places assumed Microsoft's 15-bit range and misbehaved on Linux
+  and macOS, where `rand()` returns 31 bits: a random point in a disc divided by 32767 (particles
+  landed up to 256 radii away) and the shuffle copied from Microsoft's STL rejected all but one
+  draw in 65536. Both take the low 15 bits now.
+- What remains is single pixels along triangle edges, where the GPU's and llvmpipe's subpixel
+  precision decide a pixel centre differently, and blending rounded one or two steps apart.
 
 Making the captures repeat showed three draw orders that depended on heap addresses, which ASLR
 and allocation timing change from run to run: the render queues sorted by texture pointer
@@ -386,6 +406,8 @@ the other entry's second one, which is not an ordering; it compares like with li
    fields; the sanitizer run covered login to the first map, not every window.
 5. Expand CMake to the remaining test suites.
 6. Scenes: keyboard input does not open the chat line yet (`tests/scenes/README.md`).
+7. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
+   supersampling by default (*Scene captures*).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

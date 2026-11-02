@@ -13,11 +13,11 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_
 list(TRANSFORM RAGE_CLIENT_EXCLUDED PREPEND ${PROJECT_SOURCE_DIR}/)
 list(REMOVE_ITEM RAGE_CLIENT_SOURCES ${RAGE_CLIENT_EXCLUDED})
 
-# ragexe_scenes is the client with the clock, the sockets, the threads and the per-frame driver hook replaced,
-# driven by a Lua scene script (tests/scenes/README.md).
+# ragexe_scenes is the client with the clock, the sockets, the threads, the settings store and the per-frame
+# driver hook replaced, driven by a Lua scene script (tests/scenes/README.md).
 set(RAGE_SCENE_HARNESS tests/scenes/scene_clock.c tests/scenes/scene_net.c tests/scenes/scene_thread.c
-    tests/scenes/scene_driver.c)
-set(RAGE_SCENE_REPLACED "/src/(platform/net|platform/clock|platform/thread|core/drive_state)[.]c$")
+    tests/scenes/scene_settings.c tests/scenes/scene_rand.c tests/scenes/scene_driver.c)
+set(RAGE_SCENE_REPLACED "/src/(platform/net|platform/clock|platform/thread|platform/settings|core/drive_state)[.]c$")
 set(RAGE_CLIENT_TARGETS ragexe ragexe_scenes)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
