@@ -52,7 +52,7 @@ struct Font {
     int primary_candidate, fallback_count;
     struct Fallback fallbacks[FALLBACK_FACES];
     FcFontSet *candidates;
-    int ppem, ascent, descent, embolden, oblique, em_cell;
+    int ppem, ascent, descent, embolden, oblique, em_cell, own_hints;
     struct GlyphPage *pages[GLYPH_PAGES];
 };
 
@@ -373,8 +373,12 @@ static struct Font *font_open(int face, const char *family, int size, int charse
         height = -size;
     if (!font->primary && face >= 0 && (path = font_variable("RAGEXE_FONT")))
         font->primary = open_file(font, path, bold, italic);
-    if (!font->primary && font->candidates)
+    font->own_hints = font->primary != NULL;
+    if (!font->primary && font->candidates) {
         font->primary = open_matched(font, bold, italic);
+        font->own_hints = font->primary && family && font->primary->family_name
+                          && !strcasecmp(family, font->primary->family_name);
+    }
     if (font->primary && face >= 0 && is_cjk(charset))
         font->em_cell = !family || !font->primary->family_name || strcasecmp(family, font->primary->family_name);
     if (!font->primary || !set_height(font, height)) {
@@ -492,8 +496,13 @@ static void load_glyph(struct Font *font, uint16_t unit, struct Glyph *glyph)
     FT_Face face = glyph_face(font, unit, &index);
     FT_GlyphSlot slot = face->glyph;
     int embedded;
+    FT_Int32 flags = FT_LOAD_TARGET_MONO;
     glyph->loaded = 1;
-    if (FT_Load_Glyph(face, index, FT_LOAD_TARGET_MONO | (font->oblique ? FT_LOAD_NO_BITMAP : 0)))
+    if (face != font->primary || !font->own_hints)
+        flags |= FT_LOAD_FORCE_AUTOHINT;
+    if (font->oblique)
+        flags |= FT_LOAD_NO_BITMAP;
+    if (FT_Load_Glyph(face, index, flags))
         return;
     glyph->advance = (int)((slot->advance.x + 32) >> 6) + font->embolden;
     embedded = slot->format == FT_GLYPH_FORMAT_BITMAP;
