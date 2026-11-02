@@ -9,6 +9,12 @@
 #include "platform/clock.h"
 #include "render/fonts.h"
 
+#ifdef _WIN32
+#define PERF_RENDERER "Direct3D 9"
+#else
+#define PERF_RENDERER "OpenGL"
+#endif
+
 struct perf_counters g_perf;
 
 #define OV_TEX_W 1024
@@ -99,7 +105,7 @@ static void build_lines(void)
     int order[PERF_N], nl = 0, i, j, k;
     char *s;
 
-    snprintf(P.lines[0], sizeof P.lines[0], "Direct3D 9  FPS %s  frame %s ms (max %s)  frames %u",
+    snprintf(P.lines[0], sizeof P.lines[0], "%s  FPS %s  frame %s ms (max %s)  frames %u", PERF_RENDERER,
              tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
              tenths(b3, P.snap.frameMax10), P.snap.frames);
     snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
