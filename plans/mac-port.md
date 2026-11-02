@@ -4,7 +4,7 @@ Status: implementation started on `codex/mac-port`, 2026-11-01, from `purist` co
 See [portable foundations](../docs/portability.md) for implemented boundaries, commands and validation.
 The original assessment below predates this branch. Its `client/` prefix is absent in this repository;
 work belongs in the root `src/`, `tests/` and `vendor/`. Purist already removed Bink, embedded browsing
-and HTTP services. The full client has not yet run on a Mac.
+and HTTP services. The full client has not yet run on a Mac; it runs natively on 64-bit Linux.
 
 Implemented so far:
 
@@ -15,7 +15,11 @@ Implemented so far:
   real Hangul composition still needs interactive verification.
 - IJL replaced with a portable JPEG codec; the rebuilt Windows executable no longer imports `ijl15.dll`.
 - Windows build/regression validation and a cross-platform CI matrix. Detailed commands and limitations
-  are recorded in the portability notes; no complete milestone or gameplay parity is claimed yet.
+  are recorded in the portability notes.
+- 2026-11-02: the whole client on 64-bit Linux with GCC: SDL3 window, input and IME, an OpenGL 3.3
+  backend behind `render/gfx.h`, Miles on SDL3 audio, FreeType/Fontconfig text. Played from login to
+  walking and chatting on the first map in a Linux Mint VM against rAthena; see *Linux client* in the
+  portability notes.
 
 Original assessment (2026-10-31): The
 counts come from the working tree of 2026-10-31, including its uncommitted changes, and from the data in

@@ -5,8 +5,9 @@ was written against the older `herc-client/client` tree. Here its paths are rela
 to the repository root. Purist has already removed Bink, embedded browsing, HTTP
 services and several startup checks. Those features must not be reintroduced.
 
-This is a subsystem build, not a playable macOS or Linux client. The complete
-application remains Windows x86 and builds with `build.bat`.
+The complete client builds and plays on 64-bit Linux (see *Linux client*). macOS has
+the foundations but no renderer or literal transcoding yet. The Windows x86 client
+still builds with `build.bat` and stays the reference.
 
 ## Build and test
 
@@ -243,20 +244,93 @@ draws in the device's default font and FreeType in face 0, and the performance
 overlay, which uses Fontconfig's `monospace` instead of Lucida Console. Invalid
 code-page bytes make a run disappear instead of drawing replacement characters.
 
+## Linux client
+
+The complete client builds and runs on 64-bit Linux. CMake builds it when `RAGE_CLIENT` is on:
+
+```sh
+cmake -S . -B build/client -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DRAGE_CLIENT=ON
+cmake --build build/client
+ctest --test-dir build/client --output-on-failure
+cd /path/to/game/data && /path/to/build/client/ragexe
+```
+
+GCC is required: it compiles the narrow string literals as CP949 with `-fexec-charset=CP949`,
+which is what MSVC's `/execution-charset:.949` does. Clang has no equivalent; a clang or macOS
+build needs the literal transcoding described under *Korean source literals* applied to the whole
+tree first. The client links SDL3 (found or fetched as above), FreeType, Fontconfig and the C++
+runtime (the vendored CRijndael is C++). SDL needs the usual X11/Wayland, ALSA/PulseAudio and IBus
+development packages; the CI job in `.github/workflows/portable.yml` lists them for Ubuntu 24.04.
+Files that only make sense on Windows are listed in `tools/posix_excluded.txt`; files that only
+make sense elsewhere are wrapped in `#ifndef _WIN32` and compile to nothing in `build.bat`.
+
+Run it from the game folder (the one with `data.grf` and `System`), like the Windows client. Loose
+files are found case-insensitively. Settings that Windows keeps in the registry go to
+`client_settings.ini` in that folder. Lua scripts open files themselves (the option scripts write
+`SaveData\OptionInfo.lua` with `io.open`), so every client Lua state is opened with
+`lua_open_client_libs`: on POSIX it passes the path arguments of `io.open`, `io.lines`,
+`os.remove`, `os.rename`, `dofile` and `loadfile` through `platform_path_full`; on Windows it is
+`luaL_openlibs`. Granny models are not available off Windows: `resources/granny_posix.c` loads
+no model, so objects that only exist as Granny files are not drawn.
+
+### Window, input and IME
+
+`core/app_sdl.c` replaces the Win32 window procedure. It creates the SDL window and GL context,
+turns SDL events into the client's own key codes (`platform/vk.h`, the Win32 VK numbering), the
+`lParam` scan-code layout that the hotkey code compares against, mouse state and window
+activation, and feeds them to the same handlers the Windows window procedure calls
+(`core/window_events.c`). Composition events go to `language_set_composition` and committed text
+to `language_commit`, converted from UTF-8 to the client code page. The window sets
+`SDL_HINT_IME_IMPLEMENTED_UI` to `composition`: without it SDL does not report the preedit text
+and the IME draws its own window. With IBus and `ibus-hangul`, Hangul composition was verified
+character by character (ㅎ → 하 → 한 → commit) against the SDL probe on Linux Mint 22.3.
+
+`platform/window.h` holds the remaining window services: message boxes, key and mouse state,
+clipboard text, cursor visibility and clipping, window and monitor rectangles, window placement
+for windowed, frameless and fullscreen modes, and IME cancellation.
+
+### Renderer
+
+`render/gfx_gl.c` implements `render/gfx.h` with OpenGL 3.3 core (macOS also offers 4.1 core, so the
+backend is usable there until a Metal backend exists). All client geometry arrives pre-transformed
+(D3D `XYZRHW`), so one vertex shader maps D3D9 pixel centres to GL clip space with the vertex's
+`1/rhw` as `w`, and one fragment shader evaluates the two fixed-function texture stages
+(`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
+test. Blend, depth and cull state map directly; the y flip keeps the on-screen winding, so
+`GFX_CULL_CW` culls GL back faces. Samplers carry the address, border and filter state.
+The scene is drawn into an offscreen framebuffer that the present call blits to the window, so locks,
+captures and render-target textures all work on ordinary textures. Texture creation, locking and
+unlocking never touch GL: pixels live in a CPU copy in the client's 1555/4444/565/8888/V8U8 layout
+and are uploaded on the main thread when the texture is next bound, because the model loader
+thread creates textures. `tests/test_gfx_gl.c` drives the backend through the gfx API and reads back
+pixels: clears, D3D pixel-centre edges, all texture formats, alpha test, vertex fog, blending, render
+target orientation and system-surface blits. The client has no vertex-buffer mesh producer, so
+`gfx_draw_vbuffer` is empty in this backend.
+
+### What was verified
+
+On Linux Mint 22.3 (a Hyper-V VM with Mesa llvmpipe) against rAthena built for packet version
+20220406 and the kRO data the Windows client uses: service and server selection, login, the PIN
+dialog, character creation, entering `iz_int03`, walking, chat, the inventory, equipment and skill
+windows, and an active audio stream. The frame overlay (`RAGEXE_OVERLAY=1`) showed about 90 fps at
+1024×768 on llvmpipe. A `-DRAGE_SANITIZERS=ON` build reached the same points; the misaligned
+packet-key loads and the null `memmove` it reported are fixed.
+
+For rendering questions, the Windows build runs under Wine in the same VM (`wine32` plus 32-bit
+Mesa, the client DLLs next to it) against the same data and server. It drew `iz_int03` the same
+way as the GL backend, including the black outside of the cabin's south wall that hides the lower
+half of the room from the default camera.
+
 ## Remaining work
 
-1. Validate the probe on macOS, especially real Hangul composition and Retina.
-2. Compare JPEG screenshots in-game, listen to the POSIX audio in game, and
-   stub/convert Granny as the plan describes. The IJL code and import library
-   have been removed.
-3. Migrate all message arguments and pointer-bearing runtime fields to pointer
-   width; audit raw strides and keep packet fields fixed width.
-4. Expand CMake to the application and remaining test suites; migrate filesystem,
-   clock, synchronization, network, settings, text and input consumers by subsystem.
-5. Implement the Metal backend behind a platform-neutral graphics seam. Linux
-   will need its own graphics backend; it must not inherit Metal-specific types.
+1. macOS: transcode the Korean literals so clang can build the client, then run the
+   GL backend on 4.1 core or write the Metal backend behind `render/gfx.h`; validate
+   Hangul composition and Retina on a real Mac.
+2. Granny models off Windows (`resources/granny_posix.c` loads none).
+3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
+4. Keep auditing pointer-width message arguments, raw strides and packed packet
+   fields; the sanitizer run covered login to the first map, not every window.
+5. Expand CMake to the remaining test suites.
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.
-
-No renderer, font, audio or gameplay parity claim is made by these foundation tests.
