@@ -1055,6 +1055,29 @@ static int find_advance(struct PlatformFind *find)
     return 0;
 }
 
+/* The spelling a directory stores for name: on a case-insensitive volume the requested
+   spelling already exists, but a Win32 find reports the stored one. */
+static const char *stored_spelling(const char *directory, const char *name, char *out, size_t size)
+{
+    DIR *listing = opendir(directory);
+    struct dirent *entry;
+    const char *result = name;
+    if (!listing)
+        return name;
+    while ((entry = readdir(listing)) != NULL) {
+        if (strcmp(entry->d_name, name) == 0) {
+            result = name;
+            break;
+        }
+        if (fold_compare(entry->d_name, name) == 0 && strlen(entry->d_name) < size) {
+            strcpy(out, entry->d_name);
+            result = out;
+        }
+    }
+    closedir(listing);
+    return result;
+}
+
 struct PlatformFind *platform_find_first(const char *pattern)
 {
     struct PlatformFind *find;
@@ -1077,7 +1100,20 @@ struct PlatformFind *platform_find_first(const char *pattern)
         return NULL;
     }
     if (!strpbrk(find->pattern, "*?")) {
-        find->name = stat(find->path, &status) == 0 ? recode(find->pattern, "CP949", "UTF-8") : NULL;
+        char stored[256];
+        const char *name;
+        if (stat(find->path, &status) == 0) {
+            if (slash == find->path) {
+                name = stored_spelling("/", find->pattern, stored, sizeof stored);
+            } else if (slash) {
+                *slash = 0;
+                name = stored_spelling(find->path, find->pattern, stored, sizeof stored);
+                *slash = '/';
+            } else {
+                name = stored_spelling(".", find->pattern, stored, sizeof stored);
+            }
+            find->name = recode(name, "CP949", "UTF-8");
+        }
         if (!find->name) {
             platform_find_close(find);
             return NULL;
