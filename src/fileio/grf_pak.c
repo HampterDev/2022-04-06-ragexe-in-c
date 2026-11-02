@@ -176,9 +176,6 @@ static int load_table_v1(struct GrfArchive *archive, unsigned offset, unsigned c
         }
         record = cursor + length;
         entry->size = read32(record + 8);
-        if (entry->size > UINT_MAX - 0x2cb || read32(record) < entry->size + 0x2cb
-                || read32(record + 4) < 0x92cb)
-            return 0;
         entry->sizeCompressed = read32(record) - entry->size - 0x2cb;
         entry->sizeAligned = read32(record + 4) - 0x92cb;
         entry->flags = record[12] | (is_header_only_ext(name) ? GRF_FLAG_DES_HEADER : GRF_FLAG_DES);
