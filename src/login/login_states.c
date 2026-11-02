@@ -489,10 +489,10 @@ static void enter_map(struct LoginMode *self)
         DWORD aid;
         DWORD gid;
         DWORD authCode;
-        DWORD unset;
+        DWORD reserved;
         DWORD clientTime;
         BYTE sex;
-    } pkt;
+    } pkt = {0};
 #pragma pack(pop)
     char path[0x58];
     HKEY key;
