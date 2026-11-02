@@ -8,6 +8,7 @@ struct Particle;
 
 struct ParticleSlots {
     struct Tree map;
+    struct Vec order;
     unsigned in_use;
 };
 

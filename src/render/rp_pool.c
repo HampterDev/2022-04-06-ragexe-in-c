@@ -290,7 +290,7 @@ static struct RenderTexture retain_texture(const struct Texture *texture)
 {
     struct RenderTexture retained;
     retained.surface = texture ? texture->base.surface : NULL;
-    retained.sort_key = (uintptr_t)texture;
+    retained.sort_key = texture ? texture->serial : 0;
     if (retained.surface) gfx_addref(retained.surface);
     return retained;
 }
@@ -309,6 +309,7 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     }
     queue->items[queue->count].primitive = primitive;
     queue->items[queue->count].key = key;
+    queue->items[queue->count].order = (unsigned)queue->count;
     queue->items[queue->count].textures[0] = retain_texture(texture0);
     queue->items[queue->count].textures[1] = retain_texture(texture1);
     ++queue->count;

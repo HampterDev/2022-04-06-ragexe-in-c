@@ -86,7 +86,7 @@ static unsigned char keyed_less(const void *a, const void *b, void *pred)
         return 1;
     if (x->key > y->key)
         return 0;
-    return (uintptr_t)x->primitive < (uintptr_t)y->primitive;
+    return x->order < y->order;
 }
 
 static unsigned char quad_less(const void *a, const void *b, void *pred)
@@ -116,7 +116,7 @@ static unsigned char multitexture_less(const void *a, const void *b, void *pred)
 {
     const struct RenderEntry *x = a, *y = b;
     (void)pred;
-    if (x->textures[0].sort_key != y->textures[1].sort_key)
+    if (x->textures[0].sort_key != y->textures[0].sort_key)
         return x->textures[0].sort_key < y->textures[0].sort_key;
     return x->textures[1].sort_key < y->textures[1].sort_key;
 }

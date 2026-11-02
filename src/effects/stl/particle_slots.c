@@ -1,55 +1,61 @@
 #include "effects/stl/particle_slots.h"
 #include "std/tree.h"
+#include "std/vec.h"
 
 struct ParticleSlot {
     struct Particle *particle;
     unsigned char in_use;
 };
 
+#define SLOT_COUNT(s) VEC_COUNT(&(s)->order, struct ParticleSlot *)
+#define SLOT_AT(s, i) VEC_AT(&(s)->order, struct ParticleSlot *, i)
+
 void particle_slots_release_all(struct ParticleSlots *s)
 {
-    struct TreeNode *node;
+    size_t i;
 
-    for (node = tree_first(&s->map); node != s->map.head; node = tree_next(node))
-        TREE_VALUE(node, struct ParticleSlot)->in_use = 0;
+    for (i = 0; i < SLOT_COUNT(s); i++)
+        SLOT_AT(s, i)->in_use = 0;
     s->in_use = 0;
 }
 
 void particle_slots_construct(struct ParticleSlots *s)
 {
     tree_init(&s->map);
-    particle_slots_release_all(s);
+    vec_init(&s->order);
+    s->in_use = 0;
 }
 
 void particle_slots_destroy(struct ParticleSlots *s)
 {
     tree_clear(&s->map, NULL);
-    s->in_use = 0;
     tree_free(&s->map, NULL);
+    vec_free(&s->order);
+    s->in_use = 0;
 }
 
 void particle_slots_clear(struct ParticleSlots *s)
 {
     tree_clear(&s->map, NULL);
+    vec_clear(&s->order);
     s->in_use = 0;
 }
 
 struct Particle *particle_slots_acquire(struct ParticleSlots *s)
 {
-    struct TreeNode *node;
-    struct ParticleSlot *slot;
+    size_t i;
 
-    if (!(s->in_use < s->map.size))
+    if (!(s->in_use < SLOT_COUNT(s)))
         return 0;
-    node = tree_first(&s->map);
-    while (node != s->map.head && TREE_VALUE(node, struct ParticleSlot)->in_use != 0)
-        node = tree_next(node);
-    if (node == s->map.head)
-        return 0;
-    slot = TREE_VALUE(node, struct ParticleSlot);
-    slot->in_use = 1;
-    s->in_use++;
-    return slot->particle;
+    for (i = 0; i < SLOT_COUNT(s); i++) {
+        struct ParticleSlot *slot = SLOT_AT(s, i);
+        if (!slot->in_use) {
+            slot->in_use = 1;
+            s->in_use++;
+            return slot->particle;
+        }
+    }
+    return 0;
 }
 
 void particle_slots_release(struct ParticleSlots *s, struct Particle *p)
@@ -71,14 +77,18 @@ unsigned char particle_slots_is_used(struct ParticleSlots *s, struct Particle *p
 
 void particle_slots_use_all(struct ParticleSlots *s)
 {
-    struct TreeNode *node;
+    size_t i;
 
-    for (node = tree_first(&s->map); node != s->map.head; node = tree_next(node))
-        TREE_VALUE(node, struct ParticleSlot)->in_use = 1;
-    s->in_use = s->map.size;
+    for (i = 0; i < SLOT_COUNT(s); i++)
+        SLOT_AT(s, i)->in_use = 1;
+    s->in_use = (unsigned)SLOT_COUNT(s);
 }
 
 void particle_slots_add(struct ParticleSlots *s, struct Particle *p)
 {
-    tree_get(&s->map, &p, sizeof p, sizeof(struct ParticleSlot), tree_less_ptr);
+    size_t before = s->map.size;
+    struct ParticleSlot *slot = tree_get(&s->map, &p, sizeof p, sizeof *slot, tree_less_ptr);
+
+    if (slot && s->map.size != before)
+        vec_push(&s->order, &slot, sizeof slot);
 }

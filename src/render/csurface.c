@@ -202,7 +202,9 @@ struct Texture *texture_create(int width, int height, int format)
 
 struct Texture *texture_init(struct Texture *self, int width, int height, int format)
 {
+    static unsigned serial;
     memset(self, 0, sizeof *self);
+    self->serial = ++serial;
     self->base.ops = &texture_surface_ops;
     if (format == GFX_FMT_BUMP)
         texture_create_bump(self, width, height);

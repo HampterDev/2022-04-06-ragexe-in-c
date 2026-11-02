@@ -35,12 +35,13 @@ enum RenderPass {
 
 struct RenderTexture {
     gfx_surface *surface;
-    uintptr_t sort_key;
+    unsigned sort_key;
 };
 
 struct RenderEntry {
     void *primitive;
     float key;
+    unsigned order;
     struct RenderTexture textures[2];
 };
 

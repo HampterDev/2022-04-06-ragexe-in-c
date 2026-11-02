@@ -202,7 +202,7 @@ static void queued_all_routes(struct Renderer *renderer)
         assert(renderer->queues[i].count);
         for (n = 0; n < renderer->queues[i].count; ++n) {
             const struct RenderTexture *retained = renderer->queues[i].items[n].textures;
-            assert(retained[0].surface == surface && retained[0].sort_key == (uintptr_t)texture);
+            assert(retained[0].surface == surface && retained[0].sort_key == texture->serial);
         }
     }
     texture_destroy(texture); assert(live_surfaces == 1);
