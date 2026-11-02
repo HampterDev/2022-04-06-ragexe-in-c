@@ -255,7 +255,7 @@ static long long bank_step_amount(struct UIBank_NewWnd *self, int delta)
     if (text.size == 0 || !is_digits(string_cstr(&text), text.size))
         amount = delta;
     else
-        amount = _atoi64(string_cstr(&text)) + delta;
+        amount = strtoll(string_cstr(&text), NULL, 10) + delta;
     if (amount > ZENY_MAX)
         amount = ZENY_MAX;
     else if (amount < 0)
@@ -298,7 +298,7 @@ static long long bank_checked_amount(struct UIBank_NewWnd *self, BYTE deposit)
     } else if (!is_digits(string_cstr(&text), text.size)) {
         refuse(self, MSG_BANK_NOT_A_NUMBER, MSG_BANK_NOTE_NOT_A_NUMBER);
     } else {
-        amount = _atoi64(string_cstr(&text));
+        amount = strtoll(string_cstr(&text), NULL, 10);
         if (amount > ZENY_MAX) {
             refuse(self, MSG_BANK_TOO_MUCH, MSG_BANK_NOTE_FULL);
             amount = 0;

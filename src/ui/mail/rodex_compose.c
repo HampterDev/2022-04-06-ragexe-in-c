@@ -519,7 +519,7 @@ int64_t ui_rodex_compose_wnd_get_zeny(struct UIRodexComposeWnd *self)
     memset(buf, 0, sizeof buf);
     cstr_copy(buf, sizeof buf, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, buf);
-    return _atoi64(buf);
+    return strtoll(buf, NULL, 10);
 }
 
 struct ItemInfo *ui_rodex_compose_wnd_item_at(struct UIRodexComposeWnd *self, struct ItemInfo *out, int x, int y)
@@ -666,7 +666,7 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
     memset(zeny_text, 0, sizeof zeny_text);
     cstr_copy(zeny_text, sizeof zeny_text, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, zeny_text);
-    zeny = _atoi64(zeny_text);
+    zeny = strtoll(zeny_text, NULL, 10);
     if (ui_edit_ctrl_get_text(&self->zeny->custom.edit.base)) {
         self->fee = zeny * 2 / 100 + item_tax;
         format_money64(self->fee, fee_text, sizeof fee_text);

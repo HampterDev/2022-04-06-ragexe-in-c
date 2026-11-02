@@ -295,7 +295,7 @@ void ui_edit_ctrl_currency_on_process(struct UIWindow *window)
         p++;
     }
     memset(buf, 0, sizeof buf);
-    format_money64(_atoi64(string_cstr(&digits)), buf, sizeof buf);
+    format_money64(strtoll(string_cstr(&digits), NULL, 10), buf, sizeof buf);
     string_assign_cstr(text, buf);
     ui_edit_ctrl_truncate_to_ime(&self->custom.edit);
     language_cancel_input(g_language);
