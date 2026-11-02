@@ -102,7 +102,7 @@ void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char
     text_dc_select_font(&dc, font_face, font_height, font_arg3, font_arg4);
     if (TEXT_BK_ON(self)) {
         text_dc_set_bk_color(&dc, TEXT_BK_COLOUR(self));
-        text_dc_set_bk_mode(&dc, OPAQUE);
+        text_dc_set_bk_mode(&dc, TEXT_DC_OPAQUE);
     }
     text_dc_set_text_color(&dc, outline);
     text_dc_text_out(&dc, x - 1, y, text, len);
@@ -112,7 +112,7 @@ void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char
     text_dc_set_text_color(&dc, colour);
     text_dc_text_out(&dc, x, y, text, len);
     if (TEXT_BK_ON(self))
-        text_dc_set_bk_mode(&dc, TRANSPARENT);
+        text_dc_set_bk_mode(&dc, TEXT_DC_TRANSPARENT);
     text_dc_destruct(&dc);
 }
 
@@ -180,11 +180,11 @@ static void draw_runs_bk(struct UIWindow *self, struct TextDC *dc, int x, int y,
 {
     if (TEXT_BK_ON(self)) {
         text_dc_set_bk_color(dc, TEXT_BK_COLOUR(self));
-        text_dc_set_bk_mode(dc, OPAQUE);
+        text_dc_set_bk_mode(dc, TEXT_DC_OPAQUE);
     }
     draw_runs(self, dc, x, y, text, end, tag, colour, RUNS_SHADOW, 0, shadow);
     if (TEXT_BK_ON(self))
-        text_dc_set_bk_mode(dc, TRANSPARENT);
+        text_dc_set_bk_mode(dc, TEXT_DC_TRANSPARENT);
 }
 
 void ui_window_text_out_runs_ex(struct UIWindow *self, int x, int y, const char *text,

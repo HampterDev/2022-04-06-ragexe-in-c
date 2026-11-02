@@ -10,7 +10,7 @@
 
 struct extent_entry {
     DWORD hash;
-    HFONT font;
+    FontHandle font;
     int face, size, charset, bold, italic, len;
     SIZE extent;
     DWORD tick;
@@ -32,9 +32,13 @@ static int measure(struct TextDC *self, SIZE *out, const char *str, int len, int
 {
     struct TextUnicode text;
     SIZE result = {0};
-    int i, sum = 0, ok;
+    int ok;
+#ifdef _WIN32
+    int i, sum = 0;
+#endif
     if (!text_unicode_init(&text, str, len, get_code_page_from_charset(charset)))
         return 0;
+#ifdef _WIN32
     ok = GetTextExtentPoint32W(self->hdc, text.data, text.length, &result);
     if (ok && self->italic == 1) {
         for (i = 0; i < text.length; i++) {
@@ -47,12 +51,16 @@ static int measure(struct TextDC *self, SIZE *out, const char *str, int len, int
         }
         result.cx = sum;
     }
+#else
+    font_text_extent(self->font, text.data, text.length, self->italic == 1, &result);
+    ok = 1;
+#endif
     text_unicode_release(&text);
     if (ok) *out = result;
     return ok;
 }
 
-static int entry_matches(const struct extent_entry *e, DWORD hash, HFONT font, const struct TextDC *t,
+static int entry_matches(const struct extent_entry *e, DWORD hash, FontHandle font, const struct TextDC *t,
                          const char *str, int len, int charset)
 {
     return e->hash == hash && e->font == font && e->len == len && e->face == t->face && e->size == t->size
@@ -62,8 +70,10 @@ static int entry_matches(const struct extent_entry *e, DWORD hash, HFONT font, c
 
 SIZE *text_dc_measure_in_charset(struct TextDC *self, SIZE *out, const char *str, int len, int charset)
 {
-    HFONT font;
+    FontHandle font;
+#ifdef _WIN32
     HGDIOBJ old;
+#endif
     int measured;
     DWORD hash;
     struct extent_entry *a, *b, *e;
@@ -73,9 +83,15 @@ SIZE *text_dc_measure_in_charset(struct TextDC *self, SIZE *out, const char *str
     if (!str || len <= 0)
         return out;
     font = font_cache_get_font(&g_fontCache, self->face, self->size, charset, self->bold, self->italic);
+#ifdef _WIN32
     old = font ? SelectObject(self->hdc, font) : NULL;
     if (!old || old == HGDI_ERROR)
         return out;
+#else
+    if (!font)
+        return out;
+    self->font = font;
+#endif
     if (len > EXTENT_MAXLEN) {
         g_perf.textMeasured++;
         perf_begin(PERF_TEXT);

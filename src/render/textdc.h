@@ -2,12 +2,23 @@
 #define RENDER_TEXTDC_H
 
 #include "platform/win_types.h"
+#include "render/fonts.h"
 struct DcBitmap;
 struct gfx_surface;
 
+enum { TEXT_DC_TRANSPARENT = 1, TEXT_DC_OPAQUE = 2 };
+
 struct TextDC {
+#ifdef _WIN32
     HDC hdc;
     HGDIOBJ oldFont;
+#else
+    struct DcBitmap *bitmap;
+    FontHandle font;
+    struct FontTarget target;
+    COLORREF textColour, bkColour;
+    int bkMode, locked;
+#endif
     struct gfx_surface *surface;
     int face, size, charset;
     BYTE bold, italic;
@@ -23,6 +34,7 @@ COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour);
 
 void text_dc_text_extent(struct TextDC *self, const char *text, int len, SIZE *out);
 void text_dc_text_out(struct TextDC *self, int x, int y, const char *text, int len);
+void text_dc_text_out_plain(struct TextDC *self, int x, int y, const char *text, int len);
 SIZE *text_dc_measure_in_charset(struct TextDC *self, SIZE *out, const char *text, int len, int charset);
 
 #endif
