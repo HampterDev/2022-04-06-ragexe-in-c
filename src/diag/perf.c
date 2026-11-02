@@ -7,6 +7,7 @@
 #include <string.h>
 #include "platform/window.h"
 #include "platform/clock.h"
+#include "render/fonts.h"
 
 struct perf_counters g_perf;
 
@@ -37,10 +38,12 @@ static struct {
         struct perf_counters per;
         int valid;
     } snap;
+#ifdef _WIN32
     HDC dc;
     HBITMAP bmp;
     HGDIOBJ oldBmp;
-    HFONT font;
+#endif
+    FontHandle font;
     DWORD *bits;
     int charW, lineH;
     gfx_surface *tex;
@@ -176,6 +179,7 @@ void perf_frame_end(struct Renderer *r)
         roll(t);
 }
 
+#ifdef _WIN32
 static int make_dib(void)
 {
     BITMAPINFO bi;
@@ -194,6 +198,7 @@ static int make_dib(void)
     if (!P.bmp || !P.bits) {
         DeleteDC(P.dc);
         P.dc = NULL;
+        P.bits = NULL;
         return 0;
     }
     P.oldBmp = SelectObject(P.dc, P.bmp);
@@ -212,6 +217,38 @@ static int make_dib(void)
     return 1;
 }
 
+static void overlay_text_out(int x, int y, const char *line, int len)
+{
+    TextOutA(P.dc, x, y, line, len);
+}
+#else
+static int make_dib(void)
+{
+    static const uint16_t widest = 'W';
+    SIZE sz;
+    P.font = font_cache_get_family(&g_fontCache, "monospace", -12);
+    if (!P.font)
+        return 0;
+    P.bits = malloc((size_t)OV_TEX_W * OV_TEX_H * sizeof *P.bits);
+    if (!P.bits)
+        return 0;
+    font_text_extent(P.font, &widest, 1, 0, &sz);
+    P.charW = sz.cx;
+    P.lineH = sz.cy + 1;
+    return 1;
+}
+
+static void overlay_text_out(int x, int y, const char *line, int len)
+{
+    struct FontTarget target = {(BYTE *)P.bits, OV_TEX_W, OV_TEX_H, OV_TEX_W * 4};
+    uint16_t text[OV_LINE_CHARS];
+    int i;
+    for (i = 0; i < len && i < OV_LINE_CHARS; i++)
+        text[i] = (unsigned char)line[i];
+    font_text_out(P.font, &target, x, y, text, i, RGB(255, 255, 255), NULL);
+}
+#endif
+
 static void rasterize(void)
 {
     int i, x, y, w;
@@ -222,14 +259,16 @@ static void rasterize(void)
     memset(P.bits, 0, OV_TEX_W * OV_TEX_H * 4);
     for (i = 0; i < P.nlines; i++) {
         int len = (int)strlen(P.lines[i]);
-        TextOutA(P.dc, 4, 3 + i * P.lineH, P.lines[i], len);
+        overlay_text_out(4, 3 + i * P.lineH, P.lines[i], len);
         w = len * P.charW + 8;
         if (w > P.usedW)
             P.usedW = w;
     }
     if (P.usedW > OV_TEX_W)
         P.usedW = OV_TEX_W;
+#ifdef _WIN32
     SelectObject(P.dc, P.font);
+#endif
     for (y = 0; y < P.usedH; y++) {
         DWORD *row = P.bits + y * OV_TEX_W;
         for (x = 0; x < P.usedW; x++)
@@ -322,7 +361,7 @@ static void draw(struct Renderer *r)
 
 static void draw_overlay(struct Renderer *r)
 {
-    if (!P.dc && !make_dib())
+    if (!P.bits && !make_dib())
         return;
     if (P.dirty) {
         rasterize();
