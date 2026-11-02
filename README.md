@@ -207,6 +207,10 @@ Markup, links and wrapping:
 - A description line that starts with one character and a `[...]` group that just misses the
   line no longer loops forever, and a step back before a group that does not fit moves one
   character, not one byte, so it no longer splits a double-byte character.
+- Window text that breaks at a lone line feed or carriage return keeps the next line's first
+  character. The original's line breaker kept the CR or LF in the line and skipped the byte
+  after it, which is right only for CRLF text; for LF-only books and server texts it dropped
+  the first letter of every line.
 
 Data, time and leaks:
 
