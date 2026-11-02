@@ -101,6 +101,8 @@ void *vec_add(struct Vec *v, size_t count, size_t size)
 
 void vec_erase(struct Vec *v, void *first, void *last)
 {
+    if (first == last)
+        return;
     memmove(first, last, (size_t)((char *)v->last - (char *)last));
     v->last = (char *)v->last - ((char *)last - (char *)first);
 }

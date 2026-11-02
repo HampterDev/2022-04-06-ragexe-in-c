@@ -413,13 +413,14 @@ enum { MSG_QUEST_MARK = 0x1dd };
 void game_mode_zc_quest_notify_effect(struct GameMode *self, const struct PACKET_ZC_QUEST_NOTIFY_EFFECT *packet)
 {
     struct QuestMark *mark;
+    unsigned npc = packet->npc_id;
     int x = packet->x, y = packet->y;
 
     if (packet->effect == QUEST_EFFECT_NONE) {
         x = -1;
         y = -1;
     }
-    mark = tree_get(&self->quest_marks, &packet->npc_id, sizeof packet->npc_id, sizeof *mark, tree_less_uint);
+    mark = tree_get(&self->quest_marks, &npc, sizeof npc, sizeof *mark, tree_less_uint);
     mark->value.x = (short)x;
     mark->value.y = (short)y;
     mark->value.effect = packet->effect;
@@ -543,7 +544,8 @@ struct PACKET_ZC_C_MARKERINFO {
 
 void game_mode_zc_c_marker_info(const struct PACKET_ZC_C_MARKERINFO *packet)
 {
-    struct MemberPing *ping = tree_find(&g_session1.memberPings, &packet->aid, tree_less_int);
+    int aid = packet->aid;
+    struct MemberPing *ping = tree_find(&g_session1.memberPings, &aid, tree_less_int);
 
     if (ping) {
         ping->x = packet->x;

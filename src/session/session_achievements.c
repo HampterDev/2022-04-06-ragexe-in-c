@@ -22,7 +22,8 @@ static void local_date(int t, WORD *year, WORD *month, WORD *day)
 void session_put_achievement(struct Session *self,
                                        const struct AchievementEntry *entry)
 {
-    struct AchievementPair *found = tree_find(&self->achievements, &entry->id, tree_less_int);
+    int id = entry->id;
+    struct AchievementPair *found = tree_find(&self->achievements, &id, tree_less_int);
     struct AchievementPair pair;
     struct SessionAchievementState rec;
 
