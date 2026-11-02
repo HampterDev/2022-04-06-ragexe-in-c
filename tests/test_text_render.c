@@ -57,6 +57,10 @@ static int convert(UINT cp, DWORD flags, LPCCH text, int bytes, LPWSTR out, int 
     if (fail_convert) return 0;
     return MultiByteToWideChar(cp, flags, text, bytes, out, capacity);
 }
+static int convert_utf16(unsigned code_page, const char *text, int bytes, uint16_t *out, int capacity)
+{
+    return convert(code_page, 0, text, bytes, out, capacity);
+}
 HFONT font_cache_get_font(struct FontCache *cache, int face, int size, int charset, int bold, int italic)
 {
     assert(cache == &g_fontCache); (void)face; (void)size; (void)bold; (void)italic;
@@ -125,7 +129,7 @@ void perf_begin(int phase) { assert(phase == PERF_TEXT && !timer_depth); ++timer
 void perf_end(int phase) { assert(phase == PERF_TEXT && timer_depth == 1); --timer_depth; }
 #define malloc test_malloc
 #define free test_free
-#define MultiByteToWideChar convert
+#define platform_code_page_to_utf16 convert_utf16
 #define SelectObject select_font
 #define GetTextExtentPoint32W get_extent
 #define GetCharABCWidthsW get_abc
@@ -137,7 +141,7 @@ void perf_end(int phase) { assert(phase == PERF_TEXT && timer_depth == 1); --tim
 #include "../src/render/textdc.c"
 #undef malloc
 #undef free
-#undef MultiByteToWideChar
+#undef platform_code_page_to_utf16
 #undef SelectObject
 #undef GetTextExtentPoint32W
 #undef GetCharABCWidthsW
