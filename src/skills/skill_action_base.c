@@ -69,7 +69,7 @@ struct Vec *skill_shuffled_indices(struct Vec *out, int count)
                 ret <<= bits - 1;
                 ret <<= 1;
                 for (;;) {
-                    unsigned v = (unsigned)rand();
+                    unsigned v = (unsigned)rand() & 0x7fffu;
 
                     if (v <= bmask) {
                         ret |= v;

@@ -87,8 +87,8 @@ void ez2_str_particle_skip(struct Ez2StrParticle *self, float fraction)
 
 float *effect_random_point_in_disc(float *out, float cx, float cy, int64_t radius)
 {
-    double turn = rand() / k_ez2strRandMax;
-    float dist = float_sqrt((float)(rand() / k_ez2strRandMax));
+    double turn = (rand() & 0x7fff) / k_ez2strRandMax;
+    float dist = float_sqrt((float)((rand() & 0x7fff) / k_ez2strRandMax));
     float radius_f = (float)(double)radius;
     double distance, theta;
 
