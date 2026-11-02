@@ -71,7 +71,7 @@ void ui_swap_equipment_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_swap_equipment_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_swap_equipment_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_swap_equipment_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_swap_equipment_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_swap_equipment_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_swap_equipment_wnd_ops = {
     .destroy = ui_swap_equipment_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -546,7 +546,7 @@ void ui_swap_equipment_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
         session_equip_slots_of(slots, item.worn_location);
         mode = client_current_mode();
         if (GetAsyncKeyState(VK_CONTROL))
-            mode_send_message(mode, MODE_REQ_SET_ITEM, (int)&item, 0, 0, 0);
+            mode_send_message(mode, MODE_REQ_SET_ITEM, (intptr_t)&item, 0, 0, 0);
         else
             mode_send_message(mode, MODE_REQ_SET_TAKE, slots[2], self->kind == SWAP_KIND_SPECIAL, 0, 0);
     }
@@ -637,7 +637,7 @@ void ui_swap_equipment_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if ((unsigned)item.index > 0) {
         struct UIWindow *wnd = ui_window_open(ITEM_WND_ID);
 
-        ui_window_send(wnd, NULL, 0x18, (int)&item, 0, 0, 0);
+        ui_window_send(wnd, NULL, 0x18, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
@@ -684,7 +684,7 @@ void ui_swap_equipment_wnd_drag_and_drop(struct UIWindow *window, int x, int y, 
             break;
         default:
             if (worn == 1)
-                mode_send_message(mode, MODE_REQ_SET_ITEM, (int)&item, 0, 0, 0);
+                mode_send_message(mode, MODE_REQ_SET_ITEM, (intptr_t)&item, 0, 0, 0);
             else if (item.equip_location != 0 && item.identified && item.worn_location == 0)
                 mode_send_message(mode, MODE_REQ_SET_PUT, drag->index, item.equip_location, 0, 0);
             break;
@@ -694,8 +694,8 @@ void ui_swap_equipment_wnd_drag_and_drop(struct UIWindow *window, int x, int y, 
     item_info_destruct(&item);
 }
 
-int ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISwapEquipmentWnd *self = (struct UISwapEquipmentWnd *)window;
     int refusal;
@@ -739,7 +739,7 @@ int ui_swap_equipment_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
                 return 1;
             }
         }
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(refusal), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(refusal), 0xff, 0, 0);
         return 1;
     }
     return 1;

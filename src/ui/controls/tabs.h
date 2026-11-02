@@ -66,8 +66,8 @@ void ui_bitmap_tab_destroy(struct UIWindow *window);
 void ui_bitmap_tab_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
 void ui_bitmap_tab_on_draw(struct UIWindow *self);
 void ui_bitmap_tab_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_bitmap_tab_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                   int val1, int val2, int val3, int val4);
+intptr_t ui_bitmap_tab_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                   intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_tab_control_destroy(struct UIWindow *window);
 void ui_tab_control_on_draw(struct UIWindow *self);
@@ -76,8 +76,8 @@ void ui_tab_control_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_tab_control_on_l_btn_dbl_clk(struct UIWindow *self, int x_unused, int y_unused);
 void ui_tab_control_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_tab_control_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
-int ui_tab_control_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
+intptr_t ui_tab_control_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_tab_control_select_tab(struct UIWindow *wnd, int tab);
 int ui_tab_control_tab_count(struct UITabControl *self);
 int ui_tab_control_tab_at(struct UITabControl *self, int x, int y);
@@ -87,8 +87,8 @@ void ui_tab_control_remove_tab(struct UIWindow *wnd, int index);
 void ui_tab_destroy(struct UIWindow *window);
 void ui_tab_on_draw(struct UIWindow *self);
 void ui_tab_on_l_btn_down(struct UIWindow *self, int x_unused, int y);
-int ui_tab_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1,
-                             int val2_unused, int val3_unused, int val4_unused);
+intptr_t ui_tab_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1,
+                             intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused);
 
 #define BITMAP_TAB_MSG_FIT 0xe
 #define BITMAP_TAB_MSG_CLEAR 0x4b

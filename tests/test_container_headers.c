@@ -82,7 +82,7 @@ struct UIWindow *ui_window_open(int id)
     memset(wire, 0xdd, wire_size);
     return window_missing ? NULL : (struct UIWindow *)&window_marker;
 }
-int ui_window_send(struct UIWindow *w, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *w, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(!sender && !c && !d);
     if (!w) return 0;

@@ -31,7 +31,7 @@ static void refresh_window(void)
 static void close_with_line(int msg_id)
 {
     ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_MEMORIAL_DUNGEON);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(msg_id), COLOUR_MEMORIAL_DUNGEON, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(msg_id), COLOUR_MEMORIAL_DUNGEON, 0, 0);
 }
 
 #pragma pack(push, 1)

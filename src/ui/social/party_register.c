@@ -17,7 +17,7 @@ void ui_register_party_wnd_destroy(struct UIWindow *window);
 void ui_register_party_wnd_store_info(struct UIWindow *self);
 void ui_register_party_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_register_party_wnd_on_draw(struct UIWindow *self);
-int ui_register_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_register_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_register_party_wnd_ops = {
     .destroy = ui_register_party_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -310,11 +310,11 @@ static void chat_red(int msg)
 
     memset(line, 0, sizeof line);
     _snprintf_s(line, sizeof line, (size_t)-1, msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)line, CHAT_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)line, CHAT_RED, 0, 0);
 }
 
-int ui_register_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_register_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRegisterPartyWnd *self = (struct UIRegisterPartyWnd *)window;
     switch (msg) {
@@ -326,7 +326,7 @@ int ui_register_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
                 ui_register_party_wnd_check_levels(self);
                 if (atoi(ui_edit_ctrl_get_text(self->min_level)) >
                     atoi(ui_edit_ctrl_get_text(self->max_level))) {
-                    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_LEVELS_REVERSED),
+                    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_LEVELS_REVERSED),
                                           CHAT_RED, 0, 0);
                     return 0;
                 }

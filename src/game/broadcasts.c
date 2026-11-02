@@ -40,7 +40,7 @@ static int centred_x(const struct UIWindow *wnd)
 
 static void chat(int msg, const char *text, unsigned colour, int channel, const char *sender)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, msg, (int)text, colour, channel, (int)sender);
+    ui_window_mgr_send_msg_(&g_windowMgr, msg, (intptr_t)text, colour, channel, (intptr_t)sender);
 }
 
 static void readable_links(struct String *text)

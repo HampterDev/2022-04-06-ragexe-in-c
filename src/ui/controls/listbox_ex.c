@@ -227,8 +227,8 @@ static void redraw_scrolled(struct UIListBoxEx *self)
         ui_window_invalidate(self->base.parent);
 }
 
-int ui_list_box_ex_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_list_box_ex_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIListBoxEx *self = (struct UIListBoxEx *)window;
     int old, max;

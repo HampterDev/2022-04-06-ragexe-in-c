@@ -24,7 +24,7 @@ void ui_emotion_wnd_store_info(struct UIWindow *self);
 void ui_emotion_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_emotion_wnd_on_draw(struct UIWindow *self);
 void ui_emotion_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_emotion_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_emotion_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_emotion_wnd_ops = {
     .destroy = ui_emotion_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -78,7 +78,7 @@ void ui_emotion_list_wnd_on_draw(struct UIWindow *self);
 void ui_emotion_list_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_emotion_list_wnd_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
 void ui_emotion_list_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
-int ui_emotion_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_emotion_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_emotion_list_wnd_ops = {
     .destroy = ui_emotion_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -241,8 +241,8 @@ void ui_emotion_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
 }
 
-int ui_emotion_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                    int val2, int val3, int val4)
+intptr_t ui_emotion_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                    intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEmotionWnd *self = (struct UIEmotionWnd *)window;
     switch (msg) {
@@ -542,8 +542,8 @@ void ui_emotion_list_wnd_on_process(struct UIWindow *window)
             ui_window_invalidate(self->icons[i]);
 }
 
-int ui_emotion_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_emotion_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEmotionListWnd *self = (struct UIEmotionListWnd *)window;
     switch (msg) {

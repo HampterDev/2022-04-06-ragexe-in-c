@@ -31,7 +31,7 @@ void ui_choose_wnd_destroy(struct UIWindow *window);
 void ui_choose_wnd_store_info(struct UIWindow *self);
 void ui_choose_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_choose_wnd_on_draw(struct UIWindow *self);
-int ui_choose_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_choose_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_choose_wnd_ops = {
     .destroy = ui_choose_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -80,7 +80,7 @@ struct UIChooseWarpWnd;
 void ui_choose_warp_wnd_destroy(struct UIWindow *window);
 void ui_choose_warp_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_choose_warp_wnd_on_draw(struct UIWindow *self);
-int ui_choose_warp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_choose_warp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_choose_warp_wnd_ops = {
     .destroy = ui_choose_warp_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -305,8 +305,8 @@ void ui_choose_wnd_store_info(struct UIWindow *window)
     info->y = self->frame.base.y;
 }
 
-int ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIChooseWnd *self = (struct UIChooseWnd *)window;
     if (g_windowMgr.rodex_compose_wnd) {
@@ -397,8 +397,8 @@ int ui_choose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
     }
 }
 
-int ui_choose_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_choose_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChooseWarpWnd *self = (struct UIChooseWarpWnd *)window;
     switch (msg) {
@@ -412,11 +412,11 @@ int ui_choose_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
                 return 0;
             mode = game_current_base_mode();
             mode_send_message(mode, REQ_WARP_CHOICE,
-                          (int)string_cstr(&VEC_AT(&self->destinations, struct String, sel)),
+                          (intptr_t)string_cstr(&VEC_AT(&self->destinations, struct String, sel)),
                           self->skill_id, 0, 0);
             ui_window_mgr_post_quit1(&g_windowMgr, WARP_WND_ID);
         } else if (val1 == NPC_MENU_CANCEL_ID) {
-            game_send_message(REQ_WARP_CHOICE, (int)"cancel", self->skill_id, 0, 0);
+            game_send_message(REQ_WARP_CHOICE, (intptr_t)"cancel", self->skill_id, 0, 0);
             ui_window_mgr_post_quit1(&g_windowMgr, WARP_WND_ID);
         }
         return 0;

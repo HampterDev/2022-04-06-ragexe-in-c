@@ -258,7 +258,7 @@ static void browse_emblems(struct UIGuildInfoManageWnd *self)
     }
     combo = ui_make_window(WND_ID_COMBO);
     for (node = self->emblem_files.head->next; node != self->emblem_files.head; node = node->next)
-        ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(LIST_VALUE(node, struct String)),
+        ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)string_cstr(LIST_VALUE(node, struct String)),
                            0, 0, 0);
     height = (int)(count << 4);
     if (height > 0xa0)
@@ -375,8 +375,8 @@ static void refresh(struct UIGuildInfoManageWnd *self)
     ui_window_invalidate_children(wnd);
 }
 
-int ui_guild_info_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_guild_info_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildInfoManageWnd *self = (struct UIGuildInfoManageWnd *)window;
     switch (msg) {

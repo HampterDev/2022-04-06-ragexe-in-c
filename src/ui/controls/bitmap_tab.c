@@ -133,8 +133,8 @@ void ui_bitmap_tab_on_l_btn_down(struct UIWindow *window, int x, int y)
     }
 }
 
-int ui_bitmap_tab_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_bitmap_tab_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIBitmapTab *self = (struct UIBitmapTab *)window;
     switch (msg) {

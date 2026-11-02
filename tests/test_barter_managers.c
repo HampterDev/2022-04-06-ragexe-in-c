@@ -57,8 +57,8 @@ struct UIWindow *ui_window_find(int id)
     assert(id == 0x14e || id == 0x14f);
     return windows_present ? (struct UIWindow *)(uintptr_t)id : NULL;
 }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-    int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+    intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert((uintptr_t)window == 0x14e || (uintptr_t)window == 0x14f);
     assert(!sender && message == 0x17 && !a && !b && !c && !d);

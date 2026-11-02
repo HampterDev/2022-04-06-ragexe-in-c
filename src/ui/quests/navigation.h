@@ -126,14 +126,14 @@ static __inline void ui_canvas_draw_image(struct DcBitmap *canvas, int x, int y,
 #define UI_TEXTURE_H(t) ((unsigned)((const struct Texture *)(t))->reqHeight)
 
 struct UIPrivateAirplaneWnd *ui_private_airplane_wnd_new(void);
-int ui_private_airplane_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4);
+intptr_t ui_private_airplane_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 #include "ui/quests/world_view.h"
 struct Session;
 
-int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4);
+intptr_t ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4);
 
 BYTE ui_navigation_v4_wnd_minimize_checked(struct UINavigationV4Wnd *self);
 

@@ -28,7 +28,7 @@ struct UINavigationRuideWnd;
 void ui_navigation_ruide_wnd_destroy(struct UIWindow *window);
 void ui_navigation_ruide_wnd_on_create(struct UIWindow *self, int width, int height_unused);
 void ui_navigation_ruide_wnd_on_draw(struct UIWindow *self);
-int ui_navigation_ruide_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_navigation_ruide_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_navigation_ruide_wnd_ops = {
     .destroy = ui_navigation_ruide_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -174,8 +174,8 @@ void ui_navigation_ruide_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_button_bar(wnd, 0, 0, 1);
 }
 
-int ui_navigation_ruide_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_navigation_ruide_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINavigationRuideWnd *self = (struct UINavigationRuideWnd *)window;
     if (msg != UI_MSG_COMMAND && msg != NAVI_GUIDE_MSG_REFRESH)
@@ -197,7 +197,7 @@ void ui_navigationroadicon_wnd_destroy(struct UIWindow *window);
 void ui_navigationroadicon_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_navigationroadicon_wnd_on_draw(struct UIWindow *self);
 void ui_navigationroadicon_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_navigationroadicon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_navigationroadicon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_navigationroadicon_wnd_ops = {
     .destroy = ui_navigationroadicon_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -338,8 +338,8 @@ void ui_navigationroadicon_wnd_on_l_btn_up(struct UIWindow *window, int x, int y
     ui_frame_wnd_on_l_btn_up((struct UIWindow *)(&self->frame), x, y);
 }
 
-int ui_navigationroadicon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                               int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_navigationroadicon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                                               int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
         ui_window_mgr_post_quit1(&g_windowMgr, NAVI_ROAD_ICON_WND_ID);
@@ -357,7 +357,7 @@ struct UINavigationHelpWnd;
 void ui_navigation_help_wnd_destroy(struct UIWindow *window);
 void ui_navigation_help_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_navigation_help_wnd_on_draw(struct UIWindow *self);
-int ui_navigation_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_navigation_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_navigation_help_wnd_ops = {
     .destroy = ui_navigation_help_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -461,7 +461,7 @@ void ui_navigation_help_wnd_on_create(struct UIWindow *window, int width, int he
     for (i = 0; i < sizeof navi_help_lines / sizeof navi_help_lines[0]; i++) {
         const char *line = navi_help_lines[i] == NAVI_HELP_BLANK ? " " : msg_str(navi_help_lines[i]);
 
-        ui_window_send_msg(&self->text->list.base, NULL, UI_MSG_ADD_TEXT, (int)line, NAVI_HELP_TEXT_LAYOUT, 0, 0);
+        ui_window_send_msg(&self->text->list.base, NULL, UI_MSG_ADD_TEXT, (intptr_t)line, NAVI_HELP_TEXT_LAYOUT, 0, 0);
     }
     ui_window_add_close_button(wnd, msg_str(MSG_NAVI_HELP_CLOSE), 0);
 }
@@ -473,8 +473,8 @@ void ui_navigation_help_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_body(&self->frame.base, 0x11, 0, "");
 }
 
-int ui_navigation_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_navigation_help_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
         ui_close_window(NAVI_HELP_WND_ID);

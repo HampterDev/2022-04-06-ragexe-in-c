@@ -41,7 +41,7 @@ void ui_short_cut_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_short_cut_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_short_cut_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_short_cut_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_short_cut_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_short_cut_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_short_cut_wnd_ops = {
     .destroy = ui_short_cut_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -667,7 +667,7 @@ void ui_short_cut_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
         if ((unsigned)item.index > 0) {
             struct UIWindow *describe = ui_window_open(WND_ITEM_DESCRIBE);
 
-            ui_window_send(describe, NULL, ITEM_DESCRIBE_MSG_SHOW, (int)&item, 0, 0, 0);
+            ui_window_send(describe, NULL, ITEM_DESCRIBE_MSG_SHOW, (intptr_t)&item, 0, 0, 0);
         }
         item_info_destruct(&item);
     }
@@ -733,8 +733,8 @@ static void use_item(int item_id)
     item_info_destruct(&item);
 }
 
-int ui_short_cut_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_short_cut_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIShortCutWnd *self = (struct UIShortCutWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -753,7 +753,7 @@ int ui_short_cut_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 
             session_get_skill_info(&info, slot->id);
             if (info.found && info.level && slot->level != 0 && info.level >= slot->level)
-                mode_send_message(client_current_mode(), GAME_MSG_USE_SKILL, (int)&info, slot->level, 0, 0);
+                mode_send_message(client_current_mode(), GAME_MSG_USE_SKILL, (intptr_t)&info, slot->level, 0, 0);
             skill_info_destruct(&info);
         } else {
             use_item(slot->id);

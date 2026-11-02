@@ -39,7 +39,7 @@ struct UINpcEditDialogWnd;
 void ui_npc_edit_dialog_wnd_destroy(struct UIWindow *window);
 void ui_npc_edit_dialog_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_npc_edit_dialog_wnd_on_draw(struct UIWindow *self);
-int ui_npc_edit_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_npc_edit_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_npc_edit_dialog_wnd_ops = {
     .destroy = ui_npc_edit_dialog_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -88,7 +88,7 @@ struct UINpcTextEditDialogWnd;
 void ui_npc_text_edit_dialog_wnd_destroy(struct UIWindow *window);
 void ui_npc_text_edit_dialog_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_npc_text_edit_dialog_wnd_on_draw(struct UIWindow *self);
-int ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_npc_text_edit_dialog_wnd_ops = {
     .destroy = ui_npc_text_edit_dialog_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -224,8 +224,8 @@ void ui_npc_edit_dialog_wnd_on_draw(struct UIWindow *window)
                       12, 0);
 }
 
-int ui_npc_edit_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_npc_edit_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINpcEditDialogWnd *self = (struct UINpcEditDialogWnd *)window;
     if (g_windowMgr.rodex_compose_wnd) {
@@ -319,14 +319,14 @@ static int link_size(struct UIWindow *edit)
 
 static void send_text(struct UINpcTextEditDialogWnd *self, struct Mode *mode, const char *link)
 {
-    mode_send_message(mode, MODE_MSG_NPC_TEXT, self->base.npc_id, (int)ui_edit_ctrl_get_text(&self->base.edit->base), (int)link,
+    mode_send_message(mode, MODE_MSG_NPC_TEXT, self->base.npc_id, (intptr_t)ui_edit_ctrl_get_text(&self->base.edit->base), (intptr_t)link,
                   0);
     ui_window_mgr_post_quit1(&g_windowMgr, NPC_TEXT_WND_ID);
 }
 
-int ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *window,
-                                              struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                              int val4)
+intptr_t ui_npc_text_edit_dialog_wnd_send_msg(struct UIWindow *window,
+                                              struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                              intptr_t val4)
 {
     struct UINpcTextEditDialogWnd *self = (struct UINpcTextEditDialogWnd *)window;
     struct UIWindow *edit = &self->base.edit->base;

@@ -111,7 +111,7 @@ const struct UIWindowOps ui_accessory_cus_wnd_ops = {
 };
 
 struct UIAccessoryShowCase;
-int ui_accessory_show_case_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_accessory_show_case_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_accessory_show_case_ops = {
     .destroy = ui_accessory_show_case_destroy,
     .resize = ui_scroll_wnd_resize,
@@ -254,7 +254,7 @@ void ui_styling_shop_wnd_destroy(struct UIWindow *window);
 void ui_styling_shop_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_styling_shop_wnd_on_process(struct UIWindow *self);
 void ui_styling_shop_wnd_on_draw(struct UIWindow *self);
-int ui_styling_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_styling_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_styling_shop_wnd_ops = {
     .destroy = ui_styling_shop_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -743,8 +743,8 @@ static void show_case_part_name(char *buf, int kind)
         strcpy_s(buf, 0x40, "BottomAccessory");
 }
 
-int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAccessoryShowCase *self = (struct UIAccessoryShowCase *)window;
     struct UIWindow *shop = ui_get_window(WND_STYLING_SHOP);
@@ -781,7 +781,7 @@ int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *se
         item_info_set_name(&info, item_table_get(btn->goods)->name);
         info.identified = 1;
         wnd = ui_window_open(0xc);
-        ui_window_send(wnd, NULL, 0x18, (int)&info, 0, 0, 0);
+        ui_window_send(wnd, NULL, 0x18, (intptr_t)&info, 0, 0, 0);
         if (g_windowMgr.item_collection_wnd) {
             struct ItemInfo *worn = session_get_worn_counterpart(&g_session1, &info);
 
@@ -789,7 +789,7 @@ int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *se
                 struct UIWindow *compare = ui_window_open(0xea);
 
                 if (compare)
-                    ui_window_send_msg(compare, NULL, 0x18, (int)worn, 1, 0, 0);
+                    ui_window_send_msg(compare, NULL, 0x18, (intptr_t)worn, 1, 0, 0);
                 else
                     ui_window_mgr_post_quit1(&g_windowMgr, 0xea);
             }
@@ -1164,8 +1164,8 @@ static void styling_shop_switch_tab(struct UIStylingShopWnd *self, int id)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_styling_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_styling_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIStylingShopWnd *self = (struct UIStylingShopWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

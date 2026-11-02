@@ -66,7 +66,7 @@ void session_set_hide_other_players(struct Session *self, BYTE flag)
     if (self->hideOtherPlayers == flag)
         return;
     self->hideOtherPlayers = flag;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(flag == 1 ? 0xf0c : 0xf0d), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(flag == 1 ? 0xf0c : 0xf0d), 0xff, 0, 0);
 }
 
 static void quick_slot_changed(int slot)

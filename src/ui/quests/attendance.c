@@ -56,7 +56,7 @@ void ui_check_attendance_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_check_attendance_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_check_attendance_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_check_attendance_wnd_render_overlay(struct UIWindow *self);
 const struct UIWindowOps ui_check_attendance_wnd_ops = {
     .destroy = ui_check_attendance_wnd_destroy,
@@ -398,12 +398,12 @@ void ui_check_attendance_wnd_on_r_btn_down(struct UIWindow *window, int x, int y
     item_info_construct(&info);
     item_info_set_item_id(&info, check_attendance_reward(g_attendanceTable, &reward, slot + 1)->item_id);
     info.identified = 1;
-    ui_window_send_msg(item_wnd, NULL, ITEM_INFO_MSG_SHOW, (int)&info, 0, 0, 0);
+    ui_window_send_msg(item_wnd, NULL, ITEM_INFO_MSG_SHOW, (intptr_t)&info, 0, 0, 0);
     item_info_destruct(&info);
 }
 
-int ui_check_attendance_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_check_attendance_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICheckAttendanceWnd *self = (struct UICheckAttendanceWnd *)window;
     if (msg == UI_MSG_COMMAND) {

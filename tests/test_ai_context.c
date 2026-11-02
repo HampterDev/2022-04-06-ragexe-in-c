@@ -49,7 +49,7 @@ int game_closest_walkable_cell(int *x, int *y)
 }
 int game_map_has_party_marks(void) { return 0; }
 int game_siege_state(void) { return 0; }
-int game_send_message(int message, int a, int b, int c, int d)
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(active && message_count < 8);
     message_ids[message_count++] = message;

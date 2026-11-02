@@ -71,7 +71,7 @@ int renderer_text_out(struct Renderer *self, int x, int y, const char *text, COL
     return 1;
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(self == &g_windowMgr && msg == WM_MSG_CHAT_LINE);
     ++notices;

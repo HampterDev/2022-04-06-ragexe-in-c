@@ -135,7 +135,7 @@ extern DWORD g_charServerIp;
 extern const struct ModeOps g_CLoginMode_ops;
 
 void login_mode_on_update(struct Mode *mode);
-int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d);
+intptr_t login_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 void login_mode_on_change_state(struct Mode *mode, int subMode);
 void login_mode_check_timeouts(struct LoginMode *self, int subMode);
 void login_mode_send_keep_alive(struct LoginMode *self);

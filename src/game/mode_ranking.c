@@ -28,7 +28,7 @@ SIZE_ASSERT(PacketUpdateRankingPoint, 12);
 
 static void say(const char *text, int color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)text, color, 0, 0);
 }
 
 int ranking_receive_names(const void *packet, size_t size)

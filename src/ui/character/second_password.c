@@ -73,7 +73,7 @@ static void button_disable(struct UIBitmapButton *button, BYTE disabled)
 
 void ui_store_password_input_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_store_password_input_wnd_on_draw(struct UIWindow *self);
-int ui_store_password_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_store_password_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_store_password_input_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_store_password_input_wnd_ops = {
     .destroy = ui_store_password_input_wnd_destroy,
@@ -604,18 +604,18 @@ static int second_pwd_send_msg(struct UISecondPasswordInputWnd *self, struct UIW
     return ui_frame_wnd_send_msg((struct UIWindow *)(&s->frame), sender, msg, val1, val2, val3, val4);
 }
 
-int ui_second_password_edit_wnd_send_msg(struct UIWindow *window,
-                                               struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                               int val4)
+intptr_t ui_second_password_edit_wnd_send_msg(struct UIWindow *window,
+                                               struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                               intptr_t val4)
 {
     struct UISecondPasswordInputWnd *self = (struct UISecondPasswordInputWnd *)window;
 
     return second_pwd_send_msg(self, sender, msg, val1, val2, val3, val4, 0);
 }
 
-int ui_second_password_input_wnd_send_msg(struct UIWindow *window,
-                                                struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                                int val4)
+intptr_t ui_second_password_input_wnd_send_msg(struct UIWindow *window,
+                                                struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                                intptr_t val4)
 {
     struct UISecondPasswordInputWnd *self = (struct UISecondPasswordInputWnd *)window;
 
@@ -771,9 +771,9 @@ static int store_pin_ok(const char *pw)
     return strlen(pw) < 9 && strlen(pw) > 3;
 }
 
-int ui_store_password_input_wnd_send_msg(struct UIWindow *window,
-                                               struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                               int val4)
+intptr_t ui_store_password_input_wnd_send_msg(struct UIWindow *window,
+                                               struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                               intptr_t val4)
 {
     struct UIStorePasswordInputWnd *self = (struct UIStorePasswordInputWnd *)window;
     struct Mode *mode = client_current_mode();
@@ -930,7 +930,7 @@ struct UISecondPasswordInputWnd;
 struct UIStorePasswordInputWnd;
 void ui_second_password_edit_wnd_destroy(struct UIWindow *window);
 void ui_second_password_input_wnd_on_draw(struct UIWindow *self);
-int ui_second_password_edit_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_second_password_edit_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_second_password_edit_wnd_ops = {
     .destroy = ui_second_password_edit_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -980,7 +980,7 @@ struct UIFrameWnd;
 struct UISecondPasswordInputWnd;
 struct UIStorePasswordInputWnd;
 struct UIWindow;
-int ui_second_password_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_second_password_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_second_password_input_wnd_ops = {
     .destroy = ui_second_password_input_wnd_destroy,
     .resize = ui_window_resize_base,

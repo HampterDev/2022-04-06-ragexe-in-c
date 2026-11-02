@@ -549,10 +549,10 @@ void game_mode_zc_devotion_list(struct GameMode *self, const struct PacketDevoti
 
             sprintf(text, "DEVOTION OVERFLOW : %d -- %d , %d , %d , %d , %d", packet->aid, packet->targets[0],
                         packet->targets[1], packet->targets[2], packet->targets[3], packet->targets[4]);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
             sprintf(text, "DEVOTION OVERFLOW : 그라비티에 메일로 "
                               "문의해주십시요");
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
             continue;
         }
         if (!actor)

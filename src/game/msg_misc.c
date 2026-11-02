@@ -257,7 +257,7 @@ int game_mode_msg_couple_request(const char *name, int which)
     else
         return 0;
     sprintf(line, msg_str(id), name);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_NOTICE, 4, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_NOTICE, 4, 0);
     return 0;
 }
 

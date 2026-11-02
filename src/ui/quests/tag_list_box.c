@@ -17,7 +17,7 @@ void ui_tag_list_box_on_draw(struct UIWindow *self);
 void ui_tag_list_box_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_tag_list_box_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_tag_list_box_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_tag_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_tag_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 static void ui_tag_list_box_clear(struct UIListBox *base_list);
 const struct UIListBoxOps ui_tag_list_box_ops = {
     .base = {
@@ -367,7 +367,7 @@ void ui_tag_list_box_on_link_click(struct UITagListBox *self, int kind,
         struct UIWindow *wnd = ui_window_open(WND_ITEM_DESCRIBE);
 
         if (wnd)
-            ui_window_send_msg(wnd, NULL, ITEM_DESCRIBE_MSG_SHOW, (int)&button->item, 0, 0, 0);
+            ui_window_send_msg(wnd, NULL, ITEM_DESCRIBE_MSG_SHOW, (intptr_t)&button->item, 0, 0, 0);
         return;
     }
     case TAG_KIND_NAVI:
@@ -424,8 +424,8 @@ void ui_tag_list_box_on_link_click(struct UITagListBox *self, int kind,
     }
 }
 
-int ui_tag_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                    int val2, int val3, int val4)
+intptr_t ui_tag_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                    intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UITagListBox *self = (struct UITagListBox *)window;
     switch (msg) {

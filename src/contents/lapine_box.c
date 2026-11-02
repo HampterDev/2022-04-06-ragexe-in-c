@@ -492,13 +492,13 @@ void lapine_box_show_info(struct UIWindow *window, int x, int y)
     if ((unsigned)item.index > 0) {
         struct UIWindow *desc = ui_window_open(ITEM_DESC_WND_ID);
 
-        ui_window_send(desc, NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+        ui_window_send(desc, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
 
-int lapine_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                   int a, int b, int c, int d)
+intptr_t lapine_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                   intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LapineBox *self = (struct LapineBox *)window;
     switch (msg) {

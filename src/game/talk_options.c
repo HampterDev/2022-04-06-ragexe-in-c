@@ -24,7 +24,7 @@ static int talk_type_of(const char *text)
 
 void talk_print(const char *text, unsigned color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)text, color, 0, 0);
 }
 
 void talk_print_msg(int msg_id, unsigned color)

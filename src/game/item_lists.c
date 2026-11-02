@@ -116,7 +116,7 @@ void game_mode_add_limited_sale_item(struct GameMode *self, unsigned short resul
     switch ((short)result) {
     case 0: tell_sale_tool(1, 0); break;
     case 1: tell_sale_tool(1, 1); break;
-    case 2: ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x9d5), CHAT_COLOR_RED, 0, 0); break;
+    case 2: ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x9d5), CHAT_COLOR_RED, 0, 0); break;
     case 3: tell_sale_tool(1, 3); break;
     }
 }
@@ -580,7 +580,7 @@ void game_mode_zc_ack_add_item_to_cart(const unsigned char *pkt)
     default: return;
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(text), CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(text), CHAT_COLOR_RED, 0, 0);
 }
 
 void game_mode_zc_add_item_to_cart(const unsigned char *pkt)
@@ -629,7 +629,7 @@ static void item_index_list(struct UIWindow *wnd, const struct PACKET_ZC_ITEMIDE
     for (; count != 0; count--, index++) {
         session_get_inventory_item(&g_session1, &item, *index);
         if (item.index != 0)
-            ui_window_send(wnd, NULL, ITEM_LIST_WND_ADD, (int)string_cstr(&item.id_text), item.index, 0, 0);
+            ui_window_send(wnd, NULL, ITEM_LIST_WND_ADD, (intptr_t)string_cstr(&item.id_text), item.index, 0, 0);
         item_info_destruct(&item);
     }
     ui_window_send(wnd, NULL, ITEM_LIST_WND_SHOW, 0, 0, 0, 0);
@@ -661,14 +661,14 @@ void game_mode_zc_ack_item_identify(const unsigned char *pkt)
 
     switch (packet->result) {
     case 0:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x1eb), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x1eb), 0xffff00, 0, 0);
         session_get_inventory_item(&g_session1, &item, packet->index);
         item.identified = 1;
         session_inventory_update(&g_session1, &item, 1);
         item_info_destruct(&item);
         break;
     case 1:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x1ec), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x1ec), CHAT_COLOR_RED, 0, 0);
         break;
     }
 }

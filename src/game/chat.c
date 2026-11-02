@@ -61,7 +61,7 @@ char chat_refuse_repeated_line(int repeats)
     if (repeats < 2)
         return 0;
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0x31), CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0x31), CHAT_COLOR_RED, 0, 0);
     string_clear(&g_windowMgr.chat_line);
     return 1;
 }
@@ -158,9 +158,9 @@ void game_mode_zc_notify_player_chat(struct GameMode *self, const unsigned char 
     memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length);
     chars = text.first == text.last ? 0 : text.first;
     if (g_windowMgr.chat_room_wnd != 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE_ALT, (int)chars, 0x7800, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE_ALT, (intptr_t)chars, 0x7800, 0, 0);
     } else {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)chars, 0xff00, 1, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)chars, 0xff00, 1, 0);
         chars = text.first == text.last ? 0 : text.first;
         render_object_send((struct GameActor *)self->world->player, NULL, ACTOR_MSG_SAY, MSG_ARG_PTR(chars), 0, 0, 0);
     }
@@ -193,7 +193,7 @@ void game_mode_zc_guild_chat(struct GameMode *self, const unsigned char *pkt)
     vec_resize(&text, length - 3, 1);
     memcpy_s(text.first, (char *)text.last - (char *)text.first, packet->text, length - 4);
     if (g_session1.hideChatAndGuild == 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text.first, GUILD_CHAT_COLOR, CHAT_CHANNEL_GUILD, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text.first, GUILD_CHAT_COLOR, CHAT_CHANNEL_GUILD, 0);
         if (g_session1.autoSaveChat != 0)
             game_mode_log_whisper(self, text.first);
     }

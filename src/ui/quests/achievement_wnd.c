@@ -16,7 +16,7 @@ struct UIWindow;
 void ui_achievement_wnd_destroy(struct UIWindow *window);
 void ui_achievement_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_achievement_wnd_on_draw(struct UIWindow *self);
-int ui_achievement_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_achievement_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_achievement_wnd_ops = {
     .destroy = ui_achievement_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -68,7 +68,7 @@ BYTE ui_ach_tracing_wnd_is_click_through(struct UIWindow *self);
 void ui_ach_tracing_wnd_store_info(struct UIWindow *self);
 void ui_ach_tracing_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_ach_tracing_wnd_on_draw(struct UIWindow *self);
-int ui_ach_tracing_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ach_tracing_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ach_tracing_wnd_ops = {
     .destroy = ui_ach_tracing_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -273,8 +273,8 @@ void ui_achievement_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_title_bar(&self->frame.base, 1, msg_str(ACH_TITLE_MSG), 0);
 }
 
-int ui_achievement_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_achievement_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAchievementWnd *self = (struct UIAchievementWnd *)window;
     switch (msg) {
@@ -464,8 +464,8 @@ void ui_ach_tracing_wnd_on_draw(struct UIWindow *window)
     }
 }
 
-int ui_ach_tracing_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_ach_tracing_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAchTracingWnd *self = (struct UIAchTracingWnd *)window;
     if (msg == UI_MSG_SET_INFO) {

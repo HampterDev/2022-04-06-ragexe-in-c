@@ -24,7 +24,7 @@ void ui_item_sell_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_sell_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_sell_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_sell_wnd_ops = {
     .destroy = ui_item_sell_wnd_destroy,
@@ -81,7 +81,7 @@ void ui_item_sell_wnd2_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd2_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd2_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_sell_wnd2_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_sell_wnd2_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_sell_wnd2_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_sell_wnd2_ops = {
     .destroy = ui_item_sell_wnd2_destroy,
@@ -372,8 +372,8 @@ static void sell_add_dragged(struct UIItemBaseWnd *base, struct UIWindow *other)
     item_info_destruct(&info);
 }
 
-int ui_item_sell_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_item_sell_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIItemSellWnd *self = (struct UIItemSellWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -426,8 +426,8 @@ int ui_item_sell_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
 
-int ui_item_sell_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_item_sell_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemSellWnd2 *self = (struct UIItemSellWnd2 *)window;
     struct UIItemBaseWnd *base = &self->sell.base;

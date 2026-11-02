@@ -208,7 +208,7 @@ void ui_edit_ctrl3_place_navi_links(struct UIEditCtrl3 *self, struct TextView li
     string_free(&serialized);
 }
 
-static void show_item(int item, int no_compare)
+static void show_item(intptr_t item, int no_compare)
 {
     struct UIWindow *wnd;
     struct ItemInfo *worn;
@@ -222,7 +222,7 @@ static void show_item(int item, int no_compare)
         return;
     wnd = ui_window_open(WND_ITEM_COMPARE);
     if (wnd)
-        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)worn, 1, 0, 0);
+        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)worn, 1, 0, 0);
     else
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COMPARE);
 }
@@ -289,8 +289,8 @@ done:
     string_free(&name);
 }
 
-int ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrl *self = (struct UIEditCtrl *)window;
     switch (msg) {

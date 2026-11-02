@@ -49,7 +49,7 @@ static void language_windows(void)
         {
             void *wnd = ui_window_open(0x33);
 
-            ui_window_send(wnd, NULL, 0x41, (int)names, (int)&info, 0, 0);
+            ui_window_send(wnd, NULL, 0x41, (intptr_t)names, (intptr_t)&info, 0, 0);
         }
         for (i = 9; i-- > 0;)
             string_free(&names[i]);

@@ -197,7 +197,7 @@ void ui_pet_info_wnd_destroy(struct UIWindow *window);
 void ui_pet_info_wnd_store_info(struct UIWindow *self);
 void ui_pet_info_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_pet_info_wnd_on_draw(struct UIWindow *self);
-int ui_pet_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_pet_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_pet_info_wnd_ops = {
     .destroy = ui_pet_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -486,7 +486,7 @@ void ui_pet_info_wnd_store_info(struct UIWindow *window)
 
 static void chat_refusal(int msg)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), PET_INFO_MSG_EXTRA_COLOUR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), PET_INFO_MSG_EXTRA_COLOUR, 0, 0);
 }
 
 static int message_box(const char *text, int type, int arg3)
@@ -512,7 +512,7 @@ static void pet_rename(struct UIPetInfoWnd *self)
     sprintf(question, msg_str(MSG_PET_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (message_box(question, 2, 0) != PET_RENAME_KEEP) {
         mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
-                      (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+                      (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
         sprintf(g_session1.petName, ui_edit_ctrl_get_text(self->name_edit));
         ui_window_invalidate_base(&self->frame.base);
         return;
@@ -523,7 +523,7 @@ static void pet_rename(struct UIPetInfoWnd *self)
 
 static void menu_add(struct UIWindow *menu, const char *text, int id, int value)
 {
-    ui_window_send_msg(menu, NULL, UI_MSG_MENU_ADD, (int)text, id, value, 0);
+    ui_window_send_msg(menu, NULL, UI_MSG_MENU_ADD, (intptr_t)text, id, value, 0);
 }
 
 static void pet_open_menu(struct UIPetInfoWnd *self)
@@ -602,8 +602,8 @@ static void pet_menu_choice(struct UIPetInfoWnd *self, int choice)
     ui_window_mgr_post_quit1(&g_windowMgr, UI_WND_PET_MENU);
 }
 
-int ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIPetInfoWnd *self = (struct UIPetInfoWnd *)window;
     if (self->feed_box && sender != self->feed_box)

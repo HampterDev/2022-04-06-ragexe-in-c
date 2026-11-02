@@ -296,12 +296,12 @@ void lapine_upgrade_show_info(struct UIWindow *window, int x, int y)
     if (on_target(x, y) && (unsigned)self->target.index > 0) {
         struct UIWindow *desc = ui_window_open(ITEM_DESC_WND_ID);
 
-        ui_window_send(desc, NULL, UI_MSG_SHOW_ITEM, (int)&self->target, 0, 0, 0);
+        ui_window_send(desc, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&self->target, 0, 0, 0);
     }
 }
 
-int lapine_upgrade_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                       int a, int b, int c, int d)
+intptr_t lapine_upgrade_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                       intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LapineUpgradeBox *self = (struct LapineUpgradeBox *)window;
     switch (msg) {
@@ -382,8 +382,8 @@ static void fill(struct LapineUpgradeList *self)
     ui_window_send(&self->scroll.base, &self->scroll.base, LAPINE_MSG_LAYOUT, 0, 0, 0, 0);
 }
 
-int lapine_upgrade_list_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int a, int b, int c, int d)
+intptr_t lapine_upgrade_list_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LapineUpgradeList *self = (struct LapineUpgradeList *)window;
     struct LapineIngredient **it;
@@ -475,6 +475,6 @@ void lapine_upgrade_row_show_info(struct UIWindow *window, int x, int y)
     if ((unsigned)self->item.index > 0) {
         struct UIWindow *desc = ui_window_open(ITEM_DESC_WND_ID);
 
-        ui_window_send(desc, &self->frame.base, UI_MSG_SHOW_ITEM, (int)&self->item, 0, 0, 0);
+        ui_window_send(desc, &self->frame.base, UI_MSG_SHOW_ITEM, (intptr_t)&self->item, 0, 0, 0);
     }
 }

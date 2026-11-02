@@ -24,7 +24,7 @@ void ui_expanded_barter_item_purchase_wnd_on_l_btn_down(struct UIWindow *self, i
 void ui_expanded_barter_item_purchase_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_expanded_barter_item_purchase_wnd_show_item_at(struct UIWindow *self, int x, int y);
 void ui_expanded_barter_item_purchase_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_expanded_barter_item_purchase_wnd_ops = {
     .destroy = ui_expanded_barter_item_purchase_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -455,9 +455,9 @@ done:
     barter_goods_ex_destruct(&listed.goods);
 }
 
-int ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *window,
-                                                       struct UIWindow *sender, int msg, int val1, int val2,
-                                                       int val3, int val4)
+intptr_t ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *window,
+                                                       struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                                       intptr_t val3, intptr_t val4)
 {
     struct UIExpandedBarterItemPurchaseWnd *self = (struct UIExpandedBarterItemPurchaseWnd *)window;
     struct UIWindow *wnd = &self->list.frame.base;

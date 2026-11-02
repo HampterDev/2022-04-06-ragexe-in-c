@@ -30,7 +30,7 @@ OFFSET_ASSERT(PacketBankingCheck, balance, 2);
 
 static void say_red(const char *text)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, COLOUR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, COLOUR_RED, 0, 0);
 }
 
 static void store_balance(const struct PacketBankingAck *p)

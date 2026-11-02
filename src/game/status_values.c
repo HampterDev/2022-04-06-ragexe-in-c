@@ -46,7 +46,7 @@ void game_mode_on_long_long_par_change(struct GameMode *self, const struct Packe
 
                 _snprintf_s(line, 0x100, (size_t)-1, "%lld : %lld/%lld More : %d",
                                value - g_session1.baseExp, value, g_session1.nextBaseExp, kills_left);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, CHAT_COLOR_EXP, 0, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }
         g_session1.baseExp = packet->value;
@@ -99,7 +99,7 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
             if (packet->value != 0 && gained != 0) {
                 _snprintf_s(line, 0x100, (size_t)-1, "%lld : %lld/%lld More : %lld",
                                gained, value, g_session1.nextBaseExp, (g_session1.nextBaseExp - g_session1.baseExp) / gained);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, CHAT_COLOR_EXP, 0, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }
         g_session1.baseExp = packet->value;
@@ -175,7 +175,7 @@ void game_mode_on_notify_exp2(struct GameMode *self, const struct PacketNotifyEx
             }
             suffix = msg_str(packet->amount >= 0 ? MSG_EXP_GAINED_SUFFIX : MSG_EXP_LOST_SUFFIX);
             string_append_cstr(&line, suffix);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), color,
                                 CHAT_CHANNEL_EXP, 0);
         }
     }
@@ -219,7 +219,7 @@ void game_mode_on_notify_exp(struct GameMode *self, const struct PacketNotifyExp
             }
             suffix = msg_str(packet->amount >= 0 ? MSG_EXP_GAINED_SUFFIX : MSG_EXP_LOST_SUFFIX);
             string_append_cstr(&line, suffix);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), color,
                                 CHAT_CHANNEL_EXP, 0);
         }
     }

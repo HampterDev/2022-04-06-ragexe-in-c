@@ -118,7 +118,7 @@ void ui_seek_party_list_wnd_on_draw(struct UIWindow *self);
 void ui_seek_party_list_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_seek_party_list_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_seek_party_list_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_seek_party_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_seek_party_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_seek_party_list_wnd_ops = {
     .destroy = ui_seek_party_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -730,13 +730,13 @@ static void whisper(struct UISeekPartyListWnd *self)
         const char *player = session_character_name(&g_session1);
         if (strlen(player) != copy.leader.size ||
             memcmp(player, owned_text_cstr(&copy.leader), copy.leader.size))
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (int)owned_text_cstr(&copy.leader), 0, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (intptr_t)owned_text_cstr(&copy.leader), 0, 0, 0);
     }
     party_search_row_clear(&copy);
 }
 
-int ui_seek_party_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_seek_party_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISeekPartyListWnd *self = (struct UISeekPartyListWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -843,6 +843,6 @@ void party_booking_wnd_alarm(struct UISeekPartyListWnd *self)
     if (!self->checkbox->state)
         return;
     sound_play_wave("party_alarm.wav", 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_NOTICE, (int)msg_str(MSG_PARTY_BOOKING_NEW), PARTY_ALARM_COLOUR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_NOTICE, (intptr_t)msg_str(MSG_PARTY_BOOKING_NEW), PARTY_ALARM_COLOUR,
                           0xe, 0);
 }

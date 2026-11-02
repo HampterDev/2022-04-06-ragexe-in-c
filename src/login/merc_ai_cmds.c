@@ -448,7 +448,7 @@ int merc_ai_skill_ground(lua_State *L)
         return 0;
     st = ACTOR_STATE(actor);
     if (st == 1 || st == 0 || st == 4)
-        game_send_message(0x46, (int)&use, 0, 0, 0);
+        game_send_message(0x46, (intptr_t)&use, 0, 0, 0);
     game_send_message(0x1a, 0, 0, 0, 0);
     return 0;
 }

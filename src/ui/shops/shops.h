@@ -33,15 +33,15 @@ struct UIItemBaseWnd {
     struct UIResizer *resizer;
     struct UIScrollBar *scroll_bar;
     struct UIBitmapButton *close;
-    int extra_buttons[4];
+    struct UIBitmapButton *extra_buttons[4];
     int scroll;
     int rows;
     int columns;
     int scrollable;
     struct List items;
 };
-int ui_item_base_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4);
+intptr_t ui_item_base_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4);
 void ui_item_base_wnd_update_scroll(struct UIItemBaseWnd *self);
 void ui_item_base_wnd_on_draw(struct UIWindow *self);
 

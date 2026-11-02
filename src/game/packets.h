@@ -16,7 +16,7 @@ static __inline void actor_send(struct GameActor *actor, int msg, long long par1
     render_object_send(actor, NULL, msg, par1, par2, 0, 0);
 }
 
-static __inline int wnd_send(void *wnd, int msg, int a, int b, int c, int d)
+static __inline intptr_t wnd_send(void *wnd, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     return ui_window_send(wnd, NULL, msg, a, b, c, d);
 }

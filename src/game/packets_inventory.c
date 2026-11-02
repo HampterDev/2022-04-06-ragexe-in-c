@@ -64,7 +64,7 @@ void game_mode_zc_ack_take_off_equip_all(struct GameMode *self, unsigned result)
 {
     (void)self;
     if ((unsigned char)((unsigned char)result - 1) <= 1) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0xf74), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0xf74), 0xff, 0, 0);
         if (g_windowMgr.equip_wnd != 0)
             ui_window_send(g_windowMgr.equip_wnd, NULL, UIM_EQUIP_REFRESH, 0x237, 0, 0, 0);
     }
@@ -97,7 +97,7 @@ void game_mode_zc_ack_extend_body_item_size(struct GameMode *self,
     case 4: msg = 0xded; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), color, 0, 0);
 }
 
 void game_mode_zc_ack_open_msg_box_extend_body_item_size(
@@ -124,7 +124,7 @@ void game_mode_zc_ack_open_msg_box_extend_body_item_size(
     case 4: msg = 0xded; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }
 
 void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result)
@@ -161,7 +161,7 @@ void game_mode_zc_ack_random_combine_item(struct GameMode *self, unsigned result
     case 7:
         wnd = ui_window_find(WID_RANDOM_COMBINE);
         if (wnd != 0)
-            ui_window_send(wnd, NULL, UIM_RANDOM_COMBINE_TEXT, (int)msg_str(0xb51), 0, 0, 0);
+            ui_window_send(wnd, NULL, UIM_RANDOM_COMBINE_TEXT, (intptr_t)msg_str(0xb51), 0, 0, 0);
         break;
     }
 }
@@ -191,7 +191,7 @@ static void notice_show(struct GameMode *self, const char *text)
     ui_window_move_safe(self->notice_wnd, x, 0x33);
     balloon->colour = REFINING_NOTICE_COLOR;
     balloon->outline = 0;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text,
                         REFINING_NOTICE_COLOR, 0, 0);
 }
 
@@ -265,16 +265,16 @@ void game_mode_zc_ack_merge_item(struct GameMode *self, const struct PACKET_ZC_A
     (void)self;
     switch (packet->result) {
     case 0:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0x87b), 0x64ffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0x87b), 0x64ffff, 0, 0);
         wnd = ui_window_find(WID_MERGE_ITEM);
         if (wnd != 0)
             ui_window_send(wnd, NULL, UIM_MERGE_ITEM_DONE, index, count, 0, 0);
         break;
     case 1:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0x87c), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0x87c), 0xff, 0, 0);
         break;
     case 2:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0x87d), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0x87d), 0xff, 0, 0);
         break;
     }
     ui_window_mgr_post_quit1(&g_windowMgr, WID_MERGE_ITEM);
@@ -337,7 +337,7 @@ void game_mode_zc_failed_get_item_from_zone_da(struct GameMode *self, const unsi
 {
     (void)self;
     (void)pkt;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(0x79e), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(0x79e), 0xff, 0, 0);
 }
 
 #define MSG_ITEM_DROPPED        0x649
@@ -363,7 +363,7 @@ void game_mode_zc_item_throw_ack(struct GameMode *self, const unsigned char *pkt
         format = msg_str(MSG_ITEM_DROPPED);
         string_init(&line);
         string_format(&line, format, string_cstr(&name), (int)packet->count);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), CHAT_COLOR_CYAN,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), CHAT_COLOR_CYAN,
                             CHAT_CHANNEL_ITEM, 0);
         string_free(&line);
         string_free(&name);
@@ -391,7 +391,7 @@ void game_mode_zc_notify_bind_on_equip(const unsigned char *pkt)
         format = msg_str(MSG_BOUND_ON_EQUIP);
         string_init(&line);
         string_format(&line, format, string_cstr(&name));
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), BOUND_ON_EQUIP_COLOR,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), BOUND_ON_EQUIP_COLOR,
                             0, 0);
         string_free(&line);
         string_free(&name);

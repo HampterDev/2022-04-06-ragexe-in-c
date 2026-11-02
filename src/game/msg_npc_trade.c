@@ -246,7 +246,7 @@ int game_mode_msg_npc_trade_closed(struct GameMode *self)
     }
     for (i = 0; i < sizeof trade_windows / sizeof trade_windows[0]; i++)
         close_window(trade_windows[i]);
-    self_msg(self, MODE_MSG_SHOW_ILLUSTRATION, (int)"", -1, 0, 0);
+    self_msg(self, MODE_MSG_SHOW_ILLUSTRATION, (intptr_t)"", -1, 0, 0);
     return 0;
 }
 

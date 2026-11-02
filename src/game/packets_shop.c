@@ -27,7 +27,7 @@
 static void chat_result(int msg, int color)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), color, 0, 0);
 }
 
 static void shop_window_refresh(void *wnd, int a, int b)
@@ -253,7 +253,7 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
     if (g_session1.channelCopId == 1) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
         ui_window_mgr_send_msg_(&g_windowMgr, 1,
-            (int)"한게임 유저는 12월 3일부로 "
+            (intptr_t)"한게임 유저는 12월 3일부로 "
                  "유료아이템 구매가 불가능합니다.",
             CHAT_COLOR_RED, 0, 0);
         return;
@@ -328,7 +328,7 @@ void game_mode_zc_pc_cash_point_update(struct GameMode *self, const unsigned cha
         string_assign_cstr(&line, text);
     if (line.size != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), color, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), color, 0, 0);
     }
     string_free(&line);
 }
@@ -379,7 +379,7 @@ void game_mode_zc_se_pc_buy_cashitem_result(struct GameMode *self, const unsigne
     }
     if (line.size != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), CHAT_COLOR_RED, 0, 0);
     }
     string_free(&line);
 }

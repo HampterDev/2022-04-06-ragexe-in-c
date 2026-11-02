@@ -427,8 +427,8 @@ void ui_tab_control_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unuse
     ui_window_mgr_release_capture(&g_windowMgr);
 }
 
-int ui_tab_control_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_tab_control_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UITabControl *self = (struct UITabControl *)window;
     struct String name;
@@ -457,7 +457,7 @@ int ui_tab_control_send_msg(struct UIWindow *window, struct UIWindow *sender, in
             old_width = self->base.width;
             ui_tab_control_relayout(self);
             if (self->base.parent)
-                ui_window_send_msg(self->base.parent, &self->base, UI_MSG_TAB_RENAMED, (int)string_cstr(&name),
+                ui_window_send_msg(self->base.parent, &self->base, UI_MSG_TAB_RENAMED, (intptr_t)string_cstr(&name),
                          self->selected, old_width > self->base.width ? old_width : 0, 0);
         }
         string_free(&name);

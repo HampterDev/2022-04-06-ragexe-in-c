@@ -123,7 +123,7 @@ void game_mode_zc_pet_egg_list(struct GameMode *self, const unsigned char *pkt)
 
         session_get_inventory_item(&g_session1, &egg, *index);
         if (egg.index != 0)
-            wnd_send(wnd, 0x1f, (int)string_cstr(&egg.id_text), egg.index, 0, 0);
+            wnd_send(wnd, 0x1f, (intptr_t)string_cstr(&egg.id_text), egg.index, 0, 0);
         item_info_destruct(&egg);
     }
     wnd_send(wnd, 0x3c, 0, 0, 0, 0);
@@ -192,7 +192,7 @@ void game_mode_zc_change_state_pet(struct GameMode *self, const unsigned char *p
             ui_pet_info_update_intimacy(g_windowMgr.pet_info_wnd);
         if (session_get_drawn_job(&g_session1) >= JOB_GANGSI && session_get_drawn_job(&g_session1) <= JOB_DARK_COLLECTOR
             && value < 100 && g_session1.petFullness < 30)
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4a4), 0x3232ff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4a4), 0x3232ff, 0, 0);
         return;
     case PET_STATE_FULLNESS:
         g_session1.petPrevFullness = g_session1.petFullness;
@@ -275,7 +275,7 @@ static void feed_line(struct ItemInfo *food, int food_id, int msg)
     name = item_info_get_name(food);
     string_init(&line);
     string_format(&line, msg_str(msg), name, left);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), FEED_COLOR_OK, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), FEED_COLOR_OK, 0, 0);
     string_free(&line);
 }
 
@@ -289,8 +289,8 @@ static void feed_failed_line(struct ItemInfo *food, int food_id, struct String *
     string_init(line);
     string_format(line, msg_str(0x24f), string_cstr(&name));
     string_free(&name);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(line), FEED_COLOR_FAIL, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_LOG_LINE, (int)string_cstr(line), FEED_COLOR_FAIL, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(line), FEED_COLOR_FAIL, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_LOG_LINE, (intptr_t)string_cstr(line), FEED_COLOR_FAIL, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -361,7 +361,7 @@ static void homun_value_line(const char *fmt, int value, unsigned color)
     if (!session_is_admin_option(&g_session1, 3))
         return;
     sprintf(line, fmt, value);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, color, 0, 0);
 }
 
 #pragma pack(push, 1)

@@ -36,7 +36,7 @@ void ui_merchant_item_log_wnd_on_process(struct UIWindow *self);
 void ui_merchant_item_log_wnd_on_draw(struct UIWindow *self);
 void ui_merchant_item_log_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_merchant_item_log_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_merchant_item_log_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_merchant_item_log_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_merchant_item_log_wnd_ops = {
     .destroy = ui_merchant_item_log_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -304,7 +304,7 @@ void ui_merchant_item_log_wnd_on_r_btn_down(struct UIWindow *window, int x, int 
     if (info.index) {
         game_current_base_mode();
         wnd = ui_window_open(ITEM_WND_ID);
-        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     }
     item_info_destruct(&info);
 }
@@ -329,8 +329,8 @@ void ui_merchant_item_log_wnd_on_process(struct UIWindow *window)
         ui_window_invalidate_base(&self->base.frame.base);
 }
 
-int ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemLogWnd *self = (struct UIMerchantItemLogWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

@@ -179,7 +179,7 @@ void ui_messenger_group_wnd_create_plate(int cell,
     ui_window_create(&plate->frame.base, 0xae, 0x34);
     plate->cell = cell;
     ui_window_mgr_add_plate(&g_windowMgr, plate);
-    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, PARTY_MSG_REFRESH, (int)member, 0, 0, 0);
+    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, PARTY_MSG_REFRESH, (intptr_t)member, 0, 0, 0);
     session_add_plate_record(&g_session1, member->aid, cell);
 }
 

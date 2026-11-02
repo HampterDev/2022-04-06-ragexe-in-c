@@ -224,8 +224,8 @@ void ui_slot_bitmap_on_create(struct UIWindow *self, int width_unused, int heigh
 void ui_slot_bitmap_on_l_btn_down(struct UIWindow *self, int x_unused, int y_unused);
 void ui_slot_bitmap_on_l_btn_dbl_clk(struct UIWindow *self, int x_unused, int y_unused);
 void ui_slot_bitmap_on_r_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-int ui_slot_bitmap_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
+intptr_t ui_slot_bitmap_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_sprite_button_destruct(struct UISpriteButton *self);
 void ui_sprite_button_destroy(struct UIWindow *window);

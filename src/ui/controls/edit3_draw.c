@@ -437,8 +437,8 @@ static int scroll_view(struct UIEditCtrl3 *self, int msg, int lines)
     return self->first_line - old;
 }
 
-int ui_edit_ctrl3_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_edit_ctrl3_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrl3 *self = (struct UIEditCtrl3 *)window;
     switch (msg) {

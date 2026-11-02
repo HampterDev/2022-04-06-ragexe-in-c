@@ -31,7 +31,7 @@ static void storage_line(int msg)
 
     memset(text, 0, 0xfa);
     sprintf(text, msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -242,7 +242,7 @@ static void storage_line_s(int msg)
 
     memset(text, 0, 0xfa);
     sprintf_s(text, 0xfa, msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, 0, 0);
 }
 
 void game_mode_enter_guild_storage_log(int result, const struct Vec *items)

@@ -78,7 +78,7 @@ void ui_merchant_mirror_item_wnd_store_info(struct UIWindow *self);
 void ui_merchant_mirror_item_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_merchant_mirror_item_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_merchant_mirror_item_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_merchant_mirror_item_wnd_ops = {
     .destroy = ui_merchant_mirror_item_wnd_destroy,
@@ -510,8 +510,8 @@ static void mirror_add_dragged(struct UIMerchantMirrorItemWnd *self)
     item_info_destruct(&info);
 }
 
-int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantMirrorItemWnd *self = (struct UIMerchantMirrorItemWnd *)window;
     switch (msg) {

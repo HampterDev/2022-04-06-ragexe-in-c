@@ -133,7 +133,7 @@ void ui_request_join_party_mgr_show_next(struct UIRequestJoinPartyMgr *self)
         ui_request_join_party_mgr_show_next(self);
         return;
     }
-    ui_window_send_msg(wnd, NULL, MSG_REQUEST_SHOW, (int)&request, 0, 0, 0);
+    ui_window_send_msg(wnd, NULL, MSG_REQUEST_SHOW, (intptr_t)&request, 0, 0, 0);
     request_mgr_pop_front(self);
 }
 
@@ -152,7 +152,7 @@ struct UIRequestJoinPartyWnd {
 void ui_request_join_party_wnd_destroy(struct UIWindow *window);
 void ui_request_join_party_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_request_join_party_wnd_on_draw(struct UIWindow *self);
-int ui_request_join_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_request_join_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_request_join_party_wnd_ops = {
     .destroy = ui_request_join_party_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -298,7 +298,7 @@ void ui_request_join_party_wnd_on_create(struct UIWindow *window, int width_unus
 
     self->block_text = add_text_viewer(wnd, 0x1f, 0x51, 0xb6, 0x2f, 0xffd7c6bc);
     ((struct UITextViewer *)self->block_text)->list.line_height = 0xf;
-    ui_window_send_msg(self->block_text, NULL, UI_MSG_ADD_TEXT, (int)msg_str(MSG_REQUEST_BLOCK_LABEL), 0x1e, 0, 0);
+    ui_window_send_msg(self->block_text, NULL, UI_MSG_ADD_TEXT, (intptr_t)msg_str(MSG_REQUEST_BLOCK_LABEL), 0x1e, 0, 0);
 
     ui_window_add_big_close_button(wnd, "", 0);
 }
@@ -342,13 +342,13 @@ static void request_show(struct UIRequestJoinPartyWnd *self, const struct PartyJ
     memset(text, 0, sizeof text);
     _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_REQUEST_TEXT),
                     request->name);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)text, 0, 0, 1);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)text, 0, 0, 1);
     ui_window_move(self->text, 0x2b, VEC_COUNT(&((struct UITextViewer *)self->text)->list.items, struct String) == 3 ? 0x14 : 0x1e);
     ui_window_invalidate_children(wnd);
 }
 
-int ui_request_join_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_request_join_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRequestJoinPartyWnd *self = (struct UIRequestJoinPartyWnd *)window;
     if (msg == MSG_REQUEST_SHOW) {
@@ -363,12 +363,12 @@ int ui_request_join_party_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         ui_request_join_party_wnd_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, REQUEST_ID_REFUSE, 0, 0, 0);
         return 0;
     case REQUEST_ID_ACCEPT:
-        mode_send_message(client_current_mode(), MODE_REQ_ANSWER_JOIN, self->char_id, 1, (int)&self->aid, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_ANSWER_JOIN, self->char_id, 1, (intptr_t)&self->aid, 0);
         break;
     case REQUEST_ID_REFUSE:
         if (self->block_box->state)
             request_mgr_block(g_requestJoinPartyMgr, self->aid);
-        mode_send_message(client_current_mode(), MODE_REQ_ANSWER_JOIN, self->char_id, 0, (int)&self->aid, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_ANSWER_JOIN, self->char_id, 0, (intptr_t)&self->aid, 0);
         break;
     default:
         return 0;
@@ -393,7 +393,7 @@ void ui_request_join_party_mgr_add_request(struct UIRequestJoinPartyMgr *self, i
     request.job = (short)job;
     if (!ui_window_find(REQUEST_JOIN_PARTY_WND_ID)) {
         wnd = ui_window_open(REQUEST_JOIN_PARTY_WND_ID);
-        ui_window_send(wnd, NULL, MSG_REQUEST_SHOW, (int)&request, 0, 0, 0);
+        ui_window_send(wnd, NULL, MSG_REQUEST_SHOW, (intptr_t)&request, 0, 0, 0);
         return;
     }
     list_push_back(&self->requests, &request, sizeof request);

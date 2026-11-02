@@ -56,8 +56,8 @@ void ui_list_box_destruct(struct UIListBox *self) { abort(); }
 int ui_list_box_hit_line(struct UIListBox *self, int x, int y) { abort(); }
 void ui_list_box_on_wheel(struct UIWindow *self, int delta) { abort(); }
 void ui_list_box_resize(struct UIWindow *self, int width, int height) { abort(); }
-int ui_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                 int val1, int val2, int val3, int val4) { abort(); }
+intptr_t ui_list_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                 intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4) { abort(); }
 void ui_list_box_update_scroll_bar(struct UIListBox *self) { abort(); }
 void ui_list_box_on_r_btn_down(struct UIWindow *self, int x, int y) { abort(); }
 struct UIScrollBar *ui_scroll_bar_construct(struct UIScrollBar *self) { abort(); }

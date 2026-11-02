@@ -20,7 +20,7 @@ struct Renderer *g_renderer = {0};
 struct Session g_session1 = {0};
 float g_sinTable[361] = {0};
 int game_copy_view_matrix(float matrix[12]) { abort(); }
-int game_send_message(int message, int a, int b, int c, int d) { abort(); }
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 void particle_free(struct Particle *p) { abort(); }
 struct Particle *particle_new(Vec3 pos, int list_flags) { abort(); }
 void *vec_push(struct Vec *v, const void *elem, size_t size) { abort(); }

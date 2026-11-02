@@ -20,7 +20,7 @@ void ui_mileage_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_mileage_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_mileage_wnd_on_mouse_hover(struct UIWindow *self, int x_unused, int y_unused);
 void ui_mileage_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_mileage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mileage_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mileage_wnd_ops = {
     .destroy = ui_mileage_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -218,8 +218,8 @@ void ui_mileage_wnd_on_l_btn_up(struct UIWindow *self, int x, int y)
     send_packet(&pkt, sizeof pkt);
 }
 
-int ui_mileage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                    int val2, int val3, int val4)
+intptr_t ui_mileage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                    intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMileageWnd *self = (struct UIMileageWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

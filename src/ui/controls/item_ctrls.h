@@ -44,8 +44,8 @@ void ui_slot_bmp_button_on_draw(struct UIWindow *self);
 void ui_slot_bmp_button_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_slot_bmp_button_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_slot_bmp_button_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_slot_bmp_button_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                       int val1, int val2, int val3, int val4);
+intptr_t ui_slot_bmp_button_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                       intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 struct UISlotBmpButton *ui_slot_bmp_button_construct(struct UISlotBmpButton *self,
                                                              int occupied);
 

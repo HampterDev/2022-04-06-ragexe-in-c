@@ -110,7 +110,7 @@ void ui_menu_icon_wnd_on_draw(struct UIWindow *self);
 void ui_menu_icon_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_menu_icon_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_menu_icon_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_menu_icon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_menu_icon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 struct UIWindow *ui_menu_icon_wnd_hit_test(struct UIWindow *self, int x, int y);
 const struct UIWindowOps ui_menu_icon_wnd_ops = {
     .destroy = ui_menu_icon_wnd_destroy,
@@ -443,8 +443,8 @@ static void menu_mark(struct UIMenuIconWnd *self, int id, int on)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIMenuIconWnd *self = (struct UIMenuIconWnd *)window;
     if (msg == MENU_MSG_TOGGLE) {
@@ -511,10 +511,10 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             break;
         case MENU_ID_MAIL:
             if (ui_get_window(WND_MAIL_BLOCK_1))
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_MAIL_BLOCK_1),
                                       MAIL_BLOCK_COLOUR, 0, 0);
             else if (ui_get_window(WND_MAIL_BLOCK_2))
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_2),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_MAIL_BLOCK_2),
                                       MAIL_BLOCK_COLOUR, 0, 0);
             else
                 ui_menu_icon_wnd_toggle(WND_MAIL);

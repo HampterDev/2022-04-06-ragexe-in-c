@@ -83,7 +83,7 @@ void ui_seek_party_mb_wnd_destroy(struct UIWindow *window);
 void ui_seek_party_mb_wnd_store_info(struct UIWindow *self);
 void ui_seek_party_mb_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_seek_party_mb_wnd_on_draw(struct UIWindow *self);
-int ui_seek_party_mb_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_seek_party_mb_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_seek_party_mb_wnd_ops = {
     .destroy = ui_seek_party_mb_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -538,8 +538,8 @@ static void submit(struct UISeekPartyMBWnd *self)
     string_free(&text);
 }
 
-int ui_seek_party_mb_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_seek_party_mb_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISeekPartyMBWnd *self = (struct UISeekPartyMBWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

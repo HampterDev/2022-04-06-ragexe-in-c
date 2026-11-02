@@ -26,7 +26,7 @@ enum {
 
 static void config_line(int msg_id)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg_id), CONFIG_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg_id), CONFIG_COLOR, 0, 0);
 }
 
 static void config_notify(unsigned char open_equip_window, unsigned char call_allowed)

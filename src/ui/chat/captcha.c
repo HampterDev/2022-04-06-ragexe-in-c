@@ -68,7 +68,7 @@ struct UICaptchaPreviewWnd;
 void ui_captcha_preview_wnd_destroy(struct UIWindow *window);
 void ui_captcha_preview_wnd_on_create(struct UIWindow *window, int width_unused, int height_unused);
 void ui_captcha_preview_wnd_on_draw(struct UIWindow *window);
-int ui_captcha_preview_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_captcha_preview_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_captcha_preview_wnd_ops = {
     .destroy = ui_captcha_preview_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -246,8 +246,8 @@ void ui_captcha_preview_wnd_on_draw(struct UIWindow *window)
     ui_window_clear_canvas(&self->frame.base, 0xffffffff);
 }
 
-int ui_captcha_preview_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_captcha_preview_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICaptchaPreviewWnd *self = (struct UICaptchaPreviewWnd *)window;
     if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
@@ -293,7 +293,7 @@ void ui_macro_detector_wnd_on_draw(struct UIWindow *window);
 void ui_macro_detector_wnd_on_l_btn_down(struct UIWindow *window, int x, int y);
 void ui_macro_detector_wnd_on_mouse_move(struct UIWindow *window, int x, int y);
 void ui_macro_detector_wnd_on_l_btn_up(struct UIWindow *window, int x, int y);
-int ui_macro_detector_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_macro_detector_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_macro_detector_wnd_ops = {
     .destroy = ui_macro_detector_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -517,8 +517,8 @@ void ui_macro_detector_wnd_on_process(struct UIWindow *window)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_macro_detector_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_macro_detector_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMacroDetectorWnd *self = (struct UIMacroDetectorWnd *)window;
     if (msg == 0) {

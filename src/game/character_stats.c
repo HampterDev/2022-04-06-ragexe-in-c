@@ -164,7 +164,7 @@ STATIC_ASSERT(PACKET_ZC_ACK_STATUS_GM_plus_aspd, offsetof(struct PACKET_ZC_ACK_S
 
 static void gm_status_line(const char *text, unsigned color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, (int)color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, (int)color, 0, 0);
 }
 
 void game_mode_ack_status_gm(const struct PACKET_ZC_ACK_STATUS_GM *packet)

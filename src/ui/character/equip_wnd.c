@@ -374,7 +374,7 @@ void ui_equip_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_equip_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_equip_wnd_ops = {
     .destroy = ui_equip_wnd_destroy,
@@ -949,7 +949,7 @@ void ui_equip_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (item.index) {
         struct UIWindow *info_wnd = ui_window_open(ITEM_INFO_WND_ID);
 
-        ui_window_send(info_wnd, NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+        ui_window_send(info_wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
@@ -995,8 +995,8 @@ static void equip_on_off_button(struct UIEquipWnd *self)
             return;
         }
         ui_window_send_msg(menu, NULL, MENU_MSG_RESET, 0, 0, 0, 0);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)"카트 해제", 0, 0, 0);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)string_cstr(&what), 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (intptr_t)"카트 해제", 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (intptr_t)string_cstr(&what), 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, 0xa, 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
         ui_menu_set_hold(menu);
@@ -1121,8 +1121,8 @@ static void equip_on_command(struct UIEquipWnd *self, struct UIWindow *sender, i
     }
 }
 
-int ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UIEquipWnd *self = (struct UIEquipWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -1327,7 +1327,7 @@ void ui_equip_wnd_drag_and_drop(struct UIWindow *self, int x, int y, const struc
         if (worn_as_ammo(info.type))
             mode_send_message(mode, MODE_REQ_WEAR_AMMO, drag->index, info.equip_location, 0, 0);
         else if (from_set == 1)
-            mode_send_message(mode, MODE_REQ_WEAR_FROM_SET, (int)&info, 0, 0, 0);
+            mode_send_message(mode, MODE_REQ_WEAR_FROM_SET, (intptr_t)&info, 0, 0, 0);
         else if (info.identified && info.equip_location && !info.worn_location)
             mode_send_message(mode, MODE_REQ_WEAR, drag->index, info.equip_location, 0, 0);
     }

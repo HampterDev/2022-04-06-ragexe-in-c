@@ -12,7 +12,7 @@ void ui_word_display_wnd_destroy(struct UIWindow *window);
 void ui_word_display_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_word_display_wnd_on_process(struct UIWindow *self);
 void ui_word_display_wnd_on_draw(struct UIWindow *self);
-int ui_word_display_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1, int val2_unused, int val3_unused, int val4_unused);
+intptr_t ui_word_display_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1, intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused);
 const struct UIWindowOps ui_word_display_wnd_ops = {
     .destroy = ui_word_display_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -105,8 +105,8 @@ void ui_word_display_wnd_on_draw(struct UIWindow *window)
                         ui_skin_bitmap(UI_SKIN "전장적표시.bmp"  ), 1);
 }
 
-int ui_word_display_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
-                                        int val1, int val2_unused, int val3_unused, int val4_unused)
+intptr_t ui_word_display_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
+                                        intptr_t val1, intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused)
 {
     struct UIWordDisplayWnd *self = (struct UIWordDisplayWnd *)window;
     if (msg == WORD_DISPLAY_MSG_ACTOR)

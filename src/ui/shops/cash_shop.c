@@ -40,7 +40,7 @@ void ui_cash_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const
 void ui_cash_shop_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_cash_shop_wnd_on_process(struct UIWindow *self);
 void ui_cash_shop_wnd_on_draw(struct UIWindow *self);
-int ui_cash_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_cash_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_cash_shop_wnd_ops = {
     .destroy = ui_cash_shop_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -264,7 +264,7 @@ void ui_cash_shop_wnd_on_draw(struct UIWindow *window)
 void u_in_cash_call_wnd_destroy(struct UIWindow *window);
 void u_in_cash_call_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void u_in_cash_call_wnd_on_draw(struct UIWindow *self);
-int u_in_cash_call_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t u_in_cash_call_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps u_in_cash_call_wnd_ops = {
     .destroy = u_in_cash_call_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -600,7 +600,7 @@ static void ui_cash_shop_wnd_layout_page(struct UICashShopWnd *self)
             y = (int)i / self->page_columns * 0x7f;
         }
         ui_window_move(tile, (int)i % self->page_columns * 0xaf + 8, y + 0x6b);
-        ui_window_send_msg(tile, &self->frame.base, CASH_MSG_SET_GOODS, (int)LIST_VALUE(node, struct ItemInfo), self->tab, 0, 0);
+        ui_window_send_msg(tile, &self->frame.base, CASH_MSG_SET_GOODS, (intptr_t)LIST_VALUE(node, struct ItemInfo), self->tab, 0, 0);
         node = node->next;
         tile_count = (unsigned)VEC_COUNT(&self->tiles, struct UIWindow *);
     }
@@ -655,7 +655,7 @@ static void drop_on_shop(struct UICashShopWnd *self)
 
         if (line != lines->last) {
             if (line->count > drag->drop_count)
-                ui_cash_shop_wnd_cart_send_msg(self->cart, &self->frame.base, CASH_MSG_ADD, (int)line, -drag->drop_count, 0, 0);
+                ui_cash_shop_wnd_cart_send_msg(self->cart, &self->frame.base, CASH_MSG_ADD, (intptr_t)line, -drag->drop_count, 0, 0);
             else
                 ui_cash_shop_wnd_cart_send_msg(self->cart, &self->frame.base, CASH_MSG_REMOVE, item_info_get_item_id(line),
                                                0, 0, 0);
@@ -682,7 +682,7 @@ static void drop_on_shop(struct UICashShopWnd *self)
         }
         goods = find_goods(&self->goods, &drag->name);
         if (goods)
-            ui_cash_shop_wnd_cart_send_msg(self->cart, &self->frame.base, CASH_MSG_ADD, (int)goods, drag->drop_count, 0, 0);
+            ui_cash_shop_wnd_cart_send_msg(self->cart, &self->frame.base, CASH_MSG_ADD, (intptr_t)goods, drag->drop_count, 0, 0);
     }
     mode_send_message(mode, MODE_REQ_DRAG_END, 0, 0, 0, 0);
 }
@@ -843,8 +843,8 @@ static void tab_clicked(struct UICashShopWnd *self, struct UIWindow *sender)
     RegCloseKey(key);
 }
 
-int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICashShopWnd *self = (struct UICashShopWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -963,8 +963,8 @@ int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 }
 
 #define UI_MSG_BUTTON 6
-int u_in_cash_call_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                       int val1, int val2, int val3, int val4)
+intptr_t u_in_cash_call_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                       intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     if (msg != UI_MSG_BUTTON)
         return ui_window_send_msg_base(self, sender, msg, val1, val2, val3, val4);

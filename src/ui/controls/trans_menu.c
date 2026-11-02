@@ -208,8 +208,8 @@ void ui_trans_menu_wnd_on_mouse_move(struct UIWindow *window, int x, int y)
         ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_trans_menu_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_trans_menu_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UITransMenuWnd *self = (struct UITransMenuWnd *)window;
     if (msg != TRANS_MENU_MSG_CHOSEN)

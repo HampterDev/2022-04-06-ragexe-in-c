@@ -146,7 +146,7 @@ void game_mode_on_init(struct Mode *mode, const char *map)
     memset(self->sit_times, 0, sizeof self->sit_times);
     if (g_session1.autoSaveChat != 0 && session_is_admin_option(&g_session1, 7) != 0) {
         sprintf(line, "Now Auto chat Save System is ENABLED.");
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)line, 0xffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)line, 0xffff, 0, 0);
     }
     game_mode_add_schedules();
     if (session_cash_shop_goods_empty(&g_session1)) {
@@ -163,7 +163,7 @@ void game_mode_on_init(struct Mode *mode, const char *map)
         session_set_pair(&g_session1, 6, 0);
         memset(line, 0, sizeof line);
         _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdfa), g_windowMgr.show_shop_titles == 1 ? "ON" : "OFF");
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)line, 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)line, 0xff, 0, 0);
     }
     if (session_get_instant_var(&g_session1, 0xb) == 1) {
         game_mode_reblock_whispers(self);

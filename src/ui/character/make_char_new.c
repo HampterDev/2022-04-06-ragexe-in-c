@@ -65,7 +65,7 @@ void ui_new_make_char_wnd_destroy(struct UIWindow *window);
 void ui_new_make_char_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_new_make_char_wnd_on_process(struct UIWindow *self);
 void ui_new_make_char_wnd_on_draw(struct UIWindow *self);
-int ui_new_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_new_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_new_make_char_wnd_ops = {
     .destroy = ui_new_make_char_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -558,12 +558,12 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         if (blank_edge == 1)
             box(0xc7);
     }
-    mode_send_message(client_current_mode(), LOGIN_REQ_NAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_NAME, (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
     for (i = 0; i < 6; i++)
         looks.stats[i] = self->info.stats[i];
     looks.head_palette = self->info.head_palette;
     looks.head = self->info.head;
-    mode_send_message(client_current_mode(), LOGIN_REQ_LOOKS, (int)&looks, 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_LOOKS, (intptr_t)&looks, 0, 0, 0);
 }
 
 static void on_race(struct UINewMakeCharWnd *self, struct UIWindow *sender)
@@ -661,8 +661,8 @@ static void on_hair(struct UINewMakeCharWnd *self, struct UIWindow *sender)
     }
 }
 
-int ui_new_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                        int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_new_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                        int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewMakeCharWnd *self = (struct UINewMakeCharWnd *)window;
     if (msg == UI_MSG_DEFAULT_BUTTON) {

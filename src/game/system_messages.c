@@ -26,7 +26,7 @@ enum {
 
 static void chat(int msg, const char *text, int colour, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, msg, (int)text, colour, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, msg, (intptr_t)text, colour, channel, 0);
 }
 
 static int is_warning(unsigned short msg_id)
@@ -118,7 +118,7 @@ void game_mode_on_msg_value_string(struct GameMode *self, unsigned short msg_id,
     string_init(&line);
     string_format(&line, msg_str(msg_id), value);
     if (line.size != 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), color,
                             msg_id == MSG_CALL_BLOCKED ? CHAT_CHANNEL_CALL_NOTICE : 0, 0);
     string_free(&line);
 }
@@ -353,7 +353,7 @@ void game_mode_zc_skill_msg(struct GameMode *self, const struct PACKET_ZC_SKILLM
     default:
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(line), SKILLMSG_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(line), SKILLMSG_COLOR,
                         CHAT_CHANNEL_SKILLMSG, 0);
 }
 
@@ -382,8 +382,8 @@ void game_mode_zc_hunting_list(struct GameMode *self, const struct PACKET_ZC_HUN
     memcpy(text, packet->text, len);
     text[len] = 0;
     sprintf(line, "=========== HUNTING LIST =============");
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, HUNTING_FRAME_COLOR, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, HUNTING_TEXT_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, HUNTING_FRAME_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, HUNTING_TEXT_COLOR, 0, 0);
     sprintf(line, "========================================");
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, HUNTING_FRAME_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, HUNTING_FRAME_COLOR, 0, 0);
 }

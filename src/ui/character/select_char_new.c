@@ -89,7 +89,7 @@ void ui_new_select_char_wnd_on_process(struct UIWindow *self);
 void ui_new_select_char_wnd_on_draw(struct UIWindow *self);
 BYTE ui_new_select_char_wnd_render(struct UIWindow *self, int force);
 void ui_new_select_char_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_new_select_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_new_select_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_new_select_char_wnd_ops = {
     .destroy = ui_new_select_char_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -1277,7 +1277,7 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
         char text[0x104];
 
         memset(text, 0, sizeof text);
-        mode_send_message(client_current_mode(), LOGIN_REQ_ERROR_TEXT, (int)text, 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_ERROR_TEXT, (intptr_t)text, 0, 0, 0);
         ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
         break;
     }
@@ -1295,7 +1295,7 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
         info = ui_char_info(g_loginCharInfo.slot);
         wnd = ui_make_window(0x80);
         if (wnd)
-            ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (int)info, 0, 0, 0);
+            ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (intptr_t)info, 0, 0, 0);
         break;
     }
     case ID_NAME_CHANGED:
@@ -1347,8 +1347,8 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
     }
 }
 
-int ui_new_select_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                          int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_new_select_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                          int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
     if (g_windowMgr.second_password_edit_wnd || g_windowMgr.second_password_input_wnd || ui_get_window(0x116))

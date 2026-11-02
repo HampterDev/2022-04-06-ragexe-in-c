@@ -159,7 +159,7 @@ static void notice_echo(struct String *line, char *buf, size_t size, const char 
     string_append_cstr(line, buf);
     string_append_cstr(line, " ]");
     if (strlen(buf) != 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(line), NOTICE_ECHO_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(line), NOTICE_ECHO_COLOR, 0, 0);
 }
 
 void game_mode_zc_guild_notice(struct GameMode *self, struct PacketGuildNotice *packet)

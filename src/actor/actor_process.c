@@ -261,9 +261,9 @@ void game_actor_process_will_be_attacked(struct GameActor *self)
                                 hit->damage);
             }
             if (strlen(own))
-                ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)own, 0xffff, 0xf, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)own, 0xffff, 0xf, 0);
             if (strlen(party))
-                ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)party, 0xc8c8ff, 0x10, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)party, 0xc8c8ff, 0x10, 0);
             string_free(&attacker_name);
             string_free(&target_name);
         }

@@ -297,7 +297,7 @@ static void sm_shop_title(struct GameActor *self, struct UIWindow **slot, int bu
 
     if (w == NULL)
         w = sm_window(slot, (struct UIWindow *)ui_merchant_shop_title_new(buying), 0x8c, 0x22);
-    ui_window_send_msg(w, NULL, 0x22, (int)text, self->balloon_font, 0, 0);
+    ui_window_send_msg(w, NULL, 0x22, (intptr_t)text, self->balloon_font, 0, 0);
     ui_window_send_msg(*slot, NULL, 0x1c, self->aid, 0, 0, 0);
     w = *slot;
     ui_window_move(w, self->screen_x - 0x46, self->screen_y - scale_y_from480(0x6e));

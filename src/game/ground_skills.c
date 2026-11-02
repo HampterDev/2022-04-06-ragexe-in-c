@@ -228,7 +228,7 @@ void game_mode_on_notify_ground_skill(struct GameMode *self, const struct Packet
         monster_ground_skill(caster, job, packet);
         return;
     }
-    mode_send_msg(self, MODE_MSG_GROUND_SKILL, packet->skill_id, (int)caster, packet->level, 0);
+    mode_send_msg(self, MODE_MSG_GROUND_SKILL, packet->skill_id, (intptr_t)caster, packet->level, 0);
 
     switch (packet->skill_id) {
     case SKILL_GOSPEL:

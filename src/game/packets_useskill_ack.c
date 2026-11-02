@@ -24,14 +24,10 @@ void game_mode_on_use_skill_ack(struct GameMode *self, const struct PacketUseSki
     if (version == 0) {
         game_mode_zc_useskill_ack(self, packet->src_aid, packet->target_aid, packet->x, packet->y,
                                    packet->skill_id, packet->property, packet->delay_ms, is_disposable, 0);
-    } else if (version == 1) {
+    } else {
         is_disposable = packet->is_disposable;
         game_mode_zc_useskill_ack(self, packet->src_aid, packet->target_aid, packet->x, packet->y,
                                    packet->skill_id, packet->property, packet->delay_ms, is_disposable, 0);
-    } else {
-        int raw = (int)packet;
-
-        game_mode_zc_useskill_ack(self, (unsigned)raw, (unsigned)raw, raw, raw, raw, raw, raw, is_disposable, 0);
     }
 }
 

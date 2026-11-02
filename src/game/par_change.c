@@ -91,7 +91,7 @@ struct PACKET_ZC_PAR_CHANGE {
 
 static void chat_line(const char *text, int color, int kind)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)text, color, kind, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)text, color, kind, 0);
 }
 
 static void weight_icon(void)

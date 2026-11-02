@@ -10,7 +10,7 @@ void ui_item_collection_comparison_wnd_on_create(struct UIWindow *self, int widt
 void ui_item_collection_comparison_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_collection_comparison_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_item_collection_comparison_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_collection_comparison_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_collection_comparison_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_collection_comparison_wnd_ops = {
     .destroy = ui_item_collection_comparison_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -60,7 +60,7 @@ void ui_combined_card_item_collection_wnd_move(struct UIWindow *self, int x, int
 void ui_combined_card_item_collection_wnd_store_info(struct UIWindow *self);
 void ui_combined_card_item_collection_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_combined_card_item_collection_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_combined_card_item_collection_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_combined_card_item_collection_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_combined_card_item_collection_wnd_ops = {
     .destroy = ui_combined_card_item_collection_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -109,7 +109,7 @@ void ui_combined_card_item_collection_comparison_wnd_destroy(struct UIWindow *wi
 void ui_combined_card_item_collection_comparison_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_combined_card_item_collection_comparison_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_combined_card_item_collection_comparison_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_combined_card_item_collection_comparison_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_combined_card_item_collection_comparison_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_combined_card_item_collection_comparison_wnd_ops = {
     .destroy = ui_combined_card_item_collection_comparison_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -205,8 +205,8 @@ void ui_item_collection_comparison_wnd_on_r_btn_down(struct UIWindow *window, in
     item_info_destruct(&card);
 }
 
-int ui_item_collection_comparison_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                      int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_item_collection_comparison_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                      int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemCollectionWnd *self = (struct UIItemCollectionWnd *)window;
     if (msg != UI_MSG_SET_INFO)
@@ -280,9 +280,9 @@ void ui_combined_card_item_collection_wnd_on_l_btn_up(struct UIWindow *window, i
     }
 }
 
-int ui_combined_card_item_collection_wnd_send_msg(struct UIWindow *window,
-                                                       struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                                       int val4)
+intptr_t ui_combined_card_item_collection_wnd_send_msg(struct UIWindow *window,
+                                                       struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                                       intptr_t val4)
 {
     struct UICombinedCardItemCollectionWnd *self = (struct UICombinedCardItemCollectionWnd *)window;
     if (msg != UI_MSG_SET_INFO)
@@ -329,9 +329,9 @@ void ui_combined_card_item_collection_comparison_wnd_on_create(struct UIWindow *
     ui_window_invalidate(self->text);
 }
 
-int ui_combined_card_item_collection_comparison_wnd_send_msg(struct UIWindow *window,
-                                                                  struct UIWindow *sender, int msg, int val1,
-                                                                  int val2, int val3, int val4)
+intptr_t ui_combined_card_item_collection_comparison_wnd_send_msg(struct UIWindow *window,
+                                                                  struct UIWindow *sender, int msg, intptr_t val1,
+                                                                  intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemCollectionWnd *self = (struct UIItemCollectionWnd *)window;
     if (msg != UI_MSG_SET_INFO)

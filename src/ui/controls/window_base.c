@@ -118,8 +118,8 @@ void ui_window_on_mouse_shape_base(struct UIWindow *self, int x_unused, int y_un
     mode_set_cursor_action(client_current_mode(), CURSOR_ARROW);
 }
 
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1_unused,
-                                int val2_unused, int val3_unused, int val4_unused)
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1_unused,
+                                intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused)
 {
     if ((msg == UI_MSG_DEFAULT_BUTTON || msg == UI_MSG_CANCEL_BUTTON) && self->parent)
         ui_window_send_msg(self->parent, self, msg, 0, 0, 0, 0);

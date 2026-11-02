@@ -25,7 +25,7 @@ void ui_window_on_mouse_shape_base(struct UIWindow * arg0, int arg1, int arg2) {
 void ui_window_on_process_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_render_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_save_pos_base(struct UIWindow * arg0) { abort(); }
-int ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_window_set_show_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_render_overlay_base(struct UIWindow * arg0) { abort(); }
 void ui_window_snap_base(struct UIWindow * arg0) { abort(); }
@@ -64,7 +64,7 @@ int ui_list_box_hit_line(struct UIListBox * arg0, int arg1, int arg2) { abort();
 void ui_list_box_on_create(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_list_box_on_wheel(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_list_box_resize(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
-int ui_list_box_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_list_box_send_msg(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_list_box_on_r_btn_down(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_skin_color_chip(struct SkinMgr * arg0, int arg1, int arg2, int * arg3, int * arg4, int * arg5) { abort(); }
 const char * ui_skin_path(const char * arg0) { abort(); }

@@ -17,7 +17,7 @@ struct Vec;
 struct UIWindow;
 void ui_pet_egg_list_wnd_destroy(struct UIWindow *window);
 void ui_pet_egg_list_wnd_on_draw(struct UIWindow *self);
-int ui_pet_egg_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_pet_egg_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_pet_egg_list_wnd_ops = {
     .destroy = ui_pet_egg_list_wnd_destroy,
@@ -98,8 +98,8 @@ void ui_pet_egg_list_wnd_on_draw(struct UIWindow *window)
     ui_item_identify_wnd_on_draw((struct UIWindow *)(&self->list));
 }
 
-int ui_pet_egg_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
-                                       int val1, int val2, int val3, int val4)
+intptr_t ui_pet_egg_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
+                                       intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPetEggListWnd *self = (struct UIPetEggListWnd *)window;
     struct UIItemIdentifyWnd *list = &self->list;
@@ -141,7 +141,7 @@ struct UIMakingArrowListWnd {
 
 void ui_making_arrow_list_wnd_destroy(struct UIWindow *window);
 void ui_making_arrow_list_wnd_on_draw(struct UIWindow *self);
-int ui_making_arrow_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_making_arrow_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_making_arrow_list_wnd_ops = {
     .destroy = ui_making_arrow_list_wnd_destroy,
@@ -228,8 +228,8 @@ static void making_request(struct UIMakingArrowListWnd *self, int item_id)
         mode_send_message(g_modeMgr.curMode, GAME_REQ_MAKE_ITEM, item_id, self->kind, 0, 0);
 }
 
-int ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused,
-                                            int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_making_arrow_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused,
+                                            int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMakingArrowListWnd *self = (struct UIMakingArrowListWnd *)window;
     struct UIItemIdentifyWnd *list = &self->list;
@@ -289,7 +289,7 @@ struct UISpellListWnd {
 
 void ui_spell_list_wnd_destroy(struct UIWindow *window);
 void ui_spell_list_wnd_on_draw(struct UIWindow *self);
-int ui_spell_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_spell_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_spell_list_wnd_ops = {
     .destroy = ui_spell_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -407,8 +407,8 @@ static void spell_request(struct UISpellListWnd *self, int skill_id)
         mode_send_message(g_modeMgr.curMode, GAME_REQ_SPELL_KIND, skill_id, self->kind, 0, 0);
 }
 
-int ui_spell_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
-                                      int val1, int val2, int val3, int val4)
+intptr_t ui_spell_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender_unused, int msg,
+                                      intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISpellListWnd *self = (struct UISpellListWnd *)window;
     struct UIItemIdentifyWnd *list = &self->list;
@@ -463,7 +463,7 @@ void ui_item_composition_wnd_destroy(struct UIWindow *window);
 void ui_item_composition_wnd_store_info(struct UIWindow *self);
 void ui_item_composition_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_item_composition_wnd_on_draw(struct UIWindow *self);
-int ui_item_composition_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_composition_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_composition_wnd_ops = {
     .destroy = ui_item_composition_wnd_destroy,
@@ -587,8 +587,8 @@ static void composition_set_card(struct UIItemCompositionWnd *self, int card_ind
     item_info_destruct(&card);
 }
 
-int ui_item_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_item_composition_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemCompositionWnd *self = (struct UIItemCompositionWnd *)window;
     struct UIItemIdentifyWnd *list = &self->list;

@@ -372,7 +372,7 @@ void rag_earth_spike(struct RagEffect *self, char variant)
     quake_a = 1.0f;
     quake_b = 0.24f;
     quake_c = 0.2f;
-    game_send_message(0x87, (int)&quake_a, (int)&quake_b, (int)&quake_c, 0);
+    game_send_message(0x87, (intptr_t)&quake_a, (intptr_t)&quake_b, (intptr_t)&quake_c, 0);
 
     p = self->last_prim = rag_launch_prim(self, 9, 0.0f, 0.0f, 0.0f);
     if (!p)

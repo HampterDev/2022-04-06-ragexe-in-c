@@ -82,7 +82,7 @@ struct UIWindow *ui_window_open(int id)
     opens++;
     return (struct UIWindow *)(uintptr_t)id;
 }
-int ui_window_send(struct UIWindow *w, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *w, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(w && !sender && msg == 0x17 && !a && !b && !c && !d);
     messages++;

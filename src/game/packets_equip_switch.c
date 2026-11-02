@@ -70,7 +70,7 @@ static void item_chat_line(const struct ItemInfo *item, int msg_id)
     item_info_get_display_name(item, &name);
     string_init(&line);
     string_format(&line, "%s%s", string_cstr(&name), msg_str(msg_id));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)string_cstr(&line), CHAT_COLOR_EQUIP, 6, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)string_cstr(&line), CHAT_COLOR_EQUIP, 6, 0);
     string_free(&line);
     string_free(&name);
 }
@@ -82,7 +82,7 @@ void game_mode_on_alt_equipment_equip(struct GameMode *self, const struct Packet
     if (packet->result != 0) {
         const char *text = msg_str(packet->result == 3 ? MSG_ALT_EQUIP_BUSY : MSG_ALT_EQUIP_FAILED);
 
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)text, CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)text, CHAT_COLOR_RED, 0, 0);
         return;
     }
     session_find_item_for_switch(&g_session1, &item, packet->index, packet->position);
@@ -107,7 +107,7 @@ void game_mode_on_alt_equipment_remove(struct GameMode *self, const struct Packe
         item_chat_line(&item, MSG_ALT_EQUIP_REMOVED);
         break;
     case 1:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(MSG_ALT_EQUIP_BUSY), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(MSG_ALT_EQUIP_BUSY), CHAT_COLOR_RED, 0, 0);
         take_out_of_set(&item, packet->position);
         break;
     }
@@ -147,7 +147,7 @@ void game_mode_on_alt_equipment_switch_ack(struct GameMode *self, const struct P
         return;
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT,
-                        (int)msg_str(packet->result == 1 ? MSG_ALT_EQUIP_BUSY : MSG_ALT_SWITCH_FAILED),
+                        (intptr_t)msg_str(packet->result == 1 ? MSG_ALT_EQUIP_BUSY : MSG_ALT_SWITCH_FAILED),
                         CHAT_COLOR_RED, 0, 0);
 }
 

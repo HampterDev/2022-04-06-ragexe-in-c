@@ -33,7 +33,7 @@ char *msg_str(int id)
 }
 const char *session_character_name(const struct Session *session) { assert(session == &g_session1); return "Self"; }
 struct Mode *client_current_mode(void) { return (struct Mode *)&mode; }
-int mode_send_message(struct Mode *self, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *self, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(self == (struct Mode *)&mode && message == CMODE_MSG_WHISPER && !b && !c && !d);
     string_append_format(&transcript, "away:%s:%s\n", (const char *)a, string_cstr(&g_windowMgr.chat_line));
@@ -53,7 +53,7 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *mgr, const
     assert(mgr == &g_windowMgr && colour == COLOUR_WHISPER_IN_WND);
     string_append_format(&transcript, "window:%s:%d:%s\n", name, cid, line); return window_takes;
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int message, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mgr == &g_windowMgr);
     if (message == UIM_REFRESH) { assert(!a && !b && !c && !d); string_append_format(&transcript, "refresh\n"); }

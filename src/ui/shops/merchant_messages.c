@@ -41,7 +41,7 @@
 
 static void show_item_window(struct ItemInfo *info)
 {
-    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)info, 0, 0, 0);
+    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)info, 0, 0, 0);
 }
 
 static int hover_at(struct UIItemBaseWnd *base, int *hover, int x, int y)
@@ -259,8 +259,8 @@ void ui_merchant_item_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int
     ui_window_send_msg(g_windowMgr.item_drop_cnt_wnd, NULL, COUNT_MSG_OPEN, COUNT_FOR_SHOP, 0, 0, 0);
 }
 
-int ui_merchant_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemShopWnd *self = (struct UIMerchantItemShopWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -365,8 +365,8 @@ static void my_shop_close(struct UIMerchantItemMyShopWnd *self)
     session_clear_own_store_items(&g_session1);
 }
 
-int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemMyShopWnd *self = (struct UIMerchantItemMyShopWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -448,8 +448,8 @@ int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWind
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
 
-int ui_merchant_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_merchant_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemWnd *self = (struct UIMerchantItemWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

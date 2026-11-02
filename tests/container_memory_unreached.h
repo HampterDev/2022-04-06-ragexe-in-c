@@ -2,11 +2,11 @@
 struct UIWindowMgr g_windowMgr;
 struct UIWindow * ui_window_find(int arg0) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
-int ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_window_refresh(struct UIWindow * arg0) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, const char * arg6, int arg7, int arg8, int arg9) { abort(); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr * arg0, int arg1) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 struct String * item_info_get_display_name(const struct ItemInfo * arg0, struct String * arg1) { abort(); }
 struct ItemInfo * item_info_construct(struct ItemInfo * arg0) { abort(); }
 struct ItemInfo * item_info_copy(struct ItemInfo * arg0, const struct ItemInfo * arg1) { abort(); }

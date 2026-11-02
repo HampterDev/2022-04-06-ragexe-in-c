@@ -22,7 +22,7 @@ char renew_quest_set_active(struct RenewQuestMgr *quests, unsigned id, char acti
 void renew_quest_read_ongoing(struct RenewQuestMgr *quests, unsigned id, struct RenewQuestB *info) { abort(); }
 void renew_quest_refresh_windows(void) { abort(); }
 struct RenewQuestB *renew_quest_ongoing_info(struct RenewQuestMgr *quests, unsigned id) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *mgr, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 const char *session_get_job_name(struct Session *s, unsigned job, int max_len) { abort(); }
 struct RenewQuestBase *renew_quest_base_construct(struct RenewQuestBase *info) { abort(); }
 void renew_quest_base_destruct(struct RenewQuestBase *info) { abort(); }

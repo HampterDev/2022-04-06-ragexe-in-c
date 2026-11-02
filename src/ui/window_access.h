@@ -1,6 +1,8 @@
 #ifndef UI_WINDOW_ACCESS_H
 #define UI_WINDOW_ACCESS_H
 
+#include <stdint.h>
+
 struct UIWindow;
 struct UIWindowMgr;
 
@@ -18,8 +20,8 @@ struct UIWindow *ui_window_mgr_focus_root(struct UIWindowMgr *manager);
 struct UIWindow *ui_window_find(int id);
 struct UIWindow *ui_window_open(int id);
 
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-                   int a, int b, int c, int d);
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+                   intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 void ui_window_show(struct UIWindow *window, int visible);
 void ui_window_raise(struct UIWindow *window);
 void ui_window_move_safe(struct UIWindow *window, int x, int y);

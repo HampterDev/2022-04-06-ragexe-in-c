@@ -11,8 +11,8 @@ struct UIWindow *ui_window_open(int id)
     return ui_window_mgr_make_window(&g_windowMgr, id);
 }
 
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-                   int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+                   intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     return window ? window->ops->send_msg(window, sender, message, a, b, c, d) : 0;
 }

@@ -61,7 +61,7 @@ void game_mode_zc_pc_bang_effect(struct GameMode *self, const struct PACKET_ZC_P
         balloon->outline = 0;
     }
     if (g_serviceType == 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, CAFE_NOTICE_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, CAFE_NOTICE_COLOR, 0, 0);
 }
 
 enum {
@@ -175,7 +175,7 @@ void game_mode_zc_reply_remain_time(struct GameMode *self, const struct PACKET_Z
                         "했습니다.");
         }
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, 0xffffff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, 0xffffff, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -220,5 +220,5 @@ void game_mode_zc_info_remain_time(struct GameMode *self, const struct PACKET_ZC
     } else {
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, REMAIN_TIME_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, REMAIN_TIME_COLOR, 0, 0);
 }

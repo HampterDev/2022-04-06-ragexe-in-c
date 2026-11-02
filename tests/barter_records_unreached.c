@@ -8,7 +8,7 @@ struct Session g_session1;
 struct Mouse g_mouse;
 struct Renderer *g_renderer;
 
-int game_mode_send_msg(struct Mode *mode, int message, int a, int b, int c, int d) { abort(); }
+intptr_t game_mode_send_msg(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type,
     int a, int b, int c, const char *title, int width, int height, int arg) { abort(); }
 struct ResMgr *g_resMgr(void) { abort(); }

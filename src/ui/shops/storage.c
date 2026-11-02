@@ -32,7 +32,7 @@ void ui_item_store_wnd_on_draw(struct UIWindow *self);
 void ui_item_store_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_store_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_store_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_store_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_store_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_store_wnd_ops = {
     .destroy = ui_item_store_wnd_destroy,
@@ -261,7 +261,7 @@ void ui_item_store_wnd_on_create(struct UIWindow *window, int width, int height)
         if (i == 0)
             self->base.close = button;
         else
-            self->base.extra_buttons[0] = (int)button;
+            self->base.extra_buttons[0] = button;
         shop_place_button(wnd, button, i == 0 ? s_closeButton : s_searchButton, i == 0 ? 0xdc : 0xb9,
                           wnd->height - 0x17, i == 0 ? UI_ID_CLOSE : STORE_ID_SEARCH);
     }
@@ -521,8 +521,8 @@ static int store_command(struct UIItemStoreWnd *self, int id)
     return 0;
 }
 
-int ui_item_store_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_item_store_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemStoreWnd *self = (struct UIItemStoreWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

@@ -53,7 +53,7 @@ void ui_message_box_destroy(struct UIWindow *window);
 void ui_message_box_on_destroy(struct UIWindow *self);
 void ui_message_box_on_process(struct UIWindow *self);
 void ui_message_box_on_draw(struct UIWindow *self);
-int ui_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_message_box_ops = {
     .destroy = ui_message_box_destroy,
     .resize = ui_window_resize_base,
@@ -101,7 +101,7 @@ const struct UIWindowOps ui_message_box_ops = {
 void ui_message_box_autoreturn_destroy(struct UIWindow *window);
 void ui_message_box_autoreturn_on_process(struct UIWindow *self);
 void ui_message_box_autoreturn_on_draw(struct UIWindow *self);
-int ui_message_box_autoreturn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_message_box_autoreturn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_message_box_autoreturn_ops = {
     .destroy = ui_message_box_autoreturn_destroy,
     .resize = ui_window_resize_base,
@@ -223,7 +223,7 @@ static int msgbox_tick(struct UIMessageBox *self)
         sprintf(buf, string_cstr(&self->format), secs);
         string_assign_cstr(&self->text, buf);
         ui_list_box_clear((struct UIListBox *)self->viewer);
-        ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->text), MSGBOX_TEXT_CODE,
+        ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->text), MSGBOX_TEXT_CODE,
                  0, 0);
     }
     return 1;
@@ -295,7 +295,7 @@ void ui_message_box_create(struct UIMessageBox *self, const char *text, int type
         left = pic->base.width + pic->base.x;
     }
     msgbox_viewer(self, left + 0xa, 0x16, width - left - 0x14, height - 0x37);
-    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->text),
+    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->text),
              (int)(width / 7.5), 0, 0);
     self->frame.default_id = type == MSGBOX_YES_NO ? MSGBOX_ID_NO : MSGBOX_ID_CANCEL;
 
@@ -337,8 +337,8 @@ void ui_message_box_on_draw(struct UIWindow *window)
     ui_window_draw_body(&self->frame.base, 0x11, 0, "");
 }
 
-int ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIMessageBox *self = (struct UIMessageBox *)window;
     switch (msg) {
@@ -404,8 +404,8 @@ void ui_message_box_autoreturn_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->frame.base, 0, 0, ui_skin_bitmap(UI_SKIN "win_msgbox.bmp"), 0);
 }
 
-int ui_message_box_autoreturn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                              int val2, int val3, int val4)
+intptr_t ui_message_box_autoreturn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                              intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMessageBox *self = (struct UIMessageBox *)window;
     if (msg == UI_MSG_COMMAND) {

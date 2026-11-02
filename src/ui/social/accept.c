@@ -43,7 +43,7 @@
 
 struct UIWindow;
 void ui_join_party_accept_wnd_destroy(struct UIWindow *window);
-int ui_join_party_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_join_party_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_join_party_accept_wnd_ops = {
     .destroy = ui_join_party_accept_wnd_destroy,
@@ -90,7 +90,7 @@ const struct UIWindowOps ui_join_party_accept_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_couple_accept_wnd_destroy(struct UIWindow *window);
-int ui_couple_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_couple_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_couple_accept_wnd_ops = {
     .destroy = ui_couple_accept_wnd_destroy,
@@ -137,7 +137,7 @@ const struct UIWindowOps ui_couple_accept_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_baby_accept_wnd_destroy(struct UIWindow *window);
-int ui_baby_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_baby_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_baby_accept_wnd_ops = {
     .destroy = ui_baby_accept_wnd_destroy,
@@ -184,7 +184,7 @@ const struct UIWindowOps ui_baby_accept_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_baby_accept_wnd2_destroy(struct UIWindow *window);
-int ui_baby_accept_wnd2_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_baby_accept_wnd2_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_baby_accept_wnd2_ops = {
     .destroy = ui_baby_accept_wnd2_destroy,
@@ -231,7 +231,7 @@ const struct UIWindowOps ui_baby_accept_wnd2_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_join_guild_accept_wnd_destroy(struct UIWindow *window);
-int ui_join_guild_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_join_guild_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_join_guild_accept_wnd_ops = {
     .destroy = ui_join_guild_accept_wnd_destroy,
@@ -278,7 +278,7 @@ const struct UIWindowOps ui_join_guild_accept_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_ally_guild_accept_wnd_destroy(struct UIWindow *window);
-int ui_ally_guild_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ally_guild_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ally_guild_accept_wnd_ops = {
     .destroy = ui_ally_guild_accept_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -341,7 +341,7 @@ static void accept_show(struct UIAcceptWnd *self, const char *name, int question
         string_assign_cstr(&text, q);
     }
     ui_list_box_clear((struct UIListBox *)self->text);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), 0x26, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&text), 0x26, 0, 0);
     string_free(&text);
 }
 
@@ -378,8 +378,8 @@ void ui_join_party_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_party_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                            int val2, int val3, int val4)
+intptr_t ui_join_party_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                            intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -417,8 +417,8 @@ void ui_join_guild_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                            int val2, int val3, int val4)
+intptr_t ui_join_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                            intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -470,8 +470,8 @@ void ui_ally_guild_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_ally_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                            int val2, int val3, int val4)
+intptr_t ui_ally_guild_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                            intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -508,8 +508,8 @@ void ui_couple_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_couple_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_couple_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -568,8 +568,8 @@ void ui_baby_accept_wnd2_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_baby_accept_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_baby_accept_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -588,8 +588,8 @@ int ui_baby_accept_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sende
 #define BABY_ACCEPT_WND_ID 0x69
 #define MSG_BABY_ASKER 0x5b
 
-int ui_baby_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_baby_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -633,8 +633,8 @@ struct UIWindow *ui_star_place_accept_wnd_new(void)
     return (struct UIWindow *)ui_star_place_accept_wnd_construct(mem_alloc(sizeof(struct UIStarPlaceAcceptWnd)));
 }
 
-int ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIStarPlaceAcceptWnd *self = (struct UIStarPlaceAcceptWnd *)window;
     struct UIAcceptWnd *accept = &self->accept;
@@ -662,7 +662,7 @@ int ui_star_place_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *
 struct UIAcceptWnd;
 struct UIWindow;
 void ui_star_place_accept_wnd_destroy(struct UIWindow *window);
-int ui_star_place_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_star_place_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_star_place_accept_wnd_ops = {
     .destroy = ui_star_place_accept_wnd_destroy,

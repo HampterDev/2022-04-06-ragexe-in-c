@@ -560,11 +560,11 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
     cast.level = self->skill_level;
     if (cast.skill_id == 0x7d || cast.skill_id == 0xdc) {
         wnd = ui_window_open(cast.skill_id == 0x7d ? 0x54 : 0x65);
-        ui_window_send(wnd, NULL, 0x44, (int)&cast, 0, 0, 0);
+        ui_window_send(wnd, NULL, 0x44, (intptr_t)&cast, 0, 0, 0);
         return;
     }
     if (cast.skill_id != 0x108 && cast.skill_id != 0xa04) {
-        MODE_SEND(mode, 0x46, (int)&cast, 0, 0);
+        MODE_SEND(mode, 0x46, (intptr_t)&cast, 0, 0);
         return;
     }
     x = y = sub_x = sub_y = 0;
@@ -575,7 +575,7 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
     if (path_finder_find_path(&g_pathFinder, platform_ticks_ms(), x, y, sub_x, sub_y, self->skill_cell_x,
                               self->skill_cell_y, 0x96, &path, 0xf) == 1)
         dir = path_info_end_direction(&path);
-    MODE_SEND(mode, 0x46, (int)&cast, dir, 0);
+    MODE_SEND(mode, 0x46, (intptr_t)&cast, dir, 0);
     path_info_destroy(&path);
 }
 

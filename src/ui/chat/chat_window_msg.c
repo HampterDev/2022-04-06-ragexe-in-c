@@ -113,14 +113,14 @@ static void add_box(struct UINewChatWnd *self, int height)
 {
     struct UIWindow *wnd = &self->frame.base;
     struct UIChatHisBox *box = mem_alloc(sizeof(struct UIChatHisBox));
-    int value;
+    struct UIWindow *value;
 
     if (box)
         box = ui_chat_his_box_construct(box);
     ui_list_box_create_window(&box->list, 0, 0, wnd->width - 8, height, 0);
     ui_window_move_base((struct UIWindow *)box, OFF_SCREEN - wnd->width, OFF_SCREEN);
     ui_window_add_child(wnd, (struct UIWindow *)box);
-    value = (int)box;
+    value = (struct UIWindow *)box;
     vec_push(&self->boxes, &value, sizeof value);
 }
 
@@ -227,7 +227,7 @@ static void stick_tab(struct UINewChatWnd *self, struct UIWindow *sender)
         ui_chat_his_box_copy_log(box, ((struct UISubChatHisWnd *)sub->wnd)->box);
     }
     {
-        int value = (int)box;
+        struct UIWindow *value = (struct UIWindow *)box;
 
         vec_push(&self->boxes, &value, sizeof value);
     }
@@ -426,7 +426,7 @@ static void add_line(struct UINewChatWnd *self, const char *text, COLORREF colou
         if (every_tab || chat_tab_shows_kind(&node->value, kind)) {
             struct SubChatWnd *sub = tree_get(&g_windowMgr.sub_chat_wnds, &i, sizeof i, sizeof *sub, tree_less_int);
 
-            ui_window_send_msg(sub->wnd, &self->frame.base, CHAT_MSG_ADD_LINE, (int)text, (int)colour, (int)name, 0);
+            ui_window_send_msg(sub->wnd, &self->frame.base, CHAT_MSG_ADD_LINE, (intptr_t)text, (int)colour, (intptr_t)name, 0);
         }
     }
     string_free(&plain);
@@ -470,8 +470,8 @@ static void open_whisper_names(struct UINewChatWnd *self)
     combo = ui_window_open(WND_ID_COMBO_BOX);
     for (i = 0; i < count; i++)
         ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE,
-                 (int)text_array_at(&self->whisper->history, i).data, 0, 0, 0);
-    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)"", 0, 0, 0);
+                 (intptr_t)text_array_at(&self->whisper->history, i).data, 0, 0, 0);
+    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)"", 0, 0, 0);
     height = (count + 1) * CHAT_COMBO_ROW_HEIGHT;
     if (height > CHAT_COMBO_MAX_HEIGHT)
         height = CHAT_COMBO_MAX_HEIGHT;
@@ -495,9 +495,9 @@ static void open_colours(struct UINewChatWnd *self)
     combo = ui_window_open(WND_ID_COMBO_BOX);
     if (!combo)
         return;
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_BLACK), 0, 0, 0);
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_PURPLE), 0, 0, 0);
-    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_CHAT_COLOUR_TEAL), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_BLACK), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_PURPLE), 0, 0, 0);
+    ui_window_send(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_CHAT_COLOUR_TEAL), 0, 0, 0);
     ui_window_send(combo, NULL, COMBO_MSG_SELECT, g_session1.chatTarget, 0, 0, 0);
     ui_window_resize(combo, CHAT_COMBO_WIDTH, 0x30);
     ui_window_send(combo, NULL, COMBO_MSG_OPENER_ID, WND_ID_CHAT, 0, 0, 0);
@@ -609,7 +609,7 @@ static void send_line(struct UINewChatWnd *self)
     }
     if (ui_edit_ctrl_get_text_size(&self->whisper->edit.base) && line[0] != '/') {
         string_assign_cstr(&g_windowMgr.chat_line, line);
-        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (int)ui_edit_ctrl_get_text(&self->whisper->edit.base), 0, 0,
+        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (intptr_t)ui_edit_ctrl_get_text(&self->whisper->edit.base), 0, 0,
                       0);
         goto done;
     }
@@ -625,7 +625,7 @@ static void send_line(struct UINewChatWnd *self)
     } else {
         if (at != -1)
             ui_window_mgr_set_chat_line(&g_windowMgr, line + at);
-        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (int)parts, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (intptr_t)parts, 0, 0);
     }
     for (i = 3; i-- > 0;)
         string_free(&parts[i]);
@@ -658,7 +658,7 @@ static void page_box(struct UINewChatWnd *self, int msg)
         ui_window_send_msg((struct UIWindow *)box, NULL, msg, 0, 0, 0, 0);
 }
 
-static void command(struct UINewChatWnd *self, int id, int val2)
+static void command(struct UINewChatWnd *self, int id, intptr_t val2)
 {
     struct UIWindow *options;
 
@@ -705,8 +705,8 @@ static void command(struct UINewChatWnd *self, int id, int val2)
     }
 }
 
-int ui_new_chat_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_new_chat_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UINewChatWnd *self = (struct UINewChatWnd *)window;
     struct ChatTab *node;

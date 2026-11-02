@@ -50,9 +50,9 @@ int session_get_talk_type(struct Session *session, const char *text, int *type, 
 struct UIWindowMgr g_windowMgr;
 struct UIWindow *ui_window_find(int id) { (void)id; assert(0); return NULL; }
 char *msg_str(int id) { (void)id; assert(0); return ""; }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)manager; (void)msg; (void)a; (void)b; (void)c; (void)d; assert(0); return 0; }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)window; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; assert(0); return 0; }
 
 static int query(lua_State *L, const char *name)

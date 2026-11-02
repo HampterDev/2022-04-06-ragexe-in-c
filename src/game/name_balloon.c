@@ -262,12 +262,9 @@ void game_mode_move_balloon_text_window(struct GameMode *self, struct UIWindow *
         dx = (int)((float)(-30 * g_renderer->width / 640) * actor->scale - (float)(w / 2));
         dy = (int)((float)(-25 * g_renderer->height / 480) * actor->scale - (float)(h / 2));
         break;
-    case 3:
+    default:
         dx = (int)((float)(30 * g_renderer->width / 640) * actor->scale - (float)(w / 2));
         dy = (int)((float)(-25 * g_renderer->height / 480) * actor->scale - (float)(h / 2));
-        break;
-    default:
-        dx = dy = (int)balloon;
         break;
     }
     self->name_balloon_pos = saved;

@@ -59,7 +59,7 @@ void game_mode_on_req_ack_move_guild_agit(struct GameMode *self, short result)
         msg = 0xe31;
     else
         return;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), CHAT_COLOR_AGIT, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), CHAT_COLOR_AGIT, 0, 0);
 }
 
 void game_mode_on_change_agit_owner(struct GameMode *self, unsigned char agit_id, int old_guild_id,

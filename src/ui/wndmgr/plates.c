@@ -190,7 +190,7 @@ static struct UIMiniPartyWnd *new_plate(struct UIWindowMgr *self, struct PartyMe
     ui_window_create(&plate->frame.base, WM_PLATE_WIDTH, WM_PLATE_HEIGHT);
     plate->cell = cell;
     ui_window_mgr_add_plate(self, plate);
-    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, WM_PLATE_MSG_MEMBER, (int)member, 0, 0, 0);
+    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, WM_PLATE_MSG_MEMBER, (intptr_t)member, 0, 0, 0);
     return plate;
 }
 

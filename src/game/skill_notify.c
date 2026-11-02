@@ -86,7 +86,7 @@ void game_mode_on_notify_skill(struct GameMode *self, const struct PacketNotifyS
     caster = tell_caster(self, packet->src_aid, &info, &job, &other_actor);
 
     if (!session_is_monster_actor(&g_session1, caster)) {
-        mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
+        mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (intptr_t)caster, packet->level, 0);
         return;
     }
     play_monster_skill_motion(other_actor, job, info.skill_id);
@@ -129,7 +129,7 @@ void game_mode_on_notify_skill_position(struct GameMode *self, const struct Pack
     caster = tell_caster(self, packet->src_aid, &info, &job, &other_actor);
 
     if (!session_is_monster_actor(&g_session1, caster)) {
-        mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
+        mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (intptr_t)caster, packet->level, 0);
         return;
     }
     session_get_monster_skill_info(&g_session1, session_get_job_name(&g_session1, job, -1), info.skill_id, &action,
@@ -196,11 +196,11 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
 
     if (caster) {
         if (!session_is_monster_actor(&g_session1, caster)) {
-            mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
+            mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (intptr_t)caster, packet->level, 0);
             return;
         }
         if (caster->object_type == 10 || (unsigned char)(caster->object_type - 13) <= 1)
-            mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
+            mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (intptr_t)caster, packet->level, 0);
     }
     play_monster_skill_motion(other_actor, job, info.skill_id);
 }

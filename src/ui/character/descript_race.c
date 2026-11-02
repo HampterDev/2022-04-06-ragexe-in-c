@@ -52,7 +52,7 @@ void ui_descript_race_destroy(struct UIWindow *window);
 void ui_descript_race_on_create(struct UIWindow *self, int cx, int cy);
 void ui_descript_race_on_draw(struct UIWindow *self);
 void ui_descript_race_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_descript_race_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_descript_race_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIButtonOps ui_descript_race_ops = {
     .base = {
         .destroy = ui_descript_race_destroy,
@@ -239,8 +239,8 @@ void ui_descript_race_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd, (struct UIWindow *)self, UI_MSG_COMMAND, RACE_BUTTON_ID, 0, 0, 0);
 }
 
-int ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIDescriptRace *self = (struct UIDescriptRace *)window;
     if (msg != DESCRIPT_RACE_MSG_CHOOSE)

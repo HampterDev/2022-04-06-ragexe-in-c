@@ -239,8 +239,8 @@ void ui_edit_ctrl_currency_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_edit_ctrl_currency_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_edit_ctrl_currency_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrlCurrency *self = (struct UIEditCtrlCurrency *)window;
     struct UIEditCtrl *edit = &self->custom.edit;

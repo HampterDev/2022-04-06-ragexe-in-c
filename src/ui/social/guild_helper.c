@@ -43,7 +43,7 @@ void ui_guild_helper_wnd_on_draw(struct UIWindow *self);
 void ui_guild_helper_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_helper_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_guild_helper_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_guild_helper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_helper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_guild_helper_wnd_ops = {
     .destroy = ui_guild_helper_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -201,8 +201,8 @@ static void guild_helper_info_reset(struct WindowInfo *info)
     info->height = 0x96;
 }
 
-int ui_guild_helper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_guild_helper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildHelperWnd *self = (struct UIGuildHelperWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -244,7 +244,7 @@ void ui_create_guild_wnd_on_draw(struct UIWindow *self);
 void ui_create_guild_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_create_guild_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_create_guild_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_create_guild_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_create_guild_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_create_guild_wnd_ops = {
     .destroy = ui_create_guild_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -368,8 +368,8 @@ void ui_create_guild_wnd_store_info(struct UIWindow *self)
 {
 }
 
-int ui_create_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_create_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICreateGuildWnd *self = (struct UICreateGuildWnd *)window;
     struct Mode *game;
@@ -398,9 +398,9 @@ int ui_create_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
                        (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
         ui_chat_line(msg_str(MSG_CREATE_GUILD_ITEM_LINK), RGB(0xff, 0, 0));
     } else if (!self->disband) {
-        mode_send_message(game, REQ_CREATE_GUILD, (int)string_cstr(&name), 0, 0, 0);
+        mode_send_message(game, REQ_CREATE_GUILD, (intptr_t)string_cstr(&name), 0, 0, 0);
     } else {
-        mode_send_message(game, REQ_DISBAND_GUILD, (int)string_cstr(&name), 0, 0, 0);
+        mode_send_message(game, REQ_DISBAND_GUILD, (intptr_t)string_cstr(&name), 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, DISBAND_GUILD_WND_ID);
     }
     string_free(&name);

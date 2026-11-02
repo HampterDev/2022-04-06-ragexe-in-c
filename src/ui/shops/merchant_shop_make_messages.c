@@ -356,13 +356,13 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
         } else {
             int64_t total = _atoi64(ui_edit_ctrl_get_text(self->total));
 
-            mode_send_message(mode, MODE_REQ_OPEN_BUYING, (int)ui_edit_ctrl_get_text(self->shop_name), 1, (int)total,
+            mode_send_message(mode, MODE_REQ_OPEN_BUYING, (intptr_t)ui_edit_ctrl_get_text(self->shop_name), 1, (int)total,
                           0);
         }
     } else if (self->assistant == 1) {
         ui_merchant_shop_make_wnd_set_waiting(self, 1);
     } else {
-        mode_send_message(mode, MODE_REQ_OPEN_VENDING, (int)ui_edit_ctrl_get_text(self->shop_name), 1, 0, 0);
+        mode_send_message(mode, MODE_REQ_OPEN_VENDING, (intptr_t)ui_edit_ctrl_get_text(self->shop_name), 1, 0, 0);
     }
 
     owned_text_assign(&g_session1.mcStoreBackup.title,
@@ -389,13 +389,13 @@ static void msm_cancel(struct UIMerchantShopMakeWnd *self, int val2, int val3, i
         else
             mode_send_message(mode, MODE_REQ_VENDING_SETUP_CANCELLED, 0, 0, 0, 0);
     } else {
-        mode_send_message(mode, MODE_REQ_OPEN_VENDING, (int)ui_edit_ctrl_get_text(self->shop_name), 0, 0, 0);
+        mode_send_message(mode, MODE_REQ_OPEN_VENDING, (intptr_t)ui_edit_ctrl_get_text(self->shop_name), 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_VENDING_SETUP);
     }
 }
 
-int ui_merchant_shop_make_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_shop_make_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantShopMakeWnd *self = (struct UIMerchantShopMakeWnd *)window;
     (void)sender;
@@ -455,7 +455,7 @@ void ui_merchant_shop_make_wnd_print_sale_list(struct UIMerchantShopMakeWnd *sel
     unsigned i;
 
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE,
-        (int)"======================  SALE LIST  ======================", CHAT_SALE_FRAME, 0, 0);
+        (intptr_t)"======================  SALE LIST  ======================", CHAT_SALE_FRAME, 0, 0);
     for (i = 0; i < self->items.size; i++, node = node->next) {
         const struct ItemInfo *info = LIST_VALUE(node, struct ItemInfo);
         int64_t fee;
@@ -483,17 +483,17 @@ void ui_merchant_shop_make_wnd_print_sale_list(struct UIMerchantShopMakeWnd *sel
         else
             strcpy(money, format_money(atoi(number.data), money2));
         string_format(&line, "    %s  :  %s  Zeny", string_cstr(&name), money);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
         fee = (int64_t)((double)_atoi64(number.data) * ((double)zeny_fee_percent(_atoi64(number.data)) * 0.01));
         format_money64(fee, commission, sizeof commission);
         string_format(&line, "Commission : 1 EA = %s Zeny", commission);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
     }
     strcpy(money, format_money(g_session1.zeny, money2));
     string_format(&line, "                                          Current Zeny : %s Z", money);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_ZENY, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_ZENY, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE,
-        (int)"============================ ============================", CHAT_SALE_FRAME, 0, 0);
+        (intptr_t)"============================ ============================", CHAT_SALE_FRAME, 0, 0);
     string_free(&line);
     string_free(&name);
     string_free(&number);
@@ -558,10 +558,10 @@ void ui_merchant_shop_make_wnd_request_assistant(struct UIMerchantShopMakeWnd *s
     struct Mode *mode = game_current_base_mode();
 
     if (self->buying == 1)
-        mode_send_message(mode, MODE_REQ_ASSISTANT_BUYING, (int)ui_edit_ctrl_get_text(self->shop_name),
+        mode_send_message(mode, MODE_REQ_ASSISTANT_BUYING, (intptr_t)ui_edit_ctrl_get_text(self->shop_name),
                       atoi(ui_edit_ctrl_get_text(self->total)), 0, 0);
     else
-        mode_send_message(mode, MODE_REQ_ASSISTANT_VENDING, (int)ui_edit_ctrl_get_text(self->shop_name), 0, 0, 0);
+        mode_send_message(mode, MODE_REQ_ASSISTANT_VENDING, (intptr_t)ui_edit_ctrl_get_text(self->shop_name), 0, 0, 0);
 }
 
 #define MSG_BUY_LIST_LINE 0x6c4
@@ -643,7 +643,7 @@ void ui_merchant_shop_make_wnd_print_buy_list(struct UIMerchantShopMakeWnd *self
     unsigned i;
 
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE,
-        (int)"======================  BUY LIST  ======================", CHAT_SALE_FRAME, 0, 0);
+        (intptr_t)"======================  BUY LIST  ======================", CHAT_SALE_FRAME, 0, 0);
     for (i = 0; i < self->items.size; i++, node = node->next) {
         const char *name = item_info_get_name(LIST_VALUE(node, struct ItemInfo));
         int64_t fee;
@@ -665,16 +665,16 @@ void ui_merchant_shop_make_wnd_print_buy_list(struct UIMerchantShopMakeWnd *self
         else
             strcpy(count_text, format_money(atoi(number.data), money2));
         string_format(&line, msg_str(MSG_BUY_LIST_LINE), name, price_text, count_text);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
         format_money64(fee, commission, sizeof commission);
         string_format(&line, "Commission : 1 EA = %s Zeny", commission);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_LINE, 0, 0);
     }
     strcpy(price_text, format_money(g_session1.zeny, money2));
     string_format(&line, "                                          Current Zeny : %s Z", price_text);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&line), CHAT_SALE_ZENY, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&line), CHAT_SALE_ZENY, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE,
-        (int)"============================ ============================", CHAT_SALE_FRAME, 0, 0);
+        (intptr_t)"============================ ============================", CHAT_SALE_FRAME, 0, 0);
     string_free(&line);
     string_free(&number);
 }

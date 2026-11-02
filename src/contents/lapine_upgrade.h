@@ -71,13 +71,13 @@ void lapine_upgrade_press(struct UIWindow *self, int x, int y);
 void lapine_upgrade_double_click(struct UIWindow *self, int x, int y);
 void lapine_upgrade_hover(struct UIWindow *self, int x, int y);
 void lapine_upgrade_show_info(struct UIWindow *self, int x, int y);
-int lapine_upgrade_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                       int a, int b, int c, int d);
+intptr_t lapine_upgrade_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                       intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 
 void lapine_upgrade_list_delete(struct UIWindow *window);
 void lapine_upgrade_list_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drop);
-int lapine_upgrade_list_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                            int a, int b, int c, int d);
+intptr_t lapine_upgrade_list_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                            intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 
 void lapine_upgrade_row_delete(struct UIWindow *window);
 void lapine_upgrade_row_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drop);

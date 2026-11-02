@@ -386,7 +386,7 @@ static void vending_sold_line(struct ItemInfo *item, int msg, int what_msg, int 
         string_init(&line);
         string_format(&line, msg_str(msg), string_cstr(&name), amount);
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), CHAT_COLOR_SOLD, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), CHAT_COLOR_SOLD, 0, 0);
     string_free(&line);
     string_free(&name);
 }
@@ -411,13 +411,13 @@ void game_mode_zc_pc_purchase_result_from_mc(struct GameMode *self, const unsign
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     switch (result) {
     case 6:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x69f), CHAT_COLOR_SOLD, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x69f), CHAT_COLOR_SOLD, 0, 0);
         return;
     case 7:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x705), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x705), CHAT_COLOR_RED, 0, 0);
         return;
     case 15:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xe75), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xe75), CHAT_COLOR_RED, 0, 0);
         return;
     }
     session_get_sent_store_purchase_item(&g_session1, &item, packet->index);

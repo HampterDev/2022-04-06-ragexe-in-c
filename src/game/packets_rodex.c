@@ -420,7 +420,7 @@ void game_mode_zc_rodex_block_receive(struct GameMode *self, struct String name)
     (void)self;
     string_init(&text);
     string_format(&text, msg_str(0xf18), string_cstr(&name));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&text), RODEX_CHAT_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&text), RODEX_CHAT_COLOR, 0, 0);
     string_free(&text);
     string_free(&name);
 }

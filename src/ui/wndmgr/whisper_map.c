@@ -72,12 +72,12 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, cons
             else if (session_looks_like_a_friend(&g_session1, name))
                 warning = MSG_NOT_IN_GUILD;
             if (warning)
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(warning),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(warning),
                                       WHISPER_WARNING_COLOUR, 0, 0);
         }
         session_scramble_number(&g_session1, &code, cid);
-        opened = (struct UIWindow *)(INT_PTR)ui_window_mgr_send_msg_(self, UIWM_MSG_WHISPER, (int)name,
-                                                                   (int)note, (int)string_cstr(&code), 0);
+        opened = (struct UIWindow *)(INT_PTR)ui_window_mgr_send_msg_(self, UIWM_MSG_WHISPER, (intptr_t)name,
+                                                                   (intptr_t)note, (intptr_t)string_cstr(&code), 0);
         string_free(&code);
         if (opened) {
             if (res_mgr_is_available(g_resMgr(), g_whisperSound))
@@ -97,7 +97,7 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, cons
     string_free(&key);
     if (!entry)
         return 0;
-    ui_window_send_msg(entry->wnd, NULL, WHISPER_MSG_ADD_LINE, (int)line, (int)colour, WHISPER_LINE_RECEIVED, 0);
+    ui_window_send_msg(entry->wnd, NULL, WHISPER_MSG_ADD_LINE, (intptr_t)line, (int)colour, WHISPER_LINE_RECEIVED, 0);
     ui_window_mgr_raise_window(self, entry->wnd);
     return 1;
 }

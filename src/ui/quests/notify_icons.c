@@ -27,7 +27,7 @@ struct UIWindow;
 void ui_open_mail_box_wnd_destroy(struct UIWindow *window);
 void ui_open_mail_box_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_open_mail_box_wnd_on_draw(struct UIWindow *self);
-int ui_open_mail_box_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_open_mail_box_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_open_mail_box_wnd_ops = {
     .destroy = ui_open_mail_box_wnd_destroy,
@@ -122,8 +122,8 @@ void ui_open_mail_box_wnd_on_draw(struct UIWindow *self)
 {
 }
 
-int ui_open_mail_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                        int val1, int val2, int val3, int val4)
+intptr_t ui_open_mail_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                        intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIOpenMailBoxWnd *self = (struct UIOpenMailBoxWnd *)window;
     if (msg != UI_MSG_COMMAND)
@@ -147,7 +147,7 @@ struct UINotifyLevelUpWnd;
 void ui_notify_level_up_wnd_destroy(struct UIWindow *window);
 void ui_notify_level_up_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_notify_level_up_wnd_on_draw(struct UIWindow *self);
-int ui_notify_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notify_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notify_level_up_wnd_ops = {
     .destroy = ui_notify_level_up_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -252,8 +252,8 @@ void ui_notify_level_up_wnd_on_draw(struct UIWindow *self)
 {
 }
 
-int ui_notify_level_up_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_notify_level_up_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINotifyLevelUpWnd *self = (struct UINotifyLevelUpWnd *)window;
     struct UIWindow *status;
@@ -273,7 +273,7 @@ struct UINotifyQuestWnd;
 void ui_notify_quest_wnd_destroy(struct UIWindow *window);
 void ui_notify_quest_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_notify_quest_wnd_on_draw(struct UIWindow *self);
-int ui_notify_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notify_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notify_quest_wnd_ops = {
     .destroy = ui_notify_quest_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -359,7 +359,7 @@ void ui_notify_quest_wnd_on_draw(struct UIWindow *self)
 
 struct UIFrameWnd;
 void ui_notify_job_level_up_wnd_destroy(struct UIWindow *window);
-int ui_notify_job_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notify_job_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notify_job_level_up_wnd_ops = {
     .destroy = ui_notify_job_level_up_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -430,8 +430,8 @@ void ui_notify_job_level_up_wnd_destroy(struct UIWindow *window)
 }
 
 #define UI_MSG_BUTTON 6
-int ui_notify_job_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                             int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_notify_job_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                                             int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     if (msg != UI_MSG_BUTTON)
         return ui_window_send_msg_base(self, sender, msg, val1, val2, val3, val4);
@@ -441,8 +441,8 @@ int ui_notify_job_level_up_wnd_send_msg(struct UIWindow *self, struct UIWindow *
     return 0;
 }
 
-int ui_notify_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                        int val1, int val2, int val3, int val4)
+intptr_t ui_notify_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                        intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     if (msg != UI_MSG_BUTTON)
         return ui_window_send_msg_base(self, sender, msg, val1, val2, val3, val4);

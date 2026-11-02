@@ -134,7 +134,7 @@ void ui_grade_enchant_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_grade_enchant_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_grade_enchant_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_grade_enchant_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_grade_enchant_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_grade_enchant_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_grade_enchant_wnd_ops = {
     .destroy = ui_grade_enchant_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -360,7 +360,7 @@ static void show_item_info(const struct ItemInfo *info)
     struct UIWindow *wnd = ui_window_open(WID_ITEM_INFO);
 
     if (wnd)
-        ui_window_send_msg(wnd, NULL, MSG_ITEM_INFO, (int)info, 0, 0, 0);
+        ui_window_send_msg(wnd, NULL, MSG_ITEM_INFO, (intptr_t)info, 0, 0, 0);
 }
 
 struct UIBitmapButton *ui_grade_enchant_btn_start_construct(struct UIBitmapButton *self)
@@ -576,7 +576,7 @@ void ui_grade_enchant_wnd_show_result(struct UIGradeEnchantWnd *self)
 {
     if ((unsigned)self->result > 4)
         return;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(MSG_RESULT_FIRST + self->result), 0xffff00, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(MSG_RESULT_FIRST + self->result), 0xffff00, 0, 0);
 }
 
 void ui_grade_enchant_wnd_set_materials(struct UIGradeEnchantWnd *self,
@@ -893,7 +893,7 @@ void ui_grade_enchant_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
             if (!wnd)
                 return;
             ui_window_send_msg(wnd, NULL, MSG_ITEM_INFO,
-                     (int)session_get_inventory_item_by_id(&g_session1, &tmp, MATERIAL(self, row)->item_id, 0),
+                     (intptr_t)session_get_inventory_item_by_id(&g_session1, &tmp, MATERIAL(self, row)->item_id, 0),
                      0, 0, 0);
             item_info_destruct(&tmp);
             return;
@@ -902,7 +902,7 @@ void ui_grade_enchant_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
             wnd = ui_window_open(WID_ITEM_INFO);
             if (wnd) {
                 ui_window_send_msg(wnd, NULL, MSG_ITEM_INFO,
-                         (int)session_get_inventory_item_by_id(&g_session1, &tmp, self->blessing.item_id, 0), 0,
+                         (intptr_t)session_get_inventory_item_by_id(&g_session1, &tmp, self->blessing.item_id, 0), 0,
                          0, 0);
                 item_info_destruct(&tmp);
             }
@@ -912,8 +912,8 @@ void ui_grade_enchant_wnd_on_r_btn_up(struct UIWindow *window, int x, int y)
         show_item_info(&self->item);
 }
 
-int ui_grade_enchant_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                         int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_grade_enchant_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                         int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGradeEnchantWnd *self = (struct UIGradeEnchantWnd *)window;
     struct ItemInfo tmp;

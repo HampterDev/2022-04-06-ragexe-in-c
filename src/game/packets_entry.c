@@ -1035,7 +1035,7 @@ void game_mode_zc_notify_ranking(struct GameMode *self, const struct PacketNotif
                 const char *format = msg_str(message);
 
                 sprintf(text, format, name, pkt->rank);
-                ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, 0xffff, 0, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, 0xffff, 0, 0);
             }
             player = self->world->player;
             sound_play_wave("effect\\number_change.wav", player->pos.x, 0.0f, player->pos.z, 0xfa, 0x28, 1.0f);

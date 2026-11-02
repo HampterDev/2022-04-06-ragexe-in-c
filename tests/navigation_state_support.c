@@ -72,7 +72,7 @@ const char * navi_map_name(struct NaviMap * arg0) { abort(); }
 struct NaviObject * navi_map_npc_at(struct NaviMap * arg0, int arg1, int arg2) { abort(); }
 char *res_mgr_resolve_map_name(struct ResMgr *mgr, const char *name) { abort(); }
 void ui_navigation_v4_wnd_relayout(struct UINavigationV4Wnd * arg0) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 float float_sqrt(float arg0) { abort(); }
 struct ResMgr * g_resMgr(void) { abort(); }
 struct GameMode * game_current_mode(void) { abort(); }

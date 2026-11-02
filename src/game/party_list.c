@@ -154,7 +154,7 @@ void game_mode_on_notify_member_info_to_groupm(struct GameMode *self,
 
 static void chat_line(const char *text, int colour, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, colour, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, colour, channel, 0);
 }
 
 static void chat_close_dialog(void)

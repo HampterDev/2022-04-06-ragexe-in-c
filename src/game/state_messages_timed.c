@@ -727,7 +727,7 @@ void game_mode_zc_msg_state_change(struct GameMode *mode, int aid, int state,
             if (strlen(text) > 1) {
                 sprintf(line, "%s%s", prefix, text);
                 ui_window_mgr_send_msg_(&g_windowMgr, UIM_CLOSE_DIALOG, 0, 0, 0, 0);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, color,
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, color,
                                       strlen(prefix) > 1 ? CHAT_CHANNEL_MEMBER_STATE : CHAT_CHANNEL_OWN_STATE, 0);
             }
             if (aid == g_session1.ownAid)

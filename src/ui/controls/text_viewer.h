@@ -38,8 +38,8 @@ void ui_text_view_ex_clear(struct UIListBox *base_list);
 void ui_text_view_ex_update_scroll_bar(struct UIListBox *base_list);
 void ui_text_view_ex_on_create(struct UIWindow *self, int width, int height);
 void ui_text_view_ex_on_draw(struct UIWindow *self);
-int ui_text_view_ex_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
+intptr_t ui_text_view_ex_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_text_viewer_destroy(struct UIWindow *window);
 void ui_text_viewer_on_draw(struct UIWindow *self);
@@ -47,8 +47,8 @@ void ui_text_viewer_ignore_click(struct UIWindow *self, int x, int y);
 
 void ui_text_viewer_clear_items(struct UIListBox *base_list);
 
-int ui_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
+intptr_t ui_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_text_viewer_on_create(struct UIWindow *window, int width, int height);
 

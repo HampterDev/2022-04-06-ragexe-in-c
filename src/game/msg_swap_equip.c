@@ -138,7 +138,7 @@ static void print_wait(unsigned sent_at, unsigned wait_s, int channel)
 
     string_init(&line);
     string_format(&line, "%d%s", wait_s - (now - sent_at) / 1000, text);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), COLOR_SWAP_WAIT, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), COLOR_SWAP_WAIT, channel, 0);
     string_free(&line);
 }
 

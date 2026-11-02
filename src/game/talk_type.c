@@ -25,7 +25,7 @@ enum {
 
 #define ARG(n) string_cstr(&args[n])
 
-static void mode_msg(struct GameMode *self, int msg, int a)
+static void mode_msg(struct GameMode *self, int msg, intptr_t a)
 {
     mode_send_msg(self, msg, a, 0, 0, 0);
 }
@@ -181,9 +181,9 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         if (value)
             mode_msg(self, 0x31, value);
         break;
-    case 0x1a: mode_msg(self, 0x3a, (int)ARG(0)); break;
+    case 0x1a: mode_msg(self, 0x3a, (intptr_t)ARG(0)); break;
     case 0x1b: mode_msg(self, 0x3d, 0); break;
-    case 0x1c: mode_msg(self, 0x3e, (int)ARG(0)); break;
+    case 0x1c: mode_msg(self, 0x3e, (intptr_t)ARG(0)); break;
 
     case 0x1d: case 0x1e: case 0x1f: case 0x20: case 0x21: case 0x22: case 0x23: case 0x24:
     case 0x25: case 0x26: case 0x27: case 0x28: case 0x29:
@@ -222,19 +222,19 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
 
     case 0x2b: mode_msg(self, 0x4b, 0); break;
     case 0x2c: talk_cmd_on_off(self, args); break;
-    case 0x30: mode_msg(self, 0x5b, (int)ARG(0)); break;
+    case 0x30: mode_msg(self, 0x5b, (intptr_t)ARG(0)); break;
     case 0x31: {
         int b, c;
 
         c = atoi(ARG(2));
         b = atoi(ARG(1));
-        mode_send_msg(self, 0x5c, (int)ARG(0), b, c, 0);
+        mode_send_msg(self, 0x5c, (intptr_t)ARG(0), b, c, 0);
         break;
     }
     case 0x33: ui_window_mgr_send_msg_(&g_windowMgr, 6, 0, 0, 0, 0); break;
     case 0x34: ui_window_mgr_send_msg_(&g_windowMgr, 7, 0, 0, 0, 0); break;
-    case 0x37: mode_msg(self, 0x70, (int)ARG(0)); break;
-    case 0x38: mode_msg(self, 0x6a, (int)ARG(0)); break;
+    case 0x37: mode_msg(self, 0x70, (intptr_t)ARG(0)); break;
+    case 0x38: mode_msg(self, 0x6a, (intptr_t)ARG(0)); break;
     case 0x39:
         ui_window_mgr_set_chat_line(&g_windowMgr, ARG(0));
         mode_msg(self, 0x81, 0);
@@ -280,9 +280,9 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         self->name_balloon_pos = self->name_balloon_pos == 0;
         break;
     case 0x5d: case 0x5e: case 0x5f: case 0x60:
-        mode_msg(self, type + 0x3e, (int)ARG(0));
+        mode_msg(self, type + 0x3e, (intptr_t)ARG(0));
         break;
-    case 0x63: mode_msg(self, 0xa1, (int)ARG(0)); break;
+    case 0x63: mode_msg(self, 0xa1, (intptr_t)ARG(0)); break;
     case 0x66: talk_cmd_chat_auto_save(self); break;
     case 0x68:
     case 0x69:
@@ -316,8 +316,8 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         }
         break;
     case 0x88: repeat_talk(g_set2_talk_types, sizeof g_set2_talk_types); break;
-    case 0x8d: mode_msg(self, 0xb1, (int)ARG(0)); break;
-    case 0x8e: mode_msg(self, 0xb2, (int)ARG(0)); break;
+    case 0x8d: mode_msg(self, 0xb1, (intptr_t)ARG(0)); break;
+    case 0x8e: mode_msg(self, 0xb2, (intptr_t)ARG(0)); break;
     case 0x8f:
         if (g_session1.loadingScreenRandom) {
             g_session1.loadingScreenRandom = 0;
@@ -333,12 +333,12 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0x9f: mode_msg(self, MODE_MSG_REQ_RANKING, 3); break;
     case 0x93:
         for (i = 0; i < 32; i++)
-            mode_msg(self, MODE_MSG_STAT_UP, (int)"LEVEL");
+            mode_msg(self, MODE_MSG_STAT_UP, (intptr_t)"LEVEL");
         break;
     case 0x94:
         for (i = 0; i < 5; i++) {
-            mode_msg(self, MODE_MSG_STAT_UP, (int)"SPPOINT");
-            mode_msg(self, MODE_MSG_STAT_UP, (int)"JOBLEVEL");
+            mode_msg(self, MODE_MSG_STAT_UP, (intptr_t)"SPPOINT");
+            mode_msg(self, MODE_MSG_STAT_UP, (intptr_t)"JOBLEVEL");
         }
         break;
     case 0x95: talk_cmd_hi_friends(self, args); break;
@@ -365,10 +365,10 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0xb5:
         send_byte(CZ_PARTY_CONFIG, type != 0xb4);
         break;
-    case 0xb6: mode_msg(self, 0x3b, (int)ARG(0)); break;
+    case 0xb6: mode_msg(self, 0x3b, (intptr_t)ARG(0)); break;
     case 0xb7: mode_msg(self, 0xfd, g_session1.equipOpenToOthers == 0); break;
-    case 0xc2: mode_msg(self, 0x105, (int)ARG(0)); break;
-    case 0xc6: mode_msg(self, 0x10d, (int)ARG(0)); break;
+    case 0xc2: mode_msg(self, 0x105, (intptr_t)ARG(0)); break;
+    case 0xc6: mode_msg(self, 0x10d, (intptr_t)ARG(0)); break;
     case 0xc7:
         g_session1.showStateInfo = g_session1.showStateInfo == 0;
         if (g_session1.showStateInfo) {
@@ -383,7 +383,7 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0xcd: talk_cmd_build_info(self); break;
     case 0xcf: talk_cmd_navigate(self, args, 0); break;
     case 0xd0: talk_cmd_navigate(self, args, 1); break;
-    case 0xd1: mode_msg(self, 0x11e, (int)ARG(0)); break;
+    case 0xd1: mode_msg(self, 0x11e, (intptr_t)ARG(0)); break;
     case 0xd7: ui_window_open(0xcb); break;
     case 0xd8: toggle_window_option(0xbe, &g_session1.showCashShopIcon); break;
     case 0xd9: toggle_window_option(0x10b, &g_session1.showGoldPcIcon); break;
@@ -427,7 +427,7 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
     case 0xed: send_id(CZ_NOCOSPLAY); break;
     case 0xef: talk_cmd_zoom_range(self); break;
     case 0xf8: ui_window_mgr_set_shop_titles_shown(&g_windowMgr, g_windowMgr.show_shop_titles == 0); break;
-    case 0xf9: mode_msg(self, 0x13d, (int)ARG(0)); break;
+    case 0xf9: mode_msg(self, 0x13d, (intptr_t)ARG(0)); break;
     case 0xfa: mode_msg(self, 0x13e, 0); break;
 
     case 0x2d: case 0x2e: case 0x2f: case 0x35: case 0x36: case 0x67: case 0x6b: case 0x6f:

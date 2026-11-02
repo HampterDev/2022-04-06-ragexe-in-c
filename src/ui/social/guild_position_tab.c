@@ -413,8 +413,8 @@ static int tax_changed(struct UIGuildPositionManageWnd *self, struct UIWindow *s
     return 1;
 }
 
-int ui_guild_position_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_guild_position_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildPositionManageWnd *self = (struct UIGuildPositionManageWnd *)window;
     int changed;

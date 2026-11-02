@@ -26,7 +26,7 @@ struct SessionAchievementState {
 };
 
 #define MODE_SEND_MSG(mode, msg, a, b, c, d) \
-    mode_send_message((struct Mode *)(mode), (msg), (int)(a), (int)(b), (int)(c), (int)(d))
+    mode_send_message((struct Mode *)(mode), (msg), (a), (b), (c), (d))
 
 #include "effects/effect_mgr.h"
 

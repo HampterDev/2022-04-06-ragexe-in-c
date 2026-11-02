@@ -141,7 +141,7 @@ static struct LapineIngredient **find_row(struct LapineUpgradeList *self, int in
 
 static void notice(struct LapineUpgradeList *self, int msg_id)
 {
-    ui_window_send(self->scroll.base.parent, &self->scroll.base, LAPINE_MSG_NOTICE, (int)msg_str(msg_id), 0, 0, 0);
+    ui_window_send(self->scroll.base.parent, &self->scroll.base, LAPINE_MSG_NOTICE, (intptr_t)msg_str(msg_id), 0, 0, 0);
 }
 
 static void item_text(struct UIWindow *wnd, struct ItemInfo *item, struct ItemNameRuns *runs)

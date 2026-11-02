@@ -162,7 +162,7 @@ void game_mode_zc_battlefield_chat(struct GameMode *self, const unsigned char *p
     vec_resize(&text, length, 1);
     memcpy(text.first, packet->text, (char *)text.last - (char *)text.first);
     if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text.first, BATTLEGROUND_CHAT_COLOR, 1, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text.first, BATTLEGROUND_CHAT_COLOR, 1, 0);
     speaker = world_get_game_actor_by_aid(self->world, aid);
     if (speaker)
         actor_send(speaker, ACTOR_MSG_SAY, (int)text.first, 0);

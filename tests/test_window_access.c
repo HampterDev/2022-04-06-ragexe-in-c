@@ -36,8 +36,8 @@ void ui_window_mgr_raise_window(struct UIWindowMgr *self, struct UIWindow *wnd)
     ++raises;
 }
 
-static int send(struct UIWindow *wnd, struct UIWindow *source,
-                           int msg, int a, int b, int c, int d)
+static intptr_t send(struct UIWindow *wnd, struct UIWindow *source,
+                           int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(wnd == &window && source == &sender && msg == 73);
     assert(a == 10 && b == 20 && c == 30 && d == 40);
@@ -66,8 +66,8 @@ static void refresh(struct UIWindow *wnd)
 static struct UIWindow *notification_target;
 static int notifications;
 
-static int notify(struct UIWindow *wnd, struct UIWindow *source,
-                  int message, int a, int b, int c, int d)
+static intptr_t notify(struct UIWindow *wnd, struct UIWindow *source,
+                  int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(wnd == notification_target && source == NULL);
     assert(message == UIMSG_REFRESH && a == 0 && b == 0 && c == 0 && d == 0);

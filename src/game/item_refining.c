@@ -47,7 +47,7 @@ enum {
 
 static void chat_line(int msg, int color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), color, 0, 0);
 }
 
 static void play_on_player(int effect_id)
@@ -222,7 +222,7 @@ void game_mode_zc_ack_weapon_refine(struct GameMode *self, const struct PacketWe
         item_info_get_display_name(&weapon, &name);
         string_init(&line);
         string_format(&line, msg_str(MSG_WEAPON_REFINE_FIRST + result), string_cstr(&name));
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), line_color[result],
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), line_color[result],
                               0, 0);
         string_free(&line);
         string_free(&name);
@@ -245,5 +245,5 @@ void game_mode_zc_repair_item_list(struct GameMode *self, const struct PacketRep
     ui_window_mgr_post_quit1(&g_windowMgr, WID_REPAIR);
     wnd = ui_window_open(WID_REPAIR);
     for (i = 0; i < (int)count; i++)
-        ui_window_send(wnd, NULL, UIM_REPAIR_ADD_ITEM, (int)packet->entries[i], 0, 0, 0);
+        ui_window_send(wnd, NULL, UIM_REPAIR_ADD_ITEM, (intptr_t)packet->entries[i], 0, 0, 0);
 }

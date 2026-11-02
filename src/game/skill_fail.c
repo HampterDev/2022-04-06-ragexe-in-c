@@ -43,7 +43,7 @@ static const unsigned short g_plainCauseMessage[112] = {
 
 static void fail_text(const char *text)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, SKILL_FAIL_CHANNEL, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, SKILL_FAIL_CHANNEL, 0);
 }
 
 static void fail_line(int msg)

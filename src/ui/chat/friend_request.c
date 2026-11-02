@@ -15,7 +15,7 @@
 struct UIJoinFriendAcceptWnd;
 struct UIWindow;
 void ui_join_friend_accept_wnd_destroy(struct UIWindow *window);
-int ui_join_friend_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_join_friend_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_join_friend_accept_wnd_ops = {
     .destroy = ui_join_friend_accept_wnd_destroy,
@@ -86,8 +86,8 @@ void ui_join_friend_accept_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIJoinFriendAcceptWnd *self = (struct UIJoinFriendAcceptWnd *)window;
     char line[0x80];
@@ -108,7 +108,7 @@ int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         self->asker_id2 = val2;
         sprintf(line, msg_str(MSG_JOIN_FRIEND_QUESTION), (const char *)val3);
         ui_list_box_clear((struct UIListBox *)(self->accept.text));
-        ui_window_send_msg(self->accept.text, NULL, UI_MSG_ADD_TEXT, (int)line, 0x26, 0, 0);
+        ui_window_send_msg(self->accept.text, NULL, UI_MSG_ADD_TEXT, (intptr_t)line, 0x26, 0, 0);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->accept.frame), sender, msg, val1, val2, val3, val4);

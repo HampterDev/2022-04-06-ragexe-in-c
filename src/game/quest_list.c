@@ -256,7 +256,7 @@ static void quest_added(const struct PacketAddQuest *pkt, struct RenewQuestB *in
     renew_quest_read_ongoing(g_questTable, pkt->quest_id, info);
     renew_quest_refresh_windows();
     ui_window_open(WINDOW_NOTIFY_QUEST);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x55e), QUEST_CHAT_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x55e), QUEST_CHAT_COLOR,
                           CHAT_CHANNEL_QUEST, 0);
 }
 
@@ -332,7 +332,7 @@ void game_mode_del_quest(struct GameMode *self, const void *packet, size_t size)
     renew_quest_refresh_windows();
     string_init(&line);
     string_format(&line, msg_str(0x64b), string_cstr(&title));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), QUEST_CHAT_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&line), QUEST_CHAT_COLOR,
                           CHAT_CHANNEL_QUEST, 0);
     string_free(&line);
     string_free(&title);

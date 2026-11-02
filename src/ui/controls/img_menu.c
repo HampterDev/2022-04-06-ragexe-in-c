@@ -184,8 +184,8 @@ void ui_img_menu_on_l_btn_up(struct UIWindow *window, int x, int y)
     ui_window_mgr_post_quit1(&g_windowMgr, CLOSE_WINDOW);
 }
 
-int ui_img_menu_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_img_menu_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIImgMenu *self = (struct UIImgMenu *)window;
     switch (msg) {

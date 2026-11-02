@@ -53,7 +53,7 @@ void ui_party_setting_wnd_store_info(struct UIWindow *self);
 void ui_party_setting_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_party_setting_wnd_on_draw(struct UIWindow *self);
 void ui_party_setting_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_party_setting_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_party_setting_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_party_setting_wnd_ops = {
     .destroy = ui_party_setting_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -288,7 +288,7 @@ struct UIPartyInvitationToWnd {
 void ui_party_invitation_to_wnd_destroy(struct UIWindow *window);
 void ui_party_invitation_to_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_party_invitation_to_wnd_on_draw(struct UIWindow *self);
-int ui_party_invitation_to_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_party_invitation_to_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_party_invitation_to_wnd_ops = {
     .destroy = ui_party_invitation_to_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -450,7 +450,7 @@ static void party_setting_ok(struct UIPartySettingWnd *self)
         } else if (!strlen(string_cstr(&name))) {
             ui_chat_line(msg_str(MSG_PARTY_NAME_EMPTY), 0xff);
         } else {
-            mode_send_message(mode, MODE_MSG_PARTY_CREATE, (int)string_cstr(&name), 0, 0, 0);
+            mode_send_message(mode, MODE_MSG_PARTY_CREATE, (intptr_t)string_cstr(&name), 0, 0, 0);
             ui_window_mgr_post_quit1(&g_windowMgr, PARTY_SETTING_WND);
             ui_window_mgr_post_quit1(&g_windowMgr, PARTY_RADIO_ID);
             mode_send_message(mode, MODE_MSG_PARTY_OPTIONS, 0, self->option1, self->option2, 0);
@@ -461,8 +461,8 @@ static void party_setting_ok(struct UIPartySettingWnd *self)
     mode_send_message(mode, MODE_MSG_PARTY_OPTIONS, 0, self->option1, self->option2, 0);
 }
 
-int ui_party_setting_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4)
+intptr_t ui_party_setting_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIFrameWnd *frame = (struct UIFrameWnd *)window;
     struct UIPartySettingWnd *wnd = (struct UIPartySettingWnd *)frame;
@@ -516,7 +516,7 @@ int ui_party_setting_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
     case PARTY_RADIO_ID:
         if (session_get_party_member_count(&g_session1) && !g_session1.partyLeader) {
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_PARTY_NOT_LEADER), 0xffff64,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_PARTY_NOT_LEADER), 0xffff64,
                                   9, 0);
             break;
         }
@@ -528,8 +528,8 @@ int ui_party_setting_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
     return 0;
 }
 
-int ui_party_invitation_to_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                              int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_party_invitation_to_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                              int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIFrameWnd *frame = (struct UIFrameWnd *)window;
     struct UIPartyInvitationToWnd *wnd = (struct UIPartyInvitationToWnd *)frame;
@@ -545,7 +545,7 @@ int ui_party_invitation_to_wnd_send_msg(struct UIWindow *window, struct UIWindow
         string_assign_cstr(&name, text);
         ui_edit_ctrl_select_all(wnd->name);
         if (strlen(string_cstr(&name))) {
-            game_send_message(MODE_MSG_PARTY_INVITE, (int)string_cstr(&name), 0, 0, 0);
+            game_send_message(MODE_MSG_PARTY_INVITE, (intptr_t)string_cstr(&name), 0, 0, 0);
         } else {
             ui_chat_line(msg_str(MSG_PARTY_INVITE_EMPTY), 0xff);
         }

@@ -13,8 +13,8 @@ __declspec(noreturn) void fatal_error(const char *message)
     assert(expect_abstract && !strcmp(message, "abstract method called"));
     longjmp(abstract_failure, 1);
 }
-static int switch_tab(struct UIWindow *window, struct UIWindow *sender, int message,
-                      int tab, int b, int c, int d)
+static intptr_t switch_tab(struct UIWindow *window, struct UIWindow *sender, int message,
+                      intptr_t tab, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window && !sender && message == MSG_GUILD_SWITCH_TAB && !b && !c && !d);
     switched_to = tab; return 0;

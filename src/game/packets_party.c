@@ -181,9 +181,9 @@ void game_mode_zc_seek_party(struct GameMode *self, const unsigned char *pkt)
     job_name = session_get_job_name(&g_session1, packet->job, -1);
     sprintf(line, msg_str(0x78a), packet->value, packet->name, job_name);
     if (g_windowMgr.chat_room_wnd != 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, 5, (int)line, 0x222222, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 5, (intptr_t)line, 0x222222, 0, 0);
     else if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, 0xffff00, 1, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, 0xffff00, 1, 0);
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, line);
 }
@@ -201,7 +201,7 @@ void game_mode_zc_party_config(const unsigned char *pkt)
     const struct PACKET_ZC_PARTY_CONFIG *packet = (const struct PACKET_ZC_PARTY_CONFIG *)pkt;
 
     g_session1.partyInviteRefused = packet->refuse_invitations;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(packet->refuse_invitations == 0 ? 0x52e : 0x52d), 0x64ffff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(packet->refuse_invitations == 0 ? 0x52e : 0x52d), 0x64ffff, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -259,7 +259,7 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
         text = line;
         break;
     case 9:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xda6), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xda6), 0xff, 0, 0);
         return;
     case 10: text = msg_str(0xd73); break;
     case 11: text = msg_str(0xda7); break;
@@ -272,7 +272,7 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     default:
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, color, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -319,7 +319,7 @@ void game_mode_zc_req_join_group(const unsigned char *pkt)
     name[24] = 0;
     string_assign_cstr(&g_session1.partyName, name);
     wnd = ui_window_open(WND_PARTY_INVITATION);
-    wnd_send(wnd, 0x38, packet->party_id, (int)name, 0, 0);
+    wnd_send(wnd, 0x38, packet->party_id, (intptr_t)name, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -344,49 +344,49 @@ void game_mode_party_join_ack(const unsigned char *pkt)
     string_assign_cstr(&who, player_name);
     switch (result) {
     case 0:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x50), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x50), 0xff, 0, 0);
         break;
     case 1:
         string_copy(&line, &who);
         string_append_cstr(&line, msg_str(0x80c));
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), 0xff, 0, 0);
         string_free(&line);
         break;
     case 2:
         string_copy(&line, &who);
         string_append_cstr(&line, msg_str(0x80d));
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), 0xffff00, 0, 0);
         string_free(&line);
         break;
     case 3:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x53), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x53), 0xff, 0, 0);
         break;
     case 4:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x260), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x260), 0xff, 0, 0);
         break;
     }
     switch (result) {
     case 5:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x52c), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x52c), 0xff, 0, 0);
         break;
     case 7:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x47), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x47), 0xff, 0, 0);
         break;
     case 8:
         sprintf(text, msg_str(0x56c), player_name);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, 0xff, 0, 0);
         break;
     case 9:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x74f), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x74f), 0xff, 0, 0);
         break;
     case 10:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xbd3), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xbd3), 0xff, 0, 0);
         break;
     case 11:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xc9a), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xc9a), 0xff, 0, 0);
         break;
     case 18:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xe32), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xe32), 0xff, 0, 0);
         break;
     }
     string_free(&who);
@@ -397,7 +397,7 @@ void game_mode_party_join_ack(const unsigned char *pkt)
 static void party_setting_line(const char *line)
 {
     if (strlen(line) != 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_YELLOW, 0xb, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_YELLOW, 0xb, 0);
 }
 
 #pragma pack(push, 1)
@@ -476,10 +476,10 @@ void game_mode_zc_ack_make_group(const unsigned char *pkt)
     if (result > 3)
         return;
     if (result == 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4d), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4d), 0xffff00, 0, 0);
         ui_window_open(WND_PARTY);
     } else {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(refusal[result]), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(refusal[result]), 0xff, 0, 0);
     }
 }
 
@@ -590,5 +590,5 @@ void game_mode_zc_group_info_change(const unsigned char *pkt)
     default:
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_YELLOW, 0xb, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_YELLOW, 0xb, 0);
 }

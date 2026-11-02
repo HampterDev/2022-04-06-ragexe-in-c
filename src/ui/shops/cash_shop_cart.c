@@ -33,7 +33,7 @@ void ui_cash_shop_wnd_cart_item_on_l_btn_dbl_clk(struct UIWindow *self, int x, i
 void ui_cash_shop_wnd_cart_item_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_cash_shop_wnd_cart_item_show_info(struct UIWindow *self, int x, int y);
 void ui_cash_shop_wnd_cart_item_on_wheel(struct UIWindow *self, int delta);
-int ui_cash_shop_wnd_cart_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_cash_shop_wnd_cart_item_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_cash_shop_wnd_cart_item_ops = {
     .destroy = ui_cash_shop_wnd_cart_item_destroy,
     .resize = ui_window_resize_base,
@@ -85,7 +85,7 @@ void ui_cash_shop_wnd_cart_drag_and_drop(struct UIWindow *window, int x, int y, 
 void ui_cash_shop_wnd_cart_on_create(struct UIWindow *self, int width, int height);
 void ui_cash_shop_wnd_cart_on_draw(struct UIWindow *self);
 void ui_cash_shop_wnd_cart_on_wheel(struct UIWindow *self, int delta);
-int ui_cash_shop_wnd_cart_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_cash_shop_wnd_cart_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_cash_shop_wnd_cart_ops = {
     .destroy = ui_cash_shop_wnd_cart_destroy,
     .resize = ui_window_resize_base,
@@ -263,7 +263,7 @@ void ui_cash_shop_wnd_cart_item_show_info(struct UIWindow *window, int x, int y)
         return;
     wnd = ui_make_window(ITEM_WND_ID);
     if (wnd)
-        ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&self->info, 0, 0, 0);
+        ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&self->info, 0, 0, 0);
 }
 
 void ui_cash_shop_wnd_cart_item_on_wheel(struct UIWindow *window, int delta)
@@ -273,8 +273,8 @@ void ui_cash_shop_wnd_cart_item_on_wheel(struct UIWindow *window, int delta)
         ui_window_on_wheel(self->base.parent, delta);
 }
 
-int ui_cash_shop_wnd_cart_item_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_cash_shop_wnd_cart_item_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICashShopWnd_CartItem *self = (struct UICashShopWnd_CartItem *)window;
     struct UIWindow *cart = self->base.parent;
@@ -294,12 +294,12 @@ int ui_cash_shop_wnd_cart_item_send_msg(struct UIWindow *window, struct UIWindow
             break;
         case CASH_ID_PLUS:
             if (cart)
-                ui_window_send_msg(cart, &self->base, CASH_MSG_ADD, (int)&self->info, 1, 0, 0);
+                ui_window_send_msg(cart, &self->base, CASH_MSG_ADD, (intptr_t)&self->info, 1, 0, 0);
             ui_window_invalidate_base(&self->base);
             break;
         case CASH_ID_MINUS:
             if (cart)
-                ui_window_send_msg(cart, &self->base, CASH_MSG_ADD, (int)&self->info, -1, 0, 0);
+                ui_window_send_msg(cart, &self->base, CASH_MSG_ADD, (intptr_t)&self->info, -1, 0, 0);
             ui_window_invalidate_base(&self->base);
             break;
         }
@@ -425,7 +425,7 @@ void ui_cash_shop_wnd_cart_on_draw(struct UIWindow *window)
         if (line >= CART_LINE_COUNT(self))
             ui_window_set_show(row, 0);
         else
-            ui_window_send_msg(row, &self->base, CASH_MSG_SET_GOODS, (int)CART_LINE(self, line), 0, 0, 0);
+            ui_window_send_msg(row, &self->base, CASH_MSG_SET_GOODS, (intptr_t)CART_LINE(self, line), 0, 0, 0);
     }
 }
 
@@ -463,8 +463,8 @@ static void update_scroll(struct UICashShopWnd_Cart *self, int max_pos)
     ui_scroll_bar_set_pos(&self->scroll->bar, self->first);
 }
 
-int ui_cash_shop_wnd_cart_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_cash_shop_wnd_cart_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICashShopWnd_Cart *self = (struct UICashShopWnd_Cart *)window;
     switch (msg) {

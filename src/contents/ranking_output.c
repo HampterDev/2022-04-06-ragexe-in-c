@@ -21,7 +21,7 @@ int ranking_line(int color, const char *format, ...)
     written = vsnprintf(text, (size_t)size + 1, format, args);
     va_end(args);
     if (written == size)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, color, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)text, color, 0, 0);
     free(text);
     return written == size;
 }

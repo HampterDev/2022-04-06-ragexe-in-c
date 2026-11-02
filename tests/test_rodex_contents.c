@@ -51,7 +51,7 @@ static void accept_body(struct UIWindow *window, const char *text)
 }
 static void set_body_text(struct UIWindow *window, const char *text)
 { ++plain_text; accept_body(window, text); }
-static int edit_message(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+static intptr_t edit_message(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(!sender && message == UI_MSG_PARSE_LINKS && !b && !c && !d);
     ++parsed_links;

@@ -44,8 +44,8 @@ static int selection_shown(struct UIListBox *self, int last_in_view)
     return 0;
 }
 
-int ui_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIListBox *self = (struct UIListBox *)window;
     int lines_in_view, last;
@@ -128,7 +128,7 @@ int ui_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int m
                 if (g_session1.itemCompare && worn && !val4) {
                     wnd = ui_window_open(WND_ITEM_COLLECTION_CMP);
                     if (wnd) {
-                        ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
+                        ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (intptr_t)worn, 1, 0, 0);
                         return 0;
                     }
                     ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);

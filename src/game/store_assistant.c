@@ -495,7 +495,7 @@ void game_mode_on_ack_create_assistant(unsigned char kind, unsigned char result)
     case 8: msg = 0x38; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }
 
 struct Pc;

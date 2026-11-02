@@ -146,8 +146,8 @@ void ui_new_combo_box_ctrl_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
         ui_window_send_msg(self->base.parent, &self->base, NEW_COMBO_MSG_DBLCLK, self->selected, 0, 0, 0);
 }
 
-int ui_new_combo_box_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_new_combo_box_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewComboBoxCtrl *self = (struct UINewComboBoxCtrl *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -164,7 +164,7 @@ int ui_new_combo_box_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sen
         list = ui_window_open(UI_WND_COMBO_BOX);
         n = (int)VEC_COUNT(&self->lines, struct String);
         for (i = 0; i < n; i++)
-            ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(LINE(self, i)), 0, 0, 0);
+            ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)string_cstr(LINE(self, i)), 0, 0, 0);
         ui_window_send_msg(list, NULL, COMBO_MSG_SELECT, self->selected, 0, 0, 0);
         ui_window_resize(list, self->base.width, n * LINE_HEIGHT);
         ui_combo_box_wnd_set_chosen_to((struct UIComboBoxWnd *)list, &self->base);

@@ -145,8 +145,8 @@ void ui_tool_tip_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_sys_box(&self->frame.base, 0, 0, 0, 0);
 }
 
-int ui_tool_tip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_tool_tip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIToolTipWnd *self = (struct UIToolTipWnd *)window;
     if (msg != UI_MSG_COMMAND)

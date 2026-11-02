@@ -51,8 +51,8 @@ void ui_window_resize_base(struct UIWindow *self, int width, int height);
 void ui_window_move_base(struct UIWindow *self, int x, int y);
 void ui_window_drag_and_drop_base(struct UIWindow *self, int x, int y, const struct DragInfo *drag);
 void ui_window_on_mouse_shape_base(struct UIWindow *self, int x, int y);
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2,
-                                int val3, int val4);
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                intptr_t val3, intptr_t val4);
 DWORD ui_window_get_color(struct UIWindow *self);
 struct UIWindow *ui_window_hit_test_base(struct UIWindow *self, int x, int y);
 void ui_window_render_overlay_base(struct UIWindow *self);
@@ -62,8 +62,8 @@ void ui_window_to_screen(struct UIWindow *self, int *x, int *y);
 struct UIFrameWnd *ui_frame_wnd_construct(struct UIFrameWnd *self,
                                                    int composites);
 void ui_frame_wnd_destruct(struct UIFrameWnd *self);
-int ui_frame_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                  int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                                  int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_frame_wnd_destroy(struct UIWindow *window);
 void ui_frame_wnd_move(struct UIWindow *self, int x, int y);

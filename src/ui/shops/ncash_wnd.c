@@ -305,7 +305,7 @@ static struct UIWindow *add_edit(struct UInCashWnd *self, int width, int height,
     return edit;
 }
 
-int u_in_cash_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t u_in_cash_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void u_in_cash_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UInCashWnd *self = (struct UInCashWnd *)window;
@@ -577,7 +577,7 @@ void u_in_cash_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (info.index && self->hit >= 0) {
         struct UIWindow *item_wnd = ui_window_open(ITEM_WND_ID);
 
-        ui_window_send(item_wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+        ui_window_send(item_wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     }
     item_info_destruct(&info);
 }
@@ -931,8 +931,8 @@ static int command(struct UInCashWnd *self, int id)
     return 0;
 }
 
-int u_in_cash_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t u_in_cash_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UInCashWnd *self = (struct UInCashWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

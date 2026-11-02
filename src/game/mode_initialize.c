@@ -126,9 +126,9 @@ static void greet_after_login(struct GameMode *self)
         mode_send_msg(self, MODE_MSG_REQ_REMAIN_TIME, 0, 0, 0, 0);
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)msg_str(0x16), 0xffe6e6, 0, 0);
     if (!account_user_data_is_loaded(g_accountUserDataMgr))
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)"Local account settings could not be loaded. Using initial preferences; existing file preserved.", 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)"Local account settings could not be loaded. Using initial preferences; existing file preserved.", 0xff, 0, 0);
 }
 
 static void enter_map_server(void)

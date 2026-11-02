@@ -18,7 +18,7 @@ struct UIWindow;
 struct UIItemPurchaseWnd;
 void ui_item_purchase_wnd_destroy(struct UIWindow *window);
 void ui_item_purchase_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-int ui_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_purchase_wnd_ops = {
     .destroy = ui_item_purchase_wnd_destroy,
@@ -429,8 +429,8 @@ static void purchase_add_dragged(struct UIItemPurchaseWnd *self)
     item_info_destruct(&info);
 }
 
-int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemPurchaseWnd *self = (struct UIItemPurchaseWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

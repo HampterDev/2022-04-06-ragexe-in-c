@@ -39,7 +39,7 @@ void ui_ongoing_quest_scroll_wnd_destroy(struct UIWindow *window);
 void ui_ongoing_quest_scroll_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_ongoing_quest_scroll_wnd_on_draw(struct UIWindow *self);
 void ui_ongoing_quest_scroll_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ongoing_quest_scroll_wnd_ops = {
     .destroy = ui_ongoing_quest_scroll_wnd_destroy,
     .resize = ui_scroll_wnd_resize,
@@ -403,8 +403,8 @@ void ui_ongoing_quest_scroll_wnd_set_quest(struct UIOngoingQuestScrollWnd *self,
     ui_window_invalidate_base(&pane->base);
 }
 
-int ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIOngoingQuestScrollWnd *self = (struct UIOngoingQuestScrollWnd *)window;
     if (msg == QUEST_MSG_REFRESH)

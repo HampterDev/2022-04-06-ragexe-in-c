@@ -78,7 +78,7 @@ struct UIMakeTargetResultWnd {
 void ui_make_target_list_wnd_destroy(struct UIWindow *window);
 void ui_make_target_list_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_make_target_list_wnd_on_draw(struct UIWindow *self);
-int ui_make_target_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_make_target_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_make_target_list_wnd_ops = {
     .destroy = ui_make_target_list_wnd_destroy,
@@ -129,7 +129,7 @@ void ui_make_target_process_wnd_drag_and_drop(struct UIWindow *window, int x, in
 void ui_make_target_process_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_make_target_process_wnd_on_draw(struct UIWindow *self);
 void ui_make_target_process_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_make_target_process_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_make_target_process_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_make_target_process_wnd_ops = {
     .destroy = ui_make_target_process_wnd_destroy,
@@ -178,7 +178,7 @@ const struct UIWindowOps ui_make_target_process_wnd_ops = {
 void ui_make_target_result_wnd_destroy(struct UIWindow *window);
 void ui_make_target_result_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_make_target_result_wnd_on_draw(struct UIWindow *self);
-int ui_make_target_result_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_make_target_result_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_make_target_result_wnd_ops = {
     .destroy = ui_make_target_result_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -272,7 +272,7 @@ static void send_make_empty(int item_id)
 
     for (i = 0; i < MT_STONES; i++)
         item_info_construct(&items[i]);
-    game_send_message(MT_REQ_MAKE, item_id, (int)items, 0, 0);
+    game_send_message(MT_REQ_MAKE, item_id, (intptr_t)items, 0, 0);
     for (i = MT_STONES - 1; i >= 0; i--)
         item_info_destruct(&items[i]);
 }
@@ -343,8 +343,8 @@ static void list_choose(struct UIMakeTargetListWnd *self)
     ui_close_window(MT_LIST_WND_ID);
 }
 
-int ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMakeTargetListWnd *self = (struct UIMakeTargetListWnd *)window;
     struct ItemInfo info;
@@ -474,7 +474,7 @@ void ui_make_target_process_wnd_on_l_btn_down(struct UIWindow *window, int x, in
 
     stone_at(self, &info, x, y);
     if (info.index)
-        mode_send_message(client_current_mode(), MT_REQ_SHOW_ITEM, (int)string_cstr(&info.id_text), 0, 0, 0);
+        mode_send_message(client_current_mode(), MT_REQ_SHOW_ITEM, (intptr_t)string_cstr(&info.id_text), 0, 0, 0);
     else
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
     item_info_destruct(&info);
@@ -515,8 +515,8 @@ void ui_make_target_process_wnd_drag_and_drop(struct UIWindow *window, int x, in
     mode_send_message(client_current_mode(), MT_REQ_DRAG_END, 0, 0, 0, 0);
 }
 
-int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMakeTargetProcessWnd *self = (struct UIMakeTargetProcessWnd *)window;
     BYTE returned = 0;
@@ -526,10 +526,10 @@ int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow
     case UI_MSG_COMMAND:
 
         if (val1 == UI_ID_OK) {
-            game_send_message(MT_REQ_MAKE, self->item_id, (int)self->stones, 0, 0);
+            game_send_message(MT_REQ_MAKE, self->item_id, (intptr_t)self->stones, 0, 0);
             ui_close_window(MT_PROCESS_WND_ID);
         } else if (val1 == UI_ID_CANCEL) {
-            game_send_message(MT_REQ_MAKE, 0, (int)self->stones, 0, 0);
+            game_send_message(MT_REQ_MAKE, 0, (intptr_t)self->stones, 0, 0);
             for (i = 0; i < MT_STONES; i++) {
                 if (self->stones[i].index) {
                     returned = 1;
@@ -605,8 +605,8 @@ void ui_make_target_result_wnd_on_draw(struct UIWindow *window)
     item_info_destruct(&info);
 }
 
-int ui_make_target_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_make_target_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMakeTargetResultWnd *self = (struct UIMakeTargetResultWnd *)window;
     switch (msg) {
