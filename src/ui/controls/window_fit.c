@@ -5,10 +5,10 @@
 #include "ui/chat/navi_text.h"
 #include "core/text_markup.h"
 #include "core/text_encoding.h"
+#include "platform/code_page.h"
 #include "render/textdc.h"
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 #include "ui/controls/window_fit.h"
 
 static int text_cx(struct UIWindow *self, const char *text, int face, int height, int arg)
@@ -34,9 +34,9 @@ static void measure_dots(struct UIWindow *self, int face, int height, int arg)
     text_dc_destruct(&dc);
 }
 
-static int dotted(struct String *out, const wchar_t *wide)
+static int dotted(struct String *out, const uint16_t *wide)
 {
-    char *text = encoding_from_wide(CP_THREAD_ACP, wide);
+    char *text = encoding_from_wide(CODE_PAGE_THREAD, wide);
     if (!text) return 0;
     string_assign_cstr(out, text);
     string_append_cstr(out, "...");
@@ -44,10 +44,10 @@ static int dotted(struct String *out, const wchar_t *wide)
     return 1;
 }
 
-static void shrink(struct UIWindow *self, struct String *out, wchar_t *wide,
+static void shrink(struct UIWindow *self, struct String *out, uint16_t *wide,
                     int width, int face, int height, int arg)
 {
-    size_t count = wcslen(wide);
+    size_t count = utf16_length(wide);
     for (;;) {
         if (count <= 1) { dotted(out, wide); return; }
         count -= ((unsigned char)wide[count - 2] & 0x80) &&
@@ -82,7 +82,7 @@ struct String *ui_window_fit_text(struct UIWindow *self, struct String *out,
     measured = text_cx(self, string_cstr(&result), font_face, font_height, font_arg3);
     measure_dots(self, font_face, font_height, font_arg3);
     if (width < measured) {
-        wchar_t *wide = encoding_to_wide(CP_THREAD_ACP, string_cstr(&result));
+        uint16_t *wide = encoding_to_wide(CODE_PAGE_THREAD, string_cstr(&result));
         if (wide) {
             shrink(self, &result, wide, width, font_face, font_height, font_arg3);
             free(wide);

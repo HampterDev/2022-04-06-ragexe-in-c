@@ -1,26 +1,26 @@
 #include "core/text_encoding.h"
+#include "platform/code_page.h"
 #include "ui/controls/static.h"
 #include "ui/draw.h"
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 
 struct String *ui_window_ellipsize_text(struct UIWindow *self, struct String *out,
                                       int max_width, const char *text, int font_face,
                                       int font_height, int font_arg)
 {
-    wchar_t *wide;
+    uint16_t *wide;
     int width = ui_window_text_width(self, text, 0, font_face, font_height, font_arg, 0);
     ui_window_text_width(self, "...", 0, font_face, font_height, font_arg, 0);
     string_init(out);
     string_assign_cstr(out, text);
     if (max_width >= width)
         return out;
-    wide = encoding_to_wide(CP_THREAD_ACP, text);
+    wide = encoding_to_wide(CODE_PAGE_THREAD, text);
     if (!wide)
         return out;
     for (;;) {
-        size_t count = wcslen(wide);
+        size_t count = utf16_length(wide);
         int last = count <= 1;
         char *narrow;
         if (!last) {
@@ -29,7 +29,7 @@ struct String *ui_window_ellipsize_text(struct UIWindow *self, struct String *ou
                 keep = count - 2;
             wide[keep] = 0;
         }
-        narrow = encoding_from_wide(CP_THREAD_ACP, wide);
+        narrow = encoding_from_wide(CODE_PAGE_THREAD, wide);
         if (!narrow)
             break;
         string_assign_cstr(out, narrow);

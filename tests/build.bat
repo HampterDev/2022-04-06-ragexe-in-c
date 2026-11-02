@@ -423,13 +423,13 @@ call "%~dp0build_reported_players.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\core\text_encoding.c" /Fo:text_encoding_test.obj
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_code_page_conversion.c" "%ROOT%\tests\encoding_fixture.c" text_encoding_test.obj /Fe:test_code_page_conversion.exe
+cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_code_page_conversion.c" "%ROOT%\tests\encoding_fixture.c" text_encoding_test.obj "%ROOT%\src\platform\code_page.c" /Fe:test_code_page_conversion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_code_page_conversion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\ui\controls\ellipsize_text.c"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib /Fe:test_text_consumers.exe /link /OPT:REF
+cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib "%ROOT%\src\platform\code_page.c" /Fe:test_text_consumers.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_text_consumers.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -485,7 +485,7 @@ cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_item_info.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_guild_state.c" "%ROOT%\src\contents\guild_info.c" "%ROOT%\src\contents\guild_lists.c" "%ROOT%\src\ui\social\guild_containers.c" "%ROOT%\src\ui\social\guild_requests.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\guild_state_support.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" /Fe:test_guild_state.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_guild_state.c" "%ROOT%\src\contents\guild_info.c" "%ROOT%\src\contents\guild_lists.c" "%ROOT%\src\ui\social\guild_containers.c" "%ROOT%\src\ui\social\guild_requests.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\guild_state_support.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\code_page.c" /Fe:test_guild_state.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_guild_state.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -513,7 +513,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_display_devices.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" "%ROOT%\src\platform\code_page.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_resource_paths.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )

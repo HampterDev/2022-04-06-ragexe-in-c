@@ -18,7 +18,6 @@
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
-#include <mbstring.h>
 #include <string.h>
 #include "diag/perf.h"
 

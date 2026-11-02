@@ -12,7 +12,7 @@
 #include <string.h>
 #include "core/client_path.h"
 #include "platform/filesystem.h"
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include "ui/chat/chat.h"
 #include "ui/chat/chat_history.h"
 #include "ui/chat/whisper.h"
@@ -396,7 +396,7 @@ static void add_line(struct UIWhisperWnd *self, char *text, int own)
     COLORREF colour;
 
     colour = own == WHISPER_OWN_LINE ? WHISPER_OWN_COLOUR : WHISPER_OTHER_COLOUR;
-    if (_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML)))
+    if (platform_code_page_find(text, string_cstr(&text_tag_ITEML)))
         ui_chat_his_box_add_line(&self->box->box, text, colour, NULL);
     else
         ui_chat_his_box_add_wrapped(&self->box->box, text, colour, NULL);

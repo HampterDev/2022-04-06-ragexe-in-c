@@ -8,7 +8,7 @@
 #include "render/textdc.h"
 #include "core/cstr.h"
 
-#define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)
+#define NEXT_CHAR(p) platform_code_page_next(g_codePage, (p))
 
 static void destroy_string(void *value) { string_free(value); }
 

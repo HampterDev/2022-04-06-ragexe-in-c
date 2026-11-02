@@ -359,10 +359,10 @@ void wstring_free(struct WString *s)
     wstring_init(s);
 }
 
-void wstring_assign(struct WString *s, const wchar_t *text, size_t len)
+void wstring_assign(struct WString *s, const uint16_t *text, size_t len)
 {
     size_t capacity;
-    wchar_t *block;
+    uint16_t *block;
 
     if (s->data && len <= s->capacity) {
         memmove(s->data, text, len * sizeof *text);

@@ -14,7 +14,7 @@
 #include "core/markup_tags.h"
 #include <stdlib.h>
 #include <string.h>
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
@@ -422,10 +422,10 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     struct NewCharLooks looks;
     int control_chars_ok, service, blank, i;
 
-    if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (platform_code_page_find(ui_edit_ctrl_get_text(self->name_edit),
+                                string_cstr(&text_tag_ITEML)) ||
+        platform_code_page_find(ui_edit_ctrl_get_text(self->name_edit),
+                                string_cstr(&text_tag_ITEML_END))) {
         name_box(MSG_NAME_HAS_TAG);
         ui_edit_ctrl_set_text_default((struct UIEditCtrl *)self->name_edit, "");
         return 0;

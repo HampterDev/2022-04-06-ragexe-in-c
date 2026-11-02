@@ -1,7 +1,7 @@
 #include "ui/draw.h"
 #include "core/text_format.h"
 #include "platform/language.h"
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,8 +41,7 @@ void ui_window_break_lines(struct UIWindow *self, const char *text,
             if (text_is_colour_code(p, end))
                 measured -= width12(self, "^000000", 7);
             if (*p == '[') {
-                const char *close = (const char *)_mbsstr((const unsigned char *)p,
-                                                         (const unsigned char *)"]");
+                const char *close = platform_code_page_find(p, "]");
                 if (close) {
                     int group_width = width12(self, p, (int)(close - p) + 1);
                     int char_width = width12(self, p, count);

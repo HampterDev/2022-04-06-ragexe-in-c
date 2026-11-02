@@ -155,7 +155,7 @@ int ui_window_draw_runs_shortened(struct UIWindow *self, int x, int y, int max_w
         const char *run_start = p, *run_end_at = text + runs->ends[i];
 
         while (p < run_end_at) {
-            const char *next = CharNextExA((WORD)g_codePage, p, 0);
+            const char *next = platform_code_page_next(g_codePage, p);
             int len, rest, width;
 
             if (next <= p) next = p + 1;

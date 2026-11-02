@@ -9,7 +9,7 @@
 #include "ui/chat/chat_history.h"
 #include <stdio.h>
 #include <string.h>
-#include <mbstring.h>
+#include "platform/code_page.h"
 #include "diag/perf.h"
 #include "ui/ui_std.h"
 #include <time.h>
@@ -201,8 +201,8 @@ static void push_string(struct Vec *v, const char *text)
 
 static int has_item_link(const char *text)
 {
-    return _mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-           _mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML_END));
+    return platform_code_page_find(text, string_cstr(&text_tag_ITEML)) ||
+           platform_code_page_find(text, string_cstr(&text_tag_ITEML_END));
 }
 
 static int rows_in_view(struct UIChatHisBox *self)

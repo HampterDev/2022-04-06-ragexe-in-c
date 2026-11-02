@@ -20,7 +20,7 @@
 
 #include "platform/win_types.h"
 #include <string.h>
-#include <wchar.h>
+#include "platform/code_page.h"
 #include "core/msg_str.h"
 #include "session/session_names.h"
 
@@ -71,7 +71,7 @@ int navi_manager_add_text_lines(struct NaviManager *self, int style, int x, int 
         const char *text)
 {
     struct String s;
-    wchar_t wide[100];
+    uint16_t wide[100];
     char line[40];
     struct NaviUiRecord *last;
     int len, lines;
@@ -80,22 +80,22 @@ int navi_manager_add_text_lines(struct NaviManager *self, int style, int x, int 
     string_assign_cstr(&s, "[");
     string_append_cstr(&s, text);
     memset(wide, 0, 0xc8);
-    MultiByteToWideChar(0, 0, string_cstr(&s), -1, wide, s.size);
-    len = (int)wcsnlen(wide, 100);
+    platform_code_page_to_utf16(CODE_PAGE_SYSTEM, string_cstr(&s), -1, wide, s.size);
+    len = (int)utf16_length_limit(wide, 100);
     memset(line, 0, sizeof line);
     lines = len / 12;
     if (lines >= 0) {
-        const wchar_t *start = wide;
+        const uint16_t *start = wide;
         int i, dy = 0, end = 11;
 
         for (i = 0; i <= lines; i++, dy += 14, end += 11, start += 11) {
-            const wchar_t *stop = wide + (len <= end ? len : end);
+            const uint16_t *stop = wide + (len <= end ? len : end);
             struct WString ws;
             struct NaviUiRecord rec;
 
             wstring_init(&ws);
             wstring_assign(&ws, start, (size_t)(stop - start));
-            WideCharToMultiByte(0, 0, wstring_cstr(&ws), -1, line, 0x28, NULL, NULL);
+            platform_code_page_from_utf16(CODE_PAGE_SYSTEM, wstring_cstr(&ws), -1, line, 0x28);
             rec.x = 0;
             rec.y = 0;
             string_init(&rec.text);

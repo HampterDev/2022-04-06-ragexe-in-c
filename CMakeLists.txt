@@ -32,7 +32,7 @@ if(RAGE_CLIENT)
     include(cmake/Client.cmake)
 endif()
 
-add_library(rage_platform STATIC src/platform/clock.c src/platform/filesystem.c src/platform/net.c
+add_library(rage_platform STATIC src/platform/clock.c src/platform/code_page.c src/platform/filesystem.c src/platform/net.c
     src/platform/thread.c)
 target_include_directories(rage_platform PUBLIC src)
 if(WIN32)
@@ -90,6 +90,8 @@ if(BUILD_TESTING)
     target_link_libraries(test_platform_thread PRIVATE rage_platform)
     rage_test(platform_net)
     target_link_libraries(test_platform_net PRIVATE rage_platform)
+    rage_test(platform_code_page)
+    target_link_libraries(test_platform_code_page PRIVATE rage_platform)
     rage_test(string)
     rage_test(containers src/std/vec.c src/std/list.c src/std/tree.c)
     rage_test(xml src/core/xml.c src/std/string.c src/core/memory.c)

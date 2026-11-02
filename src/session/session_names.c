@@ -494,7 +494,7 @@ char *session_remove_underbar(const char *src, char *dst)
         while ((*d++ = *s++) != 0)
             ;
     }
-    for (p = dst; *p; p = CharNextExA(g_codePage, p, 0))
+    for (p = dst; *p; p = platform_code_page_next(g_codePage, p))
         if (*p == '_')
             *p = ' ';
     return dst;
