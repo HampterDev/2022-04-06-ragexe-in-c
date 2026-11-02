@@ -203,7 +203,8 @@ int main(void)
     filter("a<ITEML>0000001C!</ITEML>b<ITEML>0000001E!</ITEML>", 0, 2);
     filter("<ITEML>000000zz!</ITEML>", 1, 1);
     filter("<ITEML>short</ITEML>", 1, 0);
-    filter("<ITEML>missing close", 1, 0);
+    filter("<ITEML>missing close", 0, 0);
+    filter("<ITEML>0000001C!</ITEML><ITEML>open", 0, 1);
     filter("</ITEML><ITEML>0000001C!</ITEML>", 1, 0);
     guard_tests();
     for (i = 0; i < 1000; ++i) {

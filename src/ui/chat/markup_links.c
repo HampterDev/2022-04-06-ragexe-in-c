@@ -39,8 +39,8 @@ int chat_filter_is_blocked(struct TextView text)
         struct ItemInfo item, *found;
         int id, blocked;
 
-        if (start == (size_t)-1 && end == (size_t)-1) return 0;
-        if (start == (size_t)-1 || end == (size_t)-1 || end < start) break;
+        if (end == (size_t)-1) return 0;
+        if (start == (size_t)-1 || end < start) break;
         while ((nested = text_view_find(text, text_view("<ITEML>", 7), start + 7)) != (size_t)-1 && nested < end)
             start = nested;
         id = item_link_id(text_view(text.data + start + 7, end - start - 7));
