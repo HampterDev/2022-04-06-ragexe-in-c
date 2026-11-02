@@ -5,6 +5,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/SDL3.cmake)
 find_package(Freetype REQUIRED)
 find_package(Fontconfig REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Iconv REQUIRED)
 
 file(GLOB_RECURSE RAGE_CLIENT_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.c)
 file(STRINGS ${PROJECT_SOURCE_DIR}/tools/posix_excluded.txt RAGE_CLIENT_EXCLUDED REGEX "^[^#]")
@@ -41,7 +42,7 @@ endif()
 target_compile_options(ragexe PRIVATE -fno-strict-aliasing -fwrapv
     -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers)
 target_compile_definitions(ragexe PRIVATE _DEFAULT_SOURCE _GNU_SOURCE)
-target_link_libraries(ragexe PRIVATE SDL3::SDL3 Freetype::Freetype Fontconfig::Fontconfig Threads::Threads
+target_link_libraries(ragexe PRIVATE SDL3::SDL3 Freetype::Freetype Fontconfig::Fontconfig Threads::Threads Iconv::Iconv
     rage_lua rage_png rage_zlib rage_gif rage_json rage_stb rage_dr_mp3 rage_crijndael m ${CMAKE_DL_LIBS})
 set_target_properties(ragexe PROPERTIES LINKER_LANGUAGE CXX)
 

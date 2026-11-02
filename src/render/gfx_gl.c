@@ -259,10 +259,10 @@ static const char fragment_source[] =
 
 static int load_functions(void)
 {
-#define GL_LOAD(ret, name, params) \
+#define GL_LOAD_PROC(ret, name, params) \
     if (!(p_##name = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#name))) return 0;
-    GL_FUNCTIONS(GL_LOAD)
-#undef GL_LOAD
+    GL_FUNCTIONS(GL_LOAD_PROC)
+#undef GL_LOAD_PROC
     return 1;
 }
 
