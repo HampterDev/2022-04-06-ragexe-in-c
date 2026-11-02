@@ -1,5 +1,6 @@
 #define ENCODING_FIXTURE_IMPLEMENTATION
 #include "encoding_fixture.h"
+#include "platform/code_page.h"
 #include <assert.h>
 
 unsigned encoding_allocations, encoding_live, encoding_fail_allocation;
@@ -26,23 +27,18 @@ void encoding_test_free(void *memory)
     }
 }
 
-int encoding_test_to_wide(UINT cp, DWORD flags, const char *input, int bytes, wchar_t *out, int count)
+int encoding_test_to_wide(unsigned int cp, const char *input, int bytes, uint16_t *out, int count)
 {
-    if (++encoding_calls == encoding_fail_call) {
-        SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+    if (++encoding_calls == encoding_fail_call)
         return 0;
-    }
-    return MultiByteToWideChar(cp, flags, input, bytes, out, count);
+    return platform_code_page_to_utf16(cp, input, bytes, out, count);
 }
 
-int encoding_test_from_wide(UINT cp, DWORD flags, const wchar_t *input, int count, char *out, int bytes,
-                            const char *replacement, BOOL *used)
+int encoding_test_from_wide(unsigned int cp, const uint16_t *input, int count, char *out, int bytes)
 {
-    if (++encoding_calls == encoding_fail_call) {
-        SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+    if (++encoding_calls == encoding_fail_call)
         return 0;
-    }
-    return WideCharToMultiByte(cp, flags, input, count, out, bytes, replacement, used);
+    return platform_code_page_from_utf16(cp, input, count, out, bytes);
 }
 
 void encoding_test_reset(void)

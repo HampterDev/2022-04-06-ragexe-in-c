@@ -71,7 +71,7 @@ void account_user_data_load(struct AccountUserDataMgr *self, int aid, const char
     } else if (result == 1) {
         json_tree_init(&data);
         if (json_parse_text(&data, text.data, text.size) &&
-            settings_json_convert(&data, CP_UTF8, g_codePage))
+            settings_json_convert(&data, CODE_PAGE_UTF8, g_codePage))
             self->loaded = account_settings_apply(&data);
         json_tree_free(&data);
     }
@@ -87,7 +87,7 @@ int account_user_data_save(struct AccountUserDataMgr *self)
     int ok = 0;
     if (!self || !self->loaded || !self->path[0]) return 0;
     json_tree_init(&data);
-    if (account_settings_capture(&data) && settings_json_convert(&data, g_codePage, CP_UTF8) &&
+    if (account_settings_capture(&data) && settings_json_convert(&data, g_codePage, CODE_PAGE_UTF8) &&
         json_write_request(&data, &text))
         ok = settings_file_write(self->path, owned_text_view(&text));
     owned_text_clear(&text);

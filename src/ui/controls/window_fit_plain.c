@@ -1,12 +1,12 @@
 #include "ui/draw.h"
 #include "core/text_encoding.h"
+#include "platform/code_page.h"
 #include <stdlib.h>
-#include <wchar.h>
 
 struct String *ui_window_fit_plain_text(struct UIWindow *self, struct String *out,
                                         struct TextView text, int width)
 {
-    wchar_t *wide;
+    uint16_t *wide;
     size_t count;
     int measured;
 
@@ -15,9 +15,9 @@ struct String *ui_window_fit_plain_text(struct UIWindow *self, struct String *ou
     string_assign(out, text.data, text.size);
     measured = out->size ? ui_window_text_width(self, string_cstr(out), 0, 0, 12, 0, 0) : 0;
     ui_window_text_width(self, "...", 3, 0, 12, 0, 0);
-    wide = encoding_to_wide(CP_THREAD_ACP, string_cstr(out));
+    wide = encoding_to_wide(CODE_PAGE_THREAD, string_cstr(out));
     if (!wide) return out;
-    count = wcslen(wide);
+    count = utf16_length(wide);
     if (width < measured) {
         for (;;) {
             char *narrow;
@@ -25,7 +25,7 @@ struct String *ui_window_fit_plain_text(struct UIWindow *self, struct String *ou
                 count -= ((unsigned char)wide[count - 2] & 0x80) &&
                          ((unsigned char)wide[count - 1] & 0x80) ? 2 : 1;
             wide[count] = 0;
-            narrow = encoding_from_wide(CP_THREAD_ACP, wide);
+            narrow = encoding_from_wide(CODE_PAGE_THREAD, wide);
             if (!narrow) break;
             string_assign_cstr(out, narrow);
             string_append_cstr(out, "...");
