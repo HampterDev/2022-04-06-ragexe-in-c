@@ -12,6 +12,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
 | `src/platform/window.c` (Windows) | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
+| `granny2.dll` clock imports (Windows) | `scene_granny_win.c` | Granny models animate on the scene clock, as the POSIX runtime does |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
 produces the same pixels every run, and the same random effects on every platform.

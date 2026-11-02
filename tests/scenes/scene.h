@@ -18,6 +18,8 @@ void scene_clock_advance(uint32_t ms);
 /* scene_input_win.c; the POSIX client declares them in platform/window.h. */
 void platform_note_key(int vk, int down);
 void platform_note_cursor(int x, int y);
+/* scene_granny_win.c: points granny2.dll's clock imports at the scene clock. */
+void scene_granny_clock_install(void);
 #endif
 
 /* Server side of the fake sockets. */

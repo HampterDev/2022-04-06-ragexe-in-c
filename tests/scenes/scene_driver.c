@@ -518,6 +518,7 @@ static void start(void)
     /* The Windows client has a real window: hidden, the desktop's mouse cannot reach it and
        focus goes back where it was. */
     ShowWindow(g_hMainWnd, SW_HIDE);
+    scene_granny_clock_install();
 #endif
     S.L = luaL_newstate();
     luaL_openlibs(S.L);
