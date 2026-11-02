@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,7 +135,7 @@ static void verify_fixture(struct Res *base, unsigned version, unsigned half, un
 }
 static void test_versions(void)
 {
-    const unsigned versions[]={0x100,0x200,0x201,0x202,0x203,0x204,0x205};
+    const unsigned versions[]={0,0xff,0x100,0x200,0x201,0x202,0x203,0x204,0x205};
     BYTE data[1024]; struct Locations loc; unsigned v,h;
     for(v=0;v<sizeof versions/sizeof *versions;++v)for(h=0;h<4;++h){
         struct Res *base=animation_resource_create();size_t size=make_fixture(data,versions[v],2,&loc);
@@ -148,7 +149,7 @@ static void test_versions(void)
 }
 static void test_prefixes_and_allocations(void)
 {
-    const unsigned versions[]={0x100,0x200,0x201,0x202,0x203,0x204,0x205};
+    const unsigned versions[]={0xff,0x100,0x200,0x201,0x202,0x203,0x204,0x205};
     BYTE data[1024]; SYSTEM_INFO sys; DWORD old; BYTE *pages,*guard; unsigned v;
     GetSystemInfo(&sys);pages=VirtualAlloc(NULL,sys.dwPageSize*2,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);assert(pages);
     guard=pages+sys.dwPageSize;assert(VirtualProtect(guard,sys.dwPageSize,PAGE_NOACCESS,&old));setup_sprite(0);
@@ -158,9 +159,17 @@ static void test_prefixes_and_allocations(void)
         struct Res *base=animation_resource_create();struct ActRes saved;unsigned held,start,count,point;
         start=allocation_calls;assert(load(base,data,size));count=allocation_calls-start;saved=*(struct ActRes*)base;held=outstanding;
         for(n=0;n<size;++n){
-            memcpy(guard-n,data,n);assert(!load(base,guard-n,n));
+            memcpy(guard-n,data,n);
+            if(versions[v]>=0x202&&n>=loc.delay){
+                assert(load(base,guard-n,n));
+                assert(act_res_get_delay((struct ActRes*)base,0)==(n>=loc.delay+4?3.5f:4.0f));
+                assert(act_res_get_delay((struct ActRes*)base,1)==4.0f);
+                continue;
+            }
+            assert(!load(base,guard-n,n));
             assert(!memcmp(base,&saved,sizeof saved)&&outstanding==held&&!borrowed);++prefixes;
         }
+        assert(load(base,data,size));saved=*(struct ActRes*)base;held=outstanding;
         for(point=1;point<=count;++point){
             fail_at=allocation_calls+point;assert(!load(base,data,size));fail_at=0;
             assert(!memcmp(base,&saved,sizeof saved)&&outstanding==held&&!borrowed);++failure_points;
@@ -173,10 +182,11 @@ static void test_malformed_and_replacement(void)
 {
     BYTE data[1024],bad[1024];struct Locations loc;size_t size=make_fixture(data,0x205,2,&loc);
     struct Res *base=animation_resource_create();struct ActRes saved;unsigned i,held;
-    size_t offsets[]={0,2,4,0,0,0,0,0,0,0,0,0};
-    int32_t values[]={0,0x206,0xffff,-1,INT_MAX,-1,INT_MAX,-1,INT_MAX,-1,0x7fc00000,0};
+    struct SprClip *clip;
+    size_t offsets[]={0,2,4,0,0,0,0,0,0,0};
+    int32_t values[]={0,0x206,0xffff,-1,INT_MAX,-1,INT_MAX,-1,INT_MAX,-1};
     offsets[3]=offsets[4]=loc.motion_count;offsets[5]=offsets[6]=loc.clip_count;
-    offsets[7]=offsets[8]=loc.attachment_count;offsets[9]=loc.event_count;offsets[10]=loc.clip+20;offsets[11]=loc.delay;
+    offsets[7]=offsets[8]=loc.attachment_count;offsets[9]=loc.event_count;
     setup_sprite(0);assert(load(base,data,size));saved=*(struct ActRes*)base;held=outstanding;
     for(i=0;i<sizeof offsets/sizeof *offsets;++i){
         memcpy(bad,data,size);if(i<3)put16(bad+offsets[i],values[i]);else put32(bad+offsets[i],values[i]);
@@ -184,7 +194,18 @@ static void test_malformed_and_replacement(void)
     }
     present=0;assert(!resource_load(base,"missing.act"));present=1;assert(!resource_load(base,NULL));
     set_input(data,size);input_size=-1;assert(!resource_load(base,"negative.act"));assert(!memcmp(base,&saved,sizeof saved));
-    memcpy(bad,data,size);putfloat(bad+loc.clip+20,0);assert(load(base,bad,size));assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->x==0);
+    memcpy(bad,data,size);putfloat(bad+loc.clip+20,0);assert(load(base,bad,size));assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->x==INT_MIN);
+    memcpy(bad,data,size);put32(bad+loc.clip+20,0x7fc00000);assert(load(base,bad,size));
+    clip=motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0);assert(isnan(clip->zoomX)&&clip->x==INT_MIN&&clip->y==1);
+    memcpy(bad,data,size);put32(bad+loc.clip+36,-5);assert(load(base,bad,size));
+    assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->x==8);
+    memcpy(bad,data,size);putfloat(bad+loc.clip+20,1e-30f);assert(load(base,bad,size));
+    assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->x==INT_MIN);
+    memcpy(bad,data,size);putfloat(bad+loc.delay,0);put32(bad+loc.delay+4,0x7fc00000);assert(load(base,bad,size));
+    assert(act_res_get_delay((struct ActRes*)base,0)==0.0f&&isnan(act_res_get_delay((struct ActRes*)base,1)));
+    memcpy(bad,data,size);putfloat(bad+loc.delay,-2);assert(load(base,bad,size));assert(act_res_get_delay((struct ActRes*)base,0)==-2.0f);
+    memcpy(bad,data,size);put32(bad+loc.clip+8,-2);assert(load(base,bad,size));
+    assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->x==(int)((10.0f-3*2.0f)/2.0f));
     memcpy(bad,data,size);put32(bad+loc.clip+8,-858993460);putfloat(bad+loc.clip+20,0);assert(load(base,bad,size));
     assert(motion_get_clip(act_res_get_motion((struct ActRes*)base,0,0),0)->sprIndex==-858993460);
     memcpy(bad,data,size);memset(bad+loc.event_count+4,'x',40);assert(load(base,bad,size));assert(strlen(act_res_get_event_name((struct ActRes*)base,0))==40);
@@ -285,6 +306,6 @@ int main(int argc,char **argv)
 {
     if(argc==2){corpus(argv[1]);return 0;}
     test_versions();test_prefixes_and_allocations();test_malformed_and_replacement();test_missing_sprite_and_large_motion();
-    printf("ACT owner: seven versions, four half-size settings, %u guarded prefixes, %u allocation failures, sparse images, fixed event names and transactional replacement pass.\n",prefixes,failure_points);
+    printf("ACT owner: nine versions, four half-size settings, %u guarded prefixes, %u allocation failures, sparse images, fixed event names and transactional replacement pass.\n",prefixes,failure_points);
     return 0;
 }
