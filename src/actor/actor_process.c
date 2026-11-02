@@ -250,13 +250,13 @@ void game_actor_process_will_be_attacked(struct GameActor *self)
             if (session_is_pc_job(&g_session1, game_actor_get_job(self))) {
                 if (g_session1.ownAid == target)
                     sprintf(own, msg_str(0x645), string_cstr(&attacker_name), hit->damage);
-                else if (session_is_party_member_aid(&g_session1, (unsigned long)target, 1))
+                else if (session_is_party_member_aid(&g_session1, (unsigned)target, 1))
                     sprintf(party, msg_str(0x646), string_cstr(&target_name), string_cstr(&attacker_name),
                                 hit->damage);
             } else {
                 if (g_session1.ownAid == attacker)
                     sprintf(own, msg_str(0x647), string_cstr(&target_name), hit->damage);
-                else if (session_is_party_member_aid(&g_session1, (unsigned long)attacker, 1))
+                else if (session_is_party_member_aid(&g_session1, (unsigned)attacker, 1))
                     sprintf(party, msg_str(0x648), string_cstr(&attacker_name), string_cstr(&target_name),
                                 hit->damage);
             }

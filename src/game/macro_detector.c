@@ -27,7 +27,7 @@ void game_mode_on_req_answer_macro_detector(struct GameMode *self, int retry_cou
     if (wnd == 0)
         return;
     ui_window_show(wnd, 1);
-    captcha_detector_set_timer(wnd, (unsigned char)retry_count, timeout > 0 ? (unsigned long)timeout : 0);
+    captcha_detector_set_timer(wnd, (unsigned char)retry_count, timeout > 0 ? (DWORD)timeout : 0);
 }
 
 #pragma pack(push, 1)

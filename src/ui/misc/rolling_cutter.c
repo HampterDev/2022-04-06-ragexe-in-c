@@ -46,7 +46,7 @@ int game_actor_get_counter(struct GameActor *self, int key)
     return (int)var->value;
 }
 
-static int64_t *actor_counter_at(void *actor, int key)
+static long long *actor_counter_at(void *actor, int key)
 {
     struct IntInt64Pair *var = tree_get(actor_counters(actor), &key, sizeof key, sizeof *var, tree_less_int);
 

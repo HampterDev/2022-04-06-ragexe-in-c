@@ -59,7 +59,7 @@ void login_set_otp_code(struct LoginMode *self, const char *code)
     memcpy(self->otp_code, text, sizeof(text));
 }
 
-unsigned long login_state_tick(const struct LoginMode *mode)
+DWORD login_state_tick(const struct LoginMode *mode)
 {
     return mode->stateTick;
 }

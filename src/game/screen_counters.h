@@ -16,7 +16,7 @@ enum {
 
 void game_mode_draw_pk_ranking(struct GameMode *self);
 void game_mode_draw_ranking_time_attack(struct GameMode *self);
-void game_mode_draw_time_attack(struct GameMode *self, unsigned long value, int type);
+void game_mode_draw_time_attack(struct GameMode *self, DWORD value, int type);
 void game_mode_draw_skill_level_at_cursor(struct GameMode *self);
 struct PACKET_ZC_SHOWDIGIT;
 

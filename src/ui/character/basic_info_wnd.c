@@ -534,7 +534,7 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     if (g_serviceType == 0xc) {
         len = sprintf(text, "Nv. %2d / %s / Nv. %2d / Exp. %lld %%", g_session1.charBaseLevel,
                           session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel,
-                          (int64_t)percent);
+                          (long long)percent);
     } else {
         if (g_serviceType == 0 && basic_small_font_job(basic_job(), 1)) {
             face = 0;
