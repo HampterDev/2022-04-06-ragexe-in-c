@@ -160,7 +160,12 @@ static void test_ground(void)
         assert(!gnd_res_load(&res, "overflow.gnd")); assert_empty_ground(&res);
     }
     ground_file(7); memset(input + name_at, 'x', 16);
-    assert(!gnd_res_load(&res, "name.gnd")); assert_empty_ground(&res);
+    assert(gnd_res_load(&res, "name.gnd") && strlen(res.textureNames[0]) == 17);
+    assert(!memcmp(res.textureNames[0], "xxxxxxxxxxxxxxxx", 16) && res.textureNames[0][16] == 1);
+    ground_file(7); patch_int(name_size_at, 0);
+    memmove(input + name_at, input + name_at + 16, input_size - name_at - 16); input_size -= 16;
+    assert(gnd_res_load(&res, "unnamed.gnd") && res.textureCount == 1);
+    assert(res.textureNames[0][0] == 1 && !res.textureNames[0][1]);
     ground_file(7); input[surface_at + offsetof(struct GndSurfaceRec, texture)] = 1;
     assert(!gnd_res_load(&res, "texture.gnd")); assert_empty_ground(&res);
     ground_file(7); input[surface_at + offsetof(struct GndSurfaceRec, lightmap)] = 1;
@@ -170,6 +175,10 @@ static void test_ground(void)
     ground_file(7); patch_int(width_at, 0); patch_int(height_at, 0); patch_int(textures_at, 0);
     input_size = name_at; put_int(0); put_int(8); put_int(8); put_int(1); put_int(0);
     assert(gnd_res_load(&res, "empty.gnd"));
+    patch_int(name_size_at, 0);
+    assert(gnd_res_load(&res, "empty-names.gnd") && !res.textureCount);
+    patch_int(name_size_at, -1);
+    assert(gnd_res_load(&res, "negative-names.gnd") && !res.textureCount);
     ground_file(6);
     assert(!gnd_res_load(&res, "old-version.gnd")); assert_empty_ground(&res);
     ground_file(7); patch_int(0, 0);

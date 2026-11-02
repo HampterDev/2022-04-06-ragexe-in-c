@@ -89,7 +89,7 @@ static BYTE gnd_surface_valid(const struct GndRes *self, int index)
 static BYTE gnd_parse(struct GndRes *self)
 {
     struct File *fp = &self->file;
-    const BYTE *names, *surfaces, *cubes;
+    const BYTE *names, *end, *surfaces, *cubes;
     uint64_t cubeCount;
     int nameLen, gridX, gridY, gridCell, i;
 
@@ -98,19 +98,23 @@ static BYTE gnd_parse(struct GndRes *self)
             || !file_read(fp, &self->width, 4) || !file_read(fp, &self->height, 4)
             || !file_read(fp, &self->zoom, 4)
             || !file_read(fp, &self->textureCount, 4) || !file_read(fp, &nameLen, 4)
-            || self->width < 0 || self->height < 0 || self->textureCount < 0 || nameLen <= 0)
+            || self->width < 0 || self->height < 0 || self->textureCount < 0
+            || (self->textureCount && nameLen < 0))
         return 0;
     cubeCount = (uint64_t)self->height * (uint64_t)self->width;
     if (cubeCount > INT_MAX / GND_CUBE_SIZE)
         return 0;
     if ((size_t)self->textureCount > SIZE_MAX / sizeof *self->textureNames)
         return 0;
-    names = file_consume(fp, (size_t)self->textureCount, (size_t)nameLen);
-    if (!names)
+    names = fp->buffer + fp->position;
+    end = fp->buffer + fp->size;
+    if (nameLen > 0 && !file_consume(fp, (size_t)self->textureCount, (size_t)nameLen))
         return 0;
-    for (i = 0; i < self->textureCount; i++)
-        if (!memchr(names + (size_t)i * nameLen, 0, (size_t)nameLen))
+    for (i = 0; i < self->textureCount; i++) {
+        const BYTE *name = names + (size_t)i * nameLen;
+        if (!memchr(name, 0, (size_t)(end - name)))
             return 0;
+    }
     if (self->textureCount) {
         self->textureNames = malloc((size_t)self->textureCount * sizeof *self->textureNames);
         if (!self->textureNames)
