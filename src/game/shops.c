@@ -443,23 +443,17 @@ SIZE_ASSERT(PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST, 4);
 void game_mode_shop_not_movable_items(const unsigned char *pkt)
 {
     const struct PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST *packet = (const struct PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST *)pkt;
-    char text[512];
+    char names[512], text[640];
     const int *id = packet->item_ids;
-    unsigned n = ((unsigned)(int)packet->packet_length - 4) >> 2;
-    const char *s;
-    char *d;
+    unsigned n = ((unsigned)(int)packet->packet_length - 4) >> 2, i;
+    size_t used = 0;
 
-    s = item_table_get(*id)->name;
-    d = text;
-    while ((*d++ = *s++) != 0)
-        ;
-
-    id++;
-    if (n > 1) {
-        for (n--; n != 0; n--, id++)
-            sprintf(text, "%s, %s", text, item_table_get(*id)->name);
+    names[0] = 0;
+    for (i = 0; i < n && used < sizeof names; i++) {
+        snprintf(names + used, sizeof names - used, i ? ", %s" : "%s", item_table_get(id[i])->name);
+        used += strlen(names + used);
     }
-    sprintf(text, msg_str(0x827), text);
+    snprintf(text, sizeof text, msg_str(0x827), names);
     chat_refresh();
     chat_line(text, 0xff);
 }
