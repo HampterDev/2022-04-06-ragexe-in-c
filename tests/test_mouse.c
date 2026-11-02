@@ -11,7 +11,7 @@ static DWORD now;
 static POINT cursor;
 static unsigned captures, releases;
 
-DWORD mouse_test_time(void) { return now; }
+uint32_t mouse_test_time(void) { return now; }
 BOOL mouse_test_cursor(POINT *point) { *point = cursor; return TRUE; }
 BOOL mouse_test_client(HWND window, POINT *point)
 {

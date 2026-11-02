@@ -65,8 +65,8 @@ void string_copy(struct String *dst, const struct String *src) { abort(); }
 void string_assign(struct String *s, const char *text, size_t len) { abort(); }
 void string_assign_cstr(struct String *s, const char *text) { abort(); }
 size_t string_find(const struct String *s, const char *text, size_t pos) { abort(); }
-int once_begin(INIT_ONCE *once) { abort(); }
-void once_complete(INIT_ONCE *once) { abort(); }
+int once_begin(struct Once *once) { abort(); }
+void once_complete(struct Once *once) { abort(); }
 void *tree_find(const struct Tree *tree, const void *key, TreeLessFn less) { abort(); }
 void *tree_add(struct Tree *tree, const void *value, size_t size, TreeLessFn less, int *added) { abort(); }
 size_t tree_erase_key(struct Tree *tree, const void *key, TreeLessFn less, TreeDestroyFn destroy) { abort(); }

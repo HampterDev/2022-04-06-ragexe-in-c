@@ -32,7 +32,7 @@ static struct SprClip clip;
 static struct SprImg image;
 static int palette;
 
-DWORD render_test_time(void) { return tick; }
+uint32_t render_test_time(void) { return tick; }
 float game_camera_scale(void) { return camera_scale; }
 struct GameMode *game_current_mode(void) { return NULL; }
 struct ResMgr *g_resMgr(void) { abort(); }

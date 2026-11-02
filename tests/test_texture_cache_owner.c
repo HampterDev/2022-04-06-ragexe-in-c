@@ -26,13 +26,15 @@ static void *checked_realloc(void *old, size_t size)
     return p;
 }
 static DWORD fixture_time;
-static DWORD fixture_clock(void) { return fixture_time; }
+static uint32_t fixture_clock(void) { return fixture_time; }
 #define calloc checked_calloc
 #define realloc checked_realloc
 #define free checked_free
 #define timeGetTime fixture_clock
+#define platform_ticks_ms fixture_clock
 #include "../src/render/tex_cache.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef free
 #undef realloc
 #undef calloc

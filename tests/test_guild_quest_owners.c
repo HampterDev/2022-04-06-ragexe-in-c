@@ -82,7 +82,7 @@ void mem_free(void *memory) { test_heap_free(memory); }
 void fatal_error(const char *message) { fprintf(stderr, "%s\n", message); abort(); }
 void error_msg(const char *message, int flags) { (void)flags; fatal_error(message); }
 
-DWORD guild_quest_test_time(void) { record(1, now); return now; }
+uint32_t guild_quest_test_time(void) { record(1, now); return now; }
 int guild_emblem_request(int guild, int version)
 {
     ++sends;

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
@@ -18,7 +19,7 @@ static __time32_t fixture_time(__time32_t *out)
     if (out) *out = clock_seconds;
     return clock_seconds;
 }
-static DWORD fixture_ticks(void) { return ticks_ms; }
+static uint32_t fixture_ticks(void) { return ticks_ms; }
 static void *checked_realloc(void *old, size_t size)
 {
     void *next = checked_malloc(size);
@@ -35,6 +36,7 @@ static void *checked_realloc(void *old, size_t size)
 #define realloc checked_realloc
 #define _time32 fixture_time
 #define timeGetTime fixture_ticks
+#define platform_ticks_ms fixture_ticks
 #include "../src/contents/schedule.c"
 #include "../src/contents/time_scheduler_tick.c"
 #include "../src/game/ping_schedule.c"
@@ -42,6 +44,7 @@ static void *checked_realloc(void *old, size_t size)
 #include "../src/contents/ranking_output.c"
 #include "../src/session/session_ranking.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef _time32
 #undef free
 #undef malloc

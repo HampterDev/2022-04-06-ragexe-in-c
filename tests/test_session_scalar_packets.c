@@ -10,10 +10,12 @@
 #include "../src/game/packets_mercenary.c"
 
 static DWORD clock_now;
-static DWORD test_clock(void) { return clock_now; }
+static uint32_t test_clock(void) { return clock_now; }
 #define timeGetTime test_clock
+#define platform_ticks_ms test_clock
 #include "../src/game/screen_counters.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
