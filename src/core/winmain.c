@@ -19,8 +19,8 @@
 #include "diag/crash_report.h"
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
+#include "platform/desktop.h"
 #include "platform/win_types.h"
-#include <objbase.h>
 #include <mmsystem.h>
 #include <float.h>
 #include <string.h>
@@ -41,7 +41,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     WIN32_FIND_DATAA found;
     HANDLE find;
     TIMECAPS caps;
-    HRESULT com_result;
+    int desktop_started;
     UINT period;
     int result;
 
@@ -78,7 +78,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
         timeBeginPeriod(period);
     }
     frame_timer_reset();
-    com_result = CoInitialize(0);
+    desktop_started = platform_desktop_start();
     if (!sound_mgr_create()) {
         error_msg("Audio System Init Failed", 0);
         result = 0;
@@ -148,7 +148,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
 done:
     string_free(&init.what);
 com_done:
-    if (SUCCEEDED(com_result))
-        CoUninitialize();
+    if (desktop_started)
+        platform_desktop_stop();
     return result;
 }

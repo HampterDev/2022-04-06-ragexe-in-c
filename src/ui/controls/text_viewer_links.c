@@ -19,8 +19,8 @@
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
+#include "platform/desktop.h"
 #include "platform/win_types.h"
-#include <shellapi.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
@@ -439,7 +439,7 @@ static void on_link(struct UITextButton *link, int id)
             return;
         arg = ui_text_button_get_line(link, 0);
         if (arg.size)
-            ShellExecuteA(g_hMainWnd, "open", arg.data, NULL, NULL, SW_SHOWNORMAL);
+            platform_open_with_desktop(arg.data);
         break;
     case LINK_NAVI: {
         unsigned count;

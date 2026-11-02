@@ -72,8 +72,8 @@ static void fake_shell(void)
 }
 
 /* Keep these operations observable; the other subsystems are inert. */
-#define CoInitialize fake_initialize
-#define CoUninitialize fake_uninitialize
+#define platform_desktop_start() SUCCEEDED(fake_initialize(NULL))
+#define platform_desktop_stop fake_uninitialize
 #define sound_mgr_create() (failure != SOUND)
 #define app_create_window fake_window
 #define app_init_managers fake_managers
