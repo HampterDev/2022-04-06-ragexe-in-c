@@ -517,7 +517,7 @@ cl /nologo /std:c11 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_embedded_fonts.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /std:c11 /source-charset:utf-8 /execution-charset:.949 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_sound_manager.c" /Fe:test_sound_manager.exe
+cl /nologo /std:c11 /source-charset:utf-8 /execution-charset:.949 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_sound_manager.c" "%ROOT%\src\platform\thread.c" /Fe:test_sound_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_sound_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -547,11 +547,11 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_registry.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_cache.c" "%ROOT%\tests\resource_cache_support.c" "%ROOT%\src\fileio\resource_cache_store.c" "%ROOT%\src\fileio\res_cache.c" "%ROOT%\src\fileio\res_get.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\fileio\grf_pak.c" "%ROOT%\src\fileio\grf_mapfile.c" "%ROOT%\src\resources\resource_registry.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\render\cache_lock.c" "%ROOT%\src\platform\clock.c" /Fe:test_resource_cache.exe /link /OPT:REF winmm.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_cache.c" "%ROOT%\tests\resource_cache_support.c" "%ROOT%\src\fileio\resource_cache_store.c" "%ROOT%\src\fileio\res_cache.c" "%ROOT%\src\fileio\res_get.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\fileio\grf_pak.c" "%ROOT%\src\fileio\grf_mapfile.c" "%ROOT%\src\resources\resource_registry.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\render\cache_lock.c" "%ROOT%\src\platform\clock.c" "%ROOT%\src\platform\thread.c" /Fe:test_resource_cache.exe /link /OPT:REF winmm.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_cache.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_errors.c" "%ROOT%\src\fileio\resource_errors.c" /Fe:test_resource_errors.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_errors.c" "%ROOT%\src\fileio\resource_errors.c" "%ROOT%\src\platform\thread.c" /Fe:test_resource_errors.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_errors.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -595,7 +595,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_scene_bounds.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_models.c" /Fe:test_world_models.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_models.c" "%ROOT%\src\platform\thread.c" /Fe:test_world_models.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_world_models.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)

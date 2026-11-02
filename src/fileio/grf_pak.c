@@ -81,7 +81,7 @@ static void grf_archive_clear(struct GrfArchive *archive)
 static void grf_archive_finish(struct GrfArchive *archive)
 {
     grf_archive_clear(archive);
-    DeleteCriticalSection(&archive->lock);
+    platform_mutex_destroy(archive->lock);
 }
 
 void grf_archive_destroy(struct GrfArchive *archive)
@@ -256,7 +256,7 @@ struct GrfArchive *grf_archive_create(const char *name)
     struct GrfArchive *archive = calloc(1, sizeof *archive);
     if (!archive) return NULL;
     grf_file_init(&archive->file);
-    InitializeCriticalSection(&archive->lock);
+    archive->lock = platform_mutex_create();
     if (!grf_file_open(&archive->file, name) || !grf_archive_load(archive)) {
         grf_archive_destroy(archive);
         return NULL;
@@ -283,7 +283,7 @@ int grf_archive_read(struct GrfArchive *archive, const struct GrfEntry *entry, B
     unsigned input_size = entry->sizeCompressed;
     int ok = 0;
     if ((!out && entry->size) || capacity < entry->size || !entry_valid(archive, entry)) return 0;
-    EnterCriticalSection(&archive->lock);
+    platform_mutex_lock(archive->lock);
     stored = grf_file_read(&archive->file, entry->offset + 0x2e, entry->sizeAligned);
     if (!stored) goto done;
     input = stored;
@@ -310,6 +310,6 @@ int grf_archive_read(struct GrfArchive *archive, const struct GrfEntry *entry, B
         ok = 1;
     }
 done:
-    LeaveCriticalSection(&archive->lock);
+    platform_mutex_unlock(archive->lock);
     return ok;
 }

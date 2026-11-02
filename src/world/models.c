@@ -2,7 +2,7 @@
 #include "world/state.h"
 #include "world/scene_objects.h"
 #include "resources/world_records.h"
-#include <limits.h>
+#include "platform/thread.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +18,7 @@ struct WorldLoader {
     struct WorldLighting lighting;
     struct DeferredModel *queue;
     size_t count, capacity;
-    HANDLE thread;
+    struct PlatformThread *thread;
     int started;
 };
 
@@ -29,7 +29,7 @@ int world_models_prepare(struct World *world, size_t maximum,
     struct C3dActor **data = NULL;
     if (!lighting || world->modelLoader || world->models.data ||
         world->models.count || world->models.pending || world->models.inserted ||
-        maximum > LONG_MAX || maximum > SIZE_MAX / sizeof *data)
+        maximum > INT32_MAX || maximum > SIZE_MAX / sizeof *data)
         return 0;
     loader = calloc(1, sizeof *loader);
     if (!loader)
@@ -107,16 +107,15 @@ static void load_deferred(struct WorldLoader *loader)
         if (!model)
             continue;
         models->data[models->count++] = model;
-        InterlockedIncrement(&models->pending);
-        Sleep(0);
+        platform_atomic_increment(&models->pending);
+        platform_thread_yield();
     }
 }
 
-static DWORD WINAPI loader_thread(void *context)
+static void loader_thread(void *context)
 {
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    platform_thread_raise_priority();
     load_deferred(context);
-    return 0;
 }
 
 void world_models_start(struct World *world)
@@ -130,7 +129,7 @@ void world_models_start(struct World *world)
         world_models_wait(world);
         return;
     }
-    loader->thread = CreateThread(NULL, 0, loader_thread, loader, 0, NULL);
+    loader->thread = platform_thread_create(loader_thread, loader);
     if (!loader->thread) {
         load_deferred(loader);
         world_models_wait(world);
@@ -140,12 +139,12 @@ void world_models_start(struct World *world)
 void world_models_process(struct World *world)
 {
     struct WorldModels *models = &world->models;
-    LONG pending = InterlockedCompareExchange(&models->pending, 0, 0);
+    int32_t pending = platform_atomic_load(&models->pending);
     while (pending-- > 0) {
         if (!scene_graph_node_insert(&world->root, models->data[models->inserted], 0))
             break;
         ++models->inserted;
-        InterlockedDecrement(&models->pending);
+        platform_atomic_decrement(&models->pending);
     }
 }
 
@@ -154,10 +153,8 @@ void world_models_wait(struct World *world)
     struct WorldLoader *loader = world->modelLoader;
     if (!loader)
         return;
-    if (loader->thread) {
-        WaitForSingleObject(loader->thread, INFINITE);
-        CloseHandle(loader->thread);
-    }
+    if (loader->thread)
+        platform_thread_join(loader->thread);
     free(loader->queue);
     free(loader);
     world->modelLoader = NULL;

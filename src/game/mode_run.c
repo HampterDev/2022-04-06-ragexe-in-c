@@ -25,6 +25,7 @@
 #include "contents/mouse.h"
 #include "game/mode_callbacks.h"
 #include "platform/win_types.h"
+#include "platform/thread.h"
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/client.h"
@@ -71,7 +72,7 @@ int game_mode_on_run(struct Mode *mode)
         }
 
         game_mode_on_update(mode);
-        Sleep(0);
+        platform_thread_yield();
     }
     mode_run_fade_out(&self->base, 0);
 

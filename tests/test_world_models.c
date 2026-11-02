@@ -1,5 +1,6 @@
 #include "world/state.h"
 #include "world/scene_objects.h"
+#include "platform/thread.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -54,26 +55,25 @@ static void *storage_realloc(void *p, size_t size)
     }
     return next;
 }
-static HANDLE WINAPI observed_thread(LPSECURITY_ATTRIBUTES security, SIZE_T stack,
-    LPTHREAD_START_ROUTINE entry, LPVOID context, DWORD flags, LPDWORD id)
+static struct PlatformThread *observed_thread(void (*entry)(void *context), void *context)
 {
     ++thread_calls;
-    return fail_thread ? NULL : CreateThread(security, stack, entry, context, flags, id);
+    return fail_thread ? NULL : platform_thread_create(entry, context);
 }
-static BOOL WINAPI observed_priority(HANDLE thread, int priority)
+static void observed_priority(void)
 {
     ++priority_calls;
-    return SetThreadPriority(thread, priority);
+    platform_thread_raise_priority();
 }
 #define malloc storage_malloc
 #define calloc storage_calloc
 #define realloc storage_realloc
 #define free storage_free
-#define CreateThread observed_thread
-#define SetThreadPriority observed_priority
+#define platform_thread_create observed_thread
+#define platform_thread_raise_priority observed_priority
 #include "../src/world/models.c"
-#undef SetThreadPriority
-#undef CreateThread
+#undef platform_thread_raise_priority
+#undef platform_thread_create
 #undef free
 #undef realloc
 #undef calloc
@@ -147,7 +147,7 @@ static void allocation_failures(void)
     }
     fail_at = 0;
     assert(!world_models_prepare(&world, SIZE_MAX, &expected_light));
-    assert(!world_models_prepare(&world, (size_t)LONG_MAX + 1, &expected_light));
+    assert(!world_models_prepare(&world, (size_t)INT32_MAX + 1, &expected_light));
     assert(!world_models_prepare(&world, 1, NULL));
     empty(&world);
     assert(world_models_prepare(&world, 17, &expected_light));
