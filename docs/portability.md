@@ -351,14 +351,17 @@ asks for a forward-compatible core context, which macOS serves as OpenGL 4.1; SD
 and Cocoa text input; Fontconfig finds the system fonts. Arial is Apple's own copy and keeps its
 hinting; Gulim is replaced by Apple SD Gothic Neo, whose last glyph can overhang the text box by a
 pixel. The `macos-client` CI job builds the bundle on GitHub's macOS 15 arm64 runners and runs the
-tests there, the GL backend test included, against a real macOS OpenGL context. The game itself has
-not run on a Mac yet: that needs a Mac with the game data, not a CI runner, and a macOS virtual
-machine on non-Apple hardware is ruled out by Apple's licence.
+tests there, the GL backend test included, against a real macOS OpenGL context.
+
+The game was played on macOS 12.7 (x86_64, VMware, Apple's software OpenGL renderer, Apple clang 14
+from the command line tools, MacPorts for cmake, ninja, freetype and fontconfig) against rAthena
+built in the same machine: `ragexe.app` opened from the game folder, logged in, created a
+character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well.
 
 ## Remaining work
 
-1. macOS: play on a real Mac with game data; check Hangul composition through the macOS
-   input method and Retina scaling (the window does not ask for a high-density drawable,
+1. macOS: check Hangul composition through the macOS input method and Retina scaling on
+   Apple hardware (the window does not ask for a high-density drawable,
    so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
    deprecated OpenGL later.
 2. Granny models off Windows (`resources/granny_posix.c` loads none).

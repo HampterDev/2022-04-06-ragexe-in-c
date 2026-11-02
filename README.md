@@ -1,8 +1,7 @@
 # Purist client
 
 The `codex/mac-port` branch adds [portable build and platform foundations](docs/portability.md)
-and a native client for 64-bit Linux and macOS arm64 (SDL3, OpenGL, FreeType). It plays on Linux;
-on macOS it builds and passes its tests in CI but has not been played yet.
+and a native client for 64-bit Linux and macOS arm64 (SDL3, OpenGL, FreeType). It plays on both.
 
 `purist` is the permanent reduced base for our custom client. These are its intentional deviations from [`main`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/main).
 
