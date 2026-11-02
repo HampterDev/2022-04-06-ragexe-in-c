@@ -73,6 +73,12 @@ int main(void)
     text_wrap_bytes(U8_ZHE U8_GRIN U8_ZHE "\xe2\x82" U8_GRIN, &lines, 5, 0);
     assert(lines.size == 2); check(&lines, 0, U8_ZHE U8_GRIN);
     check(&lines, 1, U8_ZHE "\xe2\x82" U8_GRIN); text_array_clear(&lines);
+    text_wrap_bytes("bb[bc", &lines, 2, 0);
+    assert(lines.size == 2); check(&lines, 0, "bb["); check(&lines, 1, "bc");
+    text_array_clear(&lines);
+    text_wrap_bytes("[ab]][]de", &lines, 3, 0);
+    assert(lines.size == 3); check(&lines, 0, "[ab]]"); check(&lines, 1, "[]d"); check(&lines, 2, "e");
+    text_array_clear(&lines);
     roundtrip("a[b]", 4, 1); roundtrip(U8_GA "[ab]", 5, 1); roundtrip("ab[broken", 4, 1);
     for (i = 0; i < 1000; ++i) {
         char text[256] = "";

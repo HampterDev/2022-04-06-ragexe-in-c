@@ -92,7 +92,10 @@ void text_wrap_bytes(const char *text, struct TextArray *lines, int width, int s
         while (text[pos] == '[') {
             const char *close = strstr(text + pos, "]");
             size_t count;
-            if (!close) break;
+            if (!close) {
+                ++pos;
+                continue;
+            }
             count = (size_t)(close - text) - pos + 1;
             if ((uint64_t)pos + count < limit) {
                 ++pos;
@@ -106,7 +109,7 @@ void text_wrap_bytes(const char *text, struct TextArray *lines, int width, int s
                         previous = next;
                         next = next_character(text, next, end);
                     }
-                    if (previous > start && previous >= brk) pos = previous;
+                    if (previous > start) pos = previous;
                 }
                 break;
             }
