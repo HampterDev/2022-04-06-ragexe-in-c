@@ -172,11 +172,36 @@ the full existing regression suite. The macOS label follows the [GitHub runner r
 Workflow configuration is not evidence of a successful run; record results when
 the workflow actually completes.
 
+## Audio
+
+Windows keeps Miles Sound System. Off Windows, `src/platform/miles_posix.c`
+implements the Miles subset declared in `platform/miles_api.h` on SDL3: one device
+stream per digital driver at the requested rate and channels (22050 Hz, 16-bit; mono
+in 2D mode, stereo in 3D mode), mixed in the device callback. Samples are converted
+to the mix format when their file is set (`SDL_ConvertAudioSamples`); the background
+music is decoded from memory with the vendored `dr_mp3` and resampled by an
+`SDL_AudioStream`. Volumes are linear 0..127; sample and stream status uses the Miles
+done/playing values. The one 3D provider is named "Miles Fast 2D Positional Audio":
+inverse-distance attenuation between the minimum and maximum distance, silence beyond
+the maximum, and a left/right balance from the listener's orientation. Speaker and
+room types report "unsupported"; there is no reverb.
+
+`_AIL_file_type`, `_AIL_WAV_info`, `_AIL_decompress_ADPCM` and `_AIL_decompress_ASI`
+give `resources/wave.c` the same data as on Windows: a PCM WAV image with a 44-byte
+header, freed by `_AIL_mem_free_lock`. Microsoft and IMA ADPCM both decode; the IMA
+decoder is the Intel/DVI reference algorithm (FFmpeg rounds differently). Every ADPCM
+file in `data.grf` (five IMA, one Microsoft) decoded identically to the reference
+decoders, and all 64 BGM tracks of the local game data played through.
+`test_miles_posix` (built when SDL is part of the build, e.g. with
+`RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
+`tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
+
 ## Remaining work
 
 1. Validate the probe on macOS, especially real Hangul composition and Retina.
-2. Compare JPEG screenshots in-game, replace Miles, and stub/convert Granny as
-   the plan describes. The IJL code and import library have been removed.
+2. Compare JPEG screenshots in-game, listen to the POSIX audio in game, and
+   stub/convert Granny as the plan describes. The IJL code and import library
+   have been removed.
 3. Migrate all message arguments and pointer-bearing runtime fields to pointer
    width; audit raw strides and keep packet fields fixed width.
 4. Expand CMake to the application and remaining test suites; migrate filesystem,

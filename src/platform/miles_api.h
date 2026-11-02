@@ -1,5 +1,6 @@
 #ifndef PLATFORM_MILES_API_H
 #define PLATFORM_MILES_API_H
+#include "platform/win_types.h"
 #ifndef MSS_IMPORT
 #ifdef _WIN32
 #define MSS_IMPORT __declspec(dllimport)
