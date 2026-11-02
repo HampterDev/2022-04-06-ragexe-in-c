@@ -3,17 +3,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
-#include <float.h>
 #include <math.h>
 #include <stdio.h>
 
 static int water_initialize(struct GndWater *water,
     const struct GroundWaterSettings *settings, int from_scene)
 {
-    if (settings->frameDelay <= 0 || !isfinite(settings->level)
-            || !isfinite(settings->waveHeight) || !isfinite(settings->waveSpeed)
-            || !isfinite(settings->wavePitch)
-            || fabs((double)settings->level) + fabs((double)settings->waveHeight) > FLT_MAX)
+    if (!settings->frameDelay)
         return 0;
     water->level = settings->level;
     water->type = settings->type;
@@ -77,7 +73,9 @@ void c3d_ground15_update_water(struct C3dGround15 *self)
     size_t i;
     for (i = 0; i < self->waterCount; ++i) {
         struct GndWater *water = &self->waters[i];
-        if (water->step == water->stepsPerPicture - 1) {
+        if (water->stepsPerPicture < 0) {
+            water->step = 0;
+        } else if (water->step == water->stepsPerPicture - 1) {
             water->step = 0;
             water->picture = (water->picture + 1) % 32;
         } else {
@@ -104,7 +102,7 @@ float ground_water_height(const struct GndWater *water, int64_t diagonal)
         degrees = (int)angle;
     } else {
         double wide = (double)diagonal * water->wavePitch + water->phase;
-        degrees = (int)fmod(trunc(wide), 360.0);
+        degrees = isfinite(wide) ? (int)fmod(trunc(wide), 360.0) : INT_MIN;
     }
     return get_sin_deg(degrees) * water->waveHeight + water->level;
 }
