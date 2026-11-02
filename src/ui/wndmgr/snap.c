@@ -11,7 +11,7 @@ void ui_window_mgr_update_snap_rect(struct UIWindowMgr *self, struct UIWindow *w
             return;
     if (!g_session1.windowSnap || wnd == NULL)
         return;
-    entry = tree_get(&self->snap_rects, &wnd, sizeof wnd, sizeof *entry, tree_less_uint);
+    entry = tree_get(&self->snap_rects, &wnd, sizeof wnd, sizeof *entry, tree_less_ptr);
     snap_info_set(&entry->info, wnd->x, wnd->y, wnd->width, wnd->height);
 }
 

@@ -54,7 +54,7 @@ struct Particle *particle_slots_acquire(struct ParticleSlots *s)
 
 void particle_slots_release(struct ParticleSlots *s, struct Particle *p)
 {
-    struct ParticleSlot *slot = tree_find(&s->map, &p, tree_less_uint);
+    struct ParticleSlot *slot = tree_find(&s->map, &p, tree_less_ptr);
 
     if (slot && slot->in_use == 1) {
         s->in_use--;
@@ -64,7 +64,7 @@ void particle_slots_release(struct ParticleSlots *s, struct Particle *p)
 
 unsigned char particle_slots_is_used(struct ParticleSlots *s, struct Particle *p)
 {
-    struct ParticleSlot *slot = tree_find(&s->map, &p, tree_less_uint);
+    struct ParticleSlot *slot = tree_find(&s->map, &p, tree_less_ptr);
 
     return slot ? slot->in_use : 0;
 }
@@ -80,5 +80,5 @@ void particle_slots_use_all(struct ParticleSlots *s)
 
 void particle_slots_add(struct ParticleSlots *s, struct Particle *p)
 {
-    tree_get(&s->map, &p, sizeof p, sizeof(struct ParticleSlot), tree_less_uint);
+    tree_get(&s->map, &p, sizeof p, sizeof(struct ParticleSlot), tree_less_ptr);
 }

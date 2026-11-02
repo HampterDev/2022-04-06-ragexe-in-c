@@ -1,4 +1,5 @@
 #include "std/tree.h"
+#include <stdint.h>
 #include <string.h>
 #include "core/memory.h"
 
@@ -476,4 +477,9 @@ int tree_less_uint(const void *a, const void *b)
 int tree_less_int64(const void *a, const void *b)
 {
     return *(const long long *)a < *(const long long *)b;
+}
+
+int tree_less_ptr(const void *a, const void *b)
+{
+    return (uintptr_t)*(void *const *)a < (uintptr_t)*(void *const *)b;
 }

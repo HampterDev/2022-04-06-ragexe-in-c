@@ -661,7 +661,7 @@ void ui_window_mgr_destroy_window(struct UIWindowMgr *self, struct UIWindow *wnd
     if (node == self->windows.head)
         return;
     if (g_session1.windowSnap)
-        tree_erase_key(&self->snap_rects, &wnd, tree_less_uint, NULL);
+        tree_erase_key(&self->snap_rects, &wnd, tree_less_ptr, NULL);
     snap_mgr_unregister(&g_snapMgr, wnd);
     ui_window_store_info(wnd);
     if (wnd)
