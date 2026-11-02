@@ -84,7 +84,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | call | does |
 |------|------|
 | `enter_map(map, x, y, opts)` | from the login screen straight into a map. `opts`: `name, job, sex, hair, hair_color, body_palette, level, job_level, hp, sp, weapon, shield, head_top, head_mid, head_bottom, robe, dir` |
-| `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state` |
+| `spawn{...}` | an actor appears (`ZC_NOTIFY_STANDENTRY`): `aid, kind` (`"monster"`, `"npc"`, `"player"`, `"pet"`, `"homunculus"`, `"mercenary"`), `job, x, y, dir, name, hair, hair_color, body_palette, head_dir, weapon, shield, head_top, head_mid, head_bottom, robe, body, sex, level, hp, max_hp, speed, state, guild, emblem` (guild id and emblem version; when the client asks for the emblem, the fake map server sends a generated 24×24 one in the guild's colour) |
 | `vanish(aid[, how])` | the actor leaves |
 | `say(aid, "Name : text")` | chat over an actor |
 | `chat(text)` | a line in the player's own chat |

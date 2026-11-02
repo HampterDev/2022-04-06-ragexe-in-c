@@ -120,6 +120,55 @@ static void deliver(const void *data, int size)
     }
 }
 
+/* A 24x24 guild emblem as a 24-bit BMP: magenta (transparent in emblems) around a disc in the
+   guild's own colour with a white cross, so different guilds look different. */
+static int make_emblem(int guild, unsigned char *bmp)
+{
+    enum { SIDE = 24, ROW = SIDE * 3, PIXELS = ROW * SIDE, SIZE = 54 + PIXELS };
+    unsigned char r = (unsigned char)(80 + guild * 53 % 176), g = (unsigned char)(80 + guild * 97 % 176);
+    unsigned char b = (unsigned char)(80 + guild * 31 % 176);
+    int x, y;
+    memset(bmp, 0, 54);
+    bmp[0] = 'B';
+    bmp[1] = 'M';
+    put32(bmp + 2, SIZE);
+    put32(bmp + 10, 54);
+    put32(bmp + 14, 40);
+    put32(bmp + 18, SIDE);
+    put32(bmp + 22, SIDE);
+    put16(bmp + 26, 1);
+    put16(bmp + 28, 24);
+    put32(bmp + 34, PIXELS);
+    for (y = 0; y < SIDE; y++)
+        for (x = 0; x < SIDE; x++) {
+            unsigned char *p = bmp + 54 + y * ROW + x * 3;
+            int dx = 2 * x - 23, dy = 2 * y - 23;
+            int inside = dx * dx + dy * dy <= 22 * 22, cross = inside && (abs(dx) <= 3 || abs(dy) <= 3);
+            p[0] = cross ? 255 : inside ? b : 255;
+            p[1] = cross ? 255 : inside ? g : 0;
+            p[2] = cross ? 255 : inside ? r : 255;
+        }
+    return SIZE;
+}
+
+/* The client asks for a guild emblem with 0x0b46 {guild, version}; the map server answers with
+   CR_NEW_EMBLEM_DOWNLOAD (0x0b36) in three parts: start, data, end (docs/server/README.md). */
+static void send_emblem(int guild, int version)
+{
+    unsigned char bmp[54 + 24 * 24 * 3], packet[14 + sizeof bmp];
+    int size = make_emblem(guild, bmp), part;
+    for (part = 0; part < 3; part++) {
+        int data = part == 1 ? size : 0;
+        put16(packet, 0xb36);
+        put16(packet + 2, (unsigned)(14 + data));
+        put16(packet + 4, (unsigned)part);
+        put32(packet + 6, (unsigned long)guild);
+        put32(packet + 10, (unsigned long)version);
+        memcpy(packet + 14, bmp, (size_t)data);
+        scene_net_deliver(SCENE_MAP_PORT, packet, 14 + data);
+    }
+}
+
 static void on_client_packet(int port, const unsigned char *packet, int length)
 {
     int id = packet[0] | packet[1] << 8;
@@ -139,6 +188,9 @@ static void on_client_packet(int port, const unsigned char *packet, int length)
         reply[16] = 5;
         put16(reply + 17, 0);
         scene_net_deliver(SCENE_MAP_PORT, reply, sizeof reply);
+    } else if (id == 0xb46 && length >= 10) {
+        send_emblem((int)(packet[2] | packet[3] << 8 | packet[4] << 16 | (unsigned)packet[5] << 24),
+                    (int)(packet[6] | packet[7] << 8 | packet[8] << 16 | (unsigned)packet[9] << 24));
     }
 }
 
@@ -259,6 +311,8 @@ static int l_spawn(lua_State *L)
     e->body_palette = (short)opt_int(L, 1, "body_palette", 0);
     e->head_dir = (short)opt_int(L, 1, "head_dir", 0);
     e->robe = (short)opt_int(L, 1, "robe", 0);
+    e->guild_id = (unsigned)opt_int(L, 1, "guild", 0);
+    e->emblem_version = (short)opt_int(L, 1, "emblem", 0);
     e->sex = (unsigned char)opt_int(L, 1, "sex", 1);
     pos_dir(e->pos.b, opt_int(L, 1, "x", 0), opt_int(L, 1, "y", 0), opt_int(L, 1, "dir", 0));
     e->x_size = e->y_size = 5;
