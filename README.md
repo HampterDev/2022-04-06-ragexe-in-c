@@ -210,7 +210,9 @@ Data, time and leaks:
   read instead of throwing an exception out of the loader.
 - GRF, SPR, IMF, GND and EZ effect files and the
   water settings are checked (counts, sizes, names) before use. A short or malformed file fails
-  to load instead of being read past its end. A GRF record that points outside the archive
+  to load instead of being read past its end. A sprite frame whose pixel stream is shorter or
+  longer than the frame is cut at the frame's end or filled with transparent pixels, and the
+  sprite still loads. A GRF record that points outside the archive
   (the kRO `data.grf` has such a deleted-file record) is left out, and the other files stay
   readable.
 - An empty XML element written without a space before the slash, such as `<readfolder/>`

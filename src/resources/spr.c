@@ -83,6 +83,25 @@ static int sprite_decode_rle(BYTE *out, size_t pixels, const BYTE *code, size_t 
     return output == pixels;
 }
 
+static void sprite_decode_rle_padded(BYTE *out, size_t pixels, const BYTE *code, size_t size)
+{
+    size_t input = 0, output = 0;
+    memset(out, 0, pixels);
+    while (input < size && output < pixels) {
+        unsigned value = code[input++], count = 1;
+        if (!value) {
+            if (input == size)
+                break;
+            count = code[input++];
+            if (!count) count = 1;
+        }
+        if (count > pixels - output)
+            count = (unsigned)(pixels - output);
+        memset(out + output, value, count);
+        output += count;
+    }
+}
+
 static size_t sprite_encode_pass(BYTE *out, const BYTE *raw, unsigned width, unsigned height,
                                 unsigned half_width, unsigned half_height)
 {
@@ -136,9 +155,8 @@ static int sprite_load_indexed(struct SprImg *image, struct SpriteReader *reader
     source = sprite_take(reader, size);
     if (!source) return 0;
     if (version >= 0x201) {
-        if (!sprite_decode_rle(NULL, pixels, source, size))
-            return 0;
-        if (!half_width && !half_height) {
+        int exact = sprite_decode_rle(NULL, pixels, source, size);
+        if (exact && !half_width && !half_height) {
             image->pixels = malloc(size);
             if (!image->pixels) return 0;
             memcpy(image->pixels, source, size);
@@ -146,7 +164,7 @@ static int sprite_load_indexed(struct SprImg *image, struct SpriteReader *reader
         }
         decoded = malloc(pixels);
         if (!decoded) return 0;
-        sprite_decode_rle(decoded, pixels, source, size);
+        sprite_decode_rle_padded(decoded, pixels, source, size);
         source = decoded;
     }
     image->pixels = sprite_encode(source, width, height, half_width, half_height);

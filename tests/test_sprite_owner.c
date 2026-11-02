@@ -202,8 +202,8 @@ static void test_rejected_replacement(void)
 {
     BYTE good[1200], bad[1200]; size_t size = fixture(good, 0x201); unsigned k;
     struct Res *base = sprite_resource_create(); struct SprRes saved;
-    const unsigned offsets[] = {0,2,4,6,8,10,12,15};
-    const unsigned values[] = {0,0x202,65535,65535,0,0x8000,65535,255};
+    const unsigned offsets[] = {0,2,4,6,8,10,12};
+    const unsigned values[] = {0,0x202,65535,65535,0,0x8000,65535};
     set_half(0); set_input(good,size); assert(resource_load(base,"old.spr")); saved = *(struct SprRes *)base;
     for (k = 0; k < sizeof offsets / sizeof *offsets; ++k) {
         memcpy(bad,good,size); put_word(bad+offsets[k],values[k]); set_input(bad,size);
@@ -220,6 +220,32 @@ static void test_rejected_replacement(void)
     assert(!memcmp(base,&saved,sizeof saved) && outstanding == 5);
     check_indexed(saved.images[0].items,5,3,indexed_pixels); check_rgba(saved.images[1].items,3,2,rgba_pixels);
     resource_destroy(base); clean();
+}
+static size_t uneven(BYTE *data, const BYTE *code, unsigned size)
+{
+    size_t n = 14; unsigned i;
+    memcpy(data, "SP\x01\x02\x01\x00\x00\x00", 8); put_word(data + 8, 5); put_word(data + 10, 3);
+    put_word(data + 12, size); memcpy(data + n, code, size); n += size;
+    for (i = 0; i < 1024; ++i) data[n + i] = (BYTE)i;
+    return n + 1024;
+}
+static void test_uneven_streams(void)
+{
+    static const BYTE short_code[] = {1,0,3,2}, dangling[] = {1,0,3,2,0};
+    static const BYTE past_end[] = {1,0,3,2,3,4,0,1,5,6,7,8,9,0,9};
+    static const BYTE long_code[] = {1,0,3,2,3,4,0,1,5,6,7,8,9,0,1,10,11,12};
+    static const BYTE short_pixels[15] = {1,0,0,0,2}, cut_pixels[] = {1,0,0,0,2,3,4,0,5,6,7,8,9,0,0};
+    const struct { const BYTE *code; unsigned size; const BYTE *pixels; } cases[] = {
+        {short_code, sizeof short_code, short_pixels}, {dangling, sizeof dangling, short_pixels},
+        {past_end, sizeof past_end, cut_pixels}, {long_code, sizeof long_code, indexed_pixels}};
+    BYTE data[1100]; unsigned k, half;
+    for (k = 0; k < sizeof cases / sizeof *cases; ++k) for (half = 0; half < 4; ++half) {
+        struct Res *base = sprite_resource_create(); struct SprRes *sprite = (struct SprRes *)base;
+        set_half(half); set_input(data, uneven(data, cases[k].code, cases[k].size));
+        assert(resource_load(base, "uneven.spr") && sprite->images[0].count == 1 && !borrowed_buffers);
+        check_indexed(sprite->images[0].items, 5, 3, cases[k].pixels);
+        resource_destroy(base); clean();
+    }
 }
 static void test_prefixes(void)
 {
@@ -359,7 +385,7 @@ int main(int argc, char **argv)
 {
     g_3dDevice.colorKeyPixel = 0x15ab;
     if (argc == 2) return corpus(argv[1]);
-    test_versions(); test_rejected_replacement(); test_prefixes();
+    test_versions(); test_rejected_replacement(); test_uneven_streams(); test_prefixes();
     test_allocation_failures(); test_empty_and_large(); clean();
     test_atlas_resource_lifetime();
     printf("SPR owner: versions, pixels, %u guarded prefixes, replacement and allocation failures pass (%u uploads).\n",guarded_prefixes,uploads);
