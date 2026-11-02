@@ -307,7 +307,7 @@ static int load_script(lua_State *L)
     };
     struct ItemBuilder *builder = lua_touserdata(L, 1);
     size_t i;
-    luaL_openlibs(L);
+    lua_open_client_libs(L);
     for (i = 0; i < sizeof callbacks / sizeof callbacks[0]; ++i) {
         lua_pushlightuserdata(L, builder);
         lua_pushcclosure(L, callbacks[i].callback, 1);

@@ -45,4 +45,57 @@ int lua_load_disk_file(lua_State *L, const char *path)
     free(data);
     return status;
 }
+
+static int call_with_disk_paths(lua_State *L)
+{
+    int paths = (int)lua_tointeger(L, lua_upvalueindex(2));
+    int args = lua_gettop(L), i;
+    for (i = 1; i <= paths && i <= args; i++) {
+        char disk[4096], *name;
+        const char *path;
+        if (lua_type(L, i) != LUA_TSTRING)
+            continue;
+        path = lua_tostring(L, i);
+        if (platform_path_is_native(path))
+            continue;
+        if (!platform_path_full(path, disk, sizeof disk, &name))
+            return luaL_error(L, "bad path %s", path);
+        lua_pushstring(L, disk);
+        lua_replace(L, i);
+    }
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    lua_call(L, args, LUA_MULTRET);
+    return lua_gettop(L);
+}
+
+static void wrap_path_function(lua_State *L, const char *table, const char *name, int paths)
+{
+    if (table)
+        lua_getglobal(L, table);
+    else
+        lua_pushvalue(L, LUA_GLOBALSINDEX);
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, name);
+        if (lua_isfunction(L, -1)) {
+            lua_pushinteger(L, paths);
+            lua_pushcclosure(L, call_with_disk_paths, 2);
+            lua_setfield(L, -2, name);
+        } else {
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+}
+
+void lua_open_client_libs(lua_State *L)
+{
+    luaL_openlibs(L);
+    wrap_path_function(L, "io", "open", 1);
+    wrap_path_function(L, "io", "lines", 1);
+    wrap_path_function(L, "os", "remove", 1);
+    wrap_path_function(L, "os", "rename", 2);
+    wrap_path_function(L, NULL, "dofile", 1);
+    wrap_path_function(L, NULL, "loadfile", 1);
+}
 #endif

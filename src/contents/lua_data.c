@@ -48,7 +48,7 @@ char lua_data_run(const char *path, const char *owner,
 
     if (!L)
         return 0;
-    luaL_openlibs(L);
+    lua_open_client_libs(L);
     for (i = 0; i < function_count; i++) {
         lua_pushcclosure(L, functions[i].function, 0);
         lua_setfield(L, LUA_GLOBALSINDEX, functions[i].name);

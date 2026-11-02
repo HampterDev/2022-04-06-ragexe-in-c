@@ -86,7 +86,7 @@ int merc_ai_load(struct MercenaryAI *self, const char *file)
     self->L = luaL_newstate();
     if (!self->L)
         return 2;
-    luaL_openlibs(self->L);
+    lua_open_client_libs(self->L);
     register_functions(self);
     if (lua_load_disk_file(self->L, file) == 0 && lua_pcall(self->L, 0, 0, 0) == 0)
         return 0;
