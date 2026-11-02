@@ -227,17 +227,17 @@ Data, time and leaks:
   A file cut short, or whose counts or indexes do not fit the file or the tables they point
   into, fails to load. The original read such a file as far as it went: its reads past the
   end failed and left zeros or earlier values, and the counts and offsets it took from the
-  file read past the end or outside its tables. An ACT that ends inside its delay table and
-  a PAL or SPR too short for its palette still load, as in the original. An EZ effect file
+  file read past the end or outside its tables. An ACT that ends inside its delay table,
+  a PAL or SPR too short for its palette and an RSM model that ends before or inside its
+  volume boxes still load, as in the original. An EZ effect file
   with a negative frame or texture count, or a 128-byte texture name with no NUL, fails as
   well. An RSM2 model of minor version 1 to 3 whose major version is not 2 fails; the
   original loaded it and then made the kind of model actor that major version names. A water
   animation speed of 0 fails the map; the original divided by it. A sprite frame whose pixel
   stream is shorter or longer than the frame is cut at the frame's end or filled with
   transparent pixels, and the sprite still loads. A GRF record that points outside the
-  archive
-  (the kRO `data.grf` has such a deleted-file record) is left out, and the other files stay
-  readable.
+  archive (the kRO `data.grf` has such a deleted-file record) is left out, and the other
+  files stay readable.
 - A GIF (a guild emblem or a `.gif` texture) is decoded as the original does, but never read
   or written past its buffers: bytes after the end of the file read as zero, a colour index
   past the palette as 0, an LZW stream stops at the end of its data, a code chain that loops
