@@ -143,6 +143,14 @@ int main(void)
     assert(screen_pixel(d, 8, 8) == 0xff0000 && screen_pixel(d, 23, 19) == 0xff0000);
     assert(screen_pixel(d, 7, 8) == 0x102030 && screen_pixel(d, 24, 19) == 0x102030 && screen_pixel(d, 8, 20) == 0x102030);
 
+    gfx_clear(GFX_CLEAR_TARGET, 0xff102030, 1.0f, NULL);
+    quad(v, 8.5f, 8.5f, 24.5f, 20.5f, 0xff00ff00, 0);
+    gfx_draw(GFX_PT_TRIANGLESTRIP, GFX_VTX_TEX1, v, 4, NULL, 0);
+    gfx_end_scene();
+    assert(screen_pixel(d, 8, 8) == 0x00ff00 && screen_pixel(d, 23, 19) == 0x00ff00);
+    assert(screen_pixel(d, 7, 8) == 0x102030 && screen_pixel(d, 8, 7) == 0x102030);
+    assert(screen_pixel(d, 24, 19) == 0x102030 && screen_pixel(d, 23, 20) == 0x102030);
+
     check_texture(d, GFX_FMT_8888);
     check_texture(d, GFX_FMT_565);
     check_texture(d, GFX_FMT_1555);
