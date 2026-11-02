@@ -2,6 +2,7 @@
 #include "render/render_api.h"
 #include "diag/perf.h"
 #include "ui/window_types.h"
+#include <stdlib.h>
 #include <string.h>
 
 struct perf_counters g_perf;
@@ -69,10 +70,10 @@ static int ms10_of(LONGLONG ticks)
 
 static void init(void)
 {
-    char buf[MAX_PATH];
+    const char *overlay = getenv("RAGEXE_OVERLAY");
     P.inited = 1;
     QueryPerformanceFrequency(&P.freq);
-    if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
+    if (overlay && overlay[0] && overlay[0] != '0')
         P.shown = 1;
     P.lastScroll = GetKeyState(VK_SCROLL) & 1;
     P.start = now();

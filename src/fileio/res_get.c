@@ -3,6 +3,7 @@
 #include "fileio/resource_errors.h"
 #include "diag/perf.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include "platform/clock.h"
 
@@ -33,9 +34,11 @@ static int keys_enabled = -1;
 
 static int keys_on(void)
 {
-    char env[8];
-    if (keys_enabled < 0)
-        keys_enabled = !(GetEnvironmentVariableA("RAGEXE_RES_KEYS", env, sizeof(env)) && env[0] == '0' && !env[1]);
+    const char *env;
+    if (keys_enabled < 0) {
+        env = getenv("RAGEXE_RES_KEYS");
+        keys_enabled = !(env && env[0] == '0' && !env[1]);
+    }
     return keys_enabled;
 }
 
