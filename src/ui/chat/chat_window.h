@@ -50,7 +50,6 @@ OFFSET_ASSERT(UINewChatWnd, backdrop, 0xa4);
 #define CHAT_ID_BAR_DIALOG 0xd9
 #define CHAT_ID_BAR_SYS_1 0xcc
 #define CHAT_ID_BAR_SYS_2 0xe6
-#define MINI_ID_PLACE 0xbd
 #define CHAT_MAX_TABS 10
 
 #define CHAT_LINES_SHOWN (g_windowMgr.chat_wnd_stick_on != 0)

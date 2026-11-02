@@ -73,57 +73,6 @@ const struct UIWindowOps ui_sub_chat_his_wnd_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-struct UISubChatMiniWnd;
-struct UIWindow;
-void ui_sub_chat_mini_wnd_destroy(struct UIWindow *window);
-void ui_sub_chat_mini_wnd_on_create(struct UIWindow *self, int width, int height);
-void ui_sub_chat_mini_wnd_on_draw(struct UIWindow *self);
-void ui_sub_chat_mini_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_sub_chat_mini_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_sub_chat_mini_wnd_ops = {
-    .destroy = ui_sub_chat_mini_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_sub_chat_mini_wnd_on_create,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_sub_chat_mini_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_sub_chat_mini_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_sub_chat_mini_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
 
 #define BASIC_INTERFACE UI_SKIN "basic_interface\\"
 
@@ -191,11 +140,6 @@ struct UISubChatHisWnd *ui_sub_chat_his_wnd_construct(struct UISubChatHisWnd *se
         break;
     }
     return self;
-}
-
-struct UIWindow *ui_sub_chat_his_wnd_new(void)
-{
-    return (struct UIWindow *)ui_sub_chat_his_wnd_construct(mem_alloc(sizeof(struct UISubChatHisWnd)));
 }
 
 void ui_sub_chat_his_wnd_destroy(struct UIWindow *window)
@@ -641,83 +585,4 @@ int ui_sub_chat_his_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-struct UISubChatMiniWnd {
-    struct UIFrameWnd frame;
-    int count;
-    int cell_width, cell_height;
-};
-SIZE_ASSERT(UISubChatMiniWnd, 0xa0);
-
-#define SUBCHAT_MINI_ID_TOGGLE 0xc2
-#define SUBCHAT_MINI_ID_PLACE 0xbd
-#define SUBCHAT_MINI_TOGGLED 0x107
-
-struct UISubChatMiniWnd *ui_sub_chat_mini_wnd_construct(struct UISubChatMiniWnd *self)
-{
-    ui_frame_wnd_construct(&self->frame, 0);
-    self->frame.base.ops = &ui_sub_chat_mini_wnd_ops;
-    self->count = 2;
-    self->cell_width = 0x20;
-    self->cell_height = 0x20;
-    return self;
-}
-
-struct UIWindow *ui_sub_chat_mini_wnd_new(void)
-{
-    return (struct UIWindow *)ui_sub_chat_mini_wnd_construct(mem_alloc(sizeof(struct UISubChatMiniWnd)));
-}
-
-void ui_sub_chat_mini_wnd_destroy(struct UIWindow *window)
-{
-    struct UISubChatMiniWnd *self = (struct UISubChatMiniWnd *)window;
-    self->frame.base.ops = &ui_sub_chat_mini_wnd_ops;
-    ui_frame_wnd_destruct(&self->frame);
-    mem_free(self);
-}
-
-void ui_sub_chat_mini_wnd_on_create(struct UIWindow *window, int width, int height)
-{
-    struct UISubChatMiniWnd *self = (struct UISubChatMiniWnd *)window;
-    (void)width;
-    (void)height;
-    ui_window_resize_base(&self->frame.base, self->cell_width * self->count, self->cell_height);
-}
-
-void ui_sub_chat_mini_wnd_on_draw(struct UIWindow *window)
-{
-    struct UISubChatMiniWnd *self = (struct UISubChatMiniWnd *)window;
-    struct BitmapRes *st =
-        ui_skin_bitmap(g_windowMgr.on_st_sub_chat ? BASIC_INTERFACE "st_a.tga" : BASIC_INTERFACE "st_b.tga");
-    struct BitmapRes *bt =
-        ui_skin_bitmap(g_windowMgr.on_bt_sub_chat ? BASIC_INTERFACE "bt_a.tga" : BASIC_INTERFACE "bt_b.tga");
-
-    ui_window_draw_bitmap(&self->frame.base, 0, 0, st, 0);
-    ui_window_draw_bitmap(&self->frame.base, self->cell_width, 0, bt, 0);
-}
-
-void ui_sub_chat_mini_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
-{
-    struct UISubChatMiniWnd *self = (struct UISubChatMiniWnd *)window;
-    (void)y;
-    if (x > 0 && x <= self->cell_width)
-        g_windowMgr.on_st_sub_chat = g_windowMgr.on_st_sub_chat == 0;
-    else
-        g_windowMgr.on_bt_sub_chat = g_windowMgr.on_bt_sub_chat == 0;
-    ui_sub_chat_mini_wnd_send_msg(&self->frame.base, &self->frame.base, UI_MSG_COMMAND, SUBCHAT_MINI_TOGGLED, 0, 0, 0);
-    ui_window_invalidate_base(&self->frame.base);
-}
-
-int ui_sub_chat_mini_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
-{
-    struct UISubChatMiniWnd *self = (struct UISubChatMiniWnd *)window;
-    if (msg != UI_MSG_COMMAND)
-        return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-    if (val1 == SUBCHAT_MINI_ID_PLACE)
-        ui_frame_wnd_move(&self->frame.base, val2, val3 - self->cell_height);
-    else if (val1 == SUBCHAT_MINI_ID_TOGGLE)
-        ui_sub_chat_mini_wnd_on_l_btn_down(&self->frame.base, self->cell_width * val2 + 1, 0);
-    return 0;
 }

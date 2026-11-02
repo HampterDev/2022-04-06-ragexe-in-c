@@ -10,7 +10,6 @@ struct SqQuad;
 
 void render_object_update_motion_base(struct RenderObject *object);
 void c3d_granny_game_actor_update_motion(struct RenderObject *object);
-void granny_pc_update_motion(struct RenderObject *object);
 unsigned char render_object_clip_to_quad(struct RenderObject *object, int index, int layer,
     float scale, const struct SprClip *clip, float x, float y, const float *view,
     float shift, float *depth_a, float *depth_b, const struct SprImg *image,
@@ -29,7 +28,6 @@ void render_object_set_screen_position(struct RenderObject *object, float x, flo
 void render_object_set_action_base(struct RenderObject *object, int action, int type);
 void game_actor_set_action(struct RenderObject *object, int action, int type);
 void c3d_granny_game_actor_set_action(struct RenderObject *object, int action, int type);
-void granny_pc_set_action(struct RenderObject *object, int action, int type);
 
 void game_object_set_render_info(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);
 void game_actor_set_render_info(struct RenderObject *object, const struct ScreenBounds *bounds, float x, float y);

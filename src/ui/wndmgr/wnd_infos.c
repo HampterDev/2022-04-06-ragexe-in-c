@@ -431,8 +431,6 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
     window_info_set_default(&self->pet_info_info);
     homun_info_wnd_info_set_default(&self->homun_info_info);
     mer_info_wnd_info_set_default(&self->mer_info_info);
-    frame_set(&self->sub_chat_st_info, 0, g_renderer->height - 0x77, 0x12c, 0x5f);
-    frame_set(&self->sub_chat_bt_info, 0x12c, g_renderer->height - 0x77, 0x12c, 0x5f);
     quik_slot_wnd_info_make_default(&self->quick_slot_info);
     frame_set(&self->buying_store_make_info, 0, 0xf0, 0x118, 0xdc);
     frame_set(&self->buying_store_mirror_item_info, 0, 0x78, 0x118, 0x78);

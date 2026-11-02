@@ -203,15 +203,10 @@ int main(void)
     vertices = c3d_granny_model_res_mesh_to_draw(&resource, 0, &out_texture, &out_indices,
                                            &triangles, matrix, &alternate, NULL);
     assert(vertices == source_vertices && out_texture == texture.texture);
-    assert(c3d_granny_model_res_rigid_mesh_vertices(&resource, 0) == source_vertices);
-    assert(!c3d_granny_model_res_rigid_mesh_vertices(&resource, -1));
-    assert(!c3d_granny_model_res_rigid_mesh_vertices(&resource, 1));
-    assert(!c3d_granny_model_res_rigid_mesh_vertices(NULL, 0));
     for (i = 0; i < 12; i++)
         assert(matrix[i] == alternate_composite[(i / 3) * 4 + i % 3]);
     assert(!memcmp(hair.matrix, matrix, sizeof matrix));
     rigid = 0;
-    assert(!c3d_granny_model_res_rigid_mesh_vertices(&resource, 0));
 
     {
         struct GrannyMeshVertex anchors[65] = {0};

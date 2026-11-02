@@ -119,13 +119,3 @@ void text_to_lower(struct String *s)
             s->data[i] += 0x20;
     }
 }
-
-char *str_find_last(char *text, char c)
-{
-    char *at;
-
-    for (at = text + strlen(text) - 1; at >= text; at--)
-        if (*at == c)
-            return at;
-    return NULL;
-}

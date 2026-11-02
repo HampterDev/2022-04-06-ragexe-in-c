@@ -885,7 +885,7 @@ void ui_new_select_char_wnd_on_l_btn_down(struct UIWindow *self, int x, int y)
 void ui_new_select_char_wnd_on_process(struct UIWindow *window)
 {
     struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
-    struct UIWindow *top, *button;
+    struct UIWindow *button;
 
     if (g_mouse.button[MOUSE_LEFT] != 3 || !g_windowMgr.menu_wnd) {
         if (g_mouse.button[MOUSE_LEFT])
@@ -895,9 +895,6 @@ void ui_new_select_char_wnd_on_process(struct UIWindow *window)
         if (g_mouse.button[MOUSE_LEFT])
             ui_window_invalidate_base(WND(self));
     }
-    top = ui_get_window(0x5d);
-    if (top)
-        ui_window_mgr_raise_window(&g_windowMgr, top);
     button = SLOT_BUTTON(self, self->cur);
     if (button)
         ui_window_on_process(button);

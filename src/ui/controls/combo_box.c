@@ -299,52 +299,6 @@ const struct UIWindowOps ui_combo_box_bmp_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-struct UIComboBoxV2Wnd;
-const struct UIWindowOps ui_combo_box_v2_wnd_ops = {
-    .destroy = ui_combo_box_v2_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 0,
-    .refreshes_children = 0,
-    .move = ui_window_move_base,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_window_save_pos_base,
-    .move_delta = ui_window_move_delta_base,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_combo_box_v2_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_window_on_l_btn_down_base,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_window_on_mouse_move_base,
-    .on_mouse_hover = ui_window_on_mouse_hover_base,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_combo_box_def_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_combo_box_v2_wnd_on_wheel,
-    .snap = ui_window_snap_base,
-    .send_msg = ui_combo_box_v2_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_WINDOW,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
 #define ROW_COUNT(lb) ((lb)->rows.size)
 
 static void draw_list_frame(struct UIWindow *wnd)
@@ -1087,84 +1041,6 @@ void ui_combo_box_bmp_wnd_create(struct UIComboBoxBmpWnd *self, int width, int h
     ((struct UIStaticText *)def->label)->white_shadow = 1;
     ui_window_add_child(&def->base, def->label);
     string_free(&base);
-}
-
-void ui_combo_box_v2_wnd_destroy(struct UIWindow *window)
-{
-    struct UIComboBoxV2Wnd *self = (struct UIComboBoxV2Wnd *)window;
-    self->base.ops = &ui_combo_box_v2_wnd_ops;
-    string_free(&self->bitmap);
-    ui_window_destruct(&self->base);
-    mem_free(self);
-}
-
-struct String *ui_combo_box_v2_wnd_get_selected_text(struct UIComboBoxV2Wnd *self, struct String *out)
-{
-    int row = self->selected;
-
-    if (row < 0 || (int)self->list->rows.size <= row) {
-        string_init(out);
-        return out;
-    }
-    string_copy(out, &list_box_ex_entry_at(&self->list->rows, &row)->text);
-    return out;
-}
-
-void ui_combo_box_v2_wnd_on_draw(struct UIWindow *window)
-{
-    struct UIComboBoxV2Wnd *self = (struct UIComboBoxV2Wnd *)window;
-    struct String text;
-
-    ui_window_clear_canvas(&self->base, UI_TRANSPARENT);
-    if (self->bitmap.size)
-        ui_window_draw_bitmap(&self->base, 0, 0, ui_skin_bitmap(string_cstr(&self->bitmap)), 0);
-    ui_combo_box_v2_wnd_get_selected_text(self, &text);
-    ui_window_text_out(&self->base, 2, 3, string_cstr(&text), 0, 0, 12, 0, 0, 0);
-    string_free(&text);
-}
-
-void ui_combo_box_v2_wnd_on_wheel(struct UIWindow *window, int delta)
-{
-    struct UIComboBoxV2Wnd *self = (struct UIComboBoxV2Wnd *)window;
-    self->selected += delta < 0 ? 1 : -1;
-    if ((int)self->list->rows.size <= self->selected)
-        self->selected = (int)self->list->rows.size - 1;
-    if (self->selected < 0)
-        self->selected = 0;
-    if (self->base.parent)
-        ui_window_send_msg(self->base.parent, &self->base, COMBO_MSG_CHOSEN, self->selected, 0, 0, 0);
-    ui_window_invalidate_base(&self->base);
-}
-
-int ui_combo_box_v2_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
-{
-    struct UIComboBoxV2Wnd *self = (struct UIComboBoxV2Wnd *)window;
-    struct UIWindow *wnd = &self->base;
-    int height;
-
-    switch (msg) {
-    case UI_MSG_COMMAND:
-        if (val1 != UI_ID_COMBO_BUTTON)
-            return 0;
-        height = self->head->height;
-        if (wnd->height <= height)
-            height += self->list->base.height;
-        ui_window_resize(&self->base, wnd->width, height);
-        if (wnd->parent)
-            ui_window_invalidate(wnd->parent);
-        ui_window_invalidate_base(&self->base);
-        return 0;
-    case COMBO_MSG_CHOSEN:
-        ui_window_send_msg(&self->base, NULL, UI_MSG_COMMAND, UI_ID_COMBO_BUTTON, 0, 0, 0);
-        self->selected = val1;
-        if (wnd->parent)
-            ui_window_send_msg(wnd->parent, wnd, COMBO_MSG_CHOSEN, val1, 0, 0, 0);
-        ui_window_invalidate_base(&self->base);
-        return 0;
-    default:
-        return ui_window_send_msg_base(wnd, sender, msg, val1, val2, val3, val4);
-    }
 }
 
 #define EX2_FRAME 0xc59582

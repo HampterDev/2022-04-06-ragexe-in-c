@@ -10,7 +10,6 @@
 
 struct BitmapRes;
 struct TexDrawPrim;
-struct UIScrollBar4;
 struct UIWindow;
 struct UIWindowOps;
 
@@ -114,8 +113,6 @@ void ui_scroll_bar_navi_on_draw(struct UIWindow *self);
 
 void ui_scroll_bar2_destroy(struct UIWindow *window);
 void ui_scroll_bar2_on_draw(struct UIWindow *self);
-void ui_scroll_bar4_destroy(struct UIWindow *window);
-void ui_scroll_bar4_on_draw(struct UIWindow *self);
 
 void ui_scroll_wnd_destroy(struct UIWindow *window);
 void ui_scroll_wnd_remove_child(struct UIScrollWnd *self,

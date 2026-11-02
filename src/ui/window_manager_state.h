@@ -77,8 +77,6 @@ struct UIWindowMgr {
     struct UIWindow *combined_card_item_collection_comparison_wnd;
     struct UIWindow *combined_card_item_collection_wnd;
     struct UIWindow *skill_describe_wnd;
-    struct UIWindow *quit_wnd;
-    struct UIWindow *restart_wnd;
     struct UIWindow *card_item_illust_wnd;
     struct UIWindow *notify_level_up_wnd;
     struct UIWindow *notify_job_level_up_wnd;
@@ -106,7 +104,6 @@ struct UIWindowMgr {
     struct UIWindow *join_party_accept_wnd;
     struct UIWindow *couple_accept_wnd;
     struct UIWindow *star_place_accept_wnd;
-    struct UIWindow *mix_accept_wnd;
     struct UIWindow *your_item_wnd;
     struct UIWindow *baby_accept_wnd;
     struct UIWindow *baby_accept_wnd2;
@@ -136,7 +133,6 @@ struct UIWindowMgr {
     struct UIWindow *illust_wnd;
     struct UIWindow *make_target_list_wnd;
     struct UIWindow *make_target_process_wnd;
-    struct UIWindow *make_target_result_wnd;
     struct UIWindow *emotion_wnd;
     struct UIWindow *emotion_list_wnd;
     struct UIWindow *prohibit_list_wnd;
@@ -147,7 +143,6 @@ struct UIWindowMgr {
     struct UIWindow *select_cart_wnd;
     struct UIWindow *spell_list_wnd;
     struct UIWindow *candidate_wnd;
-    struct UIWindow *composition_wnd;
     struct UIWindow *key_stroke_wnd;
     struct UIWindow *join_friend_accept_wnd;
     struct UIWindow *command_list_wnd;
@@ -159,14 +154,8 @@ struct UIWindowMgr {
     struct UIWindow *new_select_char_wnd;
     struct UIWindow *sel_char_for_userver_wnd;
     struct UIWindow *change_name_wnd;
-    struct UIWindow *rebirth_wnd;
-    struct UIWindow *sub_chat_st_wnd;
-    struct UIWindow *sub_chat_bt_wnd;
     struct UIWindow *battle_msg_option_wnd;
-    struct UIWindow *sub_chat_mini_wnd;
     BYTE chat_wnd_stick_on;
-    BYTE on_st_sub_chat;
-    BYTE on_bt_sub_chat;
     struct UIWindow *memorial_dun_wnd;
     struct UIWindow *other_equip_wnd;
     struct UIWindow *kafra_move_map_service_info_wnd;
@@ -178,7 +167,6 @@ struct UIWindowMgr {
     struct UIWindow *buying_store_item_shop_wnd;
     struct UIWindow *buying_store_item_sell_wnd;
     struct UIWindow *buying_store_mirror_sell_list_wnd;
-    struct UIWindow *monster_display_wnd;
     struct UIWindow *quest_display_wnd;
     struct UIWindow *party_invitation_to_wnd;
     struct UIWindow *guild_helper_wnd;
@@ -262,8 +250,6 @@ struct UIWindowMgr {
     struct WndInfoShow homun_skill_list_info;
     struct WindowInfo mer_info_info;
     struct WndInfoShow mer_skill_list_info;
-    struct WindowInfo sub_chat_st_info;
-    struct WindowInfo sub_chat_bt_info;
     struct WindowInfo quick_slot_info;
     struct WindowInfo buying_store_make_info;
     struct WindowInfo buying_store_mirror_item_info;

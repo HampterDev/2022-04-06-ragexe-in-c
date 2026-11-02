@@ -1,4 +1,3 @@
-#include "../src/ui/render/render_target.c"
 #include "../src/core/map_sky.c"
 #include "effects/skills/cloud.h"
 #include "contents/client_lua.h"
@@ -11,12 +10,8 @@
 static struct EffectMgr manager;
 struct EffectMgr *g_effectMgr = &manager;
 static struct Cloud cloud, expected_cloud;
-static struct Effect render_effect;
-static struct EffectOps fake_render_ops;
-static struct UIRenderTargetWnd window;
-static ParticleSubmitFn submitted;
 static int map_present, clouds_to_make, spawn_calls, restart_calls, lua_calls;
-static int missing_effect, window_present;
+static int missing_effect;
 
 void *mem_alloc(size_t bytes) { return calloc(1, bytes); }
 __declspec(noreturn) void fatal_error(const char *message)
@@ -69,9 +64,6 @@ void cloud_respawn(struct Effect *effect)
     ++restart_calls;
 }
 
-static void register_submit(struct Effect *effect, ParticleSubmitFn submit)
-{ assert(effect == &render_effect); submitted = submit; }
-
 struct Effect *effect_mgr_spawn(struct EffectMgr *self, int aid, int type, Vec3 pos,
                                 int target_aid, int level, unsigned char reuse, int key)
 {
@@ -81,16 +73,10 @@ struct Effect *effect_mgr_spawn(struct EffectMgr *self, int aid, int type, Vec3 
         assert(pos.y == 12.5f && pos.x > -60 && pos.x < 60 && pos.z > -40 && pos.z < 40);
         return missing_effect ? NULL : &cloud.base;
     }
-    assert(type == 0x442 && !pos.x && !pos.y && !pos.z);
-    return missing_effect ? NULL : &render_effect;
+    assert(0);
+    return NULL;
 }
 
-struct CharacterRender *character_render_create(int width, int height)
-{ assert(width == 200 && height == 100); return mem_alloc(sizeof(struct CharacterRender)); }
-void character_render_set_robe(struct CharacterRender *self, int robe)
-{ assert(self && robe == 0x11); }
-struct UIWindow *ui_window_find(int id)
-{ assert(id == 0x125); return window_present ? &window.frame.base : NULL; }
 
 static void test_cloud_setup(void)
 {
@@ -123,40 +109,10 @@ static void test_cloud_setup(void)
     assert(!lua_calls && spawn_calls == 2);
 }
 
-static void test_effect_callback(void)
-{
-    void *effects_head[3], *quads_head[3];
-    struct TexDrawPrim first = {0}, second = {0};
-    void **node, **next;
-    effects_head[0] = effects_head[1] = effects_head;
-    quads_head[0] = quads_head[1] = quads_head;
-    window.effects.head = (struct ListNode *)effects_head;
-    window.effect_quads.head = (struct ListNode *)quads_head;
-    fake_render_ops.set_submit = register_submit;
-    render_effect.ops = &fake_render_ops;
-    missing_effect = 0; window_present = 1;
-    ui_render_target_wnd_on_create((struct UIWindow *)(&window), 200, 100);
-    assert(submitted && window.effects.size == 1);
-    assert(((void **)effects_head[0])[2] == &render_effect);
-    submitted(&first, 0x1234);
-    submitted(&second, -1);
-    assert(window.effect_quads.size == 2);
-    node = quads_head[0]; assert(node[2] == &first);
-    node = node[0]; assert(node[2] == &second && node[0] == quads_head);
-    window_present = 0;
-    submitted(&first, 0);
-    assert(window.effect_quads.size == 2);
-    for (node = quads_head[0]; node != quads_head; node = next) {
-        next = node[0]; free(node);
-    }
-    free(effects_head[0]); free(window.character);
-}
-
 int main(void)
 {
     test_cloud_setup();
-    test_effect_callback();
-    puts("Named client dispatch: cloud settings and restart, effect callback registration and quad order pass.");
+    puts("Named client dispatch: cloud settings and restart pass.");
     return 0;
 }
 

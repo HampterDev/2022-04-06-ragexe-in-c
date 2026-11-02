@@ -7,6 +7,15 @@
 
 struct Session g_session1;
 
+static int as_int(const struct JsonTree *value)
+{
+    if (value && value->type == JSON_TREE_INT64)
+        return (int)value->u.i64;
+    if (value && value->type == JSON_TREE_UINT64)
+        return (int)value->u.u64;
+    return 0;
+}
+
 void item_info_set_item_id(struct ItemInfo *item, int id)
 {
     char number[32];
@@ -55,7 +64,10 @@ int main(void)
     assert(mcstore_write_items(&shop, &root));
     assert(json_write_request(&root, &text));
     assert(json_parse_text(&decoded, owned_text_cstr(&text), text.size));
-    assert(json_value_size(json_value_member(&decoded, "Item")) == 1);
+    {
+        const struct JsonTree *items = json_value_member(&decoded, "Item");
+        assert(items && items->type == JSON_TREE_ARRAY && items->count == 1);
+    }
     memset(&guarded.value, 0xa5, sizeof guarded.value);
     assert(mcstore_read_item(&guarded.value, json_value_at(json_value_member(&decoded, "Item"), 0)));
     assert(guarded.value.id == 501);
@@ -65,8 +77,8 @@ int main(void)
     {
         struct JsonTree *options = json_value_member(json_value_at(json_value_member(&decoded, "Item"), 0), "RandomOptionList");
         struct JsonTree *option = json_value_at(options, 1);
-        assert(json_value_as_int(json_value_member(option, "OptIndex")) == 65522);
-        assert(json_value_as_int(json_value_member(option, "Value")) == -5);
+        assert(as_int(json_value_member(option, "OptIndex")) == 65522);
+        assert(as_int(json_value_member(option, "Value")) == -5);
     }
     owned_text_clear(&text);
     json_tree_free(&root);

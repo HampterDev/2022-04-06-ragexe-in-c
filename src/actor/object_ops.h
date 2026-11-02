@@ -66,7 +66,6 @@ void game_actor_delete(struct GameObject *object);
 void game_object_delete(struct GameObject *object);
 void graffi_skill_delete(struct GameObject *object);
 void granny_corpse3d_delete(struct GameObject *object);
-void granny_pc_deleting_destruct(struct GameObject *object);
 void ground_scope_delete(struct GameObject *object);
 void hallu_npc_delete(struct GameObject *object);
 void hallu_pc2_delete(struct GameObject *object);
@@ -94,7 +93,6 @@ unsigned char effect_prim_on_process(struct GameObject *object);
 unsigned char game_object_on_process(struct GameObject *object);
 unsigned char graffi_skill_on_process(struct GameObject *object);
 unsigned char granny_corpse3d_on_process(struct GameObject *object);
-unsigned char granny_pc_on_process(struct GameObject *object);
 unsigned char ground_scope_on_process(struct GameObject *object);
 unsigned char hallu_npc_on_process(struct GameObject *object);
 unsigned char hallu_pc2_on_process(struct GameObject *object);
@@ -129,8 +127,6 @@ void effect_maker_send_msg(struct GameObject *object, struct GameObject *source,
 void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void graffi_skill_send_msg(struct GameObject *object, struct GameObject *source,
-    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
-void granny_pc_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void ground_scope_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
@@ -172,7 +168,6 @@ void effect_maker_render(struct GameObject *object, const float *view);
 void effect_prim_render(struct GameObject *object, const float *view);
 void graffi_skill_render(struct GameObject *object, const float *view);
 void granny_corpse3d_render(struct GameObject *object, const float *view);
-void granny_pc_render(struct GameObject *object, const float *view);
 void ground_scope_render(struct GameObject *object, const float *view);
 void hallu_npc_render(struct GameObject *object, const float *view);
 void hallu_pc2_render(struct GameObject *object, const float *view);

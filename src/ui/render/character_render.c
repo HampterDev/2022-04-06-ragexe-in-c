@@ -983,45 +983,6 @@ static void render_pass(struct CharacterRender *self, struct ChrPass *pass)
     render_layers(self, pass, imf);
 }
 
-struct List *character_render_collect_quads(struct CharacterRender *self, struct List *out)
-{
-    struct ChrPass pass;
-    float m[12], eye[3];
-    static const float back[3] = { 0.0f, 0.0f, 0.0f };
-
-    memset(&pass, 0, sizeof pass);
-    mat_set_rotate_x(m, self->pitch / 180.0f * PI_F);
-    mat_rotate_y(m, self->yaw / 180.0f * PI_F);
-    {
-        float p[3];
-
-        p[0] = back[0];
-        p[1] = back[1];
-        p[2] = -self->distance;
-        transform(m, p, eye);
-    }
-    {
-        Vec3 eye_point = {eye[0], eye[1], eye[2]};
-        Vec3 target_point = {self->pos[0], self->pos[1], self->pos[2]};
-        Vec3 up_direction = {self->up[0], self->up[1], self->up[2]};
-        mat_look_at(m, &eye_point, &target_point, &up_direction);
-    }
-    transform(m, self->pos, pass.viewpos);
-    {
-        Vec3 world_point = {self->pos[0], self->pos[1], self->pos[2]};
-        renderer_project_centred(g_renderer, &world_point, m, &pass.sx, &pass.sy, &pass.rhw,
-                            (float)self->view_width + self->centre_dx, (float)self->view_height + self->centre_dy);
-    }
-    pass.scale = session_get_baby_job_scale(&g_session1, self->job) * renderer_screen_scale(g_renderer, pass.rhw);
-    list_init(out);
-    pass.out = out;
-    pass.matrix = m;
-    render_pass(self, &pass);
-    if (session_is_top_layer_robe(&g_session1, self->robe))
-        robe_pass(self, out, 1, &pass.index, pass.viewpos, pass.sx, pass.sy, pass.scale, 0.0f, NULL);
-    return out;
-}
-
 struct List *character_render_collect_world_quads(struct CharacterRender *self, struct List *out,
                                                         BYTE use_bbox, BYTE *drawn)
 {

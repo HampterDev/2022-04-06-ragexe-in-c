@@ -510,44 +510,6 @@ void ui_static_text_set_text_ellipsis(struct UIWindow *wnd, const char *text)
     ui_window_invalidate(wnd);
 }
 
-void ui_static_text3_destruct(struct UIStaticText3 *self)
-{
-    self->st.base.ops = &ui_static_text3_ops;
-    ui_static_text_destruct(&self->st);
-}
-
-void ui_static_text3_destroy(struct UIWindow *window)
-{
-    struct UIStaticText3 *self = (struct UIStaticText3 *)window;
-    ui_static_text3_destruct(self);
-    mem_free(self);
-}
-
-void ui_static_text3_on_draw(struct UIWindow *window)
-{
-    struct UIStaticText3 *self = (struct UIStaticText3 *)window;
-    struct UIStaticText *st = &self->st;
-    struct UIWindow *wnd = &st->base;
-    int x = self->x_offset;
-
-    ui_window_clear_canvas(wnd, st->background);
-    if (st->white_shadow)
-        ui_window_text_out(wnd, x + 2, 2, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                         RGB(0xff, 0xff, 0xff), st->font_arg3, st->font_arg4);
-    if (st->outline) {
-        ui_window_text_out(wnd, x, 1, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                         st->outline_colour, st->font_arg3, st->font_arg4);
-        ui_window_text_out(wnd, x + 1, 0, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                         st->outline_colour, st->font_arg3, st->font_arg4);
-        ui_window_text_out(wnd, x + 2, 1, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                         st->outline_colour, st->font_arg3, st->font_arg4);
-        ui_window_text_out(wnd, x + 1, 2, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                         st->outline_colour, st->font_arg3, st->font_arg4);
-    }
-    ui_window_text_out(wnd, x + 1, 1, string_cstr(&st->text), 0, st->font_face, st->font_height,
-                     RGB((BYTE)st->r, (BYTE)st->g, (BYTE)st->b), st->font_arg3, st->font_arg4);
-}
-
 static void static_text_take(struct UIStaticText *self, const char *text, int outline)
 {
     string_assign_cstr(&self->text, text);
@@ -568,48 +530,3 @@ void ui_static_text_set_text_or_shrink2(struct UIWindow *wnd, const char *text, 
                  wnd->height);
     ui_window_invalidate(wnd);
 }
-
-const struct UIWindowOps ui_static_text3_ops = {
-    .destroy = ui_static_text3_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 0,
-    .refreshes_children = 0,
-    .move = ui_window_move_base,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_window_save_pos_base,
-    .move_delta = ui_window_move_delta_base,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_static_text3_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_static_text_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_static_text_on_l_btn_dbl_clk,
-    .on_mouse_move = ui_static_text_on_mouse_move,
-    .on_mouse_hover = ui_static_text_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_static_text_on_mouse_shape,
-    .on_l_btn_up = ui_static_text_on_l_btn_up,
-    .on_r_btn_down = ui_static_text_on_r_btn_down,
-    .on_r_btn_up = ui_static_text_on_r_btn_up,
-    .on_wheel = ui_static_text_on_wheel,
-    .snap = ui_window_snap_base,
-    .send_msg = ui_window_send_msg_base,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_WINDOW,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};

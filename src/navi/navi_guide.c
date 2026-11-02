@@ -435,11 +435,6 @@ unsigned char navi_manager_guide_link(struct NaviManager *self, int index)
     return navi_manager_update_window(self);
 }
 
-unsigned char navi_manager_guide_result(struct NaviManager *self, int index)
-{
-    return guide_result(self, index);
-}
-
 unsigned char navi_manager_guide_selected(struct NaviManager *self)
 {
     int group = self->selectedGroup, member = self->selectedMember;

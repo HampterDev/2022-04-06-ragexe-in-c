@@ -25,7 +25,6 @@
 
 #define MT_LIST_WND_ID 0x4f
 #define MT_PROCESS_WND_ID 0x50
-#define MT_RESULT_WND_ID 0x51
 
 #define LIST_MSG_SELECT_PREV 0x12
 #define LIST_MSG_SELECT_NEXT 0x13
@@ -49,10 +48,6 @@
 #define MSG_MT_LIST_TITLE 0x1a9
 #define MSG_MT_PROCESS_LINE1 0x1aa
 #define MSG_MT_PROCESS_LINE2 0x1ab
-#define MSG_MT_RESULT_FAIL1 0x1ac
-#define MSG_MT_RESULT_OK1 0x1ad
-#define MSG_MT_RESULT_FAIL2 0x1ae
-#define MSG_MT_RESULT_OK2 0x1af
 
 #define MT_STONES 3
 
@@ -70,14 +65,6 @@ struct UIMakeTargetProcessWnd {
     struct ItemInfo stones[MT_STONES];
 };
 OFFSET_ASSERT(UIMakeTargetProcessWnd, stones, 0x98);
-
-struct UIMakeTargetResultWnd {
-    struct UIFrameWnd frame;
-    int item_id;
-    BYTE success;
-};
-OFFSET_ASSERT(UIMakeTargetResultWnd, success, 0x98);
-SIZE_ASSERT(UIMakeTargetResultWnd, 0x9c);
 
 void ui_make_target_list_wnd_destroy(struct UIWindow *window);
 void ui_make_target_list_wnd_on_create(struct UIWindow *self, int width, int height);
@@ -179,55 +166,6 @@ const struct UIWindowOps ui_make_target_process_wnd_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-void ui_make_target_result_wnd_destroy(struct UIWindow *window);
-void ui_make_target_result_wnd_on_create(struct UIWindow *self, int width, int height);
-void ui_make_target_result_wnd_on_draw(struct UIWindow *self);
-int ui_make_target_result_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_make_target_result_wnd_ops = {
-    .destroy = ui_make_target_result_wnd_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_make_target_result_wnd_on_create,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
-    .on_draw = ui_make_target_result_wnd_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_frame_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_make_target_result_wnd_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
-
 static void add_buttons(struct UIFrameWnd *frame, int width, int height, int count)
 {
     static const char *const names[2][3] = {
@@ -352,7 +290,7 @@ int ui_make_target_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     struct UIMakeTargetListWnd *self = (struct UIMakeTargetListWnd *)window;
     struct ItemInfo info;
     struct String name = {0};
-    int result = 0, id;
+    int result = 0;
 
     item_info_construct(&info);
     switch (msg) {
@@ -562,65 +500,6 @@ int ui_make_target_process_wnd_send_msg(struct UIWindow *window, struct UIWindow
                 return 0;
             }
         }
-        return 0;
-    }
-    return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-struct UIMakeTargetResultWnd *ui_make_target_result_wnd_construct(struct UIMakeTargetResultWnd *self)
-{
-    ui_frame_wnd_construct(&self->frame, 0);
-    self->frame.base.ops = &ui_make_target_result_wnd_ops;
-    self->success = 0;
-    self->item_id = 0;
-    return self;
-}
-
-struct UIWindow *ui_make_target_result_wnd_new(void)
-{
-    return (struct UIWindow *)ui_make_target_result_wnd_construct(mem_alloc(sizeof(struct UIMakeTargetResultWnd)));
-}
-
-void ui_make_target_result_wnd_destroy(struct UIWindow *window)
-{
-    struct UIMakeTargetResultWnd *self = (struct UIMakeTargetResultWnd *)window;
-    self->frame.base.ops = &ui_make_target_result_wnd_ops;
-    ui_frame_wnd_destruct(&self->frame);
-    mem_free(self);
-}
-
-void ui_make_target_result_wnd_on_create(struct UIWindow *window, int width, int height)
-{
-    struct UIMakeTargetResultWnd *self = (struct UIMakeTargetResultWnd *)window;
-    add_buttons(&self->frame, width, height, 1);
-}
-
-void ui_make_target_result_wnd_on_draw(struct UIWindow *window)
-{
-    struct UIMakeTargetResultWnd *self = (struct UIMakeTargetResultWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-    struct ItemInfo info;
-
-    draw_chrome(wnd, 0, "");
-    target_info(&info, self->item_id);
-    draw_item_line(wnd, &info, 2, msg_str(self->success == 1 ? MSG_MT_RESULT_OK1 : MSG_MT_RESULT_FAIL1));
-    draw_item_line(wnd, &info, 0x2a, msg_str(self->success == 1 ? MSG_MT_RESULT_OK2 : MSG_MT_RESULT_FAIL2));
-    item_info_destruct(&info);
-}
-
-int ui_make_target_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
-{
-    struct UIMakeTargetResultWnd *self = (struct UIMakeTargetResultWnd *)window;
-    switch (msg) {
-    case UI_MSG_COMMAND:
-        ui_close_window(MT_RESULT_WND_ID);
-        return 0;
-    case MT_MSG_SET_TARGET:
-        self->item_id = val1;
-        if (val2)
-            self->success = 1;
-        ui_window_invalidate_base(&self->frame.base);
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);

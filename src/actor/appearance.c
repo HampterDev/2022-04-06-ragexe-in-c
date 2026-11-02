@@ -1,7 +1,6 @@
 #include "actor/actor_ops.h"
 #include "actor/appearance.h"
-#include "actor/actor.h"
-#include "actor/granny_pc.h"
+#include "actor/game_actor.h"
 #include "session/state.h"
 #include "game/actor_entry.h"
 #include "session/session_names.h"
@@ -172,40 +171,4 @@ void pc_set_spr_act_with_state(struct GameActor * actor, const struct ActorLook 
     actor_set_imf_name(self);
     actor_set_head_pal_name(self);
     actor_set_body_pal_name(self);
-}
-
-void granny_pc_set_spr_act(struct GameActor * actor, const struct ActorLook * look)
-{
-    struct GrannyPc *self = (struct GrannyPc *)actor;
-
-    if (!granny_pc_replace_models(self))
-        return;
-
-    game_actor_set_sex((struct GameActor *)self, look->sex);
-    self->head = look->head;
-    self->weapon = look->weapon;
-    self->accessory = look->accessory[0];
-    self->accessory2 = look->accessory[1];
-    self->accessory3 = look->accessory[2];
-    self->shield = look->shield;
-    self->head_palette = look->head_palette;
-    self->body_palette = look->body_palette;
-    game_actor_set_job((struct GameActor *)self, look->job);
-    granny_pc_set_head((struct GameActor *)self, self->head);
-    granny_pc_set_weapon((struct GameActor *)self, self->weapon);
-    granny_pc_set_accessory((struct GameActor *)self, self->accessory);
-    granny_pc_set_accessory2((struct GameActor *)self, self->accessory2);
-    granny_pc_set_accessory3((struct GameActor *)self, self->accessory3);
-    granny_pc_set_shield((struct GameActor *)self, self->shield);
-    granny_pc_set_imf_name((struct GameActor *)self);
-    granny_pc_set_head_pal_name((struct GameActor *)self);
-}
-
-void granny_pc_set_spr_act_with_state(struct GameActor * actor, const struct ActorLook * look, int effect_state)
-{
-    struct GrannyPc *self = (struct GrannyPc *)actor;
-    struct ActorLook with_shield = *look;
-    (void)effect_state;
-    with_shield.shield = self->shield;
-    granny_pc_set_spr_act((struct GameActor *)self, &with_shield);
 }

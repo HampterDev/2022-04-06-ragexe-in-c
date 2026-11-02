@@ -199,57 +199,6 @@ size_t string_find_first_of(const struct String *s, const char *chars, size_t po
     return STRING_NPOS;
 }
 
-size_t string_find_first_not_of(const struct String *s, const char *chars, size_t pos)
-{
-    unsigned char table[256];
-    const char *data = string_cstr(s), *p;
-
-    if (pos >= s->size)
-        return STRING_NPOS;
-    char_table(table, chars);
-    for (p = data + pos; p < data + s->size; p++)
-        if (!table[(unsigned char)*p])
-            return (size_t)(p - data);
-    return STRING_NPOS;
-}
-
-void string_trim_left(struct String *s, const char *chars)
-{
-    size_t first;
-
-    if (!s->size)
-        return;
-    first = string_find_first_not_of(s, chars, 0);
-    if (first)
-        string_erase(s, 0, first);
-}
-
-void string_trim_right(struct String *s, const char *chars)
-{
-    unsigned char table[256];
-    const char *data, *p;
-    size_t keep;
-
-    if (!s->size)
-        return;
-    data = string_cstr(s);
-    char_table(table, chars);
-    p = data + s->size - 1;
-    if (table[(unsigned char)*p]) {
-        for (;;) {
-            if (p == data) {
-                p = NULL;
-                break;
-            }
-            if (!table[(unsigned char)*--p])
-                break;
-        }
-    }
-    keep = p ? (size_t)(p - data) + 1 : 0;
-    if (keep < s->size)
-        string_erase(s, keep, s->size - keep);
-}
-
 static void formatted(struct String *out, const char *format, va_list args)
 {
     va_list measure;

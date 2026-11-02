@@ -185,9 +185,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
     case 0x2f:
         wnd = WM_OPEN(card_item_illust_wnd, ui_card_item_illust_wnd_new, 0x12c, 0x1a1, WM_AT_640, 0, 0);
         break;
-    case 0xc9:
-        wnd = WM_OPEN(monster_display_wnd, ui_monster_display_wnd_new, 0x64, 0x96, WM_AT_640, 0, 0);
-        break;
     case 0x2e:
         wnd = self->skill_describe_wnd;
         if (wnd == NULL) {
@@ -230,9 +227,6 @@ struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id)
         break;
     case 0x50:
         wnd = WM_OPEN(make_target_process_wnd, ui_make_target_process_wnd_new, 0x118, 0x96, WM_AT_640_UP, 0xb9, 0x12c);
-        break;
-    case 0x51:
-        wnd = WM_OPEN(make_target_result_wnd, ui_make_target_result_wnd_new, 0x118, 0x78, WM_AT_640_UP, 0xb9, 0x12c);
         break;
     case 0x58:
         if (g_session1.petJob == -1)

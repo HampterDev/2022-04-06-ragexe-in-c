@@ -108,3 +108,5 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Remove the second equipment set, its swap panel, hotkey, saved position and requests.
 - Remove the macro-detector captcha challenge, GM macro reporter, reported-player list and `/mr`, `/mp`, `/md`.
 - Remove second-password (PIN) windows and requests; servers must disable PIN codes.
+- Remove unreachable windows (pre-renewal character creation, quit/restart/rebirth, tooltip, IME composition, patch notice, make-target result, mix accept, basic buttons, trans-menu, render target, monster display, sub-chat mini/ST/BT) and 30 classes nothing constructs.
+- Remove 508 unreferenced functions and data definitions, plus the write-only `jobIdNames` table and sub-chat settings.

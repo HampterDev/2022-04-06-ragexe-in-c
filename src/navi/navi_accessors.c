@@ -21,26 +21,6 @@
 
 #include <string.h>
 
-unsigned char navi_manager_guided_on_map(struct NaviManager *self, const char *name)
-{
-    struct NaviMap *map;
-    unsigned char same;
-
-    if (!name || !self->guided.obj)
-        return 0;
-    map = navi_manager_result_map(&self->guided);
-    if (!map)
-        return 0;
-    if (strcmp(navi_map_name(map), name) == 0)
-        return 1;
-    {
-        char *alias = res_mgr_resolve_map_name(g_resMgr(), name);
-        same = strcmp(navi_map_name(map), alias) == 0;
-        free(alias);
-    }
-    return same;
-}
-
 int navi_manager_guided_kind(struct NaviManager *self)
 {
     return self->guided.kind;
@@ -68,16 +48,6 @@ unsigned char navi_manager_player_cell(struct NaviManager *self, int *x, int *y)
         return 0;
     game_mode_get_player_cell(gm, x, y);
     return 1;
-}
-
-int navi_manager_walk_distance(struct NaviManager *self)
-{
-    return self->walkDistance;
-}
-
-unsigned char navi_manager_arrives_near_target(struct NaviManager *self)
-{
-    return self->arriveNearTarget;
 }
 
 int navi_manager_route_step(struct NaviManager *self)

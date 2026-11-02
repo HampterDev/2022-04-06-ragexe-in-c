@@ -52,12 +52,6 @@ void ui_navigation_show_map(void)
     ui_window_invalidate(window);
 }
 
-void ui_navigation_refresh_results(void)
-{
-    if (g_windowMgr.navigation_v4_wnd)
-        ui_navigation_v4_wnd_fill_results((struct UINavigationV4Wnd *)g_windowMgr.navigation_v4_wnd);
-}
-
 void ui_navigation_chat(const char *text) { ui_chat_line(text, 0x62b0ff); }
 void ui_navigation_message_box(const char *text)
 {

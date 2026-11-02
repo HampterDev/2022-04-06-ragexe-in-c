@@ -13,6 +13,4 @@ void tokens_split(struct Vec *tokens, const struct String *line);
 
 void text_to_lower(struct String *s);
 
-char *str_find_last(char *text, char c);
-
 #endif

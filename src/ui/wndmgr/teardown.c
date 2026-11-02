@@ -69,7 +69,7 @@ void ui_window_mgr_close_all_but_chat(struct UIWindowMgr *self)
     struct ListNode *node, *next;
     struct TreeNode *it;
     struct Tree tabs;
-    struct UIWindow *chat, *sub_chat_st, *sub_chat_bt, *mini;
+    struct UIWindow *chat;
 
     if (self->modal_wnd)
         self->modal_result = WM_MODAL_END_TEARDOWN;
@@ -107,16 +107,10 @@ void ui_window_mgr_close_all_but_chat(struct UIWindowMgr *self)
         else
             it = tree_next(it);
     }
-    sub_chat_st = self->sub_chat_st_wnd;
-    sub_chat_bt = self->sub_chat_bt_wnd;
-    mini = self->sub_chat_mini_wnd;
     chat = self->new_chat_wnd;
     tree_copy(&tabs, SUB_CHAT_WNDS(self), sizeof(struct SubChatWnd), NULL);
     ui_window_mgr_clear_slots(self);
-    self->sub_chat_bt_wnd = sub_chat_bt;
     self->new_chat_wnd = chat;
-    self->sub_chat_st_wnd = sub_chat_st;
-    self->sub_chat_mini_wnd = mini;
     tree_free(SUB_CHAT_WNDS(self), NULL);
     tree_copy(SUB_CHAT_WNDS(self), &tabs, sizeof(struct SubChatWnd), NULL);
     destroy_plates(self);
@@ -162,8 +156,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->item_collection_comparison_wnd = NULL;
     self->combined_card_item_collection_wnd = NULL;
     self->skill_describe_wnd = NULL;
-    self->quit_wnd = NULL;
-    self->restart_wnd = NULL;
     self->card_item_illust_wnd = NULL;
     self->notify_level_up_wnd = NULL;
     self->notify_job_level_up_wnd = NULL;
@@ -191,7 +183,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->join_party_accept_wnd = NULL;
     self->couple_accept_wnd = NULL;
     self->star_place_accept_wnd = NULL;
-    self->mix_accept_wnd = NULL;
     self->your_item_wnd = NULL;
     self->baby_accept_wnd = NULL;
     self->baby_accept_wnd2 = NULL;
@@ -229,7 +220,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->making_arrow_list_wnd = NULL;
     self->select_cart_wnd = NULL;
     self->candidate_wnd = NULL;
-    self->composition_wnd = NULL;
     self->key_stroke_wnd = NULL;
     self->join_friend_accept_wnd = NULL;
     self->command_list_wnd = NULL;
@@ -240,11 +230,7 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->auto_message_wnd = NULL;
     self->new_select_char_wnd = NULL;
     self->sel_char_for_userver_wnd = NULL;
-    self->rebirth_wnd = NULL;
-    self->sub_chat_st_wnd = NULL;
-    self->sub_chat_bt_wnd = NULL;
     self->battle_msg_option_wnd = NULL;
-    self->sub_chat_mini_wnd = NULL;
     self->memorial_dun_wnd = NULL;
     self->other_equip_wnd = NULL;
     self->kafra_move_map_service_info_wnd = NULL;
@@ -256,7 +242,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->buying_store_item_shop_wnd = NULL;
     self->buying_store_item_sell_wnd = NULL;
     self->buying_store_mirror_sell_list_wnd = NULL;
-    self->monster_display_wnd = NULL;
     self->quest_display_wnd = NULL;
     self->party_invitation_to_wnd = NULL;
     self->guild_helper_wnd = NULL;

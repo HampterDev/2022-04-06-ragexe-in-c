@@ -258,90 +258,12 @@ static void text_case(struct Snapshot *out, int old, const char *text, int style
 #undef WINDOW_CALL0
 }
 
-static void tree_case(struct Snapshot *out, int old, const char *text, int style, int disabled)
-{
-    struct UITVTextButton current = {0};
-    struct UIWindow *window;
-    BYTE *disabled_field;
-    const char *label;
-    reset_fixture(); memset(out, 0, sizeof *out);
-#ifdef TEXT_BUTTONS_REFERENCE
-    {
-    struct reference_UITVTextButton saved = {0};
-    struct String input;
-#define CALL(name, ...) do { if (old) reference_##name(&saved, __VA_ARGS__); else name(&current, __VA_ARGS__); } while (0)
-#define WINDOW_CALL(name, ...) do { if (old) reference_##name(&saved, __VA_ARGS__); else name(window, __VA_ARGS__); } while (0)
-#define CALL0(name) do { if (old) reference_##name(&saved); else name(&current); } while (0)
-#define WINDOW_CALL0(name) do { if (old) reference_##name(&saved); else name(window); } while (0)
-    if (old) {
-        archived_button_construct(&saved.button); string_init(&saved.label);
-        saved.button.base.ops = (struct UIWindowOps *)reference_UITVTextButton_ops;
-        saved.framed = (BYTE)(style & 1); saved.filled = (BYTE)((style >> 1) & 1); saved.outlined = (BYTE)(style >> 2);
-        saved.boxed = 1; saved.alt_text = 1; saved.alt_text_colour = 29;
-        saved.text_colour = 17; saved.outline_colour = 23; saved.frame_colour = 31; saved.fill_colour = 37;
-        saved.font_height = 12; saved.font_face = 1; saved.value = 51;
-        disabled_field = &saved.button.disabled; window = &saved.button.base;
-    } else
-#else
-    (void)old;
-#define CALL(name, ...) name(&current, __VA_ARGS__)
-#define WINDOW_CALL(name, ...) name(window, __VA_ARGS__)
-#define CALL0(name) name(&current)
-#define WINDOW_CALL0(name) name(window)
-#endif
-    {
-        ui_button_construct(&current.button);
-        current.button.base.ops = &uitv_text_button_ops.base;
-        current.framed = (BYTE)(style & 1); current.filled = (BYTE)((style >> 1) & 1); current.outlined = (BYTE)(style >> 2);
-        current.boxed = 1; current.alt_text = 1; current.alt_text_colour = 29;
-        current.text_colour = 17; current.outline_colour = 23; current.frame_colour = 31; current.fill_colour = 37;
-        current.font_height = 12; current.font_face = 1; current.value = 51;
-        disabled_field = &current.button.disabled; window = &current.button.base;
-    }
-    window->parent = &parent; *disabled_field = (BYTE)disabled;
-#ifdef TEXT_BUTTONS_REFERENCE
-    if (old) {
-        string_init(&input); string_assign_cstr(&input, text);
-        reference_UITVTextButton_SetText(&saved, input);
-    } else
-#endif
-        uitv_text_button_set_text(&current, text_view_cstr(text));
-    if (*text) assert(window->width == (int)strlen(text) * 7 + 2 + (style & 1) * 2);
-    WINDOW_CALL0(uitv_text_button_on_draw); assert(!strcmp(drawn, text));
-    WINDOW_CALL(uitv_text_button_on_l_btn_down, 1, 1);
-    WINDOW_CALL(uitv_text_button_on_mouse_move, 1, 1);
-    WINDOW_CALL(uitv_text_button_on_l_btn_up, 1, 1);
-    WINDOW_CALL(uitv_text_button_on_l_btn_up, 2, 3);
-    WINDOW_CALL(uitv_text_button_on_l_btn_dbl_clk, 4, 5);
-    WINDOW_CALL(uitv_text_button_on_mouse_move, -1, -1);
-    WINDOW_CALL(uitv_text_button_on_mouse_shape, 1, 1);
-    WINDOW_CALL(uitv_text_button_on_r_btn, 6, 7);
-    WINDOW_CALL0(uitv_text_button_on_draw);
-    out->width = window->width; out->height = window->height; out->state = window->state;
-    strcpy(out->drawn, drawn);
-#ifdef TEXT_BUTTONS_REFERENCE
-    if (old) { strcpy(out->caption, string_cstr(&saved.button.text)); label = string_cstr(&saved.label); out->value = saved.value; out->colour = saved.text_colour; }
-    else
-#endif
-    { strcpy(out->caption, string_cstr(&current.button.text)); label = string_cstr(&current.label); out->value = current.value; out->colour = current.text_colour; }
-    strcpy(out->label, label);
-    CALL0(uitv_text_button_destruct);
-#ifdef TEXT_BUTTONS_REFERENCE
-    }
-#endif
-    out->event_count = event_count; memcpy(out->events, events, event_count * sizeof *events);
-    assert(!outstanding);
-#undef CALL
-#undef WINDOW_CALL
-#undef CALL0
-#undef WINDOW_CALL0
-}
 static void behavior_cases(void)
 {
     static const char *const inputs[] = {"", "x", "한글", "abcdef", "a longer label with spaces", "안녕하세요 세계"};
     static const int widths[] = {8, 60, 300};
     struct Snapshot actual;
-    int input, style, width, disabled, text_cases = 0, tree_cases = 0;
+    int input, style, width, disabled, text_cases = 0;
 #ifdef TEXT_BUTTONS_REFERENCE
     struct Snapshot expected;
 #endif
@@ -354,19 +276,10 @@ static void behavior_cases(void)
 #endif
             ++text_cases;
         }
-    for (input = 0; input < 6; ++input) for (style = 0; style < 8; ++style)
-        for (disabled = 0; disabled < 2; ++disabled) {
-            tree_case(&actual, 0, inputs[input], style, disabled);
 #ifdef TEXT_BUTTONS_REFERENCE
-            tree_case(&expected, 1, inputs[input], style, disabled);
-            assert(!memcmp(&actual, &expected, sizeof actual));
-#endif
-            ++tree_cases;
-        }
-#ifdef TEXT_BUTTONS_REFERENCE
-    printf("Text buttons: %d archived text and %d archived tree-label layout/draw/input cases passed.\n", text_cases, tree_cases);
+    printf("Text buttons: %d archived text layout/draw/input cases passed.\n", text_cases);
 #else
-    printf("Text buttons: %d text and %d tree-label layout/draw/input cases passed.\n", text_cases, tree_cases);
+    printf("Text buttons: %d text layout/draw/input cases passed.\n", text_cases);
 #endif
 }
 

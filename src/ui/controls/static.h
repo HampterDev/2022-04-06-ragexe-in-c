@@ -7,7 +7,6 @@
 #include "ui/controls/buttons.h"
 #include "core/object_type_tables.h"
 
-struct UIStaticText3;
 struct UITextButton;
 struct UIWindow;
 struct UIWindowOps;
@@ -116,22 +115,7 @@ void ui_static_text_lf_on_wheel(struct UIWindow *self, int delta);
 void ui_static_text_set_text_fit(struct UIWindow *wnd, const char *text);
 void ui_static_text_set_text_ellipsis_wide(struct UIWindow *wnd,
                                                  const char *text);
-void ui_static_text3_destruct(struct UIStaticText3 *self);
-void ui_static_text3_destroy(struct UIWindow *window);
-void ui_static_text3_on_draw(struct UIWindow *self);
 void ui_static_text_set_text_or_shrink2(struct UIWindow *wnd,
                                               const char *text, int outline);
-
-struct UISlotBitmap {
-    struct UIStaticBitmap bitmap;
-    BYTE has_add_button;
-    struct UIBitmapButton *add_button;
-    int slot;
-};
-
-struct UIStaticText3 {
-    struct UIStaticText st;
-    int x_offset;
-};
 
 #endif

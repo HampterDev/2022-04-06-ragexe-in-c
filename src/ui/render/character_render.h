@@ -78,7 +78,6 @@ struct ChrQuadPair {
 struct CharacterRender *character_render_create(int view_width, int view_height);
 void character_render_destroy(struct CharacterRender *self);
 void character_render_set_robe(struct CharacterRender *self, int robe);
-struct List *character_render_collect_quads(struct CharacterRender *self, struct List *out);
 struct List *character_render_collect_world_quads(struct CharacterRender *self,
                                                      struct List *out, BYTE use_bbox,
                                                      BYTE *drawn);
@@ -87,8 +86,5 @@ struct TexDrawPrim *character_render_shadow_quad(struct CharacterRender *self, c
 
 extern int g_chrHeadDx, g_chrHeadDy;
 extern int g_chrWorldHeadDx, g_chrWorldHeadDy;
-
-struct UIRenderTargetWnd *ui_render_target_wnd_construct(struct UIRenderTargetWnd *self);
-struct UIWindow *ui_render_target_wnd_new(void);
 
 #endif

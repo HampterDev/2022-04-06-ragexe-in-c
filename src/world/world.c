@@ -39,14 +39,6 @@ void world_delete(struct World *self)
     mem_free(self);
 }
 
-void world_cell_to_world(struct World *self, int cx, int cy, float *x, float *z)
-{
-    struct C3dAttr *attr = self->attr;
-
-    *x = (float)((cx - attr->width / 2) * attr->zoom);
-    *z = (float)((cy - attr->height / 2) * attr->zoom);
-}
-
 void *world_get_actor_or_player(struct World *self, int aid)
 {
     struct ListNode *head, *n;

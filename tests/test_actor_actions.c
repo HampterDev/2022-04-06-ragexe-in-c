@@ -1,5 +1,5 @@
 #include "actor/actor_ops.h"
-#include "actor/granny_pc.h"
+#include "actor/granny_actor.h"
 #include "resources/animation.h"
 #include <assert.h>
 #include <math.h>
@@ -10,8 +10,6 @@ static float delay;
 static unsigned expected_action;
 static size_t action_count;
 static int delay_reads, stops, plays, played_action, played_once;
-static int pc_plays, pc_loop;
-static struct GrannyPc *expected_pc;
 static const struct ActRes *resource = (const struct ActRes *)1;
 static struct GrannyPlayback *playback = (struct GrannyPlayback *)2;
 
@@ -41,13 +39,6 @@ int granny_playback_play(struct GrannyPlayback *p, int action, int once)
     played_action = action;
     played_once = once;
     return 1;
-}
-
-void granny_pc_play_state_anim(struct GrannyPc *pc, int loop)
-{
-    assert(pc == expected_pc);
-    ++pc_plays;
-    pc_loop = loop;
 }
 
 static void sprite_actions(void)
@@ -103,7 +94,6 @@ static void model_actions(void)
     static const int states[] = {0,1,0,5,11,12,4,3,2,2,0};
     struct RenderObjectOps ops = {0};
     struct C3dGrannyGameActor actor = {0};
-    struct GrannyPc pc = {0};
     struct GrannyModelState model = {0};
     size_t i;
 
@@ -122,20 +112,6 @@ static void model_actions(void)
         assert(played_action == states[i] && played_once == ((int)i % 3 == 1));
     }
     assert(stops == 11 && plays == 11);
-
-    pc.ops = &ops.base;
-    expected_pc = &pc;
-    ops.set_action = granny_pc_set_action;
-    pc.state = 99;
-    render_object_set_action((struct RenderObject *)&pc, 0x10, 1);
-    assert(pc.state == 99 && pc_plays == 0);
-    pc.model = &model;
-    for (i = 0; i < sizeof actions / sizeof *actions; ++i) {
-        render_object_set_action((struct RenderObject *)&pc, actions[i], (int)i % 3);
-        assert(pc.state == (actions[i] == 0x10 ? 6 : states[i]));
-        assert(pc_loop == (int)i % 3);
-    }
-    assert(pc_plays == 11);
 }
 
 static void head_extents(void)
@@ -168,6 +144,6 @@ int main(void)
     sprite_actions();
     model_actions();
     head_extents();
-    puts("Actor actions: sprite timing, pet guards and both model mappings and head extents passed");
+    puts("Actor actions: sprite timing, pet guards, model mapping and head extents passed");
     return 0;
 }

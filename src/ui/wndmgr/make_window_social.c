@@ -207,11 +207,7 @@ struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id)
         wnd = WM_OPEN(couple_accept_wnd, ui_couple_accept_wnd_new, 0x118, 0x78, WM_AT_640, 0xc8, 0xc8);
         break;
     case 0x77:
-    case 0x166:
         wnd = WM_OPEN(star_place_accept_wnd, ui_star_place_accept_wnd_new, 0x118, 0x78, WM_AT_640, 0xc8, 0xc8);
-        break;
-    case 0xa3:
-        wnd = WM_OPEN(mix_accept_wnd, ui_mix_accept_wnd_new, 0x118, 0x78, WM_AT_640, 0xc8, 0xc8);
         break;
     case 0x8a:
         wnd = WM_OPEN(your_item_wnd, ui_your_item_wnd_new, 0x118, 0x78, WM_AT_640, 0xc8, 0xc8);

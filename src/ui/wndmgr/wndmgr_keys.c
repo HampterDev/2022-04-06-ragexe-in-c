@@ -6,7 +6,7 @@
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "ui/worldmap/navi_wnd.h"
+#include "ui/worldmap/romap.h"
 #include "ui/chat/chat_window_parts.h"
 #include "ui/chat/sub_chat_map.h"
 #include "core/app.h"

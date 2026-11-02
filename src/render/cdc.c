@@ -145,97 +145,6 @@ void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h, const D
     }
 }
 
-void dc_bitmap_copy_scaled(struct DcBitmap *self, int x, int y, int sw, int sh, int dw, int dh,
-                                      const DWORD *src)
-{
-    DWORD *tmp;
-    size_t width, height;
-    DWORD *t;
-    float fx, fy;
-    int prev, last, row, col, k, n, srcRow, dstRow;
-
-    if (!self->bits || !src || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
-        return;
-    fx = (float)dw / (float)sw;
-    fy = (float)dh / (float)sh;
-    width = sw > dw ? (size_t)sw : (size_t)dw;
-    height = sh > dh ? (size_t)sh : (size_t)dh;
-    if (width > (size_t)INT_MAX / sizeof *tmp / height) return;
-    tmp = calloc(width * height, sizeof *tmp);
-    if (!tmp) return;
-    self->changed = 1;
-
-    if (fx == 1.0f) {
-        for (row = 0, srcRow = 0; row < sh; row++, srcRow += sw)
-            for (k = 0; k < sw; k++)
-                tmp[srcRow + k] = src[srcRow + k];
-    } else if (fx < 1.0f) {
-        prev = 0;
-        last = 0;
-        for (row = 0, srcRow = 0, dstRow = 0; row < sh; row++, srcRow += sw, dstRow += dw) {
-            for (k = 0; k < sw; k++) {
-                int tx = (int)((float)k * fx);
-                if (prev != tx) {
-                    tmp[dstRow + prev] = src[srcRow + last];
-                    last = k;
-                    prev = tx;
-                }
-            }
-        }
-    } else {
-        prev = 0;
-        for (row = 0, dstRow = 0; row < sh; row++, dstRow += dw, src += sw) {
-            const DWORD *s = src;
-            for (k = 1; k <= sw; k++, s++) {
-                int tx = (int)((float)k * fx);
-                if (prev < tx) {
-                    t = tmp + dstRow + prev;
-                    for (n = tx - prev; n; n--)
-                        *t++ = *s;
-                }
-                prev = tx;
-            }
-        }
-    }
-
-    if (fy < 1.0f) {
-        prev = 0;
-        last = 0;
-        for (col = 0; col < dw; col++) {
-            if ((unsigned)(col + x) >= (unsigned)self->width)
-                continue;
-            for (k = 0; k < sh; k++) {
-                int ty = (int)((float)k * fy);
-                if (prev != ty) {
-                    if ((unsigned)(ty + y) > (unsigned)self->height)
-                        continue;
-                    self->bits[(prev + y) * self->width + col + x] = tmp[last * dw + col];
-                    last = k;
-                    prev = (int)((float)k * fy);
-                }
-            }
-        }
-    } else {
-        prev = 0;
-        for (col = 0; col < dw; col++) {
-            if ((unsigned)(col + x) >= (unsigned)self->width)
-                continue;
-            t = tmp + col;
-            for (k = 1; k <= sh; k++, t += dw) {
-                int ty = (int)((float)k * fy);
-                if (prev < ty) {
-                    int yy = y + prev;
-                    for (n = ty - prev; n; n--, yy++)
-                        if ((unsigned)yy < (unsigned)self->height)
-                            self->bits[self->width * yy + col + x] = *t;
-                }
-                prev = ty;
-            }
-        }
-    }
-    free(tmp);
-}
-
 void dc_bitmap_copy_bitmap(struct DcBitmap *self, unsigned dx, unsigned dy, unsigned w, unsigned h,
                                       struct DcBitmap *src)
 {
@@ -475,19 +384,4 @@ void dc_bitmap_to_texture(struct DcBitmap *self, struct Texture **tex)
         return;
     }
     texture_upload_pixels(*tex, 0, 0, self->width, self->height, self->bits, 0, 0);
-}
-
-void dc_bitmap_alpha_from_brightness(struct DcBitmap *self, BYTE level)
-{
-    unsigned row, col;
-
-    for (row = 0; row < (unsigned)self->height; row++)
-        for (col = 0; col < (unsigned)self->width; col++) {
-            DWORD *p = &self->bits[self->width * row + col];
-            DWORD v = *p;
-            BYTE grey = (BYTE)((((v >> 8) & 0xff) + ((v >> 16) & 0xff) + (v & 0xff)) / 3);
-            BYTE alpha = (BYTE)(int)((float)grey / (float)level * 255.0f);
-
-            *p = (v & 0x00ffffff) | (DWORD)alpha << 24;
-        }
 }

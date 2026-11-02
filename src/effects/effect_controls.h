@@ -6,11 +6,8 @@
 
 struct Effect;
 
-int servant_weapon_effect_count_armed(struct Effect *effect);
-void servant_weapon_effect_fire(struct Effect *effect, int effect_id);
 void servant_weapon_effect_add_cast(struct Effect *effect);
 
-void a_machine_effect_play_attack(struct Effect *effect);
 void from_the_abyss_effect_set_ball_count(struct Effect *effect, __int64 count);
 void charging_pierce_effect_set_charges(struct Effect *effect, unsigned __int64 count);
 void curse_of_cube_effect_shock(struct Effect *effect);

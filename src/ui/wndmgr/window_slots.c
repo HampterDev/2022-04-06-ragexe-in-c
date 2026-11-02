@@ -58,16 +58,16 @@ BYTE ui_window_mgr_is_untracked_id(struct UIWindowMgr *self, int window_id)
 
     (void)self;
     switch (window_id) {
-    case 0x0: case 0x1: case 0x2: case 0x3: case 0x4: case 0x6: case 0x7: case 0x9: case 0xe: case 0xf:
+    case 0x0: case 0x1: case 0x2: case 0x3: case 0x6: case 0x7: case 0xe: case 0xf:
     case 0x10: case 0x11: case 0x12: case 0x15: case 0x16: case 0x17: case 0x18: case 0x1a:
     case 0x1c: case 0x1d: case 0x1f: case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x27:
     case 0x2a: case 0x2d: case 0x31: case 0x32: case 0x38: case 0x3a: case 0x3c: case 0x3d: case 0x3e:
     case 0x3f: case 0x40: case 0x41: case 0x42: case 0x43: case 0x46: case 0x49: case 0x4a: case 0x4e:
-    case 0x4f: case 0x50: case 0x51: case 0x5a: case 0x5b: case 0x5e: case 0x5f: case 0x63: case 0x64:
+    case 0x4f: case 0x50: case 0x5a: case 0x5b: case 0x5e: case 0x5f: case 0x63: case 0x64:
     case 0x65: case 0x68: case 0x69: case 0x6b: case 0x6d: case 0x6f: case 0x73: case 0x74: case 0x7b:
-    case 0x7c: case 0x7f: case 0x80: case 0x82: case 0x83: case 0x85: case 0x88: case 0x89: case 0x8a:
-    case 0x90: case 0x9a: case 0x9c: case 0x9e: case 0x9f: case 0xa0: case 0xa1: case 0xaf:
-    case 0xb0: case 0xb1: case 0xb3: case 0xb4: case 0xb6: case 0xb7: case 0xba:  case 0xbd:
+    case 0x7c: case 0x7f: case 0x80: case 0x88: case 0x89: case 0x8a:
+    case 0x90: case 0x9a: case 0x9c: case 0x9f: case 0xa0: case 0xa1: case 0xaf:
+    case 0xb0: case 0xb1: case 0xb3: case 0xb4: case 0xba:  case 0xbd:
     case 0xc4:  case 0xcc: case 0xe3: case 0xfd:
     case 0x101: case 0x102:
     case 0x106: case 0x10f: case 0x115: case 0x116:
@@ -238,7 +238,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0x10: closed = close_slot(self, &self->say_dialog_wnd); break;
     case 0x11: closed = close_slot(self, &self->choose_wnd); break;
     case 0x12: closed = close_slot(self, &self->menu_wnd); break;
-    case 0x13: closed = close_slot(self, &self->restart_wnd); break;
     case 0x15: closed = close_slot(self, &self->notify_level_up_wnd); break;
     case 0x16: closed = close_slot(self, &self->item_shop_wnd); break;
     case 0x17:
@@ -307,10 +306,8 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         }
         break;
     case 0x2f: closed = close_slot(self, &self->card_item_illust_wnd); break;
-    case 0x30: closed = close_slot(self, &self->quit_wnd); break;
     case 0x31: closed = close_slot(self, &self->notify_job_level_up_wnd); break;
     case 0x33: closed = close_slot(self, &self->candidate_wnd); break;
-    case 0x34: closed = close_slot(self, &self->composition_wnd); break;
     case 0x35: closed = close_slot(self, &self->party_setting_wnd); break;
     case 0xcf:
         ui_window_mgr_post_quit1(self, 0x35);
@@ -358,7 +355,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0x4e: closed = close_slot(self, &self->illust_wnd); break;
     case 0x4f: close_slot(self, &self->make_target_list_wnd); break;
     case 0x50: close_slot(self, &self->make_target_process_wnd); break;
-    case 0x51: close_slot(self, &self->make_target_result_wnd); break;
     case 0x55: close_slot(self, &self->key_stroke_wnd); break;
     case 0x6b: close_slot(self, &self->item_repair_wnd); break;
     case 0x6f: close_slot(self, &self->weapon_refine_wnd); break;
@@ -400,11 +396,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         }
         break;
     case 0x80: closed = close_slot(self, &self->change_name_wnd); break;
-    case 0x81: closed = close_slot(self, &self->rebirth_wnd); break;
-    case 0x82: closed = close_slot_stored(self, &self->sub_chat_st_wnd); break;
-    case 0x83: closed = close_slot_stored(self, &self->sub_chat_bt_wnd); break;
     case 0x84: closed = close_slot(self, &self->battle_msg_option_wnd); break;
-    case 0x85: closed = close_slot(self, &self->sub_chat_mini_wnd); break;
     case 0x89:
         if (self->memorial_dun_wnd) {
             memorial_dun_info_reset();
@@ -442,8 +434,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         break;
     case 0x99: closed = close_slot(self, &self->item_store_find_wnd); break;
     case 0x9b: closed = close_slot(self, &self->esc_option_wnd); break;
-    case 0x9c: case 0x9e: case 0x9f: case 0xa5: case 0xa6: case 0xa7: case 0xab: case 0xb5: case 0xb6:
-    case 0xb7: case 0xbf:
+    case 0x9c: case 0x9f: case 0xab: case 0xb5:
         if (ui_window_mgr_get_window(self, window_id) == NULL)
             break;
         wnd = ui_window_mgr_get_window(self, window_id);
@@ -462,7 +453,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         break;
     case 0xa0: closed = close_slot(self, &self->item_shop_wnd2); break;
     case 0xa1: closed = close_slot(self, &self->item_sell_wnd2); break;
-    case 0xa3: closed = close_slot(self, &self->mix_accept_wnd); break;
     case 0xae:
         ui_window_mgr_post_quit1(self, 0xaf);
         closed = close_slot(self, &self->buying_store_make_wnd);
@@ -483,7 +473,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
 
     case 0xc4: closed = close_slot(self, &self->collection_system_wnd); break;
 
-    case 0xc9: closed = close_slot(self, &self->monster_display_wnd); break;
     case 0xcb: closed = close_slot(self, &self->navigation_v4_wnd); break;
     case 0xcc: closed = close_slot(self, &self->quest_display_wnd); break;
     case 0xd0: closed = close_slot(self, &self->party_invitation_to_wnd); break;

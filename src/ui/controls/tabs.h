@@ -8,7 +8,6 @@
 #include "ui/controls/listbox.h"
 
 struct Vec;
-struct UIBitmapTab;
 struct UIWindow;
 
 enum UITabKind {
@@ -70,13 +69,6 @@ void ui_tab_control_add_tab(struct UIWindow *self, const char *name);
 void ui_tab_control_fit_size(struct UITabControl *self);
 void ui_tab_control_relayout(struct UITabControl *self);
 
-void ui_bitmap_tab_destroy(struct UIWindow *window);
-void ui_bitmap_tab_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-void ui_bitmap_tab_on_draw(struct UIWindow *self);
-void ui_bitmap_tab_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_bitmap_tab_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                   int val1, int val2, int val3, int val4);
-
 void ui_tab_control_destroy(struct UIWindow *window);
 void ui_tab_control_on_draw(struct UIWindow *self);
 void ui_tab_control_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
@@ -97,16 +89,5 @@ void ui_tab_on_draw(struct UIWindow *self);
 void ui_tab_on_l_btn_down(struct UIWindow *self, int x_unused, int y);
 int ui_tab_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1,
                              int val2_unused, int val3_unused, int val4_unused);
-
-#define BITMAP_TAB_MSG_FIT 0xe
-#define BITMAP_TAB_MSG_CLEAR 0x4b
-#define BITMAP_TAB_MSG_ADD 0x4e
-struct UIBitmapTab {
-    struct UIWindow base;
-    struct Vec tabs;
-    struct Tree tab_lookup;
-};
-OFFSET_ASSERT(UIBitmapTab, tab_lookup, 0x88);
-SIZE_ASSERT(UIBitmapTab, 0x90);
 
 #endif

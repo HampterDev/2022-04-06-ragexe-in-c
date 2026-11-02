@@ -163,57 +163,6 @@ const struct UIEditCtrlOps ui_edit_ctrl5_ops = {
     .truncate = ui_edit_ctrl_truncate_default,
 };
 
-struct UIEditCtrlOldList;
-const struct UIEditCtrlOps ui_edit_ctrl_old_list_ops = {
-    .base = {
-        .destroy = ui_edit_ctrl_old_list_destroy,
-        .resize = ui_window_resize_base,
-        .is_frame = 0,
-        .refreshes_children = 0,
-        .move = ui_window_move_base,
-        .is_focusable = ui_edit_ctrl_is_focusable,
-        .get_backdrop_box = ui_window_get_backdrop_box_base,
-        .is_click_through = ui_window_is_click_through_base,
-        .is_hit_testable = ui_window_is_hit_testable_base,
-        .drag_and_drop = ui_window_drag_and_drop_base,
-        .store_info = ui_window_store_info_base,
-        .save_pos = ui_window_save_pos_base,
-        .move_delta = ui_window_move_delta_base,
-        .set_show = ui_window_set_show_base,
-        .on_create = ui_window_on_create_base,
-        .on_destroy = ui_window_on_destroy_base,
-        .on_process = ui_window_on_process_base,
-        .on_draw = ui_edit_ctrl_old_list_on_draw,
-        .on_focus = ui_edit_ctrl_on_focus,
-        .on_focus_lost = ui_edit_ctrl_on_focus_lost,
-        .on_l_btn_down = ui_edit_ctrl_on_l_btn_down,
-        .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-        .on_mouse_move = ui_window_on_mouse_move_base,
-        .on_mouse_hover = ui_edit_ctrl_on_mouse_hover,
-        .track_mouse = ui_window_track_mouse_base,
-        .on_mouse_shape = ui_window_on_mouse_shape_base,
-        .on_l_btn_up = ui_window_on_l_btn_up_base,
-        .on_r_btn_down = ui_window_on_r_btn_down_base,
-        .on_r_btn_up = ui_window_on_r_btn_up_base,
-        .on_wheel = ui_edit_ctrl_old_list_on_wheel,
-        .snap = ui_window_snap_base,
-        .send_msg = ui_edit_ctrl_old_list_send_msg,
-        .invalidate = ui_window_invalidate_base,
-        .render = ui_window_render_base,
-        .has_custom_backdrop = 0,
-        .draw_backdrop = ui_window_draw_backdrop_base,
-        .type = UI_TYPE_EDIT,
-        .on_hover_enter = ui_window_on_hover_enter_base,
-        .on_hover_leave = ui_window_on_hover_leave_base,
-        .make_quad = ui_window_make_quad_base,
-        .hit_test = ui_window_hit_test_base,
-        .render_overlay = ui_window_render_overlay_base,
-    },
-    .set_text = ui_edit_ctrl_set_text_default,
-    .draw_text = ui_edit_ctrl_draw_text_default,
-    .truncate = ui_edit_ctrl_truncate_default,
-};
-
 const struct UIEditCtrlOps ui_edit_ctrl_wheel_ops = {
     .base = {
         .destroy = ui_edit_ctrl_wheel_destroy,
@@ -432,67 +381,6 @@ void ui_edit_ctrl_wheel_destroy(struct UIWindow *window)
 }
 
 #define LINE_COUNT(e) ((e)->lines.size)
-
-void ui_edit_ctrl_old_list_destruct(struct UIEditCtrlOldList *self)
-{
-    self->edit.base.ops = &ui_edit_ctrl_old_list_ops.base;
-    text_array_clear(&self->lines);
-    string_free(&self->bitmap);
-    ui_edit_ctrl_destruct(&self->edit);
-}
-
-void ui_edit_ctrl_old_list_destroy(struct UIWindow *window)
-{
-    struct UIEditCtrlOldList *self = (struct UIEditCtrlOldList *)window;
-    ui_edit_ctrl_old_list_destruct(self);
-    mem_free(self);
-}
-
-void ui_edit_ctrl_old_list_on_draw(struct UIWindow *window)
-{
-    struct UIEditCtrlOldList *self = (struct UIEditCtrlOldList *)window;
-    ui_window_clear_canvas(&self->edit.base, UI_TRANSPARENT);
-    if (self->bitmap.size)
-        ui_window_draw_bitmap(&self->edit.base, 0, 0,
-                            res_mgr_get(g_resMgr(), string_cstr(&self->bitmap)), 0);
-    ui_edit_ctrl_draw_text_default(&self->edit);
-}
-
-void ui_edit_ctrl_old_list_on_wheel(struct UIWindow *window, int delta)
-{
-    struct UIEditCtrlOldList *self = (struct UIEditCtrlOldList *)window;
-    ui_window_send_msg(&self->edit.base, NULL, delta < 0 ? UI_MSG_BAR_PAGE_DOWN : UI_MSG_BAR_PAGE_UP, 0, 0, 0, 0);
-}
-
-static void step_line(struct UIEditCtrlOldList *self, int step)
-{
-    if (self->line == -1)
-        return;
-    self->line += step;
-    if (self->line < 0)
-        self->line = (int)LINE_COUNT(self) - 1;
-    if (LINE_COUNT(self) <= (unsigned)self->line)
-        self->line = 0;
-    ui_edit_ctrl_set_text(&self->edit, text_array_at(&self->lines, self->line).data);
-    ui_edit_ctrl_on_focus(&self->edit.base);
-    ui_window_invalidate_base(&self->edit.base);
-}
-
-int ui_edit_ctrl_old_list_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
-{
-    struct UIEditCtrlOldList *self = (struct UIEditCtrlOldList *)window;
-    switch (msg) {
-    case UI_MSG_BAR_PAGE_UP:
-        step_line(self, -1);
-        return 0;
-    case UI_MSG_BAR_PAGE_DOWN:
-        step_line(self, 1);
-        return 0;
-    default:
-        return ui_edit_ctrl_send_msg((struct UIWindow *)(&self->edit), sender, msg, val1, val2, val3, val4);
-    }
-}
 
 void ui_bitmap_edit_ctrl_destroy(struct UIWindow *window)
 {

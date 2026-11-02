@@ -26,7 +26,6 @@ void model_test_free(void *memory) { checked_free(memory); }
 #undef calloc
 #undef free
 #include "../src/actor/granny_model.c"
-#include "../src/actor/granny_pc_draw.c"
 #include "granny_sdk_test_support.h"
 
 enum { TEST_MESH_COUNT = 65 };
@@ -48,8 +47,6 @@ struct ModelFixture {
 };
 static struct ModelFixture fixtures[5];
 static struct C3dGrannyModelRes *loaded_resource;
-static unsigned resource_calls, fail_resource_at;
-static int choose_parts;
 
 static void fixture_init(struct ModelFixture *f, int count)
 {
@@ -107,13 +104,7 @@ struct ResMgr *g_resMgr(void) { return (struct ResMgr *)1; }
 void *res_mgr_get(struct ResMgr *mgr, const char *name)
 {
     assert(mgr == (struct ResMgr *)1 && name);
-    if (++resource_calls == fail_resource_at) return NULL;
-    if (!choose_parts) return loaded_resource;
-    if (strstr(name, "@hd")) return &fixtures[0].resource;
-    if (name[0] == 'h' && name[1] == 'r') return &fixtures[1].resource;
-    if (strstr(name, "@bd")) return &fixtures[2].resource;
-    if (strstr(name, "@pt")) return &fixtures[3].resource;
-    assert(strstr(name, "@le")); return &fixtures[4].resource;
+    return loaded_resource;
 }
 void game_actor_set_job(struct GameActor *actor, int job) { actor->job = job; }
 void game_actor_set_sex(struct GameActor *actor, int sex) { actor->sex = sex; }
@@ -135,39 +126,6 @@ void renderer_add_prim(struct Renderer *r, struct RPQuad *q, int flags)
     assert(submissions < TEST_MESH_COUNT * 4);
     memcpy(captured[submissions++], q->verts, sizeof frame_vertices);
 }
-void renderer_project_point(struct Renderer *r, const Vec3 *p, const float *m, float *x, float *y, float *w)
-{ assert(r == &renderer && p && m); *x = *y = 0.0f; *w = 1.0f; }
-void renderer_project_vertex(struct Renderer *r, const Vec3 *p, const float *m, struct TexDrawVertex *v)
-{
-    assert(r == &renderer);
-    v->x = ((p->x * m[0] + p->y * m[3]) + p->z * m[6]) + m[9];
-    v->y = ((p->x * m[1] + p->y * m[4]) + p->z * m[7]) + m[10];
-    v->z = ((p->x * m[2] + p->y * m[5]) + p->z * m[8]) + m[11];
-    v->rhw = 1.0f;
-}
-struct Weather g_weather;
-struct GameMode *game_current_mode(void) { abort(); }
-struct C3dGround15 *game_current_ground(void) { abort(); }
-Vec3 *weather_sun_position(struct Weather *weather, Vec3 *out)
-{ (void)weather; (void)out; abort(); }
-void game_mode_cell_to_world(struct GameMode *mode, int x, int y, float *wx, float *wz)
-{ (void)mode; (void)x; (void)y; (void)wx; (void)wz; abort(); }
-void game_mode_world_to_sub_cell(struct GameMode *mode, float x, float z, int *cx, int *cy, int *sx, int *sy)
-{ (void)mode; (void)x; (void)z; (void)cx; (void)cy; (void)sx; (void)sy; abort(); }
-void c3d_ground15_draw_attr_quad(struct C3dGround15 *ground, const float *view,
-                            int x, int y, DWORD colour, struct Texture *texture, const float *uv)
-{ (void)ground; (void)view; (void)x; (void)y; (void)colour; (void)texture; (void)uv; abort(); }
-int game_copy_camera_position(float position[3]) { (void)position; return 0; }
-int texture_upload_pixels(struct Texture *texture, int x, int y, int w, int h, const DWORD *pixels, int keyed, int pitch)
-{ (void)texture; (void)x; (void)y; (void)w; (void)h; (void)pixels; (void)keyed; (void)pitch; abort(); }
-BYTE granny_bounds_screen_box(const struct GrannyBounds *r, struct ScreenBounds *box,
-                                const float *view, const float *model, const float *eye)
-{ (void)r; (void)box; (void)view; (void)model; (void)eye; abort(); }
-Vec3 *vec3_vector_emplace_reallocate(struct Vec *v, Vec3 *where, const Vec3 *value)
-{ (void)v; (void)where; (void)value; abort(); }
-void render_object_set_screen_position(struct RenderObject *self, float x, float y) { (void)self; (void)x; (void)y; }
-void game_actor_set_render_info(struct RenderObject *self, const struct ScreenBounds *bounds, float x, float y)
-{ (void)self; (void)bounds; (void)x; (void)y; abort(); }
 
 static void assert_clean(void)
 {
@@ -223,10 +181,9 @@ static void test_replacement(void)
 {
     struct C3dGrannyGameActor actor = {0};
     struct GrannyCorpse3d corpse = {0};
-    struct GrannyPc pc = {0}, prior;
     struct GrannyModelState *old;
     unsigned i, calls, before, old_allocations;
-    int locks[5], j;
+    int j;
     for (j = 0; j < 5; j++) fixture_init(&fixtures[j], TEST_MESH_COUNT);
     loaded_resource = &fixtures[0].resource;
     c3d_granny_game_actor_set_job_model((struct GameActor *)&actor, 1, 0); assert(actor.model);
@@ -247,77 +204,23 @@ static void test_replacement(void)
     granny_corpse3d_load_model(&corpse);
     granny_corpse3d_free_model(&corpse); granny_corpse3d_free_model(&corpse); assert_clean();
 
-    choose_parts = 1;
-    assert(granny_pc_replace_models(&pc));
-    assert(pc.model->mesh_count == TEST_MESH_COUNT && pc.parts[4]->mesh_count == TEST_MESH_COUNT);
-    assert(pc.parts[2]->meshes[64].binding->to == &fixtures[0].skeleton);
-    assert(pc.parts[1]->meshes[64].binding->to == &fixtures[1].skeleton);
-    assert(!pc.parts[2]->playback && pc.parts[1]->playback);
-    before = allocation_calls; assert(granny_pc_replace_models(&pc));
-    calls = allocation_calls - before; prior = pc; old_allocations = outstanding;
-    for (j = 0; j < 5; j++) locks[j] = fixtures[j].resource.res.lockCount;
-    for (i = 1; i <= calls; i++) {
-        fail_at = allocation_calls + i;
-        assert(!granny_pc_replace_models(&pc)); fail_at = 0;
-        assert(!memcmp(&pc, &prior, sizeof pc) && outstanding == old_allocations);
-        for (j = 0; j < 5; j++) assert(fixtures[j].resource.res.lockCount == locks[j]);
-    }
-    for (i = 1; i <= 5; i++) {
-        fail_resource_at = resource_calls + i;
-        assert(!granny_pc_replace_models(&pc)); fail_resource_at = 0;
-        assert(!memcmp(&pc, &prior, sizeof pc) && outstanding == old_allocations);
-    }
-    before = sdk_calls; assert(granny_pc_replace_models(&pc));
-    calls = sdk_calls - before; prior = pc;
-    for (i = 1; i <= calls; i++) {
-        sdk_fail_at = sdk_calls + i;
-        assert(!granny_pc_replace_models(&pc)); sdk_fail_at = 0;
-        assert(!memcmp(&pc, &prior, sizeof pc) && outstanding == old_allocations);
-        for (j = 0; j < 5; j++) assert(fixtures[j].resource.res.lockCount == locks[j]);
-    }
-    granny_pc_free_res(&pc); granny_pc_free_res(&pc); assert_clean();
-    choose_parts = 0;
 }
 
-static void test_pose_and_draw(void)
+static void test_pose(void)
 {
-    struct GrannyPc pc = {0};
-    struct GrannyModelState *other;
-    struct GrannyLight light = {{0.0f, 100.0f, 0.0f}, 128, 200, 200, 200};
-    Vec3 shadow[TEST_MESH_COUNT * 2];
-    float view[12] = {1,0,0,0,1,0,0,0,1,0,0,0};
-    struct TexDrawVertex full[TEST_MESH_COUNT * 2][3];
+    struct GrannyModelState *model, *other;
     granny_world_pose *pose;
-    int id;
-    assert(!granny_pc_pose(&pc, NULL) && pc.anim_time == 0.0f);
-    fixture_init(&fixtures[0], TEST_MESH_COUNT); fixture_init(&fixtures[1], TEST_MESH_COUNT);
-    pc.model = granny_model_state_create(&fixtures[0].resource, NULL); assert(pc.model);
-    pc.parts[1] = granny_model_state_create(&fixtures[1].resource, NULL); assert(pc.parts[1]);
-    pc.visible = 1; pc.alpha = 255; pc.hair_pivot.part = 1;
-    pc.hair_pivot.matrix[0] = pc.hair_pivot.matrix[4] = pc.hair_pivot.matrix[8] = 1.0f;
-    pc.shadow_points.first = pc.shadow_points.last = shadow;
-    pc.shadow_points.end = shadow + TEST_MESH_COUNT * 2;
-    renderer.width = 640; renderer.height = 480;
-
-    assert(granny_playback_play(pc.model->playback, 2, 0)); pc.anim = 2;
-    id = sdk_played_id; pc.anim_time = 20.0f;
-    granny_playback_pose(pc.model->playback, 11.0f);
-    granny_pc_pose(&pc, NULL);
-    assert(pc.anim == 0 && sdk_played_id == id && sdk_sampled_id == id);
-    pc.anim_time = 0.0f;
-    submissions = 0;
-    granny_pc_render_part(&pc, view, &light, NULL, 0, NULL);
-    granny_pc_render_part(&pc, view, &light, pc.parts[1], 1, pc.parts[1]);
-    assert(submissions == TEST_MESH_COUNT * 2);
-    memcpy(full, captured, sizeof full);
-    assert(pc.model->meshes[0].matrix[9] != pc.parts[1]->meshes[0].matrix[9]);
-    pose = granny_playback_world_pose(pc.model->playback);
+    fixture_init(&fixtures[0], TEST_MESH_COUNT);
+    model = granny_model_state_create(&fixtures[0].resource, NULL); assert(model);
+    assert(granny_playback_play(model->playback, 2, 0));
+    pose = granny_playback_pose(model->playback, 0.25f);
+    assert(pose == granny_playback_world_pose(model->playback));
     other = granny_model_state_create(&fixtures[0].resource, NULL); assert(other);
     granny_playback_pose(other->playback, 90.0f);
     assert(pose->time == 0.25f);
     granny_model_state_destroy(other);
     fixture_init(&fixtures[2], TEST_MESH_COUNT);
-    other = granny_model_state_create(&fixtures[2].resource, pc.model->resource); assert(other);
+    other = granny_model_state_create(&fixtures[2].resource, model->resource); assert(other);
     assert(!other->playback);
     assert(granny_model_prepare_mesh(other, 0, pose, NULL));
     assert(other->meshes[0].matrix[9] == 0.25f);
@@ -326,18 +229,14 @@ static void test_pose_and_draw(void)
     assert(!granny_model_prepare_mesh(other, 0, NULL, NULL));
     assert(!other->meshes[0].texture && !other->meshes[0].triangles);
     granny_model_state_destroy(other);
-    submissions = 0;
-    granny_pc_render_part_kept(&pc, view, 0, NULL);
-    granny_pc_render_part_kept(&pc, view, 1, pc.parts[1]);
-    assert(submissions == TEST_MESH_COUNT * 2 && !memcmp(full, captured, sizeof full));
-    granny_pc_free_res(&pc); assert_clean();
+    granny_model_state_destroy(model); assert_clean();
 }
 
 int main(void)
 {
     test_create_failures();
     test_replacement();
-    test_pose_and_draw();
-    puts("Granny models: 65 meshes, complete allocation/SDK rollback, atomic body/part replacement, owned bindings/poses, and matching full/cached draws passed");
+    test_pose();
+    puts("Granny models: 65 meshes, complete allocation/SDK rollback, atomic actor model replacement, owned bindings and poses passed");
     return 0;
 }

@@ -99,7 +99,6 @@ const struct UIWindowOps ui_basic_info_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-#define BASIC_BELOW_WND 0xb6
 #define BASIC_BELOW_MENU_ICON_WND 0x133
 
 #define UI_MSG_COMMAND 6
@@ -172,11 +171,6 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
 
     if (height == self->compact_height) {
         ui_window_resize_base(wnd, wnd->width, height);
-        below = ui_window_find(BASIC_BELOW_WND);
-        if (below) {
-            ui_window_set_show(below, 0);
-            basic_hang_below(self, below);
-        }
         ui_window_resize(self->name, wnd->width - 0x1e, 0xf);
         ui_static_text_set_text_ellipsis(self->name, session_character_name(&g_session1));
         ui_window_move(self->name, 0x11, 3);
@@ -186,11 +180,6 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
         ui_window_move_base(self->job_exp_bar, BASIC_OFFSCREEN, BASIC_OFFSCREEN);
     } else if (height == self->expanded_height) {
         ui_window_resize_base(wnd, wnd->width, height);
-        below = ui_window_find(BASIC_BELOW_WND);
-        if (below) {
-            ui_window_set_show(below, 1);
-            basic_hang_below(self, below);
-        }
         ui_window_move_base(self->hp_gauge, 0x23, 0x35);
         ui_window_move_base(self->sp_gauge, 0x23, 0x44);
         ui_window_resize(self->name, wnd->width - 0x14, 0xf);
@@ -280,13 +269,6 @@ static void basic_base_exp(__int64 *exp, __int64 *next)
     *next = g_session1.nextBaseExp;
     if (*next <= 0)
         *next = *exp + 1;
-}
-
-static COLORREF basic_low_colour(int value, int maximum)
-{
-    if (maximum > 0 && 0.25f > (float)value / (float)maximum)
-        return BASIC_RED;
-    return 0;
 }
 
 static int basic_small_font_job(int job, int with_17)
@@ -463,9 +445,6 @@ void ui_basic_info_wnd_on_mouse_move(struct UIWindow *window, int x, int y)
     below = ui_window_find(BASIC_BELOW_MENU_ICON_WND);
     if (below)
         basic_hang_below(self, below);
-    below = ui_window_find(BASIC_BELOW_WND);
-    if (below)
-        basic_hang_below(self, below);
 }
 
 void ui_basic_info_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
@@ -514,13 +493,10 @@ int ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
                                       int val2, int val3, int val4)
 {
     struct UIBasicInfoWnd *self = (struct UIBasicInfoWnd *)window;
-    struct UIWindow *wnd = basic_wnd(self), *below;
+    struct UIWindow *wnd = basic_wnd(self);
 
     if (msg == UI_MSG_REFRESH) {
         if (wnd->height != self->expanded_height) {
-            below = ui_window_find(BASIC_BELOW_WND);
-            if (below)
-                ui_window_set_show(below, self->expanded);
             ui_window_invalidate_base(wnd);
         }
         return 0;
@@ -532,11 +508,6 @@ int ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         self->expanded = self->info->expanded != 0;
         ui_basic_info_wnd_set_height(self, self->info->rect.height);
         ui_frame_wnd_move(wnd, self->info->rect.x, self->info->rect.y);
-        below = ui_window_find(BASIC_BELOW_WND);
-        if (below) {
-            ui_window_move(below, self->info->rect.x, self->info->rect.y + wnd->height);
-            ui_window_set_show(below, self->expanded);
-        }
         return 0;
     }
     if (msg != UI_MSG_COMMAND)

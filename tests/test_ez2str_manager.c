@@ -147,7 +147,6 @@ static void document(int which)
 static void check_rows(struct Ez2StrEffectMgr *mgr, unsigned count)
 {
     struct Vec ids;
-    struct String missing;
     const struct String *name;
     unsigned i;
     assert(mgr->rows.size == count);
@@ -161,14 +160,10 @@ static void check_rows(struct Ez2StrEffectMgr *mgr, unsigned count)
         assert(entry->flags == (EZ2STR_EX_INFINITE | EZ2STR_EX_SOUND_LOOP));
         assert(entry->quake_delay == -1 && entry->start_delay == 42);
         name = &((const struct EZ2STRRow *)((const char *)entry - offsetof(struct EZ2STRRow, entry)))->name;
-        assert(ez2_str_effect_mgr_get_effect_id(mgr, name) == id);
         record(&id, sizeof id); record_string(name);
         record_string(&entry->file_path); record_string(&entry->sound_path);
     }
     mem_free(ids.first);
-    string_init(&missing); string_assign_cstr(&missing, "missing");
-    assert(ez2_str_effect_mgr_get_effect_id(mgr, &missing) == -1);
-    string_free(&missing);
     assert(!ez2_str_effect_mgr_find_by_effect_id(mgr, -1));
 }
 int main(int argc, char **argv)

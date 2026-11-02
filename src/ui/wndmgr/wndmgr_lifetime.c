@@ -63,8 +63,6 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->chat_history_pos = 0;
     self->invalidated = 0;
     self->chat_wnd_stick_on = 1;
-    self->on_st_sub_chat = 0;
-    self->on_bt_sub_chat = 0;
     self->candidate_box = g_languageIndex == 2;
     self->skill_describe_show = 0;
     self->logo_x = 0;

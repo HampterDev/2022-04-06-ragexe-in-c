@@ -180,8 +180,7 @@ static void test_native_bitmap_radio(void)
     reset_control_events(); ui_bmp_radio_btn_on_draw((struct UIWindow *)(radio));
     expect_text(0, 13, 23, 23, shadows[3], 0, "버튼");
     expect_text(1, 14, 24, 23, 0x112236, 2, "버튼");
-    ui_bmp_radio_btn_set_tool_tip(wnd, "상세 설명"); ui_bmp_radio_btn_set_tool_tip(wnd, NULL);
-    ui_bmp_radio_btn_set_tool_tip(wnd, string_cstr(&radio->tooltip) + 2);
+    string_assign_cstr(&radio->tooltip, "세 설명");
     reset_control_events(); ui_bmp_radio_btn_on_mouse_hover((struct UIWindow *)(radio), 0, 0);
     assert(tooltip_calls == 1 && !strcmp(tooltip_text, "세 설명"));
     reset_control_events(); ui_bmp_radio_btn_on_l_btn_down((struct UIWindow *)(radio), 0, 0);

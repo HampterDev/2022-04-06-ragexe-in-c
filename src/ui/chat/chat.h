@@ -20,7 +20,6 @@
 #define WND_ID_JOIN_FRIEND_ACCEPT 0x6d
 #define WND_ID_CHAT_MACRO 0x56
 #define WND_ID_EMOTION_LIST 0x57
-#define WND_ID_NOTICE 0x5d
 #define WND_ID_CHAT 1
 #define WND_ID_BATTLE_MSG_OPTION 0x84
 
@@ -74,9 +73,6 @@ struct UIWindow *ui_join_friend_accept_wnd_new(void);
 
 struct UIGuildNoticeWnd *ui_guild_notice_wnd_construct(struct UIGuildNoticeWnd *self);
 struct UIWindow *ui_guild_notice_wnd_new(void);
-
-struct UINoticeWnd *ui_notice_wnd_construct(struct UINoticeWnd *self);
-struct UIWindow *ui_notice_wnd_new(void);
 
 struct UIProhibitListWnd *ui_prohibit_list_wnd_construct(struct UIProhibitListWnd *self);
 struct UIWindow *ui_prohibit_list_wnd_new(void);

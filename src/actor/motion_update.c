@@ -1,5 +1,6 @@
 #include "actor/render_ops.h"
-#include "actor/granny_pc.h"
+#include "actor/granny_actor.h"
+#include "actor/game_actor.h"
 #include "game/context.h"
 
 static void set_action(struct RenderObject *self, int base)
@@ -194,17 +195,4 @@ void c3d_granny_game_actor_update_motion(struct RenderObject *object)
         granny_playback_play(self->model->playback, 0, 0);
         self->attack_delay_factor = 1.0f;
     }
-}
-
-void granny_pc_update_motion(struct RenderObject *object)
-{
-    struct GrannyPc *self = (struct GrannyPc *)object;
-
-    if (self->state == 2) {
-        float left = granny_playback_remaining(self->model ? self->model->playback : NULL, 2);
-
-        self->motion_finished = 0.1f > left;
-        return;
-    }
-    self->motion_finished = 1;
 }

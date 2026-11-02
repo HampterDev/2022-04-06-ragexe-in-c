@@ -60,16 +60,6 @@ struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id
     return effect;
 }
 
-struct RagEffect *game_actor_launch_effect_timed(struct GameActor *self, int effect_id, int arg)
-{
-    Vec3 zero = { 0, 0, 0 };
-    struct RagEffect *effect = game_actor_launch_effect(self, effect_id, zero, 0.0f);
-
-    if (effect)
-        rag_effect_send_msg(effect, NULL, 0x50, arg, 0, 0);
-    return effect;
-}
-
 struct RagEffect *able_to_make_effect_launch_show_effect(struct GameActor *self, int effect_id, int show_id)
 {
     Vec3 zero = { 0, 0, 0 };

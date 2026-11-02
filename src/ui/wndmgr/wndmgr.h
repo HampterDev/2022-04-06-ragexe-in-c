@@ -126,8 +126,6 @@ void ui_window_mgr_toggle_hide_ui(struct UIWindowMgr *self);
 
 void ui_window_mgr_request_add_friend(struct UIWindowMgr *self, const char *name);
 
-void ui_window_mgr_modeless_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg5, const char *title, int width, int height, const char *picture);
-
 void ui_window_mgr_create_party_plates(struct UIWindowMgr *self);
 void ui_window_mgr_command_plate_of(struct UIWindowMgr *self, int aid, int a, int b);
 void ui_window_mgr_move_dragged_plate(struct UIWindowMgr *self, int x, int y);

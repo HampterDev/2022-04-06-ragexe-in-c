@@ -194,11 +194,7 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET_RECT("FRIENDOPTIONWNDINFO", &self->friend_option_info);
     GET_RECT("ITEMCOMPOSITIONWNDINFO", &self->item_composition_info);
     GET_RECT("ITEMIDENTIFYWNDINFO", &self->item_identify_info);
-    GET_RECT("SUBCHATWNDST", &self->sub_chat_st_info);
-    GET_RECT("SUBCHATWNDBT", &self->sub_chat_bt_info);
     GET("CHATWNDSTICKON", &self->chat_wnd_stick_on);
-    GET("ONSTSUBCHAT", &self->on_st_sub_chat);
-    GET("ONBTSUBCHAT", &self->on_bt_sub_chat);
     GET("MEMORIALDUNWND.X", &g_session1.mdWndX);
     GET("MEMORIALDUNWND.Y", &g_session1.mdWndY);
     GET_RECT("QUICKSLOTWNDINFO", &self->quick_slot_info);
@@ -359,11 +355,7 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET_RECT("FRIENDOPTIONWNDINFO", &self->friend_option_info);
     SET_RECT("ITEMCOMPOSITIONWNDINFO", &self->item_composition_info);
     SET_RECT("ITEMIDENTIFYWNDINFO", &self->item_identify_info);
-    SET_RECT("SUBCHATWNDST", &self->sub_chat_st_info);
-    SET_RECT("SUBCHATWNDBT", &self->sub_chat_bt_info);
     SET("CHATWNDSTICKON", &self->chat_wnd_stick_on);
-    SET("ONSTSUBCHAT", &self->on_st_sub_chat);
-    SET("ONBTSUBCHAT", &self->on_bt_sub_chat);
     SET("MEMORIALDUNWND.X", &g_session1.mdWndX);
     SET("MEMORIALDUNWND.Y", &g_session1.mdWndY);
     SET_RECT("QUICKSLOTWNDINFO", &self->quick_slot_info);

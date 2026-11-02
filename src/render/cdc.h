@@ -27,8 +27,6 @@ void dc_bitmap_destroy(struct DcBitmap *self);
 char dc_bitmap_get_dc(struct DcBitmap *self, HDC *out);
 void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h,
                                  const DWORD *src, char keyed);
-void dc_bitmap_copy_scaled(struct DcBitmap *self, int x, int y, int sw, int sh, int dw, int dh,
-                                      const DWORD *src);
 void dc_bitmap_copy_bitmap(struct DcBitmap *self, unsigned dx, unsigned dy, unsigned w, unsigned h,
                                       struct DcBitmap *src);
 void dc_bitmap_fill(struct DcBitmap *self, const RECT *r, DWORD colour);
@@ -45,11 +43,9 @@ void dc_bitmap_alloc(struct DcBitmap *self, int w, int h);
 void dc_bitmap_copy_rect(struct DcBitmap *self, int dx, int dy, int sx, int sy, int w, int h,
                                     struct DcBitmap *src);
 void dc_bitmap_to_texture(struct DcBitmap *self, struct Texture **tex);
-void dc_bitmap_alpha_from_brightness(struct DcBitmap *self, BYTE level);
 void dc_bitmap_upload(struct DcBitmap *self);
 
 void texture_draw_surface(struct Texture *self, int x, int y, int w, int h, DWORD colour);
 void texture_draw_surface_stretch(struct Texture *self, int x, int y, int w, int h);
-void texture_draw(struct Texture *self, int x, int y, int w, int h, DWORD colour);
 
 #endif

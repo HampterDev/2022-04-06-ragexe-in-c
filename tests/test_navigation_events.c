@@ -120,9 +120,8 @@ static void command_paths(void)
         string_free(&other.searchText);
     }
     g_windowMgr.navigation_v4_wnd = NULL; open_ok = 0;
-    ui_navigation_show_map(); ui_navigation_show_search(); ui_navigation_invalidate(); ui_navigation_refresh_results();
+    ui_navigation_show_map(); ui_navigation_show_search(); ui_navigation_invalidate();
     assert(!ui_navigation_is_open()); open_ok = 1; ui_navigation_open(); assert(ui_navigation_is_open());
-    ui_navigation_refresh_results(); assert(refreshed == 1);
     ui_navigation_message_box("status"); assert(boxes == 1);
 }
 static void readers(void)

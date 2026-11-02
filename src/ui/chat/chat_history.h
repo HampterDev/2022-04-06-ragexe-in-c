@@ -59,13 +59,6 @@ struct UIChatHisBox2 {
 SIZE_ASSERT(UIChatHisBox2, 0x12c);
 struct UIChatHisBox2 *ui_chat_his_box2_construct(struct UIChatHisBox2 *self);
 
-struct UIChatHisBox3 {
-    struct UIChatHisBox2 box2;
-    int follow_newest;
-    int font_height;
-};
-SIZE_ASSERT(UIChatHisBox3, 0x134);
-
 void ui_chat_his_box_resize(struct UIWindow *window, int width, int height);
 BYTE ui_chat_his_box2_is_click_through(struct UIWindow *self);
 void ui_chat_his_box_set_show(struct UIWindow *window, int visible);

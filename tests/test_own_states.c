@@ -73,7 +73,7 @@ static void storage(void)
     size_t i;
     assert(!own_states_count() && !own_states_at(0) && !own_states_at(SIZE_MAX));
     assert(!own_states_find(17) && !own_states_push(NULL));
-    own_states_erase_at(SIZE_MAX); own_states_remove(0, 9); own_states_set_value(0, 9);
+    own_states_erase_at(SIZE_MAX); own_states_remove(0, 9);
     attempts = 0; fail_at = 1;
     assert(!own_states_set_present(17, 1) && !own_states_count());
     fail_at = 0;
@@ -84,8 +84,6 @@ static void storage(void)
     fail_at = 0;
     assert(own_states_push(own_states_at(3)) && own_states_count() == 17 && own_states_at(0) != first);
     same(own_states_at(16), &entry);
-    own_states_set_value(3, 900);
-    assert(own_states_at(3)->value == 900 && own_states_at(16)->value == 45);
     assert(own_states_set_present(3, 1) && own_states_count() == 17);
     assert(own_states_set_present(3, 0) && own_states_count() == 16);
     same(own_states_find(3), &entry);

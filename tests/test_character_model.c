@@ -9,7 +9,6 @@
 #ifdef CHARACTER_MODEL_REFERENCE
 #define CharacterRender CCharacterRender
 #define MODEL_ROBE CCharacterRender_SetRobe
-#define MODEL_VIEW CCharacterRender_Render
 #define MODEL_WORLD CCharacterRender_RenderWorld
 #define MODEL_LIST_FREE(list) std_list_destroy(list)
 static struct CharacterRender *model_create(int w, int h)
@@ -25,7 +24,6 @@ static void model_destroy(struct CharacterRender *p)
 #define model_create character_render_create
 #define model_destroy character_render_destroy
 #define MODEL_ROBE character_render_set_robe
-#define MODEL_VIEW character_render_collect_quads
 #define MODEL_WORLD character_render_collect_world_quads
 #define MODEL_LIST_FREE(list) list_free(list, NULL)
 #endif
@@ -527,9 +525,6 @@ static void run_case(unsigned n)
     for (key = 2; key <= 4; ++key)
         *layer_view(model, key) = 100 + key;
     *layer_view(model, 8) = 108;
-    prim_count = 0;
-    MODEL_VIEW(model, &list);
-    trace_quads(&list, 0);
     have_view = 0;
     MODEL_WORLD(model, &list, 1, &drawn);
     assert(!list.size && !drawn);
@@ -587,7 +582,7 @@ int main(int argc, char **argv)
         assert(fwrite(trace, sizeof *trace, trace_count, f) == trace_count);
         assert(!fclose(f));
     }
-    printf("Character model: 24 own/world render cases, initialization, Lua failure, allocation "
+    printf("Character model: 24 world render cases, initialization, Lua failure, allocation "
            "failure, borrowed resources and cleanup passed; %u trace words.\n",
            trace_count);
     return 0;

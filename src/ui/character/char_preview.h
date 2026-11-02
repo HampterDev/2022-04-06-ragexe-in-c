@@ -21,7 +21,4 @@ struct CharPreview {
 void char_preview_init(struct CharPreview *preview);
 void char_preview_destroy(struct CharPreview *preview);
 
-struct UIMakeCharWnd *ui_make_char_wnd_construct(struct UIMakeCharWnd *self);
-struct UIWindow *ui_make_char_wnd_new(void);
-
 #endif

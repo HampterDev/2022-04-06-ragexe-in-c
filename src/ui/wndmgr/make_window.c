@@ -7,7 +7,6 @@
 #include "ui/wndmgr/make_window_internal.h"
 #include "core/object_type_tables.h"
 #include "session/session_options.h"
-#include "ui/character/char_preview.h"
 #include "ui/character/character.h"
 #include "ui/character/sel_char_userver.h"
 #include "ui/character/select_server.h"
@@ -38,14 +37,6 @@ int wm_center_x(int width)
 int wm_center_y(int height)
 {
     return (g_renderer->height - height) / 2;
-}
-int wm_half_x(int width)
-{
-    return (int)((double)(unsigned)(g_renderer->width - width) * 0.5);
-}
-int wm_half_y(int height)
-{
-    return (int)((double)(unsigned)(g_renderer->height - height) * 0.5);
 }
 
 static void wm_move_login(struct UIWindow *wnd)
@@ -202,9 +193,6 @@ static struct UIWindow *make_lua_window(struct UIWindowMgr *self, int window_id)
         wnd = ui_serach_store_info_wnd_new();
         g_session1.storeSearchOpenOnEnter = 1;
         break;
-    case 0xb6:
-        wnd = ui_buttons_of_basic_wnd_new();
-        break;
     }
     closed = ui_window_mgr_get_closed_rect(self, window_id);
     if (closed) {
@@ -281,22 +269,6 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
         wm_move_login(wnd);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0x5d:
-        wnd = ui_notice_wnd_new();
-        ui_window_create(wnd, 0x258, 0x190);
-        {
-            int y = ui_center_y480(0x28);
-
-            wm_move(wnd, ui_center_x640(0x21), y);
-        }
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x4:
-        wnd = ui_make_char_wnd_new();
-        ui_window_create(wnd, 0x96, 0x11e);
-        wm_move(wnd, wm_center_x(0x96), wm_center_y(0x11e));
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x115:
         wnd = make_select_char(self);
         break;
@@ -320,18 +292,6 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
         }
         wm_show(wnd);
         break;
-    case 0x9:
-        wnd = ui_tool_tip_wnd_new();
-        ui_window_create(wnd, 0xc8, 0x78);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x13:
-        wnd = WM_OPEN(restart_wnd, ui_restart_wnd_new, 0x118, 0x78, WM_AT_640, 0xb9, 0x12c);
-        break;
-    case 0x30:
-        wnd = WM_OPEN(quit_wnd, ui_quit_wnd_new, 0x118, 0x78, WM_AT_640, 0xb9, 0x12c);
-        break;
     case 0x14c:
         wnd = ui_disconnected_server_msg_wnd_new();
         ui_window_create(wnd, 0x118, 0x78);
@@ -353,11 +313,7 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
     case 0x80:
         wnd = WM_OPEN(change_name_wnd, ui_change_name_wnd_new, 0xb8, 0x69, WM_AT_CENTER, 0x104, 0xb4);
         break;
-    case 0x81:
-        wnd = WM_OPEN(rebirth_wnd, ui_rebirth_wnd_new, 0x118, 0x8f, WM_AT_640, 0xb9, 0x12c);
-        break;
-    case 0x9c: case 0x9e: case 0x9f: case 0xa5: case 0xa6: case 0xa7: case 0xb5: case 0xb6: case 0xb7:
-    case 0xbf:
+    case 0x9c: case 0x9f: case 0xb5:
         wnd = make_lua_window(self, window_id);
         if (wnd == NULL)
             return NULL;

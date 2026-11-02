@@ -20,7 +20,6 @@ void connection_disconnect(struct Connection *connection);
 char connection_flush(struct Connection *connection);
 char connection_poll(struct Connection *connection);
 int connection_recv_bytes(struct Connection *connection, void *dst, int count, char exact);
-void connection_unread(struct Connection *connection, int count, const void *src);
 void connection_set_hold_sends(struct Connection *connection, char hold);
 void connection_clear_held(struct Connection *connection);
 void connection_reset_queues(struct Connection *connection);

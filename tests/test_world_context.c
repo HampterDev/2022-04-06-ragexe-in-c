@@ -9,18 +9,6 @@ static struct World *world;
 static struct View *view;
 static int lookup_calls, remove_calls, object;
 static struct GameActor *found;
-static int matrix_at_calls;
-static float requested_heading;
-
-float *view_get_view_matrix_at(struct View *camera, float *out, float heading)
-{
-    assert(camera == view);
-    ++matrix_at_calls;
-    requested_heading = heading;
-    memcpy(out, camera->viewMatrix, sizeof camera->viewMatrix);
-    out[0] = heading;
-    return out;
-}
 
 struct GameActor *world_get_game_actor_by_aid(struct World *owner, unsigned aid)
 {
@@ -57,7 +45,6 @@ int main(void)
     assert(remove_calls == 0);
     assert(!game_copy_camera_position(eye) && eye[0] == 10 && eye[1] == 20 && eye[2] == 30);
     assert(!game_copy_view_matrix(matrix));
-    assert(!game_copy_view_matrix_at(matrix, 25.0f) && matrix_at_calls == 0);
     assert(memcmp(matrix, saved, sizeof matrix) == 0);
 
     world = &map;
@@ -90,10 +77,6 @@ int main(void)
     assert(memcmp(matrix, camera.viewMatrix, sizeof matrix) == 0);
     camera.viewMatrix[4] = -17.0f;
     assert(game_copy_view_matrix(matrix) && matrix[4] == -17.0f);
-    assert(game_copy_view_matrix_at(matrix, -35.0f));
-    assert(matrix_at_calls == 1 && requested_heading == -35.0f);
-    assert(matrix[0] == -35.0f);
-    assert(memcmp(matrix + 1, camera.viewMatrix + 1, sizeof matrix - sizeof *matrix) == 0);
 
     world = NULL;
     assert(!game_current_scene_root());
@@ -105,7 +88,6 @@ int main(void)
     assert(!game_copy_camera_position(eye) && eye[0] == 1 && eye[1] == 2 && eye[2] == 3);
     memcpy(saved, matrix, sizeof saved);
     assert(!game_copy_view_matrix(matrix));
-    assert(!game_copy_view_matrix_at(matrix, 0.0f) && matrix_at_calls == 1);
     assert(memcmp(matrix, saved, sizeof matrix) == 0);
     puts("world context: absent world/camera, object lists and current view matrix passed");
     return 0;

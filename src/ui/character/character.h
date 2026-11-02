@@ -67,10 +67,6 @@ static __inline struct SprImg *spr_res_image(struct SprRes *spr, const struct Sp
     return clip ? sprite_resource_image(spr, clip->clipType, clip->sprIndex) : NULL;
 }
 
-struct UIButtonsOfBasicWnd *ui_buttons_of_basic_wnd_construct(struct UIButtonsOfBasicWnd *self);
-struct UIWindow *ui_buttons_of_basic_wnd_new(void);
-void ui_buttons_of_basic_wnd_render_buttons(struct UIButtonsOfBasicWnd *self);
-
 struct UIChangeNameWnd *ui_change_name_wnd_construct(struct UIChangeNameWnd *self);
 struct UIWindow *ui_change_name_wnd_new(void);
 
@@ -90,8 +86,6 @@ struct UIWindow *ui_login_wnd_new(void);
 struct UIMenuIconWnd *ui_menu_icon_wnd_construct(struct UIMenuIconWnd *self);
 struct UIWindow *ui_menu_icon_wnd_new(void);
 
-struct UIMonsterDisplayWnd *ui_monster_display_wnd_construct(struct UIMonsterDisplayWnd *self);
-struct UIWindow *ui_monster_display_wnd_new(void);
 
 struct UIMonsterInfoWnd *ui_monster_info_wnd_construct(struct UIMonsterInfoWnd *self);
 struct UIWindow *ui_monster_info_wnd_new(void);
@@ -105,12 +99,6 @@ struct UIDisconnectedServerMsgWnd *ui_disconnected_server_msg_wnd_construct(
 struct UIWindow *ui_disconnected_server_msg_wnd_new(void);
 struct UILoadingWnd *ui_loading_wnd_construct(struct UILoadingWnd *self);
 struct UIWindow *ui_loading_wnd_new(void);
-struct UIQuitWnd *ui_quit_wnd_construct(struct UIQuitWnd *self);
-struct UIWindow *ui_quit_wnd_new(void);
-struct UIRebirthWnd *ui_rebirth_wnd_construct(struct UIRebirthWnd *self);
-struct UIWindow *ui_rebirth_wnd_new(void);
-struct UIRestartWnd *ui_restart_wnd_construct(struct UIRestartWnd *self);
-struct UIWindow *ui_restart_wnd_new(void);
 struct UIWaitWnd *ui_wait_wnd_construct(struct UIWaitWnd *self);
 struct UIWindow *ui_wait_wnd_new(void);
 void ui_wait_wnd_set_text(struct UIWindow *wnd, const char *text);

@@ -15,10 +15,7 @@
 #include "render/cdc.h"
 #include "render/surface.h"
 
-#define WND_ID_BASIC_BUTTONS 0xb6
-
 struct UIRoMapWnd;
-struct UIButtonsOfBasicWnd;
 
 static void redraw_focus_edit(struct UIWindowMgr *self)
 {
@@ -63,12 +60,7 @@ void ui_window_mgr_render_windows(struct UIWindowMgr *self)
         if (w == self->kafra_move_map_service_info_wnd)
             ui_ro_map_wnd_render_overlay((struct UIRoMapWnd *)w);
         CHECKPOINT(0xd88);
-        if (w == ui_window_mgr_get_window(self, WND_ID_BASIC_BUTTONS)) {
-            struct UIWindow *buttons = ui_window_mgr_get_window(self, WND_ID_BASIC_BUTTONS);
-
-            if (buttons)
-                ui_buttons_of_basic_wnd_render_buttons((struct UIButtonsOfBasicWnd *)buttons);
-        } else if (w->composites == 1) {
+        if (w->composites == 1) {
             if (w->texture)
                 texture_draw_surface(w->texture, w->x, w->y, w->width, w->height, ui_window_get_color(w));
             CHECKPOINT(0xd9b);

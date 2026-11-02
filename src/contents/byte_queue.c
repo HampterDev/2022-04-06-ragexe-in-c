@@ -66,22 +66,6 @@ void byte_queue_write(struct ByteQueue *queue, int count, const void *src)
     queue->write_pos += (size_t)count;
 }
 
-void byte_queue_prepend(struct ByteQueue *queue, int count, const void *src)
-{
-    size_t unread = queue->write_pos - queue->read_pos;
-
-    if (count < 0 || (size_t)count > INT_MAX - unread)
-        abort();
-    if (!count)
-        return;
-    reserve(queue, unread + (size_t)count);
-    if (unread)
-        memmove(queue->data + count, queue->data + queue->read_pos, unread);
-    memcpy(queue->data, src, (size_t)count);
-    queue->read_pos = 0;
-    queue->write_pos = unread + (size_t)count;
-}
-
 char byte_queue_peek(const struct ByteQueue *queue, int count, void *dst)
 {
     if (count < 0 || (size_t)count > queue->write_pos - queue->read_pos)

@@ -64,8 +64,3 @@ void texture_draw_surface_stretch(struct Texture *self, int x, int y, int w, int
 {
     stretch(self, x, y, w, h, 0xffffffff);
 }
-
-void texture_draw(struct Texture *self, int x, int y, int w, int h, DWORD colour)
-{
-    stretch(self, x, y, w, h, colour);
-}

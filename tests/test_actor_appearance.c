@@ -2,7 +2,6 @@
 #include "actor/actor_ops.h"
 #include "actor/actor.h"
 #include "actor/pc.h"
-#include "actor/granny_pc.h"
 #include "session/state.h"
 #include "game/actor_entry.h"
 #include <assert.h>
@@ -13,7 +12,7 @@
 struct Session g_session1;
 static void *current_actor;
 static int job_queries, query_job_offset;
-static int order[32], order_count, prepare_ok, prepare_calls, weapon_view;
+static int order[32], order_count, weapon_view;
 static int64_t arguments[60];
 
 static void record(void *actor, int slot, int64_t value)
@@ -28,12 +27,6 @@ INT_SLOT(set_head, 22) INT_SLOT(set_accessory, 25) INT_SLOT(set_accessory2, 26) 
 INT_SLOT(set_shield, 28) INT_SLOT(set_body_palette, 33)
 VOID_SLOT(set_imf_name, 30) VOID_SLOT(set_head_pal_name, 31) VOID_SLOT(set_body_pal_name, 32)
 static void fake_set_weapon(struct GameActor *actor, int64_t value) { record(actor, 23, value); }
-#define GRANNY_INT(name, n) void granny_pc_##name(struct GameActor *actor, int value) { record(actor, n, value); }
-#define GRANNY_VOID(name, n) void granny_pc_##name(struct GameActor *actor) { record(actor, n, 0); }
-GRANNY_INT(set_head, 22) GRANNY_INT(set_accessory, 25) GRANNY_INT(set_accessory2, 26)
-GRANNY_INT(set_accessory3, 27) GRANNY_INT(set_shield, 28)
-GRANNY_VOID(set_imf_name, 30) GRANNY_VOID(set_head_pal_name, 31)
-void granny_pc_set_weapon(struct GameActor *actor, int64_t value) { record(actor, 23, value); }
 static void fake_set_weapon_look(struct GameActor *actor, int64_t value) { record(actor, 24, value); }
 
 void game_actor_set_sex(struct GameActor *actor, int sex) { actor->sex = sex; }
@@ -44,8 +37,6 @@ int session_get_mounted_job(int job)
 { return job + 100; }
 int session_get_weapon_view_id(int weapon)
 { (void)weapon; return weapon_view; }
-int granny_pc_replace_models(struct GrannyPc *actor)
-{ assert(actor == current_actor); ++prepare_calls; return prepare_ok; }
 
 static void begin(void *actor, struct GameActorOps *table)
 {
@@ -137,41 +128,11 @@ static void sprite_look(void)
     }
 }
 
-static void model_look(void)
-{
-    static const int full[] = {22,23,25,26,27,28,30,31};
-    struct ActorLook look = {7,1,11,0,{12,13,14},15,16,17}, saved;
-    struct GrannyPc pc = {0}, expected;
-    struct GameActorOps table;
-
-    look.weapon = actor_weapon_pair(INT_MIN, -123); saved = look;
-    begin(&pc, &table); table.set_look = granny_pc_set_spr_act;
-    table.set_look_with_state = granny_pc_set_spr_act_with_state;
-    expected = pc; prepare_ok = 0; prepare_calls = 0;
-    actor_set_look(&pc, &look);
-    assert(prepare_calls == 1 && !order_count && !memcmp(&pc, &expected, sizeof pc));
-    prepare_ok = 1;
-    actor_set_look(&pc, &look);
-    expected.job = look.job; expected.sex = look.sex; expected.head = look.head;
-    expected.weapon = look.weapon; expected.accessory = look.accessory[0];
-    expected.accessory2 = look.accessory[1]; expected.accessory3 = look.accessory[2];
-    expected.shield = look.shield; expected.head_palette = look.head_palette;
-    expected.body_palette = look.body_palette;
-    assert(!memcmp(&pc, &expected, sizeof pc));
-    expect_order(full, sizeof full / sizeof full[0]);
-    assert(arguments[23] == look.weapon);
-    order_count = 0; pc.shield = expected.shield = 999;
-    actor_set_look_with_state(&pc, &look, INT_MIN);
-    assert(!memcmp(&pc, &expected, sizeof pc) && arguments[28] == 999);
-    assert(!memcmp(&look, &saved, sizeof look));
-    expect_order(full, sizeof full / sizeof full[0]);
-}
-
 static void entry_appearance(void)
 {
     struct ActorEntryInfo standing = {0};
     struct ActorMoveEntryInfo moving = {0};
-    struct GrannyPc pc = {0};
+    struct Pc pc = {0};
     struct ActorLook look;
     struct GameActorOps table;
     int pass;
@@ -189,12 +150,11 @@ static void entry_appearance(void)
     standing.body_palette = moving.body_palette = 88;
     for (pass = 0; pass < 2; ++pass) {
         look = pass ? actor_look_from_move_entry(&moving) : actor_look_from_entry(&standing);
-        begin(&pc, &table); table.set_look = granny_pc_set_spr_act;
-        prepare_ok = 1;
+        begin(&pc, &table); table.set_look = pc_set_spr_act;
         actor_set_look(&pc, &look);
         assert(pc.job == 0xfad && pc.sex == 1 && pc.head == 22);
         assert(pc.weapon == actor_weapon_pair(INT_MIN, -456));
-        assert(pc.accessory == 33 && pc.accessory2 == 44 && pc.accessory3 == 55);
+        assert(pc.accessory[0] == 33 && pc.accessory[1] == 44 && pc.accessory[2] == 55);
         assert(pc.shield == 66 && pc.head_palette == 77 && pc.body_palette == 88);
         assert(arguments[23] == pc.weapon && arguments[28] == 66);
     }
@@ -255,8 +215,7 @@ int main(void)
     query_appearance();
     query_job_offset = 0;
     sprite_look();
-    model_look();
     entry_appearance();
-    puts("Actor appearance: whole weapon values, ordered callbacks, shields, palettes, effect states and preparation failure passed");
+    puts("Actor appearance: whole weapon values, ordered callbacks, shields, palettes and effect states passed");
     return 0;
 }

@@ -103,26 +103,6 @@ void view_get_view_dir(struct View *self, Vec3 *dir)
     dir->z = dir->z * inv;
 }
 
-float *view_get_view_matrix_at(struct View *self, float *out, float longitude)
-{
-    float m[12], eye[3];
-
-    mat_set_rotate_x(m, VIEW_DEG_TO_RAD(self->latitude));
-    mat_rotate_y(m, VIEW_DEG_TO_RAD(longitude));
-    eye_offset(self, m, eye);
-    eye[0] = eye[0] + self->at[0];
-    eye[1] = eye[1] + self->at[1];
-    eye[2] = eye[2] + self->at[2];
-    clamp_eye_to_ground(eye);
-    {
-        Vec3 eye_point = {eye[0], eye[1], eye[2]};
-        Vec3 target_point = {self->at[0], self->at[1], self->at[2]};
-        Vec3 up_direction = {self->up[0], self->up[1], self->up[2]};
-        mat_look_at(out, &eye_point, &target_point, &up_direction);
-    }
-    return out;
-}
-
 void view_process_camera(struct View *self)
 {
     float d, rot, zoom, x, y, z, t, cot, bias, k, r;

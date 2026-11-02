@@ -35,11 +35,6 @@ int main(void)
             byte_queue_write(&queue, (int)count, input);
             memcpy(model + length, input, count);
             length += count;
-        } else if (op == 1) {
-            byte_queue_prepend(&queue, (int)count, input);
-            memmove(model + count, model, length);
-            memcpy(model, input, count);
-            length += count;
         } else if (op == 2 || op == 3) {
             int success = op == 2 ? byte_queue_read(&queue, (int)count, actual)
                                   : byte_queue_skip(&queue, (int)count);

@@ -289,32 +289,6 @@ void ui_headspr_button_on_draw(struct UIWindow *window)
                          clip->flags, img->widthHalved + 1, img->heightHalved + 1);
 }
 
-static struct SprImg *sprite_button_frame_image(struct UISpriteButton *self, int action, int motion)
-{
-    struct SprRes *spr = res_mgr_get(g_resMgr(), string_cstr(&self->spr));
-    struct ActRes *act = res_mgr_get(g_resMgr(), string_cstr(&self->act));
-    struct Motion *m;
-    const struct SprClip *clip;
-
-    if (!spr || !act)
-        return NULL;
-    m = act_res_get_motion(act, action, motion);
-    clip = motion_get_clip(m, 0);
-    return sprite_resource_image(spr, 0, clip->sprIndex);
-}
-
-int ui_sprite_button_frame_height(struct UIWindow *self, int action, int motion)
-{
-    const struct SprImg *image = sprite_button_frame_image(SPRITE_BUTTON(self), action, motion);
-    return image ? image->height : 0;
-}
-
-int ui_sprite_button_frame_width(struct UIWindow *self, int action, int motion)
-{
-    const struct SprImg *image = sprite_button_frame_image(SPRITE_BUTTON(self), action, motion);
-    return image ? image->width : 0;
-}
-
 const struct UIButtonOps ui_sprite_button_ops = {
     .base = {
         .destroy = ui_sprite_button_destroy,

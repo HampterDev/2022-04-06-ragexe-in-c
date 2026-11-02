@@ -5,6 +5,4 @@
 
 struct UIWindow;
 
-void ui_window_move_centred_for(struct UIWindow *self, int width, int height);
-
 #endif

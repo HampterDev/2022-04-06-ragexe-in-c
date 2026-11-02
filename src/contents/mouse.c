@@ -50,12 +50,6 @@ void mouse_reset_buttons(struct Mouse *self)
     memset(self->down, 0, sizeof self->down);
 }
 
-void mouse_center(struct Mouse *self)
-{
-    self->cur_x = self->x = g_3dDevice.width / 2;
-    self->cur_y = self->y = g_3dDevice.height / 2;
-}
-
 void mouse_set_x(struct Mouse *self, int x)
 {
     self->cur_x = self->x = x;

@@ -90,7 +90,6 @@ struct GrannyVertexBuffer *granny_vertex_buffer_create(const struct C3dGrannyMod
 void granny_vertex_buffer_destroy(struct GrannyVertexBuffer *buffer);
 int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh,
                                const struct GrannyMeshVertex *vertices, int vertex, Vec3 *out);
-const struct GrannyMeshVertex *c3d_granny_model_res_rigid_mesh_vertices(struct C3dGrannyModelRes *self, int mesh);
 const struct GrannyMeshVertex *c3d_granny_model_res_mesh_to_draw(struct C3dGrannyModelRes *self, int mesh,
                                               struct Texture **tex, unsigned short **indices, int *tris,
                                               float *matrix, const struct GrannyMeshPose *pose,

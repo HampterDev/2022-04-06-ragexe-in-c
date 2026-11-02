@@ -32,8 +32,6 @@ char dc_bitmap_get_dc(struct DcBitmap *b,HDC *out)
 { (void)b;(void)out;abort();return 0; }
 void dc_bitmap_fill(struct DcBitmap *b,const RECT *r,DWORD color)
 { (void)b;(void)r;(void)color;abort(); }
-void dc_bitmap_copy_scaled(struct DcBitmap *b,int x,int y,int sw,int sh,int dw,int dh,const DWORD *src)
-{ (void)b;(void)x;(void)y;(void)sw;(void)sh;(void)dw;(void)dh;(void)src;abort(); }
 int main(void)
 {
     BYTE data[1024],empty[20]={0};struct Locations loc;size_t size=make_fixture(data,0x205,2,&loc);

@@ -94,11 +94,6 @@ int main(void)
     mouse_read_state(&g_mouse);
     assert(g_mouse.x == 80);
 
-    g_3dDevice.width = 1280;
-    g_3dDevice.height = 720;
-    mouse_center(&g_mouse);
-    assert(g_mouse.x == 640 && g_mouse.cur_x == 640);
-    assert(g_mouse.y == 360 && g_mouse.cur_y == 360);
     mouse_set_x(&g_mouse, -100);
     mouse_set_y(&g_mouse, -100);
     assert(g_mouse.x == -100 && g_mouse.cur_x == -100);

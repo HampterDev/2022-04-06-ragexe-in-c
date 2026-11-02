@@ -11,6 +11,4 @@ struct List;
 struct StdBitIter *std_vector_bool_erase_at(struct StdBitVector *self, struct StdBitIter *out, unsigned *where_word,
                                                        unsigned where_bit);
 
-struct UIString;
-
 #endif

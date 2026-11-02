@@ -262,21 +262,6 @@ const struct EZ2STREntry *ez2_str_effect_mgr_find_by_effect_id(struct Ez2StrEffe
     return row ? &row->entry : 0;
 }
 
-int ez2_str_effect_mgr_get_effect_id(struct Ez2StrEffectMgr *self,
-                                             const struct String *name)
-{
-    struct String key;
-    struct EZ2STRRow *row;
-    int effect_id;
-
-    string_copy(&key, name);
-    lower_case(&key);
-    row = tree_find(&self->rows, &key, name_less);
-    effect_id = row ? row->entry.index + EZ2STR_EX_FIRST_ID : -1;
-    string_free(&key);
-    return effect_id;
-}
-
 struct Vec *ez2_str_effect_mgr_get_effect_ids(struct Ez2StrEffectMgr *self,
                                                             struct Vec *ids)
 {

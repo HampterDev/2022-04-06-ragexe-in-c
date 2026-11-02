@@ -7421,3 +7421,214 @@ Validation:
 
 The pre-removal tree is in `build/before-antibot-pin`. No live client/server smoke
 test was run.
+
+## Dead-code sweep (2026-11-02)
+
+Patrick approved removing dead code paths: production code that no runtime path in
+the shipped executable can reach. The sweep started from d725b49 plus the day's
+validated removals (cash shop, Party Booking, 4th classes, Lapine, grade enchant,
+swap equipment, macro detector/captcha, PIN codes).
+
+Removed:
+
+- **Unreachable windows.** Every window-factory ID was traced to its openers:
+  literal and named `ui_window_open`/`ui_make_window`/`ui_window_mgr_make_window`/
+  `show_option_window` calls, helper wrappers (toggle, invite, family-request,
+  market-refresh helpers), the hotkey action table, basic-info/menu-icon/ESC/storage
+  tab tables, `ZC_UI_OPEN` mappings, talk types and mode messages. No opener exists
+  for these IDs, so their factory cases, slots, `get_window`/untracked/`post_quit1`
+  cases, forget-list and teardown entries, saved-rect registry keys, type
+  registrations and code were removed:
+
+  | ID | Class | Notes |
+  |---|---|---|
+  | `0x4` | `UIMakeCharWnd` | Pre-renewal character creation; login opens only `0x116`. `make_char.c` deleted. |
+  | `0x9` | `UIToolTipWnd` | `tooltip_wnd.c` deleted. |
+  | `0x13`, `0x30`, `0x81` | `UIRestartWnd`, `UIQuitWnd`, `UIRebirthWnd` | Death and ESC already use the ESC option window `0x9b`. The `quit_wnd` Enter-key branch went with them. |
+  | `0x34` | `UICompositionWnd` | IME composition box; the candidate window `0x33` stays. |
+  | `0x51` | `UIMakeTargetResultWnd` | Make-target list/process windows stay. |
+  | `0x5d` | `UINoticeWnd` | `notice_patch.txt` patch-notice reader; `patch_notice.c` deleted. The character-select "raise `0x5d`" branch went with it. |
+  | `0x82`, `0x83` | (slots of `UISubChatHisWnd`) | Fixed "ST"/"BT" history slots and their `SUBCHATWNDST`/`SUBCHATWNDBT` saved rects. The class stays for detached chat tabs. |
+  | `0x85` | `UISubChatMiniWnd` | Its toggles were the only readers of `ONSTSUBCHAT`/`ONBTSUBCHAT`; that write-only state and its registry keys went too. |
+  | `0xa3` | `UIMixAcceptWnd` | `UIYourItemWnd` in the same file stays. |
+  | `0xb6` | `UIButtonsOfBasicWnd` | `basic_buttons.c` deleted, plus the render-loop special case, the hotkey-`0x97` second command and five basic-info "window below" branches. |
+  | `0x123` | `UITransMenuWnd` | `trans_menu.c` deleted. |
+  | `0x125` | `UIRenderTargetWnd` | Debug character render target; `render_target.c` deleted. |
+  | `0xc9` | `UIMonsterDisplayWnd` | Its only opener was in `UIString` (below); `monster_display.c` deleted. |
+
+  Factory labels with no constructor were also removed: Lua-window IDs `0x9e`,
+  `0xa5`, `0xa6`, `0xa7`, `0xb7` and `0xbf` (only opener: the removed basic
+  buttons), and the duplicate star-place label `0x166`.
+- **Classes nothing constructs.** A second relink with the type registry emptied
+  (below) showed 30 classes whose operation tables were referenced only by the
+  type-identity registry, which never constructs objects. They and their files were
+  removed: `CGrannyPc` (three files and its header), `TableBox`, `UIBasicItemCtrl`,
+  `UIBasicSkillCtrl`, `UIBitmapButton2`, `UIBitmapTab`, `UIChatHisBox3`,
+  `UIComboBoxV2Wnd`, `UIEditCtrl_OldList`, `UIImgMenu`, `UIListBox2`,
+  `UIMessageBoxAutoreturn`, `UIMiniBtnWnd`, `UINavigationWnd`, `UINewComboBoxCtrl`,
+  `UIScrollBar4`, `UIShowAndEditTimeCtrl`, `UISlotBitmap`, `UIStaticItem`,
+  `UIStaticItem_Illust`, `UIStaticText3`, `UIString`, `UITableBox`, `UITagButton`,
+  `UITagListBox`, `UITextViewEX`, `UITreeView`, `UIZeroQuestScrollBar`,
+  `UITVBitmapButton` and `UITVTextButton`. Shared tag-prototype loading
+  (`tag_parser.c`) and `UINaviLinkButton` stay.
+- **Unreferenced functions and data.** 508 file-scope definitions in all: 375
+  external and 86 static functions, 44 global data objects (all of them operation tables) and 3
+  static data objects. Besides the classes above, the probe map omitted 38
+  external functions and six statics. 36 were dead before the sweep, and the window
+  removals orphaned `ui_sub_chat_his_wnd_new` and `character_render_collect_quads`.
+  Examples: `byte_queue_prepend`, `connection_unread`,
+  `dc_bitmap_copy_scaled`/`dc_bitmap_alpha_from_brightness`, `texture_draw`,
+  `mouse_center`, `own_states_set_value`, `drag_info_destroy`, seven `json_value_*`
+  accessors, `game_copy_view_matrix_at`/`view_get_view_matrix_at`,
+  `world_cell_to_world`, `ui_window_mgr_modeless_message_box`,
+  `ez2_str_effect_mgr_get_effect_id`, `wm_half_x`/`wm_half_y`, and the servant-weapon
+  fire controls
+  (`servant_weapon_effect_fire`/`_shoot`/`_sign_shot`/`_phantom_shot`/`_count_armed`
+  and four statics) that the 4th-class removal had kept with their class. 333 stale
+  prototypes and extern declarations were removed with them, together with the
+  macros, struct definitions, forward declarations and layout asserts they orphaned.
+- **Write-only state and dead branches.** `Session.jobIdNames` (filled at startup,
+  never read) and its table; the sub-chat state and rect keys above; two
+  unreferenced locals (`packets_guild_roster.c`, `make_target.c`). Checks of the
+  retired windows' slots or IDs that could no longer succeed were removed with them,
+  as were `post_quit1` calls for those IDs, which had become no-ops.
+- **Files and directories.** 26 source files deleted (23 `.c`, 3 headers:
+  `granny_pc.h`, `ui_string.h`, `navi_wnd.h`); four files that used `granny_pc.h`
+  and `wndmgr_keys.c` (`navi_wnd.h`) now include only the headers they actually
+  needed from it. The empty directories `src/browser`, `src/replay`,
+  `src/security`, `src/ui/media`, `src/ui/net` and `src/ui/tips` were deleted.
+  Net change of this sweep (working tree against the staged base): src 12,464
+  lines deleted / 28 added in 160 files; tests 1,073 deleted / 125 added in 40 files.
+
+Kept, and why:
+
+- **Real indirect references.** Everything reachable through live operation tables,
+  Lua C-function registration, packet/effect dispatch tables or saved settings.
+  Effect classes the removed code spawned (e.g. the render-target effect `0x442`)
+  stay because server effect packets can name their IDs.
+- **Packets.** No packet handling changed; all size/name rows are untouched.
+- **`OBJECT_BASIC_BUTTONS_WINDOW`.** No registered type carries this query bit any
+  more. The enumerator stays because the historical 17-query cast fixture is indexed
+  by it.
+- **Speculative branches.** Mode-message and talk-type cases without a visible
+  sender were not chased. Many senders are wrappers or computed (`type + 0x3e`,
+  stat-command tables), and a before/after comparison found no mode message that
+  this sweep left without a sender. Residue IDs in the untracked/`post_quit1` lists
+  that no factory creates (`0x32`, `0x43`, `0xab`, …) were left as found.
+- **Option-window request `0xd`.** `make_basic_info` still requests nonexistent
+  window `0xd` when the saved `OPTIONWNDINFO.SHOW` is set. The call is reachable
+  from saved settings and touches the ESC window-id list, so it is reported below
+  rather than removed.
+- **Tests and fixtures.** Retired type names stay in `type_query_fixture.h`;
+  `test_object_type.c` lists the 44 new retired identities.
+
+Method:
+
+1. Window openers were traced with a script that resolves every call's ID
+   argument (literals, `#define`/enum constants, ternaries) and follows `int`
+   parameters back through helper functions to their callers. Each remaining
+   variable source (storage tab table, guild tab `0x3c + tab`, hotkeys, menu
+   tables) was checked by hand. The trace was rerun after each removal round;
+   removing `UIString` orphaned window `0xc9`.
+2. **Probe build** (`build/deadcode/deadcode.bat`): all of `src` with the release
+   flags plus `/Ob0 /Gy /Gw /W4`, linked with `/OPT:REF /MAP` into
+   `build/deadcode/`. `dumpsyms.bat` lists defined externals and `analyze.py`
+   reports those absent from the map. MSVC does not emit C4505 for C (verified with
+   a one-file test), so static functions and data were checked against the map's
+   static-symbol section instead.
+3. **Registry-less relink** (`noreg.bat`): the same objects linked against a copy of
+   `object_type.c` with an empty type table; `mapdiff.py` lists what disappears.
+4. Removal used `remove_defs.py` (definitions and same-file prototypes by name),
+   `stale_decls.py` (prototypes whose definitions the sweep removed) and
+   `leftovers.py`/`remove_names.py` (orphaned macros/structs). Steps 1–4 were
+   repeated until nothing new appeared. The final round reports only CRT symbols,
+   folded `static const` scalars, the stdcall-decorated `sound_fade_thread@4`, and an
+   empty registry-only difference.
+
+Tests changed:
+
+- Removed with their code: the UI string suite (`build_ui_string.bat`,
+  `test_ui_string.c`, `ui_string_owner.c`, `ui_string_test.h`,
+  `ui_string_unreached.h`), the tag-button/list-box parts of `test_link_buttons.c`,
+  tree-label cases in `test_text_buttons.c`, bitmap-tab and button-2 drop owners
+  (and the blocked-exchange case that used button 2) in `test_ui_drop.c`, the
+  render-target callback in `test_named_client_dispatch.c`, granny-PC parts of the
+  actor action/appearance/render/granny-model tests, the own-view pass of
+  `test_character_model.c`, and the single assertions/calls for the removed
+  helpers. Stub headers were pruned to what each test still links.
+- Retained tests rewired instead of keeping dead production helpers: the barter
+  test frees its drag strings directly instead of `drag_info_destroy`; the service and
+  merchant-store JSON tests use test-local number/null readers instead of the removed
+  `json_value_*` accessors; the radio test assigns the tooltip directly instead of
+  `ui_bmp_radio_btn_set_tool_tip`; the entry-appearance case uses a sprite PC
+  (`pc_set_spr_act`) instead of `CGrannyPc`. The granny pose case now poses a
+  model state directly (time 0.25) to keep its `granny_model_prepare_mesh`
+  coverage. `test_forget_window.c` uses `skill_describe_wnd` as its sample slot.
+- Object-type expectations: 475 classes (519 − 44), 136 retired identities, 329
+  named, 309 windows, 2,741 comparisons, 208 accepted casts.
+
+Validation:
+
+- **Release build.** Passed without compiler or linker warnings:
+  `build/deadcode-build.log`. None of the 419 removed external definitions and none
+  of the 44 retired type names remain in `build/main_rebuild.map` or `src`
+  (`build/deadcode/map_audit.py`).
+- **Probe convergence.** The final probe round reports only CRT data, folded
+  `static const` scalars and the stdcall thread entry (`build/deadcode/report-final.txt`).
+  The registry-less relink drops nothing (`build/deadcode/noreg-final.txt`). The
+  opener trace leaves only the table-driven guild tabs (`0x3c + tab`) and storage
+  tabs (`s_tabIds`) without a literal opener. No stale prototypes or orphaned
+  macros/structs remain, apart from the intentional historical fixture names.
+- **Packet dispatch.** All 1,179,800 cases passed. The digest stays
+  `a3fd444e45d2becf`, and the regenerated trace is byte-identical (SHA-256
+  `44404caa…25123d0`) to the pre-sweep copy `build/packet-dispatch-before-deadcode.bin`
+  (`build/deadcode-packet-dispatch.log`). No packet handling changed, so the
+  expectation is unchanged.
+- **Type checks.** Passed for 475 classes and 136 retired identities, with 2,741
+  comparisons and 208 accepted casts.
+- **Full suite.** All commands in `tests\build.bat` passed in 5 min 57 s
+  (`build/deadcode-full-tests.log`). Digests are unchanged: content managers
+  `f0fa1aba`, effect factories `274deeba`, EZ2STR `817beee3`, effect operations
+  `a5ab8449`, particle pools `eca892c6`.
+- **Standalone suites.** COM lifecycle, emote timing, headgear names, NPC music, pet
+  accessory, pet portrait and skill-tree hints passed (`build/deadcode-com_lifecycle.log`,
+  `build/deadcode-emote_timing.log`, `build/deadcode-headgear_names.log`,
+  `build/deadcode-npc_bgm.log`, `build/deadcode-pet_accessory.log`,
+  `build/deadcode-pet_portrait.log`, `build/deadcode-skill_tree_hints.log`).
+  `build_agency_server.bat` was not run (it needs the patched Hercules checkout).
+- **Diff check.** `git diff --check -- src tests` passed.
+
+Bugs and foundation candidates found (not changed unless noted):
+
+- `make_lua_window` dereferenced a NULL window for factory IDs `0x9e`, `0xa5`,
+  `0xa6`, `0xa7`, `0xb7` and `0xbf` (no constructor case). Nothing reachable opens
+  them now; the labels were removed. Before the sweep `0xbf` was reachable only from
+  the never-created basic buttons window.
+- If the saved `OPTIONWNDINFO.SHOW` is set, `make_basic_info` requests window `0xd`,
+  which no factory creates. The client never sets it to 1; it only round-trips the saved value. The
+  request leaves `0xd` in the ESC window-id list, so the list is never empty. ESC
+  then tries to close `0xd`, fails and opens the ESC menu instead of cancelling
+  active navigation guidance (`guideState == 2`).
+- ESC menu button `ESC_ID_1C1` toggles window `0xec`, which no factory creates.
+- Misleading names: `keyboard.c` `MODE_MSG_TOGGLE_WINDOW` (0x1f) is
+  `MODE_MSG_EMOTION`, and its `key_windows` entries are emotion IDs;
+  `ui_window_mgr_render_menu` in `session_job_names.c` actually builds the job,
+  sprite and palette name tables.
+- `test_service_json.c` still prints a stale "Party booking JSON" line.
+
+Open risks:
+
+- Registry reads share one `size` variable across `RegQueryValueExA` calls. The
+  removed `SUBCHATWND*`/`ONSTSUBCHAT`/`ONBTSUBCHAT` reads could only have affected
+  later reads if those values had been stored with a non-DWORD size.
+- `WM_AT_NONE` (only used by the removed `0x85` case) was removed, so the
+  placement enum values shift by one. Every use is symbolic.
+- No live client/server smoke test was run.
+
+The pre-sweep tree is in `build/before-deadcode-sweep`; probe tools, maps and reports
+are in `build/deadcode`.
+
+Independent rerun on the final tree: the release build (no warnings), the full
+suite (dispatch digest `a3fd444e45d2becf`; 475 classes, 136 retired identities)
+and the seven standalone suites passed: `build/final-build.log`,
+`build/final-full-tests.log`, `build/final-<suite>.log`.

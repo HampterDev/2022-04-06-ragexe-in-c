@@ -12,9 +12,7 @@
 
 typedef void (*DropCase)(int, int, const struct DragInfo *, int);
 void test_refine_drop(int, int, const struct DragInfo *, int);
-void test_bitmap_tab_drop(int, int, const struct DragInfo *, int);
 void test_tab_drop(int, int, const struct DragInfo *, int);
-void test_button_drop(int, int, const struct DragInfo *, int);
 void test_window_drop(int, int, const struct DragInfo *, int);
 void test_item_base_drop(int, int, const struct DragInfo *, int);
 void test_result_drop(int, int, const struct DragInfo *, int);
@@ -109,8 +107,7 @@ static void item_box(DropCase drop, int left, int top)
 int main(void)
 {
     struct DragInfo drag = {0};
-    static const DropCase forwarding[] = {test_bitmap_tab_drop, test_tab_drop,
-        test_button_drop};
+    static const DropCase forwarding[] = {test_tab_drop};
     size_t i;
     int parent;
     item_box(test_refine_drop, 109, 201);
@@ -119,19 +116,13 @@ int main(void)
             forwarding[i](-400, 600, &drag, parent);
             assert(forwards == parent && !messages && !completions);
         }
-    g_windowMgr.exchange_wnd = &parent_window;
-    for (parent = 0; parent < 2; ++parent) {
-        test_button_drop(12, -7, &drag, parent);
-        assert(!forwards && !messages && completions == 1);
-    }
-    g_windowMgr.exchange_wnd = NULL;
     test_window_drop(12, -7, &drag, 0);
     assert(!forwards && !messages && completions == 1);
     test_item_base_drop(12, -7, &drag, 1);
     assert(!forwards && !messages && completions == 1);
     test_result_drop(12, -7, &drag, 1);
     assert(!forwards && !messages && !completions);
-    puts("UI drops: typed payloads, item-box boundaries, parent forwarding, blocked exchange, "
+    puts("UI drops: typed payloads, item-box boundaries, parent forwarding, "
          "completion order and unchanged owners passed.");
     return 0;
 }

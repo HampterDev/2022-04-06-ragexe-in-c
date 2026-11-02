@@ -1,6 +1,6 @@
 #include "actor/render_ops.h"
-#include "actor/granny_pc.h"
-#include "actor/actor.h"
+#include "actor/granny_actor.h"
+#include "actor/game_actor.h"
 
 static void set_action_delay(struct RenderObject *self, int action)
 {
@@ -102,24 +102,4 @@ void c3d_granny_game_actor_set_action(struct RenderObject *object, int action, i
     granny_playback_stop(self->model->playback);
     self->anim_time = 0.0f;
     granny_playback_play(self->model->playback, self->anim, type == 1);
-}
-
-void granny_pc_set_action(struct RenderObject *object, int action, int loop)
-{
-    struct GrannyPc *self = (struct GrannyPc *)object;
-
-    if (!self->model)
-        return;
-    self->state = 0;
-    switch (action) {
-    case 0x08: self->state = 1; break;
-    case 0x10: self->state = 6; break;
-    case 0x18: self->state = 5; break;
-    case 0x20: self->state = 0xb; break;
-    case 0x28: self->state = 0xc; break;
-    case 0x30: self->state = 4; break;
-    case 0x40: self->state = 3; break;
-    case 0x50: case 0x58: self->state = 2; break;
-    }
-    granny_pc_play_state_anim(self, loop);
 }

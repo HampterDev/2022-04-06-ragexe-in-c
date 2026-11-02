@@ -38,18 +38,8 @@ static const struct EffectOps servant_weapon_effect_ops = {
     .fade_out = effect_fade_out,
 };
 
-static int age_less(const void *a, const void *b)
-{
-    return *(const int *)a < *(const int *)b;
-}
-
 #define EFFECT_SERVANT_WEAPON_LIST 0xd
 #define SLOTS 5
-
-#define FIRE_SHOOT 0x1452
-#define FIRE_SIGN 0x1453
-#define FIRE_PHANTOM 0x1454
-#define FIRE_SHOOT_2 0x1455
 
 struct ServantWeaponEffect {
     struct Effect base;
@@ -69,9 +59,6 @@ static struct Ez2StrParticle *open_animation(struct ServantWeaponEffect *self, c
 
 #define WEAPON_STR "servantweapon\\servantweapon\\servantweapon.str"
 #define CAST_STR "servantweapon\\servantweapon_cast\\servantweapon_cast.str"
-#define SHOOT_STR "servantweapon\\servantweapon_shoot\\servantweapon_shoot.str"
-#define SIGN_SHOT_STR "servant_sign\\servant_sign_shot\\servant_sign_shot.str"
-#define PHANTOM_SHOT_STR "servant_phantom\\servant_phantom_shot\\servant_phantom_shot.str"
 
 static int animation_alive(const struct Ez2StrParticle *p)
 {
@@ -128,41 +115,6 @@ void servant_weapon_effect_add_cast(struct Effect *effect)
     self->casts[i] = open_animation(self, CAST_STR);
 }
 
-void servant_weapon_effect_shoot(struct ServantWeaponEffect *self, int i)
-{
-    struct Ez2StrParticle *p = open_animation(self, SHOOT_STR);
-
-    if (self->shots[i])
-        particle_free(&self->shots[i]->base);
-    self->shots[i] = p;
-}
-
-void servant_weapon_effect_phantom_shot(struct ServantWeaponEffect *self, __int64 i)
-{
-    struct Ez2StrParticle *p;
-
-    if (i >= SLOTS)
-        return;
-    p = ez2str_particle_new(self->base.pos, EFFECT_SERVANT_WEAPON_LIST);
-    if (!p)
-        return;
-    {
-        ez2_str_particle_open(p, PHANTOM_SHOT_STR);
-    }
-    if (self->shots[i])
-        particle_free(&self->shots[i]->base);
-    self->shots[i] = p;
-}
-
-void servant_weapon_effect_sign_shot(struct ServantWeaponEffect *self, int i)
-{
-    struct Ez2StrParticle *p = open_animation(self, SIGN_SHOT_STR);
-
-    if (self->shots[i])
-        particle_free(&self->shots[i]->base);
-    self->shots[i] = p;
-}
-
 void servant_weapon_effect_release(struct Effect *effect)
 {
     struct ServantWeaponEffect *self = (struct ServantWeaponEffect *)effect;
@@ -182,85 +134,6 @@ void servant_weapon_effect_release(struct Effect *effect)
             self->shots[i] = 0;
         }
     }
-}
-
-static void fire_from(struct ServantWeaponEffect *self, int effect_id, int i)
-{
-    switch (effect_id) {
-    case FIRE_SHOOT:
-    case FIRE_SHOOT_2:
-        servant_weapon_effect_shoot(self, i);
-        break;
-    case FIRE_SIGN:
-        servant_weapon_effect_sign_shot(self, i);
-        break;
-    case FIRE_PHANTOM:
-        servant_weapon_effect_phantom_shot(self, i);
-        break;
-    }
-}
-
-static unsigned char fire_oldest_weapon(struct ServantWeaponEffect *self, int age, int effect_id)
-{
-    int i;
-
-    for (i = 0; i < SLOTS; i++) {
-        struct Ez2StrParticle *p = self->weapons[i];
-        if (p && age == p->base.age) {
-            particle_free(&p->base);
-            self->weapons[i] = 0;
-            fire_from(self, effect_id, i);
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static void fire_first_cast(struct ServantWeaponEffect *self, int effect_id)
-{
-    int i;
-
-    for (i = 0; i < SLOTS; i++) {
-        struct Ez2StrParticle *p = self->casts[i];
-        if (p) {
-            particle_free(&p->base);
-            self->casts[i] = 0;
-            fire_from(self, effect_id, i);
-            return;
-        }
-    }
-}
-
-void servant_weapon_effect_fire(struct Effect *effect, int effect_id)
-{
-    struct ServantWeaponEffect *self = (struct ServantWeaponEffect *)effect;
-    struct List ages;
-    int i;
-
-    list_init(&ages);
-    for (i = 0; i < SLOTS; i++) {
-        if (self->weapons[i]) {
-            int age = self->weapons[i]->base.age;
-            list_push_back(&ages, &age, sizeof age);
-        }
-    }
-    list_sort(&ages, age_less);
-
-    if (!ages.size || !fire_oldest_weapon(self, *LIST_VALUE(ages.head->prev, int), effect_id))
-        fire_first_cast(self, effect_id);
-
-    list_free(&ages, NULL);
-}
-
-int servant_weapon_effect_count_armed(struct Effect *effect)
-{
-    struct ServantWeaponEffect *self = (struct ServantWeaponEffect *)effect;
-    int n = 0, i;
-
-    for (i = 0; i < SLOTS; i++)
-        if (self->weapons[i] || self->casts[i])
-            n++;
-    return n;
 }
 
 void servant_weapon_effect_init(struct Effect *effect)

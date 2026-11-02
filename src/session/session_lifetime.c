@@ -76,7 +76,6 @@ struct Session *session_construct(struct Session *self)
     tree_init(&self->jobNamesSex0);
     tree_init(&self->jobNamesSex99);
     vec_init(&self->sexLetters);
-    vec_init(&self->jobIdNames);
     list_init(&self->pingSamples);
     vec_init(&self->jobBodyNames);
     text_array_init(&self->chatMacros);
@@ -301,7 +300,6 @@ void session_destruct(struct Session *self)
     text_array_clear(&self->chatMacros);
     vec_free(&self->jobBodyNames);
     list_free(&self->pingSamples, NULL);
-    vec_free(&self->jobIdNames);
     vec_free(&self->sexLetters);
     tree_free(&self->jobNamesSex99, NULL);
     tree_free(&self->jobNamesSex0, NULL);

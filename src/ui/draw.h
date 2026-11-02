@@ -92,9 +92,6 @@ void ui_window_text_out_outlined_ptr(struct UIWindow *self, int x, int y,
                                             const char *text, int len, COLORREF *colour,
                                             COLORREF outline, int font_face, int font_height,
                                             int font_arg);
-void ui_window_text_out_runs_ex(struct UIWindow *self, int x, int y,
-                                       const char *text, int len, COLORREF *colour, int font_face,
-                                       int font_height, int font_arg3, int font_arg4, BYTE shadow);
 SIZE *ui_window_text_extent(struct UIWindow *self, SIZE *out,
                                      const char *text, int len, int font_face, int font_height,
                                      int font_arg3, int font_arg4);

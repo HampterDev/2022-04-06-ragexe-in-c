@@ -92,11 +92,3 @@ struct String *ui_window_fit_text(struct UIWindow *self, struct String *out,
     *out = result;
     return out;
 }
-
-void ui_window_move_centred_for(struct UIWindow *self, int width, int height)
-{
-    int y = (int)((double)(height - self->height) * 0.5 + (double)self->y);
-    int x = (int)((double)(width - self->width) * 0.5 + (double)self->x);
-
-    ui_window_move_base(self, x, y);
-}

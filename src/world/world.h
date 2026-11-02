@@ -40,7 +40,6 @@ struct C3dActorV1;
 struct C3dActorV2;
 #include "actor/render_ops.h"
 
-void world_cell_to_world(struct World *self, int cx, int cy, float *x, float *z);
 void *world_get_actor_or_player(struct World *self, int aid);
 BYTE world_actor_matches_global(struct World *self, int aid);
 void world_remove_object(struct World *self, void *object);

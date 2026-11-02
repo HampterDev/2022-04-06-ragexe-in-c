@@ -15,7 +15,6 @@ struct UIFrameWnd;
 struct UIListBox;
 struct UIListBoxEx;
 struct UIListBoxID;
-struct UINewComboBoxCtrl;
 struct UIWindow;
 
 #define COMBO_MSG_TOGGLED 0x17
@@ -60,13 +59,6 @@ struct UIComboBoxBmpWnd {
 struct UIWindow *ui_combo_box_def_wnd_construct(struct UIWindow *self);
 struct UIWindow *ui_combo_box_def2_wnd_construct(struct UIWindow *self);
 struct UIComboBoxBmpWnd *ui_combo_box_bmp_wnd_construct(struct UIComboBoxBmpWnd *self);
-struct UIComboBoxV2Wnd {
-    struct UIWindow base;
-    struct String bitmap;
-    int selected;
-    struct UIWindow *head;
-    struct UIListBoxEx *list;
-};
 void ui_combo_box_def2_wnd_add_item(struct UIWindow *self, struct String text,
                                           int value);
 void ui_combo_box_def_wnd_clear_list(struct UIWindow *self);
@@ -137,13 +129,6 @@ void ui_combo_box_bmp_wnd_destroy(struct UIWindow *window);
 void ui_combo_box_bmp_wnd_on_draw(struct UIWindow *self);
 void ui_combo_box_bmp_wnd_create(struct UIComboBoxBmpWnd *self, int width, int height,
                                         const char *name, const char *bitmap);
-void ui_combo_box_v2_wnd_destroy(struct UIWindow *window);
-struct String *ui_combo_box_v2_wnd_get_selected_text(struct UIComboBoxV2Wnd *self,
-                                                             struct String *out);
-void ui_combo_box_v2_wnd_on_draw(struct UIWindow *self);
-void ui_combo_box_v2_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_combo_box_v2_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                       int val1, int val2, int val3, int val4);
 
 void ui_combo_box_destroy(struct UIWindow *window);
 void ui_combo_box_resize(struct UIWindow *self, int width, int height);
@@ -163,13 +148,5 @@ void ui_combo_box_id_wnd_on_create(struct UIWindow *self, int width, int height)
 void ui_combo_box_wnd_on_draw(struct UIWindow *self);
 int ui_combo_box_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
                                      int val1, int val2, int val3, int val4);
-
-void ui_new_combo_box_ctrl_destruct(struct UINewComboBoxCtrl *self);
-void ui_new_combo_box_ctrl_destroy(struct UIWindow *window);
-void ui_new_combo_box_ctrl_on_create(struct UIWindow *self, int width, int height);
-void ui_new_combo_box_ctrl_on_draw(struct UIWindow *self);
-void ui_new_combo_box_ctrl_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
-int ui_new_combo_box_ctrl_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                         int msg, int val1, int val2, int val3, int val4);
 
 #endif

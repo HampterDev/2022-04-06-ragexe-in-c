@@ -12,9 +12,6 @@ struct List;
 struct TreeNode;
 struct Vec;
 struct UIScrollBar;
-struct UITVTextButton;
-struct UITreeNode;
-struct UITreeView;
 struct UIWindow;
 struct UIWindowOps;
 
@@ -168,15 +165,6 @@ struct UIListBoxTitle {
     COLORREF listed_colour;
 };
 
-struct TableBox {
-    struct UIWindow base;
-    DWORD colour;
-};
-struct UITableBox {
-    struct UIWindow base;
-    struct Vec items;
-};
-
 void ui_list_box_agit_destruct(struct UIListBox *self);
 void ui_list_box_agit_destroy(struct UIWindow *window);
 void ui_list_box_agit_on_l_btn_down(struct UIWindow *self, int x, int y);
@@ -203,11 +191,6 @@ void ui_list_box_navi_on_draw(struct UIWindow *self);
 void ui_list_box_navi_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_list_box_navi_add_item(struct UIListBox *base_list, const char *text);
 void ui_list_box_navi_clear_items(struct UIListBox *base_list);
-void ui_list_box_navi_set_flag(struct UIListBoxNavi *self, int index, int flag);
-void ui_list_box_navi_clear_flags(struct UIListBoxNavi *self);
-int ui_list_box_navi_row_base(struct UIListBoxNavi *self);
-void ui_list_box_navi_set_row_base(struct UIListBoxNavi *self, int base);
-void ui_list_box_navi_set_flag_colour(struct UIListBoxNavi *self, COLORREF colour);
 
 void ui_list_box_ex_destruct(struct UIListBoxEx *self);
 void ui_list_box_ex_destroy(struct UIWindow *window);
@@ -230,33 +213,7 @@ struct UIListBoxTitle *ui_list_box_title_construct(struct UIListBoxTitle *self);
 void ui_list_box_title_destroy(struct UIWindow *window);
 void ui_list_box_title_on_draw(struct UIWindow *self);
 
-void table_box_destruct(struct TableBox *self);
-void table_box_destroy(struct UIWindow *window);
-void table_box_on_create(struct UIWindow *self, int width, int height);
-void table_box_on_draw(struct UIWindow *self);
-void ui_table_box_destruct(struct UITableBox *self);
-void ui_table_box_destroy(struct UIWindow *window);
-void ui_table_box_on_draw(struct UIWindow *self);
-
-void ui_tree_view_hide_rows(struct UITreeView *self, struct List *list);
-BYTE ui_tree_view_clear_children(struct UITreeView *self, struct UITreeNode *node);
-BYTE ui_tree_view_remove(struct UITreeView *self, struct UITreeNode *parent, int id,
-                                  BYTE keep_children);
-int ui_tree_view_layout(struct UITreeView *self, struct List *list, int x, int y);
-void ui_tree_view_destroy(struct UIWindow *window);
-void ui_tree_view_resize(struct UIWindow *self, int width, int height);
-void ui_tree_view_on_create(struct UIWindow *self, int width, int height);
-void ui_tree_view_on_draw(struct UIWindow *self);
-void ui_tree_view_on_l_btn_down(struct UIWindow *self, int x, int y);
-void ui_tree_view_on_mouse_move(struct UIWindow *self, int x, int y);
-void ui_tree_view_on_l_btn_up(struct UIWindow *self, int x, int y);
-void ui_tree_view_on_wheel(struct UIWindow *self, int delta);
-void ui_tree_view_update_scroll_bar(struct UITreeView *self);
-int ui_tree_view_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                  int val2, int val3, int val4);
-
 struct UIComboBoxWnd;
-void ui_combo_box_wnd_set_chosen_to(struct UIComboBoxWnd *self, struct UIWindow *chosen_to);
 
 struct UIMessageBox *ui_message_box_new(void);
 void ui_message_box_create(struct UIMessageBox *self, const char *text, int type, int default_yes,

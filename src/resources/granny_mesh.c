@@ -36,16 +36,6 @@ int granny_mesh_vertex_position(const struct C3dGrannyModelRes *model, int mesh,
     return 1;
 }
 
-const struct GrannyMeshVertex *c3d_granny_model_res_rigid_mesh_vertices(struct C3dGrannyModelRes *self, int mesh)
-{
-    struct GrannyResMesh *m;
-
-    if (!self || !self->model || mesh < 0 || mesh >= self->model->meshCount)
-        return NULL;
-    m = &self->model->meshes[mesh];
-    return _GrannyMeshIsRigid(m->mesh) ? m->rigidVerts : NULL;
-}
-
 static const struct GrannyMeshVertex *render_mesh(struct GrannyResModel *model, int mesh,
                          struct Texture **tex, unsigned short **indices, int *tris, float *matrix,
                          const struct GrannyMeshPose *pose, struct GrannyVertexBuffer *buffer)

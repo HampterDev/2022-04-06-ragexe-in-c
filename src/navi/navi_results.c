@@ -45,11 +45,6 @@ void navi_manager_clear_groups(struct NaviManager *self)
     self->resultGroups.last = self->resultGroups.first;
 }
 
-void navi_manager_clear_results(struct NaviManager *self)
-{
-    search_results_clear(&self->results);
-}
-
 int navi_manager_group_of(struct NaviManager *self, int index)
 {
     struct SearchResult *results = (struct SearchResult *)self->results.first;
@@ -227,13 +222,4 @@ void navi_manager_build_groups(struct NaviManager *self)
             vec_push(g, &i, sizeof i);
         }
     }
-}
-
-void navi_manager_group_each_result(struct NaviManager *self)
-{
-    int i;
-
-    navi_manager_clear_groups(self);
-    for (i = 0; (unsigned)i < VEC_COUNT(&self->results, struct SearchResult); i++)
-        new_group(self, &i);
 }

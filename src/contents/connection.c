@@ -221,11 +221,6 @@ int connection_recv_bytes(struct Connection *self, void *dst, int count, char ex
     return count;
 }
 
-void connection_unread(struct Connection *self, int count, const void *src)
-{
-    byte_queue_prepend(&self->recv_queue, count, src);
-}
-
 void connection_set_hold_sends(struct Connection *self, char hold)
 {
     int count;

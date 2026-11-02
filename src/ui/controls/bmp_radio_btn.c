@@ -317,10 +317,3 @@ void ui_bmp_radio_btn_set_caption(struct UIWindow *wnd, struct TextView text)
     string_assign(&self->label, text.data, text.size);
     ui_window_invalidate(wnd);
 }
-
-void ui_bmp_radio_btn_set_tool_tip(struct UIWindow *wnd, const char *text)
-{
-    struct UIBmpRadioBtn *self = (struct UIBmpRadioBtn *)wnd;
-    if (text)
-        string_assign_cstr(&self->tooltip, text);
-}

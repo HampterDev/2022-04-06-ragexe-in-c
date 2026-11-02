@@ -43,11 +43,6 @@ BYTE session_is_cash_item_type(struct Session *self, int id)
     return id == 0x12;
 }
 
-BYTE session_is_consumable_item_type(struct Session *self, int id)
-{
-    return id == 0 || id == 1 || id == 2 || id == 0x12;
-}
-
 BYTE session_is_costume_or_shadow_location(struct Session *self, int flag)
 {
     switch (flag) {
@@ -63,11 +58,6 @@ BYTE session_is_equip_item_type(struct Session *self, int id)
 {
     return id == 4 || id == 0xb || id == 0xc || id == 0xd || id == 0xe || id == 5 || id == 8 || id == 9 ||
            id == 0xf;
-}
-
-BYTE session_is_etc_item_type(struct Session *self, int id)
-{
-    return id == 6 || id == 3 || id == 7 || id == 0xa || id == 0x10 || id == 0x11 || id == 0x13;
 }
 
 int session_is_guardian(struct Session *self, int job)

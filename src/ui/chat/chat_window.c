@@ -163,8 +163,6 @@ void ui_new_chat_wnd_move(struct UIWindow *window, int x, int y)
     ui_window_to_screen(wnd, &sx, &sy);
     self->backdrop.x = sx + 3;
     self->backdrop.y = self->tab_height + sy;
-    if (g_windowMgr.sub_chat_mini_wnd)
-        ui_window_send_msg(g_windowMgr.sub_chat_mini_wnd, wnd, UI_MSG_COMMAND, MINI_ID_PLACE, wnd->width + x, wnd->height + y, 0);
 }
 
 void ui_new_chat_wnd_store_info(struct UIWindow *window)

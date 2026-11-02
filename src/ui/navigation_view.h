@@ -12,7 +12,6 @@ void ui_navigation_relayout(void);
 void ui_navigation_invalidate(void);
 void ui_navigation_show_search(void);
 void ui_navigation_show_map(void);
-void ui_navigation_refresh_results(void);
 void ui_navigation_refresh_map(unsigned layers);
 void ui_navigation_chat(const char *text);
 void ui_navigation_message_box(const char *text);

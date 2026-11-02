@@ -36,7 +36,6 @@ void ez2str_effect_mgr_destroy(void);
 
 unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self);
 const struct EZ2STREntry *ez2_str_effect_mgr_find_by_effect_id(struct Ez2StrEffectMgr *self, int effect_id);
-int ez2_str_effect_mgr_get_effect_id(struct Ez2StrEffectMgr *self, const struct String *name);
 struct Vec *ez2_str_effect_mgr_get_effect_ids(struct Ez2StrEffectMgr *self, struct Vec *ids);
 
 #endif

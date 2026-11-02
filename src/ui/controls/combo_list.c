@@ -437,9 +437,3 @@ int ui_combo_box_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
         return ui_window_send_msg(self->chosen_to, &self->frame.base, COMBO_MSG_CHOSEN, val1, val2, val3, val4);
     return ui_window_send_msg(self->list, sender, msg, val1, val2, val3, val4);
 }
-
-void ui_combo_box_wnd_set_chosen_to(struct UIComboBoxWnd *self, struct UIWindow *chosen_to)
-{
-    if (chosen_to)
-        self->chosen_to = chosen_to;
-}

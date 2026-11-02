@@ -108,16 +108,6 @@ static void set_anim(struct AMachineEffect *self, int state, struct Ez2StrPartic
     entry->anim = p;
 }
 
-void a_machine_effect_play_attack(struct Effect *effect)
-{
-    struct AMachineEffect *self = (struct AMachineEffect *)effect;
-    struct Ez2StrParticle *p = a_machine_effect_get_anim(self, A_MACHINE_ATTACK);
-    if (p) {
-        ez2_str_particle_rewind(p);
-        self->state = A_MACHINE_ATTACK;
-    }
-}
-
 void a_machine_effect_init(struct Effect *effect)
 {
     struct AMachineEffect *self = (struct AMachineEffect *)effect;

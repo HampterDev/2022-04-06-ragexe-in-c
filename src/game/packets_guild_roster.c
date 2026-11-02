@@ -249,7 +249,6 @@ void game_mode_zc_member_add_del_name(struct GameMode *self, const struct Packet
 {
     const struct GuildMemberMemo *member = &packet->member;
     struct GuildMember record;
-    struct String text;
     char memo[MEMO_LENGTH + 1];
 
     (void)self;

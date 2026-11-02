@@ -152,16 +152,8 @@ int refining_selected_zeny(struct UIRefiningWnd * arg0) { abort(); }
 int refining_carried(int arg0) { abort(); }
 #endif
 
-#if UI_DROP_OWNER == 3
-
-#endif
-
 #if UI_DROP_OWNER == 4
 struct StdBitIter * std_vector_bool_erase_at(struct StdBitVector * arg0, struct StdBitIter * arg1, unsigned int * arg2, unsigned int arg3) { abort(); }
-#endif
-
-#if UI_DROP_OWNER == 7
-void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }
 #endif
 
 #if UI_DROP_OWNER == 8
@@ -174,6 +166,7 @@ void surface_destroy(struct Surface * arg0) { abort(); }
 #endif
 
 #if UI_DROP_OWNER == 10
+void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }
 int ui_item_base_wnd_index_at(struct UIItemBaseWnd * arg0, int arg1, int arg2) { abort(); }
 struct ItemInfo * ui_item_base_wnd_get_item(struct UIItemBaseWnd * arg0, struct ItemInfo * arg1, int arg2) { abort(); }
 struct ItemInfo * ui_item_base_wnd_item_at(struct UIItemBaseWnd * arg0, struct ItemInfo * arg1, int arg2, int arg3) { abort(); }

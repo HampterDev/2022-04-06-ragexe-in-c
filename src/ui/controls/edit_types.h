@@ -40,13 +40,6 @@ struct UIEditCtrl4 {
     BYTE use_alt;
 };
 
-struct UIEditCtrlOldList {
-    struct UIEditCtrl edit;
-    struct String bitmap;
-    struct TextArray lines;
-    int line;
-};
-
 struct UIBitmapEditCtrl {
     struct UIEditCtrl edit;
     struct String bitmap;

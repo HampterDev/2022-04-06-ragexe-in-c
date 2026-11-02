@@ -102,13 +102,6 @@ static granny_control *playback_control(const struct GrannyPlayback *playback, i
     return playback->controls[animation];
 }
 
-float granny_playback_remaining(const struct GrannyPlayback *playback, int animation)
-{
-    granny_control *control = playback_control(playback, animation);
-
-    return control ? _GrannyGetControlDurationLeft(control) : 0.0f;
-}
-
 int granny_playback_finished(const struct GrannyPlayback *playback, int animation)
 {
     granny_control *control = playback_control(playback, animation);

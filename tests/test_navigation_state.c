@@ -59,8 +59,8 @@ int main(void)
     assert(!path.cells && !path.count);
     path_info_destroy(&path); assert(!live_blocks);
     texture.reqWidth = 320; texture.reqHeight = 200;
-    assert(texture_image_width(&texture) == 320 && texture_image_height(&texture) == 200);
-    assert(!texture_image_width(NULL) && !texture_image_height(NULL));
+    assert(texture_image_width(&texture) == 320);
+    assert(!texture_image_width(NULL));
     puts("Navigation: explicit guide result, owned copies, typed point growth, shared path state and texture queries passed");
     return 0;
 }

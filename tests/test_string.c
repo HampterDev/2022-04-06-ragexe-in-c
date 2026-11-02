@@ -140,10 +140,7 @@ static void check_operations(void)
     assert(string_find(&text, "", 3) == 3 && string_find(&text, "!!", 0) == STRING_NPOS);
     assert(string_rfind(&text, "c") == 3 && string_rfind(&text, "zz") == STRING_NPOS);
     assert(string_find_first_of(&text, "0123456789", 0) == 5);
-    assert(string_find_first_not_of(&text, "<abc", 0) == 4);
-    string_assign_cstr(&other, "  x y  ");
-    string_trim_left(&other, " ");
-    string_trim_right(&other, " ");
+    string_assign_cstr(&other, "x y");
     equal(&other, "x y", 3);
     string_copy(&copy, &other);
     assert(string_equal(&copy, &other) && string_equal_cstr(&copy, "x y") && !string_equal_cstr(&copy, "x"));

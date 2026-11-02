@@ -99,9 +99,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         wm_window_list_sort(&self->windows);
         wm_show(wnd);
         break;
-    case 0x34:
-        wnd = WM_OPEN(composition_wnd, ui_composition_wnd_new, 0x22, 0x22, WM_AT_XY, 0, 0);
-        break;
     case 0x33:
         wnd = self->candidate_wnd;
         if (wnd == NULL) {
@@ -271,28 +268,8 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
     case 0x74:
         wnd = WM_OPEN(auto_message_wnd, ui_auto_message_wnd_new, 0x118, 0x30, WM_AT_CENTER, 0xb9, 0xb4);
         break;
-    case 0x82:
-    case 0x83:
-    {
-        struct UIWindow **slot = window_id == 0x82 ? &self->sub_chat_st_wnd : &self->sub_chat_bt_wnd;
-
-        wnd = *slot;
-        if (wnd == NULL) {
-            wnd = ui_sub_chat_his_wnd_new();
-            *slot = wnd;
-            ui_window_create(wnd, 0x12c, 0x5f);
-            ui_window_mgr_add_window(self, wnd);
-            (*slot)->id = window_id;
-            wm_set_info(*slot, window_id == 0x82 ? &self->sub_chat_st_info : &self->sub_chat_bt_info);
-        }
-        ui_window_set_show(wnd, 0);
-        break;
-    }
     case 0x84:
         wnd = WM_OPEN(battle_msg_option_wnd, ui_battle_msg_option_wnd_new, 0x118, 0xc8, WM_AT_640, 0x190, 0xc8);
-        break;
-    case 0x85:
-        wnd = WM_OPEN(sub_chat_mini_wnd, ui_sub_chat_mini_wnd_new, 5, 5, WM_AT_NONE, 0, 0);
         break;
     case 0x89:
         if (string_equal_cstr(&g_session1.mdName, ""))
@@ -367,29 +344,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
             wm_window_list_sort(&self->windows);
         }
         ui_window_set_show(wnd, g_session1.cameraInfoShown);
-        break;
-    case 0x123:
-        wnd = ui_window_mgr_get_window(self, 0x123);
-        if (wnd) {
-            wm_show(wnd);
-            ui_window_mgr_raise_window(self, wnd);
-            break;
-        }
-        wnd = ui_trans_menu_wnd_new();
-        ui_window_create(wnd, 0x1e, 0x28);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x125:
-        if (ui_window_mgr_get_window(self, 0x125))
-            return NULL;
-        wnd = ui_render_target_wnd_new();
-        {
-            int height = (int)((float)g_renderer->height * 0.25f);
-
-            ui_window_create(wnd, (int)((float)g_renderer->width * 0.25f), height);
-        }
-        wm_move(wnd, 0, 0);
-        ui_window_mgr_add_window(self, wnd);
         break;
     case 0x12f:
         wnd = ui_window_mgr_get_window(self, 0x12f);

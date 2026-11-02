@@ -157,14 +157,6 @@ struct JsonTree *json_value_at(struct JsonTree *array, unsigned index)
     return &array->u.items[index];
 }
 
-struct JsonTree *json_value_get(const struct JsonTree *object, struct JsonTree *out,
-                    const char *key, const struct JsonTree *fallback)
-{
-    const struct JsonTree *value = object ? json_tree_find(object, key, strlen(key)) : NULL;
-    json_value_copy(out, value ? value : fallback);
-    return out;
-}
-
 void json_value_append(struct JsonTree *array, const struct JsonTree *value)
 {
     struct JsonTree copy, *slot;
@@ -177,37 +169,6 @@ void json_value_append(struct JsonTree *array, const struct JsonTree *value)
     *slot = copy;
 }
 
-size_t json_value_size(const struct JsonTree *value)
-{
-    return value && (value->type == JSON_TREE_ARRAY || value->type == JSON_TREE_OBJECT) ? value->count : 0;
-}
-
-struct JsonTree *json_value_child(struct JsonTree *parent, size_t index)
-{
-    if (index >= json_value_size(parent))
-        return NULL;
-    return parent->type == JSON_TREE_ARRAY ? &parent->u.items[index] : &parent->u.members[index].value;
-}
-
-double json_value_as_double(const struct JsonTree *value)
-{
-    if (!value)
-        return 0;
-    switch (value->type) {
-    case JSON_TREE_INT64: return (double)value->u.i64;
-    case JSON_TREE_UINT64: return (double)value->u.u64;
-    case JSON_TREE_DOUBLE: return value->u.dbl;
-    case JSON_TREE_BOOL: return value->boolean;
-    default: return 0;
-    }
-}
-
-int json_value_as_int(const struct JsonTree *value)
-{
-    double number = json_value_as_double(value);
-    return number >= INT_MIN && number <= INT_MAX ? (int)number : 0;
-}
-
 struct TextView json_value_text(const struct JsonTree *value)
 {
     if (value && value->type == JSON_TREE_STRING)
@@ -215,16 +176,6 @@ struct TextView json_value_text(const struct JsonTree *value)
     if (value && value->type == JSON_TREE_BOOL)
         return text_view_cstr(value->boolean ? "true" : "false");
     return text_view("", 0);
-}
-
-char json_value_is_null(const struct JsonTree *value)
-{
-    return !value || value->type == JSON_TREE_NULL;
-}
-
-char json_value_is_object(const struct JsonTree *value)
-{
-    return value && value->type == JSON_TREE_OBJECT;
 }
 
 static void read_value(struct JsonTree *out, yyjson_val *value)

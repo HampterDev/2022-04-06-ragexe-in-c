@@ -1,7 +1,7 @@
 #define GRANNY_IMPORT
 #include "actor/render_ops.h"
 #include "actor/sprite_render.h"
-#include "actor/granny_pc.h"
+#include "actor/granny_actor.h"
 #include "actor/granny_actor.h"
 #include "contents/body_layer.h"
 #include "game/context.h"
@@ -21,7 +21,7 @@ struct Session g_session1;
 struct Renderer *g_renderer;
 float g_sinTable[361];
 static DWORD tick;
-static float camera_scale = 2.0f, time_left, sampled_time;
+static float camera_scale = 2.0f, sampled_time;
 static int finished, samples, plays, use_hover;
 static unsigned draws;
 static struct SqQuad submitted[16];
@@ -57,8 +57,6 @@ void render_object_submit_spr_quad(struct RenderObject *o,struct SqQuad *q,
 GrannyClock __stdcall _GrannyGetSystemSeconds(void) { GrannyClock c={{0}};return c; }
 float __stdcall _GrannyGetSecondsElapsed(const GrannyClock *a,const GrannyClock *b)
 { assert(a&&b);return 0.25f; }
-float granny_playback_remaining(const struct GrannyPlayback *p,int a)
-{ (void)p;assert(a==2);return time_left; }
 int granny_playback_finished(const struct GrannyPlayback *p,int a)
 { assert(p&&a==2);return finished; }
 struct granny_world_pose *granny_playback_pose(struct GrannyPlayback *p,float t)
@@ -105,7 +103,7 @@ static void overlays(void)
 static void motions(void)
 {
     struct RenderObjectOps ops={0};struct RenderObject object={0};
-    struct GrannyPc pc={0};struct C3dGrannyGameActor actor={0};struct GrannyModelState model={0};
+    struct C3dGrannyGameActor actor={0};struct GrannyModelState model={0};
     ops.base.get_direction=direction;ops.update_motion=render_object_update_motion_base;
     object.ops=&ops.base;object.roty=90;object.base_action=8;object.motion_delay=2;
     object.act=(struct ActRes *)&object;expected_object=&object;tick=288;
@@ -113,10 +111,6 @@ static void motions(void)
     object.play_mode=1;object.plays=1;render_object_update_motion(&object);
     assert(object.motion==4&&object.motion_finished);
     object.motion=20;render_object_update_motion(&object);assert(object.motion==4);
-    ops.update_motion=granny_pc_update_motion;pc.ops=&ops.base;pc.state=2;
-    time_left=0.1f;render_object_update_motion((struct RenderObject *)&pc);assert(!pc.motion_finished);
-    time_left=0.099f;render_object_update_motion((struct RenderObject *)&pc);assert(pc.motion_finished);
-    pc.state=0;pc.motion_finished=0;render_object_update_motion((struct RenderObject *)&pc);assert(pc.motion_finished);
     ops.update_motion=c3d_granny_game_actor_update_motion;actor.ops=&ops.base;
     actor.state=2;actor.attack_delay_factor=0.5f;
     render_object_update_motion((struct RenderObject *)&actor);assert(!actor.motion_finished&&!samples);
@@ -129,6 +123,6 @@ static void motions(void)
 int main(void)
 {
     callers();overlays();motions();
-    puts("Render operations: real overlay callers, signed hover, geometry and three motion targets passed");
+    puts("Render operations: real overlay callers, signed hover, geometry and two motion targets passed");
     return 0;
 }

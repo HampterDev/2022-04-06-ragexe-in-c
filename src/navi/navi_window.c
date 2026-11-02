@@ -254,50 +254,6 @@ void navi_manager_report_status(struct NaviManager *self, int status, int how)
     string_free(&text);
 }
 
-unsigned char navi_manager_describe_destination(struct NaviManager *self, char *out, int size)
-{
-    char buf[260];
-    void *obj;
-    int len;
-
-    if (!out || !self->destination.obj)
-        return 0;
-    memset(out, 0, size);
-    memset(buf, 0, 0x104);
-    obj = self->destination.obj;
-    if (self->destination.kind == NAVI_RESULT_NPC) {
-        struct NaviMap *map = navi_object_map(obj);
-        struct NaviPoint a, b;
-        int y = navi_object_position(obj, &a)->y;
-
-        sprintf(buf, "%s %d %d", navi_map_name(map), navi_object_position(obj, &b)->x, y);
-    } else if (self->destination.kind == NAVI_RESULT_MOB) {
-        sprintf(buf, "%s", navi_map_name(navi_object_map(obj)));
-    } else if (self->destination.kind == NAVI_RESULT_MAP) {
-        sprintf(buf, "%s", navi_map_name(obj));
-    } else if (self->destination.kind == NAVI_RESULT_PLACE) {
-        struct NaviPoint a, b;
-        int y = navi_manager_target_pos(self, &a)->y;
-
-        sprintf(buf, "%s %d %d", navi_map_name(obj),
-                    navi_manager_target_pos(self, &b)->x, y);
-    } else {
-        return 0;
-    }
-
-    len = (int)strlen(buf);
-    if (size > len) {
-        memcpy(out, buf, len);
-    } else {
-        char cut[260];
-
-        memset(cut, 0, 0x104);
-        memcpy(cut, buf, size - 4);
-        sprintf(out, "%s...", cut);
-    }
-    return 1;
-}
-
 static unsigned char navigate_on(struct NaviManager *self, const char *mapName, struct NaviMap *map,
         struct SearchResult *r, struct String *label, int kind, int flags, unsigned char silent,
         int x, int y, int id)
@@ -444,13 +400,4 @@ unsigned char navi_manager_run_search(struct NaviManager *self)
     }
     string_free(&text);
     return 1;
-}
-
-void navi_manager_search_again(struct NaviManager *self)
-{
-    struct String query;
-
-    string_copy(&query, &self->searchText);
-    if (navi_manager_search(self, query, self->searchFilter, &self->results))
-        ui_navigation_refresh_results();
 }

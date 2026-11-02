@@ -6,7 +6,6 @@
 #include "session/state.h"
 #include "session/session_talk.h"
 #include "ui/window_manager_state.h"
-#include "core/object_type.h"
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
 #include "world/actor_lookup.h"
@@ -286,9 +285,7 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
         return toggle(&g_windowMgr, 0x111);
     case 0x96: return toggle(&g_windowMgr, 0x10e);
     case 0x97:
-        command(ui_window_find(0x133), 0x1d4);
-        return command((struct UIWindow *)object_as_type(ui_window_find(0xb6), OBJECT_BASIC_BUTTONS_WINDOW),
-                       0x1d4);
+        return command(ui_window_find(0x133), 0x1d4);
     case 0x9b: return command(ui_window_find(0x24), 0x21d);
     case 0x9d: return toggle(&g_windowMgr, 0x144);
     case 0x9f:

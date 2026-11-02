@@ -42,8 +42,6 @@ void dc_bitmap_draw(struct DcBitmap *b, int x, int y, int w, int h, DWORD tint)
 { assert(b == &bitmap); dimensions(x,y,w,h,tint); ++bitmaps; }
 void texture_draw_surface(struct Texture *t, int x, int y, int w, int h, DWORD tint)
 { assert(t == &texture); dimensions(x,y,w,h,tint); ++textures; }
-struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *mgr, int id)
-{ (void)mgr; assert(id == WND_ID_BASIC_BUTTONS); return NULL; }
 void ui_window_flush_quads(struct UIWindow *w)
 { assert(w == &window && renders == 1); ++flushes; }
 void icon_sheet_flush_bars(struct StateIconSheet *sheet)
@@ -66,7 +64,6 @@ void draw_box_screen(int x,int y,int w,int h,DWORD tint)
     ++boxes;
 }
 void ui_ro_map_wnd_render_overlay(struct UIRoMapWnd *w) { (void)w;assert(0); }
-void ui_buttons_of_basic_wnd_render_buttons(struct UIButtonsOfBasicWnd *w) { (void)w;assert(0); }
 
 static void run_cases(void)
 {

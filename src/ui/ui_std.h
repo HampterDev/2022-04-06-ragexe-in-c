@@ -28,10 +28,6 @@ struct TreeNode;
 struct Vec;
 struct TagLink;
 
-struct IntString {
-    int key;
-    struct String text;
-};
 struct BitIter {
     DWORD *word;
     unsigned bit;

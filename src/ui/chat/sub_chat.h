@@ -31,8 +31,5 @@ OFFSET_ASSERT(UISubChatHisWnd, key, 0xd4);
 OFFSET_ASSERT(UISubChatHisWnd, name, 0xf0);
 
 struct UISubChatHisWnd *ui_sub_chat_his_wnd_construct(struct UISubChatHisWnd *self);
-struct UIWindow *ui_sub_chat_his_wnd_new(void);
-struct UISubChatMiniWnd *ui_sub_chat_mini_wnd_construct(struct UISubChatMiniWnd *self);
-struct UIWindow *ui_sub_chat_mini_wnd_new(void);
 
 #endif

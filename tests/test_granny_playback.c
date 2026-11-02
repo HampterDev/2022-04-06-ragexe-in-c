@@ -62,7 +62,6 @@ int main(void)
     before = sdk_calls;
     assert(granny_playback_play(first, 2, 99) && sdk_calls == before);
     assert(sdk_controls[2].loops == 2);
-    assert(granny_playback_remaining(first, 2) == 10.0f);
     first_pose = granny_playback_pose(first, 10.0f);
     assert(granny_playback_finished(first, 2));
     assert(!granny_playback_finished(first, -1));

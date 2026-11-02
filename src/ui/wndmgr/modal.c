@@ -72,23 +72,3 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
     list_push_back(&self->windows, &box, sizeof box);
     return run_modal(self, box, 1);
 }
-
-#define WM_MESSAGE_BOX_MAX 5
-
-void ui_window_mgr_modeless_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg5, const char *title, int width, int height, const char *picture)
-{
-    struct UIWindow *box;
-
-    if (VEC_COUNT(&self->message_boxes, struct UIWindow *) > WM_MESSAGE_BOX_MAX) {
-        MessageBoxA(g_hMainWnd, "Max MessageBox Count", "ERROR", MB_OK);
-        return;
-    }
-    box = (struct UIWindow *)ui_message_box_new();
-    ui_message_box_create((struct UIMessageBox *)box, text, type, arg3, arg5, title, width, height, 0, picture);
-    list_push_back(&self->windows, &box, sizeof box);
-    vec_push(&self->message_boxes, &box, sizeof box);
-    self->capture = NULL;
-    if (self->focus_edit)
-        ui_window_on_focus_lost(self->focus_edit);
-    self->focus_edit = NULL;
-}

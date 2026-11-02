@@ -7,8 +7,6 @@
 
 #include "actor/game_actor.h"
 
-struct GrannyPc;
-
 void pc_destruct(struct Pc *self);
 
 void pc_set_layer_act(struct Pc *self, int layer, const char *name);

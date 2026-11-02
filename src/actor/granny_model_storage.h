@@ -30,7 +30,5 @@ void granny_model_state_destroy(struct GrannyModelState *model);
 const struct GrannyMeshVertex *granny_model_prepare_mesh(struct GrannyModelState *model, int mesh,
                                                         granny_world_pose *pose,
                                                         struct GrannyHairPivot *hair);
-const struct GrannyMeshVertex *granny_model_cached_vertices(struct GrannyModelState *model, int mesh);
-int granny_model_find_hair_pivot(const struct GrannyModelState *model);
 
 #endif

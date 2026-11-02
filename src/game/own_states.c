@@ -51,15 +51,6 @@ void own_states_remove(int low, int high)
             entries[write++] = entries[read];
     count = write;
 }
-void own_states_set_value(int index, int value)
-{
-    size_t i;
-    for (i = 0; i < count; ++i)
-        if (entries[i].index == index) {
-            entries[i].value = value;
-            return;
-        }
-}
 int own_states_set_present(int index, int present)
 {
     size_t i;

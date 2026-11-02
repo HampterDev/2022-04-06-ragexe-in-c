@@ -11,7 +11,6 @@
 
 struct Vec;
 struct UICheckBox;
-struct UISlotBitmap;
 struct UIWindow;
 
 enum UIButtonState {
@@ -140,38 +139,6 @@ struct UIWindow *ui_sprite_button_construct(struct UIWindow *self);
 void ui_sprite_button_set_sprite(struct UIWindow *self, const char *path);
 void ui_sprite_button_set_act(struct UIWindow *self, const char *path);
 
-#define UI_MSG_BMP_BUTTON2_CLICK 0x64
-#define UI_MSG_BMP_BUTTON2_RCLICK 0x65
-struct UITVBitmapButton {
-    struct UIBitmapButton bmp;
-    int value;
-};
-
-#define UI_MSG_TV_DBLCLK 0x61
-#define UI_MSG_TV_PRESS 0x6b
-#define UI_MSG_TV_HOVER 0x6c
-#define UI_MSG_TV_RELEASE 0x6d
-struct UITVTextButton {
-    struct UIButton button;
-    BYTE boxed;
-    BYTE alt_text;
-    BYTE pressed;
-    BYTE framed;
-    BYTE filled;
-    COLORREF frame_colour;
-    COLORREF fill_colour;
-    COLORREF text_colour;
-    COLORREF outline_colour;
-    COLORREF alt_text_colour;
-    BYTE outlined;
-    int font_height;
-    int font_face;
-    struct String label;
-    int value;
-};
-void uitv_text_button_fit(struct UITVTextButton *self);
-void uitv_text_button_set_text(struct UITVTextButton *self, struct TextView text);
-
 void ui_bmp_text_button_on_draw(struct UIWindow *self);
 
 void ui_button_destroy(struct UIWindow *window);
@@ -196,36 +163,7 @@ void ui_text_button_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_text_button_on_r_btn_down(struct UIWindow *self, int x_unused, int y_unused);
 void ui_text_button_on_r_btn_up(struct UIWindow *self, int x, int y);
 void ui_text_button_on_wheel(struct UIWindow *self, int delta);
-void ui_bitmap_button2_destruct(struct UIBitmapButton *self);
-void ui_bitmap_button2_destroy(struct UIWindow *window);
-void ui_bitmap_button2_drag_and_drop(struct UIWindow *self, int x, int y, const struct DragInfo *drag);
-void ui_bitmap_button2_on_l_btn_up(struct UIWindow *self, int x, int y);
-void ui_bitmap_button2_on_r_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-void ui_bitmap_button2_on_r_btn_up(struct UIWindow *self, int x, int y);
-void uitv_bitmap_button_destruct(struct UITVBitmapButton *self);
-void uitv_bitmap_button_destroy(struct UIWindow *window);
-void uitv_bitmap_button_on_l_btn_up(struct UIWindow *self, int x, int y);
-void uitv_bitmap_button_on_r_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-void uitv_bitmap_button_on_r_btn_up(struct UIWindow *self, int x, int y);
-void uitv_text_button_destruct(struct UITVTextButton *self);
-void uitv_text_button_destroy(struct UIWindow *window);
-void uitv_text_button_on_draw(struct UIWindow *self);
-void uitv_text_button_on_l_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-void uitv_text_button_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
-void uitv_text_button_on_mouse_move(struct UIWindow *self, int x, int y);
-void uitv_text_button_on_mouse_shape(struct UIWindow *self, int x, int y);
-void uitv_text_button_on_l_btn_up(struct UIWindow *self, int x, int y);
-void uitv_text_button_on_r_btn(struct UIWindow *self, int x, int y);
 void ui_bmp_text_button_set_caption(struct UIBmpTextButton *self, struct TextView text);
-
-void ui_slot_bitmap_destruct(struct UISlotBitmap *self);
-void ui_slot_bitmap_destroy(struct UIWindow *window);
-void ui_slot_bitmap_on_create(struct UIWindow *self, int width_unused, int height_unused);
-void ui_slot_bitmap_on_l_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-void ui_slot_bitmap_on_l_btn_dbl_clk(struct UIWindow *self, int x_unused, int y_unused);
-void ui_slot_bitmap_on_r_btn_down(struct UIWindow *self, int x_unused, int y_unused);
-int ui_slot_bitmap_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
 
 void ui_sprite_button_destruct(struct UISpriteButton *self);
 void ui_sprite_button_destroy(struct UIWindow *window);
@@ -239,10 +177,6 @@ struct UIWindow *ui_headspr_button_construct(struct UIWindow *wnd);
 void ui_headspr_button_destruct(struct UISpriteButton *self);
 void ui_headspr_button_destroy(struct UIWindow *window);
 void ui_headspr_button_on_draw(struct UIWindow *self);
-int ui_sprite_button_frame_height(struct UIWindow *self, int action,
-                                          int motion);
-int ui_sprite_button_frame_width(struct UIWindow *self, int action,
-                                         int motion);
 
 void ui_text_button_fit_width(struct UITextButton *self, int max_width,
                                       int height);

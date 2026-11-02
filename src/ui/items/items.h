@@ -73,8 +73,6 @@ struct UIWindow *ui_illust_wnd_new(void);
 struct UIItemBaseWnd *ui_item_base_wnd_construct(struct UIItemBaseWnd *self);
 void ui_item_base_wnd_destruct(struct UIItemBaseWnd *self);
 
-struct UIMixAcceptWnd *ui_mix_accept_wnd_construct(struct UIMixAcceptWnd *self);
-struct UIWindow *ui_mix_accept_wnd_new(void);
 struct UIYourItemWnd *ui_your_item_wnd_construct(struct UIYourItemWnd *self);
 struct UIWindow *ui_your_item_wnd_new(void);
 

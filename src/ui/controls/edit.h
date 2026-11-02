@@ -18,9 +18,7 @@ struct StdBitVector;
 struct List;
 struct Vec;
 struct UICandidateWnd;
-struct UICompositionWnd;
 struct UIScrollBar;
-struct UIShowAndEditTimeCtrl;
 struct UIWindow;
 struct UIWindowMgr;
 struct UIWindowOps;
@@ -168,12 +166,6 @@ int ui_edit_ctrl_var_id_send_msg(struct UIWindow *self, struct UIWindow *sender,
 void ui_edit_ctrl_var_id_set_text(struct UIEditCtrl *self, const char *text);
 void ui_edit_ctrl_wheel_destruct(struct UIEditCtrl *self);
 void ui_edit_ctrl_wheel_destroy(struct UIWindow *window);
-void ui_edit_ctrl_old_list_destruct(struct UIEditCtrlOldList *self);
-void ui_edit_ctrl_old_list_destroy(struct UIWindow *window);
-void ui_edit_ctrl_old_list_on_draw(struct UIWindow *self);
-void ui_edit_ctrl_old_list_on_wheel(struct UIWindow *self, int delta);
-int ui_edit_ctrl_old_list_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                         int msg, int val1, int val2, int val3, int val4);
 void ui_bitmap_edit_ctrl_destroy(struct UIWindow *window);
 void ui_bitmap_edit_ctrl_set_bitmap(struct UIBitmapEditCtrl *self, const char *name);
 void ui_bitmap_edit_ctrl_on_draw(struct UIWindow *self);
@@ -192,21 +184,6 @@ void ui_candidate_wnd_on_create(struct UIWindow *self, int width_unused, int hei
 void ui_candidate_wnd_on_draw(struct UIWindow *self);
 int ui_candidate_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
                                       int val1, int val2, int val3, int val4);
-struct UICompositionWnd *ui_composition_wnd_construct(struct UICompositionWnd *self);
-struct UIWindow *ui_composition_wnd_new(void);
-void ui_composition_wnd_destroy(struct UIWindow *window);
-void ui_composition_wnd_on_create(struct UIWindow *self, int width_unused,
-                                          int height_unused);
-void ui_composition_wnd_on_draw(struct UIWindow *self);
-int ui_composition_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                        int msg, int val1, int val2, int val3, int val4);
-
-void ui_show_and_edit_time_ctrl_destroy(struct UIWindow *window);
-void ui_show_and_edit_time_ctrl_on_create(struct UIWindow *self, int cx, int cy);
-void ui_show_and_edit_time_ctrl_on_draw(struct UIWindow *self);
-int ui_show_and_edit_time_ctrl_send_msg(struct UIWindow *self,
-                                             struct UIWindow *sender, int msg, int val1, int val2,
-                                             int val3, int val4);
 
 void ui_edit_ctrl_custom_draw_string(struct UIEditCtrlCustom *self, int x, int y, const char *text);
 

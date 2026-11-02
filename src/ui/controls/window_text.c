@@ -186,23 +186,6 @@ static void draw_runs_bk(struct UIWindow *self, struct TextDC *dc, int x, int y,
         text_dc_set_bk_mode(dc, TRANSPARENT);
 }
 
-void ui_window_text_out_runs_ex(struct UIWindow *self, int x, int y, const char *text,
-                                       int len, COLORREF *colour, int font_face, int font_height, int font_arg3,
-                                       int font_arg4, BYTE shadow)
-{
-    struct TextDC dc;
-    const char *end, *tag;
-
-    if (!len)
-        len = (int)strlen(text);
-    end = text + len;
-    tag = text + text_find_charset_tag(text, len, g_useCharsetTag);
-    dc_open(&dc, self);
-    text_dc_select_font(&dc, font_face, font_height, font_arg3, font_arg4);
-    draw_runs_bk(self, &dc, x, y, text, end, tag, colour, shadow);
-    text_dc_destruct(&dc);
-}
-
 void ui_window_text_out_runs(struct UIWindow *self, int x, int y, const char *text, int len,
                            COLORREF *colour, int font_face, int font_height, BYTE shadow)
 {

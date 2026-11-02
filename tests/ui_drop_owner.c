@@ -14,21 +14,11 @@ void test_drop_invoke(struct UIWindow *window, size_t size,
 #define DROP_OWNER UIRefiningWnd
 #define DROP_CALLBACK ui_refining_wnd_drag_and_drop
 #define DROP_TEST test_refine_drop
-#elif UI_DROP_OWNER == 3
-#include "../src/ui/controls/bitmap_tab.c"
-#define DROP_OWNER UIBitmapTab
-#define DROP_CALLBACK ui_bitmap_tab_drag_and_drop
-#define DROP_TEST test_bitmap_tab_drop
 #elif UI_DROP_OWNER == 4
 #include "../src/ui/controls/tab_control.c"
 #define DROP_OWNER UITabControl
 #define DROP_CALLBACK ui_tab_control_drag_and_drop
 #define DROP_TEST test_tab_drop
-#elif UI_DROP_OWNER == 7
-#include "../src/ui/controls/button.c"
-#define DROP_OWNER UIBitmapButton
-#define DROP_CALLBACK ui_bitmap_button2_drag_and_drop
-#define DROP_TEST test_button_drop
 #elif UI_DROP_OWNER == 8
 #include "../src/ui/controls/window_base.c"
 #define DROP_OWNER UIWindow

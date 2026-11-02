@@ -18,7 +18,6 @@ const struct OwnStateEntry *own_states_find(int index);
 int own_states_push(const struct OwnStateEntry *entry);
 void own_states_erase_at(size_t position);
 void own_states_remove(int low, int high);
-void own_states_set_value(int index, int value);
 int own_states_set_present(int index, int present);
 void own_states_clear(void);
 void own_states_destroy(void);

@@ -105,29 +105,3 @@ const struct GrannyMeshVertex *granny_model_prepare_mesh(struct GrannyModelState
                                        &mesh->indices, &mesh->triangles, mesh->matrix,
                                        &input, mesh->vertices);
 }
-
-const struct GrannyMeshVertex *granny_model_cached_vertices(struct GrannyModelState *model, int index)
-{
-    const struct GrannyMeshVertex *vertices;
-    struct GrannyMeshState *mesh;
-
-    if (!model || index < 0 || index >= model->mesh_count)
-        return NULL;
-    mesh = &model->meshes[index];
-    vertices = c3d_granny_model_res_rigid_mesh_vertices(model->resource, index);
-    return vertices ? vertices : mesh->vertices ? mesh->vertices->vertices : NULL;
-}
-
-int granny_model_find_hair_pivot(const struct GrannyModelState *model)
-{
-    int i;
-
-    if (!model)
-        return -1;
-    for (i = 0; i < model->mesh_count; i++) {
-        const char *name = model->resource->model->meshes[i].mesh->Name;
-        if (name && strstr(name, "hair_pivot"))
-            return i;
-    }
-    return -1;
-}

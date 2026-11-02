@@ -22,7 +22,7 @@ int main(void)
     memset(mgr, 0, sizeof *mgr);
     mgr->loading_wnd = gone;
     mgr->apply_for_party_wnd = gone;
-    mgr->quit_wnd = gone;
+    mgr->skill_describe_wnd = gone;
     mgr->item_store_sub_wnd[3] = gone;
     mgr->modal_wnd = gone;
     mgr->capture = gone;
@@ -36,7 +36,7 @@ int main(void)
 
     ui_window_mgr_forget_window(mgr, gone);
 
-    assert(mgr->loading_wnd == NULL && mgr->apply_for_party_wnd == NULL && mgr->quit_wnd == NULL);
+    assert(mgr->loading_wnd == NULL && mgr->apply_for_party_wnd == NULL && mgr->skill_describe_wnd == NULL);
     assert(mgr->item_store_sub_wnd[3] == NULL);
     assert(mgr->modal_wnd == NULL && mgr->capture == NULL && mgr->capture_root == NULL);
     assert(mgr->focus_edit == NULL && mgr->mouse_wnd == NULL);

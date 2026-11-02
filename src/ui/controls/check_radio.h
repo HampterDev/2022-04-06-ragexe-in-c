@@ -84,6 +84,5 @@ void ui_bmp_radio_btn_set_text_style(struct UIWindow *wnd, int look,
                                            int x, int y);
 struct UIWindow *ui_bmp_radio_btn_create(int value);
 void ui_bmp_radio_btn_set_caption(struct UIWindow *wnd, struct TextView text);
-void ui_bmp_radio_btn_set_tool_tip(struct UIWindow *wnd, const char *text);
 
 #endif

@@ -7,34 +7,10 @@
 #include "ui/character/selection_buttons.h"
 
 struct ItemInfo;
-struct UIBasicItemCtrl;
-struct UIBasicSkillCtrl;
 struct DragInfo;
 struct UISlotBmpButton;
-struct UIStaticItem;
 struct UIWindow;
 
-void ui_basic_item_ctrl_destroy(struct UIWindow *window);
-void ui_basic_item_ctrl_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-void ui_basic_item_ctrl_on_draw(struct UIWindow *self);
-void ui_basic_item_ctrl_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
-void ui_basic_item_ctrl_on_mouse_hover(struct UIWindow *self, int x_unused, int y_unused);
-void ui_basic_item_ctrl_on_r_btn_down(struct UIWindow *self, int x, int y);
-void ui_basic_skill_ctrl_destroy(struct UIWindow *window);
-void ui_basic_skill_ctrl_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-void ui_basic_skill_ctrl_on_draw(struct UIWindow *self);
-void ui_basic_skill_ctrl_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
-void ui_basic_skill_ctrl_on_mouse_hover(struct UIWindow *self, int x_unused, int y_unused);
-void ui_basic_skill_ctrl_on_r_btn_down(struct UIWindow *self, int x, int y);
-void ui_static_item_destruct(struct UIStaticItem *self);
-void ui_static_item_illust_destruct(struct UIStaticItem *self);
-void ui_static_item_destroy(struct UIWindow *window);
-void ui_static_item_illust_destroy(struct UIWindow *window);
-void ui_static_item_on_draw(struct UIWindow *self);
-void ui_static_item_illust_on_draw(struct UIWindow *self);
-void ui_static_item_on_mouse_hover(struct UIWindow *self, int x_unused, int y_unused);
-void ui_static_item_illust_on_mouse_hover(struct UIWindow *self, int x, int y);
-void ui_static_item_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_slot_bmp_button_destruct(struct UISlotBmpButton *self);
 void ui_slot_bmp_button_destroy(struct UIWindow *window);
 void ui_slot_bmp_button_on_create(struct UIWindow *self, int width, int height);

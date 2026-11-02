@@ -99,54 +99,6 @@ const struct UIWindowOps ui_message_box_ops = {
     .hit_test = ui_window_hit_test_base,
     .render_overlay = ui_window_render_overlay_base,
 };
-void ui_message_box_autoreturn_destroy(struct UIWindow *window);
-void ui_message_box_autoreturn_on_process(struct UIWindow *self);
-void ui_message_box_autoreturn_on_draw(struct UIWindow *self);
-int ui_message_box_autoreturn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
-const struct UIWindowOps ui_message_box_autoreturn_ops = {
-    .destroy = ui_message_box_autoreturn_destroy,
-    .resize = ui_window_resize_base,
-    .is_frame = 1,
-    .refreshes_children = 0,
-    .move = ui_frame_wnd_move,
-    .is_focusable = ui_window_is_focusable_base,
-    .get_backdrop_box = ui_window_get_backdrop_box_base,
-    .is_click_through = ui_window_is_click_through_base,
-    .is_hit_testable = ui_window_is_hit_testable_base,
-    .drag_and_drop = ui_window_drag_and_drop_base,
-    .store_info = ui_window_store_info_base,
-    .save_pos = ui_frame_wnd_save_pos,
-    .move_delta = ui_frame_wnd_move_delta,
-    .set_show = ui_window_set_show_base,
-    .on_create = ui_window_on_create_base,
-    .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_message_box_autoreturn_on_process,
-    .on_draw = ui_message_box_autoreturn_on_draw,
-    .on_focus = ui_window_on_focus_base,
-    .on_focus_lost = ui_window_on_focus_lost_base,
-    .on_l_btn_down = ui_frame_wnd_on_l_btn_down,
-    .on_l_btn_dbl_clk = ui_window_on_l_btn_dbl_clk_base,
-    .on_mouse_move = ui_frame_wnd_on_mouse_move,
-    .on_mouse_hover = ui_frame_wnd_on_mouse_hover,
-    .track_mouse = ui_window_track_mouse_base,
-    .on_mouse_shape = ui_window_on_mouse_shape_base,
-    .on_l_btn_up = ui_frame_wnd_on_l_btn_up,
-    .on_r_btn_down = ui_window_on_r_btn_down_base,
-    .on_r_btn_up = ui_window_on_r_btn_up_base,
-    .on_wheel = ui_window_on_wheel_base,
-    .snap = ui_frame_wnd_snap,
-    .send_msg = ui_message_box_autoreturn_send_msg,
-    .invalidate = ui_window_invalidate_base,
-    .render = ui_window_render_base,
-    .has_custom_backdrop = 0,
-    .draw_backdrop = ui_window_draw_backdrop_base,
-    .type = UI_TYPE_FRAME,
-    .on_hover_enter = ui_window_on_hover_enter_base,
-    .on_hover_leave = ui_window_on_hover_leave_base,
-    .make_quad = ui_window_make_quad_base,
-    .hit_test = ui_window_hit_test_base,
-    .render_overlay = ui_window_render_overlay_base,
-};
 
 static void msgbox_frame(struct UIMessageBox *self, const struct UIWindowOps *ops)
 {
@@ -367,51 +319,6 @@ int ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, in
         return 0;
     case MSGBOX_MSG_GET_FC:
         return self->keep_text == 1;
-    }
-    return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
-}
-
-void ui_message_box_autoreturn_destruct(struct UIMessageBox *self)
-{
-    self->frame.base.ops = &ui_message_box_autoreturn_ops;
-    string_free(&self->text);
-    string_free(&self->format);
-    self->frame.base.ops = &ui_frame_wnd_ops;
-    ui_window_destruct(&self->frame.base);
-}
-
-void ui_message_box_autoreturn_destroy(struct UIWindow *window)
-{
-    struct UIMessageBox *self = (struct UIMessageBox *)window;
-    ui_message_box_autoreturn_destruct(self);
-    mem_free(self);
-}
-
-void ui_message_box_autoreturn_on_process(struct UIWindow *window)
-{
-    struct UIMessageBox *self = (struct UIMessageBox *)window;
-    unsigned total_ms, gone;
-
-    if (!self->counting || !msgbox_tick(self))
-        return;
-    total_ms = (unsigned)self->total * 1000;
-    gone = timeGetTime() + (total_ms - self->end);
-    ui_bar_graph_set_pos(self->gauge, (float)(double)(gone * 100 / total_ms));
-}
-
-void ui_message_box_autoreturn_on_draw(struct UIWindow *window)
-{
-    struct UIMessageBox *self = (struct UIMessageBox *)window;
-    ui_window_draw_bitmap(&self->frame.base, 0, 0, ui_skin_bitmap(UI_SKIN "win_msgbox.bmp"), 0);
-}
-
-int ui_message_box_autoreturn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                              int val2, int val3, int val4)
-{
-    struct UIMessageBox *self = (struct UIMessageBox *)window;
-    if (msg == UI_MSG_COMMAND) {
-        g_windowMgr.modal_result = val1;
-        return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }

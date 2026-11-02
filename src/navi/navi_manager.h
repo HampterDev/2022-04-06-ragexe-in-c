@@ -64,7 +64,6 @@ void navi_manager_arrive(struct NaviManager *self);
 unsigned char navi_manager_plan_route(struct NaviManager *self,
         struct NaviMap *here, int x, int y);
 void navi_manager_resume(struct NaviManager *self);
-unsigned char navi_manager_guide_result(struct NaviManager *self, int index);
 unsigned char navi_manager_guide_selected(struct NaviManager *self);
 
 float navi_manager_fit_minimap(struct NaviManager *self, int *ox, int *oy,
@@ -82,11 +81,8 @@ void navi_manager_load_grid_images(struct NaviManager *self);
 unsigned char navi_manager_fill_from_passes(struct NaviManager *self);
 unsigned char navi_manager_fill_target_passes(struct NaviManager *self, int x, int y);
 
-unsigned char navi_manager_guided_on_map(struct NaviManager *self, const char *name);
 int navi_manager_guided_kind(struct NaviManager *self);
 unsigned char navi_manager_player_cell(struct NaviManager *self, int *x, int *y);
-int navi_manager_walk_distance(struct NaviManager *self);
-unsigned char navi_manager_arrives_near_target(struct NaviManager *self);
 int navi_manager_route_step(struct NaviManager *self);
 struct NaviLink *navi_manager_route_link_at(struct NaviManager *self, int index);
 struct SearchResult *navi_manager_guided(struct NaviManager *self, struct SearchResult *out);
@@ -103,10 +99,7 @@ struct String *navi_manager_step_text(struct NaviManager *self, struct String *o
 struct String *navi_manager_step_map_name(struct NaviManager *self, struct String *out);
 struct String *navi_manager_target_label(struct NaviManager *self, struct String *out);
 void navi_manager_report_status(struct NaviManager *self, int status, int how);
-unsigned char navi_manager_describe_destination(struct NaviManager *self, char *out, int size);
-void navi_manager_group_each_result(struct NaviManager *self);
 unsigned char navi_manager_run_search(struct NaviManager *self);
-void navi_manager_search_again(struct NaviManager *self);
 
 struct NaviUiRecord *navi_ui_record_construct(struct NaviUiRecord *self, int style,
         int x, int y, const char *text, unsigned colour, unsigned colour2);
@@ -120,7 +113,6 @@ void navi_manager_request_airship(struct NaviManager *self, struct String mapNam
 
 void navi_manager_clear_info_lines(struct NaviManager *self);
 void navi_manager_clear_groups(struct NaviManager *self);
-void navi_manager_clear_results(struct NaviManager *self);
 int navi_manager_group_of(struct NaviManager *self, int index);
 struct SearchResult *navi_manager_result_at(struct NaviManager *self,
         struct SearchResult *out, int index);

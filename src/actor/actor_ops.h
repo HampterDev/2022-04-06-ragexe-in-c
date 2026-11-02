@@ -50,7 +50,6 @@ struct GameActorOps {
 
 extern const struct GameActorOps game_actor_ops;
 extern const struct GameActorOps c3d_granny_game_actor_ops;
-extern const struct GameActorOps granny_pc_ops;
 extern const struct GameActorOps pc_ops;
 extern const struct GameActorOps player_ops;
 extern const struct GameActorOps npc_ops;
@@ -312,22 +311,6 @@ void game_actor_set_request2(struct GameActor *actor, const int *value0, int val
 void game_actor_set_state(struct GameActor *actor, int value0, unsigned char value1);
 void game_actor_set_unit_cell(struct GameActor *actor);
 void game_actor_walk_motion(struct GameActor *actor);
-int64_t granny_pc_get_weapon(struct GameActor *actor);
-unsigned char granny_pc_process_state(struct GameActor *actor);
-void granny_pc_set_accessory(struct GameActor *actor, int value0);
-void granny_pc_set_accessory2(struct GameActor *actor, int value0);
-void granny_pc_set_accessory3(struct GameActor *actor, int value0);
-void granny_pc_set_delay_factor(struct GameActor *actor, int value0);
-void granny_pc_set_head(struct GameActor *actor, int value0);
-void granny_pc_set_head_pal_name(struct GameActor *actor);
-void granny_pc_set_honor(struct GameActor *actor, int value0);
-void granny_pc_set_honor_virtue(struct GameActor *actor, int value0, unsigned int value1);
-void granny_pc_set_imf_name(struct GameActor *actor);
-void granny_pc_set_spr_act(struct GameActor *actor, const struct ActorLook *value0);
-void granny_pc_set_spr_act_with_state(struct GameActor *actor, const struct ActorLook *value0, int value1);
-void granny_pc_set_spr_job(struct GameActor *actor, int value0);
-void granny_pc_set_state(struct GameActor *actor, int value0, unsigned char value1);
-void granny_pc_set_weapon(struct GameActor *actor, int64_t value0);
 void npc_clear_unit_cell(struct GameActor *actor);
 void npc_set_job_and_sex(struct GameActor *actor, int value0, int value1);
 void npc_set_state(struct GameActor *actor, int value0, unsigned char value1);
@@ -368,7 +351,6 @@ void pc_set_shoes(struct GameActor *actor, int value0);
 struct ActorHeadExtent pc_get_head_extent(struct GameActor *actor);
 int pc_get_sprite_variant(struct GameActor *actor);
 void pc_set_sprite_variant(struct GameActor *actor, int value0);
-void granny_pc_set_shield(struct GameActor *actor, int value0);
 
 void actor_default_bool(struct GameActor *actor, unsigned char value0);
 unsigned char actor_default_false(struct GameActor *actor);

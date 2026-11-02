@@ -158,22 +158,6 @@ void item_info_set_item_id(struct ItemInfo *self, int itemId)
     string_assign_cstr(&self->id_text, s);
 }
 
-void item_info_set_option(struct ItemInfo *self, int idAndValue, BYTE param,
-                                   const int *index)
-{
-    if (*index >= ITEM_OPTION_COUNT)
-        return;
-    self->options[*index].id = (WORD)idAndValue;
-    self->options[*index].param = param;
-    self->options[*index].value = (WORD)((unsigned)idAndValue >> 16);
-}
-
-void item_info_set_slot(struct ItemInfo *self, const int *cardId, const int *index)
-{
-    if (*index < ITEM_SLOT_COUNT)
-        self->slot[*index] = *cardId;
-}
-
 unsigned char item_info_is_equipment_type(const struct ItemInfo *self)
 {
     switch (self->type) {

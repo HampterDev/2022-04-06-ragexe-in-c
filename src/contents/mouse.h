@@ -33,7 +33,6 @@ extern struct Mouse g_mouse;
 
 void mouse_read_state(struct Mouse *self);
 void mouse_reset_buttons(struct Mouse *self);
-void mouse_center(struct Mouse *self);
 void mouse_set_x(struct Mouse *self, int x);
 void mouse_set_y(struct Mouse *self, int y);
 void mouse_on_message(struct Mouse *self, HWND wnd, UINT msg, WPARAM wparam,

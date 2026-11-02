@@ -16,13 +16,6 @@
 
 #define WND_ITEM_TOOLTIP 0xf
 
-void drag_info_destroy(struct DragInfo *drag)
-{
-    string_free(&drag->name2);
-    string_free(&drag->name);
-    string_free(&drag->display_name);
-}
-
 void game_mode_reset_drag(struct GameMode *self)
 {
     struct DragInfo *drag = &self->drag;

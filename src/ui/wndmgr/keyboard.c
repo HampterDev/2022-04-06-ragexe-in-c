@@ -93,8 +93,6 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
     struct ListNode *node;
 
     wnd = self->modal_wnd;
-    if (wnd == NULL)
-        wnd = self->quit_wnd;
     if (wnd == NULL && self->npc_edit_dialog_wnd) {
         wnd = self->npc_edit_dialog_wnd;
     }

@@ -45,7 +45,6 @@ float game_camera_target_heading(void);
 void game_camera_limit_distance(float maximum);
 int game_map_dimensions(int *width, int *height);
 int game_copy_view_matrix(float matrix[12]);
-int game_copy_view_matrix_at(float matrix[12], float heading);
 int game_copy_camera_position(float position[3]);
 struct C3dGround15;
 struct C3dGround15 *game_current_ground(void);

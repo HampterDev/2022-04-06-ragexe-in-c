@@ -278,7 +278,7 @@ static void dragging(void)
     assert(drag->type == 5 && drag->price == 99 && drag->shop_index == 73 && display_identified == 1);
     assert(closes == 2 && !drag->index && !drag->named);
     barter_goods_ex_destruct(&expanded); barter_goods_destruct(&goods);
-    drag_info_destroy(drag);
+    string_free(&drag->name2); string_free(&drag->name); string_free(&drag->display_name);
     free(mode);
     assert(!allocations);
 }

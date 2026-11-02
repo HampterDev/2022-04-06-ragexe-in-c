@@ -654,8 +654,6 @@ call "%~dp0build_named_client_dispatch.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_ui_drop.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%~dp0build_ui_string.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_scroll_operations.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_list_operations.bat"

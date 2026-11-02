@@ -22,8 +22,6 @@ struct UIMakeTargetListWnd *ui_make_target_list_wnd_construct(struct UIMakeTarge
 struct UIWindow *ui_make_target_list_wnd_new(void);
 struct UIMakeTargetProcessWnd *ui_make_target_process_wnd_construct(struct UIMakeTargetProcessWnd *self);
 struct UIWindow *ui_make_target_process_wnd_new(void);
-struct UIMakeTargetResultWnd *ui_make_target_result_wnd_construct(struct UIMakeTargetResultWnd *self);
-struct UIWindow *ui_make_target_result_wnd_new(void);
 struct UIPetTamingDeceiveWnd *ui_pet_taming_deceive_wnd_construct(struct UIPetTamingDeceiveWnd *self);
 struct UIWindow *ui_pet_taming_deceive_wnd_new(void);
 struct UISelectCartWnd *ui_select_cart_wnd_construct(struct UISelectCartWnd *self);
@@ -43,14 +41,11 @@ void wm_set_info(struct UIWindow *wnd, void *info);
 void wm_show(struct UIWindow *wnd);
 int wm_center_x(int width);
 int wm_center_y(int height);
-int wm_half_x(int width);
-int wm_half_y(int height);
 void wm_move_640(struct UIWindow *wnd, int x, int y480);
 void wm_move_640_up(struct UIWindow *wnd, int x, int y480, int up);
 void wm_move_center(struct UIWindow *wnd, int x, int y480);
 struct UIWindow *wm_register(struct UIWindowMgr *self, int window_id, struct UIWindow *wnd);
 enum {
-    WM_AT_NONE,
     WM_AT_XY,
     WM_AT_640,
     WM_AT_CENTER,

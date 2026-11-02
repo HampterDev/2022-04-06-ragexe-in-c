@@ -32,6 +32,4 @@ struct DragInfo {
 };
 OFFSET_ASSERT(DragInfo, display_name, 0x24);
 
-void drag_info_destroy(struct DragInfo *drag);
-
 #endif

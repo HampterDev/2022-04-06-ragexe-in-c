@@ -183,22 +183,6 @@ int main(void)
     assert(bitmap.bits == bits && bitmap.dib == dib && bitmap.bits[0] == before && bitmap.width == 2 && bitmap.texture_count == 1);
     fail_dib = 0; dc_bitmap_alloc(&bitmap, 4, 4);
     assert(bitmap.width == 4 && bitmap.height == 4 && bitmap.changed && !bitmap.texture_count && !live);
-    {
-        DWORD source[4] = {1, 2, 3, 4};
-        memset(bitmap.bits, 0, 4 * 4 * 4); bitmap.changed = 0;
-        fail_at = allocation_calls + 1;
-        dc_bitmap_copy_scaled(&bitmap, 0, 0, 2, 2, 2, 2, source);
-        assert(!bitmap.changed && !bitmap.bits[0] && !outstanding);
-        fail_at = 0;
-        dc_bitmap_copy_scaled(&bitmap, 0, 0, 2, 2, 2, 2, source);
-        assert(bitmap.changed && bitmap.bits[0] == 1 && bitmap.bits[4] == 3 && bitmap.bits[1] == 0);
-        assert(!outstanding);
-    }
-    bitmap.bits[0] = 0x00ffffff; bitmap.bits[1] = 0x00000000; bitmap.bits[2] = 0x34ffffff;
-    dc_bitmap_alpha_from_brightness(&bitmap, 0xff);
-    assert(bitmap.bits[0] == 0xffffffff && bitmap.bits[1] == 0 && bitmap.bits[2] == 0xffffffff);
-    bitmap.bits[0] = 0x00404040; dc_bitmap_alpha_from_brightness(&bitmap, 0x80);
-    assert(bitmap.bits[0] == 0x7f404040);
     dc_bitmap_destruct(&bitmap);
     assert(!dc_bitmap_construct(&bitmap, -1, 2) && !bitmap.hdc);
     assert(!dc_bitmap_construct(&bitmap, INT_MAX, INT_MAX) && !bitmap.hdc);
