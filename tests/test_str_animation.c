@@ -83,7 +83,7 @@ static void arithmetic(void)
         assert(step(i, 3.0f, 1.0f, 0, 100) == 0.0f);
         assert(step(i, 3.0f, 1.0f, -1, 100) == 0.0f);
         assert(step(i, NAN, 1.0f, 4, 1) == 0.0f);
-        assert(step(i, 3.0f, INFINITY, 4, 1) == 0.0f);
+        assert(step(i, 3.0f, INFINITY, 4, 1) == (i == STR_ANI_ONCE ? 3.0f : 0.0f));
     }
     for (i = 0; i < 64; ++i) {
         float initial = (float)i / 16.0f;

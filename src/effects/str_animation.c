@@ -41,7 +41,7 @@ void str_key_apply_morph(struct StrKeyState *state, const struct StrKeyState *de
     case STR_ANI_ONCE:
         frame = state->aniframe + delta->delay;
         last = texture_count > 0 ? (float)(texture_count - 1) : 0.0f;
-        if (!isfinite(frame) || frame < 0.0f || texture_count <= 0)
+        if (isnan(frame) || frame < 0.0f || texture_count <= 0)
             frame = 0.0f;
         else if (frame >= (float)texture_count)
             frame = last;
