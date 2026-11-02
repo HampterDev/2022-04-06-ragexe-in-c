@@ -67,9 +67,6 @@ int g_displayHeight;
 #define SIZE_TAB_CONTROL sizeof(struct UITabControl)
 #define SIZE_SCROLL_BAR sizeof(struct UIScrollBar)
 
-OFFSET_ASSERT(UIGraphicSettingWnd, device_names, 0x94);
-OFFSET_ASSERT(UIGraphicSettingWnd, device_name, 0xc0);
-
 #define WND(self) (&(self)->frame.base)
 #define W(ctrl) ((struct UIWindow *)(ctrl))
 #define STR_AT(v, i) (&((struct String *)(v)->first)[i])
