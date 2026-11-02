@@ -2,14 +2,13 @@
 #include "ui/chat/speaker_name.h"
 #include "game/scream_text.h"
 #include <assert.h>
-#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
 
 int main(void)
 {
-    const char *id = "^nItemID^2147483647suffix";
+    const char *id = "^nItemID^501abc suffix";
     int length = -1, value = -1;
     char name[25], line[256], large[257];
     SYSTEM_INFO info;
@@ -18,14 +17,22 @@ int main(void)
     size_t n;
 
     assert(parse_item_id_tag(id, id + strlen(id), &length, &value));
-    assert(value == INT_MAX && length == 19);
-    id = "^nItemID^2147483648";
+    assert(value == 501 && length == 15);
+    id = "^nItemID^999999999";
+    assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 999999999 && length == 18);
+    id = "^nItemID^2147483647";
     length = value = -1;
     assert(!parse_item_id_tag(id, id + strlen(id), &length, &value));
     assert(length == -1 && value == -1);
     id = "^nItemID^123AF";
-    assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 123 && length == 12);
+    assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 123 && length == 14);
     id = "^nItemID^f";
+    assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 0 && length == 10);
+    id = "^nItemID^abc";
+    assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 0 && length == 12);
+    id = "^nItemID^1234";
+    assert(parse_item_id_tag(id, id + 11, &length, &value) && value == 12 && length == 11);
+    id = "^nItemID^ 5";
     assert(!parse_item_id_tag(id, id + strlen(id), &length, &value));
     id = "^nItemID^0";
     assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 0);
@@ -58,6 +65,6 @@ int main(void)
         parse_item_id_tag(end - n, end, &length, &value);
     }
     assert(VirtualFree(pages, 0, MEM_RELEASE));
-    puts("PASS: bounded decimal item tags, speaker fields and CR-delimited resource lines");
+    puts("PASS: item tags read as the original reads their hex-flagged digits, speaker fields and CR-delimited resource lines");
     return 0;
 }
