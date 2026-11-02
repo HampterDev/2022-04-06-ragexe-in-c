@@ -1,4 +1,5 @@
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include <string.h>
 #include "ui/wndmgr/wndmgr.h"
@@ -22,14 +23,14 @@ static void shortcut_key_path(char *path)
         strcat(path, server);
 }
 
-static int open_twice(const char *path, HKEY *key)
+static int open_twice(const char *path, struct PlatformSettingsKey **key)
 {
-    HKEY probe;
+    struct PlatformSettingsKey *probe;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
+    if (!platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &probe))
         return 0;
-    RegCloseKey(probe);
-    return RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, key) == ERROR_SUCCESS;
+    platform_settings_close(probe);
+    return platform_settings_open(path, PLATFORM_SETTINGS_QUERY, key);
 }
 
 void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
@@ -37,8 +38,8 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
     char path[0x200];
     char value_name[0x24];
     char name[0x21];
-    DWORD type, size;
-    HKEY key;
+    uint32_t type, size;
+    struct PlatformSettingsKey *key;
     int slot, is_skill, level;
 
     (void)self;
@@ -47,24 +48,24 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
         session_clear_shorten_item_name(&g_session1);
         session_clear_shorten_skill_levels(&g_session1);
         for (slot = 0; slot < SHORTCUT_SLOTS; slot++) {
-            type = REG_SZ;
+            type = PLATFORM_SETTING_STRING;
             size = 0x20;
             sprintf(value_name, "SITEM%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
             memset(name, 0, sizeof name);
             is_skill = 0;
             g_session1.shortenSkillPage = (BYTE)(slot / SHORTCUT_PAGE_SLOTS);
-            if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)name, &size) != ERROR_SUCCESS)
+            if (!platform_settings_read(key, value_name, &type, name, &size))
                 session_set_shorten_item_name(&g_session1, "nothing", slot);
             else if (name[0] == '#')
                 is_skill = 1;
             else
                 session_set_shorten_item_name(&g_session1, name, slot);
 
-            type = REG_DWORD;
+            type = PLATFORM_SETTING_DWORD;
             size = 4;
             sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
             level = 0;
-            if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS) {
+            if (platform_settings_read(key, value_name, &type, &level, &size)) {
                 session_set_shorten_skill_id(&g_session1, level, slot);
             } else {
                 session_set_shorten_skill_id(&g_session1, 0, slot);
@@ -73,42 +74,42 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
             if (is_skill)
                 session_set_shorten_skill_name(&g_session1, name, level, slot);
         }
-        RegCloseKey(key);
+        platform_settings_close(key);
     }
     g_session1.shortenSkillPage = 0;
 }
 
-#define GET(name, field) RegQueryValueExA(key, name, NULL, &type, (BYTE *)(field), &size)
+#define GET(name, field) platform_settings_read(key, name, &type, field, &size)
 #define GET_RECT(name, info) \
     (GET(name ".X", &(info)->x), GET(name ".Y", &(info)->y), \
      GET(name ".W", &(info)->width), GET(name ".H", &(info)->height))
-#define GET_OR(name, field, dflt) do { if (GET(name, field) != ERROR_SUCCESS) *(field) = (dflt); } while (0)
+#define GET_OR(name, field, dflt) do { if (!GET(name, field)) *(field) = (dflt); } while (0)
 
 void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
 {
     char path[0x200];
     char value_name[0x100];
-    DWORD type, size;
-    HKEY key, probe;
+    uint32_t type, size;
+    struct PlatformSettingsKey *key, *probe;
     int i;
 
     strcpy(path, g_registryKeyPath);
     strcat(path, g_regUIRectInfoKey);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
+    if (!platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &probe)) {
         ui_window_mgr_set_default_rect_info(self);
         return;
     }
-    RegCloseKey(probe);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    platform_settings_close(probe);
+    if (!platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &key))
         return;
 
     type = 4;
     size = 4;
     GET("m_minimapZoomWnd", &self->minimap_zoom);
-    if (GET("M_ISDRAGALL", &self->drag_all) != ERROR_SUCCESS || self->drag_all != 0)
+    if (!GET("M_ISDRAGALL", &self->drag_all) || self->drag_all != 0)
         self->drag_all = 1;
     GET_OR("M_ISDRAWCOMPASS", &self->draw_compass, 0);
-    if (GET("M_MINIMAPARGB", &self->minimap_argb) != ERROR_SUCCESS || self->minimap_argb != 0xffffffff)
+    if (!GET("M_MINIMAPARGB", &self->minimap_argb) || self->minimap_argb != 0xffffffff)
         self->minimap_argb = 0xaaffffff;
     GET("M_CHATWNDSTATUS", &self->chat_wnd_status);
     GET("M_CHATWNDHEIGHT", &self->chat_wnd_height);
@@ -234,7 +235,7 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
     GET_RECT("ADVEN_REGISTERWNDINFO", &self->adven_register_info);
     GET_RECT("ADVEN_JOINWNDINFO", &self->adven_join_info);
     GET_RECT("ADVEN_PARTYBOARDWNDINFO", &self->adven_party_board_info);
-    RegCloseKey(key);
+    platform_settings_close(key);
 }
 #undef GET
 #undef GET_RECT
@@ -245,28 +246,26 @@ void ui_window_mgr_write_shortcut_item_info_to_reg(struct UIWindowMgr *self)
     char path[0x200];
     char value_name[0x24];
     char name[0x21];
-    DWORD disposition = 0;
-    HKEY key;
+    struct PlatformSettingsKey *key;
     int slot, skill_id;
 
     (void)self;
     shortcut_key_path(path);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
-        != ERROR_SUCCESS)
+    if (!platform_settings_create(path, PLATFORM_SETTINGS_ALL, &key))
         return;
     for (slot = 0; slot < SHORTCUT_SLOTS; slot++) {
         memset(name, 0, sizeof name);
         strcpy(name, session_get_shorten_item_name(&g_session1, slot));
         sprintf(value_name, "SITEM%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
-        RegSetValueExA(key, value_name, 0, REG_SZ, (const BYTE *)name, 0x20);
+        platform_settings_write(key, value_name, PLATFORM_SETTING_STRING, name, 0x20);
         skill_id = session_get_shorten_skill_id(&g_session1, slot);
         sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
-        RegSetValueExA(key, value_name, 0, REG_DWORD, (const BYTE *)&skill_id, 4);
+        platform_settings_write(key, value_name, PLATFORM_SETTING_DWORD, &skill_id, 4);
     }
-    RegCloseKey(key);
+    platform_settings_close(key);
 }
 
-#define SET(name, field) RegSetValueExA(key, name, 0, REG_DWORD, (const BYTE *)(field), 4)
+#define SET(name, field) platform_settings_write(key, name, PLATFORM_SETTING_DWORD, field, 4)
 #define SET_RECT(name, info) \
     (SET(name ".X", &(info)->x), SET(name ".Y", &(info)->y), \
      SET(name ".W", &(info)->width), SET(name ".H", &(info)->height))
@@ -275,14 +274,12 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
 {
     char path[0x200];
     char value_name[0x100];
-    DWORD disposition = 0;
-    HKEY key;
+    struct PlatformSettingsKey *key;
     int i;
 
     strcpy(path, g_registryKeyPath);
     strcat(path, g_regUIRectInfoKey);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
-        != ERROR_SUCCESS)
+    if (!platform_settings_create(path, PLATFORM_SETTINGS_ALL, &key))
         return;
     SET("m_minimapZoomWnd", &self->minimap_zoom);
     SET("M_ISDRAGALL", &self->drag_all);
@@ -404,7 +401,7 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
     SET_RECT("ADVEN_REGISTERWNDINFO", &self->adven_register_info);
     SET_RECT("ADVEN_JOINWNDINFO", &self->adven_join_info);
     SET_RECT("ADVEN_PARTYBOARDWNDINFO", &self->adven_party_board_info);
-    RegCloseKey(key);
+    platform_settings_close(key);
 }
 #undef SET
 #undef SET_RECT

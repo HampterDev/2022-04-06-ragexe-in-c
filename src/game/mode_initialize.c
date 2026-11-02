@@ -14,6 +14,7 @@
 #include "platform/client_options.h"
 #include "contents/guild_info.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -97,20 +98,20 @@ static void make_windows(void)
 static void read_name_balloon_pos(struct GameMode *self)
 {
     char path[0x200];
-    HKEY key;
-    DWORD type, size;
+    struct PlatformSettingsKey *key;
+    uint32_t type, size;
 
     strcpy(path, g_registryKeyPath);
     strcat(path, "\\NameBaloon");
     strcat(path, "\\");
     strcat(path, string_cstr(&g_session1.serverName));
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == 0) {
-        RegCloseKey(key);
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, 0xf003f, &key) == 0) {
+    if (platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &key)) {
+        platform_settings_close(key);
+        if (platform_settings_open(path, PLATFORM_SETTINGS_ALL, &key)) {
             size = 4;
             type = 4;
-            RegQueryValueExA(key, "POS", 0, &type, (BYTE *)&self->name_balloon_pos, &size);
-            RegCloseKey(key);
+            platform_settings_read(key, "POS", &type, &self->name_balloon_pos, &size);
+            platform_settings_close(key);
         }
     }
     if (self->name_balloon_pos != 0 && self->name_balloon_pos != 1)

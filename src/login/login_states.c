@@ -4,6 +4,7 @@
 #include "contents/player_names.h"
 #include "session/character_name.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
@@ -448,8 +449,8 @@ static void enter_map(struct LoginMode *self)
     } pkt;
 #pragma pack(pop)
     char path[0x58];
-    HKEY key;
-    DWORD disposition, value;
+    struct PlatformSettingsKey *key;
+    DWORD value;
 
     char_user_data_load(g_charUserDataMgr, g_session1.ownAid, g_session1.ownGid, string_cstr(&g_session1.worldName));
     (g_session1.mdWndShown) = 0;
@@ -462,12 +463,10 @@ static void enter_map(struct LoginMode *self)
 
     strcpy(path, g_registryKeyPath);
     strcat(path, "\\NeoCash");
-    disposition = 0;
     value = 0;
-    if (RegCreateKeyExA((HKEY)0x80000001,
-                        path, 0, NULL, 0, 0xf003f, NULL, &key, &disposition) == 0) {
-        RegSetValueExA(key, "CASH_CATEGORY", 0, REG_DWORD, (const BYTE *)&value, 4);
-        RegCloseKey(key);
+    if (platform_settings_create(path, PLATFORM_SETTINGS_ALL, &key)) {
+        platform_settings_write(key, "CASH_CATEGORY", PLATFORM_SETTING_DWORD, &value, 4);
+        platform_settings_close(key);
     }
     pkt.id = 0x436;
     pkt.clientTime = platform_ticks_ms();

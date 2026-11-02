@@ -2,6 +2,7 @@
 #include "ui/controls/buttons.h"
 #include "render/rp_pool.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -824,8 +825,7 @@ static void tab_clicked(struct UICashShopWnd *self, struct UIWindow *sender)
 {
     struct TreeNode *node;
     int tab = self->tab;
-    HKEY key = NULL;
-    DWORD disposition = 0;
+    struct PlatformSettingsKey *key = NULL;
 
     for (node = tree_first(&self->tabs); node != self->tabs.head; node = tree_next(node))
         if (!CASH_TAB_NO_BUTTON(TREE_VALUE(node, struct CashTab)->id)
@@ -837,10 +837,9 @@ static void tab_clicked(struct UICashShopWnd *self, struct UIWindow *sender)
         ui_cash_shop_wnd_send_msg(&self->frame.base, NULL, CASH_MSG_RELIST, 0, 0, 0, 0);
     }
     ui_button_set_show((struct UIButton *)(self->refresh), self->tab == CASH_TAB_SALE);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
-        == ERROR_SUCCESS)
-        RegSetValueExA(key, "NeoCash", 0, REG_DWORD, (const BYTE *)&self->tab, 4);
-    RegCloseKey(key);
+    if (platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
+        platform_settings_write(key, "NeoCash", PLATFORM_SETTING_DWORD, &self->tab, 4);
+    platform_settings_close(key);
 }
 
 int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
@@ -926,16 +925,16 @@ int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
 
     case CASH_MSG_POINTS:
     case CASH_MSG_POINTS_B: {
-        HKEY key = NULL;
-        DWORD type, size;
+        struct PlatformSettingsKey *key = NULL;
+        uint32_t type, size;
         struct String zero;
 
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
-            type = REG_DWORD;
+        if (platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key)) {
+            type = PLATFORM_SETTING_DWORD;
             size = 4;
-            RegQueryValueExA(key, "CASH_CATEGORY", NULL, &type, (BYTE *)&self->tab, &size);
+            platform_settings_read(key, "CASH_CATEGORY", &type, &self->tab, &size);
         }
-        RegCloseKey(key);
+        platform_settings_close(key);
         self->cash = val1;
         self->free_cash = val2;
         string_init(&zero);
