@@ -236,6 +236,8 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
             }
         }
     }
+    if (self->mode < 0 || (size_t)self->mode >= vec_count(&self->modes, sizeof(struct DisplayMode)))
+        self->mode = 0;
 }
 
 int ui_graphic_setting_wnd_check_changed(struct UIGraphicSettingWnd *self)
@@ -313,6 +315,7 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
     struct UIWindow *wnd = WND(self);
     const struct DisplayDevice *rec;
     unsigned count, i;
+    int running = -1;
     void *mem;
 
     ui_window_add_sys_button(wnd);
@@ -324,10 +327,18 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
         rec = display_devices_at(i);
         if (!rec->hardware)
             continue;
+        if (running < 0 && memcmp(&rec->adapter_guid, &init_adapter, sizeof(GUID)) == 0)
+            running = (int)STR_COUNT(&self->device_names);
         string_vec_push_text(&self->device_names, rec->name, strlen(rec->name));
     }
+    if (running >= 0)
+        self->device = running;
+    else if (self->device < 0 || (unsigned)self->device >= STR_COUNT(&self->device_names))
+        self->device = 0;
+    g_displayDeviceIndex = self->device;
     self->mode = g_displayModeIndex;
     ui_graphic_setting_wnd_build_mode_list(self);
+    g_displayModeIndex = self->mode;
 
     mem = mem_alloc(SIZE_TAB_CONTROL);
     self->tabs = (struct UITabControl *)(mem ? ui_tab_control_construct(mem) : NULL);
@@ -486,7 +497,8 @@ void ui_graphic_setting_wnd_on_draw(struct UIWindow *window)
     box = W(self->mode_box);
     draw_label(wnd, 0x12, box->y + 3, msg_str(0xc6e));
     draw_combo(wnd, box);
-    draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->mode_names, self->mode)));
+    if (STR_COUNT(&self->mode_names) > (unsigned)self->mode)
+        draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->mode_names, self->mode)));
     draw_label(wnd, 0x12, W(self->sprite_bar)->y + 2, msg_str(0x144));
     draw_label(wnd, 0x12, W(self->texture_bar)->y + 2, msg_str(0x145));
     draw_label(wnd, 0x12, W(self->box_fullscreen)->y, msg_str(0xc6f));
@@ -786,10 +798,12 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
                             string_cstr(&self->device_name));
                 g_deviceGuid = self->device_guid;
                 g_driverGuid = self->adapter_guid;
-                mode = MODE_AT(&self->modes, self->mode);
-                g_displayWidth = mode->width;
-                g_displayHeight = mode->height;
-                g_bitsPerPixel = mode->bpp;
+                if (vec_count(&self->modes, sizeof(struct DisplayMode)) > (size_t)self->mode) {
+                    mode = MODE_AT(&self->modes, self->mode);
+                    g_displayWidth = mode->width;
+                    g_displayHeight = mode->height;
+                    g_bitsPerPixel = mode->bpp;
+                }
             }
             if (apply_display_mode(self) == 1) {
                 store_quality_settings(self);
