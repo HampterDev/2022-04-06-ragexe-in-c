@@ -146,21 +146,21 @@ const struct UIEditCtrl3Ops ui_rodex_edit_ctrl3_ops = {
 
 #define MSG_NO_RECEIVER 0xa23
 #define MSG_BAD_TITLE 0xa24
-#define MSG_NAME_TOO_LONG 0xa27
+#define MSG_NO_SUCH_RECEIVER 0xa27
 #define MSG_NOT_CONFIRMED 0xa33
 #define MSG_NO_ZENY 0xa35
 #define MSG_BODY_TOO_LONG 0xa44
 #define MSG_NO_ZENY_FEE 0xa53
 #define MSG_NAVI_LINK 0xafc
-#define MSG_BODY_NAVI_LINK 0xbe2
+#define MSG_BODY_BAD_CHARACTER 0xbe2
 #define MSG_WEIGHT 0xbdb
-#define MSG_DORAM 0xd3c
+#define MSG_TAEKWON 0xd3c
 #define MSG_SEND 0xdd8
 #define MSG_CHECK 0xdd9
 #define MSG_NAME_OPTIONS 0xa28
 
-#define JOB_SUMMONER 0xfce
-#define JOB_SPIRIT_HANDLER 0x1081
+#define JOB_TAEKWON 0xfce
+#define JOB_BABY_TAEKWON 0x1081
 
 #define TITLE_MAX 0x33
 #define TITLE_MIN 4
@@ -555,8 +555,8 @@ void ui_rodex_compose_wnd_set_receiver(struct UIRodexComposeWnd *self, int char_
     string_free(&text);
     ui_window_set_show(self->level_text, 1);
     ui_static_text_set_text_or_shrink2(self->job_text, session_get_job_name(&g_session1, job, -1), 0);
-    if (job == JOB_SUMMONER || job == JOB_SPIRIT_HANDLER)
-        ui_static_text_set_text_or_shrink2(self->job_text, msg_str(MSG_DORAM), 0);
+    if (job == JOB_TAEKWON || job == JOB_BABY_TAEKWON)
+        ui_static_text_set_text_or_shrink2(self->job_text, msg_str(MSG_TAEKWON), 0);
     ui_window_set_show(self->job_text, 1);
     self->char_id = char_id;
     session_scramble_number(&g_session1, &text, char_id);
@@ -817,7 +817,7 @@ static void check_receiver(struct UIRodexComposeWnd *self)
         return;
     }
     if (ui_edit_ctrl_get_text_size(receiver) >= RECEIVER_MAX)
-        rodex_chat(MSG_NAME_TOO_LONG);
+        rodex_chat(MSG_NO_SUCH_RECEIVER);
     rodex_chat(navi_links_has_link(text_view_cstr(ui_edit_ctrl_get_text(receiver))) ? MSG_NAVI_LINK : MSG_NO_RECEIVER);
 }
 
@@ -868,7 +868,7 @@ static void send_mail(struct UIRodexComposeWnd *self)
         if (navi_links_has_link(text_view_cstr(ui_edit_ctrl_get_text(EDIT(self->body))))) {
             ui_edit_ctrl_set_text(&self->body->edit, "");
             string_clear(&body);
-            ui_chat_line(msg_str(MSG_BODY_NAVI_LINK), 0xff);
+            ui_chat_line(msg_str(MSG_BODY_BAD_CHARACTER), 0xff);
             string_free(&body);
             return;
         }
