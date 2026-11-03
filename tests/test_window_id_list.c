@@ -3,6 +3,8 @@
 #include "ui/window_manager_state.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/wndmgr/make_window_internal.h"
+#include "ui/wndmgr/plate_hooks.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include "std/list.h"
 #include "std/tree.h"
 
@@ -86,6 +88,7 @@ int main(void)
     static const int pet_equip_item[] = {0x58, 0xa, 0x8};
 
     ui_window_mgr_set_window_table(&g_windowTable);
+    g_windowMgrHandlers.drop_dragged_plate = ui_window_mgr_drop_plate_for_hot_key;
     list_init(&mgr.id_list);
     list_init(&mgr.plates);
     tree_init(&mgr.windows_by_id);

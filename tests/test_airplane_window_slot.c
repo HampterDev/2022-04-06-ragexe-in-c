@@ -7,6 +7,7 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include "world/mode_dispatch.h"
 #include "world/mode_manager.h"
 #include "core/app.h"
@@ -113,6 +114,7 @@ static void fly(int result, const char *what)
 int main(void)
 {
     ui_window_mgr_set_window_table(&g_windowTable);
+    g_windowMgrHandlers.forget_window = actors_forget_window;
     fly(AIRPLANE_RESULT_CLOSED, "closed");
     fly(MODAL_RESULT_FLIGHT, "flight");
     puts("Airplane window slot: cleared when the window is destroyed after its modal loop ends by closing (0xb4) or by the flight's map move (0xb1).");

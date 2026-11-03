@@ -47,6 +47,8 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/wndmgr/wndmgr_handlers.h"
 #include "ui/wndmgr/window_registry.h"
+#include "ui/wndmgr/plate_hooks.h"
+#include "actor/liveness.h"
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/chat/chat_window.h"
 #include "ui/chat/chat_window_parts.h"
@@ -113,6 +115,8 @@ static void client_install_hooks(void)
     g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
     g_windowMgrHandlers.open_whisper = ui_whisper_wnd_open;
     g_windowMgrHandlers.skill_hot_key_slot = session_skill_hot_key_slot;
+    g_windowMgrHandlers.drop_dragged_plate = ui_window_mgr_drop_plate_for_hot_key;
+    g_windowMgrHandlers.forget_window = actors_forget_window;
 
     ui_window_mgr_set_window_table(&g_windowTable);
 }

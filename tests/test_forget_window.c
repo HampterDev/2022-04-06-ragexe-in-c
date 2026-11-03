@@ -1,6 +1,7 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_mgr.h"
 #include "ui/window_types.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,7 @@ int main(void)
     struct UIWindowMgr *mgr = &g_windowMgr;
 
     ui_window_mgr_set_window_table(&g_windowTable);
+    g_windowMgrHandlers.forget_window = actors_forget_window;
     memset(mgr, 0, sizeof *mgr);
     mgr->loading_wnd = gone;
     mgr->apply_for_party_wnd = gone;

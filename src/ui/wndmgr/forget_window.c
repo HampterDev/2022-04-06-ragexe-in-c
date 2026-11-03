@@ -1,7 +1,7 @@
 #include "ui/window_manager_state.h"
-#include "actor/liveness.h"
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/window_table.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 
 static void forget(struct UIWindow **ref, const struct UIWindow *wnd)
 {
@@ -26,5 +26,6 @@ void ui_window_mgr_forget_window(struct UIWindowMgr *self, const struct UIWindow
     forget(&self->modal_wnd, wnd);
     forget(&self->mouse_wnd, wnd);
     forget(&self->active_top_wnd, wnd);
-    actors_forget_window(wnd);
+    if (g_windowMgrHandlers.forget_window)
+        g_windowMgrHandlers.forget_window(wnd);
 }

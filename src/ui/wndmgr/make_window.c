@@ -2,6 +2,7 @@
 #include "ui/window_access.h"
 #include "ui/wndmgr/make_window_internal.h"
 #include "ui/wndmgr/window_table.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 
 void wm_move(struct UIWindow *wnd, int x, int y)
 {
@@ -126,8 +127,8 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
     struct UIWindow *wnd;
     int tracked;
 
-    if (ui_window_mgr_is_dragging_member_plate(self) && ui_window_mgr_is_hot_key_of_window(self))
-        ui_window_mgr_close_drag_plate(self);
+    if (g_windowMgrHandlers.drop_dragged_plate)
+        g_windowMgrHandlers.drop_dragged_plate(self);
     tracked = !ui_window_mgr_is_untracked_id(self, window_id);
     if (tracked) {
         ui_window_mgr_forget_window_id(self, window_id);
