@@ -10552,3 +10552,241 @@ generated `offsetof` table over `EffectPrim` and the record structs it sets. The
 `rag_msg_sprite` family (74 constant styles in category A, then 9 parameterised ones) is
 one launcher with a style switch and is the smallest step there; the constant ring
 families (46 IDs) follow. The harness stays as it is and covers them already.
+
+## Restructuring: feature tables (2026-11-03)
+
+Step 3 of the restructuring Patrick approved: turn the central feature lists into tables
+whose rows the features own, assembled at one explicit composition point. This section
+covers the effect-type registry and the two game packet dispatchers, and the
+characterization test of the window-ID lists that has to come before those lists change.
+Branch `purist-tables`, from `purist` at `62aabf8`. No behavior change.
+
+### Effect types (`21fcd02`)
+
+Before, `effects/effect_registry.c` listed every effect class: three row arrays
+(`k_effects_first`, `k_effects_middle`, `k_effects_last`, 194 rows, 630 types), the
+`hatEffectTable` loop and the EZ2STR file loop, called by `effect_mgr_construct`.
+
+- **Row type** (`effects/effect_types.h`, new): `struct EffectTypeRow { first, last, create }`;
+  the types `first..last` are created by `create`. A class's rows are a
+  `struct EffectTypeTable { rows, count }`, written with `EFFECT_TYPE(type, create)`,
+  `EFFECT_TYPES(first, last, create)` and `EFFECT_TYPE_TABLE(rows)`.
+- **Owners**: each effect class, in its own file under `effects/skills/`, right after its
+  constructor: a static `<class>_type_rows[]` and the table `<class>_types`, for example
+  `heal_effect_types` in `heal_effect.c`. 47 tables in 46 class files; `Ez2StrEffect` also
+  has `ez2_str_effect_late_types` (0x943-0x944). The two kinds of types known only at
+  startup are functions of their class: `ez2_str_effect_add_hat_types` (`ez2str_effect.c`,
+  one type per row of the Lua `hatEffectTable` from 0x951, a duplicate stops the
+  registration) and `ez2_str_effect_ex_add_file_types` (`ez2str_effect_ex.c`, the EZ2STR
+  file's types from 10000, a duplicate is skipped). All are declared in
+  `effects/effect_allocator.h` next to the constructors.
+- **Composition point**: `g_effectTypes` in `effects/effect_registry.c` (declared in the new
+  `effect_registry.h`), a list of `struct EffectTypeSource` entries, each a table or an
+  `add` function: the 44 fixed tables, then the headgear types and the EZ2STR file types,
+  then the late tables `ez2_str_effect_late_types`, `change_size_effect_types` and
+  `show_effect_types`. `app_init_managers` (`core/startup.c`) calls
+  `effect_mgr_create(&g_effectTypes)`; `effect_mgr_construct` takes the list and
+  registers it with two generic loops (`register_types`, `register_table`). `effect_mgr.c`
+  no longer calls into the registry or names a class. The file went from 259 to 81 lines.
+- **Order**: within a table the rows keep their former order; the tables are registered
+  in the list's order. A missing table or row means its types are not effect-manager
+  types: `effect_mgr_spawn` creates nothing and the actor code that asks
+  `effect_mgr_is_registered` takes its RagEffect path.
+
+The registration order is kept where it decides something, not literally. Before, the
+fixed rows of all classes were interleaved (first, hats, middle, file, last); now they go
+class by class. The tree of factories is sorted by type, and a type that is already
+registered is refused, so order matters only for clashes. The 626 fixed types before the
+file are pairwise distinct and all below the headgear range (checked: no type is listed
+twice, the largest fixed type is 0x947), so registering them in any order, with the
+headgear range before or after them, gives the same tree and never stops. What the order
+does decide is kept: the file types come after every fixed table except the late ones and
+after the headgear range, so a file type never replaces one (it is skipped) and a type the
+file lists twice keeps its first row; the late tables come after the file, so a file type
+they list stops the registration at that row, in the same row order as before.
+`effect_mgr_create` fails in exactly the same cases, and the tree on success is the same.
+The partial tree after a failed registration (only `effect_mgr_construct` called directly
+shows it) differs only for clashes among the fixed tables, which the data does not have.
+The list's comment documents these rules.
+
+`tests/test_effect_factories.c` included `effect_registry.c` and defines stub
+constructors, so it cannot compile the class files. It now passes `&g_effectTypes` to
+`effect_mgr_construct` and `effect_mgr_create` (through two macros, so its reference mode
+still builds), and includes `effect_type_tables.inc`, which the new
+`tests/extract_effect_types.py` writes from the class files: for every entry of the list,
+the row array and table, or the `add` function with the `#define` lines it uses, each
+found exactly once. Its digest stays `d3673c01`; no assertion changed.
+
+### Game packets (`7d53cd7`)
+
+Before, `game_mode_dispatch_packet` (`game/packet_dispatch.c`) and
+`game_mode_dispatch_packet2` (`game/packet_dispatch2.c`) were two switches: 347 and 281
+case labels, no ID in both, the first's default calling the second, the second's default
+resetting the connection's queues.
+
+- **Row type** (`game/packet_rows.h`, new): each dispatcher's packets are one row list,
+  `GAME_PACKET_ROWS_1(PACKET, CONSUMED)` and `GAME_PACKET_ROWS_2`, with `PACKET(id, call)`
+  for the 600 handled IDs (in `call`, `self`, `pkt` and `packet_size` are the
+  dispatcher's arguments) and `CONSUMED(id)` for the 28 IDs read and dropped without effect.
+  The list is expanded three times: `GAME_PACKET_ADAPTER` makes one function per row with
+  the one handler signature `GamePacketHandler (struct GameMode *self, unsigned char *pkt,
+  size_t packet_size)`; `GAME_PACKET_ENTRY` fills a const array indexed by packet ID
+  (`k_game_packets_1`, 0x85a entries, and `k_game_packets_2`, 0xbf2 entries; CONSUMED rows
+  get `game_packet_consumed`); `GAME_PACKET_CASE` makes every ID a case label of a switch
+  that is never called (`game_packet_rows_n_are_unique`), so an ID listed twice is a
+  compile error, as in the switch (checked: C2196 for `CONSUMED(HEADER_PING)` repeated and
+  for `CONSUMED(0x0187)`, the same value under another name).
+- **Shims**: 62 case bodies that unpacked the packet into arguments or checked its size
+  (7 in the first table, 55 in the second) are small static functions next to the packet
+  structs, called from their row; every other row keeps its former statement.
+- **Owners and order**: the rows stay in the dispatcher files, in the switch's order, which
+  means nothing for the lookup; each row calls the handler of its feature.
+- **Composition point**: the two arrays. `game_mode_dispatch_packet` returns on a NULL
+  packet or one shorter than 2 bytes, looks the ID up in `k_game_packets_1`
+  (`GAME_PACKET_HANDLER` accepts any int; `game_mode_poll_network_msg` passes IDs from
+  0x8000 on as negative numbers) and passes an ID without a row to
+  `game_mode_dispatch_packet2`, which does the same with `k_game_packets_2` and calls
+  `connection_reset_queues` for an ID without a row.
+
+The packet-dispatch test was not changed; its 1,179,800 cases give `d77aaadbb5fc63b7` as
+before.
+
+`login/login_dispatch.c` was left as it is. Its switch sits inside the receive loop, two
+cases (`0x73`, `0x2eb`) end the loop with `return`, others write the packet buffer, and no
+test covers it beyond the PIN-state packets of `test_login_pin_state`. A table there needs
+a handler result (continue or stop) and a characterization test of every ID first.
+
+### Window-ID lists: characterization test (`25a5fe3`)
+
+The window IDs have four views: the factory (`ui_window_mgr_make_window` and
+`wm_make_character`, `_hud`, `_trade`, `_social` in `make_window*.c`), the slots
+(`ui_window_mgr_get_window`, `ui_window_mgr_is_untracked_id` and
+`ui_window_mgr_post_quit1` in `window_slots.c`), the forget list (`forget_window.c`) and
+the teardown (`ui_window_mgr_clear_slots` and `ui_window_mgr_close_all_windows` in
+`teardown.c`). No test covered them. `tests/test_window_lists.c` (new, in `tests\build.bat`
+after the packet dispatch test) compiles these eight files for real against recording
+stubs: `tests/window_lists_stubs.c` (205 functions), written by
+`tests/make_window_lists_stubs.py` from the preprocessed sources and the list of symbols
+the files use, and a few hand-written ones (`client_lua_call`, `ui_window_create`,
+`ui_window_mgr_add_window`, `rag_connection_send_packet`, `msg_str`, `ui_skin_path`,
+`g_resMgr`). Window constructors return fake windows, zeroed blocks whose ops record every
+call; `_construct` stubs make the caller's block one.
+
+For every window ID 0-0x23f, with the stubs first returning NULL and 0 and then a zeroed
+block and 1, on a freshly built manager each time, it records: `make_window` twice,
+`get_window` and `is_untracked_id`; `post_quit1` after `make_window` and on a fresh
+manager; `forget_window` for every window the factory made; `clear_slots`; and
+`close_all_windows`. Then, for every window field of `UIWindowMgr`, whether
+`forget_window` and `clear_slots` clear it. It records every stub call and op with its
+arguments, the manager fields that changed, by name (`WL_MGR_FIELDS` lists all 277 fields
+with their kind, so a field that moves only needs a new place in that list), the changed
+words of `g_session1`, `g_navi` and `g_snapMgr`, the words of every fake window, and return
+values. Pointers are names (`W3`, `D0`, `H12`, `mgr.item_info`); an unnamed pointer stops the
+test. Result: 34,731 lines, digest `778535d4c6391e4b`, the same over repeated runs.
+`--trace FILE` writes the lines.
+
+Detection proof (each change made, the test run, the file restored with `git checkout`):
+
+| Change | Lines | Digest |
+|---|---|---|
+| none | 34,731 | `778535d4c6391e4b` |
+| `forget_window.c`: `minimap_zoom_wnd` dropped from the slot list | 34,726 | `6e0af9412308818f` |
+| `teardown.c`: `clear_slots` no longer clears `login_wnd` | 34,725 | `9e2d658b0ee2a2ab` |
+| `make_window.c`: login window 0x12e wide instead of 0x12d | 34,731 | `724bf596e2acd1df` |
+| `window_slots.c`: `get_window(0x1b)` reads `chat_room_wnd` | 34,727 | `d93f97a1889a9ee0` |
+
+What the four views do not agree on (recorded, not changed):
+
+- `clear_slots` leaves `spell_list_wnd` (0x63), `prohibit_list_wnd` (0x67),
+  `change_name_wnd` (0x80), `disband_guild_wnd` (0xd7),
+  `combined_card_item_collection_comparison_wnd` (0xfa), `para_result_wnd` (0x100),
+  `round_box_tooltip_wnd` (0x114), `capture_root` and `focus_drawn` set. The base
+  destructor `ui_window_destruct` (`ui/controls/window_base.c`) calls `forget_window`,
+  which clears all of them except `focus_drawn`, so after `close_all_windows` destroyed
+  the windows they are NULL anyway.
+- `forget_window` does not clear `hot_key_wnd`, `quest_display_wnd`, `drag_plate`,
+  `private_airplane_wnd`, `orphan_char_wnd`, `orphan_guild_wnd` or `focus_drawn`.
+  `post_quit1` (0x9c, 0xcc) and `clear_slots` clear the first two; a hotkey or quest
+  display window destroyed another way would leave its slot pointing at freed memory.
+  `focus_drawn` is only compared, never dereferenced.
+- `orphan_char_wnd` and `orphan_guild_wnd` are never set; only `clear_slots` writes them.
+  `private_airplane_wnd` is set outside the four views, in `ui/quests/navigation_cmd.c`.
+- `post_quit1` queues `login_wnd` (0x3), `loading_wnd` (0x7), `item_wnd` (via 0x127, the
+  refining window, whose factory also opens the item window 0x8) and `rpimage_wnd2` (0x145)
+  without clearing the slot; the destructor's `forget_window` clears it when the quit list
+  is processed.
+- A second `make_window(0x3)` creates a second login window and overwrites `login_wnd`.
+
+The lists were not unified; see "Left for later".
+
+### Dependency map per commit
+
+Measured on each commit's own release build in its export (`build/depmap/<label>.txt`),
+with `modules.py` cutting the 23 files of its `REGISTRY` set. The last column runs
+`modules_drop.py`, which keeps one registry file in the graph, to see whether that file
+still ties features into the knot.
+
+| commit | change | knot files / lines | library files / lines | above the knot files / lines | clusters | registry files / lines | knot with the file kept in the graph |
+|---|---|---|---|---|---|---|---|
+| `62aabf8` | baseline | 260 / 92,725 | 469 / 82,054 | 309 / 105,253 | 118 | 23 / 8,712 | `effect_registry.c`: 305 / 105,151; `packet_dispatch.c`, `packet_dispatch2.c`: 260 / 92,725 |
+| `21fcd02` | effect-type tables | 260 / 92,781 | 469 / 82,054 | 309 / 105,732 | 118 | 23 / 8,535 | `effect_registry.c`: 260 / 92,781 |
+| `7d53cd7` | packet tables | 260 / 92,781 | 469 / 82,054 | 309 / 105,732 | 118 | 23 / 8,713 | `packet_dispatch.c`, `packet_dispatch2.c`: 260 / 92,781 |
+| `25a5fe3` | window-list test | 260 / 92,781 | 469 / 82,054 | 309 / 105,732 | 118 | 23 / 8,713 | `window_slots.c`: 432 / 136,616 |
+
+The baseline already differs from the end of step 2 (259 / 93,568) because `purist` moved
+on. The registry files are cut in the main measurement, so the main numbers barely move;
+the knot grew by 56 lines because `effect_mgr.c` (+25, the generic registration) and four
+class files in the knot (`curse_of_cube_effect.c`, `emitter_effect.c`,
+`energy_orb_effect.c`, `tetra_ball_effect.c`) got their rows. The change shows in the last
+column: kept in the graph, the old `effect_registry.c` tied 45 effect class files into the
+knot, because `effect_mgr_construct` called it; the new one is only reached from
+`core/startup.c` and ties nothing in. The packet dispatchers never tied features into the
+knot; `window_slots.c` still does (172 files), as the window lists are not converted yet.
+
+### Validation
+
+Every commit was validated in its own export (`git archive` into `build/snap/<label>`) with
+`build/depmap/validate.ps1`: release build with the log grepped for `: warning ` and
+`LNK`, the full suite `tests\build.bat`, the seven standalone suites, a comparison of every
+`digest`/`passed` line with the baseline run, `git diff --check`, and the dependency-map
+measurement (`measure.ps1`). Logs: `build/tables-<label>-build.log`, `-tests.log`,
+`-<suite>.log` and `-digests.txt`; summary in `build/tables-validation.txt`.
+
+- Every commit builds without compiler or linker warnings and passes the full suite and
+  the seven standalone suites.
+- All 259 digest and result lines of the baseline are unchanged in every commit, among them
+  packet dispatch `d77aaadbb5fc63b7`, effect factories `d3673c01`, effect trace
+  `cbdaaf30ef3127d6` and EZ2STR file choice `1b0232b840610959`. From `25a5fe3` on there is
+  one more line, the window-list digest `778535d4c6391e4b`.
+- `git diff --check` passed for every commit.
+
+No live client was run.
+
+### Left for later
+
+- **Window table.** The test is in place; the unification is not done. A window table
+  would hold one row per window ID: the slot (an offset into `UIWindowMgr`, or an index
+  once the named slots become an array), whether ESC tracks it (`is_untracked_id`), the
+  factory (a `WM_OPEN` description where the case is one, constructor, size, placement and
+  info, as in 60 of the 188 factory cases; a function for the others), and the close kind (`close_slot`,
+  `close_slot_stored`, or a function for the cases with side effects). `get_window`,
+  `is_untracked_id`, `post_quit1`'s plain cases, `forget_window` and `clear_slots` would
+  then read the table. The disagreements above have to become explicit columns (or be
+  fixed on `main` first), or the digest changes. It is about 2,700 lines of
+  `ui/wndmgr`, and it should be its own change.
+- **`login/login_dispatch.c`**: see above.
+- **Packet rows per feature.** The rows now are data in one place per dispatcher. Moving
+  them next to their handlers means about 100 handler files; the packet test stubs those
+  handlers, so the rows would go into separate row files the test can compile. That fits
+  step 4, when the game clusters become libraries and each takes its rows.
+- **`core/object_type.c`**: a list of 326 ops tables with their type bits and class names,
+  used by `object_as_type` and the diagnostics. The type bits and name could move into
+  each class's ops table (a common first member, or a small info struct next to the ops),
+  so `object_as_type` reads them from the object; `test_object_type` checks the result.
+- **Startup and shutdown** (`core/app.c`, `startup.c`, `client_init.c`, `winmain.c`,
+  `session/session_lifetime.c`): `app_init_managers` (`startup.c`) and
+  `app_destroy_singletons` (`app.c`) are sequences of create and destroy calls with
+  failure messages. They could become one table of
+  `{name, create, destroy}` rows run forward at startup and backward at shutdown, which
+  makes the order explicit and the two directions symmetric. That needs a test recording
+  the order of every create and destroy first, as `test_com_lifecycle` does for COM.
