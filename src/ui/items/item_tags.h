@@ -3,21 +3,13 @@
 
 #include "ui/controls/edit_types.h"
 #include "ui/controls/buttons.h"
+#include "ui/controls/item_tag_button.h"
 #include "iteminfo/iteminfo.h"
 #include "ui/items/item_tag_list.h"
 
 struct ItemTagActions;
 
 struct UIEditCtrlOps;
-
-struct UIItemTagButton {
-    struct UITextButton text;
-    struct ItemInfo item;
-    int line_x;
-    int line;
-    int text_y;
-    int aid;
-};
 
 struct UIItemTagCtrl {
     struct UIEditCtrl edit;
@@ -39,7 +31,6 @@ struct UIItemTagOnMegaPhone {
     int tag_width;
 };
 
-struct UIItemTagButton *ui_item_tag_button_construct(struct UIItemTagButton *self);
 struct UIItemTagCtrl *ui_item_tag_ctrl_construct(struct UIItemTagCtrl *self);
 struct UIItemTagCtrl *ui_item_tag_on_chat_construct(struct UIItemTagCtrl *self);
 struct UIItemTagOnMail *ui_item_tag_on_mail_construct(struct UIItemTagOnMail *self);

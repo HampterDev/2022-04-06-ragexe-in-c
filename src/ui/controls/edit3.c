@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "iteminfo/item_link.h"
 #include <stdlib.h>
-#include "ui/items/item_tags.h"
+#include "ui/controls/item_tag_button.h"
 #include "render/rp_pool.h"
 #include "iteminfo/item_api.h"
 #include "core/object_type_tables.h"
