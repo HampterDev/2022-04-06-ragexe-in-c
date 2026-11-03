@@ -1,6 +1,7 @@
 #ifndef RENDER_CDC_H
 #define RENDER_CDC_H
 #include "platform/win_types.h"
+#include "render/text_backend.h"
 #include <stddef.h>
 
 struct Texture;
@@ -10,11 +11,7 @@ struct Texture;
 
 struct DcBitmap {
     int width, height;
-#ifdef _WIN32
-    HDC hdc;
-    HBITMAP dib;
-    HGDIOBJ oldBitmap;
-#endif
+    struct TextBitmapState text;
     DWORD *bits;
     BYTE changed;
     struct Texture **textures;
@@ -26,9 +23,6 @@ struct DcBitmap *dc_bitmap_create(int width, int height);
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h);
 void dc_bitmap_destruct(struct DcBitmap *self);
 void dc_bitmap_destroy(struct DcBitmap *self);
-#ifdef _WIN32
-char dc_bitmap_get_dc(struct DcBitmap *self, HDC *out);
-#endif
 void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h,
                                  const DWORD *src, char keyed);
 void dc_bitmap_copy_scaled(struct DcBitmap *self, int x, int y, int sw, int sh, int dw, int dh,

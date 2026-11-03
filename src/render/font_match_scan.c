@@ -1,25 +1,31 @@
 #include "render/font_match.h"
-#if !defined(_WIN32) && defined(RAGE_FONT_SCAN)
+#include "render/fonts.h"
+#if defined(RAGE_FONT_SCAN) && !defined(TEXT_BACKEND_GDI)
+#include "core/cstr.h"
+#include "platform/filesystem.h"
+#include "platform/thread.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_TRUETYPE_TABLES_H
-#include <dirent.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/stat.h>
 
-/* The fonts are the faces in the font folders (RAGE_FONT_DIRS, separated by ':', or the system's),
-   read once. A search sorts them as Fontconfig would for these requests: the asked families in
-   order, then the faces that cover the language, then the closest slant and weight. */
-#ifdef __ANDROID__
+/* The fonts are the faces in the font folders (RAGE_FONT_DIRS, separated by ':', on Windows by ';',
+   or the system's), read when the font cache starts. A search sorts them as Fontconfig would for
+   these requests: the asked families in order, then the faces that cover the language, then the
+   closest slant and weight. */
+#ifdef _WIN32
+#define FOLDER_SEPARATOR ';'
+#elif defined(__ANDROID__)
+#define FOLDER_SEPARATOR ':'
 #define SYSTEM_FONT_DIRS "/system/fonts:/product/fonts"
 #elif defined(__APPLE__)
+#define FOLDER_SEPARATOR ':'
 #define SYSTEM_FONT_DIRS "/System/Library/Fonts:/Library/Fonts"
 #else
+#define FOLDER_SEPARATOR ':'
 #define SYSTEM_FONT_DIRS "/usr/share/fonts:/usr/local/share/fonts"
 #endif
 #define FOLDER_DEPTH 4
@@ -69,8 +75,8 @@ struct FontMatches {
 static FT_Library library;
 static struct Face *faces;
 static size_t face_count, face_capacity;
-static pthread_once_t catalog_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t coverage_lock = PTHREAD_MUTEX_INITIALIZER;
+static int catalog_read;
+static struct PlatformMutex *coverage_lock;
 
 static char *copy_text(const char *text)
 {
@@ -83,7 +89,7 @@ static int language_index(const char *lang)
 {
     size_t i;
     for (i = 0; i < sizeof languages / sizeof languages[0]; ++i)
-        if (!strcasecmp(languages[i].lang, lang))
+        if (!cstr_compare_nocase(languages[i].lang, lang))
             return (int)i;
     return -1;
 }
@@ -136,8 +142,8 @@ static void add_face(const char *file, int index, FT_Face face)
 static int is_font_file(const char *name)
 {
     const char *dot = strrchr(name, '.');
-    return dot && (!strcasecmp(dot, ".ttf") || !strcasecmp(dot, ".otf") || !strcasecmp(dot, ".ttc")
-                   || !strcasecmp(dot, ".otc"));
+    return dot && (!cstr_compare_nocase(dot, ".ttf") || !cstr_compare_nocase(dot, ".otf")
+                   || !cstr_compare_nocase(dot, ".ttc") || !cstr_compare_nocase(dot, ".otc"));
 }
 
 static void add_file(const char *file)
@@ -155,66 +161,106 @@ static void add_file(const char *file)
         }
 }
 
+struct Listing {
+    char **names; /* each name after a byte that says whether it is a folder */
+    size_t count, capacity;
+};
+
+static void list_entry(void *context, const char *name, int is_directory)
+{
+    struct Listing *listing = context;
+    size_t size = strlen(name) + 2;
+    char *entry;
+    if (name[0] == '.')
+        return;
+    if (listing->count == listing->capacity) {
+        size_t capacity = listing->capacity ? listing->capacity * 2 : 64;
+        char **grown = realloc(listing->names, capacity * sizeof *grown);
+        if (!grown)
+            return;
+        listing->names = grown;
+        listing->capacity = capacity;
+    }
+    if (!(entry = malloc(size)))
+        return;
+    entry[0] = is_directory ? 'd' : 'f';
+    memcpy(entry + 1, name, size - 1);
+    listing->names[listing->count++] = entry;
+}
+
 static int compare_names(const void *a, const void *b)
 {
-    return strcmp(*(char *const *)a, *(char *const *)b);
+    return strcmp(*(char *const *)a + 1, *(char *const *)b + 1);
 }
 
 static void scan_folder(const char *folder, int depth)
 {
-    DIR *dir = opendir(folder);
-    struct dirent *entry;
-    char **names = NULL;
-    size_t count = 0, capacity = 0, i;
-    if (!dir)
+    struct Listing listing = {0};
+    size_t i;
+    if (!platform_native_list(folder, list_entry, &listing))
         return;
-    while ((entry = readdir(dir))) {
-        if (entry->d_name[0] == '.')
-            continue;
-        if (count == capacity) {
-            size_t grown_capacity = capacity ? capacity * 2 : 64;
-            char **grown = realloc(names, grown_capacity * sizeof *grown);
-            if (!grown)
-                break;
-            names = grown;
-            capacity = grown_capacity;
-        }
-        if ((names[count] = copy_text(entry->d_name)))
-            ++count;
-    }
-    closedir(dir);
-    qsort(names, count, sizeof *names, compare_names);
-    for (i = 0; i < count; ++i) {
+    qsort(listing.names, listing.count, sizeof *listing.names, compare_names);
+    for (i = 0; i < listing.count; ++i) {
+        const char *name = listing.names[i] + 1;
         char path[4096];
-        struct stat info;
-        if ((size_t)snprintf(path, sizeof path, "%s/%s", folder, names[i]) < sizeof path && !stat(path, &info)) {
-            if (S_ISDIR(info.st_mode) && depth < FOLDER_DEPTH)
+        if ((size_t)snprintf(path, sizeof path, "%s/%s", folder, name) < sizeof path) {
+            if (listing.names[i][0] == 'd' && depth < FOLDER_DEPTH)
                 scan_folder(path, depth + 1);
-            else if (S_ISREG(info.st_mode) && is_font_file(names[i]))
+            else if (listing.names[i][0] == 'f' && is_font_file(name))
                 add_file(path);
         }
-        free(names[i]);
+        free(listing.names[i]);
     }
-    free(names);
+    free(listing.names);
+}
+
+static const char *system_font_dirs(char *out, size_t size)
+{
+#ifdef _WIN32
+    const char *windows = getenv("WINDIR");
+    if (windows && (size_t)snprintf(out, size, "%s\\Fonts", windows) < size)
+        return out;
+    return "C:\\Windows\\Fonts";
+#else
+    (void)out;
+    (void)size;
+    return SYSTEM_FONT_DIRS;
+#endif
 }
 
 static void read_catalog(void)
 {
     const char *folders = getenv("RAGE_FONT_DIRS");
-    char *list, *folder, *rest;
+    char system[1024], *list, *folder, *end;
     if (FT_Init_FreeType(&library))
         return;
-    list = copy_text(folders && *folders ? folders : SYSTEM_FONT_DIRS);
+    list = copy_text(folders && *folders ? folders : system_font_dirs(system, sizeof system));
     if (!list)
         return;
-    for (folder = strtok_r(list, ":", &rest); folder; folder = strtok_r(NULL, ":", &rest))
-        scan_folder(folder, 0);
+    for (folder = list; folder; folder = end ? end + 1 : NULL) {
+        end = strchr(folder, FOLDER_SEPARATOR);
+        if (end)
+            *end = 0;
+        if (*folder)
+            scan_folder(folder, 0);
+    }
     free(list);
 }
 
 void font_match_init(void)
 {
+    if (catalog_read)
+        return;
+    catalog_read = 1;
+    coverage_lock = platform_mutex_create();
+    read_catalog();
 }
+
+/* The generic family the client asks by name, resolved as Fontconfig's configuration does. */
+static const char *const monospace_families[] = {
+    "Lucida Console", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "Droid Sans Mono",
+    "Courier New", NULL,
+};
 
 struct SortKey {
     int index, family, lang, slant, weight;
@@ -238,12 +284,12 @@ static int family_rank(const char *name, const char *family, const char *const *
 {
     int rank = 0;
     if (family) {
-        if (!strcasecmp(name, family))
+        if (!cstr_compare_nocase(name, family))
             return 0;
         ++rank;
     }
     for (; fallbacks && *fallbacks; ++fallbacks, ++rank)
-        if (!strcasecmp(name, *fallbacks))
+        if (!cstr_compare_nocase(name, *fallbacks))
             return rank;
     return rank;
 }
@@ -255,9 +301,12 @@ struct FontMatches *font_match_sort(const char *family, const char *const *fallb
     struct SortKey *keys;
     int language = language_index(lang), wanted = bold ? WEIGHT_BOLD : WEIGHT_REGULAR;
     size_t i;
-    pthread_once(&catalog_once, read_catalog);
     if (!face_count)
         return NULL;
+    if (family && !cstr_compare_nocase(family, "monospace")) {
+        family = NULL;
+        fallbacks = monospace_families;
+    }
     keys = malloc(face_count * sizeof *keys);
     matches = malloc(sizeof *matches + face_count * sizeof matches->order[0]);
     if (!keys || !matches) {
@@ -326,10 +375,10 @@ int font_match_has_char(struct FontMatches *matches, int i, unsigned code)
     int has;
     if (code >= 0x10000)
         return 0;
-    pthread_mutex_lock(&coverage_lock);
+    platform_mutex_lock(coverage_lock);
     coverage = face_coverage(&faces[matches->order[i]]);
     has = coverage && (coverage[code >> 5] >> (code & 31) & 1);
-    pthread_mutex_unlock(&coverage_lock);
+    platform_mutex_unlock(coverage_lock);
     return has;
 }
 

@@ -11,121 +11,6 @@
 #include "platform/clientinfo.h"
 #include "core/layout.h"
 
-#ifdef _WIN32
-STATIC_ASSERT(text_dc_background_modes, TEXT_DC_TRANSPARENT == TRANSPARENT && TEXT_DC_OPAQUE == OPAQUE);
-
-static void text_dc_prepare(struct TextDC *self)
-{
-    if (self->hdc) {
-        self->oldFont = GetCurrentObject(self->hdc, OBJ_FONT);
-        SetBkMode(self->hdc, TRANSPARENT);
-    }
-}
-
-struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
-{
-    *self = (struct TextDC){0};
-    dc_bitmap_get_dc(bitmap, &self->hdc);
-    text_dc_prepare(self);
-    return self;
-}
-
-struct TextDC *text_dc_from_surface(struct TextDC *self, gfx_surface *surface)
-{
-    *self = (struct TextDC){0};
-    if (surface) {
-        gfx_addref(surface);
-        self->surface = surface;
-        if (gfx_get_dc(surface, &self->hdc) < 0)
-            self->hdc = NULL;
-        text_dc_prepare(self);
-    }
-    return self;
-}
-
-void text_dc_destruct(struct TextDC *self)
-{
-    if (self->hdc) {
-        if (self->oldFont) SelectObject(self->hdc, self->oldFont);
-        if (self->surface) gfx_release_dc(self->surface, self->hdc);
-    }
-    if (self->surface) gfx_release(self->surface);
-    self->hdc = NULL;
-    self->surface = NULL;
-    self->oldFont = NULL;
-}
-#else
-static void text_dc_prepare(struct TextDC *self)
-{
-    self->bkColour = RGB(0xff, 0xff, 0xff);
-    self->bkMode = TEXT_DC_TRANSPARENT;
-}
-
-struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
-{
-    *self = (struct TextDC){0};
-    if (bitmap && bitmap->bits) {
-        bitmap->changed = 1;
-        self->bitmap = bitmap;
-    }
-    text_dc_prepare(self);
-    return self;
-}
-
-struct TextDC *text_dc_from_surface(struct TextDC *self, gfx_surface *surface)
-{
-    *self = (struct TextDC){0};
-    if (surface) {
-        gfx_addref(surface);
-        self->surface = surface;
-    }
-    text_dc_prepare(self);
-    return self;
-}
-
-void text_dc_destruct(struct TextDC *self)
-{
-    if (self->locked > 0)
-        gfx_unlock(self->surface);
-    if (self->surface)
-        gfx_release(self->surface);
-    self->surface = NULL;
-    self->bitmap = NULL;
-    self->font = NULL;
-    self->locked = 0;
-}
-
-static int text_dc_target(struct TextDC *self, struct FontTarget *target)
-{
-    struct gfx_lock lock;
-    if (self->bitmap) {
-        target->bits = (BYTE *)self->bitmap->bits;
-        target->width = self->bitmap->width;
-        target->height = self->bitmap->height;
-        target->pitch = self->bitmap->width * 4;
-        return target->bits != NULL;
-    }
-    if (!self->surface || self->locked < 0)
-        return 0;
-    if (!self->locked) {
-        self->locked = -1;
-        if (gfx_lock(self->surface, NULL, GFX_LOCK_WAIT, &lock) < 0)
-            return 0;
-        if (lock.bpp != 32) {
-            gfx_unlock(self->surface);
-            return 0;
-        }
-        self->target.bits = lock.bits;
-        self->target.width = (int)lock.width;
-        self->target.height = (int)lock.height;
-        self->target.pitch = (int)lock.pitch;
-        self->locked = 1;
-    }
-    *target = self->target;
-    return 1;
-}
-#endif
-
 void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
 {
     int lang = g_languageIndex, face = a, size = b;
@@ -191,39 +76,6 @@ void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
     self->italic = (BYTE)d;
 }
 
-COLORREF text_dc_set_bk_color(struct TextDC *self, COLORREF colour)
-{
-#ifdef _WIN32
-    return SetBkColor(self->hdc, colour);
-#else
-    COLORREF previous = self->bkColour;
-    self->bkColour = colour;
-    return previous;
-#endif
-}
-
-int text_dc_set_bk_mode(struct TextDC *self, int mode)
-{
-#ifdef _WIN32
-    return SetBkMode(self->hdc, mode);
-#else
-    int previous = self->bkMode;
-    self->bkMode = mode;
-    return previous;
-#endif
-}
-
-COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour)
-{
-#ifdef _WIN32
-    return SetTextColor(self->hdc, colour);
-#else
-    COLORREF previous = self->textColour;
-    self->textColour = colour;
-    return previous;
-#endif
-}
-
 struct TextRun {
     const char *text;
     int length, charset;
@@ -267,29 +119,15 @@ void text_dc_text_extent(struct TextDC *self, const char *s, int len, SIZE *out)
     }
 }
 
-static void textdc_text_out(struct TextDC *self, int x, int y, const char *s, int len, int charset)
+void text_dc_draw_in_charset(struct TextDC *self, int x, int y, const char *s, int len, int charset)
 {
     struct TextUnicode text;
     FontHandle font;
-#ifdef _WIN32
-    HGDIOBJ old;
-#else
-    struct FontTarget target;
-#endif
     if (!s || len <= 0 || !text_unicode_init(&text, s, len, get_code_page_from_charset(charset)))
         return;
     font = font_cache_get_font(&g_fontCache, self->face, self->size, charset, self->bold, self->italic);
-#ifdef _WIN32
-    old = font ? SelectObject(self->hdc, font) : NULL;
-    if (old && old != HGDI_ERROR)
-        TextOutW(self->hdc, x, y, text.data, text.length);
-#else
-    if (font && text_dc_target(self, &target)) {
-        self->font = font;
-        font_text_out(font, &target, x, y, text.data, text.length, self->textColour,
-                      self->bkMode == TEXT_DC_OPAQUE ? &self->bkColour : NULL);
-    }
-#endif
+    if (font && text_dc_use_font(self, font))
+        text_dc_draw_run(self, x, y, text.data, text.length);
     text_unicode_release(&text);
 }
 
@@ -299,19 +137,10 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
     struct TextRun run;
     while (next_text_run(&runs, &run)) {
         SIZE extent;
-        textdc_text_out(self, x, y, run.text, run.length, run.charset);
+        text_dc_draw_in_charset(self, x, y, run.text, run.length, run.charset);
         if (runs.remaining) {
             text_dc_measure_in_charset(self, &extent, run.text, run.length, run.charset);
             x += extent.cx;
         }
     }
-}
-
-void text_dc_text_out_plain(struct TextDC *self, int x, int y, const char *s, int len)
-{
-#ifdef _WIN32
-    TextOutA(self->hdc, x, y, s, len);
-#else
-    textdc_text_out(self, x, y, s, len, self->charset);
-#endif
 }

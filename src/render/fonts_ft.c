@@ -1,8 +1,9 @@
-#ifndef _WIN32
 #include "render/fonts.h"
+#ifndef TEXT_BACKEND_GDI
 #include "render/device.h"
 #include "platform/code_page.h"
 #include "core/client_path.h"
+#include "core/cstr.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_TRUETYPE_TABLES_H
@@ -11,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 
 #define FONT_SCDREAM_BOLD "system\\font\\SCDream6.otf"
 #define FONT_SCDREAM      "system\\font\\SCDream4.otf"
@@ -336,10 +336,11 @@ static struct Font *font_open(int face, const char *family, int size, int charse
     if (!font->primary && font->candidates) {
         font->primary = open_matched(font, bold, italic);
         font->own_hints = font->primary && family && font->primary->family_name
-                          && !strcasecmp(family, font->primary->family_name);
+                          && !cstr_compare_nocase(family, font->primary->family_name);
     }
     if (font->primary && face >= 0 && is_cjk(charset))
-        font->em_cell = !family || !font->primary->family_name || strcasecmp(family, font->primary->family_name);
+        font->em_cell = !family || !font->primary->family_name
+                        || cstr_compare_nocase(family, font->primary->family_name);
     if (!font->primary || !set_height(font, height)) {
         font_free(font);
         return NULL;

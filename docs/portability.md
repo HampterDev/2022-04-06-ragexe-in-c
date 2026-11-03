@@ -92,7 +92,9 @@ IJL; visual comparison of full in-game screenshots is still pending.
 - `platform_find_*` lists a pattern with `*` and `?` (case-insensitive; `*.*` also
   matches names without a dot, as on Win32) and returns names as game strings: on
   POSIX they are converted back to CP949 and names CP949 cannot represent are
-  skipped. `platform_file_open` returns a normal `FILE *`, owned by the caller;
+  skipped. `platform_native_list` lists a native folder instead, with names as the system
+  gives them, for files outside the game such as the system's fonts. `platform_file_open`
+  returns a normal `FILE *`, owned by the caller;
   `struct PlatformFile` is the unbuffered handle used by CFile, the GRF reader and
   the settings writers. `platform_file_create_temporary` with
   `platform_file_replace` or `platform_file_discard` is the atomic replace
@@ -197,13 +199,31 @@ decoders, and all 64 BGM tracks of the local game data played through.
 `RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
 `tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
 
-## Text on Linux and macOS
+## Text
 
-Windows keeps GDI. Elsewhere a `DcBitmap` is a heap buffer with the same top-down
-BGRA layout and no device context, and `TextDC` draws with FreeType into that
-buffer, or into a 32-bit surface it locks with `gfx_lock` on its first draw
-(`renderer_text_out`). `render/fonts_ft.c` replaces `render/fonts.c`; the client
-calls the same `text_dc_*` and `font_cache_get_font` functions on every platform.
+Text goes through one interface, `render/text_backend.h`, with two backends: GDI
+(`render/text_gdi.c`, fonts from `render/fonts.c`), the Windows default, and FreeType
+(`render/text_freetype.c`, fonts from `render/fonts_ft.c`) on every other platform and on
+Windows when it is built with `build.bat freetype`. `render/fonts.h` says which one a build has
+(`TEXT_BACKEND_GDI`). Everything above the backend is the same code for both: the bitmaps'
+pixels and their textures (`render/cdc.c`), the client's font choice per language, the
+charset-tagged runs (`render/textdc.c`) and the extent cache (`render/ctextdc.c`). A backend
+gives a bitmap its pixels, opens a text DC on a bitmap or a surface, sets colours, selects a
+font and measures and draws one run of UTF-16 text in it, and fills the client's one polygon.
+
+With GDI a `DcBitmap` is a DIB section selected into a memory DC and a `TextDC` draws through
+that DC or the surface's. With FreeType a `DcBitmap` is a heap buffer with the same top-down
+BGRA layout and no device context, and a `TextDC` draws into that buffer, or into a 32-bit
+surface it locks with `gfx_lock` on its first draw (`renderer_text_out`).
+
+`build.bat freetype` (also with `x64` and `dbg`) builds `main_rebuild_ft.exe`, whose text is
+drawn by FreeType as off Windows; `vendor\build_vendor.bat` then downloads FreeType 2.13.3, the
+release the Android build uses, and builds it static with CMake, and `tests\scenes\build.bat
+freetype` links the scene harness from those objects. Windows has no Fontconfig, so the font
+folder scan finds the fonts (see *Android client*): in `%WINDIR%\Fonts`, or in the folders
+`RAGE_FONT_DIRS` names, separated by `;`. Given the Linux VM's font folders that way, the text
+of the `windows_open` scene came out as in the Linux capture, apart from a few single pixels per
+window (this build has FreeType 2.13.3, the VM 2.13.2).
 
 **Choosing the font file** for a face index (the index into
 `g_3dDevice.faceNamesB`: 0 Gulim, 1 Arial, 2 MS Gothic, 3 SimSun, 4 MingLiU,
@@ -245,7 +265,9 @@ in them comes out a few pixels wider than before.
 Not covered: the embedded EOT fonts (MicroType Express compressed; faces 20 to 28
 use the charset's substitute at 13 pixels), the serial-number text, which GDI
 draws in the device's default font and FreeType in face 0, and the performance
-overlay, which uses Fontconfig's `monospace` instead of Lucida Console. Invalid
+overlay, which asks for the generic `monospace` instead of Lucida Console (the font
+folder scan takes Lucida Console, Consolas, DejaVu Sans Mono or another fixed-pitch
+family for it). Invalid
 code-page bytes make a run disappear instead of drawing replacement characters.
 
 ## Linux client

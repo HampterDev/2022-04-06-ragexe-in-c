@@ -2,23 +2,14 @@
 #define RENDER_TEXTDC_H
 
 #include "platform/win_types.h"
-#include "render/fonts.h"
+#include "render/text_backend.h"
 struct DcBitmap;
 struct gfx_surface;
 
 enum { TEXT_DC_TRANSPARENT = 1, TEXT_DC_OPAQUE = 2 };
 
 struct TextDC {
-#ifdef _WIN32
-    HDC hdc;
-    HGDIOBJ oldFont;
-#else
-    struct DcBitmap *bitmap;
-    FontHandle font;
-    struct FontTarget target;
-    COLORREF textColour, bkColour;
-    int bkMode, locked;
-#endif
+    struct TextDcState state;
     struct gfx_surface *surface;
     int face, size, charset;
     BYTE bold, italic;

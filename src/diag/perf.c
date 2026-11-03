@@ -44,7 +44,7 @@ static struct {
         struct perf_counters per;
         int valid;
     } snap;
-#ifdef _WIN32
+#ifdef TEXT_BACKEND_GDI
     HDC dc;
     HBITMAP bmp;
     HGDIOBJ oldBmp;
@@ -185,7 +185,7 @@ void perf_frame_end(struct Renderer *r)
         roll(t);
 }
 
-#ifdef _WIN32
+#ifdef TEXT_BACKEND_GDI
 static int make_dib(void)
 {
     BITMAPINFO bi;
@@ -272,7 +272,7 @@ static void rasterize(void)
     }
     if (P.usedW > OV_TEX_W)
         P.usedW = OV_TEX_W;
-#ifdef _WIN32
+#ifdef TEXT_BACKEND_GDI
     SelectObject(P.dc, P.font);
 #endif
     for (y = 0; y < P.usedH; y++) {

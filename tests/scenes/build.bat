@@ -1,14 +1,27 @@
 @echo off
-REM tests\scenes\build.bat [x64] -> build\ragexe_scenes.exe (build\ragexe_scenes_x64.exe), the Windows
-REM client with the scene harness (tests\scenes\README.md). It links the objects build.bat made,
-REM so run build.bat (build.bat x64) first.
+REM tests\scenes\build.bat [x64] [freetype] -> build\ragexe_scenes.exe (ragexe_scenes_x64.exe,
+REM ragexe_scenes_ft.exe), the Windows client with the scene harness (tests\scenes\README.md). It
+REM links the objects build.bat made, so run build.bat with the same arguments first.
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0..\.."
 set "BUILD=%ROOT%\build"
 set "ARCH=x86"
-if /i "%~1"=="x64" set "ARCH=x64"
+set "TEXT="
+for %%a in (%*) do (
+  if /i "%%~a"=="x64" set "ARCH=x64"
+  if /i "%%~a"=="freetype" set "TEXT=freetype"
+)
 set "SUFFIX="
 if "%ARCH%"=="x64" set "SUFFIX=_x64"
+if defined TEXT set "SUFFIX=%SUFFIX%_ft"
+set "VDIR=%BUILD%\vendor"
+if "%ARCH%"=="x64" set "VDIR=%BUILD%\vendor_x64"
+set "TEXTLIB="
+set "TEXTDEF="
+if defined TEXT (
+  set "TEXTLIB="%VDIR%\freetype.lib""
+  set "TEXTDEF=/DRAGE_TEXT_FREETYPE"
+)
 set "OBJ=%BUILD%\obj_scenes%SUFFIX%"
 set "RSP=%BUILD%\ragexe_scenes%SUFFIX%.objs.rsp"
 if not exist "%BUILD%\main_rebuild%SUFFIX%.objs.rsp" ( echo Run build.bat %ARCH% first. & exit /b 1 )
@@ -20,7 +33,7 @@ call "%VCVARS%" >nul
 set VSCMD_SKIP_SENDTELEMETRY=1
 
 set "SCENES=%ROOT%\tests\scenes"
-cl /nologo /std:c11 /c /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 ^
+cl /nologo /std:c11 /c /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %TEXTDEF% ^
  /I"%ROOT%\src" /I"%SCENES%" /I"%ROOT%\vendor\stb" /I"%ROOT%\vendor\lua-5.1.4\src" ^
  "%SCENES%\scene_clock.c" "%SCENES%\scene_net.c" "%SCENES%\scene_thread.c" "%SCENES%\scene_settings.c" ^
  "%SCENES%\scene_input_win.c" "%SCENES%\scene_granny_win.c" "%SCENES%\scene_driver.c" /Fo:"%OBJ%\\"
@@ -41,15 +54,15 @@ if "%ARCH%"=="x64" (
   link /nologo msvcrt.lib msvcprt.lib @"%RSP%" ^
    "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" ^
    "!VLIB!\dr_mp3.lib" "!VLIB!\SDL3-static.lib" setupapi.lib version.lib cfgmgr32.lib shlwapi.lib ^
-   vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
-   /OUT:"%BUILD%\ragexe_scenes_x64.exe" /SUBSYSTEM:WINDOWS /MACHINE:X64 /OPT:NOICF
+   !TEXTLIB! vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
+   /OUT:"%BUILD%\ragexe_scenes%SUFFIX%.exe" /SUBSYSTEM:WINDOWS /MACHINE:X64 /OPT:NOICF
 ) else (
   set "VLIB=%BUILD%\vendor"
   link /nologo msvcrt.lib msvcprt.lib @"%RSP%" ^
    "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" /LIBPATH:"%ROOT%\lib" ^
    cps.lib granny2.lib mss32.lib shlwapi.lib ^
-   msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
-   /OUT:"%BUILD%\ragexe_scenes.exe" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE /OPT:NOICF
+   !TEXTLIB! msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
+   /OUT:"%BUILD%\ragexe_scenes%SUFFIX%.exe" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE /OPT:NOICF
 )
 if errorlevel 1 ( echo *** scene harness LINK FAILED *** & exit /b 1 )
 echo Done -^> "%BUILD%\ragexe_scenes%SUFFIX%.exe"

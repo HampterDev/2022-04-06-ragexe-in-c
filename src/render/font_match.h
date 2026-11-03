@@ -2,9 +2,9 @@
 #define RENDER_FONT_MATCH_H
 
 /* The installed fonts that can stand in for a Windows font, best first, for fonts_ft.c. Fontconfig
-   finds them (font_match_fc.c); on Android, which has no Fontconfig, or with RAGE_FONT_SCAN, a
-   scan of the font folders does (font_match_scan.c). */
-#if defined(__ANDROID__) && !defined(RAGE_FONT_SCAN)
+   finds them (font_match_fc.c); on Android and Windows, which have no Fontconfig, or with
+   RAGE_FONT_SCAN, a scan of the font folders does (font_match_scan.c). */
+#if (defined(__ANDROID__) || defined(_WIN32)) && !defined(RAGE_FONT_SCAN)
 #define RAGE_FONT_SCAN 1
 #endif
 

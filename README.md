@@ -23,7 +23,9 @@ and still apply here. These are the deviations from `purist`:
   off Windows, scaled to the window with the aspect kept; Direct3D 9
   stays the Windows backend.
 - Draw text with FreeType and Fontconfig off Windows, sized and placed as GDI does; Android finds
-  its fonts by scanning the font folders.
+  its fonts by scanning the font folders. GDI and FreeType are two backends of one text interface
+  (`render/text_backend.h`), and `build.bat freetype` builds the Windows client with the FreeType
+  one.
 - Convert the Windows code pages with the client's own tables of them on Android, whose C library
   has none (`tools/code_pages.py` reads them from Windows).
 - Compile `char` as signed everywhere, as MSVC does.

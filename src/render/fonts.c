@@ -1,4 +1,5 @@
 #include "render/fonts.h"
+#ifdef TEXT_BACKEND_GDI
 #include "render/device.h"
 #include "render/font_family.h"
 #include "core/text_encoding.h"
@@ -196,3 +197,4 @@ void fonts_init(void)
     font_cache_construct(&g_fontCache);
     atexit(fonts_shutdown);
 }
+#endif

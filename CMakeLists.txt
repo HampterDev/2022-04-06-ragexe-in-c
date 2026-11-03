@@ -110,7 +110,8 @@ if(BUILD_TESTING)
         find_package(Fontconfig)
         if(FREETYPE_FOUND AND Fontconfig_FOUND)
             rage_test(text_freetype src/render/fonts_ft.c src/render/font_match_fc.c src/render/textdc.c src/render/ctextdc.c
-                src/render/text_unicode.c src/render/cdc.c src/core/text_format.c src/core/owned_text.c src/core/hex.c src/core/client_path.c)
+                src/render/text_freetype.c src/render/text_unicode.c src/render/cdc.c src/core/text_format.c
+                src/core/owned_text.c src/core/hex.c src/core/client_path.c src/core/cstr.c)
             target_compile_definitions(test_text_freetype PRIVATE _POSIX_C_SOURCE=200809L)
             target_link_libraries(test_text_freetype PRIVATE rage_platform Freetype::Freetype Fontconfig::Fontconfig)
         endif()

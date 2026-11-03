@@ -341,6 +341,24 @@ void platform_find_close(struct PlatformFind *find)
     FindClose(find->handle);
     free(find);
 }
+
+int platform_native_list(const char *folder, PlatformListEntry entry, void *context)
+{
+    char pattern[MAX_PATH];
+    WIN32_FIND_DATAA data;
+    HANDLE handle;
+    if ((size_t)snprintf(pattern, sizeof pattern, "%s\\*", folder) >= sizeof pattern)
+        return 0;
+    handle = FindFirstFileA(pattern, &data);
+    if (handle == INVALID_HANDLE_VALUE)
+        return 0;
+    do {
+        if (strcmp(data.cFileName, ".") && strcmp(data.cFileName, ".."))
+            entry(context, data.cFileName, (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0);
+    } while (FindNextFileA(handle, &data));
+    FindClose(handle);
+    return 1;
+}
 #else
 #include <dirent.h>
 #include <fcntl.h>
@@ -1166,5 +1184,25 @@ void platform_find_close(struct PlatformFind *find)
     free(find->short_pattern);
     free(find->path);
     free(find);
+}
+
+int platform_native_list(const char *folder, PlatformListEntry entry, void *context)
+{
+    DIR *dir = opendir(folder);
+    struct dirent *item;
+    if (!dir)
+        return 0;
+    while ((item = readdir(dir))) {
+        char path[4096];
+        struct stat info;
+        if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
+            continue;
+        if ((size_t)snprintf(path, sizeof path, "%s/%s", folder, item->d_name) >= sizeof path || stat(path, &info))
+            continue;
+        if (S_ISDIR(info.st_mode) || S_ISREG(info.st_mode))
+            entry(context, item->d_name, S_ISDIR(info.st_mode));
+    }
+    closedir(dir);
+    return 1;
 }
 #endif

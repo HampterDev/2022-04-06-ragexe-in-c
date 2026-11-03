@@ -19,7 +19,7 @@ int g_languageIndex, g_serviceType;
 unsigned int g_codePage = 949;
 unsigned char g_useCharsetTag;
 static int live_blocks, allocations, fail_alloc, fail_convert, fail_extent, fail_abc, fail_font, fail_select;
-static int acquired, released, deny_dc;
+static int released, deny_dc;
 static int conversions, extents, abc_calls, font_calls, selections, current_charset, timer_depth;
 static const char *input_start;
 static size_t input_length;
@@ -101,8 +101,6 @@ static HGDIOBJ current_object(HDC dc, UINT kind)
 { assert(dc==(HDC)1 && kind==OBJ_FONT); return (HGDIOBJ)1; }
 static int background_mode(HDC dc, int mode)
 { assert(dc==(HDC)1 && mode==TRANSPARENT); return TRANSPARENT; }
-char dc_bitmap_get_dc(struct DcBitmap *canvas,HDC *out)
-{ assert(out); *out=NULL; if(!canvas || deny_dc)return 0; *out=(HDC)1; ++acquired; return 1; }
 static int surface_refs, surface_dcs, surface_step;
 static gfx_surface *const test_surface=(gfx_surface *)(uintptr_t)2;
 void gfx_addref(gfx_surface *surface)
@@ -139,6 +137,7 @@ void perf_end(int phase) { assert(phase == PERF_TEXT && timer_depth == 1); --tim
 #include "../src/render/text_unicode.c"
 #include "../src/render/ctextdc.c"
 #include "../src/render/textdc.c"
+#include "../src/render/text_gdi.c"
 #undef malloc
 #undef free
 #undef platform_code_page_to_utf16
@@ -151,7 +150,7 @@ void perf_end(int phase) { assert(phase == PERF_TEXT && timer_depth == 1); --tim
 
 static struct TextDC context(void)
 {
-    struct TextDC dc = {0}; dc.hdc = (HDC)1; dc.face = 2; dc.size = 12; dc.charset = HANGUL_CHARSET;
+    struct TextDC dc = {0}; dc.state.hdc = (HDC)1; dc.face = 2; dc.size = 12; dc.charset = HANGUL_CHARSET;
     return dc;
 }
 static void reset(void)
@@ -225,23 +224,24 @@ static void lifetime(void)
 {
     struct DcBitmap canvas={0};
     struct TextDC dc;
-    reset(); acquired=released=deny_dc=0;
+    reset(); released=deny_dc=0;
     memset(&dc,0xa5,sizeof dc);
+    canvas.text.hdc=(HDC)1;
     assert(text_dc_construct(&dc,&canvas)==&dc);
-    assert(acquired==1 && dc.hdc==(HDC)1 && !dc.surface && !dc.bold && !dc.italic);
-    text_dc_destruct(&dc); assert(!released && !dc.surface && !dc.hdc);
+    assert(canvas.changed && dc.state.hdc==(HDC)1 && !dc.surface && !dc.bold && !dc.italic);
+    text_dc_destruct(&dc); assert(!released && !dc.surface && !dc.state.hdc);
     text_dc_destruct(&dc); assert(!released);
-    deny_dc=1; text_dc_construct(&dc,&canvas); assert(!dc.hdc);
-    text_dc_destruct(&dc); assert(!released); deny_dc=0;
-    text_dc_construct(&dc,NULL); assert(!dc.hdc); text_dc_destruct(&dc);
+    canvas.text.hdc=NULL; canvas.changed=0; text_dc_construct(&dc,&canvas); assert(!dc.state.hdc && !canvas.changed);
+    text_dc_destruct(&dc); assert(!released);
+    text_dc_construct(&dc,NULL); assert(!dc.state.hdc); text_dc_destruct(&dc);
     assert(text_dc_from_surface(&dc,test_surface)==&dc);
-    assert(dc.hdc==(HDC)1 && dc.surface==test_surface && surface_refs==1 && surface_dcs==1);
+    assert(dc.state.hdc==(HDC)1 && dc.surface==test_surface && surface_refs==1 && surface_dcs==1);
     current_charset=129;
-    text_dc_destruct(&dc); assert(released==1 && !dc.surface && !dc.hdc && !surface_refs && !surface_dcs);
+    text_dc_destruct(&dc); assert(released==1 && !dc.surface && !dc.state.hdc && !surface_refs && !surface_dcs);
     text_dc_destruct(&dc); assert(released==1);
-    deny_dc=1; text_dc_from_surface(&dc,test_surface); assert(!dc.hdc && surface_refs==1);
+    deny_dc=1; text_dc_from_surface(&dc,test_surface); assert(!dc.state.hdc && surface_refs==1);
     text_dc_destruct(&dc); assert(released==1 && !surface_refs); deny_dc=0;
-    text_dc_from_surface(&dc,NULL); assert(!dc.hdc && !dc.surface);
+    text_dc_from_surface(&dc,NULL); assert(!dc.state.hdc && !dc.surface);
     text_dc_destruct(&dc); assert(released==1 && !surface_refs && !surface_dcs);
 }
 static void cache_and_failures(void)
@@ -262,12 +262,12 @@ static void cache_and_failures(void)
     reset(); dc.italic=1; fail_abc=1; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(!size.cx && !size.cy);
     fail_abc=0; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(size.cx>0 && extents==2);
     dc.italic=0;
-    reset(); textdc_text_out(&dc,0,0,large,512,129); assert(draws==1 && !allocations);
-    reset(); textdc_text_out(&dc,0,0,large,513,129); assert(draws==1 && allocations==1 && !live_blocks);
-    reset(); fail_alloc=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !conversions && !live_blocks);
-    reset(); fail_convert=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !font_calls);
-    reset(); fail_font=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !selections);
-    reset(); fail_select=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks);
+    reset(); text_dc_draw_in_charset(&dc,0,0,large,512,129); assert(draws==1 && !allocations);
+    reset(); text_dc_draw_in_charset(&dc,0,0,large,513,129); assert(draws==1 && allocations==1 && !live_blocks);
+    reset(); fail_alloc=1; text_dc_draw_in_charset(&dc,0,0,large,513,129); assert(!draws && !conversions && !live_blocks);
+    reset(); fail_convert=1; text_dc_draw_in_charset(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !font_calls);
+    reset(); fail_font=1; text_dc_draw_in_charset(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !selections);
+    reset(); fail_select=1; text_dc_draw_in_charset(&dc,0,0,large,513,129); assert(!draws && !live_blocks);
     reset(); fail_alloc=1; text_dc_measure_in_charset(&dc,&size,large,513,129); assert(!size.cx && !size.cy && !live_blocks);
     reset(); fail_extent=1; text_dc_measure_in_charset(&dc,&size,large,513,129); assert(!size.cx && !size.cy && !live_blocks);
     reset(); fail_font=1; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(!size.cx && !conversions);

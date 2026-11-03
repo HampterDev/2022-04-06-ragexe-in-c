@@ -1,5 +1,5 @@
 #include "render/font_match.h"
-#if !defined(_WIN32) && !defined(RAGE_FONT_SCAN)
+#ifndef RAGE_FONT_SCAN
 #include <fontconfig/fontconfig.h>
 #include <stdlib.h>
 

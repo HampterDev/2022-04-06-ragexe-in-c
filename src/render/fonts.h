@@ -8,7 +8,12 @@
 #define FONT_FACE_EOT_FIRST 0x14
 #define FONT_FACE_SCDREAM   0x1d
 
-#ifdef _WIN32
+/* The text backend (render/text_backend.h): GDI on Windows unless the build asks for FreeType. */
+#if defined(_WIN32) && !defined(RAGE_TEXT_FREETYPE)
+#define TEXT_BACKEND_GDI 1
+#endif
+
+#ifdef TEXT_BACKEND_GDI
 typedef HFONT FontHandle;
 
 struct FontEntry;
@@ -40,7 +45,7 @@ void fonts_init(void);
 void fonts_shutdown(void);
 FontHandle font_cache_get_font(struct FontCache *self, int face, int size, int charset,
                        int bold, int italic);
-#ifndef _WIN32
+#ifndef TEXT_BACKEND_GDI
 FontHandle font_cache_get_family(struct FontCache *self, const char *family, int size);
 void font_text_extent(FontHandle font, const uint16_t *text, int length, int black_box, SIZE *out);
 void font_text_out(FontHandle font, const struct FontTarget *target, int x, int y, const uint16_t *text, int length,

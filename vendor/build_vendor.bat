@@ -1,7 +1,8 @@
 @echo off
 REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib
 REM (build_vendor.bat x64: ..\build\vendor_x64\*.lib, plus dr_mp3 and an audio-only SDL3 for the
-REM Miles replacement, platform\miles_sdl.c). Run from a vcvars environment of the same width.
+REM Miles replacement, platform\miles_sdl.c; build_vendor.bat <x86|x64> freetype: FreeType too, for
+REM the FreeType text backend). Run from a vcvars environment of the same width.
 setlocal
 pushd "%~dp0" || exit /b 1
 set "ARCH=x86"
@@ -26,6 +27,10 @@ if "%ARCH%"=="x64" (
   call :library dr_mp3 "/DDR_MP3_NO_STDIO" dr_libs\dr_mp3_impl.c
   if errorlevel 1 goto failed
   call :sdl3
+  if errorlevel 1 goto failed
+)
+if /i "%~2"=="freetype" (
+  call :freetype
   if errorlevel 1 goto failed
 )
 popd
@@ -67,4 +72,28 @@ if errorlevel 1 ( type "%OUT%\sdl3-configure.log" & exit /b 1 )
 cmake --build "%OUT%\sdl3-build" >"%OUT%\sdl3-build.log" 2>&1
 if errorlevel 1 ( type "%OUT%\sdl3-build.log" & exit /b 1 )
 copy /y "%OUT%\sdl3-build\SDL3-static.lib" "%OUT%\SDL3-static.lib" >nul
+exit /b %errorlevel%
+
+REM FreeType at the release cmake\Freetype.cmake fetches for Android, static, with only what the
+REM client reads (no compressed fonts, no PNG glyphs, no shaping).
+:freetype
+if exist "%OUT%\freetype.lib" exit /b 0
+set "FT_TAG=VER-2-13-3"
+set "FT_SHA256=BC5C898E4756D373E0D991BAB053036C5EB2AA7C0D5C67E8662DDC6DA40C4103"
+set "FT_TAR=%OUT%\freetype.tar.gz"
+if not exist "%OUT%\freetype-src\CMakeLists.txt" (
+  curl -sSfL -o "%FT_TAR%" "https://codeload.github.com/freetype/freetype/tar.gz/refs/tags/%FT_TAG%" || exit /b 1
+  powershell -NoProfile -Command "if ((Get-FileHash -Algorithm SHA256 '%FT_TAR%').Hash -ne '%FT_SHA256%') { exit 1 }" || ( echo *** FreeType download does not match its hash & exit /b 1 )
+  if not exist "%OUT%\freetype-src" mkdir "%OUT%\freetype-src"
+  tar -xzf "%FT_TAR%" -C "%OUT%\freetype-src" --strip-components=1 || exit /b 1
+)
+set "GEN=NMake Makefiles"
+where ninja >nul 2>nul && set "GEN=Ninja"
+cmake -S "%OUT%\freetype-src" -B "%OUT%\freetype-build" -G "%GEN%" -DCMAKE_BUILD_TYPE=Release ^
+ -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_ZLIB=ON -DFT_DISABLE_BZIP2=ON -DFT_DISABLE_PNG=ON ^
+ -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON >"%OUT%\freetype-configure.log" 2>&1
+if errorlevel 1 ( type "%OUT%\freetype-configure.log" & exit /b 1 )
+cmake --build "%OUT%\freetype-build" >"%OUT%\freetype-build.log" 2>&1
+if errorlevel 1 ( type "%OUT%\freetype-build.log" & exit /b 1 )
+copy /y "%OUT%\freetype-build\freetype.lib" "%OUT%\freetype.lib" >nul
 exit /b %errorlevel%

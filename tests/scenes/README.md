@@ -21,7 +21,8 @@ produces the same pixels every run, and the same random effects on every platfor
 
 Linux and macOS: build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`). Windows: run
 `build.bat`, then `tests\scenes\build.bat`, which links `build\ragexe_scenes.exe` from the same
-objects. Then run every script in `scripts/` from the game directory:
+objects (`build.bat freetype` and `tests\scenes\build.bat freetype`: `ragexe_scenes_ft.exe`, with
+FreeType text as on Linux). Then run every script in `scripts/` from the game directory:
 
 ```sh
 python3 tests/scenes/run.py --exe build/ragexe_scenes --game ~/ro --out /tmp/scenes
@@ -64,7 +65,8 @@ Linux captures of these scenes:
 
 - text: GDI and FreeType draw different fonts unless the same font file is installed on both
   (a Windows without Gulim falls back to Ebrima for Korean-charset text; Linux substitutes
-  Noto Sans CJK KR or NanumGothic at Gulim's size);
+  Noto Sans CJK KR or NanumGothic at Gulim's size). The FreeType build with `RAGE_FONT_DIRS` set to
+  a copy of the Linux machine's font folders draws the same text but for a few pixels;
 - single pixels along triangle edges, where the GPU's and llvmpipe's subpixel precision decide a
   pixel centre differently, and colour rounding of one or two steps in blending.
 

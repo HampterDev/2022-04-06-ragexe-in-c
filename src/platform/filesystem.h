@@ -53,4 +53,9 @@ const char *platform_find_name(const struct PlatformFind *find);
 int platform_find_is_directory(const struct PlatformFind *find);
 void platform_find_close(struct PlatformFind *find);
 
+/* The files and folders in a folder named as the system names it (UTF-8 off Windows), not as the
+   client does: for files outside the game, such as the system's fonts. "." and ".." are left out. */
+typedef void (*PlatformListEntry)(void *context, const char *name, int is_directory);
+int platform_native_list(const char *folder, PlatformListEntry entry, void *context);
+
 #endif
