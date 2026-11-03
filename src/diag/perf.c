@@ -19,7 +19,7 @@ static const char *const phase_name[PERF_N] = {
 };
 
 static struct {
-    int inited, shown, lastScroll;
+    int inited, enabled, shown, lastScroll;
     LARGE_INTEGER freq;
     LARGE_INTEGER t0[PERF_N];
     LONGLONG acc[PERF_N];
@@ -52,13 +52,29 @@ static LONGLONG now(void)
     return t.QuadPart;
 }
 
+static void init(void);
+
+/* The overlay is a developer tool and is off unless RAGEXE_OVERLAY is set to something
+   other than 0. Off, nothing is timed or drawn, and Scroll Lock, which players press
+   for screenshots, does not show it. */
+static int overlay_enabled(void)
+{
+    if (!P.inited)
+        init();
+    return P.enabled;
+}
+
 void perf_begin(int phase)
 {
+    if (!overlay_enabled())
+        return;
     QueryPerformanceCounter(&P.t0[phase]);
 }
 
 void perf_end(int phase)
 {
+    if (!overlay_enabled())
+        return;
     P.acc[phase] += now() - P.t0[phase].QuadPart;
 }
 
@@ -73,7 +89,7 @@ static void init(void)
     P.inited = 1;
     QueryPerformanceFrequency(&P.freq);
     if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
-        P.shown = 1;
+        P.enabled = P.shown = 1;
     P.lastScroll = GetKeyState(VK_SCROLL) & 1;
     P.start = now();
 }
@@ -157,8 +173,8 @@ void perf_frame_end(struct Renderer *r)
 {
     LONGLONG t;
     (void)r;
-    if (!P.inited)
-        init();
+    if (!overlay_enabled())
+        return;
     t = now();
     if (P.lastFrameEnd) {
         LONGLONG d = t - P.lastFrameEnd;
@@ -335,8 +351,9 @@ static void draw_overlay(struct Renderer *r)
 void perf_overlay_draw(struct Renderer *r)
 {
     int visible;
-    if (!P.inited)
-        init();
+    if (!overlay_enabled())
+        return;
+    /* With the overlay on, Scroll Lock hides and shows it. */
     visible = GetKeyState(VK_SCROLL) & 1;
     if (visible != P.lastScroll) {
         P.lastScroll = visible;
