@@ -16,7 +16,9 @@
 #include "navi/navi_manager.h"
 #include "platform/client_config.h"
 #include "platform/clientinfo.h"
+#include "platform/error_message.h"
 #include "platform/language.h"
+#include "render/device.h"
 #include "render/fonts.h"
 #include "render/texture.h"
 #include "render/texture_cache.h"
@@ -66,8 +68,16 @@ static void release_admin_aids(void) { vec_free(&g_adminAids); }
 static void release_yellow_aids(void) { vec_free(&g_yellowAids); }
 static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); }
 
+/* Lower layers call up into higher ones only through these hooks and handlers. This is
+   the one place that installs them; each is documented where it is declared. */
+static void client_install_hooks(void)
+{
+    g_errorMsgPrepareDisplay = device_flip_to_gdi;
+}
+
 void client_init(void)
 {
+    client_install_hooks();
     msg_strings_init();
     packet_table_construct(&g_packetLengthMap);
     atexit(release_packet_table);

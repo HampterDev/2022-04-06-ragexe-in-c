@@ -1,4 +1,3 @@
-#include "platform/error_message.h"
 #include "render/device.h"
 #include "render/rp_pool.h"
 #include "resources/sprite.h"
@@ -12,7 +11,6 @@
 #include <mmsystem.h>
 #include "render/screen_draw.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "platform/win_utf8.h"
 
 DWORD g_fadeStart = 0;
 
@@ -121,12 +119,6 @@ void screen_sprite_frame(struct Renderer *renderer, int x, int y, struct ActRes 
         v[3].v = uv.v1;
         renderer_add_prim(renderer, &prim->base, flags);
     }
-}
-
-void error_msg(const char *text, int flags)
-{
-    device_flip_to_gdi();
-    win_utf8_message_box(NULL, text, "Error", (UINT)flags);
 }
 
 void mode_run_fade_out(struct Mode *self, int logo)

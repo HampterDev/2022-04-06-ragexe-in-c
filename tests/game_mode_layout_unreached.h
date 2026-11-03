@@ -169,11 +169,6 @@ int crt_sprintf(char *arg0, const char *arg1, ...)
     abort();
 }
 
-void device_flip_to_gdi(void)
-{
-    abort();
-}
-
 struct AccountUserDataMgr *g_accountUserDataMgr;
 
 struct AdventurerAgencyMgr *g_adventurerAgency;
