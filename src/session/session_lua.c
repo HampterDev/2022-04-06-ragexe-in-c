@@ -287,28 +287,13 @@ void session_load_external_settings(struct Session *self)
     client_lua_load_file(self->luaState, file, 1, 0);
 
     table_int(self, "MaxLevelTable", "BaseLevel", &self->baseLevel);
-    table_int(self, "MaxLevelTable", "BaseLevel3rd", &self->baseLevel3rd);
-    table_int(self, "MaxLevelTable", "BaseLevelExtend2", &self->baseLevelExtend2);
-    table_int(self, "MaxLevelTable", "BaseLevelUpperJob", &self->baseLevelUpperJob);
     table_int(self, "MaxLevelTable", "BaseLevelHomun", &self->baseLevelHomun);
     table_int(self, "MaxLevelTable", "JobLevelNovice", &self->jobLevelNovice);
     table_int(self, "MaxLevelTable", "JobLevelSuperNovice", &self->jobLevelSuperNovice);
     table_int(self, "MaxLevelTable", "JobLevelBase", &self->jobLevelBase);
     table_int(self, "MaxLevelTable", "JobLevel2nd", &self->jobLevel2nd);
-    table_int(self, "MaxLevelTable", "JobLevel3rd", &self->jobLevel3rd);
-    table_int(self, "MaxLevelTable", "JobLevelExtend2", &self->jobLevelExtend2);
-    table_int(self, "MaxLevelTable", "JobLevelUpperJob", &self->jobLevelUpperJob);
-    check(self->baseLevel == -1 || self->baseLevel3rd == -1 || self->baseLevelExtend2 == -1
-          || self->baseLevelUpperJob == -1 || self->baseLevelHomun == -1 || self->jobLevelNovice == -1
-          || self->jobLevelSuperNovice == -1 || self->jobLevelBase == -1 || self->jobLevel2nd == -1
-          || self->jobLevel3rd == -1 || self->jobLevelExtend2 == -1 || self->jobLevelUpperJob == -1);
-
-    table_int(self, "MaxLevelTable", "BaseLevelDoram", &self->baseLevelDoram);
-    table_int(self, "MaxLevelTable", "JobLevelDoram", &self->jobLevelDoram);
-    check(self->jobLevelDoram == -1);
-
-    client_lua_call(self->luaState, "GetTableBoolValueForC", "ss>b", "MakeableRace", "Doram",
-                      &self->doramMakeable);
+    check(self->baseLevel == -1 || self->baseLevelHomun == -1 || self->jobLevelNovice == -1
+          || self->jobLevelSuperNovice == -1 || self->jobLevelBase == -1 || self->jobLevel2nd == -1);
 
     table_int(self, "Level99AuraTable", "Default99LvAura", &self->auras[0]);
     table_int(self, "Level99AuraTable", "Default99LvAura_sub", &self->auras[1]);
@@ -321,10 +306,6 @@ void session_load_external_settings(struct Session *self)
     table_int(self, "Level99AuraTable", "Boss99LvAura_sub", &self->auras[8]);
     table_int(self, "MaxLevelAuraTable", "Default150LvAura", &self->auras[9]);
     table_int(self, "MaxLevelAuraTable", "Default150LvAura_sub", &self->auras[10]);
-    table_int(self, "MaxLevelAuraTable", "Default160LvAura", &self->auras[11]);
-    table_int(self, "MaxLevelAuraTable", "Default160LvAura_sub", &self->auras[12]);
-    table_int(self, "MaxLevelAuraTable", "HomunMaxLvAura", &self->auras[13]);
-    table_int(self, "MaxLevelAuraTable", "HomunMaxLvAura_sub", &self->auras[14]);
-    table_int(self, "MaxLevelAuraTable", "Default185LvAura", &self->auras[15]);
-    table_int(self, "MaxLevelAuraTable", "Default185LvAura_sub", &self->auras[16]);
+    table_int(self, "MaxLevelAuraTable", "HomunMaxLvAura", &self->auras[11]);
+    table_int(self, "MaxLevelAuraTable", "HomunMaxLvAura_sub", &self->auras[12]);
 }

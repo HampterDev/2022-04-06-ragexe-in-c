@@ -215,9 +215,6 @@ static void show_info_validate(struct UIShowInfoWnd *self, BYTE *ok)
     struct UIDisplayCharacter *d;
     unsigned i;
 
-    if (style_is_doram() == 1)
-        client_lua_call(g_session1.luaState, "StylingShop_GetIsColoring_by_goods", "d>b", self->display->head_style,
-                ok);
     d = self->display;
     if (*ok && !(self->added[0] == 1 && d->head_palette == g_session1.hairColor)
         && !(self->added[1] == 1 && d->head_style == g_session1.hairStyle)

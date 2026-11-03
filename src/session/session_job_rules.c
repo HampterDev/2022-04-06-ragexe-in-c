@@ -15,36 +15,34 @@ static const BYTE low_jobs[0x18] = {
     0, 1, 0, 0, 2, 2, 2, 1, 2, 0, 2, 0, 2, 3, 1, 3, 0, 2, 2, 0,
     0, 3, 3, 0
 };
-static const BYTE high_jobs[0xfa] = {
+static const BYTE high_jobs[0xed] = {
     0, 1, 1, 2, 2, 2, 0, 2, 1, 2, 1, 2, 4, 0, 4, 1, 2, 2, 1, 1,
     4, 1, 0, 1, 1, 2, 2, 2, 0, 2, 1, 2, 1, 2, 4, 0, 4, 1, 2, 2,
-    1, 1, 4, 1, 3, 3, 3, 3, 3, 3, 3, 4, 0, 1, 1, 2, 2, 2, 0, 1,
-    1, 2, 2, 2, 0, 1, 1, 1, 4, 2, 2, 0, 1, 1, 1, 4, 2, 2, 4, 4,
-    4, 4, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 0, 1, 1, 2, 2, 2,
-    0, 1, 1, 1, 4, 2, 2, 4, 4, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    1, 1, 4, 1, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 4,
-    4, 4, 4, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3,
-    3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3,
 };
 static const BYTE low_jobs_2000[18] = {
     0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0
 };
-static const BYTE high_jobs_2000[0xca] = {
-    0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+static const BYTE high_jobs_2000[0xbd] = {
     0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
 static BYTE level_rule(int rule, int level)
@@ -61,7 +59,7 @@ BYTE session_job_allows_level(struct Session *self, int job, int level)
 {
     if (level > 2000) {
         if (job > 0xfcc) {
-            if ((unsigned)(job - 0xfd2) > 0xc9)
+            if ((unsigned)(job - 0xfd2) > 0xbc)
                 return 1;
             return high_jobs_2000[job - 0xfd2];
         }
@@ -76,7 +74,7 @@ BYTE session_job_allows_level(struct Session *self, int job, int level)
         return low_jobs_2000[job - 0xd];
     }
     if (job > 0xfa1) {
-        if ((unsigned)(job - 0xfa2) > 0xf9)
+        if ((unsigned)(job - 0xfa2) > 0xec)
             return 0;
         return level_rule(high_case[high_jobs[job - 0xfa2]], level);
     }
@@ -117,20 +115,19 @@ static const DWORD high_job_sets[20] = {
     SET_B, SET_C, SET_D, SET_E, SET_F, SET_G, SET_H, SET_F, SET_J, SET_K,
     SET_L, SET_M, SET_N, SET_O, SET_A, SET_T, SET_ALL, SET_S, SET_Q, SET_P,
 };
-static const BYTE high_job_case[0xfa] = {
+static const BYTE high_job_case[0xed] = {
     0, 1, 2, 3, 4, 5, 0, 6, 1, 7, 2, 8, 0, 9, 10, 11, 5, 12, 13, 19,
     9, 14, 0, 1, 2, 3, 4, 5, 0, 6, 1, 7, 2, 8, 0, 9, 10, 11, 5, 12,
-    13, 19, 9, 14, 19, 15, 15, 1, 16, 16, 16, 19, 0, 1, 2, 6, 7, 8, 0, 1,
-    2, 6, 7, 8, 9, 11, 13, 19, 10, 12, 5, 9, 11, 13, 19, 10, 12, 5, 0, 0,
-    9, 9, 2, 2, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 6, 7, 8,
-    9, 11, 13, 19, 10, 12, 5, 0, 9, 2, 7, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    13, 19, 9, 14, 19, 15, 15, 1, 16, 16, 16, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
-    19, 19, 19, 19, 19, 19, 19, 19, 14, 14, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
     19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
-    17, 19, 19, 19, 15, 1, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 15, 15, 1, 15,
-    1, 15, 15, 19, 19, 19, 19, 19, 19, 19,
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    17, 19, 19, 19, 15, 1, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 15,
 };
 
 BYTE session_job_accepts_value(struct Session *self, int job,
@@ -139,7 +136,7 @@ BYTE session_job_accepts_value(struct Session *self, int job,
     DWORD set;
 
     if (job > 0xfa1)
-        set = (unsigned)(job - 0xfa2) > 0xf9 ? SET_P : high_job_sets[high_job_case[job - 0xfa2]];
+        set = (unsigned)(job - 0xfa2) > 0xec ? SET_P : high_job_sets[high_job_case[job - 0xfa2]];
     else if (job == 0xfa1)
         set = SET_A;
     else if ((unsigned)job > 0x19)
@@ -220,21 +217,13 @@ static const BYTE low_job_weapons[0x1a] = {
     WT_2_6_8, WT_11, WT_16_25_30, WT_4_5, WT_4_5, WT_0_12, WT_5_10_15_23, WT_11, WT_2_6_8, WT_11,
     WT_11, WT_4_5, WT_NONE, WT_BY_MODE, WT_18_21, WT_22,
 };
-static const BYTE high_job_weapons[0xfa] = {
+static const BYTE high_job_weapons[0xed] = {
     WT_4_5, WT_1, WT_NOT_11, WT_NONE, WT_1, WT_11, WT_4_5, WT_15,
     WT_1_10_23, WT_2_6_8, WT_11, WT_16_25_30, WT_4_5, WT_4_5, WT_0_12, WT_5_10_15_23,
     WT_11, WT_2_6_8, WT_11, WT_11, WT_4_5, WT_BY_MODE, WT_4_5, WT_1,
     WT_NOT_11, WT_NONE, WT_1, WT_11, WT_4_5, WT_15, WT_1_10_23, WT_2_6_8,
     WT_11, WT_16_25_30, WT_4_5, WT_4_5, WT_0_12, WT_5_10_15_23, WT_11, WT_2_6_8,
     WT_11, WT_11, WT_4_5, WT_BY_MODE, WT_NONE, WT_NONE, WT_NONE, WT_1_10_23,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_4_5, WT_1_10_23, WT_11, WT_15,
-    WT_2_6_8, WT_16_25_30, WT_4_5, WT_1_10_23, WT_11, WT_15, WT_2_6_8, WT_16_25_30,
-    WT_4_5, WT_5_10_15_23, WT_11, WT_11, WT_0_12, WT_2_6_8, WT_11, WT_4_5,
-    WT_5_10_15_23, WT_11, WT_11, WT_0_12, WT_2_6_8, WT_11, WT_4_5, WT_4_5,
-    WT_4_5, WT_4_5, WT_11, WT_11, WT_2_6_8, WT_2_6_8, WT_4_5, WT_4_5,
-    WT_4_5, WT_4_5, WT_4_5, WT_4_5, WT_4_5, WT_4_5, WT_4_5, WT_1_10_23,
-    WT_11, WT_15, WT_2_6_8, WT_16_25_30, WT_4_5, WT_5_10_15_23, WT_11, WT_11,
-    WT_0_12, WT_2_6_8, WT_11, WT_4_5, WT_4_5, WT_11, WT_2_6_8, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
@@ -244,15 +233,21 @@ static const BYTE high_job_weapons[0xfa] = {
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_BY_MODE, WT_BY_MODE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
     WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_22, WT_22, WT_NONE, WT_NONE, WT_18_21, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_22, WT_22, WT_22, WT_NONE,
-    WT_NONE, WT_1_10_23, WT_18_21, WT_18_21, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_1_10_23, WT_NONE,
-    WT_1_10_23, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
-    WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_22, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_1_10_23, WT_18_21, WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
+    WT_NONE, WT_NONE, WT_NONE, WT_NONE, WT_NONE,
 };
 
 static int weapon_rule(int rule, int type, int mode)
@@ -293,16 +288,14 @@ BYTE session_job_accepts_weapon(struct Session *self, int job, int mode,
     int id = lo, type, rule;
 
     if (hi > 0 || (hi == 0 && (unsigned)lo >= 0x69)) {
-        if ((job == 0xc || job == 0xfad || job == 0xfc3 || job == 0xfdb || job == 0xfe1
-             || job == 0x1005)
-            && session_get_weapon_view_id(hi) > 0)
+        if ((job == 0xc || job == 0xfad || job == 0xfc3) && session_get_weapon_view_id(hi) > 0)
             id = dual_wield_type(lo, hi);
         else
             id = session_get_weapon_view_id(lo);
     }
     type = session_get_real_weapon_id(id);
     if (job > 0xfa1) {
-        if ((unsigned)(job - 0xfa2) > 0xf9)
+        if ((unsigned)(job - 0xfa2) > 0xec)
             return 0;
         rule = high_job_weapons[job - 0xfa2];
     } else if (job == 0xfa1) {
@@ -313,30 +306,6 @@ BYTE session_job_accepts_weapon(struct Session *self, int job, int mode,
         rule = low_job_weapons[job];
     }
     return (BYTE)weapon_rule(rule, type, mode);
-}
-
-struct JobRange { WORD first, last; };
-
-static int in_ranges(int job, const struct JobRange *r, int n)
-{
-    int i;
-    for (i = 0; i < n; i++)
-        if (job >= r[i].first && job <= r[i].last)
-            return 1;
-    return 0;
-}
-
-int session_is_third_job(struct Session *self, int job)
-{
-    static const struct JobRange jobs[] = {
-        { 0x1018, 0x1018 }, { 0x101f, 0x101f }, { 0x1021, 0x1021 }, { 0x1024, 0x1025 },
-        { 0x102c, 0x102c }, { 0x102f, 0x102f }, { 0x1034, 0x1034 }, { 0x1037, 0x1037 },
-        { 0x104d, 0x1054 }, { 0x1056, 0x1056 }, { 0x1065, 0x1066 }, { 0x1069, 0x106a },
-        { 0x106d, 0x106e }, { 0x1070, 0x1071 },
-    };
-    if ((unsigned)(job - 0xfd6) <= 0x3a)
-        return 1;
-    return in_ranges(job, jobs, sizeof jobs / sizeof jobs[0]);
 }
 
 int session_is_pc_job(struct Session *self, int job)

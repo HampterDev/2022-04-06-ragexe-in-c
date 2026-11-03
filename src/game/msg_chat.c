@@ -111,7 +111,7 @@ static int check_history_full(struct GameMode *self)
             }
         }
     }
-    if (!session_is_any_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
+    if (!session_is_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
         return 0;
     sprintf(phrase1, msg_str_to_compare(0x316));
     m318 = msg_str_to_compare(0x318);
@@ -123,10 +123,7 @@ static int check_history_full(struct GameMode *self)
         || !string_equal_cstr(&self->chat_history[7], phrase1)
         || self->world->player->state == 3)
         return 0;
-    if ((session_is_super_novice_job(&g_session1, session_get_drawn_job(&g_session1))
-         && g_session1.charBaseLevel >= g_session1.baseLevel)
-        || (session_is_expanded_super_novice_job(&g_session1, session_get_drawn_job(&g_session1))
-            && g_session1.charBaseLevel >= g_session1.baseLevelExtend2)) {
+    if (g_session1.charBaseLevel >= g_session1.baseLevel) {
         chat_print_msg(0x7df, CHAT_COLOR_RED);
         return 1;
     }

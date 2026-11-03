@@ -347,8 +347,6 @@ void ui_menu_icon_wnd_on_create(struct UIWindow *window, int width, int height)
     for (i = 0; i < MENU_ICON_COUNT; i++) {
         id = menu_icon_ids[i];
         name = menu_icon_names[i];
-        if (id == MENU_ID_STATUS && session_is_doram_job(&g_session1, g_session1.job) == 1)
-            name = "status_doram";
         if (id == 0x239)
             continue;
         x = (unsigned)placed % MENU_COLUMNS * MENU_ICON_DX + MENU_ICON_X;

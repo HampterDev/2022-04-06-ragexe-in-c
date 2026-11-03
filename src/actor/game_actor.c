@@ -33,28 +33,6 @@ void game_actor_show_level_aura(struct GameActor *self)
 
     if (g_session1.auraOff)
         return;
-    if (session_is_third_job(&g_session1, game_actor_get_job(self))) {
-        if (g_session1.baseLevel3rd == (short)self->level)
-            ACTOR_SEND(self, NULL, 0x96, 0);
-        else
-            self->aura_on = 0;
-    }
-    if (session_is_expanded_super_novice_job(&g_session1, game_actor_get_job(self))) {
-        if (g_session1.baseLevelExtend2 == (short)self->level) {
-            ACTOR_SEND(self, NULL, 0x92, 0);
-            return;
-        }
-        self->aura_on = 0;
-        return;
-    }
-    if (session_is_expanded_job(&g_session1, game_actor_get_job(self))) {
-        if (g_session1.baseLevelUpperJob == (short)self->level) {
-            ACTOR_SEND(self, NULL, 0x92, 0);
-            return;
-        }
-        self->aura_on = 0;
-        return;
-    }
     if (session_is_homunculus_job(&g_session1, game_actor_get_job(self))) {
         level = (short)self->level;
         if (g_session1.baseLevelHomun == level) {
@@ -66,17 +44,7 @@ void game_actor_show_level_aura(struct GameActor *self)
             return;
         }
     } else {
-        unsigned char in_group = session_is_doram_job(&g_session1, game_actor_get_job(self));
-
         level = (short)self->level;
-        if (in_group == 1) {
-            if (g_session1.baseLevelDoram == level) {
-                ACTOR_SEND(self, NULL, 0x92, 0);
-                return;
-            }
-            self->aura_on = 0;
-            return;
-        }
         if (g_session1.baseLevel != level) {
             self->aura_on = 0;
             return;
@@ -155,7 +123,7 @@ int game_actor_action_of(struct GameActor *self, unsigned motion)
         return 0x60;
     case 0x1a:
         switch (game_actor_get_job(self)) {
-        case 0xfd1: case 0x1083: case 0x1090: case 0x1092:
+        case 0xfd1: case 0x1083:
             return 0x58;
         default:
             return 0x28;
@@ -174,8 +142,6 @@ int game_actor_get_height_offset(struct GameActor *self)
         || self->aid == g_session1.ownAid) {
         if (session_is_baby_job(&g_session1, game_actor_get_job(self)))
             return self->mounted ? 10 : -20;
-        if (session_is_doram_job(&g_session1, game_actor_get_job(self)))
-            return self->mounted ? -40 : -30;
         if (self->mounted)
             offset = 30;
     }
@@ -247,13 +213,6 @@ int game_actor_get_mount_height(struct GameActor *self)
 {
     int job = game_actor_get_job(self);
 
-    if (job > 0xfff) {
-        if ((unsigned)(job - 0x100d) <= 3)
-            return 5;
-        return 0;
-    }
-    if (job >= 0xff0)
-        return 5;
     if (job == 0xd || job == 0x15 || job == 0xfae || job == 0xfb6 || job == 0xfc4 || job == 0xfcc)
         return 3;
     return 0;
@@ -279,38 +238,12 @@ int * game_actor_get_request2(struct GameActor * self, int which)
 
 int game_actor_state_job(int job, int state)
 {
-    if (job == 0xfd6) {
-        if (effect_state_bit19(state)) return job + 0x1a;
-        if (effect_state_bit23(state)) return 0xff8;
-        if (effect_state_bit24(state)) return 0xffa;
-        if (effect_state_bit25(state)) return 0xffc;
-        if (effect_state_bit26(state)) return 0xffe;
-        return job;
-    }
-    if (job == 0xfdc) {
-        if (effect_state_bit19(state)) return job + 0x15;
-        if (effect_state_bit23(state)) return 0xff9;
-        if (effect_state_bit24(state)) return 0xffb;
-        if (effect_state_bit25(state)) return 0xffd;
-        if (effect_state_bit26(state)) return 0xfff;
-        return job;
-    }
-    if (job == 0x1000) return effect_state_bit19(state) ? job + 0xd : job;
-    if (job == 0xfd8)  return effect_state_bit21(state) ? job + 0x1c : job;
-    if (job == 0xfde)  return effect_state_bit21(state) ? job + 0x17 : job;
-    if (job == 0x1002) return effect_state_bit21(state) ? job + 0xd : job;
-    if (job == 0xfda)  return effect_state_bit22(state) ? job + 0x1c : job;
-    if (job == 0xfe0)  return effect_state_bit22(state) ? job + 0x17 : job;
-    if (job == 0x1004) return effect_state_bit22(state) ? job + 0xc : job;
     if (job == 0x7)    return effect_state_bit5(state) ? job + 6 : job;
     if (job == 0xe)    return effect_state_bit5(state) ? job + 7 : job;
     if (job == 0xfa8)  return effect_state_bit5(state) ? job + 6 : job;
     if (job == 0xfbe)  return effect_state_bit5(state) ? job + 6 : job;
     if (job == 0xfaf)  return effect_state_bit5(state) ? job + 7 : job;
     if (job == 0xfc5)  return effect_state_bit5(state) ? job + 7 : job;
-    if (job == 0xfe2)  return effect_state_bit5(state) ? job + 0x10 : job;
-    if (job == 0xfe9)  return effect_state_bit5(state) ? job + 0xa : job;
-    if (job == 0x1006) return effect_state_bit5(state) ? job + 8 : job;
     if (job == 0xfcf)  return effect_state_bit15(state) ? job + 1 : job;
     if (job == 0x1082) return effect_state_bit15(state) ? job + 0xc : job;
     return job;
@@ -320,21 +253,15 @@ float game_actor_get_mount_lift(struct GameActor *self)
 {
     int job = game_actor_get_job(self);
 
-    if (job > 0xfff) {
-        if ((unsigned)(job - 0x100d) <= 3)
-            return 4.0f;
-    } else if (job >= 0xff0 || job == 0xfb6 || job == 0xd || job == 0x15 || job == 0xfae) {
+    if (job == 0xfb6 || job == 0xd || job == 0x15 || job == 0xfae)
         return 6.0f;
-    } else if (job == 0xfc4 || job == 0xfcc) {
+    if (job == 0xfc4 || job == 0xfcc)
         return 4.0f;
-    }
     if (session_is_player_job(&g_session1, game_actor_get_job(self))
         || session_get_pet_acc_act_name(&g_session1, game_actor_get_job(self))
         || self->aid == g_session1.ownAid) {
         if (session_is_baby_job(&g_session1, game_actor_get_job(self)))
             return self->mounted ? 4.0f : -1.0f;
-        if (session_is_doram_job(&g_session1, game_actor_get_job(self)))
-            return self->mounted ? -3.0f : -2.0f;
         if (self->mounted)
             return 6.0f;
     }
@@ -458,20 +385,7 @@ void game_actor_set_job(struct GameActor *self, int job)
     case 0xfc4: self->job = 0xfbe; break;
     case 0xfcc: self->job = 0xfc5; break;
     case 0xfd0: self->job = 0xfcf; break;
-    case 0xff0: case 0xff8: case 0xffa: case 0xffc: case 0xffe: self->job = 0xfd6; break;
-    case 0xff1: case 0xff9: case 0xffb: case 0xffd: case 0xfff: self->job = 0xfdc; break;
-    case 0xff2: self->job = 0xfe2; break;
-    case 0xff3: self->job = 0xfe9; break;
-    case 0xff4: self->job = 0xfd8; break;
-    case 0xff5: self->job = 0xfde; break;
-    case 0xff6: self->job = 0xfda; break;
-    case 0xff7: self->job = 0xfe0; break;
-    case 0x100d: self->job = 0x1000; break;
-    case 0x100e: self->job = 0x1006; break;
-    case 0x100f: self->job = 0x1002; break;
-    case 0x1010: self->job = 0x1004; break;
     case 0x108e: self->job = 0x1082; break;
-    case 0x1094: self->job = 0x1091; break;
     }
     actor_set_spr_job(self, game_actor_get_job(self));
     game_actor_stop_aura_effects(self);

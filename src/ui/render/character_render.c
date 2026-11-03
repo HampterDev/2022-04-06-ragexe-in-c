@@ -807,18 +807,6 @@ static void render_layers(struct CharacterRender *self, struct ChrPass *pass, co
         dx = 0;
         dy = 0;
         img = spr_res_image(pass->sprs[ly], clip);
-        if (session_is_doram_job(&g_session1, self->job) == 1) {
-            int dir = action_dir(self->action), ox = 0;
-
-            if (dir < 0)
-                dir = 7;
-            if (dir > 7)
-                dir = 0;
-            dy = 0;
-            client_lua_call(g_session1.luaState, "OffsetItemPos_GetOffsetForDoram", "ddd>dd",
-                    *layer_view(self, ly), dir, self->sex, &ox, &dy);
-            dx = ox;
-        }
         if (ly == CHR_LAYER_HEAD) {
             struct ActRes *body;
             struct String path;

@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 struct Session g_session1;
-static int manager, doram, allowed = 1;
+static int manager, allowed = 1;
 static int probes, available_from = 1, mounted_job;
 static const char *robe_text = "cape";
 static const char *body_text = "novice";
@@ -34,8 +34,6 @@ unsigned char res_mgr_is_available(struct ResMgr *self, const char *path)
 }
 unsigned __int64 *crt_printf_options(void)
 { static unsigned __int64 options; return &options; }
-BYTE session_is_doram_job(struct Session *self, int job)
-{ assert(self == &g_session1); (void)job; return (BYTE)doram; }
 int session_remap_job(struct Session *self, int job)
 { assert(self == &g_session1); return job; }
 int session_get_mounted_job(int job)
@@ -95,7 +93,6 @@ int main(void)
     hair_names[2] = "two"; hair_names[10] = "ten"; hair_names[13] = "thirteen";
     for (i = 0; i < 4096; ++i) body_names[i] = "novice";
     g_session1.maleHairNames.first = g_session1.femaleHairNames.first = hair_names;
-    g_session1.doramHairNamesMale.first = g_session1.doramHairNamesFemale.first = hair_names;
     g_session1.jobBodyNames.first = body_names;
     g_session1.jobSpritePaths.first = body_names;
     g_session1.pcNames.first = body_names;
@@ -103,17 +100,12 @@ int main(void)
     resource_path_accessory(&out, 0, 1, 1, 2, 0); check(&out, "");
     resource_path_accessory(&out, 0, 1, 1, 2, 2); check(&out, "");
     resource_path_accessory(&out, 0, 1, 1, 2, 1); check(&out, "악세사리\\남\\남_hat.act");
-    doram = 1;
-    resource_path_accessory(&out, 1, 1, 0, 2, 1); check(&out, "악세사리\\여_doram\\여_hat.spr");
-    available_from = 0;
-    resource_path_accessory(&out, 1, 1, 0, 2, 1); check(&out, "악세사리\\여\\여_hat.spr");
-    available_from = 1; doram = 0;
+    resource_path_accessory(&out, 1, 1, 0, 2, 1);
+    assert(probes == 0); check(&out, "악세사리\\여\\여_hat.spr");
 
     resource_path_body_sprite(&out, 0, 1, 1, 1, 0); check(&out, "인간족\\몸통\\남\\novice_남.act");
-    doram = 1;
-    resource_path_body_sprite(&out, 1, 1, 1, 0, 1); check(&out, "도람족\\몸통\\여\\costume_1\\novice_여_1.spr");
-    resource_path_body_palette(&out, 1, 1, 3, 1, 0); check(&out, "도람족\\body\\costume_1\\novice_남_3_1.pal");
-    doram = 0;
+    resource_path_body_sprite(&out, 1, 1, 1, 0, 1); check(&out, "인간족\\몸통\\여\\costume_1\\novice_여_1.spr");
+    resource_path_body_palette(&out, 1, 1, 3, 1, 0); check(&out, "몸\\costume_1\\novice_남_3_1.pal");
     resource_path_body_palette(&out, 1, 1, 3, 0, 0); check(&out, "몸\\novice_남_3.pal");
     resource_path_body_palette(&out, 0xfa1, 1, 0, 0, 0); check(&out, "몸\\novice_남_1.pal");
     resource_path_body_palette(&out, 0xfa8, 1, 1, 0, 0); check(&out, "몸\\novice_남_0.pal");
@@ -124,11 +116,9 @@ int main(void)
     hair = 99;
     resource_path_head_sprite(&out, 0, 1, 1, &hair);
     assert(hair == 13); check(&out, "인간족\\머리통\\남\\thirteen_남.act");
-    doram = 1; hair = -1;
+    hair = -1;
     resource_path_head_sprite(&out, 1, 1, 0, &hair);
-    assert(hair == 10); check(&out, "도람족\\머리통\\여\\ten_여.spr");
-    resource_path_head_palette(&out, 99, 1, 1, 3); check(&out, "도람족\\머리\\머리ten_남_3.pal");
-    doram = 0;
+    assert(hair == 13); check(&out, "인간족\\머리통\\여\\thirteen_여.spr");
     resource_path_head_palette(&out, 1, 1, 0, 3); check(&out, "머리\\머리two_여_3.pal");
     resource_path_imf(&out, 0xf6f, 1); check(&out, "motion_남.imf");
 

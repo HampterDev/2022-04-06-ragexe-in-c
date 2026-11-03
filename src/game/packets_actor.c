@@ -322,8 +322,7 @@ struct PACKET_ZC_SPRITE_CHANGE2 {
 };
 #pragma pack(pop)
 
-#define JOB_DOUBLE_WEAPON(job) ((job) == 12 || (job) == 4013 || (job) == 4035 || (job) == 4059 || \
-                                (job) == 4065 || (job) == 4101)
+#define JOB_DOUBLE_WEAPON(job) ((job) == 12 || (job) == 4013 || (job) == 4035)
 #define JOB_CLOTHES_COLORED(v) ((unsigned long long)((v) - 4001) <= 6)
 
 static void keep_own_look(const struct PACKET_ZC_SPRITE_CHANGE2 *packet)

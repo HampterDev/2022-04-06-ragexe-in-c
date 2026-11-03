@@ -99,7 +99,6 @@ struct Pc *pc_construct(struct Pc *self)
     self->char_id = 0;
     self->body_style = 0;
     self->look_job = 0;
-    self->soul_attack = 0;
     self->helm_robe = 0;
     self->hat_flags = 0;
     self->madogear_type = 0;

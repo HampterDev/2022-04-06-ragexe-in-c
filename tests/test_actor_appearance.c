@@ -64,7 +64,7 @@ static void sprite_look(void)
     static const int full[] = {22,23,25,26,27,28,30,31,33,32};
     static const int plain[] = {22,24,25,26,27,28,30,31,32};
     static const int transformed[] = {22,25,26,27,30,31,32};
-    static const int dual_jobs[] = {0xc,0xfad,0xfc3,0xfdb,0xfe1,0x1005};
+    static const int dual_jobs[] = {0xc,0xfad,0xfc3};
     static const int ids[] = {INT_MIN,-1,0,1,INT_MAX};
     static const int states[] = {1 << 12,1 << 16,1 << 18,1 << 27,1 << 28};
     static const int drawn[] = {0x16,0x1a,0x1b,0x1c,0x1d};

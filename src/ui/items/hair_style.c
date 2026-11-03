@@ -11,7 +11,6 @@
 #define UI_BTN_DISABLED 3
 
 #define HUMAN_HAIR_STYLES 0x17
-#define DORAM_HAIR_STYLES 6
 
 #define MAKER_SKIN UI_SKIN "make_character_ver2\\"
 
@@ -189,7 +188,6 @@ struct UIHairStyleButton *ui_hair_style_button_construct(struct UIHairStyleButto
     self->style = style;
     self->button.button.base.ops = &ui_hair_style_button_ops.base;
     self->male = male;
-    self->doram = 0;
     self->picture = NULL;
     self->selected = 0;
     return self;
@@ -225,26 +223,17 @@ static void hair_style_refresh(struct UIHairStyleButton *self)
     char path[0x80];
 
     memset(path, 0, sizeof path);
-    if ((self->doram == 0 && self->style >= HUMAN_HAIR_STYLES)
-        || (self->doram == 1 && self->style >= DORAM_HAIR_STYLES)) {
+    if (self->style >= HUMAN_HAIR_STYLES) {
         if (self->picture) {
             ui_button_set_show((struct UIButton *)(self->picture), 0);
             ui_window_invalidate_children(&self->button.button.base);
         }
         return;
     }
-    if (self->doram == 0) {
-        ui_button_set_show((struct UIButton *)(self->picture), 1);
-        sprintf_s(path, sizeof path,
-                  self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
-                  self->style + 1);
-    } else if (self->doram == 1) {
-        ui_button_set_show((struct UIButton *)(self->picture), 1);
-        sprintf_s(path, sizeof path,
-                  self->male == 0 ? MAKER_SKIN "img_hairStyle_doramGirl%02d.bmp"
-                                  : MAKER_SKIN "img_hairStyle_doramBoy%02d.bmp",
-                  self->style + 1);
-    }
+    ui_button_set_show((struct UIButton *)(self->picture), 1);
+    sprintf_s(path, sizeof path,
+              self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
+              self->style + 1);
     if (self->picture) {
         ui_bitmap_button_set_bitmap(&self->picture->button, path, UI_BTN_UP, 0);
         ui_bitmap_button_set_bitmap(&self->picture->button, path, UI_BTN_HOVER, 0);

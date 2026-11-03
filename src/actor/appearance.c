@@ -154,7 +154,7 @@ void pc_set_spr_act_with_state(struct GameActor * actor, const struct ActorLook 
         __int64 w;
 
         switch (game_actor_get_job((struct GameActor *)self)) {
-        case 0xc: case 0xfad: case 0xfc3: case 0xfdb: case 0xfe1: case 0x1005:
+        case 0xc: case 0xfad: case 0xfc3:
             w = look->weapon;
             break;
         default:

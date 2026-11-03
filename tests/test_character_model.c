@@ -206,11 +206,6 @@ float session_get_baby_job_scale(struct Session *s, int j)
     note(j);
     return .75f;
 }
-BYTE session_is_doram_job(struct Session *s, int j)
-{
-    (void)s;
-    return j == 4218;
-}
 BYTE session_is_head_replacing_view(struct Session *s, int item)
 {
     (void)s;
@@ -280,12 +275,7 @@ int client_lua_call(struct ClientLua *lua, const char *fn, const char *sig, ...)
         *va_arg(ap, double *) = 0;
         *va_arg(ap, double *) = 0;
     } else {
-        assert(!strcmp(fn, "OffsetItemPos_GetOffsetForDoram"));
-        note(403);
-        for (i = 0; i < 3; ++i)
-            note(va_arg(ap, int));
-        *va_arg(ap, int *) = 2;
-        *va_arg(ap, int *) = -3;
+        assert(!"unexpected Lua call");
     }
     va_end(ap);
     return 1;

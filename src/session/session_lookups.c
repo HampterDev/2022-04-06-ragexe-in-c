@@ -15,23 +15,15 @@
 BYTE session_is_bard_or_dancer(struct Session *self, int job, int female)
 {
     if (!female)
-        return job == JOB_BARD || job == 0xfb4 || job == 0xfca || job == 0xfe4 || job == 0xfeb
-            || job == 0x1008;
-    return job == JOB_DANCER || job == 0xfb5 || job == 0xfcb || job == 0xfe5 || job == 0xfec
-        || job == 0x1009;
+        return job == JOB_BARD || job == 0xfb4 || job == 0xfca;
+    return job == JOB_DANCER || job == 0xfb5 || job == 0xfcb;
 }
 
 float session_get_baby_job_scale(struct Session *self, int job)
 {
-    if (!((job >= 0xfb7 && job <= 0xfbd) || job == 0xfcd || job == 0x105f
-          || (unsigned)(job - 0xfbe) <= 0xe || (unsigned)(job - 0x1000) <= 0x10
-          || (unsigned)(job - 0x103e) <= 0x18 || (job >= 0x1062 && job <= 0x1064) || job == 0x1061
-          || (unsigned)(job - 0x106d) <= 5 || job == 0x107c || (unsigned)(job - 0x107e) <= 0x10
-          || job == 0x1091 || job == 0x1092 || job == 0x1094 || job == 0x1097 || job == 0x1098))
+    if (!session_is_baby_job(self, job))
         return 1.0f;
-    if (session_is_doram_job(&g_session1, job) == 1)
-        return 0.8f;
-    if ((job >= 0xfb7 && job <= 0xfbd) || job == 0xfcd || job == 0x105f)
+    if ((job >= 0xfb7 && job <= 0xfbd) || job == 0xfcd)
         return 0.75f;
     return 0.82f;
 }

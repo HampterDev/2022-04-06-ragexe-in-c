@@ -20,14 +20,8 @@
 #include "diag/perf.h"
 #include "session/session_names.h"
 
-#define RACE_HUMAN 0
-#define RACE_DORAM 1
-#define DORAM_JOB 0x107a
-
 #define MSG_HUMAN_TITLE 0xbc8
-#define MSG_DORAM_TITLE 0xbca
 #define MSG_HUMAN_TEXT 0xbcc
-#define MSG_DORAM_TEXT 0xbcd
 
 #define MAKE_CHAR_WND_ID 0x116
 #define RACE_BUTTON_ID 0xc4
@@ -42,7 +36,6 @@
 
 struct UIDescriptRace {
     struct UIBitmapButton base;
-    int race;
     BYTE animating;
     int frame;
     DWORD frame_time;
@@ -144,15 +137,9 @@ static void draw_race(struct UIDescriptRace *self)
     struct String path;
     int job, action, frame, layer;
 
-    if (self->race == RACE_DORAM) {
-        if (!g_session1.doramMakeable)
-            return;
-        draw_text(self, MSG_DORAM_TITLE, MSG_DORAM_TEXT);
-    } else if (self->race == RACE_HUMAN) {
-        draw_text(self, MSG_HUMAN_TITLE, MSG_HUMAN_TEXT);
-    }
+    draw_text(self, MSG_HUMAN_TITLE, MSG_HUMAN_TEXT);
 
-    job = self->race == RACE_DORAM ? DORAM_JOB : 0;
+    job = 0;
     action = self->animating ? ACTION_WALK : ACTION_STAND;
     frame = 0;
     for (layer = 0; layer < 2; layer++) {
@@ -245,38 +232,30 @@ int ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     struct UIDescriptRace *self = (struct UIDescriptRace *)window;
     if (msg != DESCRIPT_RACE_MSG_CHOOSE)
         return 0;
-    if (self->race == RACE_DORAM && !g_session1.doramMakeable)
-        return 0;
     if (val1) {
         self->animating = 1;
-        ui_bitmap_button_set_bitmap(&self->base,
-                                 self->race == RACE_DORAM ? MAKE_DIR "img_doram_on.bmp" : MAKE_DIR "img_human_on.bmp",
-                                 0, 0);
+        ui_bitmap_button_set_bitmap(&self->base, MAKE_DIR "img_human_on.bmp", 0, 0);
     } else {
         self->animating = 0;
-        ui_bitmap_button_set_bitmap(&self->base,
-                                 self->race == RACE_DORAM ? MAKE_DIR "img_doram_off.bmp"
-                                                          : MAKE_DIR "img_human_off.bmp",
-                                 0, 0);
+        ui_bitmap_button_set_bitmap(&self->base, MAKE_DIR "img_human_off.bmp", 0, 0);
     }
     return 0;
 }
 
-static struct UIDescriptRace *ui_descript_race_construct(struct UIDescriptRace *self, int race)
+static struct UIDescriptRace *ui_descript_race_construct(struct UIDescriptRace *self)
 {
     ui_bitmap_button_construct(&self->base);
     self->base.button.base.ops = &ui_descript_race_ops.base;
-    self->race = race;
     self->frame = 0;
     self->frame_time = timeGetTime();
-    self->animating = race == RACE_HUMAN;
+    self->animating = 1;
     return self;
 }
 
-struct UIWindow *ui_descript_race_create(int race)
+struct UIWindow *ui_descript_race_create(void)
 {
     struct UIDescriptRace *button = mem_alloc(sizeof *button);
     if (!button) return NULL;
-    ui_descript_race_construct(button, race);
+    ui_descript_race_construct(button);
     return &button->base.button.base;
 }

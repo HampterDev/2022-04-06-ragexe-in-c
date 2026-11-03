@@ -50,7 +50,7 @@ void pc_set_body_pal_name(struct GameActor * base_actor)
         return;
     job = game_actor_get_job((struct GameActor *)self);
     if (self->mounted) {
-        if (self->body_style > 0 || session_is_doram_job(&g_session1, job))
+        if (self->body_style > 0)
             job = session_get_mounted_job(game_actor_get_job((struct GameActor *)self));
     }
     session_get_body_pal_name(&name, job, self->sex, self->body_palette, self->body_style,
@@ -263,11 +263,11 @@ void pc_set_spr_job(struct GameActor * base_actor, int job)
     int st, other;
 
     switch (job) {
-    case 0x13: case 0xfb4: case 0xfca: case 0xfe4: case 0xfeb:
+    case 0x13: case 0xfb4: case 0xfca:
         if (self->sex == 0)
             self->sex = 1;
         break;
-    case 0x14: case 0xfb5: case 0xfcb: case 0xfe5: case 0xfec:
+    case 0x14: case 0xfb5: case 0xfcb:
         if (self->sex == 1)
             self->sex = 0;
         break;
@@ -304,14 +304,6 @@ void pc_set_spr_job(struct GameActor * base_actor, int job)
                                         self->body_style, 0);
     } else {
         switch (job) {
-        case 0xff6: case 0xff7:
-            if (actor_get_sprite_variant(self) == 2)
-                self->shadow_scale = 1.5f;
-            break;
-        case 0x1010:
-            if (actor_get_sprite_variant(self) == 2)
-                self->shadow_scale = 1.12f;
-            break;
         }
         other = actor_get_sprite_variant(self);
         session_get_body_spr_name_variant0(&name, job, self->sex, self->body_style, other);
@@ -492,15 +484,8 @@ void pc_set_weapon_look(struct GameActor * base_actor, int64_t weapon)
     pc_set_layer_spr(self, 6, "");
 
     switch (game_actor_get_job((struct GameActor *)self)) {
-    case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e: case 0x108f: case 0x1091:
-    case 0x1093: case 0x1094:
+    case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e:
         pc_set_glow(self, job, 0, -1, 1, NULL, NULL, 0);
-        return;
-    case 0xff4: case 0xff5: case 0x100f:
-        pc_set_glow(self, job, 0, -1, 0, NULL, NULL, 0);
-        return;
-    case 0xff6: case 0xff7: case 0x1010:
-        pc_set_glow(self, job, 0, -1, 0, "마도기어_", "마도아머_", 9);
         return;
     }
 
@@ -509,7 +494,7 @@ void pc_set_weapon_look(struct GameActor * base_actor, int64_t weapon)
     if (session_get_weapon_view_id((int)(self->weapon >> 32)) > 0) {
         kind = pc_weapon_pair_kind(self->weapon);
         switch (game_actor_get_job((struct GameActor *)self)) {
-        case 0xc: case 0xfad: case 0xfc3: case 0xfdb: case 0xfe1: case 0x1005:
+        case 0xc: case 0xfad: case 0xfc3:
             if (kind == 0 || kind == 7 || kind == 8)
                 kind = 2;
             break;
@@ -536,7 +521,7 @@ void pc_set_weapon_look(struct GameActor * base_actor, int64_t weapon)
         }
         if (kind == 0xc) {
             switch (game_actor_get_job((struct GameActor *)self)) {
-            case 0x8: case 0xfa9: case 0xfbf: case 0xfd9: case 0xfdf: case 0x1003:
+            case 0x8: case 0xfa9: case 0xfbf:
                 string_free(&act);
                 return;
             }
@@ -638,8 +623,7 @@ int pc_job_weapon_kind(struct Pc *self, int kind)
         if (kind == 8 || kind == 6 || kind == 7)
             kind = 2;
         break;
-    case 12: case 17: case 0xfad: case 0xfb2: case 0xfc3: case 0xfc8: case 0xfdb: case 0xfe1: case 0xfe8:
-    case 0xfef: case 0x1005: case 0x100c:
+    case 12: case 17: case 0xfad: case 0xfb2: case 0xfc3: case 0xfc8:
         if (kind == 8 || kind == 7)
             kind = 2;
         else if (kind == 6

@@ -181,7 +181,6 @@ void ui_display_character_destroy(struct UIWindow *window);
 
 struct String *style_kind_name(struct String *out, int kind);
 int style_kind_value(const struct UIDisplayCharacter *display, int kind);
-BYTE style_is_doram(void);
 struct UIBitmapButton *style_add_button(struct UIWindow *parent, struct UIBitmapButton *btn, const char *up,
                                         const char *over, const char *down, int x, int y, int id);
 void style_lua_size(const char *name, int *count);

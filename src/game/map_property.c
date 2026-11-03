@@ -135,8 +135,6 @@ void game_mode_map_property_r2(struct GameMode *self, const struct PacketMapProp
         notice_if_no_miracle();
     if (job_get_base_job(session_get_drawn_job(&g_session1)) == 0x1082)
         notice_if_no_miracle();
-    if (session_get_drawn_job(&g_session1) == 0x108f || session_get_drawn_job(&g_session1) == 0x1091)
-        notice_if_no_miracle();
     if (map_property_mgr_get(g_mapFlags, p->type, 0x14))
         say_notice(0x6ec);
 

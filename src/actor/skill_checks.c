@@ -318,10 +318,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         break;
     case 0x10a: case 0x10b: case 0x9d6:
         render_object_set_script_step_frames((struct RenderObject *)self, 10);
-        if (session_is_doram_job(&g_session1, game_actor_get_job(self)) == 1)
-            sot_motion(self, 0x58, 4, 5, 0x44c);
-        else
-            sot_motion(self, 0x60, 3, 4, 0x44c);
+        sot_motion(self, 0x60, 3, 4, 0x44c);
         break;
     case 0x10f:
         render_object_set_script_step_frames((struct RenderObject *)self, 4);

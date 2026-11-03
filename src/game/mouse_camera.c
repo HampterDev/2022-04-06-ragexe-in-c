@@ -22,7 +22,7 @@
 
 float g_maxViewDistance = 400.0f;
 
-enum { JOB_STAR_GLADIATOR = 0xfcf, JOB_BABY_STAR_GLADIATOR = 0x1082, JOB_STAR_EMPEROR = 0x108f, JOB_BABY_STAR_EMPEROR = 0x1091 };
+enum { JOB_STAR_GLADIATOR = 0xfcf, JOB_BABY_STAR_GLADIATOR = 0x1082 };
 
 enum { SKILL_SG_DEVIL = 0x1b9, SKILL_DA_DREAM = 0x27f };
 
@@ -220,8 +220,7 @@ static void wheel_zoom(struct GameMode *self)
     far_limit = self->camera_free ? g_maxViewDistance : g_fixedViewDistanceMax;
     skill_table_find(&g_session1.skills, &skill, SKILL_SG_DEVIL);
     job_zoom = skill.level <= 0
-               && (session_get_drawn_job(&g_session1) == JOB_STAR_GLADIATOR || session_get_drawn_job(&g_session1) == JOB_BABY_STAR_GLADIATOR
-                   || session_get_drawn_job(&g_session1) == JOB_STAR_EMPEROR || session_get_drawn_job(&g_session1) == JOB_BABY_STAR_EMPEROR)
+               && (session_get_drawn_job(&g_session1) == JOB_STAR_GLADIATOR || session_get_drawn_job(&g_session1) == JOB_BABY_STAR_GLADIATOR)
                && (player = self->world->player)->state == 6;
     if (job_zoom && !self->has_camera_preset
             && !able_to_make_effect_is_effect_exist((struct GameActor *)player, EFFECT_BLIND)) {

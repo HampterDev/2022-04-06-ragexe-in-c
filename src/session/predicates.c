@@ -25,15 +25,14 @@ BYTE session_is_baby_job(struct Session *self, int id)
 {
     if (id >= 0xfb7 && id <= 0xfbd)
         return 1;
-    if (id == 0xfcd || id == 0x105f)
+    if (id == 0xfcd)
         return 1;
-    if ((unsigned)(id - 0xfbe) <= 0xe || (unsigned)(id - 0x1000) <= 0x10 || (unsigned)(id - 0x103e) <= 0x18)
+    if ((unsigned)(id - 0xfbe) <= 0xe || (unsigned)(id - 0x103e) <= 0xe)
         return 1;
-    if (id >= 0x1062 && id <= 0x1064)
+    if (id == 0x1055 || (id >= 0x1062 && id <= 0x1064))
         return 1;
-    if (id == 0x1061 || (unsigned)(id - 0x106d) <= 5 || id == 0x107c || (unsigned)(id - 0x107e) <= 0x10)
-        return 1;
-    if (id == 0x1091 || id == 0x1092 || id == 0x1094 || id == 0x1097 || id == 0x1098)
+    if (id == 0x106f || id == 0x1072 || id == 0x107e || (unsigned)(id - 0x1081) <= 3 || id == 0x1086
+        || (unsigned)(id - 0x1089) <= 3 || id == 0x108e)
         return 1;
     return 0;
 }
@@ -105,36 +104,9 @@ BYTE session_is_space(struct Session *self, int id)
     return id == 0x7f7 || id == 0x9a0;
 }
 
-BYTE session_is_expanded_super_novice_job(struct Session *self, int id)
-{
-    return id == 0x105e || id == 0x105f || id == 0x1060 || id == 0x1061;
-}
-
 BYTE session_is_super_novice_job(struct Session *self, int id)
 {
     return id == 0x17 || id == 0xfcd || id == 0x1020 || id == 0x104c;
-}
-
-BYTE session_is_any_super_novice_job(struct Session *self, int id)
-{
-    return id == 0x17 || id == 0xfcd || id == 0x1020 || id == 0x104c || id == 0x105e || id == 0x105f ||
-           id == 0x1060 || id == 0x1061;
-}
-
-BYTE session_is_expanded_job(struct Session *self, int id)
-{
-    switch (id) {
-    case 0x1073: case 0x1074: case 0x1075: case 0x1076: case 0x1077: case 0x1078:
-    case 0x107f: case 0x1080:
-    case 0x1085:
-    case 0x1087: case 0x1088:
-    case 0x108d:
-    case 0x108f: case 0x1090: case 0x1091: case 0x1092: case 0x1093: case 0x1094: case 0x1095: case 0x1096:
-    case 0x1097: case 0x1098:
-        return 1;
-    default:
-        return 0;
-    }
 }
 
 int session_is_monster_actor(struct Session *self, struct GameActor *actor)
@@ -260,16 +232,6 @@ int session_map_disables_lock_on(struct Session *self) { return map_property_mgr
 int session_map_locks_party(struct Session *self) { return map_property_mgr_get(g_mapFlags, self->mapType, 0x12); }
 int session_map_is_siege(struct Session *self) { return map_property_mgr_get(g_mapFlags, self->mapType, 9); }
 int session_map_uses_simple_effect(struct Session *self) { return map_property_mgr_get(g_mapFlags, self->mapType, 0xf); }
-
-BYTE session_is_doram_job(struct Session *self, int job)
-{
-    switch (job) {
-    case 0x1079: case 0x107a: case 0x107b: case 0x107c: case 0x107d:
-        return 1;
-    default:
-        return 0;
-    }
-}
 
 BYTE session_is_head_replacing_view(struct Session *self, int id)
 {

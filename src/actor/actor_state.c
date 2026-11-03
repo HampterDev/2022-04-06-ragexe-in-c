@@ -464,19 +464,14 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
     case 0x12:
         script3(self, 10, base, 0, 0, 0, 3000, 0);
         break;
-    case 0x13: {
-        unsigned char kind = session_is_doram_job(&g_session1, game_actor_get_job(self));
-
+    case 0x13:
         self->script_step_frames = 10;
         script1(self, base, 0, 0, 0, 1, 1, 3000);
-        if (kind != 1) {
-            stop_effects(self, 0x1be);
-            stop_effects(self, 0x1bd);
-            launch_plain(self, 0x1bd);
-            launch_plain(self, 0x19b);
-        }
+        stop_effects(self, 0x1be);
+        stop_effects(self, 0x1bd);
+        launch_plain(self, 0x1bd);
+        launch_plain(self, 0x19b);
         break;
-    }
     case 0x14:
         self->script_step_frames = 10;
         render_object_play_motion_steps((struct RenderObject *)self, (unsigned char)base, 1, (unsigned char)base, 1,
@@ -507,8 +502,7 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
 
         self->script_step_frames = 4;
         job = game_actor_get_job(self);
-        if (job == 0xfd1 || game_actor_get_job(self) == 0x1083 || game_actor_get_job(self) == 0x1090
-            || game_actor_get_job(self) == 0x1092)
+        if (job == 0xfd1 || game_actor_get_job(self) == 0x1083)
             script1(self, base, 4, 5, 6, 7, 2, 500);
         else
             script1(self, base, 2, 3, 4, 4, 4, 500);

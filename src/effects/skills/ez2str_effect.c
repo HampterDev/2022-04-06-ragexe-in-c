@@ -268,14 +268,14 @@ int ez2str_head_height(int type, void *actor)
             if (ignore_riding == 1)
                 height = 16;
             else if (ACTOR_RIDING(actor) != 0)
-                height = session_is_doram_job(&g_session1, game_actor_get_job(actor)) != 1 ? 21 : 17;
+                height = 21;
             else
                 height = game_actor_get_mount_height(actor) + 16;
         } else {
             if (ignore_riding == 1)
                 height = 18;
             else if (ACTOR_RIDING(actor) != 0)
-                height = session_is_doram_job(&g_session1, game_actor_get_job(actor)) == 1 ? 18 : 23;
+                height = 23;
             else
                 height = game_actor_get_mount_height(actor) + 18;
         }
@@ -311,8 +311,6 @@ unsigned char ez2_str_effect_place_at_head(struct Ez2StrEffect *self,
 
     x_offset = ez2str_head_x_offset(self->base.type, string_cstr(&p->path));
     height = (float)ez2str_head_height(self->base.type, actor);
-    if (self->attached_to_head == 1 && session_is_doram_job(&g_session1, game_actor_get_job(actor)) == 1)
-        height = height - 3.0f;
     scale = session_get_baby_job_scale(&g_session1, game_actor_get_job(actor));
     if (((ACTOR_STATE_BITS(actor) >> 4) & 1) && self->adjust_position_when_shrunk == 1) {
         float own = 1.0f;

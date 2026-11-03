@@ -41,10 +41,6 @@
 #define MT_ORE_LAST 1000
 #define MT_IS_ORE(id) ((unsigned)((id) - MT_ORE_FIRST) <= MT_ORE_LAST - MT_ORE_FIRST)
 
-#define JOB_RUNE_KNIGHT 4054
-#define JOB_RUNE_KNIGHT_H 4060
-#define JOB_BABY_RUNE_KNIGHT 4096
-
 #define MSG_MT_LIST_TITLE 0x1a9
 #define MSG_MT_PROCESS_LINE1 0x1aa
 #define MSG_MT_PROCESS_LINE2 0x1ab
@@ -269,18 +265,9 @@ static void list_choose(struct UIMakeTargetListWnd *self)
     struct UIWindow *wnd;
 
     item_id = ((int *)self->ids.first)[self->list->selected];
-    switch (g_session1.job) {
-    case JOB_RUNE_KNIGHT:
-    case JOB_RUNE_KNIGHT_H:
-    case JOB_BABY_RUNE_KNIGHT:
-        send_make_empty(item_id);
-        break;
-    default:
-        wnd = ui_window_open(MT_PROCESS_WND_ID);
-        ui_window_send_msg(wnd, &self->frame.base, MT_MSG_SET_TARGET, item_id, 0, 0, 0);
-        ui_window_move(wnd, self->frame.base.x, self->frame.base.y);
-        break;
-    }
+    wnd = ui_window_open(MT_PROCESS_WND_ID);
+    ui_window_send_msg(wnd, &self->frame.base, MT_MSG_SET_TARGET, item_id, 0, 0, 0);
+    ui_window_move(wnd, self->frame.base.x, self->frame.base.y);
     ui_close_window(MT_LIST_WND_ID);
 }
 

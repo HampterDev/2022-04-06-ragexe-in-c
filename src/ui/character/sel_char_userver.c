@@ -168,33 +168,6 @@ void ui_sel_char_for_u_server_wnd_on_create(struct UIWindow *window, int cx, int
     }
 }
 
-static void doram_offset(struct UISelCharForUServerWnd *self, int index, int layer, struct CharPreview *look,
-                         int *dx, int *dy)
-{
-    struct CharInfo *info = char_info(index);
-    int item = 0, dir = 0, ox = 0, oy = 0;
-
-    if (layer == 4)
-        item = info->accessory;
-    else if (layer == 3)
-        item = info->accessory2;
-    else if (layer == 2)
-        item = info->accessory3;
-    if (look->frame == 2)
-        dir = -1;
-    else if (look->frame == 1)
-        dir = 1;
-    dir = dir - look->action_base + look->action;
-    if (dir < 0)
-        dir = 7;
-    if (dir > 7)
-        dir = 0;
-
-    client_lua_call(g_session1.luaState, "OffsetItemPos_GetOffsetForDoram", "ddd>dd", item, dir, session_get_sex(&g_session1), &ox, &oy);
-    *dx = ox;
-    *dy = oy;
-}
-
 static int attach_delta(struct Motion *motion, struct Motion *base, int *dx, int *dy)
 {
     if (!animation_attachment_count(motion) || !animation_attachment_count(base) ||
@@ -221,8 +194,6 @@ static void draw_layer(struct UISelCharForUServerWnd *self, int index, struct Ch
     act = get_res(&look->act[layer]);
     spr = get_res(&look->spr[layer]);
     motion = act_res_get_motion(act, look->action, look->frame);
-    if (session_is_doram_job(&g_session1, look->job) == 1)
-        doram_offset(self, index, layer, look, &dx, &dy);
 
     if (layer == LAYER_HEAD) {
         struct Motion *body = act_res_get_motion(get_res(&look->act[LAYER_BODY]), look->action, look->frame);

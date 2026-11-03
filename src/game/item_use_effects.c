@@ -207,7 +207,7 @@ static struct GameActor *item_user(struct GameMode *mode, int item_id, unsigned 
         return world_get_game_actor_by_aid(mode->world, aid);
     player = (struct GameActor *)mode->world->player;
     if (player != 0 && item_id == ITEM_JOB_MESSAGE) {
-        sprintf(line, msg_str((unsigned)(game_actor_get_job(player) - 4054) <= 0x3a ? 0x704 : 0x703));
+        sprintf(line, msg_str(0x703));
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_LINE, (int)line, CHAT_LINE_CYAN, 7, 0);
     }
     return player;

@@ -612,7 +612,7 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
     string_free(&content);
 }
 
-static void show_case_add_part(struct UIAccessoryShowCase *self, int *placed, int *skipped, const char *part,
+static void show_case_add_part(struct UIAccessoryShowCase *self, int *placed, const char *part,
                                const int *count, const int *kind)
 {
     struct UIWindow *wnd = &self->scroll.base;
@@ -628,16 +628,6 @@ static void show_case_add_part(struct UIAccessoryShowCase *self, int *placed, in
         unsigned index, row, col;
 
         client_lua_call(g_session1.luaState, "StylingShop_GetGoods", "sd>d", part, j, &goods);
-        if (style_is_doram() == 1) {
-            BYTE for_doram = 0;
-
-            client_lua_call(g_session1.luaState, "StylingShop_GetIsDoram_by_goods", "sd>b", part, goods,
-                    &for_doram);
-            if (!for_doram) {
-                (*skipped)++;
-                continue;
-            }
-        }
         memset(path, 0, sizeof path);
         memset(id_text, 0, sizeof id_text);
         sprintf(id_text, "%d", goods);
@@ -658,7 +648,7 @@ static void show_case_add_part(struct UIAccessoryShowCase *self, int *placed, in
             shadow = ui_static_bitmap_construct(shadow);
         ui_static_bitmap_set_bitmap(shadow, STYLE_SHADOW_ITEM_OFF);
         ui_window_create(&shadow->base, shadow->base.width, shadow->base.height);
-        index = i - *skipped - 1;
+        index = i - 1;
         row = index / (unsigned)per_row;
         col = index % (unsigned)per_row;
         ui_window_move_base(&shadow->base,
@@ -684,11 +674,11 @@ static void show_case_add_part(struct UIAccessoryShowCase *self, int *placed, in
 void ui_accessory_show_case_fill_headgear(struct UIAccessoryShowCase *self)
 {
     static const char *const parts[3] = { "TopAccessory", "MidAccessory", "BottomAccessory" };
-    int count = 0, placed = 0, skipped = 0, kind;
+    int count = 0, placed = 0, kind;
 
     for (kind = 0; kind < 3; kind++) {
         client_lua_call(g_session1.luaState, "StylingShop_GetSizeInTable", "s>d", parts[kind], &count);
-        show_case_add_part(self, &placed, &skipped, parts[kind], &count, &kind);
+        show_case_add_part(self, &placed, parts[kind], &count, &kind);
     }
 }
 
@@ -751,7 +741,6 @@ int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *se
 
     if (msg == UI_MSG_COMMAND) {
         unsigned i;
-        BYTE ok;
 
         if (val1 != STYLE_ID_ROW || !sender)
             return 0;
@@ -760,11 +749,7 @@ int ui_accessory_show_case_send_msg(struct UIWindow *window, struct UIWindow *se
                                      i == (unsigned)(btn->btn.button.cmd_value - 1) ? STYLE_SHADOW_ITEM_ON
                                                                                     : STYLE_SHADOW_ITEM_OFF);
         show_case_part_name(part, btn->kind);
-        ok = 1;
-        if (style_is_doram() == 1)
-            client_lua_call(g_session1.luaState, "StylingShop_GetIsDoram_by_goods", "sd>b", part, btn->goods, &ok);
-        if (ok == 1)
-            style_toggle_accessory(btn->goods, btn->kind);
+        style_toggle_accessory(btn->goods, btn->kind);
         return 0;
     }
     if (msg == STYLE_MSG_ACCESSORY) {
@@ -1001,12 +986,8 @@ void ui_styling_shop_wnd_on_create(struct UIWindow *window, int width, int heigh
         costume->hide_box = NULL;
     }
     id = STYLE_TAB_2ND_COSTUME;
-    if (session_is_third_job(&g_session1, session_get_drawn_job(&g_session1)) == 1)
-        styling_shop_add_tab(self, STYLE_SKIN "tab_2ndcostume_off.bmp", STYLE_SKIN "tab_2ndcostume_on_over.bmp",
-                             STYLE_SKIN "tab_2ndcostume_on.bmp", &id, &costume->tab, msg_str(0xb10));
-    else
-        styling_shop_add_tab(self, STYLE_SKIN "tab_2ndcostume_off.bmp", STYLE_SKIN "tab_2ndcostume_off.bmp",
-                             STYLE_SKIN "tab_2ndcostume_off.bmp", &id, &costume->tab, msg_str(0xb10));
+    styling_shop_add_tab(self, STYLE_SKIN "tab_2ndcostume_off.bmp", STYLE_SKIN "tab_2ndcostume_off.bmp",
+                         STYLE_SKIN "tab_2ndcostume_off.bmp", &id, &costume->tab, msg_str(0xb10));
 
     my_style = mem_try_alloc(sizeof *my_style);
     if (my_style) {
@@ -1190,8 +1171,7 @@ int ui_styling_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     case STYLE_TAB_MY_STYLE:
     case STYLE_TAB_ACCESSORY:
     case STYLE_TAB_2ND_COSTUME:
-        if (session_is_third_job(&g_session1, session_get_drawn_job(&g_session1)) == 0
-            && val1 == STYLE_TAB_2ND_COSTUME)
+        if (val1 == STYLE_TAB_2ND_COSTUME)
             break;
         styling_shop_switch_tab(self, val1);
         break;

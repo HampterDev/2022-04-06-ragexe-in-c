@@ -380,8 +380,6 @@ struct Session {
     struct Vec trackedAchievements;
     int ownDressUp;
     int lastPetEmotionTime;
-    struct Vec doramHairNamesMale;
-    struct Vec doramHairNamesFemale;
     int screenShake;
     int skillUseKey;
     int lastKeyDown;
@@ -397,12 +395,9 @@ struct Session {
     DWORD overheatStart;
     BYTE showMenuIcon;
     struct Tree transparentItemPulses;
-    int baseLevel, baseLevel3rd, baseLevelExtend2, baseLevelUpperJob, baseLevelHomun;
-    int jobLevelNovice, jobLevelSuperNovice, jobLevelBase, jobLevel2nd, jobLevel3rd;
-    int jobLevelExtend2, jobLevelUpperJob;
-    int baseLevelDoram, jobLevelDoram;
-    int auras[17];
-    BYTE doramMakeable;
+    int baseLevel, baseLevelHomun;
+    int jobLevelNovice, jobLevelSuperNovice, jobLevelBase, jobLevel2nd;
+    int auras[13];
     BYTE homunAutoFeed;
     int homun_pending_index;
     int weightPenaltyPercent;

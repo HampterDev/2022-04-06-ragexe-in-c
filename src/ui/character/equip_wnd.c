@@ -94,7 +94,6 @@
 #define MSG_NO_TITLE 0xa7e
 #define MSG_RELEASE_HIDING 0x1b9
 #define MSG_RELEASE_RUWACH 0x1ba
-#define MSG_RELEASE_RUWACH_DORAM 0x830
 #define MSG_RELEASE_SANTA 0x5b8
 #define MSG_RELEASE_TRANSFORM 0x5b7
 #define MSG_RELEASE_CART 0xdf
@@ -160,11 +159,6 @@ static BYTE equip_nothing_to_release(void)
         effect_state_bit26(g_session1.effectState) || effect_state_bit22(g_session1.effectState))
         return 0;
     return 1;
-}
-
-static int ruwach_doram_job(int job)
-{
-    return job == 0xff2 || job == 0xff3 || job == 0x100e;
 }
 
 static int transformed(void)
@@ -501,8 +495,7 @@ void ui_equip_wnd_on_create(struct UIWindow *window, int width, int height)
         if (effect_state_bit4(g_session1.effectState))
             tip = msg_str(MSG_RELEASE_HIDING);
         else if (effect_state_bit5(g_session1.effectState))
-            tip = msg_str(ruwach_doram_job(session_get_drawn_job(&g_session1)) ? MSG_RELEASE_RUWACH_DORAM
-                                                                                  : MSG_RELEASE_RUWACH);
+            tip = msg_str(MSG_RELEASE_RUWACH);
         else if (effect_state_bit22(g_session1.effectState))
             tip = msg_str(MSG_RELEASE_SANTA);
         else if (transformed())
@@ -939,13 +932,7 @@ static void equip_on_off_button(struct UIEquipWnd *self)
     string_init(&what);
     has_cart = g_session1.cartType > 0;
     if (effect_state_bit5(g_session1.effectState)) {
-        int job = session_get_drawn_job(&g_session1);
-
-        if (job == 0xff2 || session_get_drawn_job(&g_session1) == 0xff3 ||
-            session_get_drawn_job(&g_session1) == 0x100e)
-            string_assign_cstr(&what, msg_str(MSG_RELEASE_RUWACH_DORAM));
-        else
-            string_assign_cstr(&what, msg_str(MSG_RELEASE_RUWACH));
+        string_assign_cstr(&what, msg_str(MSG_RELEASE_RUWACH));
     } else if (effect_state_bit22(g_session1.effectState)) {
         string_assign_cstr(&what, msg_str(MSG_RELEASE_SANTA));
     } else if (transformed()) {

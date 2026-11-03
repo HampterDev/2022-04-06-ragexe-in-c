@@ -151,8 +151,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
             int w = (int)weapon;
             int aj = attacker ? game_actor_get_job(attacker) : 0;
 
-            if (attacker && (aj == 0xc || aj == 0xfad || aj == 0xfc3 || aj == 0xfdb || aj == 0xfe1
-                             || aj == 0x1005)) {
+            if (attacker && (aj == 0xc || aj == 0xfad || aj == 0xfc3)) {
                 if (w > 1000)
                     w = session_get_weapon_view_id(w);
             } else if (weapon > 1000) {
@@ -723,7 +722,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
 
         if (is_effect_state_burrow(self->effect_state) || is_effect_state_star2(self->effect_state) || self->cart)
             break;
-        if (session_is_any_super_novice_job(&g_session1, game_actor_get_job(self)))
+        if (session_is_super_novice_job(&g_session1, game_actor_get_job(self)))
             kind = 0;
         plus = session_is_baby_job(&g_session1, game_actor_get_job(self)) ? 1 : 0;
         self->cart = (int)sm_msg_effect(self, mode, sm_cart_kinds[plus + kind * 2], 1);
@@ -871,7 +870,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         case 0xfd2: kind = 0x20; break;
         case 0xfd3: kind = 0x21; break;
         case 0xfd4: kind = 0x22; break;
-        case 0xfd8: case 0xfde: case 0x1002: kind = 0x35; break;
         default: kind = 0xe; break;
         }
         obj = sm_msg_effect(self, mode, kind, 1);
@@ -967,8 +965,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
             break;
         job = game_actor_get_job(self);
         switch (job) {
-        case 0xfd8: case 0xfde: case 0xff4: case 0xff5: kind = 0x23; break;
-        case 0x1002: case 0x100f: kind = 0x2a; break;
         default: kind = 0; break;
         }
         if (kind)
@@ -1027,37 +1023,19 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
                  (int)((float)scale_y_from480(0xc) * self->scale + (float)self->screen_y));
         break;
     }
-    case 0x92: case 0x93: {
-        int first = 0x3fe, second = 0x3ff;
+    case 0x93: {
+        int first = 0x3d2, second = 0x3d3;
 
         if (!sm_level_new(self))
             break;
         self->aura_level = (unsigned char)g_session1.baseLevel;
         if (session_is_homunculus_job(&g_session1, game_actor_get_job(self))) {
-            first = 0x3d2;
-            second = 0x3d3;
-            SM_PICK(first, g_session1.auras[13]);
-            SM_PICK(second, g_session1.auras[14]);
-        } else if (msg == 0x93) {
-            first = 0x3d2;
-            second = 0x3d3;
-            SM_PICK(first, g_session1.auras[9]);
-            SM_PICK(second, g_session1.auras[10]);
-        } else if (msg == 0x92) {
             SM_PICK(first, g_session1.auras[11]);
             SM_PICK(second, g_session1.auras[12]);
+        } else {
+            SM_PICK(first, g_session1.auras[9]);
+            SM_PICK(second, g_session1.auras[10]);
         }
-        sm_level_effects(self, first, second);
-        break;
-    }
-    case 0x96: {
-        int first = 0x4ca, second = 0x4cb;
-
-        if (!sm_level_new(self))
-            break;
-        self->aura_level = (unsigned char)g_session1.baseLevel;
-        SM_PICK(first, g_session1.auras[15]);
-        SM_PICK(second, g_session1.auras[16]);
         sm_level_effects(self, first, second);
         break;
     }

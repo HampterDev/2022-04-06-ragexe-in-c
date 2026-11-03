@@ -366,7 +366,7 @@ void pc_render(struct GameObject *object, const float *matrix)
     if (self->state == 6) {
         int job = game_actor_get_job((struct GameActor *)self);
 
-        if (job == 0xfd0 || job == 0x108e || job == 0x1093 || job == 0x1094)
+        if (job == 0xfd0 || job == 0x108e)
             render_object_render_shadow((struct RenderObject *)self, matrix, self->zoom);
     }
     if (!self->revealed) {
@@ -385,10 +385,8 @@ static int pc_hit_action(int job)
     switch (job) {
     case 0xe: case 0x13: case 0x14: case 0x18:
     case 0xfc5: case 0xfca: case 0xfcb: case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082:
-    case 0x1084: case 0x108e: case 0x108f: case 0x1091: case 0x1093: case 0x1094:
+    case 0x1084: case 0x108e:
         return 0x20;
-    case 0x107a: case 0x107b: case 0x107c: case 0x107d:
-        return 0x50;
     default:
         return 0x60;
     }
@@ -435,25 +433,15 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         case 0: action = 0x20; break;
         case 6: action = 0x10; break;
         case 7: action = pc_hit_action(game_actor_get_job(actor)); break;
-        case 8: {
-            int job = game_actor_get_job(actor);
-
-            action = job == 0x107a || job == 0x107c ? 0x28 : 0x60;
-            break;
-        }
+        case 8: action = 0x60; break;
         }
     }
     switch (state) {
-    case 0: {
-        int job;
-
+    case 0:
         game_actor_set_state(actor, 0, snap);
         if (game_actor_get_job(actor) == 0xfcf)
             pc_cap_zoom(self);
         if (game_actor_get_job(actor) == 0x1082)
-            pc_cap_zoom(self);
-        job = game_actor_get_job(actor);
-        if (job == 0x108f || game_actor_get_job(actor) == 0x1091)
             pc_cap_zoom(self);
         self->motion = self->head_dir;
         if (old == 2 || old == 4 || old == 8 || old == 52 || old == 53 || old == 54 || old == 58 || old == 59
@@ -461,7 +449,6 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
             render_object_set_action((struct RenderObject *)self, action, 0);
         game_complete_item_use();
         break;
-    }
     case 1:
         pc_attack_reset(self);
         self->head_dir = 0;
@@ -469,14 +456,13 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         break;
     case 2: {
         unsigned char accepts, arrow;
-        int job, kind;
+        int kind;
 
         pc_attack_reset(self);
         accepts = session_job_accepts_weapon(&g_session1, game_actor_get_job(actor), self->sex,
                                             (unsigned __int64)self->weapon);
         switch (game_actor_get_job(actor)) {
-        case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e: case 0x108f: case 0x1091:
-        case 0x1093: case 0x1094: {
+        case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e: {
             int r = rand() % 10;
 
             if (r < 0)
@@ -502,10 +488,6 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
                            self->motion_delay * self->attack_motion_count, 0);
             self->attack_motion_count = 8.0f / self->motion_delay + self->attack_motion_count;
         }
-        if (session_is_doram_job(&g_session1, game_actor_get_job(actor)) == 1 && self->soul_attack == 1) {
-            job = game_actor_get_job(actor);
-            pc_shoot(self, self->motion_delay * self->attack_motion_count, job);
-        }
         break;
     }
     case 6:
@@ -522,8 +504,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
         render_object_set_action((struct RenderObject *)self, action, 1);
         job = game_actor_get_job(actor);
         switch (job) {
-        case 0xfb4: case 0xfb5: case 0xfaf: case 0xfe2: case 0xfe9: case 0xf: case 0xfb0: case 0xfc6:
-        case 0xfe6: case 0xfed: case 0x100a:
+        case 0xfb4: case 0xfb5: case 0xfaf: case 0xf: case 0xfb0: case 0xfc6:
             render_object_set_script_step_frames((struct RenderObject *)self, 4);
             render_object_play_motion_range((struct RenderObject *)self, 0x60, 0, 0, 0x60, 0, 1, 0x190, 0);
             break;

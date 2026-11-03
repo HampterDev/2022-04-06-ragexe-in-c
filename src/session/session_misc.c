@@ -34,13 +34,7 @@ void session_set_combo_delay(struct Session *self, int key, int value)
 
 int session_get_max_base_level(struct Session *self, int job)
 {
-    if (session_is_third_job(&g_session1, job))
-        return g_session1.baseLevel3rd;
-    if (session_is_expanded_super_novice_job(&g_session1, job))
-        return g_session1.baseLevelExtend2;
-    if (session_is_expanded_job(&g_session1, job))
-        return g_session1.baseLevelUpperJob;
-    return session_is_doram_job(&g_session1, job) == 1 ? g_session1.baseLevelDoram : g_session1.baseLevel;
+    return g_session1.baseLevel;
 }
 
 int session_get_max_job_level(struct Session *self, int job)
@@ -51,14 +45,6 @@ int session_get_max_job_level(struct Session *self, int job)
         return g_session1.jobLevelBase;
     if (job == 0 || job == 0xfb7 || job == 0xfa1)
         return g_session1.jobLevelNovice;
-    if (session_is_third_job(&g_session1, job))
-        return g_session1.jobLevel3rd;
-    if (session_is_expanded_job(&g_session1, job))
-        return g_session1.jobLevelUpperJob;
-    if (session_is_doram_job(&g_session1, job) == 1)
-        return g_session1.jobLevelDoram;
-    if (session_is_expanded_super_novice_job(&g_session1, job))
-        return g_session1.jobLevelUpperJob;
     return g_session1.jobLevel2nd;
 }
 

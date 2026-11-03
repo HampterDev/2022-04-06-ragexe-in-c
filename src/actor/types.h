@@ -322,7 +322,6 @@ struct ActorStates {
     int char_id;                               \
     int body_style;                            \
     int look_job;                              \
-    unsigned char soul_attack;                 \
     unsigned char helm_robe;                   \
     int madogear_type;                         \
     unsigned char skip_arrow;                  \

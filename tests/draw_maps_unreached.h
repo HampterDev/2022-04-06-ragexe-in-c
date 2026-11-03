@@ -89,10 +89,6 @@ void *res_mgr_get_string(struct ResMgr *arg0, struct String arg1)
 {
     abort();
 }
-BYTE session_is_doram_job(struct Session *arg0, int arg1)
-{
-    abort();
-}
 int game_actor_get_transform_job(struct GameActor *arg0)
 {
     abort();

@@ -122,32 +122,6 @@ static const struct NameRow s_femaleHairNames[] = {
     NAME(0x2a, "42"),
 };
 
-static const struct NameRow s_doramHairMale[] = {
-    NAME(0x1, "1"),
-    NAME(0x2, "2"),
-    NAME(0x3, "3"),
-    NAME(0x4, "4"),
-    NAME(0x5, "5"),
-    NAME(0x6, "6"),
-    NAME(0x7, "7"),
-    NAME(0x8, "8"),
-    NAME(0x9, "9"),
-    NAME(0xa, "10"),
-};
-
-static const struct NameRow s_doramHairFemale[] = {
-    NAME(0x1, "1"),
-    NAME(0x2, "2"),
-    NAME(0x3, "3"),
-    NAME(0x4, "4"),
-    NAME(0x5, "5"),
-    NAME(0x6, "6"),
-    NAME(0x7, "7"),
-    NAME(0x8, "8"),
-    NAME(0x9, "9"),
-    NAME(0xa, "10"),
-};
-
 #include "session/session_job_sprite_paths.def"
 
 #include "session/session_job_body_names.def"
@@ -176,10 +150,6 @@ void session_init_sprite_name_tables(struct Session *self)
     APPLY(&self->maleHairNames, s_maleHairNames);
     names_resize(&self->femaleHairNames, 0x2b, "2");
     APPLY(&self->femaleHairNames, s_femaleHairNames);
-    names_resize(&self->doramHairNamesMale, 0xb, "1");
-    APPLY(&self->doramHairNamesMale, s_doramHairMale);
-    names_resize(&self->doramHairNamesFemale, 0xb, "1");
-    APPLY(&self->doramHairNamesFemale, s_doramHairFemale);
 
     names_resize(&self->jobSpritePaths, 0x6d93, BEGINNER "\\" BEGINNER);
     APPLY(&self->jobSpritePaths, s_jobSpritePaths);

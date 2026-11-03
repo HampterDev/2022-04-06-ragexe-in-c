@@ -9,10 +9,8 @@ static int drawn_job_takes_i_p_icon(void)
 {
     if (session_get_drawn_job(&g_session1) >= 0xfce && session_get_drawn_job(&g_session1) <= 0xfd1)
         return 1;
-    if (session_get_drawn_job(&g_session1) == 0x1081 || session_get_drawn_job(&g_session1) == 0x1082
-        || session_get_drawn_job(&g_session1) == 0x108e || session_get_drawn_job(&g_session1) == 0x1083)
-        return 1;
-    return session_get_drawn_job(&g_session1) >= 0x108f && session_get_drawn_job(&g_session1) <= 0x1094;
+    return session_get_drawn_job(&g_session1) == 0x1081 || session_get_drawn_job(&g_session1) == 0x1082
+           || session_get_drawn_job(&g_session1) == 0x108e || session_get_drawn_job(&g_session1) == 0x1083;
 }
 
 const char *session_get_efst_image(struct Session *self, int efst, int pass)

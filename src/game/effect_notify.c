@@ -377,7 +377,7 @@ static void efst_tinted(struct GameActor *actor, int colour)
 
 static int efst_bladestop_holds(int job)
 {
-    return job == 0xf || job == 0xfb0 || job == 0xfc6 || job == 0xfe6 || job == 0xfed || job == 0x100a;
+    return job == 0xf || job == 0xfb0 || job == 0xfc6;
 }
 
 static void efst_update_player(struct GameActor *actor, int opt3)

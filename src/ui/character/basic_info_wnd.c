@@ -273,14 +273,6 @@ static void basic_base_exp(__int64 *exp, __int64 *next)
 
 static int basic_max_level(void)
 {
-    if (session_is_third_job(&g_session1, basic_job()))
-        return g_session1.baseLevel3rd;
-    if (session_is_expanded_super_novice_job(&g_session1, basic_job()))
-        return g_session1.baseLevelExtend2;
-    if (session_is_expanded_job(&g_session1, basic_job()))
-        return g_session1.baseLevelUpperJob;
-    if (session_is_doram_job(&g_session1, basic_job()) == 1)
-        return g_session1.baseLevelDoram;
     return g_session1.baseLevel;
 }
 

@@ -133,12 +133,10 @@ static int level_up_effect(void)
 {
     int job;
 
-    if (session_is_any_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
+    if (session_is_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
         return EF_LEVEL_UP_SUPER;
     job = session_get_drawn_job(&g_session1);
-    if (job >= 0x108e && job <= 0x1094)
-        return EF_LEVEL_UP_STAR;
-    if ((job >= 0xfce && job <= 0xfd1) || (job >= 0x1081 && job <= 0x1083))
+    if ((job >= 0xfce && job <= 0xfd1) || (job >= 0x1081 && job <= 0x1083) || job == 0x108e)
         return EF_LEVEL_UP_STAR;
     if (job >= 0xfd2 && job <= 0xfd4)
         return EF_LEVEL_UP_SUPER;

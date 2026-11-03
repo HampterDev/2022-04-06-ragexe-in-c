@@ -69,20 +69,9 @@ struct String *style_kind_name(struct String *out, int kind)
 {
     static const char *const names[7] = { "HeadPalette", "HeadStyle", "BodyPalette", "TopAccessory",
                                           "MidAccessory", "BottomAccessory", "BodyStyle" };
-    struct String name;
-
-    string_init(&name);
+    string_init(out);
     if (kind >= STYLE_HEAD_PALETTE && kind <= STYLE_BODY_STYLE)
-        string_assign_cstr(&name, names[kind - 1]);
-    if (kind != STYLE_HEAD_PALETTE && (kind <= STYLE_BODY_PALETTE || kind > STYLE_BOTTOM_ACCESSORY)
-        && style_is_doram()) {
-        string_init(out);
-        string_assign_cstr(out, "Doram");
-        string_append(out, string_cstr(&name), name.size);
-        string_free(&name);
-    } else {
-        *out = name;
-    }
+        string_assign_cstr(out, names[kind - 1]);
     return out;
 }
 
@@ -97,11 +86,6 @@ int style_kind_value(const struct UIDisplayCharacter *display, int kind)
     case STYLE_BOTTOM_ACCESSORY: return display->goods_bottom;
     default: return display->body_style;
     }
-}
-
-BYTE style_is_doram(void)
-{
-    return session_is_doram_job(&g_session1, session_get_drawn_job(&g_session1));
 }
 
 struct UIBitmapButton *style_add_button(struct UIWindow *parent, struct UIBitmapButton *btn, const char *up,
@@ -330,7 +314,7 @@ void ui_display_character_on_draw(struct UIWindow *window)
 
 static BYTE style_three_colours(const char *name)
 {
-    return strcmp(name, "BodyPalette") == 0 || strcmp(name, "DoramBodyPalette") == 0;
+    return strcmp(name, "BodyPalette") == 0;
 }
 
 static void style_next(const char *name, int *value)

@@ -319,26 +319,20 @@ static void test_bitmap_caption(void)
 }
 static void test_race_button_factory(void)
 {
-    int race;
-    for (race = RACE_HUMAN; race <= RACE_DORAM; ++race) {
-        struct UIWindow *window = ui_descript_race_create(race);
-        struct UIDescriptRace *button = (struct UIDescriptRace *)window;
-        assert(window && ((struct Allocation *)button - 1)->size == sizeof *button);
-        assert(button->race == race && button->frame == 0 && button->animating == (race == RACE_HUMAN));
-        assert(!button->base.button.skinned);
-        reset_events();
-        g_session1.doramMakeable = 0;
-        ui_descript_race_send_msg((struct UIWindow *)(button), NULL, DESCRIPT_RACE_MSG_CHOOSE, 1, 0, 0, 0);
-        assert(loads == (unsigned)(race == RACE_HUMAN));
-        g_session1.doramMakeable = 1;
-        ui_descript_race_send_msg((struct UIWindow *)(button), NULL, DESCRIPT_RACE_MSG_CHOOSE, 1, 0, 0, 0);
-        assert(button->animating && strstr(loaded_path, race ? "img_doram_on.bmp" : "img_human_on.bmp"));
-        ui_descript_race_send_msg((struct UIWindow *)(button), NULL, DESCRIPT_RACE_MSG_CHOOSE, 0, 0, 0, 0);
-        assert(!button->animating && strstr(loaded_path, race ? "img_doram_off.bmp" : "img_human_off.bmp"));
-        ui_descript_race_destroy((struct UIWindow *)(button));
-    }
+    struct UIWindow *window = ui_descript_race_create();
+    struct UIDescriptRace *button = (struct UIDescriptRace *)window;
+
+    assert(window && ((struct Allocation *)button - 1)->size == sizeof *button);
+    assert(button->frame == 0 && button->animating);
+    assert(!button->base.button.skinned);
+    reset_events();
+    ui_descript_race_send_msg((struct UIWindow *)(button), NULL, DESCRIPT_RACE_MSG_CHOOSE, 1, 0, 0, 0);
+    assert(loads == 1 && button->animating && strstr(loaded_path, "img_human_on.bmp"));
+    ui_descript_race_send_msg((struct UIWindow *)(button), NULL, DESCRIPT_RACE_MSG_CHOOSE, 0, 0, 0, 0);
+    assert(!button->animating && strstr(loaded_path, "img_human_off.bmp"));
+    ui_descript_race_destroy((struct UIWindow *)(button));
     fail_at = allocation_calls + 1;
-    assert(!ui_descript_race_create(RACE_HUMAN));
+    assert(!ui_descript_race_create());
     fail_at = 0;
 }
 
@@ -386,11 +380,11 @@ int main(void)
     test_native_check_box();
     test_native_radio();
     test_native_bitmap_radio();
-    assert(!outstanding && destructors == 10);
+    assert(!outstanding && destructors == 9);
     test_button_visibility();
     puts("Button drawing: stock, bitmap, job icon, disabled, missing resource and invalid state passed");
     puts("Button text: owned captions, substring aliases, labels, counted text and growing state styles passed");
-    puts("Race buttons: native allocation, initialization, race availability, selection and destruction passed");
+    puts("Race buttons: native allocation, initialization, selection and destruction passed");
     puts("Checkbox/radio controls: owned text, typed styles, borrowed aliases, drawing, notices, tooltips, factory failure and guarded lifetimes passed");
     puts("Button operations: typed dispatch, all 256 byte values, capture-before-disable and invalidation-before-visibility passed");
     return 0;

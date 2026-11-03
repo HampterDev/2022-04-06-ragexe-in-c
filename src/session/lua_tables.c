@@ -66,11 +66,8 @@ void session_init_skill_tree_view(struct Session *self)
     for (i = count; i > 0; i--) {
         job = session_get_inherited_job(self, i);
         kind = 1;
-        if (job == 0 || session_get_inherited_job(self, i + 1) == 0 || job == 0x107a || job == 0x107c)
+        if (job == 0 || session_get_inherited_job(self, i + 1) == 0)
             kind = 0;
-        else if (session_is_third_job(self, job) == 1 || job == 0x108f || job == 0x1090 || job == 0x1091 ||
-                 job == 0x1092)
-            kind = 2;
         client_lua_call(self->luaState, "InitSkillTreeView", "dd", job, kind);
     }
 }

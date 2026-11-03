@@ -22,13 +22,12 @@ static const char *const resource_extensions[2] = {
 #define DIR_BODY_PAL "몸"
 #define DIR_SHIELD "방패"
 #define DIR_ROBE "로브"
-#define RACE_DORAM_DIR "도람족"
 #define RACE_HUMAN_DIR "인간족"
 #define MADOGEAR "마도기어_"
 #define MADOARMOR "마도아머_"
 #define MOUNT_MADOGEAR 2
 
-static struct String *race_folder(struct String *out, int job);
+static struct String *race_folder(struct String *out);
 
 static const char *ext_name(int ext)
 {
@@ -45,16 +44,11 @@ static int job_base(int job)
     return job > JOB_ALT_BASE ? job - JOB_ALT_BASE : job;
 }
 
-static BYTE is_doram(int job)
-{
-    return session_is_doram_job(&g_session1, job);
-}
-
-static void race_prefixed(struct String *out, int job, struct String *tail)
+static void race_prefixed(struct String *out, struct String *tail)
 {
     struct String race;
 
-    race_folder(&race, job);
+    race_folder(&race);
     string_append(&race, string_cstr(tail), tail->size);
     string_free(out);
     string_move(out, &race);
@@ -75,10 +69,10 @@ static void madogear_names(struct String *path)
         string_replace(path, at, 9, MADOARMOR, 9);
 }
 
-static struct String *race_folder(struct String *out, int job)
+static struct String *race_folder(struct String *out)
 {
     string_init(out);
-    string_assign(out, is_doram(job) == 1 ? RACE_DORAM_DIR : RACE_HUMAN_DIR, 6);
+    string_assign(out, RACE_HUMAN_DIR, 6);
     return out;
 }
 
@@ -109,23 +103,11 @@ struct String *resource_path_accessory(struct String *out, int ext, int job, int
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);
     session_get_accessory_name(&g_session1, &acc_name, accessory);
     if (acc_name.size) {
-        if (is_doram(job) == 1) {
-            string_format(&path, DIR_ACCESSORY "\\%s_doram\\%s%s.%s", string_cstr(&sex_name),
-                          string_cstr(&sex_name), string_cstr(&acc_name), ext_name(ext));
-            if (res_mgr_is_available(g_resMgr(), string_cstr(&path)) == 1) {
-                string_free(out);
-                string_move(out, &path);
-                goto done;
-            }
-            string_free(&path);
-        }
-        string_init(&path);
         string_format(&path, DIR_ACCESSORY "\\%s\\%s%s.%s", string_cstr(&sex_name),
                       string_cstr(&sex_name), string_cstr(&acc_name), ext_name(ext));
         string_free(out);
         string_move(out, &path);
     }
-done:
     string_free(&acc_name);
     string_free(&hair_text);
     string_free(&sex_name);
@@ -136,7 +118,7 @@ done:
 struct String *resource_path_body_palette(struct String *out, int job, int sex, int palette,
     int costume, int mount)
 {
-    struct String sex_name, race;
+    struct String sex_name;
     const char *body;
     int index;
 
@@ -152,26 +134,14 @@ struct String *resource_path_body_palette(struct String *out, int job, int sex, 
         index -= JOB_ALT_BASE;
     body = name_at(&g_session1.jobBodyNames, index);
     session_get_sex_sprite_name(&g_session1, &sex_name, sex);
-    if (is_doram(job) == 1) {
-        race_folder(&race, job);
-        string_init(out);
-        if (costume > 0)
-            string_format(out, "%s\\body\\costume_%d\\%s_%s_%d_%d.pal", string_cstr(&race), costume, body,
-                          string_cstr(&sex_name), palette, costume);
-        else
-            string_format(out, "%s\\body\\%s_%s_%d.pal", string_cstr(&race), body,
-                          string_cstr(&sex_name), palette);
-        string_free(&race);
-    } else {
-        string_init(out);
-        if (costume > 0)
-            string_format(out, DIR_BODY_PAL "\\costume_%d\\%s_%s_%d_%d.pal", costume, body,
-                          string_cstr(&sex_name), palette, costume);
-        else
-            string_format(out, DIR_BODY_PAL "\\%s_%s_%d.pal", body, string_cstr(&sex_name), palette);
-        if (mount == MOUNT_MADOGEAR)
-            madogear_names(out);
-    }
+    string_init(out);
+    if (costume > 0)
+        string_format(out, DIR_BODY_PAL "\\costume_%d\\%s_%s_%d_%d.pal", costume, body,
+                      string_cstr(&sex_name), palette, costume);
+    else
+        string_format(out, DIR_BODY_PAL "\\%s_%s_%d.pal", body, string_cstr(&sex_name), palette);
+    if (mount == MOUNT_MADOGEAR)
+        madogear_names(out);
     string_free(&sex_name);
     return out;
 }
@@ -192,7 +162,7 @@ struct String *resource_path_body_sprite(struct String *out, int ext, int job, i
     else
         string_format(&tail, "\\" DIR_BODY "\\%s\\%s_%s.%s", string_cstr(&sex_name),
                       string_cstr(&body_name), string_cstr(&sex_name), ext_name(ext));
-    race_prefixed(out, job, &tail);
+    race_prefixed(out, &tail);
     string_free(&body_name);
     string_free(&sex_name);
     return out;
@@ -215,7 +185,7 @@ struct String *resource_path_job_body_sprite(struct String *out, int ext, int jo
     else
         string_format(&tail, "\\" DIR_BODY "\\%s\\%s_%s.%s", string_cstr(&sex_name),
                       string_cstr(&body_name), string_cstr(&sex_name), ext_name(ext));
-    race_prefixed(out, base + JOB_ALT_BASE, &tail);
+    race_prefixed(out, &tail);
     if (mount == MOUNT_MADOGEAR)
         madogear_names(out);
     string_free(&body_name);
@@ -226,39 +196,21 @@ struct String *resource_path_job_body_sprite(struct String *out, int ext, int jo
 struct String *resource_path_head_palette(struct String *out, int hair, int job, int sex,
     int palette)
 {
-    struct String path, sex_name, hair_text, race;
+    struct String path, sex_name, hair_text;
 
     string_init(&path);
     string_init(&sex_name);
     string_init(&hair_text);
-    if (is_doram(job) == 1) {
-        if (hair < 1 || hair >= 0xb)
-            hair = 10;
-        if (sex == 1)
-            string_assign_cstr(&hair_text, name_at(&g_session1.doramHairNamesMale, hair));
-        else if (sex == 0)
-            string_assign_cstr(&hair_text, name_at(&g_session1.doramHairNamesFemale, hair));
-        if (!res_mgr_is_available(g_resMgr(), string_cstr(&path))) {
-            string_free(&sex_name);
-            session_get_sex_sprite_name(&g_session1, &sex_name, sex);
-            race_folder(&race, job);
-            string_free(&path);
-            string_format(&path, "%s\\" DIR_HAIR "\\" DIR_HAIR "%s_%s_%d.pal", string_cstr(&race),
-                          string_cstr(&hair_text), string_cstr(&sex_name), palette);
-            string_free(&race);
-        }
-    } else {
-        session_class_from_code(&g_session1, &hair, job);
-        if (sex == 1)
-            string_assign_cstr(&hair_text, hair_name(1, hair));
-        else if (sex == 0)
-            string_assign_cstr(&hair_text, hair_name(0, hair));
-        string_free(&sex_name);
-        session_get_sex_sprite_name(&g_session1, &sex_name, sex);
-        string_free(&path);
-        string_format(&path, DIR_HAIR "\\" DIR_HAIR "%s_%s_%d.pal", string_cstr(&hair_text),
-                      string_cstr(&sex_name), palette);
-    }
+    session_class_from_code(&g_session1, &hair, job);
+    if (sex == 1)
+        string_assign_cstr(&hair_text, hair_name(1, hair));
+    else if (sex == 0)
+        string_assign_cstr(&hair_text, hair_name(0, hair));
+    string_free(&sex_name);
+    session_get_sex_sprite_name(&g_session1, &sex_name, sex);
+    string_free(&path);
+    string_format(&path, DIR_HAIR "\\" DIR_HAIR "%s_%s_%d.pal", string_cstr(&hair_text),
+                  string_cstr(&sex_name), palette);
     *out = path;
     string_free(&hair_text);
     string_free(&sex_name);
@@ -271,26 +223,18 @@ struct String *resource_path_head_sprite(struct String *out, int ext, int job, i
     struct String sex_name, hair_text, tail;
     int male, style;
 
-    if (job < 0 || (job > 0x1e && job < 0x3e8) || (job > 0x3e8 && job < 0xf9f) || (unsigned)(job - 0x4e35) <= 0x2eca)
-        job = 0;
     male = sex == 0 ? 0 : 1;
     string_init(out);
     string_init(&hair_text);
     style = *hair;
-    if (is_doram(job) == 1) {
-        if (style < 1 || style >= 0xb)
-            *hair = style = 10;
-        string_assign_cstr(&hair_text, name_at(male ? &g_session1.doramHairNamesMale : &g_session1.doramHairNamesFemale, style));
-    } else {
-        if (style < 0 || style >= 0x2b)
-            *hair = style = 0xd;
-        string_assign_cstr(&hair_text, hair_name(male, style));
-    }
+    if (style < 0 || style >= 0x2b)
+        *hair = style = 0xd;
+    string_assign_cstr(&hair_text, hair_name(male, style));
     session_get_sex_sprite_name(&g_session1, &sex_name, male);
     string_init(&tail);
     string_format(&tail, "\\" DIR_HEAD "\\%s\\%s_%s.%s", string_cstr(&sex_name), string_cstr(&hair_text),
                   string_cstr(&sex_name), ext_name(ext));
-    race_prefixed(out, job, &tail);
+    race_prefixed(out, &tail);
     string_free(&hair_text);
     string_free(&sex_name);
     return out;
@@ -399,7 +343,7 @@ struct String *resource_path_weapon_glow(struct String *out, int ext, int job, i
     string_format(&tail, "\\%s_%s%s%s.%s", job_name, string_cstr(&sex_name),
                   view == -1 ? string_cstr(&weapon_name) : session_get_weapon_name_by_class(view),
                   weapon_glows[glow], ext_name(ext));
-    race_prefixed(out, job, &tail);
+    race_prefixed(out, &tail);
     string_free(&weapon_name);
     string_free(&sex_name);
     return out;
@@ -419,12 +363,12 @@ struct String *resource_path_weapon(struct String *out, int ext, int job, int se
         string_format(&tail, "\\%s_%s%s.%s", job_name, string_cstr(&sex_name),
                       string_cstr(&weapon_name), ext_name(ext));
         string_free(&weapon_name);
-        race_prefixed(out, job, &tail);
+        race_prefixed(out, &tail);
     } else {
         string_init(&tail);
         string_format(&tail, "\\%s_%s%s.%s", job_name, string_cstr(&sex_name),
                       session_get_weapon_name_by_class(view), ext_name(ext));
-        race_prefixed(out, job + JOB_ALT_BASE, &tail);
+        race_prefixed(out, &tail);
     }
     string_free(&sex_name);
     return out;

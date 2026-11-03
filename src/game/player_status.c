@@ -168,9 +168,6 @@ enum {
     JOB_NINJA = 25,
     JOB_ASSASSIN_CROSS = 4013,
     JOB_BABY_ASSASSIN = 4035,
-    JOB_GUILLOTINE_CROSS = 4059,
-    JOB_GUILLOTINE_CROSS_T = 4065,
-    JOB_BABY_GUILLOTINE_CROSS = 4101,
     JOB_BABY_NINJA = 4222,
 };
 
@@ -190,9 +187,6 @@ static int ammo_kind_message(int job)
     case JOB_ASSASSIN:
     case JOB_ASSASSIN_CROSS:
     case JOB_BABY_ASSASSIN:
-    case JOB_GUILLOTINE_CROSS:
-    case JOB_GUILLOTINE_CROSS_T:
-    case JOB_BABY_GUILLOTINE_CROSS:
         return MSG_AMMO_KIND_ASSASSIN;
     default:
         return MSG_AMMO_KIND;

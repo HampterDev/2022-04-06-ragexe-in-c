@@ -57,9 +57,7 @@ static int job_has_layer_motions(int job)
 {
     switch (job) {
     case 0xfce: case 0xfcf: case 0xfd0:
-    case 0x1081: case 0x1082: case 0x108e: case 0x108f:
-    case 0x1091:
-    case 0x1093: case 0x1094:
+    case 0x1081: case 0x1082: case 0x108e:
         return 1;
     }
     return 0;
@@ -545,12 +543,6 @@ void pc_render_robe(struct Pc *pc, int on_top_pass,
         ++*layers_drawn;
         return;
     }
-    if (pc->sex == 0) {
-        job = game_actor_get_job((struct GameActor *)pc);
-        if (job == 0xff6 || game_actor_get_job((struct GameActor *)pc) == 0xff7 || game_actor_get_job((struct GameActor *)pc) == 0x1010)
-            return;
-    }
-
     session_get_robe_spr_name(&spr_name, game_actor_get_job((struct GameActor *)pc), pc->sex,
                            pc->robe, pc->mounted);
     session_get_robe_act_name(&act_name, game_actor_get_job((struct GameActor *)pc), pc->sex,

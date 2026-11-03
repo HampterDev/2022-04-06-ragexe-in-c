@@ -142,8 +142,6 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->titles);
     vec_init(&self->newTitles);
     vec_init(&self->trackedAchievements);
-    vec_init(&self->doramHairNamesMale);
-    vec_init(&self->doramHairNamesFemale);
     self->cameraInfoShown = 0;
     tree_init(&self->transparentItemPulses);
     self->zoomFarLimit = 0;
@@ -172,7 +170,6 @@ struct Session *session_construct(struct Session *self)
     self->new_layer_table_loaded = 0;
     self->loadingAirplane = 0;
     self->call_allowed = 0;
-    self->doramMakeable = 1;
     private_airplane_create();
     check_attendance_create();
     self->showSpiritMarbles = 1;
@@ -215,11 +212,9 @@ void session_destruct(struct Session *self)
     achievement_destroy();
     display_devices_reset();
     tree_clear(&self->transparentItemPulses, NULL);
-    memset(&self->baseLevel, 0, 0x7938 - 0x7900);
+    memset(&self->baseLevel, 0, offsetof(struct Session, auras) - offsetof(struct Session, baseLevel));
     private_airplane_destroy();
     check_attendance_destroy();
-    self->auras[15] = 0;
-    self->auras[16] = 0;
 
     string_vec_free(&self->accountCharNames);
     vec_free(&self->pcNames);
@@ -227,8 +222,6 @@ void session_destruct(struct Session *self)
     tree_free(&self->instantVars, NULL);
     tree_free(&self->pendingNameAids, NULL);
     tree_free(&self->transparentItemPulses, NULL);
-    vec_free(&self->doramHairNamesFemale);
-    vec_free(&self->doramHairNamesMale);
     tracked_achievements_free(&self->trackedAchievements);
     vec_free(&self->newTitles);
     vec_free(&self->titles);

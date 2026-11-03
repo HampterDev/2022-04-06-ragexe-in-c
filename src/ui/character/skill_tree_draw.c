@@ -139,20 +139,6 @@ static void draw_character(struct UINewSkillListWnd *self)
         }
         self->anim_frames[i] = frame;
         motion = act_res_get_motion(act, 0x17, frame);
-        if (session_is_doram_job(&g_session1, g_session1.job) == 1) {
-            int accessory = 0, ox = 0, oy = 0;
-
-            if (i == 4)
-                accessory = g_session1.headBottom;
-            else if (i == 3)
-                accessory = g_session1.headTop;
-            else if (i == 2)
-                accessory = g_session1.headMid;
-
-            client_lua_call(g_session1.luaState, "OffsetItemPos_GetOffsetForDoram", "ddd>dd", accessory, 0x17, session_get_sex(&g_session1), &ox, &oy);
-            dx = ox;
-            dy = oy;
-        }
         if (i == 1) {
             struct Motion *body = act_res_get_motion(res_mgr_get(res(), string_cstr(&act_path[0])), 0x17, frame);
 

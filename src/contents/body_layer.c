@@ -69,10 +69,6 @@ char body_layer_is_visible(struct BodyLayerDraw *self, int layer)
     if (layer == 5 || layer == 6 || layer == 7) {
         if (!action_is_ready_or_attack(self->pc->action))
             return 0;
-        if (layer == 7) {
-            int job = game_actor_get_job((struct GameActor *)self->pc);
-            return job != 0xff6 && job != 0xff7 && job != 0x1010;
-        }
     }
     if ((layer == 5 || layer == 6) && self->pc->mounted == 1)
         return 0;
@@ -151,34 +147,6 @@ struct EventName *body_layer_event_name(struct BodyLayerDraw *self, struct Event
     return out;
 }
 
-struct ScreenOffset *body_layer_doram_offset(struct BodyLayerDraw *self, struct ScreenOffset *out,
-                                                        int layer)
-{
-    struct Pc *pc = self->pc;
-    int turn, dir, x, y, view;
-
-    if (session_is_doram_job(&g_session1, pc->job) != 1) {
-        out->x = 0;
-        out->y = 0;
-        return out;
-    }
-    pc = self->pc;
-    turn = pc->head_dir == 2 ? -1 : pc->head_dir == 1 ? 1 : 0;
-    dir = pc->action - pc->base_action + turn;
-    if (dir < 0)
-        dir = 7;
-    if (dir > 7)
-        dir = 0;
-    x = 0;
-    y = 0;
-    view = *body_layer_view_slot(self, layer);
-    client_lua_call(g_session1.luaState, "OffsetItemPos_GetOffsetForDoram", "ddd>dd", view, dir,
-                      pc->sex, &x, &y);
-    out->x = x;
-    out->y = y;
-    return out;
-}
-
 void *body_layer_palette(struct BodyLayerDraw *self, int layer, struct SpriteResPair pair)
 {
     struct Pc *pc = self->pc;
@@ -235,13 +203,8 @@ void body_layer_load_sprites(struct BodyLayerDraw *self)
         if (!spr || !act)
             continue;
         if (layer == BODY_LAYER_HEAD && effect_state_bit11(self->pc->effect_state) == 1) {
-            if (session_is_doram_job(&g_session1, self->pc->job) == 1) {
-                spr = (struct SprRes *)res_mgr_get(g_resMgr(), ORCFACE "_doram.spr");
-                act = (struct ActRes *)res_mgr_get(g_resMgr(), ORCFACE "_doram.act");
-            } else {
-                spr = (struct SprRes *)res_mgr_get(g_resMgr(), ORCFACE ".spr");
-                act = (struct ActRes *)res_mgr_get(g_resMgr(), ORCFACE ".act");
-            }
+            spr = (struct SprRes *)res_mgr_get(g_resMgr(), ORCFACE ".spr");
+            act = (struct ActRes *)res_mgr_get(g_resMgr(), ORCFACE ".act");
         }
         node = body_layer_sprite_slot(self, layer);
         node->pair.spr = spr;
@@ -427,7 +390,6 @@ void body_layer_draw_layer(struct BodyLayerDraw *self, int order, int layer, str
 
     for (i = 0; i < motion->clip_count; i++) {
         struct SprClip *clip;
-        struct ScreenOffset doram;
         struct LayerClip lc;
         struct SqQuad quad;
         int rect[4];
@@ -447,9 +409,8 @@ void body_layer_draw_layer(struct BodyLayerDraw *self, int order, int layer, str
         if (layer == BODY_LAYER_HEAD)
             self->head_drawn = 1;
 
-        body_layer_doram_offset(self, &doram, layer);
-        x = doram.x;
-        y = doram.y;
+        x = 0;
+        y = 0;
         body_layer_clip_offset(self, &lc, layer, clip, drawn_clip, pair, motion, clip_image(pair.spr, clip),
                                pick_action, pick_motion, use_pick);
         if (!lc.image)

@@ -308,7 +308,6 @@ void player_refresh_status_effects(struct Player *self)
             self->motion_held = 1;
             break;
         case 0x3a9:                 ps_respawn_here(self, 0x448); break;
-        case 0x3d6:                 self->soul_attack = 1; break;
         case 0x3f6:                 ps_launch(self, 0x47c); break;
         case 0x3f8: case 0x3f9: case 0x3fa: case 0x3fb: case 0x3fc:
         case 0x3fd: case 0x3fe: case 0x3ff: case 0x400: case 0x401:

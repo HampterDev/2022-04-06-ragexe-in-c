@@ -47,7 +47,6 @@ static BYTE character_draw_is_accessory_layer(int layer);
 static struct Vec *character_draw_collect_layers(struct CharacterDraw *self,
                                                        struct Vec *out);
 static void character_draw_load_layers(struct CharacterDraw *self, const struct Vec *layers);
-static int *character_draw_doram_offset(struct CharacterDraw *self, int *out, int layer);
 static int *character_draw_head_offset(struct CharacterDraw *self, int *out, void *motion);
 static int *character_draw_accessory_offset(struct CharacterDraw *self, int *out, int layer,
                                             void **motion, void *act);
@@ -353,31 +352,6 @@ static void character_draw_load_layers(struct CharacterDraw *self, const struct 
     }
 }
 
-static int *character_draw_doram_offset(struct CharacterDraw *self, int *out, int layer)
-{
-    out[0] = 0;
-    out[1] = 0;
-    if (session_is_doram_job(&g_session1, self->options.job) == 1) {
-        int dx = 0, dy = 0, turn = 0, dir;
-
-        if (self->options.motion == 2)
-            turn = -1;
-        else if (self->options.motion == 1)
-            turn = 1;
-        dir = self->options.action % 8 + turn;
-        if (dir < 0)
-            dir = 7;
-        if (dir > 7)
-            dir = 0;
-        client_lua_call(g_session1.luaState, "OffsetItemPos_GetOffsetForDoram", "ddd>dd",
-                        *character_draw_layer_id(self, layer), dir,
-                        session_get_sex(&g_session1), &dx, &dy);
-        out[0] = dx;
-        out[1] = dy;
-    }
-    return out;
-}
-
 static int *character_draw_head_offset(struct CharacterDraw *self, int *out, void *motion)
 {
     struct SpriteResPair body;
@@ -595,9 +569,8 @@ static void character_draw_render(struct CharacterDraw *self, BYTE flag)
         character_draw_get_layer(self, &pair, layer);
         if (!pair.spr || !pair.act)
             continue;
-        character_draw_doram_offset(self, offset, layer);
-        dx = offset[0];
-        dy = offset[1];
+        dx = 0;
+        dy = 0;
         motion = act_res_get_motion(pair.act, self->options.action, self->options.motion);
         if (layer == 2) {
             character_draw_head_offset(self, offset, motion);

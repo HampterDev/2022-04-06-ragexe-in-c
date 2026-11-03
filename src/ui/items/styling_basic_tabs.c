@@ -250,19 +250,9 @@ int ui_basic_styling_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             struct UIWindow *btn = VEC_AT(&self->palette, struct UIWindow *, i);
 
             if (sender == btn) {
-                BYTE ok = 1;
-
                 none = 0;
-                if (style_is_doram() == 1)
-                    client_lua_call(g_session1.luaState, "StylingShop_GetIsColoring_by_goods", "d>b",
-                            self->tab.display->head_style, &ok);
-                if (ok) {
-                    self->tab.display->head_palette = i + 1;
-                    ui_window_invalidate_base(&self->tab.display->base);
-                } else {
-                    ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb12), UI_MSGBOX_OK, 0, 0, 0, UI_MSGBOX_TITLE,
-                                           0x118, 0x78, 0);
-                }
+                self->tab.display->head_palette = i + 1;
+                ui_window_invalidate_base(&self->tab.display->base);
             } else {
                 ui_window_set_state(btn, UI_BTN_UP);
             }

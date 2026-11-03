@@ -16,13 +16,9 @@ int g_maxAttackDelayMs = 432;
 
 static int hit_job_mark(int job)
 {
-    if (job > 0x1093)
-        return 0;
-    if (job >= 0x108e)
+    if ((job >= 0xfce && job <= 0xfd0) || job == 0x1081 || job == 0x1082 || job == 0x108e)
         return 0x1b2;
-    if ((unsigned)(job - 0xfce) > 0xb4)
-        return 0;
-    return job <= 0xfd0 || job >= 0x1081 ? 0x1b2 : 0;
+    return 0;
 }
 
 void game_actor_msg_attack(struct GameActor *self,

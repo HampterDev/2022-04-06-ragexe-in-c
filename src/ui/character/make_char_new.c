@@ -33,9 +33,6 @@
 
 #define HAIR_STYLES 24
 #define HAIR_COLOURS 9
-#define RACE_HUMAN 0
-#define RACE_DORAM 1
-#define DORAM_JOB 0x107a
 #define SEX_FEMALE 0
 #define SEX_MALE 1
 #define TURN_DIRECTIONS 8
@@ -115,8 +112,7 @@ struct UINewMakeCharWnd {
     struct CharPreview preview;
     struct CharInfo info;
     struct UIWindow *name_edit;
-    int race;
-    struct UIWindow *race_buttons[2];
+    struct UIWindow *race_button;
     struct UIHairStyleButton *hair[HAIR_STYLES];
     struct UIWindow *colours[HAIR_COLOURS];
     struct UIBitmapButton *sex_buttons[2];
@@ -139,7 +135,7 @@ static void load_sprites(struct UINewMakeCharWnd *self, int fix_head)
     string_move(&preview->act[0], session_get_body_spr_name_variant0(&tmp, info->job, info->sex, 0, 0));
     string_free(&preview->spr[0]);
     string_move(&preview->spr[0], session_get_body_spr_name_variant1(&tmp, info->job, info->sex, 0, 0));
-    if (fix_head && !session_is_doram_job(&g_session1, info->job) && info->sex == SEX_MALE && info->head == 0xd)
+    if (fix_head && info->sex == SEX_MALE && info->head == 0xd)
         info->head = 0xe;
     head = info->head;
     string_free(&preview->act[1]);
@@ -171,10 +167,8 @@ struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd 
     ui_frame_wnd_construct(&self->frame, 0);
     WND(self)->ops = &ui_new_make_char_wnd_ops;
     char_preview_init(&self->preview);
-    self->race = RACE_HUMAN;
     self->name_edit = NULL;
-    self->race_buttons[0] = NULL;
-    self->race_buttons[1] = NULL;
+    self->race_button = NULL;
     WND(self)->state_count = 0;
 
     defaults = (const struct NewCharLooks *)mode_send_message(client_current_mode(), LOGIN_REQ_MAKE_DEFAULTS,
@@ -330,22 +324,11 @@ void ui_new_make_char_wnd_on_create(struct UIWindow *window, int width_unused,
 
     add_text_button(self, 0x19, 0x17b, 0xd17, ID_CANCEL);
 
-    race = ui_descript_race_create(RACE_HUMAN);
+    race = ui_descript_race_create();
     set_bitmaps((struct UIBitmapButton *)race, MAKE_DIR "img_human_off.bmp", MAKE_DIR "img_human_on.bmp",
                 MAKE_DIR "img_human_on.bmp");
     create_at((struct UIBitmapButton *)race, 0x15, 0x24);
-    self->race_buttons[RACE_HUMAN] = race;
-    ui_window_add_child(wnd, race);
-
-    race = ui_descript_race_create(RACE_DORAM);
-    if (!g_session1.doramMakeable)
-        set_bitmaps((struct UIBitmapButton *)race, MAKE_DIR "img_doram_comingSoon.bmp",
-                    MAKE_DIR "img_doram_comingSoon.bmp", MAKE_DIR "img_doram_comingSoon.bmp");
-    else
-        set_bitmaps((struct UIBitmapButton *)race, MAKE_DIR "img_doram_off.bmp", MAKE_DIR "img_doram_on.bmp",
-                    MAKE_DIR "img_doram_on.bmp");
-    create_at((struct UIBitmapButton *)race, 0x15, 0xca);
-    self->race_buttons[RACE_DORAM] = race;
+    self->race_button = race;
     ui_window_add_child(wnd, race);
 
     self->sex_buttons[SEX_MALE] = new_bitmap_button();
@@ -479,7 +462,7 @@ void ui_new_make_char_wnd_on_draw(struct UIWindow *window)
 void ui_new_make_char_wnd_on_process(struct UIWindow *window)
 {
     struct UINewMakeCharWnd *self = (struct UINewMakeCharWnd *)window;
-    ui_window_invalidate_base(self->race_buttons[self->race]);
+    ui_window_invalidate_base(self->race_button);
 }
 
 static void box(int msg_id)
@@ -504,9 +487,8 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
     BYTE control_chars_ok, blank_edge;
     int i;
 
-    for (i = 0; i < 2; i++)
-        if ((g_session1.doramMakeable || i != RACE_DORAM) && sender == self->race_buttons[i])
-            return;
+    if (sender == self->race_button)
+        return;
     if (ui_edit_ctrl_get_text_size(self->name_edit) < 4) {
         box(0x15);
         return;
@@ -560,29 +542,16 @@ static void on_race(struct UINewMakeCharWnd *self, struct UIWindow *sender)
 {
     int i;
 
-    if (!g_session1.doramMakeable && sender == self->race_buttons[RACE_DORAM])
-        return;
-    for (i = 0; i < 2; i++) {
-        if (sender == self->race_buttons[i]) {
-            self->race = i;
-            ui_descript_race_send_msg(self->race_buttons[i], WND(self), MSG_CHOOSE, 1, 0, 0, 0);
-        } else {
-            ui_descript_race_send_msg(self->race_buttons[i], WND(self), MSG_CHOOSE, 0, 0, 0, 0);
-        }
-        ui_window_invalidate_base(self->race_buttons[i]);
-    }
-    if (sender != self->race_buttons[self->race])
+    ui_descript_race_send_msg(self->race_button, WND(self), MSG_CHOOSE, sender == self->race_button, 0, 0, 0);
+    ui_window_invalidate_base(self->race_button);
+    if (sender != self->race_button)
         return;
     self->info.head = 1;
     for (i = 0; i < HAIR_STYLES; i++) {
         ui_hair_style_button_send_msg(&self->hair[i]->button.button.base, WND(self), MSG_CHOOSE, i == 0, 0, 0, 0);
-        self->hair[i]->doram = self->race;
         ui_hair_style_button_send_msg(&self->hair[i]->button.button.base, NULL, MSG_HAIR_REFRESH, 0, 0, 0, 0);
     }
-    if (self->race == RACE_DORAM)
-        self->info.job = DORAM_JOB;
-    else if (self->race == RACE_HUMAN)
-        self->info.job = 0;
+    self->info.job = 0;
     load_sprites(self, 0);
 }
 
@@ -638,7 +607,7 @@ static void on_hair(struct UINewMakeCharWnd *self, struct UIWindow *sender)
 
     for (i = 0; i < HAIR_STYLES; i++) {
         if (sender == &self->hair[i]->button.button.base) {
-            if (i >= (session_is_doram_job(&g_session1, self->info.job) == 1 ? 6 : 0x17))
+            if (i >= 0x17)
                 return;
             ui_hair_style_button_send_msg(&self->hair[i]->button.button.base, WND(self), MSG_CHOOSE, 1, 0, 0, 0);
             self->info.head = (short)(i + 1);
@@ -665,8 +634,6 @@ int ui_new_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         return 0;
     }
     if (msg != UI_MSG_COMMAND) {
-        if (msg == MSG_CHOOSE)
-            self->race = val1;
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     }
     switch (val1) {

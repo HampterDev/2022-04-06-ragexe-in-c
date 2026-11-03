@@ -173,11 +173,6 @@ int session_get_sex(struct Session *self)
     assert(self == &g_session1);
     return 0;
 }
-BYTE session_is_doram_job(struct Session *self, int job)
-{
-    (void)self;
-    return job == 4218;
-}
 BYTE session_is_head_replacing_view(struct Session *self, int id)
 {
     (void)self;
@@ -256,12 +251,7 @@ int client_lua_call(struct ClientLua *lua, const char *func, const char *signatu
         note(item);
         *va_arg(ap, int *) = test_case % 8 == 7 ? 10 : kind * 10 + (item == 107);
     } else {
-        assert(!strcmp(func, "OffsetItemPos_GetOffsetForDoram"));
-        note(403);
-        for (i = 0; i < 3; ++i)
-            note(va_arg(ap, int));
-        *va_arg(ap, int *) = 3;
-        *va_arg(ap, int *) = -2;
+        assert(!"unexpected Lua call");
     }
     va_end(ap);
     return test_case % 8 == 6 ? 0 : 1;
