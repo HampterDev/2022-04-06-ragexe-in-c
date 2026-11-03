@@ -8813,3 +8813,102 @@ Validation: the tool's 41 unit tests and `validate.py` over the 24 output files
 passed. The server patch was built with MSVC and GCC, its helpers passed 162 checks
 under AddressSanitizer, and its upgrade and connection charset were checked on a
 throwaway MariaDB 10.5 instance. Neither was tried with a live client or server.
+
+## Font fallback by script (2026-11-03)
+
+Decision: the first phase-B step of the [UTF-8 switch](#utf-8-text-module-2026-11-03),
+approved on 2026-11-03. After phase A every string was decoded as UTF-8 but drawn in one
+font. The langtype-20 default face is Arial (`ANSI_CHARSET`), which has no Hangul, and GDI
+links Arial to no other font, so Hangul, Han, kana and most CP949 symbols drew as boxes.
+The Korean client got them from Korean Windows' font association, which drew the
+double-byte characters of an ANSI font in Gulim.
+
+What changed:
+
+- `render/text_runs.c` splits UTF-8 text into runs by Unicode range: Hangul (jamo,
+  compatibility and halfwidth jamo, syllables), Han (radicals, CJK symbols and
+  punctuation, enclosed and compatibility CJK, ideographs including the supplementary
+  planes, fullwidth forms), kana, Thai, symbols (U+2100-2BFF, letterlike through
+  dingbats and arrows, plus ‥ and ※) and emoji (U+1F000-1FAFF). Spaces, combining marks,
+  zero-width joiners and variation selectors join the run around them. Invalid bytes and
+  all other characters, Latin, Cyrillic, Greek and the rest of General Punctuation
+  included, stay in the selected face.
+- `text_dc_text_extent` and `text_dc_text_out` measure and draw run by run. When the
+  selected face lacks a run's script, the run is drawn in the script's first installed
+  Windows font; no font is bundled. Whether a face has a script is checked once per font
+  with `GetGlyphIndicesW` on a sample character (한, 中, あ, ก, ★; emoji always fall back).
+  Fallbacks, each tried under its English and its local name:
+  - Hangul: Gulim, then Malgun Gothic.
+  - Han: Gulim, MS Gothic, SimSun, Microsoft YaHei, Malgun Gothic.
+  - Kana: MS PGothic, MS Gothic, Meiryo, Yu Gothic, Gulim, Malgun Gothic.
+  - Thai: Tahoma, Leelawadee UI.
+  - Symbols: Gulim, Malgun Gothic, Segoe UI Symbol.
+  - Emoji: Segoe UI Emoji, Segoe UI Symbol.
+
+  A fallback font has the selected size, weight and italic and `DEFAULT_CHARSET`, and is
+  cached with the other fonts; the installed face is looked up once per script. A
+  fallback run is moved down by the difference of the two ascents so that it sits on the
+  selected face's baseline, and each run starts where the measured width of the runs
+  before it ends. With no fallback installed, the run stays in the selected face.
+- Italic widths, the sum of each character's A and B widths, now step per character: a
+  surrogate pair is measured whole with `GetTextExtentPoint32W` instead of as two halves
+  with `GetCharABCWidthsW`.
+- Font calls are W calls (`CreateFontW`, `CreateFontIndirectW`, `EnumFontFamiliesExW`,
+  `AddFontResourceExW`, `RemoveFontResourceExW`), and the face tables hold UTF-16 names.
+  The localized names 굴림, ＭＳ Ｐゴシック, 宋体 and 細明體 were CP949, CP932, CP936 and
+  CP950 bytes written as CP949 literals, so each matched only where the ANSI code page was
+  its own. Installed faces are still found by enumerating the face's charset and
+  comparing names without case. The SCDream family name from GDI+ goes into the
+  `LOGFONTW` as it is instead of through `CP_THREAD_ACP`; a name longer than 31
+  characters now leaves the face name empty instead of truncating it.
+- The extent cache is keyed by the font handle, which already implies the charset that
+  was part of the key. `text_dc_measure_in_charset` became `text_dc_measure_font`.
+- `text_dc_select_font` no longer reads past the 12-entry `faceCharsets` (the bug listed
+  under the [langtype lock](#langtype-20-lock-2026-11-03)). Faces past the table keep the
+  charset that mattered: SCDream (0x1d) read 0x00010101 from `hexDigitFlags`, which
+  `CreateFont` and `LOGFONT` truncate to `DEFAULT_CHARSET`, and now gets
+  `DEFAULT_CHARSET`; faces 12-0x1c get `ANSI_CHARSET`. Faces 12-0x13 read 0, and the EOT
+  faces 0x14-0x1c read 0, 0x101, 0x01010100 or 0x01010101 but put a fixed charset 1 in
+  their `LOGFONT`, so their value was only part of the cache keys. `main` has the same
+  read: its guard sends faces 0x14 and up to entry 0 only for language index 0, so faces
+  12-0x13 always, and faces 0x14-0x1d for every other language index, read
+  `hexDigitFlags`.
+
+Kept:
+
+- Coverage is decided per script from one sample, not per character. A symbol that Gulim
+  lacks but Segoe UI Symbol has still draws as a box, and General Punctuation, currency
+  signs and Latin-1 stay in Arial, although the Korean client on Korean Windows drew the
+  CP949 ones in Gulim.
+- GDI draws Segoe UI Emoji as monochrome outlines; there is no colour emoji.
+- The fallback uses the selected size, which for the default face is Arial's size, three
+  points above the requested one, as font association did.
+- On Windows without Gulim (it ships only with Korean installs or the optional Korean
+  supplemental fonts), Hangul draws in Malgun Gothic, which looks different from the
+  Korean client.
+
+Tests changed:
+
+- New `test_text_runs`: the script table, spaces, marks and variation selectors joining
+  runs, invalid bytes, guarded endings.
+- `test_text_render`: draws and measures run by run against a model of the font choice
+  (covered scripts, missing fallbacks, missing ascents), hand-computed positions and
+  baselines, one face lookup per call, an italic surrogate pair measured whole; the 3000
+  generated cases add symbols, kana, Han, Thai, spaced Hangul and combining marks.
+- `test_font_cache`: W calls, script fallbacks (Gulim before Malgun Gothic, local names,
+  matching without case, one lookup per script, nothing installed), glyph coverage and
+  ascents cached per font with the DC's font restored, retry after allocation, DC,
+  creation, selection, glyph and metric failures, and a too-long SCDream family name.
+- `test_font_cache_system`: with real GDI, Arial lacks Hangul, the Hangul fallback is
+  Gulim or Malgun Gothic and has it, and GDI objects stay balanced over 32 cycles.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/font-fallback-build.log`.
+- Full suite `tests\build.bat` passed: `build/font-fallback-full-tests.log`.
+- The seven standalone suites passed: `build/font-fallback-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-font-fallback`. No live client was run; how
+mixed Arial and Gulim or Malgun Gothic text looks in the game is still to be checked by
+hand.

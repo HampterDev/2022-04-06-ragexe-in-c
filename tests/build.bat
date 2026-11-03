@@ -77,6 +77,8 @@ call "%ROOT%\tests\build_text_format.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_utf8.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%ROOT%\tests\build_text_runs.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_text_render.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_byte_lines.bat"

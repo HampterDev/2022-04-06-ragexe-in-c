@@ -15,11 +15,11 @@ float g_texelOffsetV = 0.5f;
 
 BYTE g_waterBumpSupported;
 
-#define FACE_GULIM      "Gulim"
-#define FACE_GULIM_KR   "굴림"
-#define FACE_MS_PGOTHIC "굃굍 굊긕긘긞긏"
-#define FACE_SIMSUN_CN  "芥竟"
-#define FACE_MINGLIU_TW "꾄ⁿ톱"
+/* Localized family names: 굴림, ＭＳ Ｐゴシック, 宋体 and 細明體. */
+#define FACE_GULIM_KR   L"\xad74\xb9bc"
+#define FACE_MS_PGOTHIC L"\xff2d\xff33 \xff30\x30b4\x30b7\x30c3\x30af"
+#define FACE_SIMSUN_CN  L"\x5b8b\x4f53"
+#define FACE_MINGLIU_TW L"\x7d30\x660e\x9ad4"
 #define HEX_FLAGS_0_9   ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, \
                         ['5'] = 1, ['6'] = 1, ['7'] = 1, ['8'] = 1, ['9'] = 1
 #define HEX_VALUES_0_9  ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4, ['5'] = 5, \
@@ -27,10 +27,10 @@ BYTE g_waterBumpSupported;
 struct C3dDevice g_3dDevice = {
     .rBits = 8, .gBits = 8, .bBits = 8, .aBits = 8,
     .colorKeyPixel = 0x421,
-    .faceNamesB = { FACE_GULIM, "Arial", "MS Gothic", "SimSun", "MingLiU", "Tahoma",
-                    "Arial", "Verdana", "Verdana", "Arial", "Arial", "Tahoma" },
-    .faceNamesA = { FACE_GULIM_KR, "Arial", FACE_MS_PGOTHIC, FACE_SIMSUN_CN, FACE_MINGLIU_TW, "Tahoma",
-                    "Arial", "Verdana", "Verdana", "Arial", "Arial", "Tahoma" },
+    .faceNamesB = { L"Gulim", L"Arial", L"MS Gothic", L"SimSun", L"MingLiU", L"Tahoma",
+                    L"Arial", L"Verdana", L"Verdana", L"Arial", L"Arial", L"Tahoma" },
+    .faceNamesA = { FACE_GULIM_KR, L"Arial", FACE_MS_PGOTHIC, FACE_SIMSUN_CN, FACE_MINGLIU_TW, L"Tahoma",
+                    L"Arial", L"Verdana", L"Verdana", L"Arial", L"Arial", L"Tahoma" },
     .faceCharsets = { HANGUL_CHARSET, ANSI_CHARSET, SHIFTJIS_CHARSET, GB2312_CHARSET, CHINESEBIG5_CHARSET,
                       THAI_CHARSET, VIETNAMESE_CHARSET, ANSI_CHARSET, ANSI_CHARSET, RUSSIAN_CHARSET,
                       VIETNAMESE_CHARSET + 1, ARABIC_CHARSET },

@@ -123,3 +123,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Decode drawn and measured text as UTF-8 (the font charset only picks the font); fit and ellipsize by UTF-8 characters; remove charset tags.
 - Read keyboard, IME and clipboard input as Unicode (Unicode window, `CF_UNICODETEXT`, surrogate pairs, full-length IME strings), stored as UTF-8 on any Windows locale.
 - Add `tools/utf8-data` to convert client display text to UTF-8; [matching server patch](docs/server/utf8-text.md).
+- Draw each script in an installed Windows font that has it (Hangul in Gulim, then Malgun Gothic; Han, kana, Thai, symbols and emoji in their own), on the selected face's baseline; font calls and face names are Unicode.
