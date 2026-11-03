@@ -16,6 +16,10 @@ struct PacketNpcAckMapMove {
 #pragma pack(pop)
 enum { HEADER_ZC_NPCACK_MAPMOVE = 0x91 };
 
+/* map_name is the 16-byte field of ZC_MAPMOVE_PRIVATE_AIRPLANE and
+   ZC_SERVERMOVE_PRIVATE_AIRPLANE; a full field has no NUL. */
+#define AIRPLANE_MAP_NAME 16
+
 void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *map_name,
                                                  unsigned short x, unsigned short y)
 {
@@ -23,7 +27,8 @@ void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *m
 
     g_session1.loadingAirplane = 1;
     move.packet_type = HEADER_ZC_NPCACK_MAPMOVE;
-    strcpy_s(move.map_name, sizeof move.map_name, map_name);
+    /* Field to field, as ZC_NPCACK_MAPMOVE carries it: a full name fills it without a NUL. */
+    strncpy(move.map_name, map_name, sizeof move.map_name);
     move.x = x;
     move.y = y;
     game_mode_zc_npcack_mapmove(self, (const unsigned char *)&move);
@@ -37,7 +42,7 @@ void game_mode_on_server_move_private_airplane(struct GameMode *self, const char
     g_session1.loadingAirplane = 1;
     string_init(&extra);
     string_init(&map);
-    string_assign_cstr(&map, map_name);
+    string_assign(&map, map_name, strnlen(map_name, AIRPLANE_MAP_NAME));
     game_mode_move_to_server(self, map, x, y, ip, port, extra);
 }
 
