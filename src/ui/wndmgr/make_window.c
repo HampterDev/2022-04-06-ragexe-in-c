@@ -283,17 +283,31 @@ done:
     return wnd;
 }
 
+static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_id);
+
 struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_id)
 {
-    struct UIWindow *wnd = NULL;
+    struct UIWindow *wnd;
+    int tracked;
 
     if (ui_window_mgr_is_dragging_member_plate(self) && ui_window_mgr_is_hot_key_of_window(self))
         ui_window_mgr_close_drag_plate(self);
-    if (!ui_window_mgr_is_untracked_id(self, window_id)) {
+    tracked = !ui_window_mgr_is_untracked_id(self, window_id);
+    if (tracked) {
         ui_window_mgr_forget_window_id(self, window_id);
         list_insert(&self->id_list, window_id == 0xcb ? self->id_list.head : self->id_list.head->next, &window_id,
                     sizeof window_id);
     }
+    wnd = make_window_by_id(self, window_id);
+    /* ESC closes the listed IDs; a request that left no window must not stay listed. */
+    if (wnd == NULL && tracked && ui_window_mgr_get_window(self, window_id) == NULL)
+        ui_window_mgr_forget_window_id(self, window_id);
+    return wnd;
+}
+
+static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_id)
+{
+    struct UIWindow *wnd = NULL;
 
     switch (window_id) {
     case 0x2:
