@@ -15,10 +15,17 @@ static char *node_text(struct XmlElement *node)
 #include <stdlib.h>
 #include <string.h>
 
+/* The number in an <action> or <loopType> node of monsterskillinfo.xml; a missing node
+   counts as 0, as on the administrator path. */
+static int node_number(struct XmlElement *node)
+{
+    return node ? atoi(node_text(node)) : 0;
+}
+
 void session_get_monster_skill_info(struct Session *self, const char *monsterName,
                                             int skillId, int *action, int *loopType)
 {
-    char number[8], actionText[8], loopText[8], skillKey[8];
+    char number[8], skillKey[8];
     char name[0x100];
     struct XmlElement *node, *actionNode, *loopNode;
 
@@ -28,7 +35,7 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
         return;
     _itoa(skillId, number, 10);
     sprintf(skillKey, "_%s", number);
-    strcpy(name, monsterName);
+    _snprintf_s(name, sizeof name, _TRUNCATE, "%s", monsterName);
     _strlwr(name);
     node = xml_find_child(node, name);
     if (!node)
@@ -52,10 +59,8 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
                    0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         return;
     }
-    sprintf(actionText, node_text(actionNode));
-    sprintf(loopText, node_text(loopNode));
-    *action = atoi(actionText);
-    *loopType = atoi(loopText);
+    *action = node_number(actionNode);
+    *loopType = node_number(loopNode);
 }
 
 struct String *session_get_monster_sprite_name(struct Session *self,
