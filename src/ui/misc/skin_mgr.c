@@ -150,6 +150,7 @@ void skin_mgr_scan(struct SkinMgr *self)
     WIN32_FIND_DATAA fd;
     struct String dot, dotdot, path, ext, name;
     struct String *s;
+    const char *extension;
     HANDLE find;
     int count = 0, zero = 0, one = 1;
 
@@ -189,8 +190,12 @@ void skin_mgr_scan(struct SkinMgr *self)
             string_free(&path);
             continue;
         }
+        /* A file without an extension is not a zip skin: skip it like any other file. */
+        extension = str_find_last(fd.cFileName, '.');
+        if (!extension)
+            continue;
         string_init(&ext);
-        string_assign_cstr(&ext, str_find_last(fd.cFileName, '.'));
+        string_assign_cstr(&ext, extension);
         text_to_lower(&ext);
         if (string_equal_cstr(&ext, ".zip")) {
             string_init(&path);
