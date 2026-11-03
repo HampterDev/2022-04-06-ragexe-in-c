@@ -162,7 +162,7 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
 
     string_copy(&name, &map_name);
     string_resize(&name, name.size - 4, 0);
-    _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, string_cstr(&name));
+    _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, "%s", string_cstr(&name));
     g_session1.playerPosX = x;
     g_session1.playerPosY = y;
     _snprintf_s(g_mapServerIp.ip, sizeof g_mapServerIp.ip, _TRUNCATE, inet_ntoa(*(struct in_addr *)&ip));

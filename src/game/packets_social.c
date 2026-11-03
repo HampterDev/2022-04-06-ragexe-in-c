@@ -339,7 +339,8 @@ void game_mode_zc_couple_name(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_COUPLENAME *packet = (const struct PACKET_ZC_COUPLENAME *)pkt;
 
-    sprintf(self->couple_name, packet->name);
+    /* The packet is 26 bytes: the name field is NAME_LENGTH bytes and need not end in NUL. */
+    _snprintf_s(self->couple_name, sizeof self->couple_name, _TRUNCATE, "%.*s", NAME_LENGTH, packet->name);
 }
 
 #pragma pack(push, 1)

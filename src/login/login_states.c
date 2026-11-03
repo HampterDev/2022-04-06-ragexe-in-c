@@ -181,6 +181,7 @@ static void server_list(struct LoginMode *self)
     struct LoginServerEntry *e;
     struct String label, colour[4], text_s;
     char text[0x40];
+    size_t used;
     struct UIWindow *wnd;
     int i, k;
 
@@ -194,7 +195,9 @@ static void server_list(struct LoginMode *self)
         memset(text, 0, sizeof text);
         if (e->isNew == 1)
             sprintf(text, msg_str(0x1e2));
-        sprintf(text + strlen(text), e->name);
+        /* The name is login-server text in a 20-byte field that need not end in NUL. */
+        used = strlen(text);
+        _snprintf_s(text + used, sizeof text - used, _TRUNCATE, "%.*s", (int)sizeof e->name, e->name);
         string_init(&label);
         for (k = 0; k < 4; k++) {
             string_init(&colour[k]);

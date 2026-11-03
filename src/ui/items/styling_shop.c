@@ -605,7 +605,7 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
     }
     out = fopen(STYLE_SAVE_FILE, "w");
     if (out) {
-        fprintf(out, string_cstr(&content));
+        fputs(string_cstr(&content), out);
         fclose(out);
     }
     file_destruct(&file);

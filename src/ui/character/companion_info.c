@@ -20,6 +20,7 @@
 #include "ui/character/character.h"
 #include "ui/character/character_std.h"
 #include "core/msg_str.h"
+#include "core/utf8.h"
 #include "diag/perf.h"
 #include "session/session_names.h"
 #include "session/session_state.h"
@@ -249,8 +250,10 @@ void ui_homun_info_wnd_on_create(struct UIWindow *window, int cx, int cy)
     mem = mem_alloc(sizeof(struct UIEditCtrl));
     self->name_edit = mem ? ui_edit_ctrl2_construct(mem) : NULL;
     ui_window_create(self->name_edit, 0x50, 0x10);
+    /* A UTF-8 job name can be longer than the buffer: cut it by whole characters. */
     if (strcmp(g_session1.homunName, "") == 0)
-        sprintf(g_session1.homunName, session_get_job_name(&g_session1, g_session1.homunJob, -1));
+        utf8_copy_prefix(g_session1.homunName, sizeof g_session1.homunName,
+                         session_get_job_name(&g_session1, g_session1.homunJob, -1));
     ui_window_move(self->name_edit, 0x87, 0x16);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.homunName);
     UI_EDIT_MAX_CHARS(self->name_edit) = 0x32;
@@ -413,7 +416,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     if (ask(question) != UI_MSGBOX_ANSWER_NO) {
         mode = game_current_base_mode();
         mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-        sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
+        _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
+                    ui_edit_ctrl_get_text(self->name_edit));
         ui_window_invalidate_base(&self->frame.base);
         return;
     }

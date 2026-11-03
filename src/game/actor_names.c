@@ -63,7 +63,7 @@ static void pet_named(unsigned aid, const char *name)
 {
     if (aid != ((unsigned)g_session1.aid))
         return;
-    sprintf(g_session1.petName, name);
+    _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s", NAME_LENGTH, name);
     if (g_windowMgr.pet_info_wnd)
         ui_pet_info_set_name(g_windowMgr.pet_info_wnd, name);
 }
