@@ -377,6 +377,24 @@ static void check_server_list(void)
     busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\xb0\xa1";
     server_list(&login);
     check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+    /* A colour code that the cut would split is left out whole; one that ends at the
+       limit stays. */
+    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    server_list(&login);
+    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ");
+    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    server_list(&login);
+    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ^000000(N");
+    e->usercount = 4;
+    e->state = 3;
+    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FFx";
+    server_list(&login);
+    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
+    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FFtail";
+    server_list(&login);
+    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FF");
+    e->usercount = 0;
+    e->state = 0;
     e->isNew = 0;
     busy_text = "busy";
     state_text = "state";

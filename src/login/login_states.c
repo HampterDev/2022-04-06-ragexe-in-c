@@ -221,12 +221,21 @@ static void login_screen(struct LoginMode *self)
     mode_mgr_quit(&g_modeMgr);
 }
 
-/* Copies a server-list line into out[size], cut by whole characters. */
+/* Copies a server-list line into out[size], cut by whole characters. A ^RRGGBB colour
+   code that the cut would split is left out whole: its start would show as text. */
 static void server_line(char *out, size_t size, const struct String *line)
 {
-    size_t length = text_prefix_length(string_cstr(line), line->size, size - 1, g_codePage);
+    const char *text = string_cstr(line), *end = text + line->size, *code;
+    size_t length = text_prefix_length(text, line->size, size - 1, g_codePage);
 
-    memcpy(out, string_cstr(line), length);
+    for (code = text_find_colour_code(text, end, g_codePage); code < text + length;
+         code = text_find_colour_code(code + 7, end, g_codePage)) {
+        if (code + 7 > text + length) {
+            length = (size_t)(code - text);
+            break;
+        }
+    }
+    memcpy(out, text, length);
     out[length] = 0;
 }
 
