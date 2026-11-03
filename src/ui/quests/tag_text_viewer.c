@@ -16,6 +16,7 @@
 #include <shellapi.h>
 #include "core/app.h"
 #include "diag/perf.h"
+#include "ui/controls/url_link.h"
 
 void ui_tag_text_viewer_destroy(struct UIWindow *window);
 void tag_text_viewer_ui_scroll_on_create(struct UIWindow *self, int width, int height);
@@ -161,7 +162,7 @@ void ui_tag_text_viewer_on_url_link(struct UITagTextViewer *self, struct UITextB
     (void)self;
     if (!link || !link_arg_count(link)) return;
     url = link_arg(link, 0);
-    if (url.size) ShellExecuteA(g_hMainWnd, "open", url.data, NULL, NULL, SW_SHOWNORMAL);
+    ui_open_url_link(url);
 }
 
 void ui_tag_text_viewer_on_item_link(struct UITagTextViewer *self, struct UITextButton *link)

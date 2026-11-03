@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
+#include "ui/controls/url_link.h"
 
 struct TagLink {
     int pos;
@@ -438,8 +439,7 @@ static void on_link(struct UITextButton *link, int id)
         if (!link)
             return;
         arg = ui_text_button_get_line(link, 0);
-        if (arg.size)
-            ShellExecuteA(g_hMainWnd, "open", arg.data, NULL, NULL, SW_SHOWNORMAL);
+        ui_open_url_link(arg);
         break;
     case LINK_NAVI: {
         unsigned count;

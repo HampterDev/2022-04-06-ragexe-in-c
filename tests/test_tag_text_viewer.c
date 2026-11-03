@@ -54,6 +54,7 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
 #undef malloc
 #define malloc checked_malloc
 #define ShellExecuteA test_open_url
+#include "../src/ui/controls/url_link.c"
 #include "../src/ui/quests/tag_text_viewer.c"
 #ifdef TAG_TEXT_VIEWER_REFERENCE
 static struct String *reference_button_get_line(struct UITextButton *link, struct String *out, unsigned i);
@@ -293,6 +294,7 @@ static void link_cases(void)
     static const char *const args[] = {"한글_map", "12", "34", "7", "111", "0", "42"};
     static const char *const search[] = {"prontera", "0", "0", "2", "-222"};
     static const char *const item[] = {"62", "4"};
+    static const char *const url[] = {"https://example.com/"};
     reset_fixture(); link_init(&link, args, 7);
     ui_tag_text_viewer_on_navi_link(NULL, &link);
     assert(!strcmp(string_cstr(&action_text), "한글_map"));
@@ -304,7 +306,12 @@ static void link_cases(void)
     text_array_clear(&link.lines); link_init(&link, item, 2); event_count = 0;
     ui_tag_text_viewer_on_item_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
     assert(events[1].a == 4 && events[1].b == 1);
-    ui_tag_text_viewer_on_url_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
+    event_count = 0;
+    ui_tag_text_viewer_on_url_link(NULL, &link); assert(event_count == 0);
+    text_array_clear(&link.lines); link_init(&link, url, 1);
+    ui_tag_text_viewer_on_url_link(NULL, &link);
+    assert(!strcmp(string_cstr(&action_text), url[0]) && event_count == 1);
+    text_array_clear(&link.lines); link_init(&link, item, 2);
     ui_tag_text_viewer_on_quest_link(NULL, &link);
     text_array_clear(&link.lines); release_fixture();
     puts("Tagged text viewer: item, URL, navigation, search and quest actions passed.");
