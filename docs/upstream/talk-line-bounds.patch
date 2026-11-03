@@ -1,0 +1,577 @@
+From 6177cea0746fe9e707526edbb18915768d458ec1 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 16:55:43 +0100
+Subject: [PATCH] Bound pet and monster talk lines to their buffers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Three talk-table functions in talk_tables.c wrote client text into fixed
+buffers without a bound:
+
+- session_get_pet_speak copied a PetTalkTable.xml line into the caller's
+  256-byte buffer with strcpy.
+- session_get_monster_talk_info copied the monster's job name into
+  name[0x100] with strcpy, and a MonsterTalkTable.xml line into
+  line[0x300] with sprintf, using the line as the format.
+- session_format_chat_line copied the line into the caller's 256-byte
+  out with sprintf, again as the format; replaced the talk words in out
+  with strcpy and strcat; and wrote "name : " and the line back into the
+  caller's text buffer with sprintf, strcat and strcpy. After 형씨, whose
+  replacement 아가씨 is two bytes longer, it took the rest of the line
+  from two bytes past the word, which at the end of a line is past its
+  NUL.
+
+The three functions now take the size of their output, and their callers
+(attack_talk, game_mode_zc_pet_act) pass it. session_format_chat_line
+takes the text as const and no longer writes it: it builds the line and
+then "name : line" in Strings, and talk_copy copies the result into out
+cut by whole characters (text_prefix_length with g_codePage). The talk
+words are replaced as before, including the two skipped bytes after
+형씨, but the rest is never taken from past the end of the line. The
+pet line is cut the same way before it is decoded; the Korean-service
+mirror maps lead and trail bytes to lead and trail bytes, so the cut
+keeps whole characters. The job name is copied with a bound, and the
+monster line is passed to session_format_chat_line directly. Lines are
+copied as text, so a % in them now shows.
+
+Validation: the new test_talk_lines runs the extracted functions over
+parsed PetTalkTable.xml and MonsterTalkTable.xml, writing into 256-byte
+outputs followed by a guard: plain, tabbed, "%s%n%d" and talk-word
+lines, the pet's own name and an unknown speaker, a 4-byte output,
+300-byte lines, a line whose limit falls inside a CP949 character, a
+752-byte monster line and a 319-byte job name. 20 lines; the test fails
+on the previous code (run through adapters for the old signatures). A
+scratch comparison of the old and new session_format_chat_line on 18
+lines that fit, for three speakers and both replacement modes, gave the
+same text except "%d", which the old code formatted. The monster-talk
+stub of test_attack_records takes the new size and checks it is 0x100.
+Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/packets_act.c         |   2 +-
+ src/game/packets_pet.c         |   4 +-
+ src/session/session_talk.h     |   8 +-
+ src/session/talk_tables.c      |  90 +++++++++------
+ tests/attack_records_session.c |   4 +-
+ tests/build.bat                |   3 +
+ tests/build_talk_lines.bat     |  15 +++
+ tests/extract_talk_lines.py    |  28 +++++
+ tests/test_talk_lines.c        | 200 +++++++++++++++++++++++++++++++++
+ 9 files changed, 311 insertions(+), 43 deletions(-)
+ create mode 100644 tests/build_talk_lines.bat
+ create mode 100644 tests/extract_talk_lines.py
+ create mode 100644 tests/test_talk_lines.c
+
+diff --git a/src/game/packets_act.c b/src/game/packets_act.c
+index bfd4c2b..c05df42 100644
+--- a/src/game/packets_act.c
++++ b/src/game/packets_act.c
+@@ -49,7 +49,7 @@ static void attack_talk(struct GameMode *self, struct GameActor *actor, unsigned
+         }
+         return;
+     }
+-    session_get_monster_talk_info(&g_session1, game_actor_get_job(actor), 0, 0, text, (int)aid);
++    session_get_monster_talk_info(&g_session1, game_actor_get_job(actor), 0, 0, text, sizeof text, (int)aid);
+     if (text[0] == '\0')
+         return;
+     actor_send(actor, ACTOR_MSG_TALK, MSG_ARG_PTR(text), 0);
+diff --git a/src/game/packets_pet.c b/src/game/packets_pet.c
+index 6f7e851..c117490 100644
+--- a/src/game/packets_pet.c
++++ b/src/game/packets_pet.c
+@@ -110,10 +110,10 @@ void game_mode_zc_pet_act(struct GameMode *self, unsigned char *pkt)
+     hundreds = rest / 10;
+     packet->value = hundreds;
+     memset(line, 0, sizeof line);
+-    session_get_pet_speak(&g_session1, hundreds / 10, rest % 10, hundreds % 10, line);
++    session_get_pet_speak(&g_session1, hundreds / 10, rest % 10, hundreds % 10, line, sizeof line);
+     if (line[0] == 0)
+         return;
+-    session_format_chat_line(&g_session1, line, said, aid, 1 - kind);
++    session_format_chat_line(&g_session1, line, said, sizeof said, aid, 1 - kind);
+     if (strcmp(said, "") == 0)
+         return;
+     actor_send(pet, 7, (int)said, 0);
+diff --git a/src/session/session_talk.h b/src/session/session_talk.h
+index 6ccb038..285c93d 100644
+--- a/src/session/session_talk.h
++++ b/src/session/session_talk.h
+@@ -28,9 +28,11 @@ struct String *session_get_monster_sprite_name(struct Session *self, struct Stri
+                                                           int job);
+ const char *session_get_state_name(struct Session *self, int state);
+ void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out,
+-                                           int aid);
+-void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action, char *out);
+-void session_format_chat_line(struct Session *self, char *text, char *out, int aid, int replaceWords);
++                                           size_t out_size, int aid);
++void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action, char *out,
++                           size_t out_size);
++void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid,
++                              int replaceWords);
+
+ int session_pet_hunger_level(int fullness);
+ int session_pet_intimacy_level(int intimacy);
+diff --git a/src/session/talk_tables.c b/src/session/talk_tables.c
+index d2ad029..13367d5 100644
+--- a/src/session/talk_tables.c
++++ b/src/session/talk_tables.c
+@@ -15,6 +15,8 @@ static char *node_text(struct XmlElement *node)
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include "core/text_format.h"
++#include "platform/code_page.h"
+
+ BYTE g_talkWordCount = 13;
+ const char *g_talkWords[] = {
+@@ -123,21 +125,31 @@ const char *session_get_state_name(struct Session *self, int state)
+     }
+ }
+
++/* Copies length bytes of a talk line into out[size], cut by whole characters. */
++static void talk_copy(char *out, size_t size, const char *text, size_t length)
++{
++    if (!size)
++        return;
++    length = text_prefix_length(text, length, size - 1, g_codePage);
++    memcpy(out, text, length);
++    out[length] = 0;
++}
++
+ void session_get_monster_talk_info(struct Session *self, int job, int state, int value,
+-                                           char *out, int aid)
++                                           char *out, size_t out_size, int aid)
+ {
+-    char number[12], line[0x300], key[0x100], name[0x100];
++    char number[12], key[0x100], name[0x100];
+     struct XmlElement *node, *stateNode, *n;
+     struct Vec lines;
+     const char *stateName;
+     size_t count;
+
+-    sprintf(out, "");
++    talk_copy(out, out_size, "", 0);
+     strcpy(key, "enemy_monster_talk_table");
+     node = xml_find_child(&self->monsterTalkTable.root, text_decode(key));
+     if (!node)
+         return;
+-    strcpy(name, ((const char **)g_session1.reqJobNames.first)[job]);
++    _snprintf_s(name, sizeof name, _TRUNCATE, "%s", ((const char **)g_session1.reqJobNames.first)[job]);
+     _strlwr(name);
+     node = xml_find_child(node, text_decode(name));
+     if (!node)
+@@ -164,15 +176,14 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
+         }
+     }
+     count = VEC_COUNT(&lines, const char *);
+-    if (count) {
+-        sprintf(line, ((const char **)lines.first)[rand() % (int)count]);
+-        session_format_chat_line(&g_session1, line, out, aid, 0);
+-    }
++    if (count)
++        session_format_chat_line(&g_session1, ((const char **)lines.first)[rand() % (int)count], out,
++                                 out_size, aid, 0);
+     vec_free(&lines);
+ }
+
+ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action,
+-                                    char *out)
++                                    char *out, size_t out_size)
+ {
+     char key[0x100];
+     const char *hungerName, *actionName;
+@@ -180,7 +191,7 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
+     struct Vec lines;
+     size_t count;
+
+-    out[0] = 0;
++    talk_copy(out, out_size, "", 0);
+     strcpy(key, "monster_talk_table");
+     node = xml_find_child(&self->petTalkTable.root, text_decode(key));
+     if (!node)
+@@ -216,43 +227,50 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
+     } while (n);
+     count = VEC_COUNT(&lines, const char *);
+     if (count) {
+-        strcpy(out, ((const char **)lines.first)[rand() % (int)count]);
++        const char *line = ((const char **)lines.first)[rand() % (int)count];
++
++        /* The Korean-service mirror maps lead and trail bytes to lead and trail bytes,
++           so cutting before decoding keeps the same whole characters. */
++        talk_copy(out, out_size, line, strlen(line));
+         text_decode(out);
+     }
+     vec_free(&lines);
+ }
+
+-void session_format_chat_line(struct Session *self, char *text, char *out, int aid,
++/* Builds "name : line" in a String and copies it into out[out_size], cut by whole
++   characters; text is copied as text and not written. */
++void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid,
+                                        int replaceWords)
+ {
+-    char *source = text[0] == '\t' ? text + 1 : text;
+-    char *at = out;
+-    int offset = 0, replacedLength = 0;
+-    struct String actorName;
++    const char *source = text[0] == '\t' ? text + 1 : text;
++    size_t source_size = strlen(source), from = 0;
++    struct String line, said, actorName;
+     const char *name;
+-    size_t n;
+
+-    sprintf(out, source);
++    string_init(&line);
++    string_assign(&line, source, source_size);
+     while (replaceWords) {
++        const char *at = NULL;
+         int i;
+
+         for (i = 0; i < g_talkWordCount; i++) {
+-            at = strstr(at, g_talkWords[i]);
++            at = strstr(string_cstr(&line) + from, g_talkWords[i]);
+             if (at)
+                 break;
+-            at = out + offset + replacedLength;
+         }
+         if (i >= g_talkWordCount)
+             break;
+         {
+             const char *replacement = g_talkWords[g_talkWordCount + i];
+-            int length = (int)strlen(replacement);
++            size_t length = strlen(replacement), offset = (size_t)(at - string_cstr(&line)), tail;
+
+-            strcpy(at, replacement);
+-            offset = (int)(at - out);
+-            strcat(at, source + offset + length);
+-            at += length;
+-            replacedLength = length;
++            /* As before, the rest is taken from the source at the word's offset in the line
++               plus the replacement's length, but never from past the source's end. */
++            tail = offset + length < source_size ? offset + length : source_size;
++            string_truncate(&line, offset);
++            string_append(&line, replacement, length);
++            string_append(&line, source + tail, source_size - tail);
++            from = offset + length;
+         }
+     }
+
+@@ -261,16 +279,16 @@ void session_format_chat_line(struct Session *self, char *text, char *out, int a
+         name = string_cstr(&actorName);
+     else if (aid == g_session1.aid)
+         name = g_session1.petName;
+-    else {
+-        out[0] = 0;
+-        string_free(&actorName);
+-        return;
++    else
++        name = NULL;
++    string_init(&said);
++    if (name) {
++        string_format(&said, "%s : %s", name, string_cstr(&line));
++        if (string_cstr(&said)[said.size - 1] == '\t')
++            string_truncate(&said, said.size - 1);
+     }
+-    sprintf(source, "%s : ", name);
+-    strcat(source, out);
+-    strcpy(out, source);
+-    n = strlen(out);
+-    if (out[n - 1] == '\t')
+-        out[n - 1] = 0;
++    talk_copy(out, out_size, string_cstr(&said), said.size);
++    string_free(&said);
++    string_free(&line);
+     string_free(&actorName);
+ }
+diff --git a/tests/attack_records_session.c b/tests/attack_records_session.c
+index 47c9a71..f634787 100644
+--- a/tests/attack_records_session.c
++++ b/tests/attack_records_session.c
+@@ -27,9 +27,11 @@ int session_get_pet_emotion(struct Session *self, int hungerLevel, int intimacyL
+ { (void)self; (void)hungerLevel; (void)intimacyLevel; (void)action; return 0; }
+ int session_make_pet_talk_id(int job, int action, int hunger) { (void)job; (void)action; (void)hunger; return 0; }
+
+-void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out, int aid)
++void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out,
++                                   size_t out_size, int aid)
+ {
+     assert(self == &g_session1 && job == 1002 && state == 0 && value == 0 && aid == 100);
++    assert(out_size == 0x100);
+     strcpy(out, attack_test_talk_line ? "Poring!" : "");
+ }
+
+diff --git a/tests/build.bat b/tests/build.bat
+index 6e3a18a..1241643 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -874,3 +874,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_format_string_msg.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_talk_lines.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_talk_lines.bat b/tests/build_talk_lines.bat
+new file mode 100644
+index 0000000..14d9340
+--- /dev/null
++++ b/tests/build_talk_lines.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\talk_lines"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_talk_lines.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_talk_lines.c" "%ROOT%\src\core\xml.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\core\memory.c" "%ROOT%\src\core\text_format.c" "%ROOT%\src\core\hex.c" "%ROOT%\src\core\owned_text.c" /Fe:test_talk_lines.exe /link user32.lib
++if errorlevel 1 (popd & exit /b 1)
++test_talk_lines.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_talk_lines.py b/tests/extract_talk_lines.py
+new file mode 100644
+index 0000000..bff72be
+--- /dev/null
++++ b/tests/extract_talk_lines.py
+@@ -0,0 +1,28 @@
++"""Extract the pet and monster talk-line functions and the talk-word table from talk_tables.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/session/talk_tables.c').read_text(encoding='utf-8')
++
++
++def function(signature, optional=False):
++    matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++    if optional and not matches:
++        return []
++    assert len(matches) == 1, signature
++    start = matches[0].start()
++    return [source[start:source.index('\n}', start) + 2]]
++
++
++words = source.index('BYTE g_talkWordCount')
++parts = [source[words:source.index('\n};', words) + 3]]
++parts += function('static char *node_text(')
++parts += function('const char *session_get_state_name(')
++parts += function('static void talk_copy(', optional=True)
++parts += function('void session_get_monster_talk_info(')
++parts += function('void session_get_pet_speak(')
++parts += function('void session_format_chat_line(')
++output.mkdir(parents=True, exist_ok=True)
++(output / 'talk_lines.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_talk_lines.c b/tests/test_talk_lines.c
+new file mode 100644
+index 0000000..2acf035
+--- /dev/null
++++ b/tests/test_talk_lines.c
+@@ -0,0 +1,200 @@
++#include <windows.h>
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "core/msg_str.h"
++#include "core/text_format.h"
++#include "core/xml.h"
++#include "game/actor_names.h"
++#include "game/context.h"
++#include "session/session_talk.h"
++#include "session/state.h"
++#include "std/string.h"
++
++/* Run the production pet and monster talk lines (session_get_pet_speak,
++   session_get_monster_talk_info, session_format_chat_line) over parsed
++   PetTalkTable.xml and MonsterTalkTable.xml, writing into 256-byte outputs with
++   a guard after them. Long lines and names must be cut to the output by whole
++   CP949 characters, printf conversions must arrive as text, and the
++   talk-word replacement must give the lines it gave before. */
++
++struct Session g_session1;
++unsigned int g_codePage = 949;
++static struct GameMode *const test_mode = (struct GameMode *)0x6d6f;
++static int cases;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++/* Other services than Korea leave the text as it is. */
++char *text_decode(char *text) { return text; }
++const char *session_get_pet_name(int petJob) { assert(petJob == 1); return "poring"; }
++const char *session_get_pet_act_text(int action) { assert(action == 0); return "feeding"; }
++struct GameMode *game_current_mode(void) { return test_mode; }
++struct String *game_mode_get_actor_name(struct GameMode *self, struct String *out, int aid)
++{
++    assert(self == test_mode);
++    string_init(out);
++    if (aid == 100)
++        string_assign_cstr(out, "Poring");
++    return out;
++}
++
++#include "talk_lines.inc"
++
++struct Guarded {
++    char out[0x100];
++    char guard[0x40];
++};
++
++static void guard(struct Guarded *g)
++{
++    memset(g, 'C', sizeof *g);
++}
++
++static void check_out(const struct Guarded *g, size_t size, const char *expected)
++{
++    size_t i;
++
++    assert(strcmp(g->out, expected) == 0);
++    for (i = size; i < sizeof g->out; ++i)
++        assert(g->out[i] == 'C');
++    for (i = 0; i < sizeof g->guard; ++i)
++        assert(g->guard[i] == 'C');
++    ++cases;
++}
++
++static char *repeat(char *out, char c, size_t count)
++{
++    memset(out, c, count);
++    out[count] = 0;
++    return out;
++}
++
++/* The line in a caller's buffer whose bytes after the NUL are not NUL. */
++static void format_line(const char *input, int aid, int replace, size_t size, const char *expected)
++{
++    char text[0x400];
++    struct Guarded g;
++
++    assert(strlen(input) < sizeof text - 1);
++    memset(text, 'G', sizeof text - 1);
++    text[sizeof text - 1] = 0;
++    memcpy(text, input, strlen(input) + 1);
++    guard(&g);
++    session_format_chat_line(&g_session1, text, g.out, size, aid, replace);
++    check_out(&g, size, expected);
++}
++
++static void check_format(void)
++{
++    char input[0x200], expected[0x200];
++
++    g_session1.aid = 7;
++    strcpy(g_session1.petName, "Pet");
++    format_line("hello", 100, 0, 0x100, "Poring : hello");
++    format_line("\thello\t", 100, 0, 0x100, "Poring : hello");
++    format_line("%s%n%d", 100, 0, 0x100, "Poring : %s%n%d");
++    format_line("hi", 7, 0, 0x100, "Pet : hi");
++    format_line("hi", 999, 0, 0x100, "");
++    format_line("hello", 100, 0, 4, "Por");
++
++    /* The talk words, as before: each search starts after the last replacement. */
++    format_line("형님 좋아요", 100, 1, 0x100, "Poring : 누님 좋아요");
++    format_line("아빠 오빠 아빠", 100, 1, 0x100, "Poring : 엄마 오빠 엄마");
++    format_line("형님 좋아요", 100, 0, 0x100, "Poring : 형님 좋아요");
++    /* 형씨 is shorter than 아가씨, so as before the rest skips two more bytes, but no
++       longer from past the end of the line. */
++    format_line("형씨는 좋아", 100, 1, 0x100, "Poring : 아가씨 좋아");
++    format_line("abc형씨", 100, 1, 0x100, "Poring : abc아가씨");
++
++    repeat(input, 'x', 300);
++    strcpy(expected, "Poring : ");
++    repeat(expected + 9, 'x', 0xff - 9);
++    format_line(input, 100, 0, 0x100, expected);
++    /* 9 + 245 bytes, then a two-byte character over the 255-byte limit. */
++    repeat(input, 'x', 245);
++    strcat(input, "가yyy");
++    repeat(expected + 9, 'x', 245);
++    format_line(input, 100, 0, 0x100, expected);
++}
++
++static void parse(struct XmlDocument *doc, const char *xml)
++{
++    xml_element_construct(&doc->root, "XMLDocument");
++    doc->copy = NULL;
++    assert(xml_parse(doc, xml, xml + strlen(xml)));
++}
++
++static void release(struct XmlDocument *doc)
++{
++    xml_document_release(doc);
++    xml_element_destruct(&doc->root);
++}
++
++static void check_pet_speak(void)
++{
++    static char xml[0x800];
++    char line[0x200];
++    struct Guarded g;
++
++    snprintf(xml, sizeof xml, "<monster_talk_table><poring>"
++             "<hungry><feeding>Yum %%s%%n</feeding></hungry>"
++             "<full><feeding>%s</feeding></full>"
++             "</poring></monster_talk_table>", repeat(line, 'y', 300));
++    parse(&g_session1.petTalkTable, xml);
++    guard(&g);
++    session_get_pet_speak(&g_session1, 1, 0, 0, g.out, sizeof g.out);
++    check_out(&g, sizeof g.out, "Yum %s%n");
++    guard(&g);
++    session_get_pet_speak(&g_session1, 1, 3, 0, g.out, sizeof g.out);
++    check_out(&g, sizeof g.out, repeat(line, 'y', 0xff));
++    guard(&g);
++    session_get_pet_speak(&g_session1, 1, 2, 0, g.out, sizeof g.out);
++    check_out(&g, sizeof g.out, "");
++    release(&g_session1.petTalkTable);
++}
++
++static void check_monster_talk(void)
++{
++    static char xml[0x1000];
++    char line[0x300], expected[0x200], name[0x140];
++    const char *jobs[4];
++    struct Guarded g;
++
++    jobs[0] = "NOVICE";
++    jobs[1] = "PORING";
++    jobs[2] = "DROPS";
++    jobs[3] = repeat(name, 'p', 0x13f);
++    g_session1.reqJobNames.first = (void *)jobs;
++    g_session1.reqJobNames.last = g_session1.reqJobNames.end = (void *)(jobs + 4);
++    snprintf(xml, sizeof xml, "<enemy_monster_talk_table>"
++             "<poring><attack>Grr %%s</attack></poring>"
++             "<drops><attack>%s</attack></drops>"
++             "</enemy_monster_talk_table>", repeat(line, 'g', 0x2f0));
++    parse(&g_session1.monsterTalkTable, xml);
++    guard(&g);
++    session_get_monster_talk_info(&g_session1, 1, 0, 0, g.out, sizeof g.out, 100);
++    check_out(&g, sizeof g.out, "Poring : Grr %s");
++    guard(&g);
++    session_get_monster_talk_info(&g_session1, 2, 0, 0, g.out, sizeof g.out, 100);
++    strcpy(expected, "Poring : ");
++    check_out(&g, sizeof g.out, strcat(expected, repeat(line, 'g', 0xff - 9)));
++    guard(&g);
++    session_get_monster_talk_info(&g_session1, 3, 0, 0, g.out, sizeof g.out, 100);
++    check_out(&g, sizeof g.out, "");
++    guard(&g);
++    session_get_monster_talk_info(&g_session1, 0, 0, 0, g.out, sizeof g.out, 100);
++    check_out(&g, sizeof g.out, "");
++    release(&g_session1.monsterTalkTable);
++    g_session1.reqJobNames.first = g_session1.reqJobNames.last = g_session1.reqJobNames.end = NULL;
++}
++
++int main(void)
++{
++    check_format();
++    check_pet_speak();
++    check_monster_talk();
++    printf("Talk lines: %d lines; long lines and names are cut, conversions copied, words replaced as before.\n",
++           cases);
++    return 0;
++}

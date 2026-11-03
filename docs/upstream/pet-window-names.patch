@@ -1,0 +1,152 @@
+From e07bb1213c731440b2848c19dd80c759c574baec Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 16:38:19 +0100
+Subject: [PATCH] Give the pet windows the bounded pet name
+
+pet_named (actor_names.c) and game_mode_zc_property_pet (packets_pet.c)
+copy the pet name into petName bounded by its 24-byte packet field, but
+still passed the field itself to ui_pet_info_set_name, which sets it as
+the edit text with strlen, so a full field without a NUL was read past
+its end. For another player's pet game_mode_zc_property_pet passed it to
+ui_item_collection_set_pet, which copies at most 23 bytes.
+
+pet_named now passes petName. game_mode_zc_property_pet copies the field
+once into a 25-byte local and uses that copy for petName, the pet window
+and the item collection window.
+
+Validation: test_name_text now records the names the pet window and the
+item collection window receive: with a full 24-byte field followed by
+other bytes each must get exactly the 24 bytes, and the "%s%n%s%n" names
+unchanged; another player's pet leaves petName alone. 51 cases. The test
+fails on the previous code and with either file reverted. Release build
+without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/actor_names.c |  2 +-
+ src/game/packets_pet.c |  7 ++++---
+ tests/test_name_text.c | 40 ++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 41 insertions(+), 8 deletions(-)
+
+diff --git a/src/game/actor_names.c b/src/game/actor_names.c
+index f7e5223..390d5cd 100644
+--- a/src/game/actor_names.c
++++ b/src/game/actor_names.c
+@@ -65,7 +65,7 @@ static void pet_named(unsigned aid, const char *name)
+         return;
+     _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s", NAME_LENGTH, name);
+     if (g_windowMgr.pet_info_wnd)
+-        ui_pet_info_set_name(g_windowMgr.pet_info_wnd, name);
++        ui_pet_info_set_name(g_windowMgr.pet_info_wnd, g_session1.petName);
+ }
+
+ void game_mode_ack_req_name_by_gid(const unsigned char *pkt)
+diff --git a/src/game/packets_pet.c b/src/game/packets_pet.c
+index 7a7f9dc..6f7e851 100644
+--- a/src/game/packets_pet.c
++++ b/src/game/packets_pet.c
+@@ -41,14 +41,15 @@ SIZE_ASSERT(PACKET_ZC_PROPERTY_PET, 0x25);
+ void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
+ {
+     struct PACKET_ZC_PROPERTY_PET *packet = (struct PACKET_ZC_PROPERTY_PET *)pkt;
+-    const char *name = packet->name;
++    char name[sizeof packet->name + 1];
+     struct UIWindow *wnd;
+
+     (void)self;
++    /* The 24-byte name field need not end in NUL; everything below uses this copy. */
++    _snprintf_s(name, sizeof name, _TRUNCATE, "%.*s", (int)sizeof packet->name, packet->name);
+     g_session1.petJob = packet->job;
+     if (packet->level < PET_LEVEL_OTHER) {
+-        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s",
+-                    (int)sizeof packet->name, name);
++        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s", name);
+         g_session1.petPrevFullness = g_session1.petFullness;
+         g_session1.petFullness = packet->fullness;
+         g_session1.petIntimacy = packet->intimacy;
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+index 0707eb1..cc94358 100644
+--- a/tests/test_name_text.c
++++ b/tests/test_name_text.c
+@@ -67,7 +67,7 @@ const char *ui_edit_ctrl_get_text(struct UIWindow *self)
+ }
+ struct UIWindow *ui_window_open(int id)
+ {
+-    assert(id == 2 || id == 0x4e);
++    assert(id == 2 || id == 0xc || id == 0x4e);
+     return &test_window;
+ }
+ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+@@ -77,9 +77,22 @@ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message
+ }
+ void ui_window_move_safe(struct UIWindow *window, int x, int y) { (void)window; (void)x; (void)y; }
+ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; abort(); }
+-void ui_pet_info_set_name(struct UIWindow *wnd, const char *name) { (void)wnd; (void)name; abort(); }
+-void ui_pet_info_update_intimacy(struct UIWindow *wnd) { (void)wnd; abort(); }
+-void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet) { (void)wnd; (void)pet; abort(); }
++/* The pet windows: the names they are given, which must not run past the field. */
++static char pet_window_name[0x100], other_pet_name[0x100];
++static int invalidations;
++void ui_pet_info_set_name(struct UIWindow *wnd, const char *name)
++{
++    assert(wnd == &test_window && strlen(name) < sizeof pet_window_name);
++    strcpy(pet_window_name, name);
++}
++void ui_pet_info_update_intimacy(struct UIWindow *wnd) { assert(wnd == &test_window); }
++void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet)
++{
++    assert(wnd == &test_window && strlen(pet->name) < sizeof other_pet_name);
++    strcpy(other_pet_name, pet->name);
++}
++static void count_invalidation(struct UIWindow *wnd) { assert(wnd == &test_window); ++invalidations; }
++static const struct UIWindowOps test_ops = { .invalidate = count_invalidation };
+ struct ReplayRecorder *replay_recorder_instance(void) { return NULL; }
+ BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; (void)mode; return 0; }
+ struct UIListBox *ui_select_server_list(struct UIWindow *wnd) { assert(wnd == &test_window); return server_box; }
+@@ -188,6 +201,8 @@ static void check_pet_names(void)
+     char name[40];
+     struct { struct PACKET_ZC_PROPERTY_PET pet; char after[8]; } packet;
+
++    test_window.ops = &test_ops;
++    g_windowMgr.pet_info_wnd = &test_window;
+     g_session1.aid = 7;
+     strcpy(g_session1.petName, "kept");
+     pet_named(8, CONVERSIONS);
+@@ -201,12 +216,14 @@ static void check_pet_names(void)
+     full_field(name, NAME_LENGTH, 'P');
+     pet_named(7, name);
+     check(g_session1.petName, "PPPPPPPPPPPPPPPPPPPPPPPP");
++    check(pet_window_name, "PPPPPPPPPPPPPPPPPPPPPPPP");
+
+     memset(&packet, 'z', sizeof packet);
+     packet.pet.level = 5;
+     strcpy(packet.pet.name, CONVERSIONS);
+     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
+     check(g_session1.petName, CONVERSIONS);
++    check(pet_window_name, CONVERSIONS);
+     packet.pet.level = 5;
+     strcpy(packet.pet.name, CONVERSIONS_N);
+     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
+@@ -215,6 +232,21 @@ static void check_pet_names(void)
+     packet.pet.level = 5;
+     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
+     check(g_session1.petName, "QQQQQQQQQQQQQQQQQQQQQQQQ");
++    check(pet_window_name, "QQQQQQQQQQQQQQQQQQQQQQQQ");
++    assert(invalidations == 3);
++
++    /* Another player's pet goes to the item collection window. */
++    strcpy(g_session1.petName, "kept");
++    packet.pet.level = PET_LEVEL_OTHER + 3;
++    strcpy(packet.pet.name, CONVERSIONS_N);
++    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
++    check(other_pet_name, CONVERSIONS_N);
++    full_field(packet.pet.name, sizeof packet.pet.name, 'O');
++    packet.pet.level = PET_LEVEL_OTHER + 3;
++    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
++    check(other_pet_name, "OOOOOOOOOOOOOOOOOOOOOOOO");
++    check(g_session1.petName, "kept");
++    g_windowMgr.pet_info_wnd = NULL;
+ }
+
+ static void check_couple_name(void)

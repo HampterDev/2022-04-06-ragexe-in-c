@@ -1,0 +1,228 @@
+From 0fc910c11607f237f7abbb7fd57dfcd8066e7251 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 16:34:47 +0100
+Subject: [PATCH] Cut long char-server list lines instead of ending the client
+
+server_list builds each line of the char-server list in text[0x40]: the
+new-server prefix (msg 0x1e2) and the name, then, as a String, a colour
+code, the busy message, "  ^000000", that text and the state message,
+and copies the result back with strcpy_s(text, 0x40, ...). A line of 64
+bytes or more, as with longer busy or state messages, makes strcpy_s
+call the invalid-parameter handler, and the client sets none, so it
+ends. The prefix was also written with sprintf, using the message as
+the format.
+
+The prefix and the name are now kept in a String as well, the name
+bounded by its 20-byte field as before, and server_line copies the
+finished line into text cut by whole characters (text_prefix_length with
+g_codePage). The prefix is copied as text. Lines that fit are unchanged.
+
+Validation: test_name_text now also runs server_list with a one-byte
+busy message, a line of 93 bytes with a 40-byte busy message and a state
+message, an 80-byte state message on its own, and a line whose 63-byte
+limit falls inside a two-byte CP949 character, which is left out. It
+links core/text_format.c and user32.lib. The test ends the client's way
+on the previous code, at strcpy_s, and fails with a plain byte cut. 45
+cases. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/login/login_states.c   | 31 +++++++++++++++++++++----------
+ tests/build_name_text.bat  |  2 +-
+ tests/extract_name_text.py | 10 +++++++++-
+ tests/test_name_text.c     | 32 +++++++++++++++++++++++++++++++-
+ 4 files changed, 62 insertions(+), 13 deletions(-)
+
+diff --git a/src/login/login_states.c b/src/login/login_states.c
+index 1581b8d..6ca8b0b 100644
+--- a/src/login/login_states.c
++++ b/src/login/login_states.c
+@@ -23,6 +23,7 @@
+ #include "render/render_api.h"
+ #include "core/msg_str.h"
+ #include "core/skin_path.h"
++#include "core/text_format.h"
+ #include "core/text_util.h"
+ #include "session/session_items.h"
+ #include "session/session_names.h"
+@@ -220,14 +221,22 @@ static void login_screen(struct LoginMode *self)
+     mode_mgr_quit(&g_modeMgr);
+ }
+
++/* Copies a server-list line into out[size], cut by whole characters. */
++static void server_line(char *out, size_t size, const struct String *line)
++{
++    size_t length = text_prefix_length(string_cstr(line), line->size, size - 1, g_codePage);
++
++    memcpy(out, string_cstr(line), length);
++    out[length] = 0;
++}
++
+ static void server_list(struct LoginMode *self)
+ {
+     static const char *const colours[4] = { "^00B509", "^FF7800", "^FF0000", "^BA00FF" };
+     static const int busy[4] = { 0xcbd, 0xcbe, 0xcbf, 0xcc0 };
+     struct LoginServerEntry *e;
+-    struct String label, colour[4], text_s;
++    struct String name, label, colour[4], text_s;
+     char text[0x40];
+-    size_t used;
+     struct UIWindow *wnd;
+     int i, k;
+
+@@ -239,12 +248,11 @@ static void server_list(struct LoginMode *self)
+     UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (int)"NUMSERVER", 0, 0);
+     for (i = 0; i < self->numServer; i++) {
+         e = &self->servers[i];
+-        memset(text, 0, sizeof text);
+-        if (e->isNew == 1)
+-            sprintf(text, msg_str(0x1e2));
+         /* The name is login-server text in a 20-byte field that need not end in NUL. */
+-        used = strlen(text);
+-        _snprintf_s(text + used, sizeof text - used, _TRUNCATE, "%.*s", (int)sizeof e->name, e->name);
++        string_init(&name);
++        if (e->isNew == 1)
++            string_assign_cstr(&name, msg_str(0x1e2));
++        string_append(&name, e->name, strnlen(e->name, sizeof e->name));
+         string_init(&label);
+         for (k = 0; k < 4; k++) {
+             string_init(&colour[k]);
+@@ -253,7 +261,8 @@ static void server_list(struct LoginMode *self)
+         if (e->usercount <= 3) {
+             k = e->usercount;
+             string_init(&text_s);
+-            string_format(&text_s, "%s%s  ^000000%s", string_cstr(&colour[k]), msg_str(busy[k]), text);
++            string_format(&text_s, "%s%s  ^000000%s", string_cstr(&colour[k]), msg_str(busy[k]),
++                          string_cstr(&name));
+             string_assign(&label, string_cstr(&text_s), text_s.size);
+             string_free(&text_s);
+         }
+@@ -262,11 +271,13 @@ static void server_list(struct LoginMode *self)
+         case 3: string_append_cstr(&label, msg_str(0xcbb)); break;
+         case 4: string_append_cstr(&label, msg_str(0xcbc)); break;
+         }
+-        if (label.size)
+-            strcpy_s(text, 0x40, string_cstr(&label));
++        /* The busy and state messages can make the line longer than text, and strcpy_s
++           would end the client: cut it instead. */
++        server_line(text, sizeof text, label.size ? &label : &name);
+         for (k = 3; k >= 0; k--)
+             string_free(&colour[k]);
+         string_free(&label);
++        string_free(&name);
+         ui_list_box_add_item(ui_select_server_list(wnd), text);
+     }
+     UIWND_SENDMSG(wnd, 0, 0x28, 0, 0, 0, 0);
+diff --git a/tests/build_name_text.bat b/tests/build_name_text.bat
+index 9f9cf95..cdc772e 100644
+--- a/tests/build_name_text.bat
++++ b/tests/build_name_text.bat
+@@ -7,7 +7,7 @@ call "%VCVARS%" >nul
+ python "%ROOT%\tests\extract_name_text.py" "%ROOT%" "%OUT%"
+ if errorlevel 1 exit /b 1
+ pushd "%OUT%" || exit /b 1
+-cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_name_text.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_name_text.exe
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_name_text.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" "%ROOT%\src\core\text_format.c" "%ROOT%\src\core\hex.c" "%ROOT%\src\core\owned_text.c" /Fe:test_name_text.exe /link user32.lib
+ if errorlevel 1 (popd & exit /b 1)
+ test_name_text.exe
+ set "CODE=%errorlevel%"
+diff --git a/tests/extract_name_text.py b/tests/extract_name_text.py
+index ca7fe99..e0b8798 100644
+--- a/tests/extract_name_text.py
++++ b/tests/extract_name_text.py
+@@ -22,6 +22,13 @@ def unique(source, pattern):
+     return matches[0]
+
+
++def optional_function(source, signature):
++    """The function, or nothing in sources from before it existed."""
++    if not re.search(r'^' + re.escape(signature), source, re.M):
++        return []
++    return [function(source, signature)]
++
++
+ def function(source, signature):
+     start = unique(source, r'^' + re.escape(signature) + r'[^{;]*\n\{').start()
+     return source[start:source.index('\n}', start) + 2]
+@@ -91,7 +98,8 @@ pieces['cut_in'] = [line(world, r'static int g_illustShownPosition\b'), line(wor
+                     world[enums:unique(world, r'^void game_mode_update_cut_in\(').start()].rstrip(),
+                     function(world, 'void game_mode_update_cut_in(')]
+ login = read('login/login_states.c')
+-pieces['server_list'] = [function(login, 'static void server_list(')]
++pieces['server_list'] = (optional_function(login, 'static void server_line(') +
++                         [function(login, 'static void server_list(')])
+ pieces['map_name'] = [statement(read('game/mode_connection.c'), r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
+ homun = read('ui/character/companion_info.c')
+ pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+index 32957ca..0707eb1 100644
+--- a/tests/test_name_text.c
++++ b/tests/test_name_text.c
+@@ -6,6 +6,7 @@
+ #include <string.h>
+ #include "core/fatal.h"
+ #include "core/msg_str.h"
++#include "core/text_format.h"
+ #include "game/packet_handlers.h"
+ #include "game/packets.h"
+ #include "game/packets_world.h"
+@@ -31,6 +32,7 @@
+ #define CONVERSIONS_N "%s%n%s%n"
+
+ int g_serviceType;
++unsigned int g_codePage = 949;
+ struct Session g_session1;
+ struct UIWindowMgr g_windowMgr;
+ static struct Renderer renderer;
+@@ -38,7 +40,7 @@ struct Renderer *g_renderer = &renderer;
+ static struct UIWindow test_window;
+ static struct UIListBox *const server_box = (struct UIListBox *)0x5150;
+ static char listed[0x100];
+-static const char *job_name, *edit_text;
++static const char *job_name, *edit_text, *busy_text = "busy", *state_text = "state";
+ static int cases;
+
+ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
+@@ -47,6 +49,8 @@ char *msg_str(int id)
+     switch (id) {
+     case 0x784: return (char *)"%d%% x%.1f";
+     case 0x1e2: return (char *)"(N) ";
++    case 0xcbd: case 0xcbe: case 0xcbf: case 0xcc0: return (char *)busy_text;
++    case 0xcba: case 0xcbb: case 0xcbc: return (char *)state_text;
+     }
+     abort();
+ }
+@@ -282,6 +286,32 @@ static void check_server_list(void)
+     e->isNew = 1;
+     server_list(&login);
+     check(listed, "(N) SSSSSSSSSSSSSSSSSSSS");
++
++    /* Colored lines with long busy and state messages are cut to text[0x40]. */
++    e->usercount = 1;
++    busy_text = "B";
++    server_list(&login);
++    check(listed, "^FF7800B  ^000000(N) SSSSSSSSSSSSSSSSSSSS");
++    e->usercount = 0;
++    e->state = 2;
++    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
++    state_text = "(maintenance)";
++    server_list(&login);
++    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ^000000(N) SSS");
++    e->usercount = 4;
++    e->state = 3;
++    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
++    server_list(&login);
++    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
++    /* 7 + 55 bytes, then a two-byte CP949 character over the 63-byte limit. */
++    e->usercount = 0;
++    e->state = 0;
++    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\xb0\xa1";
++    server_list(&login);
++    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
++    e->isNew = 0;
++    busy_text = "busy";
++    state_text = "state";
+ }
+
+ static void check_map_name(void)

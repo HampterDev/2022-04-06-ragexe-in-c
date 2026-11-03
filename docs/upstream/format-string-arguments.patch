@@ -1,0 +1,292 @@
+From 61939b5d89e6587eab52bcecbd666cb15c7086dc Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 16:44:43 +0100
+Subject: [PATCH] Read format-string message arguments only up to the packet
+ length
+
+game_mode_format_string_msg (ZC_FORMATSTRING_MSG) formats msg_id's
+message with up to three %s arguments, NUL-terminated strings one after
+another in the packet. It took the first at the start of the strings
+and found the second and third with strlen, ignoring the packet length,
+so an argument without a NUL was read into whatever followed the packet,
+and an argument that was missing was read from past its end.
+
+The argument bytes, up to the packet length, are now copied into a
+String, which ends them with a NUL, and next_argument steps past each
+NUL with memchr inside that copy. An argument that runs to the end of
+the packet ends there, and those after it are empty. Well-formed packets
+give the same line as before.
+
+Validation: the new test_format_string_msg runs the extracted function
+on packets followed by 'Z' bytes: three, two and one terminated or
+unterminated arguments, empty and missing ones, a message without %s,
+one with four (still not shown) and a 768-byte argument, which fills the
+line's 0x104 bytes. 15 packets; the test fails on the previous code.
+Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/system_messages.c         |  28 ++++++--
+ tests/build.bat                    |   3 +
+ tests/build_format_string_msg.bat  |  15 ++++
+ tests/extract_format_string_msg.py |  30 ++++++++
+ tests/test_format_string_msg.c     | 111 +++++++++++++++++++++++++++++
+ 5 files changed, 182 insertions(+), 5 deletions(-)
+ create mode 100644 tests/build_format_string_msg.bat
+ create mode 100644 tests/extract_format_string_msg.py
+ create mode 100644 tests/test_format_string_msg.c
+
+diff --git a/src/game/system_messages.c b/src/game/system_messages.c
+index de2cb76..a4bfe72 100644
+--- a/src/game/system_messages.c
++++ b/src/game/system_messages.c
+@@ -132,13 +132,23 @@ struct PACKET_ZC_FORMATSTRING_MSG {
+ };
+ #pragma pack(pop)
+
++/* The argument after arg among strings that end at end: the one past arg's NUL, or end,
++   an empty string, when arg runs to the end. */
++static const char *next_argument(const char *arg, const char *end)
++{
++    const char *nul = memchr(arg, 0, (size_t)(end - arg));
++
++    return nul ? nul + 1 : end;
++}
++
+ void game_mode_format_string_msg(const unsigned char *pkt)
+ {
+     const struct PACKET_ZC_FORMATSTRING_MSG *packet = (const struct PACKET_ZC_FORMATSTRING_MSG *)pkt;
+     char line[0x105];
+     const char *fmt = msg_str(packet->msg_id);
+     const char *p = fmt;
+-    const char *arg1, *arg2, *arg3;
++    const char *arg1, *arg2, *arg3, *end;
++    struct String strings;
+     unsigned count = 0;
+
+     while (*p != 0) {
+@@ -151,7 +161,16 @@ void game_mode_format_string_msg(const unsigned char *pkt)
+             p++;
+     }
+     memset(line, 0, sizeof line);
+-    arg1 = packet->strings;
++    /* The arguments are NUL-terminated strings one after another, up to the packet
++       length. In this terminated copy an argument that runs to the end of the packet ends
++       there, and those after it are empty. */
++    string_init(&strings);
++    if (packet->length > sizeof *packet)
++        string_assign(&strings, packet->strings, packet->length - sizeof *packet);
++    arg1 = string_cstr(&strings);
++    end = arg1 + strings.size;
++    arg2 = next_argument(arg1, end);
++    arg3 = next_argument(arg2, end);
+     switch (count) {
+     case 0:
+         _snprintf(line, 0x104, fmt);
+@@ -160,18 +179,17 @@ void game_mode_format_string_msg(const unsigned char *pkt)
+         _snprintf(line, 0x104, fmt, arg1);
+         break;
+     case 2:
+-        arg2 = arg1 + strlen(arg1) + 1;
+         _snprintf(line, 0x104, fmt, arg1, arg2);
+         break;
+     case 3:
+-        arg2 = arg1 + strlen(arg1) + 1;
+-        arg3 = arg2 + strlen(arg2) + 1;
+         _snprintf(line, 0x104, fmt, arg1, arg2, arg3);
+         break;
+     default:
+         sprintf(line, "unknown argment list");
++        string_free(&strings);
+         return;
+     }
++    string_free(&strings);
+     chat(UIM_PUSH_INTO_CHAT, line, COLOUR_WHITE, 0);
+ }
+
+diff --git a/tests/build.bat b/tests/build.bat
+index 16747f2..6e3a18a 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -871,3 +871,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_login_conn_entry.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_format_string_msg.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_format_string_msg.bat b/tests/build_format_string_msg.bat
+new file mode 100644
+index 0000000..5ac43fc
+--- /dev/null
++++ b/tests/build_format_string_msg.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\format_string_msg"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_format_string_msg.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_format_string_msg.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_format_string_msg.exe
++if errorlevel 1 (popd & exit /b 1)
++test_format_string_msg.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_format_string_msg.py b/tests/extract_format_string_msg.py
+new file mode 100644
+index 0000000..e0d55f0
+--- /dev/null
++++ b/tests/extract_format_string_msg.py
+@@ -0,0 +1,30 @@
++"""Extract game_mode_format_string_msg with its packet, chat helper and argument stepping."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/game/system_messages.c').read_text(encoding='utf-8')
++
++
++def unique(pattern):
++    matches = list(re.finditer(pattern, source, re.M))
++    assert len(matches) == 1, pattern
++    return matches[0]
++
++
++def function(signature, optional=False):
++    if optional and not re.search(r'^' + re.escape(signature), source, re.M):
++        return []
++    start = unique(r'^' + re.escape(signature) + r'[^{;]*\n\{').start()
++    return [source[start:source.index('\n}', start) + 2]]
++
++
++struct = unique(r'^struct PACKET_ZC_FORMATSTRING_MSG \{\n').start()
++parts = [unique(r'^#define COLOUR_WHITE\b.*$').group(0),
++         '#pragma pack(push, 1)\n' + source[struct:source.index('\n};', struct) + 3] + '\n#pragma pack(pop)']
++parts += function('static void chat(')
++parts += function('static const char *next_argument(', optional=True)
++parts += function('void game_mode_format_string_msg(')
++output.mkdir(parents=True, exist_ok=True)
++(output / 'format_string_msg.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_format_string_msg.c b/tests/test_format_string_msg.c
+new file mode 100644
+index 0000000..aff855f
+--- /dev/null
++++ b/tests/test_format_string_msg.c
+@@ -0,0 +1,111 @@
++#include <windows.h>
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "core/msg_str.h"
++#include "game/ui_bridge.h"
++#include "std/string.h"
++#include "ui/window_manager_state.h"
++#include "ui/window_messages.h"
++
++/* Run the production game_mode_format_string_msg (ZC_FORMATSTRING_MSG) on packets
++   followed by bytes that are not NUL. Its arguments are NUL-terminated strings one
++   after another; each must be read no further than the packet length, so an argument
++   that runs to the end of the packet ends there and those after it are empty. */
++
++struct UIWindowMgr g_windowMgr;
++static char pushed[0x200];
++static int pushes, cases;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++
++char *msg_str(int id)
++{
++    switch (id) {
++    case 1: return (char *)"[%s|%s|%s]";
++    case 2: return (char *)"<%s/%s>";
++    case 3: return (char *)"(%s)";
++    case 4: return (char *)"plain";
++    case 5: return (char *)"%s%s%s%s";
++    }
++    abort();
++}
++
++int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
++{
++    const char *text = (const char *)val1;
++
++    assert(self == &g_windowMgr && msg == UIM_PUSH_INTO_CHAT && val2 == 0xffffff && val3 == 0 && val4 == 0);
++    assert(strlen(text) < sizeof pushed);
++    strcpy(pushed, text);
++    ++pushes;
++    return 0;
++}
++
++#include "format_string_msg.inc"
++
++/* Sends msg_id with the given argument bytes as a packet of exactly that length,
++   followed in memory by 'Z' bytes. */
++static void send_packet_of(unsigned short msg_id, const char *strings, size_t size)
++{
++    unsigned char buffer[0x400];
++    size_t length = 6 + size;
++
++    assert(length + 32 < sizeof buffer);
++    memset(buffer, 'Z', sizeof buffer);
++    buffer[sizeof buffer - 1] = 0;
++    buffer[0] = 0xc2;
++    buffer[1] = 0x02;
++    buffer[2] = (unsigned char)length;
++    buffer[3] = (unsigned char)(length >> 8);
++    buffer[4] = (unsigned char)msg_id;
++    buffer[5] = (unsigned char)(msg_id >> 8);
++    memcpy(buffer + 6, strings, size);
++    pushed[0] = 0;
++    game_mode_format_string_msg(buffer);
++}
++
++static void check(unsigned short msg_id, const char *strings, size_t size, const char *expected)
++{
++    int before = pushes;
++
++    send_packet_of(msg_id, strings, size);
++    if (expected) {
++        assert(pushes == before + 1 && strcmp(pushed, expected) == 0);
++    } else {
++        assert(pushes == before);
++    }
++    ++cases;
++}
++
++#define ARGS(s) s, sizeof s - 1
++
++int main(void)
++{
++    char longer[0x300], cut[0x105];
++
++    check(1, ARGS("a\0b\0c\0"), "[a|b|c]");
++    check(1, ARGS("a\0b\0c"), "[a|b|c]");
++    check(1, ARGS("a\0bc"), "[a|bc|]");
++    check(1, ARGS("abc"), "[abc||]");
++    check(1, ARGS(""), "[||]");
++    check(1, ARGS("\0\0\0"), "[||]");
++    check(2, ARGS("one\0two\0three\0"), "<one/two>");
++    check(2, ARGS("one"), "<one/>");
++    check(2, ARGS(""), "</>");
++    check(3, ARGS("abc"), "(abc)");
++    check(3, ARGS("abc\0"), "(abc)");
++    check(3, ARGS(""), "()");
++    check(4, ARGS("ignored"), "plain");
++    check(5, ARGS("a\0b\0c\0d\0"), NULL);
++
++    /* An argument without a NUL that is longer than the line fills its 0x104 bytes. */
++    memset(longer, 'L', sizeof longer);
++    cut[0] = '(';
++    memset(cut + 1, 'L', 0x103);
++    cut[0x104] = 0;
++    check(3, longer, sizeof longer, cut);
++    printf("Format string messages: %d packets; arguments end at the packet length.\n", cases);
++    return 0;
++}

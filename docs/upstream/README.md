@@ -81,11 +81,13 @@ These bugs were found during the UTF-8 work and the langtype 20 lock on `purist`
 and were fixed on `main` on 2026-11-03, one commit each with a focused
 regression test. The series starts after
 `5238a9f02101792d0995b069ae34361d71b6220d` and ends at
-`d28b5abd09104596bd9ff654209c34a118cd1468`. Fixes whose code still exists on
-`purist` were ported with `git cherry-pick -x`; on `purist` the default pet and
-homunculus names from job names are cut by whole UTF-8 characters, and the unused
-login-entry field is removed instead of zeroed. The patch files are
-`git format-patch` exports of the `main` commits.
+`d28b5abd09104596bd9ff654209c34a118cd1468`; five follow-up fixes for the bugs it
+found, `0fc910c11607f237f7abbb7fd57dfcd8066e7251` to
+`6177cea0746fe9e707526edbb18915768d458ec1`, came after it. Fixes whose code still
+exists on `purist` were ported with `git cherry-pick -x`; on `purist` the default pet
+and homunculus names from job names and the char-server list lines are cut by whole
+UTF-8 characters, and the unused login-entry field is removed instead of zeroed. The
+patch files are `git format-patch` exports of the `main` commits.
 
 | Patch | Foundation commit | Purist | Change |
 | --- | --- | --- | --- |
@@ -93,6 +95,11 @@ login-entry field is removed instead of zeroed. The patch files are
 | [monster-skill-info-values.patch](monster-skill-info-values.patch) | [b071edc1c9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b071edc1c93e95c49f65808d9e53abab50fe608c) | [b5ef5609ae](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b5ef5609aec4ce3396cf8c42d02909b7ea21a5d2) | Read `monsterskillinfo.xml` action and loop values without 8-byte buffers or a format; a missing node is 0. |
 | [face-charset-bounds.patch](face-charset-bounds.patch) | [e0db373281](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e0db373281bd5b97fe6b483309567d70da0f7069) | Already fixed on purist by [103a4735fd](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/103a4735fd70f5611cda14c1774388f13e2e5041) | Faces past the 12-entry `faceCharsets` table no longer read past it and keep the charsets they had. |
 | [login-connection-entry-fields.patch](login-connection-entry-fields.patch) | [d28b5abd09](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d28b5abd09104596bd9ff654209c34a118cd1468) | [d4940e6ba9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d4940e6ba9edf53d3963ca4b60a7222c72f64369) (field removed) | Login connection entries no longer copy two fields that nothing set. |
+| [server-list-line-cut.patch](server-list-line-cut.patch) | [0fc910c116](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0fc910c11607f237f7abbb7fd57dfcd8066e7251) | [f0c016a5df](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f0c016a5df012887e75b75181e14e6c206d729af) (whole UTF-8 characters) | A char-server list line longer than its 64-byte buffer is cut instead of ending the client in `strcpy_s`. |
+| [pet-window-names.patch](pet-window-names.patch) | [e07bb1213c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e07bb1213c731440b2848c19dd80c759c574baec) | [0af072223c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0af072223c036e641ee1342f5c834c8fe1b78c9b) | The pet window and the item collection window get the pet name bounded by its packet field. |
+| [short-map-name.patch](short-map-name.patch) | [f41fb0bb5d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f41fb0bb5de10e23dfc4e40d637e8c12901f2e5f) | [01f20dc655](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/01f20dc65560c298e083ae6fa9524ed7532dc121) | A server-move map name shorter than its 4-byte extension is kept instead of ending the client. |
+| [format-string-arguments.patch](format-string-arguments.patch) | [61939b5d89](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/61939b5d89e6587eab52bcecbd666cb15c7086dc) | [911f3e87ac](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/911f3e87acb96cdbd8f70c284e99289f821b3c6d) | `ZC_FORMATSTRING_MSG` arguments are read only up to the packet length. |
+| [talk-line-bounds.patch](talk-line-bounds.patch) | [6177cea074](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6177cea0746fe9e707526edbb18915768d458ec1) | Not needed on purist, code removed | Pet and monster talk lines are bounded to their buffers and copied as text, not as formats. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only.
 The purist differences, the format-string calls left as they are, the bugs found

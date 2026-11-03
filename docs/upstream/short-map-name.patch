@@ -1,0 +1,127 @@
+From f41fb0bb5de10e23dfc4e40d637e8c12901f2e5f Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 16:40:52 +0100
+Subject: [PATCH] Keep map names shorter than their extension on a server move
+
+game_mode_move_to_server drops the last four bytes of the map name,
+the .gat that the servers append (ZC_NPCACK_SERVERMOVE, its domain form
+and the private-airplane server move), with
+string_resize(&name, name.size - 4, 0). For a name shorter than 4 bytes
+the size wraps, and string_resize ends the client with "string too
+long".
+
+A name shorter than 4 bytes cannot carry the extension, so it is now
+kept as it is. Names of 4 bytes or more lose their last four bytes as
+before, whatever they are.
+
+Validation: test_name_text now runs the extension strip together with
+the copy into mapName: prontera.gat, x.gat, .gat, the earlier names with
+.gat added, and abc, a and the empty name, which are kept. 57 cases. The
+test ends in fatal_error on the previous code. Release build without
+warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/mode_connection.c |  5 ++++-
+ tests/extract_name_text.py | 10 +++++++++-
+ tests/test_name_text.c     | 27 +++++++++++++++++++++------
+ 3 files changed, 34 insertions(+), 8 deletions(-)
+
+diff --git a/src/game/mode_connection.c b/src/game/mode_connection.c
+index 79c6633..b8a05a6 100644
+--- a/src/game/mode_connection.c
++++ b/src/game/mode_connection.c
+@@ -166,7 +166,10 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
+     session_clear_party_members(&g_session1);
+
+     string_copy(&name, &map_name);
+-    string_resize(&name, name.size - 4, 0);
++    /* Servers send <map>.gat: drop the 4-byte extension. A shorter name has none to drop
++       and is kept; size - 4 would wrap and make string_resize end the client. */
++    if (name.size >= 4)
++        string_resize(&name, name.size - 4, 0);
+     _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, "%s", string_cstr(&name));
+     g_session1.playerPosX = x;
+     g_session1.playerPosY = y;
+diff --git a/tests/extract_name_text.py b/tests/extract_name_text.py
+index e0b8798..7491ba2 100644
+--- a/tests/extract_name_text.py
++++ b/tests/extract_name_text.py
+@@ -74,6 +74,13 @@ def statement(source, pattern):
+         i += 1
+
+
++def region(source, first, last):
++    """From the line that matches first through the statement that matches last."""
++    start = source.rindex('\n', 0, unique(source, first).start()) + 1
++    tail = statement(source, last)
++    return source[start:source.index(tail, start) + len(tail)]
++
++
+ def case(source, label):
+     start = unique(source, r'^[ \t]*case ' + re.escape(label) + r':[ \t]*$').start()
+     end = source.index('break;', start)
+@@ -100,7 +107,8 @@ pieces['cut_in'] = [line(world, r'static int g_illustShownPosition\b'), line(wor
+ login = read('login/login_states.c')
+ pieces['server_list'] = (optional_function(login, 'static void server_line(') +
+                          [function(login, 'static void server_list(')])
+-pieces['map_name'] = [statement(read('game/mode_connection.c'), r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
++pieces['map_name'] = [region(read('game/mode_connection.c'), r'string_copy\(&name, &map_name\);',
++                             r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
+ homun = read('ui/character/companion_info.c')
+ pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]
+ pieces['homun_rename'] = [statement(homun, r'\w+\(g_session1\.homunName,[^;]*ui_edit_ctrl_get_text\(self->name_edit\)')]
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+index cc94358..962bb4e 100644
+--- a/tests/test_name_text.c
++++ b/tests/test_name_text.c
+@@ -110,14 +110,16 @@ static void default_wallpaper(struct LoginMode *self) { (void)self; }
+ #include "name_text_cut_in.inc"
+ #include "name_text_server_list.inc"
+
++/* The map name from a server-move packet, with its .gat extension. */
+ static void map_name(const char *text)
+ {
+-    struct String name;
++    struct String map_name, name;
+
+-    string_init(&name);
+-    string_assign_cstr(&name, text);
++    string_init(&map_name);
++    string_assign_cstr(&map_name, text);
+ #include "name_text_map_name.inc"
+     string_free(&name);
++    string_free(&map_name);
+ }
+
+ static void homun_default(void)
+@@ -350,12 +352,25 @@ static void check_map_name(void)
+ {
+     char *whole = g_session1.mapName;
+
+-    map_name(CONVERSIONS);
++    map_name(CONVERSIONS ".gat");
+     check(whole, CONVERSIONS);
+-    map_name(CONVERSIONS_N);
++    map_name(CONVERSIONS_N ".gat");
+     check(whole, CONVERSIONS_N);
+-    map_name("abcdefghijklmnopqrstuvwxyz");
++    map_name("abcdefghijklmnopqrstuvwxyz.gat");
+     check(whole, "abcdefghijklmnopqrs");
++    map_name("prontera.gat");
++    check(whole, "prontera");
++    /* Four bytes or more lose the last four; a shorter name is kept. */
++    map_name("x.gat");
++    check(whole, "x");
++    map_name(".gat");
++    check(whole, "");
++    map_name("abc");
++    check(whole, "abc");
++    map_name("a");
++    check(whole, "a");
++    map_name("");
++    check(whole, "");
+ }
+
+ static void check_typed_names(void)

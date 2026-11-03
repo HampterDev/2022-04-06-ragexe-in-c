@@ -9314,6 +9314,10 @@ and checking where each format comes from. Each `main` commit has a focused regr
 test; the patches and commits are listed in the
 [upstream notes](upstream/README.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
 
+The five bugs this section first listed as found and not fixed were fixed the same way
+afterwards, at Patrick's request on 2026-11-03 (`main` `0fc910c` to `6177cea`); they are
+the last five items below.
+
 What each fix does:
 
 - Names and other text are copied into fixed buffers as text (`main` `1b44264`, here
@@ -9356,6 +9360,39 @@ What each fix does:
   it; zeroing the constructor alone would have missed that function, which used five
   `string_init` calls. Here `service_type` was already gone and nothing reads `version`,
   so the field and its copy are removed; `login_mode_load_connections` is unchanged.
+- Char-server list lines (`0fc910c`, here `f0c016a`). `server_list` copied each colored
+  line back into `text[0x40]` with `strcpy_s`, which ends the client for a line of 64
+  bytes or more, as no invalid-parameter handler is set; long busy or state messages
+  make one. The new-server prefix and the name are now built in a String as well, the
+  name still bounded by its 20-byte field, and `server_line` copies the finished line
+  cut by whole characters: with `text_prefix_length` and `g_codePage` on `main`, with
+  `utf8_copy_prefix` here. The prefix (msg 0x1e2) is copied as text, not used as a
+  format.
+- Pet window names (`e07bb12`, here `0af0722`). `pet_named` and
+  `game_mode_zc_property_pet` bounded `petName` by the 24-byte field but passed the field
+  itself to `ui_pet_info_set_name`, which sets the edit text with `strlen`;
+  `ui_item_collection_set_pet` already stopped at 23 bytes. They now pass `petName` and a
+  bounded copy of the field.
+- Short map names (`f41fb0b`, here `01f20dc`). `game_mode_move_to_server` drops the
+  `.gat` the servers append. For a name shorter than 4 bytes `name.size - 4` wrapped, and
+  `string_resize` ended the client with "string too long". Such a name cannot carry the
+  extension and is now kept; longer names lose their last four bytes as before.
+- Format-string message arguments (`61939b5`, here `911f3e8`).
+  `game_mode_format_string_msg` found the second and third `ZC_FORMATSTRING_MSG` argument
+  with `strlen` and ignored the packet length. The argument bytes are now copied up to
+  the packet length into a String, which ends them with a NUL, and `next_argument` steps
+  through that copy with `memchr`: an argument that runs to the end of the packet ends
+  there, and those after it are empty.
+- Talk lines (`6177cea`, `main` only; the pet and monster talk tables are gone here).
+  `session_get_pet_speak`, `session_get_monster_talk_info` and `session_format_chat_line`
+  wrote talk-table text into fixed buffers with `strcpy`, `strcat` and `sprintf`, the
+  last with the line as the format, and wrote "name : " back into the caller's text.
+  They now take their output size, build the line in Strings and copy it cut by whole
+  characters. The talk words are replaced as before, including the two bytes skipped
+  after `형씨`, whose replacement is two bytes longer, but the rest is never taken from
+  past the end of the line. On 108 lines that fit, the old and new
+  `session_format_chat_line` gave the same text, except `%d`, which the old code
+  formatted.
 
 Format-string calls left as they are:
 
@@ -9383,33 +9420,34 @@ Format-string calls left as they are:
   holds only digits and dots.
 - The message box keeps its text as a countdown format (`msgbox_start_count`,
   `message_box.c`), used only when the box has a duration; no caller passes one.
-- On `main` only, the pet and monster talk lines from `PetTalkTable.xml` and
-  `MonsterTalkTable.xml` are used as formats (`session_get_monster_talk_info`,
-  `session_format_chat_line` in `talk_tables.c`). They are client data; see below.
 - `printf(text, "")` for state 0x162 (`change_began`, both branches) was meant as
   `sprintf(text, "")`, the empty line of `no_line`. The caller clears `text` and nothing
   writes it before, so the call prints nothing and the line stays empty: no visible
   effect, so it is left.
 
-Found and not fixed:
+Found and not fixed (all five items first listed here are fixed above):
 
-- `server_list` (`login_states.c`) copies the colored label back into `text[0x40]` with
-  `strcpy_s`. A 20-byte name with the new-server prefix and long busy or state messages
-  can exceed it, and `strcpy_s` then ends the client; no invalid-parameter handler is set.
-- `pet_named` and `game_mode_zc_property_pet` still pass the packet name itself to
-  `ui_pet_info_set_name` (and to `ui_item_collection_set_pet` for another player's pet),
-  which reads a full 24-byte field past its end.
-- `game_mode_move_to_server` cuts the extension off the map name with
-  `string_resize(&name, name.size - 4, 0)`, which underflows for a name shorter than
-  4 bytes.
-- `game_mode_format_string_msg` (`system_messages.c`, `ZC_FORMATSTRING_MSG`) finds the
-  second and third argument with `strlen`, without the packet length, so arguments
-  without a NUL are read past the packet.
-- On `main` only, `talk_tables.c`: `session_get_monster_talk_info` copies the job name
-  with `strcpy` into `name[0x100]` and formats a random XML line into `line[0x300]`;
-  `session_get_pet_speak` copies a line with `strcpy` into the caller's 256-byte buffer,
-  and `session_format_chat_line` formats it again into `said[256]` and inserts the
-  replacement words with `strcpy` and `strcat`. All of it is client data.
+- `game_mode_zc_npcack_mapmove` (`packets_npc.c`) and `login_mode_enter_zone` (`zone.c`)
+  cut the map name with `size - 4` in the same way, so a name shorter than 4 bytes ends
+  the client there too. Both branches.
+- The private-airplane map moves (`private_airplane.c`) take the 16-byte packet field as
+  a string: `game_mode_on_map_move_private_airplane` copies it with `strcpy_s` into a
+  16-byte field, which ends the client for a full field, and
+  `game_mode_on_server_move_private_airplane` reads it with `string_assign_cstr`, past a
+  full field. Both branches.
+- A cut char-server list line can end inside a `^RRGGBB` colour code, which then shows as
+  text. That takes a busy message of 48 to 53 bytes, or a colour code of the server's own
+  in the name or state message near the 63-byte limit.
+- On `main` only, `session_get_monster_talk_info` passes the string literal from
+  `session_get_state_name` to `text_decode`, which for the Korean service (type 0, the
+  default) mirrors it in place. The release build pools literals read-only (`/O2` implies
+  `/GF`), so for a monster with a `MonsterTalkTable.xml` entry that write would fault. It
+  also decodes the XML node texts in place, so they alternate between decoded and encoded
+  from one call to the next, and it indexes `reqJobNames` with the actor's job without
+  the bounds check of `session_get_job_name`.
+- On `main` only, the `%s` count in `game_mode_format_string_msg` steps two bytes over a
+  DBCS lead byte, past the end of a message that ends in one (client data). Here it steps
+  with `utf8_next`.
 
 Tests added:
 
@@ -9419,7 +9457,10 @@ Tests added:
   followed by other bytes, a 319-byte image name, a 26-character map name and
   36-character typed names must be cut to the field or buffer, and the couple name must
   not reach the field after it. Here it also cuts an 11-syllable job name to 10 whole
-  syllables. 34 cases here, 41 on `main`.
+  syllables. With the follow-up fixes it also builds char-server list lines with long
+  busy and state messages and one whose limit falls inside a character (CP949 on `main`,
+  UTF-8 here), records the names the pet window and the item collection window get, and
+  strips the extension from map names of 0 to 30 bytes. 50 cases here, 57 on `main`.
 - `test_monster_skill_info` runs the extracted function over a parsed
   `monsterskillinfo.xml`: plain, 12-character, trailing-text and `5%d%s%n` values, empty
   and missing nodes, unknown skills and monsters, a 767-byte name and the administrator
@@ -9433,6 +9474,16 @@ Tests added:
   lists) from a parsed `clientinfo.xml` after filling the stack with a pattern. On `main`
   every entry must have both fields 0; here it checks the strings and asserts at compile
   time that an entry is its five strings.
+- `test_format_string_msg` runs the extracted `game_mode_format_string_msg` on packets
+  followed by `Z` bytes: terminated and unterminated arguments, empty and missing ones,
+  no `%s`, four `%s` (not shown) and a 768-byte argument, which fills the line's 0x104
+  bytes. 15 packets on both branches.
+- `test_talk_lines` (`main` only) runs the extracted talk functions over parsed
+  `PetTalkTable.xml` and `MonsterTalkTable.xml` into 256-byte outputs followed by a
+  guard: plain, tabbed, `%s%n%d` and talk-word lines, the pet's own name, an unknown
+  speaker, a 4-byte output, 300-byte lines, a cut inside a CP949 character, a 752-byte
+  monster line and a 319-byte job name. 20 lines. The monster-talk stub of
+  `test_attack_records` takes the new size and checks it.
 
 Validation:
 
@@ -9457,5 +9508,24 @@ Validation:
   fails on `main`'s previous lookup. `test_login_conn_entry` fails on `main`'s previous
   code and with only the constructor changed; here its size assertion does not compile
   against the previous `loginmode.h`.
+- Follow-up fixes, `main`: release builds passed without warnings after each commit:
+  `build/server-line-build.log`, `build/pet-window-names-build.log`,
+  `build/short-map-name-build.log`, `build/format-string-args-build.log` and
+  `build/talk-lines-build.log`. The full suite passed on the completed series:
+  `build/followup-fixes-full-tests.log`, digest still `32d81ae6406478e3`. The five
+  standalone suites there passed: `build/followup-fixes-<suite>.log`. `git diff --check`
+  passed.
+- Follow-up fixes, here: release builds passed without warnings after each port:
+  `build/server-line-build.log`, `build/pet-window-names-build.log`,
+  `build/short-map-name-build.log` and `build/format-string-args-build.log`. The full
+  suite passed: `build/followup-fixes-full-tests.log`, digest still `d8b534ea02a5d31f`.
+  The seven standalone suites passed: `build/followup-fixes-<suite>.log`.
+  `git diff --check` passed.
+- Each follow-up test fails on the code before its fix, on both branches where the fix
+  exists: the char-server lines end at `strcpy_s`, and a plain byte cut fails the
+  character case; the pet window names fail on the previous code (on `main` with either
+  file reverted); the short map names end in `fatal_error`; `test_format_string_msg`
+  fails; `test_talk_lines` fails on the previous code run through adapters for the old
+  signatures, also with its `%` cases and its 4-byte output left out.
 
 No live client was run.
