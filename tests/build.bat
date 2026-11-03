@@ -859,3 +859,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_url_link.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_name_text.bat"
+if not "%errorlevel%"=="0" exit /b 1

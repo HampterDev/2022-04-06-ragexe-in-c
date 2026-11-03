@@ -437,7 +437,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
     case 0x27c:
         string_init(&s);
         string_format(&s, msg_str(0x784), val2, val1 / 100.0 + 1.0);
-        sprintf(text, string_cstr(&s));
+        _snprintf_s(text, 0x100, _TRUNCATE, "%s", string_cstr(&s));
         string_free(&s);
         break;
     case 0x2a1:

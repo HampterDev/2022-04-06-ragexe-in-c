@@ -255,7 +255,8 @@ void ui_homun_info_wnd_on_create(struct UIWindow *window, int cx, int cy)
     self->name_edit = mem ? ui_edit_ctrl2_construct(mem) : NULL;
     ui_window_create(self->name_edit, 0x50, 0x10);
     if (strcmp(g_session1.homunName, "") == 0)
-        sprintf(g_session1.homunName, session_get_job_name(&g_session1, g_session1.homunJob, -1));
+        _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
+                    session_get_job_name(&g_session1, g_session1.homunJob, -1));
     ui_window_move(self->name_edit, 0x87, 0x16);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.homunName);
     UI_EDIT_MAX_CHARS(self->name_edit) = 0x32;
@@ -421,7 +422,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
         if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
             mode = game_current_base_mode();
             mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-            sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
+            _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
+                        ui_edit_ctrl_get_text(self->name_edit));
             ui_window_invalidate_base(&self->frame.base);
             return;
         }

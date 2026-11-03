@@ -156,7 +156,7 @@ void game_mode_update_cut_in(struct GameMode *self)
             return;
         g_illustShownPosition = self->illust_position;
     }
-    sprintf(g_illustImageName, image);
+    _snprintf_s(g_illustImageName, sizeof g_illustImageName, _TRUNCATE, "%s", image);
 
     x = 0xa0;
     y = 0;

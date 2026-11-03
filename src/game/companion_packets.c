@@ -77,12 +77,12 @@ static void homun_redraw(void)
     session_invalidate_homun_info_wnd(&g_session1);
 }
 
+/* The name is server text and a full 24-byte field has no NUL: copy it as text, never
+   as a format, and no further than the field. */
 static void homun_name(const struct HomunPropertyHead *head)
 {
-    if (g_serviceType == 10 || g_serviceType == 12 || g_serviceType == 15)
-        sprintf(g_session1.homunName, "%s", head->name);
-    else
-        sprintf(g_session1.homunName, head->name);
+    _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%.*s",
+                (int)sizeof head->name, head->name);
 }
 
 static void homun_hunger_warning(const struct HomunPropertyHead *head)
