@@ -9314,9 +9314,9 @@ and checking where each format comes from. Each `main` commit has a focused regr
 test; the patches and commits are listed in the
 [upstream notes](upstream/README.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
 
-The five bugs this section first listed as found and not fixed were fixed the same way
-afterwards, at Patrick's request on 2026-11-03 (`main` `0fc910c` to `6177cea`); they are
-the last five items below.
+The bugs this section listed as found and not fixed were fixed the same way afterwards,
+at Patrick's request on 2026-11-03, in two batches (`main` `0fc910c` to `6177cea`, then
+`9443627` to `eec8116`); they are the last ten items below.
 
 What each fix does:
 
@@ -9393,6 +9393,34 @@ What each fix does:
   past the end of the line. On 108 lines that fit, the old and new
   `session_format_chat_line` gave the same text, except `%d`, which the old code
   formatted.
+- One map-extension helper (`9443627`, here `199793a`). `game_mode_zc_npcack_mapmove`
+  (`packets_npc.c`) and `login_mode_enter_zone` (`zone.c`) cut the extension with
+  `size - 4` as `game_mode_move_to_server` did. `text_drop_map_extension`
+  (`core/text_util.c`) now does it at all three places: a name of 4 bytes or more
+  loses its last four, a shorter one is kept.
+- Private-airplane map field (`1d31026`, here `89dc33c`).
+  `game_mode_on_map_move_private_airplane` copied the 16-byte packet field with
+  `strcpy_s`, which ends the client for a full field; it now copies field to field
+  with `strncpy`, as a `ZC_NPCACK_MAPMOVE` from the server carries it.
+  `game_mode_on_server_move_private_airplane` read the field with `string_assign_cstr`;
+  it now takes at most its 16 bytes.
+- Monster talk decoding (`378db2f`, `main` only). For the Korean service `text_decode`
+  mirrors in place. `session_get_monster_talk_info` decoded the string literal from
+  `session_get_state_name`, which the release build keeps read-only (`/O2` implies
+  `/GF`): a scratch run of the previous code ended with an access violation
+  (`0xC0000005`) at the first Korean lookup. Built with writable literals, it flipped
+  the name back for the sibling search, so only the first line was found, and it
+  decoded the table's line texts in place, so the second call returned the stored
+  text. The state name is now decoded once in `stateKey`, the chosen line in a String;
+  a job outside `reqJobNames` and an unknown state give the not-found result, an
+  empty line.
+- Colour codes at the server-list cut (`c7ba72d`, here `8559386`). `server_line` ends a
+  cut line before a `^RRGGBB` code that the cut would split, found with
+  `text_find_colour_code`, which steps by characters; a code that ends at the limit
+  stays.
+- The `%s` count of `game_mode_format_string_msg` (`eec8116`, `main` only; here it steps
+  with `utf8_next`) took a lead byte's trail byte even when that was the NUL; it now
+  stops there.
 
 Format-string calls left as they are:
 
@@ -9425,29 +9453,12 @@ Format-string calls left as they are:
   writes it before, so the call prints nothing and the line stays empty: no visible
   effect, so it is left.
 
-Found and not fixed (all five items first listed here are fixed above):
+Found and not fixed (every item listed here before is fixed above):
 
-- `game_mode_zc_npcack_mapmove` (`packets_npc.c`) and `login_mode_enter_zone` (`zone.c`)
-  cut the map name with `size - 4` in the same way, so a name shorter than 4 bytes ends
-  the client there too. Both branches.
-- The private-airplane map moves (`private_airplane.c`) take the 16-byte packet field as
-  a string: `game_mode_on_map_move_private_airplane` copies it with `strcpy_s` into a
-  16-byte field, which ends the client for a full field, and
-  `game_mode_on_server_move_private_airplane` reads it with `string_assign_cstr`, past a
-  full field. Both branches.
-- A cut char-server list line can end inside a `^RRGGBB` colour code, which then shows as
-  text. That takes a busy message of 48 to 53 bytes, or a colour code of the server's own
-  in the name or state message near the 63-byte limit.
-- On `main` only, `session_get_monster_talk_info` passes the string literal from
-  `session_get_state_name` to `text_decode`, which for the Korean service (type 0, the
-  default) mirrors it in place. The release build pools literals read-only (`/O2` implies
-  `/GF`), so for a monster with a `MonsterTalkTable.xml` entry that write would fault. It
-  also decodes the XML node texts in place, so they alternate between decoded and encoded
-  from one call to the next, and it indexes `reqJobNames` with the actor's job without
-  the bounds check of `session_get_job_name`.
-- On `main` only, the `%s` count in `game_mode_format_string_msg` steps two bytes over a
-  DBCS lead byte, past the end of a message that ends in one (client data). Here it steps
-  with `utf8_next`.
+- On `main` only, `skin_mgr_scan` (`ui/misc/skin_mgr.c`) passes
+  `str_find_last(fd.cFileName, '.')` to `string_assign_cstr`. For a file without a `.`
+  in the `skin` folder `str_find_last` returns NULL, and `strlen(NULL)` crashes the client.
+  Purist has no zip skins and no `str_find_last`.
 
 Tests added:
 
@@ -9460,7 +9471,9 @@ Tests added:
   syllables. With the follow-up fixes it also builds char-server list lines with long
   busy and state messages and one whose limit falls inside a character (CP949 on `main`,
   UTF-8 here), records the names the pet window and the item collection window get, and
-  strips the extension from map names of 0 to 30 bytes. 50 cases here, 57 on `main`.
+  strips the extension from map names of 0 to 30 bytes. The last batch adds the
+  map-move and zone-entry names with short names, and colour codes at the cut. 68
+  cases here, 75 on `main`.
 - `test_monster_skill_info` runs the extracted function over a parsed
   `monsterskillinfo.xml`: plain, 12-character, trailing-text and `5%d%s%n` values, empty
   and missing nodes, unknown skills and monsters, a 767-byte name and the administrator
@@ -9477,12 +9490,18 @@ Tests added:
 - `test_format_string_msg` runs the extracted `game_mode_format_string_msg` on packets
   followed by `Z` bytes: terminated and unterminated arguments, empty and missing ones,
   no `%s`, four `%s` (not shown) and a 768-byte argument, which fills the line's 0x104
-  bytes. 15 packets on both branches.
+  bytes. On `main` also a message that ends in a CP949 lead byte, with lead bytes taken
+  from code page 949 whatever the machine's. 15 packets here, 17 on `main`.
+- `test_private_airplane` runs both private-airplane moves on 16-byte fields followed
+  by other bytes, up to a full field. 5 names on both branches.
 - `test_talk_lines` (`main` only) runs the extracted talk functions over parsed
   `PetTalkTable.xml` and `MonsterTalkTable.xml` into 256-byte outputs followed by a
   guard: plain, tabbed, `%s%n%d` and talk-word lines, the pet's own name, an unknown
   speaker, a 4-byte output, 300-byte lines, a cut inside a CP949 character, a 752-byte
-  monster line and a 319-byte job name. 20 lines. The monster-talk stub of
+  monster line and a 319-byte job name. The last batch adds jobs just outside the name
+  table, and the Korean service with the real mirror over a mirrored table: the
+  state-name literal is checked to be on a page that cannot be written, 64 lookups must
+  find both lines and the table must keep its text. 58 checks. The monster-talk stub of
   `test_attack_records` takes the new size and checks it.
 
 Validation:
@@ -9527,5 +9546,61 @@ Validation:
   file reverted); the short map names end in `fatal_error`; `test_format_string_msg`
   fails; `test_talk_lines` fails on the previous code run through adapters for the old
   signatures, also with its `%` cases and its 4-byte output left out.
+- Last batch and the overlay, `main`: release builds passed without warnings after each
+  commit: `build/map-extension-build.log`, `build/private-airplane-build.log`,
+  `build/monster-talk-decode-build.log`, `build/colour-code-cut-build.log`,
+  `build/lead-byte-count-build.log` and `build/perf-overlay-build.log`. The full suite
+  passed: `build/remaining-fixes-full-tests.log`, digest still `32d81ae6406478e3`. The
+  five standalone suites there passed: `build/remaining-fixes-<suite>.log`.
+  `git diff --check` passed.
+- Last batch and the overlay, here: release builds passed without warnings after each
+  port: `build/map-extension-build.log`, `build/private-airplane-build.log`,
+  `build/colour-code-cut-build.log` and `build/perf-overlay-build.log`. The full suite
+  passed: `build/remaining-fixes-full-tests.log`, digest still `d8b534ea02a5d31f`. The
+  seven standalone suites passed: `build/remaining-fixes-<suite>.log`.
+  `git diff --check` passed.
+- Each test of the last batch fails on the code before its fix: the short map names end
+  in `fatal_error`, on `main` also with either new site reverted alone; the airplane
+  map move ends at `strcpy_s`, and the server move fails reverted alone; the monster
+  talk fails at the job bound, and the access violation and the flipped text were
+  shown in scratch copies as described above; the colour-code cut and the lead-byte
+  count fail.
 
 No live client was run.
+
+## Frame-time overlay opt-in (2026-11-03)
+
+Decision: approved by Patrick on 2026-11-03 and made on `main` first (`53d23a1`, here
+`a25052e`); the patch is listed with the
+[UTF-8 review fixes](upstream/README.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
+The frame-time overlay (`diag/perf.c`) started shown when `RAGEXE_OVERLAY` was set, but
+`perf_overlay_draw` also toggled it whenever Scroll Lock changed state, with or without
+the variable. Scroll Lock is a screenshot key (START-066), so players who take
+screenshots with it got the debug overlay on screen.
+
+What changed:
+
+- Without `RAGEXE_OVERLAY`, or with it set to 0, the overlay never appears and Scroll
+  Lock has no effect on it. `perf_begin`, `perf_end`, `perf_frame_end` and
+  `perf_overlay_draw` return at once, so nothing is timed; the `g_perf` counters that
+  other files increment stay.
+- With `RAGEXE_OVERLAY=1` the overlay starts shown as before, and Scroll Lock hides and
+  shows it. The variable keeps its name and meaning; `docs/portability.md` on
+  `purist-portable` uses it.
+- Scroll Lock and Print Screen still take screenshots through `ui_window_mgr_handle_key`
+  (`wndmgr_keys.c`), which is unchanged.
+
+Tests added: `test_perf_overlay` compiles `diag/perf.c` with `GetEnvironmentVariableA`,
+`GetKeyState` and the performance counter stubbed and the drawing calls counted. Without
+the variable and with it set to 0, 40 frames with Scroll Lock toggled every five draw
+nothing and read the clock no more after the first call; with it set to 1 the overlay
+draws once its first half-second is in, and Scroll Lock hides it and shows it again. The
+screenshot case of `ui_window_mgr_handle_key`, extracted from this branch's
+`wndmgr_keys.c` and run with each setting, takes one screenshot per first press of
+Scroll Lock or Print Screen. The test fails on the previous code: Scroll Lock shows the
+overlay without the variable.
+
+Validation: in the release builds, full suites, standalone suites and `git diff --check`
+of the [last batch](#foundation-fixes-from-the-utf-8-review-2026-11-03) on both branches
+(`build/perf-overlay-build.log`, `build/remaining-fixes-full-tests.log`). No live client
+was run.

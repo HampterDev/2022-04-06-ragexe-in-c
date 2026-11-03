@@ -1,0 +1,257 @@
+From 9443627d108cad1894173aa5183fb6abd7d8c3c0 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 17:24:02 +0100
+Subject: [PATCH] Keep short map names at every place that drops the extension
+
+game_mode_zc_npcack_mapmove (packets_npc.c, ZC_NPCACK_MAPMOVE and the
+private-airplane map move) and login_mode_enter_zone (zone.c,
+HC_NOTIFY_ZONESVR) drop the .gat of the map name as
+game_mode_move_to_server did before f41fb0b: string_resize to the size
+minus 4, which wraps for a name shorter than 4 bytes and makes
+string_resize end the client with "string too long".
+
+text_drop_map_extension (core/text_util.c) now does it for all three:
+it drops the last 4 bytes of a name of 4 bytes or more and keeps a
+shorter one. game_mode_move_to_server uses it in place of its own check.
+
+Validation: test_name_text now also runs the name handling of
+game_mode_zc_npcack_mapmove from its 16-byte field and of
+login_mode_enter_zone through the copy into mapName, with the helper,
+on prontera.gat, a full 16-byte name, x.gat, .gat, abc, a and the empty
+name. 71 cases. The test ends in fatal_error on the previous code and
+with either of the two files reverted. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/core/text_util.c       |  6 +++++
+ src/core/text_util.h       |  4 +++
+ src/game/mode_connection.c |  6 ++---
+ src/game/packets_npc.c     |  5 ++--
+ src/login/zone.c           |  5 ++--
+ tests/extract_name_text.py | 12 +++++++++
+ tests/test_name_text.c     | 51 ++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 79 insertions(+), 10 deletions(-)
+
+diff --git a/src/core/text_util.c b/src/core/text_util.c
+index f04dd99..fcdf055 100644
+--- a/src/core/text_util.c
++++ b/src/core/text_util.c
+@@ -120,6 +120,12 @@ void text_to_lower(struct String *s)
+     }
+ }
+
++void text_drop_map_extension(struct String *map_name)
++{
++    if (map_name->size >= 4)
++        string_truncate(map_name, map_name->size - 4);
++}
++
+ char *str_find_last(char *text, char c)
+ {
+     char *at;
+diff --git a/src/core/text_util.h b/src/core/text_util.h
+index 553b91d..ae8128a 100644
+--- a/src/core/text_util.h
++++ b/src/core/text_util.h
+@@ -13,6 +13,10 @@ void tokens_split(struct Vec *tokens, const struct String *line);
+
+ void text_to_lower(struct String *s);
+
++/* Drops the 4-byte extension (.gat) that servers append to a map name. A name shorter
++   than 4 bytes cannot carry one and is kept as it is. */
++void text_drop_map_extension(struct String *map_name);
++
+ char *str_find_last(char *text, char c);
+
+ #endif
+diff --git a/src/game/mode_connection.c b/src/game/mode_connection.c
+index b8a05a6..ebdea7f 100644
+--- a/src/game/mode_connection.c
++++ b/src/game/mode_connection.c
+@@ -34,6 +34,7 @@
+ #include "ui/ui_std.h"
+ #include "ui/wndmgr/wndmgr.h"
+ #include "core/app.h"
++#include "core/text_util.h"
+ #include "login/zone.h"
+
+ static unsigned int g_keepAliveInterval = 12000u;
+@@ -166,10 +167,7 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
+     session_clear_party_members(&g_session1);
+
+     string_copy(&name, &map_name);
+-    /* Servers send <map>.gat: drop the 4-byte extension. A shorter name has none to drop
+-       and is kept; size - 4 would wrap and make string_resize end the client. */
+-    if (name.size >= 4)
+-        string_resize(&name, name.size - 4, 0);
++    text_drop_map_extension(&name);
+     _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, "%s", string_cstr(&name));
+     g_session1.playerPosX = x;
+     g_session1.playerPosY = y;
+diff --git a/src/game/packets_npc.c b/src/game/packets_npc.c
+index d8e3fb4..5be35ca 100644
+--- a/src/game/packets_npc.c
++++ b/src/game/packets_npc.c
+@@ -12,6 +12,7 @@
+ #include "session/state.h"
+ #include "ui/window_manager_state.h"
+ #include "core/object_type.h"
++#include "core/text_util.h"
+ #include "world/mode_manager.h"
+ #include "game/context.h"
+ #include "ui/window_access.h"
+@@ -277,7 +278,6 @@ void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt
+     const struct PACKET_ZC_NPCACK_MAPMOVE *packet = (const struct PACKET_ZC_NPCACK_MAPMOVE *)pkt;
+     char name_buf[17];
+     struct String map;
+-    unsigned shorter;
+     size_t state_index;
+
+     string_init(&map);
+@@ -286,8 +286,7 @@ void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt
+     memcpy(name_buf, packet->map, 16);
+     name_buf[16] = 0;
+     string_assign_cstr(&map, name_buf);
+-    shorter = map.size - 4;
+-    string_resize(&map, shorter, 0);
++    text_drop_map_extension(&map);
+
+     if (replay_recorder_instance()->state == 2) {
+         replay_recorder_set_mode(replay_recorder_instance(), 3);
+diff --git a/src/login/zone.c b/src/login/zone.c
+index 9f2ba53..f983ec2 100644
+--- a/src/login/zone.c
++++ b/src/login/zone.c
+@@ -12,6 +12,7 @@
+ #include <time.h>
+ #include <winsock2.h>
+ #include "core/msg_str.h"
++#include "core/text_util.h"
+ #include "session/session_items.h"
+ #include "session/session_state.h"
+ #include "ui/character/character.h"
+@@ -25,7 +26,6 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
+ {
+     struct String map;
+     struct in_addr addr;
+-    size_t len;
+
+     g_session1.ownGid = gid;
+     CMODE_SENDMSG(client_current_mode(), 0x2719, g_loginCharInfo.slot, 0, 0, 0);
+@@ -33,8 +33,7 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
+         ui_window_mgr_post_quit2(&g_windowMgr, g_windowMgr.new_select_char_wnd);
+
+     string_copy(&map, &mapName);
+-    len = map.size - 4;
+-    string_resize(&map, len, 0);
++    text_drop_map_extension(&map);
+     strcpy(g_session1.mapName, string_cstr(&map));
+
+     addr.s_addr = ip;
+diff --git a/tests/extract_name_text.py b/tests/extract_name_text.py
+index 7491ba2..5d00e28 100644
+--- a/tests/extract_name_text.py
++++ b/tests/extract_name_text.py
+@@ -81,6 +81,13 @@ def region(source, first, last):
+     return source[start:source.index(tail, start) + len(tail)]
+
+
++def lines_until(source, first, stop):
++    """From the line that matches first up to the next line that matches stop."""
++    start = source.rindex('\n', 0, unique(source, first).start()) + 1
++    end = re.compile(stop, re.M).search(source, start)
++    return source[start:end.start()].rstrip() + '\n'
++
++
+ def case(source, label):
+     start = unique(source, r'^[ \t]*case ' + re.escape(label) + r':[ \t]*$').start()
+     end = source.index('break;', start)
+@@ -109,6 +116,11 @@ pieces['server_list'] = (optional_function(login, 'static void server_line(') +
+                          [function(login, 'static void server_list(')])
+ pieces['map_name'] = [region(read('game/mode_connection.c'), r'string_copy\(&name, &map_name\);',
+                              r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
++pieces['map_helper'] = optional_function(read('core/text_util.c'), 'void text_drop_map_extension(')
++pieces['mapmove_name'] = [lines_until(read('game/packets_npc.c'), r'string_assign_cstr\(&map, name_buf\);',
++                                      r'^\s*if \(')]
++pieces['zone_name'] = [region(read('login/zone.c'), r'string_copy\(&map, &mapName\);',
++                              r'strcpy\(g_session1\.mapName, string_cstr\(&map\)\);')]
+ homun = read('ui/character/companion_info.c')
+ pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]
+ pieces['homun_rename'] = [statement(homun, r'\w+\(g_session1\.homunName,[^;]*ui_edit_ctrl_get_text\(self->name_edit\)')]
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+index 962bb4e..1d8d6db 100644
+--- a/tests/test_name_text.c
++++ b/tests/test_name_text.c
+@@ -109,6 +109,7 @@ static void default_wallpaper(struct LoginMode *self) { (void)self; }
+ #include "name_text_couple_name.inc"
+ #include "name_text_cut_in.inc"
+ #include "name_text_server_list.inc"
++#include "name_text_map_helper.inc"
+
+ /* The map name from a server-move packet, with its .gat extension. */
+ static void map_name(const char *text)
+@@ -122,6 +123,39 @@ static void map_name(const char *text)
+     string_free(&map_name);
+ }
+
++/* The map name from ZC_NPCACK_MAPMOVE, as game_mode_zc_npcack_mapmove takes it from
++   its 16-byte field. The previous code also used shorter. */
++static void mapmove_name(const char *text, char *out, size_t size)
++{
++    char name_buf[17];
++    struct String map;
++    unsigned shorter = 0;
++
++    (void)shorter;
++    memset(name_buf, 0, sizeof name_buf);
++    strncpy(name_buf, text, 16);
++    string_init(&map);
++#include "name_text_mapmove_name.inc"
++    assert(map.size < size);
++    strcpy(out, string_cstr(&map));
++    string_free(&map);
++}
++
++/* The map name from HC_NOTIFY_ZONESVR in login_mode_enter_zone. The previous code also
++   used len. */
++static void zone_name(const char *text)
++{
++    struct String mapName, map;
++    size_t len = 0;
++
++    (void)len;
++    string_init(&mapName);
++    string_assign_cstr(&mapName, text);
++#include "name_text_zone_name.inc"
++    string_free(&map);
++    string_free(&mapName);
++}
++
+ static void homun_default(void)
+ {
+ #include "name_text_homun_default.inc"
+@@ -371,6 +405,23 @@ static void check_map_name(void)
+     check(whole, "a");
+     map_name("");
+     check(whole, "");
++
++    /* The same at the other two places that drop the extension. */
++    {
++        static const char *const names[][2] = {
++            { "prontera.gat", "prontera" }, { "abcdefghijkl.gat", "abcdefghijkl" },
++            { "x.gat", "x" }, { ".gat", "" }, { "abc", "abc" }, { "a", "a" }, { "", "" },
++        };
++        char moved[0x20];
++        size_t i;
++
++        for (i = 0; i < sizeof names / sizeof *names; ++i) {
++            mapmove_name(names[i][0], moved, sizeof moved);
++            check(moved, names[i][1]);
++            zone_name(names[i][0]);
++            check(whole, names[i][1]);
++        }
++    }
+ }
+
+ static void check_typed_names(void)

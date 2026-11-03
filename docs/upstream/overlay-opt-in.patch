@@ -1,0 +1,384 @@
+From 53d23a1724793885eb0b6056ac05dcfc5580cdb0 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 17:48:24 +0100
+Subject: [PATCH] Show the frame-time overlay only with RAGEXE_OVERLAY
+
+The frame-time overlay (diag/perf.c) started shown when RAGEXE_OVERLAY
+was set, but perf_overlay_draw also toggled it whenever Scroll Lock
+changed state, with or without the variable. Scroll Lock is a
+screenshot key (START-066), so players who take screenshots with it got
+the debug overlay on screen.
+
+The overlay is now opt-in through the variable only. Without
+RAGEXE_OVERLAY, or with it set to 0, it never appears and Scroll Lock has
+no effect on it; perf_begin, perf_end, perf_frame_end and
+perf_overlay_draw return at once, so nothing is timed. With
+RAGEXE_OVERLAY=1 it starts shown as before, and Scroll Lock still hides
+and shows it. The variable's name and meaning are unchanged. The g_perf
+counters other files increment stay as they are. Scroll Lock and Print
+Screen still take screenshots through ui_window_mgr_handle_key, which is
+unchanged.
+
+Validation: the new test_perf_overlay compiles diag/perf.c with
+GetEnvironmentVariableA, GetKeyState and the performance counter
+stubbed and the drawing calls counted. Without the variable and with
+it set to 0, 40 frames with Scroll Lock toggled every five draw nothing
+and read the clock no more after the first call; with it set to 1, the
+overlay draws once its first half-second is in, Scroll Lock hides it and
+shows it again. The screenshot case of ui_window_mgr_handle_key, run with
+each setting, takes one screenshot per first press of Scroll Lock or
+Print Screen. The test fails on the previous code: Scroll Lock shows the
+overlay without the variable. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/diag/perf.c               |  29 ++++-
+ tests/build.bat               |   3 +
+ tests/build_perf_overlay.bat  |  15 +++
+ tests/extract_perf_overlay.py |  18 +++
+ tests/test_perf_overlay.c     | 202 ++++++++++++++++++++++++++++++++++
+ 5 files changed, 261 insertions(+), 6 deletions(-)
+ create mode 100644 tests/build_perf_overlay.bat
+ create mode 100644 tests/extract_perf_overlay.py
+ create mode 100644 tests/test_perf_overlay.c
+
+diff --git a/src/diag/perf.c b/src/diag/perf.c
+index 9e4bbce..5c438d8 100644
+--- a/src/diag/perf.c
++++ b/src/diag/perf.c
+@@ -19,7 +19,7 @@ static const char *const phase_name[PERF_N] = {
+ };
+
+ static struct {
+-    int inited, shown, lastScroll;
++    int inited, enabled, shown, lastScroll;
+     LARGE_INTEGER freq;
+     LARGE_INTEGER t0[PERF_N];
+     LONGLONG acc[PERF_N];
+@@ -52,13 +52,29 @@ static LONGLONG now(void)
+     return t.QuadPart;
+ }
+
++static void init(void);
++
++/* The overlay is a developer tool and is off unless RAGEXE_OVERLAY is set to something
++   other than 0. Off, nothing is timed or drawn, and Scroll Lock, which players press
++   for screenshots, does not show it. */
++static int overlay_enabled(void)
++{
++    if (!P.inited)
++        init();
++    return P.enabled;
++}
++
+ void perf_begin(int phase)
+ {
++    if (!overlay_enabled())
++        return;
+     QueryPerformanceCounter(&P.t0[phase]);
+ }
+
+ void perf_end(int phase)
+ {
++    if (!overlay_enabled())
++        return;
+     P.acc[phase] += now() - P.t0[phase].QuadPart;
+ }
+
+@@ -73,7 +89,7 @@ static void init(void)
+     P.inited = 1;
+     QueryPerformanceFrequency(&P.freq);
+     if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
+-        P.shown = 1;
++        P.enabled = P.shown = 1;
+     P.lastScroll = GetKeyState(VK_SCROLL) & 1;
+     P.start = now();
+ }
+@@ -157,8 +173,8 @@ void perf_frame_end(struct Renderer *r)
+ {
+     LONGLONG t;
+     (void)r;
+-    if (!P.inited)
+-        init();
++    if (!overlay_enabled())
++        return;
+     t = now();
+     if (P.lastFrameEnd) {
+         LONGLONG d = t - P.lastFrameEnd;
+@@ -335,8 +351,9 @@ static void draw_overlay(struct Renderer *r)
+ void perf_overlay_draw(struct Renderer *r)
+ {
+     int visible;
+-    if (!P.inited)
+-        init();
++    if (!overlay_enabled())
++        return;
++    /* With the overlay on, Scroll Lock hides and shows it. */
+     visible = GetKeyState(VK_SCROLL) & 1;
+     if (visible != P.lastScroll) {
+         P.lastScroll = visible;
+diff --git a/tests/build.bat b/tests/build.bat
+index 03c36ce..00bbe24 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -880,3 +880,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_private_airplane.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_perf_overlay.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_perf_overlay.bat b/tests/build_perf_overlay.bat
+new file mode 100644
+index 0000000..d0314fd
+--- /dev/null
++++ b/tests/build_perf_overlay.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\perf_overlay"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_perf_overlay.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_perf_overlay.c" /Fe:test_perf_overlay.exe /link user32.lib gdi32.lib
++if errorlevel 1 (popd & exit /b 1)
++test_perf_overlay.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_perf_overlay.py b/tests/extract_perf_overlay.py
+new file mode 100644
+index 0000000..485e0f9
+--- /dev/null
++++ b/tests/extract_perf_overlay.py
+@@ -0,0 +1,18 @@
++"""Copy diag/perf.c for the overlay test, and extract the screenshot keys of
++ui_window_mgr_handle_key from wndmgr_keys.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++perf = (root / 'src/diag/perf.c').read_text(encoding='utf-8')
++keys = (root / 'src/ui/wndmgr/wndmgr_keys.c').read_text(encoding='utf-8')
++define = re.search(r'^#define MODE_MSG_SCREENSHOT\b.*$', keys, re.M).group(0)
++matches = list(re.finditer(r'^[ \t]*case VK_SNAPSHOT:[ \t]*$', keys, re.M))
++assert len(matches) == 1
++start = matches[0].start()
++end = keys.index('break;', start) + len('break;')
++output.mkdir(parents=True, exist_ok=True)
++(output / 'perf_overlay.inc').write_text(perf, encoding='utf-8')
++(output / 'screenshot_keys.inc').write_text(define + '\n', encoding='utf-8')
++(output / 'screenshot_case.inc').write_text(keys[start:end] + '\n', encoding='utf-8')
+diff --git a/tests/test_perf_overlay.c b/tests/test_perf_overlay.c
+new file mode 100644
+index 0000000..d8361d2
+--- /dev/null
++++ b/tests/test_perf_overlay.c
+@@ -0,0 +1,202 @@
++#define WIN32_LEAN_AND_MEAN
++#include <windows.h>
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++#include "diag/perf.h"
++#include "render/device.h"
++#include "render/gfx.h"
++#include "render/renderer.h"
++#include "world/mode_dispatch.h"
++#include "world/mode_manager.h"
++
++/* Run the production diag/perf.c with a fake clock, environment and Scroll Lock state,
++   and the drawing calls stubbed. The frame-time overlay is a developer tool: without
++   RAGEXE_OVERLAY, or with it set to 0, it must never draw, Scroll Lock must not show it,
++   and the timing calls must not read the clock. With RAGEXE_OVERLAY=1 it starts shown
++   and Scroll Lock hides and shows it. Scroll Lock must still take a screenshot. */
++
++static const char *environment;
++static SHORT scroll_lock;
++static LONGLONG clock_now;
++static int clock_reads, draws;
++
++static DWORD WINAPI test_environment(LPCSTR name, LPSTR buffer, DWORD size)
++{
++    size_t length;
++
++    assert(strcmp(name, "RAGEXE_OVERLAY") == 0);
++    if (!environment)
++        return 0;
++    length = strlen(environment);
++    assert(length < size);
++    memcpy(buffer, environment, length + 1);
++    return (DWORD)length;
++}
++
++static SHORT WINAPI test_key_state(int key)
++{
++    assert(key == VK_SCROLL);
++    return scroll_lock;
++}
++
++static BOOL WINAPI test_counter(LARGE_INTEGER *t)
++{
++    ++clock_reads;
++    t->QuadPart = clock_now;
++    return TRUE;
++}
++
++static BOOL WINAPI test_frequency(LARGE_INTEGER *f)
++{
++    f->QuadPart = 1000;
++    return TRUE;
++}
++
++/* The drawing side: a texture that can be locked, and a count of overlay draws. */
++struct C3dDevice g_3dDevice;
++static DWORD pixels[1024 * 128];
++static char texture;
++int gfx_texture_format_ok(int fmt) { (void)fmt; return 1; }
++gfx_surface *gfx_create_texture(int w, int h, int fmt) { (void)w; (void)h; (void)fmt; return (gfx_surface *)&texture; }
++void gfx_release(gfx_surface *s) { (void)s; }
++int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
++{
++    (void)s; (void)r; (void)flags;
++    out->bits = pixels;
++    out->pitch = 1024 * 4;
++    out->width = 1024;
++    out->height = 128;
++    out->bpp = 32;
++    return 0;
++}
++int gfx_unlock(gfx_surface *s) { (void)s; return 0; }
++int gfx_get_render_state(int state, DWORD *out) { (void)state; *out = 0; return 0; }
++void gfx_set_render_state(int state, DWORD value) { (void)state; (void)value; }
++void gfx_set_stage_state(int stage, int state, DWORD value) { (void)stage; (void)state; (void)value; }
++void gfx_set_texture(int stage, gfx_surface *s) { (void)stage; (void)s; }
++void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
++{
++    (void)prim; (void)vertexKind; (void)verts; (void)indices; (void)nindices;
++    assert(nverts == 4);
++    ++draws;
++}
++void renderer_set_blend_stages(struct Renderer *self, int mode) { (void)self; (void)mode; }
++
++#define GetEnvironmentVariableA test_environment
++#define GetKeyState test_key_state
++#define QueryPerformanceCounter test_counter
++#define QueryPerformanceFrequency test_frequency
++#include "perf_overlay.inc"
++#undef GetEnvironmentVariableA
++#undef GetKeyState
++#undef QueryPerformanceCounter
++#undef QueryPerformanceFrequency
++
++static struct Renderer renderer;
++static int cases;
++
++/* A fresh client process with the given RAGEXE_OVERLAY (NULL: not set). */
++static void start(const char *value)
++{
++    memset(&P, 0, sizeof P);
++    environment = value;
++    scroll_lock = 0;
++    clock_now = 1000;
++    clock_reads = draws = 0;
++    g_3dDevice.width = 800;
++    g_3dDevice.height = 600;
++}
++
++/* One frame of 100 ms, timed and drawn as the renderer does it; returns the overlay draws. */
++static int frame(void)
++{
++    int before = draws;
++
++    clock_now += 100;
++    perf_begin(PERF_SCENE);
++    perf_end(PERF_SCENE);
++    perf_frame_end(&renderer);
++    perf_overlay_draw(&renderer);
++    return draws - before;
++}
++
++static void check_off(const char *value)
++{
++    int i, reads;
++
++    start(value);
++    frame();
++    reads = clock_reads;
++    for (i = 0; i < 40; ++i) {
++        if (i % 5 == 0)
++            scroll_lock ^= 1;
++        assert(frame() == 0);
++    }
++    assert(draws == 0 && clock_reads == reads);
++    ++cases;
++}
++
++static void check_on(void)
++{
++    int i;
++
++    start("1");
++    for (i = 0; i < 6; ++i)
++        frame();
++    /* Shown once the first half-second of timings is in. */
++    assert(frame() == 1 && frame() == 1);
++    scroll_lock ^= 1;
++    assert(frame() == 0 && frame() == 0);
++    scroll_lock ^= 1;
++    assert(frame() == 1);
++    assert(clock_reads > 0);
++    ++cases;
++}
++
++/* The screenshot keys of ui_window_mgr_handle_key. */
++#include "screenshot_keys.inc"
++static struct Mode *const current_mode = (struct Mode *)0x6d6f;
++static int screenshots;
++struct Mode *client_current_mode(void) { return current_mode; }
++int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
++{
++    assert(mode == current_mode && message == MODE_MSG_SCREENSHOT && !a && !b && !c && !d);
++    ++screenshots;
++    return 0;
++}
++
++static void handle_key(int vk, int first_press)
++{
++    switch (vk) {
++#include "screenshot_case.inc"
++    }
++}
++
++static void check_screenshot_keys(void)
++{
++    static const char *const values[] = { NULL, "0", "1" };
++    size_t i;
++
++    for (i = 0; i < sizeof values / sizeof *values; ++i) {
++        start(values[i]);
++        screenshots = 0;
++        handle_key(VK_SCROLL, 1);
++        handle_key(VK_SCROLL, 0);
++        handle_key(VK_SNAPSHOT, 1);
++        handle_key(VK_SNAPSHOT, 0);
++        assert(screenshots == 2);
++        ++cases;
++    }
++}
++
++int main(void)
++{
++    check_off(NULL);
++    check_off("0");
++    check_on();
++    check_screenshot_keys();
++    printf("Frame-time overlay: %d cases; off without RAGEXE_OVERLAY, Scroll Lock still takes screenshots.\n",
++           cases);
++    return 0;
++}

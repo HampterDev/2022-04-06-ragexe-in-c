@@ -83,7 +83,11 @@ regression test. The series starts after
 `5238a9f02101792d0995b069ae34361d71b6220d` and ends at
 `d28b5abd09104596bd9ff654209c34a118cd1468`; five follow-up fixes for the bugs it
 found, `0fc910c11607f237f7abbb7fd57dfcd8066e7251` to
-`6177cea0746fe9e707526edbb18915768d458ec1`, came after it. Fixes whose code still
+`6177cea0746fe9e707526edbb18915768d458ec1`, came after it, and five more for the
+bugs those found, `9443627d108cad1894173aa5183fb6abd7d8c3c0` to
+`eec81169040c52df8336e5d3de97a16ac9ff4879`. The opt-in frame-time overlay,
+`53d23a1724793885eb0b6056ac05dcfc5580cdb0`, was approved with them and has its own
+row. Fixes whose code still
 exists on `purist` were ported with `git cherry-pick -x`; on `purist` the default pet
 and homunculus names from job names and the char-server list lines are cut by whole
 UTF-8 characters, and the unused login-entry field is removed instead of zeroed. The
@@ -100,8 +104,16 @@ patch files are `git format-patch` exports of the `main` commits.
 | [short-map-name.patch](short-map-name.patch) | [f41fb0bb5d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f41fb0bb5de10e23dfc4e40d637e8c12901f2e5f) | [01f20dc655](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/01f20dc65560c298e083ae6fa9524ed7532dc121) | A server-move map name shorter than its 4-byte extension is kept instead of ending the client. |
 | [format-string-arguments.patch](format-string-arguments.patch) | [61939b5d89](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/61939b5d89e6587eab52bcecbd666cb15c7086dc) | [911f3e87ac](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/911f3e87acb96cdbd8f70c284e99289f821b3c6d) | `ZC_FORMATSTRING_MSG` arguments are read only up to the packet length. |
 | [talk-line-bounds.patch](talk-line-bounds.patch) | [6177cea074](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6177cea0746fe9e707526edbb18915768d458ec1) | Not needed on purist, code removed | Pet and monster talk lines are bounded to their buffers and copied as text, not as formats. |
+| [map-extension-helper.patch](map-extension-helper.patch) | [9443627d10](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9443627d108cad1894173aa5183fb6abd7d8c3c0) | [199793a7e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/199793a7e3538b3b09eb165ad15a96b9a8dbb59e) | The map-move and zone-entry map names shorter than their 4-byte extension are kept too, through one helper. |
+| [private-airplane-map-field.patch](private-airplane-map-field.patch) | [1d3102650c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1d3102650c7aea72a6b13c3e6f345c5059cb1503) | [89dc33c29f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/89dc33c29f2d1da69139e0acab46bb426b06cac3) | The private-airplane moves read the map name only from its 16-byte field. |
+| [monster-talk-decode.patch](monster-talk-decode.patch) | [378db2f1c8](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/378db2f1c8ab1aa448cb50cd608e0d596e116a1d) | Not needed on purist, code removed | Monster talk keys and lines are decoded in copies, never in a string literal or the table, and the job is bounded. |
+| [colour-code-cut.patch](colour-code-cut.patch) | [c7ba72d7ac](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/c7ba72d7ac0b7050daa7a4f423f0aac446afa704) | [8559386948](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/85593869486018cc46280bfc4c1314543bd4ef4b) (whole UTF-8 characters) | A char-server list line cut does not split a `^RRGGBB` colour code. |
+| [lead-byte-count.patch](lead-byte-count.patch) | [eec8116904](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/eec81169040c52df8336e5d3de97a16ac9ff4879) | Not needed on purist, which counts with `utf8_next` | The `%s` count of `ZC_FORMATSTRING_MSG` stops at a message that ends in a DBCS lead byte. |
+| [overlay-opt-in.patch](overlay-opt-in.patch) | [53d23a1724](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/53d23a1724793885eb0b6056ac05dcfc5580cdb0) | [a25052e7a9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a25052e7a9e3ca5db53304a11711fd8ac2a66a2b) | The frame-time overlay appears only with `RAGEXE_OVERLAY` set; Scroll Lock, a screenshot key, no longer shows it. |
 
-The removal of the dead server types 3 and 13 that came with them is purist-only.
+The removal of the dead server types 3 and 13 that came with them is purist-only. The
+overlay change is recorded in
+[purist-review.md](../purist-review.md#frame-time-overlay-opt-in-2026-11-03).
 The purist differences, the format-string calls left as they are, the bugs found
 and not fixed, and the validation are in
 [purist-review.md](../purist-review.md#foundation-fixes-from-the-utf-8-review-2026-11-03).

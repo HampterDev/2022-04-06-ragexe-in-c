@@ -1,0 +1,89 @@
+From eec81169040c52df8336e5d3de97a16ac9ff4879 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 17:41:12 +0100
+Subject: [PATCH] Stop the format-string %s count at a final lead byte
+
+game_mode_format_string_msg counts the %s in its message by stepping
+two bytes over every DBCS lead byte. A message that ends in a lead byte
+had its NUL stepped over, and the count went on through whatever
+followed the message.
+
+A lead byte now takes its trail byte only when that byte is not the
+NUL; otherwise the count steps one byte and stops at the end.
+
+Validation: test_format_string_msg now also formats a message that ends
+in a CP949 lead byte followed, after its NUL, by five %s (it must be
+shown with no arguments) and a message with a two-byte character before
+its %s. The test takes lead bytes from code page 949 whatever the code
+page of the machine. 17 packets; the test fails on the previous code.
+Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/system_messages.c     |  2 +-
+ tests/test_format_string_msg.c | 13 ++++++++++++-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/src/game/system_messages.c b/src/game/system_messages.c
+index a4bfe72..3c0b5fc 100644
+--- a/src/game/system_messages.c
++++ b/src/game/system_messages.c
+@@ -152,7 +152,7 @@ void game_mode_format_string_msg(const unsigned char *pkt)
+     unsigned count = 0;
+
+     while (*p != 0) {
+-        if (IsDBCSLeadByte((BYTE)*p))
++        if (IsDBCSLeadByte((BYTE)*p) && p[1] != 0)
+             p += 2;
+         else if (p[0] == '%' && p[1] == 's') {
+             count++;
+diff --git a/tests/test_format_string_msg.c b/tests/test_format_string_msg.c
+index aff855f..1534f45 100644
+--- a/tests/test_format_string_msg.c
++++ b/tests/test_format_string_msg.c
+@@ -12,7 +12,8 @@
+ /* Run the production game_mode_format_string_msg (ZC_FORMATSTRING_MSG) on packets
+    followed by bytes that are not NUL. Its arguments are NUL-terminated strings one
+    after another; each must be read no further than the packet length, so an argument
+-   that runs to the end of the packet ends there and those after it are empty. */
++   that runs to the end of the packet ends there and those after it are empty. The
++   %s count must stop at the end of a message that ends in a DBCS lead byte. */
+
+ struct UIWindowMgr g_windowMgr;
+ static char pushed[0x200];
+@@ -20,9 +21,14 @@ static int pushes, cases;
+
+ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
+
++/* A message that ends in a CP949 lead byte, with more %s after its NUL. */
++static const char lead_byte_end[] = "ab\xb0\0%s%s%s%s%s";
++
+ char *msg_str(int id)
+ {
+     switch (id) {
++    case 6: return (char *)lead_byte_end;
++    case 7: return (char *)"\xb0\xa1 %s";
+     case 1: return (char *)"[%s|%s|%s]";
+     case 2: return (char *)"<%s/%s>";
+     case 3: return (char *)"(%s)";
+@@ -43,7 +49,10 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
+     return 0;
+ }
+
++/* Lead bytes as in CP949, whatever the code page of the machine running the test. */
++#define IsDBCSLeadByte(c) IsDBCSLeadByteEx(949, (c))
+ #include "format_string_msg.inc"
++#undef IsDBCSLeadByte
+
+ /* Sends msg_id with the given argument bytes as a packet of exactly that length,
+    followed in memory by 'Z' bytes. */
+@@ -99,6 +108,8 @@ int main(void)
+     check(3, ARGS(""), "()");
+     check(4, ARGS("ignored"), "plain");
+     check(5, ARGS("a\0b\0c\0d\0"), NULL);
++    check(6, ARGS("x\0"), "ab\xb0");
++    check(7, ARGS("x\0"), "\xb0\xa1 x");
+
+     /* An argument without a NUL that is longer than the line fills its 0x104 bytes. */
+     memset(longer, 'L', sizeof longer);

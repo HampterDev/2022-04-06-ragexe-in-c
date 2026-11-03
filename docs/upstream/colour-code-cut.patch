@@ -1,0 +1,89 @@
+From c7ba72d7ac0b7050daa7a4f423f0aac446afa704 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 17:38:52 +0100
+Subject: [PATCH] Leave out a colour code that the server-list cut would split
+
+server_line cuts a char-server list line at 63 bytes by whole
+characters. A ^RRGGBB colour code across that point lost its tail, and
+what was left, such as ^000, showed as text: this happens with a busy
+message of 48 to 53 bytes, where the cut falls in the "  ^000000" before
+the name, or with a colour code of the server's own in the name or the
+state message near the limit.
+
+server_line now looks for colour codes before the cut with
+text_find_colour_code, which steps by characters, and ends the line
+before one that the cut would split. A code that ends at the limit
+stays.
+
+Validation: test_name_text now also cuts a line whose "^000000" would
+be split after a 50-byte busy message, a line where it ends before the
+limit after a 45-byte busy message, a state message with a colour code
+across the limit and one with a code that ends exactly at it. 75 cases.
+The test fails on the previous code. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/login/login_states.c | 17 +++++++++++++----
+ tests/test_name_text.c   | 18 ++++++++++++++++++
+ 2 files changed, 31 insertions(+), 4 deletions(-)
+
+diff --git a/src/login/login_states.c b/src/login/login_states.c
+index 6ca8b0b..766bf5e 100644
+--- a/src/login/login_states.c
++++ b/src/login/login_states.c
+@@ -221,12 +221,21 @@ static void login_screen(struct LoginMode *self)
+     mode_mgr_quit(&g_modeMgr);
+ }
+
+-/* Copies a server-list line into out[size], cut by whole characters. */
++/* Copies a server-list line into out[size], cut by whole characters. A ^RRGGBB colour
++   code that the cut would split is left out whole: its start would show as text. */
+ static void server_line(char *out, size_t size, const struct String *line)
+ {
+-    size_t length = text_prefix_length(string_cstr(line), line->size, size - 1, g_codePage);
+-
+-    memcpy(out, string_cstr(line), length);
++    const char *text = string_cstr(line), *end = text + line->size, *code;
++    size_t length = text_prefix_length(text, line->size, size - 1, g_codePage);
++
++    for (code = text_find_colour_code(text, end, g_codePage); code < text + length;
++         code = text_find_colour_code(code + 7, end, g_codePage)) {
++        if (code + 7 > text + length) {
++            length = (size_t)(code - text);
++            break;
++        }
++    }
++    memcpy(out, text, length);
+     out[length] = 0;
+ }
+
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+index 1d8d6db..ab5ed48 100644
+--- a/tests/test_name_text.c
++++ b/tests/test_name_text.c
+@@ -377,6 +377,24 @@ static void check_server_list(void)
+     busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\xb0\xa1";
+     server_list(&login);
+     check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
++    /* A colour code that the cut would split is left out whole; one that ends at the
++       limit stays. */
++    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
++    server_list(&login);
++    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ");
++    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
++    server_list(&login);
++    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ^000000(N");
++    e->usercount = 4;
++    e->state = 3;
++    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FFx";
++    server_list(&login);
++    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
++    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FFtail";
++    server_list(&login);
++    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM^0000FF");
++    e->usercount = 0;
++    e->state = 0;
+     e->isNew = 0;
+     busy_text = "busy";
+     state_text = "state";

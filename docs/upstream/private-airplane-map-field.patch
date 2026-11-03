@@ -1,0 +1,231 @@
+From 1d3102650c7aea72a6b13c3e6f345c5059cb1503 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 17:28:24 +0100
+Subject: [PATCH] Read private-airplane map names only from their 16-byte field
+
+The private-airplane moves take the map name from the 16-byte field of
+ZC_MAPMOVE_PRIVATE_AIRPLANE and ZC_SERVERMOVE_PRIVATE_AIRPLANE, which
+need not end in a NUL. game_mode_on_map_move_private_airplane copied it
+with strcpy_s into the 16-byte field of the ZC_NPCACK_MAPMOVE it builds,
+so a full field (or one without a NUL) made strcpy_s end the client.
+game_mode_on_server_move_private_airplane read it with
+string_assign_cstr, past a full field.
+
+The map move now copies field to field with strncpy, so a full name
+fills the field without a NUL, as a ZC_NPCACK_MAPMOVE from the server
+does, and game_mode_zc_npcack_mapmove reads it as before. The server
+move takes at most 16 bytes (AIRPLANE_MAP_NAME) with strnlen.
+
+Validation: the new test_private_airplane runs both extracted functions
+on fields followed by 'Z' bytes: prontera.gat, a name without the
+extension, the empty name, 15 bytes and a full 16 bytes. The map move
+must pass the name as game_mode_zc_npcack_mapmove reads it, with the
+packet ID and coordinates, and the server move must pass exactly the
+name. The test ends at strcpy_s on the previous code and fails with
+only the server move reverted. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/private_airplane.c       |  9 +++-
+ tests/build.bat                   |  3 ++
+ tests/build_private_airplane.bat  | 15 ++++++
+ tests/extract_private_airplane.py | 30 +++++++++++
+ tests/test_private_airplane.c     | 84 +++++++++++++++++++++++++++++++
+ 5 files changed, 139 insertions(+), 2 deletions(-)
+ create mode 100644 tests/build_private_airplane.bat
+ create mode 100644 tests/extract_private_airplane.py
+ create mode 100644 tests/test_private_airplane.c
+
+diff --git a/src/game/private_airplane.c b/src/game/private_airplane.c
+index 2d4d317..ba055bc 100644
+--- a/src/game/private_airplane.c
++++ b/src/game/private_airplane.c
+@@ -16,6 +16,10 @@ struct PacketNpcAckMapMove {
+ #pragma pack(pop)
+ enum { HEADER_ZC_NPCACK_MAPMOVE = 0x91 };
+
++/* map_name is the 16-byte field of ZC_MAPMOVE_PRIVATE_AIRPLANE and
++   ZC_SERVERMOVE_PRIVATE_AIRPLANE; a full field has no NUL. */
++#define AIRPLANE_MAP_NAME 16
++
+ void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *map_name,
+                                                  unsigned short x, unsigned short y)
+ {
+@@ -23,7 +27,8 @@ void game_mode_on_map_move_private_airplane(struct GameMode *self, const char *m
+
+     g_session1.loadingAirplane = 1;
+     move.packet_type = HEADER_ZC_NPCACK_MAPMOVE;
+-    strcpy_s(move.map_name, sizeof move.map_name, map_name);
++    /* Field to field, as ZC_NPCACK_MAPMOVE carries it: a full name fills it without a NUL. */
++    strncpy(move.map_name, map_name, sizeof move.map_name);
+     move.x = x;
+     move.y = y;
+     game_mode_zc_npcack_mapmove(self, (const unsigned char *)&move);
+@@ -37,7 +42,7 @@ void game_mode_on_server_move_private_airplane(struct GameMode *self, const char
+     g_session1.loadingAirplane = 1;
+     string_init(&extra);
+     string_init(&map);
+-    string_assign_cstr(&map, map_name);
++    string_assign(&map, map_name, strnlen(map_name, AIRPLANE_MAP_NAME));
+     game_mode_move_to_server(self, map, x, y, ip, port, extra);
+ }
+
+diff --git a/tests/build.bat b/tests/build.bat
+index 1241643..03c36ce 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -877,3 +877,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_talk_lines.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_private_airplane.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_private_airplane.bat b/tests/build_private_airplane.bat
+new file mode 100644
+index 0000000..40a40f0
+--- /dev/null
++++ b/tests/build_private_airplane.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\private_airplane"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_private_airplane.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_private_airplane.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_private_airplane.exe
++if errorlevel 1 (popd & exit /b 1)
++test_private_airplane.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_private_airplane.py b/tests/extract_private_airplane.py
+new file mode 100644
+index 0000000..ee679a8
+--- /dev/null
++++ b/tests/extract_private_airplane.py
+@@ -0,0 +1,30 @@
++"""Extract the private-airplane map and server moves with their packet from private_airplane.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/game/private_airplane.c').read_text(encoding='utf-8')
++
++
++def unique(pattern):
++    matches = list(re.finditer(pattern, source, re.M))
++    assert len(matches) == 1, pattern
++    return matches[0]
++
++
++def function(signature):
++    start = unique(r'^' + re.escape(signature) + r'[^{;]*\n\{').start()
++    return source[start:source.index('\n}', start) + 2]
++
++
++struct = unique(r'^struct PacketNpcAckMapMove \{\n').start()
++parts = ['#pragma pack(push, 1)\n' + source[struct:source.index('\n};', struct) + 3] + '\n#pragma pack(pop)',
++         unique(r'^enum \{ HEADER_ZC_NPCACK_MAPMOVE\b.*$').group(0)]
++size = re.search(r'^#define AIRPLANE_MAP_NAME\b.*$', source, re.M)
++if size:
++    parts.append(size.group(0))
++parts += [function('void game_mode_on_map_move_private_airplane('),
++          function('void game_mode_on_server_move_private_airplane(')]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'private_airplane.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_private_airplane.c b/tests/test_private_airplane.c
+new file mode 100644
+index 0000000..ad59680
+--- /dev/null
++++ b/tests/test_private_airplane.c
+@@ -0,0 +1,84 @@
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "game/connection.h"
++#include "game/packet_handlers.h"
++#include "session/state.h"
++#include "std/string.h"
++
++/* Run the production private-airplane map and server moves on the 16-byte map field
++   of their packets, followed by bytes that are not NUL. A full field has no NUL; it must
++   reach the map move and the server move whole, and nothing after it. */
++
++struct Session g_session1;
++static struct GameMode *const test_mode = (struct GameMode *)0x6d6f;
++static unsigned char moved[0x40];
++static char server_map[0x40];
++static int map_moves, server_moves, cases;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++
++void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt)
++{
++    assert(self == test_mode);
++    memcpy(moved, pkt, 2 + 16 + 4);
++    ++map_moves;
++}
++
++void game_mode_move_to_server(struct GameMode *self, struct String map_name, int x, int y,
++                              unsigned long ip, int port, struct String server_map_name)
++{
++    assert(self == test_mode && x == 12 && y == 34 && ip == 0x0100007f && port == 5121);
++    assert(server_map_name.size == 0 && map_name.size < sizeof server_map);
++    memcpy(server_map, string_cstr(&map_name), map_name.size + 1);
++    ++server_moves;
++    string_free(&map_name);
++    string_free(&server_map_name);
++}
++
++#include "private_airplane.inc"
++
++/* The packet's map field holding name, then 'Z' bytes. */
++static const char *field(char *buffer, size_t size, const char *name)
++{
++    memset(buffer, 'Z', size - 1);
++    buffer[size - 1] = 0;
++    memcpy(buffer, name, strlen(name) < 16 ? strlen(name) + 1 : 16);
++    return buffer;
++}
++
++static void check(const char *name, const char *expected)
++{
++    char buffer[0x30], read[17];
++    int before_map = map_moves, before_server = server_moves;
++
++    g_session1.loadingAirplane = 0;
++    memset(moved, 0x55, sizeof moved);
++    game_mode_on_map_move_private_airplane(test_mode, field(buffer, sizeof buffer, name), 12, 34);
++    assert(map_moves == before_map + 1 && g_session1.loadingAirplane == 1);
++    /* As game_mode_zc_npcack_mapmove reads the field. */
++    assert(moved[0] == 0x91 && moved[1] == 0);
++    memcpy(read, moved + 2, 16);
++    read[16] = 0;
++    assert(strcmp(read, expected) == 0);
++    assert(moved[18] == 12 && moved[19] == 0 && moved[20] == 34 && moved[21] == 0);
++
++    g_session1.loadingAirplane = 0;
++    game_mode_on_server_move_private_airplane(test_mode, field(buffer, sizeof buffer, name), 12, 34,
++                                              0x0100007f, 5121);
++    assert(server_moves == before_server + 1 && g_session1.loadingAirplane == 1);
++    assert(strcmp(server_map, expected) == 0);
++    ++cases;
++}
++
++int main(void)
++{
++    check("prontera.gat", "prontera.gat");
++    check("airport", "airport");
++    check("", "");
++    check("abcdefghijk.gat", "abcdefghijk.gat");
++    check("abcdefghijkl.gat", "abcdefghijkl.gat");
++    printf("Private airplane: %d map names; a full 16-byte field is read whole and no further.\n", cases);
++    return 0;
++}
