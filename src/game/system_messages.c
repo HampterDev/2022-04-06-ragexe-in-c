@@ -152,7 +152,7 @@ void game_mode_format_string_msg(const unsigned char *pkt)
     unsigned count = 0;
 
     while (*p != 0) {
-        if (IsDBCSLeadByte((BYTE)*p))
+        if (IsDBCSLeadByte((BYTE)*p) && p[1] != 0)
             p += 2;
         else if (p[0] == '%' && p[1] == 's') {
             count++;
