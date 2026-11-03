@@ -99,11 +99,6 @@ int session_is_pet_egg_id(struct Session *self, int id)
     return (unsigned)(id - 0x2329) <= 0x1f2;
 }
 
-BYTE session_is_space(struct Session *self, int id)
-{
-    return id == 0x7f7 || id == 0x9a0;
-}
-
 BYTE session_is_super_novice_job(struct Session *self, int id)
 {
     return id == 0x17 || id == 0xfcd || id == 0x1020 || id == 0x104c;

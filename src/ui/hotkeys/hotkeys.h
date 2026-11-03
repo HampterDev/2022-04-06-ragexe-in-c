@@ -32,6 +32,5 @@ struct UIHotKeyWnd *ui_hot_key_wnd_construct(struct UIHotKeyWnd *self);
 struct UIWindow *ui_hot_key_wnd_new(void);
 
 struct HotkeySlot;
-const struct HotkeySlot *ui_short_cut_wnd_slot(const struct UIWindow *window, int index);
 
 #endif

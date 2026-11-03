@@ -45,11 +45,6 @@ static void mode_effect(int effect_id, struct GameActor *caster, struct GameActo
     game_mode_launch_effect_at(game_current_mode(), effect_id, caster, target, -1);
 }
 
-static struct Effect *spawn_at(int aid, int effect_id, Vec3 at, int target_aid, int level)
-{
-    return effect_mgr_spawn(g_effectMgr, aid, effect_id, at, target_aid, level, 0, 0);
-}
-
 static void spawn_delayed(int aid, int effect_id, int delay_ms)
 {
     spawn_on_delayed(aid, effect_id, delay_ms);
@@ -60,64 +55,9 @@ static struct Player *own_player(void)
     return game_current_player();
 }
 
-static float caster_heading(struct GameActor *caster)
-{
-    return actor_screen_heading(game_current_mode(), caster);
-}
-
-static int heading_quadrant(float heading, int first, int second, int third, int rest)
-{
-    if (heading > 0.0f && heading < 90.0f)
-        return first;
-    if (heading >= 90.0f && heading < 180.0f)
-        return second;
-    if (heading >= 180.0f && heading < 270.0f)
-        return third;
-    return rest;
-}
-
-static int heading_octant(float heading, const int ids[8], int none)
-{
-    if (heading >= 0.0f && heading < 23.0f)
-        return ids[0];
-    if (heading >= 23.0f && heading < 67.0f)
-        return ids[1];
-    if (heading >= 67.0f && heading < 112.0f)
-        return ids[2];
-    if (heading >= 112.0f && heading < 157.0f)
-        return ids[3];
-    if (heading >= 157.0f && heading < 202.0f)
-        return ids[4];
-    if (heading >= 202.0f && heading < 247.0f)
-        return ids[5];
-    if (heading >= 247.0f && heading < 292.0f)
-        return ids[6];
-    if (heading >= 292.0f && heading < 337.0f)
-        return ids[7];
-    if (heading >= 337.0f && heading <= 360.0f)
-        return ids[0];
-    return none;
-}
-
-static Vec3 turned_offset(const float m[12], float radius, Vec3 at)
-{
-    float zero = 0.0f;
-    Vec3 p;
-
-    p.x = radius * m[0] + m[3] * zero + m[6] * zero + m[9] + at.x;
-    p.y = radius * m[1] + m[4] * zero + m[7] * zero + m[10] + at.y;
-    p.z = radius * m[2] + m[5] * zero + m[8] * zero + m[11] + at.z;
-    return p;
-}
-
 static int caster_delay(const struct GameActor *caster, float base)
 {
     return (int)(caster->motion_delay * 100.0f + base);
-}
-
-static void spawned_effect_spin(struct Effect *effect, float degrees)
-{
-    effect->ops->set_spin(effect, degrees);
 }
 
 static const char WAVE_QIGONG[] = "effect\\기공포.wav";
@@ -140,31 +80,6 @@ static void look_arrow_ring(struct GameActor *caster, struct GameActor *target)
     }
 }
 
-static void look_cross_ripper_slasher(struct GameActor *caster, struct GameActor *target)
-{
-    static const int ids[8] = { 0x527, 0x526, 0x525, 0x524, 0x523, 0x52a, 0x529, 0x528 };
-    int effect_id = heading_octant(caster_heading(caster), ids, 0);
-    struct RagEffect *effect;
-    Vec3 pos;
-
-    if (g_session1.map_rule_flags[0] == 1)
-        effect_id += 0xa3;
-    spawn_on(caster->aid, effect_id);
-    spawn_on(target->aid, g_session1.map_rule_flags[0] == 1 ? 0x5c5 : 0x522);
-    effect = actor_launch_effect(caster, 0x301);
-    if (effect) {
-        pos = aid_as_pos(target);
-        effect_set_pos(effect, &pos);
-    }
-    on(target, 0x226);
-}
-
-static void look_aimed_bolt(struct GameActor *caster, struct GameActor *target)
-{
-    spawn_on(target->aid, 0x672);
-    spawn_on(caster->aid, heading_quadrant(caster_heading(caster), 0x66e, 0x66d, 0x670, 0x66f));
-}
-
 static void look_arrow_storm(struct GameActor *caster, struct GameActor *target)
 {
     int effect_id, delay;
@@ -178,108 +93,6 @@ static void look_arrow_storm(struct GameActor *caster, struct GameActor *target)
         spawn_on_delayed(target->aid, effect_id + 1, delay);
 }
 
-static void look_judex(struct GameActor *caster, struct GameActor *target)
-{
-    float m[12];
-    int n, radius, delay;
-
-    play_skill_wave("effect\\AB_judex.wav");
-    spawn_on(caster->aid, 0x65b);
-    spawn_on(caster->aid, 0x65c);
-    spawn_on(target->aid, 0x65f);
-    spawn_on(target->aid, 0x660);
-    for (n = 12; n != 0; n--) {
-        Vec3 at = actor_pos(target);
-        Vec3 p;
-        int angle;
-
-        radius = rand() % 15;
-        if (radius < 2)
-            radius = 2;
-        angle = rand() % 36;
-        if (angle < 0)
-            angle = 0;
-        mat_set_rotate_y(m, (float)angle * 10.0f);
-        p = turned_offset(m, (float)radius, at);
-        delay = rand() % 10;
-        if (delay < 0)
-            delay = 0;
-        delay *= 50;
-        {
-            struct Effect *effect = spawn_at(0, 0x661, p, 0, -1);
-            if (effect)
-                spawned_effect_delay(effect, delay);
-            effect = spawn_at(0, 0x662, p, 0, -1);
-            if (effect)
-                spawned_effect_delay(effect, delay);
-        }
-    }
-}
-
-static void spawn_pair_on_target(struct GameActor *target, int first, int second, int level)
-{
-    spawn_at(target->aid, first, actor_pos(target), target->aid, level);
-    spawn_at(target->aid, second, actor_pos(target), target->aid, level);
-}
-
-static void look_hell_inferno(struct GameActor *target)
-{
-    float m[12];
-    int i;
-
-    spawn_on(target->aid, 0x60e);
-    spawn_on(target->aid, 0x60f);
-    for (i = 0; i < 4; i++) {
-        Vec3 p;
-
-        mat_set_rotate_y(m, ((float)i * 90.0f + 45.0f) / 180.0f * 3.141592f);
-        p = turned_offset(m, 15.0f, actor_pos(target));
-        spawn_at(0, 0x611, p, 0, -1);
-        spawn_at(0, 0x612, p, 0, -1);
-    }
-}
-
-static void look_banishing_point(struct GameActor *caster, struct GameActor *target)
-{
-    int effect_id = heading_quadrant(caster_heading(caster), 0x55e, 0x55d, 0x560, 0x55f);
-    int delay = caster_delay(caster, 100.0f);
-
-    if (g_session1.map_rule_flags[0] == 1) {
-        spawn_delayed(caster->aid, effect_id + 0x86, delay);
-        spawn_delayed(target->aid, 0x5df, delay);
-        spawn_delayed(target->aid, 0x5e0, delay);
-    } else {
-        spawn_delayed(caster->aid, effect_id, delay);
-        spawn_delayed(target->aid, 0x559, delay);
-        spawn_delayed(target->aid, 0x55a, delay);
-    }
-    if (g_session1.map_rule_flags[0] == 1) {
-        spawn_on(caster->aid, 0x5e1);
-        spawn_on(caster->aid, 0x5e2);
-    } else {
-        spawn_on(caster->aid, 0x55b);
-        spawn_on(caster->aid, 0x55c);
-    }
-    play_skill_wave("effect\\LG_BANISHINGPOINT.wav");
-}
-
-static void look_cannon_spear(struct GameActor *caster, struct GameActor *target)
-{
-    static const int ids[8] = { 0x57c, 0x57b, 0x57a, 0x579, 0x578, 0x57f, 0x57e, 0x57d };
-    int sector = heading_octant(caster_heading(caster), ids, 0);
-    int first = g_session1.map_rule_flags[0] == 1 ? 0x5ef : 0x580;
-
-    if (effect_mgr_find_effect(g_effectMgr, caster->aid, first) == 0) {
-        int delay;
-
-        spawn_on(caster->aid, first);
-        delay = caster_delay(caster, 100.0f);
-        spawn_delayed(caster->aid, g_session1.map_rule_flags[0] == 1 ? sector + 0x6f : sector, delay);
-    }
-    on_placed(caster, 0x581, target);
-    play_skill_wave("effect\\LG_CANNONSPEAR.wav");
-}
-
 static void look_fatal_menace(struct GameActor *caster, struct GameActor *target)
 {
     int delay;
@@ -289,81 +102,6 @@ static void look_fatal_menace(struct GameActor *caster, struct GameActor *target
     delay = caster_delay(caster, 150.0f);
     spawn_delayed(target->aid, 0x572, delay);
     spawn_delayed(target->aid, 0x573, delay);
-}
-
-static void look_triangle_shot(struct GameActor *caster, struct GameActor *target)
-{
-    int delay = caster_delay(caster, 100.0f);
-    struct Effect *effect;
-
-    if (g_session1.map_rule_flags[0] == 1) {
-        spawn_delayed(target->aid, 0x5b3, delay);
-        spawn_delayed(target->aid, 0x5b4, delay);
-    } else {
-        spawn_delayed(target->aid, 0x510, delay);
-        spawn_delayed(target->aid, 0x511, delay);
-    }
-    effect = spawn_at(0, 0x52c, actor_pos(caster), target->aid, -1);
-    if (effect)
-        spawned_effect_delay(effect, delay);
-}
-
-static void look_vulcan_arm(struct GameActor *caster, struct GameActor *target)
-{
-    struct Effect *effect;
-
-    spawn_on(caster->aid, 0x6a7);
-    spawn_on(caster->aid, 0x6a8);
-    effect = spawn_on(target->aid, 0x6a9);
-    if (effect) {
-        int turn = rand() % 36;
-        if (turn < 0)
-            turn = 0;
-        spawned_effect_spin(effect, (float)turn * 10.0f);
-    }
-    on(caster, 0x308);
-}
-
-static void look_axe_tornado(struct GameActor *caster)
-{
-    int first = g_session1.map_rule_flags[0] == 1 ? 0x5d6 : 0x553;
-
-    if (effect_mgr_find_effect(g_effectMgr, caster->aid, first) != 0)
-        return;
-    spawn_on(caster->aid, first);
-    spawn_on(caster->aid, g_session1.map_rule_flags[0] == 1 ? 0x5d7 : 0x554);
-}
-
-static void look_power_swing(struct GameActor *caster, struct GameActor *target)
-{
-    spawn_on(target->aid, heading_quadrant(caster_heading(caster), 0x6a5, 0x6a4, 0x6a3, 0x6a2));
-    spawn_on(target->aid, 0x6a6);
-}
-
-static void spin_move_once(struct GameActor *caster, const char *wave)
-{
-    if (able_to_make_effect_is_effect_exist(caster, 0x37a))
-        return;
-    on(caster, 0x376);
-    on(caster, 0x37a);
-    play_skill_wave(wave);
-}
-
-static void look_rampage_blaster(struct GameActor *caster)
-{
-    int effect_id;
-
-    if (g_session1.map_rule_flags[0] == 1) {
-        spawn_on(caster->aid, 0x5b5);
-        spawn_on(caster->aid, 0x5b6);
-        effect_id = 0x609;
-    } else {
-        spawn_on(caster->aid, 0x51e);
-        spawn_on(caster->aid, 0x51f);
-        effect_id = 0x376;
-    }
-    on(caster, effect_id);
-    play_skill_wave("effect\\SR_RAMPAGEBLASTER.wav");
 }
 
 void game_mode_zc_use_skill_(void *session, int skill, int level,
@@ -466,7 +204,7 @@ void game_mode_zc_use_skill_(void *session, int skill, int level,
         on(target, 0x1d2);
         on(target, 0x1ad);
         break;
-    case 0x1a5: case 0x7e7:
+    case 0x1a5:
         on(caster, 0x1c9);
         on_placed(caster, 0x1b7, target);
         on(target, 0x1ca);
@@ -565,217 +303,21 @@ void game_mode_zc_use_skill_(void *session, int skill, int level,
         }
         break;
     case 0x2cc: on(caster, 0x408); break;
-    case 0x2d8: case 0x8b9: look_arrow_storm(caster, target); break;
-    case 0x2db: case 0x7d8: case 0x138c:
+    case 0x2d8: look_arrow_storm(caster, target); break;
+    case 0x2db:
         play_skill_wave("dragon_breath.wav");
         break;
-    case 0x2dc: case 0x8ec: look_fatal_menace(caster, target); break;
-    case 0x2e6: case 0x990:
+    case 0x2dc: look_fatal_menace(caster, target); break;
+    case 0x2e6:
         play_skill_wave("effect\\S포이즌버스터.wav");
         on(target, 0x39b);
         break;
     case 0x3ec: mode_effect(0x258, caster, target); break;
-    case 0x1a3: case 0xa14:
+    case 0x1a3:
         on(target, 0x19f);
         on_placed(target, 0x1ae, caster);
         break;
 
-    case 0x7d2:
-        play_skill_wave(WAVE_QIGONG);
-        on_placed(caster, 0x340, target);
-        on_placed(caster, 0x68e, target);
-        break;
-    case 0x7d4:
-        on_placed(caster, 0x2d3, target);
-        on_placed(caster, 0x343, target);
-        break;
-    case 0x7dc:
-        send_quake();
-        on(target, 0x24d);
-        play_skill_wave("_enemy_hit_wind2.wav");
-        break;
-    case 0x7e6:
-        spawn_on(target->aid, 0x61e);
-        on_placed(caster, 0x620, target);
-        break;
-    case 0x7ee: on_placed(target, 0x302, target); break;
-    case 0x7ef:
-        on(caster, 0x300);
-        on(target, 0x24d);
-        play_skill_wave("effect\\EF_PoisonAttack.wav");
-        break;
-    case 0x7f2:
-        on(caster, 0x300);
-        play_skill_wave("effect\\mon_맹룡과강.wav");
-        on(caster, 0x305);
-        break;
-    case 0x7f5: look_cross_ripper_slasher(caster, target); break;
-    case 0x7f6: look_judex(caster, target); break;
-    case 0x7f8:
-        play_skill_wave("effect\\AB_adoramus.wav");
-        if (g_session1.map_rule_flags[0] == 1)
-            spawn_pair_on_target(target, 0x594, 0x595, level);
-        else
-            spawn_pair_on_target(target, 0x4ea, 0x4eb, level);
-        break;
-    case 0x807: case 0x808:
-        effect = on_placed(caster, 0x109, target);
-        if (effect == 0)
-            return;
-        effect_set_level(effect, 3);
-        break;
-    case 0x8a3:
-        play_skill_wave_at("crimson_r.wav", target->pos.x - caster->pos.x, 0.0f, target->pos.z - caster->pos.z);
-        if (g_session1.map_rule_flags[0] == 1)
-            spawn_pair_on_target(target, 0x5a1, 0x5a2, level);
-        else
-            spawn_pair_on_target(target, 0x4fa, 0x4fb, level);
-        break;
-    case 0x8a4: look_hell_inferno(target); break;
-    case 0x8a6: case 0x8a7: spawn_on(target->aid, 0x666); break;
-    case 0x8aa: on_placed(caster, 0x324, target); break;
-    case 0x8b1: on(target, 0x31); break;
-    case 0x8b2: on(target, 0x34); break;
-    case 0x8b3: on(target, 0x33); break;
-    case 0x8b4: on(target, 0x93); break;
-    case 0x8bc: look_aimed_bolt(caster, target); break;
-    case 0x8bd: on(caster, 0x2ee); break;
-    case 0x8c3: play_skill_wave("wug_strike.wav"); break;
-    case 0x8c4: play_skill_wave("wug_bite.wav"); break;
-    case 0x8c6: play_skill_wave("were_wolf_attack.wav"); break;
-    case 0x8d0:
-        play_skill_wave(WAVE_MAENGHO);
-        on_placed(caster, 0x326, target);
-        break;
-
-    case 0x8d1:
-        send_quake();
-        play_skill_wave(WAVE_MAENGHO);
-        break;
-    case 0x8d2: look_vulcan_arm(caster, target); break;
-    case 0x8de:
-        on(caster, 0x30c);
-        on(caster, 0x31a);
-        break;
-    case 0x8df: on(target, 0x312); break;
-    case 0x8e0: on(caster, 0x30d); break;
-    case 0x8e6:
-        spawn_at(caster->aid, 0x679, actor_pos(caster), target->aid, -1);
-        spawn_on(target->aid, 0x67c);
-        break;
-    case 0x8e7: look_power_swing(caster, target); break;
-    case 0x8e8: look_axe_tornado(caster); break;
-    case 0x8f0: look_triangle_shot(caster, target); break;
-    case 0x903: look_cannon_spear(caster, target); break;
-    case 0x904: look_banishing_point(caster, target); break;
-    case 0x905:
-        send_quake();
-        on(caster, 0x389);
-        play_skill_wave("effect\\LG_TRAMPLE.wav");
-        break;
-    case 0x906: on(caster, 0x38a); break;
-    case 0x908: on_placed(caster, 0x38b, target); break;
-    case 0x90a:
-        on(caster, 0x3a);
-        on(caster, 0x179);
-        play_skill_wave("effect\\LG_RAGEBURST.wav");
-        break;
-    case 0x910:
-        spin_move_once(caster, "effect\\LG_MOONSLASHER.wav");
-        on(caster, 0x3a);
-        on(caster, 0x375);
-        break;
-    case 0x912: on(target, 0x5b); break;
-    case 0x913: play_skill_wave("effect\\LG_EARTHDRIVE.wav"); break;
-    case 0x914:
-        on(caster, 0x376);
-        on(target, 0x376);
-        on(target, 0x383);
-        on(target, 0x37e);
-        on(target, 0x38a);
-        play_skill_wave("effect\\LG_HESPERUSLIT.wav");
-        break;
-    case 0x916:
-        on(caster, 0x375);
-        on(caster, 0x376);
-        play_skill_wave("effect\\SR_DRAGONCOMBO.wav");
-        break;
-    case 0x917:
-        spin_move_once(caster, "effect\\SR_SKYNETBLOW.wav");
-        on(target, 0x224);
-        on(target, 0x226);
-        break;
-    case 0x91a:
-        spawn_on(caster->aid, g_session1.map_rule_flags[0] == 1 ? 0x5fc : 0x52b);
-        on(target, 0x379);
-        play_skill_wave("effect\\SR_TIGERCANNON.wav");
-        break;
-    case 0x91c: look_rampage_blaster(caster); break;
-    case 0x920:
-        on(caster, 0x1c9);
-        on(caster, 0x376);
-        on_placed(caster, 0x37d, target);
-        on(target, 0x1ca);
-        play_skill_wave("effect\\SR_KNUCKLEARROW.wav");
-        break;
-    case 0x924:
-        on(caster, 0x376);
-        play_skill_wave("effect\\흡기.wav");
-        break;
-    case 0x927:
-        spawn_on(target->aid, 0x626);
-        on_placed(caster, 0x627, target);
-        play_skill_wave("effect\\SR_GATEOFHELL.wav");
-        break;
-    case 0x928:
-        on(caster, 0x375);
-        on(caster, 0x376);
-        play_skill_wave("effect\\mon_탄지신통.wav");
-        break;
-    case 0x96d:
-        if (on_placed(caster, 0x630, target) == 0)
-            return;
-        play_skill_wave("effect\\metalic.wav");
-        break;
-    case 0x96e:
-        on(target, 0x621);
-        on(target, 0x63a);
-        play_skill_wave("effect\\REVERBERATION.wav");
-        break;
-    case 0x97a:
-        if (on_placed(caster, 0x35f, target))
-            send_quake();
-        on(target, 0x1d2);
-        play_skill_wave("effect\\LG_EARTHDRIVE.wav");
-        break;
-    case 0x97d:
-        on_placed(target, 0x365, target);
-        on(target, 0x1a9);
-        play_skill_wave("effect\\metalic.wav");
-        break;
-
-    case 0xa21:
-        on(target, 0x4c8);
-        on(target, 0x1ad);
-        break;
-    case 0xa2c:
-        on(target, 0x1a9);
-        effect = actor_launch_effect(caster, 0x4b6);
-        if (effect) {
-            Vec3 pos = aid_as_pos(target);
-            effect_set_pos(effect, &pos);
-        }
-        on(target, 0x1af);
-        on(target, 0x1a1);
-        break;
-    case 0x13a2:
-        spawn_at(0, 0x44d, actor_pos(caster), 0, -1);
-        spawn_at(caster->aid, 0x44c, actor_pos(caster), target->aid, -1);
-        break;
-    case 0x13b6:
-        spawn_at(caster->aid, 0x468, actor_pos(caster), target->aid, -1);
-        spawn_at(target->aid, 0x469, actor_pos(target), target->aid, -1);
-        break;
     case 0x1f49:
         if (level == 1)
             on(target, 0x235);

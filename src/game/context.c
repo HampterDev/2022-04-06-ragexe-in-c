@@ -115,12 +115,6 @@ float game_camera_heading(void)
     return view ? view->longitude : 0.0f;
 }
 
-float game_camera_target_heading(void)
-{
-    struct View *view = game_current_view();
-    return view ? view->destLongitude : 0.0f;
-}
-
 int game_map_dimensions(int *width, int *height)
 {
     struct C3dAttr *attr = game_current_map_attr();

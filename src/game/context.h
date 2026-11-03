@@ -41,7 +41,6 @@ void game_complete_item_use(void);
 int game_camera_is_free(void);
 float game_camera_pitch(void);
 float game_camera_heading(void);
-float game_camera_target_heading(void);
 void game_camera_limit_distance(float maximum);
 int game_map_dimensions(int *width, int *height);
 int game_copy_view_matrix(float matrix[12]);

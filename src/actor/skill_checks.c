@@ -17,10 +17,7 @@ struct World;
 static int skill_sends_no_hit(int skill)
 {
     switch (skill) {
-    case 0xb: case 0x2f: case 0x111: case 0x19d: case 0x2dc: case 0x8d2: case 0x8ec:
-    case 0x903: case 0x90d: case 0x918: case 0x919: case 0x91c: case 0x921:
-    case 0x9ac: case 0x9d7: case 0xa10: case 0xbbe: case 0xbbf:
-    case 0x13a2: case 0x13b6:
+    case 0xb: case 0x2f: case 0x111: case 0x19d: case 0x2dc:
         return 1;
     }
     return 0;
@@ -30,10 +27,7 @@ static int skill_skips_cast_state(int skill, int action)
 {
     switch (skill) {
     case 0x8f: case 0x107: case 0x10f: case 0x110: case 0x111: case 0x173:
-    case 0x90d: case 0x916: case 0x918: case 0x919: case 0x9d7: case 0xa13:
         return 1;
-    case 0x8d5:
-        return action == 8;
     }
     return 0;
 }
@@ -41,7 +35,7 @@ static int skill_skips_cast_state(int skill, int action)
 static int skill_skips_attack_speed(int skill)
 {
     switch (skill) {
-    case 0x1ea: case 0x8d0: case 0x8d1: case 0xbc1:
+    case 0x1ea:
         return 1;
     }
     return 0;
@@ -59,7 +53,7 @@ static int send_skill_hit_60(struct GameActor *self, struct GameObject *target,
     struct ActorHit hit;
 
     if (!target)
-        return skill == 0x992 || skill == 0x2e3 || skill == 0x13a6 || skill == 0x9ad;
+        return skill == 0x2e3;
     if (skill_sends_no_hit(skill))
         return 0;
     hit.effect = -1;
@@ -86,7 +80,7 @@ static int send_skill_hit_61(struct GameActor *self, struct GameObject *target,
     struct ActorHit hit;
 
     if (!target)
-        return skill == 0x992 || skill == 0x2e3;
+        return skill == 0x2e3;
     if (skill_sends_no_hit(skill))
         return 0;
     hit.target_aid = self->attack_target_aid;
@@ -161,8 +155,6 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     if (target != NULL || g_session1.ownAid == rec->target_aid) {
         if ((skill == 0x81 || skill == 0x17d) && self->falcon != 0)
             render_object_send((void *)self->falcon, NULL, 0x1d, MSG_ARG_PTR(&target->pos), 0, 0, 0);
-        if ((skill == 0x8c3 || skill == 0x8c4) && self->cart != 0)
-            render_object_send((void *)self->cart, NULL, 0x1d, MSG_ARG_PTR(&target->pos), 0, 0, 0);
     } else {
         target = (struct GameActor *)world_get_skill_by_aid(mode->world, self->attack_target_aid);
     }
@@ -177,8 +169,6 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     }
     if (type != 8 && type != 9 && type != 0xd)
         hits = 1;
-    if (skill == 0x8f0)
-        actor_set_skip_arrow(self, 1);
 
     switch (type) {
     case 4: case 5: case 6: case 8: case 9: case 0xd: case 0xe:
@@ -187,7 +177,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         return;
     }
     if (type == 5) {
-        if (skill == 0x8ec || skill == 0x2dc)
+        if (skill == 0x2dc)
             render_object_set_motion_delay((struct RenderObject *)self, (float)rec->attack_mt / 432.0f * 4.0f);
         game_mode_zc_use_skill_(&g_session1, skill, hits, self, target);
         if (send_skill_hit_60(self, (struct GameObject *)target, rec, per_hit, value))
@@ -252,18 +242,8 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     case 0x5a: case 0x5b: case 0x302: hit1 = 0x93; break;
     case 0x88: hit1 = 0; break;
     case 0xaa: type = 0xa; break;
-    case 0xbe: case 0xa28: case 0xa2a: hit1 = 0xb4; break;
+    case 0xbe: hit1 = 0xb4; break;
     case 0x1d3: case 0x1d4: hit1 = 0x225; break;
-    case 0x7e6: hit1 = 0x61f; break;
-    case 0x89a: hit1 = 0x637; hit2 = 0x638; break;
-    case 0x903: hit2 = 0x583; break;
-    case 0x90d: case 0x9d7: hit1 = 0x699; break;
-    case 0x913:
-        if (g_session1.ownAid != self->attack_target_aid)
-            hit1 = 0x6ac;
-        break;
-    case 0x96e: hit1 = 0x639; break;
-    case 0x98e: hit1 = 0x657; break;
     }
     switch (type) {
     case 4: case 9: kind = 0x27; break;
@@ -290,15 +270,12 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
     with_damage = hits != 1;
     switch (skill) {
     case 0x4d:  msg.tick += 500; break;
-    case 0x8ab: msg.tick += 500;  with_damage = 1; break;
-    case 0x8ac: msg.tick += 1000; with_damage = 1; break;
-    case 0x8ad: msg.tick += 1500; with_damage = 1; break;
-    case 0x111: case 0x173: case 0x8aa: case 0x918: case 0x919: case 0x91a:
+    case 0x111: case 0x173:
         with_damage = 1;
         break;
-    case 0x19f: case 0x1a1: case 0xa20: case 0xa21:
+    case 0x19f: case 0x1a1:
         msg.tick += 300;
-    case 0x19d: case 0x1a3: case 0x1a5: case 0x91c: case 0x920: case 0x926: case 0xa10: case 0xa14:
+    case 0x19d: case 0x1a3: case 0x1a5:
         hit_msg = 0x82;
         with_damage = 1;
         break;
@@ -316,7 +293,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         render_object_set_script_step_frames((struct RenderObject *)self, 4);
         sot_motion(self, 0x58, 0, 7, sot_attack_duration(self));
         break;
-    case 0x10a: case 0x10b: case 0x9d6:
+    case 0x10a: case 0x10b:
         render_object_set_script_step_frames((struct RenderObject *)self, 10);
         sot_motion(self, 0x60, 3, 4, 0x44c);
         break;
@@ -360,53 +337,6 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
             sot_effect_at(e, &at);
         }
         break;
-    case 0x916:
-        render_object_set_script_step_frames((struct RenderObject *)self, 6);
-        sot_motion(self, 0x60, 4, 4, sot_attack_duration(self));
-        break;
-    case 0x917: case 0x91a:
-        render_object_set_script_step_frames((struct RenderObject *)self, 6);
-        sot_motion(self, 0x60, 5, 5, sot_attack_duration(self));
-        break;
-    case 0x918:
-        render_object_set_script_step_frames((struct RenderObject *)self, 6);
-        sot_motion(self, 0x60, 1, 2, sot_attack_duration(self));
-        if (!able_to_make_effect_is_effect_exist(self, 0x378)) {
-            game_send_message(0x7a, 0, 0, 0, 0);
-            sot_wave("effect\\SR_EARTHSHAKER.wav", 0.0f, 0.0f, 0.0f);
-            sot_launch(self, 0x376);
-            sot_launch(self, 0x378);
-        }
-        break;
-    case 0x919: {
-        Vec3 zero = { 0.0f, 0.0f, 0.0f };
-        render_object_set_script_step_frames((struct RenderObject *)self, 6);
-        sot_motion(self, 0x60, 3, 3, sot_attack_duration(self));
-        game_send_message(0x7a, 0, 0, 0, 0);
-        sot_wave("effect\\SR_FALLENEMPIRE.wav", 0.0f, 0.0f, 0.0f);
-        effect_mgr_spawn(g_effectMgr, target->aid, 0x622, zero, 0, -1, 0, 0);
-        effect_mgr_spawn(g_effectMgr, target->aid, 0x623, zero, 0, -1, 0, 0);
-        break;
-    }
-    case 0x91c:
-        if (target != self) {
-            sot_launch(target, 0x225);
-            sot_launch(target, 0x226);
-            e = sot_launch(self, 0x37b);
-            if (e != NULL) {
-                Vec3 at = target->pos;
-                sot_effect_at(e, &at);
-            }
-        }
-        break;
-    case 0x9ff:
-        sot_launch(target, 0x106);
-        sot_launch(target, 0x111);
-        break;
-    case 0xa04:
-        render_object_set_script_step_frames((struct RenderObject *)self, 4);
-        sot_motion(self, 0x58, 0, 7, 0xdac);
-        break;
     }
 
     if (type == 6 || type == 8 || type == 9 || type == 0xd) {
@@ -424,19 +354,7 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
             } else if (skill == 0x174) {
                 msg.kind = 0x6c;
                 render_object_send(self, self, 0x1b, MSG_ARG_PTR(&msg), 0, 0, 0);
-            } else if (skill == 0x8a3) {
-                msg.hit_effect = g_session1.map_rule_flags[0] == 1 ? -1 : 0x512;
-            } else if (skill == 0x8a5) {
-                if (i & 1) {
-                    msg.effect = -1;
-                } else if (g_session1.map_rule_flags[0] == 1) {
-                    msg.effect = 0x601;
-                    msg.hit_effect = 0x602;
-                } else {
-                    msg.effect = 0x588;
-                    msg.hit_effect = 0x589;
-                }
-            } else if (skill == 0x911 || skill == 0x2e1) {
+            } else if (skill == 0x2e1) {
                 msg.hit_effect = 0x593;
             }
             switch (skill) {
@@ -447,7 +365,6 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
             msg.kind = kind;
             switch (skill) {
             case 0x19d: case 0x19f: case 0x1a1: case 0x1a3: case 0x1a5:
-            case 0x91c: case 0x920: case 0x926: case 0xa10: case 0xa14: case 0xa20: case 0xa21:
                 render_object_send(target, self, 0x85, MSG_ARG_PTR(&msg), total, 0, 0);
                 break;
             default:

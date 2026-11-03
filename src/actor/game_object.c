@@ -669,3 +669,8 @@ void render_object_set_argb(struct RenderObject *self, int a, int r, int g, int 
     if (b != -1)
         argb[0] = (unsigned char)b;
 }
+
+int render_object_return_zero(struct RenderObject *self)
+{
+    return 0;
+}

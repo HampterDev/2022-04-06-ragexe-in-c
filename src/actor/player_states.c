@@ -88,7 +88,7 @@ static void ps_play_wave(const char *name, float y)
 
 static void ps_blind(struct Player *self)
 {
-    struct SkillInfo skill, extra;
+    struct SkillInfo skill;
     int level;
 
     skill_table_find(&g_session1.skills, &skill, 0x1b9);
@@ -96,9 +96,6 @@ static void ps_blind(struct Player *self)
     if (level > 0) {
         int effect, type, i;
 
-        skill_table_find(&g_session1.skills, &extra, 0xa1d);
-        if (extra.level > 0)
-            level = 5;
         effect = level + 0x1da;
         if (!able_to_make_effect_is_effect_exist(self, effect)) {
             ps_launch(self, 0x1e7);
@@ -109,7 +106,6 @@ static void ps_blind(struct Player *self)
                 render_object_send(self, NULL, 0x6d, type, 0, 0, 0);
         }
         ps_launch(self, effect);
-        skill_info_destruct(&extra);
     }
     render_object_send(self, NULL, 0x6d, 0xa4, 0, 0, 0);
     self->status_icons = ps_launch(self, 0xa4);

@@ -12,7 +12,7 @@
 #include "session/session_party.h"
 #include "session/session_skills.h"
 #include "session/session_state.h"
-#include "ui/misc/rolling_cutter.h"
+#include "actor/game_actor.h"
 #include "actor/attr_state.h"
 #include "effects/skills/msg_effect.h"
 

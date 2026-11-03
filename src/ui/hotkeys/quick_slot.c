@@ -367,13 +367,7 @@ void ui_quik_slot_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
     if (column == -1)
         return;
     slot = &self->slots[column];
-    if (slot->is_skill && slot->id == SKILL_GC_ROLLINGCUTTER) {
-        int count = session_get_instant_var(&g_session1, SESSION_OPT_ROLLING_CUTTER_ONE_SHOT) + 1;
-
-        session_set_pair(&g_session1, SESSION_OPT_ROLLING_CUTTER_ONE_SHOT, count);
-    } else {
-        session_reset_option2(&g_session1);
-    }
+    session_reset_option2(&g_session1);
     ui_quik_slot_wnd_send_msg(&self->frame.base, NULL, HOTKEY_MSG_USE, column, 0, 0, 0);
 }
 
@@ -407,13 +401,8 @@ void ui_quik_slot_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
         session_get_skill_info(&info, slot->id);
         level = self->slots[self->hover].level;
         sp = skill_info_get_sp_amount(&info, level);
-        if (session_is_space(&g_session1, info.id)) {
-            string_init(&line);
-            string_format(&line, "%s Use Lv %d (Sp : %d%%)", skill_info_get_name(&info), level, sp);
-        } else {
-            string_init(&line);
-            string_format(&line, "%s Use Lv %d (Sp : %d)", skill_info_get_name(&info), level, sp);
-        }
+        string_init(&line);
+        string_format(&line, "%s Use Lv %d (Sp : %d)", skill_info_get_name(&info), level, sp);
         string_assign(&text, string_cstr(&line), line.size);
         string_free(&line);
         skill_info_destruct(&info);

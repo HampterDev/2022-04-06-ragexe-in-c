@@ -573,13 +573,7 @@ void ui_new_skill_list_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
         return;
     skill_tree_skill_at(self, &info, self->hover);
     if (info.found && info.level) {
-        if (info.id == 0x7f4) {
-            int count = session_get_instant_var(&g_session1, 4) + 1;
-
-            session_set_pair(&g_session1, 4, count);
-        } else {
-            session_reset_option2(&g_session1);
-        }
+        session_reset_option2(&g_session1);
         ui_new_skill_list_wnd_send_msg(WND(self), NULL, MSG_USE_SKILL, (int)&info, 0, 0, 0);
     }
     skill_info_destruct(&info);

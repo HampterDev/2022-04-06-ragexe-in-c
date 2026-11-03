@@ -5,19 +5,22 @@
 #include "core/memory.h"
 #include "actor/actor.h"
 #include "game/context.h"
-#include "ui/misc/rolling_cutter.h"
 #include "effects/rag/rag_effect.h"
 
 unsigned g_launchedEffectIds[32];
 
 /* Effect IDs of the removed 4th-class jobs, traits, ABR/Bionic summons and grade
- * enchanting. Their factories, STR files and per-ID processes are gone, so a server
- * request naming one launches nothing. */
+ * enchanting, and the effect classes of removed 3rd-class and expanded-class skills.
+ * Their factories, STR files and per-ID processes are gone, so a server request naming
+ * one launches nothing. */
 static const struct { int first, last; } k_retiredEffects[] = {
-    { 0x647, 0x649 }, { 0x67d, 0x67f }, { 0x686, 0x68a }, { 0x69e, 0x6a1 }, { 0x6ae, 0x6c1 },
-    { 0x6c4, 0x6cc }, { 0x6ce, 0x730 }, { 0x732, 0x732 }, { 0x736, 0x74c }, { 0x750, 0x768 },
-    { 0x76a, 0x77f }, { 0x781, 0x7a3 }, { 0x7a5, 0x89a }, { 0x89c, 0x8e2 }, { 0x8e7, 0x8e8 },
-    { 0x8f0, 0x8fc }, { 0x92c, 0x930 }, { 0x932, 0x933 }, { 0x93e, 0x941 }, { 0x945, 0x945 },
+    { 0x423, 0x423 }, { 0x42d, 0x42f }, { 0x44b, 0x44c }, { 0x450, 0x450 }, { 0x452, 0x452 },
+    { 0x457, 0x458 }, { 0x465, 0x465 }, { 0x468, 0x468 }, { 0x474, 0x474 }, { 0x4b0, 0x4b0 },
+    { 0x4b2, 0x4b3 }, { 0x4fc, 0x4fc }, { 0x52c, 0x52c }, { 0x54d, 0x54d }, { 0x647, 0x649 },
+    { 0x67d, 0x67f }, { 0x686, 0x68a }, { 0x69e, 0x6a1 }, { 0x6ae, 0x6c1 }, { 0x6c4, 0x6cc },
+    { 0x6ce, 0x730 }, { 0x732, 0x732 }, { 0x736, 0x74c }, { 0x750, 0x768 }, { 0x76a, 0x77f },
+    { 0x781, 0x7a3 }, { 0x7a5, 0x89a }, { 0x89c, 0x8e2 }, { 0x8e7, 0x8e8 }, { 0x8f0, 0x8fc },
+    { 0x92c, 0x930 }, { 0x932, 0x933 }, { 0x93e, 0x941 }, { 0x945, 0x945 },
 };
 
 static int effect_is_retired(int effect_id)
@@ -51,15 +54,9 @@ struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id
     memcpy(&history[1], g_launchedEffectIds, 7 * sizeof(int));
     memcpy(g_launchedEffectIds, history, sizeof history);
 
-    if (effect_id == 0x345) {
-        struct RollingCutterRagEffect *cutter = mem_try_alloc(sizeof *cutter);
-
-        effect = cutter ? &rolling_cutter_rag_effect_construct(cutter)->base : NULL;
-    } else {
-        effect = mem_alloc(sizeof *effect);
-        if (effect)
-            effect = rag_effect_construct(effect);
-    }
+    effect = mem_alloc(sizeof *effect);
+    if (effect)
+        effect = rag_effect_construct(effect);
     if (!effect)
         return NULL;
 

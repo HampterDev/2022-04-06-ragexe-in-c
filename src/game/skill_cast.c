@@ -25,18 +25,11 @@ enum {
     ACTOR_MSG_CAST_TIME = 0x52,
     ACTOR_MSG_ATTACK_TARGET = 0x51,
     ACTOR_MSG_TARGET_EFFECT = 0x56,
-    ACTOR_MSG_TARGET_EFFECT_STOP = 0x57,
-    ACTOR_MSG_EFFECT_STAGE = 0x8f,
     GROUND_MSG_OWNER = 0x16,
     GROUND_MSG_CELL = 0xe,
     GROUND_MSG_END_TIME = 0x73,
     GROUND_MSG_SKILL = 0x75,
 };
-
-static __inline void effect_set_time(struct Effect *effect, float value)
-{
-    effect->ops->set_stop_frame(effect, value);
-}
 
 char skill_cast_special(struct GameActor *caster, struct GameActor *target, int skill_id,
                                unsigned cast_time, int attack_motion)
@@ -71,12 +64,6 @@ void skill_cast_caster_tint(struct GameActor *caster, int skill_id, unsigned cas
         break;
     case 0x10c:
         render_object_play_motion_range((struct RenderObject *)caster, 0x60, 0, 0, 0x60, 0, 1, cast_time + 1000, 0);
-        break;
-    case 0x8a9:
-        render_object_send(caster, NULL, ACTOR_MSG_EFFECT_STAGE, 0x2df, 1, 0, 0);
-        render_object_send(caster, NULL, ACTOR_MSG_EFFECT_STAGE, 0x2e1, 1, 0, 0);
-        render_object_send(caster, NULL, ACTOR_MSG_EFFECT_STAGE, 0x2e0, 1, 0, 0);
-        render_object_send(caster, NULL, ACTOR_MSG_EFFECT_STAGE, 0x2e2, 1, 0, 0);
         break;
     }
 }
@@ -117,41 +104,6 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
     case 0x1ea:
         game_mode_launch_effect_at(mode, 0x21b, caster, target, -1);
         break;
-    case 0x89a: {
-        unsigned wait = (unsigned)(int)(target->motion_delay * 150.0f + 200.0f) + cast_time;
-
-        effect = spawn_on(target->aid, 0x635);
-        if (effect)
-            effect_set_time(effect, (float)wait);
-        effect = spawn_on(target->aid, 0x636);
-        if (effect)
-            effect_set_time(effect, (float)wait);
-        break;
-    }
-    case 0x89c:
-        actor_send(target, ACTOR_MSG_TARGET_EFFECT_STOP);
-        render_object_send(target, NULL, ACTOR_MSG_TARGET_EFFECT, 0x5a8, cast_time >> 4, 0, 0);
-        break;
-    case 0x8a6:
-        actor_send(target, ACTOR_MSG_TARGET_EFFECT_STOP);
-        spawn_on(target->aid, 0x665);
-        break;
-    case 0x8bc:
-        actor_send(target, ACTOR_MSG_TARGET_EFFECT_STOP);
-        effect = spawn_on(target->aid, 0x673);
-        if (effect)
-            effect_set_time(effect, (float)cast_time);
-        break;
-    case 0x8d3: {
-        struct RagEffect *launched = actor_launch_effect(caster, 0x313);
-
-        if (launched) {
-            Vec3 at = actor_pos(target);
-
-            effect_set_pos(launched, &at);
-        }
-        break;
-    }
     }
 }
 
@@ -174,14 +126,6 @@ void game_mode_zc_useskill_ack(struct GameMode *mode, unsigned src_aid,
     target = world_get_actor_or_player(mode->world, target_aid);
     skill_cast_chat_line(caster, target, skill_id, is_disposable);
 
-    if (delay_ms == 0 && skill == 0xa04) {
-        struct Effect *effect = effect_mgr_find_effect(g_effectMgr, caster->aid, 0x474);
-
-        if (!effect)
-            spawn_effect(caster->aid, 0x474, actor_pos(caster));
-        else
-            effect->ops->init(effect);
-    }
     if (!is_disposable && !is_skill_39_3e(skill) && !session_is_monster_actor(&g_session1, caster)) {
         struct GameMode *gm = game_current_mode();
 

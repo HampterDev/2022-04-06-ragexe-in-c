@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../src/effects/effect.c"
-#include "../src/effects/skills/svg_spirit_effect.c"
+#include "../src/effects/skills/square_range_effect.c"
 
 static void *blocks[16];
 static unsigned block_count, frees[16], free_count;
@@ -87,14 +87,14 @@ static void factory_creation(void)
 {
     struct Effect *effect;
     allocation_fails = 1;
-    assert(!svg_spirit_effect_new());
+    assert(!square_range_effect_new());
     assert(block_count == 0);
     allocation_fails = 0;
-    effect = svg_spirit_effect_new();
+    effect = square_range_effect_new();
     assert(effect && block_count == 1);
-    assert(effect->ops == &svg_spirit_effect_ops && effect->type == 0x468);
+    assert(effect->ops == &square_range_effect_ops && effect->type == -1);
     assert(effect->duration == 60 && effect->frame == 0);
-    assert(!((struct SvgSpiritEffect *)effect)->spirit);
+    assert(((struct SquareRangeEffect *)effect)->size == 1.0f && !((struct SquareRangeEffect *)effect)->squares.first);
     effect->ops->destroy(effect);
     assert(free_count == 1);
     reset_allocations();

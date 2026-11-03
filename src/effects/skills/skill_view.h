@@ -20,8 +20,6 @@ void cane_of_evil_eye_effect_end(struct CaneOfEvilEyeEffect *self);
 
 struct EffectMaker *effect_maker_new(void);
 
-struct FallenAngelEffect;
-void fallen_angel_effect_set_position(struct FallenAngelEffect *self, Vec3 pos);
 
 struct GroundScope *ground_scope_new(void);
 

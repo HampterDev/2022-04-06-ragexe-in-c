@@ -31,7 +31,7 @@ enum { EFFECT_BLIND = 0x14e };
 
 enum { BUTTON_PRESSED = 1, BUTTON_HELD = 2, BUTTON_DOUBLE = 4 };
 
-enum { SKILL_GC_ROLLINGCUTTER = 0x7f4, BINDMSG_RUN = 0x29 };
+enum { BINDMSG_RUN = 0x29 };
 enum { BIND_SLOT_WHEEL_DOWN = 6, BIND_SLOT_WHEEL_UP = 7, BIND_SLOT_RIGHT_CLICK = 8 };
 
 enum { WID_RELEASE_CLOSE = 0x12 };
@@ -108,14 +108,7 @@ static float limit_distance(float far_limit)
 
 static void run_binding(struct UIWindow *bar, int slot)
 {
-    const struct HotkeySlot *b = ui_short_cut_wnd_slot(bar, slot);
-
-    if (b->is_skill && b->id == SKILL_GC_ROLLINGCUTTER) {
-        int count = session_get_instant_var(&g_session1, 4) + 1;
-        session_set_pair(&g_session1, 4, count);
-    } else {
-        session_reset_option2(&g_session1);
-    }
+    session_reset_option2(&g_session1);
     ui_window_send(bar, NULL, BINDMSG_RUN, slot, 0, 0, 0);
 }
 

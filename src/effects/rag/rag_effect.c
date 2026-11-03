@@ -6,7 +6,6 @@
 #include <string.h>
 #include "effects/rag/rag_effect.h"
 #include "actor/game_actor.h"
-#include "ui/misc/rolling_cutter.h"
 
 struct GameObject;
 struct RenderObject;
@@ -208,4 +207,9 @@ void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender,
     default:
         break;
     }
+}
+
+void rag_effect_set_duration(struct RagEffect *self, int frame)
+{
+    self->duration = frame;
 }

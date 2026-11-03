@@ -561,7 +561,7 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
         ui_window_send(wnd, NULL, 0x44, (int)&cast, 0, 0, 0);
         return;
     }
-    if (cast.skill_id != 0x108 && cast.skill_id != 0xa04) {
+    if (cast.skill_id != 0x108) {
         MODE_SEND(mode, 0x46, (int)&cast, 0, 0);
         return;
     }

@@ -155,12 +155,6 @@ void game_mode_ack_to_use_skill(struct GameMode *self, const struct PACKET_ZC_AC
         return;
     case 10:
         switch (packet->skill_id) {
-        case 0x8a9: case 0x8aa: case 0x8ab: case 0x8ac: case 0x8ad:
-            for (i = 0x2df; i <= 0x2e2; i++) {
-                struct Player *p = self->world->player;
-                render_object_send(p, NULL, ACTOR_MSG_EFFECT, i, 0, 0, 0);
-            }
-            break;
         }
         if (SKILL_FAIL_VERBOSE)
             fail_line(0x11d);

@@ -34,7 +34,6 @@ int session_is_homunculus_skill(struct Session *self, int id);
 int session_is_mercenary_or_homun_s_job(struct Session *self, int id);
 int session_is_homun_or_merc_job(struct Session *self, int id);
 int session_is_merc_or_elemental_skill(struct Session *self, int id);
-BYTE session_is_space(struct Session *self, int id);
 BYTE session_is_super_novice_job(struct Session *self, int id);
 int session_is_monster_actor(struct Session *self, struct GameActor *actor);
 int session_is_player_job(struct Session *self, int id);

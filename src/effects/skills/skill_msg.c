@@ -11,7 +11,6 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/actor_lookup.h"
-#include "actor/hallucination.h"
 #include "game/context.h"
 #include "effects/effect_mgr.h"
 #include "effects/skills/skill_view.h"
@@ -112,7 +111,7 @@ static int skill_hit_effect(int skill_id)
     switch (skill_id) {
     case 0x12: return 0x31;
     case 0x4f: return 0x98;
-    case 0x55: case 0xa1b: return 0x34;
+    case 0x55: return 0x34;
     case 0x59: case 0x2d3: return 0x33;
     case 0x1ac: case 0x1ad: case 0x1ae: return 0x247;
     case 0x1f6c:
@@ -187,7 +186,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
         spawn(self, 0x8d, me->pos, -1);
         break;
 
-    case 0x8a: case 0x90: case 0x91: case 0x93: case 0x99: case 0xe5:
+    case 0x8a: case 0x90: case 0x91: case 0x93: case 0x99:
         me->pickable = 1;
         show_trap_model(self);
         break;
@@ -205,7 +204,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
         if (me->revealed)
             trap_glow(self);
         break;
-    case 0xbc: case 0xdc: case 0xdd: case 0xeb:
+    case 0xbc: case 0xdc: case 0xdd:
         me->pickable = 0;
         break;
     case 0xbd:
@@ -219,58 +218,11 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
         me->pickable = 0;
         break;
     case 0xbe: self->effect_id = 0x6b; me->pickable = 0; break;
-    case 0xbf: case 0xc2: case 0x108: self->effect_id = 0x63; me->pickable = 0; break;
+    case 0xbf: case 0xc2: self->effect_id = 0x63; me->pickable = 0; break;
     case 0xc0: self->effect_id = 0x8b; me->pickable = 0; break;
     case 0xc1: self->effect_id = 0x6c; me->pickable = 0; break;
-    case 0xe4: self->effect_id = 0x6a; me->pickable = 0; break;
-    case 0xe6: self->effect_id = 0x6a; me->pickable = 1; break;
-    case 0xda: case 0xde: me->pickable = 1; self->effect_id = 0x1d0; break;
-    case 0xd2: case 0xd3: case 0xd4: case 0xd5:
-        self->effect_id = 0x8b; me->pickable = 0; show_trap_model(self); break;
-    case 0xd6: case 0xd9:
-        self->effect_id = 0x6b; me->pickable = 0; show_trap_model(self); break;
-    case 0xd7:
-        self->effect_id = 0x6c; me->pickable = 0; show_trap_model(self); break;
-    case 0xd8:
-        self->effect_id = 0x6b;
-        me->pickable = 0;
-        show_trap_model(self);
-        trap_glow(self);
-        break;
+    case 0xda: me->pickable = 1; self->effect_id = 0x1d0; break;
     case 0x101: play_at_unit(self, "effect\\NC_MAGMA_ERUPTION.wav"); me->pickable = 0; break;
-    case 0x102: play_at_unit(self, "effect\\lg_kings_grace.wav"); me->pickable = 0; break;
-
-    case 0xd1:
-        {
-            const struct GameActor *actor;
-            const float position[3] = {me->pos.x, me->pos.y, me->pos.z};
-
-            if (entry->creator_aid == g_session1.ownAid)
-                actor = (const struct GameActor *)game_current_player();
-            else
-                actor = game_find_actor(self->creator_aid);
-            actor_spawn_hallu_copy(actor, position, 0xb4);
-        }
-        break;
-
-    case 0x104:
-        switch (entry->level) {
-        case 1: spawn(self, 0x42d, me->pos, -1); break;
-        case 2: case 3: spawn(self, 0x42e, me->pos, -1); break;
-        case 4: case 5: spawn(self, 0x42f, me->pos, -1); break;
-        }
-        break;
-    case 0x106:
-        spawn(self, 0x450, me->pos, entry->level);
-        break;
-    case 0x107:
-        play_at_unit(self, "effect\\su_nyanggrass.wav");
-        spawn(self, 0x465, me->pos, entry->level);
-        break;
-    case 0x109:
-        spawn(self, 0x4b0, me->pos, -1);
-        play_at_unit(self, "effect\\g카트토네이도.wav");
-        break;
     case 0x10c:
         if (entry->level >= 1 && entry->level <= 5)
             self->effect_id = 0x641 + entry->level;

@@ -80,7 +80,6 @@ void pc_deleting_destruct(struct GameObject *object);
 void player_deleting_destruct(struct GameObject *object);
 void rag_effect_delete(struct GameObject *object);
 void render_object_delete(struct GameObject *object);
-void rolling_cutter_rag_effect_delete(struct GameObject *object);
 void skill_delete(struct GameObject *object);
 void sound_maker_delete(struct GameObject *object);
 unsigned char c3d_granny_game_actor_on_process(struct GameObject *object);
@@ -107,7 +106,6 @@ unsigned char pc_on_process(struct GameObject *object);
 unsigned char player_on_process(struct GameObject *object);
 unsigned char rag_effect_on_process(struct GameObject *object);
 unsigned char render_object_on_process(struct GameObject *object);
-unsigned char rolling_cutter_rag_effect_on_process(struct GameObject *object);
 unsigned char skill_on_process(struct GameObject *object);
 unsigned char sound_maker_on_process(struct GameObject *object);
 void dummy_effect_launcher_send_msg(struct GameObject *object, struct GameObject *source,

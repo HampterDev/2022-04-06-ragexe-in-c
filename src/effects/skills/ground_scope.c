@@ -15,8 +15,6 @@
 #define MSG_SET_END 0x73
 #define MSG_SET_SKILL 0x75
 
-#define SKILL_POISON_SMOKE 0x7f0
-#define SKILL_COMET 0x8a5
 
 struct GroundScope {
     struct AbleToMakeEffect base;
@@ -26,7 +24,6 @@ struct GroundScope {
     int size;
     float angle;
     float spin;
-    int skill_id;
 };
 
 struct GameObject;
@@ -52,7 +49,6 @@ static struct GroundScope *ground_scope_construct(struct GroundScope *self)
     self->end_tick = 0;
     self->size = 1;
     self->angle = 0.0f;
-    self->skill_id = -1;
     return self;
 }
 
@@ -81,22 +77,20 @@ unsigned char ground_scope_on_process(struct GameObject *object)
 static int ground_scope_area_cells(int skill_id)
 {
     switch (skill_id) {
-    case 0x2e0: case 0x98f: case 0x991:
+    case 0x2e0:
         return -2;
     case 0xb: case 0x19: case 0x2f: case 0x45: case 0x50: case 0x56: case 0x58: case 0x6e: case 0x81:
-    case 0x82: case 0x89: case 0x8c: case 0x17d: case 0x1e3: case 0x8d5:
+    case 0x82: case 0x89: case 0x8c: case 0x17d: case 0x1e3:
         return 3;
-    case 0x11: case 0x15: case 0x46: case 0x5b: case 0x5c: case 0x1e4: case 0x302: case 0x7d5: case 0x7f0:
-    case 0x7fc:
+    case 0x11: case 0x15: case 0x46: case 0x5b: case 0x5c: case 0x1e4: case 0x302:
         return 5;
-    case 0x4f: case 0x1de: case 0x2dd: case 0x2e3: case 0x8bd: case 0x992: case 0x994: case 0x995: case 0x996:
-    case 0x138e: case 0x1395: case 0x13a4: case 0x13b2:
+    case 0x4f: case 0x1de: case 0x2dd: case 0x2e3:
         return 7;
-    case 0x53: case 0x59: case 0x2d3: case 0x2db: case 0x301: case 0x7d8: case 0x8d4: case 0x98e: case 0x138c:
+    case 0x53: case 0x59: case 0x2d3: case 0x2db: case 0x301:
         return 9;
     case 0x55:
         return 11;
-    case 0x2c4: case 0x8a5:
+    case 0x2c4:
         return 18;
     }
     return 0;
@@ -121,7 +115,6 @@ void ground_scope_send_msg(struct GameObject *object, struct GameObject *source,
     case MSG_SET_SKILL: {
         int skill_id = (int)par1;
         self->size = ground_scope_area_cells(skill_id) + 2;
-        self->skill_id = skill_id;
         self->spin = self->size ? 0.5f / (float)self->size : 0.0f;
         return;
     }
@@ -169,15 +162,7 @@ void ground_scope_render(struct GameObject *object, const float *view)
             uv[6] = (r1s + bc + half) / n;
             uv[7] = (r1c - bs + half) / n;
 
-            if (self->skill_id == SKILL_POISON_SMOKE) {
-                name = g_session1.map_rule_flags[0] == 1
-                           ? "effect\\mineffect\\new_poisonsmoke\\new_poisonsmoke_cast\\poi_magic_circle_1.tga"
-                           : "effect\\new_poisonsmoke\\new_poisonsmoke_cast\\poi_magic_circle_1.tga";
-            } else if (self->skill_id == SKILL_COMET) {
-                name = "effect\\new_comet\\new_comet_cast_magicrune\\new_comet_cast_magicrune.tga";
-            } else {
-                name = "effect\\magic_target.tga";
-            }
+            name = "effect\\magic_target.tga";
             c3d_ground15_draw_attr_quad(ground, view, x0 + col, y0 + row, cell_color,
                        texture_cache_get(&g_textureCache, name, 0, 0), uv);
         }

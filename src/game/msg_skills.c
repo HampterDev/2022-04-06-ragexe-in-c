@@ -22,10 +22,6 @@
 #define CZ_USE_SKILL2                   0x438
 #define CZ_USE_SKILL_TOGROUND2          0xaf4
 #define CZ_USE_SKILL_TOGROUND_WITHTALKBOX2 0x367
-#define CZ_USE_SKILL_START                0xb10
-#define CZ_USE_SKILL_END            0xb11
-
-#define SKILL_GC_ROLLINGCUTTER 0x7f4
 
 int g_skillAimGood;
 
@@ -66,8 +62,8 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
     if (level < 0 || skill_id < 0)
         shout = 0;
     switch (skill_id) {
-    case 0x28: case 0x29: case 0x33: case 0x87: case 0x185: case 0x7f1:
-    case 0x8c7: case 0x8f2: case 0x926: case 0x9e7: case 0xbb9:
+    case 0x28: case 0x29: case 0x33: case 0x87: case 0x185:
+    case 0x9e7:
         shout = 0;
         break;
     }
@@ -136,7 +132,6 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
         if (player->mounted && !session_is_homunculus_skill(&g_session1, info->id)
                 && !session_is_merc_or_elemental_skill(&g_session1, info->id)) {
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED, 0, 0);
-            session_clear_rolling_cutter_one_shot(info->id);
             return 0;
         }
     }
@@ -196,21 +191,10 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
         unsigned short skill_id;
         int target;
     } packet;
-    struct {
-        unsigned short id;
-        unsigned short skill_id;
-        unsigned short level;
-        int target;
-    } skill_start;
-    struct {
-        unsigned short id;
-        unsigned short skill_id;
-    } skill_end;
 #pragma pack(pop)
     char text[0x100];
     struct SkillInfo skill, table;
     struct GameActor *actor;
-    int count;
 
     if (ui_window_find(0xc4))
         goto done;
@@ -279,23 +263,6 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
         }
         if (skill_id == 0x9a)
             ui_window_open(0x5f);
-    } else if (skill_id == SKILL_GC_ROLLINGCUTTER) {
-        skill_start.id = CZ_USE_SKILL_START;
-        skill_start.skill_id = SKILL_GC_ROLLINGCUTTER;
-        skill_start.level = (unsigned short)level;
-        skill_start.target = target;
-        send_raw(10, &skill_start);
-        if (session_get_instant_var(&g_session1, 4)) {
-            skill_end.id = CZ_USE_SKILL_END;
-            skill_end.skill_id = SKILL_GC_ROLLINGCUTTER;
-            send_raw(4, &skill_end);
-            session_set_pair(&g_session1, 4, 0);
-            return 0;
-        }
-        g_session1.skillUseKey = g_session1.lastKeyDown;
-        count = session_get_instant_var(&g_session1, 2) + 1;
-        session_set_pair(&g_session1, 2, count);
-        return 0;
     }
     packet.id = CZ_USE_SKILL2;
     packet.level = (unsigned short)level;
@@ -307,7 +274,6 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
     return 0;
 
 done:
-    session_clear_rolling_cutter_one_shot(skill_id);
     return 0;
 }
 

@@ -42,48 +42,12 @@ static void cast_on_cell(int x, int y, int effect_id, unsigned cast_time)
         effect_set_time(effect, (float)cast_time);
 }
 
-static void cast_by_heading(struct GameActor *caster)
-{
-    float heading = actor_screen_heading(game_current_mode(), caster);
-    int effect_id;
-
-    if (heading > 0.0f && heading < 90.0f)
-        effect_id = 0x545;
-    else if (heading >= 90.0f && heading < 180.0f)
-        effect_id = 0x543;
-    else if (heading >= 180.0f && heading < 270.0f)
-        effect_id = 0x549;
-    else
-        effect_id = 0x547;
-    if (g_session1.map_rule_flags[0] == 1) {
-        if (effect_id == 0x545)
-            effect_id = 0x5cf;
-        else if (effect_id == 0x543)
-            effect_id = 0x5ce;
-        else if (effect_id == 0x549)
-            effect_id = 0x5d1;
-        else if (effect_id == 0x547)
-            effect_id = 0x5d0;
-        spawn_on(caster->aid, effect_id);
-        spawn_on(caster->aid, 0x5d4);
-        spawn_on(caster->aid, 0x5d5);
-    } else {
-        spawn_on(caster->aid, effect_id);
-        spawn_on(caster->aid, effect_id + 1);
-        spawn_on(caster->aid, 0x568);
-        spawn_on(caster->aid, 0x569);
-    }
-}
-
 static const struct CastPair {
     unsigned short skill_id;
     unsigned short first;
     unsigned short second;
 } cast_pairs[] = {
-    { 0x7d6, 0x65a, 0 },      { 0x7f6, 0x65d, 0x65e },  { 0x804, 0x617, 0 },      { 0x89a, 0x633, 0x634 },
-    { 0x8a4, 0x610, 0 },      { 0x8bc, 0x671, 0 },      { 0x2e1, 0x591, 0x592 },  { 0x911, 0x591, 0x592 },
-    { 0x927, 0x625, 0 },      { 0x96d, 0x62d, 0x62e },  { 0x97d, 0x66a, 0x66b },  { 0x9bc, 0x669, 0 },
-    { 0x9d5, 0x62a, 0x62b },
+    { 0x2e1, 0x591, 0x592 },
 };
 
 void skill_cast_play_cast_look(struct GameActor *caster, int x, int y, int skill_id, unsigned cast_time,
@@ -103,69 +67,7 @@ void skill_cast_play_cast_look(struct GameActor *caster, int x, int y, int skill
 
     time = (float)cast_time;
     switch (skill) {
-    case 0x7f0:
-        actor_launch_effect(caster, 0x300);
-        return;
-    case 0x89e:
-        actor_launch_effect(caster, 0x323);
-        return;
-    case 0x8fe:
-        actor_launch_effect(caster, 0x10);
-        return;
-    case 0x89c:
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x607 : 0x5a6, time);
-        return;
-    case 0x8a5:
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x600 : 0x587, time);
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x603 : 0x58d, time);
-        return;
-    case 0x8a9:
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x5a0 : 0x4fd, time);
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x597 : 0x4ed, time);
-        return;
-    case 0x9ad:
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x5db : 0x58e, time);
-        cast_timed(caster, g_session1.map_rule_flags[0] == 1 ? 0x5dc : 0x58f, time);
-        return;
-    case 0x996:
-        if (g_session1.map_rule_flags[0] == 0)
-            cast_timed(caster, 0x61b, time);
-        cast_timed(caster, 0x61c, time);
-        return;
-    case 0x90d:
-        cast_timed(caster, 0x697, time);
-        if (g_session1.map_rule_flags[0] == 0)
-            cast_timed(caster, 0x698, time);
-        return;
-    case 0x9b2:
-        cast_timed(caster, 0x654, time);
-        if (g_session1.map_rule_flags[0] == 0)
-            cast_timed(caster, 0x655, time);
-        return;
-    case 0x8a6:
-        spawn_on(caster->aid, 0x663);
-        cast_timed(caster, 0x664, time);
-        return;
-    case 0x8d5:
-        cast_by_heading(caster);
-        return;
-    case 0x9a0:
-        play_skill_wave("_heal_effect.wav");
-        {
-            struct RagEffect *launched = actor_launch_effect(caster, 0xd8);
-
-            if (launched) {
-                Vec3 at = actor_pos(caster);
-
-                effect_set_pos(launched, &at);
-            }
-        }
-        return;
-    case 0x98f:
-        cast_on_cell(x, y, g_session1.map_rule_flags[0] == 1 ? 0x5ac : 0x504, cast_time);
-        return;
     case 0x2e0:
-    case 0x991:
         cast_on_cell(x, y, g_session1.map_rule_flags[0] == 1 ? 0x5b0 : 0x50a, cast_time);
         return;
     case 0x1f79:

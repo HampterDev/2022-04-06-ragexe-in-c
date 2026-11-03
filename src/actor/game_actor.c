@@ -3,6 +3,7 @@
 #include "render/screen_bounds.h"
 #include "ui/window_access.h"
 #include "std/tree.h"
+#include "std/integer_map.h"
 #include "ui/character/gauge.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -16,6 +17,27 @@
 #include "session/session_talk.h"
 
 #define ACTOR_SEND(self, sender, msg, par1) render_object_send((self), (sender), (msg), (par1), 0, 0, 0)
+
+static struct Tree *actor_counters(struct GameActor *actor)
+{
+    return &actor->vars;
+}
+
+int game_actor_get_counter(struct GameActor *self, int key)
+{
+    struct IntInt64Pair *var = tree_find(actor_counters(self), &key, tree_less_int);
+
+    if (!var)
+        return 0;
+    return (int)var->value;
+}
+
+void game_actor_set_counter(struct GameActor *self, int key, __int64 value)
+{
+    struct IntInt64Pair *var = tree_get(actor_counters(self), &key, sizeof key, sizeof *var, tree_less_int);
+
+    var->value = value;
+}
 
 void game_actor_set_pet_accessory(struct GameActor *self, int accessory)
 {

@@ -298,10 +298,7 @@ static void draw_rows(struct UINewSkillListWnd *self)
                 } else {
                     sp = skill_info_get_sp_amount(info, info->level);
                 }
-                if (session_is_space(&g_session1, info->id))
-                    sprintf(buf, "Sp : %d%%", sp);
-                else
-                    sprintf(buf, "Sp : %d", sp);
+                sprintf(buf, "Sp : %d", sp);
             }
             ui_window_text_out(wnd, text_x + 0x64, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
         }

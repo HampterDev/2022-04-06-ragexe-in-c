@@ -23,7 +23,6 @@ static int keeps_its_state(int skill_id)
 {
     switch (skill_id) {
     case 0x107: case 0x110: case 0x111: case 0x173:
-    case 0x917: case 0x918: case 0x919: case 0xa13:
         return 1;
     }
     return 0;
@@ -33,7 +32,7 @@ static int is_cast_on_cell(int skill_id)
 {
     switch (skill_id) {
     case 0xc: case 0x12: case 0x15: case 0x46: case 0x4f: case 0x53: case 0x55: case 0x59: case 0x6e:
-    case 0x1de: case 0x2d3: case 0x2dd: case 0x301: case 0x138e: case 0x13a4: case 0x13b2:
+    case 0x1de: case 0x2d3: case 0x2dd: case 0x301:
         return 1;
     }
     return 0;
@@ -116,10 +115,6 @@ static int play_known_look(const struct SkillCast *cast)
         return skill_use_second(cast);
     if (id <= 0x7d1)
         return skill_use_extra(cast);
-    if (id <= 0x8d6)
-        return skill_use_third(cast);
-    if (id <= 0x9d5)
-        return skill_use_third2(cast);
     if (id <= 0x146e)
         return skill_use_late(cast);
     return skill_use_companion(cast);
@@ -136,30 +131,6 @@ int play_simple_look(const struct SkillCast *cast, const struct SimpleLook *look
             target_effect(cast, looks[i].effect_id);
         else
             caster_effect(cast, looks[i].effect_id);
-        return 1;
-    }
-    return 0;
-}
-
-int play_wave_look(const struct SkillCast *cast, const struct WaveLook *looks, int count)
-{
-    int i;
-
-    for (i = 0; i < count; i++) {
-        struct GameActor *actor;
-
-        if (looks[i].skill_id != cast->skill_id)
-            continue;
-        actor = looks[i].on == ON_TARGET ? cast->target : cast->caster;
-        if (!actor)
-            return 1;
-        if (looks[i].wave_first) {
-            play_skill_wave(looks[i].wave);
-            actor_launch_effect(actor, looks[i].effect_id);
-        } else {
-            actor_launch_effect(actor, looks[i].effect_id);
-            play_skill_wave(looks[i].wave);
-        }
         return 1;
     }
     return 0;

@@ -147,11 +147,6 @@ static struct HotkeySlot *slot_at(struct UIShortCutWnd *self, int column)
     return self->slots[column + g_session1.shortenSkillPage * HOTKEY_SLOTS_PER_ROW];
 }
 
-const struct HotkeySlot *ui_short_cut_wnd_slot(const struct UIWindow *window, int index)
-{
-    return ((const struct UIShortCutWnd *)window)->slots[index];
-}
-
 void ui_short_cut_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag)
 {
     struct UIShortCutWnd *self = (struct UIShortCutWnd *)window;
@@ -509,13 +504,7 @@ void ui_short_cut_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
     if (column == -1)
         return;
     slot = slot_at(self, column);
-    if (slot->is_skill && slot->id == SKILL_GC_ROLLINGCUTTER) {
-        int count = session_get_instant_var(&g_session1, SESSION_OPT_ROLLING_CUTTER_ONE_SHOT) + 1;
-
-        session_set_pair(&g_session1, SESSION_OPT_ROLLING_CUTTER_ONE_SHOT, count);
-    } else {
-        session_reset_option2(&g_session1);
-    }
+    session_reset_option2(&g_session1);
     ui_short_cut_wnd_send_msg(&self->frame.base, NULL, HOTKEY_MSG_USE, column, g_session1.shortenSkillPage, 0, 0);
 }
 
@@ -570,15 +559,9 @@ void ui_short_cut_wnd_on_mouse_hover(struct UIWindow *window, int x, int y)
             int sp = skill_info_get_sp_amount(&info, level);
             const char *prefix = string_cstr(&label);
 
-            if (session_is_space(&g_session1, info.id)) {
-                string_init(&line);
-                string_format(&line, "%s %s Use Lv %d (Sp : %d%%)", prefix, skill_info_get_name(&info),
-                              level, sp);
-            } else {
-                string_init(&line);
-                string_format(&line, "%s %s Use Lv %d (Sp : %d)", prefix, skill_info_get_name(&info),
-                              level, sp);
-            }
+            string_init(&line);
+            string_format(&line, "%s %s Use Lv %d (Sp : %d)", prefix, skill_info_get_name(&info),
+                          level, sp);
             string_assign(&text, string_cstr(&line), line.size);
             string_free(&line);
         } else {

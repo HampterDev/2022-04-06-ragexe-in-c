@@ -28,7 +28,7 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "session/session_windows.h"
-#include "ui/misc/rolling_cutter.h"
+#include "actor/game_actor.h"
 #include "world/world.h"
 #include "session/session_skills.h"
 

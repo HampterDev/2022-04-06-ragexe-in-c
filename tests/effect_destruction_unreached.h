@@ -7,6 +7,11 @@ const float g_halfTurnDegrees = 180.0f;
 const float g_pi = 3.14159265f;
 void effect_mgr_remove(struct EffectMgr *self, struct Effect *effect, unsigned char unlink) { abort(); }
 void particle_set_texture(struct Particle *self, struct String name) { abort(); }
+void particle_set_color(struct Particle *self, short r, short g, short b) { abort(); }
+void particle_render(struct Particle *self, unsigned char facing_fixed, float v_top, float v_bottom, float u_left, float u_right, unsigned char with_depth) { abort(); }
+void mat_multiply(float *out, const float *a, const float *b) { abort(); }
+void mat_set_scale(float *m, float x, float y, float z) { abort(); }
+void mat_set_rotate_x(float *m, float rad) { abort(); }
 void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags) { abort(); }
 float get_cos_deg(int deg) { abort(); }
 float get_sin_deg(int deg) { abort(); }

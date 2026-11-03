@@ -1,4 +1,6 @@
+#include "render/math3d.h"
 #include "game/skill_use.h"
+#include <stdlib.h>
 
 static const char WAVE_2008CAT[] = "effect\\2008cat.wav";
 static const char WAVE_DREAM_DEVICE[] = "dream_device_edq.wav";
@@ -8,6 +10,9 @@ static const char WAVE_WL_JACK_FROST[] = "effect\\wl_jackfrost.wav";
 static const char WAVE_AMON_RA[] = "amon_ra_die01.wav";
 static const char WAVE_VALENTINE[] = "effect\\vallentine.wav";
 static const char WAVE_ENTRY[] = "effect\\ef_entry.wav";
+static const char WAVE_SOUL_STRIKE[] = "effect\\ef_soulstrike.wav";
+static const char WAVE_HALLUCINATION_WALK[] = "effect\\HALLUCINATIONWALK.wav";
+static const char WAVE_JACK_FROST[] = "jack_frost.wav";
 
 static const struct SimpleLook extra_looks[] = {
     { 0x242, 0x0dc, ON_CASTER }, { 0x2b1, 0x02a, ON_TARGET }, { 0x2b2, 0x025, ON_TARGET },
@@ -39,9 +44,68 @@ enum {
     SKILL_BA_PANGVOICE = 0x3f2,
     SKILL_DC_WINKCHARM = 0x3f3,
     SKILL_BS_GREED = 0x3f5,
-    SKILL_RK_ENCHANTBLADE = 0x7d1,
     ACTOR_MSG_EMOTION = 0x15,
 };
+
+static void skill_use_soul_strike_look(const struct SkillCast *cast)
+{
+    if (!cast->caster)
+        return;
+    actor_launch_effect(cast->caster, 0x1b9);
+    actor_launch_effect(cast->caster, 0x2ed);
+    play_skill_wave(WAVE_SOUL_STRIKE);
+}
+
+static void skill_use_water_look(const struct SkillCast *cast)
+{
+    if (!cast->target)
+        return;
+    actor_launch_effect(cast->target, 0x300);
+    play_skill_wave("effect\\수둔.wav");
+}
+
+static void skill_use_glow_both_look(const struct SkillCast *cast)
+{
+    if (!cast->caster || !cast->target)
+        return;
+    actor_launch_effect(cast->caster, 0x21a);
+    actor_launch_effect(cast->caster, 0x1b9);
+    actor_launch_effect(cast->target, 0x21a);
+    actor_launch_effect(cast->target, 0x1b9);
+}
+
+static void skill_use_hallucination_walk_look(const struct SkillCast *cast)
+{
+    if (cast->caster)
+        play_skill_wave(WAVE_HALLUCINATION_WALK);
+}
+
+static void skill_use_jack_frost_ring_look(const struct SkillCast *cast)
+{
+    struct GameActor *caster = cast->caster;
+    int i;
+
+    if (!caster || !cast->target)
+        return;
+    for (i = 0; i < 10; i++) {
+        Vec3 here = { 0.0f, 0.0f, 0.0f };
+        struct RagEffect *effect = game_actor_launch_effect(caster, 0x321, here, 0.0f);
+        Vec3 at;
+        int step, k;
+
+        if (!effect)
+            continue;
+        at = actor_pos(caster);
+        step = rand() % 36;
+        if (step < 0)
+            step = 0;
+        k = (short)(step + i * 36);
+        at.x = g_cosTable[k] * 80.0f + at.x;
+        at.z = g_sinTable[k] * 80.0f + at.z;
+        effect_set_pos(effect, &at);
+    }
+    play_skill_wave(WAVE_JACK_FROST);
+}
 
 static void caster_effect_at_target(struct GameActor *caster, struct GameActor *target, int effect_id)
 {
@@ -176,9 +240,6 @@ int skill_use_extra(const struct SkillCast *cast)
             play_skill_wave(WAVE_ENTRY);
         return 1;
 
-    case SKILL_RK_ENCHANTBLADE:
-        skill_use_ninja_throw_look(cast);
-        return 1;
     }
     return 0;
 }

@@ -54,7 +54,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     self->attack_target_aid = 0;
 
     switch (skill) {
-    case 0x53: case 0x301: case 0x306: case 0x13a4: case 0x13b2:
+    case 0x53: case 0x301: case 0x306:
         forced = 1;
         break;
     default:
@@ -93,7 +93,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     case 0x5c:   gs_min_or_dummy(mode, &at, 0x489, 0x5f); break;
     case 0x6e:
     case 0x2dd:
-    case 0x138e: gs_dummy(mode, &at, 0x66); break;
+    gs_dummy(mode, &at, 0x66); break;
     case 0x6f:
     case 0x1cb:  gs_dummy(mode, &at, 0x62); break;
     case 0x73:   gs_dummy(mode, &at, 0x45); break;
@@ -137,7 +137,6 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
         break;
     case 0x2cd:  gs_launch(self, 0x408); break;
     case 0x2e1:
-    case 0x911:
         gs_spawn(at, 0x590, -1);
         gs_wave("effect\\LG_RAYOFGENESIS.wav", 0.0f);
         break;
@@ -154,25 +153,6 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
             e->ops->skip(e, 0.4f);
         break;
     }
-    case 0x8d4: {
-        struct RagEffect *e = gs_launch(self, 0x317);
-        if (e != NULL)
-            rag_effect_send_msg(e, NULL, 0xe, MSG_ARG_PTR(&at), 0, 0);
-        break;
-    }
-    case 0x98f:
-        gs_wave("effect\\wl_jackfrost.wav", 0.0f);
-        if (g_session1.map_rule_flags[0] == 1) {
-            gs_spawn(at, 0x5aa, level);
-            gs_spawn(at, 0x5ab, level);
-        } else {
-            gs_spawn(at, 0x502, level);
-            gs_spawn(at, 0x503, level);
-        }
-        break;
-    case 0xa0b:  gs_spawn(at, 0x426, -1); break;
-    case 0x13a4: gs_spawn(at, 0x452, -1); break;
-    case 0x13b2: gs_spawn(at, 0x458, -1); break;
     default:
         break;
     }

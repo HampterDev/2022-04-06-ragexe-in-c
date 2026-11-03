@@ -21,8 +21,6 @@ struct SkillCast {
 int skill_use_basic(const struct SkillCast *cast);
 int skill_use_second(const struct SkillCast *cast);
 int skill_use_extra(const struct SkillCast *cast);
-int skill_use_third(const struct SkillCast *cast);
-int skill_use_third2(const struct SkillCast *cast);
 int skill_use_late(const struct SkillCast *cast);
 int skill_use_companion(const struct SkillCast *cast);
 
@@ -38,25 +36,7 @@ struct SimpleLook {
 #define SIMPLE_LOOK_COUNT(looks) ((int)(sizeof(looks) / sizeof((looks)[0])))
 int play_simple_look(const struct SkillCast *cast, const struct SimpleLook *looks, int count);
 
-struct WaveLook {
-    unsigned short skill_id;
-    unsigned short effect_id;
-    unsigned char on;
-    unsigned char wave_first;
-    const char *wave;
-};
-int play_wave_look(const struct SkillCast *cast, const struct WaveLook *looks, int count);
-
-void skill_use_counted_effect(struct GameActor *actor);
-
 void skill_use_heal(const struct SkillCast *cast);
-
-void skill_use_ninja_throw_look(const struct SkillCast *cast);
-void skill_use_soul_strike_look(const struct SkillCast *cast);
-void skill_use_water_look(const struct SkillCast *cast);
-void skill_use_glow_both_look(const struct SkillCast *cast);
-void skill_use_hallucination_walk_look(const struct SkillCast *cast);
-void skill_use_jack_frost_ring_look(const struct SkillCast *cast);
 
 enum {
     MODE_MSG_SKILL_CAST = 0x56,

@@ -986,19 +986,9 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x90:
         if (session_is_pc_job(&g_session1, game_actor_get_job(self))) {
             struct RagEffect *e = sm_launch(self, 0xa6);
-            void *angel;
 
             if (e)
                 rag_effect_send_msg(e, NULL, 0x2c, 0xffff, 0xf3, 0x64);
-            angel = effect_mgr_find_effect(g_effectMgr, self->aid, 0x474);
-            if (angel) {
-                Vec3 at = { 0.0f, 0.0f, 0.0f };
-
-                game_mode_cell_to_world(game_current_mode(), (int)par1, (int)par2, &at.x,
-                                     &at.z);
-                at.y = self->pos.y;
-                fallen_angel_effect_set_position(angel, at);
-            }
         }
         render_object_send(self, NULL, 0x13, (long long)(int)par1, (long long)(int)par2, 0xf, 0);
         render_object_set_action((struct RenderObject *)self, self->base_action, 1);

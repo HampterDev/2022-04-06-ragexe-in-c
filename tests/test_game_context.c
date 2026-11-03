@@ -43,7 +43,6 @@ int main(void)
     game_complete_item_use();
     assert(game_camera_pitch() == 0.0f);
     assert(game_camera_heading() == 0.0f);
-    assert(game_camera_target_heading() == 0.0f);
     assert(!game_map_preserves_party_effects());
     assert(!game_map_dimensions(&width, &height) && width == 0 && height == 0);
     assert(strlen(game_current_map_name()) == 0);
@@ -124,8 +123,6 @@ int main(void)
     assert(game_camera_pitch() == -45.0f);
     view.longitude = 30.0f;
     assert(game_camera_heading() == 30.0f);
-    view.destLongitude = 65.0f;
-    assert(game_camera_target_heading() == 65.0f);
     assert(game_camera_scale() == 0.0f);
     view.destDistance = 800.0f;
     assert(game_camera_scale() == 0.5f);

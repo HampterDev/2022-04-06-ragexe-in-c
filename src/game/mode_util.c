@@ -70,12 +70,6 @@ char item_id_is990_to993(int id)
     return (unsigned)(id - 990) <= 3;
 }
 
-void session_clear_rolling_cutter_one_shot(int msg)
-{
-    if (msg == 0x7f4)
-        session_set_pair(&g_session1, 4, 0);
-}
-
 void game_mode_confirm_feed_homun(void)
 {
     if (g_windowMgr.exchange_wnd)

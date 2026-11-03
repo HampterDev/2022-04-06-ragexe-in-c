@@ -30,7 +30,6 @@
 #define NEW_FRAMES 36000
 #define MSG_CELL_GONE 0x18
 #define LOOP_EXTEND 0x15
-#define GM_MSG_QUAKE 0x7a
 
 struct GameActor;
 struct RenderObject;
@@ -190,11 +189,11 @@ const char *skill_trap_model(struct Skill *self)
     int job = game_actor_get_job((struct GameActor *)&self->base);
 
     switch (job) {
-    case 0x8f: case 0xda: case 0xde: case 0xe6:
+    case 0x8f: case 0xda:
         return TRAP_DIR "03_3.rsm";
     case 0x90:
         return TRAP_DIR "02.rsm";
-    case 0x91: case 0xcb:
+    case 0x91:
         return TRAP_DIR "01.rsm";
     case 0x93:
         return TRAP_DIR "03.rsm";
@@ -210,24 +209,6 @@ const char *skill_trap_model(struct Skill *self)
         return TRAP_DIR "04.rsm";
     case 0x99:
         return TRAP_DIR "05.rsm";
-    case 0xd2:
-        return TRAP3_DIR "변화" "01.rsm";
-    case 0xd3:
-        return TRAP3_DIR "변수" "01.rsm";
-    case 0xd4:
-        return TRAP3_DIR "변지" "01.rsm";
-    case 0xd5:
-        return TRAP3_DIR "변풍" "01.rsm";
-    case 0xd6:
-        return TRAP3_DIR "화" "01.rsm";
-    case 0xd7:
-        return TRAP3_DIR "수" "01.rsm";
-    case 0xd8:
-        return TRAP3_DIR "풍" "01.rsm";
-    case 0xd9:
-        return TRAP3_DIR "지" "01.rsm";
-    case 0xe5:
-        return TRAP3_DIR "가시" "01.rsm";
     }
     return 0;
 #undef TRAP_DIR
@@ -372,18 +353,6 @@ void skill_launch_area_effect(struct Skill *self, int effect_id, int period)
     }
 }
 
-static void fire_wall(struct Skill *self, int effect_id, const char *wave, const int *tint)
-{
-    struct RagEffect *effect = launch(self, effect_id);
-
-    unit_sound(wave);
-    if (tint && effect) {
-        effect->color_r = tint[0];
-        effect->color_g = tint[1];
-        effect->color_b = tint[2];
-    }
-}
-
 unsigned char skill_on_process(struct GameObject *object)
 {
     struct Skill *self = (struct Skill *)object;
@@ -418,25 +387,6 @@ unsigned char skill_on_process(struct GameObject *object)
     case 0xbc: keep_looping(self, 0x277); break;
     case 0xc8: keep_looping(self, 0x29f); break;
     case 0xc9: keep_looping(self, 0x2a0); break;
-    case 0xcb:
-        if (keep_looping(self, 0x8e)) {
-            game_send_message(GM_MSG_QUAKE, 0, 0, 0, 0);
-        }
-        break;
-    case 0xcc: keep_looping(self, 0x336); break;
-    case 0xe1:
-        if (keep_looping(self, 0x304)) {
-            int r = rand() % 100;
-            if (r < 0)
-                r = 0;
-            if (r == 1)
-                launch_by_mgr(self->unit_aid, 0x60a, vec_zero(), -1);
-            else if (r == 2)
-                launch_by_mgr(self->unit_aid, 0x60b, vec_zero(), -1);
-        }
-        break;
-    case 0xe2: keep_looping(self, 0x30f); break;
-    case 0xe3: keep_looping(self, 0x310); break;
     case 0xee: keep_looping(self, 0x3ab); break;
 
     case 0x7e: if (due(self, dur[0x13b] - 7)) launch(self, 0x13b); break;
@@ -460,112 +410,30 @@ unsigned char skill_on_process(struct GameObject *object)
     case 0xc0: if (due(self, dur[0x280] - 1)) launch(self, 0x280); break;
     case 0xc1: if (due(self, dur[0x281] - 1)) launch(self, 0x281); break;
     case 0xc2: if (due(self, dur[0x282] - 1)) launch(self, 0x282); break;
-    case 0xcd: if (due(self, dur[0x339] - 8)) launch(self, 0x339); break;
-    case 0xce: if (due(self, dur[0x33b] - 8)) launch(self, 0x33b); break;
-    case 0xcf: if (due(self, dur[0x33c] - 8)) launch(self, 0x33c); break;
-    case 0xd0: if (due(self, dur[0x33d] - 8)) launch(self, 0x33d); break;
-    case 0xd2: due(self, dur[0x2e3] - 1); break;
-    case 0xd3: due(self, dur[0x2e4] - 1); break;
-    case 0xd4: due(self, dur[0x2e5] - 1); break;
-    case 0xd5: due(self, dur[0x2e6] - 1); break;
-    case 0xd6: case 0xd7: case 0xd8: case 0xd9: due(self, dur[0x2e7] - 1); break;
     case 0xda:
         if (due(self, dur[0x358] - 8)) {
             launch(self, 0x358);
             unit_sound("effect\\REVERBERATION.wav");
         }
         break;
-    case 0xdb:
-        if (due(self, dur[0x359] - 8)) {
-            launch_by_mgr(0, 0x4fc, me->pos, -1);
-            unit_sound("effect\\rainstorm.wav");
-        }
-        break;
     case 0xdc: if (due(self, dur[0x398] - 7)) launch(self, 0x398); break;
     case 0xdd: if (due(self, dur[0x39e] - 7)) launch(self, 0x39e); break;
-    case 0xde:
-        if (due(self, dur[0x35c] - 8)) {
-            launch(self, 0x35c);
-            unit_sound("effect\\POEMOFNETHERWORLD.wav");
-        }
-        break;
-    case 0xe4:
-        if (due(self, dur[0x3a1] - 1))
-            fire_wall(self, 0x3a1, "effect\\S워머.wav", 0);
-        break;
-    case 0xe6: if (due(self, dur[0x390] - 1)) launch(self, 0x390); break;
-    case 0xe7: case 0xf1:
-        if (due(self, dur[0x394] - 1))
-            fire_wall(self, 0x394, "effect\\EF_FireWall.wav", 0);
-        break;
-    case 0xe8:
-        if (due(self, dur[0x395] - 1))
-            fire_wall(self, 0x395, "effect\\EF_FireWall.wav", 0);
-        break;
-    case 0xe9:
-        if (due(self, dur[0x396] - 1))
-            fire_wall(self, 0x396, "effect\\EF_FireWall.wav", 0);
-        break;
-    case 0xea:
-        if (due(self, dur[0x397] - 1)) {
-            launch(self, 0x397);
-            unit_sound("effect\\G가시나무덫.wav");
-        }
-        break;
-    case 0xeb:
-        if (due(self, dur[0x399] - 1)) {
-            launch(self, 0x399);
-            unit_sound("effect\\S스펠피스트.wav");
-        }
-        break;
     case 0xef: if (due(self, dur[0x1d1] - 1)) launch(self, 0x1d1); break;
     case 0xf0:
         if (due(self, dur[0x440] - 1))
             launch_by_mgr(me->aid, 0x440, vec_zero(), -1);
         break;
-    case 0xf2:
-        if (due(self, dur[0x394] - 1))
-            fire_wall(self, 0x394, "effect\\EF_FireWall.wav", tint_blue);
-        break;
-    case 0xf3:
-        if (due(self, dur[0x394] - 1))
-            fire_wall(self, 0x394, "effect\\EF_FireWall.wav", tint_green);
-        break;
-    case 0xf4:
-        if (due(self, dur[0x394] - 1))
-            fire_wall(self, 0x394, "effect\\EF_FireWall.wav", tint_grey);
-        break;
     case 0xfe: if (due(self, dur[0x402] - 1)) launch(self, 0x402); break;
     case 0xff: case 0x100: if (due(self, dur[0x19] - 1)) launch(self, 0x19); break;
     case 0x101: if (due(self, dur[0x41a] - 1)) launch(self, 0x41a); break;
-    case 0x102: if (due(self, dur[0x41b] - 1)) launch(self, 0x41b); break;
-    case 0x105:
-        if (due(self, dur[0x428] - 1))
-            launch_by_mgr(0, 0x428, me->pos, -1);
-        break;
-    case 0x108: if (due(self, dur[0x460] - 1)) launch(self, 0x460); break;
-
     case 0xc7:
         if (!self->launched && launch_by_mgr(self->unit_aid, 0x613, me->pos, self->range * 2))
             self->launched = 1;
-        break;
-    case 0xca:
-        if (!self->launched) {
-            self->launched = 1;
-            launch(self, 0x677);
-            launch_by_mgr(me->aid, 0x676, vec_zero(), -1);
-        }
         break;
     case 0xe0:
         if (!self->launched && launch_by_mgr(self->unit_aid, 0x438, me->pos, -1)) {
             self->launched = 1;
             self->effect_id = 0x438;
-        }
-        break;
-    case 0x103:
-        if (!self->launched) {
-            self->launched = 1;
-            launch_by_mgr(0, 0x4fe, me->pos, -1);
         }
         break;
     case 0x10c:
@@ -579,11 +447,6 @@ unsigned char skill_on_process(struct GameObject *object)
     case 0xf5: skill_launch_area_effect(self, 0x3bf, 0); break;
     case 0xf6: skill_launch_area_effect(self, 0x3c4, 0); break;
     case 0xf7: skill_launch_area_effect(self, 0x3cf, 0); break;
-    case 0xf8: skill_launch_area_effect(self, 0x3e0, 0); break;
-    case 0xf9: skill_launch_area_effect(self, 0x3e1, 0); break;
-    case 0xfa: skill_launch_area_effect(self, 0x3e2, 0); break;
-    case 0xfb: skill_launch_area_effect(self, 0x3e3, 0); break;
-    case 0xfc: skill_launch_area_effect(self, 0x3ef, 0); break;
     case 0xfd: skill_launch_area_effect(self, 0x3fc, 0); break;
     }
     self->frames++;

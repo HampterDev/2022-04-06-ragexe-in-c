@@ -3,7 +3,6 @@
 #include "core/memory.h"
 #include "actor/actor.h"
 #include "game/context.h"
-#include "ui/misc/rolling_cutter.h"
 #include "std/list.h"
 #include <assert.h>
 #include <stdarg.h>
@@ -11,9 +10,8 @@
 
 static struct List *objects;
 static struct GameActor actor;
-static union {
+static struct {
     struct RagEffect effect;
-    struct RollingCutterRagEffect cutter;
 } storage;
 static int allocations, initializations, world_insertions, actor_insertions;
 static int fail_allocation, constructed_type, initialized_id;
@@ -25,7 +23,7 @@ struct List *game_current_object_list(void) { return objects; }
 
 void *mem_alloc(size_t size)
 {
-    assert(size == sizeof(struct RagEffect) || size == sizeof(struct RollingCutterRagEffect));
+    assert(size == sizeof(struct RagEffect));
     ++allocations;
     return fail_allocation ? NULL : &storage;
 }
@@ -39,13 +37,6 @@ struct RagEffect *rag_effect_construct(struct RagEffect *self)
 {
     assert(self == &storage.effect);
     constructed_type = 0;
-    return self;
-}
-
-struct RollingCutterRagEffect *rolling_cutter_rag_effect_construct(struct RollingCutterRagEffect *self)
-{
-    assert(self == &storage.cutter);
-    constructed_type = 0x345;
     return self;
 }
 
@@ -114,6 +105,11 @@ int main(void)
     assert(!game_actor_launch_effect(&actor, 0x8f0, offset, 90));
     assert(!game_actor_launch_effect(&actor, 0x8fc, offset, 90));
     assert(!game_actor_launch_effect(&actor, 0x945, offset, 90));
+    /* Retired 3rd-class and expanded-class effect IDs. */
+    assert(!game_actor_launch_effect(&actor, 0x423, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x42e, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x4fc, offset, 90));
+    assert(!game_actor_launch_effect(&actor, 0x54d, offset, 90));
     assert(allocations == 0 && initializations == 0 && g_launchedEffectIds[0] == 0);
     actor.is_pc = 0;
 
@@ -129,7 +125,7 @@ int main(void)
     assert(world_insertions == 1 && actor_insertions == 1);
 
     assert(game_actor_launch_effect(&actor, 0x345, offset, 90) == &storage.effect);
-    assert(constructed_type == 0x345 && storage.effect.always_draw == 0);
+    assert(constructed_type == 0 && storage.effect.always_draw == 0);
     assert(game_actor_launch_effect(&actor, 0x7f, offset, 90) == &storage.effect);
     assert(g_launchedEffectIds[0] == 0x7f && g_launchedEffectIds[1] == 0x345);
     assert(world_insertions == 3 && actor_insertions == 3);

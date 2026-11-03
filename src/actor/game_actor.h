@@ -22,6 +22,8 @@ struct SqQuad;
 void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long par1, long long par2, long long par3, long long par4);
 
 void game_actor_msg_attack(struct GameActor *self, const struct ActorAttack *attack);
+int game_actor_get_counter(struct GameActor *self, int key);
+void game_actor_set_counter(struct GameActor *self, int key, __int64 value);
 
 void game_actor_process_body_state(struct GameActor *self);
 void game_actor_process_chat_balloon_(struct GameActor *self);

@@ -150,11 +150,6 @@ struct PacketNotifySkill2 {
 };
 #pragma pack(pop)
 
-enum {
-    SKILL_WL_FROSTMISTY = 0x89b,
-    SKILL_RA_WUGDASH = 0x8c2,
-};
-
 void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotifySkill2 *packet)
 {
     struct ActorSkillUse info;
@@ -172,9 +167,6 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
     info.target_aid = packet->target_aid;
     info.cell_x = -1;
     info.cell_y = -1;
-    if (packet->skill_id == SKILL_RA_WUGDASH && (unsigned)packet->target_aid == (unsigned)g_session1.ownAid)
-        return;
-
     if ((unsigned)packet->target_aid == (unsigned)g_session1.ownAid)
         target = (struct GameActor *)self->world->player;
     else
@@ -183,8 +175,6 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
 
     if (target && caster)
         skill_hit_caster_effects(self, packet->skill_id, caster, target);
-    if (caster && packet->skill_id == SKILL_WL_FROSTMISTY)
-        actor_set_state(caster, 7, 1);
     if (target)
         skill_hit_target_effects(packet->skill_id, packet->level, caster, target);
 
