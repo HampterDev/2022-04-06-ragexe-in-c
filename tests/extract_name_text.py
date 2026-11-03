@@ -22,6 +22,13 @@ def unique(source, pattern):
     return matches[0]
 
 
+def optional_function(source, signature):
+    """The function, or nothing in sources from before it existed."""
+    if not re.search(r'^' + re.escape(signature), source, re.M):
+        return []
+    return [function(source, signature)]
+
+
 def function(source, signature):
     start = unique(source, r'^' + re.escape(signature) + r'[^{;]*\n\{').start()
     return source[start:source.index('\n}', start) + 2]
@@ -91,7 +98,8 @@ pieces['cut_in'] = [line(world, r'static int g_illustShownPosition\b'), line(wor
                     world[enums:unique(world, r'^void game_mode_update_cut_in\(').start()].rstrip(),
                     function(world, 'void game_mode_update_cut_in(')]
 login = read('login/login_states.c')
-pieces['server_list'] = [function(login, 'static void server_list(')]
+pieces['server_list'] = (optional_function(login, 'static void server_line(') +
+                         [function(login, 'static void server_list(')])
 pieces['map_name'] = [statement(read('game/mode_connection.c'), r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
 homun = read('ui/character/companion_info.c')
 pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]

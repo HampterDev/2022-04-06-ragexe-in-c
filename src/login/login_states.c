@@ -23,6 +23,7 @@
 #include "render/render_api.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
+#include "core/text_format.h"
 #include "core/text_util.h"
 #include "session/session_items.h"
 #include "session/session_names.h"
@@ -220,14 +221,22 @@ static void login_screen(struct LoginMode *self)
     mode_mgr_quit(&g_modeMgr);
 }
 
+/* Copies a server-list line into out[size], cut by whole characters. */
+static void server_line(char *out, size_t size, const struct String *line)
+{
+    size_t length = text_prefix_length(string_cstr(line), line->size, size - 1, g_codePage);
+
+    memcpy(out, string_cstr(line), length);
+    out[length] = 0;
+}
+
 static void server_list(struct LoginMode *self)
 {
     static const char *const colours[4] = { "^00B509", "^FF7800", "^FF0000", "^BA00FF" };
     static const int busy[4] = { 0xcbd, 0xcbe, 0xcbf, 0xcc0 };
     struct LoginServerEntry *e;
-    struct String label, colour[4], text_s;
+    struct String name, label, colour[4], text_s;
     char text[0x40];
-    size_t used;
     struct UIWindow *wnd;
     int i, k;
 
@@ -239,12 +248,11 @@ static void server_list(struct LoginMode *self)
     UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (int)"NUMSERVER", 0, 0);
     for (i = 0; i < self->numServer; i++) {
         e = &self->servers[i];
-        memset(text, 0, sizeof text);
-        if (e->isNew == 1)
-            sprintf(text, msg_str(0x1e2));
         /* The name is login-server text in a 20-byte field that need not end in NUL. */
-        used = strlen(text);
-        _snprintf_s(text + used, sizeof text - used, _TRUNCATE, "%.*s", (int)sizeof e->name, e->name);
+        string_init(&name);
+        if (e->isNew == 1)
+            string_assign_cstr(&name, msg_str(0x1e2));
+        string_append(&name, e->name, strnlen(e->name, sizeof e->name));
         string_init(&label);
         for (k = 0; k < 4; k++) {
             string_init(&colour[k]);
@@ -253,7 +261,8 @@ static void server_list(struct LoginMode *self)
         if (e->usercount <= 3) {
             k = e->usercount;
             string_init(&text_s);
-            string_format(&text_s, "%s%s  ^000000%s", string_cstr(&colour[k]), msg_str(busy[k]), text);
+            string_format(&text_s, "%s%s  ^000000%s", string_cstr(&colour[k]), msg_str(busy[k]),
+                          string_cstr(&name));
             string_assign(&label, string_cstr(&text_s), text_s.size);
             string_free(&text_s);
         }
@@ -262,11 +271,13 @@ static void server_list(struct LoginMode *self)
         case 3: string_append_cstr(&label, msg_str(0xcbb)); break;
         case 4: string_append_cstr(&label, msg_str(0xcbc)); break;
         }
-        if (label.size)
-            strcpy_s(text, 0x40, string_cstr(&label));
+        /* The busy and state messages can make the line longer than text, and strcpy_s
+           would end the client: cut it instead. */
+        server_line(text, sizeof text, label.size ? &label : &name);
         for (k = 3; k >= 0; k--)
             string_free(&colour[k]);
         string_free(&label);
+        string_free(&name);
         ui_list_box_add_item(ui_select_server_list(wnd), text);
     }
     UIWND_SENDMSG(wnd, 0, 0x28, 0, 0, 0, 0);
