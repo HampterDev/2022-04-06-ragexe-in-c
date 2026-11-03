@@ -49,7 +49,7 @@ static void attack_talk(struct GameMode *self, struct GameActor *actor, unsigned
         }
         return;
     }
-    session_get_monster_talk_info(&g_session1, game_actor_get_job(actor), 0, 0, text, (int)aid);
+    session_get_monster_talk_info(&g_session1, game_actor_get_job(actor), 0, 0, text, sizeof text, (int)aid);
     if (text[0] == '\0')
         return;
     actor_send(actor, ACTOR_MSG_TALK, MSG_ARG_PTR(text), 0);

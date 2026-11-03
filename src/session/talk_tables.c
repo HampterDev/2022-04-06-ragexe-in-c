@@ -15,6 +15,8 @@ static char *node_text(struct XmlElement *node)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "core/text_format.h"
+#include "platform/code_page.h"
 
 BYTE g_talkWordCount = 13;
 const char *g_talkWords[] = {
@@ -123,21 +125,31 @@ const char *session_get_state_name(struct Session *self, int state)
     }
 }
 
-void session_get_monster_talk_info(struct Session *self, int job, int state, int value,
-                                           char *out, int aid)
+/* Copies length bytes of a talk line into out[size], cut by whole characters. */
+static void talk_copy(char *out, size_t size, const char *text, size_t length)
 {
-    char number[12], line[0x300], key[0x100], name[0x100];
+    if (!size)
+        return;
+    length = text_prefix_length(text, length, size - 1, g_codePage);
+    memcpy(out, text, length);
+    out[length] = 0;
+}
+
+void session_get_monster_talk_info(struct Session *self, int job, int state, int value,
+                                           char *out, size_t out_size, int aid)
+{
+    char number[12], key[0x100], name[0x100];
     struct XmlElement *node, *stateNode, *n;
     struct Vec lines;
     const char *stateName;
     size_t count;
 
-    sprintf(out, "");
+    talk_copy(out, out_size, "", 0);
     strcpy(key, "enemy_monster_talk_table");
     node = xml_find_child(&self->monsterTalkTable.root, text_decode(key));
     if (!node)
         return;
-    strcpy(name, ((const char **)g_session1.reqJobNames.first)[job]);
+    _snprintf_s(name, sizeof name, _TRUNCATE, "%s", ((const char **)g_session1.reqJobNames.first)[job]);
     _strlwr(name);
     node = xml_find_child(node, text_decode(name));
     if (!node)
@@ -164,15 +176,14 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
         }
     }
     count = VEC_COUNT(&lines, const char *);
-    if (count) {
-        sprintf(line, ((const char **)lines.first)[rand() % (int)count]);
-        session_format_chat_line(&g_session1, line, out, aid, 0);
-    }
+    if (count)
+        session_format_chat_line(&g_session1, ((const char **)lines.first)[rand() % (int)count], out,
+                                 out_size, aid, 0);
     vec_free(&lines);
 }
 
 void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action,
-                                    char *out)
+                                    char *out, size_t out_size)
 {
     char key[0x100];
     const char *hungerName, *actionName;
@@ -180,7 +191,7 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
     struct Vec lines;
     size_t count;
 
-    out[0] = 0;
+    talk_copy(out, out_size, "", 0);
     strcpy(key, "monster_talk_table");
     node = xml_find_child(&self->petTalkTable.root, text_decode(key));
     if (!node)
@@ -216,43 +227,50 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
     } while (n);
     count = VEC_COUNT(&lines, const char *);
     if (count) {
-        strcpy(out, ((const char **)lines.first)[rand() % (int)count]);
+        const char *line = ((const char **)lines.first)[rand() % (int)count];
+
+        /* The Korean-service mirror maps lead and trail bytes to lead and trail bytes,
+           so cutting before decoding keeps the same whole characters. */
+        talk_copy(out, out_size, line, strlen(line));
         text_decode(out);
     }
     vec_free(&lines);
 }
 
-void session_format_chat_line(struct Session *self, char *text, char *out, int aid,
+/* Builds "name : line" in a String and copies it into out[out_size], cut by whole
+   characters; text is copied as text and not written. */
+void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid,
                                        int replaceWords)
 {
-    char *source = text[0] == '\t' ? text + 1 : text;
-    char *at = out;
-    int offset = 0, replacedLength = 0;
-    struct String actorName;
+    const char *source = text[0] == '\t' ? text + 1 : text;
+    size_t source_size = strlen(source), from = 0;
+    struct String line, said, actorName;
     const char *name;
-    size_t n;
 
-    sprintf(out, source);
+    string_init(&line);
+    string_assign(&line, source, source_size);
     while (replaceWords) {
+        const char *at = NULL;
         int i;
 
         for (i = 0; i < g_talkWordCount; i++) {
-            at = strstr(at, g_talkWords[i]);
+            at = strstr(string_cstr(&line) + from, g_talkWords[i]);
             if (at)
                 break;
-            at = out + offset + replacedLength;
         }
         if (i >= g_talkWordCount)
             break;
         {
             const char *replacement = g_talkWords[g_talkWordCount + i];
-            int length = (int)strlen(replacement);
+            size_t length = strlen(replacement), offset = (size_t)(at - string_cstr(&line)), tail;
 
-            strcpy(at, replacement);
-            offset = (int)(at - out);
-            strcat(at, source + offset + length);
-            at += length;
-            replacedLength = length;
+            /* As before, the rest is taken from the source at the word's offset in the line
+               plus the replacement's length, but never from past the source's end. */
+            tail = offset + length < source_size ? offset + length : source_size;
+            string_truncate(&line, offset);
+            string_append(&line, replacement, length);
+            string_append(&line, source + tail, source_size - tail);
+            from = offset + length;
         }
     }
 
@@ -261,16 +279,16 @@ void session_format_chat_line(struct Session *self, char *text, char *out, int a
         name = string_cstr(&actorName);
     else if (aid == g_session1.aid)
         name = g_session1.petName;
-    else {
-        out[0] = 0;
-        string_free(&actorName);
-        return;
+    else
+        name = NULL;
+    string_init(&said);
+    if (name) {
+        string_format(&said, "%s : %s", name, string_cstr(&line));
+        if (string_cstr(&said)[said.size - 1] == '\t')
+            string_truncate(&said, said.size - 1);
     }
-    sprintf(source, "%s : ", name);
-    strcat(source, out);
-    strcpy(out, source);
-    n = strlen(out);
-    if (out[n - 1] == '\t')
-        out[n - 1] = 0;
+    talk_copy(out, out_size, string_cstr(&said), said.size);
+    string_free(&said);
+    string_free(&line);
     string_free(&actorName);
 }

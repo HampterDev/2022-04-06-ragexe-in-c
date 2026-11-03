@@ -27,9 +27,11 @@ int session_get_pet_emotion(struct Session *self, int hungerLevel, int intimacyL
 { (void)self; (void)hungerLevel; (void)intimacyLevel; (void)action; return 0; }
 int session_make_pet_talk_id(int job, int action, int hunger) { (void)job; (void)action; (void)hunger; return 0; }
 
-void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out, int aid)
+void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out,
+                                   size_t out_size, int aid)
 {
     assert(self == &g_session1 && job == 1002 && state == 0 && value == 0 && aid == 100);
+    assert(out_size == 0x100);
     strcpy(out, attack_test_talk_line ? "Poring!" : "");
 }
 

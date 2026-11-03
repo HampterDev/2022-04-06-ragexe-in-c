@@ -28,9 +28,11 @@ struct String *session_get_monster_sprite_name(struct Session *self, struct Stri
                                                           int job);
 const char *session_get_state_name(struct Session *self, int state);
 void session_get_monster_talk_info(struct Session *self, int job, int state, int value, char *out,
-                                           int aid);
-void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action, char *out);
-void session_format_chat_line(struct Session *self, char *text, char *out, int aid, int replaceWords);
+                                           size_t out_size, int aid);
+void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action, char *out,
+                           size_t out_size);
+void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid,
+                              int replaceWords);
 
 int session_pet_hunger_level(int fullness);
 int session_pet_intimacy_level(int intimacy);

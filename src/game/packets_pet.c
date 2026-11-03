@@ -110,10 +110,10 @@ void game_mode_zc_pet_act(struct GameMode *self, unsigned char *pkt)
     hundreds = rest / 10;
     packet->value = hundreds;
     memset(line, 0, sizeof line);
-    session_get_pet_speak(&g_session1, hundreds / 10, rest % 10, hundreds % 10, line);
+    session_get_pet_speak(&g_session1, hundreds / 10, rest % 10, hundreds % 10, line, sizeof line);
     if (line[0] == 0)
         return;
-    session_format_chat_line(&g_session1, line, said, aid, 1 - kind);
+    session_format_chat_line(&g_session1, line, said, sizeof said, aid, 1 - kind);
     if (strcmp(said, "") == 0)
         return;
     actor_send(pet, 7, (int)said, 0);
