@@ -407,17 +407,33 @@ Windows host the SDK and NDK must be on a path without spaces (for example a jun
 so nothing links the C++ runtime.
 
 **The game folder** is the app's own external storage directory,
-`/sdcard/Android/data/local.ragexe.client/files`, which the app creates on its first start. Copy
-the game's `DATA.INI`, GRF files, `data`, `System`, `BGM` and `savedata` folders there (`adb push`,
-or USB file transfer from a computer), with the glTF models from `tools/granny_export` in
-`data/model/gltf`. `clientinfo.xml` names the servers as on any other platform; an emulator reaches
-servers on its host through `adb reverse` or the host's own address.
+`/sdcard/Android/data/local.ragexe.client/files`. It holds a game when it has `DATA.INI`, as on
+Windows. While it has none the app shows its import screen instead of starting the client: the
+player picks the game's folder with the system's folder picker (the device's storage, a USB drive,
+on a Chromebook its own files, Linux files or Google Drive) and the app copies everything in it
+into the game folder, then starts the game. The copy needs as much free space as the folder; a
+folder below `Download` can be picked, `Download` itself cannot (Android refuses it). A copy cut
+short leaves `.import-unfinished` behind, so that the screen comes back and asks for the folder
+again. The app's shortcut *Import game files* (a long press on its icon in the launcher) shows the
+screen once more, to copy a newer game over the old one. `adb push` into the game folder works as
+well. The glTF models from `tools/granny_export` belong in `data/model/gltf`. `clientinfo.xml`
+names the servers as on any other platform; an emulator reaches servers on its host through
+`adb reverse` or the host's own address.
 
 **What is different on Android:**
 
 - The client always runs in its full-screen mode, at the resolution set in its options, and the
   backend scales the scene to the screen with the aspect kept (`render/present_fit.h`), as the
   desktop backends do for a window of another size. The system bars are hidden.
+- On a desktop (ChromeOS, Android's own desktop windowing) the app runs in a window the
+  player moves, resizes and maximises; the first one is about 4:3 (`<layout>` in the manifest) and
+  the system remembers the size after that. The full-screen request only takes effect when the
+  window is maximised; the caption bar then stays drawn over the top of the app, so the activity
+  reports how far it reaches into SDL's surface and the scene is fitted below it. Resizing, moving
+  to a display of another density (`density` in `configChanges`) and maximising keep the running
+  game. A mouse is a mouse there: hover, both buttons (the right one turns the camera), the wheel
+  (zoom) and SDL's empty cursor over the client's own. A hardware keyboard types and plays as on a
+  desktop and the on-screen keyboard stays away.
 - Drawing goes through OpenGL ES 3.0 (`RAGE_GLES`, which a desktop build can also turn on for
   testing). ES has no BGRA uploads, read-backs or vertex colours, no reversed 16-bit layouts and no
   border clamping: 8888 pixels are swizzled, 1555/4444/565 textures are widened on the CPU by bit
@@ -452,8 +468,17 @@ servers on its host through `adb reverse` or the host's own address.
 
 The game was played on the Android 15 x86_64 emulator (Google APIs image, host GPU) against the
 Linux VM's rAthena: service and server selection, login through the on-screen keyboard, character
-selection, entering `iz_int03`, walking by tapping, and chat. The `android-client` CI job builds the
-APK for both ABIs.
+selection, entering `iz_int03`, walking by tapping, and chat. The desktop side was played on the
+Android 14 desktop emulator image (`android-desktop`, whose model `sdk_gpc_x86_64` SDL takes for a
+Chromebook) at 1920x1080: the import from a folder in `Download` (and its restart after a copy cut
+short), the window at its first size, resized, maximised and at another density, a virtual USB
+mouse through uinput (hover, clicks, right-drag turning the camera, the wheel zooming it) and chat
+typed on the keyboard. No real Chromebook was tried. The `android-client` CI job builds the APK for
+both ABIs.
+
+Driving the login by hand: the client gives up on the server list after 15 s without a choice and
+quits with "Failed to Connect to Server" (`login_mode_check_timeouts`, sub-mode 6). That is the
+client's own timeout, not a network fault.
 
 ## Scene captures
 
@@ -505,9 +530,10 @@ the other entry's second one, which is not an ordering; it compares like with li
 6. Scenes: keyboard input does not open the chat line yet (`tests/scenes/README.md`).
 7. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
-8. Android: only the x86_64 emulator was played; try arm64 hardware. Touch has no gesture for
-   the right mouse button and the wheel (turning and zooming the camera), and the default
-   resolution is 4:3 whatever the screen's aspect (*Android client*).
+8. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware and a
+   real Chromebook. Touch has no gesture for the right mouse button and the wheel (turning and
+   zooming the camera), and the default resolution is 4:3 whatever the screen's aspect
+   (*Android client*).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

@@ -166,7 +166,7 @@ static struct {
 } gl;
 
 static unsigned content_tick;
-int g_presentLift;
+struct PresentCover g_presentCover;
 
 #ifdef GFX_GLES
 static const char shader_header[] = "#version 300 es\nprecision highp float;\nprecision highp int;\n#define GFX_GLES 1\n";
@@ -1266,10 +1266,29 @@ void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
     batch_flush();
 }
 
+/* The cover in window points, in the drawable's pixels. */
+static struct PresentCover cover_in_pixels(int w, int h)
+{
+    struct PresentCover pixels = g_presentCover;
+    int points_w = 0, points_h = 0;
+    SDL_GetWindowSize(gl.window, &points_w, &points_h);
+    if (points_w > 0 && points_w != w) {
+        pixels.left = (int)((long long)pixels.left * w / points_w);
+        pixels.right = (int)((long long)pixels.right * w / points_w);
+    }
+    if (points_h > 0 && points_h != h) {
+        pixels.top = (int)((long long)pixels.top * h / points_h);
+        pixels.bottom = (int)((long long)pixels.bottom * h / points_h);
+        pixels.lift = (int)((long long)pixels.lift * h / points_h);
+    }
+    return pixels;
+}
+
 int gfx_present(struct C3dDevice *d, int vsync, int whole)
 {
-    int w = 0, h = 0, points_h = 0, lift = 0, fx, fy, fw, fh;
+    int w = 0, h = 0, fx, fy, fw, fh;
     struct gfx_surface *scene = gl.mainTarget;
+    struct PresentCover cover;
     (void)d;
     (void)vsync;
     (void)whole;
@@ -1277,10 +1296,8 @@ int gfx_present(struct C3dDevice *d, int vsync, int whole)
     if (!gl.context || !scene)
         return -1;
     SDL_GetWindowSizeInPixels(gl.window, &w, &h);
-    SDL_GetWindowSize(gl.window, NULL, &points_h);
-    if (g_presentLift && points_h > 0)
-        lift = (int)((long long)g_presentLift * h / points_h);
-    present_fit(w, h, scene->width, scene->height, lift, &fx, &fy, &fw, &fh);
+    cover = cover_in_pixels(w, h);
+    present_fit(w, h, scene->width, scene->height, &cover, &fx, &fy, &fw, &fh);
     p_glBindFramebuffer(GL_READ_FRAMEBUFFER, scene->fbo);
     p_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     if (fx || fy || fw != w || fh != h) {

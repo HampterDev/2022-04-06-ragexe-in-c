@@ -1,31 +1,38 @@
 #ifndef RENDER_PRESENT_FIT_H
 #define RENDER_PRESENT_FIT_H
 
-/* Window points the scene is raised by, so that the edit box being typed into stays above Android's
-   on-screen keyboard; core/app_sdl.c sets it, render/gfx_gl.c holds it, and it is 0 elsewhere. */
-extern int g_presentLift;
+/* What covers the window, in window points: the system's bars along each edge (on Android, the caption
+   bar a desktop draws over a maximised window), and how far the scene is raised so that the edit box
+   being typed into stays above the on-screen keyboard. core/app_sdl.c sets it on Android,
+   render/gfx_gl.c holds it, and it is all 0 elsewhere. */
+struct PresentCover {
+    int left, top, right, bottom, lift;
+};
 
-/* Where the scene lands in a window of another size: as large as fits with its aspect kept,
-   centred, raised by lift, the rest black. The GL backend presents into it and the SDL layer maps
-   the pointer back through it. */
-static inline void present_fit(int window_w, int window_h, int scene_w, int scene_h, int lift, int *x, int *y,
-                               int *w, int *h)
+extern struct PresentCover g_presentCover;
+
+/* Where the scene lands in a window of another size: as large as fits in the part of the window
+   nothing covers, with its aspect kept, centred there and raised by the lift, the rest black. The GL
+   backend presents into it and the SDL layer maps the pointer back through it. */
+static inline void present_fit(int window_w, int window_h, int scene_w, int scene_h,
+                               const struct PresentCover *cover, int *x, int *y, int *w, int *h)
 {
-    if (window_w <= 0 || window_h <= 0 || scene_w <= 0 || scene_h <= 0) {
+    int area_w = window_w - cover->left - cover->right, area_h = window_h - cover->top - cover->bottom;
+    if (area_w <= 0 || area_h <= 0 || scene_w <= 0 || scene_h <= 0) {
         *x = *y = 0;
         *w = window_w;
         *h = window_h;
         return;
     }
-    if ((long long)window_w * scene_h > (long long)window_h * scene_w) {
-        *h = window_h;
-        *w = (int)((long long)window_h * scene_w / scene_h);
+    if ((long long)area_w * scene_h > (long long)area_h * scene_w) {
+        *h = area_h;
+        *w = (int)((long long)area_h * scene_w / scene_h);
     } else {
-        *w = window_w;
-        *h = (int)((long long)window_w * scene_h / scene_w);
+        *w = area_w;
+        *h = (int)((long long)area_w * scene_h / scene_w);
     }
-    *x = (window_w - *w) / 2;
-    *y = (window_h - *h) / 2 - lift;
+    *x = cover->left + (area_w - *w) / 2;
+    *y = cover->top + (area_h - *h) / 2 - cover->lift;
 }
 
 #endif

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_title">Game files</string>
+    <string name="import_needed">Choose the game\'s folder: the one that holds DATA.INI, the GRF files and the data, System and BGM folders. Its files are copied into the app\'s own storage, which needs as much free space as the folder takes.</string>
+    <string name="import_unfinished">The last copy of the game files did not finish. Choose the game\'s folder again to copy it once more.</string>
+    <string name="import_again">Choose a game folder to copy its files over the ones the app has, or start the game.</string>
+    <string name="import_choose">Choose folder</string>
+    <string name="import_start">Start game</string>
+    <string name="import_listing">Looking through the folder…</string>
+    <string name="import_copying">Copying the game files: %1$s of %2$s</string>
+    <string name="import_no_data_ini">That folder has no DATA.INI. Choose the game\'s own folder, the one that holds DATA.INI and the GRF files.</string>
+    <string name="import_no_space">The game files need %1$s more space, and there is %2$s free.</string>
+    <string name="import_failed">The copy stopped: %1$s</string>
+    <string name="import_no_picker">This device has no folder picker.</string>
+    <string name="import_leave_game">Leave the game first to import game files.</string>
+    <string name="import_shortcut">Import game files</string>
+</resources>

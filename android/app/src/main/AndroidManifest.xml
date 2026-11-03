@@ -17,7 +17,7 @@
         android:allowBackup="false"
         android:hardwareAccelerated="true"
         android:enableOnBackInvokedCallback="false"
-        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
 
         <activity
             android:name=".ClientActivity"
@@ -26,13 +26,20 @@
             android:launchMode="singleInstance"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustNothing"
-            android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|density|keyboard|keyboardHidden|navigation"
             android:preferMinimalPostProcessing="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+            <!-- The first window on a desktop (ChromeOS, Android's desktop windowing): about 4:3 on a
+                 16:9 screen, centred. The system remembers the size the player gives it. -->
+            <layout
+                android:defaultWidth="60%"
+                android:defaultHeight="75%"
+                android:gravity="center" />
         </activity>
     </application>
 </manifest>

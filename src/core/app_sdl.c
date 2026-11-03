@@ -143,7 +143,7 @@ static void scene_point(float x, float y, int *outX, int *outY)
 {
     int w = 0, h = 0, fx, fy, fw, fh;
     SDL_GetWindowSize(g_sdlWindow, &w, &h);
-    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, g_presentLift, &fx, &fy, &fw, &fh);
+    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_presentCover, &fx, &fy, &fw, &fh);
     if (fw > 0 && fh > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
         *outX = (int)((x - fx) * g_3dDevice.width / fw);
         *outY = (int)((y - fy) * g_3dDevice.height / fh);
@@ -322,16 +322,42 @@ static void pump_events(void)
 
 #define KEYBOARD_MARGIN 8
 
-/* Screen pixels at the bottom that the on-screen keyboard covers, from the activity's window insets
-   (android/app/src/main/java/local/ragexe/client/ClientActivity.java). */
-static SDL_AtomicInt g_keyboardCover;
+enum { COVER_LEFT, COVER_TOP, COVER_RIGHT, COVER_BOTTOM, COVER_KEYBOARD, COVER_COUNT };
 
-JNIEXPORT void JNICALL Java_local_ragexe_client_ClientActivity_onKeyboardCover(JNIEnv *env, jclass cls,
-                                                                             jint bottom)
+/* Window pixels along each edge that a desktop's caption bar covers, and at the bottom the on-screen
+   keyboard, from the activity's window insets (android/app/src/main/java/local/ragexe/client/
+   ClientActivity.java). */
+static SDL_AtomicInt g_windowCover[COVER_COUNT];
+
+JNIEXPORT void JNICALL Java_local_ragexe_client_ClientActivity_onWindowCover(JNIEnv *env, jclass cls, jint left,
+                                                                           jint top, jint right, jint bottom,
+                                                                           jint keyboard)
 {
     (void)env;
     (void)cls;
-    SDL_SetAtomicInt(&g_keyboardCover, bottom);
+    SDL_SetAtomicInt(&g_windowCover[COVER_LEFT], left);
+    SDL_SetAtomicInt(&g_windowCover[COVER_TOP], top);
+    SDL_SetAtomicInt(&g_windowCover[COVER_RIGHT], right);
+    SDL_SetAtomicInt(&g_windowCover[COVER_BOTTOM], bottom);
+    SDL_SetAtomicInt(&g_windowCover[COVER_KEYBOARD], keyboard);
+}
+
+static int cover_points(int which, int points, int pixels)
+{
+    int cover = SDL_GetAtomicInt(&g_windowCover[which]);
+    return pixels > 0 ? (int)((long long)cover * points / pixels) : cover;
+}
+
+/* The scene keeps out from under the caption bar a desktop draws over a maximised window. */
+static void sync_window_cover(void)
+{
+    int w = 0, h = 0, pixels_w = 0, pixels_h = 0;
+    SDL_GetWindowSize(g_sdlWindow, &w, &h);
+    SDL_GetWindowSizeInPixels(g_sdlWindow, &pixels_w, &pixels_h);
+    g_presentCover.left = cover_points(COVER_LEFT, w, pixels_w);
+    g_presentCover.top = cover_points(COVER_TOP, h, pixels_h);
+    g_presentCover.right = cover_points(COVER_RIGHT, w, pixels_w);
+    g_presentCover.bottom = cover_points(COVER_BOTTOM, h, pixels_h);
 }
 
 static void screen_keyboard(int show)
@@ -354,9 +380,10 @@ static void sync_text_input(void)
     struct UIWindow *edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
     int w = 0, h = 0, pixels_h = 0, cover, fx, fy, fw, fh, x = 0, y = 0, bottom, lift = 0;
     int shown = SDL_ScreenKeyboardShown(g_sdlWindow);
+    struct PresentCover bars = g_presentCover;
     SDL_Rect area;
     if (!edit || g_3dDevice.width <= 0 || g_3dDevice.height <= 0) {
-        g_presentLift = 0;
+        g_presentCover.lift = 0;
         if (shown)
             screen_keyboard(0);
         if (SDL_TextInputActive(g_sdlWindow))
@@ -373,14 +400,13 @@ static void sync_text_input(void)
     }
     SDL_GetWindowSize(g_sdlWindow, &w, &h);
     SDL_GetWindowSizeInPixels(g_sdlWindow, NULL, &pixels_h);
-    cover = shown ? SDL_GetAtomicInt(&g_keyboardCover) : 0;
-    if (pixels_h > 0)
-        cover = (int)((long long)cover * h / pixels_h);
-    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, 0, &fx, &fy, &fw, &fh);
+    cover = shown ? cover_points(COVER_KEYBOARD, h, pixels_h) : 0;
+    bars.lift = 0;
+    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &bars, &fx, &fy, &fw, &fh);
     bottom = fy + (y + edit->height) * fh / g_3dDevice.height;
     if (cover > 0 && bottom + KEYBOARD_MARGIN > h - cover)
         lift = bottom + KEYBOARD_MARGIN - (h - cover);
-    g_presentLift = lift;
+    g_presentCover.lift = lift;
     area.x = fx + x * fw / g_3dDevice.width;
     area.y = fy - lift + y * fh / g_3dDevice.height;
     area.w = edit->width * fw / g_3dDevice.width;
@@ -398,6 +424,7 @@ void check_system_message(void)
 {
     pump_events();
 #ifdef __ANDROID__
+    sync_window_cover();
     sync_text_input();
 #endif
     drive_state_tick();
