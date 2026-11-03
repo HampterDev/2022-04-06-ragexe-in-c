@@ -759,3 +759,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_private_airplane.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_perf_overlay.bat"
+if not "%errorlevel%"=="0" exit /b 1
