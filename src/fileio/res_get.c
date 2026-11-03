@@ -71,9 +71,23 @@ static struct Res *res_find_capturing(struct ResMgr *self, int typeIdx, const ch
     return res_mgr_find(self, typeIdx, key);
 }
 
+/* The alias of a name. ResNameTable keeps CP949 names, so a UTF-8 name without an alias
+   of its own uses the alias of its CP949 spelling. */
+static const char *name_alias(struct ResMgr *self, const char *lowered, char *cp949, size_t capacity)
+{
+    const char *alias = res_mgr_get_alias(self, lowered), *other;
+
+    if (alias == lowered && resource_name_to_cp949(cp949, capacity, lowered)) {
+        other = res_mgr_get_alias(self, cp949);
+        if (other != cp949)
+            alias = other;
+    }
+    return alias;
+}
+
 static struct Res *get_body(struct ResMgr *self, const char *name)
 {
-    char lowered[260], path[sizeof ((struct Hash *)0)->name];
+    char lowered[260], cp949[260], path[sizeof ((struct Hash *)0)->name];
     const char *dot;
     int type;
     struct Res *res;
@@ -92,7 +106,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
         goto leave;
     }
 
-    if (!resource_build_path(path, sizeof path, res_mgr_get_alias(self, lowered),
+    if (!resource_build_path(path, sizeof path, name_alias(self, lowered, cp949, sizeof cp949),
                              resource_type_directory(type))) {
         res = NULL;
         goto leave;

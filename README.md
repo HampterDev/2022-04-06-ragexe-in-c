@@ -126,3 +126,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Draw each script in an installed Windows font that has it (Hangul in Gulim, then Malgun Gothic; Han, kana, Thai, symbols and emoji in their own), on the selected face's baseline; font calls and face names are Unicode.
 - Write the Korean text the client draws, compares or sends as UTF-8 escapes (message-box titles, Korean slash commands, the 그라비티 name check, the 블루 tag), with byte lengths that no longer assume CP949; resource names stay CP949.
 - Show message boxes and read and write registry text through the W calls (`platform/win_utf8.c`), so chat macros, the saved ID and error texts keep their characters on any Windows locale.
+- Look a UTF-8 file name up again in CP949 when it misses as it is, so names sent in UTF-8 still find their CP949 GRF entries, files and aliases; resource names stay CP949.

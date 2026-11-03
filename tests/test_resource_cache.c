@@ -402,6 +402,29 @@ static void test_resource_paths(void)
     assert(created == destroyed);
 }
 
+/* ResNameTable keeps CP949 names: a UTF-8 name without an alias of its own uses its
+   CP949 spelling's alias. 한글 and 가 in CP949 and UTF-8. */
+static void test_cp949_aliases(void)
+{
+    struct Res *res;
+    res_mgr_construct(&manager);
+    /* 한글: only its CP949 spelling has an alias. */
+    resource_alias_add(&manager.aliases, "\xc7\xd1\xb1\xdb.bmp", "alias.bmp");
+    /* 국: both spellings have one, and the UTF-8 name keeps its own. */
+    resource_alias_add(&manager.aliases, "\xea\xb5\xad.bmp", "own.bmp");
+    resource_alias_add(&manager.aliases, "\xb1\xb9.bmp", "other.bmp");
+    res = res_mgr_get(&manager, "\xed\x95\x9c\xea\xb8\x80.bmp");
+    assert(res && strcmp(res->name.name, "texture\\alias.bmp") == 0);
+    assert(res_mgr_get(&manager, "\xc7\xd1\xb1\xdb.bmp") == res);
+    res = res_mgr_get(&manager, "\xea\xb5\xad.bmp");
+    assert(res && strcmp(res->name.name, "texture\\own.bmp") == 0);
+    /* 가 has no alias; the file layer finds its CP949 spelling. */
+    res = res_mgr_get(&manager, "\xea\xb0\x80.bmp");
+    assert(res && strcmp(res->name.name, "texture\\\xea\xb0\x80.bmp") == 0);
+    res_mgr_destruct(&manager);
+    assert(created == destroyed);
+}
+
 int main(void)
 {
     test_storage();
@@ -409,6 +432,7 @@ int main(void)
     test_lifecycle();
     test_alias_file();
     test_resource_paths();
+    test_cp949_aliases();
     puts("resource cache: growth, aliases, loading, residents, recursive cleanup, purge and failures passed");
     return 0;
 }

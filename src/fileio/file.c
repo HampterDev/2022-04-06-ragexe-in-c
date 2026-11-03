@@ -1,4 +1,5 @@
 #include "fileio/file.h"
+#include "fileio/resource_path.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,21 +56,42 @@ static char *make_file_name(const char *name, int resolve)
     return result;
 }
 
+/* The CP949 spelling of a UTF-8 name, to free, or NULL. Resource names are CP949, so a
+   name that misses is looked up again in CP949; the name as it is goes first because
+   short CP949 names can be valid UTF-8 as well. */
+static char *cp949_name(const char *name)
+{
+    size_t capacity = strlen(name) + 1;
+    char *converted = malloc(capacity);
+    if (!converted)
+        abort();
+    if (resource_name_to_cp949(converted, capacity, name))
+        return converted;
+    free(converted);
+    return NULL;
+}
+
 BYTE file_make_file_name(const char *name, int flags)
 {
-    char *key;
+    char *key, *converted;
     BYTE found;
     if (!name)
         return 0;
     key = make_file_name(name, 1);
     found = game_file_mgr_is_file_exist(&g_fileMgr, key, (BYTE)flags);
     free(key);
+    if (!found && (converted = cp949_name(name)) != NULL) {
+        key = make_file_name(converted, 1);
+        free(converted);
+        found = game_file_mgr_is_file_exist(&g_fileMgr, key, (BYTE)flags);
+        free(key);
+    }
     return found;
 }
 
 BYTE file_open(struct File *self, const char *name, int mode, BYTE resolve, BYTE diskOnly)
 {
-    char *copy;
+    char *copy, *converted;
     if (!name || (mode != CFILE_MODE_READ && !(mode & CFILE_MODE_WRITE)))
         return 0;
     copy = make_file_name(name, mode == CFILE_MODE_READ && resolve);
@@ -79,6 +101,17 @@ BYTE file_open(struct File *self, const char *name, int mode, BYTE resolve, BYTE
     self->position = self->size = 0;
     if (mode == CFILE_MODE_READ) {
         self->buffer = game_file_mgr_get_data(&g_fileMgr, copy, &self->size, diskOnly);
+        if (!self->buffer && (converted = cp949_name(name)) != NULL) {
+            char *retry = make_file_name(converted, resolve);
+            free(converted);
+            self->buffer = game_file_mgr_get_data(&g_fileMgr, retry, &self->size, diskOnly);
+            if (self->buffer) {
+                free(self->name);
+                self->name = retry;
+            } else {
+                free(retry);
+            }
+        }
         if (self->buffer && self->size >= 0)
             return 1;
         file_close(self);

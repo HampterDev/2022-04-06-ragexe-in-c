@@ -9060,3 +9060,60 @@ Validation:
 
 The pre-change tree is in `build/before-win-utf8`. No live client was run; the message
 boxes and saved settings are still to be checked by hand on a non-Korean Windows.
+
+## CP949 lookups of UTF-8 file names (2026-11-03)
+
+Decision: the fourth phase-B step of the [UTF-8 switch](#utf-8-text-module-2026-11-03),
+approved on 2026-11-03. Resource names stay CP949: the GRF entries and the loose files
+are named in CP949, the client's path literals are CP949, and `tools/utf8-data` keeps
+every field that becomes a file path CP949 (sprite, texture, sound and illustration
+names, `ResNameTable.txt`, `Num2CardIllustNameTable.txt`). A name that reaches the file
+layer in UTF-8, for example an illustration or sound name a server script sends in
+UTF-8, matched nothing.
+
+What changed:
+
+- `resource_name_to_cp949` (`fileio/resource_path.c`) gives the CP949 spelling of a
+  UTF-8 name: only for a name with non-ASCII characters that is valid UTF-8 and whose
+  characters CP949 all holds (no best-fit substitutes).
+- `file_open` (reading) and `file_make_file_name` look a name up as it is first and,
+  on a miss, in its CP949 spelling; the file's name is then the CP949 one. The name as
+  it is goes first because short CP949 names can be valid UTF-8 as well (킴 is C5 B4,
+  also U+0174), the same reason `tools/utf8-data` decides encodings per file. A CP949
+  name never takes the second lookup unless it misses and happens to be valid,
+  convertible UTF-8; then the lookup is of different bytes and misses too.
+- `res_mgr_get` (`fileio/res_get.c`): a UTF-8 name without an alias of its own uses
+  the alias of its CP949 spelling, since `ResNameTable.txt` keys are CP949. The cache
+  key stays the path asked for, and its file is found through `file_open`.
+
+Kept:
+
+- Files the client writes keep the name they are given, and the file APIs stay ANSI
+  (`CreateFileA` and the rest). The names written are ASCII (`Chat\Chat.txt`,
+  `TraceAI.txt`, `savedata\…`, settings paths built from the server address and IDs);
+  a client folder whose path the ANSI code page cannot hold still fails, as before.
+  On non-Korean Windows the ANSI calls cannot open loose files with Korean names; the
+  GRF lookup is by bytes and is unaffected.
+- `resource_normalize_name` still lowercases every byte from A to Z, CP949 trail bytes
+  included; GRF lookups lowercase both sides the same way.
+
+Tests changed:
+
+- `test_file_io`: `resource_name_to_cp949` for Hangul and Cyrillic, ASCII, CP949, 킴's
+  bytes, an emoji, a cut sequence and buffer sizes; `file_open` and
+  `file_make_file_name` look up a UTF-8 name and then its CP949 spelling, a CP949 name
+  once, names without a CP949 spelling once, unresolved names in both forms, and keep
+  the name that was found.
+- `test_resource_cache`: a UTF-8 name uses its CP949 spelling's alias, keeps an alias of
+  its own, and without either stays the path asked for.
+- The 14 test builds that compile `file.c`, directly or through
+  `renderer_texture_owner_test.h`, also compile `resource_path.c`.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/file-names-build.log`.
+- Full suite `tests\build.bat` passed: `build/file-names-full-tests.log`.
+- The seven standalone suites passed: `build/file-names-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-file-names`. No live client was run.
