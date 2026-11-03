@@ -13,6 +13,7 @@
 #include "render/texture_quad.h"
 #include "render/sprite_draw.h"
 #include "render/math3d.h"
+#include "render/render_options.h"
 
 #include "fileio/resource_api.h"
 

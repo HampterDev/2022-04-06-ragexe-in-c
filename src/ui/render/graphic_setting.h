@@ -6,7 +6,6 @@
 #include "ui/controls/controls.h"
 
 extern int g_textureMode;
-extern int g_lightmap;
 extern int g_displayHeight;
 extern int g_displayWidth;
 extern int g_sprHalfHeight;

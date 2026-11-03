@@ -35,8 +35,6 @@
 #include "ui/render/graphic_setting.h"
 #include "game/mouse_camera.h"
 
-int g_lightmap = 1;
-
 int g_displayWidth;
 int g_displayHeight;
 

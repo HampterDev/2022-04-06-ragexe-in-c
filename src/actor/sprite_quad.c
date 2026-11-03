@@ -11,6 +11,7 @@
 #include "world/world_imports.h"
 #include "actor/game_actor.h"
 #include "actor/sprite_quad.h"
+#include "render/render_options.h"
 #include "ui/render/graphic_setting.h"
 
 float g_spriteLayerDepthStep = 9.00000032e-06f;
