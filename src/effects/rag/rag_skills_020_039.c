@@ -165,11 +165,6 @@ void rag_ruwach(struct RagEffect *self)
     prim_sync_particles(p);
 }
 
-unsigned char rag_str_only(struct RagEffect *self)
-{
-    return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
-}
-
 void rag_fire_ball(struct RagEffect *self)
 {
     struct EffectPrim *p;

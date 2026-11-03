@@ -10,9 +10,6 @@ unsigned char rag_process_491(struct RagEffect *self)
     int i;
 
     switch (self->effect_id) {
-    case 491: case 492: case 507: case 508: case 646: case 649: case 670: case 699: case 704:
-    case 705: case 706: case 709: case 721: case 731: case 987: case 988: case 1006:
-        rag_str_step_up80(self); break;
     case 493:
         rag_poison_particles(self);
         rag_flicker_tint(self, INT_MIN, 80, 0, 1, 255, 0, 255);
@@ -236,31 +233,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         break;
     case 564:
         rag_spell_casting_rings(self, "effect\\ring_red.tga"); break;
-    case 565:
-        rag_wave_at(self, 0, "effect\\h_moonlight_1.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 566:
-        rag_wave_at(self, 0, "effect\\h_moonlight_2.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 567:
-        rag_wave_at(self, 0, "effect\\h_moonlight_3.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 568:
-        rag_wave_at(self, 0, "levelup.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 569: case 603: case 717: case 959: case 960: case 964: case 965: case 966: case 967:
-    case 975: case 1019: case 1020: case 1021: case 1029: case 1031: case 1033: case 1055:
-        if (!rag_str_only(self))
-            return 0;
-        break;
     case 570:
         rag_msg_sprite(self, 0); break;
     case 571:
@@ -323,11 +295,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         for (i = 0; i < 80; i++)
             rag_clouds(self, 5);
         break;
-    case 593: case 594: case 595: case 596: case 597: case 598:
-        rag_wave_at(self, 0, "_heal_effect.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
     case 599:
         if (self->frame == 5)
             rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
@@ -359,19 +326,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         rag_directed_sprite(self, 2); break;
     case 607:
         rag_directed_sprite(self, 1); break;
-    case 608:
-        if (self->frame == 45) {
-            rag_follow_master(self);
-            rag_play_wave_here(self, "_heal_effect.wav");
-        }
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 609:
-        rag_wave_at(self, 50, "caramel_die.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
     case 610:
         rag_wave_at(self, 0, "_heal_effect.wav");
         rag_effect_texture(self, "effect\\success.bmp", 3);
@@ -466,14 +420,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         break;
     case 634:
         rag_msg_sprite(self, 0x13); break;
-    case 635:
-        rag_wave_at(self, 0, "effect\\폭염룡.wav");
-        rag_str_step_up80(self);
-        break;
-    case 636:
-        rag_wave_at(self, 0, "effect\\빙정락.wav");
-        rag_str_step_up80(self);
-        break;
     case 637:
         rag_wave_at(self, 10, "effect\\데스페라도.wav");
         rag_msg_sprite(self, 0x14);
@@ -560,14 +506,6 @@ unsigned char rag_process_491(struct RagEffect *self)
             self->master->outline_alpha = self->frame < 25 ? (unsigned char)(self->frame << 3) : 200;
         }
         break;
-    case 668:
-        if (self->frame == 1) {
-            rag_follow_master(self);
-            rag_play_wave_here(self, "effect\\dragonfear.wav");
-            rag_quake();
-        }
-        rag_str_step_up80(self);
-        break;
     case 669:
         rag_wave_at(self, 1, "effect\\wideb.wav");
         rag_colored_quad(self, 1, 255, 0, 0);
@@ -586,10 +524,6 @@ unsigned char rag_process_491(struct RagEffect *self)
     case 676:
         rag_effect_texture(self, "effect\\blast_mine##clock.bmp", 4);
         rag_wave_at(self, 10, "effect\\EF_DecAgility.wav");
-        break;
-    case 677:
-        rag_wave_at(self, 1, "effect\\wideb.wav");
-        rag_str_step_up80(self);
         break;
     case 678:
         rag_level99_aura3(self, 2); break;
@@ -666,11 +600,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         break;
     case 707:
         rag_msg_sprite(self, 0x25); break;
-    case 708:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\wizard_stormgust.wav");
-        rag_str_step_up80(self);
-        break;
     case 710:
         rag_effect_texture(self, "effect\\b.bmp", 18);
         rag_effect_texture(self, "effect\\glow02.bmp", 16);
@@ -732,18 +661,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         rag_cast_circle_131(self, "effect\\freeze_a.bmp");
         rag_snowfall(self, 1);
         break;
-    case 727:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "crimson_r.wav");
-        rag_str_step_up80(self);
-        break;
-    case 728:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "hell_in.wav");
-        rag_str_step_up80(self);
-        break;
     case 729:
         rag_msg_sprite(self, 0x26); break;
     case 730:
@@ -757,12 +674,6 @@ unsigned char rag_process_491(struct RagEffect *self)
             render_object_set_argb(self->master, -1, 155, 155, 255);
         }
         rag_slash_waves(self, 1);
-        break;
-    case 734:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "chainlight.wav");
-        rag_str_step_up80(self);
         break;
     case 735:
         rag_spirit_spheres(self, 10); break;
@@ -784,28 +695,6 @@ unsigned char rag_process_491(struct RagEffect *self)
         rag_msg_sprite(self, 0x32); break;
     case 744:
         rag_cloaking(self); break;
-    case 745:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "aimed.wav");
-        rag_str_step_up80(self);
-        break;
-    case 746:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "arrowstorm.wav");
-        rag_str_step_up80(self);
-        break;
-    case 747: case 748:
-        rag_follow_master(self);
-        if (self->frame == 1)
-            rag_play_wave_here(self, "lauagnus.wav");
-        rag_str_step_up80(self);
-        break;
-    case 749:
-        rag_follow_master(self);
-        rag_str_step_up80(self);
-        break;
     case 750:
         if (self->frame >= 10 && self->frame <= 40) {
             if (!(self->frame & 1))
@@ -948,10 +837,6 @@ unsigned char rag_process_491(struct RagEffect *self)
             rag_wave_plain("effect\\INFRAREDSCAN.wav");
         rag_scan_arcs(self, 0);
         rag_scan_arcs(self, 1);
-        break;
-    case 795:
-        if (!rag_fire_pillar(self))
-            return 0;
         break;
     case 796:
         rag_storm_ring(self, "effect\\storm2.tga", 10);

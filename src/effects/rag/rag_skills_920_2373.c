@@ -22,11 +22,6 @@ static struct EffectPrim *launch(struct RagEffect *self, int kind)
     return p;
 }
 
-unsigned char rag_str_raised(struct RagEffect *self)
-{
-    return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
-}
-
 void rag_hallu_doubles_2(struct RagEffect *self)
 {
     struct World *world = game_current_world();

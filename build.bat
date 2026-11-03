@@ -31,12 +31,22 @@ call "%ROOT%vendor\build_vendor.bat"
 if errorlevel 1 ( echo *** VENDOR BUILD FAILED *** & exit /b 1 )
 
 echo [2/3] Compiling...
+REM data\effects\effects.json is compiled in as a byte array (tools\bin2c.c), so the
+REM executable does not depend on the file being shipped.
+set "GEN=%BUILD%\gen"
+if not exist "%GEN%" mkdir "%GEN%"
+cl /nologo /O2 /MD "%ROOT%tools\bin2c.c" /Fo:"%GEN%\\" /Fe:"%GEN%\bin2c.exe"
+if errorlevel 1 ( echo *** bin2c FAILED *** & exit /b 1 )
+"%GEN%\bin2c.exe" "%GEN%\effect_data_embedded.c" g_effectData "%ROOT%data\effects\effects.json"
+if errorlevel 1 ( echo *** EMBEDDING data\effects FAILED *** & exit /b 1 )
 type nul > "%BUILD%\sources.rsp"
 type nul > "%BUILD%\%OUT%.objs.rsp"
 for /r "%ROOT%src" %%f in (*.c) do (
   >> "%BUILD%\sources.rsp" echo "%%f"
   >> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\%%~nf.obj"
 )
+>> "%BUILD%\sources.rsp" echo "%GEN%\effect_data_embedded.c"
+>> "%BUILD%\%OUT%.objs.rsp" echo "%OBJ%\effect_data_embedded.obj"
 set "INC=/I"%ROOT%src" /I"%ROOT%vendor\libpng-1.6.36" /I"%ROOT%vendor\zlib-1.2.11" /I"%ROOT%vendor\lua-5.1.4\src" /I"%ROOT%vendor\yyjson-0.13.0" /I"%ROOT%vendor\giflib""
 cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources.rsp" /Fo:"%OBJ%\\"
 if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )

@@ -46,19 +46,6 @@ unsigned char rag_potion_berserk(struct RagEffect *self)
     return 1;
 }
 
-unsigned char rag_shield_charge(struct RagEffect *self)
-{
-    return rag_str_step(self, 0.0f, 0.0f, 0.0f) != 0;
-}
-
-void rag_magic_rod(struct RagEffect *self)
-{
-    if (self->frame != 0)
-        return;
-    rag_follow_master(self);
-    rag_play_wave_here(self, "effect\\sage_magic rod.wav");
-}
-
 void rag_bottom_ring(struct RagEffect *self, const char *texture, char scale)
 {
     struct EffectPrim *p;

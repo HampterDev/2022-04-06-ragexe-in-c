@@ -19,7 +19,6 @@ void rag_wave_plain(const char *wave);
 
 unsigned char rag_str_step_up80(struct RagEffect *self);
 
-void rag_str_or_rewind(struct RagEffect *self);
 
 void rag_flicker_tint(struct RagEffect *self, int first, int last, int always, int even, int r, int g, int b);
 

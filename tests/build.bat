@@ -666,6 +666,8 @@ call "%~dp0build_effect_factories.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_effect_trace.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_effect_data.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_particle_pools.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_ez2str_manager.bat"

@@ -31,12 +31,6 @@ unsigned char rag_str_step_up80(struct RagEffect *self)
     return rag_str_step(self, 0.0f, -80.0f, 0.0f);
 }
 
-void rag_str_or_rewind(struct RagEffect *self)
-{
-    if (!rag_str_step_up80(self))
-        rag_str_rewind(self);
-}
-
 void rag_flicker_tint(struct RagEffect *self, int first, int last, int always, int even, int r, int g, int b)
 {
     if (self->frame < first || self->frame > last)

@@ -2,8 +2,10 @@
    (rag_effect_process*.c), launchers (rag_skills_*.c, rag_songs.c, rag_msg_sprites.c,
    rag_unreferenced*.c, rag_process_moves.c), rag_prim_launch.c, effect_prim.c,
    rag_effect.c, rag_effect_init and the STR player (rag_str_anim.c, rag_str_playback.c,
-   str_path.c, str_animation.c) and the launch entry game_actor_launch_effect
-   (actor/effect_launch.c), compiled with the client's flags against the stubs below.
+   rag_str_bindings.c, str_path.c, str_animation.c), the effect data loader with the
+   embedded data/effects/effects.json (effect_data.c) and the launch entry
+   game_actor_launch_effect (actor/effect_launch.c), compiled with the client's flags
+   against the stubs below.
 
    rand() in those files is renamed to effect_trace_rand by tests/effect_trace_rand.h
    (cl /FI), a seeded copy of the MSVC CRT generator that counts its calls.
@@ -38,6 +40,7 @@
 #include "actor/render_ops.h"
 #include "core/object_type.h"
 #include "effects/durations.h"
+#include "effects/effect_data.h"
 #include "effects/effect_mgr.h"
 #include "effects/rag/rag_effect.h"
 #include "effects/skills/ez2str_effect.h"
@@ -1504,6 +1507,11 @@ static void prepare(void)
     g_prim_template = mem_alloc(sizeof *g_prim_template);
     effect_prim_construct(g_prim_template);
     g_prim_ops = g_prim_template->base.ops;
+
+    /* The effect data built into the executable, whatever the environment says. */
+    _putenv("RAGEXE_EFFECT_DATA=");
+    if (!effect_data_load())
+        fail("the embedded effect data does not load");
 }
 
 /* ---- the EZ2STR file choice: ez2_str_effect_open_for_type (ez2str_effect_files.c) ---- */

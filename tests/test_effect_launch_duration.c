@@ -23,6 +23,13 @@ void rag_str_load(struct RagEffect *self, const char *name)
     strcpy(loaded, name);
 }
 
+/* The embedded effect data (data/effects/effects.json) always loads. */
+void error_msg(const char *text, int flags)
+{
+    fprintf(stderr, "%s\n", text);
+    assert(!"effect data error");
+}
+
 static void check(int id, int duration, const char *file)
 {
     struct RenderObject master;
@@ -41,6 +48,7 @@ static void check(int id, int duration, const char *file)
 
 int main(void)
 {
+    _putenv("RAGEXE_EFFECT_DATA=");
     assert(EFFECT_DURATION_COUNT == 2385);
     check(0, 50, "");
     check(13, 9999, "SafetyWall.str");

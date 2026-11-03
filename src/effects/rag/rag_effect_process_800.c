@@ -397,10 +397,6 @@ unsigned char rag_process_800(struct RagEffect *self)
         rag_summoned_monsters(self, 12); break;
     case 919: case 1610:
         rag_msg_sprite(self, 0x3f); break;
-    case 920:
-        if (!rag_str_raised(self))
-            return 0;
-        break;
     case 921:
         rag_msg_sprite(self, 0x40);
         rag_msg_sprite(self, 0x41);
@@ -411,8 +407,6 @@ unsigned char rag_process_800(struct RagEffect *self)
         rag_spr_ring_167(self, 10); break;
     case 925:
         rag_hallu_doubles_2(self); break;
-    case 926:
-        rag_str_or_rewind(self); break;
     case 927:
         rag_summoned_monsters(self, 14); break;
     case 928:
@@ -519,16 +513,6 @@ unsigned char rag_process_800(struct RagEffect *self)
         break;
     case 1004:
         rag_after_image(self); break;
-    case 1015:
-        rag_wave_at(self, 0, "effect\\p_success.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
-    case 1016: case 1017: case 1018:
-        rag_wave_at(self, 0, "effect\\p_failed.wav");
-        if (!rag_str_only(self))
-            return 0;
-        break;
     case 1026:
         rag_msg_sprite(self, 0x54); break;
     case 1028:
@@ -543,59 +527,11 @@ unsigned char rag_process_800(struct RagEffect *self)
         for (i = 0; i < 50; i++)
             rag_wedding_paper(self, "effect\\white02.bmp", 1);
         break;
-    case 1040:
-        if (!rag_str_step(self, 0.0f, 40.0f, 0.0f))
-            return 0;
-        break;
     case 1041:
         rag_msg_sprite(self, 0x56); break;
-    case 1042:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\all_full_throttle.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
-    case 1043:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\sr_flashcombo.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
-    case 1044:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\rk_luxanima.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
     case 1045:
         for (i = 0; i < 30; i++)
             rag_clouds(self, 5);
-        break;
-    case 1046:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\so_elemental_shield.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
-    case 1047:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\ab_offertorium.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
-    case 1048:
-        if (!rag_str_step(self, 0.0f, 0.0f, 0.0f))
-            return 0;
-        break;
-    case 1049:
-        if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\gn_illusiondoping.wav");
-        if (!rag_str_step_up80(self))
-            return 0;
-        break;
-    case 1050:
-        if (!rag_str_step(self, 0.0f, -25.0f, 0.0f))
-            return 0;
         break;
     case 1051:
         rag_kings_grace(self); break;

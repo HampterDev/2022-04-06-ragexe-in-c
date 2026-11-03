@@ -22,15 +22,6 @@ unsigned char rag_concentration(struct RagEffect *self)
     return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
 }
 
-unsigned char rag_two_hand_quicken(struct RagEffect *self)
-{
-    if (self->frame == 0) {
-        self->duration = 9999;
-        rag_play_wave_here(self, "effect\\knight_twohandquicken.wav");
-    }
-    return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
-}
-
 static void launch_drain_trail(struct RagEffect *self, int angle, int r, int g, int b)
 {
     struct EffectPrim *p = rag_launch_prim(self, 8, 0.0f, 0.0f, 0.0f);

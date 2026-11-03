@@ -214,21 +214,6 @@ unsigned char rag_aspersio(struct RagEffect *self)
     return 1;
 }
 
-unsigned char rag_lex_divina(struct RagEffect *self)
-{
-    if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\priest_lexdivina.wav");
-    if (self->frame == 20)
-        rag_play_wave_here(self, "effect\\priest_lexdivina.wav");
-    if (self->frame == 35)
-        rag_play_wave_here(self, "effect\\priest_lexdivina.wav");
-    if (self->frame == 60)
-        rag_play_wave_here(self, "effect\\priest_lexdivina.wav");
-    if (self->frame == 70)
-        rag_play_wave_here(self, "effect\\priest_lexdivina.wav");
-    return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
-}
-
 unsigned char rag_storm_gust(struct RagEffect *self)
 {
     struct EffectPrim *p;
@@ -377,15 +362,6 @@ void rag_jupitel_hit(struct RagEffect *self, char variant)
         p->textures[3] = rag_texture("effect\\thunder_ball_c.bmp");
         p->textures[4] = rag_texture("effect\\twirl_soft.bmp");
     }
-}
-
-unsigned char rag_fire_pillar(struct RagEffect *self)
-{
-    if (self->frame == 30)
-        rag_play_wave_here(self, "effect\\wizard_fire_pillar_b.wav");
-    if (self->frame == 35)
-        game_send_message(GAME_MSG_QUAKE, 0, 0, 0, 0);
-    return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
 }
 
 void rag_water_ball(struct RagEffect *self)

@@ -2,6 +2,7 @@
 #include "actor/object_ops.h"
 #include "contents/sound.h"
 #include "effects/durations.h"
+#include "effects/effect_data.h"
 #include "game/context.h"
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
@@ -46,13 +47,6 @@ static int str_step(struct RagEffect *self)
     return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
 }
 
-static int follow_wave_str(struct RagEffect *self, int frame, const char *wave, float y)
-{
-    if (self->frame == frame)
-        follow_wave(self, wave, y);
-    return rag_str_only(self) != 0;
-}
-
 static void tint_master(struct RagEffect *self, unsigned bit, int r, int g, int b)
 {
     self->master->overlay_flags |= bit;
@@ -92,6 +86,7 @@ unsigned char rag_effect_on_process(struct GameObject *object)
 {
     struct RagEffect *self = (struct RagEffect *)object;
 
+    const struct RagStrBinding *play;
     struct RenderObject *fx;
     int steps_due, id, n;
     char message[128];
@@ -107,7 +102,11 @@ unsigned char rag_effect_on_process(struct GameObject *object)
     }
 
     id = self->effect_id;
-    if ((unsigned)(id - 300) <= 73) {
+    play = effect_data_rag_str(id);
+    if (play && play->plays) {
+        if (!rag_str_play(self, play))
+            return 0;
+    } else if ((unsigned)(id - 300) <= 73) {
         if (!rag_effect_process300(self))
             return 0;
     } else if (id >= 491) {
@@ -147,17 +146,9 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 21:  rag_detoxication(self); break;
         case 22:  rag_sight(self); break;
         case 24:  rag_fire_ball(self); break;
-        case 25: case 29:
-            if (!str_step(self))
-                return 0;
-            break;
         case 26:  rag_ice_arrow(self); break;
         case 27:  rag_frost_diver(self, 0); break;
         case 28:  rag_frost_diver2(self); break;
-        case 30:
-            if (!rag_thunderstorm_wave(self))
-                return 0;
-            break;
         case 31:  rag_fire_arrow(self); break;
         case 32:  rag_napalm_beat(self); break;
         case 33:  rag_ruwach(self); break;
@@ -169,10 +160,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 39:  rag_holy_water(self); break;
         case 40:
             if (!rag_signum(self))
-                return 0;
-            break;
-        case 41:
-            if (!rag_angelus_wave(self))
                 return 0;
             break;
         case 42:  rag_blessing(self); break;
@@ -199,72 +186,16 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 61:  rag_warp_zone(self); break;
         case 62:  rag_sightrasher(self); break;
         case 63:  rag_big_explosion(self); break;
-        case 65:
-            if (!rag_invenom_wave(self))
-                return 0;
-            break;
-        case 66:
-            if (!rag_cure_wave(self))
-                return 0;
-            break;
-        case 67:
-            if (!rag_provoke_waves(self))
-                return 0;
-            break;
-        case 68:
-            if (!rag_mvp_wave(self))
-                return 0;
-            break;
-        case 69:
-            if (!rag_skid_trap_wave(self))
-                return 0;
-            break;
         case 71:  rag_particle_spray(self); break;
         case 72:  rag_sphere(self); break;
         case 73:  rag_bowling_bash(self); break;
         case 74:  rag_ice_wall(self); break;
-        case 75:
-            if (!rag_gloria_wave(self))
-                return 0;
-            break;
-        case 76:
-            if (!rag_magnificat_wave(self))
-                return 0;
-            break;
-        case 77:
-            if (!rag_resurrection_wave(self))
-                return 0;
-            break;
-        case 78:
-            if (!rag_recovery_wave(self))
-                return 0;
-            break;
         case 79:  rag_earth_spike(self, 0); break;
         case 80:  rag_spear_boomerang(self); break;
         case 81:  rag_pierce(self); break;
         case 82:  rag_turn_undead(self); break;
-        case 83:
-            if (!rag_sanctuary_wave(self))
-                return 0;
-            break;
-        case 84:
-            if (!rag_impositio_wave(self))
-                return 0;
-            break;
-        case 85:
-            if (!rag_lex_aeterna_wave(self))
-                return 0;
-            break;
         case 86:
             if (!rag_aspersio(self))
-                return 0;
-            break;
-        case 87:
-            if (!rag_lex_divina(self))
-                return 0;
-            break;
-        case 88:
-            if (!rag_suffragium_wave(self))
                 return 0;
             break;
         case 89:
@@ -275,71 +206,15 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             if (!rag_meteor_storm_waves(self))
                 return 0;
             break;
-        case 91:
-            if (!rag_benedictio_wave(self))
-                return 0;
-            break;
-        case 92:
-            if (!rag_meteor_wave_quake(self))
-                return 0;
-            break;
         case 93:  rag_jupitel(self, 0); break;
         case 94:  rag_jupitel_hit(self, 0); break;
         case 95:
             if (!rag_quagmire_wave(self))
                 return 0;
             break;
-        case 96:
-            if (!rag_fire_pillar_a_wave(self))
-                return 0;
-            break;
-        case 97:
-            if (!rag_fire_pillar_b_wave(self))
-                return 0;
-            break;
         case 98:  rag_adrenaline_rush(self); break;
         case 99:  rag_flasher(self); break;
         case 100: rag_remove_trap(self); break;
-        case 101:
-            if (!rag_weapon_repair_waves(self))
-                return 0;
-            break;
-        case 102:
-            if (!rag_fire_pillar(self))
-                return 0;
-            break;
-        case 103:
-            if (!rag_weapon_perfection_wave(self))
-                return 0;
-            break;
-        case 104:
-            if (!rag_maximize_power_waves(self))
-                return 0;
-            break;
-        case 106:
-            if (!rag_blast_mine_wave(self))
-                return 0;
-            break;
-        case 107:
-            if (!rag_claymore_trap_wave(self))
-                return 0;
-            break;
-        case 108:
-            if (!rag_freezing_trap_wave(self))
-                return 0;
-            break;
-        case 111:
-            if (!rag_spring_trap_wave(self))
-                return 0;
-            break;
-        case 112:
-            if (!rag_kyrie_eleison_waves(self))
-                return 0;
-            break;
-        case 113:
-            if (!rag_magnus_wave(self))
-                return 0;
-            break;
         case 114: rag_violet_cross(self); break;
         case 115: rag_blitz_beat(self); break;
         case 116: rag_water_out(self); break;
@@ -350,50 +225,12 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 121: rag_stone_curse(self); break;
         case 122: rag_sonic_blow_hit(self); break;
         case 123: rag_grimtooth(self); break;
-        case 124: case 127:
-            if (!rag_poison_react_wave(self))
-                return 0;
-            break;
         case 128: rag_over_thrust(self); break;
-        case 129:
-            if (!rag_venom_splasher_wave(self))
-                return 0;
-            break;
-        case 130: case 250:
-            rag_two_hand_quicken(self);
-            break;
-        case 131:
-            if (!rag_auto_counter_wave(self))
-                return 0;
-            break;
         case 132: rag_grimtooth_attack(self); break;
-        case 133: case 134:
-            if (!rag_str_step_or_stop(self))
-                return 0;
-            break;
-        case 136: case 391: case 406: case 407:
-            rag_str_step(self, 0.0f, -80.0f, 0.0f);
-            break;
         case 137: rag_green_rings(self); break;
         case 138: rag_fire_pillar_on(self, 0); break;
         case 140: rag_yellow_pillar(self); break;
         case 142: rag_heavens_drive(self); break;
-        case 145:
-            if (!str_step(self))
-                rag_str_rewind(self);
-            break;
-        case 153:
-            if (!rag_concentration(self))
-                return 0;
-            break;
-        case 154:
-            if (!rag_refine_success_wave(self))
-                return 0;
-            break;
-        case 155:
-            if (!rag_refine_fail_wave(self))
-                return 0;
-            break;
         case 159: rag_lock_on_ground(self); break;
         case 160: rag_party_ring(self); break;
         case 162: rag_snow(self); break;
@@ -434,14 +271,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             break;
         case 202: rag_level99_aura3(self, 0); break;
         case 203: rag_gumgang(self, 1, 0); break;
-        case 204: case 205: case 206: case 207: case 210:
-            if (!follow_wave_str(self, 0, "_heal_effect.wav", -80.0f))
-                return 0;
-            break;
-        case 208: case 209: case 211:
-            if (!follow_wave_str(self, 0, "effect\\흡기.wav"  , -80.0f))
-                return 0;
-            break;
         case 212: rag_dark_breath(self); break;
         case 215: rag_summon_slave(self); break;
         case 216: rag_blood_drain(self, 3); break;
@@ -490,10 +319,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             for (n = 40; n > 0; n--)
                 rag_clouds(self, 2);
             break;
-        case 234:
-            if (!follow_wave_str(self, 0, "effect\\sage_spell breake.wav", 0.0f))
-                return 0;
-            break;
         case 236: rag_ground_rings(self, "effect\\ring_blue.tga", 0); break;
         case 237: rag_ground_rings(self, "effect\\magic_green.tga", 0); break;
         case 238: rag_ground_rings(self, "effect\\ring_white.tga", 0); break;
@@ -501,20 +326,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 240: rag_bottom_ring(self, "effect\\ring_blue.tga", 0); break;
         case 241: rag_bottom_ring(self, "effect\\magic_green.tga", 0); break;
         case 242: rag_ground_disc(self, "effect\\aaa copy.bmp", 1); break;
-        case 244:
-            rag_str_only(self);
-            rag_magic_rod(self);
-            break;
-        case 245:
-            if (self->frame == 0)
-                sound_play_wave("effect\\cru_holy cross.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
-            if (!rag_str_only(self))
-                return 0;
-            break;
-        case 246:
-            if (!rag_shield_charge(self))
-                return 0;
-            break;
         case 247: rag_map_pillar(self, "effect\\ring_blue.tga", 1); break;
         case 248:
             rag_providence(self, "effect\\ring_yellow.tga", 0);
@@ -522,10 +333,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
                 return 0;
             break;
         case 249: rag_shield_boomerang(self, "effect\\shield_boomerang.bmp"); break;
-        case 251:
-            if (!rag_str_step(self, 0.0f, -20.0f, 0.0f))
-                return 0;
-            break;
         case 252: rag_defender(self, "effect\\ring_yellow.tga"); break;
         case 253:
             if (self->frame == 0)
@@ -533,10 +340,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
             rag_heal_rings(self, "effect\\ring_blue.tga", 2);
             break;
         case 254: rag_gumgang(self, 4, 0); break;
-        case 255: case 256: case 257: case 258:
-            if (!follow_wave_str(self, 10, "_enemy_hit_wind1.wav", -150.0f))
-                return 0;
-            break;
         case 259: rag_map_pillar(self, "effect\\magic_green.tga", 2); break;
         case 260: rag_map_pillar(self, "effect\\ring_red.tga", 3); break;
         case 261: rag_four_rings(self, "effect\\ring_yellow.tga", 0); break;
@@ -549,14 +352,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 265: rag_finger_offensive(self); break;
         case 266: hit_bursts(self, 24, "effect\\lens1.tga", 1); break;
         case 267: rag_directed_sprite(self, 0); break;
-        case 269: case 270: case 271: case 272:
-            if (!follow_wave_str(self, 6, "effect\\복호격.wav"  , 0.0f))
-                return 0;
-            break;
-        case 273:
-            if (!follow_wave_str(self, 0, "effect\\mon_연환.wav"  , 0.0f))
-                return 0;
-            break;
         case 274:
             if (self->frame == 0)
                 follow_wave(self, "effect\\rog_steal coin.wav", 0.0f);
@@ -601,15 +396,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
         case 299:
             rag_throw_item(self, "유저인터페이스\\item\\빈포션병.bmp"
                             , 1);
-            break;
-
-        case 23: case 52: case 64: case 70: case 109: case 110: case 126: case 135: case 139:
-        case 141: case 143: case 144: case 146: case 147: case 148: case 149: case 150: case 151:
-        case 152: case 156: case 157: case 158: case 167: case 168: case 169: case 181: case 182:
-        case 186: case 187: case 188: case 189: case 190: case 191: case 192: case 193: case 194:
-        case 195: case 197: case 199: case 213: case 214: case 235: case 268:
-            if (!rag_str_only(self))
-                return 0;
             break;
 
         case 105: case 161: case 198: case 443: case 489: case 490:
@@ -690,11 +476,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
                 follow_wave(self, "effect\\윈드워크.wav"  , 0.0f);
             if ((unsigned)(self->frame - 5) <= 20)
                 tint_master(self, 1, 220, 250, 220);
-            break;
-        case 390:
-            if (self->frame == 0)
-                follow_wave(self, "effect\\black_overthrust.wav", 0.0f);
-            rag_str_step(self, 0.0f, -80.0f, 0.0f);
             break;
         case 392: rag_kyrie_guard_flicker(self); break;
         case 393:
@@ -902,11 +683,6 @@ unsigned char rag_effect_on_process(struct GameObject *object)
                 rag_line_bursts(self, 1);
             }
             break;
-        case 440:
-            if (self->frame == 0)
-                follow_wave(self, "effect\\아숨프티오.wav"  , 0.0f);
-            rag_str_step(self, 0.0f, -80.0f, 0.0f);
-            break;
         case 441: rag_blue_casting(self); break;
         case 442:
             if (!(fx->overlay_flags & 0x8000)) {
@@ -1064,10 +840,6 @@ unsigned char rag_effect_process300(struct RagEffect *self)
             tint_master(self, 8, 255, 255, 150);
         break;
     case 304: rag_teleportation(self, "effect\\Magic_Violet.tga", 0); break;
-    case 305:
-        return (unsigned char)follow_wave_str(self, 0, "effect\\p_success.wav", 0.0f);
-    case 306:
-        return (unsigned char)follow_wave_str(self, 0, "effect\\p_failed.wav", 0.0f);
     case 307: rag_forest_light(self, "effect\\cloud11.tga", 0); break;
     case 308:
         rag_throw_item(self, "유저인터페이스\\item\\돌.bmp"
@@ -1078,9 +850,6 @@ unsigned char rag_effect_process300(struct RagEffect *self)
         for (n = 20; n > 0; n--)
             rag_sprinkle_sand(self);
         break;
-    case 311:
-        return (unsigned char)follow_wave_str(self, 0, "effect\\고성방가.wav"  ,
-                                              0.0f);
     case 312: rag_heal(self, "effect\\alpha_down.tga", 0); break;
     case 313: rag_heal_rings(self, "effect\\ring_white.tga", 0); break;
     case 314: rag_exit_rings(self, "effect\\ring_purple.tga"); break;
@@ -1176,8 +945,6 @@ unsigned char rag_effect_process300(struct RagEffect *self)
         rag_str_step(self, 0.0f, -80.0f, 0.0f);
         break;
     case 370: rag_song_notes(self, "effect\\cross_old.bmp", 9); break;
-    case 371: case 372:
-        return rag_str_only(self) != 0;
     case 373: rag_chimney_smoke(self); break;
     default:
         break;
