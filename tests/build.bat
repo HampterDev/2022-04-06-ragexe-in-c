@@ -693,6 +693,8 @@ call "%~dp0build_packet_dispatch.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_window_lists.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_startup_order.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_game_mode_layout.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_broadcast_packets.bat"
