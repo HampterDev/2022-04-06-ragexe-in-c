@@ -9611,3 +9611,262 @@ Validation: in the release builds, full suites, standalone suites and `git diff 
 of the [last batch](#foundation-fixes-from-the-utf-8-review-2026-11-03) on both branches
 (`build/perf-overlay-build.log`, `build/remaining-fixes-full-tests.log`). No live client
 was run.
+
+## Third-class removal (2026-11-03)
+
+Patrick decided that Revel will not offer third classes. While the work was under way he
+widened the removal to the expanded classes Expanded Super Novice, Kagerou/Oboro,
+Rebellion, Summoner (and with it the Doram race), Soul Reaper and Star Emperor, each with
+its baby variants. Kept jobs: Novice, the first, second and transcendent classes, Super
+Novice, Taekwon, Star Gladiator, Soul Linker, Ninja, Gunslinger and the babies of all of
+these. All monster and NPC behaviour stays. A purist removal; `main` keeps these classes.
+
+How the IDs were chosen:
+
+- **Jobs.** The client's own predicates. Third classes are `session_is_third_job`:
+  `0xfd6`-`0x1010` (4054-4112: the 13 classes, their transcendent and baby forms, dragon,
+  gryphon, warg and Madogear mounts and the five dragon colours) plus the 26 costume
+  mounts that `session_get_mounted_job` maps them to: `0x1018`, `0x101f`, `0x1021`,
+  `0x1024`/`0x1025`, `0x102c`, `0x102f`, `0x1034`, `0x1037`, `0x104d`-`0x1054`, `0x1056`,
+  `0x1065`/`0x1066`, `0x1069`/`0x106a`, `0x106d`/`0x106e`, `0x1070`/`0x1071` (85 IDs).
+  The expanded classes are `session_is_expanded_super_novice_job` (`0x105e`-`0x1061`),
+  `session_is_doram_job` (`0x1079`-`0x107d`) and the Kagerou/Oboro, Rebellion, Star Emperor
+  and Soul Reaper members of `session_is_expanded_job` (`0x1073`-`0x1078`, `0x107f`,
+  `0x1080`, `0x1085`, `0x1087`, `0x1088`, `0x108d`, `0x108f`-`0x1098`), 31 IDs. Baby
+  Ninja, Taekwon, Star Gladiator, Soul Linker and Gunslinger (`0x107e`, `0x1081`-`0x1084`,
+  `0x1086`, `0x1089`-`0x108c`, `0x108e`) stay.
+- **Skills.** The block markers of the client's kRO skill-ID list (`skillid.lub`):
+  third-class 2001-2532 (`THIRDJOB_END`) except `SC_REPRODUCE` 2285, which Revel's
+  `skill_tree.conf` gives to Rogue; level expansion 5001-5016 (with `ALL_FULL_THROTTLE`,
+  learned only by removed jobs on Revel); the Arch Bishop skills `AB_VITUPERATUM`/
+  `AB_CONVENIO` 5072/5073; Rebellion, Star Emperor and Soul Reaper 2551-2612; Kagerou/Oboro
+  3001-3029; Doram 5017-5057. Homunculus S skills are the client's `MH_` IDs 8018-8042 and
+  8045-8060. 8043/8044 stay: kRO numbers them `MH_VOLCANIC_ASH`/`MH_LAST`, but Revel reuses
+  them for `HAMI_COVER` (Amistr) and `HLIF_MANA` (Lif). Elemental skills are 8401-8442.
+- **Skill units.** The client's kRO unit numbering, `0xca`-`0x109`.
+
+Server checks (HampterHercules, read only):
+
+- `db/job_db.conf` and `db/skill_tree.conf` still define the removed classes; they must be
+  disabled on the server.
+- `db/mob_skill_db.conf` and `db/mob_skill_db2.conf` use no third-class or expanded-class
+  skill: their 146 distinct skills are first-, second- and transcendent-class and `NPC_`
+  skills. **No monster uses a removed skill.**
+- `db/item_db.conf`/`item_db2.conf`: the 24 `itemskill` calls use only first- and
+  second-class skills; no item names a removed skill.
+- No NPC script calls `hommutate` or `morphembryo`, so Revel has no way to create a
+  Homunculus S. Elementals come only from `SO_SUMMON_AGNI`/`AQUA`/`VENTUS`/`TERA`.
+
+### Jobs and tables (`225876e`)
+
+- **Predicates.** `session_is_third_job`, `session_is_expanded_job`,
+  `session_is_expanded_super_novice_job`, `session_is_doram_job` and
+  `session_is_any_super_novice_job` (now identical to `session_is_super_novice_job`) are
+  gone; every caller takes its former false path. `session_is_baby_job` lost the removed
+  babies; `session_get_baby_job_scale` now calls it instead of repeating the list.
+- **Job-indexed rule tables** (`session_job_rules.c`: level, value, weapon rules; the
+  skill-tree tab table in `ui/character/skill_tree.c`) give each removed ID the value that
+  reproduces the function's existing out-of-table fallback and end after the last kept
+  job, `0x108e`. A side-by-side harness compiled the old and new
+  `session_job_rules.c` and checked 3,278,600 job/level/value/weapon combinations: kept
+  jobs unchanged, removed jobs equal to the out-of-table probe `0x1700`. The tab table was
+  checked the same way in Python.
+- **Rows.** The four `.def` tables (compact `job - 0xf6e` index: 115/115/114/115 rows),
+  `pc_names.c` (114 rows, 23 now unused path strings), the job-name table (83 rows) and
+  the hit-sound cases (23 labels, with their fixture rows).
+- **Special cases** in mount and drawn-job mapping (`session_get_mounted_job`,
+  `session_get_drawn_job`, `game_actor_get_job`, `game_actor_state_job`,
+  `game_actor_set_job`, `session_get_job_without_mount`, `ef_unmounted_job`), mount
+  height and lift, weapon/dual-wield rules (Guillotine Cross), Bard/Dancer sex rules,
+  ammo messages, glow layers, hit marks, level-up effects, the Star Emperor entries of the
+  Star Gladiator camera and miracle notice, the third-class text of the job-message item
+  and the Rune Knight make-target path.
+- **Level caps and auras.** The Lua reads of `BaseLevel3rd`, `BaseLevelExtend2`,
+  `BaseLevelUpperJob`, `JobLevel3rd`, `JobLevelExtend2`, `JobLevelUpperJob`,
+  `BaseLevelDoram`, `JobLevelDoram`, `Default160LvAura(_sub)` and `Default185LvAura(_sub)`,
+  their session fields, and the actor messages `0x92` (160 aura) and `0x96` (185 aura).
+  The session destructor zeroed the level fields with an address-sized `memset`; it now
+  takes the size from the layout.
+- **2nd-costume styling tab.** It was enabled only for third jobs; it now always shows its
+  disabled bitmaps and cannot be selected, which is what kept jobs always saw.
+
+### Expanded classes and Doram
+
+- Kagerou/Oboro, Rebellion, Star Emperor and Soul Reaper went through the same tables and
+  special cases as the third classes: shadow and hit actions, attack chances, glow, zoom
+  and miracle notices for Star Emperor, the Soul Linker/Soul Reaper spirit action, the
+  Expanded Super Novice guardian-angel check, and the skill-tree tab kinds.
+- **Doram race.** The Doram button of the character-creation window (`make_char_new.c`,
+  `descript_race.c`: only the human race button stays), the Doram hair-style limit, hair
+  names (`s_doramHairMale`/`Female`), `MakeableRace` Doram read, `도람족` body, head,
+  palette and accessory paths, including the `_doram` headgear lookup and its fallback
+  (START-161), the `OffsetItemPos_GetOffsetForDoram` offsets in five draw paths, Doram
+  head heights, the Doram menu icon, styling-shop filters, the orc-face variant, Doram
+  attack motions and the soul-attack shot (status `0x3d6`, `Pc.soul_attack`, the
+  `su_soulattack` missile).
+
+### Skills, units and effects (`7315268`)
+
+- **Looks.** Every special case for the removed skills: cast and use motions and
+  effects, cast looks, hit effects, ground looks, chat shouts, harm/good-skill and
+  no-use-effect lists, hit-effect tables, skill-hit messages and targeting.
+  `skill_use_third.c` and `skill_use_third2.c` are gone; the six looks that monster
+  `NPC_` skills share (soul strike, water, glow, hallucination walk, Jack Frost ring) moved
+  into `skill_use_extra.c`, and the `SC_REPRODUCE` look moved into `skill_use_late.c`.
+- **Units.** `0xca`-`0x109` except the units monster skills also create: `0xda`
+  (`NPC_REVERBERATION`), `0xdc`/`0xdd` (`NPC_FIREWALK`/`NPC_ELECTRICWALK`), `0xdf`
+  (`NPC_PSYCHIC_WAVE`), `0xe0` (`NPC_CLOUD_KILL`), `0xfd` (`NPC_VENOMFOG`), `0xfe`
+  (`NPC_ICEMINE`), `0xff` (`NPC_FLAMECROSS`), `0x100` (`NPC_HELLBURNING`) and `0x101`
+  (`NPC_MAGMA_ERUPTION`). The Feint Bomb unit was the only caller of
+  `actor_spawn_hallu_copy`, which went with `actor/hallucination.c` and its test.
+- **Rolling Cutter.** The hold-to-repeat use, whose `CZ_USE_SKILL_START`/`END`
+  (`0x0b10`/`0x0b11`) requests are no longer sent, its session one-shot counter and four
+  input paths, and the `RollingCutterRagEffect` spin class. The generic actor counters, `rag_effect_set_duration`
+  and `render_object_return_zero` that shared its file moved to `game_actor.c`,
+  `rag_effect.c` and `game_object.c`.
+- **SP-percent skills.** `session_is_space` (Ancilla and one Sorcerer skill) and its three
+  `%` branches.
+- **Effect classes** whose only triggers were removed code, with their registry IDs: Bind
+  Trap (`0x42d`-`0x42f`), Cart Cannon (`0x54d`), Fallen Angel (`0x474`), Frigg Song
+  (`0x423`), Creating Star (`jupitel_thunder_hit.c`, `0x4b0`), Meteor (`0x44b`, `0x452`,
+  `0x457`, `0x458`), Nyanggrass (`0x465`), Powdering (`0x450`), Severe Rainstorm (`0x4fc`),
+  Star Emperor (`0x4b2`/`0x4b3`), Stem Spear (`0x44c`), SVG Spirit (`0x468`) and Triangle
+  Shot (`0x52c`). The 19 IDs joined `k_retiredEffects`, so a server request naming one
+  launches nothing, as for the 4th-class IDs.
+- Newly orphaned helpers went too, among them `play_wave_look`/`struct WaveLook`,
+  `game_camera_target_heading`, `ui_short_cut_wnd_slot`, `GroundScope.skill_id` and the
+  Poison Smoke and Comet ground textures.
+
+### Companion systems and packets (`b7f2466`)
+
+- **Elementals.** `ZC_EL_INIT`/`ZC_EL_PAR_CHANGE` handlers, the session elemental fields,
+  the own-unit term, the type-10 owner, gauge, picking (`is_merc_or_elemental` is now
+  `is_mercenary`), targeting, skill-used notice and AI `IsMonster` terms, the elemental
+  half of the skill predicate (now `session_is_mercenary_skill`), elemental skill looks and
+  units `0xed`-`0xf0`, and the Rect Up effect class (`0x440`).
+- **Homunculus S.** Jobs `0x17a0`-`0x17a4` leave `session_is_homunculus_job` and
+  `session_is_homun_or_merc_job` and their names; `session_is_homunculus_s_job` is gone and
+  `session_is_mercenary_or_homun_s_job` is now `session_is_mercenary_job` (its range still
+  starts at `0x1782`, as found). The Eleanor action, the morph-order action, the aura
+  exception, `MH_` skill looks and units `0xf5`-`0xf7` went with them.
+- **Madogear.** Status `0x47d` (begin/end and value capture), `g_session1.madogear`, its
+  map-entry copy, scaled equip/preview drawing and draw key, `마도기어_`/`마도아머_`
+  sprite renaming, the Madogear glow, shadow and robe rules and the release button.
+- **Dragons, wargs, gryphons.** The form-change handling of option bits 19 and 23-26
+  (dragons), 21 (warg rider) and 22 (Madogear), the warg companion bit 20 with actor
+  messages `0x89`/`0x8a`, and the dragon and Madogear release kinds and texts.
+- **Spheres.** Rebellion coins (Rich's Coin class, `0x46f`), Soul Reaper soul energy (Soul
+  Collect class, `0x4c9`) and the Kagerou/Oboro charm display `game_actor_show_orbs`.
+
+Packet handlers that became no-ops: the second dispatcher keeps these case labels and
+consumes the packets without a call, next to its existing ignore list:
+
+- `0x081d` `ZC_EL_INIT` and `0x081e` `ZC_EL_PAR_CHANGE` (elementals);
+- `0x08cf` `ZC_SPIRITS_ATTRIBUTE` (Kagerou/Oboro charms);
+- `0x0b73` `ZC_SOULENERGY` (Soul Reaper).
+
+No packet ID left the packet table or either dispatcher.
+
+Kept, and why:
+
+- **Monster versions.** No Revel monster casts a removed skill, but the `NPC_` skills that
+  share looks, hit effects or units with third-class skills stay (`NPC_MILLENNIUMSHIELD`,
+  `NPC_JACKFROST`, `NPC_CHEAL`, `NPC_SR_CURSEDCIRCLE`, `NPC_VENOMIMPRESS`,
+  `NPC_IGNITIONBREAK`, `NPC_PHANTOMTHRUST`, `NPC_HALLUCINATIONWALK`, `NPC_ARROWSTORM`,
+  `NPC_FATALMENACE`, `0x2db`, `NPC_PSYCHIC_WAVE`, `NPC_CLOUD_KILL`, `NPC_MAGMA_ERUPTION` and
+  the units above), and so does `ZC_MILLENNIUMSHIELD` (`0x0440`), which
+  `NPC_MILLENNIUMSHIELD` also produces.
+- **Server-driven status visuals**, as the 4th-class removal's first pass did: status
+  cases for third-class and expanded statuses in `actor_efst.c`, `player_states.c` and
+  `state_messages(_timed).c`, and the effect classes they spawn, among them Root Twist,
+  Tuna Party, Sprite Mable, Sun Stance, Gravity Control and Soul Unity. A follow-up
+  candidate.
+- **Shared effect data.** EZ2STR rows and RagEffect per-ID processes of removed skills,
+  the charm-orb rows `0x2df`-`0x2e2` of the shared energy-orb class, `orb_kind`/`orb_count`
+  and the `THROW_ORBS` branch of the shared throw-item class, and Light Sphere
+  (`0x4ad`-`0x4af`) and New Cloud Kill (`0x4ac`), which had no client trigger before this
+  removal either.
+- **Generic plumbing.** The actor sprite-variant vtable slots, `Pc.madogear_type` and the
+  variant/mount parameters of the body sprite and palette path functions: nothing sets the
+  variant any more, so they always carry 0. The 2nd-costume window, the skill-select window
+  (`ZC_SKILL_SELECT_REQUEST`) and the item-list window (`ZC_ITEMLISTWIN_OPEN`), which only
+  removed skills open on Hercules. The positional warg and Mado-cart rows of the message
+  effect kinds table. `body_style`, which the server sends for alternate outfits.
+- **Unknown IDs.** `0x13cc` and `0x13cf` (5068, 5071) in `skill_use_late.c` have no name in
+  the client's skill lists; their looks stay.
+- `SC_REPRODUCE`, `ALL_ODINS_RECALL` 2533, the `ALL_`/`ECL_` item skills and the new
+  second-class skills 2613-2625.
+
+Server implications:
+
+- Disable the removed jobs in `db/job_db.conf`/`db/skill_tree.conf`. A removed job ID takes
+  the client's fallbacks: name "Poring", Novice sprite, human paths, no level-cap entry,
+  out-of-table rule values, no special case.
+- Removed skills draw no special look; removed skill units draw the generic unit, and the
+  19 + 3 retired effect IDs launch nothing.
+- `0x081d`, `0x081e`, `0x08cf` and `0x0b73` are consumed and ignored. Status `0x47d`
+  (Madogear) and option bits 19-26 no longer change the drawn sprite; object type 10 is an
+  ordinary unit.
+- The client no longer sends `CZ_USE_SKILL_START`/`CZ_USE_SKILL_END` or the dragon and
+  Madogear release kinds. The `MaxLevelTable` keys listed above are no longer read.
+- No server checkout was modified.
+
+Tests changed:
+
+- Rewritten for the removal: the race-button factory (human only, 9 destructors), the
+  resource paths (human costume paths instead of Doram ones; Madogear renaming gone),
+  the actor dual-wield list, the hit-sound fixture, the effect launch (four retired IDs),
+  the effect destruction factory case (now Square Range), the scalar packets (elemental
+  part gone), the game context (target heading gone), the AI timed order (every homunculus
+  job now plays action `0x38`; the Homunculus S range played `0x30`) and the AI-context and
+  camera stub renames.
+- `test_hallucination.c` was removed with `actor_spawn_hallu_copy`.
+- Stale Doram stubs left the character draw/model tests and the draw-map unreached list.
+- Object-type counts are unchanged (472 classes, 139 retired identities): no removed class
+  was in the object-type registry.
+
+Validation:
+
+- Release builds passed without compiler or linker warnings before each commit (the
+  log is grepped for `: warning ` and `LNK`): `build/no-third-jobs-build.log` for the
+  first commit and `build/no-third-companions-build.log` for the final tree; the build of
+  the skills commit was checked the same way, but later builds overwrote its log.
+- Packet dispatch: all 1,179,800 cases passed, digest `d77aaadbb5fc63b7` (before:
+  `d8b534ea02a5d31f`). `build/derive_no_third_dispatch.py` changes exactly 48 cases of the
+  pre-change trace (`build/packet-dispatch-before-no-third.bin`): 12 each for `0x081d`,
+  `0x081e`, `0x08cf` and `0x0b73`, full-size non-null calls in all six patterns, direct and
+  forwarded, each losing its single sink call. The actual trace matches byte for byte
+  (SHA-256 `aaa9247d...6537c6`): `build/no-third-dispatch-expectation.log`.
+- Effect factories: digest `d3673c01` (before: `616ea281`), in two derived steps:
+  `build/derive_no_third_effect_factories.py` drops the 57 nodes of the 19 skill-effect IDs
+  (`f1707460`), and `build/derive_no_third_companion_effect_factories.py` drops the 9 nodes of
+  `0x440`, `0x46f` and `0x4c9`; both renumber the fixture, and the failure case still collides
+  on `0x943`. Both real traces match byte for byte:
+  `build/no-third-effect-factories-expectation.log`,
+  `build/no-third-companion-effect-factories-expectation.log`.
+- Full suite `tests\build.bat` and the seven standalone suites passed for each commit:
+  `build/no-third-jobs-tests.log`, `build/no-third-skills-tests.log` with
+  `build/no-third-skills-tests-resume.log` (the effect destruction test needed five more
+  unreached stubs; the run resumed there), `build/no-third-companions-tests.log` (one
+  uninterrupted run after the two AI-context corrections), and
+  `build/no-third-<jobs|skills|companions>-<suite>.log`.
+- Edits were made by scripts that prune only the labels and table rows of the listed IDs,
+  stop on a fallthrough into a removed group and report newly unreferenced static and
+  external definitions. `git diff --check` passed.
+
+Bugs found (not fixed):
+
+- `ui/mail/rodex_compose.c` names `0xfce` and `0x1081` `JOB_SUMMONER` and
+  `JOB_SPIRIT_HANDLER` and `0xd3c` `MSG_DORAM`; they are TaeKwon, Baby TaeKwon and the
+  TaeKwon job name, which is what the code shows.
+- `ui/character/equip_wnd.c` names the release texts after the wrong things:
+  `MSG_RELEASE_HIDING` (`0x1b9`) is "Release Falcon" and `MSG_RELEASE_RUWACH` (`0x1ba`)
+  "Dismount"; the removed `MSG_RELEASE_SANTA`, `MSG_RELEASE_TRANSFORM` and
+  `MSG_RELEASE_RUWACH_DORAM` were "Dismount Mado Gear", "Dismount Dragon" and "Dismount from
+  Gryphon".
+- `session_is_mercenary_job` (formerly `..._or_homun_s_job`) starts at `0x1782`, so the
+  first mercenary ID `0x1781` is not included; kept as found.
+
+The pre-removal tree is in `build/before-no-third`. The edit and check scripts are in the
+session scratch area; the derivations are in `build/`. No live client/server smoke test was
+run.

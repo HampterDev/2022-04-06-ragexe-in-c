@@ -131,3 +131,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Let the IME draw its own candidate list next to the composition; remove the client's empty candidate window.
 - Remove the login window's Opening button, which had no action.
 - Remove the server types 3 and 13, which nothing assigns, and their branches (manner points, repeated-chat refusal, shift commands, add-friend and GM prohibition menu rows); behavior unchanged.
+- Remove the third classes and the expanded classes Expanded Super Novice, Kagerou/Oboro, Rebellion, Summoner (with the Doram race), Star Emperor and Soul Reaper: their job tables, skill looks and units, 16 effect classes, Rolling Cutter, Madogear, dragon, warg and gryphon mounts, elementals and Homunculus S; `0x081d`/`0x081e`/`0x08cf`/`0x0b73` are consumed without effect.
