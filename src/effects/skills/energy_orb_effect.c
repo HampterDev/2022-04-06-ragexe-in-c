@@ -103,6 +103,16 @@ struct Effect *energy_orb_effect_new(void)
     return self ? &energy_orb_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as EnergyOrbEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow energy_orb_effect_type_rows[] = {
+    EFFECT_TYPE(0x0e4, energy_orb_effect_new),
+    EFFECT_TYPES(0x2e1, 0x2e2, energy_orb_effect_new),
+    EFFECT_TYPES(0x2df, 0x2e0, energy_orb_effect_new),
+    EFFECT_TYPE(0x3ed, energy_orb_effect_new),
+};
+const struct EffectTypeTable energy_orb_effect_types = EFFECT_TYPE_TABLE(energy_orb_effect_type_rows);
+
 void energy_orb_effect_destruct(struct EnergyOrbEffect *self)
 {
     self->base.ops = &energy_orb_effect_ops;

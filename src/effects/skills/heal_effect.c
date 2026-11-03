@@ -127,6 +127,18 @@ struct Effect *heal_effect_new(void)
     return self ? &heal_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as HealEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow heal_effect_type_rows[] = {
+    EFFECT_TYPES(0x138, 0x139, heal_effect_new),
+    EFFECT_TYPE(0x140, heal_effect_new),
+    EFFECT_TYPE(0x145, heal_effect_new),
+    EFFECT_TYPE(0x0fd, heal_effect_new),
+    EFFECT_TYPE(0x459, heal_effect_new),
+    EFFECT_TYPES(0x477, 0x478, heal_effect_new),
+};
+const struct EffectTypeTable heal_effect_types = EFFECT_TYPE_TABLE(heal_effect_type_rows);
+
 void heal_effect_destruct(struct HealEffect *self)
 {
     self->base.ops = &heal_effect_ops;

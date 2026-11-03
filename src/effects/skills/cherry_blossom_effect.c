@@ -105,6 +105,13 @@ struct Effect *cherry_blossom_effect_new(void)
     return self ? &cherry_blossom_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as CherryBlossomEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow cherry_blossom_effect_type_rows[] = {
+    EFFECT_TYPE(0x3f5, cherry_blossom_effect_new),
+};
+const struct EffectTypeTable cherry_blossom_effect_types = EFFECT_TYPE_TABLE(cherry_blossom_effect_type_rows);
+
 void cherry_blossom_effect_destruct(struct CherryBlossomEffect *self)
 {
     self->base.ops = &cherry_blossom_effect_ops;

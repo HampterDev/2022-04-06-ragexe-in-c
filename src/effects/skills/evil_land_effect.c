@@ -70,6 +70,13 @@ struct Effect *evil_land_effect_new(void)
     return self ? &evil_land_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as EvilLandEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow evil_land_effect_type_rows[] = {
+    EFFECT_TYPE(0x613, evil_land_effect_new),
+};
+const struct EffectTypeTable evil_land_effect_types = EFFECT_TYPE_TABLE(evil_land_effect_type_rows);
+
 void evil_land_effect_destruct(struct EvilLandEffect *self)
 {
     self->base.ops = &evil_land_effect_ops;

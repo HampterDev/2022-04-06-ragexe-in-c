@@ -56,6 +56,13 @@ struct Effect *root_twist_effect_new(void)
     return self ? &root_twist_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as RootTwistEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow root_twist_effect_type_rows[] = {
+    EFFECT_TYPE(0x456, root_twist_effect_new),
+};
+const struct EffectTypeTable root_twist_effect_types = EFFECT_TYPE_TABLE(root_twist_effect_type_rows);
+
 void root_twist_effect_destruct(struct RootTwistEffect *self)
 {
     self->base.ops = &root_twist_effect_ops;

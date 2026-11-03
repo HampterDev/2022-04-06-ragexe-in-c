@@ -5,8 +5,10 @@
 #include "effects/skills/ez2str_effect_ex.h"
 #include "effects/skills/skill_view.h"
 #include "effects/ez2str_effect_mgr.h"
+#include "effects/effect_mgr.h"
 #include "effects/render_object.h"
 #include "session/session_skills.h"
+#include "std/vec.h"
 
 struct Effect;
 
@@ -62,6 +64,21 @@ struct Effect *ez2_str_effect_ex_new(void)
     struct Ez2StrEffectEx *self = mem_try_alloc(sizeof *self);
 
     return self ? &ez2_str_effect_ex_construct(self)->base : NULL;
+}
+
+/* The types of the EZ2STR file (ez2_str_effect_mgr_get_effect_ids: EZ2STR_EX_FIRST_ID plus
+   each row's index), created as Ez2StrEffectEx. A type that is already registered keeps its
+   class and the file's row is skipped; this never stops the registration (returns 1). */
+unsigned char ez2_str_effect_ex_add_file_types(struct EffectMgr *mgr)
+{
+    struct Vec ez2str_ids;
+    const int *id;
+
+    ez2_str_effect_mgr_get_effect_ids(ez2str_effect_mgr_instance(), &ez2str_ids);
+    for (id = ez2str_ids.first; id != ez2str_ids.last; id++)
+        effect_mgr_register_factory(mgr, *id, ez2_str_effect_ex_new);
+    vec_free(&ez2str_ids);
+    return 1;
 }
 
 void ez2_str_effect_ex_destruct(struct Ez2StrEffectEx *self)

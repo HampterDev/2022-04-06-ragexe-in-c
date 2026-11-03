@@ -98,6 +98,14 @@ struct Effect *rotate_line_effect_new(void)
     return self ? &rotate_line_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as RotateLineEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow rotate_line_effect_type_rows[] = {
+    EFFECT_TYPE(0x3da, rotate_line_effect_new),
+    EFFECT_TYPE(0x3e8, rotate_line_effect_new),
+};
+const struct EffectTypeTable rotate_line_effect_types = EFFECT_TYPE_TABLE(rotate_line_effect_type_rows);
+
 void rotate_line_effect_destruct(struct RotateLineEffect *self)
 {
     self->base.ops = &rotate_line_effect_ops;

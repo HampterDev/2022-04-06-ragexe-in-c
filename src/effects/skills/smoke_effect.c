@@ -76,6 +76,13 @@ struct Effect *smoke_effect_new(void)
     return self ? &smoke_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SmokeEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow smoke_effect_type_rows[] = {
+    EFFECT_TYPE(0x02c, smoke_effect_new),
+};
+const struct EffectTypeTable smoke_effect_types = EFFECT_TYPE_TABLE(smoke_effect_type_rows);
+
 void smoke_effect_destruct(struct SmokeEffect *self)
 {
     self->base.ops = &smoke_effect_ops;

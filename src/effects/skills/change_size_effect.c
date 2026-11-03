@@ -47,6 +47,13 @@ struct Effect *change_size_effect_new(void)
     return self ? &change_size_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as ChangeSizeEffect that effects/effect_registry.c registers after the
+   EZ2STR file types (see g_effectTypes there). A type missing here is not created. */
+static const struct EffectTypeRow change_size_effect_type_rows[] = {
+    EFFECT_TYPE(0x946, change_size_effect_new),
+};
+const struct EffectTypeTable change_size_effect_types = EFFECT_TYPE_TABLE(change_size_effect_type_rows);
+
 static void change_size_effect_destroy(struct Effect *effect)
 {
     struct ChangeSizeEffect *self = (struct ChangeSizeEffect *)effect;

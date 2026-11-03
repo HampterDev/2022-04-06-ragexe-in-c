@@ -126,6 +126,14 @@ struct Effect *storm_kick_effect_new(void)
     return self ? &storm_kick_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as StormKickEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow storm_kick_effect_type_rows[] = {
+    EFFECT_TYPE(0x1b3, storm_kick_effect_new),
+    EFFECT_TYPE(0x4c7, storm_kick_effect_new),
+};
+const struct EffectTypeTable storm_kick_effect_types = EFFECT_TYPE_TABLE(storm_kick_effect_type_rows);
+
 void storm_kick_effect_destruct(struct StormKickEffect *self)
 {
     self->base.ops = &storm_kick_effect_ops;

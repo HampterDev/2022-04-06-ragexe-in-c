@@ -48,14 +48,39 @@ static struct List *owner_effects(struct EffectMgr *self, int aid)
     return &owner->effects;
 }
 
-struct EffectMgr *effect_mgr_construct(struct EffectMgr *self)
+static unsigned char register_table(struct EffectMgr *self, const struct EffectTypeTable *table)
+{
+    size_t i;
+    int type;
+
+    for (i = 0; i < table->count; i++)
+        for (type = table->rows[i].first; type <= table->rows[i].last; type++)
+            if (!effect_mgr_register_factory(self, type, table->rows[i].create))
+                return 0;
+    return 1;
+}
+
+static unsigned char register_types(struct EffectMgr *self, const struct EffectTypeSources *types)
+{
+    size_t i;
+
+    for (i = 0; i < types->count; i++) {
+        const struct EffectTypeSource *source = &types->items[i];
+
+        if (source->table ? !register_table(self, source->table) : !source->add(self))
+            return 0;
+    }
+    return 1;
+}
+
+struct EffectMgr *effect_mgr_construct(struct EffectMgr *self, const struct EffectTypeSources *types)
 {
     tree_init(&self->factories);
     tree_init(&self->by_owner);
     list_init(&self->removed);
     tree_init(&self->tracked);
     self->ready = 0;
-    if (effect_mgr_register_effect_types(self))
+    if (register_types(self, types))
         self->ready = 1;
     return self;
 }
@@ -69,7 +94,7 @@ void effect_mgr_destruct(struct EffectMgr *self)
     tree_free(&self->factories, NULL);
 }
 
-unsigned char effect_mgr_create(void)
+unsigned char effect_mgr_create(const struct EffectTypeSources *types)
 {
     struct EffectMgr *mgr;
 
@@ -77,7 +102,7 @@ unsigned char effect_mgr_create(void)
         return 0;
     mgr = mem_try_alloc(sizeof(struct EffectMgr));
     if (mgr)
-        effect_mgr_construct(mgr);
+        effect_mgr_construct(mgr, types);
     g_effectMgr = mgr;
     if (!mgr)
         return 0;

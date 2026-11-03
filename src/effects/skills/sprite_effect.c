@@ -75,6 +75,24 @@ struct Effect *sprite_effect_new(void)
     return self ? &sprite_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SpriteEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow sprite_effect_type_rows[] = {
+    EFFECT_TYPE(0x3de, sprite_effect_new),
+    EFFECT_TYPE(0x46a, sprite_effect_new),
+    EFFECT_TYPE(0x47b, sprite_effect_new),
+    EFFECT_TYPES(0x47f, 0x488, sprite_effect_new),
+    EFFECT_TYPE(0x4a0, sprite_effect_new),
+    EFFECT_TYPE(0x4a8, sprite_effect_new),
+    EFFECT_TYPES(0x4bb, 0x4bd, sprite_effect_new),
+    EFFECT_TYPES(0x4cf, 0x4d5, sprite_effect_new),
+    EFFECT_TYPE(0x4da, sprite_effect_new),
+    EFFECT_TYPE(0x561, sprite_effect_new),
+    EFFECT_TYPE(0x58b, sprite_effect_new),
+    EFFECT_TYPES(0x651, 0x653, sprite_effect_new),
+};
+const struct EffectTypeTable sprite_effect_types = EFFECT_TYPE_TABLE(sprite_effect_type_rows);
+
 void sprite_effect_destruct(struct SpriteEffect *self)
 {
     self->base.ops = &sprite_effect_ops;

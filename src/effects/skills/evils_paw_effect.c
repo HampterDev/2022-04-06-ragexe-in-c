@@ -78,6 +78,13 @@ struct Effect *evils_paw_effect_new(void)
     return self ? &evils_paw_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as EvilsPawEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow evils_paw_effect_type_rows[] = {
+    EFFECT_TYPE(0x40f, evils_paw_effect_new),
+};
+const struct EffectTypeTable evils_paw_effect_types = EFFECT_TYPE_TABLE(evils_paw_effect_type_rows);
+
 void evils_paw_effect_destruct(struct EvilsPawEffect *self)
 {
     self->base.ops = &evils_paw_effect_ops;

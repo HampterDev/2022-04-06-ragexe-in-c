@@ -6,6 +6,7 @@
 #include "contents/champion_monster.h"
 #include "core/map_sky.h"
 #include "effects/effect_mgr.h"
+#include "effects/effect_registry.h"
 #include "effects/ez2str_effect_mgr.h"
 #include "session/option_pairs.h"
 #include "effects/particle.h"
@@ -101,7 +102,7 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
 struct InitResult *app_init_managers(struct InitResult *out)
 {
     ez2_str_effect_mgr_load(ez2str_effect_mgr_instance());
-    if (!effect_mgr_create())
+    if (!effect_mgr_create(&g_effectTypes))
         return init_failed(out, "CEffectMgr::CreateInstance()");
     if (!effect_memory_create())
         return init_failed(out, "Particle pools");

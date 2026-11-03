@@ -110,6 +110,13 @@ struct Effect *cloud_kill_effect_new(void)
     return self ? &cloud_kill_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as CloudKillEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow cloud_kill_effect_type_rows[] = {
+    EFFECT_TYPE(0x438, cloud_kill_effect_new),
+};
+const struct EffectTypeTable cloud_kill_effect_types = EFFECT_TYPE_TABLE(cloud_kill_effect_type_rows);
+
 void cloud_kill_effect_destruct(struct CloudKillEffect *self)
 {
     self->base.ops = &cloud_kill_effect_ops;

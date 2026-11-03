@@ -272,6 +272,13 @@ struct Effect *magic_floor_effect_new(void)
     return self ? &magic_floor_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as MagicFloorEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow magic_floor_effect_type_rows[] = {
+    EFFECT_TYPE(0x401, magic_floor_effect_new),
+};
+const struct EffectTypeTable magic_floor_effect_types = EFFECT_TYPE_TABLE(magic_floor_effect_type_rows);
+
 void magic_floor_effect_destruct(struct MagicFloorEffect *self)
 {
     self->base.ops = &magic_floor_effect_ops;

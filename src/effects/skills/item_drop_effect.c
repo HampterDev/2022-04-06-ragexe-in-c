@@ -102,6 +102,15 @@ struct Effect *item_drop_effect_new(void)
     return self ? &item_drop_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as ItemDropEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow item_drop_effect_type_rows[] = {
+    EFFECT_TYPES(0x74d, 0x74f, item_drop_effect_new),
+    EFFECT_TYPES(0x4a5, 0x4a6, item_drop_effect_new),
+    EFFECT_TYPE(0x4a2, item_drop_effect_new),
+};
+const struct EffectTypeTable item_drop_effect_types = EFFECT_TYPE_TABLE(item_drop_effect_type_rows);
+
 void item_drop_effect_destruct(struct ItemDropEffect *self)
 {
     self->base.ops = &item_drop_effect_ops;

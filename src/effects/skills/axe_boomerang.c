@@ -79,6 +79,13 @@ struct Effect *axe_boomerang_new(void)
     return self ? &axe_boomerang_construct(self)->base : NULL;
 }
 
+/* Effect types created as AxeBoomerang, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow axe_boomerang_type_rows[] = {
+    EFFECT_TYPE(0x679, axe_boomerang_new),
+};
+const struct EffectTypeTable axe_boomerang_types = EFFECT_TYPE_TABLE(axe_boomerang_type_rows);
+
 void axe_boomerang_destruct(struct AxeBoomerang *self)
 {
     self->base.ops = &axe_boomerang_ops;

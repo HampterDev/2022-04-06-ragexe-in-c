@@ -84,6 +84,13 @@ struct Effect *tetra_ball_effect_new(void)
     return self ? &tetra_ball_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as TetraBallEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow tetra_ball_effect_type_rows[] = {
+    EFFECT_TYPES(0x4ee, 0x4f1, tetra_ball_effect_new),
+};
+const struct EffectTypeTable tetra_ball_effect_types = EFFECT_TYPE_TABLE(tetra_ball_effect_type_rows);
+
 void tetra_ball_effect_destruct(struct TetraBallEffect *self)
 {
     self->base.ops = &tetra_ball_effect_ops;

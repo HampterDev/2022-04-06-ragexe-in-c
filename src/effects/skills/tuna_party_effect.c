@@ -65,6 +65,13 @@ struct Effect *tuna_party_effect_new(void)
     return self ? &tuna_party_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as TunaPartyEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow tuna_party_effect_type_rows[] = {
+    EFFECT_TYPE(0x449, tuna_party_effect_new),
+};
+const struct EffectTypeTable tuna_party_effect_types = EFFECT_TYPE_TABLE(tuna_party_effect_type_rows);
+
 void tuna_party_effect_destruct(struct TunaPartyEffect *self)
 {
     self->base.ops = &tuna_party_effect_ops;

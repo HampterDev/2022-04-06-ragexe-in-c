@@ -82,6 +82,13 @@ struct Effect *blast_forge_new(void)
     return self ? &blast_forge_construct(self)->base : NULL;
 }
 
+/* Effect types created as BlastForge, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow blast_forge_type_rows[] = {
+    EFFECT_TYPE(0x925, blast_forge_new),
+};
+const struct EffectTypeTable blast_forge_types = EFFECT_TYPE_TABLE(blast_forge_type_rows);
+
 void blast_forge_destruct(struct BlastForge *self)
 {
     self->base.ops = &blast_forge_ops;

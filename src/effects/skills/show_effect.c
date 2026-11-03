@@ -68,6 +68,13 @@ struct Effect *show_effect_new(void)
     return self ? &show_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as ShowEffect that effects/effect_registry.c registers after the
+   EZ2STR file types (see g_effectTypes there). A type missing here is not created. */
+static const struct EffectTypeRow show_effect_type_rows[] = {
+    EFFECT_TYPE(0x947, show_effect_new),
+};
+const struct EffectTypeTable show_effect_types = EFFECT_TYPE_TABLE(show_effect_type_rows);
+
 static void show_effect_destroy(struct Effect *effect)
 {
     struct ShowEffect *self = (struct ShowEffect *)effect;

@@ -85,6 +85,14 @@ struct Effect *random_opt_effect_new(void)
     return self ? &random_opt_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as RandomOptEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow random_opt_effect_type_rows[] = {
+    EFFECT_TYPES(0x4a3, 0x4a4, random_opt_effect_new),
+    EFFECT_TYPE(0x4a7, random_opt_effect_new),
+};
+const struct EffectTypeTable random_opt_effect_types = EFFECT_TYPE_TABLE(random_opt_effect_type_rows);
+
 void random_opt_effect_destruct(struct RandomOptEffect *self)
 {
     self->base.ops = &random_opt_effect_ops;

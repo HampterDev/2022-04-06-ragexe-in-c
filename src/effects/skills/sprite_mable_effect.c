@@ -68,6 +68,13 @@ struct Effect *sprite_mable_effect_new(void)
     return self ? &sprite_mable_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SpriteMableEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow sprite_mable_effect_type_rows[] = {
+    EFFECT_TYPE(0x448, sprite_mable_effect_new),
+};
+const struct EffectTypeTable sprite_mable_effect_types = EFFECT_TYPE_TABLE(sprite_mable_effect_type_rows);
+
 void sprite_mable_effect_destruct(struct SpriteMableEffect *self)
 {
     self->base.ops = &sprite_mable_effect_ops;

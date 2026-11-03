@@ -96,6 +96,13 @@ struct Effect *soul_unity_effect_new(void)
     return self ? &soul_unity_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SoulUnityEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow soul_unity_effect_type_rows[] = {
+    EFFECT_TYPE(0x4c6, soul_unity_effect_new),
+};
+const struct EffectTypeTable soul_unity_effect_types = EFFECT_TYPE_TABLE(soul_unity_effect_type_rows);
+
 void soul_unity_effect_destruct(struct SoulUnityEffect *self)
 {
     self->base.ops = &soul_unity_effect_ops;

@@ -95,6 +95,13 @@ struct Effect *animated_emitter_effect_new(void)
     return self ? &animated_emitter_effect_construct(self)->base.base : NULL;
 }
 
+/* Effect types created as AnimatedEmitterEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow animated_emitter_effect_type_rows[] = {
+    EFFECT_TYPE(0x431, animated_emitter_effect_new),
+};
+const struct EffectTypeTable animated_emitter_effect_types = EFFECT_TYPE_TABLE(animated_emitter_effect_type_rows);
+
 void animated_emitter_effect_destruct(struct AnimatedEmitterEffect *self)
 {
     int i;

@@ -90,6 +90,13 @@ struct Effect *rotate_item_effect_new(void)
     return self ? &rotate_item_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as RotateItemEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow rotate_item_effect_type_rows[] = {
+    EFFECT_TYPE(0x3d8, rotate_item_effect_new),
+};
+const struct EffectTypeTable rotate_item_effect_types = EFFECT_TYPE_TABLE(rotate_item_effect_type_rows);
+
 void rotate_item_effect_destruct(struct RotateItemEffect *self)
 {
     self->base.ops = &rotate_item_effect_ops;

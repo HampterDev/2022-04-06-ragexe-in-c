@@ -104,6 +104,13 @@ struct Effect *curse_of_cube_effect_new(void)
     return self ? &curse_of_cube_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as CurseOfCubeEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow curse_of_cube_effect_type_rows[] = {
+    EFFECT_TYPES(0x901, 0x902, curse_of_cube_effect_new),
+};
+const struct EffectTypeTable curse_of_cube_effect_types = EFFECT_TYPE_TABLE(curse_of_cube_effect_type_rows);
+
 void curse_of_cube_effect_destruct(struct CurseOfCubeEffect *self)
 {
     self->base.ops = &curse_of_cube_effect_ops;

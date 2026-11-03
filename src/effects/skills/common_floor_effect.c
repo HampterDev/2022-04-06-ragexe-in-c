@@ -96,6 +96,13 @@ struct Effect *common_floor_effect_new(void)
     return self ? &common_floor_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as CommonFloorEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow common_floor_effect_type_rows[] = {
+    EFFECT_TYPE(0x420, common_floor_effect_new),
+};
+const struct EffectTypeTable common_floor_effect_types = EFFECT_TYPE_TABLE(common_floor_effect_type_rows);
+
 void common_floor_effect_destruct(struct CommonFloorEffect *self)
 {
     self->base.ops = &common_floor_effect_ops;

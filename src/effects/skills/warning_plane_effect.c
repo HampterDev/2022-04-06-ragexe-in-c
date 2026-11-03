@@ -65,6 +65,13 @@ struct Effect *warning_plane_effect_new(void)
     return self ? &warning_plane_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as WarningPlaneEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow warning_plane_effect_type_rows[] = {
+    EFFECT_TYPE(0x45a, warning_plane_effect_new),
+};
+const struct EffectTypeTable warning_plane_effect_types = EFFECT_TYPE_TABLE(warning_plane_effect_type_rows);
+
 void warning_plane_effect_destruct(struct WarningPlaneEffect *self)
 {
     self->base.ops = &warning_plane_effect_ops;

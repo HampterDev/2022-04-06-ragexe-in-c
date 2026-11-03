@@ -81,6 +81,13 @@ struct Effect *cell_range_effect_new(void)
     return self ? &cell_range_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as CellRangeEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow cell_range_effect_type_rows[] = {
+    EFFECT_TYPE(0x3ef, cell_range_effect_new),
+};
+const struct EffectTypeTable cell_range_effect_types = EFFECT_TYPE_TABLE(cell_range_effect_type_rows);
+
 void cell_range_effect_destruct(struct CellRangeEffect *self)
 {
     self->base.ops = &cell_range_effect_ops;

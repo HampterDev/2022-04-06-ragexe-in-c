@@ -87,6 +87,13 @@ struct Effect *sun_stance_effect_new(void)
     return self ? &sun_stance_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SunStanceEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow sun_stance_effect_type_rows[] = {
+    EFFECT_TYPES(0x4be, 0x4c1, sun_stance_effect_new),
+};
+const struct EffectTypeTable sun_stance_effect_types = EFFECT_TYPE_TABLE(sun_stance_effect_type_rows);
+
 void sun_stance_effect_destruct(struct SunStanceEffect *self)
 {
     self->base.ops = &sun_stance_effect_ops;

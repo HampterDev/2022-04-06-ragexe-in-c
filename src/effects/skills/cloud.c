@@ -70,6 +70,13 @@ struct Effect *cloud_new(void)
     return self ? &cloud_construct(self)->base : NULL;
 }
 
+/* Effect types created as Cloud, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow cloud_type_rows[] = {
+    EFFECT_TYPE(0x47a, cloud_new),
+};
+const struct EffectTypeTable cloud_types = EFFECT_TYPE_TABLE(cloud_type_rows);
+
 void cloud_destruct(struct Cloud *self)
 {
     self->base.ops = &cloud_ops;

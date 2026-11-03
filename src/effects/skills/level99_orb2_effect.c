@@ -139,6 +139,13 @@ struct Effect *level99_orb2_effect_new(void)
     return self ? &level99_orb2_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as Level99Orb2Effect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow level99_orb2_effect_type_rows[] = {
+    EFFECT_TYPE(0x3d1, level99_orb2_effect_new),
+};
+const struct EffectTypeTable level99_orb2_effect_types = EFFECT_TYPE_TABLE(level99_orb2_effect_type_rows);
+
 void level99_orb2_effect_destruct(struct Level99Orb2Effect *self)
 {
     self->base.ops = &level99_orb2_effect_ops;

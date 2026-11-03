@@ -107,6 +107,13 @@ struct Effect *light_sphere_effect_new(void)
     return self ? &light_sphere_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as LightSphereEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow light_sphere_effect_type_rows[] = {
+    EFFECT_TYPES(0x4ad, 0x4af, light_sphere_effect_new),
+};
+const struct EffectTypeTable light_sphere_effect_types = EFFECT_TYPE_TABLE(light_sphere_effect_type_rows);
+
 void light_sphere_effect_destruct(struct LightSphereEffect *self)
 {
     self->base.ops = &light_sphere_effect_ops;

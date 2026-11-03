@@ -133,6 +133,23 @@ struct Effect *throw_item_effect_new(void)
     return self ? &throw_item_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as ThrowItemEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow throw_item_effect_type_rows[] = {
+    EFFECT_TYPES(0x12a, 0x12b, throw_item_effect_new),
+    EFFECT_TYPE(0x134, throw_item_effect_new),
+    EFFECT_TYPE(0x21b, throw_item_effect_new),
+    EFFECT_TYPE(0x3d4, throw_item_effect_new),
+    EFFECT_TYPE(0x21d, throw_item_effect_new),
+    EFFECT_TYPE(0x258, throw_item_effect_new),
+    EFFECT_TYPES(0x265, 0x268, throw_item_effect_new),
+    EFFECT_TYPE(0x392, throw_item_effect_new),
+    EFFECT_TYPE(0x3d7, throw_item_effect_new),
+    EFFECT_TYPES(0x3d5, 0x3d6, throw_item_effect_new),
+    EFFECT_TYPE(0x3dd, throw_item_effect_new),
+};
+const struct EffectTypeTable throw_item_effect_types = EFFECT_TYPE_TABLE(throw_item_effect_type_rows);
+
 void throw_item_effect_destruct(struct ThrowItemEffect *self)
 {
     self->base.ops = &throw_item_effect_ops;

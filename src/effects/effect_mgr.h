@@ -2,6 +2,7 @@
 #define EFFECTS_EFFECT_MGR_H
 
 #include "effects/effect.h"
+#include "effects/effect_types.h"
 #include "std/list.h"
 
 struct EffectFactory {
@@ -31,12 +32,13 @@ struct EffectMgr {
     ((type) == 0x3ce || (type) == 0x401 || (type) == 0x40f || (type) == 0x431 || \
      (type) == 0x584 || (type) == 0x927)
 
-unsigned char effect_mgr_create(void);
+/* Creates g_effectMgr and registers `types` in their order (for the client: g_effectTypes,
+   effects/effect_registry.c). Returns 0, with g_effectMgr NULL, when the registration stops. */
+unsigned char effect_mgr_create(const struct EffectTypeSources *types);
 void effect_mgr_destroy_instance(void);
-struct EffectMgr *effect_mgr_construct(struct EffectMgr *self);
+struct EffectMgr *effect_mgr_construct(struct EffectMgr *self, const struct EffectTypeSources *types);
 void effect_mgr_destruct(struct EffectMgr *self);
 
-unsigned char effect_mgr_register_effect_types(struct EffectMgr *self);
 unsigned char effect_mgr_register_factory(struct EffectMgr *self, int type, struct Effect *(*create)(void));
 unsigned char effect_mgr_is_registered(struct EffectMgr *self, int type);
 struct Effect *effect_mgr_create_of_type(struct EffectMgr *self, int type);

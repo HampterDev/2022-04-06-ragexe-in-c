@@ -100,6 +100,13 @@ struct Effect *square_range_effect_new(void)
     return self ? &square_range_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as SquareRangeEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow square_range_effect_type_rows[] = {
+    EFFECT_TYPE(0x3df, square_range_effect_new),
+};
+const struct EffectTypeTable square_range_effect_types = EFFECT_TYPE_TABLE(square_range_effect_type_rows);
+
 void square_range_effect_destruct(struct SquareRangeEffect *self)
 {
     self->base.ops = &square_range_effect_ops;

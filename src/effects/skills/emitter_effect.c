@@ -117,6 +117,13 @@ struct Effect *emitter_effect_new(void)
     return self ? &emitter_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as EmitterEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow emitter_effect_type_rows[] = {
+    EFFECT_TYPE(0x3ce, emitter_effect_new),
+};
+const struct EffectTypeTable emitter_effect_types = EFFECT_TYPE_TABLE(emitter_effect_type_rows);
+
 void emitter_effect_destruct(struct EmitterEffect *self)
 {
     self->base.ops = &emitter_effect_ops.base;

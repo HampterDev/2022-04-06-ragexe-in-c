@@ -3,6 +3,7 @@
 #include "contents/client_lua_calls.h"
 #include "contents/sound.h"
 #include "effects/durations.h"
+#include "effects/effect_mgr.h"
 #include "session/state.h"
 #include <math.h>
 #include <stdio.h>
@@ -184,6 +185,143 @@ struct Effect *ez2_str_effect_new(void)
     struct Ez2StrEffect *self = mem_try_alloc(sizeof *self);
 
     return self ? &ez2_str_effect_construct(self)->base : NULL;
+}
+
+/* Effect types created as Ez2StrEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow ez2_str_effect_type_rows[] = {
+    EFFECT_TYPES(0x0cc, 0x0d3, ez2_str_effect_new),
+    EFFECT_TYPES(0x3e4, 0x3e7, ez2_str_effect_new),
+    EFFECT_TYPES(0x3f0, 0x3f2, ez2_str_effect_new),
+    EFFECT_TYPE(0x3e9, ez2_str_effect_new),
+    EFFECT_TYPE(0x3f3, ez2_str_effect_new),
+    EFFECT_TYPE(0x3e0, ez2_str_effect_new),
+    EFFECT_TYPE(0x3e3, ez2_str_effect_new),
+    EFFECT_TYPE(0x3e2, ez2_str_effect_new),
+    EFFECT_TYPE(0x3e1, ez2_str_effect_new),
+    EFFECT_TYPE(0x3f4, ez2_str_effect_new),
+    EFFECT_TYPE(0x40a, ez2_str_effect_new),
+    EFFECT_TYPE(0x437, ez2_str_effect_new),
+    EFFECT_TYPE(0x43f, ez2_str_effect_new),
+    EFFECT_TYPES(0x40b, 0x40c, ez2_str_effect_new),
+    EFFECT_TYPE(0x426, ez2_str_effect_new),
+    EFFECT_TYPE(0x428, ez2_str_effect_new),
+    EFFECT_TYPE(0x427, ez2_str_effect_new),
+    EFFECT_TYPES(0x42a, 0x42c, ez2_str_effect_new),
+    EFFECT_TYPE(0x432, ez2_str_effect_new),
+    EFFECT_TYPE(0x425, ez2_str_effect_new),
+    EFFECT_TYPES(0x433, 0x436, ez2_str_effect_new),
+    EFFECT_TYPES(0x43b, 0x43e, ez2_str_effect_new),
+    EFFECT_TYPES(0x441, 0x442, ez2_str_effect_new),
+    EFFECT_TYPES(0x443, 0x444, ez2_str_effect_new),
+    EFFECT_TYPES(0x446, 0x447, ez2_str_effect_new),
+    EFFECT_TYPE(0x44a, ez2_str_effect_new),
+    EFFECT_TYPES(0x44d, 0x44f, ez2_str_effect_new),
+    EFFECT_TYPE(0x451, ez2_str_effect_new),
+    EFFECT_TYPES(0x453, 0x455, ez2_str_effect_new),
+    EFFECT_TYPE(0x45c, ez2_str_effect_new),
+    EFFECT_TYPES(0x48a, 0x48b, ez2_str_effect_new),
+    EFFECT_TYPE(0x489, ez2_str_effect_new),
+    EFFECT_TYPE(0x45f, ez2_str_effect_new),
+    EFFECT_TYPE(0x461, ez2_str_effect_new),
+    EFFECT_TYPES(0x463, 0x464, ez2_str_effect_new),
+    EFFECT_TYPES(0x466, 0x467, ez2_str_effect_new),
+    EFFECT_TYPE(0x469, ez2_str_effect_new),
+    EFFECT_TYPE(0x08d, ez2_str_effect_new),
+    EFFECT_TYPES(0x46d, 0x46e, ez2_str_effect_new),
+    EFFECT_TYPES(0x470, 0x473, ez2_str_effect_new),
+    EFFECT_TYPES(0x475, 0x476, ez2_str_effect_new),
+    EFFECT_TYPES(0x4c2, 0x4c5, ez2_str_effect_new),
+    EFFECT_TYPES(0x4cc, 0x4ce, ez2_str_effect_new),
+    EFFECT_TYPES(0x4d6, 0x4d7, ez2_str_effect_new),
+    EFFECT_TYPES(0x4db, 0x4e7, ez2_str_effect_new),
+    EFFECT_TYPES(0x4ea, 0x4ed, ez2_str_effect_new),
+    EFFECT_TYPES(0x4f2, 0x4f9, ez2_str_effect_new),
+    EFFECT_TYPES(0x4fd, 0x501, ez2_str_effect_new),
+    EFFECT_TYPES(0x4fa, 0x4fb, ez2_str_effect_new),
+    EFFECT_TYPE(0x512, ez2_str_effect_new),
+    EFFECT_TYPE(0x505, ez2_str_effect_new),
+    EFFECT_TYPES(0x502, 0x504, ez2_str_effect_new),
+    EFFECT_TYPE(0x507, ez2_str_effect_new),
+    EFFECT_TYPE(0x50f, ez2_str_effect_new),
+    EFFECT_TYPES(0x508, 0x50a, ez2_str_effect_new),
+    EFFECT_TYPES(0x50d, 0x50e, ez2_str_effect_new),
+    EFFECT_TYPES(0x510, 0x511, ez2_str_effect_new),
+    EFFECT_TYPES(0x51e, 0x52a, ez2_str_effect_new),
+    EFFECT_TYPES(0x513, 0x51d, ez2_str_effect_new),
+    EFFECT_TYPE(0x52b, ez2_str_effect_new),
+    EFFECT_TYPE(0x544, ez2_str_effect_new),
+    EFFECT_TYPE(0x543, ez2_str_effect_new),
+    EFFECT_TYPE(0x546, ez2_str_effect_new),
+    EFFECT_TYPE(0x545, ez2_str_effect_new),
+    EFFECT_TYPE(0x548, ez2_str_effect_new),
+    EFFECT_TYPE(0x547, ez2_str_effect_new),
+    EFFECT_TYPE(0x54a, ez2_str_effect_new),
+    EFFECT_TYPE(0x549, ez2_str_effect_new),
+    EFFECT_TYPES(0x54b, 0x54c, ez2_str_effect_new),
+    EFFECT_TYPES(0x568, 0x569, ez2_str_effect_new),
+    EFFECT_TYPES(0x54e, 0x551, ez2_str_effect_new),
+    EFFECT_TYPES(0x58e, 0x58f, ez2_str_effect_new),
+    EFFECT_TYPES(0x552, 0x560, ez2_str_effect_new),
+    EFFECT_TYPES(0x562, 0x567, ez2_str_effect_new),
+    EFFECT_TYPES(0x56a, 0x575, ez2_str_effect_new),
+    EFFECT_TYPES(0x578, 0x580, ez2_str_effect_new),
+    EFFECT_TYPES(0x582, 0x589, ez2_str_effect_new),
+    EFFECT_TYPE(0x58d, ez2_str_effect_new),
+    EFFECT_TYPES(0x590, 0x5a7, ez2_str_effect_new),
+    EFFECT_TYPES(0x5aa, 0x5b9, ez2_str_effect_new),
+    EFFECT_TYPES(0x656, 0x657, ez2_str_effect_new),
+    EFFECT_TYPES(0x5ba, 0x5f4, ez2_str_effect_new),
+    EFFECT_TYPES(0x5f6, 0x5fa, ez2_str_effect_new),
+    EFFECT_TYPES(0x5fc, 0x608, ez2_str_effect_new),
+    EFFECT_TYPES(0x60a, 0x612, ez2_str_effect_new),
+    EFFECT_TYPES(0x615, 0x617, ez2_str_effect_new),
+    EFFECT_TYPES(0x619, 0x61c, ez2_str_effect_new),
+    EFFECT_TYPES(0x61e, 0x61f, ez2_str_effect_new),
+    EFFECT_TYPE(0x639, ez2_str_effect_new),
+    EFFECT_TYPES(0x622, 0x626, ez2_str_effect_new),
+    EFFECT_TYPES(0x628, 0x62f, ez2_str_effect_new),
+    EFFECT_TYPES(0x631, 0x638, ez2_str_effect_new),
+    EFFECT_TYPES(0x63b, 0x63f, ez2_str_effect_new),
+    EFFECT_TYPES(0x64b, 0x650, ez2_str_effect_new),
+    EFFECT_TYPES(0x654, 0x655, ez2_str_effect_new),
+    EFFECT_TYPES(0x658, 0x676, ez2_str_effect_new),
+    EFFECT_TYPES(0x67a, 0x67c, ez2_str_effect_new),
+    EFFECT_TYPES(0x681, 0x685, ez2_str_effect_new),
+    EFFECT_TYPES(0x68b, 0x68c, ez2_str_effect_new),
+    EFFECT_TYPES(0x68f, 0x69d, ez2_str_effect_new),
+    EFFECT_TYPES(0x6a2, 0x6ac, ez2_str_effect_new),
+    EFFECT_TYPES(0x6c2, 0x6c3, ez2_str_effect_new),
+    EFFECT_TYPE(0x6cd, ez2_str_effect_new),
+    EFFECT_TYPES(0x8fe, 0x900, ez2_str_effect_new),
+    EFFECT_TYPE(0x904, ez2_str_effect_new),
+    EFFECT_TYPES(0x907, 0x921, ez2_str_effect_new),
+    EFFECT_TYPES(0x923, 0x924, ez2_str_effect_new),
+    EFFECT_TYPE(0x926, ez2_str_effect_new),
+};
+const struct EffectTypeTable ez2_str_effect_types = EFFECT_TYPE_TABLE(ez2_str_effect_type_rows);
+
+/* Effect types created as Ez2StrEffect that effects/effect_registry.c registers after the
+   EZ2STR file types (see g_effectTypes there). A type missing here is not created. */
+static const struct EffectTypeRow ez2_str_effect_late_type_rows[] = {
+    EFFECT_TYPES(0x943, 0x944, ez2_str_effect_new),
+};
+const struct EffectTypeTable ez2_str_effect_late_types = EFFECT_TYPE_TABLE(ez2_str_effect_late_type_rows);
+
+/* The headgear effects, created as Ez2StrEffect: one type per row of the Lua table
+   hatEffectTable, HAT_FIRST + 1 up to HAT_FIRST + its size, read once when the effect
+   manager is created. A type that is already registered stops the registration (returns 0). */
+unsigned char ez2_str_effect_add_hat_types(struct EffectMgr *mgr)
+{
+    int hat_count, i;
+
+    hat_count = 0;
+
+    client_lua_call(g_session1.luaState, "GetTableSizeForC", "s>d", "hatEffectTable", &hat_count);
+    for (i = 1; i <= hat_count; i++)
+        if (!effect_mgr_register_factory(mgr, HAT_FIRST + i, ez2_str_effect_new))
+            return 0;
+    return 1;
 }
 
 void ez2_str_effect_destruct(struct Ez2StrEffect *self)

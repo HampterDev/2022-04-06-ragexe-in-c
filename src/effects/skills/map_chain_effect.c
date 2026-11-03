@@ -240,6 +240,13 @@ struct Effect *map_chain_effect_new(void)
     return self ? &map_chain_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as MapChainEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow map_chain_effect_type_rows[] = {
+    EFFECT_TYPE(0x400, map_chain_effect_new),
+};
+const struct EffectTypeTable map_chain_effect_types = EFFECT_TYPE_TABLE(map_chain_effect_type_rows);
+
 void map_chain_effect_destruct(struct MapChainEffect *self)
 {
     self->base.ops = &map_chain_effect_ops;

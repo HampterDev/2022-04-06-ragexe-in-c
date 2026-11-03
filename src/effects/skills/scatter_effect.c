@@ -81,6 +81,13 @@ struct Effect *scatter_effect_new(void)
     return self ? &scatter_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as ScatterEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow scatter_effect_type_rows[] = {
+    EFFECT_TYPE(0x3ea, scatter_effect_new),
+};
+const struct EffectTypeTable scatter_effect_types = EFFECT_TYPE_TABLE(scatter_effect_type_rows);
+
 void scatter_effect_destruct(struct ScatterEffect *self)
 {
     self->base.ops = &scatter_effect_ops;

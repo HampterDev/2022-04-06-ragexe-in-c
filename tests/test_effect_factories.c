@@ -4,9 +4,16 @@
 #include <string.h>
 #include "effect_factory_classes.h"
 #ifdef EFFECT_FACTORIES_REFERENCE
+#define construct_manager(manager) effect_mgr_construct(manager)
+#define create_manager() effect_mgr_create()
 #else
 #include "../src/effects/effect_mgr.c"
 #include "../src/effects/effect_registry.c"
+#include "effects/ez2str_effect_mgr.h"
+#include "std/vec.h"
+#include "effect_type_tables.inc"
+#define construct_manager(manager) effect_mgr_construct(manager, &g_effectTypes)
+#define create_manager() effect_mgr_create(&g_effectTypes)
 #endif
 #include "std/std.h"
 
@@ -119,7 +126,7 @@ static void registry_case(int which)
     extra_ids[0] = which == 2 ? 0x943 : 0xc8;
     extra_ids[1] = extra_ids[2] = 45000;
     lua_calls = 0;
-    effect_mgr_construct(&manager);
+    construct_manager(&manager);
     assert(manager.ready == (which != 2));
     assert(lua_calls == 1);
     record(which);
@@ -182,7 +189,7 @@ static void effect_maps_case(void)
     unsigned count;
 
     hat_count = extra_count = 0;
-    effect_mgr_construct(&manager);
+    construct_manager(&manager);
     list = owner_effects(&manager, -7);
     assert(manager.by_owner.size == 1 && list->size == 0);
     assert(list->head->next == list->head && list->head->prev == list->head);
@@ -207,12 +214,12 @@ static void singleton_lifetime_cases(void)
     effect_mgr_destroy_instance();
     assert(!g_effectMgr && !live_count);
     fail_allocation = 1;
-    assert(!effect_mgr_create() && !g_effectMgr && !live_count);
+    assert(!create_manager() && !g_effectMgr && !live_count);
     fail_allocation = 0;
-    assert(effect_mgr_create() && g_effectMgr->ready);
+    assert(create_manager() && g_effectMgr->ready);
     saved = g_effectMgr;
     before = live_count;
-    assert(!effect_mgr_create() && g_effectMgr == saved && live_count == before);
+    assert(!create_manager() && g_effectMgr == saved && live_count == before);
     effect_mgr_destroy_instance();
     assert(!g_effectMgr && !live_count);
     effect_mgr_destroy_instance();
@@ -221,10 +228,10 @@ static void singleton_lifetime_cases(void)
 
     extra_count = 1;
     extra_ids[0] = 0x943;
-    assert(!effect_mgr_create() && !g_effectMgr);
+    assert(!create_manager() && !g_effectMgr);
     reset_allocations();
     extra_count = 0;
-    assert(effect_mgr_create());
+    assert(create_manager());
     effect_mgr_destroy_instance();
     assert(!g_effectMgr && !live_count);
     reset_allocations();

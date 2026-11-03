@@ -103,6 +103,16 @@ struct Effect *level150_effect_new(void)
     return self ? &level150_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as Level150Effect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow level150_effect_type_rows[] = {
+    EFFECT_TYPE(0x3d2, level150_effect_new),
+    EFFECT_TYPE(0x3fe, level150_effect_new),
+    EFFECT_TYPE(0x4ca, level150_effect_new),
+    EFFECT_TYPE(0x8e3, level150_effect_new),
+};
+const struct EffectTypeTable level150_effect_types = EFFECT_TYPE_TABLE(level150_effect_type_rows);
+
 void level150_effect_destruct(struct Level150Effect *self)
 {
     self->base.ops = &level150_effect_ops;

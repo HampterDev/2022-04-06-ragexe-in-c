@@ -79,6 +79,13 @@ struct Effect *gravity_control_effect_new(void)
     return self ? &gravity_control_effect_construct(self)->base : NULL;
 }
 
+/* Effect types created as GravityControlEffect, registered at startup through g_effectTypes
+   (effects/effect_registry.c). A type missing here is not created. */
+static const struct EffectTypeRow gravity_control_effect_type_rows[] = {
+    EFFECT_TYPE(0x4b1, gravity_control_effect_new),
+};
+const struct EffectTypeTable gravity_control_effect_types = EFFECT_TYPE_TABLE(gravity_control_effect_type_rows);
+
 static void gravity_control_effect_destroy(struct Effect *effect)
 {
     struct GravityControlEffect *self = (struct GravityControlEffect *)effect;
