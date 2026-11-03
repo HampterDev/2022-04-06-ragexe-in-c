@@ -758,3 +758,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_perf_overlay.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_mercenary_job.bat"
+if not "%errorlevel%"=="0" exit /b 1
