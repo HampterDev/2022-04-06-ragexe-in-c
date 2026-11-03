@@ -125,13 +125,13 @@ static void relaunch_state_icons(void)
     }
 }
 
-static HMONITOR target_monitor(HWND hwnd, const GUID *adapter)
+static PlatformDisplay target_monitor(PlatformWindow hwnd, const GUID *adapter)
 {
-    HMONITOR m = gfx_adapter_monitor(adapter);
+    PlatformDisplay m = gfx_adapter_monitor(adapter);
     return m ? m : platform_window_monitor(hwnd);
 }
 
-static void monitor_size(HMONITOR m, int *w, int *h)
+static void monitor_size(PlatformDisplay m, int *w, int *h)
 {
     RECT mon, work;
     platform_monitor_rects(m, &mon, &work);
@@ -142,7 +142,7 @@ static void monitor_size(HMONITOR m, int *w, int *h)
 int borderless_rect(const GUID *adapter, RECT *rc)
 {
     RECT work;
-    HMONITOR m = gfx_adapter_monitor(adapter);
+    PlatformDisplay m = gfx_adapter_monitor(adapter);
     if (!m || !borderless_setting)
         return 0;
     platform_monitor_rects(m, rc, &work);
@@ -184,7 +184,7 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     struct C3dDevice *d = &g_3dDevice;
     struct Renderer *r = g_renderer;
     RECT old;
-    HMONITOR was, on;
+    PlatformDisplay was, on;
     int oldW = d->width, oldH = d->height, moving, kind, wasKind, devFull, wasDevFull;
 
     if (!d->hwnd || !d->dev || w <= 0 || h <= 0)

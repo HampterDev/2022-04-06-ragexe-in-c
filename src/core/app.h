@@ -9,12 +9,13 @@
 #include "platform/client_config.h"
 
 #include "platform/win_types.h"
+#include "platform/window_handle.h"
 #include "std/std.h"
 #include "core/client.h"
 
 extern HINSTANCE g_hInstance;
 extern int g_quitRequested;
-extern HWND g_hMainWnd;
+extern PlatformWindow g_hMainWnd;
 extern char g_clientDir[0x88];
 extern int g_windowActive;
 extern int g_fullscreenMode;

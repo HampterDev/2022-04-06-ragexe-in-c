@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static SDL_Window *g_sdlWindow;
+static struct PresentCover g_cover;
 static int g_composing, g_compositionEnded;
 
 static const unsigned short g_scanCodes[SDL_SCANCODE_RGUI + 1] = {
@@ -130,8 +130,8 @@ static char *client_text(const char *utf8)
 static void scene_point(float x, float y, int *outX, int *outY)
 {
     int w = 0, h = 0, fx, fy, fw, fh;
-    SDL_GetWindowSize(g_sdlWindow, &w, &h);
-    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_presentCover, &fx, &fy, &fw, &fh);
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, &fx, &fy, &fw, &fh);
     if (fw > 0 && fh > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
         *outX = (int)((x - fx) * g_3dDevice.width / fw);
         *outY = (int)((y - fy) * g_3dDevice.height / fh);
@@ -219,7 +219,7 @@ static void on_finger(const SDL_TouchFingerEvent *finger)
     uint32_t ms = (uint32_t)SDL_NS_TO_MS(finger->timestamp);
     if (finger->touchID == SDL_MOUSE_TOUCHID || SDL_GetTouchDeviceType(finger->touchID) != SDL_TOUCH_DEVICE_DIRECT)
         return;
-    SDL_GetWindowSize(g_sdlWindow, &w, &h);
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
     scene_point(finger->x * (float)w, finger->y * (float)h, &x, &y);
     if (finger->type == SDL_EVENT_FINGER_DOWN)
         touch_down(finger->fingerID, x, y, ms);
@@ -329,20 +329,20 @@ static int cover_points(int which, int points, int pixels)
 static void sync_window_cover(void)
 {
     int w = 0, h = 0, pixels_w = 0, pixels_h = 0;
-    SDL_GetWindowSize(g_sdlWindow, &w, &h);
-    SDL_GetWindowSizeInPixels(g_sdlWindow, &pixels_w, &pixels_h);
-    g_presentCover.left = cover_points(COVER_LEFT, w, pixels_w);
-    g_presentCover.top = cover_points(COVER_TOP, h, pixels_h);
-    g_presentCover.right = cover_points(COVER_RIGHT, w, pixels_w);
-    g_presentCover.bottom = cover_points(COVER_BOTTOM, h, pixels_h);
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    SDL_GetWindowSizeInPixels(g_hMainWnd, &pixels_w, &pixels_h);
+    g_cover.left = cover_points(COVER_LEFT, w, pixels_w);
+    g_cover.top = cover_points(COVER_TOP, h, pixels_h);
+    g_cover.right = cover_points(COVER_RIGHT, w, pixels_w);
+    g_cover.bottom = cover_points(COVER_BOTTOM, h, pixels_h);
 }
 
 static void screen_keyboard(int show)
 {
     SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "1");
-    SDL_StopTextInput(g_sdlWindow);
+    SDL_StopTextInput(g_hMainWnd);
     if (show)
-        SDL_StartTextInput(g_sdlWindow);
+        SDL_StartTextInput(g_hMainWnd);
     SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
 }
 
@@ -356,15 +356,15 @@ static void sync_text_input(void)
     static SDL_Rect told;
     struct UIWindow *edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
     int w = 0, h = 0, pixels_h = 0, cover, fx, fy, fw, fh, x = 0, y = 0, tx, ty, bottom, lift = 0;
-    int shown = SDL_ScreenKeyboardShown(g_sdlWindow);
-    struct PresentCover bars = g_presentCover;
+    int shown = SDL_ScreenKeyboardShown(g_hMainWnd);
+    struct PresentCover bars = g_cover;
     SDL_Rect area;
     if (!edit || g_3dDevice.width <= 0 || g_3dDevice.height <= 0) {
-        g_presentCover.lift = 0;
+        g_cover.lift = 0;
         if (shown)
             screen_keyboard(0);
-        if (SDL_TextInputActive(g_sdlWindow))
-            SDL_StopTextInput(g_sdlWindow);
+        if (SDL_TextInputActive(g_hMainWnd))
+            SDL_StopTextInput(g_hMainWnd);
         return;
     }
     ui_window_to_screen(edit, &x, &y);
@@ -375,25 +375,25 @@ static void sync_text_input(void)
             shown = on_edit;
         }
     }
-    SDL_GetWindowSize(g_sdlWindow, &w, &h);
-    SDL_GetWindowSizeInPixels(g_sdlWindow, NULL, &pixels_h);
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    SDL_GetWindowSizeInPixels(g_hMainWnd, NULL, &pixels_h);
     cover = shown ? cover_points(COVER_KEYBOARD, h, pixels_h) : 0;
     bars.lift = 0;
     present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &bars, &fx, &fy, &fw, &fh);
     bottom = fy + (y + edit->height) * fh / g_3dDevice.height;
     if (cover > 0 && bottom + KEYBOARD_MARGIN > h - cover)
         lift = bottom + KEYBOARD_MARGIN - (h - cover);
-    g_presentCover.lift = lift;
+    g_cover.lift = lift;
     area.x = fx + x * fw / g_3dDevice.width;
     area.y = fy - lift + y * fh / g_3dDevice.height;
     area.w = edit->width * fw / g_3dDevice.width;
     area.h = edit->height * fh / g_3dDevice.height;
-    if (memcmp(&area, &told, sizeof area) || !SDL_TextInputActive(g_sdlWindow)) {
+    if (memcmp(&area, &told, sizeof area) || !SDL_TextInputActive(g_hMainWnd)) {
         told = area;
-        SDL_SetTextInputArea(g_sdlWindow, &area, 0);
+        SDL_SetTextInputArea(g_hMainWnd, &area, 0);
     }
-    if (!SDL_TextInputActive(g_sdlWindow))
-        SDL_StartTextInput(g_sdlWindow);
+    if (!SDL_TextInputActive(g_hMainWnd))
+        SDL_StartTextInput(g_hMainWnd);
 }
 #endif
 
@@ -403,6 +403,7 @@ void check_system_message(void)
 #ifdef __ANDROID__
     sync_window_cover();
     sync_text_input();
+    gfx_gl_set_cover(&g_cover);
 #endif
     drive_state_tick();
 }
@@ -410,11 +411,9 @@ void check_system_message(void)
 void app_last_pump(void)
 {
     pump_events();
-    SDL_StopTextInput(g_sdlWindow);
-    SDL_DestroyWindow(g_sdlWindow);
-    g_sdlWindow = NULL;
+    SDL_StopTextInput(g_hMainWnd);
+    SDL_DestroyWindow(g_hMainWnd);
     g_hMainWnd = NULL;
-    platform_set_main_window(NULL);
 }
 
 int app_create_window(HINSTANCE instance)
@@ -458,13 +457,11 @@ int app_create_window(HINSTANCE instance)
     g_fullscreenMode = 1;
     flags |= SDL_WINDOW_FULLSCREEN;
 #endif
-    g_sdlWindow = SDL_CreateWindow(g_windowClassName, g_screenWidth, g_screenHeight, flags);
-    if (!g_sdlWindow) {
-        platform_message_box(0, "Window Creation Failed", "ERROR", 0);
+    g_hMainWnd = SDL_CreateWindow(g_windowClassName, g_screenWidth, g_screenHeight, flags);
+    if (!g_hMainWnd) {
+        platform_message_box(NULL, "Window Creation Failed", "ERROR", 0);
         return 0;
     }
-    platform_set_main_window(g_sdlWindow);
-    g_hMainWnd = (HWND)g_sdlWindow;
     if (g_fullscreenMode == 0) {
         platform_screen_size(&screenW, &screenH);
         x = (screenW - g_screenWidth) / 2;
@@ -481,11 +478,11 @@ int app_create_window(HINSTANCE instance)
             y = (screenH - g_screenHeight) / 2;
         if (y < 0)
             y = 0;
-        SDL_SetWindowPosition(g_sdlWindow, x, y);
+        SDL_SetWindowPosition(g_hMainWnd, x, y);
     }
-    SDL_ShowWindow(g_sdlWindow);
+    SDL_ShowWindow(g_hMainWnd);
 #ifndef __ANDROID__
-    SDL_StartTextInput(g_sdlWindow);
+    SDL_StartTextInput(g_hMainWnd);
 #endif
     platform_current_directory(g_clientDir, 0x80);
     return 1;

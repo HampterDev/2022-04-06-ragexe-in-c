@@ -34,7 +34,7 @@
 #include "contents/sound.h"
 #include "platform/window.h"
 
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 
 void app_activate(int active)
 {

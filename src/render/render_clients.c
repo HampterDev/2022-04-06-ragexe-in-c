@@ -8,7 +8,7 @@
 
 RECT g_monitorRect;
 
-static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx, HMONITOR monitor)
+static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx, PlatformDisplay monitor)
 {
     (void)name;
     (void)ctx;

@@ -3,13 +3,14 @@
 
 /* What covers the window, in window points: the system's bars along each edge (on Android, the caption
    bar a desktop draws over a maximised window), and how far the scene is raised so that the edit box
-   being typed into stays above the on-screen keyboard. core/app_sdl.c sets it on Android,
-   render/gfx_gl.c holds it, and it is all 0 elsewhere. */
+   being typed into stays above the on-screen keyboard. It is all 0 but on Android. */
 struct PresentCover {
     int left, top, right, bottom, lift;
 };
 
-extern struct PresentCover g_presentCover;
+/* core/app_sdl.c, which learns what covers the window from the system, tells the GL backend, which
+   presents the scene around it. */
+void gfx_gl_set_cover(const struct PresentCover *cover);
 
 /* Where the scene lands in a window of another size: as large as fits in the part of the window
    nothing covers, with its aspect kept, centred there and raised by the lift, the rest black. The GL

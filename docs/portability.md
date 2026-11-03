@@ -316,7 +316,18 @@ through and past the composition, and sent in game (`SDL_IM_MODULE=ibus`, `XMODI
 
 `platform/window.h` holds the remaining window services: message boxes, key and mouse state,
 clipboard text, cursor visibility and clipping, window and monitor rectangles, window placement
-for windowed, frameless and fullscreen modes, and IME cancellation.
+for windowed, frameless and fullscreen modes, and IME cancellation. They take the platform's own
+window and display (`platform/window_handle.h`: `PlatformWindow` and `PlatformDisplay`, on
+Windows a window and a monitor handle, elsewhere SDL's window and display id), so the SDL layer's
+window is the client's main window (`g_hMainWnd`) and the device's, with no cast and no copy of it
+in the platform code. The display queries follow the window: off Windows the window's display is
+the one SDL has it on, so a borderless or full-screen switch and its placement happen on the
+display the window is on, not always on the primary one. Message boxes and the clipboard convert
+between SDL's UTF-8 and the client's code page (the language's, as Windows uses the ANSI code
+page), and the message box shows the error, warning or information icon the caller asked for;
+`tests/test_platform_window.c` checks the clipboard in Korean, Japanese, Cyrillic and Western
+text. The GL backend learns what covers the window (*Android client*) from `gfx_gl_set_cover`,
+which the SDL layer calls once a frame.
 
 ### Renderer
 

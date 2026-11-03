@@ -166,7 +166,12 @@ static struct {
 } gl;
 
 static unsigned content_tick;
-struct PresentCover g_presentCover;
+static struct PresentCover present_cover;
+
+void gfx_gl_set_cover(const struct PresentCover *cover)
+{
+    present_cover = *cover;
+}
 
 #ifdef GFX_GLES
 static const char shader_header[] = "#version 300 es\nprecision highp float;\nprecision highp int;\n#define GFX_GLES 1\n";
@@ -1038,7 +1043,7 @@ int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags)
 {
     (void)adapter;
     (void)flags;
-    gl.window = (SDL_Window *)d->hwnd;
+    gl.window = d->hwnd;
     if (!gl.window)
         return GFX_E_DDRAW_CREATE;
     if (!gl.lock)
@@ -1269,7 +1274,7 @@ void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
 /* The cover in window points, in the drawable's pixels. */
 static struct PresentCover cover_in_pixels(int w, int h)
 {
-    struct PresentCover pixels = g_presentCover;
+    struct PresentCover pixels = present_cover;
     int points_w = 0, points_h = 0;
     SDL_GetWindowSize(gl.window, &points_w, &points_h);
     if (points_w > 0 && points_w != w) {
@@ -1371,10 +1376,11 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
     return 0;
 }
 
-HMONITOR gfx_adapter_monitor(const GUID *adapter)
+/* One adapter, the GL context's: which display it shows on is the window's, so no adapter names one. */
+PlatformDisplay gfx_adapter_monitor(const GUID *adapter)
 {
     (void)adapter;
-    return NULL;
+    return 0;
 }
 
 void gfx_set_mipmaps(int on)
@@ -1384,19 +1390,18 @@ void gfx_set_mipmaps(int on)
 
 static const GUID gl_device_guid = { 0x3ec2a7e0, 0x5b2f, 0x4f62, { 'o', 'p', 'e', 'n', 'g', 'l', '3', '3' } };
 
-void gfx_enum_adapter(const GUID *adapter, const char *desc, HMONITOR monitor)
+void gfx_enum_adapter(const GUID *adapter, const char *desc, PlatformDisplay monitor)
 {
     static const struct { unsigned w, h; } windowed[] = {
         { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1280, 1024 }, { 1366, 768 },
         { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }
     };
     struct DisplayModeList modes = {0};
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    SDL_DisplayID display = monitor ? monitor : SDL_GetPrimaryDisplay();
     const SDL_DisplayMode *desktop = display ? SDL_GetDesktopDisplayMode(display) : NULL;
     SDL_DisplayMode **list;
     int count = 0, i;
     unsigned maxW = desktop ? (unsigned)desktop->w : 1920, maxH = desktop ? (unsigned)desktop->h : 1080;
-    (void)monitor;
     for (i = 0; i < (int)(sizeof windowed / sizeof windowed[0]); i++)
         if (windowed[i].w <= maxW && windowed[i].h <= maxH)
             display_modes_append(&modes, windowed[i].w, windowed[i].h, 32);
@@ -1421,7 +1426,7 @@ int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
     char desc[] = "OpenGL";
     char name[] = "display";
     (void)flags;
-    callback(NULL, desc, name, ctx, NULL);
+    callback(NULL, desc, name, ctx, 0);
     return 0;
 }
 

@@ -47,13 +47,13 @@ short platform_key_state(int vk)
     return (short)((g_keys[vk] ? 0xff80 : 0) | g_toggles[vk]);
 }
 
-void platform_cursor_client_pos(HWND window, POINT *out)
+void platform_cursor_client_pos(PlatformWindow window, POINT *out)
 {
     (void)window;
     *out = g_cursor;
 }
 
-void platform_mouse_capture(HWND window, int capture)
+void platform_mouse_capture(PlatformWindow window, int capture)
 {
     (void)window;
     (void)capture;

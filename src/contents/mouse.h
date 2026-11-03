@@ -2,6 +2,7 @@
 #define CONTENTS_MOUSE_H
 
 #include "platform/win_types.h"
+#include "platform/window_handle.h"
 
 enum {
     MOUSE_BUTTON_UP = 0,
@@ -34,7 +35,7 @@ void mouse_center(struct Mouse *self);
 void mouse_set_x(struct Mouse *self, int x);
 void mouse_set_y(struct Mouse *self, int y);
 void mouse_on_move(struct Mouse *self);
-void mouse_on_button(struct Mouse *self, HWND wnd, int button, int down);
+void mouse_on_button(struct Mouse *self, PlatformWindow wnd, int button, int down);
 void mouse_on_wheel(struct Mouse *self, int delta);
 
 #endif

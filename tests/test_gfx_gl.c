@@ -139,7 +139,7 @@ int main(void)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    d->hwnd = (HWND)SDL_CreateWindow("gfx test", W, H, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+    d->hwnd = SDL_CreateWindow("gfx test", W, H, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
     if (!d->hwnd) {
         fprintf(stderr, "skipped: %s\n", SDL_GetError());
         return 77;
@@ -257,7 +257,7 @@ int main(void)
 
     assert(gfx_present(d, 0, 0) == 0);
     gfx_close(d);
-    SDL_DestroyWindow((SDL_Window *)d->hwnd);
+    SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
     puts("gfx gl: clear, untextured, 8888/565/1555/4444 textures, texel centres, alpha test, vertex fog, blending, render targets and system surface blits passed");
     return 0;

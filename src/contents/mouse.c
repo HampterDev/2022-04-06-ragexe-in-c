@@ -85,7 +85,7 @@ void mouse_on_move(struct Mouse *self)
     self->cur_y = pt.y;
 }
 
-void mouse_on_button(struct Mouse *self, HWND wnd, int button, int down)
+void mouse_on_button(struct Mouse *self, PlatformWindow wnd, int button, int down)
 {
     mouse_wake();
     self->down[button] = (char)(down != 0);

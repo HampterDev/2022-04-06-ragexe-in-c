@@ -44,7 +44,6 @@ typedef DWORD COLORREF;
 typedef void *HANDLE;
 typedef struct PlatformWindowHandle *HWND;
 typedef struct PlatformModuleHandle *HINSTANCE;
-typedef struct PlatformMonitorHandle *HMONITOR;
 typedef struct PlatformDcHandle *HDC;
 typedef struct PlatformGdiObject *HGDIOBJ;
 typedef struct PlatformBitmapHandle *HBITMAP;

@@ -2,11 +2,12 @@
 #define RENDER_DEVICE_H
 
 #include "render/gfx.h"
+#include "platform/window_handle.h"
 #include "base.h"
 #include <stddef.h>
 
 struct C3dDevice {
-    HWND hwnd;
+    PlatformWindow hwnd;
     int width, height;
     RECT rcClient;
     RECT rcWindow;
@@ -54,11 +55,11 @@ void c3d_device_save_frame(struct C3dDevice *self);
 int c3d_device_check_lost(struct C3dDevice *self);
 int c3d_device_clear(struct C3dDevice *self, DWORD colour);
 int c3d_device_clear_z(struct C3dDevice *self);
-RECT *window_client_rect_on_monitor(RECT *out, HWND hwnd);
+RECT *window_client_rect_on_monitor(RECT *out, PlatformWindow hwnd);
 int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc *mode, int flags);
 int c3d_device_create_environment(struct C3dDevice *self, const GUID *adapter, const GUID *device,
                                             const struct SurfaceDesc *mode, int flags);
-int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, const GUID *device,
+int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, const GUID *adapter, const GUID *device,
                                const struct SurfaceDesc *mode, int flags);
 void c3d_device_enable_mipmap(struct C3dDevice *self);
 struct Renderer *c3d_device_create_renderer(struct C3dDevice *self);

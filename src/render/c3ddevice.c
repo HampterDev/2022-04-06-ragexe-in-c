@@ -115,7 +115,7 @@ int c3d_device_clear_z(struct C3dDevice *self)
     return gfx_clear(GFX_CLEAR_ZBUFFER, 0, 1.0f, &r);
 }
 
-RECT *window_client_rect_on_monitor(RECT *out, HWND hwnd)
+RECT *window_client_rect_on_monitor(RECT *out, PlatformWindow hwnd)
 {
     platform_client_screen_rect(hwnd, out);
     out->left -= g_monitorRect.left;
@@ -200,7 +200,7 @@ int c3d_device_create_environment(struct C3dDevice *self, const GUID *adapter, c
     return gfx_create_zbuffer(self);
 }
 
-int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, const GUID *device,
+int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, const GUID *adapter, const GUID *device,
                                const struct SurfaceDesc *mode, int flags)
 {
     int hr;
