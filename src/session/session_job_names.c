@@ -333,7 +333,7 @@ static void init_job_id_names(struct Session *self)
     APPLY(&self->jobIdNames, s_jobIdNames);
 }
 
-void ui_window_mgr_render_menu(struct Session *self)
+void session_init_sprite_name_tables(struct Session *self)
 {
     int i;
 
