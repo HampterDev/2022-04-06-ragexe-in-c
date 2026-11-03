@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/skin_path.h"
+#include "ui/skin_manager.h"
 
 struct SkinMgr g_skinMgr;
 static struct String basic_skin_name;
@@ -41,6 +42,7 @@ void basic_skin_name_init(void)
 
 void skin_mgr_destruct(struct SkinMgr *self)
 {
+    ui_skin_path_set_skin(NULL);
     string_vec_free(&self->paths);
     string_vec_free(&self->names);
     string_free(&self->name);
@@ -74,6 +76,13 @@ const char *skin_mgr_get_current_path(struct SkinMgr *self)
     return entry_or_default(&self->paths, self->current);
 }
 
+/* Hands the selected folder to ui_skin_path; g_skinMgr is the only skin manager. */
+static void publish_skin(struct SkinMgr *self)
+{
+    ui_skin_path_set_skin(VEC_COUNT(&self->paths, struct String) != 0 && self->current != -1
+                          ? skin_mgr_get_current_path(self) : NULL);
+}
+
 const char *skin_mgr_get_name(struct SkinMgr *self, int index)
 {
     return entry_or_default(&self->names, index);
@@ -103,6 +112,7 @@ void skin_mgr_scan(struct SkinMgr *self)
     find = FindFirstFileA(".\\skin\\*.*", &fd);
     if (find == INVALID_HANDLE_VALUE) {
         FindClose(find);
+        publish_skin(self);
         return;
     }
     string_init(&dot);
@@ -128,6 +138,7 @@ void skin_mgr_scan(struct SkinMgr *self)
     FindClose(find);
     string_free(&dotdot);
     string_free(&dot);
+    publish_skin(self);
 }
 
 void skin_mgr_set_current_skin_num(struct SkinMgr *self, int index)
@@ -135,6 +146,7 @@ void skin_mgr_set_current_skin_num(struct SkinMgr *self, int index)
     int old = self->current;
 
     self->current = index;
+    publish_skin(self);
     if (old != index)
         res_mgr_purge_by_extension(g_resMgr(), "bmp");
 }

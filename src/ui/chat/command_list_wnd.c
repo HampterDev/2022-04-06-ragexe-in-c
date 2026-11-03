@@ -14,6 +14,7 @@
 #include "ui/draw.h"
 #include "ui/skin.h"
 #include "core/skin_path.h"
+#include "ui/skin_manager.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/make_window_internal.h"
 

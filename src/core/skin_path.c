@@ -6,6 +6,7 @@
 #include "std/std.h"
 #include "platform/language.h"
 
+static const char *g_skinFolder;
 struct String g_skinPath;
 INIT_ONCE g_skinPathGuard;
 struct String g_uiFolderPath;
@@ -20,6 +21,11 @@ static void skin_path_tail(struct String *out, struct String *path)
         string_append_char(out, string_cstr(path)[i + UI_SKIN_PREFIX_LEN]);
 }
 
+void ui_skin_path_set_skin(const char *folder)
+{
+    g_skinFolder = folder;
+}
+
 const char *ui_skin_path(const char *path)
 {
     struct String skin, full, local;
@@ -28,10 +34,9 @@ const char *ui_skin_path(const char *path)
     if (strlen(path) == 0)
         return path;
 
-    if (VEC_COUNT(&g_skinMgr.paths, struct String) != 0 && g_skinMgr.current != -1
-        && game_current_mode()) {
+    if (g_skinFolder && game_current_mode()) {
         string_init(&skin);
-        string_assign_cstr(&skin, skin_mgr_get_current_path(&g_skinMgr));
+        string_assign_cstr(&skin, g_skinFolder);
         if (once_begin(&g_skinPathGuard)) {
             string_init(&g_skinPath);
             atexit(skin_path_atexit);

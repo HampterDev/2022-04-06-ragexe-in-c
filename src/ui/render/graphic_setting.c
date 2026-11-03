@@ -27,6 +27,7 @@
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
+#include "ui/skin_manager.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "render/render_api.h"

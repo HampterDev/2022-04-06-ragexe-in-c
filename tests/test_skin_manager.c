@@ -13,6 +13,7 @@ static unsigned allocations, releases, cache_purges;
 static int resource_manager;
 
 const char *ui_skin_path(const char *path) { abort(); }
+void ui_skin_path_set_skin(const char *folder) { (void)folder; }
 void *res_mgr_get(struct ResMgr *self, const char *path) { abort(); }
 
 DWORD bitmap_res_get_pixel(const struct BitmapRes *self, int x, int y) { abort(); }
