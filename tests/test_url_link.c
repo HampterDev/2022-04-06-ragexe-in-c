@@ -12,6 +12,8 @@ static HINSTANCE test_shell_open(HWND window, const char *operation, const char 
 #define ShellExecuteA test_shell_open
 #include "url_link_helper.inc"
 #include "url_link_handlers.inc"
+
+struct UIHooks g_uiHooks;
 #undef ShellExecuteA
 
 HWND g_hMainWnd = (HWND)0x1234;

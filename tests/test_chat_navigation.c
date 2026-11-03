@@ -149,9 +149,7 @@ void ui_bitmap_button_set_tool_tip(struct UIBitmapButton *button, const char *te
 { assert(button && text); ++tooltip_count; }
 struct String *ui_window_fit_plain_text(struct UIWindow *window, struct String *out, struct TextView text, int width)
 { assert(window && width >= 0); string_assign(out, text.data, text.size); return out; }
-struct NaviManager g_navi;
-int navi_show_map(struct NaviManager *manager, const char *map, int x, int y)
-{ (void)manager; (void)map; (void)x; (void)y; abort(); }
+struct UIHooks g_uiHooks;
 static void init_box(struct UIChatHisBox *box, struct ListNode *head, struct String *rows, size_t count)
 {
     memset(box, 0, sizeof *box); memset(head, 0, sizeof *head);

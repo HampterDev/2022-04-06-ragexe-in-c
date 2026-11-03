@@ -1,4 +1,3 @@
-#include "game/packet_handlers.h"
 #include "ui/controls/listbox.h"
 #include "ui/controls/buttons.h"
 #include "ui/controls/text_viewer.h"
@@ -9,9 +8,8 @@
 #include "core/text_format.h"
 #include "core/text_markup.h"
 #include "iteminfo/item_api.h"
-#include "navi/navi_manager.h"
+#include "ui/controls/ui_hooks.h"
 #include "ui/window_manager_state.h"
-#include "game/context.h"
 #include "core/fatal.h"
 #include "ui/window_access.h"
 #include "core/markup_tags.h"
@@ -392,7 +390,8 @@ static void navi_link(struct UITextButton *link, unsigned count)
 
             string_assign_cstr(&search, "$$DB ");
             string_append(&search, map.data, map.size);
-            navi_open_search(&g_navi, string_cstr(&search), search.size, kind, 0);
+            if (g_uiHooks.navi_search)
+                g_uiHooks.navi_search(string_cstr(&search), search.size, kind, 0);
             string_free(&search);
         } else {
             int silent = link_arg_number(link, 5);
@@ -407,10 +406,11 @@ static void navi_link(struct UITextButton *link, unsigned count)
             f = how < 10 ? flags : (BYTE)(flags + 2);
             units = how < 10 ? how : how - 10;
             f = units < 1 ? f : (BYTE)(f + 4);
-            navi_navigate(&g_navi, map.data, kind, f, silent == 0, x, y, id);
+            if (g_uiHooks.navi_navigate)
+                g_uiHooks.navi_navigate(map.data, kind, f, silent == 0, x, y, id);
         }
-    } else {
-        navi_navigate(&g_navi, map.data, 2, 5, 0, x, y, 0x3ea);
+    } else if (g_uiHooks.navi_navigate) {
+        g_uiHooks.navi_navigate(map.data, 2, 5, 0, x, y, 0x3ea);
     }
 }
 
@@ -453,8 +453,8 @@ static void on_link(struct UITextButton *link, int id)
             item_link(link);
         break;
     case LINK_QUEST:
-        if (link)
-            game_mode_ui_open_v2(game_current_mode(), 6, link_arg_number(link, 0));
+        if (link && g_uiHooks.open_quest)
+            g_uiHooks.open_quest(link_arg_number(link, 0));
         break;
     }
 }

@@ -11,7 +11,6 @@
 #include "ui/game.h"
 #include "ui/chat/markup_links.h"
 #include <string.h>
-#include "ui/mail/rodex_compose.h"
 #include "ui/controls/ui_hooks.h"
 
 struct ItemInfo;
@@ -49,7 +48,7 @@ static void fit_name(struct UIEditCtrl *self, struct String *out, const struct S
 
 static int caret_ours(void)
 {
-    return !g_windowMgr.rodex_compose_wnd || (struct UIWindow *)ui_rodex_compose_body(g_windowMgr.rodex_compose_wnd) == ui_window_mgr_get_focus_edit(&g_windowMgr);
+    return !g_uiHooks.may_move_ime_caret || g_uiHooks.may_move_ime_caret();
 }
 
 static void caret_out_of_link(int start, int name_len)

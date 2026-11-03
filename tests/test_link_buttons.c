@@ -29,6 +29,7 @@ static void *moving_realloc(void *old, size_t size)
 #include "../src/core/text_array.c"
 #include "../src/ui/controls/text_button.c"
 #include "../src/ui/controls/navi_link_button.c"
+#include "../src/navi/navi_ui_hooks.c"
 #undef free
 #undef realloc
 #undef malloc
@@ -135,6 +136,7 @@ static void reset_fixture(void)
 struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *manager)
 { assert(manager == &g_windowMgr); return focused; }
 struct NaviManager g_navi;
+struct UIHooks g_uiHooks;
 struct Action { char text[256]; size_t size; int kind, filter, flags, silent, x, y, id; };
 static struct Action action;
 static void action_text(const char *text, size_t size)
@@ -197,6 +199,9 @@ static void navigation_cases(void)
 }
 int main(void)
 {
+    g_uiHooks.navi_navigate = navi_link_navigate;
+    g_uiHooks.navi_search = navi_link_search;
+    g_uiHooks.navi_show_map = navi_link_show_map;
     boundary_ops.invalidate = ui_window_invalidate_base; boundary_ops.send_msg = ui_window_send_msg_base;
     navigation_cases();
     return 0;

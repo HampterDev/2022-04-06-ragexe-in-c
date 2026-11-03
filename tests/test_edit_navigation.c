@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../src/ui/controls/edit_navi_links.c"
+#include "../src/ui/mail/rodex_ui_hooks.c"
 
 static unsigned heap_live, detached, moved, attached;
 static int fail_button;
@@ -307,6 +308,7 @@ static DWORD WINAPI watchdog(void *unused)
 int main(void)
 {
     HANDLE thread;
+    g_uiHooks.may_move_ime_caret = ui_rodex_compose_allows_caret_move;
     completed = CreateEvent(NULL, TRUE, FALSE, NULL); assert(completed);
     thread = CreateThread(NULL, 0, watchdog, NULL, 0, NULL); assert(thread);
     check_one_line(); check_other_focus(); check_multiline(); check_replace();

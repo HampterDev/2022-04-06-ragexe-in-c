@@ -1,5 +1,5 @@
 #include "ui/controls/buttons.h"
-#include "navi/navi_manager.h"
+#include "ui/controls/ui_hooks.h"
 #include "core/object_type_tables.h"
 #include "ui/chat/navi_text.h"
 #include "ui/window_mgr.h"
@@ -91,7 +91,8 @@ void ui_navi_link_button_activate(struct UINaviLinkButton *self)
         map = text_view(map.data + 7, map.size - 7);
     if (map.size) {
         string_assign(&name, map.data, map.size);
-        navi_show_map(&g_navi, string_cstr(&name), x, y);
+        if (g_uiHooks.navi_show_map)
+            g_uiHooks.navi_show_map(string_cstr(&name), x, y);
     }
     string_free(&name);
 }

@@ -14,6 +14,7 @@
 #include "iteminfo/item_table_internal.h"
 #include "iteminfo/item_tables_internal.h"
 #include "navi/navi_manager.h"
+#include "navi/navi_ui_hooks.h"
 #include "platform/client_config.h"
 #include "platform/clientinfo.h"
 #include "platform/error_message.h"
@@ -32,6 +33,7 @@
 #include "ui/character/character.h"
 #include "ui/controls/ui_hooks.h"
 #include "ui/items/item_collection.h"
+#include "ui/mail/rodex_compose.h"
 #include "ui/misc/snap_mgr.h"
 #include "ui/quests/tag_list_box.h"
 #include "ui/quests/world_view.h"
@@ -45,6 +47,7 @@
 #include "world/pick_node.h"
 #include "world/mode_ui_hooks.h"
 #include "game/connection.h"
+#include "game/game_ui_hooks.h"
 
 static void release_packet_table(void) { packet_table_destruct(&g_packetLengthMap); }
 static void release_white_texture(void) { surface_reset(&g_whiteTexture.base); }
@@ -79,6 +82,11 @@ static void client_install_hooks(void)
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;
+    g_uiHooks.navi_navigate = navi_link_navigate;
+    g_uiHooks.navi_search = navi_link_search;
+    g_uiHooks.navi_show_map = navi_link_show_map;
+    g_uiHooks.open_quest = game_open_quest_link;
+    g_uiHooks.may_move_ime_caret = ui_rodex_compose_allows_caret_move;
 }
 
 void client_init(void)

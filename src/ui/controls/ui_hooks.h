@@ -22,6 +22,21 @@ struct UIHooks {
        replace beside it. item_collection_show_link (ui/items/item_collection.c).
        NULL: the click opens nothing. */
     void (*show_item_link)(struct ItemInfo *item, int no_compare);
+    /* Navigation links in texts and edit lines: start navigating to `map`, open the
+       navigation search for `text`, or show `map` with a mark at (x, y), all through
+       the client's navigation manager g_navi. navi_link_navigate, navi_link_search and
+       navi_link_show_map (navi/navi_ui_hooks.c). NULL: the link does nothing. */
+    void (*navi_navigate)(const char *map, int kind, int flags, unsigned char silent, int x, int y,
+                          int id);
+    void (*navi_search)(const char *text, size_t size, int filter, unsigned char silent);
+    void (*navi_show_map)(const char *map, int x, int y);
+    /* A quest link in a text: opens the quest window at quest `id`.
+       game_open_quest_link (game/game_ui_hooks.c). NULL: nothing opens. */
+    void (*open_quest)(int id);
+    /* Whether an edit line may move the IME caret out of a navigation link it shows.
+       ui_rodex_compose_allows_caret_move (ui/mail/rodex_ui_hooks.c) says no while the
+       mail compose window is open and its body is not the focused edit. NULL: it may. */
+    int (*may_move_ime_caret)(void);
 };
 
 extern struct UIHooks g_uiHooks;
