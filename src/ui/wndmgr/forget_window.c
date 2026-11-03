@@ -60,6 +60,8 @@ static const unsigned short window_slots[] = {
     SLOT(expanded_bartermarket_wnd), SLOT(expanded_barter_item_purchase_wnd),
     SLOT(register_party_wnd), SLOT(adven_party_board_wnd), SLOT(request_join_party_wnd),
     SLOT(apply_for_party_wnd),
+    /* Kept outside the window lists by navigation_cmd.c for its modal loop. */
+    SLOT(private_airplane_wnd),
 };
 
 static void forget(struct UIWindow **ref, const struct UIWindow *wnd)
