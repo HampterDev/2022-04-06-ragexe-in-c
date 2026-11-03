@@ -3,6 +3,7 @@
 #include "ui/controls/buttons.h"
 #include "ui/window_access.h"
 #include "ui/character/select_char_new.h"
+#include "ui/character/character.h"
 #include "ui/character/select_char_storage.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"

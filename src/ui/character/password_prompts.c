@@ -5,6 +5,7 @@
 #include "ui/character/character.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "ui/wndmgr/wndmgr.h"
 #include "ui/items/items.h"
 
 struct UIPasswordWnd;
@@ -293,4 +294,17 @@ void ui_email_address_wnd_on_draw(struct UIWindow *self)
 {
     ui_window_draw_sys_box(self, 0, 0, 0, 0);
     ui_window_text_out(self, 0xf, 6, msg_str(0x12b), 0, 0, 0xc, 0, 0, 0);
+}
+
+int ui_window_mgr_run_email_address_box(struct UIWindowMgr *self)
+{
+    struct UIWindow *wnd;
+
+    if (self->modal_wnd)
+        return UI_ID_CANCEL;
+    wnd = (struct UIWindow *)ui_email_address_wnd_new();
+    ui_window_create(wnd, 0x118, 0x30);
+    ui_window_move(wnd, (g_renderer->width - 640) / 2 + 0xb9, (g_renderer->height - 480) / 2 + 0xb4);
+    list_push_back(&self->windows, &wnd, sizeof wnd);
+    return ui_window_mgr_run_modal(self, wnd, 0);
 }

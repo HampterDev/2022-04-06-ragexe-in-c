@@ -63,6 +63,5 @@ void ui_window_mgr_update_snap_rect(struct UIWindowMgr *self,
                                            struct UIWindow *wnd);
 struct SnapMgr;
 
-int ui_window_mgr_run_email_address_box(struct UIWindowMgr *self);
 
 #endif

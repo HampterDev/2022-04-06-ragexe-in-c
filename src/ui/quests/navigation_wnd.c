@@ -902,3 +902,11 @@ BYTE ui_navigation_v4_wnd_minimize_checked(struct UINavigationV4Wnd *self)
 {
     return self->minimize_box->state != 0;
 }
+
+void ui_window_mgr_navigation_help(struct UIWindowMgr *self)
+{
+    struct UIWindow *nav = self->navigation_v4_wnd;
+
+    if (nav && !g_navi.windowCollapsed && ui_navigation_v4_wnd_minimize_checked((struct UINavigationV4Wnd *)nav))
+        ui_window_send_msg(self->navigation_v4_wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
+}

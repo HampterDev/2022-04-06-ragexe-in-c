@@ -89,6 +89,9 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self);
 int ui_window_mgr_get_hot_key_behavior(struct UIWindowMgr *self);
 int ui_window_mgr_modal_loop(struct UIWindowMgr *self, struct UIWindow *wnd);
 int ui_window_mgr_do_modal(struct UIWindowMgr *self, struct UIWindow *wnd);
+/* Runs `wnd`, already in the window list, as the modal window until it sets a result;
+   with `drop_focus` the focused edit loses the focus first. */
+int ui_window_mgr_run_modal(struct UIWindowMgr *self, struct UIWindow *wnd, int drop_focus);
 void ui_window_mgr_invalidate_all(struct UIWindowMgr *self);
 void ui_window_mgr_invalidate_once_per_frame(struct UIWindowMgr *self);
 void ui_window_mgr_send_key_left(struct UIWindowMgr *self);
@@ -150,7 +153,6 @@ void ui_window_mgr_focus_next_edit(struct UIWindowMgr *self);
 void ui_window_mgr_focus_prev_edit(struct UIWindowMgr *self);
 
 void ui_window_mgr_hide_chat_wnd(struct UIWindowMgr *self);
-void ui_window_mgr_navigation_help(struct UIWindowMgr *self);
 void ui_window_mgr_refresh_item_windows(struct UIWindowMgr *self);
 void ui_window_mgr_remove_snap_rect(struct UIWindowMgr *self, struct UIWindow *wnd);
 

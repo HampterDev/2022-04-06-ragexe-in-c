@@ -19,6 +19,7 @@
 #include "session/session_skills.h"
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/quests/navigation.h"
 
 int g_hoverCellX = 0;
 

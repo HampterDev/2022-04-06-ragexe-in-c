@@ -87,6 +87,9 @@ struct UIMonsterInfoWnd *ui_monster_info_wnd_construct(struct UIMonsterInfoWnd *
 struct UIWindow *ui_monster_info_wnd_new(void);
 
 struct UIEmailAddressWnd *ui_email_address_wnd_new(void);
+/* Runs the e-mail address prompt as a modal box. A UIWindowMgr method in the original
+   client, kept under its name in ui/character/password_prompts.c. */
+int ui_window_mgr_run_email_address_box(struct UIWindowMgr *self);
 struct UIPasswordWnd *ui_password_wnd_construct(struct UIPasswordWnd *self);
 struct UIWindow *ui_password_wnd_new(void);
 

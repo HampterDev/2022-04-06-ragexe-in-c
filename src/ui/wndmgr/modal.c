@@ -2,7 +2,7 @@
 #include "world/mode_manager.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
-#include "ui/character/character.h"
+#include "ui/controls/listbox.h"
 
 int ui_window_mgr_modal_loop(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
@@ -17,7 +17,7 @@ int ui_window_mgr_modal_loop(struct UIWindowMgr *self, struct UIWindow *wnd)
     return UI_ID_OK;
 }
 
-static int run_modal(struct UIWindowMgr *self, struct UIWindow *wnd, int drop_focus)
+int ui_window_mgr_run_modal(struct UIWindowMgr *self, struct UIWindow *wnd, int drop_focus)
 {
     int result;
 
@@ -39,20 +39,7 @@ int ui_window_mgr_do_modal(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
     if (wnd == NULL)
         return UI_ID_CANCEL;
-    return run_modal(self, wnd, 1);
-}
-
-int ui_window_mgr_run_email_address_box(struct UIWindowMgr *self)
-{
-    struct UIWindow *wnd;
-
-    if (self->modal_wnd)
-        return UI_ID_CANCEL;
-    wnd = (struct UIWindow *)ui_email_address_wnd_new();
-    ui_window_create(wnd, 0x118, 0x30);
-    ui_window_move(wnd, (g_renderer->width - 640) / 2 + 0xb9, (g_renderer->height - 480) / 2 + 0xb4);
-    list_push_back(&self->windows, &wnd, sizeof wnd);
-    return run_modal(self, wnd, 0);
+    return ui_window_mgr_run_modal(self, wnd, 1);
 }
 
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg4,
@@ -70,5 +57,5 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
     if ((BYTE)arg9 == 1)
         ui_window_send_msg(box, NULL, 0x9d, 1, 0, 0, 0);
     list_push_back(&self->windows, &box, sizeof box);
-    return run_modal(self, box, 1);
+    return ui_window_mgr_run_modal(self, box, 1);
 }

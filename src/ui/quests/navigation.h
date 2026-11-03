@@ -140,5 +140,9 @@ int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
                                          int val2, int val3, int val4);
 
 BYTE ui_navigation_v4_wnd_minimize_checked(struct UINavigationV4Wnd *self);
+/* Opens the navigation window's help when the window is shown, not collapsed and its
+   minimize box is checked. A UIWindowMgr method in the original client, kept under its
+   name in ui/quests/navigation_wnd.c. */
+void ui_window_mgr_navigation_help(struct UIWindowMgr *self);
 
 #endif
