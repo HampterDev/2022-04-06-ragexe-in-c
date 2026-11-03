@@ -1,7 +1,6 @@
 #include "fileio/resource_api.h"
 #include "platform/code_page.h"
 #include "core/table_reader.h"
-#include "actor/weather.h"
 #include "platform/client_config.h"
 #include "core/text_util.h"
 
@@ -71,6 +70,8 @@ struct XmlElement *get_client_info(void)
     return xml_find_child(&g_clientInfoDocument.root, "clientinfo");
 }
 
+void (*g_clientInfoWeatherScript)(struct String map, struct String effect);
+
 static void load_loading_screens(int count)
 {
     char name[0x104];
@@ -115,7 +116,12 @@ static void read_etc_info(void)
                 text_to_lower(&effect);
                 string_copy(&effect_arg, &effect);
                 string_copy(&map_arg, &map);
-                weather_add_script(&g_weather, map_arg, effect_arg);
+                if (g_clientInfoWeatherScript) {
+                    g_clientInfoWeatherScript(map_arg, effect_arg);
+                } else {
+                    string_free(&map_arg);
+                    string_free(&effect_arg);
+                }
                 string_free(&effect);
                 string_free(&map);
             }

@@ -35,6 +35,8 @@ extern struct Weather g_weather;
 
 struct Weather *weather_construct(struct Weather *self);
 void weather_destruct(struct Weather *self);
+/* g_clientInfoWeatherScript: weather_add_script on g_weather for an etcinfo.txt line. */
+void weather_add_etc_script(struct String map, struct String effect);
 void weather_add_script(struct Weather *self, struct String map,
                                    struct String name);
 Vec3 *weather_sun_position(struct Weather *self, Vec3 *out);

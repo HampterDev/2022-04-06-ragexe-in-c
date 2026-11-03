@@ -95,6 +95,7 @@ static void client_install_hooks(void)
     g_emblemRules.mark_bad = guild_emblem_mark_bad;
     g_emblemRules.max_size = guild_emblem_max_size;
     g_grannyJobModelName = session_granny_job_model;
+    g_clientInfoWeatherScript = weather_add_etc_script;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

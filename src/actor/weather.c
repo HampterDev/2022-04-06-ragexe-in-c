@@ -66,6 +66,11 @@ void weather_add_script(struct Weather *self, struct String map,
     string_free(&name);
 }
 
+void weather_add_etc_script(struct String map, struct String effect)
+{
+    weather_add_script(&g_weather, map, effect);
+}
+
 Vec3 *weather_sun_position(struct Weather *self, Vec3 *out)
 {
     float s, c;
