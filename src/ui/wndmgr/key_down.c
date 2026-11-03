@@ -301,7 +301,7 @@ BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind)
         return 1;
     case 0xd2: case 0xd3: case 0xd4: case 0xd5: case 0xd6:
     case 0xd7: case 0xd8: case 0xd9: case 0xda: case 0xdb:
-        ui_window_mgr_window_hotkey(self, action);
+        ui_window_mgr_flag_emote_hotkey(self, action);
         return 1;
     }
     return 0;

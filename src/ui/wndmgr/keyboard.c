@@ -8,6 +8,7 @@
 #include "ui/character/character.h"
 #include "ui/chat/chat_window_parts.h"
 #include "ui/character/select_char_new.h"
+#include "game/mode_msg.h"
 
 #define WM_KEY_NONE 0
 #define WM_KEY_MODAL 1
@@ -270,29 +271,28 @@ void ui_window_mgr_set_text_at_battle_mode(struct UIWindowMgr *self)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, ui_edit_ctrl_get_text(edit));
 }
 
-#define MODE_MSG_TOGGLE_WINDOW 0x1f
-#define WM_KEY_WINDOW_FIRST 0xd2
+#define WM_KEY_FLAG_EMOTE_FIRST 0xd2
 
-static const int key_windows[9] = { 0xd, 0x23, 0x30, 0x31, 0x32, 0x33, 0x40, 0x42, 0x43 };
+static const int flag_emotions[9] = { 0xd, 0x23, 0x30, 0x31, 0x32, 0x33, 0x40, 0x42, 0x43 };
 
-void ui_window_mgr_window_hotkey(struct UIWindowMgr *self, int key)
+void ui_window_mgr_flag_emote_hotkey(struct UIWindowMgr *self, int key)
 {
-    int i = key - WM_KEY_WINDOW_FIRST, svc = g_serviceType, window_id = 0;
+    int i = key - WM_KEY_FLAG_EMOTE_FIRST, svc = g_serviceType, emotion = 0;
 
     (void)self;
     if (client_current_mode() == NULL || i < 0 || i > 8)
         return;
     if (svc == 0xe || svc == 0x14)
-        window_id = key_windows[(i + 7) % 9];
+        emotion = flag_emotions[(i + 7) % 9];
     else if (svc == 0 || (svc == 6 && i <= 1) || (svc == 7 && i == 2) || (svc == 8 && (i == 3 || i == 4))
              || (svc == 4 && i == 6))
-        window_id = key_windows[i];
+        emotion = flag_emotions[i];
     else if (svc == 0xc && i == 0)
-        window_id = 0x33;
+        emotion = 0x33;
     else if (svc == 0xb && i == 0)
-        window_id = 0x40;
-    if (window_id)
-        mode_send_message(client_current_mode(), MODE_MSG_TOGGLE_WINDOW, window_id, 0, 0, 0);
+        emotion = 0x40;
+    if (emotion)
+        mode_send_message(client_current_mode(), MODE_MSG_EMOTION, emotion, 0, 0, 0);
 }
 
 BYTE ui_window_mgr_is_chat_edit_focused(struct UIWindowMgr *self)
