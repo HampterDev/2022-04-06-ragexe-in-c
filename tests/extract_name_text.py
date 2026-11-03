@@ -74,6 +74,13 @@ def statement(source, pattern):
         i += 1
 
 
+def region(source, first, last):
+    """From the line that matches first through the statement that matches last."""
+    start = source.rindex('\n', 0, unique(source, first).start()) + 1
+    tail = statement(source, last)
+    return source[start:source.index(tail, start) + len(tail)]
+
+
 def case(source, label):
     start = unique(source, r'^[ \t]*case ' + re.escape(label) + r':[ \t]*$').start()
     end = source.index('break;', start)
@@ -100,7 +107,8 @@ pieces['cut_in'] = [line(world, r'static int g_illustShownPosition\b'), line(wor
 login = read('login/login_states.c')
 pieces['server_list'] = (optional_function(login, 'static void server_line(') +
                          [function(login, 'static void server_list(')])
-pieces['map_name'] = [statement(read('game/mode_connection.c'), r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
+pieces['map_name'] = [region(read('game/mode_connection.c'), r'string_copy\(&name, &map_name\);',
+                             r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
 homun = read('ui/character/companion_info.c')
 pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]
 pieces['homun_rename'] = [statement(homun, r'\w+\(g_session1\.homunName,[^;]*ui_edit_ctrl_get_text\(self->name_edit\)')]
