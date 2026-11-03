@@ -92,7 +92,9 @@ came from the third-class removal on `purist`: the mercenary job range,
 `611062607530a632645a9939d67c8c68193c7a83`, and the constant names,
 `278420d369e3e4fb20747bf3257cda4526a2e083`. Two came from the effects-as-data census on
 `purist`: the heal-effect types, `b10f009f423ea68c2af14533c6cf87e13f4a5239`, and the
-meteor-storm wave frame, `d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87`.
+meteor-storm wave frame, `d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87`. One came from the
+window-list characterization test on `purist`: the private-airplane forget entry,
+`3ac83b2847f151af6deb366560a01c114b080f92`.
 Fixes whose code still exists on `purist` were ported with `git cherry-pick -x`; on
 `purist` the default pet and homunculus names from job names and the char-server list
 lines are cut by whole UTF-8 characters, and the unused login-entry field is removed
@@ -120,6 +122,7 @@ instead of zeroed. The patch files are `git format-patch` exports of the `main` 
 | [rodex-equip-constant-names.patch](rodex-equip-constant-names.patch) | [278420d369](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/278420d369e3e4fb20747bf3257cda4526a2e083) | [0436ca56e9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0436ca56e919991f5dfcd1975ef415581eb5d876) (the constants that still exist) | The TaeKwon job IDs and messages in `rodex_compose.c` and the release messages and kinds in `equip_wnd.c` are named for what they are; no behaviour change. |
 | [heal-effect-types.patch](heal-effect-types.patch) | [b10f009f42](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b10f009f423ea68c2af14533c6cf87e13f4a5239) | [8fe0de73b2](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8fe0de73b224cb1206dcf00daf67c4942ab530ca) | Effects `0x459`, `0x477` and `0x478` play the purple, cyan and yellow heal instead of nothing. |
 | [meteor-storm-wave-frame.patch](meteor-storm-wave-frame.patch) | [d4921026ec](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87) | [457d6dd219](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/457d6dd219f8a828423b0fad174cca11d48022fa) | The meteor storm plays its eighth meteor wave at frame 180, as the original, not 170. |
+| [airplane-window-forget.patch](airplane-window-forget.patch) | [3ac83b2847](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3ac83b2847f151af6deb366560a01c114b080f92) | [3df3cbab19](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3df3cbab19ab10aed83b762b2cabc2f32989a78d) (window-list digest updated) | The private-airplane window's slot is cleared when the window is destroyed, also after a flight ends its modal loop. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in

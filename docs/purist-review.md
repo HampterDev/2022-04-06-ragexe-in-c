@@ -9325,7 +9325,10 @@ found by the
 [effects-as-data census](#effects-as-data-trace-harness-and-str-bindings-2026-11-03)
 were fixed the same way, also at Patrick's request on 2026-11-03: the heal-effect types
 (`b10f009`, here `8fe0de7`) and the meteor-storm wave frame (`d492102`, here `457d6dd`);
-they are the last two items.
+they come next. One found by the
+[window-list test](#window-id-lists-characterization-test-25a5fe3) was fixed the same
+way, at Patrick's request on 2026-11-03: the private-airplane forget entry (`3ac83b2`,
+here `3df3cba`); it is the last item.
 
 What each fix does:
 
@@ -9480,6 +9483,18 @@ What each fix does:
   effect `0x48a` (`0x996ad5`, already 180 in `ez2str_effect.c`) agree. Frame 0 falls
   through into frame 10 there too, so it plays both `wizard_meteo` and `hunter_blastmine`:
   that is original behaviour, kept, and now marked in the code.
+- Private-airplane forget entry (`3ac83b2`, here `3df3cba`). `open_airship`
+  (`navigation_cmd.c`) keeps the window in `private_airplane_wnd` for its modal loop and
+  clears the slot only when the loop ends with 0xb4 (close button, Escape, teardown, the
+  server's accept). A flight ends it with 0xb1, which the airplane map move sets in
+  `game_mode_zc_npcack_mapmove`: the window was destroyed at the end of that frame and
+  the slot pointed at it until the next map's mode init cleared all slots. Nothing
+  dereferenced it in that time (`key_down` only tests it; the ack handler runs from the
+  network poll at the start of a frame). The slot is now in `forget_window`'s list, so the
+  base destructor clears it. `hot_key_wnd`, `quest_display_wnd` and `drag_plate` have no
+  destroy path that skips their slot: they close through `post_quit1` (0x9c, 0xcc), the
+  drag-plate functions or `clear_slots`, none closes itself or is a child of another
+  window, and they are left out.
 
 Format-string calls left as they are:
 
@@ -9571,6 +9586,10 @@ Tests added:
   heal.
 - `test_meteor_storm_waves` runs the extracted `rag_meteor_storm_waves` for frames 0-300
   with the waves and quake messages recorded, against the original's schedule.
+- `test_airplane_window_slot` runs the slot statements extracted from `open_airship`
+  around the extracted modal loop with one frame that ends it, then destroys the posted
+  window through the extracted `ui_window_destruct` and the real `forget_window.c`: ended
+  by closing (0xb4) and by the flight's map move (0xb1), the slot must be NULL.
 
 Validation:
 
@@ -9662,6 +9681,21 @@ Validation:
   the effect after 36-41 frames in all five input sets, before frame 170 or 180.
 - `test_heal_colours` fails on the previous constants ("Heal type 0x459 drew nothing") and
   `test_meteor_storm_waves` on the previous frame (170 instead of 180).
+- Private-airplane forget entry, `main`: the release build passed without warnings:
+  `build/airplane-slot-build.log`. The full suite passed:
+  `build/window-list-full-tests.log`, digest still `32d81ae6406478e3`. The five standalone
+  suites there passed: `build/window-list-<suite>.log`. `git diff --check` passed.
+- Private-airplane forget entry, here: the release build passed without warnings:
+  `build/airplane-slot-build.log`. The full suite passed:
+  `build/window-list-full-tests.log`, packet dispatch `d77aaadbb5fc63b7`, effect trace
+  `cbdaaf30ef3127d6`. The seven standalone suites passed: `build/window-list-<suite>.log`.
+  `git diff --check` passed. `test_window_lists` now gives 34,733 lines and
+  `39f36d8f0948c9bf` (was 34,731 and `778535d4c6391e4b`): its "forget field
+  private_airplane_wnd[0]" case adds the line `  mgr.private_airplane_wnd: W0 -> 0` in
+  each of its two environments (trace lines 15358 and 34566); nothing else changes.
+- `test_airplane_window_slot` fails on the previous `forget_window.c` on both branches
+  ("private_airplane_wnd still points at the destroyed window"); here the extractor takes
+  `ui_window_mgr_run_modal`, the name of `run_modal` here.
 
 No live client was run.
 
@@ -10703,19 +10737,32 @@ What the four views do not agree on (recorded, not changed):
   `round_box_tooltip_wnd` (0x114), `capture_root` and `focus_drawn` set. The base
   destructor `ui_window_destruct` (`ui/controls/window_base.c`) calls `forget_window`,
   which clears all of them except `focus_drawn`, so after `close_all_windows` destroyed
-  the windows they are NULL anyway.
+  the windows they are NULL anyway. Known and harmless; left for the window table, which
+  will make it explicit.
 - `forget_window` does not clear `hot_key_wnd`, `quest_display_wnd`, `drag_plate`,
   `private_airplane_wnd`, `orphan_char_wnd`, `orphan_guild_wnd` or `focus_drawn`.
   `post_quit1` (0x9c, 0xcc) and `clear_slots` clear the first two; a hotkey or quest
   display window destroyed another way would leave its slot pointing at freed memory.
-  `focus_drawn` is only compared, never dereferenced.
+  `focus_drawn` is only compared, never dereferenced. Checked afterwards: a flight left
+  `private_airplane_wnd` pointing at the destroyed window, so it is in the list now
+  (`3df3cba`; `test_window_lists` is 34,733 lines, `39f36d8f0948c9bf` since). The other
+  three have no destroy path that skips their slot and are left out; see the
+  [UTF-8 review fixes](#foundation-fixes-from-the-utf-8-review-2026-11-03).
 - `orphan_char_wnd` and `orphan_guild_wnd` are never set; only `clear_slots` writes them.
+  Known and harmless; left for the window table.
   `private_airplane_wnd` is set outside the four views, in `ui/quests/navigation_cmd.c`.
 - `post_quit1` queues `login_wnd` (0x3), `loading_wnd` (0x7), `item_wnd` (via 0x127, the
   refining window, whose factory also opens the item window 0x8) and `rpimage_wnd2` (0x145)
   without clearing the slot; the destructor's `forget_window` clears it when the quit list
   is processed.
 - A second `make_window(0x3)` creates a second login window and overwrites `login_wnd`.
+  Checked afterwards, not changed: the only caller, `login_screen`
+  (`login/login_states.c`), opens it only when `ui_window_find(3)` returns no login
+  window, and `login_wnd` is set only there and cleared only by `clear_slots` and by the
+  destructor's `forget_window`; no other opener can pass 3 (the variable-ID openers are
+  toggles called with other IDs). The original's MakeWindow (switch at `0x634acf`, case
+  3 alone at `0x634ead`) creates the 0xd0-byte login window, stores it at `+0x1b4` and
+  creates it 0x12d by 0x84 without looking for an existing one, as the port does.
 
 The lists were not unified; see "Left for later".
 

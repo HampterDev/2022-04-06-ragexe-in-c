@@ -1,0 +1,262 @@
+From 3ac83b2847f151af6deb366560a01c114b080f92 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:21:38 +0100
+Subject: [PATCH] Forget the private-airplane window when it is destroyed
+
+open_airship (navigation_cmd.c) keeps the private-airplane window in
+g_windowMgr.private_airplane_wnd for its modal loop, outside the window
+lists, and clears the slot only when the loop ends with
+AIRPLANE_RESULT_CLOSED (0xb4: the close button, Escape, a teardown or
+the server's accept). A flight ends it otherwise: the airplane map move
+goes through game_mode_zc_npcack_mapmove, which sets modal_result to
+0xb1. The loop then posts the window to the quit list, the window is
+destroyed at the end of the frame, and the slot kept pointing at it
+until the next map's mode init cleared all slots. In that time nothing
+dereferences it: key_down only tests it, and
+game_mode_on_ack_private_airplane_call, which sends it a message, runs
+from the network poll at the start of a frame, while the window is
+destroyed in the input step of the same frame and the next frame
+belongs to the new map's mode. ui_window_destruct calls ui_window_mgr_forget_window for every
+window; the slot is now in its list, so it is cleared with the window.
+
+The other three slots named with it have no such path:
+- hot_key_wnd is closed through post_quit1(0x9c), which clears it, also
+  for its own OK and close buttons (ui_close_window(WND_HOTKEY)).
+- quest_display_wnd is closed through close_slot (0xcc).
+- drag_plate is closed through ui_window_mgr_close_drag_plate,
+  ui_window_mgr_set_drag_plate (which replaces it) and the close of
+  windows 0x22 and 0x45 in window_slots.c, which all clear or replace
+  it; it is in the window list but not in the plate list, so the plate
+  paths do not destroy it.
+None of them closes itself or is a child of another window, and both
+close-all paths clear all four through clear_slots. They are left out.
+
+The new test_airplane_window_slot runs the slot statements extracted
+from open_airship around the extracted modal loop (ui_window_mgr_do_modal,
+run_modal, ui_window_mgr_modal_loop) with one frame that ends the loop,
+then destroys the posted window through the extracted ui_window_destruct
+and the real forget_window.c. Ended by closing (0xb4) the slot is cleared
+either way; ended by the flight's map move (0xb1) it fails on the
+previous list ("private_airplane_wnd still points at the destroyed
+window").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/wndmgr/forget_window.c         |   2 +
+ tests/build.bat                       |   3 +
+ tests/build_airplane_window_slot.bat  |  15 ++++
+ tests/extract_airplane_window_slot.py |  40 ++++++++++
+ tests/test_airplane_window_slot.c     | 110 ++++++++++++++++++++++++++
+ 5 files changed, 170 insertions(+)
+ create mode 100644 tests/build_airplane_window_slot.bat
+ create mode 100644 tests/extract_airplane_window_slot.py
+ create mode 100644 tests/test_airplane_window_slot.c
+
+diff --git a/src/ui/wndmgr/forget_window.c b/src/ui/wndmgr/forget_window.c
+index 2d92f94..8838092 100644
+--- a/src/ui/wndmgr/forget_window.c
++++ b/src/ui/wndmgr/forget_window.c
+@@ -60,6 +60,8 @@ static const unsigned short window_slots[] = {
+     SLOT(expanded_bartermarket_wnd), SLOT(expanded_barter_item_purchase_wnd),
+     SLOT(register_party_wnd), SLOT(adven_party_board_wnd), SLOT(request_join_party_wnd),
+     SLOT(apply_for_party_wnd),
++    /* Kept outside the window lists by navigation_cmd.c for its modal loop. */
++    SLOT(private_airplane_wnd),
+ };
+
+ static void forget(struct UIWindow **ref, const struct UIWindow *wnd)
+diff --git a/tests/build.bat b/tests/build.bat
+index d09ffbf..559f968 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -895,3 +895,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_meteor_storm_waves.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_airplane_window_slot.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_airplane_window_slot.bat b/tests/build_airplane_window_slot.bat
+new file mode 100644
+index 0000000..839b86e
+--- /dev/null
++++ b/tests/build_airplane_window_slot.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\airplane_window_slot"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_airplane_window_slot.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_airplane_window_slot.c" "%ROOT%\src\ui\wndmgr\forget_window.c" "%ROOT%\src\std\list.c" /Fe:test_airplane_window_slot.exe
++if errorlevel 1 (popd & exit /b 1)
++test_airplane_window_slot.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_airplane_window_slot.py b/tests/extract_airplane_window_slot.py
+new file mode 100644
+index 0000000..9b213e7
+--- /dev/null
++++ b/tests/extract_airplane_window_slot.py
+@@ -0,0 +1,40 @@
++"""Extract the private-airplane window slot handling and what destroys the window.
++
++From navigation_cmd.c the statements that keep the window in g_windowMgr.private_airplane_wnd
++around its modal loop; from modal.c the modal loop; from window_base.c ui_window_destruct.
++Usage: ROOT OUT"""
++import re
++import sys
++from pathlib import Path
++
++root, out = Path(sys.argv[1]) / 'src', Path(sys.argv[2])
++out.mkdir(parents=True, exist_ok=True)
++
++
++def read(name):
++    return (root / name).read_bytes().decode('utf-8').replace('\r\n', '\n')
++
++
++def function(text, pattern, name):
++    match = re.search(r'^' + pattern + r'\([^)]*\)\n\{\n.*?^\}\n', text, re.M | re.S)
++    if not match:
++        sys.exit(name + ' not found')
++    return match.group(0)
++
++
++navigation = read('ui/quests/navigation_cmd.c')
++closed = re.search(r'^#define AIRPLANE_RESULT_CLOSED .*\n', navigation, re.M)
++slot = re.search(r'^    g_windowMgr\.private_airplane_wnd = wnd;\n(?:    .*\n)*?        g_windowMgr\.private_airplane_wnd = NULL;\n',
++                 navigation, re.M)
++if not closed or not slot:
++    sys.exit('airplane slot statements not found')
++modal = read('ui/wndmgr/modal.c')
++parts = [
++    closed.group(0),
++    'static void open_airship_slot(struct UIWindow *wnd)\n{\n' + slot.group(0) + '}\n',
++    function(modal, r'int ui_window_mgr_modal_loop', 'ui_window_mgr_modal_loop'),
++    function(modal, r'static int run_modal', 'run_modal'),
++    function(modal, r'int ui_window_mgr_do_modal', 'ui_window_mgr_do_modal'),
++    function(read('ui/controls/window_base.c'), r'void ui_window_destruct', 'ui_window_destruct'),
++]
++(out / 'airplane_window_slot.inc').write_text('\n'.join(parts), encoding='utf-8')
+diff --git a/tests/test_airplane_window_slot.c b/tests/test_airplane_window_slot.c
+new file mode 100644
+index 0000000..ad031f9
+--- /dev/null
++++ b/tests/test_airplane_window_slot.c
+@@ -0,0 +1,110 @@
++/* The private-airplane window slot. navigation_cmd.c keeps the window in
++   g_windowMgr.private_airplane_wnd for its modal loop and clears the slot only when the loop ends
++   with AIRPLANE_RESULT_CLOSED (0xb4). A flight ends it with 0xb1 instead: the airplane map move
++   (game_mode_zc_npcack_mapmove) sets that result. The loop then posts the window to the quit
++   list, and its destruction (ui_window_destruct -> ui_window_mgr_forget_window) must clear the
++   slot, or the slot points at the freed window. */
++#include "ui/window_manager_state.h"
++#include "ui/window_mgr.h"
++#include "ui/wndmgr/wndmgr.h"
++#include "world/mode_dispatch.h"
++#include "world/mode_manager.h"
++#include "core/app.h"
++#include "core/object_type_tables.h"
++#include "render/cdc.h"
++#include "render/surface.h"
++#include "render/texture.h"
++#include "std/list.h"
++#include "std/vec.h"
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#define MODAL_RESULT_FLIGHT 0xb1 /* game_mode_zc_npcack_mapmove, packets_npc.c */
++
++struct UIWindowMgr g_windowMgr;
++int g_quitRequested;
++
++void *mem_alloc(size_t bytes)
++{
++    void *p = calloc(1, bytes);
++    assert(p);
++    return p;
++}
++void mem_free(void *p) { free(p); }
++void actors_forget_window(const struct UIWindow *wnd) { (void)wnd; }
++void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr *self, struct UIWindow *wnd)
++{ (void)self; (void)wnd; }
++void dc_bitmap_destroy(struct DcBitmap *self) { (void)self; abort(); }
++void surface_destroy(struct Surface *surface) { (void)surface; abort(); }
++void vec_free(struct Vec *v)
++{
++    free(v->first);
++    memset(v, 0, sizeof *v);
++}
++struct UIWindow *ui_window_get_ancestor(struct UIWindow *self) { return self; }
++void ui_window_mgr_focus_first_edit(struct UIWindowMgr *self) { (void)self; }
++struct Mode *client_current_mode(void) { return NULL; }
++
++/* The quit list: the window is destroyed after the loop, as destroy_closed_windows does. */
++static struct UIWindow *quitting;
++void ui_window_mgr_post_quit2(struct UIWindowMgr *self, struct UIWindow *wnd)
++{
++    assert(self == &g_windowMgr && !quitting);
++    quitting = wnd;
++}
++
++/* One frame: the server's answer arrives. */
++static int frame_result, frames;
++void mode_update(struct Mode *mode)
++{
++    (void)mode;
++    assert(g_windowMgr.private_airplane_wnd && g_windowMgr.modal_wnd == g_windowMgr.private_airplane_wnd);
++    frames++;
++    g_windowMgr.modal_result = frame_result;
++}
++
++static void on_destroy(struct UIWindow *self) { (void)self; }
++static int destroyed;
++static void airplane_destroy(struct UIWindow *self)
++{
++    ui_window_destruct(self);
++    destroyed++;
++    /* Not freed, so that a slot still holding it can be recognised. */
++}
++const struct UIWindowOps ui_window_ops = { .on_destroy = on_destroy };
++static const struct UIWindowOps airplane_ops = { .destroy = airplane_destroy, .on_destroy = on_destroy };
++
++void ui_window_destruct(struct UIWindow *self);
++#include "airplane_window_slot.inc"
++
++static void fly(int result, const char *what)
++{
++    static struct UIWindow window;
++
++    memset(&window, 0, sizeof window);
++    list_init(&window.draws);
++    list_init(&window.children);
++    window.ops = &airplane_ops;
++    quitting = NULL;
++    frames = destroyed = 0;
++    frame_result = result;
++
++    open_airship_slot(&window);
++    assert(frames == 1 && quitting == &window && !g_windowMgr.modal_wnd);
++    ui_window_destroy(quitting);
++    assert(destroyed == 1);
++    if (g_windowMgr.private_airplane_wnd) {
++        printf("%s: private_airplane_wnd still points at the destroyed window\n", what);
++        exit(1);
++    }
++}
++
++int main(void)
++{
++    fly(AIRPLANE_RESULT_CLOSED, "closed");
++    fly(MODAL_RESULT_FLIGHT, "flight");
++    puts("Airplane window slot: cleared when the window is destroyed after its modal loop ends by closing (0xb4) or by the flight's map move (0xb1).");
++    return 0;
++}
