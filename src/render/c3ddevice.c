@@ -207,6 +207,31 @@ int c3d_device_create_environment(struct C3dDevice *self, const GUID *adapter, c
     return gfx_create_zbuffer(self);
 }
 
+int borderless_setting = 1;
+
+void monitor_rects(HMONITOR m, RECT *mon, RECT *work)
+{
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    if (m && GetMonitorInfoA(m, &mi)) {
+        *mon = mi.rcMonitor;
+        *work = mi.rcWork;
+    } else {
+        SetRect(mon, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+        *work = *mon;
+    }
+}
+
+int borderless_rect(const GUID *adapter, RECT *rc)
+{
+    RECT work;
+    HMONITOR m = gfx_adapter_monitor(adapter);
+    if (!m || !borderless_setting)
+        return 0;
+    monitor_rects(m, rc, &work);
+    return 1;
+}
+
 int c3d_device_init(struct C3dDevice *self, HWND hwnd, const GUID *adapter, const GUID *device,
                                const struct SurfaceDesc *mode, int flags)
 {

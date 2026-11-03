@@ -21,7 +21,6 @@
 enum { KIND_WINDOWED, KIND_EXCLUSIVE, KIND_BORDERLESS };
 static int current_kind(const struct C3dDevice *d);
 static int requested_kind(int fullscreen);
-int borderless_setting = 1;
 static struct UICheckBox *borderlessBox;
 
 static int live_request(const struct UIGraphicSettingWnd *wnd, int *w, int *h, int *fullscreen)
@@ -133,35 +132,12 @@ static HMONITOR target_monitor(HWND hwnd, const GUID *adapter)
     return m ? m : MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 }
 
-static void monitor_rects(HMONITOR m, RECT *mon, RECT *work)
-{
-    MONITORINFO mi;
-    mi.cbSize = sizeof(mi);
-    if (m && GetMonitorInfoA(m, &mi)) {
-        *mon = mi.rcMonitor;
-        *work = mi.rcWork;
-    } else {
-        SetRect(mon, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
-        *work = *mon;
-    }
-}
-
 static void monitor_size(HMONITOR m, int *w, int *h)
 {
     RECT mon, work;
     monitor_rects(m, &mon, &work);
     *w = mon.right - mon.left;
     *h = mon.bottom - mon.top;
-}
-
-int borderless_rect(const GUID *adapter, RECT *rc)
-{
-    RECT work;
-    HMONITOR m = gfx_adapter_monitor(adapter);
-    if (!m || !borderless_setting)
-        return 0;
-    monitor_rects(m, rc, &work);
-    return 1;
 }
 
 static int requested_kind(int fullscreen)
