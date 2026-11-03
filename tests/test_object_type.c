@@ -1,12 +1,20 @@
 #include "type_query_fixture.h"
+#include "core/object_type_registry.h"
 #include <windows.h>
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void *__RTDynamicCast(void *object, long delta, const void *source,
                      const void *target, int is_reference);
+
+__declspec(noreturn) void fatal_error(const char *message)
+{
+    printf("fatal_error: %s\n", message);
+    exit(1);
+}
 
 static int old_class_is(const char *name, const char *expected)
 {
@@ -30,6 +38,7 @@ int main(void)
         "UICharInfoBalloonText", "UIColorTransBalloonText", "UIAchBalloonText"
     };
     const void *unknown = (const void *)(uintptr_t)1;
+    object_types_install(&g_objectTypes);
     assert(sizeof(void *) == 4);
     assert(offsetof(struct ReferenceVtable, slots) == sizeof(void *));
     GetSystemInfo(&system);

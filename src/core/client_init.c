@@ -2,6 +2,7 @@
 #include "base.h"
 #include "core/client_init.h"
 #include "core/msg_str.h"
+#include "core/object_type_registry.h"
 #include "core/packet_table.h"
 #include "core/res_mgr.h"
 #include "contents/guild_emblem_hooks.h"
@@ -88,9 +89,10 @@ static void release_admin_aids(void) { vec_free(&g_adminAids); }
 static void release_yellow_aids(void) { vec_free(&g_yellowAids); }
 static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); }
 
-/* Lower layers call up into higher ones only through these hooks and handlers, and the window
-   manager reaches the feature windows only through the window table. This is the one place
-   that installs them; each is documented where it is declared. */
+/* Lower layers call up into higher ones only through these hooks and handlers, the window
+   manager reaches the feature windows only through the window table, and the type queries
+   know the classes only through the object types. This is the one place that installs them;
+   each is documented where it is declared. */
 static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
@@ -119,6 +121,7 @@ static void client_install_hooks(void)
     g_windowMgrHandlers.forget_window = actors_forget_window;
 
     ui_window_mgr_set_window_table(&g_windowTable);
+    object_types_install(&g_objectTypes);
 }
 
 void client_init(void)

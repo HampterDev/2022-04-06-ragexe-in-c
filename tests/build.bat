@@ -439,9 +439,10 @@ call "%ROOT%\tests\build_font_cache.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_login_pin_state.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /c /W4 /WX /O2 /MD /DTYPE_QUERY_FIXTURE /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\type_query_fixture.h" "%ROOT%\src\core\object_type.c" /Fo:object_type_test.obj
+if not exist object_type_test mkdir object_type_test
+cl /nologo /c /W4 /WX /O2 /MD /DTYPE_QUERY_FIXTURE /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\type_query_fixture.h" "%ROOT%\src\core\object_type.c" "%ROOT%\src\ui\controls\controls_object_types.c" "%ROOT%\src\ui\items\items_object_types.c" "%ROOT%\src\ui\character\character_object_types.c" "%ROOT%\src\ui\quests\quests_object_types.c" "%ROOT%\src\ui\social\social_object_types.c" "%ROOT%\src\ui\shops\shops_object_types.c" "%ROOT%\src\ui\chat\chat_object_types.c" "%ROOT%\src\actor\actor_object_types.c" "%ROOT%\src\resources\resource_object_types.c" "%ROOT%\src\ui\mail\mail_object_types.c" "%ROOT%\src\ui\hotkeys\hotkey_object_types.c" "%ROOT%\src\effects\skills\skill_object_types.c" "%ROOT%\src\ui\render\render_ui_object_types.c" "%ROOT%\src\ui\map\map_object_types.c" "%ROOT%\src\ui\worldmap\worldmap_object_types.c" "%ROOT%\src\core\object_type_registry.c" /Fo:object_type_test\
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_object_type.c" "%ROOT%\tests\fixtures\type_query_reference.c" object_type_test.obj /Fe:test_object_type.exe
+cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_object_type.c" "%ROOT%\tests\fixtures\type_query_reference.c" object_type_test\*.obj /Fe:test_object_type.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_object_type.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
