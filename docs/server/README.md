@@ -7,6 +7,8 @@ server fork may need adaptation. Build with `PACKETVER=20220406` for this client
 
 The separate [Adventurer's Agency patch](agency-packets.md) adds recruitment
 listings over game packets. It can be applied before or after the emblem patch.
+The [UTF-8 text patch](utf8-text.md) targets the HampterDev/Hercules fork instead;
+it changes name validation, text truncation and the database connection charset.
 For CRLF source checkouts, use `git apply --ignore-space-change` for checking and
 applying either patch; their baseline Git source uses LF.
 

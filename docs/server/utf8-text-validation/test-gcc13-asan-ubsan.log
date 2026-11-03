@@ -1,0 +1,8 @@
+Transcribed, not captured: WSL could not be restarted to write this file
+(Wsl/Service/CreateInstance/CreateVm/HCS/ERROR_NO_SYSTEM_RESOURCES).
+
+Result of the run against the final patched tree, GCC 13.3.0 (Ubuntu 24.04, WSL),
+-std=gnu11 -O1 -Wall -Wextra -fsanitize=address,undefined -fno-sanitize-recover=undefined:
+
+UTF-8 helper checks: 162 run, 0 failed
+gcc-asan-test-exit=0

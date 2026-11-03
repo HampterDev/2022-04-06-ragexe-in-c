@@ -122,3 +122,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Keep text in memory as UTF-8: carets, deletion, wrapping, shortening and byte limits step whole UTF-8 characters; EZ2STR resource names stay CP949.
 - Decode drawn and measured text as UTF-8 (the font charset only picks the font); fit and ellipsize by UTF-8 characters; remove charset tags.
 - Read keyboard, IME and clipboard input as Unicode (Unicode window, `CF_UNICODETEXT`, surrogate pairs, full-length IME strings), stored as UTF-8 on any Windows locale.
+- Add `tools/utf8-data` to convert client display text to UTF-8; [matching server patch](docs/server/utf8-text.md).

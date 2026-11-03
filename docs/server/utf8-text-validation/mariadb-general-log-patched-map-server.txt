@@ -1,0 +1,33 @@
+261103 10:29:47	    63 Connect	root@127.0.0.1 on rag_d using TCP/IP
+		    63 Query	SHOW VARIABLES LIKE 'wait_timeout'
+		    63 Query	SET NAMES latin1
+		    64 Connect	root@127.0.0.1 on rag_d using TCP/IP
+		    64 Query	SET NAMES latin1
+		    65 Connect	root@127.0.0.1 on rag_d using TCP/IP
+		    66 Connect	root@127.0.0.1 on rag_d using TCP/IP
+		    65 Query	SHOW VARIABLES LIKE 'wait_timeout'
+		    66 Query	SET NAMES latin1
+		    65 Query	SET NAMES latin1
+		    63 Prepare	SELECT `key`, `index`, `value` FROM `map_reg_num_db`
+		    63 Execute	SELECT `key`, `index`, `value` FROM `map_reg_num_db`
+		    63 Close stmt	
+		    63 Prepare	SELECT `key`, `index`, `value` FROM `map_reg_str_db`
+		    63 Execute	SELECT `key`, `index`, `value` FROM `map_reg_str_db`
+		    63 Close stmt	
+		    64 Query	SELECT `char_id`, `fame`, `name` FROM `char` WHERE `fame` > 0 AND (`class` = '10' OR `class` = '4011' OR `class` = '4033' OR `class` = '4058' OR `class` = '4064' OR `class` = '4100') ORDER BY `fame` DESC LIMIT 10
+		    66 Query	SELECT `char_id`, `fame`, `name` FROM `char` WHERE `fame` > 0 AND (`class` = '18' OR `class` = '4019' OR `class` = '4041' OR `class` = '4071' OR `class` = '4078' OR `class` = '4107') ORDER BY `fame` DESC LIMIT 10
+		    64 Query	SELECT `char_id`, `fame`, `name` FROM `char` WHERE `fame` > 0 AND `class` IN ('4046', '4225') ORDER BY `fame` DESC LIMIT 10
+		    63 Query	SELECT `auction_id`,`seller_id`,`seller_name`,`buyer_id`,`buyer_name`,`price`,`buynow`,`hours`,`timestamp`,`nameid`,`item_name`,`type`,`refine`,`grade`,`attribute`,`unique_id`,`card0`,`card1`,`card2`,`card3`, `opt_idx0`, `opt_val0`, `opt_idx1`, `opt_val1`, `opt_idx2`, `opt_val2`, `opt_idx3`, `opt_val3`, `opt_idx4`, `opt_val4` FROM `auction` ORDER BY `auction_id` DESC
+		    63 Prepare	SELECT `name`, `itemid`, `amount` FROM `npc_market_data`
+		    63 Execute	SELECT `name`, `itemid`, `amount` FROM `npc_market_data`
+		    63 Close stmt	
+		    63 Prepare	SELECT `name`, `itemId`, `amount`, `priceId`, `priceAmount` FROM `npc_barter_data`
+		    63 Execute	SELECT `name`, `itemId`, `amount`, `priceId`, `priceAmount` FROM `npc_barter_data`
+		    63 Close stmt	
+		    63 Prepare	SELECT `name`, `itemId`, `amount`, `zeny`, `currencyId1`, `currencyAmount1`, `currencyRefine1`, `currencyId2`, `currencyAmount2`, `currencyRefine2`, `currencyId3`, `currencyAmount3`, `currencyRefine3`, `currencyId4`, `currencyAmount4`, `currencyRefine4`, `currencyId5`, `currencyAmount5`, `currencyRefine5`, `currencyId6`, `currencyAmount6`, `currencyRefine6`, `currencyId7`, `currencyAmount7`, `currencyRefine7`, `currencyId8`, `currencyAmount8`, `currencyRefine8`, `currencyId9`, `currencyAmount9`, `currencyRefine9`, `currencyId10`, `currencyAmount10`, `currencyRefine10` FROM `npc_expanded_barter_data`
+		    63 Execute	SELECT `name`, `itemId`, `amount`, `zeny`, `currencyId1`, `currencyAmount1`, `currencyRefine1`, `currencyId2`, `currencyAmount2`, `currencyRefine2`, `currencyId3`, `currencyAmount3`, `currencyRefine3`, `currencyId4`, `currencyAmount4`, `currencyRefine4`, `currencyId5`, `currencyAmount5`, `currencyRefine5`, `currencyId6`, `currencyAmount6`, `currencyRefine6`, `currencyId7`, `currencyAmount7`, `currencyRefine7`, `currencyId8`, `currencyAmount8`, `currencyRefine8`, `currencyId9`, `currencyAmount9`, `currencyRefine9`, `currencyId10`, `currencyAmount10`, `currencyRefine10` FROM `npc_expanded_barter_data`
+		    63 Close stmt	
+		    64 Query	SELECT COUNT(*) FROM `char` WHERE `clan_id` = '1' AND `last_login` >= '1792488587'
+		    66 Query	SELECT COUNT(*) FROM `char` WHERE `clan_id` = '4' AND `last_login` >= '1792488587'
+		    66 Query	SELECT COUNT(*) FROM `char` WHERE `clan_id` = '3' AND `last_login` >= '1792488587'
+		    64 Query	SELECT COUNT(*) FROM `char` WHERE `clan_id` = '2' AND `last_login` >= '1792488587'

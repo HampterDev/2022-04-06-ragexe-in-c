@@ -1,0 +1,813 @@
+diff --git a/conf/global/sql_connection.conf b/conf/global/sql_connection.conf
+index dcfb2ba35..d64c92504 100644
+--- a/conf/global/sql_connection.conf
++++ b/conf/global/sql_connection.conf
+@@ -34,7 +34,12 @@
+ sql_connection: {
+ 	// [INTER] You can specify the codepage to use in your mySQL tables here.
+ 	// (Note that this feature requires MySQL 4.1+)
+-	//default_codepage: ""
++	// [MAP, API] Connection character set, also used by the async SQL workers.
++	// The UTF-8 client's text is stored as raw bytes in the latin1 tables:
++	// latin1 on the connection and in the columns means MySQL converts nothing.
++	// Keep it identical to `codepage` below and do not leave it empty, or each
++	// client library picks its own default (latin1 or utf8mb4).
++	default_codepage: "latin1"
+ 
+ 	// [LOGIN] Is `userid` in account_db case sensitive?
+ 	//case_sensitive: false
+@@ -48,5 +53,7 @@ sql_connection: {
+ 	db_username: "ragnarok"
+ 	db_password: "ragnarok"
+ 	db_database: "ragnarok"
+-	//codepage:""
++	// [LOGIN] Connection character set of the login server's account, ipban
++	// and loginlog connections. Keep it identical to `default_codepage`.
++	codepage: "latin1"
+ }
+diff --git a/sql-files/1main.sql b/sql-files/1main.sql
+index a7cb55a55..ee810b2f4 100644
+--- a/sql-files/1main.sql
++++ b/sql-files/1main.sql
+@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS `char` (
+   `char_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+   `account_id` INT UNSIGNED NOT NULL DEFAULT '0',
+   `char_num` TINYINT NOT NULL DEFAULT '0',
+-  `name` VARCHAR(30) NOT NULL DEFAULT '',
++  `name` VARCHAR(30) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   `class` SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+   `base_level` SMALLINT UNSIGNED NOT NULL DEFAULT '1',
+   `job_level` SMALLINT UNSIGNED NOT NULL DEFAULT '1',
+@@ -385,9 +385,9 @@ CREATE TABLE IF NOT EXISTS `global_acc_reg_str_db` (
+ 
+ CREATE TABLE IF NOT EXISTS `guild` (
+   `guild_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+-  `name` VARCHAR(24) NOT NULL DEFAULT '',
++  `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   `char_id` INT UNSIGNED NOT NULL DEFAULT '0',
+-  `master` VARCHAR(24) NOT NULL DEFAULT '',
++  `master` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   `guild_lv` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `connect_member` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `max_member` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+@@ -414,7 +414,7 @@ CREATE TABLE IF NOT EXISTS `guild_alliance` (
+   `guild_id` INT UNSIGNED NOT NULL DEFAULT '0',
+   `opposition` INT UNSIGNED NOT NULL DEFAULT '0',
+   `alliance_id` INT UNSIGNED NOT NULL DEFAULT '0',
+-  `name` VARCHAR(24) NOT NULL DEFAULT '',
++  `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   PRIMARY KEY (`guild_id`,`alliance_id`),
+   KEY `alliance_id` (`alliance_id`)
+ ) ENGINE=MyISAM;
+@@ -454,7 +454,7 @@ CREATE TABLE IF NOT EXISTS `guild_expulsion` (
+   `guild_id` INT UNSIGNED NOT NULL DEFAULT '0',
+   `account_id` INT UNSIGNED NOT NULL DEFAULT '0',
+   `char_id` INT UNSIGNED NOT NULL DEFAULT '0',
+-  `name` VARCHAR(24) NOT NULL DEFAULT '',
++  `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   `mes` VARCHAR(40) NOT NULL DEFAULT '',
+   PRIMARY KEY (`guild_id`,`name`)
+ ) ENGINE=MyISAM;
+@@ -476,7 +476,7 @@ CREATE TABLE IF NOT EXISTS `guild_member` (
+   `exp_payper` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `online` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `position` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+-  `name` VARCHAR(24) NOT NULL DEFAULT '',
++  `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   PRIMARY KEY (`guild_id`,`char_id`),
+   KEY `char_id` (`char_id`)
+ ) ENGINE=MyISAM;
+@@ -834,7 +834,7 @@ CREATE TABLE IF NOT EXISTS `mercenary_owner` (
+ 
+ CREATE TABLE IF NOT EXISTS `party` (
+   `party_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+-  `name` VARCHAR(24) NOT NULL DEFAULT '',
++  `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
+   `exp` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `item` TINYINT UNSIGNED NOT NULL DEFAULT '0',
+   `leader_id` INT UNSIGNED NOT NULL DEFAULT '0',
+@@ -1000,6 +1000,7 @@ INSERT IGNORE INTO `sql_updates` (`timestamp`) VALUES (1599908598); -- 2020-09-1
+ INSERT IGNORE INTO `sql_updates` (`timestamp`) VALUES (1613840320); -- 2021-02-20--19-57.sql
+ INSERT IGNORE INTO `sql_updates` (`timestamp`) VALUES (1618058468); -- 2021-04-10--15-36.sql
+ INSERT IGNORE INTO `sql_updates` (`timestamp`) VALUES (1653155461); -- 2022-05-21--29-49.sql
++INSERT IGNORE INTO `sql_updates` (`timestamp`) VALUES (1793707200); -- 2026-11-03--12-00.sql
+ 
+ --
+ -- Table structure for table `storage`
+diff --git a/sql-files/2026-11-03--12-00.sql b/sql-files/2026-11-03--12-00.sql
+new file mode 100644
+index 000000000..f5a16bcb3
+--- /dev/null
++++ b/sql-files/2026-11-03--12-00.sql
+@@ -0,0 +1,96 @@
++#1793707200
++
++-- This file is part of Hercules.
++-- http://herc.ws - http://github.com/HerculesWS/Hercules
++--
++-- Copyright (C) 2026 Hercules Dev Team
++--
++-- Hercules is free software: you can redistribute it and/or modify
++-- it under the terms of the GNU General Public License as published by
++-- the Free Software Foundation, either version 3 of the License, or
++-- (at your option) any later version.
++--
++-- This program is distributed in the hope that it will be useful,
++-- but WITHOUT ANY WARRANTY; without even the implied warranty of
++-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++-- GNU General Public License for more details.
++--
++-- You should have received a copy of the GNU General Public License
++-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++-- Character, party and guild names are UTF-8 bytes stored unconverted in latin1
++-- columns (connection character set latin1). Compare them byte for byte instead
++-- of with latin1_swedish_ci, which folds unrelated UTF-8 bytes together.
++-- Names become case-sensitive: 'Foo' and 'foo' are different names.
++--
++-- Each column is changed only while it is a latin1 column of the shipped type;
++-- otherwise the statement fails with an "Unknown column 'refused: ...'" error
++-- and the column is left alone. Converting a utf8mb4 column to latin1 could
++-- lose data. The sql_updates row is written only if all seven columns now use
++-- latin1_bin. Going from a case-insensitive to a binary collation cannot create
++-- duplicates, so the unique and primary keys on these columns stay valid.
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'char' AND `COLUMN_NAME` = 'name'
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(30)' AND `IS_NULLABLE` = 'NO') = 1,
++	'ALTER TABLE `char` MODIFY `name` VARCHAR(30) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: char.name not latin1 varchar(30) not null` FROM `char` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'party' AND `COLUMN_NAME` = 'name'
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(24)' AND `IS_NULLABLE` = 'NO') = 1,
++	'ALTER TABLE `party` MODIFY `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: party.name not latin1 varchar(24) not null` FROM `party` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'guild' AND `COLUMN_NAME` IN ('name', 'master')
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(24)' AND `IS_NULLABLE` = 'NO') = 2,
++	'ALTER TABLE `guild` MODIFY `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''', MODIFY `master` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: guild.name/master not latin1 varchar(24) not null` FROM `guild` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'guild_member' AND `COLUMN_NAME` = 'name'
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(24)' AND `IS_NULLABLE` = 'NO') = 1,
++	'ALTER TABLE `guild_member` MODIFY `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: guild_member.name not latin1 varchar(24) not null` FROM `guild_member` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'guild_alliance' AND `COLUMN_NAME` = 'name'
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(24)' AND `IS_NULLABLE` = 'NO') = 1,
++	'ALTER TABLE `guild_alliance` MODIFY `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: guild_alliance.name not latin1 varchar(24) not null` FROM `guild_alliance` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := IF((SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'guild_expulsion' AND `COLUMN_NAME` = 'name'
++	AND `CHARACTER_SET_NAME` = 'latin1' AND `COLUMN_TYPE` = 'varchar(24)' AND `IS_NULLABLE` = 'NO') = 1,
++	'ALTER TABLE `guild_expulsion` MODIFY `name` VARCHAR(24) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '''' ',
++	'SELECT `refused: guild_expulsion.name not latin1 varchar(24) not null` FROM `guild_expulsion` LIMIT 0');
++PREPARE utf8_text_stmt FROM @utf8_text_sql;
++EXECUTE utf8_text_stmt;
++DEALLOCATE PREPARE utf8_text_stmt;
++
++SET @utf8_text_sql := NULL;
++
++INSERT INTO `sql_updates` (`timestamp`)
++SELECT 1793707200 FROM DUAL
++WHERE (SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
++	WHERE `TABLE_SCHEMA` = DATABASE() AND `COLLATION_NAME` = 'latin1_bin'
++	AND ((`TABLE_NAME` = 'char' AND `COLUMN_NAME` = 'name')
++	  OR (`TABLE_NAME` = 'party' AND `COLUMN_NAME` = 'name')
++	  OR (`TABLE_NAME` = 'guild' AND `COLUMN_NAME` IN ('name', 'master'))
++	  OR (`TABLE_NAME` IN ('guild_member', 'guild_alliance', 'guild_expulsion') AND `COLUMN_NAME` = 'name'))) = 7;
+diff --git a/src/api/api.c b/src/api/api.c
+index 7090619ad..584c398fc 100644
+--- a/src/api/api.c
++++ b/src/api/api.c
+@@ -450,7 +450,8 @@ int do_init(int argc, char *argv[])
+ 			Sql_ShowDebug(api->mysql_handle);
+ 	}
+ 
+-	// Initialize async SQL with same credentials
++	// Initialize async SQL with same credentials and character set
++	sql_async->set_encoding(api->default_codepage);
+ 	if (!sql_async->init(2, api->server_id, api->server_pw, api->server_ip, (uint16)api->server_port, api->server_db)) {
+ 		ShowWarning("Failed to initialize async SQL, async queries will not be available.\n");
+ 	}
+diff --git a/src/common/sql_async.c b/src/common/sql_async.c
+index 724fbe5f4..356169692 100644
+--- a/src/common/sql_async.c
++++ b/src/common/sql_async.c
+@@ -91,6 +91,7 @@ static struct {
+ 	char db_host[128];
+ 	uint16 db_port;
+ 	char db_name[64];
++	char db_encoding[32];                          ///< Connection character set, empty for the library default
+ 
+ 	// Query queue (protected by queue_mutex)
+ 	struct mutex_data *queue_mutex;
+@@ -151,6 +152,16 @@ static bool sql_async_worker_connect(struct SqlAsyncWorker *worker)
+ 		return false;
+ 	}
+ 
++	// Use the same connection character set as the synchronous handle, so that text is
++	// stored identically whichever connection writes it
++	if (sql_async_state.db_encoding[0] != '\0'
++	 && mysql_set_character_set(&worker->handle, sql_async_state.db_encoding) != 0) {
++		ShowError("sql_async: Worker %d failed to set character set '%s': %s\n",
++		          worker->worker_id, sql_async_state.db_encoding, mysql_error(&worker->handle));
++		mysql_close(&worker->handle);
++		return false;
++	}
++
+ 	worker->connected = true;
+ 
+ 	return true;
+@@ -419,6 +430,26 @@ static void sql_async_free_query(struct SqlAsyncQuery *query)
+ // Public Interface Implementation
+ // ============================================================================
+ 
++/**
++ * @copydoc sql_async_interface::set_encoding
++ */
++static bool sql_async_set_encoding(const char *encoding)
++{
++	nullpo_retr(false, encoding);
++
++	if (sql_async_state.initialized) {
++		ShowWarning("sql_async: set_encoding must be called before init.\n");
++		return false;
++	}
++	if (strlen(encoding) >= sizeof(sql_async_state.db_encoding)) {
++		ShowError("sql_async: Character set name '%s' is too long.\n", encoding);
++		return false;
++	}
++
++	safestrncpy(sql_async_state.db_encoding, encoding, sizeof(sql_async_state.db_encoding));
++	return true;
++}
++
+ /**
+  * @copydoc sql_async_interface::init
+  */
+@@ -941,4 +972,5 @@ void sql_async_defaults(void)
+ 	sql_async->NumColumns = sql_async_NumColumns;
+ 	sql_async->NextRow = sql_async_NextRow;
+ 	sql_async->GetData = sql_async_GetData;
++	sql_async->set_encoding = sql_async_set_encoding;
+ }
+diff --git a/src/common/sql_async.h b/src/common/sql_async.h
+index 2f3e074c6..735156efc 100644
+--- a/src/common/sql_async.h
++++ b/src/common/sql_async.h
+@@ -274,6 +274,16 @@ struct sql_async_interface {
+ 	 * @return SQL_SUCCESS or SQL_ERROR
+ 	 */
+ 	int (*GetData)(struct SqlAsyncResult *result, size_t col, char **out_buf, size_t *out_len);
++
++	/**
++	 * Sets the connection character set of the worker connections, matching
++	 * SQL->SetEncoding on the synchronous handle. Must be called before init().
++	 * A worker whose character set cannot be applied does not use its connection.
++	 *
++	 * @param encoding Character set name, e.g. "latin1"; empty keeps the client library default
++	 * @return true on success, false if already initialized or the name is too long
++	 */
++	bool (*set_encoding)(const char *encoding);
+ };
+ 
+ #ifdef HERCULES_CORE
+diff --git a/src/common/strlib.c b/src/common/strlib.c
+index d94665409..706942d48 100644
+--- a/src/common/strlib.c
++++ b/src/common/strlib.c
+@@ -376,6 +376,115 @@ static size_t strlib_safestrnlen(const char *string, size_t maxlen)
+ 	return ( string != NULL ) ? strnlen(string, maxlen) : 0;
+ }
+ 
++/// Length of the UTF-8 sequence that lead byte c starts, or 0 if c cannot start one.
++static int strlib_utf8_sequence_length(unsigned char c)
++{
++	if (c < 0x80)
++		return 1;
++	if (c >= 0xC2 && c <= 0xDF)
++		return 2;
++	if ((c & 0xF0) == 0xE0)
++		return 3;
++	if (c >= 0xF0 && c <= 0xF4)
++		return 4;
++	return 0;
++}
++
++/// Decodes one well-formed UTF-8 character (shortest form, no surrogates, at most U+10FFFF)
++/// from s[0..len). Returns its length in bytes, or 0 if s does not start with one.
++static int strlib_utf8_decode(const unsigned char *s, size_t len, uint32 *out_cp)
++{
++	int n, i;
++	uint32 cp;
++
++	if (len == 0)
++		return 0;
++	n = strlib_utf8_sequence_length(s[0]);
++	if (n == 0 || len < (size_t)n)
++		return 0;
++	if (n == 1) {
++		*out_cp = s[0];
++		return 1;
++	}
++	cp = s[0] & (0x7F >> n);
++	for (i = 1; i < n; i++) {
++		if ((s[i] & 0xC0) != 0x80)
++			return 0;
++		cp = (cp << 6) | (s[i] & 0x3F);
++	}
++	if ((n == 3 && cp < 0x800) || (n == 4 && (cp < 0x10000 || cp > 0x10FFFF)) || (cp >= 0xD800 && cp <= 0xDFFF))
++		return 0;
++	*out_cp = cp;
++	return n;
++}
++
++static bool strlib_utf8_is_valid_name(const char *name)
++{
++	const unsigned char *s = (const unsigned char *)name;
++	size_t len, i;
++
++	if (name == NULL || name[0] == '\0')
++		return false;
++
++	len = strlen(name);
++	for (i = 0; i < len; ) {
++		uint32 cp;
++		int n = strlib_utf8_decode(s + i, len - i, &cp);
++
++		if (n == 0)
++			return false; // not well-formed UTF-8
++		if (cp < 0x20 || (cp >= 0x7F && cp <= 0x9F))
++			return false; // C0 controls, DEL, C1 controls
++		if (cp == 0xA0 || cp == 0xAD)
++			return false; // no-break space and soft hyphen (formerly trimmed as Latin-1 bytes)
++		if (cp == 0x061C || cp == 0x200E || cp == 0x200F || (cp >= 0x202A && cp <= 0x202E) || (cp >= 0x2066 && cp <= 0x2069))
++			return false; // bidirectional controls reorder the surrounding text
++		i += n;
++	}
++	return true;
++}
++
++static size_t strlib_utf8_boundary(const char *str, size_t len)
++{
++	const unsigned char *s = (const unsigned char *)str;
++	size_t lead = len;
++	int continuation = 0;
++	int need;
++
++	if (str == NULL)
++		return 0;
++
++	// step back over at most three continuation bytes to the byte that should start the sequence
++	while (lead > 0 && continuation < 3 && (s[lead - 1] & 0xC0) == 0x80) {
++		--lead;
++		++continuation;
++	}
++	if (lead == 0)
++		return len;
++	--lead;
++	need = strlib_utf8_sequence_length(s[lead]);
++	if (need > 1 + continuation)
++		return lead; // the last character was cut short
++	return len;
++}
++
++static char *strlib_safestrncpy_utf8(char *dst, const char *src, size_t n)
++{
++	size_t len, cut;
++
++	if (n == 0)
++		return dst;
++
++	strlib_safestrncpy(dst, src, n);
++	len = strlen(dst);
++	if (len == n - 1) { // src filled the buffer and may continue past it
++		cut = strlib_utf8_boundary(dst, len);
++		if (cut < len)
++			memset(dst + cut, '\0', len - cut);
++	}
++	return dst;
++}
++
+ /// Returns the line of the target position in the string.
+ /// Lines start at 1.
+ static int strlib_strline(const char *str, size_t pos)
+@@ -1127,6 +1236,9 @@ void strlib_defaults(void)
+ 	strlib->safestrnlen_ = strlib_safestrnlen;
+ 	strlib->strline_ = strlib_strline;
+ 	strlib->bin2hex_ = strlib_bin2hex;
++	strlib->utf8_is_valid_name = strlib_utf8_is_valid_name;
++	strlib->utf8_boundary = strlib_utf8_boundary;
++	strlib->safestrncpy_utf8_ = strlib_safestrncpy_utf8;
+ 
+ 	StrBuf->Malloc = StringBuf_Malloc;
+ 	StrBuf->Init = StringBuf_Init;
+diff --git a/src/common/strlib.h b/src/common/strlib.h
+index 84f6f4563..cbf430577 100644
+--- a/src/common/strlib.h
++++ b/src/common/strlib.h
+@@ -45,6 +45,7 @@
+ #define e_mail_check(email)          (strlib->e_mail_check_(email))
+ #define config_switch(str)           (strlib->config_switch_(str))
+ #define safestrncpy(dst,src,n)       (strlib->safestrncpy_((dst),(src),(n)))
++#define safestrncpy_utf8(dst,src,n)  (strlib->safestrncpy_utf8_((dst),(src),(n)))
+ #define safestrnlen(string,maxlen)   (strlib->safestrnlen_((string),(maxlen)))
+ #define strline(str,pos)             (strlib->strline_((str),(pos)))
+ #define bin2hex(output,input,count)  (strlib->bin2hex_((output),(input),(count)))
+@@ -141,6 +142,18 @@ struct strlib_interface {
+ 	/// The output buffer must be at least count*2+1 in size.
+ 	/// Returns true on success, false on failure.
+ 	bool (*bin2hex_) (char *output, const unsigned char *input, size_t count) GCC10ATTR ((access (write_only, 1), access (read_only, 2, 3)));
++
++	/// Whether the NUL-terminated name is non-empty, well-formed UTF-8 (RFC 3629) and free of
++	/// control characters (U+0000-U+001F, U+007F-U+009F), bidirectional controls, U+00A0 and U+00AD.
++	bool (*utf8_is_valid_name) (const char *name) GCC10ATTR ((access (read_only, 1)));
++
++	/// Returns len, reduced so that str[0..len) does not end in an incomplete UTF-8 sequence.
++	/// Only examines str[0..len); bytes that are not UTF-8 are left alone.
++	size_t (*utf8_boundary) (const char *str, size_t len) GCC10ATTR ((access (read_only, 1, 2)));
++
++	/// safestrncpy that does not split a UTF-8 sequence: when src fills the n - 1 bytes, an incomplete
++	/// sequence at the end of the copy is dropped. Reads at most n - 1 bytes of src and NUL-pads dst.
++	char *(*safestrncpy_utf8_) (char *dst, const char *src, size_t n) GCC10ATTR ((access (write_only, 1, 3), access (read_only, 2)));
+ };
+ 
+ struct stringbuf_interface {
+diff --git a/src/map/charselect.c b/src/map/charselect.c
+index 031901d83..c95dab4fb 100644
+--- a/src/map/charselect.c
++++ b/src/map/charselect.c
+@@ -53,7 +53,8 @@
+ #endif
+ 
+ // Characters that are trimmed from names because they cause confusion and problems. [Skotlex]
+-#define TRIM_CHARS "\255\xA0\032\t\x0A\x0D "
++// ASCII only: names are UTF-8, where bytes such as 0xA0 and 0xAD are parts of other characters.
++#define TRIM_CHARS "\032\t\x0A\x0D "
+ 
+ static struct charselect_interface charselect_s;
+ struct charselect_interface *charselect;
+@@ -889,8 +890,9 @@ static int charselect_create_char(struct charselect_session_data *csd, const cha
+                                    int slot, int hair_color, int hair_style,
+                                    int starting_job, uint8 sex)
+ {
++	char trimmed_name[NAME_LENGTH];
+ 	char esc_name[NAME_LENGTH*2+1];
+-	int char_id;
++	int char_id, flag;
+ 
+ 	nullpo_retr(-2, csd);
+ 	nullpo_retr(-2, name);
+@@ -903,20 +905,14 @@ static int charselect_create_char(struct charselect_session_data *csd, const cha
+ 	if (csd->found_char[slot] != -1)
+ 		return -4;
+ 
+-	// Escape name
++	// Trim and validate the name the same way as a rename, then check that it is free
++	safestrncpy(trimmed_name, name, NAME_LENGTH);
++	normalize_name(trimmed_name, TRIM_CHARS);
++	name = trimmed_name;
+ 	SQL->EscapeStringLen(map->mysql_handle, esc_name, name, strnlen(name, NAME_LENGTH));
+-
+-	// Check for duplicate name
+-	if (SQL_ERROR == SQL->Query(map->mysql_handle,
+-	    "SELECT 1 FROM `char` WHERE `name`='%s'", esc_name)) {
+-		Sql_ShowDebug(map->mysql_handle);
+-		return -2;
+-	}
+-	if (SQL->NumRows(map->mysql_handle) > 0) {
+-		SQL->FreeResult(map->mysql_handle);
+-		return -1; // Name exists
+-	}
+-	SQL->FreeResult(map->mysql_handle);
++	flag = charselect->check_char_name(name, esc_name);
++	if (flag < 0)
++		return flag;
+ 
+ 	// Resolve starting job if not specified
+ 	if (starting_job == 0)
+@@ -1016,15 +1012,9 @@ static int charselect_check_char_name(const char *name, const char *esc_name)
+ 	if (strlen(name) < 1)
+ 		return -2;
+ 
+-	// Check for control characters
+-	{
+-		char *name_copy = aStrdup(name);
+-		if (remove_control_chars(name_copy)) {
+-			aFree(name_copy);
+-			return -2;
+-		}
+-		aFree(name_copy);
+-	}
++	// Names must be well-formed UTF-8 without control characters
++	if (!strlib->utf8_is_valid_name(name))
++		return -2;
+ 
+ 	// Check for reserved names (wisp server name)
+ 	if (strcmpi(name, map->wisp_server_name) == 0)
+@@ -1106,7 +1096,7 @@ static int charselect_rename_char(struct charselect_session_data *csd, int char_
+ 
+ 	// Check if name exists
+ 	if (SQL_ERROR == SQL->Query(map->mysql_handle,
+-	    "SELECT 1 FROM `char` WHERE `name` LIKE '%s' LIMIT 1", esc_name)) {
++	    "SELECT 1 FROM `char` WHERE `name`='%s' LIMIT 1", esc_name)) {
+ 		Sql_ShowDebug(map->mysql_handle);
+ 		return 4;
+ 	}
+diff --git a/src/map/chat.c b/src/map/chat.c
+index 9ed27ae42..0e7356d39 100644
+--- a/src/map/chat.c
++++ b/src/map/chat.c
+@@ -56,7 +56,7 @@ static struct chat_data *chat_createchat(struct block_list *bl, const char *titl
+ 	/* Given the overhead and the numerous instances (npc allocated or otherwise) wouldn't it be beneficial to have it use ERS? [Ind] */
+ 	CREATE(cd, struct chat_data, 1);
+ 
+-	safestrncpy(cd->title, title, sizeof(cd->title));
++	safestrncpy_utf8(cd->title, title, sizeof(cd->title));
+ 	safestrncpy(cd->pass, pass, sizeof(cd->pass));
+ 	cd->pub = pub;
+ 	cd->users = 0;
+@@ -347,7 +347,7 @@ static bool chat_changechatstatus(struct map_session_data *sd, const char *title
+ 	if (cd == NULL || &sd->bl != cd->owner)
+ 		return false;
+ 
+-	safestrncpy(cd->title, title, CHATROOM_TITLE_SIZE);
++	safestrncpy_utf8(cd->title, title, CHATROOM_TITLE_SIZE);
+ 	safestrncpy(cd->pass, pass, CHATROOM_PASS_SIZE);
+ 	cd->limit = min(limit, ARRAYLENGTH(cd->usersd));
+ 	cd->pub = pub;
+diff --git a/src/map/clif.c b/src/map/clif.c
+index e1a39a80a..39e77e6df 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7236,7 +7236,7 @@ static void clif_showvendingboard(struct block_list *bl, const char *message, in
+ 	struct PACKET_ZC_STORE_ENTRY p = { 0 };
+ 	p.packetType = HEADER_ZC_STORE_ENTRY;
+ 	p.makerAID = bl->id;
+-	safestrncpy(p.storeName, message, MESSAGE_SIZE);
++	safestrncpy_utf8(p.storeName, message, MESSAGE_SIZE);
+ 	if (fd != 0) {
+ 		WFIFOHEAD(fd, sizeof(struct PACKET_ZC_STORE_ENTRY));
+ 		memcpy(WFIFOP(fd, 0), &p, sizeof(struct PACKET_ZC_STORE_ENTRY));
+@@ -9007,7 +9007,7 @@ static void clif_guild_leave(struct map_session_data *sd, const char *name, int
+ #else
+ 	safestrncpy(&p.name[0], name, NAME_LENGTH);
+ #endif
+-	safestrncpy(&p.reason[0], mes, 40);
++	safestrncpy_utf8(&p.reason[0], mes, 40);
+ 	clif->send(&p, sizeof(p), &sd->bl, GUILD_NOBG);
+ }
+ 
+@@ -9027,7 +9027,7 @@ static void clif_guild_expulsion(struct map_session_data *sd, const char *name,
+ #else
+ 	safestrncpy(&p.name[0], name, NAME_LENGTH);
+ #endif
+-	safestrncpy(&p.reason[0], mes, 40);
++	safestrncpy_utf8(&p.reason[0], mes, 40);
+ 
+ // version unconfirmed
+ #if PACKETVER < 20100803
+@@ -12649,7 +12649,7 @@ static void clif_parse_Broadcast(int fd, struct map_session_data *sd)
+ 
+ 	// as the length varies depending on the command used, truncate unreasonably long strings
+ 	if (len >= (int)(sizeof command - strlen(command)))
+-		len = (int)(sizeof command - strlen(command)) - 1;
++		len = (int)strlib->utf8_boundary(RFIFOP(fd,4), sizeof command - strlen(command) - 1); // without a cut-short UTF-8 character
+ 
+ 	strncat(command, RFIFOP(fd,4), len);
+ 	atcommand->exec(fd, sd, command, true);
+@@ -13167,7 +13167,7 @@ static void clif_parse_CreateChatRoom(int fd, struct map_session_data *sd)
+ 	}
+ 
+ 	safestrncpy(s_password, password, CHATROOM_PASS_SIZE);
+-	safestrncpy(s_title, title, min(len+1,CHATROOM_TITLE_SIZE)); //NOTE: assumes that safestrncpy will not access the len+1'th byte
++	safestrncpy_utf8(s_title, title, min(len+1,CHATROOM_TITLE_SIZE)); //NOTE: assumes that safestrncpy_utf8 will not access the len+1'th byte
+ 
+ 	chat->create_pc_chat(sd, s_title, s_password, limit, pub);
+ }
+@@ -13216,7 +13216,7 @@ static void clif_parse_ChatRoomStatusChange(int fd, struct map_session_data *sd)
+ 	title = RFIFOP(fd, 15); // not zero-terminated
+ 
+ 	safestrncpy(s_password, password, CHATROOM_PASS_SIZE);
+-	safestrncpy(s_title, title, min(len+1,CHATROOM_TITLE_SIZE)); //NOTE: assumes that safestrncpy will not access the len+1'th byte
++	safestrncpy_utf8(s_title, title, min(len+1,CHATROOM_TITLE_SIZE)); //NOTE: assumes that safestrncpy_utf8 will not access the len+1'th byte
+ 
+ 	chat->change_status(sd, s_title, s_password, limit, pub);
+ }
+@@ -13890,7 +13890,7 @@ static void clif_parse_UseSkillToPosSub(int fd, struct map_session_data *sd, uin
+ 			return;
+ 		}
+ 		//You can't use Graffiti/TalkieBox AND have a vending open, so this is safe.
+-		safestrncpy(sd->message, RFIFOP(fd, skillmoreinfo), TALKBOX_MESSAGE_SIZE);
++		safestrncpy_utf8(sd->message, RFIFOP(fd, skillmoreinfo), TALKBOX_MESSAGE_SIZE);
+ 	}
+ 
+ 	if (sd->ud.skilltimer != INVALID_TIMER && sd->auto_cast_current.type == AUTOCAST_NONE)
+@@ -14279,7 +14279,7 @@ static void clif_parse_NpcStringInput(int fd, struct map_session_data *sd)
+ 	npcid = (sd->state.using_megaphone == 0) ? RFIFOL(fd, 4) : sd->npc_id;
+ 	message = RFIFOP(fd, 8);
+ 
+-	safestrncpy(sd->npc_str, message, min(message_len,CHATBOX_SIZE));
++	safestrncpy_utf8(sd->npc_str, message, min(message_len,CHATBOX_SIZE));
+ 	npc->scriptcont(sd, npcid, false);
+ }
+ 
+@@ -14487,7 +14487,7 @@ static void clif_parse_LocalBroadcast(int fd, struct map_session_data *sd)
+ 
+ 	// as the length varies depending on the command used, truncate unreasonably long strings
+ 	if (len >= (int)(sizeof command - strlen(command)))
+-		len = (int)(sizeof command - strlen(command)) - 1;
++		len = (int)strlib->utf8_boundary(RFIFOP(fd,4), sizeof command - strlen(command) - 1); // without a cut-short UTF-8 character
+ 
+ 	strncat(command, RFIFOP(fd,4), len);
+ 	atcommand->exec(fd, sd, command, true);
+@@ -15972,6 +15972,11 @@ static void clif_parse_GuildChangeNotice(int fd, struct map_session_data *sd)
+ 
+ 	msg1 = aStrndup(RFIFOP(fd,6), MAX_GUILDMES1-1);
+ 	msg2 = aStrndup(RFIFOP(fd,66), MAX_GUILDMES2-1);
++	// drop a UTF-8 character that the length limits cut short
++	if (strlen(msg1) == MAX_GUILDMES1 - 1)
++		msg1[strlib->utf8_boundary(msg1, MAX_GUILDMES1 - 1)] = '\0';
++	if (strlen(msg2) == MAX_GUILDMES2 - 1)
++		msg2[strlib->utf8_boundary(msg2, MAX_GUILDMES2 - 1)] = '\0';
+ 
+ 	// compensate for some client defects when using multilingual mode
+ 	if (msg1[0] == '|' && msg1[3] == '|') msg1+= 3; // skip duplicate marker
+@@ -18359,14 +18364,14 @@ static void clif_parse_Mail_send(int fd, struct map_session_data *sd)
+ 	msg.dest_id = 0; // will attempt to resolve name
+ 	safestrncpy(msg.send_name, sd->status.name, NAME_LENGTH);
+ 	safestrncpy(msg.dest_name, RFIFOP(fd,4), NAME_LENGTH);
+-	safestrncpy(msg.title, RFIFOP(fd,28), MAIL_TITLE_LENGTH);
++	safestrncpy_utf8(msg.title, RFIFOP(fd,28), MAIL_TITLE_LENGTH);
+ 
+ 	if (msg.title[0] == '\0') {
+ 		return; // Message has no length and somehow client verification was skipped.
+ 	}
+ 
+ 	if (body_len)
+-		safestrncpy(msg.body, RFIFOP(fd,69), body_len + 1);
++		safestrncpy_utf8(msg.body, RFIFOP(fd,69), min(body_len + 1, (int)sizeof(msg.body)));
+ 	else
+ 		memset(msg.body, 0x00, MAIL_BODY_LENGTH);
+ 
+@@ -20287,7 +20292,7 @@ static void clif_parse_ReqOpenBuyingStore(int fd, struct map_session_data *sd)
+ 
+ 	zenylimit = p->zenyLimit;
+ 	result    = p->result;
+-	safestrncpy(storename, p->storeName, sizeof(storename));
++	safestrncpy_utf8(storename, p->storeName, sizeof(storename));
+ 	itemlist  = &p->items[0];
+ 
+ 	// so that buyingstore_create knows, how many elements it has access to
+@@ -23568,8 +23573,8 @@ static void clif_parse_rodex_send_mail(int fd, struct map_session_data *sd)
+ 		char body[RODEX_BODY_LENGTH] = "";
+ 
+ 		safestrncpy(rname, rPacket->receiveName, NAME_LENGTH);
+-		safestrncpy(title, rPacket->string, RODEX_TITLE_LENGTH);
+-		safestrncpy(body, &rPacket->string[rPacket->Titlelength], RODEX_BODY_LENGTH);
++		safestrncpy_utf8(title, rPacket->string, RODEX_TITLE_LENGTH);
++		safestrncpy_utf8(body, &rPacket->string[rPacket->Titlelength], RODEX_BODY_LENGTH);
+ 
+ 		result = rodex->send_mail(sd, rname, body, title, rPacket->zeny);
+ 	}
+diff --git a/src/map/guild.c b/src/map/guild.c
+index 093ac45e4..05301ec85 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -491,6 +491,10 @@ static int guild_create(struct map_session_data *sd, const char *name)
+ 		clif->guild_created(sd,3); // You need the necessary item to create a guild
+ 		return 0;
+ 	}
++	if (!strlib->utf8_is_valid_name(name)) {
++		clif->guild_created(sd, 2); // Creation failure, as for a name rejected by the char server
++		return 0;
++	}
+ 
+ 	guild->makemember(&m,sd);
+ 	m.position=0;
+diff --git a/src/map/homunculus.c b/src/map/homunculus.c
+index 57ddc2014..00b7e8b33 100644
+--- a/src/map/homunculus.c
++++ b/src/map/homunculus.c
+@@ -786,6 +786,13 @@ static bool homunculus_validate_name(const char *name)
+ 		if (!(name[i] & 0xe0) || name[i] == 0x7f)
+ 			return false;
+ 	}
++	{
++		// the packet field is not NUL-terminated; check the name as it will be stored
++		char stored_name[NAME_LENGTH];
++		safestrncpy(stored_name, name, NAME_LENGTH);
++		if (!strlib->utf8_is_valid_name(stored_name))
++			return false;
++	}
+ 
+ 	// Check character name options from config
+ 	// char_name_option: 0=no restriction, 1=only letters in char_name_letters, 2=letters in char_name_letters forbidden
+diff --git a/src/map/map.c b/src/map/map.c
+index d05f97415..98c171992 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -2436,13 +2436,24 @@ static struct map_session_data *map_nick2sd(const char *nick, bool allow_partial
+ 		if (qty != 1)
+ 			found_sd = NULL;
+ 	} else {
+-		// exact search only
++		// exact search only: names are case-sensitive, so a byte-exact match wins and an
++		// ASCII case-insensitive match is accepted only when it is the only one
++		struct map_session_data *folded_sd = NULL;
++		int folded_qty = 0;
++
+ 		for (struct map_session_data *sd = BL_UCAST(BL_PC, mapit->first(iter)); mapit->exists(iter); sd = BL_UCAST(BL_PC, mapit->next(iter))) {
+-			if (strcasecmp(sd->status.name, nick) == 0) {
++			if (strcmp(sd->status.name, nick) == 0) {
+ 				found_sd = sd;
+ 				break;
+ 			}
++			if (strcasecmp(sd->status.name, nick) == 0) {
++				folded_sd = sd;
++				folded_qty++;
++			}
+ 		}
++
++		if (found_sd == NULL && folded_qty == 1)
++			found_sd = folded_sd;
+ 	}
+ 	mapit->free(iter);
+ 
+@@ -4731,7 +4742,8 @@ static int map_sql_init(void)
+ 		if ( SQL_ERROR == SQL->SetEncoding(map->mysql_handle, map->default_codepage) )
+ 			Sql_ShowDebug(map->mysql_handle);
+ 
+-	// Initialize async SQL with same credentials
++	// Initialize async SQL with same credentials and character set
++	sql_async->set_encoding(map->default_codepage);
+ 	if (!sql_async->init(2, map->server_id, map->server_pw, map->server_ip, (uint16)map->server_port, map->server_db)) {
+ 		ShowWarning("Failed to initialize async SQL, async queries will not be available.\n");
+ 	}
+diff --git a/src/map/party.c b/src/map/party.c
+index dc7e6fb6a..ebf255409 100644
+--- a/src/map/party.c
++++ b/src/map/party.c
+@@ -1640,6 +1640,10 @@ static int party_validate_name_local(const char *name)
+ 	if (name[0] == '\0')
+ 		return 1;
+ 
++	// Names must be well-formed UTF-8 without control characters
++	if (!strlib->utf8_is_valid_name(name))
++		return 1;
++
+ 	// Check character name options
+ 	if (map->char_name_option == 1) {
+ 		for (i = 0; i < NAME_LENGTH && name[i]; i++) {
+diff --git a/src/map/pet.c b/src/map/pet.c
+index 7a6b06370..04ab29fdc 100644
+--- a/src/map/pet.c
++++ b/src/map/pet.c
+@@ -903,6 +903,13 @@ static bool pet_validate_name(const char *name)
+ 		if (!(name[i] & 0xe0) || name[i] == 0x7f)
+ 			return false;
+ 	}
++	{
++		// the packet field is not NUL-terminated; check the name as it will be stored
++		char stored_name[NAME_LENGTH];
++		safestrncpy(stored_name, name, NAME_LENGTH);
++		if (!strlib->utf8_is_valid_name(stored_name))
++			return false;
++	}
+ 
+ 	// Check character name options from config
+ 	// char_name_option: 0=no restriction, 1=only letters in char_name_letters, 2=letters in char_name_letters forbidden
+diff --git a/src/map/vending.c b/src/map/vending.c
+index ebdae0245..27076a436 100644
+--- a/src/map/vending.c
++++ b/src/map/vending.c
+@@ -306,7 +306,7 @@ static void vending_openvending(struct map_session_data *sd, const char *message
+ 	sd->state.vending = true;
+ 	sd->vender_id = getid();
+ 	sd->vend_num = i;
+-	safestrncpy(sd->message, message, MESSAGE_SIZE);
++	safestrncpy_utf8(sd->message, message, MESSAGE_SIZE);
+ 
+ 	clif->openvending(sd,sd->bl.id,sd->vending);
+ 	clif->showvendingboard(&sd->bl,message,0);

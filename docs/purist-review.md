@@ -8787,3 +8787,29 @@ Validation:
 The pre-change tree is in `build/before-utf8-input`. No live client/server smoke test was
 run; typing with real IMEs (Korean, Japanese, Chinese) on Korean, Russian and Western
 Windows is still to be checked by hand.
+
+## UTF-8 data conversion and server patch (2026-11-03)
+
+Patrick approved converting the client data and preparing a server patch for the
+UTF-8 client, without touching `client-files` or the HampterHercules checkouts.
+
+- `tools/utf8-data` converts the display text of the data the purist client loads
+  from CP949 to UTF-8. It finds each file the way the client does (`data.grf` before
+  loose files, since Revel's `clientinfo.xml` has no `<readfolder/>`; `.lub` before
+  `.lua`; `System\` from disk), classifies every Lua string by field path and keeps
+  names that become file paths in CP949. It also repairs `msgstringtable.txt`,
+  `jobName.lua` and `stateiconinfo.lua`, which an editor had saved as UTF-8 with
+  U+FFFD; 16 `stateiconinfo.lua` strings could not be recovered. The output went to
+  `client-files-utf8`, next to `client-files`; see the tool's README for deployment.
+  Deploy it only together with a UTF-8 client.
+- [`docs/server/hercules-utf8-text.patch`](server/utf8-text.md) targets the
+  HampterDev/Hercules fork (`73334c4`, also `feat/tournament`). It stops the rename
+  trim from turning UTF-8 continuation bytes into spaces, validates names as UTF-8,
+  truncates titles and messages on character boundaries (fixing a one-byte mail-body
+  overflow), sets `latin1` on every database connection and switches seven name
+  columns to `latin1_bin`. Character and party names become case-sensitive.
+
+Validation: the tool's 41 unit tests and `validate.py` over the 24 output files
+passed. The server patch was built with MSVC and GCC, its helpers passed 162 checks
+under AddressSanitizer, and its upgrade and connection charset were checked on a
+throwaway MariaDB 10.5 instance. Neither was tried with a live client or server.
