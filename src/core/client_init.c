@@ -21,6 +21,7 @@
 #include "platform/language.h"
 #include "render/device.h"
 #include "render/fonts.h"
+#include "render/rp_pool.h"
 #include "render/texture.h"
 #include "render/texture_cache.h"
 #include "render/texture_globals.h"
@@ -30,6 +31,7 @@
 #include "skills/skill_action.h"
 #include "std/std.h"
 #include "actor/weather.h"
+#include "effects/effect_render_hooks.h"
 #include "ui/character/character.h"
 #include "ui/controls/ui_hooks.h"
 #include "ui/items/item_collection.h"
@@ -85,6 +87,7 @@ static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); 
 static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
+    g_renderBeforeClearLists = effect_mgr_destroy_removed_effects;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

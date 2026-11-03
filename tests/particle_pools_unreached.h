@@ -27,7 +27,6 @@ void c3d_device_save_frame(struct C3dDevice *self) { abort(); }
 BYTE c3d_ground15_get_attr_quad_half(struct C3dGround15 *self, int ax, int ay, float *quad) { abort(); }
 struct Motion *act_res_get_motion(const struct ActRes *self, unsigned action, unsigned motion) { abort(); }
 unsigned char ez2_str_particle_process(struct Ez2StrParticle *self, Vec3 offset) { abort(); }
-void effect_mgr_destroy_removed(struct EffectMgr *self) { abort(); }
 struct SprClip *motion_get_clip(const struct Motion *self, unsigned index) { abort(); }
 void *res_mgr_get(struct ResMgr *self, const char *name) { abort(); }
 void res_lock(struct Res *self) { abort(); }

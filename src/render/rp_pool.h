@@ -13,6 +13,12 @@ struct TexDrawPrim *rp_quad_batch_construct(struct TexDrawPrim *self);
 struct TexDrawPrim *rp_quad_batch_copy_verts(struct TexDrawPrim *self, const struct TexDrawPrim *src);
 struct TexDrawVertex *tex_draw_vertex_construct(struct TexDrawVertex *self);
 
+/* Called first by renderer_destroy_all_rp_list, before the render lists are cleared,
+   so that the effect manager destroys the effects removed during the frame.
+   client_install_hooks() (core/client_init.c) installs effect_mgr_destroy_removed_effects
+   (effects/effect_render_hooks.c). NULL: nothing is called. Defined in render/rp_pool.c. */
+extern void (*g_renderBeforeClearLists)(void);
+
 struct TexDrawPrim *renderer_new_prim(struct Renderer *self);
 struct RPTwoTexQuad *renderer_new_two_tex_quad(struct Renderer *self);
 struct RPQuad *renderer_new_quad(struct Renderer *self);

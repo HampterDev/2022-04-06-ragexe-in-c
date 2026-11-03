@@ -2,12 +2,13 @@
 #include "render/render_api.h"
 #include "render/sprite_atlas.h"
 #include "render/texture.h"
-#include "effects/effect_mgr.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "render/rp_pool.h"
 #include <mmsystem.h>
+
+void (*g_renderBeforeClearLists)(void);
 
 struct RPQuad *rp_quad_construct(struct RPQuad *self)
 {
@@ -460,7 +461,8 @@ void renderer_destroy_all_rp_list(struct Renderer *self)
 {
     struct RenderStorage *storage = self->storage;
     size_t i;
-    effect_mgr_destroy_removed(g_effectMgr);
+    if (g_renderBeforeClearLists)
+        g_renderBeforeClearLists();
     for (i = 0; i < RENDER_PASS_COUNT; ++i) queue_clear(&self->queues[i]);
     self->boundTextures[0] = self->boundTextures[1] = NULL;
     if (storage) {

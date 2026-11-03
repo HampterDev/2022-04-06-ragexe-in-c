@@ -38,6 +38,7 @@ static void *checked_realloc(void *memory, size_t size)
 #else
 #include "../src/render/crenderer.c"
 #include "../src/effects/multitex_particle.c"
+#include "../src/effects/effect_render_hooks.c"
 #endif
 
 void *mem_alloc(size_t bytes) { void *p = checked_malloc(bytes); assert(p); return p; }
@@ -415,6 +416,7 @@ int main(int argc, char **argv)
 {
     (void)argv;
 #ifndef RENDERER_BASELINE
+    g_renderBeforeClearLists = effect_mgr_destroy_removed_effects;
     if (argc > 1 && (!strcmp(argv[1], "growth_failure") || !strcmp(argv[1], "queue_failure"))) {
         struct Renderer renderer = {0}; struct TexDrawPrim *quad; unsigned i;
         _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
