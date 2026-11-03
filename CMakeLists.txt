@@ -33,8 +33,17 @@ endif()
 
 add_subdirectory(vendor)
 
-add_library(rage_platform STATIC src/platform/clock.c src/platform/code_page.c src/platform/filesystem.c src/platform/net.c
-    src/platform/settings.c src/platform/sha256.c src/platform/thread.c)
+# A platform module is one header with one file per implementation: <module>_win32.c on Windows,
+# <module>_posix.c on Linux, macOS and Android.
+if(WIN32)
+    set(RAGE_PLATFORM_FILES win32)
+else()
+    set(RAGE_PLATFORM_FILES posix)
+endif()
+add_library(rage_platform STATIC src/platform/code_page.c)
+foreach(module clock code_page filesystem net settings sha256 thread)
+    target_sources(rage_platform PRIVATE src/platform/${module}_${RAGE_PLATFORM_FILES}.c)
+endforeach()
 target_include_directories(rage_platform PUBLIC src)
 if(WIN32)
     target_link_libraries(rage_platform PUBLIC winmm ws2_32 user32 advapi32)
@@ -135,7 +144,7 @@ if(BUILD_TESTING)
         target_link_libraries(test_miles_sdl PRIVATE rage_platform rage_dr_mp3 SDL3::SDL3 m)
         rage_enable_assertions(test_miles_sdl)
         add_test(NAME miles_sdl COMMAND test_miles_sdl "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
-        rage_test(platform_window src/platform/window.c)
+        rage_test(platform_window src/platform/window_sdl.c)
         target_compile_definitions(test_platform_window PRIVATE _POSIX_C_SOURCE=200809L)
         target_link_libraries(test_platform_window PRIVATE rage_platform SDL3::SDL3)
     endif()

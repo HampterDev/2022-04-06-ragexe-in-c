@@ -24,7 +24,7 @@ static int mock_close(FILE *file);
 #define MultiByteToWideChar mock_widen
 #define _wfopen mock_open
 #define fclose mock_close
-#include "../src/platform/embedded_fonts.c"
+#include "../src/platform/embedded_fonts_win32.c"
 #undef LoadLibraryW
 #undef GetProcAddress
 #undef FreeLibrary

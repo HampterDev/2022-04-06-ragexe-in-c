@@ -106,6 +106,14 @@ IJL; visual comparison of full in-game screenshots is still pending.
 - Public platform headers contain no Win32, AppKit, Metal or SDL types. Keep
   renderer-specific objects inside each backend. Shared POSIX behavior serves
   both macOS and Linux; use Apple-specific code only for Apple-specific services.
+- A platform module is one header with one file per implementation: `<module>_win32.c` for
+  Windows and `<module>_posix.c` for Linux, macOS and Android, or `_sdl.c` where that side is
+  written against SDL (`platform/window_sdl.c`, `core/app_sdl.c`). Code both sides share stays
+  in `<module>.c` (`platform/code_page.c`, `platform/language.c`, `core/app.c`). Each
+  implementation file starts with the `#ifdef _WIN32` or `#ifndef _WIN32` that selects it, so
+  `build.bat`, which compiles every file under `src/`, and the client's CMake glob each get one
+  implementation; `rage_platform` in `CMakeLists.txt` names its files by the same rule. Small
+  differences inside a shared file (an include, one call) stay as `#ifdef`s where they are.
 - Runtime containers and XML nodes are not serialized layouts. Their old x86
   offset/size checks were removed as those modules were made buildable on x64.
   Packet/file layout checks elsewhere remain intact.

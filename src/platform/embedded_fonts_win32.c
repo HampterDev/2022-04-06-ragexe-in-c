@@ -1,6 +1,5 @@
-#include "platform/embedded_fonts.h"
-
 #ifdef _WIN32
+#include "platform/embedded_fonts.h"
 #include "platform/t2embed_api.h"
 #include <stdio.h>
 #include <string.h>
@@ -111,18 +110,5 @@ int embedded_fonts_load(const char **missing_file)
     }
     ready = 1;
     return 1;
-}
-#else
-#include <stddef.h>
-
-int embedded_fonts_load(const char **missing_file)
-{
-    if (missing_file)
-        *missing_file = NULL;
-    return 0;
-}
-
-void embedded_fonts_clear(void)
-{
 }
 #endif

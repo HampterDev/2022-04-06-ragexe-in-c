@@ -29,7 +29,7 @@ list(REMOVE_ITEM RAGE_CLIENT_SOURCES ${RAGE_CLIENT_EXCLUDED})
 # driver hook replaced, driven by a Lua scene script (tests/scenes/README.md).
 set(RAGE_SCENE_HARNESS tests/scenes/scene_clock.c tests/scenes/scene_net.c tests/scenes/scene_thread.c
     tests/scenes/scene_settings.c tests/scenes/scene_rand.c tests/scenes/scene_driver.c)
-set(RAGE_SCENE_REPLACED "/src/(platform/net|platform/clock|platform/thread|platform/settings|core/drive_state)[.]c$")
+set(RAGE_SCENE_REPLACED "/src/(platform/(net|clock|thread|settings)_posix|core/drive_state)[.]c$")
 if(ANDROID)
     # The client is libmain.so, which SDL's activity loads and calls; the scene harness stays on desktops.
     set(RAGE_CLIENT_TARGETS ragexe)

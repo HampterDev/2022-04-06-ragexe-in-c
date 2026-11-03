@@ -145,14 +145,14 @@ call "%ROOT%\tests\build_lua_calls.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_objects.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\navi\navi_containers.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\navigation_object_support.c" "%ROOT%\src\platform\window.c" /Fe:test_navigation_objects.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_objects.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\navi\navi_containers.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\navigation_object_support.c" "%ROOT%\src\platform\window_win32.c" /Fe:test_navigation_objects.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 test_navigation_objects.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_events.c" "%ROOT%\tests\navigation_event_support.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\navi\navi_window.c" "%ROOT%\src\navi\navi_records.c" "%ROOT%\src\ui\quests\navigation_view.c" "%ROOT%\src\game\navigation.c" "%ROOT%\src\navi\navi_object_queries.c" "%ROOT%\src\platform\clock.c" /Fe:test_navigation_events.exe /link /OPT:REF user32.lib winmm.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_events.c" "%ROOT%\tests\navigation_event_support.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\navi\navi_window.c" "%ROOT%\src\navi\navi_records.c" "%ROOT%\src\ui\quests\navigation_view.c" "%ROOT%\src\game\navigation.c" "%ROOT%\src\navi\navi_object_queries.c" "%ROOT%\src\platform\clock_win32.c" /Fe:test_navigation_events.exe /link /OPT:REF user32.lib winmm.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 test_navigation_events.exe
@@ -167,7 +167,7 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_emblem_download.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ground_item.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\once.c" "%ROOT%\src\iteminfo\item_info.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" winmm.lib "%ROOT%\src\platform\clock.c" /Fe:test_ground_item.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ground_item.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\once_win32.c" "%ROOT%\src\iteminfo\item_info.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" winmm.lib "%ROOT%\src\platform\clock_win32.c" /Fe:test_ground_item.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_ground_item.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -186,21 +186,21 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_quest_value.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_quest_packets.c" "%ROOT%\src\contents\quest_value.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\ui\std\ui_std_vector.c" "%ROOT%\tests\quest_value_support.c" "%ROOT%\src\game\quest_list.c" "%ROOT%\src\game\quest_hunting.c" "%ROOT%\src\std\string_vec.c" "%ROOT%\src\platform\clock.c" winmm.lib /Fe:test_quest_packets.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_quest_packets.c" "%ROOT%\src\contents\quest_value.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\ui\std\ui_std_vector.c" "%ROOT%\tests\quest_value_support.c" "%ROOT%\src\game\quest_list.c" "%ROOT%\src\game\quest_hunting.c" "%ROOT%\src\std\string_vec.c" "%ROOT%\src\platform\clock_win32.c" winmm.lib /Fe:test_quest_packets.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 test_quest_packets.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_pathfinder_owner.c" "%ROOT%\tests\fixtures\pathfinder_reference.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_pathfinder_owner.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_pathfinder_owner.c" "%ROOT%\tests\fixtures\pathfinder_reference.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\render\math3d.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_pathfinder_owner.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_pathfinder_owner.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_attribute_grid.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_attribute_grid.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_attribute_grid.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_attribute_grid.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_attribute_grid.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_attribute_consumers.c" "%ROOT%\src\game\cells.c" "%ROOT%\src\game\cell_coordinates.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\platform\clock.c" /Fe:test_attribute_consumers.exe /link /OPT:REF winmm.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_attribute_consumers.c" "%ROOT%\src\game\cells.c" "%ROOT%\src\game\cell_coordinates.c" "%ROOT%\src\resources\attr_queries.c" "%ROOT%\src\platform\clock_win32.c" /Fe:test_attribute_consumers.exe /link /OPT:REF winmm.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_attribute_consumers.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -226,11 +226,11 @@ cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_string_move.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_once.c" "%ROOT%\src\core\once.c" /Fe:test_once.exe
+cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_once.c" "%ROOT%\src\core\once_win32.c" /Fe:test_once.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_once.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_message_tables.c" "%ROOT%\src\iteminfo\item_loader.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\message_tables_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\string.c" "%ROOT%\src\platform\window.c" /Fe:test_message_tables.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_message_tables.c" "%ROOT%\src\iteminfo\item_loader.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\message_tables_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\string.c" "%ROOT%\src\platform\window_win32.c" /Fe:test_message_tables.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_message_tables.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -242,7 +242,7 @@ cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_byte_queue.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_packets.c" "%ROOT%\src\contents\rag_connection.c" "%ROOT%\src\contents\byte_queue.c" "%ROOT%\src\core\once.c" winmm.lib user32.lib "%ROOT%\src\platform\clock.c" /Fe:test_packets.exe
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_packets.c" "%ROOT%\src\contents\rag_connection.c" "%ROOT%\src\contents\byte_queue.c" "%ROOT%\src\core\once_win32.c" winmm.lib user32.lib "%ROOT%\src\platform\clock_win32.c" /Fe:test_packets.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_packets.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -250,7 +250,7 @@ cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /exec
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_session_companion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_skin_manager.c" "%ROOT%\src\ui\misc\skin_mgr.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string_vec.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_skin_manager.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_skin_manager.c" "%ROOT%\src\ui\misc\skin_mgr.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string_vec.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_skin_manager.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_skin_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -262,7 +262,7 @@ call "%~dp0build_draw_maps.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_skill_values.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_traversal_callbacks.c" "%ROOT%\tests\model_names_fixture.c" "%ROOT%\tests\traversal_callbacks_support.c" "%ROOT%\src\world\world_near.c" "%ROOT%\src\world\model_actor.c" "%ROOT%\src\resources\model_res_queries.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\world\world_std.c" "%ROOT%\src\platform\clock.c" winmm.lib /Fe:test_traversal_callbacks.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_traversal_callbacks.c" "%ROOT%\tests\model_names_fixture.c" "%ROOT%\tests\traversal_callbacks_support.c" "%ROOT%\src\world\world_near.c" "%ROOT%\src\world\model_actor.c" "%ROOT%\src\resources\model_res_queries.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\world\world_std.c" "%ROOT%\src\platform\clock_win32.c" winmm.lib /Fe:test_traversal_callbacks.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_traversal_callbacks.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -369,7 +369,7 @@ if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 
 test_mode_lifecycle.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ai_context.c" "%ROOT%\src\login\merc_ai.c" "%ROOT%\src\login\merc_ai_cmds.c" "%ROOT%\src\ui\hotkeys\session_option_map.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\std\tree.c" "%ROOT%\build\vendor\lua514.lib" winmm.lib user32.lib "%ROOT%\src\platform\clock.c" "%ROOT%\src\platform\window.c" /Fe:test_ai_context.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ai_context.c" "%ROOT%\src\login\merc_ai.c" "%ROOT%\src\login\merc_ai_cmds.c" "%ROOT%\src\ui\hotkeys\session_option_map.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\std\tree.c" "%ROOT%\build\vendor\lua514.lib" winmm.lib user32.lib "%ROOT%\src\platform\clock_win32.c" "%ROOT%\src\platform\window_win32.c" /Fe:test_ai_context.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_ai_context.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -405,7 +405,7 @@ cl /nologo /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_bitmap_png.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_c_output.c" "%ROOT%\src\core\unique_file.c" "%ROOT%\src\game\box_report.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_c_output.exe
+cl /nologo /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_c_output.c" "%ROOT%\src\core\unique_file.c" "%ROOT%\src\game\box_report.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_c_output.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_c_output.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -423,13 +423,13 @@ call "%~dp0build_reported_players.bat"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\core\text_encoding.c" /Fo:text_encoding_test.obj
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_code_page_conversion.c" "%ROOT%\tests\encoding_fixture.c" text_encoding_test.obj "%ROOT%\src\platform\code_page.c" /Fe:test_code_page_conversion.exe
+cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_code_page_conversion.c" "%ROOT%\tests\encoding_fixture.c" text_encoding_test.obj "%ROOT%\src\platform\code_page.c" "%ROOT%\src\platform\code_page_win32.c" /Fe:test_code_page_conversion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_code_page_conversion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\ui\controls\ellipsize_text.c"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib "%ROOT%\src\platform\code_page.c" /Fe:test_text_consumers.exe /link /OPT:REF
+cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib "%ROOT%\src\platform\code_page.c" "%ROOT%\src\platform\code_page_win32.c" /Fe:test_text_consumers.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_text_consumers.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -477,7 +477,7 @@ test_crash_dialog.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 cl /nologo /c /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\mouse_fixture.h" "%ROOT%\src\contents\mouse.c" /Fo:mouse_test.obj
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /c /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\mouse_fixture.h" "%ROOT%\src\platform\window.c" /Fo:mouse_window_test.obj
+cl /nologo /c /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\mouse_fixture.h" "%ROOT%\src\platform\window_win32.c" /Fo:mouse_window_test.obj
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 cl /nologo /W3 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_mouse.c" mouse_test.obj mouse_window_test.obj /Fe:test_mouse.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -491,7 +491,7 @@ cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_item_info.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_guild_state.c" "%ROOT%\src\contents\guild_info.c" "%ROOT%\src\contents\guild_lists.c" "%ROOT%\src\ui\social\guild_containers.c" "%ROOT%\src\ui\social\guild_requests.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\guild_state_support.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\code_page.c" /Fe:test_guild_state.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_guild_state.c" "%ROOT%\src\contents\guild_info.c" "%ROOT%\src\contents\guild_lists.c" "%ROOT%\src\ui\social\guild_containers.c" "%ROOT%\src\ui\social\guild_requests.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\guild_state_support.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\tree.c" "%ROOT%\src\platform\code_page.c" "%ROOT%\src\platform\code_page_win32.c" /Fe:test_guild_state.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_guild_state.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -519,7 +519,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_display_devices.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" "%ROOT%\src\platform\code_page.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_paths.c" "%ROOT%\src\ui\resource\resource_paths.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\core\text_util.c" "%ROOT%\tests\resource_paths_support.c" "%ROOT%\src\platform\code_page.c" "%ROOT%\src\platform\code_page_win32.c" /Fe:test_resource_paths.exe /link /OPT:REF oleaut32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_resource_paths.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -527,11 +527,11 @@ cl /nologo /std:c11 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_embedded_fonts.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /std:c11 /source-charset:utf-8 /execution-charset:.949 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_sound_manager.c" "%ROOT%\src\platform\thread.c" /Fe:test_sound_manager.exe
+cl /nologo /std:c11 /source-charset:utf-8 /execution-charset:.949 /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_sound_manager.c" "%ROOT%\src\platform\thread_win32.c" /Fe:test_sound_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_sound_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_item_definitions.c" "%ROOT%\tests\item_info_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\vec.c" "%ROOT%\build\vendor\lua514.lib" "%ROOT%\src\platform\window.c" /Fe:test_item_definitions.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_item_definitions.c" "%ROOT%\tests\item_info_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\vec.c" "%ROOT%\build\vendor\lua514.lib" "%ROOT%\src\platform\window_win32.c" /Fe:test_item_definitions.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_item_definitions.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -557,11 +557,11 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_registry.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_cache.c" "%ROOT%\tests\resource_cache_support.c" "%ROOT%\src\fileio\resource_cache_store.c" "%ROOT%\src\fileio\res_cache.c" "%ROOT%\src\fileio\res_get.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\fileio\grf_pak.c" "%ROOT%\src\fileio\grf_mapfile.c" "%ROOT%\src\resources\resource_registry.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\render\cache_lock.c" "%ROOT%\src\platform\clock.c" "%ROOT%\src\core\cstr.c" "%ROOT%\src\platform\filesystem.c" "%ROOT%\src\platform\thread.c" /Fe:test_resource_cache.exe /link /OPT:REF winmm.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_cache.c" "%ROOT%\tests\resource_cache_support.c" "%ROOT%\src\fileio\resource_cache_store.c" "%ROOT%\src\fileio\res_cache.c" "%ROOT%\src\fileio\res_get.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\fileio\grf_pak.c" "%ROOT%\src\fileio\grf_mapfile.c" "%ROOT%\src\resources\resource_registry.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\render\cache_lock.c" "%ROOT%\src\platform\clock_win32.c" "%ROOT%\src\core\cstr.c" "%ROOT%\src\platform\filesystem_win32.c" "%ROOT%\src\platform\thread_win32.c" /Fe:test_resource_cache.exe /link /OPT:REF winmm.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_cache.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_errors.c" "%ROOT%\src\fileio\resource_errors.c" "%ROOT%\src\core\cstr.c" "%ROOT%\src\platform\thread.c" /Fe:test_resource_errors.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_errors.c" "%ROOT%\src\fileio\resource_errors.c" "%ROOT%\src\core\cstr.c" "%ROOT%\src\platform\thread_win32.c" /Fe:test_resource_errors.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_errors.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -569,15 +569,15 @@ call "%ROOT%\tests\build_startup_settings.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_grf_owner.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_file_io.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\file_mgr.c" "%ROOT%\src\platform\filesystem.c" "%ROOT%\src\platform\system_memory.c" /Fe:test_file_io.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_file_io.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\file_mgr.c" "%ROOT%\src\platform\filesystem_win32.c" "%ROOT%\src\platform\system_memory_win32.c" /Fe:test_file_io.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_file_io.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_spans.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_resource_spans.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_resource_spans.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_resource_spans.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_resource_spans.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ground_water.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\resources\gnd.c" "%ROOT%\src\world\ground_water.c" "%ROOT%\src\world\ground_lifecycle.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_ground_water.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ground_water.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\resources\gnd.c" "%ROOT%\src\world\ground_water.c" "%ROOT%\src\world\ground_lifecycle.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_ground_water.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_ground_water.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -589,7 +589,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_ground_lifecycle.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_resource.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\platform\filesystem.c" /Fe:test_world_resource.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_resource.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_world_resource.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_world_resource.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -605,7 +605,7 @@ cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_scene_bounds.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_models.c" "%ROOT%\src\platform\thread.c" /Fe:test_world_models.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_world_models.c" "%ROOT%\src\platform\thread_win32.c" /Fe:test_world_models.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_world_models.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -631,7 +631,7 @@ test_actor_effect_cells.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_jpeg.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_quest_time.c" "%ROOT%\src\platform\clock.c" winmm.lib /Fe:test_quest_time.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_quest_time.c" "%ROOT%\src\platform\clock_win32.c" winmm.lib /Fe:test_quest_time.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 test_quest_time.exe

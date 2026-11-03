@@ -5,13 +5,13 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 
 | replaced                    | by                   | what changes                                                     |
 |-----------------------------|----------------------|------------------------------------------------------------------|
-| `src/platform/clock.c`      | `scene_clock.c`      | time moves one frame (16 ms) per shown frame; the date is fixed  |
-| `src/platform/net.c`        | `scene_net.c`        | sockets stay in the process; the driver plays the map server     |
-| `src/platform/thread.c`     | `scene_thread.c`     | no client threads: models load in order on the main thread       |
-| `src/platform/settings.c`   | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
+| `src/platform/clock_*.c`    | `scene_clock.c`      | time moves one frame (16 ms) per shown frame; the date is fixed  |
+| `src/platform/net_*.c`      | `scene_net.c`        | sockets stay in the process; the driver plays the map server     |
+| `src/platform/thread_*.c`   | `scene_thread.c`     | no client threads: models load in order on the main thread       |
+| `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
-| `src/platform/window.c` (Windows) | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
+| `src/platform/window_win32.c`     | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
 | `granny2.dll` clock imports (Windows) | `scene_granny_win.c` | Granny models animate on the scene clock, as the POSIX runtime does |
 
 Everything else is the shipped client, renderer included. With the same game data a scene

@@ -43,7 +43,7 @@ REM The client's objects without the ones the harness replaces.
 type nul > "%RSP%"
 for /f "usebackq delims=" %%l in ("%BUILD%\main_rebuild%SUFFIX%.objs.rsp") do (
   set "skip="
-  for %%n in (net clock thread drive_state settings window) do if /i "%%~nl"=="%%n" set "skip=1"
+  for %%n in (net_win32 clock_win32 thread_win32 drive_state settings_win32 window_win32) do if /i "%%~nl"=="%%n" set "skip=1"
   if not defined skip >> "%RSP%" echo %%l
 )
 for %%f in ("%OBJ%\*.obj") do >> "%RSP%" echo "%%~ff"

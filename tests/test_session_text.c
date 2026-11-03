@@ -99,7 +99,7 @@ char *msg_str(int id)
 #define RegOpenKeyExA read_open
 #define RegQueryValueExA read_value
 #define RegCloseKey read_close
-#include "../src/platform/settings.c"
+#include "../src/platform/settings_win32.c"
 #include "../src/session/chat_macro_settings.c"
 #undef RegOpenKeyExA
 #undef RegQueryValueExA
