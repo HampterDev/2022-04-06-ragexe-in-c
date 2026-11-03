@@ -892,3 +892,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_heal_colours.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_meteor_storm_waves.bat"
+if not "%errorlevel%"=="0" exit /b 1

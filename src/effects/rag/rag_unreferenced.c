@@ -240,10 +240,11 @@ unsigned char rag_meteor_storm_waves(struct RagEffect *self)
     switch (self->frame) {
     case 0:
         rag_play_wave_here(self, "effect\\wizard_meteo.wav");
+        /* Falls through, as in the original: frame 0 also plays the blast mine wave. */
     case 10:
         rag_play_wave_here(self, "effect\\hunter_blastmine.wav");
         break;
-    case 20: case 50: case 80: case 100: case 130: case 140: case 170: case 200:
+    case 20: case 50: case 80: case 100: case 130: case 140: case 180: case 200:
         rag_play_wave_here(self, "effect\\wizard_meteo.wav");
         break;
     default:
