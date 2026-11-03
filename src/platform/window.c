@@ -246,7 +246,7 @@ void platform_window_place_frameless(HWND hwnd, HMONITOR on, int w, int h)
 #include "platform/vk.h"
 #include "platform/system.h"
 #include <SDL3/SDL.h>
-#include <iconv.h>
+#include "platform/iconv_port.h"
 
 static SDL_Window *g_window;
 static unsigned char g_keys[256];

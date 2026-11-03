@@ -5,6 +5,11 @@ if(UNIX)
     target_compile_definitions(rage_lua PRIVATE LUA_USE_POSIX LUA_USE_DLOPEN _XOPEN_SOURCE=700)
     target_link_libraries(rage_lua PUBLIC m ${CMAKE_DL_LIBS})
 endif()
+if(ANDROID)
+    # Lua 5.1 keeps a string's bytes after its header (getstr), which Android's fortified strchr takes
+    # for a read past the header and aborts on.
+    target_compile_options(rage_lua PRIVATE -U_FORTIFY_SOURCE)
+endif()
 
 file(GLOB ZLIB_SOURCES CONFIGURE_DEPENDS zlib-1.2.11/*.c)
 add_library(rage_zlib STATIC ${ZLIB_SOURCES})

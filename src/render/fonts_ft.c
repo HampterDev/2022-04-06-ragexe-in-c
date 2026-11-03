@@ -7,7 +7,7 @@
 #include FT_FREETYPE_H
 #include FT_TRUETYPE_TABLES_H
 #include FT_TRUETYPE_TAGS_H
-#include <fontconfig/fontconfig.h>
+#include "render/font_match.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +51,7 @@ struct Font {
     FT_Face primary;
     int primary_candidate, fallback_count;
     struct Fallback fallbacks[FALLBACK_FACES];
-    FcFontSet *candidates;
+    struct FontMatches *candidates;
     int ppem, ascent, descent, embolden, oblique, em_cell, own_hints;
     struct GlyphPage *pages[GLYPH_PAGES];
 };
@@ -59,7 +59,7 @@ struct Font {
 struct FontCache g_fontCache;
 static FT_Library library;
 
-static const char *const latin_families[] = {"Arial", "Liberation Sans", "DejaVu Sans", NULL};
+static const char *const latin_families[] = {"Arial", "Liberation Sans", "DejaVu Sans", "Roboto", NULL};
 static const char *const korean_families[] = {
     "Gulim", "NanumGothic", "Noto Sans CJK KR", "Noto Sans KR", "UnDotum", "Baekmuk Gulim", NULL,
 };
@@ -121,69 +121,29 @@ static FT_Face open_face(const char *path, int index)
     return FT_New_Face(library, path, index, &face) ? NULL : face;
 }
 
-static FcFontSet *sorted_candidates(const char *family, const char *const *fallbacks, const char *lang, int bold,
-                                    int italic)
+static FT_Face open_candidate(const struct FontMatches *candidates, int i)
 {
-    FcPattern *pattern = FcPatternCreate();
-    FcFontSet *set;
-    FcResult result;
-    const char *const *name;
-    if (!pattern)
-        return NULL;
-    if (family)
-        FcPatternAddString(pattern, FC_FAMILY, (const FcChar8 *)family);
-    for (name = fallbacks; name && *name; ++name)
-        FcPatternAddString(pattern, FC_FAMILY, (const FcChar8 *)*name);
-    FcPatternAddString(pattern, FC_LANG, (const FcChar8 *)lang);
-    FcPatternAddInteger(pattern, FC_WEIGHT, bold ? FC_WEIGHT_BOLD : FC_WEIGHT_REGULAR);
-    FcPatternAddInteger(pattern, FC_SLANT, italic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN);
-    FcConfigSubstitute(NULL, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-    set = FcFontSort(NULL, pattern, FcTrue, NULL, &result);
-    FcPatternDestroy(pattern);
-    if (set && !set->nfont) {
-        FcFontSetDestroy(set);
-        set = NULL;
-    }
-    return set;
-}
-
-static int covers_language(FcPattern *candidate, const char *lang)
-{
-    FcLangSet *langs;
-    return FcPatternGetLangSet(candidate, FC_LANG, 0, &langs) == FcResultMatch
-        && FcLangSetHasLang(langs, (const FcChar8 *)lang) != FcLangDifferentLang;
-}
-
-static FT_Face open_candidate(FcPattern *candidate)
-{
-    FcChar8 *file;
-    int index = 0;
-    if (FcPatternGetString(candidate, FC_FILE, 0, &file) != FcResultMatch)
-        return NULL;
-    FcPatternGetInteger(candidate, FC_INDEX, 0, &index);
-    return open_face((const char *)file, index);
+    int index;
+    const char *file = font_match_file(candidates, i, &index);
+    return file ? open_face(file, index) : NULL;
 }
 
 static FT_Face open_matched(struct Font *font, int bold, int italic)
 {
-    FcPattern *chosen;
-    int i, weight = FC_WEIGHT_REGULAR, slant = FC_SLANT_ROMAN;
+    int i, count = font_match_count(font->candidates), is_bold, is_slanted;
     FT_Face face;
-    for (i = 0; i < font->candidates->nfont; ++i)
-        if (covers_language(font->candidates->fonts[i], font->fonts->lang))
+    for (i = 0; i < count; ++i)
+        if (font_match_covers_language(font->candidates, i, font->fonts->lang))
             break;
-    if (i == font->candidates->nfont)
+    if (i == count)
         i = 0;
-    chosen = font->candidates->fonts[i];
-    face = open_candidate(chosen);
+    face = open_candidate(font->candidates, i);
     if (!face)
         return NULL;
     font->primary_candidate = i;
-    FcPatternGetInteger(chosen, FC_WEIGHT, 0, &weight);
-    FcPatternGetInteger(chosen, FC_SLANT, 0, &slant);
-    font->embolden = bold && weight < FC_WEIGHT_DEMIBOLD;
-    font->oblique = italic && slant == FC_SLANT_ROMAN;
+    font_match_style(font->candidates, i, &is_bold, &is_slanted);
+    font->embolden = bold && !is_bold;
+    font->oblique = italic && !is_slanted;
     return face;
 }
 
@@ -334,8 +294,7 @@ static void font_free(struct Font *font)
         FT_Done_Face(font->fallbacks[i].face);
     if (font->primary)
         FT_Done_Face(font->primary);
-    if (font->candidates)
-        FcFontSetDestroy(font->candidates);
+    font_match_free(font->candidates);
     free(font);
 }
 
@@ -363,7 +322,7 @@ static struct Font *font_open(int face, const char *family, int size, int charse
         family = face_family(face);
         fallbacks = font->fonts->families;
     }
-    font->candidates = sorted_candidates(family, fallbacks, font->fonts->lang, bold, italic);
+    font->candidates = font_match_sort(family, fallbacks, font->fonts->lang, bold, italic);
     snprintf(name, sizeof name, "RAGEXE_FONT_%d", face);
     if (face >= 0 && (path = font_variable(name)))
         font->primary = open_file(font, path, bold, italic);
@@ -406,14 +365,11 @@ static FT_Face open_fallback(struct Font *font, uint16_t unit, FT_UInt *index)
     if (unit < 0x20 || (unit >= 0xd800 && unit <= 0xdfff) || !font->candidates
         || font->fallback_count == FALLBACK_FACES)
         return NULL;
-    for (i = 0; i < font->candidates->nfont; ++i) {
-        FcPattern *candidate = font->candidates->fonts[i];
-        FcCharSet *chars;
+    for (i = 0; i < font_match_count(font->candidates); ++i) {
         FT_Face face;
-        if (is_open(font, i) || FcPatternGetCharSet(candidate, FC_CHARSET, 0, &chars) != FcResultMatch
-            || !FcCharSetHasChar(chars, unit))
+        if (is_open(font, i) || !font_match_has_char(font->candidates, i, unit))
             continue;
-        face = open_candidate(candidate);
+        face = open_candidate(font->candidates, i);
         if (!face)
             continue;
         if (!apply_size(font, face) || !(*index = FT_Get_Char_Index(face, unit))) {
@@ -641,7 +597,7 @@ struct FontCache *font_cache_construct(struct FontCache *self)
     memset(self, 0, sizeof(*self));
     if (!library && FT_Init_FreeType(&library))
         library = NULL;
-    FcInit();
+    font_match_init();
     return self;
 }
 

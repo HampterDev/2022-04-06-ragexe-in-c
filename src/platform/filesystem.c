@@ -344,7 +344,7 @@ void platform_find_close(struct PlatformFind *find)
 #else
 #include <dirent.h>
 #include <fcntl.h>
-#include <iconv.h>
+#include "platform/iconv_port.h"
 #include <pthread.h>
 #include <sys/mman.h>
 #include <time.h>

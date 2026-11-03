@@ -387,6 +387,74 @@ harness; every non-Granny scene captures bit for bit what the 32-bit client capt
 Granny scenes differ from `granny2.dll` only along edges, as on Linux. The `-A x64` CI job builds
 both.
 
+## Android client
+
+`android/` is a Gradle project around the same CMake build: the client is `libmain.so`, SDL3 is
+`libSDL3.so`, and SDL's own Java activity (`vendor/sdl3_android`, from the SDL commit
+`cmake/SDL3.cmake` pins) loads both and calls the client's `main`. It needs JDK 17 and the Android
+SDK with NDK 27.3.13750724 and CMake 3.31.5 (Gradle installs those two when they are missing):
+
+```sh
+cd android
+./gradlew assembleRelease     # app/build/outputs/apk/release/app-release.apk, arm64-v8a and x86_64
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+The release APK is signed with the local debug key, for installing on your own devices. On a
+Windows host the SDK and NDK must be on a path without spaces (for example a junction
+`C:\Android\Sdk`, named in `android/local.properties` as `sdk.dir`): CMake hands Ninja the short
+8.3 name of a compiler in a path with spaces, and `CLANG_~1.EXE` no longer knows it is clang++,
+so nothing links the C++ runtime.
+
+**The game folder** is the app's own external storage directory,
+`/sdcard/Android/data/local.ragexe.client/files`, which the app creates on its first start. Copy
+the game's `DATA.INI`, GRF files, `data`, `System`, `BGM` and `savedata` folders there (`adb push`,
+or USB file transfer from a computer), with the glTF models from `tools/granny_export` in
+`data/model/gltf`. `clientinfo.xml` names the servers as on any other platform; an emulator reaches
+servers on its host through `adb reverse` or the host's own address.
+
+**What is different on Android:**
+
+- The client always runs in its full-screen mode, at the resolution set in its options, and the
+  backend scales the scene to the screen with the aspect kept (`render/present_fit.h`), as the
+  desktop backends do for a window of another size. The system bars are hidden.
+- Drawing goes through OpenGL ES 3.0 (`RAGE_GLES`, which a desktop build can also turn on for
+  testing). ES has no BGRA uploads, read-backs or vertex colours, no reversed 16-bit layouts and no
+  border clamping: 8888 pixels are swizzled, 1555/4444/565 textures are widened on the CPU by bit
+  replication as desktop drivers widen them, vertex colours are swizzled in the shader and border
+  addressing clamps to the edge. Every scene drawn through ES on Mesa stays within 2 of the desktop
+  GL capture in every channel.
+- Fonts: there is no Fontconfig, so `render/font_match_scan.c` reads the faces in `/system/fonts`
+  and `/product/fonts` once and sorts them as Fontconfig does for the client's requests (the asked
+  families in order, then the faces that cover the language, then slant and weight); Korean text is
+  set in Noto Sans CJK KR, Latin text in Roboto. `RAGE_FONT_SCAN` turns the scanner on elsewhere
+  (`RAGE_FONT_DIRS` names the folders); on the Linux VM it chose the same fonts as Fontconfig for
+  every scene.
+- Text conversion: Android's iconv converts only between Unicode forms, and the client converts
+  between UTF-8 and its Windows code page all the time (file names, input, message boxes). The client
+  carries the code pages it can select (874, 932, 936, 949, 950 and 1250 to 1258) in
+  `platform/code_page_tables.c`, written by `tools/code_pages.py` from Windows' own
+  `MultiByteToWideChar` and `WideCharToMultiByte`, and converts with them through the iconv calls
+  the POSIX code already makes (`platform/iconv_port.h`, `RAGE_OWN_ICONV` elsewhere).
+  `tests/test_code_page_iconv.c` checks every code of every table against Windows on Windows.
+- Input: touches arrive as the left mouse button. A touch moves the pointer and presses at once,
+  but the client finds the window under the pointer once a frame, so a touch's press waits for the
+  next frame when the pointer moved in this one. The back button is Escape. Text input is on while
+  an edit box has the focus, so a hardware keyboard types as on a desktop; the on-screen keyboard
+  comes up when the player taps the focused edit box and goes when they tap anything else, and while
+  it is up the scene is raised so that the box stays above it (the activity reports the keyboard's
+  height from its window insets, which SDL does not). The in-game chat line opens with the keyboard
+  icon at the top of the chat window, or Enter.
+- Lua 5.1 keeps a string's bytes after its header, which bionic's fortified `strchr` takes for an
+  overread, so the vendored Lua is compiled without `_FORTIFY_SOURCE`. `char` is signed on every
+  build (`-fsigned-char`), as the code written for MSVC expects; arm64 Android and Linux make it
+  unsigned.
+
+The game was played on the Android 15 x86_64 emulator (Google APIs image, host GPU) against the
+Linux VM's rAthena: service and server selection, login through the on-screen keyboard, character
+selection, entering `iz_int03`, walking by tapping, and chat. The `android-client` CI job builds the
+APK for both ABIs.
+
 ## Scene captures
 
 `ragexe_scenes` is the client with the clock, the sockets, the threads, the settings store and
@@ -437,6 +505,9 @@ the other entry's second one, which is not an ordering; it compares like with li
 6. Scenes: keyboard input does not open the chat line yet (`tests/scenes/README.md`).
 7. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
+8. Android: only the x86_64 emulator was played; try arm64 hardware. Touch has no gesture for
+   the right mouse button and the wheel (turning and zooming the camera), and the default
+   resolution is 4:3 whatever the screen's aspect (*Android client*).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

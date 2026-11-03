@@ -3,11 +3,33 @@
 #include "render/gfx_batch.h"
 #include "render/device.h"
 #include "render/display_devices.h"
+#include "render/present_fit.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
+#if defined(__ANDROID__) || defined(RAGE_GLES)
+/* OpenGL ES 3.0 (Android, or RAGE_GLES to try it elsewhere): no BGRA uploads, reads or vertex
+   colours, no reversed 16-bit layouts and no border clamping, so those convert on the CPU or fall
+   back; everything else is shared. */
+#define GFX_GLES 1
+#include <GLES3/gl3.h>
+#ifndef APIENTRY
+#define APIENTRY GL_APIENTRY
+#endif
+#else
 #include <SDL3/SDL_opengl.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef GFX_GLES
+#define GFX_PIXEL_FORMAT GL_RGBA
+#define GFX_COLOUR_SIZE 4
+#define GL_CLEAR_DEPTH(X) X(void, glClearDepthf, (GLfloat depth))
+#else
+#define GFX_PIXEL_FORMAT GL_BGRA
+#define GFX_COLOUR_SIZE GL_BGRA
+#define GL_CLEAR_DEPTH(X) X(void, glClearDepth, (GLdouble depth))
+#endif
 
 #define GL_FUNCTIONS(X) \
     X(void, glGenTextures, (GLsizei n, GLuint *textures)) \
@@ -26,7 +48,7 @@
     X(void, glDisable, (GLenum cap)) \
     X(void, glClear, (GLbitfield mask)) \
     X(void, glClearColor, (GLfloat r, GLfloat g, GLfloat b, GLfloat a)) \
-    X(void, glClearDepth, (GLdouble depth)) \
+    GL_CLEAR_DEPTH(X) \
     X(void, glDepthFunc, (GLenum func)) \
     X(void, glDepthMask, (GLboolean flag)) \
     X(void, glColorMask, (GLboolean r, GLboolean g, GLboolean b, GLboolean a)) \
@@ -144,9 +166,15 @@ static struct {
 } gl;
 
 static unsigned content_tick;
+int g_presentLift;
+
+#ifdef GFX_GLES
+static const char shader_header[] = "#version 300 es\nprecision highp float;\nprecision highp int;\n#define GFX_GLES 1\n";
+#else
+static const char shader_header[] = "#version 330 core\n";
+#endif
 
 static const char vertex_source[] =
-    "#version 330 core\n"
     "layout(location = 0) in vec4 a_pos;\n"
     "layout(location = 1) in vec4 a_diffuse;\n"
     "layout(location = 2) in vec4 a_specular;\n"
@@ -163,14 +191,18 @@ static const char vertex_source[] =
     "    vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
     "    vec2 ndc = vec2(pixel.x / u_viewport.x * 2.0 - 1.0, 1.0 - pixel.y / u_viewport.y * 2.0);\n"
     "    gl_Position = vec4(ndc * w, (a_pos.z * 2.0 - 1.0) * w, w);\n"
+    "#ifdef GFX_GLES\n"
+    "    v_diffuse = a_diffuse.bgra;\n"
+    "    v_specular = a_specular.bgra;\n"
+    "#else\n"
     "    v_diffuse = a_diffuse;\n"
     "    v_specular = a_specular;\n"
+    "#endif\n"
     "    v_uv0 = a_uv0;\n"
     "    v_uv1 = a_uv1;\n"
     "}\n";
 
 static const char fragment_source[] =
-    "#version 330 core\n"
     "in vec4 v_diffuse;\n"
     "in vec4 v_specular;\n"
     "in vec2 v_uv0;\n"
@@ -274,7 +306,10 @@ static GLuint compile_shader(GLenum kind, const char *source)
     GLuint shader = p_glCreateShader(kind);
     GLint ok = 0;
     char log[1024];
-    p_glShaderSource(shader, 1, &source, NULL);
+    const GLchar *parts[2];
+    parts[0] = shader_header;
+    parts[1] = source;
+    p_glShaderSource(shader, 2, parts, NULL);
     p_glCompileShader(shader);
     p_glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
     if (!ok) {
@@ -490,7 +525,7 @@ static GLuint new_texture(int w, int h, GLint internal, GLenum format, GLenum ty
 
 static int make_target(struct gfx_surface *s, int withDepth)
 {
-    s->tex = new_texture(s->width, s->height, GL_RGBA8, GL_BGRA, GL_UNSIGNED_BYTE);
+    s->tex = new_texture(s->width, s->height, GL_RGBA8, GFX_PIXEL_FORMAT, GL_UNSIGNED_BYTE);
     p_glGenFramebuffers(1, &s->fbo);
     p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
     p_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s->tex, 0);
@@ -517,6 +552,57 @@ static void bind_target(struct gfx_surface *s)
     }
 }
 
+#ifdef GFX_GLES
+/* The client's A8R8G8B8 pixels (bytes B, G, R, A) as the R, G, B, A bytes ES takes. */
+static DWORD gl_rgba(DWORD argb)
+{
+    return (argb & 0xff00ff00u) | (argb >> 16 & 0xff) | (argb & 0xff) << 16;
+}
+
+/* Widened by bit replication, as desktop drivers widen 5- and 6-bit channels. */
+static DWORD expand5(DWORD v)
+{
+    v &= 31;
+    return v << 3 | v >> 2;
+}
+
+static unsigned char *rgba_copy(const struct gfx_surface *s, int level, int w, int h)
+{
+    size_t n = (size_t)w * h, i;
+    DWORD *out = malloc(n * 4);
+    if (!out)
+        return NULL;
+    if (s->fmt == GFX_FMT_1555 || s->fmt == GFX_FMT_4444 || s->fmt == GFX_FMT_565) {
+        const WORD *in = (const WORD *)s->pixels[level];
+        for (i = 0; i < n; i++) {
+            DWORD v = in[i], a, r, g, b;
+            if (s->fmt == GFX_FMT_565) {
+                a = 255;
+                r = expand5(v >> 11);
+                g = (v >> 5 & 63) << 2 | (v >> 9 & 3);
+                b = expand5(v);
+            } else if (s->fmt == GFX_FMT_1555) {
+                a = v & 0x8000 ? 255 : 0;
+                r = expand5(v >> 10);
+                g = expand5(v >> 5);
+                b = expand5(v);
+            } else {
+                a = (v >> 12 & 15) * 17;
+                r = (v >> 8 & 15) * 17;
+                g = (v >> 4 & 15) * 17;
+                b = (v & 15) * 17;
+            }
+            out[i] = a << 24 | b << 16 | g << 8 | r;
+        }
+    } else {
+        const DWORD *in = (const DWORD *)s->pixels[level];
+        for (i = 0; i < n; i++)
+            out[i] = gl_rgba(in[i]);
+    }
+    return (unsigned char *)out;
+}
+#endif
+
 static void upload_sysmem(struct gfx_surface *s)
 {
     int n = s->width * s->height, i;
@@ -526,9 +612,13 @@ static void upload_sysmem(struct gfx_surface *s)
         return;
     for (i = 0; i < n; i++)
         staging[i] = src[i] == s->key ? (src[i] & 0xffffff) : (src[i] | 0xff000000);
+#ifdef GFX_GLES
+    for (i = 0; i < n; i++)
+        staging[i] = gl_rgba(staging[i]);
+#endif
     p_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     p_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->width, s->height, 0, GL_BGRA, GL_UNSIGNED_BYTE, staging);
+    p_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, s->width, s->height, 0, GFX_PIXEL_FORMAT, GL_UNSIGNED_BYTE, staging);
     free(staging);
 }
 
@@ -536,19 +626,38 @@ static void upload_texture(struct gfx_surface *s)
 {
     int level;
     GLint internal = GL_RGBA8;
-    GLenum format = GL_BGRA, type = GL_UNSIGNED_BYTE;
+    GLenum format = GFX_PIXEL_FORMAT, type = GL_UNSIGNED_BYTE;
+    int convert = 0;
     switch (s->fmt) {
+#ifdef GFX_GLES
+    case GFX_FMT_1555: case GFX_FMT_4444: case GFX_FMT_565: convert = 1; break;
+#else
     case GFX_FMT_1555: type = GL_UNSIGNED_SHORT_1_5_5_5_REV; break;
     case GFX_FMT_4444: type = GL_UNSIGNED_SHORT_4_4_4_4_REV; break;
     case GFX_FMT_565:  format = GL_RGB; type = GL_UNSIGNED_SHORT_5_6_5; internal = GL_RGB8; break;
+#endif
     case GFX_FMT_BUMP: format = GL_RG; type = GL_BYTE; internal = GL_RG8_SNORM; break;
-    default: break;
+    default:
+#ifdef GFX_GLES
+        convert = 1;
+#endif
+        break;
     }
-    p_glPixelStorei(GL_UNPACK_ALIGNMENT, s->bpp == 32 ? 4 : 2);
+    p_glPixelStorei(GL_UNPACK_ALIGNMENT, s->bpp == 32 || convert ? 4 : 2);
     p_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     for (level = 0; level < s->levels; level++) {
         int w = s->width >> level, h = s->height >> level;
-        p_glTexImage2D(GL_TEXTURE_2D, level, internal, w < 1 ? 1 : w, h < 1 ? 1 : h, 0, format, type, s->pixels[level]);
+        w = w < 1 ? 1 : w;
+        h = h < 1 ? 1 : h;
+#ifdef GFX_GLES
+        if (convert) {
+            unsigned char *rgba = rgba_copy(s, level, w, h);
+            p_glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+            free(rgba);
+            continue;
+        }
+#endif
+        p_glTexImage2D(GL_TEXTURE_2D, level, internal, w, h, 0, format, type, s->pixels[level]);
     }
     p_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, s->levels - 1);
 }
@@ -610,7 +719,11 @@ static GLint gl_address(DWORD a)
 {
     switch (a) {
     case GFX_ADDRESS_CLAMP: return GL_CLAMP_TO_EDGE;
+#ifdef GFX_GLES
+    case GFX_ADDRESS_BORDER: return GL_CLAMP_TO_EDGE;
+#else
     case GFX_ADDRESS_BORDER: return GL_CLAMP_TO_BORDER;
+#endif
     case 2: return GL_MIRRORED_REPEAT;
     default: return GL_REPEAT;
     }
@@ -643,7 +756,11 @@ static void apply_samplers(void)
         border[1] = ((b >> 8) & 0xff) / 255.0f;
         border[2] = (b & 0xff) / 255.0f;
         border[3] = ((b >> 24) & 0xff) / 255.0f;
+#ifndef GFX_GLES
         p_glSamplerParameterfv(sm, GL_TEXTURE_BORDER_COLOR, border);
+#else
+        (void)border;
+#endif
     }
     gl.samplerDirty = 0;
 }
@@ -771,8 +888,8 @@ static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, co
     p_glBindBuffer(GL_ARRAY_BUFFER, gl.vbo);
     p_glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)nverts * stride, verts, GL_STREAM_DRAW);
     p_glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)0);
-    p_glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)16);
-    p_glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)20);
+    p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)16);
+    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, stride, (const void *)(uintptr_t)20);
     p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)24);
     p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)(vertexKind == GFX_VTX_TEX2 ? 32 : 24));
     if (nindices) {
@@ -874,10 +991,14 @@ static void read_target(struct gfx_surface *s, unsigned char *out)
     batch_flush();
     p_glBindFramebuffer(GL_READ_FRAMEBUFFER, s->fbo);
     p_glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    p_glReadPixels(0, 0, s->width, s->height, GL_BGRA, GL_UNSIGNED_BYTE, flip);
+    p_glReadPixels(0, 0, s->width, s->height, GFX_PIXEL_FORMAT, GL_UNSIGNED_BYTE, flip);
     p_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     for (y = 0; y < s->height; y++)
         memcpy(out + (size_t)y * row, flip + (size_t)(s->height - 1 - y) * row, row);
+#ifdef GFX_GLES
+    for (y = 0; y < s->width * s->height; y++)
+        ((DWORD *)out)[y] = gl_rgba(((DWORD *)out)[y]);
+#endif
     free(flip);
     gl.boundTarget = -1;
 }
@@ -892,13 +1013,17 @@ static void write_target(struct gfx_surface *s, const unsigned char *in)
         unsigned char *dst = flip + (size_t)(s->height - 1 - y) * row;
         int x;
         memcpy(dst, in + (size_t)y * row, row);
-        for (x = 0; x < s->width; x++)
+        for (x = 0; x < s->width; x++) {
             dst[x * 4 + 3] = 0xff;
+#ifdef GFX_GLES
+            ((DWORD *)dst)[x] = gl_rgba(((DWORD *)dst)[x]);
+#endif
+        }
     }
     p_glBindTexture(GL_TEXTURE_2D, s->tex);
     p_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     p_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    p_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, s->width, s->height, GL_BGRA, GL_UNSIGNED_BYTE, flip);
+    p_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, s->width, s->height, GFX_PIXEL_FORMAT, GL_UNSIGNED_BYTE, flip);
     free(flip);
     gl.stateDirty = 1;
 }
@@ -935,6 +1060,7 @@ static int ensure_context(void)
     SDL_GL_MakeCurrent(gl.window, gl.context);
     if (!load_functions() || !build_program())
         return 0;
+    p_glDisable(GL_DITHER);
     p_glGenVertexArrays(1, &gl.vao);
     p_glBindVertexArray(gl.vao);
     p_glGenBuffers(1, &gl.vbo);
@@ -1142,7 +1268,7 @@ void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
 
 int gfx_present(struct C3dDevice *d, int vsync, int whole)
 {
-    int w = 0, h = 0;
+    int w = 0, h = 0, points_h = 0, lift = 0, fx, fy, fw, fh;
     struct gfx_surface *scene = gl.mainTarget;
     (void)d;
     (void)vsync;
@@ -1151,12 +1277,26 @@ int gfx_present(struct C3dDevice *d, int vsync, int whole)
     if (!gl.context || !scene)
         return -1;
     SDL_GetWindowSizeInPixels(gl.window, &w, &h);
+    SDL_GetWindowSize(gl.window, NULL, &points_h);
+    if (g_presentLift && points_h > 0)
+        lift = (int)((long long)g_presentLift * h / points_h);
+    present_fit(w, h, scene->width, scene->height, lift, &fx, &fy, &fw, &fh);
     p_glBindFramebuffer(GL_READ_FRAMEBUFFER, scene->fbo);
     p_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    p_glBlitFramebuffer(0, 0, scene->width, scene->height, 0, 0, w, h, GL_COLOR_BUFFER_BIT,
-                        (w == scene->width && h == scene->height) ? GL_NEAREST : GL_LINEAR);
+    if (fx || fy || fw != w || fh != h) {
+        p_glDisable(GL_SCISSOR_TEST);
+        p_glViewport(0, 0, w, h);
+        p_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        p_glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        p_glClear(GL_COLOR_BUFFER_BIT);
+        gl.stateDirty = 1;
+    }
+    fy = h - fy - fh;
+    p_glBlitFramebuffer(0, 0, scene->width, scene->height, fx, fy, fx + fw, fy + fh, GL_COLOR_BUFFER_BIT,
+                        (fw == scene->width && fh == scene->height) ? GL_NEAREST : GL_LINEAR);
     SDL_GL_SwapWindow(gl.window);
     p_glBindFramebuffer(GL_FRAMEBUFFER, scene->fbo);
+    p_glViewport(0, 0, scene->width, scene->height);
     gl.boundTarget = (int)scene->fbo;
     collect_dead_textures();
     return 0;
@@ -1605,7 +1745,11 @@ int gfx_clear(int flags, DWORD colour, float z, const RECT *r)
     }
     if ((flags & GFX_CLEAR_ZBUFFER) && t->depth) {
         p_glDepthMask(GL_TRUE);
+#ifdef GFX_GLES
+        p_glClearDepthf(z);
+#else
         p_glClearDepth(z);
+#endif
         bits |= GL_DEPTH_BUFFER_BIT;
     }
     if (bits)

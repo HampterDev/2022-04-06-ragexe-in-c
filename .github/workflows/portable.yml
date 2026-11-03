@@ -77,3 +77,13 @@ jobs:
         run: cmake --build build/client --parallel 4
       - name: Test
         run: ctest --test-dir build/client --output-on-failure
+
+  android-client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Build
+        working-directory: android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          ./gradlew assembleRelease --console=plain

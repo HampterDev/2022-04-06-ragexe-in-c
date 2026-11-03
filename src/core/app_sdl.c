@@ -9,10 +9,14 @@
 #include "platform/language.h"
 #include "platform/window.h"
 #include "render/device.h"
+#include "render/present_fit.h"
 #include "session/session_options.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_keyboard.h"
+#include "ui/window_access.h"
+#include "ui/window.h"
+#include "ui/window_types.h"
 #include "core/window_state.h"
 #include <SDL3/SDL.h>
 #include <stdlib.h>
@@ -91,6 +95,10 @@ static int key_code(const SDL_KeyboardEvent *key)
         return '1' + (key->scancode - SDL_SCANCODE_1);
     if (key->scancode == SDL_SCANCODE_0)
         return '0';
+#ifdef __ANDROID__
+    if (key->scancode == SDL_SCANCODE_AC_BACK)
+        return VK_ESCAPE;
+#endif
     return (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanKeys[key->scancode] : 0;
 }
 
@@ -133,11 +141,12 @@ static char *client_text(const char *utf8)
 
 static void scene_point(float x, float y, int *outX, int *outY)
 {
-    int w = 0, h = 0;
+    int w = 0, h = 0, fx, fy, fw, fh;
     SDL_GetWindowSize(g_sdlWindow, &w, &h);
-    if (w > 0 && h > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
-        *outX = (int)(x * g_3dDevice.width / w);
-        *outY = (int)(y * g_3dDevice.height / h);
+    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, g_presentLift, &fx, &fy, &fw, &fh);
+    if (fw > 0 && fh > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
+        *outX = (int)((x - fx) * g_3dDevice.width / fw);
+        *outY = (int)((y - fy) * g_3dDevice.height / fh);
     } else {
         *outX = (int)x;
         *outY = (int)y;
@@ -262,16 +271,135 @@ static void dispatch(const SDL_Event *event)
     }
 }
 
+static int is_touch_button(const SDL_Event *event)
+{
+    return (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_UP)
+        && event->button.which == SDL_TOUCH_MOUSEID;
+}
+
+/* Where in the scene the last touch pressed this frame, for the on-screen keyboard. */
+static int g_touchPressed, g_touchX, g_touchY;
+
+static void dispatch_touch(const SDL_Event *event)
+{
+    if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && is_touch_button(event)) {
+        g_touchPressed = 1;
+        scene_point(event->button.x, event->button.y, &g_touchX, &g_touchY);
+    }
+    dispatch(event);
+}
+
+/* A touch moves the pointer and presses in one go, but the client finds the window under the pointer
+   once a frame, as a mouse gives it time to: a touch's press and release wait for the next frame
+   when the pointer moved in this one, and come one a frame. */
 static void pump_events(void)
 {
+    static SDL_Event held;
+    static int holding;
     SDL_Event event;
-    while (SDL_PollEvent(&event))
-        dispatch(&event);
+    int moved = 0, touched = 0;
+    g_touchPressed = 0;
+    if (holding) {
+        holding = 0;
+        dispatch_touch(&held);
+        touched = 1;
+    }
+    while (SDL_PollEvent(&event)) {
+        if (is_touch_button(&event) && (moved || touched)) {
+            held = event;
+            holding = 1;
+            break;
+        }
+        if (event.type == SDL_EVENT_MOUSE_MOTION)
+            moved = 1;
+        touched |= is_touch_button(&event);
+        dispatch_touch(&event);
+    }
 }
+
+#ifdef __ANDROID__
+#include <jni.h>
+
+#define KEYBOARD_MARGIN 8
+
+/* Screen pixels at the bottom that the on-screen keyboard covers, from the activity's window insets
+   (android/app/src/main/java/local/ragexe/client/ClientActivity.java). */
+static SDL_AtomicInt g_keyboardCover;
+
+JNIEXPORT void JNICALL Java_local_ragexe_client_ClientActivity_onKeyboardCover(JNIEnv *env, jclass cls,
+                                                                             jint bottom)
+{
+    (void)env;
+    (void)cls;
+    SDL_SetAtomicInt(&g_keyboardCover, bottom);
+}
+
+static void screen_keyboard(int show)
+{
+    SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "1");
+    SDL_StopTextInput(g_sdlWindow);
+    if (show)
+        SDL_StartTextInput(g_sdlWindow);
+    SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
+}
+
+/* Text input is on while an edit box has the focus, as the client's edit boxes take a hardware
+   keyboard's typing whenever they have it. The on-screen keyboard is another matter, as the client
+   keeps the chat line focused all game long: it comes up when the player taps the focused edit box
+   and goes when they tap anything else or the box loses the focus, and while it is up the scene is
+   raised so that it does not cover the box. */
+static void sync_text_input(void)
+{
+    static SDL_Rect told;
+    struct UIWindow *edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
+    int w = 0, h = 0, pixels_h = 0, cover, fx, fy, fw, fh, x = 0, y = 0, bottom, lift = 0;
+    int shown = SDL_ScreenKeyboardShown(g_sdlWindow);
+    SDL_Rect area;
+    if (!edit || g_3dDevice.width <= 0 || g_3dDevice.height <= 0) {
+        g_presentLift = 0;
+        if (shown)
+            screen_keyboard(0);
+        if (SDL_TextInputActive(g_sdlWindow))
+            SDL_StopTextInput(g_sdlWindow);
+        return;
+    }
+    ui_window_to_screen(edit, &x, &y);
+    if (g_touchPressed) {
+        int on_edit = g_touchX >= x && g_touchX < x + edit->width && g_touchY >= y && g_touchY < y + edit->height;
+        if (on_edit != shown) {
+            screen_keyboard(on_edit);
+            shown = on_edit;
+        }
+    }
+    SDL_GetWindowSize(g_sdlWindow, &w, &h);
+    SDL_GetWindowSizeInPixels(g_sdlWindow, NULL, &pixels_h);
+    cover = shown ? SDL_GetAtomicInt(&g_keyboardCover) : 0;
+    if (pixels_h > 0)
+        cover = (int)((long long)cover * h / pixels_h);
+    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, 0, &fx, &fy, &fw, &fh);
+    bottom = fy + (y + edit->height) * fh / g_3dDevice.height;
+    if (cover > 0 && bottom + KEYBOARD_MARGIN > h - cover)
+        lift = bottom + KEYBOARD_MARGIN - (h - cover);
+    g_presentLift = lift;
+    area.x = fx + x * fw / g_3dDevice.width;
+    area.y = fy - lift + y * fh / g_3dDevice.height;
+    area.w = edit->width * fw / g_3dDevice.width;
+    area.h = edit->height * fh / g_3dDevice.height;
+    if (memcmp(&area, &told, sizeof area) || !SDL_TextInputActive(g_sdlWindow)) {
+        told = area;
+        SDL_SetTextInputArea(g_sdlWindow, &area, 0);
+    }
+    if (!SDL_TextInputActive(g_sdlWindow))
+        SDL_StartTextInput(g_sdlWindow);
+}
+#endif
 
 void check_system_message(void)
 {
     pump_events();
+#ifdef __ANDROID__
+    sync_text_input();
+#endif
     drive_state_tick();
 }
 
@@ -291,19 +419,37 @@ int app_create_window(HINSTANCE instance)
     int screenW, screenH, x, y;
     g_hInstance = instance;
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+#ifdef __ANDROID__
+    /* The back button is Escape, as on the keyboard, instead of leaving the game; the on-screen
+       keyboard comes up only when the player taps an edit box (sync_text_input). */
+    SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+    SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
+#endif
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         platform_message_box(0, SDL_GetError(), "ERROR", 0);
         return 0;
     }
+#if defined(__ANDROID__) || defined(RAGE_GLES)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
 #ifdef __APPLE__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 #endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+#ifdef __ANDROID__
+    /* An Android window always covers the screen, so the client runs in its full-screen mode: at its
+       own resolution, scaled to the screen with the aspect kept, without the system bars. */
+    g_fullscreenMode = 1;
+    flags |= SDL_WINDOW_FULLSCREEN;
+#endif
     g_sdlWindow = SDL_CreateWindow(g_windowClassName, g_screenWidth, g_screenHeight, flags);
     if (!g_sdlWindow) {
         platform_message_box(0, "Window Creation Failed", "ERROR", 0);
@@ -330,7 +476,9 @@ int app_create_window(HINSTANCE instance)
         SDL_SetWindowPosition(g_sdlWindow, x, y);
     }
     SDL_ShowWindow(g_sdlWindow);
+#ifndef __ANDROID__
     SDL_StartTextInput(g_sdlWindow);
+#endif
     platform_current_directory(g_clientDir, 0x80);
     return 1;
 }

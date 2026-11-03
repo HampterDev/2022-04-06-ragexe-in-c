@@ -158,6 +158,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
 #else
 #include <unistd.h>
 
+#ifdef __ANDROID__
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_system.h>
+
+/* Android: the game folder is the app's own external storage directory
+   (Android/data/<package>/files), where the game's files are copied. */
+int main(int argc, char **argv)
+{
+    const char *files = SDL_GetAndroidExternalStoragePath();
+    (void)argc;
+    (void)argv;
+    if (!files || chdir(files) != 0)
+        SDL_Log("ragexe: cannot enter the game folder %s", files ? files : SDL_GetError());
+    return client_run(NULL);
+}
+#else
 /* Like a double-clicked Windows exe, run in the game folder: the current directory when it holds
    DATA.INI, otherwise the executable's folder, or the folder holding a macOS app bundle. */
 static void enter_game_directory(void)
@@ -188,4 +204,5 @@ int main(void)
     enter_game_directory();
     return client_run(NULL);
 }
+#endif
 #endif

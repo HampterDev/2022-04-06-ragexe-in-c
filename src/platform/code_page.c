@@ -141,7 +141,7 @@ uint16_t *platform_utf16_find_ignore_case(const uint16_t *text, const uint16_t *
 }
 #else
 #include <errno.h>
-#include <iconv.h>
+#include "platform/iconv_port.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>

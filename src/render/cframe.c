@@ -10,7 +10,9 @@
 #include "platform/language.h"
 #include "session/session_names.h"
 
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
+#endif
 
 int   g_wobbleFramesLeft;
 BYTE  g_wobbleMode;

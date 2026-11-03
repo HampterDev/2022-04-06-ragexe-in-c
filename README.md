@@ -2,7 +2,7 @@
 
 `purist-portable` is a long-lived deviation branch on top of
 [`purist`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/purist): the purist client,
-playable natively on 64-bit Linux and macOS as well as on Windows. It is not meant to be merged
+playable natively on 64-bit Linux, macOS and Android as well as on Windows. It is not meant to be merged
 back or deleted; `purist` is merged into it as it moves. Purist's own deviations from `main` are
 listed in [its README](https://github.com/HampterDev/2022-04-06-ragexe-in-c/blob/purist/README.md)
 and still apply here. These are the deviations from `purist`:
@@ -11,10 +11,18 @@ and still apply here. These are the deviations from `purist`:
   (`-DRAGE_CLIENT=ON`); on macOS as `ragexe.app`. Windows still builds with `build.bat`, and
   `build.bat x64` builds a 64-bit Windows client (Direct3D 9; sound through SDL3; Granny models
   from converted glTF).
+- Build the client for Android (arm64 and x86_64) as an APK with Gradle (`android/`): SDL3's
+  activity, OpenGL ES 3.0, the game folder in the app's own storage, touch as the mouse and the
+  on-screen keyboard for edit boxes.
 - Run on an SDL3 application layer off Windows: window, input, IME text, clipboard and cursor.
-- Draw with an OpenGL 3.3 core (macOS: 4.1) backend behind `render/gfx.h` off Windows; Direct3D 9
+- Draw with an OpenGL 3.3 core (macOS: 4.1, Android: OpenGL ES 3.0) backend behind `render/gfx.h`
+  off Windows, scaled to the window with the aspect kept; Direct3D 9
   stays the Windows backend.
-- Draw text with FreeType and Fontconfig off Windows, sized and placed as GDI does.
+- Draw text with FreeType and Fontconfig off Windows, sized and placed as GDI does; Android finds
+  its fonts by scanning the font folders.
+- Convert the Windows code pages with the client's own tables of them on Android, whose C library
+  has none (`tools/code_pages.py` reads them from Windows).
+- Compile `char` as signed everywhere, as MSVC does.
 - Play sound through an SDL3 implementation of the Miles subset the client uses off Windows.
 - Reach files, threads, sockets, time, settings, memory, crash reports and the desktop through a
   platform layer; Windows keeps its registry, CryptoAPI hashes, minidumps and Win32 calls.
@@ -29,7 +37,7 @@ and still apply here. These are the deviations from `purist`:
 - Keep `rand()` to the 15 bits the client expects where it divides or rejects by that range.
 - Show the icon menu's bottom border and corner with fewer than 21 icons.
 - Add the scene harness for pixel tests on every platform ([tests/scenes](tests/scenes/README.md)).
-- Build and test Windows, Linux and macOS in CI (`.github/workflows/portable.yml`).
+- Build and test Windows, Linux and macOS, and build Android, in CI (`.github/workflows/portable.yml`).
 
 How it is built, what each platform layer does, how it was verified and what is left:
 [docs/portability.md](docs/portability.md).

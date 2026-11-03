@@ -15,7 +15,9 @@
 
 static const char unsupported_caption[] = "notsuppot";
 
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
+#endif
 
 static WORD pixel16(const struct C3dDevice *dev, DWORD r, DWORD g, DWORD b)
 {
