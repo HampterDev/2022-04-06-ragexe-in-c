@@ -8732,3 +8732,58 @@ Validation:
 
 The pre-change tree is in `build/before-utf8-drawing`. No live client/server smoke test
 was run.
+
+## UTF-8 input (2026-11-03)
+
+Decision: the fourth step of the [UTF-8 switch](#utf-8-text-module-2026-11-03), approved by
+Patrick on 2026-11-03, and the end of phase A. The main window was an ANSI window
+(`RegisterClassA`, `CreateWindowExA`, `PeekMessageA`, `DispatchMessageA`,
+`DefWindowProcA`), so `WM_CHAR` arrived in the system ANSI code page: typed text depended
+on the Windows locale, and a character outside it could not be typed at all. The
+clipboard used `CF_TEXT` the same way.
+
+What changed:
+
+- The window class, `CreateWindowExW`, the message pump and the default procedure are
+  Unicode. `WM_CHAR` delivers UTF-16 units; `language_on_char` encodes them as UTF-8 and
+  pairs surrogates that arrive in two messages (`utf16_feed`, pending unit in
+  `Language.pending_unit`). An unpaired surrogate becomes U+FFFD; Backspace, Tab, Enter,
+  Escape and other control characters drop a pending high surrogate. Before, the four
+  bytes of the `WM_CHAR` integer were inserted as they came.
+- Clipboard: paste reads `CF_UNICODETEXT` (bounded by `GlobalSize`) and converts it to
+  UTF-8; copy, including the masked `*` copy, writes `CF_UNICODETEXT` through the new
+  `language_copy_text`, which the character-code copies of the player menu and the
+  whisper window now use as well (they put ASCII codes on the clipboard as `CF_TEXT`).
+- IME: composition and result strings are read at their full length
+  (`ImmGetCompositionStringW` sized first) instead of failing above 256 UTF-16 units,
+  and the result is inserted whole. The composition and candidate buffers hold 256 units
+  as UTF-8 (`LANGUAGE_TEXT_MAX`, 769 bytes) and truncate on a character boundary instead
+  of dropping the text when it does not fit. `GCS_CURSORPOS` is read with the W call and
+  converted from UTF-16 units to a byte offset in the composition, clamped to it and
+  never inside a surrogate pair.
+- The keyboard-layout code-page switch was already removed with the langtype lock, and
+  the keyboard layout itself with the charset tags.
+- Remaining A calls that receive text from the window or the system: none. `MessageBoxA`
+  (outgoing text), `LoadIconA`/`LoadCursorA` (resource IDs), `SetWindowLongA(GWL_STYLE)`
+  and the crash dialog's ASCII report copy do not carry window text.
+
+After phase A, Latin, Cyrillic and Greek text types, pastes, displays and copies
+correctly on any Windows locale. Korean types and is stored as UTF-8 but draws as boxes
+until the font fallback.
+
+Tests changed: `test_language_input` types Korean, Cyrillic and accented letters as
+UTF-16 units, pairs a surrogate emoji, turns lone surrogates into U+FFFD, reads a
+600-unit composition (truncated at 256 characters) and result (inserted whole), converts
+cursor positions to byte offsets around a surrogate pair, and checks `CF_UNICODETEXT` for
+Korean, emoji, invalid bytes and masked text.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-input-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-input-full-tests.log`.
+- The seven standalone suites passed: `build/utf8-input-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-utf8-input`. No live client/server smoke test was
+run; typing with real IMEs (Korean, Japanese, Chinese) on Korean, Russian and Western
+Windows is still to be checked by hand.

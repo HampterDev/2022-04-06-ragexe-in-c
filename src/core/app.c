@@ -65,12 +65,12 @@ static void pump_messages(void)
 {
     MSG msg;
 
-    if (!PeekMessageA(&msg, 0, 0, 0, PM_REMOVE))
+    if (!PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
         return;
     do {
         TranslateMessage(&msg);
-        DispatchMessageA(&msg);
-    } while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE));
+        DispatchMessageW(&msg);
+    } while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE));
 }
 
 void check_system_message(void)
@@ -89,7 +89,8 @@ void app_last_pump(void)
 
 int app_create_window(HINSTANCE instance)
 {
-    WNDCLASSA wc;
+    WNDCLASSW wc;
+    WCHAR class_name[64];
     RECT rect;
     int x, y;
 
@@ -102,9 +103,12 @@ int app_create_window(HINSTANCE instance)
     wc.hIcon = LoadIconA(instance, MAKEINTRESOURCEA(0x77));
     wc.hCursor = LoadCursorA(0, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    wc.lpszClassName = g_windowClassName;
+    /* A Unicode window: WM_CHAR delivers UTF-16, whatever the system code page. */
+    if (!MultiByteToWideChar(CP_UTF8, 0, g_windowClassName, -1, class_name, 64))
+        class_name[0] = 0;
+    wc.lpszClassName = class_name;
     wc.lpszMenuName = 0;
-    RegisterClassA(&wc);
+    RegisterClassW(&wc);
 
     rect.right = g_screenWidth;
     rect.bottom = g_screenHeight;
@@ -133,7 +137,7 @@ int app_create_window(HINSTANCE instance)
             y = 0;
     }
 
-    g_hMainWnd = CreateWindowExA(0, wc.lpszClassName, g_windowClassName, 0x2c20000, x, y,
+    g_hMainWnd = CreateWindowExW(0, class_name, class_name, 0x2c20000, x, y,
                                    rect.right - rect.left, rect.bottom - rect.top, 0, 0, instance, 0);
     if (!g_hMainWnd) {
         MessageBoxA(0, "Window Creation Failed", "ERROR", 0);

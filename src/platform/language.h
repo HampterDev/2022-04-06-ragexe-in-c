@@ -7,6 +7,9 @@
 #include <windows.h>
 #include <imm.h>
 
+/* IME composition and candidate text in UTF-8: 256 UTF-16 units of up to three bytes. */
+#define LANGUAGE_TEXT_MAX (0x100 * 3 + 1)
+
 struct Language {
     CANDIDATELIST *candidates;
     int candidate_count;
@@ -15,14 +18,15 @@ struct Language {
     char *input;
     size_t input_length, input_capacity;
     int caret, anchor;
-    char composition[256];
+    char composition[LANGUAGE_TEXT_MAX];
     size_t composition_length;
     int composition_cursor;
     BYTE masked;
+    WCHAR pending_unit;
     WORD folder_lang;
     char *display_text;
     size_t display_capacity;
-    char candidate_text[256];
+    char candidate_text[LANGUAGE_TEXT_MAX];
 };
 
 struct Language *language_construct(struct Language *self);
@@ -31,6 +35,7 @@ int language_replace_selection(struct Language *self, const char *text);
 const char *language_input_text(const struct Language *self);
 void language_paste(struct Language *self);
 void language_copy(struct Language *self);
+int language_copy_text(const char *text, size_t length);
 void language_caret_back(struct Language *self);
 void language_delete_selection(struct Language *self);
 void language_caret_forward(struct Language *self);

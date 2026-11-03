@@ -93,20 +93,13 @@ static void copy_char_code(struct GameMode *self)
 {
     struct String char_code;
     void *target = object_as_type(mode_actor(self, self->popup_target_aid), OBJECT_PC);
-    HGLOBAL mem;
     int cid;
 
     if (!target)
         return;
     cid = actor_get_char_id(target);
     session_scramble_number(&g_session1, &char_code, cid);
-    mem = GlobalAlloc(GHND, char_code.size + 1);
-    memcpy(GlobalLock(mem), string_cstr(&char_code), char_code.size);
-    GlobalUnlock(mem);
-    if (OpenClipboard(g_hMainWnd)) {
-        EmptyClipboard();
-        SetClipboardData(CF_TEXT, mem);
-        CloseClipboard();
+    if (language_copy_text(string_cstr(&char_code), char_code.size)) {
         chat_refresh();
         chat_print("C-Code copied to clipboard", COLOR_C_CODE);
     }

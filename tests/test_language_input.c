@@ -40,7 +40,7 @@ static void *test_realloc(void *data,size_t size)
 static int trace_steps;
 static int shift_down,control_down,ime_missing,ime_releases,ime_cancels;
 static LANGID user_language=LANG_GERMAN;
-static WCHAR ime_text[256];
+static WCHAR ime_text[1024];
 static LONG ime_bytes,ime_cursor=2;
 static SHORT test_key_state(int key)
 { return (key==VK_SHIFT?shift_down:key==VK_CONTROL?control_down:0)?(SHORT)0x8000:0; }
@@ -53,12 +53,11 @@ static BOOL test_notify(HIMC imc,DWORD action,DWORD index,DWORD value)
 { assert(imc==(HIMC)1 && action==NI_COMPOSITIONSTR && index==CPS_CANCEL && !value); ++ime_cancels; return TRUE; }
 static LONG test_composition_w(HIMC imc,DWORD kind,LPVOID out,DWORD size)
 {
-    assert(imc==(HIMC)1 && (kind==GCS_COMPSTR || kind==GCS_RESULTSTR));
+    assert(imc==(HIMC)1 && (kind==GCS_COMPSTR || kind==GCS_RESULTSTR || kind==GCS_CURSORPOS));
+    if (kind==GCS_CURSORPOS) { assert(!size && !out); return ime_cursor; }
     if (ime_bytes>=0 && (DWORD)ime_bytes<=size) memcpy(out,ime_text,ime_bytes);
     return ime_bytes;
 }
-static LONG test_composition_a(HIMC imc,DWORD kind,LPVOID out,DWORD size)
-{ assert(imc==(HIMC)1 && kind==GCS_CURSORPOS && !size && !out); return ime_cursor; }
 static DWORD candidate_storage[256],candidate_query,candidate_reply;
 static DWORD test_candidate_list(HIMC imc,DWORD list,LPCANDIDATELIST out,DWORD size)
 {
@@ -98,10 +97,12 @@ static HGLOBAL test_global_free(HGLOBAL block)
 static BOOL test_empty(void) { assert(!locked); return clipboard_failure!=4; }
 static HANDLE test_set_clipboard(UINT format,HANDLE block)
 {
-    assert(format==CF_TEXT && block==(HANDLE)clip_pages && !locked);
+    const WCHAR *wide=(const WCHAR*)clip_bytes;
+    assert(format==CF_UNICODETEXT && block==(HANDLE)clip_pages && !locked);
     if (clipboard_failure==5) return NULL;
-    assert(clip_bytes[clip_size-1]==0 && strlen((char*)clip_bytes)==clip_size-1);
-    strcpy(clipboard_text,(char*)clip_bytes); clip_system_owned=1; ++published; return block;
+    assert(clip_size%sizeof(WCHAR)==0 && !wide[clip_size/sizeof(WCHAR)-1] && wcslen(wide)==clip_size/sizeof(WCHAR)-1);
+    assert(WideCharToMultiByte(CP_UTF8,0,wide,-1,clipboard_text,sizeof clipboard_text,NULL,NULL));
+    clip_system_owned=1; ++published; return block;
 }
 
 #define GetKeyState test_key_state
@@ -111,7 +112,6 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #define ImmReleaseContext test_release_context
 #define ImmNotifyIME test_notify
 #define ImmGetCompositionStringW test_composition_w
-#define ImmGetCompositionStringA test_composition_a
 #define ImmGetCandidateListW test_candidate_list
 #define OpenClipboard test_open
 #define CloseClipboard test_close
@@ -135,7 +135,6 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #undef ImmReleaseContext
 #undef ImmNotifyIME
 #undef ImmGetCompositionStringW
-#undef ImmGetCompositionStringA
 #undef ImmGetCandidateListW
 #undef OpenClipboard
 #undef CloseClipboard
@@ -187,6 +186,16 @@ static void test_editing(void)
     language_set_selection(&s,5,5); type_char(&s,VK_BACK); expect_text(&s,"a\xff" U8_ZHE,1,1);
     language_set_selection(&s,4,4); type_char(&s,VK_BACK); expect_text(&s,"a\xff",2,2);
     language_set_selection(&s,2,2); press_key(&s,VK_LEFT); assert(s.caret==1 && s.anchor==1);
+    language_cancel_input(&s);
+    type_char(&s,0xd55c); type_char(&s,0x416); type_char(&s,0xe9); expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE,7,7);
+    type_char(&s,0xd83d); expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE,7,7);
+    type_char(&s,0xde00); expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE U8_GRIN,11,11);
+    type_char(&s,0xde00); type_char(&s,0xd83d); type_char(&s,'x');
+    expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE U8_GRIN "\xef\xbf\xbd\xef\xbf\xbdx",18,18);
+    type_char(&s,0xd83d); type_char(&s,VK_BACK); type_char(&s,0xde00);
+    expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE U8_GRIN "\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd",20,20);
+    type_char(&s,VK_BACK); type_char(&s,VK_BACK); type_char(&s,VK_BACK); type_char(&s,VK_BACK);
+    expect_text(&s,U8_HAN U8_ZHE U8_E_ACUTE,7,7);
     language_cancel_input(&s);language_replace_selection(&s,"abcd"); language_set_selection(&s,2,2);
     strcpy(s.composition,"XY");s.composition_length=2;assert(language_get_text(&s,&out));
     assert(!strcmp(out.data,"abXYcd") && out.size==6);
@@ -194,7 +203,7 @@ static void test_editing(void)
 }
 static void test_ime(void)
 {
-    struct Language s; BYTE handled;
+    struct Language s; BYTE handled; int i;
     language_construct(&s); language_replace_selection(&s,"test"); language_set_selection(&s,1,3);
     assert(!language_on_ime_message(&s,NULL,WM_IME_STARTCOMPOSITION,0,0,&handled) && handled);
     expect_text(&s,"tt",1,1);
@@ -203,7 +212,21 @@ static void test_ime(void)
     assert(handled && !strcmp(s.composition,"AB") && s.composition_cursor==2);
     language_on_ime_message(&s,NULL,WM_IME_COMPOSITION,0,GCS_RESULTSTR,&handled);expect_text(&s,"tABt",3,3);
     ime_cursor=-1;language_read_cursor_pos(&s);assert(s.composition_cursor==2);ime_cursor=7;
-    language_read_cursor_pos(&s);assert(s.composition_cursor==7);ime_cursor=2;
+    language_read_cursor_pos(&s);assert(s.composition_cursor==2);
+    ime_text[0]=0xac00;ime_text[1]=0xd83d;ime_text[2]=0xde00;ime_text[3]='B';ime_bytes=8;ime_cursor=1;
+    language_on_ime_message(&s,NULL,WM_IME_COMPOSITION,0,GCS_COMPSTR|GCS_CURSORPOS,&handled);
+    assert(!strcmp(s.composition,U8_GA U8_GRIN "B") && s.composition_length==8 && s.composition_cursor==3);
+    ime_cursor=2;language_read_cursor_pos(&s);assert(s.composition_cursor==7);
+    ime_cursor=3;language_read_cursor_pos(&s);assert(s.composition_cursor==7);
+    ime_cursor=4;language_read_cursor_pos(&s);assert(s.composition_cursor==8);
+    for (i=0;i<600;++i) ime_text[i]=0xd55c;
+    ime_bytes=1200;language_read_composition(&s);
+    assert(s.composition_length==768 && strlen(s.composition)==768);
+    language_cancel_input(&s);
+    language_on_ime_message(&s,NULL,WM_IME_COMPOSITION,0,GCS_RESULTSTR,&handled);
+    assert(s.input_length==1800 && s.caret==1800 && !memcmp(s.input,U8_HAN U8_HAN,6));
+    language_cancel_input(&s);language_replace_selection(&s,"tABt");
+    ime_text[0]='A';ime_text[1]='B';ime_bytes=4;ime_cursor=2;language_read_composition(&s);
     ime_bytes=-1;language_read_composition(&s);assert(!strcmp(s.composition,"AB"));
     ime_bytes=513;language_read_composition(&s);assert(!strcmp(s.composition,"AB"));
     language_on_ime_message(&s,NULL,WM_IME_ENDCOMPOSITION,0,0,&handled);
@@ -222,10 +245,16 @@ static void test_clipboard(void)
         before=closed;language_copy(&s);assert(!clip_pages && !clip_system_owned && !published && !locked);
         assert(closed==before+(clipboard_failure!=1));
     }
-    clipboard_failure=0;language_copy(&s);assert(!strcmp(clipboard_text,"**") && clip_size==3 && clip_system_owned);
+    clipboard_failure=0;language_copy(&s);assert(!strcmp(clipboard_text,"**") && clip_size==6 && clip_system_owned);
     clip_system_owned=0;test_global_free((HGLOBAL)clip_pages);
     language_set_masked(&s,0);language_set_selection(&s,8,3);language_copy(&s);
-    assert(!strcmp(clipboard_text,"34567") && clip_size==6 && clip_system_owned);
+    assert(!strcmp(clipboard_text,"34567") && clip_size==12 && clip_system_owned);
+    clip_system_owned=0;test_global_free((HGLOBAL)clip_pages);
+    language_cancel_input(&s);language_replace_selection(&s,"a" U8_HAN U8_GRIN "\xff" U8_ZHE);
+    language_set_selection(&s,0,11);language_copy(&s);
+    assert(!strcmp(clipboard_text,"a" U8_HAN U8_GRIN "\xef\xbf\xbd" U8_ZHE) && clip_size==14 && clip_system_owned);
+    clip_system_owned=0;test_global_free((HGLOBAL)clip_pages);
+    assert(language_copy_text("C-123",5) && !strcmp(clipboard_text,"C-123") && clip_size==12);
     clip_system_owned=0;test_global_free((HGLOBAL)clip_pages);
     before=opened;language_set_selection(&s,3,3);language_copy(&s);assert(opened==before);
     language_destruct(&s);assert(!heap_live && allocated==freed && !locked);
@@ -372,6 +401,6 @@ int main(int argc,char **argv)
     test_editing();test_ime();
     test_clipboard();
     test_input_ownership();test_candidates();test_edit_sequence();
-    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, UTF-8 caret steps and clipboard failures passed.");
+    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, UTF-16 typing and surrogate pairs, UTF-8 caret steps, Unicode clipboard and its failures passed.");
     return 0;
 }

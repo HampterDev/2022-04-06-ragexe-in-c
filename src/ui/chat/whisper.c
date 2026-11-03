@@ -191,19 +191,12 @@ void ui_whisper_wnd_on_draw(struct UIWindow *window)
 void ui_whisper_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
 {
     struct UIWhisperWnd *self = (struct UIWhisperWnd *)window;
-    HGLOBAL mem;
 
     (void)x;
     if (y >= WHISPER_TITLE_HEIGHT || !self->code.size)
         return;
-    mem = GlobalAlloc(GHND, self->code.size + 1);
-    memcpy(GlobalLock(mem), string_cstr(&self->code), self->code.size);
-    GlobalUnlock(mem);
-    if (!OpenClipboard(g_hMainWnd))
+    if (!language_copy_text(string_cstr(&self->code), self->code.size))
         return;
-    EmptyClipboard();
-    SetClipboardData(CF_TEXT, mem);
-    CloseClipboard();
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)"C-Code copied to clipboard",
                         WHISPER_COPIED_COLOUR, 0, 0);
