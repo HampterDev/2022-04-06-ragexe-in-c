@@ -78,8 +78,6 @@ struct UIWindow *ui_key_stroke_wnd_new(void);
 struct UIViewCameraInfoWnd *ui_view_camera_info_wnd_construct(struct UIViewCameraInfoWnd *self);
 struct UIWindow *ui_view_camera_info_wnd_new(void);
 
-struct UILoginOTPWnd *ui_login_otp_wnd_construct(struct UILoginOTPWnd *self);
-struct UIWindow *ui_login_otp_wnd_new(void);
 struct UILoginWnd *ui_login_wnd_construct(struct UILoginWnd *self);
 struct UIWindow *ui_login_wnd_new(void);
 

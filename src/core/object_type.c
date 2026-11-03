@@ -197,7 +197,6 @@ static const struct ObjectTypeEntry object_types[] = {
     {&ui_list_box_title_ops, 0, "UIListBoxTitle"},
     {&ui_list_box_navi_search_ops, 0, "UIListBox_NaviSearch"},
     {&ui_loading_wnd_ops, TYPE(FRAME_WINDOW), "UILoadingWnd"},
-    {&ui_login_otp_wnd_ops, TYPE(FRAME_WINDOW), "UILoginOTPWnd"},
     {&ui_login_wnd_ops, TYPE(FRAME_WINDOW), "UILoginWnd"},
     {&ui_make_target_list_wnd_ops, TYPE(FRAME_WINDOW), "UIMakeTargetListWnd"},
     {&ui_make_target_process_wnd_ops, TYPE(FRAME_WINDOW), "UIMakeTargetProcessWnd"},

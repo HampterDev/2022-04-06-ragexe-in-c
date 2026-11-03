@@ -129,6 +129,16 @@ static void expect_unsupported(void)
     assert(!memcmp(&mode, &expected_mode, sizeof mode));
 }
 
+/* OTP is unsupported too: a mobile-OTP request (0x09a2) leaves like a refused PIN state. */
+static void expect_otp_refused(void)
+{
+    expected_mode.base.next_sub_mode = 3;
+    assert(event_count == 2 && events[0] == EV_DISCONNECT && events[1] == EV_BOX);
+    assert(!strcmp(box_text, OTP_UNSUPPORTED));
+    assert(g_mapServerAidPending == 0);
+    assert(!memcmp(&mode, &expected_mode, sizeof mode));
+}
+
 static void expect_ignored(void)
 {
     assert(event_count == 0 && g_mapServerAidPending == 0x5a);
@@ -184,8 +194,13 @@ int main(void)
             expect_unknown_packet();
         }
     }
+    for (n = 6; n <= 16; ++n) {
+        run(0x09a2, (unsigned short)n, 0);
+        expect_otp_refused();
+    }
     puts("Login PIN state: real character-server dispatch continues for states 0 and 7, refuses 1-6 and 8-11 "
          "with disconnect, message and login screen, ignores unknown states for 0x08b9/0x0ae9, and sends "
-         "retired PIN, billing and Taren packets to the unknown-packet path.");
+         "retired PIN, billing and Taren packets to the unknown-packet path; refuses mobile-OTP requests "
+         "(0x09a2) the same way.");
     return 0;
 }

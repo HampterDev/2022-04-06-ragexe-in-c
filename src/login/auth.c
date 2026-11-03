@@ -8,13 +8,6 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 
-static void reopen_wait_window(void)
-{
-    if (ui_window_find(0xb4))
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xb4);
-    ui_window_open(0xb4);
-}
-
 static void assign_msg(struct String *s, int id)
 {
     const char *m = msg_str(id);
@@ -52,19 +45,12 @@ static void keep_token(const BYTE *pkt, int header)
     CMODE_SENDMSG(client_current_mode(), 0x2710, 0, 0, 0, 0);
 }
 
-static void after_message(struct LoginMode *self, int code)
+/* OTP is unsupported: a 0x0acf result asking for an OTP code ends the login attempt. */
+#define AUTH_OTP_REQUIRED 400
+
+static void after_message(struct LoginMode *self)
 {
-    if (self->auth_timed_out == 1)
-        return;
-    if (code == 500) {
-        self->stateTick = timeGetTime();
-        reopen_wait_window();
-        return;
-    }
-    if (ui_window_find(0xb4))
-        ui_window_mgr_post_quit1(&g_windowMgr, 0xb4);
     self->auth_answered = 0;
-    self->auth_waiting = 0;
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     self->stateTick = timeGetTime();
     self->base.next_sub_mode = 3;
@@ -81,17 +67,13 @@ void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt)
     string_clear(&s);
     switch (packet->code) {
     case 500: assign_msg(&s, 0x6d8); break;
-    case 400:
-        reopen_wait_window();
-        self->auth_waiting = 1;
-        self->stateTick = timeGetTime();
-        break;
+    case AUTH_OTP_REQUIRED: string_assign_cstr(&s, OTP_UNSUPPORTED); break;
     case 0:   keep_token(pkt, offsetof(struct PACKET_AC_AUTH_RESULT, token)); break;
     case 600: assign_msg(&s, 7); break;
     case 700: assign_msg(&s, 0xcb4); break;
     case 900:
         error_msg(msg_str(0xd86), 0);
-        after_message(self, packet->code);
+        after_message(self);
         break;
     default:  assign_msg(&s, 0x718); break;
     }
@@ -106,7 +88,7 @@ void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt)
         string_append(&s, string_cstr(&tmp), tmp.size);
         string_free(&tmp);
         ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
-        after_message(self, code);
+        after_message(self);
     }
     string_free(&s);
 }
@@ -122,11 +104,7 @@ void login_mode_on_auth_result2(struct LoginMode *self, const BYTE *pkt)
     string_clear(&s);
     switch (packet->code) {
     case 500: assign_msg(&s, 0x6d8); break;
-    case 400:
-        reopen_wait_window();
-        self->auth_waiting = 1;
-        self->stateTick = timeGetTime();
-        break;
+    case AUTH_OTP_REQUIRED: string_assign_cstr(&s, OTP_UNSUPPORTED); break;
     case 0:   keep_token(pkt, offsetof(struct PACKET_AC_AUTH_RESULT2, token)); break;
     case 600: assign_msg(&s, 7); break;
     case 700: assign_msg(&s, 0xcb4); break;
@@ -145,7 +123,7 @@ void login_mode_on_auth_result2(struct LoginMode *self, const BYTE *pkt)
             string_free(&tmp);
             ui_window_mgr_message_box(&g_windowMgr, string_cstr(&s), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
         }
-        after_message(self, code);
+        after_message(self);
     }
     string_free(&s);
 }

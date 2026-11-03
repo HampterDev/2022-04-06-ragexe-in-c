@@ -7,7 +7,7 @@
 
 static const unsigned short window_slots[] = {
     SLOT(loading_wnd), SLOT(minimap_zoom_wnd), SLOT(status_wnd), SLOT(new_chat_wnd), SLOT(login_wnd),
-    SLOT(login_otpwnd), SLOT(item_wnd), SLOT(basic_info_wnd), SLOT(equip_wnd),
+    SLOT(item_wnd), SLOT(basic_info_wnd), SLOT(equip_wnd),
     SLOT(short_cut_wnd), SLOT(item_drop_cnt_wnd), SLOT(say_dialog_wnd), SLOT(choose_wnd),
     SLOT(item_identify_wnd), SLOT(item_repair_wnd), SLOT(weapon_refine_wnd),
     SLOT(item_composition_wnd), SLOT(choose_warp_wnd), SLOT(menu_wnd), SLOT(combo_box_wnd),

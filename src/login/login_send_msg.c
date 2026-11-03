@@ -1,4 +1,3 @@
-#include "login/otp.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
@@ -20,10 +19,8 @@
 #define LMSG_SERVICE            0x00
 #define LMSG_DISCONNECT_BOX     0x01
 #define LMSG_CHAR_BY_SLOT       0x08
-#define LMSG_SEND_MOBILE_OTP           0x17
 #define LMSG_MESSAGE_WND        0x18
 #define LMSG_TO_LOGIN           0x1c
-#define LMSG_SEND_OTP           0x27
 #define LMSG_LAST_CHAR          0x102
 #define LMSG_TO_SUBMODE_4       0x2710
 
@@ -260,14 +257,10 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
             if (self->chars[i].slot == a)
                 return (int)&self->chars[i];
         return 0;
-    case LMSG_SEND_MOBILE_OTP:
-        return login_send_mobile_otp(self);
     case LMSG_MESSAGE_WND:
         return message_wnd(self, a);
     case LMSG_TO_LOGIN:
         return back_to_login(self);
-    case LMSG_SEND_OTP:
-        return login_send_otp(self);
     case LMSG_LAST_CHAR:
         if (!self->numChar)
             return 0;
@@ -311,7 +304,6 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         self->stateTick = timeGetTime();
         return back_to_login(self);
     case 0x2726: return select_sub_connection(self, a);
-    case 0x2728: login_set_otp_code(self, (const char *)a); return 0;
     case 0x2729: return 0;
 
     case 0x272c: return select_zone(self, a);

@@ -425,8 +425,6 @@ test_font_family_system.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 call "%ROOT%\tests\build_font_cache.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
-call "%ROOT%\tests\build_login_auth.bat"
-if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_login_pin_state.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 cl /nologo /c /W4 /WX /O2 /MD /DTYPE_QUERY_FIXTURE /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\type_query_fixture.h" "%ROOT%\src\core\object_type.c" /Fo:object_type_test.obj

@@ -8215,3 +8215,88 @@ Validation:
 
 The pre-removal tree is in `build/before-play-time-billing-removal`. No live
 client/server smoke test was run.
+
+## OTP login removal (2026-11-03)
+
+Decisions: Patrick approved this removal on 2026-11-03 after a leftover search. It
+follows the [second password removal](#second-password-removal-2026-11-02): an
+unsupported login challenge ends the attempt with a clear message instead of a prompt.
+The MOTP homepage notice for result 900 stays as decided under
+[START-079](#authentication-result-gnjoy-redirect-start-079-removed).
+
+What the client did before this removal:
+
+- **Login step `0x0acf`.** The login window always enters sub-mode `0x26`
+  (`login_acf`), which connects to the account server and sends `0x0acf`
+  (`CT_AUTH`/`CA_LOGIN_OTP`: user ID, hashed password, account class). The reply
+  `0x0ae3` (or `0x0ad1`) carries a result code. 0 hands over a token and continues to
+  the ordinary `0x0064` login (sub-mode 4). Codes 500-900 are failures with messages
+  (500 "OTP information is unavailable", 600 wrong ID/password, 700 maintenance, 800
+  delayed, 900 MOTP homepage).
+- **OTP prompt.** Code 400 opened the OTP window (`UILoginOTPWnd`, window `0xb4`): a
+  masked 8-digit code with a 60-second countdown. It also re-opened after a 500
+  failure. Sub-mode `0x26` then waited up to 60 seconds and showed "MOTP Input time
+  exceeded" (`0xd16`). The window sent the code as `CT_MOTP` (`0x0ad0`, mode messages
+  `0x2728` and `0x27`, `LoginMode.otp_code`).
+- **Mobile OTP.** `AC_REQ_MOBILE_OTP` (`0x09a2`) stored `LoginMode.mobile_otp_id`, entered
+  sub-mode `0x18` and opened the same window. `login_send_mobile_otp` (`0x09a3`, mode
+  message `0x17`) existed, but the window only ever sent `0x0ad0`, so nothing called it.
+
+Removed: the OTP window with its class, factory case, window-manager slot, lookup,
+close and forget entries and declarations; `src/login/otp.c`/`otp.h`
+(`login_set_otp_code`, `login_send_mobile_otp`, `login_send_otp` and the window-only
+`login_state_tick`); mode messages `0x17`, `0x27` and `0x2728`; sub-mode `0x18`; the
+`LoginMode` fields `otp_code`, `mobile_otp_id`, `auth_waiting` and `auth_timed_out` with
+the 60-second OTP wait; the 500 re-prompt; `PACKET_AC_REQ_MOBILE_OTP`; and the "Login OTP"
+test (`tests/test_login_auth.c`, `build_login_auth.bat`).
+
+New behavior:
+
+- `0x09a2` disconnects, shows "OTP codes are not supported by this client. Please ask
+  the server administrator to disable OTP." and returns to the login screen, the same
+  way the PIN removal answers PIN states (`OTP_UNSUPPORTED` in `loginmode.h`).
+- A `0x0ae3`/`0x0ad1` result 400 shows the same text through the ordinary result path
+  ("text(400) [server text]"), disconnects and returns to the login screen.
+- Result 500 shows its message and returns to the login screen instead of reopening a
+  prompt.
+
+Kept:
+
+- Sub-mode `0x26` and `0x0acf` are the normal first login step, not an OTP feature:
+  stock Hercules (`login_client_login_otp`) and rAthena (`logclif_otp_result`) answer
+  every `0x0acf` with a fake token and login flag 0, after which the client sends
+  `0x0064`. The 80-second "connection delayed" timeout for an unanswered `0x0acf` stays.
+- The `0x09a2` length and name rows stay, because the packet is now handled (refused).
+  The rows of the client-sent `0x09a3`/`0x0ad0`, now without senders, go with the
+  other OTP rows in the next removal.
+- Results 0 and 500-900 and the MOTP notice for 900 (START-079).
+
+Server implications: OTP must be off. Stock Hercules never calls its `0x09a2` sender
+(`login_client_login_mobile_otp_request`), and neither stock server asks for an OTP
+code, so ordinary logins are unaffected. A server that requests OTP (`0x09a2`, or
+result 400 to `0x0acf`) now gets a refused login with the message above. No server
+checkout was modified.
+
+Tests changed: the "Login OTP" test was removed with `otp.c`. The login-loop harness
+(`test_login_pin_state`) checks that `0x09a2` of every length from 6 to 16 bytes
+disconnects, shows the OTP message and returns to the login screen with no other state
+change. The object-type test retires `UILoginOTPWnd` (reference index 400): 474 classes,
+137 retired identities, 328 named, 308 windows, 2,733 comparisons, 207 accepted casts.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/otp-build.log`. The
+  link map has no OTP window or `otp.c` symbol.
+- Packet dispatch: all 1,179,800 cases passed with the digest unchanged at
+  `f57257980132c31b`; the regenerated trace is byte-identical to the pre-removal copy
+  `build/packet-dispatch-before-otp.bin`. The game dispatcher never handled an OTP packet,
+  so no case changes: `build/otp-dispatch.log`.
+- Login loop with the `0x09a2` refusal checks: `build/otp-login_pin_state.log`.
+- Object types: 474 classes, 137 retired identities, 328 named, 308 windows, 2,733
+  comparisons, 207 accepted casts (counts measured with a print-only copy of the test,
+  then asserted).
+- Full suite `tests\build.bat` passed in 6 min 0 s: `build/otp-full-tests.log`.
+- `git diff --check` passed.
+
+The pre-removal tree is in `build/before-otp-removal`. No live client/server smoke
+test was run.

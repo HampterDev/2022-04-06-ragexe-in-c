@@ -34,7 +34,6 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
     case 0x72: return self->homun_skill_list_wnd;
     case 0x7d: return self->mer_info_wnd;
     case 0x7e: return self->mer_skill_list_wnd;
-    case 0xb4: return self->login_otpwnd;
     case 0xc4: return self->collection_system_wnd;
     case 0xcb: return self->navigation_v4_wnd;
     case 0xcc: return self->quest_display_wnd;
@@ -462,14 +461,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0xb1: closed = close_slot(self, &self->buying_store_item_shop_wnd); break;
     case 0xb2: closed = close_slot(self, &self->buying_store_item_sell_wnd); break;
     case 0xb3: closed = close_slot(self, &self->buying_store_mirror_sell_list_wnd); break;
-    case 0xb4:
-        wnd = ui_window_mgr_get_window(self, 0xb4);
-        if (wnd) {
-            ui_window_mgr_post_quit2(self, wnd);
-            self->login_otpwnd = NULL;
-            closed = 1;
-        }
-        break;
 
     case 0xc4: closed = close_slot(self, &self->collection_system_wnd); break;
 

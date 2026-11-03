@@ -119,8 +119,6 @@ void login_mode_on_init(struct Mode *mode, const char *name)
     self->numServer = 0;
     self->numChar = 0;
     self->auth_answered = 0;
-    self->auth_waiting = 0;
-    self->auth_timed_out = 0;
     self->refuse_seconds_left = 0;
     g_session1.madogear = 0;
 }
@@ -265,28 +263,13 @@ void login_mode_check_timeouts(struct LoginMode *self, int subMode)
         return;
 
     case 0x26:
-        if (self->auth_waiting == 1) {
-            if (timeGetTime() < self->stateTick + 60000)
-                return;
-            connection_disconnect(rag_connection_transport(rag_connection_instance()));
-            if (self->auth_answered != 1 || self->auth_waiting != 1)
-                return;
-            self->auth_timed_out = 1;
-            if (g_windowMgr.modal_wnd)
-                return;
-            if (timeout_box(0xd16) != 0xb0)
-                return;
-            self->auth_waiting = 0;
-            self->auth_timed_out = 0;
-        } else {
-            if (timeGetTime() <= self->stateTick + 80000)
-                return;
-            connection_disconnect(rag_connection_transport(rag_connection_instance()));
-            if (self->auth_answered != 0)
-                return;
-            if (timeout_box(0xd70) != 0xb0)
-                return;
-        }
+        if (timeGetTime() <= self->stateTick + 80000)
+            return;
+        connection_disconnect(rag_connection_transport(rag_connection_instance()));
+        if (self->auth_answered != 0)
+            return;
+        if (timeout_box(0xd70) != 0xb0)
+            return;
         self->auth_answered = 0;
         self->stateTick = timeGetTime();
         self->base.next_sub_mode = 3;

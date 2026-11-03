@@ -55,7 +55,6 @@ struct UIWindowMgr {
     struct UIWindow *status_wnd;
     struct UIWindow *new_chat_wnd;
     struct UIWindow *login_wnd;
-    struct UIWindow *login_otpwnd;
     struct UIWindow *item_wnd;
     struct UIWindow *orphan_char_wnd;
     struct UIWindow *basic_info_wnd;

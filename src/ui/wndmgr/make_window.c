@@ -276,13 +276,6 @@ static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_i
         wm_move_login(wnd);
         ui_window_mgr_add_window(self, wnd);
         break;
-    case 0xb4:
-        wnd = ui_login_otp_wnd_new();
-        self->login_otpwnd = wnd;
-        ui_window_create(wnd, 0x118, 0x8e);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
     case 0x115:
         wnd = make_select_char(self);
         break;

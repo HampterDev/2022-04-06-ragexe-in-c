@@ -170,7 +170,6 @@ extern const struct UIListBoxOps ui_list_box_navi_ops;
 extern const struct UIListBoxExOps ui_list_box_title_ops;
 extern const struct UIListBoxOps ui_list_box_navi_search_ops;
 extern const struct UIWindowOps ui_loading_wnd_ops;
-extern const struct UIWindowOps ui_login_otp_wnd_ops;
 extern const struct UIWindowOps ui_login_wnd_ops;
 extern const struct UIWindowOps ui_make_target_list_wnd_ops;
 extern const struct UIWindowOps ui_make_target_process_wnd_ops;

@@ -92,10 +92,6 @@ struct PACKET_HC_CHARLIST_NOTIFY {
     WORD packet_type;
     DWORD count;
 };
-struct PACKET_AC_REQ_MOBILE_OTP {
-    WORD packet_type;
-    DWORD value;
-};
 struct PACKET_AC_REFUSE_LOGIN3 {
     WORD packet_type;
     BYTE error_code;
@@ -514,8 +510,9 @@ void login_mode_process_packets(struct LoginMode *self)
         case 0x8fd: login_mode_on_select_wnd_result(self, g_packetBuffer); break;
         case 0x9a0: on_char_list_notify(); break;
         case 0x9a2:
-            self->mobile_otp_id = (int)((const struct PACKET_AC_REQ_MOBILE_OTP *)g_packetBuffer)->value;
-            self->base.next_sub_mode = 0x18;
+            disconnect();
+            box(OTP_UNSUPPORTED, 0, 1, 0, 0);
+            back_to_login(self);
             break;
         case 0x9a5: on_refuse_login3(self); break;
         case 0xac4: login_mode_on_accept_login(self, g_packetBuffer, 5); break;

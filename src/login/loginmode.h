@@ -65,6 +65,9 @@ SIZE_ASSERT(LoginZoneEntry, 0x14);
 #define LOGIN_MAX_SERVERS       100
 #define LOGIN_MAX_CHARS         68
 
+/* OTP is unsupported; the server must not ask for OTP codes. */
+#define OTP_UNSUPPORTED "OTP codes are not supported by this client. Please ask the server administrator to disable OTP."
+
 struct LoginMode {
     struct Mode base;
     struct NewCharLooks new_char;
@@ -72,7 +75,6 @@ struct LoginMode {
     char email[0x80];
     char password[0x40];
     char userId[0x40];
-    BYTE otp_code[0xc];
     int numServer;
     int selectedServer;
     int numChar;
@@ -87,7 +89,6 @@ struct LoginMode {
     DWORD nextKeepAlive;
     void *waitWnd;
     struct Vec messageIds;
-    int mobile_otp_id;
     struct Vec connections;
     struct Vec subConnections;
     BYTE savedFlag;
@@ -96,8 +97,6 @@ struct LoginMode {
     struct String exit_cleared_text;
     struct Vec zones;
     BYTE auth_answered;
-    BYTE auth_waiting;
-    BYTE auth_timed_out;
     DWORD refuse_seconds_left;
 };
 

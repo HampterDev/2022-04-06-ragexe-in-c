@@ -163,7 +163,6 @@ static void login_screen(struct LoginMode *self)
         self->stateTick = timeGetTime();
         g_mapServerAidPending = 0;
         self->auth_answered = 0;
-        self->auth_waiting = 0;
         memset(g_session1.ssoToken, 0, 0x1f4);
     }
     if (strcmp((const char *)g_session1.ssoToken, "") == 0) {
@@ -517,7 +516,6 @@ void login_mode_on_change_state(struct Mode *mode, int state)
         connection_list(self, &self->subConnections, 0x2726);
         return;
     case 0x13: char_select_userver(self); return;
-    case 0x18: ui_window_open(0xb4); return;
 
     case 0x1e: zone_list(self); return;
     case 0x1f: select_zone(self); return;
