@@ -8300,3 +8300,110 @@ Validation:
 
 The pre-removal tree is in `build/before-otp-removal`. No live client/server smoke
 test was run.
+
+## Protection leftovers and dead packet rows removal (2026-11-03)
+
+Decisions: Patrick approved this removal on 2026-11-03 after a leftover search. It
+completes earlier protection removals: GameGuard/nProtect (START-007,
+[GameGuard removal validation](#gameguard-removal-validation)), packet-key
+obfuscation (START-014, [packet-key removal validation](#packet-key-removal-validation)),
+the CAPTCHA registration tool (START-023) and the
+[macro detector and captcha](#macro-detector-and-captcha-removal-2026-11-02).
+
+What remained before this removal:
+
+- **Encryption popup.** `SC_ACK_ENCRYPTION` (`0x01c7`) showed the native error box "No
+  Packet Encryption !!!" in both the game dispatcher and the login loop. Packet
+  encryption was removed earlier, and nothing sends the request `0x01c6`.
+- **SRPACKETR2 lengths.** `rag_connection_get_packet_length` returned hard-coded lengths
+  12 and 4 for `0x02bf`/`0x02c0` before consulting the packet table. Nothing sends or
+  handles either packet. The foundation fix in that function (the short-length
+  rejection in `rag_connection_get_packet`) is unchanged.
+- **Ignored protection packets.** The second game dispatcher explicitly ignored GPK
+  (`0x0851`/`0x0853`), SecretScan (`0x09cc`), EAC (`0x0a7b`), the Chinese play-time notice
+  (`0x0ab1`) and the premium-campaign notice (`0x090d`). The login loop ignored SecretScan
+  (`0x09c2`), Google OTP (`0x0a73`) and EAC (`0x0a7b`), and passed GPK `0x0851` to the
+  empty `game_mode_ignore_packet`.
+- **Rows with no code.** The packet table still named and sized protection, login and
+  billing packets that no code sends or handles.
+
+Removed:
+
+- The `0x01c7` cases in both dispatchers and `HEADER_SC_ACK_ENCRYPTION`.
+- The `0x02bf`/`0x02c0` special lengths. Both IDs now get the table's unknown-packet length.
+- The eight ignore entries above, their IDs, the login case `0x0851`, and
+  `game_mode_ignore_packet` with its file `src/game/packets_unused.c`.
+- 49 IDs' packet-table rows (40 length rows, 49 name rows):
+  - encryption `0x01c6`/`0x01c7`;
+  - SRPACKET `0x02ae`/`0x02af` and SRPACKETR2 `0x02bf`/`0x02c0`;
+  - HackShield `0x02a6`-`0x02a9`, `0x0449`; XIGNCODE `0x0b74`/`0x0b75`; CheatDefender
+    `0x0abc`;
+  - GPK `0x0851`-`0x0854`; SecretScan `0x09c2`/`0x09cc`; EAC `0x0a7b`/`0x0a7c`;
+  - bot check `0x02e6`; login captcha `0x0a71`/`0x0a72`/`0x0a7a`;
+  - SSO/Lyto `0x0825`/`0x0826`/`0x0a42`/`0x0a75`;
+  - OTP `0x0821`-`0x0823`, `0x09a3`, `0x09c8`, `0x0a73`, `0x0a74`, `0x0ad0`;
+  - cash password `0x02aa`-`0x02ac`, `0x0a8b`;
+  - PC cafe `0x0277`/`0x0278`/`0x02bc`;
+  - China fatigue/Taren `0x0982`, `0x0ab1`, `0x0aac`; premium campaign `0x090d`.
+- The name search found five rows beyond the requested list, all without code: the
+  encryption request `0x01c6`, GPK `0x0852`/`0x0854`, EAC `0x0a7c` and the Taren login
+  request `0x0aac`. Every other numeric match in the sources for these IDs is a message,
+  skill, effect or window ID.
+
+Kept:
+
+- The billing rows `0x01b5`, `0x01c0`-`0x01c2`, `0x027b` and Taren `0x0aca` were already
+  removed with their code in the play-time/billing removal.
+- `0x09a2` keeps its rows: the OTP removal answers it with a refusal.
+- Rows whose names match but have code or a different meaning: `0x0ac9` and `0x0acd`
+  (handled accept/refuse-login variants), the PIN rows (`0x08b7`, `0x08b9`, `0x0ae9`), and
+  `0x0839`/`0x083e`/`0x0842`/`0x0843` (guild ban, SSO-refusal handling and GM recall
+  commands, not SSO login).
+- The China rows without a requested keyword (`0x0981`, `0x0987`, `0x09a4`, `0x0a3c`) are
+  left for review.
+- Banking, RoDEX, world-store, cell-attribute, ping-live and `0x0855` stay in the ignore
+  lists. The other login-loop ignore entries are untouched.
+- Also kept: the NPC cash-point shop (`0x0287`-`0x0289`), the rental-item timers
+  (`0x0298`/`0x0299`), the MD5 login hash (`0x01be`/`0x01dc`) and the PIN-state handlers.
+
+Server implications:
+
+- These incoming packets now take the unknown-packet path, which resets connection
+  queues: game `0x01c7`, `0x0851`, `0x0853`, `0x090d`, `0x09cc`, `0x0a7b`, `0x0ab1`;
+  login `0x01c7`, `0x0851`, `0x09c2`, `0x0a73`, `0x0a7b`.
+- None of them is sent by stock Hercules or stock rAthena (local checkouts). Their
+  numeric matches there are only message-table IDs, and neither defines a GPK, SecretScan,
+  EAC, Google-OTP, CHN play-time or premium-campaign sender.
+- No server checkout was modified.
+
+Tests changed: the packet-dispatch test adds the seven game IDs to the unknown-packet
+IDs and drops its now unused `error_msg` stub. The login-loop harness checks the five
+login IDs and loses two stubs. `test_packets` now expects the unknown length 4 for
+`0x02bf`/`0x02c0`.
+
+Validation:
+
+- Release build passed without compiler or linker warnings:
+  `build/protection-leftovers-build.log`; `game_mode_ignore_packet` is gone from the link map.
+- Packet dispatch: all 1,179,800 cases passed, digest `d8b534ea02a5d31f` (before:
+  `f57257980132c31b`). `build/derive_round2_dispatch.py` changes exactly 78 cases of the
+  pre-removal trace (`build/packet-dispatch-before-protection-leftovers.bin`):
+  - 6 for `0x01c7`, a first-dispatcher handler (formerly the `ErrorMsg` sink; its direct
+    second-dispatcher cases were already unknown);
+  - 12 each for `0x0851`, `0x0853`, `0x090d`, `0x09cc`, `0x0a7b` and `0x0ab1`, which the second
+    dispatcher ignored both directly and when forwarded.
+  Each now reaches the unknown-packet reset. The actual trace matches byte for byte
+  (SHA-256 `23e1746c...ec95a5e51`): `build/protection-leftovers-dispatch.log`,
+  `build/protection-leftovers-dispatch-expectation.log`.
+- Packet table: 1,234 -> 1,194 length rows and 1,277 -> 1,228 name rows; only the 49 IDs
+  above lost rows and every retained row is unchanged
+  (`build/protection-leftovers-packet-table-audit.log`).
+- Login loop: `build/protection-leftovers-login_pin_state.log`.
+- Full suite `tests\build.bat` passed in 6 min 35 s (`test_packets` included):
+  `build/protection-leftovers-full-tests.log`.
+- The seven standalone suites passed: `build/protection-leftovers-<suite>.log`.
+  `build_agency_server.bat` was not run (it needs the patched Hercules checkout).
+- `git diff --check` passed.
+
+The pre-removal tree is in `build/before-protection-leftovers-removal`. No live
+client/server smoke test was run.

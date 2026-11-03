@@ -116,3 +116,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Remove the write-only skill-upgrade flag, unused companion gauge layouts, the never-created NPC HP gauge and the ESC menu's dead `0xec` command.
 - Remove the hourly play-time warning, billing/remaining-time and PC-cafe notices, premium/billing slot labels and the Taren login refusal.
 - Remove the OTP login prompt and its requests; servers asking for OTP get a clear refusal, and the ordinary `0x0acf` login step stays.
+- Remove the leftover encryption popup, SRPACKETR2 lengths, ignored GPK/SecretScan/EAC/Google-OTP/CHN/premium-campaign packets and the packet rows of 49 protection, login and billing IDs without code.

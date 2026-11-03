@@ -77,13 +77,6 @@ struct Connection *rag_connection_transport(struct RagConnection *connection)
     return (struct Connection *)&transport_token;
 }
 
-void error_msg(const char *text, int flags)
-{
-    packet_trace_call("ErrorMsg");
-    packet_trace_value(hash_bytes(UINT64_C(14695981039346656037), text, strlen(text)));
-    packet_trace_value(flags);
-}
-
 struct UIWindow *ui_window_open(int id)
 {
     packet_trace_call("ui_window_open");
@@ -121,7 +114,9 @@ static void run_case(int second, int id, size_t size, int null_packet)
             id == 0x0b5a || id == 0x0b5d || id == 0x0b5e ||
             id == 0x0a98 || id == 0x0a9a || id == 0x0a9b || id == 0x0a9d || id == 0x0ac8 ||
             id == 0x0a29 || id == 0x0bb3 || id == 0x0b6b || id == 0x0b6c ||
-            id == 0x01c1 || id == 0x01c2 || id == 0x027b))
+            id == 0x01c1 || id == 0x01c2 || id == 0x027b ||
+            id == 0x01c7 || id == 0x0851 || id == 0x0853 || id == 0x090d || id == 0x09cc || id == 0x0a7b ||
+            id == 0x0ab1))
         assert(trace_count == 12);
     if (second && id == 0x0bf1 && !null_packet && size >= 2) {
         assert(trace_count == 8);
@@ -182,7 +177,7 @@ int main(int argc, char **argv)
     if (trace_file)
         assert(fclose(trace_file) == 0);
     assert(cases == 1179800);
-    assert(digest == UINT64_C(0xf57257980132c31b));
+    assert(digest == UINT64_C(0xd8b534ea02a5d31f));
     printf("Packet dispatch: %zu cases, digest=%016llx passed.\n", cases, (unsigned long long)digest);
     return 0;
 }

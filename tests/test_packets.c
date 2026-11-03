@@ -101,7 +101,8 @@ int main(void)
     unsigned char output[32];
     unsigned short length = 0xeeee;
 
-    assert(rag_connection_get_packet_length(connection, 0x2bf) == 12);
+    /* The SRPACKETR2 rows are gone: both IDs now use the unknown-packet length. */
+    assert(rag_connection_get_packet_length(connection, 0x2bf) == 4);
     assert(rag_connection_get_packet_length(connection, 0x2c0) == 4);
     assert(rag_connection_get_packet_length(connection, 0x1234) == 6);
     assert(rag_connection_get_packet_type(packet) == 0x1234);

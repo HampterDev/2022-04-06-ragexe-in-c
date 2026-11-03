@@ -1,8 +1,6 @@
 struct Mode *client_current_mode(void) { abort(); }
 int connection_is_open(const struct Connection *arg0) { (void)arg0; abort(); }
 int connection_recv_bytes(struct Connection *arg0, void *arg1, int arg2, char arg3) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; abort(); }
-void error_msg(const char *arg0, int arg1) { (void)arg0; (void)arg1; abort(); }
-void game_mode_ignore_packet(const unsigned char *arg0) { (void)arg0; abort(); }
 void login_mode_enter_zone(struct LoginMode *arg0, DWORD arg1, struct String arg2, DWORD arg3, DWORD arg4, struct String arg5) { (void)arg0; (void)arg1; (void)arg2; (void)arg3; (void)arg4; (void)arg5; abort(); }
 void login_mode_on_accept_enter(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_accept_login(struct LoginMode *arg0, const BYTE *arg1, int arg2) { (void)arg0; (void)arg1; (void)arg2; abort(); }

@@ -116,7 +116,6 @@ extern int g_exchangeGiveBack;
 
 #include "contents/guild_emblem_api.h"
 
-void game_mode_ignore_packet(const unsigned char *pkt);
 
 static __inline void login_send_packet(int id, const void *buf)
 {

@@ -158,6 +158,8 @@ int main(void)
         0x08b7, 0x08b8, 0x08ba, 0x08bb, 0x08bc, 0x08bd, 0x08be, 0x08bf, 0x08c3, 0x08c4, 0x08c5, 0x08c6,
         /* 2026-11-03: billing/play-time notice and Taren refusal */
         0x01b5, 0x0aca,
+        /* 2026-11-03: encryption popup, GPK, SecretScan, Google OTP and EAC */
+        0x01c7, 0x0851, 0x09c2, 0x0a73, 0x0a7b,
     };
     static struct Session session_before;
     static struct UIWindowMgr manager_before;
@@ -200,7 +202,7 @@ int main(void)
     }
     puts("Login PIN state: real character-server dispatch continues for states 0 and 7, refuses 1-6 and 8-11 "
          "with disconnect, message and login screen, ignores unknown states for 0x08b9/0x0ae9, and sends "
-         "retired PIN, billing and Taren packets to the unknown-packet path; refuses mobile-OTP requests "
+         "retired PIN, billing, Taren and protection packets to the unknown-packet path; refuses mobile-OTP requests "
          "(0x09a2) the same way.");
     return 0;
 }

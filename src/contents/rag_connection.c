@@ -8,8 +8,6 @@
 
 #include "core/packet_table.h"
 #include "diag/diag.h"
-#define PACKET_ID_ZC_SRPACKETR2_INIT 0x2bf
-#define PACKET_ID_CZ_SRPACKETR2_START 0x2c0
 
 struct RagConnection g_ragConnection;
 INIT_ONCE g_ragConnection_guard;
@@ -20,10 +18,6 @@ int rag_connection_get_packet_length(struct RagConnection *conn, int packet_id)
     struct PacketLengthInfo info;
 
     (void)conn;
-    if (packet_id == PACKET_ID_ZC_SRPACKETR2_INIT)
-        return 12;
-    if (packet_id == PACKET_ID_CZ_SRPACKETR2_START)
-        return 4;
     packet_table_get_length(&g_packetLengthMap, &info, packet_id);
     return info.length > 2 ? info.length : 2;
 }

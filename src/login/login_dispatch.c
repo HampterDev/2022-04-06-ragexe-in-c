@@ -445,11 +445,8 @@ void login_mode_process_packets(struct LoginMode *self)
         case 0x283:
         case 0x8e3:
         case 0x99d:
-        case 0x9c2:
         case 0xa4d:
-        case 0xa73:
         case 0xa79:
-        case 0xa7b:
         case 0xae0:
             break;
         case 0x6a: {
@@ -475,7 +472,6 @@ void login_mode_process_packets(struct LoginMode *self)
             break;
         case 0x81: login_mode_on_disconnect_reason(self, g_packetBuffer); break;
         case 0x1be: on_ask_hash(self); break;
-        case 0x1c7: error_msg("No Packet Encryption !!!", 0); break;
         case 0x1dc: login_mode_on_hash_key(self, g_packetBuffer); break;
         case 0x1f1: on_server_text(self); break;
         case 0x20d: session_set_blocked_characters(&g_session1, g_packetBuffer, packet_length); break;
@@ -500,7 +496,6 @@ void login_mode_process_packets(struct LoginMode *self)
             break;
         }
         case 0x840: on_map_states(self); break;
-        case 0x851: game_mode_ignore_packet(g_packetBuffer); break;
         case 0x8b9: login_mode_on_pin_state(self, g_packetBuffer); break;
         case 0x8d5:
         case 0xb70:

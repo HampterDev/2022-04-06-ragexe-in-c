@@ -12,7 +12,6 @@
 #include "game/packet_data.h"
 #include "game/packet_handlers.h"
 #include "game/quest_packets.h"
-#include "platform/error_message.h"
 #include "session/skill_commands.h"
 #include "game/skill_cooldowns.h"
 #include "game/gamemode.h"
@@ -335,7 +334,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_BROADCAST2: game_mode_broadcast2(self, pkt); break;
     case HEADER_ZC_ADD_ITEM_TO_STORE2: game_mode_add_item_to_store2(pkt); break;
     case HEADER_ZC_ADD_ITEM_TO_CART2: game_mode_add_item_to_cart2(pkt); break;
-    case HEADER_SC_ACK_ENCRYPTION: error_msg("No Packet Encryption !!!", 0); break;
     case HEADER_ZC_USE_ITEM_ACK2: game_mode_zc_use_item_ack2(self, (const struct PACKET_ZC_USE_ITEM_ACK2 *)pkt); break;
     case HEADER_ZC_SKILL_ENTRY2: game_mode_zc_skill_entry2(self, (struct PACKET_ZC_SKILL_ENTRY2 *)pkt); break;
     case HEADER_ZC_AUTOSPELLLIST: game_mode_zc_auto_spell_list(pkt); break;

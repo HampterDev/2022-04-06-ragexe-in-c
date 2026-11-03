@@ -1167,16 +1167,10 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         game_mode_zc_ack_take_off_equip_all(self, packet->result);
         break;
     }
-    case HEADER_ZC_GPK_DYNCODE:
-    case HEADER_ZC_GPK_AUTH:
     case HEADER_ZC_MACRO_ITEMPICKUP_FAIL:
-    case HEADER_ZC_PREMIUM_CAMPAIGN_INFO:
     case HEADER_ZC_ACK_OPEN_BANKING:
     case HEADER_ZC_ACK_CLOSE_BANKING:
-    case HEADER_ZC_SECRETSCAN_DATA:
     case HEADER_ZC_ACK_READ_RODEX:
-    case HEADER_ZC_SEND_EAC_MESSAGE:
-    case HEADER_ZC_PLAYTIME_NOTIFY_CHN_TAREN:
     case HEADER_ZC_WORLDSTORE_INFO:
     case HEADER_ZC_WORLDSTORE_ITEMLIST_NORMAL_V5:
     case HEADER_ZC_WORLDSTORE_ITEMLIST_EQUIP_V6:
