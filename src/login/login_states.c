@@ -21,6 +21,7 @@
 #include "render/render_api.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
+#include "core/text_format.h"
 #include "core/utf8.h"
 #include "core/text_util.h"
 #include "session/session_items.h"
@@ -175,10 +176,22 @@ static void login_screen(struct LoginMode *self)
     mode_mgr_quit(&g_modeMgr);
 }
 
-/* Copies a server-list line into out[size], cut by whole UTF-8 characters. */
+/* Copies a server-list line into out[size], cut by whole UTF-8 characters. A ^RRGGBB
+   colour code that the cut would split is left out whole: its start would show as text. */
 static void server_line(char *out, size_t size, const struct String *line)
 {
-    utf8_copy_prefix(out, size, string_cstr(line));
+    const char *text = string_cstr(line), *end = text + line->size, *code;
+    size_t length = utf8_prefix(text, line->size, size - 1);
+
+    for (code = text_find_colour_code(text, end); code < text + length;
+         code = text_find_colour_code(code + 7, end)) {
+        if (code + 7 > text + length) {
+            length = (size_t)(code - text);
+            break;
+        }
+    }
+    memcpy(out, text, length);
+    out[length] = 0;
 }
 
 static void server_list(struct LoginMode *self)
