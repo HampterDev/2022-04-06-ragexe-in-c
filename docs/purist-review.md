@@ -10820,7 +10820,8 @@ No live client was run.
   `is_untracked_id`, `post_quit1`'s plain cases, `forget_window` and `clear_slots` would
   then read the table. The disagreements above have to become explicit columns (or be
   fixed on `main` first), or the digest changes. It is about 2,700 lines of
-  `ui/wndmgr`, and it should be its own change.
+  `ui/wndmgr`, and it should be its own change. Done afterwards: see
+  [Restructuring: window and object-type tables](#restructuring-window-and-object-type-tables-2026-11-03).
 - **`login/login_dispatch.c`**: see above.
 - **Packet rows per feature.** The rows now are data in one place per dispatcher. Moving
   them next to their handlers means about 100 handler files; the packet test stubs those
@@ -10830,6 +10831,8 @@ No live client was run.
   used by `object_as_type` and the diagnostics. The type bits and name could move into
   each class's ops table (a common first member, or a small info struct next to the ops),
   so `object_as_type` reads them from the object; `test_object_type` checks the result.
+  Done afterwards as per-directory row tables; the bits could not go into the operation
+  tables because of how `test_object_type` works (see [Restructuring: window and object-type tables](#restructuring-window-and-object-type-tables-2026-11-03)).
 - **Startup and shutdown** (`core/app.c`, `startup.c`, `client_init.c`, `winmain.c`,
   `session/session_lifetime.c`): `app_init_managers` (`startup.c`) and
   `app_destroy_singletons` (`app.c`) are sequences of create and destroy calls with
@@ -10837,3 +10840,387 @@ No live client was run.
   `{name, create, destroy}` rows run forward at startup and backward at shutdown, which
   makes the order explicit and the two directions symmetric. That needs a test recording
   the order of every create and destroy first, as `test_com_lifecycle` does for COM.
+  The test came afterwards (`test_startup_order`); the table did not, because shutdown is
+  not the reverse of startup (see [Restructuring: window and object-type tables](#restructuring-window-and-object-type-tables-2026-11-03)).
+
+## Restructuring: window and object-type tables (2026-11-03)
+
+The rest of step 3: the window-ID lists and the object-type list become tables whose rows the
+features own, assembled at one composition point each, and the startup and shutdown order
+gets its characterization test. Branch `purist-windows`, from `purist` at `615505c`. No
+behavior change.
+
+### Window table (`b7f7bbb`)
+
+Before, the window IDs were listed four times: the factory switches
+(`ui_window_mgr_make_window` and `wm_make_character`, `_hud`, `_trade`, `_social`; 177 IDs),
+the switches of `ui_window_mgr_get_window` (26 IDs), `ui_window_mgr_is_untracked_id` (97) and
+`ui_window_mgr_post_quit1` (147, 47 of them with side effects) in `window_slots.c`, the forget
+list (`forget_window.c`, 135 named slots and the eight storage pages) and
+`ui_window_mgr_clear_slots` (`teardown.c`, 133 named slots and the storage pages).
+`ui_window_mgr_post_quit2` and `ui_window_mgr_make_window` held two more per-ID facts: which
+slots a queued window is cleared from, and that the navigation window 0xcb goes to the end of
+the ESC list.
+
+- **Row type** (`ui/wndmgr/window_table.h`, new): `struct WmWindowRow { id, slot, flags, make,
+  close, get, open }`. `id` is the window ID, or `WM_NO_ID` for a slot that no window ID opens.
+  `slot` is `WM_SLOT(field)`, the offset of the `UIWindowMgr` field that holds the window, or
+  `WM_NO_SLOT`; the named fields stay, so `test_window_lists` names them as before. `flags`:
+  `WM_UNTRACKED` and `WM_UNTRACKED_UNLESS_SHOWN` (`is_untracked_id`), `WM_GET_SLOT`
+  (`get_window` reads the slot instead of `windows_by_id`), `WM_FORGOTTEN_BY_QUIT`
+  (`post_quit2` clears the slot), `WM_ESC_LAST`, and the two quirk flags below. `make` is the
+  factory; `make_window` registers what it returns, as the switches did after their `break`.
+  `close` is what `post_quit1` does: `WM_CLOSE_WINDOW` (queue whatever `get_window` returns,
+  the default), `WM_CLOSE_SLOT`, `WM_CLOSE_STORED`, `WM_CLOSE_UNCOUNTED`, or a function. `get`
+  replaces `get_window`'s answer (only 0x12d, the first party plate). `open` describes the 58
+  factories that were one `WM_OPEN` call (constructor, size, placement, info); their `make` is
+  the generic `wm_open_row`. The rows are written with `WM_ROW`, `WM_ROW_OPEN`,
+  `WM_ROW_OPEN_INFO`, `WM_ROW_OPEN_INFO1`, `WM_ROW_GET` and `WM_ROW_SLOT`.
+- **Owners**: the cluster files, each with its rows at the end, after the factories and closes
+  they name: `make_window_login.c` (new: the login, character-selection, change-name and
+  Lua-described windows that `make_window.c`'s switch made; 14 rows), `make_window_character.c`
+  (33), `make_window_hud.c` (43), `make_window_trade.c` (48) and `make_window_social.c` (44). A
+  row goes with the code that creates the window or sets the slot: the whisper ID 0x43 and
+  `private_airplane_wnd` are with the HUD rows, 0x12d and `drag_plate` with the social rows.
+  The rows nobody owns are in `window_registry.c` (15): the twelve IDs of removed windows that
+  the untracked list still named (0x32, 0x73, 0x7b, 0x7c, 0x88, 0x90, 0x91, 0x9a, 0xb4, 0xba,
+  0xbd, 0x157), `UI_ID_NONE`, and `orphan_char_wnd` and `orphan_guild_wnd`. 197 rows: 193 IDs
+  and 4 slots without an ID.
+- **Factories and closes**: every factory case and every `post_quit1` case with side effects
+  is now a static function next to its row, the case body moved unchanged (`break` became
+  `return wnd` or `return closed`; the old `close_slot` and `close_slot_stored` are
+  `wm_close_slot` and `wm_close_slot_stored` in `window_slots.c`). 93 factory and 38 close
+  functions; cases shared by several IDs stay one function (the storage pages 0x92-0x98 and
+  0x135, the guild tabs 0x3c-0x42, 0x15/0x8f, 0x35/0xcf, 0xd5/0xd7, 0x101/0x102, 0x132/0x13a,
+  the Lua windows 0x9c/0x9f/0xb5). Six existing helpers are the `make` of their rows directly
+  (`make_basic_info`, `make_select_char`, `make_make_char`, `make_store_page`,
+  `make_refining_wnd`, `make_guild_tab`); the four that took only `self` gained the unused
+  `window_id`. `close_drag_plate` and `send_packet_id` moved from `window_slots.c` to
+  `make_window_social.c`, their only users.
+- **Composition point**: `g_windowTable` in `ui/wndmgr/window_registry.c`, the list of the six
+  tables. `client_install_hooks()` installs it with `ui_window_mgr_set_window_table`
+  (`window_table.c`), which builds an index by ID and a list of all rows, and stops the client
+  (`fatal_error`) on a second row for an ID, an ID outside 0..0x23f, slot flags without a slot,
+  or two rows that give one slot different slot flags (0x35 and 0xcf share
+  `party_setting_wnd`). `client_install_hooks()` is the first call of `client_init()`, which is
+  the first call of `WinMain`, so no window is opened before the table is installed.
+- **Order and missing rows**: lookups go by ID and the slot loops only compare and clear, so
+  the order of the tables and rows decides nothing. A missing row means what the switches'
+  `default` meant: `make_window` creates nothing, `get_window` looks only in `windows_by_id`,
+  `is_untracked_id` returns 0, `post_quit1` queues whatever `get_window` returns, and no slot is
+  forgotten or cleared for the ID. `window_table.h` documents the owners, the order and a
+  missing row next to the row type; each cluster's row array points to it.
+- **The window manager core** reads the rows: `get_window`, `is_untracked_id`,
+  `touch_window_id`, `post_quit2` and `post_quit1` (`window_slots.c`), `forget_window`,
+  `clear_slots` (`teardown.c`) and `make_window` (`make_window.c`, now only the generic part).
+  The manager's own references (`capture`, `capture_root`, `focus_edit`, `modal_wnd`,
+  `mouse_wnd`, `active_top_wnd`) stay explicit there. None of these files names a feature
+  window or a window ID any more, except `close_all_but_chat` (below).
+
+The disagreements between the lists are flags, recorded as found, not fixed:
+
+| Flag or close | Rows | What it keeps |
+|---|---|---|
+| `WM_KEPT_BY_CLEAR` | 0x63, 0x67, 0x80, 0xd7, 0xfa, 0x100, 0x114 | `clear_slots` leaves the slot; the window's destructor forgets it |
+| `WM_KEPT_BY_FORGET` | 0x9c (`hot_key_wnd`), 0xcc (`quest_display_wnd`), `drag_plate`, `orphan_char_wnd`, `orphan_guild_wnd` | `forget_window` leaves the slot |
+| `WM_CLOSE_UNCOUNTED` | 0x4f, 0x50, 0x6b, 0x6f | `post_quit1` closes the slot but returns 0, so the ID stays in the ESC list |
+| `WM_CLOSE_WINDOW` with a slot | 0x3, 0x7, 0x145 (and 0x7f, 0x115, cleared by `WM_FORGOTTEN_BY_QUIT`) | `post_quit1` queues the window and leaves the slot for the destructor |
+| no factory, a close | 0xab | `post_quit1` still treats this removed ID like the Lua windows |
+| `WM_UNTRACKED_UNLESS_SHOWN` | 0x91 | tracked only while a visible window has the ID, which none has |
+
+`capture_root` and `focus_drawn` stay out of `clear_slots`, and `focus_drawn` out of
+`forget_window`, as before; they are manager fields, commented where they are cleared. Left
+as it is: `close_all_but_chat` (`teardown.c`) keeps the chat window, whisper windows (by their
+ID 0x43) and chat tabs and saves the memorial-dungeon window's position. That is chat code and
+needs no column; `window_table.h` says so. `make_guild_tab`, `make_store_page` and the
+store-page closes still compute their slot from the ID as they did, instead of reading the
+row's slot.
+
+Tests changed, only to follow the moved code; no assertion changed:
+
+- `test_window_lists` compiles `make_window_login.c`, `window_table.c` and `window_registry.c`
+  too and installs `g_windowTable` as `client_install_hooks()` does. 34,733 lines, digest
+  `39f36d8f0948c9bf`, unchanged; its stubs file did not change.
+- `test_forget_window`, `test_airplane_window_slot` and `test_window_id_list` compiled one
+  view each (the forget list, or the switches extracted from `window_slots.c`). They now read
+  the real rows through `tests/extract_window_rows.py`, which copies every table of
+  `g_windowTable`'s list into `window_rows.inc` (each found exactly once, as
+  `extract_effect_types.py` does), compiled with `tests/window_rows_data.h`, whose row macros
+  keep the ID, slot and flags and drop the functions. `test_window_id_list` makes every row's
+  factory its controlled factory, which now returns the window for `make_window` to register;
+  the stubs only the login factories needed left `window_id_list_unreached.c`.
+- `test_basic_info_restore` extracts `make_basic_info` with its new signature.
+
+Detection proof (each change made, `test_window_lists` run, the file restored):
+
+| Change | Result |
+|---|---|
+| none | 34,733 lines, `39f36d8f0948c9bf` |
+| 0x63 without `WM_KEPT_BY_CLEAR` | 34,739 lines, `3e75c648f8c91571` |
+| 0x4f `WM_CLOSE_SLOT` instead of `WM_CLOSE_UNCOUNTED` | 34,733 lines, `6fcb11b0633e98c9` |
+| `private_airplane_wnd` row dropped | 34,729 lines, `554593f302611a83` |
+| 0x91 `WM_UNTRACKED` instead of `WM_UNTRACKED_UNLESS_SHOWN` | 34,724 lines, `440ef31b52ada1b2` |
+| 0x157 listed twice | `fatal_error`: a window ID with two rows |
+| 0xcf with `WM_KEPT_BY_CLEAR` (its slot is 0x35's) | `fatal_error`: two rows give one slot different slot flags |
+| 0x1c without `WM_GET_SLOT` | not detected: 34,733 lines, `39f36d8f0948c9bf` |
+
+The last row is a gap of the characterization test, not of the table: the test reads
+`get_window` only right after `make_window`, when the slot and `windows_by_id` hold the same
+window. So `WM_GET_SLOT` and the untracked flags were also checked once against the old code
+(a scratch program, not in the suite): the old `get_window` and `is_untracked_id`, extracted
+from `615505c`, and the new ones on the installed real rows, for IDs -2 to 0x2ff, with every
+window field of the manager and every `windows_by_id` entry holding a different window, the
+party plate list empty and not, and 0x91 absent, hidden and shown; and only 0xcb has
+`WM_ESC_LAST`. All agree; with 0x1c's `WM_GET_SLOT` removed it reports `get_window(0x1c)`.
+
+### Window-manager handlers (`fc6fa1a`)
+
+Kept in the map, `make_window.c` and `forget_window.c` still tied 163 files each into the knot
+after the window table: `ui_window_mgr_make_window` began by dropping a party plate that is
+being dragged while a hotkey opens a window (`plates.c`, which reaches the session), and
+`ui_window_mgr_forget_window` ended with `actors_forget_window`. Both are now members of
+`g_windowMgrHandlers` (`ui/wndmgr/wndmgr_handlers.h`), installed by `client_install_hooks()`:
+
+| Handler | Installed with | NULL |
+|---|---|---|
+| `g_windowMgrHandlers.drop_dragged_plate` | `ui_window_mgr_drop_plate_for_hot_key` (`ui/wndmgr/plate_hooks.c`, new) | the plate stays |
+| `g_windowMgrHandlers.forget_window` | `actors_forget_window` (`actor/actor_process.c`) | the actors keep their references |
+
+The plate step moved unchanged into `plate_hooks.c`, a file of its own so that
+`test_window_lists` and `test_window_id_list` compile it and install it as startup does and
+reach the same stubs in the same order; `test_forget_window` and `test_airplane_window_slot`
+install their `actors_forget_window` stubs. All four tests also compile `wndmgr_handlers.c`.
+
+### Object types (`139d17d`)
+
+Before, `core/object_type.c` listed all 326 classes the type queries know: the operation
+table, the `ObjectType` bits `object_as_type` answers (the original's `dynamic_cast`) and the
+name `object_type_name` returns.
+
+- **Row type** (`core/object_type.h`): `struct ObjectTypeRow { table, types, name }`, a
+  directory's rows `struct ObjectTypeRows` (`OBJECT_TYPE_ROWS(rows)`), the installed list
+  `struct ObjectTypeTable`, and `OBJECT_TYPE(kind)` for the bits (formerly the file's own
+  `TYPE`).
+- **Owners**: the 15 directories that define the classes, each in its `*_object_types.c`, the
+  rows in their former order: `ui/controls` (57), `ui/items` (54), `ui/character` (46),
+  `ui/quests` (39), `ui/social` (37), `ui/shops` (33), `ui/chat` (28), `actor` (11, with the
+  NPC actor `CCharacterNpc` of `core/character_npc.c`), `resources` (6), `ui/mail` (5),
+  `ui/hotkeys` (4), `effects/skills` (3), and one each in `ui/render`, `ui/map` and
+  `ui/worldmap`. Basenames are unique because `build.bat` puts all objects in one folder.
+- **Composition point**: `g_objectTypes` in `core/object_type_registry.c` (declared with the
+  15 tables in `object_type_registry.h`), installed by `client_install_hooks()` with
+  `object_types_install`, which stops the client on an operation table with two rows.
+  `object_type.c` is only the lookup (51 lines, from 367).
+- **Order and missing rows**: with every table once, the first match is the only match, so the
+  order decides nothing. A table without a row gets NULL from `object_as_type` for every type
+  and "?" from `object_type_name`, as the classes the client no longer has always did.
+
+The bits did not go into the operation tables, the first option in the plan.
+`test_object_type` compiles the list with `type_query_fixture.h` forced in, which defines
+every operation-table name as a vtable copied from the original client, and compares
+`object_as_type` with that runtime's `__RTDynamicCast`. That needs the bits keyed by table
+identity; inside the C operation structs the fixture could not replace them. The test now
+compiles the 15 row files and the registry under the same fixture into `object_type_test\`,
+installs `g_objectTypes` and defines a `fatal_error` stub. Its counts are unchanged: 472
+concrete classes, 139 retired identities, 2,717 prior-runtime comparisons, 205 accepted casts,
+326 names, 306 window names. Detection: a row dropped (`CMergeItemWnd`) or a bit removed
+(`CBlurPC` without `PC`) fails its cast comparison; `UIWindow` listed twice stops at install.
+
+### Startup and shutdown: characterization test (`d5d292c`) and design
+
+`tests/test_startup_order.c` (new, in `tests\build.bat` after the window-list test) extracts
+`app_init_managers` and `init_failed` (`core/startup.c`) and `app_destroy_singletons`
+(`core/app.c`) with `tests/extract_startup_order.py` and runs them against stubs that record
+each step. It checks the 23 startup steps when everything succeeds; for each of the 14 checked
+creates, that its failure ends the sequence right there, returns its own text and undoes
+nothing; that a failure of the four ignored results (`ez2_str_effect_mgr_load`,
+`town_info_create`, `champion_monster_create`, `map_sky_mgr_load`) changes nothing; that the two
+loads that only warn (`town_info_load`, `champion_monster_load`) add their message box; and the
+19 shutdown steps. A swapped pair of destroys fails it (checked).
+
+The table was not built. Shutdown is not the reverse of startup, so one `{name, create,
+destroy}` table run forwards and backwards would change the shutdown order:
+
+| Startup (`app_init_managers`) | Shutdown (`app_destroy_singletons`) |
+|---|---|
+| EZ2STR effect manager (instance, load) | skill-action manager (created in `client_init`) |
+| effect manager | EZ2STR effect manager |
+| particle pools | map sky |
+| time scheduler | guild manager |
+| town info (create, load) | player names |
+| icon sheet | whisper block |
+| renewed quests (create, load) | account data |
+| champion monsters (create, load) | character data |
+| map properties | Rodex (`set_hwnd_to_game_mon`) |
+| Rodex | map properties |
+| account data | champion monsters |
+| character data | renewed quests |
+| whisper block | icon sheet |
+| player names | town info |
+| guild manager | time scheduler |
+| adventurer agency | particle pools |
+| join-party manager | effect manager |
+| map sky (instance, load) | adventurer agency |
+| | join-party manager |
+
+Run backwards, the startup list would destroy the join-party manager and the adventurer
+agency first and character data before account data, and it has no skill-action manager. Also, when a create
+fails, `WinMain` shows the text and returns without calling `app_destroy_singletons`, so the
+managers created before it are not destroyed (the process ends anyway).
+
+Design for the table, for Patrick to decide:
+
+- One list `g_clientManagers` of `{name, create, destroy, destroy_rank, on_failure}` rows,
+  where `on_failure` is stop with the message (the 14 checked creates), warn with a message
+  box (the two loads) or ignore. Startup runs the list forwards; shutdown runs the rows in
+  `destroy_rank` order, which reproduces today's order exactly. A later, separate change could
+  make shutdown the exact reverse once someone has checked that no destroy depends on another
+  manager still existing.
+- Whether a failed startup should destroy what it created (in reverse) is a behavior change
+  and stays out of the conversion.
+- `client_init` already pairs each construction with an `atexit` release, which C runs in
+  reverse; its rows could join the same list, but its order interleaves constructions,
+  `atexit` registrations and table loads, and it would need its own characterization first.
+  `WinMain`'s own shutdown steps (window manager, connection, renderer, sound) are another
+  sequence with the same question.
+
+### Dependency map per commit
+
+Measured on each commit's own release build in its export (`build/depmap/<label>.txt`).
+`modules.py` cuts the 23 files of its former `REGISTRY` set plus the new files that list a
+whole feature set: `make_window_login.c` and `window_registry.c` from `b7f7bbb`, and
+`object_type_registry.c` and the 15 `*_object_types.c` from `139d17d` (each row file only
+reaches the classes of its own directory; kept in the graph, a row file would join its
+directory's files into one cluster). `make_window.c`, `window_slots.c`, `forget_window.c`,
+`teardown.c` and `object_type.c` stay in the set so that the rows compare with the earlier
+tables; the last column keeps each of them in the graph with `modules_drop.py`.
+
+| commit | change | knot files / lines | library files / lines | above the knot files / lines | clusters | registry files / lines | knot with the file kept in the graph |
+|---|---|---|---|---|---|---|---|
+| `615505c` | baseline | 260 / 92,782 | 469 / 82,054 | 309 / 105,732 | 118 | 23 / 8,715 | `window_slots.c`: 432 / 136,617; `forget_window.c`: 423 / 133,014; `make_window.c`: 449 / 144,380; `teardown.c`: 260 / 92,782; all four: 460 / 148,155; `object_type.c`: 594 / 205,686 |
+| `b7f7bbb` | window table | 260 / 92,782 | 470 / 82,116 | 309 / 105,732 | 118 | 25 / 9,238 | `window_slots.c`: 260 / 92,782; `forget_window.c`: 423 / 132,959; `make_window.c`: 423 / 133,085; `teardown.c`: 260 / 92,782; all four: 425 / 133,302 |
+| `fc6fa1a` | window-manager handlers | 260 / 92,782 | 470 / 82,116 | 310 / 105,743 | 119 | 25 / 9,244 | each of the four: 260 / 92,782; all four: 260 / 92,782 (all in the library layer) |
+| `139d17d` | object-type rows | 260 / 92,782 | 470 / 82,116 | 310 / 105,743 | 119 | 41 / 9,433 | `object_type.c`: 260 / 92,782; each of the four window files: 260 / 92,782; all five: 260 / 92,782 (all in the library layer) |
+| `d5d292c` | startup-order test | 260 / 92,782 | 470 / 82,116 | 310 / 105,743 | 119 | 41 / 9,433 | as `139d17d` |
+
+The main columns do not move, because the files that changed are cut in them; the change
+shows in the last column. Kept in the graph, `window_slots.c` tied 172 files into the knot
+before the window table, because every window opener calls `get_window` or `post_quit1` and
+`post_quit1` called into the item, storage, navigation, memorial-dungeon, mail and session
+code; after it, `window_slots.c` reaches only the containers, `mem_alloc`, `ui_window_find`, the
+snap manager, `game_current_base_mode` (`world/mode_context.c`) and the window table, and ties
+nothing in. `make_window.c` and `forget_window.c` kept 163 files
+each in the knot until the two handlers of `fc6fa1a`. `core/object_type.c` tied 334 files into
+the knot (594 against 260): the widgets, the actors and the renderer that ask a type reached
+every class through it; as the lookup over an installed table it reaches only `core/fatal.c`.
+With all five kept, they lie in the library layer, below the knot. The library layer gains
+`window_table.c` (62 lines) at `b7f7bbb`; above the knot gains `plate_hooks.c` (11 lines, its
+own cluster) at `fc6fa1a`.
+
+### Validation
+
+Every commit was validated with `build/depmap/validate.ps1`: release build with the log
+grepped for `: warning ` and `LNK`, the full suite `tests\build.bat`, the seven standalone
+suites, every `digest`/`passed` line of the suite against the baseline run of `615505c`,
+`git diff --check` against the parent commit, and the dependency map (`measure.ps1`). The
+window-table commit was validated in the worktree, clean at that commit; the others each in
+their own export (`git archive` into `build/snap/<label>`), so that work could go on in the
+worktree meanwhile. Logs: `build/windows-<label>-build.log`, `-tests.log`,
+`-<suite>.log`, `-digests.txt` and `-digest-diff.txt`; summary in
+`build/windows-validation.txt`; baseline in `build/windows-baseline-*.log` and
+`-digests.txt`.
+
+- Every commit builds without compiler or linker warnings and passes the full suite and the
+  seven standalone suites.
+- All 260 digest and result lines of the baseline are unchanged in every commit, among them
+  the window lists `39f36d8f0948c9bf` (34,733 lines), packet dispatch `d77aaadbb5fc63b7`,
+  effect factories `d3673c01`, effect trace `cbdaaf30ef3127d6` and EZ2STR file choice
+  `1b0232b840610959`. From `d5d292c` on there is one more line, the startup-order result.
+  The two result lines of `test_object_type` start with "PASS:", so the comparison does not
+  collect them; they are the same in every commit's log (472 classes, 139 retired, 2,717
+  comparisons, 205 accepted casts, 326 names, 306 window names), and the test asserts those
+  counts.
+- `git diff --check` passed for every commit.
+- The first export runs of `fc6fa1a`, `139d17d` and `d5d292c` ran the build and the full suite
+  correctly but not the standalone suites and the map: a loop variable of the validation
+  script had the name of the export path (PowerShell names ignore case). Their remaining steps
+  were run again on the same exports with the fixed script (`validate.ps1 -Rest`); those are
+  the results above.
+
+No live client was run.
+
+### Found, not fixed
+
+- `set_hwnd_to_game_mon` (`ui/mail/rodex_box.c`) is the Rodex manager's destroy: it destroys
+  `g_rodex` and clears it. The name is a leftover of the decompilation; nothing else calls it.
+- The characterization test does not tell `WM_GET_SLOT` from a `windows_by_id` lookup for most
+  IDs (see the detection table); the one-off check covered it for this change.
+- `make_guild_tab`, `make_store_page` and the store-page closes keep their own ID-to-slot
+  mapping next to the rows' slot column; they agree today and could read the row.
+- `test_window_id_list` still gives 0xaa an "already open" factory result, but 0xaa has no row,
+  so `make_window` returns NULL without calling it; the test's outcome is the same as before.
+- On `purist-portable`, `make_window*.c`, `window_slots.c`, `app.c`, `startup.c` and
+  `client_init.c` carry small portability edits (`INT_PTR` to `intptr_t`, `tree_less_uint` to
+  `tree_less_ptr`) inside code this branch moved; merging needs them re-applied in the moved
+  functions.
+
+### Step 4: plan (not started)
+
+Step 4 extracts the feature clusters into folders and static libraries. Proposed order:
+
+1. **The layers below the knot first**, since they never reach it (470 files, 82,116 lines at
+   `b7f7bbb`): `base` (`std`, `json`, the base files of `core`: memory, UTF-8, text, `fatal`,
+   `msg_str`), `platform` (`platform`, `fileio`), `engine` (`render`, `resources`) and
+   `widgets` (`ui/controls`, and the window manager core: `window_slots.c`, `forget_window.c`,
+   `teardown.c`, `make_window.c`, `window_table.c`). Their links need no code change, so
+   they prove the checks; the include check may still find headers from above, which the
+   map does not measure.
+2. **Then the feature clusters above the knot.** Every cluster above it (all 119 at
+   `d5d292c`) is used from outside only by registry files, so each can become a library
+   that only the composition points reference. Each `ui/<feature>` library takes its
+   `*_object_types.c` and its share of the window rows: `make_window_<cluster>.c` would be
+   split by feature directory as the object-type rows already are. The largest clusters at
+   `615505c` are `ui/social` guild (10 files, 4,446 lines), `ui/items` (6, 2,754),
+   `ui/quests` achievements (5, 2,614), `ui/character` skills (4, 2,526) and `ui/social`
+   messenger (4, 1,851).
+3. **The game packet handlers** (`game` packets: 149 files, 55,655 lines above the knot) after
+   the packet rows move next to their handlers, which the feature-tables section left for
+   this step.
+4. **The knot** (260 files: actor, session, `effects/rag`, world, the game core) stays one
+   library until more hooks cut it.
+
+The executable keeps only the composition points: `winmain.c`, `client_init.c`, `startup.c`,
+`app.c`, the packet dispatchers and the registries (`effect_registry.c`, `window_registry.c`,
+`object_type_registry.c`). They alone may reference every library.
+
+**Checks in `build.bat`.** A table `tools/libraries.txt` names each library, its path prefixes
+and the libraries it may use. Two checks run in every build:
+
+- *Includes*, before compiling: `tools/check_includes.py` reads every `#include "..."` under
+  `src` and fails the build when a file includes a header of a library it may not use. `/I`
+  cannot enforce this, because all includes are written from the one root `src`.
+- *Links*, after compiling: each library is archived with `lib` from its objects, and the
+  executable links the libraries plus the composition objects. The upward check reuses the
+  dependency map's input: `dumpbin /symbols` of each library's objects (as `symbols.bat` does,
+  only for changed objects), and a script that fails when an undefined symbol of a library is
+  defined only in a library above it or in the executable. This is the map's edge test turned
+  into a gate, and it catches data references too, except communal globals without an
+  initializer (`int g_x;`), which have no defining object.
+
+Folders: the library table can work with today's paths, so libraries and checks can come
+before any file moves. Moving files into `src/<library>/` is then a separate, scripted step.
+
+**Effect on cherry-picks from `main`.** Without moves, cherry-picks keep applying by path. The
+code restructured in step 3 conflicts wherever `main` changes it: a fix to a factory case, a
+`post_quit1` case or a row of `object_type.c` on `main` has to be re-applied by hand in the
+moved function or row file (the bodies are textually the same, so it is a copy). With moves,
+git's rename detection follows a file only when the move commit is a pure `git mv` (no edits
+in the same commit); files that were split, like `make_window.c`, do not follow.
+
+**Effect on `purist-portable`.** It is 139 commits ahead of its merge base with `purist`
+(`d725b49`) and touches 979 files under `src`, among them `make_window*.c`, `window_slots.c`,
+`app.c`, `startup.c` and `client_init.c` (small portability edits inside code this branch
+moved). Before step 4 moves files, the two lines should meet: merge `purist-portable` into
+`purist` (or rebase it) once, resolving the moved-code conflicts by re-applying its edits, and
+then run the move script on the common base. If they stay apart, the same move script run on
+both branches keeps their paths equal, so later cherry-picks between them still apply by path.
