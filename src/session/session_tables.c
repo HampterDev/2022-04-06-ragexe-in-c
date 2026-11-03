@@ -326,7 +326,7 @@ void session_init_table(struct Session *self)
     session_load_fog_parameters(self);
     session_init_lua_files(self);
     session_load_weapon_hit_waves(self);
-    ui_window_mgr_render_menu(self);
+    session_init_sprite_name_tables(self);
     session_init_pc_name_table(self);
     session_init_job_name_tables(self);
     session_load_shadow_factors(self);

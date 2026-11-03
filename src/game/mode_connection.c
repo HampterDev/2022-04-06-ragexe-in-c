@@ -56,7 +56,7 @@ struct PacketEnter {
     int account_id;
     int char_id;
     int auth_code;
-    int client_tick;
+    int reserved;
     DWORD time;
     char sex;
 };

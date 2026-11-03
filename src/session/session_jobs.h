@@ -11,7 +11,7 @@ void session_set_job(struct Session *self, int job);
 
 void session_init_job_name_tables(struct Session *self);
 
-void ui_window_mgr_render_menu(struct Session *self);
+void session_init_sprite_name_tables(struct Session *self);
 
 BYTE session_job_allows_level(struct Session *self, int job, int level);
 BYTE session_job_accepts_value(struct Session *self, int job, unsigned __int64 value);

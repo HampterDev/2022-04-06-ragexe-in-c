@@ -162,7 +162,7 @@ static const struct NameRow s_shieldNames[] = {
 
 #define BEGINNER    "초보자"
 
-void ui_window_mgr_render_menu(struct Session *self)
+void session_init_sprite_name_tables(struct Session *self)
 {
     int i;
 
