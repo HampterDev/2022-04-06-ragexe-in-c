@@ -54,7 +54,7 @@ unsigned char rodex_create_instance(void)
     return 0;
 }
 
-void set_hwnd_to_game_mon(void)
+void rodex_destroy_instance(void)
 {
     if (!g_rodex)
         return;

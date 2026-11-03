@@ -254,7 +254,7 @@ void app_destroy_singletons(void)
     twitter_destroy();
     http_client_stop();
     run_faq_web_page();
-    set_hwnd_to_game_mon();
+    rodex_destroy_instance();
     map_property_mgr_release();
     champion_monster_destroy();
     clan_info_destroy();

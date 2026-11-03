@@ -7,6 +7,6 @@ struct Rodex;
 
 void rodex_clear(struct Rodex *self);
 unsigned char rodex_create_instance(void);
-void set_hwnd_to_game_mon(void);
+void rodex_destroy_instance(void);
 
 #endif
