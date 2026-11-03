@@ -5,6 +5,7 @@
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/win_utf8.h"
 
 #define QUEST_MSG_REFRESH 0x17
 
@@ -193,7 +194,7 @@ void ui_renew_detail_quest_info_wnd_show_quest(struct UIRenewDetailQuestInfoWnd 
     if (!info->base.text[RENEW_QUEST_TEXT_TITLE].size) {
         char text[64];
         sprintf(text, "Not found Quest Info = %lu", (unsigned long)quest_id);
-        MessageBoxA(g_hMainWnd, text, "Error", MB_OK);
+        win_utf8_message_box(g_hMainWnd, text, "Error", MB_OK);
         return;
     }
     ui_window_set_show(self->ongoing, 1);

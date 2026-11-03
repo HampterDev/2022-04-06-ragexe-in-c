@@ -57,9 +57,9 @@ unsigned char c3d_attr_load(struct C3dAttr *self, const char *name)
         || !file_read(&file, magic, sizeof magic))
         goto done;
     if (memcmp(magic, "GRAT", sizeof magic) != 0) {
-        error_msg("Block Attr 이 지원되지 않는 옛버젼의 GAT "
-                 "파일입니다. 새 버젼의 RPGSTUDIO "
-                 "에서 교정하세요", 0);
+        error_msg("Block Attr \xec\x9d\xb4 \xec\xa7\x80\xec\x9b\x90\xeb\x90\x98\xec\xa7\x80 \xec\x95\x8a\xeb\x8a\x94 \xec\x98\x9b\xeb\xb2\x84\xec\xa0\xbc\xec\x9d\x98 GAT " /* "Block Attr 이 지원되지 않는 옛버젼의 GAT " */
+                 "\xed\x8c\x8c\xec\x9d\xbc\xec\x9e\x85\xeb\x8b\x88\xeb\x8b\xa4. \xec\x83\x88 \xeb\xb2\x84\xec\xa0\xbc\xec\x9d\x98 RPGSTUDIO " /* "파일입니다. 새 버젼의 RPGSTUDIO " */
+                 "\xec\x97\x90\xec\x84\x9c \xea\xb5\x90\xec\xa0\x95\xed\x95\x98\xec\x84\xb8\xec\x9a\x94" /* "에서 교정하세요" */, 0);
         goto done;
     }
     if (!file_read(&file, version, sizeof version))

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "session/session_jobs.h"
+#include "platform/win_utf8.h"
 
 struct MercenaryAI *merc_ai_construct(struct MercenaryAI *self, int kind)
 {
@@ -30,7 +31,7 @@ static void lua_error_box(lua_State *L)
     char text[0x400];
 
     sprintf(text, "%s\n", lua_tolstring(L, -1, NULL));
-    MessageBoxA(NULL, text, "AI.lua error", 0);
+    win_utf8_message_box(NULL, text, "AI.lua error", 0);
 }
 
 static void register_functions(struct MercenaryAI *self)

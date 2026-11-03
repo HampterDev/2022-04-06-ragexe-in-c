@@ -34,6 +34,7 @@
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
 #include "ui/character/selection_buttons.h"
+#include "platform/win_utf8.h"
 
 #define SELECT_DIR UI_SKIN "select_character_ver3\\"
 #define COLUMNS 5
@@ -274,16 +275,16 @@ static void read_cur_slot(struct UINewSelectCharWnd *self)
     HKEY key;
     DWORD type = REG_DWORD, size = 4, slot;
 
-    LONG failed = RegOpenKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key);
+    LONG failed = win_utf8_reg_open_key(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key);
 
     self->page = 0;
     self->cur = 0;
     if (failed)
         return;
     RegCloseKey(key);
-    if (RegOpenKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key))
+    if (win_utf8_reg_open_key(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key))
         return;
-    RegQueryValueExA(key, "CURSLOT", NULL, &type, (BYTE *)&slot, &size);
+    win_utf8_reg_query_value(key, "CURSLOT", NULL, &type, (BYTE *)&slot, &size);
     RegCloseKey(key);
     self->page = slot / (unsigned)self->storage.per_page;
     self->cur = slot % (unsigned)self->storage.per_page;
@@ -296,10 +297,10 @@ void ui_new_select_char_wnd_write_to_reg(struct UINewSelectCharWnd *self)
     HKEY key;
     DWORD disposition = 0, slot;
 
-    if (RegCreateKeyExA(CURSLOT_ROOT, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition))
+    if (win_utf8_reg_create_key(CURSLOT_ROOT, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition))
         return;
     slot = self->storage.per_page * self->page + self->cur;
-    RegSetValueExA(key, "CURSLOT", 0, REG_DWORD, (const BYTE *)&slot, 4);
+    win_utf8_reg_set_value(key, "CURSLOT", 0, REG_DWORD, (const BYTE *)&slot, 4);
     RegCloseKey(key);
 }
 

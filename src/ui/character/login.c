@@ -16,6 +16,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/quests/quests.h"
+#include "platform/win_utf8.h"
 
 struct Vec;
 struct UILoginWnd;
@@ -150,28 +151,28 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
     DWORD type, size, check_save, bitwise;
     int colour;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->id_edit, "");
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
         return;
     }
     RegCloseKey(probe);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
         return;
     size = 4;
     type = 4;
-    RegQueryValueExA(key, "CHECKSAVE", NULL, &type, (BYTE *)&check_save, &size);
+    win_utf8_reg_query_value(key, "CHECKSAVE", NULL, &type, (BYTE *)&check_save, &size);
     check_save = check_save == 1 ? 1 : 0;
-    RegQueryValueExA(key, "BITWISE", NULL, &type, (BYTE *)&bitwise, &size);
+    win_utf8_reg_query_value(key, "BITWISE", NULL, &type, (BYTE *)&bitwise, &size);
     memset(id, 0, sizeof id);
     memset(password, 0, sizeof password);
     type = REG_SZ;
     size = LOGIN_REG_PASSWORD_SIZE;
-    RegQueryValueExA(key, "PASSWORD", NULL, &type, (BYTE *)password, &size);
+    win_utf8_reg_query_value(key, "PASSWORD", NULL, &type, (BYTE *)password, &size);
     password[0x18] = 0;
     type = REG_SZ;
     size = LOGIN_REG_ID_SIZE;
-    RegQueryValueExA(key, "ID", NULL, &type, (BYTE *)id, &size);
+    win_utf8_reg_query_value(key, "ID", NULL, &type, (BYTE *)id, &size);
     id[0x32] = 0;
     password[0x18] = 0;
     self->save_id = check_save;
@@ -198,8 +199,8 @@ void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
     DWORD disposition = 0;
     DWORD check_save, bitwise;
 
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition) !=
-        ERROR_SUCCESS)
+    if (win_utf8_reg_create_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
+                                &disposition) != ERROR_SUCCESS)
         return;
     if (self->save_id)
         strcpy(id, ui_edit_ctrl_get_text(self->id_edit));
@@ -207,10 +208,10 @@ void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
         memset(id, 0, sizeof id);
     id[0x32] = 0;
     check_save = self->save_id ? 1 : 0;
-    RegSetValueExA(key, "ID", 0, REG_SZ, (const BYTE *)id, 0x33);
-    RegSetValueExA(key, "CHECKSAVE", 0, REG_DWORD, (const BYTE *)&check_save, 4);
+    win_utf8_reg_set_value(key, "ID", 0, REG_SZ, (const BYTE *)id, 0x33);
+    win_utf8_reg_set_value(key, "CHECKSAVE", 0, REG_DWORD, (const BYTE *)&check_save, 4);
     bitwise = 1;
-    RegSetValueExA(key, "BITWISE", 0, REG_DWORD, (const BYTE *)&bitwise, 4);
+    win_utf8_reg_set_value(key, "BITWISE", 0, REG_DWORD, (const BYTE *)&bitwise, 4);
     RegCloseKey(key);
 }
 

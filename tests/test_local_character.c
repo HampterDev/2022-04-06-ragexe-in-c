@@ -45,13 +45,14 @@ static LSTATUS WINAPI registry_query(HKEY key, LPCSTR name, LPDWORD reserved,
     if (registry_invalid == 4) *(int *)out = 65536;
     return ERROR_SUCCESS;
 }
-#define RegOpenKeyExA registry_open
+#include "platform/win_utf8.h"
+#define win_utf8_reg_open_key registry_open
 #define RegCloseKey registry_close
-#define RegQueryValueExA registry_query
+#define win_utf8_reg_query_value registry_query
 #include "../src/contents/character_settings_seed.c"
-#undef RegOpenKeyExA
+#undef win_utf8_reg_open_key
 #undef RegCloseKey
-#undef RegQueryValueExA
+#undef win_utf8_reg_query_value
 
 const char *skill_get_id_name(int id)
 { return id == 42 ? "player" : id == 8000 ? "homun" : "unused"; }

@@ -112,9 +112,10 @@ static int WINAPI warn(HWND owner, LPCSTR text, LPCSTR title, UINT flags)
     return IDOK;
 }
 #define CHAT_LAYOUT_FILE target
-#define MessageBoxA warn
+#include "platform/win_utf8.h"
+#define win_utf8_message_box warn
 #include "chat_layout_destroy.inc"
-#undef MessageBoxA
+#undef win_utf8_message_box
 
 static void reset(int failure, int at)
 {

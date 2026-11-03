@@ -74,9 +74,10 @@ static int message_box(HWND window, const char *text, const char *caption, UINT 
 #include "../src/core/owned_text.c"
 #undef free
 #undef malloc
-#define MessageBoxA message_box
+#include "platform/win_utf8.h"
+#define win_utf8_message_box message_box
 #include "../src/contents/lua_calls.c"
-#undef MessageBoxA
+#undef win_utf8_message_box
 
 static int observe(lua_State *state)
 {

@@ -23,6 +23,7 @@
 #include "game/chat.h"
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/win_utf8.h"
 
 void game_mode_on_exit(struct Mode *mode)
 {
@@ -64,8 +65,8 @@ void game_mode_on_exit(struct Mode *mode)
         strcat(path, "\\");
         strcat(path, string_cstr(&g_session1.serverName));
         disposition = 0;
-        if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, 0xf003f, NULL, &key, &disposition) == 0) {
-            RegSetValueExA(key, "POS", 0, REG_DWORD, (const BYTE *)&self->name_balloon_pos, 4);
+        if (win_utf8_reg_create_key(HKEY_CURRENT_USER, path, 0, NULL, 0, 0xf003f, NULL, &key, &disposition) == 0) {
+            win_utf8_reg_set_value(key, "POS", 0, REG_DWORD, (const BYTE *)&self->name_balloon_pos, 4);
             RegCloseKey(key);
         }
 

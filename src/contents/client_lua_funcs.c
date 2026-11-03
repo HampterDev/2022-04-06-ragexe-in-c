@@ -20,6 +20,7 @@
 
 #include "ui/worldmap/kafra_services.h"
 #include "core/msg_str.h"
+#include "platform/win_utf8.h"
 
 int lua_trace_value(lua_State *L);
 int lua_get_msg_string(lua_State *L);
@@ -77,7 +78,7 @@ int lua_trace_value(lua_State *L)
     struct String text;
 
     check_string(&text, L, 1);
-    MessageBoxA(0, string_cstr(&text), "Lua error", 0);
+    win_utf8_message_box(0, string_cstr(&text), "Lua error", 0);
     string_free(&text);
     return 1;
 }

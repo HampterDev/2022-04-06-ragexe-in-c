@@ -54,7 +54,7 @@ SIZE_ASSERT(MiniMapWndInfo, 0x1c);
 
 extern const char *g_regUIRectInfoKey;
 extern const char *g_regShortcutItemKey;
-#define SAKRAY "사크라이"
+#define SAKRAY "\xec\x82\xac\xed\x81\xac\xeb\x9d\xbc\xec\x9d\xb4" /* "사크라이" */
 #define SHORTCUT_SLOTS 36
 #define SHORTCUT_PAGE_SLOTS 9
 

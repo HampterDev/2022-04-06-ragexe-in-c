@@ -11,7 +11,7 @@
 #undef free
 #undef luaL_newstate
 #undef luaL_loadfile
-#undef MessageBoxA
+#undef win_utf8_message_box
 
 static struct Block { unsigned char *raw; size_t size; } blocks[2048];
 static unsigned live_blocks, allocation_count, message_count, load_count;

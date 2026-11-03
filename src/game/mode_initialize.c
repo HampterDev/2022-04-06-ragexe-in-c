@@ -40,6 +40,7 @@
 #include "game/mode_initialize.h"
 #include "actor/attr_state.h"
 #include "game/mode_msg.h"
+#include "platform/win_utf8.h"
 
 int g_isStopByLogin = 0;
 
@@ -94,12 +95,12 @@ static void read_name_balloon_pos(struct GameMode *self)
     strcat(path, "\\NameBaloon");
     strcat(path, "\\");
     strcat(path, string_cstr(&g_session1.serverName));
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == 0) {
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == 0) {
         RegCloseKey(key);
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, 0xf003f, &key) == 0) {
+        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, 0xf003f, &key) == 0) {
             size = 4;
             type = 4;
-            RegQueryValueExA(key, "POS", 0, &type, (BYTE *)&self->name_balloon_pos, &size);
+            win_utf8_reg_query_value(key, "POS", 0, &type, (BYTE *)&self->name_balloon_pos, &size);
             RegCloseKey(key);
         }
     }

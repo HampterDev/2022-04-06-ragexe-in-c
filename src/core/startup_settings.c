@@ -4,6 +4,7 @@
 #include "ui/render/graphic_setting.h"
 #include "world/world_imports.h"
 #include <string.h>
+#include "platform/win_utf8.h"
 
 char g_deviceName[40] = { 0 };
 uint32_t g_soundMode;
@@ -18,7 +19,7 @@ static void read_startup_value(HKEY key, const char *name, DWORD kind, void *val
 
     if (capacity > sizeof bytes)
         return;
-    if (RegQueryValueExA(key, name, NULL, &type, bytes, &size) != ERROR_SUCCESS
+    if (win_utf8_reg_query_value(key, name, NULL, &type, bytes, &size) != ERROR_SUCCESS
         || type != kind || size > capacity || (kind != REG_SZ && size != capacity))
         return;
     memcpy(value, bytes, size);
@@ -39,7 +40,7 @@ void read_startup_settings(void)
     g_soundMode = 2;
     g_sound_speaker_type = 0;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
         return;
 
     read_startup_value(key, "ISVOODOO", REG_DWORD, &g_isVoodoo, sizeof g_isVoodoo);

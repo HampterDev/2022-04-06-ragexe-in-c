@@ -4,6 +4,7 @@
 #include <string.h>
 #include "render/gfx.h"
 #include "core/app.h"
+#include "platform/win_utf8.h"
 
 GUID g_driverGuid;
 
@@ -27,17 +28,17 @@ int stale_guid(void)
             memset(&g_driverGuid, 0, sizeof(GUID));
             {
                 HKEY key;
-                if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, REG_OPTION_NON_VOLATILE,
-                                    KEY_SET_VALUE, NULL, &key, NULL) == ERROR_SUCCESS) {
-                    RegSetValueExA(key, "GUIDDRIVER", 0, REG_BINARY, (const BYTE *)&g_driverGuid, sizeof(GUID));
+                if (win_utf8_reg_create_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, REG_OPTION_NON_VOLATILE,
+                                            KEY_SET_VALUE, NULL, &key, NULL) == ERROR_SUCCESS) {
+                    win_utf8_reg_set_value(key, "GUIDDRIVER", 0, REG_BINARY, (const BYTE *)&g_driverGuid, sizeof(GUID));
                     RegCloseKey(key);
                 }
             }
-            MessageBoxA(NULL,
-                        "The display device this client had saved is no longer available, so it has "
-                        "been reset to your primary display.\r\n\r\n"
-                        "Choose a display device in the in-game graphics settings.",
-                        "Display device reset", MB_ICONEXCLAMATION);
+            win_utf8_message_box(NULL,
+                                 "The display device this client had saved is no longer available, so it has "
+                                 "been reset to your primary display.\r\n\r\n"
+                                 "Choose a display device in the in-game graphics settings.",
+                                 "Display device reset", MB_ICONEXCLAMATION);
         }
     }
     return g_isVoodoo;

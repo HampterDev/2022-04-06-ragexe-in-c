@@ -5,12 +5,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/msg_str.h"
+#include "platform/win_utf8.h"
 
 const char *g_shortcutListSubkey = "\\ShortCutList";
 
 static const int s_shortcutMsg[CHAT_MACRO_COUNT] = { 0x220, 0x221, 0x222, 0x223, 0x225, 0x226, 0x227, 0x228, 0x229, 0x22a };
 static const char *const s_shortcutEmotes[CHAT_MACRO_COUNT] = {
-    "/!", "/?", "/기쁨", "/하트", "/땀", "/아하", "/짜증", "/화", "/돈", "/..."
+    "/!", "/?",
+    "/\xea\xb8\xb0\xec\x81\xa8" /* "/기쁨" */,
+    "/\xed\x95\x98\xed\x8a\xb8" /* "/하트" */,
+    "/\xeb\x95\x80" /* "/땀" */,
+    "/\xec\x95\x84\xed\x95\x98" /* "/아하" */,
+    "/\xec\xa7\x9c\xec\xa6\x9d" /* "/짜증" */,
+    "/\xed\x99\x94" /* "/화" */,
+    "/\xeb\x8f\x88" /* "/돈" */,
+    "/..."
 };
 
 void session_init_short_cut_texts(struct Session *self)
@@ -29,12 +38,12 @@ void session_init_short_cut_texts(struct Session *self)
     strcpy_s(path, sizeof path, g_registryKeyPath);
     strcat_s(path, sizeof path, g_shortcutListSubkey);
     strcat_s(path, sizeof path, "\\");
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
         for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
             _itoa(i, name, 10);
             size = sizeof value;
             memset(value, 0, sizeof value);
-            if (RegQueryValueExA(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS
+            if (win_utf8_reg_query_value(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS
                 && type == REG_SZ) {
                 value[sizeof value - 1] = 0;
                 if (!owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;

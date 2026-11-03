@@ -75,7 +75,7 @@ static LSTATUS WINAPI read_value(HKEY key, LPCSTR name, LPDWORD reserved, LPDWOR
     switch (atoi(name)) {
     case 0: text = "custom"; break;
     case 1: text = ""; break;
-    case 2: text = "/기쁨"; break;
+    case 2: text = "/\xea\xb8\xb0\xec\x81\xa8"; break; /* /기쁨 in UTF-8, as the registry call returns it */
     case 3: *type = REG_BINARY; text = "ignored"; break;
     case 4:
         memcpy(value, "unterminated", 12); *size = 12; return ERROR_SUCCESS;
@@ -96,12 +96,13 @@ char *msg_str(int id)
     sprintf(text, "default-%x", id);
     return text;
 }
-#define RegOpenKeyExA read_open
-#define RegQueryValueExA read_value
+#include "platform/win_utf8.h"
+#define win_utf8_reg_open_key read_open
+#define win_utf8_reg_query_value read_value
 #define RegCloseKey read_close
 #include "../src/session/chat_macro_settings.c"
-#undef RegOpenKeyExA
-#undef RegQueryValueExA
+#undef win_utf8_reg_open_key
+#undef win_utf8_reg_query_value
 #undef RegCloseKey
 
 static void clear_macros(struct Session *session)

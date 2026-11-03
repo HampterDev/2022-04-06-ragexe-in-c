@@ -9,11 +9,12 @@
 #include <windows.h>
 #include "platform/language.h"
 #include "ui/render/graphic_setting.h"
+#include "platform/win_utf8.h"
 
 void session_startup(struct Session *self)
 {
     if (!item_info_load())
-        MessageBoxA(NULL, "ItemInfo file Init", "Error", 0);
+        win_utf8_message_box(NULL, "ItemInfo file Init", "Error", 0);
     srand((unsigned)_time32(NULL));
     session_init_table(self);
     map_info_load(g_mapInfo);

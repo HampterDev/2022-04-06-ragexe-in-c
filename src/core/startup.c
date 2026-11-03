@@ -32,6 +32,7 @@
 #include "ui/social/party_board.h"
 #include "ui/render/graphic_setting.h"
 #include "contents/sound.h"
+#include "platform/win_utf8.h"
 
 HWND g_hMainWnd;
 
@@ -108,7 +109,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
         return init_failed(out, "CTimeScheduler::CreateInstance()");
     town_info_create();
     if (!town_info_load())
-        MessageBoxA(0, "TownInfo file Init", "Error", 0);
+        win_utf8_message_box(0, "TownInfo file Init", "Error", 0);
     if (!icon_sheet_create())
         return init_failed(out, "CCooltimerMgr::CreateInstance()");
     if (!renew_quest_create())
@@ -116,7 +117,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
     renew_quest_load();
     champion_monster_create();
     if (!champion_monster_load())
-        MessageBoxA(0, "ChampionMonster file Init", "Error", 0);
+        win_utf8_message_box(0, "ChampionMonster file Init", "Error", 0);
     if (!map_property_mgr_create())
         return init_failed(out, "CMapPropertyMgr::CreateInstance()");
     if (!rodex_create_instance())

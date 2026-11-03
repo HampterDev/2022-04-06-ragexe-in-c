@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <math.h>
+#include "platform/win_utf8.h"
 
 static const char unsupported_caption[] = "notsuppot";
 
@@ -172,7 +173,7 @@ static void ensure_format(int fmt)
     if (fmt != 0 && fmt != 1 && fmt != 4 && fmt != 2)
         error_msg("Create Texture::Unsupported pixelformat", 0);
     if (!gfx_texture_format_ok(fmt))
-        error_msg("GFC 를 구동할 수 없는 비디오시스템입니다", 0);
+        error_msg("GFC \xeb\xa5\xbc \xea\xb5\xac\xeb\x8f\x99\xed\x95\xa0 \xec\x88\x98 \xec\x97\x86\xeb\x8a\x94 \xeb\xb9\x84\xeb\x94\x94\xec\x98\xa4\xec\x8b\x9c\xec\x8a\xa4\xed\x85\x9c\xec\x9e\x85\xeb\x8b\x88\xeb\x8b\xa4" /* "GFC 를 구동할 수 없는 비디오시스템입니다" */, 0);
 }
 
 static void fit(int req, int have, int *out)
@@ -267,9 +268,9 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
 static void bump_caps_check(void)
 {
     if (!g_gfxCaps.bumpEnv)
-        MessageBoxA(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
+        win_utf8_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
     if (!g_gfxCaps.bumpEnvLuminance)
-        MessageBoxA(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
+        win_utf8_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
 }
 
 int texture_create_bump(struct Texture *self, int width, int height)

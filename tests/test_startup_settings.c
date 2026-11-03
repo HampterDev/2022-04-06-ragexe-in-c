@@ -87,12 +87,13 @@ static LONG WINAPI read_close(HKEY key)
     ++closes;
     return ERROR_SUCCESS;
 }
-#define RegOpenKeyExA read_open
-#define RegQueryValueExA read_value
+#include "platform/win_utf8.h"
+#define win_utf8_reg_open_key read_open
+#define win_utf8_reg_query_value read_value
 #define RegCloseKey read_close
 #include "../src/core/startup_settings.c"
-#undef RegOpenKeyExA
-#undef RegQueryValueExA
+#undef win_utf8_reg_open_key
+#undef win_utf8_reg_query_value
 #undef RegCloseKey
 
 int stale_guid(void)

@@ -15,9 +15,10 @@ static int message_box(HWND window, const char *text, const char *caption, UINT 
     ++errors;
     return 0;
 }
-#define MessageBoxA message_box
+#include "platform/win_utf8.h"
+#define win_utf8_message_box message_box
 #include "../src/contents/lua_calls.c"
-#undef MessageBoxA
+#undef win_utf8_message_box
 #include "headgear_names.inc"
 
 static void run(lua_State *state, const char *text)

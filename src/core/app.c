@@ -29,6 +29,7 @@
 #include "session/session_options.h"
 #include "ui/mail/rodex_box.h"
 #include "ui/social/party_board.h"
+#include "platform/win_utf8.h"
 
 HINSTANCE g_hInstance;
 int g_quitRequested;
@@ -140,7 +141,7 @@ int app_create_window(HINSTANCE instance)
     g_hMainWnd = CreateWindowExW(0, class_name, class_name, 0x2c20000, x, y,
                                    rect.right - rect.left, rect.bottom - rect.top, 0, 0, instance, 0);
     if (!g_hMainWnd) {
-        MessageBoxA(0, "Window Creation Failed", "ERROR", 0);
+        win_utf8_message_box(0, "Window Creation Failed", "ERROR", 0);
         return 0;
     }
     ShowWindow(g_hMainWnd, SW_SHOW);

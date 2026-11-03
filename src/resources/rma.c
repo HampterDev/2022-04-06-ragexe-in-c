@@ -174,7 +174,7 @@ static int rma_action(struct RmaData *data, char *cursor, size_t *capacity)
     action = rma_find_action(data, value.index);
     if (action) {
         if (action->a != -1)
-            error_msg("중복되는 액션이 있음", 0);
+            error_msg("\xec\xa4\x91\xeb\xb3\xb5\xeb\x90\x98\xeb\x8a\x94 \xec\x95\xa1\xec\x85\x98\xec\x9d\xb4 \xec\x9e\x88\xec\x9d\x8c" /* "중복되는 액션이 있음" */, 0);
         if (!value.frame_count) {
             value.frames = action->frames;
             value.frame_count = action->frame_count;

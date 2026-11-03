@@ -16,6 +16,7 @@
 #include "render/screen_draw.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/win_utf8.h"
 
 struct UINewChatWnd;
 struct UIWindow;
@@ -125,9 +126,9 @@ void ui_new_chat_wnd_destroy(struct UIWindow *window)
     ui_frame_wnd_destruct(&self->frame);
     mem_free(self);
     if (!saved)
-        MessageBoxA(NULL, "Could not save your chat layout.\n"
-                    "Your latest layout changes will not be restored next time.",
-                    "Chat layout", MB_OK | MB_ICONWARNING | MB_TASKMODAL);
+        win_utf8_message_box(NULL, "Could not save your chat layout.\n"
+                             "Your latest layout changes will not be restored next time.",
+                             "Chat layout", MB_OK | MB_ICONWARNING | MB_TASKMODAL);
 }
 
 void ui_new_chat_wnd_resize(struct UIWindow *window, int width, int height)

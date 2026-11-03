@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include "core/app.h"
 #include "platform/language.h"
+#include "platform/win_utf8.h"
 
 int session_get_real_weapon_id(int weapon)
 {
@@ -94,6 +95,11 @@ static void session_load_navigation_lua(struct Session *self)
     navi_manager_load_tables(&g_navi, self->luaState);
 }
 
+/* "querytransparentiteminfo // %d 읽기 실패". An array, not a literal format: the compiler
+   would check a literal format in the CP949 execution charset. */
+static const char transparent_item_failed[] =
+    "querytransparentiteminfo // %d \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8";
+
 void session_load_transparent_items(struct Session *self)
 {
     int id;
@@ -106,8 +112,8 @@ void session_load_transparent_items(struct Session *self)
                         id, &key, &lo, &hi, &period)) {
             char text[0x104];
             memset(text, 0, sizeof(text));
-            sprintf(text, "querytransparentiteminfo // %d 읽기 실패", id);
-            MessageBoxA(g_hMainWnd, text, "Error", 0);
+            sprintf(text, transparent_item_failed, id);
+            win_utf8_message_box(g_hMainWnd, text, "Error", 0);
             return;
         }
         if (key == 0)
@@ -179,7 +185,7 @@ void session_init_lua_files(struct Session *self)
         run_lua(self, "Lua Files\\SprEditInfo\\_New_SmallLayerDir_female");
         self->new_layer_table_loaded = 1;
     } else {
-        MessageBoxA(NULL, "NO!! 2D_LAYER_NEW_TABLE", "알림", 0);
+        win_utf8_message_box(NULL, "NO!! 2D_LAYER_NEW_TABLE", "\xec\x95\x8c\xeb\xa6\xbc" /* "알림" */, 0);
     }
     run_lua(self, "Lua Files\\DataInfo\\NpcLocationRadius");
     run_lua(self, "Lua Files\\DataInfo\\NpcLocationRadius_F");

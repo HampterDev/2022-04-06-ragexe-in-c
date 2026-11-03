@@ -6,6 +6,7 @@
 #include "skills/skill_info.h"
 #include <stdio.h>
 #include <string.h>
+#include "platform/win_utf8.h"
 
 static int read_skill_level(HKEY key, int skill_id)
 {
@@ -15,7 +16,7 @@ static int read_skill_level(HKEY key, int skill_id)
 
     memset(value_name, 0, sizeof value_name);
     sprintf(value_name, "%s%d", skill_get_id_name(skill_id), g_session1.shortcutCharSlot);
-    if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS
+    if (win_utf8_reg_query_value(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS
         && type == REG_DWORD && size == sizeof level && level >= 0 && level <= 65535
         && skill_info_is_level_used(skill_id))
         return level;
@@ -30,7 +31,7 @@ void character_settings_seed(void)
 
     strcpy(path, g_registryKeyPath);
     strcat(path, "\\SkillUseLevelInfo");
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
         return;
     for (id = 1; id < 0x157c; id++)
         player_skill_bundle_set_chosen_level(&g_session1.skills, id, read_skill_level(key, id));

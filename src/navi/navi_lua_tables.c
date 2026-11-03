@@ -23,15 +23,40 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "core/app.h"
+#include "platform/win_utf8.h"
 
 #define NAVI_MAX_MAPS       0x270f
 #define NAVI_MAX_OBJECTS    0x1869f
 #define NAVI_MAX_DISTANCE   0xf423f
 #define NAVI_MAX_SCROLLS    0xc8
 
+/* Lua read errors. Arrays, not literal formats: the compiler would check a literal
+   format in the CP949 execution charset. */
+/* "Map 루아 읽기 실패 %d" */
+static const char map_failed[] =
+    "Map \xeb\xa3\xa8\xec\x95\x84 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "Npc 루아 읽기 실패 %d" */
+static const char npc_failed[] =
+    "Npc \xeb\xa3\xa8\xec\x95\x84 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "몬스터 루아 읽기 실패 %d" */
+static const char monster_failed[] =
+    "\xeb\xaa\xac\xec\x8a\xa4\xed\x84\xb0 \xeb\xa3\xa8\xec\x95\x84 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "Link 루아 읽기 실패 %d" */
+static const char link_failed[] =
+    "Link \xeb\xa3\xa8\xec\x95\x84 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "워프 길 정보 읽기 실패 %d" */
+static const char warp_failed[] =
+    "\xec\x9b\x8c\xed\x94\x84 \xea\xb8\xb8 \xec\xa0\x95\xeb\xb3\xb4 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "Npc 워프 길 정보 읽기 실패 %d" */
+static const char npc_warp_failed[] =
+    "Npc \xec\x9b\x8c\xed\x94\x84 \xea\xb8\xb8 \xec\xa0\x95\xeb\xb3\xb4 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+/* "Scroll 정보 읽기 실패 %d" */
+static const char scroll_failed[] =
+    "Scroll \xec\xa0\x95\xeb\xb3\xb4 \xec\x9d\xbd\xea\xb8\xb0 \xec\x8b\xa4\xed\x8c\xa8 %d";
+
 static void error_box(char *text, const char *title)
 {
-    MessageBoxA(g_hMainWnd, text, title, 0);
+    win_utf8_message_box(g_hMainWnd, text, title, 0);
 }
 
 unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
@@ -59,7 +84,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         name = NULL;
         if (!client_lua_call(lua, "queryNavi_MapInfo", "d>ssddd",
                                i, &mapName, &name, &id, &x, &y)) {
-            sprintf(message, "Map 루아 읽기 실패 %d", i);
+            sprintf(message, map_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -84,7 +109,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         sprite = 0;
         if (!client_lua_call(lua, "queryNavi_NpcInfo", "d>sdddssdd",
                                i, &mapName, &id, &type, &sprite, &name, &alias, &x, &y)) {
-            sprintf(message, "Npc 루아 읽기 실패 %d", i);
+            sprintf(message, npc_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -113,7 +138,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         sprite = 0;
         if (!client_lua_call(lua, "queryNavi_MobInfo", "d>sdddssdd",
                                i, &mapName, &id, &type, &sprite, &name, &alias, &x, &y)) {
-            sprintf(message, "몬스터 루아 읽기 실패 %d", i);
+            sprintf(message, monster_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -146,7 +171,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         if (!client_lua_call(lua, "queryNavi_LinkInfo", "d>sdddssddsdd",
                                i, &mapName, &id, &type, &sprite, &name, &alias, &x, &y,
                                &destName, &destX, &destY)) {
-            sprintf(message, "Link 루아 읽기 실패 %d", i);
+            sprintf(message, link_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -198,7 +223,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         count = 0;
         if (!client_lua_call(lua, "queryNavi_Distance_Map", "d>sd",
                                i, &mapName, &count)) {
-            sprintf(message, "워프 길 정보 읽기 실패 %d", i);
+            sprintf(message, warp_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -255,7 +280,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         count = 0;
         if (!client_lua_call(lua, "queryNavi_NpcDistance_Map", "d>sd",
                                i, &mapName, &count)) {
-            sprintf(message, "Npc 워프 길 정보 읽기 실패 %d", i);
+            sprintf(message, npc_warp_failed, i);
             error_box(message, "Error");
             break;
         }
@@ -314,7 +339,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         if (!client_lua_call(lua, "queryNavi_Scroll", "d>sddsdd",
                                i, &name, &id, &sprite, &destName, &destX, &destY)) {
             memset(scrollMessage, 0, sizeof(scrollMessage));
-            sprintf(scrollMessage, "Scroll 정보 읽기 실패 %d", i);
+            sprintf(scrollMessage, scroll_failed, i);
             error_box(scrollMessage, "Error");
             break;
         }

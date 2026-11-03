@@ -10,4 +10,5 @@ int WINAPI test_message_box(HWND window, LPCSTR message, LPCSTR caption, UINT fl
 #define free test_heap_free
 #define luaL_newstate test_lua_newstate
 #define luaL_loadfile test_lua_loadfile
-#define MessageBoxA test_message_box
+#include "platform/win_utf8.h"
+#define win_utf8_message_box test_message_box

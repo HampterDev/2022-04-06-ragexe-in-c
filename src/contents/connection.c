@@ -7,6 +7,7 @@
 #include "std/std.h"
 #include "contents/ui_window_mgr.h"
 #include <mmsystem.h>
+#include "platform/win_utf8.h"
 
 typedef int (__stdcall *Ws2TransferFn)(SOCKET s, char *buf, int len, int flags);
 
@@ -28,11 +29,11 @@ char connection_startup(void)
     g_ws2_recv = (Ws2TransferFn)GetProcAddress(g_ws2_32, "recv");
     if (!g_ws2_send) {
         g_ws2_send = (Ws2TransferFn)send;
-        MessageBoxA(0, "GetProcAddress(\"send\") Failed.", "Module Hooking Error", 0);
+        win_utf8_message_box(0, "GetProcAddress(\"send\") Failed.", "Module Hooking Error", 0);
     }
     if (!g_ws2_recv) {
         g_ws2_recv = (Ws2TransferFn)recv;
-        MessageBoxA(0, "GetProcAddress(\"recv\") Failed.", "Module Hooking Error", 0);
+        win_utf8_message_box(0, "GetProcAddress(\"recv\") Failed.", "Module Hooking Error", 0);
     }
     rag_connection_instance();
     return 1;

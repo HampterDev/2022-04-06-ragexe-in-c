@@ -41,26 +41,26 @@ static int world_load_from(struct World *self, struct C3dWorldRes *rsw)
     renderer_set_light(g_renderer, lighting.direction, lighting.diffuse, lighting.ambient);
 
     if (rsw->gatFile[0] == 0) {
-        error_msg("attr 파일이 rsw 내에 지정되어 "
-                 "있지 않습니다", 0);
+        error_msg("attr \xed\x8c\x8c\xec\x9d\xbc\xec\x9d\xb4 rsw \xeb\x82\xb4\xec\x97\x90 \xec\xa7\x80\xec\xa0\x95\xeb\x90\x98\xec\x96\xb4 " /* "attr 파일이 rsw 내에 지정되어 " */
+                 "\xec\x9e\x88\xec\xa7\x80 \xec\x95\x8a\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4" /* "있지 않습니다" */, 0);
         return 0;
     }
     self->attr = res_mgr_get(g_resMgr(), rsw->gatFile);
     if (!self->attr) {
-        error_msg("attr 파일 읽기에 실패", 0);
+        error_msg("attr \xed\x8c\x8c\xec\x9d\xbc \xec\x9d\xbd\xea\xb8\xb0\xec\x97\x90 \xec\x8b\xa4\xed\x8c\xa8" /* "attr 파일 읽기에 실패" */, 0);
         return 0;
     }
     self->attr->zoom = 5;
     self->nearRange *= self->attr->zoom;
 
     if (rsw->gndFile[0] == 0) {
-        error_msg("gnd 파일이 rsw 내에 지정되어 "
-                 "있지 않습니다", 0);
+        error_msg("gnd \xed\x8c\x8c\xec\x9d\xbc\xec\x9d\xb4 rsw \xeb\x82\xb4\xec\x97\x90 \xec\xa7\x80\xec\xa0\x95\xeb\x90\x98\xec\x96\xb4 " /* "gnd 파일이 rsw 내에 지정되어 " */
+                 "\xec\x9e\x88\xec\xa7\x80 \xec\x95\x8a\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4" /* "있지 않습니다" */, 0);
         return 0;
     }
     gnd = res_mgr_get(g_resMgr(), rsw->gndFile);
     if (!gnd) {
-        error_msg("ground에 NULL이 들어왔습니다.", 0);
+        error_msg("ground\xec\x97\x90 NULL\xec\x9d\xb4 \xeb\x93\xa4\xec\x96\xb4\xec\x99\x94\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* "ground에 NULL이 들어왔습니다." */, 0);
         return 0;
     }
 
@@ -164,7 +164,7 @@ int world_load(struct World *self)
     string_assign_cstr(&name, text);
     rsw = res_mgr_get(g_resMgr(), string_cstr(&name));
     if (!rsw) {
-        error_msg("world에 NULL값이 들어왔습니다", 0);
+        error_msg("world\xec\x97\x90 NULL\xea\xb0\x92\xec\x9d\xb4 \xeb\x93\xa4\xec\x96\xb4\xec\x99\x94\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4" /* "world에 NULL값이 들어왔습니다" */, 0);
     } else {
         loaded = world_load_from(self, rsw);
     }

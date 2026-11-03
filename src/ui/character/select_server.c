@@ -15,6 +15,7 @@
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_talk.h"
+#include "platform/win_utf8.h"
 
 struct Vec;
 struct UISelectServerWnd;
@@ -375,10 +376,10 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             value = string_cstr(&self->server_value);
             self->server = self->list->list.selected;
             disposition = 0;
-            if (RegCreateKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
-                                &disposition) != ERROR_SUCCESS)
+            if (win_utf8_reg_create_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
+                                        &disposition) != ERROR_SUCCESS)
                 return 0;
-            RegSetValueExA(key, value, 0, REG_DWORD, (const BYTE *)&self->server, 4);
+            win_utf8_reg_set_value(key, value, 0, REG_DWORD, (const BYTE *)&self->server, 4);
             RegCloseKey(key);
             return 0;
         case SELECT_SERVER_ID_CANCEL:
@@ -406,14 +407,14 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         string_assign_cstr(&self->server_value, (const char *)val2);
         value = string_cstr(&self->server_value);
         self->server = CLIENT_LANGTYPE;
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
+        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
             return 0;
         RegCloseKey(probe);
-        if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
             return 0;
         size = 4;
         type = 4;
-        RegQueryValueExA(key, value, NULL, &type, (BYTE *)&self->server, &size);
+        win_utf8_reg_query_value(key, value, NULL, &type, (BYTE *)&self->server, &size);
         RegCloseKey(key);
         return 0;
     case SELECT_SERVER_MSG_PLACE_EXIT:

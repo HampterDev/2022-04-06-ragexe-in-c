@@ -5,6 +5,7 @@
 #include "session/session_names.h"
 #include "session/session_options.h"
 #include "session/session_state.h"
+#include "platform/win_utf8.h"
 
 const char *g_regShortcutItemKey = "\\ShortcutItem";
 const char *g_regUIRectInfoKey = "\\UIRectInfo";
@@ -26,10 +27,10 @@ static int open_twice(const char *path, HKEY *key)
 {
     HKEY probe;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
         return 0;
     RegCloseKey(probe);
-    return RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, key) == ERROR_SUCCESS;
+    return win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, key) == ERROR_SUCCESS;
 }
 
 void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
@@ -53,7 +54,7 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
             memset(name, 0, sizeof name);
             is_skill = 0;
             g_session1.shortenSkillPage = (BYTE)(slot / SHORTCUT_PAGE_SLOTS);
-            if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)name, &size) != ERROR_SUCCESS)
+            if (win_utf8_reg_query_value(key, value_name, NULL, &type, (BYTE *)name, &size) != ERROR_SUCCESS)
                 session_set_shorten_item_name(&g_session1, "nothing", slot);
             else if (name[0] == '#')
                 is_skill = 1;
@@ -64,7 +65,7 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
             size = 4;
             sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
             level = 0;
-            if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS) {
+            if (win_utf8_reg_query_value(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS) {
                 session_set_shorten_skill_id(&g_session1, level, slot);
             } else {
                 session_set_shorten_skill_id(&g_session1, 0, slot);
@@ -78,7 +79,7 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
     g_session1.shortenSkillPage = 0;
 }
 
-#define GET(name, field) RegQueryValueExA(key, name, NULL, &type, (BYTE *)(field), &size)
+#define GET(name, field) win_utf8_reg_query_value(key, name, NULL, &type, (BYTE *)(field), &size)
 #define GET_RECT(name, info) \
     (GET(name ".X", &(info)->x), GET(name ".Y", &(info)->y), \
      GET(name ".W", &(info)->width), GET(name ".H", &(info)->height))
@@ -94,12 +95,12 @@ void ui_window_mgr_init_ui_rect_info_from_reg(struct UIWindowMgr *self)
 
     strcpy(path, g_registryKeyPath);
     strcat(path, g_regUIRectInfoKey);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
         ui_window_mgr_set_default_rect_info(self);
         return;
     }
     RegCloseKey(probe);
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
         return;
 
     type = 4;
@@ -241,22 +242,22 @@ void ui_window_mgr_write_shortcut_item_info_to_reg(struct UIWindowMgr *self)
 
     (void)self;
     shortcut_key_path(path);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
+    if (win_utf8_reg_create_key(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
         != ERROR_SUCCESS)
         return;
     for (slot = 0; slot < SHORTCUT_SLOTS; slot++) {
         memset(name, 0, sizeof name);
         strcpy(name, session_get_shorten_item_name(&g_session1, slot));
         sprintf(value_name, "SITEM%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
-        RegSetValueExA(key, value_name, 0, REG_SZ, (const BYTE *)name, 0x20);
+        win_utf8_reg_set_value(key, value_name, 0, REG_SZ, (const BYTE *)name, 0x20);
         skill_id = session_get_shorten_skill_id(&g_session1, slot);
         sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
-        RegSetValueExA(key, value_name, 0, REG_DWORD, (const BYTE *)&skill_id, 4);
+        win_utf8_reg_set_value(key, value_name, 0, REG_DWORD, (const BYTE *)&skill_id, 4);
     }
     RegCloseKey(key);
 }
 
-#define SET(name, field) RegSetValueExA(key, name, 0, REG_DWORD, (const BYTE *)(field), 4)
+#define SET(name, field) win_utf8_reg_set_value(key, name, 0, REG_DWORD, (const BYTE *)(field), 4)
 #define SET_RECT(name, info) \
     (SET(name ".X", &(info)->x), SET(name ".Y", &(info)->y), \
      SET(name ".W", &(info)->width), SET(name ".H", &(info)->height))
@@ -271,7 +272,7 @@ void ui_window_mgr_write_ui_rect_info_to_reg(struct UIWindowMgr *self)
 
     strcpy(path, g_registryKeyPath);
     strcat(path, g_regUIRectInfoKey);
-    if (RegCreateKeyExA(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
+    if (win_utf8_reg_create_key(HKEY_CURRENT_USER, path, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition)
         != ERROR_SUCCESS)
         return;
     SET("m_minimapZoomWnd", &self->minimap_zoom);

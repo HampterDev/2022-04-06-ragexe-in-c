@@ -8,6 +8,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#include "platform/win_utf8.h"
 
 struct OwnedItem {
     struct ItemDefinition value;
@@ -343,7 +344,7 @@ int item_info_load(void)
     ok = lua_cpcall(L, load_script, &builder) == 0;
     if (!ok) {
         const char *error = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : NULL;
-        MessageBoxA(NULL, error ? error : "Item info script failed", "CItemInfoMgr", 0);
+        win_utf8_message_box(NULL, error ? error : "Item info script failed", "CItemInfoMgr", 0);
     }
     lua_close(L);
     free(builder.index);

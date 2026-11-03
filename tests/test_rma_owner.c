@@ -50,7 +50,9 @@ struct Res *res_construct(struct Res *base)
 void error_msg(const char *text, int flags)
 {
     assert(!flags);
-    if (!strcmp(text,"중복되는 액션이 있음")) ++duplicate_errors;
+    /* "중복되는 액션이 있음" in UTF-8 */
+    if (!strcmp(text,"\xec\xa4\x91\xeb\xb3\xb5\xeb\x90\x98\xeb\x8a\x94 \xec\x95\xa1\xec\x85\x98\xec\x9d\xb4 \xec\x9e\x88\xec\x9d\x8c"))
+        ++duplicate_errors;
     else { assert(!strcmp(text,"Syntax Error in Rma")); ++errors; }
 }
 BYTE *game_file_mgr_get_data(struct GameFileMgr *manager, const char *name, int *size, BYTE disk)

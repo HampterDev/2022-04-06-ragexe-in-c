@@ -77,6 +77,8 @@ call "%ROOT%\tests\build_text_format.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_utf8.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%ROOT%\tests\build_win_utf8.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_text_runs.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_text_render.bat"
@@ -145,7 +147,7 @@ call "%ROOT%\tests\build_lua_calls.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_objects.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\navi\navi_containers.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\navigation_object_support.c" /Fe:test_navigation_objects.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_navigation_objects.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\navi\navi_containers.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\navigation_object_support.c" /Fe:test_navigation_objects.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 test_navigation_objects.exe
@@ -226,7 +228,7 @@ cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%RO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_once.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_message_tables.c" "%ROOT%\src\iteminfo\item_loader.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\message_tables_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\string.c" /Fe:test_message_tables.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_message_tables.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\src\iteminfo\item_loader.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\message_tables_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\string.c" /Fe:test_message_tables.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_message_tables.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -361,7 +363,7 @@ if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 
 test_mode_lifecycle.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ai_context.c" "%ROOT%\src\login\merc_ai.c" "%ROOT%\src\login\merc_ai_cmds.c" "%ROOT%\src\ui\hotkeys\session_option_map.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\std\tree.c" "%ROOT%\build\vendor\lua514.lib" winmm.lib user32.lib /Fe:test_ai_context.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_ai_context.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\src\login\merc_ai.c" "%ROOT%\src\login\merc_ai_cmds.c" "%ROOT%\src\ui\hotkeys\session_option_map.c" "%ROOT%\src\core\numeric.c" "%ROOT%\src\std\tree.c" "%ROOT%\build\vendor\lua514.lib" winmm.lib user32.lib /Fe:test_ai_context.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_ai_context.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
@@ -511,7 +513,7 @@ cl /nologo /std:c11 /source-charset:utf-8 /execution-charset:.949 /W3 /WX /O2 /M
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_sound_manager.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_item_definitions.c" "%ROOT%\tests\item_info_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\vec.c" "%ROOT%\build\vendor\lua514.lib" /Fe:test_item_definitions.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_item_definitions.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\tests\item_info_support.c" "%ROOT%\tests\weather_state_support.c" "%ROOT%\src\std\vec.c" "%ROOT%\build\vendor\lua514.lib" /Fe:test_item_definitions.exe /link /OPT:REF user32.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_item_definitions.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)

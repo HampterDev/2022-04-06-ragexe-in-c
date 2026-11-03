@@ -64,7 +64,8 @@ static int load_file(lua_State *L, const char *name)
 #define calloc checked_calloc
 #define realloc checked_realloc
 #define free checked_free
-#define MessageBoxA error_box
+#include "platform/win_utf8.h"
+#define win_utf8_message_box error_box
 #define luaL_loadfile load_file
 #define luaL_newstate new_state
 #include "../src/contents/item_info_mgr.c"
@@ -74,7 +75,7 @@ static int load_file(lua_State *L, const char *name)
 #undef calloc
 #undef realloc
 #undef free
-#undef MessageBoxA
+#undef win_utf8_message_box
 #undef luaL_loadfile
 #undef luaL_newstate
 

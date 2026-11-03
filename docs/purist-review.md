@@ -8985,3 +8985,78 @@ Validation:
 - `git diff --check` passed.
 
 The pre-change tree is in `build/before-utf8-literals`. No live client was run.
+
+## UTF-8 message boxes and registry (2026-11-03)
+
+Decision: the third phase-B step of the [UTF-8 switch](#utf-8-text-module-2026-11-03),
+approved on 2026-11-03. The client called `MessageBoxA` and the ANSI registry functions,
+which take text in the Windows code page. With UTF-8 strings every message box with
+non-ASCII text showed mojibake, and registry strings were converted through the code
+page: the registry stores UTF-16, so a chat macro the setup tool saved on Korean
+Windows read back as `?` on another locale, and the client's UTF-8 strings were stored
+as mojibake.
+
+What changed:
+
+- New `platform/win_utf8.c` with drop-in replacements that keep the ANSI signatures:
+  `win_utf8_message_box`, `win_utf8_reg_open_key`, `win_utf8_reg_create_key`,
+  `win_utf8_reg_query_value` and `win_utf8_reg_set_value`. They convert UTF-8 to UTF-16
+  and call the W functions. Text that is not valid UTF-8 is decoded as CP949, so an
+  error that names a resource file still shows its name. String values (`REG_SZ`,
+  `REG_EXPAND_SZ`) are read as UTF-16 and returned as UTF-8; one that does not fit
+  gives `ERROR_MORE_DATA` with the size it needs, as the A call does. A string written
+  is the text up to its first NUL within the given size. Other value types pass
+  through.
+- All 32 `MessageBoxA` calls, `error_msg` among them, and all 45 registry calls in 28
+  files use them: chat macros, the saved login ID, the shortcut names and their key
+  path (which holds the server name), window rectangles, the selected server and slot,
+  the name-balloon position and the display GUID. No ANSI message box or registry call
+  is left.
+- The Korean literals that went to these calls are UTF-8 escapes: the navigation
+  tables' Lua read errors, the GFC, GAT attribute, model and action errors, the world
+  loading errors, the transparent-item error and its 알림 caption, the chat macro
+  emote defaults (/기쁨 to /돈) and 사크라이, part of the shortcut key path and compared
+  with the server name. The formats among them are arrays, as in the
+  [previous step](#utf-8-display-literals-2026-11-03).
+
+Kept:
+
+- The other ANSI calls carry ASCII or file names: the file APIs (`CreateFileA`,
+  `FindFirstFileA`, `CreateDirectoryA`, `MoveFileExA` and the rest, under the client
+  folder), `GetEnvironmentVariableA`, `OutputDebugStringA`, the performance overlay's
+  `CreateFontA`/`TextOutA`, `renderer_text_out` (draws only the `XXXXXXX-…` placeholder),
+  the crash dialog (ASCII report) and `ShellExecuteA` for http/https links.
+- Values written before this change read back the same where the old writer's code page
+  could hold them; the registry stored them as UTF-16 either way.
+
+Tests changed:
+
+- New `test_win_utf8` (the W calls mocked): message box text and caption as UTF-16,
+  emoji as a surrogate pair, a CP949 resource name, empty and missing captions, the ANSI
+  fallback when memory runs out; key paths with Korean server names; string values read
+  as UTF-8 (sizes, `ERROR_MORE_DATA` leaving the buffer alone, size queries, values
+  without a terminator or with an embedded NUL, empty values, missing values leaving the
+  type alone) and written up to the first NUL, from UTF-8 or CP949; DWORD and binary
+  values passing through; allocation failures.
+- Tests that replaced `MessageBoxA` or the registry calls with stand-ins now replace the
+  wrappers (`test_achievement_owner`, `test_chat_layout_save`, `test_com_lifecycle`,
+  `test_headgear_names`, `test_item_definitions`, `test_local_character`,
+  `test_lua_boundaries`, `test_lua_calls`, `test_lua_data_managers`, `test_pet_accessory`,
+  `test_session_text`, `test_startup_settings`, `test_town_info`,
+  `extract_item_restrictions.py`). `test_session_text`'s registry stand-in returns /기쁨
+  in UTF-8, as the wrapper does, and `test_rma_owner` expects the duplicate-action error
+  in UTF-8.
+- Tests that build those sources without a stand-in link `win_utf8.c`
+  (`test_message_tables`, `test_ai_context`, `test_navigation_objects`,
+  `test_item_definitions` for `item_loader.c`, `test_local_account`,
+  `test_surface_lifecycle`, `test_renderer_storage`, `test_game_mode_layout`).
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/win-utf8-build.log`.
+- Full suite `tests\build.bat` passed: `build/win-utf8-full-tests.log`.
+- The seven standalone suites passed: `build/win-utf8-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-win-utf8`. No live client was run; the message
+boxes and saved settings are still to be checked by hand on a non-Korean Windows.
