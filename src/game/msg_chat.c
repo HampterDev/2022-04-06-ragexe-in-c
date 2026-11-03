@@ -68,7 +68,7 @@ static int take_chat_line(struct GameMode *self, char *line)
 static int send_chat_line(int packet_id)
 {
     char text[CHAT_LINE_MAX];
-    const char *line, *charset;
+    const char *line;
     struct ChatPacket packet;
     size_t len;
 
@@ -76,8 +76,7 @@ static int send_chat_line(int packet_id)
         return 0;
     memset(text, 0, sizeof text);
     line = chat_line();
-    charset = language_charset_tag(g_language, 0);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s : %s%s", session_character_name(&g_session1), charset, line);
+    _snprintf_s(text, sizeof text, (size_t)-1, "%s : %s", session_character_name(&g_session1), line);
     window_mgr_clear_chat_line(&g_windowMgr);
     len = strlen(text);
     packet.id = (unsigned short)packet_id;
@@ -253,15 +252,14 @@ int game_mode_msg_battlefield_chat(struct GameMode *self)
 {
     char line[0x16a];
     char text[0x2d8];
-    const char *typed, *charset;
+    const char *typed;
     struct ChatPacket packet;
     unsigned len;
 
     if (!take_chat_line(self, line))
         return 0;
     typed = chat_line();
-    charset = language_charset_tag(g_language, 0);
-    sprintf(text, "%s : %s%s", session_character_name(&g_session1), charset, typed);
+    sprintf(text, "%s : %s", session_character_name(&g_session1), typed);
     len = strlen(text);
     window_mgr_clear_chat_line(&g_windowMgr);
     packet.id = CZ_BATTLEFIELD_CHAT;
@@ -304,12 +302,7 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
         window_mgr_clear_chat_line(&g_windowMgr);
         return 0;
     }
-    if (g_useCharsetTag) {
-        strcpy(text, language_charset_tag(g_language, 0));
-        strncpy(text + 3, chat_line(), 0x14e);
-    } else {
-        strncpy(text, chat_line(), 0x151);
-    }
+    strncpy(text, chat_line(), 0x151);
     text[0x151] = 0;
     string_assign_cstr(&self->whisper_text, text);
     len = strlen(text);

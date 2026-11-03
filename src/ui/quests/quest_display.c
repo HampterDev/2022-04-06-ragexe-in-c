@@ -181,7 +181,7 @@ static void strip_colours(struct String *s)
 {
     struct OwnedText out = {0};
 
-    if (text_copy_without_colours(&out, text_view(string_cstr(s), s->size), g_useCharsetTag))
+    if (text_copy_without_colours(&out, text_view(string_cstr(s), s->size)))
         string_assign(s, owned_text_cstr(&out), out.size);
     owned_text_clear(&out);
 }

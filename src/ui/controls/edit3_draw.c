@@ -181,16 +181,13 @@ void ui_edit_ctrl3_draw_text(struct UIEditCtrl *base_edit)
     struct UIEditCtrl *edit = &self->edit;
     struct String text = {0}, copy = {0};
     COLORREF colour = edit->text_colour;
-    const char *tag;
     int x0 = EDIT3_MARGIN, width, count, page, first, end, line_end, i, caret_end, comp_end;
 
     if (!edit->multiline && edit->scroll)
         x0 = EDIT3_MARGIN - text_width(self, string_cstr(&edit->text), edit->scroll);
     if (ui_window_mgr_get_focus_edit(&g_windowMgr) == &edit->base)
         ui_edit_ctrl_sync_from_ime(edit);
-    tag = language_charset_tag(g_language, 0);
-    string_assign_cstr(&text, tag);
-    string_append(&text, string_cstr(&edit->text), edit->text.size);
+    string_assign(&text, string_cstr(&edit->text), edit->text.size);
     width = edit->base.width - 6;
     if (self->scrolls)
         width += EDIT3_MARGIN - self->bar->base.width;
@@ -235,8 +232,8 @@ void ui_edit_ctrl3_draw_text(struct UIEditCtrl *base_edit)
         ui_edit_ctrl3_place_tags(self, &x0, &y, &first, &end, &i);
     }
 
-    caret_end = edit->sel_end + (int)strlen(tag);
-    comp_end = (int)g_language->composition_length + (int)strlen(tag) + max(edit->sel_start, edit->sel_end);
+    caret_end = edit->sel_end;
+    comp_end = (int)g_language->composition_length + max(edit->sel_start, edit->sel_end);
     {
         int left = caret_end;
         unsigned li;

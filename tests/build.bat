@@ -413,7 +413,7 @@ test_code_page_conversion.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /c /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /FI"%ROOT%\tests\encoding_fixture.h" "%ROOT%\src\ui\controls\ellipsize_text.c"
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
-cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib /Fe:test_text_consumers.exe /link /OPT:REF
+cl /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_consumers.c" "%ROOT%\tests\encoding_fixture.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\std\string.c" "%ROOT%\src\initializers\markup_tags.c" ellipsize_text.obj text_encoding_test.obj user32.lib /Fe:test_text_consumers.exe /link /OPT:REF
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_text_consumers.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )

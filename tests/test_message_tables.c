@@ -6,19 +6,12 @@
 #include <stdio.h>
 
 unsigned char table_token_is_number(const char *text);
-unsigned char g_useCharsetTag;
 struct Language *g_language;
-static const char *resource_text, *charset_tag = "|00";
-static unsigned opens, closes, tag_lookups;
-static int fail_tag_allocation, fail_read, negative_size;
+static const char *resource_text;
+static unsigned opens, closes;
+static int fail_read, negative_size;
 static unsigned destructs, reads;
 
-static void *message_malloc(size_t size)
-{
-    if (fail_tag_allocation) return NULL;
-    return mem_alloc(size);
-}
-static void message_free(void *memory) { mem_free(memory); }
 static void *reader_realloc(void *memory, size_t size)
 {
     size_t old_size = 0;
@@ -42,18 +35,8 @@ static void *reader_realloc(void *memory, size_t size)
 #undef realloc
 #undef free
 
-#define malloc message_malloc
-#define free message_free
 #include "../src/core/msg_str.c"
-#undef malloc
-#undef free
 
-const char *language_charset_tag(struct Language *language, unsigned char which)
-{
-    assert(language == g_language && which == 1);
-    tag_lookups++;
-    return charset_tag;
-}
 struct File *file_construct(struct File *self)
 {
     memset(self, 0, sizeof *self);
@@ -108,8 +91,7 @@ static void test_bounds(void)
 
 static void test_reload(void)
 {
-    unsigned allocations, calls, i;
-    char *cached;
+    unsigned allocations, i;
     test_bounds();
     assert(!strcmp(msg_str(0), "NO MSG"));
     msg_strings_init();
@@ -122,32 +104,17 @@ static void test_reload(void)
     assert(!strcmp(msg_str(3), "\xb0\xa1\xb3\xaa"));
     assert(!strcmp(msg_str(4), "NO MSG"));
     allocations = live_blocks;
-    g_useCharsetTag = 1;
-    cached = msg_str(0);
-    assert(!strcmp(cached, "|00hello") && live_blocks == allocations + 1);
-    calls = tag_lookups;
-    assert(msg_str(0) == cached && tag_lookups == calls);
-    assert(!strcmp(msg_str(1), "/command") && tag_lookups == calls);
-    assert(!strcmp(msg_str(2), "NO MSG") && tag_lookups == calls);
-    assert(!strcmp(msg_str_to_compare(0), "hello"));
-    assert(!strcmp(msg_str(3), "|00\xb0\xa1\xb3\xaa"));
-
-    charset_tag = "|19";
-    assert(!strcmp(msg_str(0), "|00hello"));
+    assert(msg_str(0) == msg_str_to_compare(0) && live_blocks == allocations);
+    assert(!strcmp(msg_str(3), "\xb0\xa1\xb3\xaa"));
 
     resource_text = "new#second#";
     msg_str_load();
-    assert(!strcmp(msg_str(0), "|19new"));
-    fail_tag_allocation = 1;
-    allocations = live_blocks;
-    assert(!strcmp(msg_str(1), "second") && live_blocks == allocations);
-    fail_tag_allocation = 0;
-    assert(!strcmp(msg_str(1), "|19second"));
+    assert(!strcmp(msg_str(0), "new") && !strcmp(msg_str(1), "second"));
     allocations = live_blocks;
     for (i = 0; i < 20; i++) {
         msg_str_load();
-        assert(!strcmp(msg_str(0), "|19new"));
-        assert(!strcmp(msg_str(1), "|19second"));
+        assert(!strcmp(msg_str(0), "new"));
+        assert(!strcmp(msg_str(1), "second"));
         assert(live_blocks == allocations);
     }
     msg_str_unload();
@@ -180,8 +147,7 @@ static void test_large_table(void)
     resource_text = long_text;
     msg_str_load();
     assert(strlen(msg_str_to_compare(0)) == 400);
-    assert(strlen(msg_str(0)) == 259);
-    assert(!strncmp(msg_str(0), "|19", 3));
+    assert(strlen(msg_str(0)) == 400);
     msg_str_unload();
     assert(live_blocks == 0);
 }

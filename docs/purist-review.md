@@ -8674,3 +8674,61 @@ Validation:
 
 The pre-change tree is in `build/before-utf8-stepping`. No live client/server smoke test
 was run.
+
+## UTF-8 drawing (2026-11-03)
+
+Decision: the third step of the [UTF-8 switch](#utf-8-text-module-2026-11-03), approved by
+Patrick on 2026-11-03. Text was drawn with `TextOutW` and measured with
+`GetTextExtentPoint32W`, but the bytes were decoded with the code page of the font's
+charset (`get_code_page_from_charset`), not `g_codePage`. The langtype-20 default face is
+Arial with `ANSI_CHARSET`, so every string was decoded as Windows-1252.
+
+What changed:
+
+- `text_dc_text_out` and the measurement in `ctextdc.c` decode UTF-8; the charset now only
+  selects the font. `get_code_page_from_charset` and `platform/charset.c` went.
+- Ellipsis and fitting (`ui_window_ellipsize_text`, `ui_window_fit_text`,
+  `ui_window_fit_plain_text`) drop whole UTF-8 characters from the end with `utf8_prev`
+  instead of converting through `CP_THREAD_ACP` and dropping two UTF-16 units whenever both
+  had bit 0x80 set (an imitation of a CP949 double-byte character, which also cut Hangul
+  pairs).
+- Navigation search and the navigation text lines (`navi_search.c`, `navi_info.c`) and
+  the guild job-name sort (`guild_containers.c`) convert from `CP_UTF8` instead of the
+  ANSI code page.
+- Charset tags are gone. A tag (`|` and two hex digits) switched the font charset inside
+  a string; only service type 10 and server type 3 turned them on, and nothing assigns
+  either under langtype 20, so `g_useCharsetTag` was always 0. Removed: `g_useCharsetTag`,
+  `language_charset_tag` with `Language.charset_tag` and `keyboard_lang`,
+  `get_charset_from_lang`, `text_find_charset_tag`, the tagged message-table copies in
+  `msg_str`, the tag prefixes of chat, battleground chat, whispers, guild leave/ban
+  reasons and notices, `/hi`, skill descriptions, edit fields, item-collection lines and
+  expiry text, the tag skipping in item names and window text, the line-wrap tag carry
+  (`carry_colour`), the login-mode save/restore of the flag (`LoginMode.savedFlag`) and the
+  run splitter in `textdc.c`. A font fallback per script (phase B) will need its own
+  splitter by Unicode range, so the tag splitter was not kept. `WM_INPUTLANGCHANGE` is
+  still consumed, as before.
+- The EZ2STR resource names were already pinned to CP949 in the stepping step, where
+  `g_codePage` changed.
+
+After this step Latin, Cyrillic and Greek text decode and draw correctly with Arial. Korean
+and other scripts that Arial lacks still draw as boxes until the font fallback.
+
+Tests changed:
+
+- `test_text_render`: one UTF-8 run in the context's charset (`|xx` is ordinary text),
+  Korean, Cyrillic, emoji surrogate pairs, invalid bytes as U+FFFD, guarded endings.
+- `test_fit_plain_text`, `test_text_consumers` (ellipsis), `test_readable_links`
+  (fitting): whole UTF-8 characters with 2-, 3- and 4-byte characters and invalid bytes;
+  the CP949 conversion stubs and their failure cases went with the conversions.
+- `test_text_format`, `test_message_tables`, `test_language_input`, `test_byte_lines`,
+  `test_item_names`, `test_balloon_text`, `test_multiline_draw`: the charset-tag cases
+  and stubs went; tags are ordinary text.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-drawing-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-drawing-full-tests.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-utf8-drawing`. No live client/server smoke test
+was run.

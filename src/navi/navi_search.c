@@ -43,7 +43,7 @@ static void widen_words(const struct Vec *words, struct Vec *wwords, wchar_t *wi
     for (w = (const struct String *)words->first; w != (const struct String *)words->last; w++) {
         struct WString ws;
 
-        MultiByteToWideChar(0, 0, string_cstr(w), -1, wide, 100);
+        MultiByteToWideChar(CP_UTF8, 0, string_cstr(w), -1, wide, 100);
         wstring_init(&ws);
         wstring_assign(&ws, wide, wcslen(wide));
         vec_push(wwords, &ws, sizeof ws);
@@ -79,7 +79,7 @@ static void map_key(struct NaviMap *map, struct String *key)
 
 static void widen(const char *text, wchar_t *wide, struct WString *out)
 {
-    MultiByteToWideChar(0, 0, text, -1, wide, 100);
+    MultiByteToWideChar(CP_UTF8, 0, text, -1, wide, 100);
     wstring_assign(out, wide, wcslen(wide));
 }
 
@@ -339,7 +339,7 @@ void navi_map_match_map_words(struct NaviMap *self,
     widen_words(words, &wwords, wide);
 
     map_key(self, &key);
-    MultiByteToWideChar(0, 0, string_cstr(&key), -1, wide, 100);
+    MultiByteToWideChar(CP_UTF8, 0, string_cstr(&key), -1, wide, 100);
     wstring_init(&wkey);
     wstring_assign(&wkey, wide, wcslen(wide));
 
@@ -370,7 +370,7 @@ void navi_map_match_mob_words(struct NaviMap *self,
 
     wstring_init(&wname);
     map_key(self, &key);
-    MultiByteToWideChar(0, 0, string_cstr(&key), -1, wide, 100);
+    MultiByteToWideChar(CP_UTF8, 0, string_cstr(&key), -1, wide, 100);
     wstring_init(&wkey);
     wstring_assign(&wkey, wide, wcslen(wide));
 

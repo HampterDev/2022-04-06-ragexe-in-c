@@ -32,25 +32,17 @@ void ui_window_text_out(struct UIWindow *self, int x, int y, const char *text, i
     text_dc_destruct(&dc);
 }
 
-static const char *after_tag(const char *text, const char *end)
-{
-    const char *tag = text + text_find_charset_tag(text, (int)(end - text), g_useCharsetTag);
-
-    return tag < end ? tag + 3 : text;
-}
-
 void ui_window_text_out_down(struct UIWindow *self, int x, int y, const char *text,
                                      int len, int font_face, int font_height, COLORREF colour)
 {
     struct TextDC dc;
-    const char *end, *start, *p, *next;
+    const char *end, *p, *next;
     int widest = 0;
     SIZE size;
 
     if (!len)
         len = (int)strlen(text);
     end = text + len;
-    start = text + text_find_charset_tag(text, len, g_useCharsetTag);
     dc_open(&dc, self);
     text_dc_select_font(&dc, font_face, font_height, 0, 0);
     text_dc_set_text_color(&dc, colour);
@@ -60,8 +52,7 @@ void ui_window_text_out_down(struct UIWindow *self, int x, int y, const char *te
         if (size.cx > widest)
             widest = size.cx;
     }
-    p = start < end ? start + 3 : text;
-    for (; p < end; p = next) {
+    for (p = text; p < end; p = next) {
         next = utf8_step(p, end);
         text_dc_text_extent(&dc, p, (int)(next - p), &size);
         text_dc_text_out(&dc, x + (widest - size.cx) / 2, y, p, (int)(next - p));
@@ -117,7 +108,7 @@ void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char
 enum { RUNS_OUTLINE, RUNS_SHADOW };
 
 static void draw_runs(struct UIWindow *self, struct TextDC *dc, int x, int y, const char *text, const char *end,
-                      const char *tag, COLORREF *colour, int under, COLORREF outline, BYTE shadow)
+                      COLORREF *colour, int under, COLORREF outline, BYTE shadow)
 {
     const char *p = text;
 
@@ -130,8 +121,6 @@ static void draw_runs(struct UIWindow *self, struct TextDC *dc, int x, int y, co
         string_init(&run);
         if (from != to)
             string_assign(&run, from, to - from);
-        if (tag < end)
-            string_replace(&run, 0, 0, tag, 3);
         if (to != from) {
             if (under == RUNS_OUTLINE) {
                 text_dc_set_text_color(dc, outline);
@@ -163,24 +152,20 @@ void ui_window_text_out_outlined_ptr(struct UIWindow *self, int x, int y, const 
     if (!len)
         len = (int)strlen(text);
     end = text + len;
-    {
-        const char *tag = text + text_find_charset_tag(text, len, g_useCharsetTag);
-
-        dc_open(&dc, self);
-        text_dc_select_font(&dc, font_face, font_height, font_arg, 0);
-        draw_runs(self, &dc, x, y, text, end, tag, colour, RUNS_OUTLINE, outline, 0);
-    }
+    dc_open(&dc, self);
+    text_dc_select_font(&dc, font_face, font_height, font_arg, 0);
+    draw_runs(self, &dc, x, y, text, end, colour, RUNS_OUTLINE, outline, 0);
     text_dc_destruct(&dc);
 }
 
 static void draw_runs_bk(struct UIWindow *self, struct TextDC *dc, int x, int y, const char *text,
-                         const char *end, const char *tag, COLORREF *colour, BYTE shadow)
+                         const char *end, COLORREF *colour, BYTE shadow)
 {
     if (TEXT_BK_ON(self)) {
         text_dc_set_bk_color(dc, TEXT_BK_COLOUR(self));
         text_dc_set_bk_mode(dc, OPAQUE);
     }
-    draw_runs(self, dc, x, y, text, end, tag, colour, RUNS_SHADOW, 0, shadow);
+    draw_runs(self, dc, x, y, text, end, colour, RUNS_SHADOW, 0, shadow);
     if (TEXT_BK_ON(self))
         text_dc_set_bk_mode(dc, TRANSPARENT);
 }
@@ -189,15 +174,14 @@ void ui_window_text_out_runs(struct UIWindow *self, int x, int y, const char *te
                            COLORREF *colour, int font_face, int font_height, BYTE shadow)
 {
     struct TextDC dc;
-    const char *end, *tag;
+    const char *end;
 
     if (!len)
         len = (int)strlen(text);
     end = text + len;
-    tag = text + text_find_charset_tag(text, len, g_useCharsetTag);
     dc_open(&dc, self);
     text_dc_select_font(&dc, font_face, font_height, 0, 0);
-    draw_runs_bk(self, &dc, x, y, text, end, tag, colour, shadow);
+    draw_runs_bk(self, &dc, x, y, text, end, colour, shadow);
     text_dc_destruct(&dc);
 }
 
@@ -268,7 +252,7 @@ int ui_window_vertical_text_length(struct UIWindow *self, const char *text, int 
             return 0;
     }
     end = text + len;
-    p = after_tag(text, end);
+    p = text;
     dc_open(&dc, self);
     text_dc_select_font(&dc, font_face, font_height, font_arg3, 0);
     for (; p < end; p = next) {

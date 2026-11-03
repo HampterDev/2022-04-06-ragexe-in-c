@@ -1,4 +1,4 @@
-#include "core/text_encoding.h"
+#include "core/utf8.h"
 #include "ui/controls/static.h"
 #include "ui/draw.h"
 #include <stdlib.h>
@@ -9,37 +9,23 @@ struct String *ui_window_ellipsize_text(struct UIWindow *self, struct String *ou
                                       int max_width, const char *text, int font_face,
                                       int font_height, int font_arg)
 {
-    wchar_t *wide;
+    size_t keep = strlen(text);
     int width = ui_window_text_width(self, text, 0, font_face, font_height, font_arg, 0);
     ui_window_text_width(self, "...", 0, font_face, font_height, font_arg, 0);
     string_init(out);
     string_assign_cstr(out, text);
     if (max_width >= width)
         return out;
-    wide = encoding_to_wide(CP_THREAD_ACP, text);
-    if (!wide)
-        return out;
     for (;;) {
-        size_t count = wcslen(wide);
-        int last = count <= 1;
-        char *narrow;
-        if (!last) {
-            size_t keep = count - 1;
-            if ((wide[count - 2] & 0x80) && (wide[count - 1] & 0x80))
-                keep = count - 2;
-            wide[keep] = 0;
-        }
-        narrow = encoding_from_wide(CP_THREAD_ACP, wide);
-        if (!narrow)
-            break;
-        string_assign_cstr(out, narrow);
+        int last = utf8_prev(text, text + keep) == text;
+        if (!last)
+            keep = (size_t)(utf8_prev(text, text + keep) - text);
+        string_assign(out, text, keep);
         string_append_cstr(out, "...");
-        free(narrow);
         if (last || max_width >= ui_window_text_width(self, string_cstr(out), 0,
                                                     font_face, font_height, font_arg, 0))
             break;
     }
-    free(wide);
     return out;
 }
 

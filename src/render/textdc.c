@@ -1,7 +1,5 @@
 #include "render/cdc.h"
 #include "render/device.h"
-#include "core/text_format.h"
-#include "core/hex.h"
 #include "platform/code_page.h"
 #include "platform/language.h"
 #include "platform/language_api.h"
@@ -83,73 +81,24 @@ COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour)
     return SetTextColor(self->hdc, colour);
 }
 
-struct TextRun {
-    const char *text;
-    int length, charset;
-};
-struct TextRuns {
-    const char *next;
-    size_t remaining;
-    int charset, tags;
-};
-
-static int next_text_run(struct TextRuns *runs, struct TextRun *run)
-{
-    while (runs->remaining) {
-        size_t length = text_find_charset_tag(runs->next, runs->remaining, runs->tags);
-        if (length) {
-            run->text = runs->next;
-            run->length = (int)length;
-            run->charset = runs->charset;
-            runs->next += length;
-            runs->remaining -= length;
-            return 1;
-        }
-        runs->charset = hex_digit_value((unsigned char)runs->next[1]) * 16
-                      + hex_digit_value((unsigned char)runs->next[2]);
-        runs->next += 3;
-        runs->remaining -= 3;
-    }
-    return 0;
-}
-
 void text_dc_text_extent(struct TextDC *self, const char *s, int len, SIZE *out)
 {
-    struct TextRuns runs = {s, len > 0 && s ? (size_t)len : 0, self->charset, g_useCharsetTag};
-    struct TextRun run;
     out->cx = out->cy = 0;
-    while (next_text_run(&runs, &run)) {
-        SIZE part;
-        text_dc_measure_in_charset(self, &part, run.text, run.length, run.charset);
-        out->cx += part.cx;
-        if (part.cy > out->cy) out->cy = part.cy;
-    }
+    if (s && len > 0)
+        text_dc_measure_in_charset(self, out, s, len, self->charset);
 }
 
-static void textdc_text_out(struct TextDC *self, int x, int y, const char *s, int len, int charset)
+/* Text is UTF-8; the charset only selects the font. */
+void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
 {
     struct TextUnicode text;
     HFONT font;
     HGDIOBJ old;
-    if (!s || len <= 0 || !text_unicode_init(&text, s, len, get_code_page_from_charset(charset)))
+    if (!s || len <= 0 || !text_unicode_init(&text, s, len, CP_UTF8))
         return;
-    font = font_cache_get_font(&g_fontCache, self->face, self->size, charset, self->bold, self->italic);
+    font = font_cache_get_font(&g_fontCache, self->face, self->size, self->charset, self->bold, self->italic);
     old = font ? SelectObject(self->hdc, font) : NULL;
     if (old && old != HGDI_ERROR)
         TextOutW(self->hdc, x, y, text.data, text.length);
     text_unicode_release(&text);
-}
-
-void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
-{
-    struct TextRuns runs = {s, len > 0 && s ? (size_t)len : 0, self->charset, g_useCharsetTag};
-    struct TextRun run;
-    while (next_text_run(&runs, &run)) {
-        SIZE extent;
-        textdc_text_out(self, x, y, run.text, run.length, run.charset);
-        if (runs.remaining) {
-            text_dc_measure_in_charset(self, &extent, run.text, run.length, run.charset);
-            x += extent.cx;
-        }
-    }
 }

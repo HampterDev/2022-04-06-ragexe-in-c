@@ -4,7 +4,7 @@
 #include "ui/chat/readable_links.h"
 #include "ui/chat/navi_text.h"
 #include "core/text_markup.h"
-#include "core/text_encoding.h"
+#include "core/utf8.h"
 #include "render/textdc.h"
 #include <stdlib.h>
 #include <string.h>
@@ -34,28 +34,27 @@ static void measure_dots(struct UIWindow *self, int face, int height, int arg)
     text_dc_destruct(&dc);
 }
 
-static int dotted(struct String *out, const wchar_t *wide)
+/* Drops whole UTF-8 characters from the end and appends "..." until the text fits. */
+static void shrink(struct UIWindow *self, struct String *out, int width, int face, int height, int arg)
 {
-    char *text = encoding_from_wide(CP_THREAD_ACP, wide);
-    if (!text) return 0;
-    string_assign_cstr(out, text);
-    string_append_cstr(out, "...");
-    free(text);
-    return 1;
-}
+    struct String source;
+    size_t keep;
 
-static void shrink(struct UIWindow *self, struct String *out, wchar_t *wide,
-                    int width, int face, int height, int arg)
-{
-    size_t count = wcslen(wide);
+    string_init(&source);
+    string_assign(&source, string_cstr(out), strlen(string_cstr(out)));
+    keep = source.size;
     for (;;) {
-        if (count <= 1) { dotted(out, wide); return; }
-        count -= ((unsigned char)wide[count - 2] & 0x80) &&
-                 ((unsigned char)wide[count - 1] & 0x80) ? 2 : 1;
-        wide[count] = 0;
-        if (!dotted(out, wide)) return;
-        if (width >= text_cx(self, string_cstr(out), face, height, arg)) return;
+        const char *start = string_cstr(&source);
+        int last = utf8_prev(start, start + keep) == start;
+
+        if (!last)
+            keep = (size_t)(utf8_prev(start, start + keep) - start);
+        string_assign(out, start, keep);
+        string_append_cstr(out, "...");
+        if (last || width >= text_cx(self, string_cstr(out), face, height, arg))
+            break;
     }
+    string_free(&source);
 }
 
 static void unwrap(struct String *text, const char *open, const char *close)
@@ -81,13 +80,8 @@ struct String *ui_window_fit_text(struct UIWindow *self, struct String *out,
     unwrap(&result, "<QUEST>", "</QUEST>");
     measured = text_cx(self, string_cstr(&result), font_face, font_height, font_arg3);
     measure_dots(self, font_face, font_height, font_arg3);
-    if (width < measured) {
-        wchar_t *wide = encoding_to_wide(CP_THREAD_ACP, string_cstr(&result));
-        if (wide) {
-            shrink(self, &result, wide, width, font_face, font_height, font_arg3);
-            free(wide);
-        }
-    }
+    if (width < measured)
+        shrink(self, &result, width, font_face, font_height, font_arg3);
     string_free(out);
     *out = result;
     return out;

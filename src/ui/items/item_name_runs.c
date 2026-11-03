@@ -141,10 +141,6 @@ int ui_window_draw_runs_shortened(struct UIWindow *self, int x, int y, int max_w
             const char *next = utf8_step(p, run_end_at);
             int len, rest, width;
 
-            if (g_useCharsetTag && text_find_charset_tag(p, (size_t)(run_end_at - p), g_useCharsetTag) == 0) {
-                p += 3;
-                continue;
-            }
             len = (int)(next - p);
             rest = ui_window_text_width(self, next, (int)strlen(next), 0, 0xc, 0, 0);
             width = ui_window_text_width(self, p, len, 0, 0xc, 0, 0) + drawn;

@@ -90,7 +90,6 @@ struct LoginMode {
     void *waitWnd;
     struct Vec messageIds;
     struct Vec connections;
-    BYTE savedFlag;
     int connectionIndex;
     struct String exit_cleared_text;
     struct Vec zones;

@@ -7,7 +7,6 @@
 #include "core/utf8.h"
 #include "utf8_text.h"
 
-unsigned char g_useCharsetTag;
 static unsigned item_names, item_destroys;
 static int item_id;
 struct ItemInfo *item_info_construct(struct ItemInfo *item)
@@ -53,17 +52,15 @@ int main(void)
     text_wrap_bytes("x^nItemID^5z", &lines, 99, 0);
     assert(lines.size == 3); check(&lines, 0, "x"); check(&lines, 1, U8_A U8_I U8_TEM); check(&lines, 2, "z");
     assert(item_names == 1 && item_destroys == 2); text_array_clear(&lines);
-    g_useCharsetTag = 1;
     assert(text_array_append(&lines, text_view_cstr("existing")));
-    assert(text_array_append(&lines, text_view_cstr("existing two")));
     text_split_lines("|c0abcdef", &lines, 4);
-    assert(lines.size == 5); check(&lines, 0, "existing"); check(&lines, 1, "existing two");
-    check(&lines, 2, "|c0a"); check(&lines, 3, "|c0bcde"); check(&lines, 4, "|c0f");
+    assert(lines.size == 4); check(&lines, 0, "existing"); check(&lines, 1, "|c0a");
+    check(&lines, 2, "bcde"); check(&lines, 3, "f");
     text_array_clear(&lines);
     assert(text_array_append(&lines, text_view_cstr("|c0abcdef")));
     text_split_lines(text_array_at(&lines, 0).data, &lines, 4);
-    assert(lines.size == 4); check(&lines, 0, "|c0abcdef"); check(&lines, 3, "|c0f");
-    text_array_clear(&lines); g_useCharsetTag = 0;
+    assert(lines.size == 4); check(&lines, 0, "|c0abcdef"); check(&lines, 3, "f");
+    text_array_clear(&lines);
     text_wrap_bytes(U8_HAN U8_GUK "bca[abcd]", &lines, 15, 0);
     assert(lines.size == 2); check(&lines, 0, U8_HAN U8_GUK "bc"); check(&lines, 1, "a[abcd]");
     text_array_clear(&lines);
@@ -96,6 +93,6 @@ int main(void)
     roundtrip(end - 9, 4, 1);
     memcpy(end - 2, "[", 2); roundtrip(end - 2, INT_MAX, 1);
     assert(VirtualFree(guard, 0, MEM_RELEASE));
-    puts("Byte lines: owned append, charset carry, item names, newline behavior, UTF-8 boundaries, malformed groups and 2000 generated roundtrips passed.");
+    puts("Byte lines: owned append, item names, newline behavior, UTF-8 boundaries, malformed groups and 2000 generated roundtrips passed.");
     return 0;
 }

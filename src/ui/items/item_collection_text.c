@@ -151,18 +151,9 @@ static void collection_build_options(struct UIItemCollectionWnd *self)
     }
 }
 
-static void collection_add_line(struct UIItemCollectionWnd *self, const char *line, BYTE tag_test_is_one)
+static void collection_add_line(struct UIItemCollectionWnd *self, const char *line)
 {
-    char buf[0x104];
-
-    if (tag_test_is_one ? g_useCharsetTag == 1 : g_useCharsetTag != 0) {
-        if (tag_test_is_one)
-            memset(buf, 0, sizeof buf);
-        sprintf(buf, "%s%s", language_charset_tag(g_language, 1), line);
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, TEXT_LAYOUT, 0, 0);
-    } else {
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, TEXT_LAYOUT, 0, 0);
-    }
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, TEXT_LAYOUT, 0, 0);
 }
 
 static void collection_place_card_button(struct UIItemCollectionWnd *self, int hide_view)
@@ -183,14 +174,8 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
 
     strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), _localtime32((__time32_t *)&expire));
     memset(buf, 0, sizeof buf);
-    if (g_useCharsetTag) {
-        _snprintf_s(buf, sizeof buf, (size_t)-1, "%s%s", language_charset_tag(g_language, 1), time_text);
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_LINE), buf);
-        hours_per_day = 24;
-    } else {
-        sprintf(buf, msg_str(MSG_EXPIRE_LINE), time_text);
-        hours_per_day = 24;
-    }
+    sprintf(buf, msg_str(MSG_EXPIRE_LINE), time_text);
+    hours_per_day = 24;
     if (self->item.expire_in_hours)
         _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
                        expire % hours_per_day);
@@ -282,7 +267,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
     if (self->item.expire_time)
         collection_add_expiry(self);
     for (i = 0; i < desc->count; i++)
-        collection_add_line(self, desc->data[i], 0);
+        collection_add_line(self, desc->data[i]);
 
     if (session_is_pet_egg_id(&g_session1, atoi(string_cstr(&info->id_text))) == 1) {
         static const int egg_states[5] = { 0x2a0, 0x2a1, 0x29d, 0x2a2, 0x2a3 };
@@ -292,7 +277,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
         string_init(&line);
         string_format(&line, msg_str(MSG_EGG_LINE),
                       msg_str(state >= 1 && state <= 5 ? egg_states[state - 1] : MSG_EGG_STATE_OTHER));
-        collection_add_line(self, string_cstr(&line), 1);
+        collection_add_line(self, string_cstr(&line));
         string_free(&line);
     }
     ui_window_invalidate_base(wnd);

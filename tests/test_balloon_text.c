@@ -38,7 +38,6 @@ static void tracked_free(void *p)
 #undef free
 #include "balloon_text_unreached.h"
 
-unsigned char g_useCharsetTag;
 static unsigned resized, invalidated, destroyed, drawn;
 static char drawn_text[128][128];
 static COLORREF drawn_colour[128];

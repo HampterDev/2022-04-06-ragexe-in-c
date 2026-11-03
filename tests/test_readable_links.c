@@ -3,8 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mbstring.h>
-#include <mbctype.h>
 #include "ui/chat/readable_links.h"
 #include "ui/chat/chat_window.h"
 #include "ui/window_manager_state.h"
@@ -13,42 +11,17 @@
 #include "iteminfo/item_link.h"
 #include "iteminfo/item_table.h"
 #include "render/textdc.h"
-#include "core/text_encoding.h"
 #include "contents/player_names.h"
 #include "owned_storage_test_allocator.h"
+#include "utf8_text.h"
 
-static unsigned legacy_live, conversion_live, conversion_calls, fail_wide, fail_narrow;
+static unsigned legacy_live;
 
 void *mem_alloc(size_t size) { void *p = malloc(size); assert(p); ++legacy_live; return p; }
 void mem_free(void *p)
 {  if (p) { assert(legacy_live); --legacy_live; free(p); } }
 __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
 
-wchar_t *encoding_to_wide(unsigned page, const char *text)
-{
-    wchar_t *wide;
-    int count;
-    assert(page == CP_THREAD_ACP);
-    if (fail_wide) return NULL;
-    count = MultiByteToWideChar(949, 0, text, -1, NULL, 0); assert(count);
-    wide = malloc(count * sizeof *wide); assert(wide); ++conversion_live;
-    assert(MultiByteToWideChar(949, 0, text, -1, wide, count));
-    return wide;
-}
-char *encoding_from_wide(unsigned page, const wchar_t *wide)
-{
-    char *text;
-    int count;
-    assert(page == CP_THREAD_ACP);
-    if (++conversion_calls == fail_narrow) return NULL;
-    count = WideCharToMultiByte(949, 0, wide, -1, NULL, 0, NULL, NULL); assert(count);
-    text = malloc(count); assert(text); ++conversion_live;
-    assert(WideCharToMultiByte(949, 0, wide, -1, text, count, NULL, NULL));
-    return text;
-}
-static void conversion_free(void *p)
-{ assert(p && conversion_live); --conversion_live; free(p); }
-#define free conversion_free
 #include "../src/ui/controls/window_fit_plain.c"
 #include "../src/ui/controls/window_fit.c"
 #undef free
@@ -241,19 +214,19 @@ static void fitting(void)
     struct String out = {0};
     ui_window_fit_text(&window, &out, 5, "abcdef", 0, 12, 0);
     assert(!strcmp(string_cstr(&out), "ab..."));
-    ui_window_fit_text(&window, &out, 3, "한국", 0, 12, 0);
-    assert(!strcmp(string_cstr(&out), "한..."));
-    ui_window_fit_text(&window, &out, 3, "나다", 0, 12, 0);
-    assert(!strcmp(string_cstr(&out), "..."));
+    ui_window_fit_text(&window, &out, 3, U8_HAN U8_GUK, 0, 12, 0);
+    assert(!strcmp(string_cstr(&out), U8_HAN "..."));
+    ui_window_fit_text(&window, &out, 3, U8_NA U8_DA, 0, 12, 0);
+    assert(!strcmp(string_cstr(&out), U8_NA "..."));
+    ui_window_fit_text(&window, &out, 9, U8_ZHE U8_GRIN U8_ZHE "ab", 0, 12, 0);
+    assert(!strcmp(string_cstr(&out), U8_ZHE U8_GRIN "..."));
+    ui_window_fit_text(&window, &out, 8, U8_ZHE U8_GRIN U8_ZHE "ab", 0, 12, 0);
+    assert(!strcmp(string_cstr(&out), U8_ZHE "..."));
     string_assign_cstr(&out, "before <URL>abcdef</URL> after");
     ui_window_fit_text(&window, &out, 5, out.data + 12, 0, 12, 0);
     assert(!strcmp(string_cstr(&out), "ab..."));
-    fail_wide = 1;
     ui_window_fit_text(&window, &out, 1, "abcdef", 0, 12, 0);
-    assert(!strcmp(string_cstr(&out), "abcdef")); fail_wide = 0;
-    conversion_calls = 0; fail_narrow = 2;
-    ui_window_fit_text(&window, &out, 1, "abcdef", 0, 12, 0);
-    assert(!strcmp(string_cstr(&out), "abcde...")); fail_narrow = 0;
+    assert(!strcmp(string_cstr(&out), "a..."));
     string_free(&out);
 }
 
@@ -325,9 +298,7 @@ static void history_buttons(void)
 }
 
 #ifdef READABLE_TEXT_REFERENCE
-#define free conversion_free
 #include "readable_text_reference.c"
-#undef free
 
 static void history_snapshot(struct UIChatHisBox *box, struct String *out, const char *line, const char *rest)
 {
@@ -449,14 +420,13 @@ static void reference_cases(void)
 int main(void)
 {
     unsigned i;
-    _setmbcp(949);
     window.width = 1000; window.canvas = (struct DcBitmap *)&window;
     readability(); lines(); fitting(); boundaries(); history_buttons();
     for (i = 0; i < 100; ++i) { measure_count = 0; readability(); lines(); fitting(); }
 #ifdef READABLE_TEXT_REFERENCE
     reference_cases(); reference_history_cases();
 #endif
-    assert(!outstanding && !legacy_live && !conversion_live);
+    assert(!outstanding && !legacy_live);
     puts("Readable links: counted/aliased/Korean text, malformed tags, tabs, line consumption, font fitting, guarded boundaries, child buttons and pending maker names passed.");
     return 0;
 }

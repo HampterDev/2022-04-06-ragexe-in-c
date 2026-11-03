@@ -3,36 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ui/draw.h"
-#include "core/text_encoding.h"
+#include "utf8_text.h"
 
-static unsigned conversions, live, fail_wide, fail_narrow;
 static int resized;
-wchar_t *encoding_to_wide(unsigned page, const char *text)
-{
-    int count;
-    wchar_t *wide;
-    assert(page == CP_THREAD_ACP);
-    if (fail_wide) return NULL;
-    count = MultiByteToWideChar(949, 0, text, -1, NULL, 0); assert(count);
-    wide = malloc(count * sizeof *wide); assert(wide); ++live;
-    assert(MultiByteToWideChar(949, 0, text, -1, wide, count));
-    return wide;
-}
-char *encoding_from_wide(unsigned page, const wchar_t *wide)
-{
-    int count;
-    char *text;
-    assert(page == CP_THREAD_ACP);
-    if (++conversions == fail_narrow) return NULL;
-    count = WideCharToMultiByte(949, 0, wide, -1, NULL, 0, NULL, NULL); assert(count);
-    text = malloc(count); assert(text); ++live;
-    assert(WideCharToMultiByte(949, 0, wide, -1, text, count, NULL, NULL));
-    return text;
-}
-static void conversion_free(void *p) { assert(p && live); --live; free(p); }
-#define free conversion_free
 #include "../src/ui/controls/window_fit_plain.c"
-#undef free
 
 int ui_window_text_width(struct UIWindow *window, const char *text, int length,
                         int face, int height, int a, int b)
@@ -51,10 +25,8 @@ static struct UIWindowOps ops = { .resize = resize };
 static void check(struct UIWindow *window, struct String *out, const char *text,
                   int width, const char *expected)
 {
-    conversions = 0;
     assert(ui_window_fit_plain_text(window, out, text_view_cstr(text), width) == out);
     assert(!strcmp(string_cstr(out), expected));
-    assert(!live);
 }
 int main(void)
 {
@@ -69,28 +41,35 @@ int main(void)
     check(&window, &out, "abcdef", 5, "ab...");
     check(&window, &out, "abcdef", 0, "a...");
     check(&window, &out, "a", -1, "a...");
-    check(&window, &out, "한국", 3, "한...");
-    check(&window, &out, "나다", 3, "...");
-    check(&window, &out, "가나다", 4, "가...");
+    check(&window, &out, U8_HAN U8_GUK, 3, U8_HAN "...");
+    check(&window, &out, U8_NA U8_DA, 3, U8_NA "...");
+    check(&window, &out, U8_GA U8_NA U8_DA, 4, U8_GA "...");
+    check(&window, &out, U8_GA U8_NA U8_DA, 9, U8_GA U8_NA U8_DA);
+    check(&window, &out, U8_GA U8_NA U8_DA, 8, U8_GA "...");
+    check(&window, &out, U8_ZHE U8_GRIN "a", 5, U8_ZHE "...");
+    check(&window, &out, U8_ZHE U8_GRIN "a", 9, U8_ZHE U8_GRIN "a");
+    check(&window, &out, U8_GRIN U8_GRIN, 7, U8_GRIN "...");
+    check(&window, &out, "a\xe2\x82", 2, "a...");
+    check(&window, &out, "ab\xe2\x82", 4, "ab\xe2\x82");
+    check(&window, &out, "ab\xe2\x82" "c", 4, "a...");
     assert(resized == 1);
-    fail_wide = 1; check(&window, &out, "abcdef", 1, "abcdef"); fail_wide = 0;
-    fail_narrow = 1; check(&window, &out, "abcdef", 1, "abcdef");
-    fail_narrow = 2; check(&window, &out, "abcdef", 1, "abcde..."); fail_narrow = 0;
     string_assign_cstr(&out, "prefix abcdef suffix");
     ui_window_fit_plain_text(&window, &out, text_view(out.data + 7, 6), 5);
-    assert(!strcmp(string_cstr(&out), "ab...") && !live);
+    assert(!strcmp(string_cstr(&out), "ab..."));
     ui_window_fit_plain_text(&window, &out, text_view("a\0b", 3), 100);
-    assert(out.size == 3 && !memcmp(out.data, "a\0b", 4) && !live);
+    assert(out.size == 3 && !memcmp(out.data, "a\0b", 4));
     GetSystemInfo(&info);
     pages = VirtualAlloc(NULL, info.dwPageSize * 2, MEM_RESERVE, PAGE_NOACCESS); assert(pages);
     assert(VirtualAlloc(pages, info.dwPageSize, MEM_COMMIT, PAGE_READWRITE));
     edge = pages + info.dwPageSize;
-    memcpy(edge - 4, "한국", 4);
-    ui_window_fit_plain_text(&window, &out, text_view(edge - 4, 4), 20);
-    assert(!strcmp(string_cstr(&out), "한국") && !live);
+    memcpy(edge - 6, U8_HAN U8_GUK, 6);
+    ui_window_fit_plain_text(&window, &out, text_view(edge - 6, 6), 20);
+    assert(!strcmp(string_cstr(&out), U8_HAN U8_GUK));
+    ui_window_fit_plain_text(&window, &out, text_view(edge - 6, 6), 4);
+    assert(!strcmp(string_cstr(&out), U8_HAN "..."));
     assert(VirtualFree(pages, 0, MEM_RELEASE));
     for (i = 0; i < 200; ++i) check(&window, &out, "abcdef", 5, "ab...");
     string_free(&out);
-    puts("Plain text fitting: counted Korean input, ellipsis cuts, aliasing, guarded bounds, conversion failures and repeated reuse passed.");
+    puts("Plain text fitting: whole UTF-8 characters (2-4 bytes and invalid bytes), ellipsis cuts, aliasing, guarded bounds and repeated reuse passed.");
     return 0;
 }

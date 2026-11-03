@@ -193,12 +193,9 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
             lo = min(edit->sel_start, edit->sel_end);
             hi = max(edit->sel_start, edit->sel_end);
         } else {
-            const char *tag = language_charset_tag(g_language, 0);
-
-            string_assign_cstr(&shown, tag);
-            string_append(&shown, string_cstr(&edit->text), edit->text.size);
-            lo = min(edit->sel_start, edit->sel_end) + (int)strlen(tag);
-            hi = max(edit->sel_start, edit->sel_end) + (int)strlen(tag) + (int)g_language->composition_length;
+            string_assign(&shown, string_cstr(&edit->text), edit->text.size);
+            lo = min(edit->sel_start, edit->sel_end);
+            hi = max(edit->sel_start, edit->sel_end) + (int)g_language->composition_length;
         }
         x = aligned_x(self, &shown);
         lo_x = lo ? text_width(self, string_cstr(&shown), lo, 0) : 0;

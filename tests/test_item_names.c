@@ -18,7 +18,6 @@ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abor
 #include "../src/ui/items/item_name_runs.c"
 
 unsigned g_codePage = 949;
-unsigned char g_useCharsetTag;
 struct UIWindowMgr g_windowMgr;
 static struct ItemTableEntry table;
 static struct CardAffix cards[5];
@@ -117,7 +116,6 @@ static void init_item(struct ItemInfo *item, int id)
     cards[3].prefix = ""; cards[3].postfix = "";
     cards[4].prefix = ""; cards[4].postfix = "";
     maker = "장인"; pet_prefix = "사랑받는 ";
-    g_useCharsetTag = 0;
 }
 static void equals(const struct String *text, const char *expected)
 { assert(text->size == strlen(expected) && !strcmp(string_cstr(text), expected)); }
@@ -172,7 +170,7 @@ static void native_cases(void)
     assert(runs.count == 1 && runs.marked == (size_t)-1);
     pet_prefix = "%s%%끝";
     string_clear(&text); item_name_append_pet_prefix(&item, &text); equals(&text, "%s%끝");
-    table.name = "|"; g_useCharsetTag = 1;
+    table.name = "|";
     item_info_name_runs(&window, &item, &runs, 0, 0);
     draw_count = 0; ui_window_draw_runs_shortened(&window, 3, 4, 1, &runs, 0, 12); assert(draw_count);
     table.name = "\x81";

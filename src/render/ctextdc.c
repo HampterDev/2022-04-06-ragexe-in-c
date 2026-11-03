@@ -33,7 +33,7 @@ static int measure(struct TextDC *self, SIZE *out, const char *str, int len, int
     struct TextUnicode text;
     SIZE result = {0};
     int i, sum = 0, ok;
-    if (!text_unicode_init(&text, str, len, get_code_page_from_charset(charset)))
+    if (!text_unicode_init(&text, str, len, CP_UTF8))
         return 0;
     ok = GetTextExtentPoint32W(self->hdc, text.data, text.length, &result);
     if (ok && self->italic == 1) {

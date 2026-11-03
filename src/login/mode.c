@@ -41,8 +41,6 @@ static struct LoginMode *login_mode_construct(struct LoginMode *self)
     self->zones.first = self->zones.last = self->zones.end = NULL;
     self->base.fade_in_start = 1;
     self->nextKeepAlive = timeGetTime() + 12000;
-    self->savedFlag = g_useCharsetTag;
-    g_useCharsetTag = 0;
     self->connectionIndex = -1;
     self->waitWnd = NULL;
     memset(self->chars, 0, sizeof self->chars);
@@ -61,7 +59,6 @@ struct Mode *login_mode_create(void)
 static void login_mode_destruct(struct LoginMode *self)
 {
     self->base.ops = &g_CLoginMode_ops;
-    g_useCharsetTag = self->savedFlag;
     vec_free(&self->zones);
     string_free(&self->exit_cleared_text);
     login_conn_entries_free(&self->connections);

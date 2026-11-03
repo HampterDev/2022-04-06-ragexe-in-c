@@ -255,12 +255,9 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
             lo = min(self->sel_start, self->sel_end);
             hi = max(self->sel_start, self->sel_end);
         } else {
-            const char *tag = language_charset_tag(g_language, 0);
-
-            string_assign_cstr(&shown, tag);
-            string_append(&shown, string_cstr(&self->text), self->text.size);
-            lo = min(self->sel_start, self->sel_end) + (int)strlen(tag);
-            hi = max(self->sel_start, self->sel_end) + (int)strlen(tag) + (int)g_language->composition_length;
+            string_assign(&shown, string_cstr(&self->text), self->text.size);
+            lo = min(self->sel_start, self->sel_end);
+            hi = max(self->sel_start, self->sel_end) + (int)g_language->composition_length;
         }
         lo_x = lo ? text_width(self, string_cstr(&shown), lo) : 0;
         hi_x = hi ? text_width(self, string_cstr(&shown), hi) : 0;
@@ -383,7 +380,6 @@ unsigned long long ui_edit_ctrl_focus_key(void)
     key = draw_key_int(key, language->candidate_page);
     key = draw_key_int(key, language->candidate_selection);
     key = draw_key_int(key, language->masked);
-    key = draw_key_text(key, language_charset_tag(language, 0));
     key = draw_key_int(key, (int)((timeGetTime() / CARET_BLINK_MS) & 1));
     key = draw_key_int(key, g_windowMgr.chat_bar_shown);
     return draw_key_int(key, ui_edit_ctrl_caret_shown());

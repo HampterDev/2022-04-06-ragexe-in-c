@@ -235,13 +235,8 @@ static int show_skill(struct UISkillDescribeWnd *self, int skill_id, int short_f
 
         string_init(&text);
         string_assign_cstr(&text, result);
-        if (text.size) {
-            char *line = mem_alloc(text.size + 4);
-
-            sprintf(line, "%s%s", language_charset_tag(g_language, 1), string_cstr(&text));
-            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, 0, 0, 1);
-            mem_free(line);
-        }
+        if (text.size)
+            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), 0, 0, 1);
         string_free(&text);
     } else {
         ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)"Unknown Skill", 0x21, 0, 0);

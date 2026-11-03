@@ -115,8 +115,7 @@ void talk_cmd_hi_friends(struct GameMode *self, const struct String *args)
         typed = string_cstr(&g_windowMgr.chat_line);
         string_assign_cstr(&text, typed);
         session_hi_friends(&g_session1, typed);
-        sprintf(line, "[ To Friends ] : (Hi) %s%s", language_charset_tag(g_language, 0),
-                    string_cstr(&text));
+        sprintf(line, "[ To Friends ] : (Hi) %s", string_cstr(&text));
         string_free(&text);
     }
     talk_print(line, 0x1effff);

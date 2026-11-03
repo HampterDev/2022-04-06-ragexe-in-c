@@ -70,8 +70,6 @@ static void draw_rewrap(struct UIEditCtrl3 *self, struct TextArray *lines)
         assert(byte_array_resize(&self->line_flags, 2));
     }
 }
-const char *language_charset_tag(struct Language *self, unsigned char folder)
-{ assert(self == g_language && !folder); return ""; }
 int ui_window_text_width(struct UIWindow *self, const char *text, int len, int face, int height, int a, int b)
 {
     int width = 0, i;

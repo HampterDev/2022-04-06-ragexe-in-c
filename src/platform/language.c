@@ -17,7 +17,6 @@ struct Language *g_language;
 struct Language *language_construct(struct Language *self)
 {
     memset(self, 0, sizeof *self);
-    self->keyboard_lang = LOWORD(GetKeyboardLayout(0));
     switch (GetUserDefaultLangID() & 0x3ff) {
     case LANG_GERMAN:     self->folder_lang = LANG_GERMAN;     break;
     case LANG_ITALIAN:    self->folder_lang = LANG_ITALIAN;    break;
@@ -310,17 +309,6 @@ void language_insert_result(struct Language *self)
     language_replace_selection(self, text);
 }
 
-const char *language_charset_tag(struct Language *self, BYTE folder_lang)
-{
-    if (!g_useCharsetTag) {
-        self->charset_tag[0] = 0;
-        return self->charset_tag;
-    }
-    snprintf(self->charset_tag, sizeof self->charset_tag, "|%02x",
-             get_charset_from_lang(folder_lang ? self->folder_lang : self->keyboard_lang));
-    return self->charset_tag;
-}
-
 int language_get_text(struct Language *self, struct TextView *out)
 {
     size_t composition = strlen(self->composition), size, caret;
@@ -494,7 +482,6 @@ int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM w
         language_delete_selection(self);
         break;
     case WM_INPUTLANGCHANGE:
-        self->keyboard_lang = (WORD)lparam;
         break;
     case WM_IME_ENDCOMPOSITION:
         self->composition[0] = 0;

@@ -19,11 +19,9 @@ struct Language {
     size_t composition_length;
     int composition_cursor;
     BYTE masked;
-    WORD keyboard_lang;
     WORD folder_lang;
     char *display_text;
     size_t display_capacity;
-    char charset_tag[20];
     char candidate_text[256];
 };
 

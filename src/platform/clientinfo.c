@@ -22,7 +22,6 @@ char g_accountServerAddr[129] = { 0 };
 
 static BYTE g_extendedSlot = 0;
 
-unsigned char g_useCharsetTag;
 BYTE g_hideAccountList;
 BYTE g_passwordEncrypt;
 BYTE g_passwordEncrypt2;

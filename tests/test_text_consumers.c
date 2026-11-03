@@ -1,6 +1,7 @@
 #define ENCODING_FIXTURE_IMPLEMENTATION
 #include "encoding_fixture.h"
 #include "ui/controls/static.h"
+#include "utf8_text.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +27,7 @@ void fatal_error(const char *message) { (void)message; abort(); }
 int ui_window_text_width(struct UIWindow *self, const char *text, int unused, int face,
                        int height, int arg, int arg2)
 {
-    int count = MultiByteToWideChar(CP_THREAD_ACP, 0, text, -1, NULL, 0);
+    int count = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
     (void)self; (void)unused; (void)face; (void)height; (void)arg; (void)arg2;
     assert(count);
     return (count - 1) * 7;
@@ -37,39 +38,34 @@ static void invalidate(struct UIWindow *self)
     ++invalidations;
 }
 
-static unsigned ellipsis(const char *text, int width, const char *expected, unsigned fail)
+static void ellipsis(const char *text, int width, const char *expected)
 {
     struct UIWindow wnd = {0};
     struct String result;
-    unsigned allocations;
     encoding_test_reset();
-    encoding_fail_allocation = fail;
     ui_window_ellipsize_text(&wnd, &result, width, text, 3, 12, 0);
-    if (expected)
-        assert(!strcmp(string_cstr(&result), expected));
-    assert(!encoding_live);
-    allocations = encoding_allocations;
+    assert(!strcmp(string_cstr(&result), expected));
+    assert(!encoding_live && !encoding_calls);
     string_free(&result);
     assert(!string_blocks);
-    return allocations;
 }
 
 int main(void)
 {
-    LCID previous = GetThreadLocale();
-    unsigned count, fail;
     struct UIWindowOps methods = {0};
     struct UIStaticText label = {0};
-    assert(SetThreadLocale(MAKELCID(MAKELANGID(LANG_KOREAN, SUBLANG_DEFAULT), SORT_DEFAULT)));
-    ellipsis("", 0, "", 0);
-    ellipsis("abcdef", 42, "abcdef", 0);
-    ellipsis("abcdef", 35, "ab...", 0);
-    ellipsis("abcdef", 0, "a...", 0);
-    ellipsis("a", -1, "a...", 0);
-    ellipsis("\xb0\xa1\xb3\xaa\xb4\xd9", 0, "\xb0\xa1...", 0);
-    count = ellipsis("abcdefghijklmnopqrstuv", 42, "abc...", 0);
-    for (fail = 1; fail <= count; ++fail)
-        ellipsis("abcdefghijklmnopqrstuv", 42, fail == 1 || fail == 2 ? "abcdefghijklmnopqrstuv" : NULL, fail);
+    ellipsis("", 0, "");
+    ellipsis("abcdef", 42, "abcdef");
+    ellipsis("abcdef", 35, "ab...");
+    ellipsis("abcdef", 0, "a...");
+    ellipsis("a", -1, "a...");
+    ellipsis(U8_GA U8_NA U8_DA, 0, U8_GA "...");
+    ellipsis(U8_GA U8_NA U8_DA, 21, U8_GA U8_NA U8_DA);
+    ellipsis(U8_GA U8_NA U8_DA U8_HAN U8_GUK U8_EO, 35, U8_GA U8_NA "...");
+    ellipsis(U8_ZHE U8_GRIN "abcd", 42, U8_ZHE U8_GRIN "...");
+    ellipsis(U8_ZHE U8_GRIN "abcd", 41, U8_ZHE "...");
+    ellipsis("ab\xe2\x82" "cdef", 35, "ab...");
+    ellipsis("abcdefghijklmnopqrstuv", 42, "abc...");
     methods.invalidate = invalidate;
     label.base.ops = &methods;
     label.base.width = 35;
@@ -83,14 +79,12 @@ int main(void)
     ui_static_text_set_text_ellipsis_wide(&label.base, "abcdef");
     assert(!strcmp(string_cstr(&label.text), "ab...") && label.has_tooltip);
     assert(!strcmp(string_cstr(&label.tooltip), "abcdef"));
-    encoding_test_reset(); encoding_fail_allocation = 1;
-    ui_static_text_set_text_ellipsis_wide(&label.base, "abcdef");
-    assert(!strcmp(string_cstr(&label.text), "abcdef") && label.has_tooltip);
+    ui_static_text_set_text_ellipsis_wide(&label.base, U8_HAN U8_GUK U8_EO U8_GA U8_NA U8_DA);
+    assert(!strcmp(string_cstr(&label.text), U8_HAN U8_GUK "...") && label.has_tooltip);
     assert(invalidations == 3 && !encoding_live);
     string_free(&label.text);
     string_free(&label.tooltip);
     assert(!string_blocks && !encoding_live);
-    assert(SetThreadLocale(previous));
-    puts("PASS: ASCII/Korean ellipsis, static labels, conversion-failure fallback and allocation cleanup");
+    puts("PASS: ASCII and UTF-8 ellipsis by whole characters, static labels and allocation cleanup");
     return 0;
 }

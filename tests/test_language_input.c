@@ -147,7 +147,6 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #undef SetClipboardData
 
 HWND g_hMainWnd;
-BYTE g_useCharsetTag;
 UINT g_codePage=CP_UTF8;
 struct UIWindowMgr g_windowMgr;
 struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *mgr) { (void)mgr; return NULL; }
@@ -210,7 +209,7 @@ static void test_ime(void)
     language_on_ime_message(&s,NULL,WM_IME_ENDCOMPOSITION,0,0,&handled);
     assert(handled && !s.composition_length);
     language_on_ime_message(&s,NULL,WM_INPUTLANGCHANGE,0,0x412,&handled);
-    assert(handled && s.keyboard_lang==0x412);
+    assert(handled);
     language_on_ime_message(&s,NULL,WM_USER,0,0,&handled); assert(!handled);
     ime_missing=1;strcpy(s.composition,"old");s.composition_length=3;language_read_composition(&s);assert(!s.composition_length);ime_missing=0;
     language_destruct(&s);assert(!heap_live && ime_releases>0 && ime_cancels>0);
@@ -271,17 +270,6 @@ static void test_input_ownership(void)
     language_cancel_input(&s);assert(!s.input_length && !s.input[0]);
     calls=heap_calls;assert(language_replace_selection(&s,"reuse"));assert(heap_calls==calls);
     language_destruct(&s);assert(!heap_live);
-}
-
-static void test_charset_tags(void)
-{
-    struct Language a,b;
-    char saved_tag[20];
-    language_construct(&a);language_construct(&b);
-    g_useCharsetTag=1;strcpy(saved_tag,language_charset_tag(&a,1));assert(!strcmp(saved_tag,"|00"));
-    language_charset_tag(&b,0);assert(!strcmp(a.charset_tag,saved_tag));g_useCharsetTag=0;
-    assert(!strcmp(language_charset_tag(&a,1),""));
-    language_destruct(&a);language_destruct(&b);assert(!heap_live);
 }
 
 static CANDIDATELIST *candidate_fixture(void)
@@ -383,7 +371,7 @@ int main(int argc,char **argv)
     (void)argv; trace_steps=argc>1;
     test_editing();test_ime();
     test_clipboard();
-    test_input_ownership();test_charset_tags();test_candidates();test_edit_sequence();
-    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, charset tags, UTF-8 caret steps and clipboard failures passed.");
+    test_input_ownership();test_candidates();test_edit_sequence();
+    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, UTF-8 caret steps and clipboard failures passed.");
     return 0;
 }

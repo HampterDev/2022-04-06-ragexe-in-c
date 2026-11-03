@@ -10,13 +10,12 @@
 #include "render/fonts.h"
 #include "platform/language.h"
 #include "diag/perf.h"
+#include "utf8_text.h"
 
 struct FontCache g_fontCache;
 struct C3dDevice g_3dDevice;
 struct Language *g_language;
 struct perf_counters g_perf;
-unsigned int g_codePage = 949;
-unsigned char g_useCharsetTag;
 static int live_blocks, allocations, fail_alloc, fail_convert, fail_extent, fail_abc, fail_font, fail_select;
 static int acquired, released, deny_dc;
 static int conversions, extents, abc_calls, font_calls, selections, current_charset, timer_depth;
@@ -158,13 +157,6 @@ static void reset(void)
     fail_alloc = fail_convert = fail_extent = fail_abc = fail_font = fail_select = 0;
     input_start = NULL; input_length = 0;
 }
-static int digit(unsigned char c)
-{
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
 static int expected_piece(const char *s, size_t len, int charset, int x, int y, int abc, SIZE *total)
 {
     struct Draw *d;
@@ -172,7 +164,7 @@ static int expected_piece(const char *s, size_t len, int charset, int x, int y, 
     if (!len) return x;
     assert(expected_draws < 128);
     d = &expected[expected_draws++]; d->x = x; d->y = y; d->charset = charset;
-    d->length = MultiByteToWideChar(get_code_page_from_charset(charset), 0, s, (int)len, d->text, 4096);
+    d->length = MultiByteToWideChar(CP_UTF8, 0, s, (int)len, d->text, 4096);
     assert(d->length > 0);
     width = d->length * (3 + charset % 5);
     if (abc) { width = 0; for (i=0; i<d->length; ++i) width += 4 + d->text[i] % 3; }
@@ -180,27 +172,19 @@ static int expected_piece(const char *s, size_t len, int charset, int x, int y, 
     if (total->cy < 10 + charset % 7) total->cy = 10 + charset % 7;
     return x + width;
 }
-static void check_runs(const char *s, size_t len, int tags, int abc, int trace)
+/* The whole text is one UTF-8 run in the context's charset; "|xx" is ordinary text. */
+static void check_runs(const char *s, size_t len, int abc, int trace)
 {
     struct TextDC dc = context();
     SIZE want = {0}, got = {-1,-1};
-    size_t i = 0, start = 0;
-    int charset = dc.charset, parse = tags, x = 10, j;
-    reset(); g_useCharsetTag = (unsigned char)tags; dc.italic = (BYTE)abc;
+    int j;
+    reset(); dc.italic = (BYTE)abc;
     input_start = s; input_length = len;
-    while (i < len) {
-        if (!s[i]) parse = 0;
-        if (parse && s[i] == '|' && len-i >= 3 && digit((unsigned char)s[i+1]) >= 0 && digit((unsigned char)s[i+2]) >= 0) {
-            x = expected_piece(s+start, i-start, charset, x, 20, abc, &want);
-            charset = digit((unsigned char)s[i+1]) * 16 + digit((unsigned char)s[i+2]);
-            i += 3; start = i;
-        } else ++i;
-    }
-    expected_piece(s+start, len-start, charset, x, 20, abc, &want);
+    expected_piece(s, len, dc.charset, 10, 20, abc, &want);
     text_dc_text_extent(&dc, s, (int)len, &got);
     assert(got.cx == want.cx && got.cy == want.cy);
     text_dc_text_out(&dc, 10, 20, s, (int)len);
-    assert(draws == expected_draws);
+    assert(draws == expected_draws && draws == (len ? 1 : 0));
     for (j=0; j<draws; ++j) {
         struct Draw *a=&actual[j], *b=&expected[j];
         assert(a->x==b->x && a->y==b->y && a->charset==b->charset && a->length==b->length);
@@ -215,6 +199,12 @@ static void check_runs(const char *s, size_t len, int tags, int abc, int trace)
         }
         putchar('\n');
     }
+}
+static void decoded(const char *s, const WCHAR *expected_text, int count)
+{
+    check_runs(s, strlen(s), 0, 0);
+    assert(draws == 1 && actual[0].length == count);
+    assert(!memcmp(actual[0].text, expected_text, (size_t)count * sizeof(WCHAR)));
 }
 static void lifetime(void)
 {
@@ -257,12 +247,12 @@ static void cache_and_failures(void)
     reset(); dc.italic=1; fail_abc=1; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(!size.cx && !size.cy);
     fail_abc=0; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(size.cx>0 && extents==2);
     dc.italic=0;
-    reset(); textdc_text_out(&dc,0,0,large,512,129); assert(draws==1 && !allocations);
-    reset(); textdc_text_out(&dc,0,0,large,513,129); assert(draws==1 && allocations==1 && !live_blocks);
-    reset(); fail_alloc=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !conversions && !live_blocks);
-    reset(); fail_convert=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !font_calls);
-    reset(); fail_font=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks && !selections);
-    reset(); fail_select=1; textdc_text_out(&dc,0,0,large,513,129); assert(!draws && !live_blocks);
+    reset(); text_dc_text_out(&dc,0,0,large,512); assert(draws==1 && !allocations);
+    reset(); text_dc_text_out(&dc,0,0,large,513); assert(draws==1 && allocations==1 && !live_blocks);
+    reset(); fail_alloc=1; text_dc_text_out(&dc,0,0,large,513); assert(!draws && !conversions && !live_blocks);
+    reset(); fail_convert=1; text_dc_text_out(&dc,0,0,large,513); assert(!draws && !live_blocks && !font_calls);
+    reset(); fail_font=1; text_dc_text_out(&dc,0,0,large,513); assert(!draws && !live_blocks && !selections);
+    reset(); fail_select=1; text_dc_text_out(&dc,0,0,large,513); assert(!draws && !live_blocks);
     reset(); fail_alloc=1; text_dc_measure_in_charset(&dc,&size,large,513,129); assert(!size.cx && !size.cy && !live_blocks);
     reset(); fail_extent=1; text_dc_measure_in_charset(&dc,&size,large,513,129); assert(!size.cx && !size.cy && !live_blocks);
     reset(); fail_font=1; text_dc_measure_in_charset(&dc,&size,"retry",5,129); assert(!size.cx && !conversions);
@@ -273,44 +263,48 @@ static void cache_and_failures(void)
 }
 static void guarded(void)
 {
-    const char *values[]={"before|81한국|00after", "|81a|80b|81c", "|8", "a\0|81b"};
-    const size_t lengths[]={sizeof("before|81한국|00after")-1,12,2,6};
-    SYSTEM_INFO si; BYTE *pages; DWORD old; size_t i,n; int enabled;
+    static const char *const values[]={"before|81" U8_HAN U8_GUK "|00after", U8_ZHE "a" U8_GRIN, "\xf0\x9f\x98", "a\0" U8_EURO "b"};
+    const size_t lengths[]={sizeof("before|81" U8_HAN U8_GUK "|00after")-1,7,3,6};
+    SYSTEM_INFO si; BYTE *pages; DWORD old; size_t i,n;
     GetSystemInfo(&si); pages=VirtualAlloc(NULL,2*si.dwPageSize,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE); assert(pages);
     assert(VirtualProtect(pages+si.dwPageSize,si.dwPageSize,PAGE_NOACCESS,&old));
     for(i=0;i<sizeof(values)/sizeof(values[0]);++i) for(n=0;n<=lengths[i];++n) {
         char *s=(char *)pages+si.dwPageSize-n; memcpy(s,values[i],n);
-        for(enabled=0;enabled<2;++enabled) check_runs(s,n,enabled,0,0);
+        check_runs(s,n,0,0); check_runs(s,n,1,0);
     }
     assert(VirtualFree(pages,0,MEM_RELEASE));
 }
 static void generated(int trace)
 {
+    static const char *const pieces[]={U8_HAN U8_GUK, U8_ZHE, U8_GRIN, "\xe2\x82", "\xff", "|81", U8_EURO};
     unsigned seed=0xa11378u,sample;
     for(sample=0;sample<3000;++sample) {
-        char text[2048]; size_t n=0,i; int tags=(sample%3)!=0,abc=sample%2;
+        char text[2048]; size_t n=0,i; int abc=sample%2;
         seed=seed*1664525u+1013904223u;
         for(i=0;i<(seed>>24);++i) text[n++]=(char)('a'+i%26);
-        if(sample%2) { static const char *const codes[]={"|81","|80","|00","|cc"}; memcpy(text+n,codes[(sample/2)%4],3);n+=3; }
+        if(sample%2) { const char *piece=pieces[(sample/2)%7]; memcpy(text+n,piece,strlen(piece));n+=strlen(piece); }
         seed=seed*1664525u+1013904223u;
         for(i=0;i<(seed>>24);++i) text[n++]=(char)('A'+i%26);
-        if(sample%7==0) { memcpy(text+n,"한국",sizeof("한국")-1);n+=sizeof("한국")-1; }
-        if(!trace) { memcpy(text+n,"|80日本|00tail|81한국",sizeof("|80日本|00tail|81한국")-1);n+=sizeof("|80日本|00tail|81한국")-1; }
-        text[n]=0; check_runs(text,n,tags,abc,trace);
+        if(sample%7==0) { memcpy(text+n,U8_HAN U8_GUK,6);n+=6; }
+        text[n]=0; check_runs(text,n,abc,trace);
     }
 }
 int main(int argc,char **argv)
 {
+    static const WCHAR korean[]={0xd55c,0xad6d}, mixed[]={'|','8','1',0x416,0xd83d,0xde00,0x20ac};
+    static const WCHAR broken[]={'a',0xfffd,'b'};
     int trace=argc==2 && strcmp(argv[1],"--trace")==0;
     if(!trace) {
-        check_runs("prefix|81한국|80ab|00tail",sizeof("prefix|81한국|80ab|00tail")-1,1,0,0);
-        check_runs("|81|80x|00",10,1,1,0);
-        check_runs("bad|g0x|8",9,1,0,0);
-        check_runs("a\0|81b",6,1,0,0);
+        decoded(U8_HAN U8_GUK, korean, 2);
+        decoded("|81" U8_ZHE U8_GRIN U8_EURO, mixed, 7);
+        decoded("a\xe2\x82" "b", broken, 3);
+        check_runs("prefix|81" U8_HAN U8_GUK "|80ab|00tail",sizeof("prefix|81" U8_HAN U8_GUK "|80ab|00tail")-1,0,0);
+        check_runs("|81|80x|00",10,1,0);
+        check_runs("a\0|81b",6,0,0);
         lifetime(); cache_and_failures(); guarded();
     }
     generated(trace);
     assert(!live_blocks && !timer_depth);
-    if(!trace) puts("Text rendering: shared bounded runs, UTF-16 ownership, Korean/counts, protected pages, GDI/allocator failure retry, cache and 3000 generated cases passed.");
+    if(!trace) puts("Text rendering: UTF-8 decoding in the context's charset, UTF-16 ownership, surrogate pairs and invalid bytes, protected pages, GDI/allocator failure retry, cache and 3000 generated cases passed.");
     return 0;
 }

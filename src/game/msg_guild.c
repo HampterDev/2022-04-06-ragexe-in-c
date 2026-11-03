@@ -21,12 +21,6 @@
 
 #define LIST_PACKET_MAX 0x800
 
-static char *charset_prefix(char *field)
-{
-    strcpy(field, language_charset_tag(g_language, 0));
-    return field + 3;
-}
-
 int game_mode_msg_register_guild_emblem(const void *image, int size)
 {
     struct {
@@ -169,10 +163,7 @@ int game_mode_msg_leave_guild(const char *reason)
     packet.guild_id = g_guildInfo.guild_id;
     packet.aid = g_session1.ownAid;
     packet.char_id = g_session1.ownGid;
-    if (g_useCharsetTag)
-        strncpy(charset_prefix(packet.reason), reason, 0x24);
-    else
-        strncpy(packet.reason, reason, 0x27);
+    strncpy(packet.reason, reason, 0x27);
     packet.reason[39] = 0;
     send_packet(CZ_REQ_LEAVE_GUILD, &packet);
     return 0;
@@ -196,10 +187,7 @@ int game_mode_msg_ban_guild_member(const struct GuildBanTarget *who, const char 
     packet.guild_id = who->guild_id;
     packet.aid = who->aid;
     packet.char_id = who->char_id;
-    if (g_useCharsetTag)
-        strncpy(charset_prefix(packet.reason), reason, 0x24);
-    else
-        strncpy(packet.reason, reason, 0x27);
+    strncpy(packet.reason, reason, 0x27);
     packet.reason[39] = 0;
     send_packet(CZ_REQ_BAN_GUILD, &packet);
     return 0;
@@ -313,13 +301,8 @@ int game_mode_msg_guild_notice(int guild_id, const char *subject, const char *no
 
     packet.id = CZ_GUILD_NOTICE;
     packet.guild_id = guild_id;
-    if (g_useCharsetTag) {
-        strncpy(charset_prefix(packet.subject), subject, 0x38);
-        strncpy(charset_prefix(packet.notice), notice, 0x74);
-    } else {
-        strncpy(packet.subject, subject, 0x3b);
-        strncpy(packet.notice, notice, 0x77);
-    }
+    strncpy(packet.subject, subject, 0x3b);
+    strncpy(packet.notice, notice, 0x77);
     packet.subject[59] = 0;
     packet.notice[119] = 0;
     send_packet(CZ_GUILD_NOTICE, &packet);

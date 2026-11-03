@@ -96,8 +96,8 @@ static int wide_text_less(const char *a, const char *b)
 
     memset(wa, 0, sizeof wa);
     memset(wb, 0, sizeof wb);
-    MultiByteToWideChar(CP_ACP, 0, a, -1, wa, 0x104);
-    MultiByteToWideChar(CP_ACP, 0, b, -1, wb, 0x104);
+    MultiByteToWideChar(CP_UTF8, 0, a, -1, wa, 0x104);
+    MultiByteToWideChar(CP_UTF8, 0, b, -1, wb, 0x104);
     return wcscmp(wa, wb) < 0;
 }
 
