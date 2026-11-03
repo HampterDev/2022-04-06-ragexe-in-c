@@ -52,7 +52,7 @@ char rag_connection_get_packet(struct RagConnection *self, void *buf,
         if (!byte_queue_peek(queue, 4, &head))
             return 0;
         len = (unsigned short)(head >> 16);
-        if (len < 4) {
+        if (len < 4 || (info.kind == PACKET_KIND_VARIABLE && len < info.length)) {
             connection_reset_queues(&self->base);
             return 0;
         }

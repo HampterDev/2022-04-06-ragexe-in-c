@@ -15,7 +15,7 @@ struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
 {
     (void)table;
     out->kind = id == 0x1234 ? PACKET_KIND_FIXED : id == 0x7777 ? PACKET_KIND_UNKNOWN : PACKET_KIND_VARIABLE;
-    out->length = id == 0x1234 ? 6 : 4;
+    out->length = id == 0x1234 ? 6 : id == 0x1236 ? 8 : 4;
     return out;
 }
 
@@ -150,6 +150,31 @@ int main(void)
         assert(length == sizeof packet && memcmp(packet, output, length) == 0);
         assert(byte_queue_size(received) == 0 && reset_calls == 8);
     }
-    puts("packets: framing, short framed lengths, partial reads, immutable send, holding and key sequence passed");
+
+    {
+        /* 0x1236 is variable with an 8-byte table minimum; 0x7777 has no row. */
+        static const unsigned char minimum[] = { 0x36, 0x12, 8, 0, 1, 2, 3, 4 };
+        static const unsigned char unknown[] = { 0x77, 0x77, 5, 0, 9 };
+        unsigned char framed[8];
+        int framed_length, previous;
+
+        for (framed_length = 4; framed_length < 8; ++framed_length) {
+            memcpy(framed, minimum, sizeof framed);
+            framed[2] = (unsigned char)framed_length;
+            byte_queue_write(received, sizeof framed, framed);
+            previous = reset_calls;
+            length = 0xeeee;
+            assert(!rag_connection_get_packet(connection, output, &length));
+            assert(reset_calls == previous + 1 && length == 0xeeee && byte_queue_size(received) == 0);
+        }
+        byte_queue_write(received, sizeof minimum, minimum);
+        byte_queue_write(received, sizeof unknown, unknown);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof minimum && memcmp(minimum, output, length) == 0);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof unknown && memcmp(unknown, output, length) == 0);
+        assert(byte_queue_size(received) == 0 && reset_calls == 12);
+    }
+    puts("packets: framing, short framed lengths, table minimums, partial reads, immutable send, holding and key sequence passed");
     return 0;
 }
