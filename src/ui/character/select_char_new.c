@@ -44,8 +44,6 @@
 #define ID_SELECT_PAGE_SLOT 0xc3
 #define ID_SLOT 0xc4
 #define ID_DELETE 0xcb
-#define ID_ERROR_TEXT_A 0x114
-#define ID_ERROR_TEXT_B 0x116
 #define ID_PAGE_LEFT 0x134
 #define ID_PAGE_RIGHT 0x135
 #define ID_CHANGE_NAME 0x157
@@ -68,7 +66,6 @@
 #define LOGIN_CMD_START 0x2712
 #define LOGIN_CMD_DELETE 0x271a
 #define LOGIN_REQ_BACK_TO_LOGIN 0x271b
-#define LOGIN_REQ_ERROR_TEXT 0x2724
 
 #define NOTICE_MOVE_PENDING 0x2e
 #define NOTICE_CAN_MOVE 0x2d
@@ -134,7 +131,6 @@ const struct UIWindowOps ui_new_select_char_wnd_ops = {
 
 struct UINewSelectCharWnd {
     struct UIFrameWnd frame;
-    struct UIBmpTextButton *info_button;
     struct UIBmpTextButton *reserve_button;
     struct UIBmpTextButton *cancel_button;
     struct Tree gids;
@@ -325,7 +321,6 @@ struct UIWindow *ui_new_select_char_wnd_create(void)
         (int64_t)g_session1.charListCounts[1] + g_session1.charListCounts[2] + g_session1.charListCounts[3],
         login_mode_max_char_slot((struct LoginMode *)login_mode()));
     self->delete_button = NULL;
-    self->info_button = NULL;
     self->reserve_button = NULL;
     self->cancel_button = NULL;
     self->busy = 0;
@@ -555,11 +550,6 @@ void ui_new_select_char_wnd_on_create(struct UIWindow *window, int width_unused,
     close->button.base.id = ID_BACK;
     ui_window_add_child(wnd, &close->button.base);
 
-    self->info_button = add_info_button(0x33e, 0x15f, 0xd10, 0);
-    self->info_button->bmp.button.base.id = 0x116;
-    ui_button_set_show((struct UIButton *)(self->info_button), 0);
-    ui_window_add_child(wnd, &self->info_button->bmp.button.base);
-
     self->reserve_button = add_info_button(0x33e, 0x142, 0xd0b, 1);
     ui_bmp_text_button_set_text_style(self->reserve_button, 3, 0xc, 0x909090, 0, 0, UI_TEXT_CENTRED,
                                  UI_TEXT_CENTRED);
@@ -687,23 +677,6 @@ void ui_new_select_char_wnd_on_create(struct UIWindow *window, int width_unused,
     }
     ui_new_select_char_wnd_update_info(self);
     self->frame.default_id = ID_START;
-}
-
-static void draw_slot_kind(struct UINewSelectCharWnd *self, int index)
-{
-    int col = index % self->storage.per_page;
-    int normal = g_session1.charListCounts[1], premium = g_session1.charListCounts[2];
-    const char *kind;
-
-    if (premium > 0 && index >= normal && index < normal + premium)
-        kind = "Premium ";
-    else if (g_session1.charListCounts[3] > 0 && index >= normal + premium &&
-             index < g_session1.charListCounts[3] + normal + premium)
-        kind = "Billing ";
-    else
-        return;
-    ui_window_text_out(WND(self), col * 0xa3 + 0x88, 0x32, kind, 0, 1, 0xf, 0xff, 0, 0);
-    ui_window_text_out(WND(self), col * 0xa3 + 0x8e, 0x3f, "Service", 0, 1, 0xf, 0xff, 0, 0);
 }
 
 static void draw_character(struct UINewSelectCharWnd *self, const struct CharInfo *info,
@@ -870,7 +843,6 @@ void ui_new_select_char_wnd_on_draw(struct UIWindow *window)
         if (index >= self->storage.slot_count)
             continue;
         info = ui_char_info(index);
-        draw_slot_kind(self, index);
         update_slot_button(self, index);
         update_deletion(self, info, index);
     }
@@ -1226,15 +1198,6 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
     case ID_DELETE:
         on_delete(self);
         break;
-    case ID_ERROR_TEXT_A:
-    case ID_ERROR_TEXT_B: {
-        char text[0x104];
-
-        memset(text, 0, sizeof text);
-        mode_send_message(client_current_mode(), LOGIN_REQ_ERROR_TEXT, (int)text, 0, 0, 0);
-        ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
-        break;
-    }
     case ID_PAGE_LEFT:
         on_page_left(self);
         break;

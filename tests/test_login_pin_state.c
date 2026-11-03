@@ -146,6 +146,8 @@ int main(void)
     static const unsigned short notices[2][2] = { { 0x08b9, 12 }, { 0x0ae9, 13 } };
     static const unsigned short retired[] = {
         0x08b7, 0x08b8, 0x08ba, 0x08bb, 0x08bc, 0x08bd, 0x08be, 0x08bf, 0x08c3, 0x08c4, 0x08c5, 0x08c6,
+        /* 2026-11-03: billing/play-time notice and Taren refusal */
+        0x01b5, 0x0aca,
     };
     static struct Session session_before;
     static struct UIWindowMgr manager_before;
@@ -184,6 +186,6 @@ int main(void)
     }
     puts("Login PIN state: real character-server dispatch continues for states 0 and 7, refuses 1-6 and 8-11 "
          "with disconnect, message and login screen, ignores unknown states for 0x08b9/0x0ae9, and sends "
-         "retired PIN packets to the unknown-packet path.");
+         "retired PIN, billing and Taren packets to the unknown-packet path.");
     return 0;
 }

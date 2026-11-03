@@ -114,3 +114,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Remove the remaining 4th-class status visuals and effect data, ABR/Bionic summons (`0x0b6b`/`0x0b6c`) and grade-enchant effects; requests for retired effect IDs launch nothing.
 - Remove the skill-point preview and its Apply/Reset controls; a skill's raise control sends one upgrade request at once when points and prerequisites allow.
 - Remove the write-only skill-upgrade flag, unused companion gauge layouts, the never-created NPC HP gauge and the ESC menu's dead `0xec` command.
+- Remove the hourly play-time warning, billing/remaining-time and PC-cafe notices, premium/billing slot labels and the Taren login refusal.

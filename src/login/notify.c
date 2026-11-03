@@ -8,65 +8,6 @@
 #include "platform/language.h"
 #include "core/msg_str.h"
 
-#pragma pack(push, 1)
-struct PACKET_AC_PLAY_TIME {
-    WORD packet_type;
-    DWORD first;
-    DWORD second;
-};
-#pragma pack(pop)
-SIZE_ASSERT(PACKET_AC_PLAY_TIME, 10);
-
-void login_mode_on_play_time(struct LoginMode *self, const BYTE *pkt)
-{
-    const struct PACKET_AC_PLAY_TIME *packet = (const struct PACKET_AC_PLAY_TIME *)pkt;
-    char text[0x100];
-    DWORD a = packet->first;
-    DWORD b;
-    size_t len;
-
-    if (a == 0xfffffffe) {
-        if (packet->second == a) {
-            sprintf(text, "%s\n", msg_str(0x2a8));
-            goto show;
-        }
-    } else if (a == 0xfffffffd) {
-        if (packet->second == a) {
-            sprintf(text, "%s\n", msg_str(0x41c));
-            goto show;
-        }
-    } else if (a == 0xffffffff) {
-        if (packet->second == a) {
-            sprintf(text, "%s\n", msg_str(0x2d5));
-            goto show;
-        }
-    } else if (a == 0) {
-        b = packet->second;
-        if (b > 0) {
-            sprintf(text, "%s\n", msg_str(0x21d));
-            len = strlen(text);
-            sprintf(text + len, msg_str(0x2a7), b / 60, b % 60);
-        } else {
-            sprintf(text, "\n");
-        }
-        goto show;
-    }
-
-    b = packet->second;
-    if (b != 0) {
-        sprintf(text, msg_str(0x2d6), a / 1440, a / 60 % 24, a % 60, b / 60, b % 60);
-    } else {
-        sprintf(text, "%s\n", msg_str(0x215));
-        len = strlen(text);
-        a = packet->first;
-        sprintf(text + len, msg_str(0x2a5), a / 1440, a / 60 % 24, a % 60);
-    }
-
-show:
-    self->stateTick = timeGetTime() + 90000;
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
-}
-
 void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
 {
     const struct PACKET_SC_NOTIFY_BAN *packet = (const struct PACKET_SC_NOTIFY_BAN *)pkt;

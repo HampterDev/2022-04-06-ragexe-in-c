@@ -446,9 +446,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return 0;
     case MODE_MSG_RECALL_NAME:
         return game_mode_msg_send_name(0x1bd, (const char *)a);
-    case MODE_MSG_REQ_REMAIN_TIME:
-        send_id(0x1c0);
-        return 0;
     case MODE_MSG_SELECT_AUTOSPELL:
         send_u32(0x1ce, a);
         return 0;

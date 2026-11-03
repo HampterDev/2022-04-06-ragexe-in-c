@@ -113,7 +113,6 @@ static void greet_after_login(struct GameMode *self)
     guild_info_reset(&g_guildInfo);
     if (g_serviceType == 0) {
         mode_send_message(client_current_mode(), MODE_MSG_CHAT_ROOM_MSG, 0xe, 0, 0, 0);
-        mode_send_msg(self, MODE_MSG_REQ_REMAIN_TIME, 0, 0, 0, 0);
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);

@@ -54,10 +54,6 @@ struct PACKET_HC_REFUSE_SELECTCHAR {
     WORD packet_type;
     BYTE error_code;
 };
-struct PACKET_AC_LOGIN_TAREN_REFUSE {
-    WORD packet_type;
-    BYTE error_code;
-};
 struct PACKET_AC_SERVER_TEXT {
     WORD packet_type;
     WORD packet_length;
@@ -154,14 +150,6 @@ static void back_to_login(struct LoginMode *self)
 static void disconnect(void)
 {
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-}
-
-static void read_billing(struct LoginMode *self, const struct LoginBillingInfo *src)
-{
-    self->billing = *src;
-    self->billing.value1 = ntohl(self->billing.value1);
-    self->billing.value5 = ntohl(self->billing.value5);
-    self->billing.value9 = ntohl(self->billing.value9);
 }
 
 static void enter_zone(struct LoginMode *self, struct String host)
@@ -274,7 +262,6 @@ static void on_char_list_userver(struct LoginMode *self)
     const struct PACKET_HC_ACCEPT_ENTER2 *packet = (const struct PACKET_HC_ACCEPT_ENTER2 *)g_packetBuffer;
     unsigned len;
 
-    read_billing(self, &packet->billing);
     len = (unsigned)packet->packet_length - 0x18;
     self->numChar = (int)(len / 0xaf);
     (g_session1.charCount) = self->numChar;
@@ -406,19 +393,6 @@ static void on_refuse_login3(struct LoginMode *self)
     login_mode_refuse_login(self, packet->error_code, "");
 }
 
-static void on_refuse_taren(struct LoginMode *self)
-{
-    static const int texts[] = { 0xc7c, 0xc7d, 0xc7e, 0xc7f, 0xc80, 0xc81, 0xc8e, 0xc82, 0xf47 };
-    const struct PACKET_AC_LOGIN_TAREN_REFUSE *packet = (const struct PACKET_AC_LOGIN_TAREN_REFUSE *)g_packetBuffer;
-    int code = packet->error_code, msg = 0xc82;
-
-    if ((unsigned)(code - 1) <= 8)
-        msg = texts[code - 1];
-    disconnect();
-    box(thread_text_format("%s(%d)", msg_str(msg), code), 0, 1, 0, 0);
-    back_to_login(self);
-}
-
 static void on_zone_addr_domain(struct LoginMode *self)
 {
     const struct PACKET_HC_NOTIFY_ZONESVR2 *packet = (const struct PACKET_HC_NOTIFY_ZONESVR2 *)g_packetBuffer;
@@ -504,7 +478,6 @@ void login_mode_process_packets(struct LoginMode *self)
             back_to_login(self);
             break;
         case 0x81: login_mode_on_disconnect_reason(self, g_packetBuffer); break;
-        case 0x1b5: login_mode_on_play_time(self, g_packetBuffer); break;
         case 0x1be: on_ask_hash(self); break;
         case 0x1c7: error_msg("No Packet Encryption !!!", 0); break;
         case 0x1dc: login_mode_on_hash_key(self, g_packetBuffer); break;
@@ -548,7 +521,6 @@ void login_mode_process_packets(struct LoginMode *self)
         case 0xac4: login_mode_on_accept_login(self, g_packetBuffer, 5); break;
         case 0xac5: on_zone_addr_domain(self); break;
         case 0xac9: login_mode_on_accept_login(self, g_packetBuffer, 4); break;
-        case 0xaca: on_refuse_taren(self); break;
         case 0xacd: login_mode_on_refuse_byte(self, g_packetBuffer); break;
         case 0xad1: login_mode_on_auth_result2(self, g_packetBuffer); break;
         case 0xade:

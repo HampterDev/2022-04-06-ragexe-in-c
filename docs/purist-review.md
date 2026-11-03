@@ -8123,3 +8123,95 @@ Validation: the release build had no warnings; the full `tests/build.bat`
 (`build/leftovers-<suite>.log`) passed; the packet dispatch digest is unchanged at
 `679cf1c915cfe60f`; `git diff --check` passed. No live client/server smoke test
 was run.
+
+## Play-time warning, billing and Taren removal (2026-11-03)
+
+Decisions: Patrick approved this removal on 2026-11-03 after a search for leftover
+billing, play-time and regional login code. It continues the earlier decisions to
+drop official billing and PC-cafe behavior: the unpaid-account redirect
+([START-080](#account-payment-disconnect-redirect-start-080-removed)) and the
+launcher PC-cafe mode (START-006).
+
+What the client did before this removal:
+
+- **Hourly play-time warning.** Every network poll in game mode compared
+  `timeGetTime()` with `Session.loginTick` (set when the login server accepted the
+  account). Once per elapsed hour, for every service type, it put a two-line balloon
+  above the screen: "%d 시간이 경과했습니다." and "과도한 게임이용은 정상적인 일상생활에 지장을 줄
+  수 있습니다." (`notice_play_time`, `g_playTimeHoursNoticed`).
+- **Billing and remaining time.** On map entry with service type 0, the client sent
+  `CZ_REQ_REMAINTIME` (`0x01c0`, mode message `0xa1`). `ZC_REPLY_REMAINTIME` (`0x01c1`)
+  printed the account's billing plan and remaining time in chat (Korean PC-bang tiers,
+  premium plans, mixed/flat/metered plans, China days/hours).
+  `ZC_INFO_REMAINTIME` (`0x01c2`) printed flat/metered/PC-bang minutes left (Korea) or
+  the voucher minutes (Indonesia). `ZC_PCBANG_EFFECT` (`0x027b`) showed the PC-cafe
+  EXP/death/drop factors in the same balloon. All three lived in `src/game/billing.c`.
+- **Login billing.** The login and character-list packets carry a 20-byte
+  `LoginBillingInfo`. The client byte-swapped it into `LoginMode.billing`
+  (`read_billing`, `billing_swap`). A hidden "Notice" button (message `0xd10`, ID
+  `0x116`, never shown) on the character-select window asked mode message `0x2724` for
+  `billing_text`, which formatted the plan text. `SC_BILLING_INFO` (`0x01b5`) showed a
+  play-time/billing message box during login (`login_mode_on_play_time`).
+- **Character-slot labels.** Slots beyond the normal count were labelled
+  "Premium Service" or "Billing Service" (`draw_slot_kind`).
+- **Taren refusal.** `AC_LOGIN_TAREN_REFUSE` (`0x0aca`) was the Chinese anti-addiction
+  login refusal: it mapped codes 1-9 to messages `0xc7c`-`0xc82`, `0xc8e` and `0xf47`,
+  disconnected, showed "text(code)" and returned to the login screen.
+
+Removed: `notice_play_time`, `g_playTimeHoursNoticed`, `Session.loginTick` and its
+write; `src/game/billing.c` with the three handlers, their dispatch cases, IDs,
+declarations and test sinks; the `0x01c0` request and mode message `0xa1`; the stored
+`LoginMode.billing`, `read_billing`, `billing_swap`, `billing_text`, mode message
+`0x2724`, the hidden Notice button with its command case and IDs; `0x01b5`'s handler,
+case and declaration; the slot labels; `on_refuse_taren` with its text table and
+packet struct; and the length and name rows of `0x01b5`, `0x01c0`-`0x01c2`, `0x027b` and
+`0x0aca` (the rows went with their code, as for earlier removals). Two includes only
+the removed code used went too (`ui/chat/balloon.h` in `net_poll.c`, `winsock2.h` in
+`char_list.c`).
+
+Kept:
+
+- `LoginBillingInfo` stays inside `PACKET_HC_ACCEPT_ENTER`, the neo-union header and
+  `PACKET_HC_ACCEPT_ENTER2`, so every field offset and size assertion is unchanged; it is
+  just no longer read.
+- The slot counts `charListCounts[1]`-`[4]`/`[6]` and the slot layout are unchanged.
+- `GameMode.notice_wnd`/`notice_shown_at` and their close logic in `balloon_frame.c`:
+  server broadcasts (`broadcasts.c`) still use them.
+- The `MODE_MSG_CHAT_ROOM_MSG 0xe` call on map entry for service type 0.
+
+Server implications:
+
+- The client no longer sends `0x01c0`. Hercules (`clif_parse_reqRemainTime`) and rAthena
+  (`packet(0x01c0,2)`) both accepted and ignored it.
+- `0x01c1`, `0x01c2` and `0x027b` now take the game dispatcher's unknown-packet path, and
+  `0x01b5` and `0x0aca` the login loop's, which reset connection queues. Neither
+  stock Hercules nor stock rAthena sends any of them.
+- No server checkout was modified.
+
+Tests changed: the packet-dispatch test adds `0x01c1`, `0x01c2` and `0x027b` to the
+unknown-packet IDs and loses their sinks. The login-loop harness
+(`test_login_pin_state`, which drives the real `login_dispatch.c`) now also checks
+that `0x01b5` and `0x0aca` reach the unknown-packet path, and loses the play-time stub.
+
+Validation:
+
+- Release build passed without compiler or linker warnings:
+  `build/play-time-billing-build.log`.
+- Packet dispatch: all 1,179,800 cases passed, digest `f57257980132c31b` (before:
+  `679cf1c915cfe60f`). `build/derive_round2_dispatch.py` changes exactly 18 cases of the
+  regenerated baseline (`build/packet-dispatch-before-play-time-billing.bin`): 6 each for
+  `0x01c1`, `0x01c2` and `0x027b`, the full-size non-null first-dispatcher calls in all
+  six packet patterns. These were first-dispatcher handlers; each case formerly called
+  its sink and now forwards to the second dispatcher's unknown-packet reset. Their
+  direct second-dispatcher cases were already unknown, which the script asserts. The
+  actual trace matches byte for byte (SHA-256 `96e76cc5...af7db77e9a1`):
+  `build/play-time-billing-dispatch.log`, `build/play-time-billing-dispatch-expectation.log`.
+- Packet table: 1,240 -> 1,234 length rows and 1,283 -> 1,277 name rows; only the six
+  IDs above lost rows, all retained rows unchanged (`build/audit_round2_packet_table.py`,
+  `build/play-time-billing-packet-table-audit.log`).
+- Login loop: `build/play-time-billing-login_pin_state.log`.
+- Full suite `tests\build.bat` passed in 5 min 57 s: `build/play-time-billing-full-tests.log`.
+- `git diff --check` passed.
+
+The pre-removal tree is in `build/before-play-time-billing-removal`. No live
+client/server smoke test was run.

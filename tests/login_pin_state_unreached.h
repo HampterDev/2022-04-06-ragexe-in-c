@@ -14,7 +14,6 @@ void login_mode_on_char_list_header(struct LoginMode *arg0, const BYTE *arg1) { 
 void login_mode_on_char_list_page(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_disconnect_reason(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_hash_key(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
-void login_mode_on_play_time(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_refuse_byte(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_zone_accept(struct LoginMode *arg0, const BYTE *arg1) { (void)arg0; (void)arg1; abort(); }
 void login_mode_on_zone_accept2(const BYTE *arg0) { (void)arg0; abort(); }

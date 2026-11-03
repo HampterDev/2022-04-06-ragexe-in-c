@@ -84,7 +84,6 @@ struct LoginMode {
     struct LoginServerEntry servers[LOGIN_MAX_SERVERS];
     struct CharInfo chars[LOGIN_MAX_CHARS];
     struct String wallpaper;
-    struct LoginBillingInfo billing;
     DWORD nextKeepAlive;
     void *waitWnd;
     struct Vec messageIds;
@@ -166,7 +165,6 @@ void login_mode_on_pin_state(struct LoginMode *self, const BYTE *pkt);
 void login_mode_refuse_login(struct LoginMode *self, int code, const char *text);
 void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt);
 
-void login_mode_on_play_time(struct LoginMode *self, const BYTE *pkt);
 void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt);
 
 void login_mode_on_auth_result(struct LoginMode *self, const BYTE *pkt);

@@ -56,13 +56,10 @@ struct PACKET_ZC_GUILD_SKILLINFO;
 struct PACKET_ZC_HP_INFO;
 struct PACKET_ZC_HP_INFO_TINY;
 struct PACKET_ZC_HUNTINGLIST;
-struct PACKET_ZC_INFO_REMAINTIME;
 struct PACKET_ZC_MONSTER_INFO;
 struct PACKET_ZC_NOTIFY_MAPINFO;
 struct PACKET_ZC_PAR_CHANGE;
-struct PACKET_ZC_PCBANG_EFFECT;
 struct PACKET_ZC_QUEST_NOTIFY_EFFECT;
-struct PACKET_ZC_REPLY_REMAINTIME;
 struct PACKET_ZC_REQ_GUILD_INVITE;
 struct PACKET_ZC_RESULT_MAKE_GUILD;
 struct PACKET_ZC_RESURRECTION;
@@ -2806,14 +2803,6 @@ void game_mode_zc_hunting_quest_info(struct GameMode *arg0, const void *arg1, si
     packet_trace_value(arg2);
 }
 
-void game_mode_zc_info_remain_time(struct GameMode *arg0,
-                                 const struct PACKET_ZC_INFO_REMAINTIME *arg1)
-{
-    packet_trace_call("GameMode_Zc_Info_RemainTime");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_inventory_item_list_normal(const unsigned char *arg0)
 {
     packet_trace_call("GameMode_Zc_Inventory_ItemList_Normal");
@@ -3447,13 +3436,6 @@ void game_mode_zc_party_req_master_to_join(const unsigned char *arg0)
     packet_trace_pointer(arg0);
 }
 
-void game_mode_zc_pc_bang_effect(struct GameMode *arg0, const struct PACKET_ZC_PCBANG_EFFECT *arg1)
-{
-    packet_trace_call("GameMode_Zc_PcBang_Effect");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_zc_pc_cash_point_itemlist(struct GameMode *arg0, const unsigned char *arg1)
 {
     packet_trace_call("GameMode_Zc_Pc_Cash_Point_Itemlist");
@@ -3634,14 +3616,6 @@ void game_mode_zc_refuse_enter_room(struct GameMode *arg0, const unsigned char *
 void game_mode_zc_repair_item_list(struct GameMode *arg0, const struct PacketRepairItemList *arg1)
 {
     packet_trace_call("GameMode_Zc_RepairItemList");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_reply_remain_time(struct GameMode *arg0,
-                                  const struct PACKET_ZC_REPLY_REMAINTIME *arg1)
-{
-    packet_trace_call("GameMode_Zc_Reply_RemainTime");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }

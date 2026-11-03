@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
-#include <winsock2.h>
 #include "session/session_names.h"
 
 struct CharInfo g_loginCharInfo;
@@ -50,13 +49,6 @@ SIZE_ASSERT(PACKET_HC_CHAR_LIST, 4);
 static void list_error_box(const char *text)
 {
     ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
-}
-
-static void billing_swap(struct LoginMode *self)
-{
-    self->billing.value1 = ntohl(self->billing.value1);
-    self->billing.value5 = ntohl(self->billing.value5);
-    self->billing.value9 = ntohl(self->billing.value9);
 }
 
 static void map_display_name(char *mapName)
@@ -116,8 +108,6 @@ void login_mode_on_char_list_header(struct LoginMode *self, const BYTE *pkt)
     g_session1.charListCounts[0] = 0;
     self->chars_received = 0;
     self->char_list_pages = 0;
-    memcpy(&self->billing, &packet->billing, sizeof self->billing);
-    billing_swap(self);
 }
 
 void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
@@ -127,8 +117,6 @@ void login_mode_on_accept_enter(struct LoginMode *self, const BYTE *pkt)
     unsigned body;
     int rest, i;
 
-    memcpy(&self->billing, &packet->billing, sizeof self->billing);
-    billing_swap(self);
     body = (unsigned)packet->packet_length - 0x1b;
     self->numChar = body / sizeof(struct CharInfo);
     rest = body % sizeof(struct CharInfo);

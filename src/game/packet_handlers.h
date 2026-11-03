@@ -44,14 +44,11 @@ struct PACKET_ZC_GUILD_SKILLINFO;
 struct PACKET_ZC_HP_INFO;
 struct PACKET_ZC_HP_INFO_TINY;
 struct PACKET_ZC_HUNTINGLIST;
-struct PACKET_ZC_INFO_REMAINTIME;
 struct PACKET_ZC_MONSTER_INFO;
 struct PACKET_ZC_NOTIFY_ACT_POSITION;
 struct PACKET_ZC_NOTIFY_MAPINFO;
 struct PACKET_ZC_PAR_CHANGE;
-struct PACKET_ZC_PCBANG_EFFECT;
 struct PACKET_ZC_QUEST_NOTIFY_EFFECT;
-struct PACKET_ZC_REPLY_REMAINTIME;
 struct PACKET_ZC_REQ_GUILD_INVITE;
 struct PACKET_ZC_RESULT_MAKE_GUILD;
 struct PACKET_ZC_RESURRECTION;
@@ -192,12 +189,6 @@ void game_mode_zc_battlefield_notify_hp2(struct GameMode *self, const unsigned c
 void game_mode_zc_battlefield_notify_point(const unsigned char *pkt);
 void game_mode_zc_battlefield_notify_position(struct GameMode *self, const unsigned char *pkt);
 
-void game_mode_zc_info_remain_time(struct GameMode *self,
-                                 const struct PACKET_ZC_INFO_REMAINTIME *packet);
-void game_mode_zc_pc_bang_effect(struct GameMode *self,
-                               const struct PACKET_ZC_PCBANG_EFFECT *packet);
-void game_mode_zc_reply_remain_time(struct GameMode *self,
-                                  const struct PACKET_ZC_REPLY_REMAINTIME *packet);
 
 void game_mode_broadcast(struct GameMode *self, const unsigned char *pkt);
 void game_mode_broadcast2(struct GameMode *self, const unsigned char *pkt);

@@ -276,7 +276,6 @@ struct Session {
     BYTE showGuildEmblems;
     int autoSaveChat;
     int sex;
-    DWORD loginTick;
     WORD progress_bar_extra;
     BYTE progressBarPending;
     int hp, maxHp, sp, maxSp;

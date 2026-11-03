@@ -214,48 +214,6 @@ static int enter_char(struct LoginMode *self)
     return 0;
 }
 
-static int billing_text(struct LoginMode *self, char *out)
-{
-    DWORD code = self->billing.value1, t;
-
-    switch (code) {
-    case 100:
-        sprintf(out, msg_str(0x215), self->billing.value5 / 60);
-        return 0;
-    case 200:
-        t = self->billing.value5;
-        sprintf(out, msg_str(0x216), t / 3600, t / 60 % 60, t % 60);
-        return 0;
-    case 300:
-        sprintf(out, msg_str(0x217));
-        return 0;
-    case 400:
-        t = self->billing.value9 - self->billing.value5;
-        sprintf(out, msg_str(0x218), t / 3600, t / 60 % 60, t % 60);
-        return 0;
-    case 500:
-        t = self->billing.value5;
-        if (t) {
-            sprintf(out, msg_str(0x219), t / 3600, t / 60 % 60, t % 60);
-            return 0;
-        }
-        t = self->billing.value9;
-        sprintf(out, msg_str(0x21a), t / 3600, t / 60 % 60, t % 60);
-        return 0;
-    case 600:
-        sprintf(out, msg_str(0x21b));
-        return 0;
-    case 700:
-        sprintf(out, msg_str(0x21c));
-        return 0;
-    case 800:
-        sprintf(out, msg_str(0x21d));
-        return 0;
-    }
-    sprintf(out, msg_str(0x64));
-    return 0;
-}
-
 static int select_zone(struct LoginMode *self, int zone)
 {
     struct LoginZoneEntry entry;
@@ -346,7 +304,6 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         self->base.next_sub_mode = 2;
         return 0;
     case 0x2723: return select_connection(self, a);
-    case 0x2724: return billing_text(self, (char *)a);
     case 0x2725:
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0) == 0x105)

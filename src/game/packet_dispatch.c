@@ -332,8 +332,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_CHANGE_GUILD: game_mode_zc_change_guild(self, (const struct PACKET_ZC_CHANGE_GUILD *)pkt); break;
     case HEADER_ZC_GUILD_INFO2: game_mode_zc_guild_info2((const struct PACKET_ZC_GUILD_INFO2 *)pkt); break;
     case HEADER_ZC_DISPEL: game_mode_zc_dispel(self, (const struct PacketDispel *)pkt); break;
-    case HEADER_ZC_REPLY_REMAINTIME: game_mode_zc_reply_remain_time(self, (const struct PACKET_ZC_REPLY_REMAINTIME *)pkt); break;
-    case HEADER_ZC_INFO_REMAINTIME: game_mode_zc_info_remain_time(self, (const struct PACKET_ZC_INFO_REMAINTIME *)pkt); break;
     case HEADER_ZC_BROADCAST2: game_mode_broadcast2(self, pkt); break;
     case HEADER_ZC_ADD_ITEM_TO_STORE2: game_mode_add_item_to_store2(pkt); break;
     case HEADER_ZC_ADD_ITEM_TO_CART2: game_mode_add_item_to_cart2(pkt); break;
@@ -397,7 +395,6 @@ void game_mode_dispatch_packet(struct GameMode *self, int packet_id,
     case HEADER_ZC_STARPLACE: game_mode_zc_star_place(pkt); break;
     case HEADER_ZC_MAKINGITEM_LIST: game_mode_zc_making_item_list(pkt); break;
     case HEADER_ZC_HUNTINGLIST: game_mode_zc_hunting_list(self, (const struct PACKET_ZC_HUNTINGLIST *)pkt); break;
-    case HEADER_ZC_PCBANG_EFFECT: game_mode_zc_pc_bang_effect(self, (const struct PACKET_ZC_PCBANG_EFFECT *)pkt); break;
     case HEADER_ZC_NOTIFY_EFFECT3: game_mode_on_notify_effect3(self, (const struct PacketNotifyEffect3 *)pkt); break;
     case HEADER_ZC_PC_CASH_POINT_ITEMLIST: game_mode_zc_pc_cash_point_itemlist(self, pkt); break;
     case HEADER_ZC_PC_CASH_POINT_UPDATE: game_mode_zc_pc_cash_point_update(self, pkt); break;
