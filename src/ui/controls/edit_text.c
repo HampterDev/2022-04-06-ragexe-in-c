@@ -1,6 +1,7 @@
 #include "ui/window_access.h"
 #include "ui/controls/edit.h"
 #include "ui/window_mgr.h"
+#include "core/utf8.h"
 #include <stdlib.h>
 
 #define EDIT_FONT_HEIGHT 12
@@ -42,21 +43,10 @@ void ui_edit_ctrl_set_text_default(struct UIEditCtrl *self, const char *text)
 void ui_edit_ctrl_truncate_text(struct UIEditCtrl *self, int to_language)
 {
     unsigned size = self->text.size;
-    const char *start, *p, *keep_end;
-    unsigned keep;
 
     if ((int)size <= self->max_chars)
         return;
-    start = string_cstr(&self->text);
-    p = CharNextExA((WORD)g_codePage, start, 0);
-    if (size - strlen(p) <= (unsigned)self->max_chars) {
-        do
-            p = CharNextExA((WORD)g_codePage, p, 0);
-        while (size - strlen(p) <= (unsigned)self->max_chars);
-    }
-    keep_end = CharPrevExA((WORD)g_codePage, string_cstr(&self->text), p, 0);
-    keep = size - strlen(keep_end);
-    string_truncate(&self->text, keep);
+    string_truncate(&self->text, utf8_prefix(string_cstr(&self->text), size, (size_t)self->max_chars));
     if (to_language) {
         language_cancel_input(g_language);
         language_cancel_input(g_language);
@@ -120,10 +110,10 @@ void ui_edit_ctrl_sync_from_ime_with(struct UIEditCtrl *self, int font_flag, int
         if (text_width_flag(self, font_flag, text, self->sel_end) - scrolled + 3 <= view)
             return;
         end = text + self->text.size;
-        p = CharNextExA((WORD)g_codePage, text, 0);
+        p = utf8_step(text, end);
         if (text_width_flag(self, font_flag, p, 0) + 3 > view) {
             while (p < end) {
-                p = CharNextExA((WORD)g_codePage, p, 0);
+                p = utf8_step(p, end);
                 if (text_width_flag(self, font_flag, p, 0) + 3 <= view)
                     break;
             }

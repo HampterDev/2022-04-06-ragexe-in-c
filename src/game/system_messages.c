@@ -1,4 +1,5 @@
 #include "game/packet_handlers.h"
+#include "core/utf8.h"
 #include "skills/skill_info.h"
 #include "iteminfo/item_api.h"
 #include "session/state.h"
@@ -142,13 +143,12 @@ void game_mode_format_string_msg(const unsigned char *pkt)
     unsigned count = 0;
 
     while (*p != 0) {
-        if (IsDBCSLeadByte((BYTE)*p))
-            p += 2;
-        else if (p[0] == '%' && p[1] == 's') {
+        if (p[0] == '%' && p[1] == 's') {
             count++;
             p += 2;
-        } else
-            p++;
+        } else {
+            p = utf8_next(p);
+        }
     }
     memset(line, 0, sizeof line);
     arg1 = packet->strings;

@@ -108,6 +108,7 @@ DWORD hex_after_prefix_value(const char *text)
     return value;
 }
 
+/* Lowercases a resource or file name, skipping the trail byte of CP949 double-byte characters. */
 void text_to_lower(struct String *s)
 {
     unsigned i;
@@ -118,4 +119,14 @@ void text_to_lower(struct String *s)
         else if (isupper((signed char)string_cstr(s)[i]))
             s->data[i] += 0x20;
     }
+}
+
+/* Lowercases A-Z only, leaving every other byte, including UTF-8 sequences, unchanged. */
+void text_to_lower_ascii(struct String *s)
+{
+    size_t i;
+
+    for (i = 0; i < s->size; i++)
+        if (s->data[i] >= 'A' && s->data[i] <= 'Z')
+            s->data[i] += 'a' - 'A';
 }

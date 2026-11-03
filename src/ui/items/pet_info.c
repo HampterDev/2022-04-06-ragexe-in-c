@@ -10,8 +10,8 @@
 #include "core/markup_tags.h"
 #include "ui/items/items.h"
 #include "ui/items/pet_windows.h"
-#include <mbstring.h>
 #include <stdlib.h>
+#include <string.h>
 #include "core/msg_str.h"
 #include "core/skin_path.h"
 #include "core/text_util.h"
@@ -507,10 +507,8 @@ static void pet_rename(struct UIPetInfoWnd *self)
         message_box(msg_str(MSG_PET_NAME_TOO_LONG), 0, 1);
         return;
     }
-    if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML)) ||
+        strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML_END))) {
         message_box(msg_str(MSG_PET_NAME_HAS_LINK), 0, 1);
         return;
     }

@@ -1,4 +1,5 @@
 #include "platform/code_page.h"
+#include "core/utf8.h"
 #include "ui/draw.h"
 #include "render/textdc.h"
 #include <string.h>
@@ -175,7 +176,7 @@ void ui_window_text_out_line(struct UIWindow *self, int x, int y,
                 continue;
             }
         }
-        next = CharNextExA((WORD)g_codePage, p, 0);
+        next = utf8_step(p, end);
         w = char_width(self, p, next, face, height, bold_now);
         char_draw(self, x + advance, y, p, next, face, height, bold_now, colour);
         advance += w;

@@ -537,7 +537,7 @@ void talk_cmd_on_off(struct GameMode *self, const struct String *args)
 
     string_init(&word);
     string_assign_cstr(&word, string_cstr(&args[0]));
-    text_to_lower(&word);
+    text_to_lower_ascii(&word);
     if (string_equal_cstr(&word, "off") || string_equal_cstr(&word, "on"))
         mode_send_msg(self, 0x55, string_equal_cstr(&word, "off") ^ 1, 0, 0, 0);
     string_free(&word);

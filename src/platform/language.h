@@ -43,7 +43,6 @@ void language_read_cursor_pos(struct Language *self);
 void language_insert_result(struct Language *self);
 int language_get_text(struct Language *self, struct TextView *out);
 void language_get_selection(struct Language *self, int *anchor, int *caret);
-const char *language_char_next(const char *p);
 void language_set_masked(struct Language *self, BYTE masked);
 void language_move_caret_forward(struct Language *self, int count);
 void language_move_caret_back(struct Language *self, int count);

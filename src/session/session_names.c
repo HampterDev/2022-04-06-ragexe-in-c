@@ -1,4 +1,5 @@
 #include "session/map_names.h"
+#include "core/utf8.h"
 #include "ui/resource/resource_paths.h"
 #include "session/csession.h"
 #include "session/session_items.h"
@@ -494,7 +495,7 @@ char *session_remove_underbar(const char *src, char *dst)
         while ((*d++ = *s++) != 0)
             ;
     }
-    for (p = dst; *p; p = CharNextExA(g_codePage, p, 0))
+    for (p = dst; *p; p = (char *)utf8_next(p))
         if (*p == '_')
             *p = ' ';
     return dst;

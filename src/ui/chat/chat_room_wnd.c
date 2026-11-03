@@ -12,7 +12,6 @@
 #include "core/markup_tags.h"
 #include "game/context.h"
 #include <string.h>
-#include <mbstring.h>
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/chat/markup_links.h"
 #include "ui/ui_std.h"
@@ -260,7 +259,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
         struct TextView link = ui_edit_ctrl_link_text((struct UIEditCtrl *)edit);
 
         string_assign(&line, link.data, link.size);
-    } else if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(edit), (const unsigned char *)"<") &&
+    } else if (strstr(ui_edit_ctrl_get_text(edit), "<") &&
                self->edit->popup && self->edit->popup->linked_text.size) {
         string_assign(&line, string_cstr(&self->edit->popup->linked_text), self->edit->popup->linked_text.size);
     }
@@ -324,8 +323,8 @@ static void add_line(struct UIChatRoomWnd *self, char *text, COLORREF colour)
         name[0] = 0;
     string_free(&line);
 
-    if (_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        _mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (strstr(text, string_cstr(&text_tag_ITEML)) ||
+        strstr(text, string_cstr(&text_tag_ITEML_END))) {
         if (!text_array_append(&lines, text_view_cstr(text))) abort();
     } else {
         text_split_lines(text, &lines, width);

@@ -3,6 +3,7 @@
 #include "platform/code_page.h"
 #include "core/text_format.h"
 #include "core/text_markup.h"
+#include "core/utf8.h"
 #include "render/rp_pool.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -180,8 +181,7 @@ static void strip_colours(struct String *s)
 {
     struct OwnedText out = {0};
 
-    if (text_copy_without_colours(&out, text_view(string_cstr(s), s->size),
-                                  g_codePage, g_useCharsetTag))
+    if (text_copy_without_colours(&out, text_view(string_cstr(s), s->size), g_useCharsetTag))
         string_assign(s, owned_text_cstr(&out), out.size);
     owned_text_clear(&out);
 }
@@ -253,8 +253,8 @@ void ui_quest_display_on_draw(struct UIWindow *window)
         strip_colours(&text);
         clean_text(&text);
         if (strlen(string_cstr(&text)) > QUEST_DISPLAY_SUMMARY_MAX) {
-            string_truncate(&text, text_prefix_length(string_cstr(&text), strlen(string_cstr(&text)),
-                                           QUEST_DISPLAY_SUMMARY_MAX, g_codePage));
+            string_truncate(&text, utf8_prefix(string_cstr(&text), strlen(string_cstr(&text)),
+                                               QUEST_DISPLAY_SUMMARY_MAX));
             string_append_cstr(&text, "...");
         }
         if (strlen(string_cstr(&text)))

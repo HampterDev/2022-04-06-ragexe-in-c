@@ -27,7 +27,8 @@ BYTE g_hideAccountList;
 BYTE g_passwordEncrypt;
 BYTE g_passwordEncrypt2;
 int g_serverType;
-unsigned int g_codePage;
+/* Text in memory is UTF-8; conversions to and from it name this code page. */
+unsigned int g_codePage = CP_UTF8;
 int g_clientVersion;
 struct Vec g_yellowAids;
 struct XmlDocument g_clientInfoDocument;

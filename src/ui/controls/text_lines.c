@@ -1,11 +1,11 @@
 #include "ui/draw.h"
 #include "core/text_format.h"
+#include "core/utf8.h"
 #include "platform/code_page.h"
 #include "platform/language.h"
 #include "ui/controls/item_id_tag.h"
 #include "iteminfo/item_api.h"
 #include "std/vec.h"
-#include <mbstring.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,8 +17,7 @@ static void text_lines_push_range(struct TextArray *lines, const char *first, co
 
 static size_t next_character(const char *text, size_t pos, size_t end)
 {
-    const char *next = language_char_next(text + pos);
-    return next > text + pos && next <= text + end ? (size_t)(next - text) : pos + 1;
+    return pos < end ? pos + utf8_char_size(text + pos, end - pos) : pos + 1;
 }
 
 static void carry_colour(struct TextArray *lines, size_t first, const char *colour, int skip_rgb)
@@ -117,8 +116,7 @@ void text_wrap_bytes(const char *text, struct TextArray *lines, int width, int s
         }
         while (text[pos] == ']') brk = ++pos;
         while (text[pos] == '[') {
-            const char *close = (const char *)_mbsstr((const unsigned char *)text + pos,
-                                                     (const unsigned char *)"]");
+            const char *close = strstr(text + pos, "]");
             size_t count;
             if (!close) break;
             count = (size_t)(close - text) - pos + 1;

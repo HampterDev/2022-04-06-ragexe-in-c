@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mbstring.h>
 #include <time.h>
 #include "ui/window.h"
 #include "ui/draw.h"
@@ -405,10 +404,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
         ui_message_box(msg_str(MSG_HOMUN_NAME_TOO_LONG));
         return;
     }
-    if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML)) ||
+        strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML_END))) {
         ui_message_box(msg_str(MSG_HOMUN_NAME_HAS_TAG));
         return;
     }

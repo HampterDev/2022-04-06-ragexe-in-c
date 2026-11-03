@@ -1,7 +1,7 @@
 #include "ui/draw.h"
+#include "core/utf8.h"
 #include "core/text_format.h"
 #include "platform/language.h"
-#include <mbstring.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,11 +25,10 @@ void ui_window_break_lines(struct UIWindow *self, const char *text,
         unsigned chars = 0;
 
         while (p < end && chars < 1001) {
-            const char *next = language_char_next(p);
+            const char *next = utf8_step(p, end);
             int count;
 
             ++chars;
-            if (next <= p || next > end) next = p + 1;
             count = (int)(next - p);
             if (count == 1 && (*p == '\r' || *p == '\n')) {
                 line_end = p;
@@ -41,8 +40,7 @@ void ui_window_break_lines(struct UIWindow *self, const char *text,
             if (text_is_colour_code(p, end))
                 measured -= width12(self, "^000000", 7);
             if (*p == '[') {
-                const char *close = (const char *)_mbsstr((const unsigned char *)p,
-                                                         (const unsigned char *)"]");
+                const char *close = strstr(p, "]");
                 if (close) {
                     int group_width = width12(self, p, (int)(close - p) + 1);
                     int char_width = width12(self, p, count);

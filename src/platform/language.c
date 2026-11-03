@@ -8,6 +8,7 @@
 #include <limits.h>
 #include "platform/language.h"
 #include "core/app.h"
+#include "core/utf8.h"
 
 struct Language *g_language;
 
@@ -150,7 +151,7 @@ void language_caret_back(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharPrevExA((WORD)g_codePage, s, s + self->caret, 0) - s);
+    self->caret = (int)(utf8_prev(s, s + self->caret) - s);
 }
 
 void language_caret_forward(struct Language *self)
@@ -165,7 +166,7 @@ void language_caret_forward(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharNextExA((WORD)g_codePage, s + self->caret, 0) - s);
+    self->caret = (int)(utf8_step(s + self->caret, s + size) - s);
 }
 
 const char *language_candidate_text(struct Language *self, int index)
@@ -352,11 +353,6 @@ void language_get_selection(struct Language *self, int *anchor, int *caret)
 {
     *anchor = self->anchor;
     *caret = self->caret;
-}
-
-const char *language_char_next(const char *p)
-{
-    return CharNextExA((WORD)g_codePage, p, 0);
 }
 
 void language_set_masked(struct Language *self, BYTE masked)

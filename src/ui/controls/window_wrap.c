@@ -1,4 +1,5 @@
 #include "platform/code_page.h"
+#include "core/utf8.h"
 #include "ui/window.h"
 #include "ui/draw.h"
 #include "ui/skin.h"
@@ -6,8 +7,6 @@
 #include <stdlib.h>
 
 #include "render/textdc.h"
-
-#define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)
 
 static void destroy_string(void *value) { string_free(value); }
 
@@ -76,7 +75,7 @@ struct List *ui_window_wrap_text_plain(struct UIWindow *self, struct List *out,
             p += 2;
             continue;
         }
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         w = char_width(self, p, next, font_face, font_height, font_arg);
         if (cur + w > width) {
             push_line(lines, &line);
@@ -193,7 +192,7 @@ struct List *ui_window_wrap_text(struct UIWindow *self, struct List *out,
                 continue;
             }
         }
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         w = char_width(self, p, next, font_face, font_height, cur_bold);
         if (cur + w > width) {
             push_line(lines, &line);

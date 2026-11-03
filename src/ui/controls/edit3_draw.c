@@ -1,6 +1,7 @@
 #include "ui/controls/edit.h"
 #include "ui/window_access.h"
 #include "platform/language.h"
+#include "core/utf8.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
 #include "ui/window_mgr.h"
@@ -271,7 +272,7 @@ static int chars_to_x(struct UIEditCtrl3 *self, const char *text, int target)
     int chars = 0, x = 0;
 
     while (p < end) {
-        const char *next = language_char_next(p);
+        const char *next = utf8_step(p, end);
         int clen = (int)(next - p), prev_chars = chars, prev_x = x;
 
         x += text_width(self, p, clen);

@@ -1,4 +1,5 @@
 #include "core/text_format.h"
+#include "core/utf8.h"
 #include "platform/code_page.h"
 #include "ui/window.h"
 #include "ui/draw.h"
@@ -8,8 +9,6 @@
 
 #include "render/textdc.h"
 #include "ui/ui_std.h"
-
-#define NEXT_CHAR(p) CharNextExA((WORD)g_codePage, (p), 0)
 
 #define TEXT_BK_ON(w) ((w)->text_bk_on)
 #define TEXT_BK_COLOUR(w) ((COLORREF)(w)->text_bk_colour)
@@ -56,14 +55,14 @@ void ui_window_text_out_down(struct UIWindow *self, int x, int y, const char *te
     text_dc_select_font(&dc, font_face, font_height, 0, 0);
     text_dc_set_text_color(&dc, colour);
     for (p = text; p < end; p = next) {
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         text_dc_text_extent(&dc, p, (int)(next - p), &size);
         if (size.cx > widest)
             widest = size.cx;
     }
     p = start < end ? start + 3 : text;
     for (; p < end; p = next) {
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         text_dc_text_extent(&dc, p, (int)(next - p), &size);
         text_dc_text_out(&dc, x + (widest - size.cx) / 2, y, p, (int)(next - p));
         y += size.cy;
@@ -124,7 +123,7 @@ static void draw_runs(struct UIWindow *self, struct TextDC *dc, int x, int y, co
 
     while (p < end) {
         const char *from = text_read_colour_code(p, end, colour);
-        const char *to = text_find_colour_code(from, end, g_codePage);
+        const char *to = text_find_colour_code(from, end);
         struct String run;
         SIZE size;
 
@@ -273,7 +272,7 @@ int ui_window_vertical_text_length(struct UIWindow *self, const char *text, int 
     dc_open(&dc, self);
     text_dc_select_font(&dc, font_face, font_height, font_arg3, 0);
     for (; p < end; p = next) {
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         text_dc_text_extent(&dc, p, (int)(next - p), &size);
         total += size.cy;
     }
@@ -320,7 +319,7 @@ int ui_window_markup_text_width(struct UIWindow *self, struct String text, int f
             p += 2;
             continue;
         }
-        next = NEXT_CHAR(p);
+        next = utf8_step(p, end);
         string_init(&ch);
         if (p != next)
             string_assign(&ch, p, next - p);
@@ -486,7 +485,7 @@ int ui_window_get_color_text_width(struct UIWindow *self, const char *text, int 
     }
     width = ui_window_text_width(self, text, len, font_face, font_height, font_arg3, 0);
     colour = 0;
-    if (text_read_colour_code(text_find_colour_code(text, text + len, g_codePage), text + len, &colour) &&
+    if (text_read_colour_code(text_find_colour_code(text, text + len), text + len, &colour) &&
         colour) {
         struct TextDC dc;
         SIZE size;

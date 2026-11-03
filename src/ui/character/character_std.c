@@ -1,8 +1,7 @@
 #include "skills/skill_info.h"
+#include "core/utf8.h"
 #include <errno.h>
 #include "core/fatal.h"
-#include <mbctype.h>
-#include <mbstring.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_std.h"
@@ -15,21 +14,10 @@
 
 BYTE text_within_columns(void *self, struct String text, int limit)
 {
-    int columns = 0;
-    unsigned i;
     BYTE narrower;
 
     (void)self;
-
-    _setmbcp(949);
-    for (i = 0; i < text.size; i++) {
-        switch (_mbsbtype((const unsigned char *)string_cstr(&text), i)) {
-        case _MBC_SINGLE: columns++; break;
-        case _MBC_TRAIL: columns += 2; break;
-        default: break;
-        }
-    }
-    narrower = columns < limit;
+    narrower = (int)utf8_columns(string_cstr(&text), text.size) < limit;
     string_free(&text);
     return narrower;
 }

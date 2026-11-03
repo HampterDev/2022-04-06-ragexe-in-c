@@ -42,7 +42,6 @@ unsigned char g_useCharsetTag;
 static unsigned resized, invalidated, destroyed, drawn;
 static char drawn_text[128][128];
 static COLORREF drawn_colour[128];
-const char *language_char_next(const char *text) { return CharNextExA(949, text, 0); }
 struct ItemInfo *item_info_construct(struct ItemInfo *item) { memset(item, 0, sizeof *item); return item; }
 void item_info_set_item_id(struct ItemInfo *item, int id) { (void)item; (void)id; abort(); }
 const char *item_info_get_name(const struct ItemInfo *item) { (void)item; abort(); }

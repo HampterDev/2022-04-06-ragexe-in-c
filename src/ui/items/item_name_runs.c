@@ -1,4 +1,5 @@
 #include "platform/code_page.h"
+#include "core/utf8.h"
 #include "core/text_format.h"
 #include "iteminfo/iteminfo.h"
 #include "ui/items/item_name_runs.h"
@@ -137,11 +138,8 @@ int ui_window_draw_runs_shortened(struct UIWindow *self, int x, int y, int max_w
         const char *run_start = p, *run_end_at = text + runs->ends[i];
 
         while (p < run_end_at) {
-            const char *next = CharNextExA((WORD)g_codePage, p, 0);
+            const char *next = utf8_step(p, run_end_at);
             int len, rest, width;
-
-            if (next <= p) next = p + 1;
-            if (next > run_end_at) next = run_end_at;
 
             if (g_useCharsetTag && text_find_charset_tag(p, (size_t)(run_end_at - p), g_useCharsetTag) == 0) {
                 p += 3;

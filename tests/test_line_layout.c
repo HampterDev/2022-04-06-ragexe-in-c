@@ -43,11 +43,12 @@ static void *moving_realloc(void *old, size_t size)
 #undef malloc
 #define malloc window_malloc
 #include "../src/ui/controls/line_info.c"
+#include "core/utf8.h"
+#include "utf8_text.h"
 #undef malloc
 #undef free
 #undef realloc
 
-unsigned g_codePage = 949;
 void *mem_alloc(size_t size)
 {
     if ((size == sizeof(struct LineCutterText) || size == sizeof(struct UITextButton)) &&
@@ -96,9 +97,9 @@ static int width_of(const char *text, size_t length, int height, int bold, int i
     int width = 0;
     size_t i = 0;
     while (i < length) {
-        int dbcs = IsDBCSLeadByteEx((UINT)g_codePage, (BYTE)text[i]) && i + 1 < length;
-        width += (dbcs ? 11 : text[i] == 'W' ? 9 : 5) + height / 6 + !!bold + !!italic;
-        i += dbcs ? 2 : 1;
+        size_t size = utf8_char_size(text + i, length - i);
+        width += (size > 1 ? 11 : text[i] == 'W' ? 9 : 5) + height / 6 + !!bold + !!italic;
+        i += size;
     }
     return width;
 }
@@ -157,7 +158,7 @@ void ui_text_button_fit_width(struct UITextButton *button, int width, int height
 const char *item_info_get_name(const struct ItemInfo *item)
 {
     int id = atoi(string_cstr(&item->id_text));
-    return id == 62 ? "Sword" : id == 63 ? "한글 갑옷" : "Unknown";
+    return id == 62 ? "Sword" : id == 63 ? U8_HAN U8_GUK " " U8_EO : "Unknown";
 }
 char *msg_str(int id) { return id == 1 ? "Message %s %d" : "알림"; }
 #include "line_layout_unreached.h"
@@ -300,9 +301,9 @@ static void expected_cases(void)
     run_layout(&actual, "<TIPBOX>Guide label<INFO>42</INFO></TIPBOX>", 1000, 4, style, 0, 0);
     assert(actual.count == 1 && !actual.windows[0].kind && !actual.windows[0].args);
     assert(!strcmp(actual.windows[0].text, "Guide label") && actual.windows[0].colour == style.colour);
-    run_layout(&actual, "<URL>Site<INFO>https://example.test</INFO></URL><TIPBOX>한글<INFO>42</INFO></TIPBOX><QUEST>Quest<INFO>7</INFO></QUEST>", 1000, 4, style, 0, 0);
+    run_layout(&actual, "<URL>Site<INFO>https://example.test</INFO></URL><TIPBOX>" U8_HAN U8_GUK "<INFO>42</INFO></TIPBOX><QUEST>Quest<INFO>7</INFO></QUEST>", 1000, 4, style, 0, 0);
     assert(actual.count == 3 && actual.windows[0].kind == 0x1ad && actual.windows[2].kind == 0x213);
-    assert(!actual.windows[1].kind && !actual.windows[1].args && !strcmp(actual.windows[1].text, "한글"));
+    assert(!actual.windows[1].kind && !actual.windows[1].args && !strcmp(actual.windows[1].text, U8_HAN U8_GUK));
     assert(!strcmp(actual.windows[0].arguments, "https://example.test|") && !strcmp(actual.windows[2].arguments, "7|"));
     run_layout(&actual, "<TIPBOX>plain label</TIPBOX>", 1000, 4, style, 0, 0);
     assert(actual.count == 1 && !actual.windows[0].kind && !strcmp(actual.windows[0].text, "plain label"));
@@ -361,7 +362,7 @@ static void safety_cases(void)
     struct CreateLineInfo empty;
     int width;
     for (width = -2; width < 14; ++width) {
-        run_layout(&actual, "W한글<URL>WW한글<INFO>a</INFO></URL>", width, 4, style, 0, 0);
+        run_layout(&actual, "W" U8_HAN U8_GRIN "<URL>WW" U8_ZHE "\xe2\x82<INFO>a</INFO></URL>", width, 4, style, 0, 0);
         assert(actual.count && actual.count < 20);
     }
     run_layout(&actual, "</FONT>plain<FONT COLOR=bad>x</FONT>end", 1000, 4, style, 0, 0);
@@ -426,7 +427,6 @@ static void escape_cases(void)
 
 int main(void)
 {
-    assert(!_setmbcp(949));
     button_ops.move = ui_window_move_base; button_ops.resize = ui_window_resize_base;
     expected_cases(); compare_cases(); safety_cases(); escape_cases();
     assert(!outstanding);

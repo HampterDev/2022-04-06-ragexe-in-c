@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "ui/draw.h"
+#include "utf8_text.h"
 
-const char *language_char_next(const char *text) { return CharNextExA(949, text, 0); }
 int ui_window_text_width(struct UIWindow *self, const char *text, int len,
                         int face, int height, int a, int b)
 {
@@ -33,8 +33,12 @@ int main(void)
     ui_window_break_lines(&window, "abcdef", &lines, 2);
     assert(lines.size == 3); check(&lines, 0, "ab"); check(&lines, 1, "cd"); check(&lines, 2, "ef");
     text_array_clear(&lines);
-    ui_window_break_lines(&window, "한국어a", &lines, 3);
-    assert(lines.size == 3); check(&lines, 0, "한"); check(&lines, 1, "국"); check(&lines, 2, "어a");
+    ui_window_break_lines(&window, U8_HAN U8_GUK U8_EO "a", &lines, 4);
+    assert(lines.size == 3); check(&lines, 0, U8_HAN); check(&lines, 1, U8_GUK); check(&lines, 2, U8_EO "a");
+    text_array_clear(&lines);
+    ui_window_break_lines(&window, U8_ZHE U8_HAN U8_GRIN "a", &lines, 3);
+    assert(lines.size == 4); check(&lines, 0, U8_ZHE); check(&lines, 1, U8_HAN);
+    check(&lines, 2, U8_GRIN); check(&lines, 3, "a");
     text_array_clear(&lines);
     ui_window_break_lines(&window, "ab [cd]e", &lines, 5);
     assert(lines.size == 2); check(&lines, 0, "ab "); check(&lines, 1, "[cd]e");
@@ -50,9 +54,9 @@ int main(void)
     text_array_clear(&lines);
 
     for (i = 0; i < 100; ++i) {
-        ui_window_break_lines(&window, "가나다x", &lines, i % 3 == 0 ? INT_MIN : (int)(i % 3) - 1);
+        ui_window_break_lines(&window, U8_GA U8_NA U8_DA "x", &lines, i % 3 == 0 ? INT_MIN : (int)(i % 3) - 1);
         assert(lines.size == 4);
-        check(&lines, 0, "가"); check(&lines, 1, "나"); check(&lines, 2, "다"); check(&lines, 3, "x");
+        check(&lines, 0, U8_GA); check(&lines, 1, U8_NA); check(&lines, 2, U8_DA); check(&lines, 3, "x");
         assert(text_array_resize(&lines, 0));
     }
     ui_window_break_lines(&window, "\r\n\rX\nY\rZ\n", &lines, 40);
@@ -63,9 +67,9 @@ int main(void)
     ui_window_break_lines(&window, "\n", &lines, 0);
     assert(lines.size == 1); check(&lines, 0, " ");
     text_array_clear(&lines);
-    ui_window_break_lines(&window, "가\n나\r다\r\nx", &lines, 2);
+    ui_window_break_lines(&window, U8_GA "\n" U8_NA "\r" U8_DA "\r\nx", &lines, 3);
     assert(lines.size == 4);
-    check(&lines, 0, "가"); check(&lines, 1, "나"); check(&lines, 2, "다"); check(&lines, 3, "x");
+    check(&lines, 0, U8_GA); check(&lines, 1, U8_NA); check(&lines, 2, U8_DA); check(&lines, 3, "x");
     text_array_clear(&lines);
 
     assert(text_array_append(&lines, text_view_cstr("abcdef")));
@@ -90,14 +94,14 @@ int main(void)
     memcpy(end - 3, "a\n", 3);
     ui_window_break_lines(&window, end - 3, &lines, 1);
     assert(lines.size == 1); check(&lines, 0, "a"); text_array_clear(&lines);
-    memcpy(end - 3, "가", 3);
-    ui_window_break_lines(&window, end - 3, &lines, 0);
-    assert(lines.size == 1); check(&lines, 0, "가"); text_array_clear(&lines);
-    memcpy(end - 2, "\x81", 2);
+    memcpy(end - 4, U8_GA, 4);
+    ui_window_break_lines(&window, end - 4, &lines, 0);
+    assert(lines.size == 1); check(&lines, 0, U8_GA); text_array_clear(&lines);
+    memcpy(end - 2, "\xe2", 2);
     ui_window_break_lines(&window, end - 2, &lines, 0);
     assert(lines.size == 1 && lines.items[0].size == 1);
     text_array_clear(&lines);
     assert(VirtualFree(guard, 0, MEM_RELEASE));
-    puts("Plain lines: Korean text, colour/bracket wrapping, narrow widths, CR/LF, guarded endings, owned append and limits passed.");
+    puts("Plain lines: UTF-8 text, colour/bracket wrapping, narrow widths, CR/LF, guarded endings, owned append and limits passed.");
     return 0;
 }

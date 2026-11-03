@@ -178,7 +178,7 @@ void ez2_str_effect_mgr_add_record(struct LoadClosure *closure,
     string_init(&file_path);
     string_init(&sound_path);
 
-    text_utf8_to_codepage(&converted, &record->file_path, g_codePage);
+    text_utf8_to_codepage(&converted, &record->file_path, RESOURCE_NAME_CODE_PAGE);
     string_assign(&file_path, string_cstr(&converted), converted.size);
     string_free(&converted);
     pos_x = (float)record->pos_x;
@@ -188,13 +188,13 @@ void ez2_str_effect_mgr_add_record(struct LoadClosure *closure,
     if (record->is_floor)
         flags |= EZ2STR_EX_FLOOR;
 
-    text_utf8_to_codepage(&converted, &record->sound_path, g_codePage);
+    text_utf8_to_codepage(&converted, &record->sound_path, RESOURCE_NAME_CODE_PAGE);
     string_assign(&sound_path, string_cstr(&converted), converted.size);
     string_free(&converted);
     if (record->is_sound_loop)
         flags |= EZ2STR_EX_SOUND_LOOP;
 
-    text_utf8_to_codepage(&name, &record->name, g_codePage);
+    text_utf8_to_codepage(&name, &record->name, RESOURCE_NAME_CODE_PAGE);
     lower_case(&name);
 
     string_copy(&row.name, &name);

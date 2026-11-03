@@ -7,6 +7,7 @@
 #include "platform/code_page.h"
 #include "core/text_format.h"
 #include "core/text_markup.h"
+#include "core/utf8.h"
 #include "core/memory.h"
 #include "std/std.h"
 #include <ctype.h>
@@ -146,12 +147,7 @@ static size_t str_find_key(struct TextView text, const char *key)
 
 static size_t first_char_size(struct TextView text)
 {
-    char bytes[3] = {0};
-    size_t count;
-    if (!text.size) return 0;
-    memcpy(bytes, text.data, text.size < 2 ? text.size : 2);
-    count = (size_t)(CharNextExA((WORD)g_codePage, bytes, 0) - bytes);
-    return count && count <= text.size ? count : 1;
+    return utf8_char_size(text.data, text.size);
 }
 
 static BYTE parse_hex_colour(const char *hex, COLORREF *colour)
@@ -514,7 +510,7 @@ static int add_link(struct LineBuilder *self, int x, struct TextView text, int k
     SIZE size;
     if (!parts.ok) return x;
     string_assign(&shown, parts.shown.data, parts.shown.size);
-    if (shown.size) shown.size = text_strip_colour_codes(shown.data, shown.size, g_codePage);
+    if (shown.size) shown.size = text_strip_colour_codes(shown.data, shown.size);
     size = measure(self->wnd, string_view(&shown), &style);
     if (size.cx > self->width) {
         size_t pos = 0;

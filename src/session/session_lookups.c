@@ -125,7 +125,7 @@ BYTE session_is_emotion_text(struct Session *self, const char *text)
         is = 0;
     } else {
         const char *word;
-        text_to_lower(tokens_at(&tokens, 0));
+        text_to_lower_ascii(tokens_at(&tokens, 0));
         emotion = -1;
         word = string_cstr(tokens_at(&tokens, 0));
         is = client_lua_call(g_session1.luaState, "ReqEmotionByMsgStr", "s>d", word, &emotion) && emotion >= 0;

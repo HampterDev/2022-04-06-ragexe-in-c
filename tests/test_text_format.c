@@ -5,6 +5,8 @@
 #include <string.h>
 #include <windows.h>
 #include "core/text_markup.h"
+#include "core/utf8.h"
+#include "utf8_text.h"
 
 static int live_blocks, allocation_calls, fail_allocation;
 struct Allocation { size_t size; unsigned guard; };
@@ -47,7 +49,7 @@ static void plain(const char *input, size_t length, const char *expected, size_t
     assert(buffer);
     memcpy(buffer, input, length);
     buffer[length + 1] = '!';
-    result = text_strip_colour_codes(buffer, length, 949);
+    result = text_strip_colour_codes(buffer, length);
     assert(result == expected_size && memcmp(buffer, expected, result) == 0);
     assert(buffer[result] == 0 && buffer[length + 1] == '!');
     free(buffer);
@@ -65,7 +67,9 @@ static void fixtures(void)
     PLAIN("", "");
     PLAIN("hello", "hello");
     PLAIN("^000000a^12aBcFb^FFFFFF", "ab");
-    PLAIN("앞^00ff00가나다^FFFFFF뒤", "앞가나다뒤");
+    PLAIN(U8_AP "^00ff00" U8_GA U8_NA U8_DA "^FFFFFF" U8_DWI, U8_AP U8_GA U8_NA U8_DA U8_DWI);
+    PLAIN(U8_GRIN "^123456" U8_ZHE "\xe2\x82^abcdef" U8_EURO, U8_GRIN U8_ZHE "\xe2\x82" U8_EURO);
+    PLAIN("\xf0\x9f^123456\x80", "\xf0\x9f\x80");
     PLAIN("a\0^123456b\0c", "a\0b\0c");
     PLAIN("^12345", "^12345");
     PLAIN("^GGGGGGx^000000y", "^GGGGGGxy");
@@ -88,10 +92,6 @@ static void fixtures(void)
     assert(text_find_charset_tag("a|c0b", 5, 0) == 5);
     assert(text_find_charset_tag("a|c0b", 3, 1) == 3);
     assert(text_find_charset_tag("a\0|c0", 5, 1) == 5);
-    assert(text_prefix_length("가나다", sizeof("가나다")-1, 1, 949) == 0);
-    assert(text_prefix_length("가나다", sizeof("가나다")-1, 3, 949) == 2);
-    assert(text_prefix_length("abc", 3, 0, 949) == 0);
-    assert(text_prefix_length("abc", 3, 20, 949) == 3);
     assert(!text_has_markup_tags("", 0));
     assert(!text_has_markup_tags("<INFO>x</INFO>", 14));
     assert(!text_has_markup_tags("<ITEM>", 5));
@@ -100,15 +100,15 @@ static void fixtures(void)
     assert(!text_has_markup_tags("<item>", 6));
     assert(allocation_calls == allocations);
 
-    assert(text_copy_without_colours(&out, text_view_cstr("|c0abc"), 949, 1));
+    assert(text_copy_without_colours(&out, text_view_cstr("|c0abc"), 1));
     assert(strcmp(owned_text_cstr(&out), "|c0|c0abc") == 0);
-    assert(text_copy_without_colours(&out, text_view_cstr("a|c0b^123456c^abcdefd"), 949, 1));
+    assert(text_copy_without_colours(&out, text_view_cstr("a|c0b^123456c^abcdefd"), 1));
     assert(strcmp(owned_text_cstr(&out), "|c0a|c0b|c0c|c0d") == 0);
-    assert(text_copy_without_colours(&out, text_view_cstr("^123456^abcdef|c0x"), 949, 1));
+    assert(text_copy_without_colours(&out, text_view_cstr("^123456^abcdef|c0x"), 1));
     assert(strcmp(owned_text_cstr(&out), "|c0|c0x") == 0);
-    assert(text_copy_without_colours(&out, text_view_cstr("|c0a^123456b"), 949, 0));
+    assert(text_copy_without_colours(&out, text_view_cstr("|c0a^123456b"), 0));
     assert(strcmp(owned_text_cstr(&out), "|c0ab") == 0);
-    assert(text_copy_without_colours(&out, text_view("a\0^123456b", 10), 949, 0));
+    assert(text_copy_without_colours(&out, text_view("a\0^123456b", 10), 0));
     assert(out.size == 3 && memcmp(out.data, "a\0b", 3) == 0);
     owned_text_clear(&out);
     assert(live_blocks == 0);
@@ -123,17 +123,17 @@ static void ownership(void)
     assert(owned_text_assign(&out, text_view_cstr("keep |c0a^123456b")));
     prior = out.data; size = out.size;
     fail_allocation = 1;
-    assert(!text_copy_without_colours(&out, text_view(out.data + 5, out.size - 5), 949, 1));
+    assert(!text_copy_without_colours(&out, text_view(out.data + 5, out.size - 5), 1));
     assert(out.data == prior && out.size == size && strcmp(out.data, "keep |c0a^123456b") == 0);
     calls = allocation_calls;
-    assert(!text_copy_without_colours(&out, text_view("", (size_t)-1), 949, 1));
+    assert(!text_copy_without_colours(&out, text_view("", (size_t)-1), 1));
     assert(allocation_calls == calls && out.data == prior && out.size == size);
     fail_allocation = 0;
     calls = allocation_calls;
-    assert(text_copy_without_colours(&out, text_view(out.data + 5, out.size - 5), 949, 1));
+    assert(text_copy_without_colours(&out, text_view(out.data + 5, out.size - 5), 1));
     assert(strcmp(out.data, "|c0|c0a|c0b") == 0 && live_blocks == 1);
     assert(allocation_calls == calls + 1);
-    assert(text_copy_without_colours(&out, text_view("", 0), 949, 1));
+    assert(text_copy_without_colours(&out, text_view("", 0), 1));
     assert(out.size == 0 && !out.data && live_blocks == 0);
     owned_text_clear(&out);
     owned_text_clear(&out);
@@ -141,8 +141,9 @@ static void ownership(void)
 
 static void guarded_inputs(void)
 {
-    static const char *const inputs[] = { "^123456|c0tail", "a^12345", "|c", "가^12ab56나", "a\0^123456b" };
-    static const size_t sizes[] = { 13, 7, 2, sizeof("가^12ab56나")-1, 10 };
+    static const char *const inputs[] = { "^123456|c0tail", "a^12345", "|c", U8_GA "^12ab56" U8_NA,
+                                          "a\0^123456b", U8_GRIN "^1234", "\xf0\x9f\x98" };
+    static const size_t sizes[] = { 13, 7, 2, sizeof(U8_GA "^12ab56" U8_NA)-1, 10, 9, 3 };
     SYSTEM_INFO info;
     unsigned char *pages;
     DWORD old;
@@ -156,38 +157,36 @@ static void guarded_inputs(void)
             const char *end = start + length, *found;
             struct OwnedText out = {0};
             unsigned long colour = 123;
-            size_t limit;
             memcpy((char *)start, inputs[i], length);
-            found = text_find_colour_code(start, end, 949);
+            found = text_find_colour_code(start, end);
             assert(found >= start && found <= end);
             assert(text_read_colour_code(found, end, &colour) <= end);
             assert(text_find_charset_tag(start, length, 1) <= length);
             (void)text_has_markup_tags(start, length);
-            for (limit = 0; limit <= length + 1; ++limit)
-                assert(text_prefix_length(start, length, limit, 949) <= limit);
-            assert(text_copy_without_colours(&out, text_view(start, length), 949, 1));
+            assert(text_copy_without_colours(&out, text_view(start, length), 1));
             owned_text_clear(&out);
             start--;
             memcpy((char *)start, inputs[i], length);
-            assert(text_strip_colour_codes((char *)start, length, 949) <= length);
+            assert(text_strip_colour_codes((char *)start, length) <= length);
         }
     }
     assert(VirtualFree(pages, 0, MEM_RELEASE));
     assert(live_blocks == 0);
 }
 
-static void code_page_steps(void)
+/* A colour code is an ASCII run, and no UTF-8 character contains an ASCII byte, so a code
+   is found after any two bytes, valid or not. */
+static void utf8_prefixes(void)
 {
-    static const unsigned pages[] = { 1252, 874, 932, 936, 949, 950, 1361 };
-    size_t cp;
     unsigned first, second;
-    for (cp = 0; cp < sizeof(pages)/sizeof(pages[0]); ++cp)
-        for (first = 1; first < 256; ++first)
-            for (second = 1; second < 256; ++second) {
-                char text[3] = { (char)first, (char)second, 0 };
-                size_t step = (size_t)(CharNextExA((WORD)pages[cp], text, 0) - text);
-                assert(text_prefix_length(text, 2, 1, pages[cp]) == (step == 1 ? 1u : 0u));
-            }
+    for (first = 1; first < 256; ++first)
+        for (second = 1; second < 256; ++second) {
+            char text[10] = { (char)first, (char)second, '^', '1', '2', '3', '4', '5', '6', 0 };
+            char plain_text[10];
+            memcpy(plain_text, text, sizeof text);
+            assert(text_find_colour_code(text, text + 9) == text + 2);
+            assert(text_strip_colour_codes(plain_text, 9) == 2 && !memcmp(plain_text, text, 2));
+        }
 }
 
 static unsigned random_state = 0x19a846dfu;
@@ -203,12 +202,10 @@ static void hex_trace(const char *text, size_t length)
 }
 static void generated_cases(int trace)
 {
-    static const unsigned code_pages[] = {1252, 874, 932, 936, 949, 950, 1361};
     unsigned sample;
     for (sample = 0; sample < 5000; ++sample) {
         char input[2048] = "A", plain_text[2048];
-        size_t size = 1, plain_size, piece, limit;
-        unsigned code_page = code_pages[random_value()%7];
+        size_t size = 1, plain_size, piece;
         int enabled = (random_value() >> 16) & 1;
         unsigned pieces = random_value()%20;
         struct OwnedText out = {0};
@@ -225,17 +222,14 @@ static void generated_cases(int trace)
         }
         input[size] = 0;
         memcpy(plain_text, input, size + 1);
-        plain_size = text_strip_colour_codes(plain_text, size, code_page);
-        assert(text_copy_without_colours(&out, text_view(input, size), code_page, enabled));
+        plain_size = text_strip_colour_codes(plain_text, size);
+        assert(text_copy_without_colours(&out, text_view(input, size), enabled));
         assert(plain_size <= size && out.size <= size + 3);
         if (trace) {
-            printf("%u %u %d %lu %d ", sample, code_page, enabled,
+            printf("%u %d %lu %d ", sample, enabled,
                    (unsigned long)text_find_charset_tag(input, size, enabled), text_has_markup_tags(input, size));
             hex_trace(plain_text, plain_size); putchar(' ');
-            hex_trace(owned_text_cstr(&out), out.size); putchar(' ');
-            for (limit = 1; limit <= size + 1; ++limit)
-                printf("%lu,", (unsigned long)text_prefix_length(input, size, limit, code_page));
-            putchar('\n');
+            hex_trace(owned_text_cstr(&out), out.size); putchar('\n');
         }
         owned_text_clear(&out);
     }
@@ -246,9 +240,9 @@ int main(int argc, char **argv)
 {
     int trace = argc == 2 && strcmp(argv[1], "--trace") == 0;
     if (!trace) {
-        fixtures(); ownership(); guarded_inputs(); code_page_steps();
+        fixtures(); ownership(); guarded_inputs(); utf8_prefixes();
     }
     generated_cases(trace);
-    if (!trace) puts("Text format: bounded colour/charset parsing, C ownership, alias/OOM safety, protected pages, 455175 SDK character pairs and 5000 generated cases passed.");
+    if (!trace) puts("Text format: bounded colour/charset parsing, C ownership, alias/OOM safety, protected pages, colour codes after all 65025 two-byte prefixes and 5000 generated cases passed.");
     return 0;
 }

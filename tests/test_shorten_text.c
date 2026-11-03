@@ -1,4 +1,5 @@
 #include <assert.h>
+#include "utf8_text.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,6 @@ void fatal_error(const char *message)
 }
 #include "../src/std/string.c"
 
-const char *language_char_next(const char *p) { return CharNextExA(949, p, 0); }
 int ui_window_text_width(struct UIWindow *self, const char *text, int length,
                         int face, int height, int arg, int extra)
 {
@@ -85,12 +85,14 @@ int main(void)
     check(&window, &first, "abcdef", 4, "a...");
     check(&window, &first, "abcdef", 3, "abcdef");
     check(&window, &first, "abcdef", 0, "abcdef");
-    check(&window, &first, "한국어", 5, "한...");
-    check(&window, &first, "한국어", 4, "한국어");
-    check(&window, &first, "한국어", INT_MIN, "한국어");
-    check(&window, &first, "한국어", INT_MAX, "한국어");
+    check(&window, &first, U8_HAN U8_GUK U8_EO, 6, U8_HAN "...");
+    check(&window, &first, U8_HAN U8_GUK U8_EO, 5, U8_HAN U8_GUK U8_EO);
+    check(&window, &first, U8_HAN U8_GUK U8_EO, INT_MIN, U8_HAN U8_GUK U8_EO);
+    check(&window, &first, U8_HAN U8_GUK U8_EO, INT_MAX, U8_HAN U8_GUK U8_EO);
+    check(&window, &first, U8_ZHE U8_GRIN "ab", 6, U8_ZHE "...");
+    check(&window, &first, "a\xe2\x82" U8_GRIN, 6, "a\xe2\x82...");
     expected_face = 3; expected_height = 20; expected_arg = 1;
-    check(&window, &first, "abc한국", 6, "abc...");
+    check(&window, &first, "abc" U8_HAN U8_GUK, 6, "abc...");
     saved = string_cstr(&first);
     check(&window, &second, "different text", 7, "diff...");
     assert(!strcmp(saved, "abc..."));
@@ -104,18 +106,18 @@ int main(void)
     check(&window, &first, "abcdef", INT_MIN, "abcdef");
     dots_width = 3;
     for (i = 0; i < 1000; ++i) {
-        check(&window, &first, "긴 이름 한국어", 7, "긴 ...");
+        check(&window, &first, U8_GIN " " U8_I U8_REUM " " U8_HAN U8_GUK U8_EO, 7, U8_GIN " ...");
         check(&window, &second, "abcdefghijk", 8, "abcde...");
     }
     GetSystemInfo(&info);
     guard = VirtualAlloc(NULL, info.dwPageSize * 2, MEM_RESERVE, PAGE_NOACCESS); assert(guard);
     assert(VirtualAlloc(guard, info.dwPageSize, MEM_COMMIT, PAGE_READWRITE));
     edge = guard + info.dwPageSize;
-    memcpy(edge - 7, "한국어", 7);
-    check(&window, &first, edge - 7, 5, "한...");
+    memcpy(edge - 10, U8_HAN U8_GUK U8_EO, 10);
+    check(&window, &first, edge - 10, 6, U8_HAN "...");
     assert(VirtualFree(guard, 0, MEM_RELEASE));
     string_free(&first); string_free(&second);
     assert(!allocations && !contexts);
-    puts("Shortened text: independent owners, copied input, aliasing, Korean boundaries, narrow/extreme widths, font arguments, guarded endings and 1000 reuse cycles passed.");
+    puts("Shortened text: independent owners, copied input, aliasing, UTF-8 boundaries, narrow/extreme widths, font arguments, guarded endings and 1000 reuse cycles passed.");
     return 0;
 }

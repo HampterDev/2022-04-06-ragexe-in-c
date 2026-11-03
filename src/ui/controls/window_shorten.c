@@ -1,4 +1,5 @@
 #include "ui/draw.h"
+#include "core/utf8.h"
 #include "platform/language.h"
 #include "render/textdc.h"
 #include <stdint.h>
@@ -34,8 +35,7 @@ const char *ui_window_shorten_text(struct UIWindow *self, struct String *out,
     pos = first;
     end = first + out->size;
     while (pos < end) {
-        const char *next = language_char_next(pos);
-        if (next <= pos || next > end) next = pos + 1;
+        const char *next = utf8_step(pos, end);
         width += ui_window_text_width(self, pos, (int)(next - pos),
                                     font_face, font_height, font_arg, 0);
         if (width > available) break;

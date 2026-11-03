@@ -12,7 +12,6 @@
 #include "core/markup_tags.h"
 #include <string.h>
 #include <errno.h>
-#include <mbstring.h>
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
@@ -512,10 +511,8 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         box(0x15);
         return;
     }
-    if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
-                (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML)) ||
+        strstr(ui_edit_ctrl_get_text(self->name_edit), string_cstr(&text_tag_ITEML_END))) {
         box(0xafc);
         return;
     }

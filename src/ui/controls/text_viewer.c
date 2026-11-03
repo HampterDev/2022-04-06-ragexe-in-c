@@ -120,7 +120,7 @@ void ui_text_viewer_on_draw(struct UIWindow *window)
         const char *stop = p + line->size;
 
         while (p < stop)
-            p = text_read_colour_code(text_find_colour_code(p, stop, g_codePage), stop, &colour);
+            p = text_read_colour_code(text_find_colour_code(p, stop), stop, &colour);
     }
 
     if (first >= end)

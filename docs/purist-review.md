@@ -8603,3 +8603,74 @@ Validation:
 - `git diff --check` passed.
 
 No live client/server smoke test was run.
+
+## UTF-8 character stepping (2026-11-03)
+
+Decision: the second step of the [UTF-8 switch](#utf-8-text-module-2026-11-03) approved by
+Patrick on 2026-11-03. Text in memory is now UTF-8 (`g_codePage = CP_UTF8`), and every
+place that stepped through text by code-page characters steps whole UTF-8 characters.
+Drawing still decodes with the font's charset (the next step), and the window still
+delivers ANSI `WM_CHAR` text (the input step).
+
+What changed:
+
+- `g_codePage` is `CP_UTF8`. Its remaining users convert between it and UTF-8: the local
+  account and shop settings (now an identity conversion that still rejects invalid UTF-8)
+  and the IME composition, result and candidate text, which now arrive as UTF-8.
+- Stepping: the editor caret (Left/Right, Backspace and Delete through
+  `language_caret_back`/`_forward`), edit scrolling (`ui_edit_ctrl_sync_from_ime_with`), the
+  multiline caret column (`chars_to_x`), line breaking (`text_lines.c`, `window_lines.c`,
+  `window_coloured_lines.c`, `window_wrap.c`), per-character drawing and measuring
+  (`window_text.c`, `window_text_styles.c`), item-name runs, byte-wise shortening
+  (`ui_window_shorten_text`), markup lines (`line_info.c`), colour-code scanning
+  (`text_format.c`) and the underscore replacement in `session_remove_underbar` use
+  `utf8_step`/`utf8_next`/`utf8_prev`. `language_char_next` and the per-call
+  `CharNextExA`/`CharPrevExA` copies are gone, and so are the `code_page` parameters of
+  the colour-code helpers.
+- Byte limits stay, but truncation lands on a character boundary: edit fields
+  (`ui_edit_ctrl_truncate_text`, still padding with spaces to the limit as before) and the
+  quest summary use `utf8_prefix`; `text_prefix_length` went.
+- `game_mode_format_string_msg` counts `%s` stepping UTF-8 characters instead of skipping
+  a byte after every `IsDBCSLeadByte` byte. The old loop used the system ANSI code page
+  and could step over the terminator when a lead byte ended the format.
+- `_mbsstr` (40 calls in 17 files) became `strstr`: the needles are ASCII markup tags,
+  `#`, `<`, `>`, `]` and player names, and UTF-8 never places an ASCII byte inside a
+  character.
+- Name columns (`text_within_columns`, used by the rename window) count with
+  `utf8_columns`. `_setmbcp(949)`, which set the CRT's multibyte code page for the whole
+  process on first use, went with `_mbsbtype`.
+- Chat tokens are lowercased with the new ASCII-only `text_to_lower_ascii` (`/on`/`/off`
+  arguments, talk-command names, emotion words); `text_to_lower` keeps its CP949-aware
+  form for file and resource names (illustrations, `etcinfo.txt` weather maps and
+  effects).
+- EZ2STR effect files, sounds and names convert from UTF-8 to `RESOURCE_NAME_CODE_PAGE`
+  (949) instead of `g_codePage`. Under code page 0 they used the ANSI code page, which
+  broke the Korean names on non-Korean Windows.
+
+Kept:
+
+- The charset-tag code and `g_useCharsetTag`, still never set (removed with drawing).
+- CP949 resource names and data: the message table, Lua data and XML still hold CP949
+  text, which now steps as one-byte characters until the data is converted.
+
+Tests changed: CP949 assumptions became UTF-8 expectations with 2-, 3- and 4-byte
+characters and invalid bytes, using `tests/utf8_text.h`:
+
+- `test_edit_text`: limits on character boundaries (Korean, Cyrillic, emoji, invalid
+  bytes) and the space padding.
+- `test_language_input`: caret stepping, Backspace and Delete over mixed characters,
+  IME candidates as UTF-8.
+- `test_text_format`: colour codes after every two-byte prefix are found (replacing the
+  455,175 SDK code-page pairs), UTF-8 and invalid text around colour codes.
+- `test_byte_lines`, `test_plain_lines`, `test_multiline_lines`, `test_multiline_draw`,
+  `test_shorten_text`, `test_line_layout`: UTF-8 widths and boundaries; the CP949
+  `language_char_next` stubs went.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-stepping-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-stepping-full-tests.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-utf8-stepping`. No live client/server smoke test
+was run.

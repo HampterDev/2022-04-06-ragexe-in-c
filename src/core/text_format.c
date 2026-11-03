@@ -1,5 +1,6 @@
 #include "core/text_format.h"
 #include "core/hex.h"
+#include "core/utf8.h"
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,16 +8,6 @@
 static int hex_byte(unsigned char c)
 {
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-}
-
-static size_t character_size(const char *text, size_t length, unsigned code_page)
-{
-    char bytes[3] = {0};
-    size_t step;
-    bytes[0] = text[0];
-    if (length > 1) bytes[1] = text[1];
-    step = (size_t)(CharNextExA((WORD)code_page, bytes, 0) - bytes);
-    return step ? step : 1;
 }
 
 int text_is_colour_code(const char *text, const char *end)
@@ -30,12 +21,12 @@ int text_is_colour_code(const char *text, const char *end)
     return 1;
 }
 
-const char *text_find_colour_code(const char *text, const char *end, unsigned code_page)
+const char *text_find_colour_code(const char *text, const char *end)
 {
     while (text < end) {
         if (text_is_colour_code(text, end))
             return text;
-        text += character_size(text, (size_t)(end - text), code_page);
+        text = utf8_step(text, end);
     }
     return end;
 }
@@ -63,11 +54,11 @@ size_t text_find_charset_tag(const char *text, size_t length, int enabled)
     return length;
 }
 
-size_t text_strip_colour_codes(char *text, size_t length, unsigned code_page)
+size_t text_strip_colour_codes(char *text, size_t length)
 {
     size_t read = 0, written = 0;
     while (read < length) {
-        size_t end = (size_t)(text_find_colour_code(text + read, text + length, code_page) - text);
+        size_t end = (size_t)(text_find_colour_code(text + read, text + length) - text);
         memmove(text + written, text + read, end - read);
         written += end - read;
         read = end < length ? end + 7 : end;
@@ -76,8 +67,7 @@ size_t text_strip_colour_codes(char *text, size_t length, unsigned code_page)
     return written;
 }
 
-int text_copy_without_colours(struct OwnedText *out, struct TextView text,
-                              unsigned code_page, int charset_tags)
+int text_copy_without_colours(struct OwnedText *out, struct TextView text, int charset_tags)
 {
     char *copy;
     size_t read = 0, written = 0, tag;
@@ -95,7 +85,7 @@ int text_copy_without_colours(struct OwnedText *out, struct TextView text,
         size_t end;
         if (text_is_colour_code(text.data + read, text.data + text.size))
             read += 7;
-        end = (size_t)(text_find_colour_code(text.data + read, text.data + text.size, code_page) - text.data);
+        end = (size_t)(text_find_colour_code(text.data + read, text.data + text.size) - text.data);
         if (end != read) {
             if (tag < text.size) {
                 memcpy(copy + written, text.data + tag, 3);
@@ -111,19 +101,4 @@ int text_copy_without_colours(struct OwnedText *out, struct TextView text,
     out->data = copy;
     out->size = written;
     return 1;
-}
-
-size_t text_prefix_length(const char *text, size_t length, size_t max_bytes,
-                          unsigned code_page)
-{
-    size_t at = 0;
-    if (max_bytes >= length)
-        return length;
-    while (at < length) {
-        size_t step = character_size(text + at, length - at, code_page);
-        if (step > max_bytes - at)
-            break;
-        at += step;
-    }
-    return at;
 }

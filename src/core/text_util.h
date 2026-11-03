@@ -12,5 +12,6 @@ DWORD hex_after_prefix_value(const char *text);
 void tokens_split(struct Vec *tokens, const struct String *line);
 
 void text_to_lower(struct String *s);
+void text_to_lower_ascii(struct String *s);
 
 #endif

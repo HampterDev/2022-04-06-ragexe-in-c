@@ -117,7 +117,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 3;
         return -1;
     }
-    text_to_lower(TOK(0));
+    text_to_lower_ascii(TOK(0));
     if (text[0] != '/') {
         *type = 0;
         return at;

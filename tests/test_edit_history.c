@@ -9,7 +9,6 @@
 struct UIWindowMgr g_windowMgr;
 static struct Language language;
 struct Language *g_language = &language;
-unsigned int g_codePage = 949;
 static struct UIWindow *focus;
 static char input[1024];
 static int unavailable, cancelled, replaced, invalidated;

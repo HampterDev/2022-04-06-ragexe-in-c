@@ -3,7 +3,6 @@
 #include "core/object_type_tables.h"
 #include "game/context.h"
 #include "core/markup_tags.h"
-#include <mbstring.h>
 #include <string.h>
 #include "ui/social/social.h"
 #include <mmsystem.h>
@@ -395,10 +394,8 @@ int ui_create_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     ui_edit_ctrl_select_all(self->name);
     if (name.size == 0) {
         ui_chat_line(msg_str(MSG_CREATE_GUILD_NO_NAME), RGB(0xff, 0, 0));
-    } else if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name),
-                       (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-               _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name),
-                       (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    } else if (strstr(ui_edit_ctrl_get_text(self->name), string_cstr(&text_tag_ITEML)) ||
+               strstr(ui_edit_ctrl_get_text(self->name), string_cstr(&text_tag_ITEML_END))) {
         ui_chat_line(msg_str(MSG_CREATE_GUILD_ITEM_LINK), RGB(0xff, 0, 0));
     } else if (!self->disband) {
         mode_send_message(game, REQ_CREATE_GUILD, (int)string_cstr(&name), 0, 0, 0);

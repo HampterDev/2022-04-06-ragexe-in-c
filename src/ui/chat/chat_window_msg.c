@@ -12,7 +12,6 @@
 #include "core/markup_tags.h"
 #include <string.h>
 #include <stdio.h>
-#include <mbstring.h>
 #include "ui/chat/chat_window.h"
 #include "ui/chat/markup_links.h"
 #include "ui/chat/sub_chat.h"
@@ -380,7 +379,7 @@ static void add_line(struct UINewChatWnd *self, const char *text, COLORREF colou
     string_init(&plain);
     string_assign_cstr(&plain, text);
     if (plain.size)
-        plain.size = text_strip_colour_codes(plain.data, plain.size, g_codePage);
+        plain.size = text_strip_colour_codes(plain.data, plain.size);
     if (navi_links_has_link(string_view(&plain))) {
         has_link = 1;
         if (!text_array_append(&lines, string_view(&plain))) abort();
@@ -610,8 +609,8 @@ static void send_line(struct UINewChatWnd *self)
         string_init(&parts[i]);
     at = session_get_talk_type(&g_session1, line, &type, parts);
     if ((type == TALK_NAME_MAKE_GUILD || type == TALK_NAME_MAKE_PARTY || type == TALK_NAME_EX) &&
-        (_mbsstr((const unsigned char *)line, (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-         _mbsstr((const unsigned char *)line, (const unsigned char *)string_cstr(&text_tag_ITEML_END)))) {
+        (strstr(line, string_cstr(&text_tag_ITEML)) ||
+         strstr(line, string_cstr(&text_tag_ITEML_END)))) {
         ui_chat_line(msg_str(MSG_CHAT_NAME_LINK), CHAT_NOTICE_COLOUR);
     } else {
         if (at != -1)

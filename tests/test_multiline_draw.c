@@ -1,4 +1,5 @@
 #include "ui/window_access.h"
+#include "utf8_text.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +70,6 @@ static void draw_rewrap(struct UIEditCtrl3 *self, struct TextArray *lines)
         assert(byte_array_resize(&self->line_flags, 2));
     }
 }
-const char *language_char_next(const char *text) { return CharNextExA(949, text, 0); }
 const char *language_charset_tag(struct Language *self, unsigned char folder)
 { assert(self == g_language && !folder); return ""; }
 int ui_window_text_width(struct UIWindow *self, const char *text, int len, int face, int height, int a, int b)
@@ -178,8 +178,8 @@ int main(void)
     ui_edit_ctrl3_join_lines(&edit, &joined); assert(!strcmp(string_cstr(&joined), "c") && !edit.lines.size);
     string_free(&joined);
     edit.first_line = 0; edit.edit.base.width = 26; edit.edit.base.height = 42;
-    for (i = 0; i < 200; ++i) draw(&edit, "한국\r\nx");
-    assert(updated >= 200 && !strcmp(drawn[0], "한국") && !strcmp(drawn[1], "x"));
+    for (i = 0; i < 200; ++i) draw(&edit, U8_HAN U8_GUK "\r\nx");
+    assert(updated >= 200 && !strcmp(drawn[0], U8_HAN U8_GUK) && !strcmp(drawn[1], "x"));
     cleanup(&edit);
     puts("Multiline drawing: guarded short lines, CR/LF, flag bounds, keys, scroll gaps, tag placement, joining and repeated redraw passed.");
     return 0;

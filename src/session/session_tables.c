@@ -9,7 +9,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <mbstring.h>
 #include "iteminfo/iteminfo.h"
 #include "ui/ui_std.h"
 
@@ -268,7 +267,7 @@ void session_load_mini_party_info(struct Session *self)
             entry.found = 1;
             switch (buf[i]) {
             case ',':
-                if (!_mbsstr((const unsigned char *)name, (const unsigned char *)session_character_name(&g_session1)))
+                if (!strstr(name, session_character_name(&g_session1)))
                     break;
                 if (state == 2) {
                     i++;

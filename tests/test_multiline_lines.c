@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ui/controls/edit.h"
+#include "utf8_text.h"
 
-const char *language_char_next(const char *text) { return CharNextExA(949, text, 0); }
 int ui_window_text_width(struct UIWindow *self, const char *text, int len, int face, int height, int a, int b)
 {
     int width = 0, i;
@@ -36,9 +36,12 @@ int main(void)
     check(&lines, 0, "ab\r\n"); check(&lines, 1, "cd"); check(&lines, 2, "e");
     assert(flags.items[0] == 1 && !flags.items[1] && !flags.items[2]);
     text_array_clear(&lines); byte_array_clear(&flags);
-    ui_window_break_coloured_lines(&edit.edit.base, "가나다x", &lines, &flags, 1);
+    ui_window_break_coloured_lines(&edit.edit.base, U8_GA U8_ZHE U8_GRIN "x", &lines, &flags, 1);
     assert(lines.size == 4 && flags.size == 4);
-    check(&lines, 0, "가"); check(&lines, 1, "나"); check(&lines, 2, "다"); check(&lines, 3, "x");
+    check(&lines, 0, U8_GA); check(&lines, 1, U8_ZHE); check(&lines, 2, U8_GRIN); check(&lines, 3, "x");
+    text_array_clear(&lines); byte_array_clear(&flags);
+    ui_window_break_coloured_lines(&edit.edit.base, U8_ZHE U8_GA "x", &lines, &flags, 5);
+    assert(lines.size == 2); check(&lines, 0, U8_ZHE U8_GA); check(&lines, 1, "x");
     text_array_clear(&lines); byte_array_clear(&flags);
     for (i = 0; i < 100; ++i) {
         assert(text_array_resize(&lines, 0) && byte_array_resize(&flags, 0));
@@ -60,9 +63,9 @@ int main(void)
     ui_window_break_coloured_lines(&edit.edit.base, end - 3, &lines, &flags, 1);
     check(&lines, 0, "a\r"); assert(lines.size == 1 && flags.items[0]);
     text_array_clear(&lines); byte_array_clear(&flags);
-    memcpy(end - 3, "가", 3);
-    ui_window_break_coloured_lines(&edit.edit.base, end - 3, &lines, &flags, 0);
-    check(&lines, 0, "가"); assert(lines.size == 1);
+    memcpy(end - 4, U8_GA, 4);
+    ui_window_break_coloured_lines(&edit.edit.base, end - 4, &lines, &flags, 0);
+    check(&lines, 0, U8_GA); assert(lines.size == 1);
     assert(VirtualFree(guard, 0, MEM_RELEASE));
     text_array_clear(&lines); byte_array_clear(&flags);
 
@@ -72,6 +75,6 @@ int main(void)
     ui_edit_ctrl3_rewrap(&edit, &lines);
     assert(lines.size == 3); check(&lines, 0, "abc"); check(&lines, 1, "<def>g"); check(&lines, 2, "hi");
     text_array_clear(&lines);
-    puts("Multiline lines: preserved breaks, counted Korean characters, narrow/negative widths, append, guarded endings and link rewrap passed.");
+    puts("Multiline lines: preserved breaks, counted UTF-8 characters, narrow/negative widths, append, guarded endings and link rewrap passed.");
     return 0;
 }

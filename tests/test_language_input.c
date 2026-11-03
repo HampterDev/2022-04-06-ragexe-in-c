@@ -7,6 +7,7 @@
 #include <string.h>
 #include <windows.h>
 #include <imm.h>
+#include "utf8_text.h"
 
 static int heap_live,heap_calls,fail_after=-1;
 struct TestAllocation { size_t size; unsigned magic; };
@@ -147,7 +148,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 
 HWND g_hMainWnd;
 BYTE g_useCharsetTag;
-UINT g_codePage=949;
+UINT g_codePage=CP_UTF8;
 struct UIWindowMgr g_windowMgr;
 struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *mgr) { (void)mgr; return NULL; }
 
@@ -175,8 +176,18 @@ static void test_editing(void)
     press_key(&s,VK_END); type_char(&s,'!'); expect_text(&s,"Zf!",3,3);
     type_char(&s,'\n'); type_char(&s,'\t'); expect_text(&s,"Zf!",3,3);
     language_set_selection(&s,-1,100); assert(s.anchor==0 && s.caret==3);
-    language_cancel_input(&s); type_char(&s,0xa1b0); assert(s.input_length==2);
-    language_caret_back(&s); assert(s.caret==0); language_caret_forward(&s); assert(s.caret==2);
+    language_cancel_input(&s); language_replace_selection(&s,"a" U8_GA U8_GRIN "\xff" U8_ZHE);
+    assert(s.input_length==11 && s.caret==11);
+    language_caret_back(&s); assert(s.caret==9); language_caret_back(&s); assert(s.caret==8);
+    language_caret_back(&s); assert(s.caret==4); language_caret_back(&s); assert(s.caret==1);
+    language_caret_back(&s); assert(s.caret==0); language_caret_back(&s); assert(s.caret==0);
+    language_caret_forward(&s); assert(s.caret==1); language_caret_forward(&s); assert(s.caret==4);
+    language_caret_forward(&s); assert(s.caret==8); language_caret_forward(&s); assert(s.caret==9);
+    language_caret_forward(&s); assert(s.caret==11); language_caret_forward(&s); assert(s.caret==11);
+    language_set_selection(&s,1,1); press_key(&s,VK_DELETE); expect_text(&s,"a" U8_GRIN "\xff" U8_ZHE,1,1);
+    language_set_selection(&s,5,5); type_char(&s,VK_BACK); expect_text(&s,"a\xff" U8_ZHE,1,1);
+    language_set_selection(&s,4,4); type_char(&s,VK_BACK); expect_text(&s,"a\xff",2,2);
+    language_set_selection(&s,2,2); press_key(&s,VK_LEFT); assert(s.caret==1 && s.anchor==1);
     language_cancel_input(&s);language_replace_selection(&s,"abcd"); language_set_selection(&s,2,2);
     strcpy(s.composition,"XY");s.composition_length=2;assert(language_get_text(&s,&out));
     assert(!strcmp(out.data,"abXYcd") && out.size==6);
@@ -297,7 +308,7 @@ static void test_candidates(void)
     language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_OPENCANDIDATE,0,&handled);
     assert(handled && s.candidate_count==3 && s.candidate_selection==1 && s.candidate_page==9);
     assert(!strcmp(language_candidate_text(&s,0),"alpha"));
-    assert(!strcmp(language_candidate_text(&s,1),"가"));
+    assert(!strcmp(language_candidate_text(&s,1),U8_GA));
     assert(!strcmp(language_candidate_text(&s,2),"z"));
     assert(!strcmp(language_candidate_text(&s,-1),"") && !strcmp(language_candidate_text(&s,3),""));
     saved=s.candidates;fail_after=0;releases=ime_releases;language_read_candidates(&s);
@@ -373,6 +384,6 @@ int main(int argc,char **argv)
     test_editing();test_ime();
     test_clipboard();
     test_input_ownership();test_charset_tags();test_candidates();test_edit_sequence();
-    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, charset tags, DBCS and clipboard failures passed.");
+    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, charset tags, UTF-8 caret steps and clipboard failures passed.");
     return 0;
 }

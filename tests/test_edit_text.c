@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "ui/controls/edit.h"
+#include "utf8_text.h"
 
 struct UIWindowMgr g_windowMgr;
 static struct Language language;
 struct Language *g_language = &language;
-unsigned int g_codePage = 949;
 static struct UIWindow *focus;
 static char input[1024];
 static int unavailable, cancelled, replaced, invalidated;
@@ -53,42 +53,57 @@ int main(void)
     parent.ops = &parent_ops; edit.base.parent = &parent;
     edit.base.width = 500; edit.max_chars = 255;
     string_reserve(&edit.text, 255); storage = edit.text.data;
-    ui_edit_ctrl_set_text(&edit, "앞이름뒤");
-    assert(!strcmp(ui_edit_ctrl_get_text(&edit.base), "앞이름뒤"));
-    assert(edit.sel_start == 0 && edit.sel_end == 8 && invalidated == 1);
-    assert(!cancelled && !replaced && ui_edit_ctrl_get_text_size(&edit.base) == 8);
-    ui_edit_ctrl_set_text(&edit, edit.text.data + 2);
-    assert(!strcmp(edit.text.data, "이름뒤") && edit.text.data == storage);
+    ui_edit_ctrl_set_text(&edit, U8_AP U8_I U8_REUM U8_DWI);
+    assert(!strcmp(ui_edit_ctrl_get_text(&edit.base), U8_AP U8_I U8_REUM U8_DWI));
+    assert(edit.sel_start == 0 && edit.sel_end == 12 && invalidated == 1);
+    assert(!cancelled && !replaced && ui_edit_ctrl_get_text_size(&edit.base) == 12);
+    ui_edit_ctrl_set_text(&edit, edit.text.data + 3);
+    assert(!strcmp(edit.text.data, U8_I U8_REUM U8_DWI) && edit.text.data == storage);
     edit.max_chars = 3;
-    ui_edit_ctrl_set_text(&edit, "가나다");
-    assert(edit.text.size == 3 && !memcmp(edit.text.data, "가 ", 4));
+    ui_edit_ctrl_set_text(&edit, U8_GA U8_NA U8_DA);
+    assert(edit.text.size == 3 && !strcmp(edit.text.data, U8_GA));
+    edit.max_chars = 5;
+    ui_edit_ctrl_set_text(&edit, U8_GA U8_NA U8_DA);
+    assert(edit.text.size == 5 && !strcmp(edit.text.data, U8_GA "  "));
+    ui_edit_ctrl_set_text(&edit, U8_ZHE U8_ZHE U8_ZHE);
+    assert(!strcmp(edit.text.data, U8_ZHE U8_ZHE " "));
+    ui_edit_ctrl_set_text(&edit, "a" U8_GRIN "b");
+    assert(!strcmp(edit.text.data, "a" U8_GRIN));
+    edit.max_chars = 4;
+    ui_edit_ctrl_set_text(&edit, "a" U8_GRIN "b");
+    assert(!strcmp(edit.text.data, "a   "));
+    edit.max_chars = 2;
+    ui_edit_ctrl_set_text(&edit, "\xff\xfe\xfd");
+    assert(!strcmp(edit.text.data, "\xff\xfe"));
+    ui_edit_ctrl_set_text(&edit, "\xe2\x82x");
+    assert(!strcmp(edit.text.data, "\xe2\x82"));
     edit.max_chars = 0;
-    ui_edit_ctrl_set_text(&edit, "가");
+    ui_edit_ctrl_set_text(&edit, U8_GA);
     assert(!edit.text.size && !*edit.text.data);
-    edit.max_chars = 3;
-    string_assign_cstr(&edit.text, "가나다");
+    edit.max_chars = 4;
+    string_assign_cstr(&edit.text, U8_GA U8_NA U8_DA);
     edit.base.ops = &ime_ops.base;
     ui_edit_ctrl_truncate(&edit);
     edit.base.ops = &edit_ops.base;
-    assert(!strcmp(edit.text.data, "가 ") && !strcmp(input, "가"));
+    assert(!strcmp(edit.text.data, U8_GA " ") && !strcmp(input, U8_GA));
     assert(cancelled == 2 && replaced == 1);
 
     focus = &edit.base; edit.max_chars = 255;
     ui_edit_ctrl_set_text(&edit, "typed");
     assert(!strcmp(input, "typed") && language.anchor == 0 && language.caret == 5);
     for (i = 0; i < 1000; ++i) {
-        strcpy_s(input, sizeof input, "입력 composition");
-        language.input_length = strlen("입력 ");
+        strcpy_s(input, sizeof input, U8_IP U8_RYEOK " composition");
+        language.input_length = strlen(U8_IP U8_RYEOK " ");
         language.anchor = 1; language.caret = (int)strlen(input);
         ui_edit_ctrl_sync_from_ime(&edit);
         assert(!strcmp(edit.text.data, input) && edit.text.data == storage);
         assert(edit.sel_start == 1 && edit.sel_end == (int)strlen(input));
-        assert(ui_edit_ctrl_get_text_size(&edit.base) == (int)strlen("입력 "));
+        assert(ui_edit_ctrl_get_text_size(&edit.base) == (int)strlen(U8_IP U8_RYEOK " "));
     }
     unavailable = 1;
     strcpy_s(input, sizeof input, "unavailable input");
     ui_edit_ctrl_sync_from_ime(&edit);
-    assert(!strcmp(edit.text.data, "입력 composition"));
+    assert(!strcmp(edit.text.data, U8_IP U8_RYEOK " composition"));
     unavailable = 0;
     strcpy_s(input, sizeof input, "abcdef");
     language.anchor = language.caret = 100;
@@ -107,6 +122,6 @@ int main(void)
     assert(ui_edit_ctrl_link_text(&edit).data == edit.raw_text.data);
     assert(ui_edit_ctrl_link_text(&edit).size == strlen("<NAVIL>경로</NAVIL>"));
     string_free(&edit.raw_text); string_free(&edit.text);
-    puts("Edit text: real setters, Korean character boundaries, aliasing, IME synchronization, retained capacity, selection and scrolling passed.");
+    puts("Edit text: real setters, UTF-8 character boundaries (2-4 bytes and invalid bytes), aliasing, IME synchronization, retained capacity, selection and scrolling passed.");
     return 0;
 }

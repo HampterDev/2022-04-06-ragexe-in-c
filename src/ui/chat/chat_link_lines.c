@@ -4,7 +4,6 @@
 #include "ui/chat/chat_history.h"
 #include "ui/chat/markup_links.h"
 #include "ui/ui_std.h"
-#include <mbstring.h>
 #include <string.h>
 #include <time.h>
 
@@ -138,8 +137,8 @@ static struct String *build_navi_line(struct UIChatHisBox *self, struct String *
     struct String s, result, cur;
     int p;
 
-    if (!_mbsstr((const unsigned char *)line, (const unsigned char *)"<") &&
-        !_mbsstr((const unsigned char *)line, (const unsigned char *)">")) {
+    if (!strstr(line, "<") &&
+        !strstr(line, ">")) {
         p = string_find(remain, line, 0);
         if (p != -1)
             string_substring(remain, remain, p + strlen(line), (size_t)-1);
@@ -232,8 +231,8 @@ void ui_chat_his_box_add_item_link_line(struct UIChatHisBox *self, const char *t
     struct String readable = {0}, rest = {0};
     unsigned i;
 
-    if (!_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
-        !_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_ITEML_END))) {
+    if (!strstr(text, string_cstr(&text_tag_ITEML)) ||
+        !strstr(text, string_cstr(&text_tag_ITEML_END))) {
         ui_list_box_add_item(&self->list, text);
         return;
     }

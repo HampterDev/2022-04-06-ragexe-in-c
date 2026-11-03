@@ -10,7 +10,6 @@
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/chat/markup_links.h"
-#include <mbstring.h>
 #include <string.h>
 #include "ui/mail/rodex_compose.h"
 #include "session/session_items.h"
@@ -250,8 +249,8 @@ static void add_navi_link(struct UIEditCtrl *self, const char *text)
         string_free(&old_shown);
         string_free(&old_name);
     }
-    if (!_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_NAVIL)) &&
-        !_mbsstr((const unsigned char *)text, (const unsigned char *)string_cstr(&text_tag_NAVIL_END))) {
+    if (!strstr(text, string_cstr(&text_tag_NAVIL)) &&
+        !strstr(text, string_cstr(&text_tag_NAVIL_END))) {
         ui_edit_ctrl_set_text(self, text);
         goto done;
     }

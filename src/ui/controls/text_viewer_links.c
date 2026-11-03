@@ -106,7 +106,7 @@ static int *link_place(struct UITextViewer *self, int out[2], int pos, int lines
         string_init(&plain);
         string_assign_cstr(&plain, string_cstr(LINE(self, i)));
         if (plain.size)
-            plain.size = text_strip_colour_codes(plain.data, plain.size, g_codePage);
+            plain.size = text_strip_colour_codes(plain.data, plain.size);
         total += plain.size;
         if (total > pos) {
             out[0] = i;
@@ -209,7 +209,7 @@ static void plain_text(struct String *s, const struct String *text)
     string_init(s);
     string_assign_cstr(s, string_cstr(text));
     if (s->size)
-        s->size = text_strip_colour_codes(s->data, s->size, g_codePage);
+        s->size = text_strip_colour_codes(s->data, s->size);
 }
 
 static BYTE add_item_links(struct UITextViewer *self, struct String text, int lines)
