@@ -413,10 +413,10 @@ static void enter_map(struct LoginMode *self)
         DWORD aid;
         DWORD gid;
         DWORD authCode;
-        DWORD unset;
+        DWORD reserved;
         DWORD clientTime;
         BYTE sex;
-    } pkt;
+    } pkt = {0};
 #pragma pack(pop)
 
     char_user_data_load(g_charUserDataMgr, g_session1.ownAid, g_session1.ownGid, string_cstr(&g_session1.worldName));
