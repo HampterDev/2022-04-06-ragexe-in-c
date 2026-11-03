@@ -107,14 +107,16 @@ static void default_wallpaper(struct LoginMode *self) { (void)self; }
 #include "name_text_cut_in.inc"
 #include "name_text_server_list.inc"
 
+/* The map name from a server-move packet, with its .gat extension. */
 static void map_name(const char *text)
 {
-    struct String name;
+    struct String map_name, name;
 
-    string_init(&name);
-    string_assign_cstr(&name, text);
+    string_init(&map_name);
+    string_assign_cstr(&map_name, text);
 #include "name_text_map_name.inc"
     string_free(&name);
+    string_free(&map_name);
 }
 
 static void homun_default(void)
@@ -341,12 +343,25 @@ static void check_map_name(void)
 {
     char *whole = g_session1.mapName;
 
-    map_name(CONVERSIONS);
+    map_name(CONVERSIONS ".gat");
     check(whole, CONVERSIONS);
-    map_name(CONVERSIONS_N);
+    map_name(CONVERSIONS_N ".gat");
     check(whole, CONVERSIONS_N);
-    map_name("abcdefghijklmnopqrstuvwxyz");
+    map_name("abcdefghijklmnopqrstuvwxyz.gat");
     check(whole, "abcdefghijklmnopqrs");
+    map_name("prontera.gat");
+    check(whole, "prontera");
+    /* Four bytes or more lose the last four; a shorter name is kept. */
+    map_name("x.gat");
+    check(whole, "x");
+    map_name(".gat");
+    check(whole, "");
+    map_name("abc");
+    check(whole, "abc");
+    map_name("a");
+    check(whole, "a");
+    map_name("");
+    check(whole, "");
 }
 
 static void check_typed_names(void)
