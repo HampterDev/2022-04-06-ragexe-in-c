@@ -406,8 +406,7 @@ void session_init_talk_type_table_(struct Session *self)
     size_t i;
 
     push_commands(&self->talkTypes, s_commands, COUNT(s_commands));
-    if (g_serverType != 3)
-        push_commands(&self->talkTypes, s_shiftCommands, COUNT(s_shiftCommands));
+    push_commands(&self->talkTypes, s_shiftCommands, COUNT(s_shiftCommands));
     push_commands(&self->talkTypes, s_moreCommands, COUNT(s_moreCommands));
     std_stable_sort(self->talkTypes.first, self->talkTypes.last, sizeof(struct NamedInt), less_name, NULL);
 

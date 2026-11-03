@@ -254,7 +254,7 @@ void set_option(struct XmlElement *node)
     if (el) {
         text = xml_node_text(el);
         if (string_equal_cstr(text, "primary"))
-            g_serverType = g_serverType == 0xd ? 0xd : 0;
+            g_serverType = 0;
         else if (string_equal_cstr(xml_node_text(el), "sakray"))
             g_serverType = 1;
         else if (string_equal_cstr(xml_node_text(el), "local"))

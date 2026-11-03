@@ -304,7 +304,7 @@ static void open_menu(struct UIWhisperWnd *self)
     if (g_windowMgr.menu_wnd)
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_MENU);
     add_menu_entry(self, MSG_WHISPER_MENU_SAVE, WHISPER_MENU_SAVE);
-    if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&self->name)) && g_serverType != 3)
+    if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&self->name)))
         add_menu_entry(self, MSG_WHISPER_MENU_ADD_FRIEND, WHISPER_MENU_ADD_FRIEND);
     mode_send_message(client_current_mode(), MODE_REQ_MENU_NAME, (int)string_cstr(&self->name), 0, 0, 0);
     if (self->menu.first == self->menu.last)

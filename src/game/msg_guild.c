@@ -316,8 +316,6 @@ int game_mode_msg_give_manner_point(int aid, int type, int points)
 #pragma pack(pop)
     int clamped;
 
-    if (g_serverType == 3)
-        return 0;
     packet.id = 0x149;
     packet.aid = aid;
     packet.type = (unsigned char)type;

@@ -1,6 +1,5 @@
 #include "game/packet_handlers.h"
 #include "ui/chat/markup_links.h"
-#include "platform/service.h"
 #include "game/whisper_log.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -45,7 +44,7 @@ void game_mode_mute_self_for_flooding(void)
 {
     struct PacketMannerPoint packet;
 
-    if (clientinfo_is_admin_aid(g_session1.ownAid) || g_serverType == 3)
+    if (clientinfo_is_admin_aid(g_session1.ownAid))
         return;
     packet.id = CZ_REQ_GIVE_MANNER_POINT;
     packet.account_id = g_session1.ownAid;
@@ -56,8 +55,6 @@ void game_mode_mute_self_for_flooding(void)
 
 char chat_refuse_repeated_line(int repeats)
 {
-    if (g_serverType == 3)
-        return 0;
     if (repeats < 2)
         return 0;
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);

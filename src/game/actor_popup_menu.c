@@ -31,7 +31,6 @@
 #define MSG_MENU_ADD_SEPARATOR  0x48
 
 #define OBJECT_TYPE_PET 7
-#define SERVER_TYPE_GUILD 3
 
 #define JOB_NPC_FIRST 0x2d
 #define JOB_NPC_END   0x3e8
@@ -152,15 +151,13 @@ static void gm_rows(struct GameMode *self, struct UIWindow *menu, char *line, co
 {
     menu_separator(menu);
     menu_row(self, menu, POPUP_GM_FULLSTRIP, 0x636);
-    if (g_serverType != SERVER_TYPE_GUILD) {
-        menu_row(self, menu, POPUP_GM_PROHIBIT_REMOVE, 0x185);
-        menu_row(self, menu, POPUP_GM_PROHIBIT_ADD, 0x186);
-        int prohibitions = session_count_prohibits_of(&g_session1, self->popup_target_aid);
+    menu_row(self, menu, POPUP_GM_PROHIBIT_REMOVE, 0x185);
+    menu_row(self, menu, POPUP_GM_PROHIBIT_ADD, 0x186);
+    int prohibitions = session_count_prohibits_of(&g_session1, self->popup_target_aid);
 
-        sprintf(line, msg_str(0x2c9), prohibitions);
-        menu_entry(self, POPUP_PROHIBIT_LIST);
-        menu_item(menu, line);
-    }
+    sprintf(line, msg_str(0x2c9), prohibitions);
+    menu_entry(self, POPUP_PROHIBIT_LIST);
+    menu_item(menu, line);
     sprintf(line, "%s : %d (GID) : %s", string_cstr(&g_session1.serverName), self->popup_target_aid,
                 string_cstr(name));
     menu_entry(self, POPUP_COPY_GID);
@@ -232,8 +229,7 @@ static void player_menu(struct GameMode *self, const struct PickInfo *pick, stru
 
     menu_separator(menu);
     menu_row(self, menu, POPUP_ACTOR_INFO, 0x168);
-    if (!clientinfo_is_admin_aid(pick->aid) && !ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&name))
-        && g_serverType != SERVER_TYPE_GUILD)
+    if (!clientinfo_is_admin_aid(pick->aid) && !ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&name)))
         menu_row(self, menu, POPUP_ADD_FRIEND, 0x166);
     menu_row(self, menu, POPUP_WRITE_RODEX, 0xaf8);
 

@@ -481,15 +481,13 @@ static int fill_menu(struct UIChatRoomWnd *self, int my_value, const struct Stri
             add_menu_entry(self, MSG_MENU_OWNER_1, CHAT_ROOM_MENU_GIVE_OWNER);
         }
         add_menu_entry(self, MSG_MENU_NOTE, CHAT_ROOM_MENU_NOTE);
-        if (g_serverType != 3 && !ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&target)) &&
-            !string_equal(&target, me))
+        if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&target)) && !string_equal(&target, me))
             add_menu_entry(self, MSG_MENU_ADD_FRIEND, CHAT_ROOM_MENU_ADD_FRIEND);
         add_menu_entry(self, MSG_MENU_SETUP, CHAT_ROOM_MENU_SETUP);
         break;
     case 1:
         add_menu_entry(self, MSG_MENU_NOTE, CHAT_ROOM_MENU_NOTE);
-        if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&target)) && !string_equal(&target, me) &&
-            g_serverType != 3)
+        if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&target)) && !string_equal(&target, me))
             add_menu_entry(self, MSG_MENU_ADD_FRIEND, CHAT_ROOM_MENU_ADD_FRIEND);
         break;
     }

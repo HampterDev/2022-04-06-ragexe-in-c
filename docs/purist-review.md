@@ -9257,3 +9257,48 @@ Validation:
 - Live check in the same test folder as the IME candidate list: the login window shows
   the account combo box, both fields, Save ID and the Login and close buttons, with no
   Opening button.
+
+## Dead server types 3 and 13 (2026-11-03)
+
+Decision: the server-type branches listed as dead under the
+[langtype 20 lock](#langtype-20-lock-2026-11-03), removed at Patrick's request on
+2026-11-03. A purist removal; `main` keeps them.
+
+`set_option` (`platform/clientinfo.c`) is the only code that assigns `g_serverType`:
+`<servertype>` `primary` gives 0, `sakray` 1, `local` 2 and `pk` 5, starting from 0. For
+`primary` it kept 13 (0xd) if the value already was 13, which nothing sets. So the value
+is never 3 or 13, every `g_serverType == 3` branch is dead and every `!= 3` test is true.
+
+What changed, with behavior unchanged:
+
+- `set_option` sets 0 for `primary`.
+- `game_mode_mute_self_for_flooding` (`game/chat.c`) skips only administrators, and
+  `chat_refuse_repeated_line` lost its early return; `chat.c` no longer includes
+  `platform/service.h`.
+- `game_mode_msg_give_manner_point` (`game/msg_guild.c`) lost its early return.
+- `session_init_talk_type_table_` (`session/session_talk.c`) always adds the shift
+  commands.
+- The add-friend entries of the chat-room menu (`fill_menu` in `ui/chat/chat_room_wnd.c`,
+  owner and member), the whisper menu (`open_menu` in `ui/chat/whisper.c`) and the player
+  popup menu (`player_menu` in `game/actor_popup_menu.c`) no longer test the server
+  type; their other conditions are unchanged. `gm_rows` always adds the two prohibition
+  rows and the prohibition count. `SERVER_TYPE_GUILD` is gone.
+
+Kept: `g_serverType` itself. `login_mode_client_type` (`login/account.c`) reads 5, and
+`session_load_navigation_lua` and `session_load_external_settings`
+(`session/session_lua.c`) read 0 and 1.
+
+No test changed: no test covered these branches, and the values that reach them are the
+same.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/server-type-build.log`.
+- Full suite `tests\build.bat` passed with this change and the ports of the
+  [UTF-8-review fixes](#foundation-fixes-from-the-utf-8-review-2026-11-03):
+  `build/utf8-review-fixes-full-tests.log`; the packet dispatch digest is still
+  `d8b534ea02a5d31f`.
+- The seven standalone suites passed: `build/utf8-review-fixes-<suite>.log`.
+- `git diff --check` passed.
+
+No live client was run.

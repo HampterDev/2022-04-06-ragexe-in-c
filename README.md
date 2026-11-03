@@ -130,3 +130,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Keep characters whole where text is cut to a fixed size: navigation name lines (surrogate pairs), guild and whisper packet fields, and the renewed-quest condition names.
 - Let the IME draw its own candidate list next to the composition; remove the client's empty candidate window.
 - Remove the login window's Opening button, which had no action.
+- Remove the server types 3 and 13, which nothing assigns, and their branches (manner points, repeated-chat refusal, shift commands, add-friend and GM prohibition menu rows); behavior unchanged.
