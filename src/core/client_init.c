@@ -4,6 +4,7 @@
 #include "core/msg_str.h"
 #include "core/packet_table.h"
 #include "core/res_mgr.h"
+#include "contents/guild_emblem_hooks.h"
 #include "contents/guild_info.h"
 #include "core/xml.h"
 #include "fileio/file_manager.h"
@@ -25,6 +26,7 @@
 #include "render/texture.h"
 #include "render/texture_cache.h"
 #include "render/texture_globals.h"
+#include "resources/emblem.h"
 #include "resources/granny_res.h"
 #include "session/session_state.h"
 #include "session/state.h"
@@ -88,6 +90,9 @@ static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
     g_renderBeforeClearLists = effect_mgr_destroy_removed_effects;
+    g_emblemRules.is_bad = guild_emblem_is_bad;
+    g_emblemRules.mark_bad = guild_emblem_mark_bad;
+    g_emblemRules.max_size = guild_emblem_max_size;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

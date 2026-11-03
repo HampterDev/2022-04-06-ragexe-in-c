@@ -42,6 +42,7 @@ static DWORD bitmap_test_now(void) { return clock_now; }
 #undef calloc
 #undef realloc
 #undef free
+#include "../src/contents/guild_emblem_hooks.c"
 
 static BYTE *file_bytes;
 static int file_size, file_is_open, bad_emblem, bad_marks;
@@ -256,5 +257,8 @@ static void check_emblems(void)
 }
 int main(void)
 {
+    g_emblemRules.is_bad = guild_emblem_is_bad;
+    g_emblemRules.mark_bad = guild_emblem_mark_bad;
+    g_emblemRules.max_size = guild_emblem_max_size;
     check_formats();check_malformed();check_lifecycle();check_emblems();return 0;
 }

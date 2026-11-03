@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct EmblemRules g_emblemRules = {0};
+
 struct EmblemRes *emblem_resource_init(struct EmblemRes *self)
 {
     res_construct(&self->res);
@@ -28,9 +30,9 @@ BYTE emblem_res_load(struct EmblemRes *self, const char *name)
     unsigned long size;
     BYTE *buffer = NULL, ok = 0;
     if (!self || !name) return 0;
-    if (guild_mgr_is_bad_emblem(g_guildMgr, string_from_cstr(name)))
+    if (g_emblemRules.is_bad && g_emblemRules.is_bad(name))
         return gif_res_add_blank_frame(&self->picture, 24, 24);
-    bound = (uint64_t)g_guildMgr->emblem_max_size * 6 / 5;
+    bound = (uint64_t)(g_emblemRules.max_size ? g_emblemRules.max_size() : 0) * 6 / 5;
     if (!bound || bound > INT_MAX) return 0;
     file_construct(&file);
     if (file_open(&file, name, 0, 1, 0)) {
@@ -43,7 +45,7 @@ BYTE emblem_res_load(struct EmblemRes *self, const char *name)
                 ok = 1;
             } else {
                 ok = gif_res_add_blank_frame(&self->picture, 24, 24);
-                if (ok) guild_mgr_mark_bad_emblem(g_guildMgr, string_from_cstr(name));
+                if (ok && g_emblemRules.mark_bad) g_emblemRules.mark_bad(name);
             }
         }
         free(buffer);
