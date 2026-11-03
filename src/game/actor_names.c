@@ -65,7 +65,7 @@ static void pet_named(unsigned aid, const char *name)
         return;
     _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s", NAME_LENGTH, name);
     if (g_windowMgr.pet_info_wnd)
-        ui_pet_info_set_name(g_windowMgr.pet_info_wnd, name);
+        ui_pet_info_set_name(g_windowMgr.pet_info_wnd, g_session1.petName);
 }
 
 void game_mode_ack_req_name_by_gid(const unsigned char *pkt)

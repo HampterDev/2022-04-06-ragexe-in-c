@@ -41,14 +41,15 @@ SIZE_ASSERT(PACKET_ZC_PROPERTY_PET, 0x25);
 void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
 {
     struct PACKET_ZC_PROPERTY_PET *packet = (struct PACKET_ZC_PROPERTY_PET *)pkt;
-    const char *name = packet->name;
+    char name[sizeof packet->name + 1];
     struct UIWindow *wnd;
 
     (void)self;
+    /* The 24-byte name field need not end in NUL; everything below uses this copy. */
+    _snprintf_s(name, sizeof name, _TRUNCATE, "%.*s", (int)sizeof packet->name, packet->name);
     g_session1.petJob = packet->job;
     if (packet->level < PET_LEVEL_OTHER) {
-        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s",
-                    (int)sizeof packet->name, name);
+        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s", name);
         g_session1.petPrevFullness = g_session1.petFullness;
         g_session1.petFullness = packet->fullness;
         g_session1.petIntimacy = packet->intimacy;
