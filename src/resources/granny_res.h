@@ -97,6 +97,12 @@ const struct GrannyMeshVertex *c3d_granny_model_res_mesh_to_draw(struct C3dGrann
 BYTE granny_bounds_screen_box(const struct GrannyBounds *bounds, struct ScreenBounds *box,
                                             const float *view, const float *r, const float *eye);
 
+/* The model name ("model\\3dmob\\" + name) that job `job`'s bone animations belong to,
+   or NULL. Defined in resources/granny_res.c; client_install_hooks()
+   (core/client_init.c) installs session_granny_job_model (session/session_granny_hooks.c).
+   NULL: no job has one, so no bone animation loads. */
+extern const char *(*g_grannyJobModelName)(int job);
+
 void granny_animation_cache_init(struct C3dGrannyBoneRes *self);
 void granny_animation_cache_clear(struct C3dGrannyBoneRes *self);
 BYTE granny_animation_cache_load(struct C3dGrannyBoneRes *self, const char *name, int job, int part);

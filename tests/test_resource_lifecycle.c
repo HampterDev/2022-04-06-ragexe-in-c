@@ -20,6 +20,7 @@ static void *lifecycle_calloc(size_t count, size_t size)
 #undef malloc
 #undef calloc
 #undef free
+#include "../src/session/session_granny_hooks.c"
 
 #define AIL_FILE_WAV 1
 
@@ -420,6 +421,7 @@ int main(void)
         17,0,1,0,64,31,0,0,199,27,0,0,8,0,4,0,2,0,9,0,
         'f','a','c','t',4,0,0,0,9,0,0,0,'d','a','t','a',8,0,0,0
     };
+    g_grannyJobModelName = session_granny_job_model;
     memcpy(file_data, wave_bytes, sizeof file_data);
     resource_destroy(NULL);
     test_wave(); test_granny(); test_granny_animation_bounds();

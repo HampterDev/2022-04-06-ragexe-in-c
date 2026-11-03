@@ -6,7 +6,6 @@
 #include <string.h>
 #include <math.h>
 #include "render/texture_cache.h"
-#include "session/state.h"
 #include "core/numeric.h"
 #include "fileio/file.h"
 #include "render/cdc.h"
@@ -19,9 +18,10 @@
 #include "fileio/resource_api.h"
 #include "fileio/res_mgr.h"
 #include "resources/resource_factories.h"
-#include "session/session_names.h"
 
 struct C3dGrannyBoneRes g_grannyBoneRes;
+const char *(*g_grannyJobModelName)(int job);
+
 static const int g_grannyBoneJobIds[] = {1288, 722, 1324, 1000, 1000, 1000, 1000, 1286, 1285, 1287};
 static const char *const g_grannyBonePartNames[] = {"stand", "move", "attack", "dead", "damage"};
 
@@ -316,7 +316,7 @@ static granny_animation *bone_animation(struct C3dGrannyBoneRes *bones, int job,
     if (entry->animation)
         return entry->animation;
     if (part == 0) {
-        const char *model = session_get_job_name(&g_session1, g_grannyBoneJobIds[job], -1);
+        const char *model = g_grannyJobModelName ? g_grannyJobModelName(g_grannyBoneJobIds[job]) : NULL;
         if (!model)
             return NULL;
         length = snprintf(name, sizeof name, "model\\3dmob\\%s", model);

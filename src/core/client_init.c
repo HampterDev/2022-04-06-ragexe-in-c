@@ -28,6 +28,7 @@
 #include "render/texture_globals.h"
 #include "resources/emblem.h"
 #include "resources/granny_res.h"
+#include "session/session_granny_hooks.h"
 #include "session/session_state.h"
 #include "session/state.h"
 #include "skills/skill_action.h"
@@ -93,6 +94,7 @@ static void client_install_hooks(void)
     g_emblemRules.is_bad = guild_emblem_is_bad;
     g_emblemRules.mark_bad = guild_emblem_mark_bad;
     g_emblemRules.max_size = guild_emblem_max_size;
+    g_grannyJobModelName = session_granny_job_model;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;
