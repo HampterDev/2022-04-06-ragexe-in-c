@@ -57,7 +57,7 @@ static void expect(const int *ids, int count)
     int i;
 
     request_count = 0;
-    assert(make_basic_info(&mgr) == &basic_info);
+    assert(make_basic_info(&mgr, 0x0) == &basic_info);
     assert(request_count == count);
     for (i = 0; i < count; i++)
         assert(requested[i] == ids[i]);

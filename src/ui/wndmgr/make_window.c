@@ -1,19 +1,7 @@
-#include "ui/character/select_char_new.h"
 #include "render/renderer.h"
-#include "contents/client_lua_calls.h"
-#include "session/state.h"
 #include "ui/window_access.h"
-#include <string.h>
 #include "ui/wndmgr/make_window_internal.h"
-#include "core/object_type_tables.h"
-#include "session/session_options.h"
-#include "ui/character/character.h"
-#include "ui/character/sel_char_userver.h"
-#include "ui/character/select_server.h"
-#include "ui/chat/chat.h"
-#include "ui/hotkeys/hotkey_bars.h"
-#include "ui/quests/quests.h"
-#include "ui/shops/shops.h"
+#include "ui/wndmgr/window_table.h"
 
 void wm_move(struct UIWindow *wnd, int x, int y)
 {
@@ -39,12 +27,6 @@ int wm_center_y(int height)
     return (g_renderer->height - height) / 2;
 }
 
-static void wm_move_login(struct UIWindow *wnd)
-{
-    int y = scale_y_from480(0x12c);
-
-    wm_move(wnd, ui_center_x640(0xb9), y);
-}
 void wm_move_640(struct UIWindow *wnd, int x, int y480)
 {
     int y = scale_y_from480(y480);
@@ -78,44 +60,6 @@ struct UIWindow *wm_register(struct UIWindowMgr *self, int window_id, struct UIW
         ;
 
     self->active_top_wnd = top;
-    return wnd;
-}
-
-static struct UIWindow *make_select_char(struct UIWindowMgr *self)
-{
-    static const char bg[] = UI_SKIN "select_character_ver3\\bg_back1.tga";
-    struct UIWindow *wnd, *backdrop;
-    struct BitmapRes *res;
-
-    wnd = ui_new_select_char_wnd_create();
-    self->new_select_char_wnd = wnd;
-    backdrop = (struct UIWindow *)uirp_image_wnd_new(bg, 5);
-    res = ui_skin_bitmap(bg);
-    if (backdrop && res) {
-        ui_window_create(backdrop, res->width, res->height);
-        wm_move(backdrop, wm_center_x(backdrop->width), wm_center_y(backdrop->height));
-        ui_window_mgr_add_window(self, backdrop);
-        ui_window_create(wnd, backdrop->width, backdrop->height);
-        wm_move(wnd, wm_center_x(backdrop->width), wm_center_y(backdrop->height));
-        ui_window_mgr_add_window(self, wnd);
-    }
-    own_states_clear();
-    skill_cooldowns_clear(&g_session1.skillDelays);
-    return wnd;
-}
-
-static struct UIWindow *make_make_char(struct UIWindowMgr *self)
-{
-    struct UIWindow *wnd, *backdrop;
-
-    wnd = ui_new_make_char_wnd_new();
-    backdrop = (struct UIWindow *)uirp_image_wnd_new(UI_SKIN "make_character_ver2\\bg_back2.tga", 1);
-    ui_window_create(backdrop, 0x404, 0x300);
-    wm_move(backdrop, wm_center_x(0x404) - 2, wm_center_y(0x300));
-    ui_window_mgr_add_window(self, backdrop);
-    ui_window_create(wnd, 0x31a, 0x1a6);
-    wm_move(wnd, wm_center_x(0x31a), wm_center_y(0x1a6) - 0x46);
-    ui_window_mgr_add_window(self, wnd);
     return wnd;
 }
 
@@ -154,6 +98,16 @@ struct UIWindow *wm_open(struct UIWindowMgr *self, struct UIWindow **slot, WmNew
     wm_show(wnd);
     return wnd;
 }
+
+struct UIWindow *wm_open_row(struct UIWindowMgr *self, int window_id)
+{
+    const struct WmWindowRow *row = wm_window_row(window_id);
+    const struct WmOpen *open = &row->open;
+
+    return wm_open(self, wm_row_slot(self, row), open->new_window, open->new_window1, open->arg, open->width,
+                   open->height, open->at, open->x, open->y, open->info ? (unsigned char *)self + open->info : NULL);
+}
+
 int wm_times_half(int v)
 {
     return (int)((double)v * 0.5);
@@ -164,67 +118,11 @@ void wm_move_on_centre(struct UIWindow *wnd)
     wm_move(wnd, g_renderer->centreX - wnd->width / 2, g_renderer->centreY - wnd->height / 2);
 }
 
-static struct UIWindow *make_lua_window(struct UIWindowMgr *self, int window_id)
-{
-    int width = 0, height = 0, x = 0, y = 0;
-    int at_x, at_y;
-    struct WindowInfo *closed;
-    struct String name_x, name_y;
-    struct UIWindow *wnd;
-
-    if (!client_lua_call(g_session1.luaState, "GetWindowInfo", "d>dddd", window_id, &width, &height, &x, &y))
-        return NULL;
-    x = g_renderer->width * x / 1024;
-    y = g_renderer->height * y / 768;
-    wnd = ui_window_mgr_get_window(self, window_id);
-    string_init(&name_y);
-    string_init(&name_x);
-    if (wnd)
-        goto done;
-    switch (window_id) {
-    case 0x9c:
-        wnd = ui_hot_key_wnd_new();
-        self->hot_key_wnd = wnd;
-        break;
-    case 0x9f:
-        wnd = ui_quik_slot_wnd_new();
-        break;
-    case 0xb5:
-        wnd = ui_serach_store_info_wnd_new();
-        g_session1.storeSearchOpenOnEnter = 1;
-        break;
-    }
-    closed = ui_window_mgr_get_closed_rect(self, window_id);
-    if (closed) {
-        at_x = closed->x;
-        at_y = closed->y;
-    } else {
-        at_x = session_get_option_int(&g_session1, string_cstr(&name_x), x);
-        at_y = session_get_option_int(&g_session1, string_cstr(&name_y), y);
-    }
-    wnd->id = window_id;
-    ui_window_create(wnd, width, height);
-    if (at_x >= 0 && at_x <= g_renderer->width - wnd->width && at_y >= 0 &&
-        at_y <= g_renderer->height - wnd->height) {
-        x = at_x;
-        y = at_y;
-    }
-    wm_move(wnd, x, y);
-    ui_window_mgr_add_window(self, wnd);
-    if (window_id == 0x9f)
-        wm_set_info(wnd, &self->quick_slot_info);
-    else if (window_id == 0xd4)
-        wm_set_info(wnd, &self->guild_helper_info);
-done:
-    string_free(&name_x);
-    string_free(&name_y);
-    return wnd;
-}
-
 static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_id);
 
 struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_id)
 {
+    const struct WmWindowRow *row = wm_window_row(window_id);
     struct UIWindow *wnd;
     int tracked;
 
@@ -233,8 +131,8 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
     tracked = !ui_window_mgr_is_untracked_id(self, window_id);
     if (tracked) {
         ui_window_mgr_forget_window_id(self, window_id);
-        list_insert(&self->id_list, window_id == 0xcb ? self->id_list.head : self->id_list.head->next, &window_id,
-                    sizeof window_id);
+        list_insert(&self->id_list, row && (row->flags & WM_ESC_LAST) ? self->id_list.head : self->id_list.head->next,
+                    &window_id, sizeof window_id);
     }
     wnd = make_window_by_id(self, window_id);
     /* ESC closes the listed IDs; a request that left no window must not stay listed. */
@@ -245,98 +143,11 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
 
 static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_id)
 {
-    struct UIWindow *wnd = NULL;
+    const struct WmWindowRow *row = wm_window_row(window_id);
 
-    switch (window_id) {
-    case 0x2:
-        wnd = ui_select_server_wnd_new();
-        ui_window_create(wnd, 0x118, 0xc8);
-        {
-            int y = scale_y_from480(0x12c) - 0x50;
-
-            wm_move(wnd, ui_center_x640(0xb9), y);
-        }
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x145:
-        if (ui_window_mgr_get_window(self, 0x145)) {
-            wnd = ui_window_mgr_get_window(self, 0x145);
-            break;
-        }
-        wnd = uirp_image_wnd2_new();
-        self->rpimage_wnd2 = wnd;
-        ui_window_create(wnd, 0x12d, 0x84);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x3:
-        wnd = ui_login_wnd_new();
-        self->login_wnd = wnd;
-        ui_window_create(wnd, 0x12d, 0x84);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x115:
-        wnd = make_select_char(self);
-        break;
-    case 0x116:
-        wnd = make_make_char(self);
-        break;
-    case 0x6:
-        wnd = ui_wait_wnd_new();
-        ui_window_create(wnd, 0x118, 0x78);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x7:
-        wnd = self->loading_wnd;
-        if (wnd == NULL) {
-            wnd = ui_loading_wnd_new();
-            self->loading_wnd = wnd;
-            ui_window_create(wnd, 0xf0, 0xf);
-            wm_move(wnd, g_renderer->width / 2 - 0x64, g_renderer->height / 2 + 0xa0);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
-    case 0x14c:
-        wnd = ui_disconnected_server_msg_wnd_new();
-        ui_window_create(wnd, 0x118, 0x78);
-        wm_move_login(wnd);
-        ui_window_mgr_add_window(self, wnd);
-        break;
-
-    case 0x7f:
-    {
-        int width = g_session1.charCount > 0xc ? 0x30f : 0x21c;
-
-        wnd = ui_sel_char_for_u_server_wnd_new();
-        self->sel_char_for_userver_wnd = wnd;
-        ui_window_create(wnd, width, 0x190);
-        wm_move(wnd, wm_center_x(width), wm_center_y(0x190));
-        ui_window_mgr_add_window(self, wnd);
-        break;
-    }
-    case 0x80:
-        wnd = WM_OPEN(change_name_wnd, ui_change_name_wnd_new, 0xb8, 0x69, WM_AT_CENTER, 0x104, 0xb4);
-        break;
-    case 0x9c: case 0x9f: case 0xb5:
-        wnd = make_lua_window(self, window_id);
-        if (wnd == NULL)
-            return NULL;
-        wm_show(wnd);
-        break;
-    default:
-        wnd = wm_make_character(self, window_id);
-        if (wnd == WM_NOT_MINE)
-            wnd = wm_make_hud(self, window_id);
-        if (wnd == WM_NOT_MINE)
-            wnd = wm_make_trade(self, window_id);
-        if (wnd == WM_NOT_MINE)
-            wnd = wm_make_social(self, window_id);
-        return wnd == WM_NOT_MINE ? NULL : wnd;
-    }
-    return wm_register(self, window_id, wnd);
+    if (row == NULL || row->make == NULL)
+        return NULL;
+    return wm_register(self, window_id, row->make(self, window_id));
 }
 
 int scale_y_from480(int n)

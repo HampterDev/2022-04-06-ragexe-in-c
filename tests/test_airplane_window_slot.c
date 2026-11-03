@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The window table's rows, which name the slots forget_window clears. */
+#include "window_rows_data.h"
+#include "window_rows.inc"
+
 #define MODAL_RESULT_FLIGHT 0xb1 /* game_mode_zc_npcack_mapmove, packets_npc.c */
 
 struct UIWindowMgr g_windowMgr;
@@ -33,6 +37,11 @@ void *mem_alloc(size_t bytes)
     return p;
 }
 void mem_free(void *p) { free(p); }
+__declspec(noreturn) void fatal_error(const char *message)
+{
+    (void)message;
+    abort();
+}
 void actors_forget_window(const struct UIWindow *wnd) { (void)wnd; }
 void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr *self, struct UIWindow *wnd)
 { (void)self; (void)wnd; }
@@ -103,6 +112,7 @@ static void fly(int result, const char *what)
 
 int main(void)
 {
+    ui_window_mgr_set_window_table(&g_windowTable);
     fly(AIRPLANE_RESULT_CLOSED, "closed");
     fly(MODAL_RESULT_FLIGHT, "flight");
     puts("Airplane window slot: cleared when the window is destroyed after its modal loop ends by closing (0xb4) or by the flight's map move (0xb1).");

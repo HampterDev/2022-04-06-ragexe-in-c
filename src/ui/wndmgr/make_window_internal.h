@@ -7,6 +7,7 @@
 #define UI_WNDMGR_MAKE_WINDOW_INTERNAL_H
 
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/window_table.h"
 #include "ui/controls/controls.h"
 
 extern int g_guildWndWidth, g_guildWndHeight;
@@ -34,8 +35,6 @@ struct SnapMgr;
 #define WM_SKILL_LIST_HOMUN 0
 #define WM_SKILL_LIST_MERCENARY 1
 
-typedef struct UIWindow *(*WmNew)(void);
-typedef struct UIWindow *(*WmNew1)(int arg);
 void wm_move(struct UIWindow *wnd, int x, int y);
 void wm_set_info(struct UIWindow *wnd, void *info);
 void wm_show(struct UIWindow *wnd);
@@ -61,11 +60,5 @@ struct UIWindow *wm_open(struct UIWindowMgr *self, struct UIWindow **slot, WmNew
     wm_open(self, &self->slot, NULL, (new_window), (arg), (w), (h), (at), (x), (y), &self->info)
 int wm_times_half(int v);
 void wm_move_on_centre(struct UIWindow *wnd);
-
-#define WM_NOT_MINE ((struct UIWindow *)-1)
-struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id);
-struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id);
-struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id);
-struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id);
 
 #endif

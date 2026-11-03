@@ -11,8 +11,9 @@
 #include <stdlib.h>
 
 /* Run the production ui_window_mgr_make_window and ESC window-ID list helpers
-   with controlled sub-factories: ESC closes the listed IDs one by one, so a
-   request that leaves no window must not leave its ID behind. */
+   with the real window table, whose factories are replaced by a controlled one:
+   ESC closes the listed IDs one by one, so a request that leaves no window must
+   not leave its ID behind. */
 struct Session g_session1;
 struct Renderer *g_renderer;
 static struct UIWindowMgr mgr;
@@ -32,9 +33,15 @@ static int factory_mode(int id)
 
 void *mem_alloc(size_t size) { void *p = malloc(size); assert(p); return p; }
 void mem_free(void *p) { free(p); }
+__declspec(noreturn) void fatal_error(const char *message)
+{
+    (void)message;
+    abort();
+}
 int ui_window_mgr_is_dragging_member_plate(struct UIWindowMgr *self) { assert(self == &mgr); return 0; }
 BYTE ui_window_mgr_is_hot_key_of_window(struct UIWindowMgr *self) { (void)self; return 0; }
 
+/* The factory of every row; make_window registers what it returns. */
 static struct UIWindow *factory(struct UIWindowMgr *self, int window_id)
 {
     assert(self == &mgr);
@@ -42,14 +49,13 @@ static struct UIWindow *factory(struct UIWindowMgr *self, int window_id)
     case NO_WINDOW: return NULL;
     case NEW_WINDOW:
         assert(created < (int)(sizeof windows / sizeof *windows));
-        return wm_register(self, window_id, &windows[created++]);
+        return &windows[created++];
     }
-    return WM_NOT_MINE;
+    return NULL;
 }
-struct UIWindow *wm_make_character(struct UIWindowMgr *self, int window_id) { return factory(self, window_id); }
-struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; return WM_NOT_MINE; }
-struct UIWindow *wm_make_trade(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; return WM_NOT_MINE; }
-struct UIWindow *wm_make_social(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; return WM_NOT_MINE; }
+#define WINDOW_ROWS_MAKE factory
+#include "window_rows_data.h"
+#include "window_rows.inc"
 
 #include "window_id_list.inc"
 
@@ -79,6 +85,7 @@ int main(void)
     static const int skill_equip_item[] = {0x25, 0xa, 0x8};
     static const int pet_equip_item[] = {0x58, 0xa, 0x8};
 
+    ui_window_mgr_set_window_table(&g_windowTable);
     list_init(&mgr.id_list);
     list_init(&mgr.plates);
     tree_init(&mgr.windows_by_id);

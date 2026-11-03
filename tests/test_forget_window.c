@@ -1,12 +1,24 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_mgr.h"
+#include "ui/window_types.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
+
+/* The window table's rows, which name the slots forget_window clears. */
+#include "window_rows_data.h"
+#include "window_rows.inc"
 
 struct UIWindowMgr g_windowMgr;
 
 static const struct UIWindow *actors_told;
 static int actors_calls;
+
+__declspec(noreturn) void fatal_error(const char *message)
+{
+    (void)message;
+    abort();
+}
 
 void actors_forget_window(const struct UIWindow *wnd)
 {
@@ -19,6 +31,7 @@ int main(void)
     struct UIWindow *gone = (struct UIWindow *)0x1000, *kept = (struct UIWindow *)0x2000;
     struct UIWindowMgr *mgr = &g_windowMgr;
 
+    ui_window_mgr_set_window_table(&g_windowTable);
     memset(mgr, 0, sizeof *mgr);
     mgr->loading_wnd = gone;
     mgr->apply_for_party_wnd = gone;

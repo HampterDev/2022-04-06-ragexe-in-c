@@ -1,7 +1,11 @@
-/* Characterization of the window-ID lists of the window manager, before they become one table.
+/* Characterization of the window-ID lists of the window manager. They were four views of one
+   list and are now one table (ui/wndmgr/window_table.h); the digest was taken before the change.
 
-   The four views of a window ID are compiled for real:
-   - the factory: ui_window_mgr_make_window and the wm_make_* functions (make_window*.c);
+   The table and the code that reads it are compiled for real, and the table is installed as
+   client_install_hooks() does:
+   - the rows and factories: ui_window_mgr_make_window (make_window.c), the cluster files
+     make_window_{login,character,hud,trade,social}.c and the composition g_windowTable
+     (window_registry.c, window_table.c);
    - the slots: ui_window_mgr_get_window, ui_window_mgr_is_untracked_id and
      ui_window_mgr_post_quit1 (window_slots.c);
    - forgetting a destroyed window: ui_window_mgr_forget_window (forget_window.c);
@@ -57,6 +61,7 @@
 #include "ui/window.h"
 #include "ui/window_manager_state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/window_registry.h"
 
 #define LAST_ID 0x23f
 #define BLOCK 0x10000
@@ -1318,6 +1323,7 @@ int main(int argc, char **argv)
         trace_file = fopen(argv[2], "w");
         assert(trace_file);
     }
+    ui_window_mgr_set_window_table(&g_windowTable);
     for (environment = 0; environment < 2; ++environment) {
         note("environment %d", environment);
         for (id = 0; id <= LAST_ID; ++id) {

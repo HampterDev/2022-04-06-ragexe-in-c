@@ -46,6 +46,7 @@
 #include "ui/social/guild_member_sort.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/wndmgr/wndmgr_handlers.h"
+#include "ui/wndmgr/window_registry.h"
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/chat/chat_window.h"
 #include "ui/chat/chat_window_parts.h"
@@ -85,8 +86,9 @@ static void release_admin_aids(void) { vec_free(&g_adminAids); }
 static void release_yellow_aids(void) { vec_free(&g_yellowAids); }
 static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); }
 
-/* Lower layers call up into higher ones only through these hooks and handlers. This is
-   the one place that installs them; each is documented where it is declared. */
+/* Lower layers call up into higher ones only through these hooks and handlers, and the window
+   manager reaches the feature windows only through the window table. This is the one place
+   that installs them; each is documented where it is declared. */
 static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
@@ -111,6 +113,8 @@ static void client_install_hooks(void)
     g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
     g_windowMgrHandlers.open_whisper = ui_whisper_wnd_open;
     g_windowMgrHandlers.skill_hot_key_slot = session_skill_hot_key_slot;
+
+    ui_window_mgr_set_window_table(&g_windowTable);
 }
 
 void client_init(void)

@@ -1,5 +1,6 @@
 #include "session/state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/window_table.h"
 
 #include "ui/chat/sub_chat_map.h"
 
@@ -119,7 +120,7 @@ void ui_window_mgr_close_all_but_chat(struct UIWindowMgr *self)
 
 void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
 {
-    int i;
+    size_t i;
 
     tree_clear(&self->windows_by_id, NULL);
     tree_clear(SUB_CHAT_WNDS(self), NULL);
@@ -127,144 +128,17 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     list_clear(&self->hidden_wnds, NULL);
     self->hide_ui_state = 0;
 
+    /* The window manager's own references; capture_root and focus_drawn stay set (a known,
+       harmless gap: the windows' destructors forget capture_root). */
     self->capture = NULL;
     self->focus_edit = NULL;
     self->modal_wnd = NULL;
     self->mouse_wnd = NULL;
-    self->loading_wnd = NULL;
-    self->minimap_zoom_wnd = NULL;
-    self->status_wnd = NULL;
-    self->new_chat_wnd = NULL;
-    self->login_wnd = NULL;
-    self->item_wnd = NULL;
-    self->orphan_char_wnd = NULL;
-    self->basic_info_wnd = NULL;
-    self->equip_wnd = NULL;
-    self->short_cut_wnd = NULL;
-    self->item_drop_cnt_wnd = NULL;
-    self->say_dialog_wnd = NULL;
-    self->choose_wnd = NULL;
-    self->item_identify_wnd = NULL;
-    self->item_repair_wnd = NULL;
-    self->weapon_refine_wnd = NULL;
-    self->item_composition_wnd = NULL;
-    self->choose_warp_wnd = NULL;
-    self->menu_wnd = NULL;
-    self->combo_box_wnd = NULL;
-    self->item_collection_wnd = NULL;
-    self->combo_box_idwnd = NULL;
-    self->item_collection_comparison_wnd = NULL;
-    self->combined_card_item_collection_wnd = NULL;
-    self->skill_describe_wnd = NULL;
-    self->card_item_illust_wnd = NULL;
-    self->notify_level_up_wnd = NULL;
-    self->notify_job_level_up_wnd = NULL;
-    self->notify_quest_wnd = NULL;
-    self->item_shop_wnd = NULL;
-    self->item_shop_wnd2 = NULL;
-    self->item_purchase_wnd = NULL;
-    self->item_sell_wnd = NULL;
-    self->item_sell_wnd2 = NULL;
-    self->choose_sell_buy_wnd = NULL;
-    self->para_item_shop_wnd = NULL;
-    self->para_item_purchase_wnd = NULL;
-    self->chat_room_make_wnd = NULL;
-    self->chat_room_change_wnd = NULL;
-    self->chat_room_wnd = NULL;
-    self->password_wnd = NULL;
-    self->exchange_wnd = NULL;
-    self->exchange_accept_wnd = NULL;
-    self->item_store_wnd = NULL;
-    for (i = 0; i < ITEM_STORE_SUB_WNDS; i++)
-        self->item_store_sub_wnd[i] = NULL;
-    self->item_store_find_wnd = NULL;
-    self->new_skill_list_wnd = NULL;
-    self->messenger_group_wnd = NULL;
-    self->join_party_accept_wnd = NULL;
-    self->couple_accept_wnd = NULL;
-    self->star_place_accept_wnd = NULL;
-    self->your_item_wnd = NULL;
-    self->baby_accept_wnd = NULL;
-    self->baby_accept_wnd2 = NULL;
-    self->join_guild_accept_wnd = NULL;
-    self->ally_guild_accept_wnd = NULL;
-    self->merchant_item_wnd = NULL;
-    self->merchant_mirror_item_wnd = NULL;
-    self->merchant_shop_make_wnd = NULL;
-    self->merchant_item_shop_wnd = NULL;
-    self->merchant_item_my_shop_wnd = NULL;
-    self->merchant_item_purchase_wnd = NULL;
-    self->party_setting_wnd = NULL;
-    self->skill_name_change_wnd = NULL;
-    self->npc_edit_dialog_wnd = NULL;
-    self->npc_text_edit_dialog_wnd = NULL;
-    self->notify_item_obtain_wnd = NULL;
-    self->guild_info_manage_wnd = NULL;
-    self->guild_member_manage_wnd = NULL;
-    self->guild_position_manage_wnd = NULL;
-    self->guild_skill_wnd = NULL;
-    self->guild_banished_member_wnd = NULL;
-    self->guild_notice_wnd = NULL;
-    self->guild_total_info_wnd = NULL;
-    self->friend_option_wnd = NULL;
-    self->guild_leave_reason_desc_wnd = NULL;
-    self->guild_ban_reason_desc_wnd = NULL;
-    self->illust_wnd = NULL;
-    self->make_target_list_wnd = NULL;
-    self->make_target_process_wnd = NULL;
-    self->emotion_wnd = NULL;
-    self->emotion_list_wnd = NULL;
-    self->pet_info_wnd = NULL;
-    self->pet_egg_list_wnd = NULL;
-    self->pet_taming_deceive_wnd = NULL;
-    self->making_arrow_list_wnd = NULL;
-    self->select_cart_wnd = NULL;
-    self->join_friend_accept_wnd = NULL;
-    self->command_list_wnd = NULL;
-    self->homun_info_wnd = NULL;
-    self->homun_skill_list_wnd = NULL;
-    self->mer_info_wnd = NULL;
-    self->mer_skill_list_wnd = NULL;
-    self->auto_message_wnd = NULL;
-    self->new_select_char_wnd = NULL;
-    self->sel_char_for_userver_wnd = NULL;
-    self->battle_msg_option_wnd = NULL;
-    self->memorial_dun_wnd = NULL;
-    self->other_equip_wnd = NULL;
-    self->kafra_move_map_service_info_wnd = NULL;
-    self->hot_key_wnd = NULL;
-    self->esc_option_wnd = NULL;
-    self->buying_store_make_wnd = NULL;
-    self->buying_store_mirror_item_wnd = NULL;
-    self->buying_store_item_my_shop_wnd = NULL;
-    self->buying_store_item_shop_wnd = NULL;
-    self->buying_store_item_sell_wnd = NULL;
-    self->buying_store_mirror_sell_list_wnd = NULL;
-    self->quest_display_wnd = NULL;
-    self->party_invitation_to_wnd = NULL;
-    self->guild_helper_wnd = NULL;
-    self->create_guild_wnd = NULL;
-    self->orphan_guild_wnd = NULL;
-    self->bank_new_wnd = NULL;
-    self->guild_storage_log_wnd = NULL;
-    self->open_mail_box_wnd = NULL;
-    self->rodex_inbox_wnd = NULL;
-    self->rodex_compose_wnd = NULL;
-    self->rodex_contents_wnd = NULL;
-    self->second_costume_wnd = NULL;
-    self->navigation_v4_wnd = NULL;
-    self->collection_system_wnd = NULL;
-    self->mini_map_wnd = NULL;
     self->active_top_wnd = NULL;
-    self->drag_plate = NULL;
-    self->private_airplane_wnd = NULL;
-    self->rpimage_wnd2 = NULL;
-    self->bartermarket_wnd = NULL;
-    self->barter_item_purchase_wnd = NULL;
-    self->expanded_bartermarket_wnd = NULL;
-    self->expanded_barter_item_purchase_wnd = NULL;
-    self->register_party_wnd = NULL;
-    self->adven_party_board_wnd = NULL;
-    self->request_join_party_wnd = NULL;
-    self->apply_for_party_wnd = NULL;
+    for (i = 0; i < wm_window_row_count(); i++) {
+        const struct WmWindowRow *row = wm_window_row_at(i);
+
+        if (row->slot != WM_NO_SLOT && !(row->flags & WM_KEPT_BY_CLEAR))
+            *wm_row_slot(self, row) = NULL;
+    }
 }
