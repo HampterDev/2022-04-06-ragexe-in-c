@@ -7,7 +7,6 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/character/character.h"
 #include "ui/wndmgr/wndmgr_handlers.h"
-#include "ui/character/select_char_new.h"
 #include "game/mode_msg.h"
 
 #define WM_KEY_NONE 0
@@ -134,7 +133,7 @@ BYTE ui_window_mgr_on_enter(struct UIWindowMgr *self)
         return 1;
     }
     if (self->new_select_char_wnd) {
-        ui_new_select_char_wnd_send_msg(self->new_select_char_wnd, NULL, UI_MSG_DEFAULT_BUTTON, 0, 0, 0, 0);
+        ui_window_send_msg(self->new_select_char_wnd, NULL, UI_MSG_DEFAULT_BUTTON, 0, 0, 0, 0);
         return 1;
     }
     if (self->new_chat_wnd && g_windowMgr.chat_bar_shown == 1) {
