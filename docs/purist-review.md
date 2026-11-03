@@ -8554,3 +8554,52 @@ Validation:
 
 The pre-change tree is in `build/before-langtype20-lock`. No live client/server smoke
 test was run.
+
+## UTF-8 text module (2026-11-03)
+
+Decision: Patrick approved switching the client's text to UTF-8 on 2026-11-03, so that
+players can type and read Korean, Russian and other scripts on any Windows locale. The
+design follows the read-only survey of the same day: UTF-8 is the only in-memory text
+encoding, text is converted to UTF-16 only at Win32 calls, and CP949 remains only for
+resource names in the file layer. The work comes in steps after the
+[langtype 20 lock](#langtype-20-lock-2026-11-03); this first one adds the shared helpers,
+which nothing calls yet.
+
+Why a module of its own: the Windows helpers the client uses do not handle UTF-8.
+`CharNextExA`/`CharPrevExA` with code page 65001 step one byte, and
+`IsDBCSLeadByteEx(65001, ...)` is always false, so every caret, wrap and truncation
+would split characters.
+
+Added `src/core/utf8.c` and `utf8.h`:
+
+- A character is a well-formed sequence of 1-4 bytes (RFC 3629: no overlong forms,
+  surrogates or values above U+10FFFF). Every other byte, including a truncated
+  sequence's lead byte, is a one-byte character of its own. Stepping therefore never
+  splits a valid character, never swallows the one after an invalid byte, and never reads
+  past the end: bounded functions stop at `text + length`, `utf8_next` at the terminator.
+- `utf8_decode`, `utf8_char_size`; `utf8_next` (NUL-terminated), `utf8_step` (bounded),
+  `utf8_prev` (consistent with forward stepping); `utf8_valid`; `utf8_prefix`, the
+  longest byte-limited prefix ending on a character boundary; `utf8_columns`, which
+  counts East Asian wide and fullwidth characters as two columns (the CP949 rule counted
+  every double-byte character as two); `utf8_encode`; `utf8_from_utf16`, which joins
+  surrogate pairs, writes U+FFFD for unpaired surrogates and never splits a character at
+  the capacity; and `utf16_feed`, which pairs surrogates arriving one `WM_CHAR` at a time.
+
+Tests: `tests/test_utf8.c` (`tests/build_utf8.bat`, called from `tests\build.bat`) checks
+1-4-byte characters (é, Ж, 한, €, 😀, U+10FFFF) and invalid bytes (stray continuation,
+overlong, surrogate, above U+10FFFF, truncated at the end and before ASCII); agreement
+with Windows' strict decoder (`MB_ERR_INVALID_CHARS`) for all one- and two-byte
+sequences, three-byte sequences over every lead and second byte, and four-byte sequences
+over every lead and second byte with eight tail values; an encode/decode round trip of
+every code point; forward and backward boundaries agreeing on 20,000 generated strings
+placed against a no-access page; maximal byte-limited prefixes; column widths;
+validation (CP949 가 is not UTF-8); UTF-16 conversion at every capacity; and surrogate
+pairing.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-module-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-module-full-tests.log`.
+- `git diff --check` passed.
+
+No live client/server smoke test was run.
