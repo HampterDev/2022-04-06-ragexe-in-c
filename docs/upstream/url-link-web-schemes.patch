@@ -1,0 +1,398 @@
+From 5238a9f02101792d0995b069ae34361d71b6220d Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 09:02:07 +0100
+Subject: [PATCH] Open only http and https targets from text-viewer URL links
+
+Both <URL> link handlers, on_link in text_viewer_links.c and
+ui_tag_text_viewer_on_url_link in tag_text_viewer.c, pass the link
+target straight to ShellExecuteA with "open". The target comes from
+<URL>...<INFO>target</INFO></URL> markup in server-supplied text (NPC
+dialog, quest panes, message boxes), so a server could make a click
+start a local or UNC executable, open a file: URL, or invoke any
+registered protocol handler such as ms-msdt: or search-ms:.
+
+Add ui_open_url_link, used by both handlers. It opens a target only if
+it begins with http:// or https://, compared case-insensitively for
+ASCII, with nothing before the scheme, at least one character after
+the //, and no embedded NUL. Any other target stays unopened: the link
+label is still shown and clicking it does nothing.
+
+The data is already a C string: link arguments are stored by
+owned_text_assign, which writes a NUL at the view's size, and a missing
+argument is the empty literal. No copy is needed; the embedded-NUL check
+makes the bytes that are checked the same as the string the shell
+receives.
+
+Validation: the new test_url_link runs both extracted handlers with
+ShellExecuteA stubbed. http://x, HTTPS://example.com/path?q and a
+mixed-case scheme open; file:///C:/x, a drive path, a UNC path, ms-msdt:,
+search-ms:, javascript:, http:/x, http://, https://, an empty target,
+" http://x", an embedded NUL and missing arguments do not. A target
+taken from part of a longer text opens exactly that part. The test fails
+on the previous code. test_tag_text_viewer now checks that its item
+argument "62" no longer opens and that an https link does. Release build
+without warnings; the full behavioral suite passed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/controls/text_viewer_links.c |   4 +-
+ src/ui/controls/url_link.c          |  32 +++++++++
+ src/ui/controls/url_link.h          |  12 ++++
+ src/ui/quests/tag_text_viewer.c     |   3 +-
+ tests/build.bat                     |   3 +
+ tests/build_url_link.bat            |  15 ++++
+ tests/extract_url_link.py           |  37 ++++++++++
+ tests/test_tag_text_viewer.c        |   9 ++-
+ tests/test_url_link.c               | 103 ++++++++++++++++++++++++++++
+ tests/url_link_unreached.c          |  19 +++++
+ 10 files changed, 233 insertions(+), 4 deletions(-)
+ create mode 100644 src/ui/controls/url_link.c
+ create mode 100644 src/ui/controls/url_link.h
+ create mode 100644 tests/build_url_link.bat
+ create mode 100644 tests/extract_url_link.py
+ create mode 100644 tests/test_url_link.c
+ create mode 100644 tests/url_link_unreached.c
+
+diff --git a/src/ui/controls/text_viewer_links.c b/src/ui/controls/text_viewer_links.c
+index c339c8b..fb2def5 100644
+--- a/src/ui/controls/text_viewer_links.c
++++ b/src/ui/controls/text_viewer_links.c
+@@ -26,6 +26,7 @@
+ #include <string.h>
+ #include "core/app.h"
+ #include "ui/tips/tips.h"
++#include "ui/controls/url_link.h"
+
+ struct TagLink {
+     int pos;
+@@ -531,8 +532,7 @@ static void on_link(struct UITextButton *link, int id)
+         if (!link)
+             return;
+         arg = ui_text_button_get_line(link, 0);
+-        if (arg.size)
+-            ShellExecuteA(g_hMainWnd, "open", arg.data, NULL, NULL, SW_SHOWNORMAL);
++        ui_open_url_link(arg);
+         break;
+     case LINK_NAVI: {
+         unsigned count;
+diff --git a/src/ui/controls/url_link.c b/src/ui/controls/url_link.c
+new file mode 100644
+index 0000000..a4382ea
+--- /dev/null
++++ b/src/ui/controls/url_link.c
+@@ -0,0 +1,32 @@
++#include "ui/controls/url_link.h"
++#include "core/app.h"
++#include <windows.h>
++#include <shellapi.h>
++#include <string.h>
++
++static int starts_with_scheme(struct TextView target, const char *scheme)
++{
++    size_t i, length = strlen(scheme);
++
++    if (target.size <= length)
++        return 0;
++    for (i = 0; i < length; ++i) {
++        char c = target.data[i];
++
++        if (c >= 'A' && c <= 'Z')
++            c = (char)(c - 'A' + 'a');
++        if (c != scheme[i])
++            return 0;
++    }
++    return 1;
++}
++
++int ui_open_url_link(struct TextView target)
++{
++    if (!target.data || memchr(target.data, '\0', target.size))
++        return 0;
++    if (!starts_with_scheme(target, "http://") && !starts_with_scheme(target, "https://"))
++        return 0;
++    ShellExecuteA(g_hMainWnd, "open", target.data, NULL, NULL, SW_SHOWNORMAL);
++    return 1;
++}
+diff --git a/src/ui/controls/url_link.h b/src/ui/controls/url_link.h
+new file mode 100644
+index 0000000..a3be6b9
+--- /dev/null
++++ b/src/ui/controls/url_link.h
+@@ -0,0 +1,12 @@
++#ifndef UI_CONTROLS_URL_LINK_H
++#define UI_CONTROLS_URL_LINK_H
++
++#include "core/text_view.h"
++
++/* Opens the target of a <URL> text link in the user's browser. Only an absolute
++   http:// or https:// URL is opened; files, UNC paths and other protocol
++   handlers are ignored. The target must be NUL-terminated at its size, as
++   text-button lines are. Returns 1 when the target was handed to the shell. */
++int ui_open_url_link(struct TextView target);
++
++#endif
+diff --git a/src/ui/quests/tag_text_viewer.c b/src/ui/quests/tag_text_viewer.c
+index 03df2e3..bfbf899 100644
+--- a/src/ui/quests/tag_text_viewer.c
++++ b/src/ui/quests/tag_text_viewer.c
+@@ -17,6 +17,7 @@
+ #include "core/app.h"
+ #include "diag/perf.h"
+ #include "ui/tips/tips.h"
++#include "ui/controls/url_link.h"
+
+ void ui_tag_text_viewer_destroy(struct UIWindow *window);
+ void tag_text_viewer_ui_scroll_on_create(struct UIWindow *self, int width, int height);
+@@ -165,7 +166,7 @@ void ui_tag_text_viewer_on_url_link(struct UITagTextViewer *self, struct UITextB
+     (void)self;
+     if (!link || !link_arg_count(link)) return;
+     url = link_arg(link, 0);
+-    if (url.size) ShellExecuteA(g_hMainWnd, "open", url.data, NULL, NULL, SW_SHOWNORMAL);
++    ui_open_url_link(url);
+ }
+
+ void ui_tag_text_viewer_on_item_link(struct UITagTextViewer *self, struct UITextButton *link)
+diff --git a/tests/build.bat b/tests/build.bat
+index 2dcceb3..9a4b144 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -856,3 +856,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_window_id_list.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_url_link.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_url_link.bat b/tests/build_url_link.bat
+new file mode 100644
+index 0000000..a470062
+--- /dev/null
++++ b/tests/build_url_link.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\url_link"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_url_link.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_url_link.c" "%ROOT%\tests\url_link_unreached.c" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\core\text_array.c" /Fe:test_url_link.exe
++if errorlevel 1 (popd & exit /b 1)
++test_url_link.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_url_link.py b/tests/extract_url_link.py
+new file mode 100644
+index 0000000..120d062
+--- /dev/null
++++ b/tests/extract_url_link.py
+@@ -0,0 +1,37 @@
++"""Extract both <URL> link handlers (text viewer and tagged text viewer) for one test.
++
++Writes url_link_handlers.inc with the text viewer's prefix and its on_link
++dispatch, plus the tagged viewer's URL handler, and url_link_helper.inc with
++src/ui/controls/url_link.c when that file exists (it is empty otherwise, so the
++same test also runs against sources from before the shared helper).
++"""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def functions(source, signatures):
++    parts = []
++    for signature in signatures:
++        matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++        assert len(matches) == 1, signature
++        start = matches[0].start()
++        parts.append(source[start:source.index('\n}', start) + 2])
++    return parts
++
++
++viewer = (root / 'src/ui/controls/text_viewer_links.c').read_text(encoding='utf-8')
++parts = [viewer[:viewer.index('\nstatic int link_arg_number(')]]
++parts += functions(viewer, ['static int link_arg_number(', 'static void navi_link(',
++                            'static void item_link(', 'static void on_link('])
++tagged = (root / 'src/ui/quests/tag_text_viewer.c').read_text(encoding='utf-8')
++parts.append('#include "ui/quests/tag_text_viewer.h"')
++parts += functions(tagged, ['static unsigned link_arg_count(', 'static struct TextView link_arg(',
++                            'void ui_tag_text_viewer_on_url_link('])
++output.mkdir(parents=True, exist_ok=True)
++(output / 'url_link_handlers.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
++helper = root / 'src/ui/controls/url_link.c'
++(output / 'url_link_helper.inc').write_text(
++    helper.read_text(encoding='utf-8') if helper.exists() else '', encoding='utf-8')
+diff --git a/tests/test_tag_text_viewer.c b/tests/test_tag_text_viewer.c
+index a655464..5921779 100644
+--- a/tests/test_tag_text_viewer.c
++++ b/tests/test_tag_text_viewer.c
+@@ -54,6 +54,7 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
+ #undef malloc
+ #define malloc checked_malloc
+ #define ShellExecuteA test_open_url
++#include "../src/ui/controls/url_link.c"
+ #include "../src/ui/quests/tag_text_viewer.c"
+ #ifdef TAG_TEXT_VIEWER_REFERENCE
+ static struct String *reference_button_get_line(struct UITextButton *link, struct String *out, unsigned i);
+@@ -295,6 +296,7 @@ static void link_cases(void)
+     static const char *const args[] = {"한글_map", "12", "34", "7", "111", "0", "42"};
+     static const char *const search[] = {"prontera", "0", "0", "2", "-222"};
+     static const char *const item[] = {"62", "4"};
++    static const char *const url[] = {"https://example.com/"};
+     reset_fixture(); link_init(&link, args, 7);
+     ui_tag_text_viewer_on_navi_link(NULL, &link);
+     assert(!strcmp(string_cstr(&action_text), "한글_map"));
+@@ -306,7 +308,12 @@ static void link_cases(void)
+     text_array_clear(&link.lines); link_init(&link, item, 2); event_count = 0;
+     ui_tag_text_viewer_on_item_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
+     assert(events[1].a == 4 && events[1].b == 1);
+-    ui_tag_text_viewer_on_url_link(NULL, &link); assert(!strcmp(string_cstr(&action_text), "62"));
++    event_count = 0;
++    ui_tag_text_viewer_on_url_link(NULL, &link); assert(event_count == 0);
++    text_array_clear(&link.lines); link_init(&link, url, 1);
++    ui_tag_text_viewer_on_url_link(NULL, &link);
++    assert(!strcmp(string_cstr(&action_text), url[0]) && event_count == 1);
++    text_array_clear(&link.lines); link_init(&link, item, 2);
+     ui_tag_text_viewer_on_tip_link(NULL, &link); ui_tag_text_viewer_on_quest_link(NULL, &link);
+     text_array_clear(&link.lines); release_fixture();
+     puts("Tagged text viewer: item, URL, navigation, search, tip and quest actions passed.");
+diff --git a/tests/test_url_link.c b/tests/test_url_link.c
+new file mode 100644
+index 0000000..14bc962
+--- /dev/null
++++ b/tests/test_url_link.c
+@@ -0,0 +1,103 @@
++#include <windows.h>
++#include <shellapi.h>
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Run both production <URL> link handlers with the shell stubbed. Link targets
++   come from server text, so only absolute http:// and https:// URLs may reach
++   ShellExecuteA; files, UNC paths and other protocol handlers must not. */
++static HINSTANCE test_shell_open(HWND window, const char *operation, const char *file,
++                                 const char *parameters, const char *directory, int show);
++#define ShellExecuteA test_shell_open
++#include "url_link_helper.inc"
++#include "url_link_handlers.inc"
++#undef ShellExecuteA
++
++HWND g_hMainWnd = (HWND)0x1234;
++static char opened[128];
++static int opens, cases;
++
++static HINSTANCE test_shell_open(HWND window, const char *operation, const char *file,
++                                 const char *parameters, const char *directory, int show)
++{
++    assert(window == g_hMainWnd && !strcmp(operation, "open"));
++    assert(!parameters && !directory && show == SW_SHOWNORMAL);
++    assert(strlen(file) < sizeof opened);
++    strcpy(opened, file);
++    ++opens;
++    return (HINSTANCE)33;
++}
++
++/* Text-button lines, as the production button stores them. */
++struct TextView ui_text_button_get_line(const struct UITextButton *self, size_t i)
++{
++    return text_array_at(&self->lines, i);
++}
++
++size_t ui_text_button_line_count(const struct UITextButton *self)
++{
++    return self->lines.size;
++}
++
++static void check(struct TextView target, const char *expected)
++{
++    int handler;
++
++    for (handler = 0; handler < 2; ++handler) {
++        struct UITextButton link;
++        int before = opens;
++
++        memset(&link, 0, sizeof link);
++        assert(text_array_append(&link.lines, target));
++        opened[0] = 0;
++        if (handler)
++            ui_tag_text_viewer_on_url_link(NULL, &link);
++        else
++            on_link(&link, LINK_URL);
++        if (expected) {
++            assert(opens == before + 1 && !strcmp(opened, expected));
++        } else {
++            assert(opens == before);
++        }
++        text_array_clear(&link.lines);
++        ++cases;
++    }
++}
++
++static void opens_as(const char *target, const char *expected) { check(text_view_cstr(target), expected); }
++static void stays_closed(const char *target) { check(text_view_cstr(target), NULL); }
++
++int main(void)
++{
++    static const char embedded[] = "http://\0x";
++    static const char slice[] = "http://xC:\\Windows\\System32\\cmd.exe";
++    struct UITextButton empty;
++
++    opens_as("http://x", "http://x");
++    opens_as("HTTPS://example.com/path?q", "HTTPS://example.com/path?q");
++    opens_as("hTtP://example.com", "hTtP://example.com");
++    stays_closed("file:///C:/x");
++    stays_closed("C:\\Windows\\System32\\cmd.exe");
++    stays_closed("\\\\host\\share\\a.exe");
++    stays_closed("ms-msdt:/id");
++    stays_closed("search-ms:query=x");
++    stays_closed("javascript:alert(1)");
++    stays_closed("http:/x");
++    stays_closed("http://");
++    stays_closed("https://");
++    stays_closed("");
++    stays_closed(" http://x");
++    stays_closed("xhttp://x");
++    check(text_view(embedded, sizeof embedded - 1), NULL);
++    /* A line taken from part of a longer text is stored with its own NUL. */
++    check(text_view(slice, 8), "http://x");
++
++    memset(&empty, 0, sizeof empty);
++    ui_tag_text_viewer_on_url_link(NULL, &empty);
++    on_link(&empty, LINK_URL);
++    on_link(NULL, LINK_URL);
++    assert(opens == 8);
++    printf("URL links: %d handler cases passed (only http:// and https:// targets open).\n", cases);
++    return 0;
++}
+diff --git a/tests/url_link_unreached.c b/tests/url_link_unreached.c
+new file mode 100644
+index 0000000..b8c57b9
+--- /dev/null
++++ b/tests/url_link_unreached.c
+@@ -0,0 +1,19 @@
++/* Helpers of the text viewer's other link kinds (navigation, item, tip box,
++   quest) that the URL link test never reaches. Each stops the test if called. */
++#include <stdlib.h>
++
++#define UNREACHED(name) void name(void) { abort(); }
++
++int g_navi;
++
++UNREACHED(game_current_mode)
++UNREACHED(game_mode_ui_open_v2)
++UNREACHED(item_info_construct)
++UNREACHED(navi_navigate)
++UNREACHED(navi_open_search)
++UNREACHED(string_append)
++UNREACHED(string_assign)
++UNREACHED(string_assign_cstr)
++UNREACHED(string_free)
++UNREACHED(ui_tipbox_wnd_show_tip)
++UNREACHED(ui_window_open)

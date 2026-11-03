@@ -50,7 +50,8 @@ The separate server patch exports are documented in [server notes](../server/REA
 These bugs were found while pruning `purist` and were fixed on `main` on
 2026-11-02, one commit each with a focused regression test. The series
 starts after `db18fe4b65c59b46ade4908780faadf71341d058` and ends at
-`1150faabf332e9d5bd99b9df76103db5333aaa2f`. Fixes whose code still exists
+`1150faabf332e9d5bd99b9df76103db5333aaa2f`; a naming follow-up and the
+website-link fix came after it. Fixes whose code still exists
 on `purist` were ported with `git cherry-pick -x`; the status-window fix
 was rewritten for purist's single-height window. The patch files are
 `git format-patch` exports of the `main` commits.
@@ -67,6 +68,8 @@ was rewritten for purist's single-height window. The patch files are
 | [effect-duration-bounds.patch](effect-duration-bounds.patch) | [e26afaf764](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e26afaf76438c52e774afc32b2d3354af6edc588) | [6095736a2c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6095736a2c7411b3313debda12a7a5cde5962e5f) | Effect IDs past the 2,385-row duration table no longer read past its end. |
 | [variable-packet-minimum.patch](variable-packet-minimum.patch) | [301c8c62a6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/301c8c62a62de03d0158857f1be0ca4ce218f3af) | [321284a664](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/321284a664e1a096687d2593fea91fbf787bb53c) | Reject variable-length packets shorter than their table minimum. |
 | [esc-list-empty-requests.patch](esc-list-empty-requests.patch) | [1150faabf3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1150faabf332e9d5bd99b9df76103db5333aaa2f) | [8cc259bdc5](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8cc259bdc52e6fed3054b6b06b4e790afa1fedf0) | A window request that leaves no window is not kept in the ESC window list. |
+| [sprite-name-tables-and-reserved-field.patch](sprite-name-tables-and-reserved-field.patch) | [cd5635e762](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/cd5635e762b4b5999f6d1cab6d439dfc2ddf3374) | [9b6180b197](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9b6180b197a546bc1623f6e80c53ec02038d48bc) | Name the sprite-name table builder and the `0x0436` reserved field; no behavior change. |
+| [url-link-web-schemes.patch](url-link-web-schemes.patch) | [5238a9f021](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5238a9f02101792d0995b069ae34361d71b6220d) | [d80fc8010d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d80fc8010dd84d2c8c871c8c3fd2e44d11caaf9a) | Text-viewer `<URL>` links open only `http://` and `https://` targets. |
 
 ESC menu command `ESC_ID_1C1` (toggle of window `0xec`) is dead code on both
 branches and was left unchanged; see the candidate list in

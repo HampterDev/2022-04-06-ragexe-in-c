@@ -1,0 +1,77 @@
+From cd5635e762b4b5999f6d1cab6d439dfc2ddf3374 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 08:38:05 +0100
+Subject: [PATCH] Name the sprite-name table builder and the map-entry reserved
+ field
+
+ui_window_mgr_render_menu renders nothing: it fills the session's job,
+sprite, palette, hair, weapon and body name tables at startup, so it is
+now session_init_sprite_name_tables. The game-mode PacketEnter field at
+offset 14 of 0x0436 was called client_tick, but the tick is the next
+field and offset 14 is always sent as zero; it is now reserved, as in
+the login-mode packet.
+
+No behavior change. Validation: release build without warnings and the
+complete behavioral suite.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/mode_connection.c      | 2 +-
+ src/session/session_job_names.c | 2 +-
+ src/session/session_jobs.h      | 2 +-
+ src/session/session_tables.c    | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/game/mode_connection.c b/src/game/mode_connection.c
+index bc17df8..762ee3b 100644
+--- a/src/game/mode_connection.c
++++ b/src/game/mode_connection.c
+@@ -60,7 +60,7 @@ struct PacketEnter {
+     int account_id;
+     int char_id;
+     int auth_code;
+-    int client_tick;
++    int reserved;
+     DWORD time;
+     char sex;
+ };
+diff --git a/src/session/session_job_names.c b/src/session/session_job_names.c
+index f0ce57d..822197f 100644
+--- a/src/session/session_job_names.c
++++ b/src/session/session_job_names.c
+@@ -333,7 +333,7 @@ static void init_job_id_names(struct Session *self)
+     APPLY(&self->jobIdNames, s_jobIdNames);
+ }
+
+-void ui_window_mgr_render_menu(struct Session *self)
++void session_init_sprite_name_tables(struct Session *self)
+ {
+     int i;
+
+diff --git a/src/session/session_jobs.h b/src/session/session_jobs.h
+index 5c77a04..561c536 100644
+--- a/src/session/session_jobs.h
++++ b/src/session/session_jobs.h
+@@ -11,7 +11,7 @@ void session_set_job(struct Session *self, int job);
+
+ void session_init_job_name_tables(struct Session *self);
+
+-void ui_window_mgr_render_menu(struct Session *self);
++void session_init_sprite_name_tables(struct Session *self);
+
+ BYTE session_job_allows_level(struct Session *self, int job, int level);
+ BYTE session_job_accepts_value(struct Session *self, int job, unsigned __int64 value);
+diff --git a/src/session/session_tables.c b/src/session/session_tables.c
+index b15d4d5..7b3ec98 100644
+--- a/src/session/session_tables.c
++++ b/src/session/session_tables.c
+@@ -346,7 +346,7 @@ void session_init_table(struct Session *self)
+     session_load_fog_parameters(self);
+     session_init_lua_files(self);
+     session_load_weapon_hit_waves(self);
+-    ui_window_mgr_render_menu(self);
++    session_init_sprite_name_tables(self);
+     session_init_pc_name_table(self);
+     session_init_job_name_tables(self);
+     session_load_shadow_factors(self);

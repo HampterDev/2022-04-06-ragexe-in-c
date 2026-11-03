@@ -2917,6 +2917,11 @@ Patrick instead chose to keep clickable website links. Both implementations,
 markup parsing and the other in-game link kinds remain unchanged. This retained
 shell behavior motivated keeping COM and correcting cleanup under START-075.
 
+Since 2026-11-02, both viewers open a link only when its target is an
+`http://` or `https://` URL; files, UNC paths and other protocol handlers
+stay unopened, and their labels remain visible. Fixed on `main` in
+`5238a9f021` and on `purist` in `d80fc8010d`.
+
 ## Shared audio backend (START-087, kept)
 
 `sound_mgr_create` constructs the shared Miles audio manager. When sound is
