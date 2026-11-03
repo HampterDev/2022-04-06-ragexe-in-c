@@ -103,7 +103,6 @@ struct LoginConnEntry {
     struct String balloon;
     struct String address;
     struct String port;
-    DWORD version;
 };
 
 #define UIWND_SENDMSG(w, a, msg, b, c, d, e) \

@@ -24,7 +24,6 @@ struct LoginConnEntry *login_conn_entry_copy(struct LoginConnEntry *self,
     string_assign(&self->desc, string_cstr(&src->desc), src->desc.size);
     string_assign(&self->address, string_cstr(&src->address), src->address.size);
     string_assign(&self->port, string_cstr(&src->port), src->port.size);
-    self->version = src->version;
     string_assign(&self->balloon, string_cstr(&src->balloon), src->balloon.size);
     return self;
 }
