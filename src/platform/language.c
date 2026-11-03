@@ -30,7 +30,6 @@ struct Language *language_construct(struct Language *self)
 void language_destruct(struct Language *self)
 {
     free(self->input);
-    free(self->candidates);
     free(self->display_text);
     memset(self, 0, sizeof *self);
 }
@@ -208,68 +207,37 @@ void language_caret_forward(struct Language *self)
     self->caret = (int)(utf8_step(s + self->caret, s + size) - s);
 }
 
-const char *language_candidate_text(struct Language *self, int index)
+/* The client draws the composition itself and leaves the candidate list to the IME's own
+   window. x is where the composition starts and top..bottom the line it is on, in client
+   coordinates of the main window; the IME opens the list below that line, or above it when
+   there is no room. */
+void language_place_candidates(struct Language *self, int x, int top, int bottom)
 {
-    const WCHAR *text;
+    struct LanguageCandidatePos *pos = &self->candidate_pos;
+    CANDIDATEFORM form;
+    HIMC imc;
 
-    if (index < 0 || index >= self->candidate_count)
-        return "";
-    text = (const WCHAR *)((const BYTE *)self->candidates + self->candidates->dwOffset[index]);
-    utf8_from_utf16(self->candidate_text, sizeof self->candidate_text, text, wcslen(text));
-    return self->candidate_text;
-}
-
-static int candidate_list_valid(const CANDIDATELIST *list, size_t bytes)
-{
-    size_t header = offsetof(CANDIDATELIST, dwOffset), strings, offset, limit;
-    DWORD i;
-    const WCHAR *text;
-    if (bytes < header || list->dwSize < header || list->dwSize > bytes)
-        return 0;
-    if (list->dwCount > (list->dwSize - header) / sizeof(DWORD))
-        return 0;
-    if (list->dwCount && list->dwSelection >= list->dwCount)
-        return 0;
-    if (list->dwStyle == IME_CAND_CODE && list->dwCount == 1)
-        return 0;
-    strings = header + list->dwCount * sizeof(DWORD);
-    for (i = 0; i < list->dwCount; ++i) {
-        offset = list->dwOffset[i];
-        if (offset < strings || offset > list->dwSize || offset % sizeof(WCHAR))
-            return 0;
-        limit = (list->dwSize - offset) / sizeof(WCHAR);
-        text = (const WCHAR *)((const BYTE *)list + offset);
-        while (limit && *text) { ++text; --limit; }
-        if (!limit) return 0;
-    }
-    return 1;
-}
-
-void language_read_candidates(struct Language *self)
-{
-    HIMC imc = ImmGetContext(g_hMainWnd);
-    DWORD size, copied;
-    CANDIDATELIST *list = NULL;
-
-    self->candidate_count = self->candidate_selection = self->candidate_page = 0;
-    if (!imc) return;
-    size = ImmGetCandidateListW(imc, 0, NULL, 0);
-    if (size < offsetof(CANDIDATELIST, dwOffset) || size > INT_MAX)
-        goto done;
-    list = malloc(size);
-    if (!list) goto done;
-    copied = ImmGetCandidateListW(imc, 0, list, size);
-    if (copied > size || !candidate_list_valid(list, copied))
-        goto done;
-    free(self->candidates);
-    self->candidates = list;
-    list = NULL;
-    self->candidate_count = self->candidates->dwCount;
-    self->candidate_selection = self->candidates->dwSelection;
-    self->candidate_page = self->candidates->dwPageSize < 9 ? self->candidates->dwPageSize : 9;
- done:
-    free(list);
+    if (pos->placed && pos->x == x && pos->top == top && pos->bottom == bottom)
+        return;
+    imc = ImmGetContext(g_hMainWnd);
+    if (!imc)
+        return;
+    /* Some IMEs take only the list's position, others only the area to keep clear. */
+    form.dwIndex = 0;
+    form.dwStyle = CFS_CANDIDATEPOS;
+    form.ptCurrentPos.x = x;
+    form.ptCurrentPos.y = bottom;
+    SetRectEmpty(&form.rcArea);
+    ImmSetCandidateWindow(imc, &form);
+    form.dwStyle = CFS_EXCLUDE;
+    form.ptCurrentPos.y = top;
+    SetRect(&form.rcArea, x, top, x + 1, bottom);
+    ImmSetCandidateWindow(imc, &form);
     ImmReleaseContext(g_hMainWnd, imc);
+    pos->x = x;
+    pos->top = top;
+    pos->bottom = bottom;
+    pos->placed = 1;
 }
 
 /* Reads an IME string of any length; NULL if the IME reports an invalid size. */
@@ -547,6 +515,7 @@ int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM w
     switch (msg) {
     case WM_IME_STARTCOMPOSITION:
         language_delete_selection(self);
+        self->candidate_pos.placed = 0;
         break;
     case WM_INPUTLANGCHANGE:
         break;
@@ -561,12 +530,6 @@ int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM w
             language_read_cursor_pos(self);
         if (lparam & GCS_RESULTSTR)
             language_insert_result(self);
-        break;
-    case WM_IME_NOTIFY:
-        if (wparam == IMN_OPENCANDIDATE || wparam == IMN_CHANGECANDIDATE)
-            language_read_candidates(self);
-        else if (wparam == IMN_CLOSECANDIDATE)
-            self->candidate_count = 0;
         break;
     default:
         *handled = 0;
@@ -590,7 +553,6 @@ void language_cancel_input(struct Language *self)
     self->anchor = self->input_length;
     self->composition_length = 0;
     self->composition[0] = 0;
-    self->candidate_count = 0;
     self->pending_unit = 0;
 }
 

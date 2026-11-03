@@ -23,41 +23,6 @@ int g_activatedNow = 0;
 
 int g_windowActive = 1;
 
-static void language_windows(void)
-{
-    if (g_language->candidate_count != 0) {
-        struct String names[9];
-        struct CandidatePage info;
-        int first, last, count, i;
-
-        for (i = 0; i < 9; i++)
-            string_init(&names[i]);
-        first = g_language->candidate_selection / 9 * 9;
-        last = first + 9;
-        if (last >= g_language->candidate_count)
-            last = g_language->candidate_count;
-        info.selected = g_language->candidate_selection - first;
-        info.page = (g_language->candidate_selection + 8) / 9;
-        info.last_page = (g_language->candidate_count + 8) / 9;
-        count = last - first;
-        info.count = count;
-        for (i = 0; i < count; i++) {
-            const char *name = language_candidate_text(g_language, first + i);
-
-            string_assign_cstr(&names[i], name);
-        }
-        {
-            void *wnd = ui_window_open(0x33);
-
-            ui_window_send(wnd, NULL, 0x41, (int)names, (int)&info, 0, 0);
-        }
-        for (i = 9; i-- > 0;)
-            string_free(&names[i]);
-    } else {
-        ui_window_mgr_post_quit1(&g_windowMgr, 0x33);
-    }
-}
-
 static LRESULT on_activate(HWND hwnd, WPARAM wparam)
 {
     WORD state = LOWORD(wparam);
@@ -170,10 +135,8 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     LRESULT result;
 
     result = language_on_ime_message(g_language, hwnd, msg, wparam, lparam, &handled);
-    if (handled) {
-        language_windows();
+    if (handled)
         return result;
-    }
     switch (msg) {
     case WM_CREATE:
     case WM_DESTROY:
@@ -244,8 +207,9 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
             app_activate(1);
         break;
     case WM_IME_SETCONTEXT:
+        /* The edit controls draw the composition; the IME draws its candidate list. */
         wparam = 1;
-        lparam = 0;
+        lparam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
         break;
     }
     return DefWindowProcW(hwnd, msg, wparam, lparam);

@@ -58,14 +58,13 @@ static LONG test_composition_w(HIMC imc,DWORD kind,LPVOID out,DWORD size)
     if (ime_bytes>=0 && (DWORD)ime_bytes<=size) memcpy(out,ime_text,ime_bytes);
     return ime_bytes;
 }
-static DWORD candidate_storage[256],candidate_query,candidate_reply;
-static DWORD test_candidate_list(HIMC imc,DWORD list,LPCANDIDATELIST out,DWORD size)
+static CANDIDATEFORM candidate_forms[4];
+static int candidate_calls;
+static BOOL test_candidate_window(HIMC imc,LPCANDIDATEFORM form)
 {
-    assert(imc==(HIMC)1 && list==0);
-    if (!out) { assert(!size);return candidate_query; }
-    assert(size==candidate_query);
-    if (candidate_reply<=size) memcpy(out,candidate_storage,candidate_reply);
-    return candidate_reply;
+    assert(imc==(HIMC)1 && form && candidate_calls<4);
+    candidate_forms[candidate_calls++]=*form;
+    return TRUE;
 }
 
 static int clipboard_failure,opened,closed,allocated,freed,published,locked;
@@ -112,7 +111,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #define ImmReleaseContext test_release_context
 #define ImmNotifyIME test_notify
 #define ImmGetCompositionStringW test_composition_w
-#define ImmGetCandidateListW test_candidate_list
+#define ImmSetCandidateWindow test_candidate_window
 #define OpenClipboard test_open
 #define CloseClipboard test_close
 #define GlobalAlloc test_global_alloc
@@ -135,7 +134,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #undef ImmReleaseContext
 #undef ImmNotifyIME
 #undef ImmGetCompositionStringW
-#undef ImmGetCandidateListW
+#undef ImmSetCandidateWindow
 #undef OpenClipboard
 #undef CloseClipboard
 #undef GlobalAlloc
@@ -301,64 +300,37 @@ static void test_input_ownership(void)
     language_destruct(&s);assert(!heap_live);
 }
 
-static CANDIDATELIST *candidate_fixture(void)
+static void expect_candidate_forms(int x,int top,int bottom)
 {
-    CANDIDATELIST *list=(CANDIDATELIST*)candidate_storage;
-    static const WCHAR first[]={ 'a','l','p','h','a',0 };
-    static const WCHAR second[]={0xac00,0};
-    static const WCHAR third[]={ 'z',0 };
-    size_t next=offsetof(CANDIDATELIST,dwOffset)+3*sizeof(DWORD);
-    memset(candidate_storage,0,sizeof candidate_storage);list->dwCount=3;list->dwSelection=1;list->dwPageSize=20;list->dwStyle=IME_CAND_READ;
-    list->dwOffset[0]=(DWORD)next;memcpy((BYTE*)list+next,first,sizeof first);next+=sizeof first;
-    list->dwOffset[1]=(DWORD)next;memcpy((BYTE*)list+next,second,sizeof second);next+=sizeof second;
-    list->dwOffset[2]=(DWORD)next;memcpy((BYTE*)list+next,third,sizeof third);next+=sizeof third;
-    list->dwSize=(DWORD)next;candidate_query=candidate_reply=(DWORD)next;return list;
+    const CANDIDATEFORM *pos=&candidate_forms[0],*area=&candidate_forms[1];
+    assert(candidate_calls==2);
+    assert(pos->dwIndex==0 && pos->dwStyle==CFS_CANDIDATEPOS && pos->ptCurrentPos.x==x && pos->ptCurrentPos.y==bottom);
+    assert(area->dwIndex==0 && area->dwStyle==CFS_EXCLUDE && area->ptCurrentPos.x==x && area->ptCurrentPos.y==top);
+    assert(area->rcArea.left==x && area->rcArea.top==top && area->rcArea.right==x+1 && area->rcArea.bottom==bottom);
+    candidate_calls=0;
 }
 static void test_candidates(void)
 {
     struct Language s;
-    CANDIDATELIST *list,*saved;
-    DWORD full;
-    int releases,calls;
     BYTE handled;
-    language_construct(&s);candidate_fixture();
-    language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_OPENCANDIDATE,0,&handled);
-    assert(handled && s.candidate_count==3 && s.candidate_selection==1 && s.candidate_page==9);
-    assert(!strcmp(language_candidate_text(&s,0),"alpha"));
-    assert(!strcmp(language_candidate_text(&s,1),U8_GA));
-    assert(!strcmp(language_candidate_text(&s,2),"z"));
-    assert(!strcmp(language_candidate_text(&s,-1),"") && !strcmp(language_candidate_text(&s,3),""));
-    saved=s.candidates;fail_after=0;releases=ime_releases;language_read_candidates(&s);
-    assert(!s.candidate_count && s.candidates==saved && ime_releases==releases+1);fail_after=-1;
-    full=candidate_reply;
-    for (DWORD bytes=0;bytes<full;++bytes) {
-        candidate_fixture();candidate_reply=bytes;releases=ime_releases;
-        language_read_candidates(&s);assert(!s.candidate_count && ime_releases==releases+1 && s.candidates==saved);
-    }
-    for (int fault=0;fault<10;++fault) {
-        list=candidate_fixture();
-        switch (fault) {
-        case 0:list->dwSize=4;break;
-        case 1:list->dwCount=0xffffffffu;break;
-        case 2:list->dwSelection=3;break;
-        case 3:list->dwOffset[0]=1;break;
-        case 4:list->dwOffset[0]=24;break;
-        case 5:list->dwOffset[0]=list->dwSize;break;
-        case 6:((WCHAR*)((BYTE*)list+list->dwOffset[2]))[1]='x';break;
-        case 7:list->dwStyle=IME_CAND_CODE;list->dwCount=1;list->dwSelection=0;break;
-        case 8:candidate_reply=candidate_query+1;break;
-        case 9:candidate_query=0xffffffffu;break;
-        }
-        language_read_candidates(&s);assert(!s.candidate_count && s.candidates==saved && !strcmp(language_candidate_text(&s,0),""));
-    }
-    candidate_fixture();language_read_candidates(&s);assert(s.candidate_count==3);
-    calls=heap_calls;ime_missing=1;releases=ime_releases;language_read_candidates(&s);
-    assert(!s.candidate_count && heap_calls==calls && releases==ime_releases);ime_missing=0;
-    list=candidate_fixture();list->dwCount=0;list->dwSelection=0;list->dwSize=24;candidate_reply=candidate_query=24;
-    language_read_candidates(&s);assert(!s.candidate_count);
-    candidate_fixture();language_read_candidates(&s);assert(s.candidate_count==3);
-    language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_CLOSECANDIDATE,0,&handled);assert(handled && !s.candidate_count);
-    language_destruct(&s);language_destruct(&s);assert(!heap_live);candidate_query=candidate_reply=0;
+    int releases;
+    language_construct(&s);
+    /* The IME draws its own candidate list, so its notifications go on to the default window procedure. */
+    handled=1;language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_OPENCANDIDATE,0,&handled);assert(!handled);
+    handled=1;language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_CHANGECANDIDATE,0,&handled);assert(!handled);
+    handled=1;language_on_ime_message(&s,NULL,WM_IME_NOTIFY,IMN_CLOSECANDIDATE,0,&handled);assert(!handled);
+    candidate_calls=0;releases=ime_releases;
+    language_place_candidates(&s,120,300,318);expect_candidate_forms(120,300,318);assert(ime_releases==releases+1);
+    language_place_candidates(&s,120,300,318);assert(!candidate_calls && ime_releases==releases+1);
+    language_place_candidates(&s,126,300,318);expect_candidate_forms(126,300,318);
+    language_place_candidates(&s,126,40,58);expect_candidate_forms(126,40,58);
+    /* A new composition places the list again, even at the same spot. */
+    language_on_ime_message(&s,NULL,WM_IME_STARTCOMPOSITION,0,0,&handled);assert(handled);
+    language_place_candidates(&s,126,40,58);expect_candidate_forms(126,40,58);
+    ime_missing=1;releases=ime_releases;language_on_ime_message(&s,NULL,WM_IME_STARTCOMPOSITION,0,0,&handled);
+    language_place_candidates(&s,10,20,30);assert(!candidate_calls && ime_releases==releases);ime_missing=0;
+    language_place_candidates(&s,10,20,30);expect_candidate_forms(10,20,30);
+    language_destruct(&s);assert(!heap_live);
 }
 
 static void test_edit_sequence(void)
@@ -401,6 +373,6 @@ int main(int argc,char **argv)
     test_editing();test_ime();
     test_clipboard();
     test_input_ownership();test_candidates();test_edit_sequence();
-    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, bounded IME candidates, UTF-16 typing and surrogate pairs, UTF-8 caret steps, Unicode clipboard and its failures passed.");
+    puts("Language input: C ownership, atomic edits, aliasing, reusable storage, IME candidate placement, UTF-16 typing and surrogate pairs, UTF-8 caret steps, Unicode clipboard and its failures passed.");
     return 0;
 }

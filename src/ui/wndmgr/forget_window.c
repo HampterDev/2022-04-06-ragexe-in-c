@@ -35,7 +35,7 @@ static const unsigned short window_slots[] = {
     SLOT(make_target_process_wnd), SLOT(emotion_wnd),
     SLOT(emotion_list_wnd), SLOT(prohibit_list_wnd), SLOT(pet_info_wnd), SLOT(pet_egg_list_wnd),
     SLOT(pet_taming_deceive_wnd), SLOT(making_arrow_list_wnd), SLOT(select_cart_wnd),
-    SLOT(spell_list_wnd), SLOT(candidate_wnd),
+    SLOT(spell_list_wnd),
     SLOT(join_friend_accept_wnd), SLOT(command_list_wnd),
     SLOT(homun_info_wnd),
     SLOT(homun_skill_list_wnd), SLOT(mer_info_wnd), SLOT(mer_skill_list_wnd), SLOT(auto_message_wnd),

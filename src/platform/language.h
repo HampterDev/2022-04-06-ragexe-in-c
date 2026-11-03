@@ -7,14 +7,16 @@
 #include <windows.h>
 #include <imm.h>
 
-/* IME composition and candidate text in UTF-8: 256 UTF-16 units of up to three bytes. */
+/* IME composition text in UTF-8: 256 UTF-16 units of up to three bytes. */
 #define LANGUAGE_TEXT_MAX (0x100 * 3 + 1)
 
+/* Where the IME's own candidate list was last placed, in main-window client coordinates. */
+struct LanguageCandidatePos {
+    int x, top, bottom;
+    BYTE placed;
+};
+
 struct Language {
-    CANDIDATELIST *candidates;
-    int candidate_count;
-    int candidate_page;
-    int candidate_selection;
     char *input;
     size_t input_length, input_capacity;
     int caret, anchor;
@@ -26,7 +28,7 @@ struct Language {
     WORD folder_lang;
     char *display_text;
     size_t display_capacity;
-    char candidate_text[LANGUAGE_TEXT_MAX];
+    struct LanguageCandidatePos candidate_pos;
 };
 
 struct Language *language_construct(struct Language *self);
@@ -39,8 +41,7 @@ int language_copy_text(const char *text, size_t length);
 void language_caret_back(struct Language *self);
 void language_delete_selection(struct Language *self);
 void language_caret_forward(struct Language *self);
-const char *language_candidate_text(struct Language *self, int index);
-void language_read_candidates(struct Language *self);
+void language_place_candidates(struct Language *self, int x, int top, int bottom);
 void language_read_composition(struct Language *self);
 void language_read_cursor_pos(struct Language *self);
 void language_insert_result(struct Language *self);

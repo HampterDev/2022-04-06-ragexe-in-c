@@ -17,7 +17,6 @@ void ui_edit_ctrl3_set_tag_colour(struct UIEditCtrl3 *self, DWORD colour);
 struct StdBitVector;
 struct List;
 struct Vec;
-struct UICandidateWnd;
 struct UIScrollBar;
 struct UIWindow;
 struct UIWindowMgr;
@@ -92,7 +91,7 @@ void ui_edit_ctrl_set_text_colour(struct UIWindow *self, int red, int green, int
 void ui_edit_ctrl_destruct(struct UIEditCtrl *self);
 void ui_edit_ctrl_sync_from_ime(struct UIEditCtrl *self);
 void ui_edit_ctrl_draw_highlight(struct UIEditCtrl *self, int x, int width);
-void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *self, int x);
+void ui_edit_ctrl_place_ime_candidates(struct UIEditCtrl *self, int x, int top, int bottom);
 void ui_edit_ctrl_layout_navi_links(struct UIEditCtrl *self);
 BYTE ui_edit_ctrl_caret_shown(void);
 unsigned long long ui_edit_ctrl_focus_key(void);
@@ -168,21 +167,6 @@ void ui_edit_ctrl_wheel_destroy(struct UIWindow *window);
 void ui_bitmap_edit_ctrl_destroy(struct UIWindow *window);
 void ui_bitmap_edit_ctrl_set_bitmap(struct UIBitmapEditCtrl *self, const char *name);
 void ui_bitmap_edit_ctrl_on_draw(struct UIWindow *self);
-
-struct CandidatePage {
-    int selected;
-    int page;
-    int last_page;
-    int count;
-};
-
-struct UICandidateWnd *ui_candidate_wnd_construct(struct UICandidateWnd *self);
-struct UIWindow *ui_candidate_wnd_new(void);
-void ui_candidate_wnd_destroy(struct UIWindow *window);
-void ui_candidate_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
-void ui_candidate_wnd_on_draw(struct UIWindow *self);
-int ui_candidate_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                      int val1, int val2, int val3, int val4);
 
 void ui_edit_ctrl_custom_draw_string(struct UIEditCtrlCustom *self, int x, int y, const char *text);
 

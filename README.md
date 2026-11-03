@@ -128,3 +128,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Show message boxes and read and write registry text through the W calls (`platform/win_utf8.c`), so chat macros, the saved ID and error texts keep their characters on any Windows locale.
 - Look a UTF-8 file name up again in CP949 when it misses as it is, so names sent in UTF-8 still find their CP949 GRF entries, files and aliases; resource names stay CP949.
 - Keep characters whole where text is cut to a fixed size: navigation name lines (surrogate pairs), guild and whisper packet fields, and the renewed-quest condition names.
+- Let the IME draw its own candidate list next to the composition; remove the client's empty candidate window.

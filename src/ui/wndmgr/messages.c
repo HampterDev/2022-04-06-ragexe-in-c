@@ -16,9 +16,6 @@
 #define UIWM_MSG_CHAT_ROOM_LINE 5
 #define UIWM_MSG_SAVE_CHAT 6
 #define UIWM_MSG_SAVE_CHAT_ROOM 7
-#define UIWM_MSG_EMBLEM 8
-#define UIWM_MSG_EMBLEM_2 9
-#define UIWM_MSG_CLOSE_EMBLEM 10
 #define UIWM_MSG_WHISPER 14
 #define UIWM_MSG_CHAT_LINE_ALT 0x13
 #define UIWM_MSG_TO_WHISPERS 0x9a
@@ -183,13 +180,6 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
     case UIWM_MSG_SAVE_CHAT_ROOM:
         if (self->chat_room_wnd)
             ui_chat_room_wnd_save_talk((struct UIChatRoomWnd *)self->chat_room_wnd);
-        break;
-    case UIWM_MSG_EMBLEM:
-    case UIWM_MSG_EMBLEM_2:
-        ui_window_send(ui_window_mgr_make_window(self, 0x33), NULL, 0x41, val1, val2, 0, 0);
-        break;
-    case UIWM_MSG_CLOSE_EMBLEM:
-        ui_window_mgr_post_quit1(self, 0x33);
         break;
     case UIWM_MSG_WHISPER:
         return open_whisper(self, (const char *)(INT_PTR)val1, (const char *)(INT_PTR)val2,

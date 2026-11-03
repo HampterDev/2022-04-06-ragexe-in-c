@@ -99,19 +99,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         wm_window_list_sort(&self->windows);
         wm_show(wnd);
         break;
-    case 0x33:
-        wnd = self->candidate_wnd;
-        if (wnd == NULL) {
-            int width = 0x124, height = 0x22;
-
-            wnd = ui_candidate_wnd_new();
-            self->candidate_wnd = wnd;
-            ui_window_create(wnd, width, height);
-            wm_move(wnd, g_renderer->width - width, g_renderer->height - height);
-            ui_window_mgr_add_window(self, wnd);
-        }
-        wm_show(wnd);
-        break;
     case 0x10:
         wnd = WM_OPEN_INFO(say_dialog_wnd, ui_say_dialog_wnd_new, 0x118, 0xb4, WM_AT_640, 0xc8, 0x64, say_dialog_info);
         break;

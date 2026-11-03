@@ -75,7 +75,6 @@ static const struct ObjectTypeEntry object_types[] = {
     {&ui_bmp_radio_btn_ops, 0, "UIBmpRadioBtn"},
     {&ui_bmp_text_button_ops, 0, "UIBmpTextButton"},
     {&ui_button_ops, 0, "UIButton"},
-    {&ui_candidate_wnd_ops, TYPE(FRAME_WINDOW), "UICandidateWnd"},
     {&ui_card_item_illust_wnd_ops, TYPE(FRAME_WINDOW), "UICardItemIllustWnd"},
     {&ui_change_name_wnd_ops, TYPE(FRAME_WINDOW), "UIChangeNameWnd"},
     {&ui_char_info_balloon_text_ops, 0, "UICharInfoBalloonText"},

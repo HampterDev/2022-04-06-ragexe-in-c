@@ -94,7 +94,8 @@ struct UIWindow *ui_window_mgr_get_focus_edit(struct UIWindowMgr *self)
 void ui_edit_ctrl_sync_from_ime(struct UIEditCtrl *edit)
 { string_assign_cstr(&edit->text, ime_input); }
 BYTE ui_edit_ctrl_caret_shown(void) { return 0; }
-void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *edit, int x) { (void)edit; (void)x; }
+void ui_edit_ctrl_place_ime_candidates(struct UIEditCtrl *edit, int x, int top, int bottom)
+{ (void)edit; (void)x; (void)top; (void)bottom; }
 void ui_edit_ctrl3_place_navi_links(struct UIEditCtrl3 *edit, struct TextView line, int y, int index, int first, int last)
 { (void)y; assert(edit && line.data && index >= first && index < last); }
 void language_get_selection(struct Language *self, int *anchor, int *caret)

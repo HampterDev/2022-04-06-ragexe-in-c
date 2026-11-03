@@ -267,7 +267,7 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
             draw_string(self, x, &shown);
             plain = 0;
         } else if (g_language->composition_length) {
-            ui_edit_ctrl_place_candidate_wnd(self, lo_x);
+            ui_edit_ctrl_place_ime_candidates(self, lo_x + x, 0, self->base.height);
             if (!((timeGetTime() / CARET_BLINK_MS) & 1))
                 ui_edit_ctrl_draw_highlight(self, lo_x + x, max(hi_x - lo_x, 2));
             draw_string(self, x, &shown);
@@ -339,22 +339,13 @@ void ui_edit_ctrl_draw_highlight(struct UIEditCtrl *self, int x, int width)
                       ui_skin_colour(6, 2));
 }
 
-static void place_ime_window(struct UIEditCtrl *self, struct UIWindow *ime_wnd, int x)
+/* x is where the composition starts and top..bottom its line, relative to the edit control. */
+void ui_edit_ctrl_place_ime_candidates(struct UIEditCtrl *self, int x, int top, int bottom)
 {
-    int sx = x, sy = self->base.height + 6;
+    int sx = x, sy = top;
 
     ui_window_to_screen(&self->base, &sx, &sy);
-    if (ime_wnd->width + sx > g_renderer->width)
-        sx = g_renderer->width - ime_wnd->width;
-    if (sy + ime_wnd->height > g_renderer->height)
-        sy += -12 - self->base.height - ime_wnd->height;
-    ui_window_move(ime_wnd, sx, sy);
-}
-
-void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *self, int x)
-{
-    if (g_windowMgr.candidate_wnd)
-        place_ime_window(self, g_windowMgr.candidate_wnd, x);
+    language_place_candidates(g_language, sx, sy, sy + bottom - top);
 }
 
 BYTE ui_edit_ctrl_caret_shown(void)
@@ -376,9 +367,6 @@ unsigned long long ui_edit_ctrl_focus_key(void)
     key = draw_key_int(key, (int)language->composition_length);
     key = draw_key_bytes(key, language->composition, language->composition_length);
     key = draw_key_int(key, language->composition_cursor);
-    key = draw_key_int(key, language->candidate_count);
-    key = draw_key_int(key, language->candidate_page);
-    key = draw_key_int(key, language->candidate_selection);
     key = draw_key_int(key, language->masked);
     key = draw_key_int(key, (int)((timeGetTime() / CARET_BLINK_MS) & 1));
     key = draw_key_int(key, g_windowMgr.chat_bar_shown);

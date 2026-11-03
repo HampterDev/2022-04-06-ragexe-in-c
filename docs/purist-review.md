@@ -9174,3 +9174,62 @@ Validation:
 - `git diff --check` passed.
 
 The pre-change tree is in `build/before-utf8-splits`. No live client was run.
+
+## IME candidate list (2026-11-03)
+
+Patrick chose to let Windows draw the IME candidate list, the list Japanese and Chinese
+input picks words from and Korean uses for Hanja.
+
+Before: `WM_IME_SETCONTEXT` cleared every `ISC_SHOWUI*` flag, so Windows showed no IME
+window. `language.c` consumed `WM_IME_NOTIFY`, read the candidates with
+`ImmGetCandidateListW` and passed nine at a time to `UICandidateWnd` (window `0x33`),
+which drew only its frame: its Korean, Japanese and Chinese layouts belonged to other
+service types. Japanese and Chinese users saw an empty box.
+
+Now:
+
+- `WM_IME_SETCONTEXT` clears only `ISC_SHOWUICOMPOSITIONWINDOW`. The edit controls still
+  draw the composition inline; the IME draws its own candidate window.
+- `WM_IME_NOTIFY` is no longer handled, so it reaches `DefWindowProcW` and the IME's
+  window.
+- While composing, the single-line, custom and multiline edits call
+  `language_place_candidates` with the composition's start and line in client
+  coordinates. It sets `CFS_CANDIDATEPOS` below the line and `CFS_EXCLUDE` around it,
+  because IMEs differ in which one they use. It skips unchanged positions and places the
+  list again for each new composition. The single-line and custom edits used to pass
+  the composition's x without the text offset; they now include it. The multiline edit
+  uses the caret's line instead of the bottom of the whole control.
+
+Removed with the old list: `UICandidateWnd` (`ime_wnd.c`), window `0x33` (factory, close,
+forget and teardown slots), the window-manager messages 8, 9 and 10 (named `EMBLEM`,
+`EMBLEM_2` and `CLOSE_EMBLEM`; nothing sends them, and they only opened and closed window
+`0x33`), `CandidatePage`, the candidate fields of `struct Language` and the edit draw-key
+inputs that tracked them.
+
+Object types: `UICandidateWnd` (reference index 223) is retired. Counts are now 472
+classes, 139 retired, 326 named, 306 windows, 2,717 comparisons and 205 accepted casts,
+measured with a print-only copy of the test and then asserted.
+
+Tests changed: `test_language_input` no longer covers candidate-list reading. It checks
+that candidate notifications are left to the default window procedure, the two
+`CANDIDATEFORM`s, that an unchanged position is not set again, that a new composition
+sets it again, and a missing input context.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/ime-candidates-build.log`.
+- Full suite `tests\build.bat` passed: `build/ime-candidates-full-tests.log`.
+- The seven standalone suites passed: `build/ime-candidates-<suite>.log`.
+- `git diff --check` passed.
+- Live check on Windows 10 in a 1024x768 window, from a separate folder with a hard link
+  to Revel's `data.grf`: with the Microsoft Japanese IME, typing `nihongo` and Space twice
+  in the login ID field showed Windows' list (日本語, にほんご, ニホンゴ) directly below the
+  field, starting at the composition. Exclusive fullscreen was not tested; IME windows
+  cannot appear over an exclusive fullscreen Direct3D device. Chinese and Korean IMEs
+  were not tried.
+
+Observation from that run: with Revel's `data.grf` alone, the client finds neither
+`LuaFiles514\Lua Files\MsgString_KR` nor `LuaFiles514\Lua Files\service_eu\ExternalSettings_eu`.
+They exist only under the older `data\lua files\` layout (loose in `client-files` and
+in `revel.grf`), and their absence shows about 35 Lua error boxes at startup. The test
+folder used copies of the loose `.lua` files. `client-files` was not changed.

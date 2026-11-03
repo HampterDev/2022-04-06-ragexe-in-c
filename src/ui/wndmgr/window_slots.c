@@ -306,7 +306,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
         break;
     case 0x2f: closed = close_slot(self, &self->card_item_illust_wnd); break;
     case 0x31: closed = close_slot(self, &self->notify_job_level_up_wnd); break;
-    case 0x33: closed = close_slot(self, &self->candidate_wnd); break;
     case 0x35: closed = close_slot(self, &self->party_setting_wnd); break;
     case 0xcf:
         ui_window_mgr_post_quit1(self, 0x35);

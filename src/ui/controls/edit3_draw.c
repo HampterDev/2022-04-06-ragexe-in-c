@@ -160,9 +160,11 @@ static void place_caret(struct UIEditCtrl3 *self, int x0, int first, int page, i
         len -= break_bytes(self, line);
     comp_x = len ? text_width(self, line_at(self, line), len) : 0;
     if (g_language->composition_length) {
+        int top = (at_break - first + line) * self->line_height;
+
+        ui_edit_ctrl_place_ime_candidates(edit, x0 + caret_x, top, top + self->line_height);
         caret_x += max(comp_x - caret_x, 2) + 2;
         self->caret_col += 2;
-        ui_edit_ctrl_place_candidate_wnd(edit, caret_x);
     }
     if (self->caret_x != caret_x)
         self->caret_x = caret_x;

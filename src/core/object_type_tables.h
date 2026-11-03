@@ -48,7 +48,6 @@ extern const struct UIEditCtrlOps ui_bitmap_edit_ctrl_ops;
 extern const struct UIWindowOps ui_bmp_radio_btn_ops;
 extern const struct UIButtonOps ui_bmp_text_button_ops;
 extern const struct UIButtonOps ui_button_ops;
-extern const struct UIWindowOps ui_candidate_wnd_ops;
 extern const struct UIWindowOps ui_card_item_illust_wnd_ops;
 extern const struct UIWindowOps ui_change_name_wnd_ops;
 extern const struct UIWindowOps ui_char_info_balloon_text_ops;

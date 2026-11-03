@@ -139,7 +139,6 @@ struct UIWindowMgr {
     struct UIWindow *making_arrow_list_wnd;
     struct UIWindow *select_cart_wnd;
     struct UIWindow *spell_list_wnd;
-    struct UIWindow *candidate_wnd;
     struct UIWindow *join_friend_accept_wnd;
     struct UIWindow *command_list_wnd;
     struct UIWindow *homun_info_wnd;
