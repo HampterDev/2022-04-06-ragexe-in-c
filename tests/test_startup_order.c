@@ -130,7 +130,7 @@ void player_names_destroy(void) { step("player_names_destroy"); }
 void whisper_block_destroy(void) { step("whisper_block_destroy"); }
 void account_user_data_destroy(void) { step("account_user_data_destroy"); }
 void char_user_data_destroy(void) { step("char_user_data_destroy"); }
-void set_hwnd_to_game_mon(void) { step("set_hwnd_to_game_mon"); }
+void rodex_destroy_instance(void) { step("rodex_destroy_instance"); }
 void map_property_mgr_release(void) { step("map_property_mgr_release"); }
 void champion_monster_destroy(void) { step("champion_monster_destroy"); }
 void renew_quest_destroy(void) { step("renew_quest_destroy"); }
@@ -201,7 +201,7 @@ static const char *const destroy_order[] = {
     "whisper_block_destroy",
     "account_user_data_destroy",
     "char_user_data_destroy",
-    "set_hwnd_to_game_mon",
+    "rodex_destroy_instance",
     "map_property_mgr_release",
     "champion_monster_destroy",
     "renew_quest_destroy",

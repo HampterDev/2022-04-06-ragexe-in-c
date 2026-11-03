@@ -163,7 +163,7 @@ void app_destroy_singletons(void)
     whisper_block_destroy();
     account_user_data_destroy();
     char_user_data_destroy();
-    set_hwnd_to_game_mon();
+    rodex_destroy_instance();
     map_property_mgr_release();
     champion_monster_destroy();
 
