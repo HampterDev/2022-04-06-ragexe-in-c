@@ -159,6 +159,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
 #include <unistd.h>
 
 #ifdef __ANDROID__
+#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_system.h>
 
