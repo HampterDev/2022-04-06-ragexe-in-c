@@ -67,7 +67,7 @@ const char *ui_edit_ctrl_get_text(struct UIWindow *self)
 }
 struct UIWindow *ui_window_open(int id)
 {
-    assert(id == 2 || id == 0x4e);
+    assert(id == 2 || id == 0xc || id == 0x4e);
     return &test_window;
 }
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
@@ -77,9 +77,22 @@ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message
 }
 void ui_window_move_safe(struct UIWindow *window, int x, int y) { (void)window; (void)x; (void)y; }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; abort(); }
-void ui_pet_info_set_name(struct UIWindow *wnd, const char *name) { (void)wnd; (void)name; abort(); }
-void ui_pet_info_update_intimacy(struct UIWindow *wnd) { (void)wnd; abort(); }
-void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet) { (void)wnd; (void)pet; abort(); }
+/* The pet windows: the names they are given, which must not run past the field. */
+static char pet_window_name[0x100], other_pet_name[0x100];
+static int invalidations;
+void ui_pet_info_set_name(struct UIWindow *wnd, const char *name)
+{
+    assert(wnd == &test_window && strlen(name) < sizeof pet_window_name);
+    strcpy(pet_window_name, name);
+}
+void ui_pet_info_update_intimacy(struct UIWindow *wnd) { assert(wnd == &test_window); }
+void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet)
+{
+    assert(wnd == &test_window && strlen(pet->name) < sizeof other_pet_name);
+    strcpy(other_pet_name, pet->name);
+}
+static void count_invalidation(struct UIWindow *wnd) { assert(wnd == &test_window); ++invalidations; }
+static const struct UIWindowOps test_ops = { .invalidate = count_invalidation };
 struct ReplayRecorder *replay_recorder_instance(void) { return NULL; }
 BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; (void)mode; return 0; }
 struct UIListBox *ui_select_server_list(struct UIWindow *wnd) { assert(wnd == &test_window); return server_box; }
@@ -188,6 +201,8 @@ static void check_pet_names(void)
     char name[40];
     struct { struct PACKET_ZC_PROPERTY_PET pet; char after[8]; } packet;
 
+    test_window.ops = &test_ops;
+    g_windowMgr.pet_info_wnd = &test_window;
     g_session1.aid = 7;
     strcpy(g_session1.petName, "kept");
     pet_named(8, CONVERSIONS);
@@ -201,12 +216,14 @@ static void check_pet_names(void)
     full_field(name, NAME_LENGTH, 'P');
     pet_named(7, name);
     check(g_session1.petName, "PPPPPPPPPPPPPPPPPPPPPPPP");
+    check(pet_window_name, "PPPPPPPPPPPPPPPPPPPPPPPP");
 
     memset(&packet, 'z', sizeof packet);
     packet.pet.level = 5;
     strcpy(packet.pet.name, CONVERSIONS);
     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
     check(g_session1.petName, CONVERSIONS);
+    check(pet_window_name, CONVERSIONS);
     packet.pet.level = 5;
     strcpy(packet.pet.name, CONVERSIONS_N);
     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
@@ -215,6 +232,21 @@ static void check_pet_names(void)
     packet.pet.level = 5;
     game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
     check(g_session1.petName, "QQQQQQQQQQQQQQQQQQQQQQQQ");
+    check(pet_window_name, "QQQQQQQQQQQQQQQQQQQQQQQQ");
+    assert(invalidations == 3);
+
+    /* Another player's pet goes to the item collection window. */
+    strcpy(g_session1.petName, "kept");
+    packet.pet.level = PET_LEVEL_OTHER + 3;
+    strcpy(packet.pet.name, CONVERSIONS_N);
+    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
+    check(other_pet_name, CONVERSIONS_N);
+    full_field(packet.pet.name, sizeof packet.pet.name, 'O');
+    packet.pet.level = PET_LEVEL_OTHER + 3;
+    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
+    check(other_pet_name, "OOOOOOOOOOOOOOOOOOOOOOOO");
+    check(g_session1.petName, "kept");
+    g_windowMgr.pet_info_wnd = NULL;
 }
 
 static void check_couple_name(void)
