@@ -7,15 +7,24 @@
 
 struct PacketTable g_packetLengthMap;
 struct Session g_session1;
-static int flush_calls;
+static int flush_calls, reset_calls;
 
 struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
         struct PacketLengthInfo *out, int id)
 {
     (void)table;
-    out->kind = id == 0x1234 ? PACKET_KIND_FIXED : PACKET_KIND_VARIABLE;
+    out->kind = id == 0x1234 ? PACKET_KIND_FIXED : id == 0x7777 ? PACKET_KIND_UNKNOWN : PACKET_KIND_VARIABLE;
     out->length = id == 0x1234 ? 6 : 4;
     return out;
+}
+
+void connection_reset_queues(struct Connection *connection)
+{
+    assert(connection == rag_connection_transport(rag_connection_instance()));
+    byte_queue_reset(&connection->recv_queue, CONNECTION_QUEUE_SIZE);
+    byte_queue_reset(&connection->send_queue, CONNECTION_QUEUE_SIZE);
+    byte_queue_reset(&connection->held, CONNECTION_QUEUE_SIZE);
+    ++reset_calls;
 }
 
 char connection_flush(struct Connection *connection)
@@ -134,7 +143,40 @@ int main(void)
     assert(rag_connection_get_packet(connection, output, &length));
     assert(length == sizeof packet && memcmp(packet, output, length) == 0);
     assert(byte_queue_size(received) == 0);
+    assert(reset_calls == 0);
+
+    {
+        static const unsigned char shortest[] = { 0x35, 0x12, 4, 0 };
+        unsigned char framed[4 + sizeof packet];
+        int framed_length, previous;
+
+        for (framed_length = 0; framed_length < 8; ++framed_length) {
+            framed[0] = (unsigned char)(framed_length < 4 ? 0x35 : 0x77);
+            framed[1] = (unsigned char)(framed_length < 4 ? 0x12 : 0x77);
+            framed[2] = (unsigned char)(framed_length % 4);
+            framed[3] = 0;
+            memcpy(framed + 4, packet, sizeof packet);
+            byte_queue_write(received, sizeof framed, framed);
+            byte_queue_write(&connection->base.send_queue, 2, packet);
+            previous = reset_calls;
+            length = 0xeeee;
+            assert(!rag_connection_get_packet(connection, output, &length));
+            assert(reset_calls == previous + 1 && length == 0xeeee);
+            assert(byte_queue_size(received) == 0);
+            assert(byte_queue_size(&connection->base.send_queue) == 0);
+            assert(byte_queue_size(&connection->base.held) == 0);
+            assert(!rag_connection_get_packet(connection, output, &length));
+            assert(reset_calls == previous + 1);
+        }
+        byte_queue_write(received, sizeof shortest, shortest);
+        byte_queue_write(received, sizeof packet, packet);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof shortest && memcmp(shortest, output, length) == 0);
+        assert(rag_connection_get_packet(connection, output, &length));
+        assert(length == sizeof packet && memcmp(packet, output, length) == 0);
+        assert(byte_queue_size(received) == 0 && reset_calls == 8);
+    }
     test_all_packet_ids(connection);
-    puts("Packets: framing, partial reads, immutable plain sends, holding, disconnected sends and 196608 packet-ID/send-mode cases passed.");
+    puts("Packets: framing, short framed lengths, partial reads, immutable plain sends, holding, disconnected sends and 196608 packet-ID/send-mode cases passed.");
     return 0;
 }

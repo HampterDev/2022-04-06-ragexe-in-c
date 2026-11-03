@@ -51,6 +51,10 @@ char rag_connection_get_packet(struct RagConnection *self, void *buf,
         if (!byte_queue_peek(queue, 4, &head))
             return 0;
         len = (unsigned short)(head >> 16);
+        if (len < 4) {
+            connection_reset_queues(&self->base);
+            return 0;
+        }
     }
     if (!byte_queue_read(queue, len, buf))
         return 0;
