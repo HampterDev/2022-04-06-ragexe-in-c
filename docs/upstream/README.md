@@ -44,3 +44,30 @@ overlapping test-runner additions and the COM/process-scan startup context.
 
 Purist-only removals and local/packet transport replacements remain on `purist`.
 The separate server patch exports are documented in [server notes](../server/README.md).
+
+## Foundation fixes from the size-ranked review, 2026-11-02
+
+These bugs were found while pruning `purist` and were fixed on `main` on
+2026-11-02, one commit each with a focused regression test. The series
+starts after `db18fe4b65c59b46ade4908780faadf71341d058` and ends at
+`1150faabf332e9d5bd99b9df76103db5333aaa2f`. Fixes whose code still exists
+on `purist` were ported with `git cherry-pick -x`; the status-window fix
+was rewritten for purist's single-height window. The patch files are
+`git format-patch` exports of the `main` commits.
+
+| Patch | Foundation commit | Purist | Change |
+| --- | --- | --- | --- |
+| [framed-length-below-header.patch](framed-length-below-header.patch) | [ebb1887196](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ebb18871960a166b57163210b30f78d8c87bc418) | [e731da3cf1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e731da3cf16025002914b795d69b10cbb30d0de0) | Reset the connection on a framed packet length below 4 instead of hanging or desynchronizing. |
+| [map-entry-reserved-field.patch](map-entry-reserved-field.patch) | [f21e5cb13b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f21e5cb13b2f58caaaae4ee7c2d9d6ea9596083e) | [d477f7b91b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d477f7b91b186672d62d3c810ae80eb9a98d4941) | Send zeros, not stack bytes, in the unused field of map entry `0x0436`. |
+| [name-plate-lookup.patch](name-plate-lookup.patch) | [ad2c6075c8](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ad2c6075c80a55a58e6b9422d2c726daf8dda66d) | Already correct on purist | Window `0x12d` without a name plate no longer returns the cash shop. |
+| [swap-equipment-default-position.patch](swap-equipment-default-position.patch) | [685ebfa786](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/685ebfa78631c403dff69b770da044356e19560e) | Not needed on purist, code removed | The swap-equipment default no longer overwrites the friend-list plate size. |
+| [lapine-upgrade-failure-window.patch](lapine-upgrade-failure-window.patch) | [3e9d6ce8fe](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3e9d6ce8fed8bc3ee7e8e4d55a20150b6dee2c50) | Not needed on purist, code removed | A failed Lapine upgrade releases the upgrade box, not the synthesis box. |
+| [status-window-title-bar.patch](status-window-title-bar.patch) | [5da401b8f2](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5da401b8f2310de64669c67c808e6f54b09955d6) | [fb6d501f97](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/fb6d501f97a00064ebafeefac0a6fe040cc6dea6) (purist version) | A status window saved as a title bar reopens minimized. |
+| [option-window-request.patch](option-window-request.patch) | [07135fd6d1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/07135fd6d18e994eb171b7bc645f52ee575f43bb) | [7bde71e3b3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/7bde71e3b397f62d492367089af17231c2cbe85b) | A saved `OPTIONWNDINFO.SHOW` no longer requests the nonexistent window `0xd`. |
+| [effect-duration-bounds.patch](effect-duration-bounds.patch) | [e26afaf764](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e26afaf76438c52e774afc32b2d3354af6edc588) | [6095736a2c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6095736a2c7411b3313debda12a7a5cde5962e5f) | Effect IDs past the 2,385-row duration table no longer read past its end. |
+| [variable-packet-minimum.patch](variable-packet-minimum.patch) | [301c8c62a6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/301c8c62a62de03d0158857f1be0ca4ce218f3af) | [321284a664](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/321284a664e1a096687d2593fea91fbf787bb53c) | Reject variable-length packets shorter than their table minimum. |
+| [esc-list-empty-requests.patch](esc-list-empty-requests.patch) | [1150faabf3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1150faabf332e9d5bd99b9df76103db5333aaa2f) | [8cc259bdc5](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8cc259bdc52e6fed3054b6b06b4e790afa1fedf0) | A window request that leaves no window is not kept in the ESC window list. |
+
+ESC menu command `ESC_ID_1C1` (toggle of window `0xec`) is dead code on both
+branches and was left unchanged; see the candidate list in
+[purist-review.md](../purist-review.md).

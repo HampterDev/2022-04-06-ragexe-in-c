@@ -1,0 +1,119 @@
+From ebb18871960a166b57163210b30f78d8c87bc418 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 23:56:32 +0100
+Subject: [PATCH] Reject framed packet lengths shorter than the header
+
+rag_connection_get_packet takes the length of variable-size and unknown
+packets from bytes 2-3 without a lower bound. A length of 0 reports a
+packet without consuming any input. The game-mode loop ignores the empty
+packet and reads the same bytes forever, which hangs the client; the
+login loop dispatches the stale packet buffer again. Lengths 1-3 consume
+only part of the 4-byte header and desynchronize every later packet.
+The 2022-04-06 executable frames packets the same way.
+
+Treat a framed length below 4 as a protocol error and reset the
+connection queues, as both dispatchers already do for unknown packets.
+The call then reports no packet, which ends the receive loop.
+
+Validation: test_packets now covers framed lengths 0-3 for a known
+variable packet and for an unknown packet, the 4-byte minimum and the
+next packet after it; the new cases fail without the fix. Release build
+without warnings. The full behavioral suite passed on the completed
+series; the packet-dispatch digest is unchanged (32d81ae6406478e3).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/contents/rag_connection.c |  4 +++
+ tests/test_packets.c          | 48 ++++++++++++++++++++++++++++++++---
+ 2 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/src/contents/rag_connection.c b/src/contents/rag_connection.c
+index e1c6c4e..d65ac58 100644
+--- a/src/contents/rag_connection.c
++++ b/src/contents/rag_connection.c
+@@ -52,6 +52,10 @@ char rag_connection_get_packet(struct RagConnection *self, void *buf,
+         if (!byte_queue_peek(queue, 4, &head))
+             return 0;
+         len = (unsigned short)(head >> 16);
++        if (len < 4) {
++            connection_reset_queues(&self->base);
++            return 0;
++        }
+     }
+     if (!byte_queue_read(queue, len, buf))
+         return 0;
+diff --git a/tests/test_packets.c b/tests/test_packets.c
+index faee20e..475e7a1 100644
+--- a/tests/test_packets.c
++++ b/tests/test_packets.c
+@@ -8,17 +8,26 @@
+ struct PacketTable g_packetLengthMap;
+ void *g_packetKeys;
+ struct Session g_session1;
+-static int key_calls, flush_calls;
++static int key_calls, flush_calls, reset_calls;
+
+ struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
+         struct PacketLengthInfo *out, int id)
+ {
+     (void)table;
+-    out->kind = id == 0x1234 ? PACKET_KIND_FIXED : PACKET_KIND_VARIABLE;
++    out->kind = id == 0x1234 ? PACKET_KIND_FIXED : id == 0x7777 ? PACKET_KIND_UNKNOWN : PACKET_KIND_VARIABLE;
+     out->length = id == 0x1234 ? 6 : 4;
+     return out;
+ }
+
++void connection_reset_queues(struct Connection *connection)
++{
++    assert(connection == rag_connection_transport(rag_connection_instance()));
++    byte_queue_reset(&connection->recv_queue, CONNECTION_QUEUE_SIZE);
++    byte_queue_reset(&connection->send_queue, CONNECTION_QUEUE_SIZE);
++    byte_queue_reset(&connection->held, CONNECTION_QUEUE_SIZE);
++    ++reset_calls;
++}
++
+ int packet_keys_next(void *keys, int reseed)
+ {
+     (void)keys;
+@@ -108,6 +117,39 @@ int main(void)
+     assert(rag_connection_get_packet(connection, output, &length));
+     assert(length == sizeof packet && memcmp(packet, output, length) == 0);
+     assert(byte_queue_size(received) == 0);
+-    puts("packets: framing, partial reads, immutable send, holding and key sequence passed");
++    assert(reset_calls == 0);
++
++    {
++        static const unsigned char shortest[] = { 0x35, 0x12, 4, 0 };
++        unsigned char framed[4 + sizeof packet];
++        int framed_length, previous;
++
++        for (framed_length = 0; framed_length < 8; ++framed_length) {
++            framed[0] = (unsigned char)(framed_length < 4 ? 0x35 : 0x77);
++            framed[1] = (unsigned char)(framed_length < 4 ? 0x12 : 0x77);
++            framed[2] = (unsigned char)(framed_length % 4);
++            framed[3] = 0;
++            memcpy(framed + 4, packet, sizeof packet);
++            byte_queue_write(received, sizeof framed, framed);
++            byte_queue_write(&connection->base.send_queue, 2, packet);
++            previous = reset_calls;
++            length = 0xeeee;
++            assert(!rag_connection_get_packet(connection, output, &length));
++            assert(reset_calls == previous + 1 && length == 0xeeee);
++            assert(byte_queue_size(received) == 0);
++            assert(byte_queue_size(&connection->base.send_queue) == 0);
++            assert(byte_queue_size(&connection->base.held) == 0);
++            assert(!rag_connection_get_packet(connection, output, &length));
++            assert(reset_calls == previous + 1);
++        }
++        byte_queue_write(received, sizeof shortest, shortest);
++        byte_queue_write(received, sizeof packet, packet);
++        assert(rag_connection_get_packet(connection, output, &length));
++        assert(length == sizeof shortest && memcmp(shortest, output, length) == 0);
++        assert(rag_connection_get_packet(connection, output, &length));
++        assert(length == sizeof packet && memcmp(packet, output, length) == 0);
++        assert(byte_queue_size(received) == 0 && reset_calls == 8);
++    }
++    puts("packets: framing, short framed lengths, partial reads, immutable send, holding and key sequence passed");
+     return 0;
+ }

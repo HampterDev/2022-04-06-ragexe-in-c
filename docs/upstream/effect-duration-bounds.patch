@@ -1,0 +1,211 @@
+From e26afaf76438c52e774afc32b2d3354af6edc588 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 01:00:41 +0100
+Subject: [PATCH] Bound effect-duration lookups to the duration table
+
+game_actor_launch_effect accepts effect IDs up to 60000, and
+rag_effect_init reads g_effectDurations[effect_id] for every one, but
+the table has 2,385 rows. A server effect ID from 2385 to 60000 reads
+past the end of the table and gives the effect an arbitrary lifetime.
+rag_effect_init has no case at or above 2385, so these effects are
+inert apart from that lifetime. Lua-listed ground effect IDs in
+session_play_ground_skill_effect index the same table without a bound.
+The 2022-04-06 executable reads its table the same way.
+
+Add effect_duration(), which returns the table row for IDs inside the
+table. Any other ID gets its own value, as the unconfigured rows do:
+1,141 of the 2,385 rows, including the last unconfigured ones before
+the end, hold their own ID. Use it at both data-driven lookups.
+
+Validation: the new test_effect_launch_duration runs the extracted
+rag_effect_init against the real table for IDs inside it, at its end
+and up to 60000; it fails without the fix. The existing table checksum
+test is unchanged. Release build without warnings; the full behavioral
+suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/effects/durations.c                 |  7 ++++
+ src/effects/durations.h                 |  4 ++
+ src/effects/rag/rag_str_anim.c          |  2 +-
+ src/session/skill_effect.c              |  2 +-
+ tests/build.bat                         |  3 ++
+ tests/build_effect_launch_duration.bat  | 15 +++++++
+ tests/extract_effect_launch_duration.py | 16 +++++++
+ tests/test_effect_launch_duration.c     | 56 +++++++++++++++++++++++++
+ 8 files changed, 103 insertions(+), 2 deletions(-)
+ create mode 100644 tests/build_effect_launch_duration.bat
+ create mode 100644 tests/extract_effect_launch_duration.py
+ create mode 100644 tests/test_effect_launch_duration.c
+
+diff --git a/src/effects/durations.c b/src/effects/durations.c
+index 83b019e..ffe5021 100644
+--- a/src/effects/durations.c
++++ b/src/effects/durations.c
+@@ -201,3 +201,10 @@ const int g_effectDurations[EFFECT_DURATION_COUNT] = {
+     99999999, 99999999, 2366, 40, 100, 40, 2370, 2371, 2372, 300, 99999999, 99999999,
+     2376, 2377, 2378, 2379, 2380, 2381, 2382, 9999, 0,
+ };
++
++int effect_duration(int effect_id)
++{
++    if (effect_id >= 0 && effect_id < EFFECT_DURATION_COUNT)
++        return g_effectDurations[effect_id];
++    return effect_id;
++}
+diff --git a/src/effects/durations.h b/src/effects/durations.h
+index 83dab1f..9a89bab 100644
+--- a/src/effects/durations.h
++++ b/src/effects/durations.h
+@@ -5,4 +5,8 @@ enum { EFFECT_DURATION_COUNT = 2385 };
+
+ extern const int g_effectDurations[EFFECT_DURATION_COUNT];
+
++/* Frames an effect lasts. IDs past the table are unconfigured; like the
++   unconfigured IDs inside it, they last as many frames as their ID. */
++int effect_duration(int effect_id);
++
+ #endif
+diff --git a/src/effects/rag/rag_str_anim.c b/src/effects/rag/rag_str_anim.c
+index 8dc8cff..c226b2e 100644
+--- a/src/effects/rag/rag_str_anim.c
++++ b/src/effects/rag/rag_str_anim.c
+@@ -35,7 +35,7 @@ void rag_effect_init(struct RagEffect *self, struct RenderObject *master, int ef
+     self->master = master;
+     self->base.pos = master->pos;
+     self->master_roty = master->roty;
+-    rag_effect_set_duration(self, g_effectDurations[self->effect_id]);
++    rag_effect_set_duration(self, effect_duration(self->effect_id));
+     self->offset = offset;
+     sprintf(file_name, "");
+
+diff --git a/src/session/skill_effect.c b/src/session/skill_effect.c
+index 440c1cc..8d212e6 100644
+--- a/src/session/skill_effect.c
++++ b/src/session/skill_effect.c
+@@ -37,7 +37,7 @@ BYTE session_play_ground_skill_effect(struct Session *self, int skill, struct Ve
+             if (effect_mgr_is_registered(g_effectMgr, id))
+                 effect_mgr_spawn(g_effectMgr, 0, id, pos, 0, -1, 0, 0);
+             else
+-                game_mode_launch_dummy_effect(game_current_mode(), &pos, id, g_effectDurations[id] + 10, 0);
++                game_mode_launch_dummy_effect(game_current_mode(), &pos, id, effect_duration(id) + 10, 0);
+         }
+     }
+     return 1;
+diff --git a/tests/build.bat b/tests/build.bat
+index ecaad9f..8b1d1f0 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -850,3 +850,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_basic_info_restore.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_effect_launch_duration.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_effect_launch_duration.bat b/tests/build_effect_launch_duration.bat
+new file mode 100644
+index 0000000..5841b0b
+--- /dev/null
++++ b/tests/build_effect_launch_duration.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\effect_launch_duration"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_effect_launch_duration.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_effect_launch_duration.c" "%ROOT%\src\effects\durations.c" /Fe:test_effect_launch_duration.exe
++if errorlevel 1 (popd & exit /b 1)
++test_effect_launch_duration.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_effect_launch_duration.py b/tests/extract_effect_launch_duration.py
+new file mode 100644
+index 0000000..3037a2a
+--- /dev/null
++++ b/tests/extract_effect_launch_duration.py
+@@ -0,0 +1,16 @@
++"""Extract rag_effect_init (with its file prefix) so its duration lookup can run alone."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/effects/rag/rag_str_anim.c').read_text(encoding='utf-8')
++prefix_end = source.index('\nstatic int roll(')
++parts = [source[:prefix_end]]
++for signature in ['static int roll(', 'void rag_effect_init(']:
++    matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{]*\n\{', source, re.M))
++    assert len(matches) == 1, signature
++    start = matches[0].start()
++    parts.append(source[start:source.index('\n}', start) + 2])
++output.mkdir(parents=True, exist_ok=True)
++(output / 'effect_launch_duration.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_effect_launch_duration.c b/tests/test_effect_launch_duration.c
+new file mode 100644
+index 0000000..9e2acf6
+--- /dev/null
++++ b/tests/test_effect_launch_duration.c
+@@ -0,0 +1,56 @@
++#include "effect_launch_duration.inc"
++
++#include <assert.h>
++#include <stdio.h>
++
++/* Run the production rag_effect_init against the real duration table. Server
++   effect IDs reach it up to 60000; the table has EFFECT_DURATION_COUNT rows. */
++struct Session g_session1;
++static struct RagEffect effect;
++static int set_calls, last_duration, cases;
++static char loaded[64];
++
++void rag_effect_set_duration(struct RagEffect *self, int frame)
++{
++    assert(self == &effect);
++    last_duration = frame;
++    ++set_calls;
++}
++
++void rag_str_load(struct RagEffect *self, const char *name)
++{
++    assert(self == &effect && strlen(name) < sizeof loaded);
++    strcpy(loaded, name);
++}
++
++static void check(int id, int duration, const char *file)
++{
++    struct RenderObject master;
++    Vec3 offset = { 1.0f, 2.0f, 3.0f };
++    int previous = set_calls;
++
++    memset(&effect, 0, sizeof effect);
++    memset(&master, 0, sizeof master);
++    loaded[0] = 0;
++    rag_effect_init(&effect, &master, id, offset);
++    assert(set_calls == previous + 1 && effect.effect_id == id && effect.master == &master);
++    assert(last_duration == duration);
++    assert(strcmp(loaded, file) == 0);
++    ++cases;
++}
++
++int main(void)
++{
++    assert(EFFECT_DURATION_COUNT == 2385);
++    check(0, 50, "");
++    check(13, 9999, "SafetyWall.str");
++    check(2340, 2340, "");
++    check(2383, 9999, "");
++    check(2384, 0, "");
++    check(2385, 2385, "");
++    check(2386, 2386, "");
++    check(30000, 30000, "");
++    check(60000, 60000, "");
++    printf("Effect launch duration: %d cases passed (table rows in range; IDs past it last their ID).\n", cases);
++    return 0;
++}

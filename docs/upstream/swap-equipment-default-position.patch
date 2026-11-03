@@ -1,0 +1,143 @@
+From 685ebfa78631c403dff69b770da044356e19560e Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 00:02:08 +0100
+Subject: [PATCH] Set only the position in the swap-equipment default
+
+When no saved window layout exists, ui_window_mgr_set_default_rect_info
+passes the 8-byte POINT swap_equipment_pos to
+swap_equipment_wnd_info_make_default as a 16-byte WindowInfo. Its width
+and height writes (0x118, 0xa7) land on the next fields, plate_width
+and plate_height (0x97, 0x25), which the friend list uses to hit-test
+dropped party plates. The original executable keeps a full rectangle
+there; this decompilation stores only the saved X/Y, and nothing reads a
+swap-equipment width or height.
+
+Take a POINT and set only x and y.
+
+Validation: the new test_window_defaults applies the defaults to a whole
+window manager and checks the swap position and the plate size; the
+plate size was overwritten without the fix. Release build without
+warnings; the full behavioral suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/wndmgr/wnd_infos.c       |  6 ++--
+ tests/build.bat                 |  3 ++
+ tests/build_window_defaults.bat | 14 ++++++++++
+ tests/test_window_defaults.c    | 49 +++++++++++++++++++++++++++++++++
+ 4 files changed, 68 insertions(+), 4 deletions(-)
+ create mode 100644 tests/build_window_defaults.bat
+ create mode 100644 tests/test_window_defaults.c
+
+diff --git a/src/ui/wndmgr/wnd_infos.c b/src/ui/wndmgr/wnd_infos.c
+index da71e96..afd6979 100644
+--- a/src/ui/wndmgr/wnd_infos.c
++++ b/src/ui/wndmgr/wnd_infos.c
+@@ -361,10 +361,8 @@ void wnd_info_make_default140x30(struct WindowInfo *self)
+     frame_set(self, 0xb9, 0x12c, 0x8c, 0x1e);
+ }
+
+-void swap_equipment_wnd_info_make_default(struct WindowInfo *self)
++void swap_equipment_wnd_info_make_default(POINT *self)
+ {
+-    self->width = 0x118;
+-    self->height = 0xa7;
+     self->x = (g_renderer->width - 0x118) / 2;
+     self->y = (g_renderer->height - 0xb1) / 2;
+ }
+@@ -497,7 +495,7 @@ void ui_window_mgr_set_default_rect_info(struct UIWindowMgr *self)
+     self->macro_reporter_info.x = g_renderer->width - 0x103;
+     self->macro_reporter_info.y = (g_renderer->height - 0x134) / 2;
+     preview_equip_info_set_default(&self->preview_equip_pos);
+-    swap_equipment_wnd_info_make_default((struct WindowInfo *)&self->swap_equipment_pos);
++    swap_equipment_wnd_info_make_default(&self->swap_equipment_pos);
+
+     graphic_setting_wnd_info_make_default(&self->graphic_setting_info);
+     self->quest_display = 1;
+diff --git a/tests/build.bat b/tests/build.bat
+index 3001f62..fc2408c 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -838,3 +838,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_name_plate_lookup.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_window_defaults.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_window_defaults.bat b/tests/build_window_defaults.bat
+new file mode 100644
+index 0000000..3401a28
+--- /dev/null
++++ b/tests/build_window_defaults.bat
+@@ -0,0 +1,14 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\window_defaults"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++if not exist "%OUT%" mkdir "%OUT%"
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_window_defaults.c" "%ROOT%\src\ui\wndmgr\wnd_infos.c" /Fe:test_window_defaults.exe
++if errorlevel 1 (popd & exit /b 1)
++test_window_defaults.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/test_window_defaults.c b/tests/test_window_defaults.c
+new file mode 100644
+index 0000000..ff895c6
+--- /dev/null
++++ b/tests/test_window_defaults.c
+@@ -0,0 +1,49 @@
++#include "session/state.h"
++#include "render/renderer.h"
++#include "ui/window_manager_state.h"
++#include "ui/wndmgr/wndmgr.h"
++#include "session/session_jobs.h"
++
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Apply the production first-run window defaults to a whole window manager
++   and check that each default stays inside its own field. */
++struct Session g_session1;
++static struct Renderer renderer;
++struct Renderer *g_renderer = &renderer;
++static struct UIWindowMgr mgr;
++
++int session_get_drawn_job(struct Session *self)
++{
++    assert(self == &g_session1);
++    return 0;
++}
++
++BYTE session_is_fourth_job(struct Session *self, int job)
++{
++    assert(self == &g_session1 && job == 0);
++    return 0;
++}
++
++int main(void)
++{
++    renderer.width = 1024;
++    renderer.height = 768;
++    memset(&mgr, 0, sizeof mgr);
++    mgr.plate_width = 0x97;
++    mgr.plate_height = 0x25;
++    mgr.preview_equip_pos.x = mgr.preview_equip_pos.y = -1;
++    mgr.swap_equipment_pos.x = mgr.swap_equipment_pos.y = -1;
++
++    ui_window_mgr_set_default_rect_info(&mgr);
++
++    assert(mgr.swap_equipment_pos.x == (1024 - 0x118) / 2);
++    assert(mgr.swap_equipment_pos.y == (768 - 0xb1) / 2);
++    assert(mgr.plate_width == 0x97 && mgr.plate_height == 0x25);
++    assert(mgr.preview_equip_pos.x == (int)((1024 - 0x118) * 0.5f));
++    assert(mgr.preview_equip_pos.y == (int)((768 - 0x104) * 0.5f));
++    puts("Window defaults: swap-equipment position set; friend-list plate size preserved.");
++    return 0;
++}

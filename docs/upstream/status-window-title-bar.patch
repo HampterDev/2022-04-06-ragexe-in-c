@@ -1,0 +1,272 @@
+From 5da401b8f2310de64669c67c808e6f54b09955d6 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 00:05:57 +0100
+Subject: [PATCH] Keep a status window saved as a title bar minimized
+
+UI_MSG_SET_INFO for the status window first minimizes it when the saved
+height differs from the saved full height. It then applies the saved
+expanded state through ID_EXPAND, which resizes the window to 0x8d or
+0xf1. The window therefore always reopens at full height, and the saved
+title-bar state is never restored. The 2022-04-06 executable uses the
+same order.
+
+Minimize after applying the expanded state, so the title-bar toggle
+also records the expanded height to restore.
+
+Validation: the new test_status_wnd_info restores normal, expanded,
+minimized, minimized-expanded and invalid saved layouts through the
+extracted message handler, and checks a store-and-restore round trip;
+it fails without the fix. Release build without warnings; the full
+behavioral suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/character/status_wnd.c    |   6 +-
+ tests/build.bat                  |   3 +
+ tests/build_status_wnd_info.bat  |  15 ++++
+ tests/extract_status_wnd_info.py |  27 ++++++
+ tests/test_status_wnd_info.c     | 146 +++++++++++++++++++++++++++++++
+ 5 files changed, 194 insertions(+), 3 deletions(-)
+ create mode 100644 tests/build_status_wnd_info.bat
+ create mode 100644 tests/extract_status_wnd_info.py
+ create mode 100644 tests/test_status_wnd_info.c
+
+diff --git a/src/ui/character/status_wnd.c b/src/ui/character/status_wnd.c
+index 6853e04..db1c5ed 100644
+--- a/src/ui/character/status_wnd.c
++++ b/src/ui/character/status_wnd.c
+@@ -541,13 +541,13 @@ int ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
+             status_wnd_info_make_default(self->info);
+         info = self->info;
+         ui_status_wnd_send_msg(wnd, NULL, UI_MSG_RESIZE, 7, info->rect.width, info->org_height, 0);
+-        info = self->info;
+-        if (info->rect.height != info->org_height)
+-            ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
+         ui_status_wnd_send_msg(wnd, NULL, STATUS_MSG_REFRESH, 0, 0, 0, 0);
+         ui_frame_wnd_move(wnd, self->info->rect.x, self->info->rect.y);
+         self->expanded = self->info->expanded != 1;
+         ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_EXPAND, 0, 0, 0);
++        info = self->info;
++        if (info->rect.height != info->org_height)
++            ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
+         return 0;
+
+     case STATUS_MSG_REFRESH:
+diff --git a/tests/build.bat b/tests/build.bat
+index 606cc6d..55c4e1e 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -844,3 +844,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_lapine_upgrade_result.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_status_wnd_info.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_status_wnd_info.bat b/tests/build_status_wnd_info.bat
+new file mode 100644
+index 0000000..517b20f
+--- /dev/null
++++ b/tests/build_status_wnd_info.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\status_wnd_info"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_status_wnd_info.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_status_wnd_info.c" "%ROOT%\src\ui\wndmgr\wnd_infos.c" /Fe:test_status_wnd_info.exe
++if errorlevel 1 (popd & exit /b 1)
++test_status_wnd_info.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_status_wnd_info.py b/tests/extract_status_wnd_info.py
+new file mode 100644
+index 0000000..d1bfd3f
+--- /dev/null
++++ b/tests/extract_status_wnd_info.py
+@@ -0,0 +1,27 @@
++"""Extract the status window's layout state machine (info, expand, minimize)."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/ui/character/status_wnd.c').read_text(encoding='utf-8')
++prefix_end = source.index('\nint session_get_param(')
++parts = [source[:prefix_end]]
++declaration = re.findall(r'^int ui_status_wnd_send_msg\([^;{]*\);$', source, re.M)
++assert len(declaration) == 1
++parts.append(declaration[0])
++signatures = [
++    'void ui_status_wnd_store_info(',
++    'static void status_place_buttons(',
++    'static void status_toggle_expand(',
++    'static void status_plus(',
++    'static void status_on_command(',
++    'int ui_status_wnd_send_msg(',
++]
++for signature in signatures:
++    matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{]*\n\{', source, re.M))
++    assert len(matches) == 1, signature
++    start = matches[0].start()
++    parts.append(source[start:source.index('\n}', start) + 2])
++output.mkdir(parents=True, exist_ok=True)
++(output / 'status_wnd_info.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_status_wnd_info.c b/tests/test_status_wnd_info.c
+new file mode 100644
+index 0000000..b904589
+--- /dev/null
++++ b/tests/test_status_wnd_info.c
+@@ -0,0 +1,146 @@
++#include "render/renderer.h"
++#include "session/session_jobs.h"
++#include "status_wnd_info.inc"
++
++#include <assert.h>
++#include <stdio.h>
++
++/* Restore saved status-window layouts through the production UI_MSG_SET_INFO
++   path. A window saved as a title bar must come back as a title bar and
++   expand to the saved full height. */
++struct Session g_session1;
++struct UIWindowMgr g_windowMgr;
++struct SnapMgr g_snapMgr;
++static struct Renderer renderer;
++struct Renderer *g_renderer = &renderer;
++static struct UIBitmapButton plus_buttons[STAT_COUNT], trait_buttons[STAT_COUNT];
++static struct UIBmpTextButton expand_button;
++static int cases;
++
++int session_get_drawn_job(struct Session *self) { (void)self; return 0; }
++BYTE session_is_fourth_job(struct Session *self, int job) { (void)self; (void)job; return 0; }
++int session_get_param(struct Session *self, int type) { assert(self == &g_session1); (void)type; return 0; }
++
++void ui_window_resize_base(struct UIWindow *self, int width, int height)
++{
++    self->width = width;
++    self->height = height;
++}
++void ui_window_move_base(struct UIWindow *self, int x, int y) { self->x = x; self->y = y; }
++void ui_frame_wnd_move(struct UIWindow *self, int x, int y) { self->x = x; self->y = y; }
++void ui_window_invalidate_base(struct UIWindow *self) { (void)self; }
++BYTE ui_bitmap_button_set_bitmap(struct UIBitmapButton *self, const char *path, int state, int reserved)
++{
++    assert(self == &expand_button.bmp && path && state >= 0 && state <= 2 && reserved == 0);
++    return 1;
++}
++void ui_window_mgr_update_snap_rect(struct UIWindowMgr *self, struct UIWindow *wnd)
++{
++    assert(self == &g_windowMgr && wnd);
++}
++void ui_window_mgr_raise_window(struct UIWindowMgr *self, struct UIWindow *wnd)
++{
++    assert(self == &g_windowMgr && wnd);
++}
++void snap_mgr_move_chain(struct SnapMgr *self, struct UIWindow *wnd, int dx, int dy, int side)
++{
++    assert(self == &g_snapMgr && wnd && dx == 0 && dy != 0 && side == 3);
++}
++int ui_frame_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3,
++                          int val4)
++{
++    (void)self; (void)sender; (void)val1; (void)val2; (void)val3; (void)val4;
++    assert(msg == UI_MSG_RESIZE);
++    return 0;
++}
++BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
++{
++    (void)self; (void)window_id;
++    assert(!"not closed");
++    return 0;
++}
++struct Mode *client_current_mode(void) { assert(!"no stat requests"); return NULL; }
++int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
++{
++    (void)mode; (void)message; (void)a; (void)b; (void)c; (void)d;
++    assert(!"no stat requests");
++    return 0;
++}
++
++/* The state the status-window factory leaves before it sends UI_MSG_SET_INFO. */
++static void create(struct UIStatusWnd *self)
++{
++    int i;
++
++    memset(self, 0, sizeof *self);
++    self->frame.base.width = STATUS_WIDTH;
++    self->frame.base.height = STATUS_HEIGHT;
++    self->title_height = TITLE_HEIGHT;
++    for (i = 0; i < STAT_COUNT; i++) {
++        self->plus[i] = &plus_buttons[i];
++        self->trait_plus[i] = &trait_buttons[i];
++    }
++    self->expand = &expand_button;
++    self->full_height = self->frame.base.height;
++}
++
++static void restore(struct UIStatusWnd *self, struct StatusWndInfo *info)
++{
++    create(self);
++    ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_SET_INFO, (int)(INT_PTR)info, 0, 0, 0);
++}
++
++static void expect(struct UIStatusWnd *self, int x, int y, int height, int full_height, int expanded)
++{
++    assert(self->frame.base.x == x && self->frame.base.y == y);
++    assert(self->frame.base.width == STATUS_WIDTH && self->frame.base.height == height);
++    assert(self->full_height == full_height && self->expanded == expanded);
++    ++cases;
++}
++
++static void toggle_title_bar(struct UIStatusWnd *self)
++{
++    ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
++}
++
++int main(void)
++{
++    static struct UIStatusWnd wnd;
++    struct StatusWndInfo info;
++
++    renderer.width = 1024;
++    renderer.height = 768;
++
++    info = (struct StatusWndInfo){ { 10, 20, STATUS_WIDTH, STATUS_HEIGHT }, STATUS_HEIGHT, 1, 0 };
++    restore(&wnd, &info);
++    expect(&wnd, 10, 20, STATUS_HEIGHT, STATUS_HEIGHT, 0);
++
++    info = (struct StatusWndInfo){ { 30, 40, STATUS_WIDTH, STATUS_HEIGHT_EXPANDED }, STATUS_HEIGHT_EXPANDED, 1, 1 };
++    restore(&wnd, &info);
++    expect(&wnd, 30, 40, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
++
++    info = (struct StatusWndInfo){ { 50, 60, STATUS_WIDTH, TITLE_HEIGHT }, STATUS_HEIGHT, 1, 0 };
++    restore(&wnd, &info);
++    expect(&wnd, 50, 60, TITLE_HEIGHT, STATUS_HEIGHT, 0);
++    toggle_title_bar(&wnd);
++    expect(&wnd, 50, 60, STATUS_HEIGHT, STATUS_HEIGHT, 0);
++
++    info = (struct StatusWndInfo){ { 70, 80, STATUS_WIDTH, TITLE_HEIGHT }, STATUS_HEIGHT_EXPANDED, 1, 1 };
++    restore(&wnd, &info);
++    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
++    ui_status_wnd_store_info(&wnd.frame.base);
++    assert(info.rect.height == TITLE_HEIGHT && info.org_height == STATUS_HEIGHT_EXPANDED && info.expanded == 1);
++    restore(&wnd, &info);
++    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
++    toggle_title_bar(&wnd);
++    expect(&wnd, 70, 80, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
++    toggle_title_bar(&wnd);
++    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
++
++    info = (struct StatusWndInfo){ { 90, 100, 0x100, TITLE_HEIGHT }, STATUS_HEIGHT, 1, 0 };
++    restore(&wnd, &info);
++    expect(&wnd, 0xb9, 0x12c, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
++
++    printf("Status window info: %d cases passed (saved title bar restored, expanded height kept).\n", cases);
++    return 0;
++}

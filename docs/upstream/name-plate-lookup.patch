@@ -1,0 +1,186 @@
+From ad2c6075c80a55a58e6b9422d2c726daf8dda66d Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 00:00:20 +0100
+Subject: [PATCH] Return no window for a name-plate lookup without plates
+
+ui_window_mgr_get_window(0x12d) returns the first party name plate, but
+when there is no plate it returns the cash-shop window. The 2022-04-06
+executable does the same: its jump table sends 0x12d into the code for
+0x13e, as if a break were missing. The cash shop is never a name plate,
+and a generic ui_window_mgr_post_quit1(0x12d) would then quit the cash
+shop while cash_shop_wnd still points to it. No current caller looks up
+0x12d, since plate menus find their owner through
+ui_window_mgr_find_by_key, so current behavior is unchanged.
+
+Return NULL when there is no plate.
+
+Validation: the new test_name_plate_lookup runs the extracted lookup with
+and without plates and with and without an open cash shop; it fails
+without the fix. Release build without warnings; the full behavioral
+suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/wndmgr/window_slots.c       |  2 +-
+ tests/build.bat                    |  3 ++
+ tests/build_name_plate_lookup.bat  | 15 ++++++
+ tests/extract_name_plate_lookup.py | 14 ++++++
+ tests/test_name_plate_lookup.c     | 81 ++++++++++++++++++++++++++++++
+ 5 files changed, 114 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_name_plate_lookup.bat
+ create mode 100644 tests/extract_name_plate_lookup.py
+ create mode 100644 tests/test_name_plate_lookup.c
+
+diff --git a/src/ui/wndmgr/window_slots.c b/src/ui/wndmgr/window_slots.c
+index aabb4b6..393c29e 100644
+--- a/src/ui/wndmgr/window_slots.c
++++ b/src/ui/wndmgr/window_slots.c
+@@ -56,7 +56,7 @@ struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_i
+     case 0x12d:
+         if (self->plates.size)
+             return *LIST_VALUE(self->plates.head->next, struct UIWindow *);
+-        return self->cash_shop_wnd;
++        return NULL;
+     case 0x13b: return self->tipbox_wnd;
+     case 0x13e: return self->cash_shop_wnd;
+     case 0x145: return self->rpimage_wnd2;
+diff --git a/tests/build.bat b/tests/build.bat
+index c14da94..3001f62 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -835,3 +835,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_map_enter_packet.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_name_plate_lookup.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_name_plate_lookup.bat b/tests/build_name_plate_lookup.bat
+new file mode 100644
+index 0000000..a353b03
+--- /dev/null
++++ b/tests/build_name_plate_lookup.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\name_plate_lookup"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_name_plate_lookup.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_name_plate_lookup.c" "%ROOT%\src\std\list.c" /Fe:test_name_plate_lookup.exe
++if errorlevel 1 (popd & exit /b 1)
++test_name_plate_lookup.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_name_plate_lookup.py b/tests/extract_name_plate_lookup.py
+new file mode 100644
+index 0000000..98d7515
+--- /dev/null
++++ b/tests/extract_name_plate_lookup.py
+@@ -0,0 +1,14 @@
++"""Extract the window manager's ID lookup so the name-plate case can run alone."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/ui/wndmgr/window_slots.c').read_text(encoding='utf-8')
++signature = 'struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int window_id)'
++matches = list(re.finditer(r'^' + re.escape(signature) + r'\n\{', source, re.M))
++assert len(matches) == 1, signature
++start = matches[0].start()
++function = source[start:source.index('\n}', start) + 2]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'name_plate_lookup.inc').write_text(function + '\n', encoding='utf-8')
+diff --git a/tests/test_name_plate_lookup.c b/tests/test_name_plate_lookup.c
+new file mode 100644
+index 0000000..0cd7da2
+--- /dev/null
++++ b/tests/test_name_plate_lookup.c
+@@ -0,0 +1,81 @@
++#include "ui/window_manager_state.h"
++#include "ui/wndmgr/wndmgr.h"
++#include "replay/replay.h"
++#include "std/list.h"
++#include "std/tree.h"
++
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++/* Run the production window-ID lookup: window 0x12d is the first party name
++   plate, and the cash shop is reachable only through its own ID 0x13e. */
++int g_replayPlaying;
++static struct UIWindowMgr mgr;
++static struct WmWindowEntry registered;
++static int tree_lookups, cases;
++
++void *mem_alloc(size_t size)
++{
++    void *p = malloc(size);
++    assert(p);
++    return p;
++}
++
++void mem_free(void *p)
++{
++    free(p);
++}
++
++int tree_less_int(const void *a, const void *b)
++{
++    return *(const int *)a < *(const int *)b;
++}
++
++void *tree_find(const struct Tree *tree, const void *key, TreeLessFn less)
++{
++    assert(tree == &mgr.windows_by_id && less == tree_less_int);
++    ++tree_lookups;
++    return registered.wnd && registered.id == *(const int *)key ? &registered : NULL;
++}
++
++#include "name_plate_lookup.inc"
++
++static void expect(int id, struct UIWindow *expected)
++{
++    assert(ui_window_mgr_get_window(&mgr, id) == expected);
++    ++cases;
++}
++
++int main(void)
++{
++    struct UIWindow cash_shop = {0}, first_plate = {0}, second_plate = {0}, other = {0};
++    struct UIWindow *plate;
++
++    list_init(&mgr.plates);
++    expect(0x12d, NULL);
++    expect(0x13e, NULL);
++
++    mgr.cash_shop_wnd = &cash_shop;
++    expect(0x12d, NULL);
++    expect(0x13e, &cash_shop);
++
++    plate = &first_plate;
++    list_push_back(&mgr.plates, &plate, sizeof plate);
++    plate = &second_plate;
++    list_push_back(&mgr.plates, &plate, sizeof plate);
++    expect(0x12d, &first_plate);
++    expect(0x13e, &cash_shop);
++
++    list_clear(&mgr.plates, NULL);
++    expect(0x12d, NULL);
++
++    tree_lookups = 0;
++    registered.id = 0x154;
++    registered.wnd = &other;
++    expect(0x154, &other);
++    assert(tree_lookups == 1);
++    list_free(&mgr.plates, NULL);
++    printf("Name plate lookup: %d cases passed (first plate or none; cash shop only as 0x13e).\n", cases);
++    return 0;
++}

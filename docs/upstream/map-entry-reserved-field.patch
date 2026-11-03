@@ -1,0 +1,255 @@
+From f21e5cb13b2f58caaaae4ee7c2d9d6ea9596083e Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 23:58:26 +0100
+Subject: [PATCH] Zero the reserved field of the map-entry packet
+
+enter_map builds CZ_ENTER2 (0x0436) on the stack and never assigns the
+four bytes after the auth code, so the login path sends whatever the
+stack held there. The 2022-04-06 executable also leaves them unset, and
+Hercules reads the client tick from offset 18 and skips offset 14, so
+the field has no known meaning. The game-mode sender in
+mode_connection.c already zero-initializes its copy of the packet.
+
+Zero-initialize the packet and name the field reserved.
+
+Validation: the new test_map_enter_packet runs the extracted enter_map
+over stack memory filled with three marker values and checks all 23
+bytes sent; offset 14 was nonzero without the fix. Release build without
+warnings; the full behavioral suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/login/login_states.c          |   4 +-
+ tests/build.bat                   |   3 +
+ tests/build_map_enter_packet.bat  |  15 +++
+ tests/extract_map_enter_packet.py |  14 +++
+ tests/test_map_enter_packet.c     | 148 ++++++++++++++++++++++++++++++
+ 5 files changed, 182 insertions(+), 2 deletions(-)
+ create mode 100644 tests/build_map_enter_packet.bat
+ create mode 100644 tests/extract_map_enter_packet.py
+ create mode 100644 tests/test_map_enter_packet.c
+
+diff --git a/src/login/login_states.c b/src/login/login_states.c
+index f8635d2..3e84ddd 100644
+--- a/src/login/login_states.c
++++ b/src/login/login_states.c
+@@ -489,10 +489,10 @@ static void enter_map(struct LoginMode *self)
+         DWORD aid;
+         DWORD gid;
+         DWORD authCode;
+-        DWORD unset;
++        DWORD reserved;
+         DWORD clientTime;
+         BYTE sex;
+-    } pkt;
++    } pkt = {0};
+ #pragma pack(pop)
+     char path[0x58];
+     HKEY key;
+diff --git a/tests/build.bat b/tests/build.bat
+index 8cbf0af..c14da94 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -832,3 +832,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_screenshot_save.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_map_enter_packet.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_map_enter_packet.bat b/tests/build_map_enter_packet.bat
+new file mode 100644
+index 0000000..c0a5f7e
+--- /dev/null
++++ b/tests/build_map_enter_packet.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\map_enter_packet"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_map_enter_packet.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_map_enter_packet.c" /Fe:test_map_enter_packet.exe
++if errorlevel 1 (popd & exit /b 1)
++test_map_enter_packet.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_map_enter_packet.py b/tests/extract_map_enter_packet.py
+new file mode 100644
+index 0000000..f3c3289
+--- /dev/null
++++ b/tests/extract_map_enter_packet.py
+@@ -0,0 +1,14 @@
++"""Extract the login-mode map-entry sender so its packet bytes can be checked."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/login/login_states.c').read_text(encoding='utf-8')
++signature = 'static void enter_map(struct LoginMode *self)'
++matches = list(re.finditer(r'^' + re.escape(signature) + r'\n\{', source, re.M))
++assert len(matches) == 1, signature
++start = matches[0].start()
++function = source[start:source.index('\n}', start) + 2]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'map_enter_packet.inc').write_text(function + '\n', encoding='utf-8')
+diff --git a/tests/test_map_enter_packet.c b/tests/test_map_enter_packet.c
+new file mode 100644
+index 0000000..0998b92
+--- /dev/null
++++ b/tests/test_map_enter_packet.c
+@@ -0,0 +1,148 @@
++#include "session/state.h"
++#include "login/loginmode.h"
++#include "contents/connection_api.h"
++#include "web/service_managers.h"
++#include "security/gameguard.h"
++#include "ui/net/packet_crypt.h"
++#include "platform/client_config.h"
++#include "login/zone_addr.h"
++#include "session/session_talk.h"
++#include "session/option_pairs.h"
++
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Run the production login-mode sender of map entry 0x0436 against stack
++   memory filled with a marker, and check every byte that reaches the wire. */
++struct Session g_session1;
++struct CharUserDataMgr *g_charUserDataMgr;
++struct GameGuard *g_gameGuard;
++struct PacketKeys *g_packetKeys;
++struct ServerAddress g_mapServerIp;
++const char *g_registryKeyPath = "Software\\MapEnterPacketTest";
++
++static struct RagConnection *connection = (struct RagConnection *)&g_mapServerIp;
++static unsigned char sent[64];
++static int sent_length, sends, hold_sends, wait_windows, cases;
++
++static DWORD test_time(void) { return 0x13579bdf; }
++static LONG test_reg_create(HKEY key, const char *path, DWORD reserved, char *cls, DWORD options, REGSAM sam,
++                            const SECURITY_ATTRIBUTES *security, PHKEY result, DWORD *disposition)
++{
++    (void)key; (void)path; (void)reserved; (void)cls; (void)options; (void)sam; (void)security;
++    *result = (HKEY)0x1234;
++    *disposition = REG_OPENED_EXISTING_KEY;
++    return ERROR_SUCCESS;
++}
++static LONG test_reg_set(HKEY key, const char *name, DWORD reserved, DWORD type, const BYTE *data, DWORD size)
++{
++    (void)key; (void)name; (void)reserved; (void)type; (void)data; (void)size;
++    return ERROR_SUCCESS;
++}
++static LONG test_reg_close(HKEY key) { (void)key; return ERROR_SUCCESS; }
++
++void char_user_data_load(struct CharUserDataMgr *self, int aid, int gid, const char *world)
++{
++    (void)self; (void)aid; (void)gid; (void)world;
++}
++struct Connection *rag_connection_transport(struct RagConnection *c) { return (struct Connection *)c; }
++struct RagConnection *rag_connection_instance(void) { return connection; }
++char connection_connect(struct Connection *c, const struct ServerAddress *address)
++{
++    assert(c == (struct Connection *)connection && address == &g_mapServerIp);
++    return 1;
++}
++void gameguard_on_connect(struct GameGuard *guard) { (void)guard; }
++int packet_keys_next(struct PacketKeys *self, int mode) { (void)self; (void)mode; return 0; }
++int session_get_sex(struct Session *self) { assert(self == &g_session1); return 1; }
++void session_set_pair(struct Session *session, int key, long long value)
++{
++    assert(session == &g_session1 && key == 0x11 && value == 1);
++}
++void connection_set_hold_sends(struct Connection *c, char hold)
++{
++    assert(c == (struct Connection *)connection && hold == 1);
++    ++hold_sends;
++}
++int rag_connection_get_packet_length(struct RagConnection *c, int id)
++{
++    assert(c == connection && id == 0x436);
++    return 23;
++}
++char rag_connection_send_packet(struct RagConnection *c, int len, const void *packet)
++{
++    assert(c == connection && len > 0 && len <= (int)sizeof sent);
++    memcpy(sent, packet, (size_t)len);
++    sent_length = len;
++    ++sends;
++    return 1;
++}
++
++static void default_wallpaper(struct LoginMode *self) { (void)self; }
++static void connect_failed(struct LoginMode *self) { (void)self; assert(!"connection succeeds"); }
++static void *wait_window(int msg, int a)
++{
++    assert(msg == 0x7a && a == 0x10);
++    ++wait_windows;
++    return NULL;
++}
++
++#define timeGetTime test_time
++#define RegCreateKeyExA test_reg_create
++#define RegSetValueExA test_reg_set
++#define RegCloseKey test_reg_close
++#include "map_enter_packet.inc"
++#undef timeGetTime
++#undef RegCreateKeyExA
++#undef RegSetValueExA
++#undef RegCloseKey
++
++static __declspec(noinline) void fill_stack(unsigned char marker)
++{
++    volatile unsigned char area[16384];
++    size_t i;
++
++    for (i = 0; i < sizeof area; ++i)
++        area[i] = marker;
++}
++
++static __declspec(noinline) void send_map_entry(struct LoginMode *mode)
++{
++    enter_map(mode);
++}
++
++static DWORD le32(int offset)
++{
++    return (DWORD)sent[offset] | (DWORD)sent[offset + 1] << 8 | (DWORD)sent[offset + 2] << 16
++           | (DWORD)sent[offset + 3] << 24;
++}
++
++static void check_entry(unsigned char marker)
++{
++    static struct LoginMode mode;
++    int previous = sends;
++
++    memset(sent, 0xee, sizeof sent);
++    fill_stack(marker);
++    send_map_entry(&mode);
++    assert(sends == previous + 1 && sent_length == 23 && mode.base.connected == 1);
++    assert(sent[0] == 0x36 && sent[1] == 0x04);
++    assert(le32(2) == 0x01020304 && le32(6) == 0x0a0b0c0d && le32(10) == 0x55667788);
++    assert(le32(14) == 0);
++    assert(le32(18) == 0x13579bdf && sent[22] == 1);
++    ++cases;
++}
++
++int main(void)
++{
++    g_session1.ownAid = 0x01020304;
++    g_session1.ownGid = 0x0a0b0c0d;
++    g_session1.authCode = 0x55667788;
++    check_entry(0xa5);
++    check_entry(0x5a);
++    check_entry(0xff);
++    assert(hold_sends == cases && wait_windows == cases);
++    printf("Map entry packet: %d cases passed (all 23 bytes defined, reserved field zero).\n", cases);
++    return 0;
++}

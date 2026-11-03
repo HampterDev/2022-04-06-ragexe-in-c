@@ -1,0 +1,188 @@
+From 3e9d6ce8fed8bc3ee7e8e4d55a20150b6dee2c50 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 00:04:01 +0100
+Subject: [PATCH] Release the Lapine upgrade box after a failed upgrade
+
+On a failed ZC_ACK_RANDOM_UPGRADE_ITEM result,
+game_mode_zc_ack_random_upgrade_item looks up the Lapine synthesis
+window (0x122) instead of the upgrade window (0x12e) before calling
+lapine_upgrade_set_waiting. With only the upgrade box open, the normal
+case, the box stays waiting with its button disabled until it is
+closed. If a synthesis box were open, the call would write a LapineBox
+through the LapineUpgradeBox layout. The 2022-04-06 executable has the
+same lookup; the success branch already uses 0x12e.
+
+Look up the upgrade window.
+
+Validation: the new test_lapine_upgrade_result runs the extracted handler
+for every combination of open windows with failing and successful
+results; it fails without the fix. Release build without warnings; the
+full behavioral suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/packets_inventory.c           |  2 +-
+ tests/build.bat                        |  3 +
+ tests/build_lapine_upgrade_result.bat  | 15 +++++
+ tests/extract_lapine_upgrade_result.py | 17 ++++++
+ tests/test_lapine_upgrade_result.c     | 80 ++++++++++++++++++++++++++
+ 5 files changed, 116 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_lapine_upgrade_result.bat
+ create mode 100644 tests/extract_lapine_upgrade_result.py
+ create mode 100644 tests/test_lapine_upgrade_result.c
+
+diff --git a/src/game/packets_inventory.c b/src/game/packets_inventory.c
+index 36defbd..67b39a2 100644
+--- a/src/game/packets_inventory.c
++++ b/src/game/packets_inventory.c
+@@ -132,7 +132,7 @@ void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result
+
+     (void)self;
+     if ((unsigned short)result != 0) {
+-        wnd = ui_window_find(WID_RANDOM_COMBINE);
++        wnd = ui_window_find(WID_RANDOM_UPGRADE);
+         if (wnd != 0)
+             lapine_upgrade_set_waiting(wnd, 0);
+     } else if (ui_window_find(WID_RANDOM_UPGRADE) != 0) {
+diff --git a/tests/build.bat b/tests/build.bat
+index fc2408c..606cc6d 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -841,3 +841,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_window_defaults.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_lapine_upgrade_result.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_lapine_upgrade_result.bat b/tests/build_lapine_upgrade_result.bat
+new file mode 100644
+index 0000000..96aef8e
+--- /dev/null
++++ b/tests/build_lapine_upgrade_result.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\lapine_upgrade_result"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_lapine_upgrade_result.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_lapine_upgrade_result.c" /Fe:test_lapine_upgrade_result.exe
++if errorlevel 1 (popd & exit /b 1)
++test_lapine_upgrade_result.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_lapine_upgrade_result.py b/tests/extract_lapine_upgrade_result.py
+new file mode 100644
+index 0000000..6009e60
+--- /dev/null
++++ b/tests/extract_lapine_upgrade_result.py
+@@ -0,0 +1,17 @@
++"""Extract the Lapine upgrade result handler and the window IDs it uses."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/game/packets_inventory.c').read_text(encoding='utf-8')
++ids = list(re.finditer(r'^enum \{\n(?:    WID_[A-Z_]+ = 0x[0-9a-f]+,\n)+\};\n', source, re.M))
++assert len(ids) == 1
++signature = 'void game_mode_zc_ack_random_upgrade_item(struct GameMode *self, unsigned result)'
++matches = list(re.finditer(r'^' + re.escape(signature) + r'\n\{', source, re.M))
++assert len(matches) == 1, signature
++start = matches[0].start()
++function = source[start:source.index('\n}', start) + 2]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'lapine_upgrade_result.inc').write_text(ids[0].group(0) + '\n' + function + '\n',
++                                                  encoding='utf-8')
+diff --git a/tests/test_lapine_upgrade_result.c b/tests/test_lapine_upgrade_result.c
+new file mode 100644
+index 0000000..6234cd4
+--- /dev/null
++++ b/tests/test_lapine_upgrade_result.c
+@@ -0,0 +1,80 @@
++#include "game/packet_handlers.h"
++#include "ui/window_access.h"
++#include "ui/window_manager_state.h"
++#include "contents/lapine_upgrade.h"
++
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Run the production ZC_ACK_RANDOM_UPGRADE_ITEM handler against controlled
++   synthesis (0x122) and upgrade (0x12e) windows. */
++struct UIWindowMgr g_windowMgr;
++static struct UIWindow synthesis_box, upgrade_box;
++static struct UIWindow *open_synthesis, *open_upgrade;
++static void *waiting_window;
++static int waiting_calls, waiting_value, quit_calls, quit_id, cases;
++
++struct UIWindow *ui_window_find(int id)
++{
++    if (id == 0x122)
++        return open_synthesis;
++    if (id == 0x12e)
++        return open_upgrade;
++    assert(!"only the Lapine windows are looked up");
++    return NULL;
++}
++
++void lapine_upgrade_set_waiting(struct LapineUpgradeBox *self, char on)
++{
++    waiting_window = self;
++    waiting_value = on;
++    ++waiting_calls;
++}
++
++BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
++{
++    assert(self == &g_windowMgr);
++    quit_id = window_id;
++    ++quit_calls;
++    return 1;
++}
++
++#include "lapine_upgrade_result.inc"
++
++static void check(int synthesis, int upgrade, unsigned result, struct UIWindow *expected_waiting, int expected_quit)
++{
++    open_synthesis = synthesis ? &synthesis_box : NULL;
++    open_upgrade = upgrade ? &upgrade_box : NULL;
++    waiting_window = NULL;
++    waiting_calls = quit_calls = quit_id = 0;
++    waiting_value = -1;
++    game_mode_zc_ack_random_upgrade_item(NULL, result);
++    if (expected_waiting) {
++        assert(waiting_calls == 1 && waiting_window == expected_waiting && waiting_value == 0);
++    } else {
++        assert(waiting_calls == 0);
++    }
++    if (expected_quit) {
++        assert(quit_calls == 1 && quit_id == expected_quit);
++    } else {
++        assert(quit_calls == 0);
++    }
++    ++cases;
++}
++
++int main(void)
++{
++    check(0, 1, 1, &upgrade_box, 0);
++    check(1, 1, 1, &upgrade_box, 0);
++    check(1, 0, 1, NULL, 0);
++    check(0, 0, 1, NULL, 0);
++    check(0, 1, 0xffff, &upgrade_box, 0);
++    check(0, 1, 0, NULL, 0x12e);
++    check(1, 1, 0, NULL, 0x12e);
++    check(1, 0, 0, NULL, 0);
++    check(0, 1, 0x10000, NULL, 0x12e);
++    printf("Lapine upgrade result: %d cases passed (failure releases the upgrade box, success closes it).\n",
++           cases);
++    return 0;
++}

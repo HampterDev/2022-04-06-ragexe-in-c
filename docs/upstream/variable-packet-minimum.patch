@@ -1,0 +1,92 @@
+From 301c8c62a62de03d0158857f1be0ca4ce218f3af Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 01:03:50 +0100
+Subject: [PATCH] Reject variable packets shorter than their table minimum
+
+Each variable-length row of the packet table records the packet's
+minimum size. The 2022-04-06 executable registers the same pairs (for
+example 0x0835 as -1 with minimum 15), and the minimums match the fixed
+part of the packets: 47 for AC_ACCEPT_LOGIN, 32 for ZC_WHISPER, 74 for
+ZC_CLANINFO, 84 for ZC_NOTIFY_STANDENTRY11 without its name. No variable
+row has a minimum below 4. rag_connection_get_packet ignored the
+minimum, so a framed length from 4 up to the minimum reached the
+handler, which then read the missing fields from stale g_packetBuffer
+bytes.
+
+Treat such a packet like a framed length below 4: reset the connection
+queues and report no packet. Packets without a table row have no known
+minimum and keep only the 4-byte check.
+
+Validation: test_packets covers framed lengths 4-7 for a variable
+packet with an 8-byte minimum, the minimum itself, and an unknown
+packet of 5 bytes; the new cases fail without the fix. Release build
+without warnings. The full behavioral suite passed on the completed
+series; the packet-dispatch digest is unchanged (32d81ae6406478e3),
+since the dispatch test does not frame packets.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/contents/rag_connection.c |  2 +-
+ tests/test_packets.c          | 29 +++++++++++++++++++++++++++--
+ 2 files changed, 28 insertions(+), 3 deletions(-)
+
+diff --git a/src/contents/rag_connection.c b/src/contents/rag_connection.c
+index d65ac58..85645cf 100644
+--- a/src/contents/rag_connection.c
++++ b/src/contents/rag_connection.c
+@@ -52,7 +52,7 @@ char rag_connection_get_packet(struct RagConnection *self, void *buf,
+         if (!byte_queue_peek(queue, 4, &head))
+             return 0;
+         len = (unsigned short)(head >> 16);
+-        if (len < 4) {
++        if (len < 4 || (info.kind == PACKET_KIND_VARIABLE && len < info.length)) {
+             connection_reset_queues(&self->base);
+             return 0;
+         }
+diff --git a/tests/test_packets.c b/tests/test_packets.c
+index 475e7a1..dc8789b 100644
+--- a/tests/test_packets.c
++++ b/tests/test_packets.c
+@@ -15,7 +15,7 @@ struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
+ {
+     (void)table;
+     out->kind = id == 0x1234 ? PACKET_KIND_FIXED : id == 0x7777 ? PACKET_KIND_UNKNOWN : PACKET_KIND_VARIABLE;
+-    out->length = id == 0x1234 ? 6 : 4;
++    out->length = id == 0x1234 ? 6 : id == 0x1236 ? 8 : 4;
+     return out;
+ }
+
+@@ -150,6 +150,31 @@ int main(void)
+         assert(length == sizeof packet && memcmp(packet, output, length) == 0);
+         assert(byte_queue_size(received) == 0 && reset_calls == 8);
+     }
+-    puts("packets: framing, short framed lengths, partial reads, immutable send, holding and key sequence passed");
++
++    {
++        /* 0x1236 is variable with an 8-byte table minimum; 0x7777 has no row. */
++        static const unsigned char minimum[] = { 0x36, 0x12, 8, 0, 1, 2, 3, 4 };
++        static const unsigned char unknown[] = { 0x77, 0x77, 5, 0, 9 };
++        unsigned char framed[8];
++        int framed_length, previous;
++
++        for (framed_length = 4; framed_length < 8; ++framed_length) {
++            memcpy(framed, minimum, sizeof framed);
++            framed[2] = (unsigned char)framed_length;
++            byte_queue_write(received, sizeof framed, framed);
++            previous = reset_calls;
++            length = 0xeeee;
++            assert(!rag_connection_get_packet(connection, output, &length));
++            assert(reset_calls == previous + 1 && length == 0xeeee && byte_queue_size(received) == 0);
++        }
++        byte_queue_write(received, sizeof minimum, minimum);
++        byte_queue_write(received, sizeof unknown, unknown);
++        assert(rag_connection_get_packet(connection, output, &length));
++        assert(length == sizeof minimum && memcmp(minimum, output, length) == 0);
++        assert(rag_connection_get_packet(connection, output, &length));
++        assert(length == sizeof unknown && memcmp(unknown, output, length) == 0);
++        assert(byte_queue_size(received) == 0 && reset_calls == 12);
++    }
++    puts("packets: framing, short framed lengths, table minimums, partial reads, immutable send, holding and key sequence passed");
+     return 0;
+ }

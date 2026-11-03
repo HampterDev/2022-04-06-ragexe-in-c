@@ -1,0 +1,206 @@
+From 07135fd6d18e994eb171b7bc645f52ee575f43bb Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 00:07:40 +0100
+Subject: [PATCH] Stop requesting the nonexistent option window 0xd
+
+When the saved OPTIONWNDINFO.SHOW is set, make_basic_info requests
+window 0xd. No factory creates 0xd, and neither does the 2022-04-06
+executable's MakeWindow, where 0xd takes the default branch. This client
+never sets the flag to 1; it only reads it and writes it back.
+ui_window_mgr_make_window adds the ID to the ESC window list before it
+looks for a factory, and ui_window_mgr_post_quit1 forgets only windows
+it closed, so 0xd stays in the list. Once it is the first entry, ESC
+tries to close it, fails, and opens the ESC menu instead of cancelling
+active navigation guidance (guideState == 2).
+
+Drop the request. The saved value is still read and written unchanged.
+
+Validation: the new test_basic_info_restore runs the extracted factory
+over the saved shown flags and checks the windows it reopens; it fails
+without the fix. Release build without warnings; the full behavioral
+suite passed on the completed series.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/wndmgr/make_window_character.c |   2 -
+ tests/build.bat                       |   3 +
+ tests/build_basic_info_restore.bat    |  15 ++++
+ tests/extract_basic_info_restore.py   |  14 ++++
+ tests/test_basic_info_restore.c       | 100 ++++++++++++++++++++++++++
+ 5 files changed, 132 insertions(+), 2 deletions(-)
+ create mode 100644 tests/build_basic_info_restore.bat
+ create mode 100644 tests/extract_basic_info_restore.py
+ create mode 100644 tests/test_basic_info_restore.c
+
+diff --git a/src/ui/wndmgr/make_window_character.c b/src/ui/wndmgr/make_window_character.c
+index f76504d..cf250d5 100644
+--- a/src/ui/wndmgr/make_window_character.c
++++ b/src/ui/wndmgr/make_window_character.c
+@@ -63,8 +63,6 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self)
+         ui_window_mgr_make_window(self, 0xa);
+     if (self->status_info.show)
+         ui_window_mgr_make_window(self, 0xb);
+-    if (self->option_info.show)
+-        ui_window_mgr_make_window(self, 0xd);
+     if (self->skill_list_info.show)
+         ui_window_mgr_make_window(self, 0x25);
+     if (self->quest_info.show)
+diff --git a/tests/build.bat b/tests/build.bat
+index 55c4e1e..ecaad9f 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -847,3 +847,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_status_wnd_info.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_basic_info_restore.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_basic_info_restore.bat b/tests/build_basic_info_restore.bat
+new file mode 100644
+index 0000000..b93404c
+--- /dev/null
++++ b/tests/build_basic_info_restore.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\basic_info_restore"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_basic_info_restore.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_basic_info_restore.c" /Fe:test_basic_info_restore.exe
++if errorlevel 1 (popd & exit /b 1)
++test_basic_info_restore.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_basic_info_restore.py b/tests/extract_basic_info_restore.py
+new file mode 100644
+index 0000000..1346115
+--- /dev/null
++++ b/tests/extract_basic_info_restore.py
+@@ -0,0 +1,14 @@
++"""Extract the basic-info factory that reopens windows saved as shown."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++source = (root / 'src/ui/wndmgr/make_window_character.c').read_text(encoding='utf-8')
++signature = 'static struct UIWindow *make_basic_info(struct UIWindowMgr *self)'
++matches = list(re.finditer(r'^' + re.escape(signature) + r'\n\{', source, re.M))
++assert len(matches) == 1, signature
++start = matches[0].start()
++function = source[start:source.index('\n}', start) + 2]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'basic_info_restore.inc').write_text(function + '\n', encoding='utf-8')
+diff --git a/tests/test_basic_info_restore.c b/tests/test_basic_info_restore.c
+new file mode 100644
+index 0000000..5d48c46
+--- /dev/null
++++ b/tests/test_basic_info_restore.c
+@@ -0,0 +1,100 @@
++#include "replay/replay.h"
++#include "ui/misc/snap_mgr.h"
++#include "session/state.h"
++#include "ui/window_access.h"
++#include "game/context.h"
++#include "ui/wndmgr/make_window_internal.h"
++#include "session/session_jobs.h"
++#include "ui/character/gauge.h"
++#include "ui/render/graphic_setting.h"
++
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++/* Run the production basic-info factory over saved "shown" flags and record
++   which windows it reopens. Every request enters the ESC window-ID list, so it
++   must name a window that a factory can create. */
++int g_replayPlaying;
++int g_spriteMode, g_textureMode;
++struct Session g_session1;
++struct SnapMgr g_snapMgr;
++static struct UIWindowMgr mgr;
++static struct UIWindow basic_info;
++static int requested[32], request_count, shows, plate_restores, camera_free, tracked_achievements;
++
++struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int id)
++{
++    assert(self == &mgr && request_count < (int)(sizeof requested / sizeof *requested));
++    requested[request_count++] = id;
++    return NULL;
++}
++void wm_show(struct UIWindow *wnd) { assert(wnd == &basic_info); ++shows; }
++int game_camera_is_free(void) { return camera_free; }
++BYTE ui_window_mgr_show_option_window(struct UIWindowMgr *self, int window_id, int show)
++{
++    assert(self == &mgr && (window_id == 0x1 || window_id == 0x24 || window_id == 0xf));
++    (void)show;
++    return 1;
++}
++BYTE session_has_tracked_achievements(struct Session *self)
++{
++    assert(self == &g_session1);
++    return (BYTE)tracked_achievements;
++}
++void ui_window_mgr_restore_plates(struct UIWindowMgr *self) { assert(self == &mgr); ++plate_restores; }
++
++/* Window creation is not exercised: the basic-info window already exists. */
++struct UIWindow *ui_basic_info_wnd_new(void) { assert(!"exists"); return NULL; }
++void ui_window_create(struct UIWindow *wnd, int width, int height) { (void)wnd; (void)width; (void)height; assert(!"exists"); }
++int session_get_drawn_job(struct Session *self) { (void)self; assert(!"exists"); return 0; }
++BYTE session_is_fourth_job(struct Session *self, int job) { (void)self; (void)job; assert(!"exists"); return 0; }
++void wm_move(struct UIWindow *wnd, int x, int y) { (void)wnd; (void)x; (void)y; assert(!"exists"); }
++void ui_window_mgr_add_window(struct UIWindowMgr *self, struct UIWindow *wnd) { (void)self; (void)wnd; assert(!"exists"); }
++void snap_mgr_register_root(struct SnapMgr *self, struct UIWindow *wnd) { (void)self; (void)wnd; assert(!"exists"); }
++struct UIWindow *ui_window_open(int id) { (void)id; assert(!"exists"); return NULL; }
++void ui_window_to_screen(struct UIWindow *wnd, int *x, int *y) { (void)wnd; (void)x; (void)y; assert(!"exists"); }
++struct UIWindow *ui_window_mgr_get_window(struct UIWindowMgr *self, int id) { (void)self; (void)id; assert(!"live"); return NULL; }
++struct ReplayRecorder *replay_recorder_instance(void) { assert(!"live"); return NULL; }
++
++#include "basic_info_restore.inc"
++
++static void expect(const int *ids, int count)
++{
++    int i;
++
++    request_count = 0;
++    assert(make_basic_info(&mgr) == &basic_info);
++    assert(request_count == count);
++    for (i = 0; i < count; i++)
++        assert(requested[i] == ids[i]);
++}
++
++int main(void)
++{
++    static const int none[1] = {0};
++    static const int all[] = {0x8, 0xa, 0xb, 0x25, 0x141, 0xe, 0x45, 0x10f, 0x11e};
++    static const int status_only[] = {0xb};
++
++    mgr.basic_info_wnd = &basic_info;
++    mgr.option_info.show = 1;
++    expect(none, 0);
++
++    mgr.status_info.show = 1;
++    expect(status_only, 1);
++
++    mgr.item_info.show = 1;
++    mgr.equip_info.show = 1;
++    mgr.skill_list_info.show = 1;
++    mgr.quest_info.show = 1;
++    mgr.messenger_group_info.show = 1;
++    mgr.macro_reporter_info.open = 1;
++    camera_free = tracked_achievements = 1;
++    expect(all, (int)(sizeof all / sizeof *all));
++
++    mgr.option_info.show = 0;
++    expect(all, (int)(sizeof all / sizeof *all));
++    assert(shows == 4 && plate_restores == 4);
++    puts("Basic info restore: saved windows reopened; stale option-window flag requests nothing.");
++    return 0;
++}

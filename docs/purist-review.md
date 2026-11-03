@@ -106,25 +106,50 @@ prefixes (`cash-shop-`, `party-booking-`, `fourth-class-`, `item-systems-`,
 
 ### Foundation-fix candidates found during removal
 
-Not changed on either branch; each needs its own fix for `main`.
+Fixed on `main` on 2026-11-02, one commit each, and ported to `purist` where the
+code remains; exceptions are noted. The series is indexed in
+[docs/upstream](upstream/README.md#foundation-fixes-from-the-size-ranked-review-2026-11-02).
 
 - `rag_connection_get_packet` accepts a variable or unknown packet length below 4.
   A length of 0 makes the receive loop re-read the same bytes forever (client hang);
   1 desynchronizes framing. Treat lengths below 4 as a protocol error.
+  Fixed: `main` `ebb1887196`, `purist` `e731da3cf1`.
 - `enter_map` in `src/login/login_states.c` leaves the 4-byte `unset` field of map
   entry `0x0436` uninitialized, sending stack bytes.
+  Fixed: `main` `f21e5cb13b`, `purist` `d477f7b91b`.
 - On `main`, `ui_window_mgr_get_window(0x12d)` falls back to the cash-shop window
   when no name plate exists, apparently a decompiled fall-through.
+  Fixed: `main` `ad2c6075c8`; already correct on `purist`, which returns NULL there
+  since the cash-shop removal.
 - On `main`, the swap-equipment window's default position writes a 16-byte
   rectangle into an 8-byte point, overwriting the friend-list drag plate size.
+  Fixed: `main` `685ebfa786`; not needed on `purist`, code removed.
 - On `main`, a Lapine upgrade failure checks the synthesis window (`0x122`) instead
   of the upgrade window (`0x12e`), leaving the upgrade box waiting.
+  Fixed: `main` `3e9d6ce8fe`; not needed on `purist`, code removed.
 - `jobIdNames` is filled at startup but never read (removed on `purist` by the
-  [dead-code sweep](#dead-code-sweep-2026-11-02)).
+  [dead-code sweep](#dead-code-sweep-2026-11-02)). Write-only data with no wrong
+  behavior; left unchanged on `main`.
 - A saved `OPTIONWNDINFO.SHOW` makes `make_basic_info` request window `0xd`, which no
   factory creates; ESC then opens the ESC menu instead of cancelling navigation
-  guidance. ESC menu button `ESC_ID_1C1` toggles nonexistent window `0xec`.
+  guidance. Fixed: `main` `07135fd6d1`, `purist` `7bde71e3b3`.
+- ESC menu button `ESC_ID_1C1` toggles nonexistent window `0xec`. Dead code, left
+  unfixed: no ESC menu button has ID `0x1c1` (its seven buttons are `0x16b`,
+  `0x1c2`, `0x16a`, `0xf3`, `0xb1`, `0x159` and `0x16c`, here and in the original
+  executable), and the original's MakeWindow has no case for `0xec`, so nothing
+  sends the command and its intended window cannot be determined.
 - A status window saved minimized is restored at full height (pre-existing).
+  Fixed: `main` `5da401b8f2`, `purist` `fb6d501f97` (purist version for its
+  single-height window).
+- `rag_effect_init` reads `g_effectDurations[effect_id]` for effect IDs 2385-60000,
+  past the end of the 2,385-row table. Fixed: `main` `e26afaf764`, `purist`
+  `6095736a2c`; such IDs now last their ID in frames, like the unconfigured rows.
+- `rag_connection_get_packet` accepts variable-length packets whose framed length
+  is at least 4 but below the table minimum, so handlers read stale
+  `g_packetBuffer` bytes. Fixed: `main` `301c8c62a6`, `purist` `321284a664`.
+- `ui_window_mgr_make_window` adds tracked IDs to the ESC list before anything is
+  created, so any request that creates no window leaves a stuck entry, not only
+  `0xd`. Fixed: `main` `1150faabf3`, `purist` `8cc259bdc5`.
 
 ## Starting point
 
@@ -6803,11 +6828,11 @@ Foundation candidates (not changed here):
 
 - `enter_map` in `src/login/login_states.c` never assigns the 4-byte field after
   `authCode` in the `0x0436` map-enter packet, so stack bytes are sent. The same
-  code is on `main`.
+  code is on `main`. Fixed on `main` in `f21e5cb13b` (`purist` `d477f7b91b`).
 - On `main`, `ui_window_mgr_get_window(0x12d)` returns the open cash-shop window
   when no name plate exists, which looks like a decompiled fall-through; a lookup
-  for the plate owner could then reach the shop. Not verified against the original
-  executable.
+  for the plate owner could then reach the shop. The original executable has the
+  same fall-through. Fixed on `main` in `ad2c6075c8`.
 
 The pre-removal tree is in `build/before-cash-shop-removal`; the full diff is
 `build/cash-shop.diff`. No live client/server smoke test was run.
@@ -6890,7 +6915,8 @@ same code. For the retired IDs, `0x0803`/`0x0807` success replies carry 0 there 
 only answer the removed requests) and the notifications carry the advertisement
 index (a hang when its low 16 bits are zero, otherwise misframing before the reset).
 Not changed here: the removal does not depend on it. Suggested fix: treat a framed
-length below 4 for variable/unknown packets as a protocol error.
+length below 4 for variable/unknown packets as a protocol error. Fixed on `main` in
+`ebb1887196` (`purist` `e731da3cf1`).
 
 Validation:
 
@@ -7076,7 +7102,8 @@ Foundation-fix candidates (not changed):
 - `jobIdNames` is filled at startup but never read.
 - `UI_MSG_SET_INFO` for the status window minimizes a saved title-only window and
   then resizes it to full height. As a result, the minimized state is never
-  restored. This behavior is preserved.
+  restored. This behavior is preserved. Fixed on `main` in `5da401b8f2` (`purist`
+  `fb6d501f97`).
 
 The pre-removal tree is in `build/before-fourth-class-removal`. No live
 client/server smoke test was run.
@@ -7119,7 +7146,8 @@ Foundation fix candidate for `main`: on a failed upgrade (`0x0ab7`, result ≠ 0
 instead of the upgrade window `0x12e`, then calls `lapine_upgrade_set_waiting`
 on it. With only the upgrade box open, which is the normal case, it never leaves
 its waiting state. If a synthesis box were open, a `LapineBox` would be written
-through the `LapineUpgradeBox` layout. Purist no longer has the code.
+through the `LapineUpgradeBox` layout. Purist no longer has the code. Fixed on
+`main` in `3e9d6ce8fe`.
 
 Validation:
 
@@ -7242,7 +7270,8 @@ a 16-byte `WindowInfo` through `(struct WindowInfo *)&swap_equipment_pos`, a
 `POINT`. When no saved UI rect info exists (first run), it overwrites the
 following `plate_width`/`plate_height` (`0x97`/`0x25`) with `0x118`/`0xa7`. That
 corrupts friend-list drag hit-testing in `messenger_group_wnd.c`. On `main` it
-should set only `x`/`y`. Purist no longer has the code.
+should set only `x`/`y`. Purist no longer has the code. Fixed on `main` in
+`685ebfa786`.
 
 Validation:
 
@@ -7525,7 +7554,7 @@ Kept, and why:
 - **Option-window request `0xd`.** `make_basic_info` still requests nonexistent
   window `0xd` when the saved `OPTIONWNDINFO.SHOW` is set. The call is reachable
   from saved settings and touches the ESC window-id list, so it is reported below
-  rather than removed.
+  rather than removed. Fixed on `main` in `07135fd6d1` (`purist` `7bde71e3b3`).
 - **Tests and fixtures.** Retired type names stay in `type_query_fixture.h`;
   `test_object_type.c` lists the 44 new retired identities.
 
@@ -7615,8 +7644,11 @@ Bugs and foundation candidates found (not changed unless noted):
   which no factory creates. The client never sets it to 1; it only round-trips the saved value. The
   request leaves `0xd` in the ESC window-id list, so the list is never empty. ESC
   then tries to close `0xd`, fails and opens the ESC menu instead of cancelling
-  active navigation guidance (`guideState == 2`).
+  active navigation guidance (`guideState == 2`). Fixed on `main` in `07135fd6d1`
+  (`purist` `7bde71e3b3`); requests that create no window are no longer kept in
+  the list either (`main` `1150faabf3`, `purist` `8cc259bdc5`).
 - ESC menu button `ESC_ID_1C1` toggles window `0xec`, which no factory creates.
+  Dead code, left unfixed: no ESC menu button carries that ID.
 - Misleading names: `keyboard.c` `MODE_MSG_TOGGLE_WINDOW` (0x1f) is
   `MODE_MSG_EMOTION`, and its `key_windows` entries are emotion IDs;
   `ui_window_mgr_render_menu` in `session_job_names.c` actually builds the job,
@@ -7907,7 +7939,8 @@ Bugs found (not fixed):
 
 - `rag_effect_init` reads `g_effectDurations[effect_id]` for any ID up to 60000, but the
   table has 2,385 entries, so a server effect ID from 2385 to 60000 without a factory
-  reads past its end (`rag_str_anim.c`). Foundation candidate.
+  reads past its end (`rag_str_anim.c`). Foundation candidate. Fixed on `main` in
+  `e26afaf764` (`purist` `6095736a2c`).
 - Removed with the feature: the ABR handlers keyed the HP trees with a sign-extended AID
   while vanish and the readers used the zero-extended one, so AIDs of `0x80000000` and
   above never matched. The trees were also cleared only on vanish and at the login
