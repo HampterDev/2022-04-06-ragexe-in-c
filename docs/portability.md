@@ -292,12 +292,21 @@ scenes `granny_models` and `granny_dead`, with the Windows scene harness on the 
 
 ### Window, input and IME
 
-`core/app_sdl.c` replaces the Win32 window procedure. It creates the SDL window and GL context,
-turns SDL events into the client's own key codes (`platform/vk.h`, the Win32 VK numbering), the
-`lParam` scan-code layout that the hotkey code compares against, mouse state and window
-activation, and feeds them to the same handlers the Windows window procedure calls
-(`core/window_events.c`). Composition events go to `language_set_composition` and committed text
-to `language_commit`, converted from UTF-8 to the client code page. The window sets
+Every platform's keys, characters and pointer go through one module, `core/user_input.h`: the
+Windows window procedure (`core/wndproc.c`), the SDL layer and the scene scripts all describe a key
+transition the same way (virtual-key code, the Win32 VK numbering in `platform/vk.h`; scan code;
+repeat; Alt held) and hand over pointer moves, buttons and wheel notches in scene pixels. The
+module packs the `lParam` scan-code layout that the window manager and edit boxes read, sends a
+press with Alt held, or F10, to the window manager's system-key handling (`WM_SYSKEYDOWN` on
+Windows) and everything else to `core/window_events.c`, and tells `platform_note_key` and
+`platform_note_cursor` the key and pointer state, which the SDL platform layer keeps and Windows
+keeps itself.
+
+`core/app_sdl.c` replaces the Win32 window procedure. It creates the SDL window and GL context and
+turns SDL events into that input: Print Screen only as it goes up and Backspace also as a
+character, as Windows delivers them, the window activation, and touch screens through
+`core/touch.c` (*Android client*). Composition events go to `language_set_composition` and
+committed text to `language_commit`, converted from UTF-8 to the client code page. The window sets
 `SDL_HINT_IME_IMPLEMENTED_UI` to `composition`: without it SDL does not report the preedit text
 and the IME draws its own window. SDL reports the end of a composition (an empty editing event)
 before the committed text, and the key that caused the commit never arrives as a key event, so a
@@ -453,9 +462,19 @@ names the servers as on any other platform; an emulator reaches servers on its h
   `MultiByteToWideChar` and `WideCharToMultiByte`, and converts with them through the iconv calls
   the POSIX code already makes (`platform/iconv_port.h`, `RAGE_OWN_ICONV` elsewhere).
   `tests/test_code_page_iconv.c` checks every code of every table against Windows on Windows.
-- Input: touches arrive as the left mouse button. A touch moves the pointer and presses at once,
-  but the client finds the window under the pointer once a frame, so a touch's press waits for the
-  next frame when the pointer moved in this one. The back button is Escape. Text input is on while
+- Touch (`core/touch.c`, the same on any SDL platform with a touch screen): one finger is the left
+  button. A tap clicks where it lands, a finger held or dragged presses there and moves with the
+  finger, and a tap close to the last one lands exactly on it, so that two taps make a double
+  click. Two fingers dragged the same way turn the camera, as the right button dragged does;
+  spread apart or pinched together they zoom it, a wheel notch per 40 scene pixels; tapped together
+  they right-click, and tapped twice they put the camera back as the right double click does. A
+  first finger waits 120 ms before it presses, so that a second one landing just after it makes a
+  two-finger gesture and no left click. The client finds the window under the pointer once a frame,
+  so the recognizer hands over at most one button change and one wheel notch a frame, and a button
+  never in the frame the pointer moved before it. SDL's own touch-to-mouse events are off, and only
+  direct touch screens reach the recognizer: a trackpad stays the mouse it already is. Zooming over
+  a UI window does what the wheel does there, nothing without Ctrl.
+- Input: the back button is Escape. Text input is on while
   an edit box has the focus, so a hardware keyboard types as on a desktop; the on-screen keyboard
   comes up when the player taps the focused edit box and goes when they tap anything else, and while
   it is up the scene is raised so that the box stays above it (the activity reports the keyboard's
@@ -473,8 +492,11 @@ Android 14 desktop emulator image (`android-desktop`, whose model `sdk_gpc_x86_6
 Chromebook) at 1920x1080: the import from a folder in `Download` (and its restart after a copy cut
 short), the window at its first size, resized, maximised and at another density, a virtual USB
 mouse through uinput (hover, clicks, right-drag turning the camera, the wheel zooming it) and chat
-typed on the keyboard. No real Chromebook was tried. The `android-client` CI job builds the APK for
-both ABIs.
+typed on the keyboard. The touch gestures were played there through a virtual multi-touch screen
+(uinput again): two fingers turning the camera without walking, spreading and pinching to zoom in
+and out, a two-finger double tap putting the camera back; and on the phone emulator the login and
+walking by tapping, with the on-screen keyboard coming up for the tapped edit box. No real
+Chromebook or touch screen was tried. The `android-client` CI job builds the APK for both ABIs.
 
 Driving the login by hand: the client gives up on the server list after 15 s without a choice and
 quits with "Failed to Connect to Server" (`login_mode_check_timeouts`, sub-mode 6). That is the
@@ -527,13 +549,11 @@ the other entry's second one, which is not an ordering; it compares like with li
 4. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
 5. Expand CMake to the remaining test suites.
-6. Scenes: keyboard input does not open the chat line yet (`tests/scenes/README.md`).
-7. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
+6. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
-8. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware and a
-   real Chromebook. Touch has no gesture for the right mouse button and the wheel (turning and
-   zooming the camera), and the default resolution is 4:3 whatever the screen's aspect
-   (*Android client*).
+7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
+   Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
+   the default resolution is 4:3 whatever the screen's aspect (*Android client*).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

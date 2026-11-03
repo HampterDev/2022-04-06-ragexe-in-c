@@ -98,33 +98,3 @@ void mouse_on_wheel(struct Mouse *self, int delta)
     mouse_wake();
     self->wheel_pending = delta;
 }
-
-#ifdef _WIN32
-void mouse_on_message(struct Mouse *self, HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    (void)lparam;
-    switch (msg) {
-    case WM_MOUSEMOVE:
-        mouse_on_move(self);
-        break;
-    case WM_LBUTTONDOWN:
-        mouse_on_button(self, wnd, MOUSE_LEFT, 1);
-        break;
-    case WM_LBUTTONUP:
-        mouse_on_button(self, wnd, MOUSE_LEFT, 0);
-        break;
-    case WM_RBUTTONDOWN:
-        mouse_on_button(self, wnd, MOUSE_RIGHT, 1);
-        break;
-    case WM_RBUTTONUP:
-        mouse_on_button(self, wnd, MOUSE_RIGHT, 0);
-        break;
-    case WM_MOUSEWHEEL:
-        mouse_on_wheel(self, (short)HIWORD(wparam));
-        break;
-    default:
-        mouse_wake();
-        break;
-    }
-}
-#endif

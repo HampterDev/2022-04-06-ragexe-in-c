@@ -19,6 +19,7 @@
 #include "session/session_options.h"
 #include "ui/controls/edit.h"
 #include "core/window_events.h"
+#include "core/user_input.h"
 
 static LRESULT on_activate(HWND hwnd, WPARAM wparam)
 {
@@ -83,6 +84,40 @@ static int sys_command_passes(HWND hwnd, WPARAM wparam, LPARAM lparam)
     }
 }
 
+/* The key message parameter, unpacked for core/user_input.c, which packs it again for the client. */
+static int on_key(WPARAM wparam, LPARAM lparam, int down)
+{
+    struct InputKey key;
+    key.vk = (int)wparam;
+    key.scancode = (int)(lparam >> 16 & 0xff) | (lparam & 1 << 24 ? 0x100 : 0);
+    key.down = down;
+    key.repeat = down && (lparam & 1 << 30) != 0;
+    key.alt = (lparam & 1 << 29) != 0;
+    key.count = (int)(lparam & 0xffff);
+    return input_key(&key);
+}
+
+static void on_mouse(UINT msg, WPARAM wparam, LPARAM lparam)
+{
+    int x = (short)LOWORD(lparam), y = (short)HIWORD(lparam);
+    switch (msg) {
+    case WM_MOUSEMOVE:
+        input_pointer(x, y);
+        break;
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+        input_button(INPUT_BUTTON_LEFT, msg == WM_LBUTTONDOWN, x, y);
+        break;
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+        input_button(INPUT_BUTTON_RIGHT, msg == WM_RBUTTONDOWN, x, y);
+        break;
+    case WM_MOUSEWHEEL:
+        input_wheel((short)HIWORD(wparam));
+        break;
+    }
+}
+
 LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     unsigned char handled = 0;
@@ -122,16 +157,16 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
             frame_timer_reset();
         break;
     case WM_KEYDOWN:
-        window_events_key_down((int)wparam, (int)lparam);
+        on_key(wparam, lparam, 1);
         return 0;
     case WM_KEYUP:
-        window_events_key_up((int)wparam, (int)lparam);
+        on_key(wparam, lparam, 0);
         return 0;
     case WM_CHAR:
-        window_events_char((int)wparam);
+        input_char((int)wparam);
         return 0;
     case WM_SYSKEYDOWN:
-        if (ui_window_mgr_on_key_down(&g_windowMgr, wparam, lparam, !(lparam >> 30 & 1)))
+        if (on_key(wparam, lparam, 1))
             return 0;
         break;
     case WM_SYSCOMMAND:
@@ -141,12 +176,10 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_MOUSEMOVE:
     case WM_LBUTTONDOWN:
     case WM_LBUTTONUP:
-    case WM_LBUTTONDBLCLK:
     case WM_RBUTTONDOWN:
     case WM_RBUTTONUP:
-    case WM_RBUTTONDBLCLK:
     case WM_MOUSEWHEEL:
-        mouse_on_message(&g_mouse, hwnd, msg, wparam, lparam);
+        on_mouse(msg, wparam, lparam);
         break;
     case WM_ENTERMENULOOP:
     case WM_ENTERSIZEMOVE:

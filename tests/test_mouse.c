@@ -33,9 +33,9 @@ void mem_free(void *memory)
     free(memory);
 }
 
-static void message(UINT message, WPARAM value)
+static void button(int which, int down)
 {
-    mouse_on_message(&g_mouse, g_hMainWnd, message, value, 0);
+    mouse_on_button(&g_mouse, g_hMainWnd, which, down);
 }
 
 int main(void)
@@ -49,19 +49,19 @@ int main(void)
     now = 2000;
     cursor.x = 100;
     cursor.y = 200;
-    message(WM_MOUSEMOVE, 0);
+    mouse_on_move(&g_mouse);
     assert(g_mouse.x == 0 && g_mouse.y == 0);
     mouse_read_state(&g_mouse);
     assert(g_mouse.x == 80 && g_mouse.y == 170);
     assert(g_mouse.dx == 80 && g_mouse.dy == 170);
 
-    message(WM_LBUTTONDOWN, 0);
+    button(MOUSE_LEFT, 1);
     mouse_read_state(&g_mouse);
     assert(captures == 1);
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_PRESSED);
     mouse_read_state(&g_mouse);
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_HELD);
-    message(WM_LBUTTONUP, 0);
+    button(MOUSE_LEFT, 0);
     mouse_read_state(&g_mouse);
     assert(releases == 1);
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_RELEASED);
@@ -69,14 +69,14 @@ int main(void)
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_UP);
 
     now += 100;
-    message(WM_LBUTTONDOWN, 0);
+    button(MOUSE_LEFT, 1);
     mouse_read_state(&g_mouse);
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_DOUBLE);
-    message(WM_RBUTTONDOWN, 0);
+    button(MOUSE_RIGHT, 1);
     mouse_read_state(&g_mouse);
     assert(g_mouse.button[MOUSE_RIGHT] == MOUSE_BUTTON_PRESSED);
 
-    message(WM_MOUSEWHEEL, MAKEWPARAM(0, (WORD)-120));
+    mouse_on_wheel(&g_mouse, -120);
     assert(g_mouse.wheel == 0);
     mouse_read_state(&g_mouse);
     assert(g_mouse.wheel == -120 && g_mouse.wheel_pending == 0);
@@ -84,7 +84,7 @@ int main(void)
     assert(g_mouse.wheel == 0);
 
     g_mouse.ready = 0;
-    message(WM_RBUTTONUP, 0);
+    button(MOUSE_RIGHT, 0);
     assert(g_mouse.ready == 1);
     assert(g_mouse.button[MOUSE_LEFT] == MOUSE_BUTTON_UP);
     assert(g_mouse.down[MOUSE_LEFT] == 0 && g_mouse.was_down[MOUSE_LEFT] == 0);

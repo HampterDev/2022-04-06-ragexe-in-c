@@ -13,8 +13,11 @@ and still apply here. These are the deviations from `purist`:
   from converted glTF).
 - Build the client for Android (arm64 and x86_64) as an APK with Gradle (`android/`): SDL3's
   activity, OpenGL ES 3.0, the game folder in the app's own storage (filled from a folder the player
-  picks, on first start), touch as the mouse and the on-screen keyboard for edit boxes; in a
-  desktop window (ChromeOS, Android's desktop windowing) mouse, wheel and keyboard as on a PC.
+  picks, on first start), touch as the mouse (two fingers turn and zoom the camera) and the
+  on-screen keyboard for edit boxes; in a desktop window (ChromeOS, Android's desktop windowing)
+  mouse, wheel and keyboard as on a PC.
+- Take every platform's keys and pointer through one input module (`core/user_input.h`), with
+  touch screens turned into the mouse by `core/touch.c`.
 - Run on an SDL3 application layer off Windows: window, input, IME text, clipboard and cursor.
 - Draw with an OpenGL 3.3 core (macOS: 4.1, Android: OpenGL ES 3.0) backend behind `render/gfx.h`
   off Windows, scaled to the window with the aspect kept; Direct3D 9

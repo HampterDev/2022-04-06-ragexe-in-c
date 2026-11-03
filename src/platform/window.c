@@ -22,6 +22,18 @@ short platform_key_state(int vk)
     return GetKeyState(vk);
 }
 
+void platform_note_key(int vk, int down)
+{
+    (void)vk;
+    (void)down;
+}
+
+void platform_note_cursor(int x, int y)
+{
+    (void)x;
+    (void)y;
+}
+
 int platform_clipboard_set(HWND owner, const char *text, size_t length)
 {
     HGLOBAL block;

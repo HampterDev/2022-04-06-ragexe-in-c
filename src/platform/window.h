@@ -31,6 +31,11 @@ void platform_ime_cancel(HWND window);
 WORD platform_keyboard_language(void);
 void platform_ime_alphanumeric(HWND window);
 
+/* Key and pointer state for the window systems that do not keep it (core/user_input.c tells; the key
+   and cursor queries above read it back). Windows keeps its own, so there they do nothing. */
+void platform_note_key(int vk, int down);
+void platform_note_cursor(int x, int y);
+
 #ifndef _WIN32
 #define MB_OK 0x0
 #define MB_ICONERROR 0x10
@@ -39,8 +44,6 @@ void platform_ime_alphanumeric(HWND window);
 #define MB_ICONINFORMATION 0x40
 #define MB_TASKMODAL 0x2000
 
-void platform_note_key(int vk, int down);
-void platform_note_cursor(int x, int y);
 void platform_set_main_window(void *window);
 #endif
 

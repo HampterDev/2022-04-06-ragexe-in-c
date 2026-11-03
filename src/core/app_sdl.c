@@ -2,18 +2,19 @@
 #include "core/app.h"
 #include "core/window_events.h"
 #include "core/drive_state.h"
-#include "contents/mouse.h"
+#include "core/user_input.h"
+#include "core/touch.h"
 #include "contents/frame_timer.h"
 #include "platform/code_page.h"
 #include "platform/filesystem.h"
 #include "platform/language.h"
+#include "platform/vk.h"
 #include "platform/window.h"
 #include "render/device.h"
 #include "render/present_fit.h"
 #include "session/session_options.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include "ui/window_keyboard.h"
 #include "ui/window_access.h"
 #include "ui/window.h"
 #include "ui/window_types.h"
@@ -102,19 +103,6 @@ static int key_code(const SDL_KeyboardEvent *key)
     return (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanKeys[key->scancode] : 0;
 }
 
-static int key_lparam(const SDL_KeyboardEvent *key)
-{
-    unsigned code = (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanCodes[key->scancode] : 0;
-    int lparam = 1 | (int)((code & 0xff) << 16);
-    if (code & 0x100)
-        lparam |= 1 << 24;
-    if (key->mod & SDL_KMOD_ALT)
-        lparam |= 1 << 29;
-    if (key->repeat)
-        lparam |= 1 << 30;
-    return lparam;
-}
-
 static char *client_text(const char *utf8)
 {
     uint16_t *wide = (uint16_t *)SDL_iconv_string("UTF-16LE", "UTF-8", utf8, strlen(utf8) + 1);
@@ -153,26 +141,28 @@ static void scene_point(float x, float y, int *outX, int *outY)
     }
 }
 
+/* SDL's keys as Windows delivers them: Print Screen only as it goes up, and Backspace also as a
+   character. */
 static void on_key(const SDL_KeyboardEvent *key, int down)
 {
-    int vk = key_code(key), lparam = key_lparam(key);
-    if (!vk)
+    struct InputKey in;
+    in.vk = key_code(key);
+    in.scancode = (unsigned)key->scancode <= SDL_SCANCODE_RGUI ? g_scanCodes[key->scancode] : 0;
+    in.down = down;
+    in.repeat = down && key->repeat;
+    in.alt = (key->mod & SDL_KMOD_ALT) != 0;
+    in.count = 1;
+    if (!in.vk)
         return;
-    platform_note_key(vk, down);
-    if (!down) {
-        window_events_key_up(vk, lparam | (int)0xc0000000u);
-        return;
-    }
-    if (vk == VK_SNAPSHOT)
-        return;
-    g_compositionEnded = 0;
-    if ((key->mod & SDL_KMOD_ALT) || vk == VK_F10) {
-        ui_window_mgr_on_key_down(&g_windowMgr, vk, lparam, !key->repeat);
+    if (down && in.vk == VK_SNAPSHOT) {
+        platform_note_key(in.vk, 1);
         return;
     }
-    window_events_key_down(vk, lparam);
-    if (vk == VK_BACK && !g_composing)
-        window_events_char(VK_BACK);
+    if (down)
+        g_compositionEnded = 0;
+    input_key(&in);
+    if (down && in.vk == VK_BACK && !g_composing)
+        input_char(VK_BACK);
 }
 
 static void on_text(const char *utf8)
@@ -186,7 +176,7 @@ static void on_text(const char *utf8)
     if (!text)
         return;
     if (!composed && text[0] && !text[1])
-        window_events_char((unsigned char)text[0]);
+        input_char((unsigned char)text[0]);
     else
         language_commit(g_language, text);
     free(text);
@@ -211,6 +201,36 @@ static void on_editing(const char *utf8, int start)
     window_events_language_changed();
 }
 
+static int mouse_button(Uint8 button)
+{
+    switch (button) {
+    case SDL_BUTTON_LEFT: return INPUT_BUTTON_LEFT;
+    case SDL_BUTTON_RIGHT: return INPUT_BUTTON_RIGHT;
+    case SDL_BUTTON_MIDDLE: return INPUT_BUTTON_MIDDLE;
+    default: return -1;
+    }
+}
+
+/* Touch screens go to core/touch.c; trackpads, which also report touches, stay the mouse they
+   already are. */
+static void on_finger(const SDL_TouchFingerEvent *finger)
+{
+    int w = 0, h = 0, x, y;
+    uint32_t ms = (uint32_t)SDL_NS_TO_MS(finger->timestamp);
+    if (finger->touchID == SDL_MOUSE_TOUCHID || SDL_GetTouchDeviceType(finger->touchID) != SDL_TOUCH_DEVICE_DIRECT)
+        return;
+    SDL_GetWindowSize(g_sdlWindow, &w, &h);
+    scene_point(finger->x * (float)w, finger->y * (float)h, &x, &y);
+    if (finger->type == SDL_EVENT_FINGER_DOWN)
+        touch_down(finger->fingerID, x, y, ms);
+    else if (finger->type == SDL_EVENT_FINGER_MOTION)
+        touch_move(finger->fingerID, x, y, ms);
+    else if (finger->type == SDL_EVENT_FINGER_UP)
+        touch_up(finger->fingerID, x, y, ms);
+    else
+        touch_cancel();
+}
+
 static void dispatch(const SDL_Event *event)
 {
     int x, y;
@@ -227,6 +247,7 @@ static void dispatch(const SDL_Event *event)
             g_activatedNow = 1;
         break;
     case SDL_EVENT_WINDOW_FOCUS_LOST:
+        touch_cancel();
         window_events_activate(0);
         app_activate(0);
         break;
@@ -244,77 +265,33 @@ static void dispatch(const SDL_Event *event)
         break;
     case SDL_EVENT_MOUSE_MOTION:
         scene_point(event->motion.x, event->motion.y, &x, &y);
-        platform_note_cursor(x, y);
-        mouse_on_move(&g_mouse);
+        input_pointer(x, y);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-    case SDL_EVENT_MOUSE_BUTTON_UP: {
-        int down = event->type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
         scene_point(event->button.x, event->button.y, &x, &y);
-        platform_note_cursor(x, y);
-        if (event->button.button == SDL_BUTTON_LEFT) {
-            platform_note_key(VK_LBUTTON, down);
-            mouse_on_button(&g_mouse, g_hMainWnd, MOUSE_LEFT, down);
-        } else if (event->button.button == SDL_BUTTON_RIGHT) {
-            platform_note_key(VK_RBUTTON, down);
-            mouse_on_button(&g_mouse, g_hMainWnd, MOUSE_RIGHT, down);
-        } else if (event->button.button == SDL_BUTTON_MIDDLE) {
-            platform_note_key(VK_MBUTTON, down);
-        }
+        input_button(mouse_button(event->button.button), event->type == SDL_EVENT_MOUSE_BUTTON_DOWN, x, y);
         break;
-    }
     case SDL_EVENT_MOUSE_WHEEL:
-        mouse_on_wheel(&g_mouse, (int)(event->wheel.y * 120.0f));
+        input_wheel((int)(event->wheel.y * 120.0f));
+        break;
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+    case SDL_EVENT_FINGER_UP:
+    case SDL_EVENT_FINGER_CANCELED:
+        on_finger(&event->tfinger);
         break;
     default:
         break;
     }
 }
 
-static int is_touch_button(const SDL_Event *event)
-{
-    return (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_UP)
-        && event->button.which == SDL_TOUCH_MOUSEID;
-}
-
-/* Where in the scene the last touch pressed this frame, for the on-screen keyboard. */
-static int g_touchPressed, g_touchX, g_touchY;
-
-static void dispatch_touch(const SDL_Event *event)
-{
-    if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && is_touch_button(event)) {
-        g_touchPressed = 1;
-        scene_point(event->button.x, event->button.y, &g_touchX, &g_touchY);
-    }
-    dispatch(event);
-}
-
-/* A touch moves the pointer and presses in one go, but the client finds the window under the pointer
-   once a frame, as a mouse gives it time to: a touch's press and release wait for the next frame
-   when the pointer moved in this one, and come one a frame. */
 static void pump_events(void)
 {
-    static SDL_Event held;
-    static int holding;
     SDL_Event event;
-    int moved = 0, touched = 0;
-    g_touchPressed = 0;
-    if (holding) {
-        holding = 0;
-        dispatch_touch(&held);
-        touched = 1;
-    }
-    while (SDL_PollEvent(&event)) {
-        if (is_touch_button(&event) && (moved || touched)) {
-            held = event;
-            holding = 1;
-            break;
-        }
-        if (event.type == SDL_EVENT_MOUSE_MOTION)
-            moved = 1;
-        touched |= is_touch_button(&event);
-        dispatch_touch(&event);
-    }
+    while (SDL_PollEvent(&event))
+        dispatch(&event);
+    touch_frame((uint32_t)SDL_GetTicks());
 }
 
 #ifdef __ANDROID__
@@ -378,7 +355,7 @@ static void sync_text_input(void)
 {
     static SDL_Rect told;
     struct UIWindow *edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
-    int w = 0, h = 0, pixels_h = 0, cover, fx, fy, fw, fh, x = 0, y = 0, bottom, lift = 0;
+    int w = 0, h = 0, pixels_h = 0, cover, fx, fy, fw, fh, x = 0, y = 0, tx, ty, bottom, lift = 0;
     int shown = SDL_ScreenKeyboardShown(g_sdlWindow);
     struct PresentCover bars = g_presentCover;
     SDL_Rect area;
@@ -391,8 +368,8 @@ static void sync_text_input(void)
         return;
     }
     ui_window_to_screen(edit, &x, &y);
-    if (g_touchPressed) {
-        int on_edit = g_touchX >= x && g_touchX < x + edit->width && g_touchY >= y && g_touchY < y + edit->height;
+    if (touch_pressed(&tx, &ty)) {
+        int on_edit = tx >= x && tx < x + edit->width && ty >= y && ty < y + edit->height;
         if (on_edit != shown) {
             screen_keyboard(on_edit);
             shown = on_edit;
@@ -446,6 +423,10 @@ int app_create_window(HINSTANCE instance)
     int screenW, screenH, x, y;
     g_hInstance = instance;
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+    /* Touches reach the client through core/touch.c only, a mouse and a pen as a mouse. */
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_PEN_TOUCH_EVENTS, "0");
 #ifdef __ANDROID__
     /* The back button is Escape, as on the keyboard, instead of leaving the game; the on-screen
        keyboard comes up only when the player taps an edit box (sync_text_input). */

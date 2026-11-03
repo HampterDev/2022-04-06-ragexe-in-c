@@ -90,9 +90,9 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `chat(text)` | a line in the player's own chat |
 | `send(bytes)` | any packet, as the map server would send it |
 | `wait([frames])`, `wait_ready([timeout])` | let frames pass; wait until the map is loaded |
-| `mouse(x, y)`, `button(x, y, down[, "right"])`, `click(x, y[, "right"])` | the mouse |
-| `key(vk[, scan])`, `key_event(vk, scan, down, alt)` | keys, through the entry points `core/app_sdl.c` uses; `scene.VK` names a few virtual keys |
-| `text(s)` | characters, as SDL text input delivers them |
+| `mouse(x, y)`, `button(x, y, down[, "right"])`, `click(x, y[, "right"])` | the mouse, through `core/user_input.h` as every platform's input goes |
+| `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
+| `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
 | `capture(name)` | writes `<out>/<name>.png` |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
@@ -100,6 +100,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 
 A script error, a map that does not finish loading, or `fail` ends the run with exit status 1.
 
-Open: keyboard input reaches the window manager, but Enter does not open the chat line in a
-scene yet, so typed text goes nowhere and the Alt window shortcuts do nothing; the scenes open
-windows with the mouse.
+The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACCEPT_ENTER2`), the
+client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the
+hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
+`keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.

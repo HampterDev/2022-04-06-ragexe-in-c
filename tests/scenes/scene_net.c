@@ -72,6 +72,12 @@ static int packet_length(const unsigned char *data, size_t size)
             return 0;
         length = data[2] | data[3] << 8;
     }
+    if (id == 0xf3) {
+        /* CZ_REQUEST_CHAT: the table holds what the client reads, and 0xf3 reads as another packet. */
+        if (size < 4)
+            return 0;
+        length = data[2] | data[3] << 8;
+    }
     if (length < 2)
         length = id == 0x436 ? 19 : (int)size;
     return (size_t)length <= size ? length : 0;

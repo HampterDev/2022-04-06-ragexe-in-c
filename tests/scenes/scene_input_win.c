@@ -1,15 +1,19 @@
 /* Windows scene runs: the cursor and the key state come from the scene script, not from the
-   desktop, and the scene never captures the real mouse. Everything else is platform/window.c.
-   (The POSIX client already takes both from platform_note_key and platform_note_cursor.) */
+   desktop, and the scene never captures the real mouse: platform_note_key and platform_note_cursor
+   keep them, as on POSIX. Everything else is platform/window.c. */
 #define platform_async_key_state platform_async_key_state_os
 #define platform_key_state platform_key_state_os
 #define platform_cursor_client_pos platform_cursor_client_pos_os
 #define platform_mouse_capture platform_mouse_capture_os
+#define platform_note_key platform_note_key_os
+#define platform_note_cursor platform_note_cursor_os
 #include "platform/window.c"
 #undef platform_async_key_state
 #undef platform_key_state
 #undef platform_cursor_client_pos
 #undef platform_mouse_capture
+#undef platform_note_key
+#undef platform_note_cursor
 
 #include "scene.h"
 

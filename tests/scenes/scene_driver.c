@@ -8,9 +8,8 @@
    RAGEXE_SCENE_TRACE=1 for the packets and mode changes. See tests/scenes/README.md. */
 #include "core/app.h"
 #include "core/drive_state.h"
-#include "core/window_events.h"
+#include "core/user_input.h"
 #include "contents/account_settings_internal.h"
-#include "contents/mouse.h"
 #include "game/gamemode.h"
 #include "game/packet_ids.h"
 #include "game/packets_entry.h"
@@ -26,8 +25,6 @@
 #include "session/state.h"
 #include "std/string.h"
 #include "ui/window_access.h"
-#include "ui/window_keyboard.h"
-#include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
 #include "world/models.h"
 #include "world/state.h"
@@ -171,6 +168,19 @@ static void send_emblem(int guild, int version)
     }
 }
 
+/* ZC_NOTIFY_PLAYERCHAT: a line in the player's own chat. */
+static void own_chat(const char *text, size_t size)
+{
+    unsigned char packet[4 + 256];
+    if (size > 255)
+        size = 255;
+    put16(packet, HEADER_ZC_NOTIFY_PLAYERCHAT);
+    put16(packet + 2, (unsigned)(4 + size + 1));
+    memcpy(packet + 4, text, size);
+    packet[4 + size] = 0;
+    deliver(packet, (int)(4 + size + 1));
+}
+
 static void on_client_packet(int port, const unsigned char *packet, int length)
 {
     int id = packet[0] | packet[1] << 8;
@@ -190,6 +200,15 @@ static void on_client_packet(int port, const unsigned char *packet, int length)
         reply[16] = 5;
         put16(reply + 17, 0);
         scene_net_deliver(SCENE_MAP_PORT, reply, sizeof reply);
+    } else if (id == 0x7d) {
+        /* CZ_NOTIFY_ACTORINIT: the map is loaded. ZC_NOTIFY_ACTORINIT confirms it, as rAthena
+           does, which lets the hotkeys work. */
+        unsigned char reply[2];
+        put16(reply, 0xb1b);
+        scene_net_deliver(SCENE_MAP_PORT, reply, sizeof reply);
+    } else if (id == 0xf3 && length > 4) {
+        /* CZ_REQUEST_CHAT: the map server says the line back to the one who said it. */
+        own_chat((const char *)packet + 4, strnlen((const char *)packet + 4, (size_t)length - 4));
     } else if (id == 0xb46 && length >= 10) {
         send_emblem((int)(packet[2] | packet[3] << 8 | packet[4] << 16 | (unsigned)packet[5] << 24),
                     (int)(packet[6] | packet[7] << 8 | packet[8] << 16 | (unsigned)packet[9] << 24));
@@ -361,14 +380,7 @@ static int l_chat(lua_State *L)
 {
     size_t size;
     const char *text = luaL_checklstring(L, 1, &size);
-    unsigned char packet[4 + 256];
-    if (size > 255)
-        size = 255;
-    put16(packet, HEADER_ZC_NOTIFY_PLAYERCHAT);
-    put16(packet + 2, (unsigned)(4 + size + 1));
-    memcpy(packet + 4, text, size);
-    packet[4 + size] = 0;
-    deliver(packet, (int)(4 + size + 1));
+    own_chat(text, size);
     return 0;
 }
 
@@ -381,36 +393,51 @@ static int l_send(lua_State *L)
     return 0;
 }
 
-/* scene.key_event(vk, scan, down, alt): one key transition, routed the way core/app_sdl.c routes
-   SDL key events (Alt combinations and F10 go straight to the window manager). */
+/* scene.key_event(vk, scan, down): one key transition, as a keyboard gives it to core/user_input.c;
+   while the scene holds an Alt key (VK_MENU) down, the keys it presses come with Alt. */
 static int l_key_event(lua_State *L)
 {
-    int vk = (int)luaL_checkinteger(L, 1), scan = (int)luaL_optinteger(L, 2, 0);
-    int down = lua_toboolean(L, 3), alt = lua_toboolean(L, 4);
-    int lparam = scan << 16 | 1 | (alt ? 1 << 29 : 0);
-    platform_note_key(vk, down);
-    if (!down)
-        window_events_key_up(vk, lparam | (int)0xc0000000u);
-    else if (alt || vk == VK_F10)
-        ui_window_mgr_on_key_down(&g_windowMgr, vk, lparam, 1);
-    else
-        window_events_key_down(vk, lparam);
+    static int alt;
+    struct InputKey key;
+    key.vk = (int)luaL_checkinteger(L, 1);
+    key.scancode = (int)luaL_optinteger(L, 2, 0);
+    key.down = lua_toboolean(L, 3);
+    key.repeat = 0;
+    key.count = 1;
+    if (key.vk == VK_MENU)
+        alt = key.down;
+    key.alt = alt;
+    input_key(&key);
     return 0;
 }
 
+static void key_transition(int vk, int down)
+{
+    struct InputKey key = {vk, 0, down, 0, 0, 1};
+    input_key(&key);
+}
+
+/* scene.text(s): typed as a keyboard types it, a letter, digit or space with its key going down
+   first (the window manager decides on the key whether characters go to the chat line) and up
+   after. */
 static int l_text(lua_State *L)
 {
     const char *text = luaL_checkstring(L, 1);
-    for (; *text; text++)
-        window_events_char((unsigned char)*text);
+    for (; *text; text++) {
+        int ch = (unsigned char)*text;
+        int vk = ch >= 'a' && ch <= 'z' ? ch - 'a' + 'A' : (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == ' ' ? ch : 0;
+        if (vk)
+            key_transition(vk, 1);
+        input_char(ch);
+        if (vk)
+            key_transition(vk, 0);
+    }
     return 0;
 }
 
 static int l_mouse(lua_State *L)
 {
-    int x = (int)luaL_checkinteger(L, 1), y = (int)luaL_checkinteger(L, 2);
-    platform_note_cursor(x, y);
-    mouse_on_move(&g_mouse);
+    input_pointer((int)luaL_checkinteger(L, 1), (int)luaL_checkinteger(L, 2));
     return 0;
 }
 
@@ -419,9 +446,7 @@ static int l_button(lua_State *L)
 {
     int x = (int)luaL_checkinteger(L, 1), y = (int)luaL_checkinteger(L, 2), down = lua_toboolean(L, 3);
     int right = lua_isstring(L, 4) && !strcmp(lua_tostring(L, 4), "right");
-    platform_note_cursor(x, y);
-    platform_note_key(right ? VK_RBUTTON : VK_LBUTTON, down);
-    mouse_on_button(&g_mouse, g_hMainWnd, right ? MOUSE_RIGHT : MOUSE_LEFT, down);
+    input_button(right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT, down, x, y);
     return 0;
 }
 
@@ -534,8 +559,14 @@ static const char prelude[] =
     "scene.VK = { RETURN = 0x0d, ESCAPE = 0x1b, TAB = 0x09, BACK = 0x08, F1 = 0x70, INSERT = 0x2d }\n"
     "-- scene.key(vk[, scan]): press and release a key.\n"
     "function scene.key(vk, scancode)\n"
-    "  scene.key_event(vk, scancode or 0, true, false) scene.wait(1)\n"
-    "  scene.key_event(vk, scancode or 0, false, false) scene.wait(1)\n"
+    "  scene.key_event(vk, scancode or 0, true) scene.wait(1)\n"
+    "  scene.key_event(vk, scancode or 0, false) scene.wait(1)\n"
+    "end\n"
+    "-- scene.alt_key(vk[, scan]): a key with Alt held, as the window shortcuts are pressed.\n"
+    "function scene.alt_key(vk, scancode)\n"
+    "  scene.key_event(0x12, 0x38, true) scene.wait(1)\n"
+    "  scene.key(vk, scancode)\n"
+    "  scene.key_event(0x12, 0x38, false) scene.wait(1)\n"
     "end\n";
 
 /* ---- frame loop ---- */
