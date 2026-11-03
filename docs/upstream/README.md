@@ -90,7 +90,9 @@ bugs those found, `9443627d108cad1894173aa5183fb6abd7d8c3c0` to
 row, and a fix, `ab24db87b1f58c8447b01ba62fae3bab9159452c`, came after it. Two more
 came from the third-class removal on `purist`: the mercenary job range,
 `611062607530a632645a9939d67c8c68193c7a83`, and the constant names,
-`278420d369e3e4fb20747bf3257cda4526a2e083`.
+`278420d369e3e4fb20747bf3257cda4526a2e083`. Two came from the effects-as-data census on
+`purist`: the heal-effect types, `b10f009f423ea68c2af14533c6cf87e13f4a5239`, and the
+meteor-storm wave frame, `d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87`.
 Fixes whose code still exists on `purist` were ported with `git cherry-pick -x`; on
 `purist` the default pet and homunculus names from job names and the char-server list
 lines are cut by whole UTF-8 characters, and the unused login-entry field is removed
@@ -116,6 +118,8 @@ instead of zeroed. The patch files are `git format-patch` exports of the `main` 
 | [skin-scan-extensionless.patch](skin-scan-extensionless.patch) | [ab24db87b1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ab24db87b1f58c8447b01ba62fae3bab9159452c) | Not needed on purist, code removed | A file without an extension in the `skin` folder is skipped instead of crashing the scan. |
 | [mercenary-job-range.patch](mercenary-job-range.patch) | [6110626075](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/611062607530a632645a9939d67c8c68193c7a83) | [a2e90706b6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a2e90706b6e02e39bd2b7360d4b56d715961c589) (also stops at 6046) | Job 6017, the first mercenary, counts as a mercenary, so it is shown in the direction rounded from its facing like the others. |
 | [rodex-equip-constant-names.patch](rodex-equip-constant-names.patch) | [278420d369](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/278420d369e3e4fb20747bf3257cda4526a2e083) | [0436ca56e9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0436ca56e919991f5dfcd1975ef415581eb5d876) (the constants that still exist) | The TaeKwon job IDs and messages in `rodex_compose.c` and the release messages and kinds in `equip_wnd.c` are named for what they are; no behaviour change. |
+| [heal-effect-types.patch](heal-effect-types.patch) | [b10f009f42](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b10f009f423ea68c2af14533c6cf87e13f4a5239) | [8fe0de73b2](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8fe0de73b224cb1206dcf00daf67c4942ab530ca) | Effects `0x459`, `0x477` and `0x478` play the purple, cyan and yellow heal instead of nothing. |
+| [meteor-storm-wave-frame.patch](meteor-storm-wave-frame.patch) | [d4921026ec](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87) | [457d6dd219](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/457d6dd219f8a828423b0fad174cca11d48022fa) | The meteor storm plays its eighth meteor wave at frame 180, as the original, not 170. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in

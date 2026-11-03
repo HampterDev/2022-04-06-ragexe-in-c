@@ -9320,8 +9320,12 @@ at Patrick's request on 2026-11-03, in two batches (`main` `0fc910c` to `6177cea
 the first four below. Two bugs found during the
 [third-class removal](#third-class-removal-2026-11-03) were fixed the same way, also at
 Patrick's request on 2026-11-03: the mercenary job range (`main` `6110626`, here
-`a2e9070`) and the constant names (`278420d`, here `0436ca5`); they are the last two
-items.
+`a2e9070`) and the constant names (`278420d`, here `0436ca5`); they come next. Two bugs
+found by the
+[effects-as-data census](#effects-as-data-trace-harness-and-str-bindings-2026-11-03)
+were fixed the same way, also at Patrick's request on 2026-11-03: the heal-effect types
+(`b10f009`, here `8fe0de7`) and the meteor-storm wave frame (`d492102`, here `457d6dd`);
+they are the last two items.
 
 What each fix does:
 
@@ -9462,6 +9466,20 @@ What each fix does:
   `MSG_DISMOUNT_MADO_GEAR`, `MSG_RELEASE_TRANSFORM` is `MSG_DISMOUNT_DRAGON` (picked by
   `riding_dragon`, formerly `transformed`), and `RELEASE_SANTA` 3 and `RELEASE_TRANSFORM`
   1 are `RELEASE_MADO_GEAR` and `RELEASE_DRAGON`.
+- Heal-effect types (`b10f009`, here `8fe0de7`). `HEAL_TYPE_PURPLE`, `HEAL_TYPE_CYAN`
+  and `HEAL_TYPE_YELLOW` were `0x59e`, `0x5bc` and `0x5bd`, each `0x145` too high; the
+  heal factory is registered for `0x459`, `0x477` and `0x478`, so those effects matched no
+  case and drew nothing. They are now `0x459`, `0x477` and `0x478`, the cases of the
+  original's heal step (`0x9aabf0`), as the
+  [census](#the-heal-effect-ids-checked-not-changed) found and the original's colour and
+  texture pushes confirm.
+- Meteor-storm wave frame (`d492102`, here `457d6dd`). `rag_meteor_storm_waves`
+  (RagEffect 90) played its eighth `wizard_meteo.wav` at frame 170. The original's process
+  switch (`0x6f874d`, table `0x6ffd94`, entry 90 = `0x6fe37d`) plays it at frames 20, 50,
+  80, 100, 130, 140, 180 and 200; the unreferenced copy at `0x6eb310` and the cue list of
+  effect `0x48a` (`0x996ad5`, already 180 in `ez2str_effect.c`) agree. Frame 0 falls
+  through into frame 10 there too, so it plays both `wizard_meteo` and `hunter_blastmine`:
+  that is original behaviour, kept, and now marked in the code.
 
 Format-string calls left as they are:
 
@@ -9547,6 +9565,12 @@ Tests added:
   the direction of job 6018. 291 checks on both branches.
 - The renames have no test, having no behaviour to test; they were checked by
   disassembling the release objects of both files before and after.
+- `test_heal_colours` runs `heal_effect.c` whole for 100 frames with the particle
+  functions recorded: `0x459`, `0x477` and `0x478` must each spawn 42 column particles
+  with their texture and colour and 36 sparkles with their colour, and `0x138` the green
+  heal.
+- `test_meteor_storm_waves` runs the extracted `rag_meteor_storm_waves` for frames 0-300
+  with the waves and quake messages recorded, against the original's schedule.
 
 Validation:
 
@@ -9623,6 +9647,21 @@ Validation:
   renamed static functions mapped back, `dumpbin /disasm` shows the same code for every
   function of `equip_wnd.obj` and `rodex_compose.obj` before and after the renames (69
   and 56 functions on `main`, 61 and 56 here).
+- Heal types and meteor waves, `main`: release builds passed without warnings after each
+  commit: `build/heal-colours-build.log` and `build/meteor-storm-build.log`. The full suite
+  passed: `build/effect-fixes-full-tests.log`, digest still `32d81ae6406478e3`. The five
+  standalone suites there passed: `build/effect-fixes-<suite>.log`. `git diff --check`
+  passed.
+- Heal types and meteor waves, here: both tests passed after each port; the release build
+  of the completed series passed without warnings: `build/effect-fixes-build.log`. The
+  full suite passed: `build/effect-fixes-full-tests.log`, digest `d77aaadbb5fc63b7`. The
+  seven standalone suites passed: `build/effect-fixes-<suite>.log`. `git diff --check`
+  passed. `test_effect_trace` kept `cbdaaf30ef3127d6` after each port
+  (`build/effect-trace-heal.log`, `build/effect-trace-meteor.log`): it does not run
+  `heal_effect.c`, and it traces effect 90's waves with their frames but its STR stub ends
+  the effect after 36-41 frames in all five input sets, before frame 170 or 180.
+- `test_heal_colours` fails on the previous constants ("Heal type 0x459 drew nothing") and
+  `test_meteor_storm_waves` on the previous frame (170 instead of 180).
 
 No live client was run.
 
@@ -10487,17 +10526,24 @@ So the port's registration is right and its switch is wrong: `HEAL_TYPE_PURPLE`,
 `HEAL_TYPE_CYAN` and `HEAL_TYPE_YELLOW` in `heal_effect.c` should be `0x459`, `0x477` and
 `0x478`. Each is off by exactly `0x145`, the constant of the comparison before the
 subtraction. As it is, these three heal effects draw nothing. Not changed here; it is a
-`main` fix.
+`main` fix. Fixed afterwards: `main` `b10f009`, here `8fe0de7`.
 
 ### Found, not fixed
 
-- The heal-effect constants above.
+- The heal-effect constants above (fixed afterwards, `8fe0de7`).
 - `rag_earth_spike` (`rag_skills_040_079.c`) sends message `0x87` with the addresses of
   three stack floats cast to `int`; that truncates the pointers on a 64-bit build.
+  Checked afterwards, not changed: the message goes through `game_send_message`, whose
+  arguments are `int` on `main` and here, so a wider cast would be cut back to `int` at
+  the call. `purist-portable` widened the mode-message arguments to `intptr_t` in
+  `40bcdef`, and its `rag_earth_spike` already passes `(intptr_t)` pointers. It is the only
+  sender of mode message `0x87` on all three branches.
 - `rag_effect_construct` leaves `screen_pos` and `str_state[60..127]` uninitialized; the
   first STR step writes them before anything reads them.
 - `rag_meteor_storm_waves` (`rag_unreferenced.c`) falls through from frame 0 to frame 10,
-  so frame 0 plays both waves; not compared with the original.
+  so frame 0 plays both waves; not compared with the original. Compared afterwards: the
+  original does the same (kept), but plays the eighth meteor wave at frame 180, not 170
+  (fixed, `457d6dd`).
 
 ### Next batch
 

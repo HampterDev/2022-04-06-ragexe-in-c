@@ -1,0 +1,172 @@
+From d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 21:44:58 +0100
+Subject: [PATCH] Play the meteor storm's eighth meteor wave at frame 180, as
+ the original
+
+rag_meteor_storm_waves (RagEffect 90) played wizard_meteo.wav at frame
+170; the original plays it at 180. The original's RagEffect process
+switch (0x6f874d) jumps on the effect ID through the table at 0x6ffd94,
+whose entry 90 is 0x6fe37d. That case switches on the frame through
+0x700540/0x700550: frame 0 plays wizard_meteo and runs on into frame
+10's hunter_blastmine, and frames 20, 50, 80, 100, 130, 140, 180 and
+200 play wizard_meteo. The unreferenced copy at 0x6eb310 has the same
+cases, and so does the cue list of effect 0x48a (0x996ad5), which the
+port already has with 180 (ez2str_effect.c).
+
+The fall-through from frame 0 into frame 10, which plays two waves at
+frame 0, is the original's and is kept; it now says so.
+
+The new test_meteor_storm_waves runs the extracted function for frames
+0-300 with the waves and quake messages recorded and compares them with
+the original's schedule: both waves at 0, blast mine at 10, meteo at
+20-200 including 180, and a quake every 50 frames from 50 to 250. It
+fails on the previous code (170 instead of 180).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/effects/rag/rag_unreferenced.c  |  3 +-
+ tests/build.bat                     |  3 ++
+ tests/build_meteor_storm_waves.bat  | 15 +++++++
+ tests/extract_meteor_storm_waves.py | 12 ++++++
+ tests/test_meteor_storm_waves.c     | 61 +++++++++++++++++++++++++++++
+ 5 files changed, 93 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_meteor_storm_waves.bat
+ create mode 100644 tests/extract_meteor_storm_waves.py
+ create mode 100644 tests/test_meteor_storm_waves.c
+
+diff --git a/src/effects/rag/rag_unreferenced.c b/src/effects/rag/rag_unreferenced.c
+index 1f63cc6..8917cdf 100644
+--- a/src/effects/rag/rag_unreferenced.c
++++ b/src/effects/rag/rag_unreferenced.c
+@@ -240,10 +240,11 @@ unsigned char rag_meteor_storm_waves(struct RagEffect *self)
+     switch (self->frame) {
+     case 0:
+         rag_play_wave_here(self, "effect\\wizard_meteo.wav");
++        /* Falls through, as in the original: frame 0 also plays the blast mine wave. */
+     case 10:
+         rag_play_wave_here(self, "effect\\hunter_blastmine.wav");
+         break;
+-    case 20: case 50: case 80: case 100: case 130: case 140: case 170: case 200:
++    case 20: case 50: case 80: case 100: case 130: case 140: case 180: case 200:
+         rag_play_wave_here(self, "effect\\wizard_meteo.wav");
+         break;
+     default:
+diff --git a/tests/build.bat b/tests/build.bat
+index 3c12b6a..d09ffbf 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -892,3 +892,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_heal_colours.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_meteor_storm_waves.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_meteor_storm_waves.bat b/tests/build_meteor_storm_waves.bat
+new file mode 100644
+index 0000000..6527563
+--- /dev/null
++++ b/tests/build_meteor_storm_waves.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\meteor_storm_waves"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_meteor_storm_waves.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_meteor_storm_waves.c" /Fe:test_meteor_storm_waves.exe
++if errorlevel 1 (popd & exit /b 1)
++test_meteor_storm_waves.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_meteor_storm_waves.py b/tests/extract_meteor_storm_waves.py
+new file mode 100644
+index 0000000..1517ebc
+--- /dev/null
++++ b/tests/extract_meteor_storm_waves.py
+@@ -0,0 +1,12 @@
++"""Extract rag_meteor_storm_waves from rag_unreferenced.c. Usage: ROOT OUT"""
++import re
++import sys
++from pathlib import Path
++
++root, out = Path(sys.argv[1]), Path(sys.argv[2])
++out.mkdir(parents=True, exist_ok=True)
++text = (root / 'src' / 'effects' / 'rag' / 'rag_unreferenced.c').read_bytes().decode('utf-8').replace('\r\n', '\n')
++match = re.search(r'^unsigned char rag_meteor_storm_waves\(struct RagEffect \*self\)\n\{\n.*?^\}\n', text, re.M | re.S)
++if not match:
++    sys.exit('rag_meteor_storm_waves not found')
++(out / 'meteor_storm_waves.inc').write_text(match.group(0), encoding='utf-8')
+diff --git a/tests/test_meteor_storm_waves.c b/tests/test_meteor_storm_waves.c
+new file mode 100644
+index 0000000..0ee2c73
+--- /dev/null
++++ b/tests/test_meteor_storm_waves.c
+@@ -0,0 +1,61 @@
++/* Meteor storm (RagEffect 90): the waves and quakes of frames 0-300 must be those of the
++   original's case 90, which plays wizard_meteo and hunter_blastmine at frame 0, hunter_blastmine
++   at 10, wizard_meteo at 20, 50, 80, 100, 130, 140, 180 and 200, and quakes every 50 frames from
++   50 to 250. */
++#include "effects/rag/rag_effect.h"
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++
++#define GAME_MSG_QUAKE 0x7a
++#define METEO "effect\\wizard_meteo.wav"
++#define BLASTMINE "effect\\hunter_blastmine.wav"
++
++static struct RagEffect effect;
++static char played[400];
++static int quakes[400], steps;
++
++void effect_play_wave_at(const char *wave, const Vec3 *position, float height)
++{
++    size_t length = strlen(played);
++    assert(position == &effect.base.pos && height == 0.0f);
++    assert(length + strlen(wave) + 32 < sizeof played);
++    sprintf(played + length, "%d:%s ", effect.frame, wave);
++}
++
++static void mode_message(int msg, int par1)
++{
++    assert(msg == GAME_MSG_QUAKE && par1 == 0 && effect.frame < 400);
++    quakes[effect.frame]++;
++}
++
++static unsigned char step(struct RagEffect *self)
++{
++    assert(self == &effect);
++    steps++;
++    return 1;
++}
++
++#include "meteor_storm_waves.inc"
++
++int main(void)
++{
++    static const char expected[] =
++        "0:" METEO " 0:" BLASTMINE " 10:" BLASTMINE " 20:" METEO " 50:" METEO " 80:" METEO
++        " 100:" METEO " 130:" METEO " 140:" METEO " 180:" METEO " 200:" METEO " ";
++    int frame;
++
++    for (frame = 0; frame <= 300; frame++) {
++        effect.frame = frame;
++        assert(rag_meteor_storm_waves(&effect) == 1);
++    }
++    if (strcmp(played, expected)) {
++        printf("Meteor storm waves differ from the original:\n  got      %s\n  expected %s\n", played, expected);
++        return 1;
++    }
++    for (frame = 0; frame <= 300; frame++)
++        assert(quakes[frame] == (frame >= 50 && frame % 50 == 0 && frame < 300));
++    assert(steps == 301);
++    puts("Meteor storm waves: frame 0 plays both waves as in the original, meteo at 180 not 170, quakes every 50 frames.");
++    return 0;
++}
