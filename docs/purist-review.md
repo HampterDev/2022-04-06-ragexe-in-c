@@ -9302,3 +9302,160 @@ Validation:
 - `git diff --check` passed.
 
 No live client was run.
+
+## Foundation fixes from the UTF-8 review (2026-11-03)
+
+Decision: Patrick approved fixing these bugs on `main` and porting them here on
+2026-11-03. Four were listed under the [langtype 20 lock](#langtype-20-lock-2026-11-03):
+the homunculus-name format, the monster-skill buffers, the face-charset read and the
+uninitialized login-entry field. The other format-string sites were found by listing every
+printf-family call whose format is not a string literal (about 450 on `main`, 336 here)
+and checking where each format comes from. Each `main` commit has a focused regression
+test; the patches and commits are listed in the
+[upstream notes](upstream/README.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
+
+What each fix does:
+
+- Names and other text are copied into fixed buffers as text (`main` `1b44264`, here
+  `8016545`). Thirteen copies passed server, user or file text to `sprintf`,
+  `_snprintf_s` or `fprintf` as the format, so a `%` read arguments that were never
+  passed and `%n` stopped the client; packet fields were read up to the next NUL, past a
+  full field. The copies: the homunculus name (`homun_name`), the pet name (`pet_named`,
+  `game_mode_zc_property_pet`), the couple name (`game_mode_zc_couple_name`), the cut-in
+  image name (`game_mode_update_cut_in`), the char-server names (`server_list`), the map
+  name (`game_mode_move_to_server`), the default and typed homunculus and pet names
+  (`companion_info.c`, `pet_info.c`), the saved styling-shop records
+  (`ui_my_style_wnd_save_slots`, now `fputs`) and the line of state 0x27c (`change_began`),
+  which was formatted a second time. Each now copies with `"%s"`, or with `"%.*s"` bounded
+  by the packet field, through `_snprintf_s(..., _TRUNCATE, ...)` bounded by the buffer.
+  Here `homun_name` had only the format branch; the `"%s"` branch of services 10, 12 and 15
+  went with the langtype lock. The default names taken from job names are copied with
+  `utf8_copy_prefix` instead, because a UTF-8 job name can be longer than the 32-byte
+  buffers and the cut must keep characters whole, as in the
+  [UTF-8 splits](#utf-8-splits-in-navigation-lines-and-packet-fields-2026-11-03) step. The
+  other copies never cut valid text: the 24- and 20-byte fields go into larger buffers,
+  and the typed names are refused at 24 bytes before the copy. A full 24-byte couple name,
+  which needs a server that leaves out the NUL, is cut to 23 bytes and can end in part of
+  a character.
+- Monster skill values (`b071edc`, here `b5ef560`). `session_get_monster_skill_info`
+  copied the `<action>` and `<loopType>` text of `monsterskillinfo.xml` into 8-byte
+  buffers with the text as the format, and for players who are not administrators a
+  missing node reached `xml_node_text(NULL)`. The values are now parsed with `atoi` from
+  the node text, and a missing node counts as 0, the value the administrator path already
+  set. The monster name is copied into `name[0x100]` with a bound instead of `strcpy`.
+  Here there is no `text_decode`, so the values were already read as stored; on `main` the
+  commit also stops passing them through it, which cannot change an `atoi` result.
+- Face charsets (`e0db373`, `main` only). `main` now does what
+  [font fallback by script](#font-fallback-by-script-2026-11-03) did here: faces past the
+  12-entry `faceCharsets` get `DEFAULT_CHARSET` for SCDream and `ANSI_CHARSET` otherwise,
+  without reading `hexDigitFlags`. `main` keeps its rule that faces 0x14 and up use the
+  first entry with language index 0. Not needed here.
+- Login connection entries (`d28b5ab`, here `d4940e6`). `login_conn_entry_copy` copied
+  fields that nothing set. `main` zeroes `version` and `service_type` in
+  `login_conn_entry_construct` and builds the entry of `login_mode_load_connections` with
+  it; zeroing the constructor alone would have missed that function, which used five
+  `string_init` calls. Here `service_type` was already gone and nothing reads `version`,
+  so the field and its copy are removed; `login_mode_load_connections` is unchanged.
+
+Format-string calls left as they are:
+
+- About 430 calls format a `msg_str` message, the client's message table, some through a
+  variable (`system_messages.c`, `packets_party.c`, `packets_inventory.c`,
+  `packets_entry.c`) or a wrapper (`ranking_line`, `thread_text_format`). That is their
+  purpose; the server text they show is passed as an argument.
+- Formats chosen from literals or tables in the code: sprite, effect and bitmap paths
+  (`merc_render.c`, `npc.c`, `render_sprite.c`, `rag_str_anim.c`, `rag_skills_800_839.c`,
+  `navi_info.c`, `session_names.c`, `tabs.c`, `window_chrome.c`, `hair_style.c`, the
+  party job icons, `bitmap_tab.c`, `cash_shop.c`, `menu_icon_wnd.c`,
+  `refining_children.c`), labels and lines (`basic_info_wnd.c`, `skill_list_wnd.c`,
+  `npc_shop_purchase.c`, `status_wnd.c`, `select_char_new.c`, `info_overlays.c`,
+  `achievement_upper.c`, `refining_draw.c`, `homun_value_line`), error texts
+  (`achievement_lua.c`, `item_reform.c`, `lua_data.c`, the navigation and session Lua
+  tables, `prohibit_list.c`, `merc_ai_trace.c`, `quest_panes.c`), and the wrappers that
+  pass on their own format (`std/string.c`, `thread_text.c`, `ranking_output.c`,
+  `lua_calls.c`, `crash_report.c`, `json_loader.c`, `item_info_mgr.c`).
+- Client data meant to hold a conversion: the state-icon descriptions from Lua
+  (`put_time_left` in `mode_tips.c`) and the option names from `GetVarOptionName`
+  (`item_collection_text.c`).
+- `render_argument` (`message_tags.c`) checks first that its format is one `%s`, `%d` or
+  `%f` conversion.
+- `inet_ntoa` as the format of the map-server address (`game_mode_move_to_server`): it
+  holds only digits and dots.
+- The message box keeps its text as a countdown format (`msgbox_start_count`,
+  `message_box.c`), used only when the box has a duration; no caller passes one.
+- On `main` only, the pet and monster talk lines from `PetTalkTable.xml` and
+  `MonsterTalkTable.xml` are used as formats (`session_get_monster_talk_info`,
+  `session_format_chat_line` in `talk_tables.c`). They are client data; see below.
+- `printf(text, "")` for state 0x162 (`change_began`, both branches) was meant as
+  `sprintf(text, "")`, the empty line of `no_line`. The caller clears `text` and nothing
+  writes it before, so the call prints nothing and the line stays empty: no visible
+  effect, so it is left.
+
+Found and not fixed:
+
+- `server_list` (`login_states.c`) copies the colored label back into `text[0x40]` with
+  `strcpy_s`. A 20-byte name with the new-server prefix and long busy or state messages
+  can exceed it, and `strcpy_s` then ends the client; no invalid-parameter handler is set.
+- `pet_named` and `game_mode_zc_property_pet` still pass the packet name itself to
+  `ui_pet_info_set_name` (and to `ui_item_collection_set_pet` for another player's pet),
+  which reads a full 24-byte field past its end.
+- `game_mode_move_to_server` cuts the extension off the map name with
+  `string_resize(&name, name.size - 4, 0)`, which underflows for a name shorter than
+  4 bytes.
+- `game_mode_format_string_msg` (`system_messages.c`, `ZC_FORMATSTRING_MSG`) finds the
+  second and third argument with `strlen`, without the packet length, so arguments
+  without a NUL are read past the packet.
+- On `main` only, `talk_tables.c`: `session_get_monster_talk_info` copies the job name
+  with `strcpy` into `name[0x100]` and formats a random XML line into `line[0x300]`;
+  `session_get_pet_speak` copies a line with `strcpy` into the caller's 256-byte buffer,
+  and `session_format_chat_line` formats it again into `said[256]` and inserts the
+  replacement words with `strcpy` and `strcat`. All of it is client data.
+
+Tests added:
+
+- `test_name_text` runs the extracted production code of every copy: the small
+  functions whole, and from the large ones the statement that fills the buffer. Every
+  text holds `a%d%x%%b` or `%s%n%s%n` and must arrive unchanged; full packet fields
+  followed by other bytes, a 319-byte image name, a 26-character map name and
+  36-character typed names must be cut to the field or buffer, and the couple name must
+  not reach the field after it. Here it also cuts an 11-syllable job name to 10 whole
+  syllables. 34 cases here, 41 on `main`.
+- `test_monster_skill_info` runs the extracted function over a parsed
+  `monsterskillinfo.xml`: plain, 12-character, trailing-text and `5%d%s%n` values, empty
+  and missing nodes, unknown skills and monsters, a 767-byte name and the administrator
+  path. 16 lookups here; on `main` the same 16 again with the tags mirrored as for the
+  Korean service.
+- `test_face_charset` (`main` only) runs `text_dc_select_font` with the production
+  `g_3dDevice` tables for faces 0-0x1d, language indexes 0-12, five service types and two
+  folder languages, and checks the old bytes past the table against the new values and
+  their code pages. 3,900 selections.
+- `test_login_conn_entry` loads the connection list (and on `main` both subconnection
+  lists) from a parsed `clientinfo.xml` after filling the stack with a pattern. On `main`
+  every entry must have both fields 0; here it checks the strings and asserts at compile
+  time that an entry is its five strings.
+
+Validation:
+
+- `main`: release builds passed without compiler or linker warnings after each commit:
+  `build/name-text-build.log`, `build/monster-skill-info-build.log`,
+  `build/face-charset-build.log` and `build/login-conn-entry-build.log` in the `main`
+  checkout. The full suite passed on the completed series:
+  `build/utf8-review-fixes-full-tests.log`, with the packet dispatch digest still
+  `32d81ae6406478e3`. Five of the seven standalone suites exist on `main` and passed:
+  `build/utf8-review-fixes-<suite>.log`; `headgear_names` and `pet_accessory` exist only
+  here. `git diff --check` passed.
+- Here: release builds passed without warnings after each port:
+  `build/name-text-build.log`, `build/monster-skill-info-build.log` and
+  `build/login-conn-entry-build.log`. The full suite passed with the
+  [server-type removal](#dead-server-types-3-and-13-2026-11-03):
+  `build/utf8-review-fixes-full-tests.log`, with the digest still `d8b534ea02a5d31f`. The
+  seven standalone suites passed: `build/utf8-review-fixes-<suite>.log`.
+  `git diff --check` passed.
+- Each new test fails on the code before its fix. `test_name_text` fails on both
+  branches with any one of the eleven changed files reverted. `test_monster_skill_info`
+  fails on the previous code and with only the `strcpy` restored. `test_face_charset`
+  fails on `main`'s previous lookup. `test_login_conn_entry` fails on `main`'s previous
+  code and with only the constructor changed; here its size assertion does not compile
+  against the previous `loginmode.h`.
+
+No live client was run.

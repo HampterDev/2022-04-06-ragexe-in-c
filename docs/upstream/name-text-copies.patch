@@ -1,0 +1,779 @@
+From 1b442642e153dcdfc08f1e5cec2171893efef826 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 14:32:23 +0100
+Subject: [PATCH] Copy names and other text into fixed buffers as text, not as
+ formats
+
+Thirteen sites passed text from the server, the user or a file to sprintf,
+_snprintf_s or fprintf as the format. A % in a pet, homunculus, couple,
+char-server or character name, or in a typed name, made the client read
+arguments that were never passed; %n stops it. Packet fields were also
+read up to the next NUL, past a full field.
+
+Each site now copies the text with "%s", or "%.*s" bounded by the packet
+field, through _snprintf_s(..., _TRUNCATE, ...) bounded by the buffer:
+
+- homun_name (companion_packets.c), from ZC_PROPERTY_HOMUN: both service
+  type paths are merged into one bounded copy of the 24-byte name.
+- pet_named (actor_names.c), from ZC_ACK_REQNAME and ZC_ACK_REQNAMEALL:
+  NAME_LENGTH bytes into petName[32].
+- game_mode_zc_property_pet (packets_pet.c): the 24-byte name field.
+- game_mode_zc_couple_name (packets_social.c): the 24-byte name into
+  couple_name[24]; a full field is cut to 23 bytes instead of writing a
+  25th byte into name_balloon.
+- game_mode_update_cut_in (packets_world.c): the cut-in image name into
+  g_illustImageName[0x100].
+- server_list (login_states.c): the 20-byte char-server name after the
+  optional "new" prefix, into the rest of text[0x40].
+- game_mode_move_to_server (mode_connection.c): the map name, into the
+  20 bytes of mapName and map_name_tail as before.
+- ui_homun_info_wnd_on_create and homun_rename (companion_info.c): the
+  job name used as the default name and the name the user typed, into
+  homunName[0x20].
+- ui_pet_info_wnd_on_create and pet_rename (pet_info.c): the same two
+  copies into petName[32].
+- ui_my_style_wnd_save_slots (styling_shop.c): the saved records, which
+  hold character names, are written with fputs instead of fprintf.
+- change_began state 0x27c (state_messages_timed.c): the line formatted
+  from msg 0x784 was formatted a second time, so a % in its output (as
+  from %%) read a missing argument; it is now copied into the 0x100-byte
+  line.
+
+Validation: the new test_name_text runs the extracted production code:
+homun_name, pet_named, game_mode_zc_property_pet,
+game_mode_zc_couple_name, game_mode_update_cut_in and server_list whole,
+and from the larger functions the statement that fills the buffer. Every
+text holds "a%d%x%%b" or "%s%n%s%n" and must arrive unchanged; full packet
+fields followed by other bytes, a 319-byte image name, a 26-character map
+name and 36-character typed names must be cut to the field or buffer;
+couple_name must not touch name_balloon. 41 cases. With any one of the
+eleven files reverted the test fails. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/game/actor_names.c            |   2 +-
+ src/game/companion_packets.c      |   8 +-
+ src/game/mode_connection.c        |   2 +-
+ src/game/packets_pet.c            |   3 +-
+ src/game/packets_social.c         |   3 +-
+ src/game/packets_world.c          |   2 +-
+ src/game/state_messages_timed.c   |   2 +-
+ src/login/login_states.c          |   5 +-
+ src/ui/character/companion_info.c |   6 +-
+ src/ui/items/pet_info.c           |   6 +-
+ src/ui/items/styling_shop.c       |   2 +-
+ tests/build.bat                   |   3 +
+ tests/build_name_text.bat         |  15 ++
+ tests/extract_name_text.py        | 107 +++++++++
+ tests/test_name_text.c            | 369 ++++++++++++++++++++++++++++++
+ 15 files changed, 519 insertions(+), 16 deletions(-)
+ create mode 100644 tests/build_name_text.bat
+ create mode 100644 tests/extract_name_text.py
+ create mode 100644 tests/test_name_text.c
+
+diff --git a/src/game/actor_names.c b/src/game/actor_names.c
+index fb0e8cd..f7e5223 100644
+--- a/src/game/actor_names.c
++++ b/src/game/actor_names.c
+@@ -63,7 +63,7 @@ static void pet_named(unsigned aid, const char *name)
+ {
+     if (aid != ((unsigned)g_session1.aid))
+         return;
+-    sprintf(g_session1.petName, name);
++    _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s", NAME_LENGTH, name);
+     if (g_windowMgr.pet_info_wnd)
+         ui_pet_info_set_name(g_windowMgr.pet_info_wnd, name);
+ }
+diff --git a/src/game/companion_packets.c b/src/game/companion_packets.c
+index 032f603..247d7a5 100644
+--- a/src/game/companion_packets.c
++++ b/src/game/companion_packets.c
+@@ -77,12 +77,12 @@ static void homun_redraw(void)
+     session_invalidate_homun_info_wnd(&g_session1);
+ }
+
++/* The name is server text and a full 24-byte field has no NUL: copy it as text, never
++   as a format, and no further than the field. */
+ static void homun_name(const struct HomunPropertyHead *head)
+ {
+-    if (g_serviceType == 10 || g_serviceType == 12 || g_serviceType == 15)
+-        sprintf(g_session1.homunName, "%s", head->name);
+-    else
+-        sprintf(g_session1.homunName, head->name);
++    _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%.*s",
++                (int)sizeof head->name, head->name);
+ }
+
+ static void homun_hunger_warning(const struct HomunPropertyHead *head)
+diff --git a/src/game/mode_connection.c b/src/game/mode_connection.c
+index 762ee3b..79c6633 100644
+--- a/src/game/mode_connection.c
++++ b/src/game/mode_connection.c
+@@ -167,7 +167,7 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
+
+     string_copy(&name, &map_name);
+     string_resize(&name, name.size - 4, 0);
+-    _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, string_cstr(&name));
++    _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, "%s", string_cstr(&name));
+     g_session1.playerPosX = x;
+     g_session1.playerPosY = y;
+     _snprintf_s(g_mapServerIp.ip, sizeof g_mapServerIp.ip, _TRUNCATE, inet_ntoa(*(struct in_addr *)&ip));
+diff --git a/src/game/packets_pet.c b/src/game/packets_pet.c
+index 1619f9b..7a7f9dc 100644
+--- a/src/game/packets_pet.c
++++ b/src/game/packets_pet.c
+@@ -47,7 +47,8 @@ void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
+     (void)self;
+     g_session1.petJob = packet->job;
+     if (packet->level < PET_LEVEL_OTHER) {
+-        sprintf(g_session1.petName, name);
++        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%.*s",
++                    (int)sizeof packet->name, name);
+         g_session1.petPrevFullness = g_session1.petFullness;
+         g_session1.petFullness = packet->fullness;
+         g_session1.petIntimacy = packet->intimacy;
+diff --git a/src/game/packets_social.c b/src/game/packets_social.c
+index 32804e9..9857cdd 100644
+--- a/src/game/packets_social.c
++++ b/src/game/packets_social.c
+@@ -340,7 +340,8 @@ void game_mode_zc_couple_name(struct GameMode *self, const unsigned char *pkt)
+ {
+     const struct PACKET_ZC_COUPLENAME *packet = (const struct PACKET_ZC_COUPLENAME *)pkt;
+
+-    sprintf(self->couple_name, packet->name);
++    /* The packet is 26 bytes: the name field is NAME_LENGTH bytes and need not end in NUL. */
++    _snprintf_s(self->couple_name, sizeof self->couple_name, _TRUNCATE, "%.*s", NAME_LENGTH, packet->name);
+ }
+
+ #pragma pack(push, 1)
+diff --git a/src/game/packets_world.c b/src/game/packets_world.c
+index 266499f..2b3dd1a 100644
+--- a/src/game/packets_world.c
++++ b/src/game/packets_world.c
+@@ -156,7 +156,7 @@ void game_mode_update_cut_in(struct GameMode *self)
+             return;
+         g_illustShownPosition = self->illust_position;
+     }
+-    sprintf(g_illustImageName, image);
++    _snprintf_s(g_illustImageName, sizeof g_illustImageName, _TRUNCATE, "%s", image);
+
+     x = 0xa0;
+     y = 0;
+diff --git a/src/game/state_messages_timed.c b/src/game/state_messages_timed.c
+index 21151a6..84118e4 100644
+--- a/src/game/state_messages_timed.c
++++ b/src/game/state_messages_timed.c
+@@ -437,7 +437,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
+     case 0x27c:
+         string_init(&s);
+         string_format(&s, msg_str(0x784), val2, val1 / 100.0 + 1.0);
+-        sprintf(text, string_cstr(&s));
++        _snprintf_s(text, 0x100, _TRUNCATE, "%s", string_cstr(&s));
+         string_free(&s);
+         break;
+     case 0x2a1:
+diff --git a/src/login/login_states.c b/src/login/login_states.c
+index 3e84ddd..1581b8d 100644
+--- a/src/login/login_states.c
++++ b/src/login/login_states.c
+@@ -227,6 +227,7 @@ static void server_list(struct LoginMode *self)
+     struct LoginServerEntry *e;
+     struct String label, colour[4], text_s;
+     char text[0x40];
++    size_t used;
+     struct UIWindow *wnd;
+     int i, k;
+
+@@ -241,7 +242,9 @@ static void server_list(struct LoginMode *self)
+         memset(text, 0, sizeof text);
+         if (e->isNew == 1)
+             sprintf(text, msg_str(0x1e2));
+-        sprintf(text + strlen(text), e->name);
++        /* The name is login-server text in a 20-byte field that need not end in NUL. */
++        used = strlen(text);
++        _snprintf_s(text + used, sizeof text - used, _TRUNCATE, "%.*s", (int)sizeof e->name, e->name);
+         string_init(&label);
+         for (k = 0; k < 4; k++) {
+             string_init(&colour[k]);
+diff --git a/src/ui/character/companion_info.c b/src/ui/character/companion_info.c
+index 0cad7f4..091c5be 100644
+--- a/src/ui/character/companion_info.c
++++ b/src/ui/character/companion_info.c
+@@ -255,7 +255,8 @@ void ui_homun_info_wnd_on_create(struct UIWindow *window, int cx, int cy)
+     self->name_edit = mem ? ui_edit_ctrl2_construct(mem) : NULL;
+     ui_window_create(self->name_edit, 0x50, 0x10);
+     if (strcmp(g_session1.homunName, "") == 0)
+-        sprintf(g_session1.homunName, session_get_job_name(&g_session1, g_session1.homunJob, -1));
++        _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
++                    session_get_job_name(&g_session1, g_session1.homunJob, -1));
+     ui_window_move(self->name_edit, 0x87, 0x16);
+     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.homunName);
+     UI_EDIT_MAX_CHARS(self->name_edit) = 0x32;
+@@ -421,7 +422,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
+         if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
+             mode = game_current_base_mode();
+             mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+-            sprintf(g_session1.homunName, ui_edit_ctrl_get_text(self->name_edit));
++            _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
++                        ui_edit_ctrl_get_text(self->name_edit));
+             ui_window_invalidate_base(&self->frame.base);
+             return;
+         }
+diff --git a/src/ui/items/pet_info.c b/src/ui/items/pet_info.c
+index 1736fc7..c78b143 100644
+--- a/src/ui/items/pet_info.c
++++ b/src/ui/items/pet_info.c
+@@ -369,7 +369,8 @@ void ui_pet_info_wnd_on_create(struct UIWindow *window, int width, int height)
+     self->name_edit = edit;
+     ui_window_create(edit, 0x50, 0x10);
+     if (strcmp(g_session1.petName, "") == 0)
+-        sprintf(g_session1.petName, session_get_job_name(&g_session1, g_session1.petJob, -1));
++        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s",
++                    session_get_job_name(&g_session1, g_session1.petJob, -1));
+     ui_window_move(self->name_edit, 0x87, 0x18);
+     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->name_edit, g_session1.petName);
+     ((struct UIEditCtrl *)self->name_edit)->max_chars = 0x32;
+@@ -526,7 +527,8 @@ static void pet_rename(struct UIPetInfoWnd *self)
+         if (word_filter_contains(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit)) != 1) {
+             mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
+                           (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+-            sprintf(g_session1.petName, ui_edit_ctrl_get_text(self->name_edit));
++            _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s",
++                        ui_edit_ctrl_get_text(self->name_edit));
+             ui_window_invalidate_base(&self->frame.base);
+             return;
+         }
+diff --git a/src/ui/items/styling_shop.c b/src/ui/items/styling_shop.c
+index c6e6772..3aae36d 100644
+--- a/src/ui/items/styling_shop.c
++++ b/src/ui/items/styling_shop.c
+@@ -613,7 +613,7 @@ void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self)
+     }
+     out = fopen(STYLE_SAVE_FILE, "w");
+     if (out) {
+-        fprintf(out, string_cstr(&content));
++        fputs(string_cstr(&content), out);
+         fclose(out);
+     }
+     file_destruct(&file);
+diff --git a/tests/build.bat b/tests/build.bat
+index 9a4b144..1209b9b 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -859,3 +859,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_url_link.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_name_text.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_name_text.bat b/tests/build_name_text.bat
+new file mode 100644
+index 0000000..9f9cf95
+--- /dev/null
++++ b/tests/build_name_text.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\name_text"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_name_text.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_name_text.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_name_text.exe
++if errorlevel 1 (popd & exit /b 1)
++test_name_text.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_name_text.py b/tests/extract_name_text.py
+new file mode 100644
+index 0000000..ca7fe99
+--- /dev/null
++++ b/tests/extract_name_text.py
+@@ -0,0 +1,107 @@
++"""Extract the code that copies server, user and client text into fixed buffers.
++
++Small functions are taken whole. From large functions only the statement that
++fills the buffer is taken (an if statement with its body, a braced block, or a
++switch case up to its break), so the test runs exactly that production code with
++its own locals. Each piece goes to its own .inc file in the output directory.
++"""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def read(name):
++    return (root / 'src' / name).read_text(encoding='utf-8')
++
++
++def unique(source, pattern):
++    matches = list(re.finditer(pattern, source, re.M))
++    assert len(matches) == 1, pattern
++    return matches[0]
++
++
++def function(source, signature):
++    start = unique(source, r'^' + re.escape(signature) + r'[^{;]*\n\{').start()
++    return source[start:source.index('\n}', start) + 2]
++
++
++def struct(source, name):
++    start = unique(source, r'^struct ' + re.escape(name) + r' \{\n').start()
++    return '#pragma pack(push, 1)\n' + source[start:source.index('\n};', start) + 3] + '\n#pragma pack(pop)'
++
++
++def line(source, pattern):
++    match = unique(source, r'^' + pattern + r'.*$')
++    return match.group(0)
++
++
++def statement(source, pattern):
++    """The statement starting on the line that matches: up to the first ';' outside
++    parentheses and braces, or the '}' that closes its first brace."""
++    start = source.rindex('\n', 0, unique(source, pattern).start()) + 1
++    parens = braces = 0
++    i, quote = start, None
++    while True:
++        c = source[i]
++        if quote:
++            if c == '\\':
++                i += 1
++            elif c == quote:
++                quote = None
++        elif c in '"\'':
++            quote = c
++        elif c == '(':
++            parens += 1
++        elif c == ')':
++            parens -= 1
++        elif c == '{':
++            braces += 1
++        elif c == '}':
++            braces -= 1
++            if braces == 0:
++                return source[start:i + 1]
++        elif c == ';' and parens == 0 and braces == 0:
++            return source[start:i + 1]
++        i += 1
++
++
++def case(source, label):
++    start = unique(source, r'^[ \t]*case ' + re.escape(label) + r':[ \t]*$').start()
++    end = source.index('break;', start)
++    return source[start:end + len('break;')]
++
++
++pieces = {}
++companion = read('game/companion_packets.c')
++pieces['homun_packet'] = [struct(companion, 'HomunPropertyHead'), function(companion, 'static void homun_name(')]
++names = read('game/actor_names.c')
++pieces['pet_named'] = [line(names, r'#define NAME_LENGTH\b'), function(names, 'static void pet_named(')]
++pet = read('game/packets_pet.c')
++pieces['pet_packet'] = [line(pet, r'#define WND_PET_INFO_OTHER\b'), line(pet, r'#define PET_LEVEL_OTHER\b'),
++                        struct(pet, 'PACKET_ZC_PROPERTY_PET'),
++                        function(pet, 'void game_mode_zc_property_pet(')]
++social = read('game/packets_social.c')
++pieces['couple_name'] = [line(social, r'#define NAME_LENGTH\b'), struct(social, 'PACKET_ZC_COUPLENAME'),
++                         function(social, 'void game_mode_zc_couple_name(')]
++world = read('game/packets_world.c')
++enums = unique(world, r'^enum \{\n\s+WMSG_CUTIN_LAYOUT').start()
++pieces['cut_in'] = [line(world, r'static int g_illustShownPosition\b'), line(world, r'char g_illustImageName\['),
++                    world[enums:unique(world, r'^void game_mode_update_cut_in\(').start()].rstrip(),
++                    function(world, 'void game_mode_update_cut_in(')]
++login = read('login/login_states.c')
++pieces['server_list'] = [function(login, 'static void server_list(')]
++pieces['map_name'] = [statement(read('game/mode_connection.c'), r'\(\*\(char \(\*\)\[20\]\)&g_session1\.mapName\)')]
++homun = read('ui/character/companion_info.c')
++pieces['homun_default'] = [statement(homun, r'if \(strcmp\(g_session1\.homunName, ""\) == 0\)')]
++pieces['homun_rename'] = [statement(homun, r'\w+\(g_session1\.homunName,[^;]*ui_edit_ctrl_get_text\(self->name_edit\)')]
++pet_info = read('ui/items/pet_info.c')
++pieces['pet_default'] = [statement(pet_info, r'if \(strcmp\(g_session1\.petName, ""\) == 0\)')]
++pieces['pet_rename'] = [statement(pet_info, r'\w+\(g_session1\.petName,[^;]*ui_edit_ctrl_get_text\(self->name_edit\)')]
++pieces['style_save'] = [statement(read('ui/items/styling_shop.c'), r'^[ \t]*if \(out\) \{')]
++pieces['state_line'] = [case(read('game/state_messages_timed.c'), '0x27c')]
++
++output.mkdir(parents=True, exist_ok=True)
++for name, parts in pieces.items():
++    (output / f'name_text_{name}.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_name_text.c b/tests/test_name_text.c
+new file mode 100644
+index 0000000..32957ca
+--- /dev/null
++++ b/tests/test_name_text.c
+@@ -0,0 +1,369 @@
++#include <windows.h>
++#include <assert.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "core/fatal.h"
++#include "core/msg_str.h"
++#include "game/packet_handlers.h"
++#include "game/packets.h"
++#include "game/packets_world.h"
++#include "login/loginmode.h"
++#include "login/server_entry.h"
++#include "platform/language.h"
++#include "render/renderer.h"
++#include "replay/replay.h"
++#include "session/session_names.h"
++#include "ui/character/select_server.h"
++#include "ui/controls/edit.h"
++#include "ui/controls/listbox.h"
++#include "ui/items/pet_windows.h"
++
++/* Run the production code that stores names and other text in fixed buffers: pet,
++   homunculus and couple names and the char-server list from the servers, the cut-in
++   image and map names, homunculus and pet names typed by the user or taken from the
++   job names, the saved styling-shop records and a formatted state-change line. Each
++   text is full of printf conversions and must arrive as it was, cut to the buffer, and
++   a full packet field without a NUL must be read no further than the field. */
++
++#define CONVERSIONS "a%d%x%%b"
++#define CONVERSIONS_N "%s%n%s%n"
++
++int g_serviceType;
++struct Session g_session1;
++struct UIWindowMgr g_windowMgr;
++static struct Renderer renderer;
++struct Renderer *g_renderer = &renderer;
++static struct UIWindow test_window;
++static struct UIListBox *const server_box = (struct UIListBox *)0x5150;
++static char listed[0x100];
++static const char *job_name, *edit_text;
++static int cases;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++char *msg_str(int id)
++{
++    switch (id) {
++    case 0x784: return (char *)"%d%% x%.1f";
++    case 0x1e2: return (char *)"(N) ";
++    }
++    abort();
++}
++const char *session_get_job_name(struct Session *self, unsigned job, int sex)
++{
++    assert(self == &g_session1 && sex == -1);
++    (void)job;
++    return job_name;
++}
++const char *ui_edit_ctrl_get_text(struct UIWindow *self)
++{
++    assert(self == &test_window);
++    return edit_text;
++}
++struct UIWindow *ui_window_open(int id)
++{
++    assert(id == 2 || id == 0x4e);
++    return &test_window;
++}
++int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
++{
++    (void)window; (void)sender; (void)message; (void)a; (void)b; (void)c; (void)d;
++    return 0;
++}
++void ui_window_move_safe(struct UIWindow *window, int x, int y) { (void)window; (void)x; (void)y; }
++BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; abort(); }
++void ui_pet_info_set_name(struct UIWindow *wnd, const char *name) { (void)wnd; (void)name; abort(); }
++void ui_pet_info_update_intimacy(struct UIWindow *wnd) { (void)wnd; abort(); }
++void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet) { (void)wnd; (void)pet; abort(); }
++struct ReplayRecorder *replay_recorder_instance(void) { return NULL; }
++BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; (void)mode; return 0; }
++struct UIListBox *ui_select_server_list(struct UIWindow *wnd) { assert(wnd == &test_window); return server_box; }
++void ui_list_box_add_item(struct UIListBox *self, const char *text)
++{
++    assert(self == server_box && strlen(text) < sizeof listed);
++    strcpy(listed, text);
++}
++static void default_wallpaper(struct LoginMode *self) { (void)self; }
++
++#include "name_text_homun_packet.inc"
++#include "name_text_pet_named.inc"
++#include "name_text_pet_packet.inc"
++#include "name_text_couple_name.inc"
++#include "name_text_cut_in.inc"
++#include "name_text_server_list.inc"
++
++static void map_name(const char *text)
++{
++    struct String name;
++
++    string_init(&name);
++    string_assign_cstr(&name, text);
++#include "name_text_map_name.inc"
++    string_free(&name);
++}
++
++static void homun_default(void)
++{
++#include "name_text_homun_default.inc"
++}
++
++static void pet_default(void)
++{
++#include "name_text_pet_default.inc"
++}
++
++static void homun_rename(void)
++{
++    struct { struct UIWindow *name_edit; } wnd = { &test_window }, *self = &wnd;
++#include "name_text_homun_rename.inc"
++}
++
++static void pet_rename(void)
++{
++    struct { struct UIWindow *name_edit; } wnd = { &test_window }, *self = &wnd;
++#include "name_text_pet_rename.inc"
++}
++
++static void style_save(const char *path, const char *text)
++{
++    struct String content;
++    FILE *out = fopen(path, "w");
++
++    string_init(&content);
++    string_assign_cstr(&content, text);
++#include "name_text_style_save.inc"
++    string_free(&content);
++}
++
++static void state_line(char *text, int index, int val1, int val2)
++{
++    struct String s;
++
++    switch (index) {
++#include "name_text_state_line.inc"
++    }
++}
++
++/* A full field of `fill` followed by bytes that are not NUL, as in a packet. */
++static void full_field(char *field, size_t size, char fill)
++{
++    memset(field, fill, size);
++}
++
++static void check(const char *got, const char *expected)
++{
++    assert(strcmp(got, expected) == 0);
++    ++cases;
++}
++
++static void check_homun_packet(void)
++{
++    struct { struct HomunPropertyHead head; char after[8]; } packet;
++    static const int services[] = { 0, 10, 12, 15 };
++    size_t i;
++
++    for (i = 0; i < sizeof services / sizeof *services; ++i) {
++        g_serviceType = services[i];
++        memset(&packet, 'z', sizeof packet);
++        strcpy(packet.head.name, CONVERSIONS);
++        homun_name(&packet.head);
++        check(g_session1.homunName, CONVERSIONS);
++        strcpy(packet.head.name, CONVERSIONS_N);
++        homun_name(&packet.head);
++        check(g_session1.homunName, CONVERSIONS_N);
++        full_field(packet.head.name, sizeof packet.head.name, 'H');
++        homun_name(&packet.head);
++        check(g_session1.homunName, "HHHHHHHHHHHHHHHHHHHHHHHH");
++    }
++    g_serviceType = 0;
++}
++
++static void check_pet_names(void)
++{
++    char name[40];
++    struct { struct PACKET_ZC_PROPERTY_PET pet; char after[8]; } packet;
++
++    g_session1.aid = 7;
++    strcpy(g_session1.petName, "kept");
++    pet_named(8, CONVERSIONS);
++    check(g_session1.petName, "kept");
++    pet_named(7, CONVERSIONS);
++    check(g_session1.petName, CONVERSIONS);
++    pet_named(7, CONVERSIONS_N);
++    check(g_session1.petName, CONVERSIONS_N);
++    memset(name, 'q', sizeof name - 1);
++    name[sizeof name - 1] = 0;
++    full_field(name, NAME_LENGTH, 'P');
++    pet_named(7, name);
++    check(g_session1.petName, "PPPPPPPPPPPPPPPPPPPPPPPP");
++
++    memset(&packet, 'z', sizeof packet);
++    packet.pet.level = 5;
++    strcpy(packet.pet.name, CONVERSIONS);
++    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
++    check(g_session1.petName, CONVERSIONS);
++    packet.pet.level = 5;
++    strcpy(packet.pet.name, CONVERSIONS_N);
++    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
++    check(g_session1.petName, CONVERSIONS_N);
++    full_field(packet.pet.name, sizeof packet.pet.name, 'Q');
++    packet.pet.level = 5;
++    game_mode_zc_property_pet(NULL, (unsigned char *)&packet);
++    check(g_session1.petName, "QQQQQQQQQQQQQQQQQQQQQQQQ");
++}
++
++static void check_couple_name(void)
++{
++    static struct GameMode mode;
++    unsigned char packet[2 + NAME_LENGTH + 8];
++    struct UIWindow *const after = (struct UIWindow *)0x1234;
++
++    mode.name_balloon = after;
++    memset(packet, 'z', sizeof packet);
++    strcpy((char *)packet + 2, CONVERSIONS);
++    game_mode_zc_couple_name(&mode, packet);
++    check(mode.couple_name, CONVERSIONS);
++    strcpy((char *)packet + 2, CONVERSIONS_N);
++    game_mode_zc_couple_name(&mode, packet);
++    check(mode.couple_name, CONVERSIONS_N);
++    full_field((char *)packet + 2, NAME_LENGTH, 'C');
++    game_mode_zc_couple_name(&mode, packet);
++    check(mode.couple_name, "CCCCCCCCCCCCCCCCCCCCCCC");
++    assert(mode.name_balloon == after);
++}
++
++static void check_cut_in(void)
++{
++    static struct GameMode mode;
++    char longer[0x140];
++
++    renderer.width = 800;
++    renderer.height = 600;
++    test_window.width = test_window.height = 100;
++    string_init(&mode.illust_file);
++    mode.illust_position = 1;
++    string_assign_cstr(&mode.illust_file, CONVERSIONS ".bmp");
++    game_mode_update_cut_in(&mode);
++    check(g_illustImageName, CONVERSIONS ".bmp");
++    g_windowMgr.illust_wnd = &test_window;
++    string_assign_cstr(&mode.illust_file, CONVERSIONS_N ".bmp");
++    game_mode_update_cut_in(&mode);
++    check(g_illustImageName, CONVERSIONS_N ".bmp");
++    memset(longer, 'I', sizeof longer - 1);
++    longer[sizeof longer - 1] = 0;
++    string_assign_cstr(&mode.illust_file, longer);
++    game_mode_update_cut_in(&mode);
++    longer[sizeof g_illustImageName - 1] = 0;
++    check(g_illustImageName, longer);
++    g_windowMgr.illust_wnd = NULL;
++    string_free(&mode.illust_file);
++}
++
++static void check_server_list(void)
++{
++    static struct LoginMode login;
++    struct LoginServerEntry *e = login.servers;
++
++    login.numServer = 1;
++    memset(e, 'z', sizeof *e);
++    e->usercount = 4;
++    e->state = 0;
++    e->isNew = 0;
++    strcpy(e->name, CONVERSIONS);
++    server_list(&login);
++    check(listed, CONVERSIONS);
++    strcpy(e->name, CONVERSIONS_N);
++    server_list(&login);
++    check(listed, CONVERSIONS_N);
++    full_field(e->name, sizeof e->name, 'S');
++    server_list(&login);
++    check(listed, "SSSSSSSSSSSSSSSSSSSS");
++    e->isNew = 1;
++    server_list(&login);
++    check(listed, "(N) SSSSSSSSSSSSSSSSSSSS");
++}
++
++static void check_map_name(void)
++{
++    char *whole = g_session1.mapName;
++
++    map_name(CONVERSIONS);
++    check(whole, CONVERSIONS);
++    map_name(CONVERSIONS_N);
++    check(whole, CONVERSIONS_N);
++    map_name("abcdefghijklmnopqrstuvwxyz");
++    check(whole, "abcdefghijklmnopqrs");
++}
++
++static void check_typed_names(void)
++{
++    g_session1.homunName[0] = 0;
++    job_name = CONVERSIONS;
++    homun_default();
++    check(g_session1.homunName, CONVERSIONS);
++    job_name = "unused";
++    homun_default();
++    check(g_session1.homunName, CONVERSIONS);
++    g_session1.petName[0] = 0;
++    job_name = CONVERSIONS_N;
++    pet_default();
++    check(g_session1.petName, CONVERSIONS_N);
++
++    edit_text = CONVERSIONS_N;
++    homun_rename();
++    check(g_session1.homunName, CONVERSIONS_N);
++    edit_text = CONVERSIONS;
++    pet_rename();
++    check(g_session1.petName, CONVERSIONS);
++    edit_text = "0123456789abcdef0123456789abcdef0123";
++    homun_rename();
++    check(g_session1.homunName, "0123456789abcdef0123456789abcde");
++    pet_rename();
++    check(g_session1.petName, "0123456789abcdef0123456789abcde");
++}
++
++static void check_style_save(void)
++{
++    static const char text[] = "characterName:" CONVERSIONS "\nslotNum:1\n*\n"
++                               "characterName:" CONVERSIONS_N "\nslotNum:2\n*\n";
++    char path[MAX_PATH], saved[sizeof text + 8];
++    FILE *in;
++    size_t n;
++
++    assert(GetTempPathA(MAX_PATH, path) && strlen(path) + 20 < sizeof path);
++    strcat(path, "name_text_style.lua");
++    style_save(path, text);
++    in = fopen(path, "r");
++    assert(in);
++    n = fread(saved, 1, sizeof saved - 1, in);
++    fclose(in);
++    remove(path);
++    saved[n] = 0;
++    check(saved, text);
++}
++
++static void check_state_line(void)
++{
++    char text[0x100];
++
++    memset(text, 0, sizeof text);
++    state_line(text, 0x27c, 100, 50);
++    check(text, "50% x2.0");
++}
++
++int main(void)
++{
++    check_homun_packet();
++    check_pet_names();
++    check_couple_name();
++    check_cut_in();
++    check_server_list();
++    check_map_name();
++    check_typed_names();
++    check_style_save();
++    check_state_line();
++    printf("Name text: %d cases; names, image and map names, saved records and state lines are copied as text.\n",
++           cases);
++    return 0;
++}

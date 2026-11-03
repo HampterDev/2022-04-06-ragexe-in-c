@@ -74,3 +74,27 @@ was rewritten for purist's single-height window. The patch files are
 ESC menu command `ESC_ID_1C1` (toggle of window `0xec`) is dead code on both
 branches and was left unchanged; see the candidate list in
 [purist-review.md](../purist-review.md).
+
+## Foundation fixes from the UTF-8 review, 2026-11-03
+
+These bugs were found during the UTF-8 work and the langtype 20 lock on `purist`
+and were fixed on `main` on 2026-11-03, one commit each with a focused
+regression test. The series starts after
+`5238a9f02101792d0995b069ae34361d71b6220d` and ends at
+`d28b5abd09104596bd9ff654209c34a118cd1468`. Fixes whose code still exists on
+`purist` were ported with `git cherry-pick -x`; on `purist` the default pet and
+homunculus names from job names are cut by whole UTF-8 characters, and the unused
+login-entry field is removed instead of zeroed. The patch files are
+`git format-patch` exports of the `main` commits.
+
+| Patch | Foundation commit | Purist | Change |
+| --- | --- | --- | --- |
+| [name-text-copies.patch](name-text-copies.patch) | [1b442642e1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1b442642e153dcdfc08f1e5cec2171893efef826) | [8016545128](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/80165451283e37faed05a43e6f8962f5af23ed2c) | Copy pet, homunculus, couple, char-server, map and cut-in names, saved styling records and a state line into fixed buffers as text, bounded, instead of as printf formats. |
+| [monster-skill-info-values.patch](monster-skill-info-values.patch) | [b071edc1c9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b071edc1c93e95c49f65808d9e53abab50fe608c) | [b5ef5609ae](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b5ef5609aec4ce3396cf8c42d02909b7ea21a5d2) | Read `monsterskillinfo.xml` action and loop values without 8-byte buffers or a format; a missing node is 0. |
+| [face-charset-bounds.patch](face-charset-bounds.patch) | [e0db373281](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e0db373281bd5b97fe6b483309567d70da0f7069) | Already fixed on purist by [103a4735fd](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/103a4735fd70f5611cda14c1774388f13e2e5041) | Faces past the 12-entry `faceCharsets` table no longer read past it and keep the charsets they had. |
+| [login-connection-entry-fields.patch](login-connection-entry-fields.patch) | [d28b5abd09](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d28b5abd09104596bd9ff654209c34a118cd1468) | [d4940e6ba9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d4940e6ba9edf53d3963ca4b60a7222c72f64369) (field removed) | Login connection entries no longer copy two fields that nothing set. |
+
+The removal of the dead server types 3 and 13 that came with them is purist-only.
+The purist differences, the format-string calls left as they are, the bugs found
+and not fixed, and the validation are in
+[purist-review.md](../purist-review.md#foundation-fixes-from-the-utf-8-review-2026-11-03).

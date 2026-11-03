@@ -1,0 +1,234 @@
+From e0db373281bd5b97fe6b483309567d70da0f7069 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 14:40:33 +0100
+Subject: [PATCH] Stop reading face charsets past the 12-entry table
+
+text_dc_select_font took the charset of face 0 for faces 0x14 and up
+with language index 0, and g_3dDevice.faceCharsets[face] otherwise. The
+table has 12 entries and faces go up to 0x1d (SCDream), so faces 12-0x13
+with any language index, and faces 0x14-0x1d with every other language
+index, read the bytes after it, in hexDigitFlags.
+
+Faces past the table now get, without the read, the charset that those
+bytes gave them where it mattered:
+
+- Faces 12-0x13 read 0 and get ANSI_CHARSET (0).
+- SCDream read 0x10101, which CreateFontA and the LOGFONT of the font
+  file truncate to DEFAULT_CHARSET, and gets DEFAULT_CHARSET.
+- The EOT faces 0x14-0x1c read 0, 0x101, 0x1010100 or 0x1010101 and get
+  ANSI_CHARSET. eot_logfont puts a fixed charset 1 in their LOGFONT, and
+  get_code_page_from_charset gives code page 1252 for all of these
+  values, so only the font and extent cache keys change.
+
+The purist branch made the same change in 103a473.
+
+Validation: the new test_face_charset runs the extracted
+text_dc_select_font with the production g_3dDevice initializer for faces
+0-0x1d, language indexes 0-12, five service types and two folder
+languages: faces in the table, and faces 0x14 and up with language index
+0, keep the old value; the others get the values above, with the bytes
+the old lookup read checked against them and against their code page.
+3900 selections; the test fails on the previous code. Release build
+without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/render/textdc.c           | 12 ++++-
+ tests/build.bat               |  3 ++
+ tests/build_face_charset.bat  | 15 ++++++
+ tests/extract_face_charset.py | 28 +++++++++++
+ tests/test_face_charset.c     | 93 +++++++++++++++++++++++++++++++++++
+ 5 files changed, 150 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_face_charset.bat
+ create mode 100644 tests/extract_face_charset.py
+ create mode 100644 tests/test_face_charset.c
+
+diff --git a/src/render/textdc.c b/src/render/textdc.c
+index f3affc0..eaa252c 100644
+--- a/src/render/textdc.c
++++ b/src/render/textdc.c
+@@ -111,7 +111,17 @@ void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
+     }
+     self->face = face;
+     self->size = size;
+-    self->charset = (lang == 0 && face >= 0x14) ? g_3dDevice.faceCharsets[0] : g_3dDevice.faceCharsets[face];
++    /* faceCharsets has 12 entries; faces past it used to read the bytes after it, in
++       hexDigitFlags. Keep the values that mattered: SCDream read 0x10101, which fonts
++       truncate to DEFAULT_CHARSET, and faces 12-0x13 read ANSI_CHARSET. The EOT faces read
++       0, 0x101, 0x1010100 or 0x1010101, but their LOGFONT has a fixed charset, and like
++       ANSI_CHARSET each of these decodes text as code page 1252. */
++    if (lang == 0 && face >= FONT_FACE_EOT_FIRST)
++        self->charset = g_3dDevice.faceCharsets[0];
++    else if (face >= 0 && (size_t)face < sizeof g_3dDevice.faceCharsets / sizeof g_3dDevice.faceCharsets[0])
++        self->charset = g_3dDevice.faceCharsets[face];
++    else
++        self->charset = face == FONT_FACE_SCDREAM ? DEFAULT_CHARSET : ANSI_CHARSET;
+     self->bold = (BYTE)c;
+     self->italic = (BYTE)d;
+ }
+diff --git a/tests/build.bat b/tests/build.bat
+index 2b79421..71cb90e 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -865,3 +865,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_monster_skill_info.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_face_charset.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_face_charset.bat b/tests/build_face_charset.bat
+new file mode 100644
+index 0000000..9b68f50
+--- /dev/null
++++ b/tests/build_face_charset.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\face_charset"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_face_charset.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_face_charset.c" /Fe:test_face_charset.exe
++if errorlevel 1 (popd & exit /b 1)
++test_face_charset.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_face_charset.py b/tests/extract_face_charset.py
+new file mode 100644
+index 0000000..287b67a
+--- /dev/null
++++ b/tests/extract_face_charset.py
+@@ -0,0 +1,28 @@
++"""Extract text_dc_select_font, the g_3dDevice initializer with its face tables and
++get_code_page_from_charset for the face charset test."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def read(name):
++    return (root / 'src' / name).read_text(encoding='utf-8')
++
++
++def function(source, signature):
++    matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++    assert len(matches) == 1, signature
++    start = matches[0].start()
++    return source[start:source.index('\n}', start) + 2]
++
++
++device = read('render/c3ddevice.c')
++start = device.index('#define FACE_GULIM ')
++end = device.index('\n};', device.index('struct C3dDevice g_3dDevice = {')) + 3
++parts = [device[start:end],
++         function(read('platform/charset.c'), 'UINT get_code_page_from_charset('),
++         function(read('render/textdc.c'), 'void text_dc_select_font(')]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'face_charset.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_face_charset.c b/tests/test_face_charset.c
+new file mode 100644
+index 0000000..9d42d06
+--- /dev/null
++++ b/tests/test_face_charset.c
+@@ -0,0 +1,93 @@
++#include <windows.h>
++#include <assert.h>
++#include <stddef.h>
++#include <stdio.h>
++#include <string.h>
++#include "platform/clientinfo.h"
++#include "platform/code_page.h"
++#include "platform/language.h"
++#include "platform/language_api.h"
++#include "render/device.h"
++#include "render/fonts.h"
++#include "render/textdc.h"
++
++/* Run the production text_dc_select_font with the production g_3dDevice tables
++   for every face, language index, service type and folder language. Faces past
++   the 12-entry faceCharsets table must not read past it, and must get the
++   charset that the bytes after the table gave them where it mattered:
++   - faces 12-0x13 read 0, ANSI_CHARSET;
++   - SCDream (0x1d) read 0x10101, which fonts truncate to DEFAULT_CHARSET;
++   - the EOT faces 0x14-0x1c, whose LOGFONT has a fixed charset, get
++     ANSI_CHARSET, which decodes text with the same code page as what they read.
++   With language index 0, faces 0x14 and up keep the first entry. */
++
++int g_languageIndex;
++int g_serviceType;
++static struct Language language;
++struct Language *g_language = &language;
++
++#include "face_charset.inc"
++
++#define TABLE_SIZE (sizeof g_3dDevice.faceCharsets / sizeof g_3dDevice.faceCharsets[0])
++
++/* What the old lookup g_3dDevice.faceCharsets[face] read: the four bytes at that
++   position of g_3dDevice, past the table for faces 12 and up. */
++static int read_at(int face)
++{
++    int value;
++
++    assert(face >= 0 && offsetof(struct C3dDevice, faceCharsets) + (face + 1) * sizeof value
++           <= sizeof g_3dDevice);
++    memcpy(&value, (const BYTE *)&g_3dDevice + offsetof(struct C3dDevice, faceCharsets) + face * sizeof value,
++           sizeof value);
++    return value;
++}
++
++static int cases;
++
++static void check_face(int lang, int a)
++{
++    struct TextDC dc;
++    int face, before;
++
++    memset(&dc, 0, sizeof dc);
++    g_languageIndex = lang;
++    text_dc_select_font(&dc, a, 12, 0, 0);
++    face = dc.face;
++    assert(face >= 0 && face <= FONT_FACE_SCDREAM);
++    before = lang == 0 && face >= FONT_FACE_EOT_FIRST ? g_3dDevice.faceCharsets[0] : read_at(face);
++    if ((size_t)face < TABLE_SIZE || (lang == 0 && face >= FONT_FACE_EOT_FIRST)) {
++        assert(dc.charset == before);
++    } else if (face < FONT_FACE_EOT_FIRST) {
++        assert(before == ANSI_CHARSET && dc.charset == ANSI_CHARSET);
++    } else if (face < FONT_FACE_SCDREAM) {
++        assert(before == 0 || before == 0x101 || before == 0x1010100 || before == 0x1010101);
++        assert(dc.charset == ANSI_CHARSET);
++        assert(get_code_page_from_charset(before) == get_code_page_from_charset(dc.charset));
++    } else {
++        assert(before == 0x10101 && (BYTE)before == DEFAULT_CHARSET && dc.charset == DEFAULT_CHARSET);
++        assert(get_code_page_from_charset(before) == get_code_page_from_charset(dc.charset));
++    }
++    ++cases;
++}
++
++int main(void)
++{
++    static const int services[] = { 0, 6, 0xc, 0xe, 0x12 };
++    static const WORD folders[] = { 0, 0x1f };
++    size_t s, f;
++    int lang, a;
++
++    assert(TABLE_SIZE == 12);
++    for (s = 0; s < sizeof services / sizeof *services; ++s)
++        for (f = 0; f < sizeof folders / sizeof *folders; ++f) {
++            g_serviceType = services[s];
++            language.folder_lang = folders[f];
++            for (lang = 0; lang <= 12; ++lang)
++                for (a = 0; a <= FONT_FACE_SCDREAM; ++a)
++                    check_face(lang, a);
++        }
++    printf("Face charsets: %d selections; faces past the table keep their charsets without reading past it.\n",
++           cases);
++    return 0;
++}

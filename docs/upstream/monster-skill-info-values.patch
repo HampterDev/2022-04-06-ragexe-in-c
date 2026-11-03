@@ -1,0 +1,317 @@
+From b071edc1c93e95c49f65808d9e53abab50fe608c Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 14:36:57 +0100
+Subject: [PATCH] Read monster skill actions without copying them into 8-byte
+ buffers
+
+session_get_monster_skill_info copied the text of the <action> and
+<loopType> nodes of monsterskillinfo.xml into actionText[8] and
+loopText[8] with sprintf, using the text as the format, and then parsed
+them with atoi. A value of 8 or more characters overran the stack, and a
+% in a value read arguments that were never passed. On the path for
+players who are not administrators a missing <action> or <loopType>
+node reached node_text(NULL), and xml_node_text dereferences its
+argument.
+
+The values are now parsed with atoi straight from the node text, and a
+missing node counts as 0, the value the administrator path already
+sets. The text is no longer passed through text_decode first: atoi
+reads only blanks, a sign and digits, and the Korean-service mirror maps
+each of those bytes to itself and no other byte to one of them, so
+every result is the same as before.
+
+The monster name, a job name from the client's Lua tables, is copied
+into name[0x100] with a bound instead of strcpy; a longer name finds no
+entry.
+
+Validation: the new test_monster_skill_info runs the extracted function
+over monsterskillinfo.xml parsed by core/xml.c, once with plain tags and
+once with tags mirrored as for the Korean service: plain values, a
+12-character value, a value with text after the number, "5%d%s%n",
+"%n9", empty values, missing <action>, <loopType> or both, unknown
+skills and monsters, a 767-byte monster name, and the administrator
+path with its two message boxes. 32 lookups. The test fails on the
+previous code, and with only the strcpy restored. Release build without
+warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/session/talk_tables.c           |  18 ++--
+ tests/build.bat                     |   3 +
+ tests/build_monster_skill_info.bat  |  15 +++
+ tests/extract_monster_skill_info.py |  30 ++++++
+ tests/test_monster_skill_info.c     | 148 ++++++++++++++++++++++++++++
+ 5 files changed, 208 insertions(+), 6 deletions(-)
+ create mode 100644 tests/build_monster_skill_info.bat
+ create mode 100644 tests/extract_monster_skill_info.py
+ create mode 100644 tests/test_monster_skill_info.c
+
+diff --git a/src/session/talk_tables.c b/src/session/talk_tables.c
+index 8bb5fe7..d2ad029 100644
+--- a/src/session/talk_tables.c
++++ b/src/session/talk_tables.c
+@@ -47,10 +47,18 @@ const char *g_talkWords[] = {
+     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+ };
+
++/* The number in an <action> or <loopType> node of monsterskillinfo.xml; a missing node
++   counts as 0, as on the administrator path. atoi reads only blanks, a sign and digits,
++   which text_decode leaves as they are, so the text is read as stored. */
++static int node_number(struct XmlElement *node)
++{
++    return node ? atoi(node_text(node)) : 0;
++}
++
+ void session_get_monster_skill_info(struct Session *self, const char *monsterName,
+                                             int skillId, int *action, int *loopType)
+ {
+-    char number[8], actionText[8], loopText[8], skillKey[8];
++    char number[8], skillKey[8];
+     char key[0x100], name[0x100];
+     struct XmlElement *node, *actionNode, *loopNode;
+
+@@ -61,7 +69,7 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
+         return;
+     _itoa(skillId, number, 10);
+     sprintf(skillKey, "_%s", number);
+-    strcpy(name, monsterName);
++    _snprintf_s(name, sizeof name, _TRUNCATE, "%s", monsterName);
+     _strlwr(name);
+     node = xml_find_child(node, text_decode(name));
+     if (!node)
+@@ -87,10 +95,8 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
+                    0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+         return;
+     }
+-    sprintf(actionText, text_decode(node_text(actionNode)));
+-    sprintf(loopText, text_decode(node_text(loopNode)));
+-    *action = atoi(actionText);
+-    *loopType = atoi(loopText);
++    *action = node_number(actionNode);
++    *loopType = node_number(loopNode);
+ }
+
+ struct String *session_get_monster_sprite_name(struct Session *self,
+diff --git a/tests/build.bat b/tests/build.bat
+index 1209b9b..2b79421 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -862,3 +862,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_name_text.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_monster_skill_info.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_monster_skill_info.bat b/tests/build_monster_skill_info.bat
+new file mode 100644
+index 0000000..6a8be86
+--- /dev/null
++++ b/tests/build_monster_skill_info.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\monster_skill_info"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_monster_skill_info.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_monster_skill_info.c" "%ROOT%\src\core\xml.c" "%ROOT%\src\std\string.c" "%ROOT%\src\core\memory.c" /Fe:test_monster_skill_info.exe
++if errorlevel 1 (popd & exit /b 1)
++test_monster_skill_info.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_monster_skill_info.py b/tests/extract_monster_skill_info.py
+new file mode 100644
+index 0000000..f039004
+--- /dev/null
++++ b/tests/extract_monster_skill_info.py
+@@ -0,0 +1,30 @@
++"""Extract session_get_monster_skill_info with its static helpers from talk_tables.c,
++and the Korean-service text mirror from msg_str.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def functions(source, signatures, optional=()):
++    parts = []
++    for signature in signatures:
++        matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++        if not matches and signature in optional:
++            continue
++        assert len(matches) == 1, signature
++        start = matches[0].start()
++        parts.append(source[start:source.index('\n}', start) + 2])
++    return parts
++
++
++talk = (root / 'src/session/talk_tables.c').read_text(encoding='utf-8')
++parts = functions(talk, ['static char *node_text(', 'static int node_number(',
++                         'void session_get_monster_skill_info('],
++                  optional=('static int node_number(',))
++mirror = functions((root / 'src/core/msg_str.c').read_text(encoding='utf-8'),
++                   ['static char *text_decode_mirror('])
++output.mkdir(parents=True, exist_ok=True)
++(output / 'monster_skill_info.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
++(output / 'text_mirror.inc').write_text('\n\n'.join(mirror) + '\n', encoding='utf-8')
+diff --git a/tests/test_monster_skill_info.c b/tests/test_monster_skill_info.c
+new file mode 100644
+index 0000000..9937f7c
+--- /dev/null
++++ b/tests/test_monster_skill_info.c
+@@ -0,0 +1,148 @@
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "core/msg_str.h"
++#include "core/xml.h"
++#include "session/session_state.h"
++#include "session/state.h"
++#include "ui/window_manager_state.h"
++#include "ui/window_messages.h"
++
++/* Run the production session_get_monster_skill_info over a parsed
++   monsterskillinfo.xml. Values longer than 8 bytes, values with printf
++   conversions, missing <action> or <loopType> nodes and monster names longer
++   than its 0x100-byte buffer must be read without overrunning anything, with
++   the tags stored plain and, as for the Korean service, mirrored. */
++
++struct Session g_session1;
++struct UIWindowMgr g_windowMgr;
++static int korean, admin, boxes;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++
++#include "text_mirror.inc"
++
++char *text_decode(char *text)
++{
++    return korean ? text_decode_mirror(text) : text;
++}
++
++int session_is_admin_option(struct Session *self, int what)
++{
++    assert(self == &g_session1 && what == 1);
++    return admin;
++}
++
++int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg4, int arg5,
++                              const char *title, int width, int height, int arg9)
++{
++    assert(self == &g_windowMgr && text && title);
++    (void)type; (void)arg3; (void)arg4; (void)arg5; (void)width; (void)height; (void)arg9;
++    ++boxes;
++    return 0;
++}
++
++#include "monster_skill_info.inc"
++
++/* Append "<tag>" or "</tag>", the tag mirrored for the Korean service. */
++static void tag(char *xml, const char *name, int close)
++{
++    char stored[64];
++
++    assert(strlen(name) < sizeof stored);
++    strcpy(stored, name);
++    if (korean)
++        text_decode_mirror(stored);
++    strcat(xml, close ? "</" : "<");
++    strcat(xml, stored);
++    strcat(xml, ">");
++}
++
++static void element(char *xml, const char *name, const char *value)
++{
++    tag(xml, name, 0);
++    strcat(xml, value);
++    tag(xml, name, 1);
++}
++
++static void skill(char *xml, const char *key, const char *action, const char *loop)
++{
++    tag(xml, key, 0);
++    if (action)
++        element(xml, "action", action);
++    if (loop)
++        element(xml, "loopType", loop);
++    tag(xml, key, 1);
++}
++
++static void load(void)
++{
++    static char xml[2048];
++
++    xml[0] = 0;
++    tag(xml, "Monster_Action_Table", 0);
++    tag(xml, "poring", 0);
++    skill(xml, "_10", "3", "1");
++    skill(xml, "_11", "000000000007", "  -2 and some text after it");
++    skill(xml, "_12", "5%d%s%n", "%n9");
++    skill(xml, "_13", "4", NULL);
++    skill(xml, "_14", NULL, "1");
++    skill(xml, "_15", NULL, NULL);
++    skill(xml, "_16", "", "");
++    tag(xml, "poring", 1);
++    tag(xml, "Monster_Action_Table", 1);
++    xml_element_construct(&g_session1.monsterSkillTable.root, "XMLDocument");
++    g_session1.monsterSkillTable.copy = NULL;
++    assert(xml_parse(&g_session1.monsterSkillTable, xml, xml + strlen(xml)));
++}
++
++static void unload(void)
++{
++    xml_document_release(&g_session1.monsterSkillTable);
++    xml_element_destruct(&g_session1.monsterSkillTable.root);
++}
++
++static int cases;
++
++static void check(const char *monster, int skill_id, int action, int loop, int message_boxes)
++{
++    int got_action = 0x55, got_loop = 0x66;
++
++    boxes = 0;
++    session_get_monster_skill_info(&g_session1, monster, skill_id, &got_action, &got_loop);
++    assert(got_action == action && got_loop == loop && boxes == message_boxes);
++    ++cases;
++}
++
++int main(void)
++{
++    char long_name[0x300];
++
++    memset(long_name, 'p', sizeof long_name - 1);
++    long_name[sizeof long_name - 1] = 0;
++    for (korean = 0; korean < 2; ++korean) {
++        load();
++        admin = 0;
++        check("poring", 10, 3, 1, 0);
++        check("PORING", 10, 3, 1, 0);
++        check("poring", 11, 7, -2, 0);
++        check("poring", 12, 5, 0, 0);
++        check("poring", 13, 4, 0, 0);
++        check("poring", 14, 0, 1, 0);
++        check("poring", 15, 0, 0, 0);
++        check("poring", 16, 0, 0, 0);
++        check("poring", 99, -1, 0x66, 0);
++        check("lunatic", 10, -1, 0x66, 0);
++        check(long_name, 10, -1, 0x66, 0);
++        check("poring", 10, 3, 1, 0);
++        admin = 1;
++        check("poring", 10, 3, 1, 0);
++        check("poring", 13, 0, 0, 2);
++        check("poring", 14, 0, 0, 2);
++        check("poring", 11, 7, -2, 0);
++        unload();
++    }
++    printf("Monster skill info: %d lookups; long, formatted and missing values and long names.\n", cases);
++    return 0;
++}
