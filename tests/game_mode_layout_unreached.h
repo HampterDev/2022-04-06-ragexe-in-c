@@ -29,32 +29,12 @@ struct Vec;
 struct TexDrawPrim;
 struct TextureUV;
 
-struct Motion *act_res_get_motion(const struct ActRes *arg0, unsigned int arg1, unsigned int arg2)
-{
-    abort();
-}
-
 float act_res_get_delay(const struct ActRes *arg0, unsigned int arg1)
 {
     abort();
 }
 
-struct SprClip *motion_get_clip(const struct Motion *arg0, unsigned int arg1)
-{
-    abort();
-}
-
 char rag_connection_send_packet(struct RagConnection *arg0, int arg1, const void *arg2)
-{
-    abort();
-}
-
-void renderer_add_prim(struct Renderer *arg0, struct RPQuad *arg1, int arg2)
-{
-    abort();
-}
-
-struct TexDrawPrim *renderer_new_prim(struct Renderer *arg0)
 {
     abort();
 }
@@ -95,16 +75,6 @@ void *res_mgr_get(struct ResMgr *arg0, const char *arg1)
 }
 
 void draw_box_screen(int arg0, int arg1, int arg2, int arg3, DWORD arg4)
-{
-    abort();
-}
-
-float get_cos_deg(int arg0)
-{
-    abort();
-}
-
-float get_sin_deg(int arg0)
 {
     abort();
 }
@@ -209,12 +179,6 @@ void sound_bgm_fade_in(void)
 }
 
 void sound_bgm_fade_out(void)
-{
-    abort();
-}
-
-struct Texture *sprite_atlas_resolve(struct Renderer *arg0, const struct SprImg *arg1,
-                                      const DWORD *arg2, struct SpriteRegion *arg3)
 {
     abort();
 }
