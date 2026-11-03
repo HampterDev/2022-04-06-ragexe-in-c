@@ -9924,3 +9924,320 @@ All three were fixed afterwards, on `main` first: the names in `0436ca5` and the
 The pre-removal tree is in `build/before-no-third`. The edit and check scripts are in the
 session scratch area; the derivations are in `build/`. No live client/server smoke test was
 run.
+
+## Restructuring: definitions and hooks (2026-11-03)
+
+Patrick approved four restructuring steps: move misplaced definitions, replace upward
+calls with hooks and registered handlers, turn the central feature lists into tables,
+and extract feature clusters into modules or static libraries. This section records the
+first two, on the branch `purist-restructure`. No behavior change.
+
+### Measurement
+
+The dependency map is built from the compiled objects: `dumpbin /symbols` on every
+`build\obj\*.obj`, then the file graph of which external functions and data each `.c`
+file defines and uses (`depmap.py`). `modules.py` leaves out the 23 registry and startup
+files (`core/object_type.c`, the packet dispatchers, `make_window*.c`, `window_slots.c`,
+`client_init.c`, `winmain.c` and the others in its `REGISTRY` set) and reports the
+largest strongly connected component (the knot), the files below it that never reach
+it (the library layer) and the files above it, grouped into clusters. The scripts and
+every measurement are in `build/depmap/`; `whatif.py` there simulates dropped
+references and moved definitions, which is how the cuts below were chosen and ordered
+(single-edge ranking, then a leave-one-out run over every planned cut).
+
+The baseline measurement of `purist` at `be1ec6e` reproduced the published numbers
+exactly: 1,046 files and 289,359 lines; knot 473 files, 149,369 lines; library 205
+files, 21,966 lines; above the knot 345 files, 109,360 lines in 164 clusters; registry
+and startup files 23 files, 8,664 lines.
+
+Two properties of the measurement matter when reading it:
+
+- A global without an initializer (`int g_x;`) is a communal symbol in MSVC C. It has
+  no defining object, so the map never draws an edge for it. `g_lightmap` and
+  `g_depthPerPixelCot` were initialized and did form edges; `g_trilinearFilter`,
+  `g_sprHalfWidth`, `g_displayWidth` and the other display options in
+  `ui/render/graphic_setting.c` are not, so their use from `render/c3ddevice.c`,
+  `resources/spr.c` and `ui/controls/frame_wnd.c` does not show. They create no link
+  dependency either.
+- The map counts only link-time references. Header includes are not measured; where a
+  change removed the last use of an upper-layer header, the include went too.
+
+### Step 1: moved definitions
+
+Moved code is unchanged in its new place, apart from the renames noted.
+
+- **`error_msg`** (`1617399`): from `world/mode_draw.c` to the new
+  `platform/error_message.c`, next to its header. Every resource loader, the file layer,
+  the renderer and the platform code call it. Its one display step, flipping a
+  full-screen DirectDraw display back to GDI, is the hook `g_errorMsgPrepareDisplay`.
+- **`screen_sprite_frame`** (`e90a23e`): from `world/mode_draw.c` to the new
+  `render/sprite_draw.c`. It is declared in `render/sprite_draw.h` and called by
+  `render/cframe.c` and `render/rp_hud.c`.
+- **`g_lightmap`** (`74209d5`): from `ui/render/graphic_setting.c` to the new
+  `render/render_options.c`, declared in the new `render/render_options.h` (included by
+  `render/render_api.h`); initial value 1 as before. The renderer reads it every frame.
+  It did not go into `crenderer.c` because the renderer storage test includes that file
+  and defines its own zero-initialized `g_lightmap`.
+- **`g_depthPerPixelCot`** (`a6c37be`): from `world/view_camera.c` to `render/rp_screen.c`
+  beside `g_spriteDepthScale` and `g_spriteRowDepthStep`; declared in `render/renderer.h`
+  instead of `world/world_imports.h`.
+- **`borderless_rect`, `borderless_setting`, `monitor_rects`** (`d3b3051`): from
+  `render/resize.c`, which also builds settings-window rows, re-lays out windows and
+  restarts the status icons, to `render/c3ddevice.c`, whose `c3d_device_init` is their
+  only device-side caller. `monitor_rects` was static and keeps its name.
+- **`ui_frame_wnd_ops`** (`5935d78`): from `ui/character/companion_info.c` to
+  `ui/controls/frame_wnd.c`, with the functions it lists.
+- **`ui_edit_ctrl_var_id_ops`** (`f01d496`): from `ui/chat/guild_notice.c` to
+  `ui/controls/edit_variants.c`, with the other edit-control tables. Not in the original
+  list of ties; the single-edge ranking found it (3,916 lines on its own).
+- **The skin folder** (`58341a1`): `ui_skin_path` in `core/skin_path.c` no longer reads
+  `g_skinMgr` or calls `skin_mgr_get_current_path`. The skin manager hands the selected
+  folder to the new `ui_skin_path_set_skin` at the end of `skin_mgr_scan` (also when no
+  skin folder exists), in `skin_mgr_set_current_skin_num` and, with NULL, in
+  `skin_mgr_destruct`. NULL means no skin, as an empty list or selection -1 did. The
+  string stays the skin manager's and changes only with a new scan, which publishes
+  again. `core/skin_path.h` no longer includes `ui/skin_manager.h`.
+- **The item-link step** (`739eef5`): `ui_frame_wnd_send_msg`, the edit control's link
+  handler (`edit_navi_links.c`) and the list box's `LIST_MSG_ITEM_LINK` case each opened
+  the item collection window and, through `session_get_worn_counterpart`, the comparison
+  window. The three copies were identical; the step is now `item_collection_show_link`
+  in `ui/items/item_collection.c` (declared in the new `ui/items/item_collection.h`) and
+  the widgets reach it through `g_uiHooks.show_item_link`.
+- **The item tag button** (`630b00d`): `struct UIItemTagButton`, `ui_item_tag_button_ops`,
+  its four methods and its constructor, from `ui/items/item_tags.c`/`.h` to the new
+  `ui/controls/item_tag_button.c`/`.h`, which `ui/items/item_tags.h` includes. The
+  multi-line edit control creates these buttons.
+
+Window-manager functions that are not about windows. They are `UIWindowMgr` methods of
+the original client, keep their names and bodies, and only game and feature code calls
+them, so they moved to the owning module instead of getting a handler:
+
+- `ui_window_mgr_is_friend` (`window_list.c`) and `ui_window_mgr_request_add_friend`
+  (`messages.c`, the `CZ_ADD_FRIENDS` sender) to `ui/chat/friend_request.c`, declared in
+  the new `ui/chat/friends.h` (`a6ef706`);
+- `ui_window_mgr_open_sub_chat` (`window_list.c`) to `ui/chat/sub_chat.c` (`a6ef706`);
+- `ui_window_mgr_navigation_help` (`window_list.c`) to `ui/quests/navigation_wnd.c` and
+  `ui_window_mgr_run_email_address_box` (`modal.c`) to `ui/character/password_prompts.c`
+  (`3fb79d0`); the modal loop the prompt uses, formerly the static `run_modal`, is
+  `ui_window_mgr_run_modal` in `modal.c`;
+- `ui_window_mgr_add_whisper_chat_to_whisper_wnd` and `g_whisperSound`
+  (`whisper_map.c`) to `ui/chat/whisper.c` (`f8cb90c`).
+
+### Step 2: hooks and handlers
+
+Every hook and handler is set in one place: `client_install_hooks()` in
+`core/client_init.c`, the first call of `client_init()`, which is the first call of
+`WinMain`. Nothing that uses a hook runs earlier. Each is documented where it is
+declared. A NULL member is checked at every call; the column says what happens then.
+
+| Hook | Declared / defined in | Installed with | NULL |
+|---|---|---|---|
+| `g_errorMsgPrepareDisplay` | `platform/error_message.h` / `.c` | `device_flip_to_gdi` (`render/c3ddevice.c`) | the box is shown without the flip, as with no device |
+| `g_uiHooks.show_tooltip` | `ui/controls/ui_hooks.h` / `ui_hooks.c` | `mode_show_current_tooltip` (`world/mode_ui_hooks.c`) | no help balloon |
+| `g_uiHooks.set_cursor_action` | same | `mode_set_current_cursor_action` (`world/mode_ui_hooks.c`) | the cursor stays |
+| `g_uiHooks.show_item_link` | same | `item_collection_show_link` (`ui/items/item_collection.c`) | the click opens nothing |
+| `g_uiHooks.navi_navigate`, `navi_search`, `navi_show_map` | same | `navi_link_navigate`, `navi_link_search`, `navi_link_show_map` (`navi/navi_ui_hooks.c`) | the link does nothing |
+| `g_uiHooks.open_quest` | same | `game_open_quest_link` (`game/game_ui_hooks.c`) | nothing opens |
+| `g_uiHooks.may_move_ime_caret` | same | `ui_rodex_compose_allows_caret_move` (`ui/mail/rodex_ui_hooks.c`) | the caret may move |
+| `g_windowMgrHandlers.chat_edit`, `chat_whisper_edit` | `ui/wndmgr/wndmgr_handlers.h` / `.c` | `ui_chat_window_edit`, `ui_chat_window_whisper_edit` (`ui/chat/chat_window.c`) | the chat window has no edit line: focusing it does nothing, battle mode clears nothing, no focused edit counts as the chat window's |
+| `g_windowMgrHandlers.save_chat_log` | same | `ui_chat_wnd_write_chat_to_file` (`ui/chat/chat_window_log.c`) | `UIWM_MSG_SAVE_CHAT` writes nothing |
+| `g_windowMgrHandlers.save_chat_room_talk` | same | `ui_chat_room_wnd_save_talk` (`ui/chat/chat_room.c`) | `UIWM_MSG_SAVE_CHAT_ROOM` writes nothing |
+| `g_windowMgrHandlers.open_whisper` | same | `ui_whisper_wnd_open` (`ui/chat/whisper.c`) | `UIWM_MSG_WHISPER` opens nothing and returns 0 |
+| `g_windowMgrHandlers.skill_hot_key_slot` | same | `session_skill_hot_key_slot` (`session/session_hotkeys.c`) | -1, no skill hotkey |
+| `g_renderBeforeClearLists` | `render/rp_pool.h` / `rp_pool.c` | `effect_mgr_destroy_removed_effects` (`effects/effect_render_hooks.c`) | the render lists are cleared without it |
+| `g_emblemRules.is_bad`, `mark_bad`, `max_size` | `resources/emblem.h` / `emblem_res.c` | `guild_emblem_is_bad`, `guild_emblem_mark_bad`, `guild_emblem_max_size` (`contents/guild_emblem_hooks.c`) | no emblem is known bad, nothing is recorded, the size limit is 0 so nothing loads |
+| `g_grannyJobModelName` | `resources/granny_res.h` / `granny_res.c` | `session_granny_job_model` (`session/session_granny_hooks.c`) | no job has a model; its bone animation is not loaded |
+| `g_clientInfoWeatherScript` | `platform/clientinfo.h` / `clientinfo.c` | `weather_add_etc_script` (`actor/weather.c`) | the etcinfo.txt weather line is ignored and its strings freed |
+
+What changed at the call sites:
+
+- **Widgets** (`e6fb6af`, `f39b5f7`, `739eef5`). The base window, button, check box, radio
+  buttons, edit line, static text, resizer and scroll bar call `ui_show_tooltip` and
+  `ui_set_cursor_action` (inline in `ui_hooks.h`) instead of `mode_show_tooltip` and
+  `mode_set_cursor_action` on `client_current_mode()`; six of them no longer include a
+  `world/` header. The navigation link button and the text viewer's navigation and quest
+  links, and the edit control's IME-caret check, go through their `g_uiHooks` members.
+  Each adapter makes exactly the former call; the adapters live in small
+  `<module>_ui_hooks.c` files so the tests can include them.
+- **Window manager** (`bd9c6ab`, `f8cb90c`, `2b65246`). `ui_window_mgr_edit_focus_to_chat_wnd`,
+  `ui_window_mgr_set_text_at_battle_mode`, `ui_window_mgr_is_chat_edit_focused`,
+  `UIWM_MSG_SAVE_CHAT`, `UIWM_MSG_SAVE_CHAT_ROOM` and `UIWM_MSG_WHISPER` use the handlers;
+  with all of them installed the calls, their order and their short-circuits are as
+  before. The skill-hotkey loop at the end of `ui_window_mgr_get_hot_key_behavior` moved
+  unchanged into `session_skill_hot_key_slot`. `open_whisper` and its `place_whisper`
+  moved unchanged into `ui/chat/whisper.c` as `ui_whisper_wnd_open`; its window ID
+  constant is `WHISPER_WINDOW_ID` there because `whisper.c` already uses `WHISPER_WND_ID`
+  for a control. `ui_window_mgr_on_enter` sends Enter to the character selection window
+  through `ui_window_send_msg`: `new_select_char_wnd` is only ever set by
+  `make_select_char` to a window whose ops' `send_msg` is
+  `ui_new_select_char_wnd_send_msg`, so the same function runs.
+- **Renderer and resources** (`3d66d4d`, `82b5baa`, `e179e00`, `359c0b4`). The render-list
+  reset, the emblem loader, the Granny bone-animation cache and the etcinfo.txt reader
+  call their hooks. `emblem.h` no longer includes `contents/guild_mgr.h`, `granny_res.c`
+  no session header and `clientinfo.c`/`.h` no `actor/weather.h`.
+
+### Dependency map after each commit
+
+Each row is measured on that commit's own release build (`build/depmap/<label>.txt`).
+
+| commit | change | knot files / lines | library files / lines | above the knot files / lines | clusters |
+|---|---|---|---|---|---|
+| `be1ec6e` | baseline (purist with the class removal) | 473 / 149,369 | 205 / 21,966 | 345 / 109,360 | 164 |
+| `1617399` | error_msg to platform/error_message.c | 448 / 145,087 | 236 / 26,901 | 340 / 108,711 | 163 |
+| `e90a23e` | screen_sprite_frame to render/sprite_draw.c | 449 / 145,092 | 236 / 26,901 | 340 / 108,711 | 163 |
+| `74209d5` | g_lightmap to render/render_options.c | 444 / 143,265 | 237 / 26,905 | 345 / 110,539 | 155 |
+| `a6c37be` | g_depthPerPixelCot to render/rp_screen.c | 444 / 143,265 | 237 / 26,905 | 345 / 110,539 | 155 |
+| `d3b3051` | borderless_rect to render/c3ddevice.c | 442 / 142,884 | 237 / 26,905 | 347 / 110,921 | 152 |
+| `5935d78` | ui_frame_wnd_ops to frame_wnd.c | 441 / 142,171 | 237 / 26,905 | 348 / 111,633 | 153 |
+| `f01d496` | ui_edit_ctrl_var_id_ops to edit_variants.c | 431 / 138,305 | 237 / 26,905 | 358 / 115,497 | 153 |
+| `58341a1` | skin manager publishes the skin folder | 431 / 138,322 | 237 / 26,905 | 358 / 115,499 | 153 |
+| `739eef5` | g_uiHooks.show_item_link | 431 / 138,264 | 238 / 26,909 | 358 / 115,520 | 153 |
+| `e6fb6af` | g_uiHooks tooltip and cursor | 431 / 138,262 | 238 / 26,909 | 359 / 115,534 | 154 |
+| `f39b5f7` | g_uiHooks navigation, quest, caret | 430 / 138,052 | 238 / 26,909 | 363 / 115,783 | 156 |
+| `a6ef706` | friend and sub-chat helpers to chat | 432 / 138,550 | 238 / 26,909 | 361 / 115,296 | 157 |
+| `3fb79d0` | navigation help, e-mail prompt to their windows | 432 / 138,553 | 238 / 26,909 | 361 / 115,296 | 157 |
+| `bd9c6ab` | g_windowMgrHandlers chat and hotkey | 431 / 138,478 | 238 / 26,738 | 363 / 115,560 | 153 |
+| `f8cb90c` | g_windowMgrHandlers.open_whisper | 429 / 137,768 | 239 / 26,777 | 364 / 116,232 | 153 |
+| `2b65246` | select-char Enter through ops | 420 / 133,695 | 239 / 26,777 | 373 / 120,304 | 148 |
+| `3d66d4d` | g_renderBeforeClearLists | 420 / 133,697 | 239 / 26,777 | 374 / 120,312 | 149 |
+| `82b5baa` | g_emblemRules | 420 / 133,699 | 239 / 26,777 | 375 / 120,330 | 150 |
+| `e179e00` | g_grannyJobModelName | 266 / 96,096 | 454 / 77,895 | 315 / 106,824 | 122 |
+| `630b00d` | item tag button to ui/controls | 261 / 93,923 | 461 / 80,142 | 314 / 106,754 | 121 |
+| `359c0b4` | g_clientInfoWeatherScript | 259 / 93,568 | 468 / 81,457 | 309 / 105,805 | 118 |
+
+The knot went from 473 files / 149,369 lines to 259 files / 93,568 lines (-214 files,
+-55,801 lines); the library layer from 205 files / 21,966 lines to 468 files / 81,457
+lines. Most cuts only pay off together. The renderer, resource and file layers leave the
+knot only when `g_lightmap`, `g_depthPerPixelCot`, `borderless_rect`, the render-list
+reset, the emblem rules and the Granny name are all cut, and the widget and
+window-manager cuts made before that only take effect once the layers below them stop
+reaching up. That is why the knot moves little until `e179e00` and then drops from 420
+to 266 files. The knot grew by two files at `a6ef706` because `ui/chat/friend_request.c`,
+which now holds the friend helpers, and its base `ui/social/accept_base.c` joined it;
+both are feature code. The second component of 71 files that appears at `e179e00` is the
+renderer, resource and widget foundation calling each other; it lies below the knot.
+
+Composition of the knot, before and after:
+
+| directory | baseline files / lines | after files / lines |
+|---|---|---|
+| `effects` | 80 / 40,005 | 77 / 38,715 |
+| `ui/controls` | 51 / 13,783 | - |
+| `actor` | 47 / 13,015 | 39 / 12,338 |
+| `session` | 48 / 9,860 | 32 / 7,469 |
+| `render` | 24 / 7,762 | - |
+| `game` | 26 / 6,866 | 20 / 5,384 |
+| `ui/chat` | 16 / 6,746 | 8 / 3,200 |
+| `ui/social` | 18 / 6,570 | 13 / 3,689 |
+| `ui/character` | 9 / 5,224 | 4 / 1,643 |
+| `contents` | 28 / 4,727 | 18 / 2,982 |
+| `world` | 20 / 4,572 | 12 / 2,598 |
+| `ui/shops` | 9 / 4,202 | 8 / 3,859 |
+| `resources` | 21 / 3,746 | - |
+| `navi` | 16 / 3,733 | 8 / 2,416 |
+| `ui/items` | 10 / 3,086 | 6 / 2,017 |
+| `ui/quests` | 8 / 3,078 | 6 / 2,610 |
+| `ui/render` | 3 / 2,081 | 1 / 1,005 |
+| `ui/wndmgr` | 7 / 1,967 | 1 / 294 |
+| `login` | 5 / 1,127 | 2 / 753 |
+| `ui/worldmap` | 1 / 1,060 | 1 / 1,060 |
+| `ui/mail` | 1 / 967 | 1 / 967 |
+| `web` | 3 / 961 | - |
+| `platform` | 2 / 870 | - |
+| `fileio` | 4 / 758 | - |
+| `core` | 7 / 688 | 1 / 208 |
+| `iteminfo` | 2 / 459 | - |
+| `skills` | 1 / 376 | - |
+| `diag` | 1 / 368 | - |
+| `ui/resource` | 1 / 361 | 1 / 361 |
+| `ui (top level)` | 3 / 210 | - |
+| `ui/misc` | 1 / 141 | - |
+
+### Left in the knot, and why
+
+- **actor, game, session, effects, world, navi** (as asked): the real core, untouched
+  except for the trivial moves above.
+- **`core/character_npc.c`**: an NPC actor class filed under `core/`. It calls about
+  fifteen actor files and `ui/render/character_render.c`. Moving the file changes no
+  edge; it belongs with the actor work.
+- **`ui/wndmgr/plates.c`**: the party member plates (mini party windows, plate records in
+  the session), a feature filed under the window manager. Only feature code reaches it.
+- **`ui/render/character_render.c` and `ui/render/graphic_setting.c`**: a character
+  preview renderer and the graphics settings window, features filed beside the widgets.
+  `graphic_setting.c` left the knot once `g_lightmap` moved.
+- **The feature windows** that call the game mode and the session and are called back
+  by them (`ui/shops`, `ui/social`, `ui/chat`, `ui/quests`, `ui/items`, ...).
+
+Upward calls left in the low layers that no longer hold the knot together, and so were
+not converted: `core/drive_state.c` and `ui/controls/edit.c` calling
+`ui_window_mgr_is_chat_edit_focused`, `platform/language.c` calling
+`ui_window_mgr_get_focus_edit` and `fileio/resource_errors.c` calling
+`ui_window_mgr_send_msg_` (the window manager is below the knot now); widgets calling
+`client_current_mode` and `mode_send_message` (`world/mode_context.c` and
+`world/mode_dispatch.c` only dispatch through the mode's table and are not in the knot);
+`core/map_sky.c` and `diag/crash_report.c` calling game and session code;
+`ui/controls/agit_message_box.c` using `ui_agit_message_box_ops` and
+`ui_agit_message_box_create` from `ui/social/guild_manage.c` (a misplaced definition with
+no effect on the knot); `ui/wndmgr/key_down.c` with `wndmgr_keys.c`, and `registry.c`,
+which call into the chat window, navigation, world view, hotkeys and the session but are
+reached only from `core/wndproc.c`, `core/winmain.c` and feature code, so they sit above
+the knot.
+
+### Tests changed
+
+Only to follow a moved symbol; no assertion changed.
+
+- Stubs that only the moved code needed were removed: the game-mode layout test
+  (`device_flip_to_gdi`, `win_utf8.c`, the seven `screen_sprite_frame` dependencies), the
+  edit navigation test (four item-link stubs and `g_session1`), the scroll and UI-drop
+  tests (the cursor and mode stubs), the chat-navigation and URL-link tests (navi, quest
+  and game-mode stubs, `g_navi`) and the particle pools test (`effect_mgr_destroy_removed`).
+- The projection test dropped its own `g_depthPerPixelCot`, which `rp_screen.c` now
+  defines.
+- The skin manager test stubs `ui_skin_path_set_skin`, as it stubs `ui_skin_path`.
+- Tests that link a widget, `rp_pool.c`, `emblem_res.c` or `granny_res.c` define the hook
+  table where needed. The ones whose recording stubs the moved calls reached (button
+  drawing, link buttons, edit navigation, renderer storage, bitmap owner, resource
+  lifecycle) include the real adapter file (`world/mode_ui_hooks.c`,
+  `navi/navi_ui_hooks.c`, `ui/mail/rodex_ui_hooks.c`, `effects/effect_render_hooks.c`,
+  `contents/guild_emblem_hooks.c`, `session/session_granny_hooks.c`) and install it as
+  `client_install_hooks()` does, so the same stubs are reached in the same order.
+
+### Validation
+
+Every commit was validated in its own export (`git archive` into `build/snap/<label>`)
+with `build/depmap/validate.ps1`: a release build with the log grepped for `: warning `
+and `LNK`, the full suite `tests\build.bat`, the seven standalone suites, a comparison
+of every `digest`/`passed` line of the suite log with the baseline run, and the
+dependency-map measurement. Logs: `build/restructure-<label>-build.log`,
+`-tests.log` and `-<suite>.log`; summary in `build/restructure-validation.txt`; baseline
+in `build/restructure-baseline-build.log`, `-tests.log` and `-digests.txt`.
+
+- Every commit builds without compiler or linker warnings and passes the full suite and
+  the seven standalone suites.
+- All 256 digest and result lines of every commit's suite match the baseline, among them
+  packet dispatch `d77aaadbb5fc63b7` and effect factories `d3673c01`.
+- One line depends on the checkout path, not on the code: the Lua boundaries test counts
+  allocation failures during initialization, and that count grows with the path length
+  (419 at the worktree root, 422 in an 18-character snapshot folder, for the baseline
+  commit too). The first run of `e6fb6af` used such a folder; its rerun with a
+  13-character label (`c10-cursortip`) matches.
+- Two commits failed their first validation and were amended in place: `f39b5f7` (the
+  URL-link test, which extracts functions from `text_viewer_links.c`, needed
+  `g_uiHooks`) and `a6ef706` (five more callers of `ui_window_mgr_is_friend` needed
+  `ui/chat/friends.h`). The commits after them were rebased onto the fixed ones and
+  validated again; the table rows are those of the final commits (the failed runs'
+  logs, `c11-links`, `c12-chatmoves` and `c13-navemail`, are kept).
+- `git diff --check` passed for every commit.
+
+### Bugs found (not fixed)
+
+- `ui_agit_message_box_destroy` in `ui/social/guild_manage.c` calls `mem_free(self)`
+  twice. Closing the guild castle (agit) move box frees the same block twice.
+- The navigation-link parsing (`navi_link`) is duplicated in
+  `ui/controls/text_viewer_links.c` and `ui/quests/tag_text_viewer.c`, and the item-link
+  step was copied three times (now one function); not bugs, but the copies can drift.
+- The text-button, link-button and chat-navigation tests define a
+  `mode_set_cursor_action` stub that only their archived reference build can reach.
+
+No live client/server smoke test was run.
