@@ -9,7 +9,7 @@
 #include "actor/types.h"
 #include "login/merc_ai_types.h"
 #include "game/drag_info.h"
-#include "ui/chat/chat_window_parts.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include "ui/chat/sub_chat_map.h"
 #include "ui/quests/navigation.h"
 #include "resources/bitmap_types.h"
@@ -172,9 +172,9 @@ void ui_window_mgr_edit_focus_to_chat_wnd(struct UIWindowMgr *self)
 {
     struct UIWindow *edit;
 
-    if (self->new_chat_wnd == NULL)
+    if (self->new_chat_wnd == NULL || !g_windowMgrHandlers.chat_edit)
         return;
-    edit = ui_chat_window_edit(self->new_chat_wnd);
+    edit = g_windowMgrHandlers.chat_edit(self->new_chat_wnd);
     if (self->focus_edit)
         ui_window_on_focus_lost(self->focus_edit);
     self->focus_edit = edit;

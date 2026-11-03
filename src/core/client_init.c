@@ -40,6 +40,11 @@
 #include "ui/skin_manager.h"
 #include "ui/social/guild_member_sort.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
+#include "ui/chat/chat_room_wnd.h"
+#include "ui/chat/chat_window.h"
+#include "ui/chat/chat_window_parts.h"
+#include "session/hotkey_bindings.h"
 #include "ui/window_manager_lifecycle.h"
 #include "ui/window_manager_state.h"
 #include "ui/worldmap/kafra_services.h"
@@ -87,6 +92,12 @@ static void client_install_hooks(void)
     g_uiHooks.navi_show_map = navi_link_show_map;
     g_uiHooks.open_quest = game_open_quest_link;
     g_uiHooks.may_move_ime_caret = ui_rodex_compose_allows_caret_move;
+
+    g_windowMgrHandlers.chat_edit = ui_chat_window_edit;
+    g_windowMgrHandlers.chat_whisper_edit = ui_chat_window_whisper_edit;
+    g_windowMgrHandlers.save_chat_log = ui_chat_wnd_write_chat_to_file;
+    g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
+    g_windowMgrHandlers.skill_hot_key_slot = session_skill_hot_key_slot;
 }
 
 void client_init(void)

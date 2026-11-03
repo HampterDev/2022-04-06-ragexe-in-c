@@ -6,8 +6,7 @@
 #include "ui/draw.h"
 #include "ui/chat/whisper.h"
 #include "ui/chat/chat.h"
-#include "ui/chat/chat_room_wnd.h"
-#include "ui/chat/chat_window.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 
 #define UIWM_MSG_CHAT_COMMAND 2
 #define UIWM_MSG_SHOW_CHAT 3
@@ -173,12 +172,12 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
             ui_window_send_msg(self->chat_room_wnd, NULL, 0x25, val1, val2, 0, 0);
         break;
     case UIWM_MSG_SAVE_CHAT:
-        if (self->new_chat_wnd)
-            ui_chat_wnd_write_chat_to_file((struct UINewChatWnd *)self->new_chat_wnd);
+        if (self->new_chat_wnd && g_windowMgrHandlers.save_chat_log)
+            g_windowMgrHandlers.save_chat_log((struct UINewChatWnd *)self->new_chat_wnd);
         break;
     case UIWM_MSG_SAVE_CHAT_ROOM:
-        if (self->chat_room_wnd)
-            ui_chat_room_wnd_save_talk((struct UIChatRoomWnd *)self->chat_room_wnd);
+        if (self->chat_room_wnd && g_windowMgrHandlers.save_chat_room_talk)
+            g_windowMgrHandlers.save_chat_room_talk((struct UIChatRoomWnd *)self->chat_room_wnd);
         break;
     case UIWM_MSG_WHISPER:
         return open_whisper(self, (const char *)(INT_PTR)val1, (const char *)(INT_PTR)val2,

@@ -157,6 +157,25 @@ void session_refresh_guild_skill_hotkeys(struct Session *self)
     }
 }
 
+int session_skill_hot_key_slot(struct Session *self, int code)
+{
+    struct HotKey key;
+    int count, i;
+
+    count = session_get_hot_key_list_size(self, 0);
+    for (i = 0; i < count && i < HOTKEY_SLOTS; i++) {
+        session_get_hot_key(self, &key, 0, i);
+        if (key.code == code && self->hotkeys0[i].is_skill) {
+            string_free(&key.action);
+            string_free(&key.label);
+            return i;
+        }
+        string_free(&key.action);
+        string_free(&key.label);
+    }
+    return -1;
+}
+
 struct HotKey *session_get_hot_key(struct Session *self, struct HotKey *out,
                                                  int index, int b)
 {

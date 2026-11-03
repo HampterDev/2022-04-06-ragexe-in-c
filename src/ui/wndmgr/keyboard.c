@@ -6,7 +6,7 @@
 #include "world/mode_manager.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/character/character.h"
-#include "ui/chat/chat_window_parts.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include "ui/character/select_char_new.h"
 #include "game/mode_msg.h"
 
@@ -186,9 +186,8 @@ BYTE ui_window_mgr_excute_msg_in_battle_mode(struct UIWindowMgr *self, int lpara
 
 int ui_window_mgr_get_hot_key_behavior(struct UIWindowMgr *self)
 {
-    struct HotKey key;
     struct UIWindow *parent;
-    int behavior = -1, count, i;
+    int behavior = -1;
 
     client_lua_call(g_session1.luaState, "GetBehaviorOfHotKey2", "ddd>d", session_get_instant_var(&g_session1, 10),
             self->last_key, self->key_modifier, &behavior);
@@ -201,18 +200,9 @@ int ui_window_mgr_get_hot_key_behavior(struct UIWindowMgr *self)
         if (parent && parent != self->new_chat_wnd && parent->visible)
             return -1;
     }
-    count = session_get_hot_key_list_size(&g_session1, 0);
-    for (i = 0; i < count && i < HOTKEY_SLOTS; i++) {
-        session_get_hot_key(&g_session1, &key, 0, i);
-        if (key.code == self->last_key && g_session1.hotkeys0[i].is_skill) {
-            string_free(&key.action);
-            string_free(&key.label);
-            return i;
-        }
-        string_free(&key.action);
-        string_free(&key.label);
-    }
-    return -1;
+    if (!g_windowMgrHandlers.skill_hot_key_slot)
+        return -1;
+    return g_windowMgrHandlers.skill_hot_key_slot(&g_session1, self->last_key);
 }
 
 BYTE ui_window_mgr_is_hot_key_of_window(struct UIWindowMgr *self)
@@ -263,12 +253,16 @@ void ui_window_mgr_set_text_at_battle_mode(struct UIWindowMgr *self)
 
     if (chat == NULL)
         return;
-    edit = ui_chat_window_edit(chat);
-    if (self->focus_edit == edit)
-        ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, "");
-    edit = ui_chat_window_whisper_edit(self->new_chat_wnd);
-    if (self->focus_edit == edit)
-        ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, ui_edit_ctrl_get_text(edit));
+    if (g_windowMgrHandlers.chat_edit) {
+        edit = g_windowMgrHandlers.chat_edit(chat);
+        if (self->focus_edit == edit)
+            ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, "");
+    }
+    if (g_windowMgrHandlers.chat_whisper_edit) {
+        edit = g_windowMgrHandlers.chat_whisper_edit(self->new_chat_wnd);
+        if (self->focus_edit == edit)
+            ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, ui_edit_ctrl_get_text(edit));
+    }
 }
 
 #define WM_KEY_FLAG_EMOTE_FIRST 0xd2
@@ -289,5 +283,7 @@ BYTE ui_window_mgr_is_chat_edit_focused(struct UIWindowMgr *self)
 {
     struct UIWindow *chat = self->new_chat_wnd;
 
-    return chat && (self->focus_edit == ui_chat_window_edit(chat) || self->focus_edit == ui_chat_window_whisper_edit(chat));
+    return chat && ((g_windowMgrHandlers.chat_edit && self->focus_edit == g_windowMgrHandlers.chat_edit(chat))
+                    || (g_windowMgrHandlers.chat_whisper_edit
+                        && self->focus_edit == g_windowMgrHandlers.chat_whisper_edit(chat)));
 }
