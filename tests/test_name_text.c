@@ -39,7 +39,7 @@ struct Renderer *g_renderer = &renderer;
 static struct UIWindow test_window;
 static struct UIListBox *const server_box = (struct UIListBox *)0x5150;
 static char listed[0x100];
-static const char *job_name, *edit_text;
+static const char *job_name, *edit_text, *busy_text = "busy", *state_text = "state";
 static int cases;
 
 __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
@@ -48,6 +48,8 @@ char *msg_str(int id)
     switch (id) {
     case 0x784: return (char *)"%d%% x%.1f";
     case 0x1e2: return (char *)"(N) ";
+    case 0xcbd: case 0xcbe: case 0xcbf: case 0xcc0: return (char *)busy_text;
+    case 0xcba: case 0xcbb: case 0xcbc: return (char *)state_text;
     }
     abort();
 }
@@ -275,6 +277,32 @@ static void check_server_list(void)
     e->isNew = 1;
     server_list(&login);
     check(listed, "(N) SSSSSSSSSSSSSSSSSSSS");
+
+    /* Colored lines with long busy and state messages are cut to text[0x40]. */
+    e->usercount = 1;
+    busy_text = "B";
+    server_list(&login);
+    check(listed, "^FF7800B  ^000000(N) SSSSSSSSSSSSSSSSSSSS");
+    e->usercount = 0;
+    e->state = 2;
+    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    state_text = "(maintenance)";
+    server_list(&login);
+    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ^000000(N) SSS");
+    e->usercount = 4;
+    e->state = 3;
+    state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
+    server_list(&login);
+    check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
+    /* 7 + 54 bytes, then a three-byte UTF-8 character over the 63-byte limit. */
+    e->usercount = 0;
+    e->state = 0;
+    busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\xea\xb0\x80";
+    server_list(&login);
+    check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+    e->isNew = 0;
+    busy_text = "busy";
+    state_text = "state";
 }
 
 static void check_map_name(void)
