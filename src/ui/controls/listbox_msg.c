@@ -10,15 +10,12 @@
 #include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
-#include "session/session_items.h"
+#include "ui/controls/ui_hooks.h"
 
 #define LIST_MSG_SELECT_PREV 0x12
 #define LIST_MSG_SELECT_NEXT 0x13
 #define LIST_MSG_SELECT 0x28
 #define LIST_MSG_ITEM_LINK 0x62
-#define WND_ITEM_COLLECTION 0xc
-#define WND_ITEM_COLLECTION_CMP 0xea
-#define UI_MSG_COLLECTION_ITEM 0x18
 #define H_PAGE_STEP 0xf
 
 #define LINE_COUNT(lb) ((int)VEC_COUNT(&(lb)->items, struct String))
@@ -118,24 +115,8 @@ int ui_list_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int m
             scroll_lines(self, -1);
         return selection_shown(self, self->base.height / self->line_height - 1 + self->top);
     case LIST_MSG_ITEM_LINK:
-        if (val3) {
-            struct UIWindow *wnd;
-            struct ItemInfo *worn;
-
-            wnd = ui_window_open(WND_ITEM_COLLECTION);
-            ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, val3, 0, 0, 0);
-            if (g_windowMgr.item_collection_wnd) {
-                worn = session_get_worn_counterpart(&g_session1, (const struct ItemInfo *)val3);
-                if (g_session1.itemCompare && worn && !val4) {
-                    wnd = ui_window_open(WND_ITEM_COLLECTION_CMP);
-                    if (wnd) {
-                        ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
-                        return 0;
-                    }
-                    ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);
-                }
-            }
-        }
+        if (val3 && g_uiHooks.show_item_link)
+            g_uiHooks.show_item_link((struct ItemInfo *)val3, val4);
         return 0;
     }
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);

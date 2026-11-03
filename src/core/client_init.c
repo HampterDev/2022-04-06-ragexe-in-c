@@ -30,6 +30,8 @@
 #include "std/std.h"
 #include "actor/weather.h"
 #include "ui/character/character.h"
+#include "ui/controls/ui_hooks.h"
+#include "ui/items/item_collection.h"
 #include "ui/misc/snap_mgr.h"
 #include "ui/quests/tag_list_box.h"
 #include "ui/quests/world_view.h"
@@ -73,6 +75,7 @@ static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); 
 static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
+    g_uiHooks.show_item_link = item_collection_show_link;
 }
 
 void client_init(void)

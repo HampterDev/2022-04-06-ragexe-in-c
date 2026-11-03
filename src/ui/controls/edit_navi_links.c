@@ -12,13 +12,10 @@
 #include "ui/chat/markup_links.h"
 #include <string.h>
 #include "ui/mail/rodex_compose.h"
-#include "session/session_items.h"
+#include "ui/controls/ui_hooks.h"
 
 struct ItemInfo;
 
-#define WND_ITEM 0xc
-#define WND_ITEM_COMPARE 0xea
-#define UI_MSG_SHOW_ITEM 0x18
 #define NAVI_LINK_COLOUR 0x9e68f0
 #define LINK_FONT_HEIGHT 0xc
 #define OUT_OF_SIGHT (-1000)
@@ -207,25 +204,6 @@ void ui_edit_ctrl3_place_navi_links(struct UIEditCtrl3 *self, struct TextView li
     string_free(&serialized);
 }
 
-static void show_item(int item, int no_compare)
-{
-    struct UIWindow *wnd;
-    struct ItemInfo *worn;
-
-    wnd = ui_window_open(WND_ITEM);
-    ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, item, 0, 0, 0);
-    if (!g_windowMgr.item_collection_wnd)
-        return;
-    worn = session_get_worn_counterpart(&g_session1, (const struct ItemInfo *)item);
-    if (!g_session1.itemCompare || !worn || no_compare)
-        return;
-    wnd = ui_window_open(WND_ITEM_COMPARE);
-    if (wnd)
-        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)worn, 1, 0, 0);
-    else
-        ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COMPARE);
-}
-
 static void add_navi_link(struct UIEditCtrl *self, const char *text)
 {
     struct String name = {0}, shown = {0}, merged = {0}, readable = {0};
@@ -299,8 +277,8 @@ int ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             language_cancel_input(g_language);
         return 0;
     case UI_MSG_TEXT_BUTTON:
-        if (val3)
-            show_item(val3, val4);
+        if (val3 && g_uiHooks.show_item_link)
+            g_uiHooks.show_item_link((struct ItemInfo *)val3, val4);
         break;
     case UI_MSG_PARSE_LINKS:
         add_navi_link(self, (const char *)val1);

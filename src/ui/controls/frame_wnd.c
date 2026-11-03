@@ -8,12 +8,8 @@
 #include <mmsystem.h>
 #include <stdlib.h>
 #include "core/object_type_tables.h"
-#include "session/session_items.h"
+#include "ui/controls/ui_hooks.h"
 #include "ui/render/graphic_setting.h"
-
-#define WND_ITEM_COLLECTION 0xc
-#define WND_ITEM_COLLECTION_CMP 0xea
-#define UI_MSG_COLLECTION_ITEM 0x18
 
 struct ItemInfo;
 
@@ -83,8 +79,7 @@ int ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
                                   int val1, int val2, int val3, int val4)
 {
     struct UIFrameWnd *self = (struct UIFrameWnd *)window;
-    struct ItemInfo *item, *worn;
-    struct UIWindow *wnd;
+    struct ItemInfo *item;
     int id;
 
     switch (msg) {
@@ -96,20 +91,8 @@ int ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
         return 0;
     case UI_MSG_TEXT_BUTTON:
         item = (struct ItemInfo *)val3;
-        if (!item)
-            return 0;
-        wnd = ui_window_open(WND_ITEM_COLLECTION);
-        ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)item, 0, 0, 0);
-        if (!g_windowMgr.item_collection_wnd)
-            return 0;
-        worn = session_get_worn_counterpart(&g_session1, item);
-        if (!g_session1.itemCompare || !worn || val4 != 0)
-            return 0;
-        wnd = ui_window_open(WND_ITEM_COLLECTION_CMP);
-        if (wnd)
-            ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
-        else
-            ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);
+        if (item && g_uiHooks.show_item_link)
+            g_uiHooks.show_item_link(item, val4);
         return 0;
     }
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);

@@ -15,7 +15,6 @@ static struct UIEditCtrl *active_edit;
 static struct Language language;
 struct Language *g_language = &language;
 struct UIWindowMgr g_windowMgr;
-struct Session g_session1;
 const struct String text_tag_NAVIL = STRING_LITERAL("<NAVIL>");
 const struct String text_tag_NAVIL_END = STRING_LITERAL("</NAVIL>");
 
@@ -97,12 +96,7 @@ void ui_window_remove_child(struct UIWindow *self, struct UIWindow *button, BYTE
 }
 int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int a, int b, int c, int d)
 { (void)self; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
-struct ItemInfo *session_get_worn_counterpart(struct Session *self, const struct ItemInfo *item)
-{ (void)self; (void)item; abort(); }
-struct UIWindow *ui_window_open(int id) { (void)id; abort(); }
-int ui_window_send(struct UIWindow *w, struct UIWindow *s, int m, int a, int b, int c, int d)
-{ (void)w; (void)s; (void)m; (void)a; (void)b; (void)c; (void)d; abort(); }
-BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int id) { (void)self; (void)id; abort(); }
+struct UIHooks g_uiHooks;
 
 struct ItemInfo *item_info_copy(struct ItemInfo *self, const struct ItemInfo *from) { (void)self; (void)from; abort(); }
 struct String *item_info_get_display_name(const struct ItemInfo *self, struct String *out)

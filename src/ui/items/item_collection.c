@@ -3,6 +3,7 @@
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
 #include "world/mode_manager.h"
+#include "ui/items/item_collection.h"
 #include "ui/items/item_collection_internal.h"
 #include "ui/items/pet_windows.h"
 #include <string.h>
@@ -10,6 +11,7 @@
 #include "diag/perf.h"
 #include "iteminfo/iteminfo.h"
 #include "std/tree.h"
+#include "session/session_items.h"
 
 const struct UIWindowOps ui_item_collection_wnd_ops = {
     .destroy = ui_item_collection_wnd_destroy,
@@ -371,6 +373,25 @@ void item_collection_show_card(int wnd_id, struct ItemInfo *card, int past_slots
 
     ui_window_send_msg(wnd, NULL, UI_MSG_COLLECTION_IDENTIFIED, card->identified, 0, 0, 0);
     ui_window_send_msg(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)card, past_slots, 0, 0);
+}
+
+void item_collection_show_link(struct ItemInfo *item, int no_compare)
+{
+    struct UIWindow *wnd;
+    struct ItemInfo *worn;
+
+    wnd = ui_window_open(WND_ITEM_COLLECTION);
+    ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)item, 0, 0, 0);
+    if (!g_windowMgr.item_collection_wnd)
+        return;
+    worn = session_get_worn_counterpart(&g_session1, item);
+    if (!g_session1.itemCompare || !worn || no_compare)
+        return;
+    wnd = ui_window_open(WND_ITEM_COLLECTION_CMP);
+    if (wnd)
+        ui_window_send(wnd, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
+    else
+        ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);
 }
 
 void ui_item_collection_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
