@@ -111,7 +111,17 @@ void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
     }
     self->face = face;
     self->size = size;
-    self->charset = (lang == 0 && face >= 0x14) ? g_3dDevice.faceCharsets[0] : g_3dDevice.faceCharsets[face];
+    /* faceCharsets has 12 entries; faces past it used to read the bytes after it, in
+       hexDigitFlags. Keep the values that mattered: SCDream read 0x10101, which fonts
+       truncate to DEFAULT_CHARSET, and faces 12-0x13 read ANSI_CHARSET. The EOT faces read
+       0, 0x101, 0x1010100 or 0x1010101, but their LOGFONT has a fixed charset, and like
+       ANSI_CHARSET each of these decodes text as code page 1252. */
+    if (lang == 0 && face >= FONT_FACE_EOT_FIRST)
+        self->charset = g_3dDevice.faceCharsets[0];
+    else if (face >= 0 && (size_t)face < sizeof g_3dDevice.faceCharsets / sizeof g_3dDevice.faceCharsets[0])
+        self->charset = g_3dDevice.faceCharsets[face];
+    else
+        self->charset = face == FONT_FACE_SCDREAM ? DEFAULT_CHARSET : ANSI_CHARSET;
     self->bold = (BYTE)c;
     self->italic = (BYTE)d;
 }

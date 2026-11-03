@@ -865,3 +865,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_monster_skill_info.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_face_charset.bat"
+if not "%errorlevel%"=="0" exit /b 1
