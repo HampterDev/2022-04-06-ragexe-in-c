@@ -725,3 +725,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_basic_info_restore.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_effect_launch_duration.bat"
+if not "%errorlevel%"=="0" exit /b 1

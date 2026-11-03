@@ -201,3 +201,10 @@ const int g_effectDurations[EFFECT_DURATION_COUNT] = {
     99999999, 99999999, 2366, 40, 100, 40, 2370, 2371, 2372, 300, 99999999, 99999999,
     2376, 2377, 2378, 2379, 2380, 2381, 2382, 9999, 0,
 };
+
+int effect_duration(int effect_id)
+{
+    if (effect_id >= 0 && effect_id < EFFECT_DURATION_COUNT)
+        return g_effectDurations[effect_id];
+    return effect_id;
+}

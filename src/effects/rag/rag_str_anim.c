@@ -35,7 +35,7 @@ void rag_effect_init(struct RagEffect *self, struct RenderObject *master, int ef
     self->master = master;
     self->base.pos = master->pos;
     self->master_roty = master->roty;
-    rag_effect_set_duration(self, g_effectDurations[self->effect_id]);
+    rag_effect_set_duration(self, effect_duration(self->effect_id));
     self->offset = offset;
     sprintf(file_name, "");
 

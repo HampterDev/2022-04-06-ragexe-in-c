@@ -37,7 +37,7 @@ BYTE session_play_ground_skill_effect(struct Session *self, int skill, struct Ve
             if (effect_mgr_is_registered(g_effectMgr, id))
                 effect_mgr_spawn(g_effectMgr, 0, id, pos, 0, -1, 0, 0);
             else
-                game_mode_launch_dummy_effect(game_current_mode(), &pos, id, g_effectDurations[id] + 10, 0);
+                game_mode_launch_dummy_effect(game_current_mode(), &pos, id, effect_duration(id) + 10, 0);
         }
     }
     return 1;
