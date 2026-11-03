@@ -11,6 +11,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type.h"
+#include "core/text_util.h"
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
@@ -276,7 +277,6 @@ void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt
     const struct PACKET_ZC_NPCACK_MAPMOVE *packet = (const struct PACKET_ZC_NPCACK_MAPMOVE *)pkt;
     char name_buf[17];
     struct String map;
-    unsigned shorter;
     size_t state_index;
 
     string_init(&map);
@@ -285,8 +285,7 @@ void game_mode_zc_npcack_mapmove(struct GameMode *self, const unsigned char *pkt
     memcpy(name_buf, packet->map, 16);
     name_buf[16] = 0;
     string_assign_cstr(&map, name_buf);
-    shorter = map.size - 4;
-    string_resize(&map, shorter, 0);
+    text_drop_map_extension(&map);
 
     if (strcmp(string_cstr(&map), g_session1.mapName) != 0) {
         void *loading;

@@ -121,6 +121,12 @@ void text_to_lower(struct String *s)
     }
 }
 
+void text_drop_map_extension(struct String *map_name)
+{
+    if (map_name->size >= 4)
+        string_truncate(map_name, map_name->size - 4);
+}
+
 /* Lowercases A-Z only, leaving every other byte, including UTF-8 sequences, unchanged. */
 void text_to_lower_ascii(struct String *s)
 {
