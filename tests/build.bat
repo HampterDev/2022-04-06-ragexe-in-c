@@ -719,3 +719,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_map_enter_packet.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_status_wnd_info.bat"
+if not "%errorlevel%"=="0" exit /b 1
