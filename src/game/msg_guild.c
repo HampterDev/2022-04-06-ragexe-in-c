@@ -194,7 +194,9 @@ int game_mode_msg_ban_guild_member(const struct GuildBanTarget *who, const char 
 }
 
 #define MAKE_GUILD_REFUSED_COLOR 0x6e96ff
-#define FULLWIDTH_SPACE "　"
+/* U+3000 IDEOGRAPHIC SPACE in UTF-8. */
+#define FULLWIDTH_SPACE "\xe3\x80\x80"
+#define FULLWIDTH_SPACE_SIZE (sizeof FULLWIDTH_SPACE - 1)
 
 int game_mode_msg_make_guild(const char *name, int b)
 {
@@ -206,17 +208,15 @@ int game_mode_msg_make_guild(const char *name, int b)
     } packet;
 #pragma pack(pop)
     char text[0x100];
-    char pair[4];
+    size_t length = strlen(name);
     struct Player *player = game_current_player();
 
+    (void)b;
     if (!player)
         return 0;
-    memcpy(pair, &b, 4);
-    memcpy(pair, name, 2);
-    if (strcmp(pair, FULLWIDTH_SPACE) == 0)
-        goto no_space;
-    memcpy(pair, name + strlen(name) - 2, 2);
-    if (strcmp(pair, FULLWIDTH_SPACE) == 0)
+    if (length >= FULLWIDTH_SPACE_SIZE
+        && (memcmp(name, FULLWIDTH_SPACE, FULLWIDTH_SPACE_SIZE) == 0
+            || memcmp(name + length - FULLWIDTH_SPACE_SIZE, FULLWIDTH_SPACE, FULLWIDTH_SPACE_SIZE) == 0))
         goto no_space;
     if (strchr(name, ' '))
         goto no_space;

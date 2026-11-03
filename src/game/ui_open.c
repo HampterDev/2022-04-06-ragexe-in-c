@@ -178,12 +178,12 @@ void game_mode_ack_buy_styling_shop(struct GameMode *self, const unsigned char *
     case 0:
         header = HEADER_CZ_STYLINGSHOP_OK;
         send_packet(HEADER_CZ_STYLINGSHOP_OK, &header);
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb14), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb14), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, WINDOW_STYLING_SHOP);
         break;
     case 1:
     case 2:
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x627), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x627), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         break;
     }
 }

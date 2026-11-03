@@ -148,6 +148,12 @@ void ui_prohibit_list_wnd_on_create(struct UIWindow *window, int width_unused, i
     string_free(&skin);
 }
 
+/* "ProhibitTime : %d분   LogTime : %d년 %d월 %d일   %d시 %d분 %d초". A format array, not a
+   literal: the compiler would check a literal format in the CP949 execution charset. */
+static const char record_format[] =
+    "ProhibitTime : %d\xeb\xb6\x84   LogTime : %d\xeb\x85\x84 %d\xec\x9b\x94 %d\xec\x9d\xbc   "
+    "%d\xec\x8b\x9c %d\xeb\xb6\x84 %d\xec\xb4\x88";
+
 void ui_prohibit_list_wnd_on_draw(struct UIWindow *window)
 {
     struct UIProhibitListWnd *self = (struct UIProhibitListWnd *)window;
@@ -176,10 +182,7 @@ void ui_prohibit_list_wnd_on_draw(struct UIWindow *window)
             sprintf(line, "ServerName : %s", entry->giver);
             ui_window_text_out(wnd, 0xa, 0x29, line, 0, 0, 0xc, 0, 0, 0);
         }
-        sprintf(line,
-                    "ProhibitTime : %d분   LogTime : %d년 %d월 %d일   "
-                    "%d시 %d분 %d초",
-                    entry->minutes, (WORD)(entry->date >> 16), (BYTE)(entry->date >> 8),
+        sprintf(line, record_format, entry->minutes, (WORD)(entry->date >> 16), (BYTE)(entry->date >> 8),
                     (BYTE)entry->date, (BYTE)(entry->time >> 16), (BYTE)(entry->time >> 8),
                     (BYTE)entry->time);
         ui_window_text_out(wnd, 0xa, 0x41 + y, line, 0, 0, 0xc, 0, 0, 0);

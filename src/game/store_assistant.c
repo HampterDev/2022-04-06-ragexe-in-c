@@ -406,7 +406,7 @@ static int store_setup_refused(void)
 
 static void store_setup_busy_box(void)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_STORE_SETUP_BUSY), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_STORE_SETUP_BUSY), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 void game_mode_on_open_ui_assistant_buying(struct GameMode *self, unsigned char slots)

@@ -260,7 +260,7 @@ int ui_basic_styling_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
                     self->tab.display->head_palette = i + 1;
                     ui_window_invalidate_base(&self->tab.display->base);
                 } else {
-                    ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb12), UI_MSGBOX_OK, 0, 0, 0, "메시지",
+                    ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb12), UI_MSGBOX_OK, 0, 0, 0, UI_MSGBOX_TITLE,
                                            0x118, 0x78, 0);
                 }
             } else {

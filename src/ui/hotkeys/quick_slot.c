@@ -500,7 +500,7 @@ static void use_item(int item_id)
                 string_init(&ask);
                 string_format(&ask, msg_str(MSG_ASK_USE_ITEM), string_cstr(&name));
                 answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&ask), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                                "메시지", 0x118, 0x78, 0);
+                                                UI_MSGBOX_TITLE, 0x118, 0x78, 0);
                 string_free(&ask);
                 string_free(&name);
                 if (answer == UI_MSGBOX_ANSWER_YES)

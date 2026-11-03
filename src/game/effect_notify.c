@@ -548,8 +548,8 @@ void game_mode_zc_devotion_list(struct GameMode *self, const struct PacketDevoti
             sprintf(text, "DEVOTION OVERFLOW : %d -- %d , %d , %d , %d , %d", packet->aid, packet->targets[0],
                         packet->targets[1], packet->targets[2], packet->targets[3], packet->targets[4]);
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
-            sprintf(text, "DEVOTION OVERFLOW : 그라비티에 메일로 "
-                              "문의해주십시요");
+            strcpy(text, "DEVOTION OVERFLOW : \xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0\xec\x97\x90 \xeb\xa9\x94\xec\x9d\xbc\xeb\xa1\x9c " /* "DEVOTION OVERFLOW : 그라비티에 메일로 " */
+                              "\xeb\xac\xb8\xec\x9d\x98\xed\x95\xb4\xec\xa3\xbc\xec\x8b\xad\xec\x8b\x9c\xec\x9a\x94" /* "문의해주십시요" */);
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
             continue;
         }

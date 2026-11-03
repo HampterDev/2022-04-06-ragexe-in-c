@@ -124,3 +124,4 @@ The [review ledger](docs/purist-review.md) records decisions and validation; [sh
 - Read keyboard, IME and clipboard input as Unicode (Unicode window, `CF_UNICODETEXT`, surrogate pairs, full-length IME strings), stored as UTF-8 on any Windows locale.
 - Add `tools/utf8-data` to convert client display text to UTF-8; [matching server patch](docs/server/utf8-text.md).
 - Draw each script in an installed Windows font that has it (Hangul in Gulim, then Malgun Gothic; Han, kana, Thai, symbols and emoji in their own), on the selected face's baseline; font calls and face names are Unicode.
+- Write the Korean text the client draws, compares or sends as UTF-8 escapes (message-box titles, Korean slash commands, the 그라비티 name check, the 블루 tag), with byte lengths that no longer assume CP949; resource names stay CP949.

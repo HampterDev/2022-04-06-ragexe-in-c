@@ -249,8 +249,8 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
     if (g_session1.channelCopId == 1) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
         ui_window_mgr_send_msg_(&g_windowMgr, 1,
-            (int)"한게임 유저는 12월 3일부로 "
-                 "유료아이템 구매가 불가능합니다.",
+            (int)"\xed\x95\x9c\xea\xb2\x8c\xec\x9e\x84 \xec\x9c\xa0\xec\xa0\x80\xeb\x8a\x94 12\xec\x9b\x94 3\xec\x9d\xbc\xeb\xb6\x80\xeb\xa1\x9c " /* "한게임 유저는 12월 3일부로 " */
+                 "\xec\x9c\xa0\xeb\xa3\x8c\xec\x95\x84\xec\x9d\xb4\xed\x85\x9c \xea\xb5\xac\xeb\xa7\xa4\xea\xb0\x80 \xeb\xb6\x88\xea\xb0\x80\xeb\x8a\xa5\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4." /* "유료아이템 구매가 불가능합니다." */,
             CHAT_COLOR_RED, 0, 0);
         return;
     }

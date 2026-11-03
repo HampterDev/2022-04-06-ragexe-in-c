@@ -240,14 +240,14 @@ static void change_name_submit(struct UIChangeNameWnd *self)
     strcpy(lower, ui_edit_ctrl_get_text(edit));
     self->char_copy = *self->char_info;
     memcpy(self->char_copy.name, lower, CHAR_NAME_LEN);
-    if (strstr(self->char_copy.name, "그라비티"))
+    if (strstr(self->char_copy.name, "\xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0" /* "그라비티" */))
         goto done;
     _strlwr(lower);
     if (strstr(lower, "gravity") || change_name_has_gm_tag(lower))
         goto done;
 
     sprintf(question, msg_str(MSG_NAME_ASK), self->char_copy.name);
-    if (ui_window_mgr_message_box(&g_windowMgr, question, UI_MSGBOX_QUESTION, 0, 0, 0, "메시지", 0x118,
+    if (ui_window_mgr_message_box(&g_windowMgr, question, UI_MSGBOX_QUESTION, 0, 0, 0, UI_MSGBOX_TITLE, 0x118,
                                0x78, 0) == UI_MSGBOX_ANSWER_YES) {
         struct PacketChangeName packet;
         int len;

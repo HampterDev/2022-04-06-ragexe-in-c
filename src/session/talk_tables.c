@@ -43,13 +43,13 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
         *action = 0;
         *loopType = 0;
         ui_window_mgr_message_box(&g_windowMgr,
-                   "에러발생. 클라이언트 담당자 "
-                   "에게 에러 사실을 통보 하세요. "
-                   "위치 - CPlayer :: GetMonsterSkillInfo",
-                   0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+                   "\xec\x97\x90\xeb\x9f\xac\xeb\xb0\x9c\xec\x83\x9d. \xed\x81\xb4\xeb\x9d\xbc\xec\x9d\xb4\xec\x96\xb8\xed\x8a\xb8 \xeb\x8b\xb4\xeb\x8b\xb9\xec\x9e\x90 " /* "에러발생. 클라이언트 담당자 " */
+                   "\xec\x97\x90\xea\xb2\x8c \xec\x97\x90\xeb\x9f\xac \xec\x82\xac\xec\x8b\xa4\xec\x9d\x84 \xed\x86\xb5\xeb\xb3\xb4 \xed\x95\x98\xec\x84\xb8\xec\x9a\x94. " /* "에게 에러 사실을 통보 하세요. " */
+                   "\xec\x9c\x84\xec\xb9\x98 - CPlayer :: GetMonsterSkillInfo" /* "위치 - CPlayer :: GetMonsterSkillInfo" */,
+                   0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         ui_window_mgr_message_box(&g_windowMgr,
-                   "action 또는 loopType 이 존재하지 않음.",
-                   0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+                   "action \xeb\x98\x90\xeb\x8a\x94 loopType \xec\x9d\xb4 \xec\xa1\xb4\xec\x9e\xac\xed\x95\x98\xec\xa7\x80 \xec\x95\x8a\xec\x9d\x8c." /* "action 또는 loopType 이 존재하지 않음." */,
+                   0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         return;
     }
     sprintf(actionText, node_text(actionNode));

@@ -432,7 +432,7 @@ static void send_checked(struct UISelCharForUServerWnd *self)
     int gids[SEL_CHAR_MAX];
     int n = 0, i;
 
-    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM), UI_MSGBOX_QUESTION, 0, 0, 0, "메시지",
+    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM), UI_MSGBOX_QUESTION, 0, 0, 0, UI_MSGBOX_TITLE,
                                0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
         return;
     memset(gids, 0, sizeof gids);
@@ -456,7 +456,7 @@ static void send_checked(struct UISelCharForUServerWnd *self)
                                   rag_connection_get_packet_length(rag_connection_instance(), 0x28c), &packet);
         ui_window_mgr_post_quit2(&g_windowMgr, &self->frame.base);
     } else {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NONE_CHECKED), UI_MSGBOX_OK, 1, 1, 0, "메시지",
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NONE_CHECKED), UI_MSGBOX_OK, 1, 1, 0, UI_MSGBOX_TITLE,
                                0x118, 0x78, 0);
     }
 }
@@ -472,7 +472,7 @@ int ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *window, struct UIWind
     } else if (val1 == UI_ID_CHECKBOX) {
         self->checked += sender->state != 0 ? 1 : -1;
         if (self->checked > MAX_CHECKED) {
-            ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_TOO_MANY), UI_MSGBOX_OK, 1, 1, 0, "메시지",
+            ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_TOO_MANY), UI_MSGBOX_OK, 1, 1, 0, UI_MSGBOX_TITLE,
                                    0x118, 0x78, 0);
             ui_check_box_set_check(sender, 0);
         }

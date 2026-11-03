@@ -395,7 +395,7 @@ void ui_ach_tracing_wnd_on_create(struct UIWindow *window, int width, int height
 
     for (i = 0; i < 3; i++) {
         self->lines[i] = trace_new_button(self, "", TRACE_LINE_ID);
-        self->arrows[i] = trace_new_button(self, "▶", TRACE_ARROW_ID);
+        self->arrows[i] = trace_new_button(self, "\xe2\x96\xb6" /* "▶" */, TRACE_ARROW_ID);
     }
 }
 
@@ -437,7 +437,7 @@ void ui_ach_tracing_wnd_on_draw(struct UIWindow *window)
             ui_button_set_show((struct UIButton *)(line), 1);
             ui_button_set_show((struct UIButton *)(arrow), 1);
             string_init(&text);
-            string_format(&text, "● [%s]", string_cstr(&trace->name));
+            string_format(&text, "\xe2\x97\x8f [%s]" /* "● [%s]" */, string_cstr(&trace->name));
             string_assign(&line->button.text, string_cstr(&text), text.size);
             string_free(&text);
             ui_text_button_fit_to_caption((struct UITextButton *)&line->button);

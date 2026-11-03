@@ -126,7 +126,7 @@ static int enter_zone(struct GameMode *self)
     self->base.connected = (unsigned char)connection_connect(rag_connection_transport(rag_connection_instance()), &g_mapServerIp);
     if (!self->base.connected) {
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 1, 1, 1, 0, "메시지", 0x118, 0x78, 0)
+        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 1, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0)
             != MSGBOX_RESULT_CLOSED)
             game_mode_send_msg(&self->base, MODE_MSG_TO_LOGIN, 0, 0, 0, 0);
         return 0;
@@ -245,7 +245,7 @@ void game_mode_notify_ban(struct GameMode *self, const struct PACKET_SC_NOTIFY_B
         const char *fallback = msg_str(0x718);
         string_assign_cstr(&text, fallback);
     }
-    ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 0, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
     mode_send_msg(self, MODE_REQ_QUIT, 0, 0, 0, 0);
     string_free(&text);
 }
@@ -256,7 +256,7 @@ void game_mode_isvr_disconnect(struct GameMode *self)
         return;
     ui_window_mgr_post_quit1(&g_windowMgr, WID_MEMORIAL_DUNGEON);
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x545), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0)
+    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x545), 0, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0)
         != MSGBOX_RESULT_CLOSED)
         mode_send_msg(self, MODE_REQ_LOGIN_WINDOW, 0, 0, 0, 0);
 }

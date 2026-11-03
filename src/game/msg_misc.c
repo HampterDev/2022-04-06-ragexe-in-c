@@ -52,7 +52,7 @@ int game_mode_msg_connection_lost(struct GameMode *self)
     self->server_move_pending = 1;
     self->server_move_time = timeGetTime();
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(2), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0x105)
+    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(2), 0, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0) == 0x105)
         return 0;
     self_msg(self, MODE_MSG_GO_TO_LOGIN, 0, 0, 0, 0);
     return 0;

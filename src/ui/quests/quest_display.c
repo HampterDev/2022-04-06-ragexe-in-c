@@ -201,11 +201,11 @@ static void hunt_label(struct String *label, const struct RenewQuestB *info, int
         string_assign(label, string_cstr(&text), text.size);
     } else if (min == 0) {
         string_init(&text);
-        string_format(&text, "%s Lv.%d▼", name, max);
+        string_format(&text, "%s Lv.%d\xe2\x96\xbc" /* "%s Lv.%d▼" */, name, max);
         string_assign(label, string_cstr(&text), text.size);
     } else if (max == 0) {
         string_init(&text);
-        string_format(&text, "%s Lv.%d▲", name, min);
+        string_format(&text, "%s Lv.%d\xe2\x96\xb2" /* "%s Lv.%d▲" */, name, min);
         string_assign(label, string_cstr(&text), text.size);
     } else {
         string_init(&text);

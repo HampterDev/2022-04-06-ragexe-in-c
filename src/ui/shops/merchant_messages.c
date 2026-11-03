@@ -381,7 +381,7 @@ int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWind
             g_session1.noSellWndSound = g_session1.noSellWndSound == 0;
         } else if (val1 == UI_ID_MY_SHOP_END) {
             if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_MY_SHOP_END), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                       "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+                                       UI_MSGBOX_TITLE, 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                 mode_send_message(mode, MODE_REQ_CLOSE_SHOP_KEEP, self->owner_aid, 0, 0, 0);
                 mode_send_message(mode, MODE_REQ_SHOP_CLOSE, 0, 0, 0, 0);
                 ui_close_window(self->variant == 1 ? WND_ID_MY_BUYING : WND_ID_MY_SHOP);

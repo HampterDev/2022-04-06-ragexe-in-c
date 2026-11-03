@@ -238,7 +238,7 @@ void game_mode_zc_repair_item_list(struct GameMode *self, const struct PacketRep
 
     (void)self;
     if (count == 0) {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_TO_REPAIR), 0, 1, 0, 0, "메시지", 0x118,
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_TO_REPAIR), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118,
                                0x78, 0);
         return;
     }

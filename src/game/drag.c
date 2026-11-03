@@ -150,7 +150,7 @@ char game_mode_refuse_held_item_drag(struct GameMode *self)
     session_get_inventory_item(&g_session1, &item, self->drag.index);
     if ((unsigned)item.index > 0) {
         mode_send_msg(self, MODE_MSG_END_DRAG, 0, 0, 0, 0);
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x291), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x291), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
         refused = 1;
     }
     string_free(&item.name);

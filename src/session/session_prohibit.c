@@ -82,20 +82,20 @@ void session_erase_prohibit(struct Session *self, int aid, unsigned minutes)
         if (rec->aid == aid)
             found = rec;
     if (found == last) {
-        text = "채팅 로그 삭제 실패 : "
-               "채팅 금지를 준 기록이 "
-               "없습니다.";
+        text = "\xec\xb1\x84\xed\x8c\x85 \xeb\xa1\x9c\xea\xb7\xb8 \xec\x82\xad\xec\xa0\x9c \xec\x8b\xa4\xed\x8c\xa8 : " /* "채팅 로그 삭제 실패 : " */
+               "\xec\xb1\x84\xed\x8c\x85 \xea\xb8\x88\xec\xa7\x80\xeb\xa5\xbc \xec\xa4\x80 \xea\xb8\xb0\xeb\xa1\x9d\xec\x9d\xb4 " /* "채팅 금지를 준 기록이 " */
+               "\xec\x97\x86\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* "없습니다." */;
     } else if (found->minutes > minutes) {
-        text = "채팅 로그 삭제 안함 : "
-               "마이너스 된 시간이 "
-               "기존의 채팅 금지 시간보다 "
-               "짧습니다.";
+        text = "\xec\xb1\x84\xed\x8c\x85 \xeb\xa1\x9c\xea\xb7\xb8 \xec\x82\xad\xec\xa0\x9c \xec\x95\x88\xed\x95\xa8 : " /* "채팅 로그 삭제 안함 : " */
+               "\xeb\xa7\x88\xec\x9d\xb4\xeb\x84\x88\xec\x8a\xa4 \xeb\x90\x9c \xec\x8b\x9c\xea\xb0\x84\xec\x9d\xb4 " /* "마이너스 된 시간이 " */
+               "\xea\xb8\xb0\xec\xa1\xb4\xec\x9d\x98 \xec\xb1\x84\xed\x8c\x85 \xea\xb8\x88\xec\xa7\x80 \xec\x8b\x9c\xea\xb0\x84\xeb\xb3\xb4\xeb\x8b\xa4 " /* "기존의 채팅 금지 시간보다 " */
+               "\xec\xa7\xa7\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* "짧습니다." */;
     } else {
         memmove(found, found + 1, (size_t)((BYTE *)last - (BYTE *)(found + 1)));
         self->prohibitionLog.last = last - 1;
-        text = "채팅 로그 삭제 성공";
+        text = "\xec\xb1\x84\xed\x8c\x85 \xeb\xa1\x9c\xea\xb7\xb8 \xec\x82\xad\xec\xa0\x9c \xec\x84\xb1\xea\xb3\xb5" /* "채팅 로그 삭제 성공" */;
     }
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 int session_count_prohibits_of(struct Session *self, int aid)

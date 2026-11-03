@@ -4,6 +4,8 @@
 #include <string.h>
 #include <windows.h>
 
+#define BLUE_KR "\xeb\xb8\x94\xeb\xa3\xa8" /* 블루 in UTF-8 */
+
 static void plain(const char *input, const char *text, unsigned colour, int balloon, int log_line, int channel)
 {
     struct BroadcastText result;
@@ -21,12 +23,14 @@ int main(void)
     unsigned char *pages, *end;
     DWORD old;
     size_t n, i;
-    const char *tags[] = {"tool", "micc", "blue", "ssss", "블루"};
+    const char *tags[] = {"tool", "micc", "blue", "ssss", BLUE_KR};
 
     plain("hello", "hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
     plain("TOOLaB12Efhello", "hello", 0xef12ab, 1, 1, BROADCAST_CHANNEL);
     plain("BlUehello", "hello", 0xffff00, 1, 1, BROADCAST_CHANNEL);
-    plain("블루hello", "hello", 0xffff00, 1, 1, BROADCAST_CHANNEL);
+    plain(BLUE_KR "hello", "hello", 0xffff00, 1, 1, BROADCAST_CHANNEL);
+    plain("\xeb\xb8\x94" "hello", "\xeb\xb8\x94" "hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
+    plain("\xba\xed\xb7\xe7" "hello", "\xba\xed\xb7\xe7" "hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
     plain("sssshello", "hello", 0xffff, 0, 0, BROADCAST_CHANNEL_SSSS);
     plain("name#tag: hello", "name: hello", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain("name#tag", "name", 0xffff, 0, 1, BROADCAST_CHANNEL);
@@ -56,7 +60,7 @@ int main(void)
             unsigned char *payload = end - n;
             struct { unsigned before; struct BroadcastText value; unsigned after; } guarded;
             memset(payload, 'a', n);
-            memcpy(payload, tags[i], n < 4 ? n : 4);
+            memcpy(payload, tags[i], n < strlen(tags[i]) ? n : strlen(tags[i]));
             guarded.before = guarded.after = 0x12345678;
             broadcast_text_parse(&guarded.value, (const char *)payload, n);
             assert(guarded.before == 0x12345678 && guarded.after == 0x12345678);
@@ -68,6 +72,6 @@ int main(void)
     assert(broadcast_text_parse(&result, (const char *)end - 1100, 1100));
     assert(strlen(result.text) == 1023);
     assert(VirtualFree(pages, 0, MEM_RELEASE));
-    puts("PASS: broadcast tags, colours, sender fields, limits and 5505 guarded payload boundaries");
+    puts("PASS: broadcast tags (the Korean blue tag in UTF-8), colours, sender fields, limits and 5505 guarded payload boundaries");
     return 0;
 }

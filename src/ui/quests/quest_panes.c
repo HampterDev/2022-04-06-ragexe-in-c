@@ -24,8 +24,10 @@
 #define MSG_QUEST_HUNT_DONE 0x7ee
 #define MSG_REWARD_COUNT 0xb6
 
-#define HUNT_UP_TO_FMT "%s Lv.%d▼"
-#define HUNT_FROM_FMT "%s Lv.%d▲"
+/* "%s Lv.%d▼" and "%s Lv.%d▲". Format arrays, not literals: the compiler would check a
+   literal format in the CP949 execution charset. */
+static const char hunt_up_to_format[] = "%s Lv.%d\xe2\x96\xbc";
+static const char hunt_from_format[] = "%s Lv.%d\xe2\x96\xb2";
 
 #define QUEST_TEXT_R 0x1d
 #define QUEST_TEXT_G 0x55
@@ -265,9 +267,9 @@ static void ongoing_hunt_text(const struct RenewQuestB *info, int i, char *out, 
     } else if (min < 0 || max < 0 || (min == 0 && max == 0)) {
         _snprintf(what, sizeof what, "%s", info->plain.hunt_name[i]);
     } else if (min == 0) {
-        _snprintf(what, sizeof what, HUNT_UP_TO_FMT, info->plain.hunt_name[i], max);
+        _snprintf(what, sizeof what, hunt_up_to_format, info->plain.hunt_name[i], max);
     } else if (max == 0) {
-        _snprintf(what, sizeof what, HUNT_FROM_FMT, info->plain.hunt_name[i], min);
+        _snprintf(what, sizeof what, hunt_from_format, info->plain.hunt_name[i], min);
     } else {
         _snprintf(what, sizeof what, "%s Lv.%d~Lv.%d", info->plain.hunt_name[i], min, max);
     }

@@ -311,7 +311,7 @@ void game_mode_item_delete_buying_store(const unsigned char *pkt)
 
 static void message_box(const char *text)
 {
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 static void close_buying_store_make(void)

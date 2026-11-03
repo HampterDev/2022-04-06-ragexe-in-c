@@ -500,7 +500,7 @@ static void login_close(struct UILoginWnd *self)
 {
     ui_login_wnd_store_saved_id(self);
     if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_LOGIN_QUIT_ASK), UI_MSGBOX_QUESTION, 1, 0, 0,
-                               "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
+                               UI_MSGBOX_TITLE, 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
         login_leave(self);
 }
 
@@ -549,7 +549,7 @@ int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             break;
         default:
             ui_window_mgr_message_box(&g_windowMgr, "unknown account class found!", UI_MSGBOX_OK, 0, 0, 0,
-                                   "메시지", 0x118, 0x78, 0);
+                                   UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             login_leave(self);
             break;
         }

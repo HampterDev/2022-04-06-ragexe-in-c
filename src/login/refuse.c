@@ -29,7 +29,7 @@ static void set_formatted(struct String *s, int id, const char *text)
 
 static int refuse_box(const struct String *s, int a, int c)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, string_cstr(s), a, 1, c, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, string_cstr(s), a, 1, c, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
@@ -199,7 +199,7 @@ void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt)
     _snprintf_s(text, sizeof text, _TRUNCATE, "%s", msg_str(id));
 show:
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
-    ui_window_mgr_message_box(&g_windowMgr, thread_text_format("%s(%d)", text, packet->code), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, thread_text_format("%s(%d)", text, packet->code), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
     g_mapServerAidPending = 0;
     self->base.next_sub_mode = 3;
 }

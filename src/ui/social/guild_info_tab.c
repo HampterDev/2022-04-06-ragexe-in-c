@@ -383,7 +383,7 @@ int ui_guild_info_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *
             browse_emblems(self);
             break;
         case GUILD_INFO_ID_DISBAND:
-            ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_DISBAND_STORAGE_WARNING), UI_MSGBOX_OK, 0, 0, 0, "메시지", 0x118,
+            ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_DISBAND_STORAGE_WARNING), UI_MSGBOX_OK, 0, 0, 0, UI_MSGBOX_TITLE, 0x118,
                                    0x78, 0);
             ui_make_window(WND_ID_DISBAND_GUILD);
             break;

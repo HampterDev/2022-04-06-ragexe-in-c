@@ -484,7 +484,7 @@ void ui_new_make_char_wnd_on_process(struct UIWindow *window)
 
 static void box(int msg_id)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_OK, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 static int has_gm_tag(const char *s)
@@ -533,7 +533,7 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         strcpy(name, ui_edit_ctrl_get_text(self->name_edit));
         memcpy(self->info.name, name, sizeof self->info.name);
         memcpy_s(&g_loginCharInfo, sizeof g_loginCharInfo, &self->info, sizeof self->info);
-        if (strstr(g_loginCharInfo.name, "그라비티"))
+        if (strstr(g_loginCharInfo.name, "\xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0" /* "그라비티" */))
             return;
         _strlwr(name);
         if (strstr(name, "gravity") || has_gm_tag(name))

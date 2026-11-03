@@ -342,29 +342,26 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
         string_assign_cstr(&line, self->pet_name);
         string_vec_push_copy(&lines, &line);
         if (self->pet_renamed)
-            string_assign(&line, "이름 변경됨", 0xb);
+            string_assign_cstr(&line, "\xec\x9d\xb4\xeb\xa6\x84 \xeb\xb3\x80\xea\xb2\xbd\xeb\x90\xa8" /* "이름 변경됨" */);
         else
-            string_assign(&line, "이름 변경되지않음",
-                              0x11);
+            string_assign_cstr(&line, "\xec\x9d\xb4\xeb\xa6\x84 \xeb\xb3\x80\xea\xb2\xbd\xeb\x90\x98\xec\xa7\x80\xec\x95\x8a\xec\x9d\x8c" /* "이름 변경되지않음" */);
         string_vec_push_copy(&lines, &line);
         _itoa(self->pet_level, number, 10);
-        string_assign(&line, "레벨 : ", 7);
+        string_assign_cstr(&line, "\xeb\xa0\x88\xeb\xb2\xa8 : " /* "레벨 : " */);
         string_append_cstr(&line, number);
         string_vec_push_copy(&lines, &line);
         session_get_pet_hunger_text(self->pet_hunger, number);
-        string_assign(&line, "만복도 : ", 9);
+        string_assign_cstr(&line, "\xeb\xa7\x8c\xeb\xb3\xb5\xeb\x8f\x84 : " /* "만복도 : " */);
         string_append_cstr(&line, number);
         string_vec_push_copy(&lines, &line);
         session_get_pet_intimacy_text(self->pet_intimacy, number);
-        string_assign(&line, "친밀도 : ", 9);
+        string_assign_cstr(&line, "\xec\xb9\x9c\xeb\xb0\x80\xeb\x8f\x84 : " /* "친밀도 : " */);
         string_append_cstr(&line, number);
         string_vec_push_copy(&lines, &line);
         if (self->pet_accessory)
-            string_assign(&line, "악세사리 : 장착됨",
-                              0x11);
+            string_assign_cstr(&line, "\xec\x95\x85\xec\x84\xb8\xec\x82\xac\xeb\xa6\xac : \xec\x9e\xa5\xec\xb0\xa9\xeb\x90\xa8" /* "악세사리 : 장착됨" */);
         else
-            string_assign(&line, "악세사리 : 장착안됨",
-                              0x13);
+            string_assign_cstr(&line, "\xec\x95\x85\xec\x84\xb8\xec\x82\xac\xeb\xa6\xac : \xec\x9e\xa5\xec\xb0\xa9\xec\x95\x88\xeb\x90\xa8" /* "악세사리 : 장착안됨" */);
         string_vec_push_copy(&lines, &line);
     }
     for (i = 0; i < desc->count; i++) {

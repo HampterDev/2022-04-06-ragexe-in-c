@@ -8912,3 +8912,76 @@ Validation:
 The pre-change tree is in `build/before-font-fallback`. No live client was run; how
 mixed Arial and Gulim or Malgun Gothic text looks in the game is still to be checked by
 hand.
+
+## UTF-8 display literals (2026-11-03)
+
+Decision: the second phase-B step of the [UTF-8 switch](#utf-8-text-module-2026-11-03),
+approved on 2026-11-03. The build compiles narrow literals to CP949
+(`/execution-charset:.949`), so Korean text in the source stayed CP949 while everything
+around it became UTF-8: the 메시지 title of every message box drew as mojibake, Korean
+slash commands and the 그라비티 name check never matched typed text, and the Korean blue
+broadcast tag never matched.
+
+What changed:
+
+- Literals that the client draws, compares with typed or received text, sends, or keeps
+  as text are UTF-8 escapes, each followed by a comment with the text. The message-box
+  title 메시지 is `UI_MSGBOX_TITLE` (`ui/window_messages.h`, 87 uses in 65 files); the
+  one 메세지 title (login refusal 800) keeps its spelling.
+  - Commands and checks: the Korean slash commands (74 in `session_talk.c`, 32 in
+    `session_talk_type.c`), 그라비티 in character creation and renaming, the ideographic
+    space in guild names, the 블루 broadcast tag.
+  - Chat and message-box text: the Devotion overflow notice, the Hangame purchase
+    refusal, the NPC shop's 10-item refusal, the chat room's enter and leave markers,
+    the chat-prohibition log results and the monster skill info errors.
+  - Window text: pet intimacy and hunger, the pet item lines, the default mercenary
+    (용병) and character (잠이들었던거야) names, the cart-release menu item, the 닫기 and
+    dye-removal tooltips, the sub-storage caption, the hotkey guide's ← ↑ → ↓ ▤ keys,
+    the achievement ▶ and ● marks, the quest ▲ and ▼ level marks and the prohibition
+    list's record line.
+  - Text that is never drawn: the JSON loader's errors (never read) and the TraceAI log
+    time stamp.
+- Code that counted CP949 bytes:
+  - The broadcast-prefix table held byte lengths (3, 5, 7, 0xb for /ㅠ, /ㅣㅠ, /파란말,
+    /지역파란말); they now come from `sizeof`. `/차단`, `/해제`, `/gc` and `/guildchat`
+    took their argument at fixed offsets (`text + 6`, `+ 4`, `+ 0xb`) and now take it
+    after the command token and one blank.
+  - The pet item lines were assigned with CP949 lengths (7, 9, 0xb, 0x11, 0x13) and are
+    now assigned whole.
+  - 블루 was compared within the four-byte ASCII tag; the six UTF-8 bytes are now matched
+    as their own prefix.
+  - The guild-name check compared two bytes of the name against "　", using the third
+    byte of the unrelated second argument (always 0) as the terminator, and read one
+    byte before a one-byte name. It now compares the three UTF-8 bytes at both ends.
+- Format strings with UTF-8 text are arrays (TraceAI stamp, prohibition record, quest
+  hunt levels), and text with no conversions is copied with `strcpy`. MSVC checks a
+  literal format in the execution charset and warns (C4819) on UTF-8 bytes.
+
+Kept in CP949, because they name files in `data.grf` or on disk, which keep CP949 names
+(`tools/utf8-data` keeps them too): sprite, action, texture, model, sound and effect
+paths and the fragments they are built from (이팩트, 몬스터, 유저인터페이스, 몸통,
+머리통, 남/여, the shield, cart and mount names, the `.str` and wave names), the storage
+tab bitmaps, the 사과 fallback item resource and the 총알이빨토니 bitmap magic.
+
+Left for the next step, because they go to ANSI Win32 calls: the `MessageBoxA` and
+`error_msg` texts (`navi_lua_tables.c`, `csurface.c`, `attr.c`, the model loaders,
+`rma.c`, `session_lua.c`, `world_load.c`), the chat macro defaults (registry) and
+사크라이 (a registry key name).
+
+Tests changed:
+
+- New `test_talk_type`: the UTF-8 broadcast prefixes start the message after their
+  bytes and blanks, `/차단`, `/해제`, `/gc` and `/guildchat` take the text after the
+  command, `/길드` takes its argument, and the CP949 spelling is no longer a command.
+- `test_broadcast_text`: 블루 in UTF-8 is the blue tag; its CP949 bytes and a cut UTF-8
+  tag are ordinary text.
+- `test_navigation_events`: the message-box title is `UI_MSGBOX_TITLE`.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-literals-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-literals-full-tests.log`.
+- The seven standalone suites passed: `build/utf8-literals-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-utf8-literals`. No live client was run.

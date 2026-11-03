@@ -86,7 +86,7 @@ void session_init_at_startup(struct Session *self)
     for (i = 0; i < 3; i++)
         self->homun_command[i] = 0;
     self->mercJob = -1;
-    sprintf(self->mercName, "용병");
+    strcpy(self->mercName, "\xec\x9a\xa9\xeb\xb3\x91" /* "용병" */);
     for (i = 0; i < 8; i++)
         self->mercStats[i] = 0;
     self->mercLevel = 1;

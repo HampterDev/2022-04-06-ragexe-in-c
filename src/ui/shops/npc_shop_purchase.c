@@ -319,7 +319,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
         return;
     }
     if (points == 0 && g_session1.cashPoints < total
-        && ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CASH_NO_FREE), UI_MSGBOX_OK, 1, 0, 0, "메시지",
+        && ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CASH_NO_FREE), UI_MSGBOX_OK, 1, 0, 0, UI_MSGBOX_TITLE,
                                   0x118, 0x78, 0) != 0)
         return;
     {
@@ -335,7 +335,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
         string_assign(&text, string_cstr(&tmp), tmp.size);
         string_free(&tmp);
         if (ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_QUESTION, 1, 1, 0,
-                                   "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+                                   UI_MSGBOX_TITLE, 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
             ui_window_mgr_set_focus_edit(&g_windowMgr, self->points);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, "0");
             mode_send_message(mode, MODE_REQ_CASH_BUY, points, 0, 0, 0);
@@ -368,8 +368,8 @@ static void purchase_add_dragged(struct UIItemPurchaseWnd *self)
     budget = g_session1.zeny;
     if (self->cash) {
         if (session_get_shop_buy_list_size(&g_session1) == CASH_PURCHASE_MAX) {
-            chat_refusal("한 번에 10개 이상 구매 할 수 "
-                         "없습니다.");
+            chat_refusal("\xed\x95\x9c \xeb\xb2\x88\xec\x97\x90 10\xea\xb0\x9c \xec\x9d\xb4\xec\x83\x81 \xea\xb5\xac\xeb\xa7\xa4 \xed\x95\xa0 \xec\x88\x98 " /* "한 번에 10개 이상 구매 할 수 " */
+                         "\xec\x97\x86\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* "없습니다." */);
             item_info_destruct(&info);
             return;
         }

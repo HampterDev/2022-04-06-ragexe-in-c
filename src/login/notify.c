@@ -57,7 +57,7 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
 show:
     if (strlen(text) != 0) {
         sprintf(line, "%s(%d)", text, packet->code);
-        ui_window_mgr_message_box(&g_windowMgr, line, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, line, 0, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
     }
     if (g_session1.canBackToLogin == 1)
         self->base.next_sub_mode = 3;

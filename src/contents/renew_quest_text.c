@@ -23,8 +23,8 @@ static const struct ConditionName condition_names[] = {
     { 0x00010000, 0x8ec, 0 },
 };
 
-#define LEVEL_UP_MARK   "▲"
-#define LEVEL_DOWN_MARK "▼"
+#define LEVEL_UP_MARK   "\xe2\x96\xb2" /* "▲" */
+#define LEVEL_DOWN_MARK "\xe2\x96\xbc" /* "▼" */
 
 struct String *renew_quest_condition_text(struct RenewQuestMgr *self, struct String *out,
                                                         unsigned name_mask, int min_level, int max_level)

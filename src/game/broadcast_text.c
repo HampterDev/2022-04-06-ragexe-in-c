@@ -40,6 +40,10 @@ int broadcast_text_strip_annotation(char *text)
     return 1;
 }
 
+/* The Korean blue tag, 블루. It is six bytes in UTF-8, so it is matched apart from the
+   four-byte ASCII tags. */
+#define BLUE_TAG_KR "\xeb\xb8\x94\xeb\xa3\xa8"
+
 int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t bytes)
 {
     char tag[5] = {0};
@@ -61,9 +65,12 @@ int broadcast_text_parse(struct BroadcastText *out, const char *payload, size_t 
         if (bytes < 10 || !read_colour(payload + 4, &out->colour))
             return 0;
         offset = 10;
-    } else if (strcmp(tag, "blue") == 0 || strcmp(tag, "블루") == 0) {
+    } else if (strcmp(tag, "blue") == 0) {
         out->colour = 0xffff00;
         offset = 4;
+    } else if (bytes >= sizeof BLUE_TAG_KR - 1 && memcmp(payload, BLUE_TAG_KR, sizeof BLUE_TAG_KR - 1) == 0) {
+        out->colour = 0xffff00;
+        offset = sizeof BLUE_TAG_KR - 1;
     } else if (strcmp(tag, "micc") == 0) {
         if (bytes < 34 || !read_colour(payload + 28, &out->colour))
             return 0;

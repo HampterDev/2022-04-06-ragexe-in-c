@@ -438,7 +438,7 @@ static void delete_mail(void)
         return;
     }
     if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_DELETE_QUESTION), UI_MSGBOX_QUESTION, 0, 0, 0,
-                               "메시지", 0x118, 0x78, 0)
+                               UI_MSGBOX_TITLE, 0x118, 0x78, 0)
         != UI_MSGBOX_ANSWER_YES)
         return;
     game_send_message(MODE_RODEX_DELETE, (int)g_rodex->open_mail_id,

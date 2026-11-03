@@ -217,7 +217,7 @@ static void keep_money_text(struct UIExchangeWnd *self)
 
 static void bad_amount_box(void)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(0x25a), UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(0x25a), UI_MSGBOX_OK, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 void ui_exchange_wnd_on_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag)
@@ -321,7 +321,7 @@ void ui_exchange_wnd_on_process(struct UIWindow *window)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->money_edit, buf);
         keep_money_text(self);
     } else if (amount > TRADE_MAX_ZENY_TYPED) {
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x9a3), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x9a3), UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE,
                                    0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
             amount = TRADE_MAX_ZENY_TYPED;
             format_money64(amount, buf, sizeof buf);

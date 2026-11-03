@@ -100,7 +100,7 @@ void msm_edit_reset(struct UIWindow *edit, const char *text)
 
 int msm_question_box(const char *text)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "메시지", 0x118, 0x78,
+    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78,
                                   0);
 }
 

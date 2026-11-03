@@ -50,7 +50,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *owner, int id) { (void)owner; 
 int ui_window_mgr_send_msg_(struct UIWindowMgr *owner, int message, int text, int colour, int c, int d)
 { assert(owner == &g_windowMgr && message == 1 && text && colour == 0x62b0ff && !c && !d); ++chat_lines; return 1; }
 int ui_window_mgr_message_box(struct UIWindowMgr *owner, const char *text, int type, int a, int b, int c, const char *title, int width, int height, int d)
-{ assert(owner == &g_windowMgr && text && !type && a == 1 && !b && !c && !strcmp(title, "메시지") && width == 280 && height == 120 && !d); ++boxes; return 0; }
+{ assert(owner == &g_windowMgr && text && !type && a == 1 && !b && !c && !strcmp(title, UI_MSGBOX_TITLE) && width == 280 && height == 120 && !d); ++boxes; return 0; }
 void ui_navigation_v4_wnd_relayout(struct UINavigationV4Wnd *value) { assert(value == &window); ++relayouts; }
 void ui_navigation_v4_wnd_layout_list_page(struct UINavigationV4Wnd *value) { assert(value == &window); ++list_layouts; }
 void ui_navigation_v4_wnd_fill_results(struct UINavigationV4Wnd *value) { assert(value == &window); ++refreshed; }

@@ -109,7 +109,7 @@ const struct UIButtonOps ui_acc_bitmap_button_ops = {
     .set_show = ui_button_set_show,
 };
 
-const char g_styleNoColourText[] = "염색제거";
+const char g_styleNoColourText[] = "\xec\x97\xbc\xec\x83\x89\xec\xa0\x9c\xea\xb1\xb0" /* "염색제거" */;
 
 void ui_styling_shop_button_destroy(struct UIWindow *window)
 {

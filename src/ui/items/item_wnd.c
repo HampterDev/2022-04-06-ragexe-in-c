@@ -916,7 +916,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
         case 1:
         case 2:
             if (item_info_get_item_id(&item) == ITEM_ID_CONFIRM_USE &&
-                ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_OPEN_BOUND_BOX), 2, 0, 0, 0, "메시지",
+                ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_OPEN_BOUND_BOX), 2, 0, 0, 0, UI_MSGBOX_TITLE,
                                        0x118, 0x78, 0) == UI_MSGBOX_ANSWER_NO)
                 break;
             mode_send_message(game, MODE_REQ_USE_ITEM, item.index, 0, 0, 0);
@@ -931,7 +931,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
             item_info_get_display_name(&item, &name);
             string_init(&text);
             string_format(&text, msg_str(MSG_CONFIRM_OPEN_CASH_ITEM), string_cstr(&name));
-            answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 2, 0, 0, 0, "메시지",
+            answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 2, 0, 0, 0, UI_MSGBOX_TITLE,
                                             0x118, 0x78, 0);
             string_free(&text);
             string_free(&name);

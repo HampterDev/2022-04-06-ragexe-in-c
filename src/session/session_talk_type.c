@@ -23,20 +23,23 @@ struct TalkPrefix {
     int type;
 };
 
+/* The length is the command's length in bytes, where the message text starts. */
+#define PREFIX(text, type) { text, sizeof text - 1, type }
+
 static const struct TalkPrefix s_prefixes[] = {
-    { "/ㅠ", 3, 0x1 },
-    { "/b", 2, 0x1 },
-    { "/lb", 3, 0x57 },
-    { "/ㅣㅠ", 5, 0x57 },
-    { "/nb", 3, 0x5a },
-    { "/파란말", 7, 0x64 },
-    { "/ㅜㅠ", 5, 0x5a },
-    { "/nlb", 4, 0x5b },
-    { "/ㅟㅠ", 5, 0x5b },
-    { "/bb", 3, 0x64 },
-    { "/지역파란말", 0xb, 0x65 },
-    { "/mb", 3, 0x65 },
-    { "/kill", 5, 0x4 },
+    PREFIX("/\xe3\x85\xa0" /* "/ㅠ" */, 0x1),
+    PREFIX("/b", 0x1),
+    PREFIX("/lb", 0x57),
+    PREFIX("/\xe3\x85\xa3\xe3\x85\xa0" /* "/ㅣㅠ" */, 0x57),
+    PREFIX("/nb", 0x5a),
+    PREFIX("/\xed\x8c\x8c\xeb\x9e\x80\xeb\xa7\x90" /* "/파란말" */, 0x64),
+    PREFIX("/\xe3\x85\x9c\xe3\x85\xa0" /* "/ㅜㅠ" */, 0x5a),
+    PREFIX("/nlb", 0x5b),
+    PREFIX("/\xe3\x85\x9f\xe3\x85\xa0" /* "/ㅟㅠ" */, 0x5b),
+    PREFIX("/bb", 0x64),
+    PREFIX("/\xec\xa7\x80\xec\x97\xad\xed\x8c\x8c\xeb\x9e\x80\xeb\xa7\x90" /* "/지역파란말" */, 0x65),
+    PREFIX("/mb", 0x65),
+    PREFIX("/kill", 0x4),
 };
 
 struct StatCommand {
@@ -69,6 +72,12 @@ static void append_token(struct String *out, struct Vec *tokens, int i)
     const struct String *token = TOK(i);
 
     string_append(out, string_cstr(token), token->size);
+}
+
+/* The text after the command and the one character that ends it. */
+static const char *after_command(const char *text, struct Vec *tokens)
+{
+    return text + TOK(0)->size + 1;
 }
 
 static int skip_blanks(const char *text, int at)
@@ -132,7 +141,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         }
     }
 
-    if (string_equal_cstr(t0, "/v") || string_equal_cstr(t0, "/ㅍ")) {
+    if (string_equal_cstr(t0, "/v") || string_equal_cstr(t0, "/\xe3\x85\x8d" /* "/ㅍ" */)) {
         char number[0x14];
 
         *type = 0xc;
@@ -142,7 +151,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         string_assign_cstr(out, number);
         return -1;
     }
-    if (string_equal_cstr(t0, "/bv") || string_equal_cstr(t0, "/ㅠㅍ")) {
+    if (string_equal_cstr(t0, "/bv") || string_equal_cstr(t0, "/\xe3\x85\xa0\xe3\x85\x8d" /* "/ㅠㅍ" */)) {
         char number[0x14];
 
         *type = 0xd;
@@ -154,17 +163,17 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
     }
     if ((string_equal_cstr(t0, "/gc") || string_equal_cstr(t0, "/guildchat")) && COUNT() >= 2) {
         *type = 0x39;
-        string_assign_cstr(out, string_equal_cstr(TOK(0), "/gc") ? text + 4 : text + 0xb);
+        string_assign_cstr(out, after_command(text, tokens));
         return -1;
     }
-    if ((string_equal_cstr(t0, "/ex") || string_equal_cstr(t0, "/차단")) && COUNT() >= 2) {
+    if ((string_equal_cstr(t0, "/ex") || string_equal_cstr(t0, "/\xec\xb0\xa8\xeb\x8b\xa8" /* "/차단" */)) && COUNT() >= 2) {
         *type = 0x12;
-        string_assign_cstr(out, string_equal_cstr(TOK(0), "/ex") ? text + 4 : text + 6);
+        string_assign_cstr(out, after_command(text, tokens));
         return -1;
     }
-    if ((string_equal_cstr(t0, "/in") || string_equal_cstr(t0, "/해제")) && COUNT() >= 2) {
+    if ((string_equal_cstr(t0, "/in") || string_equal_cstr(t0, "/\xed\x95\xb4\xec\xa0\x9c" /* "/해제" */)) && COUNT() >= 2) {
         *type = 0x13;
-        string_assign_cstr(out, string_equal_cstr(TOK(0), "/in") ? text + 4 : text + 6);
+        string_assign_cstr(out, after_command(text, tokens));
         return -1;
     }
     if (string_equal_cstr(t0, "/red")) {
@@ -176,29 +185,29 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         }
         return at;
     }
-    if ((string_equal_cstr(t0, "/거래") || string_equal_cstr(t0, "/rjfo")
-         || string_equal_cstr(t0, "/교환") || string_equal_cstr(t0, "/ryghks")
-         || string_equal_cstr(t0, "/deal") || string_equal_cstr(t0, "/ㅇㄷ미"))
+    if ((string_equal_cstr(t0, "/\xea\xb1\xb0\xeb\x9e\x98" /* "/거래" */) || string_equal_cstr(t0, "/rjfo")
+         || string_equal_cstr(t0, "/\xea\xb5\x90\xed\x99\x98" /* "/교환" */) || string_equal_cstr(t0, "/ryghks")
+         || string_equal_cstr(t0, "/deal") || string_equal_cstr(t0, "/\xe3\x85\x87\xe3\x84\xb7\xeb\xaf\xb8" /* "/ㅇㄷ미" */))
          && COUNT() == 2) {
         *type = 0x19;
         return first_arg(out, tokens);
     }
-    if ((string_equal_cstr(t0, "/길드") || string_equal_cstr(t0, "/rlfem") || string_equal_cstr(t0, "/guild"))
+    if ((string_equal_cstr(t0, "/\xea\xb8\xb8\xeb\x93\x9c" /* "/길드" */) || string_equal_cstr(t0, "/rlfem") || string_equal_cstr(t0, "/guild"))
         && COUNT() == 2) {
         *type = 0x37;
         return first_arg(out, tokens);
     }
-    if ((string_equal_cstr(t0, "/해체") || string_equal_cstr(t0, "/gocp") || string_equal_cstr(t0, "/breakguild"))
+    if ((string_equal_cstr(t0, "/\xed\x95\xb4\xec\xb2\xb4" /* "/해체" */) || string_equal_cstr(t0, "/gocp") || string_equal_cstr(t0, "/breakguild"))
         && COUNT() == 2) {
         *type = 0x38;
         return first_arg(out, tokens);
     }
-    if ((string_equal_cstr(t0, "/결성") || string_equal_cstr(t0, "/ruftjd") || string_equal_cstr(t0, "/organize"))
+    if ((string_equal_cstr(t0, "/\xea\xb2\xb0\xec\x84\xb1" /* "/결성" */) || string_equal_cstr(t0, "/ruftjd") || string_equal_cstr(t0, "/organize"))
         && COUNT() == 2) {
         *type = 0x1a;
         return first_arg(out, tokens);
     }
-    if ((string_equal_cstr(t0, "/몬스터") || string_equal_cstr(t0, "/아이템")
+    if ((string_equal_cstr(t0, "/\xeb\xaa\xac\xec\x8a\xa4\xed\x84\xb0" /* "/몬스터" */) || string_equal_cstr(t0, "/\xec\x95\x84\xec\x9d\xb4\xed\x85\x9c" /* "/아이템" */)
          || string_equal_cstr(t0, "/item") || string_equal_cstr(t0, "/monster"))
          && COUNT() >= 2) {
         *type = 0x30;
@@ -224,7 +233,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         string_free(&joined);
         return -1;
     }
-    if ((string_equal_cstr(t0, "/맵이동") || string_equal_cstr(t0, "/mapmove") || string_equal_cstr(t0, "/mm"))
+    if ((string_equal_cstr(t0, "/\xeb\xa7\xb5\xec\x9d\xb4\xeb\x8f\x99" /* "/맵이동" */) || string_equal_cstr(t0, "/mapmove") || string_equal_cstr(t0, "/mm"))
         && COUNT() >= 2) {
         *type = 0x31;
         assign_token(out, tokens, 1);
@@ -235,7 +244,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         string_assign_cstr(&out[1], "0");
         return at;
     }
-    if ((string_equal_cstr(t0, "/제명") || string_equal_cstr(t0, "/wpaud") || string_equal_cstr(t0, "/expel"))
+    if ((string_equal_cstr(t0, "/\xec\xa0\x9c\xeb\xaa\x85" /* "/제명" */) || string_equal_cstr(t0, "/wpaud") || string_equal_cstr(t0, "/expel"))
         && COUNT() == 2) {
         *type = 0x1c;
         return first_arg(out, tokens);
@@ -262,8 +271,8 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         assign_token(&out[2], tokens, 3);
         return -1;
     }
-    if (string_equal_cstr(t0, "/emblem") || string_equal_cstr(t0, "/엠블렘")
-        || string_equal_cstr(t0, "/앰블렘")
+    if (string_equal_cstr(t0, "/emblem") || string_equal_cstr(t0, "/\xec\x97\xa0\xeb\xb8\x94\xeb\xa0\x98" /* "/엠블렘" */)
+        || string_equal_cstr(t0, "/\xec\x95\xb0\xeb\xb8\x94\xeb\xa0\x98" /* "/앰블렘" */)
         || string_equal_cstr(t0, "/dpaqmffpa") || string_equal_cstr(t0, "/doaqmffpa")) {
         *type = 0x40;
         return -1;
@@ -272,7 +281,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0x58;
         return -1;
     }
-    if (string_equal_cstr(t0, "/폰트") || string_equal_cstr(t0, "/font")) {
+    if (string_equal_cstr(t0, "/\xed\x8f\xb0\xed\x8a\xb8" /* "/폰트" */) || string_equal_cstr(t0, "/font")) {
         *type = 0x5c;
         return -1;
     }
@@ -308,11 +317,11 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0x8e;
         return first_arg(out, tokens);
     }
-    if (string_equal_cstr(TOK(0), "/요금")) {
+    if (string_equal_cstr(TOK(0), "/\xec\x9a\x94\xea\xb8\x88" /* "/요금" */)) {
         *type = 0x63;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/이름표시")
+    if (string_equal_cstr(TOK(0), "/\xec\x9d\xb4\xeb\xa6\x84\xed\x91\x9c\xec\x8b\x9c" /* "/이름표시" */)
         || string_equal_cstr(TOK(0), "/showname")) {
         *type = 0x6a;
         return skip_blanks(text, at);
@@ -345,7 +354,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         at = -1;
         return at;
     }
-    if (string_equal_cstr(TOK(0), "/초대")
+    if (string_equal_cstr(TOK(0), "/\xec\xb4\x88\xeb\x8c\x80" /* "/초대" */)
         || string_equal_cstr(TOK(0), "/cheo") || string_equal_cstr(TOK(0), "/invite")) {
         *type = 0xb6;
         string_init(&joined);
@@ -359,7 +368,7 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         }
         return invited(out, &joined, pos);
     }
-    if (string_equal_cstr(TOK(0), "/길드초대")
+    if (string_equal_cstr(TOK(0), "/\xea\xb8\xb8\xeb\x93\x9c\xec\xb4\x88\xeb\x8c\x80" /* "/길드초대" */)
         || string_equal_cstr(TOK(0), "/rlfemcheo") || string_equal_cstr(TOK(0), "/guildinvite")) {
         *type = 0xd1;
         string_init(&joined);
@@ -413,16 +422,16 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
         *type = 0xe4;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/call") || string_equal_cstr(TOK(0), "/호출")) {
+    if (string_equal_cstr(TOK(0), "/call") || string_equal_cstr(TOK(0), "/\xed\x98\xb8\xec\xb6\x9c" /* "/호출" */)) {
         *type = 0xe5;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/환복")
+    if (string_equal_cstr(TOK(0), "/\xed\x99\x98\xeb\xb3\xb5" /* "/환복" */)
         || string_equal_cstr(TOK(0), "/changedress") || string_equal_cstr(TOK(0), "/nocosplay")) {
         *type = 0xed;
         return -1;
     }
-    if (string_equal_cstr(TOK(0), "/노점보기")
+    if (string_equal_cstr(TOK(0), "/\xeb\x85\xb8\xec\xa0\x90\xeb\xb3\xb4\xea\xb8\xb0" /* "/노점보기" */)
         || string_equal_cstr(TOK(0), "/showshop")) {
         *type = 0xf8;
         return -1;
@@ -433,8 +442,8 @@ static int talk_type_scan(struct Session *self, const char *text, int *type, str
             return -1;
         return first_arg(out, tokens);
     }
-    if (string_equal_cstr(TOK(0), "/모험가중개소")
-        || string_equal_cstr(TOK(0), "/중개소")
+    if (string_equal_cstr(TOK(0), "/\xeb\xaa\xa8\xed\x97\x98\xea\xb0\x80\xec\xa4\x91\xea\xb0\x9c\xec\x86\x8c" /* "/모험가중개소" */)
+        || string_equal_cstr(TOK(0), "/\xec\xa4\x91\xea\xb0\x9c\xec\x86\x8c" /* "/중개소" */)
         || string_equal_cstr(TOK(0), "/agency")) {
         *type = 0xeb;
         return -1;

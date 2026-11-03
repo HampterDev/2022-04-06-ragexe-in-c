@@ -32,7 +32,7 @@ void session_init_variables_(struct Session *self)
     self->zeny = value;
     self->charBaseLevel = value;
     self->jobLevel = value;
-    session_set_character_name(self, text_view_cstr("잠이들었던거야"));
+    session_set_character_name(self, text_view_cstr("\xec\x9e\xa0\xec\x9d\xb4\xeb\x93\xa4\xec\x97\x88\xeb\x8d\x98\xea\xb1\xb0\xec\x95\xbc" /* "잠이들었던거야" */));
     self->statBonus[3] = 0;
     self->statBonus[4] = 0;
     self->statBonus[5] = 0;

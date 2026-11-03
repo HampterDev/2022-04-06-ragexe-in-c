@@ -966,7 +966,7 @@ static void equip_on_off_button(struct UIEquipWnd *self)
             return;
         }
         ui_window_send_msg(menu, NULL, MENU_MSG_RESET, 0, 0, 0, 0);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)"카트 해제", 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)"\xec\xb9\xb4\xed\x8a\xb8 \xed\x95\xb4\xec\xa0\x9c" /* "카트 해제" */, 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)string_cstr(&what), 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, 0xa, 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);

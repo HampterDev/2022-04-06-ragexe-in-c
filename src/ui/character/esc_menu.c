@@ -236,7 +236,7 @@ int ui_esc_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         break;
     case ESC_ID_SAVE_POINT:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_ASK_SAVE_POINT), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+                                   UI_MSGBOX_TITLE, 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
             mode_send_message(mode, MODE_MSG_RESTART, 0, 0, 0, 0);
             ui_close_window(WND_ESC_MENU);
         }

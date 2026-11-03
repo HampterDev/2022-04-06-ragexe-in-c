@@ -509,7 +509,7 @@ static int quest_wnd_refresh(struct UIRenewQuestWnd *self, int quest_id)
         }
         if (tab == QUEST_TAB_COUNT) {
             ui_window_mgr_message_box(&g_windowMgr, "not found quest info", 0, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0);
+                                   UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             return 0;
         }
         ui_renew_quest_wnd_send_msg(&self->frame.base, &self->frame.base, QUEST_MSG_SET_TAB, tab, 0, 0, 0);

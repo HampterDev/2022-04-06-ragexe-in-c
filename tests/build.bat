@@ -377,6 +377,10 @@ cl /nologo /W4 /WX /O2 /MD /source-charset:utf-8 /execution-charset:.949 /I"%ROO
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_broadcast_text.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_talk_type.c" "%ROOT%\src\session\session_talk_type.c" "%ROOT%\src\core\text_tokens.c" "%ROOT%\src\core\text_util.c" "%ROOT%\src\core\memory.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string_vec.c" /Fe:test_talk_type.exe /link oleaut32.lib
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+test_talk_type.exe
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W4 /WX /O2 /MD /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_text_parsing.c" "%ROOT%\src\ui\controls\item_id_tag.c" "%ROOT%\src\ui\chat\speaker_name.c" "%ROOT%\src\game\scream_text.c" /Fe:test_text_parsing.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_text_parsing.exe

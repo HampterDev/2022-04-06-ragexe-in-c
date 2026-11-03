@@ -23,7 +23,7 @@ void json_loader_free(struct JsonCppLoader *self)
 }
 
 #define MSG_LOAD_EMPTY      "error : JsonCppLoader::Load failed (reason : " \
-                            "비어있는 버퍼가 전달되었습니다.)"
+                            "\xeb\xb9\x84\xec\x96\xb4\xec\x9e\x88\xeb\x8a\x94 \xeb\xb2\x84\xed\x8d\xbc\xea\xb0\x80 \xec\xa0\x84\xeb\x8b\xac\xeb\x90\x98\xec\x97\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4.)" /* "비어있는 버퍼가 전달되었습니다.)" */
 #define MSG_BSON_FAILED     "error : JsonCppLoader::LoadBson failed (reason : %s)"
 
 unsigned char json_loader_load_bson(struct JsonCppLoader *self, const struct Vec *bytes)

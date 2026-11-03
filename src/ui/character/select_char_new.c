@@ -643,7 +643,7 @@ void ui_new_select_char_wnd_on_create(struct UIWindow *window, int width_unused,
 
             memset(message, 0, sizeof message);
             sprintf(message, msg_str(0x974), i, 0x9c41);
-            ui_window_mgr_message_box(&g_windowMgr, message, UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78,
+            ui_window_mgr_message_box(&g_windowMgr, message, UI_MSGBOX_OK, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78,
                                    0);
             mode_send_message(client_current_mode(), LOGIN_REQ_BACK, 0, 0, 0, 0);
             break;
@@ -904,7 +904,7 @@ static int refuse_blocked(const struct CharInfo *info)
             name[sizeof name - 1] = '\0';
             memset(text, 0, sizeof text);
             sprintf(text, msg_str(0x337), name);
-            ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+            ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             return 1;
         }
     }
@@ -913,7 +913,7 @@ static int refuse_blocked(const struct CharInfo *info)
 
 static int question(int msg_id)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE,
                                   0x118, 0x78, 0);
 }
 
@@ -1106,7 +1106,7 @@ static void on_delete(struct UINewSelectCharWnd *self)
     info = ui_char_info(g_loginCharInfo.slot);
     if (refuse_blocked(info))
         return;
-    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x13), UI_MSGBOX_QUESTION, 0, 0, 0, "메시지", 0x118,
+    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x13), UI_MSGBOX_QUESTION, 0, 0, 0, UI_MSGBOX_TITLE, 0x118,
                                0x78, 0) != UI_MSGBOX_ANSWER_YES)
         return;
     self->busy = 1;

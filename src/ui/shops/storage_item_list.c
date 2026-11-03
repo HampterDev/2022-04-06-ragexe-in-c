@@ -327,7 +327,7 @@ void storage_list_create(struct UIItemBaseWnd *base, struct UIWindow **title, st
     struct UIResizer *grip;
 
     shop_add_scroll_bar(base, wnd->height - 0x26);
-    sprintf(caption, "서브창고");
+    strcpy(caption, "\xec\x84\x9c\xeb\xb8\x8c\xec\xb0\xbd\xea\xb3\xa0" /* "서브창고" */);
     *title = mem_alloc(sizeof(struct UIStaticText));
     if (*title)
         *title = ui_static_text_construct(*title);

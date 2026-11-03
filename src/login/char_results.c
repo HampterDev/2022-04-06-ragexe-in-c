@@ -52,12 +52,12 @@ SIZE_ASSERT(PACKET_HC_SECOND_PASSWD_LOGIN, 13);
 
 static int result_box(const char *text)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 static int confirm_box(const char *text)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
 }
 
 static void select_wnd_msg(void *wnd, int msg)

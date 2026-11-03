@@ -25,6 +25,11 @@ int merc_ai_trace_value(lua_State *L)
     return 1;
 }
 
+/* "%d년 %d월 %d일 %d시 %d분 %d초 ". A format array, not a literal: the compiler would check
+   a literal format in the CP949 execution charset. */
+static const char stamp_format[] =
+    "%d\xeb\x85\x84 %d\xec\x9b\x94 %d\xec\x9d\xbc %d\xec\x8b\x9c %d\xeb\xb6\x84 %d\xec\xb4\x88 ";
+
 int merc_ai_trace_ai(lua_State *L)
 {
     struct String line;
@@ -76,7 +81,7 @@ int merc_ai_trace_ai(lua_State *L)
     file_open(&f, dir, 0x1001, 1, 0);
     if (size)
         file_write(&f, old, size);
-    sprintf(stamp, "%d년 %d월 %d일 %d시 %d분 %d초 ", date >> 16, (BYTE)(date >> 8), (BYTE)date,
+    sprintf(stamp, stamp_format, date >> 16, (BYTE)(date >> 8), (BYTE)date,
                 (BYTE)(time >> 16), (BYTE)(time >> 8), (BYTE)time);
     file_write(&f, stamp, strlen(stamp));
     file_write(&f, text, strlen(text));

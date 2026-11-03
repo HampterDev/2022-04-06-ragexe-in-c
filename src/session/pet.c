@@ -56,33 +56,33 @@ void session_set_sex(struct Session *self, int sex)
 void session_get_pet_intimacy_text(int intimacy, char *out)
 {
     if (intimacy >= 0 && intimacy <= 100)
-        strcpy(out, "서먹서먹함");
+        strcpy(out, "\xec\x84\x9c\xeb\xa8\xb9\xec\x84\x9c\xeb\xa8\xb9\xed\x95\xa8" /* "서먹서먹함" */);
     else if (intimacy > 100 && intimacy <= 250)
-        strcpy(out, "어색함");
+        strcpy(out, "\xec\x96\xb4\xec\x83\x89\xed\x95\xa8" /* "어색함" */);
     else if (intimacy > 250 && intimacy <= 750)
-        strcpy(out, "보통");
+        strcpy(out, "\xeb\xb3\xb4\xed\x86\xb5" /* "보통" */);
     else if (intimacy > 750 && intimacy <= 900)
-        strcpy(out, "친함");
+        strcpy(out, "\xec\xb9\x9c\xed\x95\xa8" /* "친함" */);
     else if (intimacy > 900 && intimacy <= 1000)
-        strcpy(out, "절친함");
+        strcpy(out, "\xec\xa0\x88\xec\xb9\x9c\xed\x95\xa8" /* "절친함" */);
     else
-        strcpy(out, "저는 모릅니다아아아.");
+        strcpy(out, "\xec\xa0\x80\xeb\x8a\x94 \xeb\xaa\xa8\xeb\xa6\x85\xeb\x8b\x88\xeb\x8b\xa4\xec\x95\x84\xec\x95\x84\xec\x95\x84." /* "저는 모릅니다아아아." */);
 }
 
 void session_get_pet_hunger_text(int fullness, char *out)
 {
     if (fullness >= 0 && fullness <= 10)
-        strcpy(out, "배고픔");
+        strcpy(out, "\xeb\xb0\xb0\xea\xb3\xa0\xed\x94\x94" /* "배고픔" */);
     else if (fullness > 10 && fullness <= 25)
-        strcpy(out, "출출함");
+        strcpy(out, "\xec\xb6\x9c\xec\xb6\x9c\xed\x95\xa8" /* "출출함" */);
     else if (fullness > 25 && fullness <= 75)
-        strcpy(out, "보통");
+        strcpy(out, "\xeb\xb3\xb4\xed\x86\xb5" /* "보통" */);
     else if (fullness > 75 && fullness <= 90)
-        strcpy(out, "배부름");
+        strcpy(out, "\xeb\xb0\xb0\xeb\xb6\x80\xeb\xa6\x84" /* "배부름" */);
     else if (fullness > 90 && fullness <= 100)
-        strcpy(out, "아주 배부름");
+        strcpy(out, "\xec\x95\x84\xec\xa3\xbc \xeb\xb0\xb0\xeb\xb6\x80\xeb\xa6\x84" /* "아주 배부름" */);
     else
-        strcpy(out, "몰라요.");
+        strcpy(out, "\xeb\xaa\xb0\xeb\x9d\xbc\xec\x9a\x94." /* "몰라요." */);
 }
 
 void session_get_pet_illust_name(struct Session *self, int petJob, char *out, size_t outSize)

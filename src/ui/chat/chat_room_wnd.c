@@ -313,9 +313,9 @@ static void add_line(struct UIChatRoomWnd *self, char *text, COLORREF colour)
     width = self->frame.base.width * 80 / 640;
     string_init(&line);
     string_assign_cstr(&line, text);
-    in = string_find(&line, ")님이 입장 하였습니다."
+    in = string_find(&line, ")\xeb\x8b\x98\xec\x9d\xb4 \xec\x9e\x85\xec\x9e\xa5 \xed\x95\x98\xec\x98\x80\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* ")님이 입장 하였습니다." */
                           , 0);
-    out = string_find(&line, ")님이 퇴장 하였습니다."
+    out = string_find(&line, ")\xeb\x8b\x98\xec\x9d\xb4 \xed\x87\xb4\xec\x9e\xa5 \xed\x95\x98\xec\x98\x80\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4." /* ")님이 퇴장 하였습니다." */
                            , 0);
     colon = string_find(&line, " :", 0);
     chat_speaker_name(name, text, in, out, colon);

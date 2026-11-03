@@ -756,7 +756,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         switch (ui_graphic_setting_wnd_check_changed(self)) {
         case 2:
             answer = ui_window_mgr_message_box(&g_windowMgr, display_prompt_text(self, MSG_CONFIRM_RESTART),
-                                            UI_MSGBOX_QUESTION, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+                                            UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             if (answer == UI_MSGBOX_ANSWER_NO)
                 return 0;
             if (g_displayDeviceIndex != self->device || g_displayModeIndex != self->mode) {
@@ -783,7 +783,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             BYTE refresh = 0;
 
             answer = ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_APPLY), UI_MSGBOX_QUESTION, 1, 0,
-                                            0, "메시지", 0x118, 0x78, 0);
+                                            0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             if (answer == UI_MSGBOX_ANSWER_NO)
                 return 0;
             g_spriteMode = self->sprite_mode;
@@ -818,7 +818,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         }
     case ID_RESET:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_RESET), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
+                                   UI_MSGBOX_TITLE, 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
             return 0;
         ui_window_mgr_invalidate_all(&g_windowMgr);
         skin_mgr_set_current_skin_num(&g_skinMgr, 0);
