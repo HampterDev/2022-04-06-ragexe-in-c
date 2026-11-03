@@ -87,7 +87,10 @@ found, `0fc910c11607f237f7abbb7fd57dfcd8066e7251` to
 bugs those found, `9443627d108cad1894173aa5183fb6abd7d8c3c0` to
 `eec81169040c52df8336e5d3de97a16ac9ff4879`. The opt-in frame-time overlay,
 `53d23a1724793885eb0b6056ac05dcfc5580cdb0`, was approved with them and has its own
-row, and a last fix, `ab24db87b1f58c8447b01ba62fae3bab9159452c`, came after it.
+row, and a fix, `ab24db87b1f58c8447b01ba62fae3bab9159452c`, came after it. Two more
+came from the third-class removal on `purist`: the mercenary job range,
+`611062607530a632645a9939d67c8c68193c7a83`, and the constant names,
+`278420d369e3e4fb20747bf3257cda4526a2e083`.
 Fixes whose code still exists on `purist` were ported with `git cherry-pick -x`; on
 `purist` the default pet and homunculus names from job names and the char-server list
 lines are cut by whole UTF-8 characters, and the unused login-entry field is removed
@@ -111,6 +114,8 @@ instead of zeroed. The patch files are `git format-patch` exports of the `main` 
 | [lead-byte-count.patch](lead-byte-count.patch) | [eec8116904](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/eec81169040c52df8336e5d3de97a16ac9ff4879) | Not needed on purist, which counts with `utf8_next` | The `%s` count of `ZC_FORMATSTRING_MSG` stops at a message that ends in a DBCS lead byte. |
 | [overlay-opt-in.patch](overlay-opt-in.patch) | [53d23a1724](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/53d23a1724793885eb0b6056ac05dcfc5580cdb0) | [a25052e7a9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a25052e7a9e3ca5db53304a11711fd8ac2a66a2b) | The frame-time overlay appears only with `RAGEXE_OVERLAY` set; Scroll Lock, a screenshot key, no longer shows it. |
 | [skin-scan-extensionless.patch](skin-scan-extensionless.patch) | [ab24db87b1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ab24db87b1f58c8447b01ba62fae3bab9159452c) | Not needed on purist, code removed | A file without an extension in the `skin` folder is skipped instead of crashing the scan. |
+| [mercenary-job-range.patch](mercenary-job-range.patch) | [6110626075](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/611062607530a632645a9939d67c8c68193c7a83) | [a2e90706b6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a2e90706b6e02e39bd2b7360d4b56d715961c589) (also stops at 6046) | Job 6017, the first mercenary, counts as a mercenary, so it is shown in the direction rounded from its facing like the others. |
+| [rodex-equip-constant-names.patch](rodex-equip-constant-names.patch) | [278420d369](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/278420d369e3e4fb20747bf3257cda4526a2e083) | [0436ca56e9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0436ca56e919991f5dfcd1975ef415581eb5d876) (the constants that still exist) | The TaeKwon job IDs and messages in `rodex_compose.c` and the release messages and kinds in `equip_wnd.c` are named for what they are; no behaviour change. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in

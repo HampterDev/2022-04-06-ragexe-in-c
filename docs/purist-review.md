@@ -9316,8 +9316,12 @@ test; the patches and commits are listed in the
 
 The bugs this section listed as found and not fixed were fixed the same way afterwards,
 at Patrick's request on 2026-11-03, in two batches (`main` `0fc910c` to `6177cea`, then
-`9443627` to `eec8116`) and one last fix (`ab24db8`); they are the last eleven items
-below.
+`9443627` to `eec8116`) and one more fix (`ab24db8`); they are the eleven items after
+the first four below. Two bugs found during the
+[third-class removal](#third-class-removal-2026-11-03) were fixed the same way, also at
+Patrick's request on 2026-11-03: the mercenary job range (`main` `6110626`, here
+`a2e9070`) and the constant names (`278420d`, here `0436ca5`); they are the last two
+items.
 
 What each fix does:
 
@@ -9431,6 +9435,33 @@ What each fix does:
   (`build/skin-scan-build.log`), the full suite passed with the digest still
   `32d81ae6406478e3` (`build/skin-scan-full-tests.log`), the five standalone suites there
   passed (`build/skin-scan-<suite>.log`) and `git diff --check` passed.
+- The mercenary job range (`6110626`, here `a2e9070`). On `main`
+  `session_is_mercenary_or_homun_s_job` took jobs 6018-6052, but the mercenaries are
+  6017-6046 (`MER_ARCHER01`, Mina, to `MER_SWORDMAN10`, Wayne, in Hercules'
+  `mercenary_db.txt`) and the Homunculus S 6048-6052, so Mina was left out; it now starts
+  at 6017. Here `session_is_mercenary_job` took 6018-6047 and now takes exactly
+  6017-6046; 6047 is no job. What 6017 missed: `game_actor_dir_of` shows a mercenary that
+  stands, walks or is in action 0x10 in the direction rounded from its facing, and Mina got
+  the facing cut down instead, one direction below the others for about half of all
+  angles (40 degrees gave direction 0 instead of 1). `skill_cast_target_look` and the AI
+  GetV type 12 also ask the predicate, but give the same result for 6017 either way.
+- Constant names (`278420d`, here `0436ca5`), checked against `msgstringtable.txt`,
+  `jobidentity.lua` and Hercules' `CZ_UNINSTALLATION` kinds (`REMOVE_MOUNT_*`); no
+  behaviour change. In `rodex_compose.c`, `JOB_SUMMONER` and `JOB_SPIRIT_HANDLER` are
+  `JOB_TAEKWON` (4046) and `JOB_BABY_TAEKWON` (4225), `MSG_DORAM` ("Taekwon") is
+  `MSG_TAEKWON`, `MSG_NAME_TOO_LONG` ("Information of the recipient does not exist.") is
+  `MSG_NO_SUCH_RECEIVER` and `MSG_BODY_NAVI_LINK` ("The message contains unrecognizable
+  character") is `MSG_BODY_BAD_CHARACTER`. In `equip_wnd.c`, `MSG_RELEASE_HIDING`
+  ("Release Falcon") is `MSG_RELEASE_FALCON`, `MSG_RELEASE_RUWACH` ("Dismount") is
+  `MSG_DISMOUNT`, `MSG_RELEASE_BOTH` ("Mounting/Dismounting") is `MSG_MOUNT_DISMOUNT`,
+  `MSG_CANNOT_NOW` ("Please close Shop.") is `MSG_CLOSE_SHOP`, and the release kinds
+  `RELEASE_HIDING` 5 and `RELEASE_RUWACH` 4 are `RELEASE_FALCON` and `RELEASE_RIDING`.
+  On `main` also the gryphon, Mado Gear and dragon texts and kinds, which purist removed
+  with the third classes: `MSG_RELEASE_RUWACH_DORAM` is `MSG_DISMOUNT_GRYPHON` (picked by
+  `gryphon_rider_job`, formerly `ruwach_doram_job`), `MSG_RELEASE_SANTA` is
+  `MSG_DISMOUNT_MADO_GEAR`, `MSG_RELEASE_TRANSFORM` is `MSG_DISMOUNT_DRAGON` (picked by
+  `riding_dragon`, formerly `transformed`), and `RELEASE_SANTA` 3 and `RELEASE_TRANSFORM`
+  1 are `RELEASE_MADO_GEAR` and `RELEASE_DRAGON`.
 
 Format-string calls left as they are:
 
@@ -9510,6 +9541,12 @@ Tests added:
   state-name literal is checked to be on a page that cannot be written, 64 lookups must
   find both lines and the table must keep its text. 58 checks. The monster-talk stub of
   `test_attack_records` takes the new size and checks it.
+- `test_mercenary_job` runs the extracted predicate, found by its code because its name
+  differs here, and `game_actor_dir_of`: jobs 5990-6070 must be mercenaries exactly for
+  6017-6046 (on `main` also 6047-6052), and every mercenary at seven angles must show
+  the direction of job 6018. 291 checks on both branches.
+- The renames have no test, having no behaviour to test; they were checked by
+  disassembling the release objects of both files before and after.
 
 Validation:
 
@@ -9572,6 +9609,20 @@ Validation:
   talk fails at the job bound, and the access violation and the flipped text were
   shown in scratch copies as described above; the colour-code cut and the lead-byte
   count fail.
+- Mercenary range and names, `main`: release builds passed without warnings after each
+  commit: `build/mercenary-job-build.log` and `build/name-fixes-build.log`. The full suite
+  passed: `build/name-fixes-full-tests.log`, digest still `32d81ae6406478e3`. The five
+  standalone suites there passed: `build/name-fixes-<suite>.log`. `git diff --check`
+  passed.
+- Mercenary range and names, here: release builds passed without warnings after each
+  port: `build/mercenary-job-build.log` and `build/name-fixes-build.log`. The full suite
+  passed: `build/name-fixes-full-tests.log`, digest `d77aaadbb5fc63b7`, the value since
+  the [third-class removal](#third-class-removal-2026-11-03). The seven standalone
+  suites passed: `build/name-fixes-<suite>.log`. `git diff --check` passed.
+- `test_mercenary_job` fails on the previous predicate on both branches. With the two
+  renamed static functions mapped back, `dumpbin /disasm` shows the same code for every
+  function of `equip_wnd.obj` and `rodex_compose.obj` before and after the renames (69
+  and 56 functions on `main`, 61 and 56 here).
 
 No live client was run.
 
@@ -9747,8 +9798,8 @@ Server checks (HampterHercules, read only):
 - **Homunculus S.** Jobs `0x17a0`-`0x17a4` leave `session_is_homunculus_job` and
   `session_is_homun_or_merc_job` and their names; `session_is_homunculus_s_job` is gone and
   `session_is_mercenary_or_homun_s_job` is now `session_is_mercenary_job` (its range still
-  starts at `0x1782`, as found). The Eleanor action, the morph-order action, the aura
-  exception, `MH_` skill looks and units `0xf5`-`0xf7` went with them.
+  started at `0x1782`, as found; fixed in `a2e9070`). The Eleanor action, the morph-order
+  action, the aura exception, `MH_` skill looks and units `0xf5`-`0xf7` went with them.
 - **Madogear.** Status `0x47d` (begin/end and value capture), `g_session1.madogear`, its
   map-entry copy, scaled equip/preview drawing and draw key, `마도기어_`/`마도아머_`
   sprite renaming, the Madogear glow, shadow and robe rules and the release button.
@@ -9866,6 +9917,9 @@ Bugs found (not fixed):
   Gryphon".
 - `session_is_mercenary_job` (formerly `..._or_homun_s_job`) starts at `0x1782`, so the
   first mercenary ID `0x1781` is not included; kept as found.
+
+All three were fixed afterwards, on `main` first: the names in `0436ca5` and the range in
+`a2e9070`; see the [UTF-8 review fixes](#foundation-fixes-from-the-utf-8-review-2026-11-03).
 
 The pre-removal tree is in `build/before-no-third`. The edit and check scripts are in the
 session scratch area; the derivations are in `build/`. No live client/server smoke test was

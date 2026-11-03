@@ -1,0 +1,215 @@
+From 611062607530a632645a9939d67c8c68193c7a83 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 18:45:14 +0100
+Subject: [PATCH] Count job 6017 as a mercenary
+
+session_is_mercenary_or_homun_s_job took jobs 0x1782-0x17a4 (6018-6052).
+The mercenary jobs are 6017-6046, MER_ARCHER01 (Mina) to MER_SWORDMAN10
+(Wayne) in Hercules' mercenary_db.txt, and 6048-6052 are the
+Homunculus S, so the first archer mercenary was left out. It now starts
+at 0x1781.
+
+What 6017 missed:
+
+- game_actor_dir_of (position.c) shows a mercenary that stands, walks or
+  is in action 0x10 in the 8-way direction rounded from its facing, as
+  for players. Mina got the facing cut down instead, so for about half of
+  all angles to the camera she showed the direction one below the one
+  every other mercenary would show (40 degrees gave direction 0 instead
+  of 1, and 340 degrees direction 7 instead of 0).
+- skill_cast_target_look (skill_cast.c) and the merc AI GetV type 12 also
+  ask the predicate, but neither changed for 6017: mercenaries arrive with
+  object type 9, which the skill check accepts anyway, and GetV gives
+  job % 0x1781 + 1, which is 1 for 6017, the value it gave her before.
+
+Validation: the new test_mercenary_job runs the extracted predicate,
+found by content because its name differs on purist, and
+game_actor_dir_of: jobs 5990-6070 must be mercenaries exactly for
+6017-6046 (and on main also 6047-6052), and every mercenary standing at
+seven angles must show the same direction as job 6018, with 40 degrees
+direction 1 and 340 degrees direction 0. 291 checks; the test fails on
+the previous code. Release build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/session/predicates.c       |  3 +-
+ tests/build.bat                |  3 ++
+ tests/build_mercenary_job.bat  | 15 +++++++
+ tests/extract_mercenary_job.py | 31 +++++++++++++
+ tests/test_mercenary_job.c     | 79 ++++++++++++++++++++++++++++++++++
+ 5 files changed, 130 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_mercenary_job.bat
+ create mode 100644 tests/extract_mercenary_job.py
+ create mode 100644 tests/test_mercenary_job.c
+
+diff --git a/src/session/predicates.c b/src/session/predicates.c
+index 4cf5922..a6fa12a 100644
+--- a/src/session/predicates.c
++++ b/src/session/predicates.c
+@@ -90,9 +90,10 @@ int session_is_homunculus_skill(struct Session *self, int id)
+     return (unsigned)(id - 0x1f40) <= 0x3c;
+ }
+
++/* Mercenaries are jobs 6017-6046 (0x1781-0x179e); 6048-6052 are the Homunculus S. */
+ int session_is_mercenary_or_homun_s_job(struct Session *self, int id)
+ {
+-    return (unsigned)(id - 0x1782) <= 0x22;
++    return (unsigned)(id - 0x1781) <= 0x23;
+ }
+
+ int session_is_homun_or_merc_job(struct Session *self, int id)
+diff --git a/tests/build.bat b/tests/build.bat
+index 6670fe4..ed15708 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -886,3 +886,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_skin_scan.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_mercenary_job.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_mercenary_job.bat b/tests/build_mercenary_job.bat
+new file mode 100644
+index 0000000..5828a84
+--- /dev/null
++++ b/tests/build_mercenary_job.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\mercenary_job"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_mercenary_job.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_mercenary_job.c" /Fe:test_mercenary_job.exe
++if errorlevel 1 (popd & exit /b 1)
++test_mercenary_job.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_mercenary_job.py b/tests/extract_mercenary_job.py
+new file mode 100644
+index 0000000..051153b
+--- /dev/null
++++ b/tests/extract_mercenary_job.py
+@@ -0,0 +1,31 @@
++"""Extract the mercenary-job predicate from predicates.c (found by content: its name differs
++between branches) and the actor facing from position.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def function_at(source, start):
++    return source[start:source.index('\n}', start) + 2]
++
++
++def function(source, signature):
++    matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++    assert len(matches) == 1, signature
++    return function_at(source, matches[0].start())
++
++
++predicates = (root / 'src/session/predicates.c').read_text(encoding='utf-8')
++matches = list(re.finditer(r'^int (session_is_mercenary\w*_job)\(struct Session \*self, int id\)\n\{', predicates, re.M))
++assert len(matches) == 1
++name = matches[0].group(1)
++position = (root / 'src/actor/position.c').read_text(encoding='utf-8')
++covers = 1 if 'homun_s' in name else 0
++parts = [f'#define MERCENARY_JOB {name}', f'#define MERCENARY_JOB_COVERS_HOMUN_S {covers}',
++         function_at(predicates, matches[0].start()),
++         function(position, 'static float view_facing('), function(position, 'static int dir_rounded('),
++         function(position, 'int game_actor_dir_of(')]
++output.mkdir(parents=True, exist_ok=True)
++(output / 'mercenary_job.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_mercenary_job.c b/tests/test_mercenary_job.c
+new file mode 100644
+index 0000000..79cf285
+--- /dev/null
++++ b/tests/test_mercenary_job.c
+@@ -0,0 +1,79 @@
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++#include "actor/game_actor.h"
++#include "actor/job.h"
++#include "game/context.h"
++#include "session/session_jobs.h"
++#include "session/state.h"
++#include "world/view_types.h"
++
++/* Run the production mercenary-job predicate and game_actor_dir_of. The mercenary jobs
++   are 6017-6046 (MER_ARCHER01 Mina to MER_SWORDMAN10 Wayne in Hercules' mercenary_db);
++   6048-6052 are the Homunculus S, which this predicate also covers on main. Mina,
++   standing, must face the way every other mercenary does. */
++
++struct Session g_session1;
++static struct View view;
++static int actor_job, cases;
++
++struct GameMode *game_current_mode(void) { return (struct GameMode *)&view; }
++struct View *game_current_view(void) { return &view; }
++int game_actor_get_job(struct GameActor *actor) { (void)actor; return actor_job; }
++int session_is_pc_job(struct Session *self, int job) { (void)self; return job < 0x1f; }
++
++#include "mercenary_job.inc"
++
++static void check_range(void)
++{
++    int id;
++
++    for (id = 5990; id <= 6070; ++id) {
++        int mercenary = id >= 6017 && id <= 6046, homun_s = id >= 6048 && id <= 6052;
++        int got = MERCENARY_JOB(&g_session1, id) != 0;
++
++        if (mercenary)
++            assert(got);
++        else if (homun_s || id == 6047)
++            assert(got == MERCENARY_JOB_COVERS_HOMUN_S);
++        else
++            assert(!got);
++        ++cases;
++    }
++}
++
++/* The 8-way direction a standing actor of this job shows, facing deg degrees from the
++   camera. */
++static int facing(int job, float deg)
++{
++    struct GameActor actor;
++
++    memset(&actor, 0, sizeof actor);
++    actor.base_action = 0;
++    actor_job = job;
++    return game_actor_dir_of((struct GameObject *)&actor, -deg);
++}
++
++static void check_facing(void)
++{
++    static const float angles[] = { 0.0f, 20.0f, 30.0f, 40.0f, 100.0f, 200.0f, 340.0f };
++    size_t i;
++    int job;
++
++    view.longitude = 0.0f;
++    for (i = 0; i < sizeof angles / sizeof *angles; ++i)
++        for (job = 6017; job <= 6046; ++job) {
++            assert(facing(job, angles[i]) == facing(6018, angles[i]));
++            ++cases;
++        }
++    /* Rounded, not cut down: 40 degrees is direction 1 and 340 direction 0. */
++    assert(facing(6017, 40.0f) == 1 && facing(6017, 340.0f) == 0);
++}
++
++int main(void)
++{
++    check_range();
++    check_facing();
++    printf("Mercenary jobs: %d checks; 6017-6046 are mercenaries and face like them.\n", cases);
++    return 0;
++}
