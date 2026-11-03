@@ -109,9 +109,6 @@ int main(void)
     resource_path_body_palette(&out, 1, 1, 3, 0, 0); check(&out, "몸\\novice_남_3.pal");
     resource_path_body_palette(&out, 0xfa1, 1, 0, 0, 0); check(&out, "몸\\novice_남_1.pal");
     resource_path_body_palette(&out, 0xfa8, 1, 1, 0, 0); check(&out, "몸\\novice_남_0.pal");
-    body_text = "마도기어_test";
-    resource_path_job_body_sprite(&out, 0, 1, 1, 0, 2); check(&out, "인간족\\몸통\\남\\마도아머_test_남.act");
-    body_text = "novice";
 
     hair = 99;
     resource_path_head_sprite(&out, 0, 1, 1, &hair);

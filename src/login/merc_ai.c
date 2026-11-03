@@ -121,8 +121,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
         if (order != 0 && kind == 0) {
             self->startTick = GetTickCount();
             if (order == 0x1d) {
-                render_object_set_action((struct RenderObject *)actor,
-                    (unsigned)(g_session1.homunJob - 0x17a0) <= 4 ? 0x30 : 0x38, 0);
+                render_object_set_action((struct RenderObject *)actor, 0x38, 0);
                 self->duration = 3000;
             }
             return 0;

@@ -318,7 +318,7 @@ int merc_ai_merc_get_v(lua_State *L)
     case 12:
         if (!actor)
             r = -1.0;
-        else if (session_is_mercenary_or_homun_s_job(&g_session1, game_actor_get_job(ACTOR(actor))))
+        else if (session_is_mercenary_job(&g_session1, game_actor_get_job(ACTOR(actor))))
             r = (double)(game_actor_get_job(ACTOR(actor)) % 0x1781) + 1.0;
         else
             r = 1.0;
@@ -345,7 +345,7 @@ int merc_ai_is_monster(lua_State *L)
         c = ACTOR(actor)->object_type;
         if (c != 7) {
             switch (c) {
-            case 9: case 10:
+            case 9:
                 r = 0.0;
                 goto push;
             }
@@ -440,7 +440,7 @@ int merc_ai_skill_ground(lua_State *L)
     if (!session_is_homunculus_aid(&g_session1, id) && !session_is_mercenary_aid(&g_session1, id))
         return 0;
     if (!session_is_homunculus_skill(&g_session1, use.skill_id)
-            && !session_is_merc_or_elemental_skill(&g_session1, use.skill_id))
+            && !session_is_mercenary_skill(&g_session1, use.skill_id))
         return 0;
     actor = (BYTE *)game_find_actor(id);
     if (!actor)
@@ -467,7 +467,7 @@ int merc_ai_skill_object(lua_State *L)
         goto done;
     if (!session_is_homunculus_aid(&g_session1, id) && !session_is_mercenary_aid(&g_session1, id))
         goto done;
-    if (!session_is_homunculus_skill(&g_session1, skill) && !session_is_merc_or_elemental_skill(&g_session1, skill))
+    if (!session_is_homunculus_skill(&g_session1, skill) && !session_is_mercenary_skill(&g_session1, skill))
         goto done;
     if (tid == (DWORD)g_session1.ownAid) {
         target = (BYTE *)game_current_player();

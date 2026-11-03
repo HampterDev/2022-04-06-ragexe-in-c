@@ -609,8 +609,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_FAILED_TRADE_BUYING_STORE_TO_BUYER: game_mode_failed_trade_buying_store_to_buyer(self, pkt); break;
     case HEADER_ZC_UPDATE_ITEM_FROM_BUYING_STORE: game_mode_zc_update_item_from_buying_store(self, pkt); break;
     case HEADER_ZC_ITEM_DELETE_BUYING_STORE: game_mode_item_delete_buying_store(pkt); break;
-    case HEADER_ZC_EL_INIT: game_mode_zc_el_init(self, pkt); break;
-    case HEADER_ZC_EL_PAR_CHANGE: game_mode_zc_el_par_change(self, pkt); break;
     case HEADER_ZC_BROADCAST4: game_mode_broadcast4(pkt); break;
     case HEADER_ZC_FAILED_TRADE_BUYING_STORE_TO_SELLER: game_mode_failed_trade_buying_store_to_seller(pkt); break;
     case HEADER_ZC_SEARCH_STORE_INFO_ACK: game_mode_zc_search_store_info_ack(self, pkt); break;
@@ -642,7 +640,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_FAILED_GET_ITEM_FROM_ZONEDA: game_mode_zc_failed_get_item_from_zone_da(self, pkt); break;
-    case HEADER_ZC_SPIRITS_ATTRIBUTE: game_mode_on_spirits_attribute(self, (const struct PacketSpiritsAttribute *)pkt); break;
     case HEADER_ZC_REQ_WEAR_EQUIP_ACK2: game_mode_zc_req_wear_equip_ack2(self, pkt); break;
     case HEADER_ZC_REQ_TAKEOFF_EQUIP_ACK2: game_mode_zc_req_takeoff_equip_ack2(self, pkt); break;
     case HEADER_ZC_FASTMOVE: game_mode_zc_fast_move(self, pkt); break;
@@ -1110,7 +1107,6 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
         break;
     }
     case HEADER_ZC_NOTIFY_EFFECT4: game_mode_on_notify_effect4(self, (const struct PacketNotifyEffect4 *)pkt); break;
-    case HEADER_ZC_SOULENERGY: game_mode_on_soul_energy(self, (const struct PacketSoulEnergy *)pkt); break;
     case HEADER_ZC_PROPERTY_HOMUN_NO_ACCESSORY2: game_mode_zc_property_homun_no_accessory2(self, pkt); break;
     case HEADER_ZC_PC_PURCHASE_ITEMLIST2: game_mode_zc_pc_purchase_itemlist2(self, pkt); break;
     case HEADER_ZC_NPC_BARTER_MARKET_ITEMINFO2: game_mode_zc_npc_barter_market_item_info2(self, pkt); break;
@@ -1178,6 +1174,10 @@ void game_mode_dispatch_packet2(struct GameMode *self, int packet_id,
     case HEADER_ZC_WORLDSTORE_MOVEITEMINFO:
     case HEADER_ZC_CELLATTR_UPDATE:
     case HEADER_ZC_PING_LIVE:
+    case HEADER_ZC_EL_INIT:
+    case HEADER_ZC_EL_PAR_CHANGE:
+    case HEADER_ZC_SPIRITS_ATTRIBUTE:
+    case HEADER_ZC_SOULENERGY:
         break;
     default:
         connection_reset_queues(rag_connection_transport(rag_connection_instance()));

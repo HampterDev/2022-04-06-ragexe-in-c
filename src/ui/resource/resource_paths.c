@@ -23,9 +23,6 @@ static const char *const resource_extensions[2] = {
 #define DIR_SHIELD "방패"
 #define DIR_ROBE "로브"
 #define RACE_HUMAN_DIR "인간족"
-#define MADOGEAR "마도기어_"
-#define MADOARMOR "마도아머_"
-#define MOUNT_MADOGEAR 2
 
 static struct String *race_folder(struct String *out);
 
@@ -59,14 +56,6 @@ static const char *hair_name(int male, int style)
 {
     const struct Vec *names = male ? &g_session1.maleHairNames : &g_session1.femaleHairNames;
     return name_at(names, style);
-}
-
-static void madogear_names(struct String *path)
-{
-    size_t at = string_rfind(path, MADOGEAR);
-
-    if (at != (size_t)-1)
-        string_replace(path, at, 9, MADOARMOR, 9);
 }
 
 static struct String *race_folder(struct String *out)
@@ -140,8 +129,6 @@ struct String *resource_path_body_palette(struct String *out, int job, int sex, 
                       string_cstr(&sex_name), palette, costume);
     else
         string_format(out, DIR_BODY_PAL "\\%s_%s_%d.pal", body, string_cstr(&sex_name), palette);
-    if (mount == MOUNT_MADOGEAR)
-        madogear_names(out);
     string_free(&sex_name);
     return out;
 }
@@ -186,8 +173,6 @@ struct String *resource_path_job_body_sprite(struct String *out, int ext, int jo
         string_format(&tail, "\\" DIR_BODY "\\%s\\%s_%s.%s", string_cstr(&sex_name),
                       string_cstr(&body_name), string_cstr(&sex_name), ext_name(ext));
     race_prefixed(out, &tail);
-    if (mount == MOUNT_MADOGEAR)
-        madogear_names(out);
     string_free(&body_name);
     string_free(&sex_name);
     return out;

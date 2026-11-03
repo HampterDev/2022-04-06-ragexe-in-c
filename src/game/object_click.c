@@ -176,7 +176,6 @@ static int unit_is_attackable_in_siege(int unit)
     case 0x8d: case 0x8f: case 0x90: case 0x91: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97: case 0x98:
     case 0x99: case 0xbe: case 0xbf: case 0xc0: case 0xc1: case 0xc2:
     case 0xda:
-    case 0xf0:
         return 1;
     }
     return 0;
@@ -339,7 +338,7 @@ static void click_monster(struct GameMode *self, struct PickInfo *pick)
     if (attack != 0 && g_session1.mercPresent != 0) {
         if (g_mouse.button[MOUSE_LEFT] != BUTTON_PRESSED)
             goto not_attacked;
-        if (session_is_merc_or_elemental_skill(&g_session1, self->skill_use.skill_id) != 0) {
+        if (session_is_mercenary_skill(&g_session1, self->skill_use.skill_id) != 0) {
             pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.mercAid));
             if (pet != 0 && actor_merc_ai_running(pet))
                 pet_target_order(pet, game_actor_set_request, PET_ORDER_SKILL_AT_ACTOR, self->skill_use.level,
@@ -379,7 +378,7 @@ static void click_player(struct GameMode *self, struct PickInfo *pick)
             pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.homunAid));
             if (pet != 0 && actor_homun_ai_running(pet))
                 goto skill_order;
-        } else if (session_is_merc_or_elemental_skill(&g_session1, self->skill_use.skill_id) != 0 && g_session1.mercPresent != 0) {
+        } else if (session_is_mercenary_skill(&g_session1, self->skill_use.skill_id) != 0 && g_session1.mercPresent != 0) {
             pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.mercAid));
             if (pet != 0 && actor_merc_ai_running(pet)) {
                 is_mercenary = 1;

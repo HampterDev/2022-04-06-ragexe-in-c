@@ -70,11 +70,6 @@ void skill_cast_play_cast_look(struct GameActor *caster, int x, int y, int skill
     case 0x2e0:
         cast_on_cell(x, y, g_session1.map_rule_flags[0] == 1 ? 0x5b0 : 0x50a, cast_time);
         return;
-    case 0x1f79:
-        effect = spawn_on(caster->aid, 0x91d);
-        if (effect)
-            effect_set_time(effect, (float)(cast_time + 50));
-        return;
     }
     for (i = 0; i < (int)(sizeof cast_pairs / sizeof cast_pairs[0]); i++) {
         if (cast_pairs[i].skill_id == skill) {

@@ -126,7 +126,6 @@ static void companions(void)
     struct PacketMerInit packet = {0};
     const struct GameObjectOps ops = {.send_msg = companion_message};
     unsigned char change[8] = {0};
-    unsigned char elemental[22] = {0};
     int value;
     unsigned i;
     const unsigned short parameters[] = {5, 6, 7, 8, 41, 49, 53, 165, 189, 190, 65535};
@@ -166,20 +165,6 @@ static void companions(void)
     assert(g_session1.merc_contract_stats[2] == 1008 && g_session1.merc_contract_stats[0] == 1009);
     g_session1.mercPresent = 0; i = (unsigned)redraws;
     game_mode_zc_mer_par_change(change); assert((unsigned)redraws == i);
-    actor_present = 1;
-    memcpy(elemental + 2, &expected_aid, 4);
-    for (i = 0; i < 4; ++i) { value = 91 + (int)i; memcpy(elemental + 6 + i * 4, &value, 4); }
-    game_mode_zc_el_init(&mode, elemental);
-    assert((unsigned)g_session1.elementalAid == expected_aid && actor_messages == 1);
-    assert(g_session1.elementalHp == 91 && g_session1.elementalMaxHp == 92 && g_session1.elementalSp == 93 && g_session1.elementalMaxSp == 94);
-    for (i = 0; i < 4; ++i) {
-        value = 201 + (int)i;
-        memcpy(change + 2, &parameters[i], 2); memcpy(change + 4, &value, 4);
-        game_mode_zc_el_par_change(&mode, change);
-    }
-    assert(actor_messages == 5 && g_session1.elementalHp == 201 && g_session1.elementalMaxHp == 202 && g_session1.elementalSp == 203 && g_session1.elementalMaxSp == 204);
-    g_session1.elementalAid = -1;
-    game_mode_zc_el_par_change(&mode, change); assert(actor_messages == 5);
 }
 
 static void clocks(void)

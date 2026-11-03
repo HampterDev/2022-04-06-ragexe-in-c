@@ -77,7 +77,6 @@ int game_actor_get_height_offset(struct GameActor *self);
 unsigned char game_actor_has_pending_hits(struct GameActor *self);
 int game_actor_is_pc_job(int job);
 void game_actor_set_mark_listed(struct GameActor *self, int value);
-void game_actor_show_orbs(struct GameActor *self, int kind, int count);
 int game_actor_get_mount_height(struct GameActor *self);
 float game_actor_get_mount_lift(struct GameActor *self);
 void render_object_apply_shrink_scale(struct GameActor *self, float *scale);

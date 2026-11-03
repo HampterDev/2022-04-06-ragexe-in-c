@@ -60,9 +60,6 @@ static int caster_delay(const struct GameActor *caster, float base)
     return (int)(caster->motion_delay * 100.0f + base);
 }
 
-static const char WAVE_QIGONG[] = "effect\\기공포.wav";
-static const char WAVE_MAENGHO[] = "effect\\맹호경파산.wav";
-
 static void look_arrow_ring(struct GameActor *caster, struct GameActor *target)
 {
     static const int ring[8][2] = {
@@ -330,134 +327,7 @@ void game_mode_zc_use_skill_(void *session, int skill, int level,
         on(target, 0x237);
         on(target, 0x1a9);
         break;
-    case 0x1f58: on(target, 0x3c0); break;
-    case 0x1f59: on_placed(caster, 0x43a, target); break;
-    case 0x1f5c: on(target, 0x3c5); break;
-    case 0x1f5e: on(target, 0x3c7); break;
-    case 0x1f64: case 0x1f65: case 0x1f66: on(target, 0x3c6); break;
     case 0x2031: on(target, 0x407); break;
-    case 0x20d1:
-        on(target, 0xfc);
-        on(target, 0x150);
-        break;
-    case 0x20d4:
-        on(caster, 0x1b9);
-        on(target, 0x1b9);
-        break;
-    case 0x20d7: on(target, 0x185); break;
-    case 0x20da:
-        on(caster, 0xd6);
-        on(target, 0xd6);
-        break;
-    case 0x20dd:
-        play_skill_wave("effect\\EF_FireWall.wav");
-        on(caster, 0x3a8);
-        on(target, 0x3bc);
-        break;
-    case 0x20de:
-        play_skill_wave("effect\\ef_firehit.wav");
-        on(caster, 0x3a8);
-        on(target, 0x3be);
-        break;
-    case 0x20df:
-        play_skill_wave("effect\\EF_FireArrow1.wav");
-        on(caster, 0x3a8);
-        send_quake();
-        on(target, 0x3bb);
-        break;
-    case 0x20e0:
-        play_skill_wave("effect\\EF_FrostDiver2.wav");
-        on(caster, 0x376);
-        on(target, 0x3b5);
-        break;
-    case 0x20e1:
-        play_skill_wave("effect\\EF_FrostDiver.wav");
-        on(caster, 0x376);
-        on(target, 0x3ba);
-        break;
-    case 0x20e2:
-        play_skill_wave("effect\\EF_IceArrow1.wav");
-        on(caster, 0x376);
-        on(caster, 0x37e);
-        on(target, 0x3b8);
-        break;
-    case 0x20e3:
-        play_skill_wave("effect\\EF_ThunderStorm.wav");
-        on(caster, 0x3a9);
-        on(target, 0x3b3);
-        break;
-    case 0x20e4:
-        play_skill_wave("effect\\EF_LightBolt1.wav");
-        on(caster, 0x3a9);
-        on(target, 0x3b4);
-        break;
-    case 0x20e5:
-        play_skill_wave("effect\\EF_LightBolt3.wav");
-        on(caster, 0x3a9);
-        send_quake();
-        on(target, 0x3b7);
-        break;
-    case 0x20e6:
-        play_skill_wave("_stonecurse.wav");
-        on(caster, 0x3aa);
-        on(target, 0x3bd);
-        break;
-    case 0x20e7:
-        play_skill_wave("evil_cloud_hermit_attack.wav");
-        on(caster, 0x3aa);
-        on(target, 0x3b9);
-        break;
-    case 0x20e8:
-        play_skill_wave("effect\\wizard_earthspike.wav");
-        on(caster, 0x3aa);
-        send_quake();
-        on(target, 0x3b6);
-        break;
-    case 0x20e9:
-        effect = actor_launch_effect(target, 0x1f);
-        if (effect)
-            effect_set_level(effect, 1);
-        break;
-    case 0x20ea:
-        play_skill_wave("effect\\화염진.wav");
-        effect = actor_launch_effect(caster, 0x18);
-        if (effect == 0)
-            return;
-        on(target, 0x11);
-        {
-            Vec3 pos = actor_pos(target);
-            effect_set_pos(effect, &pos);
-        }
-        break;
-    case 0x20ec:
-        on(target, 0x385);
-        on(target, 0x11);
-        play_skill_wave("effect\\폭염룡.wav");
-        break;
-    case 0x20ee:
-        effect = actor_launch_effect(target, 0x1a);
-        if (effect)
-            effect_set_level(effect, 1);
-        break;
-    case 0x20ef: on(target, 0x3ad); break;
-    case 0x20f1:
-        on(target, 0x3ae);
-        on_placed(caster, 0x1b7, target);
-        break;
-    case 0x20f2:
-        play_skill_wave(WAVE_QIGONG);
-        on_placed(caster, 0x3af, target);
-        break;
-    case 0x20f3:
-        on(target, 0x1d2);
-        if (!able_to_make_effect_is_effect_exist(target, 0x1cc))
-            on(target, 0x1cc);
-        break;
-    case 0x20f5:
-        play_skill_wave(WAVE_MAENGHO);
-        on_placed(caster, 0x3a7, target);
-        break;
-    case 0x20fa: on(target, 0x3b0); break;
     default:
         break;
     }

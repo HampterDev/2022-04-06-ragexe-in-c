@@ -29,15 +29,12 @@
     X(MapChainEffect, 0x100, map_chain_effect_construct, map_chain_effect_new) \
     X(NewCloudKillEffect, 0x0f8, new_cloud_kill_effect_construct, new_cloud_kill_effect_new) \
     X(RandomOptEffect, 0x0ec, random_opt_effect_construct, random_opt_effect_new) \
-    X(RectUpEffect, 0x0f0, rect_up_effect_construct, rect_up_effect_new) \
-    X(RichsCoinEffect, 0x0e4, richs_coin_effect_construct, richs_coin_effect_new) \
     X(RootTwistEffect, 0x0d4, root_twist_effect_construct, root_twist_effect_new) \
     X(RotateItemEffect, 0x0dc, rotate_item_effect_construct, rotate_item_effect_new) \
     X(RotateLineEffect, 0x100, rotate_line_effect_construct, rotate_line_effect_new) \
     X(ScatterEffect, 0x0d4, scatter_effect_construct, scatter_effect_new) \
     X(ShowEffect, 0x0d0, show_effect_construct, show_effect_new) \
     X(SmokeEffect, 0x0d8, smoke_effect_construct, smoke_effect_new) \
-    X(SoulCollectEffect, 0x0d0, soul_collect_effect_construct, soul_collect_effect_new) \
     X(SoulUnityEffect, 0x0d0, soul_unity_effect_construct, soul_unity_effect_new) \
     X(SpriteEffect, 0x0d4, sprite_effect_construct, sprite_effect_new) \
     X(SpriteMableEffect, 0x0d4, sprite_mable_effect_construct, sprite_mable_effect_new) \

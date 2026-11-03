@@ -361,15 +361,6 @@ static int state_ended(struct GameMode *mode, const struct PacketMsgStateChange 
         say(text, 0xcb0);
         break;
     case 0x465: end_effect(packet, 0x552); break;
-    case 0x47d:
-        actor = state_actor(mode, packet);
-        if (actor) {
-            actor_set_sprite_variant(actor, 0);
-            if (is_own(packet))
-                g_session1.madogear = 0;
-            actor_msg(actor, ACTOR_MSG_FORM_OFF, 0);
-        }
-        break;
     case 0x48d:
         actor = state_actor(mode, packet);
         if (actor)

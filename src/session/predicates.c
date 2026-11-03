@@ -66,12 +66,7 @@ int session_is_guardian(struct Session *self, int job)
 
 int session_is_homunculus_job(struct Session *self, int id)
 {
-    return (unsigned)(id - 0x1771) <= 0xf || (unsigned)(id - 0x17a0) <= 4;
-}
-
-int session_is_homunculus_s_job(struct Session *self, int id)
-{
-    return (unsigned)(id - 0x17a0) <= 4;
+    return (unsigned)(id - 0x1771) <= 0xf;
 }
 
 int session_is_homunculus_skill(struct Session *self, int id)
@@ -79,19 +74,19 @@ int session_is_homunculus_skill(struct Session *self, int id)
     return (unsigned)(id - 0x1f40) <= 0x3c;
 }
 
-int session_is_mercenary_or_homun_s_job(struct Session *self, int id)
+int session_is_mercenary_job(struct Session *self, int id)
 {
-    return (unsigned)(id - 0x1782) <= 0x22;
+    return (unsigned)(id - 0x1782) <= 0x1d;
 }
 
 int session_is_homun_or_merc_job(struct Session *self, int id)
 {
-    return (unsigned)(id - 0x1771) <= 0x33;
+    return (unsigned)(id - 0x1771) <= 0x2e;
 }
 
-int session_is_merc_or_elemental_skill(struct Session *self, int id)
+int session_is_mercenary_skill(struct Session *self, int id)
 {
-    return (unsigned)(id - 0x2008) <= 0x29 || (unsigned)(id - 0x20d0) <= 0x39;
+    return (unsigned)(id - 0x2008) <= 0x29;
 }
 
 int session_is_pet_egg_id(struct Session *self, int id)
@@ -164,7 +159,7 @@ int session_is_own_unit_aid(struct Session *self, int aid)
 {
     if (aid == -1)
         return 0;
-    return aid == self->homunAid || aid == self->mercAid || aid == self->aid || aid == self->elementalAid;
+    return aid == self->homunAid || aid == self->mercAid || aid == self->aid;
 }
 
 int session_is_party_member_aid(struct Session *self, int aid, BYTE onlyIfClear)

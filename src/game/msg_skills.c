@@ -130,7 +130,7 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
     if (!quiet) {
         player = self->world->player;
         if (player->mounted && !session_is_homunculus_skill(&g_session1, info->id)
-                && !session_is_merc_or_elemental_skill(&g_session1, info->id)) {
+                && !session_is_mercenary_skill(&g_session1, info->id)) {
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED, 0, 0);
             return 0;
         }
@@ -146,7 +146,7 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
         if (session_is_homunculus_skill(&g_session1, info->id))
             target = g_session1.homunAid;
         else
-            target = session_is_merc_or_elemental_skill(&g_session1, info->id) ? g_session1.mercAid : g_session1.ownAid;
+            target = session_is_mercenary_skill(&g_session1, info->id) ? g_session1.mercAid : g_session1.ownAid;
         skill_id = info->id;
         self_msg(self, MODE_MSG_USE_SKILL, skill_id, target, level, quiet);
         self_msg(self, MODE_MSG_AIM_SKILL, 0, 0, 0, 0);
@@ -199,7 +199,7 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
     if (ui_window_find(0xc4))
         goto done;
     if (quiet == 0 && self->world->player->mounted && !session_is_homunculus_skill(&g_session1, skill_id)
-            && !session_is_merc_or_elemental_skill(&g_session1, skill_id)) {
+            && !session_is_mercenary_skill(&g_session1, skill_id)) {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED,
                             CHAT_CHANNEL_SKILL, 0);
         goto done;
@@ -245,7 +245,7 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
         }
         skill_info_destruct(&skill);
     }
-    if (!session_is_homunculus_skill(&g_session1, skill_id) && !session_is_merc_or_elemental_skill(&g_session1, skill_id)
+    if (!session_is_homunculus_skill(&g_session1, skill_id) && !session_is_mercenary_skill(&g_session1, skill_id)
             && self->world->player->state == 6)
         goto done;
     if (g_windowMgr.chat_room_wnd)
@@ -293,7 +293,7 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct Ground
     int skill_id, x, y, level;
 
     if (self->world->player->mounted && !session_is_homunculus_skill(&g_session1, (int)use)
-            && !session_is_merc_or_elemental_skill(&g_session1, (int)use)) {
+            && !session_is_mercenary_skill(&g_session1, (int)use)) {
         chat_print_msg(0x75e, COLOR_SKILL_REFUSED);
         return 0;
     }

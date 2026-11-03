@@ -18,7 +18,7 @@ struct GameActor *world_get_game_actor_by_aid(struct World *world, unsigned aid)
 float float_sqrt(float value) { abort(); }
 int game_actor_get_job(struct GameActor *actor) { return actor->job; }
 int session_is_pc_job(struct Session *session, int job) { assert(session == &g_session1);return job == 1; }
-int session_is_mercenary_or_homun_s_job(struct Session *session, int job) { assert(session == &g_session1);return job == 2000; }
+int session_is_mercenary_job(struct Session *session, int job) { assert(session == &g_session1);return job == 2000; }
 float get_sin_deg(int degrees) { abort(); }
 float get_cos_deg(int degrees) { abort(); }
 void renderer_project_point(struct Renderer *renderer, const Vec3 *in, const float *matrix,

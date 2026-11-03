@@ -183,8 +183,6 @@ void game_mode_on_notify_skill2(struct GameMode *self, const struct PacketNotify
             mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
             return;
         }
-        if (caster->object_type == 10)
-            mode_send_msg(self, MODE_MSG_SKILL_USED, packet->skill_id, (int)caster, packet->level, 0);
     }
     play_monster_skill_motion(other_actor, job, info.skill_id);
 }

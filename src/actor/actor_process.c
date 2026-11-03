@@ -285,11 +285,9 @@ static INIT_ONCE g_actorPickLeastGuard;
 
 #define ACTOR_JOB_IS(fn, self) (fn(&g_session1, game_actor_get_job((self))))
 
-static int is_merc_or_elemental(const struct GameActor *self)
+static int is_mercenary(const struct GameActor *self)
 {
-    unsigned k = self->object_type - 9u;
-
-    return k <= 1;
+    return self->object_type == 9;
 }
 
 static float lift_of_other_job(void *session, struct GameActor *self)
@@ -360,7 +358,7 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
             once_complete(&g_actorPickLeastGuard);
         }
         lift = pick_lift(self);
-        if (is_merc_or_elemental(self))
+        if (is_mercenary(self))
             lift = 50.0f;
         if (self->not_pickable != 1) {
             if (rect->left == (float)g_renderer->width && rect->top == (float)g_renderer->height && rect->right == 0.0f
@@ -384,7 +382,7 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
                 pick->kind = 4;
             else
                 pick->kind = 0;
-            if (is_merc_or_elemental(self))
+            if (is_mercenary(self))
                 pick->kind = 4;
             pick_widen(&pick->left, &pick->right, g_actorPickLeast);
             pick_widen(&pick->top, &pick->bottom, g_actorPickLeast);

@@ -178,7 +178,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
     int type = game_actor_get_job((struct GameActor *)me);
 
     switch (type) {
-    case 0x7f: case 0xed:
+    case 0x7f:
         play_at_unit(self, "effect\\EF_FireWall.wav");
         me->pickable = 0;
         break;

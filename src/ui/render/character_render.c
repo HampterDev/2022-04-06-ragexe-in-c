@@ -675,7 +675,6 @@ static void load_layers(struct CharacterRender *self, struct ChrPass *pass)
 {
     static const int accessories[3] = { CHR_LAYER_TOP, CHR_LAYER_MID, CHR_LAYER_BOTTOM };
     int head_job = pass->world ? self->job : self->job2;
-    int madogear = pass->world ? 0 : g_session1.madogear;
     struct String path;
     int i, key;
 
@@ -683,9 +682,9 @@ static void load_layers(struct CharacterRender *self, struct ChrPass *pass)
     memset(pass->sprs, 0, sizeof pass->sprs);
     if (pass->world || self->job != CHR_JOB_WEDDING) {
         pass->acts[CHR_LAYER_BODY] = res_by_path(
-            *session_get_body_spr_name_variant0(&path, riding_job(self), self->sex, self->body_style, madogear));
+            *session_get_body_spr_name_variant0(&path, riding_job(self), self->sex, self->body_style, 0));
         pass->sprs[CHR_LAYER_BODY] = res_by_path(
-            *session_get_body_spr_name_variant1(&path, riding_job(self), self->sex, self->body_style, madogear));
+            *session_get_body_spr_name_variant1(&path, riding_job(self), self->sex, self->body_style, 0));
     } else {
         session_get_body_spr_name(&path, 0, self->job2, CHR_JOB_WEDDING, self->sex, 0);
         pass->acts[CHR_LAYER_BODY] = res_by_cstr(&path);
@@ -887,7 +886,7 @@ static void render_layers(struct CharacterRender *self, struct ChrPass *pass, co
                                         self->body_style, 0);
             else
                 session_get_body_pal_name(&path, riding_job(self), self->sex, self->body_palette,
-                                        self->body_style, g_session1.madogear);
+                                        self->body_style, 0);
             palette = palette_resource_colors(res_by_cstr(&path), pass->sprs[ly]->palette);
         } else if (ly == CHR_LAYER_HEAD && self->head_palette > 0) {
             struct String path;

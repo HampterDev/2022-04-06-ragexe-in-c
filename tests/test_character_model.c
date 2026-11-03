@@ -510,7 +510,6 @@ static void run_case(unsigned n)
     model->shadow = 0;
     model->action = 9;
     model->motion = 2;
-    g_session1.madogear = n % 2;
     g_viewDistance = n % 2 ? 200.0f : 400.0f;
     for (key = 2; key <= 4; ++key)
         *layer_view(model, key) = 100 + key;

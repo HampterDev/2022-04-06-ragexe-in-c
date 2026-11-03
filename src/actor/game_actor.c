@@ -61,7 +61,7 @@ void game_actor_show_level_aura(struct GameActor *self)
             ACTOR_SEND(self, NULL, 0x93, 0);
             return;
         }
-        if (g_session1.baseLevel != level || session_is_homunculus_s_job(&g_session1, game_actor_get_job(self))) {
+        if (g_session1.baseLevel != level) {
             self->aura_on = 0;
             return;
         }
@@ -452,52 +452,6 @@ void render_object_load_spr_res(struct RenderObject *self, const char *name)
     self->spr = res_mgr_get(g_resMgr(), name);
     if (self->spr)
         res_lock((struct Res *)self->spr);
-}
-
-static int orb_effect(int kind)
-{
-    switch (kind) {
-    case 1: return 0x2e1;
-    case 2: return 0x2e2;
-    case 3: return 0x2df;
-    case 4: return 0x2e0;
-    default: return 0xe4;
-    }
-}
-
-void game_actor_show_orbs(struct GameActor *self, int kind, int count)
-{
-    render_object_send(self, self, 0x6d, 0x2e1, 0, 0, 0);
-    render_object_send(self, self, 0x6d, 0x2e2, 0, 0, 0);
-    render_object_send(self, self, 0x6d, 0x2df, 0, 0, 0);
-    render_object_send(self, self, 0x6d, 0x2e0, 0, 0, 0);
-    if (count <= 0)
-        return;
-    if (is_effect_state_burrow(game_actor_get_effect_state((struct RenderObject *)self)))
-        return;
-    if (is_effect_state_star2(game_actor_get_effect_state((struct RenderObject *)self)))
-        return;
-    self->orb_kind = kind;
-    self->orb_count = count;
-    if (effect_mgr_is_registered(g_effectMgr, 0xe4)) {
-        void *effect;
-
-        if (kind < 1 || kind > 5)
-            return;
-        effect = effect_mgr_spawn(g_effectMgr, self->aid, orb_effect(kind), self->pos, 0, -1, 0, 0);
-        if (effect)
-            energy_orb_effect_set_ring_count(effect, count);
-    } else {
-        Vec3 zero = { 0, 0, 0 };
-        struct RagEffect *effect = game_actor_launch_effect(self, orb_effect(kind), zero, 0.0f);
-        Vec3 n;
-
-        n.x = (float)count;
-        n.y = 0.0f;
-        n.z = 0.0f;
-        if (effect)
-            rag_effect_send_msg(effect, NULL, 0xe, MSG_ARG_PTR(&n), 0, 0);
-    }
 }
 
 void game_actor_clear_unit_cell(struct GameActor * self)

@@ -87,8 +87,8 @@ int session_is_homunculus_aid(void *s, DWORD aid) { assert(s == &g_session1); re
 int session_is_mercenary_aid(void *s, DWORD aid) { assert(s == &g_session1); return aid == 21; }
 int session_is_own_unit_aid(void *s, DWORD aid) { assert(s == &g_session1); return aid == 20 || aid == 21; }
 int session_is_homunculus_skill(void *s, int skill) { assert(s == &g_session1); return skill == 100; }
-int session_is_merc_or_elemental_skill(void *s, int skill) { assert(s == &g_session1); return skill == 101; }
-int session_is_mercenary_or_homun_s_job(void *s, int job) { (void)s; (void)job; return 0; }
+int session_is_mercenary_skill(void *s, int skill) { assert(s == &g_session1); return skill == 101; }
+int session_is_mercenary_job(void *s, int job) { (void)s; (void)job; return 0; }
 int session_is_player_job(void *s, int job) { (void)s; (void)job; return 0; }
 int session_is_own_guild_id(void *s, int id) { (void)s; (void)id; return 0; }
 int session_is_party_member_aid(struct Session *s, int aid, unsigned char flag) { (void)s; (void)aid; (void)flag; return 0; }
@@ -142,7 +142,7 @@ static void timed_action_start(struct RenderObject *self, int action, int mode)
 static void check_timed_order(void)
 {
     const int jobs[] = {0x179f, 0x17a0, 0x17a4, 0x17a5};
-    const int actions[] = {0x38, 0x30, 0x30, 0x38};
+    const int actions[] = {0x38, 0x38, 0x38, 0x38};
     size_t i;
     actor_ops.base.set_action = timed_action_start;
     for (i = 0; i < sizeof jobs / sizeof jobs[0]; ++i) {
@@ -156,7 +156,7 @@ static void check_timed_order(void)
         assert(ai.duration == 3000 && ai.lastRun == 0);
     }
     g_session1.homun_ai_state[0] = 0;
-    puts("AI timed order: feeding keeps looping playback across both job-range boundaries");
+    puts("AI timed order: feeding keeps looping playback for homunculus jobs on both sides of the former Homunculus S range");
 }
 
 static void args(lua_State *L, double a, double b, double c, double d, double e)

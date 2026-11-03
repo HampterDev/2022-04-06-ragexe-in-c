@@ -862,7 +862,6 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->body_state = g_session1.bodyState;
     self->effect_state = g_session1.effectState;
     self->health_state = g_session1.healthState;
-    actor_set_sprite_variant(self, g_session1.madogear);
     actor_set_body_style(self, g_session1.body, 0);
     sex = session_get_sex(&g_session1);
     job = session_get_drawn_job(&g_session1);

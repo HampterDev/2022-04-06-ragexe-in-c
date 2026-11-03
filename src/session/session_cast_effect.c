@@ -270,20 +270,6 @@ void session_get_cast_effect(struct Session *self, int skill, int *effect, int *
         *action = 0x0;
         *effect = -1;
         return;
-    case 0x20d1: case 0x20e9: case 0x20ea: case 0x20ec:
-        *action = 0x7;
-        *effect = 0x37;
-        return;
-    case 0x20ee: case 0x20ef: case 0x20f1:
-        *action = 0x7;
-        *effect = 0x36;
-        return;
-    case 0x20f2: case 0x20f3:
-        *action = 0x7;
-        *effect = 0x39;
-        return;
-    case 0x20fa:
-        *action = 0x7;
     case 0x3f9:
         *effect = 0x38;
         return;

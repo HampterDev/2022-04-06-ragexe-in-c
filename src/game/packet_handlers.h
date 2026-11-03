@@ -158,9 +158,7 @@ struct PacketRecoverPenaltyOverweight;
 struct PacketRepairItemList;
 struct PacketShowScript;
 struct PacketShowWarpList;
-struct PacketSoulEnergy;
 struct PacketSpirits2;
-struct PacketSpiritsAttribute;
 struct PacketTryResult;
 struct PacketUseSkillAck;
 struct PacketVendingList4;
@@ -530,8 +528,6 @@ void game_mode_zc_equip_item_damaged(struct GameMode *self,
 void game_mode_zc_update_card_slot(struct GameMode *self,
                                  const struct PACKET_ZC_UPDATE_CARDSLOT *packet);
 
-void game_mode_zc_el_init(struct GameMode *self, const unsigned char *pkt);
-void game_mode_zc_el_par_change(struct GameMode *self, const unsigned char *pkt);
 void game_mode_zc_mer_init(struct GameMode *self, const struct PacketMerInit *pkt);
 void game_mode_zc_mer_par_change(const unsigned char *pkt);
 
@@ -766,11 +762,8 @@ void game_mode_show_skill_use(struct GameMode *self, unsigned short skill_id, in
 
 void game_mode_on_millennium_shield(struct GameMode *self,
                                  const struct PacketMillenniumShield *packet);
-void game_mode_on_soul_energy(struct GameMode *self, const struct PacketSoulEnergy *packet);
 void game_mode_on_spirits(struct GameMode *self, int aid, short num);
 void game_mode_on_spirits2(struct GameMode *self, const struct PacketSpirits2 *packet);
-void game_mode_on_spirits_attribute(struct GameMode *self,
-                                 const struct PacketSpiritsAttribute *packet);
 void game_mode_on_target_spirits(struct GameMode *self, int aid, short num);
 
 void game_mode_zc_star_skill(struct GameMode *self, struct PACKET_ZC_STARSKILL *packet);

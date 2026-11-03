@@ -247,7 +247,6 @@ static void draw_character(struct UIPreviewEquipWnd *self)
         .accessory3 = (short)chr->accessory_bottom,
         .robe = chr->robe,
         .riding = chr->riding,
-        .scaled = g_session1.madogear,
         .body_palette = chr->body_palette,
         .head_palette = chr->head_palette,
         .action = chr->action,

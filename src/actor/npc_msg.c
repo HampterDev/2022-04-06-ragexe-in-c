@@ -36,11 +36,6 @@ static void npc_build_player_gage(struct Npc *self, struct UIWindow *g)
         ui_player_gauge_set(g, PLAYER_GAUGE_SP, gauge_value_from_int(&g_session1.mercSp), gauge_value_from_int(&g_session1.mercMaxSp));
         ui_window_create(g, 0x3c, 9);
         break;
-    case 10:
-        ui_player_gauge_set(g, PLAYER_GAUGE_HP, gauge_value_from_int(&g_session1.elementalHp), gauge_value_from_int(&g_session1.elementalMaxHp));
-        ui_player_gauge_set(g, PLAYER_GAUGE_SP, gauge_value_from_int(&g_session1.elementalSp), gauge_value_from_int(&g_session1.elementalMaxSp));
-        ui_window_create(g, 0x3c, 9);
-        break;
     }
 }
 
@@ -54,7 +49,7 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
 
         game_actor_send_msg(object, source, 4, par1, par2, par3, par4);
         switch (self->object_type) {
-        case 8: case 9: case 10:
+        case 8: case 9:
             self->owner_aid = info->char_id;
             break;
         }
@@ -65,7 +60,7 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
     if (msg == 0x22) {
         struct UIWindow *g;
 
-        /* Every sender targets the player's own pet, homunculus, mercenary or elemental. */
+        /* Every sender targets the player's own pet, homunculus or mercenary. */
         if (!session_is_own_unit_aid(&g_session1, self->aid))
             return;
         g = self->player_gage;

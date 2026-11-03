@@ -31,7 +31,7 @@ void game_mode_skill_list(int packet_id, const struct Vec *entries)
         skill_info_construct(&skill);
         if ((e->id < 1 || e->id > SKILL_ID_LAST_PLAIN)
             && !session_is_homunculus_skill(&g_session1, e->id)
-            && !session_is_merc_or_elemental_skill(&g_session1, e->id)) {
+            && !session_is_mercenary_skill(&g_session1, e->id)) {
             skill_info_destruct(&skill);
             continue;
         }
@@ -77,7 +77,7 @@ void game_mode_skill_update(struct GameMode *self, unsigned short id, short leve
     skill.level2 = level2;
     if (session_is_homunculus_skill(&g_session1, id))
         session_put_homun_skill(&g_session1, &skill, 1);
-    else if (session_is_merc_or_elemental_skill(&g_session1, id))
+    else if (session_is_mercenary_skill(&g_session1, id))
         session_put_mer_skill(&g_session1, &skill, 1);
     else
         session_put_skill_keep_type(&g_session1, &skill, 1);

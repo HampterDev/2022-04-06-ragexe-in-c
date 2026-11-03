@@ -54,8 +54,6 @@ static void as_hidden(struct GameActor *self)
         AS_SEND0(self, 0x34);
     if (effect_state_bit4(self->effect_state))
         AS_SEND0(self, 0x66);
-    if (effect_state_bit20(self->effect_state))
-        AS_SEND0(self, 0x8a);
     if (session_is_guild_member_aid(&g_session1, self->aid) == 0)
         game_actor_drop_siege_window(self);
     if (self->word_display_wnd) {
@@ -70,8 +68,6 @@ static void as_shown(struct GameActor *self)
         AS_SEND0(self, 0x33);
     if (effect_state_bit4(self->effect_state))
         AS_SEND0(self, 0x65);
-    if (effect_state_bit20(self->effect_state))
-        AS_SEND0(self, 0x89);
     game_actor_show_siege_emblem(self);
     if (self->aura_on)
         game_actor_show_level_aura(self);
@@ -161,16 +157,8 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
         !effect_state_bit6(self->effect_state)) {
         if (effect_state_bit4_changed(self->effect_state, old_effect))
             AS_SEND0(self, effect_state_bit4(self->effect_state) ? 0x65 : 0x66);
-        if (effect_state_bit20_changed(self->effect_state, old_effect))
-            AS_SEND0(self, effect_state_bit20(self->effect_state) ? 0x89 : 0x8a);
     }
 
-    AS_FORM(effect_state_bit19_changed, effect_state_bit19);
-    AS_FORM(effect_state_bit23_changed, effect_state_bit23);
-    AS_FORM(effect_state_bit24_changed, effect_state_bit24);
-    AS_FORM(effect_state_bit25_changed, effect_state_bit25);
-    AS_FORM(effect_state_bit26_changed, effect_state_bit26);
-    AS_FORM(effect_state_bit21_changed, effect_state_bit21);
     AS_FORM(effect_state_bit5_changed, effect_state_bit5);
     AS_FORM(effect_state_bit15_changed, effect_state_bit15);
 

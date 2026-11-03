@@ -27,7 +27,6 @@ enum {
     STATE_END_NEVER = 999999,
     MSG_STATE_CHANGE = 0x6e,
     ACTOR_MSG_SLEEP_MARK_ON = 0x45,
-    ACTOR_MSG_FORM_ON = 0x69,
 };
 
 static void actor_state_msg(void *actor, int index, unsigned char state, int val1, int val2)
@@ -125,7 +124,7 @@ static void own_state_list(int index, int remain_ms, int val1, int val2, int tot
 
     if ((unsigned)(index - EFST_TIMER_KIND_FIRST) <= 4)
         entry.value = val1 & 3;
-    else if (index == 0x153 || index == EFST_EQUIPMENT_EFFECT || index == 0x47d)
+    else if (index == 0x153 || index == EFST_EQUIPMENT_EFFECT)
         entry.value = val1;
     if (state_known(index))
         entry.value = val1;
@@ -243,7 +242,7 @@ static int change_ends_quietly(int index)
     case 0x1c0: case 0x2a1: case 0x2a2: case 0x2d8: case 0x2da: case 0x30b: case 0x336: case 0x337:
     case 0x339: case 0x33a: case 0x351: case 0x358: case 0x359: case 0x35b: case 0x35f: case 0x360:
     case 0x368: case 0x37f: case 0x380: case 0x395: case 0x397: case 0x3a9: case 0x3d6: case 0x3f6:
-    case 0x413: case 0x41a: case 0x41f: case 0x466: case 0x473: case 0x475: case 0x476: case 0x47d:
+    case 0x413: case 0x41a: case 0x41f: case 0x466: case 0x473: case 0x475: case 0x476:
         return 1;
     }
     return (index >= 0x46 && index <= 0x54) || (index >= 0x1c4 && index <= 0x1c6) ||
@@ -454,21 +453,6 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
         spawn(aid, 0x552);
         sound_play_wave("effect\\s포이즌버스터.wav", 0.0f, 0.0f,
                         0.0f, 0xfa, 0x28, 1.0f);
-        break;
-    case 0x47d:
-        actor = own ? (struct GameActor *)player : world_get_game_actor_by_aid(mode->world, aid);
-        if (actor) {
-            if (val1 == 2) {
-                actor_set_sprite_variant(actor, 2);
-                if (aid == g_session1.ownAid)
-                    g_session1.madogear = 2;
-            } else {
-                actor_set_sprite_variant(actor, 1);
-                if (aid == g_session1.ownAid)
-                    g_session1.madogear = 1;
-            }
-            actor_msg(actor, ACTOR_MSG_FORM_ON, 0);
-        }
         break;
     default:
         if (change_begins_without_line(index))

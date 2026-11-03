@@ -426,25 +426,12 @@ static int pc_res_available(const struct String *name)
     return res_mgr_is_available(g_resMgr(), string_cstr(name));
 }
 
-static void pc_replace_last(struct String *s, const char *from, const char *to, size_t len)
-{
-    size_t pos = string_rfind(s, from);
-
-    if (pos != (size_t)-1)
-        string_replace(s, pos, len, to, len);
-}
-
-static void pc_set_glow(struct Pc *self, int job, int kind, int item, int flag, const char *from, const char *to,
-                        size_t len)
+static void pc_set_glow(struct Pc *self, int job, int kind, int item, int flag)
 {
     struct String act, spr;
 
     session_get_glow_weapon_act_name(&act, job, self->sex, kind, item, flag);
     session_get_glow_weapon_spr_name(&spr, job, self->sex, kind, item, flag);
-    if (from && actor_get_sprite_variant(self) == 2) {
-        pc_replace_last(&act, from, to, len);
-        pc_replace_last(&spr, from, to, len);
-    }
     pc_set_layer_act(self, 6, string_cstr(&act));
     pc_set_layer_spr(self, 6, string_cstr(&spr));
     string_free(&spr);
@@ -485,7 +472,7 @@ void pc_set_weapon_look(struct GameActor * base_actor, int64_t weapon)
 
     switch (game_actor_get_job((struct GameActor *)self)) {
     case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e:
-        pc_set_glow(self, job, 0, -1, 1, NULL, NULL, 0);
+        pc_set_glow(self, job, 0, -1, 1);
         return;
     }
 
@@ -501,7 +488,7 @@ void pc_set_weapon_look(struct GameActor * base_actor, int64_t weapon)
         }
         pc_set_weapon5(self, job, kind, -1);
         if ((kind >= 1 && kind <= 7) || (kind >= 16 && kind <= 18) || (kind >= 25 && kind <= 30))
-            pc_set_glow(self, job, kind, -1, 0, NULL, NULL, 0);
+            pc_set_glow(self, job, kind, -1, 0);
         return;
     }
 

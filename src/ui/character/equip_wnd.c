@@ -71,8 +71,6 @@
 #define RELEASE_CART 6
 #define RELEASE_HIDING 5
 #define RELEASE_RUWACH 4
-#define RELEASE_SANTA 3
-#define RELEASE_TRANSFORM 1
 
 #define DRAG_FROM_EQUIP 2
 #define DRAG_FROM_COSTUME 0x18
@@ -94,8 +92,6 @@
 #define MSG_NO_TITLE 0xa7e
 #define MSG_RELEASE_HIDING 0x1b9
 #define MSG_RELEASE_RUWACH 0x1ba
-#define MSG_RELEASE_SANTA 0x5b8
-#define MSG_RELEASE_TRANSFORM 0x5b7
 #define MSG_RELEASE_CART 0xdf
 #define MSG_RELEASE_BOTH 0xe34
 #define MSG_CART_ITEMS 0xed
@@ -153,19 +149,9 @@ static BYTE equip_nothing_to_release(void)
 {
     if (g_session1.cartType > 0)
         return 0;
-    if (effect_state_bit4(g_session1.effectState) || effect_state_bit5(g_session1.effectState) ||
-        effect_state_bit19(g_session1.effectState) || effect_state_bit23(g_session1.effectState) ||
-        effect_state_bit24(g_session1.effectState) || effect_state_bit25(g_session1.effectState) ||
-        effect_state_bit26(g_session1.effectState) || effect_state_bit22(g_session1.effectState))
+    if (effect_state_bit4(g_session1.effectState) || effect_state_bit5(g_session1.effectState))
         return 0;
     return 1;
-}
-
-static int transformed(void)
-{
-    return effect_state_bit19(g_session1.effectState) || effect_state_bit23(g_session1.effectState) ||
-           effect_state_bit24(g_session1.effectState) || effect_state_bit25(g_session1.effectState) ||
-           effect_state_bit26(g_session1.effectState);
 }
 
 static void equip_release(int what)
@@ -181,10 +167,6 @@ static void equip_release(int what)
         kind = RELEASE_HIDING;
     else if (effect_state_bit5(g_session1.effectState))
         kind = RELEASE_RUWACH;
-    else if (effect_state_bit22(g_session1.effectState))
-        kind = RELEASE_SANTA;
-    else if (transformed())
-        kind = RELEASE_TRANSFORM;
     mode_send_message(mode, REQ_RELEASE, kind, 0, 0, 0);
 }
 
@@ -496,10 +478,6 @@ void ui_equip_wnd_on_create(struct UIWindow *window, int width, int height)
             tip = msg_str(MSG_RELEASE_HIDING);
         else if (effect_state_bit5(g_session1.effectState))
             tip = msg_str(MSG_RELEASE_RUWACH);
-        else if (effect_state_bit22(g_session1.effectState))
-            tip = msg_str(MSG_RELEASE_SANTA);
-        else if (transformed())
-            tip = msg_str(MSG_RELEASE_TRANSFORM);
         if (g_session1.cartType > 0)
             tip = msg_str(tip ? MSG_RELEASE_BOTH : MSG_RELEASE_CART);
         ui_bitmap_button_set_tool_tip(self->off_button, tip);
@@ -605,7 +583,6 @@ static unsigned long long equip_key(struct UIEquipWnd *self)
         else
             key = draw_key_int(key, self->body);
     }
-    key = draw_key_int(key, g_session1.madogear);
     key = draw_key_int(key, g_session1.ownTitleId);
     for (i = 0; i < 10; i++) {
         struct ItemInfo item;
@@ -702,7 +679,6 @@ static void equip_draw(struct UIEquipWnd *self)
             .accessory3 = (short)self->head_mid,
             .robe = self->garment,
             .riding = 0,
-            .scaled = g_session1.madogear,
             .body_palette = self->body_palette,
             .head_palette = self->hair_palette,
             .action = 0,
@@ -933,10 +909,6 @@ static void equip_on_off_button(struct UIEquipWnd *self)
     has_cart = g_session1.cartType > 0;
     if (effect_state_bit5(g_session1.effectState)) {
         string_assign_cstr(&what, msg_str(MSG_RELEASE_RUWACH));
-    } else if (effect_state_bit22(g_session1.effectState)) {
-        string_assign_cstr(&what, msg_str(MSG_RELEASE_SANTA));
-    } else if (transformed()) {
-        string_assign_cstr(&what, msg_str(MSG_RELEASE_TRANSFORM));
     } else {
         string_clear(&what);
     }

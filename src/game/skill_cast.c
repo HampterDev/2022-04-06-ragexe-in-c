@@ -92,7 +92,7 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
     }
     if (!target || caster == target)
         return;
-    if (session_is_mercenary_or_homun_s_job(&g_session1, game_actor_get_job(target)) || target->object_type == 9) {
+    if (session_is_mercenary_job(&g_session1, game_actor_get_job(target)) || target->object_type == 9) {
         struct World *world = mode->world;
 
         if (world->is_pvp || world->is_siege || !skill_info_is_good_skill_for_actor(skill))

@@ -13,28 +13,6 @@ static int caster_hit_delay(struct GameActor *caster)
     return (int)(caster->motion_delay * 100.0f + 100.0f);
 }
 
-static void spawned_effect_direction(struct Effect *effect, float degrees)
-{
-    effect->ops->set_spin(effect, degrees);
-}
-
-static void face_target_effect(struct GameActor *caster, struct GameActor *target)
-{
-    struct GameMode *mode = game_current_mode();
-    float caster_x = caster->pos.x, caster_z = caster->pos.z;
-    float target_x = target->pos.x, target_z = target->pos.z;
-    float view = game_mode_get_view_heading(mode);
-    float angle = (float)atan2((double)(target_z - caster_z), (double)(target_x - caster_x));
-    float direction;
-    struct Effect *effect;
-
-    angle = angle / 3.141592f * 180.0f;
-    direction = (float)(360.0 - ((double)angle + view));
-    effect = spawn_on(caster->aid, 0x91f);
-    if (effect)
-        spawned_effect_direction(effect, direction);
-}
-
 void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameActor *caster,
                               struct GameActor *target)
 {
@@ -56,9 +34,6 @@ void skill_hit_caster_effects(struct GameMode *mode, int skill_id, struct GameAc
         break;
     case 0x2e1:
         spawn_on_delayed(target->aid, 0x593, caster_hit_delay(caster));
-        break;
-    case 0x1f78:
-        face_target_effect(caster, target);
         break;
     }
 }
@@ -104,21 +79,8 @@ static void dragon_strike(const struct DragonLook *look, struct GameActor *caste
     play_skill_wave(WAVE_DRAGON);
 }
 
-static const struct {
-    unsigned short skill_id;
-    unsigned short effects[3];
-} target_effects[] = {
-    { 0x1f6f, { 0x919 } },
-    { 0x1f70, { 0x916, 0x917 } },
-    { 0x1f72, { 0x921 } },
-    { 0x1f75, { 0x912 } },
-    { 0x1f76, { 0x913, 0x914 } },
-};
-
 void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster, struct GameActor *target)
 {
-    unsigned i, j;
-
     switch (skill_id) {
     case 0x8d:
         if (level == -1)
@@ -126,13 +88,6 @@ void skill_hit_target_effects(int skill_id, int level, struct GameActor *caster,
         return;
     case 0x2db:
         dragon_strike(&dragon_2db, caster, target);
-        return;
-    }
-    for (i = 0; i < sizeof target_effects / sizeof target_effects[0]; i++) {
-        if (target_effects[i].skill_id != skill_id)
-            continue;
-        for (j = 0; j < 3 && target_effects[i].effects[j]; j++)
-            spawn_on(target->aid, target_effects[i].effects[j]);
         return;
     }
 }

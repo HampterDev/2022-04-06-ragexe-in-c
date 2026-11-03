@@ -300,7 +300,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
         }
         if (g_session1.mercPresent != 0 && g_mouse.button[MOUSE_LEFT] == BUTTON_PRESSED) {
             session_clear_merc_commands(&g_session1);
-            if (self->skill_use.type == 1 && session_is_merc_or_elemental_skill(&g_session1, self->skill_use.skill_id) != 0) {
+            if (self->skill_use.type == 1 && session_is_mercenary_skill(&g_session1, self->skill_use.skill_id) != 0) {
                 pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.mercAid));
                 if (pet != 0 && actor_merc_ai_running(pet) && (pet->state == 1 || pet->state == 0 || pet->state == 4)) {
                     pet_order(pet, game_actor_set_request, 8, x, y, self->skill_use.level, self->skill_use.skill_id, 1);

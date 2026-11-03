@@ -115,7 +115,6 @@ void login_mode_on_init(struct Mode *mode, const char *name)
     self->numChar = 0;
     self->auth_answered = 0;
     self->refuse_seconds_left = 0;
-    g_session1.madogear = 0;
 }
 
 void login_mode_on_exit(struct Mode *mode)

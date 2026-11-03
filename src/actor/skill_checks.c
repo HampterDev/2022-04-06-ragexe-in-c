@@ -357,11 +357,6 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
             } else if (skill == 0x2e1) {
                 msg.hit_effect = 0x593;
             }
-            switch (skill) {
-            case 0x1f6f: case 0x1f70: case 0x1f72:
-                msg.hit_effect = session_get_skill_hit_effect_id(&g_session1, skill);
-                break;
-            }
             msg.kind = kind;
             switch (skill) {
             case 0x19d: case 0x19f: case 0x1a1: case 0x1a3: case 0x1a5:

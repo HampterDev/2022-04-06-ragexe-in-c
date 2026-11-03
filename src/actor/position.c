@@ -110,7 +110,7 @@ int game_actor_dir_of(struct GameObject *object, float roty)
     }
     if (game_actor_get_job(self) > 0x2d && game_actor_get_job(self) < 0x3e8 && self->base_action == 0)
         return dir_rounded(deg);
-    if (session_is_mercenary_or_homun_s_job(&g_session1, game_actor_get_job(self))) {
+    if (session_is_mercenary_job(&g_session1, game_actor_get_job(self))) {
         action = self->base_action;
         if (action == 0 || action == 8 || action == 0x10)
             return dir_rounded(deg);

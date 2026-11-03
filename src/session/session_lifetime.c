@@ -176,7 +176,6 @@ struct Session *session_construct(struct Session *self)
     self->viewedBody = 0;
     self->inventoryExtension = 0;
     map_info_create();
-    self->madogear = 0;
     tree_clear(&self->instantVars, NULL);
     return self;
 }

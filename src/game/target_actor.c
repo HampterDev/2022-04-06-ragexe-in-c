@@ -87,7 +87,7 @@ void game_mode_process_target_actor(struct GameMode *self, int *verdict, struct 
     if (attack != 0 && g_session1.mercPresent != 0) {
         if (g_mouse.button[MOUSE_LEFT] != BUTTON_PRESSED)
             goto not_attacked;
-        if (session_is_merc_or_elemental_skill(&g_session1, self->skill_use.skill_id) != 0) {
+        if (session_is_mercenary_skill(&g_session1, self->skill_use.skill_id) != 0) {
             pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.mercAid));
             if (pet == 0 || !actor_merc_ai_running(pet))
                 return;
@@ -166,7 +166,6 @@ static int picked_is_foe(struct GameMode *self, struct PickInfo *pick, struct Ga
     switch (actor->object_type) {
     case OBJECT_TYPE_HOMUNCULUS:
     case OBJECT_TYPE_MERCENARY:
-    case OBJECT_TYPE_ELEMENTAL:
         owner = world_get_game_actor_by_aid(self->world, actor->owner_aid);
         if (owner != 0)
             judged = owner;
@@ -274,7 +273,7 @@ void game_mode_process_picked_actor(struct GameMode *self, int *verdict, struct 
     if (attack != 0 && g_session1.mercPresent != 0) {
         if (g_mouse.button[MOUSE_LEFT] != BUTTON_PRESSED)
             goto right_button;
-        if (session_is_merc_or_elemental_skill(&g_session1, self->skill_use.skill_id) != 0) {
+        if (session_is_mercenary_skill(&g_session1, self->skill_use.skill_id) != 0) {
             pet = world_get_game_actor_by_aid(self->world, ((unsigned)g_session1.mercAid));
             if (pet == 0 || !actor_merc_ai_running(pet))
                 return;

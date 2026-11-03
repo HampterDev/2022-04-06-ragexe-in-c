@@ -266,31 +266,6 @@ static void ef_2f3(struct GameActor *self)
         ef_spawn_at(self->aid, 0x433, &self->pos, -1);
 }
 
-static void ef_47d(struct GameActor *self, struct GameMode *mode, long long par2, long long par3)
-{
-    struct GameActor *who = ef_actor(self, mode);
-
-    if (!who)
-        return;
-    if (par2 == 1) {
-        if (par3 == 2) {
-            actor_set_sprite_variant(who, 2);
-            if (self->aid == g_session1.ownAid)
-                g_session1.madogear = 2;
-        } else {
-            actor_set_sprite_variant(who, 1);
-            if (self->aid == g_session1.ownAid)
-                g_session1.madogear = 1;
-        }
-        render_object_send(who, NULL, 0x69, 0, 0, 0, 0);
-    } else {
-        actor_set_sprite_variant(who, 0);
-        if (self->aid == g_session1.ownAid)
-            g_session1.madogear = 0;
-        render_object_send(who, NULL, 0x6a, 0, 0, 0, 0);
-    }
-}
-
 void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long par1, long long par2, long long par3,
                         long long par4)
 {
@@ -833,7 +808,6 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
         ef_toggle_once(ef_actor(self, mode), state == 0x473 ? 0x576 : state == 0x475 ? 0x58c
                                              : state == 0x476 ? 0x18c : 0x5f5, on);
         break;
-    case 0x47d: ef_47d(self, mode, par2, par3); break;
     case 0x47e: ef_spawn_or_end(self->aid, 0x6cd, on); break;
     case 0x48d: case 0x48f: {
         struct GameActor *who = ef_actor(self, mode);

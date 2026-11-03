@@ -121,7 +121,6 @@ void session_init_at_startup(struct Session *self)
     chat_tabs_clear(&self->chatWndTabs);
     chat_tabs_clear(&self->subChatWnds);
     self->luaState = NULL;
-    self->elementalAid = -1;
     session_load_prohibition_log(self);
     store_search_items_destroy(self->storeSearchResults.first, self->storeSearchResults.last);
     vec_clear(&self->storeSearchResults);

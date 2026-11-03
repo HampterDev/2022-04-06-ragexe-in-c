@@ -339,11 +339,6 @@ struct Session {
     int stateIconSlots[100];
     BYTE lockMouse;
     int channelCopId;
-    int elementalAid;
-    int elementalHp;
-    int elementalSp;
-    int elementalMaxHp;
-    int elementalMaxSp;
     struct Vec storeSearchResults;
     int storeSearchesLeft;
     unsigned char storeSearchOpenOnEnter;
@@ -414,7 +409,6 @@ struct Session {
     struct Tree instantVars;
     int inventoryExtension;
     struct McStoreBackup mcStoreBackup;
-    int madogear;
     struct Vec pcNames;
     BYTE hideOtherPlayers;
     BYTE userConfigEntry1;

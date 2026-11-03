@@ -728,7 +728,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         self->cart = (int)sm_msg_effect(self, mode, sm_cart_kinds[plus + kind * 2], 1);
         break;
     }
-    case 0x34: case 0x8a:
+    case 0x34:
         sm_drop(&self->cart);
         break;
     case 0x36:
@@ -958,19 +958,6 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x83: sm_msg_effect(self, mode, 0x16, 1); break;
     case 0x86: sm_hold(self, mode, &self->cursor_mark, 0x1f); break;
     case 0x87: sm_drop(&self->cursor_mark); break;
-    case 0x89: {
-        int kind;
-
-        if (self->cart)
-            break;
-        job = game_actor_get_job(self);
-        switch (job) {
-        default: kind = 0; break;
-        }
-        if (kind)
-            self->cart = (int)sm_msg_effect(self, mode, kind, 1);
-        break;
-    }
     case 0x8b:
         sm_launch(self, 0x316);
         break;

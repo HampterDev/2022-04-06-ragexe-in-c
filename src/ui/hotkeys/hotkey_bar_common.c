@@ -10,7 +10,7 @@ struct SkillCooldownNode *hotkey_cooldown_of(int skill_id)
 {
     int key = skill_id;
 
-    if (session_is_homunculus_skill(&g_session1, key) || session_is_merc_or_elemental_skill(&g_session1, key))
+    if (session_is_homunculus_skill(&g_session1, key) || session_is_mercenary_skill(&g_session1, key))
         key = SKILL_SHARED_DELAY;
     return skill_cooldowns_find(&g_session1.skillDelays, key);
 }
@@ -47,7 +47,7 @@ void hotkey_cooldowns_draw(struct UIWindow *wnd, struct CooldownSlotList *slots,
                 if (cooldown_timers_find(timers, s->value.slot) == NULL)
                     add_timer(timers, cd, &s->value);
             }
-            if ((session_is_homunculus_skill(&g_session1, id) || session_is_merc_or_elemental_skill(&g_session1, id))
+            if ((session_is_homunculus_skill(&g_session1, id) || session_is_mercenary_skill(&g_session1, id))
                 && cd->skill_id == SKILL_SHARED_DELAY) {
                 if (cooldown_timers_find(timers, s->value.slot) == NULL)
                     add_timer(timers, cd, &s->value);

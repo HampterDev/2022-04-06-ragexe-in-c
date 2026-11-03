@@ -387,10 +387,8 @@ unsigned char skill_on_process(struct GameObject *object)
     case 0xbc: keep_looping(self, 0x277); break;
     case 0xc8: keep_looping(self, 0x29f); break;
     case 0xc9: keep_looping(self, 0x2a0); break;
-    case 0xee: keep_looping(self, 0x3ab); break;
-
     case 0x7e: if (due(self, dur[0x13b] - 7)) launch(self, 0x13b); break;
-    case 0x7f: case 0xed: if (due(self, dur[0x19] - 7)) launch(self, 0x19); break;
+    case 0x7f: if (due(self, dur[0x19] - 7)) launch(self, 0x19); break;
     case 0x80: if (due(self, dur[0x13d] - 8)) launch(self, 0x13d); break;
     case 0x81: if (due(self, dur[0x13c] - 8)) launch(self, 0x13c); break;
     case 0x82: if (due(self, dur[0x5b] - 8)) launch(self, 0x5b); break;
@@ -418,11 +416,6 @@ unsigned char skill_on_process(struct GameObject *object)
         break;
     case 0xdc: if (due(self, dur[0x398] - 7)) launch(self, 0x398); break;
     case 0xdd: if (due(self, dur[0x39e] - 7)) launch(self, 0x39e); break;
-    case 0xef: if (due(self, dur[0x1d1] - 1)) launch(self, 0x1d1); break;
-    case 0xf0:
-        if (due(self, dur[0x440] - 1))
-            launch_by_mgr(me->aid, 0x440, vec_zero(), -1);
-        break;
     case 0xfe: if (due(self, dur[0x402] - 1)) launch(self, 0x402); break;
     case 0xff: case 0x100: if (due(self, dur[0x19] - 1)) launch(self, 0x19); break;
     case 0x101: if (due(self, dur[0x41a] - 1)) launch(self, 0x41a); break;
@@ -444,9 +437,6 @@ unsigned char skill_on_process(struct GameObject *object)
         }
         break;
 
-    case 0xf5: skill_launch_area_effect(self, 0x3bf, 0); break;
-    case 0xf6: skill_launch_area_effect(self, 0x3c4, 0); break;
-    case 0xf7: skill_launch_area_effect(self, 0x3cf, 0); break;
     case 0xfd: skill_launch_area_effect(self, 0x3fc, 0); break;
     }
     self->frames++;

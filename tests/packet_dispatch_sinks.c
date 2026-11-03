@@ -191,9 +191,7 @@ struct PacketRepairItemList2;
 struct PacketRoomEntry;
 struct PacketShowScript;
 struct PacketShowWarpList;
-struct PacketSoulEnergy;
 struct PacketSpirits2;
-struct PacketSpiritsAttribute;
 struct PacketStandEntry;
 struct PacketStandEntry10;
 struct PacketStandEntry11;
@@ -1541,13 +1539,6 @@ void game_mode_on_show_warp_list(struct GameMode *arg0, struct PacketShowWarpLis
     packet_trace_pointer(arg1);
 }
 
-void game_mode_on_soul_energy(struct GameMode *arg0, const struct PacketSoulEnergy *arg1)
-{
-    packet_trace_call("GameMode_OnSoulEnergy");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
 void game_mode_on_spirits(struct GameMode *arg0, int arg1, short arg2)
 {
     packet_trace_call("GameMode_OnSpirits");
@@ -1559,13 +1550,6 @@ void game_mode_on_spirits(struct GameMode *arg0, int arg1, short arg2)
 void game_mode_on_spirits2(struct GameMode *arg0, const struct PacketSpirits2 *arg1)
 {
     packet_trace_call("GameMode_OnSpirits2");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_on_spirits_attribute(struct GameMode *arg0, const struct PacketSpiritsAttribute *arg1)
-{
-    packet_trace_call("GameMode_OnSpiritsAttribute");
     packet_trace_pointer(arg0);
     packet_trace_pointer(arg1);
 }
@@ -2586,20 +2570,6 @@ void game_mode_zc_divorce(struct GameMode *arg0, const struct PACKET_ZC_DIVORCE 
 void game_mode_zc_dressroom_open(void)
 {
     packet_trace_call("GameMode_Zc_Dressroom_Open");
-}
-
-void game_mode_zc_el_init(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_El_Init");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
-}
-
-void game_mode_zc_el_par_change(struct GameMode *arg0, const unsigned char *arg1)
-{
-    packet_trace_call("GameMode_Zc_El_Par_Change");
-    packet_trace_pointer(arg0);
-    packet_trace_pointer(arg1);
 }
 
 void game_mode_zc_emotion(struct GameMode *arg0, const unsigned char *arg1)

@@ -368,9 +368,7 @@ static void npc_set_state_general(struct Npc *self, int state)
         kind = self->object_type;
         job = game_actor_get_job(actor);
         if (kind == 8) {
-            if (job == 0x17a4)
-                render_object_set_action((struct RenderObject *)self, 0x10, 1);
-            else if (rand() % 2 == 0)
+            if (rand() % 2 == 0)
                 render_object_set_action((struct RenderObject *)self, 0x30, 1);
             else
                 render_object_set_action((struct RenderObject *)self, 0x10, 1);
