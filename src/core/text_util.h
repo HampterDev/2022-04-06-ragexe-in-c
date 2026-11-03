@@ -13,6 +13,10 @@ void tokens_split(struct Vec *tokens, const struct String *line);
 
 void text_to_lower(struct String *s);
 
+/* Drops the 4-byte extension (.gat) that servers append to a map name. A name shorter
+   than 4 bytes cannot carry one and is kept as it is. */
+void text_drop_map_extension(struct String *map_name);
+
 char *str_find_last(char *text, char c);
 
 #endif

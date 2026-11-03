@@ -12,6 +12,7 @@
 #include <time.h>
 #include <winsock2.h>
 #include "core/msg_str.h"
+#include "core/text_util.h"
 #include "session/session_items.h"
 #include "session/session_state.h"
 #include "ui/character/character.h"
@@ -25,7 +26,6 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
 {
     struct String map;
     struct in_addr addr;
-    size_t len;
 
     g_session1.ownGid = gid;
     CMODE_SENDMSG(client_current_mode(), 0x2719, g_loginCharInfo.slot, 0, 0, 0);
@@ -33,8 +33,7 @@ void login_mode_enter_zone(struct LoginMode *self, DWORD gid,
         ui_window_mgr_post_quit2(&g_windowMgr, g_windowMgr.new_select_char_wnd);
 
     string_copy(&map, &mapName);
-    len = map.size - 4;
-    string_resize(&map, len, 0);
+    text_drop_map_extension(&map);
     strcpy(g_session1.mapName, string_cstr(&map));
 
     addr.s_addr = ip;

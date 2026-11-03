@@ -120,6 +120,12 @@ void text_to_lower(struct String *s)
     }
 }
 
+void text_drop_map_extension(struct String *map_name)
+{
+    if (map_name->size >= 4)
+        string_truncate(map_name, map_name->size - 4);
+}
+
 char *str_find_last(char *text, char c)
 {
     char *at;

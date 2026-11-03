@@ -109,6 +109,7 @@ static void default_wallpaper(struct LoginMode *self) { (void)self; }
 #include "name_text_couple_name.inc"
 #include "name_text_cut_in.inc"
 #include "name_text_server_list.inc"
+#include "name_text_map_helper.inc"
 
 /* The map name from a server-move packet, with its .gat extension. */
 static void map_name(const char *text)
@@ -120,6 +121,39 @@ static void map_name(const char *text)
 #include "name_text_map_name.inc"
     string_free(&name);
     string_free(&map_name);
+}
+
+/* The map name from ZC_NPCACK_MAPMOVE, as game_mode_zc_npcack_mapmove takes it from
+   its 16-byte field. The previous code also used shorter. */
+static void mapmove_name(const char *text, char *out, size_t size)
+{
+    char name_buf[17];
+    struct String map;
+    unsigned shorter = 0;
+
+    (void)shorter;
+    memset(name_buf, 0, sizeof name_buf);
+    strncpy(name_buf, text, 16);
+    string_init(&map);
+#include "name_text_mapmove_name.inc"
+    assert(map.size < size);
+    strcpy(out, string_cstr(&map));
+    string_free(&map);
+}
+
+/* The map name from HC_NOTIFY_ZONESVR in login_mode_enter_zone. The previous code also
+   used len. */
+static void zone_name(const char *text)
+{
+    struct String mapName, map;
+    size_t len = 0;
+
+    (void)len;
+    string_init(&mapName);
+    string_assign_cstr(&mapName, text);
+#include "name_text_zone_name.inc"
+    string_free(&map);
+    string_free(&mapName);
 }
 
 static void homun_default(void)
@@ -371,6 +405,23 @@ static void check_map_name(void)
     check(whole, "a");
     map_name("");
     check(whole, "");
+
+    /* The same at the other two places that drop the extension. */
+    {
+        static const char *const names[][2] = {
+            { "prontera.gat", "prontera" }, { "abcdefghijkl.gat", "abcdefghijkl" },
+            { "x.gat", "x" }, { ".gat", "" }, { "abc", "abc" }, { "a", "a" }, { "", "" },
+        };
+        char moved[0x20];
+        size_t i;
+
+        for (i = 0; i < sizeof names / sizeof *names; ++i) {
+            mapmove_name(names[i][0], moved, sizeof moved);
+            check(moved, names[i][1]);
+            zone_name(names[i][0]);
+            check(whole, names[i][1]);
+        }
+    }
 }
 
 static void check_typed_names(void)
