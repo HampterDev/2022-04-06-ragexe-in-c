@@ -9316,7 +9316,8 @@ test; the patches and commits are listed in the
 
 The bugs this section listed as found and not fixed were fixed the same way afterwards,
 at Patrick's request on 2026-11-03, in two batches (`main` `0fc910c` to `6177cea`, then
-`9443627` to `eec8116`); they are the last ten items below.
+`9443627` to `eec8116`) and one last fix (`ab24db8`); they are the last eleven items
+below.
 
 What each fix does:
 
@@ -9421,6 +9422,15 @@ What each fix does:
 - The `%s` count of `game_mode_format_string_msg` (`eec8116`, `main` only; here it steps
   with `utf8_next`) took a lead byte's trail byte even when that was the NUL; it now
   stops there.
+- Skin-folder files without an extension (`ab24db8`, `main` only; purist has no zip
+  skins). `skin_mgr_scan` passed `str_find_last(fd.cFileName, '.')` to
+  `string_assign_cstr`, which crashed on the NULL for a file without a `.`; such a file
+  is now skipped like any other file that is not a zip skin. The new `test_skin_scan`
+  runs the scan over a stubbed folder listing and crashes with an access violation on
+  the previous code. On `main` the release build passed without warnings
+  (`build/skin-scan-build.log`), the full suite passed with the digest still
+  `32d81ae6406478e3` (`build/skin-scan-full-tests.log`), the five standalone suites there
+  passed (`build/skin-scan-<suite>.log`) and `git diff --check` passed.
 
 Format-string calls left as they are:
 
@@ -9453,12 +9463,9 @@ Format-string calls left as they are:
   writes it before, so the call prints nothing and the line stays empty: no visible
   effect, so it is left.
 
-Found and not fixed (every item listed here before is fixed above):
-
-- On `main` only, `skin_mgr_scan` (`ui/misc/skin_mgr.c`) passes
-  `str_find_last(fd.cFileName, '.')` to `string_assign_cstr`. For a file without a `.`
-  in the `skin` folder `str_find_last` returns NULL, and `strlen(NULL)` crashes the client.
-  Purist has no zip skins and no `str_find_last`.
+Found and not fixed: every item listed here before is fixed above. One note: on `main`,
+`skin_mgr_scan` resets the skin names, paths and zip flags but not `extracted`, which it
+appends to; the scan runs once, at startup, so the lists stay aligned.
 
 Tests added:
 

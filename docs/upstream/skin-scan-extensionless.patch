@@ -1,0 +1,258 @@
+From ab24db87b1f58c8447b01ba62fae3bab9159452c Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 18:14:25 +0100
+Subject: [PATCH] Skip skin-folder files without an extension
+
+skin_mgr_scan lists the .\skin folder: folders become skins, .zip
+files zip skins, and every other file is skipped. To find the
+extension it passed str_find_last(fd.cFileName, '.') to
+string_assign_cstr, and for a file without a '.' in its name
+str_find_last returns NULL, so strlen(NULL) crashed the client at
+startup.
+
+Such a file is now skipped like any other file that is not a zip skin.
+
+Validation: the new test_skin_scan runs the extracted skin_mgr_scan,
+with str_find_last and text_to_lower, over a fake .\skin listing with
+FindFirstFileA, FindNextFileA and FindClose stubbed: a folder, README,
+LICENSE and a file named zip (no '.'), notes.txt, Blue.ZIP and
+Night.zip must give the folder and the two zip skins with their paths
+and the current skin, and a folder of only README no skins. The test
+crashes with an access violation on the previous code. Release build
+without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/ui/misc/skin_mgr.c     |   7 +-
+ tests/build.bat            |   3 +
+ tests/build_skin_scan.bat  |  15 +++++
+ tests/extract_skin_scan.py |  25 ++++++++
+ tests/test_skin_scan.c     | 127 +++++++++++++++++++++++++++++++++++++
+ 5 files changed, 176 insertions(+), 1 deletion(-)
+ create mode 100644 tests/build_skin_scan.bat
+ create mode 100644 tests/extract_skin_scan.py
+ create mode 100644 tests/test_skin_scan.c
+
+diff --git a/src/ui/misc/skin_mgr.c b/src/ui/misc/skin_mgr.c
+index b53a073..7a108e8 100644
+--- a/src/ui/misc/skin_mgr.c
++++ b/src/ui/misc/skin_mgr.c
+@@ -150,6 +150,7 @@ void skin_mgr_scan(struct SkinMgr *self)
+     WIN32_FIND_DATAA fd;
+     struct String dot, dotdot, path, ext, name;
+     struct String *s;
++    const char *extension;
+     HANDLE find;
+     int count = 0, zero = 0, one = 1;
+
+@@ -189,8 +190,12 @@ void skin_mgr_scan(struct SkinMgr *self)
+             string_free(&path);
+             continue;
+         }
++        /* A file without an extension is not a zip skin: skip it like any other file. */
++        extension = str_find_last(fd.cFileName, '.');
++        if (!extension)
++            continue;
+         string_init(&ext);
+-        string_assign_cstr(&ext, str_find_last(fd.cFileName, '.'));
++        string_assign_cstr(&ext, extension);
+         text_to_lower(&ext);
+         if (string_equal_cstr(&ext, ".zip")) {
+             string_init(&path);
+diff --git a/tests/build.bat b/tests/build.bat
+index 00bbe24..6670fe4 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -883,3 +883,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_perf_overlay.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_skin_scan.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_skin_scan.bat b/tests/build_skin_scan.bat
+new file mode 100644
+index 0000000..674c32f
+--- /dev/null
++++ b/tests/build_skin_scan.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\skin_scan"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_skin_scan.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" /I"%ROOT%\vendor\curl-7.46.0\include" "%ROOT%\tests\test_skin_scan.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\string_vec.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\core\memory.c" /Fe:test_skin_scan.exe
++if errorlevel 1 (popd & exit /b 1)
++test_skin_scan.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_skin_scan.py b/tests/extract_skin_scan.py
+new file mode 100644
+index 0000000..005a80f
+--- /dev/null
++++ b/tests/extract_skin_scan.py
+@@ -0,0 +1,25 @@
++"""Extract skin_mgr_scan with its helpers from skin_mgr.c, and str_find_last and
++text_to_lower from text_util.c."""
++from pathlib import Path
++import re
++import sys
++
++root, output = map(Path, sys.argv[1:])
++
++
++def functions(name, signatures):
++    source = (root / 'src' / name).read_text(encoding='utf-8')
++    parts = []
++    for signature in signatures:
++        matches = list(re.finditer(r'^' + re.escape(signature) + r'[^{;]*\n\{', source, re.M))
++        assert len(matches) == 1, signature
++        start = matches[0].start()
++        parts.append(source[start:source.index('\n}', start) + 2])
++    return parts
++
++
++parts = functions('core/text_util.c', ['void text_to_lower(', 'char *str_find_last('])
++parts += functions('ui/misc/skin_mgr.c', ['static void push_string(', 'static void drop_extension(',
++                                          'void skin_mgr_scan('])
++output.mkdir(parents=True, exist_ok=True)
++(output / 'skin_scan.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
+diff --git a/tests/test_skin_scan.c b/tests/test_skin_scan.c
+new file mode 100644
+index 0000000..f2d2bdd
+--- /dev/null
++++ b/tests/test_skin_scan.c
+@@ -0,0 +1,127 @@
++#include <windows.h>
++#include <assert.h>
++#include <ctype.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "core/text_util.h"
++#include "std/string.h"
++#include "std/string_vec.h"
++#include "ui/skin_manager.h"
++
++/* Run the production skin_mgr_scan over a fake .\skin folder. Folders become skins and
++   .zip files zip skins; every other file is skipped, including one without a '.' in its
++   name, for which str_find_last returns NULL. */
++
++struct Entry {
++    const char *name;
++    DWORD attributes;
++};
++
++static const struct Entry *listing;
++static size_t listed, next;
++static int finds, closes;
++
++__declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
++
++static void fill(WIN32_FIND_DATAA *fd)
++{
++    memset(fd, 0, sizeof *fd);
++    fd->dwFileAttributes = listing[next].attributes;
++    strcpy(fd->cFileName, listing[next].name);
++    ++next;
++}
++
++static HANDLE WINAPI test_find_first(LPCSTR pattern, LPWIN32_FIND_DATAA fd)
++{
++    assert(strcmp(pattern, ".\\skin\\*.*") == 0);
++    ++finds;
++    next = 0;
++    if (!listed)
++        return INVALID_HANDLE_VALUE;
++    fill(fd);
++    return (HANDLE)0x5c1;
++}
++
++static BOOL WINAPI test_find_next(HANDLE find, LPWIN32_FIND_DATAA fd)
++{
++    assert(find == (HANDLE)0x5c1);
++    if (next == listed)
++        return FALSE;
++    fill(fd);
++    return TRUE;
++}
++
++static BOOL WINAPI test_find_close(HANDLE find)
++{
++    (void)find;
++    ++closes;
++    return TRUE;
++}
++
++#define FindFirstFileA test_find_first
++#define FindNextFileA test_find_next
++#define FindClose test_find_close
++#include "skin_scan.inc"
++#undef FindFirstFileA
++#undef FindNextFileA
++#undef FindClose
++
++static int cases;
++
++static const char *at(const struct Vec *v, size_t i)
++{
++    return string_cstr((const struct String *)v->first + i);
++}
++
++static void check_skins(const struct SkinMgr *mgr, const char *const *names, const char *const *paths,
++                        const int *zip, size_t count)
++{
++    size_t i;
++
++    assert((size_t)((const struct String *)mgr->names.last - (const struct String *)mgr->names.first) == count);
++    assert((size_t)((const struct String *)mgr->paths.last - (const struct String *)mgr->paths.first) == count);
++    assert((size_t)((const int *)mgr->is_zip.last - (const int *)mgr->is_zip.first) == count);
++    for (i = 0; i < count; ++i) {
++        assert(strcmp(at(&mgr->names, i), names[i]) == 0);
++        assert(strcmp(at(&mgr->paths, i), paths[i]) == 0);
++        assert(((const int *)mgr->is_zip.first)[i] == zip[i]);
++    }
++    ++cases;
++}
++
++int main(void)
++{
++    static const struct Entry folder[] = {
++        { ".", FILE_ATTRIBUTE_DIRECTORY }, { "..", FILE_ATTRIBUTE_DIRECTORY },
++        { "Classic", FILE_ATTRIBUTE_DIRECTORY }, { "README", FILE_ATTRIBUTE_NORMAL },
++        { "Blue.ZIP", FILE_ATTRIBUTE_ARCHIVE }, { "notes.txt", FILE_ATTRIBUTE_ARCHIVE },
++        { "LICENSE", FILE_ATTRIBUTE_ARCHIVE }, { "Night.zip", FILE_ATTRIBUTE_ARCHIVE },
++        { "zip", FILE_ATTRIBUTE_ARCHIVE },
++    };
++    static const char *const names[] = { "Classic", "Blue", "Night" };
++    static const char *const paths[] = {
++        "..\\..\\skin\\Classic\\", "..\\..\\_tmpskin_\\Blue\\", "..\\..\\_tmpskin_\\Night\\",
++    };
++    static const int zip[] = { 0, 1, 1 };
++    static const struct Entry only_plain[] = { { "README", FILE_ATTRIBUTE_NORMAL } };
++    struct SkinMgr mgr;
++
++    memset(&mgr, 0, sizeof mgr);
++    string_init(&mgr.name);
++    string_assign_cstr(&mgr.name, "Night");
++    listing = folder;
++    listed = sizeof folder / sizeof *folder;
++    skin_mgr_scan(&mgr);
++    check_skins(&mgr, names, paths, zip, 3);
++    assert(mgr.current == 2 && finds == 1 && closes == 1);
++
++    /* A folder of files without extensions has no skins. */
++    listing = only_plain;
++    listed = 1;
++    skin_mgr_scan(&mgr);
++    check_skins(&mgr, names, paths, zip, 0);
++    assert(mgr.current == -1 && closes == 2);
++    printf("Skin scan: %d scans; files without an extension are skipped like other files.\n", cases);
++    return 0;
++}

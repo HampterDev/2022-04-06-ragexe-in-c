@@ -87,11 +87,11 @@ found, `0fc910c11607f237f7abbb7fd57dfcd8066e7251` to
 bugs those found, `9443627d108cad1894173aa5183fb6abd7d8c3c0` to
 `eec81169040c52df8336e5d3de97a16ac9ff4879`. The opt-in frame-time overlay,
 `53d23a1724793885eb0b6056ac05dcfc5580cdb0`, was approved with them and has its own
-row. Fixes whose code still
-exists on `purist` were ported with `git cherry-pick -x`; on `purist` the default pet
-and homunculus names from job names and the char-server list lines are cut by whole
-UTF-8 characters, and the unused login-entry field is removed instead of zeroed. The
-patch files are `git format-patch` exports of the `main` commits.
+row, and a last fix, `ab24db87b1f58c8447b01ba62fae3bab9159452c`, came after it.
+Fixes whose code still exists on `purist` were ported with `git cherry-pick -x`; on
+`purist` the default pet and homunculus names from job names and the char-server list
+lines are cut by whole UTF-8 characters, and the unused login-entry field is removed
+instead of zeroed. The patch files are `git format-patch` exports of the `main` commits.
 
 | Patch | Foundation commit | Purist | Change |
 | --- | --- | --- | --- |
@@ -110,6 +110,7 @@ patch files are `git format-patch` exports of the `main` commits.
 | [colour-code-cut.patch](colour-code-cut.patch) | [c7ba72d7ac](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/c7ba72d7ac0b7050daa7a4f423f0aac446afa704) | [8559386948](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/85593869486018cc46280bfc4c1314543bd4ef4b) (whole UTF-8 characters) | A char-server list line cut does not split a `^RRGGBB` colour code. |
 | [lead-byte-count.patch](lead-byte-count.patch) | [eec8116904](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/eec81169040c52df8336e5d3de97a16ac9ff4879) | Not needed on purist, which counts with `utf8_next` | The `%s` count of `ZC_FORMATSTRING_MSG` stops at a message that ends in a DBCS lead byte. |
 | [overlay-opt-in.patch](overlay-opt-in.patch) | [53d23a1724](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/53d23a1724793885eb0b6056ac05dcfc5580cdb0) | [a25052e7a9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a25052e7a9e3ca5db53304a11711fd8ac2a66a2b) | The frame-time overlay appears only with `RAGEXE_OVERLAY` set; Scroll Lock, a screenshot key, no longer shows it. |
+| [skin-scan-extensionless.patch](skin-scan-extensionless.patch) | [ab24db87b1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ab24db87b1f58c8447b01ba62fae3bab9159452c) | Not needed on purist, code removed | A file without an extension in the `skin` folder is skipped instead of crashing the scan. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in
