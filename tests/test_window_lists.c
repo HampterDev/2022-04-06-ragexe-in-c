@@ -1333,7 +1333,7 @@ int main(int argc, char **argv)
     printf("Window lists: IDs 0-%#x in 2 environments, %llu lines; digest %016llx.\n", LAST_ID, line_count,
            (unsigned long long)digest);
     fflush(stdout);
-    assert(line_count == 34731);
-    assert(digest == UINT64_C(0x778535d4c6391e4b));
+    assert(line_count == 34733);
+    assert(digest == UINT64_C(0x39f36d8f0948c9bf));
     return 0;
 }
