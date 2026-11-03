@@ -1,0 +1,36 @@
+/* Window constructors and helpers that make_window.c references but the
+   ESC window-ID list test never reaches. Each stops the test if called. */
+#include <stdlib.h>
+
+#define UNREACHED(name) void name(void) { abort(); }
+
+UNREACHED(client_lua_call)
+UNREACHED(g_resMgr)
+UNREACHED(own_states_clear)
+UNREACHED(res_mgr_get)
+UNREACHED(session_get_option_int)
+UNREACHED(skill_cooldowns_clear)
+UNREACHED(string_free)
+UNREACHED(ui_center_x640)
+UNREACHED(ui_center_y480)
+UNREACHED(ui_change_name_wnd_new)
+UNREACHED(ui_disconnected_server_msg_wnd_new)
+UNREACHED(ui_hot_key_wnd_new)
+UNREACHED(ui_loading_wnd_new)
+UNREACHED(ui_login_otp_wnd_new)
+UNREACHED(ui_login_wnd_new)
+UNREACHED(ui_new_make_char_wnd_new)
+UNREACHED(ui_new_select_char_wnd_create)
+UNREACHED(ui_quik_slot_wnd_new)
+UNREACHED(ui_sel_char_for_u_server_wnd_new)
+UNREACHED(ui_select_server_wnd_new)
+UNREACHED(ui_serach_store_info_wnd_new)
+UNREACHED(ui_skin_path)
+UNREACHED(ui_wait_wnd_new)
+UNREACHED(ui_window_create)
+UNREACHED(ui_window_find)
+UNREACHED(ui_window_mgr_add_window)
+UNREACHED(ui_window_mgr_close_drag_plate)
+UNREACHED(ui_window_mgr_get_closed_rect)
+UNREACHED(uirp_image_wnd_new)
+UNREACHED(uirp_image_wnd2_new)
