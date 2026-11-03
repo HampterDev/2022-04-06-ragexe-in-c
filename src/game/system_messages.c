@@ -133,13 +133,23 @@ struct PACKET_ZC_FORMATSTRING_MSG {
 };
 #pragma pack(pop)
 
+/* The argument after arg among strings that end at end: the one past arg's NUL, or end,
+   an empty string, when arg runs to the end. */
+static const char *next_argument(const char *arg, const char *end)
+{
+    const char *nul = memchr(arg, 0, (size_t)(end - arg));
+
+    return nul ? nul + 1 : end;
+}
+
 void game_mode_format_string_msg(const unsigned char *pkt)
 {
     const struct PACKET_ZC_FORMATSTRING_MSG *packet = (const struct PACKET_ZC_FORMATSTRING_MSG *)pkt;
     char line[0x105];
     const char *fmt = msg_str(packet->msg_id);
     const char *p = fmt;
-    const char *arg1, *arg2, *arg3;
+    const char *arg1, *arg2, *arg3, *end;
+    struct String strings;
     unsigned count = 0;
 
     while (*p != 0) {
@@ -151,7 +161,16 @@ void game_mode_format_string_msg(const unsigned char *pkt)
         }
     }
     memset(line, 0, sizeof line);
-    arg1 = packet->strings;
+    /* The arguments are NUL-terminated strings one after another, up to the packet
+       length. In this terminated copy an argument that runs to the end of the packet ends
+       there, and those after it are empty. */
+    string_init(&strings);
+    if (packet->length > sizeof *packet)
+        string_assign(&strings, packet->strings, packet->length - sizeof *packet);
+    arg1 = string_cstr(&strings);
+    end = arg1 + strings.size;
+    arg2 = next_argument(arg1, end);
+    arg3 = next_argument(arg2, end);
     switch (count) {
     case 0:
         _snprintf(line, 0x104, fmt);
@@ -160,18 +179,17 @@ void game_mode_format_string_msg(const unsigned char *pkt)
         _snprintf(line, 0x104, fmt, arg1);
         break;
     case 2:
-        arg2 = arg1 + strlen(arg1) + 1;
         _snprintf(line, 0x104, fmt, arg1, arg2);
         break;
     case 3:
-        arg2 = arg1 + strlen(arg1) + 1;
-        arg3 = arg2 + strlen(arg2) + 1;
         _snprintf(line, 0x104, fmt, arg1, arg2, arg3);
         break;
     default:
         sprintf(line, "unknown argment list");
+        string_free(&strings);
         return;
     }
+    string_free(&strings);
     chat(UIM_PUSH_INTO_CHAT, line, COLOUR_WHITE, 0);
 }
 

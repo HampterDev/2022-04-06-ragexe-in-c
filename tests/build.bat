@@ -753,3 +753,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_login_conn_entry.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_format_string_msg.bat"
+if not "%errorlevel%"=="0" exit /b 1
