@@ -4,7 +4,6 @@
 #include <string.h>
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/draw.h"
-#include "ui/chat/whisper.h"
 #include "ui/chat/chat.h"
 #include "ui/wndmgr/wndmgr_handlers.h"
 
@@ -18,9 +17,6 @@
 #define UIWM_MSG_CHAT_LINE_ALT 0x13
 #define UIWM_MSG_TO_WHISPERS 0x9a
 
-#define WHISPER_WND_ID 0x43
-#define WHISPER_MSG_INFO 0x22
-#define WHISPER_CASCADE 0x11
 #define WM_CHAT_LINE_WIDTH 0x5e
 #define WM_COLOUR_WHITE 0xffffff
 
@@ -73,80 +69,6 @@ static void show_chat(struct UIWindowMgr *self)
         ui_window_send_msg(self->new_chat_wnd, NULL, 0x10, 0, 0, 0, 0);
 }
 
-static void place_whisper(struct UIWindowMgr *self, struct UIWindow *wnd)
-{
-    const struct WindowInfo *info = &self->whisper_info;
-    int off = (int)self->whisper_wnds.size * WHISPER_CASCADE, x, y;
-    int right = g_renderer->width - WHISPER_CASCADE, bottom = g_renderer->height - WHISPER_CASCADE;
-
-    if (self->whisper_wnds.size == 0)
-        return;
-    x = info->x + off;
-    y = info->y + off;
-    if (x > 0 && info->width + x < right && y > 0 && info->height + y < bottom)
-        ui_window_move(wnd, x, y);
-    else if (off > 0 && info->width + off < right && info->height + off < bottom)
-        ui_window_move(wnd, off, off);
-}
-
-static int open_whisper(struct UIWindowMgr *self, const char *name, const char *title, const char *code)
-{
-    struct String key, keyed, part1, part2, full, text;
-    struct WmWhisperWnd *entry;
-    struct UIWindow *wnd;
-    void *mem;
-
-    string_init(&key);
-    string_assign_cstr(&key, name);
-    if (tree_find(&self->whisper_wnds, &key, wm_whisper_name_less)) {
-        string_free(&key);
-        return 0;
-    }
-    mem = mem_alloc(sizeof(struct UIWhisperWnd));
-    wnd = mem ? (struct UIWindow *)ui_whisper_wnd_construct(mem) : NULL;
-    ui_window_create(wnd, 0x118, 0x78);
-    ui_window_mgr_add_window(self, wnd);
-    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (int)(INT_PTR)&self->whisper_info, 0, 0, 0);
-    ui_window_set_show_base(wnd, 1);
-    string_assign(&((struct UIWhisperWnd *)wnd)->name, string_cstr(&key), key.size);
-    wnd->id = WHISPER_WND_ID;
-    if (title == NULL) {
-        string_assign(&((struct UIWhisperWnd *)wnd)->title_name, string_cstr(&key), key.size);
-    } else {
-        string_copy(&part1, &key);
-        string_append_cstr(&part1, " (");
-        string_append_cstr(&part1, title);
-        string_move(&part2, &part1);
-        string_append_cstr(&part2, ") *^_^*");
-        string_move(&full, &part2);
-        string_free(&((struct UIWhisperWnd *)wnd)->title_name);
-        string_move(&((struct UIWhisperWnd *)wnd)->title_name, &full);
-        string_free(&part2);
-        string_free(&part1);
-    }
-    if (code) {
-        string_init(&text);
-        string_assign_cstr(&text, code);
-        string_free(&((struct UIWhisperWnd *)wnd)->code);
-        ((struct UIWhisperWnd *)wnd)->code = text;
-    }
-    place_whisper(self, wnd);
-    string_copy(&keyed, &key);
-    entry = tree_find(&self->whisper_wnds, &keyed, wm_whisper_name_less);
-    if (!entry) {
-        struct WmWhisperWnd fresh;
-
-        string_copy(&fresh.name, &keyed);
-        fresh.wnd = NULL;
-        entry = tree_add(&self->whisper_wnds, &fresh, sizeof fresh, wm_whisper_name_less, NULL);
-    }
-    entry->wnd = wnd;
-    string_free(&keyed);
-    ui_window_mgr_add_whisper_name(self, string_cstr(&key));
-    string_free(&key);
-    return 1;
-}
-
 int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
 {
     struct TreeNode *node;
@@ -180,8 +102,10 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
             g_windowMgrHandlers.save_chat_room_talk((struct UIChatRoomWnd *)self->chat_room_wnd);
         break;
     case UIWM_MSG_WHISPER:
-        return open_whisper(self, (const char *)(INT_PTR)val1, (const char *)(INT_PTR)val2,
-                            (const char *)(INT_PTR)val3);
+        if (!g_windowMgrHandlers.open_whisper)
+            return 0;
+        return g_windowMgrHandlers.open_whisper(self, (const char *)(INT_PTR)val1, (const char *)(INT_PTR)val2,
+                                                (const char *)(INT_PTR)val3);
     case UIWM_MSG_TO_WHISPERS:
         for (node = tree_first(&self->whisper_wnds); node != self->whisper_wnds.head; node = tree_next(node))
             ui_window_send_msg(TREE_VALUE(node, struct WmWhisperWnd)->wnd, NULL, 0x9a, val1, 0, 0, 0);

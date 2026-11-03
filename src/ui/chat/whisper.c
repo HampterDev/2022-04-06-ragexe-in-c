@@ -15,6 +15,10 @@
 #include "ui/chat/chat.h"
 #include "ui/chat/chat_history.h"
 #include "ui/chat/whisper.h"
+#include "ui/wndmgr/wndmgr.h"
+#include "contents/sound.h"
+#include "session/character_name.h"
+#include "session/session_party.h"
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
@@ -521,4 +525,146 @@ void ui_whisper_wnd_on_create(struct UIWindow *window, int width, int height)
     ui_window_add_child(wnd, (struct UIWindow *)box);
 
     self->close = ui_window_add_close_button(wnd, "/q", 0);
+}
+
+#define WHISPER_WINDOW_ID 0x43
+#define WHISPER_MSG_INFO 0x22
+#define WHISPER_CASCADE 0x11
+
+static void place_whisper(struct UIWindowMgr *self, struct UIWindow *wnd)
+{
+    const struct WindowInfo *info = &self->whisper_info;
+    int off = (int)self->whisper_wnds.size * WHISPER_CASCADE, x, y;
+    int right = g_renderer->width - WHISPER_CASCADE, bottom = g_renderer->height - WHISPER_CASCADE;
+
+    if (self->whisper_wnds.size == 0)
+        return;
+    x = info->x + off;
+    y = info->y + off;
+    if (x > 0 && info->width + x < right && y > 0 && info->height + y < bottom)
+        ui_window_move(wnd, x, y);
+    else if (off > 0 && info->width + off < right && info->height + off < bottom)
+        ui_window_move(wnd, off, off);
+}
+
+int ui_whisper_wnd_open(struct UIWindowMgr *self, const char *name, const char *title, const char *code)
+{
+    struct String key, keyed, part1, part2, full, text;
+    struct WmWhisperWnd *entry;
+    struct UIWindow *wnd;
+    void *mem;
+
+    string_init(&key);
+    string_assign_cstr(&key, name);
+    if (tree_find(&self->whisper_wnds, &key, wm_whisper_name_less)) {
+        string_free(&key);
+        return 0;
+    }
+    mem = mem_alloc(sizeof(struct UIWhisperWnd));
+    wnd = mem ? (struct UIWindow *)ui_whisper_wnd_construct(mem) : NULL;
+    ui_window_create(wnd, 0x118, 0x78);
+    ui_window_mgr_add_window(self, wnd);
+    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (int)(INT_PTR)&self->whisper_info, 0, 0, 0);
+    ui_window_set_show_base(wnd, 1);
+    string_assign(&((struct UIWhisperWnd *)wnd)->name, string_cstr(&key), key.size);
+    wnd->id = WHISPER_WINDOW_ID;
+    if (title == NULL) {
+        string_assign(&((struct UIWhisperWnd *)wnd)->title_name, string_cstr(&key), key.size);
+    } else {
+        string_copy(&part1, &key);
+        string_append_cstr(&part1, " (");
+        string_append_cstr(&part1, title);
+        string_move(&part2, &part1);
+        string_append_cstr(&part2, ") *^_^*");
+        string_move(&full, &part2);
+        string_free(&((struct UIWhisperWnd *)wnd)->title_name);
+        string_move(&((struct UIWhisperWnd *)wnd)->title_name, &full);
+        string_free(&part2);
+        string_free(&part1);
+    }
+    if (code) {
+        string_init(&text);
+        string_assign_cstr(&text, code);
+        string_free(&((struct UIWhisperWnd *)wnd)->code);
+        ((struct UIWhisperWnd *)wnd)->code = text;
+    }
+    place_whisper(self, wnd);
+    string_copy(&keyed, &key);
+    entry = tree_find(&self->whisper_wnds, &keyed, wm_whisper_name_less);
+    if (!entry) {
+        struct WmWhisperWnd fresh;
+
+        string_copy(&fresh.name, &keyed);
+        fresh.wnd = NULL;
+        entry = tree_add(&self->whisper_wnds, &fresh, sizeof fresh, wm_whisper_name_less, NULL);
+    }
+    entry->wnd = wnd;
+    string_free(&keyed);
+    ui_window_mgr_add_whisper_name(self, string_cstr(&key));
+    string_free(&key);
+    return 1;
+}
+
+#define MSG_WHISPER_FRIEND 0x66
+#define MSG_NOT_IN_FRIEND_LIST 0x395
+#define MSG_NOT_IN_GUILD 0x397
+#define WHISPER_WARNING_COLOUR 0xffff
+#define UIWM_MSG_WHISPER 14
+#define WHISPER_LINE_RECEIVED 2
+#define SOUND_BUTTON "버튼소리.wav"
+
+const char *g_whisperSound = "..\\..\\BGM\\Msg_NewMsg.wav";
+
+int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, const char *name, const char *line,
+                                                       unsigned colour, int cid)
+{
+    int is_friend = session_has_friend_named(&g_session1, name) != 0;
+    struct UIWindow *opened = NULL;
+    struct String key;
+    struct WmWhisperWnd *entry;
+
+    if ((g_session1.showWhisperWnd && !is_friend) || (g_session1.showWhisperWndFriend && is_friend)) {
+        const char *note = NULL;
+        struct String code;
+
+        if (is_friend) {
+            note = msg_str(MSG_WHISPER_FRIEND);
+        } else if (session_is_guild_member_char_id(&g_session1, cid)) {
+            note = "GuildMember";
+        } else {
+            int warning = 0;
+
+            if (session_looks_like_a_party_member(&g_session1, name))
+                warning = MSG_NOT_IN_FRIEND_LIST;
+            else if (session_looks_like_a_friend(&g_session1, name))
+                warning = MSG_NOT_IN_GUILD;
+            if (warning)
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(warning),
+                                      WHISPER_WARNING_COLOUR, 0, 0);
+        }
+        session_scramble_number(&g_session1, &code, cid);
+        opened = (struct UIWindow *)(INT_PTR)ui_window_mgr_send_msg_(self, UIWM_MSG_WHISPER, (int)name,
+                                                                   (int)note, (int)string_cstr(&code), 0);
+        string_free(&code);
+        if (opened) {
+            if (res_mgr_is_available(g_resMgr(), g_whisperSound))
+                sound_play_wave(g_whisperSound, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+            else if (g_session1.playWhisperOpenSound)
+                sound_play_wave(SOUND_BUTTON, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+        }
+    }
+
+    if (strcmp(name, session_character_name(&g_session1)) == 0)
+        return 0;
+    if (g_session1.showWhisperWnd && opened)
+        ui_window_mgr_add_whisper_name(&g_windowMgr, name);
+    string_init(&key);
+    string_assign_cstr(&key, name);
+    entry = tree_find(&self->whisper_wnds, &key, wm_whisper_name_less);
+    string_free(&key);
+    if (!entry)
+        return 0;
+    ui_window_send_msg(entry->wnd, NULL, WHISPER_MSG_ADD_LINE, (int)line, (int)colour, WHISPER_LINE_RECEIVED, 0);
+    ui_window_mgr_raise_window(self, entry->wnd);
+    return 1;
 }

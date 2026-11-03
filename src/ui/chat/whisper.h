@@ -21,6 +21,20 @@ struct UIWhisperWnd {
 };
 
 struct UIWhisperWnd *ui_whisper_wnd_construct(struct UIWhisperWnd *self);
+
+struct UIWindowMgr;
+
+/* g_windowMgrHandlers.open_whisper for UIWM_MSG_WHISPER: opens the whisper window for
+   `name`, titled "name (title) *^_^*" when `title` is given and carrying `code`, unless
+   one is open. Returns 1 when it opened one. */
+int ui_whisper_wnd_open(struct UIWindowMgr *mgr, const char *name, const char *title, const char *code);
+
+/* Shows an incoming whisper `line` from `name` (character `cid`), opening that sender's
+   whisper window first when the whisper-window options ask for it. Returns 1 when the
+   line went to a whisper window. A UIWindowMgr method in the original client, kept under
+   its name. */
+int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, const char *name, const char *line,
+                                                       unsigned colour, int cid);
 int ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
                                     int val3, int val4);
 

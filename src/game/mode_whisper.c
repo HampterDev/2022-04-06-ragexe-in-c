@@ -12,6 +12,7 @@
 #include "session/session_party.h"
 #include "std/std.h"
 #include "ui/chat/chat.h"
+#include "ui/chat/whisper.h"
 #include "ui/ui_items.h"
 #include "ui/wndmgr/wndmgr.h"
 

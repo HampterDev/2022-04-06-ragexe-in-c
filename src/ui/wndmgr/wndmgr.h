@@ -136,8 +136,6 @@ void ui_window_mgr_render_windows(struct UIWindowMgr *self);
 
 void ui_window_mgr_notify_whisper_wnd(struct UIWindowMgr *self, const char *name);
 void ui_window_mgr_set_chat_line(struct UIWindowMgr *self, const char *text);
-int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, const char *name, const char *line,
-                                                       unsigned colour, int cid);
 
 struct UIWindow *ui_minimap_zoom_wnd_new(void);
 BYTE ui_minimap_zoom_wnd_claims_mouse(struct UIWindow *self);

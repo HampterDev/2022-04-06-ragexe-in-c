@@ -5,6 +5,7 @@ struct Session;
 struct UIChatRoomWnd;
 struct UINewChatWnd;
 struct UIWindow;
+struct UIWindowMgr;
 
 /* Window-specific steps the window manager (ui/wndmgr) hands to the module that owns
    the window. There is one instance, g_windowMgrHandlers (ui/wndmgr/wndmgr_handlers.c);
@@ -26,6 +27,10 @@ struct WindowMgrHandlers {
     /* UIWM_MSG_SAVE_CHAT_ROOM: writes the open chat room's talk to a file.
        ui_chat_room_wnd_save_talk (ui/chat/chat_room.c). NULL: nothing is written. */
     void (*save_chat_room_talk)(struct UIChatRoomWnd *room);
+    /* UIWM_MSG_WHISPER: opens the whisper window for `name`, titled with `title` and
+       carrying `code`, unless one is open; returns 1 when it opened one.
+       ui_whisper_wnd_open (ui/chat/whisper.c). NULL: no window opens; returns 0. */
+    int (*open_whisper)(struct UIWindowMgr *mgr, const char *name, const char *title, const char *code);
     /* The slot of the skill hotkey in the first hotkey list that key `code` triggers,
        or -1. session_skill_hot_key_slot (session/session_hotkeys.c). NULL: -1, no skill
        hotkey. */

@@ -44,6 +44,7 @@
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/chat/chat_window.h"
 #include "ui/chat/chat_window_parts.h"
+#include "ui/chat/whisper.h"
 #include "session/hotkey_bindings.h"
 #include "ui/window_manager_lifecycle.h"
 #include "ui/window_manager_state.h"
@@ -97,6 +98,7 @@ static void client_install_hooks(void)
     g_windowMgrHandlers.chat_whisper_edit = ui_chat_window_whisper_edit;
     g_windowMgrHandlers.save_chat_log = ui_chat_wnd_write_chat_to_file;
     g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
+    g_windowMgrHandlers.open_whisper = ui_whisper_wnd_open;
     g_windowMgrHandlers.skill_hot_key_slot = session_skill_hot_key_slot;
 }
 
