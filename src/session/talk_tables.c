@@ -138,7 +138,7 @@ static void talk_copy(char *out, size_t size, const char *text, size_t length)
 void session_get_monster_talk_info(struct Session *self, int job, int state, int value,
                                            char *out, size_t out_size, int aid)
 {
-    char number[12], key[0x100], name[0x100];
+    char number[12], key[0x100], name[0x100], stateKey[0x100];
     struct XmlElement *node, *stateNode, *n;
     struct Vec lines;
     const char *stateName;
@@ -149,36 +149,51 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
     node = xml_find_child(&self->monsterTalkTable.root, text_decode(key));
     if (!node)
         return;
+    /* A job past the name table has no entry, like a monster without one. */
+    if (job < 0 || (size_t)job >= VEC_COUNT(&g_session1.reqJobNames, const char *))
+        return;
     _snprintf_s(name, sizeof name, _TRUNCATE, "%s", ((const char **)g_session1.reqJobNames.first)[job]);
     _strlwr(name);
     node = xml_find_child(node, text_decode(name));
     if (!node)
         return;
     stateName = session_get_state_name(&g_session1, state);
-    stateNode = xml_find_child(node, text_decode((char *)stateName));
+    if (!stateName)
+        return;
+    /* Keys and lines are decoded once, in copies: the state name is a string literal,
+       and decoding a node's text in place would flip it on every call. */
+    _snprintf_s(stateKey, sizeof stateKey, _TRUNCATE, "%s", stateName);
+    stateNode = xml_find_child(node, text_decode(stateKey));
     if (!stateNode)
         return;
 
     lines.first = lines.last = lines.end = NULL;
     if ((unsigned)(state - 1) <= 2) {
         _itoa(value, number, 10);
-        for (n = xml_find_child(stateNode, text_decode(number)); n;
-             n = xml_find_next(n, text_decode(number))) {
-            const char *text = text_decode(node_text(n));
+        text_decode(number);
+        for (n = xml_find_child(stateNode, number); n; n = xml_find_next(n, number)) {
+            const char *text = node_text(n);
 
             vec_push(&lines, &text, sizeof text);
         }
     } else {
-        for (n = stateNode; n; n = xml_find_next(n, text_decode((char *)stateName))) {
-            const char *text = text_decode(node_text(n));
+        for (n = stateNode; n; n = xml_find_next(n, stateKey)) {
+            const char *text = node_text(n);
 
             vec_push(&lines, &text, sizeof text);
         }
     }
     count = VEC_COUNT(&lines, const char *);
-    if (count)
-        session_format_chat_line(&g_session1, ((const char **)lines.first)[rand() % (int)count], out,
-                                 out_size, aid, 0);
+    if (count) {
+        struct String line;
+
+        string_init(&line);
+        string_assign_cstr(&line, ((const char **)lines.first)[rand() % (int)count]);
+        if (line.size)
+            text_decode(line.data);
+        session_format_chat_line(&g_session1, string_cstr(&line), out, out_size, aid, 0);
+        string_free(&line);
+    }
     vec_free(&lines);
 }
 

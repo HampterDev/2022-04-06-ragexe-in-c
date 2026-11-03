@@ -17,16 +17,22 @@
    PetTalkTable.xml and MonsterTalkTable.xml, writing into 256-byte outputs with
    a guard after them. Long lines and names must be cut to the output by whole
    CP949 characters, printf conversions must arrive as text, and the
-   talk-word replacement must give the lines it gave before. */
+   talk-word replacement must give the lines it gave before. For the Korean
+   service, whose tables are mirrored, the monster lines must be decoded without
+   writing to the state name, a string literal on a read-only page, or to the
+   table. Jobs past the name table have no entry. */
 
 struct Session g_session1;
 unsigned int g_codePage = 949;
 static struct GameMode *const test_mode = (struct GameMode *)0x6d6f;
-static int cases;
+static int cases, korean;
 
 __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
-/* Other services than Korea leave the text as it is. */
-char *text_decode(char *text) { return text; }
+
+#include "text_mirror.inc"
+
+/* The Korean service mirrors its table text in place; the others leave it as it is. */
+char *text_decode(char *text) { return korean ? text_decode_mirror(text) : text; }
 const char *session_get_pet_name(int petJob) { assert(petJob == 1); return "poring"; }
 const char *session_get_pet_act_text(int action) { assert(action == 0); return "feeding"; }
 struct GameMode *game_current_mode(void) { return test_mode; }
@@ -158,9 +164,11 @@ static void check_monster_talk(void)
 {
     static char xml[0x1000];
     char line[0x300], expected[0x200], name[0x140];
-    const char *jobs[4];
+    /* A valid name on each side of the table, where an unchecked index would find it. */
+    const char *storage[6], **jobs = storage + 1;
     struct Guarded g;
 
+    storage[0] = storage[5] = "PORING";
     jobs[0] = "NOVICE";
     jobs[1] = "PORING";
     jobs[2] = "DROPS";
@@ -185,6 +193,86 @@ static void check_monster_talk(void)
     guard(&g);
     session_get_monster_talk_info(&g_session1, 0, 0, 0, g.out, sizeof g.out, 100);
     check_out(&g, sizeof g.out, "");
+    guard(&g);
+    session_get_monster_talk_info(&g_session1, 4, 0, 0, g.out, sizeof g.out, 100);
+    check_out(&g, sizeof g.out, "");
+    guard(&g);
+    session_get_monster_talk_info(&g_session1, -1, 0, 0, g.out, sizeof g.out, 100);
+    check_out(&g, sizeof g.out, "");
+    release(&g_session1.monsterTalkTable);
+    g_session1.reqJobNames.first = g_session1.reqJobNames.last = g_session1.reqJobNames.end = NULL;
+}
+
+/* Appends text to xml, mirrored as the Korean service stores it. */
+static void stored(char *xml, const char *text)
+{
+    char copy[0x100];
+
+    assert(strlen(text) < sizeof copy);
+    strcpy(copy, text);
+    strcat(xml, text_decode_mirror(copy));
+}
+
+static void tag(char *xml, const char *name, int close)
+{
+    strcat(xml, close ? "</" : "<");
+    stored(xml, name);
+    strcat(xml, ">");
+}
+
+static void check_monster_talk_korean(void)
+{
+    static char xml[0x400];
+    const char *jobs[2] = { "NOVICE", "PORING" }, *literal;
+    char key[0x40];
+    MEMORY_BASIC_INFORMATION page;
+    struct XmlElement *node;
+    struct Guarded g;
+    int i, seen[2] = { 0, 0 };
+
+    /* The state name is a string literal on a page that cannot be written. */
+    literal = session_get_state_name(&g_session1, 0);
+    assert(strcmp(literal, "attack") == 0 && VirtualQuery(literal, &page, sizeof page) == sizeof page);
+    assert(!(page.Protect & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE |
+                             PAGE_EXECUTE_WRITECOPY)));
+
+    g_session1.reqJobNames.first = (void *)jobs;
+    g_session1.reqJobNames.last = g_session1.reqJobNames.end = (void *)(jobs + 2);
+    xml[0] = 0;
+    tag(xml, "enemy_monster_talk_table", 0);
+    tag(xml, "poring", 0);
+    tag(xml, "attack", 0);
+    stored(xml, "Grr one");
+    tag(xml, "attack", 1);
+    tag(xml, "attack", 0);
+    stored(xml, "Grr two");
+    tag(xml, "attack", 1);
+    tag(xml, "poring", 1);
+    tag(xml, "enemy_monster_talk_table", 1);
+    parse(&g_session1.monsterTalkTable, xml);
+    korean = 1;
+    srand(7);
+    for (i = 0; i < 64; ++i) {
+        guard(&g);
+        session_get_monster_talk_info(&g_session1, 1, 0, 0, g.out, sizeof g.out, 100);
+        if (strcmp(g.out, "Poring : Grr one") == 0)
+            seen[0] = 1;
+        else
+            check_out(&g, sizeof g.out, "Poring : Grr two"), seen[1] = 1;
+    }
+    /* Both lines are found every time, and the table keeps its stored text. */
+    assert(seen[0] && seen[1]);
+    korean = 0;
+    strcpy(key, "enemy_monster_talk_table");
+    node = xml_find_child(&g_session1.monsterTalkTable.root, text_decode_mirror(key));
+    strcpy(key, "poring");
+    node = node ? xml_find_child(node, text_decode_mirror(key)) : NULL;
+    strcpy(key, "attack");
+    node = node ? xml_find_child(node, text_decode_mirror(key)) : NULL;
+    assert(node);
+    strcpy(key, "Grr one");
+    assert(strcmp(string_cstr(xml_node_text(node)), text_decode_mirror(key)) == 0);
+    ++cases;
     release(&g_session1.monsterTalkTable);
     g_session1.reqJobNames.first = g_session1.reqJobNames.last = g_session1.reqJobNames.end = NULL;
 }
@@ -194,6 +282,7 @@ int main(void)
     check_format();
     check_pet_speak();
     check_monster_talk();
+    check_monster_talk_korean();
     printf("Talk lines: %d lines; long lines and names are cut, conversions copied, words replaced as before.\n",
            cases);
     return 0;
