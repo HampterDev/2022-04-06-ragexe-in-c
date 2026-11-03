@@ -1,7 +1,7 @@
 #include "ui/controls/resizer.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
@@ -156,11 +156,11 @@ void ui_resizer_on_mouse_shape(struct UIWindow *window, int x, int y)
 
     if (ui_window_mgr_get_capture(&g_windowMgr) == wnd
         || (x >= 0 && x < wnd->width && y >= 0 && y <= wnd->height)) {
-        mode_set_cursor_action(client_current_mode(), CURSOR_HAND);
+        ui_set_cursor_action(CURSOR_HAND);
         return;
     }
     if (ui_window_mgr_get_capture(&g_windowMgr) != wnd)
-        mode_set_cursor_action(client_current_mode(), CURSOR_ARROW);
+        ui_set_cursor_action(CURSOR_ARROW);
 }
 
 void ui_resizer_on_l_btn_up(struct UIWindow *window, int x_unused, int y_unused)

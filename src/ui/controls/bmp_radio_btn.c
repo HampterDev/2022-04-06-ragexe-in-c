@@ -1,8 +1,7 @@
 #include "ui/controls/check_radio.h"
-#include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
@@ -191,7 +190,7 @@ void ui_bmp_radio_btn_on_mouse_hover(struct UIWindow *window, int x, int y)
     if (!self->tooltip.size)
         return;
     ui_window_to_screen(&self->base, &sx, &sy);
-    mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), sx, sy, 0xffffffff, 0);
+    ui_show_tooltip(string_cstr(&self->tooltip), sx, sy, 0xffffffff, 0);
 }
 
 void ui_bmp_radio_btn_hover_on(struct UIWindow *window)

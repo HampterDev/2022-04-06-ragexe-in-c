@@ -8,6 +8,8 @@
 #include "../src/ui/controls/scroll.c"
 #include "../src/ui/controls/scroll_wnd.c"
 
+struct UIHooks g_uiHooks;
+
 static char events[32];
 static unsigned event_count;
 

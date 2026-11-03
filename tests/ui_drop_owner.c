@@ -1,9 +1,12 @@
 #include <stdlib.h>
 #include "game/drag_info.h"
 #include "ui/window.h"
+#include "ui/controls/ui_hooks.h"
 #ifndef UI_DROP_OWNER
 #define UI_DROP_OWNER 2
 #endif
+
+struct UIHooks g_uiHooks;
 
 void test_drop_invoke(struct UIWindow *window, size_t size,
                      void (*callback)(struct UIWindow *, int, int, const struct DragInfo *),

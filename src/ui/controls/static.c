@@ -1,8 +1,7 @@
 #include "ui/controls/static.h"
-#include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/controls/controls.h"
 #include "ui/game.h"
 #include <string.h>
@@ -218,7 +217,7 @@ void ui_static_text_on_mouse_hover(struct UIWindow *window, int x_unused, int y_
     tip_x = -6;
     tip_y = -4;
     ui_window_to_screen(&self->base, &tip_x, &tip_y);
-    mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
+    ui_show_tooltip(string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
 }
 
 UI_PASS_TO_PARENT(ui_static_text_on_mouse_shape, on_mouse_shape)
@@ -305,7 +304,7 @@ void ui_static_bitmap_on_mouse_hover(struct UIWindow *window, int x, int y)
         x = self->tip_x;
         y = self->tip_y;
         ui_window_to_screen(&self->base, &x, &y);
-        mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), x, y, 0xffffffff, 0);
+        ui_show_tooltip(string_cstr(&self->tooltip), x, y, 0xffffffff, 0);
     }
 }
 

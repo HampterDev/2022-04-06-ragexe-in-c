@@ -43,6 +43,7 @@
 #include "ui/worldmap/kafra_services.h"
 #include "world/pathfinder_state.h"
 #include "world/pick_node.h"
+#include "world/mode_ui_hooks.h"
 #include "game/connection.h"
 
 static void release_packet_table(void) { packet_table_destruct(&g_packetLengthMap); }
@@ -75,6 +76,8 @@ static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); 
 static void client_install_hooks(void)
 {
     g_errorMsgPrepareDisplay = device_flip_to_gdi;
+    g_uiHooks.show_tooltip = mode_show_current_tooltip;
+    g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;
 }
 

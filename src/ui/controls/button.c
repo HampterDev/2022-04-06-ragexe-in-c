@@ -1,5 +1,5 @@
 #include "ui/controls/buttons.h"
-#include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "contents/client_lua_calls.h"
 #include "session/state.h"
@@ -379,7 +379,7 @@ void ui_button_on_mouse_hover(struct UIWindow *window, int x, int y)
         int tip_x = 0, tip_y = -20;
 
         ui_window_to_screen(wnd, &tip_x, &tip_y);
-        mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
+        ui_show_tooltip(string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
     }
     if (!self->disabled)
         ui_window_on_mouse_move(wnd, x, y);
@@ -405,7 +405,7 @@ void ui_button_on_mouse_shape(struct UIWindow *window, int x, int y)
         ui_window_on_mouse_shape_base(&self->base, x, y);
         return;
     }
-    mode_set_cursor_action(client_current_mode(), CURSOR_HAND);
+    ui_set_cursor_action(CURSOR_HAND);
 }
 
 void ui_button_on_l_btn_up(struct UIWindow *window, int x, int y)

@@ -1,8 +1,7 @@
 #include "ui/controls/check_radio.h"
-#include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/controls/controls.h"
 #include "ui/game.h"
 #include <string.h>
@@ -143,14 +142,14 @@ void ui_check_box_on_mouse_hover(struct UIWindow *window, int x, int y)
     tip_y = -20;
     ui_window_to_screen(wnd, &tip_x, &tip_y);
     tip = wnd->state == 0 && self->unchecked_tooltip.size ? &self->unchecked_tooltip : &self->tooltip;
-    mode_show_tooltip(client_current_mode(), string_cstr(tip), tip_x, tip_y, 0xffffffff, 0);
+    ui_show_tooltip(string_cstr(tip), tip_x, tip_y, 0xffffffff, 0);
 }
 
 void ui_check_box_on_mouse_shape(struct UIWindow *window, int x_unused, int y_unused)
 {
     struct UICheckBox *self = (struct UICheckBox *)window;
     if (!self->disabled)
-        mode_set_cursor_action(client_current_mode(), CURSOR_HAND);
+        ui_set_cursor_action(CURSOR_HAND);
 }
 
 void ui_check_box_fit_to_label(struct UICheckBox *self)
@@ -282,7 +281,7 @@ void ui_radio_btn_on_mouse_hover(struct UIWindow *window, int x, int y)
     tip_x = 10;
     tip_y = -20;
     ui_window_to_screen(&self->base, &tip_x, &tip_y);
-    mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
+    ui_show_tooltip(string_cstr(&self->tooltip), tip_x, tip_y, 0xffffffff, 0);
 }
 
 int ui_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,

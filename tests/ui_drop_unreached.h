@@ -100,7 +100,6 @@ void ui_window_mgr_release_capture(struct UIWindowMgr * arg0) { abort(); }
 void ui_window_mgr_update_snap_rect(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 int client_lua_call(struct ClientLua * arg0, const char * arg1, const char * arg2, ...) { abort(); }
 void mode_show_tooltip(struct Mode * arg0, const char * arg1, int arg2, int arg3, DWORD arg4, BYTE arg5) { abort(); }
-void mode_set_cursor_action(struct Mode * arg0, int arg1) { abort(); }
 void session_clear_lists(struct Session * arg0) { abort(); }
 struct DcBitmap * dc_bitmap_create(int arg0, int arg1) { abort(); }
 void dc_bitmap_destroy(struct DcBitmap * arg0) { abort(); }

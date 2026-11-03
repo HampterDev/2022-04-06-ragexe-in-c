@@ -1,6 +1,5 @@
 void dc_bitmap_copy_rect(struct DcBitmap * arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, struct DcBitmap * arg7) { abort(); }
 void dc_bitmap_to_texture(struct DcBitmap * arg0, struct Texture ** arg1) { abort(); }
-void mode_set_cursor_action(struct Mode * arg0, int arg1) { abort(); }
 struct TexDrawPrim * renderer_new_prim(struct Renderer * arg0) { abort(); }
 void * res_mgr_get_string(struct ResMgr * arg0, struct String arg1) { abort(); }
 void * res_mgr_get(struct ResMgr * arg0, const char * arg1) { abort(); }
@@ -52,7 +51,6 @@ void ui_window_on_hover_leave_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_focusable_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_click_through_base(struct UIWindow * arg0) { abort(); }
 void dc_bitmap_copy_bitmap(struct DcBitmap * arg0, unsigned int arg1, unsigned int arg2, unsigned int arg3, unsigned int arg4, struct DcBitmap * arg5) { abort(); }
-struct Mode * client_current_mode(void) { abort(); }
 void fatal_error(const char * arg0) { abort(); }
 struct Renderer * g_renderer;
 struct ResMgr * g_resMgr(void) { abort(); }

@@ -1,7 +1,7 @@
 #include "ui/controls/scroll.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
@@ -385,7 +385,7 @@ void ui_scroll_bar_on_mouse_shape(struct UIWindow *window, int x, int y)
         ui_window_on_mouse_shape_base(&self->base, x, y);
         return;
     }
-    mode_set_cursor_action(client_current_mode(), CURSOR_HAND);
+    ui_set_cursor_action(CURSOR_HAND);
 }
 
 void ui_scroll_bar_on_l_btn_up(struct UIWindow *window, int x, int y)

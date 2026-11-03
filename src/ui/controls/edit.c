@@ -1,11 +1,10 @@
 #include "ui/controls/edit.h"
 #include "ui/window_keyboard.h"
 #include "ui/window_access.h"
-#include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "render/rp_pool.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
-#include "world/mode_manager.h"
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
@@ -197,7 +196,7 @@ void ui_edit_ctrl_on_mouse_hover(struct UIWindow *window, int x, int y)
     tip_x = 10;
     tip_y = -20;
     ui_window_to_screen(&self->base, &tip_x, &tip_y);
-    mode_show_tooltip(client_current_mode(), string_cstr(&self->tooltip), tip_x, tip_y, -1, 0);
+    ui_show_tooltip(string_cstr(&self->tooltip), tip_x, tip_y, -1, 0);
 }
 
 static void draw_string(struct UIEditCtrl *self, int x, const struct String *shown)

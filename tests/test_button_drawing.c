@@ -27,12 +27,14 @@ static void *moving_realloc(void *old, size_t size)
 #include "../src/ui/controls/check_radio.c"
 #undef service_path
 #include "../src/ui/controls/bmp_radio_btn.c"
+#include "../src/world/mode_ui_hooks.c"
 #undef free
 #undef realloc
 #undef malloc
 #include "button_drawing_unreached.h"
 #include "race_button_unreached.h"
 
+struct UIHooks g_uiHooks;
 static struct BitmapRes resource;
 static struct UIWindow parent;
 static struct UIWindowOps parent_methods;
@@ -370,6 +372,8 @@ static void test_button_visibility(void)
 
 int main(void)
 {
+    g_uiHooks.show_tooltip = mode_show_current_tooltip;
+    g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     parent_methods.invalidate = invalidate_parent;
     parent.ops = &parent_methods;
     test_stock();

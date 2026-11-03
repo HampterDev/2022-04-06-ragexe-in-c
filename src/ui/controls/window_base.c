@@ -1,4 +1,5 @@
 #include "render/rp_pool.h"
+#include "ui/controls/ui_hooks.h"
 #include "core/object_type_tables.h"
 #include "world/mode_dispatch.h"
 #include "world/mode_manager.h"
@@ -115,7 +116,7 @@ void ui_window_drag_and_drop_base(struct UIWindow *self, int x_unused, int y_unu
 
 void ui_window_on_mouse_shape_base(struct UIWindow *self, int x_unused, int y_unused)
 {
-    mode_set_cursor_action(client_current_mode(), CURSOR_ARROW);
+    ui_set_cursor_action(CURSOR_ARROW);
 }
 
 int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1_unused,
