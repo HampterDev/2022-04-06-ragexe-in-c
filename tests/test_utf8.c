@@ -206,6 +206,25 @@ static void check_navigation(void)
     }
 }
 
+static void check_copy_prefix(void)
+{
+    char out[8];
+
+    memset(out, 0x55, sizeof out);
+    assert(utf8_copy_prefix(out, sizeof out, "ab" "\xed\x95\x9c" "\xea\xb5\xad") == 5);
+    assert(!memcmp(out, "ab" "\xed\x95\x9c" "\0\0\0", 8));
+    memset(out, 0x55, sizeof out);
+    assert(utf8_copy_prefix(out, 4, "abcdef") == 3 && !memcmp(out, "abc", 4) && (unsigned char)out[4] == 0x55);
+    memset(out, 0x55, sizeof out);
+    assert(utf8_copy_prefix(out, 1, "abc") == 0 && !out[0] && (unsigned char)out[1] == 0x55);
+    assert(utf8_copy_prefix(out, 0, "abc") == 0 && !out[0]);
+    assert(utf8_copy_prefix(out, sizeof out, "") == 0 && !memcmp(out, "\0\0\0\0\0\0\0", 8));
+    assert(utf8_copy_prefix(out, 3, "\xff\xfe\xfd") == 2 && !memcmp(out, "\xff\xfe", 3));
+    assert(utf8_copy_prefix(out, 5, "a" "\xf0\x9f\x98\x80") == 1 && !memcmp(out, "a\0\0\0", 5));
+    assert(utf8_copy_prefix(out, 6, "a" "\xf0\x9f\x98\x80") == 5 && !strcmp(out, "a" "\xf0\x9f\x98\x80"));
+    assert(utf8_copy_prefix(out, 3, "\xe2\x82") == 2 && !memcmp(out, "\xe2\x82", 3));
+}
+
 static void check_prefix_columns_valid(void)
 {
     static const char text[] = "a\xed\x95\x9c" "b";
@@ -286,8 +305,9 @@ int main(void)
     check_encode();
     check_navigation();
     check_prefix_columns_valid();
+    check_copy_prefix();
     check_utf16();
     assert(VirtualFree(guard_page, 0, MEM_RELEASE));
-    puts("UTF-8: decoding against Windows, every code point, guarded next/prev/prefix with invalid bytes, columns and UTF-16 pairs passed.");
+    puts("UTF-8: decoding against Windows, every code point, guarded next/prev/prefix with invalid bytes, whole-character copies, columns and UTF-16 pairs passed.");
     return 0;
 }

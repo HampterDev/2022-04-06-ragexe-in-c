@@ -9117,3 +9117,60 @@ Validation:
 - `git diff --check` passed.
 
 The pre-change tree is in `build/before-file-names`. No live client was run.
+
+## UTF-8 splits in navigation lines and packet fields (2026-11-03)
+
+Decision: the fifth and last phase-B step of the
+[UTF-8 switch](#utf-8-text-module-2026-11-03), approved on 2026-11-03. Three places cut
+text at a fixed count that assumed CP949 or UTF-16 units and could split a character.
+
+What changed:
+
+- Navigation names (`navi_manager_add_text_lines`) are split by the new
+  `navi/navi_text_lines.c`: lines of at most 11 UTF-16 units, as before, but a line that
+  would end between the two halves of a surrogate pair ends before the pair, which
+  starts the next line. The name is cut to its first 100 units by whole characters; the
+  old conversion passed the byte count as the capacity of its 100-unit buffer and wrote
+  past it for names longer than 100 units. The line count stays `len / 12 + 1`.
+- Guild and whisper packet fields are copied with the new `utf8_copy_prefix`
+  (`core/utf8.c`), a whole-character `strncpy` that always terminates and zero-fills the
+  field: guild position titles, the disband key, the leave and expel reasons, and the
+  notice subject and text (`msg_guild.c`); the whisper line kept for the repeat check and
+  the whisper text (`msg_chat.c`). A whisper longer than the packet holds is still
+  refused: the check now measures the line itself, because the whole-character copy can
+  be shorter than the old byte cut. The guild-name fields were already length-checked
+  first and are unchanged.
+- The renewed-quest condition names (`renew_quest_text.c`) dropped their last two
+  bytes, one Korean character or two ASCII ones in CP949, and cut a UTF-8 syllable in
+  the middle. They now drop the characters those two bytes belong to, so a Korean
+  syllable goes whole and two ASCII letters still go.
+
+Not changed: the vending titles (`msg_vending.c`) are cut at 0x4f bytes the same way,
+with no length check before; that is outside the guild and whisper fields this step
+covers. Party and prison names (`msg_party.c`, `msg_misc.c`) are length-checked first or
+come from the server, so their copies never cut.
+
+Tests changed:
+
+- New `test_navi_text_lines`: one line for short names, 11 units a line and the
+  `len / 12 + 1` count, surrogate pairs kept whole at line ends, the 100-unit limit by
+  whole characters, invalid bytes as U+FFFD.
+- New `test_renew_quest_text`: a Korean syllable dropped whole, two ASCII letters,
+  names kept whole, a syllable before an ASCII ending and an emoji ending, and the UTF-8
+  level marks.
+- `test_utf8`: `utf8_copy_prefix` stops before a character that does not fit, zero-fills
+  the field, handles sizes 0 and 1, empty text, invalid bytes and emoji.
+
+Bugs found (not fixed):
+
+- `navi_manager_add_text_lines` makes `len / 12 + 1` lines of 11 units, so a name of 23
+  units (or 35, 47 …) loses its last unit.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/utf8-splits-build.log`.
+- Full suite `tests\build.bat` passed: `build/utf8-splits-full-tests.log`.
+- The seven standalone suites passed: `build/utf8-splits-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-utf8-splits`. No live client was run.

@@ -42,6 +42,12 @@ int utf8_valid(const char *text, size_t length);
    boundary. */
 size_t utf8_prefix(const char *text, size_t length, size_t max_bytes);
 
+/* Copies the longest prefix of text that ends on a character boundary and fits in
+   size - 1 bytes, and fills the rest of out with NULs, as a fixed packet field wants:
+   a whole-character strncpy that always terminates. Returns the bytes copied; writes
+   nothing when size is 0. */
+size_t utf8_copy_prefix(char *out, size_t size, const char *text);
+
 /* Display columns: 2 for East Asian wide and fullwidth characters, 1 for every other
    character and invalid byte. */
 size_t utf8_columns(const char *text, size_t length);

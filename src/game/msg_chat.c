@@ -9,6 +9,7 @@
 #include <string.h>
 #include "game/mode_msg.h"
 #include "game/chat.h"
+#include "core/utf8.h"
 #include "platform/language.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
@@ -282,8 +283,7 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
         return 0;
     if (session_has_berserk(&g_session1) == 1)
         return 0;
-    strncpy(line, chat_line(), 0x151);
-    line[0x151] = 0;
+    utf8_copy_prefix(line, sizeof line, chat_line());
     if (!g_silentWhisperAcks) {
         if (string_equal_cstr(&self->last_chat_line, line))
             self->chat_repeats++;
@@ -302,11 +302,11 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
         window_mgr_clear_chat_line(&g_windowMgr);
         return 0;
     }
-    strncpy(text, chat_line(), 0x151);
-    text[0x151] = 0;
+    utf8_copy_prefix(text, sizeof text, chat_line());
     string_assign_cstr(&self->whisper_text, text);
     len = strlen(text);
-    if (len - 1 > 0x14f) {
+    /* A line longer than the packet holds is refused, as before, not sent cut. */
+    if (strlen(chat_line()) - 1 > 0x14f) {
         window_mgr_clear_chat_line(&g_windowMgr);
         return 0;
     }

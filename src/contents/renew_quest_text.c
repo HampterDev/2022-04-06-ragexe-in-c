@@ -3,12 +3,13 @@
 #include "contents/client_res.h"
 #include "contents/renew_quest.h"
 #include "core/msg_str.h"
+#include "core/utf8.h"
 #include "ui/wndmgr/wndmgr.h"
 
 struct ConditionName {
     unsigned bit;
     int message;
-    char drop_last_two;
+    char drop_last_two;     /* drops the characters the last two bytes belong to */
 };
 
 static const struct ConditionName condition_names[] = {
@@ -48,9 +49,11 @@ struct String *renew_quest_condition_text(struct RenewQuestMgr *self, struct Str
             string_init(&text);
             string_assign_cstr(&text, message);
             if (name->drop_last_two) {
+                /* Two CP949 bytes were one Korean character or two ASCII ones; the
+                   UTF-8 cut ends on a character boundary, so a syllable goes whole. */
                 if (text.size < 2)
                     fatal_error("invalid string position");
-                string_truncate(&text, text.size - 2);
+                string_truncate(&text, utf8_prefix(string_cstr(&text), text.size, text.size - 2));
             }
             string_append(out, string_cstr(&text), text.size);
             string_append_cstr(out, " ");

@@ -112,6 +112,18 @@ size_t utf8_prefix(const char *text, size_t length, size_t max_bytes)
     return at;
 }
 
+size_t utf8_copy_prefix(char *out, size_t size, const char *text)
+{
+    size_t length;
+
+    if (!size)
+        return 0;
+    length = utf8_prefix(text, strlen(text), size - 1);
+    memcpy(out, text, length);
+    memset(out + length, 0, size - length);
+    return length;
+}
+
 static int is_wide(unsigned long c)
 {
     static const unsigned long ranges[][2] = {

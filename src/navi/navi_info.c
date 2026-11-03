@@ -8,6 +8,7 @@
 #include "contents/client_lua_calls.h"
 #include "world/pathfinder_state.h"
 #include "navi/navi_search.h"
+#include "navi/navi_text_lines.h"
 #include "resources/attr.h"
 #include "ui/window_manager_state.h"
 #include "world/mode_manager.h"
@@ -72,50 +73,34 @@ int navi_manager_add_text_lines(struct NaviManager *self, int style, int x, int 
         const char *text)
 {
     struct String s;
-    wchar_t wide[100];
-    char line[40];
+    char lines[NAVI_TEXT_MAX_LINES][NAVI_TEXT_LINE_BYTES];
     struct NaviUiRecord *last;
-    int len, lines;
+    int count, i;
 
     string_init(&s);
     string_assign_cstr(&s, "[");
     string_append_cstr(&s, text);
-    memset(wide, 0, 0xc8);
-    MultiByteToWideChar(CP_UTF8, 0, string_cstr(&s), -1, wide, s.size);
-    len = (int)wcsnlen(wide, 100);
-    memset(line, 0, sizeof line);
-    lines = len / 12;
-    if (lines >= 0) {
-        const wchar_t *start = wide;
-        int i, dy = 0, end = 11;
+    count = navi_text_lines(string_cstr(&s), s.size, lines);
+    for (i = 0; i < count; i++) {
+        struct NaviUiRecord rec;
 
-        for (i = 0; i <= lines; i++, dy += 14, end += 11, start += 11) {
-            const wchar_t *stop = wide + (len <= end ? len : end);
-            struct WString ws;
-            struct NaviUiRecord rec;
-
-            wstring_init(&ws);
-            wstring_assign(&ws, start, (size_t)(stop - start));
-            WideCharToMultiByte(CP_UTF8, 0, wstring_cstr(&ws), -1, line, 0x28, NULL, NULL);
-            rec.x = 0;
-            rec.y = 0;
-            string_init(&rec.text);
-            rec.style = style;
-            rec.x = x;
-            rec.y = y + dy;
-            string_assign_cstr(&rec.text, line);
-            rec.colour = 0xdcdcdc;
-            rec.colour2 = 0xcb6b54;
-            push_line(self, &rec);
-            navi_ui_record_destroy(&rec);
-            wstring_free(&ws);
-        }
+        rec.x = 0;
+        rec.y = 0;
+        string_init(&rec.text);
+        rec.style = style;
+        rec.x = x;
+        rec.y = y + i * 14;
+        string_assign_cstr(&rec.text, lines[i]);
+        rec.colour = 0xdcdcdc;
+        rec.colour2 = 0xcb6b54;
+        push_line(self, &rec);
+        navi_ui_record_destroy(&rec);
     }
     last = (struct NaviUiRecord *)self->infoLines.first
          + (VEC_COUNT(&self->infoLines, struct NaviUiRecord) - 1);
     string_append_cstr(&last->text, "]");
     string_free(&s);
-    return lines + 1;
+    return count;
 }
 
 #define MOB_TRAIT_ELEMENT(traits)   ((unsigned char)((traits) >> 16))

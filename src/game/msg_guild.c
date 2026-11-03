@@ -5,6 +5,7 @@
 #include "game/context.h"
 #include "platform/language.h"
 #include "core/text_util.h"
+#include "core/utf8.h"
 #include "std/tree.h"
 
 #define CZ_REGISTER_GUILD_EMBLEM_IMG    0x153
@@ -116,8 +117,7 @@ int game_mode_msg_change_guild_positions(void)
         entry.mode = mode;
         entry.ranking = pos->ranking;
         entry.pay_rate = pos->exp_tax;
-        strncpy(entry.title, string_cstr(&pos->name), 0x17);
-        entry.title[23] = 0;
+        utf8_copy_prefix(entry.title, sizeof entry.title, string_cstr(&pos->name));
         *out++ = entry;
     }
     tree_clear(changes, guild_position_edit_destroy);
@@ -137,8 +137,7 @@ int game_mode_msg_disorganize_guild(const char *key)
     if (!g_guildInfo.is_master)
         return 0;
     packet.id = CZ_REQ_DISORGANIZE_GUILD;
-    strncpy(packet.key, key, 0x27);
-    packet.key[39] = 0;
+    utf8_copy_prefix(packet.key, sizeof packet.key, key);
     if (strcmp(key, string_cstr(((&g_guildInfo.name)))) != 0) {
         message_box_msg(0x16e);
         return 0;
@@ -163,8 +162,7 @@ int game_mode_msg_leave_guild(const char *reason)
     packet.guild_id = g_guildInfo.guild_id;
     packet.aid = g_session1.ownAid;
     packet.char_id = g_session1.ownGid;
-    strncpy(packet.reason, reason, 0x27);
-    packet.reason[39] = 0;
+    utf8_copy_prefix(packet.reason, sizeof packet.reason, reason);
     send_packet(CZ_REQ_LEAVE_GUILD, &packet);
     return 0;
 }
@@ -187,8 +185,7 @@ int game_mode_msg_ban_guild_member(const struct GuildBanTarget *who, const char 
     packet.guild_id = who->guild_id;
     packet.aid = who->aid;
     packet.char_id = who->char_id;
-    strncpy(packet.reason, reason, 0x27);
-    packet.reason[39] = 0;
+    utf8_copy_prefix(packet.reason, sizeof packet.reason, reason);
     send_packet(CZ_REQ_BAN_GUILD, &packet);
     return 0;
 }
@@ -301,10 +298,8 @@ int game_mode_msg_guild_notice(int guild_id, const char *subject, const char *no
 
     packet.id = CZ_GUILD_NOTICE;
     packet.guild_id = guild_id;
-    strncpy(packet.subject, subject, 0x3b);
-    strncpy(packet.notice, notice, 0x77);
-    packet.subject[59] = 0;
-    packet.notice[119] = 0;
+    utf8_copy_prefix(packet.subject, sizeof packet.subject, subject);
+    utf8_copy_prefix(packet.notice, sizeof packet.notice, notice);
     send_packet(CZ_GUILD_NOTICE, &packet);
     return 0;
 }

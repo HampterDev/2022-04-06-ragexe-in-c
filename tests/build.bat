@@ -77,6 +77,8 @@ call "%ROOT%\tests\build_text_format.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_utf8.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%ROOT%\tests\build_navi_text_lines.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_win_utf8.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%ROOT%\tests\build_text_runs.bat"
@@ -378,6 +380,10 @@ if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W4 /WX /O2 /MD /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_broadcast_text.c" "%ROOT%\src\game\broadcast_text.c" /Fe:test_broadcast_text.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 test_broadcast_text.exe
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_renew_quest_text.c" "%ROOT%\src\contents\renew_quest_text.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\core\memory.c" "%ROOT%\src\std\string.c" /Fe:test_renew_quest_text.exe
+if not "%errorlevel%"=="0" ( popd & exit /b 1 )
+test_renew_quest_text.exe
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
 cl /nologo /W3 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_talk_type.c" "%ROOT%\src\session\session_talk_type.c" "%ROOT%\src\core\text_tokens.c" "%ROOT%\src\core\text_util.c" "%ROOT%\src\core\memory.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string_vec.c" /Fe:test_talk_type.exe /link oleaut32.lib
 if not "%errorlevel%"=="0" ( popd & exit /b 1 )
