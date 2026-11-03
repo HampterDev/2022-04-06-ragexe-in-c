@@ -10246,3 +10246,263 @@ in `build/restructure-baseline-build.log`, `-tests.log` and `-digests.txt`.
   `mode_set_cursor_action` stub that only their archived reference build can reach.
 
 No live client/server smoke test was run.
+
+## Effects as data: trace harness and STR bindings (2026-11-03)
+
+Decision: approved by Patrick on 2026-11-03, after the read-only census of all effect IDs:
+build a trace harness first, then move the effects that only play an STR file, and the STR
+file choices, from C into a data file. Behavior is unchanged. Commits `731155f` (harness)
+and `558ceb4` (conversion), both on `purist-effects`.
+
+### The harness (`tests/test_effect_trace.c`)
+
+`tests\build_effect_trace.bat` compiles the real client files with the client's flags
+(`/std:c11 /O2 /Oy- /MD /GS /Gd /we4013`, warnings as errors) and the harness sets
+`_controlfp(0x20000, 0x30000)` as `winmain.c` does (START-073):
+
+- the dispatch `rag_effect_process.c`, `rag_effect_process_491.c`, `rag_effect_process_800.c`;
+- the launchers `rag_skills_*.c` (18 files), `rag_songs.c`, `rag_msg_sprites.c`,
+  `rag_unreferenced.c`, `rag_unreferenced_prims.c`, `rag_process_moves.c`;
+- `rag_prim_launch.c`, `effect_prim.c`, `rag_effect.c` (construct, messages, destruct),
+  `rag_effect_init` and the STR player (`rag_str_anim.c`, `rag_str_playback.c`,
+  `str_path.c`, `str_animation.c`), the launch entry `game_actor_launch_effect`
+  (`actor/effect_launch.c`), and `ez2str_effect_files.c`;
+- support code that computes values: `math3d.c`, `rp_project.c`, `position.c`,
+  `effect_objects.c`, `effect_sound.c`, `durations.c`, `std/list.c`, `vec.c`, `string.c`;
+- after the conversion also `effect_data.c`, `rag_str_bindings.c`, `resource_path.c` and
+  the embedded data, built the way `build.bat` builds them.
+
+Everything else is a stub in the test file: the world object list, the texture cache, the
+resource manager (STR files get a synthetic animation of 1-4 layers and 1-4 keys whose
+length and values come from a hash of the file name, so files differ in length and loops
+and rewinds happen), sprites and ACT frame counts, sound (logs the wave, its position and
+the effect's frame), `game_send_message` (quakes; message `0x87` logs the three floats its
+pointers carry), mode messages, Lua calls, effect-manager spawns, after-image and plant
+constructors, a master actor and a player at fixed positions, a fixed view matrix and
+renderer projection, a ground height that is a linear function of x and z, and the session
+fields the effects read (`map_rule_flags[0]`, `effectOn`, `ownAid`, `stateIconSlots`).
+
+`tests/effect_trace_rand.h` is forced into every client file (`cl /FI`): it includes
+`stdlib.h` and renames `rand` to `effect_trace_rand`, a copy of the MSVC CRT generator
+(`holdrand * 214013 + 2531011`, bits 16-30) seeded per run and counting its calls. No
+production file needed a seam.
+
+Runs: every ID of the duration table (0-2384) and 2385, 10000 and 60000, each with five
+input sets that vary the seed, the master's facing (0, 90, 225, 315, 180), the launch
+offset and rotation, the hit count (none, 3, 51, 1, 0), a duration message (none, 37, 120),
+`msg_params`, the min-effects flag (0, 1, 2), whether the master is a PC and whether it is
+the player, the camera heading, `effectOn`, and the logic-step schedule. Each render frame
+sets `master->drawn` and `g_isSkipFrame`; a schedule of 1 calls `rag_effect_on_process`
+once per frame, the other schedules pick 0, 1, 2 or 3 steps per frame, and a frame of 0
+steps calls the process once with `g_isSkipFrame` 0, so `rag_runs_every_frame` decides
+whether anything happens. A run stops when the process returns 0, at frame 400, or after
+1,200 calls, and ends with the real destructor.
+
+After every call the harness hashes (64-bit FNV over words):
+
+- the side-effect log as text lines: textures, resource loads, locks and unlocks, waves,
+  messages, tints, motions, Lua calls, spawns, constructors, ground-height and actor
+  queries;
+- the words of the RagEffect (without its 512 triangles, which launchers never write) and
+  of the master that changed since the previous call; the first call hashes them whole;
+- every object new in the world list, in full: primitives with their textures, alpha
+  keys and triangles, child RagEffects and other objects;
+- the `rand()` call count.
+
+Pointers are replaced by names: objects by kind and creation order (`E0`, `p12`),
+textures and resources by file name, the STR animation by its file, other heap blocks by
+allocation order and offset. Heap blocks are filled with `0xcd`, and the stack is painted
+before each call, so that uninitialized bytes hash the same in every run. At the end of a
+run every object is hashed again whole. Per-ID digests combine the five runs; the total
+combines the IDs.
+
+A second part calls `ez2_str_effect_open_for_type` for EZ2STR types 0-2450 with the
+min-effects flag 0, 1 and 2 and two seeds (14,706 calls) and hashes what it loads.
+
+Results: 2,388 IDs, 2,031,553 process calls, 36,986 primitives; effect trace digest
+`cbdaaf30ef3127d6`, EZ2STR file choice digest `1b0232b840610959`. The executable runs in
+about 12 seconds. Three runs gave the same per-ID digests; because ASLR moves the image,
+heap and stack, a pointer that escaped the naming would differ between runs (the first
+version leaked the stack addresses of message `0x87` that way, in IDs 79 and 619).
+`--digests FILE` writes the digest of every ID and type, `--trace FILE` the readable log
+with the changed words of every call, `--ids FIRST LAST` limits the run.
+
+Detection proof (each change made, the harness run, the change reverted with
+`git checkout`):
+
+| Change | Effect trace | EZ2STR | IDs that changed |
+|---|---|---|---|
+| none | `cbdaaf30ef3127d6` | `1b0232b840610959` | |
+| `rag_hit1`: `p->speed = 0.7f` to `0.71f` (`rag_skills_000_019.c`) | `116beead1b0d74b1` | same | 0 |
+| `hit_spark`: the two angle `rnd()` draws swapped | `fff4211b079df558` | same | 2, 3 |
+| `rag_effect_init` case 23: `StoneCurse.str` to `StoneCurse2.str` | `5c809a775b09dabe` | same | 23 |
+| EZ2STR row 997: `setsudan.str` to `setsudan2.str` | same | `269269faf04d303c` | type 997 |
+| after the conversion, `effects.json` ID 30: `magician_thunderstorm.wav` to `...2.wav` | `1bcd9c222710225a` | same | 30 |
+
+### Data format, embedding and override
+
+The data is `data/effects/effects.json`, documented in `data/effects/README.md`:
+
+- `RagEffect` rows by effect ID: `Str` (`File`, `MinFile` used when `map_rule_flags[0]`
+  is not 0, `Variants` for `1 + rand() % n` in a `%d`, `Loops` for `str_max_loops`) and
+  `Play`, which replaces the dispatch case: a `Timeline` of cues (`At` a frame or every
+  frame, `AfterStr`, `Do`: `Follow`, `Wave` with `Height` or `AtPlayer`, `Quake`,
+  `Duration`), the step's `Offset` (default `[0, -80, 0]`), `OnStrEnd` (`Stop`,
+  `Continue`, `Rewind`) and `StopFrame`.
+- `Ez2StrFile` rows by EZ2STR type: `File`, `MinFile` (used when the flag is 1), `Open`
+  (through `ez2_str_particle_open`), `FullOnly` and `Variants`.
+
+`build.bat` compiles `tools/bin2c.c` (plain C99), which writes `build/gen/effect_data_embedded.c`
+with the bytes as `g_effectData`; that file is compiled and linked like the sources. The
+test scripts embed the file the same way. A build without `build.bat`, such as the port
+on `purist-portable`, compiles and runs the same tool; nothing is Win32-specific.
+
+`src/effects/effect_data.c` (596 lines) reads the file once, on the first lookup, with
+the vendored yyjson in strict mode: no comments, trailing commas or BOM, a fixed `Format`
+string, only known keys, each key and ID once, integers in range, floats only when a
+32-bit float holds them exactly, `%` only as the one `%d` of `Variants`, names within the
+63 and 255 bytes the C buffers hold, and names converted from UTF-8 to CP949 by
+`resource_name_to_cp949` (rejected when CP949 lacks a character). Lookups index arrays by
+ID.
+
+`RAGEXE_EFFECT_DATA`, unset or empty by default, names a file to read instead. When that
+file is missing or breaks a rule, `error_msg` shows "Effect data FILE: REASON. The client
+uses its built-in effect data instead." with the place of the error (for example
+`RagEffect 5 Play, cue 1, operation 1: Height and AtPlayer belong to a Wave`), and the
+embedded data is used.
+
+### What was converted
+
+The converter `tools/convert_str_bindings.py` parsed the C code of `2239d84` and wrote
+the data: the `rag_effect_init` switch (226 IDs), the dispatch case groups whose body only
+steps the STR, with waves, quakes, following and a duration, inlining the helpers they
+call (93 case groups, 195 IDs), and the EZ2STR table with its special cases 141, 1163 and
+1244-1253 (510 types). It refuses any statement outside that vocabulary; the 195 IDs it
+accepted are exactly the census's category D. With `--apply` it deleted the case groups.
+
+- `rag_effect_init` (`rag_str_anim.c`) looks the ID up and picks `MinFile`, rolls the
+  variant and sets `str_max_loops` as the switch did; the switch (226 cases, 228 lines) and
+  `FULL_OR_MIN` are gone, and the names are formatted with `snprintf`.
+- `rag_effect_on_process` checks for a `Play` row before its dispatch and runs
+  `rag_str_play` (`rag_str_bindings.c`, 59 lines): cues before the step, `rag_str_step`,
+  cues after the step, then stop, continue or rewind. 58 case groups left
+  `rag_effect_process.c` (including all of 305, 306, 311, 371 and 372 in
+  `rag_effect_process300`), 22 left `rag_effect_process_491.c` and 13
+  `rag_effect_process_800.c`.
+- 42 functions that only those cases called are gone with their declarations in
+  `rag_effect.h` and `rag_process_moves.h`: the 33 `rag_*_wave(s)` functions and
+  `rag_str_step_or_stop` (`rag_unreferenced.c`), `rag_lex_divina` and `rag_fire_pillar`,
+  `rag_two_hand_quicken`, `rag_shield_charge` and `rag_magic_rod`, `rag_str_raised`,
+  `rag_str_only` and `rag_str_or_rewind`. The static helpers `follow_wave_str`
+  (`rag_effect_process.c`) and `wave_then_step` (`rag_unreferenced.c`) went too.
+- `ez2str_effect_files.c` lost its 498-row table, the `LOAD`/`OPEN`/`FULL_ONLY`/
+  `MINEFFECT` macros, the binary search and the cases 141, 1163 and 1244-1253; type 1412
+  (its own name) and the headgear types from 2384 (Lua) stay in C.
+
+Before and after (`git diff --stat 2239d84`, 30 files changed, 4338 insertions(+), 1537 deletions(-)):
+
+```
+    added  gone  file
+       10     0  build.bat
+      113     0  data/effects/README.md
+      743     0  data/effects/effects.json
+      596     0  src/effects/effect_data.c
+       75     0  src/effects/effect_data.h
+        2    41  src/effects/rag/rag_effect.h
+        7   240  src/effects/rag/rag_effect_process.c
+        0   115  src/effects/rag/rag_effect_process_491.c
+        0    64  src/effects/rag/rag_effect_process_800.c
+        0     6  src/effects/rag/rag_process_moves.c
+        0     1  src/effects/rag/rag_process_moves.h
+        0     5  src/effects/rag/rag_skills_020_039.c
+        0    24  src/effects/rag/rag_skills_080_119.c
+        0     9  src/effects/rag/rag_skills_120_219.c
+        0    13  src/effects/rag/rag_skills_220_259.c
+        0     5  src/effects/rag/rag_skills_920_2373.c
+       11   232  src/effects/rag/rag_str_anim.c
+       59     0  src/effects/rag/rag_str_bindings.c
+        0   209  src/effects/rag/rag_unreferenced.c
+       20   572  src/effects/skills/ez2str_effect_files.c
+        4     0  tests/build.bat
+       20     0  tests/build_effect_data.bat
+        8     1  tests/build_effect_launch_duration.bat
+       27     0  tests/build_effect_trace.bat
+       13     0  tests/effect_trace_rand.h
+      190     0  tests/test_effect_data.c
+        8     0  tests/test_effect_launch_duration.c
+     1634     0  tests/test_effect_trace.c
+       61     0  tools/bin2c.c
+      737     0  tools/convert_str_bindings.py
+```
+
+In the client's C code 1,536 lines are gone and 770 added: 40 in the existing files and 730 in the
+new loader (`effect_data.c`/`.h`, 671) and STR player (`rag_str_bindings.c`, 59). The 743 lines of
+`effects.json` replace the 226-case switch, 93 dispatch case groups, 42 helpers and the 498-row
+EZ2STR table.
+
+### Validation
+
+- Effect trace before and after the deletion: the same `cbdaaf30ef3127d6` and
+  `1b0232b840610959`, and the same digest for every one of the 2,388 IDs and 2,451 EZ2STR
+  types (`build/effects-digests-base.txt` and `build/effects-digests-after.txt` compare
+  equal).
+- Effect factories: digest `d3673c01`. `effect_registry.c` is untouched, so the
+  registrations are the same; the EZ2STR conversion changes which file a registered type
+  loads, which the EZ2STR digest covers.
+- Packet dispatch: digest `d77aaadbb5fc63b7`.
+- `tests\build_effect_data.bat` (new): the embedded data loads, an override file replaces
+  it, and a missing file and 40 bad files (syntax, BOM, format, keys, IDs, duplicates,
+  names, `%`, CP949, ranges, floats, operations) are each reported once and fall back.
+- `test_effect_launch_duration`, which runs the extracted `rag_effect_init`, now links the
+  loader and the embedded data; its nine cases, among them ID 13 loading `SafetyWall.str`,
+  pass unchanged.
+- The converter run on a clean export of `2239d84` writes the committed `effects.json`
+  byte for byte, and its `--apply` writes the committed `rag_effect_process_491.c` and
+  `rag_effect_process_800.c`; `rag_effect_process.c` differs from its output only by the
+  `rag_str_play` call and the removed `follow_wave_str`.
+- Release build without compiler or linker warnings, full suite `tests\build.bat` and the
+  seven standalone suites, for each commit: `build/effects-build*.log`,
+  `build/effects-suite*.log`, `build/effects-standalone*-<suite>.log`. `git diff --check`
+  passed.
+
+No live client was run.
+
+### The heal-effect IDs (checked, not changed)
+
+The census noticed that `heal_effect` is registered for `0x459`, `0x477` and `0x478` but
+handles `0x59e`, `0x5bc` and `0x5bd`, which are registered to the STR player. The original
+executable (read with a disassembler, nothing written) settles it:
+
+- Its registration function calls the register routine 1,206 times. The heal factory
+  (`0x9618c0`, `CEffectAllocator<CHealEffect>` by RTTI) is used for exactly
+  `0x138`, `0x139`, `0x140`, `0x145`, `0xfd`, `0x459`, `0x477` and `0x478`, as in the port.
+  `0x59e`, `0x5bc` and `0x5bd` use the EZ2STR factory (`0x9612c0`), as in the port.
+- The heal spawn step (`0x9aabf0`) compares the type: above `0x145` it jumps to
+  `sub eax, 0x459` / `sub eax, 0x1e` / `sub eax, 1` on the unchanged type, so its cases are
+  `0x459` (purple: `ring_white.tga`, color 115/25/115, sparkle kind 6), `0x477` (cyan,
+  `alpha_down.tga`, kind 7) and `0x478` (yellow, kind 8). It never compares with `0x59e`,
+  `0x5bc` or `0x5bd`.
+
+So the port's registration is right and its switch is wrong: `HEAL_TYPE_PURPLE`,
+`HEAL_TYPE_CYAN` and `HEAL_TYPE_YELLOW` in `heal_effect.c` should be `0x459`, `0x477` and
+`0x478`. Each is off by exactly `0x145`, the constant of the comparison before the
+subtraction. As it is, these three heal effects draw nothing. Not changed here; it is a
+`main` fix.
+
+### Found, not fixed
+
+- The heal-effect constants above.
+- `rag_earth_spike` (`rag_skills_040_079.c`) sends message `0x87` with the addresses of
+  three stack floats cast to `int`; that truncates the pointers on a 64-bit build.
+- `rag_effect_construct` leaves `screen_pos` and `str_state[60..127]` uninitialized; the
+  first STR step writes them before anything reads them.
+- `rag_meteor_storm_waves` (`rag_unreferenced.c`) falls through from frame 0 to frame 10,
+  so frame 0 plays both waves; not compared with the original.
+
+### Next batch
+
+The census's next candidates launch primitives, so `Play` needs a `Launch` operation and a
+generated `offsetof` table over `EffectPrim` and the record structs it sets. The
+`rag_msg_sprite` family (74 constant styles in category A, then 9 parameterised ones) is
+one launcher with a style switch and is the smallest step there; the constant ring
+families (46 IDs) follow. The harness stays as it is and covers them already.
