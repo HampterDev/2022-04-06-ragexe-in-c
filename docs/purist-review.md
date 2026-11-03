@@ -9233,3 +9233,27 @@ Observation from that run: with Revel's `data.grf` alone, the client finds neith
 They exist only under the older `data\lua files\` layout (loose in `client-files` and
 in `revel.grf`), and their absence shows about 35 Lua error boxes at startup. The test
 folder used copies of the loose `.lua` files. `client-files` was not changed.
+
+## Login Opening button removal (2026-11-03)
+
+Patrick asked whether the login window's **Opening** button should go with the removed
+opening videos. It should: the button never did anything in this client. It was a
+`UIBmpTextButton` with the `bt_close_*` bitmaps and caption message `0xd67` ("Opening"),
+command ID `0x115`, at (13, 104) in the login window. Clicking it sends `UI_MSG_COMMAND`
+`0x115` to `ui_login_wnd_send_msg`, which has no case for it. That is so on `main` and in
+the original source tree as well (`3d9f1a9`). Nothing else in the client plays an opening
+video from the login window.
+
+Removed: the button, the `add_text_button` helper it was the only user of, and its
+`LOGIN_ID_CANCEL` and `MSG_LOGIN_CLOSE` defines (both misnamed). The `UIBmpTextButton`
+class stays, because character creation and selection use it.
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/opening-button-build.log`.
+- Full suite `tests\build.bat` passed: `build/opening-button-full-tests.log`.
+- The seven standalone suites passed: `build/opening-button-<suite>.log`.
+- `git diff --check` passed.
+- Live check in the same test folder as the IME candidate list: the login window shows
+  the account combo box, both fields, Save ID and the Login and close buttons, with no
+  Opening button.

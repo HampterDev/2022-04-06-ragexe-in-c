@@ -76,44 +76,12 @@ const struct UIWindowOps ui_login_wnd_ops = {
 
 #define WND_ID_LOGIN_BACKDROP 0x145
 
-#define LOGIN_BUTTON_TEXT_HEIGHT 12
-#define LOGIN_BUTTON_TEXT_COLOUR 0x313131
-
-static struct UIBmpTextButton *add_text_button(struct UIWindow *parent, const char *normal,
-                                               const char *hover, const char *pressed, int extra_height,
-                                               int x, int y, int id, int caption)
-{
-    struct UIBmpTextButton *button = mem_alloc(sizeof(struct UIBmpTextButton));
-    const char *text;
-    int state;
-
-    if (button)
-        button = ui_bmp_text_button_construct(button);
-    ui_bitmap_button_set_bitmap(&button->bmp, normal, UI_BTN_UP, 0);
-    ui_bitmap_button_set_bitmap(&button->bmp, hover, UI_BTN_HOVER, 0);
-    ui_bitmap_button_set_bitmap(&button->bmp, pressed, UI_BTN_DOWN, 0);
-    ui_window_create(&button->bmp.button.base, button->bmp.bitmap_width,
-                     button->bmp.bitmap_height + extra_height);
-    ui_window_move_base(&button->bmp.button.base, x, y);
-    button->bmp.button.base.id = id;
-    text = msg_str(caption);
-    string_assign_cstr(&button->caption, text);
-    ui_window_invalidate_base(&button->bmp.button.base);
-    for (state = UI_BTN_UP; state <= UI_BTN_DOWN; state++)
-        ui_bmp_text_button_set_text_style(button, state, LOGIN_BUTTON_TEXT_HEIGHT, LOGIN_BUTTON_TEXT_COLOUR,
-                                     1, 1, UI_TEXT_CENTRED, UI_TEXT_CENTRED);
-    ui_window_add_child(parent, &button->bmp.button.base);
-    return button;
-}
-
 #define LOGIN_ID_START 0xb2
 #define LOGIN_ID_CLOSE 0xd5
-#define LOGIN_ID_CANCEL 0x115
 #define LOGIN_MAX_CHARS 24
 #define LOGIN_PLACEHOLDER_GREY 0x9c
 
 #define MSG_LOGIN_SAVE_ID 0xd53
-#define MSG_LOGIN_CLOSE 0xd67
 #define MSG_ACCOUNT_CLASS_0 0xcb2
 #define MSG_ACCOUNT_CLASS_1 0xcb3
 #define LOGIN_MSG_COMBO_CHANGED 0x27
@@ -286,10 +254,6 @@ void ui_login_wnd_on_create(struct UIWindow *window, int width_unused, int heigh
     ui_window_move(label, 0x49, 0x57);
     ui_static_text_set_font(label, 0, 11, 0, 0);
     ui_window_add_child(wnd, label);
-
-    add_text_button(wnd, UI_SKIN "login_interface\\bt_close_normal.bmp",
-                    UI_SKIN "login_interface\\bt_close_over.bmp", UI_SKIN "login_interface\\bt_close_press.bmp",
-                    2, 0xd, 0x68, LOGIN_ID_CANCEL, MSG_LOGIN_CLOSE);
 
     button = ui_bitmap_button(UI_SKIN "login_interface\\bt_start_normal.bmp",
                               UI_SKIN "login_interface\\bt_start_over.bmp",
