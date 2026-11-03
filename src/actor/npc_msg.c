@@ -65,33 +65,20 @@ void npc_send_msg(struct GameObject *object, struct GameObject *source,
     if (msg == 0x22) {
         struct UIWindow *g;
 
-        if (session_is_own_unit_aid(&g_session1, self->aid)) {
-            g = self->player_gage;
-            if (!g) {
-                g = ui_player_gauge_create();
-                self->player_gage = g;
-                npc_build_player_gage(self, g);
-                ui_window_mgr_add_to_window_list(&g_windowMgr, self->player_gage);
-                g = self->player_gage;
-                if (!g)
-                    return;
-            }
-            ui_window_move(g, self->screen_x - 30, g_renderer->height * 12 / 480 + self->screen_y);
+        /* Every sender targets the player's own pet, homunculus, mercenary or elemental. */
+        if (!session_is_own_unit_aid(&g_session1, self->aid))
             return;
-        }
-        g = self->pc_gage;
+        g = self->player_gage;
         if (!g) {
-            g = (struct UIWindow *)ui_pc_gage_new();
-            self->pc_gage = g;
-            ui_window_create(g, 0x3c, 5);
-            ui_window_mgr_add_to_window_list(&g_windowMgr, self->pc_gage);
-            if (!self->pc_gage)
+            g = ui_player_gauge_create();
+            self->player_gage = g;
+            npc_build_player_gage(self, g);
+            ui_window_mgr_add_to_window_list(&g_windowMgr, self->player_gage);
+            g = self->player_gage;
+            if (!g)
                 return;
         }
-        ui_pc_gage_set_hp((struct UIPcGage *)self->pc_gage, (int)par1, (int)par2);
-        ui_pc_gage_set_sp((struct UIPcGage *)self->pc_gage, 0, 0);
-        g = self->pc_gage;
-        ui_window_move(g, self->screen_x - 30, scale_y_from480(12) + self->screen_y);
+        ui_window_move(g, self->screen_x - 30, g_renderer->height * 12 / 480 + self->screen_y);
         return;
     }
     game_actor_send_msg(object, source, msg, par1, par2, par3, par4);

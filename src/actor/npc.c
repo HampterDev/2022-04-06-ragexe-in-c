@@ -159,8 +159,6 @@ unsigned char npc_on_process(struct GameObject *object)
         render_object_send(self, NULL, 0x22, 0, 0, 0, 0);
     if (self->player_gage)
         npc_place_window(self, self->player_gage);
-    if (self->pc_gage)
-        npc_place_window(self, self->pc_gage);
     game_actor_place_hp_gage(actor);
     if ((g_session1.homun_ai_flags[0] && g_session1.homun_command[0] == self->aid) || (g_session1.mercPresent && g_session1.merc_command[0] == self->aid))
         msg = 0x86;

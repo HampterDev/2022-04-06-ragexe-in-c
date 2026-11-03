@@ -137,7 +137,8 @@ code remains; exceptions are noted. The series is indexed in
   unfixed: no ESC menu button has ID `0x1c1` (its seven buttons are `0x16b`,
   `0x1c2`, `0x16a`, `0xf3`, `0xb1`, `0x159` and `0x16c`, here and in the original
   executable), and the original's MakeWindow has no case for `0xec`, so nothing
-  sends the command and its intended window cannot be determined.
+  sends the command and its intended window cannot be determined. Left on `main`;
+  removed on `purist` by the [leftover cleanup](#leftover-cleanup-2026-11-03).
 - A status window saved minimized is restored at full height (pre-existing).
   Fixed: `main` `5da401b8f2`, `purist` `fb6d501f97` (purist version for its
   single-height window).
@@ -7648,11 +7649,13 @@ Bugs and foundation candidates found (not changed unless noted):
   (`purist` `7bde71e3b3`); requests that create no window are no longer kept in
   the list either (`main` `1150faabf3`, `purist` `8cc259bdc5`).
 - ESC menu button `ESC_ID_1C1` toggles window `0xec`, which no factory creates.
-  Dead code, left unfixed: no ESC menu button carries that ID.
+  Dead code: no ESC menu button carries that ID. Removed by the
+  [leftover cleanup](#leftover-cleanup-2026-11-03).
 - Misleading names: `keyboard.c` `MODE_MSG_TOGGLE_WINDOW` (0x1f) is
   `MODE_MSG_EMOTION`, and its `key_windows` entries are emotion IDs;
   `ui_window_mgr_render_menu` in `session_job_names.c` actually builds the job,
-  sprite and palette name tables.
+  sprite and palette name tables. Renamed by the
+  [leftover cleanup](#leftover-cleanup-2026-11-03).
 - `test_service_json.c` still prints a stale "Party booking JSON" line.
 
 Open risks:
@@ -7948,6 +7951,7 @@ Bugs found (not fixed):
 - Dead branches left as found: `ui_player_gage_on_draw`'s `case 9`/`case 10` (no code
   sets those layouts; mercenary and elemental use the default layout), and the
   non-own-unit `pc_gage` block of `npc_send_msg` message `0x22`, which no sender reaches.
+  Both removed by the [leftover cleanup](#leftover-cleanup-2026-11-03).
 
 The pre-removal tree is in `build/before-fourth-class-leftovers`. The edit and derivation
 scripts are `build/edit_fourth_class_effect_data.py`,
@@ -8041,8 +8045,9 @@ that tab showed the session list rather than a copy. Apply compared the list wit
 itself and sent nothing, and Reset did not restore it, so the displayed level stayed
 wrong until the next server update.
 
-Observation (not changed): `GameMode.skill_upgrade_pending` is set by mode message
-`0x43` and cleared by skill updates but never read.
+Observation: `GameMode.skill_upgrade_pending` is set by mode message
+`0x43` and cleared by skill updates but never read. Removed by the
+[leftover cleanup](#leftover-cleanup-2026-11-03).
 
 Tests changed: `tests/test_skill_tree_hints.c` now builds its tabs as session lists (the
 session's tree-tab lookup, tree-skill level lookup and the mode-message sender are
@@ -8073,3 +8078,48 @@ Validation:
 
 The pre-removal tree is in `build/before-skill-point-preview-removal`. No live
 client/server smoke test was run.
+
+## Leftover cleanup (2026-11-03)
+
+Patrick approved removing the small leftovers reported by the 2026-11-02 removals and
+renaming the misleading names they found.
+
+Removed:
+
+- `GameMode.skill_upgrade_pending`: set by mode message `0x43` (`0x0112` upgrade
+  request), cleared by three skill-list updates, never read.
+- `ui_player_gage_on_draw` layouts 9 and 10. Only layouts 7 (pet) and 8
+  (homunculus) are ever set; mercenary and elemental gauges use the default layout.
+- The NPC HP gauge (`pc_gage`) of `npc_send_msg` message `0x22`. All four senders
+  target the player's own units: `npc_on_process` for the own pet
+  (`Session.aid` holds the pet AID), `npc_run_ai` after loading homunculus or
+  mercenary AI, and `elemental_tell` for the own elemental. Every one of them takes
+  the companion-gauge branch, so the non-own branch never ran and `pc_gage` stayed
+  `NULL` on every NPC. The field, its placement in `npc_on_process` and its cleanup
+  in `npc_destruct`/`npc_construct` went with it; the message now returns early for
+  non-own units. The `UIPcGage` class stays, because party, messenger and PC code use it.
+- ESC menu command `ESC_ID_1C1`, which toggled nonexistent window `0xec`. No ESC
+  menu button carries that ID, here or in the original executable.
+
+Renamed (no behavior change):
+
+- `keyboard.c`: `MODE_MSG_TOGGLE_WINDOW` → the shared `MODE_MSG_EMOTION`,
+  `key_windows` → `flag_emotions`, `WM_KEY_WINDOW_FIRST` →
+  `WM_KEY_FLAG_EMOTE_FIRST` and `ui_window_mgr_window_hotkey` →
+  `ui_window_mgr_flag_emote_hotkey`. These hunks are taken unchanged from upstream
+  `996806c` ("Name ids, messages and functions for what their values are") on
+  `origin/main`, so a later sync applies cleanly.
+- `ui_window_mgr_render_menu` → `session_init_sprite_name_tables`, and the
+  game-mode `PacketEnter.client_tick` (offset 14 of `0x0436`, always zero; the tick
+  is the following `time` field) → `reserved`, matching the login-mode packet. Both
+  renames are also committed on `main`.
+
+Not changed: `Session.aid` and `session_is_own_aid` also have misleading names, since
+they hold and test the pet AID. They are used widely, so renaming them is left for a
+coordinated rename with upstream.
+
+Validation: the release build had no warnings; the full `tests/build.bat`
+(`build/leftovers-full-tests.log`) and the seven standalone suites
+(`build/leftovers-<suite>.log`) passed; the packet dispatch digest is unchanged at
+`679cf1c915cfe60f`; `git diff --check` passed. No live client/server smoke test
+was run.

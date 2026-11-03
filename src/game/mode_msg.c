@@ -169,7 +169,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_PARTY_CHAT:
         return game_mode_msg_party_chat(self);
     case MODE_MSG_UPGRADE_SKILL:
-        self->skill_upgrade_pending = 1;
         send_u16(0x112, a);
         return 0;
     case MODE_MSG_USE_SKILL:

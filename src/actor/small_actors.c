@@ -392,10 +392,6 @@ void npc_destruct(struct Npc *self)
         ui_window_mgr_post_quit2(&g_windowMgr, self->player_gage);
         self->player_gage = NULL;
     }
-    if (self->pc_gage) {
-        ui_window_mgr_post_quit2(&g_windowMgr, self->pc_gage);
-        self->pc_gage = NULL;
-    }
     game_actor_dc_game_actor((struct GameActor *)self);
 }
 

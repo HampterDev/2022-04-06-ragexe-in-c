@@ -405,7 +405,6 @@ struct SoundMaker {
     unsigned last_effect_tick;                 \
     int area_effect_launched;                  \
     struct UIWindow *player_gage;              \
-    struct UIWindow *pc_gage;                  \
     struct GameObject *mark;                   \
     short mark_effect;                         \
     short mark_icon;

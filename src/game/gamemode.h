@@ -120,7 +120,6 @@ struct GameMode {
     int exchange_add_pending;
     unsigned wear_ack_time;
     unsigned takeoff_ack_time;
-    int skill_upgrade_pending;
     int trade_add_amount;
     int exchange_open;
     struct String whisper_setting_name;

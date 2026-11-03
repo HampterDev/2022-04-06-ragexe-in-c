@@ -25,7 +25,6 @@
 #define ESC_ID_CANCEL UI_ID_CANCEL
 #define ESC_ID_RISE_HERE 0x159
 #define ESC_ID_SAVE_POINT 0x16c
-#define ESC_ID_1C1 0x1c1
 
 #define MODE_MSG_RESTART 0x19
 #define MSG_ESC_MENU_TITLE 0x5cb
@@ -241,9 +240,6 @@ int ui_esc_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
             mode_send_message(mode, MODE_MSG_RESTART, 0, 0, 0, 0);
             ui_close_window(WND_ESC_MENU);
         }
-        break;
-    case ESC_ID_1C1:
-        esc_toggle_window(0xec);
         break;
     case ESC_ID_GRAPHIC_SETTING:
         esc_toggle_window(0x131);

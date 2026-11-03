@@ -207,7 +207,6 @@ void game_mode_initialize(struct GameMode *self)
     self->exchange_add_pending = 0;
     self->wear_ack_time = timeGetTime() - 2000;
     self->takeoff_ack_time = timeGetTime() - 2000;
-    self->skill_upgrade_pending = 0;
     self->trade_add_amount = 0;
     self->exchange_open = 0;
     self->chat_repeats = 0;

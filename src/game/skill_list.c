@@ -67,7 +67,6 @@ void game_mode_skill_update(struct GameMode *self, unsigned short id, short leve
 {
     struct SkillInfo skill;
 
-    self->skill_upgrade_pending = 0;
     session_get_skill_info(&skill, id);
     skill.level = level;
     skill.sp_cost = sp;
@@ -128,7 +127,6 @@ void game_mode_zc_skill_info_update(struct GameMode *self, const struct PACKET_Z
     struct SkillInfo skill, copy;
     int known = 1;
 
-    self->skill_upgrade_pending = 0;
     skill_info_construct(&skill);
     if (packet->id == HEADER_ZC_SKILLINFO_UPDATE)
         skill_table_find(&g_session1.skills, &copy, packet->skill_id);
@@ -321,7 +319,6 @@ void game_mode_zc_guild_skill_info(struct GameMode *self, const struct PACKET_ZC
     struct SkillInfo skill;
     int n;
 
-    self->skill_upgrade_pending = 0;
     list_clear(&g_session1.guildSkills, skill_info_destroy);
     for (n = (int)((unsigned)(packet->length - 6) / sizeof *e); n > 0; n--, e++) {
         skill_info_construct(&skill);

@@ -155,7 +155,6 @@ struct Npc *npc_construct(struct Npc *self)
     game_actor_construct((struct GameActor *)self);
     self->ops = &npc_ops.base.base;
     self->player_gage = NULL;
-    self->pc_gage = NULL;
     self->player_in_area = 0;
     self->last_effect_tick = timeGetTime();
     self->area_effect_launched = 0;
