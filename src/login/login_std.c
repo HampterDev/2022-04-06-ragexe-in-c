@@ -13,6 +13,8 @@ struct LoginConnEntry *login_conn_entry_construct(struct LoginConnEntry *self)
     string_init(&self->balloon);
     string_init(&self->address);
     string_init(&self->port);
+    self->version = 0;
+    self->service_type = 0;
     return self;
 }
 

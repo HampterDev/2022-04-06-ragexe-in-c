@@ -91,11 +91,7 @@ BYTE login_mode_load_connections(struct LoginMode *self)
         if (!conn)
             return 0;
         do {
-            string_init(&e.display);
-            string_init(&e.desc);
-            string_init(&e.balloon);
-            string_init(&e.address);
-            string_init(&e.port);
+            login_conn_entry_construct(&e);
             read_text(conn, "display", &e.display);
             read_text(conn, "desc", &e.desc);
             read_text(conn, "balloon", &e.balloon);
