@@ -54,8 +54,6 @@ struct C3dAttr;
 struct AttrCell;
 struct FrustumObb;
 
-extern float g_depthPerPixelCot;
-
 #include "resources/attr.h"
 
 extern int g_isVoodooInUse;

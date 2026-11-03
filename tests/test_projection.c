@@ -10,7 +10,6 @@
 #include <string.h>
 
 DWORD g_fogColor;
-float g_depthPerPixelCot;
 struct C3dDevice g_3dDevice;
 static DWORD cleared_color;
 static unsigned color_clears, depth_clears, frame_restores;

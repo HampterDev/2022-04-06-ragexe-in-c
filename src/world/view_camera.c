@@ -16,8 +16,6 @@
 #include "game/camera.h"
 #include "game/mode_callbacks.h"
 
-float g_depthPerPixelCot = 0.159999996f;
-
 int g_drawnCellMaxX = 0;
 
 int g_drawnCellMaxY = 0;

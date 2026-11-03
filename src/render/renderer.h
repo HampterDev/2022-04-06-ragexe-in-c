@@ -64,6 +64,7 @@ extern struct Renderer *g_renderer;
 
 extern float g_spriteDepthScale;
 extern float g_spriteRowDepthStep;
+extern float g_depthPerPixelCot;
 extern float g_spriteScaleDivisor;
 
 #endif

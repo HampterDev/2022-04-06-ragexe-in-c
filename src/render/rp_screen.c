@@ -8,6 +8,8 @@ float g_spriteDepthScale = 0.159999996f;
 
 float g_spriteRowDepthStep = 0.159999996f;
 
+float g_depthPerPixelCot = 0.159999996f;
+
 float g_spriteScaleDivisor = 1.34000003f;
 
 void renderer_restore_frame(struct Renderer *self)
