@@ -162,7 +162,6 @@ static void place_caret(struct UIEditCtrl3 *self, int x0, int first, int page, i
         caret_x += max(comp_x - caret_x, 2) + 2;
         self->caret_col += 2;
         ui_edit_ctrl_place_candidate_wnd(edit, caret_x);
-        ui_edit_ctrl_place_key_stroke_wnd(edit, comp_x);
     }
     if (self->caret_x != caret_x)
         self->caret_x = caret_x;

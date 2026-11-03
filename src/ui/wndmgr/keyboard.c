@@ -277,22 +277,12 @@ static const int flag_emotions[9] = { 0xd, 0x23, 0x30, 0x31, 0x32, 0x33, 0x40, 0
 
 void ui_window_mgr_flag_emote_hotkey(struct UIWindowMgr *self, int key)
 {
-    int i = key - WM_KEY_FLAG_EMOTE_FIRST, svc = g_serviceType, emotion = 0;
+    int i = key - WM_KEY_FLAG_EMOTE_FIRST;
 
     (void)self;
     if (client_current_mode() == NULL || i < 0 || i > 8)
         return;
-    if (svc == 0xe || svc == 0x14)
-        emotion = flag_emotions[(i + 7) % 9];
-    else if (svc == 0 || (svc == 6 && i <= 1) || (svc == 7 && i == 2) || (svc == 8 && (i == 3 || i == 4))
-             || (svc == 4 && i == 6))
-        emotion = flag_emotions[i];
-    else if (svc == 0xc && i == 0)
-        emotion = 0x33;
-    else if (svc == 0xb && i == 0)
-        emotion = 0x40;
-    if (emotion)
-        mode_send_message(client_current_mode(), MODE_MSG_EMOTION, emotion, 0, 0, 0);
+    mode_send_message(client_current_mode(), MODE_MSG_EMOTION, flag_emotions[(i + 7) % 9], 0, 0, 0);
 }
 
 BYTE ui_window_mgr_is_chat_edit_focused(struct UIWindowMgr *self)

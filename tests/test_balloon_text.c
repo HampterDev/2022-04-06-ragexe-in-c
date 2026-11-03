@@ -38,8 +38,7 @@ static void tracked_free(void *p)
 #undef free
 #include "balloon_text_unreached.h"
 
-unsigned char g_useCharsetTag, g_showNameA, g_showNameB;
-int g_nameFontHeight = 12;
+unsigned char g_useCharsetTag;
 static unsigned resized, invalidated, destroyed, drawn;
 static char drawn_text[128][128];
 static COLORREF drawn_colour[128];
@@ -114,7 +113,6 @@ static void name_card_cases(void)
     }
     before = card;
     ui_name_balloon_text_construct(&name);
-    g_serviceType = 1;
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
     assert(name.balloon.lines.size == 3 && name.balloon.base.height == 48);
     assert_line(&name, 0, "NPC title");
@@ -123,20 +121,12 @@ static void name_card_cases(void)
     assert(name.balloon.base.width == (int)strlen("[Champion] 한국 (bad party with long name)") + 8);
     assert(!memcmp(&card, &before, sizeof card));
     for (i = 0; i < 6; ++i) assert(!strcmp(string_cstr(fields[i]), labels[i]));
-    g_serviceType = 0;
     ui_name_balloon_text_set_name_text(&name, &card, 0, 0);
-    assert_line(&name, 1, "[Champion] 한국#hidden『bad party with long name』");
-    assert_line(&name, 2, "bad Guild『bad Rank』");
-    g_showNameA = 1;
-    ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
-    assert_line(&name, 0, "NPC title");
-    assert_line(&name, 1, "bad Rank");
-    assert_line(&name, 2, "한국");
+    assert_line(&name, 1, "[Champion] 한국#hidden (bad party with long name)");
     for (i = 1; i < 6; ++i) string_clear(fields[i]);
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
     assert(name.balloon.lines.size == 1 && name.balloon.base.width == 32);
     assert_line(&name, 0, "한국");
-    g_showNameA = 0;
     resources_available = 1;
     monster_mark.width = 27; monster_mark.height = 43;
     ui_name_balloon_text_set_name_text(&name, &card, 1, 1);

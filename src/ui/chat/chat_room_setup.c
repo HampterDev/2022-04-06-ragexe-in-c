@@ -118,7 +118,6 @@ const struct UIWindowOps ui_chat_room_change_wnd_ops = {
 #define MSG_CHAT_ROOM_NO_TITLE 0xd
 #define MSG_CHAT_ROOM_NO_PASSWORD 0xf
 #define MSG_CHAT_ROOM_SHORT_PASSWORD 0x10
-#define MSG_CHAT_ROOM_NOT_ASCII 0xbe
 #define MSG_CHAT_ROOM_REFUSED 0x295
 
 #define CHAT_ROOM_ID_PEOPLE_LIST 0xdc
@@ -361,8 +360,6 @@ static void chat_room_ok(struct UIChatRoomMakeWnd *self, int request, int wnd_id
 
     if (ui_edit_ctrl_get_text_size(self->title_edit) == 0)
         msg = MSG_CHAT_ROOM_NO_TITLE;
-    else if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->title_edit)))
-        msg = MSG_CHAT_ROOM_NOT_ASCII;
     else if (ui_edit_ctrl_get_text_size(self->password_edit) < 4 && self->is_private == 1)
         msg = ui_edit_ctrl_get_text_size(self->password_edit) == 0 ? MSG_CHAT_ROOM_NO_PASSWORD
                                                                       : MSG_CHAT_ROOM_SHORT_PASSWORD;
@@ -460,7 +457,6 @@ int ui_chat_room_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
 #define MSG_NO_TITLE 0xd
 #define MSG_NO_PASSWORD 0xf
 #define MSG_SHORT_PASSWORD 0x10
-#define MSG_NOT_ASCII 0xbe
 #define ID_RADIO 0xcf
 #define ID_PEOPLE_LIST 0xdc
 #define ID_KIND_LIST 0xdd
@@ -474,8 +470,6 @@ static void make_ok(struct UIChatRoomMakeWnd *self)
 
     if (!ui_edit_ctrl_get_text_size(self->title_edit))
         msg = MSG_NO_TITLE;
-    else if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->title_edit)))
-        msg = MSG_NOT_ASCII;
     else if (ui_edit_ctrl_get_text_size(self->password_edit) < 4 && self->is_private == 1)
         msg = ui_edit_ctrl_get_text_size(self->password_edit) ? MSG_SHORT_PASSWORD : MSG_NO_PASSWORD;
     if (msg) {

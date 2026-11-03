@@ -37,7 +37,6 @@ static struct LoginMode *login_mode_construct(struct LoginMode *self)
     string_init(&self->wallpaper);
     self->messageIds.first = self->messageIds.last = self->messageIds.end = NULL;
     self->connections.first = self->connections.last = self->connections.end = NULL;
-    self->subConnections.first = self->subConnections.last = self->subConnections.end = NULL;
     string_init(&self->exit_cleared_text);
     self->zones.first = self->zones.last = self->zones.end = NULL;
     self->base.fade_in_start = 1;
@@ -65,7 +64,6 @@ static void login_mode_destruct(struct LoginMode *self)
     g_useCharsetTag = self->savedFlag;
     vec_free(&self->zones);
     string_free(&self->exit_cleared_text);
-    login_conn_entries_free(&self->subConnections);
     login_conn_entries_free(&self->connections);
     vec_free(&self->messageIds);
     string_free(&self->wallpaper);
@@ -181,26 +179,15 @@ void login_mode_on_update(struct Mode *mode)
     if (!g_windowActive && g_3dDevice.fullscreen)
         return;
 
-    {
-        int st = g_serviceType;
-        int skipRender = 0;
-
-        renderer_clear_frame(g_renderer, 1);
-        ui_window_mgr_on_process(&g_windowMgr);
-        if (st == 0 || st == 4 || st == 8 || st == 9 || st == 3 || st == 0xa || st == 1 ||
-            st == 0xb || st == 0xc || st == 5 || st == 7 || st == 0xe || st == 0x14) {
-            ui_window_mgr_draw_login_screen(&g_windowMgr);
-            skipRender = 1;
-        }
-        if (!skipRender)
-            ui_window_mgr_render(&g_windowMgr);
-        ui_window_mgr_render_windows(&g_windowMgr);
-        mode_draw_mouse_cursor(&self->base);
-        mode_process_fade_in(&self->base);
-        if ((char)renderer_draw_scene(g_renderer))
-            ui_window_mgr_draw_serial_number(&g_windowMgr);
-        renderer_flip(g_renderer, 1);
-    }
+    renderer_clear_frame(g_renderer, 1);
+    ui_window_mgr_on_process(&g_windowMgr);
+    ui_window_mgr_draw_login_screen(&g_windowMgr);
+    ui_window_mgr_render_windows(&g_windowMgr);
+    mode_draw_mouse_cursor(&self->base);
+    mode_process_fade_in(&self->base);
+    if ((char)renderer_draw_scene(g_renderer))
+        ui_window_mgr_draw_serial_number(&g_windowMgr);
+    renderer_flip(g_renderer, 1);
     mode_screen_shot(&self->base);
 }
 
@@ -211,24 +198,10 @@ static int timeout_box(int msgId)
 
 void login_mode_check_timeouts(struct LoginMode *self, int subMode)
 {
-    DWORD timeout = (g_serviceType == 5 || g_serviceType == 7) ? 120000 : 15000;
-
     switch (subMode) {
     case 4:
-        if (timeGetTime() > self->stateTick + timeout)
+        if (timeGetTime() > self->stateTick + 15000)
             login_mode_send_msg(&self->base, 0x2725, 0, 0, 0, 0);
-        if ((g_serviceType == 5 || g_serviceType == 7) && timeGetTime() > self->stateTick + 15000) {
-            void *wnd = self->waitWnd;
-            if (!wnd) {
-                wnd = ui_window_open(6);
-                self->waitWnd = wnd;
-                if (!wnd)
-                    return;
-            }
-            UIWND_SENDMSG(wnd, 0, 0x58, 0, 0, 0, 0);
-            wnd = self->waitWnd;
-            ui_window_invalidate(wnd);
-        }
         return;
 
     case 5:

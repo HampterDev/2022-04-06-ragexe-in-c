@@ -354,7 +354,6 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     case 0x4e: closed = close_slot(self, &self->illust_wnd); break;
     case 0x4f: close_slot(self, &self->make_target_list_wnd); break;
     case 0x50: close_slot(self, &self->make_target_process_wnd); break;
-    case 0x55: close_slot(self, &self->key_stroke_wnd); break;
     case 0x6b: close_slot(self, &self->item_repair_wnd); break;
     case 0x6f: close_slot(self, &self->weapon_refine_wnd); break;
     case 0x52: closed = close_slot(self, &self->combined_card_item_collection_wnd); break;

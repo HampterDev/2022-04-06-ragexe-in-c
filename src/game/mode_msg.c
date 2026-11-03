@@ -99,8 +99,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_EMOTION:
         return game_mode_msg_emotion(self, a);
     case MODE_MSG_USER_COUNT:
-        if (g_serviceType == 3 || g_serviceType == 8 || g_serviceType == 9)
-            return 0;
         send_id(0xc1);
         return 0;
     case MODE_MSG_NPC_BUY:

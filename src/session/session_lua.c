@@ -275,76 +275,10 @@ static void check(int bad)
 
 void session_load_external_settings(struct Session *self)
 {
-    const char *file;
-    int sakray = g_serverType == 1;
+    const char *file = g_serverType == 1 ? "Lua Files\\service_eu\\ExternalSettings_eu_sak"
+                                         : "Lua Files\\service_eu\\ExternalSettings_eu";
 
-    switch (g_serviceType) {
-    case 0:
-        if (g_serverType == 1)
-            file = "Lua Files\\service_korea\\ExternalSettings_kr_sak";
-        else if (g_serverType == 2)
-            file = "Lua Files\\service_korea\\ExternalSettings_kr_indoor";
-        else
-            file = "Lua Files\\service_korea\\ExternalSettings_kr";
-        break;
-    case 1:
-        file = sakray ? "Lua Files\\service_usa\\ExternalSettings_usa_sak"
-                      : "Lua Files\\service_usa\\ExternalSettings_usa";
-        break;
-    case 2:
-        file = sakray ? "Lua Files\\service_japan\\ExternalSettings_jp_sak"
-                      : "Lua Files\\service_japan\\ExternalSettings_jp";
-        break;
-    case 3:
-        file = sakray ? "Lua Files\\service_china\\ExternalSettings_ch_sak"
-                      : "Lua Files\\service_china\\ExternalSettings_ch";
-        break;
-    case 4:
-        file = sakray ? "Lua Files\\service_taiwan\\ExternalSettings_tw_sak"
-                      : "Lua Files\\service_taiwan\\ExternalSettings_tw";
-        break;
-    case 5:
-        if (sakray)
-            file = "Lua Files\\service_thailand\\ExternalSettings_th_sak";
-        else if (g_serverType == 13)
-            file = "Lua Files\\service_thailand\\ExternalSettings_th_stage";
-        else
-            file = "Lua Files\\service_thailand\\ExternalSettings_th";
-        break;
-    case 6:
-        file = sakray ? "Lua Files\\service_indonesia\\ExternalSettings_id_sak"
-                      : "Lua Files\\service_indonesia\\ExternalSettings_id";
-        break;
-    case 7:
-        file = sakray ? "Lua Files\\service_philippine\\ExternalSettings_ph_sak"
-                      : "Lua Files\\service_philippine\\ExternalSettings_ph";
-        break;
-    case 12:
-        file = sakray ? "Lua Files\\service_brazil\\ExternalSettings_br_sak"
-                      : "Lua Files\\service_brazil\\ExternalSettings_br";
-        break;
-    case 14:
-        file = sakray ? "Lua Files\\service_ru\\ExternalSettings_ru_sak"
-                      : "Lua Files\\service_ru\\ExternalSettings_ru";
-        break;
-    case 15:
-        file = sakray ? "Lua Files\\service_vietnam\\ExternalSettings_vn_sak"
-                      : "Lua Files\\service_vietnam\\ExternalSettings_vn";
-        break;
-    case 18:
-        file = sakray ? "Lua Files\\service_france\\ExternalSettings_fr_sak"
-                      : "Lua Files\\service_france\\ExternalSettings_fr";
-        break;
-    case 20:
-        file = sakray ? "Lua Files\\service_eu\\ExternalSettings_eu_sak"
-                      : "Lua Files\\service_eu\\ExternalSettings_eu";
-        break;
-    default:
-        file = NULL;
-        break;
-    }
-    if (file)
-        client_lua_load_file(self->luaState, file, 1, 0);
+    client_lua_load_file(self->luaState, file, 1, 0);
 
     table_int(self, "MaxLevelTable", "BaseLevel", &self->baseLevel);
     table_int(self, "MaxLevelTable", "BaseLevel3rd", &self->baseLevel3rd);

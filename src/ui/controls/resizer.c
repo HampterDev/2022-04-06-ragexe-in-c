@@ -83,9 +83,7 @@ void ui_resizer_set_bitmap(struct UIResizer *self, const char *name)
     const char *path;
 
     string_assign_cstr(&self->bitmap, name);
-    path = string_cstr(&self->bitmap);
-    if (g_serviceType)
-        path = ui_skin_path(path);
+    path = ui_skin_path(string_cstr(&self->bitmap));
     bitmap = (struct BitmapRes *)res_mgr_get(g_resMgr(), path);
     self->base.width = bitmap->width;
     self->base.height = bitmap->height;

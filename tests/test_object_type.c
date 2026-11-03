@@ -50,7 +50,7 @@ int main(void)
                 i == 429 || i == 434 || i == 435 || i == 444 || i == 447 || i == 457 || i == 490 || i == 494 ||
                 i == 503 || i == 514 || i == 528 || i == 545 || i == 552 || i == 560 || i == 561 || i == 563 ||
                 i == 567 || i == 572 || i == 575 || i == 576 || i == 579 || i == 580 || i == 581 || i == 586 ||
-                i == 592 || i == 594 || i == 595 || i == 608 || i == 400) {
+                i == 592 || i == 594 || i == 595 || i == 608 || i == 400 || i == 383) {
             static const struct { size_t index; const char *name; } retired_types[] = {
                 {479, "UIPetEvolutionWnd@@"},
                 {333, "UIGuildTipWnd@@"},
@@ -127,7 +127,7 @@ int main(void)
                 {579, "UITableBox@@"}, {580, "UITagButton@@"}, {581, "UITagListBox@@"},
                 {586, "UITextViewEX@@"}, {592, "UIToolTipWnd@@"}, {594, "UITransMenuWnd@@"},
                 {595, "UITreeView@@"}, {608, "UIZeroQuestScrollBar@@"},
-                {400, "UILoginOTPWnd@@"}
+                {400, "UILoginOTPWnd@@"}, {383, "UIKeyStrokeWnd@@"}
             };
             size_t entry;
             for (entry = 0; entry < sizeof retired_types / sizeof retired_types[0]; ++entry)
@@ -177,7 +177,7 @@ int main(void)
                        !strcmp(name, policy_names[policy]));
         }
     }
-    assert(named == 328 && windows == 308 && retired == 137);
+    assert(named == 327 && windows == 307 && retired == 138);
     assert(!strcmp(object_type_name(NULL), "?"));
     assert(!strcmp(object_type_name(unknown), "?"));
     assert(!strcmp(object_type_name(pages + system.dwPageSize), "?"));
@@ -186,9 +186,9 @@ int main(void)
         assert(!object_as_type(guarded, (enum ObjectType)kind));
     assert(!object_as_type(guarded, (enum ObjectType)-1));
     assert(!object_as_type(guarded, OBJECT_TYPE_COUNT));
-    assert(comparisons == 2733 && successes == 207);
+    assert(comparisons == 2725 && successes == 206);
     assert(VirtualFree(pages, 0, MEM_RELEASE));
-    printf("PASS: 474 concrete classes and 137 retired identities, 17 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
+    printf("PASS: 473 concrete classes and 138 retired identities, 17 C type queries, %u prior-runtime comparisons, %u accepted casts, guarded/null/unknown objects\n", comparisons, successes);
     printf("PASS: %u C diagnostic names, %u window names preserve redraw and resize matches\n", named, windows);
     return 0;
 }

@@ -496,6 +496,9 @@ void ui_char_info_balloon_text_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
+/* Name balloons use the 12-pixel regular face. */
+#define NAME_FONT_HEIGHT 12
+
 #define NAME_MARK_BOSS 1
 #define NAME_MARK_MVP 2
 
@@ -614,8 +617,8 @@ void ui_name_balloon_text_on_draw(struct UIWindow *window)
         struct OwnedText *line = BALLOON_LINE(b, i);
 
         ui_window_text_out_outlined(wnd, x, y, owned_text_cstr(line), line->size, b->colour, b->outline, 0,
-                                 g_nameFontHeight, g_showNameB, 0);
-        y += 2 + g_nameFontHeight;
+                                 NAME_FONT_HEIGHT, 0, 0);
+        y += 2 + NAME_FONT_HEIGHT;
     }
 }
 
@@ -638,12 +641,12 @@ void ui_name_balloon_text_set_text(struct UINameBalloonText *self, const char *t
     if (!name_balloon_set_line(b, text))
         return;
     line = &b->lines.items[b->lines.size - 1];
-    length = ui_window_text_width(&b->base, owned_text_cstr(line), line->size, 0, g_nameFontHeight,
-                                g_showNameB, 0) + 8;
+    length = ui_window_text_width(&b->base, owned_text_cstr(line), line->size, 0, NAME_FONT_HEIGHT,
+                                0, 0) + 8;
     if (length <= 0x20)
         length = 0x20;
     self->text_length = length;
-    ui_window_resize_base(&self->balloon.base, length, g_nameFontHeight + 8);
+    ui_window_resize_base(&self->balloon.base, length, NAME_FONT_HEIGHT + 8);
     ui_window_invalidate_base(&self->balloon.base);
 }
 
@@ -669,8 +672,8 @@ void ui_vertical_name_balloon_text_on_draw(struct UIWindow *window)
         struct OwnedText *line = BALLOON_LINE(b, i);
 
         ui_window_draw_text_outlined_vertical(wnd, x, y, owned_text_cstr(line), line->size, b->colour, b->outline, 0,
-                   g_nameFontHeight, g_showNameB);
-        x += g_nameFontHeight + 2;
+                   NAME_FONT_HEIGHT, 0);
+        x += NAME_FONT_HEIGHT + 2;
     }
 }
 
@@ -684,12 +687,12 @@ void ui_vertical_name_balloon_text_set_text(struct UINameBalloonText *name, cons
     if (!name_balloon_set_line(b, text))
         return;
     line = &b->lines.items[b->lines.size - 1];
-    length = ui_window_vertical_text_length(&b->base, owned_text_cstr(line), 0, 0, g_nameFontHeight,
-                                         g_showNameB) + 8;
+    length = ui_window_vertical_text_length(&b->base, owned_text_cstr(line), 0, 0, NAME_FONT_HEIGHT,
+                                         0) + 8;
     if (length <= 0x20)
         length = 0x20;
     self->text_length = length;
-    ui_window_resize_base(&self->name.balloon.base, g_nameFontHeight + 8, length);
+    ui_window_resize_base(&self->name.balloon.base, NAME_FONT_HEIGHT + 8, length);
     ui_window_invalidate_base(&self->name.balloon.base);
 }
 
@@ -838,8 +841,6 @@ void ui_color_trans_balloon_text_on_draw(struct UIWindow *window)
     ui_window_text_out_runs(wnd, 6, 4, text_array_at(&self->balloon.lines, 0).data, 0, &colour, 0, 0xc, 0);
 }
 
-static const char name_bracket_format[] = "%s『%s』";
-
 #define NAME_TEXT_BUF 0x104
 
 static void name_copy_text(char *buf, const struct String *text)
@@ -870,52 +871,40 @@ void ui_name_balloon_text_set_name_text(struct UINameBalloonText *self, const st
         if (hash)
             string_truncate(&name, (size_t)(hash - name.data));
     }
-    if (g_showNameA) {
-        if (string_cstr(&info->npc_title)[0])
-            name_add_line(b, string_cstr(&info->npc_title));
-        if (string_cstr(&info->position)[0] == 0) {
-            self->text_length = 0;
-        } else {
-            name_copy_text(buf, &info->position);
-            name_add_line(b, buf);
-        }
+    if (string_cstr(&info->npc_title)[0])
+        name_add_line(b, string_cstr(&info->npc_title));
+    if (string_cstr(&info->achievement_title)[0]) {
+        struct String full;
+
+        string_init(&full);
+        string_format(&full, "[%s] %s", string_cstr(&info->achievement_title), string_cstr(&name));
+        string_assign(&name, string_cstr(&full), full.size);
+        string_free(&full);
+    }
+    if (string_cstr(&info->party)[0] == 0) {
         name_add_line(b, string_cstr(&name));
     } else {
-        if (string_cstr(&info->npc_title)[0])
-            name_add_line(b, string_cstr(&info->npc_title));
-        if (string_cstr(&info->achievement_title)[0]) {
-            struct String full;
-
-            string_init(&full);
-            string_format(&full, "[%s] %s", string_cstr(&info->achievement_title), string_cstr(&name));
-            string_assign(&name, string_cstr(&full), full.size);
-            string_free(&full);
-        }
-        if (string_cstr(&info->party)[0] == 0) {
-            name_add_line(b, string_cstr(&name));
-        } else {
-            name_copy_text(buf, &info->party);
-            memset(line, 0, sizeof line);
-            sprintf_s(line, sizeof line, g_serviceType ? "%s (%s)" : name_bracket_format, string_cstr(&name), buf);
-            name_add_line(b, line);
-        }
-        if (string_cstr(&info->guild)[0]) {
-            name_copy_text(buf2, &info->guild);
-            name_copy_text(buf, &info->position);
-            memset(line, 0, sizeof line);
-            sprintf_s(line, sizeof line, g_serviceType ? "%s [%s]" : name_bracket_format, buf2, buf);
-            name_add_line(b, line);
-        }
+        name_copy_text(buf, &info->party);
+        memset(line, 0, sizeof line);
+        sprintf_s(line, sizeof line, "%s (%s)", string_cstr(&name), buf);
+        name_add_line(b, line);
+    }
+    if (string_cstr(&info->guild)[0]) {
+        name_copy_text(buf2, &info->guild);
+        name_copy_text(buf, &info->position);
+        memset(line, 0, sizeof line);
+        sprintf_s(line, sizeof line, "%s [%s]", buf2, buf);
+        name_add_line(b, line);
     }
     for (i = 0; i < b->lines.size; i++) {
-        int w = ui_window_text_width(&b->base, text_array_at(&b->lines, i).data, 0, 0, g_nameFontHeight, g_showNameB, 0) + 8;
+        int w = ui_window_text_width(&b->base, text_array_at(&b->lines, i).data, 0, 0, NAME_FONT_HEIGHT, 0, 0) + 8;
 
         if (w > width)
             width = w;
     }
     self->text_length = width;
     self->mark = mark;
-    height = (int)BALLOON_LINE_COUNT(b) * (g_nameFontHeight + 2) + 6;
+    height = (int)BALLOON_LINE_COUNT(b) * (NAME_FONT_HEIGHT + 2) + 6;
     if (mark && info->group_id == 0) {
         const char *path = mark == NAME_MARK_BOSS  ? UI_SKIN "montype_boss.bmp"
                            : mark == NAME_MARK_MVP ? UI_SKIN "montype_mvp.bmp"

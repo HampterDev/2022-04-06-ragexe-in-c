@@ -36,8 +36,6 @@ struct UIWindowMgr {
     DWORD minimap_argb;
     int draw_compass;
     int drag_all;
-    int candidate_box;
-    char arabic_text;
     struct UIWindow *capture_root;
     BYTE close_capture_root;
     struct List windows;
@@ -142,7 +140,6 @@ struct UIWindowMgr {
     struct UIWindow *select_cart_wnd;
     struct UIWindow *spell_list_wnd;
     struct UIWindow *candidate_wnd;
-    struct UIWindow *key_stroke_wnd;
     struct UIWindow *join_friend_accept_wnd;
     struct UIWindow *command_list_wnd;
     struct UIWindow *homun_info_wnd;

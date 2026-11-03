@@ -8412,3 +8412,145 @@ Validation:
 
 The pre-removal tree is in `build/before-protection-leftovers-removal`. No live
 client/server smoke test was run.
+
+## Langtype 20 lock (2026-11-03)
+
+Decision: Patrick approved fixing the client at langtype 20 on 2026-11-03, as the first
+step towards UTF-8 text. The client must keep behaving as it does with Revel RO's
+`clientinfo.xml` (`client-files/data/clientinfo.xml`, not modified), which has
+`<servicetype>korea</servicetype>` on the root and `<langtype>20</langtype>` in its only
+`<connection>`. Text behavior stays exactly as before: code page 0, the Arial/ANSI default
+face and no charset tags.
+
+How the service type was set before this change:
+
+- `clientinfo_load` read the root options. `<servicetype>korea</servicetype>` set service
+  type 0, so the default loading-screen count was Korea's 7 and `init_client_info_` took
+  the Korean path: it selected connection 0 and formatted `g_accountServerAddr`
+  (`address:port`, used by the `0x0acf` login step). Reading that connection set the
+  service type to 20 from `<langtype>`.
+- `init_language_` then chose language index 1, code page 0, the default language object
+  and no charset tag. It also built the Traditional Chinese, Thai and Arabic objects on
+  every start; the Thai one opened `..\ftwrk.lex`.
+- `window_mgr_construct` runs in `client_init`, before `clientinfo.xml` is read, so it saw
+  service type 0 and kept the Korean login-logo offset (`logo_y = -25`).
+- After `clientinfo_load` every reader saw 20. Nothing else changed it: other connections
+  are not in the file, and only service types 5 and 7 listed subconnections.
+
+What changed:
+
+- `clientinfo.c` no longer reads `<servicetype>` or `<langtype>`. Removed: the service-name
+  table, the "ServiceType Error", "No ServiceType", "Unknown ServiceType" and "no language
+  setting" errors, `g_serviceType`, `g_languageIndex`, `g_showNameA`/`g_showNameB`,
+  `g_nameFontHeight` and `session_set_text_type` (a no-op under 20). `clientinfo_load` reads
+  the root options and `etcinfo.txt`, selects connection 0, formats the account address
+  and builds the one language object. The default loading-screen count is 7; the logo
+  offset stays -25. `CLIENT_LANGTYPE` (20) remains only where the number was data: the
+  shortcut registry value names (`SITEM<slot>20<char>`, `S_SKILL_USE_LEVEL<slot>20<char>`)
+  and the server-select window's default before its saved value is read.
+- Language objects: removed the Thai object and its lexicon loader (`thai_lexicon.c`), the
+  Traditional Chinese Zhuyin object (`language_tc.c`, reading keys, the `VK_PROCESSKEY`
+  hook in the message pump), the Arabic object, the per-object code page and the
+  keyboard-layout code-page switch (every caller now uses `g_codePage`, still 0), the
+  language-folder lookup (`language_language_file`, `language_set_folder`, folder strings;
+  it returned the name unchanged under 20) and the Zhuyin key-stroke window
+  (`UIKeyStrokeWnd`, window `0x55`, its slot, factory case and placement calls).
+- Every other `g_serviceType` branch (about 160 reads in 80 files) collapsed to its
+  langtype-20 path, and code that only those branches reached went with them:
+  - Login: client type `0x24` (0 with server type `pk`); the hash login always sends
+    `0x01dd`, so `0x01fa` (CA_LOGIN3), `0x027c` (CA_LOGIN4) and their packet-table rows
+    went; character deletion always sends `0x0829` with the 6-byte e-mail field, so
+    `0x01fb` (CH_DELETE_CHAR2) and its rows went; the plain `0x0064` login, so the service
+    4 and 7 password encodings went (`login_password_encode` now only has the 32-byte
+    `0x0acf` form); subconnection lists (sub-mode `0xd`, mode message `0x2726`,
+    `select_client_info_`, `login_mode_load_sub_connections`); the 15-second login timeout;
+    login mode always draws the login screen; login refusal 16 and disconnect reason 107
+    show no message box, in-game ban 15 shows the generic message `0x718`, and delete
+    refusal 0 uses message `0x12d`.
+  - Display: no hourly game-grade badge (`renderer_draw_game_grade_badge`); no event-account
+    rendering or second GM sprite set (`is_event_aid`, `pc_render_event_account`); no
+    message-table mirror decoding (`text_decode`); siege emblems are shown; name balloons
+    use `name (party)` and `guild [position]` with the 12-pixel regular face; the default
+    face is Arial size+3 (Arial with charset 163 on Turkish Windows); English labels in the
+    basic-info, skill and NPC-input windows; GM chat in `0xffff`; cash shops say
+    "Point"/"P"; UI bitmaps always go through `ui_skin_path`, which now looks for the
+    plain path and then `UI\`.
+  - Gameplay text: `/where` also goes to the chat log, `/hi` friends text carries the (empty)
+    charset tag, `MODE_MSG_USER_COUNT` always asks the server, map flags are cleared after
+    each map-property packet, Slow Poison launches no effect, `/showname` only toggles its
+    saved flag, scream/frost-joke lines come from `DC_scream.txt`/`BA_frostjoke.txt`.
+  - Tables: the Korean body-palette names (`s_jobBodyNamesKorea`), Brazilian window names,
+    Brazilian and Russian item-name orders and the service-specific chat-tab widths.
+  - Unused afterwards: `embedded_fonts.c` and `t2embed_api.h` (the Rix fonts were loaded only
+    for Korea), `code_page_from_lang`, `count_in_words`, `weather_pokjuk`,
+    `session_is_ascii_name`, the Arabic modes of `chat_speaker_name` and the chat history,
+    and the Japanese/Chinese candidate-window layouts.
+
+Kept:
+
+- `g_useCharsetTag` (never set: only service 10 and server type 3, which nothing assigns,
+  turned it on), `Language.keyboard_lang` (read only by the charset tag) and the tag code;
+  they go with the charset tags in the drawing step of the UTF-8 work.
+- `Language.folder_lang`, because Turkish Windows selects face 6.
+- `g_codePage` (0) and the font tables, including the Rix faces: their fonts are created
+  by name and fall back to the GDI default, as before.
+- Server-type branches (`g_serverType` 3 and 13 are never assigned; listed below).
+- Selecting a connection still re-reads it, which appends its `<loading>` images again.
+
+Behavior under langtype 20 that may be unexpected (all unchanged):
+
+- Body palettes of second-class, transcendent and expanded jobs use first-class names
+  (`s_jobBodyNamesOther`): a dyed Crusader loads `기사_남_N.pal`, Monk the Priest palette,
+  Sage the Wizard one, Rogue the Assassin one, Alchemist the Blacksmith one, Bard and
+  Dancer the Hunter one, Gunslinger and Ninja the Novice one.
+- The IME candidate window draws only its frame: its layouts existed for language indices
+  0, 2, 3 and 4.
+- `/showname` changes nothing visible.
+- With Revel's file the loading-screen list holds `loading00`-`06` twice (the Korean
+  default and the connection's `<loading>` list).
+
+Bugs found (not fixed):
+
+- `homun_name` (`companion_packets.c`) passes the server-sent homunculus name to `sprintf` as
+  the format; only services 10, 12 and 15 used `"%s"`.
+- `session_get_monster_skill_info` (`talk_tables.c`) uses `monsterskillinfo.xml` text as a
+  `sprintf` format into 8-byte buffers.
+- `text_dc_select_font` indexes the 12-entry `faceCharsets` with faces 0x14-0x1d (Rix and
+  SCDream); the language-0 guard that mapped them to entry 0 never applied under 20, so it
+  reads `hexDigitFlags`.
+- `g_serverType` is never 3 or 13, so its branches (repeated-chat check, guild and whisper
+  checks, charset tag, Thai stage settings) are dead.
+- `login_conn_entry_copy` copies the uninitialized `version` of `load_connections`' entry.
+
+Tests changed:
+
+- `test_language_input`: the Zhuyin mapping, trace and conversion-failure tests, the Thai
+  lexicon and the folder lookup went; the IME test uses the default object and checks
+  `WM_INPUTLANGCHANGE`; the per-object charset-tag test stays.
+- `test_message_tables` and `test_item_restrictions`: no language-folder lookup, no UAE
+  re-tagging.
+- `test_balloon_text`: name cards only in the langtype-20 layout.
+- `test_texture_quad`: the game-grade badge cases went.
+- `test_sprite_atlas`: no Germany UV trim.
+- `test_password_encode`: 4,096 `0x0acf` vectors (was 12,288 over three encodings).
+- `test_text_parsing`: no Arabic speaker-name case. `test_item_names`: its archived
+  reference block runs with service type 20.
+- `test_embedded_fonts` removed. Stubs of `g_serviceType`, `text_decode`,
+  `language_language_file` and the key-stroke placement went.
+- Object types: `UIKeyStrokeWnd` (reference index 383) is retired: 473 classes, 138 retired
+  identities, 327 named, 307 windows, 2,725 comparisons, 206 accepted casts (measured with
+  a print-only copy of the test, then asserted).
+
+Validation:
+
+- Release build passed without compiler or linker warnings: `build/langtype20-build.log`.
+- Packet dispatch: digest unchanged at `d8b534ea02a5d31f`; neither dispatcher was touched.
+- Packet table: 1,194 -> 1,191 length rows and 1,228 -> 1,225 name rows; only `0x01fa`,
+  `0x01fb` and `0x027c` lost rows, every retained row is unchanged
+  (`build/langtype20-packet-table-audit.log`).
+- Full suite `tests\build.bat` passed: `build/langtype20-full-tests.log`.
+- The seven standalone suites passed: `build/langtype20-<suite>.log`.
+- `git diff --check` passed.
+
+The pre-change tree is in `build/before-langtype20-lock`. No live client/server smoke
+test was run.

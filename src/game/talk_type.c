@@ -107,8 +107,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
 
     if (!args)
         args = none;
-    if (g_serviceType == 4 && type == 6)
-        type = TALK_UNKNOWN;
 
     switch (type) {
     case TALK_CHAT:
@@ -274,7 +272,6 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         break;
     case 0x6a:
         g_session1.showName = g_session1.showName == 0;
-        session_set_text_type((unsigned char)g_session1.showName, (unsigned char)g_session1.showName);
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
         talk_print_msg(g_session1.showName ? 0x2d2 : 0x2d3, TALK_COLOR_NOTICE);
         break;

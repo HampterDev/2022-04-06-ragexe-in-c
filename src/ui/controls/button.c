@@ -640,11 +640,6 @@ void ui_bitmap_button_set_tool_tip(struct UIBitmapButton *self, const char *text
     ui_button_set_tool_tip(&self->button, text);
 }
 
-static const char *service_path(const char *path)
-{
-    return g_serviceType ? ui_skin_path(path) : path;
-}
-
 struct UIBitmapButton *ui_bitmap_button_construct(struct UIBitmapButton *self)
 {
     int i;
@@ -663,7 +658,7 @@ struct UIBitmapButton *ui_bitmap_button_construct(struct UIBitmapButton *self)
 BYTE ui_bitmap_button_set_bitmap(struct UIBitmapButton *self, const char *path, int state,
                                          int flag)
 {
-    struct BitmapRes *bitmap = res_mgr_get(g_resMgr(), service_path(path));
+    struct BitmapRes *bitmap = res_mgr_get(g_resMgr(), ui_skin_path(path));
 
     if (!bitmap)
         return 0;

@@ -6,11 +6,10 @@
 #include <stdio.h>
 
 unsigned char table_token_is_number(const char *text);
-int g_serviceType;
 unsigned char g_useCharsetTag;
 struct Language *g_language;
 static const char *resource_text, *charset_tag = "|00";
-static unsigned opens, closes, language_lookups, tag_lookups;
+static unsigned opens, closes, tag_lookups;
 static int fail_tag_allocation, fail_read, negative_size;
 static unsigned destructs, reads;
 
@@ -49,13 +48,6 @@ static void *reader_realloc(void *memory, size_t size)
 #undef malloc
 #undef free
 
-const char *language_language_file(struct Language *language, const char *name)
-{
-    assert(language == g_language && language);
-    assert(!strcmp(name, "msgStringTable.txt"));
-    language_lookups++;
-    return "localized/messages.txt";
-}
 const char *language_charset_tag(struct Language *language, unsigned char which)
 {
     assert(language == g_language && which == 1);
@@ -71,7 +63,7 @@ unsigned char file_open(struct File *self, const char *name, int mode,
                         unsigned char a3, unsigned char a4)
 {
     assert(mode == 0 && a3 == 1 && a4 == 0);
-    assert(!strcmp(name, g_language ? "localized/messages.txt" : "msgStringTable.txt"));
+    assert(!strcmp(name, "msgStringTable.txt"));
     opens++;
     if (!resource_text) return 0;
     self->size = negative_size ? -1 : (int)strlen(resource_text);
@@ -140,21 +132,11 @@ static void test_reload(void)
     assert(!strcmp(msg_str_to_compare(0), "hello"));
     assert(!strcmp(msg_str(3), "|00\xb0\xa1\xb3\xaa"));
 
-    g_serviceType = 0x13;
     charset_tag = "|19";
-    assert(!strcmp(msg_str(0), "|19hello"));
-    allocations = live_blocks;
-    for (i = 0; i < 20; i++) assert(!strcmp(msg_str(0), "|19hello"));
-    assert(live_blocks == allocations);
-    fail_tag_allocation = 1;
-    assert(!strcmp(msg_str(0), "hello") && live_blocks == allocations);
-    fail_tag_allocation = 0;
+    assert(!strcmp(msg_str(0), "|00hello"));
 
-    g_serviceType = 0;
-    g_language = (struct Language *)&language_lookups;
     resource_text = "new#second#";
     msg_str_load();
-    assert(language_lookups == 1);
     assert(!strcmp(msg_str(0), "|19new"));
     fail_tag_allocation = 1;
     allocations = live_blocks;

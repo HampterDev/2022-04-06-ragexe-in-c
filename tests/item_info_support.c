@@ -19,8 +19,6 @@ unsigned char table_reader_read(struct TableReader *self, const char *name, enum
 void table_reader_release(struct TableReader *self) { abort(); }
 void error_msg(const char *text, int flags) { abort(); }
 void session_remove_underbar(const char *src, char *dst) { abort(); }
-char *text_decode(char *text) { abort(); }
-const char *language_language_file(struct Language *language, const char *name) { abort(); }
 void string_free(struct String *text) { abort(); }
 int string_compare(const struct String *a, const struct String *b) { abort(); }
 

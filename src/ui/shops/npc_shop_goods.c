@@ -124,14 +124,7 @@ static void price_unit_short(char *buf, int cash)
     sprintf(buf, "Z");
     if (!cash)
         return;
-    if (g_serviceType == 6)
-        sprintf(buf, "K");
-    else if (g_serviceType != 0)
-        sprintf(buf, "P");
-    else if (g_session1.channelCopId == 1)
-        sprintf(buf, "H");
-    else
-        sprintf(buf, "C");
+    sprintf(buf, "P");
 }
 
 static void shop_create(struct UIItemShopWnd2 *self, int height)
@@ -413,7 +406,7 @@ void ui_item_shop_wnd_on_draw(struct UIWindow *window)
                                                100, 0, 12, 0);
         int len;
 
-        len = sprintf(line, msg_str(g_serviceType == 0 && g_session1.channelCopId == 1 ? MSG_POINTS_HANCOIN : MSG_POINTS_CASH),
+        len = sprintf(line, msg_str(MSG_POINTS_CASH),
                           name,
                           g_session1.cashPoints);
         ui_window_text_out(wnd, 0xc, wnd->height - 0x15, line, len, 0, 12, 0, 0, 0);

@@ -187,7 +187,6 @@ static const struct ObjectTypeEntry object_types[] = {
     {&ui_join_friend_accept_wnd_ops, TYPE(FRAME_WINDOW), "UIJoinFriendAcceptWnd"},
     {&ui_join_guild_accept_wnd_ops, TYPE(FRAME_WINDOW), "UIJoinGuildAcceptWnd"},
     {&ui_join_party_accept_wnd_ops, TYPE(FRAME_WINDOW), "UIJoinPartyAcceptWnd"},
-    {&ui_key_stroke_wnd_ops, TYPE(FRAME_WINDOW), "UIKeyStrokeWnd"},
     {&ui_list_box_ops, 0, "UIListBox"},
     {&ui_list_box_agit_ops, 0, "UIListBoxAgit"},
     {&ui_list_box_agit_menu_ops, 0, "UIListBoxAgitMenu"},

@@ -378,7 +378,6 @@ void game_mode_zc_open_edit_dlg_str(struct GameMode *self, const unsigned char *
 #define WND_SHOP_BUY            0x16
 #define WND_SHOP_BUY_CART       0x17
 #define WND_SHOP_SELL           0x18
-#define SERVICE_TYPE_GERMANY    10
 #define NPC_DIALOG_TEXT_MAX     0x803
 #define NPC_DIALOG_TEXT_LEN_MAX 0x7fd
 
@@ -415,13 +414,7 @@ void game_mode_zc_say_dialog(struct GameMode *self, const unsigned char *pkt)
         length = NPC_DIALOG_TEXT_LEN_MAX;
     self->npc_dialog_open = 1;
     self->npc_dialog_id = packet->aid;
-    if (g_serviceType == SERVICE_TYPE_GERMANY) {
-        sprintf(text, "|%02x", get_charset_from_lang(0x1f));
-        memcpy(text + 3, packet->text, length);
-        length += 3;
-    } else {
-        memcpy(text, packet->text, length);
-    }
+    memcpy(text, packet->text, length);
     text[length] = 0;
     wnd = ui_window_open(WND_NPC_DIALOG);
     wnd_send(wnd, 0x1a, (int)text, (int)packet->aid, 0, 0);

@@ -29,7 +29,6 @@
 #include "actor/weather.h"
 #include "ui/character/character.h"
 #include "ui/misc/snap_mgr.h"
-#include "ui/misc/thai_lexicon.h"
 #include "ui/quests/tag_list_box.h"
 #include "ui/quests/world_view.h"
 #include "ui/skin_manager.h"
@@ -58,10 +57,6 @@ static void release_whisper_log(void) { file_destruct(&g_whisperLog); }
 static void release_session(void) { session_destruct(&g_session1); }
 static void release_granny_bone_res(void) { granny_animation_cache_clear(&g_grannyBoneRes); }
 static void release_tag_prototypes(void) { tag_prototypes_free(&g_tagPrototypes); }
-static void release_thai_break_iterator(void)
-{
-    thai_break_iterator_delete_lexicon(&g_thaiBreakIterator);
-}
 static void release_client_info_document(void)
 {
     xml_document_release(&g_clientInfoDocument);
@@ -123,7 +118,6 @@ void client_init(void)
     skill_actions_register();
     tag_prototypes_construct(&g_tagPrototypes);
     atexit(release_tag_prototypes);
-    atexit(release_thai_break_iterator);
     xml_element_construct(&g_clientInfoDocument.root, "XMLDocument");
     g_clientInfoDocument.copy = NULL;
     atexit(release_client_info_document);

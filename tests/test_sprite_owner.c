@@ -33,7 +33,6 @@ struct C3dDevice g_3dDevice;
 int g_sprHalfWidth, g_sprHalfHeight;
 struct Renderer *g_renderer;
 unsigned g_resPurgeAgeMs = 1000;
-int g_serviceType;
 static unsigned atlas_uploads;
 static BYTE *input;
 static int input_size, file_present = 1, borrowed_buffers, fail_texture, fail_upload;

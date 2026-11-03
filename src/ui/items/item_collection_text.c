@@ -161,8 +161,7 @@ static void collection_add_line(struct UIItemCollectionWnd *self, const char *li
         sprintf(buf, "%s%s", language_charset_tag(g_language, 1), line);
         ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, TEXT_LAYOUT, 0, 0);
     } else {
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line,
-                 g_serviceType == 6 ? TEXT_LAYOUT_SERVICE_6 : TEXT_LAYOUT, 0, 0);
+        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, TEXT_LAYOUT, 0, 0);
     }
 }
 
@@ -191,8 +190,6 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
     } else {
         sprintf(buf, msg_str(MSG_EXPIRE_LINE), time_text);
         hours_per_day = 24;
-        if (g_serviceType == 6)
-            layout = TEXT_LAYOUT_SERVICE_6;
     }
     if (self->item.expire_in_hours)
         _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,

@@ -106,19 +106,6 @@ struct UINewChatWnd *ui_new_chat_wnd_construct(struct UINewChatWnd *self)
     self->tab_height = 0x10;
     self->tab_width = 0x47;
     self->bar_height = 0x18;
-    switch (g_serviceType) {
-    case 1:
-    case 7:
-    case 11:
-        self->tab_width = 0x6e;
-        break;
-    case 10:
-        self->tab_width = 0x47;
-        break;
-    case 18:
-        self->tab_width = 0x5a;
-        break;
-    }
     return self;
 }
 

@@ -45,9 +45,6 @@ void game_actor_show_siege_emblem(struct GameActor *self)
 
     if (!session_is_siege_mode(&g_session1))
         return;
-    if (g_serviceType == 3 || g_serviceType == 8 || g_serviceType == 9 || g_serviceType == 0
-        || g_serviceType == 4)
-        return;
     emblems = g_guildMgr;
     version = guild_mgr_emblem_version(emblems, game_actor_get_guild_id(self));
     guild = game_actor_get_guild_id(self);

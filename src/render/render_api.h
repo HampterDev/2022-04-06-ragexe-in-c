@@ -39,9 +39,7 @@ struct RPMesh {
 void rp_quad_draw(struct RPQuad *self);
 extern int   g_wobbleFramesLeft;
 extern BYTE  g_wobbleMode;
-extern BYTE  g_gradeBadgeState;
 extern short g_wobbleAmplitude;
-extern int   g_gradeBadgeAlpha;
 extern GUID g_driverGuid;
 
 struct VertexBuffer {

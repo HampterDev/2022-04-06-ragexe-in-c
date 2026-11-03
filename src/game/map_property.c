@@ -68,8 +68,7 @@ void game_mode_notify_map_property(struct GameMode *self, const struct PacketMap
         break;
     }
     apply_flag_f();
-    if (g_serviceType != 0)
-        map_property_mgr_clear(g_mapFlags);
+    map_property_mgr_clear(g_mapFlags);
 }
 
 void game_mode_notify_map_property2(struct GameMode *self, const struct PacketMapProperty *p)

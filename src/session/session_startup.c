@@ -3,7 +3,6 @@
 #include "session/session_options.h"
 #include "session/session_state.h"
 
-#include "platform/embedded_fonts.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -13,23 +12,12 @@
 
 void session_startup(struct Session *self)
 {
-    const char *missing_font;
-
     if (!item_info_load())
         MessageBoxA(NULL, "ItemInfo file Init", "Error", 0);
     srand((unsigned)_time32(NULL));
     session_init_table(self);
     map_info_load(g_mapInfo);
     session_load_options(self);
-    if (g_serviceType != 0)
-        return;
-    embedded_fonts_load(&missing_font);
-    if (missing_font) {
-        char message[128];
-        snprintf(message, sizeof message, "System\\Font\\%s 파일 없음!", missing_font);
-        error_msg(message, 0);
-        exit(EXIT_FAILURE);
-    }
 }
 
 #define NUMBERS_ACT "이팩트\\숫자.act"

@@ -118,7 +118,6 @@ static void fake_shell(void)
 #define c3d_device_release_all(...) ((void)0)
 #define timeEndPeriod(...) ((void)0)
 #define crash_report_uninstall() ((void)0)
-#define g_serviceType 1
 #define app_is_win9x() 0
 #define create_depends_dll_msg() ((void)0)
 #define i_process_construct() ((void)0)

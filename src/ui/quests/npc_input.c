@@ -222,7 +222,7 @@ void ui_npc_edit_dialog_wnd_on_draw(struct UIWindow *window)
 {
     struct UINpcEditDialogWnd *self = (struct UINpcEditDialogWnd *)window;
     ui_window_draw_sys_box(&self->frame.base, 0, 0, 0, 0);
-    ui_window_draw_text(&self->frame.base, 0xf, 6, g_serviceType == 0xc ? "Insira o Numero" : "Input number ",
+    ui_window_draw_text(&self->frame.base, 0xf, 6, "Input number ",
                       12, 0);
 }
 

@@ -98,7 +98,6 @@ struct UIWindow * ui_window_mgr_get_capture(struct UIWindowMgr * arg0) { abort()
 void ui_window_mgr_set_capture(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 void ui_window_mgr_release_capture(struct UIWindowMgr * arg0) { abort(); }
 void ui_window_mgr_update_snap_rect(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
-int g_serviceType;
 int client_lua_call(struct ClientLua * arg0, const char * arg1, const char * arg2, ...) { abort(); }
 void mode_show_tooltip(struct Mode * arg0, const char * arg1, int arg2, int arg3, DWORD arg4, BYTE arg5) { abort(); }
 void mode_set_cursor_action(struct Mode * arg0, int arg1) { abort(); }

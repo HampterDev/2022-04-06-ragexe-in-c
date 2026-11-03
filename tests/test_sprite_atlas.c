@@ -28,7 +28,6 @@ static void *checked_calloc(size_t count, size_t size)
 #undef calloc
 
 unsigned g_resPurgeAgeMs = 1000;
-int g_serviceType;
 static int failed_texture, failed_upload, clamp_width, clamp_height;
 static unsigned textures, uploads;
 struct PaintedCell { int x, y; DWORD color; };
@@ -185,9 +184,9 @@ static void dimensions_and_spares(void)
     assert(texture && texture->base.width==1024 && a.u1==0.5f);
     assert(sprite_atlas_resolve(&renderer,images+1,palette,&b)==texture && b.x==512 && b.u==0.5f);
     clean(&renderer);
-    images[0].width=65;images[0].height=33;g_serviceType=10;
+    images[0].width=65;images[0].height=33;
     assert(sprite_atlas_resolve(&renderer,images,palette,&a));
-    assert(a.u1==65.0f/256.0f-0.005f && a.v1==33.0f/256.0f);clean(&renderer);g_serviceType=0;
+    assert(a.u1==65.0f/256.0f && a.v1==33.0f/256.0f);clean(&renderer);
     sprite_atlas_initialize(&renderer); assert(textures==50);
     assert(sprite_atlas_resolve(&renderer,images,palette,&a));
     assert(textures==50);

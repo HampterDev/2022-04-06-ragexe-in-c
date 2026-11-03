@@ -34,8 +34,6 @@
 #define PARTY_LAYOUT_SHORT 5
 #define PARTY_LAYOUT_CREATE 0x32
 
-#define SERVICE_TYPE_BRAZIL 0xc
-
 struct UIPartySettingWnd {
     struct UIFrameWnd frame;
     struct UIWindow *option0_radio[2];
@@ -134,7 +132,7 @@ static struct UIWindow *new_radio(void)
 
     if (radio)
         radio = (struct UIWindow *)ui_radio_btn_construct((struct UIRadioBtn *)radio);
-    ui_window_create(radio, 0xa0, g_serviceType == SERVICE_TYPE_BRAZIL ? 0x11 : 0xc);
+    ui_window_create(radio, 0xa0, 0xc);
     return radio;
 }
 

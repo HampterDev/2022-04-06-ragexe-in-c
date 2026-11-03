@@ -30,17 +30,15 @@ int main(void)
     id = "^nItemID^0";
     assert(parse_item_id_tag(id, id + strlen(id), &length, &value) && value == 0);
 
-    chat_speaker_name(name, "(alice) entered", 6, -1, -1, 0);
+    chat_speaker_name(name, "(alice) entered", 6, -1, -1);
     assert(strcmp(name, "alice") == 0);
-    chat_speaker_name(name, "alice : hello", -1, -1, 5, 0);
+    chat_speaker_name(name, "alice : hello", -1, -1, 5);
     assert(strcmp(name, "alice") == 0);
-    chat_speaker_name(name, "prefix)alice", 6, -1, -1, 1);
-    assert(strcmp(name, "alice") == 0);
-    chat_speaker_name(name, "(abcdefghijklmnopqrstuvwx) entered", 25, -1, -1, 0);
+    chat_speaker_name(name, "(abcdefghijklmnopqrstuvwx) entered", 25, -1, -1);
     assert(strlen(name) == 24);
-    chat_speaker_name(name, "(abcdefghijklmnopqrstuvwxy) entered", 26, -1, -1, 0);
+    chat_speaker_name(name, "(abcdefghijklmnopqrstuvwxy) entered", 26, -1, -1);
     assert(!*name);
-    chat_speaker_name(name, "short", 1000, -1, -1, 0);
+    chat_speaker_name(name, "short", 1000, -1, -1);
     assert(!*name);
 
     assert(scream_text_line(line, sizeof line, "header\r\nhe\tllo\r\nlast",

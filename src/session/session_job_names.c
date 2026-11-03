@@ -197,10 +197,7 @@ void session_init_sprite_name_tables(struct Session *self)
 
     names_resize(&self->jobBodyNames, 0x6d93, BEGINNER);
     APPLY(&self->jobBodyNames, s_jobBodyNamesFirst);
-    if (g_serviceType == 0)
-        APPLY(&self->jobBodyNames, s_jobBodyNamesKorea);
-    else
-        APPLY(&self->jobBodyNames, s_jobBodyNamesOther);
+    APPLY(&self->jobBodyNames, s_jobBodyNamesOther);
     APPLY(&self->jobBodyNames, s_jobBodyNames);
 
     names_resize(&self->shieldSpriteNames, 5, "");

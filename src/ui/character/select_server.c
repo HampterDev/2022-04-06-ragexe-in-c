@@ -405,7 +405,7 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         self->mode_request = val1;
         string_assign_cstr(&self->server_value, (const char *)val2);
         value = string_cstr(&self->server_value);
-        self->server = g_serviceType;
+        self->server = CLIENT_LANGTYPE;
         if (RegOpenKeyExA(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
             return 0;
         RegCloseKey(probe);

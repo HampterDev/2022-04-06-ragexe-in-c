@@ -337,26 +337,6 @@ static const struct NamedInt s_commandListCommands[] = {
     { "/exall", 0x10 },
 };
 
-static const struct NamedInt s_windowNamesPt[] = {
-    { "Sala de Chat", 0x43 },
-    { "Atributos", 0x41 },
-    { "Detalhes", 0x44 },
-    { "Configura豫o", 0x4f },
-    { "Invent?io", 0x45 },
-    { "Carrinho", 0x57 },
-    { "Habilidades", 0x53 },
-    { "Equipamentos", 0x51 },
-    { "Inf. B?icas", 0x56 },
-    { "Cl?", 0x47 },
-    { "Conf. Grupo", 0x50 },
-    { "Conf. Contatos", 0x49 },
-    { "Grupo", 0x5a },
-    { "Contatos", 0x48 },
-    { "Atalhos", 0x4d },
-    { "Lista Emoticons", 0x4c },
-    { "Bicho de Est.", 0x4a },
-};
-
 static const struct NamedInt s_windowNames[] = {
     { "Chat", 0x43 },
     { "Status", 0x41 },
@@ -433,13 +413,8 @@ void session_init_talk_type_table_(struct Session *self)
 
     for (i = 0; i < COUNT(s_commandListCommands); i++)
         push_named(&self->commandListCommands, s_commandListCommands[i].name, s_commandListCommands[i].value);
-    if (g_serviceType == 0xc) {
-        for (i = 0; i < COUNT(s_windowNamesPt); i++)
-            push_named(&self->windowNames, s_windowNamesPt[i].name, s_windowNamesPt[i].value);
-    } else {
-        for (i = 0; i < COUNT(s_windowNames); i++)
-            push_named(&self->windowNames, s_windowNames[i].name, s_windowNames[i].value);
-    }
+    for (i = 0; i < COUNT(s_windowNames); i++)
+        push_named(&self->windowNames, s_windowNames[i].name, s_windowNames[i].value);
     for (i = 0; i < COUNT(s_altKeys); i++)
         vec_push(&self->altKeyNames, &s_altKeys[i], sizeof s_altKeys[i]);
 }

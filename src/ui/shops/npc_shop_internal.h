@@ -12,7 +12,6 @@
 #define MSG_SHOP2_CONVERT_TITLE 0x620
 #define MSG_PRICE_COUNT 0x24c
 #define MSG_POINTS_CASH 0x4ba
-#define MSG_POINTS_HANCOIN 0x50a
 #define MSG_POINTS_FREE 0x519
 #define MSG_TIP_COUNT_OPTIONS 0xac6
 #define MSG_TIP_COUNT_OPTIONS_SAME 0xac7
@@ -66,8 +65,6 @@
 #define MODE_REQ_SELL2_NO 0x10b
 #define UIWM_MSG_SHOW_CHAT 3
 #define CHAT_RED 0xff
-#define CASH_HANCOIN "한코인"
-#define CASH_WORD "캐시"
 
 int purchase_info_usable(struct WindowInfo *self);
 int sell_info_usable(struct WindowInfo *self);

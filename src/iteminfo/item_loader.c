@@ -48,8 +48,6 @@ unsigned char read_int_file(struct Vec *out, const char *name)
 
     out->last = out->first;
     file_construct(&file);
-    if (g_language)
-        name = language_language_file(g_language, name);
     if (!file_open(&file, name, 0, 1, 0)) {
         MessageBoxA(NULL, "Can't open file", "ErrorMessage", MB_OK);
         file_destruct(&file);

@@ -142,7 +142,7 @@ static void login_acf(struct LoginMode *self)
     _snprintf_s(pkt.userId, 0x19, (size_t)-1, "%s", self->userId);
     memset(password, 0, sizeof password);
     _snprintf_s(password, 0x21, (size_t)-1, "%s", self->password);
-    if (!login_password_encode(LOGIN_PASSWORD_ACF, password, sizeof password, pkt.hash, sizeof pkt.hash)) {
+    if (!login_password_encode(password, sizeof password, pkt.hash, sizeof pkt.hash)) {
         connect_failed(self);
         return;
     }
@@ -257,7 +257,6 @@ static void char_server(struct LoginMode *self)
     } login;
 #pragma pack(pop)
     WORD hashed;
-    int st;
 
     player_names_clear();
     default_wallpaper(self);
@@ -276,25 +275,10 @@ static void char_server(struct LoginMode *self)
         self->waitWnd = wait_window(0x7a, 0x10);
         return;
     }
-    st = g_serviceType;
     login.id = 0x64;
     login.version = g_clientVersion;
     memcpy(login.userId, self->userId, 24);
-    if (st == 7) {
-        if (!login_password_encode(LOGIN_PASSWORD_SERVICE7, self->password, sizeof self->password,
-                                   login.password, sizeof login.password)) {
-            connect_failed(self);
-            return;
-        }
-    } else if (st == 4) {
-        if (!login_password_encode(LOGIN_PASSWORD_SERVICE4, self->password, sizeof self->password,
-                                   login.password, sizeof login.password)) {
-            connect_failed(self);
-            return;
-        }
-    } else {
-        memcpy(login.password, self->password, 24);
-    }
+    memcpy(login.password, self->password, 24);
     login.clientType = login_mode_client_type();
     login_send_packet((short)login.id, &login);
     wait_window(0x7a, 0x10);
@@ -366,7 +350,6 @@ static void delete_char(struct LoginMode *self)
 {
 #pragma pack(push, 1)
     struct { WORD id; DWORD gid; char email[6]; } pkt;
-    struct { WORD id; DWORD gid; char email[0x32]; } pkt2;
 #pragma pack(pop)
     struct CharInfo *c;
 
@@ -375,19 +358,7 @@ static void delete_char(struct LoginMode *self)
     strncpy(pkt.email, self->email, 6);
     c = (struct CharInfo *)login_mode_send_msg(&self->base, 8, g_loginCharInfo.slot, 0, 0, 0);
     pkt.gid = c->gid;
-    if (g_serviceType == 0) {
-        if (self->email[5] == 0)
-            pkt.email[0] = 0;
-        login_send_packet((short)pkt.id, &pkt);
-    } else if (g_serviceType == 0xa || g_serviceType == 0xc || g_serviceType == 1) {
-        pkt2.gid = c->gid;
-        pkt2.id = 0x1fb;
-        strncpy(pkt2.email, self->email, 0x32);
-        pkt2.email[0x31] = 0;
-        login_send_packet((short)pkt2.id, &pkt2);
-    } else {
-        login_send_packet((short)pkt.id, &pkt);
-    }
+    login_send_packet((short)pkt.id, &pkt);
     wait_window(0x7c, 0x11);
 }
 
@@ -508,13 +479,6 @@ void login_mode_on_change_state(struct Mode *mode, int state)
     case 0xa: make_char(self); return;
     case 0xb: delete_char(self); return;
     case 0xc: enter_map(self); return;
-    case 0xd:
-        if (!login_mode_load_sub_connections(self, self->connectionIndex)) {
-            login_mode_send_msg(&self->base, 0x1c, 0, 0, 0, 0);
-            return;
-        }
-        connection_list(self, &self->subConnections, 0x2726);
-        return;
     case 0x13: char_select_userver(self); return;
 
     case 0x1e: zone_list(self); return;

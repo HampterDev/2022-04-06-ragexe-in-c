@@ -54,7 +54,6 @@ void renderer_enable_fog(struct Renderer *self, int enable);
 void renderer_set_light(struct Renderer *self, const float *dir,
                        const float *diffuse, const float *ambient);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
-void renderer_draw_game_grade_badge(struct Renderer *self);
 void renderer_draw_battle_field_icon(struct Renderer *self);
 SIZE *renderer_get_text_extent(struct Renderer *self, SIZE *out, const char *text, int length,
                 int a, int b, int c);

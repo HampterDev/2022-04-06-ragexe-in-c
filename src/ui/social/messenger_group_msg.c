@@ -240,14 +240,6 @@ static int resize(struct UIMessengerGroupWnd *self, int width, int height)
     ui_window_move_base(&self->tabs[0]->base, 4, wnd->height - 0x10);
     ui_window_move_base(&self->tabs[1]->base, 0x40, wnd->height - 0x10);
     ui_messenger_group_wnd_layout_buttons(self);
-    switch (g_serviceType) {
-    case 10:
-    case 12:
-    case 15:
-    case 18:
-        self->visible = ((struct UIWindow *)self->scrollbar)->height / self->row_height;
-        break;
-    }
     memset(title, 0, sizeof(title));
     party_wnd_title(self, title);
     ui_window_resize(self->title, wnd->width - 0x39, 0xc);

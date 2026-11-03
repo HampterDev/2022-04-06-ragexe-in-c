@@ -59,8 +59,3 @@ UINT get_code_page_from_charset(int charset)
     default:                  return 1252;
     }
 }
-
-UINT code_page_from_lang(WORD lang)
-{
-    return get_code_page_from_charset(get_charset_from_lang(lang));
-}

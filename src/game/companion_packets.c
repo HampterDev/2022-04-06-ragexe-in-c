@@ -79,10 +79,7 @@ static void homun_redraw(void)
 
 static void homun_name(const struct HomunPropertyHead *head)
 {
-    if (g_serviceType == 10 || g_serviceType == 12 || g_serviceType == 15)
-        sprintf(g_session1.homunName, "%s", head->name);
-    else
-        sprintf(g_session1.homunName, head->name);
+    sprintf(g_session1.homunName, head->name);
 }
 
 static void homun_hunger_warning(const struct HomunPropertyHead *head)

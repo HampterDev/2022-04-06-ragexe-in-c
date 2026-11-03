@@ -43,7 +43,6 @@
 #define MM_PET_ACT             0x94
 
 #define WND_RESURRECTION        0x9b
-#define SERVICE_TYPE_TAIWAN          4
 
 enum { VANISH_OUT_OF_SIGHT = 0, VANISH_DIED = 1, VANISH_LOGGED_OUT = 2, VANISH_TELEPORT = 3 };
 
@@ -72,11 +71,8 @@ static void we_died(struct GameMode *self)
 
         mode_send_msg(self, MM_PET_ACT, emotion, 0, 0, 0);
     }
-    if (g_serviceType == SERVICE_TYPE_TAIWAN) {
-        message_box(0x2b7);
-    } else if (!ui_window_mgr_post_quit1(&g_windowMgr, WND_RESURRECTION)) {
+    if (!ui_window_mgr_post_quit1(&g_windowMgr, WND_RESURRECTION))
         ui_window_open(WND_RESURRECTION);
-    }
     session_notify_messenger_group_and_plates(&g_session1);
 }
 

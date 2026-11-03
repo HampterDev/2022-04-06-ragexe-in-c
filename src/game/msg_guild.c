@@ -233,10 +233,6 @@ int game_mode_msg_make_guild(const char *name, int b)
     if (strchr(name, ' '))
         goto no_space;
 
-    if (g_serviceType == 0xc && strchr(name, 0x2323)) {
-        message_box_msg(0x464);
-        return 0;
-    }
     if (strlen(name) >= 0x18) {
         message_box_msg(0x213);
         return 0;

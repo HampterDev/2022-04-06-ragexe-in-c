@@ -33,7 +33,6 @@
 #define MSG_PREVIEW_BUTTON 0xb6a
 
 #define TEXT_LAYOUT 0x1a
-#define TEXT_LAYOUT_SERVICE_6 0x18
 #define TEXT_LAYOUT_EXPIRE 0x20
 
 #define ITEM_EGG_STATE(info) ((info)->slot[2])

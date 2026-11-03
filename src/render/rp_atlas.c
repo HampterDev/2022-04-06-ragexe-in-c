@@ -12,7 +12,6 @@
 #define ATLAS_BUCKETS 25
 #define ATLAS_SPARES 50
 #define ATLAS_PAGE_SIZE 256
-#define ATLAS_UV_TRIM 0.005f
 
 struct SpriteAtlasCell {
     const struct SprImg *image;
@@ -191,10 +190,6 @@ struct Texture *sprite_atlas_resolve(struct Renderer *renderer, const struct Spr
     available->occupied = 1;
     available->region.u1 = (float)(available->region.x + image->width) / (float)page->texture->base.width;
     available->region.v1 = (float)(available->region.y + image->height) / (float)page->texture->base.height;
-    if (g_serviceType == 0xa) {
-        if (image->width > 64) available->region.u1 -= ATLAS_UV_TRIM;
-        if (image->height > 64) available->region.v1 -= ATLAS_UV_TRIM;
-    }
     return atlas_use(page, available, now, region);
 }
 

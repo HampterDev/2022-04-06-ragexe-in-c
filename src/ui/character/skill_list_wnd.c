@@ -543,7 +543,7 @@ void ui_skill_list_wnd_on_draw(struct UIWindow *window)
             int sp;
 
             if (skill_info_is_level_used(info->id)) {
-                sprintf(buf, g_serviceType != 0xc ? "Lv :" : "Nv :");
+                sprintf(buf, "Lv :");
                 ui_window_text_out(wnd, x + 0x7c, y + 0x22, buf, 0, 0, 0xc, 0, 0, 0);
                 level = chosen_level(self, info->id);
                 if (level <= 0 || level > info->level)
@@ -554,7 +554,7 @@ void ui_skill_list_wnd_on_draw(struct UIWindow *window)
                 sprintf(buf, "/ %2d", info->level);
                 ui_window_text_out(wnd, x + 0xa8, y + 0x22, buf, 0, 0, 0xc, 0, 0, 0);
             } else {
-                sprintf(buf, g_serviceType != 0xc ? "Lv : %d" : "Nv : %d", info->level);
+                sprintf(buf, "Lv : %d", info->level);
                 ui_window_text_out(wnd, x + 0x71, y + 0x22, buf, 0, 0, 0xc, 0, 0, 0);
             }
             if (info->type == 0) {

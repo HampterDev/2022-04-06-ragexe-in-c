@@ -329,11 +329,6 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
         edit_number(self->prices[i], buf);
         if (ui_edit_ctrl_get_text_size(self->prices[i]))
             price = atoi(buf);
-        if (g_serviceType == 2 && !ui_edit_ctrl_get_text_size(self->prices[i])
-            && ui_edit_ctrl_get_text(self->prices[i])) {
-            ui_message_box(msg_str(MSG_NOT_A_NUMBER));
-            return;
-        }
         session_set_store_setup_price_at(&g_session1, i, price);
     }
     if (self->buying) {
@@ -343,11 +338,6 @@ static void msm_ok(struct UIMerchantShopMakeWnd *self)
             edit_number(self->counts[i], buf);
             if (ui_edit_ctrl_get_text_size(self->counts[i]))
                 count = atoi(buf);
-            if (g_serviceType == 2 && !ui_edit_ctrl_get_text_size(self->counts[i])
-                && ui_edit_ctrl_get_text(self->counts[i])) {
-                ui_message_box(msg_str(MSG_NOT_A_NUMBER));
-                return;
-            }
             session_set_store_setup_count_at(&g_session1, i, count);
         }
         if (self->assistant == 1) {

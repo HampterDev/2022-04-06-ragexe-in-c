@@ -11,7 +11,6 @@
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 BYTE g_packetBuffer[0x10000];
-int g_serviceType;
 
 #include "login_pin_state_unreached.h"
 

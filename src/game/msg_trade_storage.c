@@ -11,11 +11,6 @@ int game_mode_msg_req_exchange(struct GameMode *self, int aid)
 {
     struct String name;
 
-    if (g_serviceType == 6 && g_windowMgr.exchange_accept_wnd) {
-        chat_refresh();
-        chat_print_msg(0x48, CHAT_COLOR_RED);
-        return 0;
-    }
     self_msg(self, 0x28, 0, 0, 0, 0);
     session_clear_lists(&g_session1);
     game_mode_get_actor_name(self, &name, aid);

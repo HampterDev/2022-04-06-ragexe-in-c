@@ -197,7 +197,6 @@ struct ResMgr *g_resMgr(void)
     abort();
 }
 
-int g_serviceType;
 
 struct Session g_session1;
 

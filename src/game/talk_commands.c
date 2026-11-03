@@ -115,11 +115,8 @@ void talk_cmd_hi_friends(struct GameMode *self, const struct String *args)
         typed = string_cstr(&g_windowMgr.chat_line);
         string_assign_cstr(&text, typed);
         session_hi_friends(&g_session1, typed);
-        if (g_serviceType == 0)
-            sprintf(line, "[ To Friends ] : (Hi) %s", string_cstr(&text));
-        else
-            sprintf(line, "[ To Friends ] : (Hi) %s%s", language_charset_tag(g_language, 0),
-                        string_cstr(&text));
+        sprintf(line, "[ To Friends ] : (Hi) %s%s", language_charset_tag(g_language, 0),
+                    string_cstr(&text));
         string_free(&text);
     }
     talk_print(line, 0x1effff);
@@ -180,8 +177,7 @@ void talk_cmd_where(struct GameMode *self)
                 string_cstr(&map), x, y);
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     talk_print(line, TALK_COLOR_NOTICE);
-    if (g_serviceType != 10)
-        ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)line, TALK_COLOR_NOTICE, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)line, TALK_COLOR_NOTICE, 0, 0);
     string_free(&map);
 }
 

@@ -47,7 +47,6 @@ static char loaded_path[512];
 static struct UIButton *visibility_button;
 static BYTE expected_show;
 static unsigned visibility_events, capture_releases;
-int g_serviceType;
 
 void *mem_alloc(size_t size) { return checked_malloc(size); }
 void mem_free(void *memory)

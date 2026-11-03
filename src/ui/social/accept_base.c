@@ -342,12 +342,7 @@ int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
             string_init(&line);
             string_assign_cstr(&line, "PN : ");
             trade_code_letters(&line, val2);
-            if (g_serviceType == 6)
-                string_clear(&line);
-            if (g_serviceType == 12)
-                string_append_cstr(&line, "     Nv.");
-            else
-                string_append_cstr(&line, "     Lv.");
+            string_append_cstr(&line, "     Lv.");
             memset(level, 0, sizeof level);
             sprintf(level, "%d", val3);
             string_append_cstr(&line, level);

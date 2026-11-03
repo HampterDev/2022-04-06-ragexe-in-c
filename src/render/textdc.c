@@ -53,65 +53,17 @@ void text_dc_destruct(struct TextDC *self)
 
 void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
 {
-    int lang = g_languageIndex, face = a, size = b;
+    int face = a, size = b;
 
-    if (a == 0 && (unsigned)(lang - 1) <= 10) {
-        switch (lang) {
-        case 1:
-            if (g_serviceType == 6) {
-                face = 8;
-                size = b + 2;
-                break;
-            }
-            size = b + 3;
-            if (g_serviceType == 0xe) {
-                face = 9;
-                break;
-            }
-            face = 1;
-            if (g_language && g_language->folder_lang == 0x1f)
-                face = 6;
-            break;
-        case 2:
-            face = 2;
-            break;
-        case 3:
-            face = 3;
-            break;
-        case 4:
-            face = 4;
-            break;
-        case 5:
-            face = 5;
-            size = b + 3;
-            break;
-        case 6:
-            face = 7;
-            size = b + 3;
-            if (g_serviceType == 0xc) {
-                size -= 2;
-            } else if (g_serviceType == 0x12) {
-                if (g_language->folder_lang == 0x1f)
-                    face = 6;
-                else
-                    size -= 2;
-            }
-            break;
-        case 7:
-            face = 0xa;
-            size = b + 3;
-            break;
-        case 11:
-            face = 0xb;
-            size = b + 3;
-            break;
-        default:
-            break;
-        }
+    /* Face 0 is the default UI face: Arial (face 1), or Arial with face 6's
+       charset when Windows uses Turkish; both three points larger. */
+    if (a == 0) {
+        size = b + 3;
+        face = g_language && g_language->folder_lang == LANG_TURKISH ? 6 : 1;
     }
     self->face = face;
     self->size = size;
-    self->charset = (lang == 0 && face >= 0x14) ? g_3dDevice.faceCharsets[0] : g_3dDevice.faceCharsets[face];
+    self->charset = g_3dDevice.faceCharsets[face];
     self->bold = (BYTE)c;
     self->italic = (BYTE)d;
 }

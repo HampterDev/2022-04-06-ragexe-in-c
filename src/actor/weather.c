@@ -141,11 +141,6 @@ void weather_set_dim(struct Weather *self)
     self->dim = 1;
 }
 
-void weather_pokjuk(struct Weather *self)
-{
-    launch_pokjuk(self);
-}
-
 void weather_snow(struct Weather *self)
 {
     if (effect_is_fading(self->effect))

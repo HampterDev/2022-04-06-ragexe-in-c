@@ -46,7 +46,6 @@
 #define MSG_PARA_WEIGHT 0x9e8
 #define MSG_PARA_RESULT_TITLE 0x9e2
 #define MSG_POINTS_CASH 0x4ba
-#define MSG_POINTS_HANCOIN 0x50a
 #define MSG_POINTS_FREE 0x519
 #define DRAG_SHOP_GOODS 3
 
@@ -388,16 +387,7 @@ void ui_para_item_shop_wnd_on_draw(struct UIWindow *window)
         else
             ui_window_draw_item_icon_count(wnd, 0x22, y, info, 0, 0);
         ui_window_draw_item_name_short(wnd, 0x46, y + 8, 0x78, info, 0xc);
-        if (!self->cash)
-            unit = "Z";
-        else if (g_serviceType == 6)
-            unit = "K";
-        else if (g_serviceType != 0)
-            unit = "P";
-        else if (g_session1.channelCopId == 1)
-            unit = "H";
-        else
-            unit = "C";
+        unit = self->cash ? "P" : "Z";
         len = price_text(price, info, unit);
         ui_window_text_out_right(wnd, wnd->width - 0x12, y + 8, price, len, 0, 0xc, 0, 0);
         if (drawn == base->rows)
@@ -414,7 +404,7 @@ void ui_para_item_shop_wnd_on_draw(struct UIWindow *window)
 
         string_init(&line);
         string_format(&line,
-                      msg_str(g_serviceType == 0 && g_session1.channelCopId == 1 ? MSG_POINTS_HANCOIN : MSG_POINTS_CASH),
+                      msg_str(MSG_POINTS_CASH),
                       name,
                       g_session1.cashPoints);
         ui_window_text_out(wnd, 0xc, wnd->height - 0x15, string_cstr(&line), line.size, 0, 0xc, 0, 0, 0);

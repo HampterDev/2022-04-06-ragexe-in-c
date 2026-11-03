@@ -440,16 +440,11 @@ void ui_chat_his_box_on_create(struct UIWindow *window, int width, int height)
     ui_window_add_child(&self->list.base, &self->list.hbar->base);
 }
 
-static int right_aligned(void)
-{
-    return g_serviceType == SERVICE_UAE && g_windowMgr.arabic_text;
-}
-
 void ui_chat_his_box_on_draw(struct UIWindow *window)
 {
     struct UIChatHisBox *self = (struct UIChatHisBox *)window;
     struct UIWindow *wnd = &self->list.base;
-    int first, end, row, i, w;
+    int first, end, row, i;
     struct String *line;
 
     ui_window_clear_canvas(wnd, UI_TRANSPARENT);
@@ -459,18 +454,10 @@ void ui_chat_his_box_on_draw(struct UIWindow *window)
     end = view_end(self);
     for (row = 0, i = first; i < end; row++, i++) {
         line = LINE(self, i);
-        if (right_aligned()) {
-            w = ui_window_text_width(wnd, string_cstr(line), 0, 0, 12, 0, 0);
-            ui_window_text_out(wnd, wnd->width - w - 0x12, self->list.line_height * row + 4,
-                             string_cstr(line), 0, 0, 12, 0, 0, 0);
-            ui_window_text_out(wnd, wnd->width - w - 0x13, self->list.line_height * row + 3,
-                             string_cstr(line), 0, 0, 12, DWORDS(&self->colours)[i], 0, 0);
-        } else {
-            ui_window_text_out(wnd, 3, self->list.line_height * row + 4, string_cstr(line), 0, 0, 12, 0,
-                             0, 0);
-            ui_window_text_out(wnd, 2, self->list.line_height * row + 3, string_cstr(line), 0, 0, 12,
-                             DWORDS(&self->colours)[i], 0, 0);
-        }
+        ui_window_text_out(wnd, 3, self->list.line_height * row + 4, string_cstr(line), 0, 0, 12, 0,
+                         0, 0);
+        ui_window_text_out(wnd, 2, self->list.line_height * row + 3, string_cstr(line), 0, 0, 12,
+                         DWORDS(&self->colours)[i], 0, 0);
         place_navi_links(self, i);
         place_item_tags(self, i);
     }
@@ -695,16 +682,13 @@ void ui_chat_his_box2_on_draw(struct UIWindow *window)
     struct UIWindow *wnd = &box->list.base;
     int i = box->list.top;
     int end = view_end(box);
-    int row, x;
+    int row;
     struct String *line;
 
     ui_window_clear_canvas(wnd, RGB(self->back_r, self->back_g, self->back_b));
     for (row = 0; i < end; row++, i++) {
         line = LINE(box, i);
-        x = 2;
-        if (right_aligned())
-            x = wnd->width - ui_window_text_width(wnd, string_cstr(line), 0, 0, 12, 0, 0) - 0x13;
-        ui_window_text_out(wnd, x, box->list.line_height * row + 3, string_cstr(line), 0, 0, 12,
+        ui_window_text_out(wnd, 2, box->list.line_height * row + 3, string_cstr(line), 0, 0, 12,
                          DWORDS(&box->colours)[i], 0, 0);
         place_navi_links(box, i);
         place_item_tags(box, i);

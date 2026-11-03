@@ -216,7 +216,7 @@ static void on_delete_char_refused(struct LoginMode *self)
     int msg;
 
     switch (packet->error_code) {
-    case 0: msg = g_serviceType == 0 ? 0x12f : 0x12d; break;
+    case 0: msg = 0x12d; break;
     case 1: msg = 0x54c; break;
     case 2: msg = 0x788; break;
     default: msg = 0xc; break;

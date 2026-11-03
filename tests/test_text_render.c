@@ -15,7 +15,6 @@ struct FontCache g_fontCache;
 struct C3dDevice g_3dDevice;
 struct Language *g_language;
 struct perf_counters g_perf;
-int g_languageIndex, g_serviceType;
 unsigned int g_codePage = 949;
 unsigned char g_useCharsetTag;
 static int live_blocks, allocations, fail_alloc, fail_convert, fail_extent, fail_abc, fail_font, fail_select;

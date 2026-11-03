@@ -160,7 +160,6 @@ extern const struct UIButtonOps ui_job_slot_button_ops;
 extern const struct UIWindowOps ui_join_friend_accept_wnd_ops;
 extern const struct UIWindowOps ui_join_guild_accept_wnd_ops;
 extern const struct UIWindowOps ui_join_party_accept_wnd_ops;
-extern const struct UIWindowOps ui_key_stroke_wnd_ops;
 extern const struct UIListBoxOps ui_list_box_ops;
 extern const struct UIListBoxOps ui_list_box_agit_ops;
 extern const struct UIListBoxOps ui_list_box_agit_menu_ops;

@@ -111,9 +111,6 @@ static void greet_after_login(struct GameMode *self)
 {
     g_isStopByLogin = 0;
     guild_info_reset(&g_guildInfo);
-    if (g_serviceType == 0) {
-        mode_send_message(client_current_mode(), MODE_MSG_CHAT_ROOM_MSG, 0xe, 0, 0, 0);
-    }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);
     if (!account_user_data_is_loaded(g_accountUserDataMgr))
@@ -148,8 +145,6 @@ static void start_weather(struct GameMode *self)
     string_assign_cstr(&map, self->map_name);
     map_sky_mgr_apply(map_sky_mgr_instance(), &map);
     string_free(&map);
-    if ((g_serviceType == 8 || g_serviceType == 9) && strcmp("comodo.rsw", self->map_name) == 0 && g_session1.effectOn != 0)
-        weather_pokjuk(&g_weather);
 }
 
 void game_mode_initialize(struct GameMode *self)

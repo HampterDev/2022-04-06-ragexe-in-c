@@ -13,11 +13,7 @@ static struct Texture texture;
 static struct TexDrawPrim primitive;
 static int allocations, submissions, projections, fail_allocation;
 static float expected_rhw;
-static SYSTEMTIME test_time;
-static int texture_queries, missing_texture;
 struct TexCache g_textureCache;
-BYTE g_gradeBadgeState;
-int g_gradeBadgeAlpha;
 const struct TextureUV g_fullUV = {0, 0, 1, 1};
 struct Session g_session1;
 
@@ -36,18 +32,14 @@ void screen_sprite_frame(struct Renderer *renderer, int x, int y, struct ActRes 
     assert(0);
 }
 
-static void test_local_time(SYSTEMTIME *time) { *time = test_time; }
-#define GetLocalTime test_local_time
 #include "../src/render/rp_hud.c"
-#undef GetLocalTime
 
 struct Texture *texture_cache_get(struct TexCache *cache,
                                              const char *name, int a, int b)
 {
-    assert(cache == &g_textureCache && a == 0 && b == 0);
-    assert(strcmp(name, "유저인터페이스\\T_GameGrade.tga") == 0);
-    ++texture_queries;
-    return missing_texture ? NULL : &texture;
+    (void)cache; (void)name; (void)a; (void)b;
+    assert(0);
+    return NULL;
 }
 
 struct TexDrawPrim *renderer_new_prim(struct Renderer *r)
@@ -136,37 +128,6 @@ int main(void)
     screen_texture_rect(&renderer, &rect, 0, expected_rhw, 0, &texture, crop);
     assert(allocations == 4 && submissions == 3 && projections == 3);
 
-    fail_allocation = 0;
-    renderer.width = 800;
-    test_time.wMinute = 5;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(texture_queries == 0 && submissions == 3);
-    test_time.wMinute = test_time.wSecond = 0;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(texture_queries == 1 && submissions == 4);
-    assert(g_gradeBadgeState == 1 && g_gradeBadgeAlpha == 1);
-    {
-        const float badge[4][2] = {{560, 45}, {660, 45}, {560, 95}, {660, 95}};
-        const float full[4][2] = {{0, 0}, {0.78125f, 0}, {0, 0.78125f}, {0.78125f, 0.78125f}};
-        check_quad(badge, 0x01ffffff, full);
-    }
-    g_gradeBadgeAlpha = 220;
-    test_time.wSecond = 5;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(g_gradeBadgeAlpha == 220 && primitive.base.verts[0].diffuse == 0xdcffffff);
-    test_time.wSecond = 10;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(g_gradeBadgeState == 2 && g_gradeBadgeAlpha == 219);
-    assert(primitive.base.verts[0].diffuse == 0xdbffffff);
-    missing_texture = 1;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(g_gradeBadgeAlpha == 219 && submissions == 6);
-    missing_texture = 0;
-    g_gradeBadgeAlpha = 0;
-    renderer_draw_game_grade_badge(&renderer);
-    assert(g_gradeBadgeState == 0 && submissions == 7);
-    renderer_draw_game_grade_badge(&renderer);
-    assert(submissions == 7);
-    puts("PASS: texture geometry, resource failures and frame badge rendering/fades");
+    puts("PASS: texture geometry and resource failures");
     return 0;
 }

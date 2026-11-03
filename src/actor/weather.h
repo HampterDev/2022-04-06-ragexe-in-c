@@ -44,7 +44,6 @@ void weather_script_process(struct Weather *self, struct String map);
 
 void weather_set_dim(struct Weather *self);
 void weather_clear_dim(struct Weather *self);
-void weather_pokjuk(struct Weather *self);
 void weather_snow(struct Weather *self);
 void weather_forget_effect(struct Weather *self);
 void weather_stop_effect(struct Weather *self);

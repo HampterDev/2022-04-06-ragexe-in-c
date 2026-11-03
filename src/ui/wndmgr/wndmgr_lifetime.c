@@ -63,10 +63,11 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->chat_history_pos = 0;
     self->invalidated = 0;
     self->chat_wnd_stick_on = 1;
-    self->candidate_box = g_languageIndex == 2;
     self->skill_describe_show = 0;
     self->logo_x = 0;
-    self->logo_y = g_serviceType == 0 ? -25 : 0;
+    /* The window manager is built before clientinfo.xml is read, while the service type
+       was still 0 (korea), so the logo kept the Korean offset. */
+    self->logo_y = -25;
     self->grade_width = 0xcb;
     self->service_piece_x = self->service_piece_y = 0;
     self->tape_y = self->tape_top = 0;

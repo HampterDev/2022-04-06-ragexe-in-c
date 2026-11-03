@@ -135,13 +135,8 @@ void game_mode_show_name_balloon(struct GameMode *self, struct GameActor *actor)
     self->name_balloon_height = (*slot)->height;
 
     aid = actor->aid;
-    if (g_serviceType == 0xc && aid - 0x189111 <= 9 && aid - 0x189111 != 4 && aid - 0x189111 != 7) {
-        BALLOON(*slot)->balloon.colour = 0xff;
-        BALLOON(*slot)->balloon.outline = 0x646464;
-    } else {
-        BALLOON(*slot)->balloon.colour = game_mode_name_color(self, game_actor_get_job(actor), aid);
-        BALLOON(*slot)->balloon.outline = 0;
-    }
+    BALLOON(*slot)->balloon.colour = game_mode_name_color(self, game_actor_get_job(actor), aid);
+    BALLOON(*slot)->balloon.outline = 0;
     job = game_actor_get_job(actor);
     if (game_actor_is_pc_job(job) == 0 && (short)actor->level > 0 && session_is_monster_actor(&g_session1, actor) != 0) {
         short diff = (short)(((unsigned short)g_session1.charBaseLevel) - actor->level);

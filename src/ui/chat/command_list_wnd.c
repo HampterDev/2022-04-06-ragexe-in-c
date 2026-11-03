@@ -245,7 +245,7 @@ void ui_command_list_wnd_on_draw(struct UIWindow *window)
         for (x = left_w; n > 0; n--, x += tile)
             ui_window_draw_bitmap(wnd, x, wnd->height - bar_h, bmp, 0);
     }
-    ui_window_draw_shadow_text(wnd, 0x11, 2, g_serviceType == 0xc ? "Lista de Comandos" : "Command List",
+    ui_window_draw_shadow_text(wnd, 0x11, 2, "Command List",
                             0, 0, 0xffffff, 0, 0xc, 0);
 
     tab = CMDLIST_TAB(self);

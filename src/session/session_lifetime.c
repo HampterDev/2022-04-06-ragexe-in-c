@@ -1,6 +1,5 @@
 #include "contents/client_lua.h"
 #include <stdlib.h>
-#include "platform/embedded_fonts.h"
 #include "render/display_devices.h"
 #include "session/state.h"
 #include "core/memory.h"
@@ -210,7 +209,6 @@ void session_destruct(struct Session *self)
         mem_free(block);
     }
 
-    embedded_fonts_clear();
     item_info_mgr_clear();
     pet_auto_feed_destroy();
     achievement_destroy();

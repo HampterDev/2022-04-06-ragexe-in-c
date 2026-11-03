@@ -41,7 +41,6 @@ void ui_button_on_mouse_shape(struct UIWindow *self, int x, int y) { abort(); }
 void ui_button_set_show(struct UIButton *self, BYTE show) { abort(); }
 void ui_window_set_show_base(struct UIWindow *self, int show) { abort(); }
 
-int g_serviceType;
 void ui_scroll_bar_resize(struct UIWindow *self, int width, int height) { abort(); }
 const struct UIWindowOps ui_scroll_bar2_ops = { .destroy = ui_window_on_destroy_base };
 const struct UIWindowOps ui_scroll_bar3_ops = { .destroy = ui_window_on_destroy_base };

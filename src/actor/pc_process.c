@@ -373,10 +373,6 @@ void pc_render(struct GameObject *object, const float *matrix)
         render_object_render_projected(ro, matrix);
         return;
     }
-    if (is_event_aid(self->aid)) {
-        pc_render_event_account((struct Pc *)self, matrix);
-        return;
-    }
     if (self->single_sprite) {
         render_object_render_sprite((struct RenderObject *)ro, matrix, 0, 0.0f);
         return;

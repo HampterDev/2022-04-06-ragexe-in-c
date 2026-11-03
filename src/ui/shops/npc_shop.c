@@ -16,14 +16,7 @@ void npc_shop_price_unit_long(char *buf, int cash)
     sprintf(buf, "Zeny");
     if (!cash)
         return;
-    if (g_serviceType == 6)
-        sprintf(buf, "Koin");
-    else if (g_serviceType != 0)
-        sprintf(buf, "Point");
-    else if (g_session1.channelCopId == 1)
-        sprintf(buf, "한코인");
-    else
-        sprintf(buf, msg_str(MSG_SHOP_UNIT_CASH));
+    sprintf(buf, "Point");
 }
 
 void shop_tooltip_cell(struct UIWindow *wnd, int x, int y, int *tip_x, int *tip_y)

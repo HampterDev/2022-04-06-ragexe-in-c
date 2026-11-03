@@ -95,7 +95,6 @@ int crt_snprintf_s(char *arg0, size_t arg1, size_t arg2, const char *arg3, ...)
 {
     abort();
 }
-int g_serviceType;
 void string_assign_cstr(struct String *arg0, const char *arg1)
 {
     abort();
@@ -142,10 +141,6 @@ int session_is_admin_option(struct Session *arg0, int arg1)
     abort();
 }
 void debug_divide_by_zero(void)
-{
-    abort();
-}
-char *text_decode(char *arg0)
 {
     abort();
 }

@@ -6,6 +6,5 @@ extern unsigned char g_useCharsetTag;
 
 int get_charset_from_lang(unsigned short lang);
 unsigned int get_code_page_from_charset(int charset);
-unsigned int code_page_from_lang(unsigned short lang);
 
 #endif

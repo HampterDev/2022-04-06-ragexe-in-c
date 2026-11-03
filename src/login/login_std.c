@@ -25,7 +25,6 @@ struct LoginConnEntry *login_conn_entry_copy(struct LoginConnEntry *self,
     string_assign(&self->address, string_cstr(&src->address), src->address.size);
     string_assign(&self->port, string_cstr(&src->port), src->port.size);
     self->version = src->version;
-    self->service_type = src->service_type;
     string_assign(&self->balloon, string_cstr(&src->balloon), src->balloon.size);
     return self;
 }
@@ -39,22 +38,11 @@ static void conn_entry_destroy(struct LoginConnEntry *e)
     string_free(&e->display);
 }
 
-void login_conn_entry_destruct(struct LoginConnEntry *self)
-{
-    conn_entry_destroy(self);
-}
-
-void login_conn_entries_clear(struct Vec *v)
+void login_conn_entries_free(struct Vec *v)
 {
     struct LoginConnEntry *e;
 
     for (e = (struct LoginConnEntry *)v->first; e != (struct LoginConnEntry *)v->last; e++)
         conn_entry_destroy(e);
-    vec_clear(v);
-}
-
-void login_conn_entries_free(struct Vec *v)
-{
-    login_conn_entries_clear(v);
     vec_free(v);
 }

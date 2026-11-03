@@ -220,7 +220,6 @@ void ui_window_mgr_clear_slots(struct UIWindowMgr *self)
     self->making_arrow_list_wnd = NULL;
     self->select_cart_wnd = NULL;
     self->candidate_wnd = NULL;
-    self->key_stroke_wnd = NULL;
     self->join_friend_accept_wnd = NULL;
     self->command_list_wnd = NULL;
     self->homun_info_wnd = NULL;

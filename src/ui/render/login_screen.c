@@ -61,7 +61,7 @@ static void drag_pieces(struct UIWindowMgr *self, int tw, int th)
         if (between(fx, ftw * 0.1f + self->logo_x, ftw * 1.8f + self->logo_x)
             && between(fy, fth * 0.3f + self->logo_y, fth * 1.2f + self->logo_y))
             self->login_drag_piece = LOGIN_PIECE_LOGO;
-        if (g_serviceType != 0 && g_startupSecondMod4 > 0
+        if (g_startupSecondMod4 > 0
             && between(fx, ftw * 2.2f + self->service_piece_x, ftw * 3.5f + self->service_piece_x)
             && my > self->service_piece_y && my < self->service_piece_y + th * 3)
             self->login_drag_piece = LOGIN_PIECE_SERVICE;
@@ -93,8 +93,7 @@ static void drag_pieces(struct UIWindowMgr *self, int tw, int th)
             self->tape_y += (short)g_mouse.dy;
         break;
     case LOGIN_PIECE_SERVICE:
-        if (g_serviceType != 0 || self->service_piece_x + g_mouse.dx >= 0)
-            self->service_piece_x += (short)g_mouse.dx;
+        self->service_piece_x += (short)g_mouse.dx;
         break;
     }
 }

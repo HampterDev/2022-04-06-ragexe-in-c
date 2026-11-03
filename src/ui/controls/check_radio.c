@@ -173,15 +173,11 @@ void ui_check_box_set_bitmaps_fit(struct UICheckBox *self, const char *checked, 
 
     string_assign_cstr(&self->checked_bitmap, checked);
     string_assign_cstr(&self->unchecked_bitmap, unchecked);
-    path = string_cstr(&self->checked_bitmap);
-    if (g_serviceType)
-        path = ui_skin_path(path);
+    path = ui_skin_path(string_cstr(&self->checked_bitmap));
     bitmap = res_mgr_get(g_resMgr(), path);
     self->base.width = bitmap->width;
     self->base.height = bitmap->height;
-    path = string_cstr(&self->unchecked_bitmap);
-    if (g_serviceType)
-        path = ui_skin_path(path);
+    path = ui_skin_path(string_cstr(&self->unchecked_bitmap));
     res_mgr_get(g_resMgr(), path);
 }
 
@@ -312,11 +308,6 @@ void ui_radio_btn_set_label(struct UIWindow *self, const char *label)
     ui_window_invalidate(self);
 }
 
-static const char *service_path(const char *path)
-{
-    return g_serviceType ? ui_skin_path(path) : path;
-}
-
 struct UICheckBox *ui_check_box_construct(struct UIWindow *wnd)
 {
     struct UICheckBox *self = (struct UICheckBox *)wnd;
@@ -346,8 +337,8 @@ void ui_check_box_set_bitmaps(struct UIWindow *wnd, const char *checked,
 
     string_assign_cstr(&self->checked_bitmap, checked);
     string_assign_cstr(&self->unchecked_bitmap, unchecked);
-    res_mgr_get(g_resMgr(), service_path(string_cstr(&self->checked_bitmap)));
-    res_mgr_get(g_resMgr(), service_path(string_cstr(&self->unchecked_bitmap)));
+    res_mgr_get(g_resMgr(), ui_skin_path(string_cstr(&self->checked_bitmap)));
+    res_mgr_get(g_resMgr(), ui_skin_path(string_cstr(&self->unchecked_bitmap)));
     if (!label)
         label = "";
     string_assign_cstr(&self->label, label);

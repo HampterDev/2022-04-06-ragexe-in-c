@@ -1,6 +1,5 @@
 #include "ui/window_access.h"
 #include "ui/window_mgr.h"
-#include "fileio/resource_api.h"
 #include "ui/window_manager_state.h"
 #include <string.h>
 #include <stdlib.h>
@@ -9,9 +8,6 @@
 #include <limits.h>
 #include "platform/language.h"
 #include "core/app.h"
-#include "ui/misc/thai_lexicon.h"
-
-struct ThaiBreakIterator g_thaiBreakIterator;
 
 struct Language *g_language;
 
@@ -20,25 +16,14 @@ struct Language *g_language;
 struct Language *language_construct(struct Language *self)
 {
     memset(self, 0, sizeof *self);
-    self->input_method = LANGUAGE_INPUT_DEFAULT;
     self->keyboard_lang = LOWORD(GetKeyboardLayout(0));
-    self->code_page = g_useCharsetTag ? code_page_from_lang(self->keyboard_lang) : g_codePage;
     switch (GetUserDefaultLangID() & 0x3ff) {
-    case LANG_GERMAN:     self->folder_lang = LANG_GERMAN;     self->folder = "german\\";     break;
-    case LANG_ITALIAN:    self->folder_lang = LANG_ITALIAN;    self->folder = "italian\\";    break;
-    case LANG_PORTUGUESE: self->folder_lang = LANG_PORTUGUESE; self->folder = "portuguese\\"; break;
-    case LANG_TURKISH:    self->folder_lang = LANG_TURKISH;    self->folder = "turkish\\";    break;
-    default:             self->folder_lang = LANG_ENGLISH;    self->folder = "english\\";    break;
+    case LANG_GERMAN:     self->folder_lang = LANG_GERMAN;     break;
+    case LANG_ITALIAN:    self->folder_lang = LANG_ITALIAN;    break;
+    case LANG_PORTUGUESE: self->folder_lang = LANG_PORTUGUESE; break;
+    case LANG_TURKISH:    self->folder_lang = LANG_TURKISH;    break;
+    default:              self->folder_lang = LANG_ENGLISH;    break;
     }
-    if (g_serviceType == 0xf)
-        self->code_page = 1258;
-    return self;
-}
-
-struct Language *language_th_construct(struct Language *self)
-{
-    language_construct(self);
-    thai_break_iterator_initialize_lexicon(&g_thaiBreakIterator);
     return self;
 }
 
@@ -46,11 +31,8 @@ void language_destruct(struct Language *self)
 {
     free(self->input);
     free(self->candidates);
-    free(self->owned_folder);
-    free(self->lookup_path);
     free(self->display_text);
     memset(self, 0, sizeof *self);
-    self->folder = "";
 }
 
 void language_delete_selection(struct Language *self)
@@ -168,7 +150,7 @@ void language_caret_back(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharPrevExA((WORD)self->code_page, s, s + self->caret, 0) - s);
+    self->caret = (int)(CharPrevExA((WORD)g_codePage, s, s + self->caret, 0) - s);
 }
 
 void language_caret_forward(struct Language *self)
@@ -183,7 +165,7 @@ void language_caret_forward(struct Language *self)
         return;
     }
     s = language_input_text(self);
-    self->caret = (int)(CharNextExA((WORD)self->code_page, s + self->caret, 0) - s);
+    self->caret = (int)(CharNextExA((WORD)g_codePage, s + self->caret, 0) - s);
 }
 
 const char *language_candidate_text(struct Language *self, int index)
@@ -191,7 +173,7 @@ const char *language_candidate_text(struct Language *self, int index)
     int length;
     if (index < 0 || index >= self->candidate_count)
         return "";
-    length = WideCharToMultiByte(self->code_page, 0,
+    length = WideCharToMultiByte(g_codePage, 0,
         (LPCWSTR)((const BYTE *)self->candidates + self->candidates->dwOffset[index]), -1,
         self->candidate_text, sizeof self->candidate_text, NULL, NULL);
     if ((unsigned)length >= sizeof self->candidate_text)
@@ -271,7 +253,7 @@ void language_read_composition(struct Language *self)
         ImmReleaseContext(g_hMainWnd, imc);
         return;
     }
-    length = bytes ? WideCharToMultiByte(self->code_page, 0, wide, (int)(bytes / sizeof(WCHAR)),
+    length = bytes ? WideCharToMultiByte(g_codePage, 0, wide, (int)(bytes / sizeof(WCHAR)),
                                         text, sizeof text - 1, NULL, NULL) : 0;
     if (bytes && !length) {
         ImmReleaseContext(g_hMainWnd, imc);
@@ -316,7 +298,7 @@ void language_insert_result(struct Language *self)
         ImmReleaseContext(g_hMainWnd, imc);
         return;
     }
-    length = bytes ? WideCharToMultiByte(self->code_page, 0, wide, (int)(bytes / sizeof(WCHAR)),
+    length = bytes ? WideCharToMultiByte(g_codePage, 0, wide, (int)(bytes / sizeof(WCHAR)),
                                         text, sizeof text - 1, NULL, NULL) : 0;
     if (bytes && !length) {
         ImmReleaseContext(g_hMainWnd, imc);
@@ -325,20 +307,6 @@ void language_insert_result(struct Language *self)
     text[length] = 0;
     ImmReleaseContext(g_hMainWnd, imc);
     language_replace_selection(self, text);
-}
-
-const char *language_reading(struct Language *self)
-{
-    if (self->input_method == LANGUAGE_INPUT_ZHUYIN)
-        return language_tc_reading((struct LanguageTC *)self);
-    return self->reading;
-}
-
-int language_reading_length(struct Language *self)
-{
-    if (self->input_method == LANGUAGE_INPUT_ZHUYIN)
-        return language_tc_reading_length((struct LanguageTC *)self);
-    return self->reading_length;
 }
 
 const char *language_charset_tag(struct Language *self, BYTE folder_lang)
@@ -394,31 +362,6 @@ const char *language_char_next(const char *p)
 void language_set_masked(struct Language *self, BYTE masked)
 {
     self->masked = masked;
-}
-
-const char *language_language_file(struct Language *self, const char *name)
-{
-    size_t folder, length;
-    char *path;
-    BYTE found;
-    if (g_serviceType == 0 || g_serviceType == 2 || g_serviceType == 0x14)
-        return name;
-    folder = strlen(self->folder);
-    length = strlen(name);
-    if (length == SIZE_MAX || folder > SIZE_MAX - length - 1)
-        return name;
-    path = malloc(folder + length + 1);
-    if (!path) return name;
-    memcpy(path, self->folder, folder);
-    memcpy(path + folder, name, length + 1);
-    if (strstr(name, ".txt") || strstr(name, ".xml"))
-        found = file_make_file_name(path, 0);
-    else
-        found = res_mgr_is_available(g_resMgr(), path);
-    if (!found) { free(path); return name; }
-    free(self->lookup_path);
-    self->lookup_path = path;
-    return path;
 }
 
 void language_move_caret_forward(struct Language *self, int count)
@@ -556,23 +499,14 @@ int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM w
         break;
     case WM_INPUTLANGCHANGE:
         self->keyboard_lang = (WORD)lparam;
-        self->code_page = g_useCharsetTag ? code_page_from_lang(self->keyboard_lang) : g_codePage;
         break;
     case WM_IME_ENDCOMPOSITION:
-        if (self->input_method == LANGUAGE_INPUT_ZHUYIN)
-            language_tc_clear_keys((struct LanguageTC *)self);
         self->composition[0] = 0;
         self->composition_length = 0;
         break;
     case WM_IME_COMPOSITION:
-        if (lparam & GCS_COMPSTR) {
-            if (self->input_method == LANGUAGE_INPUT_ZHUYIN) {
-                language_tc_read_composition((struct LanguageTC *)self);
-                language_tc_on_composition_changed((struct LanguageTC *)self);
-            } else {
-                language_read_composition(self);
-            }
-        }
+        if (lparam & GCS_COMPSTR)
+            language_read_composition(self);
         if (lparam & GCS_CURSORPOS)
             language_read_cursor_pos(self);
         if (lparam & GCS_RESULTSTR)
@@ -604,8 +538,6 @@ void language_cancel_input(struct Language *self)
     if (self->input) self->input[0] = 0;
     self->caret = self->input_length;
     self->anchor = self->input_length;
-    self->reading_length = 0;
-    self->reading[0] = 0;
     self->composition_length = 0;
     self->composition[0] = 0;
     self->candidate_count = 0;
@@ -630,25 +562,4 @@ void language_set_selection(struct Language *self, int anchor, int caret)
     }
     if ((unsigned)caret > size)
         self->caret = size;
-}
-
-void language_on_reading_key(struct Language *self, BYTE key)
-{
-    if (self->input_method == LANGUAGE_INPUT_ZHUYIN)
-        language_tc_on_key((struct LanguageTC *)self, key);
-}
-
-int language_set_folder(struct Language *self, const char *folder, WORD language)
-{
-    size_t length = strlen(folder);
-    char *copy;
-    if (length == SIZE_MAX) return 0;
-    copy = malloc(length + 1);
-    if (!copy) return 0;
-    memcpy(copy, folder, length + 1);
-    free(self->owned_folder);
-    self->owned_folder = copy;
-    self->folder = copy;
-    self->folder_lang = language;
-    return 1;
 }

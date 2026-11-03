@@ -248,16 +248,8 @@ void ui_item_purchase_wnd_on_draw(struct UIWindow *window)
         }
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, name_width, info, 12);
         _snprintf_s(unit, 10, (size_t)-1, "Z");
-        if (self->cash) {
-            if (g_serviceType == 6)
-                sprintf(unit, "Koin");
-            else if (g_serviceType != 0)
-                sprintf(unit, "Point");
-            else if (g_session1.channelCopId == 1)
-                sprintf(unit, CASH_HANCOIN);
-            else
-                sprintf(unit, msg_str(MSG_SHOP_UNIT_CASH));
-        }
+        if (self->cash)
+            sprintf(unit, "Point");
         if (info->price != info->charged_price)
             len = sprintf(text, " %d -> %s %s", info->price, format_money(info->charged_price, money), unit);
         else
@@ -278,16 +270,8 @@ static void purchase_total_text(struct UIItemPurchaseWnd *self, int total)
     char text[0x60], money[0x60];
     const char *fmt = "Total : %s Zeny";
 
-    if (self->cash) {
-        if (g_serviceType == 6)
-            fmt = "Total : %s Koin";
-        else if (g_serviceType != 0)
-            fmt = "Total : %s Point";
-        else if (g_session1.channelCopId == 1)
-            fmt = "Total : %s " CASH_HANCOIN;
-        else
-            fmt = "Total : %s " CASH_WORD;
-    }
+    if (self->cash)
+        fmt = "Total : %s Point";
     sprintf(text, fmt, format_money(total, money));
     ui_static_text_set_text_fit(self->total, text);
 }
@@ -481,16 +465,8 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             ui_window_move(self->points, 0x6e, wnd->height - 0x32);
         else
             ui_window_move(self->points, -100, -100);
-        if (self->cash) {
-            if (g_serviceType == 6)
-                fmt = "Total : %d Koin";
-            else if (g_serviceType != 0)
-                fmt = "Total : %d Point";
-            else if (g_session1.channelCopId == 1)
-                fmt = "Total : %d " CASH_HANCOIN;
-            else
-                fmt = "Total : %d " CASH_WORD;
-        }
+        if (self->cash)
+            fmt = "Total : %d Point";
         sprintf(text, fmt, 0);
         ui_static_text_set_text_fit(self->total, text);
         return 0;

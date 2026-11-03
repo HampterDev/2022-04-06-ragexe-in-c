@@ -189,7 +189,6 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
     string_free(&server_map_name);
 }
 
-enum { SERVICE_TYPE_TAIWAN = 4 };
 enum { WID_MEMORIAL_DUNGEON = 0x89 };
 enum { MODE_REQ_LOGIN_WINDOW = 0x8d };
 enum { MODE_REQ_QUIT = 2 };
@@ -205,7 +204,7 @@ static int ban_message(unsigned code)
     case 5:    return 0x131;
     case 9:    return 0x211;
     case 10:   return 0x212;
-    case 15:   return g_serviceType == SERVICE_TYPE_TAIWAN ? 0x243 : 0;
+    case 15:   return 0;
     case 0x6e: return 0x635;
     case 0x71: return 0x7e5;
     case 0x73: return 0x92b;

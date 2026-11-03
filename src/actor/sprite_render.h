@@ -35,7 +35,6 @@ void render_object_swing_point(struct RenderObject *self, int layer, int *x, int
 void render_object_draw_flashes(struct RenderObject *self, struct SqQuad quad, void *palette);
 
 void pc_render_body_layers(struct Pc *pc, const float *matrix, int mode, char flag);
-void pc_render_event_account(struct Pc *pc, const float *matrix);
 struct Vec *pc_layer_act_names(struct Pc *pc, struct Vec *out);
 struct Vec *pc_layer_spr_names(struct Pc *pc, struct Vec *out);
 void pc_place_head(struct Pc *pc);

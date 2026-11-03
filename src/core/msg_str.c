@@ -7,9 +7,6 @@
 #include <string.h>
 #include "platform/language.h"
 
-#define SERVICE_KOREA 0
-#define SERVICE_UAE 0x13
-
 static struct TableReader message_reader;
 static char *tagged_messages[MSG_STRING_COUNT];
 static char missing_message[32];
@@ -43,13 +40,6 @@ const char *msg_str_field(unsigned id)
     return no_message;
 }
 
-unsigned char is_event_aid(unsigned aid)
-{
-    if (g_serviceType != SERVICE_KOREA)
-        return 0;
-    return (aid >= 0x2c8c7d && aid <= 0x2c8c80) || aid == 0x2c8c82;
-}
-
 const char *msg_str_to_compare(int id)
 {
     return (unsigned)id < MSG_STRING_COUNT ? msg_str_field((unsigned)id) : no_message;
@@ -66,7 +56,7 @@ char *msg_str(int id)
     if (!g_useCharsetTag || text[0] == '/' || strcmp(text, no_message) == 0)
         return (char *)text;
 
-    if (!tagged_messages[id] || g_serviceType == SERVICE_UAE) {
+    if (!tagged_messages[id]) {
         char buffer[260];
         char *copy;
         size_t length;
@@ -80,29 +70,4 @@ char *msg_str(int id)
         tagged_messages[id] = copy;
     }
     return tagged_messages[id];
-}
-
-static char *text_decode_mirror(char *text)
-{
-    int len = (int)strlen(text), i;
-
-    for (i = 0; i < len; i++) {
-        unsigned char c = (unsigned char)text[i];
-        unsigned char b = (unsigned char)(c - 'a') <= 25 ? (unsigned char)(0xdb - c) : c;
-
-        if ((unsigned char)(b - 'A') <= 25)
-            text[i] = (char)(0x9b - b);
-        else if ((unsigned char)(b + 0x50) <= 0xf)
-            text[i] = (char)(0x6f - b);
-        else
-            text[i] = (char)b;
-    }
-    return text;
-}
-
-char *text_decode(char *text)
-{
-    if (g_serviceType != SERVICE_KOREA)
-        return text;
-    return text_decode_mirror(text);
 }

@@ -371,7 +371,7 @@ void ui_guild_skill_wnd_on_draw(struct UIWindow *window)
         session_format_item_bitmap_path(SKILL_INFO_NAME(info), buf);
         ui_window_draw_bitmap(wnd, x + 0x2c, y + 0x2d, res_mgr_get(g_resMgr(), buf), 1);
         if (info->level) {
-            sprintf(buf, g_serviceType != 0xc ? "Lv : %d" : "Nv : %d", info->level);
+            sprintf(buf, "Lv : %d", info->level);
             level_y = y + 0x3a;
             ui_window_text_out(wnd, x + 0x71, level_y, buf, 0, 0, 0xc, 0, 0, 0);
             if (info->type == 0)

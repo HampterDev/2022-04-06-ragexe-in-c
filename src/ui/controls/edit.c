@@ -271,7 +271,6 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
             plain = 0;
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_candidate_wnd(self, lo_x);
-            ui_edit_ctrl_place_key_stroke_wnd(self, hi_x);
             if (!((timeGetTime() / CARET_BLINK_MS) & 1))
                 ui_edit_ctrl_draw_highlight(self, lo_x + x, max(hi_x - lo_x, 2));
             draw_string(self, x, &shown);
@@ -361,12 +360,6 @@ void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *self, int x)
         place_ime_window(self, g_windowMgr.candidate_wnd, x);
 }
 
-void ui_edit_ctrl_place_key_stroke_wnd(struct UIEditCtrl *self, int x)
-{
-    if (g_windowMgr.key_stroke_wnd)
-        place_ime_window(self, g_windowMgr.key_stroke_wnd, x);
-}
-
 BYTE ui_edit_ctrl_caret_shown(void)
 {
     if (ui_window_mgr_is_chat_edit_focused(&g_windowMgr) && !g_windowMgr.chat_bar_shown)
@@ -383,8 +376,6 @@ unsigned long long ui_edit_ctrl_focus_key(void)
     key = draw_key_bytes(key, language->input, language->input_length);
     key = draw_key_int(key, language->caret);
     key = draw_key_int(key, language->anchor);
-    key = draw_key_int(key, (int)language->reading_length);
-    key = draw_key_bytes(key, language->reading, language->reading_length);
     key = draw_key_int(key, (int)language->composition_length);
     key = draw_key_bytes(key, language->composition, language->composition_length);
     key = draw_key_int(key, language->composition_cursor);

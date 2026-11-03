@@ -90,7 +90,6 @@ static int send_chat_line(int packet_id)
 static int check_history_full(struct GameMode *self)
 {
     char phrase1[0x100], phrase2[0x100], phrase3[0x100];
-    const char *(*msg)(int);
     const char *m317, *m318, *name;
     int lines, k;
 
@@ -114,13 +113,12 @@ static int check_history_full(struct GameMode *self)
     }
     if (!session_is_any_super_novice_job(&g_session1, session_get_drawn_job(&g_session1)))
         return 0;
-    msg = g_serviceType == 0 ? msg_str : msg_str_to_compare;
-    sprintf(phrase1, msg(0x316));
-    m318 = msg(0x318);
+    sprintf(phrase1, msg_str_to_compare(0x316));
+    m318 = msg_str_to_compare(0x318);
     name = session_character_name(&g_session1);
-    m317 = msg(0x317);
+    m317 = msg_str_to_compare(0x317);
     sprintf(phrase2, "%s %s%s", m317, name, m318);
-    sprintf(phrase3, msg(0x319));
+    sprintf(phrase3, msg_str_to_compare(0x319));
     if (!string_equal_cstr(&self->chat_history[9], phrase3)
         || !string_equal_cstr(&self->chat_history[7], phrase1)
         || self->world->player->state == 3)

@@ -245,15 +245,9 @@ struct String *item_info_get_display_name(const struct ItemInfo *self,
     if (self->slot[0] == ITEM_SLOT_NAMED && self->slot[1] == 0) {
         if (self->refine > 0)
             item_name_append_refine(self, out);
-        if (g_serviceType == 0xc || g_serviceType == 0xe) {
-            string_append_cstr(out, item_info_get_name(self));
-            string_append_cstr(out, item_info_get_maker_element_text(self));
-            string_append_cstr(out, item_info_get_maker_name(self));
-        } else {
-            string_append_cstr(out, item_info_get_maker_name(self));
-            string_append_cstr(out, item_info_get_maker_element_text(self));
-            string_append_cstr(out, item_info_get_name(self));
-        }
+        string_append_cstr(out, item_info_get_maker_name(self));
+        string_append_cstr(out, item_info_get_maker_element_text(self));
+        string_append_cstr(out, item_info_get_name(self));
         return out;
     }
 
@@ -276,21 +270,9 @@ struct String *item_info_get_display_name(const struct ItemInfo *self,
         item_name_append_sockets(self, out);
         return out;
     }
-    if (g_serviceType == 0xc) {
-        string_append_cstr(out, item_info_get_name(self));
-        string_append_cstr(out, item_info_get_maker_element_text(self));
-        string_append_cstr(out, item_info_get_maker_star_text(self));
-        string_append_cstr(out, item_info_get_maker_name(self));
-    } else if (g_serviceType == 0xe) {
-        string_append_cstr(out, item_info_get_maker_star_text(self));
-        string_append_cstr(out, item_info_get_name(self));
-        string_append_cstr(out, item_info_get_maker_element_text(self));
-        string_append_cstr(out, item_info_get_maker_name(self));
-    } else {
-        string_append_cstr(out, item_info_get_maker_star_text(self));
-        string_append_cstr(out, item_info_get_maker_name(self));
-        string_append_cstr(out, item_info_get_maker_element_text(self));
-        string_append_cstr(out, item_info_get_name(self));
-    }
+    string_append_cstr(out, item_info_get_maker_star_text(self));
+    string_append_cstr(out, item_info_get_maker_name(self));
+    string_append_cstr(out, item_info_get_maker_element_text(self));
+    string_append_cstr(out, item_info_get_name(self));
     return out;
 }

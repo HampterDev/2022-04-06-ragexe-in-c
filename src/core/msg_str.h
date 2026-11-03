@@ -9,7 +9,5 @@ void msg_str_unload(void);
 char *msg_str(int id);
 const char *msg_str_to_compare(int id);
 const char *msg_str_field(unsigned id);
-unsigned char is_event_aid(unsigned aid);
-char *text_decode(char *text);
 
 #endif

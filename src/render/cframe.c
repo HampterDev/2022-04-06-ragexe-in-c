@@ -15,14 +15,10 @@
 
 int   g_wobbleFramesLeft;
 BYTE  g_wobbleMode;
-BYTE  g_gradeBadgeState;
 short g_wobbleAmplitude;
-int   g_gradeBadgeAlpha;
 
 void renderer_draw_frame_extras(struct Renderer *self)
 {
-    if (g_serviceType == 0)
-        renderer_draw_game_grade_badge(self);
     if (g_session1.showTimeFont != 0) {
         int unit = self->height / 700;
         void *act = res_mgr_get(g_resMgr(), "이팩트\\TimeFont.act");

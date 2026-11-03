@@ -68,11 +68,6 @@ static void pump_messages(void)
     if (!PeekMessageA(&msg, 0, 0, 0, PM_REMOVE))
         return;
     do {
-        if (msg.message == WM_KEYDOWN && msg.wParam == VK_PROCESSKEY) {
-            UINT key = ImmGetVirtualKey(msg.hwnd);
-
-            language_on_reading_key(g_language, (BYTE)key);
-        }
         TranslateMessage(&msg);
         DispatchMessageA(&msg);
     } while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE));

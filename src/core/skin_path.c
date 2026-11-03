@@ -52,10 +52,8 @@ const char *ui_skin_path(const char *path)
         string_free(&skin);
     }
 
-    if (g_serviceType == 0)
+    if (res_mgr_is_available(g_resMgr(), path))
         return path;
-    if (res_mgr_is_available(g_resMgr(), language_language_file(g_language, path)))
-        return language_language_file(g_language, path);
 
     if (once_begin(&g_uiFolderPathGuard)) {
         string_init(&g_uiFolderPath);

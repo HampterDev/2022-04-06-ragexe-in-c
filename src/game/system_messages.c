@@ -233,19 +233,6 @@ void game_mode_zc_ack_disconnect_character(const unsigned char *pkt)
     chat(UIM_PUSH_INTO_CHAT, line, 0x32ff, 0);
 }
 
-static const char *count_in_words(unsigned short count)
-{
-    if (count <= 1000)
-        return msg_str(0x339);
-    if (count <= 3000)
-        return msg_str(0x33a);
-    if (count <= 6000)
-        return msg_str(0x33b);
-    if (count <= 10000)
-        return msg_str(0x33c);
-    return msg_str(0x33d);
-}
-#define SERVICE_TYPE_CHINA 3
 #define MSG_USER_COUNT                0xb2
 
 #pragma pack(push, 1)
@@ -261,10 +248,7 @@ void game_mode_zc_user_count(const unsigned char *pkt)
     const struct PACKET_ZC_USER_COUNT *packet = (const struct PACKET_ZC_USER_COUNT *)pkt;
     char line[0x100];
 
-    if (g_serviceType == SERVICE_TYPE_CHINA && !clientinfo_is_admin_aid(g_session1.ownAid))
-        strcpy(line, count_in_words((unsigned short)packet->count));
-    else
-        sprintf(line, msg_str(MSG_USER_COUNT), packet->count);
+    sprintf(line, msg_str(MSG_USER_COUNT), packet->count);
     chat(UIM_REFRESH, 0, 0, 0);
     chat(UIM_PUSH_INTO_CHAT, line, 0xffff, 0);
 }

@@ -53,8 +53,6 @@ const struct UIWindowOps ui_candidate_wnd_ops = {
 };
 
 #define IME_FONT_HEIGHT 12
-#define IME_ARROW_ON 0xff9f70
-#define IME_ARROW_OFF 0xd2d2d2
 
 #define CANDIDATE_MAX 9
 
@@ -103,68 +101,11 @@ static void candidate_label(struct UICandidateWnd *self, int i, char *buf)
     sprintf(buf, "%d %s", i + 1, string_cstr(&self->text[i]));
 }
 
-static void candidate_arrows(struct UICandidateWnd *self)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    int w;
-
-    ui_window_fill_triangle(wnd, 8, 0x12, 0xe, 0xa, 0xe, 0x1a,
-                          self->page > 0 ? IME_ARROW_ON : IME_ARROW_OFF);
-    w = wnd->width;
-    ui_window_fill_triangle(wnd, w - 8, 0x12, w - 0xe, 0xa, w - 0xe, 0x1a,
-                          self->page < self->last_page ? IME_ARROW_ON : IME_ARROW_OFF);
-}
-
+/* The client draws no candidate text: the Korean (horizontal), Japanese (vertical) and
+   Chinese layouts belonged to other service types, so only the frame is drawn. */
 void ui_candidate_wnd_on_draw(struct UIWindow *window)
 {
-    struct UICandidateWnd *self = (struct UICandidateWnd *)window;
-    struct UIWindow *wnd = &self->frame.base;
-    char buf[64];
-    int i, x, y, len;
-
-    ui_window_draw_sys_box(wnd, 0, 0, 0, 0);
-    switch (g_languageIndex) {
-    case 0:
-        x = 0xe;
-        for (i = 0; i < self->count; i++) {
-            candidate_label(self, i, buf);
-            ui_window_text_out(wnd, x, 0xc, buf, 0, 0, IME_FONT_HEIGHT, 0, 0, 0);
-            x += ui_window_text_width(wnd, buf, (int)strlen(buf), 0, IME_FONT_HEIGHT, 0, 0) + 8;
-        }
-        candidate_arrows(self);
-        break;
-    case 2:
-        y = 0xc;
-        for (i = 0; i < self->count; i++) {
-            candidate_label(self, i, buf);
-            if (self->selected == i) {
-                COLORREF bar = ui_skin_colour(6, 2);
-                int w = ui_window_text_width(wnd, buf, 0, 0, IME_FONT_HEIGHT, 0, 0);
-                ui_window_fill_rect(wnd, 8, y - 2, w + 4, 0x10, bar);
-            }
-            ui_window_text_out(wnd, 0xa, y, buf, 0, 0, IME_FONT_HEIGHT, 0, 0, 0);
-            y += 0x14;
-        }
-        sprintf(buf, "%d / %d", self->page + 1, self->last_page + 1);
-        ui_window_text_out(wnd, 0x6e - ui_window_text_width(wnd, buf, 0, 0, IME_FONT_HEIGHT, 0, 0), 0xc0,
-                         buf, 0, 0, IME_FONT_HEIGHT, 0, 0, 0);
-        break;
-    case 3:
-    case 4:
-        x = 0xe;
-        for (i = 0; i < self->count; i++) {
-            candidate_label(self, i, buf);
-            if (i != self->selected) {
-                ui_window_text_out(wnd, x, 0xc, buf, 0, 0, IME_FONT_HEIGHT, 0, 0, 0);
-            } else {
-                len = (int)strlen(buf);
-                ui_window_text_out(wnd, x, 0xc, buf, len, 0, IME_FONT_HEIGHT, RGB(0xff, 0, 0), 0, 0);
-            }
-            x += ui_window_text_width(wnd, buf, (int)strlen(buf), 0, IME_FONT_HEIGHT, 0, 0) + 8;
-        }
-        candidate_arrows(self);
-        break;
-    }
+    ui_window_draw_sys_box(window, 0, 0, 0, 0);
 }
 
 int ui_candidate_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
@@ -175,7 +116,7 @@ int ui_candidate_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     const struct String *text = (const struct String *)val1;
     const struct CandidatePage *page = (const struct CandidatePage *)val2;
     char buf[64];
-    int i, w, width;
+    int i, width;
 
     if (msg != 0x41)
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
@@ -190,13 +131,9 @@ int ui_candidate_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     width = 0;
     for (i = 0; i < self->count; i++) {
         candidate_label(self, i, buf);
-        w = ui_window_text_width(wnd, buf, 0, 0, IME_FONT_HEIGHT, 0, 0) + 8;
-        if (g_languageIndex != 2)
-            width += w;
-        else if (w > width)
-            width = w;
+        width += ui_window_text_width(wnd, buf, 0, 0, IME_FONT_HEIGHT, 0, 0) + 8;
     }
-    ui_window_resize_base(wnd, width + 0x16, g_languageIndex == 2 ? self->count * 20 + 0xe : wnd->height);
+    ui_window_resize_base(wnd, width + 0x16, wnd->height);
     ui_window_invalidate_base(wnd);
     return 0;
 }

@@ -260,7 +260,7 @@ static void draw_rows(struct UINewSkillListWnd *self)
         if (level) {
             int lx;
 
-            sprintf(buf, g_serviceType == 0xc ? "Nv :" : "Lv :");
+            sprintf(buf, "Lv :");
             lx = level_use ? text_x + 0xc : text_x + 1;
             ui_window_text_out(wnd, lx, y + 0x2f, buf, 0, 0, 0xc, GREY(grey), 0, 0);
             if (level_use) {

@@ -31,7 +31,6 @@
 #define MSG_NAME_BLANK_EDGE 0xc7
 #define MSG_NAME_TOO_LONG 0x213
 #define MSG_NAME_ASK 0x4bd
-#define MSG_NAME_SERVICE_TEST 0x7e2
 #define MSG_NAME_NAVI_LINK 0xafc
 #define MSG_NAME_LINE_BREAK 0xd06
 
@@ -216,10 +215,6 @@ static void change_name_submit(struct UIChangeNameWnd *self)
     string_assign_cstr(&text, ui_edit_ctrl_get_text(edit));
     if (string_find(&text, "\n", 0) != STRING_NPOS) {
         change_name_refuse(self, MSG_NAME_LINE_BREAK);
-        goto done;
-    }
-    if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(edit))) {
-        change_name_refuse(self, MSG_NAME_SERVICE_TEST);
         goto done;
     }
     if (ui_edit_ctrl_get_text_size(edit) < 4) {

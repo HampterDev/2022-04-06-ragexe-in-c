@@ -332,13 +332,11 @@ void pc_set_spr_job(struct GameActor * base_actor, int job)
     actor_set_imf_name(self);
 }
 
-static struct Res *pc_layer_res(struct Pc *self, int layer, const char *name, const char *const names[2][2][2])
+static struct Res *pc_layer_res(struct Pc *self, int layer, const char *name, const char *const names[2][2])
 {
     if (clientinfo_is_yellow_aid(self->aid)) {
-        int event = is_event_aid(self->aid) ? 0 : 1;
-
         if (layer == 0 || layer == 5)
-            return res_mgr_get(g_resMgr(), names[event][layer == 5][self->sex != 0]);
+            return res_mgr_get(g_resMgr(), names[layer == 5][self->sex != 0]);
         if (layer == 6)
             return NULL;
     }
@@ -347,15 +345,11 @@ static struct Res *pc_layer_res(struct Pc *self, int layer, const char *name, co
 
 void pc_set_layer_spr(struct Pc *self, int layer, const char *name)
 {
-    static const char *const names[2][2][2] = {
-        { { "인간족\\몸통\\여\\운영자""2_여.Spr"  ,
-            "인간족\\몸통\\남\\운영자""2_남.Spr"   },
-          { "인간족\\운영자\\운영자""2_여_검.Spr"  ,
-            "인간족\\운영자\\운영자""2_남_검.Spr"   } },
-        { { "인간족\\몸통\\여\\운영자_여.Spr"  ,
-            "인간족\\몸통\\남\\운영자_남.Spr"   },
-          { "인간족\\운영자\\운영자_여_검.Spr"  ,
-            "인간족\\운영자\\운영자_남_검.Spr"   } },
+    static const char *const names[2][2] = {
+        { "인간족\\몸통\\여\\운영자_여.Spr"  ,
+          "인간족\\몸통\\남\\운영자_남.Spr"   },
+        { "인간족\\운영자\\운영자_여_검.Spr"  ,
+          "인간족\\운영자\\운영자_남_검.Spr"   },
     };
     struct Res **res = (struct Res **)self->layer_sprs.first;
 
@@ -369,15 +363,11 @@ void pc_set_layer_spr(struct Pc *self, int layer, const char *name)
 
 void pc_set_layer_act(struct Pc *self, int layer, const char *name)
 {
-    static const char *const names[2][2][2] = {
-        { { "인간족\\몸통\\여\\운영자""2_여.Act"  ,
-            "인간족\\몸통\\남\\운영자""2_남.Act"   },
-          { "인간족\\운영자\\운영자""2_여_검.Act"  ,
-            "인간족\\운영자\\운영자""2_남_검.Act"   } },
-        { { "인간족\\몸통\\여\\운영자_여.Act"  ,
-            "인간족\\몸통\\남\\운영자_남.Act"   },
-          { "인간족\\운영자\\운영자_여_검.Act"  ,
-            "인간족\\운영자\\운영자_남_검.Act"   } },
+    static const char *const names[2][2] = {
+        { "인간족\\몸통\\여\\운영자_여.Act"  ,
+          "인간족\\몸통\\남\\운영자_남.Act"   },
+        { "인간족\\운영자\\운영자_여_검.Act"  ,
+          "인간족\\운영자\\운영자_남_검.Act"   },
     };
     struct Res **res = (struct Res **)self->layer_acts.first;
 

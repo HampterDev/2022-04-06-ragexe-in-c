@@ -56,7 +56,7 @@ void game_mode_mute_self_for_flooding(void)
 
 char chat_refuse_repeated_line(int repeats)
 {
-    if (g_serverType == 3 || g_serviceType == 10)
+    if (g_serverType == 3)
         return 0;
     if (repeats < 2)
         return 0;

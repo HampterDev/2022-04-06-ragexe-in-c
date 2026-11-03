@@ -11,8 +11,6 @@
 #define UI_ID_HISTORY_LINE 0x153
 #define UI_MSG_HISTORY_DRAW 0x74
 
-#define SERVICE_UAE 0x13
-
 #define UI_ID_NAVI_LINK 0x1ae
 
 struct UIChatHisBox {

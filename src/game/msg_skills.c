@@ -80,8 +80,6 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         game_mode_get_actor_name(game_current_mode(), &name, level);
         strcpy(line, string_cstr(&name));
         strcpy(skill, skill_name(skill_id));
-        if (g_serviceType == 0)
-            strcat(skill, " ♡");
         strcat(line, " !!  ");
         strcat(line, msg_str(0x2f7));
         render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);
@@ -91,8 +89,6 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
     if (skill_id == 0x150) {
         wsprintfA(line, "%s", self->couple_name);
         strcpy(skill, skill_name(skill_id));
-        if (g_serviceType == 0)
-            strcat(skill, " ♡");
         strcat(line, " !!  ");
         strcat(line, skill);
         render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);

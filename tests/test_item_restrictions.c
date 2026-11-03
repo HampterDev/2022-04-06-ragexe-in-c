@@ -15,7 +15,7 @@ static struct { void *pointer; size_t size; } allocations[32];
 static struct { int id; int flags[8]; } rows[16];
 static const char *input;
 static int row_count, failed_read, negative_size, warning_count, failed, aborted;
-static int opened, closed, destroyed, read_count, localized;
+static int opened, closed, destroyed, read_count;
 static jmp_buf stop;
 
 void *mem_alloc(size_t size)
@@ -47,13 +47,6 @@ __declspec(noreturn) void fatal_error(const char *message)
     abort();
 }
 
-const char *language_language_file(struct Language *language, const char *name)
-{
-    assert(language == g_language && !strcmp(name, "ItemMoveInfoV5.txt"));
-    ++localized;
-    return "localized/ItemMoveInfoV5.txt";
-}
-
 struct File *file_construct(struct File *file)
 {
     memset(file, 0, sizeof *file);
@@ -63,7 +56,7 @@ struct File *file_construct(struct File *file)
 unsigned char file_open(struct File *file, const char *name, int mode, unsigned char resolve, unsigned char disk_only)
 {
     assert(!mode && resolve && !disk_only);
-    assert(!strcmp(name, g_language ? "localized/ItemMoveInfoV5.txt" : "ItemMoveInfoV5.txt"));
+    assert(!strcmp(name, "ItemMoveInfoV5.txt"));
     ++opened;
     if (!input) return 0;
     file->size = negative_size ? -1 : (int)strlen(input);
@@ -163,11 +156,10 @@ int main(int argc, char **argv)
         failed_read = 1; run("501 1 0 1 0 1 0 1 0 ", 0); failed_read = 0;
         negative_size = 1; run("501 ", 0); negative_size = 0;
         run(NULL, 0); assert(warning_count == 1);
-        g_language = (struct Language *)&localized;
+        g_language = (struct Language *)&opened;
         run("501 1 0 1 0 1 0 1 0", 1); expect_first();
-        assert(localized == 1);
     }
     if (failed) return 1;
-    puts("Item restrictions: actual numeric reader/startup traversal, whitespace, EOF/comments, partial records, invalid/overflow values, read failures, localization and cleanup passed.");
+    puts("Item restrictions: actual numeric reader/startup traversal, whitespace, EOF/comments, partial records, invalid/overflow values, read failures, no language-folder lookup and cleanup passed.");
     return 0;
 }

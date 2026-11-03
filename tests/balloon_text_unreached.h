@@ -41,7 +41,6 @@ void ui_window_on_hover_leave_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_is_focusable_base(struct UIWindow * arg0) { abort(); }
 BYTE ui_window_get_backdrop_box_base(struct UIWindow * arg0, struct UIBackdropBox * arg1) { abort(); }
 BYTE ui_window_is_click_through_base(struct UIWindow * arg0) { abort(); }
-int g_serviceType;
 struct Mode * game_current_base_mode(void) { abort(); }
 void * object_as_type(void * arg0, enum ObjectType arg1) { abort(); }
 

@@ -13,7 +13,6 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
     const struct PACKET_SC_NOTIFY_BAN *packet = (const struct PACKET_SC_NOTIFY_BAN *)pkt;
     char text[0x100];
     char line[0x100];
-    char tmp[200];
     int id;
 
     text[0] = 0;
@@ -44,10 +43,6 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
     case 104: id = 0x51e; break;
     case 105: id = 0x51f; break;
     case 107:
-        if (g_serviceType == 0) {
-            sprintf(tmp, msg_str(0x595), 9);
-            strcpy(text, tmp);
-        }
         goto show;
     case 108: id = 0x62e; break;
     case 109: id = 0x62f; break;

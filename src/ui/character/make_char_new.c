@@ -502,7 +502,7 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
 {
     struct String arg;
     struct NewCharLooks looks;
-    BYTE service_ok, control_chars_ok, blank_edge;
+    BYTE control_chars_ok, blank_edge;
     int i;
 
     for (i = 0; i < 2; i++)
@@ -519,15 +519,12 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         box(0xafc);
         return;
     }
-    service_ok = 1;
-    if (g_serviceType == 1)
-        service_ok = session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->name_edit)) ? 1 : 0;
     string_init(&arg);
     string_assign_cstr(&arg, ui_edit_ctrl_get_text(self->name_edit));
     control_chars_ok = !session_has_control_char(&g_session1, arg);
     blank_edge = np_dect(ui_edit_ctrl_get_text(self->name_edit));
 
-    if (control_chars_ok == 1 && service_ok == 1 && !blank_edge) {
+    if (control_chars_ok == 1 && !blank_edge) {
         char name[25];
 
         if (ui_edit_ctrl_get_text_size(self->name_edit) >= 0x18) {
@@ -550,10 +547,6 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         if (control_chars_ok != 1) {
             if (!control_chars_ok)
                 box(0x14);
-        }
-        if (control_chars_ok != 1 || service_ok != 1) {
-            if (!service_ok)
-                box(0xbe);
         }
         if (blank_edge == 1)
             box(0xc7);

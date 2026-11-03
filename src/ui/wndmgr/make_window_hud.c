@@ -102,7 +102,7 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
     case 0x33:
         wnd = self->candidate_wnd;
         if (wnd == NULL) {
-            int width = self->candidate_box ? 0x78 : 0x124, height = self->candidate_box ? 0xd4 : 0x22;
+            int width = 0x124, height = 0x22;
 
             wnd = ui_candidate_wnd_new();
             self->candidate_wnd = wnd;
@@ -189,9 +189,6 @@ struct UIWindow *wm_make_hud(struct UIWindowMgr *self, int window_id)
         ui_window_create(wnd, 0x118, 0x78);
         wm_move_640_up(wnd, 0xb9, 0x12c, 0x3c);
         ui_window_mgr_add_window(self, wnd);
-        break;
-    case 0x55:
-        wnd = WM_OPEN(key_stroke_wnd, ui_key_stroke_wnd_new, 0x3c, 0x12, WM_AT_640_UP, 0xb9, 0x12c);
         break;
     case 0x56:
         wnd = self->emotion_wnd;

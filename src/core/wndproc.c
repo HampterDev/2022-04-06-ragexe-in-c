@@ -56,13 +56,6 @@ static void language_windows(void)
     } else {
         ui_window_mgr_post_quit1(&g_windowMgr, 0x33);
     }
-    if (language_reading_length(g_language) != 0) {
-        void *wnd = ui_window_open(0x55);
-
-        ui_window_refresh(wnd);
-    } else {
-        ui_window_mgr_post_quit1(&g_windowMgr, 0x55);
-    }
 }
 
 static LRESULT on_activate(HWND hwnd, WPARAM wparam)
@@ -129,7 +122,7 @@ static LRESULT on_key_down(WPARAM wparam, LPARAM lparam)
         ui_window_mgr_set_text_at_battle_mode(&g_windowMgr);
         return 0;
     }
-    if (ui_window_mgr_is_chat_edit_focused(&g_windowMgr) && g_serviceType != 0xf
+    if (ui_window_mgr_is_chat_edit_focused(&g_windowMgr)
         && ui_window_mgr_excute_msg_in_battle_mode(&g_windowMgr, lparam))
         return 0;
     if (ui_window_mgr_get_focus_edit(&g_windowMgr) == 0

@@ -46,16 +46,10 @@ void blur_pc_render(struct GameObject *object, const float *matrix)
         render_object_render_projected(ro, matrix);
         return;
     }
-    if (g_serviceType == 4 && clientinfo_is_admin_aid(self->aid) && self->aid != g_session1.ownAid)
-        return;
     if (self->state != 6 && self->state != 3)
         render_object_render_shadow((struct RenderObject *)self, matrix, self->zoom);
     if (!self->revealed) {
         render_object_render_projected(ro, matrix);
-        return;
-    }
-    if (is_event_aid(self->aid)) {
-        pc_render_event_account((struct Pc *)self, matrix);
         return;
     }
     if (self->single_sprite) {

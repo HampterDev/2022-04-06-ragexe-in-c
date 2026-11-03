@@ -90,10 +90,8 @@ struct LoginMode {
     void *waitWnd;
     struct Vec messageIds;
     struct Vec connections;
-    struct Vec subConnections;
     BYTE savedFlag;
     int connectionIndex;
-    int sub_connection_index;
     struct String exit_cleared_text;
     struct Vec zones;
     BYTE auth_answered;
@@ -106,7 +104,7 @@ struct LoginConnEntry {
     struct String balloon;
     struct String address;
     struct String port;
-    DWORD version, service_type;
+    DWORD version;
 };
 
 #define UIWND_SENDMSG(w, a, msg, b, c, d, e) \
@@ -144,7 +142,6 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
 void login_mode_send_exe_digest(struct LoginMode *self);
 
 BYTE login_mode_load_connections(struct LoginMode *self);
-BYTE login_mode_load_sub_connections(struct LoginMode *self, int index);
 
 int login_mode_max_char_slot(struct LoginMode *self);
 void login_mode_remove_deleted_char(struct LoginMode *self);
@@ -177,8 +174,6 @@ BYTE login_mode_add_notice(struct LoginMode *self, int msg, BYTE append);
 
 struct LoginConnEntry *login_conn_entry_construct(struct LoginConnEntry *self);
 struct LoginConnEntry *login_conn_entry_copy(struct LoginConnEntry *self, const struct LoginConnEntry *src);
-void login_conn_entry_destruct(struct LoginConnEntry *self);
-void login_conn_entries_clear(struct Vec *v);
 void login_conn_entries_free(struct Vec *v);
 
 #endif

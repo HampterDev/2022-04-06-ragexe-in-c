@@ -56,8 +56,6 @@ unsigned char table_reader_read(struct TableReader *reader, const char *name,
 
     reader->count = 0;
     file_construct(&file);
-    if (g_language)
-        name = language_language_file(g_language, name);
     if (!file_open(&file, name, 0, 1, 0)) {
         file_destruct(&file);
         return 0;

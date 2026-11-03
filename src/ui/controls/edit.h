@@ -93,7 +93,6 @@ void ui_edit_ctrl_destruct(struct UIEditCtrl *self);
 void ui_edit_ctrl_sync_from_ime(struct UIEditCtrl *self);
 void ui_edit_ctrl_draw_highlight(struct UIEditCtrl *self, int x, int width);
 void ui_edit_ctrl_place_candidate_wnd(struct UIEditCtrl *self, int x);
-void ui_edit_ctrl_place_key_stroke_wnd(struct UIEditCtrl *self, int x);
 void ui_edit_ctrl_layout_navi_links(struct UIEditCtrl *self);
 BYTE ui_edit_ctrl_caret_shown(void);
 unsigned long long ui_edit_ctrl_focus_key(void);

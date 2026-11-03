@@ -20,32 +20,7 @@
 
 int login_mode_client_type(void)
 {
-    static const BYTE byService1[20] = {
-        0x0e, 0x09, 0x04, 0x05, 0x07, 0x0d, 0x12, 0x10, 0x11, 0x14,
-        0x15, 0x16, 0x17, 0x19, 0x21, 0x02, 0x02, 0x02, 0x23, 0x24,
-    };
-    static const BYTE byServiceOther[20] = {
-        0x01, 0x03, 0x04, 0x05, 0x07, 0x0c, 0x0f, 0x10, 0x11, 0x14,
-        0x15, 0x16, 0x17, 0x19, 0x1a, 0x00, 0x1e, 0x1f, 0x23, 0x24,
-    };
-    unsigned st;
-
-    if (g_serverType == 1) {
-        st = (unsigned)g_serviceType - 1;
-        return st > 0x13 ? 2 : byService1[st];
-    }
-    if (g_serverType == 5) {
-        switch (g_serviceType) {
-        case 2:  return 0x1c;
-        case 5:  return 0x1d;
-        case 6:  return 0x22;
-        case 7:  return 0x1b;
-        case 15: return 0x20;
-        default: return 0;
-        }
-    }
-    st = (unsigned)g_serviceType - 1;
-    return st > 0x13 ? 0 : byServiceOther[st];
+    return g_serverType == 5 ? 0 : 0x24;
 }
 
 #pragma pack(push, 1)
@@ -89,16 +64,7 @@ void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt)
         char userId[24];
         BYTE digest[16];
         BYTE clientType;
-        BYTE clientInfo;
     } login;
-    struct {
-        WORD id;
-        DWORD version;
-        char userId[24];
-        BYTE digest[16];
-        BYTE clientType;
-        BYTE unset[13];
-    } login4;
 #pragma pack(pop)
     const struct PACKET_AC_ACK_HASH *packet = (const struct PACKET_AC_ACK_HASH *)pkt;
     struct MD5Context md5;
@@ -116,29 +82,12 @@ void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt)
         md5ctx_update(&md5, password, strlen(password));
     }
 
-    if (g_serviceType == 5) {
-        login.id = 0x1fa;
-        login.version = g_clientVersion;
-        memcpy(login.userId, self->userId, 24);
-        md5ctx_final(&md5, login.digest);
-        login.clientType = (BYTE)login_mode_client_type();
-        login.clientInfo = g_session1.connectionIndex;
-        login_send_packet(login.id, &login);
-    } else if (g_serviceType == 2) {
-        login4.id = 0x27c;
-        login4.version = g_clientVersion;
-        memcpy(login4.userId, self->userId, 24);
-        md5ctx_final(&md5, login4.digest);
-        login4.clientType = (BYTE)login_mode_client_type();
-        login_send_packet(login4.id, &login4);
-    } else {
-        login.id = 0x1dd;
-        login.version = g_clientVersion;
-        memcpy(login.userId, self->userId, 24);
-        md5ctx_final(&md5, login.digest);
-        login.clientType = (BYTE)login_mode_client_type();
-        login_send_packet(login.id, &login);
-    }
+    login.id = 0x1dd;
+    login.version = g_clientVersion;
+    memcpy(login.userId, self->userId, 24);
+    md5ctx_final(&md5, login.digest);
+    login.clientType = (BYTE)login_mode_client_type();
+    login_send_packet(login.id, &login);
 
     wnd = ui_window_open(6);
     ui_wait_wnd_set_text(wnd, msg_str(0x7a));
@@ -151,7 +100,6 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
     const char *text;
     unsigned len, n;
     BYTE sex;
-    BYTE textType;
 
     text = msg_str(0x3ac);
     string_assign_cstr(&g_session1.autoMessage, text);
@@ -168,13 +116,6 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
         g_session1.accountSex = packet->head.sex;
     }
 
-    if (g_serviceType == 6 || g_serviceType == 0xc || g_serviceType == 0xa) {
-        g_session1.showName = 0;
-        textType = 0;
-    } else {
-        textType = g_session1.showName;
-    }
-    session_set_text_type(textType, textType);
     g_session1.lastLoginIp = packet->head.last_login_ip;
     memcpy_s(g_session1.lastLoginTime, 26, packet->head.last_login_time, 26);
     g_session1.lastLoginTime[26] = 0;

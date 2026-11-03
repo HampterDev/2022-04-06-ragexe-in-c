@@ -17,7 +17,6 @@ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abor
 #include "../src/iteminfo/item_name.c"
 #include "../src/ui/items/item_name_runs.c"
 
-int g_serviceType;
 unsigned g_codePage = 949;
 unsigned char g_useCharsetTag;
 struct UIWindowMgr g_windowMgr;
@@ -89,6 +88,8 @@ void ui_window_draw_shadow_text(struct UIWindow *window, int x, int y, const cha
 }
 
 #ifdef ITEM_NAMES_REFERENCE
+/* The archived references still read the service type; the client is fixed at langtype 20. */
+int g_serviceType = 20;
 void string_vector_reserve(struct Vec *v, size_t count) { (void)v; (void)count; abort(); }
 int crt_sprintf(char *out, const char *format, ...)
 {
@@ -116,7 +117,7 @@ static void init_item(struct ItemInfo *item, int id)
     cards[3].prefix = ""; cards[3].postfix = "";
     cards[4].prefix = ""; cards[4].postfix = "";
     maker = "장인"; pet_prefix = "사랑받는 ";
-    g_serviceType = 0; g_useCharsetTag = 0;
+    g_useCharsetTag = 0;
 }
 static void equals(const struct String *text, const char *expected)
 { assert(text->size == strlen(expected) && !strcmp(string_cstr(text), expected)); }
@@ -185,7 +186,6 @@ static void native_cases(void)
 static void archived_cases(void)
 {
     static const int ids[] = {501, 9001, 9499, 10000, 10999, 11000, 2634};
-    static const int services[] = {0, 12, 14};
     struct UIWindow window = {0};
     unsigned i;
     for (i = 0; i < 6000; ++i) {
@@ -202,7 +202,7 @@ static void archived_cases(void)
         unsigned wanted, old_waits, new_waits;
         int width = (i % 4) == 0 ? 2000 : (i % 4) == 1 ? 30 : (i % 4) == 2 ? 90 : 160;
         init_item(&item, ids[i % 7]);
-        g_serviceType = services[i % 3]; item.type = i % 23;
+        item.type = i % 23;
         item.identified = i % 11 == 0 ? 0 : i % 13 == 0 ? 2 : 1;
         item.refine = i % 3 == 0 ? -1 : i % 3 == 1 ? 0 : 7;
         item.slot[0] = i % 5 == 0 ? ITEM_SLOT_NAMED : i % 5 == 1 ? ITEM_SLOT_FORGED : (int)(i % 5);

@@ -378,8 +378,7 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
     switch (state) {
     case 0x00:
         render_object_set_action((struct RenderObject *)self, base, 0);
-        if (!is_event_aid(self->aid))
-            self->motion_finished = 1;
+        self->motion_finished = 1;
         actor_set_unit_cell(self);
         break;
     case 0x01:

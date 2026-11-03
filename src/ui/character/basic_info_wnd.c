@@ -271,13 +271,6 @@ static void basic_base_exp(__int64 *exp, __int64 *next)
         *next = *exp + 1;
 }
 
-static int basic_small_font_job(int job, int with_17)
-{
-    if (with_17 && job == 0x17)
-        return 1;
-    return (job >= 0xfce && job <= 0xfd1) || (job >= 0x108f && job <= 0x1094);
-}
-
 static int basic_max_level(void)
 {
     if (session_is_third_job(&g_session1, basic_job()))
@@ -319,23 +312,13 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     else
         percent = (double)((float)(int)((double)exp / (double)next * 1000.0) * 0.1f);
 
-    if (g_serviceType == 0xc) {
-        len = sprintf(text, "Nv. %2d / %s / Nv. %2d / Exp. %lld %%", g_session1.charBaseLevel,
-                          session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel,
-                          (__int64)percent);
-    } else {
-        if (g_serviceType == 0 && basic_small_font_job(basic_job(), 1)) {
-            face = 0;
-            font_height = 0xb;
-        }
-        len = sprintf(text, "Lv.%2d / %s / Lv.%2d / Exp. %.1lf %%", g_session1.charBaseLevel,
+    len = sprintf(text, "Lv.%2d / %s / Lv.%2d / Exp. %.1lf %%", g_session1.charBaseLevel,
+                      session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel, percent);
+    if (ui_window_text_width(wnd, text, len, face, font_height, 0, 0) + 9 > wnd->width) {
+        len = sprintf(text, "Lv%2d / %s / Lv%2d / Exp%.1lf%%", g_session1.charBaseLevel,
                           session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel, percent);
-        if (ui_window_text_width(wnd, text, len, face, font_height, 0, 0) + 9 > wnd->width) {
-            len = sprintf(text, "Lv%2d / %s / Lv%2d / Exp%.1lf%%", g_session1.charBaseLevel,
-                              session_get_job_name(&g_session1, basic_job(), -1), g_session1.jobLevel, percent);
-            width = wnd->width - ui_window_text_width(wnd, text, len, face, font_height, 0, 0);
-            x = width < 0 ? 3 : width / 2;
-        }
+        width = wnd->width - ui_window_text_width(wnd, text, len, face, font_height, 0, 0);
+        x = width < 0 ? 3 : width / 2;
     }
     ui_window_text_out(wnd, x, 0x14, text, len, face, font_height, 0, 0, 0);
     format_money(g_session1.zeny, money);
@@ -362,27 +345,15 @@ static void basic_draw_expanded(struct UIBasicInfoWnd *self)
     struct UIWindow *wnd = basic_wnd(self);
     char text[0x80], money[0x40];
     const char *title;
-    int face, font_height, zeny_width, divisor;
+    int zeny_width, divisor;
 
     ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\basewin_bg2.bmp"), 0);
     ui_window_draw_title_bar(wnd, 0, "", 0);
-    if (g_serviceType == 0 || g_serviceType == 0xe) {
-        face = 0;
-        font_height = 0xc;
-    } else {
-        face = 1;
-        font_height = 0xe;
-    }
-    ui_window_text_out(wnd, 9, 0x24, session_get_job_name(&g_session1, basic_job(), -1), 0, face,
-                     font_height, 0, 0, 0);
+    ui_window_text_out(wnd, 9, 0x24, session_get_job_name(&g_session1, basic_job(), -1), 0, 1,
+                     0xe, 0, 0, 0);
     memset(text, 0, sizeof text);
-    if (g_serviceType == 1) {
-        ui_window_text_out(wnd, 0x12, 3, "Basic Info", 0, 0, 0xc, 0xffffff, 0, 0);
-        title = "Basic Info";
-    } else {
-        ui_window_text_out(wnd, 0x12, 3, msg_str(0xee), 0, 0, 0xc, 0xffffff, 0, 0);
-        title = msg_str(0xee);
-    }
+    ui_window_text_out(wnd, 0x12, 3, msg_str(0xee), 0, 0, 0xc, 0xffffff, 0, 0);
+    title = msg_str(0xee);
     ui_window_text_out(wnd, 0x11, 2, title, 0, 0, 0xc, 0, 0, 0);
     ui_window_text_out(wnd, 0x11, 0x33, "HP", 0, 1, 0xe, 0, 0, 0);
     ui_window_text_out(wnd, 0x11, 0x41, "SP", 0, 1, 0xe, 0, 0, 0);
@@ -394,9 +365,9 @@ static void basic_draw_expanded(struct UIBasicInfoWnd *self)
         sprintf(text, "%d%%", g_session1.sp * 100 / g_session1.maxSp);
         ui_window_text_out(wnd, 0xad, 0x41, text, 0, 1, 0xe, 0, 0, 0);
     }
-    sprintf(text, g_serviceType == 0xc ? "Base. %d" : "Base Lv. %d", g_session1.charBaseLevel);
+    sprintf(text, "Base Lv. %d", g_session1.charBaseLevel);
     ui_window_text_out(wnd, 0x11, self->row_y + 0x47, text, 0, 1, 0xe, 0, 0, 0);
-    sprintf(text, g_serviceType == 0xc ? "Classe. %d" : "Job Lv. %d", g_session1.jobLevel);
+    sprintf(text, "Job Lv. %d", g_session1.jobLevel);
     ui_window_text_out(wnd, 0x11, self->row_y + 0x53, text, 0, 1, 0xe, 0, 0, 0);
 
     memset(money, 0, sizeof money);
@@ -404,7 +375,7 @@ static void basic_draw_expanded(struct UIBasicInfoWnd *self)
     sprintf(text, "Zeny : %s", money);
     zeny_width = ui_window_text_width(wnd, text, (int)strlen(text), 1, 0xe, 0, 0);
     ui_window_text_out_right(wnd, wnd->width - 5, self->row_y + 0x67, text, (int)strlen(text), 1, 0xe, 0, 0);
-    sprintf(text, g_serviceType == 0xc ? "Peso : %3d / %3d" : "Weight : %3d / %3d", g_session1.weight, g_session1.maxWeight);
+    sprintf(text, "Weight : %3d / %3d", g_session1.weight, g_session1.maxWeight);
     divisor = g_session1.maxWeight > 1 ? g_session1.maxWeight : 1;
     ui_window_text_out_right(wnd, wnd->width - zeny_width - 10, self->row_y + 0x67, text, (int)strlen(text), 1,
                           0xe, g_session1.weight * 100 / divisor >= g_session1.weightPenaltyPercent ? BASIC_RED : 0, 0);

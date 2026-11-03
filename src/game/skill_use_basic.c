@@ -138,8 +138,6 @@ int skill_use_basic(const struct SkillCast *cast)
         return 1;
 
     case SKILL_PR_SLOWPOISON:
-        if (g_serviceType == 0 && target)
-            actor_launch_effect(target, 0x88);
         return 1;
 
     case SKILL_BS_OVERTHRUST:

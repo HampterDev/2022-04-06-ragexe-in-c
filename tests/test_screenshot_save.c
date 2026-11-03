@@ -26,7 +26,6 @@ struct UIWindowMgr g_windowMgr;
 static struct Renderer renderer;
 struct Renderer *g_renderer = &renderer;
 char g_clientDir[0x88] = "C:\\screenshot-test";
-int g_serviceType = 1;
 static const char directory[] = "C:\\screenshot-test\\ScreenShot";
 static int directory_exists, mkdir_ok, capture_ok, collisions;
 static int accesses, mkdirs, captures, notices, errors;

@@ -19,28 +19,25 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
                                             int skillId, int *action, int *loopType)
 {
     char number[8], actionText[8], loopText[8], skillKey[8];
-    char key[0x100], name[0x100];
+    char name[0x100];
     struct XmlElement *node, *actionNode, *loopNode;
 
     *action = -1;
-    strcpy(key, "Monster_Action_Table");
-    node = xml_find_child(&self->monsterSkillTable.root, text_decode(key));
+    node = xml_find_child(&self->monsterSkillTable.root, "Monster_Action_Table");
     if (!node)
         return;
     _itoa(skillId, number, 10);
     sprintf(skillKey, "_%s", number);
     strcpy(name, monsterName);
     _strlwr(name);
-    node = xml_find_child(node, text_decode(name));
+    node = xml_find_child(node, name);
     if (!node)
         return;
-    node = xml_find_child(node, text_decode(skillKey));
+    node = xml_find_child(node, skillKey);
     if (!node)
         return;
-    strcpy(key, "action");
-    actionNode = xml_find_child(node, text_decode(key));
-    strcpy(key, "loopType");
-    loopNode = xml_find_child(node, text_decode(key));
+    actionNode = xml_find_child(node, "action");
+    loopNode = xml_find_child(node, "loopType");
 
     if (session_is_admin_option(&g_session1, 1) && (!actionNode || !loopNode)) {
         *action = 0;
@@ -55,8 +52,8 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
                    0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
         return;
     }
-    sprintf(actionText, text_decode(node_text(actionNode)));
-    sprintf(loopText, text_decode(node_text(loopNode)));
+    sprintf(actionText, node_text(actionNode));
+    sprintf(loopText, node_text(loopNode));
     *action = atoi(actionText);
     *loopType = atoi(loopText);
 }

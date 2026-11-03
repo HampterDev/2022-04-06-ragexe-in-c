@@ -7,7 +7,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-int g_serviceType;
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 static int redraws, skill_updates, warnings;

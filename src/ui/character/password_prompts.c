@@ -292,5 +292,5 @@ int ui_email_address_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
 void ui_email_address_wnd_on_draw(struct UIWindow *self)
 {
     ui_window_draw_sys_box(self, 0, 0, 0, 0);
-    ui_window_text_out(self, 0xf, 6, msg_str(g_serviceType == 0 ? 0x717 : 0x12b), 0, 0, 0xc, 0, 0, 0);
+    ui_window_text_out(self, 0xf, 6, msg_str(0x12b), 0, 0, 0xc, 0, 0, 0);
 }

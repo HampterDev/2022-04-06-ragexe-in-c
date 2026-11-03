@@ -35,7 +35,6 @@ int session_is_guild_member_char_id(struct Session *self, int id);
 BYTE session_named_body_palettes_enabled(struct Session *self);
 BYTE session_is_account_char_name(struct Session *self, struct String name);
 BYTE session_is_known_name(struct Session *self, struct String name);
-BYTE session_is_ascii_name(struct Session *self, const char *name);
 
 void session_on_pending_name(struct Session *self, int aid, const char *text);
 void session_add_pending_name(struct Session *self, int aid);

@@ -94,10 +94,6 @@ void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
     case 9:  case 10: case 11: case 12: case 13: case 14: case 15:
               set_msg(&s, 0x2bf + (code - 9)); break;
     case 16:
-        if (g_serviceType != 0)
-            break;
-        string_assign(&s,
-            "비밀 번호 변경 후, 다시 접속 해주시기 바랍니다.", 0x2f);
         break;
     case 17:
         set_formatted(&s, 0x564, text);

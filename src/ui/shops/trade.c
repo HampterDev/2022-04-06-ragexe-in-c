@@ -397,15 +397,11 @@ void ui_exchange_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out(wnd, 0xd, 4, label, 0, 0, 12, 0xffffff, 0, 0);
     ui_window_text_out(wnd, 0xc, 3, label, 0, 0, 12, 0, 0, 0);
     if (self->partner_cid > 0) {
-        if (g_serviceType == 6)
-            sprintf(line, "%s  Lv%d", name, (int)self->partner_level);
-        else {
-            struct String code;
+        struct String code;
 
-            session_scramble_number(&g_session1, &code, self->partner_cid);
-            sprintf(line, "%s  Lv%d (%s)", name, (int)self->partner_level, string_cstr(&code));
-            string_free(&code);
-        }
+        session_scramble_number(&g_session1, &code, self->partner_cid);
+        sprintf(line, "%s  Lv%d (%s)", name, (int)self->partner_level, string_cstr(&code));
+        string_free(&code);
     } else
         sprintf(line, "%s", name);
     ui_window_text_out(wnd, 0x3f, 4, line, 0, 0, 12, 0xb4b4b4, 0, 0);

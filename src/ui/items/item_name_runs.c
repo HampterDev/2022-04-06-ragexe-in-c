@@ -70,12 +70,6 @@ void item_info_name_runs(struct UIWindow *self, const struct ItemInfo *info,
     if (info->slot[0] == 0xfe && info->slot[1] == 0) {
         if (info->refine)
             piece(runs, info, item_name_append_refine);
-        if (g_serviceType == 0xc || g_serviceType == 0xe) {
-            piece_text(runs, item_info_get_name(info));
-            piece_text(runs, item_info_get_maker_element_text(info));
-            maker_name(self, info, runs);
-            return;
-        }
         maker_name(self, info, runs);
         piece_text(runs, item_info_get_maker_element_text(info));
         piece_text(runs, item_info_get_name(info));
@@ -97,25 +91,13 @@ void item_info_name_runs(struct UIWindow *self, const struct ItemInfo *info,
     } else if (!item_info_has_maker_slot(info)) {
         piece_text(runs, item_info_get_name(info));
     } else {
-        if (g_serviceType == 0xc) {
-            piece_text(runs, item_info_get_name(info));
-            piece_text(runs, item_info_get_maker_element_text(info));
-            piece_text(runs, item_info_get_maker_star_text(info));
-        } else if (g_serviceType == 0xe) {
-            piece_text(runs, item_info_get_maker_star_text(info));
-            piece_text(runs, item_info_get_name(info));
-            piece_text(runs, item_info_get_maker_element_text(info));
-        } else {
-            piece_text(runs, item_info_get_maker_star_text(info));
-        }
+        piece_text(runs, item_info_get_maker_star_text(info));
         runs->marked = runs->text.size;
         maker_name(self, info, runs);
         if (twice_maker)
             item_name_runs_end(runs);
-        if (g_serviceType != 0xc && g_serviceType != 0xe) {
-            piece_text(runs, item_info_get_maker_element_text(info));
-            piece_text(runs, item_info_get_name(info));
-        }
+        piece_text(runs, item_info_get_maker_element_text(info));
+        piece_text(runs, item_info_get_name(info));
         return;
     }
     if (with_sockets == 1)

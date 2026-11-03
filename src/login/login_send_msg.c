@@ -96,28 +96,6 @@ static int select_connection(struct LoginMode *self, int connection)
     self->connectionIndex = connection;
     (g_session1.connectionIndex) = connection;
     select_client_info2(connection);
-    if (g_serviceType == 0x13) {
-        if (!language_set_folder(g_language, connection == 1 ? "uae\\" : "english\\",
-                                 connection == 1 ? (WORD)connection : 9))
-            return 0;
-        g_windowMgr.arabic_text = connection == 1;
-        session_reload_texts(&g_session1);
-    }
-    if (g_serviceType == 5 || g_serviceType == 7) {
-        self->base.next_sub_mode = 0xd;
-        return 0;
-    }
-    self->base.next_sub_mode = 3;
-    return 0;
-}
-
-static int select_sub_connection(struct LoginMode *self, int sub_connection)
-{
-    struct Vec *subs = &self->subConnections;
-
-    self->sub_connection_index = sub_connection;
-    login_conn_entries_clear(subs);
-    select_client_info_(self->connectionIndex, self->sub_connection_index);
     self->base.next_sub_mode = 3;
     return 0;
 }
@@ -303,7 +281,6 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
             return 0;
         self->stateTick = timeGetTime();
         return back_to_login(self);
-    case 0x2726: return select_sub_connection(self, a);
     case 0x2729: return 0;
 
     case 0x272c: return select_zone(self, a);

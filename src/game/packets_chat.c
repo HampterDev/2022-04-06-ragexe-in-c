@@ -351,11 +351,7 @@ void game_mode_zc_setting_whisper_state(struct GameMode *self, const unsigned ch
 #define CHAT_COLOR_ROOM         0x222222
 #define CHAT_COLOR_PLAYER       0xffffff
 #define CHAT_COLOR_GM           0xffff
-#define CHAT_COLOR_GM_SVC5      0xffff00
-#define CHAT_COLOR_GM_SVC10     0x1d8dff
 #define CHAT_TEXT_MAX           0x169
-#define SERVICE_TYPE_THAI          5
-#define SERVICE_TYPE_GERMANY         10
 
 #pragma pack(push, 1)
 struct PACKET_ZC_NOTIFY_CHAT {
@@ -386,10 +382,7 @@ void game_mode_zc_notify_chat(struct GameMode *self, const unsigned char *pkt)
         ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ROOM_LINE, (int)line, CHAT_COLOR_ROOM, 0, 0);
     } else {
         if (clientinfo_is_yellow_aid(aid)) {
-            int color = g_serviceType == SERVICE_TYPE_THAI ? CHAT_COLOR_GM_SVC5
-                      : g_serviceType == SERVICE_TYPE_GERMANY ? CHAT_COLOR_GM_SVC10 : CHAT_COLOR_GM;
-
-            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)line, color, 1, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)line, CHAT_COLOR_GM, 1, 0);
         } else if (g_session1.hideChat != 1 && g_session1.hideChatAndGuild != 1) {
             ui_window_mgr_send_msg_(&g_windowMgr, CHAT_MSG_ADD, (int)line, CHAT_COLOR_PLAYER, 1, 0);
         }

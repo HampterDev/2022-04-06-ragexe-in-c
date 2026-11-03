@@ -142,16 +142,10 @@ void ui_guild_info_manage_wnd_on_draw(struct UIWindow *window)
     width = ui_window_text_width(wnd, line, 0, 0, 12, 0, 0);
     sprintf(line, "%s", UI_SKIN "basic_interface\\grp_online.bmp");
     online = ui_skin_bitmap(line);
-    if (g_serviceType == 0) {
-        ui_window_draw_bitmap(wnd, 0x80, 0x5f, online, 1);
-        sprintf(line, "   %d", g->online_count);
-        text_at(wnd, 0x8a, 0x61, line);
-    } else {
-        ui_window_draw_bitmap(wnd, width + 0x10, 0x5f, online, 1);
-        sprintf(line, " %d", g->online_count);
-        (void)ui_window_text_width(wnd, msg_str(MSG_GUILD_MASTER), 0, 0, 12, 0, 0);
-        text_at(wnd, online->width + 0x10 + width, 0x61, line);
-    }
+    ui_window_draw_bitmap(wnd, width + 0x10, 0x5f, online, 1);
+    sprintf(line, " %d", g->online_count);
+    (void)ui_window_text_width(wnd, msg_str(MSG_GUILD_MASTER), 0, 0, 12, 0, 0);
+    text_at(wnd, online->width + 0x10 + width, 0x61, line);
     sprintf(line, "%s : %d", msg_str(MSG_GUILD_AVG_LEVEL), g->average_level);
     text_at(wnd, 8, 0x71, line);
     sprintf(line, "%s : %s", msg_str(MSG_GUILD_CASTLES), string_cstr(&g->castle_name));

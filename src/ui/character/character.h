@@ -73,8 +73,6 @@ struct UIWindow *ui_change_name_wnd_new(void);
 struct UIEscOptionWnd *ui_esc_option_wnd_construct(struct UIEscOptionWnd *self);
 struct UIWindow *ui_esc_option_wnd_new(void);
 
-struct UIKeyStrokeWnd *ui_key_stroke_wnd_construct(struct UIKeyStrokeWnd *self);
-struct UIWindow *ui_key_stroke_wnd_new(void);
 struct UIViewCameraInfoWnd *ui_view_camera_info_wnd_construct(struct UIViewCameraInfoWnd *self);
 struct UIWindow *ui_view_camera_info_wnd_new(void);
 

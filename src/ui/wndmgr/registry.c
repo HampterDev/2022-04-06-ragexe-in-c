@@ -49,7 +49,7 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
         for (slot = 0; slot < SHORTCUT_SLOTS; slot++) {
             type = REG_SZ;
             size = 0x20;
-            sprintf(value_name, "SITEM%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
+            sprintf(value_name, "SITEM%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
             memset(name, 0, sizeof name);
             is_skill = 0;
             g_session1.shortenSkillPage = (BYTE)(slot / SHORTCUT_PAGE_SLOTS);
@@ -62,7 +62,7 @@ void ui_window_mgr_init_shortcut_item_info_from_reg(struct UIWindowMgr *self)
 
             type = REG_DWORD;
             size = 4;
-            sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
+            sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
             level = 0;
             if (RegQueryValueExA(key, value_name, NULL, &type, (BYTE *)&level, &size) == ERROR_SUCCESS) {
                 session_set_shorten_skill_id(&g_session1, level, slot);
@@ -247,10 +247,10 @@ void ui_window_mgr_write_shortcut_item_info_to_reg(struct UIWindowMgr *self)
     for (slot = 0; slot < SHORTCUT_SLOTS; slot++) {
         memset(name, 0, sizeof name);
         strcpy(name, session_get_shorten_item_name(&g_session1, slot));
-        sprintf(value_name, "SITEM%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
+        sprintf(value_name, "SITEM%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
         RegSetValueExA(key, value_name, 0, REG_SZ, (const BYTE *)name, 0x20);
         skill_id = session_get_shorten_skill_id(&g_session1, slot);
-        sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, g_serviceType, g_session1.shortcutCharSlot);
+        sprintf(value_name, "S_SKILL_USE_LEVEL%d%d%d", slot, CLIENT_LANGTYPE, g_session1.shortcutCharSlot);
         RegSetValueExA(key, value_name, 0, REG_DWORD, (const BYTE *)&skill_id, 4);
     }
     RegCloseKey(key);

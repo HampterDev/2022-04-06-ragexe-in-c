@@ -468,8 +468,6 @@ int game_mode_msg_scream_line(int which)
     if (which != 0 && which != 1)
         return 0;
     name = which == 0 ? "DC_scream.txt" : "BA_frostjoke.txt";
-    if (g_serviceType == 10)
-        name = which == 0 ? "english\\DC_scream.txt" : "english\\BA_frostjoke.txt";
     file_construct(&file);
     if (!file_open(&file, name, 0, 1, 0)) {
         file_destruct(&file);
@@ -491,7 +489,7 @@ int game_mode_msg_scream_line(int which)
         return 0;
     }
     free(buf);
-    if (snprintf(line, sizeof line, "%s : %s", session_character_name(&g_session1), text_decode(text)) < 0) {
+    if (snprintf(line, sizeof line, "%s : %s", session_character_name(&g_session1), text) < 0) {
         file_destruct(&file);
         return 0;
     }

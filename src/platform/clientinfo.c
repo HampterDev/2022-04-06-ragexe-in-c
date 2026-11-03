@@ -18,13 +18,9 @@ const char *g_serverDomain = "";
 const char *g_windowClassName = "";
 const char *g_registryKeyPath = "";
 
-int g_nameFontHeight = 12;
-
 char g_accountServerAddr[129] = { 0 };
 
 static BYTE g_extendedSlot = 0;
-
-int g_serviceType = 0;
 
 unsigned char g_useCharsetTag;
 BYTE g_hideAccountList;
@@ -33,24 +29,18 @@ BYTE g_passwordEncrypt2;
 int g_serverType;
 unsigned int g_codePage;
 int g_clientVersion;
-BYTE g_showNameA;
-BYTE g_showNameB;
-int g_languageIndex;
 struct Vec g_yellowAids;
 struct XmlDocument g_clientInfoDocument;
 struct Vec g_loadingScreens;
 struct Vec g_adminAids;
 BYTE g_clientInfoRead;
 static struct Language g_languageDefault;
-static INIT_ONCE g_languageDefaultGuard;
-static struct LanguageTC g_languageTC;
-static INIT_ONCE g_languageTCGuard;
-static struct Language g_languageTH;
-static INIT_ONCE g_languageTHGuard;
-static struct Language g_languageARB;
-static INIT_ONCE g_languageARBGuard;
 
 #define UI_FOLDER "유저인터페이스"
+
+/* Without a loadingscreen count in etcinfo.txt the client looks for loading00-06.jpg,
+   the Korean count, because <servicetype>korea</servicetype> was in effect at that point. */
+#define DEFAULT_LOADING_SCREENS 7
 
 static unsigned char uint_less(const void *a, const void *b, void *pred)
 {
@@ -81,69 +71,11 @@ struct XmlElement *get_client_info(void)
     return xml_find_child(&g_clientInfoDocument.root, "clientinfo");
 }
 
-void clientinfo_load(const char *xml_name)
-{
-    struct File file;
-    SYSTEMTIME now;
-
-    file_construct(&file);
-    if (file_open(&file, xml_name, 0, 1, 0)) {
-        xml_parse(&g_clientInfoDocument, (const char *)file.buffer, (const char *)file.buffer + file.size);
-        file_close(&file);
-    }
-    init_default_service_type_();
-    init_client_info_();
-    if (g_serviceType == 0 || g_serviceType == 6) {
-        g_showNameA = 1;
-        g_showNameB = 1;
-        g_nameFontHeight = 0xd;
-    } else {
-        g_showNameA = 0;
-        g_showNameB = 0;
-        g_nameFontHeight = 0xc;
-    }
-    GetLocalTime(&now);
-    g_startupSecondMod4 = (BYTE)now.wSecond & 3;
-    g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
-    g_windowClassName = "Ragnarok";
-    file_destruct(&file);
-}
-
-void init_client_info_(void)
-{
-    if ((unsigned)g_serviceType > 0x14 || g_serviceType == 0x10) {
-        error_msg("Unknown ServiceType !!!", 0);
-        init_language_();
-        return;
-    }
-    if (g_serviceType != 0) {
-        select_client_info2(0);
-        init_language_();
-        return;
-    }
-    if (xml_find_child(&g_clientInfoDocument.root, "clientinfo"))
-        select_client_info2(0);
-    _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
-    init_language_();
-}
-
-void load_loading_screens(int count)
+static void load_loading_screens(int count)
 {
     char name[0x104];
     int i;
 
-    if (count == 0) {
-        switch (g_serviceType) {
-        case 0: count = 7; break;
-        case 1: count = 0xc; break;
-        case 3: count = 4; break;
-        case 5: case 7: count = 8; break;
-        case 6: count = 9; break;
-        default: count = 1; break;
-        }
-    } else if (count < 0) {
-        return;
-    }
     for (i = 0; i < count; i++) {
         sprintf(name, UI_FOLDER "\\loading%02d.jpg", i);
         if (res_mgr_is_available(g_resMgr(), name))
@@ -151,15 +83,12 @@ void load_loading_screens(int count)
     }
 }
 
-void init_default_service_type_(void)
+static void read_etc_info(void)
 {
-    struct XmlElement *root = xml_find_child(&g_clientInfoDocument.root, "clientinfo");
     struct TableReader reader = {0};
     struct String *s;
     size_t i;
 
-    if (root)
-        set_option(root);
     if (file_make_file_name("etcinfo.txt", 0)) {
         for (s = (struct String *)g_loadingScreens.first; s != (struct String *)g_loadingScreens.last; s++)
             string_free(s);
@@ -194,7 +123,7 @@ void init_default_service_type_(void)
         table_reader_release(&reader);
     }
     if (g_loadingScreens.first == g_loadingScreens.last)
-        load_loading_screens(0);
+        load_loading_screens(DEFAULT_LOADING_SCREENS);
 }
 
 static void language_default_destroy(void)
@@ -202,70 +131,31 @@ static void language_default_destroy(void)
     language_destruct(&g_languageDefault);
 }
 
-static void language_tc_destroy(void)
+void clientinfo_load(const char *xml_name)
 {
-    language_destruct(&g_languageTC.base);
-}
+    struct XmlElement *root;
+    struct File file;
+    SYSTEMTIME now;
 
-static void language_th_destroy(void)
-{
-    language_destruct(&g_languageTH);
-}
-
-static void language_arb_destroy(void)
-{
-    language_destruct(&g_languageARB);
-}
-
-void init_language_(void)
-{
-    BYTE tag;
-
-    if (once_begin(&g_languageDefaultGuard)) {
-        language_construct(&g_languageDefault);
-        atexit(language_default_destroy);
-        once_complete(&g_languageDefaultGuard);
+    file_construct(&file);
+    if (file_open(&file, xml_name, 0, 1, 0)) {
+        xml_parse(&g_clientInfoDocument, (const char *)file.buffer, (const char *)file.buffer + file.size);
+        file_close(&file);
     }
-    if (once_begin(&g_languageTCGuard)) {
-        language_tc_construct(&g_languageTC);
-        atexit(language_tc_destroy);
-        once_complete(&g_languageTCGuard);
-    }
-    if (once_begin(&g_languageTHGuard)) {
-        language_th_construct(&g_languageTH);
-        atexit(language_th_destroy);
-        once_complete(&g_languageTHGuard);
-    }
-    if (once_begin(&g_languageARBGuard)) {
-        language_construct(&g_languageARB);
-        atexit(language_arb_destroy);
-        once_complete(&g_languageARBGuard);
-    }
+    root = get_client_info();
+    if (root)
+        set_option(root);
+    read_etc_info();
+    select_client_info2(0);
+    _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
+    language_construct(&g_languageDefault);
+    atexit(language_default_destroy);
     g_language = &g_languageDefault;
-    tag = g_useCharsetTag;
-    switch (g_serviceType) {
-    case 0:  g_languageIndex = 0;   g_codePage = 949;  break;
-    case 2:  g_languageIndex = 2;   g_codePage = 932;  break;
-    case 3:  g_languageIndex = 3;   g_codePage = 936;  g_language = &g_languageTC.base; break;
-    case 4:  g_languageIndex = 4;   g_codePage = 950;  g_language = &g_languageTC.base; break;
-    case 5:  g_languageIndex = 5;   g_codePage = 874;  g_language = &g_languageTH; break;
-    case 0xa: g_languageIndex = 1;  tag = 1; g_codePage = 0;    break;
-    case 0xb: g_languageIndex = 1;  tag = 0; g_codePage = 0;    break;
-    case 0xc: case 0x12:
-             g_languageIndex = 6;   tag = 0; g_codePage = 1252; break;
-    case 0xe: g_languageIndex = 1;  tag = 0; g_codePage = 1251; break;
-    case 0xf: g_languageIndex = 7;  tag = 0; g_codePage = 1258; break;
-    case 0x11: g_languageIndex = 1; tag = 0; g_codePage = 1145; break;
-    case 0x13: g_languageIndex = 0xb; g_codePage = 1256; g_language = &g_languageARB; break;
-    case 0x10:
-    default:
-        if (g_serviceType == 0x10 || (unsigned)g_serviceType > 0x14)
-            error_msg("no language setting !!!", 0);
-        g_codePage = 0;
-        g_languageIndex = 1;
-        break;
-    }
-    g_useCharsetTag = g_serverType == 3 ? 1 : tag;
+    GetLocalTime(&now);
+    g_startupSecondMod4 = (BYTE)now.wSecond & 3;
+    g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
+    g_windowClassName = "Ragnarok";
+    file_destruct(&file);
 }
 
 BYTE clientinfo_is_admin_aid(int aid)
@@ -319,8 +209,6 @@ static void read_connection(struct XmlElement *node)
         g_serverDomain = text;
     if ((text = child_text(node, "version")) != NULL)
         g_clientVersion = atoi(text);
-    if ((text = child_text(node, "langtype")) != NULL)
-        g_serviceType = atoi(text);
     list = xml_find_child(node, "aid");
     if (list)
         read_admins(list, &g_adminAids);
@@ -347,25 +235,6 @@ static struct XmlElement *find_connection(int index)
     return conn;
 }
 
-void select_client_info_(int connection, int subconnection)
-{
-    struct XmlElement *conn = find_connection(connection), *sub;
-
-    if (!conn)
-        return;
-    sub = xml_find_child(conn, "subconnection");
-    if (!sub) {
-        read_connection(conn);
-        init_language_();
-        return;
-    }
-    for (; sub && subconnection; subconnection--)
-        sub = xml_find_next(sub, "subconnection");
-    if (sub)
-        read_connection(sub);
-    init_language_();
-}
-
 void select_client_info2(int connection)
 {
     struct XmlElement *conn = find_connection(connection);
@@ -373,41 +242,13 @@ void select_client_info2(int connection)
     if (!conn)
         return;
     read_connection(conn);
-    init_language_();
 }
-
-static const char *const service_names[] = {
-    "korea", "america", "japan", "china", "taiwan", "thai", "indonesia", "philippine", "malaysia",
-    "singapore", "germany", "india", "brazil", "australia", "russia", "vietnam",
-};
 
 void set_option(struct XmlElement *node)
 {
     struct XmlElement *el;
     struct String *text;
     char name[0x104];
-    int i;
-
-    el = xml_find_child(node, "servicetype");
-    if (el) {
-        for (i = 0; i < 0x10; i++)
-            if (string_equal_cstr(xml_node_text(el), service_names[i]))
-                break;
-        if (i < 0x10)
-            g_serviceType = i;
-        else if (string_equal_cstr(xml_node_text(el), "chile"))
-            g_serviceType = 0x11;
-        else if (string_equal_cstr(xml_node_text(el), "france"))
-            g_serviceType = 0x12;
-        else if (string_equal_cstr(xml_node_text(el), "uae"))
-            g_serviceType = 0x13;
-        else if (string_equal_cstr(xml_node_text(el), "eu"))
-            g_serviceType = 0x14;
-        else
-            error_msg("ServiceType Error !!", 0);
-    } else if (!g_clientInfoRead) {
-        error_msg("No ServiceType !!", 0);
-    }
 
     el = xml_find_child(node, "servertype");
     if (el) {
@@ -446,12 +287,4 @@ void set_option(struct XmlElement *node)
         }
     }
     g_clientInfoRead = 1;
-}
-
-void session_set_text_type(int a, int b)
-{
-    if (g_serviceType != 0 && g_serviceType != 6 && g_serviceType != 0xa && g_serviceType != 0xc)
-        return;
-    g_showNameA = a != 0;
-    g_showNameB = b != 0;
 }

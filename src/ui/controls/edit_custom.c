@@ -208,7 +208,6 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_candidate_wnd(edit, lo_x);
-            ui_edit_ctrl_place_key_stroke_wnd(edit, hi_x);
             if (!((timeGetTime() / CARET_BLINK_MS) & 1))
                 ui_edit_ctrl_draw_highlight(edit, lo_x + x, max(hi_x - lo_x, 2));
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));

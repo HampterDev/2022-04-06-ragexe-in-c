@@ -4,53 +4,6 @@
 
 #define BADGE_DEPTH 0.0999f
 
-void renderer_draw_game_grade_badge(struct Renderer *self)
-{
-    SYSTEMTIME now;
-    struct Texture *tex;
-    RECT rc;
-    int ramp;
-    signed char state;
-
-    GetLocalTime(&now);
-    state = (signed char)g_gradeBadgeState;
-    if (now.wMinute == 0) {
-        if (now.wSecond == 0) {
-            if (state == 0) {
-                g_gradeBadgeState = 1;
-                g_gradeBadgeAlpha = 0;
-                goto draw;
-            }
-        } else if (now.wSecond >= 10) {
-            if (state == 1) {
-                g_gradeBadgeState = 2;
-                goto draw;
-            }
-        }
-    }
-    if (state < 1)
-        return;
-draw:
-    tex = texture_cache_get(&g_textureCache, "유저인터페이스\\T_GameGrade.tga", 0, 0);
-    if (!tex)
-        return;
-    rc.left = self->width - tex->reqWidth - 0x8c;
-    rc.top = 0x2d;
-    rc.right = self->width - 0x8c;
-    rc.bottom = tex->reqHeight + 0x2d;
-    ramp = g_gradeBadgeAlpha;
-    if (g_gradeBadgeState == 1) {
-        if (ramp < 0xdc)
-            g_gradeBadgeAlpha = ++ramp;
-    } else if (ramp > 0) {
-        g_gradeBadgeAlpha = --ramp;
-    } else {
-        g_gradeBadgeState = 0;
-    }
-    screen_texture_rect(self, &rc, 0, BADGE_DEPTH,
-                 ((DWORD)ramp << 24) + 0xffffff, tex, g_fullUV);
-}
-
 static void draw_points(struct Renderer *self, int points, int y, BYTE wide, void *act, void *spr)
 {
     int value = points < 0 ? 0 : points;
