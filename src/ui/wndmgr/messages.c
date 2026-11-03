@@ -1,7 +1,6 @@
 #include "core/text_array.h"
 #include "core/drive_state.h"
 #include "ui/window_access.h"
-#include "contents/connection_api.h"
 #include <string.h>
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/draw.h"
@@ -190,25 +189,4 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
         break;
     }
     return 0;
-}
-
-#define CZ_ADD_FRIENDS 0x202
-#pragma pack(push, 1)
-struct PacketAddFriends {
-    short id;
-    char name[24];
-};
-#pragma pack(pop)
-SIZE_ASSERT(PacketAddFriends, 0x1a);
-
-void ui_window_mgr_request_add_friend(struct UIWindowMgr *self, const char *name)
-{
-    struct PacketAddFriends packet;
-    int len;
-
-    (void)self;
-    packet.id = CZ_ADD_FRIENDS;
-    memcpy(packet.name, name, sizeof packet.name);
-    len = rag_connection_get_packet_length(rag_connection_instance(), CZ_ADD_FRIENDS);
-    rag_connection_send_packet(rag_connection_instance(), len, &packet);
 }

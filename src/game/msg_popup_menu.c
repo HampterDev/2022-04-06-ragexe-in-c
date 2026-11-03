@@ -1,4 +1,5 @@
 #include "game/mode_util.h"
+#include "ui/chat/friends.h"
 #include "actor/actor_ops.h"
 #include "platform/language.h"
 #include "session/number_codec.h"

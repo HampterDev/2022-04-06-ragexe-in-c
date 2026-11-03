@@ -1,4 +1,5 @@
 #include "actor/actor_ops.h"
+#include "ui/chat/friends.h"
 #include "contents/whisper_block.h"
 #include "session/number_codec.h"
 #include "std/string.h"

@@ -7,6 +7,10 @@
 #include "ui/accept_wnd.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "ui/chat/friends.h"
+#include "contents/connection_api.h"
+#include "session/session_party.h"
+#include "session/state.h"
 
 #define JOIN_FRIEND_MSG_ASKER 0x5f
 #define REQ_JOIN_FRIEND_ANSWER 0xaf
@@ -114,4 +118,31 @@ int ui_join_friend_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         return 0;
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->accept.frame), sender, msg, val1, val2, val3, val4);
+}
+
+int ui_window_mgr_is_friend(struct UIWindowMgr *self, const char *name)
+{
+    (void)self;
+    return session_has_friend_named(&g_session1, name) != 0;
+}
+
+#define CZ_ADD_FRIENDS 0x202
+#pragma pack(push, 1)
+struct PacketAddFriends {
+    short id;
+    char name[24];
+};
+#pragma pack(pop)
+SIZE_ASSERT(PacketAddFriends, 0x1a);
+
+void ui_window_mgr_request_add_friend(struct UIWindowMgr *self, const char *name)
+{
+    struct PacketAddFriends packet;
+    int len;
+
+    (void)self;
+    packet.id = CZ_ADD_FRIENDS;
+    memcpy(packet.name, name, sizeof packet.name);
+    len = rag_connection_get_packet_length(rag_connection_instance(), CZ_ADD_FRIENDS);
+    rag_connection_send_packet(rag_connection_instance(), len, &packet);
 }

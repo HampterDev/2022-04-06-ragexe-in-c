@@ -572,3 +572,36 @@ int ui_sub_chat_his_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     }
     return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
 }
+
+struct UIWindow *ui_window_mgr_open_sub_chat(struct UIWindowMgr *self, int key, int x, int y, int width,
+                                                    int height)
+{
+    struct SubChatWnd *sub;
+    struct UIWindow *wnd;
+
+    if (x == -1 && y == -1) {
+        x = (key + 10) * 10;
+        y = (key + 5) * 20;
+    }
+    if (width == 0 || width > g_renderer->width)
+        width = 300;
+    if (height == 0 || height > g_renderer->height)
+        height = 0x5f;
+    if (x > g_renderer->width)
+        x = g_renderer->width - width;
+    if (y > g_renderer->height)
+        y = 100;
+    sub = tree_get(&self->sub_chat_wnds, &key, sizeof key, sizeof *sub, tree_less_int);
+    wnd = sub->wnd;
+    if (wnd == NULL) {
+        wnd = (struct UIWindow *)mem_alloc(sizeof(struct UISubChatHisWnd));
+        wnd = wnd ? (struct UIWindow *)ui_sub_chat_his_wnd_construct((struct UISubChatHisWnd *)wnd) : NULL;
+        ((struct UISubChatHisWnd *)wnd)->key = key;
+        ui_window_create(wnd, width, height);
+        ui_window_move(wnd, x, y);
+        list_push_back(&self->windows, &wnd, sizeof wnd);
+        sub->wnd = wnd;
+    }
+    ui_window_set_show(wnd, 1);
+    return wnd;
+}

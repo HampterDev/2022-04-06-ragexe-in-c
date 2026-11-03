@@ -10,9 +10,7 @@
 #include "login/merc_ai_types.h"
 #include "game/drag_info.h"
 #include "ui/chat/chat_window_parts.h"
-#include "ui/chat/sub_chat.h"
 #include "ui/chat/sub_chat_map.h"
-#include "session/session_party.h"
 #include "ui/quests/navigation.h"
 #include "resources/bitmap_types.h"
 
@@ -413,50 +411,11 @@ BYTE ui_window_mgr_is_barter_open(struct UIWindowMgr *self)
         || self->expanded_barter_item_purchase_wnd;
 }
 
-int ui_window_mgr_is_friend(struct UIWindowMgr *self, const char *name)
-{
-    (void)self;
-    return session_has_friend_named(&g_session1, name) != 0;
-}
-
 BYTE ui_minimap_zoom_wnd_claims_mouse(struct UIWindow *self)
 {
     (void)self;
 
     return 1;
-}
-
-struct UIWindow *ui_window_mgr_open_sub_chat(struct UIWindowMgr *self, int key, int x, int y, int width,
-                                                    int height)
-{
-    struct SubChatWnd *sub;
-    struct UIWindow *wnd;
-
-    if (x == -1 && y == -1) {
-        x = (key + 10) * 10;
-        y = (key + 5) * 20;
-    }
-    if (width == 0 || width > g_renderer->width)
-        width = 300;
-    if (height == 0 || height > g_renderer->height)
-        height = 0x5f;
-    if (x > g_renderer->width)
-        x = g_renderer->width - width;
-    if (y > g_renderer->height)
-        y = 100;
-    sub = tree_get(&self->sub_chat_wnds, &key, sizeof key, sizeof *sub, tree_less_int);
-    wnd = sub->wnd;
-    if (wnd == NULL) {
-        wnd = (struct UIWindow *)mem_alloc(sizeof(struct UISubChatHisWnd));
-        wnd = wnd ? (struct UIWindow *)ui_sub_chat_his_wnd_construct((struct UISubChatHisWnd *)wnd) : NULL;
-        ((struct UISubChatHisWnd *)wnd)->key = key;
-        ui_window_create(wnd, width, height);
-        ui_window_move(wnd, x, y);
-        list_push_back(&self->windows, &wnd, sizeof wnd);
-        sub->wnd = wnd;
-    }
-    ui_window_set_show(wnd, 1);
-    return wnd;
 }
 
 BYTE actor_merc_ai_running(void *actor)

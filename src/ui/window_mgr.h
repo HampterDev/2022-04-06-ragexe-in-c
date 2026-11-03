@@ -15,7 +15,6 @@ void ui_window_mgr_touch_window_id(struct UIWindowMgr *self, int window_id);
 void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr *self,
                                                       struct UIWindow *wnd);
 void ui_window_mgr_forget_window(struct UIWindowMgr *self, const struct UIWindow *wnd);
-int ui_window_mgr_is_friend(struct UIWindowMgr *self, const char *name);
 void ui_window_mgr_set_backdrop(struct UIWindowMgr *self,
                                         struct BitmapRes *res);
 

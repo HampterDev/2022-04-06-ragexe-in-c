@@ -1,4 +1,5 @@
 #include "game/packet_handlers.h"
+#include "ui/chat/friends.h"
 #include "ui/window_types.h"
 #include "ui/window_access.h"
 #include "ui/chat/readable_links.h"

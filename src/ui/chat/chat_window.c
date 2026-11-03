@@ -11,6 +11,7 @@
 #include "ui/chat/chat_window.h"
 #include "ui/chat/markup_links.h"
 #include "ui/chat/chat_window_parts.h"
+#include "ui/chat/sub_chat.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "render/screen_draw.h"

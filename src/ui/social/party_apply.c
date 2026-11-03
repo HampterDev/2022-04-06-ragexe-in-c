@@ -1,4 +1,5 @@
 #include "contents/adventurer_agency.h"
+#include "ui/chat/friends.h"
 #include "world/tooltip.h"
 #include "core/text_array.h"
 #include "render/rp_pool.h"

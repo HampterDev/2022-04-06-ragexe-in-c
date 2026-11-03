@@ -32,4 +32,10 @@ OFFSET_ASSERT(UISubChatHisWnd, name, 0xf0);
 
 struct UISubChatHisWnd *ui_sub_chat_his_wnd_construct(struct UISubChatHisWnd *self);
 
+/* Shows sub-chat window `key`, creating it at (x, y) and size (width, height) clamped
+   to the screen when it does not exist yet (x == y == -1: cascade by key). A UIWindowMgr
+   method in the original client, kept under its name in ui/chat/sub_chat.c. */
+struct UIWindow *ui_window_mgr_open_sub_chat(struct UIWindowMgr *self, int key, int x, int y,
+                                                    int width, int height);
+
 #endif

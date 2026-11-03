@@ -1,4 +1,5 @@
 #include "ui/controls/buttons.h"
+#include "ui/chat/friends.h"
 #include "session/character_name.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"

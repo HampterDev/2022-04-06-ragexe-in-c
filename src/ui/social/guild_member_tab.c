@@ -1,4 +1,5 @@
 #include "ui/controls/buttons.h"
+#include "ui/chat/friends.h"
 #include "ui/social/guild_windows.h"
 #include "contents/player_names.h"
 #include "session/character_name.h"

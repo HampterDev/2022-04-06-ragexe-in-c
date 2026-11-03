@@ -93,8 +93,6 @@ void ui_window_mgr_invalidate_all(struct UIWindowMgr *self);
 void ui_window_mgr_invalidate_once_per_frame(struct UIWindowMgr *self);
 void ui_window_mgr_send_key_left(struct UIWindowMgr *self);
 BYTE ui_window_mgr_is_barter_open(struct UIWindowMgr *self);
-struct UIWindow *ui_window_mgr_open_sub_chat(struct UIWindowMgr *self, int key, int x, int y,
-                                                    int width, int height);
 BYTE ui_window_mgr_is_first_edit(struct UIWindowMgr *self, struct UIWindow *edit);
 BYTE ui_window_mgr_is_last_edit(struct UIWindowMgr *self, struct UIWindow *edit);
 BYTE ui_window_mgr_is_edit_in_open_window(struct UIWindowMgr *self);
@@ -123,8 +121,6 @@ int ui_center_y480(int y);
 int scale_y_from480(int n);
 
 void ui_window_mgr_toggle_hide_ui(struct UIWindowMgr *self);
-
-void ui_window_mgr_request_add_friend(struct UIWindowMgr *self, const char *name);
 
 void ui_window_mgr_create_party_plates(struct UIWindowMgr *self);
 void ui_window_mgr_command_plate_of(struct UIWindowMgr *self, int aid, int a, int b);

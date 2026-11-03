@@ -1,4 +1,5 @@
 #include "world/tooltip.h"
+#include "ui/chat/friends.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"
 #include "session/state.h"

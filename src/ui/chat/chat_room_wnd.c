@@ -1,4 +1,5 @@
 #include "ui/controls/listbox.h"
+#include "ui/chat/friends.h"
 #include "ui/controls/edit.h"
 #include "core/text_array.h"
 #include "render/rp_pool.h"
