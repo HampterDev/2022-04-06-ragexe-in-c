@@ -10217,11 +10217,14 @@ in `build/restructure-baseline-build.log`, `-tests.log` and `-digests.txt`.
   the seven standalone suites.
 - All 256 digest and result lines of every commit's suite match the baseline, among them
   packet dispatch `d77aaadbb5fc63b7` and effect factories `d3673c01`.
-- One line depends on the checkout path, not on the code: the Lua boundaries test counts
-  allocation failures during initialization, and that count grows with the path length
-  (419 at the worktree root, 422 in an 18-character snapshot folder, for the baseline
-  commit too). The first run of `e6fb6af` used such a folder; its rerun with a
-  13-character label (`c10-cursortip`) matches.
+- One printed line depends on the checkout path, not on the code: `test_lua_boundaries`
+  prints how many allocations `client_lua_open` makes (it asserts no fixed count; it fails
+  each one in turn and checks that nothing is left allocated). Lua 5.1's `setprogdir`
+  puts the exe directory into the four `!` of the default `package.path` (53 + 4 x D
+  bytes), and past the 512-byte `luaL_gsub` buffer the count rises by 3: 419 up to a
+  114-character directory, 422 from 115. The first run of `e6fb6af` used a longer
+  snapshot folder; its rerun with a 13-character label (`c10-cursortip`) matches. Not a
+  bug: three allocations once per Lua state, all freed.
 - Two commits failed their first validation and were amended in place: `f39b5f7` (the
   URL-link test, which extracts functions from `text_viewer_links.c`, needed
   `g_uiHooks`) and `a6ef706` (five more callers of `ui_window_mgr_is_friend` needed
@@ -10232,8 +10235,10 @@ in `build/restructure-baseline-build.log`, `-tests.log` and `-digests.txt`.
 
 ### Bugs found (not fixed)
 
-- `ui_agit_message_box_destroy` in `ui/social/guild_manage.c` calls `mem_free(self)`
-  twice. Closing the guild castle (agit) move box frees the same block twice.
+- Withdrawn: `ui_agit_message_box_destroy` in `ui/social/guild_manage.c` was reported
+  here as calling `mem_free(self)` twice. It calls it once on both branches and always
+  has (`git log -L`), and a counting-allocator check of the whole destroy chain frees
+  each block once.
 - The navigation-link parsing (`navi_link`) is duplicated in
   `ui/controls/text_viewer_links.c` and `ui/quests/tag_text_viewer.c`, and the item-link
   step was copied three times (now one function); not bugs, but the copies can drift.
