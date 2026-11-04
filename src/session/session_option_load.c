@@ -7,7 +7,7 @@
 #include "platform/display_depth.h"
 
 #include <string.h>
-#include "core/app.h"
+#include "core/window_state.h"
 #include "ui/render/graphic_setting.h"
 #include "game/mouse_camera.h"
 #include "render/texture_cache.h"

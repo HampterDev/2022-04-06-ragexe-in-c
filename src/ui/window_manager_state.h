@@ -290,6 +290,7 @@ struct UIWindowMgr {
     struct UIWindow *apply_for_party_wnd;
 };
 
+/* Defined in ui/window_manager_state.c; window_mgr_construct (ui/wndmgr/wndmgr_lifetime.c) builds it. */
 extern struct UIWindowMgr g_windowMgr;
 
 #endif

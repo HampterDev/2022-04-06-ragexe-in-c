@@ -415,6 +415,7 @@ struct Session {
     struct Vec accountCharNames;
 };
 
+/* Defined in session/state.c; session_construct (session/session_lifetime.c) builds it. */
 extern struct Session g_session1;
 
 #endif

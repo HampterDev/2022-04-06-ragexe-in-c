@@ -36,9 +36,6 @@
 #include "ui/render/graphic_setting.h"
 #include "game/mouse_camera.h"
 
-int g_displayWidth;
-int g_displayHeight;
-
 #define WID_GRAPHIC_SETTING 0x131
 #define WID_COMMAND_LIST 0x70
 
@@ -126,10 +123,6 @@ const struct UIWindowOps ui_graphic_setting_wnd_ops = {
 int g_displayDeviceIndex;
 int g_displayModeIndex;
 int g_bitsPerPixel;
-int g_spriteMode;
-int g_textureMode;
-int g_trilinearFilter;
-int g_sprHalfWidth, g_sprHalfHeight;
 
 #pragma pack(push, 1)
 struct PacketSetUserConfig {

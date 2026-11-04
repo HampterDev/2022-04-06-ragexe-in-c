@@ -1,6 +1,6 @@
 #ifdef _WIN32
 #include "platform/desktop.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "platform/win_utf8.h"
 #include <objbase.h>
 #include <shellapi.h>

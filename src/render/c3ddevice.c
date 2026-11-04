@@ -4,9 +4,10 @@
 #include "diag/diag.h"
 #include <string.h>
 #include <stdlib.h>
-#include "core/app.h"
+#include "core/window_state.h"
+#include "platform/code_page.h"
 #include "core/drive_state.h"
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 #include "platform/window.h"
 
 const char g_msgBgr565NotSupported[] = "BGR 565 MODE. NOT SUPPORTED";

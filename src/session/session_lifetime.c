@@ -19,8 +19,6 @@
 #include "session/session_achievements.h"
 #include "platform/window.h"
 
-struct Session g_session1;
-
 static void session_inventory_lists(struct Session *self, struct List *lists[12])
 {
     lists[0] = &self->itemList;

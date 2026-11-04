@@ -10,7 +10,7 @@
 #include "ui/controls/check_radio.h"
 #include "actor/status_icons.h"
 #include <string.h>
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/msg_str.h"
 #include "session/session_options.h"
 #include "ui/render/graphic_setting.h"

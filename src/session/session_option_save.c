@@ -4,7 +4,7 @@
 #include "ui/window_manager_state.h"
 #include "session/csession.h"
 #include "session/session_options.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "ui/render/graphic_setting.h"
 #include "game/camera.h"
 #include "platform/window.h"

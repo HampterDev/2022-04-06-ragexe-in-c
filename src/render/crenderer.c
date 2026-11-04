@@ -5,7 +5,7 @@
 #include "std/std_sort.h"
 #include <stdint.h>
 #include <string.h>
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 #include "platform/clock.h"
 
 DWORD g_renderCheckpointLine = 0;

@@ -9,7 +9,7 @@
 #include "platform/language.h"
 #include "platform/window.h"
 #include "platform/system.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/utf8.h"
 
 /* The input editor every edit box shares, the same on every platform. The IME side is

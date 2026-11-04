@@ -2,7 +2,7 @@
 #include "contents/sound.h"
 #include "platform/settings.h"
 #include "render/render_api.h"
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 #include "world/world_imports.h"
 #include <string.h>
 

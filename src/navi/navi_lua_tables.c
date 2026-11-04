@@ -21,7 +21,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include "platform/win_types.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "platform/window.h"
 
 #define NAVI_MAX_MAPS       0x270f

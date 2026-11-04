@@ -1,6 +1,6 @@
 #include "contents/mouse.h"
 #include "render/device.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include <string.h>
 #include "platform/clock.h"
 #include "platform/window.h"

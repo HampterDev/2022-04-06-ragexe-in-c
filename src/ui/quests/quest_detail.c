@@ -2,7 +2,7 @@
 #include "core/object_type_tables.h"
 #include <stdio.h>
 #include "ui/quests/quests.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "platform/window.h"

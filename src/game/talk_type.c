@@ -14,7 +14,6 @@
 #include "ui/chat/chat_window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "render/render_options.h"
-#include "ui/render/graphic_setting.h"
 
 enum {
     MODE_MSG_EMOTION = 0x1f,

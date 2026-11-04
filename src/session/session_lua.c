@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "core/app.h"
+#include "core/window_state.h"
 #include "platform/language.h"
 #include "platform/window.h"
 

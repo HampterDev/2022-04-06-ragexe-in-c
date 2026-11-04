@@ -7,7 +7,7 @@
 #include <math.h>
 #include <string.h>
 #include "render/render_api.h"
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 #include "actor/attr_state.h"
 
 static int off_screen(const struct TexDrawVertex *v)

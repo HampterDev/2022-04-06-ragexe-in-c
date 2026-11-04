@@ -17,8 +17,6 @@
 #include "contents/sound.h"
 #include "platform/window.h"
 
-PlatformWindow g_hMainWnd;
-
 void app_activate(int active)
 {
     g_windowActive = active;

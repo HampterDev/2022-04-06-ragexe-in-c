@@ -13,8 +13,6 @@
 #include "ui/mail/rodex_ui.h"
 #include "platform/clock.h"
 
-struct Rodex *g_rodex;
-
 #pragma pack(push, 1)
 struct PACKET_ZC_ACK_ALL_RODEX_LIST {
     unsigned short id;

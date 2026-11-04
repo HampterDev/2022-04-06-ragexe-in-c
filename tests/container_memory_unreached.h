@@ -1,5 +1,6 @@
 #if CONTAINER_MEMORY_PROBE == 2
 struct UIWindowMgr g_windowMgr;
+struct Rodex *g_rodex;
 struct UIWindow * ui_window_find(int arg0) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
 intptr_t ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }

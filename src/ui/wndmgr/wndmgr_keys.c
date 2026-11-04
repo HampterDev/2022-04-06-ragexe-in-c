@@ -9,7 +9,7 @@
 #include "ui/worldmap/romap.h"
 #include "ui/chat/chat_window_parts.h"
 #include "ui/chat/sub_chat_map.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/msg_str.h"
 #include "ui/chat/chat_window.h"
 #include "platform/window.h"

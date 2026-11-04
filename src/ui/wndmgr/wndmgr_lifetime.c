@@ -7,8 +7,6 @@
 #include "ui/chat/sub_chat_map.h"
 #include "ui/ui_std.h"
 
-struct UIWindowMgr g_windowMgr;
-
 static void destroy_string(void *value) { string_free(value); }
 
 static void destroy_chat_line(void *value)

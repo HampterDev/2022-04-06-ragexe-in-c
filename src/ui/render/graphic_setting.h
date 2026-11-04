@@ -4,14 +4,7 @@
 #include "platform/win_types.h"
 #include "base.h"
 #include "ui/controls/controls.h"
-
-extern int g_textureMode;
-extern int g_displayHeight;
-extern int g_displayWidth;
-extern int g_sprHalfHeight;
-extern int g_sprHalfWidth;
-extern int g_spriteMode;
-extern int g_trilinearFilter;
+#include "render/render_options.h"
 
 struct UIGraphicSettingWnd {
     struct UIFrameWnd frame;

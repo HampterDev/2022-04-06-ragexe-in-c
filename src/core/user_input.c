@@ -1,5 +1,5 @@
 #include "core/user_input.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/window_events.h"
 #include "contents/mouse.h"
 #include "platform/vk.h"

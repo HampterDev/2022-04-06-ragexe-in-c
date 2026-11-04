@@ -4,6 +4,8 @@
 #include "ui/mail/rodex_box.h"
 #include "ui/ui_std.h"
 
+struct Rodex *g_rodex;
+
 static struct Rodex *rodex_construct(struct Rodex *self)
 {
     int i;

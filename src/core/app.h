@@ -14,11 +14,7 @@
 #include "core/client.h"
 
 extern HINSTANCE g_hInstance;
-extern int g_quitRequested;
-extern PlatformWindow g_hMainWnd;
 extern char g_clientDir[0x88];
-extern int g_windowActive;
-extern int g_fullscreenMode;
 extern unsigned char g_windowDragging;
 extern RECT g_windowDragRect;
 extern POINT g_windowDragCursor;
@@ -45,7 +41,6 @@ struct InitResult *app_init_managers(struct InitResult *out);
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-extern int g_activatedNow;
 extern int g_loginStartMode;
 
 #endif

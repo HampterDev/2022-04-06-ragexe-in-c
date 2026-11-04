@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "core/object_type_tables.h"
 #include "ui/controls/ui_hooks.h"
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 #include "platform/clock.h"
 
 struct ItemInfo;

@@ -15,15 +15,11 @@
 #include "platform/win_types.h"
 #include "std/std.h"
 #include "render/render_api.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "session/session_options.h"
 #include "ui/controls/edit.h"
 #include "core/window_events.h"
 #include "platform/vk.h"
-
-int g_activatedNow = 0;
-
-int g_windowActive = 1;
 
 void window_events_activate(int active)
 {

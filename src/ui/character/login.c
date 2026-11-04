@@ -11,7 +11,7 @@
 #include <string.h>
 #include "ui/character/character.h"
 #include "platform/window.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"

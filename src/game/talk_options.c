@@ -8,7 +8,6 @@
 #include "game/client.h"
 #include "core/msg_str.h"
 #include "render/render_options.h"
-#include "ui/render/graphic_setting.h"
 
 int g_isFixedCamera;
 

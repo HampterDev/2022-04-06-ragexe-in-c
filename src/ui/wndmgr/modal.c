@@ -1,7 +1,7 @@
 #include "ui/window_access.h"
 #include "world/mode_manager.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "core/app.h"
+#include "core/window_state.h"
 #include "ui/controls/listbox.h"
 
 int ui_window_mgr_modal_loop(struct UIWindowMgr *self, struct UIWindow *wnd)

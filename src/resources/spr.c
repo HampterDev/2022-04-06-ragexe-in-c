@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ui/render/graphic_setting.h"
+#include "render/render_options.h"
 
 struct SpriteReader {
     const BYTE *data;

@@ -8,12 +8,7 @@
 #include "core/text_util.h"
 
 HINSTANCE g_hInstance;
-int g_quitRequested;
 char g_clientDir[0x88];
-int g_fullscreenMode = 0;
-int g_savedWidth, g_savedHeight;
-int g_screenWidth = 1024;
-int g_screenHeight = 768;
 
 /* Destroys the client's managers (g_clientManagers, core/client_managers.c) in destroy-rank
    order, which is not the reverse of the create order. */
