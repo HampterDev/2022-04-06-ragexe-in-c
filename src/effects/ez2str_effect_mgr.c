@@ -255,9 +255,10 @@ unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
     return ok;
 }
 
+/* The lookups take a NULL manager (its allocation failed) as one without rows. */
 const struct EZ2STREntry *ez2_str_effect_mgr_find_by_effect_id(struct Ez2StrEffectMgr *self, int effect_id)
 {
-    struct EZ2STRRow *row = find_effect_id(self, effect_id);
+    struct EZ2STRRow *row = self ? find_effect_id(self, effect_id) : NULL;
 
     return row ? &row->entry : 0;
 }
@@ -269,6 +270,8 @@ int ez2_str_effect_mgr_get_effect_id(struct Ez2StrEffectMgr *self,
     struct EZ2STRRow *row;
     int effect_id;
 
+    if (!self)
+        return -1;
     string_copy(&key, name);
     lower_case(&key);
     row = tree_find(&self->rows, &key, name_less);
@@ -283,6 +286,8 @@ struct Vec *ez2_str_effect_mgr_get_effect_ids(struct Ez2StrEffectMgr *self,
     struct TreeNode *node;
 
     ids->first = ids->last = ids->end = 0;
+    if (!self)
+        return ids;
     for (node = tree_first(&self->rows); node != self->rows.head; node = tree_next(node)) {
         int effect_id = TREE_VALUE(node, struct EZ2STRRow)->entry.index + EZ2STR_EX_FIRST_ID;
         vec_push(ids, &effect_id, sizeof(int));

@@ -187,13 +187,32 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
     return out;
 }
 
+/* The EZ2STR effect and map-sky managers are allocated on first use. When that fails, startup
+   goes on without them, as when their files do not load; their users take a missing manager
+   as an empty one. */
+static void load_ez2str_effects(void)
+{
+    struct Ez2StrEffectMgr *mgr = ez2str_effect_mgr_instance();
+
+    if (mgr)
+        ez2_str_effect_mgr_load(mgr);
+}
+
+static void load_map_sky(void)
+{
+    struct MapSkyMgr *mgr = map_sky_mgr_instance();
+
+    if (mgr)
+        map_sky_mgr_load(mgr);
+}
+
 struct InitResult *app_init_managers(struct InitResult *out)
 {
     if (!themida_startup())
         return init_failed(out, "CThemidaMgr::CreateInstance()");
     if (!reassembly_packet_mgr_create())
         return init_failed(out, "CReassemblyPacketMgr::CreateInstance()");
-    ez2_str_effect_mgr_load(ez2str_effect_mgr_instance());
+    load_ez2str_effects();
     if (!effect_mgr_create())
         return init_failed(out, "CEffectMgr::CreateInstance()");
     if (!effect_memory_create())
@@ -254,7 +273,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
     item_db_to_id_load(item_db_to_id_instance());
     item_reform_mgr_load(item_reform_mgr());
     enchant_mgr_load(enchant_mgr_instance());
-    map_sky_mgr_load(map_sky_mgr_instance());
+    load_map_sky();
     select_package_create();
     select_package_load(g_selectPackageMgr);
     out->ok = 1;
