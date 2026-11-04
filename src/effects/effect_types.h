@@ -14,8 +14,8 @@ struct EffectMgr;
    are created by `create`; the rows of a table are registered in their order.
 
    effects/effect_registry.c assembles the tables in one fixed order (g_effectTypes there),
-   and app_init_managers (core/startup.c) hands that list to effect_mgr_create. The effect
-   manager itself names no effect class.
+   and the effect manager's row in the manager table (core/client_managers.c) hands that list
+   to effect_mgr_create. The effect manager itself names no effect class.
 
    A type that no row lists is not an effect-manager type: effect_mgr_spawn creates nothing
    for it, and the actor code that asks effect_mgr_is_registered takes its other path for it

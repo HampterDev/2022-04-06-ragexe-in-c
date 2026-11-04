@@ -1,21 +1,5 @@
-#include "contents/adventurer_agency.h"
-#include "contents/character_settings.h"
-#include "contents/account_settings.h"
-#include "actor/map_type_table.h"
-#include "contents/town_info.h"
-#include "contents/champion_monster.h"
-#include "core/map_sky.h"
-#include "effects/effect_mgr.h"
-#include "effects/effect_registry.h"
-#include "effects/ez2str_effect_mgr.h"
 #include "session/option_pairs.h"
-#include "effects/particle.h"
-#include "contents/player_names.h"
 #include "render/device.h"
-#include "contents/schedule.h"
-#include "contents/whisper_block.h"
-#include "resources/state_icon_sheet.h"
-#include "contents/quest.h"
 #include "platform/client_options.h"
 #include "platform/client_config.h"
 #include "session/state.h"
@@ -25,12 +9,10 @@
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
+#include "core/client_managers.h"
 #include "platform/language.h"
 #include "world/world_imports.h"
-#include "contents/guild_mgr.h"
 #include "session/session_state.h"
-#include "ui/mail/rodex_box.h"
-#include "ui/social/party_board.h"
 #include "ui/render/graphic_setting.h"
 #include "contents/sound.h"
 #include "platform/window.h"
@@ -85,45 +67,15 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
     return out;
 }
 
+/* Creates the client's managers (g_clientManagers, core/client_managers.c) in their list order.
+   A manager whose failure stops startup ends it with its text; the managers created before it
+   stay (see manager_table.h). */
 struct InitResult *app_init_managers(struct InitResult *out)
 {
-    ez2_str_effect_mgr_load(ez2str_effect_mgr_instance());
-    if (!effect_mgr_create(&g_effectTypes))
-        return init_failed(out, "CEffectMgr::CreateInstance()");
-    if (!effect_memory_create())
-        return init_failed(out, "Particle pools");
-    if (!time_scheduler_create())
-        return init_failed(out, "CTimeScheduler::CreateInstance()");
-    town_info_create();
-    if (!town_info_load())
-        platform_message_box(0, "TownInfo file Init", "Error", 0);
-    if (!icon_sheet_create())
-        return init_failed(out, "CCooltimerMgr::CreateInstance()");
-    if (!renew_quest_create())
-        return init_failed(out, "CRenewQuestMgr::CreateInstance()");
-    renew_quest_load();
-    champion_monster_create();
-    if (!champion_monster_load())
-        platform_message_box(0, "ChampionMonster file Init", "Error", 0);
-    if (!map_property_mgr_create())
-        return init_failed(out, "CMapPropertyMgr::CreateInstance()");
-    if (!rodex_create_instance())
-        return init_failed(out, "CRodexSystemMgr::CreateInstance()");
-    if (!account_user_data_create())
-        return init_failed(out, "CAccountLinkedUserDataMgr::CreateInstance()");
-    if (!char_user_data_create())
-        return init_failed(out, "CCharacterLinkedUserDataMgr::CreateInstance()");
-    if (!whisper_block_create())
-        return init_failed(out, "CWhisperBlockMgr::CreateInstance()");
-    if (!player_names_create())
-        return init_failed(out, "CPlayerNameDictionary::CreateInstance()");
-    if (!guild_mgr_create())
-        return init_failed(out, "CGuildMgr::CreateInstance()");
-    if (!adventurer_agency_create())
-        return init_failed(out, "CAdventurerAgencyMgr::CreateInstance()");
-    if (!ui_request_join_party_mgr_create())
-        return init_failed(out, "UIRequestJoinPartyMgr::CreateInstance()");
-    map_sky_mgr_load(map_sky_mgr_instance());
+    const struct ManagerRow *failed = manager_table_create(&g_clientManagers);
+
+    if (failed)
+        return init_failed(out, failed->on_failure.text);
     out->ok = 1;
     string_init(&out->what);
     string_assign_cstr(&out->what, "good");
