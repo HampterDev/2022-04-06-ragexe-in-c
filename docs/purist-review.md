@@ -9739,10 +9739,23 @@ Validation:
   x64 passes CTest 21 of 21 (`build/manager-alloc-cmake-x64-*.log`), and Linux (WSL, as for
   the merge) builds with 1,671 warnings and passes 26 of 26 with `SDL_VIDEO_DRIVER=offscreen`
   (`build/wsl-manager-alloc-*.log`). `git diff --check` passed.
-- Also found on `main`, not fixed: `app_init_managers` loads four more managers the same way
-  (`repute_mgr_load`, `item_db_to_id_load`, `item_reform_mgr_load`, `enchant_mgr_load`), each
-  dereferencing a NULL instance; their 33 later users would need the same check. Purist
-  removed these managers.
+- The four managers only `main` has (`0b21c23`, `main` only; purist removed them):
+  `app_init_managers` loaded the reputation, item-name, item-reform and enchant managers the
+  same way (`repute_mgr_load`, `item_db_to_id_load`, `item_reform_mgr_load`,
+  `enchant_mgr_load`), each reaching its Lua script or tables through a NULL instance. Their
+  loads are skipped the same way, and their 29 later users get the answers of an unloaded
+  manager: empty reputation lists, the "changed" text and list refresh without a manager, the
+  "no information" notice in the reputation window, item name 0 (already so), no reform
+  items or reforms, `REFORM_MAX_MATERIALS` (6) material slots through the new
+  `item_reform_max_materials`, no enchant list (the window closes as for an unknown table)
+  and enchant setters that store nothing. `test_manager_alloc_failure` links the four
+  managers' files whole, with their outside calls in `tests/manager_alloc_failure_stubs.c`,
+  and runs every user check without memory and on new managers that have not loaded, with
+  the same answers; it fails with `startup.c`, `repute_mgr.c`, `item_reform.c` or
+  `enchant_mgr.c` reverted. Release build without warnings
+  (`build/manager-alloc4-build.log`), full suite (`build/manager-alloc4-full-tests.log`,
+  digest `32d81ae6406478e3`) and the five standalone suites (`build/manager-alloc4-<suite>.log`)
+  passed on `main`; `git diff --check` passed.
 
 No live client was run.
 

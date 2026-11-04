@@ -1,0 +1,810 @@
+From 0b21c238d509de2716fb57edc6ae5cdc15a0cc58 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 10:51:47 +0100
+Subject: [PATCH] Go on without the reputation, item-name, item-reform and
+ enchant managers when they cannot be allocated
+
+The same as 91ba2d9 for the four other managers that app_init_managers
+loads through an instance function allocating on first use:
+repute_mgr_load, item_db_to_id_load, item_reform_mgr_load and
+enchant_mgr_load got NULL when mem_try_alloc failed and reached the
+manager's Lua script or tables through it. The loads are skipped now,
+and startup goes on as when they fail (their results were not looked
+at).
+
+The 29 later users ask the instance again and get NULL while memory is
+short. Each now gets the answer of a manager whose file did not load:
+- reputation (repute_wnd.c, repute_wnd_pages.c, game/repute.c): the
+  group, info and search lists are empty, set_points stores nothing,
+  set_info_result still refreshes the window and on_changed still opens
+  it with the general "changed" text, and the window's draw shows the
+  "no information" notice for a missing manager, as for no_info;
+- item names (enchant_mgr.c, item_reform.c): item_db_to_id_lookup
+  already answered 0 for a NULL manager;
+- item reform (item_reform_list.c, item_reform_wnd.c,
+  mode_item_reform.c): no base items, no reform found, no reform item,
+  and the window's material slots come from the new
+  item_reform_max_materials, REFORM_MAX_MATERIALS (6) without a
+  manager, which is what an unloaded manager holds;
+- enchants (enchant_wnd.c, and the 12 Lua callbacks of enchant_lua.c):
+  enchant_mgr_find_list finds no list, so the window closes as for an
+  unknown table, and the setters store nothing.
+
+test_manager_alloc_failure now covers the six managers: the startup
+loads extracted from app_init_managers, the four managers' files linked
+whole with their outside calls stubbed (tests/
+manager_alloc_failure_stubs.c, where a Lua script reached through a
+NULL manager stops the test), and every user check run twice, without
+memory and on new managers that have not loaded, with the same
+answers. It fails on the previous code with startup.c reverted
+("repute_mgr_load was called with NULL"), with repute_mgr.c or
+enchant_mgr.c reverted (an access violation), with item_reform.c
+reverted (it has no item_reform_max_materials; with only that function
+added, an access violation in the lookups).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/contents/enchant_mgr.c             |  45 ++++++--
+ src/contents/item_reform.c             |  12 +-
+ src/contents/item_reform.h             |   2 +
+ src/contents/item_reform_wnd.c         |   2 +-
+ src/contents/repute_mgr.c              |  18 ++-
+ src/contents/repute_wnd.c              |   2 +-
+ src/core/startup.c                     |  46 ++++++--
+ tests/build_manager_alloc_failure.bat  |   2 +-
+ tests/extract_manager_alloc_failure.py |  21 ++--
+ tests/manager_alloc_failure_stubs.c    | 129 +++++++++++++++++++++
+ tests/test_manager_alloc_failure.c     | 150 +++++++++++++++++++------
+ 11 files changed, 359 insertions(+), 70 deletions(-)
+ create mode 100644 tests/manager_alloc_failure_stubs.c
+
+diff --git a/src/contents/enchant_mgr.c b/src/contents/enchant_mgr.c
+index 1218279..6e21934 100644
+--- a/src/contents/enchant_mgr.c
++++ b/src/contents/enchant_mgr.c
+@@ -48,7 +48,7 @@ void enchant_mgr_add_target_item(struct EnchantMgr *self, unsigned __int64 id, c
+     int item_id = enchant_item_id(item_name);
+     struct Vec *items;
+
+-    if (!item_id)
++    if (!self || !item_id)
+         return;
+     items = &enchant_list_at(&self->lists, id)->target_items;
+     vec_push(items, &item_id, sizeof(int));
+@@ -56,27 +56,35 @@ void enchant_mgr_add_target_item(struct EnchantMgr *self, unsigned __int64 id, c
+
+ void enchant_mgr_set_condition(struct EnchantMgr *self, unsigned __int64 id, unsigned min_refine, unsigned min_grade)
+ {
+-    struct EnchantList *list = enchant_list_at(&self->lists, id);
++    struct EnchantList *list;
+
++    if (!self)
++        return;
++    list = enchant_list_at(&self->lists, id);
+     list->min_refine = min_refine;
+     list->min_grade = min_grade;
+ }
+
+ void enchant_mgr_set_approve_random_option(struct EnchantMgr *self, unsigned __int64 id, char approve)
+ {
+-    enchant_list_at(&self->lists, id)->approve_random_option = approve;
++    if (self)
++        enchant_list_at(&self->lists, id)->approve_random_option = approve;
+ }
+
+ void enchant_mgr_set_slot_order(struct EnchantMgr *self, unsigned __int64 id, const struct Vec *order)
+ {
+-    vec_assign(&enchant_list_at(&self->lists, id)->slot_order, order->first, order->last, sizeof(unsigned));
++    if (self)
++        vec_assign(&enchant_list_at(&self->lists, id)->slot_order, order->first, order->last, sizeof(unsigned));
+ }
+
+ void enchant_mgr_set_reset(struct EnchantMgr *self, unsigned __int64 id, char enabled,
+                            unsigned __int64 chance, unsigned __int64 zeny, const struct Tree *materials)
+ {
+-    struct EnchantReset *reset = &enchant_list_at(&self->lists, id)->reset;
++    struct EnchantReset *reset;
+
++    if (!self)
++        return;
++    reset = &enchant_list_at(&self->lists, id)->reset;
+     reset->enabled = enabled;
+     reset->chance = chance;
+     reset->zeny = zeny;
+@@ -85,29 +93,39 @@ void enchant_mgr_set_reset(struct EnchantMgr *self, unsigned __int64 id, char en
+
+ void enchant_mgr_set_caution(struct EnchantMgr *self, unsigned __int64 id, const struct String *text)
+ {
+-    struct String *caution = &enchant_list_at(&self->lists, id)->caution;
++    struct String *caution;
+
++    if (!self)
++        return;
++    caution = &enchant_list_at(&self->lists, id)->caution;
+     string_assign(caution, string_cstr(text), text->size);
+ }
+
+ void enchant_mgr_set_require(struct EnchantMgr *self, unsigned __int64 id, unsigned slot,
+                              unsigned __int64 zeny, const struct Tree *materials)
+ {
+-    struct EnchantSlot *s = slot_of(self, id, slot);
++    struct EnchantSlot *s;
+
++    if (!self)
++        return;
++    s = slot_of(self, id, slot);
+     s->require_zeny = zeny;
+     item_counts_set_from_names(&s->require_materials, materials);
+ }
+
+ void enchant_mgr_set_success_rate(struct EnchantMgr *self, unsigned __int64 id, unsigned slot, unsigned __int64 rate)
+ {
+-    slot_of(self, id, slot)->success_rate = rate;
++    if (self)
++        slot_of(self, id, slot)->success_rate = rate;
+ }
+
+ void enchant_mgr_set_grade_bonus(struct EnchantMgr *self, unsigned __int64 id, unsigned slot, const struct Tree *bonus)
+ {
+-    struct Tree *grade_bonus = &slot_of(self, id, slot)->grade_bonus;
++    struct Tree *grade_bonus;
+
++    if (!self)
++        return;
++    grade_bonus = &slot_of(self, id, slot)->grade_bonus;
+     tree_free(grade_bonus, NULL);
+     tree_copy(grade_bonus, bonus, sizeof(struct GradeBonus), NULL);
+ }
+@@ -119,6 +137,8 @@ void enchant_mgr_set_enchant(struct EnchantMgr *self, unsigned __int64 id, unsig
+     struct TreeNode *node;
+     int item_id;
+
++    if (!self)
++        return;
+     tree_init(&amounts);
+     for (node = tree_first(amount_by_name); node != amount_by_name->head; node = tree_next(node)) {
+         const struct NameAmount *name = TREE_VALUE(node, const struct NameAmount);
+@@ -143,7 +163,7 @@ void enchant_mgr_add_perfect_enchant(struct EnchantMgr *self, unsigned __int64 i
+     int item_id = enchant_item_id(item_name);
+     struct PerfectEnchant *perfect;
+
+-    if (!item_id)
++    if (!self || !item_id)
+         return;
+     perfect = perfect_enchant_at(&slot_of(self, id, slot)->perfect_enchants, item_id);
+     perfect->zeny = zeny;
+@@ -157,7 +177,7 @@ void enchant_mgr_add_upgrade_enchant(struct EnchantMgr *self, unsigned __int64 i
+     int item_id = enchant_item_id(item_name), result_id;
+     struct UpgradeEnchant *upgrade;
+
+-    if (!item_id)
++    if (!self || !item_id)
+         return;
+     result_id = enchant_item_id(result_name);
+     if (!result_id)
+@@ -198,7 +218,8 @@ struct EnchantMgr *enchant_mgr_construct(struct EnchantMgr *self)
+
+ struct EnchantList *enchant_mgr_find_list(struct EnchantMgr *self, unsigned __int64 id)
+ {
+-    struct EnchantListEntry *entry = tree_find(&self->lists, &id, tree_less_uint64);
++    /* A NULL manager (its allocation failed) has no lists, as one whose file did not load. */
++    struct EnchantListEntry *entry = self ? tree_find(&self->lists, &id, tree_less_uint64) : NULL;
+
+     return entry ? &entry->list : NULL;
+ }
+diff --git a/src/contents/item_reform.c b/src/contents/item_reform.c
+index 228287b..04f49d6 100644
+--- a/src/contents/item_reform.c
++++ b/src/contents/item_reform.c
+@@ -337,7 +337,7 @@ struct Vec *item_reform_base_items(struct ItemReformMgr *self, struct Vec *out,
+     const unsigned long long *id;
+     struct ReformInfoEntry *info;
+
+-    node = tree_find(&self->reform_items, &reform_item, tree_less_int);
++    node = self ? tree_find(&self->reform_items, &reform_item, tree_less_int) : NULL;
+     if (!node) {
+         out->first = out->last = out->end = 0;
+     } else {
+@@ -360,7 +360,7 @@ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
+     const unsigned long long *id;
+     struct ReformInfoEntry *info;
+
+-    node = tree_find(&self->reform_items, &reform_item, tree_less_int);
++    node = self ? tree_find(&self->reform_items, &reform_item, tree_less_int) : NULL;
+     if (!node)
+         return 0;
+     for (id = node->ids.first; id != node->ids.last; id++) {
+@@ -371,7 +371,13 @@ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
+     return 0;
+ }
+
++/* A NULL manager (its allocation failed) has no reform items, as one whose file did not load. */
+ char item_reform_is_reform_item(struct ItemReformMgr *self, int item)
+ {
+-    return tree_find(&self->reform_items, &item, tree_less_int) != 0;
++    return self && tree_find(&self->reform_items, &item, tree_less_int) != 0;
++}
++
++unsigned item_reform_max_materials(const struct ItemReformMgr *self)
++{
++    return self ? self->max_materials : REFORM_MAX_MATERIALS;
+ }
+diff --git a/src/contents/item_reform.h b/src/contents/item_reform.h
+index 5998815..2209e1a 100644
+--- a/src/contents/item_reform.h
++++ b/src/contents/item_reform.h
+@@ -60,6 +60,8 @@ struct Vec *item_reform_base_items(struct ItemReformMgr *self, struct Vec *out,
+ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
+                                                int base_item);
+ char item_reform_is_reform_item(struct ItemReformMgr *self, int item);
++/* The material slots of the reform window: max_materials, or its default without a manager. */
++unsigned item_reform_max_materials(const struct ItemReformMgr *self);
+
+ void reform_info_init(struct ReformInfo *info);
+ void reform_info_destroy(struct ReformInfo *info);
+diff --git a/src/contents/item_reform_wnd.c b/src/contents/item_reform_wnd.c
+index 00f2f60..b9c2023 100644
+--- a/src/contents/item_reform_wnd.c
++++ b/src/contents/item_reform_wnd.c
+@@ -306,7 +306,7 @@ void item_reform_wnd_on_create(struct UIWindow *window, int w, int h)
+
+     self->base_slot = new_item_slot(self, 0x90, 0x32);
+     self->result_slot = new_item_slot(self, 0x36, 0x32);
+-    for (i = 0; i < item_reform_mgr()->max_materials; i++) {
++    for (i = 0; i < item_reform_max_materials(item_reform_mgr()); i++) {
+         struct UIItemReformWnd_Item *slot = new_item_slot(self, (i % 3) * 0x45 + 0x1e, (i / 3) * 0x32 + 0x8c);
+
+         vec_push(&self->material_slots, &slot, sizeof slot);
+diff --git a/src/contents/repute_mgr.c b/src/contents/repute_mgr.c
+index bd0db71..bc1de8c 100644
+--- a/src/contents/repute_mgr.c
++++ b/src/contents/repute_mgr.c
+@@ -114,11 +114,14 @@ static void add_group_infos(const struct ReputeMgr *self, struct Vec *out, const
+     }
+ }
+
++/* A NULL manager (its allocation failed) has no groups and no infos, as one whose file did not load. */
+ struct Vec *repute_mgr_group_names(struct ReputeMgr *self, struct Vec *out)
+ {
+     struct TreeNode *it;
+
+     out->first = out->last = out->end = 0;
++    if (!self)
++        return out;
+     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it))
+         string_vec_push_copy(out, &TREE_VALUE(it, struct ReputeGroupEntry)->group.text);
+     return out;
+@@ -130,6 +133,8 @@ struct Vec *repute_mgr_group_infos(struct ReputeMgr *self, struct Vec *out,
+     struct TreeNode *it;
+
+     out->first = out->last = out->end = 0;
++    if (!self)
++        return out;
+     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it)) {
+         const struct ReputeGroup *group = &TREE_VALUE(it, struct ReputeGroupEntry)->group;
+
+@@ -144,6 +149,8 @@ struct Vec *repute_mgr_all_infos(struct ReputeMgr *self, struct Vec *out)
+     struct TreeNode *it;
+
+     out->first = out->last = out->end = 0;
++    if (!self)
++        return out;
+     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it))
+         add_group_infos(self, out, &TREE_VALUE(it, struct ReputeGroupEntry)->group);
+     return out;
+@@ -157,6 +164,8 @@ struct Vec *repute_mgr_search_infos(struct ReputeMgr *self, struct Vec *out,
+     size_t needle_len = text->size;
+
+     out->first = out->last = out->end = 0;
++    if (!self)
++        return out;
+     for (it = tree_first(&self->infos); it != self->infos.head; it = tree_next(it)) {
+         struct ReputeInfo *info = &TREE_VALUE(it, struct ReputeInfoEntry)->info;
+         const char *name = string_cstr(&info->name), *end, *at;
+@@ -192,12 +201,12 @@ void repute_mgr_on_changed(struct ReputeMgr *self, unsigned long long group_id,
+     if (group_id == 0) {
+         ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)msg_str(MSG_REPUTE_CHANGED), 0, 0, 0);
+     } else {
+-        struct ReputeGroupEntry *group = tree_find(&self->groups, &group_id, tree_less_uint64);
++        struct ReputeGroupEntry *group = self ? tree_find(&self->groups, &group_id, tree_less_uint64) : NULL;
+
+         if (group)
+             ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)string_cstr(&group->group.text), 0, 0, 0);
+     }
+-    entry = tree_find(&self->infos, &info_id, tree_less_uint64);
++    entry = self ? tree_find(&self->infos, &info_id, tree_less_uint64) : NULL;
+     if (entry) {
+         entry->info.highlighted = 1;
+         ui_window_invalidate(wnd);
+@@ -206,7 +215,7 @@ void repute_mgr_on_changed(struct ReputeMgr *self, unsigned long long group_id,
+
+ void repute_mgr_set_points(struct ReputeMgr *self, unsigned long long info_id, long long points)
+ {
+-    struct ReputeInfoEntry *entry = tree_find(&self->infos, &info_id, tree_less_uint64);
++    struct ReputeInfoEntry *entry = self ? tree_find(&self->infos, &info_id, tree_less_uint64) : NULL;
+
+     if (entry)
+         entry->info.points = points;
+@@ -216,7 +225,8 @@ void repute_mgr_set_info_result(struct ReputeMgr *self, unsigned char flag)
+ {
+     void *wnd;
+
+-    self->no_info = (unsigned char)(flag ^ 1);
++    if (self)
++        self->no_info = (unsigned char)(flag ^ 1);
+     if (flag != 1)
+         return;
+     wnd = ui_window_find(REPUTE_WND_ID);
+diff --git a/src/contents/repute_wnd.c b/src/contents/repute_wnd.c
+index a53b8f5..d13875e 100644
+--- a/src/contents/repute_wnd.c
++++ b/src/contents/repute_wnd.c
+@@ -240,7 +240,7 @@ void repute_wnd_on_draw(struct UIWindow *window)
+     ui_window_draw_outline(&self->frame.base, 0, title, self->frame.base.width, 1, 0);
+
+     mgr = repute_mgr_instance();
+-    if (mgr->no_info == 1) {
++    if (!mgr || mgr->no_info == 1) {
+         ui_window_draw_round_frame(&self->frame.base, 0xe1, 0x9b, 0xbe, 0x8c, 0xce9484);
+         ui_window_fill_round_rect(&self->frame.base, 0xe2, 0x9c, 0xbc, 0x8a, 0xffe7de);
+         ui_window_fill_round_rect(&self->frame.base, 0xe7, 0xa1, 0xb2, 0x80, 0xffffff);
+diff --git a/src/core/startup.c b/src/core/startup.c
+index 07f1f41..857aedc 100644
+--- a/src/core/startup.c
++++ b/src/core/startup.c
+@@ -187,9 +187,9 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
+     return out;
+ }
+
+-/* The EZ2STR effect and map-sky managers are allocated on first use. When that fails, startup
+-   goes on without them, as when their files do not load; their users take a missing manager
+-   as an empty one. */
++/* The EZ2STR effect, map-sky, reputation, item-name, item-reform and enchant managers are
++   allocated on first use. When that fails, startup goes on without them, as when their files do
++   not load; their users take a missing manager as an empty one. */
+ static void load_ez2str_effects(void)
+ {
+     struct Ez2StrEffectMgr *mgr = ez2str_effect_mgr_instance();
+@@ -206,6 +206,38 @@ static void load_map_sky(void)
+         map_sky_mgr_load(mgr);
+ }
+
++static void load_repute(void)
++{
++    struct ReputeMgr *mgr = repute_mgr_instance();
++
++    if (mgr)
++        repute_mgr_load(mgr);
++}
++
++static void load_item_db_names(void)
++{
++    struct ItemDbToIdMgr *mgr = item_db_to_id_instance();
++
++    if (mgr)
++        item_db_to_id_load(mgr);
++}
++
++static void load_item_reform(void)
++{
++    struct ItemReformMgr *mgr = item_reform_mgr();
++
++    if (mgr)
++        item_reform_mgr_load(mgr);
++}
++
++static void load_enchant(void)
++{
++    struct EnchantMgr *mgr = enchant_mgr_instance();
++
++    if (mgr)
++        enchant_mgr_load(mgr);
++}
++
+ struct InitResult *app_init_managers(struct InitResult *out)
+ {
+     if (!themida_startup())
+@@ -269,10 +301,10 @@ struct InitResult *app_init_managers(struct InitResult *out)
+         return init_failed(out, "CAdventurerAgencyMgr::CreateInstance()");
+     if (!ui_request_join_party_mgr_create())
+         return init_failed(out, "UIRequestJoinPartyMgr::CreateInstance()");
+-    repute_mgr_load(repute_mgr_instance());
+-    item_db_to_id_load(item_db_to_id_instance());
+-    item_reform_mgr_load(item_reform_mgr());
+-    enchant_mgr_load(enchant_mgr_instance());
++    load_repute();
++    load_item_db_names();
++    load_item_reform();
++    load_enchant();
+     load_map_sky();
+     select_package_create();
+     select_package_load(g_selectPackageMgr);
+diff --git a/tests/build_manager_alloc_failure.bat b/tests/build_manager_alloc_failure.bat
+index 4369c7c..c81cfda 100644
+--- a/tests/build_manager_alloc_failure.bat
++++ b/tests/build_manager_alloc_failure.bat
+@@ -7,7 +7,7 @@ call "%VCVARS%" >nul
+ python "%ROOT%\tests\extract_manager_alloc_failure.py" "%ROOT%" "%OUT%"
+ if errorlevel 1 exit /b 1
+ pushd "%OUT%" || exit /b 1
+-cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" "%ROOT%\tests\test_manager_alloc_failure.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\tree.c" /Fe:test_manager_alloc_failure.exe
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" "%ROOT%\tests\test_manager_alloc_failure.c" "%ROOT%\tests\manager_alloc_failure_stubs.c" "%ROOT%\src\contents\repute_mgr.c" "%ROOT%\src\contents\item_db_to_id.c" "%ROOT%\src\contents\item_reform.c" "%ROOT%\src\contents\enchant_mgr.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\tree.c" /Fe:test_manager_alloc_failure.exe /link user32.lib
+ if errorlevel 1 (popd & exit /b 1)
+ test_manager_alloc_failure.exe
+ set "CODE=%errorlevel%"
+diff --git a/tests/extract_manager_alloc_failure.py b/tests/extract_manager_alloc_failure.py
+index 60c9c41..f4a1f1d 100644
+--- a/tests/extract_manager_alloc_failure.py
++++ b/tests/extract_manager_alloc_failure.py
+@@ -1,5 +1,6 @@
+-"""Extract the startup loads of the EZ2STR effect and map-sky managers and the code that later uses
+-the two managers.
++"""Extract the startup loads of the managers that are allocated on first use (EZ2STR effects, map
++sky and, on main, reputation, item names, item reform and enchants) and the code that later uses
++the first two; test_manager_alloc_failure links the four main-only managers' files whole.
+
+ The loads come from core/client_managers.c (the manager table's adapters) when it exists, else from
+ app_init_managers (core/startup.c): its statements that name the two instances or their load
+@@ -59,13 +60,17 @@ if table.exists():
+                  '    load_results[1] = load_map_sky();\n}\n')
+ else:
+     text = read('core/startup.c')
+-    parts.append(function(text, 'load_ez2str_effects', required=False))
+-    parts.append(function(text, 'load_map_sky', required=False))
++    helpers = ('load_ez2str_effects', 'load_map_sky', 'load_repute', 'load_item_db_names', 'load_item_reform',
++               'load_enchant')
++    instances = ('ez2str_effect_mgr_instance', 'map_sky_mgr_instance', 'repute_mgr_instance',
++                 'item_db_to_id_instance', 'item_reform_mgr', 'enchant_mgr_instance')
++    for name in helpers:
++        parts.append(function(text, name, required=False))
+     body = function(text, 'app_init_managers')
+-    calls = [l for l in body.splitlines()
+-             if re.search(r'ez2str_effect_mgr_instance\(\)|map_sky_mgr_instance\(\)|load_ez2str_effects\(\);|load_map_sky\(\);', l)]
+-    if len(calls) != 2:
+-        sys.exit('expected two manager loads in app_init_managers, found %d' % len(calls))
++    pattern = '|'.join([re.escape(i) + r'\(\)' for i in instances] + [re.escape(h) + r'\(\);' for h in helpers])
++    calls = [l for l in body.splitlines() if re.search(pattern, l)]
++    if len(calls) != 6:
++        sys.exit('expected six manager loads in app_init_managers, found %d' % len(calls))
+     parts.append('static int load_results[2];\n'
+                  'static void startup_loads(void)\n{\n' + '\n'.join(calls) + '\n}\n')
+ (out / 'manager_alloc_failure.inc').write_text('\n'.join(parts), encoding='utf-8')
+diff --git a/tests/manager_alloc_failure_stubs.c b/tests/manager_alloc_failure_stubs.c
+new file mode 100644
+index 0000000..08b9dae
+--- /dev/null
++++ b/tests/manager_alloc_failure_stubs.c
+@@ -0,0 +1,129 @@
++/* What the reputation, item-name, item-reform and enchant managers reach outside their files, for
++   test_manager_alloc_failure. Their Lua scripts never load here: lua_script_run_file answers 0,
++   as for a missing file, so the Lua API itself must not be reached. A LuaScript must lie in a
++   manager the allocator gave out; one reached through a NULL manager stops the test. */
++#include <windows.h>
++#include <lua.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include "contents/lua_script.h"
++#include "contents/repute_api.h"
++#include "contents/repute_mgr.h"
++#include "contents/item_reform.h"
++#include "contents/enchant_mgr.h"
++#include "core/msg_str.h"
++#include "core/text_util.h"
++#include "platform/error_message.h"
++#include "std/string_vec.h"
++#include "ui/window_access.h"
++
++int alloc_failure_owns(const void *p);
++int alloc_failure_window_sends, alloc_failure_window_opens, alloc_failure_script_runs, alloc_failure_repute_loads;
++static struct UIWindow *const fake_window = (struct UIWindow *)(UINT_PTR)0x4000;
++
++static void unreached(const char *name)
++{
++    printf("manager allocation failure: %s reached\n", name);
++    exit(1);
++}
++
++static void check_script(const struct LuaScript *self, const char *name)
++{
++    if (!alloc_failure_owns(self)) {
++        printf("manager allocation failure: %s got the script of a NULL manager (%p)\n", name, (const void *)self);
++        exit(1);
++    }
++}
++
++/* The managers' Lua scripts. */
++struct LuaScript *lua_script_construct(struct LuaScript *self) { check_script(self, "lua_script_construct"); return self; }
++void lua_script_destruct(struct LuaScript *self) { check_script(self, "lua_script_destruct"); }
++void lua_script_set_number(struct LuaScript *self, const char *name, double value)
++{ (void)name; (void)value; check_script(self, "lua_script_set_number"); }
++void lua_script_set_boolean(struct LuaScript *self, const char *name, char value)
++{ (void)name; (void)value; check_script(self, "lua_script_set_boolean"); }
++void lua_script_register(struct LuaScript *self, const char *name, int (*fn)(struct lua_State *))
++{ (void)name; (void)fn; check_script(self, "lua_script_register"); }
++char lua_script_run_file(struct LuaScript *self, const char *path)
++{
++    (void)path;
++    check_script(self, "lua_script_run_file");
++    alloc_failure_script_runs++;
++    return 0;
++}
++
++/* The reputation load reads its own tables (repute_load.c). */
++char repute_mgr_load(struct ReputeMgr *self)
++{
++    if (!alloc_failure_owns(self)) {
++        puts("manager allocation failure: repute_mgr_load was called with NULL");
++        exit(1);
++    }
++    alloc_failure_repute_loads++;
++    return 0;
++}
++
++/* The repute window. */
++struct UIWindow *ui_window_open(int id) { (void)id; alloc_failure_window_opens++; return fake_window; }
++struct UIWindow *ui_window_find(int id) { (void)id; return fake_window; }
++int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
++{
++    (void)sender; (void)message; (void)a; (void)b; (void)c; (void)d;
++    if (window != fake_window)
++        unreached("ui_window_send");
++    alloc_failure_window_sends++;
++    return 0;
++}
++char *msg_str(int id) { static char text[] = "changed"; (void)id; return text; }
++unsigned int g_codePage = 65001;
++
++/* Reached only with loaded tables. */
++struct String *text_utf8_to_codepage(struct String *out, const struct String *utf8, UINT code_page)
++{ (void)utf8; (void)code_page; unreached("text_utf8_to_codepage"); return out; }
++struct String *string_vec_push_copy(struct Vec *v, const struct String *s) { (void)v; (void)s; unreached("string_vec_push_copy"); return NULL; }
++void repute_group_entry_destroy(void *value) { (void)value; unreached("repute_group_entry_destroy"); }
++void repute_info_entry_destroy(void *value) { (void)value; unreached("repute_info_entry_destroy"); }
++void reform_info_init(struct ReformInfo *info) { (void)info; unreached("reform_info_init"); }
++void reform_info_destroy(struct ReformInfo *info) { (void)info; unreached("reform_info_destroy"); }
++void error_msg(const char *text, int flags) { (void)text; (void)flags; unreached("error_msg"); }
++struct EnchantList *enchant_list_at(struct Tree *lists, unsigned __int64 id) { (void)lists; (void)id; unreached("enchant_list_at"); return NULL; }
++void enchant_list_entry_destroy(void *value) { (void)value; unreached("enchant_list_entry_destroy"); }
++struct Tree *enchant_set_at(struct Tree *sets, unsigned grade) { (void)sets; (void)grade; unreached("enchant_set_at"); return NULL; }
++struct EnchantSlot *enchant_slot_at(struct Tree *slots, unsigned index) { (void)slots; (void)index; unreached("enchant_slot_at"); return NULL; }
++struct PerfectEnchant *perfect_enchant_at(struct Tree *perfects, int item_id) { (void)perfects; (void)item_id; unreached("perfect_enchant_at"); return NULL; }
++struct UpgradeEnchant *upgrade_enchant_at(struct Tree *upgrades, int item_id) { (void)upgrades; (void)item_id; unreached("upgrade_enchant_at"); return NULL; }
++#define ENCHANT_CALLBACK(name) int name(struct lua_State *L) { (void)L; unreached(#name); return 0; }
++ENCHANT_CALLBACK(enchant_lua_set_slot_order)
++ENCHANT_CALLBACK(enchant_lua_add_target_item)
++ENCHANT_CALLBACK(enchant_lua_set_condition)
++ENCHANT_CALLBACK(enchant_lua_approve_random_option)
++ENCHANT_CALLBACK(enchant_lua_set_reset)
++ENCHANT_CALLBACK(enchant_lua_set_caution)
++ENCHANT_CALLBACK(enchant_lua_set_require)
++ENCHANT_CALLBACK(enchant_lua_set_success_rate)
++ENCHANT_CALLBACK(enchant_lua_set_grade_bonus)
++ENCHANT_CALLBACK(enchant_lua_set_enchant)
++ENCHANT_CALLBACK(enchant_lua_add_perfect_enchant)
++ENCHANT_CALLBACK(enchant_lua_add_upgrade_enchant)
++ENCHANT_CALLBACK(enchant_lua_get_slot_count)
++
++/* The Lua API: only a loaded script reaches it. */
++int lua_gettop(lua_State *L) { (void)L; unreached("lua_gettop"); return 0; }
++void lua_settop(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_settop"); }
++int lua_isnumber(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_isnumber"); return 0; }
++int lua_isstring(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_isstring"); return 0; }
++int lua_type(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_type"); return 0; }
++lua_Number lua_tonumber(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_tonumber"); return 0; }
++lua_Integer lua_tointeger(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_tointeger"); return 0; }
++int lua_toboolean(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_toboolean"); return 0; }
++const char *lua_tolstring(lua_State *L, int idx, size_t *len) { (void)L; (void)idx; (void)len; unreached("lua_tolstring"); return NULL; }
++void *lua_touserdata(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_touserdata"); return NULL; }
++void lua_pushnil(lua_State *L) { (void)L; unreached("lua_pushnil"); }
++void lua_pushstring(lua_State *L, const char *s) { (void)L; (void)s; unreached("lua_pushstring"); }
++void lua_pushboolean(lua_State *L, int b) { (void)L; (void)b; unreached("lua_pushboolean"); }
++void lua_gettable(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_gettable"); }
++void lua_getfield(lua_State *L, int idx, const char *k) { (void)L; (void)idx; (void)k; unreached("lua_getfield"); }
++void lua_call(lua_State *L, int nargs, int nresults) { (void)L; (void)nargs; (void)nresults; unreached("lua_call"); }
++int lua_pcall(lua_State *L, int nargs, int nresults, int errfunc) { (void)L; (void)nargs; (void)nresults; (void)errfunc; unreached("lua_pcall"); return 0; }
++int lua_cpcall(lua_State *L, lua_CFunction func, void *ud) { (void)L; (void)func; (void)ud; unreached("lua_cpcall"); return 0; }
++int lua_next(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_next"); return 0; }
+diff --git a/tests/test_manager_alloc_failure.c b/tests/test_manager_alloc_failure.c
+index 3c85050..28c41d6 100644
+--- a/tests/test_manager_alloc_failure.c
++++ b/tests/test_manager_alloc_failure.c
+@@ -1,13 +1,25 @@
+-/* The EZ2STR effect manager and the map-sky manager are allocated on first use (mem_try_alloc).
+-   When that fails at startup, the client goes on without them, as when their files do not load:
+-   their loads are not called with NULL (the map-sky load reads self->lua, the EZ2STR load its rows),
+-   and their later users take the missing manager as one whose file did not load: no EZ2STR rows,
+-   and a map without sky data (a black background). The startup loads, the two instances, the map-sky
+-   load and apply and the EZ2STR lookups are the production code; the allocator fails on request. */
++/* Managers allocated on first use (mem_try_alloc): the EZ2STR effect, map-sky, reputation, item-name,
++   item-reform and enchant managers. When that fails at startup, the client goes on without them, as
++   when their files do not load: no load is called with NULL (the map-sky load reads self->lua, the
++   EZ2STR load its rows, the others their Lua scripts), and every later user takes the missing
++   manager as one whose file did not load: no EZ2STR rows, a map without sky data (a black
++   background), no reputation groups or infos, item name 0, no reform items and the default number
++   of material slots, no enchant lists, and enchant setters that store nothing.
++
++   The startup loads (extracted from app_init_managers), the EZ2STR and map-sky instances, load and
++   apply and lookups (extracted), and the reputation, item-name, item-reform and enchant managers'
++   files (linked whole) are the production code; manager_alloc_failure_stubs.c stands in for what
++   those files reach outside. The allocator fails on request. Each user check runs twice: without
++   memory (NULL managers) and on new managers that have not loaded; the answers must be the same. */
+ #include "core/map_sky.h"
+ #include "effects/ez2str_effect_mgr.h"
+ #include "contents/client_lua.h"
+ #include "contents/client_lua_calls.h"
++#include "contents/repute_api.h"
++#include "contents/repute_mgr.h"
++#include "contents/item_db_to_id.h"
++#include "contents/item_reform.h"
++#include "contents/enchant_mgr.h"
+ #include "render/renderer.h"
+ #include "std/string.h"
+ #include "std/tree.h"
+@@ -24,10 +36,32 @@ static int fail_allocations, allocations;
+ static struct Renderer renderer;
+ struct Renderer *g_renderer = &renderer;
+
++/* The managers the allocator gave out, so the stubs can tell a manager from a NULL one. */
++static struct { const char *at; size_t size; } given[64];
++static int given_count;
++
++int alloc_failure_owns(const void *p)
++{
++    int i;
++
++    for (i = 0; i < given_count; i++)
++        if ((const char *)p >= given[i].at && (const char *)p < given[i].at + given[i].size)
++            return 1;
++    return 0;
++}
++
+ void *mem_try_alloc(size_t bytes)
+ {
++    void *p;
++
+     allocations++;
+-    return fail_allocations ? NULL : calloc(1, bytes);
++    if (fail_allocations)
++        return NULL;
++    p = calloc(1, bytes);
++    assert(p && given_count < 64);
++    given[given_count].at = p;
++    given[given_count++].size = bytes;
++    return p;
+ }
+ void *mem_alloc(size_t bytes)
+ {
+@@ -43,7 +77,6 @@ void fatal_error(const char *message)
+ }
+
+ /* Lua: the map-sky manager's state; nothing is loaded, so every call finds no function. */
+-static struct ClientLua lua_state;
+ static int lua_loads, lua_calls;
+ struct ClientLua *client_lua_construct(struct ClientLua *self) { return self; }
+ void client_lua_open(struct ClientLua *self) { (void)self; }
+@@ -86,6 +119,8 @@ unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
+     return 1;
+ }
+
++extern int alloc_failure_window_sends, alloc_failure_window_opens, alloc_failure_script_runs, alloc_failure_repute_loads;
++
+ #include "manager_alloc_failure.inc"
+
+ static void apply_sky(const char *map_name)
+@@ -99,41 +134,90 @@ static void apply_sky(const char *map_name)
+     string_free(&map);
+ }
+
+-int main(void)
++/* What the later users get from a manager that did not load; setters only for a missing one (an
++   allocated manager's setters fill its tables, which the stubs leave out). */
++static void check_users(int missing)
+ {
+-    struct Vec ids;
+-    struct String name;
++    struct Vec list;
++    struct String text;
++    struct Tree none;
++    int opens, sends;
+
+-    /* Startup with no memory for the two managers. */
+-    fail_allocations = 1;
+-    startup_loads();
+-    assert(allocations == 2 && !g_ez2strMgr && !g_mapSkyMgrInstance);
+-    assert(ez2str_loads == 0 && lua_loads == 0);
+-
+-    /* Their later users, still without memory: no rows, and no sky (black). */
+-    assert(ez2_str_effect_mgr_get_effect_ids(ez2str_effect_mgr_instance(), &ids) == &ids && ids.first == ids.last);
++    /* EZ2STR effects and map sky. */
++    assert(ez2_str_effect_mgr_get_effect_ids(ez2str_effect_mgr_instance(), &list) == &list && list.first == list.last);
+     assert(ez2_str_effect_mgr_find_by_effect_id(ez2str_effect_mgr_instance(), 10000) == NULL);
+-    string_init(&name);
+-    string_assign_cstr(&name, "EF_X");
++    string_init(&text);
++    string_assign_cstr(&text, "EF_X");
+ #if HAVE_GET_EFFECT_ID
+-    assert(ez2_str_effect_mgr_get_effect_id(ez2str_effect_mgr_instance(), &name) == -1);
++    assert(ez2_str_effect_mgr_get_effect_id(ez2str_effect_mgr_instance(), &text) == -1);
+ #endif
+     renderer.clearColor = 0x12345678;
+     apply_sky("prontera.rsw");
+-    assert(renderer.clearColor == 0xff000000 && lua_calls == 0);
++    assert(renderer.clearColor == 0xff000000);
++
++    /* Reputation: no groups, no infos; the window still hears that something changed. */
++    assert(repute_mgr_group_names(repute_mgr_instance(), &list) == &list && list.first == list.last);
++    assert(repute_mgr_all_infos(repute_mgr_instance(), &list) == &list && list.first == list.last);
++    assert(repute_mgr_group_infos(repute_mgr_instance(), &list, &text) == &list && list.first == list.last);
++    assert(repute_mgr_search_infos(repute_mgr_instance(), &list, &text) == &list && list.first == list.last);
++    repute_mgr_set_points(repute_mgr_instance(), 5, 10);
++    opens = alloc_failure_window_opens;
++    sends = alloc_failure_window_sends;
++    repute_mgr_set_info_result(repute_mgr_instance(), 1);
++    repute_mgr_on_changed(repute_mgr_instance(), 0, 5);
++    repute_mgr_on_changed(repute_mgr_instance(), 7, 5);
++    assert(alloc_failure_window_opens == opens + 2 && alloc_failure_window_sends == sends + 2);
+
+-    /* With memory, the managers are made on first use and their loads run. */
++    /* Item names, item reform and enchants. */
++    assert(item_db_to_id_lookup(item_db_to_id_instance(), "Red_Potion") == 0);
++    assert(item_reform_base_items(item_reform_mgr(), &list, 1001) == &list && list.first == list.last);
++    assert(item_reform_find(item_reform_mgr(), 1001, 1002) == NULL);
++    assert(item_reform_is_reform_item(item_reform_mgr(), 1001) == 0);
++    assert(item_reform_max_materials(item_reform_mgr()) == 6);
++    assert(enchant_mgr_find_list(enchant_mgr_instance(), 1) == NULL);
++    if (missing) {
++        tree_init(&none);
++        list.first = list.last = list.end = NULL;
++        enchant_mgr_add_target_item(enchant_mgr_instance(), 1, &text);
++        enchant_mgr_set_condition(enchant_mgr_instance(), 1, 2, 3);
++        enchant_mgr_set_approve_random_option(enchant_mgr_instance(), 1, 1);
++        enchant_mgr_set_slot_order(enchant_mgr_instance(), 1, &list);
++        enchant_mgr_set_reset(enchant_mgr_instance(), 1, 1, 10, 20, &none);
++        enchant_mgr_set_caution(enchant_mgr_instance(), 1, &text);
++        enchant_mgr_set_require(enchant_mgr_instance(), 1, 0, 20, &none);
++        enchant_mgr_set_success_rate(enchant_mgr_instance(), 1, 0, 50);
++        enchant_mgr_set_grade_bonus(enchant_mgr_instance(), 1, 0, &none);
++        enchant_mgr_set_enchant(enchant_mgr_instance(), 1, 0, 1, &none);
++        enchant_mgr_add_perfect_enchant(enchant_mgr_instance(), 1, 0, &text, 20, &none);
++        enchant_mgr_add_upgrade_enchant(enchant_mgr_instance(), 1, 0, &text, &text, 20, &none);
++        assert(enchant_mgr_find_list(enchant_mgr_instance(), 1) == NULL);
++        tree_free(&none, NULL);
++    }
++    string_free(&text);
++}
++
++int main(void)
++{
++    /* Startup with no memory for the six managers. */
++    fail_allocations = 1;
++    startup_loads();
++    assert(allocations == 6 && !g_ez2strMgr && !g_mapSkyMgrInstance);
++    assert(ez2str_loads == 0 && lua_loads == 0 && alloc_failure_repute_loads == 0 && alloc_failure_script_runs == 0);
++    assert(!repute_mgr_instance() && !item_db_to_id_instance() && !item_reform_mgr() && !enchant_mgr_instance());
++
++    /* Their later users, still without memory. */
++    check_users(1);
++    assert(lua_calls == 0 && alloc_failure_script_runs == 0);
++
++    /* With memory, the managers are made on first use and their loads run; none of the files loads
++       here (item names, item reform and the enchant list each try one Lua file). */
+     fail_allocations = 0;
+     startup_loads();
+     assert(g_ez2strMgr && g_mapSkyMgrInstance && ez2str_loads == 1 && lua_loads == 1);
+-    renderer.clearColor = 0x12345678;
+-    apply_sky("prontera.rsw");
+-    assert(renderer.clearColor == 0xff000000 && lua_calls == 1);
+-    assert(ez2_str_effect_mgr_find_by_effect_id(ez2str_effect_mgr_instance(), 10000) == NULL);
+-#if HAVE_GET_EFFECT_ID
+-    assert(ez2_str_effect_mgr_get_effect_id(ez2str_effect_mgr_instance(), &name) == -1);
+-#endif
+-    string_free(&name);
+-    puts("Manager allocation failure: the EZ2STR and map-sky loads are skipped, their users see empty managers.");
++    assert(alloc_failure_repute_loads == 1 && alloc_failure_script_runs == 3);
++    assert(repute_mgr_instance() && item_db_to_id_instance() && item_reform_mgr() && enchant_mgr_instance());
++    check_users(0);
++    assert(lua_calls == 1);
++    puts("Manager allocation failure: the six managers' loads are skipped, their users answer as for unloaded managers.");
+     return 0;
+ }
