@@ -2,12 +2,13 @@
 #include "resources/world_format.h"
 #include "fileio/file.h"
 #include "render/math3d.h"
-#include "actor/weather.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+void (*g_worldResLight)(const float ambient[3], const float diffuse[3]);
 
 #define RSW_AT_LEAST_1(major, minor, n) ((major) == 1 ? (minor) >= (n) : (major) >= 2)
 
@@ -274,9 +275,8 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
         }
     }
     file_destruct(&fp);
-    memcpy(g_weather.tint, self->ambient, sizeof self->ambient);
-    memcpy(g_weather.light, self->diffuse, sizeof self->diffuse);
-    memcpy(g_weather.light_max, self->diffuse, sizeof self->diffuse);
+    if (g_worldResLight)
+        g_worldResLight(self->ambient, self->diffuse);
     return 1;
 fail:
     file_destruct(&fp);

@@ -29,6 +29,7 @@
 #include "render/texture_globals.h"
 #include "resources/emblem.h"
 #include "resources/granny_res.h"
+#include "resources/world_res.h"
 #include "session/session_granny_hooks.h"
 #include "session/session_state.h"
 #include "session/state.h"
@@ -102,6 +103,7 @@ static void client_install_hooks(void)
     g_emblemRules.max_size = guild_emblem_max_size;
     g_grannyJobModelName = session_granny_job_model;
     g_clientInfoWeatherScript = weather_add_etc_script;
+    g_worldResLight = weather_take_map_light;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

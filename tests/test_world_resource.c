@@ -61,6 +61,7 @@ static void *observed_realloc(void *memory, size_t size)
 #undef free
 #undef realloc
 #undef calloc
+#include "../src/actor/weather_hooks.c"
 
 struct Weather g_weather;
 struct GameFileMgr g_fileMgr;
@@ -181,6 +182,7 @@ int main(void)
     const int versions[][3] = {{1,0,0}, {1,9,0}, {2,0,0}, {2,6,185}, {2,6,186}};
     unsigned i, failures;
     size_t complete, length;
+    g_worldResLight = weather_take_map_light;   /* as client_install_hooks() does */
     world_res_init(&resource); empty_resource(&resource, 0);
     fail_at = 1; allocation_calls = 0; assert(!world_resource_create()); fail_at = 0;
     for (i = 0; i < sizeof versions / sizeof *versions; ++i) {

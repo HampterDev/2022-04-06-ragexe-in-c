@@ -32,4 +32,9 @@ struct C3dWorldRes {
 BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name);
 void world_resource_clear(struct C3dWorldRes *self);
 void world_resource_finish(struct C3dWorldRes *self);
+
+/* Called by c3d_world_res_load with the ambient and diffuse light of a map it has loaded.
+   client_install_hooks() (core/client_init.c) installs weather_take_map_light
+   (actor/weather_hooks.c). NULL: the light is not passed on. */
+extern void (*g_worldResLight)(const float ambient[3], const float diffuse[3]);
 #endif
