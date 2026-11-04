@@ -92,7 +92,6 @@ static void fake_shell(void)
 #define string_cstr(...) "startup failure"
 #define msg_str(...) "https://example.com"
 #define error_msg(...) ((void)0)
-#include "platform/window.h"
 #define MessageBoxA(...) ((void)0)
 #define platform_message_box(...) ((void)0)
 #define frame_timer_reset() ((void)0)
@@ -101,6 +100,8 @@ static void fake_shell(void)
 #define res_mgr_read_res_name_table(...) ((void)0)
 #define SetFocus(...) ((void)0)
 #define ShowCursor(...) ((void)0)
+#define platform_focus_window(...) ((void)0)
+#define platform_show_cursor(...) ((void)0)
 #define ui_window_mgr_set_screen_size(...) ((void)0)
 #define ui_window_mgr_init_ui_rect_info_from_reg(...) ((void)0)
 #define granny_animation_cache_init(...) ((void)0)

@@ -10,9 +10,10 @@ import sys
 winmain = Path(sys.argv[1]).read_text(encoding="utf-8")
 app = Path(sys.argv[2]).read_text(encoding="utf-8")
 start = winmain.index("    frame_timer_reset();")
-end = winmain.rindex("}")
+# The tail ends with the function that holds it (client_run, which WinMain and the POSIX main
+# call), the first closing brace at the start of a line after it.
+end = winmain.index("\n}", start) + 1
 assert winmain.count("    frame_timer_reset();") == 1
-assert not winmain[end + 1:].strip()
 tail = winmain[start:end]
 pump_start = app.index("void app_last_pump(void)\n{")
 pump_end = app.index("\n}", pump_start) + 2
