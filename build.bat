@@ -4,6 +4,8 @@ REM build.bat dbg      -> build\main_dbg.exe          (optimized, with build\mai
 REM build.bat x64      -> build\main_rebuild_x64.exe  (64-bit; build.bat x64 dbg -> main_dbg_x64.exe)
 REM build.bat freetype -> build\main_rebuild_ft.exe   (text through FreeType instead of GDI, as off
 REM                       Windows; with x64 -> main_rebuild_x64_ft.exe)
+REM build.bat check    -> also checks the library table on the objects it built
+REM                       (tools\check_libraries.bat; combines with the other words)
 REM The 32-bit client links RAD's granny2.dll and mss32.dll; the 64-bit one draws Granny models
 REM from converted glTF files (tools\granny_export) and plays sound through SDL3.
 setlocal enabledelayedexpansion
@@ -15,10 +17,12 @@ if not exist "%BUILD%" mkdir "%BUILD%"
 set "WANTDBG="
 set "ARCH=x86"
 set "TEXT="
+set "CHECK="
 for %%a in (%*) do (
   if /i "%%~a"=="dbg" set "WANTDBG=1"
   if /i "%%~a"=="x64" set "ARCH=x64"
   if /i "%%~a"=="freetype" set "TEXT=freetype"
+  if /i "%%~a"=="check" set "CHECK=1"
 )
 set "SUFFIX="
 if "%ARCH%"=="x64" set "SUFFIX=_x64"
@@ -96,3 +100,7 @@ if "%ARCH%"=="x64" (
 )
 if errorlevel 1 ( echo *** LINK FAILED *** & exit /b 1 )
 echo Done -^> "%BUILD%\%OUT%.exe"
+if defined CHECK (
+  call "%ROOT%tools\check_libraries.bat" "%OBJ%"
+  if errorlevel 1 ( echo *** LIBRARY CHECK FAILED *** & exit /b 1 )
+)

@@ -92,6 +92,8 @@ target_link_libraries(rage_jpeg PRIVATE rage_stb)
 
 if(BUILD_TESTING)
     add_test(NAME source_encoding COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_source_encoding.py")
+    # The include check of the library table (tools/libraries.txt); cmake/Client.cmake adds the link check.
+    add_test(NAME library_includes COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/depmap/check_includes.py" --strict)
     rage_legacy_source(literal_source tests/test_literal_bytes.c)
     add_executable(test_literal_bytes "${literal_source}")
     rage_enable_assertions(test_literal_bytes)

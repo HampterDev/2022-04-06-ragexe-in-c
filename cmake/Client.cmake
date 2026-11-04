@@ -129,6 +129,9 @@ if(BUILD_TESTING AND NOT ANDROID)
     target_link_libraries(test_gfx_gl PRIVATE SDL3::SDL3 m)
     rage_enable_assertions(test_gfx_gl)
     add_test(NAME gfx_gl COMMAND test_gfx_gl)
+    # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
+    add_test(NAME library_links COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/depmap/check_links.py
+        --nm ${CMAKE_BINARY_DIR}/CMakeFiles/ragexe.dir --strict)
     set_tests_properties(gfx_gl PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
 
     # The scene captures need game data; with RAGE_SCENE_GOLDEN they are compared with golden images.
