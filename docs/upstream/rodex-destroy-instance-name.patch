@@ -1,0 +1,62 @@
+From 5572da79175b9354b89d7070ac7d6890af7a4a12 Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:55:02 +0100
+Subject: [PATCH] Name the RODEX manager's destroy rodex_destroy_instance
+
+set_hwnd_to_game_mon (ui/mail/rodex_box.c) destroys g_rodex, the RODEX
+manager, and clears it; it is the counterpart of rodex_create_instance
+and is called once, from the shutdown sequence in core/app.c, next to
+the other *_destroy and *_destroy_instance calls. The old name is a
+leftover of the decompilation. No behaviour change.
+
+Validation: the release objects rodex_box.obj and app.obj were
+disassembled with dumpbin before and after; with the renamed symbol
+mapped, every function's code is identical (8 and 12 functions). Release
+build without warnings.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/core/app.c          | 2 +-
+ src/ui/mail/rodex_box.c | 2 +-
+ src/ui/mail/rodex_box.h | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/core/app.c b/src/core/app.c
+index b4466a8..9d167b0 100644
+--- a/src/core/app.c
++++ b/src/core/app.c
+@@ -254,7 +254,7 @@ void app_destroy_singletons(void)
+     twitter_destroy();
+     http_client_stop();
+     run_faq_web_page();
+-    set_hwnd_to_game_mon();
++    rodex_destroy_instance();
+     map_property_mgr_release();
+     champion_monster_destroy();
+     clan_info_destroy();
+diff --git a/src/ui/mail/rodex_box.c b/src/ui/mail/rodex_box.c
+index fa93372..f4902ec 100644
+--- a/src/ui/mail/rodex_box.c
++++ b/src/ui/mail/rodex_box.c
+@@ -54,7 +54,7 @@ unsigned char rodex_create_instance(void)
+     return 0;
+ }
+
+-void set_hwnd_to_game_mon(void)
++void rodex_destroy_instance(void)
+ {
+     if (!g_rodex)
+         return;
+diff --git a/src/ui/mail/rodex_box.h b/src/ui/mail/rodex_box.h
+index 7dee0d9..77f4bf5 100644
+--- a/src/ui/mail/rodex_box.h
++++ b/src/ui/mail/rodex_box.h
+@@ -7,6 +7,6 @@ struct Rodex;
+
+ void rodex_clear(struct Rodex *self);
+ unsigned char rodex_create_instance(void);
+-void set_hwnd_to_game_mon(void);
++void rodex_destroy_instance(void);
+
+ #endif

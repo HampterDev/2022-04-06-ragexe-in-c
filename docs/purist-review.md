@@ -9328,7 +9328,9 @@ were fixed the same way, also at Patrick's request on 2026-11-03: the heal-effec
 they come next. One found by the
 [window-list test](#window-id-lists-characterization-test-25a5fe3) was fixed the same
 way, at Patrick's request on 2026-11-03: the private-airplane forget entry (`3ac83b2`,
-here `3df3cba`); it is the last item.
+here `3df3cba`); it comes next. The RODEX destroy name, found with the window and
+object-type tables, was changed the same way on 2026-11-04 (`5572da7`, here `9f11693`);
+it is the last item.
 
 What each fix does:
 
@@ -9495,6 +9497,10 @@ What each fix does:
   destroy path that skips their slot: they close through `post_quit1` (0x9c, 0xcc), the
   drag-plate functions or `clear_slots`, none closes itself or is a child of another
   window, and they are left out.
+- RODEX destroy name (`5572da7`, here `9f11693`). `set_hwnd_to_game_mon`
+  (`ui/mail/rodex_box.c`) destroys and clears `g_rodex`; it is `rodex_destroy_instance`
+  now, next to `rodex_create_instance`. Its one caller is the shutdown sequence in
+  `core/app.c`; here `test_startup_order`'s stub and expected step take the new name.
 
 Format-string calls left as they are:
 
@@ -9696,6 +9702,14 @@ Validation:
 - `test_airplane_window_slot` fails on the previous `forget_window.c` on both branches
   ("private_airplane_wnd still points at the destroyed window"); here the extractor takes
   `ui_window_mgr_run_modal`, the name of `run_modal` here.
+- RODEX destroy name: no test, being a rename. `dumpbin /disasm` of `rodex_box.obj` and
+  `app.obj` before and after, with the symbol mapped, shows the same code for every
+  function (8 and 12 on `main`, 8 and 6 here). Release builds without warnings
+  (`build/rodex-rename-build.log` on both branches); full suites
+  (`build/rodex-rename-full-tests.log` on `main`, digest `32d81ae6406478e3`;
+  `build/table-followups-full-tests.log` here) and standalone suites
+  (`build/rodex-rename-<suite>.log`, `build/table-followups-<suite>.log`) passed;
+  `git diff --check` passed.
 
 No live client was run.
 
@@ -11051,7 +11065,7 @@ destroy}` table run forwards and backwards would change the shutdown order:
 | icon sheet | whisper block |
 | renewed quests (create, load) | account data |
 | champion monsters (create, load) | character data |
-| map properties | Rodex (`set_hwnd_to_game_mon`) |
+| map properties | Rodex (`rodex_destroy_instance`) |
 | Rodex | map properties |
 | account data | champion monsters |
 | character data | renewed quests |
@@ -11153,12 +11167,26 @@ No live client was run.
 
 - `set_hwnd_to_game_mon` (`ui/mail/rodex_box.c`) is the Rodex manager's destroy: it destroys
   `g_rodex` and clears it. The name is a leftover of the decompilation; nothing else calls it.
+  Renamed `rodex_destroy_instance` afterwards (`9f11693`; `main` `5572da7`), with the same
+  code.
 - The characterization test does not tell `WM_GET_SLOT` from a `windows_by_id` lookup for most
-  IDs (see the detection table); the one-off check covered it for this change.
+  IDs (see the detection table); the one-off check covered it for this change. Closed
+  afterwards (`0fc7891`): a lookup case records `get_window` and `is_untracked_id` for every
+  ID in both environments, with every window field and every `windows_by_id` entry holding
+  its own window (W0+n and W1+id), without and with a mini-party plate. The trace only gains
+  lines, 2,314 after each environment's field cases (2 x 2 x 576 records, 4 notes, 4
+  `ui_window_find(145)` calls and their 2 `-> D0`): 37,047 lines, `2232167ff470caa7`.
+  Exactly the 25 `WM_GET_SLOT` rows answer from their slot. `WM_GET_SLOT` dropped from 0x58
+  gives `417e398825759e7b` (before: unchanged `39f36d8f0948c9bf`), from 0x1c
+  `5cad0c5769dff71b`, and `get_window` ignoring it everywhere `636123f4647ddbf1`.
 - `make_guild_tab`, `make_store_page` and the store-page closes keep their own ID-to-slot
   mapping next to the rows' slot column; they agree today and could read the row.
 - `test_window_id_list` still gives 0xaa an "already open" factory result, but 0xaa has no row,
   so `make_window` returns NULL without calling it; the test's outcome is the same as before.
+  Fixed afterwards (`8f7f567`): the case uses 0xe5, the navigation help, a tracked row
+  without a slot whose real factory refuses while the window is open, and counts the
+  refusal; removing 0xe5's row now fails the test. The same commit lists the
+  ignored-results scenario in `test_startup_order.c`'s header comment.
 - On `purist-portable`, `make_window*.c`, `window_slots.c`, `app.c`, `startup.c` and
   `client_init.c` carry small portability edits (`INT_PTR` to `intptr_t`, `tree_less_uint` to
   `tree_less_ptr`) inside code this branch moved; merging needs them re-applied in the moved
