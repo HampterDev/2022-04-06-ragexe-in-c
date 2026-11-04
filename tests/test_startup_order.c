@@ -10,6 +10,8 @@
      effect load, town info, champion monsters, the map sky load): the full sequence, and
      success;
    - app_init_managers when the two loads that only warn (town info, champion monsters) fail;
+   - app_init_managers when the EZ2STR or the map-sky manager cannot be allocated (its instance
+     is NULL): its load is skipped, and startup goes on;
    - app_destroy_singletons.
    The expected sequences below are the current order; a change to either function that moves,
    adds or drops a step fails the test. */
@@ -78,7 +80,8 @@ const struct EffectTypeSources g_effectTypes;
 static struct Ez2StrEffectMgr *const ez2str = (struct Ez2StrEffectMgr *)(uintptr_t)0x1000;
 static struct MapSkyMgr *const map_sky = (struct MapSkyMgr *)(uintptr_t)0x2000;
 
-struct Ez2StrEffectMgr *ez2str_effect_mgr_instance(void) { step("ez2str_effect_mgr_instance"); return ez2str; }
+/* An instance "fails" when the scenario names it: its allocation failed. */
+struct Ez2StrEffectMgr *ez2str_effect_mgr_instance(void) { return result("ez2str_effect_mgr_instance") ? ez2str : NULL; }
 unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
 {
     assert(self == ez2str);
@@ -107,7 +110,7 @@ int player_names_create(void) { return result("player_names_create"); }
 char guild_mgr_create(void) { return (char)result("guild_mgr_create"); }
 int adventurer_agency_create(void) { return result("adventurer_agency_create"); }
 char ui_request_join_party_mgr_create(void) { return (char)result("ui_request_join_party_mgr_create"); }
-struct MapSkyMgr *map_sky_mgr_instance(void) { step("map_sky_mgr_instance"); return map_sky; }
+struct MapSkyMgr *map_sky_mgr_instance(void) { return result("map_sky_mgr_instance") ? map_sky : NULL; }
 unsigned char map_sky_mgr_load(struct MapSkyMgr *self)
 {
     assert(self == map_sky);
@@ -287,13 +290,27 @@ int main(void)
         string_free(&init.what);
     }
 
+    /* A manager that cannot be allocated: no load, and startup goes on without it. */
+    for (i = 0; i < 2; i++) {
+        const char *instance = i == 0 ? "ez2str_effect_mgr_instance" : "map_sky_mgr_instance";
+
+        for (j = n = 0; j < COUNT(create_order); j++)
+            if (j == 0 || strcmp(create_order[j - 1], instance))
+                with_warnings[n++] = create_order[j];
+        run_init(instance, &init);
+        expect_steps(with_warnings, n, instance);
+        assert(n == COUNT(create_order) - 1 && init.ok == 1);
+        string_free(&init.what);
+    }
+
     /* Shutdown. */
     step_count = 0;
     failing = NULL;
     app_destroy_singletons();
     expect_steps(destroy_order, COUNT(destroy_order), "destroy");
 
-    printf("Startup order: %d startup steps (%d checked creates, %d ignored results, 2 warning loads), "
-           "%d shutdown steps; passed.\n", COUNT(create_order), COUNT(checked), COUNT(ignored), COUNT(destroy_order));
+    printf("Startup order: %d startup steps (%d checked creates, %d ignored results, 2 warning loads, "
+           "2 unallocated managers), %d shutdown steps; passed.\n", COUNT(create_order), COUNT(checked),
+           COUNT(ignored), COUNT(destroy_order));
     return 0;
 }

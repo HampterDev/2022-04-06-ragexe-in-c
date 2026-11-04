@@ -789,3 +789,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_latest_achievements.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_manager_alloc_failure.bat"
+if not "%errorlevel%"=="0" exit /b 1

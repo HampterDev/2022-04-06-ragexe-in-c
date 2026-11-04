@@ -22,7 +22,15 @@
 
 /* The creates in the form a row calls them: no arguments, nonzero on success. The managers
    whose create already has that form are in the rows directly. */
-static int load_ez2str_effects(void) { return ez2_str_effect_mgr_load(ez2str_effect_mgr_instance()); }
+/* The EZ2STR effect and map-sky managers are allocated on first use. When that fails, the row's
+   load is skipped and startup goes on without the manager, as when its file does not load (both
+   rows ignore the result); their users take a missing manager as an empty one. */
+static int load_ez2str_effects(void)
+{
+    struct Ez2StrEffectMgr *mgr = ez2str_effect_mgr_instance();
+
+    return mgr ? ez2_str_effect_mgr_load(mgr) : 0;
+}
 static int create_effect_mgr(void) { return effect_mgr_create(&g_effectTypes); }
 static int create_particle_pools(void) { return effect_memory_create(); }
 static int create_time_scheduler(void) { return time_scheduler_create(); }
@@ -52,7 +60,12 @@ static int create_map_properties(void) { return map_property_mgr_create(); }
 static int create_rodex(void) { return rodex_create_instance(); }
 static int create_guild_mgr(void) { return guild_mgr_create(); }
 static int create_join_party_mgr(void) { return ui_request_join_party_mgr_create(); }
-static int load_map_sky(void) { return map_sky_mgr_load(map_sky_mgr_instance()); }
+static int load_map_sky(void)
+{
+    struct MapSkyMgr *mgr = map_sky_mgr_instance();
+
+    return mgr ? map_sky_mgr_load(mgr) : 0;
+}
 
 /* The composition point: every manager that startup creates and shutdown destroys. The list
    order is the create order; destroy_rank is the destroy order, which is not the reverse.
