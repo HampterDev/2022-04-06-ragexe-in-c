@@ -44,6 +44,16 @@ The initial CTest set covers the real string, container, numeric, 3D math and XM
 Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
 The full Windows regression suite still runs through `tests/build.bat`.
 
+With `RAGE_CLIENT=ON`, CTest's `gfx_gl` opens an SDL window. When SDL is built with
+`-DSDL_UNIX_CONSOLE_BUILD=ON` (no X11, Wayland or other window backend, as on a WSL without
+their development packages), SDL finds no video device unless its offscreen driver is chosen,
+and `gfx_gl` reports itself skipped ("No available video device"). Run CTest with that driver
+there:
+
+```sh
+SDL_VIDEO_DRIVER=offscreen ctest --test-dir build/client --output-on-failure
+```
+
 ## JPEG without IJL
 
 JPEG loading and screenshots use the pinned stb implementation in `vendor/stb`.

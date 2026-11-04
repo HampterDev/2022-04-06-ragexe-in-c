@@ -1,8 +1,11 @@
-/* Characterization of the order in which the client creates and destroys its managers, before
-   startup and shutdown become one table.
+/* Checks the order in which the client creates and destroys its managers, which the manager
+   table defines: the rows of g_clientManagers (core/client_managers.c), run by
+   core/manager_table.c. The sequences below were recorded from the two functions before they
+   became the table, and the table must keep them.
 
    app_init_managers (core/startup.c) and app_destroy_singletons (core/app.c) are extracted
-   (extract_startup_order.py) and run against stubs that record their names. Recorded:
+   (extract_startup_order.py), compiled with the real table and its runner, and run against
+   stubs that record the names of the managers' functions. Recorded:
    - app_init_managers when every step succeeds;
    - app_init_managers when each checked create fails in turn: the steps up to the failing
      one, and the failure text it returns (nothing created before it is destroyed);
