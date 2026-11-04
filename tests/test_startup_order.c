@@ -6,6 +6,9 @@
    - app_init_managers when every step succeeds;
    - app_init_managers when each checked create fails in turn: the steps up to the failing
      one, and the failure text it returns (nothing created before it is destroyed);
+   - app_init_managers when each step whose result is ignored fails in turn (the EZ2STR
+     effect load, town info, champion monsters, the map sky load): the full sequence, and
+     success;
    - app_init_managers when the two loads that only warn (town info, champion monsters) fail;
    - app_destroy_singletons.
    The expected sequences below are the current order; a change to either function that moves,

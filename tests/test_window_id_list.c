@@ -20,14 +20,14 @@ struct Session g_session1;
 struct Renderer *g_renderer;
 static struct UIWindowMgr mgr;
 static struct UIWindow windows[8];
-static int created;
+static int created, refused_open;
 
 enum { NOT_MINE, NO_WINDOW, NEW_WINDOW };
 static int factory_mode(int id)
 {
     switch (id) {
     case 0x58: case 0x71: case 0x28: return NO_WINDOW; /* no pet/homunculus, refused */
-    case 0xaa: case 0xcb: return NO_WINDOW;            /* "already open" requests */
+    case 0xe5: case 0xcb: return NO_WINDOW;            /* "already open" requests */
     case 0x8: case 0xa: case 0x25: case 0xe: return NEW_WINDOW;
     }
     return NOT_MINE;
@@ -48,7 +48,11 @@ static struct UIWindow *factory(struct UIWindowMgr *self, int window_id)
 {
     assert(self == &mgr);
     switch (factory_mode(window_id)) {
-    case NO_WINDOW: return NULL;
+    case NO_WINDOW:
+        /* make_navigation_help_wnd refuses while a 0xe5 window exists. */
+        if (window_id == 0xe5)
+            refused_open++;
+        return NULL;
     case NEW_WINDOW:
         assert(created < (int)(sizeof windows / sizeof *windows));
         return &windows[created++];
@@ -112,11 +116,13 @@ int main(void)
     request(0x25, 1);
     expect_list(skill_equip_item, 3);
 
-    /* "Already open": no new window, but one is registered under the ID. */
-    wm_register(&mgr, 0xaa, &windows[created++]);
-    request(0xaa, 0);
-    assert(*LIST_VALUE(mgr.id_list.head->next, int) == 0xaa);
-    ui_window_mgr_forget_window_id(&mgr, 0xaa);
+    /* "Already open": the row's factory makes no new window, but one is registered under
+       the ID (0xe5, the navigation help, has a row and no slot, so it is found by ID). */
+    wm_register(&mgr, 0xe5, &windows[created++]);
+    request(0xe5, 0);
+    assert(refused_open == 1);
+    assert(*LIST_VALUE(mgr.id_list.head->next, int) == 0xe5);
+    ui_window_mgr_forget_window_id(&mgr, 0xe5);
     ui_window_mgr_forget_window_id(&mgr, 0x25);
     expect_list(equip_item, 2);
 
