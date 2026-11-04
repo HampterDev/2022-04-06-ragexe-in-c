@@ -16,7 +16,7 @@
 
 enum {
     MSG_ALT_EQUIP_FAILED = 0xbd9,
-    MSG_ALT_EQUIP_BUSY = 0xbc1,
+    MSG_ALT_EQUIP_NOTHING_TO_SWAP = 0xbc1,
     MSG_ALT_EQUIP_ADDED = 0xc47,
     MSG_ALT_EQUIP_REMOVED = 0xc48,
     MSG_ALT_SWITCH_FAILED = 0xbe0,
@@ -80,7 +80,7 @@ void game_mode_on_alt_equipment_equip(struct GameMode *self, const struct Packet
     struct ItemInfo item;
 
     if (packet->result != 0) {
-        const char *text = msg_str(packet->result == 3 ? MSG_ALT_EQUIP_BUSY : MSG_ALT_EQUIP_FAILED);
+        const char *text = msg_str(packet->result == 3 ? MSG_ALT_EQUIP_NOTHING_TO_SWAP : MSG_ALT_EQUIP_FAILED);
 
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)text, CHAT_COLOR_RED, 0, 0);
         return;
@@ -107,7 +107,7 @@ void game_mode_on_alt_equipment_remove(struct GameMode *self, const struct Packe
         item_chat_line(&item, MSG_ALT_EQUIP_REMOVED);
         break;
     case 1:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(MSG_ALT_EQUIP_BUSY), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(MSG_ALT_EQUIP_NOTHING_TO_SWAP), CHAT_COLOR_RED, 0, 0);
         take_out_of_set(&item, packet->position);
         break;
     }
@@ -147,7 +147,7 @@ void game_mode_on_alt_equipment_switch_ack(struct GameMode *self, const struct P
         return;
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT,
-                        (int)msg_str(packet->result == 1 ? MSG_ALT_EQUIP_BUSY : MSG_ALT_SWITCH_FAILED),
+                        (int)msg_str(packet->result == 1 ? MSG_ALT_EQUIP_NOTHING_TO_SWAP : MSG_ALT_SWITCH_FAILED),
                         CHAT_COLOR_RED, 0, 0);
 }
 

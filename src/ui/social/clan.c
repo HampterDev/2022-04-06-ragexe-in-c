@@ -14,7 +14,7 @@
 #define MSG_CLAN_LABEL_LEVEL 0x934
 #define MSG_CLAN_LABEL_LEADER 0x93a
 #define MSG_CLAN_LABEL_ONLINE 0x93b
-#define MSG_CLAN_LABEL_MAP 0x93c
+#define MSG_CLAN_LABEL_TERRITORY 0x93c
 #define MSG_CLAN_EMBLEM_TITLE 0x936
 #define MSG_CLAN_KIND0_TITLE 0x937
 #define MSG_CLAN_KIND1_TITLE 0x938
@@ -382,7 +382,7 @@ void ui_clan_info_manage_wnd_on_draw(struct UIWindow *window)
 
         string_assign_cstr(&map, name);
     }
-    sprintf(line, "%s : %s", msg_str(MSG_CLAN_LABEL_MAP), string_cstr(&map));
+    sprintf(line, "%s : %s", msg_str(MSG_CLAN_LABEL_TERRITORY), string_cstr(&map));
     text_at(wnd, 8, 0x71, line);
     string_free(&map);
 

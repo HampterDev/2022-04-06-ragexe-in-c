@@ -83,7 +83,7 @@ static void arithmetic(void)
         assert(step(i, 3.0f, 1.0f, 0, 100) == 0.0f);
         assert(step(i, 3.0f, 1.0f, -1, 100) == 0.0f);
         assert(step(i, NAN, 1.0f, 4, 1) == 0.0f);
-        assert(step(i, 3.0f, INFINITY, 4, 1) == 0.0f);
+        assert(step(i, 3.0f, INFINITY, 4, 1) == (i == STR_ANI_ONCE ? 3.0f : 0.0f));
     }
     for (i = 0; i < 64; ++i) {
         float initial = (float)i / 16.0f;
@@ -220,9 +220,10 @@ static void key_boundaries(void)
     assert(!p->drawn[0] && !r->str_drawn[0]);
     play_frame(p, r, 3, 1);
     assert(p->drawn[0] && r->str_drawn[0] && p->state[0].x == 41.0f && r->str_state[0].x == 41.0f);
-    assert(p->key_index[0] == -1 && r->str_key_index[0] == -1);
-    assert(p->layers_done == 1 && r->str_layers_done == 1);
-    play_frame(p, r, 4, 0);
+    assert(!p->key_index[0] && !r->str_key_index[0]);
+    assert(!p->layers_done && !r->str_layers_done);
+    play_frame(p, r, 4, 1);
+    assert(p->drawn[0] && r->str_drawn[0] && !p->layers_done && !r->str_layers_done);
 
     keys = (struct StrKey *)(pages + system.dwPageSize) - 2;
     memset(keys, 0, 2 * sizeof *keys);
@@ -234,8 +235,9 @@ static void key_boundaries(void)
     assert(!p->layers_done && !r->str_layers_done);
     play_frame(p, r, 1, 1);
     assert(p->state[0].x == 12 && r->str_state[0].x == 12);
-    assert(p->layers_done == 1 && r->str_layers_done == 1);
-    play_frame(p, r, 2, 0);
+    assert(!p->layers_done && !r->str_layers_done);
+    play_frame(p, r, 2, 1);
+    assert(p->state[0].x == 14 && r->str_state[0].x == 14 && p->key_index[0] == 1);
 
     keys = (struct StrKey *)(pages + system.dwPageSize) - 3;
     memset(keys, 0, 3 * sizeof *keys);
@@ -252,7 +254,7 @@ static void key_boundaries(void)
     prepare_players(res, p, r, &master);
     p->key_index[0] = r->str_key_index[0] = layer->key_count;
     play_frame(p, r, 0, 1);
-    assert(!p->drawn[0] && !r->str_drawn[0] && p->layers_done == 1 && r->str_layers_done == 1);
+    assert(!p->drawn[0] && !r->str_drawn[0] && !p->layers_done && !r->str_layers_done);
 
     memset(&res->anim, 0, sizeof res->anim); res->anim.layer_count = STR_LAYERS;
     layer = &res->anim.layers[STR_LAYERS - 1];
@@ -260,12 +262,17 @@ static void key_boundaries(void)
     memset(keys, 0, sizeof *keys); keys[0].s.x = 75;
     layer->keys = keys; layer->key_count = 1;
     prepare_players(res, p, r, &master);
-    assert(p->layers_to_play == 1 && r->str_layers_to_play == 1);
+    assert(p->layers_to_play == STR_LAYERS - 1 && r->str_layers_to_play == STR_LAYERS - 1);
     play_frame(p, r, 0, 1);
     assert(p->drawn[STR_LAYERS - 1] && r->str_drawn[STR_LAYERS - 1]);
-    assert(p->state[STR_LAYERS - 1].x == 75 && p->layers_done == 1);
+    assert(p->state[STR_LAYERS - 1].x == 75 && !p->layers_done);
     assert(!p->drawn[0] && !r->str_drawn[0]);
-    play_frame(p, r, 1, 0);
+    play_frame(p, r, 1, 1);
+    assert(p->drawn[STR_LAYERS - 1] && !p->layers_done);
+    res->anim.layers[0].keys = keys; res->anim.layers[0].key_count = 1;
+    prepare_players(res, p, r, &master);
+    assert(p->layers_to_play == STR_LAYERS && r->str_layers_to_play == STR_LAYERS);
+    res->anim.layers[0].keys = NULL; res->anim.layers[0].key_count = 0;
 
     keys[0].frame = INT_MIN; keys[0].type = 1; keys[0].s.x = 1;
     prepare_players(res, p, r, &master); play_frame(p, r, INT_MAX, 1);
@@ -283,7 +290,7 @@ int main(void)
     arithmetic();
     independent_layers();
     key_boundaries();
-    puts("STR playback: guard-page key bounds, empty layers, final keys, rewind and frame limits passed");
+    puts("STR playback: guard-page key bounds, the original's layer count and completion rules (empty layers and keys not advanced onto never finish), rewind and frame limits passed");
     puts("STR animation: fractional wrapping, reverse playback, empty/single textures and independent player/layer state passed");
     return 0;
 }

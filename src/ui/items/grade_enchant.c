@@ -48,12 +48,12 @@
 #define COLOUR_OK 0x5aeb00
 
 #define MSG_NO_CHANCE 0xeed
-#define MSG_NOT_ALLOWED 0xeee
+#define MSG_WONT_BREAK 0xeee
 #define MSG_PICK_MATERIAL 0xe7b
 #define MSG_LACK_MATERIAL 0xe7c
 #define MSG_LACK_ZENY 0xe7d
 #define MSG_OVERWEIGHT 0xe7e
-#define MSG_OK 0xe7f
+#define MSG_PROTECTED 0xe7f
 #define MSG_MAY_BREAK 0xe80
 #define MSG_DOWNGRADE 0xe81
 #define MSG_RESULT_FIRST 0xe76
@@ -72,7 +72,7 @@ struct GradeMaterial {
     int count;
     int zeny;
     int downgrade;
-    BYTE allowed;
+    BYTE breakable;
 };
 struct PacketGradeEnchantSelect {
     unsigned short id;
@@ -547,8 +547,8 @@ void ui_grade_enchant_wnd_build_cautions(struct UIGradeEnchantWnd *self)
         vec_push(lines, &id, sizeof id);
         return;
     }
-    if (self->selected != -1 && !MATERIAL(self, self->selected)->allowed) {
-        id = MSG_NOT_ALLOWED;
+    if (self->selected != -1 && !MATERIAL(self, self->selected)->breakable) {
+        id = MSG_WONT_BREAK;
         vec_push(lines, &id, sizeof id);
     }
     if (self->selected == -1) {
@@ -572,8 +572,8 @@ void ui_grade_enchant_wnd_build_cautions(struct UIGradeEnchantWnd *self)
         id = MSG_OVERWEIGHT;
         vec_push(lines, &id, sizeof id);
     }
-    if (self->selected != -1 && MATERIAL(self, self->selected)->allowed == 1) {
-        id = ui_grade_enchant_wnd_success_chance(self) < 100 ? MSG_MAY_BREAK : MSG_NOT_ALLOWED;
+    if (self->selected != -1 && MATERIAL(self, self->selected)->breakable == 1) {
+        id = ui_grade_enchant_wnd_success_chance(self) < 100 ? MSG_MAY_BREAK : MSG_WONT_BREAK;
         vec_push(lines, &id, sizeof id);
     }
     if (self->selected != -1 && MATERIAL(self, self->selected)->downgrade > 0) {
@@ -808,7 +808,7 @@ void ui_grade_enchant_wnd_on_draw(struct UIWindow *window)
                 ui_window_draw_bitmap(wnd, 0x98, y, bitmap(GRADE_DIR "caution.bmp"), 1);
                 id = ((int *)self->cautions.first)[i];
                 text_out(self, 0xa6, y, msg_str(id), 0xe4, 0,
-                         id == MSG_OK || id == MSG_NOT_ALLOWED ? COLOUR_OK : COLOUR_CAUTION, 0, 0xb, 1, 0);
+                         id == MSG_PROTECTED || id == MSG_WONT_BREAK ? COLOUR_OK : COLOUR_CAUTION, 0, 0xb, 1, 0);
             }
         }
         string_format(&path, "%d", ui_grade_enchant_wnd_selected_zeny(self));

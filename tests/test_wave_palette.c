@@ -189,7 +189,7 @@ static void test_palette(void)
     assert(palette_resource_colors(palette, fallback) == palette->palette);
     assert(palette_resource_colors(NULL, fallback) == fallback && !palette_resource_colors(NULL, NULL));
     saved = *palette; memset(raw, 0xff, sizeof raw); fail_read = 1;
-    assert(!resource_load(base, "test.pal") && !memcmp(palette, &saved, sizeof saved));
+    assert(resource_load(base, "test.pal") && !memcmp(palette, &saved, sizeof saved));
     fail_read = 0; file_present = 0;
     assert(!resource_load(base, "missing.pal") && !memcmp(palette, &saved, sizeof saved));
     file_present = 1; assert(!resource_load(base, NULL) && !memcmp(palette, &saved, sizeof saved));
@@ -201,14 +201,27 @@ static unsigned test_guarded_prefixes(const BYTE *data, unsigned size, int palet
 {
     SYSTEM_INFO sys; DWORD old; BYTE *pages, *guard, *at;
     struct Res *resource = palette ? palette_resource_create() : wave_resource_create();
-    unsigned n, before = type_calls;
+    unsigned n, before = type_calls, info_before = info_calls;
     GetSystemInfo(&sys); assert(size < sys.dwPageSize);
     pages = VirtualAlloc(NULL, sys.dwPageSize * 2, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE); assert(pages);
     guard = pages + sys.dwPageSize; assert(VirtualProtect(guard, sys.dwPageSize, PAGE_NOACCESS, &old));
     for (n = 0; n < size; ++n) {
         at = guard - n; memcpy(at, data, n); set_input(at, n);
-        assert(!resource_load(resource, palette ? "test.pal" : "test.wav"));
-        assert(!borrowed_buffers && outstanding == 1 && type_calls == before);
+        if (palette) {
+            static const BYTE zeros[1024];
+            assert(resource_load(resource, "test.pal") && !borrowed_buffers);
+            palette_matches((struct PaletteRes *)resource, zeros);
+            continue;
+        }
+        if (n >= 12 && file_kind == AIL_FILE_WAV) {
+            assert(resource_load(resource, "test.wav") && !borrowed_buffers);
+            assert(!memcmp(((struct Wave *)resource)->data, data, n) && type_calls == ++before);
+            continue;
+        }
+        assert(!resource_load(resource, "test.wav"));
+        assert(!borrowed_buffers && outstanding == 1 && info_calls == info_before);
+        if (n < 12) assert(type_calls == before);
+        else before = type_calls;
     }
     set_input(pages, -1); assert(!resource_load(resource, "negative"));
     resource_destroy(resource); assert(VirtualFree(pages, 0, MEM_RELEASE)); require_clean();
@@ -217,16 +230,29 @@ static unsigned test_guarded_prefixes(const BYTE *data, unsigned size, int palet
 
 static void test_malformed_chunks(void)
 {
-    BYTE data[sizeof ima_wave]; struct Res *resource = wave_resource_create();
-    unsigned before = type_calls;
+    BYTE data[sizeof pcm_wave > sizeof ima_wave ? sizeof pcm_wave : sizeof ima_wave];
+    struct Res *resource = wave_resource_create();
+    unsigned before = info_calls;
     const unsigned offsets[] = {4, 16, 56}; unsigned i;
+    file_kind = AIL_FILE_ADPCM;
     for (i = 0; i < sizeof offsets / sizeof *offsets; ++i) {
-        memcpy(data, ima_wave, sizeof data); memset(data + offsets[i], 255, 4);
-        set_input(data, sizeof data); assert(!resource_load(resource, "bad.wav"));
+        memcpy(data, ima_wave, sizeof ima_wave); memset(data + offsets[i], 255, 4);
+        set_input(data, sizeof ima_wave); assert(!resource_load(resource, "bad.wav"));
     }
-    memcpy(data, ima_wave, sizeof data); data[36] = 255;
-    set_input(data, sizeof data); assert(!resource_load(resource, "bad.wav"));
-    assert(type_calls == before); resource_destroy(resource); require_clean();
+    memcpy(data, ima_wave, sizeof ima_wave); data[36] = 255;
+    set_input(data, sizeof ima_wave); assert(!resource_load(resource, "bad.wav"));
+    assert(info_calls == before);
+    file_kind = AIL_FILE_WAV;
+    for (i = 0; i < 4; ++i) {
+        memcpy(data, pcm_wave, sizeof pcm_wave);
+        if (i == 0) memset(data + 4, 255, 4);
+        if (i == 1) data[4] = (BYTE)(sizeof pcm_wave);
+        if (i == 2) memset(data + 40, 0, 4);
+        if (i == 3) memset(data + 40, 255, 4);
+        set_input(data, sizeof pcm_wave); assert(resource_load(resource, "sloppy.wav"));
+        assert(!memcmp(((struct Wave *)resource)->data, data, sizeof pcm_wave));
+    }
+    resource_destroy(resource); require_clean();
 }
 
 static void test_allocation_failures(void)
@@ -277,6 +303,8 @@ int main(int argc, char **argv)
     test_wave_replacement(); test_palette();
     prefixes = test_guarded_prefixes(pcm_wave, sizeof pcm_wave, 0);
     prefixes += test_guarded_prefixes(ima_wave, sizeof ima_wave, 0);
+    file_kind = AIL_FILE_ADPCM; prefixes += test_guarded_prefixes(ima_wave, sizeof ima_wave, 0);
+    file_kind = AIL_FILE_WAV;
     prefixes += test_guarded_prefixes(palette, sizeof palette, 1);
     test_malformed_chunks(); test_allocation_failures(); require_clean();
     assert(closed_buffers && info_calls && decode_calls && sdk_frees);

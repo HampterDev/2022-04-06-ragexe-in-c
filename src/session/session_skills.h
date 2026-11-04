@@ -30,8 +30,8 @@ const char *session_get_efst_image(struct Session *self, int efst, int pass);
 
 BYTE effect_state_bit0(DWORD state);
 BYTE effect_state_bit0_changed(DWORD a, DWORD b);
-BYTE is_effect_state_burrow(DWORD state);
-BYTE is_effect_state_star2(DWORD state);
+BYTE is_effect_state_hiding(DWORD state);
+BYTE is_effect_state_cloaking(DWORD state);
 BYTE effect_state_none(DWORD state);
 void effect_state_set_bit6(DWORD *state);
 void effect_state_clear_bit6(DWORD *state);

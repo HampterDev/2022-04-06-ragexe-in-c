@@ -398,7 +398,7 @@ void level150_effect_render(struct Effect *effect)
     struct Particle **it;
 
     if (owner && self->base.type == LEVEL150_ORANGE) {
-        if (is_effect_state_star2(actor_get_effect_state(owner)))
+        if (is_effect_state_cloaking(actor_get_effect_state(owner)))
             return;
         if (!owner->revealed || !owner->visible)
             return;

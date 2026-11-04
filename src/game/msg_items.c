@@ -341,7 +341,7 @@ int game_mode_msg_use_item(struct GameMode *self, int index)
     player = self->world->player;
     state = actor_get_effect_state(player);
     mode = self->world->player->body_state;
-    if (is_effect_state_burrow(state))
+    if (is_effect_state_hiding(state))
         goto done;
     if ((mode == 4 || mode == 1) && item_info_get_item_id(&item) != 0x31b5)
         goto done;
@@ -390,7 +390,7 @@ int game_mode_msg_use_item_with_target(struct GameMode *self, int index, int b, 
         chat_print_msg(0xbb7, CHAT_COLOR_RED);
         return 0;
     }
-    if (is_effect_state_burrow(actor_get_effect_state(self->world->player))) {
+    if (is_effect_state_hiding(actor_get_effect_state(self->world->player))) {
         chat_print_msg(0xf83, CHAT_COLOR_RED);
         return 0;
     }

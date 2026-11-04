@@ -567,9 +567,9 @@ void game_actor_show_orbs(struct GameActor *self, int kind, int count)
     render_object_send(self, self, 0x6d, 0x2e0, 0, 0, 0);
     if (count <= 0)
         return;
-    if (is_effect_state_burrow(game_actor_get_effect_state((struct RenderObject *)self)))
+    if (is_effect_state_hiding(game_actor_get_effect_state((struct RenderObject *)self)))
         return;
-    if (is_effect_state_star2(game_actor_get_effect_state((struct RenderObject *)self)))
+    if (is_effect_state_cloaking(game_actor_get_effect_state((struct RenderObject *)self)))
         return;
     self->orb_kind = kind;
     self->orb_count = count;

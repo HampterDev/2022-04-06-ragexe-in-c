@@ -227,9 +227,6 @@ void item_send_msg(struct GameObject *object, struct GameObject *source,
     item_place(self, mode, (const struct ItemDropInfo *)(intptr_t)par1);
 }
 
-int g_minPickBoxSide;
-INIT_ONCE g_minPickBoxSideGuard;
-
 static __inline void widen_to(float *lo, float *hi, int min_side)
 {
     int side = (int)(*hi - *lo);
@@ -250,10 +247,6 @@ void item_add_pick_box(struct RenderObject *object, const struct ScreenBounds *s
         float left, right;
         int min_side;
 
-        if (once_begin(&g_minPickBoxSideGuard)) {
-            g_minPickBoxSide = (int)(renderer_scale_x(g_renderer) * 34.0f);
-            once_complete(&g_minPickBoxSideGuard);
-        }
         box = (struct PickInfo *)mem_alloc(sizeof *box);
         if (box) {
             box->left = 0.0f;
@@ -263,7 +256,7 @@ void item_add_pick_box(struct RenderObject *object, const struct ScreenBounds *s
             box->bottom = 0.0f;
             box->far_z = 0.0f;
         }
-        min_side = g_minPickBoxSide;
+        min_side = (int)(renderer_scale_x(g_renderer) * 34.0f);
         left = screen->left < screen->right ? screen->left : screen->right;
         right = screen->left > screen->right ? screen->left : screen->right;
         box->left = left;

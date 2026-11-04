@@ -45,6 +45,12 @@ int main(void)
     ui_window_break_lines(&window, "^123456abcd", &lines, 2);
     assert(lines.size == 2); check(&lines, 0, "^123456ab"); check(&lines, 1, "cd");
     text_array_clear(&lines);
+    ui_window_break_lines(&window, "^_^abc", &lines, 2);
+    assert(lines.size == 1); check(&lines, 0, "^_^abc");
+    text_array_clear(&lines);
+    ui_window_break_lines(&window, "^ghijk", &lines, 2);
+    assert(lines.size == 3); check(&lines, 0, "^g");
+    text_array_clear(&lines);
     ui_window_break_lines(&window, "ab[cd", &lines, 4);
     assert(lines.size == 2); check(&lines, 0, "ab[c"); check(&lines, 1, "d");
     text_array_clear(&lines);

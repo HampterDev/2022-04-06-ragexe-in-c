@@ -93,8 +93,8 @@ static void test_replacement(void)
 {
     BYTE data[160], bad[160]; size_t size = fixture(data); unsigned i, before;
     struct Res *base = imf_resource_create(); struct ImfRes *resource = (struct ImfRes *)base, saved;
-    const unsigned offsets[] = {0,0,0,8,8,12,12,16,16,60,64};
-    const int32_t values[] = {0x7fc00000,0x7f800000,0x3f800000,-2,INT_MAX,-1,INT_MAX,-1,INT_MAX,-1,-1};
+    const unsigned offsets[] = {0,0,8,12,12,16,16};
+    const int32_t values[] = {0x3f800000,(int32_t)0xff800000,INT_MAX,-1,INT_MAX,-1,INT_MAX};
     assert(base && base->ops == &imf_resource_ops); set_input(data,size);
     assert(resource_load(base,"layers.imf")); saved = *resource; verify_fixture(resource); before = outstanding;
     for (i = 0; i < sizeof offsets/sizeof *offsets; ++i) {
@@ -109,7 +109,20 @@ static void test_replacement(void)
     assert(resource_load(base,"replacement.imf") && resource->layers != saved.layers); verify_fixture(resource);
     imf_resource_reset(resource); imf_resource_reset(resource);
     assert(!resource->layers && !resource->count && outstanding == 1);
-    assert(resource_load(base,"reload.imf")); verify_fixture(resource); resource_destroy(base); clean();
+    assert(resource_load(base,"reload.imf")); verify_fixture(resource);
+    memcpy(bad,data,size); put32(bad,0x7fc00000); set_input(bad,size);
+    assert(resource_load(base,"nan-version.imf")); verify_fixture(resource);
+    memcpy(bad,data,size); put32(bad,0x7f800000); set_input(bad,size);
+    assert(resource_load(base,"infinite-version.imf")); verify_fixture(resource);
+    memcpy(bad,data,size); put32(bad+8,-2); set_input(bad,size);
+    assert(resource_load(base,"no-layers.imf") && !resource->layers && !resource->count);
+    memcpy(bad,data,size); put32(bad+60,-1); set_input(bad,size);
+    assert(resource_load(base,"no-actions.imf") && resource->count == 2 && !resource->layers[1].count);
+    assert(resource->layers[0].count == 2);
+    memcpy(bad,data,size); put32(bad+64,-1); set_input(bad,size);
+    assert(resource_load(base,"no-frames.imf") && resource->layers[1].count == 1);
+    assert(!resource->layers[1].actions[0].count);
+    resource_destroy(base); clean();
 }
 static void test_prefixes(void)
 {

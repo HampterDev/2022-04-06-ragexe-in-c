@@ -30,7 +30,7 @@
 #define MSG_LIST_COLUMN_1 0x197
 #define MSG_LIST_COLUMN_2 0x198
 #define MSG_LIST_COLUMN_3 0x6a2
-#define MSG_LIST_CHECKBOX 0x69e
+#define MSG_LIST_ALARM 0x69e
 #define MSG_LIST_FORM_BUTTON 0x6e3
 #define MSG_LIST_FORM_TOOLTIP 0x6e4
 #define MSG_LIST_ANY 0x6e6
@@ -520,7 +520,7 @@ void ui_seek_party_list_wnd_on_create(struct UIWindow *window, int width_unused,
     ui_window_create(box, 0x3c, 0x14);
     ui_window_create(self->checkbox, 0x64, 0xc);
     ui_check_box_set_bitmaps(self->checkbox, UI_SKIN "checkbox_1.bmp", UI_SKIN "checkbox_0.bmp",
-                          msg_str(MSG_LIST_CHECKBOX));
+                          msg_str(MSG_LIST_ALARM));
     ui_window_move_base(self->checkbox, 0x1ae, 0x2b);
     ui_check_box_set_check(self->checkbox, g_session1.partyBooking.alarm);
     ui_window_add_child(wnd, self->checkbox);

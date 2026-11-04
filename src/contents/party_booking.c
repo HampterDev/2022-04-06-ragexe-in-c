@@ -14,8 +14,8 @@
 
 #define PARTY_BOOKING_WINDOW 0xa9
 #define MSG_PARTY_BOOKING_NEW 0x6d9
-#define MSG_JOB_NAME_LOW 0x6af
-#define MSG_JOB_NAME 0x658
+#define MSG_ROLE_NAME_BASE 0x6af
+#define MSG_JOB_NAME_BASE 0x658
 #define LEVEL_SPAN 15
 #define PENDING_BATCH 11
 
@@ -27,7 +27,7 @@ static int format_jobs(struct OwnedText *out, const short *jobs)
         const char *name;
         if (jobs[i] < 0)
             continue;
-        name = msg_str((jobs[i] <= 4 ? MSG_JOB_NAME_LOW : MSG_JOB_NAME) + jobs[i]);
+        name = msg_str((jobs[i] <= 4 ? MSG_ROLE_NAME_BASE : MSG_JOB_NAME_BASE) + jobs[i]);
         if (!owned_text_concat(&text, owned_text_view(&text), text_view_cstr(name)) ||
             !owned_text_concat(&text, owned_text_view(&text), text_view(",", 1))) {
             owned_text_clear(&text);

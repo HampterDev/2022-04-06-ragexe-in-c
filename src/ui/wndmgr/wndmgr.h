@@ -121,7 +121,7 @@ BYTE ui_window_mgr_handle_key(struct UIWindowMgr *self, int vk, int first_press)
 BYTE ui_window_mgr_hot_key_action(struct UIWindowMgr *self, int kind);
 void ui_window_mgr_send_chat_macro(int index);
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr *self, int window_id, int show);
-void ui_window_mgr_window_hotkey(struct UIWindowMgr *self, int key);
+void ui_window_mgr_flag_emote_hotkey(struct UIWindowMgr *self, int key);
 BYTE actor_homun_ai_running(void *actor);
 BYTE actor_merc_ai_running(void *actor);
 void ui_window_mgr_close_all_plates(struct UIWindowMgr *self);

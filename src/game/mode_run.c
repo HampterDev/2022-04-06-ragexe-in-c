@@ -75,7 +75,7 @@ int game_mode_on_run(struct Mode *mode)
         }
         gameguard_has_error(g_gameGuard);
         game_mode_on_update(mode);
-        Sleep(0);
+        Sleep(g_windowActive == 0 && g_3dDevice.fullscreen != 0 ? 1 : 0);
     }
     mode_run_fade_out(&self->base, 0);
 

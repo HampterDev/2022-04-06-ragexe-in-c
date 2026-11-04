@@ -791,7 +791,7 @@ void ui_navigation_v4_wnd_store_info(struct UIWindow *window)
 void ui_navigation_v4_wnd_on_process(struct UIWindow *window)
 {
     struct UINavigationV4Wnd *self = (struct UINavigationV4Wnd *)window;
-    if (g_navi.windowPage == NAVI_VIEW_TARGET)
+    if (g_navi.windowPage == NAVI_VIEW_TARGET || ui_window_mgr_focus_root(&g_windowMgr) == window)
         ui_window_invalidate_base(&self->frame.base);
 }
 

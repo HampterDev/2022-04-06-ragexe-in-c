@@ -359,7 +359,7 @@ static int sm_level_new(struct GameActor *self)
 {
     self->aura_on = 1;
     if (g_session1.baseLevel == (signed char)self->aura_level || effect_state_bit6(self->effect_state)
-        || is_effect_state_burrow(self->effect_state) || is_effect_state_star2(self->effect_state))
+        || is_effect_state_hiding(self->effect_state) || is_effect_state_cloaking(self->effect_state))
         return 0;
     return 1;
 }
@@ -505,7 +505,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     int job;
 
     if (self->aid != g_session1.ownAid
-        && (is_effect_state_burrow(self->effect_state) || is_effect_state_star2(self->effect_state)
+        && (is_effect_state_hiding(self->effect_state) || is_effect_state_cloaking(self->effect_state)
             || effect_state_bit6(self->effect_state)))
         shown = 0;
 
@@ -742,7 +742,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x33: {
         int kind = self->mark_kind, plus;
 
-        if (is_effect_state_burrow(self->effect_state) || is_effect_state_star2(self->effect_state) || self->cart)
+        if (is_effect_state_hiding(self->effect_state) || is_effect_state_cloaking(self->effect_state) || self->cart)
             break;
         if (session_is_any_super_novice_job(&g_session1, game_actor_get_job(self)))
             kind = 0;
@@ -800,21 +800,15 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
         self->attack_target_aid = (int)par1;
         break;
     case 0x52: {
-        static int raise_done;
-        static float raise;
         unsigned now;
 
         if (self->recharge_gage_wnd == NULL) {
             struct UIWindow *w;
 
-            if (!raise_done) {
-                raise = (float)(g_renderer->height * 0x51 / 480);
-                raise_done = 1;
-            }
             w = (struct UIWindow *)ui_recharge_gage_new();
             self->recharge_gage_wnd = w;
             ui_window_create(w, 0x3c, 6);
-            ui_window_move(self->recharge_gage_wnd, self->screen_x - 0x1e, (int)((float)self->screen_y - self->scale * raise));
+            ui_window_move(self->recharge_gage_wnd, self->screen_x - 0x1e, (int)((float)self->screen_y - self->scale * (float)(g_renderer->height * 0x51 / 480)));
             ui_window_mgr_add_to_window_list(&g_windowMgr, self->recharge_gage_wnd);
         }
         now = timeGetTime();
@@ -1087,7 +1081,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     case 0x97:
         self->aura_on = 1;
         if (g_session1.baseLevel == (signed char)self->aura_level || effect_state_bit6(self->effect_state) == 1
-            || is_effect_state_burrow(self->effect_state) == 1 || is_effect_state_star2(self->effect_state) == 1)
+            || is_effect_state_hiding(self->effect_state) == 1 || is_effect_state_cloaking(self->effect_state) == 1)
             break;
         self->aura_level = (unsigned char)g_session1.baseLevel;
         sm_level_effects(self, g_session1.maxLevelEffect4th, g_session1.maxLevelEffect4thSub);

@@ -8,9 +8,6 @@
 #include "iteminfo/iteminfo.h"
 
 #include <string.h>
-#include <ctype.h>
-#include <errno.h>
-#include <limits.h>
 #include "core/msg_str.h"
 #include "session/session_names.h"
 #include "ui/ui_std.h"
@@ -49,8 +46,8 @@ unsigned char read_int_file(struct Vec *out, const char *name)
 {
     struct File file;
     struct Vec shrunk;
-    int size;
-    char *text, *cursor, *end;
+    int size, i;
+    char *text, *start;
 
     out->last = out->first;
     file_construct(&file);
@@ -75,36 +72,22 @@ unsigned char read_int_file(struct Vec *out, const char *name)
     text[size] = 0;
     file_close(&file);
 
-    cursor = text;
-    end = text + size;
-    while (cursor < end) {
-        char *next;
-        long parsed;
-        int value;
+    start = text;
+    for (i = 0; i < size; i++) {
+        if (text[i] == '/' && text[i + 1] == '/') {
+            while (text[i] != '\r' && i < size && text[++i] != '\n') {}
+            start = text + i + 1;
+        }
+        if (text[i] == '\t' || text[i] == ' ') {
+            int value;
 
-        if (isspace((unsigned char)*cursor)) {
-            ++cursor;
-            continue;
+            text[i] = 0;
+            value = atoi(start);
+            vec_push(out, &value, sizeof value);
+            start = text + i + 1;
+        } else if (text[i] == '\n' || text[i] == '\r') {
+            start = text + i + 1;
         }
-        if (*cursor == '/' && cursor + 1 < end && cursor[1] == '/') {
-            while (cursor < end && *cursor != '\r' && *cursor != '\n')
-                ++cursor;
-            continue;
-        }
-
-        errno = 0;
-        parsed = strtol(cursor, &next, 10);
-        if (next == cursor || errno == ERANGE || parsed < INT_MIN || parsed > INT_MAX
-            || (next < end && !isspace((unsigned char)*next)
-                && !(*next == '/' && next + 1 < end && next[1] == '/'))) {
-            out->last = out->first;
-            mem_free(text);
-            file_destruct(&file);
-            return 0;
-        }
-        value = (int)parsed;
-        vec_push(out, &value, sizeof value);
-        cursor = next;
     }
     mem_free(text);
 

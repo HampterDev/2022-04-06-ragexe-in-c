@@ -249,11 +249,11 @@ static void set_weight(int *packet_value)
     } else if (now < before) {
         if (now < g_session1.weightPenaltyPercent && before >= g_session1.weightPenaltyPercent) {
             weight_icon();
-            chat_line(msg_str(MSG_WEIGHT_BELOW_LOW), CHAT_COLOR_YELLOW, CHAT_LINE_WEIGHT);
+            chat_line(msg_str(MSG_WEIGHT_BELOW_LOW), CHAT_COLOR_CYAN, CHAT_LINE_WEIGHT);
         }
         if (now < WEIGHT_HEAVY && before >= WEIGHT_HEAVY) {
             weight_icon();
-            chat_line(msg_str(MSG_WEIGHT_BELOW_HEAVY), CHAT_COLOR_YELLOW, CHAT_LINE_WEIGHT);
+            chat_line(msg_str(MSG_WEIGHT_BELOW_HEAVY), CHAT_COLOR_CYAN, CHAT_LINE_WEIGHT);
         }
     }
 }
@@ -274,11 +274,11 @@ static void set_max_weight(int *packet_value)
     now = weight_percent(g_session1.weight, g_session1.maxWeight);
     if (now < WEIGHT_LIGHT_AT_MAXWEIGHT && before >= WEIGHT_LIGHT_AT_MAXWEIGHT) {
         weight_icon();
-        chat_line(msg_str(MSG_WEIGHT_BELOW_LOW), CHAT_COLOR_YELLOW, CHAT_LINE_WEIGHT);
+        chat_line(msg_str(MSG_WEIGHT_BELOW_LOW), CHAT_COLOR_CYAN, CHAT_LINE_WEIGHT);
     }
     if (now < WEIGHT_HEAVY && before >= WEIGHT_HEAVY) {
         weight_icon();
-        chat_line(msg_str(MSG_WEIGHT_BELOW_HEAVY), CHAT_COLOR_YELLOW, CHAT_LINE_WEIGHT);
+        chat_line(msg_str(MSG_WEIGHT_BELOW_HEAVY), CHAT_COLOR_CYAN, CHAT_LINE_WEIGHT);
     }
 }
 

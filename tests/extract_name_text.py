@@ -100,7 +100,8 @@ pieces['homun_packet'] = [struct(companion, 'HomunPropertyHead'), function(compa
 names = read('game/actor_names.c')
 pieces['pet_named'] = [line(names, r'#define NAME_LENGTH\b'), function(names, 'static void pet_named(')]
 pet = read('game/packets_pet.c')
-pieces['pet_packet'] = [line(pet, r'#define WND_PET_INFO_OTHER\b'), line(pet, r'#define PET_LEVEL_OTHER\b'),
+pieces['pet_packet'] = [line(read('ui/items/item_collection_internal.h'), r'#define WND_ITEM_COLLECTION\b'),
+                        line(pet, r'#define PET_LEVEL_OTHER\b'),
                         struct(pet, 'PACKET_ZC_PROPERTY_PET'),
                         function(pet, 'void game_mode_zc_property_pet(')]
 social = read('game/packets_social.c')

@@ -219,7 +219,7 @@ void effect_render_if_visible(struct Effect *self)
     if (owner && self->owner_aid != g_session1.ownAid && ACTOR_IS_PC(owner) == 1 && self->type != EFFECT_TYPE_WIND_SIGN_LOOP) {
         if (!owner->visible || !owner->revealed)
             return;
-        if (is_effect_state_star2(actor_get_effect_state(owner)))
+        if (is_effect_state_cloaking(actor_get_effect_state(owner)))
             return;
     }
     if (!self->out_of_range)

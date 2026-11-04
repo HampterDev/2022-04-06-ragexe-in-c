@@ -32,6 +32,8 @@ static int live_request(const struct UIGraphicSettingWnd *wnd, int *w, int *h, i
         return 0;
     if (!wnd->modes.first || wnd->mode < 0)
         return 0;
+    if (!gfx_can_set_mode_live(&wnd->adapter_guid))
+        return 0;
     mode = (const struct DisplayMode *)wnd->modes.first + wnd->mode;
     *w = (int)mode->width;
     *h = (int)mode->height;

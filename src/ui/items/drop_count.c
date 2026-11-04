@@ -213,10 +213,10 @@ void ui_item_drop_cnt_wnd_on_draw(struct UIWindow *window)
 #define WND_ID_PARA_SHOP 0xfe
 #define WND_ID_PARA_PURCHASE 0xff
 #define WND_ID_CASH_SHOP 0x13e
-#define WND_ID_BARTER_CART 0x14e
-#define WND_ID_BARTER_GOODS 0x14f
-#define WND_ID_EX_BARTER_CART 0x155
-#define WND_ID_EX_BARTER_GOODS 0x156
+#define WND_ID_BARTER_MARKET 0x14e
+#define WND_ID_BARTER_PURCHASE 0x14f
+#define WND_ID_EXB_MARKET 0x155
+#define WND_ID_EXB_PURCHASE 0x156
 
 typedef struct ItemInfo *(*SessionItemGetter)(struct Session *, struct ItemInfo *, int);
 
@@ -553,7 +553,7 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         if (n <= 0)
             goto refuse;
         game->drag.drop_count = count > n ? n : count;
-        add_dragged(ui_window_find(WND_ID_BARTER_CART), 0);
+        add_dragged(ui_window_find(WND_ID_BARTER_MARKET), 0);
         break;
     case 0x18:
         if (count <= 0)
@@ -562,14 +562,14 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             goto too_many;
         n = barter_goods_count(g_barter, game->drag.shop_index);
         cap_count(game, count, n == -1 ? COUNT_CAP : n);
-        count_to_window(game, WND_ID_BARTER_GOODS, count);
+        count_to_window(game, WND_ID_BARTER_PURCHASE, count);
         break;
     case 0x19:
         n = expanded_barter_cart_count(g_expandedBarter, game->drag.shop_index);
         if (n <= 0)
             goto refuse;
         game->drag.drop_count = count > n ? n : count;
-        add_dragged(ui_window_find(WND_ID_EX_BARTER_CART), 0);
+        add_dragged(ui_window_find(WND_ID_EXB_MARKET), 0);
         break;
     case 0x1a:
         if (count <= 0)
@@ -578,7 +578,7 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             goto too_many;
         n = expanded_barter_goods_count(g_expandedBarter, game->drag.shop_index);
         cap_count(game, count, n == -1 ? COUNT_CAP : n);
-        count_to_window(game, WND_ID_EX_BARTER_GOODS, count);
+        count_to_window(game, WND_ID_EXB_PURCHASE, count);
         break;
     default:
         break;

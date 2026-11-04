@@ -96,8 +96,8 @@ const struct UIWindowOps ui_frame_wnd_ops = {
 #define MSG_HOMUN_TITLE 0x3a8
 #define MSG_HOMUN_NAME 0x197
 #define MSG_HOMUN_LEVEL 0x198
-#define MSG_HOMUN_HUNGER 0x3fb
-#define MSG_HOMUN_EXP 0x249
+#define MSG_HOMUN_EXP 0x3fb
+#define MSG_HOMUN_HUNGER 0x249
 #define MSG_HOMUN_INTIMACY_CAPTION 0x24a
 #define MSG_HOMUN_AUTO_FEED 0xccf
 #define MSG_HOMUN_INTIMACY_HEAD 0xcd4
@@ -358,8 +358,8 @@ void ui_homun_info_wnd_on_draw(struct UIWindow *window)
     caption(wnd, 5, 2, title);
     caption(wnd, 0x64, 0x18, msg_str(MSG_HOMUN_NAME));
     caption(wnd, 0x64, 0x2f, msg_str(MSG_HOMUN_LEVEL));
-    caption(wnd, 0x64, 0x69, msg_str(MSG_HOMUN_HUNGER));
-    caption(wnd, 0x64, 0x83, msg_str(MSG_HOMUN_EXP));
+    caption(wnd, 0x64, 0x69, msg_str(MSG_HOMUN_EXP));
+    caption(wnd, 0x64, 0x83, msg_str(MSG_HOMUN_HUNGER));
     caption(wnd, 0x64, 0x9f, msg_str(MSG_HOMUN_INTIMACY_CAPTION));
     caption(wnd, 0x8c, 0x9f, ":");
     stat_cell(wnd, 0x18, g_session1.homunStats[0]);

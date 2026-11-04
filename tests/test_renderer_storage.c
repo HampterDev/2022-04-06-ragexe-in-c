@@ -145,8 +145,12 @@ void gfx_set_render_state(int state, DWORD value)
 { assert((unsigned)state < 256); states[state] = value; word(1); word(state); word(value); }
 int gfx_get_render_state(int state, DWORD *out)
 { assert((unsigned)state < 256); *out = states[state]; return 0; }
+static DWORD stage_states[2][32];
 void gfx_set_stage_state(int stage, int state, DWORD value)
-{ word(2); word(stage); word(state); word(value); }
+{
+    if (stage >= 0 && stage < 2 && state >= 0 && state < 32) stage_states[stage][state] = value;
+    word(2); word(stage); word(state); word(value);
+}
 void gfx_set_texture(int stage, gfx_surface *surface)
 {
     assert(stage >= 0 && stage < 2 && (!surface || !surface->allocated || surface->refs));
@@ -242,6 +246,23 @@ static void routing(void)
         putchar('\n'); renderer_destroy_all_rp_list(&renderer);
     }
     renderer_destruct(&renderer); assert(!outstanding);
+}
+
+static void blend_stage_arguments(void)
+{
+    struct Renderer renderer = {0};
+    renderer_set_blend_stages(&renderer, 6);
+    assert(stage_states[0][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
+    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
+    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_MODULATE);
+    renderer_set_blend_stages(&renderer, 7);
+    assert(stage_states[0][GFX_TSS_COLORARG1] == GFX_TA_TEXTURE);
+    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE));
+    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_MODULATE);
+    renderer_set_blend_stages(&renderer, 12);
+    assert(stage_states[0][GFX_TSS_COLORARG1] == GFX_TA_TEXTURE);
+    assert(stage_states[1][GFX_TSS_COLORARG1] == (GFX_TA_TEXTURE | GFX_TA_COMPLEMENT));
+    assert(stage_states[1][GFX_TSS_COLOROP] == GFX_TOP_ADD);
 }
 
 static void render_trace(void)
@@ -430,7 +451,7 @@ int main(int argc, char **argv)
     }
     if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); }
 #endif
-    growth(); routing(); render_trace();
+    growth(); routing(); blend_stage_arguments(); render_trace();
     assert(!outstanding && atlas_starts && atlas_ends && frame_ends == effect_ends);
     if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes and real draw passes passed.");
     return 0;

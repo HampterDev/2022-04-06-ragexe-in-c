@@ -251,6 +251,8 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
             }
         }
     }
+    if (self->mode < 0 || (size_t)self->mode >= vec_count(&self->modes, sizeof(struct DisplayMode)))
+        self->mode = 0;
 }
 
 int ui_graphic_setting_wnd_check_changed(struct UIGraphicSettingWnd *self)
@@ -328,6 +330,7 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
     struct UIWindow *wnd = WND(self);
     const struct DisplayDevice *rec;
     unsigned count, i;
+    int running = -1;
     void *mem;
 
     ui_window_add_sys_button(wnd);
@@ -339,10 +342,18 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
         rec = display_devices_at(i);
         if (!rec->hardware)
             continue;
+        if (running < 0 && memcmp(&rec->adapter_guid, &init_adapter, sizeof(GUID)) == 0)
+            running = (int)STR_COUNT(&self->device_names);
         string_vec_push_text(&self->device_names, rec->name, strlen(rec->name));
     }
+    if (running >= 0)
+        self->device = running;
+    else if (self->device < 0 || (unsigned)self->device >= STR_COUNT(&self->device_names))
+        self->device = 0;
+    g_displayDeviceIndex = self->device;
     self->mode = g_displayModeIndex;
     ui_graphic_setting_wnd_build_mode_list(self);
+    g_displayModeIndex = self->mode;
 
     mem = mem_alloc(SIZE_TAB_CONTROL);
     self->tabs = (struct UITabControl *)(mem ? ui_tab_control_construct(mem) : NULL);
@@ -503,7 +514,8 @@ void ui_graphic_setting_wnd_on_draw(struct UIWindow *window)
     box = W(self->mode_box);
     draw_label(wnd, 0x12, box->y + 3, msg_str(0xc6e));
     draw_combo(wnd, box);
-    draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->mode_names, self->mode)));
+    if (STR_COUNT(&self->mode_names) > (unsigned)self->mode)
+        draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->mode_names, self->mode)));
     draw_label(wnd, 0x12, W(self->sprite_bar)->y + 2, msg_str(0x144));
     draw_label(wnd, 0x12, W(self->texture_bar)->y + 2, msg_str(0x145));
     draw_label(wnd, 0x12, W(self->box_fullscreen)->y, msg_str(0xc6f));
@@ -643,6 +655,38 @@ static void place_list(struct UIGraphicSettingWnd *self, struct UIWindow *list, 
     ui_window_move(list, x + 1, y + 1);
 }
 
+static void store_quality_settings(struct UIGraphicSettingWnd *self)
+{
+    int detail;
+    BYTE refresh = 0;
+
+    g_spriteMode = self->sprite_mode;
+    if (self->sprite_mode == 0) {
+        g_sprHalfWidth = 1;
+        g_sprHalfHeight = 1;
+    } else {
+        g_sprHalfWidth = 0;
+        g_sprHalfHeight = self->sprite_mode == 1;
+    }
+    g_textureMode = self->texture_detail;
+    detail = self->texture_detail == 0 ? 4 : self->texture_detail == 1 ? 2 : 1;
+    if (detail != g_textureDivisor) {
+        g_textureDivisor = detail;
+        refresh = 1;
+    }
+    if (g_trilinearFilter != W(self->box_trilinear)->state) {
+        g_trilinearFilter = W(self->box_trilinear)->state;
+        c3d_device_enable_mipmap(&g_3dDevice);
+        texcache_reload_all(&g_textureCache);
+    } else if (refresh) {
+        texcache_reload_all(&g_textureCache);
+    }
+    if (W(self->box_mouse)->state != (g_session1.mouseExclusiveOption != 0))
+        g_session1.mouseExclusiveOption = W(self->box_mouse)->state != 0;
+    ui_graphic_setting_wnd_check_changed(self);
+    ui_window_invalidate_base(WND(self));
+}
+
 static void open_string_list(struct UIGraphicSettingWnd *self, int id, struct Vec *names, int selected,
                              struct UIWindow *box)
 {
@@ -776,52 +820,28 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
                                string_cstr(&self->device_name));
                 g_deviceGuid = self->device_guid;
                 g_driverGuid = self->adapter_guid;
-                mode = MODE_AT(&self->modes, self->mode);
-                g_displayWidth = mode->width;
-                g_displayHeight = mode->height;
-                g_bitsPerPixel = mode->bpp;
+                if (vec_count(&self->modes, sizeof(struct DisplayMode)) > (size_t)self->mode) {
+                    mode = MODE_AT(&self->modes, self->mode);
+                    g_displayWidth = mode->width;
+                    g_displayHeight = mode->height;
+                    g_bitsPerPixel = mode->bpp;
+                }
             }
-            if (apply_display_mode(self) == 1)
+            if (apply_display_mode(self) == 1) {
+                store_quality_settings(self);
                 return 0;
+            }
             g_openLauncherPageAtExit = 1;
             connection_disconnect(rag_connection_transport(rag_connection_instance()));
             mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
             return 0;
-        case 1: {
-            int detail;
-            BYTE refresh = 0;
-
+        case 1:
             answer = ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_APPLY), UI_MSGBOX_QUESTION, 1, 0,
                                             0, "메시지", 0x118, 0x78, 0);
             if (answer == UI_MSGBOX_ANSWER_NO)
                 return 0;
-            g_spriteMode = self->sprite_mode;
-            if (self->sprite_mode == 0) {
-                g_sprHalfWidth = 1;
-                g_sprHalfHeight = 1;
-            } else {
-                g_sprHalfWidth = 0;
-                g_sprHalfHeight = self->sprite_mode == 1;
-            }
-            g_textureMode = self->texture_detail;
-            detail = self->texture_detail == 0 ? 4 : self->texture_detail == 1 ? 2 : 1;
-            if (detail != g_textureDivisor) {
-                g_textureDivisor = detail;
-                refresh = 1;
-            }
-            if (g_trilinearFilter != W(self->box_trilinear)->state) {
-                g_trilinearFilter = W(self->box_trilinear)->state;
-                c3d_device_enable_mipmap(&g_3dDevice);
-                texcache_reload_all(&g_textureCache);
-            } else if (refresh) {
-                texcache_reload_all(&g_textureCache);
-            }
-            if (W(self->box_mouse)->state != (g_session1.mouseExclusiveOption != 0))
-                g_session1.mouseExclusiveOption = W(self->box_mouse)->state != 0;
-            ui_graphic_setting_wnd_check_changed(self);
-            ui_window_invalidate_base(WND(self));
+            store_quality_settings(self);
             return 0;
-        }
         default:
             return 0;
         }

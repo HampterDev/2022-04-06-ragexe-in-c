@@ -116,8 +116,7 @@ int c3d_ground15_load(struct C3dGround15 *self, const struct GndRes *gnd,
     int x, y, i;
 
     c3d_ground15_clear(self);
-    if (!gnd || !isfinite(gnd->zoom) || gnd->zoom <= 0.0f
-            || gnd->surfaceCount < 0 || (size_t)gnd->surfaceCount > SIZE_MAX / sizeof *self->surfaces
+    if (!gnd || gnd->surfaceCount < 0 || (size_t)gnd->surfaceCount > SIZE_MAX / sizeof *self->surfaces
             || !gnd->cubes || (gnd->surfaceCount && !gnd->surfaces)
             || !c3d_ground15_create(self, gnd->width, gnd->height))
         return 0;

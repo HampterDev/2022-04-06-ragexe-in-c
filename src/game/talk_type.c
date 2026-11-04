@@ -269,7 +269,7 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         break;
     case 0x58:
         value = g_session1.effectState;
-        if (is_effect_state_star2(value))
+        if (is_effect_state_cloaking(value))
             effect_state_clear_bit6(&value);
         else
             effect_state_set_bit6(&value);

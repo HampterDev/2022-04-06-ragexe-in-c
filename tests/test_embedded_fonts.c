@@ -218,19 +218,19 @@ int main(void)
 
         reset(); fail_conversion_at = i;
         missing = "stale";
-        assert(!embedded_fonts_load(&missing) && !missing);
-        assert(api_deletes == i && open_attempts == i && widen_calls == i + 1);
-        assert_released();
+        assert(embedded_fonts_load(&missing) && !missing);
+        assert(!api_deletes && open_attempts == 8 && widen_calls == 9 && api_loads == 8 && !live_fonts[i]);
+        embedded_fonts_clear(); assert(api_deletes == 8); assert_released();
         for (j = 0; j < sizeof failures / sizeof failures[0]; ++j) {
             reset(); results[i] = failures[j];
             missing = "stale";
-            assert(!embedded_fonts_load(&missing) && !missing);
-            assert(api_loads == i + 1 && api_deletes == i && file_opens == file_closes);
-            assert_released();
+            assert(embedded_fonts_load(&missing) && !missing);
+            assert(api_loads == 9 && !api_deletes && file_opens == file_closes && !live_fonts[i]);
+            embedded_fonts_clear(); assert(api_deletes == 8); assert_released();
         }
         reset(); no_handle_at = i;
-        assert(!embedded_fonts_load(NULL));
-        assert(api_deletes == i); assert_released();
+        assert(embedded_fonts_load(NULL) && !live_fonts[i]);
+        embedded_fonts_clear(); assert(api_deletes == 8); assert_released();
     }
     reset(); results[2] = E_FONTALREADYEXISTS; results[7] = E_FONTNAMEALREADYEXISTS;
     assert(embedded_fonts_load(NULL));
@@ -240,6 +240,6 @@ int main(void)
         reset(); assert(embedded_fonts_load(NULL));
         embedded_fonts_clear(); assert_released();
     }
-    puts("Embedded fonts: SDK signatures, names and licensing, real stream reads, owned registrations, failure rollback and repeated cleanup passed");
+    puts("Embedded fonts: SDK signatures, names and licensing, real stream reads, owned registrations, a failing font leaving the others loaded, missing-file rollback and repeated cleanup passed");
     return 0;
 }

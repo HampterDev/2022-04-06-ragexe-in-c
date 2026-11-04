@@ -71,10 +71,10 @@
 #define REQ_RELEASE 0x50
 #define REQ_SHOW_EQUIP 0xfd
 #define RELEASE_CART 6
-#define RELEASE_FALCON 5
-#define RELEASE_RIDING 4
-#define RELEASE_MADO_GEAR 3
-#define RELEASE_DRAGON 1
+#define RELEASE_HIDING 5
+#define RELEASE_RUWACH 4
+#define RELEASE_SANTA 3
+#define RELEASE_TRANSFORM 1
 
 #define DRAG_FROM_EQUIP 2
 #define DRAG_FROM_COSTUME 0x18
@@ -95,16 +95,16 @@
 #define MSG_TAB_TITLE 0xa7d
 #define MSG_NO_TITLE 0xa7e
 #define MSG_RELEASE_FALCON 0x1b9
-#define MSG_DISMOUNT 0x1ba
-#define MSG_DISMOUNT_GRYPHON 0x830
-#define MSG_DISMOUNT_MADO_GEAR 0x5b8
-#define MSG_DISMOUNT_DRAGON 0x5b7
+#define MSG_RELEASE_PECO 0x1ba
+#define MSG_RELEASE_GRYPHON 0x830
+#define MSG_RELEASE_MADOGEAR 0x5b8
+#define MSG_RELEASE_DRAGON 0x5b7
 #define MSG_RELEASE_CART 0xdf
-#define MSG_MOUNT_DISMOUNT 0xe34
+#define MSG_RELEASE_BOTH 0xe34
 #define MSG_CART_ITEMS 0xed
 #define MSG_SWAP 0xbaa
 #define MSG_TAKE_OFF_ALL 0xf73
-#define MSG_CLOSE_SHOP 0x20d
+#define MSG_CLOSE_SHOP_FIRST 0x20d
 #define MSG_ITEM_TIP 0xb7
 #define MSG_ITEM_TIP_OPTIONS 0xa28
 #define MSG_ITEM_TIP_OPTIONS_COUNT 0x9f7
@@ -168,12 +168,12 @@ static BYTE equip_nothing_to_release(void)
     return 1;
 }
 
-static int gryphon_rider_job(int job)
+static int rides_gryphon(int job)
 {
     return job == 0xff2 || job == 0xff3 || job == 0x100e || job == 0x10b9;
 }
 
-static int riding_dragon(void)
+static int transformed(void)
 {
     return effect_state_bit19(g_session1.effectState) || effect_state_bit23(g_session1.effectState) ||
            effect_state_bit24(g_session1.effectState) || effect_state_bit25(g_session1.effectState) ||
@@ -190,13 +190,13 @@ static void equip_release(int what)
         return;
     }
     if (effect_state_bit4(g_session1.effectState))
-        kind = RELEASE_FALCON;
+        kind = RELEASE_HIDING;
     else if (effect_state_bit5(g_session1.effectState))
-        kind = RELEASE_RIDING;
+        kind = RELEASE_RUWACH;
     else if (effect_state_bit22(g_session1.effectState))
-        kind = RELEASE_MADO_GEAR;
-    else if (riding_dragon())
-        kind = RELEASE_DRAGON;
+        kind = RELEASE_SANTA;
+    else if (transformed())
+        kind = RELEASE_TRANSFORM;
     mode_send_message(mode, REQ_RELEASE, kind, 0, 0, 0);
 }
 
@@ -512,14 +512,14 @@ void ui_equip_wnd_on_create(struct UIWindow *window, int width, int height)
         if (effect_state_bit4(g_session1.effectState))
             tip = msg_str(MSG_RELEASE_FALCON);
         else if (effect_state_bit5(g_session1.effectState))
-            tip = msg_str(gryphon_rider_job(session_get_drawn_job(&g_session1)) ? MSG_DISMOUNT_GRYPHON
-                                                                                : MSG_DISMOUNT);
+            tip = msg_str(rides_gryphon(session_get_drawn_job(&g_session1)) ? MSG_RELEASE_GRYPHON
+                                                                            : MSG_RELEASE_PECO);
         else if (effect_state_bit22(g_session1.effectState))
-            tip = msg_str(MSG_DISMOUNT_MADO_GEAR);
-        else if (riding_dragon())
-            tip = msg_str(MSG_DISMOUNT_DRAGON);
+            tip = msg_str(MSG_RELEASE_MADOGEAR);
+        else if (transformed())
+            tip = msg_str(MSG_RELEASE_DRAGON);
         if (g_session1.cartType > 0)
-            tip = msg_str(tip ? MSG_MOUNT_DISMOUNT : MSG_RELEASE_CART);
+            tip = msg_str(tip ? MSG_RELEASE_BOTH : MSG_RELEASE_CART);
         ui_bitmap_button_set_tool_tip(self->off_button, tip);
         ui_window_add_child(wnd, &self->off_button->button.base);
         string_free(&dir);
@@ -966,7 +966,7 @@ static void equip_on_off_button(struct UIEquipWnd *self)
 
     if (g_windowMgr.merchant_item_my_shop_wnd) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_chat_line(msg_str(MSG_CLOSE_SHOP), RGB(0xff, 0, 0));
+        ui_chat_line(msg_str(MSG_CLOSE_SHOP_FIRST), RGB(0xff, 0, 0));
         return;
     }
     string_init(&what);
@@ -976,13 +976,13 @@ static void equip_on_off_button(struct UIEquipWnd *self)
 
         if (job == 0xff2 || session_get_drawn_job(&g_session1) == 0xff3 ||
             session_get_drawn_job(&g_session1) == 0x100e)
-            string_assign_cstr(&what, msg_str(MSG_DISMOUNT_GRYPHON));
+            string_assign_cstr(&what, msg_str(MSG_RELEASE_GRYPHON));
         else
-            string_assign_cstr(&what, msg_str(MSG_DISMOUNT));
+            string_assign_cstr(&what, msg_str(MSG_RELEASE_PECO));
     } else if (effect_state_bit22(g_session1.effectState)) {
-        string_assign_cstr(&what, msg_str(MSG_DISMOUNT_MADO_GEAR));
-    } else if (riding_dragon()) {
-        string_assign_cstr(&what, msg_str(MSG_DISMOUNT_DRAGON));
+        string_assign_cstr(&what, msg_str(MSG_RELEASE_MADOGEAR));
+    } else if (transformed()) {
+        string_assign_cstr(&what, msg_str(MSG_RELEASE_DRAGON));
     } else {
         string_clear(&what);
     }

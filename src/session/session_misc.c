@@ -50,7 +50,7 @@ int session_get_max_job_level(struct Session *self, int job)
     if (session_is_super_novice_job(&g_session1, job))
         return g_session1.jobLevelSuperNovice;
     if ((job >= 0xfa8 && job < 0xfb7) || job == 0x18 || job == 0x19 || job == 0x1084 || job == 0x107e)
-        return g_session1.jobLevelBase;
+        return g_session1.jobLevel2nd;
     if (job == 0 || job == 0xfb7 || job == 0xfa1)
         return g_session1.jobLevelNovice;
     if (session_is_fourth_job(&g_session1, job) == 1)
@@ -63,7 +63,7 @@ int session_get_max_job_level(struct Session *self, int job)
         return g_session1.jobLevelDoram;
     if (session_is_expanded_super_novice_job(&g_session1, job))
         return g_session1.jobLevelUpperJob;
-    return g_session1.jobLevel2nd;
+    return g_session1.jobLevelBase;
 }
 
 BYTE session_pet_talk_due(struct Session *self, __int64 interval)

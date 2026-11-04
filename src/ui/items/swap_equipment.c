@@ -420,7 +420,7 @@ unsigned long long ui_swap_equipment_wnd_key(struct UISwapEquipmentWnd *self, un
     session_get_inventory_item(&g_session1, &item, g_session1.switchArrowIndex);
     key = draw_key_item(key, &item);
     item_info_destruct(&item);
-    return key;
+    return draw_key_int(key, timeGetTime() - g_session1.equipSwapSentAt < SWAP_COOLDOWN);
 }
 
 void ui_swap_equipment_wnd_on_create(struct UIWindow *window, int width, int height)
@@ -759,7 +759,6 @@ void ui_swap_bitmap_button_on_draw(struct UIWindow *window)
     struct UIWindow *wnd = &self->btn.button.base;
     DWORD elapsed;
 
-    ui_bitmap_button_on_draw((struct UIWindow *)(&self->btn));
     elapsed = timeGetTime() - g_session1.equipSwapSentAt;
     ui_bitmap_button_set_bitmap(&self->btn, elapsed < SWAP_COOLDOWN ? SWAP_BTN_DISABLE : SWAP_BTN_NORMAL,
                              UI_BTN_UP, 0);
@@ -768,6 +767,7 @@ void ui_swap_bitmap_button_on_draw(struct UIWindow *window)
     ui_bitmap_button_set_bitmap(&self->btn, elapsed < SWAP_COOLDOWN ? SWAP_BTN_DISABLE : SWAP_BTN_PRESS,
                              UI_BTN_DOWN, 0);
     self->text_colour = elapsed < SWAP_COOLDOWN ? SWAP_TEXT_COLOUR_GREY : SWAP_TEXT_COLOUR;
+    ui_bitmap_button_on_draw((struct UIWindow *)(&self->btn));
     ui_window_text_out_centred(wnd, wnd->width / 2, wnd->height / 2 - 5, string_cstr(&self->btn.button.text),
                             (int)self->btn.button.text.size, 0, 0xc, self->text_colour, 0);
 }

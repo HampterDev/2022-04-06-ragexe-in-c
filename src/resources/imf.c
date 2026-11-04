@@ -3,7 +3,6 @@
 #include "resources/resource_ops.h"
 #include "fileio/res_mgr.h"
 #include "fileio/file.h"
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,8 +53,11 @@ static void imf_resource_reset(struct ImfRes *resource)
 static int imf_count(struct File *file, size_t *count, size_t record_size)
 {
     int32_t value;
-    if (!file_read(file, &value, sizeof value) || value < 0
-            || (size_t)value > (size_t)(file->size - file->position) / record_size)
+    if (!file_read(file, &value, sizeof value))
+        return 0;
+    if (value < 0)
+        value = 0;
+    if ((size_t)value > (size_t)(file->size - file->position) / record_size)
         return 0;
     *count = (size_t)value;
     return 1;
@@ -65,10 +67,11 @@ static int imf_parse(struct ImfRes *resource, struct File *file)
 {
     struct { float version; int32_t checksum, last_layer; } header;
     size_t layers, layer;
-    if (!file_read(file, &header, sizeof header) || !isfinite(header.version)
-            || header.version < 1.01f || header.last_layer < -1)
+    if (!file_read(file, &header, sizeof header) || header.version < 1.01f)
         return 0;
-    layers = (size_t)(header.last_layer + (int64_t)1);
+    if (header.last_layer < 0)
+        return 1;
+    layers = (size_t)header.last_layer + 1;
     if (layers > (size_t)(file->size - file->position) / sizeof(int32_t)
             || layers > SIZE_MAX / sizeof *resource->layers)
         return 0;

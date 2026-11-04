@@ -385,7 +385,7 @@ static int efst_bladestop_holds(int job)
 
 static void efst_update_player(struct GameActor *actor, int opt3)
 {
-    if (is_effect_state_burrow(actor_get_effect_state(actor)) || is_effect_state_star2(actor_get_effect_state(actor))) {
+    if (is_effect_state_hiding(actor_get_effect_state(actor)) || is_effect_state_cloaking(actor_get_effect_state(actor))) {
         efst_drop(actor, 0xcb);
         efst_drop(actor, 0xfe);
         efst_drop(actor, 0x46c);
@@ -459,7 +459,7 @@ static void efst_update_other(struct GameActor *actor, int opt3)
 {
     char exists;
 
-    if (is_effect_state_burrow(actor_get_effect_state(actor)) || is_effect_state_star2(actor_get_effect_state(actor))) {
+    if (is_effect_state_hiding(actor_get_effect_state(actor)) || is_effect_state_cloaking(actor_get_effect_state(actor))) {
         efst_drop(actor, 0xcb);
         efst_drop(actor, 0xfe);
         efst_drop(actor, 0x46c);

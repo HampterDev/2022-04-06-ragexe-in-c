@@ -49,7 +49,8 @@ struct gfx_surface {
     unsigned version;
 };
 
-static unsigned content_tick;
+static volatile LONG content_tick;
+static SRWLOCK handles_lock = SRWLOCK_INIT;
 
 static int device_gone;
 static int reset_failures;
@@ -198,17 +199,19 @@ static struct gfx_surface *new_handle(int kind, int w, int h, D3DFORMAT f)
     s->fmt = -1;
     s->d3dfmt = f;
     s->levels = 1;
-    s->version = ++content_tick;
+    s->version = (unsigned)InterlockedIncrement(&content_tick);
+    AcquireSRWLockExclusive(&handles_lock);
     s->next = d9.handles;
     if (d9.handles)
         d9.handles->prev = s;
     d9.handles = s;
+    ReleaseSRWLockExclusive(&handles_lock);
     return s;
 }
 
 static void drop_objects(struct gfx_surface *s)
 {
-    s->version = ++content_tick;
+    s->version = (unsigned)InterlockedIncrement(&content_tick);
     if (s->surf) {
         IDirect3DSurface9_Release(s->surf);
         s->surf = NULL;
@@ -236,12 +239,14 @@ static void free_handle(struct gfx_surface *s)
         d9.depth = NULL;
     if (d9.target == s)
         d9.target = d9.mainTarget;
+    AcquireSRWLockExclusive(&handles_lock);
     if (s->prev)
         s->prev->next = s->next;
     else
         d9.handles = s->next;
     if (s->next)
         s->next->prev = s->prev;
+    ReleaseSRWLockExclusive(&handles_lock);
     free(s);
 }
 
@@ -950,7 +955,8 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     if (hr == D3D_OK) {
         out->zbufferless = 0;
         out->vertexFog = (caps.RasterCaps & D3DPRASTERCAPS_FOGVERTEX) != 0;
-        out->mipNearest = (caps.TextureFilterCaps & D3DPTFILTERCAPS_MIPFPOINT) != 0;
+        out->trilinear = (caps.TextureFilterCaps & (D3DPTFILTERCAPS_MINFLINEAR | D3DPTFILTERCAPS_MIPFLINEAR))
+                         == (D3DPTFILTERCAPS_MINFLINEAR | D3DPTFILTERCAPS_MIPFLINEAR);
         out->bumpEnv = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAP) != 0;
         out->bumpEnvLuminance = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAPLUMINANCE) != 0;
         out->waterBump = (caps.MaxTextureBlendStages >= 2 && (caps.TextureOpCaps & D3DTEXOPCAPS_MODULATEALPHA_ADDCOLOR)) ? 1 : 0;
@@ -1026,10 +1032,12 @@ int gfx_close(struct C3dDevice *d)
     if (d9.bbCopy)  { gfx_release(d9.bbCopy);  d9.bbCopy = NULL; }
     d9.msDirty = 0;
     d9.mainTarget = d9.target = d9.depth = NULL;
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = next) {
         next = s->next;
         drop_objects(s);
     }
+    ReleaseSRWLockExclusive(&handles_lock);
     if (d9.dev) {
         IDirect3DDevice9_Release(d9.dev);
         d9.dev = NULL;
@@ -1055,17 +1063,29 @@ void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
     }
 }
 
+static HRESULT present_without_wait(void)
+{
+    IDirect3DSwapChain9 *chain = NULL;
+    HRESULT hr = IDirect3DDevice9_GetSwapChain(d9.dev, 0, &chain);
+    if (FAILED(hr))
+        return IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL);
+    hr = IDirect3DSwapChain9_Present(chain, NULL, NULL, NULL, NULL, D3DPRESENT_DONOTWAIT);
+    IDirect3DSwapChain9_Release(chain);
+    return hr;
+}
+
 int gfx_present(struct C3dDevice *d, int vsync, int whole)
 {
     HRESULT hr;
     batch_flush();
     (void)d;
     (void)whole;
-    (void)vsync;
     if (!d9.dev)
         return -1;
     resolve_ms();
-    hr = IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL);
+    hr = vsync ? IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL) : present_without_wait();
+    if (hr == D3DERR_WASSTILLDRAWING)
+        return 0;
     if (hr == D3DERR_DEVICELOST)
         return GFX_E_SURFACELOST;
     if (hr == D3DERR_DEVICEHUNG || hr == D3DERR_DEVICEREMOVED) {
@@ -1091,6 +1111,7 @@ static int recreate_after_reset(void)
             d9.msType = D3DMULTISAMPLE_NONE;
         pick_transparency_aa();
     }
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = s->next) {
         if (s == d9.msRT || s == d9.bbCopy)
             continue;
@@ -1116,6 +1137,7 @@ static int recreate_after_reset(void)
             break;
         }
     }
+    ReleaseSRWLockExclusive(&handles_lock);
     IDirect3DSurface9_Release(bb);
     d9.target = d9.mainTarget;
     if (d9.mainTarget && d9.mainTarget->surf)
@@ -1132,6 +1154,7 @@ static int reset_device(void)
     if (d9.mainTarget && d9.mainTarget->surf)
         IDirect3DDevice9_SetRenderTarget(d9.dev, 0, d9.mainTarget->surf);
     d9.msDirty = 0;
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = s->next) {
         if (s->kind == K_SCREEN || s->kind == K_TARGET || s->kind == K_SAVE || s->kind == K_RTTEX || s->kind == K_ZBUFFER
             || s->kind == K_MSRT)
@@ -1139,6 +1162,7 @@ static int reset_device(void)
         else if (s->kind == K_SYSMEM)
             s->dirty = 1;
     }
+    ReleaseSRWLockExclusive(&handles_lock);
     {
         HRESULT hr = IDirect3DDevice9_Reset(d9.dev, &d9.pp);
         if (FAILED(hr)) {
@@ -1169,6 +1193,7 @@ static int recreate_device(struct C3dDevice *d)
     }
     if (FAILED(hr))
         return GFX_E_SURFACELOST;
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = s->next) {
         switch (s->kind) {
         case K_TEXTURE: migrate_texture(dev, s); break;
@@ -1176,6 +1201,7 @@ static int recreate_device(struct C3dDevice *d)
         default:        drop_objects(s); break;
         }
     }
+    ReleaseSRWLockExclusive(&handles_lock);
     IDirect3DDevice9_Release(old);
     d9.dev = dev;
     d->dev = dev;
@@ -1229,12 +1255,14 @@ static void size_screen_handles(int w, int h)
     struct gfx_surface *s;
     d9.pp.BackBufferWidth = w;
     d9.pp.BackBufferHeight = h;
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = s->next)
         if (s->kind == K_SCREEN || s->kind == K_TARGET || s->kind == K_SAVE || s->kind == K_ZBUFFER
             || s->kind == K_MSRT || s == d9.bbCopy) {
             s->width = w;
             s->height = h;
         }
+    ReleaseSRWLockExclusive(&handles_lock);
 }
 
 static int change_mode(int w, int h, int fullscreen)
@@ -1261,6 +1289,15 @@ static int same_gpu(UINT a, UINT b)
     if (FAILED(IDirect3D9_GetAdapterIdentifier(d9.d3d, a, 0, &ia)) || FAILED(IDirect3D9_GetAdapterIdentifier(d9.d3d, b, 0, &ib)))
         return 0;
     return ia.VendorId == ib.VendorId && ia.DeviceId == ib.DeviceId;
+}
+
+int gfx_can_set_mode_live(const GUID *adapter)
+{
+    UINT ordinal;
+    if (!d9.d3d || !d9.dev)
+        return 0;
+    ordinal = adapter ? adapter_ordinal(adapter) : d9.adapter;
+    return ordinal == d9.adapter || same_gpu(d9.adapter, ordinal);
 }
 
 static int copy_surface(IDirect3DSurface9 *dst, IDirect3DSurface9 *src)
@@ -1338,7 +1375,7 @@ static void migrate_sysmem(IDirect3DDevice9 *dev, struct gfx_surface *s)
     s->surf = surf;
     s->dirty = 1;
     if (s->version != version)
-        s->version = ++content_tick;
+        s->version = (unsigned)InterlockedIncrement(&content_tick);
 }
 
 static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int fullscreen)
@@ -1382,6 +1419,7 @@ static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int f
         }
         return (int)hr;
     }
+    AcquireSRWLockExclusive(&handles_lock);
     for (s = d9.handles; s; s = s->next) {
         switch (s->kind) {
         case K_TEXTURE: migrate_texture(dev, s); break;
@@ -1389,6 +1427,7 @@ static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int f
         default:        drop_objects(s); break;
         }
     }
+    ReleaseSRWLockExclusive(&handles_lock);
     IDirect3DDevice9_Release(old);
     d9.dev = dev;
     d->dev = dev;
@@ -1638,7 +1677,7 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
 int gfx_unlock(gfx_surface *s)
 {
     HRESULT result = D3D_OK;
-    s->version = ++content_tick;
+    s->version = (unsigned)InterlockedIncrement(&content_tick);
     if (s->surf)
         result = IDirect3DSurface9_UnlockRect(s->surf);
     if (s->kind == K_SYSMEM)
@@ -1658,7 +1697,7 @@ int gfx_blit(gfx_surface *dst, const RECT *dr, gfx_surface *src, const RECT *sr,
     batch_flush();
     (void)flags;
     g_perf.blits++;
-    dst->version = ++content_tick;
+    dst->version = (unsigned)InterlockedIncrement(&content_tick);
     if (!d9.dev || !dst->surf || !src->surf)
         return -1;
     if (dst->surf == src->surf)
@@ -1763,7 +1802,7 @@ int gfx_is_lost(gfx_surface *s)
 
 void gfx_restore(gfx_surface *s)
 {
-    s->version = ++content_tick;
+    s->version = (unsigned)InterlockedIncrement(&content_tick);
 }
 
 int gfx_get_dc(gfx_surface *s, HDC *out)
@@ -1779,7 +1818,7 @@ int gfx_get_dc(gfx_surface *s, HDC *out)
 
 void gfx_release_dc(gfx_surface *s, HDC dc)
 {
-    s->version = ++content_tick;
+    s->version = (unsigned)InterlockedIncrement(&content_tick);
     if (s->surf)
         IDirect3DSurface9_ReleaseDC(s->surf, dc);
     if (s->kind == K_SYSMEM)

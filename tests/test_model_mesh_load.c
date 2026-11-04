@@ -204,6 +204,30 @@ static void check_invalid(int major)
     assert(!outstanding && !locks);
 }
 
+static void check_empty_v2(void)
+{
+    struct C3dModelRes model = {0};
+    model_res_init(&model);
+    assert(model_resource_load_v2(&model, "모델.rsm"));
+    assert(!model.nodeCount && !model.nodes && !model.blockCount && model.fileName.data);
+    model_res_clear(&model);
+    assert(!outstanding && !locks);
+}
+
+static void check_short_boxes(int major, int cut)
+{
+    struct C3dModelRes model = {0};
+    size_t boxes = cut < blocks_offset + 4 ? 0 : 2;
+    model_res_init(&model);
+    assert(major == 1 ? model_resource_load_v1(&model, "모델.rsm") :
+                        model_resource_load_v2(&model, "모델.rsm"));
+    assert(model.nodeCount == 2 && model.blockCount == boxes);
+    if (boxes)
+        assert(model.blocks[1].size[0] == 0 || model.blocks[1].size[0] == 3 || model.blocks[1].size[0] == 5);
+    model_res_clear(&model);
+    assert(!outstanding && !locks);
+}
+
 static void malformed_and_reload(void)
 {
     int major, minor, cut, complete, value;
@@ -240,11 +264,21 @@ static void malformed_and_reload(void)
         parent_case = 0;
         resource_fixture(major, minor);
         complete = used;
-        for (cut = 0; cut < complete; ++cut) { used = cut; check_invalid(major); }
+        for (cut = 0; cut < complete; ++cut) {
+            used = cut;
+            if (cut >= blocks_offset) check_short_boxes(major, cut);
+            else check_invalid(major);
+        }
         used = complete;
         open_failure = 1; check_invalid(major); open_failure = 0;
         input[4] = 7; check_invalid(major);
-        resource_fixture(major, minor); input[5] = 99; check_invalid(major);
+        resource_fixture(major, minor); input[5] = 99;
+        if (major == 1) check_invalid(major);
+        else {
+            check_empty_v2();
+            input[5] = 0; check_empty_v2();
+            input[4] = 7; check_empty_v2();
+        }
         resource_fixture(major, minor); value = -1; memcpy(input + nodes_offset, &value, 4); check_invalid(major);
         resource_fixture(major, minor); memcpy(input + names_offset, &value, 4); check_invalid(major);
     }

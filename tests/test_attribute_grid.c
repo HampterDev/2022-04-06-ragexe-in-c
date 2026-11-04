@@ -93,6 +93,14 @@ static void retained_failure(struct C3dAttr *grid)
     assert(!memcmp(old, contents, sizeof contents));
     assert(live == old_live && !buffers);
 }
+static void unsupported_version(struct C3dAttr *grid)
+{
+    struct AttrCell *old = grid->cells;
+    unsigned old_errors = errors, old_live = live;
+    assert(c3d_attr_load(grid, "fixture.gat"));
+    assert(errors == old_errors + 1 && grid->cells == old && grid->width == 2 && grid->height == 2);
+    assert(live == old_live && !buffers);
+}
 static void test_loading(void)
 {
     struct { unsigned char before[16]; struct C3dAttr grid; unsigned char after[16]; } guarded;
@@ -118,8 +126,8 @@ static void test_loading(void)
     }
     fixture(3); missing = 1; retained_failure(grid); missing = 0;
     fixture(3); input[0] = 'X'; retained_failure(grid);
-    fixture(3); input[4] = 2; retained_failure(grid);
-    fixture(3); input[5] = 4; retained_failure(grid);
+    fixture(3); input[4] = 2; unsupported_version(grid);
+    fixture(3); input[5] = 4; unsupported_version(grid);
     fixture(3); dimensions(-1, 2); retained_failure(grid);
     fixture(3); dimensions(2, -1); retained_failure(grid);
     fixture(3); dimensions(INT_MAX, INT_MAX); retained_failure(grid);
@@ -143,6 +151,8 @@ static void test_factory(void)
     fail_at = allocations + 1; assert(!attribute_resource_create()); fail_at = 0;
     grid = (struct C3dAttr *)attribute_resource_create(); assert(grid && live == 1);
     assert(grid->zoom == 5 && !grid->cells && !grid->width && !grid->height);
+    fixture(3); input[5] = 4; assert(c3d_attr_load(grid, "fixture.gat") && live == 1);
+    assert(!grid->cells && !grid->width && !grid->height);
     fixture(3); assert(c3d_attr_load(grid, "fixture.gat") && live == 2);
     attribute_resource_clear(grid); assert(live == 1);
     resource_destroy(&grid->res); assert(!live && !buffers);
@@ -190,6 +200,6 @@ static void test_ray_distance(void)
 int main(void)
 {
     test_loading(); test_factory(); test_queries(); test_ray_distance();
-    puts("attribute grid: GAT versions, byte-exact cells, every-byte truncation, dimensions, allocation failure, retained reloads, queries and repeat cleanup passed");
+    puts("attribute grid: GAT versions, an unsupported version loaded empty, byte-exact cells, every-byte truncation, dimensions, allocation failure, retained reloads, queries and repeat cleanup passed");
     return 0;
 }

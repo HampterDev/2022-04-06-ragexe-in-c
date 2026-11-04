@@ -261,6 +261,29 @@ static void deleted_record_skipped(const char *path)
     puts("GRF records: a record outside the archive is left out and the others stay readable");
 }
 
+static void underflowing_record_skipped(const char *path)
+{
+    struct GrfArchive *archive;
+    struct GrfEntry entry;
+    struct Hash key;
+    BYTE output[GRF_FIXTURE_PAYLOAD];
+    char name[252];
+    make_grf_fixture(0x103);
+    memset(archive_bytes + archive_table + fixture_record_offsets[2], 0, 12);
+    store32(archive_bytes + archive_table + fixture_record_offsets[5], 0);
+    write_fixture(path);
+    archive = grf_archive_create(path);
+    assert(archive && archive->entry_count == GRF_FIXTURE_COUNT - 2);
+    fixture_name(2, name); hash_construct(&key, name);
+    assert(!grf_archive_find(archive, &key, NULL));
+    fixture_name(5, name); hash_construct(&key, name);
+    assert(!grf_archive_find(archive, &key, NULL));
+    fixture_name(3, name); hash_construct(&key, name);
+    assert(grf_archive_find(archive, &key, &entry) && grf_archive_read(archive, &entry, output, sizeof output));
+    grf_archive_destroy(archive); empty_owners();
+    puts("GRF records: a 0x103 record whose stored sizes wrap below zero is left out and the others stay readable");
+}
+
 static void empty_and_bounded_records(const char *path)
 {
     struct GrfArchive *archive;
@@ -328,6 +351,7 @@ int main(int argc, char **argv)
     reference_cases(first, argv[1]);
     mapping_failures(first); allocation_and_read_failures(first); malformed_records(first);
     deleted_record_skipped(first);
+    underflowing_record_skipped(first);
     empty_and_bounded_records(first);
     manager_lifetime(first, second);
     assert(DeleteFileA(first) && DeleteFileA(second));

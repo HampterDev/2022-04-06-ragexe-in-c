@@ -46,10 +46,10 @@ BYTE *game_file_mgr_read_loose_file(struct GameFileMgr *self, const char *name, 
     file = CreateFileA(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (file == INVALID_HANDLE_VALUE)
         return NULL;
-    if (GetFileSizeEx(file, &length) && length.QuadPart >= 0 && length.QuadPart <= INT_MAX) {
+    if (GetFileSizeEx(file, &length) && length.QuadPart > 0 && length.QuadPart <= INT_MAX) {
         DWORD count = (DWORD)length.QuadPart;
-        data = VirtualAlloc(NULL, count ? count : 1, MEM_COMMIT, PAGE_READWRITE);
-        if (data && count && (!ReadFile(file, data, count, &read, NULL) || read != count)) {
+        data = VirtualAlloc(NULL, count, MEM_COMMIT, PAGE_READWRITE);
+        if (data && (!ReadFile(file, data, count, &read, NULL) || read != count)) {
             VirtualFree(data, 0, MEM_RELEASE);
             data = NULL;
         }

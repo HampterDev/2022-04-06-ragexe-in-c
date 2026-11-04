@@ -1,164 +1,305 @@
 #include "resources/bitmap_internal.h"
-#include <gif_lib.h>
 #include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct GifInput { const BYTE *next; size_t remaining; };
+#define GIF_LZW_CODES 4096
 
-static int gif_read_memory(GifFileType *gif, GifByteType *out, int count)
+struct GifInput { const BYTE *data; size_t size, at; };
+struct GifImage { unsigned left, top, width, height; BYTE flags; };
+struct LzwEntry { BYTE value; int prefix, length; };
+struct Lzw { struct LzwEntry *table; unsigned size; int clear; };
+
+struct GifDecoder {
+    struct GifInput in;
+    struct GifFrames frames;
+    struct Lzw lzw;
+    DWORD global[256];
+    unsigned width, global_count;
+    size_t count;
+    BYTE background, transparent, transparent_index;
+    unsigned short delay, loops;
+};
+
+static BYTE gif_byte(const struct GifInput *in, size_t at)
+{ return at < in->size ? in->data[at] : 0; }
+
+static BYTE gif_next(struct GifInput *in)
+{ return gif_byte(in, in->at++); }
+
+static unsigned gif_u16(const struct GifInput *in, size_t at)
+{ return gif_byte(in, at) | (unsigned)gif_byte(in, at + 1) << 8; }
+
+static unsigned gif_read_palette(struct GifInput *in, DWORD *palette, BYTE flags)
 {
-    struct GifInput *input = gif->UserData;
-    if (count < 0 || (size_t)count > input->remaining)
-        return 0;
-    memcpy(out, input->next, count);
-    input->next += count;
-    input->remaining -= count;
+    unsigned i, count = 2u << (flags & 7);
+    memset(palette, 0, 256 * sizeof *palette);
+    for (i = 0; i < count; ++i, in->at += 3)
+        palette[i] = 0xff000000u | (DWORD)gif_byte(in, in->at) << 16 |
+                     (DWORD)gif_byte(in, in->at + 1) << 8 | gif_byte(in, in->at + 2);
     return count;
 }
 
-static DWORD gif_color(GifColorType color)
-{ return 0xff000000u | (DWORD)color.Red << 16 | (DWORD)color.Green << 8 | color.Blue; }
-
-static void gif_control_reset(GraphicsControlBlock *control)
+static struct LzwEntry lzw_entry(const struct Lzw *lzw, int code)
 {
-    memset(control, 0, sizeof *control);
-    control->TransparentColor = NO_TRANSPARENT_COLOR;
+    struct LzwEntry entry = {0, 0, 0};
+    if (code < 0 || (unsigned)code >= lzw->size) return entry;
+    if (code < GIF_LZW_CODES) return lzw->table[code];
+    if (code < lzw->clear) {
+        entry.value = (BYTE)code;
+        entry.prefix = -1;
+        entry.length = 1;
+    }
+    return entry;
 }
 
-static BYTE gif_extension(GifFileType *gif, GraphicsControlBlock *control, unsigned short *loops)
+static int lzw_reset(struct Lzw *lzw)
 {
-    GifByteType *block;
-    int label, application = 0, first = 1;
-    if (DGifGetExtension(gif, &label, &block) == GIF_ERROR) return 0;
-    if (label == GRAPHICS_EXT_FUNC_CODE) {
-        if (!block || block[0] != 4 ||
-            DGifExtensionToGCB(block[0], block + 1, control) == GIF_ERROR ||
-            control->DisposalMode > DISPOSE_PREVIOUS)
-            return 0;
+    int i;
+    for (i = 0; i < lzw->clear && i < GIF_LZW_CODES; ++i) {
+        lzw->table[i].value = (BYTE)i;
+        lzw->table[i].prefix = -1;
+        lzw->table[i].length = 1;
     }
-    if (label == APPLICATION_EXT_FUNC_CODE && block && block[0] == 11)
-        application = !memcmp(block + 1, "NETSCAPE2.0", 11) || !memcmp(block + 1, "ANIMEXTS1.0", 11);
-    while (block) {
-        if (application && !first && block[0] == 3 && block[1] == 1) {
-            unsigned repeat = (unsigned)block[2] | (unsigned)block[3] << 8;
-            *loops = (unsigned short)(repeat ? repeat + 1 : 0);
+    return (lzw->clear > 0 ? lzw->clear : 0) + 2;
+}
+
+static int lzw_add(struct Lzw *lzw, int code, int prev, int next)
+{
+    struct LzwEntry entry;
+    int root = code == next ? prev : code, steps = 0;
+    while ((entry = lzw_entry(lzw, root)).prefix != -1) {
+        if (++steps > GIF_LZW_CODES) return 0;
+        root = entry.prefix;
+    }
+    if ((unsigned)next < lzw->size) {
+        lzw->table[next].value = entry.value;
+        lzw->table[next].prefix = prev;
+        lzw->table[next].length = lzw_entry(lzw, prev).length + 1;
+    }
+    return 1;
+}
+
+static int lzw_output(const struct Lzw *lzw, int code, BYTE *out, size_t pos, size_t count)
+{
+    int steps = 0;
+    for (;;) {
+        struct LzwEntry entry = lzw_entry(lzw, code);
+        size_t end = pos + (size_t)entry.length;
+        if (end && end - 1 < count) out[end - 1] = entry.value;
+        if (entry.prefix == code || ++steps > GIF_LZW_CODES) return 0;
+        if (entry.prefix == -1) return 1;
+        code = entry.prefix;
+    }
+}
+
+static int gif_lzw_decode(struct Lzw *lzw, BYTE min_size, const BYTE *src, size_t count,
+                          BYTE *out, size_t out_count)
+{
+    unsigned initial = 1u << ((min_size + 1) & 31), mask = 1;
+    int code_size = min_size, prev = -1, last = 0, next;
+    size_t at = 0, pos = 0, remaining = count;
+    lzw->clear = (int)(1u << (min_size & 31));
+    lzw->size = initial;
+    memset(lzw->table, 0, GIF_LZW_CODES * sizeof *lzw->table);
+    next = lzw_reset(lzw);
+    while (remaining) {
+        int bits = code_size + 1, code, k;
+        unsigned value = 0;
+        for (k = 0; k < bits; ++k) {
+            if ((at < count ? src[at] : 0) & mask) value |= 1u << (k & 31);
+            mask <<= 1;
+            if (mask == 0x100) {
+                mask = 1;
+                ++at;
+                if (remaining) --remaining;
+            }
         }
-        first = 0;
-        if (DGifGetExtensionNext(gif, &block) == GIF_ERROR) return 0;
-        if (label == GRAPHICS_EXT_FUNC_CODE && block) return 0;
+        code = (int)value;
+        if (code == lzw->clear) {
+            code_size = min_size;
+            lzw->size = initial;
+            next = lzw_reset(lzw);
+            prev = -1;
+            continue;
+        }
+        if (code == lzw->clear + 1) return remaining <= 1 ? last : -1;
+        if (prev > -1 && code_size < 12) {
+            if (code > next || !lzw_add(lzw, code, prev, next)) return -1;
+            if (next <= GIF_LZW_CODES) ++next;
+            if (code_size < 11 && (unsigned)next == 1u << bits) {
+                unsigned grown = 1u << (bits + 1);
+                memset(lzw->table + lzw->size, 0, (grown - lzw->size) * sizeof *lzw->table);
+                lzw->size = grown;
+                code_size = bits;
+            }
+        }
+        prev = code;
+        last = lzw_entry(lzw, code).length;
+        if (code != -1 && !lzw_output(lzw, code, out, pos, out_count)) return -1;
+        pos += (size_t)last;
+        if (pos > out_count) pos = out_count + 1;
     }
-    if (label == PLAINTEXT_EXT_FUNC_CODE) gif_control_reset(control);
+    return last;
+}
+
+static BYTE *gif_join_blocks(struct GifInput *in, size_t *total)
+{
+    size_t at = in->at, length, sum = 0;
+    BYTE *joined, *cursor;
+    while ((length = gif_byte(in, at)) != 0) {
+        sum += length;
+        at += length + 1;
+    }
+    joined = malloc(sum ? sum : 1);
+    if (!joined) return NULL;
+    for (cursor = joined; (length = gif_next(in)) != 0; cursor += length, in->at += length) {
+        size_t have = in->at < in->size ? in->size - in->at : 0;
+        if (have > length) have = length;
+        if (have) memcpy(cursor, in->data + in->at, have);
+        memset(cursor + have, 0, length - have);
+    }
+    *total = sum;
+    return joined;
+}
+
+static BYTE gif_add_frame(struct GifDecoder *gif, const struct GifImage *image, const BYTE *indices,
+                          const DWORD *palette, unsigned colors)
+{
+    struct GifFrame frame;
+    size_t bytes = gif->count * sizeof(DWORD);
+    int keyed = gif->frames.count && gif->transparent == 1;
+    DWORD key = palette[gif->transparent_index < colors ? gif->transparent_index : colors];
+    unsigned x, y;
+    if (bytes && gif->frames.count >= BITMAP_MAX_BYTES / bytes) return 0;
+    frame.pixels = malloc(bytes ? bytes : sizeof(DWORD));
+    if (!frame.pixels) return 0;
+    if (gif->frames.count)
+        memcpy(frame.pixels, gif->frames.data[gif->frames.count - 1].pixels, bytes);
+    else
+        memset(frame.pixels, (int)palette[gif->background], bytes);
+    for (y = 0; y < image->height; ++y, indices += image->width)
+        for (x = 0; x < image->width; ++x) {
+            DWORD color = palette[indices[x] < colors ? indices[x] : colors];
+            unsigned at = (image->top + y) * gif->width + x + image->left;
+            if (!(keyed && color == key) && at < gif->count) frame.pixels[at] = color;
+        }
+    frame.delay = gif->delay;
+    if (!gif_frames_append(&gif->frames, frame)) {
+        free(frame.pixels);
+        return 0;
+    }
     return 1;
 }
 
-static BYTE gif_read_row(GifFileType *gif, const GraphicsControlBlock *control,
-                         GifByteType *row, DWORD *pixels, int y)
+static BYTE gif_image(struct GifDecoder *gif)
 {
-    const GifImageDesc *image = &gif->Image;
-    const ColorMapObject *palette = image->ColorMap ? image->ColorMap : gif->SColorMap;
-    DWORD *out = pixels + (size_t)(image->Top + y) * gif->SWidth + image->Left;
-    int x;
-    if (!palette || (control->TransparentColor >= palette->ColorCount) ||
-        DGifGetLine(gif, row, image->Width) == GIF_ERROR)
-        return 0;
-    for (x = 0; x < image->Width; ++x) {
-        unsigned index = row[x];
-        if (index >= (unsigned)palette->ColorCount) return 0;
-        if ((int)index != control->TransparentColor)
-            out[x] = gif_color(palette->Colors[index]);
+    struct GifInput *in = &gif->in;
+    struct GifImage image;
+    DWORD local[256];
+    const DWORD *palette = gif->global;
+    unsigned colors = gif->global_count;
+    size_t total, count;
+    BYTE min_size, *joined, *indices, ok = 1;
+    image.left = gif_u16(in, in->at);
+    image.top = gif_u16(in, in->at + 2);
+    image.width = gif_u16(in, in->at + 4);
+    image.height = gif_u16(in, in->at + 6);
+    image.flags = gif_byte(in, in->at + 8);
+    in->at += 9;
+    if (image.flags & 0x80) {
+        colors = gif_read_palette(in, local, image.flags);
+        palette = local;
     }
-    return 1;
+    min_size = gif_next(in);
+    joined = gif_join_blocks(in, &total);
+    if (!joined) return 0;
+    count = (size_t)image.width * image.height;
+    indices = count <= BITMAP_MAX_BYTES ? calloc(count ? count : 1, 1) : NULL;
+    if (indices && gif_lzw_decode(&gif->lzw, min_size, joined, total, indices, count) > 0)
+        ok = gif_add_frame(gif, &image, indices, palette, colors);
+    else if (!indices)
+        ok = 0;
+    free(joined);
+    free(indices);
+    return ok;
+}
+
+static BYTE gif_has_netscape(const struct GifInput *in, size_t at, size_t length)
+{
+    size_t i, j;
+    for (i = 0; i + 8 <= length; ++i) {
+        for (j = 0; j < 8; ++j)
+            if (gif_byte(in, at + i + j) != (BYTE)"NETSCAPE"[j]) break;
+        if (j == 8) return 1;
+    }
+    return 0;
+}
+
+static void gif_extension(struct GifDecoder *gif)
+{
+    struct GifInput *in = &gif->in;
+    BYTE label = gif_next(in);
+    if (label == 0xf9) {
+        unsigned delay = gif_u16(in, in->at + 2);
+        gif->transparent = (BYTE)(gif_byte(in, in->at + 1) & 1);
+        gif->transparent_index = gif_byte(in, in->at + 4);
+        gif->delay = (unsigned short)(delay < 10 ? 10 : delay);
+        in->at += 5;
+    } else if (label == 0xff) {
+        size_t length = gif_next(in), name = in->at;
+        in->at += length;
+        if (gif_has_netscape(in, name, length)) {
+            unsigned repeat = gif_u16(in, in->at + 2);
+            gif->loops = (unsigned short)(repeat ? repeat + 1 : 0);
+            in->at += 4;
+        }
+    }
+    while (gif_byte(in, in->at)) ++in->at;
 }
 
 BYTE gif_res_load_gif_data(struct GifRes *self, const BYTE *data, int size, BYTE need24)
 {
-    struct GifInput input;
-    struct GifFrames frames = {0};
-    GraphicsControlBlock control;
-    GifFileType *gif;
-    GifRecordType record;
-    DWORD *canvas = NULL, *pixels = NULL, background = 0;
-    GifByteType *row = NULL;
-    size_t count, bytes, i;
-    unsigned short loops = 0;
-    int width, height, error, complete = 0;
-    if (!self || !data || size < 13 ||
-        (memcmp(data, "GIF87a", 6) && memcmp(data, "GIF89a", 6))) return 0;
-    input.next = data;
-    input.remaining = size;
-    gif = DGifOpen(&input, gif_read_memory, &error);
-    if (!gif) return 0;
-    width = gif->SWidth;
-    height = gif->SHeight;
-    count = bitmap_pixel_count(width, height);
-    if (!count || (need24 && (width != 24 || height != 24))) goto done;
-    bytes = count * sizeof(DWORD);
-    if (gif->SColorMap) {
-        if (gif->SBackGroundColor >= gif->SColorMap->ColorCount) goto done;
-        background = gif_color(gif->SColorMap->Colors[gif->SBackGroundColor]);
+    struct GifDecoder gif;
+    unsigned height;
+    BYTE flags, ok = 0;
+    if (!self || !data || size < 0) return 0;
+    memset(&gif, 0, sizeof gif);
+    gif.in.data = data;
+    gif.in.size = (size_t)size;
+    if (gif_byte(&gif.in, 0) != 'G' || gif_byte(&gif.in, 1) != 'I' || gif_byte(&gif.in, 2) != 'F')
+        return 0;
+    gif.width = gif_u16(&gif.in, 6);
+    height = gif_u16(&gif.in, 8);
+    flags = gif_byte(&gif.in, 10);
+    gif.background = gif_byte(&gif.in, 11);
+    gif.in.at = 13;
+    if (need24 == 1 && (gif.width != 24 || height != 24)) return 0;
+    gif.count = (size_t)gif.width * height;
+    if (gif.count > BITMAP_MAX_BYTES / sizeof(DWORD)) return 0;
+    gif.global_count = flags & 0x80 ? gif_read_palette(&gif.in, gif.global, flags) : 256;
+    gif.lzw.table = malloc(GIF_LZW_CODES * sizeof *gif.lzw.table);
+    if (!gif.lzw.table) return 0;
+    while (gif.in.at < gif.in.size) {
+        BYTE block = gif_next(&gif.in);
+        if (block == ',' && !gif_image(&gif)) break;
+        if (block == '!') gif_extension(&gif);
+        if (block == ';') {
+            ok = gif.frames.count != 0;
+            break;
+        }
     }
-    canvas = bitmap_allocate_pixels(width, height);
-    row = malloc(width);
-    if (!canvas || !row) goto done;
-    gif_control_reset(&control);
-    while (DGifGetRecordType(gif, &record) != GIF_ERROR) {
-        if (record == TERMINATE_RECORD_TYPE) { complete = frames.count != 0; break; }
-        if (record == EXTENSION_RECORD_TYPE) {
-            if (!gif_extension(gif, &control, &loops)) goto done;
-        } else if (record == IMAGE_DESC_RECORD_TYPE) {
-            struct GifFrame frame = {0};
-            const GifImageDesc *image;
-            int y, pass;
-            static const int starts[] = {0, 4, 2, 1}, steps[] = {8, 8, 4, 2};
-            if (frames.count >= BITMAP_MAX_BYTES / bytes ||
-                DGifGetImageHeader(gif) == GIF_ERROR) goto done;
-            image = &gif->Image;
-            if (image->Width <= 0 || image->Height <= 0 || image->Left < 0 || image->Top < 0 ||
-                image->Width > width - image->Left || image->Height > height - image->Top) goto done;
-            if (!frames.count)
-                for (i = 0; i < count; ++i)
-                    canvas[i] = control.TransparentColor == NO_TRANSPARENT_COLOR ? background : 0;
-            pixels = bitmap_allocate_pixels(width, height);
-            if (!pixels) goto done;
-            memcpy(pixels, canvas, bytes);
-            for (pass = 0; pass < (image->Interlace ? 4 : 1); ++pass)
-                for (y = image->Interlace ? starts[pass] : 0; y < image->Height;
-                     y += image->Interlace ? steps[pass] : 1)
-                    if (!gif_read_row(gif, &control, row, pixels, y)) goto done;
-            frame.pixels = pixels;
-            frame.delay = (unsigned short)(control.DelayTime < 10 ? 10 : control.DelayTime);
-            if (!gif_frames_append(&frames, frame)) goto done;
-            pixels = NULL;
-            if (control.DisposalMode != DISPOSE_PREVIOUS) {
-                memcpy(canvas, frame.pixels, bytes);
-                if (control.DisposalMode == DISPOSE_BACKGROUND) {
-                    DWORD fill = control.TransparentColor == NO_TRANSPARENT_COLOR ? background : 0;
-                    int x;
-                    for (y = 0; y < image->Height; ++y)
-                        for (x = 0; x < image->Width; ++x)
-                            canvas[(size_t)(image->Top + y) * width + image->Left + x] = fill;
-                }
-            }
-            gif_control_reset(&control);
-        } else goto done;
-    }
-done:
-    DGifCloseFile(gif, &error);
-    free(row);
-    free(canvas);
-    free(pixels);
-    if (!complete) {
-        gif_frames_destroy(&frames);
+    free(gif.lzw.table);
+    if (!ok) {
+        gif_frames_destroy(&gif.frames);
         return 0;
     }
     gif_resource_clear(self);
-    self->frames = frames;
-    self->bmp.width = width;
-    self->bmp.height = height;
-    self->bmp.hasAlpha = 1;
-    self->bmp.pixels = frames.data[0].pixels;
-    self->loopCount = loops;
+    self->frames = gif.frames;
+    self->bmp.width = (int)gif.width;
+    self->bmp.height = (int)height;
+    self->bmp.pixels = gif.frames.data[0].pixels;
+    self->loopCount = gif.loops;
     self->lastTime = timeGetTime();
     self->animated = 1;
     return 1;

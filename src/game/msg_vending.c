@@ -16,8 +16,8 @@
 #define CZ_REQ_CLICK_TO_BUYING_STORE    0x817
 #define CZ_REQ_TRADE_BUYING_STORE       0x819
 #define CZ_REQ_BUY_FROMMC               0x130
-#define CZ_OPEN_REUSE_STORE             0xa7f
-#define CZ_OPEN_REUSE_BUYING_STORE      0xa92
+#define CZ_REQ_CREATE_ASSISTANT_VENDING 0xa7f
+#define CZ_REQ_CREATE_ASSISTANT_BUYING  0xa92
 
 #define LIST_PACKET_MAX 0x800
 #define SHOP_TITLE_MAX 80
@@ -264,7 +264,7 @@ int game_mode_msg_create_assistant_vending(const char *title)
 
     memset(&packet, 0, LIST_PACKET_MAX);
     count = session_get_store_setup_size(&g_session1);
-    packet.id = CZ_OPEN_REUSE_STORE;
+    packet.id = CZ_REQ_CREATE_ASSISTANT_VENDING;
     packet.len = (unsigned short)(count * 8 + 0x58);
     strncpy(packet.title, title, 0x4f);
     packet.title[SHOP_TITLE_MAX - 1] = 0;
@@ -314,7 +314,7 @@ int game_mode_msg_create_assistant_buying(const char *title, int limit)
     memset(&packet, 0, LIST_PACKET_MAX);
     count = session_get_store_setup_size(&g_session1);
     packet.limit_high = 0;
-    packet.id = CZ_OPEN_REUSE_BUYING_STORE;
+    packet.id = CZ_REQ_CREATE_ASSISTANT_BUYING;
     packet.limit = limit;
     packet.len = (unsigned short)(count * 10 + 0x60);
     strncpy(packet.title, title, 0x4f);

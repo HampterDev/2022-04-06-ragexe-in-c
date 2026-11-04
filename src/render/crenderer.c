@@ -440,13 +440,13 @@ void renderer_set_blend_stages(struct Renderer *self, int mode)
         break;
     case 6:
         HTSS(self, 0, GFX_TSS_TEXCOORDINDEX, 0);
-        HTSS(self, 0, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE);
+        HTSS(self, 0, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_COMPLEMENT);
         HTSS(self, 0, GFX_TSS_COLOROP, GFX_TOP_MODULATE);
         HTSS(self, 0, GFX_TSS_COLORARG2, GFX_TA_DIFFUSE);
         HTSS(self, 0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG2);
         HTSS(self, 0, GFX_TSS_ALPHAARG2, GFX_TA_DIFFUSE);
         HTSS(self, 1, GFX_TSS_TEXCOORDINDEX, 1);
-        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE);
+        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_COMPLEMENT);
         STAGE1_TAIL(GFX_TOP_MODULATE);
         break;
     case 7:
@@ -456,7 +456,7 @@ void renderer_set_blend_stages(struct Renderer *self, int mode)
         HTSS(self, 0, GFX_TSS_ALPHAARG1, GFX_TA_TEXTURE);
         HTSS(self, 0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG1);
         HTSS(self, 1, GFX_TSS_TEXCOORDINDEX, 1);
-        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_COMPLEMENT);
+        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE);
         STAGE1_TAIL(GFX_TOP_MODULATE);
         break;
     case 8:
@@ -504,7 +504,7 @@ void renderer_set_blend_stages(struct Renderer *self, int mode)
         HTSS(self, 0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG2);
         HTSS(self, 0, GFX_TSS_ALPHAARG2, GFX_TA_DIFFUSE);
         HTSS(self, 1, GFX_TSS_TEXCOORDINDEX, 1);
-        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_ALPHAREPLICATE);
+        HTSS(self, 1, GFX_TSS_COLORARG1, GFX_TA_TEXTURE | GFX_TA_COMPLEMENT);
         STAGE1_TAIL(GFX_TOP_ADD);
         break;
     case 13:

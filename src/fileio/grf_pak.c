@@ -176,9 +176,6 @@ static int load_table_v1(struct GrfArchive *archive, unsigned offset, unsigned c
         }
         record = cursor + length;
         entry->size = read32(record + 8);
-        if (entry->size > UINT_MAX - 0x2cb || read32(record) < entry->size + 0x2cb
-                || read32(record + 4) < 0x92cb)
-            return 0;
         entry->sizeCompressed = read32(record) - entry->size - 0x2cb;
         entry->sizeAligned = read32(record + 4) - 0x92cb;
         entry->flags = record[12] | (is_header_only_ext(name) ? GRF_FLAG_DES_HEADER : GRF_FLAG_DES);
@@ -304,7 +301,10 @@ int grf_archive_read(struct GrfArchive *archive, const struct GrfEntry *entry, B
     }
     if (entry->flags & GRF_FLAG_DEFLATED) {
         unsigned long length = entry->size;
-        ok = uncompress(out, &length, input, input_size) == Z_OK && length == entry->size;
+        uncompress(out, &length, input, input_size);
+        if (length < entry->size)
+            memset(out + length, 0, entry->size - length);
+        ok = 1;
     } else {
         if (entry->size) memcpy(out, stored, entry->size);
         ok = 1;

@@ -94,7 +94,7 @@ void repute_info_store(const struct ReputeInfoStore *self,
 
 #define REPUTE_WND_MSG_TEXT  0x16
 #define REPUTE_WND_MSG_REFRESH_LIST    0x88
-#define MSG_REPUTE_CHANGED   0xef5
+#define MSG_ALL_GROUPS       0xef5
 
 static int info_listed(const struct ReputeInfo *info)
 {
@@ -199,7 +199,7 @@ void repute_mgr_on_changed(struct ReputeMgr *self, unsigned long long group_id,
     if (!wnd)
         return;
     if (group_id == 0) {
-        ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)msg_str(MSG_REPUTE_CHANGED), 0, 0, 0);
+        ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)msg_str(MSG_ALL_GROUPS), 0, 0, 0);
     } else {
         struct ReputeGroupEntry *group = self ? tree_find(&self->groups, &group_id, tree_less_uint64) : NULL;
 

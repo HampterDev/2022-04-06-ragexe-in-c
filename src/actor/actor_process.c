@@ -25,9 +25,6 @@
 #include "game/input.h"
 #include "game/mode_msg.h"
 
-static float g_actorBalloonScale;
-static INIT_ONCE g_actorBalloonScaleGuard;
-
 static void actor_forget_window(struct GameActor *actor, const struct UIWindow *wnd)
 {
     struct UIWindow **const slots[] = {
@@ -63,16 +60,11 @@ void actors_forget_window(const struct UIWindow *wnd)
 
 static float balloon_top(const struct GameActor *self)
 {
-    return (float)self->screen_y - self->scale * g_actorBalloonScale;
+    return (float)self->screen_y - self->scale * (float)(g_renderer->height * 81 / 480);
 }
 
 void game_actor_process_chat_balloon_(struct GameActor *self)
 {
-    if (once_begin(&g_actorBalloonScaleGuard)) {
-        g_actorBalloonScale = (float)(g_renderer->height * 81 / 480);
-        once_complete(&g_actorBalloonScaleGuard);
-    }
-
     if (self->balloon_wnd) {
         if (timeGetTime() >= self->balloon_tick + 5000) {
             ui_window_mgr_post_quit2(&g_windowMgr, self->balloon_wnd);
@@ -167,8 +159,8 @@ void game_actor_place_hp_gage(struct GameActor *self)
 
     if (!gage)
         return;
-    if (!g_session1.showMonsterHp || !ui_monster_gauge_two_bars(gage) || is_effect_state_burrow(self->effect_state)
-        || is_effect_state_star2(self->effect_state) || effect_state_bit6(self->effect_state) || g_windowMgr.hide_ui_state == 2) {
+    if (!g_session1.showMonsterHp || !ui_monster_gauge_two_bars(gage) || is_effect_state_hiding(self->effect_state)
+        || is_effect_state_cloaking(self->effect_state) || effect_state_bit6(self->effect_state) || g_windowMgr.hide_ui_state == 2) {
         ui_window_set_show(self->monster_gage_wnd, 0);
         return;
     }
@@ -280,9 +272,6 @@ void game_actor_set_unit_cell(struct GameActor * self)
     GAME_MODE_SEND(mode, 0xc, self->aid, cx, cy, 0);
 }
 
-static int g_actorPickLeast;
-static INIT_ONCE g_actorPickLeastGuard;
-
 #define ACTOR_JOB_IS(fn, self) (fn(&g_session1, game_actor_get_job((self))))
 
 static int is_merc_elemental_or_summon(const struct GameActor *self)
@@ -355,10 +344,6 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
     float lift;
 
     if (self->pickable) {
-        if (once_begin(&g_actorPickLeastGuard)) {
-            g_actorPickLeast = (int)(renderer_scale_x(g_renderer) * 40.0f);
-            once_complete(&g_actorPickLeastGuard);
-        }
         lift = pick_lift(self);
         if (is_merc_elemental_or_summon(self))
             lift = 50.0f;
@@ -386,8 +371,8 @@ void game_actor_set_render_info(struct RenderObject *object, const struct Screen
                 pick->kind = 0;
             if (is_merc_elemental_or_summon(self))
                 pick->kind = 4;
-            pick_widen(&pick->left, &pick->right, g_actorPickLeast);
-            pick_widen(&pick->top, &pick->bottom, g_actorPickLeast);
+            pick_widen(&pick->left, &pick->right, (int)(renderer_scale_x(g_renderer) * 40.0f));
+            pick_widen(&pick->top, &pick->bottom, (int)(renderer_scale_x(g_renderer) * 40.0f));
             actor_pick_node_insert(&g_actorPickNode, pick);
         }
     }
