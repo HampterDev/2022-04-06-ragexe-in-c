@@ -140,6 +140,17 @@ if(BUILD_TESTING)
     target_link_libraries(test_jpeg_codec PRIVATE rage_jpeg)
     rage_enable_assertions(test_jpeg_codec)
     add_test(NAME jpeg_codec COMMAND test_jpeg_codec "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/jpeg_quadrants.jpg")
+    # Tests that run production code extracted by tests/extract_<name>.py at build time.
+    function(rage_extracted_test name)
+        set(dir "${CMAKE_CURRENT_BINARY_DIR}/extracted/${name}")
+        add_custom_command(OUTPUT "${dir}/${name}.inc"
+            COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tests/extract_${name}.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}" "${dir}"
+            DEPENDS tests/extract_${name}.py ${ARGN} VERBATIM)
+        rage_test(${name} "${dir}/${name}.inc")
+        target_include_directories(test_${name} PRIVATE "${dir}")
+    endfunction()
+    rage_extracted_test(chat_room_title src/actor/actor_sendmsg.c)
     if(NOT WIN32 AND TARGET SDL3::SDL3)
         add_executable(test_miles_sdl tests/test_miles_sdl.c)
         target_include_directories(test_miles_sdl PRIVATE src)

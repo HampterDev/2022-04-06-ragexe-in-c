@@ -663,7 +663,7 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
 
         if (w == NULL)
             w = sm_window(&self->chatroom_title_wnd, (struct UIWindow *)ui_chat_room_title_new(), 0x8c, 0x22);
-        ui_window_send_msg(w, NULL, 0x22, (int)par1, self->balloon_font, 0, 0);
+        ui_window_send_msg(w, NULL, 0x22, (intptr_t)par1, self->balloon_font, 0, 0);
         w = self->chatroom_title_wnd;
         ui_window_move(w, self->screen_x - 0x46, self->screen_y - scale_y_from480(0x6e));
         break;
