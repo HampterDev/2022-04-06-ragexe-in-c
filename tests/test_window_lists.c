@@ -25,7 +25,10 @@
      clear   clear_slots after make_window(id);
      closeall  close_all_windows after make_window(id).
    And for every window field of the manager (not by ID): whether forget_window clears it,
-   and whether clear_slots clears it.
+   and whether clear_slots clears it. Then, in each environment, lookup: with every window
+   field of the manager and every windows_by_id entry holding its own window (a slot read and
+   a lookup by ID give different answers), get_window(id) and is_untracked_id(id) for every ID,
+   once without and once with a mini-party plate (0x12d answers with the first plate).
 
    What is recorded: every stub call and every fake-window op with its arguments; the fields
    of the window manager that changed, by name (a window is named W<n> by creation order, an
@@ -1320,6 +1323,53 @@ static void case_fields(void)
     report_changes();
 }
 
+/* get_window and is_untracked_id for every ID, with every window field and every windows_by_id
+   entry holding its own window: W0+<n> is the n-th window word of WL_MGR_FIELDS, W1+<id> the
+   entry of id, so a row that reads its slot answers differently from one that looks the ID up. */
+static void case_lookup(void)
+{
+    unsigned char *slots, *by_id;
+    size_t i, j, n;
+    int id, plate;
+
+    for (plate = 0; plate < 2; ++plate) {
+        fresh();
+        quiet = 1;
+        slots = (unsigned char *)wl_fake_window("lookup slots");
+        by_id = (unsigned char *)wl_fake_window("lookup ids");
+        quiet = 0;
+        n = 0;
+        for (i = 0; i < FIELD_COUNT; ++i) {
+            if (fields[i].kind != K_WND && fields[i].kind != K_WNDS)
+                continue;
+            for (j = 0; j < fields[i].size / sizeof(void *); ++j, ++n) {
+                assert(0x10 * n < BLOCK);
+                ((struct UIWindow **)((unsigned char *)&g_windowMgr + fields[i].offset))[j] =
+                    (struct UIWindow *)(slots + 0x10 * n);
+            }
+        }
+        for (id = 0; id <= LAST_ID; ++id) {
+            struct WmWindowEntry *entry =
+                tree_get(&g_windowMgr.windows_by_id, &id, sizeof id, sizeof *entry, tree_less_int);
+            entry->wnd = (struct UIWindow *)(by_id + 0x10 * id);
+        }
+        if (plate) {
+            struct UIWindow *first = (struct UIWindow *)(by_id + 0x10 * (LAST_ID + 1));
+            list_push_back(&g_windowMgr.plates, &first, sizeof first);
+        }
+        note("lookup%s", plate ? " with a plate" : "");
+        for (id = 0; id <= LAST_ID; ++id) {
+            struct UIWindow *got = ui_window_mgr_get_window(&g_windowMgr, id);
+            int untracked = ui_window_mgr_is_untracked_id(&g_windowMgr, id);
+
+            put("  %#x get_window ", id);
+            put_pointer(got);
+            put(" is_untracked_id %d", untracked);
+            emit();
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     int id;
@@ -1340,13 +1390,14 @@ int main(int argc, char **argv)
             case_teardown(id);
         }
         case_fields();
+        case_lookup();
     }
     if (trace_file)
         assert(fclose(trace_file) == 0);
     printf("Window lists: IDs 0-%#x in 2 environments, %llu lines; digest %016llx.\n", LAST_ID, line_count,
            (unsigned long long)digest);
     fflush(stdout);
-    assert(line_count == 34733);
-    assert(digest == UINT64_C(0x39f36d8f0948c9bf));
+    assert(line_count == 37047);
+    assert(digest == UINT64_C(0x2232167ff470caa7));
     return 0;
 }
