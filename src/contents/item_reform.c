@@ -337,7 +337,7 @@ struct Vec *item_reform_base_items(struct ItemReformMgr *self, struct Vec *out,
     const unsigned long long *id;
     struct ReformInfoEntry *info;
 
-    node = tree_find(&self->reform_items, &reform_item, tree_less_int);
+    node = self ? tree_find(&self->reform_items, &reform_item, tree_less_int) : NULL;
     if (!node) {
         out->first = out->last = out->end = 0;
     } else {
@@ -360,7 +360,7 @@ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
     const unsigned long long *id;
     struct ReformInfoEntry *info;
 
-    node = tree_find(&self->reform_items, &reform_item, tree_less_int);
+    node = self ? tree_find(&self->reform_items, &reform_item, tree_less_int) : NULL;
     if (!node)
         return 0;
     for (id = node->ids.first; id != node->ids.last; id++) {
@@ -371,7 +371,13 @@ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
     return 0;
 }
 
+/* A NULL manager (its allocation failed) has no reform items, as one whose file did not load. */
 char item_reform_is_reform_item(struct ItemReformMgr *self, int item)
 {
-    return tree_find(&self->reform_items, &item, tree_less_int) != 0;
+    return self && tree_find(&self->reform_items, &item, tree_less_int) != 0;
+}
+
+unsigned item_reform_max_materials(const struct ItemReformMgr *self)
+{
+    return self ? self->max_materials : REFORM_MAX_MATERIALS;
 }

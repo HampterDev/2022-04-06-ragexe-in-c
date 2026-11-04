@@ -114,11 +114,14 @@ static void add_group_infos(const struct ReputeMgr *self, struct Vec *out, const
     }
 }
 
+/* A NULL manager (its allocation failed) has no groups and no infos, as one whose file did not load. */
 struct Vec *repute_mgr_group_names(struct ReputeMgr *self, struct Vec *out)
 {
     struct TreeNode *it;
 
     out->first = out->last = out->end = 0;
+    if (!self)
+        return out;
     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it))
         string_vec_push_copy(out, &TREE_VALUE(it, struct ReputeGroupEntry)->group.text);
     return out;
@@ -130,6 +133,8 @@ struct Vec *repute_mgr_group_infos(struct ReputeMgr *self, struct Vec *out,
     struct TreeNode *it;
 
     out->first = out->last = out->end = 0;
+    if (!self)
+        return out;
     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it)) {
         const struct ReputeGroup *group = &TREE_VALUE(it, struct ReputeGroupEntry)->group;
 
@@ -144,6 +149,8 @@ struct Vec *repute_mgr_all_infos(struct ReputeMgr *self, struct Vec *out)
     struct TreeNode *it;
 
     out->first = out->last = out->end = 0;
+    if (!self)
+        return out;
     for (it = tree_first(&self->groups); it != self->groups.head; it = tree_next(it))
         add_group_infos(self, out, &TREE_VALUE(it, struct ReputeGroupEntry)->group);
     return out;
@@ -157,6 +164,8 @@ struct Vec *repute_mgr_search_infos(struct ReputeMgr *self, struct Vec *out,
     size_t needle_len = text->size;
 
     out->first = out->last = out->end = 0;
+    if (!self)
+        return out;
     for (it = tree_first(&self->infos); it != self->infos.head; it = tree_next(it)) {
         struct ReputeInfo *info = &TREE_VALUE(it, struct ReputeInfoEntry)->info;
         const char *name = string_cstr(&info->name), *end, *at;
@@ -192,12 +201,12 @@ void repute_mgr_on_changed(struct ReputeMgr *self, unsigned long long group_id,
     if (group_id == 0) {
         ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)msg_str(MSG_REPUTE_CHANGED), 0, 0, 0);
     } else {
-        struct ReputeGroupEntry *group = tree_find(&self->groups, &group_id, tree_less_uint64);
+        struct ReputeGroupEntry *group = self ? tree_find(&self->groups, &group_id, tree_less_uint64) : NULL;
 
         if (group)
             ui_window_send(wnd, NULL, REPUTE_WND_MSG_TEXT, (int)string_cstr(&group->group.text), 0, 0, 0);
     }
-    entry = tree_find(&self->infos, &info_id, tree_less_uint64);
+    entry = self ? tree_find(&self->infos, &info_id, tree_less_uint64) : NULL;
     if (entry) {
         entry->info.highlighted = 1;
         ui_window_invalidate(wnd);
@@ -206,7 +215,7 @@ void repute_mgr_on_changed(struct ReputeMgr *self, unsigned long long group_id,
 
 void repute_mgr_set_points(struct ReputeMgr *self, unsigned long long info_id, long long points)
 {
-    struct ReputeInfoEntry *entry = tree_find(&self->infos, &info_id, tree_less_uint64);
+    struct ReputeInfoEntry *entry = self ? tree_find(&self->infos, &info_id, tree_less_uint64) : NULL;
 
     if (entry)
         entry->info.points = points;
@@ -216,7 +225,8 @@ void repute_mgr_set_info_result(struct ReputeMgr *self, unsigned char flag)
 {
     void *wnd;
 
-    self->no_info = (unsigned char)(flag ^ 1);
+    if (self)
+        self->no_info = (unsigned char)(flag ^ 1);
     if (flag != 1)
         return;
     wnd = ui_window_find(REPUTE_WND_ID);

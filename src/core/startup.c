@@ -187,9 +187,9 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
     return out;
 }
 
-/* The EZ2STR effect and map-sky managers are allocated on first use. When that fails, startup
-   goes on without them, as when their files do not load; their users take a missing manager
-   as an empty one. */
+/* The EZ2STR effect, map-sky, reputation, item-name, item-reform and enchant managers are
+   allocated on first use. When that fails, startup goes on without them, as when their files do
+   not load; their users take a missing manager as an empty one. */
 static void load_ez2str_effects(void)
 {
     struct Ez2StrEffectMgr *mgr = ez2str_effect_mgr_instance();
@@ -204,6 +204,38 @@ static void load_map_sky(void)
 
     if (mgr)
         map_sky_mgr_load(mgr);
+}
+
+static void load_repute(void)
+{
+    struct ReputeMgr *mgr = repute_mgr_instance();
+
+    if (mgr)
+        repute_mgr_load(mgr);
+}
+
+static void load_item_db_names(void)
+{
+    struct ItemDbToIdMgr *mgr = item_db_to_id_instance();
+
+    if (mgr)
+        item_db_to_id_load(mgr);
+}
+
+static void load_item_reform(void)
+{
+    struct ItemReformMgr *mgr = item_reform_mgr();
+
+    if (mgr)
+        item_reform_mgr_load(mgr);
+}
+
+static void load_enchant(void)
+{
+    struct EnchantMgr *mgr = enchant_mgr_instance();
+
+    if (mgr)
+        enchant_mgr_load(mgr);
 }
 
 struct InitResult *app_init_managers(struct InitResult *out)
@@ -269,10 +301,10 @@ struct InitResult *app_init_managers(struct InitResult *out)
         return init_failed(out, "CAdventurerAgencyMgr::CreateInstance()");
     if (!ui_request_join_party_mgr_create())
         return init_failed(out, "UIRequestJoinPartyMgr::CreateInstance()");
-    repute_mgr_load(repute_mgr_instance());
-    item_db_to_id_load(item_db_to_id_instance());
-    item_reform_mgr_load(item_reform_mgr());
-    enchant_mgr_load(enchant_mgr_instance());
+    load_repute();
+    load_item_db_names();
+    load_item_reform();
+    load_enchant();
     load_map_sky();
     select_package_create();
     select_package_load(g_selectPackageMgr);

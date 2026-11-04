@@ -48,7 +48,7 @@ void enchant_mgr_add_target_item(struct EnchantMgr *self, unsigned __int64 id, c
     int item_id = enchant_item_id(item_name);
     struct Vec *items;
 
-    if (!item_id)
+    if (!self || !item_id)
         return;
     items = &enchant_list_at(&self->lists, id)->target_items;
     vec_push(items, &item_id, sizeof(int));
@@ -56,27 +56,35 @@ void enchant_mgr_add_target_item(struct EnchantMgr *self, unsigned __int64 id, c
 
 void enchant_mgr_set_condition(struct EnchantMgr *self, unsigned __int64 id, unsigned min_refine, unsigned min_grade)
 {
-    struct EnchantList *list = enchant_list_at(&self->lists, id);
+    struct EnchantList *list;
 
+    if (!self)
+        return;
+    list = enchant_list_at(&self->lists, id);
     list->min_refine = min_refine;
     list->min_grade = min_grade;
 }
 
 void enchant_mgr_set_approve_random_option(struct EnchantMgr *self, unsigned __int64 id, char approve)
 {
-    enchant_list_at(&self->lists, id)->approve_random_option = approve;
+    if (self)
+        enchant_list_at(&self->lists, id)->approve_random_option = approve;
 }
 
 void enchant_mgr_set_slot_order(struct EnchantMgr *self, unsigned __int64 id, const struct Vec *order)
 {
-    vec_assign(&enchant_list_at(&self->lists, id)->slot_order, order->first, order->last, sizeof(unsigned));
+    if (self)
+        vec_assign(&enchant_list_at(&self->lists, id)->slot_order, order->first, order->last, sizeof(unsigned));
 }
 
 void enchant_mgr_set_reset(struct EnchantMgr *self, unsigned __int64 id, char enabled,
                            unsigned __int64 chance, unsigned __int64 zeny, const struct Tree *materials)
 {
-    struct EnchantReset *reset = &enchant_list_at(&self->lists, id)->reset;
+    struct EnchantReset *reset;
 
+    if (!self)
+        return;
+    reset = &enchant_list_at(&self->lists, id)->reset;
     reset->enabled = enabled;
     reset->chance = chance;
     reset->zeny = zeny;
@@ -85,29 +93,39 @@ void enchant_mgr_set_reset(struct EnchantMgr *self, unsigned __int64 id, char en
 
 void enchant_mgr_set_caution(struct EnchantMgr *self, unsigned __int64 id, const struct String *text)
 {
-    struct String *caution = &enchant_list_at(&self->lists, id)->caution;
+    struct String *caution;
 
+    if (!self)
+        return;
+    caution = &enchant_list_at(&self->lists, id)->caution;
     string_assign(caution, string_cstr(text), text->size);
 }
 
 void enchant_mgr_set_require(struct EnchantMgr *self, unsigned __int64 id, unsigned slot,
                              unsigned __int64 zeny, const struct Tree *materials)
 {
-    struct EnchantSlot *s = slot_of(self, id, slot);
+    struct EnchantSlot *s;
 
+    if (!self)
+        return;
+    s = slot_of(self, id, slot);
     s->require_zeny = zeny;
     item_counts_set_from_names(&s->require_materials, materials);
 }
 
 void enchant_mgr_set_success_rate(struct EnchantMgr *self, unsigned __int64 id, unsigned slot, unsigned __int64 rate)
 {
-    slot_of(self, id, slot)->success_rate = rate;
+    if (self)
+        slot_of(self, id, slot)->success_rate = rate;
 }
 
 void enchant_mgr_set_grade_bonus(struct EnchantMgr *self, unsigned __int64 id, unsigned slot, const struct Tree *bonus)
 {
-    struct Tree *grade_bonus = &slot_of(self, id, slot)->grade_bonus;
+    struct Tree *grade_bonus;
 
+    if (!self)
+        return;
+    grade_bonus = &slot_of(self, id, slot)->grade_bonus;
     tree_free(grade_bonus, NULL);
     tree_copy(grade_bonus, bonus, sizeof(struct GradeBonus), NULL);
 }
@@ -119,6 +137,8 @@ void enchant_mgr_set_enchant(struct EnchantMgr *self, unsigned __int64 id, unsig
     struct TreeNode *node;
     int item_id;
 
+    if (!self)
+        return;
     tree_init(&amounts);
     for (node = tree_first(amount_by_name); node != amount_by_name->head; node = tree_next(node)) {
         const struct NameAmount *name = TREE_VALUE(node, const struct NameAmount);
@@ -143,7 +163,7 @@ void enchant_mgr_add_perfect_enchant(struct EnchantMgr *self, unsigned __int64 i
     int item_id = enchant_item_id(item_name);
     struct PerfectEnchant *perfect;
 
-    if (!item_id)
+    if (!self || !item_id)
         return;
     perfect = perfect_enchant_at(&slot_of(self, id, slot)->perfect_enchants, item_id);
     perfect->zeny = zeny;
@@ -157,7 +177,7 @@ void enchant_mgr_add_upgrade_enchant(struct EnchantMgr *self, unsigned __int64 i
     int item_id = enchant_item_id(item_name), result_id;
     struct UpgradeEnchant *upgrade;
 
-    if (!item_id)
+    if (!self || !item_id)
         return;
     result_id = enchant_item_id(result_name);
     if (!result_id)
@@ -198,7 +218,8 @@ struct EnchantMgr *enchant_mgr_construct(struct EnchantMgr *self)
 
 struct EnchantList *enchant_mgr_find_list(struct EnchantMgr *self, unsigned __int64 id)
 {
-    struct EnchantListEntry *entry = tree_find(&self->lists, &id, tree_less_uint64);
+    /* A NULL manager (its allocation failed) has no lists, as one whose file did not load. */
+    struct EnchantListEntry *entry = self ? tree_find(&self->lists, &id, tree_less_uint64) : NULL;
 
     return entry ? &entry->list : NULL;
 }

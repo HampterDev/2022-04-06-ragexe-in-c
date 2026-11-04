@@ -240,7 +240,7 @@ void repute_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_outline(&self->frame.base, 0, title, self->frame.base.width, 1, 0);
 
     mgr = repute_mgr_instance();
-    if (mgr->no_info == 1) {
+    if (!mgr || mgr->no_info == 1) {
         ui_window_draw_round_frame(&self->frame.base, 0xe1, 0x9b, 0xbe, 0x8c, 0xce9484);
         ui_window_fill_round_rect(&self->frame.base, 0xe2, 0x9c, 0xbc, 0x8a, 0xffe7de);
         ui_window_fill_round_rect(&self->frame.base, 0xe7, 0xa1, 0xb2, 0x80, 0xffffff);

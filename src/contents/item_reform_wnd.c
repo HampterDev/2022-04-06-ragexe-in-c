@@ -306,7 +306,7 @@ void item_reform_wnd_on_create(struct UIWindow *window, int w, int h)
 
     self->base_slot = new_item_slot(self, 0x90, 0x32);
     self->result_slot = new_item_slot(self, 0x36, 0x32);
-    for (i = 0; i < item_reform_mgr()->max_materials; i++) {
+    for (i = 0; i < item_reform_max_materials(item_reform_mgr()); i++) {
         struct UIItemReformWnd_Item *slot = new_item_slot(self, (i % 3) * 0x45 + 0x1e, (i / 3) * 0x32 + 0x8c);
 
         vec_push(&self->material_slots, &slot, sizeof slot);

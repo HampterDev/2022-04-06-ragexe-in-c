@@ -1,5 +1,6 @@
-"""Extract the startup loads of the EZ2STR effect and map-sky managers and the code that later uses
-the two managers.
+"""Extract the startup loads of the managers that are allocated on first use (EZ2STR effects, map
+sky and, on main, reputation, item names, item reform and enchants) and the code that later uses
+the first two; test_manager_alloc_failure links the four main-only managers' files whole.
 
 The loads come from core/client_managers.c (the manager table's adapters) when it exists, else from
 app_init_managers (core/startup.c): its statements that name the two instances or their load
@@ -59,13 +60,17 @@ if table.exists():
                  '    load_results[1] = load_map_sky();\n}\n')
 else:
     text = read('core/startup.c')
-    parts.append(function(text, 'load_ez2str_effects', required=False))
-    parts.append(function(text, 'load_map_sky', required=False))
+    helpers = ('load_ez2str_effects', 'load_map_sky', 'load_repute', 'load_item_db_names', 'load_item_reform',
+               'load_enchant')
+    instances = ('ez2str_effect_mgr_instance', 'map_sky_mgr_instance', 'repute_mgr_instance',
+                 'item_db_to_id_instance', 'item_reform_mgr', 'enchant_mgr_instance')
+    for name in helpers:
+        parts.append(function(text, name, required=False))
     body = function(text, 'app_init_managers')
-    calls = [l for l in body.splitlines()
-             if re.search(r'ez2str_effect_mgr_instance\(\)|map_sky_mgr_instance\(\)|load_ez2str_effects\(\);|load_map_sky\(\);', l)]
-    if len(calls) != 2:
-        sys.exit('expected two manager loads in app_init_managers, found %d' % len(calls))
+    pattern = '|'.join([re.escape(i) + r'\(\)' for i in instances] + [re.escape(h) + r'\(\);' for h in helpers])
+    calls = [l for l in body.splitlines() if re.search(pattern, l)]
+    if len(calls) != 6:
+        sys.exit('expected six manager loads in app_init_managers, found %d' % len(calls))
     parts.append('static int load_results[2];\n'
                  'static void startup_loads(void)\n{\n' + '\n'.join(calls) + '\n}\n')
 (out / 'manager_alloc_failure.inc').write_text('\n'.join(parts), encoding='utf-8')
