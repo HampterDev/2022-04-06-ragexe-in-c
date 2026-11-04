@@ -132,3 +132,19 @@ overlay change is recorded in
 The purist differences, the format-string calls left as they are, the bugs found
 and not fixed, and the validation are in
 [purist-review.md](../purist-review.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
+
+## Purist-only fixes after the merge of purist-portable, 2026-11-04
+
+The merge of `purist-portable` (64-bit builds, other platforms) found these. They matter only
+where `main` does not build: on Win32 a pointer fits in an `int` and the client text is in the
+Windows code page, so `main` has no commit and there are no patch files.
+
+| Purist | On `main` | Change |
+| --- | --- | --- |
+| [ca17c78818](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ca17c788185a0e8568cff316c6c08561c26dfd1a) | Same line, harmless (`int` arguments, 32-bit pointers) | Actor message `0x20` hands the chat room to its title window as a whole pointer, not cut to `int`. |
+| [b2681a9258](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b2681a9258c6bda653c578801cd5ea7b650b39b8) | Same line, same results (a 32-bit stack address compares like -1) | The second-latest achievement search starts at -1, not at the address of its output parameter. |
+| [3ca656a44f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3ca656a44f69a90192c0b44dea349153467de820) | `ShellExecuteA` with CP949 text, as the original | Desktop links open through `ShellExecuteW`, so a UTF-8 URL beyond ASCII is not misread. |
+| [aed6618d0d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/aed6618d0db3ca81facfc46b014c4b473e87da42) | The variables are still used there | Locals the removals left unused are gone; no code change. |
+
+What each does, the sweep, the checks on `main` and the validation are in
+[purist-review.md](../purist-review.md#fixes-after-the-merge-of-purist-portable-2026-11-04).

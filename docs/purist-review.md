@@ -11521,17 +11521,18 @@ composition.
 
 - `actor/actor_sendmsg.c`, case `0x20`: `ui_window_send_msg(w, NULL, 0x22, (int)par1, ...)` cuts a
   pointer-sized argument to `int` on 64-bit builds. Both sides have the line; portable's pointer
-  sweep missed it.
+  sweep missed it. Fixed afterwards (`ca17c78`).
 - `platform_open_with_desktop` on Windows (`platform/desktop_win32.c`) passes the URL to
   `ShellExecuteA`, so a URL with non-ASCII characters (the client's text is UTF-8) is misread;
-  purist's own `ShellExecuteA` call had the same limit.
+  purist's own `ShellExecuteA` call had the same limit. Fixed afterwards (`3ca656a`).
 - GCC reports purist code that MSVC at `/W1` does not: unused variables `job`
   (`actor/pc_layers.c`), `tint_blue`, `tint_green`, `tint_grey` (`effects/skills/skill.c`), `effect`
   (`game/skill_cast.c`, `game/skill_cast_look.c`) and `i` (`game/skill_fail.c`), leftovers of the
   removals, and possible truncation of names in `ui/chat/balloon.c` and `game/packets_social.c`.
+  The variables are gone (`aed6618`); neither truncation can cut a name (below).
 - `session_get_latest_achievements` (`session/session_achievements.c`) starts its search with
   `int next = (int)(INT_PTR)second`, the address of an output parameter cut to `int`; both sides,
-  unchanged.
+  unchanged. Fixed afterwards (`b2681a9`).
 - `tests\build_com_lifecycle.bat` failed on `purist-portable` itself (its extractor and its
   compile); fixed in `db5afd9`.
 - Not verified here: the desktop SDL placement of the IME candidate list (no interactive IME), the
@@ -11560,3 +11561,108 @@ composition.
 - CMake embeds `data/effects/effects.json` (`cmake/EffectData.cmake`); purist's new tests
   (`test_utf8`, `test_text_runs`, `test_effect_trace`, `test_window_lists`, ...) run only from
   `tests\build.bat`, not from CTest.
+
+## Fixes after the merge of purist-portable (2026-11-04)
+
+Decision: Patrick asked for the bugs the merge found to be fixed here, with a regression test
+each, and for each to be checked on `main` and fixed there too where it is real. None is real on
+`main` (below), so these are purist-only; the
+[upstream notes](upstream/README.md#purist-only-fixes-after-the-merge-of-purist-portable-2026-11-04)
+list them without patches.
+
+### What each fix does
+
+- Chat room title (`ca17c78`). Actor message `0x20` (`actor/actor_sendmsg.c`) carries the chat
+  room an actor shows in `par1` (a `struct ChatRoomInfo *`, from `packets_chat.c`) and passes it as
+  `val1` of window message `0x22`, which `chat_room.c` reads as that pointer. It was cut to `int`;
+  it is `intptr_t` now. On a 64-bit build a room above 4 GB reached the window as another address.
+- Latest achievements (`b2681a9`). `session_get_latest_achievements` started the second-latest
+  search at `(int)(INT_PTR)second`. That start is read only while no latest achievement is known,
+  which a completion time of -1 or less leaves so; a 32-bit stack address (positive) and -1 give
+  the same answer there, so -1 keeps Win32's results for every input, while a 64-bit address cut
+  to `int` could be negative and take a completion at -5 as the second latest.
+- Desktop links (`3ca656a`). `platform_open_with_desktop` (`platform/desktop_win32.c`) calls the new
+  `win_utf8_shell_execute` (`platform/win_utf8.c`), which converts its text like the other
+  wrappers there (UTF-8, else CP949) and calls `ShellExecuteW`; text that cannot be converted for
+  lack of memory is not opened. `url_link.c` keeps its http:// and https:// check.
+- Unused locals (`aed6618`): `job` (`pc_render_robe`), `tint_blue`, `tint_green`, `tint_grey`
+  (`skill_on_process`), `effect` (`skill_cast_target_look`, `skill_cast_play_cast_look`) and `i`
+  (`game_mode_ack_to_use_skill`). GCC now reports 1,671 warnings, 14 fewer (each was counted for
+  `ragexe` and `ragexe_scenes`).
+- The two possible truncations GCC reports cannot cut a name, so they are left: the couple name
+  (`game_mode_zc_couple_name`) is at most the 24-byte field in a 24-byte buffer, and a character
+  name is at most 23 bytes with the server's NUL; the name balloon's lines are
+  "[title] name (party)" and "guild [position]" in 259 characters, with name, party, guild and
+  position from 24-byte packet fields and the title from the title table (longest 19 bytes): at
+  most 71 characters.
+
+### The pointer sweep
+
+Every `(int)` cast of `par1`-`par4`, `val1`-`val4` and the mode-message arguments `a`-`d` (about
+80) carries a number except case `0x20`. An x64 compile of every client source at `/W4`
+(syntax only, `build/merge-fixes-sweep-x64-w4.log`) reports no pointer truncation or extension
+(C4311, C4302, C4312); its 420 narrowings of `intptr_t` or `__int64` to `int`
+(`build/merge-fixes-sweep-narrowings.txt`) are numbers handed to `int` parameters, and every
+widening back to a pointer (`(T *)(intptr_t)x`, `MSG_PTR`) starts from a 64-bit value. Eight
+casts through a pointer-sized type to `int` were found: two hashes, the achievements start fixed
+above, and five in the three places listed below.
+
+### Checked on `main`
+
+- Case `0x20` and the achievements start: the same lines; on Win32 they change nothing (`int`
+  message arguments; a 32-bit stack address compares like -1).
+- `url_link.c` calls `ShellExecuteA` with the client's CP949 text, which is the Windows code page
+  of a Korean system, as in the original client.
+- The unused locals are used on `main` (the effects the removals took out are there).
+- The couple name and the balloon lines are the same and cannot cut a name either; `main`'s
+  `sprintf_s` cannot overflow at 71 characters.
+
+### Found, not fixed
+
+- Actor message `0x78` (`able_send_msg.c`) passes the address of its effect type, not the type,
+  to `effect_mgr_is_registered` and `effect_mgr_has_effect`. The original does the same (`push edi`
+  with the pointer at `0x751b2e`, then `mov dword ptr [edi], -1`). Its only sender
+  (`body_layer.c`) passes no sender and ignores the answer, so the result is the same either way.
+- `game_mode_msg_use_skill_to_ground` (`game/msg_skills.c`) passes the address of its
+  `GroundSkillUse` as the skill ID of the homunculus and mercenary checks; the original does too
+  (`0x790718`, then reads the structure through the same pointer at `0x790762`). On Win32 an
+  address is never a homunculus or mercenary skill ID, so a mounted player cannot use any ground
+  skill there; on 64-bit only the low 32 bits are compared. Fixing it (`use->skill_id`) would let a
+  mounted player use those skills, a change from the original.
+- `prim_standing_square_render` (`effects/rag/prim_kinds_129_134.c`) starts the blue channel at
+  the low byte of the `view` pointer; a square without a shade is drawn with it. Not a width
+  problem (the low byte is the same on 64-bit), but the colour depends on an address.
+- `tests/test_com_lifecycle.c` still defines a `ShellExecuteA` macro that nothing uses now; the file
+  belongs to the startup-table work and was left alone.
+
+### Tests added
+
+- `test_chat_room_title` extracts case `0x20` and `sm_window` and runs them against recording
+  stubs: a room value with bits above bit 31 on 64-bit builds must reach the window whole.
+- `test_latest_achievements` runs the extracted function on the real tree, with `second` at
+  `0x12f0000000` on 64-bit builds (a negative low word): the two latest of four completions, and a
+  lone completion at -5 that must leave both results alone.
+- Both run in CTest, through the new `rage_extracted_test` helper that runs the extractor at
+  build time, and in `tests\build.bat`. On 64-bit builds both fail on the previous code (MSVC x64
+  and GCC on Linux); on Win32 both pass either way.
+- `test_url_link` runs the real `win_utf8_shell_execute` with `ShellExecuteW` stubbed and
+  `ShellExecuteA` trapped, and adds a Hangul URL and one with an accented letter and a character
+  outside the BMP, whose UTF-16 must be exact: 38 cases. It fails on the previous
+  `desktop_win32.c`. `test_tag_text_viewer` stubs `win_utf8_shell_execute`.
+
+### Validation
+
+- Windows x86: `build.bat` without warnings (`build/merge-fixes-build.log`); the full suite
+  passed (`build/merge-fixes-full-tests.log`: packet dispatch `d77aaadbb5fc63b7`, effect trace
+  `cbdaaf30ef3127d6`, window lists `2232167ff470caa7`), and the seven standalone suites
+  (`build/merge-fixes-<suite>.log`). `git diff --check` passed for every commit.
+- Windows x64: `build.bat x64` without warnings (`build/merge-fixes-build-x64.log`).
+- CMake with MSVC x64 (Debug): configure and build without warnings; CTest passes 21 of 21, the 19
+  of the merge and the two new ones (`build/merge-fixes-cmake-x64-*.log`).
+- Linux (WSL Ubuntu 24.04, GCC 13.3, Ninja, `-DRAGE_CLIENT=ON`, SDL with
+  `SDL_UNIX_CONSOLE_BUILD=ON` from the merge check's sources): `ragexe` and `ragexe_scenes` build
+  with 1,671 warnings; CTest passes 26 of 26 with `SDL_VIDEO_DRIVER=offscreen` (`gfx_gl` skips
+  without a video driver); `build/wsl-merge-fixes-*.log`. The two new tests, built with GCC against
+  the merge's sources, fail (`build/wsl-merge-fixes-oldcheck.log`).
+
+No live client was run.
