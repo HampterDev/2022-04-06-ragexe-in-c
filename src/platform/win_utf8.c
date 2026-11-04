@@ -1,10 +1,12 @@
 #ifdef _WIN32
 #include "platform/win_utf8.h"
 #include "platform/code_page.h"
+#include <shellapi.h>
 #include <stdlib.h>
 #include <string.h>
 
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "advapi32.lib")
 
 /* Bytes as UTF-16: as UTF-8 when they are valid UTF-8, otherwise as CP949. Returns a
@@ -53,6 +55,23 @@ int WINAPI win_utf8_message_box(HWND owner, LPCSTR text, LPCSTR caption, UINT ty
         result = MessageBoxW(owner, wide_text, wide_caption, type);
     free(wide_text);
     free(wide_caption);
+    return result;
+}
+
+HINSTANCE WINAPI win_utf8_shell_execute(HWND owner, LPCSTR operation, LPCSTR file, LPCSTR parameters,
+                                        LPCSTR directory, INT show)
+{
+    wchar_t *wide_operation = widen(operation, -1, NULL), *wide_file = widen(file, -1, NULL);
+    wchar_t *wide_parameters = widen(parameters, -1, NULL), *wide_directory = widen(directory, -1, NULL);
+    HINSTANCE result = (HINSTANCE)(INT_PTR)SE_ERR_OOM;
+
+    if ((!operation || wide_operation) && (!file || wide_file) && (!parameters || wide_parameters) &&
+        (!directory || wide_directory))
+        result = ShellExecuteW(owner, wide_operation, wide_file, wide_parameters, wide_directory, show);
+    free(wide_operation);
+    free(wide_file);
+    free(wide_parameters);
+    free(wide_directory);
     return result;
 }
 

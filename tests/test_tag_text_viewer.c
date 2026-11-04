@@ -53,7 +53,8 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
 #include "../src/core/text_array.c"
 #undef malloc
 #define malloc checked_malloc
-#define ShellExecuteA test_open_url
+#include "platform/win_utf8.h"
+#define win_utf8_shell_execute test_open_url
 #include "../src/ui/controls/url_link.c"
 #include "../src/platform/desktop_win32.c"
 #include "../src/ui/quests/tag_text_viewer.c"
@@ -61,7 +62,7 @@ static HINSTANCE test_open_url(HWND window, const char *operation, const char *f
 static struct String *reference_button_get_line(struct UITextButton *link, struct String *out, unsigned i);
 #include "tag_text_viewer_reference.c"
 #endif
-#undef ShellExecuteA
+#undef win_utf8_shell_execute
 #undef free
 #undef malloc
 #undef realloc
