@@ -48,9 +48,9 @@ static void play_cast_motion(struct GameMode *mode, unsigned short skill_id, int
 
     if (!session_is_monster_actor(&g_session1, caster) && skill_id != SKILL_MG_SRECOVERY) {
         if (skill_id == SKILL_WE_MALE || skill_id == SKILL_WE_FEMALE)
-            mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (int)caster, target_aid, 0);
+            mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (intptr_t)caster, target_aid, 0);
         else
-            mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (int)caster, level, 0);
+            mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (intptr_t)caster, level, 0);
     } else {
         session_get_monster_skill_info(&g_session1, session_get_job_name(&g_session1, game_actor_get_job(caster), -1),
                                     skill_id, &action, &loop_type);
@@ -58,7 +58,7 @@ static void play_cast_motion(struct GameMode *mode, unsigned short skill_id, int
             render_object_set_action((struct RenderObject *)caster, action * 8 - 8, loop_type == 0);
     }
     if (session_is_monster_actor(&g_session1, caster) == 1)
-        mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (int)caster, level, 0);
+        mode_send_msg(mode, MODE_MSG_SKILL_CAST, skill_id, (intptr_t)caster, level, 0);
 
     if (action != -1 || keeps_its_state(skill_id))
         return;

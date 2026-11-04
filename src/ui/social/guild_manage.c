@@ -29,6 +29,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 static void destroy_string(void *value) { string_free(value); }
 
@@ -511,7 +512,7 @@ void ui_agit_message_box_create(struct UIAgitMessageBox *self, const char *text,
     UI_TEXT_VIEWER_BACKGROUND(viewer) = ui_skin_argb(2, 2);
     ui_window_invalidate(viewer);
     ui_window_add_child(wnd, viewer);
-    ui_window_send_msg(viewer, NULL, UI_MSG_ADD_TEXT, (int)text, width / 6, 0, 0);
+    ui_window_send_msg(viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)text, width / 6, 0, 0);
 
     ui_skin_dir(&dir);
     for (i = 0; i < 2; i++) {
@@ -688,7 +689,7 @@ BYTE ui_guild_member_manage_wnd_draw_row(struct UIGuildMemberManageWnd *self, st
     x += cols[4] + 1;
     string_format(&text, "%d", m->exp);
     member_draw_right(self, cols[5] + x - 4, y, &text, m->exp >= MEMBER_EXP_MAX ? MEMBER_EXP_MAX_COLOUR : 0);
-    strftime(time_text, sizeof time_text, msg_str(MSG_LAST_LOGIN_TIME), _localtime32((__time32_t *)&m->last_login));
+    strftime(time_text, sizeof time_text, msg_str(MSG_LAST_LOGIN_TIME), platform_time_local(m->last_login));
     string_format(&text, msg_str(MSG_LAST_LOGIN), time_text);
     ui_window_text_out(wnd, 8, y + 0x11, string_cstr(&text), 0, 0, 0xb, 0x404040, 0, 0);
     string_free(&text);

@@ -18,7 +18,7 @@
 
 static void chat(const char *text, int color, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, color, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, color, channel, 0);
 }
 
 static void end_exchange(struct GameMode *self)
@@ -72,15 +72,15 @@ void game_mode_delete_item_from_body(struct GameMode *self, const unsigned char 
 static void rental_line(const char *text)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, 0xffff, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)text, 0xffff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, 0xffff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (intptr_t)text, 0xffff, 0, 0);
 }
 
 static const char *item_name(int item_id)
 {
     char text[12];
 
-    _itoa(item_id, text, 10);
+    snprintf(text, sizeof text, "%d", item_id);
     return item_table_get(atoi(text))->name;
 }
 
@@ -111,7 +111,7 @@ void game_mode_cash_time_counter(const unsigned char *pkt)
     rental_line(line);
     if (minutes == 1) {
         sprintf(line, msg_str(0x4e9), name);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, 0xffff, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)line, 0xffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, 0xffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (intptr_t)line, 0xffff, 0, 0);
     }
 }

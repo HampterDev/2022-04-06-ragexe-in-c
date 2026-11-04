@@ -44,7 +44,7 @@ void game_mode_on_req_ack_agit_investment(struct GameMode *self, unsigned char a
 
     client_lua_call(g_session1.luaState, "get_agit_name", "d>s", (int)agit_id, &name);
     memset(text, 0, sizeof text);
-    sprintf_s(text, 0x100, msg_str(0xe30), name, defense, 100, economy, 100);
+    snprintf(text, 0x100, msg_str(0xe30), name, defense, 100, economy, 100);
     ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, UI_MSGBOX_TITLE, 0xfa, 0x82, 0);
 }
 
@@ -59,7 +59,7 @@ void game_mode_on_req_ack_move_guild_agit(struct GameMode *self, short result)
         msg = 0xe31;
     else
         return;
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), CHAT_COLOR_AGIT, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), CHAT_COLOR_AGIT, 0, 0);
 }
 
 void game_mode_on_change_agit_owner(struct GameMode *self, unsigned char agit_id, int old_guild_id,

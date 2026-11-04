@@ -7,8 +7,8 @@
 #include "render/texture.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 struct UIWindow;
 const struct UIWindowOps ui_window_ops = {
@@ -119,8 +119,8 @@ void ui_window_on_mouse_shape_base(struct UIWindow *self, int x_unused, int y_un
     ui_set_cursor_action(CURSOR_ARROW);
 }
 
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1_unused,
-                                int val2_unused, int val3_unused, int val4_unused)
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1_unused,
+                                intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused)
 {
     if ((msg == UI_MSG_DEFAULT_BUTTON || msg == UI_MSG_CANCEL_BUTTON) && self->parent)
         ui_window_send_msg(self->parent, self, msg, 0, 0, 0, 0);
@@ -134,13 +134,13 @@ DWORD ui_window_get_color(struct UIWindow *self)
     unsigned target = w->alpha_target;
 
     if (alpha < target) {
-        if (target >= w->alpha + ((timeGetTime() - w->alpha_time) >> 4))
-            target = w->alpha + ((timeGetTime() - w->alpha_time) >> 4);
+        if (target >= w->alpha + ((platform_ticks_ms() - w->alpha_time) >> 4))
+            target = w->alpha + ((platform_ticks_ms() - w->alpha_time) >> 4);
         w->alpha = target;
         alpha = target;
     } else if (alpha > target) {
-        if (target <= w->alpha - ((timeGetTime() - w->alpha_time) >> 4))
-            target = w->alpha - ((timeGetTime() - w->alpha_time) >> 4);
+        if (target <= w->alpha - ((platform_ticks_ms() - w->alpha_time) >> 4))
+            target = w->alpha - ((platform_ticks_ms() - w->alpha_time) >> 4);
         w->alpha = target;
         alpha = target;
     }

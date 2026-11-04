@@ -155,7 +155,7 @@ float game_camera_scale(void)
     return 400.0f / view->destDistance;
 }
 
-int game_send_message(int message, int a, int b, int c, int d)
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct GameMode *mode = game_current_mode();
     return mode ? mode_send_msg(mode, message, a, b, c, d) : 0;

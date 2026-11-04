@@ -30,7 +30,7 @@ void game_mode_on_item_fall_entry5(struct GameMode *self, const struct PacketIte
     struct Item *item;
 
     memset(&info, 0, sizeof info);
-    _itoa(packet->item_id, info.item_id_text, 10);
+    snprintf(info.item_id_text, sizeof info.item_id_text, "%d", packet->item_id);
     info.x = packet->x;
     info.y = packet->y;
     info.sub_x = packet->sub_x;
@@ -100,7 +100,7 @@ void game_mode_on_item_pickup_party2(struct GameMode *self, const struct PacketI
         string_init(&line);
         string_format(&line, msg_str(MSG_PARTY_MEMBER_GOT_ITEM), string_cstr(&member.name),
                           string_cstr(name));
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), CHAT_COLOR_YELLOW,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), CHAT_COLOR_YELLOW,
                             8, 0);
         string_free(&line);
         string_free(&item_name);

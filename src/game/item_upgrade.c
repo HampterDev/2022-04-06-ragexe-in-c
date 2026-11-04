@@ -44,5 +44,5 @@ void game_mode_on_repair_item_list2(struct GameMode *self, const struct PacketRe
     if (wnd == 0)
         return;
     for (i = 0; i < count; i++, item++)
-        ui_window_send(wnd, NULL, WM_REPAIR_ADD_ITEM, (int)item, 0, 0, 0);
+        ui_window_send(wnd, NULL, WM_REPAIR_ADD_ITEM, (intptr_t)item, 0, 0, 0);
 }

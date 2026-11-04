@@ -5,7 +5,7 @@
 #include "ui/window_manager_state.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include "game/character_stats.h"
 #include "game/session_bridge.h"
@@ -88,7 +88,7 @@ struct PACKET_ZC_PAR_CHANGE {
 
 static void chat_line(const char *text, int color, int kind)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)text, color, kind, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)text, color, kind, 0);
 }
 
 static void weight_icon(void)

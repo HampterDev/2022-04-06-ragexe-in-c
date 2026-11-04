@@ -1,12 +1,13 @@
 #include "core/thread_text.h"
 #include <string.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "contents/lua_data.h"
 #include "std/std.h"
 #include <lauxlib.h>
 #include <lualib.h>
 #include "core/text_util.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
+#include "contents/lua_file.h"
 
 static char main_result_ok(lua_State *L, const char *owner, enum LuaDataCheck check)
 {
@@ -14,24 +15,24 @@ static char main_result_ok(lua_State *L, const char *owner, enum LuaDataCheck ch
     struct String text;
 
     if (!lua_isstring(L, -1)) {
-        win_utf8_message_box(0, "second return value is not string...", owner, 0);
+        platform_message_box(0, "second return value is not string...", owner, 0);
         return 0;
     }
     if (lua_toboolean(L, -2))
         return 1;
     message = lua_tolstring(L, -1, 0);
     if (check == LUA_DATA_ERROR_FORMAT) {
-        win_utf8_message_box(0, thread_text_format("error : %s", message), owner, 0);
+        platform_message_box(0, thread_text_format("error : %s", message), owner, 0);
     } else if (check == LUA_DATA_ERROR_STRING) {
         string_init(&text);
         string_format(&text, "error : %s", message);
-        win_utf8_message_box(0, string_cstr(&text), owner, 0);
+        platform_message_box(0, string_cstr(&text), owner, 0);
         string_free(&text);
     } else {
         string_init(&text);
         string_assign_cstr(&text, "error found :");
         string_append_cstr(&text, message);
-        win_utf8_message_box(0, string_cstr(&text), owner, 0);
+        platform_message_box(0, string_cstr(&text), owner, 0);
         string_free(&text);
     }
     return 0;
@@ -47,19 +48,19 @@ char lua_data_run(const char *path, const char *owner,
 
     if (!L)
         return 0;
-    luaL_openlibs(L);
+    lua_open_client_libs(L);
     for (i = 0; i < function_count; i++) {
         lua_pushcclosure(L, functions[i].function, 0);
         lua_setfield(L, LUA_GLOBALSINDEX, functions[i].name);
     }
-    if (luaL_loadfile(L, path) != 0 || lua_pcall(L, 0, 0, 0) != 0) {
+    if (lua_load_disk_file(L, path) != 0 || lua_pcall(L, 0, 0, 0) != 0) {
         ok = 0;
     } else {
         lua_getfield(L, LUA_GLOBALSINDEX, "main");
         ok = lua_pcall(L, 0, 2, 0) == 0;
     }
     if (!ok)
-        win_utf8_message_box(0, lua_tolstring(L, -1, 0), owner, 0);
+        platform_message_box(0, lua_tolstring(L, -1, 0), owner, 0);
     else if (check != LUA_DATA_IGNORE_RESULT)
         ok = main_result_ok(L, owner, check);
     lua_close(L);

@@ -68,7 +68,7 @@ static void set_options(struct ItemInfo *item, const struct ItemOption *options)
 static void show_item(struct UIWindow *wnd, struct ItemInfo *item)
 {
     if (wnd != 0)
-        ui_window_send(wnd, NULL, UIM_SHOW_ITEM, (int)item, 1, 0, 0);
+        ui_window_send(wnd, NULL, UIM_SHOW_ITEM, (intptr_t)item, 1, 0, 0);
 }
 
 void game_mode_zc_change_item_option(struct GameMode *self, unsigned index, unsigned refine,
@@ -264,7 +264,7 @@ void game_mode_zc_equip_item_damaged(struct GameMode *self, const struct PACKET_
     }
     if (line.size != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), DAMAGED_COLOR, DAMAGED_CHANNEL, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), DAMAGED_COLOR, DAMAGED_CHANNEL, 0);
     }
     string_free(&line);
 }

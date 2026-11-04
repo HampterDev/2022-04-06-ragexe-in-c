@@ -104,6 +104,7 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
     clip_system_owned=1; ++published; return block;
 }
 
+#include "platform/window.h"
 #define GetKeyState test_key_state
 #define GetKeyboardLayout test_keyboard
 #define GetUserDefaultLangID test_user_language
@@ -123,7 +124,10 @@ static HANDLE test_set_clipboard(UINT format,HANDLE block)
 #define malloc test_malloc
 #define realloc test_realloc
 #define free test_free
+#include "../src/platform/system_win32.c"
 #include "../src/platform/language.c"
+#include "../src/platform/language_win32.c"
+#include "../src/platform/window_win32.c"
 #undef malloc
 #undef realloc
 #undef free

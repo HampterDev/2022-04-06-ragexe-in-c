@@ -70,10 +70,10 @@ static void reset_case(void)
     if (sound_manager) {
         sound_stop_stream();
         free(manager.bgm_name);
-        DeleteCriticalSection(&manager.stream_lock);
+        platform_mutex_destroy(manager.stream_lock);
     }
     memset(&manager, 0, sizeof manager);
-    InitializeCriticalSection(&manager.stream_lock);
+    manager.stream_lock = platform_mutex_create();
     manager.driver = &driver_token;
     manager.bgm_volume = 100;
     sound_manager = &manager;
@@ -179,7 +179,7 @@ int main(void)
     silent_map_cases();
 
     sound_stop_stream(); free(manager.bgm_name);
-    DeleteCriticalSection(&manager.stream_lock); sound_manager = NULL;
+    platform_mutex_destroy(manager.stream_lock); sound_manager = NULL;
     if (failures) { printf("NPC music handoff: %d failed checks\n", failures); return 1; }
     puts("Map/NPC music: mapped and silent entry, empty catalog/entry, resume, event completion, mute, missing track and return to mapped music passed");
     return 0;

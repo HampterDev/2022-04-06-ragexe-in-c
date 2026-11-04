@@ -8,11 +8,11 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <winsock2.h>
 #include "core/msg_str.h"
 #include "session/session_names.h"
 #include "core/unknown_packet.h"
 #include "core/packet_table.h"
+#include "core/memory.h"
 
 int g_mapServerAidPending = 0;
 
@@ -162,7 +162,7 @@ static void enter_zone(struct LoginMode *self, struct String host)
 
 static void char_map_display_name(char *mapName)
 {
-    _snprintf_s(mapName, 0x10, (size_t)-1, "%s", session_get_rsw_name(mapName));
+    snprintf(mapName, 0x10, "%s", session_get_rsw_name(mapName));
 }
 
 static void on_refuse_char_server(struct LoginMode *self)
@@ -261,7 +261,7 @@ static void on_char_list_userver(struct LoginMode *self)
     len = (unsigned)packet->packet_length - 0x18;
     self->numChar = (int)(len / 0xaf);
     (g_session1.charCount) = self->numChar;
-    memcpy_s(self->chars, 0x2e7c, packet->chars + len % 0xaf, self->numChar * 0xaf);
+    mem_copy_checked(self->chars, 0x2e7c, packet->chars + len % 0xaf, self->numChar * 0xaf);
     self->base.next_sub_mode = 0x13;
 }
 
@@ -418,7 +418,7 @@ static void on_char_updated(struct LoginMode *self)
 
     if (!c || c->gid != ((DWORD)g_session1.renameCharId))
         return;
-    memcpy_s(c, 0xaf, &packet->chara, 0xaf);
+    memcpy(c, &packet->chara, 0xaf);
     char_map_display_name(c->map_name);
     self->base.next_sub_mode = 7;
 }

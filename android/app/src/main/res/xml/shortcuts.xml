@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="import"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/import_shortcut">
+        <intent
+            android:action="local.ragexe.client.IMPORT"
+            android:targetPackage="local.ragexe.client"
+            android:targetClass="local.ragexe.client.ClientActivity" />
+    </shortcut>
+</shortcuts>

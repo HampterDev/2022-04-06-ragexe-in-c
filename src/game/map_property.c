@@ -34,7 +34,7 @@ struct PacketMapPropertyR2 {
 
 static void say_notice(int msg_id)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(msg_id), COLOUR_NOTICE, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(msg_id), COLOUR_NOTICE, 0, 0);
 }
 
 static void apply_flag_f(void)
@@ -57,7 +57,7 @@ void game_mode_notify_map_property(struct GameMode *self, const struct PacketMap
         self->world->is_event_pvp = 1;
         break;
     case 4:
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x357), 0x9b9bff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x357), 0x9b9bff, 0, 0);
         break;
     case 5:
         self->world->is_pvp = 1;
@@ -161,8 +161,8 @@ enum {
 
 static void map_info_line(int msg_id, unsigned colour)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(msg_id), colour, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_NOTICE_LOG, (int)msg_str(msg_id), colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(msg_id), colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_NOTICE_LOG, (intptr_t)msg_str(msg_id), colour, 0, 0);
 }
 
 void game_mode_zc_notify_map_info(struct GameMode *self, const struct PACKET_ZC_NOTIFY_MAPINFO *packet)

@@ -14,6 +14,7 @@
 #include "platform/client_options.h"
 #include "contents/guild_info.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -22,9 +23,7 @@
 #include "ui/window_access.h"
 #include "game/context.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
-#include <winsock.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/client.h"
@@ -40,7 +39,7 @@
 #include "game/mode_initialize.h"
 #include "actor/attr_state.h"
 #include "game/mode_msg.h"
-#include "platform/win_utf8.h"
+#include "platform/clock.h"
 
 int g_isStopByLogin = 0;
 
@@ -88,20 +87,20 @@ static void make_windows(void)
 static void read_name_balloon_pos(struct GameMode *self)
 {
     char path[0x200];
-    HKEY key;
-    DWORD type, size;
+    struct PlatformSettingsKey *key;
+    uint32_t type, size;
 
     strcpy(path, g_registryKeyPath);
     strcat(path, "\\NameBaloon");
     strcat(path, "\\");
     strcat(path, string_cstr(&g_session1.serverName));
-    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == 0) {
-        RegCloseKey(key);
-        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, 0xf003f, &key) == 0) {
+    if (platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &key)) {
+        platform_settings_close(key);
+        if (platform_settings_open(path, PLATFORM_SETTINGS_ALL, &key)) {
             size = 4;
             type = 4;
-            win_utf8_reg_query_value(key, "POS", 0, &type, (BYTE *)&self->name_balloon_pos, &size);
-            RegCloseKey(key);
+            platform_settings_read(key, "POS", &type, &self->name_balloon_pos, &size);
+            platform_settings_close(key);
         }
     }
     if (self->name_balloon_pos != 0 && self->name_balloon_pos != 1)
@@ -113,9 +112,9 @@ static void greet_after_login(struct GameMode *self)
     g_isStopByLogin = 0;
     guild_info_reset(&g_guildInfo);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)msg_str(0x16), 0xffe6e6, 0, 0);
     if (!account_user_data_is_loaded(g_accountUserDataMgr))
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)"Local account settings could not be loaded. Using initial preferences; existing file preserved.", 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (intptr_t)"Local account settings could not be loaded. Using initial preferences; existing file preserved.", 0xff, 0, 0);
 }
 
 static void enter_map_server(void)
@@ -200,8 +199,8 @@ void game_mode_initialize(struct GameMode *self)
     self->held_walk_allowed = 1;
     self->chat_room_pending = 0;
     self->exchange_add_pending = 0;
-    self->wear_ack_time = timeGetTime() - 2000;
-    self->takeoff_ack_time = timeGetTime() - 2000;
+    self->wear_ack_time = platform_ticks_ms() - 2000;
+    self->takeoff_ack_time = platform_ticks_ms() - 2000;
     self->trade_add_amount = 0;
     self->exchange_open = 0;
     self->chat_repeats = 0;
@@ -219,15 +218,15 @@ void game_mode_initialize(struct GameMode *self)
 
     mouse_reset_buttons(&g_mouse);
     self->server_time_answered = 1;
-    self->server_time_requested_at = timeGetTime();
-    self->initialized_at = timeGetTime();
-    self->emotion_time = timeGetTime();
-    self->server_move_time = timeGetTime();
-    self->ui_tick_time = timeGetTime();
-    self->notice_shown_at = timeGetTime();
-    self->skill_shout_time = timeGetTime();
-    self->chat_room_enter_time = timeGetTime();
-    self->store_browse_time = timeGetTime();
+    self->server_time_requested_at = platform_ticks_ms();
+    self->initialized_at = platform_ticks_ms();
+    self->emotion_time = platform_ticks_ms();
+    self->server_move_time = platform_ticks_ms();
+    self->ui_tick_time = platform_ticks_ms();
+    self->notice_shown_at = platform_ticks_ms();
+    self->skill_shout_time = platform_ticks_ms();
+    self->chat_room_enter_time = platform_ticks_ms();
+    self->store_browse_time = platform_ticks_ms();
     self->item_move_ready = 1;
     memset(self->stat_raises, 0, sizeof self->stat_raises);
     self->wheel_count = 0;

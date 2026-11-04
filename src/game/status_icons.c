@@ -13,9 +13,9 @@
 #include "ui/ui_std.h"
 
 struct Tree g_healthStateIcons;
-INIT_ONCE g_healthStateIconsGuard;
+struct Once g_healthStateIconsGuard;
 struct Tree g_bodyStateIcons;
-INIT_ONCE g_bodyStateIconsGuard;
+struct Once g_bodyStateIconsGuard;
 void health_state_icons_atexit(void);
 void body_state_icons_atexit(void);
 
@@ -95,7 +95,7 @@ static void own_states(const struct ActorStates *states)
 static void tell_actor(struct GameActor *actor, struct ActorStates *states)
 {
     if (actor != 0)
-        render_object_send(actor, NULL, ACTOR_MSG_STATES, MSG_ARG_PTR(states), 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_STATES, (intptr_t)states, 0, 0, 0);
 }
 
 void game_mode_zc_state_change3(struct GameMode *self, const struct PACKET_ZC_STATE_CHANGE3 *packet)

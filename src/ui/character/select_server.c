@@ -4,6 +4,7 @@
 #include "render/rp_pool.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "contents/mouse.h"
 #include "core/object_type_tables.h"
@@ -15,7 +16,6 @@
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_talk.h"
-#include "platform/win_utf8.h"
 
 struct Vec;
 struct UISelectServerWnd;
@@ -24,7 +24,7 @@ void ui_select_server_wnd_destroy(struct UIWindow *window);
 void ui_select_server_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_select_server_wnd_on_destroy(struct UIWindow *self);
 void ui_select_server_wnd_on_draw(struct UIWindow *self);
-int ui_select_server_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_select_server_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_select_server_wnd_ops = {
     .destroy = ui_select_server_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -177,8 +177,6 @@ struct UIServerListBox {
     struct Vec balloon_texts;
     struct UIWindow *balloon;
 };
-OFFSET_ASSERT(UIServerListBox, balloon, 0xdc);
-SIZE_ASSERT(UIServerListBox, 0xe0);
 
 struct UIServerListBox *ui_server_list_box_construct(struct UIServerListBox *self)
 {
@@ -255,7 +253,6 @@ struct UISelectServerWnd {
     int server;
     int mode_request;
 };
-OFFSET_ASSERT(UISelectServerWnd, server_value, 0x9c);
 
 struct UISelectServerWnd *ui_select_server_wnd_construct(struct UISelectServerWnd *self)
 {
@@ -353,15 +350,15 @@ void ui_select_server_wnd_on_draw(struct UIWindow *window)
 #define SELECT_SERVER_REQ_CANCEL 0x2716
 #define MSG_SELECT_SERVER_QUIT_ASK 0x11
 
-int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISelectServerWnd *self = (struct UISelectServerWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *list = &self->list->list.base;
     const char *value;
-    HKEY probe, key;
-    DWORD type, size, disposition;
+    struct PlatformSettingsKey *probe, *key;
+    uint32_t type, size;
 
     switch (msg) {
     case UI_MSG_COMMAND:
@@ -375,12 +372,10 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
                             0.0f, 0xfa, 0x28, 1.0f);
             value = string_cstr(&self->server_value);
             self->server = self->list->list.selected;
-            disposition = 0;
-            if (win_utf8_reg_create_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
-                                        &disposition) != ERROR_SUCCESS)
+            if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
                 return 0;
-            win_utf8_reg_set_value(key, value, 0, REG_DWORD, (const BYTE *)&self->server, 4);
-            RegCloseKey(key);
+            platform_settings_write(key, value, PLATFORM_SETTING_DWORD, &self->server, 4);
+            platform_settings_close(key);
             return 0;
         case SELECT_SERVER_ID_CANCEL:
             ui_window_mgr_post_quit2(&g_windowMgr, wnd);
@@ -407,15 +402,15 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         string_assign_cstr(&self->server_value, (const char *)val2);
         value = string_cstr(&self->server_value);
         self->server = CLIENT_LANGTYPE;
-        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS)
+        if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &probe))
             return 0;
-        RegCloseKey(probe);
-        if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+        platform_settings_close(probe);
+        if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
             return 0;
         size = 4;
         type = 4;
-        win_utf8_reg_query_value(key, value, NULL, &type, (BYTE *)&self->server, &size);
-        RegCloseKey(key);
+        platform_settings_read(key, value, &type, &self->server, &size);
+        platform_settings_close(key);
         return 0;
     case SELECT_SERVER_MSG_PLACE_EXIT:
         ui_window_move_base(self->exit_button, SELECT_SERVER_EXIT_X, self->exit_button->y);

@@ -7,15 +7,16 @@
 #ifndef GAMEMODE_WORLD_PICK_H
 #define GAMEMODE_WORLD_PICK_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/input.h"
 #include "game/mode_msg.h"
 
 #include "actor/render_ops.h"
+#include "platform/window.h"
 
 static __inline unsigned char key_down(int vk)
 {
-    return (unsigned char)((unsigned)GetAsyncKeyState(vk) >> 8);
+    return (unsigned char)((unsigned)platform_async_key_state(vk) >> 8);
 }
 
 enum { CURSOR_ARROW = 0, CURSOR_ATTACK = 5, CURSOR_SKILL = 0xb };

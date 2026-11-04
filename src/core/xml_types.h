@@ -1,7 +1,7 @@
 #ifndef CORE_XML_TYPES_H
 #define CORE_XML_TYPES_H
 
-#include "base.h"
+#include "std/string.h"
 
 struct XmlElement {
     const char *name;
@@ -11,7 +11,6 @@ struct XmlElement {
     struct XmlElement *next;
     struct XmlElement *first;
 };
-OFFSET_ASSERT(XmlElement, text, 0x0c);
 
 struct XmlDocument {
     struct XmlElement root;

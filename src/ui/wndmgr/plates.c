@@ -8,6 +8,7 @@
 #include "session/session_party.h"
 #include "session/session_state.h"
 #include "session/session_windows.h"
+#include "platform/clock.h"
 
 #define PLATE_MEMBER_ID(plate) ((plate)->member.aid)
 #define NODE_PLATE(node) (*LIST_VALUE(node, struct UIMiniPartyWnd *))
@@ -115,7 +116,7 @@ void ui_window_mgr_set_drag_plate(struct UIWindowMgr *self, struct UIWindow *pla
         ui_window_mgr_post_quit2(self, self->drag_plate);
     self->drag_plate = plate;
     plate->alpha_target = 0x80;
-    plate->alpha_time = timeGetTime();
+    plate->alpha_time = platform_ticks_ms();
     list_push_back(&self->windows, &self->drag_plate, sizeof self->drag_plate);
 }
 
@@ -189,7 +190,7 @@ static struct UIMiniPartyWnd *new_plate(struct UIWindowMgr *self, struct PartyMe
     ui_window_create(&plate->frame.base, WM_PLATE_WIDTH, WM_PLATE_HEIGHT);
     plate->cell = cell;
     ui_window_mgr_add_plate(self, plate);
-    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, WM_PLATE_MSG_MEMBER, (int)member, 0, 0, 0);
+    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, WM_PLATE_MSG_MEMBER, (intptr_t)member, 0, 0, 0);
     return plate;
 }
 

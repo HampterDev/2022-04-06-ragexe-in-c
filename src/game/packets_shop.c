@@ -3,7 +3,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/packets.h"
@@ -12,6 +12,7 @@
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/store_entries.h"
+#include "core/cstr.h"
 
 #define WND_SHOP_BUY            0x16
 #define WND_SHOP_BUY_CART       0x17
@@ -25,7 +26,7 @@
 static void chat_result(int msg, int color)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), color, 0, 0);
 }
 
 static void shop_window_refresh(void *wnd, int a, int b)
@@ -77,7 +78,7 @@ void game_mode_zc_pc_purchase_itemlist2(struct GameMode *self, const unsigned ch
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(entry.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", entry.item_id);
         item.price = entry.price;
         item.charged_price = entry.discount_price;
         item.type = entry.type;
@@ -118,7 +119,7 @@ void game_mode_zc_pc_purchase_itemlist(struct GameMode *self, const unsigned cha
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.discount_price;
         item.type = copy.type;
@@ -188,7 +189,7 @@ void game_mode_zc_pc_sell_itemlist(struct GameMode *self, const unsigned char *p
 
             item_record_a_clear(&item);
             item.index = copy.index;
-            strcpy_s(item.id_text, sizeof item.id_text, string_cstr(&owned.id_text));
+            cstr_copy(item.id_text, sizeof item.id_text, string_cstr(&owned.id_text));
             item.price = copy.price;
             item.charged_price = copy.overcharge_price;
             item.type = owned.type;
@@ -249,7 +250,7 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
     if (g_session1.channelCopId == 1) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
         ui_window_mgr_send_msg_(&g_windowMgr, 1,
-            (int)"\xed\x95\x9c\xea\xb2\x8c\xec\x9e\x84 \xec\x9c\xa0\xec\xa0\x80\xeb\x8a\x94 12\xec\x9b\x94 3\xec\x9d\xbc\xeb\xb6\x80\xeb\xa1\x9c " /* "한게임 유저는 12월 3일부로 " */
+            (intptr_t)"\xed\x95\x9c\xea\xb2\x8c\xec\x9e\x84 \xec\x9c\xa0\xec\xa0\x80\xeb\x8a\x94 12\xec\x9b\x94 3\xec\x9d\xbc\xeb\xb6\x80\xeb\xa1\x9c " /* "한게임 유저는 12월 3일부로 " */
                  "\xec\x9c\xa0\xeb\xa3\x8c\xec\x95\x84\xec\x9d\xb4\xed\x85\x9c \xea\xb5\xac\xeb\xa7\xa4\xea\xb0\x80 \xeb\xb6\x88\xea\xb0\x80\xeb\x8a\xa5\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4." /* "유료아이템 구매가 불가능합니다." */,
             CHAT_COLOR_RED, 0, 0);
         return;
@@ -260,7 +261,7 @@ void game_mode_zc_pc_cash_point_itemlist(struct GameMode *self, const unsigned c
         struct ItemRecordA item;
 
         item_record_a_clear(&item);
-        _itoa(copy.item_id, item.id_text, 10);
+        snprintf(item.id_text, sizeof item.id_text, "%d", copy.item_id);
         item.price = copy.price;
         item.charged_price = copy.discount_price;
         item.type = copy.type;
@@ -324,7 +325,7 @@ void game_mode_zc_pc_cash_point_update(struct GameMode *self, const unsigned cha
         string_assign_cstr(&line, text);
     if (line.size != 0) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), color, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), color, 0, 0);
     }
     string_free(&line);
 }

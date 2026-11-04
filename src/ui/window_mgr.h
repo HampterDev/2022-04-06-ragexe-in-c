@@ -33,7 +33,7 @@ static __inline BYTE ui_close_window(int window_id)
 
 static __inline void ui_chat_line(const char *text, COLORREF colour)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, (int)colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)text, (int)colour, 0, 0);
 }
 
 void ui_window_mgr_set_focus_edit(struct UIWindowMgr *self,
@@ -54,7 +54,7 @@ static __inline int ui_message_box(const char *text)
 
 struct UIWindow *ui_normal_mb_new(void);
 void ui_normal_mb_create(struct UIWindow *self, struct UIWindow *owner, const char *text,
-                                  int type, int arg3, int arg4, int width, int height, int arg7);
+                                  int type, int arg3, const char *arg4, int width, int height, const char *arg7);
 void ui_normal_mb_set_answer(struct UIWindow *window, int id, void (*run)(void));
 
 void ui_window_mgr_get_snap_delta(struct UIWindowMgr *self, struct UIWindow *wnd,

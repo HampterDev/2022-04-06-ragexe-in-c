@@ -1,8 +1,9 @@
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/drive_state.h"
+#include "platform/filesystem.h"
 #include "world/mode_manager.h"
 #include "world/mode_types.h"
 #include "world/state.h"
@@ -13,6 +14,7 @@
 #include "ui/window_types.h"
 #include "ui/window_keyboard.h"
 #include "world/pick_node.h"
+#include "platform/clock.h"
 
 #define DRIVE_STATE_INTERVAL_MS 250
 #define CHAT_KEPT 8
@@ -27,9 +29,11 @@ static int g_chatNext;
 static const char *state_path(void)
 {
     if (!g_stateChecked) {
-        DWORD n = GetEnvironmentVariableA("RAGEXE_DRIVE_STATE", g_statePath, sizeof g_statePath);
+        const char *path = getenv("RAGEXE_DRIVE_STATE");
 
-        if (n == 0 || n >= sizeof g_statePath)
+        if (path && strlen(path) < sizeof g_statePath)
+            strcpy(g_statePath, path);
+        else
             g_statePath[0] = '\0';
         g_stateChecked = 1;
     }
@@ -108,6 +112,10 @@ static void write_windows(FILE *f)
     fprintf(f, "chat_focus=%d\n", g_windowMgr.chat_bar_shown && ui_window_mgr_is_chat_edit_focused(&g_windowMgr));
 }
 
+void drive_state_frame_shown(void)
+{
+}
+
 void drive_state_tick(void)
 {
     const char *path = state_path();
@@ -118,7 +126,7 @@ void drive_state_tick(void)
 
     if (!path[0])
         return;
-    now = GetTickCount();
+    now = platform_coarse_ticks_ms();
     if (now - g_stateLastWrite < DRIVE_STATE_INTERVAL_MS)
         return;
     g_stateLastWrite = now;
@@ -148,5 +156,5 @@ void drive_state_tick(void)
             fprintf(f, "chat%d=%s\n", i, line);
     }
     fclose(f);
-    MoveFileExA(temp, path, MOVEFILE_REPLACE_EXISTING);
+    platform_file_move(temp, path);
 }

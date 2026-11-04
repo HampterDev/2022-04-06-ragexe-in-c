@@ -1,7 +1,7 @@
 #ifndef PLATFORM_CRASH_DUMP_H
 #define PLATFORM_CRASH_DUMP_H
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 
 enum CrashDumpStatus {
     CRASH_DUMP_SAVED,

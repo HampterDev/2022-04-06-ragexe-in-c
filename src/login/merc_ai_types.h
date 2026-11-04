@@ -1,7 +1,7 @@
 #ifndef LOGINMODE_MERC_AI_TYPES_H
 #define LOGINMODE_MERC_AI_TYPES_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 
 struct lua_State;
@@ -13,6 +13,5 @@ struct MercenaryAI {
     int kind;
     DWORD lastRun;
 };
-SIZE_ASSERT(MercenaryAI, 0x14);
 
 #endif

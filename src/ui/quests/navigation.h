@@ -23,8 +23,6 @@ struct UIListBox_NaviSearch {
     struct UIListBox list;
     struct Vec kinds;
 };
-OFFSET_ASSERT(UIListBox_NaviSearch, kinds, 0xd0);
-SIZE_ASSERT(UIListBox_NaviSearch, 0xdc);
 #define NAVI_LINE_MAP 1
 #define NAVI_LINE_NPC 2
 #define NAVI_LINE_MOB 3
@@ -73,8 +71,6 @@ struct UINavigationV4Wnd {
     DWORD hint_until;
     int anim_period;
 };
-OFFSET_ASSERT(UINavigationV4Wnd, close_button, 0x94);
-OFFSET_ASSERT(UINavigationV4Wnd, results, 0xc8);
 
 #define NAVI_MSG_ROAD_ICON 0x28
 
@@ -130,14 +126,14 @@ static __inline void ui_canvas_draw_image(struct DcBitmap *canvas, int x, int y,
 #define UI_TEXTURE_H(t) ((unsigned)((const struct Texture *)(t))->reqHeight)
 
 struct UIPrivateAirplaneWnd *ui_private_airplane_wnd_new(void);
-int ui_private_airplane_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4);
+intptr_t ui_private_airplane_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 #include "ui/quests/world_view.h"
 struct Session;
 
-int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4);
+intptr_t ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4);
 
 BYTE ui_navigation_v4_wnd_minimize_checked(struct UINavigationV4Wnd *self);
 /* Opens the navigation window's help when the window is shown, not collapsed and its

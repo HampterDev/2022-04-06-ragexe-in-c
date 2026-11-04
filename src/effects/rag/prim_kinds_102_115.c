@@ -422,7 +422,7 @@ static void launch_109_on(struct RenderObject *actor, Vec3 centre)
 
     if (effect) {
         Vec3 at = centre;
-        rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, MSG_ARG_PTR(&at), 0, 0);
+        rag_effect_send_msg(effect, 0, RAG_MSG_OFFSET, (intptr_t)&at, 0, 0);
     }
 }
 

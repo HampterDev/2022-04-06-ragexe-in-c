@@ -1,30 +1,31 @@
 #include "session/state.h"
 #include "core/text_util.h"
+#include "platform/code_page.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <wctype.h>
-#include <oleauto.h>
 #include "base.h"
 #include "game/client.h"
 
 static void text_to_wide(struct WString *out, UINT code_page, const struct String *src)
 {
-    BSTR wide;
+    uint16_t *wide;
     int count;
 
     wstring_init(out);
-    count = MultiByteToWideChar(code_page, 0, string_cstr(src), src->size, NULL, 0);
+    count = platform_code_page_to_utf16(code_page, string_cstr(src), src->size, NULL, 0);
     if (count == 0)
         return;
-    wide = SysAllocStringLen(NULL, count);
+    wide = malloc(((size_t)count + 1) * sizeof *wide);
     if (!wide)
         return;
-    if (MultiByteToWideChar(code_page, 0, string_cstr(src), src->size, wide, count) != 0)
-        wstring_assign(out, wide, wcslen(wide));
-    SysFreeString(wide);
+    wide[count] = 0;
+    if (platform_code_page_to_utf16(code_page, string_cstr(src), src->size, wide, count) != 0)
+        wstring_assign(out, wide, utf16_length(wide));
+    free(wide);
 }
 
 static void wide_to_text(struct String *out, UINT code_page, const struct WString *src)
@@ -33,11 +34,11 @@ static void wide_to_text(struct String *out, UINT code_page, const struct WStrin
     int count;
 
     string_init(out);
-    count = WideCharToMultiByte(code_page, 0, wstring_cstr(src), -1, NULL, 0, NULL, NULL);
+    count = platform_code_page_from_utf16(code_page, wstring_cstr(src), -1, NULL, 0);
     if (count == 0)
         return;
     text = mem_alloc(count);
-    if (WideCharToMultiByte(code_page, 0, wstring_cstr(src), -1, text, count, NULL, NULL) != 0)
+    if (platform_code_page_from_utf16(code_page, wstring_cstr(src), -1, text, count) != 0)
         string_assign_cstr(out, text);
     mem_free(text);
 }
@@ -46,7 +47,7 @@ struct String *text_utf8_to_codepage(struct String *out, const struct String *ut
 {
     struct WString wide;
 
-    text_to_wide(&wide, CP_UTF8, utf8);
+    text_to_wide(&wide, CODE_PAGE_UTF8, utf8);
     if (wide.size == 0)
         string_init(out);
     else
@@ -84,7 +85,7 @@ char *format_money(int value, char *buf)
 
 char *format_money64(long long value, char *buf, int size)
 {
-    _i64toa_s(value, buf, size, 10);
+    snprintf(buf, (size_t)size, "%lld", value);
     money_commas(buf);
     return buf;
 }

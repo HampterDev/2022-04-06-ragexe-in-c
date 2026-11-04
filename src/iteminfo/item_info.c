@@ -153,9 +153,9 @@ unsigned char item_info_set_name(struct ItemInfo *self, const char *text)
 void item_info_set_item_id(struct ItemInfo *self, int itemId)
 {
     char text[16] = {0};
-    char *s = _itoa(itemId, text, 10);
 
-    string_assign_cstr(&self->id_text, s);
+    snprintf(text, sizeof text, "%d", itemId);
+    string_assign_cstr(&self->id_text, text);
 }
 
 unsigned char item_info_is_equipment_type(const struct ItemInfo *self)

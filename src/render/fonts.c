@@ -1,4 +1,5 @@
 #include "render/fonts.h"
+#ifdef TEXT_BACKEND_GDI
 #include "render/device.h"
 #include "render/font_family.h"
 #include <stdlib.h>
@@ -108,7 +109,7 @@ static void eot_logfont(LOGFONTW *lf, const wchar_t *name)
     lf->lfOutPrecision = 6;
     lf->lfQuality = 2;
     wcscpy(lf->lfFaceName, name);
-    lf->lfHeight = -MulDiv(13, 72, 72);
+    lf->lfHeight = -13;
 }
 
 static const wchar_t *const eot_names[] = {
@@ -119,7 +120,7 @@ static const wchar_t *const eot_names[] = {
 static HFONT file_font(const struct FontEntry *entry, int backend_active)
 {
     LOGFONTW lf = {0};
-    lf.lfHeight = -MulDiv(entry->size, 72, 72);
+    lf.lfHeight = -entry->size;
     lf.lfWeight = entry->bold ? 700 : 400;
     lf.lfItalic = entry->italic;
     lf.lfCharSet = (BYTE)entry->charset;
@@ -333,13 +334,14 @@ void font_cache_destruct(struct FontCache *self)
     self->token = 0;
 }
 
-void gdiplus_destroy(void)
+void fonts_shutdown(void)
 {
     font_cache_destruct(&g_fontCache);
 }
 
-void gdiplus_init(void)
+void fonts_init(void)
 {
     font_cache_construct(&g_fontCache);
-    atexit(gdiplus_destroy);
+    atexit(fonts_shutdown);
 }
+#endif

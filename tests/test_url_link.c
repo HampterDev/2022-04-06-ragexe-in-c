@@ -12,6 +12,8 @@ static HINSTANCE test_shell_open(HWND window, const char *operation, const char 
 #define ShellExecuteA test_shell_open
 #include "url_link_helper.inc"
 #include "url_link_handlers.inc"
+/* The links open through the platform's desktop call, which is ShellExecuteA on Windows. */
+#include "../src/platform/desktop_win32.c"
 
 struct UIHooks g_uiHooks;
 #undef ShellExecuteA

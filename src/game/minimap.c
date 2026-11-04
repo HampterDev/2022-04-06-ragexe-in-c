@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "game/packet_handlers.h"
 #include "game/gamemode.h"
 #include "game/quest_marks.h"
@@ -9,14 +10,14 @@
 #include "ui/window_access.h"
 #include <math.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/minimap.h"
 #include "game/cells.h"
 #include "actor/game_actor.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "ui/ui_std.h"
+#include "platform/clock.h"
 
 enum {
     MSG_MARK_COUNT = 0x1dc,
@@ -40,7 +41,7 @@ enum { MINIMAP_SIZE = 128, MINIMAP_RIGHT_MARGIN = 144, MINIMAP_TOP = 16 };
 #define MARK_Z 0.0999f
 #define MAP_Z 0.0998f
 
-__declspec(noinline) void game_mode_draw_minimap_triangle(float x, float y, float r, unsigned color)
+RAGE_NOINLINE void game_mode_draw_minimap_triangle(float x, float y, float r, unsigned color)
 {
     struct TexDrawPrim *prim = renderer_new_prim(g_renderer);
     struct TexDrawVertex *v = prim->base.verts;
@@ -215,14 +216,14 @@ static void draw_mark(struct GameMode *self, const struct TextureUV *uv, int x, 
                       texture_cache_get(&g_textureCache, string_cstr(texture), 0, 0), g_fullUV);
 }
 
-__declspec(noinline) void game_mode_draw_minimap_mark(struct GameMode *self, const struct TextureUV *uv, int x, int y, int size,
+RAGE_NOINLINE void game_mode_draw_minimap_mark(struct GameMode *self, const struct TextureUV *uv, int x, int y, int size,
                                          struct String texture, int kind, unsigned color, char clamp)
 {
     draw_mark(self, uv, x, y, size, &texture, kind, color, clamp);
     string_free(&texture);
 }
 
-__declspec(noinline) void game_mode_draw_member_marks(struct GameMode *self, const struct TextureUV *uv)
+RAGE_NOINLINE void game_mode_draw_member_marks(struct GameMode *self, const struct TextureUV *uv)
 {
     struct TreeNode *it;
     int index = 0;
@@ -276,7 +277,7 @@ static void draw_ping_marks(struct GameMode *self, const struct TextureUV *uv)
     for (it = tree_first(&self->ping_marks); it != self->ping_marks.head; ) {
         const struct PingMark *mark = TREE_VALUE(it, const struct PingMark);
         unsigned set_at = mark->time;
-        if (mark->sticky == 0 && timeGetTime() > set_at + 15000)
+        if (mark->sticky == 0 && platform_ticks_ms() > set_at + 15000)
             it = tree_erase(&self->ping_marks, it, NULL);
         else
             it = tree_next(it);
@@ -284,7 +285,7 @@ static void draw_ping_marks(struct GameMode *self, const struct TextureUV *uv)
     for (it = self->ping_marks.head->left; it != self->ping_marks.head; it = tree_next(it)) {
         const struct PingMark *mark = TREE_VALUE(it, const struct PingMark);
         unsigned set_at = mark->time;
-        if ((int)(timeGetTime() - set_at) % 1000 < 500)
+        if ((int)(platform_ticks_ms() - set_at) % 1000 < 500)
             game_mode_draw_minimap_mark(self, uv, mark->x, mark->y, 1, string_from("", 0), MARK_CROSS, mark->color, 0);
     }
 }
@@ -412,13 +413,14 @@ enum { MSG_QUEST_MARK = 0x1dd };
 void game_mode_zc_quest_notify_effect(struct GameMode *self, const struct PACKET_ZC_QUEST_NOTIFY_EFFECT *packet)
 {
     struct QuestMark *mark;
+    unsigned npc = packet->npc_id;
     int x = packet->x, y = packet->y;
 
     if (packet->effect == QUEST_EFFECT_NONE) {
         x = -1;
         y = -1;
     }
-    mark = tree_get(&self->quest_marks, &packet->npc_id, sizeof packet->npc_id, sizeof *mark, tree_less_uint);
+    mark = tree_get(&self->quest_marks, &npc, sizeof npc, sizeof *mark, tree_less_uint);
     mark->value.x = (short)x;
     mark->value.y = (short)y;
     mark->value.effect = packet->effect;
@@ -492,8 +494,8 @@ enum {
 static void boss_line(const char *text)
 {
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, BOSS_COLOR, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (int)text, BOSS_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, BOSS_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (intptr_t)text, BOSS_COLOR, 0, 0);
 }
 
 void game_mode_zc_boss_info(struct GameMode *self, const struct PACKET_ZC_BOSS_INFO *packet)
@@ -506,8 +508,8 @@ void game_mode_zc_boss_info(struct GameMode *self, const struct PACKET_ZC_BOSS_I
     switch (packet->type) {
     case BOSS_INFO_NONE:
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (int)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_BOSS_LINE, (intptr_t)msg_str(MSG_BOSS_NONE), BOSS_COLOR, 0, 0);
         return;
     case BOSS_INFO_ALIVE:
     case BOSS_INFO_ALIVE_SAY:
@@ -542,7 +544,8 @@ struct PACKET_ZC_C_MARKERINFO {
 
 void game_mode_zc_c_marker_info(const struct PACKET_ZC_C_MARKERINFO *packet)
 {
-    struct MemberPing *ping = tree_find(&g_session1.memberPings, &packet->aid, tree_less_int);
+    int aid = packet->aid;
+    struct MemberPing *ping = tree_find(&g_session1.memberPings, &aid, tree_less_int);
 
     if (ping) {
         ping->x = packet->x;
@@ -589,5 +592,5 @@ void game_mode_zc_compass(struct GameMode *self, const unsigned char *pkt)
     mark->y = packet->y;
     mark->color = packet->color | 0xff000000;
     mark->sticky = packet->type;
-    mark->time = timeGetTime();
+    mark->time = platform_ticks_ms();
 }

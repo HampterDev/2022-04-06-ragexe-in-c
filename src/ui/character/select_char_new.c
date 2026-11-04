@@ -9,6 +9,7 @@
 #include "session/character_name.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -24,7 +25,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/msg_str.h"
@@ -35,7 +35,7 @@
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
 #include "ui/character/selection_buttons.h"
-#include "platform/win_utf8.h"
+#include "platform/clock.h"
 
 #define SELECT_DIR UI_SKIN "select_character_ver3\\"
 #define COLUMNS 5
@@ -75,8 +75,6 @@
 
 #define SOUND_BUTTON "버튼소리.wav"
 
-#define CURSLOT_ROOT HKEY_CURRENT_USER
-
 struct UINewSelectCharWnd;
 struct UIWindow;
 void ui_new_select_char_wnd_destroy(struct UIWindow *window);
@@ -85,7 +83,7 @@ void ui_new_select_char_wnd_on_process(struct UIWindow *self);
 void ui_new_select_char_wnd_on_draw(struct UIWindow *self);
 BYTE ui_new_select_char_wnd_render(struct UIWindow *self, int force);
 void ui_new_select_char_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_new_select_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_new_select_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_new_select_char_wnd_ops = {
     .destroy = ui_new_select_char_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -273,20 +271,21 @@ static void set_page_label(struct UINewSelectCharWnd *self)
 
 static void read_cur_slot(struct UINewSelectCharWnd *self)
 {
-    HKEY key;
-    DWORD type = REG_DWORD, size = 4, slot;
+    struct PlatformSettingsKey *key;
+    uint32_t type = PLATFORM_SETTING_DWORD, size = 4;
+    DWORD slot;
 
-    LONG failed = win_utf8_reg_open_key(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key);
+    int failed = !platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key);
 
     self->page = 0;
     self->cur = 0;
     if (failed)
         return;
-    RegCloseKey(key);
-    if (win_utf8_reg_open_key(CURSLOT_ROOT, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key))
+    platform_settings_close(key);
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
-    win_utf8_reg_query_value(key, "CURSLOT", NULL, &type, (BYTE *)&slot, &size);
-    RegCloseKey(key);
+    platform_settings_read(key, "CURSLOT", &type, &slot, &size);
+    platform_settings_close(key);
     self->page = slot / (unsigned)self->storage.per_page;
     self->cur = slot % (unsigned)self->storage.per_page;
     if (self->page >= self->storage.page_count || self->page < 0)
@@ -295,14 +294,14 @@ static void read_cur_slot(struct UINewSelectCharWnd *self)
 
 void ui_new_select_char_wnd_write_to_reg(struct UINewSelectCharWnd *self)
 {
-    HKEY key;
-    DWORD disposition = 0, slot;
+    struct PlatformSettingsKey *key;
+    DWORD slot;
 
-    if (win_utf8_reg_create_key(CURSLOT_ROOT, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key, &disposition))
+    if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
         return;
     slot = self->storage.per_page * self->page + self->cur;
-    win_utf8_reg_set_value(key, "CURSLOT", 0, REG_DWORD, (const BYTE *)&slot, 4);
-    RegCloseKey(key);
+    platform_settings_write(key, "CURSLOT", PLATFORM_SETTING_DWORD, &slot, 4);
+    platform_settings_close(key);
 }
 
 static void store_selected_slot(struct UINewSelectCharWnd *self)
@@ -328,7 +327,7 @@ struct UIWindow *ui_new_select_char_wnd_create(void)
     self->busy = 0;
     self->page = 0;
     self->cur = 0;
-    self->created_time = timeGetTime();
+    self->created_time = platform_ticks_ms();
     self->move_from = -1;
     return WND(self);
 }
@@ -1214,7 +1213,7 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
         info = ui_char_info(g_loginCharInfo.slot);
         wnd = ui_make_window(0x80);
         if (wnd)
-            ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (int)info, 0, 0, 0);
+            ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (intptr_t)info, 0, 0, 0);
         break;
     }
     case ID_NAME_CHANGED:
@@ -1253,8 +1252,8 @@ static void on_command(struct UINewSelectCharWnd *self, struct UIWindow *sender,
     }
 }
 
-int ui_new_select_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                          int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_new_select_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                          int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewSelectCharWnd *self = (struct UINewSelectCharWnd *)window;
     if (ui_get_window(0x116))

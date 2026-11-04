@@ -20,8 +20,8 @@
 #include "platform/client_config.h"
 #include "session/state.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <shellapi.h>
+#include "platform/system.h"
+#include "platform/win_types.h"
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
@@ -33,38 +33,24 @@
 #include "ui/social/party_board.h"
 #include "ui/render/graphic_setting.h"
 #include "contents/sound.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 
 void app_activate(int active)
 {
     g_windowActive = active;
     if (active) {
-        RECT client, clip;
-        POINT top_left, bottom_right;
-
-        SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+        platform_set_background_priority(0);
         if (g_session1.mouseExclusiveOption != 1)
             return;
-        GetClientRect(g_hMainWnd, &client);
-        top_left.x = client.left;
-        top_left.y = client.top;
-        bottom_right.x = client.right;
-        bottom_right.y = client.bottom;
-        ClientToScreen(g_hMainWnd, &top_left);
-        ClientToScreen(g_hMainWnd, &bottom_right);
-        clip.left = top_left.x;
-        clip.top = top_left.y;
-        clip.right = bottom_right.x;
-        clip.bottom = bottom_right.y;
-        ClipCursor(&clip);
+        platform_clip_cursor_to_client(g_hMainWnd, 1);
     } else {
         struct IntInt64Pair *var;
         DWORD packet;
         int key = 2, flag;
 
-        SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+        platform_set_background_priority(1);
         var = tree_find(&g_session1.instantVars, &key, tree_less_int);
         flag = var ? (int)var->value : 0;
         if (flag) {
@@ -110,7 +96,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
         return init_failed(out, "CTimeScheduler::CreateInstance()");
     town_info_create();
     if (!town_info_load())
-        win_utf8_message_box(0, "TownInfo file Init", "Error", 0);
+        platform_message_box(0, "TownInfo file Init", "Error", 0);
     if (!icon_sheet_create())
         return init_failed(out, "CCooltimerMgr::CreateInstance()");
     if (!renew_quest_create())
@@ -118,7 +104,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
     renew_quest_load();
     champion_monster_create();
     if (!champion_monster_load())
-        win_utf8_message_box(0, "ChampionMonster file Init", "Error", 0);
+        platform_message_box(0, "ChampionMonster file Init", "Error", 0);
     if (!map_property_mgr_create())
         return init_failed(out, "CMapPropertyMgr::CreateInstance()");
     if (!rodex_create_instance())

@@ -280,7 +280,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
     if (members->selected != -1 && buf[0] != '/' && !own) {
         string_assign_cstr(&g_windowMgr.chat_line, buf);
         string_copy(&name, LIST_ITEM(members, members->selected));
-        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (int)string_cstr(&name), 0, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (intptr_t)string_cstr(&name), 0, 0, 0);
         string_free(&name);
     } else if (!session_is_emotion_text(&g_session1, buf)) {
         for (i = 0; i < 3; i++)
@@ -292,7 +292,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
             type = TALK_TYPE_PLAIN;
         else if (type == TALK_TYPE_SAVE)
             type = TALK_TYPE_SAVE_ROOM;
-        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (int)(INT_PTR)parts, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (intptr_t)parts, 0, 0);
         for (i = 3; i-- > 0;)
             string_free(&parts[i]);
     }
@@ -521,7 +521,7 @@ static void open_menu(struct UIChatRoomWnd *self)
     if (MENU_ENTRY_COUNT(&self->menu)) {
         menu = ui_window_open(WND_ID_MENU);
         for (i = 0; i < MENU_ENTRY_COUNT(&self->menu); i++)
-            ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (int)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
+            ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (intptr_t)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
                      0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, 0x1c, 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
@@ -549,13 +549,13 @@ static void menu_choice(struct UIChatRoomWnd *self, int index)
     switch (MENU_ENTRIES(&self->menu)[index].id) {
     case CHAT_ROOM_MENU_KICK:
         if (chosen_member(self, &name)) {
-            game_send_message(MODE_REQ_MENU_OWNER_0, (int)string_cstr(&name), 0, 0, 0);
+            game_send_message(MODE_REQ_MENU_OWNER_0, (intptr_t)string_cstr(&name), 0, 0, 0);
             string_free(&name);
         }
         break;
     case CHAT_ROOM_MENU_GIVE_OWNER:
         if (chosen_member(self, &name)) {
-            game_send_message(MODE_REQ_MENU_OWNER_1, (int)string_cstr(&name), 0, 0, 0);
+            game_send_message(MODE_REQ_MENU_OWNER_1, (intptr_t)string_cstr(&name), 0, 0, 0);
             string_free(&name);
         }
         break;
@@ -566,7 +566,7 @@ static void menu_choice(struct UIChatRoomWnd *self, int index)
         setup = ui_make_window(WND_ID_CHAT_ROOM_CHANGE);
         room = game_current_chat_room();
         if (setup && room)
-            ui_window_send_msg(setup, NULL, CHAT_ROOM_MSG_SET_ROOM, (int)room, 0, 0, 0);
+            ui_window_send_msg(setup, NULL, CHAT_ROOM_MSG_SET_ROOM, (intptr_t)room, 0, 0, 0);
         else if (setup)
             ui_window_mgr_post_quit2(&g_windowMgr, setup);
         break;
@@ -624,8 +624,8 @@ static void resize(struct UIChatRoomWnd *self, int width, int height)
     ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
 }
 
-int ui_chat_room_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_chat_room_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChatRoomWnd *self = (struct UIChatRoomWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

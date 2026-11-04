@@ -346,7 +346,7 @@ void game_mode_on_purchase_item_list_from_mc4(struct GameMode *self,
         struct VendingEntry4 e;
         struct ItemInfo item;
 
-        memcpy_s(&e, sizeof e, &packet->items[i], sizeof e);
+        memcpy(&e, &packet->items[i], sizeof e);
         vending_entry4_to_item(&item, &e);
         items_push_copy(&items, &item);
         item_info_destruct(&item);
@@ -366,7 +366,7 @@ void game_mode_on_purchase_my_item_list3(struct GameMode *self, const struct Pac
         struct MyVendingEntry3 e;
         struct ItemInfo item;
 
-        memcpy_s(&e, sizeof e, &packet->items[i], sizeof e);
+        memcpy(&e, &packet->items[i], sizeof e);
         item_info_construct(&item);
         item.index = e.index;
         item.price = e.price;
@@ -493,7 +493,7 @@ void game_mode_on_ack_create_assistant(unsigned char kind, unsigned char result)
     case 8: msg = 0x38; break;
     default: return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }
 
 struct Pc;
@@ -509,7 +509,7 @@ static int store_assistant_enter(struct GameMode *self, struct ActorEntryInfo *i
     }
     actor = world_get_game_actor_by_aid(self->world, info->aid);
     if (actor) {
-        render_object_send(actor, NULL, ACTOR_MSG_ENTRY, (int)info, 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_ENTRY, (intptr_t)info, 0, 0, 0);
     } else {
         void *block = mem_alloc(sizeof(struct Pc));
         struct Pc *pc = block ? pc_construct((struct Pc *)block) : 0;
@@ -519,7 +519,7 @@ static int store_assistant_enter(struct GameMode *self, struct ActorEntryInfo *i
         actor = (struct GameActor *)pc;
         list_push_back(&self->world->gameObjects, &pc, sizeof pc);
         actor_list_push_back(&self->world->actors, pc);
-        render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (int)info, 0, 0, 0);
+        render_object_send(actor, NULL, ACTOR_MSG_NEW_ENTRY, (intptr_t)info, 0, 0, 0);
     }
     actor->is_store_assistant = 1;
     return 1;

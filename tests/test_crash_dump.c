@@ -148,8 +148,12 @@ static void verify_dump(void)
     assert(exception->ThreadId == caller_thread);
     assert(exception->ExceptionRecord.ExceptionCode == expected_record.ExceptionCode);
     assert(exception->ExceptionRecord.ExceptionAddress == (ULONG64)(UINT_PTR)expected_record.ExceptionAddress);
-    assert(exception->ThreadContext.DataSize == sizeof expected_context);
-    assert(exception->ThreadContext.Rva + sizeof expected_context <= file_size);
+    fprintf(stderr, "Minidump context: stored=%lu bytes, fixed=%zu bytes\n",
+            exception->ThreadContext.DataSize, sizeof expected_context);
+    /* DbgHelp can include trailing state/alignment after the fixed CONTEXT. */
+    assert(exception->ThreadContext.DataSize >= sizeof expected_context);
+    assert(exception->ThreadContext.Rva <= file_size);
+    assert(exception->ThreadContext.DataSize <= file_size - exception->ThreadContext.Rva);
     assert(!memcmp((char *)base + exception->ThreadContext.Rva, &expected_context, sizeof expected_context));
     assert(MiniDumpReadDumpStream(base, ThreadListStream, &entry, &stream, &size));
     threads = stream;

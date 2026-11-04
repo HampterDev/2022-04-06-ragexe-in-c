@@ -28,8 +28,9 @@ void *bitmap_test_realloc(void *p, size_t size)
     return next;
 }
 static DWORD clock_now;
-static DWORD bitmap_test_now(void) { return clock_now; }
+static uint32_t bitmap_test_now(void) { return clock_now; }
 #define timeGetTime bitmap_test_now
+#define platform_ticks_ms bitmap_test_now
 #include "bitmap_alloc_fixture.h"
 #include "../src/resources/bitmap_storage.c"
 #include "../src/resources/bitmap_codecs.c"
@@ -38,6 +39,7 @@ static DWORD bitmap_test_now(void) { return clock_now; }
 #include "../src/resources/bitmap.c"
 #include "../src/resources/emblem_res.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef malloc
 #undef calloc
 #undef realloc

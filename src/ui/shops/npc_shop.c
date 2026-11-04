@@ -291,7 +291,7 @@ void npc_shop_store_info(struct UIWindow *wnd, struct WindowInfo *info)
 
 static void show_item_window(const struct ItemInfo *info, int toggle)
 {
-    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)info, toggle, 0, 0);
+    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)info, toggle, 0, 0);
 }
 
 void npc_shop_drop_or_count(struct UIItemBaseWnd *base, int at_once, int val1, int for_what)

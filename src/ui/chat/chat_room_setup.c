@@ -17,7 +17,7 @@ struct UIWindow;
 void ui_chat_room_make_wnd_destroy(struct UIWindow *window);
 void ui_chat_room_make_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_chat_room_make_wnd_on_draw(struct UIWindow *self);
-int ui_chat_room_make_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_chat_room_make_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_chat_room_make_wnd_ops = {
     .destroy = ui_chat_room_make_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -63,7 +63,7 @@ const struct UIWindowOps ui_chat_room_make_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 void ui_chat_room_change_wnd_destroy(struct UIWindow *window);
-int ui_chat_room_change_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_chat_room_change_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_chat_room_change_wnd_ops = {
     .destroy = ui_chat_room_change_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -301,7 +301,7 @@ void ui_chat_room_make_wnd_on_create(struct UIWindow *window, int width_unused, 
     int i, count;
 
     if (session_has_trick_dead(&g_session1)) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_CHAT_ROOM_REFUSED), 0xff, 0,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_CHAT_ROOM_REFUSED), 0xff, 0,
                             0);
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_CHAT_ROOM_MAKE);
     }
@@ -380,7 +380,7 @@ static void chat_room_ok(struct UIChatRoomMakeWnd *self, int request, int wnd_id
         text = ui_edit_ctrl_get_text(self->password_edit);
         string_assign_cstr(&setup.password, text);
     }
-    mode_send_message(g_modeMgr.curMode, request, (int)&setup, 0, 0, 0);
+    mode_send_message(g_modeMgr.curMode, request, (intptr_t)&setup, 0, 0, 0);
     ui_window_mgr_post_quit1(&g_windowMgr, wnd_id);
     string_free(&setup.password);
     string_free(&setup.title);
@@ -400,7 +400,7 @@ static void chat_room_open_list(struct UIChatRoomMakeWnd *self, int id, int wnd_
     count = (int)VEC_COUNT(names, struct String);
     for (i = 0; i < count; i++)
         ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE,
-                 (int)string_cstr(&VEC_AT(names, struct String, i)), 0, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(names, struct String, i)), 0, 0, 0);
     ui_window_send_msg(combo, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
     ui_window_resize(combo, 0x4a, count * 16 < 0x30 ? count * 16 : 0x30);
     ui_window_send_msg(combo, NULL, COMBO_MSG_OPENER_ID, wnd_id, 0, 0, 0);
@@ -410,8 +410,8 @@ static void chat_room_open_list(struct UIChatRoomMakeWnd *self, int id, int wnd_
     ui_window_move(combo, x + 1, y);
 }
 
-int ui_chat_room_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_chat_room_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChatRoomMakeWnd *self = (struct UIChatRoomMakeWnd *)window;
     if (msg == CHAT_ROOM_MSG_SETUP) {
@@ -486,7 +486,7 @@ static void make_ok(struct UIChatRoomMakeWnd *self)
     string_assign_cstr(&setup.title, text);
     text = ui_edit_ctrl_get_text(self->password_edit);
     string_assign_cstr(&setup.password, text);
-    mode_send_message(client_current_mode(), REQ_CHAT_ROOM_MAKE, (int)&setup, 0, 0, 0);
+    mode_send_message(client_current_mode(), REQ_CHAT_ROOM_MAKE, (intptr_t)&setup, 0, 0, 0);
     ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_CHAT_ROOM_MAKE);
     string_free(&setup.password);
     string_free(&setup.title);
@@ -506,7 +506,7 @@ static void make_open_list(struct UIChatRoomMakeWnd *self, int id)
     count = (int)VEC_COUNT(names, struct String);
     for (i = 0; i < count; i++)
         ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE,
-                 (int)string_cstr(&VEC_AT(names, struct String, i)), 0, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(names, struct String, i)), 0, 0, 0);
     ui_window_send_msg(combo, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
     ui_window_resize(combo, 0x4a, count * 16 < 0x30 ? count * 16 : 0x30);
     ui_window_send_msg(combo, NULL, COMBO_MSG_OPENER_ID, WND_ID_CHAT_ROOM_MAKE, 0, 0, 0);
@@ -516,8 +516,8 @@ static void make_open_list(struct UIChatRoomMakeWnd *self, int id)
     ui_window_move(combo, x + 1, y);
 }
 
-int ui_chat_room_make_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                         int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_chat_room_make_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                         int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChatRoomMakeWnd *self = (struct UIChatRoomMakeWnd *)window;
     int i;

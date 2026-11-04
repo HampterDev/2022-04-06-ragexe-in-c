@@ -29,11 +29,11 @@ static void *checked_realloc(void *old, size_t size)
 #undef realloc
 #undef malloc
 
-static __time32_t ticks = 100;
-static __time32_t fixture_time(__time32_t *out) { if (out) *out = ticks; return ticks; }
-#define _time32 fixture_time
+static int32_t ticks = 100;
+static int32_t fixture_time(void) { return ticks; }
+#define platform_time_now fixture_time
 #include "../src/session/session_ranking.c"
-#undef _time32
+#undef platform_time_now
 #include "../src/game/mode_ranking.c"
 
 struct Session g_session1;
@@ -84,7 +84,7 @@ char *msg_str(int id)
     assert(id == 0x385 || id == 0x386 || id == 0x39e || id == 0x3b9);
     return "points %d total %d";
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *s, int msg, int a, int color, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *s, int msg, intptr_t a, intptr_t color, intptr_t c, intptr_t d)
 {
     const char *text = (const char *)a;
     assert(s == &g_windowMgr && msg == 1 && !c && !d && line_count < 32);

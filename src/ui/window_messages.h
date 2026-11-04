@@ -4,7 +4,8 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
+#include <stdint.h>
 struct UIWindowMgr;
 
 #define UIWM_MSG_CHAT_LINE 1
@@ -18,7 +19,7 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
 
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id);
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2,
-                                   int val3, int val4);
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4);
 
 #endif

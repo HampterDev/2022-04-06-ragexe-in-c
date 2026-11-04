@@ -6,34 +6,16 @@
 #include "contents/connection.h"
 #include "std/std.h"
 #include "contents/ui_window_mgr.h"
-#include <mmsystem.h>
-#include "platform/win_utf8.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 
-typedef int (__stdcall *Ws2TransferFn)(SOCKET s, char *buf, int len, int flags);
-
-HMODULE g_ws2_32;
-Ws2TransferFn g_ws2_send;
-Ws2TransferFn g_ws2_recv;
-WSADATA g_wsa_data;
 #define RECV_CHUNK 0x800
 
 char connection_startup(void)
 {
-    if (WSAStartup(0x101, &g_wsa_data) != 0) {
+    if (!platform_net_startup()) {
         error_msg("Failed to load Winsock library!", 0);
-        WSACleanup();
         return 0;
-    }
-    g_ws2_32 = LoadLibraryA("ws2_32.dll");
-    g_ws2_send = (Ws2TransferFn)GetProcAddress(g_ws2_32, "send");
-    g_ws2_recv = (Ws2TransferFn)GetProcAddress(g_ws2_32, "recv");
-    if (!g_ws2_send) {
-        g_ws2_send = (Ws2TransferFn)send;
-        win_utf8_message_box(0, "GetProcAddress(\"send\") Failed.", "Module Hooking Error", 0);
-    }
-    if (!g_ws2_recv) {
-        g_ws2_recv = (Ws2TransferFn)recv;
-        win_utf8_message_box(0, "GetProcAddress(\"recv\") Failed.", "Module Hooking Error", 0);
     }
     rag_connection_instance();
     return 1;
@@ -41,14 +23,13 @@ char connection_startup(void)
 
 void connection_shutdown(void)
 {
-    WSACleanup();
-    FreeLibrary(g_ws2_32);
+    platform_net_shutdown();
 }
 
 struct Connection *connection_construct(struct Connection *self)
 {
     memset(self, 0, sizeof *self);
-    self->socket = INVALID_SOCKET;
+    self->socket = NULL;
     self->hold_sends = 0;
     self->send_after = 0;
     byte_queue_construct(&self->send_queue);
@@ -78,9 +59,9 @@ void connection_disconnect(struct Connection *self)
     struct IntInt64Pair *var;
     int key = 5;
 
-    if (self->socket != INVALID_SOCKET) {
-        closesocket(self->socket);
-        self->socket = INVALID_SOCKET;
+    if (self->socket) {
+        platform_socket_close(self->socket);
+        self->socket = NULL;
         byte_queue_reset(&self->send_queue, CONNECTION_QUEUE_SIZE);
         byte_queue_reset(&self->held, CONNECTION_QUEUE_SIZE);
     }
@@ -91,28 +72,23 @@ void connection_disconnect(struct Connection *self)
 
 char connection_flush(struct Connection *self)
 {
-    while (self->send_after < timeGetTime()) {
-        fd_set writable;
-        struct timeval no_wait = { 0, 0 };
-        int ready, sent, err;
+    while (self->send_after < platform_ticks_ms()) {
+        int ready, sent;
 
         if (byte_queue_size(&self->send_queue) == 0)
             break;
-        writable.fd_count = 1;
-        writable.fd_array[0] = self->socket;
-        ready = select(0, 0, &writable, 0, &no_wait);
-        if (ready == SOCKET_ERROR)
+        ready = platform_socket_writable(self->socket);
+        if (ready < 0)
             continue;
-        if (ready <= 0)
+        if (ready == 0)
             break;
-        sent = g_ws2_send(self->socket, self->send_queue.data + self->send_queue.read_pos,
-                          self->send_queue.write_pos - self->send_queue.read_pos, 0);
-        if (sent != SOCKET_ERROR) {
+        sent = platform_socket_send(self->socket, self->send_queue.data + self->send_queue.read_pos,
+                                    self->send_queue.write_pos - self->send_queue.read_pos);
+        if (sent >= 0) {
             byte_queue_skip(&self->send_queue, sent);
             continue;
         }
-        err = WSAGetLastError();
-        if (err != WSAEWOULDBLOCK && err != WSAENOTCONN) {
+        if (sent != PLATFORM_SOCKET_RETRY) {
             connection_disconnect(self);
             return 0;
         }
@@ -125,23 +101,14 @@ static char connection_receive(struct Connection *self)
     char chunk[RECV_CHUNK];
 
     for (;;) {
-        fd_set readable;
-        struct timeval no_wait = { 0, 0 };
-        int ready, got, err;
+        int ready, got;
 
-        readable.fd_count = 1;
-        readable.fd_array[0] = self->socket;
-        ready = select(0, &readable, 0, 0, &no_wait);
-        if (ready == SOCKET_ERROR || ready <= 0)
+        ready = platform_socket_readable(self->socket);
+        if (ready <= 0)
             return 1;
-        got = g_ws2_recv(self->socket, chunk, RECV_CHUNK, 0);
-        if (got == SOCKET_ERROR) {
-            err = WSAGetLastError();
-            if (err == WSAEWOULDBLOCK || err == WSAENOTCONN)
-                continue;
-            connection_disconnect(self);
-            return 0;
-        }
+        got = platform_socket_recv(self->socket, chunk, RECV_CHUNK);
+        if (got == PLATFORM_SOCKET_RETRY)
+            continue;
         if (got <= 0) {
             connection_disconnect(self);
             return 0;
@@ -154,46 +121,37 @@ char connection_connect(struct Connection *self, const struct ServerAddress *add
 {
     char ip[sizeof *address];
     const char *colon;
-    u_long non_blocking = 1;
-    int port, err;
+    uint32_t resolved;
+    int port;
     connection_set_hold_sends(self, 0);
     byte_queue_reset(&self->recv_queue, CONNECTION_QUEUE_SIZE);
     byte_queue_reset(&self->send_queue, CONNECTION_QUEUE_SIZE);
     byte_queue_reset(&self->held, CONNECTION_QUEUE_SIZE);
 
-    self->socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (self->socket == INVALID_SOCKET)
+    self->socket = platform_socket_open();
+    if (!self->socket)
         return 0;
-    if (ioctlsocket(self->socket, FIONBIO, &non_blocking) == SOCKET_ERROR) {
+    if (!platform_socket_set_nonblocking(self->socket)) {
         error_msg("Failed to setup select mode", 0);
         return 0;
     }
-    memset(&self->addr, 0, sizeof self->addr);
 
     strcpy(ip, address->ip);
     colon = strrchr(address->host, ':');
     if (colon) {
         char name[sizeof address->host];
-        struct hostent *found;
 
         memcpy(name, address->host, colon - address->host);
         name[colon - address->host] = 0;
-        found = gethostbyname(name);
-        if (found)
-            strcpy(ip, inet_ntoa(*(struct in_addr *)found->h_addr_list[0]));
+        if (platform_net_resolve_ipv4(name, &resolved))
+            strcpy(ip, platform_net_ipv4_text(resolved));
     }
-    self->addr.sin_family = AF_INET;
-    self->addr.sin_addr.s_addr = inet_addr(ip);
 
     port = address->port;
     if (colon)
         port = atoi(colon + 1);
-    self->addr.sin_port = htons((u_short)port);
 
-    if (connect(self->socket, (struct sockaddr *)&self->addr, sizeof self->addr) == SOCKET_ERROR
-        && WSAGetLastError() != WSAEWOULDBLOCK) {
-        err = WSAGetLastError();
-        (void)err;
+    if (!platform_socket_connect(self->socket, platform_net_parse_ipv4(ip), (uint16_t)port)) {
         connection_disconnect(self);
         return 0;
     }
@@ -203,7 +161,7 @@ char connection_connect(struct Connection *self, const struct ServerAddress *add
 
 char connection_poll(struct Connection *self)
 {
-    if (self->socket == INVALID_SOCKET)
+    if (!self->socket)
         return 1;
     if (!connection_receive(self))
         return 0;
@@ -249,10 +207,10 @@ void connection_reset_queues(struct Connection *self)
 
 void connection_delay_sends(struct Connection *connection, unsigned milliseconds)
 {
-    connection->send_after = timeGetTime() + milliseconds;
+    connection->send_after = platform_ticks_ms() + milliseconds;
 }
 
 int connection_is_open(const struct Connection *connection)
 {
-    return connection->socket != INVALID_SOCKET;
+    return connection->socket != NULL;
 }

@@ -16,8 +16,8 @@ void ui_cnt_wnd_destruct(struct UICntWnd *self);
 void ui_cnt_wnd_destroy(struct UIWindow *window);
 void ui_cnt_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_cnt_wnd_on_draw(struct UIWindow *self);
-int ui_cnt_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                                int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_cnt_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                                int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 #include "ui/controls/agit.h"
 

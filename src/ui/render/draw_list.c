@@ -79,6 +79,28 @@ void ui_window_queue_bitmap(struct UIWindow *self, int x, int y, struct String n
     string_free(&name);
 }
 
+void ui_window_queue_bitmap_bottom(struct UIWindow *self, int x, int y, struct String name, DWORD argb, int height)
+{
+    struct Texture *tex = texture_cache_get(&g_textureCache, string_cstr(&name), 0, 1);
+
+    if (tex) {
+        struct TexDrawPrim *quad = borrow_quad();
+        int image_w = tex->reqWidth, image_h = tex->reqHeight, top;
+        float tw = (float)tex->base.width, th = (float)tex->base.height;
+
+        if (height <= 0 || height > image_h)
+            height = image_h;
+        top = image_h - height;
+        quad->base.texture = tex;
+        quad_place(quad, (float)x, (float)y, (float)(x + image_w), (float)(y + height));
+        quad_map(quad, g_texelOffsetU / tw, ((float)top + g_texelOffsetV) / th, ((float)image_w + g_texelOffsetU) / tw,
+                 ((float)image_h + g_texelOffsetV) / th);
+        quad_finish(quad, argb);
+        list_push_back(&self->draws, &quad, sizeof quad);
+    }
+    string_free(&name);
+}
+
 void ui_window_reset_draws(struct UIWindow *self, int width, int height, DWORD argb)
 {
     struct TexDrawPrim *quad;

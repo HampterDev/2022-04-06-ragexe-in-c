@@ -109,7 +109,7 @@ static struct UIWindow *make_chat_room_wnd(struct UIWindowMgr *self, int window_
         ui_window_create(wnd, 0x118, 0x78);
         wm_move_640(wnd, 0xc8, 0x12c);
         ui_window_mgr_add_window(self, wnd);
-        ui_window_send_msg(self->chat_room_wnd, NULL, 0x35, (int)(INT_PTR)&self->chat_room_info, 0, 0, 0);
+        ui_window_send_msg(self->chat_room_wnd, NULL, 0x35, (intptr_t)&self->chat_room_info, 0, 0, 0);
     }
     wm_show(wnd);
     return wnd;

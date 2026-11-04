@@ -22,19 +22,16 @@ struct UIGuildLeaveReasonDescWnd {
     struct UIWindow *reason;
     struct UIWindow *caption;
 };
-SIZE_ASSERT(UIGuildLeaveReasonDescWnd, 0x9c);
 
 struct UIGuildBanReasonDescWnd {
     struct UIGuildLeaveReasonDescWnd leave;
     struct GuildBanTarget member;
 };
-OFFSET_ASSERT(UIGuildBanReasonDescWnd, member, 0x9c);
-SIZE_ASSERT(UIGuildBanReasonDescWnd, 0xa8);
 
 void ui_guild_leave_reason_desc_wnd_destroy(struct UIWindow *window);
 void ui_guild_leave_reason_desc_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_reason_wnd_on_draw(struct UIWindow *self);
-int ui_guild_leave_reason_desc_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_leave_reason_desc_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_guild_leave_reason_desc_wnd_ops = {
     .destroy = ui_guild_leave_reason_desc_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -81,7 +78,7 @@ const struct UIWindowOps ui_guild_leave_reason_desc_wnd_ops = {
 };
 void ui_guild_ban_reason_desc_wnd_destroy(struct UIWindow *window);
 void ui_guild_ban_reason_desc_wnd_on_create(struct UIWindow *self, int width, int height);
-int ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_guild_ban_reason_desc_wnd_ops = {
     .destroy = ui_guild_ban_reason_desc_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -195,14 +192,14 @@ void ui_guild_reason_wnd_on_draw(struct UIWindow *self)
     ui_window_draw_sys_box(self, 0, 0, 0, 0);
 }
 
-int ui_guild_leave_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                 int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_guild_leave_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                 int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildLeaveReasonDescWnd *self = (struct UIGuildLeaveReasonDescWnd *)window;
     if (msg != UI_MSG_COMMAND)
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     if (val1 == UI_ID_OK) {
-        mode_send_message(client_current_mode(), REQ_GUILD_LEAVE, (int)ui_edit_ctrl_get_text(self->reason), 0, 0, 0);
+        mode_send_message(client_current_mode(), REQ_GUILD_LEAVE, (intptr_t)ui_edit_ctrl_get_text(self->reason), 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, GUILD_LEAVE_REASON_WND_ID);
     } else if (val1 == UI_ID_CANCEL) {
         ui_window_mgr_post_quit1(&g_windowMgr, GUILD_LEAVE_REASON_WND_ID);
@@ -243,15 +240,15 @@ void ui_guild_ban_reason_desc_wnd_on_create(struct UIWindow *window, int width, 
         ui_static_text_set_text(self->leave.caption, msg_str(MSG_GUILD_BAN_REASON), 0);
 }
 
-int ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                               int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_guild_ban_reason_desc_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                               int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildBanReasonDescWnd *self = (struct UIGuildBanReasonDescWnd *)window;
     if (msg == UI_MSG_COMMAND) {
         if (val1 == UI_ID_OK) {
             ui_window_mgr_post_quit1(&g_windowMgr, GUILD_BAN_REASON_WND_ID);
-            mode_send_message(client_current_mode(), REQ_GUILD_EXPEL, (int)&self->member,
-                          (int)ui_edit_ctrl_get_text(self->leave.reason), 0, 0);
+            mode_send_message(client_current_mode(), REQ_GUILD_EXPEL, (intptr_t)&self->member,
+                          (intptr_t)ui_edit_ctrl_get_text(self->leave.reason), 0, 0);
         } else if (val1 == UI_ID_CANCEL) {
             ui_window_mgr_post_quit1(&g_windowMgr, GUILD_BAN_REASON_WND_ID);
         }

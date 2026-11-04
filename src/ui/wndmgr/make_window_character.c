@@ -39,7 +39,7 @@ static struct UIWindow *make_basic_info(struct UIWindowMgr *self, int window_id)
         wm_move(wnd, 0, 0);
         ui_window_mgr_add_window(self, wnd);
         ui_window_send_msg(self->basic_info_wnd, self->basic_info_wnd, UI_MSG_SET_INFO,
-                 (int)(INT_PTR)&self->basic_info_info, 0, 0, 0);
+                 (intptr_t)&self->basic_info_info, 0, 0, 0);
         snap_mgr_register_root(&g_snapMgr, wnd);
         w = ui_window_open(0x133);
         if (w) {

@@ -13,7 +13,7 @@ static unsigned short sent_id;
     fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #value); ++failures; \
 } } while (0)
 
-static DWORD timeGetTime(void) { return clock_now; }
+static uint32_t platform_ticks_ms(void) { return clock_now; }
 static void send_u8(unsigned short id, int emotion)
 {
     ++sent;

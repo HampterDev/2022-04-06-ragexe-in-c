@@ -1,11 +1,12 @@
 #include "session/chat_macros.h"
 #include "session/state.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "contents/client_res.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/msg_str.h"
-#include "platform/win_utf8.h"
 
 const char *g_shortcutListSubkey = "\\ShortCutList";
 
@@ -26,8 +27,8 @@ void session_init_short_cut_texts(struct Session *self)
 {
     struct TextArray replacement = {0};
     char path[0x200], value[0x100], name[8];
-    HKEY key = NULL;
-    DWORD type, size;
+    struct PlatformSettingsKey *key = NULL;
+    uint32_t type, size;
     const char *message;
     int i;
 
@@ -35,21 +36,18 @@ void session_init_short_cut_texts(struct Session *self)
     for (i = 0; i < CHAT_MACRO_COUNT; ++i)
         if (!owned_text_assign(&replacement.items[i], text_view_cstr(msg_str(s_shortcutMsg[i])))) goto failed;
 
-    strcpy_s(path, sizeof path, g_registryKeyPath);
-    strcat_s(path, sizeof path, g_shortcutListSubkey);
-    strcat_s(path, sizeof path, "\\");
-    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
+    snprintf(path, sizeof path, "%s%s\\", g_registryKeyPath, g_shortcutListSubkey);
+    if (platform_settings_open(path, PLATFORM_SETTINGS_QUERY, &key)) {
         for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
-            _itoa(i, name, 10);
+            snprintf(name, sizeof name, "%d", i);
             size = sizeof value;
             memset(value, 0, sizeof value);
-            if (win_utf8_reg_query_value(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS
-                && type == REG_SZ) {
+            if (platform_settings_read(key, name, &type, value, &size) && type == PLATFORM_SETTING_STRING) {
                 value[sizeof value - 1] = 0;
                 if (!owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;
             }
         }
-        RegCloseKey(key);
+        platform_settings_close(key);
         key = NULL;
     }
     for (i = 0; i < CHAT_MACRO_COUNT; ++i) {
@@ -63,6 +61,6 @@ void session_init_short_cut_texts(struct Session *self)
     self->chatMacros = replacement;
     return;
 failed:
-    if (key) RegCloseKey(key);
+    if (key) platform_settings_close(key);
     text_array_clear(&replacement);
 }

@@ -36,7 +36,7 @@
 #include "effects/effect_registry.h"
 #include "effects/ez2str_effect_mgr.h"
 #include "effects/particle.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 #include "resources/state_icon_sheet.h"
 #include "skills/skill_action_registry.h"
 #include "ui/mail/rodex_box.h"
@@ -113,7 +113,7 @@ unsigned char map_sky_mgr_load(struct MapSkyMgr *self)
     assert(self == map_sky);
     return (unsigned char)result("map_sky_mgr_load");
 }
-int WINAPI win_utf8_message_box(HWND owner, LPCSTR text, LPCSTR caption, UINT type)
+void platform_message_box(PlatformWindow owner, const char *text, const char *caption, unsigned type)
 {
     assert(owner == NULL && !strcmp(caption, "Error") && type == 0);
     if (!strcmp(text, "TownInfo file Init"))
@@ -122,7 +122,6 @@ int WINAPI win_utf8_message_box(HWND owner, LPCSTR text, LPCSTR caption, UINT ty
         step("message box: ChampionMonster file Init");
     else
         assert(!"an unexpected message box");
-    return 0;
 }
 
 void skill_action_mgr_destroy_instance(void) { step("skill_action_mgr_destroy_instance"); }

@@ -5,17 +5,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "platform/language.h"
 #include "ui/render/graphic_setting.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
+#include "platform/clock.h"
 
 void session_startup(struct Session *self)
 {
     if (!item_info_load())
-        win_utf8_message_box(NULL, "ItemInfo file Init", "Error", 0);
-    srand((unsigned)_time32(NULL));
+        platform_message_box(NULL, "ItemInfo file Init", "Error", 0);
+    srand((unsigned)platform_time_now());
     session_init_table(self);
     map_info_load(g_mapInfo);
     session_load_options(self);

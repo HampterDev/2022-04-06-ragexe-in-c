@@ -13,7 +13,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <shellapi.h>
 #include "core/app.h"
 #include "diag/perf.h"
 #include "ui/controls/url_link.h"
@@ -22,8 +21,8 @@ void ui_tag_text_viewer_destroy(struct UIWindow *window);
 void tag_text_viewer_ui_scroll_on_create(struct UIWindow *self, int width, int height);
 void tag_text_viewer_ui_scroll_on_wheel(struct UIWindow *self, int delta);
 void ui_tag_text_viewer_on_draw(struct UIWindow *self);
-int ui_tag_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender,
-                          int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_tag_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender,
+                          int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_tag_text_viewer_ops = {
     .destroy = ui_tag_text_viewer_destroy,
     .resize = ui_window_resize_base,
@@ -178,7 +177,7 @@ void ui_tag_text_viewer_on_item_link(struct UITagTextViewer *self, struct UIText
     item.type = link_arg_number(link, 1);
     string_assign(&item.id_text, name.data, name.size);
     wnd = ui_make_window(ITEM_WND_ID);
-    if (wnd) ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+    if (wnd) ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     item_info_destruct(&item);
 }
 
@@ -211,8 +210,8 @@ static void ui_tag_text_viewer_on_link(struct UITagTextViewer *self, struct UITe
     }
 }
 
-int ui_tag_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_tag_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UITagTextViewer *self = (struct UITagTextViewer *)window;
     int old_pos;

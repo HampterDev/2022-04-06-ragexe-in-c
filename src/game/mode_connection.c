@@ -1,3 +1,4 @@
+#include "platform/filesystem.h"
 #include "game/packet_handlers.h"
 #include "game/gamemode.h"
 #include "game/mode_callbacks.h"
@@ -11,9 +12,8 @@
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
 #include <stdio.h>
-#include <windows.h>
-#include <mmsystem.h>
-#include <winsock.h>
+#include "platform/win_types.h"
+#include "platform/net.h"
 #include "game/connection.h"
 #include "game/client.h"
 #include "login/zone_addr.h"
@@ -42,6 +42,7 @@ struct List g_keepAliveTimes;
 DWORD g_firstKeepAliveTime;
 
 #include "actor/render_ops.h"
+#include "platform/clock.h"
 
 #define WND_LOADING          6
 #define MSGBOX_RESULT_CLOSED 0x105
@@ -67,17 +68,17 @@ void game_mode_send_keep_alive(struct GameMode *self, char force)
 {
     struct PacketKeepAlive packet;
 
-    if (!force && timeGetTime() <= self->server_time_requested_at + g_keepAliveInterval)
+    if (!force && platform_ticks_ms() <= self->server_time_requested_at + g_keepAliveInterval)
         return;
 
     self->server_time_answered = 0;
-    self->server_time_requested_at = timeGetTime();
+    self->server_time_requested_at = platform_ticks_ms();
     packet.id = CZ_KEEP_ALIVE;
-    packet.time = timeGetTime();
+    packet.time = platform_ticks_ms();
     send_packet((short)packet.id, &packet);
 
     if (g_trackPing) {
-        DWORD now = timeGetTime();
+        DWORD now = platform_ticks_ms();
 
         list_push_back(&g_keepAliveTimes, &now, sizeof now);
         if (g_firstKeepAliveTime == 0)
@@ -98,11 +99,11 @@ void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt)
     const struct PACKET_ZC_NOTIFY_TIME *packet = (const struct PACKET_ZC_NOTIFY_TIME *)pkt;
 
     if (g_trackPing) {
-        FILE *log = fopen("PingLog.txt", "at");
+        FILE *log = platform_file_open("PingLog.txt", "at");
 
         if (log) {
             DWORD sent = *LIST_VALUE(g_keepAliveTimes.head->next, DWORD);
-            DWORD round_trip = timeGetTime() - sent;
+            DWORD round_trip = platform_ticks_ms() - sent;
 
             fprintf(log, "%10.2f\t%10d\n", (double)((float)(double)(sent - g_firstKeepAliveTime) / 1000.0f),
                         round_trip);
@@ -116,7 +117,7 @@ void game_mode_zc_notify_time(struct GameMode *self, const unsigned char *pkt)
         session_sync_server_time(&g_session1, packet->server_time);
     self->server_time_syncs++;
     self->server_time_answered = 1;
-    session_push_ping_sample(&g_session1, timeGetTime() - self->server_time_requested_at);
+    session_push_ping_sample(&g_session1, platform_ticks_ms() - self->server_time_requested_at);
 }
 
 static int enter_zone(struct GameMode *self)
@@ -136,7 +137,7 @@ static int enter_zone(struct GameMode *self)
     connection = rag_connection_instance();
     connection_delay_sends(rag_connection_transport(connection), 1000);
     packet.id = CZ_ENTER;
-    packet.time = timeGetTime();
+    packet.time = platform_ticks_ms();
     packet.account_id = g_session1.ownAid;
     packet.char_id = g_session1.ownGid;
     packet.auth_code = ((int)g_session1.authCode);
@@ -163,18 +164,18 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
 
     string_copy(&name, &map_name);
     text_drop_map_extension(&name);
-    _snprintf_s((*(char (*)[20])&g_session1.mapName), 0x14, _TRUNCATE, "%s", string_cstr(&name));
+    snprintf((*(char (*)[20])&g_session1.mapName), 0x14, "%s", string_cstr(&name));
     g_session1.playerPosX = x;
     g_session1.playerPosY = y;
-    _snprintf_s(g_mapServerIp.ip, sizeof g_mapServerIp.ip, _TRUNCATE, inet_ntoa(*(struct in_addr *)&ip));
+    snprintf(g_mapServerIp.ip, sizeof g_mapServerIp.ip, platform_net_ipv4_text(ip));
     g_mapServerIp.port = port;
-    _snprintf_s(g_mapServerIp.host, sizeof g_mapServerIp.host, _TRUNCATE, "%s", string_cstr(&server_map_name));
+    snprintf(g_mapServerIp.host, sizeof g_mapServerIp.host, "%s", string_cstr(&server_map_name));
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
 
     own_states_clear();
 
     self->server_move_pending = 1;
-    self->server_move_time = timeGetTime();
+    self->server_move_time = platform_ticks_ms();
     player = self->world->player;
     render_object_send(player, NULL, 8, 0, 0, 0, 0);
     if (g_wobbleFramesLeft > 0)
@@ -276,7 +277,7 @@ void game_mode_ack_req_disconnect(struct GameMode *self, const struct PACKET_ZC_
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         mode_send_msg(self, MODE_REQ_QUIT, 0, 0, 0, 0);
     } else if (packet->result == 1) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(MSG_CANNOT_QUIT_NOW), CHAT_COLOR_RED,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(MSG_CANNOT_QUIT_NOW), CHAT_COLOR_RED,
                               0, 0);
     }
 }

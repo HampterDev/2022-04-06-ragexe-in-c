@@ -10,7 +10,7 @@
 #include <mmsystem.h>
 
 static DWORD ticks;
-static DWORD test_ticks(void) { return ticks; }
+static uint32_t test_ticks(void) { return ticks; }
 static void *checked_calloc(size_t count, size_t size)
 {
     void *p;
@@ -22,8 +22,10 @@ static void *checked_calloc(size_t count, size_t size)
 #define calloc checked_calloc
 #define free checked_free
 #define timeGetTime test_ticks
+#define platform_ticks_ms test_ticks
 #include "../src/render/rp_atlas.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef free
 #undef calloc
 

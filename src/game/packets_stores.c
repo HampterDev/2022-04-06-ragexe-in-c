@@ -3,15 +3,15 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
 #include "game/context.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
-#include <time.h>
 #include "game/packets.h"
 #include "game/store_entries.h"
 #include "core/text_util.h"
 #include "game/store_search_items.h"
 #include "session/session_items.h"
 #include "ui/shops/merchant_shop_make.h"
+#include "platform/clock.h"
 
 #define WND_BUYING_STORE_OPEN   0xae
 #define MM_STORE_REFUSED        0x51
@@ -63,7 +63,7 @@ void game_mode_zc_update_item_from_buying_store(struct GameMode *self, const uns
 {
     const struct PACKET_ZC_UPDATE_ITEM_FROM_BUYING_STORE *packet =
         (const struct PACKET_ZC_UPDATE_ITEM_FROM_BUYING_STORE *)pkt;
-    int now = (int)_time32(NULL);
+    int now = platform_time_now();
 
     (void)self;
     game_mode_buying_store_bought(now, packet->item_id, packet->count, packet->zeny, 0, 0);
@@ -385,7 +385,7 @@ static void vending_sold_line(struct ItemInfo *item, int msg, int what_msg, int 
         string_init(&line);
         string_format(&line, msg_str(msg), string_cstr(&name), amount);
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), CHAT_COLOR_SOLD, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), CHAT_COLOR_SOLD, 0, 0);
     string_free(&line);
     string_free(&name);
 }
@@ -410,13 +410,13 @@ void game_mode_zc_pc_purchase_result_from_mc(struct GameMode *self, const unsign
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     switch (result) {
     case 6:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x69f), CHAT_COLOR_SOLD, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x69f), CHAT_COLOR_SOLD, 0, 0);
         return;
     case 7:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x705), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x705), CHAT_COLOR_RED, 0, 0);
         return;
     case 15:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xe75), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xe75), CHAT_COLOR_RED, 0, 0);
         return;
     }
     session_get_sent_store_purchase_item(&g_session1, &item, packet->index);
@@ -488,7 +488,7 @@ void game_mode_zc_store_entry(struct GameMode *self, const unsigned char *pkt)
     title[STORE_TITLE_MAX] = 0;
     actor = world_get_game_actor_by_aid(self->world, packet->aid);
     if (actor)
-        actor_send(actor, ACTOR_MSG_STORE_SIGN, (int)title, 0);
+        actor_send(actor, ACTOR_MSG_STORE_SIGN, (intptr_t)title, 0);
 }
 
 #pragma pack(push, 1)
@@ -520,7 +520,7 @@ SIZE_ASSERT(PACKET_ZC_DELETEITEM_FROM_MCSTORE, 6);
 void game_mode_zc_delete_item_from_mc_store(const unsigned char *pkt)
 {
     const struct PACKET_ZC_DELETEITEM_FROM_MCSTORE *packet = (const struct PACKET_ZC_DELETEITEM_FROM_MCSTORE *)pkt;
-    int now = (int)_time32(NULL);
+    int now = platform_time_now();
 
     game_mode_shop_item_sold(now, packet->index, packet->amount, 0, 0);
 }

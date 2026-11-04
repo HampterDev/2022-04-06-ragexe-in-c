@@ -21,7 +21,6 @@
 #include "ui/ui_items.h"
 #include "ui/runtime.h"
 #include "ui/render/render.h"
-#include <mmsystem.h>
 #include "ui/chat/chat_window_parts.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
@@ -35,6 +34,7 @@
 #include "ui/shops/merchant.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/controls/popups.h"
+#include "platform/window.h"
 
 #define GRID_LEFT 0x28
 #define GRID_TOP 0x11
@@ -108,10 +108,6 @@ enum ItemWndTab {
 
 SIZE_ASSERT(ItemWndInfo, 0x28);
 
-OFFSET_ASSERT(UIItemWnd, info, 0xd0);
-OFFSET_ASSERT(UIItemWnd, tab, 0xec);
-OFFSET_ASSERT(UIItemWnd, sort, 0x10c);
-SIZE_ASSERT(UIItemWnd, 0x110);
 struct DragInfo;
 void ui_item_wnd_destroy(struct UIWindow *window);
 void ui_item_wnd_on_create(struct UIWindow *self, int width, int height);
@@ -120,7 +116,7 @@ void ui_item_wnd_on_draw(struct UIWindow *self);
 void ui_item_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_item_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_item_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_item_wnd_ops = {
     .destroy = ui_item_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -671,8 +667,8 @@ static void item_wnd_place_children(struct UIItemWnd *self)
     ui_window_move_base(&self->sort->button.base, 0x9d, wnd->height - 0x13);
 }
 
-int ui_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIItemWnd *self = (struct UIItemWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -842,7 +838,7 @@ void ui_item_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const stru
         return;
     case 0xe:
         if (g_windowMgr.make_target_process_wnd) {
-            ui_window_send_msg(g_windowMgr.make_target_process_wnd, NULL, 0x4b, (int)string_cstr(&drag->name),
+            ui_window_send_msg(g_windowMgr.make_target_process_wnd, NULL, 0x4b, (intptr_t)string_cstr(&drag->name),
                      0, 0, 0);
         }
         break;
@@ -875,7 +871,7 @@ void ui_item_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
             item_info_assign(&item, &current);
             item_info_destruct(&current);
             game_mode_drag_item(game, 1, &item, item.count, -1);
-            if ((BYTE)(GetAsyncKeyState(VK_SHIFT) >> 8) && ui_window_mgr_get_focus_edit(&g_windowMgr) &&
+            if ((BYTE)(platform_async_key_state(VK_SHIFT) >> 8) && ui_window_mgr_get_focus_edit(&g_windowMgr) &&
                 item.identified) {
                 edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
                 if (edit->id == ITEM_LINK_EDIT_MEGAPHONE) {
@@ -906,7 +902,7 @@ void ui_item_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd, wnd, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         return;
     }
-    if (GetAsyncKeyState(VK_SHIFT))
+    if (platform_async_key_state(VK_SHIFT))
         return;
     ui_item_wnd_item_at(self, &item, x, y);
     if (item.index > 0) {
@@ -1017,7 +1013,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     ui_item_wnd_item_at(self, &item, x, y);
     if (item.index > 0) {
         game = game_current_mode();
-        if ((BYTE)(GetAsyncKeyState(VK_MENU) >> 8)) {
+        if ((BYTE)(platform_async_key_state(VK_MENU) >> 8)) {
             if (!g_windowMgr.say_dialog_wnd && !g_windowMgr.choose_wnd) {
                 struct ItemInfo current;
 
@@ -1037,7 +1033,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
                     }
                 }
             }
-        } else if ((BYTE)(GetAsyncKeyState(VK_CONTROL) >> 8)) {
+        } else if ((BYTE)(platform_async_key_state(VK_CONTROL) >> 8)) {
             if (item.index > 0 && !session_is_pet_egg_id(&g_session1, atoi(string_cstr(&item.id_text)))) {
                 struct ItemInfo magnifier, magnifier2;
                 int count;
@@ -1062,7 +1058,7 @@ void ui_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
                 }
             }
         } else {
-            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
         }
     }
     item_info_destruct(&item);

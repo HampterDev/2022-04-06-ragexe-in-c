@@ -57,7 +57,7 @@ void ui_renew_quest_wnd_on_draw(struct UIWindow *self);
 void ui_renew_quest_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_renew_quest_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_renew_quest_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_renew_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_renew_quest_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_renew_quest_wnd_ops = {
     .destroy = ui_renew_quest_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -119,9 +119,6 @@ struct UIRenewQuestWnd {
     int pressed;
     struct Vec lists[QUEST_TAB_COUNT];
 };
-OFFSET_ASSERT(UIRenewQuestWnd, tab, 0x110);
-OFFSET_ASSERT(UIRenewQuestWnd, lists, 0x124);
-SIZE_ASSERT(UIRenewQuestWnd, 0x148);
 
 static unsigned quest_wnd_count(struct UIRenewQuestWnd *self, int tab)
 {
@@ -364,8 +361,7 @@ static void quest_wnd_set_icon(struct UIWindow *icon, const struct RenewQuestBas
     if (!info->text[RENEW_QUEST_TEXT_ICON].size) {
         strcpy(path, QUEST_ICON_NONE);
     } else {
-        _snprintf(path, sizeof path, QUEST_UI_DIR "%s", string_cstr(&info->text[RENEW_QUEST_TEXT_ICON]));
-        path[sizeof path - 1] = 0;
+        snprintf(path, sizeof path, QUEST_UI_DIR "%s", string_cstr(&info->text[RENEW_QUEST_TEXT_ICON]));
     }
     ui_static_bitmap_set_bitmap((struct UIStaticBitmap *)icon, path);
     ui_static_bitmap_set_tool_tip(icon, string_cstr(&info->text[RENEW_QUEST_TEXT_ICON_TIP]));
@@ -520,8 +516,8 @@ static int quest_wnd_refresh(struct UIRenewQuestWnd *self, int quest_id)
     return 0;
 }
 
-int ui_renew_quest_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_renew_quest_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRenewQuestWnd *self = (struct UIRenewQuestWnd *)window;
     int old_top;

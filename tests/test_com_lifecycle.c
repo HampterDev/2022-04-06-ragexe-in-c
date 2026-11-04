@@ -72,8 +72,8 @@ static void fake_shell(void)
 }
 
 /* Keep these operations observable; the other subsystems are inert. */
-#define CoInitialize fake_initialize
-#define CoUninitialize fake_uninitialize
+#define platform_desktop_start() SUCCEEDED(fake_initialize(NULL))
+#define platform_desktop_stop fake_uninitialize
 #define sound_mgr_create() (failure != SOUND)
 #define app_create_window fake_window
 #define app_init_managers fake_managers
@@ -92,7 +92,9 @@ static void fake_shell(void)
 #define string_cstr(...) "startup failure"
 #define msg_str(...) "https://example.com"
 #define error_msg(...) ((void)0)
-#define win_utf8_message_box(...) ((void)0)
+#include "platform/window.h"
+#define MessageBoxA(...) ((void)0)
+#define platform_message_box(...) ((void)0)
 #define frame_timer_reset() ((void)0)
 #define frame_timer_start(...) ((void)0)
 #define session_startup(...) ((void)0)
@@ -116,7 +118,7 @@ static void fake_shell(void)
 #define texcache_clear(...) ((void)0)
 #define c3d_device_delete_renderer(...) ((void)0)
 #define c3d_device_release_all(...) ((void)0)
-#define timeEndPeriod(...) ((void)0)
+#define platform_timer_period_end(...) ((void)0)
 #define crash_report_uninstall() ((void)0)
 #define app_is_win9x() 0
 #define create_depends_dll_msg() ((void)0)

@@ -7,7 +7,8 @@
 #include "resources/sprite.h"
 #include "resources/animation.h"
 #include "iteminfo/item_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
+#include "platform/thread.h"
 #include "actor/render_object.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -87,7 +88,7 @@ struct ShortNameBuffer {
 };
 
 struct Tree g_shortNameBuffers;
-INIT_ONCE g_shortNameBuffersGuard;
+struct Once g_shortNameBuffersGuard;
 void name_buffers_atexit(void);
 
 char *game_mode_short_name(struct String name)
@@ -103,7 +104,7 @@ char *game_mode_short_name(struct String name)
         atexit(name_buffers_atexit);
         once_complete(&g_shortNameBuffersGuard);
     }
-    thread = (int)GetCurrentThread();
+    thread = (int)platform_thread_id();
     buffer = tree_get(&g_shortNameBuffers, &thread, sizeof thread, sizeof *buffer, tree_less_int);
     buf = buffer->text;
     text = string_cstr(&name);
@@ -115,7 +116,7 @@ char *game_mode_short_name(struct String name)
             string_erase(&name, at - 4, 3);
     }
 copy:
-    _snprintf_s(buf, sizeof buffer->text, (size_t)-1, "%s", string_cstr(&name));
+    snprintf(buf, sizeof buffer->text, "%s", string_cstr(&name));
     string_free(&name);
     return buf;
 }
@@ -148,7 +149,7 @@ unsigned long long game_mode_launch_dummy_effect(struct GameMode *self, const Ve
         return 0;
     able_to_make_effect_construct(launcher);
     launcher->ops = &dummy_effect_launcher_ops.base;
-    render_object_send(launcher, NULL, DUMMY_LAUNCHER_MSG_START, MSG_ARG_PTR(at), effect_id, frames, value);
+    render_object_send(launcher, NULL, DUMMY_LAUNCHER_MSG_START, (intptr_t)at, effect_id, frames, value);
     list_push_back(&self->world->gameObjects, &launcher, sizeof launcher);
     return launcher->serial;
 }

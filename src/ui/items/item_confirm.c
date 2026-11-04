@@ -25,7 +25,7 @@ static void accept_show_question(struct UIAcceptWnd *self, int msg_id)
     line = msg_str(msg_id);
     string_assign_cstr(&text, line);
     ui_list_box_clear((struct UIListBox *)self->text);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), ACCEPT_TEXT_STYLE, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&text), ACCEPT_TEXT_STYLE, 0, 0);
     string_free(&text);
 }
 
@@ -34,8 +34,6 @@ struct UIYourItemWnd {
     int value1;
     int value2;
 };
-OFFSET_ASSERT(UIYourItemWnd, value1, 0xa0);
-SIZE_ASSERT(UIYourItemWnd, 0xa8);
 
 #pragma pack(push, 1)
 struct YourItemAnswer {
@@ -47,7 +45,7 @@ struct YourItemAnswer {
 SIZE_ASSERT(YourItemAnswer, 8);
 
 void ui_your_item_wnd_destroy(struct UIWindow *window);
-int ui_your_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_your_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_your_item_wnd_ops = {
     .destroy = ui_your_item_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -116,8 +114,8 @@ void ui_your_item_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_your_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_your_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIYourItemWnd *self = (struct UIYourItemWnd *)window;
     struct YourItemAnswer answer;

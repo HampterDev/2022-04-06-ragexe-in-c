@@ -3,6 +3,7 @@
 
 #include "base.h"
 #include "iteminfo/item_types.h"
+#include <stdint.h>
 
 struct UIWindow;
 
@@ -28,8 +29,7 @@ struct DragInfo {
     int shop_index;
     char by_index;
     int equip_location;
-    __int64 view;
+    int64_t view;
 };
-OFFSET_ASSERT(DragInfo, display_name, 0x24);
 
 #endif

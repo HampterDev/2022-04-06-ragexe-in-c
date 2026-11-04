@@ -11,7 +11,7 @@ void wm_move(struct UIWindow *wnd, int x, int y)
 
 void wm_set_info(struct UIWindow *wnd, void *info)
 {
-    ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (int)(INT_PTR)info, 0, 0, 0);
+    ui_window_send_msg(wnd, NULL, UI_MSG_SET_INFO, (intptr_t)info, 0, 0, 0);
 }
 
 void wm_show(struct UIWindow *wnd)

@@ -10,8 +10,7 @@
 #include "ui/window_access.h"
 #include "ui/shops/merchant_shop_make.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/world_pick.h"
 #include "actor/job.h"
 #include "game/name_balloon.h"
@@ -20,6 +19,7 @@
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/quests/navigation.h"
+#include "platform/clock.h"
 
 int g_hoverCellX = 0;
 
@@ -52,7 +52,7 @@ char game_mode_too_heavy_to_attack(void)
     if (g_session1.weight * 100 / max < 90)
         return 0;
     ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CLEAR_CHAT, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CHAT_LINE, (int)msg_str(MSG_TOO_HEAVY_TO_ATTACK), 0xff, 0,
+    ui_window_mgr_send_msg_(&g_windowMgr, WINDOWMGR_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_TOO_HEAVY_TO_ATTACK), 0xff, 0,
                           0);
     return 1;
 }
@@ -356,7 +356,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
         g_hoverCellHidden = show;
     }
 
-    due = timeGetTime() > self->click_repeat_time + 600;
+    due = platform_ticks_ms() > self->click_repeat_time + 600;
     if (self->world->player->pending == 0 && g_mouse.button[MOUSE_LEFT] == BUTTON_HELD) {
         if (!due || self->held_walk_allowed == 0)
             return picked;
@@ -368,7 +368,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
     }
 
     ui_window_mgr_navigation_help(&g_windowMgr);
-    self->click_repeat_time = timeGetTime();
+    self->click_repeat_time = platform_ticks_ms();
     if (key_down(VK_SHIFT) || g_windowMgr.chat_room_wnd != 0 || self->world->player->state == PLAYER_STATE_SIT) {
         render_object_send(self->world->player, NULL, ACTOR_MSG_WALK, (long long)x, (long long)y, 0, 0);
         return picked;

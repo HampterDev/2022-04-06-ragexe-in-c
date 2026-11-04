@@ -7,8 +7,10 @@
 #undef malloc
 #undef free
 #define timeGetTime bitmap_test_now
+#define platform_ticks_ms bitmap_test_now
 #include "../src/contents/guild_emblem_req.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 
 static int connected = 1, accepts = 1, sends, sent_size;
 static unsigned char sent_bytes[GUILD_EMBLEM_MAX_SIZE + 4];

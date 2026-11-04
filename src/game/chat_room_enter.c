@@ -86,9 +86,9 @@ void game_mode_zc_enter_room(struct GameMode *self, const struct PACKET_ZC_ENTER
     window = ui_window_open(WID_CHAT_ROOM);
     ui_window_send(window, NULL, CHAT_ROOM_MSG_CLEAR, 0, 0, 0, 0);
     room.users = (int)count;
-    ui_window_send(window, NULL, CHAT_ROOM_MSG_INFO, (int)&room, 0, 0, 0);
+    ui_window_send(window, NULL, CHAT_ROOM_MSG_INFO, (intptr_t)&room, 0, 0, 0);
     for (i = 0; i < count; ++i)
-        ui_window_send(window, NULL, CHAT_ROOM_MSG_ADD_MEMBER, (int)members[i].name, members[i].role, 0, 0);
+        ui_window_send(window, NULL, CHAT_ROOM_MSG_ADD_MEMBER, (intptr_t)members[i].name, members[i].role, 0, 0);
     chat_room_info_assign(&self->own_chat_room, &room);
 
 done:

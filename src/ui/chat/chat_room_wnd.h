@@ -27,7 +27,6 @@ struct UIChatRoomWnd {
     struct Vec menu;
     struct WindowInfo *info;
 };
-OFFSET_ASSERT(UIChatRoomWnd, room, 0x94);
 
 static __inline int chat_room_member_width(int width)
 {
@@ -37,8 +36,8 @@ static __inline int chat_room_member_width(int width)
 struct UIChatRoomWnd *ui_chat_room_wnd_construct(struct UIChatRoomWnd *self);
 struct UIWindow *ui_chat_room_wnd_new(void);
 void ui_chat_room_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
-int ui_chat_room_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4);
+intptr_t ui_chat_room_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_chat_room_wnd_save_talk(struct UIChatRoomWnd *self);
 
 char guild_string_differs(const struct String *a, const struct String *b);

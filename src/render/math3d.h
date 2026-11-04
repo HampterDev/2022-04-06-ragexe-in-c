@@ -1,7 +1,8 @@
 #ifndef RENDER_MATH3D_H
 #define RENDER_MATH3D_H
 
-#include "base.h"
+#include <stdint.h>
+#include "core/layout.h"
 #include "render/vec3.h"
 
 struct Mat34 {
@@ -74,6 +75,7 @@ int ray_triangle_hit(const struct Ray3 *ray, const struct Vec3 *v0, const struct
 void mat_look_at(float *m, const struct Vec3 *eye,
                                const struct Vec3 *target, const struct Vec3 *up);
 
-long mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar);
+/* Retains the signed 32-bit result convention on LP64 platforms. */
+int32_t mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar);
 
 #endif

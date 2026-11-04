@@ -3,6 +3,7 @@
 #include "session/csession.h"
 #include "session/session_state.h"
 #include "session/session_windows.h"
+#include "platform/system_memory.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +11,6 @@
 
 void session_init_variables_(struct Session *self)
 {
-    MEMORYSTATUS memory;
     int value, r;
 
     self->decoy_sqrt50 = float_sqrt(50.0f);
@@ -109,10 +109,7 @@ void session_init_variables_(struct Session *self)
     self->married = 0;
     self->ownIllusion = 0;
     self->showTimeFont = 0;
-    memset(&memory, 0, sizeof(memory));
-    memory.dwLength = sizeof(memory);
-    GlobalMemoryStatus(&memory);
-    self->lowMemory = memory.dwTotalPhys < 0x9b72ec0;
+    self->lowMemory = platform_physical_memory() < 0x9b72ec0;
     memset(self->blockedChars, 0, sizeof self->blockedChars);
     self->cartType = 0;
 }

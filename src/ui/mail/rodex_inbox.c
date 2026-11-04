@@ -7,7 +7,6 @@
 #include "game/context.h"
 #include "contents/connection_api.h"
 #include <string.h>
-#include <time.h>
 #include "ui/mail/rodex_ui.h"
 #include "ui/ui_std.h"
 #include "game/rodex_mail.h"
@@ -15,6 +14,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define ROWS 6
 #define ROW_STEP 0x2c
@@ -109,13 +109,6 @@ struct UIRodexInboxWnd {
     struct Vec hits;
     struct Vec lists[3];
 };
-OFFSET_ASSERT(UIRodexInboxWnd, tabs, 0x110);
-OFFSET_ASSERT(UIRodexInboxWnd, checks, 0x154);
-OFFSET_ASSERT(UIRodexInboxWnd, page, 0x17c);
-OFFSET_ASSERT(UIRodexInboxWnd, returns, 0x188);
-OFFSET_ASSERT(UIRodexInboxWnd, searching, 0x1b4);
-OFFSET_ASSERT(UIRodexInboxWnd, lists, 0x1c4);
-SIZE_ASSERT(UIRodexInboxWnd, 0x1e8);
 void ui_rodex_inbox_wnd_destroy(struct UIWindow *window);
 void ui_rodex_inbox_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_rodex_inbox_wnd_on_process(struct UIWindow *self);
@@ -123,7 +116,7 @@ void ui_rodex_inbox_wnd_on_draw(struct UIWindow *self);
 void ui_rodex_inbox_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_rodex_inbox_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_rodex_inbox_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_rodex_inbox_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_rodex_inbox_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_rodex_inbox_wnd_ops = {
     .destroy = ui_rodex_inbox_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -514,14 +507,14 @@ static void draw_row_icons(struct UIRodexInboxWnd *self, int row, BYTE type, BYT
     ui_window_draw_bitmap(wnd, 0xdb, y + 0x7f, res_mgr_get(g_resMgr(), attached), 1);
 }
 
-static void draw_time_left(struct UIRodexInboxWnd *self, int row, __time32_t since, __time32_t expire, BYTE returned)
+static void draw_time_left(struct UIRodexInboxWnd *self, int row, int32_t since, int32_t expire, BYTE returned)
 {
     struct UIWindow *wnd = WND(self);
     struct String text;
     int left, n;
 
-    (void)_difftime32(_time32(NULL), since);
-    left = (int)_difftime32(expire, _time32(NULL));
+    (void)platform_time_diff(platform_time_now(), since);
+    left = (int)platform_time_diff(expire, platform_time_now());
     if (left <= 0) {
         self->expired = 1;
         return;
@@ -1221,13 +1214,13 @@ static void text_button(struct Mode *mode, int id, int mail_id)
         if (g_rodex->open_type != 0 || !node || (node->mail.type & MAIL_FROM_SERVER) || !node->mail.sender.size)
             return;
         if (!navi_links_strip_nr(&nr, string_view(&node->mail.title)))
-            mode_send_message(mode, MODE_RODEX_WRITE, (int)string_cstr(&node->mail.sender), 0, 0, 0);
+            mode_send_message(mode, MODE_RODEX_WRITE, (intptr_t)string_cstr(&node->mail.sender), 0, 0, 0);
         string_free(&nr);
     }
 }
 
-int ui_rodex_inbox_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_rodex_inbox_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRodexInboxWnd *self = (struct UIRodexInboxWnd *)window;
     struct Mode *mode;

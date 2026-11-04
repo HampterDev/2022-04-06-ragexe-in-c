@@ -9,16 +9,17 @@
 /* Use the actual lookup, Lua bridge/runtime and String implementation. */
 static int errors, checks;
 
-static int message_box(HWND window, const char *text, const char *caption, UINT flags)
+static void message_box(HWND window, const char *text, const char *caption, unsigned flags)
 {
     assert(!window && !flags && text && caption);
     ++errors;
-    return 0;
 }
-#include "platform/win_utf8.h"
-#define win_utf8_message_box message_box
+#include "platform/window.h"
+#define MessageBoxA message_box
+#define platform_message_box message_box
 #include "../src/contents/lua_calls.c"
-#undef win_utf8_message_box
+#undef MessageBoxA
+#undef platform_message_box
 #include "headgear_names.inc"
 
 static void run(lua_State *state, const char *text)

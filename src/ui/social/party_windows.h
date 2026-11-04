@@ -14,7 +14,6 @@
 #include "ui/social/social.h"
 #include "ui/character/job_icon_button.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <string.h>
 #include "session/session_items.h"
 #include "session/party_types.h"
@@ -56,9 +55,6 @@ struct MiniPartyWndAreaMgr {
     struct Vec taken;
     struct Vec free;
 };
-OFFSET_ASSERT(MiniPartyWndAreaMgr, cols, 0x10);
-OFFSET_ASSERT(MiniPartyWndAreaMgr, free, 0x24);
-SIZE_ASSERT(MiniPartyWndAreaMgr, 0x30);
 
 struct MiniPartySortArea {
     RECT area;
@@ -83,7 +79,6 @@ struct UIDragMiniPartyWnd {
     int layout;
     struct Vec layouts;
 };
-OFFSET_ASSERT(UIDragMiniPartyWnd, member, 0x94);
 
 struct UIDragMiniPartyWnd *ui_drag_mini_party_wnd_construct(struct UIDragMiniPartyWnd *self,
                                                                    struct PartyMember member);
@@ -114,20 +109,17 @@ struct UIMiniPartyInfoWnd {
     struct UIPcGage *gauge;
     struct UIMiniPartyWnd *owner;
 };
-OFFSET_ASSERT(UIMiniPartyInfoWnd, menu, 0x94);
-OFFSET_ASSERT(UIMiniPartyInfoWnd, owner, 0xa4);
-SIZE_ASSERT(UIMiniPartyInfoWnd, 0xa8);
 
 struct UIMiniPartyWnd *ui_mini_party_wnd_construct(struct UIMiniPartyWnd *self);
 struct PartyMember *ui_mini_party_wnd_get_member(struct UIMiniPartyWnd *self, struct PartyMember *out);
 void ui_mini_party_wnd_set_display_mode(struct UIMiniPartyWnd *self, int mode);
-int ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4);
+intptr_t ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_mini_party_wnd_on_l_btn_up(struct UIWindow *window, int x, int y);
 void ui_mini_party_wnd_on_l_btn_down(struct UIWindow *window, int x, int y);
 struct UIMiniPartyInfoWnd *ui_mini_party_info_wnd_construct(struct UIMiniPartyInfoWnd *self);
-int ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4);
+intptr_t ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4);
 
 #define RENEWAL_PARTY UI_SKIN "renewalparty\\"
 #define PLATE_BG RENEWAL_PARTY "img_partymini_bg.tga"
@@ -186,12 +178,6 @@ struct UIMessengerGroupWnd {
     BYTE party_hides[PARTY_WND_BUTTONS];
     int tab;
 };
-OFFSET_ASSERT(UIMessengerGroupWnd, rows, 0xdc);
-OFFSET_ASSERT(UIMessengerGroupWnd, gauges, 0x108);
-OFFSET_ASSERT(UIMessengerGroupWnd, mode, 0x248);
-OFFSET_ASSERT(UIMessengerGroupWnd, party_hides, 0x260);
-OFFSET_ASSERT(UIMessengerGroupWnd, tab, 0x26c);
-SIZE_ASSERT(UIMessengerGroupWnd, 0x270);
 
 #define PARTY_MSG_SCROLL 7
 #define PARTY_MSG_PAGE_UP 9
@@ -224,8 +210,8 @@ void ui_window_mgr_sort_plates(struct UIWindowMgr *self);
 #include <stdlib.h>
 
 void ui_messenger_group_wnd_on_draw(struct UIWindow *window);
-int ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                           int val2, int val3, int val4);
+intptr_t ui_messenger_group_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                           intptr_t val2, intptr_t val3, intptr_t val4);
 
 struct UIMessengerGroupWnd *ui_messenger_group_wnd_construct(struct UIMessengerGroupWnd *self);
 struct UIWindow *ui_messenger_group_wnd_new(void);

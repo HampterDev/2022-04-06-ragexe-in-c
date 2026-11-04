@@ -5,7 +5,6 @@
 #include "core/object_type_tables.h"
 #include "game/context.h"
 #include "ui/window.h"
-#include <mmsystem.h>
 #include "ui/draw.h"
 #include "ui/skin.h"
 #include "ui/window_mgr.h"
@@ -14,6 +13,7 @@
 #include "ui/controls/controls.h"
 #include "diag/perf.h"
 #include "ui/wndmgr/make_window_internal.h"
+#include "platform/clock.h"
 
 #define PET_TAMING_WND_ID 0x5b
 #define MSG_PET_TAMING_RESULT 0x50
@@ -32,15 +32,13 @@ struct UIPetTamingDeceiveWnd {
     DWORD stopped_at;
     int clicked;
 };
-OFFSET_ASSERT(UIPetTamingDeceiveWnd, stopped_at, 0xac);
-SIZE_ASSERT(UIPetTamingDeceiveWnd, 0xb4);
 
 struct UIWindow;
 void ui_pet_taming_deceive_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_pet_taming_deceive_wnd_on_process(struct UIWindow *self);
 void ui_pet_taming_deceive_wnd_on_draw(struct UIWindow *self);
 void ui_pet_taming_deceive_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_pet_taming_deceive_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_pet_taming_deceive_wnd_ops = {
     .destroy = ui_pet_taming_deceive_wnd_destroy,
@@ -118,8 +116,8 @@ void ui_pet_taming_deceive_wnd_on_process(struct UIWindow *window)
         return;
     if (self->stopped_at == (DWORD)-1) {
         if (self->step <= self->max_step)
-            self->stopped_at = timeGetTime();
-    } else if (self->step <= self->max_step && timeGetTime() - self->stopped_at >= PET_TAMING_CLOSE_MS) {
+            self->stopped_at = platform_ticks_ms();
+    } else if (self->step <= self->max_step && platform_ticks_ms() - self->stopped_at >= PET_TAMING_CLOSE_MS) {
         ui_window_mgr_post_quit1(&g_windowMgr, PET_TAMING_WND_ID);
     }
 }
@@ -170,8 +168,8 @@ void ui_pet_taming_deceive_wnd_on_l_btn_down(struct UIWindow *window, int x, int
     game_send_message(REQ_PET_TAMING, self->item, 0, 0, 0);
 }
 
-int ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_pet_taming_deceive_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPetTamingDeceiveWnd *self = (struct UIPetTamingDeceiveWnd *)window;
     if (msg == MSG_PET_TAMING_RESULT) {

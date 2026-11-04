@@ -7,7 +7,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"
@@ -207,8 +206,8 @@ void ui_bmp_radio_btn_hover_off(struct UIWindow *window)
     ui_window_invalidate_base(&self->base);
 }
 
-int ui_bmp_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_bmp_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIBmpRadioBtn *self = (struct UIBmpRadioBtn *)window;
     if (msg == UI_MSG_SET_STATE) {

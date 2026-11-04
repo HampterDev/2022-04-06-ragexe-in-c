@@ -133,7 +133,7 @@ void ui_hair_bitmap_on_l_btn_up(struct UIWindow *window, int x, int y)
 
 void ui_hair_style_button_destroy(struct UIWindow *window);
 void ui_hair_style_button_on_create(struct UIWindow *self, int width, int height);
-int ui_hair_style_button_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_hair_style_button_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIButtonOps ui_hair_style_button_ops = {
     .base = {
         .destroy = ui_hair_style_button_destroy,
@@ -231,9 +231,9 @@ static void hair_style_refresh(struct UIHairStyleButton *self)
         return;
     }
     ui_button_set_show((struct UIButton *)(self->picture), 1);
-    sprintf_s(path, sizeof path,
-              self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
-              self->style + 1);
+    snprintf(path, sizeof path,
+             self->male == 0 ? MAKER_SKIN "img_hairStyle_girl%02d.bmp" : MAKER_SKIN "img_hairStyle%02d.bmp",
+             self->style + 1);
     if (self->picture) {
         ui_bitmap_button_set_bitmap(&self->picture->button, path, UI_BTN_UP, 0);
         ui_bitmap_button_set_bitmap(&self->picture->button, path, UI_BTN_HOVER, 0);
@@ -264,8 +264,8 @@ static void hair_style_select(struct UIHairStyleButton *self, int selected)
     ui_window_invalidate_base(&self->button.button.base);
 }
 
-int ui_hair_style_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_hair_style_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIHairStyleButton *self = (struct UIHairStyleButton *)window;
     switch (msg) {

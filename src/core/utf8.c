@@ -183,7 +183,7 @@ size_t utf8_encode(unsigned long c, char out[UTF8_CHAR_MAX])
     return 0;
 }
 
-size_t utf8_from_utf16(char *out, size_t capacity, const wchar_t *text, size_t count)
+size_t utf8_from_utf16(char *out, size_t capacity, const uint16_t *text, size_t count)
 {
     char bytes[UTF8_CHAR_MAX];
     size_t written = 0, i, n;
@@ -209,7 +209,7 @@ size_t utf8_from_utf16(char *out, size_t capacity, const wchar_t *text, size_t c
     return written;
 }
 
-size_t utf16_feed(wchar_t *pending, wchar_t unit, unsigned long out[2])
+size_t utf16_feed(uint16_t *pending, uint16_t unit, unsigned long out[2])
 {
     unsigned long u = (unsigned short)unit;
     size_t count = 0;

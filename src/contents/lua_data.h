@@ -24,7 +24,6 @@ struct LuaDataResult {
     char ok;
     struct String message;
 };
-OFFSET_ASSERT(LuaDataResult, message, 0x04);
 
 struct LuaDataResult *lua_data_result(struct LuaDataResult *result, char ok, const char *message);
 

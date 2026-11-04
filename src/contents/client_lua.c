@@ -1,4 +1,5 @@
 #include "contents/client_lua.h"
+#include "contents/lua_file.h"
 #include "fileio/file.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -28,7 +29,7 @@ void client_lua_destruct(struct ClientLua *self)
 static int open_libraries(lua_State *state)
 {
     struct ClientLua *self = lua_touserdata(state, 1);
-    luaL_openlibs(state);
+    lua_open_client_libs(state);
     client_lua_register_functions(self);
     return 0;
 }

@@ -5,6 +5,7 @@
 
 #include "ui/ui_std.h"
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 
 static __inline int ui_stoi(const char *text)
@@ -16,7 +17,7 @@ static __inline int ui_stoi(const char *text)
     value = strtol(text, &end, 10);
     if (text == end)
         fatal_error("invalid stoi argument");
-    if (errno == ERANGE)
+    if (errno == ERANGE || value < INT_MIN || value > INT_MAX)
         fatal_error("stoi argument out of range");
     return (int)value;
 }

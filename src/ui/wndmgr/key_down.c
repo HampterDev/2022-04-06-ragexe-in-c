@@ -22,6 +22,7 @@
 #include "session/session_windows.h"
 #include "ui/chat/chat_window.h"
 #include "ui/hotkeys/hotkeys.h"
+#include "platform/window.h"
 
 #define MODE_MSG_CHAT_LINE 6
 #define MODE_MSG_PARTY_LINE 0x42
@@ -340,7 +341,7 @@ void ui_window_mgr_send_chat_macro(int index)
     at = session_get_talk_type(&g_session1, text, &type, parts);
     if (at != -1)
         string_assign_cstr(&g_windowMgr.chat_line, text + at);
-    mode_send_message(client_current_mode(), MODE_MSG_TALK_COMMAND, type, (int)(INT_PTR)parts, 0, 0);
+    mode_send_message(client_current_mode(), MODE_MSG_TALK_COMMAND, type, (intptr_t)parts, 0, 0);
     for (i = 3; i-- > 0;)
         string_free(&parts[i]);
 }
@@ -367,7 +368,7 @@ static int edit_lets_through(int vk)
 
 static int altgr_down(void)
 {
-    return (GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000);
+    return (platform_key_state(VK_CONTROL) & 0x8000) && (platform_key_state(VK_MENU) & 0x8000);
 }
 
 BYTE ui_window_mgr_on_key_down(struct UIWindowMgr *self, int vk, int lparam, int first_press)

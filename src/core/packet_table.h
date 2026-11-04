@@ -22,8 +22,6 @@ struct PacketTable {
     struct Tree lengths;
     const char *names[PACKET_ID_LIMIT];
 };
-OFFSET_ASSERT(PacketTable, names, 0x08);
-SIZE_ASSERT(PacketTable, 0x9c48);
 
 enum {
     PACKET_KIND_UNKNOWN = -1,

@@ -2,7 +2,7 @@
 #ifndef GAMEMODE_CONNECTION_H
 #define GAMEMODE_CONNECTION_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 #include "base.h"
 

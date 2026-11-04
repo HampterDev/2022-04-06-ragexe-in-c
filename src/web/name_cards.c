@@ -6,10 +6,10 @@
 #include "web/name_cards.h"
 #include "std/tree.h"
 #include "std/vec.h"
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 struct ActorNameCard g_emptyNameCard;
-INIT_ONCE g_emptyNameCardGuard;
+struct Once g_emptyNameCardGuard;
 
 #define REQ_NAME_PACKET                                                                            \
     0x368
@@ -83,7 +83,7 @@ static void expire_requests(struct ActorNameCardHolder *self)
 {
     struct NameCardRequest *first = self->asked.first, *expired = first;
 
-    while (expired != self->asked.last && timeGetTime() >= expired->sent + REQUEST_TIMEOUT)
+    while (expired != self->asked.last && platform_ticks_ms() >= expired->sent + REQUEST_TIMEOUT)
         expired++;
     vec_erase(&self->asked, first, expired);
 }
@@ -215,7 +215,7 @@ void name_card_holder_update(struct ActorNameCardHolder *self)
     rag_connection_send_packet(rag_connection_instance(), sizeof packet, &packet);
 
     request.aid = aid;
-    request.sent = timeGetTime();
+    request.sent = platform_ticks_ms();
     vec_push(&self->asked, &request, sizeof request);
 }
 

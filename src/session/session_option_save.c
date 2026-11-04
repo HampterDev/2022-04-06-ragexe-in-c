@@ -7,6 +7,7 @@
 #include "core/app.h"
 #include "ui/render/graphic_setting.h"
 #include "game/camera.h"
+#include "platform/window.h"
 
 #define OPT_INT(name, value)    session_write_option_int(self, &out, (name), (value))
 
@@ -44,7 +45,7 @@ void session_save_options(struct Session *self)
             session_write_option_float(self, &out, "Indoor_ViewDistance", g_fixedViewDistance);
             session_write_option_string(self, &out, "SkinName", skin_mgr_get_current_name(&g_skinMgr));
             OPT_INT("ChannelCopID", self->channelCopId);
-            GetWindowRect(g_hMainWnd, &window);
+            platform_window_rect(g_hMainWnd, &window);
             OPT_INT("Window_XPos", window.left);
             OPT_INT("Window_YPos", window.top);
             OPT_INT("Simplicity_SkillList", self->simpleSkillWnd);

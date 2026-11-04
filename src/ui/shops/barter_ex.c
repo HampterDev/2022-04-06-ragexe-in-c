@@ -91,7 +91,7 @@ static struct BarterExFound *exb_goods_or_pay_at(const struct ExpandedBarterWnd 
                     item.type = pay->type;
                     item.refine = pay->refine;
                     memset(id, 0, sizeof id);
-                    _itoa(pay->id, id, 10);
+                    snprintf(id, sizeof id, "%d", pay->id);
                     string_assign_cstr(&item.id_text, id);
                     out->found = 1;
                     barter_goods_ex_copy(&out->goods, &item);
@@ -115,7 +115,7 @@ void exb_append_refine(struct String *text, int refine)
 {
     char number[0xc];
 
-    _itoa(refine, number, 10);
+    snprintf(number, sizeof number, "%d", refine);
     string_append_cstr(text, "+");
     string_append_cstr(text, number);
     string_append_cstr(text, " ");
@@ -186,7 +186,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
 
         item_info_construct(&item);
         item.count = market ? pay->count : pay->count * goods->count;
-        _itoa(pay->id, id, 10);
+        snprintf(id, sizeof id, "%d", pay->id);
         string_assign_cstr(&item.id_text, id);
         item.refine = pay->refine;
         if (market && goods->count == 0)
@@ -198,7 +198,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
             char text[0x10];
 
             memset(text, 0, sizeof text);
-            _snprintf_s(text, sizeof text, (size_t)-1, "+%d", item.refine);
+            snprintf(text, sizeof text, "+%d", item.refine);
             ui_window_text_out_outlined_ptr(wnd, x + 8, y + 0x1c, text, strlen(text), &colour,
                                         EXB_REFINE_OUTLINE, 0, 12, 1);
         }
@@ -206,7 +206,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
     }
 
     memset(price, 0, sizeof price);
-    _snprintf_s(price, sizeof price, (size_t)-1, "%d z", market ? goods->price : goods->price * goods->count);
+    snprintf(price, sizeof price, "%d z", market ? goods->price : goods->price * goods->count);
     ui_window_text_out_right(wnd, wnd->width - 0x14, y + 0x27, price, 0, 0, 12, 0, 0);
 }
 
@@ -309,7 +309,7 @@ void exb_show_item_at(const struct ExpandedBarterWnd *self, int x, int y)
             struct ItemInfo info;
 
             barter_goods_ex_to_item_info(&at.goods, &info);
-            ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+            ui_window_send_msg(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
             item_info_destruct(&info);
         }
     }

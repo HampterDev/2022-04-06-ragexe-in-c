@@ -15,6 +15,7 @@
 #include "session/session_windows.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define LMSG_SERVICE            0x00
 #define LMSG_DISCONNECT_BOX     0x01
@@ -79,9 +80,9 @@ static int select_server(struct LoginMode *self, int server)
     e = &self->servers[server];
     string_assign_cstr(&g_session1.worldName, e->name);
     ip = self->servers[self->selectedServer].ip;
-    wsprintfA(info.ip, "%d.%d.%d.%d", ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, ip >> 24);
+    snprintf(info.ip, sizeof info.ip, "%d.%d.%d.%d", ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, ip >> 24);
     info.port = (short)self->servers[self->selectedServer].port;
-    _snprintf_s(info.name, 0x81, (size_t)-1, "%s", (const char *)self->servers[self->selectedServer].host);
+    snprintf(info.name, 0x81, "%s", (const char *)self->servers[self->selectedServer].host);
     memcpy(&g_charServerAddr, &info, sizeof info);
     g_charServerIp = self->servers[self->selectedServer].ip;
     string_assign_cstr(&g_session1.serverName,
@@ -204,7 +205,7 @@ static int select_zone(struct LoginMode *self, int zone)
     return 0;
 }
 
-int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
+intptr_t login_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct LoginMode *self = (struct LoginMode *)mode;
     int i;
@@ -233,7 +234,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case LMSG_CHAR_BY_SLOT:
         for (i = 0; i < self->numChar; i++)
             if (self->chars[i].slot == a)
-                return (int)&self->chars[i];
+                return (intptr_t)&self->chars[i];
         return 0;
     case LMSG_MESSAGE_WND:
         return message_wnd(self, a);
@@ -242,7 +243,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case LMSG_LAST_CHAR:
         if (!self->numChar)
             return 0;
-        return (int)&self->chars[self->numChar - 1];
+        return (intptr_t)&self->chars[self->numChar - 1];
     case LMSG_TO_SUBMODE_4:
         self->base.next_sub_mode = 4;
         return 0;
@@ -266,10 +267,10 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         ui_window_mgr_invalidate_all(&g_windowMgr);
         strcpy(self->email, (const char *)a);
         return 0;
-    case 0x271d: return (int)self->email;
-    case 0x271e: return (int)self->new_char_name;
+    case 0x271d: return (intptr_t)self->email;
+    case 0x271e: return (intptr_t)self->new_char_name;
     case 0x271f: strcpy(self->new_char_name, (const char *)a); return 0;
-    case 0x2720: return (int)&self->new_char;
+    case 0x2720: return (intptr_t)&self->new_char;
     case 0x2721: self->new_char = *(const struct NewCharLooks *)a; return 0;
     case 0x2722:
         self->base.next_sub_mode = 2;
@@ -279,14 +280,14 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0) == 0x105)
             return 0;
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         return back_to_login(self);
     case 0x2729: return 0;
 
     case 0x272c: return select_zone(self, a);
     case 0x2735:
         self->base.next_sub_mode = a;
-        return (int)self->email;
+        return (intptr_t)self->email;
     case 0x2736: strcpy((char *)self->account_class, (const char *)a); return 0;
     }
     return mode_send_msg_base(&self->base, msg, a, b, c, 0);

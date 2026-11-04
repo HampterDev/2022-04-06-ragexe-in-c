@@ -22,7 +22,6 @@ struct UITab {
     int count;
     int kind;
 };
-SIZE_ASSERT(UITab, 0x84);
 struct UITab *ui_tab_construct(struct UITab *self);
 
 enum UITabSide {
@@ -53,13 +52,6 @@ struct UITabControl {
     int font_height;
     struct StdBitVector new_marks;
 };
-OFFSET_ASSERT(UITabControl, side, 0x80);
-OFFSET_ASSERT(UITabControl, fill_selected, 0x90);
-OFFSET_ASSERT(UITabControl, renamable, 0xa8);
-OFFSET_ASSERT(UITabControl, names, 0xb4);
-OFFSET_ASSERT(UITabControl, edit, 0xd8);
-OFFSET_ASSERT(UITabControl, new_marks, 0xe0);
-SIZE_ASSERT(UITabControl, 0xf0);
 struct UIWindow *ui_tab_control_construct(struct UIWindow *self);
 void ui_tab_control_setup(struct UIWindow *self, int side, int thickness, int padding,
                                    BYTE equal_lengths, BYTE no_fill, BYTE renamable, DWORD fill_selected,
@@ -76,8 +68,8 @@ void ui_tab_control_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_tab_control_on_l_btn_dbl_clk(struct UIWindow *self, int x_unused, int y_unused);
 void ui_tab_control_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_tab_control_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
-int ui_tab_control_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4);
+intptr_t ui_tab_control_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_tab_control_select_tab(struct UIWindow *wnd, int tab);
 int ui_tab_control_tab_count(struct UITabControl *self);
 int ui_tab_control_tab_at(struct UITabControl *self, int x, int y);
@@ -87,7 +79,7 @@ void ui_tab_control_remove_tab(struct UIWindow *wnd, int index);
 void ui_tab_destroy(struct UIWindow *window);
 void ui_tab_on_draw(struct UIWindow *self);
 void ui_tab_on_l_btn_down(struct UIWindow *self, int x_unused, int y);
-int ui_tab_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, int val1,
-                             int val2_unused, int val3_unused, int val4_unused);
+intptr_t ui_tab_send_msg(struct UIWindow *self, struct UIWindow *sender_unused, int msg, intptr_t val1,
+                             intptr_t val2_unused, intptr_t val3_unused, intptr_t val4_unused);
 
 #endif

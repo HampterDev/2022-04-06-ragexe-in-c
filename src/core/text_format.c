@@ -1,7 +1,6 @@
 #include "core/text_format.h"
 #include "core/hex.h"
 #include "core/utf8.h"
-#include <windows.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,9 +30,9 @@ const char *text_find_colour_code(const char *text, const char *end)
     return end;
 }
 
-const char *text_read_colour_code(const char *text, const char *end, unsigned long *colour)
+const char *text_read_colour_code(const char *text, const char *end, COLORREF *colour)
 {
-    unsigned long r, g, b;
+    COLORREF r, g, b;
     if (!text_is_colour_code(text, end))
         return text;
     r = hex_digit_value((unsigned char)text[1]) * 16 + hex_digit_value((unsigned char)text[2]);

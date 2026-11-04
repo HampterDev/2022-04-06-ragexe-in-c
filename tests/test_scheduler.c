@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
@@ -9,16 +10,16 @@
 #include <mmsystem.h>
 #include "owned_storage_test_allocator.h"
 #include "contents/schedule.h"
+#include "platform/clock.h"
 
-static __time32_t clock_seconds = 100;
+static int32_t clock_seconds = 100;
 static unsigned clock_reads, ticks_ms;
-static __time32_t fixture_time(__time32_t *out)
+static int32_t fixture_time(void)
 {
     ++clock_reads;
-    if (out) *out = clock_seconds;
     return clock_seconds;
 }
-static DWORD fixture_ticks(void) { return ticks_ms; }
+static uint32_t fixture_ticks(void) { return ticks_ms; }
 static void *checked_realloc(void *old, size_t size)
 {
     void *next = checked_malloc(size);
@@ -33,8 +34,9 @@ static void *checked_realloc(void *old, size_t size)
 #define malloc checked_malloc
 #define free checked_free
 #define realloc checked_realloc
-#define _time32 fixture_time
+#define platform_time_now fixture_time
 #define timeGetTime fixture_ticks
+#define platform_ticks_ms fixture_ticks
 #include "../src/contents/schedule.c"
 #include "../src/contents/time_scheduler_tick.c"
 #include "../src/game/ping_schedule.c"
@@ -42,7 +44,8 @@ static void *checked_realloc(void *old, size_t size)
 #include "../src/contents/ranking_output.c"
 #include "../src/session/session_ranking.c"
 #undef timeGetTime
-#undef _time32
+#undef platform_ticks_ms
+#undef platform_time_now
 #undef free
 #undef malloc
 #undef realloc
@@ -82,7 +85,7 @@ char *msg_str(int id)
     last_msg = id;
     return "message";
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *w, int msg, int text, int color, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *w, int msg, intptr_t text, intptr_t color, intptr_t c, intptr_t d)
 {
     assert(w == &g_windowMgr && msg == 1 && text && !c && !d);
     (void)color; ++chat_lines; return 0;

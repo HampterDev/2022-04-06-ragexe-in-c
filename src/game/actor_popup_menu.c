@@ -9,7 +9,7 @@
 #include "contents/mouse.h"
 #include "core/object_type.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/mode_msg.h"
 #include "game/input.h"
@@ -25,6 +25,7 @@
 #include "session/session_talk.h"
 #include "ui/ui_std.h"
 #include "ui/window_mgr.h"
+#include "platform/window.h"
 
 #define WID_POPUP_MENU          0x12
 #define MSG_MENU_FIT            0x1e
@@ -55,7 +56,7 @@ static void menu_entry(struct GameMode *self, int entry)
 
 static void menu_item(struct UIWindow *menu, const char *text)
 {
-    ui_window_send(menu, NULL, MSG_MENU_ADD_ITEM, (int)text, 0, 0, 0);
+    ui_window_send(menu, NULL, MSG_MENU_ADD_ITEM, (intptr_t)text, 0, 0, 0);
 }
 
 static void menu_row(struct GameMode *self, struct UIWindow *menu, int entry, int text_id)
@@ -258,7 +259,7 @@ void game_mode_open_actor_popup_menu(struct GameMode *self, struct PickInfo *pic
 
     if (g_mouse.button[MOUSE_LEFT] == BUTTON_HELD)
         return;
-    if ((unsigned char)((unsigned)GetAsyncKeyState(VK_SHIFT) >> 8))
+    if ((unsigned char)((unsigned)platform_async_key_state(VK_SHIFT) >> 8))
         return;
     we_are_gm = clientinfo_is_admin_aid(g_session1.ownAid);
     if (!pick || verdict != 0 || g_mouse.button[MOUSE_RIGHT] != BUTTON_RELEASED || g_windowMgr.item_store_wnd)

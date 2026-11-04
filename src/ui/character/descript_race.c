@@ -12,13 +12,13 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/character/character.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 #define MSG_HUMAN_TITLE 0xbc8
 #define MSG_HUMAN_TEXT 0xbcc
@@ -45,7 +45,7 @@ void ui_descript_race_destroy(struct UIWindow *window);
 void ui_descript_race_on_create(struct UIWindow *self, int cx, int cy);
 void ui_descript_race_on_draw(struct UIWindow *self);
 void ui_descript_race_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_descript_race_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_descript_race_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIButtonOps ui_descript_race_ops = {
     .base = {
         .destroy = ui_descript_race_destroy,
@@ -163,13 +163,13 @@ static void draw_race(struct UIDescriptRace *self)
         }
 
         if (self->animating) {
-            if (self->frame_time + FRAME_MS <= timeGetTime()) {
+            if (self->frame_time + FRAME_MS <= platform_ticks_ms()) {
                 int next = self->frame + 1;
 
                 if (next >= (int)actres_frame_count(act, action))
                     next = 0;
                 self->frame = next;
-                self->frame_time = timeGetTime();
+                self->frame_time = platform_ticks_ms();
             }
             frame = self->frame;
         }
@@ -226,8 +226,8 @@ void ui_descript_race_on_l_btn_down(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd, (struct UIWindow *)self, UI_MSG_COMMAND, RACE_BUTTON_ID, 0, 0, 0);
 }
 
-int ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_descript_race_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIDescriptRace *self = (struct UIDescriptRace *)window;
     if (msg != DESCRIPT_RACE_MSG_CHOOSE)
@@ -247,7 +247,7 @@ static struct UIDescriptRace *ui_descript_race_construct(struct UIDescriptRace *
     ui_bitmap_button_construct(&self->base);
     self->base.button.base.ops = &ui_descript_race_ops.base;
     self->frame = 0;
-    self->frame_time = timeGetTime();
+    self->frame_time = platform_ticks_ms();
     self->animating = 1;
     return self;
 }

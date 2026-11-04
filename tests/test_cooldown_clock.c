@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include "session/session_state.h"
 static unsigned ticks;
-static DWORD fixture_clock(void) { return ticks; }
+static uint32_t fixture_clock(void) { return ticks; }
 #define timeGetTime fixture_clock
+#define platform_ticks_ms fixture_clock
 #include "../src/ui/cooldown_clock.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 
 static void test_session_delays(void)
 {

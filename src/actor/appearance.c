@@ -5,6 +5,7 @@
 #include "game/actor_entry.h"
 #include "session/session_names.h"
 #include "session/session_skills.h"
+#include <stdint.h>
 
 int actor_get_screen_position(const struct GameActor *actor, struct ActorScreenPosition *position)
 {
@@ -151,7 +152,7 @@ void pc_set_spr_act_with_state(struct GameActor * actor, const struct ActorLook 
     game_actor_set_job((struct GameActor *)self, pc_drawn_job(self, look->job, st));
     actor_set_head(self, self->head);
     if (pc_plain_look(self, st)) {
-        __int64 w;
+        int64_t w;
 
         switch (game_actor_get_job((struct GameActor *)self)) {
         case 0xc: case 0xfad: case 0xfc3:

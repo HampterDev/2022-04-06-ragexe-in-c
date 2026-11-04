@@ -23,7 +23,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
 
 void game_actor_msg_attack(struct GameActor *self, const struct ActorAttack *attack);
 int game_actor_get_counter(struct GameActor *self, int key);
-void game_actor_set_counter(struct GameActor *self, int key, __int64 value);
+void game_actor_set_counter(struct GameActor *self, int key, int64_t value);
 
 void game_actor_process_body_state(struct GameActor *self);
 void game_actor_process_chat_balloon_(struct GameActor *self);
@@ -37,7 +37,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
 
 void game_actor_stop_aura_effects(struct GameActor *self);
 void game_actor_drop_siege_window(struct GameActor *self);
-void game_actor_forget_handle(struct GameActor *self, int handle);
+void game_actor_forget_handle(struct GameActor *self, struct GameObject *handle);
 int game_actor_get_transform_job(struct GameActor *self);
 void game_actor_launch_ranged_attack(struct GameActor *self, int id, float height);
 void game_actor_raise_body_quarter_height(struct GameActor *self, int value);

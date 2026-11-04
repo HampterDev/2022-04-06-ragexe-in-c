@@ -37,8 +37,8 @@ void snap_mgr_move_chain(struct SnapMgr *self, struct UIWindow *wnd, int dx, int
 {
     assert(self == &g_snapMgr && wnd && dx == 0 && dy != 0 && side == 3);
 }
-int ui_frame_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                          int val4)
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1,
+                               intptr_t val2, intptr_t val3, intptr_t val4)
 {
     (void)self; (void)sender; (void)val1; (void)val2; (void)val3; (void)val4;
     assert(msg == UI_MSG_RESIZE);
@@ -75,7 +75,7 @@ static void create(struct UIStatusWnd *self)
 static void restore(struct UIStatusWnd *self, struct StatusWndInfo *info)
 {
     create(self);
-    ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_SET_INFO, (int)(INT_PTR)info, 0, 0, 0);
+    ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_SET_INFO, (intptr_t)info, 0, 0, 0);
 }
 
 static void expect(struct UIStatusWnd *self, int x, int y, int height)

@@ -14,6 +14,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "session/session_items.h"
+#include <stdint.h>
 
 #define ID_TAKE_ITEMS 0xb5
 #define ID_TAKE_ZENY 0xb6
@@ -53,7 +54,7 @@ struct UIRodexContentsWnd {
     struct UIEditCtrl3 *body;
     struct String sender;
     struct String title;
-    __int64 zeny;
+    int64_t zeny;
     struct List items;
     int hover;
     struct UIBitmapButton *btn_items;
@@ -69,7 +70,7 @@ void ui_rodex_contents_wnd_on_draw(struct UIWindow *self);
 void ui_rodex_contents_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_rodex_contents_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_rodex_contents_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_rodex_contents_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_rodex_contents_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_rodex_contents_wnd_ops = {
     .destroy = ui_rodex_contents_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -241,7 +242,7 @@ static struct UIBitmapButton *receive_button(struct UIRodexContentsWnd *self, in
 
 void ui_rodex_contents_wnd_set_mail(struct UIRodexContentsWnd *self, struct String sender,
                                            struct String title, struct String text, BYTE item_count,
-                                           __int64 zeny, BYTE type)
+                                           int64_t zeny, BYTE type)
 {
     struct String nr = {0};
     struct String body_text;
@@ -272,7 +273,7 @@ void ui_rodex_contents_wnd_set_mail(struct UIRodexContentsWnd *self, struct Stri
         && text_view_find(string_view(&body_text), string_view(&text_tag_NAVIL_END), 0) == STRING_NPOS)
         ui_edit_ctrl_set_text(&self->body->edit, string_cstr(&body_text));
     else
-        ui_window_send_msg(EDIT(self->body), NULL, UI_MSG_PARSE_LINKS, (int)string_cstr(&body_text), 0, 0, 0);
+        ui_window_send_msg(EDIT(self->body), NULL, UI_MSG_PARSE_LINKS, (intptr_t)string_cstr(&body_text), 0, 0, 0);
     ui_edit_ctrl3_set_tag_colour(self->body, RODEX_TAG_COLOUR);
     ui_window_add_child(WND(self), EDIT(self->body));
 
@@ -408,7 +409,7 @@ void ui_rodex_contents_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
 
     ui_rodex_contents_wnd_item_at(self, &item, x, y);
     if (atoi(string_cstr(&item.id_text)))
-        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     item_info_destruct(&item);
 }
 
@@ -463,8 +464,8 @@ static void reload_items(struct UIRodexContentsWnd *self)
     ui_window_invalidate_base(WND(self));
 }
 
-int ui_rodex_contents_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_rodex_contents_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRodexContentsWnd *self = (struct UIRodexContentsWnd *)window;
     switch (msg) {
@@ -490,7 +491,7 @@ int ui_rodex_contents_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
         case ID_REPLY:
             if (self->no_reply != 1)
                 mode_send_message(game_current_base_mode(), MODE_RODEX_REPLY,
-                              (int)string_cstr(&self->sender), 0, 0, 0);
+                              (intptr_t)string_cstr(&self->sender), 0, 0, 0);
             break;
         case ID_RETURN: {
             struct PacketRodexReturn packet;

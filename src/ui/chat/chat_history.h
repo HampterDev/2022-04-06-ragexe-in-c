@@ -24,11 +24,6 @@ struct UIChatHisBox {
     struct Vec log_colour;
     struct Vec log_extra;
 };
-OFFSET_ASSERT(UIChatHisBox, item_tags, 0xd0);
-OFFSET_ASSERT(UIChatHisBox, colours, 0xe0);
-OFFSET_ASSERT(UIChatHisBox, line_extra, 0xf0);
-OFFSET_ASSERT(UIChatHisBox, log_extra, 0x114);
-SIZE_ASSERT(UIChatHisBox, 0x120);
 
 struct UIChatHisBox *ui_chat_his_box_construct(struct UIChatHisBox *self);
 void ui_chat_his_box_destruct(struct UIChatHisBox *self);
@@ -54,7 +49,6 @@ struct UIChatHisBox2 {
     struct UIChatHisBox box;
     int back_r, back_g, back_b;
 };
-SIZE_ASSERT(UIChatHisBox2, 0x12c);
 struct UIChatHisBox2 *ui_chat_his_box2_construct(struct UIChatHisBox2 *self);
 
 void ui_chat_his_box_resize(struct UIWindow *window, int width, int height);
@@ -63,8 +57,8 @@ void ui_chat_his_box_set_show(struct UIWindow *window, int visible);
 void ui_chat_his_box2_on_create(struct UIWindow *window, int width, int height);
 void ui_chat_his_box_on_l_btn_dbl_clk(struct UIWindow *window, int x_unused, int y_unused);
 void ui_chat_his_box_on_l_btn_up(struct UIWindow *self, int x_unused, int y_unused);
-int ui_chat_his_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4);
+intptr_t ui_chat_his_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4);
 
 void ui_chat_his_box2_create(struct UIListBox *base_list, int x, int y, int width, int height, BYTE transparent_unused);
 void ui_chat_his_box_clear_items(struct UIListBox *base_list);

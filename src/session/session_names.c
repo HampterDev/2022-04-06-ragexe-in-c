@@ -14,7 +14,7 @@
 #include "ui/ui_std.h"
 
 struct String s_rswName;
-INIT_ONCE s_rswNameGuard;
+struct Once s_rswNameGuard;
 
 const char *session_get_rsw_name(const char *mapName)
 {
@@ -154,9 +154,9 @@ int session_get_item_bitmap_file_name(const char *itemIdText, char *buf, int ide
 }
 
 struct String s_itemDisplayName;
-INIT_ONCE s_itemDisplayNameGuard;
+struct Once s_itemDisplayNameGuard;
 struct String s_itemActName;
-INIT_ONCE s_itemActNameGuard;
+struct Once s_itemActNameGuard;
 
 const char *session_get_item_display_name(const char *itemIdText, int identified)
 {
@@ -222,7 +222,7 @@ static struct NamedStrings *named_lower_bound(struct NamedStrings *first, struct
 }
 
 struct Vec s_fogNone;
-INIT_ONCE s_fogNoneGuard;
+struct Once s_fogNoneGuard;
 
 struct Vec *session_find_fog_parameters(struct Session *self,
                                                     const char *name, int *found)
@@ -258,7 +258,7 @@ struct Vec *session_find_fog_parameters(struct Session *self,
 }
 
 struct Vec s_viewNone;
-INIT_ONCE s_viewNoneGuard;
+struct Once s_viewNoneGuard;
 
 struct Vec *session_get_map_view_preset(struct Session *self,
                                                     const char *name, int *found)

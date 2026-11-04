@@ -22,9 +22,6 @@ struct UIItemPickWnd {
     struct Vec item_ids;
     struct Vec indices;
 };
-OFFSET_ASSERT(UIItemPickWnd, list, 0x94);
-OFFSET_ASSERT(UIItemPickWnd, indices, 0xa4);
-SIZE_ASSERT(UIItemPickWnd, 0xb0);
 
 static void pick_wnd_create(struct UIItemPickWnd *self, int width, int height)
 {
@@ -84,7 +81,7 @@ struct UIItemRepairWnd;
 void ui_item_repair_wnd_destroy(struct UIWindow *window);
 void ui_item_repair_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_item_repair_wnd_on_draw(struct UIWindow *self);
-int ui_item_repair_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_repair_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_repair_wnd_ops = {
     .destroy = ui_item_repair_wnd_destroy,
@@ -135,8 +132,6 @@ struct UIItemRepairWnd {
     struct UIItemPickWnd pick;
     struct List items;
 };
-OFFSET_ASSERT(UIItemRepairWnd, items, 0xb0);
-SIZE_ASSERT(UIItemRepairWnd, 0xb8);
 
 struct UIItemRepairWnd *ui_item_repair_wnd_construct(struct UIItemRepairWnd *self)
 {
@@ -205,13 +200,13 @@ static void repair_ok(struct UIItemRepairWnd *self)
                 return;
             }
         }
-        mode_send_message(g_modeMgr.curMode, GAME_REQ_REPAIR_ITEM, (int)LIST_VALUE(node, struct RepairItem), 0, 0, 0);
+        mode_send_message(g_modeMgr.curMode, GAME_REQ_REPAIR_ITEM, (intptr_t)LIST_VALUE(node, struct RepairItem), 0, 0, 0);
     }
     ui_window_mgr_post_quit1(&g_windowMgr, ITEM_REPAIR_WND_ID);
 }
 
-int ui_item_repair_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_item_repair_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemRepairWnd *self = (struct UIItemRepairWnd *)window;
     switch (msg) {
@@ -244,7 +239,7 @@ struct UIWeaponRefineWnd;
 void ui_weapon_refine_wnd_destroy(struct UIWindow *window);
 void ui_weapon_refine_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_weapon_refine_wnd_on_draw(struct UIWindow *self);
-int ui_weapon_refine_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_weapon_refine_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_weapon_refine_wnd_ops = {
     .destroy = ui_weapon_refine_wnd_destroy,
@@ -294,7 +289,6 @@ const struct UIWindowOps ui_weapon_refine_wnd_ops = {
 struct UIWeaponRefineWnd {
     struct UIItemPickWnd pick;
 };
-SIZE_ASSERT(UIWeaponRefineWnd, 0xb0);
 
 struct UIWeaponRefineWnd *ui_weapon_refine_wnd_construct(struct UIWeaponRefineWnd *self)
 {
@@ -348,8 +342,8 @@ static void refine_ok(struct UIWeaponRefineWnd *self)
     ui_window_mgr_post_quit1(&g_windowMgr, WEAPON_REFINE_WND_ID);
 }
 
-int ui_weapon_refine_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_weapon_refine_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIWeaponRefineWnd *self = (struct UIWeaponRefineWnd *)window;
     switch (msg) {

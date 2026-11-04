@@ -10,8 +10,8 @@
 #include "core/markup_tags.h"
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "ui/chat/chat.h"
 #include "ui/chat/chat_history.h"
 #include "ui/chat/whisper.h"
@@ -37,7 +37,7 @@ void ui_whisper_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_whisper_wnd_on_draw(struct UIWindow *self);
 void ui_whisper_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_whisper_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_whisper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_whisper_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_whisper_wnd_draw_backdrop(struct UIWindow *window);
 const struct UIWindowOps ui_whisper_wnd_ops = {
     .destroy = ui_whisper_wnd_destroy,
@@ -203,7 +203,7 @@ void ui_whisper_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int y)
     if (!language_copy_text(string_cstr(&self->code), self->code.size))
         return;
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)"C-Code copied to clipboard",
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)"C-Code copied to clipboard",
                         WHISPER_COPIED_COLOUR, 0, 0);
 }
 
@@ -253,8 +253,8 @@ static void save_conversation(struct UIWhisperWnd *self)
     unsigned i;
     int n = 0;
 
-    sprintf(path, "%s\\Whisper", g_clientDir);
-    if (_access(path, 0) && _mkdir(path))
+    client_path(path, sizeof path, "Whisper");
+    if (!platform_path_exists(path) && platform_directory_create(path))
         return;
     string_copy(&name, &self->name);
     for (i = 0; i < name.size; i++) {
@@ -263,12 +263,12 @@ static void save_conversation(struct UIWhisperWnd *self)
         if (strchr("\\/:*?\"<>|", *c) && *c)
             *c = '_';
     }
-    sprintf(path, "%s\\Whisper\\%s.txt", g_clientDir, string_cstr(&name));
-    if (!_access(path, 0)) {
+    client_path(path, sizeof path, "Whisper\\%s.txt", string_cstr(&name));
+    if (platform_path_exists(path)) {
         do {
             n++;
-            sprintf(path, "%s\\Whisper\\%s%03d.txt", g_clientDir, string_cstr(&name), n);
-        } while (!_access(path, 0));
+            client_path(path, sizeof path, "Whisper\\%s%03d.txt", string_cstr(&name), n);
+        } while (platform_path_exists(path));
     }
     if (ui_chat_his_box_save_to_file(&self->box->box, path)) {
         struct String said;
@@ -277,7 +277,7 @@ static void save_conversation(struct UIWhisperWnd *self)
         string_assign_cstr(&said, path);
         string_append_cstr(&said, " is Saved.");
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)string_cstr(&said), 0xff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)string_cstr(&said), 0xff00, 0, 0);
         string_free(&said);
     }
     string_free(&name);
@@ -311,13 +311,13 @@ static void open_menu(struct UIWhisperWnd *self)
     add_menu_entry(self, MSG_WHISPER_MENU_SAVE, WHISPER_MENU_SAVE);
     if (!ui_window_mgr_is_friend(&g_windowMgr, string_cstr(&self->name)))
         add_menu_entry(self, MSG_WHISPER_MENU_ADD_FRIEND, WHISPER_MENU_ADD_FRIEND);
-    mode_send_message(client_current_mode(), MODE_REQ_MENU_NAME, (int)string_cstr(&self->name), 0, 0, 0);
+    mode_send_message(client_current_mode(), MODE_REQ_MENU_NAME, (intptr_t)string_cstr(&self->name), 0, 0, 0);
     if (self->menu.first == self->menu.last)
         return;
 
     menu = ui_window_open(WND_ID_MENU);
     for (i = 0; i < MENU_ENTRY_COUNT(&self->menu); i++)
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (int)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (intptr_t)string_cstr(&MENU_ENTRIES(&self->menu)[i].text),
                  0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
     x = g_mouse.x + 1;
@@ -364,7 +364,7 @@ static void send_line(struct UIWhisperWnd *self)
         } else {
             string_assign_cstr(&g_windowMgr.chat_line, line);
         }
-        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (int)string_cstr(&self->name), 0, 0, 0);
+        mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (intptr_t)string_cstr(&self->name), 0, 0, 0);
         return;
     }
 
@@ -382,7 +382,7 @@ static void send_line(struct UIWhisperWnd *self)
         else if (type == TALK_TYPE_SAVE)
             save_conversation(self);
         else
-            mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (int)parts, 0, 0);
+            mode_send_message(client_current_mode(), MODE_REQ_TALK, type, (intptr_t)parts, 0, 0);
         for (i = 3; i-- > 0;)
             string_free(&parts[i]);
     }
@@ -426,8 +426,8 @@ static void resize(struct UIWhisperWnd *self, int width, int height)
     ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
 }
 
-int ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIWhisperWnd *self = (struct UIWhisperWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -564,7 +564,7 @@ int ui_whisper_wnd_open(struct UIWindowMgr *self, const char *name, const char *
     wnd = mem ? (struct UIWindow *)ui_whisper_wnd_construct(mem) : NULL;
     ui_window_create(wnd, 0x118, 0x78);
     ui_window_mgr_add_window(self, wnd);
-    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (int)(INT_PTR)&self->whisper_info, 0, 0, 0);
+    ui_whisper_wnd_send_msg(wnd, NULL, WHISPER_MSG_INFO, (intptr_t)&self->whisper_info, 0, 0, 0);
     ui_window_set_show_base(wnd, 1);
     string_assign(&((struct UIWhisperWnd *)wnd)->name, string_cstr(&key), key.size);
     wnd->id = WHISPER_WINDOW_ID;
@@ -639,12 +639,12 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, cons
             else if (session_looks_like_a_friend(&g_session1, name))
                 warning = MSG_NOT_IN_GUILD;
             if (warning)
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(warning),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(warning),
                                       WHISPER_WARNING_COLOUR, 0, 0);
         }
         session_scramble_number(&g_session1, &code, cid);
-        opened = (struct UIWindow *)(INT_PTR)ui_window_mgr_send_msg_(self, UIWM_MSG_WHISPER, (int)name,
-                                                                   (int)note, (int)string_cstr(&code), 0);
+        opened = (struct UIWindow *)(INT_PTR)ui_window_mgr_send_msg_(self, UIWM_MSG_WHISPER, (intptr_t)name,
+                                                                   (intptr_t)note, (intptr_t)string_cstr(&code), 0);
         string_free(&code);
         if (opened) {
             if (res_mgr_is_available(g_resMgr(), g_whisperSound))
@@ -664,7 +664,7 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, cons
     string_free(&key);
     if (!entry)
         return 0;
-    ui_window_send_msg(entry->wnd, NULL, WHISPER_MSG_ADD_LINE, (int)line, (int)colour, WHISPER_LINE_RECEIVED, 0);
+    ui_window_send_msg(entry->wnd, NULL, WHISPER_MSG_ADD_LINE, (intptr_t)line, (int)colour, WHISPER_LINE_RECEIVED, 0);
     ui_window_mgr_raise_window(self, entry->wnd);
     return 1;
 }

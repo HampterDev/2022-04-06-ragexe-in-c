@@ -36,6 +36,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/character/skill_list_wnd.h"
 #include "game/rodex_mail.h"
+#include "platform/clock.h"
 
 static int box(const char *text, int a, int b, int c, int d)
 {
@@ -104,7 +105,7 @@ static void connection_list(struct LoginMode *self, struct Vec *list, int msg)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, msg, (int)"NUMACCOUNT", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, msg, (intptr_t)"NUMACCOUNT", 0, 0);
     for (e = (struct LoginConnEntry *)list->first; e != (struct LoginConnEntry *)list->last; e++) {
         ui_list_box_add_item(ui_select_server_list(wnd), string_cstr(&e->display));
         balloons = ui_server_list_balloons(ui_select_server_list(wnd));
@@ -129,7 +130,7 @@ static void login_acf(struct LoginMode *self)
     char password[0x21];
 
     memset(&addr, 0, sizeof addr);
-    _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_accountServerAddr);
+    snprintf(addr.host, 0x81, "%s", g_accountServerAddr);
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
@@ -141,16 +142,16 @@ static void login_acf(struct LoginMode *self)
     memset(&pkt, 0, sizeof pkt);
     pkt.tag = 0x31313030;
     pkt.id = 0xacf;
-    _snprintf_s(pkt.userId, 0x19, (size_t)-1, "%s", self->userId);
+    snprintf(pkt.userId, 0x19, "%s", self->userId);
     memset(password, 0, sizeof password);
-    _snprintf_s(password, 0x21, (size_t)-1, "%s", self->password);
+    snprintf(password, 0x21, "%s", self->password);
     if (!login_password_encode(password, sizeof password, pkt.hash, sizeof pkt.hash)) {
         connect_failed(self);
         return;
     }
-    _snprintf_s(pkt.code, 5, (size_t)-1, "%s", (const char *)self->account_class);
+    snprintf(pkt.code, 5, "%s", (const char *)self->account_class);
     rag_connection_send_packet(rag_connection_instance(), 0x44, &pkt);
-    self->stateTick = timeGetTime();
+    self->stateTick = platform_ticks_ms();
     self->waitWnd = wait_window(0x7a, 0x10);
 }
 
@@ -162,7 +163,7 @@ static void login_screen(struct LoginMode *self)
     guild_mgr_clear_versions(g_guildMgr);
     default_wallpaper(self);
     if (g_session1.canBackToLogin == 1) {
-        self->stateTick = timeGetTime();
+        self->stateTick = platform_ticks_ms();
         g_mapServerAidPending = 0;
         self->auth_answered = 0;
         memset(g_session1.ssoToken, 0, 0x1f4);
@@ -208,7 +209,7 @@ static void server_list(struct LoginMode *self)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (int)"NUMSERVER", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (intptr_t)"NUMSERVER", 0, 0);
     for (i = 0; i < self->numServer; i++) {
         e = &self->servers[i];
         /* The name is login-server text in a 20-byte field that need not end in NUL. */
@@ -286,7 +287,7 @@ static void char_server(struct LoginMode *self)
     default_wallpaper(self);
     strcpy(addr.ip, g_serverAddress);
     addr.port = atoi(g_serverPort);
-    _snprintf_s(addr.host, 0x81, (size_t)-1, "%s", g_serverDomain);
+    snprintf(addr.host, 0x81, "%s", g_serverDomain);
     self->base.connected = (BYTE)connection_connect(rag_connection_transport(rag_connection_instance()), &addr);
     if (!self->base.connected) {
         connect_failed(self);
@@ -423,7 +424,7 @@ static void enter_map(struct LoginMode *self)
     }
 
     pkt.id = 0x436;
-    pkt.clientTime = timeGetTime();
+    pkt.clientTime = platform_ticks_ms();
     pkt.aid = g_session1.ownAid;
     pkt.gid = ((DWORD)g_session1.ownGid);
     pkt.authCode = (g_session1.authCode);
@@ -454,7 +455,7 @@ static void zone_list(struct LoginMode *self)
     wnd = ui_window_open(2);
     if (!wnd)
         return;
-    UIWND_SENDMSG(wnd, 0, 0x50, 0x272c, (int)"NUMZONE", 0, 0);
+    UIWND_SENDMSG(wnd, 0, 0x50, 0x272c, (intptr_t)"NUMZONE", 0, 0);
     for (i = 0; i < (unsigned)(((BYTE *)self->zones.last - (BYTE *)self->zones.first) / 0x14); i++) {
         strncpy(name, session_get_rsw_name((const char *)((struct LoginZoneEntry *)self->zones.first)[i].data), 0x10);
         ui_list_box_add_item(ui_select_server_list(wnd), session_map_display_name(name));
@@ -477,7 +478,7 @@ static void select_zone(struct LoginMode *self)
 void login_mode_on_change_state(struct Mode *mode, int state)
 {
     struct LoginMode *self = (struct LoginMode *)mode;
-    self->stateTick = timeGetTime();
+    self->stateTick = platform_ticks_ms();
     ui_window_mgr_close_all_windows(&g_windowMgr);
     self->base.help_balloon = NULL;
     (g_session1.battle_mode) = 0;

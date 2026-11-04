@@ -11,8 +11,8 @@ void ui_frame_wnd_on_mouse_hover(struct UIWindow *self, int x, int y) { fprintf(
 void ui_frame_wnd_on_mouse_move(struct UIWindow *self, int x, int y) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_frame_wnd_save_pos(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_frame_wnd_snap(struct UIWindow *self) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2,
-                                   int val3, int val4) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_window_clear_canvas(struct UIWindow *self, DWORD colour) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 void ui_window_drag_and_drop_base(struct UIWindow *self, int x, int y, const struct DragInfo *drag) { fprintf(stderr, "Unexpected test boundary: %s\n", __FUNCTION__); abort(); }
 int ui_window_draw_button_bar(struct UIWindow *self, int variant,

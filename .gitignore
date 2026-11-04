@@ -14,3 +14,8 @@ __pycache__/
 *.bak
 *~
 Thumbs.db
+
+# Android: Gradle and CMake state, the local SDK path
+android/.gradle/
+android/app/.cxx/
+android/local.properties

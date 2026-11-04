@@ -3,7 +3,7 @@
 #ifndef CORE_CHARACTER_NPC_H
 #define CORE_CHARACTER_NPC_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
 #include "actor/types.h"

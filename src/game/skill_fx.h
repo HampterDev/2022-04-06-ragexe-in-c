@@ -14,6 +14,7 @@
 #include "game/session_bridge.h"
 #include "game/cells.h"
 #include "game/camera.h"
+#include <stdint.h>
 
 static __inline void spawned_effect_delay(struct Effect *effect, int delay_ms)
 {
@@ -69,7 +70,7 @@ enum {
 };
 static __inline void effect_set_pos(struct RagEffect *effect, const Vec3 *at)
 {
-    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_POS, (__int64)(int)at, 0, 0);
+    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_POS, (intptr_t)at, 0, 0);
 }
 
 static __inline float actor_screen_heading(struct GameMode *mode, struct GameActor *actor)

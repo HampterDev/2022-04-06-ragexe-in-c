@@ -1,9 +1,9 @@
 #include "render/rp_pool.h"
 #include "core/object_type_tables.h"
 #include "ui/items/items.h"
-#include <mmsystem.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define UI_WND_ITEM_OBTAIN 0x3a
 #define UI_MSG_OBTAINED 0x24
@@ -33,7 +33,7 @@ BYTE ui_notify_item_obtain_wnd_is_hit_testable(struct UIWindow *self);
 void ui_notify_item_obtain_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_notify_item_obtain_wnd_on_process(struct UIWindow *self);
 void ui_notify_item_obtain_wnd_on_draw(struct UIWindow *self);
-int ui_notify_item_obtain_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_notify_item_obtain_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_notify_item_obtain_wnd_ops = {
     .destroy = ui_notify_item_obtain_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -123,7 +123,7 @@ void ui_notify_item_obtain_wnd_on_create(struct UIWindow *self, int width, int h
 void ui_notify_item_obtain_wnd_on_process(struct UIWindow *window)
 {
     struct UINotifyItemObtainWnd *self = (struct UINotifyItemObtainWnd *)window;
-    if (timeGetTime() > self->shown_at + OBTAIN_SHOW_MS)
+    if (platform_ticks_ms() > self->shown_at + OBTAIN_SHOW_MS)
         ui_window_mgr_post_quit1(&g_windowMgr, UI_WND_ITEM_OBTAIN);
 }
 
@@ -182,11 +182,11 @@ static void obtain_notice(struct UINotifyItemObtainWnd *self, int zeny, int amou
     if (width != self->frame.base.width)
         ui_window_resize_base(&self->frame.base, width, self->frame.base.height);
     ui_window_invalidate_base(&self->frame.base);
-    self->shown_at = timeGetTime();
+    self->shown_at = platform_ticks_ms();
 }
 
-int ui_notify_item_obtain_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_notify_item_obtain_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINotifyItemObtainWnd *self = (struct UINotifyItemObtainWnd *)window;
     switch (msg) {

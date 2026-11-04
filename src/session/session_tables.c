@@ -11,6 +11,7 @@
 #include <string.h>
 #include "iteminfo/iteminfo.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 static unsigned char less_cstr_first(const void *a, const void *b, void *pred)
 {
@@ -293,7 +294,7 @@ void session_load_mini_party_info(struct Session *self)
                     c = buf[i + 1];
                     i++;
                 }
-                strcpy_s(name, 0x18, text);
+                cstr_copy(name, 0x18, text);
                 if (state == 1) {
                     i++;
                     entry.found = atoi(buf + i);

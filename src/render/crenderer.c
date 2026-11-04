@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "ui/render/graphic_setting.h"
+#include "platform/clock.h"
 
 DWORD g_renderCheckpointLine = 0;
 const char *g_renderCheckpointFile = "";
@@ -85,7 +86,7 @@ static unsigned char keyed_less(const void *a, const void *b, void *pred)
         return 1;
     if (x->key > y->key)
         return 0;
-    return (uintptr_t)x->primitive < (uintptr_t)y->primitive;
+    return x->order < y->order;
 }
 
 static unsigned char quad_less(const void *a, const void *b, void *pred)
@@ -115,7 +116,7 @@ static unsigned char multitexture_less(const void *a, const void *b, void *pred)
 {
     const struct RenderEntry *x = a, *y = b;
     (void)pred;
-    if (x->textures[0].sort_key != y->textures[1].sort_key)
+    if (x->textures[0].sort_key != y->textures[0].sort_key)
         return x->textures[0].sort_key < y->textures[0].sort_key;
     return x->textures[1].sort_key < y->textures[1].sort_key;
 }
@@ -682,8 +683,8 @@ void renderer_flip(struct Renderer *self, char vsync)
 {
     int hr;
     self->frame++;
-    if ((float)(unsigned)(GetTickCount() - self->fpsTick) >= 1000.0f) {
-        self->fpsTick = GetTickCount();
+    if ((float)(unsigned)(platform_coarse_ticks_ms() - self->fpsTick) >= 1000.0f) {
+        self->fpsTick = platform_coarse_ticks_ms();
         self->fps = self->fpsCount;
         self->fpsCount = 0;
     } else {

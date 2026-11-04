@@ -8,26 +8,16 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <intrin.h>
 
-#ifndef STATIC_ASSERT
-#define STATIC_ASSERT(name, cond) typedef char static_assert_##name[(cond) ? 1 : -1]
-#endif
-#define OFFSET_ASSERT(type, field, off) \
-    STATIC_ASSERT(type##_##field, offsetof(struct type, field) == (off))
-#define SIZE_ASSERT(type, size) STATIC_ASSERT(type##_size, sizeof(struct type) == (size))
+#include "core/layout.h"
 
 #include "std/string.h"
 
-struct Vec {
-    void *first, *last, *end;
-};
-SIZE_ASSERT(Vec, 12);
-#define VEC_COUNT(v, type) ((size_t)((type *)(v)->last - (type *)(v)->first))
-#define VEC_AT(v, type, i) (((type *)(v)->first)[i])
+#include "std/container_types.h"
 
 #include "fileio/file_api.h"
 
+#include "platform/win_types.h"
 #include "core/once.h"
 
 #endif

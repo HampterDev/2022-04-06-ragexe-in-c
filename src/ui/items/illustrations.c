@@ -17,13 +17,12 @@ struct UICardItemIllustWnd {
     struct String item_id;
     BYTE identified;
 };
-OFFSET_ASSERT(UICardItemIllustWnd, bitmap, 0x94);
 
 struct UIWindow;
 void ui_card_item_illust_wnd_destroy(struct UIWindow *window);
 void ui_card_item_illust_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_card_item_illust_wnd_on_draw(struct UIWindow *self);
-int ui_card_item_illust_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_card_item_illust_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_card_item_illust_wnd_ops = {
     .destroy = ui_card_item_illust_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -126,8 +125,8 @@ void ui_card_item_illust_wnd_on_draw(struct UIWindow *window)
     item_info_destruct(&info);
 }
 
-int ui_card_item_illust_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_card_item_illust_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICardItemIllustWnd *self = (struct UICardItemIllustWnd *)window;
     const char *id_text, *name;
@@ -163,9 +162,6 @@ struct UIIllustWnd {
     int closable;
     struct String bitmap;
 };
-OFFSET_ASSERT(UIIllustWnd, titled, 0x94);
-OFFSET_ASSERT(UIIllustWnd, closable, 0x98);
-OFFSET_ASSERT(UIIllustWnd, bitmap, 0x9c);
 
 void ui_illust_wnd_destroy(struct UIWindow *window);
 BYTE ui_illust_wnd_is_hit_testable(struct UIWindow *self);
@@ -173,7 +169,7 @@ void ui_illust_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_illust_wnd_on_destroy(struct UIWindow *self);
 void ui_illust_wnd_on_draw(struct UIWindow *self);
 void ui_illust_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
-int ui_illust_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_illust_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_illust_wnd_ops = {
     .destroy = ui_illust_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -303,15 +299,15 @@ static struct BitmapRes *illust_bitmap(struct UIIllustWnd *self)
     return (struct BitmapRes *)res_mgr_get(g_resMgr(), ui_skin_path(string_cstr(&self->bitmap)));
 }
 
-int ui_illust_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_illust_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIIllustWnd *self = (struct UIIllustWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
 
     if (msg == UI_MSG_COMMAND) {
         if (val1 == UI_ID_CLOSE) {
-            game_send_message(MODE_MSG_SHOW_ILLUSTRATION, (int)"", -1, 1, 0);
+            game_send_message(MODE_MSG_SHOW_ILLUSTRATION, (intptr_t)"", -1, 1, 0);
             ui_window_mgr_release_capture(&g_windowMgr);
         }
         return 0;

@@ -446,7 +446,7 @@ void body_layer_draw_layer(struct BodyLayerDraw *self, int order, int layer, str
         palette = body_layer_palette(self, layer, pair);
         {
             int msg_arg = 0xa6;
-            render_object_send(self->pc, NULL, 0x78, MSG_ARG_PTR(&msg_arg), 0, 0, 0);
+            render_object_send(self->pc, NULL, 0x78, (intptr_t)&msg_arg, 0, 0, 0);
         }
         flags = body_layer_flags(self, layer, quad.color);
         body_layer_grow_bounds(self, layer, &quad);
@@ -503,8 +503,8 @@ static void render_layer(struct BodyLayerDraw *self, int order, int layer)
         self->pc->wave_pending = 1;
         string_copy(&text, &event.name);
         pc = self->pc;
-        _snprintf_s((char *)pc->wave_name, sizeof pc->wave_name, (size_t)-1, "%s",
-                       text.size ? string_cstr(&text) : (const char *)pc->wave_name);
+        snprintf((char *)pc->wave_name, sizeof pc->wave_name, "%s",
+                    text.size ? string_cstr(&text) : (const char *)pc->wave_name);
         string_free(&text);
     }
     body_layer_motion_for(self, &pick, layer, act);

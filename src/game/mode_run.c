@@ -24,8 +24,8 @@
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
 #include "game/mode_callbacks.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
+#include "platform/thread.h"
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/client.h"
@@ -42,6 +42,7 @@
 #include "session/session_names.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 int g_isSkipFrame = 0;
 
@@ -71,14 +72,14 @@ int game_mode_on_run(struct Mode *mode)
         }
 
         game_mode_on_update(mode);
-        Sleep(0);
+        platform_thread_yield();
     }
     mode_run_fade_out(&self->base, 0);
 
     return 1;
 }
 
-INIT_ONCE g_firstFrameTickGuard;
+struct Once g_firstFrameTickGuard;
 extern DWORD g_firstFrameTick;
 
 unsigned g_followLastMoveTick;
@@ -112,8 +113,8 @@ static void follow_pointed_actor(struct GameMode *self)
     actor = world_find_pc_by_char_id(self->world, g_followActorGid);
     if (actor == 0) {
         if (g_followLostSinceTick == 0)
-            g_followLostSinceTick = timeGetTime();
-        if (timeGetTime() - g_followLostSinceTick > 10000) {
+            g_followLostSinceTick = platform_ticks_ms();
+        if (platform_ticks_ms() - g_followLostSinceTick > 10000) {
             g_followActorGid = 0;
             g_followLastMoveTick = 0;
             g_followLostSinceTick = 0;
@@ -121,9 +122,9 @@ static void follow_pointed_actor(struct GameMode *self)
         return;
     }
     g_followLostSinceTick = 0;
-    if (timeGetTime() - g_followLastMoveTick <= 1000)
+    if (platform_ticks_ms() - g_followLastMoveTick <= 1000)
         return;
-    g_followLastMoveTick = timeGetTime();
+    g_followLastMoveTick = platform_ticks_ms();
     x = actor->cell_x;
     y = actor->cell_y;
     player = self->world->player;
@@ -151,8 +152,8 @@ static void play_loop_sounds(struct GameMode *self)
     struct Player *player;
 
     for (sound = self->loop_sounds.first; sound != (struct LoopSound *)self->loop_sounds.last; sound++) {
-        timeGetTime();
-        if (timeGetTime() < sound->next_tick)
+        platform_ticks_ms();
+        if (platform_ticks_ms() < sound->next_tick)
             continue;
         if (sound->npc_aid != 0) {
             npc = world_get_game_actor_by_aid(self->world, sound->npc_aid);
@@ -164,7 +165,7 @@ static void play_loop_sounds(struct GameMode *self)
         } else {
             sound_play_wave(string_cstr(&sound->name), 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
         }
-        sound->next_tick = timeGetTime() + sound->interval;
+        sound->next_tick = platform_ticks_ms() + sound->interval;
     }
 }
 
@@ -252,7 +253,7 @@ void game_mode_on_update(struct Mode *mode)
 {
     struct GameMode *self = (struct GameMode *)mode;
     if (once_begin(&g_firstFrameTickGuard)) {
-        g_firstFrameTick = timeGetTime();
+        g_firstFrameTick = platform_ticks_ms();
         once_complete(&g_firstFrameTickGuard);
     }
     adventurer_agency_tick(g_adventurerAgency);

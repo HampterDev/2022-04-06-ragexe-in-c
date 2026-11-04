@@ -16,13 +16,12 @@
 #include "ui/window_manager_state.h"
 #include "game/context.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "game/talk_type.h"
 #include "game/client.h"
 #include "game/cells.h"
@@ -41,6 +40,8 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mouse_camera.h"
 #include "core/app.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 
 enum {
     MODE_MSG_CHAT = 6,
@@ -67,9 +68,9 @@ void talk_cmd_send_chat(struct GameMode *self, int type)
         ui_window_mgr_set_chat_line(&g_windowMgr, line + 1);
         guild = 1;
     }
-    if ((GetAsyncKeyState(VK_CONTROL) >> 8) & 0xff)
+    if ((platform_async_key_state(VK_CONTROL) >> 8) & 0xff)
         party = 1;
-    if ((GetAsyncKeyState(VK_MENU) >> 8) & 0xff)
+    if ((platform_async_key_state(VK_MENU) >> 8) & 0xff)
         guild = 1;
 
     if (type == TALK_CHAT_TO_GUILD) {
@@ -145,13 +146,13 @@ void talk_cmd_chat_auto_save(struct GameMode *self)
     mode = game_current_mode();
     if (session_is_admin_option(&g_session1, 7)) {
         mode->whispers_logged = 0;
-        sprintf(dir, "%s\\Chat", g_clientDir);
+        client_path(dir, sizeof dir, "Chat");
         n = 0;
-        if (_access(dir, 0) == 0 || _mkdir(dir) == 0) {
-            sprintf(g_whisperLogPath, "%s\\Chat\\Chat.txt", g_clientDir);
-            while (_access(g_whisperLogPath, 0) == 0) {
+        if (platform_path_exists(dir) || platform_directory_create(dir) == 0) {
+            client_path(g_whisperLogPath, sizeof g_whisperLogPath, "Chat\\Chat.txt");
+            while (platform_path_exists(g_whisperLogPath)) {
                 n++;
-                sprintf(g_whisperLogPath, "%s\\Chat\\Chat%03d.txt", g_clientDir, n);
+                client_path(g_whisperLogPath, sizeof g_whisperLogPath, "Chat\\Chat%03d.txt", n);
             }
         }
     }
@@ -176,7 +177,7 @@ void talk_cmd_where(struct GameMode *self)
                 string_cstr(&map), x, y);
     ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
     talk_print(line, TALK_COLOR_NOTICE);
-    ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (int)line, TALK_COLOR_NOTICE, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 0x13, (intptr_t)line, TALK_COLOR_NOTICE, 0, 0);
     string_free(&map);
 }
 
@@ -224,7 +225,7 @@ void talk_cmd_sit_or_stand(struct GameMode *self)
     self->sit_times[2] = self->sit_times[3];
     self->sit_times[3] = self->sit_times[4];
     self->sit_times[4] = self->sit_times[5];
-    now = timeGetTime();
+    now = platform_ticks_ms();
     self->sit_times[5] = now;
     if (now - self->sit_times[0] - 1501 <= 1498) {
         mode_send_msg(self, 0xa9, 0, 0, 0, 0);
@@ -304,7 +305,7 @@ void talk_cmd_help(struct GameMode *self)
 
 void talk_cmd_trace_ai(struct GameMode *self)
 {
-    char path[0x100];
+    char path[0x100], directory[0x100];
     char *data;
     struct File file;
 
@@ -315,11 +316,11 @@ void talk_cmd_trace_ai(struct GameMode *self)
         talk_print_msg(0x3bd, TALK_COLOR_NOTICE);
         return;
     }
-    GetCurrentDirectoryA(sizeof path, path);
-    data = strstr(path, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    data = strstr(directory, "\\data");
     if (data)
-        memcpy(path, path, data - path);
-    strcat(path, "\\TraceAI.txt");
+        memcpy(directory, directory, data - directory);
+    platform_path_join(path, sizeof path, directory, "TraceAI.txt");
     file_construct(&file);
     file_open(&file, path, FILE_MODE_WRITE, 1, 0);
     file_write(&file, "", 0);
@@ -468,11 +469,11 @@ void talk_cmd_build_info(struct GameMode *self)
 
     (void)self;
     memset(line, 0, sizeof line);
-    sprintf_s(line, sizeof line, "build : %s - %s", "Mar 31 2022", "14:22:14");
+    snprintf(line, sizeof line, "build : %s - %s", "Mar 31 2022", "14:22:14");
     talk_print(line, TALK_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, "ver : %d.%d.%d", 0xe, 2, 3);
+    snprintf(line, sizeof line, "ver : %d.%d.%d", 0xe, 2, 3);
     talk_print(line, TALK_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, "s/n : %s", "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX");
+    snprintf(line, sizeof line, "s/n : %s", "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX");
     talk_print(line, TALK_COLOR_YELLOW);
 }
 

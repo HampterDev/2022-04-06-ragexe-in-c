@@ -27,7 +27,7 @@ void ui_mini_party_info_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_mini_party_info_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_mini_party_info_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_mini_party_info_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_mini_party_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mini_party_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mini_party_info_wnd_ops = {
     .destroy = ui_mini_party_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -401,7 +401,7 @@ static void open_menu(struct UIMiniPartyInfoWnd *self)
     ui_window_send(menu, NULL, MENU_MSG_RESET, 0, 0, 0, 0);
     for (i = 0; i < VEC_COUNT(&self->menu, struct UIMenuEntry); i++)
         ui_window_send(menu, NULL, MENU_MSG_ADD,
-                 (int)string_cstr(&VEC_AT(&self->menu, struct UIMenuEntry, i).text), 0, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(&self->menu, struct UIMenuEntry, i).text), 0, 0, 0);
     ui_window_send(menu, NULL, MENU_MSG_OWNER, MENU_OWNER_PLATE, self->owner->cell, 0, 0);
     ui_window_send(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
     x = g_mouse.x + 1;
@@ -440,7 +440,7 @@ static void menu_choice(struct UIMiniPartyInfoWnd *self, int index)
         break;
     case 5:
         if (self->owner->cell != -1 && m.found)
-            mode_send_message(client_current_mode(), 0x3b, (int)string_cstr(&m.name), 0, 0, 0);
+            mode_send_message(client_current_mode(), 0x3b, (intptr_t)string_cstr(&m.name), 0, 0, 0);
         break;
     case 6:
         ui_mini_party_info_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, 0xdf, 0, 0, 0);
@@ -462,11 +462,11 @@ static void menu_choice(struct UIMiniPartyInfoWnd *self, int index)
                 mode_send_message(client_current_mode(), 0x104, m.aid, 0, 0, 0);
         } else {
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(0x5fe), 0xff, 3, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(0x5fe), 0xff, 3, 0);
         }
         break;
     case PLATE_MENU_EQUIPMENT:
-        mode_send_message(client_current_mode(), 0x10c, (int)string_cstr(&m.name), 0, 0, 0);
+        mode_send_message(client_current_mode(), 0x10c, (intptr_t)string_cstr(&m.name), 0, 0, 0);
         break;
     case PLATE_MENU_REMOVE:
         ui_window_mgr_remove_plate(&g_windowMgr, m.aid);
@@ -517,8 +517,8 @@ static void command(struct UIMiniPartyInfoWnd *self, int id, int val2, int val3,
         else
             note = session_is_guild_member_char_id(&g_session1, m.char_id) ? "GuildMember" : NULL;
         session_scramble_number(&g_session1, &number, m.char_id);
-        ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (int)string_cstr(&m.name), (int)note,
-                              (int)string_cstr(&number), 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 0xe, (intptr_t)string_cstr(&m.name), (intptr_t)note,
+                              (intptr_t)string_cstr(&number), 0);
         string_free(&number);
         party_member_destroy(&m);
         return;
@@ -552,7 +552,7 @@ static void command(struct UIMiniPartyInfoWnd *self, int id, int val2, int val3,
             return;
         owner_member(self, &m);
         if (m.found && !is_own_name(&m) && ask(0x16b) == UI_MSGBOX_ANSWER_YES)
-            mode_send_message(client_current_mode(), 0x3e, (int)string_cstr(&m.name), 0, 0, 0);
+            mode_send_message(client_current_mode(), 0x3e, (intptr_t)string_cstr(&m.name), 0, 0, 0);
         party_member_destroy(&m);
         return;
     case 0xe4:
@@ -570,8 +570,8 @@ static void command(struct UIMiniPartyInfoWnd *self, int id, int val2, int val3,
     }
 }
 
-int ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_mini_party_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMiniPartyInfoWnd *self = (struct UIMiniPartyInfoWnd *)window;
     switch (msg) {

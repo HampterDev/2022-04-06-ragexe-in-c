@@ -3,7 +3,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include "render/math3d.h"
-#include <windows.h>
+#include "platform/win_types.h"
 struct C3dGround15;
 struct C3dAttr;
 struct GndRes;

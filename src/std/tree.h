@@ -36,6 +36,7 @@ void tree_copy(struct Tree *dst, const struct Tree *src, size_t size, TreeCopyFn
 
 int tree_less_int(const void *a, const void *b);
 int tree_less_uint(const void *a, const void *b);
+int tree_less_ptr(const void *a, const void *b);
 
 static __inline struct TreeNode *tree_first(const struct Tree *tree)
 {

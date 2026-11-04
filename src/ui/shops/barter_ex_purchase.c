@@ -13,6 +13,7 @@
 #include "session/session_jobs.h"
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 struct DragInfo;
 void ui_expanded_barter_item_purchase_wnd_destroy(struct UIWindow *window);
@@ -23,7 +24,7 @@ void ui_expanded_barter_item_purchase_wnd_on_l_btn_down(struct UIWindow *self, i
 void ui_expanded_barter_item_purchase_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_expanded_barter_item_purchase_wnd_show_item_at(struct UIWindow *self, int x, int y);
 void ui_expanded_barter_item_purchase_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_expanded_barter_item_purchase_wnd_ops = {
     .destroy = ui_expanded_barter_item_purchase_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -146,7 +147,7 @@ static void exb_pay_line(struct String *out, int refine, const char *name, int c
     if (refine > 0)
         exb_append_refine(out, refine);
     memset(line, 0, sizeof line);
-    _snprintf_s(line, sizeof line, (size_t)-1, msg_str(MSG_BARTER_PAY), name, count);
+    snprintf(line, sizeof line, msg_str(MSG_BARTER_PAY), name, count);
     string_append_cstr(out, line);
 }
 
@@ -158,7 +159,7 @@ void ui_expanded_barter_purchase_button_on_mouse_hover(struct UIWindow *window, 
     int n = (int)vec_count(pays, sizeof(struct BarterExPay)), lines = 0, tip_x, tip_y;
     const struct BarterExPay *pay;
     struct String text;
-    __int64 amount;
+    int64_t amount;
 
     (void)x, (void)y;
     string_init(&text);
@@ -422,7 +423,7 @@ static void exb_add_dragged(struct UIExpandedBarterItemPurchaseWnd *self)
         char text[0xc8];
 
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_EXB_OVER_MAX), BARTER_MAX_COUNT);
+        snprintf(text, sizeof text, msg_str(MSG_EXB_OVER_MAX), BARTER_MAX_COUNT);
         ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_SHOW_CHAT, 0, 0, 0, 0);
         ui_chat_line(text, BARTER_REFUSAL_COLOUR);
         goto done;
@@ -441,8 +442,8 @@ static void exb_add_dragged(struct UIExpandedBarterItemPurchaseWnd *self)
             goto done;
         }
     }
-    if ((__int64)(int)((unsigned)drag->drop_count * (unsigned)listed.goods.price) + expanded_barter_total(g_expandedBarter)
-        > (__int64)g_session1.zeny) {
+    if ((int64_t)(int)((unsigned)drag->drop_count * (unsigned)listed.goods.price) + expanded_barter_total(g_expandedBarter)
+        > (int64_t)g_session1.zeny) {
         exb_drag_refusal(mode, MSG_EXB_NO_ZENY);
         goto done;
     }
@@ -454,9 +455,9 @@ done:
     barter_goods_ex_destruct(&listed.goods);
 }
 
-int ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *window,
-                                                       struct UIWindow *sender, int msg, int val1, int val2,
-                                                       int val3, int val4)
+intptr_t ui_expanded_barter_item_purchase_wnd_send_msg(struct UIWindow *window,
+                                                       struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                                       intptr_t val3, intptr_t val4)
 {
     struct UIExpandedBarterItemPurchaseWnd *self = (struct UIExpandedBarterItemPurchaseWnd *)window;
     struct UIWindow *wnd = &self->list.frame.base;

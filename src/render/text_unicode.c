@@ -1,4 +1,5 @@
 #include "render/text_unicode.h"
+#include "platform/code_page.h"
 #include <stdlib.h>
 
 int text_unicode_init(struct TextUnicode *text, const char *bytes, int length, unsigned code_page)
@@ -15,7 +16,7 @@ int text_unicode_init(struct TextUnicode *text, const char *bytes, int length, u
         ? text->local : malloc((size_t)length * sizeof(WCHAR));
     if (!text->data)
         return 0;
-    text->length = MultiByteToWideChar(code_page, 0, bytes, length, text->data, length);
+    text->length = platform_code_page_to_utf16(code_page, bytes, length, text->data, length);
     if (!text->length) {
         text_unicode_release(text);
         return 0;

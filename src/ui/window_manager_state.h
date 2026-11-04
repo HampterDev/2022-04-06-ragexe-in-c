@@ -4,7 +4,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/container_types.h"
 #include "ui/window_info.h"

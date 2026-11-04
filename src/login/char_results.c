@@ -3,10 +3,10 @@
 #include "login/loginmode.h"
 
 #include <string.h>
-#include <time.h>
 #include <stdio.h>
 #include "core/msg_str.h"
 #include "core/text_util.h"
+#include "platform/clock.h"
 
 #define SUBMODE_LOGIN           3
 #define SUBMODE_SELECT_CHAR     7
@@ -166,7 +166,7 @@ void login_mode_on_delete_reserved(struct LoginMode *self, const BYTE *pkt)
 {
     const struct PACKET_HC_DELETE_CHAR3_RESERVED *packet = (const struct PACKET_HC_DELETE_CHAR3_RESERVED *)pkt;
     struct String text;
-    __time32_t now;
+    int32_t now;
     int i;
 
     string_init(&text);
@@ -177,7 +177,7 @@ void login_mode_on_delete_reserved(struct LoginMode *self, const BYTE *pkt)
     case 1:
         for (i = 0; i < self->numChar; i++) {
             if (self->chars[i].gid == packet->gid) {
-                _time32(&now);
+                now = platform_time_now();
                 self->chars[i].delete_date = packet->delete_delay + now;
                 break;
             }

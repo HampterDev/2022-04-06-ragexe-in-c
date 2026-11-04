@@ -28,8 +28,6 @@ struct UIMinimapZoomWnd {
     struct Tree buttons;
     struct Vec row;
 };
-OFFSET_ASSERT(UIMinimapZoomWnd, buttons, 0x94);
-OFFSET_ASSERT(UIMinimapZoomWnd, row, 0x9c);
 struct ZoomButton {
     int index;
     struct UIWindow *button;
@@ -191,8 +189,8 @@ static void navigate_to_facility(int id)
     string_free(&map);
 }
 
-int ui_minimap_zoom_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                        int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_minimap_zoom_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                        int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMinimapZoomWnd *self = (struct UIMinimapZoomWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -264,7 +262,7 @@ struct UIWindow;
 void ui_minimap_zoom_wnd_destroy(struct UIWindow *window);
 void ui_minimap_zoom_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_minimap_zoom_wnd_on_draw(struct UIWindow *self);
-int ui_minimap_zoom_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_minimap_zoom_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_minimap_zoom_wnd_ops = {
     .destroy = ui_minimap_zoom_wnd_destroy,
     .resize = ui_window_resize_base,

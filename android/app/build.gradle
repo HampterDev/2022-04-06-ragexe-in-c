@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The client is the repository's CMake project built as libmain.so (cmake/Client.cmake), with
+// SDL3's libSDL3.so; SDL's Java activity (vendor/sdl3_android) starts it.
+android {
+    namespace 'local.ragexe.client'
+    compileSdk 35
+    ndkVersion '27.3.13750724'
+
+    defaultConfig {
+        applicationId 'local.ragexe.client'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        externalNativeBuild {
+            cmake {
+                arguments '-DRAGE_CLIENT=ON', '-DBUILD_TESTING=OFF', '-DANDROID_STL=c++_static'
+                targets 'ragexe', 'SDL3-shared'
+            }
+        }
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed with the local debug key, for installing on your own devices.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../CMakeLists.txt'
+            version '3.31.5'
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += '../../vendor/sdl3_android/java'
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}

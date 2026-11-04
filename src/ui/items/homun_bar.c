@@ -6,6 +6,7 @@
 #include "core/skin_path.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
+#include <inttypes.h>
 
 void ui_bar_graph_homun_destroy(struct UIWindow *window);
 void ui_bar_graph_homun_on_draw(struct UIWindow *self);
@@ -88,7 +89,7 @@ void ui_bar_graph_homun_on_draw(struct UIWindow *window)
 {
     struct UIValueGauge *self = (struct UIValueGauge *)window;
     struct BitmapRes *left, *mid, *right;
-    __int64 value, maximum;
+    int64_t value, maximum;
     const char *colour;
     char path[MAX_PATH];
     struct String text;
@@ -109,9 +110,9 @@ void ui_bar_graph_homun_on_draw(struct UIWindow *window)
     if (left && mid && right) {
         ui_window_draw_bitmap(&self->base, 0, 0, left, 0);
         if (self->base.width - left->width - right->width > 0) {
-            __int64 i;
+            int64_t i;
 
-            for (i = 0; i < (__int64)(self->base.width - left->width - right->width); i++)
+            for (i = 0; i < (int64_t)(self->base.width - left->width - right->width); i++)
                 ui_window_draw_bitmap(&self->base, left->width + (int)i, 0, mid, 0);
         }
         ui_window_draw_bitmap(&self->base, self->base.width - right->width, 0, right, 0);
@@ -135,7 +136,7 @@ void ui_bar_graph_homun_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->base, fill + GAUGE_INSET, 0, skin_bitmap(path), 1);
 
     string_init(&text);
-    string_format(&text, "%3I64d  /  %3I64d", value, maximum);
+    string_format(&text, "%3" PRId64 "  /  %3" PRId64, value, maximum);
     ui_window_text_out_centred(&self->base, 0, -2, string_cstr(&text), self->base.width, 1, 0xd, 0, 0);
     string_free(&text);
 }

@@ -42,8 +42,6 @@ struct UIBarGraph2 {
     int back_red, back_green, back_blue;
     int bar_red, bar_green, bar_blue;
 };
-OFFSET_ASSERT(UIBarGraph2, bar_red, 0x90);
-SIZE_ASSERT(UIBarGraph2, 0x9c);
 struct UIWindow *ui_bar_graph2_construct(struct UIWindow *self);
 void ui_bar_graph_set_pos(struct UIWindow *self, float pos);
 
@@ -52,12 +50,10 @@ struct UIBarGraph3 {
     int *current;
     int *maximum;
 };
-SIZE_ASSERT(UIBarGraph3, 0x84);
 struct UIBarGraph4 {
     struct UIBarGraph3 graph;
     BYTE no_warning;
 };
-SIZE_ASSERT(UIBarGraph4, 0x88);
 struct UIBarGraph3 *ui_bar_graph3_construct(struct UIBarGraph3 *self);
 void ui_bar_graph3_set_values(struct UIBarGraph3 *self, int *current, int *maximum);
 

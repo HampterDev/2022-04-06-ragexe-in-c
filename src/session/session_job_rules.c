@@ -2,6 +2,7 @@
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"
+#include <stdint.h>
 
 enum {
     LV_ONE,
@@ -131,7 +132,7 @@ static const BYTE high_job_case[0xed] = {
 };
 
 BYTE session_job_accepts_value(struct Session *self, int job,
-                                         unsigned __int64 value)
+                                         uint64_t value)
 {
     DWORD set;
 
@@ -282,7 +283,7 @@ static int weapon_rule(int rule, int type, int mode)
 }
 
 BYTE session_job_accepts_weapon(struct Session *self, int job, int mode,
-                                          unsigned __int64 item)
+                                          uint64_t item)
 {
     int lo = (int)(DWORD)item, hi = (int)(DWORD)(item >> 32);
     int id = lo, type, rule;

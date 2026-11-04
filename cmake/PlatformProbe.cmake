@@ -1,0 +1,13 @@
+include(${CMAKE_CURRENT_LIST_DIR}/SDL3.cmake)
+
+add_executable(platform_probe tools/platform_probe.c)
+target_link_libraries(platform_probe PRIVATE SDL3::SDL3)
+if(APPLE)
+    enable_language(OBJC)
+    target_sources(platform_probe PRIVATE tools/metal_probe.m)
+    target_link_libraries(platform_probe PRIVATE "-framework Metal" "-framework QuartzCore" "-framework Foundation")
+endif()
+if(BUILD_TESTING)
+    add_test(NAME platform_probe COMMAND platform_probe --smoke)
+    set_tests_properties(platform_probe PROPERTIES TIMEOUT 20)
+endif()

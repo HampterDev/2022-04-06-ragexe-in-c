@@ -13,7 +13,7 @@ struct UIWindow;
 void ui_show_warp_wnd_destroy(struct UIWindow *window);
 void ui_show_warp_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_show_warp_wnd_on_draw(struct UIWindow *self);
-int ui_show_warp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_show_warp_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_show_warp_wnd_ops = {
     .destroy = ui_show_warp_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -71,7 +71,6 @@ struct UIShowWarpWnd {
     struct UIFrameWnd frame;
     struct UIListBox *list;
 };
-SIZE_ASSERT(UIShowWarpWnd, 0x98);
 
 struct UIShowWarpWnd *ui_show_warp_wnd_construct(struct UIShowWarpWnd *self)
 {
@@ -158,8 +157,8 @@ static int text_is(const char *text, const char *word)
     return equal;
 }
 
-int ui_show_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_show_warp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIShowWarpWnd *self = (struct UIShowWarpWnd *)window;
     const char *line;

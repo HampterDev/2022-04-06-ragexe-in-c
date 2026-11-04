@@ -5,7 +5,7 @@
 
 /* At most capacity UTF-16 units of text, whole characters only; an invalid byte becomes
    U+FFFD. */
-static int widen_prefix(const char *text, size_t size, wchar_t *wide, int capacity)
+static int widen_prefix(const char *text, size_t size, uint16_t *wide, int capacity)
 {
     size_t at = 0, step;
     int units = 0;
@@ -19,27 +19,27 @@ static int widen_prefix(const char *text, size_t size, wchar_t *wide, int capaci
             break;
         if (need == 2) {
             value -= 0x10000;
-            wide[units++] = (wchar_t)(0xd800 + (value >> 10));
-            wide[units++] = (wchar_t)(0xdc00 + (value & 0x3ff));
+            wide[units++] = (uint16_t)(0xd800 + (value >> 10));
+            wide[units++] = (uint16_t)(0xdc00 + (value & 0x3ff));
         } else {
-            wide[units++] = (wchar_t)value;
+            wide[units++] = (uint16_t)value;
         }
         at += step;
     }
     return units;
 }
 
-static int is_high(wchar_t unit) { return unit >= 0xd800 && unit <= 0xdbff; }
-static int is_low(wchar_t unit) { return unit >= 0xdc00 && unit <= 0xdfff; }
+static int is_high(uint16_t unit) { return unit >= 0xd800 && unit <= 0xdbff; }
+static int is_low(uint16_t unit) { return unit >= 0xdc00 && unit <= 0xdfff; }
 
 int navi_text_lines(const char *text, size_t size, char lines[NAVI_TEXT_MAX_LINES][NAVI_TEXT_LINE_BYTES])
 {
-    wchar_t wide[NAVI_TEXT_MAX_UNITS];
+    uint16_t wide[NAVI_TEXT_MAX_UNITS];
     int len = widen_prefix(text, size, wide, NAVI_TEXT_MAX_UNITS), count = len / 12 + 1, i;
-    const wchar_t *start = wide, *limit = wide + len;
+    const uint16_t *start = wide, *limit = wide + len;
 
     for (i = 0; i < count; i++) {
-        const wchar_t *stop = limit - start > NAVI_TEXT_LINE_UNITS ? start + NAVI_TEXT_LINE_UNITS : limit;
+        const uint16_t *stop = limit - start > NAVI_TEXT_LINE_UNITS ? start + NAVI_TEXT_LINE_UNITS : limit;
 
         if (stop < limit && stop > start + 1 && is_high(stop[-1]) && is_low(*stop))
             --stop;

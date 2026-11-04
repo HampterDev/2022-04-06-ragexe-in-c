@@ -12,8 +12,5 @@ struct Res {
     int typeIndex;
     struct Hash name;
 };
-OFFSET_ASSERT(Res, lastUse, 0x08);
-OFFSET_ASSERT(Res, name, 0x10);
-SIZE_ASSERT(Res, 0x110);
 
 #endif

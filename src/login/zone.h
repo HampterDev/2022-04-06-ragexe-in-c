@@ -1,7 +1,7 @@
 #ifndef LOGINMODE_ZONE_H
 #define LOGINMODE_ZONE_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 #include "base.h"
 

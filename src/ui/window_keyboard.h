@@ -3,7 +3,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include "platform/win_types.h"
 struct UIWindowMgr;
 
 BYTE ui_window_mgr_on_key_down(struct UIWindowMgr *manager, int vk, int lparam, int first_press);

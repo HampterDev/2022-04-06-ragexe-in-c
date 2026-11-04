@@ -1,6 +1,5 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include <math.h>
+#include <string.h>
 #include "render/math3d.h"
 
 const float g_pi = 3.141592f;
@@ -96,13 +95,14 @@ void mat_rotate_x(float *m, float rad)
     mat34_post_multiply(m, &b);
 }
 
-static DWORD sincos_last_angle;
+static uint32_t sincos_last_angle;
 static float sincos_last_sin, sincos_last_cos;
 static int sincos_valid;
 
 static void cached_sincos(float rad, float *s, float *c)
 {
-    DWORD bits = *(DWORD *)&rad;
+    uint32_t bits;
+    memcpy(&bits, &rad, sizeof bits);
 
     if (bits != sincos_last_angle || !sincos_valid) {
         sincos_last_angle = bits;
@@ -458,16 +458,16 @@ void mat_set_rotate_z(float *m, float rad)
     m[1] = s;
 }
 
-long mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar)
+int32_t mat4_perspective_lh(float *m, float fov, float aspect, float zNear, float zFar)
 {
     float depth = zFar - zNear, cosHalf, w, q;
     double h;
 
     if (0.01f > (float)fabs((double)depth))
-        return (long)0x80070057;
+        return -INT32_C(2147024809);
     fov = fov * 0.5f;
     if (0.01f > (float)fabs((double)float_sin(fov)))
-        return (long)0x80070057;
+        return -INT32_C(2147024809);
     cosHalf = float_cos(fov);
     w = (float)((double)cosHalf / (double)float_sin(fov) * (double)aspect);
     cosHalf = float_cos(fov);

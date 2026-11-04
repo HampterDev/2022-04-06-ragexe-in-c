@@ -56,13 +56,13 @@ char game_mode_pickup_failed(int result)
         return 0;
     }
     ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(msg), 0xff, 0, 0);
     return 1;
 }
 
 static void chat_line(const char *text, int channel)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, COLOUR_PICKUP, channel, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, COLOUR_PICKUP, channel, 0);
 }
 
 static void announce_pickup(struct ItemInfo *item, int count)
@@ -84,8 +84,8 @@ static void show_obtained_window(struct ItemInfo *item, int count)
     struct UIWindow *w = ui_window_open(WINDOW_ITEM_OBTAIN);
 
     UIWINDOW_SENDMSG(w, 0x4c, item->identified, 0, 0, 0);
-    UIWINDOW_SENDMSG(w, 0x24, 0, count, (int)string_cstr(&item->id_text), 0);
-    UIWINDOW_SENDMSG(w, 0x22, (int)item, 0, 0, 0);
+    UIWINDOW_SENDMSG(w, 0x24, 0, count, (intptr_t)string_cstr(&item->id_text), 0);
+    UIWINDOW_SENDMSG(w, 0x22, (intptr_t)item, 0, 0, 0);
 }
 
 static void mark_item_menu_new(void)

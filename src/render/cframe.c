@@ -4,14 +4,15 @@
 #include "game/context.h"
 #define _CRT_SECURE_NO_WARNINGS
 #include "render/render_api.h"
-#include <mmsystem.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "platform/language.h"
 #include "session/session_names.h"
 
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
+#endif
 
 int   g_wobbleFramesLeft;
 BYTE  g_wobbleMode;
@@ -88,8 +89,8 @@ int renderer_text_out(struct Renderer *self, int x, int y, const char *str, COLO
     (void)self;
     text_dc_from_surface(&t, g_3dDevice.target);
     text_dc_select_font(&t, 0, 12, 0, 0);
-    SetTextColor(t.hdc, colour);
-    TextOutA(t.hdc, x, y, str, (int)strlen(str));
+    text_dc_set_text_color(&t, colour);
+    text_dc_text_out_plain(&t, x, y, str, (int)strlen(str));
     text_dc_destruct(&t);
     return 0;
 }

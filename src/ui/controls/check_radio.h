@@ -64,8 +64,8 @@ void ui_radio_btn_destroy(struct UIWindow *window);
 void ui_radio_btn_on_draw(struct UIWindow *self);
 void ui_radio_btn_on_l_btn_down(struct UIWindow *self, int x_unused, int y_unused);
 void ui_radio_btn_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_radio_btn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1,
-                                  int val2, int val3, int val4);
+intptr_t ui_radio_btn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1,
+                                  intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_window_set_state(struct UIWindow *self, int state);
 
 struct UIBmpRadioBtn;
@@ -75,8 +75,8 @@ void ui_bmp_radio_btn_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_bmp_radio_btn_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_bmp_radio_btn_hover_on(struct UIWindow *self);
 void ui_bmp_radio_btn_hover_off(struct UIWindow *self);
-int ui_bmp_radio_btn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                     int val1, int val2, int val3, int val4);
+intptr_t ui_bmp_radio_btn_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                     intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 BYTE ui_bmp_radio_btn_set_bitmap(struct UIWindow *wnd, const char *path,
                                         int look);
 void ui_bmp_radio_btn_set_text_style(struct UIWindow *wnd, int look,

@@ -15,6 +15,7 @@
 #include "session/session_names.h"
 #include "session/session_skills.h"
 #include "session/session_talk.h"
+#include <stdint.h>
 
 #define ACTOR_SEND(self, sender, msg, par1) render_object_send((self), (sender), (msg), (par1), 0, 0, 0)
 
@@ -32,7 +33,7 @@ int game_actor_get_counter(struct GameActor *self, int key)
     return (int)var->value;
 }
 
-void game_actor_set_counter(struct GameActor *self, int key, __int64 value)
+void game_actor_set_counter(struct GameActor *self, int key, int64_t value)
 {
     struct IntInt64Pair *var = tree_get(actor_counters(self), &key, sizeof key, sizeof *var, tree_less_int);
 
@@ -97,7 +98,7 @@ void game_actor_drop_siege_window(struct GameActor *self)
     }
 }
 
-void game_actor_forget_handle(struct GameActor *self, int handle)
+void game_actor_forget_handle(struct GameActor *self, struct GameObject *handle)
 {
     if (self->cart == handle) { self->cart = 0; return; }
     if (self->falcon == handle) { self->falcon = 0; return; }
@@ -116,7 +117,7 @@ void game_actor_forget_handle(struct GameActor *self, int handle)
 int game_actor_action_of(struct GameActor *self, unsigned motion)
 {
     int mode;
-    unsigned __int64 weapon;
+    uint64_t weapon;
 
     switch (motion) {
     case 0x01:

@@ -9,6 +9,7 @@
 #include "core/text_util.h"
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/window.h"
 
 static struct ItemInfo *store_item_at(struct UIItemBaseWnd *base, struct ItemInfo *out, int x, int y, int left)
 {
@@ -106,7 +107,7 @@ void storage_on_r_btn_down(struct UIItemBaseWnd *base, int x, int y, int left)
     if (info.index) {
         struct Mode *mode = game_current_base_mode();
 
-        if ((GetAsyncKeyState(VK_MENU) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_MENU) >> 8) & 0xff) {
             if (g_windowMgr.item_wnd) {
                 if (game_take_item_move())
                     mode_send_message(mode, MODE_REQ_FROM_STORAGE, info.index, info.count, 0, 0);
@@ -116,7 +117,7 @@ void storage_on_r_btn_down(struct UIItemBaseWnd *base, int x, int y, int left)
         } else {
             struct UIWindow *wnd = ui_window_open(ITEM_WND_ID);
 
-            ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+            ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
         }
     }
     item_info_destruct(&info);

@@ -16,7 +16,7 @@ void ui_list_box_navi_search_on_create(struct UIWindow *self, int width, int hei
 void ui_list_box_navi_search_on_draw(struct UIWindow *self);
 void ui_list_box_navi_search_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_list_box_navi_search_on_wheel(struct UIWindow *self, int delta);
-int ui_list_box_navi_search_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_list_box_navi_search_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_list_box_navi_search_clear_items(struct UIListBox *base_list);
 static void ui_list_box_navi_search_update_scroll_bar(struct UIListBox *base_list);
 const struct UIListBoxOps ui_list_box_navi_search_ops = {
@@ -219,8 +219,8 @@ void ui_list_box_navi_search_resize(struct UIWindow *window, int width, int heig
     ui_list_box_navi_search_update_scroll_bar(lb);
 }
 
-int ui_list_box_navi_search_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_list_box_navi_search_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIListBox_NaviSearch *self = (struct UIListBox_NaviSearch *)window;
     struct UIListBox *lb = &self->list;

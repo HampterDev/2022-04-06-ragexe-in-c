@@ -15,6 +15,7 @@
 #include "core/msg_str.h"
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/window.h"
 
 #define MODE_REQ_CART_TO_STORAGE 0x4f
 #define MODE_REQ_CART_TO_INVENTORY 0x4d
@@ -41,7 +42,7 @@
 
 static void show_item_window(struct ItemInfo *info)
 {
-    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)info, 0, 0, 0);
+    ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)info, 0, 0, 0);
 }
 
 static int hover_at(struct UIItemBaseWnd *base, int *hover, int x, int y)
@@ -149,7 +150,7 @@ void ui_merchant_item_purchase_wnd_on_r_btn_down(struct UIWindow *window, int x,
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (g_windowMgr.merchant_item_shop_wnd) {
                 struct ItemInfo listed;
 
@@ -175,7 +176,7 @@ void ui_merchant_item_shop_wnd_on_r_btn_down(struct UIWindow *window, int x, int
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (g_windowMgr.merchant_item_purchase_wnd) {
                 game_mode_drag_item(mode, DRAG_SHOP_ITEM, &info, info.count, -1);
                 ui_window_send_msg(g_windowMgr.merchant_item_purchase_wnd, NULL, UI_MSG_ADD_DRAGGED, 0, 0, 0, 0);
@@ -196,7 +197,7 @@ void ui_merchant_item_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if ((unsigned)info.index > 0) {
         struct Mode *mode = game_current_base_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             if (!g_windowMgr.exchange_wnd && !g_windowMgr.merchant_shop_make_wnd) {
                 if (g_windowMgr.item_store_wnd) {
                     if (game_take_item_move())
@@ -221,7 +222,7 @@ void ui_merchant_mirror_item_wnd_on_r_btn_down(struct UIWindow *window, int x, i
     if ((unsigned)info.index > 0) {
         struct GameMode *mode = game_current_mode();
 
-        if ((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff) {
+        if ((platform_async_key_state(VK_SHIFT) >> 8) & 0xff) {
             struct UIWindow *target = g_windowMgr.merchant_shop_make_wnd ? g_windowMgr.merchant_shop_make_wnd : g_windowMgr.buying_store_make_wnd;
 
             if (target) {
@@ -259,8 +260,8 @@ void ui_merchant_item_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int
     ui_window_send_msg(g_windowMgr.item_drop_cnt_wnd, NULL, COUNT_MSG_OPEN, COUNT_FOR_SHOP, 0, 0, 0);
 }
 
-int ui_merchant_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemShopWnd *self = (struct UIMerchantItemShopWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -365,8 +366,8 @@ static void my_shop_close(struct UIMerchantItemMyShopWnd *self)
     session_clear_own_store_items(&g_session1);
 }
 
-int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemMyShopWnd *self = (struct UIMerchantItemMyShopWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -448,8 +449,8 @@ int ui_merchant_item_my_shop_wnd_send_msg(struct UIWindow *window, struct UIWind
     return ui_item_base_wnd_send_msg((struct UIWindow *)(&self->base), sender, msg, val1, val2, val3, val4);
 }
 
-int ui_merchant_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_merchant_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemWnd *self = (struct UIMerchantItemWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

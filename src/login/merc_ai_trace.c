@@ -1,11 +1,14 @@
 #include "ui/window_manager_state.h"
 #include "login/merc_ai.h"
+#include "platform/filesystem.h"
+#include "platform/system.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "platform/clock.h"
 
 struct String g_traceAiLast;
-INIT_ONCE g_traceAiLastGuard;
+struct Once g_traceAiLastGuard;
 
 int merc_ai_trace(lua_State *L)
 {
@@ -20,7 +23,7 @@ int merc_ai_trace_value(lua_State *L)
 
     string_init(&s);
     string_assign_cstr(&s, text);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&s), 0xffff, 4, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&s), 0xffff, 4, 0);
     string_free(&s);
     return 1;
 }
@@ -34,8 +37,8 @@ int merc_ai_trace_ai(lua_State *L)
 {
     struct String line;
     struct File f;
-    SYSTEMTIME st;
-    char dir[0x100];
+    struct PlatformDateTime st;
+    char dir[0x100], directory[0x100];
     char stamp[0x100];
     const char *text, *p;
     BYTE *old;
@@ -58,18 +61,18 @@ int merc_ai_trace_ai(lua_State *L)
     string_init(&line);
     string_assign_cstr(&line, text);
     string_append_cstr(&line, "\n");
-    OutputDebugStringA(string_cstr(&line));
-    GetLocalTime(&st);
-    date = ((((DWORD)st.wYear << 8) | (short)st.wMonth) << 8) | (short)st.wDay;
-    time = ((((DWORD)st.wHour << 8) | (short)st.wMinute) << 8) | (short)st.wSecond;
+    platform_debug_output(string_cstr(&line));
+    platform_date_time_local(&st);
+    date = ((((DWORD)st.year << 8) | (short)st.month) << 8) | (short)st.day;
+    time = ((((DWORD)st.hour << 8) | (short)st.minute) << 8) | (short)st.second;
 
     file_construct(&f);
-    GetCurrentDirectoryA(0x100, dir);
-    p = strstr(dir, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    p = strstr(directory, "\\data");
     size = 0;
     if (p)
-        memcpy(dir, dir, p - dir);
-    strcat(dir, "\\TraceAI.txt");
+        memcpy(directory, directory, p - directory);
+    platform_path_join(dir, sizeof dir, directory, "TraceAI.txt");
     if (file_open(&f, dir, 0, 1, 0)) {
         size = f.size;
         old = mem_alloc(size);

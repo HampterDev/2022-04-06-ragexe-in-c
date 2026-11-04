@@ -11,7 +11,7 @@ struct UIBasicStylingWnd;
 void ui_basic_styling_wnd_destroy(struct UIWindow *window);
 void ui_basic_styling_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_basic_styling_wnd_on_draw(struct UIWindow *self);
-int ui_basic_styling_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_basic_styling_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_basic_styling_wnd_ops = {
     .destroy = ui_basic_styling_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -61,7 +61,7 @@ struct UIStylingTab;
 void ui_slot_of_my_style_wnd_destroy(struct UIWindow *window);
 void ui_slot_of_my_style_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_slot_of_my_style_wnd_on_draw(struct UIWindow *self);
-int ui_slot_of_my_style_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_slot_of_my_style_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_slot_of_my_style_wnd_ops = {
     .destroy = ui_slot_of_my_style_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -119,8 +119,8 @@ void ui_stylingshop_tab_parent_wnd_on_draw(struct UIWindow *self)
     (void)self;
 }
 
-int ui_stylingshop_tab_parent_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                                 int val1, int val2, int val3, int val4)
+intptr_t ui_stylingshop_tab_parent_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                                 intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     (void)self;
     (void)sender;
@@ -180,9 +180,9 @@ void ui_basic_styling_wnd_on_create(struct UIWindow *window, int width, int heig
     for (i = 0; i < count; i++) {
         char off[0x40], off_over[0x40], on[0x40];
 
-        sprintf_s(off, sizeof off, STYLE_SKIN "color%02d_off.bmp", i + 1);
-        sprintf_s(off_over, sizeof off_over, STYLE_SKIN "color%02d_off_over.bmp", i + 1);
-        sprintf_s(on, sizeof on, STYLE_SKIN "color%02d_on.bmp", i + 1);
+        snprintf(off, sizeof off, STYLE_SKIN "color%02d_off.bmp", i + 1);
+        snprintf(off_over, sizeof off_over, STYLE_SKIN "color%02d_off_over.bmp", i + 1);
+        snprintf(on, sizeof on, STYLE_SKIN "color%02d_on.bmp", i + 1);
         btn = style_new_shop_button();
         ui_bitmap_button_set_bitmap(btn, off, UI_BTN_UP, 0);
         ui_bitmap_button_set_bitmap(btn, off_over, UI_BTN_HOVER, 0);
@@ -233,8 +233,8 @@ void ui_basic_styling_wnd_on_draw(struct UIWindow *window)
         ui_window_draw_bitmap(wnd, 4, 0x81, bitmap, 0);
 }
 
-int ui_basic_styling_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4)
+intptr_t ui_basic_styling_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIBasicStylingWnd *self = (struct UIBasicStylingWnd *)window;
     struct UIWindow *wnd = &self->tab.base;
@@ -316,8 +316,8 @@ void ui_slot_of_my_style_wnd_on_draw(struct UIWindow *self)
     (void)self;
 }
 
-int ui_slot_of_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_slot_of_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIStylingTab *self = (struct UIStylingTab *)window;
     (void)sender;

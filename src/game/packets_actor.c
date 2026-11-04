@@ -9,11 +9,10 @@
 #include "std/integer_map.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
-#include <mmsystem.h>
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "game/packets.h"
@@ -31,6 +30,7 @@
 #include "actor/game_actor.h"
 #include "world/world.h"
 #include "session/session_skills.h"
+#include "platform/clock.h"
 
 #define ACTOR_MSG_DEAD          0x1c
 #define ACTOR_MSG_OUT_OF_SIGHT  0x63
@@ -557,7 +557,7 @@ void game_mode_zc_notify_move(struct GameMode *self, const unsigned char *pkt)
     actor = world_get_game_actor_by_aid(self->world, packet->aid);
     session_sync_server_time(&g_session1, move.start_tick);
     if (actor)
-        actor_send(actor, ACTOR_MSG_MOVE, (int)&move, 0);
+        actor_send(actor, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
 }
 
 void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char *pkt)
@@ -568,7 +568,7 @@ void game_mode_zc_notify_player_move(struct GameMode *self, const unsigned char 
     move.start_tick = packet->start_tick;
     packet_decode_move_data(packet->move_data, &move.src_x, &move.src_y, &move.dst_x, &move.dst_y, &move.sub_x, &move.sub_y);
     session_sync_server_time(&g_session1, move.start_tick);
-    actor_send((struct GameActor *)self->world->player, ACTOR_MSG_MOVE, (int)&move, 0);
+    actor_send((struct GameActor *)self->world->player, ACTOR_MSG_MOVE, (intptr_t)&move, 0);
 }
 
 void game_mode_zc_change_direction(struct GameMode *self, const unsigned char *pkt)
@@ -781,5 +781,5 @@ void game_mode_zc_equip_arrow(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_EQUIP_ARROW *packet = (const struct PACKET_ZC_EQUIP_ARROW *)pkt;
     session_set_arrow(&g_session1, packet->index);
-    self->wear_ack_time = timeGetTime() - 2000;
+    self->wear_ack_time = platform_ticks_ms() - 2000;
 }

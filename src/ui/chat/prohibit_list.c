@@ -19,7 +19,7 @@ void ui_prohibit_list_wnd_destroy(struct UIWindow *window);
 void ui_prohibit_list_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_prohibit_list_wnd_on_process(struct UIWindow *self);
 void ui_prohibit_list_wnd_on_draw(struct UIWindow *self);
-int ui_prohibit_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_prohibit_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_prohibit_list_wnd_ops = {
     .destroy = ui_prohibit_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -84,7 +84,6 @@ struct UIProhibitListWnd {
     int shown_count;
     int aid;
 };
-SIZE_ASSERT(UIProhibitListWnd, 0x9c);
 
 struct UIProhibitListWnd *ui_prohibit_list_wnd_construct(struct UIProhibitListWnd *self)
 {
@@ -206,9 +205,9 @@ static void prohibit_open_commands(struct UIProhibitListWnd *self)
     struct UIWindow *combo = ui_window_open(WND_ID_COMBO_BOX);
     int x, y;
 
-    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_PROHIBIT_COMMAND1), 0, 0, 0);
-    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_PROHIBIT_COMMAND2), 0, 0, 0);
-    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(MSG_PROHIBIT_COMMAND3), 0, 0, 0);
+    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_PROHIBIT_COMMAND1), 0, 0, 0);
+    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_PROHIBIT_COMMAND2), 0, 0, 0);
+    ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(MSG_PROHIBIT_COMMAND3), 0, 0, 0);
     ui_window_send_msg(combo, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
     ui_window_resize(combo, 0x82, 0x30);
     ui_window_send_msg(combo, NULL, COMBO_MSG_OPENER_ID, WND_ID_PROHIBIT_LIST, 0, 0, 0);
@@ -228,12 +227,12 @@ static void prohibit_open_count(int request, int msg)
     ui_frame_wnd_move(cnt, (g_renderer->width - 0x280) / 2 + 0xc8, y);
     ui_window_mgr_add_window(&g_windowMgr, cnt);
     ui_window_send_msg(cnt, NULL, CNT_MSG_REQUEST, request, 0, 0, 0);
-    ui_window_send_msg(cnt, NULL, UI_MSG_ADD_TEXT, (int)msg_str(msg), 0, 0, 0);
+    ui_window_send_msg(cnt, NULL, UI_MSG_ADD_TEXT, (intptr_t)msg_str(msg), 0, 0, 0);
     ui_window_send_msg(cnt, NULL, CNT_MSG_SET_COUNT, 1, 0, 0, 0);
 }
 
-int ui_prohibit_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4)
+intptr_t ui_prohibit_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIProhibitListWnd *self = (struct UIProhibitListWnd *)window;
     struct Mode *mode;

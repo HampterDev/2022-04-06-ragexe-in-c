@@ -35,7 +35,7 @@ static int read_file(struct McStoreBackup *self, const char *path, int type)
     if (json_parse_text(&root, text.data, text.size) && root.type == JSON_TREE_OBJECT) {
         version = json_tree_find(&root, "version", 7);
         if (version && (version->type == JSON_TREE_INT64 || version->type == JSON_TREE_UINT64) &&
-            version->u.u64 == 1 && settings_json_convert(&root, CP_UTF8, g_codePage) &&
+            version->u.u64 == 1 && settings_json_convert(&root, CODE_PAGE_UTF8, g_codePage) &&
             mcstore_read_items(self, json_tree_find(&root, "data", 4)) &&
             self->item_count <= (type ? 5u : 13u))
             result = 1;
@@ -76,7 +76,7 @@ int mcstore_request_save(struct McStoreBackup *self, int type)
     json_tree_init(&root);
     json_tree_init(&data);
     if (mcstore_write_items(self, &data) && mcstore_read_items(&checked, &data) &&
-        checked.item_count <= (type ? 5u : 13u) && settings_json_convert(&data, g_codePage, CP_UTF8)) {
+        checked.item_count <= (type ? 5u : 13u) && settings_json_convert(&data, g_codePage, CODE_PAGE_UTF8)) {
         json_value_from_int(&version, 1);
         json_value_assign(json_value_member(&root, "version"), &version);
         json_value_assign(json_value_member(&root, "data"), &data);

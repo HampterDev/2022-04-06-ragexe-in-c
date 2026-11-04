@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include "web/name_cards.h"
+#include "platform/clock.h"
 
 #ifdef NAME_CARD_OWNERS_REFERENCE
 #define name_card_init name_card_construct
@@ -100,11 +101,13 @@ static unsigned test_time = 100;
 #define realloc resize
 #define free release
 #define timeGetTime() test_time
+#define platform_ticks_ms() test_time
 #include <web/name_cards.c>
 
 #define ASKED(h) vec_count(&(h)->asked, sizeof(struct NameCardRequest))
 #define WANTED(h) vec_count(&(h)->wanted, sizeof(unsigned))
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef malloc
 #undef realloc
 #undef free

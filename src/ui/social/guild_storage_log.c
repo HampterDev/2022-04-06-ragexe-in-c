@@ -47,13 +47,10 @@ struct UIGuild_Storage_Log {
     unsigned count[STORAGE_LOG_TABS];
     struct Vec in_flags;
 };
-OFFSET_ASSERT(UIGuild_Storage_Log, tab, 0x134);
-OFFSET_ASSERT(UIGuild_Storage_Log, in_flags, 0x164);
-SIZE_ASSERT(UIGuild_Storage_Log, 0x170);
 void ui_guild_storage_log_destroy(struct UIWindow *window);
 void ui_guild_storage_log_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_storage_log_on_draw(struct UIWindow *self);
-int ui_guild_storage_log_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_storage_log_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_guild_storage_log_ops = {
     .destroy = ui_guild_storage_log_destroy,
     .resize = ui_window_resize_base,
@@ -236,7 +233,7 @@ static void storage_log_fill(struct UIGuild_Storage_Log *self)
         line = first + self->index;
         in = line->action;
         vec_push(&self->in_flags, &in, sizeof in);
-        _itoa(line->amount, number, 10);
+        snprintf(number, sizeof number, "%d", line->amount);
         r = (int)self->row - 1;
         for (c = 0; c < STORAGE_LOG_COLUMNS; c++)
             ui_static_text_set_text_colour(self->texts[c][r], line->attribute == 1 ? 0xff : 0, 0, 0);
@@ -298,8 +295,8 @@ static void storage_log_clear(struct UIGuild_Storage_Log *self)
     ui_guild_storage_log_send_msg(&self->frame.base, &self->frame.base, MSG_STORAGE_LOG_CLEAR, 0, 0, 0, 0);
 }
 
-int ui_guild_storage_log_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                           int val1, int val2, int val3, int val4)
+intptr_t ui_guild_storage_log_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                           intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuild_Storage_Log *self = (struct UIGuild_Storage_Log *)window;
     int r, c;

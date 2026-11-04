@@ -37,15 +37,17 @@ static void expect_events(const char *expected)
     events[event_count = 0] = 0;
 }
 
-static DWORD test_time(void)
+static uint32_t test_time(void)
 {
     event('T');
     return now;
 }
 
 #define timeGetTime test_time
+#define platform_ticks_ms test_time
 #include "../src/world/tooltip.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 
 void *mem_alloc(size_t bytes)
 {

@@ -3,6 +3,7 @@
 #include "ui/character/character.h"
 #include "ui/character/character_std.h"
 #include "diag/perf.h"
+#include <stdint.h>
 
 struct UIGage;
 void ui_gage_destroy(struct UIWindow *window);
@@ -340,7 +341,6 @@ struct UIMonsterGage {
     struct UIPcGage pc;
     int low_percent;
 };
-SIZE_ASSERT(UIMonsterGage, 0xb0);
 
 int ui_monster_gauge_hp(const struct UIWindow *window)
 {
@@ -395,7 +395,6 @@ struct UIRechargeGage {
     int value;
     int maximum;
 };
-SIZE_ASSERT(UIRechargeGage, 0xa0);
 
 void ui_recharge_gage_destroy(struct UIWindow *window)
 {
@@ -434,7 +433,6 @@ struct UIPlayerGage {
     int layout;
     struct GaugeValue getters[PLAYER_GAGE_GETTERS];
 };
-OFFSET_ASSERT(UIPlayerGage, getters, 0x9c);
 
 static struct UIPlayerGage *ui_player_gage_construct(struct UIPlayerGage *self)
 {
@@ -467,7 +465,7 @@ void ui_player_gage_destroy(struct UIWindow *window)
 static float player_ratio(struct UIPlayerGage *self, int current, int int_denominator)
 {
     struct GaugeValue *cur = &self->getters[current], *max = &self->getters[current + 1];
-    __int64 denominator = GAUGE_MAX(GAUGE_MAX(gauge_value_read(max), (__int64)1), gauge_value_read(cur));
+    int64_t denominator = GAUGE_MAX(GAUGE_MAX(gauge_value_read(max), (int64_t)1), gauge_value_read(cur));
 
     if (int_denominator)
         return (float)((double)gauge_value_read(cur) / (double)(int)denominator);

@@ -1,6 +1,7 @@
 #include "session/csession.h"
 #include "session/session_state.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_std.h"
@@ -52,27 +53,17 @@ static void set_group_box(struct Session *self, int group, const struct MapRect 
 
 static void make_rect_maps(struct Session *self, const char *start, const char *p)
 {
-    unsigned long long bytes;
-    size_t size;
-    int *block;
+    struct Tree *maps = NULL;
     int count, i;
 
     self->rectMapCount = atoi_between(start, p);
     count = self->rectMapCount;
-    bytes = (unsigned long long)(unsigned)count * 8;
-    size = bytes > 0xffffffffu ? 0xffffffffu : (size_t)bytes;
-    size = size + 4 < size ? 0xffffffffu : size + 4;
-    block = (int *)mem_alloc(size);
-    if (block) {
-        struct Tree *maps = (struct Tree *)(block + 1);
-
-        *block = count;
+    if (count > 0 && (size_t)count <= SIZE_MAX / sizeof *maps)
+        maps = mem_alloc((size_t)count * sizeof *maps);
+    if (maps)
         for (i = 0; i < count; i++)
             tree_init(&maps[i]);
-        self->rectMaps = maps;
-    } else {
-        self->rectMaps = NULL;
-    }
+    self->rectMaps = maps;
 }
 
 int session_init_map_pos_table(struct Session *self)

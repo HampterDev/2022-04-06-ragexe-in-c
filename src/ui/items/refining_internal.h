@@ -130,14 +130,11 @@ struct UIRefiningWnd {
     int next_blessing_count;
     struct ItemInfo next_item;
 };
-OFFSET_ASSERT(UIRefiningWnd, state, 0xa4);
-OFFSET_ASSERT(UIRefiningWnd, materials, 0xbc);
-OFFSET_ASSERT(UIRefiningWnd, item, 0xd4);
 
 void ui_refining_wnd_reset(struct UIRefiningWnd *self);
 void ui_refining_wnd_set_state(struct UIRefiningWnd *self, int state, int result);
-int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4);
+intptr_t ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4);
 void ui_refining_wnd_refresh(struct UIRefiningWnd *self);
 void ui_refining_btn_again_set_bitmaps(struct UIRefining_BtnAgain *self);
 void ui_refining_btn_return_set_bitmaps(struct UIRefining_BtnReturn *self);

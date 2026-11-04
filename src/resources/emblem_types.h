@@ -7,6 +7,5 @@ struct EmblemRes {
     struct Res res;
     struct GifRes picture;
 };
-OFFSET_ASSERT(EmblemRes, picture, 0x110);
 
 #endif

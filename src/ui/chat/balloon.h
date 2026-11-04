@@ -15,9 +15,6 @@ struct UIBalloonText {
     WORD font_code;
     BYTE colour_codes;
 };
-OFFSET_ASSERT(UIBalloonText, lines, 0x84);
-OFFSET_ASSERT(UIBalloonText, font_code, 0x9a);
-SIZE_ASSERT(UIBalloonText, BALLOON_TEXT_SIZE);
 
 #define NAME_BALLOON_TEXT_SIZE 0xc0
 struct UINameBalloonText {
@@ -27,7 +24,6 @@ struct UINameBalloonText {
     BYTE mark;
     BYTE emblem_frame;
 };
-OFFSET_ASSERT(UINameBalloonText, emblem, 0xa0);
 
 struct UIVerticalNameBalloonText {
     struct UINameBalloonText name;
@@ -62,9 +58,6 @@ struct UITransBalloonText {
     struct BalloonLineColours line_colours;
     COLORREF frame_colour;
 };
-OFFSET_ASSERT(UITransBalloonText, backdrop, 0xa0);
-OFFSET_ASSERT(UITransBalloonText, line_colours, 0xbc);
-SIZE_ASSERT(UITransBalloonText, TRANS_BALLOON_TEXT_SIZE);
 
 struct UIWindow *ui_trans_balloon_text_construct(struct UIWindow *self);
 void ui_balloon_text_set_text(struct UIBalloonText *self, const char *text, int line_chars);

@@ -2,12 +2,12 @@
 #include "session/state.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "session/session_items.h"
 #include "ui/ui_std.h"
 #include "ui/shops/merchant_shop_make.h"
+#include "platform/clock.h"
 
 #define CZ_REQ_OPENSTORE2               0x1b2
 #define CZ_PC_PURCHASE_ITEMLIST_FROMMC2 0x801
@@ -123,9 +123,9 @@ int game_mode_msg_buy_from_vendor(int aid, int store_id)
 
 static int store_browse_allowed(struct GameMode *self)
 {
-    if (timeGetTime() <= self->store_browse_time + 1000)
+    if (platform_ticks_ms() <= self->store_browse_time + 1000)
         return 0;
-    self->store_browse_time = timeGetTime();
+    self->store_browse_time = platform_ticks_ms();
     return 1;
 }
 

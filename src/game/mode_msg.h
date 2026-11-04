@@ -249,7 +249,7 @@ enum {
 
 struct SkillInfo;
 
-static __inline int self_msg(struct GameMode *self, int msg, int a, int b, int c, int d)
+static __inline intptr_t self_msg(struct GameMode *self, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     return mode_send_msg(self, msg, a, b, c, d);
 }
@@ -312,7 +312,7 @@ static __inline char close_window(int id)
 
 static __inline void chat_print(const char *text, unsigned color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, color, 0, 0);
 }
 
 static __inline void chat_print_msg(int id, unsigned color)
@@ -375,7 +375,7 @@ int game_mode_msg_actor_removed(struct GameMode *self, unsigned aid);
 int game_mode_msg_show_equip_of(struct GameMode *self);
 int game_mode_msg_set_popup_target_name(struct GameMode *self, const char *name);
 int game_mode_msg_popup_choice(struct GameMode *self, unsigned index);
-int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, int arg);
+int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, intptr_t arg);
 int game_mode_msg_create_chat_room(struct GameMode *self, const struct ChatRoomInfo *room);
 int game_mode_msg_change_chat_room(struct GameMode *self, const struct ChatRoomInfo *room);
 int game_mode_msg_enter_chat_room(struct GameMode *self, int room_id, const char *password);

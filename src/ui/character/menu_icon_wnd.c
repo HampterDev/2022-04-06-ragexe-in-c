@@ -74,6 +74,7 @@ enum MenuIconId {
 #define MENU_ICON_DY 0x2b
 #define MENU_ICON_X 9
 #define MENU_ICON_Y 0x17
+#define MENU_BG_Y 0xd
 #define MENU_ICON_NEW_Y 0x11
 #define MENU_BUTTON_Y 4
 #define MENU_ICON_COUNT 17
@@ -95,10 +96,6 @@ struct UIMenuIconWnd {
     struct UIBitmapButton *menu_new;
     struct UIBitmapButton *close;
 };
-OFFSET_ASSERT(UIMenuIconWnd, icons, 0x94);
-OFFSET_ASSERT(UIMenuIconWnd, marks, 0xa4);
-OFFSET_ASSERT(UIMenuIconWnd, close, 0xb4);
-SIZE_ASSERT(UIMenuIconWnd, 0xb8);
 
 struct UIWindow;
 void ui_menu_icon_wnd_destroy(struct UIWindow *window);
@@ -109,7 +106,7 @@ void ui_menu_icon_wnd_on_draw(struct UIWindow *self);
 void ui_menu_icon_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_menu_icon_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_menu_icon_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_menu_icon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_menu_icon_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 struct UIWindow *ui_menu_icon_wnd_hit_test(struct UIWindow *self, int x, int y);
 const struct UIWindowOps ui_menu_icon_wnd_ops = {
     .destroy = ui_menu_icon_wnd_destroy,
@@ -418,7 +415,8 @@ void ui_menu_icon_wnd_on_draw(struct UIWindow *window)
         }
         string_init(&bg);
         string_assign_cstr(&bg, MENU_ICON_DIR "bg_menu.tga");
-        ui_window_queue_bitmap(&self->frame.base, 0, 0xd, bg, 0xffffffff, 0, 0);
+        ui_window_queue_bitmap_bottom(&self->frame.base, 0, MENU_BG_Y, bg, 0xffffffff,
+                                      self->frame.base.height - MENU_BG_Y);
         marked = menu_marked(self, icon->id);
         ui_button_show((struct UIButton *)(icon->button), !marked);
         variant = tree_find(&self->new_icons, &icon->id, tree_less_int);
@@ -440,8 +438,8 @@ static void menu_mark(struct UIMenuIconWnd *self, int id, int on)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct UIMenuIconWnd *self = (struct UIMenuIconWnd *)window;
     if (msg == MENU_MSG_TOGGLE) {
@@ -508,7 +506,7 @@ int ui_menu_icon_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             break;
         case MENU_ID_MAIL:
             if (ui_get_window(WND_MAIL_BLOCK_1))
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_MAIL_BLOCK_1),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_MAIL_BLOCK_1),
                                       MAIL_BLOCK_COLOUR, 0, 0);
             else
                 ui_menu_icon_wnd_toggle(WND_MAIL);

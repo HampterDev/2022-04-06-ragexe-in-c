@@ -8,14 +8,14 @@
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include <time.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/quests/quests.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "render/screen_draw.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define ATTENDANCE_WND_ID 0x148
 #define ATTENDANCE_DIR UI_SKIN "check_attendance\\"
@@ -48,9 +48,6 @@ struct UICheckAttendanceWnd {
     int today_state;
     struct UIBmpTextButton *close;
 };
-OFFSET_ASSERT(UICheckAttendanceWnd, today_open, 0x98);
-OFFSET_ASSERT(UICheckAttendanceWnd, close, 0xa8);
-SIZE_ASSERT(UICheckAttendanceWnd, 0xac);
 void ui_check_attendance_wnd_destroy(struct UIWindow *window);
 void ui_check_attendance_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_check_attendance_wnd_on_process(struct UIWindow *self);
@@ -59,7 +56,7 @@ void ui_check_attendance_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_check_attendance_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_check_attendance_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_check_attendance_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_check_attendance_wnd_render_overlay(struct UIWindow *self);
 const struct UIWindowOps ui_check_attendance_wnd_ops = {
     .destroy = ui_check_attendance_wnd_destroy,
@@ -138,7 +135,7 @@ void ui_check_attendance_wnd_on_create(struct UIWindow *window, int width_unused
     struct UIWindow *wnd = &self->frame.base;
     int date = g_attendanceTable->end_date;
     struct tm end;
-    __time32_t now, left;
+    int32_t now, left;
     struct UIBmpTextButton *close;
 
     end.tm_sec = 0;
@@ -147,10 +144,10 @@ void ui_check_attendance_wnd_on_create(struct UIWindow *window, int width_unused
     end.tm_mday = date % 100;
     end.tm_mon = date % 10000 / 100 - 1;
     end.tm_year = date / 10000 - 1900;
-    _time32(&now);
-    left = _mktime32(&end) - now;
+    now = platform_time_now();
+    left = platform_time_make(&end) - now;
     if (left > 0)
-        self->days_left = _localtime32(&left)->tm_yday;
+        self->days_left = platform_time_local(left)->tm_yday;
     else
         self->days_left = 0;
 
@@ -354,7 +351,7 @@ void ui_check_attendance_wnd_on_process(struct UIWindow *window)
 
     if (!self->today_open)
         return;
-    phase = timeGetTime() / 100 & 1;
+    phase = platform_ticks_ms() / 100 & 1;
     if (self->today_state != ATTENDANCE_TODAY_PRESSED && self->today_state != phase) {
         self->today_state = phase;
         ui_window_invalidate_base(&self->frame.base);
@@ -401,12 +398,12 @@ void ui_check_attendance_wnd_on_r_btn_down(struct UIWindow *window, int x, int y
     item_info_construct(&info);
     item_info_set_item_id(&info, check_attendance_reward(g_attendanceTable, &reward, slot + 1)->item_id);
     info.identified = 1;
-    ui_window_send_msg(item_wnd, NULL, ITEM_INFO_MSG_SHOW, (int)&info, 0, 0, 0);
+    ui_window_send_msg(item_wnd, NULL, ITEM_INFO_MSG_SHOW, (intptr_t)&info, 0, 0, 0);
     item_info_destruct(&info);
 }
 
-int ui_check_attendance_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_check_attendance_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICheckAttendanceWnd *self = (struct UICheckAttendanceWnd *)window;
     if (msg == UI_MSG_COMMAND) {

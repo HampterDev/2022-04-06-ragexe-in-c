@@ -5,6 +5,8 @@
 #include "effects/render_object.h"
 #include "actor/game_actor.h"
 #include "effects/skills/arrow_effect.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #define MONSTER_DIR "몬스터\\"
 #define BULLET(name) { MONSTER_DIR name ".spr", MONSTER_DIR name ".act" }
@@ -156,7 +158,7 @@ unsigned char arrow_effect_on_process(struct GameObject *object)
     return 1;
 }
 
-static struct MissileSprite missile_for_job(__int64 job64)
+static struct MissileSprite missile_for_job(int64_t job64)
 {
     static const struct MissileSprite arrow = BULLET("skel_archer_arrow");
     static const struct MissileSprite stone_shooter = BULLET("STONE_SHOOTER_BULLET");
@@ -239,7 +241,7 @@ void arrow_effect_send_msg(struct GameObject *object, struct GameObject *source,
         render_object_send_msg((struct GameObject *)&self->base, source, msg, par1, par2, par3, par4);
         return;
     }
-    self->base.start_tick = timeGetTime();
+    self->base.start_tick = platform_ticks_ms();
     if (par3)
         self->launch_delay = *(const float *)MSG_PTR(par3);
 }

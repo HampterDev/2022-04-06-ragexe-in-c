@@ -13,8 +13,7 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "fileio/res_mgr.h"
@@ -136,7 +135,7 @@ void navi_manager_reset_link_depths(struct NaviManager *self)
 
         end = *navi_map_links_end(*map, &endSlot);
         it = *navi_map_links_begin(*map, &beginSlot);
-        count = ((unsigned)((char *)end - (char *)it) + 3) >> 2;
+        count = (unsigned)(end - it);
         if (it > end)
             count = 0;
         for (i = 0; i < count; i++, it++)

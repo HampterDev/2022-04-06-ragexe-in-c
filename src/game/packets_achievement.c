@@ -11,6 +11,7 @@
 #include "session/session_lua.h"
 #include "ui/chat/balloon.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 enum {
     WID_EQUIP = 0xa,
@@ -50,7 +51,7 @@ static void announce(struct GameMode *self, int id)
     struct UIWindow *wnd;
     struct Vec3 pos;
 
-    self->achievement_notice_time = timeGetTime();
+    self->achievement_notice_time = platform_ticks_ms();
     if (self->achievement_notice == 0) {
         wnd = (struct UIWindow *)ui_ach_balloon_text_new();
         self->achievement_notice = wnd;

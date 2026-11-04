@@ -26,6 +26,7 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "game/input.h"
+#include "platform/clock.h"
 
 void player_process_proceed(struct Player *self);
 void player_process_costume_body(struct Player *self, unsigned char show);
@@ -58,19 +59,19 @@ unsigned char player_on_process(struct GameObject *object)
     game_actor_process_effect_state(actor);
     game_actor_process_will_be_attacked(actor);
     game_actor_process_chat_balloon_(actor);
-    if (self->hit_flash && timeGetTime() > self->hit_tick + 100) {
+    if (self->hit_flash && platform_ticks_ms() > self->hit_tick + 100) {
         self->hit_argb = 0xffff0000;
         self->hit_flash = 0;
     }
     if (self->argb != 0xffffffff)
         render_object_modify_argb((struct RenderObject *)self, 8, 8, 8, 8);
     mode = game_current_mode();
-    if (self->move_request_pending && timeGetTime() > self->move_request_tick + (g_session1.averagePing >> 1)) {
+    if (self->move_request_pending && platform_ticks_ms() > self->move_request_tick + (g_session1.averagePing >> 1)) {
         game_mode_world_to_sub_cell(mode, self->pos.x, self->pos.z, &req.src_x, &req.src_y, &req.sub_x, &req.sub_y);
         req.start_tick = session_get_server_time(&g_session1);
         req.dst_x = self->requested_cell_x;
         req.dst_y = self->requested_cell_y;
-        render_object_send(self, NULL, 0, MSG_ARG_PTR(&req), 0, 0, 0);
+        render_object_send(self, NULL, 0, (intptr_t)&req, 0, 0, 0);
     }
     player_process_proceed(self);
     result = actor_process_state(self);
@@ -198,10 +199,10 @@ static void player_attack_now(struct Player *self)
         player_msg(self, 0xd);
     if (self->attack_sent)
         return;
-    if (self->attack_tick + 0x4b0 >= timeGetTime())
+    if (self->attack_tick + 0x4b0 >= platform_ticks_ms())
         return;
     self->attacks++;
-    self->attack_tick = timeGetTime();
+    self->attack_tick = platform_ticks_ms();
     self->attack_sent = 1;
     player_msg(self, self->attack_kind == 2 ? 0x1d : 0x28);
 }
@@ -255,7 +256,7 @@ static int player_proceed_attack(struct Player *self, struct GameMode *mode)
     }
 
     interval = self->pending != 5 ? 0x1c2 : 0x4b0;
-    due = timeGetTime() > self->move_tick + interval;
+    due = platform_ticks_ms() > self->move_tick + interval;
     st = self->state;
     x = target->cell_x;
     y = target->cell_y;
@@ -275,7 +276,7 @@ static int player_proceed_attack(struct Player *self, struct GameMode *mode)
         return 1;
     self->requested_cell_x = x;
     self->requested_cell_y = y;
-    self->move_tick = timeGetTime();
+    self->move_tick = platform_ticks_ms();
     player_walk_msg(self, x, y);
     return 1;
 }
@@ -558,11 +559,11 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
     cast.level = self->skill_level;
     if (cast.skill_id == 0x7d || cast.skill_id == 0xdc) {
         wnd = ui_window_open(cast.skill_id == 0x7d ? 0x54 : 0x65);
-        ui_window_send(wnd, NULL, 0x44, (int)&cast, 0, 0, 0);
+        ui_window_send(wnd, NULL, 0x44, (intptr_t)&cast, 0, 0, 0);
         return;
     }
     if (cast.skill_id != 0x108) {
-        MODE_SEND(mode, 0x46, (int)&cast, 0, 0);
+        MODE_SEND(mode, 0x46, (intptr_t)&cast, 0, 0);
         return;
     }
     x = y = sub_x = sub_y = 0;
@@ -570,10 +571,10 @@ static void player_msg_ground_cast(struct Player *self, struct GameMode *mode)
                             &sub_y);
     path_info_init(&path);
     dir = 0;
-    if (path_finder_find_path(&g_pathFinder, timeGetTime(), x, y, sub_x, sub_y, self->skill_cell_x,
+    if (path_finder_find_path(&g_pathFinder, platform_ticks_ms(), x, y, sub_x, sub_y, self->skill_cell_x,
                               self->skill_cell_y, 0x96, &path, 0xf) == 1)
         dir = path_info_end_direction(&path);
-    MODE_SEND(mode, 0x46, (int)&cast, dir, 0);
+    MODE_SEND(mode, 0x46, (intptr_t)&cast, dir, 0);
     path_info_destroy(&path);
 }
 
@@ -601,7 +602,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         break;
     case 0x9:
         self->move_request_pending = 1;
-        self->move_request_tick = timeGetTime();
+        self->move_request_tick = platform_ticks_ms();
         self->requested_cell_x = p1;
         self->requested_cell_y = p2;
         break;
@@ -695,7 +696,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         if (player_busy(self))
             break;
         self->pending = self->pending == 1 ? 5 : 1;
-        self->move_tick = timeGetTime() - 0x4b0;
+        self->move_tick = platform_ticks_ms() - 0x4b0;
         self->target_aid = p1;
         self->attack_sent = 0;
         self->attacks = 0;
@@ -720,8 +721,8 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         self->skill_level = p1;
         break;
     case 0x5b:
-        if (timeGetTime() > self->held_walk_tick + 0x15e) {
-            self->held_walk_tick = timeGetTime();
+        if (platform_ticks_ms() > self->held_walk_tick + 0x15e) {
+            self->held_walk_tick = platform_ticks_ms();
             MODE_SEND(mode, 0x8a, p1, p2, 0);
         }
         break;
@@ -756,10 +757,10 @@ void player_process_costume_body(struct Player *self, unsigned char show)
 
             list_push_back(&self->attached, &obj, sizeof obj);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-            self->costume_body_obj = (int)obj;
+            self->costume_body_obj = obj;
         }
     } else if (self->costume_body_obj) {
-        render_object_send((void *)self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
+        render_object_send(self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
         self->costume_body_obj = 0;
     }
 }
@@ -843,14 +844,14 @@ static void player_init(struct Player *self, const float position[3], int cell_x
     self->pickable = 1;
     self->skill_id = 0;
     self->skill_level = 0;
-    self->move_tick = timeGetTime() - 1200;
-    self->attack_tick = timeGetTime() - 1200;
+    self->move_tick = platform_ticks_ms() - 1200;
+    self->attack_tick = platform_ticks_ms() - 1200;
     self->screen_x = g_renderer->centreX;
     self->screen_y = g_renderer->centreY;
     self->owed_walk = 0;
     self->owed_walk_x = -1;
     self->owed_walk_y = -1;
-    self->held_walk_tick = timeGetTime() - 1200;
+    self->held_walk_tick = platform_ticks_ms() - 1200;
     actor_set_state(self, 0, 1);
     self->walk_speed = g_session1.walkSpeed;
     self->is_pc = 1;

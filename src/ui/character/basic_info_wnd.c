@@ -26,6 +26,7 @@
 #include "session/session_state.h"
 #include "ui/character/gauge_internal.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 #define BASIC_INFO_SIZE 0xf8
 #define BASIC_OFFSCREEN (-100)
@@ -43,7 +44,6 @@ struct UIBasicInfoWnd {
     struct UIWindow *job_exp_bar;
     int row_y;
 };
-OFFSET_ASSERT(UIBasicInfoWnd, name, 0xa0);
 
 void ui_basic_info_wnd_destroy(struct UIWindow *window);
 void ui_basic_info_wnd_store_info(struct UIWindow *self);
@@ -53,7 +53,7 @@ void ui_basic_info_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_basic_info_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_basic_info_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_basic_info_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_basic_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_basic_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_basic_info_wnd_ops = {
     .destroy = ui_basic_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -199,12 +199,12 @@ void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height)
         basic_hang_below(self, below);
 }
 
-void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum)
+void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum)
 {
     uiint64_bar_graph_set_values((struct UIINT64BarGraph *)self->base_exp_bar, current, maximum);
 }
 
-void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum)
+void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum)
 {
     uiint64_bar_graph_set_values((struct UIINT64BarGraph *)self->job_exp_bar, current, maximum);
 }
@@ -219,7 +219,7 @@ static struct UIWindow *basic_gauge(struct UIBasicInfoWnd *self, struct UIWindow
     return gauge;
 }
 
-static struct UIWindow *basic_exp_bar(struct UIBasicInfoWnd *self, int y, __int64 current, __int64 maximum)
+static struct UIWindow *basic_exp_bar(struct UIBasicInfoWnd *self, int y, int64_t current, int64_t maximum)
 {
     struct UIWindow *bar = (struct UIWindow *)uiint64_bar_graph_new();
 
@@ -261,7 +261,7 @@ void ui_basic_info_wnd_on_create(struct UIWindow *window, int width, int height)
     ui_basic_info_wnd_set_height(self, height);
 }
 
-static void basic_base_exp(__int64 *exp, __int64 *next)
+static void basic_base_exp(int64_t *exp, int64_t *next)
 {
     *exp = g_session1.baseExp;
     if (*exp < 0)
@@ -287,7 +287,7 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     char text[0x80], money[0x40];
     COLORREF colour;
     int face = 1, font_height = 0xe, x = 9, len, offset, width;
-    __int64 exp, next;
+    int64_t exp, next;
     double percent;
 
     colour = basic_chip(0xe, 6);
@@ -452,8 +452,8 @@ static void basic_toggle(int window_id)
 static const int basic_closed_windows[] = {0xb, 0xd, 8, 0x141, 0xa, 0x45, 0x1b, 0x1e, 0x25, 0x58, 0x56, 0x57,
                                            0x28, 0x3b};
 
-int ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIBasicInfoWnd *self = (struct UIBasicInfoWnd *)window;
     struct UIWindow *wnd = basic_wnd(self);

@@ -3,6 +3,7 @@
 #include "session/state.h"
 #include "render/screen_prim.h"
 #include "render/math3d.h"
+#include "platform/clock.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>

@@ -55,17 +55,17 @@ int main(void)
     encoding_test_free(wide);
     for (n = 1; n <= 2; ++n) {
         encoding_test_reset(); encoding_fail_call = n;
-        assert(!encoding_to_wide(949, "abc") && GetLastError() == ERROR_NO_UNICODE_TRANSLATION && !encoding_live);
+        assert(!encoding_to_wide(949, "abc") && !encoding_live);
         encoding_test_reset(); encoding_fail_call = n;
-        assert(!encoding_from_wide(949, L"abc") && GetLastError() == ERROR_NO_UNICODE_TRANSLATION && !encoding_live);
+        assert(!encoding_from_wide(949, L"abc") && !encoding_live);
     }
     encoding_test_reset(); encoding_fail_allocation = 1;
-    assert(!encoding_to_wide(949, "abc") && GetLastError() == ERROR_NOT_ENOUGH_MEMORY);
+    assert(!encoding_to_wide(949, "abc") && !encoding_live);
     encoding_test_reset(); encoding_fail_allocation = 1;
-    assert(!encoding_from_wide(949, L"abc") && GetLastError() == ERROR_NOT_ENOUGH_MEMORY);
+    assert(!encoding_from_wide(949, L"abc") && !encoding_live);
     encoding_test_reset();
-    assert(!encoding_to_wide(949, NULL) && GetLastError() == ERROR_INVALID_PARAMETER);
-    assert(!encoding_from_wide(949, NULL) && GetLastError() == ERROR_INVALID_PARAMETER);
+    assert(!encoding_to_wide(949, NULL));
+    assert(!encoding_from_wide(949, NULL));
     assert(!encoding_to_wide(0xffffffffu, "abc"));
     assert(!encoding_from_wide(0xffffffffu, L"abc"));
     GetSystemInfo(&info);

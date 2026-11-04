@@ -4,7 +4,7 @@
 #include "ui/window_manager_state.h"
 #include "core/memory.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packets.h"
 #include "game/chat.h"
@@ -14,6 +14,7 @@
 #include "ui/social/party_board.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PACKET_ZC_PARTY_CONFIG {
@@ -28,7 +29,7 @@ void game_mode_zc_party_config(const unsigned char *pkt)
     const struct PACKET_ZC_PARTY_CONFIG *packet = (const struct PACKET_ZC_PARTY_CONFIG *)pkt;
 
     g_session1.partyInviteRefused = packet->refuse_invitations;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(packet->refuse_invitations == 0 ? 0x52e : 0x52d), 0x64ffff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(packet->refuse_invitations == 0 ? 0x52e : 0x52d), 0x64ffff, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -56,18 +57,18 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     case 0:
         memset(line, 0, sizeof line);
         if (g_session1.partyLeader == 1)
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdad), player_name);
+            snprintf(line, sizeof line, msg_str(0xdad), player_name);
         else
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdaa), party_name);
+            snprintf(line, sizeof line, msg_str(0xdaa), party_name);
         text = line;
         color = 0xffff64;
         break;
     case 1:
         memset(line, 0, sizeof line);
         if (g_session1.partyLeader == 1)
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdae), player_name);
+            snprintf(line, sizeof line, msg_str(0xdae), player_name);
         else
-            _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdab), party_name);
+            snprintf(line, sizeof line, msg_str(0xdab), party_name);
         text = line;
         break;
     case 2: text = msg_str(0xda9); break;
@@ -77,29 +78,29 @@ void game_mode_zc_party_join_req_ack_from_master(const unsigned char *pkt)
     case 6: text = msg_str(0xda4); break;
     case 7:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdac), player_name);
+        snprintf(line, sizeof line, msg_str(0xdac), player_name);
         text = line;
         break;
     case 8:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0xdaf), player_name);
+        snprintf(line, sizeof line, msg_str(0xdaf), player_name);
         text = line;
         break;
     case 9:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xda6), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xda6), 0xff, 0, 0);
         return;
     case 10: text = msg_str(0xd73); break;
     case 11: text = msg_str(0xda7); break;
     case 12:
         memset(line, 0, sizeof line);
-        _snprintf_s(line, sizeof line, (size_t)-1, msg_str(0x260), player_name);
+        snprintf(line, sizeof line, msg_str(0x260), player_name);
         text = line;
         break;
     case 13: text = msg_str(0x718); break;
     default:
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, color, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -146,7 +147,7 @@ void game_mode_zc_req_join_group(const unsigned char *pkt)
     name[24] = 0;
     string_assign_cstr(&g_session1.partyName, name);
     wnd = ui_window_open(WND_PARTY_INVITATION);
-    wnd_send(wnd, 0x38, packet->party_id, (int)name, 0, 0);
+    wnd_send(wnd, 0x38, packet->party_id, (intptr_t)name, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -171,49 +172,49 @@ void game_mode_party_join_ack(const unsigned char *pkt)
     string_assign_cstr(&who, player_name);
     switch (result) {
     case 0:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x50), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x50), 0xff, 0, 0);
         break;
     case 1:
         string_copy(&line, &who);
         string_append_cstr(&line, msg_str(0x80c));
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), 0xff, 0, 0);
         string_free(&line);
         break;
     case 2:
         string_copy(&line, &who);
         string_append_cstr(&line, msg_str(0x80d));
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)string_cstr(&line), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)string_cstr(&line), 0xffff00, 0, 0);
         string_free(&line);
         break;
     case 3:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x53), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x53), 0xff, 0, 0);
         break;
     case 4:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x260), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x260), 0xff, 0, 0);
         break;
     }
     switch (result) {
     case 5:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x52c), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x52c), 0xff, 0, 0);
         break;
     case 7:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x47), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x47), 0xff, 0, 0);
         break;
     case 8:
         sprintf(text, msg_str(0x56c), player_name);
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)text, 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)text, 0xff, 0, 0);
         break;
     case 9:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x74f), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x74f), 0xff, 0, 0);
         break;
     case 10:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xbd3), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xbd3), 0xff, 0, 0);
         break;
     case 11:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xc9a), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xc9a), 0xff, 0, 0);
         break;
     case 18:
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0xe32), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0xe32), 0xff, 0, 0);
         break;
     }
     string_free(&who);
@@ -224,7 +225,7 @@ void game_mode_party_join_ack(const unsigned char *pkt)
 static void party_setting_line(const char *line)
 {
     if (strlen(line) != 0)
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_YELLOW, 0xb, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_YELLOW, 0xb, 0);
 }
 
 #pragma pack(push, 1)
@@ -303,10 +304,10 @@ void game_mode_zc_ack_make_group(const unsigned char *pkt)
     if (result > 3)
         return;
     if (result == 0) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x4d), 0xffff00, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x4d), 0xffff00, 0, 0);
         ui_window_open(WND_PARTY);
     } else {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(refusal[result]), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(refusal[result]), 0xff, 0, 0);
     }
 }
 
@@ -412,10 +413,10 @@ void game_mode_zc_group_info_change(const unsigned char *pkt)
         how = msg_str(0x120);
         what = msg_str(0x124);
         setting = msg_str(0x175);
-        _snprintf_s(line, sizeof line, (size_t)-1, setting, what, how);
+        snprintf(line, sizeof line, setting, what, how);
         break;
     default:
         return;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, CHAT_COLOR_YELLOW, 0xb, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, CHAT_COLOR_YELLOW, 0xb, 0);
 }

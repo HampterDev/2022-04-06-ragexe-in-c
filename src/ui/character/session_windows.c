@@ -23,7 +23,7 @@ struct UIWindow;
 void ui_wait_wnd_destroy(struct UIWindow *window);
 void ui_wait_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_wait_wnd_on_draw(struct UIWindow *self);
-int ui_wait_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_wait_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_wait_wnd_ops = {
     .destroy = ui_wait_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -72,7 +72,7 @@ struct UILoadingWnd;
 void ui_loading_wnd_destroy(struct UIWindow *window);
 void ui_loading_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_loading_wnd_on_draw(struct UIWindow *self);
-int ui_loading_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_loading_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_loading_wnd_ops = {
     .destroy = ui_loading_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -122,7 +122,7 @@ struct UIFrameWnd;
 void ui_disconnected_server_msg_wnd_destroy(struct UIWindow *window);
 void ui_disconnected_server_msg_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_disconnected_server_msg_wnd_on_draw(struct UIWindow *self);
-int ui_disconnected_server_msg_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_disconnected_server_msg_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_disconnected_server_msg_wnd_ops = {
     .destroy = ui_disconnected_server_msg_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -188,7 +188,7 @@ static struct UIWindow *add_message_text(struct UIWindow *wnd, int width, int he
     UI_TEXT_VIEWER_BACKGROUND(text) = ui_skin_argb(2, 2);
     ui_window_invalidate(text);
     ui_window_add_child(wnd, text);
-    ui_window_send_msg(text, NULL, UI_MSG_ADD_TEXT, (int)msg_str(text_id), 0x26, 0, 0);
+    ui_window_send_msg(text, NULL, UI_MSG_ADD_TEXT, (intptr_t)msg_str(text_id), 0x26, 0, 0);
     return text;
 }
 
@@ -207,8 +207,6 @@ struct UIWaitWnd {
     struct UIWindow *text;
     struct UIBitmapButton *cancel;
 };
-OFFSET_ASSERT(UIWaitWnd, cancel, 0x98);
-SIZE_ASSERT(UIWaitWnd, 0x9c);
 
 struct UIWaitWnd *ui_wait_wnd_construct(struct UIWaitWnd *self)
 {
@@ -252,8 +250,8 @@ void ui_wait_wnd_on_draw(struct UIWindow *window)
     draw_msgbox(&self->frame.base);
 }
 
-int ui_wait_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_wait_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIWaitWnd *self = (struct UIWaitWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -341,8 +339,8 @@ void ui_loading_wnd_on_draw(struct UIWindow *self)
 {
 }
 
-int ui_loading_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                    int val2, int val3, int val4)
+intptr_t ui_loading_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                    intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UILoadingWnd *self = (struct UILoadingWnd *)window;
 
@@ -358,7 +356,6 @@ struct UIDisconnectedServerMsgWnd {
     struct UIFrameWnd frame;
     struct UIWindow *text;
 };
-SIZE_ASSERT(UIDisconnectedServerMsgWnd, 0x98);
 
 struct UIDisconnectedServerMsgWnd *ui_disconnected_server_msg_wnd_construct(
     struct UIDisconnectedServerMsgWnd *self)
@@ -401,8 +398,8 @@ void ui_disconnected_server_msg_wnd_on_draw(struct UIWindow *window)
 }
 
 #define UI_MSG_BUTTON 6
-int ui_disconnected_server_msg_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                  int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_disconnected_server_msg_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                  int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIFrameWnd *self = (struct UIFrameWnd *)window;
     if (msg != UI_MSG_BUTTON)
@@ -418,5 +415,5 @@ void ui_wait_wnd_set_text(struct UIWindow *wnd, const char *text)
     struct UIWaitWnd *self = (struct UIWaitWnd *)wnd;
 
     ui_list_box_clear((struct UIListBox *)self->text);
-    ui_window_send_msg(self->text, NULL, 0x1d, (int)text, 0x26, 0, 0);
+    ui_window_send_msg(self->text, NULL, 0x1d, (intptr_t)text, 0x26, 0, 0);
 }

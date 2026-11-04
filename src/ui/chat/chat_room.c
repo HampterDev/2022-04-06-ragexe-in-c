@@ -4,8 +4,8 @@
 #include "game/context.h"
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "ui/chat/chat_room_wnd.h"
 #include "ui/ui_std.h"
 #include <time.h>
@@ -13,7 +13,6 @@
 #include "ui/game.h"
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "core/msg_str.h"
 #include "diag/perf.h"
@@ -26,7 +25,7 @@ void ui_chat_room_title_on_create(struct UIWindow *self, int width_unused, int h
 void ui_chat_room_title_on_draw(struct UIWindow *self);
 void ui_chat_room_title_on_l_btn_dbl_clk(struct UIWindow *self, int x_unused, int y_unused);
 void ui_chat_room_title_on_mouse_shape(struct UIWindow *self, int x, int y);
-int ui_chat_room_title_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_chat_room_title_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_chat_room_title_ops = {
     .destroy = ui_chat_room_title_destroy,
     .resize = ui_window_resize_base,
@@ -80,7 +79,6 @@ struct UIChatRoomTitle {
     struct ChatRoomInfo room;
     short font_code;
 };
-OFFSET_ASSERT(UIChatRoomTitle, room, 0x80);
 
 const struct ChatRoomInfo *ui_chat_room_title_info(const struct UIWindow *window)
 {
@@ -227,8 +225,8 @@ static void cut_at_cr(struct String *text)
     string_truncate(text, (size_t)(cr - chars));
 }
 
-int ui_chat_room_title_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_chat_room_title_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChatRoomTitle *self = (struct UIChatRoomTitle *)window;
     const struct ChatRoomInfo *room;
@@ -330,8 +328,8 @@ void ui_chat_room_wnd_save_talk(struct UIChatRoomWnd *self)
     unsigned i;
     int number = 0;
 
-    sprintf(path, "%s\\Chat", g_clientDir);
-    if (_access(path, 0) != 0 && _mkdir(path) != 0)
+    client_path(path, sizeof path, "Chat");
+    if (!platform_path_exists(path) && platform_directory_create(path) != 0)
         return;
     string_copy(&name, &self->room.title);
     for (i = 0; i < name.size; i++) {
@@ -341,10 +339,10 @@ void ui_chat_room_wnd_save_talk(struct UIChatRoomWnd *self)
             break;
         }
     }
-    sprintf(path, "%s\\Chat\\%s.txt", g_clientDir, string_cstr(&name));
-    while (_access(path, 0) == 0) {
+    client_path(path, sizeof path, "Chat\\%s.txt", string_cstr(&name));
+    while (platform_path_exists(path)) {
         number++;
-        sprintf(path, "%s\\Chat\\%s%03d.txt", g_clientDir, string_cstr(&name), number);
+        client_path(path, sizeof path, "Chat\\%s%03d.txt", string_cstr(&name), number);
     }
     if (ui_chat_his_box_save_to_file(&self->talk->box, path)) {
         string_init(&line);

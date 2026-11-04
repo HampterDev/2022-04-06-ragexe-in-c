@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "render/projection.h"
 #include "render/render_api.h"
 #include "render/texture_globals.h"
@@ -10,7 +11,7 @@
 #include "std/std.h"
 #include "game/context.h"
 
-__declspec(align(16)) const struct TextureUV g_fullUV = { 0.0f, 0.0f, 1.0f, 1.0f };
+RAGE_ALIGN(16) const struct TextureUV g_fullUV = { 0.0f, 0.0f, 1.0f, 1.0f };
 
 #define BOX_Z   1e-6f
 #define BOX_RHW 0.999999f

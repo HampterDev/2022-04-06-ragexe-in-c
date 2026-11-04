@@ -47,15 +47,12 @@ struct UIEscOptionWnd {
     int layout;
     int title_height;
 };
-OFFSET_ASSERT(UIEscOptionWnd, buttons, 0x94);
-OFFSET_ASSERT(UIEscOptionWnd, layout, 0xb0);
-SIZE_ASSERT(UIEscOptionWnd, 0xb8);
 
 struct UIWindow;
 void ui_esc_option_wnd_destroy(struct UIWindow *window);
 void ui_esc_option_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_esc_option_wnd_on_draw(struct UIWindow *self);
-int ui_esc_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_esc_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_esc_option_wnd_ops = {
     .destroy = ui_esc_option_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -203,8 +200,8 @@ static void esc_toggle_window(int window_id)
         ui_make_window(window_id);
 }
 
-int ui_esc_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_esc_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEscOptionWnd *self = (struct UIEscOptionWnd *)window;
     struct Mode *mode = game_current_base_mode();

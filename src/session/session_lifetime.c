@@ -17,7 +17,7 @@
 #include "game/guild_storage.h"
 #include "game/party_member.h"
 #include "session/session_achievements.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
 struct Session g_session1;
 
@@ -158,15 +158,15 @@ struct Session *session_construct(struct Session *self)
     vec_init(&self->accountCharNames);
 
     if (!user_hotkey_mgr_create())
-        win_utf8_message_box(NULL, "CUserHotkeyMgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "CUserHotkeyMgr::CreateInstance()", "Error", MB_OK);
     if (!barter_market_create())
-        win_utf8_message_box(NULL, "InstanceCBarterMarketItemMgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "InstanceCBarterMarketItemMgr::CreateInstance()", "Error", MB_OK);
     if (!expanded_barter_create())
-        win_utf8_message_box(NULL, "InstanceCBarterMarketItem2Mgr::CreateInstance()", "Error", MB_OK);
+        platform_message_box(NULL, "InstanceCBarterMarketItem2Mgr::CreateInstance()", "Error", MB_OK);
     if (!pet_auto_feed_create())
-        win_utf8_message_box(NULL, "Pet auto-feeding data initialization", "Error", MB_OK);
+        platform_message_box(NULL, "Pet auto-feeding data initialization", "Error", MB_OK);
     if (!achievement_create())
-        win_utf8_message_box(NULL, "CAchievementMgr file init", "Error", MB_OK);
+        platform_message_box(NULL, "CAchievementMgr file init", "Error", MB_OK);
     self->new_layer_table_loaded = 0;
     self->loadingAirplane = 0;
     self->call_allowed = 0;
@@ -200,10 +200,9 @@ void session_destruct(struct Session *self)
         tree_clear(&self->rectMaps[i], named_map_rect_destroy);
     maps = self->rectMaps;
     if (maps) {
-        int *block = (int *)maps - 1;
-        for (i = *block; i-- > 0;)
+        for (i = self->rectMapCount; i-- > 0;)
             tree_free(&maps[i], named_map_rect_destroy);
-        mem_free(block);
+        mem_free(maps);
     }
 
     item_info_mgr_clear();

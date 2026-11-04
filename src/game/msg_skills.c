@@ -10,14 +10,14 @@
 #include "ui/window_access.h"
 #include "skills/attack_range.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "game/skill_list.h"
 #include "game/mode_util.h"
 #include "platform/language.h"
 #include "session/session_jobs.h"
 #include "session/session_state.h"
+#include "platform/clock.h"
 
 #define CZ_USE_SKILL2                   0x438
 #define CZ_USE_SKILL_TOGROUND2          0xaf4
@@ -57,7 +57,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
     struct String name;
     int shout;
 
-    self->skill_shout_time = timeGetTime();
+    self->skill_shout_time = platform_ticks_ms();
     shout = 1;
     if (level < 0 || skill_id < 0)
         shout = 0;
@@ -78,16 +78,16 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         strcpy(skill, skill_name(skill_id));
         strcat(line, " !!  ");
         strcat(line, msg_str(0x2f7));
-        render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);
+        render_object_send(actor, NULL, 7, (intptr_t)line, 0, 0, 0);
         string_free(&name);
         return 0;
     }
     if (skill_id == 0x150) {
-        wsprintfA(line, "%s", self->couple_name);
+        snprintf(line, sizeof line, "%s", self->couple_name);
         strcpy(skill, skill_name(skill_id));
         strcat(line, " !!  ");
         strcat(line, skill);
-        render_object_send(actor, NULL, 7, MSG_ARG_PTR(line), 0, 0, 0);
+        render_object_send(actor, NULL, 7, (intptr_t)line, 0, 0, 0);
         return 0;
     }
     if (skill_id == 0x146 || skill_id == 0x13e || skill_id == 0x1ec)
@@ -96,7 +96,7 @@ int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameAc
         return 0;
     strcpy(skill, skill_name(skill_id));
     strcat(skill, " !!");
-    render_object_send(actor, NULL, 7, MSG_ARG_PTR(skill), 0, 0, 0);
+    render_object_send(actor, NULL, 7, (intptr_t)skill, 0, 0, 0);
     return 0;
 }
 
@@ -131,7 +131,7 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
         player = self->world->player;
         if (player->mounted && !session_is_homunculus_skill(&g_session1, info->id)
                 && !session_is_mercenary_skill(&g_session1, info->id)) {
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x75e), COLOR_SKILL_REFUSED, 0, 0);
             return 0;
         }
     }
@@ -139,9 +139,9 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
     self->skill_use_unchecked = d == -1;
     switch (info->type) {
     case 1:
-        return self_msg(self, MODE_MSG_AIM_SKILL, 2, (int)info, level, 0), 0;
+        return self_msg(self, MODE_MSG_AIM_SKILL, 2, (intptr_t)info, level, 0), 0;
     case 2:
-        return self_msg(self, MODE_MSG_AIM_SKILL, 1, (int)info, level, 0), 0;
+        return self_msg(self, MODE_MSG_AIM_SKILL, 1, (intptr_t)info, level, 0), 0;
     case 4:
         if (session_is_homunculus_skill(&g_session1, info->id))
             target = g_session1.homunAid;
@@ -152,18 +152,18 @@ int game_mode_msg_skill_target(struct GameMode *self, const struct SkillInfo *in
         self_msg(self, MODE_MSG_AIM_SKILL, 0, 0, 0, 0);
         return 0;
     case 8:
-        return self_msg(self, MODE_MSG_AIM_SKILL, 3, (int)info, level, 0), 0;
+        return self_msg(self, MODE_MSG_AIM_SKILL, 3, (intptr_t)info, level, 0), 0;
     case 16:
-        return self_msg(self, MODE_MSG_AIM_SKILL, 4, (int)info, level, 0), 0;
+        return self_msg(self, MODE_MSG_AIM_SKILL, 4, (intptr_t)info, level, 0), 0;
     case 32:
-        return self_msg(self, MODE_MSG_AIM_SKILL, 5, (int)info, level, 0), 0;
+        return self_msg(self, MODE_MSG_AIM_SKILL, 5, (intptr_t)info, level, 0), 0;
     }
     return 0;
 }
 
 static void skill_refused(const char *text)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, COLOR_SKILL_REFUSED, CHAT_CHANNEL_SKILL, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, COLOR_SKILL_REFUSED, CHAT_CHANNEL_SKILL, 0);
 }
 
 static void skill_not_usable(int skill_id)
@@ -200,7 +200,7 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
         goto done;
     if (quiet == 0 && self->world->player->mounted && !session_is_homunculus_skill(&g_session1, skill_id)
             && !session_is_mercenary_skill(&g_session1, skill_id)) {
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x75e), COLOR_SKILL_REFUSED,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x75e), COLOR_SKILL_REFUSED,
                             CHAT_CHANNEL_SKILL, 0);
         goto done;
     }
@@ -292,8 +292,8 @@ int game_mode_msg_use_skill_to_ground(struct GameMode *self, const struct Ground
     struct SkillInfo skill;
     int skill_id, x, y, level;
 
-    if (self->world->player->mounted && !session_is_homunculus_skill(&g_session1, (int)use)
-            && !session_is_mercenary_skill(&g_session1, (int)use)) {
+    if (self->world->player->mounted && !session_is_homunculus_skill(&g_session1, (int)(intptr_t)use)
+            && !session_is_mercenary_skill(&g_session1, (int)(intptr_t)use)) {
         chat_print_msg(0x75e, COLOR_SKILL_REFUSED);
         return 0;
     }
@@ -342,7 +342,7 @@ int game_mode_msg_use_skill_to_ground_talkbox(struct GameMode *self, const struc
         skill_not_usable(packet.skill_id);
         return 0;
     }
-    _snprintf_s(packet.text, 0x15, (size_t)-1, "%s", talkbox->text);
+    snprintf(packet.text, 0x15, "%s", talkbox->text);
     if (packet.level == 0) {
         packet.level = (unsigned short)skill_table_find(&g_session1.skills, &skill, packet.skill_id)->level;
         skill_info_destruct(&skill);

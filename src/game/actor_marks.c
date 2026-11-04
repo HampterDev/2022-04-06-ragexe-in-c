@@ -64,7 +64,7 @@ void *game_mode_make_emotion_effect(struct GameMode *self, const float *pos, int
     effect = mem != 0 ? msg_effect_construct(mem) : 0;
     list_push_back(&self->world->gameObjects, &effect, sizeof effect);
     render_object_send(effect, NULL, 0x16, (long long)aid, 1, 0, 0);
-    render_object_send(effect, NULL, 0xe, (long long)(int)pos, (long long)(int)names, (long long)action, 0);
+    render_object_send(effect, NULL, 0xe, (intptr_t)pos, (intptr_t)names, (long long)action, 0);
     string_free(&names[1]);
     string_free(&names[0]);
     return effect;
@@ -99,8 +99,8 @@ void *game_mode_make_miss_effect(struct GameMode *self, const float *pos, unsign
     if (effect != 0) {
         msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_SET_STYLE, (long long)aid,
             MSG_EFFECT_STYLE_MISS, 0, 0);
-        msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_START, (long long)(int)pos,
-            (long long)(int)names, 0, 0);
+        msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_START, (intptr_t)pos,
+            (intptr_t)names, 0, 0);
         effect->base.argb = argb;
         effect->base.cell_lit = 0;
     }
@@ -227,8 +227,8 @@ void *game_mode_make_msg_effect(struct GameMode *self, unsigned kind, const stru
     if (effect != 0) {
         msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_SET_STYLE, (long long)aid, k->style, 0, 0);
         effect->drawn = drawn;
-        msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_START, (long long)(int)pos,
-            (long long)(int)names, k->action, 0);
+        msg_effect_send_msg((struct GameObject *)effect, NULL, MSG_EFFECT_START, (intptr_t)pos,
+            (intptr_t)names, k->action, 0);
     }
     string_free(&names[1]);
     string_free(&names[0]);

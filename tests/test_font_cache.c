@@ -485,8 +485,8 @@ int main(void)
         assert(guarded.before[i] == 0xa5a5a5a5 && guarded.after[i] == 0xa5a5a5a5);
     installed_fonts(); eot_fonts(); file_fonts(); shared_file_resources(); retry_failures(); script_fonts();
     stopped = stops;
-    gdiplus_init();
-    assert(exit_callback == gdiplus_destroy && g_fontCache.token == active_token);
+    fonts_init();
+    assert(exit_callback == fonts_shutdown && g_fontCache.token == active_token);
     exit_callback(); exit_callback();
     assert(stops == stopped + 1 && !g_fontCache.entries && !g_fontCache.count);
     assert(dc_gets == dc_releases + 2 && !active_dc);

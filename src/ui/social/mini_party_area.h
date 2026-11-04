@@ -1,7 +1,7 @@
 #ifndef NLIB_MINI_PARTY_AREA_H
 #define NLIB_MINI_PARTY_AREA_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct MiniPartySortArea;
 

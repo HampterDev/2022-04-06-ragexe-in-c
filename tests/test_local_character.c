@@ -49,6 +49,7 @@ static LSTATUS WINAPI registry_query(HKEY key, LPCSTR name, LPDWORD reserved,
 #define win_utf8_reg_open_key registry_open
 #define RegCloseKey registry_close
 #define win_utf8_reg_query_value registry_query
+#include "../src/platform/settings_win32.c"
 #include "../src/contents/character_settings_seed.c"
 #undef win_utf8_reg_open_key
 #undef RegCloseKey

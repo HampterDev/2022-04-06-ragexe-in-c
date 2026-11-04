@@ -359,8 +359,8 @@ static int scroll_by(struct UIScrollWnd *self, struct UIScrollBar *bar, int *pos
     return *pos - old;
 }
 
-int ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                   int val1, int val2, int val3, int val4)
+intptr_t ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                   intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIScrollWnd *self = (struct UIScrollWnd *)window;
     switch (msg) {

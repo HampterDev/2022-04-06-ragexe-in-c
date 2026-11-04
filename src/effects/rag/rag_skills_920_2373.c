@@ -7,6 +7,7 @@
 #include "actor/actor_common.h"
 #include "actor/actor_ops.h"
 #include "core/object_type.h"
+#include <stdint.h>
 
 #define EFFECT_DIR "이팩트\\"
 
@@ -624,7 +625,7 @@ void rag_hallu_walk(struct RagEffect *self)
 void rag_fighter_rings_31(struct RagEffect *self, const char *tex)
 {
     struct EffectPrim *p;
-    __int64 i;
+    int64_t i;
 
     self->base.pos = self->master->pos;
     if (self->frame != 0)

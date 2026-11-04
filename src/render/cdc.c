@@ -34,13 +34,11 @@ static void opaque(struct DcBitmap *self)
 struct DcBitmap *dc_bitmap_construct(struct DcBitmap *self, int w, int h)
 {
     memset(self, 0, sizeof *self);
-    self->hdc = CreateCompatibleDC(NULL);
-    if (!self->hdc)
+    if (!text_bitmap_open(self))
         return NULL;
     dc_bitmap_alloc(self, w, h);
-    if (!self->dib) {
-        DeleteDC(self->hdc);
-        self->hdc = NULL;
+    if (!self->bits) {
+        text_bitmap_close(self);
         return NULL;
     }
     return self;
@@ -61,14 +59,7 @@ struct DcBitmap *dc_bitmap_create(int w, int h)
 void dc_bitmap_destruct(struct DcBitmap *self)
 {
     delete_textures(self);
-    if (self->hdc) {
-        if (self->oldBitmap) SelectObject(self->hdc, self->oldBitmap);
-        if (self->dib) DeleteObject(self->dib);
-        DeleteDC(self->hdc);
-    }
-    self->hdc = NULL;
-    self->dib = NULL;
-    self->oldBitmap = NULL;
+    text_bitmap_close(self);
     self->bits = NULL;
     self->width = self->height = 0;
     self->changed = 0;
@@ -83,43 +74,17 @@ void dc_bitmap_destroy(struct DcBitmap *self)
 
 void dc_bitmap_alloc(struct DcBitmap *self, int w, int h)
 {
-    BITMAPINFO info = {0};
-    HBITMAP dib;
-    HGDIOBJ previous;
     DWORD *bits;
-    if (!self->hdc || w <= 0 || h <= 0 || (size_t)w > (size_t)INT_MAX / 4 / (size_t)h)
+    if (w <= 0 || h <= 0 || (size_t)w > (size_t)INT_MAX / 4 / (size_t)h)
         return;
-    info.bmiHeader.biSize = sizeof info.bmiHeader;
-    info.bmiHeader.biWidth = w;
-    info.bmiHeader.biHeight = -h;
-    info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
-    info.bmiHeader.biCompression = BI_RGB;
-    info.bmiHeader.biXPelsPerMeter = info.bmiHeader.biYPelsPerMeter = 100;
-    dib = CreateDIBSection(NULL, &info, DIB_RGB_COLORS, (void **)&bits, NULL, 0);
-    if (!dib) return;
-    previous = SelectObject(self->hdc, dib);
-    if (!previous || previous == HGDI_ERROR) {
-        DeleteObject(dib);
+    bits = text_bitmap_resize(self, w, h);
+    if (!bits)
         return;
-    }
     delete_textures(self);
-    if (self->dib) DeleteObject(self->dib);
-    else self->oldBitmap = previous;
-    self->dib = dib;
     self->bits = bits;
     self->width = w;
     self->height = h;
     self->changed = 1;
-}
-
-char dc_bitmap_get_dc(struct DcBitmap *self, HDC *out)
-{
-    *out = NULL;
-    if (!self || !self->hdc) return 0;
-    self->changed = 1;
-    *out = self->hdc;
-    return 1;
 }
 
 void dc_bitmap_update(struct DcBitmap *self, int x, int y, int w, int h, const DWORD *src, char keyed)

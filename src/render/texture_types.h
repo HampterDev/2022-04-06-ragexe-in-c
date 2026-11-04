@@ -20,6 +20,7 @@ struct Texture {
     int lockCount;
     DWORD lastUse;
     BYTE fullSize;
+    unsigned serial;
 };
 
 #endif

@@ -4,7 +4,7 @@
 #include "platform/error_message.h"
 #include "platform/code_page.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/std.h"
 #include "fileio/grf.h"

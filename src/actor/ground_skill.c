@@ -100,9 +100,9 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     case 0x82: {
         void *obj;
         gs_dummy(mode, &at, 0x77);
-        obj = (void *)self->falcon;
+        obj = self->falcon;
         if (obj != NULL)
-            render_object_send(obj, NULL, 0x1d, MSG_ARG_PTR(&at), 0, 0, 0);
+            render_object_send(obj, NULL, 0x1d, (intptr_t)&at, 0, 0, 0);
         break;
     }
     case 0x8c:   gs_dummy(mode, &at, 0x7c); break;

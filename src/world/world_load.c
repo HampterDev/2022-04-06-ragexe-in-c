@@ -193,7 +193,7 @@ void world_load_effects_and_sounds(struct World *self)
             effect_mgr_spawn(g_effectMgr, 0, e->id, pos, 0, -1, 0, 0);
         } else {
             void *obj = effect_maker_new();
-            render_object_send(obj, NULL, 0xe, MSG_ARG_PTR(e), 0, 0, 0);
+            render_object_send(obj, NULL, 0xe, (intptr_t)e, 0, 0, 0);
             list_push_back(&self->gameObjects, &obj, sizeof obj);
         }
     }
@@ -203,7 +203,7 @@ void world_load_effects_and_sounds(struct World *self)
             const struct RswSound *src = &rsw->sounds[index];
             void *p = mem_alloc(sizeof(struct SoundMaker));
             void *obj = p ? world_sound_construct(p) : NULL;
-            render_object_send(obj, NULL, 0xe, MSG_ARG_PTR(src), 0, 0, 0);
+            render_object_send(obj, NULL, 0xe, (intptr_t)src, 0, 0, 0);
             list_push_back(&self->gameObjects, &obj, sizeof obj);
         }
     }

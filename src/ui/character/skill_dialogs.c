@@ -17,7 +17,7 @@ struct UIWindow;
 void ui_skill_describe_wnd_destroy(struct UIWindow *window);
 void ui_skill_describe_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_skill_describe_wnd_on_draw(struct UIWindow *self);
-int ui_skill_describe_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_skill_describe_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_skill_describe_wnd_query_screen_position(struct UIWindow *window);
 const struct UIWindowOps ui_skill_describe_wnd_ops = {
     .destroy = ui_skill_describe_wnd_destroy,
@@ -68,7 +68,7 @@ struct UIWindow;
 void ui_skill_name_change_wnd_destroy(struct UIWindow *window);
 void ui_skill_name_change_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_skill_name_change_wnd_on_draw(struct UIWindow *self);
-int ui_skill_name_change_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_skill_name_change_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_skill_name_change_wnd_ops = {
     .destroy = ui_skill_name_change_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -130,7 +130,6 @@ struct UISkillDescribeWnd {
     struct String title;
     int skill_id;
 };
-OFFSET_ASSERT(UISkillDescribeWnd, icon_path, 0x9c);
 
 struct UISkillDescribeWnd *ui_skill_describe_wnd_construct(struct UISkillDescribeWnd *self)
 {
@@ -236,10 +235,10 @@ static int show_skill(struct UISkillDescribeWnd *self, int skill_id, int short_f
         string_init(&text);
         string_assign_cstr(&text, result);
         if (text.size)
-            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), 0, 0, 1);
+            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&text), 0, 0, 1);
         string_free(&text);
     } else {
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)"Unknown Skill", 0x21, 0, 0);
+        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)"Unknown Skill", 0x21, 0, 0);
     }
 
     lines = (int)VEC_COUNT(&((struct UITextViewer *)self->text)->list.items, struct String);
@@ -252,8 +251,8 @@ static int show_skill(struct UISkillDescribeWnd *self, int skill_id, int short_f
     return 0;
 }
 
-int ui_skill_describe_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_skill_describe_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISkillDescribeWnd *self = (struct UISkillDescribeWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -282,7 +281,6 @@ struct UISkillNameChangeWnd {
     int skill_id;
     struct String skill_name;
 };
-OFFSET_ASSERT(UISkillNameChangeWnd, skill_name, 0x9c);
 
 struct UISkillNameChangeWnd *ui_skill_name_change_wnd_construct(struct UISkillNameChangeWnd *self)
 {
@@ -341,8 +339,8 @@ void ui_skill_name_change_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out(&self->frame.base, 0xf, 6, string_cstr(&self->skill_name), 0, 0, 12, 0, 0, 0);
 }
 
-int ui_skill_name_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_skill_name_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISkillNameChangeWnd *self = (struct UISkillNameChangeWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -351,7 +349,7 @@ int ui_skill_name_change_wnd_send_msg(struct UIWindow *window, struct UIWindow *
         if (self->skill_id != -1 && ui_edit_ctrl_get_text_size(self->edit) != 0) {
             struct Mode *mode = g_modeMgr.curMode;
 
-            mode_send_message(mode, MODE_REQ_SKILL_NAME, self->skill_id, (int)ui_edit_ctrl_get_text(self->edit), 0, 0);
+            mode_send_message(mode, MODE_REQ_SKILL_NAME, self->skill_id, (intptr_t)ui_edit_ctrl_get_text(self->edit), 0, 0);
         }
         ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_SKILL_NAME_CHANGE);
         return 0;

@@ -54,7 +54,7 @@ BYTE e_zeffect_res_load(struct EzEffectRes *self, const char *name)
             || !file_read(fp, &metadata, 4)
             || !file_read(fp, &self->anim.frame_count, 4)
             || !file_read(fp, &self->anim.layer_count, 4)
-            || !file_seek(fp, 0x10, FILE_CURRENT))
+            || !file_seek(fp, 0x10, SEEK_CUR))
         goto invalid;
     if (version != STR_VERSION) {
         error_msg("LoadAniClip: Version is incorrect", 0);

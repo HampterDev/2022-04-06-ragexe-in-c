@@ -4,8 +4,7 @@
 #include "game/client_state.h"
 #include "contents/guild_info.h"
 #include "ui/window_manager_state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/mode_msg.h"
 #include "game/chat.h"
@@ -13,6 +12,7 @@
 #include "platform/language.h"
 #include "session/session_jobs.h"
 #include "session/session_names.h"
+#include "platform/clock.h"
 
 #define CZ_WHISPER              0x96
 #define CZ_REQUEST_CHAT_PARTY   0x108
@@ -77,12 +77,12 @@ static int send_chat_line(int packet_id)
         return 0;
     memset(text, 0, sizeof text);
     line = chat_line();
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s : %s", session_character_name(&g_session1), line);
+    snprintf(text, sizeof text, "%s : %s", session_character_name(&g_session1), line);
     window_mgr_clear_chat_line(&g_windowMgr);
     len = strlen(text);
     packet.id = (unsigned short)packet_id;
     packet.len = (unsigned short)(len + 4);
-    memcpy_s(packet.text, len, text, len);
+    memcpy(packet.text, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }
@@ -93,12 +93,12 @@ static int check_history_full(struct GameMode *self)
     const char *m317, *m318, *name;
     int lines, k;
 
-    if (timeGetTime() - self->chat_history_time[0] < 10000 && timeGetTime() - self->chat_history_time[0] != 0) {
+    if (platform_ticks_ms() - self->chat_history_time[0] < 10000 && platform_ticks_ms() - self->chat_history_time[0] != 0) {
         game_mode_mute_self_for_flooding();
         self->flood_count = 0;
         return 1;
     }
-    if (timeGetTime() - self->chat_history_time[0] < 30000 && timeGetTime() - self->chat_history_time[0] != 0) {
+    if (platform_ticks_ms() - self->chat_history_time[0] < 30000 && platform_ticks_ms() - self->chat_history_time[0] != 0) {
         lines = self->chat_history_count;
         for (k = 0; k < lines; k++) {
             if (self->chat_history[k].size < 20)
@@ -140,7 +140,7 @@ static void count_flood_burst(struct GameMode *self)
         self->flood_time[1] = self->flood_time[2];
         self->flood_count = 2;
     }
-    self->flood_time[self->flood_count] = timeGetTime();
+    self->flood_time[self->flood_count] = platform_ticks_ms();
     bursts = self->flood_count;
     if (bursts >= 2 && self->flood_time[2] - self->flood_time[0] < 90000) {
         game_mode_mute_self_for_flooding();
@@ -196,7 +196,7 @@ int game_mode_msg_chat(struct GameMode *self)
         }
     }
     string_assign_cstr(&self->chat_history[self->chat_history_count], line);
-    self->chat_history_time[self->chat_history_count] = timeGetTime();
+    self->chat_history_time[self->chat_history_count] = platform_ticks_ms();
     count = ++self->chat_history_count;
     if (count > 10)
         self->chat_history_count = 10;
@@ -212,7 +212,7 @@ int game_mode_msg_chat(struct GameMode *self)
             && !string_equal_cstr(seen, dup1) && !string_equal_cstr(seen, cut1)
             && !string_equal_cstr(seen, cut2))
             continue;
-        if (timeGetTime() - self->chat_history_time[i] >= 30000 || timeGetTime() - self->chat_history_time[0] == 0)
+        if (platform_ticks_ms() - self->chat_history_time[i] >= 30000 || platform_ticks_ms() - self->chat_history_time[0] == 0)
             continue;
         if (++hits >= 3) {
             count_flood_burst(self);
@@ -311,8 +311,8 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
 
     packet.id = CZ_WHISPER;
     packet.len = (unsigned short)(len + 0x1c);
-    memcpy_s(packet.text, 0x18, name, 0x18);
-    memcpy_s(packet.text + 0x18, len, text, len);
+    memcpy(packet.text, name, 0x18);
+    memcpy(packet.text + 0x18, text, len);
     send_raw(packet.len, &packet);
     return 0;
 }

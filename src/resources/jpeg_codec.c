@@ -1,96 +1,78 @@
 #include "resources/jpeg_codec.h"
-#include "platform/ijl_api.h"
+#include "resources/jpeg_internal.h"
+#include "../../vendor/stb/stb_image.h"
+#include "../../vendor/stb/stb_image_write.h"
 #include <limits.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
-static int jpeg_image_layout(int width, int height, size_t *stride, size_t *bytes)
+static void copy_swapped_channels(unsigned char *out, size_t out_stride,
+                                 const unsigned char *in, size_t in_stride,
+                                 int width, int height)
 {
-    if (width <= 0 || height <= 0 || width > (INT_MAX - 3) / 3)
-        return 0;
-    *stride = ((size_t)width * 3 + 3) & ~(size_t)3;
-    if ((size_t)height > SIZE_MAX / *stride)
-        return 0;
-    *bytes = *stride * (size_t)height;
-    return 1;
-}
-
-void jpeg_image_destroy(struct JpegImage *image)
-{
-    if (image) {
-        free(image->pixels);
-        memset(image, 0, sizeof *image);
+    int x, y;
+    for (y = 0; y < height; ++y) {
+        const unsigned char *source = in + (size_t)y * in_stride;
+        unsigned char *target = out + (size_t)y * out_stride;
+        for (x = 0; x < width; ++x) {
+            target[x * 3] = source[x * 3 + 2];
+            target[x * 3 + 1] = source[x * 3 + 1];
+            target[x * 3 + 2] = source[x * 3];
+        }
     }
 }
 
-int jpeg_image_create(struct JpegImage *image, int width, int height)
+int jpeg_image_read(struct JpegImage *image, const void *data, size_t size)
 {
     struct JpegImage replacement = {0};
-    size_t bytes;
-
-    if (!image || !jpeg_image_layout(width, height, &replacement.stride, &bytes))
+    unsigned char *rgb;
+    int width, height, channels;
+    size_t stride, bytes;
+    if (!image || !data || !size || size > INT_MAX ||
+        !stbi_info_from_memory(data, (int)size, &width, &height, &channels) ||
+        !jpeg_image_layout(width, height, &stride, &bytes))
         return 0;
-    replacement.pixels = calloc(1, bytes);
-    if (!replacement.pixels)
+    rgb = stbi_load_from_memory(data, (int)size, &width, &height, &channels, 3);
+    if (!rgb)
         return 0;
-    replacement.width = width;
-    replacement.height = height;
+    if (!jpeg_image_create(&replacement, width, height)) {
+        stbi_image_free(rgb);
+        return 0;
+    }
+    copy_swapped_channels(replacement.pixels, replacement.stride, rgb, (size_t)width * 3, width, height);
+    stbi_image_free(rgb);
     jpeg_image_destroy(image);
     *image = replacement;
     return 1;
 }
 
-static void jpeg_set_pixels(struct IjlProps *props, const struct JpegImage *image)
+struct JpegOutput {
+    FILE *file;
+    int failed;
+};
+
+static void jpeg_write_bytes(void *context, void *data, int size)
 {
-    props->dibBytes = image->pixels;
-    props->dibWidth = image->width;
-    props->dibHeight = image->height;
-    props->dibPadBytes = (int)(image->stride - (size_t)image->width * 3);
-    props->dibChannels = 3;
-    props->dibColor = IJL_BGR;
+    struct JpegOutput *output = context;
+    if (!output->failed && fwrite(data, 1, (size_t)size, output->file) != (size_t)size)
+        output->failed = 1;
 }
 
-int jpeg_image_read(struct JpegImage *image, const void *data, size_t size)
+int jpeg_image_write(const struct JpegImage *image, FILE *file)
 {
-    struct IjlProps props = {0};
-    struct JpegImage replacement = {0};
-    int ok = 0;
-
-    if (!image || !data || !size || size > INT_MAX || ijlInit(&props) != 0)
-        return 0;
-    props.jpgBytes = data;
-    props.jpgSizeBytes = (int)size;
-    if (ijlRead(&props, IJL_JBUFF_READPARAMS) == 0 &&
-        jpeg_image_create(&replacement, props.jpgWidth, props.jpgHeight)) {
-        jpeg_set_pixels(&props, &replacement);
-        ok = ijlRead(&props, IJL_JBUFF_READWHOLEIMAGE) == 0;
-    }
-    ijlFree(&props);
-    if (ok) {
-        jpeg_image_destroy(image);
-        *image = replacement;
-    } else {
-        jpeg_image_destroy(&replacement);
-    }
-    return ok;
-}
-
-int jpeg_image_write(const struct JpegImage *image, const char *filename)
-{
-    struct IjlProps props = {0};
+    struct JpegOutput output = {file, 0};
     size_t stride, bytes;
+    unsigned char *rgb;
     int ok;
-
-    if (!image || !image->pixels || !filename || !*filename ||
+    if (!image || !image->pixels || !file ||
         !jpeg_image_layout(image->width, image->height, &stride, &bytes) ||
-        image->stride != stride || ijlInit(&props) != 0)
+        image->stride != stride)
         return 0;
-    jpeg_set_pixels(&props, image);
-    props.jpgFile = filename;
-    props.jpgWidth = image->width;
-    props.jpgHeight = image->height;
-    ok = ijlWrite(&props, IJL_JFILE_WRITEWHOLEIMAGE) == 0;
-    ijlFree(&props);
-    return ok;
+    rgb = malloc((size_t)image->width * image->height * 3);
+    if (!rgb)
+        return 0;
+    copy_swapped_channels(rgb, (size_t)image->width * 3, image->pixels, image->stride,
+                          image->width, image->height);
+    ok = stbi_write_jpg_to_func(jpeg_write_bytes, &output, image->width, image->height, 3, rgb, 90);
+    free(rgb);
+    return ok && !output.failed && !ferror(file);
 }

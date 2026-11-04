@@ -13,6 +13,7 @@
 #include "session/session_windows.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/unknown_packet.h"
+#include "core/memory.h"
 
 enum {
     LIST_INVENTORY = 0,
@@ -307,7 +308,7 @@ void game_mode_zc_split_send_item_list_set(struct GameMode *self,
     case LIST_STORAGE:
     case LIST_STORAGE2:
         memset(name, 0, sizeof name);
-        memcpy_s(name, sizeof name, packet->name, name_length);
+        mem_copy_checked(name, sizeof name, packet->name, name_length);
         wnd = ui_window_open(WINDOW_STORAGE);
         if (wnd == 0)
             break;

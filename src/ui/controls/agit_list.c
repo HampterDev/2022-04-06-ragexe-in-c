@@ -233,8 +233,8 @@ void ui_list_box_agit_menu_on_mouse_hover(struct UIWindow *window, int x, int y)
 #define MSG_AGIT_IN_SIEGE 0xe31
 #define MSG_AGIT_BOX_TEXT 0xe2f
 
-int ui_list_box_agit_menu_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                         int val3, int val4)
+intptr_t ui_list_box_agit_menu_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                         intptr_t val3, intptr_t val4)
 {
     struct UIListBox *self = (struct UIListBox *)window;
     int agit = ((struct UIListBoxAgitMenu *)self)->agit_index;

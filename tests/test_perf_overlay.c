@@ -1,9 +1,13 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "diag/perf.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 #include "render/device.h"
 #include "render/gfx.h"
 #include "render/renderer.h"
@@ -21,36 +25,30 @@ static SHORT scroll_lock;
 static LONGLONG clock_now;
 static int clock_reads, draws;
 
-static DWORD WINAPI test_environment(LPCSTR name, LPSTR buffer, DWORD size)
+/* diag/perf.c reads the environment with getenv, the clock with platform_perf_counter and
+   platform_perf_frequency, and Scroll Lock with platform_key_state (platform/clock.h,
+   platform/window.h). */
+static char *test_environment(const char *name)
 {
-    size_t length;
-
     assert(strcmp(name, "RAGEXE_OVERLAY") == 0);
-    if (!environment)
-        return 0;
-    length = strlen(environment);
-    assert(length < size);
-    memcpy(buffer, environment, length + 1);
-    return (DWORD)length;
+    return (char *)environment;
 }
 
-static SHORT WINAPI test_key_state(int key)
+static short test_key_state(int key)
 {
     assert(key == VK_SCROLL);
     return scroll_lock;
 }
 
-static BOOL WINAPI test_counter(LARGE_INTEGER *t)
+static int64_t test_counter(void)
 {
     ++clock_reads;
-    t->QuadPart = clock_now;
-    return TRUE;
+    return clock_now;
 }
 
-static BOOL WINAPI test_frequency(LARGE_INTEGER *f)
+static int64_t test_frequency(void)
 {
-    f->QuadPart = 1000;
-    return TRUE;
+    return 1000;
 }
 
 /* The drawing side: a texture that can be locked, and a count of overlay draws. */
@@ -83,15 +81,15 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
 }
 void renderer_set_blend_stages(struct Renderer *self, int mode) { (void)self; (void)mode; }
 
-#define GetEnvironmentVariableA test_environment
-#define GetKeyState test_key_state
-#define QueryPerformanceCounter test_counter
-#define QueryPerformanceFrequency test_frequency
+#define getenv test_environment
+#define platform_key_state test_key_state
+#define platform_perf_counter test_counter
+#define platform_perf_frequency test_frequency
 #include "perf_overlay.inc"
-#undef GetEnvironmentVariableA
-#undef GetKeyState
-#undef QueryPerformanceCounter
-#undef QueryPerformanceFrequency
+#undef getenv
+#undef platform_key_state
+#undef platform_perf_counter
+#undef platform_perf_frequency
 
 static struct Renderer renderer;
 static int cases;

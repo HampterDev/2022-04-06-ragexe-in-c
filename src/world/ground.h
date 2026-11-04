@@ -24,10 +24,6 @@ struct GndLightmap {
     float uv[4][2];
     BYTE quarter[4][4];
 };
-OFFSET_ASSERT(GndLightmap, page, 0x04);
-OFFSET_ASSERT(GndLightmap, uv, 0x08);
-OFFSET_ASSERT(GndLightmap, quarter, 0x28);
-SIZE_ASSERT(GndLightmap, 0x38);
 
 struct GndSurface {
     struct GndVertex v[4];
@@ -47,13 +43,6 @@ struct GndCell {
     int lastFrame;
     BYTE colour[3];
 };
-OFFSET_ASSERT(GndCell, water, 0x10);
-OFFSET_ASSERT(GndCell, top, 0x40);
-OFFSET_ASSERT(GndCell, rightWall, 0x44);
-OFFSET_ASSERT(GndCell, frontWall, 0x48);
-OFFSET_ASSERT(GndCell, lastFrame, 0x4c);
-OFFSET_ASSERT(GndCell, colour, 0x50);
-SIZE_ASSERT(GndCell, 0x54);
 
 struct GndColour { float r, g, b; };
 SIZE_ASSERT(GndColour, 12);

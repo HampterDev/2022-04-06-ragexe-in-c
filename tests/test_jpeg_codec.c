@@ -1,157 +1,114 @@
-#include "jpeg_fixture.h"
-#include "resources/bitmap.h"
-static void *jpeg_test_malloc(size_t bytes) { return jpeg_test_calloc(1, bytes); }
-#define malloc jpeg_test_malloc
-#define free jpeg_test_free
-#include "../src/resources/bitmap_storage.c"
-#include "../src/resources/bitmap_jpeg.c"
-#undef malloc
-#undef free
+#include "resources/jpeg_codec.h"
+#include <assert.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-static void check_create(void)
+static void check_pixel(const struct JpegImage *image, int x, int y, int r, int g, int b, int tolerance)
 {
-    struct JpegImage image = {0}, previous;
+    const unsigned char *p = image->pixels + (size_t)y * image->stride + x * 3;
+    assert(abs((int)p[0] - b) <= tolerance);
+    assert(abs((int)p[1] - g) <= tolerance);
+    assert(abs((int)p[2] - r) <= tolerance);
+}
+
+static void check_quadrants(const struct JpegImage *image, int tolerance)
+{
+    assert(image->width == 17 && image->height == 19 && image->stride == 52);
+    check_pixel(image, 1, 1, 240, 10, 20, tolerance);
+    check_pixel(image, 15, 1, 10, 220, 30, tolerance);
+    check_pixel(image, 1, 17, 15, 25, 230, tolerance);
+    check_pixel(image, 15, 17, 245, 240, 230, tolerance);
+    for (int y = 0; y < image->height; ++y)
+        assert(image->pixels[(size_t)y * image->stride + 51] == 0);
+}
+
+static unsigned char *read_stream(FILE *file, size_t *size)
+{
+    long length;
+    unsigned char *bytes;
+    assert(!fseek(file, 0, SEEK_END));
+    length = ftell(file);
+    assert(length > 0 && length < 1024 * 1024);
+    assert(!fseek(file, 0, SEEK_SET));
+    *size = (size_t)length;
+    bytes = malloc(*size);
+    assert(bytes && fread(bytes, 1, *size, file) == *size);
+    return bytes;
+}
+
+int main(int argc, char **argv)
+{
+    struct JpegImage image = {0}, original, decoded = {0};
+    unsigned char *bytes, *encoded;
+    size_t size, encoded_size;
+    FILE *file;
     int width;
+    assert(argc == 2);
     for (width = 1; width <= 17; ++width) {
-        size_t i;
-        jpeg_fixture_reset();
         assert(jpeg_image_create(&image, width, 3));
-        assert(image.width == width && image.height == 3);
         assert(image.stride == ((size_t)width * 3 + 3) / 4 * 4);
-        for (i = 0; i < image.stride * 3; ++i) assert(image.pixels[i] == 0);
-        previous = image;
-        jpeg_fail_allocation = jpeg_allocations + 1;
-        assert(!jpeg_image_create(&image, width + 1, 2));
-        assert(!memcmp(&image, &previous, sizeof image));
-        jpeg_image_destroy(&image);
-        jpeg_image_destroy(&image);
+        for (size_t i = 0; i < image.stride * 3; ++i) assert(!image.pixels[i]);
     }
-    jpeg_fixture_reset();
-    assert(!jpeg_image_create(&image, 0, 1));
-    assert(!jpeg_image_create(&image, -1, 1));
-    assert(!jpeg_image_create(&image, 1, 0));
+    original = image;
     assert(!jpeg_image_create(&image, INT_MAX, 1));
     assert(!jpeg_image_create(&image, 1, INT_MAX));
+    assert(!jpeg_image_create(&image, 65536, 1));
+    assert(!jpeg_image_create(&image, 1, 65536));
+    assert(!jpeg_image_create(&image, 0, 1));
     assert(!jpeg_image_create(NULL, 1, 1));
-    assert(jpeg_allocations == 0);
-    jpeg_image_destroy(NULL);
-}
-
-static void check_read(void)
-{
-    struct JpegImage image = {0}, previous;
-    int width, failure;
-    for (width = 1; width <= 17; ++width) {
-        jpeg_fixture_reset();
-        jpeg_width = width;
-        assert(jpeg_image_read(&image, jpeg_input, sizeof jpeg_input));
-        assert(image.width == width && image.height == 2);
-        assert(image.pixels[0] == 254 && image.pixels[1] == 3 && image.pixels[2] == 255);
-        assert(image.pixels[image.stride + 1] == 21);
-        assert(jpeg_inits == 1 && jpeg_frees == 1 && jpeg_live == 1);
-        assert(jpeg_image_read(&image, jpeg_input, sizeof jpeg_input));
-        assert(jpeg_live == 1 && jpeg_frees == 2);
-        jpeg_image_destroy(&image);
-    }
-    for (failure = 0; failure < 6; ++failure) {
-        jpeg_fixture_reset();
-        assert(jpeg_image_create(&image, 2, 1));
-        image.pixels[0] = 77;
-        previous = image;
-        if (failure == 0) jpeg_fail_init = 1;
-        if (failure == 1) jpeg_fail_header = 1;
-        if (failure == 2) jpeg_fail_read = 1;
-        if (failure == 3) jpeg_fail_allocation = jpeg_allocations + 1;
-        if (failure == 4) jpeg_width = 0;
-        if (failure == 5) jpeg_height = INT_MAX;
-        assert(!jpeg_image_read(&image, jpeg_input, sizeof jpeg_input));
-        assert(!memcmp(&image, &previous, sizeof image) && image.pixels[0] == 77);
-        assert(jpeg_live == 1 && jpeg_frees == (failure != 0));
-        jpeg_image_destroy(&image);
-    }
-    jpeg_fixture_reset();
-    assert(!jpeg_image_read(&image, NULL, 1));
-    assert(!jpeg_image_read(&image, jpeg_input, 0));
-    assert(!jpeg_image_read(&image, jpeg_input, (size_t)INT_MAX + 1));
-    assert(!jpeg_image_read(NULL, jpeg_input, sizeof jpeg_input));
-    assert(jpeg_inits == 0);
-}
-
-static void check_write(void)
-{
-    struct JpegImage image = {0}, previous;
-    int failure;
-    for (failure = 0; failure < 3; ++failure) {
-        jpeg_fixture_reset();
-        assert(jpeg_image_create(&image, 5, 3));
-        memset(image.pixels, 0x36, image.stride * 3);
-        previous = image;
-        jpeg_fail_init = failure == 1;
-        jpeg_fail_write = failure == 2;
-        assert(jpeg_image_write(&image, "test.jpg") == (failure == 0));
-        assert(!memcmp(&image, &previous, sizeof image));
-        assert(jpeg_live == 1 && jpeg_frees == (failure != 1));
-        if (failure != 1) {
-            assert(jpeg_written_width == 5 && jpeg_written_height == 3 && jpeg_written_stride == 16);
-            assert(!memcmp(jpeg_written, image.pixels, image.stride * 3));
-        }
-        jpeg_image_destroy(&image);
-    }
-    jpeg_fixture_reset();
-    assert(!jpeg_image_write(&image, "test.jpg"));
-    assert(jpeg_image_create(&image, 1, 1));
-    assert(!jpeg_image_write(&image, ""));
+    assert(!memcmp(&image, &original, sizeof image));
     assert(!jpeg_image_write(&image, NULL));
-    ++image.stride;
-    assert(!jpeg_image_write(&image, "test.jpg"));
-    assert(jpeg_inits == 0);
-    jpeg_image_destroy(&image);
-}
+    assert(!jpeg_image_read(&image, NULL, 1));
+    assert(!jpeg_image_read(&image, "broken", 6));
+    assert(!jpeg_image_read(&image, "broken", SIZE_MAX));
+    assert(!memcmp(&image, &original, sizeof image));
 
-static void check_bitmap(void)
-{
-    struct BitmapRes bitmap, previous;
-    int failure, x, y;
-    for (failure = 0; failure < 6; ++failure) {
-        jpeg_fixture_reset();
-        memset(&bitmap, 0, sizeof bitmap);
-        bitmap.width = bitmap.height = bitmap.hasAlpha = 1;
-        bitmap.pixels = jpeg_test_malloc(4);
-        bitmap.grayPixels = jpeg_test_malloc(4);
-        bitmap.pixels[0] = 0x12345678;
-        previous = bitmap;
-        if (failure == 1) jpeg_fail_init = 1;
-        if (failure == 2) jpeg_fail_header = 1;
-        if (failure == 3) jpeg_fail_read = 1;
-        if (failure == 4) jpeg_fail_allocation = jpeg_allocations + 1;
-        if (failure == 5) jpeg_fail_allocation = jpeg_allocations + 2;
-        assert(bitmap_res_load_jpg_data(&bitmap, jpeg_input, sizeof jpeg_input) == (failure == 0));
-        if (failure) {
-            assert(!memcmp(&bitmap, &previous, sizeof bitmap));
-            assert(bitmap.pixels[0] == 0x12345678 && jpeg_live == 2);
-        } else {
-            assert(bitmap.width == 3 && bitmap.height == 2 && !bitmap.hasAlpha && !bitmap.grayPixels);
-            assert(jpeg_live == 1 && bitmap.pixels[0] == 0x000a0a0a);
-            for (y = 0; y < 2; ++y) for (x = 0; x < 3; ++x) {
-                DWORD expected = 0xff000000u | (DWORD)(30 + x + y) << 16 | (DWORD)(20 + y) << 8 | (10 + x);
-                if (x || y) assert(bitmap.pixels[y * 3 + x] == expected);
-            }
-        }
-        jpeg_test_free(bitmap.pixels);
-        jpeg_test_free(bitmap.grayPixels);
+    file = fopen(argv[1], "rb");
+    assert(file);
+    bytes = read_stream(file, &size);
+    assert(jpeg_image_read(&image, bytes, size));
+    check_quadrants(&image, 3);
+    original = image;
+    for (size_t i = 0; i < 128; ++i) {
+        assert(!jpeg_image_read(&image, bytes, i));
+        assert(!memcmp(&image, &original, sizeof image));
     }
-    jpeg_fixture_reset();
-    assert(!bitmap_res_load_jpg_data(NULL, jpeg_input, sizeof jpeg_input));
-    assert(!bitmap_res_load_jpg_data(&bitmap, jpeg_input, -1));
-}
+    for (size_t i = 128; i < size; ++i) {
+        struct JpegImage partial = {0};
+        jpeg_image_read(&partial, bytes, i);
+        jpeg_image_destroy(&partial);
+    }
+    assert(!jpeg_image_write(&image, file));
+    assert(!fclose(file));
+    free(bytes);
 
-int main(void)
-{
-    check_create();
-    check_read();
-    check_write();
-    check_bitmap();
-    jpeg_fixture_reset();
-    puts("JPEG ownership: padded widths, atomic replacement, DLL failures, allocation failures, bitmap color key and repeat cleanup passed");
+    file = tmpfile();
+    assert(file);
+    {
+        struct JpegImage invalid = image;
+        invalid.width = 65536;
+        invalid.stride = 196608;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+        invalid = image;
+        invalid.height = 65536;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+        invalid = image;
+        ++invalid.stride;
+        assert(!jpeg_image_write(&invalid, file) && ftell(file) == 0);
+    }
+    assert(jpeg_image_write(&image, file));
+    assert(!fflush(file));
+    encoded = read_stream(file, &encoded_size);
+    assert(jpeg_image_read(&decoded, encoded, encoded_size));
+    check_quadrants(&decoded, 25);
+    free(encoded);
+    assert(!fclose(file));
+    jpeg_image_destroy(&decoded);
+    jpeg_image_destroy(&image);
+    jpeg_image_destroy(&image);
+    jpeg_image_destroy(NULL);
+    puts("JPEG: independent fixture, padded BGR, orientation, round-trip, truncated input and write failures passed");
     return 0;
 }

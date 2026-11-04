@@ -18,7 +18,7 @@ void ui_friend_option_wnd_destroy(struct UIWindow *window);
 void ui_friend_option_wnd_store_info(struct UIWindow *self);
 void ui_friend_option_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_friend_option_wnd_on_draw(struct UIWindow *self);
-int ui_friend_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_friend_option_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_friend_option_wnd_ops = {
     .destroy = ui_friend_option_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -72,9 +72,6 @@ struct UIFriendOptionWnd {
     struct UIWindow *strangers_box;
     struct UIWindow *close_button;
 };
-OFFSET_ASSERT(UIFriendOptionWnd, info, 0x94);
-OFFSET_ASSERT(UIFriendOptionWnd, close_button, 0xa4);
-SIZE_ASSERT(UIFriendOptionWnd, 0xa8);
 
 #define FRIEND_OPTION_WND_X 200
 #define FRIEND_OPTION_WND_Y 120
@@ -166,8 +163,8 @@ void ui_friend_option_wnd_on_draw(struct UIWindow *window)
     ui_window_fill_rect(wnd, 0, wnd->height - bar_height, wnd->width, 1, RGB(0xc0, 0xc0, 0xc0));
 }
 
-int ui_friend_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4)
+intptr_t ui_friend_option_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIFriendOptionWnd *self = (struct UIFriendOptionWnd *)window;
     if (msg == UI_MSG_COMMAND) {

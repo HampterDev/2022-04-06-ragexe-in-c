@@ -184,8 +184,8 @@ void ui2nd_costume_wnd_on_draw(struct UIWindow *window)
     styling_draw_dotted_line(wnd, 0x77);
 }
 
-int ui2nd_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui2nd_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UI2ndCostumeWnd *self = (struct UI2ndCostumeWnd *)window;
     struct UIDisplayCharacter *display = self->tab.display;
@@ -286,8 +286,8 @@ void ui_accessory_cus_wnd_on_draw(struct UIWindow *window)
     styling_draw_dotted_line(&self->base, 0x77);
 }
 
-int ui_accessory_cus_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_accessory_cus_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIStylingTab *self = (struct UIStylingTab *)window;
     if (msg != UI_MSG_COMMAND)
@@ -492,8 +492,8 @@ static void my_style_select(struct UIMyStyleWnd *self, int x)
     ui_window_invalidate_base(wnd);
 }
 
-int ui_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIMyStyleWnd *self = (struct UIMyStyleWnd *)window;
     int i;

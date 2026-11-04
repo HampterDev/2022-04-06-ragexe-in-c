@@ -14,6 +14,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "ui/items/items.h"
+#include "platform/clock.h"
 
 #define LOG_WND_ID_0 0x101
 #define LOG_WND_ID_1 0x102
@@ -36,7 +37,7 @@ void ui_merchant_item_log_wnd_on_process(struct UIWindow *self);
 void ui_merchant_item_log_wnd_on_draw(struct UIWindow *self);
 void ui_merchant_item_log_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_merchant_item_log_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_merchant_item_log_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_merchant_item_log_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_merchant_item_log_wnd_ops = {
     .destroy = ui_merchant_item_log_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -87,8 +88,6 @@ struct UIMerchantItemLogWnd {
     struct Vec entries;
     int variant;
 };
-OFFSET_ASSERT(UIMerchantItemLogWnd, entries, 0xd0);
-SIZE_ASSERT(UIMerchantItemLogWnd, 0xe0);
 
 void merchant_log_entry_destruct(struct MerchantLogEntry *self)
 {
@@ -236,7 +235,7 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     x = wnd->width - 0x172;
                     y += 0x1d;
                     memset(name, 0, sizeof name);
-                    _snprintf_s(name, sizeof name, (size_t)-1, "%s", string_cstr(&entry->name));
+                    snprintf(name, sizeof name, "%s", string_cstr(&entry->name));
                     ui_window_text_out(wnd, x, y, name, (int)strlen(name), 0, 12, 0, 0, 0);
                     x += 0x96;
                     memset(money, 0, sizeof money);
@@ -245,9 +244,9 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                     ui_window_text_out(wnd, x, y, money, len, 0, 12, 0, 0, 0);
                     x += 0x6e;
                     memset(when, 0, sizeof when);
-                    tm = _localtime32(&entry->time);
-                    _snprintf_s(when, sizeof when, (size_t)-1, "%02d/%02d - %02d:%02d:%02d", tm->tm_mon + 1,
-                                   tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+                    tm = platform_time_local(entry->time);
+                    snprintf(when, sizeof when, "%02d/%02d - %02d:%02d:%02d", tm->tm_mon + 1,
+                                tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
                     ui_window_text_out(wnd, x, y, when, (int)strlen(when), 0, 12, 0, 0, 0);
                     shown++;
                 }
@@ -297,7 +296,7 @@ void ui_merchant_item_log_wnd_on_r_btn_down(struct UIWindow *window, int x, int 
     if (info.index) {
         game_current_base_mode();
         wnd = ui_window_open(ITEM_WND_ID);
-        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+        ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     }
     item_info_destruct(&info);
 }
@@ -322,8 +321,8 @@ void ui_merchant_item_log_wnd_on_process(struct UIWindow *window)
         ui_window_invalidate_base(&self->base.frame.base);
 }
 
-int ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemLogWnd *self = (struct UIMerchantItemLogWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -368,7 +367,7 @@ int ui_merchant_item_log_wnd_send_msg(struct UIWindow *window, struct UIWindow *
             struct TextView name = player_name_lookup(val2);
             string_assign(&entry.name, name.data, name.size);
         }
-        entry.time = (__time32_t)val3;
+        entry.time = (int32_t)val3;
         item_info_get_display_name(&info, &text);
         string_assign(&entry.item, string_cstr(&text), text.size);
         string_free(&text);

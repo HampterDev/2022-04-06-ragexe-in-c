@@ -16,9 +16,6 @@
 struct RagEffect;
 struct Renderer;
 
-OFFSET_ASSERT(PrimTriangle, texture, 0x60);
-SIZE_ASSERT(PrimTriangle, 0x6c);
-
 struct PrimParticle {
     Vec3 pos;
     Vec3 corners[4];
@@ -150,7 +147,7 @@ struct EffectPrim {
     union PrimRecords records;
     struct PrimParticle particles[PRIM_PARTICLES];
     struct PrimTriangle triangles[PRIM_TRIANGLES];
-    __int64 master_sprite_lift;
+    int64_t master_sprite_lift;
 };
 
 #define PRIM_VARIANT_STATE_ICON 0x62
@@ -454,6 +451,7 @@ void prim_wide_rings_process(struct EffectPrim *self);
 void prim_wide_rings_render(struct EffectPrim *self, const float *view);
 
 #include <stdlib.h>
+#include <stdint.h>
 static __inline int prim_rand_below(int n)
 {
     int r;

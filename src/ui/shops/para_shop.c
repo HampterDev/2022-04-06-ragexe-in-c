@@ -59,16 +59,13 @@ struct UIParaResultWnd {
     int bottom;
     int extra;
 };
-OFFSET_ASSERT(UIParaResultWnd, title, 0xd0);
-OFFSET_ASSERT(UIParaResultWnd, extra, 0xe0);
-SIZE_ASSERT(UIParaResultWnd, 0xe4);
 
 struct DragInfo;
 struct UIItemShopWnd;
 void ui_para_item_shop_wnd_destroy(struct UIWindow *window);
 void ui_para_item_shop_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
 void ui_para_item_shop_wnd_on_draw(struct UIWindow *self);
-int ui_para_item_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_para_item_shop_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_para_item_shop_wnd_ops = {
     .destroy = ui_para_item_shop_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -116,7 +113,7 @@ const struct UIWindowOps ui_para_item_shop_wnd_ops = {
 struct UIItemPurchaseWnd;
 void ui_para_item_purchase_wnd_destroy(struct UIWindow *window);
 void ui_para_item_purchase_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-int ui_para_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_para_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_para_item_purchase_wnd_ops = {
     .destroy = ui_para_item_purchase_wnd_destroy,
@@ -170,7 +167,7 @@ void ui_para_result_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_para_result_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_para_result_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_para_result_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_para_result_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_para_result_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_para_result_wnd_ops = {
     .destroy = ui_para_result_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -261,7 +258,7 @@ static void set_total(struct UIWindow *total, int zeny)
 
     memset(line, 0, sizeof line);
     memset(money, 0, sizeof money);
-    sprintf_s(line, sizeof line, "Total : %s Zeny", format_money(zeny, money));
+    snprintf(line, sizeof line, "Total : %s Zeny", format_money(zeny, money));
     ui_static_text_set_text_fit(total, line);
 }
 
@@ -419,8 +416,8 @@ void ui_para_item_shop_wnd_on_draw(struct UIWindow *window)
     }
 }
 
-int ui_para_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_para_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemShopWnd *self = (struct UIItemShopWnd *)window;
     struct UIItemShopWnd2 *shop = &self->shop;
@@ -569,7 +566,7 @@ static void cart_add_dragged(struct UIItemPurchaseWnd *self, int wanted)
     if (in_cart + info.count > PARA_MAX_COUNT) {
         info.count = PARA_MAX_COUNT - in_cart;
         memset(text, 0, sizeof text);
-        sprintf_s(text, sizeof text, msg_str(MSG_PARA_MAX_COUNT), PARA_MAX_COUNT);
+        snprintf(text, sizeof text, msg_str(MSG_PARA_MAX_COUNT), PARA_MAX_COUNT);
         refusal(text);
     }
     by_index = info.by_index == 1;
@@ -606,8 +603,8 @@ static void cart_add_dragged(struct UIItemPurchaseWnd *self, int wanted)
     item_info_destruct(&info);
 }
 
-int ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemPurchaseWnd *self = (struct UIItemPurchaseWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -849,13 +846,13 @@ void ui_para_result_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     ui_item_base_wnd_get_item(&self->base, &info, self->hover);
     if (info.index) {
         game_current_base_mode();
-        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     }
     item_info_destruct(&info);
 }
 
-int ui_para_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_para_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIParaResultWnd *self = (struct UIParaResultWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;

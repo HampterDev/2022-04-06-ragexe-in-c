@@ -14,7 +14,7 @@ struct UIColoringTextViewer;
 struct UIWindow;
 void ui_coloring_text_viewer_destroy(struct UIWindow *window);
 void ui_coloring_text_viewer_on_draw(struct UIWindow *self);
-int ui_coloring_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_coloring_text_viewer_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIListBoxOps ui_coloring_text_viewer_ops = {
     .base = {
         .destroy = ui_coloring_text_viewer_destroy,
@@ -69,7 +69,7 @@ struct UIRoundBoxTooltipWnd;
 void ui_round_box_tooltip_wnd_destroy(struct UIWindow *window);
 void ui_round_box_tooltip_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_round_box_tooltip_wnd_on_draw(struct UIWindow *self);
-int ui_round_box_tooltip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_round_box_tooltip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_round_box_tooltip_wnd_ops = {
     .destroy = ui_round_box_tooltip_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -124,8 +124,6 @@ struct UIColoringTextViewer {
     int max_lines;
     DWORD background;
 };
-OFFSET_ASSERT(UIColoringTextViewer, colour, 0xd0);
-SIZE_ASSERT(UIColoringTextViewer, 0xdc);
 
 static struct UIColoringTextViewer *coloring_text_viewer_construct(struct UIColoringTextViewer *self)
 {
@@ -173,8 +171,8 @@ void ui_coloring_text_viewer_on_draw(struct UIWindow *window)
                    &self->colour, 0, 0xc, 0);
 }
 
-int ui_coloring_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_coloring_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIColoringTextViewer *self = (struct UIColoringTextViewer *)window;
     struct TextArray lines = {0};
@@ -195,7 +193,6 @@ struct UIRoundBoxTooltipWnd {
     struct UIFrameWnd frame;
     struct UIColoringTextViewer *viewer;
 };
-SIZE_ASSERT(UIRoundBoxTooltipWnd, 0x98);
 
 struct UIRoundBoxTooltipWnd *ui_round_box_tooltip_wnd_construct(struct UIRoundBoxTooltipWnd *self)
 {
@@ -297,7 +294,7 @@ static int move_info_show(struct UIRoundBoxTooltipWnd *self, int item_id)
     ui_list_box_resize(&viewer->list.base, width + 0xf, (int)height);
     ui_window_resize_base(wnd, viewer->list.base.width + 2, viewer->list.base.height + 2);
     ui_frame_wnd_move(wnd, g_mouse.x + 0x1a, g_mouse.y);
-    ui_coloring_text_viewer_send_msg(&viewer->list.base, NULL, 0x1d, (int)string_cstr(&text), 0, 0, 0);
+    ui_coloring_text_viewer_send_msg(&viewer->list.base, NULL, 0x1d, (intptr_t)string_cstr(&text), 0, 0, 0);
     string_free(&widest);
     string_free(&text);
     ui_window_invalidate_base(wnd);
@@ -305,8 +302,8 @@ static int move_info_show(struct UIRoundBoxTooltipWnd *self, int item_id)
     return 0;
 }
 
-int ui_round_box_tooltip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                            int val1, int val2, int val3, int val4)
+intptr_t ui_round_box_tooltip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                            intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRoundBoxTooltipWnd *self = (struct UIRoundBoxTooltipWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

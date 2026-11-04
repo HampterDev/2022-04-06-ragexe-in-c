@@ -8,10 +8,11 @@
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "diag/perf.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
+#include "core/numeric.h"
 
 struct UIEditCtrl;
 struct UIWindow;
@@ -150,7 +151,7 @@ void ui_edit_ctrl_on_draw(struct UIWindow *window)
         rect.right = self->base.width;
         rect.bottom = self->base.height;
         ui_window_fill_canvas(&self->base, RGB(self->border_r, self->border_g, self->border_b), &rect);
-        SetRect(&rect, 1, 1, self->base.width - 1, self->base.height - 1);
+        rect = (RECT){1, 1, self->base.width - 1, self->base.height - 1};
         ui_window_fill_canvas(&self->base, RGB(r, g, b), &rect);
     } else {
         ui_window_clear_canvas(&self->base, RGB(r, g, b));
@@ -251,12 +252,12 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
         ui_edit_ctrl_sync_from_ime(self);
         if (self->mask_char) {
             string_resize(&shown, self->text.size, (char)self->mask_char);
-            lo = min(self->sel_start, self->sel_end);
-            hi = max(self->sel_start, self->sel_end);
+            lo = int_min(self->sel_start, self->sel_end);
+            hi = int_max(self->sel_start, self->sel_end);
         } else {
             string_assign(&shown, string_cstr(&self->text), self->text.size);
-            lo = min(self->sel_start, self->sel_end);
-            hi = max(self->sel_start, self->sel_end) + (int)g_language->composition_length;
+            lo = int_min(self->sel_start, self->sel_end);
+            hi = int_max(self->sel_start, self->sel_end) + (int)g_language->composition_length;
         }
         lo_x = lo ? text_width(self, string_cstr(&shown), lo) : 0;
         hi_x = hi ? text_width(self, string_cstr(&shown), hi) : 0;
@@ -267,13 +268,13 @@ static void draw_text(struct UIEditCtrl *self, const struct UIEditCtrl4 *alt)
             plain = 0;
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_ime_candidates(self, lo_x + x, 0, self->base.height);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1))
-                ui_edit_ctrl_draw_highlight(self, lo_x + x, max(hi_x - lo_x, 2));
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1))
+                ui_edit_ctrl_draw_highlight(self, lo_x + x, int_max(hi_x - lo_x, 2));
             draw_string(self, x, &shown);
             plain = 0;
         } else {
             draw_string(self, x, &shown);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1) && ui_edit_ctrl_caret_shown())
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1) && ui_edit_ctrl_caret_shown())
                 ui_window_text_out(wnd, lo_x + x - 2, self->text_y, "|", 0, 0, EDIT_FONT_HEIGHT,
                                  self->text_colour, 0, 0);
         }
@@ -367,7 +368,7 @@ unsigned long long ui_edit_ctrl_focus_key(void)
     key = draw_key_bytes(key, language->composition, language->composition_length);
     key = draw_key_int(key, language->composition_cursor);
     key = draw_key_int(key, language->masked);
-    key = draw_key_int(key, (int)((timeGetTime() / CARET_BLINK_MS) & 1));
+    key = draw_key_int(key, (int)((platform_ticks_ms() / CARET_BLINK_MS) & 1));
     key = draw_key_int(key, g_windowMgr.chat_bar_shown);
     return draw_key_int(key, ui_edit_ctrl_caret_shown());
 }

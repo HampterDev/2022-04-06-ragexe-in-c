@@ -28,15 +28,11 @@ struct ExpandedBarterWnd {
     int hover;
     BYTE scrollable;
 };
-OFFSET_ASSERT(ExpandedBarterWnd, goods, 0x94);
-OFFSET_ASSERT(ExpandedBarterWnd, scrollable, 0xb0);
-SIZE_ASSERT(ExpandedBarterWnd, 0xb4);
 struct UIExpandedBarterItemPurchaseWnd {
     struct ExpandedBarterWnd list;
     struct UIBitmapButton *buy;
     struct UIBitmapButton *cancel;
 };
-SIZE_ASSERT(UIExpandedBarterItemPurchaseWnd, 0xbc);
 
 #define WND_ID_EXB_MARKET 0x155
 #define WND_ID_EXB_PURCHASE 0x156

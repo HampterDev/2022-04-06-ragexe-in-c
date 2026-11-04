@@ -13,7 +13,7 @@ void ui_ach_tab_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_ach_tab_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_ach_tab_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_ach_tab_on_wheel(struct UIWindow *self, int delta);
-int ui_ach_tab_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ach_tab_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ach_tab_ops = {
     .destroy = ui_ach_tab_destroy,
     .resize = ui_window_resize_base,
@@ -65,7 +65,7 @@ void ui_ach_list_wnd_on_draw(struct UIWindow *self);
 void ui_ach_list_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_ach_list_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_ach_list_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_ach_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ach_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ach_list_wnd_ops = {
     .destroy = ui_ach_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -403,8 +403,8 @@ void ui_ach_list_wnd_on_wheel(struct UIWindow *window, int delta)
     ui_ach_list_wnd_send_msg(&self->base, &self->scroll->bar.base, UI_MSG_SCROLL_V, delta < 0 ? 3 : -3, 0, 0, 0);
 }
 
-int ui_ach_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_ach_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIAchListWnd *self = (struct UIAchListWnd *)window;
     int old, top;
@@ -743,8 +743,8 @@ void ui_ach_tab_on_wheel(struct UIWindow *window, int delta)
     ui_ach_tab_send_msg(&self->base, &self->scroll->bar.base, UI_MSG_SCROLL_V, delta < 0 ? 1 : -1, 0, 0, 0);
 }
 
-int ui_ach_tab_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                int val4)
+intptr_t ui_ach_tab_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                intptr_t val4)
 {
     struct UIAchTab *self = (struct UIAchTab *)window;
     int old, top;

@@ -1,9 +1,9 @@
 #include "game/packet_handlers.h"
 #include "session/state.h"
 #include "contents/mouse.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/screen_counters.h"
+#include "platform/clock.h"
 
 #define GLYPH_SEPARATOR 10
 #define DRAW_COLOR_WHITE 0xffffffffu
@@ -96,7 +96,7 @@ void game_mode_draw_ranking_time_attack(struct GameMode *self)
     if (player->pvp_total <= 1 || player->pvp_rank != 1)
         return;
     game_mode_draw_time_attack(self, g_session1.pvpFirstPlaceTime, TIMER_SINCE);
-    if (g_session1.pvpFirstPlaceTime == 0 || timeGetTime() - g_session1.pvpFirstPlaceTime >= 3000)
+    if (g_session1.pvpFirstPlaceTime == 0 || platform_ticks_ms() - g_session1.pvpFirstPlaceTime >= 3000)
         return;
     draw_time_attack_banner();
 }
@@ -113,17 +113,17 @@ void game_mode_draw_time_attack(struct GameMode *self, DWORD value, int type)
     if (type == TIMER_FOR_5S) {
         shown = value;
         if (self->timer_shown_since == 0)
-            self->timer_shown_since = timeGetTime();
-        if (timeGetTime() - self->timer_shown_since > 5000) {
+            self->timer_shown_since = platform_ticks_ms();
+        if (platform_ticks_ms() - self->timer_shown_since > 5000) {
             self->timer_shown_since = 0;
             g_session1.timerShown = 0;
         }
     } else if (type == TIMER_SINCE) {
-        shown = timeGetTime() - value;
+        shown = platform_ticks_ms() - value;
         if (value == 0)
             g_session1.timerShown = 0;
     } else if (type == TIMER_UNTIL) {
-        shown = value - timeGetTime();
+        shown = value - platform_ticks_ms();
         if (shown == 0)
             g_session1.timerShown = 0;
     } else if (type == TIMER_COUNTDOWN) {
@@ -243,11 +243,11 @@ void game_mode_zc_show_digit(struct GameMode *self, const struct PACKET_ZC_SHOWD
         break;
     case TIMER_SINCE:
         g_session1.timerKind = TIMER_SINCE;
-        g_session1.countdownTicks = timeGetTime() + (unsigned)packet->value * 1000u;
+        g_session1.countdownTicks = platform_ticks_ms() + (unsigned)packet->value * 1000u;
         break;
     case TIMER_UNTIL:
         g_session1.timerKind = TIMER_UNTIL;
-        g_session1.countdownTicks = timeGetTime() - (unsigned)packet->value * 1000u;
+        g_session1.countdownTicks = platform_ticks_ms() - (unsigned)packet->value * 1000u;
         break;
     case TIMER_COUNTDOWN:
         g_session1.timerKind = TIMER_COUNTDOWN;

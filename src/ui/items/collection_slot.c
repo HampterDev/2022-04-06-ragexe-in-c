@@ -6,8 +6,8 @@
 #include "ui/items/items.h"
 #include "game/context.h"
 #include "ui/character/character.h"
-#include <mmsystem.h>
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define WND_COLLECTION_SLOT_MACHINE 0xc4
 
@@ -29,9 +29,6 @@ struct UICollectionSystemWnd {
     struct ActRes *act;
     struct SprRes *spr;
 };
-OFFSET_ASSERT(UICollectionSystemWnd, frame_ms, 0x94);
-OFFSET_ASSERT(UICollectionSystemWnd, frame_time, 0xac);
-SIZE_ASSERT(UICollectionSystemWnd, 0xb8);
 
 struct UIWindow;
 void ui_collection_system_wnd_destroy(struct UIWindow *window);
@@ -39,7 +36,7 @@ void ui_collection_system_wnd_on_create(struct UIWindow *self, int width, int he
 void ui_collection_system_wnd_on_process(struct UIWindow *self);
 void ui_collection_system_wnd_on_draw(struct UIWindow *self);
 void ui_collection_system_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_collection_system_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_collection_system_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_collection_system_wnd_ops = {
     .destroy = ui_collection_system_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -108,7 +105,7 @@ void ui_collection_system_wnd_on_process(struct UIWindow *window)
     DWORD now;
 
     ui_window_invalidate_base(&self->frame.base);
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (self->motion != self->stop_motion)
         return;
     if (!self->stopped) {
@@ -158,7 +155,7 @@ void ui_collection_system_wnd_on_draw(struct UIWindow *window)
 {
     struct UICollectionSystemWnd *self = (struct UICollectionSystemWnd *)window;
     ui_collection_system_wnd_draw_clips(self);
-    ui_collection_system_wnd_advance(self, timeGetTime());
+    ui_collection_system_wnd_advance(self, platform_ticks_ms());
 }
 
 void ui_collection_system_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
@@ -170,8 +167,8 @@ void ui_collection_system_wnd_on_l_btn_down(struct UIWindow *window, int x, int 
     game_send_message(MODE_MSG_SLOT_MACHINE_SPIN, self->spin_id, 0, 0, 0);
 }
 
-int ui_collection_system_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_collection_system_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICollectionSystemWnd *self = (struct UICollectionSystemWnd *)window;
     if (msg == UI_MSG_SLOT_MACHINE) {

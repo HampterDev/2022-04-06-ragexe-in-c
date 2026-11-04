@@ -54,11 +54,10 @@ extern GUID init_adapter;
 int set_display(int w, int h, int fullscreen, const GUID *adapter);
 /* Fullscreen is drawn as a frameless window covering the monitor when nonzero (the
    ISBORDERLESS option). borderless_rect gives that monitor's rectangle, or 0 when the
-   setting is off or the adapter has no monitor. monitor_rects gives a monitor's full and
-   work-area rectangles, or the primary screen for NULL. All in render/c3ddevice.c. */
+   setting is off or the adapter has no monitor. Both in render/c3ddevice.c; a monitor's
+   full and work-area rectangles come from platform_monitor_rects (platform/window.h). */
 int borderless_rect(const GUID *adapter, RECT *rc);
 extern int borderless_setting;
-void monitor_rects(HMONITOR m, RECT *mon, RECT *work);
 extern float g_texelOffsetU, g_texelOffsetV;
 extern DWORD g_fogVertexMode;
 extern DWORD g_fogColor;

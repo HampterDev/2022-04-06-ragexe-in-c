@@ -19,7 +19,6 @@
 #include "ui/character/char_info.h"
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "ui/character/character.h"
 #include "core/msg_str.h"
@@ -28,6 +27,8 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_party.h"
+#include "platform/clock.h"
+#include "core/cstr.h"
 
 #define MAKE_DIR UI_SKIN "make_character_ver2\\"
 
@@ -61,7 +62,7 @@ void ui_new_make_char_wnd_destroy(struct UIWindow *window);
 void ui_new_make_char_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_new_make_char_wnd_on_process(struct UIWindow *self);
 void ui_new_make_char_wnd_on_draw(struct UIWindow *self);
-int ui_new_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_new_make_char_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_new_make_char_wnd_ops = {
     .destroy = ui_new_make_char_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -202,7 +203,7 @@ struct UINewMakeCharWnd *ui_new_make_char_wnd_construct(struct UINewMakeCharWnd 
     load_sprites(self, 1);
 
     self->anim_action = 0;
-    self->created_time = timeGetTime();
+    self->created_time = platform_ticks_ms();
     self->anim_frame = 0;
     self->anim_elapsed = 0;
     memset(self->hair, 0, 6 * sizeof self->hair[0]);
@@ -514,10 +515,10 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         memset(name, 0, sizeof name);
         strcpy(name, ui_edit_ctrl_get_text(self->name_edit));
         memcpy(self->info.name, name, sizeof self->info.name);
-        memcpy_s(&g_loginCharInfo, sizeof g_loginCharInfo, &self->info, sizeof self->info);
+        memcpy(&g_loginCharInfo, &self->info, sizeof self->info);
         if (strstr(g_loginCharInfo.name, "\xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0" /* "그라비티" */))
             return;
-        _strlwr(name);
+        cstr_lower(name);
         if (strstr(name, "gravity") || has_gm_tag(name))
             return;
         mode_send_message(client_current_mode(), LOGIN_REQ_MAKE, 0, 0, 0, 0);
@@ -530,12 +531,12 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
         if (blank_edge == 1)
             box(0xc7);
     }
-    mode_send_message(client_current_mode(), LOGIN_REQ_NAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_NAME, (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
     for (i = 0; i < 6; i++)
         looks.stats[i] = self->info.stats[i];
     looks.head_palette = self->info.head_palette;
     looks.head = self->info.head;
-    mode_send_message(client_current_mode(), LOGIN_REQ_LOOKS, (int)&looks, 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_LOOKS, (intptr_t)&looks, 0, 0, 0);
 }
 
 static void on_race(struct UINewMakeCharWnd *self, struct UIWindow *sender)
@@ -620,8 +621,8 @@ static void on_hair(struct UINewMakeCharWnd *self, struct UIWindow *sender)
     }
 }
 
-int ui_new_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                        int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_new_make_char_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                        int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewMakeCharWnd *self = (struct UINewMakeCharWnd *)window;
     if (msg == UI_MSG_DEFAULT_BUTTON) {

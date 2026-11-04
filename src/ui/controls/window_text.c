@@ -9,6 +9,7 @@
 
 #include "render/textdc.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 #define TEXT_BK_ON(w) ((w)->text_bk_on)
 #define TEXT_BK_COLOUR(w) ((COLORREF)(w)->text_bk_colour)
@@ -91,7 +92,7 @@ void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char
     text_dc_select_font(&dc, font_face, font_height, font_arg3, font_arg4);
     if (TEXT_BK_ON(self)) {
         text_dc_set_bk_color(&dc, TEXT_BK_COLOUR(self));
-        text_dc_set_bk_mode(&dc, OPAQUE);
+        text_dc_set_bk_mode(&dc, TEXT_DC_OPAQUE);
     }
     text_dc_set_text_color(&dc, outline);
     text_dc_text_out(&dc, x - 1, y, text, len);
@@ -101,7 +102,7 @@ void ui_window_text_out_outlined(struct UIWindow *self, int x, int y, const char
     text_dc_set_text_color(&dc, colour);
     text_dc_text_out(&dc, x, y, text, len);
     if (TEXT_BK_ON(self))
-        text_dc_set_bk_mode(&dc, TRANSPARENT);
+        text_dc_set_bk_mode(&dc, TEXT_DC_TRANSPARENT);
     text_dc_destruct(&dc);
 }
 
@@ -163,11 +164,11 @@ static void draw_runs_bk(struct UIWindow *self, struct TextDC *dc, int x, int y,
 {
     if (TEXT_BK_ON(self)) {
         text_dc_set_bk_color(dc, TEXT_BK_COLOUR(self));
-        text_dc_set_bk_mode(dc, OPAQUE);
+        text_dc_set_bk_mode(dc, TEXT_DC_OPAQUE);
     }
     draw_runs(self, dc, x, y, text, end, colour, RUNS_SHADOW, 0, shadow);
     if (TEXT_BK_ON(self))
-        text_dc_set_bk_mode(dc, TRANSPARENT);
+        text_dc_set_bk_mode(dc, TEXT_DC_TRANSPARENT);
 }
 
 void ui_window_text_out_runs(struct UIWindow *self, int x, int y, const char *text, int len,
@@ -293,7 +294,7 @@ int ui_window_markup_text_width(struct UIWindow *self, struct String text, int f
                 continue;
             }
             memset(digits, 0, sizeof digits);
-            strncpy_s(digits, 7, p + 1, 6);
+            cstr_copy_n(digits, 7, p + 1, 6);
             strtol(digits, &stop, 16);
             if (stop - digits == 6) {
                 p += 7;

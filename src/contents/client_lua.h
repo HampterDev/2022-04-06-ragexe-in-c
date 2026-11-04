@@ -8,7 +8,6 @@
 struct ClientLua {
     lua_State *L;
 };
-SIZE_ASSERT(ClientLua, 4);
 
 struct ClientLua *client_lua_construct(struct ClientLua *self);
 void client_lua_destruct(struct ClientLua *self);

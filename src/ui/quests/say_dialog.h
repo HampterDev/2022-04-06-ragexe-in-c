@@ -14,8 +14,6 @@ struct UISayDialogWnd {
     struct WindowInfo *info;
     int clear_on_text;
 };
-OFFSET_ASSERT(UISayDialogWnd, info, 0xb0);
-SIZE_ASSERT(UISayDialogWnd, 0xb8);
 
 void ui_say_dialog_wnd_set_text_align(struct UISayDialogWnd *self, unsigned char align);
 

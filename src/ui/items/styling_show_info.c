@@ -9,12 +9,13 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "session/session_names.h"
+#include "core/cstr.h"
 
 struct UIShowInfoWnd;
 void ui_show_info_wnd_destroy(struct UIWindow *window);
 void ui_show_info_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_show_info_wnd_on_draw(struct UIWindow *self);
-int ui_show_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_show_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_show_info_wnd_ops = {
     .destroy = ui_show_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -303,7 +304,7 @@ static void show_info_draw_icon(struct UIShowInfoWnd *self, const int *kind, con
             sprintf(id_text, "%d", style_kind_value(self->display, *kind));
             session_get_item_bitmap_file_name(id_text, path, 1);
         } else {
-            strcpy_s(path, sizeof path, STYLE_SKIN "icon_zeny.bmp");
+            cstr_copy(path, sizeof path, STYLE_SKIN "icon_zeny.bmp");
         }
         bitmap = ui_skin_bitmap(path);
     } else if (item_id) {
@@ -434,7 +435,7 @@ static void show_info_draw_rows(struct UIShowInfoWnd *self)
             ui_window_draw_bitmap(wnd, self->icon_x, wnd->height / 7 * i + self->icon_y,
                                 ui_skin_bitmap(STYLE_SKIN "icon_color_off.bmp"), 0);
             memset(buf, 0, sizeof buf);
-            _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(0xf48));
+            snprintf(buf, sizeof buf, msg_str(0xf48));
             show_info_text(self, x, y, buf, STYLE_ZENY_COLOUR);
         }
     }
@@ -558,8 +559,8 @@ void ui_show_info_wnd_setup(struct UIShowInfoWnd *self, const int *tab)
     }
 }
 
-int ui_show_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_show_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIShowInfoWnd *self = (struct UIShowInfoWnd *)window;
     if (msg != UI_MSG_COMMAND)

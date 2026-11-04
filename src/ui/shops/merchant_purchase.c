@@ -14,6 +14,7 @@
 #include "session/session_items.h"
 #include "ui/items/items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 struct UIMerchantItemPurchaseWnd;
 void ui_merchant_item_purchase_wnd_destroy(struct UIWindow *window);
@@ -23,7 +24,7 @@ void ui_merchant_item_purchase_wnd_on_create(struct UIWindow *self, int width, i
 void ui_merchant_item_purchase_wnd_on_draw(struct UIWindow *self);
 void ui_merchant_item_purchase_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_merchant_item_purchase_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_merchant_item_purchase_wnd_ops = {
     .destroy = ui_merchant_item_purchase_wnd_destroy,
@@ -437,12 +438,12 @@ static void purchase_add_dragged(struct UIMerchantItemPurchaseWnd *self)
         purchase_refuse(text);
     }
     if (dragged.count > 0) {
-        __int64 listed_total = session_purchase_total(&g_session1);
+        int64_t listed_total = session_purchase_total(&g_session1);
 
         if (self->variant) {
             int price = (int)((unsigned)drag->charged_price * (unsigned)dragged.count);
 
-            if ((__int64)g_session1.zeny + price + listed_total > 0x7fffffff) {
+            if ((int64_t)g_session1.zeny + price + listed_total > 0x7fffffff) {
                 purchase_refuse(msg_str(MSG_ZENY_OVERFLOW));
             } else {
                 session_purchase_add(&g_session1, &dragged);
@@ -451,7 +452,7 @@ static void purchase_add_dragged(struct UIMerchantItemPurchaseWnd *self)
                 if (g_windowMgr.buying_store_mirror_sell_list_wnd)
                     ui_window_send_msg(g_windowMgr.buying_store_mirror_sell_list_wnd, NULL, SHOP_MSG_REFRESH, 0, 0, 0, 0);
             }
-        } else if ((__int64)g_session1.zeny < (__int64)dragged.count * drag->charged_price + listed_total) {
+        } else if ((int64_t)g_session1.zeny < (int64_t)dragged.count * drag->charged_price + listed_total) {
             purchase_refuse(msg_str(MSG_NOT_ENOUGH_ZENY));
         } else {
             session_purchase_add(&g_session1, &dragged);
@@ -464,8 +465,8 @@ static void purchase_add_dragged(struct UIMerchantItemPurchaseWnd *self)
     item_info_destruct(&dragged);
 }
 
-int ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                 int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                 int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantItemPurchaseWnd *self = (struct UIMerchantItemPurchaseWnd *)window;
     switch (msg) {

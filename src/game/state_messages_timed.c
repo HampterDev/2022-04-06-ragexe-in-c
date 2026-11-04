@@ -2,8 +2,7 @@
 #include "resources/state_icon_sheet.h"
 #include "contents/sound.h"
 #include "session/state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/packet_handlers.h"
 #include "game/actor_packets.h"
@@ -19,6 +18,7 @@
 #include "session/session_items.h"
 #include "session/session_party.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     EFST_ATTACK_COOLDOWN = 0x40,
@@ -119,7 +119,7 @@ static void own_state_list(int index, int remain_ms, int val1, int val2, int tot
     entry.index = index;
     if (remain_ms == STATE_NO_TIME)
         end = STATE_END_NEVER;
-    else end = timeGetTime() + remain_ms;
+    else end = platform_ticks_ms() + remain_ms;
     entry.end_tick = end;
 
     if ((unsigned)(index - EFST_TIMER_KIND_FIRST) <= 4)
@@ -380,7 +380,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
         }
         break;
     case 0x175:
-        g_session1.overheatStart = timeGetTime();
+        g_session1.overheatStart = platform_ticks_ms();
         g_session1.overheatValue = val2 == 0 ? val1 : 0;
         if (val1 == 0 && own_states_count() != 0)
             own_states_remove(0x175, 0x175);
@@ -420,7 +420,7 @@ static int change_began(struct GameMode *mode, int aid, unsigned char state, int
     case 0x27c:
         string_init(&s);
         string_format(&s, msg_str(0x784), val2, val1 / 100.0 + 1.0);
-        _snprintf_s(text, 0x100, _TRUNCATE, "%s", string_cstr(&s));
+        snprintf(text, 0x100, "%s", string_cstr(&s));
         string_free(&s);
         break;
     case 0x2a1:
@@ -654,7 +654,7 @@ void game_mode_zc_msg_state_change(struct GameMode *mode, int aid, int state,
             if (strlen(text) > 1) {
                 sprintf(line, "%s%s", prefix, text);
                 ui_window_mgr_send_msg_(&g_windowMgr, UIM_CLOSE_DIALOG, 0, 0, 0, 0);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, color,
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, color,
                                       strlen(prefix) > 1 ? CHAT_CHANNEL_MEMBER_STATE : CHAT_CHANNEL_OWN_STATE, 0);
             }
             if (aid == g_session1.ownAid)

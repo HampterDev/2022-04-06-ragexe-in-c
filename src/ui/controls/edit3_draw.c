@@ -6,9 +6,11 @@
 #include "ui/ui_std.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
+#include "platform/window.h"
+#include "core/numeric.h"
 
 #define EDIT3_FONT_HEIGHT 0xc
 #define EDIT3_MARGIN 3
@@ -55,7 +57,7 @@ static int text_width(struct UIEditCtrl3 *self, const char *text, int len)
 
 static int caret_blink_on(void)
 {
-    return !((timeGetTime() / CARET_BLINK_MS) & 1);
+    return !((platform_ticks_ms() / CARET_BLINK_MS) & 1);
 }
 
 static void draw_caret(struct UIEditCtrl3 *self, int x, int y, COLORREF colour)
@@ -66,13 +68,13 @@ static void draw_caret(struct UIEditCtrl3 *self, int x, int y, COLORREF colour)
 static int break_bytes(const struct UIEditCtrl3 *self, unsigned line)
 {
     int size = line_len(self, line);
-    return ends_in_break(self, line) ? min(size, 2) : 0;
+    return ends_in_break(self, line) ? int_min(size, 2) : 0;
 }
 
 static void draw_selection(struct UIEditCtrl3 *self, int i, int line_end, int x0, int y)
 {
     struct UIEditCtrl *edit = &self->edit;
-    int lo = min(edit->sel_start, edit->sel_end), hi = max(edit->sel_start, edit->sel_end);
+    int lo = int_min(edit->sel_start, edit->sel_end), hi = int_max(edit->sel_start, edit->sel_end);
     int lo_x = 0, width = 0, x, right, len, col;
     const char *line = line_at(self, i);
 
@@ -163,7 +165,7 @@ static void place_caret(struct UIEditCtrl3 *self, int x0, int first, int page, i
         int top = (at_break - first + line) * self->line_height;
 
         ui_edit_ctrl_place_ime_candidates(edit, x0 + caret_x, top, top + self->line_height);
-        caret_x += max(comp_x - caret_x, 2) + 2;
+        caret_x += int_max(comp_x - caret_x, 2) + 2;
         self->caret_col += 2;
     }
     if (self->caret_x != caret_x)
@@ -235,7 +237,7 @@ void ui_edit_ctrl3_draw_text(struct UIEditCtrl *base_edit)
     }
 
     caret_end = edit->sel_end;
-    comp_end = (int)g_language->composition_length + max(edit->sel_start, edit->sel_end);
+    comp_end = (int)g_language->composition_length + int_max(edit->sel_start, edit->sel_end);
     {
         int left = caret_end;
         unsigned li;
@@ -436,13 +438,13 @@ static int scroll_view(struct UIEditCtrl3 *self, int msg, int lines)
     return self->first_line - old;
 }
 
-int ui_edit_ctrl3_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_edit_ctrl3_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrl3 *self = (struct UIEditCtrl3 *)window;
     switch (msg) {
     case 0:
-        if (self->extra_line && !(BYTE)(GetKeyState(VK_SHIFT) >> 8)) {
+        if (self->extra_line && !(BYTE)(platform_key_state(VK_SHIFT) >> 8)) {
             ui_window_send_msg_base(&self->edit.base, sender, 0, val1, val2, val3, val4);
         } else {
             char crlf[3] = "\r\n";

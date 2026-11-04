@@ -7,13 +7,13 @@
 #include "ui/character/dress_room.h"
 #include "game/context.h"
 #include "actor/appearance.h"
-#include <mmsystem.h>
 #include "ui/character/character_std.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "session/session_jobs.h"
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 struct DressOption {
     struct String text;
@@ -27,7 +27,7 @@ void ui_second_costume_wnd_destroy(struct UIWindow *window);
 void ui_second_costume_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_second_costume_wnd_on_draw(struct UIWindow *self);
 BYTE ui_second_costume_wnd_render(struct UIWindow *self, int force);
-int ui_second_costume_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_second_costume_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_second_costume_wnd_ops = {
     .destroy = ui_second_costume_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -112,8 +112,6 @@ struct UISecondCostumeWnd {
     struct UIAnimation animation;
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UISecondCostumeWnd, lists, 0xb0);
-OFFSET_ASSERT(UISecondCostumeWnd, start_time, 0xe0);
 
 static size_t list_size(const struct Vec *v)
 {
@@ -137,7 +135,7 @@ struct UISecondCostumeWnd *ui_second_costume_wnd_construct(struct UISecondCostum
     self->category = 0;
     for (i = 0; i < DRESS_LISTS; i++)
         self->selected[i] = 0;
-    self->start_time = timeGetTime();
+    self->start_time = platform_ticks_ms();
     self->direction = 0;
     self->frame.base.redraws_tree = 1;
     ui_animation_reset(&self->animation);
@@ -397,8 +395,8 @@ void ui_second_costume_wnd_on_draw(struct UIWindow *window)
     self->drawn_key = dress_key(self);
 }
 
-int ui_second_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4)
+intptr_t ui_second_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISecondCostumeWnd *self = (struct UISecondCostumeWnd *)window;
     if (msg == UI_MSG_COMMAND) {

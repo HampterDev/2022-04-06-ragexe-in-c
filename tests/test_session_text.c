@@ -100,6 +100,7 @@ char *msg_str(int id)
 #define win_utf8_reg_open_key read_open
 #define win_utf8_reg_query_value read_value
 #define RegCloseKey read_close
+#include "../src/platform/settings_win32.c"
 #include "../src/session/chat_macro_settings.c"
 #undef win_utf8_reg_open_key
 #undef win_utf8_reg_query_value

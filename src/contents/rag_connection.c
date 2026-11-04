@@ -4,13 +4,13 @@
 #include <string.h>
 #include "contents/connection.h"
 #include "std/std.h"
-#include <mmsystem.h>
 
 #include "core/packet_table.h"
 #include "diag/diag.h"
+#include "platform/clock.h"
 
 struct RagConnection g_ragConnection;
-INIT_ONCE g_ragConnection_guard;
+struct Once g_ragConnection_guard;
 void rag_connection_atexit(void);
 
 int rag_connection_get_packet_length(struct RagConnection *conn, int packet_id)
@@ -63,9 +63,9 @@ char rag_connection_send_packet(struct RagConnection *self, int len, const void 
     struct ByteQueue *queue;
     if (!packet || len < (int)sizeof id)
         return 0;
-    g_session1.lastSendTime = timeGetTime();
+    g_session1.lastSendTime = platform_ticks_ms();
     memcpy(&id, packet, sizeof id);
-    if (self->base.socket == INVALID_SOCKET)
+    if (!self->base.socket)
         return 1;
     queue = self->base.hold_sends ? &self->base.held : &self->base.send_queue;
     byte_queue_write(queue, sizeof id, &id);

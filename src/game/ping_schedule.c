@@ -1,11 +1,10 @@
-#include <windows.h>
-#include <mmsystem.h>
-#include <time.h>
+#include "platform/win_types.h"
 #include "contents/schedule.h"
 #include "contents/connection_api.h"
 #include "session/state.h"
 #include "ui/window_access.h"
 #include "game/schedules.h"
+#include "platform/clock.h"
 
 static void ping_run(struct Schedule *self, int now)
 {
@@ -16,7 +15,7 @@ static void ping_run(struct Schedule *self, int now)
         self->alive = 0;
         return;
     }
-    ticks = timeGetTime();
+    ticks = platform_ticks_ms();
     if ((unsigned)(ticks - g_session1.lastPacketTime) > 60000u) {
         self->alive = 0;
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
@@ -30,9 +29,9 @@ static const struct ScheduleOps ping_ops = {ping_run, schedule_free};
 
 void game_mode_add_schedules(void)
 {
-    __time32_t now;
+    int32_t now;
     struct Schedule *job;
-    _time32(&now);
+    now = platform_time_now();
     job = schedule_create(now, 5, SCHEDULE_REPEAT, &ping_ops);
     if (!job) return;
     if (!time_scheduler_add(g_timeScheduler, job)) { schedule_free(job); return; }

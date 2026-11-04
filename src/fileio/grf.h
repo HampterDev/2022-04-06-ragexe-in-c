@@ -2,8 +2,9 @@
 #define FILEIO_GRF_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
+#include "platform/thread.h"
 
 struct Dec {
     BYTE subkey[16][8];
@@ -18,9 +19,13 @@ BYTE dec_decode(struct Dec *self, const BYTE *src, int len, BYTE *dst,
 BYTE dec_decode_header(struct Dec *self, const BYTE *src, int len, BYTE *dst,
                                   int *outLen);
 
+struct PlatformFile;
+struct PlatformFileMapping;
+
 struct GrfFile {
-    HANDLE file, mapping;
-    BYTE *view;
+    struct PlatformFile *file;
+    struct PlatformFileMapping *mapping;
+    const BYTE *view;
     unsigned file_size, view_offset, view_size, map_chunk, granularity;
     BYTE *buffer;
     size_t buffer_capacity;
@@ -52,7 +57,7 @@ struct GrfArchive {
     BYTE *scratch;
     size_t scratch_size;
     unsigned version;
-    CRITICAL_SECTION lock;
+    struct PlatformMutex *lock;
 };
 struct GrfArchive *grf_archive_create(const char *name);
 void grf_archive_destroy(struct GrfArchive *archive);

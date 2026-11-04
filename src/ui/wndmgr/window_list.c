@@ -278,7 +278,7 @@ void ui_window_mgr_remove_snap_rect(struct UIWindowMgr *self, struct UIWindow *w
 {
     if (!g_session1.windowSnap)
         return;
-    tree_erase_key(&self->snap_rects, &wnd, tree_less_uint, NULL);
+    tree_erase_key(&self->snap_rects, &wnd, tree_less_ptr, NULL);
 }
 
 struct WindowInfo *ui_window_mgr_get_closed_rect(struct UIWindowMgr *self, int window_id)

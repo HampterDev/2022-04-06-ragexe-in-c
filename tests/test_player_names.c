@@ -25,14 +25,16 @@ static void *checked_realloc(void *old, size_t size)
     }
     return next;
 }
-static DWORD fixture_ticks(void) { return ticks; }
+static uint32_t fixture_ticks(void) { return ticks; }
 #define malloc checked_malloc
 #define realloc checked_realloc
 #define free checked_free
 #define timeGetTime fixture_ticks
+#define platform_ticks_ms fixture_ticks
 #include "../src/core/owned_text.c"
 #include "../src/contents/player_names.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 #undef free
 #undef realloc
 #undef malloc

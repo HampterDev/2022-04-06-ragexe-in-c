@@ -91,7 +91,7 @@ BYTE skill_effect_on_caster(int skill, struct GameActor *caster, struct GameActo
 
                 client_lua_call(g_session1.luaState, "IsOnTarget", "d>b", skill, &on_target);
                 if (on_target && target)
-                    rag_effect_send_msg(effect, NULL, 0xe, MSG_ARG_PTR(&target->pos), 0, 0);
+                    rag_effect_send_msg(effect, NULL, 0xe, (intptr_t)&target->pos, 0, 0);
             }
         }
     }

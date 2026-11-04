@@ -9,7 +9,7 @@
 #include "ui/window_access.h"
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "contents/client_lua.h"
 #include "contents/client_res.h"
 #include "contents/game_session.h"
@@ -20,7 +20,7 @@
 
 #include "ui/worldmap/kafra_services.h"
 #include "core/msg_str.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
 int lua_trace_value(lua_State *L);
 int lua_get_msg_string(lua_State *L);
@@ -78,7 +78,7 @@ int lua_trace_value(lua_State *L)
     struct String text;
 
     check_string(&text, L, 1);
-    win_utf8_message_box(0, string_cstr(&text), "Lua error", 0);
+    platform_message_box(0, string_cstr(&text), "Lua error", 0);
     string_free(&text);
     return 1;
 }

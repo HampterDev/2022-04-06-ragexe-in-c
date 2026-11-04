@@ -1,7 +1,7 @@
 #include "skills/skill_info.h"
 #include "std/list.h"
 #include "session/state.h"
-#include <windows.h>
+#include "platform/code_page.h"
 #include "core/fatal.h"
 #include "contents/guild_info.h"
 #include "ui/social/guild_member_sort.h"
@@ -92,13 +92,13 @@ void guild_position_edit_destroy(void *value)
 
 static int wide_text_less(const char *a, const char *b)
 {
-    WCHAR wa[0x104], wb[0x104];
+    uint16_t wa[0x104], wb[0x104];
 
     memset(wa, 0, sizeof wa);
     memset(wb, 0, sizeof wb);
-    MultiByteToWideChar(CP_UTF8, 0, a, -1, wa, 0x104);
-    MultiByteToWideChar(CP_UTF8, 0, b, -1, wb, 0x104);
-    return wcscmp(wa, wb) < 0;
+    platform_code_page_to_utf16(CODE_PAGE_UTF8, a, -1, wa, 0x104);
+    platform_code_page_to_utf16(CODE_PAGE_UTF8, b, -1, wb, 0x104);
+    return utf16_compare(wa, wb) < 0;
 }
 
 static int job_name_less(const struct GuildMember *later, const struct GuildMember *earlier)

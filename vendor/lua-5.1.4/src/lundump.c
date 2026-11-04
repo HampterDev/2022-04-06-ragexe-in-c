@@ -5,6 +5,7 @@
 */
 
 #include <string.h>
+#include <stdint.h>
 
 #define lundump_c
 #define LUA_CORE
@@ -25,6 +26,7 @@ typedef struct {
  ZIO* Z;
  Mbuffer* b;
  const char* name;
+ unsigned char size_t_size;
 } LoadState;
 
 #ifdef LUAC_TRUST_BINARIES
@@ -76,13 +78,21 @@ static lua_Number LoadNumber(LoadState* S)
 static TString* LoadString(LoadState* S)
 {
  size_t size;
- LoadVar(S,size);
+ if (S->size_t_size==4)
+ {
+  uint32_t stored_size;
+  LoadVar(S,stored_size);
+  size=stored_size;
+ }
+ else
+  LoadVar(S,size);
  if (size==0)
   return NULL;
  else
  {
   char* s=luaZ_openspace(S->L,S->b,size);
   LoadBlock(S,s,size);
+  IF (s[size-1]!='\0', "bad string");
   return luaS_newlstr(S->L,s,size-1);		/* remove trailing '\0' */
  }
 }
@@ -186,6 +196,9 @@ static void LoadHeader(LoadState* S)
  char s[LUAC_HEADERSIZE];
  luaU_header(h);
  LoadBlock(S,s,LUAC_HEADERSIZE);
+ S->size_t_size=(unsigned char)s[8];
+ IF (S->size_t_size!=sizeof(size_t) && S->size_t_size!=4, "bad size_t size");
+ h[8]=s[8];
  IF (memcmp(h,s,LUAC_HEADERSIZE)!=0, "bad header");
 }
 

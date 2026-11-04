@@ -10,7 +10,7 @@ struct EffectMgr *g_effectMgr = {0};
 struct Mat34 g_identityMatrix = {0};
 struct Session g_session1 = {0};
 float game_camera_pitch(void) { abort(); }
-int game_send_message(int message, int a, int b, int c, int d) { abort(); }
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 void mat_multiply(float *out, const float *a, const float *b) { abort(); }
 void mat_rotate_x(float *m, float rad) { abort(); }
 void mat_rotate_y(float *m, float rad) { abort(); }

@@ -16,7 +16,7 @@
 
 static void chat(const char *text, unsigned colour)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, colour, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, colour, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -54,7 +54,7 @@ void game_mode_friends_list(const unsigned char *pkt)
     for (i = 0; i < count; i++) {
         memcpy(&entry, &packet->friends[(int)i], sizeof entry);
         memset(name, 0, sizeof name);
-        _snprintf_s(name, sizeof name, (size_t)-1, "%s", entry.name);
+        snprintf(name, sizeof name, "%s", entry.name);
         if (!player_names_has(entry.char_id)) {
             string_init(&text);
             string_assign(&text, name, sizeof name);

@@ -3,8 +3,9 @@
 #include "fileio/resource_errors.h"
 #include "diag/perf.h"
 
-#include <mmsystem.h>
+#include <stdlib.h>
 #include <string.h>
+#include "platform/clock.h"
 
 #define KEY_SLOTS 4096
 #define KEY_MAXLEN 119
@@ -33,9 +34,11 @@ static int keys_enabled = -1;
 
 static int keys_on(void)
 {
-    char env[8];
-    if (keys_enabled < 0)
-        keys_enabled = !(GetEnvironmentVariableA("RAGEXE_RES_KEYS", env, sizeof(env)) && env[0] == '0' && !env[1]);
+    const char *env;
+    if (keys_enabled < 0) {
+        env = getenv("RAGEXE_RES_KEYS");
+        keys_enabled = !(env && env[0] == '0' && !env[1]);
+    }
     return keys_enabled;
 }
 
@@ -94,7 +97,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
 
     if (!name)
         return NULL;
-    EnterCriticalSection(&self->lock);
+    platform_mutex_lock(self->lock);
     if (!resource_normalize_name(lowered, sizeof lowered, name)) {
         res = NULL;
         goto leave;
@@ -114,7 +117,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
 
     res = res_find_capturing(self, type, path);
     if (res) {
-        res->lastUse = timeGetTime();
+        res->lastUse = platform_ticks_ms();
         goto leave;
     }
     res = resource_create(type);
@@ -124,7 +127,7 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
         int inserted;
         hash_set_string(&res->name, path);
         res->typeIndex = type;
-        res->lastUse = timeGetTime();
+        res->lastUse = platform_ticks_ms();
         cache_lock_write_begin();
         inserted = resource_cache_insert(&self->resources[type], res);
         cache_lock_write_end();
@@ -139,12 +142,12 @@ static struct Res *get_body(struct ResMgr *self, const char *name)
     }
 
     resource_destroy(res);
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     resource_error_report(name, path);
     return NULL;
 
 leave:
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     return res;
 }
 
@@ -158,7 +161,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
 
     if (!name)
         return NULL;
-    EnterCriticalSection(&self->lock);
+    platform_mutex_lock(self->lock);
     g_perf.resGets++;
     len = strlen(name);
     if (len <= KEY_MAXLEN && keys_on()) {
@@ -168,10 +171,10 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
     if (e) {
         res = res_mgr_find(self, e->typeIdx, e->key);
         if (res) {
-            res->lastUse = timeGetTime();
+            res->lastUse = platform_ticks_ms();
             e->tick = ++key_tick;
             g_perf.resHits++;
-            LeaveCriticalSection(&self->lock);
+            platform_mutex_unlock(self->lock);
             return res;
         }
     }
@@ -190,7 +193,7 @@ void *res_mgr_get(struct ResMgr *self, const char *name)
         memcpy(e->key, pend.key, strlen(pend.key) + 1);
     }
     pend = save;
-    LeaveCriticalSection(&self->lock);
+    platform_mutex_unlock(self->lock);
     return res;
 }
 

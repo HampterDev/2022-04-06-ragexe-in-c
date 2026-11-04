@@ -5,6 +5,7 @@
 #include "effects/rag/rag_effect.h"
 #include "effects/skills/skill_view.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     ACTOR_MSG_CAST_EFFECT = 0x55,

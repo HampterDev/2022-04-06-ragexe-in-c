@@ -14,7 +14,7 @@ void ui_password_wnd_destroy(struct UIWindow *window);
 void ui_password_wnd_set_show(struct UIWindow *self, int visible);
 void ui_password_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_password_wnd_on_draw(struct UIWindow *self);
-int ui_password_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_password_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_password_wnd_ops = {
     .destroy = ui_password_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -63,7 +63,7 @@ struct UIEmailAddressWnd;
 void ui_email_address_wnd_destroy(struct UIWindow *window);
 void ui_email_address_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_email_address_wnd_on_draw(struct UIWindow *self);
-int ui_email_address_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_email_address_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_email_address_wnd_ops = {
     .destroy = ui_email_address_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -132,7 +132,6 @@ struct UIPasswordWnd {
     struct UIItemDropCntWnd base;
     int arg;
 };
-SIZE_ASSERT(UIPasswordWnd, 0xa0);
 
 struct UIPasswordWnd *ui_password_wnd_construct(struct UIPasswordWnd *self)
 {
@@ -200,8 +199,8 @@ void ui_password_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_sys_box(&self->base.frame.base, 0, 0, 0, 0);
 }
 
-int ui_password_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_password_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIPasswordWnd *self = (struct UIPasswordWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -209,7 +208,7 @@ int ui_password_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, i
             struct Mode *mode = g_modeMgr.curMode;
 
             mode_send_message(mode, MODE_REQ_PASSWORD, self->arg,
-                          (int)ui_edit_ctrl_get_text(self->base.edit), 0, 0);
+                          (intptr_t)ui_edit_ctrl_get_text(self->base.edit), 0, 0);
             ui_window_mgr_post_quit1(&g_windowMgr, WND_ID_PASSWORD);
         }
         return 0;
@@ -229,7 +228,6 @@ struct UIEmailAddressWnd {
     struct UIFrameWnd frame;
     struct UIWindow *edit;
 };
-SIZE_ASSERT(UIEmailAddressWnd, 0x98);
 
 static struct UIEmailAddressWnd *ui_email_address_wnd_construct(struct UIEmailAddressWnd *self)
 {
@@ -278,15 +276,15 @@ void ui_email_address_wnd_on_create(struct UIWindow *window, int width_unused, i
     UI_FRAME_DEFAULT_ID(self) = PROMPT_ID_OK;
 }
 
-int ui_email_address_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                         int val1, int val2, int val3, int val4)
+intptr_t ui_email_address_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                         intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEmailAddressWnd *self = (struct UIEmailAddressWnd *)window;
     if (msg != UI_MSG_COMMAND)
         return ui_frame_wnd_send_msg((struct UIWindow *)(&self->frame), sender, msg, val1, val2, val3, val4);
     g_windowMgr.modal_result = val1;
     if (val1 == PROMPT_ID_OK)
-        mode_send_message(g_modeMgr.curMode, MODE_REQ_EMAIL, (int)ui_edit_ctrl_get_text(self->edit), 0, 0, 0);
+        mode_send_message(g_modeMgr.curMode, MODE_REQ_EMAIL, (intptr_t)ui_edit_ctrl_get_text(self->edit), 0, 0, 0);
     return 0;
 }
 

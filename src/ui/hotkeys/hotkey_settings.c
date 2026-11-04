@@ -88,10 +88,6 @@ struct UIHotKeyWnd {
     struct UIBitmapButton *prev;
     struct UIBitmapButton *next;
 };
-OFFSET_ASSERT(UIHotKeyWnd, changes, 0xbc);
-OFFSET_ASSERT(UIHotKeyWnd, balloon, 0xdc);
-OFFSET_ASSERT(UIHotKeyWnd, paged, 0xf4);
-SIZE_ASSERT(UIHotKeyWnd, 0x100);
 
 #define CHAT_LINE_TAGS(line) (((struct UIChatEditCtrl *)(line))->popup)
 
@@ -540,8 +536,8 @@ static int hotkey_wnd_take_key(struct UIHotKeyWnd *self)
             }
             stays = 1;
             if (n != self->selected || group != self->group) {
-                _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_HOTKEY_ASK_REPLACE),
-                               string_cstr(&key.action));
+                snprintf(text, sizeof text, msg_str(MSG_HOTKEY_ASK_REPLACE),
+                            string_cstr(&key.action));
                 if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE,
                                            0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                     key.code = 0;
@@ -675,9 +671,9 @@ static void hotkey_wnd_apply(struct UIHotKeyWnd *self)
         }
     }
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, (size_t)-1, "%s", account_user_data_save(g_accountUserDataMgr)
+    snprintf(text, sizeof text, "%s", account_user_data_save(g_accountUserDataMgr)
         ? msg_str(MSG_HOTKEY_SAVED) : "Could not save local account settings.");
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)text, HOTKEY_WARN_COLOUR, 1, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)text, HOTKEY_WARN_COLOUR, 1, 0);
 }
 
 static void hotkey_wnd_reset(struct UIHotKeyWnd *self)
@@ -725,8 +721,8 @@ static void hotkey_wnd_reset(struct UIHotKeyWnd *self)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_hot_key_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_hot_key_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIHotKeyWnd *self = (struct UIHotKeyWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -823,7 +819,7 @@ void ui_hot_key_wnd_on_draw(struct UIWindow *self);
 void ui_hot_key_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_hot_key_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_hot_key_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_hot_key_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_hot_key_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_hot_key_wnd_ops = {
     .destroy = ui_hot_key_wnd_destroy,
     .resize = ui_window_resize_base,

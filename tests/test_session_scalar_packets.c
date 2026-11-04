@@ -10,10 +10,12 @@
 #include "../src/game/packets_mercenary.c"
 
 static DWORD clock_now;
-static DWORD test_clock(void) { return clock_now; }
+static uint32_t test_clock(void) { return clock_now; }
 #define timeGetTime test_clock
+#define platform_ticks_ms test_clock
 #include "../src/game/screen_counters.c"
 #undef timeGetTime
+#undef platform_ticks_ms
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
@@ -50,7 +52,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *manager, int id)
 struct UIWindow *ui_window_open(int id)
 { assert(id == 0x113); ++open_calls; return NULL; }
 char *msg_str(int id) { last_message = id; return "bank failure"; }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int message, int text, int colour, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int message, intptr_t text, intptr_t colour, intptr_t c, intptr_t d)
 {
     assert(manager == &g_windowMgr && message == UIM_CHAT_LINE && colour == 0xff && !c && !d);
     assert(!strcmp((const char *)text, "bank failure"));

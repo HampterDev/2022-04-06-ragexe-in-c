@@ -72,7 +72,7 @@ void game_mode_notify_act(struct GameMode *self, unsigned aid, unsigned target, 
     if (actor->state == 0 && (unsigned)actor->attack_target_aid != target
         && attack.action != 1 && attack.action != 2 && attack.action != 3)
         pet_attack_emotion(self, aid);
-    actor_send(actor, ACTOR_MSG_ATTACK, MSG_ARG_PTR(&attack), 0);
+    actor_send(actor, ACTOR_MSG_ATTACK, (intptr_t)&attack, 0);
 }
 
 #pragma pack(push, 1)
@@ -114,5 +114,5 @@ void game_mode_zc_notify_act_position(struct GameMode *self, const struct PACKET
     else
         actor = world_get_game_actor_by_aid(self->world, packet->aid);
     if (actor)
-        actor_send(actor, ACTOR_MSG_ATTACK, MSG_ARG_PTR(&attack), 0);
+        actor_send(actor, ACTOR_MSG_ATTACK, (intptr_t)&attack, 0);
 }

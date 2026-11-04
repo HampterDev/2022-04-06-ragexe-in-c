@@ -9,6 +9,7 @@
 #include "session/session_items.h"
 #include "session/session_talk.h"
 #include "std/tree.h"
+#include "platform/clock.h"
 
 static void destroy_string(void *value) { string_free(value); }
 
@@ -153,7 +154,7 @@ static void collection_build_options(struct UIItemCollectionWnd *self)
 
 static void collection_add_line(struct UIItemCollectionWnd *self, const char *line)
 {
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)line, TEXT_LAYOUT, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)line, TEXT_LAYOUT, 0, 0);
 }
 
 static void collection_place_card_button(struct UIItemCollectionWnd *self, int hide_view)
@@ -172,14 +173,14 @@ static void collection_add_expiry(struct UIItemCollectionWnd *self)
     int layout = TEXT_LAYOUT_EXPIRE;
     int hours_per_day;
 
-    strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), _localtime32((__time32_t *)&expire));
+    strftime(time_text, sizeof time_text, msg_str(MSG_EXPIRE_TIME_FORMAT), platform_time_local(expire));
     memset(buf, 0, sizeof buf);
     sprintf(buf, msg_str(MSG_EXPIRE_LINE), time_text);
     hours_per_day = 24;
     if (self->item.expire_in_hours)
-        _snprintf_s(buf, sizeof buf, (size_t)-1, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
-                       expire % hours_per_day);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)buf, layout, 0, 0);
+        snprintf(buf, sizeof buf, msg_str(MSG_EXPIRE_DAYS_HOURS), expire / hours_per_day,
+                    expire % hours_per_day);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)buf, layout, 0, 0);
 }
 
 static void collection_fit_text(struct UIItemCollectionWnd *self)
@@ -290,7 +291,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
             struct UIWindow *cmp = ui_make_window(WND_ITEM_COLLECTION_CMP);
 
             if (cmp)
-                ui_window_send_msg(cmp, NULL, UI_MSG_COLLECTION_ITEM, (int)worn, 1, 0, 0);
+                ui_window_send_msg(cmp, NULL, UI_MSG_COLLECTION_ITEM, (intptr_t)worn, 1, 0, 0);
         } else {
             ui_window_mgr_post_quit1(&g_windowMgr, WND_ITEM_COLLECTION_CMP);
         }
@@ -346,7 +347,7 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
         else
             string_assign_cstr(&line, "\xec\x9d\xb4\xeb\xa6\x84 \xeb\xb3\x80\xea\xb2\xbd\xeb\x90\x98\xec\xa7\x80\xec\x95\x8a\xec\x9d\x8c" /* "이름 변경되지않음" */);
         string_vec_push_copy(&lines, &line);
-        _itoa(self->pet_level, number, 10);
+        snprintf(number, sizeof number, "%d", self->pet_level);
         string_assign_cstr(&line, "\xeb\xa0\x88\xeb\xb2\xa8 : " /* "레벨 : " */);
         string_append_cstr(&line, number);
         string_vec_push_copy(&lines, &line);
@@ -377,7 +378,7 @@ void item_collection_refresh(struct UIItemCollectionWnd *self)
     ui_list_box_clear((struct UIListBox *)self->text);
     for (i = 0; i < VEC_COUNT(&lines, struct String); i++)
         ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT,
-                 (int)string_cstr(&VEC_AT(&lines, struct String, i)), TEXT_LAYOUT, 0, 0);
+                 (intptr_t)string_cstr(&VEC_AT(&lines, struct String, i)), TEXT_LAYOUT, 0, 0);
     ui_window_invalidate_base(wnd);
     ui_window_mgr_raise_window(&g_windowMgr, wnd);
     string_free(&line);

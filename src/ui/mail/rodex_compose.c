@@ -20,6 +20,8 @@
 #include "session/session_party.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/items/item_tags_internal.h"
+#include <stdint.h>
+#include "core/cstr.h"
 
 int g_rodexBodyMaxChars = 500;
 
@@ -191,14 +193,9 @@ struct UIRodexComposeWnd {
     int zeny_amount_low, zeny_amount_high;
     struct List items;
     int hover;
-    __int64 fee;
+    int64_t fee;
     struct UIItemTagOnMail *tags;
 };
-OFFSET_ASSERT(UIRodexComposeWnd, char_id, 0xac);
-OFFSET_ASSERT(UIRodexComposeWnd, items, 0xc8);
-OFFSET_ASSERT(UIRodexComposeWnd, fee, 0xd8);
-OFFSET_ASSERT(UIRodexComposeWnd, tags, 0xe0);
-SIZE_ASSERT(UIRodexComposeWnd, 0xe8);
 struct DragInfo;
 void ui_rodex_compose_wnd_destroy(struct UIWindow *window);
 void ui_rodex_compose_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
@@ -208,7 +205,7 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *self);
 void ui_rodex_compose_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_rodex_compose_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_rodex_compose_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_rodex_compose_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_rodex_compose_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_rodex_compose_wnd_ops = {
     .destroy = ui_rodex_compose_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -515,14 +512,14 @@ void ui_rodex_compose_wnd_on_create(struct UIWindow *window, int width, int heig
     ui_window_add_child(WND(self), &self->btn_send->button.base);
 }
 
-__int64 ui_rodex_compose_wnd_get_zeny(struct UIRodexComposeWnd *self)
+int64_t ui_rodex_compose_wnd_get_zeny(struct UIRodexComposeWnd *self)
 {
     char buf[0x104];
 
     memset(buf, 0, sizeof buf);
-    strcpy_s(buf, sizeof buf, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
+    cstr_copy(buf, sizeof buf, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, buf);
-    return _atoi64(buf);
+    return strtoll(buf, NULL, 10);
 }
 
 struct ItemInfo *ui_rodex_compose_wnd_item_at(struct UIRodexComposeWnd *self, struct ItemInfo *out, int x, int y)
@@ -631,7 +628,7 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
     struct String text;
     char money[0x104], fee_text[0x104], zeny_text[0x104];
     struct ListNode *node;
-    __int64 item_tax, zeny;
+    int64_t item_tax, zeny;
     int x;
 
     ui_window_clear_canvas(wnd, 0xff00ff);
@@ -667,9 +664,9 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
     memset(fee_text, 0, sizeof fee_text);
     item_tax = session_count_mail_items(&g_session1) * 2500;
     memset(zeny_text, 0, sizeof zeny_text);
-    strcpy_s(zeny_text, sizeof zeny_text, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
+    cstr_copy(zeny_text, sizeof zeny_text, ui_edit_ctrl_get_text(&self->zeny->custom.edit.base));
     session_is_number_text(&g_session1, zeny_text);
-    zeny = _atoi64(zeny_text);
+    zeny = strtoll(zeny_text, NULL, 10);
     if (ui_edit_ctrl_get_text(&self->zeny->custom.edit.base)) {
         self->fee = zeny * 2 / 100 + item_tax;
         format_money64(self->fee, fee_text, sizeof fee_text);
@@ -677,9 +674,9 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
         format_money64(item_tax, fee_text, sizeof fee_text);
     }
     ui_window_text_out_right(wnd, 0x68, 0x17e, fee_text, 0, 0, 0xb,
-                          self->fee + zeny > (__int64)g_session1.zeny ? COLOUR_SHORT : 0, 0);
+                          self->fee + zeny > (int64_t)g_session1.zeny ? COLOUR_SHORT : 0, 0);
     if (ui_edit_ctrl_get_text_size(&self->zeny->custom.edit.base)) {
-        if (zeny > (__int64)g_session1.zeny || self->fee + zeny > (__int64)g_session1.zeny)
+        if (zeny > (int64_t)g_session1.zeny || self->fee + zeny > (int64_t)g_session1.zeny)
             ui_edit_ctrl_set_text_colour(&self->zeny->custom.edit.base, 0xff, 0, 0, -1);
         else
             ui_edit_ctrl_set_text_colour(&self->zeny->custom.edit.base, 0, 0, 0, -1);
@@ -692,7 +689,7 @@ void ui_rodex_compose_wnd_on_draw(struct UIWindow *window)
 
         ui_window_draw_bitmap(wnd, x - 4, 0x13f, res_mgr_get(g_resMgr(), RODEX_DIR "shadow_item_on.bmp"),
                             1);
-        if (self->fee > (__int64)g_session1.zeny)
+        if (self->fee > (int64_t)g_session1.zeny)
             ui_window_draw_item_icon_count_grey(wnd, 1, x, ITEM_ROW_TOP, item, (BYTE)item->bind_on_equip_type, 0);
         else
             ui_window_draw_item_icon_count(wnd, x, ITEM_ROW_TOP, item, 0, 0);
@@ -774,7 +771,7 @@ void ui_rodex_compose_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
 
     ui_rodex_compose_wnd_item_at(self, &item, x, y);
     if (atoi(string_cstr(&item.id_text)))
-        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+        ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     item_info_destruct(&item);
 }
 
@@ -793,7 +790,7 @@ static void check_receiver(struct UIRodexComposeWnd *self)
         }
         memset(&packet, 0, sizeof packet);
         packet.id = PACKET_CZ_CHECK_NAME;
-        strcpy_s(packet.name, sizeof packet.name, ui_edit_ctrl_get_text(receiver));
+        cstr_copy(packet.name, sizeof packet.name, ui_edit_ctrl_get_text(receiver));
         string_init(&name);
         string_assign_cstr(&name, packet.name);
         if (session_is_account_char_name(&g_session1, name)) {
@@ -818,7 +815,7 @@ static void send_mail(struct UIRodexComposeWnd *self)
     struct RodexSendRequest request;
     struct String body;
     struct String joined = {0};
-    __int64 zeny;
+    int64_t zeny;
     int len;
 
     if (!ui_edit_ctrl_get_text_size(EDIT(self->receiver)) && !ui_edit_ctrl_get_text_size(EDIT(self->receiver_name))) {
@@ -836,16 +833,16 @@ static void send_mail(struct UIRodexComposeWnd *self)
     }
     zeny = ui_rodex_compose_wnd_get_zeny(self);
     if (zeny > 0) {
-        if (zeny > (__int64)g_session1.zeny) {
+        if (zeny > (int64_t)g_session1.zeny) {
             rodex_chat(MSG_NO_ZENY);
             return;
         }
-        if (self->fee + zeny > (__int64)g_session1.zeny) {
+        if (self->fee + zeny > (int64_t)g_session1.zeny) {
             rodex_chat(MSG_NO_ZENY_FEE);
             return;
         }
     }
-    if (self->fee > 0 && self->fee > (__int64)g_session1.zeny) {
+    if (self->fee > 0 && self->fee > (int64_t)g_session1.zeny) {
         rodex_chat(MSG_NO_ZENY_FEE);
         return;
     }
@@ -882,7 +879,7 @@ static void send_mail(struct UIRodexComposeWnd *self)
     string_assign_cstr(&request.title, ui_edit_ctrl_get_text(EDIT(self->title)));
     string_assign(&request.body, string_cstr(&body), body.size);
     request.zeny = (int)zeny;
-    game_send_message(MODE_RODEX_SEND, (int)&request, 0, 0, 0);
+    game_send_message(MODE_RODEX_SEND, (intptr_t)&request, 0, 0, 0);
     string_free(&request.body);
     string_free(&request.title);
     string_free(&request.receiver);
@@ -913,8 +910,8 @@ static void attach_dragged(int request)
     game_send_message(MODE_REQ_DRAG_END, 0, 0, 0, 0);
 }
 
-int ui_rodex_compose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_rodex_compose_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRodexComposeWnd *self = (struct UIRodexComposeWnd *)window;
     switch (msg) {
@@ -950,7 +947,7 @@ int ui_rodex_compose_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             return 0;
         compare = ui_make_window(WID_ITEM_COMPARE);
         if (compare)
-            ui_window_send_msg(compare, NULL, UI_MSG_SHOW_ITEM, (int)worn, 1, 0, 0);
+            ui_window_send_msg(compare, NULL, UI_MSG_SHOW_ITEM, (intptr_t)worn, 1, 0, 0);
         else
             ui_close_window(WID_ITEM_COMPARE);
         return 0;

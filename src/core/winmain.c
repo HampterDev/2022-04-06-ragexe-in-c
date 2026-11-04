@@ -19,16 +19,17 @@
 #include "diag/crash_report.h"
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <objbase.h>
-#include <mmsystem.h>
+#include "platform/desktop.h"
+#include "platform/win_types.h"
+#include "platform/filesystem.h"
 #include <float.h>
 #include <string.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
 #include "core/client_init.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
+#include "platform/clock.h"
 
 int g_loginStartMode = 2;
 
@@ -36,13 +37,11 @@ void winmain_on_crash(void)
 {
 }
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
+static int client_run(HINSTANCE instance)
 {
     struct InitResult init;
-    WIN32_FIND_DATAA found;
-    HANDLE find;
-    TIMECAPS caps;
-    HRESULT com_result;
+    struct PlatformFind *find;
+    int desktop_started;
     UINT period;
     int result;
 
@@ -61,25 +60,19 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     read_startup_settings();
 
     if (render_enum_adapters() < 0)
-        win_utf8_message_box(0, "d3denum init", "Error", 0);
-    find = FindFirstFileA("savedata", &found);
-    if (find == INVALID_HANDLE_VALUE)
-        CreateDirectoryA("savedata", 0);
+        platform_message_box(0, "d3denum init", "Error", 0);
+    find = platform_find_first("savedata");
+    if (!find)
+        platform_directory_create("savedata");
     else
-        FindClose(find);
+        platform_find_close(find);
+#ifdef _WIN32
     _controlfp(0x20000, 0x30000);
+#endif
 
-    period = 0;
-    if (timeGetDevCaps(&caps, sizeof caps) == 0) {
-        UINT p = caps.wPeriodMin > 1 ? caps.wPeriodMin : 1;
-
-        period = caps.wPeriodMax;
-        if (p < period)
-            period = p;
-        timeBeginPeriod(period);
-    }
+    period = platform_timer_period_begin();
     frame_timer_reset();
-    com_result = CoInitialize(0);
+    desktop_started = platform_desktop_start();
     if (!sound_mgr_create()) {
         error_msg("Audio System Init Failed", 0);
         result = 0;
@@ -95,7 +88,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     }
     app_init_managers(&init);
     if (!init.ok) {
-        win_utf8_message_box(0, string_cstr(&init.what), "ERROR", 0);
+        platform_message_box(0, string_cstr(&init.what), "ERROR", 0);
         result = 1;
         goto done;
     }
@@ -114,9 +107,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     }
 
     frame_timer_start(0x3c);
-    SetFocus(g_hMainWnd);
+    platform_focus_window(g_hMainWnd);
     if (g_3dDevice.fullscreen != 0)
-        ShowCursor(FALSE);
+        platform_show_cursor(0);
 
     ui_window_mgr_set_screen_size(&g_windowMgr, g_renderer->width,
                g_renderer->height);
@@ -142,14 +135,75 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, 
     app_destroy_singletons();
     sound_mgr_destroy();
     if (period != 0)
-        timeEndPeriod(period);
+        platform_timer_period_end(period);
     crash_report_uninstall();
 
     result = 0;
 done:
     string_free(&init.what);
 com_done:
-    if (SUCCEEDED(com_result))
-        CoUninitialize();
+    if (desktop_started)
+        platform_desktop_stop();
     return result;
 }
+
+#ifdef _WIN32
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
+{
+    (void)prev_unused;
+    (void)cmd_unused;
+    (void)show;
+    return client_run(instance);
+}
+#else
+#include <unistd.h>
+
+#ifdef __ANDROID__
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_system.h>
+
+/* Android: the game folder is the app's own external storage directory
+   (Android/data/<package>/files), where the game's files are copied. */
+int main(int argc, char **argv)
+{
+    const char *files = SDL_GetAndroidExternalStoragePath();
+    (void)argc;
+    (void)argv;
+    if (!files || chdir(files) != 0)
+        SDL_Log("ragexe: cannot enter the game folder %s", files ? files : SDL_GetError());
+    return client_run(NULL);
+}
+#else
+/* Like a double-clicked Windows exe, run in the game folder: the current directory when it holds
+   DATA.INI, otherwise the executable's folder, or the folder holding a macOS app bundle. */
+static void enter_game_directory(void)
+{
+    static const char bundle[] = ".app/Contents/MacOS";
+    char path[4096], *slash;
+    size_t length;
+    if (platform_path_exists("DATA.INI") || !platform_module_path(path, sizeof path))
+        return;
+    slash = strrchr(path, '/');
+    if (!slash)
+        return;
+    *slash = 0;
+    length = strlen(path);
+    if (length > sizeof bundle - 1 && !strcmp(path + length - (sizeof bundle - 1), bundle)) {
+        path[length - (sizeof bundle - 1)] = 0;
+        slash = strrchr(path, '/');
+        if (!slash)
+            return;
+        *slash = 0;
+    }
+    if (path[0] && chdir(path) != 0)
+        return;
+}
+
+int main(void)
+{
+    enter_game_directory();
+    return client_run(NULL);
+}
+#endif
+#endif

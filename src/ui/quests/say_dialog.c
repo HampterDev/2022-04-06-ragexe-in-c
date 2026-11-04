@@ -11,6 +11,7 @@
 #include "core/msg_str.h"
 #include "diag/perf.h"
 #include "ui/quests/tag_text_viewer.h"
+#include "platform/clock.h"
 
 struct UISayDialogWnd;
 struct UIWindow;
@@ -19,7 +20,7 @@ void ui_say_dialog_wnd_resize(struct UIWindow *self, int width, int height);
 void ui_say_dialog_wnd_store_info(struct UIWindow *self);
 void ui_say_dialog_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_say_dialog_wnd_on_draw(struct UIWindow *self);
-int ui_say_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_say_dialog_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_say_dialog_wnd_ops = {
     .destroy = ui_say_dialog_wnd_destroy,
     .resize = ui_say_dialog_wnd_resize,
@@ -215,12 +216,12 @@ static void say_show_button(struct UISayDialogWnd *self, int default_id, int cmd
 {
     UI_FRAME_DEFAULT_ID(&self->frame) = default_id;
     self->cmd_id = cmd_id;
-    ui_say_dialog_wnd_send_msg(&self->frame.base, NULL, SAY_MSG_ADD_BUTTON, SAY_ID_NEXT, (int)name, 0, 0);
+    ui_say_dialog_wnd_send_msg(&self->frame.base, NULL, SAY_MSG_ADD_BUTTON, SAY_ID_NEXT, (intptr_t)name, 0, 0);
     ui_window_invalidate_base(&self->frame.base);
 }
 
-int ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISayDialogWnd *self = (struct UISayDialogWnd *)window;
     struct UIWindow *wnd = &self->frame.base;
@@ -233,7 +234,7 @@ int ui_say_dialog_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
     case UI_MSG_COMMAND:
 
         if (val1 == SAY_ID_NEXT) {
-            DWORD now = GetTickCount();
+            DWORD now = platform_coarse_ticks_ms();
 
             if (now - g_session1.npcDialogTick < SAY_NEXT_GAP_MS)
                 return 0;

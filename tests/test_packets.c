@@ -8,6 +8,8 @@
 struct PacketTable g_packetLengthMap;
 struct Session g_session1;
 static int flush_calls, reset_calls;
+static char open_socket;
+#define OPEN_SOCKET ((struct PlatformSocket *)&open_socket)
 
 struct PacketLengthInfo *packet_table_get_length(struct PacketTable *table,
         struct PacketLengthInfo *out, int id)
@@ -37,7 +39,7 @@ char connection_flush(struct Connection *connection)
 struct RagConnection *rag_connection_construct(struct RagConnection *connection)
 {
     memset(connection, 0, sizeof *connection);
-    connection->base.socket = 123;
+    connection->base.socket = OPEN_SOCKET;
     return connection;
 }
 
@@ -73,7 +75,7 @@ static void test_all_packet_ids(struct RagConnection *connection)
             byte_queue_reset(&connection->base.send_queue, 0);
             byte_queue_reset(&connection->base.held, 0);
             connection->base.hold_sends = mode == 1;
-            connection->base.socket = mode == 2 ? INVALID_SOCKET : 123;
+            connection->base.socket = mode == 2 ? NULL : OPEN_SOCKET;
             before = flush_calls;
             assert(rag_connection_send_packet(connection, length, packet));
             assert(!memcmp(packet, expected, sizeof packet));
@@ -121,7 +123,7 @@ int main(void)
     assert(rag_connection_send_packet(connection, sizeof packet, packet));
     expect_bytes(&connection->base.held, packet, sizeof packet);
     assert(flush_calls == 1);
-    connection->base.socket = INVALID_SOCKET;
+    connection->base.socket = NULL;
     assert(rag_connection_send_packet(connection, sizeof packet, packet));
     assert(flush_calls == 1);
     expect_bytes(&connection->base.held, packet, sizeof packet);

@@ -18,7 +18,7 @@ struct UIWindow;
 struct UIItemPurchaseWnd;
 void ui_item_purchase_wnd_destroy(struct UIWindow *window);
 void ui_item_purchase_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const struct DragInfo *drag);
-int ui_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_item_purchase_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_item_purchase_wnd_ops = {
     .destroy = ui_item_purchase_wnd_destroy,
@@ -247,7 +247,7 @@ void ui_item_purchase_wnd_on_draw(struct UIWindow *window)
                 name_width = 0x50;
         }
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, name_width, info, 12);
-        _snprintf_s(unit, 10, (size_t)-1, "Z");
+        snprintf(unit, 10, "Z");
         if (self->cash)
             sprintf(unit, "Point");
         if (info->price != info->charged_price)
@@ -309,7 +309,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
     points = purchase_points(self);
     if (points > session_get_shop_buy_total(&g_session1))
         points = session_get_shop_buy_total(&g_session1);
-    _itoa(points, buf, 10);
+    snprintf(buf, sizeof buf, "%d", points);
     ui_window_mgr_set_focus_edit(&g_windowMgr, self->points);
     ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, buf);
     ui_window_mgr_set_focus_edit(&g_windowMgr, NULL);
@@ -404,8 +404,8 @@ static void purchase_add_dragged(struct UIItemPurchaseWnd *self)
     item_info_destruct(&info);
 }
 
-int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIItemPurchaseWnd *self = (struct UIItemPurchaseWnd *)window;
     struct UIWindow *wnd = &self->base.frame.base;
@@ -425,7 +425,7 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         } else if (val1 == PURCHASE_DEFAULT_ID && self->cash) {
             char buf[0x10];
 
-            _itoa(purchase_points(self), buf, 10);
+            snprintf(buf, sizeof buf, "%d", purchase_points(self));
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, buf);
             ui_window_mgr_set_focus_edit(&g_windowMgr, NULL);
         }

@@ -83,12 +83,12 @@ struct TexDrawPrim * ui_window_make_quad_base(struct UIWindow * arg0) { abort();
 struct UIWindow * ui_window_mgr_get_focus_edit(struct UIWindowMgr * arg0) { abort(); }
 struct UIWindow * ui_window_find(int arg0) { abort(); }
 struct UIWindow * ui_window_open(int arg0) { abort(); }
-int ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 struct Mode * game_current_base_mode(void) { abort(); }
 struct GameMode *game_current_mode(void) { abort(); }
 struct DragInfo * game_current_drag(void) { abort(); }
 int ui_window_mgr_message_box(struct UIWindowMgr * arg0, const char * arg1, int arg2, int arg3, int arg4, int arg5, const char * arg6, int arg7, int arg8, int arg9) { abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, int arg2, int arg3, int arg4, int arg5) { abort(); }
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5) { abort(); }
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr * arg0, int arg1, int arg2) { abort(); }
 void ui_window_mgr_remove_from_name_waiting_list(struct UIWindowMgr * arg0, struct UIWindow * arg1) { abort(); }
 void ui_window_mgr_forget_window(struct UIWindowMgr * arg0, const struct UIWindow * arg1) { abort(); }

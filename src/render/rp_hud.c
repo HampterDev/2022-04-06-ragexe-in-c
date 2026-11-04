@@ -1,6 +1,7 @@
 #include "render/texture_cache.h"
 #include "session/state.h"
 #include "render/render_api.h"
+#include "platform/clock.h"
 
 #define BADGE_DEPTH 0.0999f
 

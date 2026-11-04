@@ -9,6 +9,7 @@
 #include "session/session_state.h"
 #include "session/session_windows.h"
 #include "ui/character/gauge.h"
+#include <stdint.h>
 
 enum {
     SP_BASEEXP = 1,
@@ -26,7 +27,7 @@ enum { OPTION_SHOW_EXP_GAIN = 2 };
 struct PacketLongLongParChange {
     unsigned short packet_type;
     unsigned short var_id;
-    __int64 value;
+    int64_t value;
 };
 #pragma pack(pop)
 
@@ -35,16 +36,17 @@ void game_mode_on_long_long_par_change(struct GameMode *self, const struct Packe
     switch (packet->var_id) {
     case SP_BASEEXP:
         if (session_is_admin_option(&g_session1, OPTION_SHOW_EXP_GAIN) != 0) {
-            __int64 value = packet->value;
+            int64_t value = packet->value;
             int gained = (int)value - (int)g_session1.baseExp;
 
             if (value != 0 && gained != 0) {
                 char line[0x100];
-                int kills_left = (int)((g_session1.nextBaseExp - g_session1.baseExp) / (__int64)gained);
+                int kills_left = (int)((g_session1.nextBaseExp - g_session1.baseExp) / (int64_t)gained);
 
-                _snprintf_s(line, 0x100, (size_t)-1, "%lld : %lld/%lld More : %d",
-                               value - g_session1.baseExp, value, g_session1.nextBaseExp, kills_left);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, CHAT_COLOR_EXP, 0, 0);
+                snprintf(line, 0x100, "%lld : %lld/%lld More : %d",
+                            (long long)(value - g_session1.baseExp), (long long)value, (long long)g_session1.nextBaseExp,
+                            kills_left);
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }
         g_session1.baseExp = packet->value;
@@ -90,14 +92,15 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
     case SP_BASEEXP:
         if (session_is_admin_option(&g_session1, OPTION_SHOW_EXP_GAIN) != 0) {
             char line[0x100];
-            __int64 value = packet->value;
-            __int64 gained = value - g_session1.baseExp;
+            int64_t value = packet->value;
+            int64_t gained = value - g_session1.baseExp;
 
             memset(line, 0, sizeof line);
             if (packet->value != 0 && gained != 0) {
-                _snprintf_s(line, 0x100, (size_t)-1, "%lld : %lld/%lld More : %lld",
-                               gained, value, g_session1.nextBaseExp, (g_session1.nextBaseExp - g_session1.baseExp) / gained);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, CHAT_COLOR_EXP, 0, 0);
+                snprintf(line, 0x100, "%lld : %lld/%lld More : %lld",
+                            (long long)gained, (long long)value, (long long)g_session1.nextBaseExp,
+                            (long long)((g_session1.nextBaseExp - g_session1.baseExp) / gained));
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, CHAT_COLOR_EXP, 0, 0);
             }
         }
         g_session1.baseExp = packet->value;
@@ -135,7 +138,7 @@ void game_mode_on_long_par_change(struct GameMode *self, const struct PacketLong
 struct PacketNotifyExp2 {
     unsigned short packet_type;
     int aid;
-    __int64 amount;
+    int64_t amount;
     unsigned short var_id;
     unsigned short exp_type;
 };
@@ -173,7 +176,7 @@ void game_mode_on_notify_exp2(struct GameMode *self, const struct PacketNotifyEx
             }
             suffix = msg_str(packet->amount >= 0 ? MSG_EXP_GAINED_SUFFIX : MSG_EXP_LOST_SUFFIX);
             string_append_cstr(&line, suffix);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), color,
                                 CHAT_CHANNEL_EXP, 0);
         }
     }
@@ -217,7 +220,7 @@ void game_mode_on_notify_exp(struct GameMode *self, const struct PacketNotifyExp
             }
             suffix = msg_str(packet->amount >= 0 ? MSG_EXP_GAINED_SUFFIX : MSG_EXP_LOST_SUFFIX);
             string_append_cstr(&line, suffix);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)string_cstr(&line), color,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)string_cstr(&line), color,
                                 CHAT_CHANNEL_EXP, 0);
         }
     }

@@ -13,7 +13,6 @@ struct GuildEmblemDownload {
     unsigned char *data;
     size_t size, capacity;
 };
-SIZE_ASSERT(GuildEmblemDownload, 0x14);
 
 struct GuildMgr {
     struct Tree guilds;

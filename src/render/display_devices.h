@@ -2,7 +2,7 @@
 #define DISPLAY_DEVICES_H
 
 #include <stddef.h>
-#include <guiddef.h>
+#include "platform/win_types.h"
 
 struct DisplayMode {
     unsigned width, height, bpp;

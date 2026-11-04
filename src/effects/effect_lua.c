@@ -5,6 +5,7 @@
 #include "effects/skills/emitter_effect.h"
 #include "effects/skills/evils_paw_effect.h"
 #include "effects/skills/wind_effect.h"
+#include <stdint.h>
 
 #define EFFECT_EMITTER           0x3ce
 #define EFFECT_MAGIC_FLOOR       0x401
@@ -359,10 +360,10 @@ int effect_lua_set_wind_effect_info(lua_State *L)
         e->spin = (float)luaL_checknumber(L, 3);
         break;
     case INFO_SRC_BLEND:
-        e->src_blend = (int)(__int64)luaL_checknumber(L, 3);
+        e->src_blend = (int)(int64_t)luaL_checknumber(L, 3);
         break;
     case INFO_DEST_BLEND:
-        e->dest_blend = (int)(__int64)luaL_checknumber(L, 3);
+        e->dest_blend = (int)(int64_t)luaL_checknumber(L, 3);
         break;
     case INFO_BASE_RISE_ANGLE:
         e->band_width = (float)luaL_checknumber(L, 3);

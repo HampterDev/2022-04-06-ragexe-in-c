@@ -123,7 +123,7 @@ void game_mode_on_update(struct Mode *base)
     record(4);
 }
 
-int game_mode_send_msg(struct Mode *base, int message, int a, int b, int c, int d)
+intptr_t game_mode_send_msg(struct Mode *base, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(base == GAME_BASE(expected) && message == 123 && a == -1 && b == 2 && c == 3 && d == 4);
     record(6);
@@ -138,7 +138,7 @@ void game_mode_on_change_state(struct Mode *base, int state)
     record(state);
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int message, int action, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int message, intptr_t action, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(manager == &g_windowMgr && message == 0xf && !b && !c && !d);
     ++cursor_messages;

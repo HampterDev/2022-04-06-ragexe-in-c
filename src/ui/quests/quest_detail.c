@@ -5,7 +5,7 @@
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
 #define QUEST_MSG_REFRESH 0x17
 
@@ -30,7 +30,7 @@ void ui_renew_detail_quest_info_wnd_destroy(struct UIWindow *window);
 void ui_renew_detail_quest_info_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_renew_detail_quest_info_wnd_on_draw(struct UIWindow *self);
 void ui_renew_detail_quest_info_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_renew_detail_quest_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_renew_detail_quest_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_renew_detail_quest_info_wnd_ops = {
     .destroy = ui_renew_detail_quest_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -165,8 +165,8 @@ void ui_renew_detail_quest_info_wnd_on_l_btn_down(struct UIWindow *window, int x
         ui_frame_wnd_on_l_btn_down((struct UIWindow *)(&self->frame), x, y);
 }
 
-int ui_renew_detail_quest_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                 int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_renew_detail_quest_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                 int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIRenewDetailQuestInfoWnd *self = (struct UIRenewDetailQuestInfoWnd *)window;
     if (msg == UI_MSG_COMMAND) {
@@ -194,16 +194,15 @@ void ui_renew_detail_quest_info_wnd_show_quest(struct UIRenewDetailQuestInfoWnd 
     if (!info->base.text[RENEW_QUEST_TEXT_TITLE].size) {
         char text[64];
         sprintf(text, "Not found Quest Info = %lu", (unsigned long)quest_id);
-        win_utf8_message_box(g_hMainWnd, text, "Error", MB_OK);
+        platform_message_box(g_hMainWnd, text, "Error", MB_OK);
         return;
     }
     ui_window_set_show(self->ongoing, 1);
     ui_ongoing_quest_scroll_wnd_set_quest((struct UIOngoingQuestScrollWnd *)self->ongoing, self->quest_id);
     if (info->plain.deadline.year > 1970) {
         char text[MAX_PATH];
-        _snprintf(text, sizeof text, "%s [%02d/%02d/%02d %02d:%02d]", msg_str(MSG_QUEST_END_TIME),
-                  info->plain.deadline.year, info->plain.deadline.month, info->plain.deadline.day, info->plain.deadline.hour, info->plain.deadline.minute);
-        text[sizeof text - 1] = 0;
+        snprintf(text, sizeof text, "%s [%02d/%02d/%02d %02d:%02d]", msg_str(MSG_QUEST_END_TIME),
+                 info->plain.deadline.year, info->plain.deadline.month, info->plain.deadline.day, info->plain.deadline.hour, info->plain.deadline.minute);
         string_assign_cstr(&self->end_time, text);
     }
     ui_window_invalidate_base(&self->frame.base);

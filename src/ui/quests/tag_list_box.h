@@ -17,7 +17,6 @@ struct TagPrototype {
     struct String open;
     struct String close;
 };
-OFFSET_ASSERT(TagPrototype, open, 0x04);
 
 extern struct Vec g_tagPrototypes;
 

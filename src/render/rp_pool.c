@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "render/rp_pool.h"
-#include <mmsystem.h>
+#include "platform/clock.h"
 
 void (*g_renderBeforeClearLists)(void);
 
@@ -237,7 +237,7 @@ struct Renderer *renderer_construct(struct Renderer *self)
     }
     self->clearColor = 0;
     self->frame = self->fpsCount = self->fps = 0;
-    self->fpsTick = timeGetTime();
+    self->fpsTick = platform_ticks_ms();
     self->boundTextures[0] = self->boundTextures[1] = NULL;
     self->fogEnable = self->fogVertexCaps = 0;
     self->clipLeft = self->clipRight = self->clipTop = self->clipBottom = 0.0f;
@@ -291,7 +291,7 @@ static struct RenderTexture retain_texture(const struct Texture *texture)
 {
     struct RenderTexture retained;
     retained.surface = texture ? texture->base.surface : NULL;
-    retained.sort_key = (uintptr_t)texture;
+    retained.sort_key = texture ? texture->serial : 0;
     if (retained.surface) gfx_addref(retained.surface);
     return retained;
 }
@@ -310,6 +310,7 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     }
     queue->items[queue->count].primitive = primitive;
     queue->items[queue->count].key = key;
+    queue->items[queue->count].order = (unsigned)queue->count;
     queue->items[queue->count].textures[0] = retain_texture(texture0);
     queue->items[queue->count].textures[1] = retain_texture(texture1);
     ++queue->count;

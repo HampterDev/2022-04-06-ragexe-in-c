@@ -2,6 +2,7 @@
 #include "render/rp_pool.h"
 #include "contents/sound.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type_tables.h"
@@ -9,14 +10,12 @@
 #include "ui/window_access.h"
 #include <string.h>
 #include "ui/character/character.h"
-#include <imm.h>
-#include <mmsystem.h>
+#include "platform/window.h"
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "ui/quests/quests.h"
-#include "platform/win_utf8.h"
 
 struct Vec;
 struct UILoginWnd;
@@ -28,7 +27,7 @@ void ui_login_wnd_on_destroy(struct UIWindow *self);
 void ui_login_wnd_on_process(struct UIWindow *self);
 void ui_login_wnd_on_draw(struct UIWindow *self);
 void ui_login_wnd_on_mouse_move(struct UIWindow *self, int arg1_unused, int arg2_unused);
-int ui_login_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_login_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_login_wnd_ops = {
     .destroy = ui_login_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -102,11 +101,6 @@ struct UILoginWnd {
     struct UIWindow *account_combo;
     const char *account_class;
 };
-OFFSET_ASSERT(UILoginWnd, id_placeholder, 0xa0);
-OFFSET_ASSERT(UILoginWnd, save_id, 0xa8);
-OFFSET_ASSERT(UILoginWnd, notice_lines, 0xb8);
-OFFSET_ASSERT(UILoginWnd, account_combo, 0xc8);
-SIZE_ASSERT(UILoginWnd, 0xd0);
 
 #define LOGIN_REG_ID_SIZE 0x33
 #define LOGIN_REG_PASSWORD_SIZE 0x19
@@ -115,32 +109,33 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
 {
     char id[0x34];
     char password[0x1a];
-    HKEY probe, key;
-    DWORD type, size, check_save, bitwise;
+    struct PlatformSettingsKey *probe, *key;
+    uint32_t type, size;
+    DWORD check_save, bitwise;
     int colour;
 
-    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &probe) != ERROR_SUCCESS) {
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &probe)) {
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->id_edit, "");
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
         return;
     }
-    RegCloseKey(probe);
-    if (win_utf8_reg_open_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    platform_settings_close(probe);
+    if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
     size = 4;
     type = 4;
-    win_utf8_reg_query_value(key, "CHECKSAVE", NULL, &type, (BYTE *)&check_save, &size);
+    platform_settings_read(key, "CHECKSAVE", &type, &check_save, &size);
     check_save = check_save == 1 ? 1 : 0;
-    win_utf8_reg_query_value(key, "BITWISE", NULL, &type, (BYTE *)&bitwise, &size);
+    platform_settings_read(key, "BITWISE", &type, &bitwise, &size);
     memset(id, 0, sizeof id);
     memset(password, 0, sizeof password);
-    type = REG_SZ;
+    type = PLATFORM_SETTING_STRING;
     size = LOGIN_REG_PASSWORD_SIZE;
-    win_utf8_reg_query_value(key, "PASSWORD", NULL, &type, (BYTE *)password, &size);
+    platform_settings_read(key, "PASSWORD", &type, password, &size);
     password[0x18] = 0;
-    type = REG_SZ;
+    type = PLATFORM_SETTING_STRING;
     size = LOGIN_REG_ID_SIZE;
-    win_utf8_reg_query_value(key, "ID", NULL, &type, (BYTE *)id, &size);
+    platform_settings_read(key, "ID", &type, id, &size);
     id[0x32] = 0;
     password[0x18] = 0;
     self->save_id = check_save;
@@ -157,18 +152,16 @@ void ui_login_wnd_load_saved_id(struct UILoginWnd *self)
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->id_edit, id);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->password_edit, "");
     }
-    RegCloseKey(key);
+    platform_settings_close(key);
 }
 
 void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
 {
     char id[0x34];
-    HKEY key;
-    DWORD disposition = 0;
+    struct PlatformSettingsKey *key;
     DWORD check_save, bitwise;
 
-    if (win_utf8_reg_create_key(HKEY_CURRENT_USER, g_registryKeyPath, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &key,
-                                &disposition) != ERROR_SUCCESS)
+    if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))
         return;
     if (self->save_id)
         strcpy(id, ui_edit_ctrl_get_text(self->id_edit));
@@ -176,11 +169,11 @@ void ui_login_wnd_store_saved_id(struct UILoginWnd *self)
         memset(id, 0, sizeof id);
     id[0x32] = 0;
     check_save = self->save_id ? 1 : 0;
-    win_utf8_reg_set_value(key, "ID", 0, REG_SZ, (const BYTE *)id, 0x33);
-    win_utf8_reg_set_value(key, "CHECKSAVE", 0, REG_DWORD, (const BYTE *)&check_save, 4);
+    platform_settings_write(key, "ID", PLATFORM_SETTING_STRING, id, 0x33);
+    platform_settings_write(key, "CHECKSAVE", PLATFORM_SETTING_DWORD, &check_save, 4);
     bitwise = 1;
-    win_utf8_reg_set_value(key, "BITWISE", 0, REG_DWORD, (const BYTE *)&bitwise, 4);
-    RegCloseKey(key);
+    platform_settings_write(key, "BITWISE", PLATFORM_SETTING_DWORD, &bitwise, 4);
+    platform_settings_close(key);
 }
 
 struct UILoginWnd *ui_login_wnd_construct(struct UILoginWnd *self)
@@ -346,12 +339,7 @@ void ui_login_wnd_on_process(struct UIWindow *window)
     }
 
     if (ui_window_mgr_get_focus_edit(&g_windowMgr) == self->password_edit) {
-        HIMC imc = ImmGetContext(g_hMainWnd);
-        DWORD conversion, sentence;
-
-        ImmGetConversionStatus(imc, &conversion, &sentence);
-        ImmSetConversionStatus(imc, 0, sentence);
-        ImmReleaseContext(g_hMainWnd, imc);
+        platform_ime_alphanumeric(g_hMainWnd);
         ui_edit_ctrl_set_text_colour(self->password_edit, 0, 0, 0, -1);
         if (self->password_placeholder == 1
             && strcmp("PASSWORD", ui_edit_ctrl_get_text(self->password_edit)) == 0) {
@@ -424,9 +412,9 @@ static void login_start(struct UILoginWnd *self)
     if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS
         && ui_edit_ctrl_get_text_size(self->id_edit) >= LOGIN_ID_MIN_CHARS) {
         mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (int)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (int)self->account_class, 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (intptr_t)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (intptr_t)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
+        mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (intptr_t)self->account_class, 0, 0, 0);
         ui_window_mgr_post_quit1(&g_windowMgr, 3);
         ui_login_wnd_store_saved_id(self);
         return;
@@ -453,7 +441,7 @@ static void login_show_notices(struct UILoginWnd *self)
     count = VEC_COUNT(&self->notice_lines, struct String);
     for (i = 0; i < VEC_COUNT(&self->notice_lines, struct String); i++)
         ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE,
-                 (int)string_cstr((struct String *)self->notice_lines.first + i), 0, 0, 0);
+                 (intptr_t)string_cstr((struct String *)self->notice_lines.first + i), 0, 0, 0);
     ui_window_send_msg(list, NULL, COMBO_MSG_SELECT, 0, 0, 0, 0);
     ui_window_resize(list, 0x4a, (int)(count * 16) < 0x30 ? (int)(count * 16) : 0x30);
     ui_window_send_msg(list, NULL, COMBO_MSG_OPENER_ID, 3, 0, 0, 0);
@@ -469,8 +457,8 @@ static void login_close(struct UILoginWnd *self)
         login_leave(self);
 }
 
-int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UILoginWnd *self = (struct UILoginWnd *)window;
     switch (msg) {

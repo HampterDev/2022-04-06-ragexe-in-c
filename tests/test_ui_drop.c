@@ -23,20 +23,20 @@ static struct Mode *current_mode = (struct Mode *)&parent_window;
 static const struct DragInfo *expected_drag;
 static int expected_x, expected_y, messages, completions, forwards;
 
-int game_send_message(int message, int a, int b, int c, int d)
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(message == 0x12 && !a && !b && !c && !d);
     ++completions;
     return 0;
 }
 struct Mode *client_current_mode(void) { return current_mode; }
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == current_mode);
     return game_send_message(message, a, b, c, d);
 }
-static int on_message(struct UIWindow *window, struct UIWindow *sender, int message,
-                      int a, int b, int c, int d)
+static intptr_t on_message(struct UIWindow *window, struct UIWindow *sender, int message,
+                      intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window == active && sender == active);
     assert(message == 0x17 && a == expected_drag->index && !b && !c && !d);
@@ -45,12 +45,12 @@ static int on_message(struct UIWindow *window, struct UIWindow *sender, int mess
     return 0;
 }
 void string_free(struct String *text) { assert(text && !text->data); }
-int ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window == active && sender == active && message == 0x17 && a == expected_drag->index && !b && !c && !d);
     return 0;
 }
-int ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_refining_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     return on_message(window, sender, message, a, b, c, d);
 }

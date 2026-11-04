@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "render/textdc.h"
+#include "core/cstr.h"
 
 static void destroy_string(void *value) { string_free(value); }
 
@@ -181,7 +182,7 @@ struct List *ui_window_wrap_text(struct UIWindow *self, struct List *out,
                 continue;
             }
             memset(digits, 0, sizeof digits);
-            strncpy_s(digits, 7, p + 1, 6);
+            cstr_copy_n(digits, 7, p + 1, 6);
             strtol(digits, &stop, 16);
             if (stop - digits == 6) {
                 string_assign_cstr(&colour, digits);

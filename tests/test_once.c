@@ -1,3 +1,4 @@
+#include <windows.h>
 #include "core/once.h"
 #include <assert.h>
 #include <process.h>
@@ -5,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static INIT_ONCE shared_once = INIT_ONCE_STATIC_INIT;
-static INIT_ONCE nested_once = INIT_ONCE_STATIC_INIT;
+static struct Once shared_once;
+static struct Once nested_once;
 static HANDLE start_event;
 static LONG builds, nested_builds;
 static unsigned payload[256];

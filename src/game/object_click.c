@@ -3,7 +3,7 @@
 #include "contents/guild_info.h"
 #include "session/state.h"
 #include "contents/mouse.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "game/world_pick.h"
 #include "game/cells.h"
 #include "actor/actor_common.h"
@@ -416,7 +416,7 @@ static void click_skill_unit(struct GameMode *self, struct PickInfo *pick)
 
     if (!unit_is_attackable(pick->job)) {
         if (self->skill_use.type == SKILL_USE_ON_UNIT)
-            render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (long long)(INT_PTR)&self->skill_use, 0, 0);
+            render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 0, 0);
         return;
     }
     if (skill == 0xd7 || skill == 0xd8 || skill == 0xd9 || skill == 0xda)
@@ -424,10 +424,10 @@ static void click_skill_unit(struct GameMode *self, struct PickInfo *pick)
     mode_send_msg(self, MODE_MSG_SET_ATTACK_IN_PROGRESS, 1, 0, 0, 0);
     self->held_walk_allowed = 0;
     if (key_down(VK_CONTROL) || g_session1.noCtrl == 1) {
-        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (long long)(INT_PTR)&self->skill_use, 0, 0);
+        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 0, 0);
         self->attack_repeat = 1;
     } else {
-        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (long long)(INT_PTR)&self->skill_use, 1, 0);
+        render_object_send(self->world->player, NULL, ACTOR_MSG_UNIT_SKILL, (long long)pick->aid, (intptr_t)&self->skill_use, 1, 0);
         self->attack_repeat = 0;
     }
 }

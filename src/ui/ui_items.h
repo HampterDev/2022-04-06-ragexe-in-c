@@ -10,6 +10,7 @@
 #include "iteminfo/item_types.h"
 #include "iteminfo/item_table.h"
 #include "ui/window.h"
+#include <stdint.h>
 
 struct Session;
 
@@ -25,7 +26,7 @@ void ui_chat_edit_ctrl_add_item_link(struct UIWindow *self,
 void ui_rodex_compose_wnd_add_item_link(struct UIWindow *self, const struct ItemInfo *info);
 struct UIRefiningWnd;
 
-int zeny_fee_percent(__int64 price);
+int zeny_fee_percent(int64_t price);
 
 struct McStoreBackup;
 

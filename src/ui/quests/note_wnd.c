@@ -15,7 +15,7 @@ struct UIWindow;
 void ui_note_wnd_destroy(struct UIWindow *window);
 void ui_note_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_note_wnd_on_draw(struct UIWindow *self);
-int ui_note_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_note_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_note_wnd_ops = {
     .destroy = ui_note_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -117,14 +117,11 @@ struct UINoteWnd_Scroll {
     struct UIScrollWnd scroll;
     struct UIStaticTextLF *text;
 };
-OFFSET_ASSERT(UINoteWnd_Scroll, text, 0xb0);
-SIZE_ASSERT(UINoteWnd_Scroll, 0xb4);
 
 struct UINoteWnd {
     struct UIFrameWnd frame;
     struct UINoteWnd_Scroll *pane;
 };
-SIZE_ASSERT(UINoteWnd, 0x98);
 
 static struct UINoteWnd_Scroll *ui_note_wnd_scroll_construct(struct UINoteWnd_Scroll *self, int width,
                                                                       int height)
@@ -262,8 +259,8 @@ void ui_note_wnd_on_create(struct UIWindow *window, int width, int height)
     ui_window_add_child(wnd, &self->pane->scroll.base);
 }
 
-int ui_note_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_note_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UINoteWnd *self = (struct UINoteWnd *)window;
     if (msg == NOTE_MSG_SHOW_LINE) {

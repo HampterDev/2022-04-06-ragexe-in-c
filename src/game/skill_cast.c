@@ -8,8 +8,7 @@
 #include "session/state.h"
 #include "core/memory.h"
 #include "game/context.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/skill_use.h"
 #include "effects/effect_controls.h"
@@ -20,6 +19,7 @@
 #include "session/session_skills.h"
 #include "session/session_talk.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 enum {
     ACTOR_MSG_CAST_TIME = 0x52,
@@ -41,7 +41,7 @@ char skill_cast_special(struct GameActor *caster, struct GameActor *target, int 
     if (skill == 0x49) {
         if (target && caster != target)
             render_object_turn_toward((struct RenderObject *)caster, target->pos.x, target->pos.z);
-        game_send_message(MODE_MSG_SKILL_CAST, 0x49, (int)caster, 0, 0);
+        game_send_message(MODE_MSG_SKILL_CAST, 0x49, (intptr_t)caster, 0, 0);
     }
     return cast_time ? 0 : 1;
 }
@@ -56,7 +56,7 @@ void skill_cast_caster_tint(struct GameActor *caster, int skill_id, unsigned cas
     case 0x39:
     case 0x3e:
         caster->motion_held = 1;
-        caster->motion_hold_until = timeGetTime() + cast_time;
+        caster->motion_hold_until = platform_ticks_ms() + cast_time;
         break;
     case 0x105:
     case 0x3f7:
@@ -85,7 +85,7 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
             return;
         render_object_send(scope, NULL, GROUND_MSG_OWNER, (unsigned)caster->aid, 0, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_CELL, (short)x, (short)y, 0, 0);
-        render_object_send(scope, NULL, GROUND_MSG_END_TIME, (unsigned)(timeGetTime() + cast_time), 0, 0, 0);
+        render_object_send(scope, NULL, GROUND_MSG_END_TIME, (unsigned)(platform_ticks_ms() + cast_time), 0, 0, 0);
         render_object_send(scope, NULL, GROUND_MSG_SKILL, skill, 0, 0, 0);
         list_push_back(&mode->world->gameObjects, &scope, sizeof scope);
         return;
@@ -130,9 +130,9 @@ void game_mode_zc_useskill_ack(struct GameMode *mode, unsigned src_aid,
         struct GameMode *gm = game_current_mode();
 
         if (skill == 0x14e || skill == 0x14f)
-            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (int)caster, (int)target_aid, 0);
+            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (intptr_t)caster, (int)target_aid, 0);
         else
-            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (int)caster, 0, 0);
+            mode_send_msg(gm, MODE_MSG_SKILL_CAST, skill, (intptr_t)caster, 0, 0);
     }
     if (skill_cast_special(caster, target, skill_id, delay_ms, attack_motion) == 1)
         return;

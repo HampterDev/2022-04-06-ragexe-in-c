@@ -59,5 +59,5 @@ void game_mode_on_ack_private_airplane_call(struct GameMode *self, int result)
             g_windowMgr.modal_result = 0xb4;
         return;
     }
-    UIWINDOW_SENDMSG(w, 0x9a, (int)msg_str(refusal[result]), 0, 0, 0);
+    UIWINDOW_SENDMSG(w, 0x9a, (intptr_t)msg_str(refusal[result]), 0, 0, 0);
 }

@@ -20,7 +20,7 @@ static struct UIWindow root, parent, child, hidden, grandchild;
 static struct ListNode heads[5];
 static struct { struct ListNode links; struct UIWindow *window; } nodes[4];
 
-DWORD ui_fixture_time(void) { return 0; }
+uint32_t ui_fixture_time(void) { return 0; }
 
 struct UIWindow *ui_window_mgr_focus_root(struct UIWindowMgr *manager)
 {

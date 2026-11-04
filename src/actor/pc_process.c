@@ -25,6 +25,8 @@
 #include "ui/window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "game/mouse_camera.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 unsigned char pc_on_process(struct GameObject *object)
 {
@@ -42,7 +44,7 @@ unsigned char pc_on_process(struct GameObject *object)
         ui_window_move(self->hp_gage_wnd, self->screen_x - 30, (int)((float)raise * self->scale + (float)self->screen_y));
     }
     game_actor_place_hp_gage(actor);
-    if (self->hit_flash && timeGetTime() > self->hit_tick + 100) {
+    if (self->hit_flash && platform_ticks_ms() > self->hit_tick + 100) {
         self->hit_argb = 0xffff0000;
         self->hit_flash = 0;
     }
@@ -68,10 +70,10 @@ unsigned char pc_on_process(struct GameObject *object)
 
             list_push_back(&self->attached, &obj, sizeof obj);
             render_object_send(obj, self, 0x32, 0, 0, 0, 0);
-            self->costume_body_obj = (int)obj;
+            self->costume_body_obj = obj;
         }
     } else if (self->costume_body_obj) {
-        render_object_send((void *)self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
+        render_object_send(self->costume_body_obj, NULL, 0x35, 0, 0, 0, 0);
         self->costume_body_obj = 0;
     }
     return result;
@@ -292,7 +294,7 @@ unsigned char pc_process_state(struct GameActor * base_actor)
 
     struct GameActor *actor = (struct GameActor *)self;
 
-    if (self->motion_hold_until && timeGetTime() > self->motion_hold_until) {
+    if (self->motion_hold_until && platform_ticks_ms() > self->motion_hold_until) {
         self->motion_held = 0;
         self->motion_hold_until = 0;
     }
@@ -318,7 +320,7 @@ unsigned char pc_process_state(struct GameActor * base_actor)
         int frame;
 
         render_object_update_motion((struct RenderObject *)self);
-        frame = (int)((float)(timeGetTime() - self->start_tick) / 24.0f);
+        frame = (int)((float)(platform_ticks_ms() - self->start_tick) / 24.0f);
         if (self->attack_target_aid && frame % 34 == 0) {
             struct GameActor *target = (struct GameActor *)game_find_actor(self->attack_target_aid);
 
@@ -460,7 +462,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
 
         pc_attack_reset(self);
         accepts = session_job_accepts_weapon(&g_session1, game_actor_get_job(actor), self->sex,
-                                            (unsigned __int64)self->weapon);
+                                            (uint64_t)self->weapon);
         switch (game_actor_get_job(actor)) {
         case 0xfce: case 0xfcf: case 0xfd0: case 0x1081: case 0x1082: case 0x108e: {
             int r = rand() % 10;
@@ -531,7 +533,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
 
         pc_attack_reset(self);
         accepts = session_job_accepts_weapon(&g_session1, game_actor_get_job(actor), self->sex,
-                                            (unsigned __int64)self->weapon);
+                                            (uint64_t)self->weapon);
         game_actor_set_state(actor, accepts ? 9 : 2, snap);
         t = session_get_job_float(&g_session1, game_actor_get_job(actor), self->sex,
                                  (int)self->weapon, accepts);
@@ -547,5 +549,5 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
     self->action = game_actor_dir_of((struct GameObject *)self, self->roty)
                    + self->base_action;
     self->state = state;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
 }

@@ -25,8 +25,6 @@ struct UIStaticText {
     struct String text;
     struct String tooltip;
 };
-OFFSET_ASSERT(UIStaticText, background, 0x90);
-OFFSET_ASSERT(UIStaticText, has_tooltip, 0xa4);
 struct UIWindow *ui_static_text_construct(struct UIWindow *self);
 void ui_static_text_destruct(struct UIStaticText *self);
 void ui_static_text_set_text(struct UIWindow *self, const char *text,

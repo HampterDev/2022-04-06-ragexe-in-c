@@ -12,6 +12,8 @@
 #include "core/msg_str.h"
 #include "core/text_util.h"
 #include "session/session_names.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #define UIM_CHAT_LINE 1
 #define QUEST_CHAT_COLOR 0xffff
@@ -32,19 +34,18 @@ static void quest_info_destroy(struct RenewQuestB *info)
 
 static void quest_info_set_end_time(struct RenewQuestB *info, int seconds, int has_time)
 {
-    __time32_t timestamp = seconds;
-    struct tm local;
+    const struct tm *local = platform_time_local(seconds);
 
-    if (_localtime32_s(&local, &timestamp) != 0) {
+    if (!local) {
         info->plain.deadline.year = info->plain.deadline.month = info->plain.deadline.day = 0;
         info->plain.deadline.hour = info->plain.deadline.minute = 0;
         return;
     }
-    info->plain.deadline.year = (unsigned short)(local.tm_year + 1900);
-    info->plain.deadline.month = (unsigned short)(local.tm_mon + 1);
-    info->plain.deadline.day = (unsigned short)local.tm_mday;
-    info->plain.deadline.hour = has_time ? (unsigned short)local.tm_hour : 0;
-    info->plain.deadline.minute = has_time ? (unsigned short)local.tm_min : 0;
+    info->plain.deadline.year = (unsigned short)(local->tm_year + 1900);
+    info->plain.deadline.month = (unsigned short)(local->tm_mon + 1);
+    info->plain.deadline.day = (unsigned short)local->tm_mday;
+    info->plain.deadline.hour = has_time ? (unsigned short)local->tm_hour : 0;
+    info->plain.deadline.minute = has_time ? (unsigned short)local->tm_min : 0;
 }
 
 static void quest_info_set(struct RenewQuestB *info, unsigned char active, int end_time, unsigned char hunts)
@@ -54,7 +55,7 @@ static void quest_info_set(struct RenewQuestB *info, unsigned char active, int e
     info->plain.hunt_count = hunts;
 }
 
-static void quest_info_set_hunt(struct RenewQuestB *info, int i, __int64 hunt_id, int mob_type, int mob_id,
+static void quest_info_set_hunt(struct RenewQuestB *info, int i, int64_t hunt_id, int mob_type, int mob_id,
                                 short killed, short to_kill, short min_level, short max_level)
 {
     if ((unsigned)i >= RENEW_QUEST_HUNT_MAX)
@@ -88,13 +89,13 @@ static void quest_hunt_name(char *out, int mob_id, const char *packet_name)
         string_init(&rsw);
         string_format(&rsw, "%s.rsw", packet_name);
         name = session_map_display_name(string_cstr(&rsw));
-        _snprintf_s(out, QUEST_HUNT_NAME, (size_t)-1, "%s", name);
+        snprintf(out, QUEST_HUNT_NAME, "%s", name);
         string_free(&rsw);
         return;
     } else {
         name = session_get_job_name(&g_session1, mob_id, 0x63);
     }
-    _snprintf_s(out, QUEST_HUNT_NAME, (size_t)-1, "%s", name);
+    snprintf(out, QUEST_HUNT_NAME, "%s", name);
 }
 
 #pragma pack(push, 1)
@@ -120,7 +121,7 @@ struct PacketQuestHunt3 {
     char mob_name[24];
 };
 struct PacketQuestHunt4 {
-    __int64 hunt_id;
+    int64_t hunt_id;
     int mob_type;
     int mob_id;
     short min_level, max_level;
@@ -232,7 +233,7 @@ struct PacketAddQuestHunt {
     char mob_name[24];
 };
 struct PacketAddQuestHunt2 {
-    __int64 hunt_id;
+    int64_t hunt_id;
     int mob_type;
     int mob_id;
     short min_level, max_level;
@@ -255,7 +256,7 @@ static void quest_added(const struct PacketAddQuest *pkt, struct RenewQuestB *in
     renew_quest_read_ongoing(g_questTable, pkt->quest_id, info);
     renew_quest_refresh_windows();
     ui_window_open(WINDOW_NOTIFY_QUEST);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(0x55e), QUEST_CHAT_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(0x55e), QUEST_CHAT_COLOR,
                           CHAT_CHANNEL_QUEST, 0);
 }
 
@@ -331,7 +332,7 @@ void game_mode_del_quest(struct GameMode *self, const void *packet, size_t size)
     renew_quest_refresh_windows();
     string_init(&line);
     string_format(&line, msg_str(0x64b), string_cstr(&title));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), QUEST_CHAT_COLOR,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&line), QUEST_CHAT_COLOR,
                           CHAT_CHANNEL_QUEST, 0);
     string_free(&line);
     string_free(&title);

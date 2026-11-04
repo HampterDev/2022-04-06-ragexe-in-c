@@ -5,6 +5,7 @@
 #include "web/barter_expanded.h"
 #include "std/tree.h"
 #include "session/session_items.h"
+#include <stdint.h>
 
 struct ExpandedBarter *g_expandedBarter;
 
@@ -307,7 +308,7 @@ int expanded_barter_cart_count(struct ExpandedBarter *self, int key)
     return p == GOODS_LAST(&self->cart) ? 0 : p->count;
 }
 
-__int64 expanded_barter_total(const struct ExpandedBarter *self)
+int64_t expanded_barter_total(const struct ExpandedBarter *self)
 {
     return self->total;
 }

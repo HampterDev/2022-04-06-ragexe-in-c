@@ -11,6 +11,8 @@
 #include "session/session_state.h"
 #include "session/session_talk.h"
 #include "world/world.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #define GAME_MODE_SEND(mode, msg, p1, p2, p3, p4) \
     mode_send_message((struct Mode *)(mode), (msg), (p1), (p2), (p3), (p4))
@@ -42,7 +44,7 @@ static int fade(struct GameActor *self)
 
     if (!self->fade_until)
         return 1;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     if (now > self->fade_until)
         return 0;
     left = (self->fade_until - now) >> 1;
@@ -59,7 +61,7 @@ static void pet_idle_emotion(struct GameActor *self, struct GameMode *mode)
 {
     if (self->object_type != 7 || self->aid != g_session1.aid || !self->pet_emotion_tick)
         return;
-    if (timeGetTime() - self->pet_emotion_tick <= 3000)
+    if (platform_ticks_ms() - self->pet_emotion_tick <= 3000)
         return;
     if (rand() % 100 < 25) {
         int hunger = session_pet_hunger_level(g_session1.petFullness);
@@ -78,7 +80,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
     unsigned server_now;
     int moved = 0;
 
-    if (self->motion_hold_until && timeGetTime() > self->motion_hold_until) {
+    if (self->motion_hold_until && platform_ticks_ms() > self->motion_hold_until) {
         self->motion_held = 0;
         self->motion_hold_until = 0;
     }
@@ -215,8 +217,8 @@ unsigned char game_actor_process_state(struct GameActor * self)
         from = self->pos;
         dx = self->slide_x - self->pos.x;
         dz = self->slide_z - self->pos.z;
-        left = self->start_tick - timeGetTime() + 200;
-        since = (int)(timeGetTime() - self->process_tick);
+        left = self->start_tick - platform_ticks_ms() + 200;
+        since = (int)(platform_ticks_ms() - self->process_tick);
         if (left) {
             float s = (float)(since < 0 ? 0 : since);
             float total = (float)left;
@@ -239,7 +241,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
 
         self->casting = 0;
         render_object_update_motion((struct RenderObject *)self);
-        frames = (int)((float)(timeGetTime() - self->start_tick) / 24.0f);
+        frames = (int)((float)(platform_ticks_ms() - self->start_tick) / 24.0f);
         if (self->attack_target_aid && frames % 34 == 0) {
             struct RenderObject *other = (struct RenderObject *)game_find_actor(self->attack_target_aid);
 
@@ -264,7 +266,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
             self->casting = 1;
             if (session_is_player_job(&g_session1, game_actor_get_job(self))) {
                 int sex = self->sex;
-                unsigned __int64 weapon =
+                uint64_t weapon =
                     ((uint64_t)actor_get_weapon(self));
 
                 if (session_job_accepts_weapon(&g_session1, game_actor_get_job(self), sex, weapon))
@@ -276,8 +278,8 @@ unsigned char game_actor_process_state(struct GameActor * self)
             }
             self->motion_held = 1;
         }
-        timeGetTime();
-        now = timeGetTime();
+        platform_ticks_ms();
+        now = platform_ticks_ms();
         if (now >= self->cast_end_tick) {
             self->casting = 0;
             self->motion_held = 0;
@@ -289,7 +291,7 @@ unsigned char game_actor_process_state(struct GameActor * self)
     }
     }
 
-    self->process_tick = timeGetTime();
+    self->process_tick = platform_ticks_ms();
     self->process_server_time = server_now;
     if (moved)
         self->pos.y = c3d_attr_get_height(world->attr, self->pos.x, self->pos.z);
@@ -444,7 +446,7 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
     case 0x0d:
         if (session_is_player_job(&g_session1, game_actor_get_job(self))) {
             int sex = self->sex;
-            unsigned __int64 weapon =
+            uint64_t weapon =
                 ((uint64_t)actor_get_weapon(self));
 
             session_job_accepts_weapon(&g_session1, game_actor_get_job(self), sex, weapon);
@@ -618,5 +620,5 @@ void game_actor_set_state(struct GameActor * self, int state, unsigned char snap
     self->state = state;
     if (state == 7 || state == 0x31)
         self->state = 7;
-    self->start_tick = timeGetTime();
+    self->start_tick = platform_ticks_ms();
 }

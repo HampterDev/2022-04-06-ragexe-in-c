@@ -26,7 +26,7 @@ void ui_sub_chat_his_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_sub_chat_his_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_sub_chat_his_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_sub_chat_his_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_sub_chat_his_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_sub_chat_his_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_sub_chat_his_wnd_draw_backdrop(struct UIWindow *window);
 const struct UIWindowOps ui_sub_chat_his_wnd_ops = {
     .destroy = ui_sub_chat_his_wnd_destroy,
@@ -504,8 +504,8 @@ static void add_line(struct UISubChatHisWnd *self, const char *text, COLORREF co
         ui_chat_his_box_add_wrapped(self->box, text, colour, extra);
 }
 
-int ui_sub_chat_his_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_sub_chat_his_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISubChatHisWnd *self = (struct UISubChatHisWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

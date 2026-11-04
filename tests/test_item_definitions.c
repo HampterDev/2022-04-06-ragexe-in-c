@@ -47,11 +47,10 @@ static void *checked_calloc(size_t count, size_t size)
     if (p) memset(p, 0, count * size);
     return p;
 }
-static int WINAPI error_box(HWND window, LPCSTR text, LPCSTR caption, UINT type)
+static void error_box(HWND window, const char *text, const char *caption, unsigned type)
 {
     assert(!window && text && strcmp(caption, "CItemInfoMgr") == 0 && !type);
     strncpy_s(last_error, sizeof last_error, text, _TRUNCATE); ++errors;
-    return 0;
 }
 static lua_State *new_state(void) { return fail_state ? NULL : luaL_newstate(); }
 static int load_file(lua_State *L, const char *name)
@@ -64,8 +63,9 @@ static int load_file(lua_State *L, const char *name)
 #define calloc checked_calloc
 #define realloc checked_realloc
 #define free checked_free
-#include "platform/win_utf8.h"
-#define win_utf8_message_box error_box
+#include "platform/window.h"
+#define MessageBoxA error_box
+#define platform_message_box error_box
 #define luaL_loadfile load_file
 #define luaL_newstate new_state
 #include "../src/contents/item_info_mgr.c"
@@ -75,7 +75,8 @@ static int load_file(lua_State *L, const char *name)
 #undef calloc
 #undef realloc
 #undef free
-#undef win_utf8_message_box
+#undef MessageBoxA
+#undef platform_message_box
 #undef luaL_loadfile
 #undef luaL_newstate
 

@@ -4,18 +4,16 @@
 #include "std/list.h"
 #include <stdlib.h>
 #include <string.h>
+#include "platform/window.h"
 
 RECT g_monitorRect;
 
-static BOOL WINAPI ddraw_enum_adapter_callback(GUID *guid, LPSTR desc, LPSTR name, LPVOID ctx, HMONITOR monitor)
+static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx, PlatformDisplay monitor)
 {
     (void)name;
     (void)ctx;
     if (guid && monitor && memcmp(guid, &g_driverGuid, sizeof(GUID)) == 0) {
-        MONITORINFOEXA mi;
-        mi.cbSize = sizeof(mi);
-        GetMonitorInfoA(monitor, (MONITORINFO *)&mi);
-        g_monitorRect = mi.rcMonitor;
+        platform_monitor_rect(monitor, &g_monitorRect);
     }
     gfx_enum_adapter(guid, desc, monitor);
     return 1;

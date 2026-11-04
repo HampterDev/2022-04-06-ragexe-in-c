@@ -2,8 +2,14 @@
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
 
-#define COS_DEG(d) g_cosTable[d]
-#define SIN_DEG(d) g_sinTable[d]
+static int wrap_degrees(int degrees)
+{
+    degrees %= 360;
+    return degrees < 0 ? degrees + 360 : degrees;
+}
+
+#define COS_DEG(d) g_cosTable[wrap_degrees(d)]
+#define SIN_DEG(d) g_sinTable[wrap_degrees(d)]
 
 #define COLUMN_PROFILE(j) SIN_DEG((j) * 9)
 

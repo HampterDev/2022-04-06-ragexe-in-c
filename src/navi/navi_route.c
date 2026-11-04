@@ -12,8 +12,7 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "navi/navi_manager.h"
@@ -71,7 +70,7 @@ static void clear_visited(struct NaviManager *self)
 {
     struct NaviMap **it = (struct NaviMap **)self->base.maps.first;
     struct NaviMap **end = (struct NaviMap **)self->base.maps.last;
-    unsigned count = ((unsigned)((char *)end - (char *)it) + 3) >> 2;
+    unsigned count = (unsigned)(end - it);
     unsigned i;
 
     if (it > end)

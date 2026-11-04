@@ -1,7 +1,7 @@
 #include "contents/settings_json.h"
 #include "json/service_json.h"
 #include "core/text_encoding.h"
-#include <windows.h>
+#include "platform/code_page.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,10 +10,10 @@ static int convert(struct JsonTree *data, unsigned from, unsigned to, unsigned d
     size_t i;
     if (depth > 16) return 0;
     if (data->type == JSON_TREE_STRING) {
-        wchar_t *wide;
+        uint16_t *wide;
         char *text;
         if ((data->count > 16384 || memchr(data->u.text, 0, data->count)) ||
-            !MultiByteToWideChar(from, MB_ERR_INVALID_CHARS, data->u.text, -1, NULL, 0)) return 0;
+            !platform_code_page_is_valid(from, data->u.text)) return 0;
         wide = encoding_to_wide(from, data->u.text);
         if (!wide) return 0;
         text = encoding_from_wide(to, wide);

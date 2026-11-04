@@ -52,7 +52,7 @@ static void chat_line(struct UIWindowMgr *self, int msg, const char *text, COLOR
     if (strcmp(text, "No Msg") == 0 || strcmp(text, "NO MSG") == 0)
         return;
     drive_state_note_chat(text);
-    ui_window_send_msg(chat, NULL, msg == UIWM_MSG_CHAT_LINE_ALT ? 0x73 : 0x25, (int)(INT_PTR)text, (int)colour,
+    ui_window_send_msg(chat, NULL, msg == UIWM_MSG_CHAT_LINE_ALT ? 0x73 : 0x25, (intptr_t)text, (int)colour,
              val3, val4);
 }
 
@@ -69,7 +69,7 @@ static void show_chat(struct UIWindowMgr *self)
         ui_window_send_msg(self->new_chat_wnd, NULL, 0x10, 0, 0, 0, 0);
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct TreeNode *node;
 

@@ -21,7 +21,6 @@
 #include "ui/controls/controls.h"
 #include "ui/draw.h"
 #include "ui/skin.h"
-#include <mmsystem.h>
 #include "ui/ui_items.h"
 #include "ui/shops/shops.h"
 #include "ui/chat/chat_window_parts.h"
@@ -42,6 +41,8 @@
 #include "session/session_skills.h"
 #include "ui/character/popup_menu.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 
 #define EQUIP_WND_ID 0xa
 #define EQUIP_VIEW_WND_ID 0x8b
@@ -137,9 +138,6 @@ struct UIEquipWnd {
     struct UIAnimation animation;
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UIEquipWnd, viewing_other, 0x94);
-OFFSET_ASSERT(UIEquipWnd, info, 0xa8);
-OFFSET_ASSERT(UIEquipWnd, show_box, 0xbc);
 
 #define ITEM_LOCATION(info) ((info)->worn_location)
 
@@ -347,7 +345,7 @@ void ui_equip_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_equip_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
-int ui_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_equip_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_equip_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_equip_wnd_ops = {
     .destroy = ui_equip_wnd_destroy,
@@ -403,7 +401,7 @@ struct UIEquipWnd *ui_equip_wnd_construct(struct UIEquipWnd *self)
     self->drawn_key = 0;
     self->take_off_button = NULL;
     self->info = NULL;
-    self->created = timeGetTime();
+    self->created = platform_ticks_ms();
     self->bar_height = 0;
     self->tab = 0;
     self->top = 0x14;
@@ -722,7 +720,7 @@ static void equip_link_item(const struct ItemInfo *info)
 {
     struct UIWindow *edit;
 
-    if (!((GetAsyncKeyState(VK_SHIFT) >> 8) & 0xff))
+    if (!((platform_async_key_state(VK_SHIFT) >> 8) & 0xff))
         return;
     if (!ui_window_mgr_get_focus_edit(&g_windowMgr) || !info->identified)
         return;
@@ -889,7 +887,7 @@ void ui_equip_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (item.index) {
         struct UIWindow *info_wnd = ui_window_open(ITEM_INFO_WND_ID);
 
-        ui_window_send(info_wnd, NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+        ui_window_send(info_wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
@@ -925,8 +923,8 @@ static void equip_on_off_button(struct UIEquipWnd *self)
             return;
         }
         ui_window_send_msg(menu, NULL, MENU_MSG_RESET, 0, 0, 0, 0);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)"\xec\xb9\xb4\xed\x8a\xb8 \xed\x95\xb4\xec\xa0\x9c" /* "카트 해제" */, 0, 0, 0);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (int)string_cstr(&what), 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (intptr_t)"\xec\xb9\xb4\xed\x8a\xb8 \xed\x95\xb4\xec\xa0\x9c" /* "카트 해제" */, 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD, (intptr_t)string_cstr(&what), 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, 0xa, 0, 0, 0);
         ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
         ui_menu_set_hold(menu);
@@ -1018,8 +1016,8 @@ static void equip_on_command(struct UIEquipWnd *self, int id, int val2)
     }
 }
 
-int ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_equip_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UIEquipWnd *self = (struct UIEquipWnd *)window;
     struct UIWindow *wnd = &self->frame.base;

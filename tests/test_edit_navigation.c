@@ -95,7 +95,7 @@ void ui_window_remove_child(struct UIWindow *self, struct UIWindow *button, BYTE
         heap_button = NULL;
     }
 }
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)self; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
 struct UIHooks g_uiHooks;
 
@@ -257,7 +257,7 @@ static void check_multiline(void)
 }
 static void parse(struct UIEditCtrl *edit, const char *text)
 {
-    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (int)text, 0, 0, 0);
+    ui_edit_ctrl_send_msg((struct UIWindow *)(edit), NULL, UI_MSG_PARSE_LINKS, (intptr_t)text, 0, 0, 0);
 }
 static void check_replace(void)
 {

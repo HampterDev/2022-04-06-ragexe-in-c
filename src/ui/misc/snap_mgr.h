@@ -1,7 +1,7 @@
 #ifndef UI_MISC_SNAP_MGR_H
 #define UI_MISC_SNAP_MGR_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "std/container_types.h"
 
@@ -14,14 +14,11 @@ struct SnapObject {
     struct List sides[4];
     int visited;
 };
-OFFSET_ASSERT(SnapObject, visited, 0x24);
-SIZE_ASSERT(SnapObject, 0x28);
 
 struct SnapMgr {
     struct SnapObject *root;
     struct List objects;
 };
-SIZE_ASSERT(SnapMgr, 0xc);
 
 struct ListNode *snap_list_buy_node0(struct List *list, struct ListNode *next,
                                                 struct ListNode *prev);

@@ -12,6 +12,8 @@
 #include "core/msg_str.h"
 #include "platform/clientinfo.h"
 #include "session/session_skills.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #define LO(v) ((int)(v))
 #define HI(v) ((int)((unsigned long long)(v) >> 32))
@@ -142,7 +144,7 @@ void sound_maker_send_msg(struct GameObject *object, struct GameObject *source,
         render_object_send_msg(object, source, msg, par1, par2, par3, par4);
         return;
     }
-    rec = (const struct RswSound *)LO(par1);
+    rec = MSG_PTR(par1);
     string_assign_cstr(&self->wave, rec->waveName);
     self->volume = rec->volume;
     self->area_w = rec->width;
@@ -150,8 +152,8 @@ void sound_maker_send_msg(struct GameObject *object, struct GameObject *source,
     self->range = rec->range;
     memcpy(&self->pos, rec->pos, sizeof rec->pos);
     self->area_reach = float_sqrt((float)(self->area_w * self->area_w + self->area_h * self->area_h));
-    self->interval = (unsigned)(__int64)(rec->cycle * 1000.0f);
-    self->last_play = timeGetTime() - self->interval;
+    self->interval = (unsigned)(int64_t)(rec->cycle * 1000.0f);
+    self->last_play = platform_ticks_ms() - self->interval;
 }
 
 #define COPY_MSG(self, msg, par1, par2, par3, fade_step, fade_float, colour)                                     \

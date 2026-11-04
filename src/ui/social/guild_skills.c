@@ -79,7 +79,7 @@ void ui_guild_skill_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_skill_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_guild_skill_wnd_on_r_btn_up(struct UIWindow *self, int x_unused, int y_unused);
 void ui_guild_skill_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_guild_skill_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_skill_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIGuildWndOps ui_guild_skill_wnd_ops = {
     .base = {
@@ -500,7 +500,7 @@ static void open_menu(struct UIGuildSkillWnd *self)
     menu = ui_make_window(WND_ID_MENU);
     end = self->menu.last;
     for (entry = self->menu.first; entry != end; entry++)
-        ui_window_send_msg(menu, NULL, MSG_MENU_ADD_ITEM, (int)string_cstr(&entry->text), 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MSG_MENU_ADD_ITEM, (intptr_t)string_cstr(&entry->text), 0, 0, 0);
     ui_window_send_msg(menu, NULL, MSG_MENU_SET_OWNER, GUILD_TAB_WND_ID_FIRST + GUILD_TAB_SKILLS, 0, 0, 0);
     ui_window_send_msg(menu, NULL, MSG_MENU_FIT, 0, 0, 0, 0);
     x = g_mouse.x + 1;
@@ -565,7 +565,7 @@ static void command(struct UIGuildSkillWnd *self, int id)
             return;
         get_entry(self, &info, self->selected);
         if (info.level)
-            ui_window_send_msg(&self->base.frame.base, NULL, GUILD_SKILL_MSG_USE, (int)&info, 0, 0, 0);
+            ui_window_send_msg(&self->base.frame.base, NULL, GUILD_SKILL_MSG_USE, (intptr_t)&info, 0, 0, 0);
         skill_info_destruct(&info);
     } else if (id == UI_ID_CLOSE) {
         ui_close_window(GUILD_WND_ID);
@@ -583,8 +583,8 @@ static void command(struct UIGuildSkillWnd *self, int id)
     }
 }
 
-int ui_guild_skill_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_guild_skill_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildSkillWnd *self = (struct UIGuildSkillWnd *)window;
     switch (msg) {
@@ -622,7 +622,7 @@ int ui_guild_skill_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
         struct SkillInfo *info = (struct SkillInfo *)val1;
 
         if (info->level)
-            mode_send_message(client_current_mode(), MODE_REQ_USE_SKILL, (int)info, session_get_skill_table_value(&g_session1, info->id),
+            mode_send_message(client_current_mode(), MODE_REQ_USE_SKILL, (intptr_t)info, session_get_skill_table_value(&g_session1, info->id),
                           0, 0);
         return 0;
     }

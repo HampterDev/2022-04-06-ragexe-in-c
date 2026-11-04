@@ -3,8 +3,7 @@
 #include "ui/chat/balloon.h"
 #include "session/state.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/gamemode.h"
 #include "game/ui_bridge.h"
 #include "game/session_bridge.h"
@@ -13,6 +12,7 @@
 #include "core/text_util.h"
 #include "session/session_jobs.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 enum { PLAYER_MSG_SYNC_ATTACKED_POS = 0x95 };
 
@@ -71,7 +71,7 @@ static void line_from_msg(struct String *line, int msg)
 
 static void chat_line(const char *text)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, BONUS_LINE_COLOR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, BONUS_LINE_COLOR, 0, 0);
 }
 
 void game_mode_on_personal_info(struct GameMode *self, const struct PacketPersonalInfo *packet)
@@ -95,7 +95,7 @@ void game_mode_on_personal_info(struct GameMode *self, const struct PacketPerson
             cafe = *d;
     }
 
-    self->notice_shown_at = timeGetTime();
+    self->notice_shown_at = platform_ticks_ms();
     if (!self->notice_wnd) {
         void *block = mem_alloc(sizeof(struct UITransBalloonText));
         self->notice_wnd = block ? ui_trans_balloon_text_construct(block) : 0;
@@ -173,7 +173,7 @@ enum {
 
 static void action_failure_line(int msg, unsigned color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)msg_str(msg), color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)msg_str(msg), color, 0, 0);
 }
 
 static int ammo_kind_message(int job)

@@ -27,7 +27,7 @@ struct Mode;
 struct GameMode;
 #include "world/mode_dispatch.h"
 #include "game/mode_callbacks.h"
-static __inline int mode_send_msg(struct GameMode *mode, int msg, int a, int b, int c, int d)
+static __inline intptr_t mode_send_msg(struct GameMode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     return mode ? game_mode_send_msg((struct Mode *)mode, msg, a, b, c, d) : 0;
 }

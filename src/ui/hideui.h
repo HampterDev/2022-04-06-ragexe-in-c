@@ -1,7 +1,7 @@
 #ifndef HIDEUI_H
 #define HIDEUI_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 extern int hideui_clear_count;
 

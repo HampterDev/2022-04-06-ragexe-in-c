@@ -12,6 +12,7 @@
 
 #include "render/vec3.h"
 #include "actor/types.h"
+#include <stdint.h>
 
 enum SoundCueKind {
     SOUND_CUE_WAVE = 0,
@@ -23,7 +24,6 @@ struct SoundCue {
     float height;
     struct String wave;
 };
-OFFSET_ASSERT(SoundCue, wave, 0x0c);
 
 struct Effect;
 
@@ -85,11 +85,6 @@ struct Effect {
     unsigned char always_draw;
     int instance_key;
 };
-OFFSET_ASSERT(Effect, pos, 0x08);
-OFFSET_ASSERT(Effect, owner_aid, 0x20);
-OFFSET_ASSERT(Effect, frame, 0x28);
-OFFSET_ASSERT(Effect, out_of_range, 0x34);
-OFFSET_ASSERT(Effect, view_range, 0x38);
 
 struct Effect *effect_construct(struct Effect *self, int type);
 void effect_destruct(struct Effect *self);
@@ -132,7 +127,7 @@ struct RenderObject;
 int effect_add_world_object(struct World *expected_world, struct RenderObject *object);
 Vec3 *effect_player_position(Vec3 *out);
 
-float *effect_random_point_in_disc(float *out, float cx, float cy, __int64 radius);
+float *effect_random_point_in_disc(float *out, float cx, float cy, int64_t radius);
 
 #define ACTOR_POS(actor) (&((const struct RenderObject *)(actor))->pos)
 

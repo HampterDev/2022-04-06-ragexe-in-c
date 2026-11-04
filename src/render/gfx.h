@@ -2,7 +2,8 @@
 #define GFX_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
+#include "platform/window_handle.h"
 
 typedef struct gfx_surface gfx_surface;
 typedef struct gfx_vbuffer gfx_vbuffer;
@@ -163,6 +164,8 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_E_DISPLAY_MODE      0x82000009
 #define GFX_E_NO_PRIMARY        0x8200000e
 #define GFX_E_SURFACELOST        ((int)0x887601c2)
+#define GFX_E_FAIL               ((int)0x80004005)
+#define GFX_E_INVALIDARG         ((int)0x80070057)
 
 int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags);
 int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int flags);
@@ -176,7 +179,7 @@ int gfx_present(struct C3dDevice *d, int vsync, int whole);
 int gfx_restore_all(struct C3dDevice *d);
 void gfx_evict_managed_textures(struct C3dDevice *d);
 void gfx_set_mipmaps(int on);
-void gfx_enum_adapter(const GUID *adapter, const char *desc, HMONITOR monitor);
+void gfx_enum_adapter(const GUID *adapter, const char *desc, PlatformDisplay monitor);
 
 gfx_surface *gfx_create_surface(int w, int h);
 gfx_surface *gfx_create_texture(int w, int h, int fmt);
@@ -209,12 +212,13 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
 
 void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const WORD *indices, DWORD nindices);
 
-int gfx_ddraw_enumerate(BOOL (WINAPI *callback)(GUID *, LPSTR, LPSTR, LPVOID, HMONITOR), void *ctx, DWORD flags);
+typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, PlatformDisplay monitor);
+int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);
 
 unsigned gfx_content_version(gfx_surface *s);
 
 int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int fullscreen);
-HMONITOR gfx_adapter_monitor(const GUID *adapter);
+PlatformDisplay gfx_adapter_monitor(const GUID *adapter);
 
 int stale_guid(void);
 

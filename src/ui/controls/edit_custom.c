@@ -5,10 +5,10 @@
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
 #include "ui/game.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "ui/ui_std.h"
 #include "diag/perf.h"
+#include "core/numeric.h"
 
 struct UIEditCtrlCustom;
 struct UIWindow;
@@ -120,6 +120,7 @@ const struct UIEditCtrlOps ui_edit_ctrl_currency_ops = {
 #define UI_MSG_KEY 0x100
 
 #include "render/textdc.h"
+#include "platform/clock.h"
 
 static int text_width(struct UIEditCtrlCustom *self, const char *text, int len, int font_flag)
 {
@@ -190,12 +191,12 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
         sync_from_ime(self);
         if (edit->mask_char) {
             string_resize(&shown, edit->text.size, (char)edit->mask_char);
-            lo = min(edit->sel_start, edit->sel_end);
-            hi = max(edit->sel_start, edit->sel_end);
+            lo = int_min(edit->sel_start, edit->sel_end);
+            hi = int_max(edit->sel_start, edit->sel_end);
         } else {
             string_assign(&shown, string_cstr(&edit->text), edit->text.size);
-            lo = min(edit->sel_start, edit->sel_end);
-            hi = max(edit->sel_start, edit->sel_end) + (int)g_language->composition_length;
+            lo = int_min(edit->sel_start, edit->sel_end);
+            hi = int_max(edit->sel_start, edit->sel_end) + (int)g_language->composition_length;
         }
         x = aligned_x(self, &shown);
         lo_x = lo ? text_width(self, string_cstr(&shown), lo, 0) : 0;
@@ -205,12 +206,12 @@ void ui_edit_ctrl_custom_draw_text(struct UIEditCtrl *base_edit)
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
         } else if (g_language->composition_length) {
             ui_edit_ctrl_place_ime_candidates(edit, lo_x + x, 0, wnd->height);
-            if (!((timeGetTime() / CARET_BLINK_MS) & 1))
-                ui_edit_ctrl_draw_highlight(edit, lo_x + x, max(hi_x - lo_x, 2));
+            if (!((platform_ticks_ms() / CARET_BLINK_MS) & 1))
+                ui_edit_ctrl_draw_highlight(edit, lo_x + x, int_max(hi_x - lo_x, 2));
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
         } else {
             ui_edit_ctrl_custom_draw_string(self, x, y, string_cstr(&shown));
-            if (ui_edit_ctrl_caret_shown() == 1 && !((timeGetTime() / CARET_BLINK_MS) & 1))
+            if (ui_edit_ctrl_caret_shown() == 1 && !((platform_ticks_ms() / CARET_BLINK_MS) & 1))
                 ui_window_text_out(wnd, lo_x + x - 2, y, "|", 0, 0, EDIT_FONT_HEIGHT, edit->text_colour, 0, 0);
         }
     }
@@ -235,8 +236,8 @@ void ui_edit_ctrl_currency_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_edit_ctrl_currency_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_edit_ctrl_currency_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrlCurrency *self = (struct UIEditCtrlCurrency *)window;
     struct UIEditCtrl *edit = &self->custom.edit;
@@ -291,7 +292,7 @@ void ui_edit_ctrl_currency_on_process(struct UIWindow *window)
         p++;
     }
     memset(buf, 0, sizeof buf);
-    format_money64(_atoi64(string_cstr(&digits)), buf, sizeof buf);
+    format_money64(strtoll(string_cstr(&digits), NULL, 10), buf, sizeof buf);
     string_assign_cstr(text, buf);
     ui_edit_ctrl_truncate_to_ime(&self->custom.edit);
     language_cancel_input(g_language);

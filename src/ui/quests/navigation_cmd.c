@@ -10,7 +10,6 @@
 #include "ui/skin.h"
 #include "ui/ui_std.h"
 
-#include <mmsystem.h>
 
 #include <stdio.h>
 #include "ui/chat/chat_window_parts.h"
@@ -19,6 +18,7 @@
 #include "ui/chat/chat_window.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 #define MSG_NAVI_STOP_GUIDE 0x8bf
 #define MSG_NAVI_MOB_VERY_LOW 0x995
@@ -168,7 +168,7 @@ void ui_navigation_v4_wnd_put_link(struct UINavigationV4Wnd *self, struct String
         ui_window_mgr_set_focus_edit(&g_windowMgr, ui_chat_window_edit(g_windowMgr.new_chat_wnd));
     }
     focus = ui_window_mgr_get_focus_edit(&g_windowMgr);
-    ui_window_send_msg(focus, NULL, NAVI_CHAT_MSG_LINK, (int)string_cstr(&link), 0, 0, 0);
+    ui_window_send_msg(focus, NULL, NAVI_CHAT_MSG_LINK, (intptr_t)string_cstr(&link), 0, 0, 0);
     string_free(&link);
     string_free(&ys);
     string_free(&xs);
@@ -282,7 +282,7 @@ static void share(struct UINavigationV4Wnd *self)
     if (kind <= 1) {
         ui_navigation_v4_wnd_layout_route(self);
         g_navi.windowPage = NAVI_VIEW_TARGET;
-        self->hint_until = timeGetTime() + 5000;
+        self->hint_until = platform_ticks_ms() + 5000;
         return;
     }
     navi_manager_guided(&g_navi, &result);
@@ -340,7 +340,7 @@ static unsigned find_rsw(const struct String *s)
 
 static void airship_refuse(struct UIWindow *wnd, int msg)
 {
-    ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (int)msg_str(msg), 0, 0, 0);
+    ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(msg), 0, 0, 0);
     ui_window_send_msg(wnd, NULL, AIRPLANE_MSG_DISABLE_ALL, 0, 0, 0, 0);
 }
 
@@ -359,7 +359,7 @@ static void open_airship(struct UINavigationV4Wnd *self)
              (int)((double)(g_renderer->height - 0x6e) * 0.5));
     ui_window_mgr_add_window(&g_windowMgr, wnd);
     if (navi_manager_guided_kind(&g_navi) == 2)
-        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (int)msg_str(MSG_AIRPLANE_GUIDED_MOB), 0, 0, 0);
+        ui_private_airplane_wnd_send_msg(wnd, NULL, AIRPLANE_MSG_NOTICE, (intptr_t)msg_str(MSG_AIRPLANE_GUIDED_MOB), 0, 0, 0);
 
     map_name = game_current_map_name();
     string_init(&here);
@@ -407,7 +407,7 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     case NAVI_ID_MAXIMIZE:
         g_navi.windowCollapsed = 0;
         self->frame.base.alpha_target = 0xff;
-        self->frame.base.alpha_time = timeGetTime();
+        self->frame.base.alpha_time = platform_ticks_ms();
         g_navi.windowHidden = 0;
         ui_navigation_v4_wnd_relayout(self);
         break;
@@ -417,7 +417,7 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     case NAVI_ID_MINIMIZE:
         g_navi.windowCollapsed = 1;
         self->frame.base.alpha_target = 0xaa;
-        self->frame.base.alpha_time = timeGetTime();
+        self->frame.base.alpha_time = platform_ticks_ms();
         if (g_windowMgr.kafra_move_map_service_info_wnd)
             ui_ro_map_wnd_place_search((struct UIRoMapWnd *)g_windowMgr.kafra_move_map_service_info_wnd);
         ui_navigation_v4_wnd_relayout(self);
@@ -477,8 +477,8 @@ static void command(struct UINavigationV4Wnd *self, int id, int val2, int val3, 
     }
 }
 
-int ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_navigation_v4_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINavigationV4Wnd *self = (struct UINavigationV4Wnd *)window;
     switch (msg) {

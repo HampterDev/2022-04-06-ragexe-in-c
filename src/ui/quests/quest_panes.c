@@ -41,7 +41,7 @@ void ui_ongoing_quest_scroll_wnd_destroy(struct UIWindow *window);
 void ui_ongoing_quest_scroll_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_ongoing_quest_scroll_wnd_on_draw(struct UIWindow *self);
 void ui_ongoing_quest_scroll_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ongoing_quest_scroll_wnd_ops = {
     .destroy = ui_ongoing_quest_scroll_wnd_destroy,
     .resize = ui_scroll_wnd_resize,
@@ -92,7 +92,6 @@ struct UIOngoingQuestScrollWnd {
     int quest_id;
     int line_height;
 };
-SIZE_ASSERT(UIOngoingQuestScrollWnd, 0xc4);
 
 static int pane_text_width(struct UIScrollWnd *pane, const char *text)
 {
@@ -194,8 +193,8 @@ static void pane_on_draw(struct UIScrollWnd *pane)
         ui_window_invalidate(pane->base.parent);
 }
 
-static int pane_send_msg(struct UIScrollWnd *pane, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                        int val4)
+static intptr_t pane_send_msg(struct UIScrollWnd *pane, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                        intptr_t val4)
 {
     if (msg == UI_MSG_COMMAND && val1 == UI_ID_CLOSE)
         ui_close_window(QUEST_DETAIL_WND_ID);
@@ -262,26 +261,24 @@ static void ongoing_hunt_text(const struct RenewQuestB *info, int i, char *out, 
     if (info->plain.hunt_mob[i] == QUEST_HUNT_ANY_MOB) {
         struct String kinds;
         renew_quest_condition_text(g_questTable, &kinds, info->plain.hunt_flags[i], min, max);
-        _snprintf(what, sizeof what, "%s", string_cstr(&kinds));
+        snprintf(what, sizeof what, "%s", string_cstr(&kinds));
         string_free(&kinds);
     } else if (min < 0 || max < 0 || (min == 0 && max == 0)) {
-        _snprintf(what, sizeof what, "%s", info->plain.hunt_name[i]);
+        snprintf(what, sizeof what, "%s", info->plain.hunt_name[i]);
     } else if (min == 0) {
-        _snprintf(what, sizeof what, hunt_up_to_format, info->plain.hunt_name[i], max);
+        snprintf(what, sizeof what, hunt_up_to_format, info->plain.hunt_name[i], max);
     } else if (max == 0) {
-        _snprintf(what, sizeof what, hunt_from_format, info->plain.hunt_name[i], min);
+        snprintf(what, sizeof what, hunt_from_format, info->plain.hunt_name[i], min);
     } else {
-        _snprintf(what, sizeof what, "%s Lv.%d~Lv.%d", info->plain.hunt_name[i], min, max);
+        snprintf(what, sizeof what, "%s Lv.%d~Lv.%d", info->plain.hunt_name[i], min, max);
     }
-    what[sizeof what - 1] = 0;
 
     if (info->plain.hunt_goal[i] <= 0)
-        _snprintf(out, size, "%s", what);
+        snprintf(out, size, "%s", what);
     else if (info->plain.hunt_done[i] != info->plain.hunt_goal[i])
-        _snprintf(out, size, "%s ( %d / %d )", what, info->plain.hunt_done[i], info->plain.hunt_goal[i]);
+        snprintf(out, size, "%s ( %d / %d )", what, info->plain.hunt_done[i], info->plain.hunt_goal[i]);
     else
-        _snprintf(out, size, "%s ( %s )", what, msg_str(MSG_QUEST_HUNT_DONE));
-    out[size - 1] = 0;
+        snprintf(out, size, "%s ( %s )", what, msg_str(MSG_QUEST_HUNT_DONE));
 }
 
 void ui_ongoing_quest_scroll_wnd_update_hunts(struct UIOngoingQuestScrollWnd *self)
@@ -324,14 +321,12 @@ static int ongoing_add_reward(struct UIOngoingQuestScrollWnd *self, const struct
     if (!reward->item_id)
         return y;
     item = item_table_get(reward->item_id);
-    _snprintf(text, sizeof text, ITEM_BMP_FMT, item->resName ? item->resName : ITEM_FALLBACK_RESOURCE);
-    text[sizeof text - 1] = 0;
+    snprintf(text, sizeof text, ITEM_BMP_FMT, item->resName ? item->resName : ITEM_FALLBACK_RESOURCE);
     pane_add_bitmap(pane, text, 0x74, y + 7);
 
     name = pane_add_label(pane, item->name, 0x9a, y + 5);
     ui_static_text_set_text_colour(name, 0, 0, 0);
-    _snprintf(text, sizeof text, msg_str(MSG_REWARD_COUNT), reward->count);
-    text[sizeof text - 1] = 0;
+    snprintf(text, sizeof text, msg_str(MSG_REWARD_COUNT), reward->count);
     pane_add_blue_label(pane, text, 0x9a, y + 0x14);
     return y + 3 + box->height;
 }
@@ -406,8 +401,8 @@ void ui_ongoing_quest_scroll_wnd_set_quest(struct UIOngoingQuestScrollWnd *self,
     ui_window_invalidate_base(&pane->base);
 }
 
-int ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_ongoing_quest_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIOngoingQuestScrollWnd *self = (struct UIOngoingQuestScrollWnd *)window;
     if (msg == QUEST_MSG_REFRESH)

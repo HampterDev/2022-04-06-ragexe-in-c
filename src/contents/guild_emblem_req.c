@@ -1,12 +1,12 @@
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <stdint.h>
 #include <string.h>
 #include "contents/guild_emblem_transport.h"
 #include "contents/guild_emblem_req.h"
 #include "core/fatal.h"
 #include "core/memory.h"
+#include "platform/clock.h"
 
 #define EMBLEM_RESEND_AFTER_MS 60000
 
@@ -86,7 +86,7 @@ static void expire_sent(struct GuildEmblemReqBundle *bundle)
     while (bundle->sent.count) {
         const struct SentEmblemRequest *sent = queue_at(&bundle->sent, 0, sizeof *sent);
 
-        if (timeGetTime() < sent->sent_at + EMBLEM_RESEND_AFTER_MS)
+        if (platform_ticks_ms() < sent->sent_at + EMBLEM_RESEND_AFTER_MS)
             break;
         queue_pop(&bundle->sent);
     }
@@ -136,7 +136,7 @@ void emblem_bundle_process(struct GuildEmblemReqBundle *bundle)
             return;
         }
         sent.request = request;
-        sent.sent_at = timeGetTime();
+        sent.sent_at = platform_ticks_ms();
         queue_append(&bundle->sent, &sent, sizeof sent);
         return;
     }

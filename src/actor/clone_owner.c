@@ -1,6 +1,6 @@
 #include "game/context.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "actor/liveness.h"
 #include "std/list.h"
 #include "actor/clone_owner.h"

@@ -13,6 +13,7 @@
 #include "core/text_util.h"
 #include "fileio/res_mgr.h"
 #include "diag/perf.h"
+#include "core/cstr.h"
 
 struct UIBalloonText;
 struct UIWindow;
@@ -415,7 +416,6 @@ struct UIAchBalloonText {
     struct UITransBalloonText trans;
     int font_face;
 };
-SIZE_ASSERT(UIAchBalloonText, 0xd0);
 
 static struct UIAchBalloonText *ui_ach_balloon_text_construct(struct UIAchBalloonText *self)
 {
@@ -846,7 +846,7 @@ void ui_color_trans_balloon_text_on_draw(struct UIWindow *window)
 static void name_copy_text(char *buf, const struct String *text)
 {
     memset(buf, 0, NAME_TEXT_BUF);
-    strncpy_s(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
+    cstr_copy_n(buf, NAME_TEXT_BUF, string_cstr(text), text->size);
 }
 
 static void name_add_line(struct UIBalloonText *b, const char *text)
@@ -886,14 +886,14 @@ void ui_name_balloon_text_set_name_text(struct UINameBalloonText *self, const st
     } else {
         name_copy_text(buf, &info->party);
         memset(line, 0, sizeof line);
-        sprintf_s(line, sizeof line, "%s (%s)", string_cstr(&name), buf);
+        snprintf(line, sizeof line, "%s (%s)", string_cstr(&name), buf);
         name_add_line(b, line);
     }
     if (string_cstr(&info->guild)[0]) {
         name_copy_text(buf2, &info->guild);
         name_copy_text(buf, &info->position);
         memset(line, 0, sizeof line);
-        sprintf_s(line, sizeof line, "%s [%s]", buf2, buf);
+        snprintf(line, sizeof line, "%s [%s]", buf2, buf);
         name_add_line(b, line);
     }
     for (i = 0; i < b->lines.size; i++) {

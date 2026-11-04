@@ -12,7 +12,6 @@
 #include "ui/ui_items.h"
 #include "ui/controls/controls.h"
 #include "ui/ui_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "game/drag_info.h"
@@ -210,7 +209,7 @@ void ui_slot_bmp_button_on_draw(struct UIWindow *window)
         if (self->style == 0 && self->selected == 1) {
             path = ui_skin_path(SLOT_DIR "img_slot2_select.bmp");
         } else if (self->style == 1 && self->selected == 1) {
-            _snprintf(name, (size_t)-1, SLOT_DIR "img_slot_select%d.bmp", self->anim_tick / self->anim_divisor);
+            snprintf(name, sizeof name, SLOT_DIR "img_slot_select%d.bmp", self->anim_tick / self->anim_divisor);
             path = ui_skin_path(name);
         }
         if (path) {
@@ -301,8 +300,8 @@ void ui_slot_bmp_button_on_r_btn_down(struct UIWindow *window, int x, int y)
         ui_window_send_msg(wnd->parent, wnd, UI_MSG_COMMAND, wnd->id, SLOT_VAL_R_BTN_DOWN, 0, 0);
 }
 
-int ui_slot_bmp_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_slot_bmp_button_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISlotBmpButton *self = (struct UISlotBmpButton *)window;
     if (msg == UI_MSG_SET_STATE) {

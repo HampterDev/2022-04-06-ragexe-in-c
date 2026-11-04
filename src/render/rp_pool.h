@@ -28,7 +28,7 @@ void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
-unsigned long rp_fog_blend(unsigned long argb);
+DWORD rp_fog_blend(DWORD argb);
 int rp_vertex_fog_alpha(float rhw);
 
 void renderer_destroy_all_rp_list(struct Renderer *self);

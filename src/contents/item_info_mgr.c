@@ -1,5 +1,5 @@
 #include "contents/item_info_mgr.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -8,7 +8,8 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
-#include "platform/win_utf8.h"
+#include "platform/window.h"
+#include "contents/lua_file.h"
 
 struct OwnedItem {
     struct ItemDefinition value;
@@ -306,13 +307,13 @@ static int load_script(lua_State *L)
     };
     struct ItemBuilder *builder = lua_touserdata(L, 1);
     size_t i;
-    luaL_openlibs(L);
+    lua_open_client_libs(L);
     for (i = 0; i < sizeof callbacks / sizeof callbacks[0]; ++i) {
         lua_pushlightuserdata(L, builder);
         lua_pushcclosure(L, callbacks[i].callback, 1);
         lua_setglobal(L, callbacks[i].name);
     }
-    if (luaL_loadfile(L, "System\\iteminfo_true.lub") != 0) return lua_error(L);
+    if (lua_load_disk_file(L, "System\\iteminfo_true.lub") != 0) return lua_error(L);
     lua_call(L, 0, 0);
     lua_getglobal(L, "main");
     lua_call(L, 0, 2);
@@ -344,7 +345,7 @@ int item_info_load(void)
     ok = lua_cpcall(L, load_script, &builder) == 0;
     if (!ok) {
         const char *error = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : NULL;
-        win_utf8_message_box(NULL, error ? error : "Item info script failed", "CItemInfoMgr", 0);
+        platform_message_box(NULL, error ? error : "Item info script failed", "CItemInfoMgr", 0);
     }
     lua_close(L);
     free(builder.index);

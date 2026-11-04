@@ -6,6 +6,7 @@
 #include <string.h>
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
 
 static struct ItemInfo *copy_by_index(struct ItemInfo *out, struct List *list, int index)
 {
@@ -164,14 +165,14 @@ int session_get_store_purchase_count(struct Session *self, int index)
     return count_by_index(&self->storePurchaseItems, index);
 }
 
-__int64 session_purchase_total(struct Session *self)
+int64_t session_purchase_total(struct Session *self)
 {
     struct ListNode *node;
-    __int64 total = 0;
+    int64_t total = 0;
 
     for (node = self->storePurchaseItems.head->next; node != self->storePurchaseItems.head; node = node->next) {
         const struct ItemInfo *item = LIST_VALUE(node, struct ItemInfo);
-        total += (__int64)item->charged_price * item->count;
+        total += (int64_t)item->charged_price * item->count;
     }
     return total;
 }

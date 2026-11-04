@@ -1,3 +1,5 @@
+#include "platform/filesystem.h"
+#include "core/client_path.h"
 #include "render/renderer.h"
 #include "session/character_name.h"
 #include "contents/guild_info.h"
@@ -9,11 +11,8 @@
 #include "session/session_windows.h"
 
 #include <stdio.h>
-#include <io.h>
-#include <direct.h>
 #include <stdlib.h>
 #include <string.h>
-#include <mmsystem.h>
 #include "render/render_api.h"
 #include "platform/language.h"
 #include "core/file_util.h"
@@ -21,6 +20,7 @@
 #include "ui/wndmgr/wndmgr.h"
 #include "core/app.h"
 #include "game/store_search_items.h"
+#include "platform/clock.h"
 
 void session_clear_shorten_item_name(struct Session *self)
 {
@@ -142,7 +142,7 @@ int session_get_transparent_item_alpha(struct Session *self, int key)
         return p->hi;
     base = p->hi >= p->lo ? p->lo : p->hi;
     half = (int)((float)(int)p->period * 0.5f);
-    t = timeGetTime() % p->period;
+    t = platform_ticks_ms() % p->period;
     if ((int)t > half)
         t = p->period - t;
     value = (int)((float)(int)t / (float)half * (float)range + (float)base);
@@ -215,10 +215,10 @@ void session_save_mini_party_info(struct Session *self)
         char line[0x200];
 
         memset(line, 0, sizeof line);
-        sprintf_s(line, 0x200, "{%s,%d,%d,%d}\n", session_character_name(&g_session1), v->found, v->id, v->cell);
+        snprintf(line, 0x200, "{%s,%d,%d,%d}\n", session_character_name(&g_session1), v->found, v->id, v->cell);
         string_append_cstr(&text, line);
     }
-    f = fopen("savedata\\MiniPartyInfo.lua", "w");
+    f = platform_file_open("savedata\\MiniPartyInfo.lua", "w");
     if (f) {
         int (*print)(FILE *, const char *, ...) = fprintf;
         print(f, string_cstr(&text));
@@ -239,22 +239,23 @@ void session_save_emblem(struct Session *self, const void *data, size_t size,
 
     if (guildId == g_guildInfo.guild_id)
         guild_mgr_set_emblem_version(g_guildMgr, guildId, version);
-    sprintf(dir, "%s\\_tmpEmblem\\", g_clientDir);
-    if (_access(dir, 0) != 0 && _mkdir(dir) == -1)
+    client_path(dir, sizeof dir, "_tmpEmblem\\");
+    if (!platform_path_exists(dir) && platform_directory_create(dir) == -1)
         return;
     sprintf(name, "%s_%d_*.ebm", string_cstr(&self->worldName), guildId);
     list_init(&files);
     dir_list_names_list(&files, dir, name);
     for (node = files.head->next; node != files.head; node = node->next) {
-        sprintf(name, "%s%s", dir, string_cstr(LIST_VALUE(node, struct String)));
-        _chmod(name, 0x80);
-        _unlink(name);
+        if (!platform_path_join(name, sizeof name, dir, string_cstr(LIST_VALUE(node, struct String))))
+            continue;
+        platform_file_make_writable(name);
+        platform_file_remove(name);
     }
     {
         struct String name;
 
         guild_emblem_name(&name, &self->worldName, (unsigned)guildId, version);
-        snprintf(path, sizeof path, "%s%s", dir, string_cstr(&name));
+        platform_path_join(path, sizeof path, dir, string_cstr(&name));
         string_free(&name);
     }
     f = fopen(path, "wb");
@@ -288,20 +289,20 @@ void session_set_plate_cell(struct Session *self, int memberId, int value)
 
 void session_set_server_time(struct Session *self, DWORD serverTime)
 {
-    self->serverTimeOffset = timeGetTime() - serverTime;
+    self->serverTimeOffset = platform_ticks_ms() - serverTime;
     self->serverTimeLagCount = 0;
 }
 
 void session_sync_server_time(struct Session *self, DWORD serverTime)
 {
-    DWORD now = timeGetTime() - 72 - self->serverTimeOffset;
+    DWORD now = platform_ticks_ms() - 72 - self->serverTimeOffset;
 
     if (now + 72 < serverTime) {
-        self->serverTimeOffset = timeGetTime() - serverTime;
+        self->serverTimeOffset = platform_ticks_ms() - serverTime;
     } else if (now + 72 > serverTime + 0x90) {
         if (++self->serverTimeLagCount < 4)
             return;
-        self->serverTimeOffset = timeGetTime() + (72 - now);
+        self->serverTimeOffset = platform_ticks_ms() + (72 - now);
     }
     self->serverTimeLagCount = 0;
 }

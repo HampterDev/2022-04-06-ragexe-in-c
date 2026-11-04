@@ -24,7 +24,7 @@ BYTE ui_quest_display_is_click_through(struct UIWindow *self);
 void ui_quest_display_store_info(struct UIWindow *self);
 void ui_quest_display_on_draw(struct UIWindow *self);
 void ui_quest_display_on_r_btn_up(struct UIWindow *self, int x, int y);
-int ui_quest_display_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_quest_display_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_quest_display_ops = {
     .destroy = ui_quest_display_destroy,
     .resize = ui_window_resize_base,
@@ -96,8 +96,6 @@ struct UIQuestDisplay {
     struct Vec menu;
     int *setting;
 };
-OFFSET_ASSERT(UIQuestDisplay, menu, 0x84);
-SIZE_ASSERT(UIQuestDisplay, 0x94);
 
 #pragma pack(push, 1)
 struct PacketQuestActive {
@@ -364,7 +362,7 @@ static void open_menu(struct UIQuestDisplay *self)
 
     menu = ui_window_open(WND_ID_MENU);
     for (i = 0; i < MENU_ENTRY_COUNT(&self->menu); i++)
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (int)string_cstr(&MENU_ENTRIES(&self->menu)[i].text), 0,
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (intptr_t)string_cstr(&MENU_ENTRIES(&self->menu)[i].text), 0,
                  0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, QUEST_DISPLAY_WND_ID, 0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
@@ -421,8 +419,8 @@ static void menu_choice(struct UIQuestDisplay *self, int item)
     }
 }
 
-int ui_quest_display_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                      int val3, int val4)
+intptr_t ui_quest_display_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                      intptr_t val3, intptr_t val4)
 {
     struct UIQuestDisplay *self = (struct UIQuestDisplay *)window;
     switch (msg) {

@@ -5,17 +5,19 @@
 #include "render/render_api.h"
 #include "diag/perf.h"
 #include "render/cdc.h"
-#include <mmsystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
 #include <math.h>
-#include "platform/win_utf8.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 
 static const char unsupported_caption[] = "notsuppot";
 
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
+#endif
 
 static WORD pixel16(const struct C3dDevice *dev, DWORD r, DWORD g, DWORD b)
 {
@@ -202,7 +204,9 @@ struct Texture *texture_create(int width, int height, int format)
 
 struct Texture *texture_init(struct Texture *self, int width, int height, int format)
 {
+    static unsigned serial;
     memset(self, 0, sizeof *self);
+    self->serial = ++serial;
     self->base.ops = &texture_surface_ops;
     if (format == GFX_FMT_BUMP)
         texture_create_bump(self, width, height);
@@ -268,9 +272,9 @@ int texture_recreate(struct Texture *self, int width, int height, int format)
 static void bump_caps_check(void)
 {
     if (!g_gfxCaps.bumpEnv)
-        win_utf8_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
+        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAP", unsupported_caption, 0);
     if (!g_gfxCaps.bumpEnvLuminance)
-        win_utf8_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
+        platform_message_box(NULL, "D3DTEXOPCAPS_BUMPENVMAPLUMINANCE", unsupported_caption, 0);
 }
 
 int texture_create_bump(struct Texture *self, int width, int height)
@@ -330,7 +334,7 @@ int texture_create_bump(struct Texture *self, int width, int height)
 
 void texture_lock(struct Texture *self)
 {
-    self->lastUse = timeGetTime();
+    self->lastUse = platform_ticks_ms();
     self->lockCount++;
 }
 

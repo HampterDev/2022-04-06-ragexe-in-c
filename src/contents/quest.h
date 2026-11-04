@@ -2,6 +2,7 @@
 #define CONTENTS_QUEST_H
 #include "base.h"
 #include "std/container_types.h"
+#include <stdint.h>
 
 #define RENEW_QUEST_TEXT_TITLE      0
 #define RENEW_QUEST_TEXT_ICON       1
@@ -31,7 +32,7 @@ struct RenewQuestPlain {
     short hunt_done[RENEW_QUEST_HUNT_MAX];
     char hunt_name[RENEW_QUEST_HUNT_MAX][RENEW_QUEST_HUNT_NAME];
     short hunt_goal[RENEW_QUEST_HUNT_MAX];
-    __int64 hunt_id[RENEW_QUEST_HUNT_MAX];
+    int64_t hunt_id[RENEW_QUEST_HUNT_MAX];
     int hunt_flags[RENEW_QUEST_HUNT_MAX];
     short hunt_min_level[RENEW_QUEST_HUNT_MAX];
     short hunt_max_level[RENEW_QUEST_HUNT_MAX];

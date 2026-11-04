@@ -2,6 +2,7 @@
 #define UI_ITEM_NAME_RUNS_H
 
 #include "std/string.h"
+#include "platform/win_types.h"
 #include <stddef.h>
 
 struct UIWindow;
@@ -12,13 +13,13 @@ struct ItemNameRuns {
     size_t ends[8];
     size_t count;
     size_t marked;
-    unsigned long mark_colour;
+    COLORREF mark_colour;
 };
 
 void item_name_runs_end(struct ItemNameRuns *runs);
 void item_info_name_runs(struct UIWindow *window, const struct ItemInfo *item,
                       struct ItemNameRuns *runs, int twice_maker, int with_sockets);
 int ui_window_draw_runs_shortened(struct UIWindow *window, int x, int y, int max_width,
-                              const struct ItemNameRuns *runs, unsigned long colour,
+                              const struct ItemNameRuns *runs, COLORREF colour,
                               int line_height);
 #endif

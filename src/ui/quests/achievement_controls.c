@@ -449,7 +449,7 @@ void ui_tool_tip_bitmap_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     item_info_set_item_id(&info, self->item_id);
     info.identified = 1;
     wnd = ui_window_open(ITEM_INFO_WND_ID);
-    ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (int)&info, 0, 0, 0);
+    ui_window_send(wnd, NULL, UI_MSG_SHOW_ITEM, (intptr_t)&info, 0, 0, 0);
     item_info_destruct(&info);
 }
 

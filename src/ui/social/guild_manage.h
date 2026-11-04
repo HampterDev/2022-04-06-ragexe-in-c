@@ -21,7 +21,6 @@
 #include "ui/game.h"
 #include "ui/ui_items.h"
 #include "ui/runtime.h"
-#include <mmsystem.h>
 #include "ui/ui_std.h"
 
 #define GUILD_TAX_MAX 0x32

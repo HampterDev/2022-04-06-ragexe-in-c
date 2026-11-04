@@ -11,9 +11,10 @@
 #include "contents/sound.h"
 #include "world/pick_node.h"
 #include "platform/client_config.h"
+#include "platform/settings.h"
 #include "session/state.h"
 #include "game/mode_callbacks.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/camera.h"
 #include "game/client.h"
@@ -23,14 +24,12 @@
 #include "game/chat.h"
 #include "session/session_state.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "platform/win_utf8.h"
 
 void game_mode_on_exit(struct Mode *mode)
 {
     struct GameMode *self = (struct GameMode *)mode;
     char path[0x200];
-    HKEY key;
-    DWORD disposition;
+    struct PlatformSettingsKey *key;
     struct Schedule *schedule;
 
     adventurer_agency_reset(g_adventurerAgency);
@@ -64,10 +63,9 @@ void game_mode_on_exit(struct Mode *mode)
         strcat(path, "\\NameBaloon");
         strcat(path, "\\");
         strcat(path, string_cstr(&g_session1.serverName));
-        disposition = 0;
-        if (win_utf8_reg_create_key(HKEY_CURRENT_USER, path, 0, NULL, 0, 0xf003f, NULL, &key, &disposition) == 0) {
-            win_utf8_reg_set_value(key, "POS", 0, REG_DWORD, (const BYTE *)&self->name_balloon_pos, 4);
-            RegCloseKey(key);
+        if (platform_settings_create(path, PLATFORM_SETTINGS_ALL, &key)) {
+            platform_settings_write(key, "POS", PLATFORM_SETTING_DWORD, &self->name_balloon_pos, 4);
+            platform_settings_close(key);
         }
 
         if (self->camera_free != 0) {

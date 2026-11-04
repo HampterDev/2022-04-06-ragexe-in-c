@@ -9,6 +9,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "session/session_talk.h"
+#include <stdint.h>
 
 #pragma pack(push, 1)
 struct PacketNotifyGroundSkill {
@@ -114,12 +115,12 @@ void game_mode_on_notify_ground_skill(struct GameMode *self, const struct Packet
     info.y = packet->y;
     info.level = packet->level;
     if ((unsigned)packet->aid == (unsigned)g_session1.ownAid) {
-        render_object_send(self->world->player, NULL, ACTOR_MSG_GROUND_SKILL, (__int64)(int)&info, 0, 0, 0);
+        render_object_send(self->world->player, NULL, ACTOR_MSG_GROUND_SKILL, (intptr_t)&info, 0, 0, 0);
         caster = (struct GameActor *)self->world->player;
     } else {
         struct GameActor *actor = world_get_game_actor_by_aid(self->world, packet->aid);
         if (actor) {
-            render_object_send(actor, NULL, ACTOR_MSG_GROUND_SKILL, (__int64)(int)&info, 0, 0, 0);
+            render_object_send(actor, NULL, ACTOR_MSG_GROUND_SKILL, (intptr_t)&info, 0, 0, 0);
             caster = actor;
         }
     }
@@ -130,7 +131,7 @@ void game_mode_on_notify_ground_skill(struct GameMode *self, const struct Packet
         monster_ground_skill(caster, job, packet);
         return;
     }
-    mode_send_msg(self, MODE_MSG_GROUND_SKILL, packet->skill_id, (int)caster, packet->level, 0);
+    mode_send_msg(self, MODE_MSG_GROUND_SKILL, packet->skill_id, (intptr_t)caster, packet->level, 0);
 
     switch (packet->skill_id) {
     case SKILL_GOSPEL:

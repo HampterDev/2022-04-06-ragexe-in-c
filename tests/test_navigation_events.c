@@ -42,12 +42,12 @@ struct UIWindow *ui_window_open(int id)
     if (open_ok) g_windowMgr.navigation_v4_wnd = &window.frame.base;
     return g_windowMgr.navigation_v4_wnd;
 }
-int ui_window_send(struct UIWindow *value, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *value, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { assert(value == &window.frame.base && !sender && message == UI_MSG_COMMAND && a == NAVI_ID_MAXIMIZE && !b && !c && !d); ++commands; return 0; }
 void ui_window_mgr_raise_window(struct UIWindowMgr *owner, struct UIWindow *value)
 { assert(owner == &g_windowMgr && value == g_windowMgr.navigation_v4_wnd); ++raised; }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *owner, int id) { (void)owner; (void)id; abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *owner, int message, int text, int colour, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *owner, int message, intptr_t text, intptr_t colour, intptr_t c, intptr_t d)
 { assert(owner == &g_windowMgr && message == 1 && text && colour == 0x62b0ff && !c && !d); ++chat_lines; return 1; }
 int ui_window_mgr_message_box(struct UIWindowMgr *owner, const char *text, int type, int a, int b, int c, const char *title, int width, int height, int d)
 { assert(owner == &g_windowMgr && text && !type && a == 1 && !b && !c && !strcmp(title, UI_MSGBOX_TITLE) && width == 280 && height == 120 && !d); ++boxes; return 0; }

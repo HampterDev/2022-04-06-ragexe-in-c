@@ -1,5 +1,6 @@
 #ifndef GAMEMODE_CELLS_H
 #define GAMEMODE_CELLS_H
+#include "core/compiler.h"
 
 struct GameMode;
 
@@ -16,8 +17,8 @@ int game_mode_angle_to_direction(float degrees);
 char game_mode_is_within_cells(const int *a_x, const int *a_y, const int *b_x, const int *b_y,
                             int range);
 
-__declspec(noinline) char game_mode_is_cell_blocked(struct GameMode *self, int x, int y);
-__declspec(noinline) char game_mode_is_cell_occupied(struct GameMode *self, int x, int y);
+RAGE_NOINLINE char game_mode_is_cell_blocked(struct GameMode *self, int x, int y);
+RAGE_NOINLINE char game_mode_is_cell_occupied(struct GameMode *self, int x, int y);
 char game_mode_can_find_path(struct GameMode *self, int from_x, int from_y, int from_sub_x,
                           int from_sub_y, int to_x, int to_y);
 char game_mode_is_valid_cell(struct GameMode *self, int x, int y);

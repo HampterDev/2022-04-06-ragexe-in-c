@@ -5,6 +5,7 @@
 #include "effects/render_object.h"
 #include "actor/game_actor.h"
 #include "effects/skills/mandra_attack_effect.h"
+#include "platform/clock.h"
 
 #define MONSTER_DIR "몬스터\\"
 
@@ -154,7 +155,7 @@ void mandra_attack_effect_send_msg(struct GameObject *object, struct GameObject 
     render_object_get_actor_pos(&self->base, (int)par1, &target);
     self->base.pos = target;
     self->base.visible = 1;
-    self->base.start_tick = timeGetTime();
+    self->base.start_tick = platform_ticks_ms();
     render_object_set_motion_delay(&self->base, act_res_get_delay(render_object_get_act_res(&self->base), 0));
     if (job == JOB_HYDRA)
         render_object_set_motion_delay(&self->base, 2.0f);

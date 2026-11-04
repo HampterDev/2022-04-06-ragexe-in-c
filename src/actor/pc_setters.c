@@ -13,6 +13,7 @@
 #include "session/session_talk.h"
 #include "ui/ui_std.h"
 #include "session/session_skills.h"
+#include <stdint.h>
 
 void pc_set_imf_name(struct GameActor * base_actor)
 {
@@ -381,7 +382,7 @@ void pc_set_weapon(struct GameActor * base_actor, int64_t weapon)
 
     self->weapon = weapon;
     if (!session_job_accepts_value(&g_session1, game_actor_get_job((struct GameActor *)self),
-                                  (unsigned __int64)weapon)) {
+                                  (uint64_t)weapon)) {
         pc_set_layer_act(self, 5, "");
         pc_set_layer_spr(self, 5, "");
         pc_set_layer_act(self, 6, "");
@@ -418,7 +419,7 @@ void pc_set_weapon(struct GameActor * base_actor, int64_t weapon)
     string_free(&act);
 }
 
-int pc_weapon_pair_kind(__int64 weapon);
+int pc_weapon_pair_kind(int64_t weapon);
 int pc_job_weapon_kind(struct Pc *self, int kind);
 
 static int pc_res_available(const struct String *name)
@@ -566,7 +567,7 @@ static int weapon_group_c(int id)
     return (id >= 0x514 && id < 0x546) || (unsigned)(id - 0x7ef40) <= 0x270f;
 }
 
-int pc_weapon_pair_kind(__int64 weapon)
+int pc_weapon_pair_kind(int64_t weapon)
 {
     int right = (int)weapon, left = (int)(weapon >> 32);
 

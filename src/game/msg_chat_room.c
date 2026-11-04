@@ -1,10 +1,10 @@
 #include "ui/window_manager_state.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mode_msg.h"
 #include "game/talk_type.h"
 #include "ui/ui_std.h"
+#include "platform/clock.h"
 
 #define CZ_CREATE_CHATROOM          0xd5
 #define CZ_REQ_ENTER_ROOM           0xd9
@@ -15,7 +15,7 @@
 
 #define CHAT_ROOM_PACKET_MAX 0x400
 
-int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, int arg)
+int game_mode_msg_chat_room_msg(struct GameMode *self, int kind, intptr_t arg)
 {
     struct UIWindow *log;
 
@@ -85,12 +85,12 @@ int game_mode_msg_enter_chat_room(struct GameMode *self, int room_id, const char
     char copy[12];
     struct UIWindow *in_room = g_windowMgr.chat_room_wnd;
 
-    if (timeGetTime() > self->chat_room_enter_time + 1000)
+    if (platform_ticks_ms() > self->chat_room_enter_time + 1000)
         self->chat_room_pending = 0;
     if (in_room || self->chat_room_pending)
         return 0;
     self->chat_room_pending = 1;
-    self->chat_room_enter_time = timeGetTime();
+    self->chat_room_enter_time = platform_ticks_ms();
     packet.id = CZ_REQ_ENTER_ROOM;
     packet.room_id = room_id;
     if (password) {

@@ -16,7 +16,7 @@ struct UIAchViewWnd;
 void ui_ach_view_wnd_destroy(struct UIWindow *window);
 void ui_ach_view_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_ach_view_wnd_on_draw(struct UIWindow *self);
-int ui_ach_view_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ach_view_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ach_view_wnd_ops = {
     .destroy = ui_ach_view_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -67,7 +67,7 @@ void ui_ach_summary_wnd_destroy(struct UIWindow *window);
 void ui_ach_summary_wnd_set_show(struct UIWindow *self, int visible);
 void ui_ach_summary_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_ach_summary_wnd_on_draw(struct UIWindow *self);
-int ui_ach_summary_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_ach_summary_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_ach_summary_wnd_ops = {
     .destroy = ui_ach_summary_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -250,8 +250,8 @@ void ui_ach_view_wnd_on_draw(struct UIWindow *window)
     }
 }
 
-int ui_ach_view_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_ach_view_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIAchViewWnd *self = (struct UIAchViewWnd *)window;
 #pragma pack(push, 1)
@@ -297,7 +297,7 @@ void ui_ach_view_wnd_refresh(struct UIAchViewWnd *self)
     ui_button_show((struct UIButton *)(self->receive), 0);
     if (self->info) {
         ach_state(&state, self->id);
-        ui_text_viewer_send_msg(&self->text->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->info->text[2]), 0x32, 0, 0);
+        ui_text_viewer_send_msg(&self->text->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->info->text[2]), 0x32, 0, 0);
         if (ach_has_reward(self->info) == 1 && !state.rewarded) {
             ui_button_show((struct UIButton *)(self->receive), 1);
             self->receive->button.disabled = 1;
@@ -321,14 +321,14 @@ void ui_ach_view_wnd_refresh(struct UIAchViewWnd *self)
 
                 string_init(&text);
                 string_format(&text, "%s ( %d / %d )", string_cstr(&req->text), count, target);
-                ui_text_viewer_send_msg(&line->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), 0x38, 0, 0);
+                ui_text_viewer_send_msg(&line->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&text), 0x38, 0, 0);
                 ui_window_set_show_base(&self->gauges[i]->base, 1);
                 self->gauges[i]->value = count;
                 self->gauges[i]->max = target;
                 ui_window_invalidate_base(&self->gauges[i]->base);
                 string_free(&text);
             } else {
-                ui_text_viewer_send_msg(&line->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&req->text), 0x38, 0, 0);
+                ui_text_viewer_send_msg(&line->viewer.list.base, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&req->text), 0x38, 0, 0);
                 ui_window_set_show_base(&self->gauges[i]->base, 0);
             }
             if (self->info->ui_type == 0) {
@@ -540,8 +540,8 @@ void ui_ach_summary_wnd_set_show(struct UIWindow *window, int visible)
         ui_text_button_on_mouse_move(&self->recent_buttons[i]->button.base, -1, -1);
 }
 
-int ui_ach_summary_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_ach_summary_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAchSummaryWnd *self = (struct UIAchSummaryWnd *)window;
     if (msg == UI_MSG_TEXT_BUTTON && val1 != -1 && self->base.parent)

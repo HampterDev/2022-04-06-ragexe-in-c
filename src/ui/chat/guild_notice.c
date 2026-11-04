@@ -17,7 +17,7 @@ void ui_guild_notice_wnd_destroy(struct UIWindow *window);
 void ui_guild_notice_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_guild_notice_wnd_on_draw(struct UIWindow *self);
 void ui_guild_notice_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
-int ui_guild_notice_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_guild_notice_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIGuildWndOps ui_guild_notice_wnd_ops = {
     .base = {
@@ -84,7 +84,6 @@ struct UIGuildNoticeWnd {
     struct UIWindow *body_edit;
     struct UIBitmapButton *send_button;
 };
-SIZE_ASSERT(UIGuildNoticeWnd, 0xbc);
 #define GUILD_WND(self) (&(self)->base.frame.base)
 
 struct UIGuildNoticeWnd *ui_guild_notice_wnd_construct(struct UIGuildNoticeWnd *self)
@@ -204,13 +203,13 @@ static void guild_notice_send(struct UIGuildNoticeWnd *self)
     string_assign_cstr(&body, text);
     if (g_guildInfo.is_master != 0)
         mode_send_message(g_modeMgr.curMode, MODE_REQ_GUILD_NOTICE, g_guildInfo.guild_id,
-                      (int)ui_edit_ctrl_get_text(self->subject_edit), (int)string_cstr(&body), 0);
+                      (intptr_t)ui_edit_ctrl_get_text(self->subject_edit), (intptr_t)string_cstr(&body), 0);
     ui_window_invalidate_children(GUILD_WND(self));
     string_free(&body);
 }
 
-int ui_guild_notice_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_guild_notice_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildNoticeWnd *self = (struct UIGuildNoticeWnd *)window;
     if (msg == UI_MSG_COMMAND) {

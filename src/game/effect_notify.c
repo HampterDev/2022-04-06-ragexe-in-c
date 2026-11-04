@@ -3,8 +3,7 @@
 #include "actor/actor_ops.h"
 #include "effects/rag/rag_effect.h"
 #include "contents/client_lua_calls.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "actor/render_object.h"
 #include "resources/attr_queries.h"
 #include "session/state.h"
@@ -21,6 +20,8 @@
 #include "session/session_state.h"
 #include "session/session_windows.h"
 #include "world/world.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PacketNotifyEffect {
@@ -141,12 +142,12 @@ enum {
     ACTOR_MSG_SHOW_NUMBER = 0x58,
 };
 
-static void show_number(struct GameActor *actor, __int64 num, unsigned color)
+static void show_number(struct GameActor *actor, int64_t num, unsigned color)
 {
     render_object_send(actor, NULL, ACTOR_MSG_SHOW_NUMBER, num, color, 0x72, 0);
 }
 
-void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect_id, __int64 num)
+void game_mode_notify_effect_with_num(struct GameMode *self, int aid, int effect_id, int64_t num)
 {
     static const unsigned number_colors[EF_NUMBER_LAST - EF_NUMBER_FIRST + 1] = {
         0xff00ff00, 0xff0000ff, 0xffff0000, 0xffff00ff, 0xff000000, 0xffffffff, 0xffffff00, 0xffff55b1,
@@ -212,7 +213,7 @@ struct PacketNotifyEffect4 {
     unsigned short packet_type;
     int aid;
     int effect_id;
-    __int64 num;
+    int64_t num;
 };
 #pragma pack(pop)
 
@@ -301,7 +302,7 @@ void game_mode_on_ef_warning_plane(struct GameMode *self, int aid, unsigned shor
             at.y = c3d_attr_get_height(self->world->attr, wx, wz);
             at.z = wz;
             warning_plane_effect_add_plane(effect, at);
-            warning_plane_effect_set_end_time(effect, timeGetTime() + duration);
+            warning_plane_effect_set_end_time(effect, platform_ticks_ms() + duration);
         }
     }
 }
@@ -547,17 +548,17 @@ void game_mode_zc_devotion_list(struct GameMode *self, const struct PacketDevoti
 
             sprintf(text, "DEVOTION OVERFLOW : %d -- %d , %d , %d , %d , %d", packet->aid, packet->targets[0],
                         packet->targets[1], packet->targets[2], packet->targets[3], packet->targets[4]);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
             strcpy(text, "DEVOTION OVERFLOW : \xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0\xec\x97\x90 \xeb\xa9\x94\xec\x9d\xbc\xeb\xa1\x9c " /* "DEVOTION OVERFLOW : 그라비티에 메일로 " */
                               "\xeb\xac\xb8\xec\x9d\x98\xed\x95\xb4\xec\xa3\xbc\xec\x8b\xad\xec\x8b\x9c\xec\x9a\x94" /* "문의해주십시요" */);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, DEVOTION_OVERFLOW_COLOR, 0, 0);
             continue;
         }
         if (!actor)
             continue;
         line = game_actor_launch_effect(actor, EF_DEVOTION_LINE, here, 0.0f);
         if (line)
-            rag_effect_send_msg(line, NULL, EFFECT_MSG_SET_ENDS, (int)ends, 0, 0);
+            rag_effect_send_msg(line, NULL, EFFECT_MSG_SET_ENDS, (intptr_t)ends, 0, 0);
     }
 }
 

@@ -18,6 +18,7 @@
 #include "session/session_items.h"
 #include "ui/items/items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/window.h"
 
 struct UIMerchantItemWnd;
 void ui_merchant_item_wnd_destroy(struct UIWindow *window);
@@ -78,7 +79,7 @@ void ui_merchant_mirror_item_wnd_store_info(struct UIWindow *self);
 void ui_merchant_mirror_item_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_merchant_mirror_item_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_merchant_mirror_item_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
-int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_merchant_mirror_item_wnd_ops = {
     .destroy = ui_merchant_mirror_item_wnd_destroy,
@@ -185,7 +186,7 @@ static void merchant_link_item(const struct ItemInfo *info)
 {
     struct UIWindow *edit;
 
-    if (!(GetAsyncKeyState(VK_SHIFT) & 0xff00))
+    if (!(platform_async_key_state(VK_SHIFT) & 0xff00))
         return;
     edit = ui_window_mgr_get_focus_edit(&g_windowMgr);
     if (!edit || !info->identified)
@@ -510,8 +511,8 @@ static void mirror_add_dragged(struct UIMerchantMirrorItemWnd *self)
     item_info_destruct(&info);
 }
 
-int ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                               int val1, int val2, int val3, int val4)
+intptr_t ui_merchant_mirror_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                               intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerchantMirrorItemWnd *self = (struct UIMerchantMirrorItemWnd *)window;
     switch (msg) {

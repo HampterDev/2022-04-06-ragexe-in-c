@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "contents/player_names.h"
 #include "skills/skill_bundle.h"
 #include "contents/guild_info.h"
@@ -140,14 +141,14 @@ void client_add_skill(unsigned short id, short level, int type, unsigned char up
     skill_info_destruct(&info);
 }
 
-__declspec(noinline) void game_mode_drop_aid_entry(struct GameMode *self, unsigned aid,
+RAGE_NOINLINE void game_mode_drop_aid_entry(struct GameMode *self, unsigned aid,
                                                         const struct String *text)
 {
     struct AwaitingName *entry = tree_find(&self->awaiting_name, &aid, tree_less_uint);
 
     if (!entry)
         return;
-    mode_send_msg(self, 0x8c, (int)string_cstr(text), entry->request, 0, 0);
+    mode_send_msg(self, 0x8c, (intptr_t)string_cstr(text), entry->request, 0, 0);
     tree_erase(&self->awaiting_name, TREE_NODE_OF(entry), NULL);
 }
 

@@ -11,6 +11,7 @@
 #include "session/session_jobs.h"
 #include "session/session_names.h"
 #include "world/world.h"
+#include <stdint.h>
 
 static void world_add(struct GameMode *self, void *object)
 {
@@ -28,7 +29,7 @@ void game_mode_launch_arrow(struct GameMode *self, const struct Vec3 *from, unsi
     if (arrow == 0)
         return;
     world_add(self, arrow);
-    render_object_send(arrow, NULL, 0xe, (__int64)(int)from, (__int64)target, (__int64)(int)&speed, (__int64)job);
+    render_object_send(arrow, NULL, 0xe, (intptr_t)from, (int64_t)target, (intptr_t)&speed, (int64_t)job);
 }
 
 void game_mode_launch_arrow_to_point(struct GameMode *self, const float *from, const float *to, float speed)
@@ -38,7 +39,7 @@ void game_mode_launch_arrow_to_point(struct GameMode *self, const float *from, c
     if (arrow == 0)
         return;
     world_add(self, arrow);
-    render_object_send(arrow, NULL, 0x40, (__int64)(int)from, (__int64)(int)to, (__int64)(int)&speed, 0);
+    render_object_send(arrow, NULL, 0x40, (intptr_t)from, (intptr_t)to, (intptr_t)&speed, 0);
 }
 
 void game_mode_launch_plant_attack(struct GameMode *self, unsigned target_id, int job, float delay)
@@ -48,7 +49,7 @@ void game_mode_launch_plant_attack(struct GameMode *self, unsigned target_id, in
     if (attack == 0)
         return;
     world_add(self, attack);
-    render_object_send(attack, NULL, 0xe, (__int64)target_id, (__int64)(int)&delay, (__int64)job, 0);
+    render_object_send(attack, NULL, 0xe, (int64_t)target_id, (intptr_t)&delay, (int64_t)job, 0);
 }
 
 struct Corpse *game_mode_make_corpse(struct GameMode *self, Vec3 pos,
@@ -144,8 +145,8 @@ char game_mode_launch_effect_at(struct GameMode *self, int effect_id, struct Gam
     at.x = target->pos.x;
     at.y = target->pos.y;
     at.z = target->pos.z;
-    rag_effect_send_msg(effect, NULL, 0xe, (__int64)(int)&at, 0, 0);
+    rag_effect_send_msg(effect, NULL, 0xe, (intptr_t)&at, 0, 0);
     if (level != -1)
-        rag_effect_send_msg(effect, NULL, 0x2c, (__int64)level, 0, 0);
+        rag_effect_send_msg(effect, NULL, 0x2c, (int64_t)level, 0, 0);
     return 1;
 }

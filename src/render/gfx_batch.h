@@ -2,7 +2,7 @@
 #define GFX_BATCH_H
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 
 typedef void (*batch_drawfn)(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices);
 

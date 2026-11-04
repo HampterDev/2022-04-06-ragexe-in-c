@@ -1,7 +1,7 @@
 #ifndef UI_RENDER_GRAPHIC_SETTING_H
 #define UI_RENDER_GRAPHIC_SETTING_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "base.h"
 #include "ui/controls/controls.h"
 

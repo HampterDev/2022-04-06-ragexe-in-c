@@ -134,7 +134,7 @@ void game_mode_point_mouse_at(struct GameMode *self, float x, float z, int red)
 
     position[0] = x;
     position[1] = z;
-    render_object_send(pointer, NULL, MOUSE_POINTER_MSG_SHOW_MARKER, MSG_ARG_PTR(position), red, 0, 0);
+    render_object_send(pointer, NULL, MOUSE_POINTER_MSG_SHOW_MARKER, (intptr_t)position, red, 0, 0);
 }
 
 #define WID_CAMERA_INFO 0x121
@@ -162,7 +162,7 @@ void game_mode_camera_info(struct GameMode *self, const unsigned char *pkt)
         g_session1.cameraInfoShown = g_session1.cameraInfoShown == 0;
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE,
-                            (int)(g_session1.cameraInfoShown == 1 ? "Camera Info On" : "Camera Info Off"), 0x64ffff, 0, 0);
+                            (intptr_t)(g_session1.cameraInfoShown == 1 ? "Camera Info On" : "Camera Info Off"), 0x64ffff, 0, 0);
         ui_window_show(wnd, g_session1.cameraInfoShown);
         return;
     }

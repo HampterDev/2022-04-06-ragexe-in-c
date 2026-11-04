@@ -17,7 +17,7 @@
 struct UIAcceptWnd;
 struct UIWindow;
 void ui_choose_sell_buy_wnd_on_create(struct UIWindow *self, int width, int height);
-int ui_choose_sell_buy_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_choose_sell_buy_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_choose_sell_buy_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_choose_sell_buy_wnd_ops = {
@@ -65,7 +65,7 @@ const struct UIWindowOps ui_choose_sell_buy_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-int ui_exchange_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_exchange_accept_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_exchange_accept_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_exchange_accept_wnd_ops = {
@@ -174,7 +174,7 @@ void ui_choose_sell_buy_wnd_on_create(struct UIWindow *window, int width, int he
         ui_add_named_skin_button(&self->frame.base, &dir, names[i], pos[i][0], pos[i][1], ids[i]);
     self->frame.default_id = ID_BUY;
     accept_add_text(self, width, height);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)msg_str(MSG_CHOOSE_SELL_BUY_QUESTION), 0x26, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)msg_str(MSG_CHOOSE_SELL_BUY_QUESTION), 0x26, 0, 0);
     string_free(&dir);
 }
 
@@ -184,8 +184,8 @@ void ui_accept_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->frame.base, 0, 0, ui_skin_bitmap(UI_SKIN "win_msgbox.bmp"), 0);
 }
 
-int ui_choose_sell_buy_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                          int val2, int val3, int val4)
+intptr_t ui_choose_sell_buy_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                          intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -238,7 +238,7 @@ void ui_exchange_accept_wnd_on_create(struct UIWindow *window, int width, int he
         ui_add_named_skin_button(&self->frame.base, &dir, names[i], pos[i][0], pos[i][1], ids[i]);
     self->frame.default_id = UI_ID_OK;
     accept_add_text(self, width, height);
-    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)"deal", 0x26, 0, 0);
+    ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)"deal", 0x26, 0, 0);
     string_free(&dir);
 }
 
@@ -299,8 +299,8 @@ static void trade_code_letters(struct String *out, int number)
     } while (div > 0);
 }
 
-int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                           int val2, int val3, int val4)
+intptr_t ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                           intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAcceptWnd *self = (struct UIAcceptWnd *)window;
     switch (msg) {
@@ -334,7 +334,7 @@ int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
         q = msg_str(MSG_EXCHANGE_QUESTION);
         string_append_cstr(&text, q);
         ui_list_box_clear((struct UIListBox *)self->text);
-        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&text), 0x8a, 0, 0);
+        ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&text), 0x8a, 0, 0);
         if (val2 > 0 && (unsigned)(val3 - 1) <= 0x62) {
             struct String line;
             char level[10];
@@ -344,9 +344,9 @@ int ui_exchange_accept_wnd_send_msg(struct UIWindow *window, struct UIWindow *se
             trade_code_letters(&line, val2);
             string_append_cstr(&line, "     Lv.");
             memset(level, 0, sizeof level);
-            sprintf(level, "%d", val3);
+            sprintf(level, "%d", (int)val3);
             string_append_cstr(&line, level);
-            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&line), 0x8a, 0, 0);
+            ui_window_send_msg(self->text, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&line), 0x8a, 0, 0);
             string_free(&line);
         }
         string_free(&text);

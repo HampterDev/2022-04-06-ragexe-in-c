@@ -43,8 +43,8 @@ void ui_agit_message_box_on_draw(struct UIWindow *window)
     ui_window_draw_button_bar(wnd, 2, 0, 1);
 }
 
-int ui_agit_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                        int val2, int val3, int val4)
+intptr_t ui_agit_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                        intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIAgitMessageBox *self = (struct UIAgitMessageBox *)window;
     if (msg != UI_MSG_COMMAND)

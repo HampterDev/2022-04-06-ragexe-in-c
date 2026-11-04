@@ -9,6 +9,8 @@
 #include "game/guild_storage.h"
 #include "core/msg_str.h"
 #include "session/session_items.h"
+#include <stdint.h>
+#include "core/cstr.h"
 
 enum {
     WID_GUILD_STORAGE = 0x21,
@@ -30,7 +32,7 @@ static void storage_line(int msg)
 
     memset(text, 0, 0xfa);
     sprintf(text, msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -95,7 +97,7 @@ struct GuildStorageLogRecord {
     int amount;
     unsigned char action;
     int refine;
-    __int64 unique_id;
+    int64_t unique_id;
     unsigned char identified;
     short item_type;
     int cards[4];
@@ -127,7 +129,6 @@ static void log_append(const struct GuildStorageLogRecord *record)
     struct GuildStorageLogEntry entry;
     struct String display_name = {0};
     char digits[16];
-    const char *id_text;
 
     item_info_construct(&item);
     staged.id = record->id;
@@ -136,8 +137,8 @@ static void log_append(const struct GuildStorageLogRecord *record)
     strcpy(staged.name, record->name);
     strcpy(staged.time, record->time);
     memset(digits, 0, sizeof digits);
-    id_text = _itoa(record->item_id, digits, 10);
-    string_assign_cstr(&item.id_text, id_text);
+    snprintf(digits, sizeof digits, "%d", record->item_id);
+    string_assign_cstr(&item.id_text, digits);
     item.identified = record->identified;
     item.type = record->item_type;
     item.refine = record->refine;
@@ -209,7 +210,7 @@ struct GuildStorageLogRecord2 {
     int item_id;
     int amount;
     unsigned char action;
-    __int64 unique_id;
+    int64_t unique_id;
     unsigned char identified;
     short item_type;
     int cards[4];
@@ -239,8 +240,8 @@ static void storage_line_s(int msg)
     char text[0x100];
 
     memset(text, 0, 0xfa);
-    sprintf_s(text, 0xfa, msg_str(msg));
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, 0, 0);
+    snprintf(text, 0xfa, msg_str(msg));
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, 0, 0);
 }
 
 void game_mode_enter_guild_storage_log(int result, const struct Vec *items)
@@ -266,8 +267,8 @@ void game_mode_enter_guild_storage_log(int result, const struct Vec *items)
         entry.id = it->item.guild_log.id;
         entry.amount = it->item.guild_log.amount;
         entry.action = it->item.guild_log.action;
-        strncpy_s(entry.name, sizeof entry.name, it->item.guild_log.name, _TRUNCATE);
-        strncpy_s(entry.time, sizeof entry.time, it->item.guild_log.time, _TRUNCATE);
+        cstr_copy(entry.name, sizeof entry.name, it->item.guild_log.name);
+        cstr_copy(entry.time, sizeof entry.time, it->item.guild_log.time);
         item_info_get_display_name(&it->item, &display_name);
         string_assign(&entry.item_name, string_cstr(&display_name), display_name.size);
         string_free(&display_name);
@@ -316,17 +317,16 @@ void game_mode_ack_guild_storage_log2(const struct PACKET_ZC_ACK_GUILDSTORAGE_LO
             struct ItemInfo item;
             struct GuildLogItem staged;
             char digits[16];
-            const char *id_text;
 
             item_info_construct(&item);
             item.guild_log.id = record->id;
             item.guild_log.amount = record->amount;
             item.guild_log.action = record->action;
-            strncpy_s(item.guild_log.name, sizeof item.guild_log.name, record->name, _TRUNCATE);
-            strncpy_s(item.guild_log.time, sizeof item.guild_log.time, record->time, _TRUNCATE);
+            cstr_copy(item.guild_log.name, sizeof item.guild_log.name, record->name);
+            cstr_copy(item.guild_log.time, sizeof item.guild_log.time, record->time);
             memset(digits, 0, sizeof digits);
-            id_text = _itoa(record->item_id, digits, 10);
-            string_assign_cstr(&item.id_text, id_text);
+            snprintf(digits, sizeof digits, "%d", record->item_id);
+            string_assign_cstr(&item.id_text, digits);
             item.identified = record->identified;
             item.type = record->item_type;
             item.refine = record->refine;

@@ -23,7 +23,7 @@ struct PacketU32U8 { unsigned short id; int value; unsigned char byte; };
 struct PacketName24 { unsigned short id; char name[24]; };
 #pragma pack(pop)
 
-int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
+intptr_t game_mode_send_msg(struct Mode *mode, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct GameMode *self = (struct GameMode *)mode;
     switch (msg) {
@@ -40,7 +40,7 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_BROADCAST:
         return game_mode_msg_broadcast(a);
     case MODE_MSG_GET_MAP_NAME:
-        return (int)self->map_name;
+        return (intptr_t)self->map_name;
     case MODE_MSG_CONTACT_NPC:
         return game_mode_msg_contact_npc(self, (const struct NpcClick *)a);
     case CMODE_MSG_WHISPER:

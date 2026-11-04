@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/xml.h"
+#include "core/cstr.h"
 #include "session/session_state.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"

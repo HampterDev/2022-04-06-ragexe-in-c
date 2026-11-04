@@ -12,12 +12,12 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "fileio/res_mgr.h"
 #include "ui/navigation_view.h"
+#include "core/cstr.h"
 
 #pragma pack(push, 1)
 struct PacketPrivateAirshipRequest {
@@ -37,7 +37,7 @@ void navi_manager_request_airship(struct NaviManager *self, struct String mapNam
         int len;
 
         pkt.id = 0xa49;
-        strcpy_s(pkt.mapName, 0x10, string_cstr(&mapName));
+        cstr_copy(pkt.mapName, 0x10, string_cstr(&mapName));
         pkt.itemId = itemId;
         len = rag_connection_get_packet_length(rag_connection_instance(), pkt.id);
         rag_connection_send_packet(rag_connection_instance(), len, &pkt);

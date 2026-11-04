@@ -75,8 +75,6 @@ struct UIPetInfoBarGraph {
     struct UIWindow base;
     unsigned percent;
 };
-OFFSET_ASSERT(UIPetInfoBarGraph, percent, 0x7c);
-SIZE_ASSERT(UIPetInfoBarGraph, 0x80);
 
 void ui_pet_info_bar_graph_destroy(struct UIWindow *window);
 void ui_pet_info_bar_graph_on_draw(struct UIWindow *self);
@@ -195,15 +193,12 @@ struct UIPetInfoWnd {
     struct UIPetInfoBarGraph *intimacy_bar;
     struct String intimacy_text;
 };
-OFFSET_ASSERT(UIPetInfoWnd, name_edit, 0x94);
-OFFSET_ASSERT(UIPetInfoWnd, feed_box, 0xa4);
-OFFSET_ASSERT(UIPetInfoWnd, intimacy_text, 0xac);
 
 void ui_pet_info_wnd_destroy(struct UIWindow *window);
 void ui_pet_info_wnd_store_info(struct UIWindow *self);
 void ui_pet_info_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_pet_info_wnd_on_draw(struct UIWindow *self);
-int ui_pet_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_pet_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_pet_info_wnd_ops = {
     .destroy = ui_pet_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -387,7 +382,7 @@ void ui_pet_info_wnd_on_create(struct UIWindow *window, int width, int height)
     if (arrow_btn)
         arrow_btn = ui_bitmap_button_construct(arrow_btn);
     for (state = UI_BTN_UP; state <= UI_BTN_DOWN; state++) {
-        _snprintf(path, sizeof path, UI_SKIN "basic_interface\\%s.bmp", arrow[state]);
+        snprintf(path, sizeof path, UI_SKIN "basic_interface\\%s.bmp", arrow[state]);
         ui_bitmap_button_set_bitmap(arrow_btn, path, state, 0);
     }
     ui_window_create(&arrow_btn->button.base, arrow_btn->bitmap_width, arrow_btn->bitmap_height);
@@ -436,7 +431,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     ui_window_draw_bitmap(&self->frame.base, self->frame.base.width - res->width,
                         self->frame.base.height - res->height, res, 0);
 
-    _snprintf_s(title, sizeof title, (size_t)-1, "%s", msg_str(MSG_PET_TITLE));
+    snprintf(title, sizeof title, "%s", msg_str(MSG_PET_TITLE));
     draw_label(self, 5, 2, title);
     draw_label(self, 0x64, 0x18, msg_str(MSG_PET_NAME));
     draw_label(self, 0x64, 0x2c, msg_str(MSG_PET_LEVEL));
@@ -457,7 +452,7 @@ void ui_pet_info_wnd_on_draw(struct UIWindow *window)
     else
         msg = MSG_PET_OUT_OF_RANGE;
     strcpy(fullness, msg_str(msg));
-    _itoa(g_session1.petLevel, level, 10);
+    snprintf(level, sizeof level, "%d", g_session1.petLevel);
     draw_label(self, 0x87, 0x2c, level);
     draw_label(self, 0x91, 0x45, fullness);
     draw_label(self, 0x91, 0x59, string_cstr(&self->intimacy_text));
@@ -494,7 +489,7 @@ void ui_pet_info_wnd_store_info(struct UIWindow *window)
 
 static void chat_refusal(int msg)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), PET_INFO_MSG_EXTRA_COLOUR, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), PET_INFO_MSG_EXTRA_COLOUR, 0, 0);
 }
 
 static int message_box(const char *text, int type, int arg3)
@@ -518,9 +513,9 @@ static void pet_rename(struct UIPetInfoWnd *self)
     sprintf(question, msg_str(MSG_PET_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (message_box(question, 2, 0) != PET_RENAME_KEEP) {
         mode_send_message(game_current_base_mode(), REQ_PET_RENAME,
-                      (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-        _snprintf_s(g_session1.petName, sizeof g_session1.petName, _TRUNCATE, "%s",
-                    ui_edit_ctrl_get_text(self->name_edit));
+                      (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+        snprintf(g_session1.petName, sizeof g_session1.petName, "%s",
+                 ui_edit_ctrl_get_text(self->name_edit));
         ui_window_invalidate_base(&self->frame.base);
         return;
     }
@@ -530,7 +525,7 @@ static void pet_rename(struct UIPetInfoWnd *self)
 
 static void menu_add(struct UIWindow *menu, const char *text, int id, int value)
 {
-    ui_window_send_msg(menu, NULL, UI_MSG_MENU_ADD, (int)text, id, value, 0);
+    ui_window_send_msg(menu, NULL, UI_MSG_MENU_ADD, (intptr_t)text, id, value, 0);
 }
 
 static void pet_open_menu(struct UIPetInfoWnd *self)
@@ -609,8 +604,8 @@ static void pet_menu_choice(struct UIPetInfoWnd *self, int choice)
     ui_window_mgr_post_quit1(&g_windowMgr, UI_WND_PET_MENU);
 }
 
-int ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_pet_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIPetInfoWnd *self = (struct UIPetInfoWnd *)window;
     if (self->feed_box && sender != self->feed_box)

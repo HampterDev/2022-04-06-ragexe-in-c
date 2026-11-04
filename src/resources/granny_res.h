@@ -24,7 +24,6 @@ struct GrannyResTexture {
     const char *name;
     struct Texture *texture;
 };
-SIZE_ASSERT(GrannyResTexture, 8);
 
 struct GrannyResMesh {
     granny_mesh *mesh;

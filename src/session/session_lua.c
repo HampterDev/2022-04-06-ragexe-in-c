@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include "core/app.h"
 #include "platform/language.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
 int session_get_real_weapon_id(int weapon)
 {
@@ -113,7 +113,7 @@ void session_load_transparent_items(struct Session *self)
             char text[0x104];
             memset(text, 0, sizeof(text));
             sprintf(text, transparent_item_failed, id);
-            win_utf8_message_box(g_hMainWnd, text, "Error", 0);
+            platform_message_box(g_hMainWnd, text, "Error", 0);
             return;
         }
         if (key == 0)
@@ -185,7 +185,7 @@ void session_init_lua_files(struct Session *self)
         run_lua(self, "Lua Files\\SprEditInfo\\_New_SmallLayerDir_female");
         self->new_layer_table_loaded = 1;
     } else {
-        win_utf8_message_box(NULL, "NO!! 2D_LAYER_NEW_TABLE", "\xec\x95\x8c\xeb\xa6\xbc" /* "알림" */, 0);
+        platform_message_box(NULL, "NO!! 2D_LAYER_NEW_TABLE", "\xec\x95\x8c\xeb\xa6\xbc" /* "알림" */, 0);
     }
     run_lua(self, "Lua Files\\DataInfo\\NpcLocationRadius");
     run_lua(self, "Lua Files\\DataInfo\\NpcLocationRadius_F");

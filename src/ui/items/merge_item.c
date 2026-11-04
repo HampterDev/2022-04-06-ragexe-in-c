@@ -10,6 +10,7 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "std/vec.h"
+#include "platform/window.h"
 
 #define UI_WND_MERGE_ITEM 0xe3
 
@@ -45,10 +46,6 @@ struct MergeItemWnd {
     int top_row;
     int max_row;
 };
-OFFSET_ASSERT(MergeItemWnd, checks, 0xa0);
-OFFSET_ASSERT(MergeItemWnd, count, 0xb4);
-OFFSET_ASSERT(MergeItemWnd, max_row, 0xc8);
-SIZE_ASSERT(MergeItemWnd, 0xcc);
 
 void merge_item_wnd_destroy(struct UIWindow *window);
 void merge_item_wnd_resize(struct UIWindow *self, int width, int height);
@@ -58,7 +55,7 @@ void merge_item_wnd_on_draw(struct UIWindow *self);
 void merge_item_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void merge_item_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void merge_item_wnd_on_wheel(struct UIWindow *self, int delta);
-int merge_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t merge_item_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps merge_item_wnd_ops = {
     .destroy = merge_item_wnd_destroy,
     .resize = merge_item_wnd_resize,
@@ -355,7 +352,7 @@ static void click_follow_kind(struct MergeItemWnd *self, int index)
     int kind, mark = 0;
     size_t k;
 
-    if (!((GetAsyncKeyState(VK_CONTROL) >> 8) & 0xff))
+    if (!((platform_async_key_state(VK_CONTROL) >> 8) & 0xff))
         return;
     kind = item_id_at(index);
     for (k = 0; k < CHECK_COUNT(self); k++) {
@@ -472,7 +469,7 @@ BYTE merge_item_wnd_collect_ticked(struct MergeItemWnd *self, struct Vec *picked
         vec_push(picked, &index, sizeof(unsigned short));
     }
     if (VEC_COUNT(picked, unsigned short) < MERGE_MIN_ITEMS) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(MSG_MERGE_TOO_FEW), MERGE_REFUSAL_COLOUR, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(MSG_MERGE_TOO_FEW), MERGE_REFUSAL_COLOUR, 0, 0);
         return 0;
     }
     return 1;
@@ -533,8 +530,8 @@ void merge_item_wnd_set_count(int index, int count)
     item_info_destruct(&item);
 }
 
-int merge_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                     int val3, int val4)
+intptr_t merge_item_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                     intptr_t val3, intptr_t val4)
 {
     struct MergeItemWnd *self = (struct MergeItemWnd *)window;
     switch (msg) {

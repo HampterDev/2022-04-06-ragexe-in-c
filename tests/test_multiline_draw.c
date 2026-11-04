@@ -109,9 +109,9 @@ void language_on_key_down(struct Language *self, int key) { assert(self == g_lan
 int language_replace_selection(struct Language *self, const char *text)
 { assert(self == g_language && !strcmp(text, "\r\n")); return 1; }
 void ui_scroll_bar_set_pos(struct UIScrollBar *bar, int pos) { assert(bar); bar->pos = pos; }
-int ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)self; (void)sender; (void)msg; (void)a; (void)b; (void)c; (void)d; return 0; }
-int ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int a, int b, int c, int d)
+intptr_t ui_edit_ctrl_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     struct UIEditCtrl *self = (struct UIEditCtrl *)window; return ui_window_send_msg_base(&self->base, sender, msg, a, b, c, d); }
 void ui_window_invalidate_base(struct UIWindow *window) { assert(window); ++invalidated; }

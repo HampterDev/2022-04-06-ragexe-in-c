@@ -91,6 +91,7 @@ static LONG WINAPI read_close(HKEY key)
 #define win_utf8_reg_open_key read_open
 #define win_utf8_reg_query_value read_value
 #define RegCloseKey read_close
+#include "../src/platform/settings_win32.c"
 #include "../src/core/startup_settings.c"
 #undef win_utf8_reg_open_key
 #undef win_utf8_reg_query_value

@@ -59,12 +59,6 @@ struct UINewSkillListWnd {
     int anim_frames[2];
     unsigned long long drawn_key;
 };
-OFFSET_ASSERT(UINewSkillListWnd, up_buttons, 0xa8);
-OFFSET_ASSERT(UINewSkillListWnd, raise_buttons, 0x178);
-OFFSET_ASSERT(UINewSkillListWnd, info, 0x228);
-OFFSET_ASSERT(UINewSkillListWnd, required, 0x250);
-OFFSET_ASSERT(UINewSkillListWnd, required_cell, 0x25c);
-SIZE_ASSERT(UINewSkillListWnd, 0x278);
 
 void ui_new_skill_list_wnd_on_draw(struct UIWindow *window);
 

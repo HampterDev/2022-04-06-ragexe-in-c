@@ -1,6 +1,7 @@
 #ifndef CORE_ABSTRACT_METHOD_H
 #define CORE_ABSTRACT_METHOD_H
+#include "core/compiler.h"
 
-__declspec(noreturn) void abstract_method_called(void);
+RAGE_NORETURN void abstract_method_called(void);
 
 #endif

@@ -9,47 +9,6 @@
 #include "render/text_runs.h"
 #include "platform/clientinfo.h"
 
-static void text_dc_prepare(struct TextDC *self)
-{
-    if (self->hdc) {
-        self->oldFont = GetCurrentObject(self->hdc, OBJ_FONT);
-        SetBkMode(self->hdc, TRANSPARENT);
-    }
-}
-
-struct TextDC *text_dc_construct(struct TextDC *self, struct DcBitmap *bitmap)
-{
-    *self = (struct TextDC){0};
-    dc_bitmap_get_dc(bitmap, &self->hdc);
-    text_dc_prepare(self);
-    return self;
-}
-
-struct TextDC *text_dc_from_surface(struct TextDC *self, gfx_surface *surface)
-{
-    *self = (struct TextDC){0};
-    if (surface) {
-        gfx_addref(surface);
-        self->surface = surface;
-        if (gfx_get_dc(surface, &self->hdc) < 0)
-            self->hdc = NULL;
-        text_dc_prepare(self);
-    }
-    return self;
-}
-
-void text_dc_destruct(struct TextDC *self)
-{
-    if (self->hdc) {
-        if (self->oldFont) SelectObject(self->hdc, self->oldFont);
-        if (self->surface) gfx_release_dc(self->surface, self->hdc);
-    }
-    if (self->surface) gfx_release(self->surface);
-    self->hdc = NULL;
-    self->surface = NULL;
-    self->oldFont = NULL;
-}
-
 void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
 {
     int face = a, size = b;
@@ -58,7 +17,7 @@ void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
        charset when Windows uses Turkish; both three points larger. */
     if (a == 0) {
         size = b + 3;
-        face = g_language && g_language->folder_lang == LANG_TURKISH ? 6 : 1;
+        face = g_language && g_language->folder_lang == LANGUAGE_ID_TURKISH ? 6 : 1;
     }
     self->face = face;
     self->size = size;
@@ -68,52 +27,37 @@ void text_dc_select_font(struct TextDC *self, int a, int b, int c, int d)
     if (face >= 0 && (size_t)face < sizeof g_3dDevice.faceCharsets / sizeof g_3dDevice.faceCharsets[0])
         self->charset = g_3dDevice.faceCharsets[face];
     else
-        self->charset = face == FONT_FACE_SCDREAM ? DEFAULT_CHARSET : ANSI_CHARSET;
+        self->charset = face == FONT_FACE_SCDREAM ? CHARSET_DEFAULT : CHARSET_ANSI;
     self->bold = (BYTE)c;
     self->italic = (BYTE)d;
 }
 
-COLORREF text_dc_set_bk_color(struct TextDC *self, COLORREF colour)
-{
-    return SetBkColor(self->hdc, colour);
-}
-
-int text_dc_set_bk_mode(struct TextDC *self, int mode)
-{
-    return SetBkMode(self->hdc, mode);
-}
-
-COLORREF text_dc_set_text_color(struct TextDC *self, COLORREF colour)
-{
-    return SetTextColor(self->hdc, colour);
-}
-
-static HFONT face_font(struct TextDC *self)
+static FontHandle face_font(struct TextDC *self)
 {
     return font_cache_get_font(&g_fontCache, self->face, self->size, self->charset, self->bold, self->italic);
 }
 
 /* The selected face draws a run unless it lacks the run's script; then the script's
-   Windows fallback font does, if one is installed. */
-static HFONT run_font(struct TextDC *self, HFONT face, enum TextScript script)
+   fallback font does, if one is installed. */
+static FontHandle run_font(struct TextDC *self, FontHandle face, enum TextScript script)
 {
-    HFONT fallback;
+    FontHandle fallback;
 
-    if (script == TEXT_SCRIPT_DEFAULT || font_cache_covers(&g_fontCache, self->hdc, face, script))
+    if (script == TEXT_SCRIPT_DEFAULT || text_dc_font_covers(self, face, script))
         return face;
     fallback = font_cache_get_script_font(&g_fontCache, script, self->size, self->bold, self->italic);
     return fallback ? fallback : face;
 }
 
 /* How far down to draw a fallback run so that it shares the selected face's baseline. */
-static int baseline_offset(struct TextDC *self, HFONT face, HFONT font)
+static int baseline_offset(struct TextDC *self, FontHandle face, FontHandle font)
 {
     int want, have;
 
     if (font == face)
         return 0;
-    want = font_cache_ascent(&g_fontCache, self->hdc, face);
-    have = font_cache_ascent(&g_fontCache, self->hdc, font);
+    want = text_dc_font_ascent(self, face);
+    have = text_dc_font_ascent(self, font);
     return want > 0 && have > 0 ? want - have : 0;
 }
 
@@ -121,7 +65,7 @@ void text_dc_text_extent(struct TextDC *self, const char *s, int len, SIZE *out)
 {
     size_t at = 0, length = s && len > 0 ? (size_t)len : 0, run;
     enum TextScript script;
-    HFONT face;
+    FontHandle face;
 
     out->cx = out->cy = 0;
     if (!length || !(face = face_font(self)))
@@ -144,29 +88,28 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
 {
     size_t at = 0, length = s && len > 0 ? (size_t)len : 0, run;
     enum TextScript script;
-    HFONT face = NULL;
+    FontHandle face = NULL;
 
     while (at < length) {
         struct TextUnicode text;
-        HFONT font;
-        HGDIOBJ old = NULL;
+        FontHandle font;
         SIZE extent;
-        int top = y;
+        int top = y, used = 0;
 
         run = text_script_run(s + at, length - at, &script);
-        if (!text_unicode_init(&text, s + at, (int)run, CP_UTF8))
+        if (!text_unicode_init(&text, s + at, (int)run, CODE_PAGE_UTF8))
             return;
         if (!face)
             face = face_font(self);
         font = face ? run_font(self, face, script) : NULL;
         if (font) {
             top += baseline_offset(self, face, font);
-            old = SelectObject(self->hdc, font);
+            used = text_dc_use_font(self, font);
         }
-        if (old && old != HGDI_ERROR)
-            TextOutW(self->hdc, x, top, text.data, text.length);
+        if (used)
+            text_dc_draw_run(self, x, top, text.data, text.length);
         text_unicode_release(&text);
-        if (!old || old == HGDI_ERROR)
+        if (!used)
             return;
         at += run;
         if (at < length) {
@@ -174,4 +117,17 @@ void text_dc_text_out(struct TextDC *self, int x, int y, const char *s, int len)
             x += extent.cx;
         }
     }
+}
+
+void text_dc_draw_plain(struct TextDC *self, int x, int y, const char *s, int len)
+{
+    struct TextUnicode text;
+    FontHandle font;
+
+    if (!s || len <= 0 || !text_unicode_init(&text, s, len, CODE_PAGE_UTF8))
+        return;
+    font = face_font(self);
+    if (font && text_dc_use_font(self, font))
+        text_dc_draw_run(self, x, y, text.data, text.length);
+    text_unicode_release(&text);
 }

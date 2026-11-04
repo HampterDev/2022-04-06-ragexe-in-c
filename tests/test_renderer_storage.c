@@ -83,7 +83,7 @@ void effect_mgr_destroy_removed(void *mgr) { assert(mgr == g_effectMgr); ++effec
 void effect_mgr_destroy_removed(struct EffectMgr *mgr) { assert(mgr == g_effectMgr); ++effect_ends; }
 #endif
 void error_msg(const char *text, int flags) { (void)text; (void)flags; abort(); }
-long mat4_perspective_lh(float *m, float fov, float aspect, float near_z, float far_z)
+int32_t mat4_perspective_lh(float *m, float fov, float aspect, float near_z, float far_z)
 { (void)m; (void)fov; (void)aspect; (void)near_z; (void)far_z; abort(); return -1; }
 void perf_begin(int phase) { (void)phase; }
 void perf_end(int phase) { (void)phase; }

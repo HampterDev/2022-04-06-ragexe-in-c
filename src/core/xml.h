@@ -2,7 +2,6 @@
 #define CORE_XML_H
 
 #include "core/xml_types.h"
-#include "std/std.h"
 
 struct XmlElement *xml_element_construct(struct XmlElement *self, const char *name);
 void xml_element_destruct(struct XmlElement *self);

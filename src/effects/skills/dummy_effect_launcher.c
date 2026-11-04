@@ -2,6 +2,7 @@
 #include "effects/skills/dummy_effect_launcher.h"
 #include "effects/effect_mgr.h"
 #include "effects/render_object.h"
+#include "platform/clock.h"
 
 #define MSG_START 0xe
 #define DEFAULT_FRAMES 300
@@ -35,7 +36,7 @@ void dummy_effect_launcher_send_msg(struct GameObject *object, struct GameObject
     }
     me->pos = *(const Vec3 *)MSG_PTR(par1);
     me->visible = 0;
-    me->start_tick = timeGetTime();
+    me->start_tick = platform_ticks_ms();
     effect_id = (int)par2;
     if (effect_mgr_spawn(g_effectMgr, 0, effect_id, me->pos, 0, -1, 0, 0))
         return;
@@ -52,6 +53,6 @@ void dummy_effect_launcher_send_msg(struct GameObject *object, struct GameObject
         offset.y = 0.0f;
         offset.z = 0.0f;
         if (own)
-            rag_effect_send_msg(own, 0, MSG_START, MSG_ARG_PTR(&offset), 0, 0);
+            rag_effect_send_msg(own, 0, MSG_START, (intptr_t)&offset, 0, 0);
     }
 }

@@ -12,7 +12,6 @@ struct UIChooseWnd {
     int npc_id;
     void *info;
 };
-SIZE_ASSERT(UIChooseWnd, 0xb0);
 
 struct UIChooseWarpWnd {
     struct UIFrameWnd frame;
@@ -20,7 +19,6 @@ struct UIChooseWarpWnd {
     int skill_id;
     struct Vec destinations;
 };
-SIZE_ASSERT(UIChooseWarpWnd, 0xa8);
 
 struct UIChooseWarpWnd *ui_choose_warp_wnd_construct(struct UIChooseWarpWnd *self);
 struct UIWindow *ui_choose_warp_wnd_new(void);

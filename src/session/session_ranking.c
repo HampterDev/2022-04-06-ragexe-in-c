@@ -1,20 +1,20 @@
 #include "session/ranking.h"
 #include "session/state.h"
 #include "contents/ranking.h"
-#include <time.h>
+#include "platform/clock.h"
 
 void session_on_ranking_packet(struct Session *self, int show, const struct RankPacket *packet)
 {
     struct Schedule *running = time_scheduler_find(g_timeScheduler, self->rankingScheduleId);
     struct RankingSchedule *ranking;
-    __time32_t now;
+    int32_t now;
 
     if (show != 1) {
         if (running) running->alive = 0;
         return;
     }
     if (running || !packet) return;
-    _time32(&now);
+    now = platform_time_now();
     ranking = ranking_create((int)now, 1, SCHEDULE_REPEAT);
     if (!ranking) return;
     ranking->timeout = 3;

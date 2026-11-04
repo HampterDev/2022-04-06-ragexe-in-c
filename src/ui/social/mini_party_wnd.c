@@ -8,6 +8,7 @@
 #include "session/session_items.h"
 #include "session/session_state.h"
 #include "world/world.h"
+#include "platform/clock.h"
 
 struct UIMiniPartyWnd;
 struct UIWindow;
@@ -17,7 +18,7 @@ void ui_mini_party_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_mini_party_wnd_on_draw(struct UIWindow *self);
 void ui_mini_party_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_mini_party_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_mini_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mini_party_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mini_party_wnd_ops = {
     .destroy = ui_mini_party_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -177,7 +178,7 @@ void ui_mini_party_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     self->frame.press_y = sy;
     self->frame.saved_x = wnd->x;
     self->frame.saved_y = wnd->y;
-    wnd->alpha_time = timeGetTime();
+    wnd->alpha_time = platform_ticks_ms();
     snap_mgr_save_group_positions(&g_snapMgr, wnd);
 }
 
@@ -250,8 +251,8 @@ void ui_mini_party_wnd_set_display_mode(struct UIMiniPartyWnd *self, int mode)
     ui_window_invalidate_base(wnd);
 }
 
-int ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                      int val2, int val3, int val4)
+intptr_t ui_mini_party_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                      intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMiniPartyWnd *self = (struct UIMiniPartyWnd *)window;
     struct UIWindow *info = (struct UIWindow *)self->info;

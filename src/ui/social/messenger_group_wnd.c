@@ -15,6 +15,7 @@
 #include "session/session_state.h"
 #include "ui/character/gauge.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 struct UIMessengerGroupWnd;
 struct UIWindow;
@@ -178,7 +179,7 @@ void ui_messenger_group_wnd_create_plate(int cell,
     ui_window_create(&plate->frame.base, 0xae, 0x34);
     plate->cell = cell;
     ui_window_mgr_add_plate(&g_windowMgr, plate);
-    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, PARTY_MSG_REFRESH, (int)member, 0, 0, 0);
+    ui_mini_party_wnd_send_msg(&plate->frame.base, NULL, PARTY_MSG_REFRESH, (intptr_t)member, 0, 0, 0);
     session_add_plate_record(&g_session1, member->aid, cell);
 }
 
@@ -355,7 +356,7 @@ void ui_messenger_group_wnd_on_create(struct UIWindow *window, int width, int he
     for (i = 0; i < PARTY_WND_BUTTONS; i++) {
         struct UIBitmapButton *button;
 
-        _itoa(i + 1, number, 10);
+        snprintf(number, sizeof number, "%d", i + 1);
         button = mem_alloc(sizeof(struct UIBitmapButton));
         self->buttons[i] = button = button ? ui_bitmap_button_construct(button) : NULL;
         if (i == 0 || i == 2) {
@@ -413,7 +414,7 @@ void ui_messenger_group_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
         docked = party_wnd_docked(self);
         if (docked) {
             docked->alpha_target = 0x80;
-            docked->alpha_time = timeGetTime();
+            docked->alpha_time = platform_ticks_ms();
         }
         return;
     }
@@ -481,7 +482,7 @@ void ui_messenger_group_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
     docked = party_wnd_docked(self);
     if (docked) {
         docked->alpha_target = 0xff;
-        docked->alpha_time = timeGetTime();
+        docked->alpha_time = platform_ticks_ms();
     }
     ui_window_mgr_close_drag_plate(&g_windowMgr);
 }

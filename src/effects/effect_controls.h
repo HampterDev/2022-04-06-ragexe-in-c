@@ -1,8 +1,9 @@
 #ifndef EFFECTS_EFFECT_CONTROLS_H
 #define EFFECTS_EFFECT_CONTROLS_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/vec3.h"
+#include <stdint.h>
 
 struct Effect;
 

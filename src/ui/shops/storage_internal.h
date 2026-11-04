@@ -88,9 +88,6 @@ struct UIItemStoreWnd {
     int capacity;
     BYTE list_received;
 };
-OFFSET_ASSERT(UIItemStoreWnd, boxes, 0xe0);
-OFFSET_ASSERT(UIItemStoreWnd, find_wnd, 0x120);
-OFFSET_ASSERT(UIItemStoreWnd, count_text, 0x124);
 
 void storage_draw_items(struct UIItemBaseWnd *base, int x0, int name_width);
 void storage_on_lbtn_down(struct UIItemBaseWnd *base, int x, int y, int left);

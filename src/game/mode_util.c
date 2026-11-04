@@ -7,11 +7,10 @@
 #include "core/memory.h"
 #include "world/mode_manager.h"
 #include "ui/window_access.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
 #include <errno.h>
 #include <stdlib.h>
-#include <mmsystem.h>
 #include <string.h>
 #include "game/mode_util.h"
 #include "game/client.h"
@@ -20,12 +19,13 @@
 #include "ui/ui_std.h"
 #include "world/world.h"
 #include "game/mode_callbacks.h"
+#include "platform/clock.h"
 
 unsigned g_rendererTickNext;
 
 void renderer_run_every15s(void)
 {
-    unsigned now = timeGetTime();
+    unsigned now = platform_ticks_ms();
     if (now > g_rendererTickNext) {
         g_rendererTickNext = now + 15000;
         sprite_atlas_purge(g_renderer);
@@ -73,7 +73,7 @@ char item_id_is990_to993(int id)
 void game_mode_confirm_feed_homun(void)
 {
     if (g_windowMgr.exchange_wnd)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xddf), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0xddf), CHAT_COLOR_RED, 0, 0);
     else
         mode_send_message(client_current_mode(), 0xb8, 1, 0, 0, 0);
 }
@@ -81,7 +81,7 @@ void game_mode_confirm_feed_homun(void)
 void game_mode_confirm_feed_pet(void)
 {
     if (g_windowMgr.exchange_wnd)
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0xdde), CHAT_COLOR_RED, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (intptr_t)msg_str(0xdde), CHAT_COLOR_RED, 0, 0);
     else
         mode_send_message(client_current_mode(), 0x96, 1, 0, 0, 0);
 }

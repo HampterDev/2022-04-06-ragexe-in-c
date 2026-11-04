@@ -270,7 +270,7 @@ void game_mode_zc_making_arrow_list(const unsigned char *pkt)
     wnd = ui_window_open(WINDOW_MAKING_LIST);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_START, 0, 0, 0, 0);
     for (; n != 0; n--, entry++)
-        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)&entry->item_id, 0, 0, 0);
+        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (intptr_t)&entry->item_id, 0, 0, 0);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_KIND, MAKING_KIND_ARROWS, 0, 0, 0);
 }
 
@@ -287,7 +287,7 @@ void game_mode_zc_making_item_list(const unsigned char *pkt)
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_START, 0, 0, 0, 0);
     UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_KIND, packet->kind, 0, 0, 0);
     for (; n != 0; n--, entry++)
-        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (int)&entry->item_id, 0, 0, 0);
+        UIWINDOW_SENDMSG(wnd, MAKING_LIST_MSG_ADD, (intptr_t)&entry->item_id, 0, 0, 0);
 }
 
 #pragma pack(push, 1)
@@ -406,7 +406,7 @@ void game_mode_zc_msg_skill(const unsigned char *pkt)
 
     sprintf(text, msg_str(packet->msg_id));
     sprintf(line, "[%s] %s", skill_name(packet->skill_id), text);
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)line, SKILL_MSG_COLOR, CHAT_CHANNEL_SKILL, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)line, SKILL_MSG_COLOR, CHAT_CHANNEL_SKILL, 0);
 }
 
 #define MM_AUTORUN_SKILL         0x71
@@ -439,6 +439,6 @@ void game_mode_zc_autorun_skill(struct GameMode *self, const unsigned char *pkt)
     skill.sp_cost = packet->sp_cost;
     skill.range = packet->range;
     player_skill_bundle_put_autorun_skill(&g_session1.skills, &skill);
-    mode_send_msg(self, MM_AUTORUN_SKILL, (int)&skill, skill.level, 1, -1);
+    mode_send_msg(self, MM_AUTORUN_SKILL, (intptr_t)&skill, skill.level, 1, -1);
     skill_info_destruct(&skill);
 }

@@ -2,6 +2,7 @@
 #include "actor/granny_actor.h"
 #include "actor/game_actor.h"
 #include "game/context.h"
+#include "platform/clock.h"
 
 static void set_action(struct RenderObject *self, int base)
 {
@@ -14,8 +15,8 @@ static void set_action(struct RenderObject *self, int base)
 
 static void end_timed(struct RenderObject *self, int *running)
 {
-    timeGetTime();
-    if (timeGetTime() >= self->script_end_tick) {
+    platform_ticks_ms();
+    if (platform_ticks_ms() >= self->script_end_tick) {
         *running = 0;
         self->script_end_tick = 0;
         self->play_mode = 1;
@@ -30,7 +31,7 @@ void render_object_update_motion_base(struct RenderObject *self)
     int count;
 
     self->action = render_object_direction(self, self->roty) + self->base_action;
-    frames = (float)(timeGetTime() - self->start_tick) / 24.0f;
+    frames = (float)(platform_ticks_ms() - self->start_tick) / 24.0f;
     act = self->act;
     if (self->state == 0x2d)
         act = res_mgr_get(g_resMgr(), "인간족\\몸통\\여\\아크비숍_여""2.Act");

@@ -6,6 +6,7 @@
 #include "game/gamemode.h"
 #include "game/session_bridge.h"
 #include "world/world.h"
+#include <stdint.h>
 
 enum { ACTOR_MSG_SHOW_SCRIPT = 7 };
 
@@ -33,7 +34,7 @@ void game_mode_on_show_script(struct GameMode *self, const struct PacketShowScri
     if (actor == 0)
         return;
     memcpy(text, packet->text, length);
-    render_object_send(actor, NULL, ACTOR_MSG_SHOW_SCRIPT, (__int64)(int)text, 0, 0, 0);
+    render_object_send(actor, NULL, ACTOR_MSG_SHOW_SCRIPT, (intptr_t)text, 0, 0, 0);
 }
 
 void game_mode_on_remove_neighborhood_characters(struct GameMode *self, int count, const int *aids)

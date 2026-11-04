@@ -14,7 +14,7 @@ struct UIWindow;
 void ui_graffi_strbox_wnd_destroy(struct UIWindow *window);
 void ui_graffi_strbox_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_graffi_strbox_wnd_on_draw(struct UIWindow *self);
-int ui_graffi_strbox_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_graffi_strbox_wnd_send_msg(struct UIWindow *frame, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_graffi_strbox_wnd_ops = {
     .destroy = ui_graffi_strbox_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -62,7 +62,7 @@ const struct UIWindowOps ui_graffi_strbox_wnd_ops = {
 void ui_talkbox_trap_input_wnd_destroy(struct UIWindow *window);
 void ui_talkbox_trap_input_wnd_on_create(struct UIWindow *self, int width_unused, int height_unused);
 void ui_talkbox_trap_input_wnd_on_draw(struct UIWindow *self);
-int ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_talkbox_trap_input_wnd_ops = {
     .destroy = ui_talkbox_trap_input_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -118,10 +118,9 @@ struct UISkillTextWnd {
     struct GroundSkillUse use;
     struct UIWindow *edit;
 };
-SIZE_ASSERT(UISkillTextWnd, 0xa8);
 
-int ui_graffi_strbox_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                              int val1, int val2, int val3, int val4)
+intptr_t ui_graffi_strbox_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     return ui_talkbox_trap_input_wnd_send_msg(window, sender, msg, val1, val2, val3, val4);
 }
@@ -254,8 +253,8 @@ void ui_talkbox_trap_input_wnd_on_draw(struct UIWindow *window)
 #define SKILL_TEXT_MSG_SET_CELL 0x44
 #define MODE_MSG_TALKBOX_TEXT 0x83
 
-int ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                             int val1, int val2, int val3, int val4)
+intptr_t ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                             intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISkillTextWnd *self = (struct UISkillTextWnd *)window;
     struct GroundSkillTalkbox request;
@@ -264,7 +263,7 @@ int ui_talkbox_trap_input_wnd_send_msg(struct UIWindow *window, struct UIWindow 
         if (val1 == UI_ID_OK) {
             request.use = self->use;
             request.text = ui_edit_ctrl_get_text(self->edit);
-            game_send_message(MODE_MSG_TALKBOX_TEXT, (int)&request, 0, 0, 0);
+            game_send_message(MODE_MSG_TALKBOX_TEXT, (intptr_t)&request, 0, 0, 0);
         } else if (val1 != UI_ID_CANCEL) {
             return 0;
         }

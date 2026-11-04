@@ -3,7 +3,7 @@
 
 #include "contents/character_settings.h"
 #include "json/service_json.h"
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct CharUserDataMgr {
     int loaded;

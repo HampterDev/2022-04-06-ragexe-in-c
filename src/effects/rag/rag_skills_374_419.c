@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "effects/rag/rag_effect.h"
 #include "render/render_api.h"
+#include <stdint.h>
 
 #define EFFECT_DIR "이팩트\\"
 
@@ -260,7 +261,7 @@ static void actor_link(struct RagEffect *self, float radius, float style)
         if (tube->target == (float)(double)(unsigned)g_session1.ownAid)
             actor = game_current_player();
         else
-            actor = game_find_actor((int)(__int64)tube->target);
+            actor = game_find_actor((int)(int64_t)tube->target);
     }
     if (actor != NULL) {
         tube->end.x = ACTOR_POS(actor)->x;

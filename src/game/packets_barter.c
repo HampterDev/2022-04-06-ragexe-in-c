@@ -29,7 +29,7 @@ static void set_id_text(struct String *text, int item_id)
     char buf[0x20];
 
     memset(buf, 0, sizeof buf);
-    _itoa(item_id, buf, 10);
+    snprintf(buf, sizeof buf, "%d", item_id);
     string_assign_cstr(text, buf);
 }
 
@@ -123,7 +123,7 @@ void game_mode_zc_npc_barter_market_item_info(struct GameMode *self, const unsig
 
         barter_goods_construct(&item);
         memset(id_text, 0, sizeof id_text);
-        _itoa(e.item_id, id_text, 10);
+        snprintf(id_text, sizeof id_text, "%d", e.item_id);
         string_assign_cstr(&item.id_text, id_text);
         item.type = e.type;
         item.count = e.amount;

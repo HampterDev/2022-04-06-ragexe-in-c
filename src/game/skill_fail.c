@@ -43,7 +43,7 @@ static const unsigned short g_plainCauseMessage[112] = {
 
 static void fail_text(const char *text)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)text, CHAT_COLOR_RED, SKILL_FAIL_CHANNEL, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)text, CHAT_COLOR_RED, SKILL_FAIL_CHANNEL, 0);
 }
 
 static void fail_line(int msg)
@@ -187,9 +187,9 @@ void game_mode_ack_to_use_skill(struct GameMode *self, const struct PACKET_ZC_AC
     case 85:
         memset(text, 0, sizeof text);
         if (packet->number > 0)
-            _snprintf_s(text, sizeof text, (size_t)-1, msg_str(0x9f9), packet->number);
+            snprintf(text, sizeof text, msg_str(0x9f9), packet->number);
         else
-            _snprintf_s(text, sizeof text, (size_t)-1, msg_str(0x9f8), 0x9f8);
+            snprintf(text, sizeof text, msg_str(0x9f8), 0x9f8);
         fail_text(text);
         return;
     case 86:

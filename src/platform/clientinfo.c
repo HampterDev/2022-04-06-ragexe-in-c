@@ -10,6 +10,7 @@ unsigned char g_startupSecondMod4;
 #include <stdlib.h>
 #include <string.h>
 #include "platform/clientinfo.h"
+#include "platform/clock.h"
 
 const char *g_serverAddress = "";
 const char *g_serverPort = "";
@@ -26,7 +27,7 @@ BYTE g_passwordEncrypt;
 BYTE g_passwordEncrypt2;
 int g_serverType;
 /* Text in memory is UTF-8; conversions to and from it name this code page. */
-unsigned int g_codePage = CP_UTF8;
+unsigned int g_codePage = CODE_PAGE_UTF8;
 int g_clientVersion;
 struct Vec g_yellowAids;
 struct XmlDocument g_clientInfoDocument;
@@ -141,7 +142,7 @@ void clientinfo_load(const char *xml_name)
 {
     struct XmlElement *root;
     struct File file;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
 
     file_construct(&file);
     if (file_open(&file, xml_name, 0, 1, 0)) {
@@ -153,12 +154,12 @@ void clientinfo_load(const char *xml_name)
         set_option(root);
     read_etc_info();
     select_client_info2(0);
-    _snprintf_s(g_accountServerAddr, 0x81, (size_t)-1, "%s:%s", g_serverAddress, g_serverPort);
+    snprintf(g_accountServerAddr, 0x81, "%s:%s", g_serverAddress, g_serverPort);
     language_construct(&g_languageDefault);
     atexit(language_default_destroy);
     g_language = &g_languageDefault;
-    GetLocalTime(&now);
-    g_startupSecondMod4 = (BYTE)now.wSecond & 3;
+    platform_date_time_local(&now);
+    g_startupSecondMod4 = (BYTE)now.second & 3;
     g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
     g_windowClassName = "Ragnarok";
     file_destruct(&file);

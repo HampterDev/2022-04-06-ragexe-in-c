@@ -11,7 +11,7 @@ static const char *recursive_path;
 static char last_lines[3][256];
 static int capture_lines;
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int value, int colour, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, intptr_t value, intptr_t colour, intptr_t c, intptr_t d)
 {
     const char *text = (const char *)value;
     LONG line = InterlockedIncrement(&lines) - 1;

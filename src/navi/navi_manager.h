@@ -19,7 +19,6 @@ struct NaviUiRecord {
     unsigned colour;
     unsigned colour2;
 };
-OFFSET_ASSERT(NaviUiRecord, text, 0x0c);
 
 struct NaviManager *navi_manager_construct(struct NaviManager *self);
 void navi_manager_destruct(struct NaviManager *self);

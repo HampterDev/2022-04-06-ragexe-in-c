@@ -1,18 +1,20 @@
 #include "ui/window_manager_state.h"
 #include "session/csession.h"
 #include "session/session_talk.h"
+#include "platform/filesystem.h"
 #include "game/context.h"
 
 #include <string.h>
 #include "actor/types.h"
+#include "platform/clock.h"
 
 void session_append_prohibit(struct Session *self, int aid, unsigned minutes)
 {
     struct ProhibitionRecord record;
     struct String name;
     struct File file;
-    SYSTEMTIME now;
-    char path[0x100], *data;
+    struct PlatformDateTime now;
+    char path[0x100], directory[0x100], *data;
     void *actor;
     unsigned char *old = NULL;
     int count, length, actorId, aidCopy = aid;
@@ -28,19 +30,19 @@ void session_append_prohibit(struct Session *self, int aid, unsigned minutes)
     record.minutes = minutes;
     record.aid = aid;
     record.actor_id = actorId;
-    GetLocalTime(&now);
-    record.date = (((now.wYear << 8) | (short)now.wMonth) << 8) | (short)now.wDay;
-    record.time = (((now.wHour << 8) | (short)now.wMinute) << 8) | (short)now.wSecond;
+    platform_date_time_local(&now);
+    record.date = (((now.year << 8) | (short)now.month) << 8) | (short)now.day;
+    record.time = (((now.hour << 8) | (short)now.minute) << 8) | (short)now.second;
     vec_push(&self->prohibitionLog, &record, sizeof record);
 
     file_construct(&file);
-    GetCurrentDirectoryA(sizeof path, path);
-    data = strstr(path, "\\data");
+    platform_current_directory(directory, sizeof directory);
+    data = strstr(directory, "\\data");
     count = 0;
     oldSize = 0;
     if (data)
-        memcpy(path, path, data - path);
-    strcat(path, "\\ProhibitionLog.gd");
+        memcpy(directory, directory, data - directory);
+    platform_path_join(path, sizeof path, directory, "ProhibitionLog.gd");
     if (file_open(&file, path, 0, 1, 0)) {
         oldSize = file.size - 4;
         old = mem_alloc(oldSize);

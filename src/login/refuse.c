@@ -176,7 +176,7 @@ void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt)
     int id;
 
     memset(text, 0, sizeof text);
-    _snprintf_s(text, sizeof text, _TRUNCATE, "%s", msg_str(0xc82));
+    snprintf(text, sizeof text, "%s", msg_str(0xc82));
     switch (packet->code) {
     case 1:   id = 0xc7c; break;
     case 2:   id = 0xc7d; break;
@@ -191,12 +191,12 @@ void login_mode_on_refuse_byte(struct LoginMode *self, const BYTE *pkt)
     case 9:   id = 0xf47; break;
     case 101:
         memset(name, 0, sizeof name);
-        memcpy_s(name, 0x14, packet->name, 0x14);
-        _snprintf_s(text, sizeof text, _TRUNCATE, msg_str(0x1c1), name);
+        memcpy(name, packet->name, 0x14);
+        snprintf(text, sizeof text, msg_str(0x1c1), name);
         goto show;
     default:  goto show;
     }
-    _snprintf_s(text, sizeof text, _TRUNCATE, "%s", msg_str(id));
+    snprintf(text, sizeof text, "%s", msg_str(id));
 show:
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     ui_window_mgr_message_box(&g_windowMgr, thread_text_format("%s(%d)", text, packet->code), 0, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);

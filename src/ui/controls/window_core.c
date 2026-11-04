@@ -6,11 +6,11 @@
 #include "ui/controls/controls_std.h"
 #include "ui/window_mgr.h"
 #include "ui/render/render.h"
-#include <mmsystem.h>
 #include "core/object_type_tables.h"
 #include "render/render_api.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 int g_uiWindowSerial;
 
@@ -30,7 +30,7 @@ struct UIWindow *ui_window_construct(struct UIWindow *self, int composites)
     self->state = 0;
     self->state_count = 0;
     self->alpha_target = 0xff;
-    self->alpha_time = timeGetTime();
+    self->alpha_time = platform_ticks_ms();
     self->alpha = 0xff;
     self->text_bk_on = 0;
     self->text_bk_colour = 0;

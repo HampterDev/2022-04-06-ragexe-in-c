@@ -54,7 +54,7 @@ static struct UIWindow *make_store_page(struct UIWindowMgr *self, int window_id)
 
 static struct UIWindow *wm_refuse(int msg)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(msg), 0xff, 0, 0);
     return NULL;
 }
 
@@ -65,7 +65,7 @@ static void wm_close_rodex(struct UIWindowMgr *self, int msg)
     ui_window_mgr_post_quit1(self, 0x108);
     ui_window_mgr_post_quit1(self, 0x109);
     ui_window_send_msg(self->rodex_inbox_wnd, NULL, UI_MSG_COMMAND, UI_ID_CLOSE, 0, 0, 0);
-    ui_window_mgr_send_msg_(self, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(self, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }
 
 static void wm_close_bank(struct UIWindowMgr *self, int msg)
@@ -73,7 +73,7 @@ static void wm_close_bank(struct UIWindowMgr *self, int msg)
     if (self->bank_new_wnd == NULL)
         return;
     ui_window_mgr_post_quit1(&g_windowMgr, 0x113);
-    ui_window_mgr_send_msg_(self, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(msg), 0xff, 0, 0);
+    ui_window_mgr_send_msg_(self, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(msg), 0xff, 0, 0);
 }
 
 static struct UIWindow *make_refining_wnd(struct UIWindowMgr *self, int window_id)
@@ -158,7 +158,7 @@ static struct UIWindow *make_merchant_item_wnd(struct UIWindowMgr *self, int win
 
     if (!map_property_mgr_get(g_mapFlags, g_session1.mapType, 0x28)) {
         ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(0x94c), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(0x94c), 0xff, 0, 0);
         return NULL;
     }
     wnd = self->merchant_item_wnd;
@@ -521,7 +521,7 @@ static struct UIWindow *make_expanded_bartermarket_wnd(struct UIWindowMgr *self,
 
     if (ui_window_mgr_get_window(self, 0x113)) {
         ui_window_mgr_post_quit1(&g_windowMgr, 0x113);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)(INT_PTR)msg_str(0xf7e), 0xff, 0,
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(0xf7e), 0xff, 0,
                               0);
     }
     wnd = ui_window_mgr_get_window(self, 0x155);

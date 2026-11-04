@@ -1,4 +1,5 @@
 #include "std/vec.h"
+#include "core/fatal.h"
 #include "std/list.h"
 #include "std/tree.h"
 #include <assert.h>
@@ -27,7 +28,7 @@ void mem_free(void *p)
     free(p);
 }
 
-__declspec(noreturn) void fatal_error(const char *message)
+RAGE_NORETURN void fatal_error(const char *message)
 {
     (void)message;
     abort();

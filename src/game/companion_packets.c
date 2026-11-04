@@ -81,8 +81,8 @@ static void homun_redraw(void)
    as a format, and no further than the field. */
 static void homun_name(const struct HomunPropertyHead *head)
 {
-    _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%.*s",
-                (int)sizeof head->name, head->name);
+    snprintf(g_session1.homunName, sizeof g_session1.homunName, "%.*s",
+             (int)sizeof head->name, head->name);
 }
 
 static void homun_hunger_warning(const struct HomunPropertyHead *head)
@@ -90,7 +90,7 @@ static void homun_hunger_warning(const struct HomunPropertyHead *head)
     short fullness = head->fullness;
 
     if ((fullness == 1 || fullness == 5 || fullness == 10) && g_session1.homun_ai_state[1] != fullness) {
-        ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(0x3fa), 0xff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(0x3fa), 0xff, 0, 0);
         g_session1.homun_ai_state[1] = head->fullness;
     }
 }
@@ -179,7 +179,7 @@ void game_mode_zc_property_homun_no_accessory(struct GameMode *self, const unsig
 
 static void homun_v2_head(const struct PACKET_ZC_PROPERTY_HOMUN_NO_ACCESSORY2 *packet)
 {
-    _snprintf_s(g_session1.homunName, 0x20, (size_t)-1, "%s", packet->head.name);
+    snprintf(g_session1.homunName, 0x20, "%s", packet->head.name);
     g_session1.homunRenamed = packet->head.renamed;
     g_session1.homunLevel = packet->head.level;
     g_session1.homunFullness = packet->head.fullness;

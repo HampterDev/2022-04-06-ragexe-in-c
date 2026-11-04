@@ -124,8 +124,8 @@ void ui_guild_wnd_store_info(struct UIWindow *window)
     self->info->tab = guild_tab(self);
 }
 
-int ui_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                  int val3, int val4)
+intptr_t ui_guild_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                  intptr_t val3, intptr_t val4)
 {
     struct UIGuildWnd *self = (struct UIGuildWnd *)window;
     switch (msg) {

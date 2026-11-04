@@ -27,7 +27,7 @@ void ui_exchange_wnd_on_draw(struct UIWindow *self);
 void ui_exchange_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_exchange_wnd_on_r_btn_down(struct UIWindow *self, int x, int y);
 void ui_exchange_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_exchange_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_exchange_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 const struct UIWindowOps ui_exchange_wnd_ops = {
     .destroy = ui_exchange_wnd_destroy,
@@ -112,7 +112,6 @@ struct UIExchangeWnd {
     int money_len;
     struct String money_text;
 };
-OFFSET_ASSERT(UIExchangeWnd, buttons, 0x94);
 
 static const int g_buttonX[3] = { 3, 0x104, 0x1fe };
 
@@ -314,7 +313,7 @@ void ui_exchange_wnd_on_process(struct UIWindow *window)
         ui_window_mgr_set_focus_edit(&g_windowMgr, self->money_edit);
         return;
     }
-    amount = _atoi64(buf);
+    amount = strtoll(buf, NULL, 10);
     if (amount <= 0) {
         amount = 0;
         format_money64(amount, buf, sizeof buf);
@@ -470,7 +469,7 @@ void ui_exchange_wnd_on_r_btn_down(struct UIWindow *window, int x, int y)
     if (item.index != 0) {
         info_wnd = ui_window_open(0xc);
         if (info_wnd)
-            ui_window_send_msg(info_wnd, NULL, 0x18, (int)&item, 0, 0, 0);
+            ui_window_send_msg(info_wnd, NULL, 0x18, (intptr_t)&item, 0, 0, 0);
     }
     item_info_destruct(&item);
 }
@@ -499,7 +498,7 @@ static int on_command(struct UIExchangeWnd *self, int id)
                 bad_amount_box();
                 return 0;
             }
-            typed = _atoi64(buf);
+            typed = strtoll(buf, NULL, 10);
             amount = typed >= 0x7fffffff ? 0x7fffffff : typed > 0 ? (int)typed : 0;
             if (amount < 0)
                 amount = 0;
@@ -542,8 +541,8 @@ static int on_command(struct UIExchangeWnd *self, int id)
     return 0;
 }
 
-int ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                     int val2, int val3, int val4)
+intptr_t ui_exchange_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                     intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIExchangeWnd *self = (struct UIExchangeWnd *)window;
     switch (msg) {

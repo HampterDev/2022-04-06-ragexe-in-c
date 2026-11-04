@@ -73,7 +73,7 @@ void ui_window_resize_base(struct UIWindow *window, int width, int height)
 void ui_window_invalidate_base(struct UIWindow *window) { event(3, window == &parent, 0, 0, 0, 0); }
 void ui_window_on_create_base(struct UIWindow *window, int width, int height)
 { (void)window; event(4, width, height, 0, 0, 0); }
-int ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
+intptr_t ui_window_send_msg_base(struct UIWindow *window, struct UIWindow *sender, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window == &parent || window == focused || window == &item_window);
     if (message == 0x18 || message == 0x94) {

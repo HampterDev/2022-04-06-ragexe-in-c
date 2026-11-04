@@ -11,15 +11,14 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <mmsystem.h>
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "navi/navi_manager.h"
 #include "fileio/res_mgr.h"
 #include "ui/navigation_view.h"
 
-#include <windows.h>
-#include <shlwapi.h>
+#include "platform/win_types.h"
+#include "platform/code_page.h"
 #include <stdlib.h>
 #include "core/msg_str.h"
 #include "ui/ui_std.h"
@@ -36,16 +35,16 @@ static void push_object(struct Vec *results, struct SearchResult *tmp, struct Na
     search_results_push_copy(results, tmp);
 }
 
-static void widen_words(const struct Vec *words, struct Vec *wwords, wchar_t *wide)
+static void widen_words(const struct Vec *words, struct Vec *wwords, uint16_t *wide)
 {
     const struct String *w;
 
     for (w = (const struct String *)words->first; w != (const struct String *)words->last; w++) {
         struct WString ws;
 
-        MultiByteToWideChar(CP_UTF8, 0, string_cstr(w), -1, wide, 100);
+        platform_code_page_to_utf16(CODE_PAGE_UTF8, string_cstr(w), -1, wide, 100);
         wstring_init(&ws);
-        wstring_assign(&ws, wide, wcslen(wide));
+        wstring_assign(&ws, wide, utf16_length(wide));
         vec_push(wwords, &ws, sizeof ws);
     }
 }
@@ -65,7 +64,7 @@ static unsigned char all_words_in(const struct Vec *wwords, const struct WString
     unsigned char all = 1;
 
     for (ww = (const struct WString *)wwords->first; ww != (const struct WString *)wwords->last; ww++)
-        all &= StrStrIW(wstring_cstr(text), wstring_cstr(ww)) != NULL ? 0xff : 0;
+        all &= platform_utf16_find_ignore_case(wstring_cstr(text), wstring_cstr(ww)) != NULL ? 0xff : 0;
     return all;
 }
 
@@ -77,10 +76,10 @@ static void map_key(struct NaviMap *map, struct String *key)
     string_append_char(key, ' ');
 }
 
-static void widen(const char *text, wchar_t *wide, struct WString *out)
+static void widen(const char *text, uint16_t *wide, struct WString *out)
 {
-    MultiByteToWideChar(CP_UTF8, 0, text, -1, wide, 100);
-    wstring_assign(out, wide, wcslen(wide));
+    platform_code_page_to_utf16(CODE_PAGE_UTF8, text, -1, wide, 100);
+    wstring_assign(out, wide, utf16_length(wide));
 }
 
 static void split_words(struct NaviManager *self, const struct String *query, struct Vec *words_out)
@@ -326,7 +325,7 @@ void navi_map_match_map_words(struct NaviMap *self,
         const struct Vec *words, struct Vec *results)
 {
     struct SearchResult tmp;
-    wchar_t wide[100];
+    uint16_t wide[100];
     struct Vec wwords;
     struct String key;
     struct WString wkey;
@@ -339,9 +338,9 @@ void navi_map_match_map_words(struct NaviMap *self,
     widen_words(words, &wwords, wide);
 
     map_key(self, &key);
-    MultiByteToWideChar(CP_UTF8, 0, string_cstr(&key), -1, wide, 100);
+    platform_code_page_to_utf16(CODE_PAGE_UTF8, string_cstr(&key), -1, wide, 100);
     wstring_init(&wkey);
-    wstring_assign(&wkey, wide, wcslen(wide));
+    wstring_assign(&wkey, wide, utf16_length(wide));
 
     map_results(self, &wwords, &wkey, &tmp, results);
 
@@ -355,7 +354,7 @@ void navi_map_match_mob_words(struct NaviMap *self,
         const struct Vec *words, struct Vec *results)
 {
     struct SearchResult tmp;
-    wchar_t wide[100];
+    uint16_t wide[100];
     struct Vec wwords;
     struct WString wkey, wname;
     struct String key;
@@ -370,9 +369,9 @@ void navi_map_match_mob_words(struct NaviMap *self,
 
     wstring_init(&wname);
     map_key(self, &key);
-    MultiByteToWideChar(CP_UTF8, 0, string_cstr(&key), -1, wide, 100);
+    platform_code_page_to_utf16(CODE_PAGE_UTF8, string_cstr(&key), -1, wide, 100);
     wstring_init(&wkey);
-    wstring_assign(&wkey, wide, wcslen(wide));
+    wstring_assign(&wkey, wide, utf16_length(wide));
 
     for (it = (struct NaviObject **)self->mobs.first; it != (struct NaviObject **)self->mobs.last; it++) {
         widen(navi_object_name(*it), wide, &wname);
@@ -408,7 +407,7 @@ void navi_map_match_npc_words(struct NaviMap *self,
         const struct Vec *words, struct Vec *results)
 {
     struct SearchResult tmp;
-    wchar_t wide[100];
+    uint16_t wide[100];
     struct Vec wwords;
     struct WString wname;
     struct NaviObject **it;

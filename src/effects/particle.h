@@ -4,6 +4,7 @@
 
 #include "effects/effect.h"
 #include "effects/str_animation.h"
+#include <stdint.h>
 
 #define PARTICLE_TINT_BY_CLIP 0x200
 
@@ -131,7 +132,7 @@ struct Ez2StrParticle {
     unsigned char scale_by_actor;
     int actor_aid;
     float screen_dx, screen_dy;
-    __int64 lift;
+    int64_t lift;
     unsigned char flip_v;
     unsigned char flip_h;
     unsigned char sound_loops;

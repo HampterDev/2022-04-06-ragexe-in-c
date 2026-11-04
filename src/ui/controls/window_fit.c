@@ -8,7 +8,6 @@
 #include "render/textdc.h"
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 #include "ui/controls/window_fit.h"
 
 static int text_cx(struct UIWindow *self, const char *text, int face, int height, int arg)

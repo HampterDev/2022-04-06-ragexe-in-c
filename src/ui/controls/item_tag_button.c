@@ -96,7 +96,7 @@ void ui_item_tag_button_on_l_btn_down(struct UIWindow *window, int x, int y)
     } else {
         wnd->state = UI_BTN_HOVER;
         if (wnd->parent) {
-            ui_window_send_msg(wnd->parent, wnd, UI_MSG_ITEM_TAG_CLICK, wnd->id, self->text.value, (int)&self->item,
+            ui_window_send_msg(wnd->parent, wnd, UI_MSG_ITEM_TAG_CLICK, wnd->id, self->text.value, (intptr_t)&self->item,
                      0);
             ui_window_invalidate_base(wnd);
             return;

@@ -11,6 +11,7 @@
 #include "session/session_options.h"
 #include "std/tree.h"
 #include "ui/ui_std.h"
+#include "core/cstr.h"
 
 enum { MSG_UNKNOWN_MEMBER = 0x245 };
 
@@ -151,7 +152,7 @@ struct GuildExpelled *guild_ban_construct(struct GuildExpelled *ban)
 
 static void guild_chat(const char *text, int color)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)text, color, CHAT_CHANNEL_GUILD, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)text, color, CHAT_CHANNEL_GUILD, 0);
 }
 
 static char is_our_name(const char *name)
@@ -185,7 +186,7 @@ static void report_expelled(const char *name, const char *reason)
     sprintf(line, msg_str(MSG_MEMBER_EXPELLED), name);
     guild_chat(line, CHAT_COLOR_YELLOW);
     memset(line, 0, sizeof line);
-    sprintf_s(line, sizeof line, msg_str(MSG_EXPEL_REASON), reason);
+    snprintf(line, sizeof line, msg_str(MSG_EXPEL_REASON), reason);
     guild_chat(line, CHAT_COLOR_YELLOW);
     guild_ban_construct(&ban);
     string_assign_cstr(&ban.name, name);
@@ -202,7 +203,7 @@ static void report_left(const char *name, const char *reason)
 
     sprintf(line, msg_str(MSG_MEMBER_LEFT), name);
     guild_chat(line, CHAT_COLOR_YELLOW);
-    sprintf_s(line, sizeof line, msg_str(MSG_LEAVE_REASON), reason);
+    snprintf(line, sizeof line, msg_str(MSG_LEAVE_REASON), reason);
     guild_chat(line, CHAT_COLOR_YELLOW);
 }
 
@@ -291,7 +292,7 @@ void game_mode_zc_ack_leave_guild_del_name(struct GameMode *self, const struct P
     struct String name;
     struct GameActor *actor;
 
-    strcpy_s(reason, 40, packet->reason);
+    cstr_copy(reason, 40, packet->reason);
     reason[40] = 0;
     if (packet->gid == (unsigned)g_session1.ownGid) {
         session_refresh_guild_skill_hotkeys(&g_session1);

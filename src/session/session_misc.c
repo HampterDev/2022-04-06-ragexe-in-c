@@ -3,11 +3,12 @@
 #include "session/session_names.h"
 #include "session/session_state.h"
 
-#include <mmsystem.h>
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include "platform/clock.h"
 
 struct IntPair2 {
     int key, value;
@@ -48,11 +49,11 @@ int session_get_max_job_level(struct Session *self, int job)
     return g_session1.jobLevel2nd;
 }
 
-BYTE session_pet_emotion_due(struct Session *self, __int64 interval)
+BYTE session_pet_emotion_due(struct Session *self, int64_t interval)
 {
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
 
-    if ((__int64)(int)now < (__int64)self->lastPetEmotionTime + interval)
+    if ((int64_t)(int)now < (int64_t)self->lastPetEmotionTime + interval)
         return 0;
     self->lastPetEmotionTime = (int)now;
     return 1;

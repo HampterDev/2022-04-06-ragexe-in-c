@@ -284,8 +284,8 @@ void ui_edit_ctrl2_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-int ui_edit_ctrl2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                   int val3, int val4)
+intptr_t ui_edit_ctrl2_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                   intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrl *self = (struct UIEditCtrl *)window;
     if (msg != UI_MSG_DEFAULT_BUTTON) {
@@ -400,8 +400,8 @@ void ui_edit_ctrl_wheel_to_parent(struct UIWindow *window, int delta)
         ui_window_on_wheel(self->base.parent, delta);
 }
 
-int ui_edit_ctrl_var_id_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                       int val3, int val4)
+intptr_t ui_edit_ctrl_var_id_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                       intptr_t val3, intptr_t val4)
 {
     struct UIEditCtrl *self = (struct UIEditCtrl *)window;
     if (msg != UI_MSG_DEFAULT_BUTTON)

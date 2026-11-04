@@ -4,7 +4,7 @@
 #include "world/object_lookup.h"
 #include <stdio.h>
 #include <string.h>
-#include <windows.h>
+#include "platform/win_types.h"
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "effects/render_object.h"

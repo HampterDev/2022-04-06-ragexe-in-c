@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "core/app.h"
+#include "platform/filesystem.h"
 #include "contents/md5ctx.h"
 #include "core/msg_str.h"
 #include "session/session_talk.h"
@@ -117,7 +118,7 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
     }
 
     g_session1.lastLoginIp = packet->head.last_login_ip;
-    memcpy_s(g_session1.lastLoginTime, 26, packet->head.last_login_time, 26);
+    memcpy(g_session1.lastLoginTime, packet->head.last_login_time, 26);
     g_session1.lastLoginTime[26] = 0;
 
     len = packet->head.packet_length;
@@ -152,7 +153,7 @@ void login_mode_send_exe_digest(struct LoginMode *self)
 
     pkt.id = 0x204;
     md5ctx_init(&md5);
-    GetModuleFileNameA(g_hInstance, path, MAX_PATH);
+    platform_module_path(path, MAX_PATH);
     f = fopen(path, "rb");
     if (!f)
         return;

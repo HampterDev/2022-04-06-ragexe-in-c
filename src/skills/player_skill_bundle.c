@@ -10,7 +10,7 @@
 #include "contents/ui_window_mgr.h"
 
 struct List g_skillBundleEmptyList;
-INIT_ONCE g_skillBundleEmptyListGuard;
+struct Once g_skillBundleEmptyListGuard;
 static void skill_bundle_empty_list_destroy(void);
 
 struct TreeTab {

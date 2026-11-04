@@ -67,7 +67,9 @@ static void *wait_window(int msg, int a)
 }
 
 #define timeGetTime test_time
+#define platform_ticks_ms test_time
 #include "map_enter_packet.inc"
+#undef platform_ticks_ms
 #undef timeGetTime
 
 static __declspec(noinline) void fill_stack(unsigned char marker)

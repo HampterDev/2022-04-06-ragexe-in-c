@@ -5,8 +5,8 @@
 #include "session/session_names.h"
 
 #include <string.h>
-#include <mmsystem.h>
 #include "actor/types.h"
+#include "platform/clock.h"
 
 struct String *session_get_accessory_name(struct Session *self,
                                                      struct String *out, int accessory)
@@ -151,7 +151,7 @@ int session_get_motion_stepping(void *master, void *slave, int action, int block
 
 int motion_stepping_frame(const struct MotionStepping *stepping)
 {
-    DWORD elapsed = timeGetTime() - stepping->start_time;
+    DWORD elapsed = platform_ticks_ms() - stepping->start_time;
     double wall = (double)elapsed;
 
     return (int)((float)wall / 24.0f / (float)stepping->delay) % stepping->ratio + stepping->ratio * stepping->block;

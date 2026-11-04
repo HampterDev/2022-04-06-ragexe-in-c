@@ -5,11 +5,11 @@
 #include "ui/window_access.h"
 #include "ui/controls/controls.h"
 #include "ui/window_mgr.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "core/object_type_tables.h"
 #include "ui/controls/ui_hooks.h"
 #include "ui/render/graphic_setting.h"
+#include "platform/clock.h"
 
 struct ItemInfo;
 
@@ -75,8 +75,8 @@ void ui_frame_wnd_destruct(struct UIFrameWnd *self)
     ui_window_destruct(&self->base);
 }
 
-int ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                  int val1, int val2, int val3, int val4)
+intptr_t ui_frame_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                  intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIFrameWnd *self = (struct UIFrameWnd *)window;
     struct ItemInfo *item;
@@ -153,7 +153,7 @@ void ui_frame_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     f->saved_x = self->base.x;
     f->saved_y = self->base.y;
     f->base.alpha_target = UI_FRAME_DRAG_ALPHA;
-    f->base.alpha_time = timeGetTime();
+    f->base.alpha_time = platform_ticks_ms();
     snap_mgr_save_group_positions(&g_snapMgr, &self->base);
 }
 
@@ -207,7 +207,7 @@ void ui_frame_wnd_on_l_btn_up(struct UIWindow *window, int x_unused, int y_unuse
         return;
     g_windowMgr.last_id = -1;
     f->base.alpha_target = 0xff;
-    f->base.alpha_time = timeGetTime();
+    f->base.alpha_time = platform_ticks_ms();
     ui_window_mgr_release_capture(&g_windowMgr);
     snap_mgr_relink_all(&g_snapMgr, &self->base);
 }

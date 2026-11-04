@@ -28,8 +28,8 @@ void dc_bitmap_draw_sprite(struct DcBitmap *canvas,int x,int y,int width,int hei
 }
 void dc_bitmap_update(struct DcBitmap *b,int x,int y,int w,int h,const DWORD *pixels,char keyed)
 { (void)b;(void)x;(void)y;(void)w;(void)h;(void)pixels;(void)keyed;abort(); }
-char dc_bitmap_get_dc(struct DcBitmap *b,HDC *out)
-{ (void)b;(void)out;abort();return 0; }
+void dc_bitmap_fill_triangle(struct DcBitmap *b,const POINT points[3],COLORREF colour)
+{ (void)b;(void)points;(void)colour;abort(); }
 void dc_bitmap_fill(struct DcBitmap *b,const RECT *r,DWORD color)
 { (void)b;(void)r;(void)color;abort(); }
 int main(void)

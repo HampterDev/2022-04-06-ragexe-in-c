@@ -21,10 +21,10 @@
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
 #include "ui/render/render_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core/app.h"
+#include "platform/display_depth.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
 #include "ui/skin_manager.h"
@@ -67,9 +67,6 @@ int g_displayHeight;
 #define SIZE_TAB_CONTROL sizeof(struct UITabControl)
 #define SIZE_SCROLL_BAR sizeof(struct UIScrollBar)
 
-OFFSET_ASSERT(UIGraphicSettingWnd, device_names, 0x94);
-OFFSET_ASSERT(UIGraphicSettingWnd, device_name, 0xc0);
-
 #define WND(self) (&(self)->frame.base)
 #define W(ctrl) ((struct UIWindow *)(ctrl))
 #define STR_AT(v, i) (&((struct String *)(v)->first)[i])
@@ -80,7 +77,7 @@ void ui_graphic_setting_wnd_destroy(struct UIWindow *window);
 void ui_graphic_setting_wnd_store_info(struct UIWindow *self);
 void ui_graphic_setting_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_graphic_setting_wnd_on_draw(struct UIWindow *self);
-int ui_graphic_setting_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .destroy = ui_graphic_setting_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -184,13 +181,10 @@ void ui_graphic_setting_wnd_destroy(struct UIWindow *window)
 
 void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
 {
-    OSVERSIONINFOA version;
     const struct DisplayDevice *rec;
     unsigned count, i, hw, m;
+    int has_16bit_modes = platform_display_has_16bit_modes();
 
-    memset(&version, 0, sizeof version);
-    version.dwOSVersionInfoSize = sizeof version;
-    GetVersionExA(&version);
     count = (unsigned)display_devices_count();
     self->modes.last = self->modes.first;
     string_vec_clear(&self->mode_names);
@@ -214,7 +208,7 @@ void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
             const struct DisplayMode *mode = &rec->modes[m];
             int width = (int)mode->width, height = (int)mode->height, bpp = (int)mode->bpp;
 
-            if (version.dwMajorVersion == 6 && version.dwMinorVersion == 2) {
+            if (!has_16bit_modes) {
                 if ((unsigned)height >= 0x298 && bpp == 32 && (unsigned)width <= 0x2000
                     && (unsigned)height <= 0x1000) {
                     struct String text;
@@ -648,7 +642,7 @@ static void open_string_list(struct UIGraphicSettingWnd *self, int id, struct Ve
     list = ui_window_open(UI_WND_COMBO_BOX);
     list->id = id;
     for (i = 0; i < STR_COUNT(names); i++)
-        ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (int)string_cstr(STR_AT(names, i)), 0, 0, 0);
+        ui_window_send_msg(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)string_cstr(STR_AT(names, i)), 0, 0, 0);
     if (STR_COUNT(names) * 16 < height)
         height = STR_COUNT(names) * 16;
     place_list(self, list, box, selected, (int)height);
@@ -714,7 +708,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         } else if (sender == W(self->box_emblem_frame)) {
             g_session1.emblemFrame = value;
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
         } else if (sender == W(self->box_extend_damage)) {
             g_session1.extendDamage = value;
         } else if (settings_is_display_box(sender, self) || sender == W(self->box_trilinear)) {
@@ -743,9 +737,9 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         if (!list)
             return 0;
         list->id = ID_SKIN;
-        ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (int)msg_str(0xc12), 0, 0, 0);
+        ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)msg_str(0xc12), 0, 0, 0);
         for (i = 0; i < count; i++)
-            ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (int)skin_mgr_get_name(&g_skinMgr, i), 0, 0, 0);
+            ui_window_send(list, NULL, COMBO_MSG_ADD_LINE, (intptr_t)skin_mgr_get_name(&g_skinMgr, i), 0, 0, 0);
         height = (count + 1) * 16;
         if (height >= 0x50)
             height = 0x50;
@@ -763,8 +757,8 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
 
                 g_displayDeviceIndex = self->device;
                 g_displayModeIndex = self->mode;
-                _snprintf_s(g_deviceName, sizeof(g_deviceName), (size_t)-1, "%s",
-                               string_cstr(&self->device_name));
+                snprintf(g_deviceName, sizeof(g_deviceName), "%s",
+                            string_cstr(&self->device_name));
                 g_deviceGuid = self->device_guid;
                 g_driverGuid = self->adapter_guid;
                 mode = MODE_AT(&self->modes, self->mode);
@@ -865,9 +859,9 @@ static int scroll_step(int msg, int delta)
     return delta;
 }
 
-int ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
-                                           struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                                           int val4)
+intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
+                                           struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3,
+                                           intptr_t val4)
 {
     struct UIGraphicSettingWnd *self = (struct UIGraphicSettingWnd *)window;
     int old, pos;

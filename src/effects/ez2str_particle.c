@@ -7,6 +7,7 @@
 #include "render/render_api.h"
 #include "effects/effect.h"
 #include "game/context.h"
+#include <stdint.h>
 
 static const double k_ez2strPi = 3.141592653589;
 static const double k_ez2strRandMax = 32767.0;
@@ -84,10 +85,10 @@ void ez2_str_particle_skip(struct Ez2StrParticle *self, float fraction)
     } while (--frames);
 }
 
-float *effect_random_point_in_disc(float *out, float cx, float cy, __int64 radius)
+float *effect_random_point_in_disc(float *out, float cx, float cy, int64_t radius)
 {
-    double turn = rand() / k_ez2strRandMax;
-    float dist = float_sqrt((float)(rand() / k_ez2strRandMax));
+    double turn = (rand() & 0x7fff) / k_ez2strRandMax;
+    float dist = float_sqrt((float)((rand() & 0x7fff) / k_ez2strRandMax));
     float radius_f = (float)(double)radius;
     double distance, theta;
 

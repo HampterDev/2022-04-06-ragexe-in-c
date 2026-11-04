@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #include "platform/win_utf8.h"
 #include "platform/code_page.h"
 #include <stdlib.h>
@@ -170,3 +171,4 @@ LONG WINAPI win_utf8_reg_set_value(HKEY key, LPCSTR name, DWORD reserved, DWORD 
     free(value);
     return result;
 }
+#endif

@@ -69,7 +69,7 @@ void game_mode_on_millennium_shield(struct GameMode *self, const struct PacketMi
     count[0] = (float)packet->num;
     count[1] = 0.0f;
     count[2] = 0.0f;
-    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, MSG_ARG_PTR(count), 0, 0);
+    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, (intptr_t)count, 0, 0);
 }
 
 static void remove_effect(struct GameActor *actor, int effect_id)
@@ -96,7 +96,7 @@ static void launch_spheres(struct GameActor *actor, int effect_id, short num)
     count[0] = (float)num;
     count[1] = 0.0f;
     count[2] = 0.0f;
-    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, MSG_ARG_PTR(count), 0, 0);
+    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, (intptr_t)count, 0, 0);
 }
 
 void game_mode_on_spirits(struct GameMode *self, int aid, short num)
@@ -194,7 +194,7 @@ void game_mode_on_spirits2(struct GameMode *self, const struct PacketSpirits2 *p
     count[2] = 0.0f;
     if (effect == 0)
         return;
-    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, MSG_ARG_PTR(count), 0, 0);
+    rag_effect_send_msg(effect, NULL, EFFECT_MSG_SET_COUNT, (intptr_t)count, 0, 0);
 }
 
 void game_mode_on_target_spirits(struct GameMode *self, int aid, short num)

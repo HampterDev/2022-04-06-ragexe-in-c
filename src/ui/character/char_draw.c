@@ -15,7 +15,6 @@
 #include "ui/runtime.h"
 #include "ui/ui_std.h"
 #include "ui/character/character_std.h"
-#include <mmsystem.h>
 #include <stdlib.h>
 #include "std/std.h"
 #include "actor/sprite_render.h"

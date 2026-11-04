@@ -3,7 +3,7 @@
 #include "game/actor_packets.h"
 #include "contents/sound.h"
 #include "session/state.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "game/gamemode.h"
 #include "game/ui_bridge.h"
@@ -414,7 +414,7 @@ void game_mode_on_msg_state_change(struct GameMode *self, const struct PacketMsg
             if (strlen(text) > 1) {
                 sprintf(line, "%s%s", prefix, text);
                 ui_window_mgr_send_msg_(&g_windowMgr, UIM_CLOSE_DIALOG, 0, 0, 0, 0);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (int)line, color,
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_PUSH_INTO_CHAT, (intptr_t)line, color,
                                     strlen(prefix) > 1 ? CHAT_CHANNEL_MEMBER_STATE : CHAT_CHANNEL_OWN_STATE, 0);
             }
             if (packet->aid == g_session1.ownAid)

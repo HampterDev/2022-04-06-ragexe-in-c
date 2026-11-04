@@ -3,7 +3,7 @@
 
 #include "contents/account_settings.h"
 #include "json/service_json.h"
-#include <windows.h>
+#include "platform/win_types.h"
 
 struct AccountUserDataMgr {
     struct JsonTree defaults;

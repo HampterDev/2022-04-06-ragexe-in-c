@@ -100,7 +100,7 @@ void ranking_run(struct RankingSchedule *self, int now)
             string_free(&name);
         }
         if (!all_named) {
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_RANK_NAMES_PENDING),
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_RANK_NAMES_PENDING),
                                    CHAT_YELLOW, 0, 0);
             return;
         }
@@ -111,7 +111,7 @@ void ranking_run(struct RankingSchedule *self, int now)
 
 void ranking_set(struct RankingSchedule *self, const struct RankPacket *packet)
 {
-    memcpy_s(&self->rank, sizeof self->rank, packet, sizeof self->rank);
+    memcpy(&self->rank, packet, sizeof self->rank);
 }
 
 void ranking_print(struct RankingSchedule *self)
@@ -121,7 +121,7 @@ void ranking_print(struct RankingSchedule *self)
     struct String name;
     const char *no_name;
 
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)style->title, style->title_color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)style->title, style->title_color, 0, 0);
 
     for (i = 0; i < RANK_ENTRIES; i++) {
         string_init(&name);
@@ -134,7 +134,7 @@ void ranking_print(struct RankingSchedule *self)
         string_free(&name);
     }
 
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)RANK_SEPARATOR, style->title_color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)RANK_SEPARATOR, style->title_color, 0, 0);
     ranking_line(style->line_color, "MY POINT    :  %4d POINT ", self->rank.my_points);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)RANK_SEPARATOR, style->title_color, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)RANK_SEPARATOR, style->title_color, 0, 0);
 }

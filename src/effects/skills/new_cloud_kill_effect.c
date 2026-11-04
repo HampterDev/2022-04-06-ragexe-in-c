@@ -1,12 +1,12 @@
 #include "effects/effect_allocator.h"
 #include "render/math3d.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "std/list.h"
+#include "platform/clock.h"
 
 struct Effect;
 struct NewCloudKillEffect;
@@ -368,8 +368,8 @@ void new_cloud_kill_effect_add_puffs(struct NewCloudKillEffect *self)
 void new_cloud_kill_effect_init(struct Effect *effect)
 {
     struct NewCloudKillEffect *self = (struct NewCloudKillEffect *)effect;
-    self->circle_shown_ms = timeGetTime();
-    self->mist_shown_ms = timeGetTime();
+    self->circle_shown_ms = platform_ticks_ms();
+    self->mist_shown_ms = platform_ticks_ms();
     new_cloud_kill_effect_add_circle(self);
     new_cloud_kill_effect_add_mist(self);
     new_cloud_kill_effect_add_clouds(self);
@@ -509,7 +509,7 @@ void new_cloud_kill_effect_step_lightning(struct NewCloudKillEffect *self,
 void new_cloud_kill_effect_process(struct Effect *effect)
 {
     struct NewCloudKillEffect *self = (struct NewCloudKillEffect *)effect;
-    const unsigned now = timeGetTime();
+    const unsigned now = platform_ticks_ms();
     struct ListNode *n;
 
     for (n = self->circle.head->next; n != self->circle.head; n = n->next) {
@@ -519,7 +519,7 @@ void new_cloud_kill_effect_process(struct Effect *effect)
         particle_of(n)->age--;
     }
     if (now - self->circle_shown_ms > RESHOW_MS)
-        self->circle_shown_ms = timeGetTime();
+        self->circle_shown_ms = platform_ticks_ms();
 
     for (n = self->mist.head->next; n != self->mist.head; n = n->next) {
         if (now - self->mist_shown_ms > RESHOW_MS)
@@ -527,7 +527,7 @@ void new_cloud_kill_effect_process(struct Effect *effect)
         new_cloud_kill_effect_step_mist(self, particle_of(n));
     }
     if (now - self->mist_shown_ms > RESHOW_MS)
-        self->mist_shown_ms = timeGetTime();
+        self->mist_shown_ms = platform_ticks_ms();
 
     for (n = self->clouds.head->next; n != self->clouds.head; n = n->next) {
         particle_of(n)->age++;

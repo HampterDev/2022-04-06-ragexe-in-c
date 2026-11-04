@@ -246,7 +246,7 @@ int game_mode_msg_npc_trade_closed(struct GameMode *self)
     }
     for (i = 0; i < sizeof trade_windows / sizeof trade_windows[0]; i++)
         close_window(trade_windows[i]);
-    self_msg(self, MODE_MSG_SHOW_ILLUSTRATION, (int)"", -1, 0, 0);
+    self_msg(self, MODE_MSG_SHOW_ILLUSTRATION, (intptr_t)"", -1, 0, 0);
     return 0;
 }
 
@@ -374,7 +374,7 @@ int game_mode_msg_barter_purchase(struct GameMode *self)
         return 0;
     header.id = CZ_NPC_BARTER_MARKET_PURCHASE;
     header.len = (unsigned short)len;
-    memcpy_s(packet, sizeof packet, &header, sizeof header);
+    memcpy(packet, &header, sizeof header);
     cart = barter_cart(g_barter);
     out = (struct BarterPurchaseEntry *)(packet + 4);
     for (node = cart->head->next; node != cart->head; node = node->next, out++) {
@@ -410,7 +410,7 @@ int game_mode_msg_expanded_barter_purchase(struct GameMode *self)
         return 0;
     header.id = CZ_NPC_EXPANDED_BARTER_MARKET_PURCHASE;
     header.len = (unsigned short)len;
-    memcpy_s(packet, sizeof packet, &header, sizeof header);
+    memcpy(packet, &header, sizeof header);
     cart = expanded_barter_cart(g_expandedBarter);
     out = (struct ExpandedEntry *)(packet + 4);
     for (src = cart->first; src != cart->last; src++, out++) {

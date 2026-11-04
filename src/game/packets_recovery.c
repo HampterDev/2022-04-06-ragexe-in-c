@@ -48,12 +48,9 @@ void game_mode_on_recovery(struct GameMode *self, const void *packet, int versio
     if (version == 0) {
         amount = ((const struct PacketRecovery *)packet)->amount;
         var_id = (short)((const struct PacketRecovery *)packet)->var_id;
-    } else if (version == 1) {
+    } else {
         amount = ((const struct PacketRecovery2 *)packet)->amount;
         var_id = (short)((const struct PacketRecovery2 *)packet)->var_id;
-    } else {
-        amount = (int)packet;
-        var_id = (short)(int)packet;
     }
     if (var_id == SP_HP)
         recover(&g_session1.hp, amount, player, COLOUR_HP, EF_HP_RECOVERY);

@@ -1,8 +1,5 @@
 #include <errno.h>
 #include "core/fatal.h"
-#include <malloc.h>
-#include <mbctype.h>
-#include <mbstring.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ui/ui_std.h"

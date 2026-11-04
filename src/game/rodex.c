@@ -1,17 +1,18 @@
 #include "game/packet_handlers.h"
 #include "ui/window_manager_state.h"
 #include <string.h>
-#include <time.h>
 #include "game/gamemode.h"
 #include "game/ui_bridge.h"
 #include "game/rodex_mail.h"
 #include "ui/mail/rodex_ui.h"
+#include <stdint.h>
+#include "platform/clock.h"
 
 struct UIRodexInboxWnd;
 
 #pragma pack(push, 1)
 struct MailEntry {
-    __int64 mail_id;
+    int64_t mail_id;
     unsigned char is_read;
     unsigned char type;
     char sender[24];
@@ -68,7 +69,7 @@ void game_mode_on_latest_rodex_list(struct GameMode *self, const struct PacketLa
         mail.sender_trusted = -1;
         mail.is_read = e->is_read;
         mail.type = e->type;
-        mail.expire_time = e->expire_seconds + (int)_time32(0);
+        mail.expire_time = e->expire_seconds + platform_time_now();
         sender_length = c_strlen(e->sender);
         string_assign(&mail.sender, e->sender, sender_length > 24 ? 24 : sender_length);
         string_assign(&mail.title, e->title, (size_t)(int)e->title_length);

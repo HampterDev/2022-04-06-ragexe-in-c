@@ -6,6 +6,7 @@
 #include "resources/attr_queries.h"
 #include "effects/skills/msg_effect.h"
 #include "actor/game_actor.h"
+#include "platform/clock.h"
 
 static unsigned char g_showNumberMsgs = 1u;
 
@@ -439,7 +440,7 @@ static void msg_effect_number(struct MsgEffect *self, const Vec3 *at, int motion
     me->zoom = 5.0f;
     self->base_zoom = 5.0f;
     me->depth_layer = -2;
-    me->start_tick = timeGetTime();
+    me->start_tick = platform_ticks_ms();
 }
 
 void msg_effect_send_msg(struct GameObject *object, struct GameObject *source,
@@ -455,7 +456,7 @@ void msg_effect_send_msg(struct GameObject *object, struct GameObject *source,
         const struct String *names = (const struct String *)MSG_PTR(par2);
 
         me->visible = 1;
-        me->start_tick = timeGetTime();
+        me->start_tick = platform_ticks_ms();
         if (par2) {
             render_object_load_spr_res(me, string_cstr(&names[0]));
             render_object_load_act_res(me, string_cstr(&names[1]));

@@ -7,7 +7,7 @@ struct MiniPartyWndAreaMgr *mini_party_area_mgr_construct(struct MiniPartyWndAre
 {
     self->taken.first = self->taken.last = self->taken.end = NULL;
     self->free.first = self->free.last = self->free.end = NULL;
-    SetRect(&self->area, 0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height);
+    self->area = (RECT){0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height};
     return self;
 }
 
@@ -18,7 +18,7 @@ struct MiniPartySortArea *mini_party_sort_area_construct(struct MiniPartySortAre
     int i;
 
     list_init(&self->cells);
-    SetRect(&self->area, 0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height);
+    self->area = (RECT){0, 0, g_windowMgr.screen_width, g_windowMgr.screen_height};
     self->cols = (self->area.right - self->area.left) / g_miniPartyCellWidth;
     self->rows = (self->area.bottom - self->area.top) / g_miniPartyCellHeight;
     bounds = *in;

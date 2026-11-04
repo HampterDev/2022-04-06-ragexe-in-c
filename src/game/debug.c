@@ -1,5 +1,5 @@
 #include "core/thread_text.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>

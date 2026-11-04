@@ -1,3 +1,4 @@
+#include "platform/filesystem.h"
 #include "game/actor_packets.h"
 #include "game/gamemode.h"
 #include "game/ground_item_packets.h"
@@ -5,7 +6,6 @@
 #include "world/mode_manager.h"
 #include "contents/connection_api.h"
 #include <stdio.h>
-#include <time.h>
 #include "game/packet_handlers.h"
 #include "game/client.h"
 #include "login/zone_addr.h"
@@ -13,6 +13,7 @@
 #include "ui/items/styling_shop.h"
 #include "game/connection.h"
 #include "login/zone.h"
+#include "platform/clock.h"
 
 #define MODE_GAME 1
 
@@ -33,16 +34,16 @@ static void switch_to_map(void)
 static void log_entry(void)
 {
     FILE *f;
-    __time32_t now;
+    int32_t now;
 
-    f = fopen("PingLog.txt", "at");
+    f = platform_file_open("PingLog.txt", "at");
     if (f != 0) {
-        _time32(&now);
+        now = platform_time_now();
         fprintf(f, "\n");
         fprintf(f, "server:%s\n", string_cstr(&g_session1.worldName));
         fprintf(f, "ip:%s\n", g_mapServerIp.ip);
         fprintf(f, "map:%s.gat\n", g_session1.mapName);
-        fprintf(f, "time:%s\n\n", _ctime32(&now));
+        fprintf(f, "time:%s\n\n", platform_time_text(now));
         fclose(f);
     }
     list_clear(&g_keepAliveTimes, NULL);

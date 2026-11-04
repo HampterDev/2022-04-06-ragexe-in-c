@@ -73,11 +73,6 @@ struct UIDisplayCharacter {
     int draw_x, draw_y;
     int goods_top, goods_mid, goods_bottom;
 };
-OFFSET_ASSERT(UIDisplayCharacter, robe, 0x88);
-OFFSET_ASSERT(UIDisplayCharacter, start_time, 0xa8);
-OFFSET_ASSERT(UIDisplayCharacter, draw_x, 0xb4);
-OFFSET_ASSERT(UIDisplayCharacter, goods_top, 0xbc);
-SIZE_ASSERT(UIDisplayCharacter, 0xc8);
 struct UIDisplayCharacter *ui_display_character_construct(struct UIDisplayCharacter *self);
 void ui_display_character_copy_look(struct UIDisplayCharacter *self,
                                             const struct UIDisplayCharacter *other);
@@ -100,11 +95,6 @@ struct UIShowInfoWnd {
     int text_x, text_y;
     const char *row_bitmap;
 };
-OFFSET_ASSERT(UIShowInfoWnd, show_hint, 0x9c);
-OFFSET_ASSERT(UIShowInfoWnd, all_ok, 0xa8);
-OFFSET_ASSERT(UIShowInfoWnd, kinds, 0xb0);
-OFFSET_ASSERT(UIShowInfoWnd, icon_x, 0xbc);
-SIZE_ASSERT(UIShowInfoWnd, 0xd0);
 struct UIShowInfoWnd *ui_show_info_wnd_construct(struct UIShowInfoWnd *self);
 void ui_show_info_wnd_setup(struct UIShowInfoWnd *self, const int *tab);
 BYTE show_info_buy(struct UIShowInfoWnd *self);
@@ -114,21 +104,18 @@ struct UIStylingTab {
     struct UIDisplayCharacter *display;
     struct UIShowInfoWnd *info;
 };
-SIZE_ASSERT(UIStylingTab, 0x84);
 
 struct UIBasicStylingWnd {
     struct UIStylingTab tab;
     struct Vec palette;
     struct UIBitmapButton *no_colour;
 };
-SIZE_ASSERT(UIBasicStylingWnd, 0x94);
 
 struct UI2ndCostumeWnd {
     struct UIStylingTab tab;
     struct UICheckBox *show_box;
     struct UICheckBox *hide_box;
 };
-SIZE_ASSERT(UI2ndCostumeWnd, 0x8c);
 
 #define MY_STYLE_SLOTS 3
 struct UIMyStyleWnd {
@@ -139,8 +126,6 @@ struct UIMyStyleWnd {
     struct UIBitmapButton *rotate_left[MY_STYLE_SLOTS];
     struct UIBitmapButton *rotate_right[MY_STYLE_SLOTS];
 };
-OFFSET_ASSERT(UIMyStyleWnd, slots, 0x88);
-SIZE_ASSERT(UIMyStyleWnd, 0xb8);
 void ui_my_style_wnd_load_slots(struct UIMyStyleWnd *self);
 void ui_my_style_wnd_save_slots(struct UIMyStyleWnd *self);
 BYTE my_style_add_slot(struct UIMyStyleWnd *self, struct UIDisplayCharacter *look);
@@ -164,8 +149,6 @@ struct UIStylingShopWnd {
     struct UIDisplayCharacter *display;
     struct Tree tabs;
 };
-OFFSET_ASSERT(UIStylingShopWnd, tabs, 0x9c);
-SIZE_ASSERT(UIStylingShopWnd, 0xa4);
 struct StyleTab {
     struct UIWindow *button;
     struct UIStylingTab *tab;
@@ -175,8 +158,8 @@ void styling_shop_set_buyable(struct UIStylingShopWnd *shop, BYTE all_ok);
 BYTE styling_shop_save_look(struct UIStylingShopWnd *shop);
 void styling_shop_refresh_favourite(struct UIStylingShopWnd *shop);
 void display_set_favourite(struct UIDisplayCharacter *display, BYTE saved);
-int ui_display_character_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                          int val1, int val2, int val3, int val4);
+intptr_t ui_display_character_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                          intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_display_character_destroy(struct UIWindow *window);
 
 struct String *style_kind_name(struct String *out, int kind);
@@ -199,21 +182,21 @@ void ui_slot_for_select_wnd_destroy(struct UIWindow *window);
 
 void ui2nd_costume_wnd_on_create(struct UIWindow *window, int width, int height);
 void ui2nd_costume_wnd_on_draw(struct UIWindow *window);
-int ui2nd_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4);
+intptr_t ui2nd_costume_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_accessory_cus_wnd_on_create(struct UIWindow *window, int width, int height);
 void ui_accessory_cus_wnd_on_draw(struct UIWindow *window);
-int ui_accessory_cus_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4);
+intptr_t ui_accessory_cus_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_accessory_show_case_on_draw(struct UIWindow *window);
 void ui_my_style_wnd_on_create(struct UIWindow *window, int width, int height);
 void ui_my_style_wnd_on_draw(struct UIWindow *window);
-int ui_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4);
+intptr_t ui_my_style_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4);
 void ui_stylingshop_tab_parent_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_stylingshop_tab_parent_wnd_on_draw(struct UIWindow *self);
-int ui_stylingshop_tab_parent_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
-                                                 int val1, int val2, int val3, int val4);
+intptr_t ui_stylingshop_tab_parent_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg,
+                                                 intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 
 void ui_slot_for_select_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_slot_for_select_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);

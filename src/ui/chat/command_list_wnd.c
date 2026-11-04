@@ -38,8 +38,6 @@ struct UICommandListWnd {
     int has_scroll;
     int scroll_row;
 };
-OFFSET_ASSERT(UICommandListWnd, tab, 0x94);
-OFFSET_ASSERT(UICommandListWnd, scroll_row, 0xac);
 
 #define CMDLIST_TAB(self) ((self)->tab->base.state)
 
@@ -111,7 +109,7 @@ void ui_command_list_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_command_list_wnd_on_l_btn_dbl_clk(struct UIWindow *self, int x, int y);
 void ui_command_list_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_command_list_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_command_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_command_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 void ui_command_list_wnd_destroy(struct UIWindow *window);
 const struct UIWindowOps ui_command_list_wnd_ops = {
     .destroy = ui_command_list_wnd_destroy,
@@ -421,8 +419,8 @@ void ui_command_list_wnd_on_wheel(struct UIWindow *window, int delta)
     ui_window_send_msg_base(&self->scroll->base, &self->scroll->base, 7, step, 0, 0, 0);
 }
 
-int ui_command_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                        int val1, int val2, int val3, int val4)
+intptr_t ui_command_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                        intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UICommandListWnd *self = (struct UICommandListWnd *)window;
     int old, pos;

@@ -2,7 +2,8 @@
 #include "render/device.h"
 #include "core/app.h"
 #include <string.h>
-#include <mmsystem.h>
+#include "platform/clock.h"
+#include "platform/window.h"
 
 struct Mouse g_mouse = {
     .double_click_ms = 500,
@@ -20,7 +21,7 @@ void mouse_read_state(struct Mouse *self)
     self->dy = self->cur_y - self->y;
     self->x = self->cur_x;
     self->y = self->cur_y;
-    now = timeGetTime();
+    now = platform_ticks_ms();
     for (i = 0; i < 2; i++) {
         if (self->dx != 0 || self->dy != 0)
             self->press_time[i] = now - self->double_click_ms;
@@ -60,38 +61,34 @@ void mouse_set_y(struct Mouse *self, int y)
     self->cur_y = self->y = y;
 }
 
-void mouse_on_message(struct Mouse *self, HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
+static void mouse_wake(void)
 {
-    POINT pt;
-
-    (void)lparam;
     if (g_mouse.ready != 1) {
         mouse_reset_buttons(&g_mouse);
         g_mouse.ready = 1;
     }
-    switch (msg) {
-    case WM_MOUSEMOVE:
-        GetCursorPos(&pt);
-        ScreenToClient(g_hMainWnd, &pt);
-        self->cur_x = pt.x;
-        self->cur_y = pt.y;
-        break;
-    case WM_LBUTTONDOWN:
-        self->down[MOUSE_LEFT] = 1;
-        SetCapture(wnd);
-        break;
-    case WM_LBUTTONUP:
-        self->down[MOUSE_LEFT] = 0;
-        ReleaseCapture();
-        break;
-    case WM_RBUTTONDOWN:
-        self->down[MOUSE_RIGHT] = 1;
-        break;
-    case WM_RBUTTONUP:
-        self->down[MOUSE_RIGHT] = 0;
-        break;
-    case WM_MOUSEWHEEL:
-        self->wheel_pending = (short)HIWORD(wparam);
-        break;
-    }
+}
+
+void mouse_on_move(struct Mouse *self)
+{
+    POINT pt;
+
+    mouse_wake();
+    platform_cursor_client_pos(g_hMainWnd, &pt);
+    self->cur_x = pt.x;
+    self->cur_y = pt.y;
+}
+
+void mouse_on_button(struct Mouse *self, PlatformWindow wnd, int button, int down)
+{
+    mouse_wake();
+    self->down[button] = (char)(down != 0);
+    if (button == MOUSE_LEFT)
+        platform_mouse_capture(wnd, down);
+}
+
+void mouse_on_wheel(struct Mouse *self, int delta)
+{
+    mouse_wake();
+    self->wheel_pending = delta;
 }

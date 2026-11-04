@@ -21,6 +21,7 @@
 #include "session/session_names.h"
 #include "session/session_talk.h"
 #include "ui/draw_key.h"
+#include "platform/clock.h"
 
 static int g_selCharHeadOffsetX = 0;
 
@@ -346,16 +347,21 @@ static void show_balloon(struct UISelCharForUServerWnd *self, int x, int y, DWOR
     push_line(&self->lines, "Job");
     push_line(&self->lines, session_get_job_name(&g_session1, info->job, -1));
     push_line(&self->lines, "Lv. ");
-    push_line(&self->lines, _itoa(info->level, num, 10));
+    snprintf(num, sizeof num, "%d", info->level);
+    push_line(&self->lines, num);
     push_line(&self->lines, "EXP");
-    push_line(&self->lines, _itoa((int)info->exp, num, 10));
+    snprintf(num, sizeof num, "%d", (int)info->exp);
+    push_line(&self->lines, num);
     push_line(&self->lines, "HP");
-    push_line(&self->lines, _i64toa(info->hp, num, 10));
+    snprintf(num, sizeof num, "%lld", info->hp);
+    push_line(&self->lines, num);
     push_line(&self->lines, "SP");
-    push_line(&self->lines, _i64toa(info->sp, num, 10));
+    snprintf(num, sizeof num, "%lld", info->sp);
+    push_line(&self->lines, num);
     for (i = 0; i < 6; i++) {
         push_line(&self->lines, stats[i]);
-        push_line(&self->lines, _itoa(info->stats[i], num, 10));
+        snprintf(num, sizeof num, "%d", info->stats[i]);
+        push_line(&self->lines, num);
     }
 
     ui_trans_balloon_text_resize(self->balloon, width < 0x8c ? 0x8c : width, 0xc8);
@@ -432,8 +438,8 @@ static void send_checked(struct UISelCharForUServerWnd *self)
     }
 }
 
-int ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UISelCharForUServerWnd *self = (struct UISelCharForUServerWnd *)window;
     if (msg != UI_MSG_COMMAND)
@@ -459,7 +465,7 @@ void ui_sel_char_for_u_server_wnd_on_create(struct UIWindow *self, int cx, int c
 void ui_sel_char_for_u_server_wnd_on_draw(struct UIWindow *self);
 BYTE ui_sel_char_for_u_server_wnd_render(struct UIWindow *self, int force);
 void ui_sel_char_for_u_server_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
-int ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_sel_char_for_u_server_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_sel_char_for_u_server_wnd_ops = {
     .destroy = ui_sel_char_for_u_server_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -523,7 +529,7 @@ struct UISelCharForUServerWnd *ui_sel_char_for_u_server_wnd_construct(struct UIS
     self->ok = NULL;
     for (i = 0; i < g_session1.charCount; i++)
         self->hidden[i] = 1;
-    self->start_time = timeGetTime();
+    self->start_time = platform_ticks_ms();
     self->frame.base.redraws_tree = 1;
     ui_animation_reset(&self->animation);
     self->drawn_key = 0;

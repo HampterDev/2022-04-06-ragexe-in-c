@@ -12,7 +12,6 @@
 #include "game/context.h"
 #include "ui/window_access.h"
 #include "contents/connection_api.h"
-#include <mmsystem.h>
 #include "fileio/resource_api.h"
 #include <string.h>
 #include "navi/navi_manager.h"
@@ -21,9 +20,9 @@
 #include <stdlib.h>
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "core/app.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
 
 #define NAVI_MAX_MAPS       0x270f
 #define NAVI_MAX_OBJECTS    0x1869f
@@ -56,7 +55,7 @@ static const char scroll_failed[] =
 
 static void error_box(char *text, const char *title)
 {
-    win_utf8_message_box(g_hMainWnd, text, title, 0);
+    platform_message_box(g_hMainWnd, text, title, 0);
 }
 
 unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
@@ -201,7 +200,7 @@ unsigned char navi_manager_load_tables(struct NaviManager *self, void *lua)
         if (!client_lua_call(lua, "queryNavi_PickNpc", "d>sddddddddddd",
                                i, &mapName, &x, &y, &pick[0], &pick[1], &pick[2], &pick[3],
                                &pick[4], &pick[5], &pick[6], &pick[7], &pick[8])) {
-            _snprintf_s(message, 0x104, (size_t)-1, "Failed to read Link lua %d", i);
+            snprintf(message, 0x104, "Failed to read Link lua %d", i);
             error_box(message, "Error queryNavi_PickNpc ");
             break;
         }

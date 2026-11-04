@@ -27,6 +27,7 @@
 #include "ui/character/gauge_internal.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 #define WND_HOMUN_INFO 0x71
 #define WND_HOMUN_SKILL 0x72
@@ -65,7 +66,7 @@ void ui_homun_info_wnd_destroy(struct UIWindow *window);
 void ui_homun_info_wnd_store_info(struct UIWindow *self);
 void ui_homun_info_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_homun_info_wnd_on_draw(struct UIWindow *self);
-int ui_homun_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_homun_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_homun_info_wnd_ops = {
     .destroy = ui_homun_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -123,7 +124,6 @@ struct UIHomunInfoWnd {
     struct UIWindow *question;
     struct UIWindow *auto_feed;
 };
-SIZE_ASSERT(UIHomunInfoWnd, 0xb8);
 
 struct UIHomunInfoWnd *ui_homun_info_wnd_construct(struct UIHomunInfoWnd *self)
 {
@@ -322,7 +322,7 @@ void ui_homun_info_wnd_on_draw(struct UIWindow *window)
     stat_cell(wnd, 0x84, g_session1.homunStats[6]);
     len = sprintf(cell, "%d", (2000 - g_session1.homunStats[7]) / 10);
     ui_window_text_out_right(wnd, 0x4f, 0x96, cell, len, 1, 0xe, 0, 0);
-    _itoa(g_session1.homunLevel, cell, 10);
+    snprintf(cell, sizeof cell, "%d", g_session1.homunLevel);
     caption(wnd, 0x87, 0x2f, cell);
     if (g_session1.homunJob == -1)
         return;
@@ -369,9 +369,9 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     sprintf(question, msg_str(MSG_HOMUN_RENAME_QUESTION), ui_edit_ctrl_get_text(self->name_edit));
     if (ask(question) != UI_MSGBOX_ANSWER_NO) {
         mode = game_current_base_mode();
-        mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (int)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
-        _snprintf_s(g_session1.homunName, sizeof g_session1.homunName, _TRUNCATE, "%s",
-                    ui_edit_ctrl_get_text(self->name_edit));
+        mode_send_message(mode, MODE_REQ_HOMUN_RENAME, (intptr_t)ui_edit_ctrl_get_text(self->name_edit), 0, 0, 0);
+        snprintf(g_session1.homunName, sizeof g_session1.homunName, "%s",
+                 ui_edit_ctrl_get_text(self->name_edit));
         ui_window_invalidate_base(&self->frame.base);
         return;
     }
@@ -379,8 +379,8 @@ static void homun_rename(struct UIHomunInfoWnd *self)
     ui_window_invalidate(self->name_edit);
 }
 
-int ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                      int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                      int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIHomunInfoWnd *self = (struct UIHomunInfoWnd *)window;
     struct Mode *mode;
@@ -437,7 +437,7 @@ int ui_homun_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         mode = game_current_base_mode();
         if (sender == self->question && val2 == UI_MSGBOX_ANSWER_YES) {
             if (g_windowMgr.exchange_wnd != 0)
-                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_HOMUN_FEED_BLOCKED),
+                ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_HOMUN_FEED_BLOCKED),
                                       0xff, 0, 0);
             else
                 mode_send_message(mode, MODE_REQ_HOMUN_COMMAND, HOMUN_COMMAND_FEED, 0, 0, 0);
@@ -469,7 +469,7 @@ void ui_mer_info_wnd_destroy(struct UIWindow *window);
 void ui_mer_info_wnd_store_info(struct UIWindow *self);
 void ui_mer_info_wnd_on_create(struct UIWindow *self, int cx, int cy);
 void ui_mer_info_wnd_on_draw(struct UIWindow *self);
-int ui_mer_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_mer_info_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_mer_info_wnd_ops = {
     .destroy = ui_mer_info_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -601,7 +601,6 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     char cell[0x18] = { 0 };
     char level[12] = { 0 };
     int len;
-    __time32_t expires;
 
     ui_window_draw_bitmap(wnd, 0, 0, ui_skin_bitmap(UI_SKIN "basic_interface\\homuninfo_bg.bmp"), 0);
     memset(title, 0, sizeof title);
@@ -624,7 +623,7 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     ui_window_text_out_right(wnd, 0x4f, 0x96, cell, len, 1, 0xe, 0, 0);
     ui_window_text_out(wnd, 0x88, 0x18, g_session1.mercName, 0, 0, 0xc, 0x646464, 0, 0);
     caption(wnd, 0x87, 0x18, g_session1.mercName);
-    _itoa(g_session1.mercLevel, level, 10);
+    snprintf(level, sizeof level, "%d", g_session1.mercLevel);
     caption(wnd, 0x87, 0x2f, level);
     if (g_session1.mercJob == -1)
         return;
@@ -633,8 +632,7 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     mer_number(wnd, 0xda, 0x46, text, len);
     len = sprintf(text, "%d / %d", g_session1.mercSp, g_session1.mercMaxSp);
     mer_number(wnd, 0xda, 0x55, text, len);
-    expires = g_session1.merc_contract_stats[4];
-    strftime(text, 0x80, msg_str(MSG_MER_EXPIRE_FORMAT), _localtime32(&expires));
+    strftime(text, 0x80, msg_str(MSG_MER_EXPIRE_FORMAT), platform_time_local(g_session1.merc_contract_stats[4]));
     ui_window_text_out(wnd, 0x9b, 0x6f, text, strlen(text), 0, 0xc, 0xff, 0, 0);
     len = sprintf(text, "%d", g_session1.merc_contract_stats[0]);
     mer_number(wnd, 0xaa, 0x85, text, len);
@@ -644,8 +642,8 @@ void ui_mer_info_wnd_on_draw(struct UIWindow *window)
     mer_number(wnd, 0xf5, 0x9d, text, len);
 }
 
-int ui_mer_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                    int val1, int val2, int val3, int val4)
+intptr_t ui_mer_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                    intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIMerInfoWnd *self = (struct UIMerInfoWnd *)window;
     struct Mode *mode;

@@ -1,0 +1,6 @@
+src/diag/crash_report.c
+src/platform/crash_dump.c
+src/render/fonts.c
+src/render/gfx_d3d9.c
+src/ui/misc/crash_dialog.c
+src/core/wndproc.c

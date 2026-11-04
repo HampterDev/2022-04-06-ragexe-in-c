@@ -8,8 +8,7 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include "ui/window_access.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/character/skill_tree_internal.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
@@ -18,6 +17,7 @@
 #include "session/skill_levels.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "platform/clock.h"
 
 int g_skillWndHeadDx;
 int g_skillWndHeadDy;
@@ -33,7 +33,7 @@ void ui_new_skill_list_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_new_skill_list_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
 void ui_new_skill_list_wnd_on_r_btn_up(struct UIWindow *self, int x, int y);
 void ui_new_skill_list_wnd_on_wheel(struct UIWindow *self, int delta);
-int ui_new_skill_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_new_skill_list_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_new_skill_list_wnd_ops = {
     .destroy = ui_new_skill_list_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -117,7 +117,7 @@ struct UINewSkillListWnd *ui_new_skill_list_wnd_construct(struct UINewSkillListW
     self->tab = 0;
     self->dirty = 1;
     self->hover = -1;
-    self->anim_time = timeGetTime();
+    self->anim_time = platform_ticks_ms();
     self->anim_frame_counts[0] = self->anim_frame_counts[1] = 0;
     self->anim_frames[0] = self->anim_frames[1] = 0;
     self->drawn_key = 0;
@@ -574,7 +574,7 @@ void ui_new_skill_list_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, int 
     skill_tree_skill_at(self, &info, self->hover);
     if (info.found && info.level) {
         session_reset_option2(&g_session1);
-        ui_new_skill_list_wnd_send_msg(WND(self), NULL, MSG_USE_SKILL, (int)&info, 0, 0, 0);
+        ui_new_skill_list_wnd_send_msg(WND(self), NULL, MSG_USE_SKILL, (intptr_t)&info, 0, 0, 0);
     }
     skill_info_destruct(&info);
 }
@@ -799,8 +799,8 @@ static int on_command(struct UINewSkillListWnd *self, int id)
     return 0;
 }
 
-int ui_new_skill_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                         int val2, int val3, int val4)
+intptr_t ui_new_skill_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                         intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UINewSkillListWnd *self = (struct UINewSkillListWnd *)window;
     struct UIWindow *wnd = WND(self);
@@ -878,7 +878,7 @@ int ui_new_skill_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sen
         struct SkillInfo *info = (struct SkillInfo *)val1;
 
         if (info->level)
-            mode_send_message(client_current_mode(), MODE_REQ_USE_SKILL, (int)info, session_get_skill_table_value(&g_session1, info->id), 0,
+            mode_send_message(client_current_mode(), MODE_REQ_USE_SKILL, (intptr_t)info, session_get_skill_table_value(&g_session1, info->id), 0,
                           0);
         return 0;
     }

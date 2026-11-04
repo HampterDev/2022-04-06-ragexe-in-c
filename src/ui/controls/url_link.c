@@ -1,7 +1,5 @@
 #include "ui/controls/url_link.h"
-#include "core/app.h"
-#include <windows.h>
-#include <shellapi.h>
+#include "platform/desktop.h"
 #include <string.h>
 
 static int starts_with_scheme(struct TextView target, const char *scheme)
@@ -27,6 +25,6 @@ int ui_open_url_link(struct TextView target)
         return 0;
     if (!starts_with_scheme(target, "http://") && !starts_with_scheme(target, "https://"))
         return 0;
-    ShellExecuteA(g_hMainWnd, "open", target.data, NULL, NULL, SW_SHOWNORMAL);
+    platform_open_with_desktop(target.data);
     return 1;
 }

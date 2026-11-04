@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 static void near_value(float actual, float expected)
 {
@@ -70,11 +71,34 @@ static void test_picking(void)
     assert(!ray_triangle_hit(&ray, &a, &b, &c, &u, &v, &t));
 }
 
+static void test_projection(void)
+{
+    float m[16], previous[16];
+    int i;
+    for (i = 0; i < 16; ++i)
+        m[i] = (float)(i + 100);
+    memcpy(previous, m, sizeof m);
+    assert(mat4_perspective_lh(m, 1.0f, 1.0f, 10.0f, 10.0f) < 0);
+    assert(!memcmp(m, previous, sizeof m));
+    assert(mat4_perspective_lh(m, 0.0f, 1.0f, 10.0f, 20.0f) < 0);
+    assert(!memcmp(m, previous, sizeof m));
+    assert(mat4_perspective_lh(m, 1.5707963268f, 0.75f, 1.0f, 101.0f) == 0);
+    near_value(m[0], 0.75f);
+    near_value(m[5], 1.0f);
+    near_value(m[10], 1.01f);
+    near_value(m[11], 1.0f);
+    near_value(m[14], -1.01f);
+    for (i = 0; i < 16; ++i)
+        if (i != 0 && i != 5 && i != 10 && i != 11 && i != 14)
+            near_value(m[i], 0.0f);
+}
+
 int main(void)
 {
     test_transform_inverse();
     test_quaternions_and_degrees();
     test_picking();
-    puts("math: rotated/scaled inverse transforms, degree tables, quaternions and picking passed");
+    test_projection();
+    puts("math: transforms, degree tables, quaternions, picking and projection results passed");
     return 0;
 }

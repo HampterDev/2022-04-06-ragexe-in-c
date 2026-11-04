@@ -20,6 +20,7 @@
 #include "diag/perf.h"
 #include "session/session_party.h"
 #include "ui/character/character_std.h"
+#include "core/cstr.h"
 
 #define UI_MSG_CHANGE_NAME_CHAR 0x22
 #define MODE_MSG_GET_NEW_CHAR_NAME 0x271e
@@ -51,15 +52,12 @@ struct UIChangeNameWnd {
     const struct CharInfo *char_info;
     struct CharInfo char_copy;
 };
-OFFSET_ASSERT(UIChangeNameWnd, edit, 0x9c);
-OFFSET_ASSERT(UIChangeNameWnd, char_copy, 0xa4);
-SIZE_ASSERT(UIChangeNameWnd, 0x154);
 
 struct UIWindow;
 void ui_change_name_wnd_destroy(struct UIWindow *window);
 void ui_change_name_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_change_name_wnd_on_draw(struct UIWindow *self);
-int ui_change_name_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_change_name_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_change_name_wnd_ops = {
     .destroy = ui_change_name_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -242,7 +240,7 @@ static void change_name_submit(struct UIChangeNameWnd *self)
     memcpy(self->char_copy.name, lower, CHAR_NAME_LEN);
     if (strstr(self->char_copy.name, "\xea\xb7\xb8\xeb\x9d\xbc\xeb\xb9\x84\xed\x8b\xb0" /* "그라비티" */))
         goto done;
-    _strlwr(lower);
+    cstr_lower(lower);
     if (strstr(lower, "gravity") || change_name_has_gm_tag(lower))
         goto done;
 
@@ -265,8 +263,8 @@ done:
     string_free(&text);
 }
 
-int ui_change_name_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1,
-                                       int val2, int val3, int val4)
+intptr_t ui_change_name_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1,
+                                       intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIChangeNameWnd *self = (struct UIChangeNameWnd *)window;
     switch (msg) {

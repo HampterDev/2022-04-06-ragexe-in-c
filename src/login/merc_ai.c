@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <math.h>
 #include "session/session_jobs.h"
-#include "platform/win_utf8.h"
+#include "platform/window.h"
+#include "platform/clock.h"
+#include "contents/lua_file.h"
 
 struct MercenaryAI *merc_ai_construct(struct MercenaryAI *self, int kind)
 {
@@ -31,7 +33,7 @@ static void lua_error_box(lua_State *L)
     char text[0x400];
 
     sprintf(text, "%s\n", lua_tolstring(L, -1, NULL));
-    win_utf8_message_box(NULL, text, "AI.lua error", 0);
+    platform_message_box(NULL, text, "AI.lua error", 0);
 }
 
 static void register_functions(struct MercenaryAI *self)
@@ -84,9 +86,9 @@ int merc_ai_load(struct MercenaryAI *self, const char *file)
     self->L = luaL_newstate();
     if (!self->L)
         return 2;
-    luaL_openlibs(self->L);
+    lua_open_client_libs(self->L);
     register_functions(self);
-    if (luaL_loadfile(self->L, file) == 0 && lua_pcall(self->L, 0, 0, 0) == 0)
+    if (lua_load_disk_file(self->L, file) == 0 && lua_pcall(self->L, 0, 0, 0) == 0)
         return 0;
     lua_error_box(self->L);
     return 3;
@@ -119,14 +121,14 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
         else
             goto run;
         if (order != 0 && kind == 0) {
-            self->startTick = GetTickCount();
+            self->startTick = platform_coarse_ticks_ms();
             if (order == 0x1d) {
                 render_object_set_action((struct RenderObject *)actor, 0x38, 0);
                 self->duration = 3000;
             }
             return 0;
         }
-    } else if (GetTickCount() - self->startTick > self->duration) {
+    } else if (platform_coarse_ticks_ms() - self->startTick > self->duration) {
         actor_set_state(actor, 0, 1);
         if (self->kind == 0) {
             g_session1.homun_ai_state[0] = 0;
@@ -140,7 +142,7 @@ int merc_ai_run(struct MercenaryAI *self, DWORD aid)
     }
 
 run:
-    now = GetTickCount();
+    now = platform_coarse_ticks_ms();
     if (now - self->lastRun < 0x8c)
         return 0;
     self->lastRun = now;
@@ -251,6 +253,6 @@ int merc_ai_get_actors(lua_State *L)
 
 int merc_ai_get_tick(lua_State *L)
 {
-    lua_pushnumber(L, (double)(DWORD)(GetTickCount()));
+    lua_pushnumber(L, (double)platform_coarse_ticks_ms());
     return 1;
 }

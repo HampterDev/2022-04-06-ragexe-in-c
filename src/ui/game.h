@@ -38,7 +38,7 @@ struct Language;
 
 
 struct Time {
-    __time32_t t;
+    int32_t t;
 };
 struct TimeRecord {
     WORD year;
@@ -49,7 +49,7 @@ struct TimeRecord {
     WORD second;
     DWORD fraction;
 };
-struct Time *time_construct(struct Time *self, __time32_t t);
+struct Time *time_construct(struct Time *self, int32_t t);
 BYTE time_is_past(struct Time *self);
 struct TimeRecord *time_get_as_record(struct Time *self, struct TimeRecord *out);
 void time_destruct(struct Time *self);

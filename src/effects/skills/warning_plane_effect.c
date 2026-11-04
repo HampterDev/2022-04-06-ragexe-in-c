@@ -1,12 +1,12 @@
 #include "effects/effect_allocator.h"
 #include "render/math3d.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include <string.h>
 #include "effects/particle.h"
 #include "effects/skills/skill_view.h"
 #include "effects/effect_controls.h"
 #include "std/vec.h"
+#include "platform/clock.h"
 
 #define EFFECT_WARNING_PLANE 0x45a
 
@@ -127,7 +127,7 @@ void warning_plane_effect_add_plane(struct Effect *effect, Vec3 pos)
 unsigned char warning_plane_effect_is_alive(struct Effect *effect)
 {
     struct WarningPlaneEffect *self = (struct WarningPlaneEffect *)effect;
-    DWORD now = timeGetTime();
+    DWORD now = platform_ticks_ms();
     if (self->end_time && now > self->end_time)
         return 0;
     return effect_is_owner_alive(&self->base);

@@ -11,6 +11,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "std/tree.h"
+#include "platform/clock.h"
 
 #define POS_COL(i) (g_guildLayout.member_position_cols[6 + (i)])
 #define POS_COLUMNS 6
@@ -290,7 +291,7 @@ void ui_guild_position_manage_wnd_on_wheel(struct UIWindow *window, int delta)
 void ui_guild_position_manage_wnd_on_process(struct UIWindow *window)
 {
     struct UIGuildPositionManageWnd *self = (struct UIGuildPositionManageWnd *)window;
-    if (self->ok_time && timeGetTime() > self->ok_time + GUILD_OK_REENABLE_MS) {
+    if (self->ok_time && platform_ticks_ms() > self->ok_time + GUILD_OK_REENABLE_MS) {
         self->ok_time = 0;
         self->ok_button->button.disabled = 0;
         ui_window_invalidate_base(&self->ok_button->button.base);
@@ -320,7 +321,7 @@ static void send_changes(struct UIGuildPositionManageWnd *self)
     ui_window_move_base(&self->ok_button->button.base, GUILD_OFF_SCREEN, GUILD_OFF_SCREEN);
     self->ok_button->button.disabled = 1;
     ui_window_invalidate_base(&self->ok_button->button.base);
-    self->ok_time = timeGetTime();
+    self->ok_time = platform_ticks_ms();
     ui_window_invalidate_children(GUILD_WND(self));
 }
 
@@ -412,8 +413,8 @@ static int tax_changed(struct UIGuildPositionManageWnd *self, struct UIWindow *s
     return 1;
 }
 
-int ui_guild_position_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
-                                                int msg, int val1, int val2, int val3, int val4)
+intptr_t ui_guild_position_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
+                                                int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildPositionManageWnd *self = (struct UIGuildPositionManageWnd *)window;
     int changed;

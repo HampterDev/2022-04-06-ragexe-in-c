@@ -24,7 +24,7 @@ void ui_window_on_mouse_shape_base(struct UIWindow * arg0, int arg1, int arg2) {
 void ui_window_on_wheel_base(struct UIWindow * arg0, int arg1) { abort(); }
 BYTE ui_window_render_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_save_pos_base(struct UIWindow * arg0) { abort(); }
-int ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, int arg3, int arg4, int arg5, int arg6) { abort(); }
+intptr_t ui_window_send_msg_base(struct UIWindow * arg0, struct UIWindow * arg1, int arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5, intptr_t arg6) { abort(); }
 void ui_window_set_show_base(struct UIWindow * arg0, int arg1) { abort(); }
 void ui_window_render_overlay_base(struct UIWindow * arg0) { abort(); }
 void ui_window_snap_base(struct UIWindow * arg0) { abort(); }

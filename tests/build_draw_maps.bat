@@ -9,7 +9,7 @@ call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
 call "%VCVARS%" >nul
 if not exist "%ROOT%\build\tests\draw_maps_%MODE%" mkdir "%ROOT%\build\tests\draw_maps_%MODE%"
 pushd "%ROOT%\build\tests\draw_maps_%MODE%" || exit /b 1
-cl /nologo /W1 /WX /we4013 /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 %REFERENCE% /I"%SOURCE%" /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_draw_maps.c" %EXTRA% "%SOURCE%\std\string.c" "%SOURCE%\std\container_memory.c" "%SOURCE%\std\vec.c" "%SOURCE%\core\once.c" "%SOURCE%\contents\body_layer_maps.c" "%SOURCE%\std\tree.c" /Fe:test_draw_maps.exe /link /OPT:REF
+cl /nologo /W1 /WX /we4013 /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 %REFERENCE% /I"%SOURCE%" /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" /I"%ROOT%\vendor\giflib" "%ROOT%\tests\test_draw_maps.c" %EXTRA% "%SOURCE%\std\string.c" "%SOURCE%\std\container_memory.c" "%SOURCE%\std\vec.c" "%SOURCE%\core\once_win32.c" "%SOURCE%\contents\body_layer_maps.c" "%SOURCE%\std\tree.c" /Fe:test_draw_maps.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_draw_maps.exe %2
 set "CODE=%errorlevel%"

@@ -3,7 +3,6 @@
 #include "ui/draw.h"
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 
 struct String *ui_window_ellipsize_text(struct UIWindow *self, struct String *out,
                                       int max_width, const char *text, int font_face,

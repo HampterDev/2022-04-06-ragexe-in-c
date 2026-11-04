@@ -1,6 +1,8 @@
 #ifndef GAMEMODE_CONTEXT_H
 #define GAMEMODE_CONTEXT_H
 
+#include <stdint.h>
+
 struct GameMode;
 struct Mode;
 struct World;
@@ -61,7 +63,7 @@ int game_siege_state(void);
 int game_map_has_party_marks(void);
 int game_map_preserves_party_effects(void);
 float game_camera_scale(void);
-int game_send_message(int message, int a, int b, int c, int d);
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d);
 
 void skill_cast_play_cast_look(struct GameActor *caster, int x, int y, int skill_id, unsigned cast_time,
                                     int cast_effect);

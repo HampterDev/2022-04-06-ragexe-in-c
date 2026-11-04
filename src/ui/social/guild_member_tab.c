@@ -18,6 +18,7 @@
 #include "core/text_util.h"
 #include "diag/perf.h"
 #include "std/tree.h"
+#include "platform/clock.h"
 
 #define MEMBER_TAB_WND_ID (GUILD_TAB_WND_ID_FIRST + GUILD_TAB_MEMBERS)
 
@@ -58,7 +59,7 @@ void guild_open_menu(struct Vec *entries, int owner_id)
     menu = ui_make_window(WND_ID_MENU);
     for (i = 0; i < VEC_COUNT(entries, struct UIMenuEntry); i++) {
         entry = &VEC_AT(entries, struct UIMenuEntry, i);
-        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (int)string_cstr(&entry->text), 0, 0, 0);
+        ui_window_send_msg(menu, NULL, MENU_MSG_ADD_ITEM, (intptr_t)string_cstr(&entry->text), 0, 0, 0);
     }
     ui_window_send_msg(menu, NULL, MENU_MSG_SET_OWNER, owner_id, 0, 0, 0);
     ui_window_send_msg(menu, NULL, MENU_MSG_FIT, 0, 0, 0, 0);
@@ -476,7 +477,7 @@ void ui_guild_member_manage_wnd_on_wheel(struct UIWindow *window, int delta)
 void ui_guild_member_manage_wnd_on_process(struct UIWindow *window)
 {
     struct UIGuildMemberManageWnd *self = (struct UIGuildMemberManageWnd *)window;
-    if (self->ok_time && timeGetTime() > self->ok_time + GUILD_OK_REENABLE_MS) {
+    if (self->ok_time && platform_ticks_ms() > self->ok_time + GUILD_OK_REENABLE_MS) {
         self->ok_time = 0;
         self->ok_button->button.disabled = 0;
         ui_window_invalidate_base(&self->ok_button->button.base);
@@ -495,7 +496,7 @@ static void send_changes(struct UIGuildMemberManageWnd *self)
     tree_clear(&self->changes, NULL);
     self->ok_button->button.disabled = 1;
     ui_window_invalidate_base(&self->ok_button->button.base);
-    self->ok_time = timeGetTime();
+    self->ok_time = platform_ticks_ms();
 }
 
 static void open_positions(struct UIGuildMemberManageWnd *self, struct UIWindow *sender)
@@ -522,7 +523,7 @@ static void open_positions(struct UIGuildMemberManageWnd *self, struct UIWindow 
         char text[0x40];
 
         sprintf(text, "%s", string_cstr(position_name(n)));
-        ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (int)text, 0, 0, 0);
+        ui_window_send_msg(combo, NULL, COMBO_MSG_ADD_LINE, (intptr_t)text, 0, 0, 0);
     }
     height = n * 16;
     if (height >= 0x50)
@@ -642,7 +643,7 @@ static void menu_choice(struct UIGuildMemberManageWnd *self, int choice)
     case MENU_INVITE:
         guild_member_construct(&m);
         if (ui_guild_member_manage_wnd_get_member(self, self->selected, &m))
-            mode_send_message(client_current_mode(), MODE_REQ_PARTY_INVITE, (int)string_cstr(&m.name), 0, 0, 0);
+            mode_send_message(client_current_mode(), MODE_REQ_PARTY_INVITE, (intptr_t)string_cstr(&m.name), 0, 0, 0);
         break;
     case MENU_EXPEL:
         guild_member_construct(&m);
@@ -652,7 +653,7 @@ static void menu_choice(struct UIGuildMemberManageWnd *self, int choice)
             target.guild_id = g_guildInfo.guild_id;
             target.aid = m.aid;
             target.char_id = m.gid;
-            ui_window_send(ui_window_open(WND_ID_GUILD_EXPEL), NULL, UI_MSG_SET_INFO, (int)&target, 0, 0, 0);
+            ui_window_send(ui_window_open(WND_ID_GUILD_EXPEL), NULL, UI_MSG_SET_INFO, (intptr_t)&target, 0, 0, 0);
         }
         break;
     case MENU_LEAVE:
@@ -678,15 +679,15 @@ static void menu_choice(struct UIGuildMemberManageWnd *self, int choice)
             else
                 label = session_is_guild_member_char_id(&g_session1, m.gid) == 1 ? "GuildMember" : NULL;
             session_scramble_number(&g_session1, &gid_text, m.gid);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (int)string_cstr(&m.name), (int)label,
-                                  (int)string_cstr(&gid_text), 0);
+            ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_WHISPER, (intptr_t)string_cstr(&m.name), (intptr_t)label,
+                                  (intptr_t)string_cstr(&gid_text), 0);
             string_free(&gid_text);
         }
         break;
     case MENU_SEND_MAIL:
         guild_member_construct(&m);
         if (ui_guild_member_manage_wnd_get_member(self, self->selected, &m) == 1) {
-            game_send_message(MODE_REQ_OPEN_WRITE_RODEX, (int)string_cstr(&m.name), 0, 0, 0);
+            game_send_message(MODE_REQ_OPEN_WRITE_RODEX, (intptr_t)string_cstr(&m.name), 0, 0, 0);
         }
         break;
     case MENU_POSITION_0:
@@ -765,8 +766,8 @@ static void rebuild(struct UIGuildMemberManageWnd *self)
 
 #define MEMBER_MSG_REBUILD 0x6a
 
-int ui_guild_member_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
-                                              int val1, int val2, int val3, int val4)
+intptr_t ui_guild_member_manage_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
+                                              intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4)
 {
     struct UIGuildMemberManageWnd *self = (struct UIGuildMemberManageWnd *)window;
     switch (msg) {

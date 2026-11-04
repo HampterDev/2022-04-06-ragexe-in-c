@@ -2,8 +2,7 @@
 #include "skills/skill_info.h"
 #include "world/object_lookup.h"
 #include "session/state.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/gamemode.h"
 #include "game/client.h"
 #include "ui/chat/balloon.h"
@@ -12,6 +11,7 @@
 #include "session/session_jobs.h"
 #include "session/session_state.h"
 #include "ui/window.h"
+#include "platform/clock.h"
 
 enum {
     NOTICE_TIME = 20000,
@@ -50,7 +50,7 @@ static void follow_balloon(struct GameMode *self, struct UIWindow **slot, int *r
 
 static void close_after(struct UIWindow **slot, unsigned since, unsigned after)
 {
-    if (timeGetTime() > since + after) {
+    if (platform_ticks_ms() > since + after) {
         ui_window_mgr_post_quit2(&g_windowMgr, *slot);
         *slot = 0;
     }

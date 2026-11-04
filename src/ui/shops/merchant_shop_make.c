@@ -19,6 +19,8 @@
 #include "diag/perf.h"
 #include "session/session_items.h"
 #include "ui/wndmgr/wndmgr.h"
+#include <stdint.h>
+#include "platform/window.h"
 
 struct DragInfo;
 void ui_merchant_shop_make_wnd_destroy(struct UIWindow *window);
@@ -76,14 +78,14 @@ const struct UIWindowOps ui_merchant_shop_make_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-static __int64 price_with_commission(__int64 price, double sign)
+static int64_t price_with_commission(int64_t price, double sign)
 {
     double rate = (double)zeny_fee_percent(price) * (sign * 0.01);
 
-    return price + (__int64)((double)price * rate);
+    return price + (int64_t)((double)price * rate);
 }
 
-void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, __int64 amount)
+void msm_edit_amount_colour(struct UIWindow *wnd, struct UIWindow *edit, int64_t amount)
 {
     struct AmountColours c;
 
@@ -336,7 +338,7 @@ void ui_merchant_shop_make_wnd_set_waiting(struct UIMerchantShopMakeWnd *self, B
         self->waiting = 1;
         ui_window_set_show_base(&self->frame.base, 0);
         ui_window_set_show(items, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (int)msg_str(MSG_WAITING), 0xffff, 0, 0);
+        ui_window_mgr_send_msg_(&g_windowMgr, UIWM_MSG_CHAT_LINE, (intptr_t)msg_str(MSG_WAITING), 0xffff, 0, 0);
     } else {
         self->waiting = 0;
         ui_window_set_show_base(&self->frame.base, 1);
@@ -419,7 +421,7 @@ int ui_merchant_shop_make_wnd_commit_price(struct UIMerchantShopMakeWnd *self, i
 {
     struct UIWindow *edit;
     char buf[0x18];
-    __int64 price;
+    int64_t price;
 
     if (self->focused == -1 || !g_session1.noPriceCheckWarning) {
         self->focused = next_row;
@@ -431,10 +433,10 @@ int ui_merchant_shop_make_wnd_commit_price(struct UIMerchantShopMakeWnd *self, i
         ui_message_box(msg_str(MSG_NOT_A_NUMBER));
         goto refused;
     }
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price >= 0x7fffffff)
         goto too_high;
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price <= 0)
         price = 0;
     else if (price > PRICE_MAX)
@@ -445,11 +447,12 @@ too_high:
     if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) != UI_MSGBOX_ANSWER_YES)
         goto refused;
     price = PRICE_MAX;
-    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+    snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+    ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
     ui_window_invalidate_base(&self->frame.base);
 
 checked:
-    if (price >= (__int64)atoi(msg_str(MSG_PRICE_UNIT_SMALL))) {
+    if (price >= (int64_t)atoi(msg_str(MSG_PRICE_UNIT_SMALL))) {
         struct ItemInfo item;
         struct String text, part;
         const char *name;
@@ -510,12 +513,12 @@ static void draw_price_with_commission(struct UIWindow *wnd, struct UIWindow *ed
     struct AmountColours c;
     const char *word;
     int w;
-    __int64 price;
+    int64_t price;
 
     strcpy(buf, ui_edit_ctrl_get_text(edit));
     if (session_is_number_text(&g_session1, buf) != 1)
         return;
-    price = _atoi64(buf);
+    price = strtoll(buf, NULL, 10);
     if (price <= 0)
         return;
     ui_window_text_out(wnd, x, y, msg_str(MSG_WITH_COMMISSION), 0, 0, 0xc, 0, 0, 0);
@@ -641,29 +644,29 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *edit;
     char buf[0x18];
-    __int64 price;
+    int64_t price;
     int row;
 
     if (self->total && self->buying) {
-        __int64 total = 0;
+        int64_t total = 0;
         char text[0x80];
         unsigned i;
 
         for (i = 0; i < self->items.size; i++) {
             char price_text[0x18] = { 0 };
 
-            _snprintf_s(price_text, sizeof price_text, (size_t)-1, "%s",
-                           ui_edit_ctrl_get_text(self->prices[i]));
+            snprintf(price_text, sizeof price_text, "%s",
+                        ui_edit_ctrl_get_text(self->prices[i]));
             if (session_is_number_text(&g_session1, price_text) == 1) {
-                __int64 count;
+                int64_t count;
 
-                price = _atoi64(price_text);
-                count = _atoi64(ui_edit_ctrl_get_text(self->counts[i]));
+                price = strtoll(price_text, NULL, 10);
+                count = strtoll(ui_edit_ctrl_get_text(self->counts[i]), NULL, 10);
                 total += price_with_commission(price, 1.0) * count;
             }
         }
         memset(text, 0, sizeof text);
-        _snprintf_s(text, sizeof text, (size_t)-1, "%lld", total);
+        snprintf(text, sizeof text, "%lld", (long long)total);
         ui_edit_ctrl_set_text((struct UIEditCtrl *)self->total, text);
         ui_window_invalidate_children(wnd);
         return;
@@ -705,14 +708,15 @@ void ui_merchant_shop_make_wnd_on_process(struct UIWindow *window)
         ui_window_mgr_set_focus_edit(&g_windowMgr, edit);
         return;
     }
-    if (_atoi64(buf) <= 0) {
+    if (strtoll(buf, NULL, 10) <= 0) {
         price = 0;
     } else {
-        price = _atoi64(buf);
+        price = strtoll(buf, NULL, 10);
         if (price > PRICE_MAX) {
             if (msm_question_box(msg_str(MSG_PRICE_TOO_HIGH)) == UI_MSGBOX_ANSWER_YES) {
                 price = PRICE_MAX;
-                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, _itoa(PRICE_MAX, buf, 10));
+                snprintf(buf, sizeof buf, "%d", PRICE_MAX);
+                ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, buf);
             } else {
                 ui_edit_ctrl_set_text((struct UIEditCtrl *)edit, string_cstr(&self->last_text));
                 ui_window_mgr_set_focus_edit(&g_windowMgr, edit);
@@ -762,7 +766,7 @@ void ui_merchant_shop_make_wnd_on_r_btn_down(struct UIWindow *window, int x, int
     ui_merchant_shop_make_wnd_item_at(self, &item, x, y);
     if ((unsigned)item.index > 0) {
         mode = game_current_mode();
-        if ((BYTE)(GetAsyncKeyState(VK_MENU) >> 8)) {
+        if ((BYTE)(platform_async_key_state(VK_MENU) >> 8)) {
             if (g_windowMgr.merchant_mirror_item_wnd) {
                 item_info_assign(&item, session_get_store_setup_item_by_index(&g_session1, &entry, item.index));
                 item_info_destruct(&entry);
@@ -776,7 +780,7 @@ void ui_merchant_shop_make_wnd_on_r_btn_down(struct UIWindow *window, int x, int
                 ui_window_send_msg(g_windowMgr.buying_store_mirror_item_wnd, NULL, UI_MSG_ADD_DRAGGED, 0, 0, 0, 0);
             }
         } else {
-            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (int)&item, 0, 0, 0);
+            ui_window_send(ui_window_open(ITEM_WND_ID), NULL, UI_MSG_SHOW_ITEM, (intptr_t)&item, 0, 0, 0);
         }
     }
     item_info_destruct(&item);

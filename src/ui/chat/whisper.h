@@ -35,7 +35,7 @@ int ui_whisper_wnd_open(struct UIWindowMgr *mgr, const char *name, const char *t
    its name. */
 int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, const char *name, const char *line,
                                                        unsigned colour, int cid);
-int ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4);
+intptr_t ui_whisper_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4);
 
 #endif

@@ -13,10 +13,10 @@
 #include "ui/controls/controls.h"
 #include "ui/character/character.h"
 #include "ui/ui_items.h"
-#include <mmsystem.h>
 #include "render/renderer.h"
 #include "core/msg_str.h"
 #include "diag/perf.h"
+#include "platform/clock.h"
 
 #define MSGBOX_OK 0
 #define MSGBOX_YES_NO 2
@@ -48,13 +48,12 @@ struct UIMessageBox {
     int modal;
     BYTE keep_text;
 };
-OFFSET_ASSERT(UIMessageBox, format, 0xb0);
 
 void ui_message_box_destroy(struct UIWindow *window);
 void ui_message_box_on_destroy(struct UIWindow *self);
 void ui_message_box_on_process(struct UIWindow *self);
 void ui_message_box_on_draw(struct UIWindow *self);
-int ui_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_message_box_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_message_box_ops = {
     .destroy = ui_message_box_destroy,
     .resize = ui_window_resize_base,
@@ -122,8 +121,8 @@ static void msgbox_start(struct UIMessageBox *self, const char *text, DWORD dura
 {
     string_assign_cstr(&self->text, text);
     string_assign_cstr(&self->format, text);
-    self->start = timeGetTime();
-    self->end = timeGetTime() + duration;
+    self->start = platform_ticks_ms();
+    self->end = platform_ticks_ms() + duration;
     self->shown = msgbox_seconds(self->start, self->end);
 }
 
@@ -163,20 +162,20 @@ static int msgbox_tick(struct UIMessageBox *self)
     char buf[0x200];
     int last, secs, round_up;
 
-    if (timeGetTime() > self->end) {
+    if (platform_ticks_ms() > self->end) {
         g_windowMgr.modal_result = MSGBOX_TIMEOUT_RESULT;
         self->counting = 0;
         return 0;
     }
     last = self->shown;
-    round_up = (self->end - timeGetTime()) % 1000 != 0;
-    secs = (int)((self->end - timeGetTime()) / 1000) + round_up;
+    round_up = (self->end - platform_ticks_ms()) % 1000 != 0;
+    secs = (int)((self->end - platform_ticks_ms()) / 1000) + round_up;
     self->shown = secs;
     if (last != secs) {
         sprintf(buf, string_cstr(&self->format), secs);
         string_assign_cstr(&self->text, buf);
         ui_list_box_clear((struct UIListBox *)self->viewer);
-        ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->text), MSGBOX_TEXT_CODE,
+        ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->text), MSGBOX_TEXT_CODE,
                  0, 0);
     }
     return 1;
@@ -248,7 +247,7 @@ void ui_message_box_create(struct UIMessageBox *self, const char *text, int type
         left = pic->base.width + pic->base.x;
     }
     msgbox_viewer(self, left + 0xa, 0x16, width - left - 0x14, height - 0x37);
-    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (int)string_cstr(&self->text),
+    ui_window_send_msg(self->viewer, NULL, UI_MSG_ADD_TEXT, (intptr_t)string_cstr(&self->text),
              (int)(width / 7.5), 0, 0);
     self->frame.default_id = type == MSGBOX_YES_NO ? MSGBOX_ID_NO : MSGBOX_ID_CANCEL;
 
@@ -290,8 +289,8 @@ void ui_message_box_on_draw(struct UIWindow *window)
     ui_window_draw_body(&self->frame.base, 0x11, 0, "");
 }
 
-int ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                    int val3, int val4)
+intptr_t ui_message_box_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                    intptr_t val3, intptr_t val4)
 {
     struct UIMessageBox *self = (struct UIMessageBox *)window;
     switch (msg) {

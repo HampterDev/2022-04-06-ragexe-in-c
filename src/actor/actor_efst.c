@@ -13,6 +13,7 @@
 #include "session/session_skills.h"
 #include "ui/character/gauge.h"
 #include "actor/attr_state.h"
+#include <stdint.h>
 
 static const char blind_wave[] = "effect\\_blind.wav";
 static const char manhole_wave[] = "effect\\manhole.wav";
@@ -457,7 +458,7 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
         const char *word = state == 0x115 ? word_flee_up : state == 0x116 ? word_atk_up
                          : state == 0x117 ? word_hp_up : state == 0x118 ? word_sp_up : word_dex_up;
 
-        render_object_send(self, NULL, 7, (int)word, 0, 0, 0);
+        render_object_send(self, NULL, 7, (intptr_t)word, 0, 0, 0);
         ef_launch(self, 0x1c8);
         break;
     }
@@ -489,11 +490,8 @@ void actor_effect_state(struct GameActor *self, struct GameMode *mode, long long
             struct RagEffect *e = ef_launch(self, 0x341);
             Vec3 v = { 2.0f, 0.0f, 0.0f };
 
-            if (e) {
-                long long p = (int)&v;
-
-                rag_effect_send_msg(e, NULL, 0xe, p, 0, 0);
-            }
+            if (e)
+                rag_effect_send_msg(e, NULL, 0xe, (intptr_t)&v, 0, 0);
         }
         break;
     case 0x15f: ef_toggle(self, 0x315, on); break;

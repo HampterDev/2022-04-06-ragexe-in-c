@@ -245,7 +245,7 @@ static void dummy_lifetime(void)
     object = (struct GameObject *)dummy;
     game_object_send(object, object, INT64_MAX, INT64_MIN, -1, INT64_MAX, 7);
     assert(forwarded_messages == 1);
-    game_object_send(object, NULL, 0xe, MSG_ARG_PTR(&at), 123, 0, 0);
+    game_object_send(object, NULL, 0xe, (intptr_t)&at, 123, 0, 0);
     assert(dummy->frames == 300 && dummy->base.visible == 0);
     assert(spawned_effects == 1 && launched_effects == 1);
     dummy->base.start_tick = timeGetTime();

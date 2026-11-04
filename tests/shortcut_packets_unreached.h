@@ -55,8 +55,8 @@ struct UIWindow *ui_window_open(int arg0)
 {
     abort();
 }
-int ui_window_send(struct UIWindow *arg0, struct UIWindow *arg1, int arg2, int arg3, int arg4,
-                   int arg5, int arg6)
+intptr_t ui_window_send(struct UIWindow *arg0, struct UIWindow *arg1, int arg2, intptr_t arg3, intptr_t arg4,
+                   intptr_t arg5, intptr_t arg6)
 {
     abort();
 }
@@ -68,7 +68,7 @@ struct Connection *rag_connection_transport(struct RagConnection *arg0)
 {
     abort();
 }
-int game_mode_send_msg(struct Mode *arg0, int arg1, int arg2, int arg3, int arg4, int arg5)
+intptr_t game_mode_send_msg(struct Mode *arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4, intptr_t arg5)
 {
     abort();
 }
@@ -81,8 +81,8 @@ int ui_window_mgr_message_box(struct UIWindowMgr *arg0, const char *arg1, int ar
 {
     abort();
 }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *arg0, int arg1, int arg2, int arg3, int arg4,
-                          int arg5)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *arg0, int arg1, intptr_t arg2, intptr_t arg3, intptr_t arg4,
+                          intptr_t arg5)
 {
     abort();
 }

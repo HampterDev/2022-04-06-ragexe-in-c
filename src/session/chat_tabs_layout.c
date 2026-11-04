@@ -1,19 +1,18 @@
 #include "session/chat_tabs_layout.h"
-#include <windows.h>
+#include "platform/win_types.h"
+#include "platform/filesystem.h"
 #include <stdio.h>
 #include <string.h>
 
 struct LayoutWriter {
-    HANDLE file;
+    struct PlatformFile *file;
     int ok;
 };
 
 static void write_bytes(struct LayoutWriter *writer, const void *data, size_t size)
 {
-    DWORD written = 0;
     if (!writer->ok) return;
-    writer->ok = size <= MAXDWORD &&
-        WriteFile(writer->file, data, (DWORD)size, &written, NULL) && written == size;
+    writer->ok = platform_file_write(writer->file, data, size);
 }
 
 static void write_line(struct LayoutWriter *writer, const char *line)
@@ -73,30 +72,25 @@ int chat_tabs_save_layout(const struct ChatTabs *main_tabs, const struct ChatTab
 {
     struct LayoutWriter writer;
     char target[MAX_PATH], directory[MAX_PATH], temporary[MAX_PATH], *name;
-    DWORD length;
+    size_t length;
     unsigned i;
 
     if (!path || !*path) return 0;
-    length = GetFullPathNameA(path, MAX_PATH, target, &name);
+    length = platform_path_full(path, target, MAX_PATH, &name);
     if (!length || length >= MAX_PATH || !name || !*name) return 0;
     memcpy(directory, target, (size_t)(name - target));
     directory[name - target] = 0;
-    if (!GetTempFileNameA(directory, "cht", 0, temporary)) return 0;
-    writer.file = CreateFileA(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL, NULL);
-    writer.ok = writer.file != INVALID_HANDLE_VALUE;
-    if (writer.ok) {
-        write_line(&writer, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
-        for (i = 0; writer.ok && i < main_tabs->size; ++i)
-            write_tab(&writer, i + 1, &main_tabs->items[i].value, 1);
-        for (i = 0; writer.ok && i < separate_tabs->size; ++i)
-            write_tab(&writer, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
-        if (writer.ok) writer.ok = FlushFileBuffers(writer.file) != 0;
-        if (!CloseHandle(writer.file)) writer.ok = 0;
+    writer.file = platform_file_create_temporary(directory, "cht", temporary, sizeof temporary);
+    if (!writer.file) return 0;
+    writer.ok = 1;
+    write_line(&writer, editable ? "CanDragWnd = 1\r\n\r\n" : "CanDragWnd = 0\r\n\r\n");
+    for (i = 0; writer.ok && i < main_tabs->size; ++i)
+        write_tab(&writer, i + 1, &main_tabs->items[i].value, 1);
+    for (i = 0; writer.ok && i < separate_tabs->size; ++i)
+        write_tab(&writer, main_tabs->size + i + 1, &separate_tabs->items[i].value, 0);
+    if (!writer.ok) {
+        platform_file_discard(writer.file, temporary);
+        return 0;
     }
-    if (writer.ok)
-        writer.ok = MoveFileExA(temporary, target,
-                               MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
-    if (!writer.ok) DeleteFileA(temporary);
-    return writer.ok;
+    return platform_file_replace(writer.file, temporary, target);
 }

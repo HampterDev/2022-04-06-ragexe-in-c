@@ -17,7 +17,7 @@ void ui_menu_wnd_on_draw(struct UIWindow *self);
 void ui_menu_wnd_on_mouse_move(struct UIWindow *self, int x, int y);
 void ui_menu_wnd_on_mouse_hover(struct UIWindow *self, int x, int y);
 void ui_menu_wnd_on_l_btn_up(struct UIWindow *self, int x, int y);
-int ui_menu_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3, int val4);
+intptr_t ui_menu_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_menu_wnd_ops = {
     .destroy = ui_menu_wnd_destroy,
     .resize = ui_window_resize_base,
@@ -84,8 +84,6 @@ struct UIMenuWnd {
     int owner_key;
     BYTE hold;
 };
-OFFSET_ASSERT(UIMenuWnd, items, 0xa0);
-SIZE_ASSERT(UIMenuWnd, 0xb4);
 
 #define MENU_ITEMS(self) ((struct String *)(self)->items.first)
 #define MENU_COUNT(self) ((int)VEC_COUNT(&(self)->items, struct String))
@@ -247,8 +245,8 @@ static void add_item(struct UIMenuWnd *self, const char *text)
     string_vec_push_text(&self->items, text, strlen(text));
 }
 
-int ui_menu_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, int val1, int val2,
-                                 int val3, int val4)
+intptr_t ui_menu_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                                 intptr_t val3, intptr_t val4)
 {
     struct UIMenuWnd *self = (struct UIMenuWnd *)window;
     int width, count, i;

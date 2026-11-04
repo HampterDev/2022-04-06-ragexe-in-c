@@ -1,10 +1,10 @@
 #include "ui/items/refine_controls.h"
 #include <string.h>
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "ui/chat/chat.h"
 #include "core/object_type_tables.h"
 #include "ui/items/refining_internal.h"
+#include "platform/clock.h"
 
 #define REFINE_NOTICE_LINE_HEIGHT 0xb
 #define REFINE_NOTICE_RED 0x2e15ca
@@ -56,7 +56,7 @@ void ui_refining_notice_on_draw(struct UIWindow *window)
 void ui_refining_notice_on_process(struct UIWindow *window)
 {
     struct UIRefining_Notice *self = (struct UIRefining_Notice *)window;
-    if (self->due == 0 || timeGetTime() <= self->due)
+    if (self->due == 0 || platform_ticks_ms() <= self->due)
         return;
     self->due = 0;
     if (self->hide_when_due == 1) {

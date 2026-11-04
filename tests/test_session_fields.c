@@ -16,12 +16,12 @@ static int window_marker;
 void session_invalidate_windows(struct Session *session)
 { assert(session == &g_session1); ++notifications; }
 struct UIWindow *ui_window_open(int id) { (void)id; abort(); }
-int ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, int a, int b, int c, int d)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *manager, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 { (void)manager; (void)msg; (void)a; (void)b; (void)c; (void)d; abort(); }
 int crt_sprintf(char *buffer, const char *format, ...)
 { (void)buffer; (void)format; abort(); }
-int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
-                   int a, int b, int c, int d)
+intptr_t ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message,
+                   intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(window == (struct UIWindow *)&window_marker && !sender);
     assert(message == 0x8f && a == expected_rotate && b == expected_tab && !c && !d);

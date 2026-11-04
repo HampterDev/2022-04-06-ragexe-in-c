@@ -2,7 +2,18 @@
 #include "render/render_api.h"
 #include "diag/perf.h"
 #include "ui/window_types.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "platform/window.h"
+#include "platform/clock.h"
+#include "render/fonts.h"
+
+#ifdef _WIN32
+#define PERF_RENDERER "Direct3D 9"
+#else
+#define PERF_RENDERER "OpenGL"
+#endif
 
 struct perf_counters g_perf;
 
@@ -20,8 +31,8 @@ static const char *const phase_name[PERF_N] = {
 
 static struct {
     int inited, enabled, shown, lastScroll;
-    LARGE_INTEGER freq;
-    LARGE_INTEGER t0[PERF_N];
+    LONGLONG freq;
+    LONGLONG t0[PERF_N];
     LONGLONG acc[PERF_N];
     LONGLONG frameMax;
     LONGLONG lastFrameEnd, intervalStart, start;
@@ -33,10 +44,12 @@ static struct {
         struct perf_counters per;
         int valid;
     } snap;
+#ifdef TEXT_BACKEND_GDI
     HDC dc;
     HBITMAP bmp;
     HGDIOBJ oldBmp;
-    HFONT font;
+#endif
+    FontHandle font;
     DWORD *bits;
     int charW, lineH;
     gfx_surface *tex;
@@ -47,9 +60,7 @@ static struct {
 
 static LONGLONG now(void)
 {
-    LARGE_INTEGER t;
-    QueryPerformanceCounter(&t);
-    return t.QuadPart;
+    return platform_perf_counter();
 }
 
 static void init(void);
@@ -68,29 +79,29 @@ void perf_begin(int phase)
 {
     if (!overlay_enabled())
         return;
-    QueryPerformanceCounter(&P.t0[phase]);
+    P.t0[phase] = now();
 }
 
 void perf_end(int phase)
 {
     if (!overlay_enabled())
         return;
-    P.acc[phase] += now() - P.t0[phase].QuadPart;
+    P.acc[phase] += now() - P.t0[phase];
 }
 
 static int ms10_of(LONGLONG ticks)
 {
-    return (int)((double)ticks * 10000.0 / (double)P.freq.QuadPart);
+    return (int)((double)ticks * 10000.0 / (double)P.freq);
 }
 
 static void init(void)
 {
-    char buf[MAX_PATH];
+    const char *overlay = getenv("RAGEXE_OVERLAY");
     P.inited = 1;
-    QueryPerformanceFrequency(&P.freq);
-    if (GetEnvironmentVariableA("RAGEXE_OVERLAY", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
+    P.freq = platform_perf_frequency();
+    if (overlay && overlay[0] && overlay[0] != '0')
         P.enabled = P.shown = 1;
-    P.lastScroll = GetKeyState(VK_SCROLL) & 1;
+    P.lastScroll = platform_key_state(VK_SCROLL) & 1;
     P.start = now();
 }
 
@@ -98,7 +109,7 @@ static const char *tenths(char *buf, int v10)
 {
     if (v10 < 0)
         v10 = 0;
-    wsprintfA(buf, "%d.%d", v10 / 10, v10 % 10);
+    sprintf(buf, "%d.%d", v10 / 10, v10 % 10);
     return buf;
 }
 
@@ -110,15 +121,15 @@ static void build_lines(void)
     int order[PERF_N], nl = 0, i, j, k;
     char *s;
 
-    wsprintfA(P.lines[0], "Direct3D 9  FPS %s  frame %s ms (max %s)  frames %u",
-              tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
-              tenths(b3, P.snap.frameMax10), P.snap.frames);
-    wsprintfA(P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
-              tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
-              tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
-    wsprintfA(P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
-              tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
-              tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
+    snprintf(P.lines[0], sizeof P.lines[0], "%s  FPS %s  frame %s ms (max %s)  frames %u", PERF_RENDERER,
+             tenths(b1, P.snap.fps10), tenths(b2, P.snap.ms10[PERF_FRAME]),
+             tenths(b3, P.snap.frameMax10), P.snap.frames);
+    snprintf(P.lines[1], sizeof P.lines[1], "scene %s  destroy %s  endscene %s  targetlock %s",
+             tenths(b1, P.snap.ms10[PERF_SCENE]), tenths(b2, P.snap.ms10[PERF_DESTROY]),
+             tenths(b3, P.snap.ms10[PERF_ENDSCENE]), tenths(b4, P.snap.ms10[PERF_TARGETLOCK]));
+    snprintf(P.lines[2], sizeof P.lines[2], "present %s (the blank wait)  logic %s (text %s, surface locks %s)  overlay %s",
+             tenths(b1, P.snap.ms10[PERF_PRESENT]), tenths(b2, P.snap.logic10),
+             tenths(b3, P.snap.ms10[PERF_TEXT]), tenths(b4, P.snap.ms10[PERF_TEXLOCK]), tenths(b5, P.snap.ms10[PERF_OVERLAY]));
     for (i = PERF_L_GROUND; i < PERF_N; i++)
         order[nl++] = i;
     for (i = 0; i < nl; i++)
@@ -127,21 +138,21 @@ static void build_lines(void)
                 k = order[i]; order[i] = order[j]; order[j] = k;
             }
     s = P.lines[3];
-    lstrcpyA(s, "lists:");
+    strcpy(s, "lists:");
     for (i = 0; i < 5 && i < nl; i++) {
-        wsprintfA(s + lstrlenA(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
+        snprintf(s + strlen(s), sizeof P.lines[3] - strlen(s), "  %s %s", phase_name[order[i]] + 2, tenths(b1, P.snap.ms10[order[i]]));
     }
-    wsprintfA(P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
-              c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
-              c->locks / f, c->targetLocks / f);
-    wsprintfA(P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
-              c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
-              (c->textMeasured + c->textHits) / f,
-              c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
-              c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
-    wsprintfA(P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
-              c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
-              c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
+    snprintf(P.lines[4], sizeof P.lines[4], "draws %u (%u calls)  prims %u  states %u sent / %u skipped  tex sets %u  locks %u (target %u)",
+             c->draws / f, c->drawCalls / f, c->prims / f, c->statesSent / f, c->statesSkipped / f, c->texSets / f,
+             c->locks / f, c->targetLocks / f);
+    snprintf(P.lines[5], sizeof P.lines[5], "textures +%u  surfaces +%u  blits %u (quad %u, cpu %u)  dc %u  text extents %u/frame, %u%% hits  res gets %u/frame, %u%% keyed",
+             c->texCreated, c->surfCreated, c->blits / f, c->blitQuads / f, c->cpuBlits / f, c->dcGets / f,
+             (c->textMeasured + c->textHits) / f,
+             c->textMeasured + c->textHits ? c->textHits * 100 / (c->textMeasured + c->textHits) : 0,
+             c->resGets / f, c->resGets ? c->resHits * 100 / c->resGets : 0);
+    snprintf(P.lines[6], sizeof P.lines[6], "texture builds %u/frame, %u skipped as unchanged  windows: %u invalidated, %u redrawn /frame  actor lookups %u/frame, %u%% indexed",
+             c->builds / f, c->buildsSkipped / f, c->invalidates / f, c->ondraws / f,
+             c->actorLookups / f, c->actorLookups ? c->actorIndexHits * 100 / c->actorLookups : 0);
     P.nlines = 7;
     P.dirty = 1;
 }
@@ -152,9 +163,9 @@ static void roll(LONGLONG t)
     unsigned f = P.frames ? P.frames : 1;
     int i, logic;
     for (i = 0; i < PERF_N; i++)
-        P.snap.ms10[i] = (int)((double)P.acc[i] * 10000.0 / (double)P.freq.QuadPart / (double)f);
+        P.snap.ms10[i] = (int)((double)P.acc[i] * 10000.0 / (double)P.freq / (double)f);
     P.snap.frameMax10 = ms10_of(P.frameMax);
-    P.snap.fps10 = span > 0 ? (int)((double)P.frames * 10.0 * (double)P.freq.QuadPart / (double)span) : 0;
+    P.snap.fps10 = span > 0 ? (int)((double)P.frames * 10.0 * (double)P.freq / (double)span) : 0;
     P.snap.frames = P.frames;
     P.snap.per = g_perf;
     logic = P.snap.ms10[PERF_FRAME] - P.snap.ms10[PERF_SCENE] - P.snap.ms10[PERF_DESTROY] - P.snap.ms10[PERF_ENDSCENE]
@@ -186,10 +197,11 @@ void perf_frame_end(struct Renderer *r)
     P.lastFrameEnd = t;
     if (!P.intervalStart)
         P.intervalStart = t;
-    else if (t - P.intervalStart >= (P.freq.QuadPart >> 1))
+    else if (t - P.intervalStart >= (P.freq >> 1))
         roll(t);
 }
 
+#ifdef TEXT_BACKEND_GDI
 static int make_dib(void)
 {
     BITMAPINFO bi;
@@ -208,6 +220,7 @@ static int make_dib(void)
     if (!P.bmp || !P.bits) {
         DeleteDC(P.dc);
         P.dc = NULL;
+        P.bits = NULL;
         return 0;
     }
     P.oldBmp = SelectObject(P.dc, P.bmp);
@@ -226,6 +239,38 @@ static int make_dib(void)
     return 1;
 }
 
+static void overlay_text_out(int x, int y, const char *line, int len)
+{
+    TextOutA(P.dc, x, y, line, len);
+}
+#else
+static int make_dib(void)
+{
+    static const uint16_t widest = 'W';
+    SIZE sz;
+    P.font = font_cache_get_family(&g_fontCache, "monospace", -12);
+    if (!P.font)
+        return 0;
+    P.bits = malloc((size_t)OV_TEX_W * OV_TEX_H * sizeof *P.bits);
+    if (!P.bits)
+        return 0;
+    font_text_extent(P.font, &widest, 1, 0, &sz);
+    P.charW = sz.cx;
+    P.lineH = sz.cy + 1;
+    return 1;
+}
+
+static void overlay_text_out(int x, int y, const char *line, int len)
+{
+    struct FontTarget target = {(BYTE *)P.bits, OV_TEX_W, OV_TEX_H, OV_TEX_W * 4};
+    uint16_t text[OV_LINE_CHARS];
+    int i;
+    for (i = 0; i < len && i < OV_LINE_CHARS; i++)
+        text[i] = (unsigned char)line[i];
+    font_text_out(P.font, &target, x, y, text, i, RGB(255, 255, 255), NULL);
+}
+#endif
+
 static void rasterize(void)
 {
     int i, x, y, w;
@@ -235,15 +280,17 @@ static void rasterize(void)
         P.usedH = OV_TEX_H;
     memset(P.bits, 0, OV_TEX_W * OV_TEX_H * 4);
     for (i = 0; i < P.nlines; i++) {
-        int len = lstrlenA(P.lines[i]);
-        TextOutA(P.dc, 4, 3 + i * P.lineH, P.lines[i], len);
+        int len = (int)strlen(P.lines[i]);
+        overlay_text_out(4, 3 + i * P.lineH, P.lines[i], len);
         w = len * P.charW + 8;
         if (w > P.usedW)
             P.usedW = w;
     }
     if (P.usedW > OV_TEX_W)
         P.usedW = OV_TEX_W;
+#ifdef TEXT_BACKEND_GDI
     SelectObject(P.dc, P.font);
+#endif
     for (y = 0; y < P.usedH; y++) {
         DWORD *row = P.bits + y * OV_TEX_W;
         for (x = 0; x < P.usedW; x++)
@@ -336,7 +383,7 @@ static void draw(struct Renderer *r)
 
 static void draw_overlay(struct Renderer *r)
 {
-    if (!P.dc && !make_dib())
+    if (!P.bits && !make_dib())
         return;
     if (P.dirty) {
         rasterize();
@@ -354,7 +401,7 @@ void perf_overlay_draw(struct Renderer *r)
     if (!overlay_enabled())
         return;
     /* With the overlay on, Scroll Lock hides and shows it. */
-    visible = GetKeyState(VK_SCROLL) & 1;
+    visible = platform_key_state(VK_SCROLL) & 1;
     if (visible != P.lastScroll) {
         P.lastScroll = visible;
         P.shown = !P.shown;

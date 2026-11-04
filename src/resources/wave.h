@@ -8,8 +8,6 @@ struct Wave {
     void *data;
     int milesOwned;
 };
-OFFSET_ASSERT(Wave, data, 0x110);
-SIZE_ASSERT(Wave, 0x118);
 
 void wave_resource_reset(struct Wave *wave);
 

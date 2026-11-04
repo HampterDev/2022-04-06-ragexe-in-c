@@ -151,7 +151,7 @@ int ui_party_info_wnd_set_ad(struct UIPartyInfoWnd *self, const struct AdvenPart
     self->button.button.skinned = 1;
     string_assign(&self->memo, owned_text_cstr(&ad->memo), ad->memo.size);
     memset(levels, 0, sizeof levels);
-    _snprintf_s(levels, sizeof levels, (size_t)-1, "%d~%d", ad->min_level, ad->max_level);
+    snprintf(levels, sizeof levels, "%d~%d", ad->min_level, ad->max_level);
     string_assign_cstr(&self->levels, levels);
     self->roles[0] = ad->roles[0];
     self->roles[2] = ad->roles[1];

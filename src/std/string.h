@@ -2,6 +2,7 @@
 #define STD_STRING_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include "core/text_view.h"
 
 struct String {
@@ -11,7 +12,7 @@ struct String {
 };
 
 struct WString {
-    wchar_t *data;
+    uint16_t *data;
     size_t size;
     size_t capacity;
 };
@@ -86,12 +87,36 @@ static __inline void wstring_init(struct WString *s)
     s->capacity = 0;
 }
 
-static __inline const wchar_t *wstring_cstr(const struct WString *s)
+static __inline const uint16_t *wstring_cstr(const struct WString *s)
 {
-    return s->data ? s->data : L"";
+    static const uint16_t empty = 0;
+    return s->data ? s->data : &empty;
 }
 
 void wstring_free(struct WString *s);
-void wstring_assign(struct WString *s, const wchar_t *text, size_t len);
+void wstring_assign(struct WString *s, const uint16_t *text, size_t len);
+
+static __inline size_t utf16_length(const uint16_t *text)
+{
+    size_t length = 0;
+    while (text[length])
+        ++length;
+    return length;
+}
+
+static __inline size_t utf16_length_limit(const uint16_t *text, size_t limit)
+{
+    size_t length = 0;
+    while (length < limit && text[length])
+        ++length;
+    return length;
+}
+
+static __inline int utf16_compare(const uint16_t *a, const uint16_t *b)
+{
+    while (*a && *a == *b)
+        ++a, ++b;
+    return (*a > *b) - (*a < *b);
+}
 
 #endif

@@ -19,13 +19,13 @@
 signed char g_silentWhisperAcks;
 #define WIN32_LEAN_AND_MEAN
 #include "core/markup_tags.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include "render/renderer.h"
-#include <mmsystem.h>
 #include <string.h>
 #include "game/whisper.h"
 #include "game/client.h"
 #include "ui/chat/balloon.h"
+#include "platform/clock.h"
 
 #define COLOUR_WHISPER   0xffff
 #define COLOUR_WHISPER_WND 0x7800
@@ -77,8 +77,8 @@ static void show_sent_whisper(struct GameMode *self, int receiver_cid)
         g_silentWhisperAcks--;
     } else {
         ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&line), COLOUR_WHISPER,
-                              CHAT_CHANNEL_WHISPER, (int)string_cstr(target));
+        ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&line), COLOUR_WHISPER,
+                              CHAT_CHANNEL_WHISPER, (intptr_t)string_cstr(target));
     }
     if (g_session1.autoSaveChat != 0)
         game_mode_log_whisper(self, string_cstr(&line));
@@ -101,7 +101,7 @@ static void build_failure_line(struct GameMode *self, struct String *out, int ms
 
 static void show_failure_line(struct String *line)
 {
-    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(line), COLOUR_WHISPER,
+    ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(line), COLOUR_WHISPER,
                           CHAT_CHANNEL_WHISPER, 0);
 }
 
@@ -178,7 +178,7 @@ static void answer_with_away_message(const char *text, const char *sender)
     string_assign_cstr(&reply, msg_str(MSG_AWAY_PREFIX));
     string_append_cstr(&reply, string_cstr(&g_session1.autoMessage));
     string_assign_cstr(&g_windowMgr.chat_line, string_cstr(&reply));
-    CMODE_SENDMSG(client_current_mode(), CMODE_MSG_WHISPER, (int)sender, 0, 0, 0);
+    CMODE_SENDMSG(client_current_mode(), CMODE_MSG_WHISPER, (intptr_t)sender, 0, 0, 0);
     string_free(&reply);
 }
 
@@ -186,7 +186,7 @@ static void open_admin_balloon(struct GameMode *self)
 {
     struct UIWindow *w;
 
-    self->admin_whisper_time = timeGetTime();
+    self->admin_whisper_time = platform_ticks_ms();
     if (self->admin_whisper_balloon == 0) {
         w = (struct UIWindow *)mem_alloc(sizeof(struct UITransBalloonText));
         w = w ? ui_trans_balloon_text_construct(w) : 0;
@@ -282,8 +282,8 @@ void game_mode_whisper(struct GameMode *self, int sender_cid, struct TextView se
             else if (session_looks_like_a_friend(&g_session1, string_cstr(&sender_text)) != 0)
                 warning = MSG_NOT_IN_GUILD;
             if (warning != 0) {
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)msg_str(warning), COLOUR_WHISPER, 0, 0);
-                ui_window_mgr_send_msg_(&g_windowMgr, UIM_WHISPER_LOG_LINE, (int)msg_str(warning), COLOUR_WHISPER, 0, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)msg_str(warning), COLOUR_WHISPER, 0, 0);
+                ui_window_mgr_send_msg_(&g_windowMgr, UIM_WHISPER_LOG_LINE, (intptr_t)msg_str(warning), COLOUR_WHISPER, 0, 0);
             }
             string_assign_cstr(&prefix, "( From ");
             string_append(&prefix, string_cstr(&sender_text), sender_text.size);
@@ -294,9 +294,9 @@ void game_mode_whisper(struct GameMode *self, int sender_cid, struct TextView se
 
         if (strcmp(string_cstr(&sender_text), session_character_name(&g_session1)) != 0) {
             ui_window_mgr_send_msg_(&g_windowMgr, UIM_REFRESH, 0, 0, 0, 0);
-            ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (int)string_cstr(&prefix), COLOUR_WHISPER,
+            ui_window_mgr_send_msg_(&g_windowMgr, UIM_CHAT_LINE, (intptr_t)string_cstr(&prefix), COLOUR_WHISPER,
                                   from_admin ? CHAT_CHANNEL_ADMIN_WHISPER : CHAT_CHANNEL_WHISPER,
-                                  (int)string_cstr(&sender_text));
+                                  (intptr_t)string_cstr(&sender_text));
             ui_window_mgr_add_whisper_name(&g_windowMgr, string_cstr(&sender_text));
             if (from_admin) {
                 open_admin_balloon(self);

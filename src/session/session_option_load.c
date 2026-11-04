@@ -4,6 +4,7 @@
 #include "ui/window_manager_state.h"
 #include "session/csession.h"
 #include "session/session_options.h"
+#include "platform/display_depth.h"
 
 #include <string.h>
 #include "core/app.h"
@@ -15,7 +16,6 @@
 void session_load_options(struct Session *self)
 {
     struct String text, *skin;
-    OSVERSIONINFOA version;
     int effectVolume;
     float farthest;
 
@@ -90,10 +90,7 @@ void session_load_options(struct Session *self)
     g_screenWidth = g_displayWidth;
     g_screenHeight = g_displayHeight;
     g_bitsPerPixel = session_get_option_int(self, "BITPERPIXEL", 16);
-    memset(&version, 0, sizeof version);
-    version.dwOSVersionInfoSize = sizeof version;
-    GetVersionExA(&version);
-    if (version.dwMajorVersion >= 6 && version.dwMinorVersion >= 2)
+    if (!platform_display_has_16bit_modes())
         g_bitsPerPixel = 32;
     g_displayDeviceIndex = session_get_option_int(self, "DEVICECNT", 0);
     g_displayModeIndex = session_get_option_int(self, "MODECNT", 0);

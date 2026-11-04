@@ -1,13 +1,14 @@
 #include "game/packet_handlers.h"
-#include <windows.h>
+#include "platform/win_types.h"
 #include <stdio.h>
-#include <io.h>
-#include <direct.h>
+#include "core/client_path.h"
+#include "platform/filesystem.h"
 #include "game/gamemode.h"
 #include "game/item_info.h"
 #include "ui/items/styling_shop.h"
 #include "ui/ui_std.h"
 #include "core/app.h"
+#include "platform/clock.h"
 
 #pragma pack(push, 1)
 struct PackageItemTestEntry {
@@ -31,7 +32,7 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     const char *package_name;
     char path[0x800];
     struct ItemInfo item;
-    SYSTEMTIME now;
+    struct PlatformDateTime now;
     FILE *f;
     const struct PackageItemTestEntry *entry = packet->records;
     int n = 0, records, total, written;
@@ -41,21 +42,20 @@ void game_mode_zc_result_package_item_test(struct GameMode *self, const unsigned
     item_info_construct(&item);
     item_info_set_item_id(&item, packet->package_item_id);
     package_name = item_info_get_name(&item);
-    written = snprintf(path, sizeof path, "%s\\PackageItemTest", g_clientDir);
-    if (written < 0 || (size_t)written >= sizeof path) goto done;
-    if (_access(path, 0) && _mkdir(path))
+    if (!client_path(path, sizeof path, "PackageItemTest")) goto done;
+    if (!platform_path_exists(path) && platform_directory_create(path))
         goto done;
-    GetLocalTime(&now);
-    written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d).txt", g_clientDir, package_name, now.wYear, now.wMonth,
-                now.wDay);
-    if (written < 0 || (size_t)written >= sizeof path) goto done;
-    if (!_access(path, 0)) {
+    platform_date_time_local(&now);
+    if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d).txt", package_name, now.year, now.month,
+                     now.day))
+        goto done;
+    if (platform_path_exists(path)) {
         do {
             n++;
-            written = snprintf(path, sizeof path, "%s\\PackageItemTest\\%s(%d_%d_%d)_%d.txt", g_clientDir, package_name, now.wYear,
-                        now.wMonth, now.wDay, n);
-            if (written < 0 || (size_t)written >= sizeof path) goto done;
-        } while (!_access(path, 0));
+            if (!client_path(path, sizeof path, "PackageItemTest\\%s(%d_%d_%d)_%d.txt", package_name, now.year,
+                             now.month, now.day, n))
+                goto done;
+        } while (platform_path_exists(path));
     }
     f = fopen(path, "w");
     if (!f)

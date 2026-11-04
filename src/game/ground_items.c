@@ -32,7 +32,7 @@ void game_mode_item_entry(struct GameMode *self, const struct PacketGroundItemEn
     entry.y = packet->y;
     entry.sub_x = packet->sub_x;
     entry.sub_y = packet->sub_y;
-    _itoa(packet->item_id, entry.item_id_text, 10);
+    snprintf(entry.item_id_text, sizeof entry.item_id_text, "%d", packet->item_id);
     entry.falls = 0;
     entry.is_identified = packet->identified;
     show_ground_item(self, &entry);
@@ -47,7 +47,7 @@ void game_mode_item_fall_entry4(struct GameMode *self, const struct PacketGround
     entry.y = packet->y;
     entry.sub_x = packet->sub_x;
     entry.sub_y = packet->sub_y;
-    _itoa(packet->item_id, entry.item_id_text, 10);
+    snprintf(entry.item_id_text, sizeof entry.item_id_text, "%d", packet->item_id);
     entry.falls = 1;
     entry.is_identified = packet->identified;
     entry.type = packet->type;
@@ -63,7 +63,7 @@ void game_mode_item_fall_entry(struct GameMode *self, const struct PacketGroundI
     entry.y = packet->y;
     entry.sub_x = packet->sub_x;
     entry.sub_y = packet->sub_y;
-    _itoa(packet->item_id, entry.item_id_text, 10);
+    snprintf(entry.item_id_text, sizeof entry.item_id_text, "%d", packet->item_id);
     entry.falls = 1;
     entry.is_identified = packet->identified;
     show_ground_item(self, &entry);

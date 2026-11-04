@@ -97,7 +97,7 @@ unsigned char effect_maker_on_process(struct GameObject *object)
         self->frames_since_launch = 0;
         effect = game_actor_launch_effect((struct GameActor *)me, self->effect_id, here, 0);
         if (effect)
-            rag_effect_send_msg(effect, 0, RAG_MSG_EMITTER_PARAMS, MSG_ARG_PTR(&self->params), 0, 0);
+            rag_effect_send_msg(effect, 0, RAG_MSG_EMITTER_PARAMS, (intptr_t)&self->params, 0, 0);
     }
     self->frames_since_launch++;
     return 1;

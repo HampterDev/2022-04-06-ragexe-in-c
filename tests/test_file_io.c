@@ -1,5 +1,6 @@
 #include "fileio/file.h"
 #include "fileio/resource_path.h"
+#include "platform/filesystem.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
@@ -84,10 +85,10 @@ static void bounded_spans(void)
     file.size = -1;
     assert(!file_consume(&file, 0, 1));
     file.size = sizeof data;
-    file.handle = NULL;
+    file.handle = (struct PlatformFile *)&file;
     assert(!file_consume(&file, 1, 1));
     file.buffer = NULL;
-    file.handle = INVALID_HANDLE_VALUE;
+    file.handle = NULL;
     file_destruct(&file);
 }
 
@@ -112,10 +113,10 @@ static void memory_file(const char *path)
     assert(file_read(&file, bytes, 3) && memcmp(bytes, "abc", 3) == 0);
     assert(!file_read(&file, bytes, 4) && file.position == 3);
     assert(!file_write(&file, bytes, 1));
-    assert(!file_seek(&file, INT_MAX, FILE_CURRENT) && file.position == 3);
-    assert(!file_seek(&file, -1, FILE_BEGIN) && file.position == 3);
+    assert(!file_seek(&file, INT_MAX, SEEK_CUR) && file.position == 3);
+    assert(!file_seek(&file, -1, SEEK_SET) && file.position == 3);
     assert(!file_seek(&file, 0, 99) && file.position == 3);
-    assert(file_seek(&file, -2, FILE_END) && file.position == 4);
+    assert(file_seek(&file, -2, SEEK_END) && file.position == 4);
     assert(file_read(&file, bytes, 2) && memcmp(bytes, "ef", 2) == 0);
     assert(!file_read(&file, bytes, 1) && file.position == 6);
     file.position = INT_MAX - 1;
@@ -126,7 +127,7 @@ static void memory_file(const char *path)
     file.position = 0;
     file.size = -1;
     assert(!file_read(&file, bytes, 1));
-    assert(!file_seek(&file, 0, FILE_BEGIN));
+    assert(!file_seek(&file, 0, SEEK_SET));
     file.size = 6;
     assert(file_open(&file, file.name, CFILE_MODE_READ, 0, 1));
     assert(file.buffer && file.size == 6 && file.position == 0);
@@ -142,30 +143,26 @@ static void disk_file(const char *path)
 {
     struct File file;
     char bytes[8] = {0};
-    HANDLE write_end;
-    DWORD written;
     file_construct(&file);
     assert(file_open(&file, path, CFILE_MODE_WRITE, 0, 1));
     assert(!file_write(&file, "x", -1));
     assert(!file_write(&file, NULL, 1));
     assert(file_write(&file, NULL, 0));
     assert(file_write(&file, "abcdef", 6));
-    assert(file_seek(&file, -2, FILE_END));
+    assert(file_seek(&file, -2, SEEK_END));
     assert(!file_read(&file, bytes, 4));
     assert(memcmp(bytes, "ef", 2) == 0);
-    assert(!file_seek(&file, -1, FILE_BEGIN));
-    assert(file_seek(&file, 0, FILE_BEGIN));
+    assert(!file_seek(&file, -1, SEEK_SET));
+    assert(file_seek(&file, 0, SEEK_SET));
     assert(file_read(&file, bytes, 6) && memcmp(bytes, "abcdef", 6) == 0);
     file_close(&file);
     assert(!file_write(&file, bytes, 1));
-    assert(CreatePipe(&file.handle, &write_end, NULL, 0));
-    assert(WriteFile(write_end, "abc", 3, &written, NULL) && written == 3);
-    assert(CloseHandle(write_end));
-    assert(!file_read(&file, bytes, 5) && memcmp(bytes, "abc", 3) == 0);
+    file.handle = platform_file_open_read(path);
+    assert(file.handle);
+    memset(bytes, 0, sizeof bytes);
+    assert(!file_read(&file, bytes, 8) && memcmp(bytes, "abcdef", 6) == 0);
     file_destruct(&file);
-    file.handle = NULL;
-    assert(!file_seek(&file, 0, FILE_BEGIN));
-    file.handle = INVALID_HANDLE_VALUE;
+    assert(!file.handle && !file_seek(&file, 0, SEEK_SET));
 }
 
 static void empty_and_missing(const char *empty, const char *missing)

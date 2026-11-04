@@ -12,6 +12,7 @@
 #include "core/app.h"
 #include "core/msg_str.h"
 #include "ui/chat/chat_window.h"
+#include "platform/window.h"
 
 #define WND_ID_NONE (-1)
 #define WND_ID_SAY_DIALOG 0x10
@@ -149,7 +150,7 @@ static void tab(struct UIWindowMgr *self)
 {
     struct UIWindow *wnd;
 
-    if (HIBYTE(GetAsyncKeyState(VK_CONTROL)))
+    if (HIBYTE(platform_async_key_state(VK_CONTROL)))
         return;
     if (self->key_modifier == 0) {
         if ((wnd = ui_window_mgr_get_window(self, WND_ID_WORLD_MAP)) != NULL) {
@@ -165,7 +166,7 @@ static void tab(struct UIWindowMgr *self)
         ui_window_mgr_focus_first_edit(self);
         return;
     }
-    if (GetAsyncKeyState(VK_SHIFT)) {
+    if (platform_async_key_state(VK_SHIFT)) {
         if (ui_window_mgr_is_first_edit(self, self->focus_edit))
             ui_window_mgr_set_focus_edit_last(self);
         else

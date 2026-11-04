@@ -1,3 +1,4 @@
+#include "core/compiler.h"
 #include "world/mode_actions.h"
 #include "game/gamemode.h"
 #include "session/option_pairs.h"
@@ -6,8 +7,7 @@
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
-#include <windows.h>
-#include <mmsystem.h>
+#include "platform/win_types.h"
 #include "game/mouse_camera.h"
 #include "skills/skill_info.h"
 #include "game/client.h"
@@ -19,6 +19,8 @@
 #include "session/hotkey_types.h"
 #include "ui/hotkeys/hotkeys.h"
 #include "world/camera.h"
+#include "platform/clock.h"
+#include "platform/window.h"
 
 float g_maxViewDistance = 400.0f;
 
@@ -41,7 +43,7 @@ enum { GMMSG_CANCEL_DRAG = 0x12, GMMSG_CANCEL_SKILL_AIM = 0x47 };
 
 static int key_down(int vk)
 {
-    return (unsigned char)((unsigned)GetAsyncKeyState(vk) >> 8) != 0;
+    return (unsigned char)((unsigned)platform_async_key_state(vk) >> 8) != 0;
 }
 
 static void set_pitch(struct GameMode *self, float pitch, float range)
@@ -187,7 +189,7 @@ static void right_button_double(struct GameMode *self)
         self->view->destLongitude = 0.0f;
 }
 
-__declspec(noinline) void game_mode_process_right_button(struct GameMode *self)
+RAGE_NOINLINE void game_mode_process_right_button(struct GameMode *self)
 {
     switch (g_mouse.button[MOUSE_RIGHT]) {
     case BUTTON_PRESSED:
@@ -241,13 +243,13 @@ static void wheel_zoom(struct GameMode *self)
     skill_info_destruct(&skill);
 }
 
-__declspec(noinline) void game_mode_process_wheel(struct GameMode *self, int verdict)
+RAGE_NOINLINE void game_mode_process_wheel(struct GameMode *self, int verdict)
 {
     struct SkillInfo skill;
 
-    if (timeGetTime() - self->throttle_time <= 15)
+    if (platform_ticks_ms() - self->throttle_time <= 15)
         return;
-    self->throttle_time = timeGetTime();
+    self->throttle_time = platform_ticks_ms();
     if (g_mouse.wheel == 0 || self->skill_use.type != 0)
         return;
 

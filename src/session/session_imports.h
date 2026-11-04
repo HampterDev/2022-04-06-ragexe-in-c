@@ -65,7 +65,7 @@
 #include "base.h"
 #include "render/renderer.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/win_types.h"
 #include "std/std.h"
 #include "core/client.h"
 #include "fileio/res_mgr.h"

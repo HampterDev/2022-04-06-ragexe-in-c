@@ -178,11 +178,11 @@ void ui_messenger_group_wnd_on_draw(struct UIWindow *window)
     string_assign(&base, RENEWAL_PARTY, 0x1c);
     if (self->tab == 0) {
         memset(path, 0, sizeof(path));
-        _snprintf_s(path, sizeof(path), (size_t)-1, "%simg_friend1.bmp", string_cstr(&base));
+        snprintf(path, sizeof(path), "%simg_friend1.bmp", string_cstr(&base));
         bmp = ui_skin_bitmap(path);
         if (self->mode == 0)
             ui_window_draw_bitmap(wnd, 0x93, 0x24, bmp, 1);
-        _snprintf_s(path, sizeof(path), (size_t)-1, "%simg_friend2.bmp", string_cstr(&base));
+        snprintf(path, sizeof(path), "%simg_friend2.bmp", string_cstr(&base));
         bmp = ui_skin_bitmap(path);
         if (self->mode == 0)
             ui_window_draw_bitmap(wnd, 0x63, 0xc1, bmp, 1);

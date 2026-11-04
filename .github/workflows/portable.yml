@@ -1,0 +1,89 @@
+name: Portable foundations
+
+on:
+  push:
+    branches: [purist-portable]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            configure: -A Win32
+          - os: windows-2022
+            configure: -A x64
+          - os: ubuntu-24.04
+            configure: -DCMAKE_C_COMPILER=clang -DRAGE_SANITIZERS=ON
+          - os: macos-15
+            configure: -DCMAKE_OSX_ARCHITECTURES=arm64 -DRAGE_SANITIZERS=ON -DRAGE_PLATFORM_PROBE=ON
+    runs-on: ${{ matrix.os }}
+    env:
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Configure
+        run: cmake -S . -B build/portable -DCMAKE_BUILD_TYPE=Debug ${{ matrix.configure }}
+      - name: Build
+        run: cmake --build build/portable --config Debug --parallel 4
+      - name: Test
+        run: ctest --test-dir build/portable -C Debug --output-on-failure
+      - name: Build Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        shell: cmd
+        run: build.bat
+      - name: Build 64-bit Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A x64'
+        shell: cmd
+        run: build.bat x64 && tests\scenes\build.bat x64
+      - name: Test Windows client
+        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        shell: cmd
+        run: tests\build.bat
+
+  linux-client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libfreetype-dev libfontconfig-dev fonts-dejavu-core fonts-nanum \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
+            libasound2-dev libpulse-dev libibus-1.0-dev libdbus-1-dev libudev-dev xvfb mesa-utils
+      - name: Configure
+        run: cmake -S . -B build/client -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DRAGE_CLIENT=ON
+      - name: Build
+        run: cmake --build build/client --parallel 4
+      - name: Test
+        run: xvfb-run -a ctest --test-dir build/client --output-on-failure
+
+  macos-client:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install dependencies
+        run: brew install ninja freetype fontconfig
+      - name: Configure
+        run: cmake -S . -B build/client -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64 -DRAGE_CLIENT=ON
+      - name: Build
+        run: cmake --build build/client --parallel 4
+      - name: Test
+        run: ctest --test-dir build/client --output-on-failure
+
+  android-client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Build
+        working-directory: android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          ./gradlew assembleRelease --console=plain

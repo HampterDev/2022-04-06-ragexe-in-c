@@ -1,10 +1,11 @@
 #ifndef UI_CHARACTER_GAUGE_H
 #define UI_CHARACTER_GAUGE_H
 
-#include <windows.h>
+#include "platform/win_types.h"
 
 #include "ui/character/gauge_value.h"
 #include "ui/window_types.h"
+#include <stdint.h>
 
 int ui_monster_gauge_hp(const struct UIWindow *window);
 int ui_monster_gauge_max_hp(const struct UIWindow *window);
@@ -26,8 +27,8 @@ struct UIBasicInfoWnd;
 struct UIBasicInfoWnd *ui_basic_info_wnd_construct(struct UIBasicInfoWnd *self);
 struct UIWindow *ui_basic_info_wnd_new(void);
 void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height);
-void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum);
-void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum);
+void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum);
+void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, int64_t current, int64_t maximum);
 
 struct UIHomunInfoWnd *ui_homun_info_wnd_construct(struct UIHomunInfoWnd *self);
 struct UIWindow *ui_homun_info_wnd_new(void);
@@ -43,7 +44,6 @@ struct UIGage {
     COLORREF low_colour;
     COLORREF food_colour, food_low_colour;
 };
-SIZE_ASSERT(UIGage, 0x98);
 
 struct UIPcGage {
     struct UIGage gage;
@@ -51,7 +51,6 @@ struct UIPcGage {
     int hp, max_hp;
     int sp, max_sp;
 };
-SIZE_ASSERT(UIPcGage, 0xac);
 
 void ui_gage_set_back_colour(struct UIGage *self, COLORREF colour);
 struct UIMonsterGage *ui_monster_gage_new(void);

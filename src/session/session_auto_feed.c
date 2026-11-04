@@ -17,13 +17,13 @@ void session_set_homun_auto_feed(struct Session *self, BYTE on)
         g_session1.homunAutoFeed = 0;
         msg = 0xcd3;
     }
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str(msg), CHAT_COLOR_FEED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(msg), CHAT_COLOR_FEED, 0, 0);
 }
 
 void session_set_pet_auto_feed(struct Session *self, BYTE on)
 {
     g_session1.petAutoFeed = on == 1;
-    ui_window_mgr_send_msg_(&g_windowMgr, 1, (int)msg_str((on ^ 1) + 0xa13), CHAT_COLOR_FEED, 0, 0);
+    ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str((on ^ 1) + 0xa13), CHAT_COLOR_FEED, 0, 0);
 }
 
 #pragma pack(push, 1)
