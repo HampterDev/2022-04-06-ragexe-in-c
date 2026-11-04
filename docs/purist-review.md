@@ -10856,6 +10856,8 @@ No live client was run.
   the order of every create and destroy first, as `test_com_lifecycle` does for COM.
   The test came afterwards (`test_startup_order`); the table did not, because shutdown is
   not the reverse of startup (see [Restructuring: window and object-type tables](#restructuring-window-and-object-type-tables-2026-11-03)).
+  Done afterwards with a destroy rank per row: see
+  [Restructuring: manager lifecycle table](#restructuring-manager-lifecycle-table-2026-11-04).
 
 ## Restructuring: window and object-type tables (2026-11-03)
 
@@ -11097,6 +11099,10 @@ Design for the table, for Patrick to decide:
   `atexit` registrations and table loads, and it would need its own characterization first.
   `WinMain`'s own shutdown steps (window manager, connection, renderer, sound) are another
   sequence with the same question.
+
+Patrick approved the table. It is done in
+[Restructuring: manager lifecycle table](#restructuring-manager-lifecycle-table-2026-11-04); the cleanup after a failed startup
+and the `client_init` and `WinMain` sequences stay as they are.
 
 ### Dependency map per commit
 
@@ -11666,3 +11672,212 @@ above, and five in the three places listed below.
   the merge's sources, fail (`build/wsl-merge-fixes-oldcheck.log`).
 
 No live client was run.
+
+## Restructuring: manager lifecycle table (2026-11-04)
+
+The startup and shutdown table that [Startup and shutdown: characterization test and
+design](#startup-and-shutdown-characterization-test-d5d292c-and-design) proposed, which Patrick
+approved. Branch `purist-lifecycle`, from `purist` at `657555f`. No behavior change.
+
+### The table (`346b667`)
+
+- **Row type** (`core/manager_table.h`, new): `struct ManagerRow { name, create, destroy,
+  destroy_rank, on_failure }` and the list `struct ManagerTable` (`MANAGER_TABLE(rows)`). `create`
+  is `int (*)(void)`, nonzero on success, or NULL for a manager that is created elsewhere.
+  `destroy` is `void (*)(void)`, or NULL for nothing to destroy. `destroy_rank` places the
+  destroy at shutdown, lowest first; gaps are allowed. `on_failure` says what a create that
+  returns 0 does: `MANAGER_STOP(text)` ends startup with `text`, `MANAGER_WARN(text)` shows
+  `text` in a message box and goes on, `MANAGER_IGNORE` goes on. The header documents the
+  columns, the order, the failure behaviour and a missing row.
+- **Runner** (`core/manager_table.c`, new): `manager_table_create` runs the rows in list order
+  and returns the `MANAGER_STOP` row whose create failed, or NULL; a warn row's failure calls
+  `platform_message_box(NULL, text, "Error", 0)`, the call the two loads made.
+  `manager_table_destroy` calls the destroys from the lowest rank to the highest. Both first
+  check the table and stop the client with `fatal_error`, naming the rows, on two rows with a
+  destroy and the same rank (one of them would not be destroyed) or a stop or warn row without
+  its text. The runner reaches only `fatal_error`, `platform_message_box` and `snprintf`.
+- **Composition point**: `g_clientManagers` in `core/client_managers.c` (new, declared in
+  `client_managers.h`), the one list of the 19 rows, in create order. Five creates already have
+  the row's form and are in the rows directly (`account_user_data_create`,
+  `char_user_data_create`, `whisper_block_create`, `player_names_create`,
+  `adventurer_agency_create`); 13 static adapters next to the list give the others that form:
+  they pass `&g_effectTypes`, turn a `char` or `unsigned char` result into `int`, load the
+  EZ2STR and map-sky instances, and do the three create-and-load pairs as before. Town info
+  and champion monsters call the create, do not look at its result and return the load's, so
+  the row warns when the file does not load. Renewed quests return 0 when the create fails,
+  before the load, and 1 after the load, which has no result.
+- **Entry points unchanged**: `app_init_managers` (`core/startup.c`) runs
+  `manager_table_create(&g_clientManagers)` and builds the `InitResult` as before (`init_failed`
+  with the stop row's text, or "good"); `app_destroy_singletons` (`core/app.c`) runs
+  `manager_table_destroy(&g_clientManagers)`. `client_run` (`core/winmain.c`), which `WinMain`,
+  the POSIX `main` and Android's `main` call, calls both at the same places as before, so every
+  platform runs the same table; `winmain.c`, `app_win32.c` and `app_sdl.c` did not change, and
+  the table has no platform-specific code. `startup.c` and `app.c` include `client_managers.h`
+  instead of the 19 manager headers. The comments in `effects/effect_registry.h` and
+  `effect_types.h` that said `app_init_managers` passes `g_effectTypes` now name the
+  effect-manager row.
+
+The rows, in create order:
+
+| # | name | create | on failure | destroy | rank |
+|---|---|---|---|---|---|
+| 1 | skill-action manager | none: `client_init` (`skill_actions_register`) | | `skill_action_mgr_destroy_instance` | 1 |
+| 2 | EZ2STR effect manager | `ez2_str_effect_mgr_load(ez2str_effect_mgr_instance())` | ignore | `ez2str_effect_mgr_destroy` | 2 |
+| 3 | effect manager | `effect_mgr_create(&g_effectTypes)` | stop: `CEffectMgr::CreateInstance()` | `effect_mgr_destroy_instance` | 17 |
+| 4 | particle pools | `effect_memory_create` | stop: `Particle pools` | `effect_memory_destroy` | 16 |
+| 5 | time scheduler | `time_scheduler_create` | stop: `CTimeScheduler::CreateInstance()` | `time_scheduler_destroy` | 15 |
+| 6 | town info | `town_info_create`, then `town_info_load` | warn: `TownInfo file Init` | `town_info_destroy` | 14 |
+| 7 | icon sheet | `icon_sheet_create` | stop: `CCooltimerMgr::CreateInstance()` | `icon_sheet_destroy` | 13 |
+| 8 | renewed quests | `renew_quest_create`, then `renew_quest_load` | stop: `CRenewQuestMgr::CreateInstance()` | `renew_quest_destroy` | 12 |
+| 9 | champion monsters | `champion_monster_create`, then `champion_monster_load` | warn: `ChampionMonster file Init` | `champion_monster_destroy` | 11 |
+| 10 | map properties | `map_property_mgr_create` | stop: `CMapPropertyMgr::CreateInstance()` | `map_property_mgr_release` | 10 |
+| 11 | Rodex | `rodex_create_instance` | stop: `CRodexSystemMgr::CreateInstance()` | `rodex_destroy_instance` | 9 |
+| 12 | account data | `account_user_data_create` | stop: `CAccountLinkedUserDataMgr::CreateInstance()` | `account_user_data_destroy` | 7 |
+| 13 | character data | `char_user_data_create` | stop: `CCharacterLinkedUserDataMgr::CreateInstance()` | `char_user_data_destroy` | 8 |
+| 14 | whisper block | `whisper_block_create` | stop: `CWhisperBlockMgr::CreateInstance()` | `whisper_block_destroy` | 6 |
+| 15 | player names | `player_names_create` | stop: `CPlayerNameDictionary::CreateInstance()` | `player_names_destroy` | 5 |
+| 16 | guild manager | `guild_mgr_create` | stop: `CGuildMgr::CreateInstance()` | `guild_mgr_destroy` | 4 |
+| 17 | adventurer agency | `adventurer_agency_create` | stop: `CAdventurerAgencyMgr::CreateInstance()` | `adventurer_agency_destroy` | 18 |
+| 18 | join-party manager | `ui_request_join_party_mgr_create` | stop: `UIRequestJoinPartyMgr::CreateInstance()` | `ui_request_join_party_mgr_delete` | 19 |
+| 19 | map sky | `map_sky_mgr_load(map_sky_mgr_instance())` | ignore | `map_sky_mgr_destroy` | 3 |
+
+One row per manager, not per call: each of the 19 shutdown steps is one row's destroy, and the
+create column holds the calls that `app_init_managers` made for that manager. A row per call
+(23 steps) would have given the three loads rows without a destroy. In the test's terms the
+table is the same as the two functions: 23 startup steps, 14 checked creates (the stop rows), 4
+ignored results (the EZ2STR and map-sky loads, and the town-info and champion-monster creates
+inside their adapters), 2 warning loads, 19 shutdown steps.
+
+- **Order and failure**: the list order is the create order, `destroy_rank` the destroy order,
+  which is today's and not the reverse of the create order. When a stop row fails,
+  `app_init_managers` returns its text and `client_run` shows it and returns 1 without calling
+  `app_destroy_singletons`, so the managers created before it are not destroyed (the process
+  ends anyway). That is unchanged and recorded in `manager_table.h`; the same holds when
+  `app_init_3d`, `c3d_device_create_renderer` or `connection_startup` fail after the managers,
+  where `client_run` also skips `sound_mgr_destroy`, `platform_timer_period_end` and
+  `crash_report_uninstall`.
+- **A missing row**: startup does not create the manager and shutdown does not destroy it. Code
+  that uses it then finds no instance, or one that its `*_instance()` function makes on first
+  use (the EZ2STR, map-sky and skill-action managers have such functions) and that nothing
+  destroys before the process ends.
+
+### Left outside the table
+
+Three more sequences in the files that the plan named (`client_init.c`, `winmain.c`,
+`session/session_lifetime.c`) stay as they are; the design already set the first two apart:
+
+- **`client_init`** (`core/client_init.c`): 24 `atexit` registrations, most right after the
+  construction they undo, interleaved with 11 initializations that register no release (the
+  message strings, fonts, texture cache, the two skin names, five item and table loaders and
+  `skill_actions_register`). The releases run in reverse at process exit, after `client_run`
+  has returned. No test records that order, so it needs its own characterization first.
+- **`client_run`'s own steps** (`core/winmain.c`): the crash report, the sound manager, the
+  window, the 3D device, the renderer and the connection at startup, and the window manager,
+  connection, renderer, sound, timer period and crash report around `app_destroy_singletons` at
+  shutdown. Each failure has its own result and cleanup label (`com_done` up to the window,
+  `done` from the managers on), which `test_com_lifecycle` records; they are not rows of one
+  shape.
+- **The session's managers** (`session/session_lifetime.c`): `session_construct` creates the
+  user hotkeys, the barter markets, pet auto-feeding and achievements (each with a message box
+  on failure) and the private airplane, attendance and map-info managers (results not looked
+  at); `session_destruct` destroys them, except map info, which `client_run` destroys with
+  `map_info_destroy`. They belong to the lifetime of `g_session1`, which `client_init`
+  constructs and releases at exit, not to `app_init_managers`.
+
+Making shutdown the exact reverse of startup is still a separate change: it needs each destroy
+checked for a dependency on a manager that would then be gone already.
+
+### Tests changed
+
+- `tests/test_startup_order.c` did not change (byte for byte). Its stubs replace every create
+  and destroy and the message box; the table and the runner are now compiled from the sources.
+- `tests/extract_startup_order.py` extracts the same three functions (`init_failed` and
+  `app_init_managers` from `startup.c`, `app_destroy_singletons` from `app.c`) and starts
+  `startup_order.inc` with `#include "core/client_managers.h"`.
+- `tests/build_startup_order.bat` compiles `src/core/client_managers.c` and
+  `src/core/manager_table.c` with the test, at `/W3 /WX` as before.
+- `test_com_lifecycle` did not change; it extracts `client_run`'s tail from `winmain.c`, which
+  did not change.
+
+The test's header comment still says it characterizes the order "before startup and shutdown
+become one table"; it was left so that the file stays unchanged.
+
+Detection proof (each change made in `client_managers.c` at `346b667`,
+`tests\build_startup_order.bat` run, the file restored byte for byte;
+`build/lifecycle-mutations.log`):
+
+| Change | Result |
+|---|---|
+| none | passed: 23 startup steps, 19 shutdown steps |
+| account-data and character-data rows swapped (create order) | `all succeed: step 14 is char_user_data_create, expected account_user_data_create` |
+| their ranks 7 and 8 swapped (destroy order) | `destroy: step 6 is char_user_data_destroy, expected account_user_data_destroy` |
+| Rodex row dropped | `all succeed: 22 steps, expected 23` |
+| skill-action row dropped (no create) | `destroy: 18 steps, expected 19` |
+| map properties `MANAGER_IGNORE` instead of stop | `map_property_mgr_create: 23 steps, expected 13` |
+| town info `MANAGER_IGNORE` instead of warn | `town_info_load: 23 steps, expected 24` |
+| map sky `MANAGER_STOP("x")` instead of ignore | assertion `init.ok == 1` |
+| guild manager rank 5, which player names has | `fatal_error: manager table: player names and guild manager have destroy rank 5` |
+| map properties `MANAGER_STOP(NULL)` | `fatal_error: manager table: map properties stops or warns without a text` |
+
+### Validation
+
+Logs are in the worktree's `build/` (`lifecycle-*`). The baseline ran on a clean export of
+`657555f` (`build/base`, logs `lifecycle-base-*`), the final runs on a clean export of
+`346b667` (`build/final`, logs `lifecycle-final-*`).
+
+- **Windows x86, the reference** (`build.bat`, MSVC 2022): the release build has no compiler
+  or linker warnings (`lifecycle-final-build.log`, grepped for `: warning ` and `LNK`), as on
+  the base (`lifecycle-base-build.log`). The full `tests\build.bat` passes in 390 s
+  (`lifecycle-final-tests.log`), and so do the seven standalone suites, each with the base's
+  result line (`lifecycle-final-<suite>.log`, `lifecycle-base-<suite>.log`), among them
+  `COM lifecycle: 28 cases, 0 failures`.
+- **Digests**: the 314 result lines of the suite (every line with a digest, "passed",
+  "PASS", cases, steps, failures or `render`) are identical to the base's, in order
+  (`lifecycle-final-results-base.txt` and `-results-change.txt`); the whole log differs from
+  the base's only in the run time that `tests/test_map_name_migration.py` prints
+  (`lifecycle-final-results-diff.txt`). Among them: the startup order (23 startup steps, 14
+  checked creates, 4 ignored results, 2 warning loads, 19 shutdown steps), packet dispatch
+  `d77aaadbb5fc63b7` (1,179,800 cases), effect factories `d3673c01`, effect trace
+  `cbdaaf30ef3127d6`, EZ2STR file choice `1b0232b840610959`, window lists `2232167ff470caa7`
+  (37,047 lines), the object-type counts (472 classes, 139 retired, 2,717 comparisons, 205
+  accepted casts, 326 names, 306 window names) and the 17 `render` lines of
+  `test_renderer_storage`.
+- **Windows x64 and FreeType text** (`build.bat x64`, `build.bat freetype`): both build without
+  warnings (`lifecycle-final-build-x64.log`, `lifecycle-final-build-ft.log`).
+- **CMake with MSVC** (`-A Win32` and `-A x64`, Debug, separate build directories): configure
+  and build without warnings; CTest passes 20 of 20 (Win32) and 19 of 19 (x64), as recorded for
+  the merge (`lifecycle-final-cmake-<arch>-*.log`; the CTest logs are UTF-16). On Windows CMake
+  builds only the CTest programs, not the client.
+- **Linux** (WSL Ubuntu 24.04, GCC 13.3, Ninja, `-DRAGE_CLIENT=ON`; SDL configured with
+  `SDL_UNIX_CONSOLE_BUILD=ON` from the merge check's download, as for the merge): `ragexe` and
+  `ragexe_scenes` of `346b667` build, `client_managers.c` and `manager_table.c` among them, and
+  CTest passes 24 of 24 with `SDL_VIDEO_DRIVER=offscreen`; `657555f` gives the same 24 of 24.
+  GCC reports 1,685 warnings for both trees, none in the new files. Logs:
+  `lifecycle-wsl-<base|final>-{configure,build,ctest}.log` (copied from `~/lifecycle-check` in
+  WSL).
+- **`test_startup_order` with GCC** (a scratch build outside the suite: an empty `windows.h`,
+  `__declspec` defined away, otherwise as `build_startup_order.bat` compiles it): the unchanged
+  test passes on Linux against `657555f`'s two functions and against `346b667`'s table, with
+  the same result line and no warnings at `-Wall` (`lifecycle-wsl-startup-order-gcc.log`).
+- `git diff --check` passes for both commits.
+
+Not run: the macOS and Android builds (not possible here), a live client, the scene captures
+(they need game data) and the dependency map (its scripts are in another worktree's untracked
+`build/depmap`).
+
+### Found, not fixed
+
+- `load_ez2str_effects` and `load_map_sky` (`core/client_managers.c`) pass whatever
+  `ez2str_effect_mgr_instance()` and `map_sky_mgr_instance()` return to the loads. Both return
+  NULL when `mem_try_alloc` fails; `map_sky_mgr_load` then reads `self->lua`, and the EZ2STR load
+  uses its manager once the file has parsed. `app_init_managers` made the same calls.
+- `client_run` (`core/winmain.c`) jumps to `done` when `app_init_3d`,
+  `c3d_device_create_renderer` or `connection_startup` fails after the managers were created,
+  and so skips `app_destroy_singletons`, `sound_mgr_destroy`, `platform_timer_period_end` and
+  `crash_report_uninstall`, as for a failed manager; the earlier note named only the manager
+  case. Kept.
+- On Linux, CTest's `gfx_gl` is skipped ("No available video device") with the console-only
+  SDL build unless `SDL_VIDEO_DRIVER=offscreen` is set. The merge notes say it ran on SDL's
+  offscreen driver without naming the variable, and `docs/portability.md` does not mention it.
+- `tests/test_startup_order.c`'s header comment still describes the test as recorded "before
+  startup and shutdown become one table" (left so that the file stays unchanged).
