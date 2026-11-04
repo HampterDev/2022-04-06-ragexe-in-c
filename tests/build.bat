@@ -786,3 +786,6 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_chat_room_title.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+call "%~dp0build_latest_achievements.bat"
+if not "%errorlevel%"=="0" exit /b 1

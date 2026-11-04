@@ -111,7 +111,9 @@ void session_add_new_title(struct Session *self, int id)
 void session_get_latest_achievements(struct Session *self, int *second, int *first)
 {
     struct TreeNode *node;
-    int best = -1, next = (int)(INT_PTR)second, at;
+    /* next is read only once best is set, which sets it too, or for a time of -1 or less, which a
+       32-bit stack address (positive) and -1 both pass over; it is not an address. */
+    int best = -1, next = -1, at;
 
     for (node = tree_first(&self->achievements); node != self->achievements.head; node = tree_next(node)) {
         const struct AchievementPair *achievement = TREE_VALUE(node, const struct AchievementPair);
