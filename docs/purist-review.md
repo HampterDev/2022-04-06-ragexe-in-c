@@ -11252,3 +11252,311 @@ moved). Before step 4 moves files, the two lines should meet: merge `purist-port
 `purist` (or rebase it) once, resolving the moved-code conflicts by re-applying its edits, and
 then run the move script on the common base. If they stay apart, the same move script run on
 both branches keeps their paths equal, so later cherry-picks between them still apply by path.
+
+## Merge of purist-portable (2026-11-04)
+
+Decision: Patrick decided to bring `purist-portable` and `purist` together before step 4 moves any
+files (see *Effect on `purist-portable`* in [Step 4: plan](#step-4-plan-not-started)). The port is
+now part of `purist`; [docs/portability.md](portability.md) describes it.
+
+### What was merged
+
+`purist-portable` at `d327397` into `purist` at `aed1b3a`, merge base `d725b49`, on the branch
+`purist-merge`: merge commit `3660577`, and `db5afd9` for the COM lifecycle test (below).
+
+- `purist-portable`: 139 commits, 1,294 files. A platform layer so that the client builds and runs
+  on 64-bit Linux, macOS and Android with Windows x86 as the reference: CMake (`CMakeLists.txt`,
+  `cmake/`), SDL3 window and application layer, one input module (`core/user_input.c`,
+  `core/window_events.c`, `core/touch.c`), platform window and display types, one text interface
+  with GDI and FreeType backends, an OpenGL backend, Miles on SDL3 audio, glTF Granny models,
+  stb JPEG instead of IJL, files, threads, sockets, clock, settings, desktop and crash reports
+  behind `platform/`, pointer-width fixes (`intptr_t` message arguments, `tree_less_ptr`, ...),
+  standard C instead of MSVC string and format functions, `build.bat x64` and `build.bat freetype`.
+- `purist`: 102 commits, 1,238 files: the removals, the langtype 20 lock, the UTF-8 switch, the
+  restructuring steps 1-3, effects as data and the fixes recorded above.
+- 597 files were changed on both sides. `git merge` stopped with 328 conflicted files: 239 with
+  content conflicts (420 conflict regions; 471 hunks in diff3 form) and 89 modify/delete
+  conflicts; 771 changed files merged cleanly and portable added 190. The merged tree differs from
+  `purist` in 1,195 files (+61,475/-5,998 lines) and from `purist-portable` in 1,256 files
+  (+41,543/-71,106).
+
+### How the conflicts were resolved
+
+- Everything purist removed stays removed. All 89 modify/delete conflicts were purist removals
+  (OTP, billing, protection leftovers, third and expanded classes, the eight optional systems,
+  unreachable windows, the embedded fonts, the candidate window); portable's edits in them went
+  with the files, among them its rename `embedded_fonts.c` -> `embedded_fonts_win32.c`. Where a
+  purist deletion inside a conflict was a move, portable's edit was applied at the new place (list
+  below).
+- Text stepping, searching, fitting and conversions take purist's UTF-8 code (`core/utf8.h`,
+  `strstr`, `CP_UTF8`) over portable's code-page wrappers (`platform_code_page_next/prev/find/
+  byte_type`, `CODE_PAGE_SYSTEM`); where client text still crosses into UTF-16 in shared code it goes
+  through `platform_code_page_to_utf16/from_utf16(CODE_PAGE_UTF8, ...)` with `uint16_t` buffers.
+- Portable's mechanical replacements are applied on top of purist's version of each line:
+  `platform_ticks_ms`, `int_min`/`int_max`, `snprintf`, `cstr_*`, `intptr_t` message arguments,
+  `PlatformWindow`, the filesystem, settings, thread, net, clock and desktop calls. Purist code that
+  merged without a conflict but used what portable replaced was converted the same way (six
+  `_snprintf_s(..., _TRUNCATE, ...)` in purist's name fixes, `ShellExecuteA` in `url_link.c`,
+  `fileio/resource_path.c`, `__int64` in `game_actor.h`, `wchar_t` UTF-16 units in `core/utf8.c`
+  and `navi/navi_text_lines.c`).
+- Call sites use portable's platform API, and the platform's Windows side uses purist's UTF-8
+  wrappers, so Windows keeps purist's behaviour: `platform_message_box` calls
+  `win_utf8_message_box`, the settings store (`platform/settings_win32.c`) calls the
+  `win_utf8_reg_*` functions, and `platform_clipboard_set/get` are purist's `CF_UNICODETEXT` code
+  (`language_copy_text` calls `platform_clipboard_set`).
+
+### Resolutions that needed a design
+
+Each entry: the file(s), purist's intent, portable's intent, the result.
+
+- **Text** (`render/textdc.c`, `ctextdc.c`, `textdc.h`, `text_backend.h`, `text_gdi.c`,
+  `text_freetype.c`, `fonts.h`, `fonts.c`, `fonts_ft.c`, `text_unicode.c`).
+  - Purist: text is UTF-8, split into runs by Unicode script (`render/text_runs.c`); a run whose
+    script the selected face lacks is drawn in the script's first installed Windows font (Hangul:
+    Gulim, then Malgun Gothic; Han, kana, Thai, symbols, emoji in their own lists), on the selected
+    face's baseline; W font calls and UTF-16 face tables; an extent cache keyed by the font handle
+    (`text_dc_measure_font`); italic widths with surrogate pairs measured whole; the langtype-20
+    face choice.
+  - Portable: one text interface with GDI and FreeType backends (`text_backend.h`); the shared
+    `textdc.c` split runs by charset tag and decoded each with the charset's code page.
+  - Result: the shared `textdc.c`/`ctextdc.c` are purist's algorithm written against the backend
+    interface (`FontHandle`, `text_dc_use_font`, `text_dc_measure_run`, `text_dc_draw_run`). Two
+    backend calls were added for the fallback, `text_dc_font_covers` and `text_dc_font_ascent`: on
+    GDI they are purist's `font_cache_covers`/`font_cache_ascent` on the text DC's `HDC`, on FreeType
+    `font_covers` (the script's sample character in the font's own face; emoji always fall back)
+    and `font_ascent`. Both backends implement `font_cache_get_script_font`: GDI is purist's
+    `fonts.c` unchanged apart from portable's `MulDiv(x, 72, 72)` -> `x`; FreeType asks Fontconfig
+    (or the font-folder scan) for the same Windows families in the same order, followed by the free
+    fonts that stand in for them (Hangul: Gulim, Malgun Gothic, NanumGothic, Noto Sans CJK KR, ...;
+    emoji: Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji, ...), with a language per script and
+    the em made equal to the cell for the CJK scripts, as portable already did for CJK face
+    substitutes. Purist's surrogate-pair italic measurement moved into `text_gdi.c`'s
+    `text_dc_measure_run`. The FreeType glyph cache is now keyed by code point (pages up to
+    U+10FFFF, surrogate pairs joined), so non-BMP text such as emoji reaches its fallback font
+    instead of drawing two boxes. `fonts_ft.c` reads purist's UTF-16 face table and converts the
+    family name to UTF-8. Portable's `text_dc_draw_in_charset` (one run in a charset's code page) became
+    `text_dc_draw_plain` (one UTF-8 run in the selected face), used by FreeType's
+    `text_dc_text_out_plain`; GDI keeps `TextOutA` there, as purist does. `textdc.c` uses portable's
+    `CHARSET_*` constants (with a new `CHARSET_DEFAULT`) and `LANGUAGE_ID_TURKISH` instead of the
+    Win32 macros, so it builds everywhere.
+  - Same UTF-8 input on both backends: `platform/code_page_posix.c` now converts `CODE_PAGE_UTF8`
+    itself with `core/utf8.c` and writes U+FFFD for invalid bytes and unpaired surrogates, as
+    Windows' `MultiByteToWideChar`/`WideCharToMultiByte(CP_UTF8, 0, ...)` do, instead of failing in
+    iconv (portable's notes said such a run disappeared). `platform_code_page_is_valid(UTF-8)` is
+    `utf8_valid`.
+- **Input** (`platform/language.c`, `language.h`, new `language_win32.c`/`language_posix.c`
+  contents, `core/wndproc.c`, `core/window_events.c`, `core/app_win32.c`, `core/app_sdl.c`).
+  - Purist: a Unicode window (`RegisterClassW`, `CreateWindowExW`, `PeekMessageW`,
+    `DispatchMessageW`, `DefWindowProcW`); `WM_CHAR` UTF-16 units paired with `utf16_feed`;
+    `CF_UNICODETEXT` paste and copy (`language_copy_text`); IME composition and result read at full
+    length in UTF-16, the cursor converted to a byte offset; the IME draws its own candidate list
+    next to the composition (`language_place_candidates`, `WM_IME_SETCONTEXT` clears only
+    `ISC_SHOWUICOMPOSITIONWINDOW`); the candidate window `0x33`, the key-stroke window `0x55`,
+    Zhuyin and the per-object code page removed.
+  - Portable: the shared `language.c` on `platform_*` calls and the IME side split into
+    `language_win32.c`/`language_posix.c`; keys, characters and the pointer go through
+    `core/user_input.c` and `core/window_events.c` from the window procedure and from SDL; window
+    creation and the message pump in `core/app_win32.c`/`app_sdl.c`.
+  - Result: `language.c` is purist's editor logic on portable's platform calls
+    (`platform_key_state`, `platform_clipboard_*`, `platform_ime_cancel`, `platform_user_language`
+    with the `LANGUAGE_ID_*` constants, now public in `language.h`). `language_win32.c` is purist's
+    IME code (no candidate list). `language_posix.c` keeps portable's `language_set_composition` and
+    `language_commit`, now taking SDL's UTF-8 as it is (`app_sdl.c` no longer converts it to a client
+    code page), cutting a long composition on a character boundary and converting SDL's cursor
+    (characters) to a byte offset; its `language_place_candidates` keeps the place, and on desktop
+    SDL `app_sdl.c` hands it to `SDL_SetTextInputArea` so that the IME opens its list below the
+    composition's line (Android keeps its edit-box area for the on-screen keyboard).
+    `window_events.c` lost `window_events_language_changed` (the candidate and key-stroke windows)
+    and the service-type-15 test of the key handler; `wndproc.c` keeps portable's routing with
+    purist's `DefWindowProcW` and IME context; `app_win32.c` got purist's W window class and W
+    message pump without the Zhuyin reading-key hook.
+- **Message boxes, registry and clipboard** (`platform/window_win32.c`, `settings_win32.c`,
+  `window_sdl.c`, `win_utf8.c`, `error_message.c` and about 60 callers).
+  - Purist: `win_utf8_message_box` and `win_utf8_reg_*` (UTF-8 to the W calls, CP949 for text that
+    is not UTF-8) at every call site.
+  - Portable: `platform_message_box`, the settings store `platform_settings_*`
+    (`client_settings.ini` off Windows) and `platform_clipboard_*` at every call site.
+  - Result: call sites use portable's API; its Windows side calls purist's wrappers
+    (`platform_message_box` -> `win_utf8_message_box`, the settings store -> `win_utf8_reg_*`), and
+    `platform_clipboard_set/get` are purist's `CF_UNICODETEXT` code. The SDL side shows message box
+    text that is not UTF-8 as CP949, as `win_utf8.c` does, and passes clipboard text as UTF-8 (U+FFFD
+    for invalid bytes). `win_utf8.c` is wrapped in `#ifdef _WIN32`. Purist's moved `error_msg`
+    (`platform/error_message.c`) calls `platform_message_box`.
+- **Startup** (`core/winmain.c`, `core/app.c`, `core/startup.c`, `core/client_init.c`).
+  - Purist: `client_install_hooks()` first in `client_init()`; the startup and shutdown order
+    recorded by `test_startup_order`; `rodex_destroy_instance`.
+  - Portable: `WinMain` became `client_run(instance)`, shared with the POSIX `main` (and Android's),
+    which first enters the game folder; `platform_desktop_start` in place of COM; fonts start with
+    `fonts_init`.
+  - Result: both; `client_run` calls `client_init()`, so the hooks and tables are installed before
+    anything else on every platform. Nothing in purist's hook or table installation is
+    Windows-specific. `test_startup_order` (extracted from `startup.c` and `app.c`) passes
+    unchanged.
+- **Moved code** carrying portable edits: `make_window_social.c`, `make_window_trade.c` (the
+  window-table factories: `(int)(INT_PTR)` -> `(intptr_t)`); `messages.c` (purist's
+  handler-table `ui_window_mgr_send_msg_` with portable's `intptr_t` signature); `ui/chat/whisper.c`
+  (purist's moves of `place_whisper`, `open_whisper` and `ui_window_mgr_add_whisper_chat_to_whisper_wnd`
+  with portable's casts from `messages.c` and `whisper_map.c`); `ui/items/item_collection.c`
+  (`item_collection_show_link`) and `ui/controls/item_tag_button.c` (casts);
+  `render/c3ddevice.c` (purist moved `borderless_rect` there; portable replaced `monitor_rects` with
+  `platform_monitor_rects` and `HMONITOR` with `PlatformDisplay`; `monitor_rects` is gone);
+  `actor/game_actor.c`/`.h` (`game_actor_set_counter`, moved from `rolling_cutter.c`, with
+  `int64_t`). Portable's other edits in `make_window.c`, `make_window_character.c`,
+  `window_slots.c` and `client_init.c` merged cleanly into purist's moved code.
+- **Removed code that portable had moved**: `platform/code_page.c` (portable's new home of
+  `platform/charset.c`) is deleted, since purist removed `get_charset_from_lang`,
+  `get_code_page_from_charset` and `code_page_from_lang` with the charset tags;
+  `platform/embedded_fonts_posix.c` is deleted with the embedded fonts.
+- **`fileio/resource_path.c`** (purist's CP949 lookup of UTF-8 file names): the strict
+  `MultiByteToWideChar(MB_ERR_INVALID_CHARS)` and `WideCharToMultiByte(WC_NO_BEST_FIT_CHARS, lossy)`
+  became `utf8_valid` and `platform_code_page_to_utf16/from_utf16` with a CP949 round trip (a
+  character CP949 lacks does not come back as itself), so it builds and behaves the same off
+  Windows; `test_file_io` passes unchanged.
+- **UI and game files** (about 160 files): purist's UTF-8 stepping, fitting, ellipsis and wrapping
+  over portable's code-page wrappers; the guild-member sort through
+  `platform_code_page_to_utf16(CODE_PAGE_UTF8, ...)`; the login, server-select and character-select
+  settings through the settings store with purist's `CLIENT_LANGTYPE` default; `url_link.c` (purist)
+  calls `platform_open_with_desktop` with purist's http/https check; `diag/perf.c` keeps purist's
+  `RAGEXE_OVERLAY` gate with portable's counters; `private_airplane.c` keeps purist's deliberate
+  16-byte `strncpy`; `actor/types.h` portable's `struct GameObject *` mark fields without the marks
+  purist removed; `contents/connection.c` portable's socket layer (the `ws2_32` hook block purist
+  had only touched for its message boxes is gone). The x86 layout asserts that purist had re-valued
+  (`gauge.h`, `gauges.c`, `skill_tree.h`, `status_wnd.c`, `balloon.c`) are dropped, as portable
+  dropped such runtime asserts everywhere.
+- **Build**: `build.bat` keeps purist's `bin2c` step and gives it portable's per-variant response
+  file; one `build\gen` serves every variant. CMake embeds `data/effects/effects.json` the same way
+  (`cmake/EffectData.cmake` builds and runs `tools/bin2c.c`; a cross build, Android, runs
+  `cmake/bin2c.cmake`, which writes the same file, checked byte for byte), the platform library
+  starts from `src/core/utf8.c` (and `win_utf8.c` on Windows), and the client's glob picks up every
+  source purist added; `test_text_freetype` gets `text_runs.c`.
+- **Tests**: message-box stand-ins intercept `platform_message_box` (portable's way) instead of
+  `win_utf8_message_box`; registry stand-ins replace `win_utf8_reg_*` under `settings_win32.c`;
+  `test_text_render` runs purist's cases on portable's backend split (it includes `text_gdi.c` and
+  mocks `platform_code_page_to_utf16`); `test_language_input` includes `language_win32.c` and
+  `window_win32.c`; `test_canvas_owner` stubs the two font-cache calls `text_gdi.c` now makes; the
+  CTest `test_platform_window` and `test_text_freetype` were rewritten for UTF-8 (clipboard round
+  trips with U+FFFD; Hangul in UTF-8; script runs and the Hangul fallback instead of the removed
+  charset tags); `test_platform_code_page` lost its charset checks. Purist's tests that extract
+  production code follow the platform calls in it: `test_startup_order`'s message-box stand-in is
+  `platform_message_box`, `test_map_enter_packet`'s clock stand-in also replaces
+  `platform_ticks_ms`, `test_perf_overlay` replaces `getenv`, `platform_perf_counter`,
+  `platform_perf_frequency` and `platform_key_state`, `test_url_link` compiles
+  `platform/desktop_win32.c` under its `ShellExecuteA` stand-in (so it still checks the exact shell
+  call), `test_monster_skill_info` gets `core/cstr.h`, and `extract_status_wnd_info.py` accepts the
+  `intptr_t` message function. Build lines gained `win_utf8.c`, `utf8.c`, `code_page_win32.c`,
+  `clock_win32.c`, `cstr.c`, `memory.c`, `winmm.lib` or `ole32.lib` where the merged sources need
+  them. No expectation of a `tests\build.bat` test changed; only the three CTest programs above
+  check new expectations, the merged UTF-8 behaviour.
+
+### Validation
+
+Logs are in the worktree's `build/` (`merge-*`, `wsl-*`); the baselines were run on clean exports
+(`git archive`) of `aed1b3a` (`build/base`, logs `base-*`) and `d327397` (`build/port`, logs
+`port-*`, `wsl-port-*`).
+
+- **Windows x86, the reference** (`build.bat`, MSVC 2022, on `db5afd9`): the release build has
+  no compiler or linker warnings (`merge-final-build.log`, grepped for `: warning ` and `LNK`).
+  The full `tests\build.bat` passes in 379 s (`merge-final-tests.log`), and so do the seven
+  standalone suites, each with the result line of `aed1b3a` (`merge-final-<suite>.log`). On
+  `3660577` alone `build_com_lifecycle.bat` fails as it does on `d327397`; `db5afd9` fixes the
+  test (see below). `git diff --check` passes for every commit.
+- **Windows x64** (`build.bat x64`): builds without warnings (`merge-build-x64.log`), as
+  portable's own `d327397` does (`port-build-x64.log`); no pointer-truncation warning anywhere,
+  purist's new code included.
+- **Windows, FreeType text** (`build.bat freetype`): builds without warnings
+  (`merge-build-ft.log`; `port-build-ft.log` for `d327397`).
+- **CMake with MSVC** (`-A Win32` and `-A x64`, Debug, separate build directories): configure
+  and build without warnings; CTest passes 20 of 20 (Win32) and 19 of 19 (x64; the crash-dump test
+  is Win32 only), the same tests and results as on `d327397` (`merge-cmake-<arch>-*.log`,
+  `port-cmake-<arch>-*.log`; the logs are UTF-16).
+- **Linux** (WSL Ubuntu 24.04, GCC 13.3, Ninja, `-DRAGE_CLIENT=ON`): the whole client (`ragexe`)
+  and the scene harness (`ragexe_scenes`) of `db5afd9` build, and CTest passes 24 of 24
+  (`wsl-merge-*.log`); `d327397` gives the same 24 of 24 (`wsl-port-*.log`). Among them,
+  `text_freetype` drew Arial through DejaVu Sans and its Hangul runs through the Hangul fallback
+  (NanumGothic here), `platform_window` checked the UTF-8 clipboard, and `gfx_gl` and `miles_sdl`
+  ran on SDL's offscreen and dummy drivers. This WSL has no X11, Wayland or ALSA development
+  packages and no sudo, so SDL was configured with `SDL_UNIX_CONSOLE_BUILD=ON` for both trees; that
+  checks the build and the headless tests, not a desktop window. GCC reports 1,685 warnings against
+  portable's 1,753, none for pointer and integer casts; the ones that are new are purist code that
+  MSVC does not report (below).
+- **macOS and Android** cannot be built here. The Android build is the only cross build, so it is
+  the only one that writes the effect data with `cmake/bin2c.cmake`.
+- No live client was run, and the scene captures (`tests/scenes`, which need game data) were not
+  run.
+
+### Digest and behaviour changes
+
+All result lines of `tests\build.bat` (349 on `aed1b3a`, 261 of them with a digest or "passed";
+352 and 263 merged) were compared, in order, with a run of the same suite on a clean export of
+`aed1b3a` (`base-tests.log`; the lines in `merge-final-results-base.txt` and `-merged.txt`). They
+are identical, among them packet dispatch
+`d77aaadbb5fc63b7` (1,179,800 cases), effect factories `d3673c01`, effect trace `cbdaaf30ef3127d6`,
+EZ2STR file choice `1b0232b840610959`, window lists `2232167ff470caa7` (37,047 lines), the
+object-type counts (472 classes, 139 retired, 2,717 comparisons, 205 accepted casts, 326 names, 306
+window names), the startup order (23 startup steps, 19 shutdown steps) and every other suite
+digest, except for these lines, all from portable's own, intended changes:
+
+- `test_renderer_storage` prints 16 `render <scenario> <draws>` trace digests; the draw counts are
+  the same, the digests differ. Portable sorts the render queues by a texture serial instead of the
+  texture pointer, breaks ties by submission order, and compares like with like in the multitexture
+  sort (`d0a4589`, *Scene captures* in the portability notes). The same test on `d327397` gives
+  exactly the merged digests (`port-renderer_storage.log`).
+- The IJL ownership test is replaced by portable's stb JPEG codec and bitmap tests (`JPEG:` and
+  `JPEG bitmap:` lines); JPEG bytes come from stb now.
+- `test_math` describes its wider coverage ("transforms, ..., picking and projection results"),
+  `test_touch` is new, and `test_crash_dump` prints its context sizes. The only other differing
+  line is the run time that `tests/test_map_name_migration.py` prints.
+
+Behaviour on Windows x86 is purist's. Beyond portable's own documented changes (stb JPEG and
+quality 90 screenshots, draw order independent of heap addresses, `rand()` kept to 15 bits where the
+client divides by that range, the icon menu's bottom border, settings writes through temporary
+files), the merge itself changes nothing there. Off Windows, the merge changes portable's behaviour
+where purist's intents now apply: the client's text is UTF-8 (SDL text, message boxes, the
+clipboard and the FreeType backend take it as it is), the FreeType backend draws scripts the
+selected face lacks in purist's per-script fallback order, invalid UTF-8 draws as U+FFFD instead of
+dropping the run, non-BMP characters reach a font, and the IME's candidate list is placed below the
+composition.
+
+### Found, not fixed
+
+- `actor/actor_sendmsg.c`, case `0x20`: `ui_window_send_msg(w, NULL, 0x22, (int)par1, ...)` cuts a
+  pointer-sized argument to `int` on 64-bit builds. Both sides have the line; portable's pointer
+  sweep missed it.
+- `platform_open_with_desktop` on Windows (`platform/desktop_win32.c`) passes the URL to
+  `ShellExecuteA`, so a URL with non-ASCII characters (the client's text is UTF-8) is misread;
+  purist's own `ShellExecuteA` call had the same limit.
+- GCC reports purist code that MSVC at `/W1` does not: unused variables `job`
+  (`actor/pc_layers.c`), `tint_blue`, `tint_green`, `tint_grey` (`effects/skills/skill.c`), `effect`
+  (`game/skill_cast.c`, `game/skill_cast_look.c`) and `i` (`game/skill_fail.c`), leftovers of the
+  removals, and possible truncation of names in `ui/chat/balloon.c` and `game/packets_social.c`.
+- `session_get_latest_achievements` (`session/session_achievements.c`) starts its search with
+  `int next = (int)(INT_PTR)second`, the address of an output parameter cut to `int`; both sides,
+  unchanged.
+- `tests\build_com_lifecycle.bat` failed on `purist-portable` itself (its extractor and its
+  compile); fixed in `db5afd9`.
+- Not verified here: the desktop SDL placement of the IME candidate list (no interactive IME), the
+  FreeType Hangul fallback on Windows (`build.bat freetype` builds, the scene captures need game
+  data), and the Android build's effect data path (`cmake/bin2c.cmake` was checked byte for byte on
+  Windows, not in an NDK build).
+
+### For the purist-portable session
+
+- `purist-merge` carries the merge; once `purist` points at it, `purist-portable` can fast-forward
+  with `git merge --ff-only purist` from its own worktree. The older feature branches `port/audio`
+  (`422434e`) and `port/text2` (`487106c`) predate the merge and will conflict with it where they
+  touch text or input.
+- Client text is UTF-8 on every platform: do not convert client text with `CODE_PAGE_SYSTEM`,
+  `CODE_PAGE_THREAD` or a language code page; `g_codePage` is `CODE_PAGE_UTF8`, and CP949 is only
+  for resource names (`RESOURCE_NAME_CODE_PAGE`). `platform/code_page.c`, `get_charset_from_lang`,
+  `get_code_page_from_charset` and `code_page_from_lang` are gone, and `struct Language` has no
+  candidates, code page, keyboard language, input method or folder.
+- Text API: `text_dc_measure_in_charset` is `text_dc_measure_font(self, out, text, len, font)`,
+  `text_dc_draw_in_charset` is `text_dc_draw_plain(self, x, y, text, len)`, and a backend implements
+  `text_dc_font_covers`, `text_dc_font_ascent` and `font_cache_get_script_font` as well.
+  `window_events_language_changed` is gone (the candidate and key-stroke windows were removed).
+- On Windows, `platform_message_box`, the settings store and the clipboard are purist's UTF-8 W
+  calls (`platform/win_utf8.c`); tests that stub the registry stub `win_utf8_reg_*` under
+  `settings_win32.c` and link `win_utf8.c`.
+- CMake embeds `data/effects/effects.json` (`cmake/EffectData.cmake`); purist's new tests
+  (`test_utf8`, `test_text_runs`, `test_effect_trace`, `test_window_lists`, ...) run only from
+  `tests\build.bat`, not from CTest.
