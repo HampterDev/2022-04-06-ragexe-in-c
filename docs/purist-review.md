@@ -9330,7 +9330,9 @@ they come next. One found by the
 way, at Patrick's request on 2026-11-03: the private-airplane forget entry (`3ac83b2`,
 here `3df3cba`); it comes next. The RODEX destroy name, found with the window and
 object-type tables, was changed the same way on 2026-11-04 (`5572da7`, here `9f11693`);
-it is the last item.
+it comes next. The EZ2STR and map-sky allocation failures, found with the
+[manager lifecycle table](#restructuring-manager-lifecycle-table-2026-11-04), were fixed
+the same way on 2026-11-04 (`91ba2d9`, here `5b707c7`); it is the last item.
 
 What each fix does:
 
@@ -9501,6 +9503,16 @@ What each fix does:
   (`ui/mail/rodex_box.c`) destroys and clears `g_rodex`; it is `rodex_destroy_instance`
   now, next to `rodex_create_instance`. Its one caller is the shutdown sequence in
   `core/app.c`; here `test_startup_order`'s stub and expected step take the new name.
+- EZ2STR and map-sky allocation failures (`91ba2d9`, here `5b707c7`). The two managers are
+  allocated on first use by `ez2str_effect_mgr_instance` and `map_sky_mgr_instance`, which
+  return NULL when `mem_try_alloc` fails, and startup passed that NULL to their loads
+  (`map_sky_mgr_load` reads `self->lua`, the EZ2STR load writes `self->rows` once its file
+  has loaded). The load is skipped now (on `main` in `app_init_managers`, here in the
+  manager table's adapters, which return 0 to their ignore rows), so startup goes on
+  without the manager, as when its file does not load. Its later users ask the instance
+  again and get NULL while memory is short; they now take it as an unloaded manager:
+  `map_sky_mgr_apply` sets the black background of a map without sky data, and the EZ2STR
+  lookups (`get_effect_ids`, `find_by_effect_id`, and on `main` `get_effect_id`) find no rows.
 
 Format-string calls left as they are:
 
@@ -9596,6 +9608,14 @@ Tests added:
   around the extracted modal loop with one frame that ends it, then destroys the posted
   window through the extracted `ui_window_destruct` and the real `forget_window.c`: ended
   by closing (0xb4) and by the flight's map move (0xb1), the slot must be NULL.
+- `test_manager_alloc_failure` runs the startup loads (from `app_init_managers` on `main`,
+  the table's adapters here), the two instances, the map-sky load and apply and the EZ2STR
+  lookups extracted from production with an allocator that fails: no load may get NULL, and
+  the users must answer as for unloaded managers; with memory, both loads must run. It fails
+  with any one of the three changed files reverted, on both branches. Here
+  `test_startup_order` also runs startup with each instance returning NULL: the sequence
+  without that load, and success (its result line now ends "2 warning loads, 2 unallocated
+  managers)").
 
 Validation:
 
@@ -9710,6 +9730,19 @@ Validation:
   `build/table-followups-full-tests.log` here) and standalone suites
   (`build/rodex-rename-<suite>.log`, `build/table-followups-<suite>.log`) passed;
   `git diff --check` passed.
+- EZ2STR and map-sky allocation failures: release builds without warnings
+  (`build/manager-alloc-build.log` on both branches, `build/manager-alloc-build-x64.log`
+  here); full suites (`build/manager-alloc-full-tests.log`: `main` digest
+  `32d81ae6406478e3`; here packet dispatch `d77aaadbb5fc63b7`, effect trace
+  `cbdaaf30ef3127d6`, window lists `2232167ff470caa7`) and standalone suites
+  (`build/manager-alloc-<suite>.log`, five on `main`, seven here) passed. Here CMake with MSVC
+  x64 passes CTest 21 of 21 (`build/manager-alloc-cmake-x64-*.log`), and Linux (WSL, as for
+  the merge) builds with 1,671 warnings and passes 26 of 26 with `SDL_VIDEO_DRIVER=offscreen`
+  (`build/wsl-manager-alloc-*.log`). `git diff --check` passed.
+- Also found on `main`, not fixed: `app_init_managers` loads four more managers the same way
+  (`repute_mgr_load`, `item_db_to_id_load`, `item_reform_mgr_load`, `enchant_mgr_load`), each
+  dereferencing a NULL instance; their 33 later users would need the same check. Purist
+  removed these managers.
 
 No live client was run.
 
@@ -11870,7 +11903,8 @@ Not run: the macOS and Android builds (not possible here), a live client, the sc
 - `load_ez2str_effects` and `load_map_sky` (`core/client_managers.c`) pass whatever
   `ez2str_effect_mgr_instance()` and `map_sky_mgr_instance()` return to the loads. Both return
   NULL when `mem_try_alloc` fails; `map_sky_mgr_load` then reads `self->lua`, and the EZ2STR load
-  uses its manager once the file has parsed. `app_init_managers` made the same calls.
+  uses its manager once the file has parsed. `app_init_managers` made the same calls. Fixed
+  afterwards (`5b707c7`; `main` `91ba2d9`).
 - `client_run` (`core/winmain.c`) jumps to `done` when `app_init_3d`,
   `c3d_device_create_renderer` or `connection_startup` fails after the managers were created,
   and so skips `app_destroy_singletons`, `sound_mgr_destroy`, `platform_timer_period_end` and
@@ -11879,5 +11913,7 @@ Not run: the macOS and Android builds (not possible here), a live client, the sc
 - On Linux, CTest's `gfx_gl` is skipped ("No available video device") with the console-only
   SDL build unless `SDL_VIDEO_DRIVER=offscreen` is set. The merge notes say it ran on SDL's
   offscreen driver without naming the variable, and `docs/portability.md` does not mention it.
+  It does now (`b2f43c3`, *Build and test*).
 - `tests/test_startup_order.c`'s header comment still describes the test as recorded "before
-  startup and shutdown become one table" (left so that the file stays unchanged).
+  startup and shutdown become one table" (left so that the file stays unchanged). It now says
+  that the test checks the table (`b2f43c3`).

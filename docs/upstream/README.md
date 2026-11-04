@@ -95,7 +95,8 @@ came from the third-class removal on `purist`: the mercenary job range,
 meteor-storm wave frame, `d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87`. One came from the
 window-list characterization test on `purist`: the private-airplane forget entry,
 `3ac83b2847f151af6deb366560a01c114b080f92`. One came from the window and object-type
-tables: the RODEX manager's destroy name, `5572da79175b9354b89d7070ac7d6890af7a4a12`.
+tables: the RODEX manager's destroy name, `5572da79175b9354b89d7070ac7d6890af7a4a12`. One came
+from the manager lifecycle table: the EZ2STR and map-sky allocation failures, `91ba2d9a01c0ee49cca54a7832e0066ea162764a`.
 Fixes whose code still exists on `purist` were ported with `git cherry-pick -x`; on
 `purist` the default pet and homunculus names from job names and the char-server list
 lines are cut by whole UTF-8 characters, and the unused login-entry field is removed
@@ -125,6 +126,7 @@ instead of zeroed. The patch files are `git format-patch` exports of the `main` 
 | [meteor-storm-wave-frame.patch](meteor-storm-wave-frame.patch) | [d4921026ec](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d4921026ecdb808ee9bb20d5b10bd4eac8c2fc87) | [457d6dd219](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/457d6dd219f8a828423b0fad174cca11d48022fa) | The meteor storm plays its eighth meteor wave at frame 180, as the original, not 170. |
 | [airplane-window-forget.patch](airplane-window-forget.patch) | [3ac83b2847](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3ac83b2847f151af6deb366560a01c114b080f92) | [3df3cbab19](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3df3cbab19ab10aed83b762b2cabc2f32989a78d) (window-list digest updated) | The private-airplane window's slot is cleared when the window is destroyed, also after a flight ends its modal loop. |
 | [rodex-destroy-instance-name.patch](rodex-destroy-instance-name.patch) | [5572da7917](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5572da79175b9354b89d7070ac7d6890af7a4a12) | [9f11693a89](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9f11693a89912e75e5844f1280f745545b911d8f) | `set_hwnd_to_game_mon`, the RODEX manager's destroy, is `rodex_destroy_instance`; no behaviour change. |
+| [manager-alloc-failure.patch](manager-alloc-failure.patch) | [91ba2d9a01](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/91ba2d9a01c0ee49cca54a7832e0066ea162764a) | [5b707c7249](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5b707c7249fd9ec51568b824269d10f6eea08889) (the manager table's adapters) | When the EZ2STR or map-sky manager cannot be allocated, its load is skipped and startup goes on; its users take the missing manager as an empty one. |
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in

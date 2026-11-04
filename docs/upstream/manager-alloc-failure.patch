@@ -1,0 +1,402 @@
+From 91ba2d9a01c0ee49cca54a7832e0066ea162764a Mon Sep 17 00:00:00 2001
+From: HampterDev <131729366+HampterDev@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 10:25:21 +0100
+Subject: [PATCH] Go on without the EZ2STR and map-sky managers when they
+ cannot be allocated
+
+app_init_managers loaded both managers through their instance
+functions, which allocate on first use and return NULL when
+mem_try_alloc fails, and passed that NULL to the load:
+map_sky_mgr_load reads self->lua, and ez2_str_effect_mgr_load writes
+self->rows once its file has loaded. The loads are skipped now, so
+startup goes on without the two managers, as when their files do not
+load; the load results were not looked at before either.
+
+Their later users ask the instance again, which retries the allocation
+and gives NULL while memory is short. They now take a missing manager
+as one whose file did not load:
+- map_sky_mgr_apply (game mode initialisation, every map) finds no sky
+  data and sets the black background;
+- ez2_str_effect_mgr_get_effect_ids (effect registration),
+  ez2_str_effect_mgr_find_by_effect_id (Ez2StrEffectEx init) and
+  ez2_str_effect_mgr_get_effect_id (skill actions, Hyper Novice) find
+  no rows (an empty list, NULL, -1), which their callers already handle.
+
+The new test_manager_alloc_failure runs the startup loads, the two
+instances, the map-sky load and apply and the EZ2STR lookups extracted
+from production with an allocator that fails: no load may be called with
+NULL, and the users must answer as for unloaded managers; then, with
+memory, both loads must run. It fails on the previous code with any one
+of the three files reverted (the EZ2STR load called with NULL, or an
+access violation in map_sky_mgr_apply or the lookups).
+
+Also found, not fixed: app_init_managers loads four more managers the
+same way (repute_mgr_load, item_db_to_id_load, item_reform_mgr_load,
+enchant_mgr_load), each dereferencing a NULL instance; their 33 later
+users would need the same check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VaQB81YtRGLtH8zvfX7WTY
+---
+ src/core/map_sky.c                     |   4 +-
+ src/core/startup.c                     |  23 +++-
+ src/effects/ez2str_effect_mgr.c        |   7 +-
+ tests/build.bat                        |   3 +
+ tests/build_manager_alloc_failure.bat  |  15 +++
+ tests/extract_manager_alloc_failure.py |  71 +++++++++++++
+ tests/test_manager_alloc_failure.c     | 139 +++++++++++++++++++++++++
+ 7 files changed, 258 insertions(+), 4 deletions(-)
+ create mode 100644 tests/build_manager_alloc_failure.bat
+ create mode 100644 tests/extract_manager_alloc_failure.py
+ create mode 100644 tests/test_manager_alloc_failure.c
+
+diff --git a/src/core/map_sky.c b/src/core/map_sky.c
+index fb29250..c4bca76 100644
+--- a/src/core/map_sky.c
++++ b/src/core/map_sky.c
+@@ -177,7 +177,9 @@ void map_sky_mgr_apply(struct MapSkyMgr *self, const struct String *map)
+     sky_name = game_mode_short_name(arg);
+     string_init(&name);
+     string_assign_cstr(&name, sky_name);
+-    client_lua_call(self->lua, "IsExistMapSkyData", "s>b", string_cstr(&name), &exists);
++    /* No manager (its allocation failed): no sky data, as when the file did not load. */
++    if (self)
++        client_lua_call(self->lua, "IsExistMapSkyData", "s>b", string_cstr(&name), &exists);
+     if (!exists) {
+         g_renderer->clearColor = 0xff000000;
+     } else {
+diff --git a/src/core/startup.c b/src/core/startup.c
+index fc6ab53..07f1f41 100644
+--- a/src/core/startup.c
++++ b/src/core/startup.c
+@@ -187,13 +187,32 @@ static struct InitResult *init_failed(struct InitResult *out, const char *what)
+     return out;
+ }
+
++/* The EZ2STR effect and map-sky managers are allocated on first use. When that fails, startup
++   goes on without them, as when their files do not load; their users take a missing manager
++   as an empty one. */
++static void load_ez2str_effects(void)
++{
++    struct Ez2StrEffectMgr *mgr = ez2str_effect_mgr_instance();
++
++    if (mgr)
++        ez2_str_effect_mgr_load(mgr);
++}
++
++static void load_map_sky(void)
++{
++    struct MapSkyMgr *mgr = map_sky_mgr_instance();
++
++    if (mgr)
++        map_sky_mgr_load(mgr);
++}
++
+ struct InitResult *app_init_managers(struct InitResult *out)
+ {
+     if (!themida_startup())
+         return init_failed(out, "CThemidaMgr::CreateInstance()");
+     if (!reassembly_packet_mgr_create())
+         return init_failed(out, "CReassemblyPacketMgr::CreateInstance()");
+-    ez2_str_effect_mgr_load(ez2str_effect_mgr_instance());
++    load_ez2str_effects();
+     if (!effect_mgr_create())
+         return init_failed(out, "CEffectMgr::CreateInstance()");
+     if (!effect_memory_create())
+@@ -254,7 +273,7 @@ struct InitResult *app_init_managers(struct InitResult *out)
+     item_db_to_id_load(item_db_to_id_instance());
+     item_reform_mgr_load(item_reform_mgr());
+     enchant_mgr_load(enchant_mgr_instance());
+-    map_sky_mgr_load(map_sky_mgr_instance());
++    load_map_sky();
+     select_package_create();
+     select_package_load(g_selectPackageMgr);
+     out->ok = 1;
+diff --git a/src/effects/ez2str_effect_mgr.c b/src/effects/ez2str_effect_mgr.c
+index 8d90808..5433620 100644
+--- a/src/effects/ez2str_effect_mgr.c
++++ b/src/effects/ez2str_effect_mgr.c
+@@ -255,9 +255,10 @@ unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
+     return ok;
+ }
+
++/* The lookups take a NULL manager (its allocation failed) as one without rows. */
+ const struct EZ2STREntry *ez2_str_effect_mgr_find_by_effect_id(struct Ez2StrEffectMgr *self, int effect_id)
+ {
+-    struct EZ2STRRow *row = find_effect_id(self, effect_id);
++    struct EZ2STRRow *row = self ? find_effect_id(self, effect_id) : NULL;
+
+     return row ? &row->entry : 0;
+ }
+@@ -269,6 +270,8 @@ int ez2_str_effect_mgr_get_effect_id(struct Ez2StrEffectMgr *self,
+     struct EZ2STRRow *row;
+     int effect_id;
+
++    if (!self)
++        return -1;
+     string_copy(&key, name);
+     lower_case(&key);
+     row = tree_find(&self->rows, &key, name_less);
+@@ -283,6 +286,8 @@ struct Vec *ez2_str_effect_mgr_get_effect_ids(struct Ez2StrEffectMgr *self,
+     struct TreeNode *node;
+
+     ids->first = ids->last = ids->end = 0;
++    if (!self)
++        return ids;
+     for (node = tree_first(&self->rows); node != self->rows.head; node = tree_next(node)) {
+         int effect_id = TREE_VALUE(node, struct EZ2STRRow)->entry.index + EZ2STR_EX_FIRST_ID;
+         vec_push(ids, &effect_id, sizeof(int));
+diff --git a/tests/build.bat b/tests/build.bat
+index 559f968..60e25d5 100644
+--- a/tests/build.bat
++++ b/tests/build.bat
+@@ -898,3 +898,6 @@ if not "%errorlevel%"=="0" exit /b 1
+
+ call "%~dp0build_airplane_window_slot.bat"
+ if not "%errorlevel%"=="0" exit /b 1
++
++call "%~dp0build_manager_alloc_failure.bat"
++if not "%errorlevel%"=="0" exit /b 1
+diff --git a/tests/build_manager_alloc_failure.bat b/tests/build_manager_alloc_failure.bat
+new file mode 100644
+index 0000000..4369c7c
+--- /dev/null
++++ b/tests/build_manager_alloc_failure.bat
+@@ -0,0 +1,15 @@
++@echo off
++setlocal
++set "ROOT=%~dp0.."
++set "OUT=%ROOT%\build\tests\manager_alloc_failure"
++call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
++call "%VCVARS%" >nul
++python "%ROOT%\tests\extract_manager_alloc_failure.py" "%ROOT%" "%OUT%"
++if errorlevel 1 exit /b 1
++pushd "%OUT%" || exit /b 1
++cl /nologo /W3 /WX /we4013 /O2 /TC /std:c11 /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%OUT%" /I"%ROOT%\vendor\lua-5.1.4\src" "%ROOT%\tests\test_manager_alloc_failure.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\tree.c" /Fe:test_manager_alloc_failure.exe
++if errorlevel 1 (popd & exit /b 1)
++test_manager_alloc_failure.exe
++set "CODE=%errorlevel%"
++popd
++exit /b %CODE%
+diff --git a/tests/extract_manager_alloc_failure.py b/tests/extract_manager_alloc_failure.py
+new file mode 100644
+index 0000000..60c9c41
+--- /dev/null
++++ b/tests/extract_manager_alloc_failure.py
+@@ -0,0 +1,71 @@
++"""Extract the startup loads of the EZ2STR effect and map-sky managers and the code that later uses
++the two managers.
++
++The loads come from core/client_managers.c (the manager table's adapters) when it exists, else from
++app_init_managers (core/startup.c): its statements that name the two instances or their load
++helpers, and the helpers. Either way the result defines startup_loads(), which runs them in order.
++From core/map_sky.c and effects/ez2str_effect_mgr.c come the instances and the functions their
++users call. Usage: ROOT OUT"""
++import re
++import sys
++from pathlib import Path
++
++root, out = Path(sys.argv[1]) / 'src', Path(sys.argv[2])
++out.mkdir(parents=True, exist_ok=True)
++
++
++def read(name):
++    return (root / name).read_bytes().decode('utf-8').replace('\r\n', '\n')
++
++
++def function(text, name, required=True):
++    match = (re.search(r'^(?:static )?[^\n(]*\b' + name + r'\([^)]*\)\n\{\n.*?^\}\n', text, re.M | re.S) or
++             re.search(r'^(?:static )?[^\n(]*\b' + name + r'\([^)]*\) \{[^\n]*\}\n', text, re.M))
++    if not match:
++        if required:
++            sys.exit(name + ' not found')
++        return ''
++    return match.group(0)
++
++
++def line(text, pattern):
++    match = re.search(pattern, text, re.M)
++    if not match:
++        sys.exit(pattern + ' not found')
++    return match.group(0) + '\n'
++
++
++parts = []
++sky = read('core/map_sky.c')
++parts.append(line(sky, r'^static struct MapSkyMgr \*g_mapSkyMgrInstance;'))
++for name in ('map_sky_mgr_instance', 'map_sky_mgr_construct', 'map_sky_mgr_load', 'map_sky_mgr_apply'):
++    parts.append(function(sky, name))
++ez = read('effects/ez2str_effect_mgr.c')
++parts.append(line(ez, r'^static struct Ez2StrEffectMgr \*g_ez2strMgr;'))
++for name in ('name_less', 'find_effect_id', 'lower_case', 'ez2str_effect_mgr_instance',
++             'ez2_str_effect_mgr_find_by_effect_id', 'ez2_str_effect_mgr_get_effect_ids'):
++    parts.append(function(ez, name))
++parts.append(function(ez, 'ez2_str_effect_mgr_get_effect_id', required=False))
++parts.append('#define HAVE_GET_EFFECT_ID %d\n' % ('ez2_str_effect_mgr_get_effect_id(' in ez))
++
++table = root / 'core' / 'client_managers.c'
++if table.exists():
++    text = read('core/client_managers.c')
++    parts.append(function(text, 'load_ez2str_effects'))
++    parts.append(function(text, 'load_map_sky'))
++    parts.append('static int load_results[2];\n'
++                 'static void startup_loads(void)\n{\n'
++                 '    load_results[0] = load_ez2str_effects();\n'
++                 '    load_results[1] = load_map_sky();\n}\n')
++else:
++    text = read('core/startup.c')
++    parts.append(function(text, 'load_ez2str_effects', required=False))
++    parts.append(function(text, 'load_map_sky', required=False))
++    body = function(text, 'app_init_managers')
++    calls = [l for l in body.splitlines()
++             if re.search(r'ez2str_effect_mgr_instance\(\)|map_sky_mgr_instance\(\)|load_ez2str_effects\(\);|load_map_sky\(\);', l)]
++    if len(calls) != 2:
++        sys.exit('expected two manager loads in app_init_managers, found %d' % len(calls))
++    parts.append('static int load_results[2];\n'
++                 'static void startup_loads(void)\n{\n' + '\n'.join(calls) + '\n}\n')
++(out / 'manager_alloc_failure.inc').write_text('\n'.join(parts), encoding='utf-8')
+diff --git a/tests/test_manager_alloc_failure.c b/tests/test_manager_alloc_failure.c
+new file mode 100644
+index 0000000..3c85050
+--- /dev/null
++++ b/tests/test_manager_alloc_failure.c
+@@ -0,0 +1,139 @@
++/* The EZ2STR effect manager and the map-sky manager are allocated on first use (mem_try_alloc).
++   When that fails at startup, the client goes on without them, as when their files do not load:
++   their loads are not called with NULL (the map-sky load reads self->lua, the EZ2STR load its rows),
++   and their later users take the missing manager as one whose file did not load: no EZ2STR rows,
++   and a map without sky data (a black background). The startup loads, the two instances, the map-sky
++   load and apply and the EZ2STR lookups are the production code; the allocator fails on request. */
++#include "core/map_sky.h"
++#include "effects/ez2str_effect_mgr.h"
++#include "contents/client_lua.h"
++#include "contents/client_lua_calls.h"
++#include "render/renderer.h"
++#include "std/string.h"
++#include "std/tree.h"
++#include "std/vec.h"
++#include "core/memory.h"
++#include "core/fatal.h"
++#include <assert.h>
++#include <ctype.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++static int fail_allocations, allocations;
++static struct Renderer renderer;
++struct Renderer *g_renderer = &renderer;
++
++void *mem_try_alloc(size_t bytes)
++{
++    allocations++;
++    return fail_allocations ? NULL : calloc(1, bytes);
++}
++void *mem_alloc(size_t bytes)
++{
++    void *p = calloc(1, bytes);
++    assert(p);
++    return p;
++}
++void mem_free(void *p) { free(p); }
++void fatal_error(const char *message)
++{
++    puts(message);
++    abort();
++}
++
++/* Lua: the map-sky manager's state; nothing is loaded, so every call finds no function. */
++static struct ClientLua lua_state;
++static int lua_loads, lua_calls;
++struct ClientLua *client_lua_construct(struct ClientLua *self) { return self; }
++void client_lua_open(struct ClientLua *self) { (void)self; }
++char client_lua_load_file(struct ClientLua *self, const char *name, char via_cfile, char disk_only)
++{
++    (void)name; (void)via_cfile; (void)disk_only;
++    assert(self);
++    lua_loads++;
++    return 1;
++}
++int client_lua_call(struct ClientLua *lua, const char *function, const char *format, ...)
++{
++    (void)function; (void)format;
++    assert(lua);
++    lua_calls++;
++    return 0;
++}
++char *game_mode_short_name(struct String name)
++{
++    static char short_name[64];
++    snprintf(short_name, sizeof short_name, "%s", string_cstr(&name));
++    string_free(&name);
++    return short_name;
++}
++/* Reached only when a map has sky data. */
++void map_sky_mgr_set_background(struct MapSkyMgr *self, const struct String *map) { (void)self; (void)map; abort(); }
++void map_sky_mgr_stars(struct MapSkyMgr *self, const struct String *map) { (void)self; (void)map; abort(); }
++void map_sky_mgr_make_clouds(struct MapSkyMgr *self, const struct String *map) { (void)self; (void)map; abort(); }
++void map_sky_mgr_old_clouds(struct MapSkyMgr *self, const struct String *map) { (void)self; (void)map; abort(); }
++
++/* The EZ2STR load reads its file into self->rows; here it only records what it was given. */
++static int ez2str_loads;
++unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
++{
++    if (!self) {
++        puts("manager allocation failure: ez2_str_effect_mgr_load was called with NULL");
++        exit(1);
++    }
++    ez2str_loads++;
++    return 1;
++}
++
++#include "manager_alloc_failure.inc"
++
++static void apply_sky(const char *map_name)
++{
++    struct String map;
++
++    string_init(&map);
++    string_assign_cstr(&map, map_name);
++    /* As game mode initialisation does at every map. */
++    map_sky_mgr_apply(map_sky_mgr_instance(), &map);
++    string_free(&map);
++}
++
++int main(void)
++{
++    struct Vec ids;
++    struct String name;
++
++    /* Startup with no memory for the two managers. */
++    fail_allocations = 1;
++    startup_loads();
++    assert(allocations == 2 && !g_ez2strMgr && !g_mapSkyMgrInstance);
++    assert(ez2str_loads == 0 && lua_loads == 0);
++
++    /* Their later users, still without memory: no rows, and no sky (black). */
++    assert(ez2_str_effect_mgr_get_effect_ids(ez2str_effect_mgr_instance(), &ids) == &ids && ids.first == ids.last);
++    assert(ez2_str_effect_mgr_find_by_effect_id(ez2str_effect_mgr_instance(), 10000) == NULL);
++    string_init(&name);
++    string_assign_cstr(&name, "EF_X");
++#if HAVE_GET_EFFECT_ID
++    assert(ez2_str_effect_mgr_get_effect_id(ez2str_effect_mgr_instance(), &name) == -1);
++#endif
++    renderer.clearColor = 0x12345678;
++    apply_sky("prontera.rsw");
++    assert(renderer.clearColor == 0xff000000 && lua_calls == 0);
++
++    /* With memory, the managers are made on first use and their loads run. */
++    fail_allocations = 0;
++    startup_loads();
++    assert(g_ez2strMgr && g_mapSkyMgrInstance && ez2str_loads == 1 && lua_loads == 1);
++    renderer.clearColor = 0x12345678;
++    apply_sky("prontera.rsw");
++    assert(renderer.clearColor == 0xff000000 && lua_calls == 1);
++    assert(ez2_str_effect_mgr_find_by_effect_id(ez2str_effect_mgr_instance(), 10000) == NULL);
++#if HAVE_GET_EFFECT_ID
++    assert(ez2_str_effect_mgr_get_effect_id(ez2str_effect_mgr_instance(), &name) == -1);
++#endif
++    string_free(&name);
++    puts("Manager allocation failure: the EZ2STR and map-sky loads are skipped, their users see empty managers.");
++    return 0;
++}
