@@ -137,7 +137,6 @@ void game_mode_ack_to_use_skill(struct GameMode *self, const struct PACKET_ZC_AC
     struct Player *player = self->world->player;
     char text[0x100];
     const char *name;
-    int i;
 
     player->motion_held = 0;
     if (packet->flag != 0 || packet->cause > 111)

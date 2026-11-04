@@ -72,7 +72,6 @@ void skill_cast_target_look(struct GameMode *mode, struct GameActor *caster, str
                                   unsigned target_aid, int skill_id, int x, int y, unsigned cast_time)
 {
     unsigned short skill = (unsigned short)skill_id;
-    struct Effect *effect;
 
     if (target_aid == 0) {
         float world_x = 0.0f, world_z = 0.0f;

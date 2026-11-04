@@ -56,7 +56,6 @@ void skill_cast_play_cast_look(struct GameActor *caster, int x, int y, int skill
 {
     unsigned short skill = (unsigned short)skill_id;
     float time;
-    struct Effect *effect;
     int i;
 
     if (skill == 0x3e || skill == 0x39)

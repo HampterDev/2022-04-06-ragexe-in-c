@@ -530,7 +530,7 @@ void pc_render_robe(struct Pc *pc, int on_top_pass,
     float depth_a, depth_b;
     int rect[4], flags;
     unsigned colour;
-    int job, motion_index, step_motion, i;
+    int motion_index, step_motion, i;
     char mode = (char)on_top_pass;
 
     if (pc->robe <= 0 || pc->helm_robe == 1)

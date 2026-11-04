@@ -357,9 +357,6 @@ unsigned char skill_on_process(struct GameObject *object)
 {
     struct Skill *self = (struct Skill *)object;
 
-    static const int tint_blue[3] = { 0x14, 0x14, 0xb4 };
-    static const int tint_green[3] = { 0x14, 0xb4, 0x14 };
-    static const int tint_grey[3] = { 0x28, 0x28, 0x28 };
     struct RenderObject *me = (struct RenderObject *)&self->base;
     const int *dur = g_effectDurations;
 
