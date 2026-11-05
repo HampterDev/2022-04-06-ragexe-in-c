@@ -237,6 +237,7 @@ void game_mode_zc_equip_item_damaged(struct GameMode *self, const struct PACKET_
                 break;
             case EQUIP_ARMOR:
                 what = msg_str(MSG_DAMAGED_ARMOR);
+                string_init(&text);
                 string_format(&text, msg_str(MSG_MEMBER_ITEM_DAMAGED), string_cstr(&member.name), what);
                 string_assign(&line, string_cstr(&text), text.size);
                 string_free(&text);
