@@ -140,7 +140,8 @@ void ui_window_mgr_request_add_friend(struct UIWindowMgr *self, const char *name
 
     (void)self;
     packet.id = CZ_ADD_FRIENDS;
-    memcpy(packet.name, name, sizeof packet.name);
+    /* Up to the name's NUL, the rest zeroed: a short name's String holds fewer than 24 bytes. */
+    strncpy(packet.name, name, sizeof packet.name);
     len = rag_connection_get_packet_length(rag_connection_instance(), CZ_ADD_FRIENDS);
     rag_connection_send_packet(rag_connection_instance(), len, &packet);
 }
