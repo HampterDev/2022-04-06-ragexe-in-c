@@ -126,7 +126,9 @@ BYTE world_remove_skill(struct World *self, int aid)
     if (!skill)
         return 0;
     render_object_send(skill, NULL, 0x35, 0, 0, 0, 0);
-    if (game_actor_has_pending_hits(skill) == 1) {
+    /* a unit still playing queued hits is kept until they end (world_process_actors); its id on the
+     * pending list destroys any unit of that id, so only such a unit may go on it */
+    if (game_actor_has_pending_hits(skill) != 1) {
         world_remove_object(self, skill);
         list_erase(&self->skills, n, NULL);
         return 1;
