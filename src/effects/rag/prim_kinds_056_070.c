@@ -734,6 +734,19 @@ void prim_whip_render(struct EffectPrim *self, const float *view)
     Vec3 prev_p = {0.0f, 0.0f, 0.0f}, prev_q = {0.0f, 0.0f, 0.0f};
 
     for (i = 0; i < RECORD_COUNT; i++, wh++) {
+        float jy[WHIP_JOINTS] = {0}, jz[WHIP_JOINTS] = {0}, jx[WHIP_JOINTS] = {0};
+        int joints = 0;
+
+        /* The joints shimmer: every frame each link up to the link length draws three rand() values
+         * (y, z, x, in that order) and moves its joint by up to 0.3 either way. The client draws them
+         * for every record whose link length is set, before and whether or not the record is drawn,
+         * so the draws happen here before the active test. Joints past the link length keep 0. */
+        while (joints < WHIP_JOINTS - 1 && wh->link_length > (float)joints) {
+            jy[joints] = (float)rag_rand(7) * 0.1f - 0.3f;
+            jz[joints] = (float)rag_rand(7) * 0.1f - 0.3f;
+            jx[joints] = (float)rag_rand(7) * 0.1f - 0.3f;
+            joints++;
+        }
         if (wh->active != 1 || wh->alpha <= 0 || wh->age <= 0)
             continue;
         for (k = 0; k < WHIP_JOINTS - 1; k++) {
@@ -745,15 +758,15 @@ void prim_whip_render(struct EffectPrim *self, const float *view)
             whip_joint(wh, k, &reach_a, &drop_a);
             ch = COS_DEG(wh->heading);
             sh = SIN_DEG(wh->heading);
-            ax = ch * reach_a;
-            az = sh * reach_a;
+            ax = ch * reach_a + jx[k];
+            az = sh * reach_a + jz[k];
             whip_joint(wh, k + 1, &reach_b, &drop_b);
-            bx = ch * reach_b;
-            bz = sh * reach_b;
+            bx = ch * reach_b + jx[k + 1];
+            bz = sh * reach_b + jz[k + 1];
             prim_heading_degrees(ax - bx, az - bz, &facing);
             side = (facing + 90) % 360;
-            a = vec3(wh->root.x + ax, wh->root.y + drop_a, wh->root.z + az);
-            b = vec3(wh->root.x + bx, wh->root.y + drop_b, wh->root.z + bz);
+            a = vec3(wh->root.x + ax, wh->root.y + drop_a + jy[k], wh->root.z + az);
+            b = vec3(wh->root.x + bx, wh->root.y + drop_b + jy[k + 1], wh->root.z + bz);
 
             for (j = 0; j <= 3; j++) {
                 float across = COS_DEG(j * 120) * wh->thickness;
