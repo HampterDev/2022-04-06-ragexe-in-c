@@ -105,6 +105,21 @@ void session_get_use_effect(struct Session *self, int skill, int *effect, int *a
         *action = 0x1e;
         *effect = -1;
         return;
+    case 0x13d: case 0x13f: case 0x140: case 0x141: case 0x142:
+        *action = 0x11;
+        *effect = -1;
+        return;
+    case 0x15b:
+        *effect = 0x1c6;
+        return;
+    case 0x16c:
+        *action = 0x1;
+        *effect = -1;
+        return;
+    case 0x1a5:
+        *action = 0x1b;
+        *effect = -1;
+        return;
     case 0x1a1:
         *action = 0x20;
         *effect = -1;
