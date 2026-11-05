@@ -37,8 +37,10 @@ void game_mode_poll_network_msg(struct GameMode *self)
             return;
         packet_id = rag_connection_get_packet_type(g_packetBuffer);
         g_session1.lastPacketTime = platform_ticks_ms();
+        /* game_mode_poll_network_msg reads on to the last packet received even after one that ends
+         * the mode (a map move, a return to the character select), as the client's own loop does: what
+         * came in with that packet is handled by the mode it came to. The "Warped." line sent behind a move
+         * to another map goes to the old world's player, so no balloon follows the player onto the new map. */
         game_mode_dispatch_packet(self, (short)packet_id, g_packetBuffer, packet_len);
-        if (!self->base.loop_cond)
-            return;
     }
 }
