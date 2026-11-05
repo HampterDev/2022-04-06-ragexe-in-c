@@ -88,7 +88,9 @@ int main(void)
         assert(query(L, "/icon") == (unsigned char)values[i]);
         set(L, "/integer", values[i]);
         assert(g_session1.noShift == values[i] && query(L, "/integer") == (unsigned char)values[i]);
-        assert(g_session1.loadingScreenRandom == 0xa5 && g_session1.pcBang == 0xb6);
+        /* the name option's int lands its second byte on /loading's flag, as the client's store does */
+        assert(g_session1.loadingScreenRandom == (unsigned char)((unsigned)values[i] >> 8));
+        assert(g_session1.pcBang == 0xb6);
     }
     set(L, "/mirror", 345);
     assert(g_session1.map_rule_flags[0] == 345 && g_session1.map_rule_flags[1] == 345 && query(L, "/mirror") == 89);
