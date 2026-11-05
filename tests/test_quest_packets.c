@@ -165,13 +165,29 @@ int main(void)
         for (i = 0; i < used; ++i) rejected(fn, i);
         at16(2, (unsigned)used - 1); rejected(fn, used); at16(2, (unsigned)used);
         if (kind != 2) { at16(4, 3); rejected(fn, used); at16(4, 0xffff); rejected(fn, used); at16(4, 2); }
-        fn(NULL, packet, used);
-        assert(quests[0].value.plain.hunt_done[0] == 7 && quests[1].value.plain.hunt_done[0] == 6);
-        assert(quests[1].value.plain.hunt_goal[0] == 88);
+        {
+            short done202 = quests[1].value.plain.hunt_done[0];
+            fn(NULL, packet, used);
+            assert(quests[0].value.plain.hunt_done[0] == 7);
+            /* the hunting info's entry n is looked for from slot n on, so its second entry skips slot 0 */
+            if (kind == 2) assert(quests[1].value.plain.hunt_done[0] == done202);
+            else assert(quests[1].value.plain.hunt_done[0] == 6 && quests[1].value.plain.hunt_goal[0] == 88);
+        }
         assert(lines_shown == (kind == 2 ? 0 : 2));
         quests[0].value.plain.hunt_count = 0; quests[0].value.plain.hunt_done[0] = 3;
-        fn(NULL, packet, used); assert(quests[0].value.plain.hunt_done[0] == 3);
+        fn(NULL, packet, used); assert(quests[0].value.plain.hunt_done[0] == (kind == 2 ? 7 : 3));
     }
+    /* the hunting info as the server sends it after a quest is added: one entry per objective, every
+     * monster-type objective under the same id, each landing in its own slot */
+    reset(); list_packet(0, 3);
+    game_mode_all_quest_list3(NULL, packet, used);
+    for (i = 0; i < 3; ++i) quests[0].value.plain.hunt_mob[i] = 31999;
+    used = 0; put16(0x8fe); put16(0);
+    for (i = 0; i < 4; ++i) { put32(101); put32(31999); put16(10 * ((unsigned)i + 1)); put16((unsigned)i + 1); }
+    at16(2, (unsigned)used);
+    game_mode_zc_hunting_quest_info(NULL, packet, used);
+    for (i = 0; i < 3; ++i)
+        assert(quests[0].value.plain.hunt_goal[i] == 10 * ((int)i + 1) && quests[0].value.plain.hunt_done[i] == (int)i + 1);
     used = 0; put16(0x2b7); put32(101); packet[used++] = 0;
     for (i = 0; i < used; ++i) { unsigned before = events; game_mode_zc_active_quest(packet, i); assert(before == events); }
     game_mode_zc_active_quest(packet, used); assert(!quests[0].value.base.active);
