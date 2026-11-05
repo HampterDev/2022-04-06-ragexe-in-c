@@ -11930,3 +11930,352 @@ Not run: the macOS and Android builds (not possible here), a live client, the sc
 - `tests/test_startup_order.c`'s header comment still describes the test as recorded "before
   startup and shutdown become one table" (left so that the file stays unchanged). It now says
   that the test checks the table (`b2f43c3`).
+
+## Restructuring: library table and checks (2026-11-04)
+
+The first part of step 4, as planned in [Step 4: plan](#step-4-plan-not-started): a table of
+libraries with the files each owns and the libraries each may use, an include check and a link
+check that enforce it, the code changes that were clear moves of a definition or a hook, and a
+`build.bat libs` variant that links the client from one static library per table library. No
+file moved. Branch `purist-libs`, on `purist` at `8fd86bb`: `83e6952`, `53b850b`, `c84012f`
+(code), `2c79f7d` (table and checks), `49d2cf5` (static libraries). No behavior change.
+
+The work started from `purist` before the manager allocation-failure fix and was rebased onto
+it; the one conflict was the end of `tests\build.bat`, where both added a call (the fix's test
+runs first, the library checks last). The fix changes `core/client_managers.c` (app),
+`core/map_sky.c` and `effects/ez2str_effect_mgr.c`, which pass both checks without new
+exceptions.
+
+### Measurement
+
+The dependency-map scripts that the earlier steps kept in an untracked `build/depmap` are now in
+`tools/depmap`: `depmap.py` (the file graph), `modules.py` (knot, library layer, clusters; its
+`REGISTRY` set is the 23 files of the first measurements, `make_window_login.c`,
+`window_registry.c`, `object_type_registry.c`, the `*_object_types.c` row files and
+`core/client_managers.c`), `symbols.bat` (one `dumpbin /symbols` listing for a whole object
+folder, about 2 seconds for the 1,133 objects instead of one dumpbin run per object) and
+`objsyms.py`, the symbol reader that the map and the link check share.
+
+The map has one gap, recorded in step 1: a global without an initializer is a communal symbol in
+MSVC C, which dumpbin lists as `UNDEF` with its size as the value, so the map never drew an edge
+for it. `objsyms.py` counts such an object as defining the symbol, and `depmap.py --communal`
+draws those edges. The link check always does. At `8fd86bb` there are 187 communal globals; the
+largest are `g_session1` (414 using files), `g_windowMgr` (351) and `g_renderer` (149).
+
+| tree | edges | knot files / lines | library layer files / lines | above the knot files / lines | clusters |
+|---|---|---|---|---|---|
+| `8fd86bb` (`purist`) | without communal globals | 260 / 92,799 | 514 / 99,400 | 313 / 106,152 | 119 |
+| `8fd86bb` | with communal globals | 441 / 138,164 | 270 / 42,610 | 376 / 117,577 | 160 |
+| `c84012f` (after the three code commits) | without | 260 / 92,797 | 519 / 99,442 | 313 / 106,136 | 119 |
+| `c84012f` | with | 273 / 96,266 | 507 / 96,908 | 312 / 105,201 | 127 |
+
+The 42 registry and startup files (9,373 lines at `8fd86bb`) are cut in every row. Both trees
+were measured on the release objects of the validation exports (`build/map-*.json`,
+`build/mod-*.json`). Without
+communal globals the numbers match the last published ones (260 / 92,782 at `d5d292c`, plus the
+lifecycle and merge commits since). With them, the knot was 441 files: the renderer, resource and
+widget component (the 73 files below the knot) reached the knot through one global,
+`g_weather`, which `resources/world_res.c` wrote (below), and `g_windowMgr` and `g_session1`
+were defined in a feature file and a registry file. After the code commits the knot with
+communal globals is the published knot plus 13 files that read `g_navi`, `g_guildInfo`,
+`g_mapPropertyQuiet` or `g_silentWhisperAcks` (the navigation helpers, `game/chat.c`,
+`game/map_property.c`, `game/mode_whisper.c`, `game/talk_commands.c`, `ui/chat/whisper.c`,
+`ui/quests/private_airplane_wnd.c`). The table is derived from that map, since the link check
+counts communal globals.
+
+### Code changes
+
+**Definitions next to their declarations (`83e6952`).** Moved unchanged, same initializers:
+
+| Global | From | To | Declared in |
+|---|---|---|---|
+| `g_windowMgr` | `ui/wndmgr/wndmgr_lifetime.c` (builds the party areas, a feature) | `ui/window_manager_state.c` (new) | `ui/window_manager_state.h` |
+| `g_session1` | `session/session_lifetime.c` (a composition point) | `session/state.c` (new) | `session/state.h` |
+| `g_hMainWnd` | `core/startup.c` | `core/window_state.c` (new) | `core/window_state.h` (was `core/app.h`) |
+| `g_fullscreenMode`, `g_savedWidth`, `g_savedHeight`, `g_screenWidth`, `g_screenHeight`, `g_quitRequested` | `core/app.c` | `core/window_state.c` | `core/window_state.h` (`g_fullscreenMode`, `g_quitRequested` were in `core/app.h`) |
+| `g_windowActive`, `g_activatedNow` | `core/window_events.c` | `core/window_state.c` | `core/window_state.h` (were in `core/app.h`) |
+| `g_textureMode`, `g_displayWidth`, `g_displayHeight`, `g_sprHalfWidth`, `g_sprHalfHeight`, `g_spriteMode`, `g_trilinearFilter` | `ui/render/graphic_setting.c` | `render/render_options.c`, beside `g_lightmap` | `render/render_options.h` (were in `ui/render/graphic_setting.h`, which includes it) |
+| `g_rodex` | `game/packets_rodex.c` | `ui/mail/rodex_box.c`, beside `rodex_create_instance` | `game/rodex_mail.h` |
+
+`core/app.h` includes `core/window_state.h` as before, so its includers see the same
+declarations. Sixteen files below app that included `core/app.h` only for these globals include
+`core/window_state.h` instead (`render/c3ddevice.c` also `platform/code_page.h`, for the charset
+constants that came through `core/app.h`), and six below the graphics settings window that
+included `ui/render/graphic_setting.h` include `render/render_options.h`; three included it for
+nothing and no longer do. Test change: `tests/container_memory_unreached.h` defines `g_rodex`
+for the mail probe, which includes `packets_rodex.c`, as it defines its other globals.
+
+Not moved: `g_clientDir` (`core/app.c`). Its home is `core/client_path.c`, but
+`test_emblem_cache`, `test_screenshot_save` and the CMake `test_text_freetype` compile
+`client_path.c` and define an initialized `g_clientDir` of their own, which GCC rejects next to
+a second definition; it is an exception (below).
+
+**The world light (`53b850b`).** `c3d_world_res_load` copied the map's ambient and diffuse light
+into the actor layer's `g_weather`. It now calls a hook:
+
+| Hook | Declared / defined in | Installed with | NULL |
+|---|---|---|---|
+| `g_worldResLight` | `resources/world_res.h` / `world_res.c` | `weather_take_map_light` (`actor/weather_hooks.c`, new) | the light is not passed on |
+
+The adapter makes the same three copies (tint from the ambient light, light and maximum light
+from the diffuse light). `test_world_resource` includes the adapter and installs it as
+`client_install_hooks()` does; its assertions did not change.
+
+**The code page (`c84012f`).** `g_codePage`, the code page that conversions of client text name,
+is declared in `platform/code_page.h` and read by `platform/code_page_posix.c`, but was defined
+in `platform/clientinfo.c`, the `clientinfo.xml` reader. It is now defined in the new
+`platform/code_page.c`, the shared file of the code-page module (the `<module>.c` of the
+portability notes), with the same initializer, `CODE_PAGE_UTF8`. The CMake platform library
+that the tests link does not compile `code_page.c`; the tests that use `g_codePage` define their
+own, as before.
+
+### The library table (`tools/libraries.txt`, `2c79f7d`)
+
+Each library has a note, the libraries it may use and its paths, relative to `src`: `dir/` is
+everything below a directory, a name with `*` or `?` a glob within one directory, anything else
+one file. The most specific pattern names a file (a file before a glob, a glob before a
+directory, a deeper directory before a shallower one); a file in no library, a file two equally
+specific patterns name, a pattern that owns no file, a library cycle and an exception without
+`why` or `remove` are errors. `uses` is transitive: a library may use what the libraries it uses
+may use. `app` uses `*`, every library, and no library may use it. A header goes with the `.c`
+of its name; a header without one is in its directory's library unless only lower libraries
+include it and everything it includes is usable from there, in which case it is in the lowest
+library that needs it (124 headers, mostly structure and constant headers of the knot's
+directories that gamedata uses).
+
+| Library | `.c` files | lines | other files | uses | holds |
+|---|---|---|---|---|---|
+| `base` | 33 | 6,029 | 44 | nothing | `std`, `json`, memory, UTF-8 and text formatting, XML, the type queries, `fatal`, `base.h`, the Windows type names |
+| `platform` | 40 | 13,056 | 29 | `base` | `platform/` (files, threads, sockets, clock, settings, code pages, desktop, crash dumps, the text-input editor and IME), client paths, the main window's state |
+| `fileio` | 14 | 1,749 | 16 | `platform` | `fileio/` (game files, GRF, resource paths and names), the table and message-string readers, the JPEG codec |
+| `render` | 41 | 12,467 | 44 | `fileio` | `render/`, the display options, the frame-time overlay (`diag/perf.c`) |
+| `resources` | 37 | 6,631 | 35 | `render` | the resource manager (`core/res_mgr.c`, `fileio/res_get.c`, `fileio/res_cache.c`) and `resources/`, the cooldown timers the status icons draw |
+| `widgets` | 93 | 20,097 | 76 | `resources` | `ui/controls`, the UIWindow base, the window-manager core (`ui/wndmgr`: list, slots, window table, forget, teardown, messages, modal loop, keyboard, snapping), skins, the current mode and its dispatch |
+| `gamedata` | 250 | 36,631 | 187 | `widgets` | the rest of the library layer: the game-side modules below the knot |
+| `knot` | 275 | 96,676 | 152 | `gamedata` | the 273 knot files, `game/mode_run.c` and `game/lifecycle.c` (the game mode's run loop and operations) |
+| `feat-packets` | 138 | 52,436 | 40 | `knot` | the game packet handlers and the windows they drive (one cluster) |
+| `feat-game` | 64 | 14,686 | 12 | `knot` | the other game handler clusters |
+| `feat-effects` | 40 | 11,669 | 4 | `knot` | the effect classes of `effects/skills` |
+| `feat-social` | 17 | 7,586 | 4 | `knot` | `ui/social` windows |
+| `feat-character` | 12 | 5,665 | 4 | `knot` | `ui/character` windows |
+| `feat-items` | 10 | 4,176 | 1 | `knot` | `ui/items` windows |
+| `feat-quests` | 9 | 4,333 | 3 | `knot` | `ui/quests` windows |
+| `feat-shops` | 5 | 2,504 | 0 | `knot` | `ui/shops` windows |
+| `feat-other` | 15 | 2,082 | 9 | `knot` | the other clusters (chat, map, world map, mail, crash report) and the hook adapters (`*_hooks.c`), which only app installs |
+| `app` | 41 | 9,268 | 10 | every library | the composition points (below) |
+
+1,134 `.c` files and 670 other files (headers and the five `.def` tables), 1,804 in all.
+
+How the plan's groups came out:
+
+- **Split where clean.** `fileio`, `render` and `resources` are three libraries because the
+  resource types create textures through render while render loads files through the file layer:
+  with the resource manager counted as resources, only 18 uses go upward (render to resources).
+  One library "fileio and resources" below render would have 26 upward uses, above render 11
+  plus the file reads.
+- **Not split.** The widgets and the window-manager core are one library: the widgets call the
+  manager's capture, focus and quit-list functions (48 uses from 17 files, plus `g_windowMgr`),
+  and the manager calls the widgets' methods. Ordering gamedata below the widgets instead gives
+  1,826 upward uses.
+- **The rest of the library layer** (250 files: session storage and tables, item and skill
+  information, contents managers, Lua bindings, chat and link text, world, actor and navigation
+  helpers, login records) is one library, `gamedata`. It never uses the knot; the knot uses it.
+- **Feature clusters.** The 127 clusters above the knot are grouped by the directory most of
+  their files are in. No cluster uses another, so the nine libraries have no link edges between
+  them; only headers cross (below).
+- **App.** `core/winmain.c`, `client_init.c`, `startup.c`, `app.c`, `client_managers.c`,
+  `manager_table.c`, `object_type_registry.c`, `wndproc.c`, `app_win32.c`, `app_sdl.c`,
+  `effects/effect_registry.c`, the two packet dispatchers, `ui/wndmgr/window_registry.c` and the
+  five `make_window_*.c` row files, the `*_object_types.c` row files, `game/mode_msg.c` (the game
+  mode's message switch, which names a handler of every feature), the login mode
+  (`login/mode.c`, `login_states.c`, `login_dispatch.c`, `loginmode_vtables.c`), the main loop
+  (`world/mode_loop.c`) and the session's construction (`session/session_lifetime.c`). The
+  former registry files that only read tables now are library code: `core/object_type.c` is in
+  `base`, `make_window.c`, `window_slots.c`, `forget_window.c` and `teardown.c` in `widgets`.
+
+### The checks
+
+- **Include check** (`tools/depmap/check_includes.py`). Reads every `#include` line of every file
+  under `src`, whatever `#if` it is in, and resolves it as the compiler does: next to the
+  including file, then from `src`. An include that resolves to no file under `src` (system,
+  vendor) is not checked. It fails when the included file's library is neither the including
+  file's library nor one it may use, unless the table lists the pair. 11,072 includes are
+  checked.
+- **Link check** (`tools/depmap/check_links.py`). Reads the symbol listing of a build's objects,
+  `dumpbin /symbols` (`symbols.bat`) or `nm -P -A` (`--nm OBJDIR` runs nm itself), and maps each
+  object to its source (build.bat names objects after the unique basename; CMake keeps the path).
+  For every external symbol an object uses, it looks up the objects that define it, with communal
+  globals counted as defined where they are declared without an initializer; the use is allowed
+  when one definer is in the object's library or one it may use, or when the table lists the
+  (source, symbol) pair. Symbols that no client object defines (C runtime, Windows, the vendored
+  libraries, `build\gen\effect_data_embedded.c`) are not checked. Names are matched as the
+  compiler wrote them (`_f`, `@f@8`) and listed in the table without decoration. 29,764 uses of
+  client symbols are checked in the x86 build (29,876 in x64, 29,786 with FreeType).
+- Both run with `--strict`, which also fails on an exception that matches nothing, so removing a
+  use requires removing its exception and the list stays the to-do list.
+- **How to run.** `tools\check_libraries.bat` runs both; the link check reads `build\obj` and
+  runs `build.bat` first (log in `build\check_libraries-build.log`) when an object is missing or
+  older than a file under `src` (`tools/depmap/stale_objects.py`). `tests\build.bat` calls it
+  after its last test, so the suite runs both. `build.bat check`, combinable with `x64`,
+  `freetype` and `dbg`, runs it on the objects of the variant it just built. CTest has
+  `library_includes` (every platform) and, for the Linux client (`RAGE_CLIENT`), `library_links`
+  on `CMakeFiles/ragexe.dir` through nm. `python tools/depmap/libtable.py` prints the libraries
+  with their sizes.
+
+### Exceptions
+
+398 entries in 15 groups: 269 includes and 129 symbol uses, from 296 files. Each group's `why`
+and `remove` are in the table; in short:
+
+| Group | includes | uses | why | what removes it |
+|---|---|---|---|---|
+| `knot-headers-below` | 108 | 0 | gamedata, widgets, render and resources files include knot headers for types and constants (`navi/navi_manager.h`, `session/session_state.h`, `world/world.h`, ...) | the types in headers of the lower library |
+| `game-mode-messages` | 25 | 44 | knot, feature and gamedata code calls `game_mode_send_msg` (`game/mode_msg.c`, app) | the message switch as rows that app installs, the lookup in the knot |
+| `link-text-in-widgets` | 23 | 25 | edit, text-viewer, list and fit widgets turn item and navigation links into text through `ui/chat`, `iteminfo` and `ui/draw_key.c` | link-text hooks in `g_uiHooks`, or the link parsing in the widgets |
+| `session-below-the-game` | 23 | 11 | render and widget files read options from `g_session1` | the settings each library reads in a structure of its own, or hooks |
+| `feature-headers` | 29 | 0 | headers of a feature library included from another feature, gamedata, the knot or the widgets | the declarations in a lower header, or no include |
+| `app-header` | 24 | 0 | `core/app.h` and `session/session_imports.h` included below app, mostly for what they include | the headers that declare what is used |
+| `widgets-reach-game-state` | 12 | 7 | Lua calls from buttons and the keyboard, the mouse, the drive state, the mail sort | hooks; narrower includes |
+| `resource-manager-in-render` | 4 | 14 | the texture cache and the frame and HUD drawing load through the resource manager; the sprite drawing reads ACT motions | a texture-source hook, the motion passed in |
+| `main-loop-state` | 0 | 14 | `mode_mgr_switch`, `check_system_message`, `g_loginStartMode`, `g_mapServerAidPending` are in app files | the switch in the mode manager, the pump a platform call, the login globals below the knot |
+| `window-manager-below-widgets` | 5 | 4 | `fileio/resource_errors.c` and `platform/language.c` call the window manager (recorded in step 2) | a hook each |
+| `render-reaches-game-state` | 5 | 3 | the drive state's frame note, `g_isVoodoo`, `g_registryKeyPath` | a frame hook, the values passed at device creation |
+| `stray-includes` | 8 | 0 | single higher includes (`std/std.h` includes `render/math3d.h`, ...) | the narrower header or no include |
+| `client-dir` | 0 | 4 | `g_clientDir` is in `core/app.c` | define it in `core/client_path.c`; three tests set it at run time |
+| `packet-dispatch` | 3 | 1 | `game/net_poll.c` calls the dispatcher; two files include its header unused | a dispatch hook; drop the includes |
+| `knot-calls-features` | 0 | 2 | the run loop sends the keep-alive and draws the windows (both in `feat-packets`) | handlers installed at startup |
+
+The largest single targets: `game_mode_send_msg` (44 uses, 25 includes of `game/mode_msg.h`),
+`core/app.h` (22 includes), `session/state.h` and `g_session1` (16 includes, 8 uses below
+gamedata) and `navi/navi_manager.h` (8 includes). Converting the game mode's message switch to
+rows, as step 3 did for the packets, is the single change that removes the most (69 entries).
+
+### Mutation proof
+
+Each change made in the worktree at `49d2cf5`, the check run, the files restored with
+`git checkout` (`build/libs-mutations.log`; the same results before the rebase are in
+`build/libs-mutations-prerebase.log`):
+
+| Change | Result |
+|---|---|
+| `std/vec.c` (base) includes `ui/wndmgr/wndmgr.h` (widgets) | include check fails: `base may not use widgets: src/std/vec.c:2: includes ui/wndmgr/wndmgr.h` |
+| `render/math3d.c` (render) includes `session/session_state.h` (knot) | include check fails: `render may not use knot` |
+| `game/battlefield.c` drops its unused `game/packet_dispatch.h` include | include check fails: `1 include exceptions match no include: packet-dispatch: game/battlefield.c game/packet_dispatch.h` |
+| `render/math3d.c` calls `weather_take_map_light` (`actor/weather_hooks.c`, feat-other); `std/vec.c` returns the address of `g_session1` (gamedata, a communal global), built with `build.bat` | link check fails: `base may not use gamedata: src/std/vec.c: uses g_session1` and `render may not use feat-other: src/render/math3d.c: uses weather_take_map_light`; rebuilt after the restore: passes |
+| `std/vec.c` in the paths of both base and platform | `std/vec.c: equally specific paths of base, platform name it` |
+| base uses widgets | `libraries use each other: base -> widgets -> resources -> render -> fileio -> platform -> base` |
+| an exception without `remove` | `exception stray-includes needs a why and a remove` |
+
+The `g_session1` case is caught only because communal globals count as definitions; the map
+before this step had no edge for it.
+
+### Static libraries (`49d2cf5`)
+
+`build.bat libs` builds the client from the table's libraries. It compiles the same sources with
+the same flags as the variant it combines with (`x64`, `freetype`, `dbg`, `check`), then:
+
+- `tools/depmap/symbols.bat` lists the objects' symbols, and `tools/depmap/lib_objects.py`
+  assigns each object to its library by the table and writes one response file per library,
+  `app.rsp` and `libraries.txt` (the libraries from the highest to the lowest, the link order);
+- `lib.exe` archives each library except app into `build\obj<variant>_libs\<library>.lib`;
+- the linker gets app's objects and the 17 libraries instead of every object, and writes
+  `build\main_libs_<variant>.exe` (`main_libs_rebuild.exe`, `main_libs_dbg.exe`, ...).
+
+Objects that define no external symbol (the other platform's files, empty here) stay out of the
+libraries, since `lib.exe` warns about them and nothing could pull them in. `build\gen`'s
+`effect_data_embedded.obj` goes with `effects/effect_data.c`, its only user. The linker takes
+from a library only the objects something references; since all registration is explicit
+(steps 1 to 3), nothing the client needs is left behind. The default build is unchanged: same
+sources, flags, objects and executable.
+
+Checked on the exports of `8fd86bb` and of this branch: `build.bat libs`, `libs x64`,
+`libs freetype`, `libs dbg` and `libs check` build without compiler, librarian or linker
+warnings (1,107, 1,109 and 1,108 objects in the libraries for x86, x64 and FreeType). The
+linker maps of the libraries executables list the objects of the default ones minus four, in
+all three variants: `dead_word_table.obj`, `navi_strings.obj`, `res_maps.obj` and
+`touch.obj`, which nothing references (below).
+
+### Validation
+
+Logs are in the worktree's `build/`. The baseline ran on a clean export of `purist` at
+`8fd86bb` (`build/snap/pbase`, logs `libs-pbase-*`), the change on a clean export of this branch
+(`build/snap/ptip`, logs `libs-ptip-*`).
+
+- **Windows x86, the reference** (`build.bat`, MSVC 2022): the release build has no compiler
+  or linker warnings, as on the base. The full `tests\build.bat` passes in 408 s, and so do the
+  seven standalone suites, each with the base's result line.
+- **Digests**: the 316 result lines of the base's suite (every line with a digest, "passed",
+  "PASS", cases, steps, failures or `render`) are identical, in order; the change adds the two
+  lines of the library checks at the end (`libs-pbase-results.txt`, `libs-ptip-results.txt`).
+  Among them: the startup order, packet dispatch `d77aaadbb5fc63b7`, effect factories
+  `d3673c01`, effect trace `cbdaaf30ef3127d6`, EZ2STR `1b0232b840610959`, window lists
+  `2232167ff470caa7`, the object-type counts and the `render` lines.
+- **Windows x64 and FreeType text** (`build.bat x64`, `build.bat freetype`): no warnings.
+- **The checks on every variant** (`build.bat check`, `x64 check`, `freetype check`): both pass,
+  with 29,764, 29,876 and 29,786 uses of client symbols checked (`libs-ptip-more.txt`).
+- **The libraries link**: above.
+- **CMake with MSVC** (`-A Win32` and `-A x64`, Debug): configure and build without warnings;
+  CTest passes 23 of 23 (Win32) and 22 of 22 (x64), `library_includes` among them.
+- **Linux** (WSL Ubuntu 24.04, GCC 13.3, Ninja, `-DRAGE_CLIENT=ON`, console SDL as for the
+  merge): both trees build with the same 1,671 GCC warnings (one moves a line in
+  `game/talk_type.c`, which lost an include), none in the new files; CTest passes 26 of 26 on
+  the base and 28 of 28 on the change, the two new ones being `library_includes` and
+  `library_links` (`libs-wsl-<pbase|ptip>-*.log`).
+- **Mutations**: above, on the branch after the rebase.
+- `git diff --check` passes for every commit.
+
+Not run: the macOS and Android builds (not possible here), a live client and the scene
+captures (they need game data).
+
+### Found, not fixed
+
+- Four objects of the default link are not referenced by anything, which the libraries link
+  shows by leaving them out:
+  - `contents/dead_word_table.c` defines `g_dead_word_table`, 5,636 bytes without an
+    initializer, and nothing uses it.
+  - `effects/navi_strings.c` and `fileio/res_maps.c` contain only includes.
+  - `core/touch.c` (363 lines), the touch input, is called only from `core/app_sdl.c`, which
+    is compiled out on Windows (`#ifndef _WIN32`), so the Windows clients link it for nothing.
+
+  The first three are pruning candidates; `touch.c` is used off Windows.
+
+### Step 4b: moving the files (plan)
+
+What makes the moves cheap: every `#include` under `src` is written from `src` (the only one
+without a directory is `base.h`, at the root), and `build.bat` already compiles whatever is
+under `src`. A file moved from `src/<path>` to `src/<library>/<path>`, with every
+`src/<library>` an include directory, is found by the same `#include` line, so the moved files
+do not change.
+
+1. **One commit per library, from the bottom** (`base`, `platform`, ... `feat-*`, `app` last).
+   Each commit is `git mv` of the library's files to `src/<library>/<old path>` plus what a
+   script derives from the old-to-new path list, in the same commit so that every commit builds:
+   - the include directories (`build.bat`, `cmake/`, the test scripts), one per library,
+     generated from `tools/libraries.txt`;
+   - the 43 source paths in `CMakeLists.txt` and `cmake/*.cmake`;
+   - the 992 source paths in 128 test scripts and the 275 `../src/...` includes in 134 test
+     files;
+   - the table: the library's paths become `<library>/`, and its exceptions' file names get the
+     prefix.
+
+   The moved files are unchanged, so git sees exact renames (100% similarity). Object names stay
+   the unique basenames that `build.bat` needs.
+2. **After the last move** the table's paths are one directory per library, and the libraries
+   link (`build.bat libs`) can become the default link if Patrick wants it.
+
+**Cherry-picks from `main`.** `git cherry-pick` follows exact renames, so a `main` fix to a
+file that moved applies to its new path. It does not follow a file `main` adds: directory-rename
+detection only works when a whole directory moved to one place, and `core/`, `game/`, `ui/`,
+`session/` and others are split across libraries. Such a file needs a manual `git mv` after
+the pick. The alternative is to run the same move script on `main`, so both branches keep the
+same paths.
+
+**`purist-portable`** is fully merged into `purist` (no commit of its own ahead), so the moves
+need no second run there unless it gets new work.
+
+**Patrick decides:**
+
+- The folder scheme: `src/<library>/<old path>` as above (include lines unchanged, deeper
+  paths such as `src/knot/game/mode_run.c`), or flatter folders with rewritten includes.
+- Whether `main` gets the same moves, or `main` fixes that add files are moved by hand.
+- Whether the libraries link becomes the default after the moves.
