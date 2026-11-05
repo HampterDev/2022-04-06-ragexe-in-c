@@ -120,8 +120,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
     }
     case 0x8c:   gs_dummy(mode, &at, 0x7c); break;
     case 0x11d:  gs_dummy(mode, &at, 0xe1); break;
-    case 0x11e:
-    case 0x21d:  gs_dummy(mode, &at, 0xec); break;
+    case 0x11e:  gs_dummy(mode, &at, 0xec); break;
     case 0x11f:  gs_dummy(mode, &at, 0xed); break;
     case 0x120:  gs_dummy(mode, &at, 0xee); break;
     case 0x1de:
@@ -161,6 +160,7 @@ void game_actor_am_groundskill(struct GameActor *self, const struct GroundSkillI
         gs_wave("effect\\wizard_meteor.wav", 0.0f);
         break;
     }
+    case 0x302:  gs_dummy(mode, &at, 0x577); break;
     case 0x306: {
         struct Effect *e = gs_spawn(at, 0x426, -1);
         if (e != NULL)
