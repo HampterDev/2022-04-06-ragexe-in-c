@@ -6,6 +6,10 @@ REM build.bat freetype -> build\main_rebuild_ft.exe   (text through FreeType ins
 REM                       Windows; with x64 -> main_rebuild_x64_ft.exe)
 REM build.bat check    -> also checks the library table on the objects it built
 REM                       (tools\check_libraries.bat; combines with the other words)
+REM build.bat libs     -> build\main_libs_rebuild.exe: the same objects, archived per library of
+REM                       tools\libraries.txt (build\obj_libs\*.lib, next to the variant's object
+REM                       folder) and linked as app's objects plus those libraries; combines with
+REM                       the other words
 REM The 32-bit client links RAD's granny2.dll and mss32.dll; the 64-bit one draws Granny models
 REM from converted glTF files (tools\granny_export) and plays sound through SDL3.
 setlocal enabledelayedexpansion
@@ -18,11 +22,13 @@ set "WANTDBG="
 set "ARCH=x86"
 set "TEXT="
 set "CHECK="
+set "LIBS="
 for %%a in (%*) do (
   if /i "%%~a"=="dbg" set "WANTDBG=1"
   if /i "%%~a"=="x64" set "ARCH=x64"
   if /i "%%~a"=="freetype" set "TEXT=freetype"
   if /i "%%~a"=="check" set "CHECK=1"
+  if /i "%%~a"=="libs" set "LIBS=1"
 )
 set "SUFFIX="
 if "%ARCH%"=="x64" set "SUFFIX=_x64"
@@ -41,6 +47,8 @@ if defined WANTDBG (
   set "CDBG="
 )
 if not exist "%OBJ%" mkdir "%OBJ%"
+if defined LIBS set "OUT=%OUT:main_=main_libs_%"
+if defined LIBS if defined WANTDBG set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:%OUT%.pdb"
 
 call "%ROOT%tools\find_vcvars.bat" || exit /b 1
 if "%ARCH%"=="x64" set "VCVARS=%VCVARS:vcvars32.bat=vcvars64.bat%"
@@ -77,6 +85,20 @@ if defined TEXT (
 )
 cl /nologo /std:c11 /c /MP4 /O2 /Oy- /MD /GS /Gd /we4013 /source-charset:utf-8 /execution-charset:.949 %INC% %CDBG% @"%BUILD%\sources%SUFFIX%.rsp" /Fo:"%OBJ%\\"
 if errorlevel 1 ( echo. & echo *** C compilation FAILED *** & exit /b 1 )
+if defined LIBS (
+  echo [libs] Archiving the libraries...
+  set "LIBDIR=%OBJ%_libs"
+  call "%ROOT%tools\depmap\symbols.bat" "%OBJ%" "!LIBDIR!.sym"
+  if errorlevel 1 exit /b 1
+  python "%ROOT%tools\depmap\lib_objects.py" "%OBJ%" "!LIBDIR!.sym" "!LIBDIR!"
+  if errorlevel 1 exit /b 1
+  copy /y "!LIBDIR!\app.rsp" "%BUILD%\%OUT%.objs.rsp" >nul
+  for /f "usebackq" %%l in ("!LIBDIR!\libraries.txt") do (
+    lib /nologo /OUT:"!LIBDIR!\%%l.lib" @"!LIBDIR!\%%l.rsp"
+    if errorlevel 1 ( echo *** lib %%l FAILED *** & exit /b 1 )
+    >> "%BUILD%\%OUT%.objs.rsp" echo "!LIBDIR!\%%l.lib"
+  )
+)
 >> "%BUILD%\%OUT%.objs.rsp" echo "%ROOT%res\app.res"
 
 echo [3/3] Linking...
