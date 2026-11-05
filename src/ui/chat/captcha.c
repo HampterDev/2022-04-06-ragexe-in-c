@@ -708,9 +708,11 @@ void captcha_detector_append(struct UIWindow *window, const void *key, const voi
     struct UIMacroDetectorWnd *self = (struct UIMacroDetectorWnd *)window;
     WORD id = PACKET_DETECTOR_IMAGE_DONE;
     if (!self || !key || memcmp(self->key, key, sizeof self->key)) return;
-    if (captcha_stream_append(&self->stream, chunk, size) != CAPTCHA_COMPLETE
-        || !captcha_unpack(self->image, &self->stream.packed)) return;
-    ui_window_invalidate(window);
+    if (captcha_stream_append(&self->stream, chunk, size) != CAPTCHA_COMPLETE) return;
+    if (captcha_unpack(self->image, &self->stream.packed))
+        ui_window_invalidate(window);
+    /* the server asks for the answer only after this, so it goes out once every byte is in, whether or
+     * not the picture decodes */
     rag_connection_send_packet(rag_connection_instance(), sizeof id, &id);
 }
 
