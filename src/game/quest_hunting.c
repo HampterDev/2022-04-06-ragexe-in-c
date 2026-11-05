@@ -210,7 +210,9 @@ void game_mode_zc_hunting_quest_info(struct GameMode *self, const void *packet, 
         if (found->base.text[RENEW_QUEST_TEXT_TITLE].size == 0)
             continue;
         quest_hunt_copy(&quest, found);
-        for (slot = 0; slot < QUEST_HUNT_SLOTS && slot < quest.plain.hunt_count; slot++) {
+        /* entry n is looked for from slot n on: two objectives on the same monster id (the server sends one
+         * id for every monster-type or map objective) each keep their own slot */
+        for (slot = n; slot < QUEST_HUNT_SLOTS; slot++) {
             if (e->monster == quest.plain.hunt_mob[slot]) {
                 quest.plain.hunt_done[slot] = e->hunted;
                 quest.plain.hunt_goal[slot] = e->needed;
