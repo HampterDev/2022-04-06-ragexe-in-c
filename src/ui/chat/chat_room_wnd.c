@@ -208,7 +208,7 @@ void ui_chat_room_wnd_on_create(struct UIWindow *window, int width_unused, int h
     edit = &self->edit->edit.base;
     ui_window_create(edit, wnd->width - 0x1e, 0x10);
     ui_window_move_base(edit, 3, wnd->height - 0x12);
-    ((struct UIEditCtrl *)edit)->max_chars = 0x46;
+    ((struct UIEditCtrl *)edit)->max_chars = 0xff;
     ui_edit_ctrl_set_back_colour(edit, 0xf2, 0xf2, 0xf2);
     ui_window_add_child(wnd, edit);
     ui_window_mgr_set_focus_edit(&g_windowMgr, edit);
@@ -246,7 +246,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
     struct UIWindow *edit = &self->edit->edit.base;
     struct UIListBox *members = &self->member_list->box.list;
     struct String line, name, parts[3];
-    char buf[0x100];
+    char buf[0x16a];
     BYTE own = 0;
     int at, i;
 
@@ -269,7 +269,7 @@ static void send_line(struct UIChatRoomWnd *self, int type)
         string_assign(&line, string_cstr(&self->edit->popup->linked_text), self->edit->popup->linked_text.size);
     }
     if (line.size)
-        strcpy(buf, string_cstr(&line));
+        _snprintf_s(buf, sizeof buf, (size_t)-1, "%s", string_cstr(&line));
     else
         strcpy(buf, ui_edit_ctrl_get_text(edit));
 
