@@ -75,19 +75,6 @@ struct Skill *world_get_skill_by_aid(struct World *self, int aid)
     return NULL;
 }
 
-void *world_find_pc_by_char_id(struct World *self, int value)
-{
-    struct ListNode *head = self->actors.head, *n;
-
-    for (n = head->next; n != head; n = n->next) {
-        void *actor = *LIST_VALUE(n, void *);
-        if (((struct GameActor *)actor)->object_type == 0
-            && actor_get_char_id(actor) == value)
-            break;
-    }
-    return n != self->actors.head ? *LIST_VALUE(n, void *) : NULL;
-}
-
 BYTE world_remove_item(struct World *self, int aid)
 {
     struct ListNode *head = self->items.head, *n, *o;

@@ -173,7 +173,7 @@ paths   actor/
         session/session_job.c session/session_job_rules.c session/session_lookups.c
         session/session_lua.* session/session_mail.c session/session_misc.c
         session/session_name_checks.c session/session_names.* session/session_party.*
-        session/session_party_lookups.c
+        session/session_party_lookups.c game/mode_listed.c world/actor_lookup.c
         session/session_prohibit.c session/session_redraws.c
         session/session_redraws_game.c session/session_refresh.c
         session/session_resets.c session/session_skills.* session/session_state.*
