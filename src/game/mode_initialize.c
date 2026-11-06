@@ -20,7 +20,6 @@
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
 #include "core/memory.h"
-#include "world/mode_manager.h"
 #include "ui/window_access.h"
 #include "game/context.h"
 #include "contents/connection_api.h"
@@ -123,14 +122,10 @@ static void read_name_balloon_pos(struct GameMode *self)
         self->name_balloon_pos = 0;
 }
 
-static void greet_after_login(struct GameMode *self)
+static void greet_after_login(void)
 {
     g_isStopByLogin = 0;
     guild_info_reset(&g_guildInfo);
-    if (g_serviceType == 0) {
-        mode_send_message(client_current_mode(), MODE_MSG_CHAT_ROOM_MSG, 0xe, 0, 0, 0);
-        mode_send_msg(self, MODE_MSG_REQ_REMAIN_TIME, 0, 0, 0, 0);
-    }
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_LOADED, 0, 0, 0, 0);
     ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_LINE, (int)msg_str(0x16), 0xffe6e6, 0, 0);
     if (!account_user_data_is_loaded(g_accountUserDataMgr))
@@ -290,7 +285,7 @@ void game_mode_initialize(struct GameMode *self)
     sound_set_listener_angle(self->view->destLongitude);
     mode_send_msg(self, MODE_MSG_TOGGLE_STATUS_BARS, 0, 0, 0, 0);
     if (g_isStopByLogin != 0)
-        greet_after_login(self);
+        greet_after_login();
 
     session_clear_stat_bonuses(&g_session1);
     session_reroll_values(&g_session1);
