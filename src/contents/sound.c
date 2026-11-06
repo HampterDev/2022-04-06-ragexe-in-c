@@ -177,7 +177,7 @@ static int open_manager(struct SoundManager *mgr)
     _AIL_startup();
     mgr->miles_started = 1;
     channels = g_soundMode == 1 ? 1 : 2;
-    rate = g_sound_rate_type == 0 ? 22050 : g_sound_rate_type == 1 ? 11025 : 8000;
+    rate = g_sound_rate_type == 0 ? 44100 : g_sound_rate_type == 1 ? 11025 : 8000;
     bits = g_sound_bits_type == 0 ? 16 : 8;
     _AIL_set_preference(15, g_sound_use_waveout);
     mgr->driver = _AIL_open_digital_driver(rate, bits, channels, 1);

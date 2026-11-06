@@ -229,7 +229,7 @@ static void reset(int mode)
     enumerations = release_count = shutdown_count = room_type = wave_missing = reject_3d = 0;
     provider_index = 0; sample_limit = 48;
     g_soundMode = mode; g_sound_sample_type = g_sound_rate_type = g_sound_bits_type = 0;
-    expected_rate = 22050; expected_bits = 16; expected_channels = mode == 1 ? 1 : 2;
+    expected_rate = 44100; expected_bits = 16; expected_channels = mode == 1 ? 1 : 2;
     wave_resource.data = &wave_resource;
 }
 
@@ -346,7 +346,7 @@ int main(void)
         for (type = 0; type < 3; ++type) {
             reset(mode); g_sound_sample_type = g_sound_rate_type = type;
             g_sound_bits_type = type != 0;
-            expected_rate = type == 0 ? 22050 : type == 1 ? 11025 : 8000;
+            expected_rate = type == 0 ? 44100 : type == 1 ? 11025 : 8000;
             expected_bits = type == 0 ? 16 : 8;
             assert(sound_mgr_create());
             if (mode) assert(sample_allocated + sample_3d_allocated == (type == 0 ? 48 : type == 1 ? 32 : 16));
