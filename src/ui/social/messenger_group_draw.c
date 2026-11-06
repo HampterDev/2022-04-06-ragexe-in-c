@@ -97,7 +97,7 @@ static void draw_party_row(struct UIMessengerGroupWnd *self, const struct String
     ui_window_text_out(wnd, wnd->width - 0x60, wnd->height - 0x10, msg_str(0xc9f), 0, 0, 0xc, 0, 0, 0);
     ui_window_draw_bitmap(wnd, wnd->width - 0x3a, wnd->height - 0x12, bg, 1);
     memset(text, 0, sizeof(text));
-    sprintf(text, "%d/%d", session_get_party_member_count(&g_session1), 0xc);
+    sprintf(text, "%d/%d", session_get_party_member_count(&g_session1), 5);
     ui_window_text_out(wnd, wnd->width - 0x33, wnd->height - 0x10, text, (int)strlen(text), 0, 0xc, 0xffffff,
                      0, 0);
 
