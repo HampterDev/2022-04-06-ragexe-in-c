@@ -450,8 +450,6 @@ void set_option(struct XmlElement *node)
 
 void session_set_text_type(int a, int b)
 {
-    if (g_serviceType != 0 && g_serviceType != 6 && g_serviceType != 0xa && g_serviceType != 0xc)
-        return;
     g_showNameA = a != 0;
     g_showNameB = b != 0;
 }
