@@ -646,7 +646,7 @@ void ui_check_attendance_wnd_banner_on_l_btn_up(struct UIWindow *window, int x, 
 
     string_copy(&url, &BANNER_AT(self, self->current)->second);
     if (url.size) {
-        ShellExecuteA(NULL, "OPEN", "iexplore.exe", string_cstr(&url), NULL, SW_SHOW);
+        ShellExecuteA(NULL, "OPEN", string_cstr(&url), NULL, NULL, SW_SHOW);
     } else if (!ui_get_window(BANNER_AT(self, self->current)->third) && self->current < BANNER_COUNT(self)) {
         struct StdBanner38 *banner = BANNER_AT(self, self->current);
 

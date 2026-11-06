@@ -434,7 +434,7 @@ void ui_cash_shop_wnd_banner_on_l_btn_up(struct UIWindow *window, int x, int y)
         return;
     banner = (struct CashShopBanner *)self->banners.first + self->current;
     string_copy(&url, &banner->url);
-    ShellExecuteA(NULL, "OPEN", "iexplore.exe", string_cstr(&url), NULL, SW_SHOW);
+    ShellExecuteA(NULL, "OPEN", string_cstr(&url), NULL, NULL, SW_SHOW);
     string_free(&url);
 }
 
@@ -1107,7 +1107,7 @@ int ui_cash_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
             buy_cart(self);
             return 0;
         case CASH_ID_CHARGE:
-            ShellExecuteA(NULL, "OPEN", "iexplore.exe", msg_str(MSG_CASH_CHARGE_URL), NULL, SW_SHOW);
+            ShellExecuteA(NULL, "OPEN", msg_str(MSG_CASH_CHARGE_URL), NULL, NULL, SW_SHOW);
             return 0;
         case CASH_ID_PREV_PAGE:
             self->page = self->page - 1 >= 0 ? self->page - 1 : 0;
