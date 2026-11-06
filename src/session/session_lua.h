@@ -18,4 +18,11 @@ int session_get_inherited_job(struct Session *self, int job);
 struct String *session_get_title_string(struct Session *self, struct String *out, int id);
 void session_init_skill_tree_view(struct Session *self);
 
+/* Called by the session after it ran the navigation Lua files: the navigation manager reads
+   its tables from the Lua state (navi_manager_load_tables, navi/navi_lua_tables.c, whose
+   tables reach the whole navigation). client_install_hooks() (core/client_init.c) installs
+   navi_manager_load_tables. NULL: the navigation tables stay empty. */
+struct NaviManager;
+extern unsigned char (*g_sessionNaviTables)(struct NaviManager *navi, void *lua);
+
 #endif
