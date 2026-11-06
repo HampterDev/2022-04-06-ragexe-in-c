@@ -845,7 +845,7 @@ void ui_color_trans_balloon_text_on_draw(struct UIWindow *window)
     ui_window_text_out_runs(wnd, 6, 4, text_array_at(&self->balloon.lines, 0).data, 0, &colour, 0, 0xc, 0);
 }
 
-static const char name_bracket_format[] = "%s『%s』";
+static const char name_bracket_format[] = "%s (%s) ";
 
 #define NAME_TEXT_BUF 0x104
 

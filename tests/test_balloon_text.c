@@ -133,8 +133,8 @@ static void name_card_cases(void)
     for (i = 0; i < 6; ++i) assert(!strcmp(string_cstr(fields[i]), labels[i]));
     g_serviceType = 0;
     ui_name_balloon_text_set_name_text(&name, &card, 0, 0);
-    assert_line(&name, 1, "[Champion] 한국#hidden『*** party with long name』");
-    assert_line(&name, 2, "*** guild『*** rank』");
+    assert_line(&name, 1, "[Champion] 한국#hidden (*** party with long name) ");
+    assert_line(&name, 2, "*** guild (*** rank) ");
     g_showNameA = 1;
     ui_name_balloon_text_set_name_text(&name, &card, 1, 0);
     assert_line(&name, 0, "NPC title");
