@@ -16,6 +16,7 @@
 #define WND_ID_NONE (-1)
 #define WND_ID_SAY_DIALOG 0x10
 #define WND_ID_SKILL_LIST 0x25
+#define WND_ID_ILLUST 0x4e
 #define WND_ID_WORLD_MAP 0x8c
 #define WND_ID_ESC_MENU 0x9b
 #define WND_ID_NAVI_GUIDE 0x13a
@@ -26,6 +27,7 @@
 #define MSG_BACK_TO_LOGIN_ASK 0xd68
 #define MODE_MSG_QUIT 2
 #define MODE_MSG_SCREENSHOT 0x44
+#define MODE_MSG_SHOW_ILLUSTRATION 0x64
 #define LOGIN_REQ_BACK_TO_LOGIN 0x271b
 #define MODAL_ESCAPED 0xb4
 #define EDIT_OFF_SCREEN (-100)
@@ -120,24 +122,30 @@ static void escape(struct UIWindowMgr *self)
     id = self->id_list.head->next != self->id_list.head ? *LIST_VALUE(self->id_list.head->next, int) : WND_ID_NONE;
     if (g_replayPlaying && ((unsigned)id > WND_ID_MAX || !self->window_flags[id][UI_WNDFLAG_COMMANDS]))
         return;
-    wnd = ui_window_find(id);
-    if (wnd) {
-        switch (id) {
-        case 0x84: case 0xb5: case 0xb8: case 0xcb: case 0x119: case 0x146:
-            click(wnd, UI_ID_CLOSE);
-            return;
-        case 0x16: case 0x17: case 0x18: case 0x19: case 0x29: case 0x2c: case 0xa1: case 0xae: case 0xb2:
-            if (!g_replayPlaying)
-                click(wnd, UI_ID_CANCEL);
-            return;
-        }
-    }
-    if (id != WND_ID_NONE) {
+    if (ui_window_mgr_post_quit1(self, WND_ID_ILLUST)) {
+        game_send_message(MODE_MSG_SHOW_ILLUSTRATION, (int)"", -1, 1, 0);
         if (ui_window_mgr_post_quit1(self, id) == 1)
             return;
-    } else if (g_navi.guideState == 2) {
-        escape_navigation();
-        return;
+    } else {
+        wnd = ui_window_find(id);
+        if (wnd) {
+            switch (id) {
+            case 0x84: case 0xb5: case 0xb8: case 0xcb: case 0x119: case 0x146:
+                click(wnd, UI_ID_CLOSE);
+                return;
+            case 0x16: case 0x17: case 0x18: case 0x19: case 0x29: case 0x2c: case 0xa1: case 0xae: case 0xb2:
+                if (!g_replayPlaying)
+                    click(wnd, UI_ID_CANCEL);
+                return;
+            }
+        }
+        if (id != WND_ID_NONE) {
+            if (ui_window_mgr_post_quit1(self, id) == 1)
+                return;
+        } else if (g_navi.guideState == 2) {
+            escape_navigation();
+            return;
+        }
     }
 
     if (g_quitRequested || !g_modeMgr.loopCond)
