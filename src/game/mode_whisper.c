@@ -16,7 +16,6 @@
 #include "ui/ui_items.h"
 #include "ui/wndmgr/wndmgr.h"
 
-signed char g_silentWhisperAcks;
 #define WIN32_LEAN_AND_MEAN
 #include "core/markup_tags.h"
 #include "platform/win_types.h"

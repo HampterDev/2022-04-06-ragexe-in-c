@@ -110,7 +110,7 @@ paths   contents/
         effects/rag/effect_prim_draw.c effects/rag/prim_flat_quads.c effects/str_animation.*
         game/actor_packets.h game/barter_packets.h game/broadcast_text.* game/broadcasts.c
         game/cell_context.c game/cell_coordinates.c game/cells.* game/chat_room.h game/client.h
-        game/client_state.h game/connection.h game/context.* game/debug.* game/gamemode.h
+        game/client_state.* game/connection.h game/context.* game/debug.* game/gamemode.h
         game/ground_item_packets.h game/guild_log_vector.c game/item_choice_lists.c game/item_info.h
         game/item_list_packets.h game/item_merge.c game/mail_map.c game/mode_callbacks.h
         game/mode_memorial_dungeon.c game/mode_ranking.c game/msg_player_gauge.c game/net_poll.c

@@ -10,7 +10,6 @@
 #include "session/session_jobs.h"
 #include "session/session_windows.h"
 
-unsigned char g_mapPropertyQuiet;
 #include "contents/connection_api.h"
 #include "game/packet_handlers.h"
 #include "game/client.h"
