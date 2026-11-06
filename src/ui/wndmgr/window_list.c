@@ -693,22 +693,6 @@ void ui_window_mgr_set_shop_titles_shown(struct UIWindowMgr *self, BYTE show)
     ui_window_mgr_show_windows(self, 0xbd, show);
 }
 
-void ui_window_mgr_draw_serial_number(struct UIWindowMgr *self)
-{
-    SIZE size;
-    int x, y;
-
-    if (self->tape_top + 0x50 < g_renderer->height)
-        return;
-    x = g_renderer->width - renderer_get_text_extent(g_renderer, &size, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0, 0, 0xc, 0)->cx - 0x64;
-    y = g_renderer->height - 0x14;
-    renderer_text_out(g_renderer, x + 1, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x - 1, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y + 1, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y - 1, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0);
-    renderer_text_out(g_renderer, x, y, "XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX", 0xffffff);
-}
-
 static void show_or_store(struct UIWindow *wnd, int show)
 {
     if (show)

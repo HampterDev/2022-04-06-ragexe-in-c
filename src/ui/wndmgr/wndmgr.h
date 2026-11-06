@@ -167,7 +167,6 @@ void ui_minimap_zoom_wnd_on_l_btn_down(struct UIWindow *self, int x, int y);
 void ui_window_mgr_add_to_name_waiting_list(struct UIWindowMgr *self, struct UIWindow *wnd);
 struct BitmapRes;
 void ui_window_mgr_draw_picture(struct UIWindowMgr *self, int x, int y, struct BitmapRes *bitmap);
-void ui_window_mgr_draw_serial_number(struct UIWindowMgr *self);
 BYTE ui_window_mgr_drop_on(struct UIWindowMgr *self, int x, int y, struct DragInfo *drag);
 void ui_window_mgr_drop_window_refs(struct UIWindowMgr *self, struct UIWindow *wnd);
 void ui_window_mgr_edit_focus_to_chat_wnd(struct UIWindowMgr *self);

@@ -211,8 +211,7 @@ void login_mode_on_update(struct Mode *mode)
         ui_window_mgr_render_windows(&g_windowMgr);
         mode_draw_mouse_cursor(&self->base);
         mode_process_fade_in(&self->base);
-        if ((char)renderer_draw_scene(g_renderer))
-            ui_window_mgr_draw_serial_number(&g_windowMgr);
+        renderer_draw_scene(g_renderer);
         renderer_flip(g_renderer, 1);
     }
     mode_screen_shot(&self->base);

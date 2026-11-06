@@ -79,7 +79,7 @@ struct UIWindowMgr *window_mgr_construct(struct UIWindowMgr *self)
     self->logo_y = g_serviceType == 0 ? -25 : 0;
     self->grade_width = 0xcb;
     self->service_piece_x = self->service_piece_y = 0;
-    self->tape_y = self->tape_top = 0;
+    self->tape_y = 0;
     self->rating_x = self->rating_y = 0;
     self->unpicked_piece_x = self->unpicked_piece_y = 0;
     self->login_drag_piece = 0;

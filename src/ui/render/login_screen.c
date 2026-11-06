@@ -133,7 +133,6 @@ static void draw_tape(struct UIWindowMgr *self, int tw, float fth)
         x += tw;
         rc.right = x;
         rc.top = (int)(fth * 2.5f + (float)self->tape_y);
-        self->tape_top = (short)rc.top;
         rc.bottom = (int)(fth * 3.0f + (float)self->tape_y);
         draw(&rc, texture_cache_get(&g_textureCache, UI_SKIN, 0, 0));
     }

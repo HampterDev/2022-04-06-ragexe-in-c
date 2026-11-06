@@ -220,7 +220,6 @@ struct UIWindowMgr {
     short logo_x, logo_y;
     short service_piece_x, service_piece_y;
     short tape_y;
-    short tape_top;
     short rating_x, rating_y;
     short unpicked_piece_x, unpicked_piece_y;
     BYTE login_drag_piece;
