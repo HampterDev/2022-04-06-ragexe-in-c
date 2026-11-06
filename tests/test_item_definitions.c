@@ -56,7 +56,7 @@ static int WINAPI error_box(HWND window, LPCSTR text, LPCSTR caption, UINT type)
 static lua_State *new_state(void) { return fail_state ? NULL : luaL_newstate(); }
 static int load_file(lua_State *L, const char *name)
 {
-    ++loads; assert(strcmp(name, "System\\iteminfo_true.lub") == 0);
+    ++loads; assert(strcmp(name, "System\\iteminfo.lua") == 0);
     if (!script) { lua_pushstring(L, "missing test script"); return LUA_ERRFILE; }
     return luaL_loadbuffer(L, script, strlen(script), name);
 }

@@ -311,7 +311,7 @@ static int load_script(lua_State *L)
         lua_pushcclosure(L, callbacks[i].callback, 1);
         lua_setglobal(L, callbacks[i].name);
     }
-    if (luaL_loadfile(L, "System\\iteminfo_true.lub") != 0) return lua_error(L);
+    if (luaL_loadfile(L, "System\\iteminfo.lua") != 0) return lua_error(L);
     lua_call(L, 0, 0);
     lua_getglobal(L, "main");
     lua_call(L, 0, 2);
