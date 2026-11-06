@@ -156,16 +156,23 @@ int main(void)
         static const unsigned char minimum[] = { 0x36, 0x12, 8, 0, 1, 2, 3, 4 };
         static const unsigned char unknown[] = { 0x77, 0x77, 5, 0, 9 };
         unsigned char framed[8];
-        int framed_length, previous;
+        int framed_length, previous, i;
 
         for (framed_length = 4; framed_length < 8; ++framed_length) {
             memcpy(framed, minimum, sizeof framed);
             framed[2] = (unsigned char)framed_length;
-            byte_queue_write(received, sizeof framed, framed);
+            byte_queue_write(received, framed_length, framed);
+            byte_queue_write(received, sizeof unknown, unknown);
             previous = reset_calls;
-            length = 0xeeee;
-            assert(!rag_connection_get_packet(connection, output, &length));
-            assert(reset_calls == previous + 1 && length == 0xeeee && byte_queue_size(received) == 0);
+            memset(output, 0xcc, 16);
+            assert(rag_connection_get_packet(connection, output, &length));
+            assert(length == framed_length && memcmp(framed, output, length) == 0);
+            for (i = framed_length; i < 8; ++i)
+                assert(output[i] == 0);
+            assert(output[8] == 0xcc && reset_calls == previous);
+            assert(rag_connection_get_packet(connection, output, &length));
+            assert(length == sizeof unknown && memcmp(unknown, output, length) == 0);
+            assert(byte_queue_size(received) == 0);
         }
         byte_queue_write(received, sizeof minimum, minimum);
         byte_queue_write(received, sizeof unknown, unknown);
@@ -173,8 +180,8 @@ int main(void)
         assert(length == sizeof minimum && memcmp(minimum, output, length) == 0);
         assert(rag_connection_get_packet(connection, output, &length));
         assert(length == sizeof unknown && memcmp(unknown, output, length) == 0);
-        assert(byte_queue_size(received) == 0 && reset_calls == 12);
+        assert(byte_queue_size(received) == 0 && reset_calls == 8);
     }
-    puts("packets: framing, short framed lengths, table minimums, partial reads, immutable send, holding and key sequence passed");
+    puts("packets: framing, short framed lengths, packets below their table minimum read with zeroed tails, partial reads, immutable send, holding and key sequence passed");
     return 0;
 }
