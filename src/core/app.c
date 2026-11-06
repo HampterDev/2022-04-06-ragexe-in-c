@@ -166,27 +166,6 @@ int app_create_window(HINSTANCE instance)
     return 1;
 }
 
-HANDLE app_run(const char *cmd)
-{
-    char line[0x400];
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-
-    memset(line, 0, sizeof line);
-    if (g_session1.launchArgsSet)
-        _snprintf_s(line, sizeof line, (size_t)-1, "%s %s %s %c %s", cmd, g_session1.ssoToken, g_session1.launchArg2,
-                       (int)g_session1.launchArgFlag, g_session1.launchArg3);
-    else
-        _snprintf_s(line, sizeof line, (size_t)-1, "%s", cmd);
-    memset(&si, 0, sizeof si);
-    si.cb = sizeof si;
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_SHOWNORMAL;
-    memset(&pi, 0, sizeof pi);
-    CreateProcessA(0, line, 0, 0, FALSE, 0, 0, 0, &si, &pi);
-    return pi.hProcess;
-}
-
 void app_swap_ai_folder(void)
 {
     char from[16];
