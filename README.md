@@ -127,6 +127,194 @@ lists it, in an orange badge.
   hotkeys. AltGr+Q types `@` on a German layout; the original took it for Alt+Q (the
   equipment window) and lost the character. The same goes for `€` and `{ [ ] }`.
 
+### WARP patches
+
+The patches of a [WARP](https://github.com/Neo-Mind/WARP) session (PLV Online's
+`warpsession.yml`) are made here in the source; each carries its WARP name in a blue badge.
+Where WARP changes a copy of the code that the 2022 exe never calls (DecrAFDelay's follow
+delay, NoHourly's Game Grade badge, EnableWho's plain user count), the patched exe does not
+change, and neither does this client. CustomIcon replaces the icon in `res\app.res` and is not
+a source change.
+
+Starting and connecting:
+
+- [![WARP: NoMultiWindow](https://img.shields.io/badge/WARP-NoMultiWindow-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoMultiWindow.qjs)
+  A second client started while one is running exits at once (mutex `Global\Surface`).
+- [![WARP: GRFsFromIni](https://img.shields.io/badge/WARP-GRFsFromIni-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/MultiGRFs.qjs)
+  The GRF archives are `[Data]` keys 0-9 of `DATA.INI` beside the exe, key 0 searched first.
+  Without any key the client writes `2=data.grf` into the file and loads that.
+- [![WARP: CustomItemInfoLub](https://img.shields.io/badge/WARP-CustomItemInfoLub-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomPath.qjs)
+  Item data is read from `System\iteminfo.lua` instead of `System\iteminfo_true.lub`.
+- [![WARP: NoMapInfo](https://img.shields.io/badge/WARP-NoMapInfo-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoMapInfo.qjs)
+  `system\mapInfo_true.lub` is not loaded, so no map sign or banner is shown on entering a
+  map. Map names from `mapNameTable.txt` still work.
+- [![WARP: CallKoreaClientInfo](https://img.shields.io/badge/WARP-CallKoreaClientInfo-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CallKoreaClientInfo.qjs)
+  Every service type takes the Korean client-info path, so the 0xacf login step always
+  connects to `<address>:<port>` from `clientinfo.xml`, also when `/account:` names another
+  config file.
+- [![WARP: EnableDnsSupport](https://img.shields.io/badge/WARP-EnableDnsSupport-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/EnableDnsSupport.qjs)
+  `<address>` in `clientinfo.xml` may be a host name; it is resolved when a connection is
+  read and once at network start-up.
+- [![WARP: NoNagle](https://img.shields.io/badge/WARP-NoNagle-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoNagle.qjs)
+  The server connection uses `TCP_NODELAY`: packets are sent at once instead of being batched.
+- [![WARP: SendClientFlags](https://img.shields.io/badge/WARP-SendClientFlags-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/SendClientFlags.qjs)
+  Login packets 0x64, 0x1dd, 0x1fa and 0x27c carry 0x80000001 in their version field instead
+  of `<version>` from `clientinfo.xml`, which is no longer read. Bit 0 tells the server the
+  cash shop can preview equipment (PreviewInShop).
+- [![WARP: HideLicense](https://img.shields.io/badge/WARP-HideLicense-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/LicenseScreenVis.qjs)
+  The login starts at service selection; the warning notice and the licence screen are
+  skipped and `..\licence.txt` is not read.
+- [![WARP: OpenToServiceSelect](https://img.shields.io/badge/WARP-OpenToServiceSelect-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/OpenToServiceSelect.qjs)
+  The login window's "Opening" button goes back to service selection.
+- [![WARP: NoGNJoyLaunch](https://img.shields.io/badge/WARP-NoGNJoyLaunch-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoGNJoyLaunch.qjs)
+  The client opens no official Ragnarok web page: not the kRO page on auth result 900, the
+  India homepage on quit, the iRO and Kunlun account pages, or the Hangame/kRO page after
+  three wrong passwords. The message boxes and quits on those paths stay.
+- [![WARP: DisConnToLogin](https://img.shields.io/badge/WARP-DisConnToLogin-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ReturnToLogin.qjs)
+  After a disconnect or ban notice from the map server the client shows the message and
+  returns to the login screen instead of closing.
+- [![WARP: NoUsernameLimit](https://img.shields.io/badge/WARP-NoUsernameLimit-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoLetterLimit.qjs) [![WARP: NoPasswordLimit](https://img.shields.io/badge/WARP-NoPasswordLimit-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoLetterLimit.qjs)
+  The login window accepts account names shorter than 4 characters and passwords shorter than
+  6.
+- [![WARP: HideBuildInfo](https://img.shields.io/badge/WARP-HideBuildInfo-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Patches/Data.yml)
+  The exe carries no build date: the crash report's "Build:" line shows only the image stamp,
+  which `/Brepro` makes a content hash, and the release has no debug directory or PDB path.
+- [![WARP: NoGGuard](https://img.shields.io/badge/WARP-NoGGuard-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/DisableProtect.qjs) [![WARP: No1and1Arg](https://img.shields.io/badge/WARP-No1and1Arg-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ClientArgs.qjs) [![WARP: NoFilenameCheck](https://img.shields.io/badge/WARP-NoFilenameCheck-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoFilenameCheck.qjs) [![WARP: NoHardCodedAddr](https://img.shields.io/badge/WARP-NoHardCodedAddr-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoHardCodedAddr.qjs) [![WARP: UseOldLogin](https://img.shields.io/badge/WARP-UseOldLogin-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/LoginMode.qjs) [![WARP: MsgStrings](https://img.shields.io/badge/WARP-MsgStrings-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ReadTxtFile.qjs)
+  These are the NEMO changes listed above: no GameGuard, no launcher argument, no filename
+  check, the login server from `clientinfo.xml`, login packet 0x64 and `msgStringTable.txt`
+  for every service type.
+
+Window, display and sound:
+
+- [![WARP: CustomWinTitle](https://img.shields.io/badge/WARP-CustomWinTitle-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/WindowFrame.qjs)
+  The game window is titled "PLV Online"; the same text is its window class name and the
+  in-game browser's title.
+- [![WARP: EnableSysMenu](https://img.shields.io/badge/WARP-EnableSysMenu-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/WindowFrame.qjs)
+  The game window has a system menu with its icon, minimize and close buttons, and Alt+Space,
+  also after switching back from fullscreen or borderless.
+- [![WARP: CustomFontName](https://img.shields.io/badge/WARP-CustomFontName-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs) [![WARP: CustomFontHeight](https://img.shields.io/badge/WARP-CustomFontHeight-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs) [![WARP: CustomFontWeight](https://img.shields.io/badge/WARP-CustomFontWeight-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs)
+  UI text is drawn in "Eras Medium ITC", 12 px tall and at normal weight (400), whatever size
+  and weight the UI asks for, instead of each language's font. The Rix and SCDream fonts are
+  unchanged.
+- [![WARP: IncrMapQuality](https://img.shields.io/badge/WARP-IncrMapQuality-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/IncrMapQuality.qjs)
+  Map lightmaps are 32-bit textures instead of 16-bit 4444, so ground lighting has no banding.
+- [![WARP: RestoreModelCulling](https://img.shields.io/badge/WARP-RestoreModelCulling-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/RestoreModelCulling.qjs)
+  Map models between the camera and the player turn translucent and fade back when they no
+  longer block the view.
+- [![WARP: MediumCamAngle](https://img.shields.io/badge/WARP-MediumCamAngle-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/IncrCamAngle.qjs)
+  On free-camera maps, Shift + right-drag tilts the camera over a pitch range of 42 instead
+  of 20 (about -87 to -28 degrees, -3 with Ctrl, instead of -65 to -50).
+- [![WARP: ZoomMax](https://img.shields.io/badge/WARP-ZoomMax-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/IncrZoom.qjs)
+  The camera zooms out to a distance of 1224 instead of 400 (480 with `/zoom`); `/zoom` and
+  its checkbox still toggle and save the setting but no longer change the limit.
+- [![WARP: NoGravityAds](https://img.shields.io/badge/WARP-NoGravityAds-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoGravityImages.qjs) [![WARP: NoGravityLogo](https://img.shields.io/badge/WARP-NoGravityLogo-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoGravityImages.qjs)
+  The login screen shows no Gravity logo, age-rating image, tape strips or Game Grade badge.
+- [![WARP: NoSerialDisplay](https://img.shields.io/badge/WARP-NoSerialDisplay-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoSerialDisplay.qjs)
+  The login screens no longer show the serial placeholder at the bottom right.
+- [![WARP: FixLatestNCWin](https://img.shields.io/badge/WARP-FixLatestNCWin-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/FixLatestNCWin.qjs)
+  The new character-making screen has no `bg_back2.tga` backdrop and its window sits 64 px
+  lower.
+- [![WARP: Enable44kHzAudio](https://img.shields.io/badge/WARP-Enable44kHzAudio-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomSound.qjs)
+  Sound plays at 44,100 Hz instead of 22,050 Hz for the default rate setting
+  (`DIGITALRATETYPE` 0); types 1 and 2 stay 11,025 and 8,000 Hz.
+- [![WARP: AutoMute](https://img.shields.io/badge/WARP-AutoMute-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomSound.qjs)
+  In game the client mutes music and effects within half a second of losing focus and
+  restores the volumes when it is active again. Options saved while muted save an effect
+  volume of 0.
+- [![WARP: TranslateClient](https://img.shields.io/badge/WARP-TranslateClient-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/TranslateClient.qjs)
+  The client's own interface texts are English, as `Translations_EN.yml` makes them:
+  "Message" box titles, "Exit", "Cart Off", "No Color", "Total : %d Cash", "%dea" and the AI
+  trace timestamp. The file's other entries translate the exe's built-in Korean message
+  table, which this client does not have; their English comes from `msgStringTable.txt`.
+
+Game and chat:
+
+- [![WARP: NoGMSprite](https://img.shields.io/badge/WARP-NoGMSprite-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoGMSprite.qjs)
+  GM accounts are drawn with their own body and weapon sprites instead of the GM sprite; the
+  yellow name and GM menus stay.
+- [![WARP: AllowSkillSpam](https://img.shields.io/badge/WARP-AllowSkillSpam-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/AllowSkillSpam.qjs)
+  Holding a skill hotkey keeps casting the skill; the original ignored auto-repeated key
+  presses.
+- [![WARP: CustomWalkDelay](https://img.shields.io/badge/WARP-CustomWalkDelay-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/WalkDelay.qjs)
+  A held left click repeats the walk request without the 600 ms and 350 ms waits.
+- [![WARP: CustomFadeDelay](https://img.shields.io/badge/WARP-CustomFadeDelay-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFadeDelay.qjs)
+  Warps and mode changes switch the screen without the black fade-out and fade-in; the music
+  still fades.
+- [![WARP: UnlimitedChatRepeat](https://img.shields.io/badge/WARP-UnlimitedChatRepeat-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ChatRepeat.qjs)
+  The same chat line can be sent any number of times in a row; the original refused the third
+  (message 0x31).
+- [![WARP: NoSwearFilter](https://img.shields.io/badge/WARP-NoSwearFilter-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoSwearFilter.qjs)
+  `manner.txt` is not loaded, so no chat, name or title is censored.
+- [![WARP: GuildBrackets](https://img.shields.io/badge/WARP-GuildBrackets-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/GuildBrackets.qjs)
+  For service type 0 name balloons show party and guild as `name (party) ` instead of
+  `name『party』`.
+- [![WARP: NoHourly](https://img.shields.io/badge/WARP-NoHourly-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoHourly.qjs)
+  No "N hours have passed" play-time reminder.
+- [![WARP: NoHelpMsg](https://img.shields.io/badge/WARP-NoHelpMsg-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoHelpMsg.qjs)
+  Entering the game no longer prints the help text or, for service type 0, requests the
+  remaining play time (0x1c0).
+- [![WARP: EnableWho](https://img.shields.io/badge/WARP-EnableWho-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/EnableSlashCmd.qjs)
+  `/w` and `/who` request the user count for every service type; the original did not for 3,
+  8 and 9.
+- [![WARP: EnableShowName](https://img.shields.io/badge/WARP-EnableShowName-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/EnableSlashCmd.qjs)
+  `/showname` and its saved setting switch the name font for every service type, not only 0,
+  6, 0xa and 0xc.
+- [![WARP: AlwaysAscii](https://img.shields.io/badge/WARP-AlwaysAscii-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/AlwaysAscii.qjs)
+  On service type 1 character names, chat room titles and chat, room and whisper lines with
+  non-ASCII characters are no longer refused.
+- [![WARP: NoCharnameLimit](https://img.shields.io/badge/WARP-NoCharnameLimit-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoLetterLimit.qjs)
+  Character names may be shorter than 4 bytes in both character creation windows; as in the
+  patched exe, RODEX mail titles may be too.
+- [![WARP: ResizeChatBox](https://img.shields.io/badge/WARP-ResizeChatBox-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResizeBox.qjs) [![WARP: ResizeChatRoomBox](https://img.shields.io/badge/WARP-ResizeChatRoomBox-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResizeBox.qjs) [![WARP: ResizePMBox](https://img.shields.io/badge/WARP-ResizePMBox-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResizeBox.qjs)
+  The chat line, the chat room's line and the whisper window's line take up to 255 characters
+  instead of 70. The buffers they are sent through are sized for that.
+- [![WARP: RestoreChatFocus](https://img.shields.io/badge/WARP-RestoreChatFocus-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/RestoreChatFocus.qjs)
+  Clicking into the world no longer takes the keyboard away from the chat line.
+- [![WARP: CloseCutinOnEsc](https://img.shields.io/badge/WARP-CloseCutinOnEsc-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CloseCutinOnEsc.qjs)
+  Esc closes an open cutin picture. As in the patched exe, the same press then goes on to
+  close the topmost window or open the Esc menu.
+- [![WARP: FixChatAt](https://img.shields.io/badge/WARP-FixChatAt-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/FixChatAt.qjs)
+  Covered by the "@ Bug Fix" above, without WARP's side effect of also firing the Alt hotkey.
+
+Windows and shops:
+
+- [![WARP: ResizeNormalBar](https://img.shields.io/badge/WARP-ResizeNormalBar-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResizeMobBar.qjs) [![WARP: ResizeBossBar](https://img.shields.io/badge/WARP-ResizeBossBar-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResizeMobBar.qjs)
+  The HP bar over normal monsters is 90x5 and over bosses 120x5 instead of 60x5; mini-bosses
+  keep 60x5.
+- [![WARP: ShowExpNumbers](https://img.shields.io/badge/WARP-ShowExpNumbers-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomExpBars.qjs)
+  The expanded Basic Info window shows base and job experience as "current / next" in light
+  green (RGB 0x9a, 0xd4, 0x93) at the bars.
+- [![WARP: CustomPartyLimit](https://img.shields.io/badge/WARP-CustomPartyLimit-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFriendWin.qjs)
+  The party tab shows the member count out of 5 instead of 12.
+- [![WARP: MoveUpItemCount](https://img.shields.io/badge/WARP-MoveUpItemCount-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/MoveUpItemCount.qjs)
+  Item counts on the shortcut bar are drawn higher and outlined, like the skill levels.
+- [![WARP: PlainTextDesc](https://img.shields.io/badge/WARP-PlainTextDesc-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/PlainTextDesc.qjs)
+  Text data is read as stored for every service type: the Korean letter mirroring of item
+  descriptions, the talk tables, the monster skill table and the scream lines is no longer
+  undone.
+- [![WARP: ShortcutForAll](https://img.shields.io/badge/WARP-ShortcutForAll-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ShortcutForAll.qjs)
+  Any identified inventory item of type 0-0x13 can go on the shortcut bar and the quick slots.
+- [![WARP: HideNewButtons](https://img.shields.io/badge/WARP-HideNewButtons-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NewButtonVisibility.qjs)
+  The menu icon window has no Guild, World Map, Navigation, Bank, Record, Tip, Adventurer
+  Agency or Reputation button; the others move up.
+- [![WARP: HideTraitStatusButton](https://img.shields.io/badge/WARP-HideTraitStatusButton-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/TraitStatusButton.qjs) [![WARP: DisableTraitStatusButton](https://img.shields.io/badge/WARP-DisableTraitStatusButton-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/TraitStatusButton.qjs)
+  The status window has no trait expand button and keeps the size it is restored with. The
+  trait "+" buttons still work; in the patched exe the disable jump also swallowed them.
+- [![WARP: NoAdvAgencyInParty](https://img.shields.io/badge/WARP-NoAdvAgencyInParty-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoAdvAgencyInParty.qjs)
+  The party tab's Adventurer Agency button stays greyed out.
+- [![WARP: ShowResButton](https://img.shields.io/badge/WARP-ShowResButton-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/ResButtonVis.qjs)
+  The Resurrection button also shows on PvP, GvG/siege and event-PvP maps.
+- [![WARP: ShowRoulette](https://img.shields.io/badge/WARP-ShowRoulette-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/RouletteVis.qjs)
+  The Roulette icon is created on every map entry, as in older clients; its show/hide setting
+  still applies.
+- [![WARP: DefShopBrowser](https://img.shields.io/badge/WARP-DefShopBrowser-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CashShop.qjs)
+  The cash shop banner and charge button and the attendance banner open in the default
+  browser instead of `iexplore.exe`.
+- [![WARP: PreviewInShop](https://img.shields.io/badge/WARP-PreviewInShop-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/PreviewInShop.qjs)
+  Cash shop item lists (0x8ca) use 14-byte records with the view sprite and equip location,
+  so the cash shop can preview equipment. The server must send that format.
+- [![WARP: InsensitiveStorageSearch](https://img.shields.io/badge/WARP-InsensitiveStorageSearch-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CaseInsensitiveSearch.qjs) [![WARP: InsensitiveShopSearch](https://img.shields.io/badge/WARP-InsensitiveShopSearch-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CaseInsensitiveSearch.qjs)
+  The storage and cash shop item searches ignore upper and lower case.
 ### Bugs of the original fixed
 
 Dangling pointers and races:
@@ -173,9 +361,6 @@ Overruns and bad table indexes:
   before its sine and cosine tables.
 - Bytes above 0x7f no longer index before the hex digit table, and
   non-hex characters decode as 0.
-- The font lookup releases the screen DCs it takes; the original
-  leaked two per lookup. An unknown font id, SCDream's fallback included, uses GDI's default
-  font instead of reading past the twelve font slots.
 
 Format strings:
 
