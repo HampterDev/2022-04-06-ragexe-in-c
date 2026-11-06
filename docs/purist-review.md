@@ -12651,3 +12651,62 @@ worktree's `build/`.
 
 Not run: macOS and Android, a live client. No test drives the hooks' installation in
 `client_install_hooks()` (`core/client_init.c` is in no test), as for the hooks before.
+
+## Splitting the knot library (2026-11-06)
+
+Decision: after the knot cuts Patrick asked for a proposal to split the library table's `knot`
+library, and chose the four layers below over a finer split of `game-parts`.
+
+**By directory does not work.** With the 235 `.c` files grouped by directory (actor with the
+effect base, session, game, world, navi, contents, the effect classes of `effects/skills`, ui),
+every group uses every other one through some file. The best of all orders of the eight groups,
+with each file in the lowest group at or above its own that is at or above everything it uses and
+a local search toward the files' own groups, still puts 124 files (33,221 lines) in another
+directory's library: most directories hold low helpers, part of the actor model and high game
+mode code.
+
+**Around the actor core it layers.** Taken against the SCC of `actor/game_object.c` (the 9 files
+left after cut 25), the files fall into what the core uses, the core, what uses the core and what
+does neither, and between these four there is no use against the order:
+
+| library | uses | `.c` files | lines | what |
+|---|---|---|---|---|
+| `game-state` | `gamedata` | 51 | 9,996 | what the core uses: the session's data and lookups, the world and its lookups, game, actor and effect helpers, the mercenary AI commands |
+| `actors` | `game-state` | 9 | 2,586 | the core: the method tables of `actor/game_object.c`, the actor message, process and state code, the effect base, `game/mode_util.c` |
+| `game-parts` | `game-state` | 72 | 15,684 | neither: guild, party, agency and account data and windows, effect classes that do not touch actors, navigation data, smaller pieces, which do not use each other |
+| `game-world` | `actors`, `game-parts` | 103 | 35,216 | what uses the core: the actor classes, the game mode's actions and the windows tied to the actors, the navigation route and guide, the run loop (`game/mode_run.c`) and `game/lifecycle.c`; one connected piece |
+
+The feature libraries use `game-world` where they used `knot`.
+
+Two commits:
+
+- `3209b12` moves `g_isSkipFrame`, `g_followLastMoveTick` and `g_followLostSinceTick` from the run
+  loop to the new `game/mode_callbacks.c`, with their header in `gamedata`: the core and the
+  effects read them, and the layering would not allow the run loop below them. This and
+  `game/lifecycle.c` (the game mode's method table, which names the run loop's functions) were
+  the only link-check failures of the trial table.
+- `54ce159` writes the table. A header goes with the `.c` of its name unless a lower library
+  includes it for its types or globals, as `effects/rag/effect_prim.h` did; the 21 such headers
+  are named in the notes of `game-state` (17) and `game-parts` (4). Patterns of the old library
+  that no longer name a file are gone. No new exception: still 269 include and 129 link
+  exceptions.
+
+**Proof.** A call from `session/session_lookups.c` (`game-state`) to `game_object_construct`
+(`actors`) builds, and the link check then fails on exactly that use (`game-state may not use
+actors`). `build.bat libs` links the client from 21 static libraries, the four new ones among
+them.
+
+### Validation
+
+Clean exports of both commits (`build/snap/s1`, `s2`; the table commit was validated as
+`44e1e41`, the same tree as `54ce159` before its message was corrected), logs `libs-s1-*` and
+`libs-s2-*` in the worktree's `build/`.
+
+- **Both commits:** `build.bat` without warnings; the full `testsuild.bat` and the seven
+  standalone suites pass, every result line as before the cuts (`pfinal3`) except the two
+  library-check lines (22 libraries at `54ce159`).
+- **At `54ce159`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`: no
+  warnings; CMake with MSVC, Win32 and x64 (Debug): CTest 23 of 23 and 22 of 22; Linux (WSL,
+  GCC 13.3): CTest 28 of 28, 1,665 warnings as before.
+
+Not run: macOS and Android, a live client.
