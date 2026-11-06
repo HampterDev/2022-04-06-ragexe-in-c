@@ -28,12 +28,6 @@
 #include "ui/tips/tips.h"
 #include "ui/controls/url_link.h"
 
-struct TagLink {
-    int pos;
-    struct String label;
-    struct String args;
-};
-
 #define LINK_URL 0x1ad
 #define LINK_NAVI 0x1ae
 #define LINK_ITEM 0x1c8
@@ -65,9 +59,9 @@ static int link_arg_number(struct UITextButton *link, unsigned i)
 
 static void tag_links_free(struct Vec *v)
 {
-    struct TagLink *link;
+    struct UiTagLink *link;
 
-    for (link = v->first; link != (struct TagLink *)v->last; link++) {
+    for (link = v->first; link != (struct UiTagLink *)v->last; link++) {
         string_free(&link->args);
         string_free(&link->label);
     }
@@ -185,7 +179,7 @@ static void add_embed(struct UITextViewer *self, struct UITextButton *btn)
     vec_push(&self->embeds, &btn, sizeof btn);
 }
 
-static void add_link(struct UITextViewer *self, const struct TagLink *link, int id, int lines)
+static void add_link(struct UITextViewer *self, const struct UiTagLink *link, int id, int lines)
 {
     struct UITextButton *btn = new_link(self, &link->label, LINK_COLOUR);
 
@@ -199,11 +193,11 @@ static void add_link(struct UITextViewer *self, const struct TagLink *link, int 
 
 static BYTE add_links(struct UITextViewer *self, struct Vec *links, int id, int lines)
 {
-    struct TagLink *link;
+    struct UiTagLink *link;
 
     if (links->first == links->last)
         return 0;
-    for (link = links->first; link != (struct TagLink *)links->last; link++)
+    for (link = links->first; link != (struct UiTagLink *)links->last; link++)
         add_link(self, link, id, lines);
     ui_window_send_msg(&self->list.base, NULL, UI_MSG_SCROLL_V, 0, 0, 0, 0);
     return 1;
@@ -322,7 +316,7 @@ static void add_tipbox_links(struct UITextViewer *self, struct String text, int 
 {
     struct String s;
     struct Vec links = { 0 };
-    struct TagLink *link;
+    struct UiTagLink *link;
 
     plain_text(&s, &text);
     apply(&s, "<URL>", "</URL>");
@@ -333,7 +327,7 @@ static void add_tipbox_links(struct UITextViewer *self, struct String text, int 
     apply_navil(&s);
     ui_window_parse_tipbox_links(&self->list.base, string_from(string_cstr(&s), s.size), &links);
     if (links.first != links.last) {
-        for (link = links.first; link != (struct TagLink *)links.last; link++) {
+        for (link = links.first; link != (struct UiTagLink *)links.last; link++) {
             if (self->split_tipbox_links == 1) {
                 struct Vec pieces = { 0 };
                 unsigned j;
@@ -369,7 +363,7 @@ static void add_url_links(struct UITextViewer *self, struct String text, int lin
 {
     struct String s;
     struct Vec links = { 0 };
-    struct TagLink *link;
+    struct UiTagLink *link;
 
     plain_text(&s, &text);
     apply(&s, "<NAVI>", "</NAVI>");
@@ -380,7 +374,7 @@ static void add_url_links(struct UITextViewer *self, struct String text, int lin
     apply(&s, "<QUEST>", "</QUEST>");
     ui_window_parse_url_links(&self->list.base, string_from(string_cstr(&s), s.size), &links);
     if (links.first != links.last) {
-        for (link = links.first; link != (struct TagLink *)links.last; link++) {
+        for (link = links.first; link != (struct UiTagLink *)links.last; link++) {
             struct UITextButton *btn = new_link(self, &link->label, URL_COLOUR);
 
             btn->hover_colour = URL_HOVER;
