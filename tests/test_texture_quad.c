@@ -45,7 +45,7 @@ struct Texture *texture_cache_get(struct TexCache *cache,
                                              const char *name, int a, int b)
 {
     assert(cache == &g_textureCache && a == 0 && b == 0);
-    assert(strcmp(name, "유저인터페이스\\T_GameGrade.tga") == 0);
+    assert(strcmp(name, "유저인터페이스\\") == 0);
     ++texture_queries;
     return missing_texture ? NULL : &texture;
 }

@@ -22,10 +22,7 @@ enum {
     LOGIN_PIECE_UNPICKED = 6
 };
 
-#define GRADE_TGA UI_SKIN "T_GameGrade.tga"
 #define TILE_FMT UI_SKIN "T_배경%d-%d.bmp"
-#define TAPE_FMT UI_SKIN "T_테입%d.tga"
-#define RATING_TGA UI_SKIN "T_중력성인.tga"
 #define LOGO_FMT UI_SKIN "T_R%d.tga"
 
 static void draw(RECT *rc, struct Texture *tex)
@@ -130,21 +127,17 @@ static void draw_tiles(int tw, int th)
 
 static void draw_tape(struct UIWindowMgr *self, int tw, float fth)
 {
-    char name[256];
     RECT rc;
     int x;
-    signed char n = 0;
 
     for (x = 0; x < tw * 4;) {
-        n++;
         rc.left = x;
         x += tw;
         rc.right = x;
         rc.top = (int)(fth * 2.5f + (float)self->tape_y);
         self->tape_top = (short)rc.top;
         rc.bottom = (int)(fth * 3.0f + (float)self->tape_y);
-        sprintf(name, TAPE_FMT, n);
-        draw(&rc, texture_cache_get(&g_textureCache, name, 0, 0));
+        draw(&rc, texture_cache_get(&g_textureCache, UI_SKIN, 0, 0));
     }
 }
 
@@ -183,7 +176,7 @@ void ui_window_mgr_draw_login_screen(struct UIWindowMgr *self)
     int tw = (short)(g_renderer->width / 4);
     int th = (short)(g_renderer->height / 3);
     float fth;
-    struct Texture *grade = texture_cache_get(&g_textureCache, GRADE_TGA, 0, 0);
+    struct Texture *grade = texture_cache_get(&g_textureCache, UI_SKIN, 0, 0);
 
     if (grade) {
         self->grade_width = ((unsigned)grade->reqWidth);
@@ -204,13 +197,13 @@ void ui_window_mgr_draw_login_screen(struct UIWindowMgr *self)
     rc.top = self->grade_y;
     rc.right = self->grade_x + self->grade_width;
     rc.bottom = self->grade_y + self->grade_height;
-    draw(&rc, texture_cache_get(&g_textureCache, GRADE_TGA, 0, 0));
+    draw(&rc, texture_cache_get(&g_textureCache, UI_SKIN, 0, 0));
 
     rc.left = (int)((float)self->rating_x + (float)tw * 3.1f);
     rc.top = (int)((float)self->rating_y + fth * 2.4f);
     rc.right = rc.left + tw;
     rc.bottom = (int)((float)rc.top + fth * 0.5f);
-    draw(&rc, texture_cache_get(&g_textureCache, RATING_TGA, 0, 0));
+    draw(&rc, texture_cache_get(&g_textureCache, UI_SKIN, 0, 0));
 
     draw_logo(self, tw, th, fth);
 }

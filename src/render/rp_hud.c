@@ -31,7 +31,7 @@ void renderer_draw_game_grade_badge(struct Renderer *self)
     if (state < 1)
         return;
 draw:
-    tex = texture_cache_get(&g_textureCache, "유저인터페이스\\T_GameGrade.tga", 0, 0);
+    tex = texture_cache_get(&g_textureCache, "유저인터페이스\\", 0, 0);
     if (!tex)
         return;
     rc.left = self->width - tex->reqWidth - 0x8c;
