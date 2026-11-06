@@ -12279,3 +12279,127 @@ need no second run there unless it gets new work.
   paths such as `src/knot/game/mode_run.c`), or flatter folders with rewritten includes.
 - Whether `main` gets the same moves, or `main` fixes that add files are moved by hand.
 - Whether the libraries link becomes the default after the moves.
+
+## Foundation fixes ported from main (2026-11-06)
+
+Decision: Patrick asked for `main`'s fixes to be applied to `purist`, carefully, now that its
+structure differs. `main` had 64 commits that `purist` did not have and had not recorded as
+done, already fixed or not needed in the [upstream notes](upstream/README.md):
+
+- 52 from 2026-11-02, which reached `main` with its merge of GitHub's `main` (`af2a04f7`): the
+  file readers (SPR, ACT, GND, GAT, RSW, RSM2, IMF, PAL, BMP, PNG, GIF, WAV, GRF, loose files),
+  STR playback, the renderer and graphic settings, text and link parsing, and a naming pass;
+- 12 from 2026-11-05: ten from kbirk/fenrir-ragexe, the Star Gladiator name bound and the
+  whip shimmer.
+
+They were picked onto `purist-libs` (after the library table) in `main`'s order with
+`git cherry-pick -x`, one at a time; Kevin Birk's keep his authorship. A pick that conflicted
+or that does not build on `purist`'s other platforms was resolved by hand, and its message says
+how under "On purist". The [upstream notes](upstream/README.md#foundation-fixes-ported-from-main-2026-11-06)
+list every commit with its `purist` commit or why it is left out.
+
+| | commits |
+|---|---|
+| picked as they are | 33 |
+| adapted | 24 |
+| left out | 7 |
+
+### Adapted
+
+- **Removed features.** Where `main`'s change also touched code `purist` removed, only the rest
+  was taken: the job-level maximum without the third, fourth, expanded and Doram classes (its
+  test checks the classes `purist` has), the live display apply without the launcher page, the
+  skill use pose without the third-class skills `0x917`, `0x91a` and `0x920`, the item link
+  card loop without item grades, the NPC dialog without the German prefix, the network loop
+  without replay playback, the item restriction test without the language-folder lookup (and
+  without its two command-line modes for the old strict reader), the talk-option test without
+  the PC-bang flag.
+- **Already done differently.** The cached screen-size values were behind once guards on
+  `purist`; the guards go with them. The name copies of `ac4f50ec` were already text copies
+  (left out, below).
+- **The platform layer.** The game loop's sleep goes through a new `platform_thread_sleep`
+  (`Sleep`, `nanosleep`); the draw batch's owner is `platform_thread_id()`; the empty-file
+  check uses the platform file calls; the GIF decoder keeps `platform_ticks_ms`; the OpenGL
+  backend answers `gfx_can_set_mode_live` (any adapter, when it has a context) and reports the
+  renamed `trilinear` capability.
+- **MSVC-only calls.** `_snprintf_s` (Star Gladiator name) became `utf8_copy_prefix`, which
+  also cuts by whole characters; `sscanf_s` (broadcast colour) became `sscanf`;
+  `__declspec(thread)` (sin/cos cache) became `__declspec(thread)` under MSVC and
+  `_Thread_local` elsewhere, since MSVC knows `_Thread_local` only with `/std:c11`, which the
+  test scripts do not pass.
+- **UTF-8.** The broadcast annotation cut (`33df070c`) cuts the repeated text with
+  `utf8_prefix`, so it never splits a character; its test checks such a cut and fails with a
+  plain byte cut. The bracket-wrap test keeps its UTF-8 cases beside `main`'s new ASCII ones.
+- **giflib.** With `main`'s own GIF decoder, giflib also leaves the CMake build (`rage_gif` and
+  the client's link) and the two `purist`-only test scripts that compiled or linked it.
+- **Names.** `996806c1` renames constants and functions whose names contradicted their values.
+  On `purist` some had already been renamed, and several constants are defined per `.c` file
+  with different values (`CHAT_COLOR_YELLOW` is `0x00ffff` in one file and `0xffff00`, really
+  cyan, in another), so a name is changed only in the files where `main` changed it, and
+  everywhere only when one header defines it. No value changes.
+- **Tests.** `tests\build.bat` gets each new test before the library checks, which stay last.
+  The draw-batch tests link the platform thread file. The name-text extractor reads
+  `WND_ITEM_COLLECTION` from its header, as `main`'s does since the naming pass.
+
+### Left out
+
+| `main` | Why |
+|---|---|
+| `ac4f50ec` names as text | already on `purist` (`b2d7102e`) |
+| `bcc333b2` RoDEX TaeKwon names | already on `purist` (empty pick) |
+| `a38ec2e1`, `e20a417a` README | `purist`'s README lists its deviations, not `main`'s fixes |
+| `e9d8d0ab` Swap button | the swap-equipment window is removed |
+| `dd6cec07` embedded fonts | the embedded Korean fonts went with the langtype 20 lock |
+| `91c5764c` macro detector | the macro detector is removed |
+
+### What changes in the recorded results
+
+Behaviour changes are the point of these fixes; these are the recorded results they move, each
+traced to one commit by running the test before and after every commit that could touch it
+(`build/trace-bisect.txt`, `build/render-bisect.txt`):
+
+- **Effect trace** (`tests/test_effect_trace.c`): only `c828e76b` (STR layers finished by the
+  original's rules) changes it, to 2,083,072 steps, 36,991 primitives and digest
+  `5c269a851ffa6be1` (was 2,031,553, 36,986, `cbdaaf30ef3127d6`); the expected digest moves in
+  that commit. The EZ2STR digest `1b0232b840610959` stays.
+- **The 16 `render` lines of `test_renderer_storage`**: only `b715096f` (the texture arguments
+  of blend modes 6, 7 and 12) changes them.
+- Result lines that name new cases: item links (extra cards), ACT and SPR owners (more
+  versions, prefixes and uploads), wave/palette, the bitmap fixtures (37 instead of 23, no
+  giflib), GIF emblems, the attribute grid (an unsupported GAT version), STR playback (the
+  completion rules), item tags, item restrictions (the tokenizer), file I/O (empty loose files),
+  water numerics, the scene resource (versions 0.x, unknown objects). Every other result line of
+  the suite is unchanged, among them packet dispatch `d77aaadbb5fc63b7`, effect factories
+  `d3673c01`, EZ2STR `1b0232b840610959`, window lists `2232167ff470caa7`, the object-type counts
+  and the startup order. New lines: the job-level maximum and the draw batch.
+
+### Validation
+
+Clean exports of `purist-libs` before the port (`build/snap/ptip`) and after it
+(`build/snap/pfinal3`, `pfinal2` for the variants and CMake), logs `libs-<label>-*` in the
+worktree's `build/`.
+
+- **Windows x86, x64 and FreeType** (`build.bat`, `x64`, `freetype`; the same with `check` and
+  `libs`): no compiler, librarian or linker warnings. The include and link checks pass with the
+  same 269 and 129 exceptions; no ported commit needed a new one.
+- **The full `tests\build.bat`** passes, and so do the seven standalone suites with their
+  unchanged result lines. The result lines differ from the export before the port only as listed
+  above.
+- **CMake with MSVC** (Win32 and x64, Debug): builds without warnings; CTest passes 23 of 23 and
+  22 of 22.
+- **Linux** (WSL Ubuntu 24.04, GCC 13.3, `-DRAGE_CLIENT=ON`): the client and the tests build and
+  CTest passes 28 of 28 (`library_includes` and `library_links` among them). GCC reports 1,665
+  warnings instead of 1,671: giflib's are gone, and `ui/shops/merchant_shop.c` lost its
+  `-Wformat-security` warning with the price-limit notice's restored argument (`7d405c00`). No
+  new warning in a client file. This build found what MSVC could not: `_snprintf_s`,
+  `sscanf_s` and `GetCurrentThreadId` in shared code and the GL backend's stale capability name
+  (all adapted above).
+- `git diff --check` passes for every commit.
+
+Not run: macOS and Android, a live client, the scene captures (they need game data).
+
+### Found, not fixed
+
+- On `main`, `broadcast_text_strip_annotation` (`33df070c`) cuts the repeated text at a byte
+  count, which can split a CP949 double-byte character at the end of a 1,024-byte broadcast.
+  `purist` cuts on a character boundary (above).
