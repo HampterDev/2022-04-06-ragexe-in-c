@@ -259,6 +259,35 @@ static void send_stat_raises(struct GameMode *self)
     }
 }
 
+static DWORD mute_next_check;
+static int muted, unmuted_bgm_volume, unmuted_effect_volume;
+
+static void auto_mute(void)
+{
+    DWORD now = timeGetTime();
+
+    if ((int)now < (int)mute_next_check)
+        return;
+    mute_next_check = now + 500;
+    if (!muted) {
+        unmuted_bgm_volume = sound_bgm_volume();
+        unmuted_effect_volume = sound_effect_volume();
+    }
+    if (GetActiveWindow()) {
+        if (!muted)
+            return;
+        muted = 0;
+        sound_set_effect_volume(unmuted_effect_volume);
+        sound_set_effect_volume_3d(unmuted_effect_volume);
+        sound_set_bgm_volume(unmuted_bgm_volume);
+    } else if (!muted) {
+        muted = 1;
+        sound_set_effect_volume(0);
+        sound_set_effect_volume_3d(0);
+        sound_set_bgm_volume(0);
+    }
+}
+
 void game_mode_on_update(struct Mode *mode)
 {
     struct GameMode *self = (struct GameMode *)mode;
@@ -288,6 +317,7 @@ void game_mode_on_update(struct Mode *mode)
         c3d_device_restore_surfaces(&g_3dDevice);
         ui_window_mgr_invalidate_all(&g_windowMgr);
     }
+    auto_mute();
     weather_process(&g_weather);
     if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
         return;
