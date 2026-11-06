@@ -190,6 +190,7 @@ char connection_connect(struct Connection *self, const struct ServerAddress *add
     char ip[sizeof *address];
     const char *colon;
     u_long non_blocking = 1;
+    BOOL no_delay = TRUE;
     int port, err;
     connection_set_hold_sends(self, 0);
     byte_queue_reset(&self->recv_queue, CONNECTION_QUEUE_SIZE);
@@ -199,6 +200,7 @@ char connection_connect(struct Connection *self, const struct ServerAddress *add
     self->socket = socket(AF_INET, SOCK_STREAM, 0);
     if (self->socket == INVALID_SOCKET)
         return 0;
+    setsockopt(self->socket, IPPROTO_TCP, TCP_NODELAY, (const char *)&no_delay, sizeof no_delay);
     if (ioctlsocket(self->socket, FIONBIO, &non_blocking) == SOCKET_ERROR) {
         error_msg("Failed to setup select mode", 0);
         return 0;
