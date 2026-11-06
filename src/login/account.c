@@ -155,7 +155,6 @@ void login_mode_on_accept_login(struct LoginMode *self, const BYTE *pkt, int for
     BYTE sex;
     BYTE textType;
 
-    g_session1.loginTick = timeGetTime();
     text = msg_str(0x3ac);
     string_assign_cstr(&g_session1.autoMessage, text);
     g_session1.authCode = packet->head.auth_code;
