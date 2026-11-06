@@ -580,6 +580,7 @@ int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
     case UI_MSG_COMMAND:
         switch (val1) {
         case LOGIN_CMD_CANCEL:
+        case LOGIN_ID_CANCEL:
             mode_send_message(client_current_mode(), LOGIN_REQ_TO_SERVICE_SELECT, 0, 0, 0, 0);
             break;
         case LOGIN_ID_START:
