@@ -12502,3 +12502,65 @@ cycles inside `render` and `resources`, which the table allows.
 Recorded: `build/knot-cuts-tip.txt` and `.json` in the `purist-libs` worktree. Rerun after each
 cut with `python tools/depmap/knot_cuts.py <checkout> <symbols> <out.json>` (`symbols.bat` writes
 the listing).
+
+## Knot cuts 1 and 2: the effect processes and primitives (2026-11-06)
+
+Decision: Patrick chose the first two cuts of the [ranking](#ranking-the-knots-cuts-2026-11-06).
+Three commits, behaviour unchanged:
+
+- `71a0ad7` **cut 1**: `rag_effect.c`'s method table named `rag_effect_on_process`, the switch
+  over every effect ID. Its `on_process` is now a small function that calls
+  `g_ragEffectProcess` (`effects/rag/rag_effect.h`), which `client_install_hooks()` sets to
+  `rag_effect_on_process`. NULL: an effect ends at its first frame, as when its process returns 0
+  (`world_process_actors` then removes and destroys it). `test_effect_trace` installs the hook.
+- `a010e31` **cut 2**: `prim_triangle_construct` and `effect_prim_send_msg`, which the effect base
+  calls in its constructor and when it lets go of its primitives, move unchanged from
+  `effect_prim.c` to the new `effects/rag/effect_prim_shared.c`, which uses nothing of the
+  client.
+- `3d98e62` **the table**: the 54 files that left the knot become the library `feat-rag`, which
+  uses the knot: `effects/rag/` except the effect base (`rag_effect.*`, `rag_str_anim.*`,
+  `rag_str_playback.c`, `effect_prim_shared.c`), plus `effects/effect_objects.c` and
+  `session/session_efst_image.c`. `effect_prim.h`, `prim_records.h` and `rag_effect_types.h` stay
+  with the knot, since `rag_effect.h` needs their types; the table's note says so. No new
+  exception.
+
+### Measured
+
+| | knot files / lines | library layer | above the knot | clusters |
+|---|---|---|---|---|
+| `dd3d5ba` (before) | 273 / 96,292 | 507 / 97,137 | 312 / 105,217 | 127 |
+| `a010e31` (after cut 2) | 219 / 62,995 | 508 / 97,161 | 366 / 138,506 | 128 |
+
+As the ranking predicted (219 / 62,986, plus the nine lines of the hook). The freed primitives
+call each other, so above the knot they are an SCC of their own (24 files), as the effect classes
+of `effects/skills` are clusters. `knot_cuts.py` on the new objects gives the ranking's cuts 3 to
+26 unchanged (36 symbols) and the same second SCC (`build/knot-cuts-12.txt`).
+
+### Proof
+
+- **Effect trace:** both digests unchanged after each commit (`5c269a851ffa6be1`,
+  `1b0232b840610959`). Without the hook installed in the test it fails: 8,865 steps, no
+  primitives, digest `d4f729a52d9dfac3`.
+- **The table:** on the objects from before the two cuts (`build/snap/pfinal3`), the link check
+  with the new table fails on exactly the three uses they removed: `rag_effect.c` uses
+  `effect_prim_send_msg`, `prim_triangle_construct` and `rag_effect_on_process`. A change that
+  ties the effect base to the processes or the primitives again fails it.
+
+### Validation
+
+Clean exports of each commit (`build/snap/k1`, `k2`, `k3`), logs `libs-k<n>-*` in the worktree's
+`build/`.
+
+- **Each commit:** `build.bat` without compiler, librarian or linker warnings; the full
+  `testsuild.bat` and the seven standalone suites pass. Every result line is the one of the
+  export before the cuts (`pfinal3`) except the two library-check lines: one more file, include
+  and use (`effect_prim_shared.c` and the hook's include), and at `3d98e62` 19 libraries
+  instead of 18.
+- **At `3d98e62`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`
+  (one static library per table library, `feat-rag` among them): no warnings; the include and
+  link checks pass with the same 269 and 129 exceptions. CMake with MSVC, Win32 and x64 (Debug):
+  no warnings, CTest 23 of 23 and 22 of 22. Linux (WSL, GCC 13.3): CTest 28 of 28, 1,665
+  warnings as before.
+- `git diff --check` passes for each commit.
+
+Not run: macOS and Android, a live client.
