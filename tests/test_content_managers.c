@@ -134,6 +134,7 @@ int main(int argc,char **argv)
 {
     unsigned before,i;
     if(argc>1) {trace=fopen(argv[1],"wb");assert(trace);}
+    g_clientLuaFunctions=client_lua_register_functions;
     destroy_all();assert(!allocation_count);
     fail_manager=1;
     assert(!map_sky_mgr_instance());assert(!live_blocks && !lua_bytes);

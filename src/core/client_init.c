@@ -5,6 +5,7 @@
 #include "core/object_type_registry.h"
 #include "core/packet_table.h"
 #include "core/res_mgr.h"
+#include "contents/client_lua.h"
 #include "contents/guild_emblem_hooks.h"
 #include "contents/guild_info.h"
 #include "core/xml.h"
@@ -112,6 +113,7 @@ static void client_install_hooks(void)
     g_ragEffectProcess = rag_effect_on_process;
     g_gameActorHandleMsg = game_actor_handle_msg;
     g_renderObjectDraw = render_object_draw;
+    g_clientLuaFunctions = client_lua_register_functions;
     g_sessionBasicInfoHeight = ui_basic_info_wnd_set_height;
     g_actorSpawns.launch_arrow = game_mode_launch_arrow;
     g_actorSpawns.launch_plant_attack = game_mode_launch_plant_attack;

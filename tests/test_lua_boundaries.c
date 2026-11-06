@@ -314,6 +314,7 @@ int main(void)
     struct ClientLua lua;
     long allocations, query_allocations = 0, i;
     int operation;
+    g_clientLuaFunctions = client_lua_register_functions;
     client_lua_construct(&lua);
     client_lua_open(&lua);
     assert(lua.L);
