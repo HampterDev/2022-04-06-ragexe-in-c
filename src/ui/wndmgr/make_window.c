@@ -130,12 +130,12 @@ static struct UIWindow *make_make_char(struct UIWindowMgr *self)
     struct UIWindow *wnd, *backdrop;
 
     wnd = ui_new_make_char_wnd_new();
-    backdrop = (struct UIWindow *)uirp_image_wnd_new(UI_SKIN "make_character_ver2\\bg_back2.tga", 1);
+    backdrop = (struct UIWindow *)uirp_image_wnd_new("", 1);
     ui_window_create(backdrop, 0x404, 0x300);
     wm_move(backdrop, wm_center_x(0x404) - 2, wm_center_y(0x300));
     ui_window_mgr_add_window(self, backdrop);
     ui_window_create(wnd, 0x31a, 0x1a6);
-    wm_move(wnd, wm_center_x(0x31a), wm_center_y(0x1a6) - 0x46);
+    wm_move(wnd, wm_center_x(0x31a), wm_center_y(0x1a6) - 6);
     ui_window_mgr_add_window(self, wnd);
     return wnd;
 }
