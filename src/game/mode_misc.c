@@ -43,10 +43,9 @@ char game_mode_has_resurrection_token(struct GameMode *self)
     struct ItemInfo item, tmp;
     char found;
 
+    (void)self;
     session_get_inventory_item_by_id(&g_session1, &item, 0x1dc5, 0);
-    if (self->world->is_pvp != 0 || self->world->is_siege != 0 || self->world->is_event_pvp != 0) {
-        found = 0;
-    } else if (has_item(&item)) {
+    if (has_item(&item)) {
         found = 1;
     } else {
         item_info_assign(&item, session_get_inventory_item_by_id(&g_session1, &tmp, 0x1ab1, 0));
