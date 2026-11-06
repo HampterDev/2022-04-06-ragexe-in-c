@@ -526,7 +526,7 @@ static void captcha_register_send(struct UICaptchaRegisterWnd *self)
         return;
     }
     snprintf(question, sizeof question, msg_str(MSG_CAPTCHA_CONFIRM), ui_edit_ctrl_get_text(self->answer_edit));
-    answer = ui_window_mgr_message_box(&g_windowMgr, question, 2, 0, 0, 0, "메시지", 0x118, 0x78, 0);
+    answer = ui_window_mgr_message_box(&g_windowMgr, question, 2, 0, 0, 0, "Message", 0x118, 0x78, 0);
     if (answer == MSGBOX_ID_NO)
         return;
     packet.id = PACKET_CAPTCHA_REGISTER;

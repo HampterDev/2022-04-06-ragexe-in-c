@@ -253,7 +253,7 @@ int ui_video_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
         break;
     case UI_MSG_VIDEO_ASK_SKIP:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_VIDEO_SKIP_QUESTION), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
+                                   "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
             ui_close_window(VIDEO_WND_ID);
         break;
     case UI_MSG_COMMAND:

@@ -308,7 +308,7 @@ static int is_own_name(const struct PartyMember *m)
 
 static int ask(int msg_id)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_QUESTION, 0, 0, 0, "메시지",
+    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_QUESTION, 0, 0, 0, "Message",
                                   0x118, 0x78, 0);
 }
 
@@ -426,7 +426,7 @@ static void menu_choice(struct UIMiniPartyInfoWnd *self, int index)
     if (!m.found)
         goto out;
     if (self->menu.first == self->menu.last) {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xca4), UI_MSGBOX_OK, 0, 0, 0, "메시지", 0x118, 0x78,
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xca4), UI_MSGBOX_OK, 0, 0, 0, "Message", 0x118, 0x78,
                                0);
         goto out;
     }

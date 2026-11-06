@@ -783,7 +783,7 @@ int ui_basic_info_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender,
         if (!g_windowMgr.merchant_shop_make_wnd && !g_windowMgr.merchant_item_my_shop_wnd)
             ui_window_open(0x1b);
         else
-            ui_window_mgr_message_box(&g_windowMgr, msg_str(0x24b), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+            ui_window_mgr_message_box(&g_windowMgr, msg_str(0x24b), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         break;
     case BASIC_CMD_CLOSE_ALL: {
         size_t i;

@@ -91,10 +91,10 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
                    "에러발생. 클라이언트 담당자 "
                    "에게 에러 사실을 통보 하세요. "
                    "위치 - CPlayer :: GetMonsterSkillInfo",
-                   0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+                   0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         ui_window_mgr_message_box(&g_windowMgr,
                    "action 또는 loopType 이 존재하지 않음.",
-                   0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+                   0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         return;
     }
     *action = node_number(actionNode);

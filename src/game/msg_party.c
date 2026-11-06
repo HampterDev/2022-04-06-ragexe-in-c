@@ -159,7 +159,7 @@ int game_mode_msg_leave_party(struct GameMode *self)
         chat_print_msg(0xcc9, CHAT_COLOR_RED);
         return 0;
     }
-    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xcb9), 2, 0, 0, 0, "메시지", 0x118, 0x78, 0) != 0xb3)
+    if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xcb9), 2, 0, 0, 0, "Message", 0x118, 0x78, 0) != 0xb3)
         return 0;
 leave:
     if (g_windowMgr.party_invitation_to_wnd)

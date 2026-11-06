@@ -220,7 +220,7 @@ void login_mode_on_update(struct Mode *mode)
 
 static int timeout_box(int msgId)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msgId), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, msg_str(msgId), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 void login_mode_check_timeouts(struct LoginMode *self, int subMode)

@@ -54,7 +54,7 @@ void ui_window_mgr_release_capture(struct UIWindowMgr *self);
 #define UI_MSGBOX_ANSWER_YES 0xb3
 static __inline int ui_message_box(const char *text)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 0, 0, "메시지",
+    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_OK, 1, 0, 0, "Message",
                                   0x118, 0x78, 0);
 }
 

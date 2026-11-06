@@ -117,7 +117,7 @@ int ui_window_mgr_message_box(struct UIWindowMgr *w, const char *text, int type,
                           const char *title, int width, int height, int d)
 {
     assert(w == &g_windowMgr && !type && a == 1 && b == 1 && !c && !d);
-    assert(!strcmp(title, "메시지") && width == 0x118 && height == 0x78);
+    assert(!strcmp(title, "Message") && width == 0x118 && height == 0x78);
     strcpy(notice_text, text); ++boxes; return 0;
 }
 

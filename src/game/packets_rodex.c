@@ -450,7 +450,7 @@ void game_mode_zc_rodex_return_ack(struct GameMode *self, int mail_id, int resul
         }
         msg = 0xf19;
     }
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
     rodex_chat(msg);
 }
 

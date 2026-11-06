@@ -190,7 +190,7 @@ void emblem_mgr_on_uploaded(struct EmblemMgr *self, int succeeded,
                 rag_connection_send_packet(rag_connection_instance(), len, &packet);
             } else if ((unsigned)(type - 2) <= 2) {
                 ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_EMBLEM_UPLOAD_FAILED), 0, 1, 0, 0,
-                                       "메시지", 0x118, 0x78, 0);
+                                       "Message", 0x118, 0x78, 0);
             }
             self->upload_blocked = 0;
         }

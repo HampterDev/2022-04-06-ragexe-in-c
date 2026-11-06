@@ -852,7 +852,7 @@ static int on_command(struct UINewSkillListWnd *self, int id)
     }
     case ID_APPLY:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_APPLY_QUESTION), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
+                                   "Message", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
             return 0;
         skill_tree_apply_points(self);
         ui_new_skill_list_wnd_send_msg(wnd, NULL, MSG_REFRESH, 0, 0, 0, 0);

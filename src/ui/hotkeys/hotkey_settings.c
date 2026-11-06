@@ -541,7 +541,7 @@ static int hotkey_wnd_take_key(struct UIHotKeyWnd *self)
             if (n != self->selected || group != self->group) {
                 _snprintf_s(text, sizeof text, (size_t)-1, msg_str(MSG_HOTKEY_ASK_REPLACE),
                                string_cstr(&key.action));
-                if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+                if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "Message",
                                            0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                     key.code = 0;
                     key.modifier = 0;

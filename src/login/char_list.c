@@ -49,7 +49,7 @@ SIZE_ASSERT(PACKET_HC_CHAR_LIST, 4);
 
 static void list_error_box(const char *text)
 {
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void billing_swap(struct LoginMode *self)

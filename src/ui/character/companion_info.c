@@ -397,7 +397,7 @@ void ui_homun_info_wnd_on_draw(struct UIWindow *window)
 
 static int ask(const char *text)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 0, 0, 0, "메시지", 0x118,
+    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 0, 0, 0, "Message", 0x118,
                                   0x78, 0);
 }
 

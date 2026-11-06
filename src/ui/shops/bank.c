@@ -160,7 +160,7 @@ void ui_bank_new_wnd_on_create(struct UIWindow *window, int width_unused, int he
     struct UIWindow *wnd = &self->frame.base;
     struct UIWindow *edit;
 
-    ui_window_add_close_button(wnd, "닫기", 0);
+    ui_window_add_close_button(wnd, "Exit", 0);
     ui_window_add_bitmap_button(wnd, BANK_ID_DEPOSIT, 0xd1, 0x4d, "bank\\btn_deposit", msg_str(MSG_BANK_DEPOSIT));
     ui_window_add_bitmap_button(wnd, BANK_ID_WITHDRAW, 0xd1, 0x66, "bank\\btn_withdraw", msg_str(MSG_BANK_WITHDRAW));
     ui_window_add_bitmap_button(wnd, BANK_ID_STEP_UP, 0xb1, 0x59, "bank\\btn_upper", msg_str(MSG_BANK_STEP_UP));

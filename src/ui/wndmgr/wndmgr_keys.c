@@ -35,7 +35,7 @@
 
 static int ask(struct UIWindowMgr *mgr, const char *text)
 {
-    return ui_window_mgr_message_box(mgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(mgr, text, UI_MSGBOX_QUESTION, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void click(struct UIWindow *wnd, int id)

@@ -113,7 +113,7 @@ void game_mode_zc_ack_open_msg_box_extend_body_item_size(
         format = msg_str(0xde9);
         string_init(&text);
         string_format(&text, format, item_name, extension + 100, extension + 110);
-        answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 2, 0, 0, 0, "메시지", 0x118, 0x78, 0);
+        answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 2, 0, 0, 0, "Message", 0x118, 0x78, 0);
         string_free(&text);
         mode_send_msg(self, answer == MSGBOX_YES ? MM_EXTEND_BODYITEM_ACCEPT : MM_EXTEND_BODYITEM_REFUSE, 0, 0, 0, 0);
         return;

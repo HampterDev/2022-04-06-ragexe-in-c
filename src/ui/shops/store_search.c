@@ -219,7 +219,7 @@ void ui_serach_store_info_wnd_on_l_btn_dbl_clk(struct UIWindow *window, int x, i
     if (info.id_text.size && (unsigned)(x - 0x33) <= 0x6c && (result = page_result(self, self->row)) != NULL &&
         (!g_session1.storeSearchItemLimit ||
          ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_SEARCH_CONFIRM_CLICK), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)) {
+                                "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)) {
         struct PACKET_CZ_SSILIST_ITEM_CLICK packet;
         void *conn;
 

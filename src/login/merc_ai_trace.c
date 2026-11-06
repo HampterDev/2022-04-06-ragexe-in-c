@@ -76,7 +76,7 @@ int merc_ai_trace_ai(lua_State *L)
     file_open(&f, dir, 0x1001, 1, 0);
     if (size)
         file_write(&f, old, size);
-    sprintf(stamp, "%d년 %d월 %d일 %d시 %d분 %d초 ", date >> 16, (BYTE)(date >> 8), (BYTE)date,
+    sprintf(stamp, "%d/%d/%d - %d:%d:%d", date >> 16, (BYTE)(date >> 8), (BYTE)date,
                 (BYTE)(time >> 16), (BYTE)(time >> 8), (BYTE)time);
     file_write(&f, stamp, strlen(stamp));
     file_write(&f, text, strlen(text));

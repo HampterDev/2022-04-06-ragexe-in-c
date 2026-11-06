@@ -38,7 +38,7 @@ enum {
 
 static void nothing_to_choose(void)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_IN_LIST), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_IN_LIST), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 void game_mode_zc_makable_item_list(struct GameMode *self, const struct PacketMakableItemList *packet)

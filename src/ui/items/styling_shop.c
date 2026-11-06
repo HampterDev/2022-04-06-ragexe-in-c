@@ -1186,7 +1186,7 @@ int ui_styling_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow *sende
     case STYLE_ID_BUY:
         if (self->buy->button.cmd_value == 0
             && ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb02), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                      "메시지", 0x118, 0x78, 0)
+                                      "Message", 0x118, 0x78, 0)
                    != 0xb4
             && self->tabs.size) {
             styling_shop_buy(self);

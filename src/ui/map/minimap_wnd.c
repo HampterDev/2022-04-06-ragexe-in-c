@@ -687,7 +687,7 @@ static int minimap_command(struct UIMiniMapWnd *self, int id)
     }
 
     if (id >= MEMO_ID_FIRST && id < MEMO_ID_FIRST + MEMO_MAX) {
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xabf), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0xabf), UI_MSGBOX_QUESTION, 1, 0, 0, "Message",
                                    0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
             if (minimap_save_memos(self, id - MEMO_ID_FIRST) >= 0) {
                 self->memo_count = minimap_load_memos(self);

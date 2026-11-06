@@ -65,7 +65,7 @@ void login_mode_on_play_time(struct LoginMode *self, const BYTE *pkt)
 
 show:
     self->stateTick = timeGetTime() + 90000;
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 1, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void open_account_page(void)
@@ -107,7 +107,7 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
     case 5:   id = 0x131; break;
     case 6:
         strcpy(text, msg_str(0x1b6));
-        if (ui_window_mgr_message_box(&g_windowMgr, text, 2, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0xb3) {
+        if (ui_window_mgr_message_box(&g_windowMgr, text, 2, 1, 1, 0, "Message", 0x118, 0x78, 0) == 0xb3) {
             mode_mgr_quit(&g_modeMgr);
             open_account_page();
         }
@@ -149,7 +149,7 @@ void login_mode_on_disconnect_reason(struct LoginMode *self, const BYTE *pkt)
 show:
     if (strlen(text) != 0) {
         sprintf(line, "%s(%d)", text, packet->code);
-        ui_window_mgr_message_box(&g_windowMgr, line, 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, line, 0, 1, 1, 0, "Message", 0x118, 0x78, 0);
     }
     if (g_session1.canBackToLogin == 1)
         self->base.next_sub_mode = 3;

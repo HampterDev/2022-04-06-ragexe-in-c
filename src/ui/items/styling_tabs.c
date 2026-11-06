@@ -456,7 +456,7 @@ static void my_style_delete(struct UIMyStyleWnd *self, struct UIWindow *sender)
     int i;
 
     if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_MY_STYLE_DELETE), UI_MSGBOX_QUESTION, 0, 0, 0,
-                               "메시지", 0x118, 0x78, 0)
+                               "Message", 0x118, 0x78, 0)
         == 0xb4)
         return;
     for (i = 0; i < MY_STYLE_SLOTS; i++) {

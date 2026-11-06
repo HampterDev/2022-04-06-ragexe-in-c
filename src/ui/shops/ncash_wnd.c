@@ -714,7 +714,7 @@ static void buy(struct UInCashWnd *self)
                      header.points);
     else
         _snprintf(text, 0x800, msg_str(MSG_NCASH_CONFIRM), self->cart_total);
-    if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 1, 0, "메시지", 0x118, 0x78,
+    if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 1, 0, "Message", 0x118, 0x78,
                                0) != UI_MSGBOX_ANSWER_YES)
         return;
     count = session_get_shop_buy_list_size(&g_session1);

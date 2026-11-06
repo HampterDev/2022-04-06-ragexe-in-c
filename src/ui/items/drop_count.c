@@ -512,7 +512,7 @@ int ui_item_drop_cnt_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
         if (count >= COUNT_CAP_CASH_CART) {
             string_init(&text);
             string_format(&text, msg_str(MSG_COUNT_CAPPED), COUNT_CAP_CASH_CART);
-            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_OK, 1, 0, 0, "메시지",
+            ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_OK, 1, 0, 0, "Message",
                                    0x118, 0x78, 0);
             string_free(&text);
             break;

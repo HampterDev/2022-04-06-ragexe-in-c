@@ -173,7 +173,7 @@ void game_mode_process_talk_type(struct GameMode *self, int type, struct String 
         else if (g_windowMgr.merchant_shop_make_wnd != 0 && g_windowMgr.merchant_item_my_shop_wnd == 0)
             mode_msg(self, 0x52, 0);
         else
-            ui_window_mgr_message_box(&g_windowMgr, msg_str(0x24b), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+            ui_window_mgr_message_box(&g_windowMgr, msg_str(0x24b), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         break;
     case 0x18: mode_msg(self, 0x30, 0); break;
     case 0x19:

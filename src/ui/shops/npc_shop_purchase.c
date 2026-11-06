@@ -355,7 +355,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
         return;
     }
     if (points == 0 && g_session1.cashPoints < total
-        && ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CASH_NO_FREE), UI_MSGBOX_OK, 1, 0, 0, "메시지",
+        && ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CASH_NO_FREE), UI_MSGBOX_OK, 1, 0, 0, "Message",
                                   0x118, 0x78, 0) != 0)
         return;
     {
@@ -371,7 +371,7 @@ static void purchase_buy(struct UIItemPurchaseWnd *self, struct Mode *mode)
         string_assign(&text, string_cstr(&tmp), tmp.size);
         string_free(&tmp);
         if (ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_QUESTION, 1, 1, 0,
-                                   "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+                                   "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
             ui_window_mgr_set_focus_edit(&g_windowMgr, self->points);
             ui_edit_ctrl_set_text((struct UIEditCtrl *)self->points, "0");
             mode_send_message(mode, MODE_REQ_CASH_BUY, points, 0, 0, 0);
@@ -510,7 +510,7 @@ int ui_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             else if (g_session1.channelCopId == 1)
                 fmt = "Total : %d " CASH_HANCOIN;
             else
-                fmt = "Total : %d " CASH_WORD;
+                fmt = "Total : %d Cash";
         }
         sprintf(text, fmt, 0);
         ui_static_text_set_text_fit(self->total, text);

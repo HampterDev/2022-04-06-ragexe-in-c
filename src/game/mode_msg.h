@@ -349,7 +349,7 @@ static __inline void chat_refresh(void)
 
 static __inline int message_box_msg(int id)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, msg_str(id), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, msg_str(id), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static __inline struct GameActor *mode_actor(struct GameMode *self, int aid)

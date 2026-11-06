@@ -696,7 +696,7 @@ static void menu_choice(struct UIGuildMemberManageWnd *self, int choice)
             string_init(&text);
             string_format(&text, msg_str(0xb6c), string_cstr(&m.name), string_cstr(&m.name));
             if (ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                       "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_NO) {
+                                       "Message", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_NO) {
                 struct GuildMemberEdit *edit;
                 const struct String *name;
 

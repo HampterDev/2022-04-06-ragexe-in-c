@@ -304,7 +304,7 @@ void ui_pet_evolution_wnd_on_draw(struct UIWindow *window)
         char text[0x104];
 
         memset(text, 0, sizeof text);
-        sprintf(text, "%d개", material->count);
+        sprintf(text, "%dea", material->count);
         ui_window_text_out(wnd, (*name)->x + 0xa + (*name)->width, (*name)->y + 1, text, 0, 0, 0xc, 0, 1, 0);
     }
     ui_window_text_out(wnd, 0xa, wnd->height - 0x34, msg_str(MSG_PET_EVO_HINT), 0, 0, 0xc, 0, 0, 0);

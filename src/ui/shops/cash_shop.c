@@ -1027,7 +1027,7 @@ static void buy_cart(struct UICashShopWnd *self)
         ui_message_box(msg_str(MSG_CASH_NOT_ENOUGH));
         return;
     }
-    if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 1, 0, "메시지", 0x118, 0x78,
+    if (ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 1, 1, 0, "Message", 0x118, 0x78,
                                0) != UI_MSGBOX_ANSWER_YES)
         return;
     len = (count + 1) * 10;

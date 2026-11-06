@@ -398,7 +398,7 @@ int ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
             return 0;
         case SELECT_SERVER_ID_EXIT:
             if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_SELECT_SERVER_QUIT_ASK), UI_MSGBOX_QUESTION, 1,
-                                       0, 0, "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
+                                       0, 0, "Message", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
                 return 0;
             mode_send_message(client_current_mode(), SELECT_SERVER_REQ_QUIT, 0, 0, 0, 0);
             ui_window_mgr_post_quit2(&g_windowMgr, wnd);

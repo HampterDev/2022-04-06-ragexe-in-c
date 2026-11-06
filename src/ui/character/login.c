@@ -553,7 +553,7 @@ static void login_join(struct UILoginWnd *self)
             return;
         }
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_LOGIN_JOIN_ASK), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
+                                   "Message", 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
             return;
     }
     mode_mgr_quit(&g_modeMgr);
@@ -585,7 +585,7 @@ static void login_close(struct UILoginWnd *self)
 {
     ui_login_wnd_store_saved_id(self);
     if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_LOGIN_QUIT_ASK), UI_MSGBOX_QUESTION, 1, 0, 0,
-                               "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
+                               "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
         login_leave(self);
 }
 
@@ -637,7 +637,7 @@ int ui_login_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int 
             break;
         default:
             ui_window_mgr_message_box(&g_windowMgr, "unknown account class found!", UI_MSGBOX_OK, 0, 0, 0,
-                                   "메시지", 0x118, 0x78, 0);
+                                   "Message", 0x118, 0x78, 0);
             login_leave(self);
             break;
         }
@@ -804,7 +804,7 @@ int ui_login_otp_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, 
     if (msg == UI_MSG_COMMAND) {
         if (val1 == OTP_ID_CANCEL) {
             if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_OTP_CANCEL_ASK), UI_MSGBOX_QUESTION, 1, 0,
-                                       0, "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
+                                       0, "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                 mode_send_message(g_modeMgr.curMode, LOGIN_REQ_QUIT, 0, 0, 0, 0);
                 ui_window_mgr_post_quit2(&g_windowMgr, &self->frame.base);
             }

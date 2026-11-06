@@ -26,7 +26,7 @@
 
 static void entry_queue_box(int msg)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 0, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 0, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void entry_queue_chat(struct EntryQueueMgr *self, int msg, COLORREF colour)

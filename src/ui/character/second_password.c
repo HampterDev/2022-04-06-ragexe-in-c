@@ -62,7 +62,7 @@ static const char g_star[] = "*";
 
 static void pwd_box(int msg)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void button_disable(struct UIBitmapButton *button, BYTE disabled)
@@ -539,7 +539,7 @@ static int second_pwd_send_msg(struct UISecondPasswordInputWnd *self, struct UIW
             second_pwd_confirm(self, input);
             break;
         case PWD_ID_CANCEL:
-            if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x11), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+            if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x11), UI_MSGBOX_QUESTION, 1, 0, 0, "Message",
                                        0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES) {
                 mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
                 ui_window_mgr_post_quit2(&g_windowMgr, wnd);

@@ -61,5 +61,5 @@ void ui_navigation_refresh_results(void)
 void ui_navigation_chat(const char *text) { ui_chat_line(text, 0x62b0ff); }
 void ui_navigation_message_box(const char *text)
 {
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }

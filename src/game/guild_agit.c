@@ -45,7 +45,7 @@ void game_mode_on_req_ack_agit_investment(struct GameMode *self, unsigned char a
     client_lua_call(g_session1.luaState, "get_agit_name", "d>s", (int)agit_id, &name);
     memset(text, 0, sizeof text);
     sprintf_s(text, 0x100, msg_str(0xe30), name, defense, 100, economy, 100);
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0xfa, 0x82, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "Message", 0xfa, 0x82, 0);
 }
 
 void game_mode_on_req_ack_move_guild_agit(struct GameMode *self, short result)

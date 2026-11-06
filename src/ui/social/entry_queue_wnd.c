@@ -266,7 +266,7 @@ static void entry_queue_info_reset(struct WindowInfo *info)
 
 static BYTE refuse(int msg)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 0, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), UI_MSGBOX_OK, 0, 0, 0, "Message", 0x118, 0x78, 0);
     return 0;
 }
 
@@ -320,7 +320,7 @@ static BYTE confirm(const char *question)
         return 0;
     memset(text, 0, sizeof text);
     sprintf_s(text, sizeof text, "%s %s", queue->title, question);
-    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 0, 0, 0, "메시지", 0x118, 0x78,
+    return ui_window_mgr_message_box(&g_windowMgr, text, UI_MSGBOX_QUESTION, 0, 0, 0, "Message", 0x118, 0x78,
                                   0) == UI_MSGBOX_ANSWER_YES;
 }
 

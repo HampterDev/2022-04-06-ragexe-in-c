@@ -487,7 +487,7 @@ void ui_new_make_char_wnd_on_process(struct UIWindow *window)
 
 static void box(int msg_id)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_OK, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg_id), UI_MSGBOX_OK, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static int has_gm_tag(const char *s)

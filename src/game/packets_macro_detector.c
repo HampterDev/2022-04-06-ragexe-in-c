@@ -112,12 +112,12 @@ void game_mode_zc_close_macro_detector(struct GameMode *self, int result)
     case 1: msg = 0xb36; break;
     case 2:
         ui_window_mgr_post_quit1(&g_windowMgr, WID_MACRO_DETECTOR);
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb37), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb37), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         return;
     default:
         return;
     }
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(msg), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
     connection_disconnect(rag_connection_transport(rag_connection_instance()));
     mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
 }
@@ -145,5 +145,5 @@ void game_mode_zc_complete_upload_macro_detector_captcha(struct GameMode *self)
     if (wnd == 0)
         return;
     captcha_register_set_send_disabled(wnd, 0);
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb40), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(0xb40), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }

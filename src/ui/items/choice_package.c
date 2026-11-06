@@ -449,7 +449,7 @@ int choice_package_item_box_wnd_send_msg(struct UIWindow *window, struct UIWindo
             string_init(&text);
             string_format(&text, msg_str(MSG_CONFIRM), string_cstr(&name));
             answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                            "메시지", 0x118, 0x78, 0);
+                                            "Message", 0x118, 0x78, 0);
             string_free(&text);
             string_free(&name);
             if (answer != ANSWER_NO)

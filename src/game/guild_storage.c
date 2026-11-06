@@ -72,7 +72,7 @@ void game_mode_ack_close_guild_storage(const struct PACKET_ZC_ACK_CLOSE_GUILD_ST
     struct UIWindow *wnd;
 
     if (packet->result == 2) {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x9f5), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x9f5), 0, 1, 1, 0, "Message", 0x118, 0x78, 0);
         wnd = ui_window_find(WID_GUILD_STORAGE);
     } else {
         wnd = ui_window_find(WID_GUILD_STORAGE);

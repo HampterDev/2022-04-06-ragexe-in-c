@@ -926,7 +926,7 @@ static void command(struct UINavigationWnd *self, struct UIWindow *sender, int i
         return;
     case UI_ID_CLOSE:
         if (g_navi.guideState == 2) {
-            if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x8bf), UI_MSGBOX_QUESTION, 1, 0, 0, "메시지",
+            if (ui_window_mgr_message_box(&g_windowMgr, msg_str(0x8bf), UI_MSGBOX_QUESTION, 1, 0, 0, "Message",
                                        0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
                 return;
             navi_manager_set_guide_state(&g_navi, 0);

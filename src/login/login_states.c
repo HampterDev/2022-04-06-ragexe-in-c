@@ -44,7 +44,7 @@ static const char warning2_bmp[] = "유저인터페이스\\login_interface\\warn
 
 static int box(const char *text, int a, int b, int c, int d)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, a, b, c, d, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, text, a, b, c, d, "Message", 0x118, 0x78, 0);
 }
 
 static void show_wallpaper(struct LoginMode *self)

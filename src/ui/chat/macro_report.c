@@ -670,7 +670,7 @@ static void reporter_report(struct UIMacroReporterWnd *self)
     count = (unsigned)VEC_COUNT(&aids, int);
     string_init(&question);
     string_format(&question, msg_str(MSG_REPORTER_CONFIRM), count);
-    answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&question), 2, 0, 0, 0, "메시지",
+    answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&question), 2, 0, 0, 0, "Message",
                                     0x118, 0x78, 0);
     string_free(&question);
     if (answer != MSGBOX_ID_NO) {

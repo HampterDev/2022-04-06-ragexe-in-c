@@ -67,7 +67,7 @@ void game_mode_on_repair_item_list2(struct GameMode *self, const struct PacketRe
 
     (void)self;
     if (count == 0) {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_TO_REPAIR), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_NOTHING_TO_REPAIR), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         return;
     }
     ui_close_window(WID_REPAIR);

@@ -701,7 +701,7 @@ static void use_item(int item_id)
         case 0: case 1: case 2:
             if (item_info_get_item_id(&item) == ITEM_ID_ASK_FIRST
                 && ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_OPEN_BOUND_BOX), UI_MSGBOX_QUESTION, 0, 0,
-                                          0, "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_NO)
+                                          0, "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_NO)
                 break;
             mode_send_message(mode, GAME_MSG_USE_ITEM, item.index, 0, 0, 0);
             break;
@@ -719,7 +719,7 @@ static void use_item(int item_id)
                 string_init(&ask);
                 string_format(&ask, msg_str(MSG_ASK_USE_ITEM), string_cstr(&name));
                 answer = ui_window_mgr_message_box(&g_windowMgr, string_cstr(&ask), UI_MSGBOX_QUESTION, 0, 0, 0,
-                                                "메시지", 0x118, 0x78, 0);
+                                                "Message", 0x118, 0x78, 0);
                 string_free(&ask);
                 string_free(&name);
                 if (answer == UI_MSGBOX_ANSWER_YES)

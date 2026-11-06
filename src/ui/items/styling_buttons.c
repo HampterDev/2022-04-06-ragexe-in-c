@@ -111,7 +111,7 @@ const struct UIButtonOps ui_acc_bitmap_button_ops = {
     .set_show = ui_button_set_show,
 };
 
-const char g_styleNoColourText[] = "염색제거";
+const char g_styleNoColourText[] = "No Color";
 
 void ui_styling_shop_button_destroy(struct UIWindow *window)
 {

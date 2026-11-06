@@ -477,7 +477,7 @@ int ui_item_sell_wnd2_send_msg(struct UIWindow *window, struct UIWindow *sender,
             if (count <= 0)
                 return 0;
             if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_SELL2_CONFIRM), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                       "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
+                                       "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_YES)
                 mode_send_message(mode, MODE_REQ_SELL2_YES, self->window_type, 0, 0, 0);
             else
                 mode_send_message(mode, MODE_REQ_SELL2_NO, self->window_type, 0, 0, 0);

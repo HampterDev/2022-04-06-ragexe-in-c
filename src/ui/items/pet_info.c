@@ -504,7 +504,7 @@ static void chat_refusal(int msg)
 
 static int message_box(const char *text, int type, int arg3)
 {
-    return ui_window_mgr_message_box(&g_windowMgr, text, type, arg3, 0, 0, "메시지", 0x118, 0x78, 0);
+    return ui_window_mgr_message_box(&g_windowMgr, text, type, arg3, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 static void pet_rename(struct UIPetInfoWnd *self)

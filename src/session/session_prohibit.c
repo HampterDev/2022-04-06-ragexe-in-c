@@ -95,7 +95,7 @@ void session_erase_prohibit(struct Session *self, int aid, unsigned minutes)
         self->prohibitionLog.last = last - 1;
         text = "채팅 로그 삭제 성공";
     }
-    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, text, 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 int session_count_prohibits_of(struct Session *self, int aid)

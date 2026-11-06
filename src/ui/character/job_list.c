@@ -243,7 +243,7 @@ static void send_jobs(struct UIJobListWnd *self)
     }
     if (!checked) {
         ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_JOB_LIST_NONE_CHECKED), UI_MSGBOX_OK, 1, 0, 0,
-                               "메시지", 0x118, 0x78, 0);
+                               "Message", 0x118, 0x78, 0);
         return;
     }
     length = rag_connection_get_packet_length(rag_connection_instance(), (short)packet.id);

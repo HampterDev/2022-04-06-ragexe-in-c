@@ -306,7 +306,7 @@ static void purchase_command(struct UIMerchantItemPurchaseWnd *self, int id)
             }
             if (sum > ((const struct UIMerchantItemShopWnd *)g_windowMgr.buying_store_item_shop_wnd)->notice_amount) {
                 ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_OVER_LIMIT), UI_MSGBOX_OK, 1, 0, 0,
-                                       "메시지", 0x118, 0x78, 0);
+                                       "Message", 0x118, 0x78, 0);
                 return;
             }
             mode_send_message(mode, MODE_REQ_PURCHASE_VARIANT, self->request_arg1, self->request_arg2, 0, 0);

@@ -875,7 +875,7 @@ void ui_grade_enchant_wnd_on_l_btn_up(struct UIWindow *window, int x, int y)
     if (self->selected != row) {
         if (self->blessing_used > 0)
             ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_BLESSING_LOST), UI_MSGBOX_OK, 1, 0, 0,
-                                   "메시지", 0x118, 0x78, 0);
+                                   "Message", 0x118, 0x78, 0);
         self->selected = row;
         self->blessing_used = 0;
         self->protect = 0;
@@ -963,7 +963,7 @@ int ui_grade_enchant_wnd_send_msg(struct UIWindow *window, struct UIWindow *send
                 break;
             if (!self->protect && !self->blessing_used &&
                 ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_START), UI_MSGBOX_QUESTION, 1, 0, 0,
-                                       "메시지", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_NO)
+                                       "Message", 0x118, 0x78, 0) == UI_MSGBOX_ANSWER_NO)
                 break;
             self->waiting = 1;
             packet.id = CZ_GRADE_ENCHANT_START;

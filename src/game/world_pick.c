@@ -256,7 +256,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
                 ui_merchant_shop_make_wnd_set_waiting(shop, 0);
                 ui_merchant_shop_make_wnd_set_chosen_cell(shop, x, y);
                 if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_PLACE_ASSISTANT_HERE), 2, 1, 0, 0,
-                                           "메시지", 0x118, 0x78, 0)
+                                           "Message", 0x118, 0x78, 0)
                     == MSGBOX_YES) {
                     ui_merchant_shop_make_wnd_request_assistant(shop);
                     return -1;

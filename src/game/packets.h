@@ -23,7 +23,7 @@ static __inline int wnd_send(void *wnd, int msg, int a, int b, int c, int d)
 
 static __inline void message_box(int id)
 {
-    ui_window_mgr_message_box(&g_windowMgr, msg_str(id), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+    ui_window_mgr_message_box(&g_windowMgr, msg_str(id), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
 }
 
 struct Session;

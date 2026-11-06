@@ -75,7 +75,7 @@ static int select_server(struct LoginMode *self, int server)
     if (server == -1)
         return 0;
     if (self->servers[server].state == 3) {
-        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x2fc), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0);
+        ui_window_mgr_message_box(&g_windowMgr, msg_str(0x2fc), 0, 1, 0, 0, "Message", 0x118, 0x78, 0);
         self->base.next_sub_mode = 6;
         return 0;
     }
@@ -294,7 +294,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
         return 0;
     case LMSG_DISCONNECT_BOX:
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(2), 0, 1, 1, 0, "메시지", 0x118, 0x78, 0) == 0x105)
+        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(2), 0, 1, 1, 0, "Message", 0x118, 0x78, 0) == 0x105)
             return 0;
         return back_to_login(self);
     case LMSG_CHAR_BY_SLOT:
@@ -353,7 +353,7 @@ int login_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case 0x2724: return billing_text(self, (char *)a);
     case 0x2725:
         connection_disconnect(rag_connection_transport(rag_connection_instance()));
-        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 0, 1, 0, 0, "메시지", 0x118, 0x78, 0) == 0x105)
+        if (ui_window_mgr_message_box(&g_windowMgr, msg_str(1), 0, 1, 0, 0, "Message", 0x118, 0x78, 0) == 0x105)
             return 0;
         self->stateTick = timeGetTime();
         return back_to_login(self);
