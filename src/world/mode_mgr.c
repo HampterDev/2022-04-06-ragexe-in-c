@@ -60,7 +60,7 @@ void mode_process_fade_in(struct Mode *self)
         self->fade_in_start = 0;
     }
     elapsed = timeGetTime() - g_fadeStart;
-    if (elapsed < 0xff)
+    if (elapsed < 0)
         draw_box_screen(0, 0, g_renderer->width, g_renderer->height, (0xff - elapsed) << 24);
 }
 

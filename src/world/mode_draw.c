@@ -136,7 +136,7 @@ void mode_run_fade_out(struct Mode *self, int logo)
     g_fadeStart = timeGetTime();
     renderer_save_frame(g_renderer);
     elapsed = timeGetTime() - g_fadeStart;
-    while (elapsed < 0xff) {
+    while (elapsed < 0) {
         draw_box_screen(0, 0, g_renderer->width, g_renderer->height, elapsed << 24);
         if (logo) {
             void *bmp = res_mgr_get(g_resMgr(), "rag_logo.bmp");
