@@ -101,37 +101,6 @@ static void session_reset_achievements(struct Session *session)
     tracked_achievements_clear(&session->trackedAchievements);
 }
 
-void login_mode_show_warning(struct LoginMode *self)
-{
-    void *w;
-
-    if (g_serviceType == 0)
-        string_assign(&self->wallpaper, warning2_bmp, 0x2b);
-    else
-        string_assign(&self->wallpaper, "유저인터페이스\\login_interface\\warning.bmp", 0x2a);
-    show_wallpaper(self);
-    w = ui_window_open(0x14);
-    UIWND_SENDMSG(w, 0, 0x50, 0x2722, 0, 0, 0);
-}
-
-void login_mode_show_license(struct LoginMode *self)
-{
-    void *w;
-    int x, y;
-
-    show_wallpaper(self);
-    string_assign_cstr(&self->wallpaper, g_loginBackgroundName);
-    w = ui_window_open(0x10);
-    ui_window_resize(w, 0x190, 0x12c);
-    y = (g_renderer->height - 0x1e0) / 2 + 0x5a;
-    x = (g_renderer->width - 0x280) / 2 + 0x78;
-    ui_window_move(w, x, y);
-    UIWND_SENDMSG(w, 0, 0x55, 0xc1, (int)"btn_disagree", 0, 0);
-    UIWND_SENDMSG(w, 0, 0x55, 0xd2, (int)"btn_agree", 0, 0);
-    UIWND_SENDMSG(w, 0, 0x1a, (int)get_licence_text_(), 0, g_serviceType == 6 ? 0x35 : 0x3a, 0);
-    UIWND_SENDMSG(w, 0, 0x50, 0x2722, 0, 0, 0);
-}
-
 static void connection_list(struct LoginMode *self, struct Vec *list, int msg)
 {
     struct LoginConnEntry *e;
@@ -703,8 +672,8 @@ void login_mode_on_change_state(struct Mode *mode, int state)
     (g_session1.battle_mode) = 0;
     self->base.connected = 1;
     switch (state) {
-    case 0: login_mode_show_warning(self); return;
-    case 1: login_mode_show_license(self); return;
+    case 0:
+    case 1:
     case 2:
         if (!login_mode_load_connections(self)) {
             login_mode_send_msg(&self->base, 0x1c, 0, 0, 0, 0);

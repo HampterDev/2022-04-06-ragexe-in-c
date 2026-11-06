@@ -153,8 +153,6 @@ void login_mode_send_keep_alive(struct LoginMode *self);
 
 void login_mode_process_packets(struct LoginMode *self);
 
-void login_mode_show_warning(struct LoginMode *self);
-void login_mode_show_license(struct LoginMode *self);
 
 int login_mode_client_type(void);
 void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt);
