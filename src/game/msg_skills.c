@@ -290,7 +290,10 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
         }
         if (skill_id == 0x9a)
             ui_window_open(0x5f);
-    } else if (skill_id == SKILL_GC_ROLLINGCUTTER) {
+    } else {
+        g_session1.skillUseKey = g_session1.lastKeyDown;
+    }
+    if (skill_id == SKILL_GC_ROLLINGCUTTER) {
         skill_start.id = CZ_USE_SKILL_START;
         skill_start.skill_id = SKILL_GC_ROLLINGCUTTER;
         skill_start.level = (unsigned short)level;
@@ -303,7 +306,6 @@ int game_mode_msg_use_skill(struct GameMode *self, int skill_id, int target, int
             session_set_pair(&g_session1, 4, 0);
             return 0;
         }
-        g_session1.skillUseKey = g_session1.lastKeyDown;
         count = session_get_instant_var(&g_session1, 2) + 1;
         session_set_pair(&g_session1, 2, count);
         return 0;

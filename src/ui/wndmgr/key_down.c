@@ -463,10 +463,11 @@ BYTE ui_window_mgr_on_key_down(struct UIWindowMgr *self, int vk, int lparam, int
         if (self->key_modifier == VK_SHIFT || !pass)
             return ui_window_mgr_handle_key(self, vk, first_press);
     }
-    if (!first_press)
-        return ui_window_mgr_handle_key(self, vk, first_press);
-    if (g_session1.skillUseKey != vk)
+    if (g_session1.skillUseKey != vk) {
+        if (!first_press)
+            return ui_window_mgr_handle_key(self, vk, first_press);
         session_reset_option2(&g_session1);
+    }
     g_session1.lastKeyDown = vk;
     if ((vk == VK_RETURN || vk == VK_SPACE) && ui_window_mgr_on_enter(self))
         return 1;
