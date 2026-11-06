@@ -116,7 +116,7 @@ void dc_bitmap_copy_bitmap(struct DcBitmap *self, unsigned dx, unsigned dy, unsi
     DWORD *d, *s;
     int row, k, srcW;
 
-    if (!self->bits || dx >= (unsigned)self->width || dy >= (unsigned)self->height)
+    if (!src || !src->bits || !self->bits || dx >= (unsigned)self->width || dy >= (unsigned)self->height)
         return;
     if (dx + w > (unsigned)self->width)
         w = self->width - dx;
@@ -325,7 +325,7 @@ void dc_bitmap_copy_rect(struct DcBitmap *self, int dx, int dy, int sx, int sy, 
     DWORD *d, *s;
     int row, k;
 
-    if (!self->bits)
+    if (!src || !src->bits || !self->bits)
         return;
     self->changed = 1;
     d = self->bits + (self->width * dy + dx);

@@ -197,11 +197,22 @@ int main(void)
     assert(bitmap.bits == bits && bitmap.text.dib == dib && bitmap.bits[0] == before && bitmap.width == 2 && bitmap.texture_count == 1);
     fail_dib = 0; dc_bitmap_alloc(&bitmap, 4, 4);
     assert(bitmap.width == 4 && bitmap.height == 4 && bitmap.changed && !bitmap.texture_count && !live);
+    {
+        struct DcBitmap empty;
+        memset(&empty, 0, sizeof empty);
+        empty.width = 3; empty.height = 3;
+        memset(bitmap.bits, 0x5a, 4 * 4 * 4); bitmap.changed = 0;
+        dc_bitmap_copy_bitmap(&bitmap, 1, 1, 0, 0, NULL);
+        dc_bitmap_copy_bitmap(&bitmap, 1, 1, 2, 2, &empty);
+        dc_bitmap_copy_rect(&bitmap, 0, 0, 1, 1, 2, 2, NULL);
+        dc_bitmap_copy_rect(&bitmap, 0, 0, 1, 1, 2, 2, &empty);
+        assert(!bitmap.changed && bitmap.bits[0] == 0x5a5a5a5a && bitmap.bits[5] == 0x5a5a5a5a);
+    }
     dc_bitmap_destruct(&bitmap);
     assert(!dc_bitmap_construct(&bitmap, -1, 2) && !bitmap.text.hdc);
     assert(!dc_bitmap_construct(&bitmap, INT_MAX, INT_MAX) && !bitmap.text.hdc);
     fail_dib = 1; assert(!dc_bitmap_construct(&bitmap, 2, 2) && !bitmap.text.hdc); fail_dib = 0;
     assert(!live && !outstanding);
-    puts("Canvas owner: C tile arrays, every allocation failure, retry, cropped rows, GDI replacement and repeated cleanup passed.");
+    puts("Canvas owner: C tile arrays, every allocation failure, retry, cropped rows, GDI replacement, copies from a missing or pixel-less canvas and repeated cleanup passed.");
     return 0;
 }
