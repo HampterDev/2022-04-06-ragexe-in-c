@@ -70,6 +70,7 @@ SIZE_ASSERT(LoginZoneEntry, 0x14);
 
 #define LOGIN_MAX_SERVERS       100
 #define LOGIN_MAX_CHARS         68
+#define LOGIN_CLIENT_FLAGS      0x80000001u
 
 struct LoginMode {
     struct Mode base;

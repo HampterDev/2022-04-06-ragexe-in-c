@@ -35,7 +35,6 @@ BYTE g_passwordEncrypt;
 BYTE g_passwordEncrypt2;
 int g_serverType;
 unsigned int g_codePage;
-int g_clientVersion;
 BYTE g_showNameA;
 BYTE g_showNameB;
 int g_languageIndex;
@@ -352,8 +351,6 @@ static void read_connection(struct XmlElement *node)
         g_serverPort = text;
     if ((text = child_text(node, "domain")) != NULL)
         g_serverDomain = text;
-    if ((text = child_text(node, "version")) != NULL)
-        g_clientVersion = atoi(text);
     if ((text = child_text(node, "langtype")) != NULL)
         g_serviceType = atoi(text);
     if ((text = child_text(node, "registrationweb")) != NULL)

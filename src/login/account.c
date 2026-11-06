@@ -120,7 +120,7 @@ void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt)
 
     if (g_serviceType == 5) {
         login.id = 0x1fa;
-        login.version = g_clientVersion;
+        login.version = LOGIN_CLIENT_FLAGS;
         memcpy(login.userId, self->userId, 24);
         md5ctx_final(&md5, login.digest);
         login.clientType = (BYTE)login_mode_client_type();
@@ -128,14 +128,14 @@ void login_mode_on_hash_key(struct LoginMode *self, const BYTE *pkt)
         login_send_packet(login.id, &login);
     } else if (g_serviceType == 2) {
         login4.id = 0x27c;
-        login4.version = g_clientVersion;
+        login4.version = LOGIN_CLIENT_FLAGS;
         memcpy(login4.userId, self->userId, 24);
         md5ctx_final(&md5, login4.digest);
         login4.clientType = (BYTE)login_mode_client_type();
         login_send_packet(login4.id, &login4);
     } else {
         login.id = 0x1dd;
-        login.version = g_clientVersion;
+        login.version = LOGIN_CLIENT_FLAGS;
         memcpy(login.userId, self->userId, 24);
         md5ctx_final(&md5, login.digest);
         login.clientType = (BYTE)login_mode_client_type();

@@ -376,7 +376,7 @@ static void char_server(struct LoginMode *self)
     }
     st = g_serviceType;
     login.id = 0x64;
-    login.version = g_clientVersion;
+    login.version = LOGIN_CLIENT_FLAGS;
     memcpy(login.userId, self->userId, 24);
     if (st == 7) {
         if (!login_password_encode(LOGIN_PASSWORD_SERVICE7, self->password, sizeof self->password,

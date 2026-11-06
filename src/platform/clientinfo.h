@@ -17,7 +17,6 @@
 #include "core/xml.h"
 #include "platform/language.h"
 
-extern int g_clientVersion;
 extern int g_languageIndex;
 extern BYTE g_hideAccountList;
 extern BYTE g_passwordEncrypt;
