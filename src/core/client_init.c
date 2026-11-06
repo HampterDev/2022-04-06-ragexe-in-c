@@ -32,6 +32,8 @@
 #include "resources/world_res.h"
 #include "session/session_granny_hooks.h"
 #include "session/session_state.h"
+#include "session/session_windows.h"
+#include "ui/character/gauge.h"
 #include "session/state.h"
 #include "skills/skill_action.h"
 #include "std/std.h"
@@ -107,6 +109,7 @@ static void client_install_hooks(void)
     g_worldResLight = weather_take_map_light;
     g_ragEffectProcess = rag_effect_on_process;
     g_gameActorHandleMsg = game_actor_handle_msg;
+    g_sessionBasicInfoHeight = ui_basic_info_wnd_set_height;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

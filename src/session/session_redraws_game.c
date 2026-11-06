@@ -2,12 +2,13 @@
 #include "game/context.h"
 #include "session/session_lua.h"
 #include "session/session_windows.h"
-#include "ui/character/gauge.h"
 #include "ui/wndmgr/wndmgr.h"
 
 /* The session's redraws that reach above the window manager: the game mode's own HP bar,
    the basic info window's height and the party plates. The others, in session_redraws.c,
    only use the window manager. */
+
+void (*g_sessionBasicInfoHeight)(struct UIBasicInfoWnd *wnd, int height);
 
 void session_refresh_basic_info(struct Session *self)
 {
@@ -37,7 +38,8 @@ void session_refresh_skill_tree(struct Session *self)
         ui_window_send(wnd, NULL, 0x3c, 0, 0, 0, 0);
     wnd = g_windowMgr.basic_info_wnd;
     if (wnd)
-        ui_basic_info_wnd_set_height((struct UIBasicInfoWnd *)wnd, wnd->height);
+        if (g_sessionBasicInfoHeight)
+            g_sessionBasicInfoHeight((struct UIBasicInfoWnd *)wnd, wnd->height);
 }
 
 void session_notify_messenger_group_and_plates(struct Session *self)
