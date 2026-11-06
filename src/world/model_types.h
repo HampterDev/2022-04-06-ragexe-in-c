@@ -84,7 +84,6 @@ struct C3dActor {
     float bboxMin[3];
     float bboxMax[3];
     int lastFrame;
-    BYTE pickable;
     BYTE picked;
     BYTE alpha;
     BYTE layer;

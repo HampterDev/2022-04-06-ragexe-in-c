@@ -431,8 +431,7 @@ void c3d_actor_v1_render(struct C3dActor *base, const float *view, BYTE clip)
     mir = mirrored(&self->base);
     mat_multiply(m, self->base.matrix, view);
     c3d_node_v1_render(self->root, m, mir, clip, self->base.layer);
-    if (self->base.pickable == 1)
-        fade(self->root);
+    fade(self->root);
 }
 
 void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
@@ -448,8 +447,7 @@ void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
     mat_multiply(m, self->base.matrix, view);
     for (nodeIndex = 0; nodeIndex < self->nodeCount; ++nodeIndex) {
         c3d_node_v2_render(self->nodes[nodeIndex], m, mir, clip, self->base.layer);
-        if (self->base.pickable == 1)
-            fade(self->nodes[nodeIndex]);
+        fade(self->nodes[nodeIndex]);
     }
 }
 
@@ -458,8 +456,6 @@ void c3d_actor_pick(struct C3dActor *self, const struct Ray3 *ray)
     struct OrientedBox box;
     int i;
 
-    if (self->pickable != 1)
-        return;
     box.centre = (Vec3){self->obb.centre[0], self->obb.centre[1], self->obb.centre[2]};
     for (i = 0; i < 3; ++i) {
         box.half[i] = self->obb.extent[i];

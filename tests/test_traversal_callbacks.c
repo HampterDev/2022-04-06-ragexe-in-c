@@ -286,9 +286,6 @@ static void model_picking(void)
     struct C3dActor actor = {0};
     struct Ray3 ray = {{2, 3, -5}, {0, 0, 1}, 10};
     int i;
-    c3d_actor_pick(&actor, NULL);
-    assert(!actor.picked);
-    actor.pickable = 1;
     actor.obb.centre[0] = 2; actor.obb.centre[1] = 3;
     for (i = 0; i < 3; ++i) {
         actor.obb.extent[i] = 1;

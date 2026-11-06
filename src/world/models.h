@@ -33,8 +33,7 @@ void world_models_wait(struct World *world);
 void world_models_clear(struct World *world);
 
 struct C3dActor *world_model_create(const struct RswModel *record,
-                                  const struct WorldLighting *lighting,
-                                  int deferred);
+                                  const struct WorldLighting *lighting);
 void world_model_destroy(struct C3dActor *model);
 
 #endif

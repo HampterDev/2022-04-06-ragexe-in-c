@@ -132,7 +132,7 @@ static int world_load_from(struct World *self, struct C3dWorldRes *rsw)
             continue;
         }
 
-        actor = world_model_create(m, &lighting, 0);
+        actor = world_model_create(m, &lighting);
         if (!actor)
             continue;
         if (!world_models_add(self, actor)) {

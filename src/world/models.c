@@ -103,7 +103,7 @@ static void load_deferred(struct WorldLoader *loader)
     qsort(loader->queue, loader->count, sizeof *loader->queue, deferred_order);
     for (i = 0; i < loader->count; ++i) {
         struct C3dActor *model = world_model_create(&loader->queue[i].record,
-                                                   &loader->lighting, 1);
+                                                   &loader->lighting);
         if (!model)
             continue;
         models->data[models->count++] = model;

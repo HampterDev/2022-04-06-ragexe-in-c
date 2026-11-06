@@ -280,7 +280,6 @@ void skill_load_model(struct Skill *self, const char *name)
         skill_release_model(self); return;
     }
     self->model->ops->animate(self->model, 3.0);
-    self->model->pickable = 0;
     self->model->animType = 0;
     self->model->ops->light(self->model, colors[0], colors[1], colors[2]);
     if (scene != game_current_scene_root()) {

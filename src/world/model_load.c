@@ -34,8 +34,7 @@ static void place_actor(struct C3dActor *a, const struct RswModel *m)
 }
 
 struct C3dActor *world_model_create(const struct RswModel *record,
-                                  const struct WorldLighting *lighting,
-                                  int deferred)
+                                  const struct WorldLighting *lighting)
 {
     struct C3dModelRes *res = model_resource(record);
     struct C3dActor *actor;
@@ -45,13 +44,9 @@ struct C3dActor *world_model_create(const struct RswModel *record,
     if (!actor)
         return NULL;
     if (!c3d_actor_add_volume_boxes(actor, res->blocks, res->blockCount)) goto fail;
-    if (deferred)
-        actor->pickable = 0;
     actor->ops->set_speed(actor, record->animSpeed);
     place_actor(actor, record);
     if (!actor->ops->create(actor, res)) goto fail;
-    if (!deferred)
-        actor->pickable = 0;
     actor->ops->light(actor, lighting->direction,
                                  lighting->diffuse, lighting->ambient);
     return actor;
