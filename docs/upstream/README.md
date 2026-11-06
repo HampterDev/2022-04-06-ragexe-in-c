@@ -240,3 +240,4 @@ picked onto `purist` with `git cherry-pick -x`.
 | Foundation commit | Purist | Change |
 | --- | --- | --- |
 | [a1a5a206b4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a1a5a206b4ec43a3213d8f3aaa0365055382b07b) | [9d2ba7b65e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9d2ba7b65e1488ca3dae79fde5c386dab87ca5b1) (adapted) | GM name packets: copy the name within its 24-byte field |
+| [2e49bcefe7](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/2e49bcefe7bac8b5a66ded6376f938883ed60218) | [f980881051](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f980881051cf3e407e750b7b3f42811a899c745f) (adapted) | Take compress and uncompress from cps.dll, as the original does |
