@@ -154,7 +154,8 @@ paths   actor/
         effects/skills/energy_orb_effect.c effects/skills/mandra_attack_effect.*
         effects/skills/msg_effect.* effects/skills/msg_effect_process.c effects/skills/skill_entry.h
         effects/skills/skill_state.h effects/skills/skill_view.h effects/skills/tetra_ball_effect.c
-        game/actor_actions.h game/actor_entry.h game/actor_marks.* game/actor_names.*
+        game/actor_actions.h game/actor_entry.h game/actor_marks.* game/actor_name_lookup.c
+        game/actor_names.*
         game/actor_popup_menu.c game/balloon_frame.c game/barter_drag.h game/camera.* game/chat.*
         game/display_settings.h game/drag.* game/entry_packet_handlers.h game/ground_item_state.h
         game/input.* game/item_records.h game/lifecycle.* game/magic_static.h game/map_property.c
