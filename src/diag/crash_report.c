@@ -373,8 +373,7 @@ static LONG WINAPI crash_filter(EXCEPTION_POINTERS *exception)
     find_image();
     snapshot_modules();
     put_line("==================== crash report ====================");
-    put_fmt("Build:      image %08X  (crash_report.c compiled %s %s)\r\n",
-            image_timestamp(), __DATE__, __TIME__);
+    put_fmt("Build:      image %08X\r\n", image_timestamp());
     put_fmt("Image:      base %08X  size %08X\r\n", (DWORD)image_base, image_size);
     GetLocalTime(&time);
     put_fmt("Time:       %04u-%02u-%02u %02u:%02u:%02u  uptime %lu s\r\n",
