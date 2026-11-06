@@ -472,7 +472,7 @@ static void sm_moving(struct GameActor *self, struct ActorMoveEntryInfo *info)
     sm_walk(self, info);
 }
 
-void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
+void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4)
 {
     struct GameActor *self = (struct GameActor *)object;

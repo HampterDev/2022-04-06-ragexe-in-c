@@ -123,6 +123,15 @@ void effect_maker_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
+/* Called by game_actor_send_msg, a game actor's send_msg and its subclasses' fallback, with
+   the same arguments: what an actor does on a message (game_actor_handle_msg,
+   actor/actor_sendmsg.c, which reaches effects, windows and the session).
+   client_install_hooks() (core/client_init.c) installs game_actor_handle_msg. NULL: actors
+   ignore the messages their own classes do not handle. */
+extern void (*g_gameActorHandleMsg)(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
+void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void graffi_skill_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void ground_scope_send_msg(struct GameObject *object, struct GameObject *source,

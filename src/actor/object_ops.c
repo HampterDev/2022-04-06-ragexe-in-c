@@ -36,6 +36,16 @@ void game_object_send_msg(struct GameObject *object, struct GameObject *source,
 {
 }
 
+void (*g_gameActorHandleMsg)(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
+
+void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4)
+{
+    if (g_gameActorHandleMsg)
+        g_gameActorHandleMsg(object, source, msg, par1, par2, par3, par4);
+}
+
 void game_object_render_base(struct GameObject *object, const float *view)
 {
 }
