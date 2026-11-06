@@ -10,7 +10,6 @@ struct LuaDataFunction {
 };
 
 enum LuaDataCheck {
-    LUA_DATA_IGNORE_RESULT,
     LUA_DATA_ERROR_FORMAT,
     LUA_DATA_ERROR_STRING,
     LUA_DATA_ERROR_PREFIX

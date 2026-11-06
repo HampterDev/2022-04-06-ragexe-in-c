@@ -59,7 +59,7 @@ char lua_data_run(const char *path, const char *owner,
     }
     if (!ok)
         MessageBoxA(0, lua_tolstring(L, -1, 0), owner, 0);
-    else if (check != LUA_DATA_IGNORE_RESULT)
+    else
         ok = main_result_ok(L, owner, check);
     lua_close(L);
     return ok;

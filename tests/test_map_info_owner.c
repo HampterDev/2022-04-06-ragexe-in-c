@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <lauxlib.h>
-#include <lualib.h>
 
 static struct { void *pointer; size_t size; } blocks[20000];
 static size_t live;
@@ -54,9 +52,6 @@ static void *tracked_realloc(void *p, size_t size)
 #undef realloc
 #undef free
 
-void client_lua_loadfile_hook(const char *name) { (void)name; abort(); }
-
-static const char *lua_script = "";
 static char default_name[64]="Unknown map";
 static char shown_line1[2048], shown_line2[2048], shown_ornament[2048];
 static int banners, released, rendered, banner_finished, fail_banner;
@@ -72,57 +67,29 @@ struct MapNameDisplay *map_name_display_construct(struct MapNameDisplay *s,
 void map_name_display_destruct(struct MapNameDisplay *s) { assert(s); ++released; }
 char map_name_display_render(struct MapNameDisplay *s)
 { assert(s); ++rendered; return !banner_finished; }
-int lua_data_reply(lua_State *L,int ok,const char *message)
-{ lua_pushboolean(L,ok); lua_pushstring(L,message); return 2; }
-char lua_data_run(const char *path,const char *owner,const struct LuaDataFunction *functions,
-    int count,enum LuaDataCheck check)
-{
-    lua_State *L=luaL_newstate(); int status;
-    assert(!strcmp(path,"system\\mapInfo_true.lub") && !strcmp(owner,"CMapInfoMgr"));
-    assert(count==3 && check==LUA_DATA_IGNORE_RESULT); luaL_openlibs(L);
-    for (int i=0;i<count;++i) lua_register(L,functions[i].name,functions[i].function);
-    status=luaL_dostring(L,lua_script);
-    if (status) fprintf(stderr,"Lua: %s\n",lua_tostring(L,-1));
-    lua_close(L); return status==0;
-}
 static void reset(void)
 {
     fail_after=-1; map_info_destroy(); map_info_destroy(); assert(!live && !g_mapInfo);
-    assert(banners==released); banner_finished=fail_banner=0; lua_script="";
-    assert(map_info_create()); assert(!map_info_create()); assert(map_info_load(g_mapInfo));
-}
-static int set_value(int kind,const char *map)
-{
-    if (kind==0) return map_info_set_display_name(g_mapInfo,map,"changed",1);
-    if (kind==1) return map_info_set_sign(g_mapInfo,map,"first","second");
-    return map_info_set_ornament(g_mapInfo,map,"art");
+    assert(banners==released); banner_finished=fail_banner=0;
+    assert(map_info_create()); assert(!map_info_create()); assert(!map_info_load(g_mapInfo));
 }
 static void test_failures(void)
 {
     int success;
     fail_after=0; assert(!map_info_create() && !g_mapInfo && !live); fail_after=-1;
-    for (int kind=0;kind<3;++kind) {
-        for (int existing=0;existing<2;++existing) {
-            success=0;
-            for (int n=0;n<6;++n) {
-                size_t before;
-                reset();
-                if (existing) {
-                    assert(map_info_set_display_name(g_mapInfo,"map","original",1));
-                    assert(map_info_set_sign(g_mapInfo,"map","old-first","old-second"));
-                    assert(map_info_set_ornament(g_mapInfo,"map","old-art"));
-                }
-                before=live; fail_after=n; success=set_value(kind,"map"); fail_after=-1;
-                if (success) break;
-                assert(live==before);
-                assert(!strcmp(map_info_display_name(g_mapInfo,"map"),existing?"original":"Unknown map"));
-                if (existing) {
-                    map_info_show_banner(g_mapInfo,"map");
-                    assert(!strcmp(shown_line1,"old-first") && !strcmp(shown_ornament,"old-art"));
-                }
-            }
-            assert(success);
+    for (int existing=0;existing<2;++existing) {
+        success=0;
+        for (int n=0;n<6;++n) {
+            size_t before;
+            reset();
+            if (existing) assert(map_info_set_display_name(g_mapInfo,"map","original",1));
+            before=live; fail_after=n; success=map_info_set_display_name(g_mapInfo,"map","changed",1);
+            fail_after=-1;
+            if (success) break;
+            assert(live==before);
+            assert(!strcmp(map_info_display_name(g_mapInfo,"map"),existing?"original":"Unknown map"));
         }
+        assert(success);
     }
     reset(); fail_after=0; strcpy(default_name,"New default");
     assert(!map_info_load(g_mapInfo)); fail_after=-1;
@@ -145,7 +112,6 @@ static void test_storage(void)
     }
     assert(borrowed==map_info_display_name(g_mapInfo,"stable") && !strcmp(borrowed,"copied"));
     assert(map_info_set_display_name(g_mapInfo,"stable",borrowed,0));
-    assert(map_info_set_sign(g_mapInfo,"stable","one",map_info_display_name(g_mapInfo,"stable")));
     assert(map_info_set_display_name(g_mapInfo,"stable","",0));
     assert(!*map_info_display_name(g_mapInfo,"stable"));
 }
@@ -179,50 +145,27 @@ static void test_banners(void)
     assert(banners==before && banners-released==1);
     fail_banner=1; map_info_show_banner(g_mapInfo,"map"); fail_banner=0;
     assert(banners==before && banners-released==1);
-    assert(map_info_set_sign(g_mapInfo,"map","line1","line2"));
-    assert(map_info_set_ornament(g_mapInfo,"map","image")); map_info_show_banner(g_mapInfo,"map");
-    assert(banners-released==1 && !strcmp(shown_line1,"line1") && !strcmp(shown_line2,"line2"));
-    assert(!strcmp(shown_ornament,"image")); before=banners;
     map_info_show_banner(g_mapInfo,"missing"); assert(banners==before);
     assert(map_info_set_display_name(g_mapInfo,"map","Map",0)); map_info_show_banner(g_mapInfo,"map");
     assert(banners==before); map_info_render_banner(g_mapInfo); assert(banners-released==1);
     banner_finished=1; map_info_render_banner(g_mapInfo); assert(banners==released);
     before=rendered; map_info_render_banner(g_mapInfo); assert(rendered==before);
 }
-static void test_lua(void)
+static void test_load(void)
 {
-    reset();
-    lua_script=
-        "local function check(f,msg,...) local ok,why=f(...); assert(not ok and why==msg) end "
-        "check(AddMapDisplayName,'argument 1st is must string',{},'x',true) "
-        "check(AddMapDisplayName,'argument 2nd is must string','x',{},true) "
-        "check(AddMapDisplayName,'argument 3th is must boolean','x','y',1) "
-        "check(AddMapSignName,'argument 1st is must string',{},'x','y') "
-        "check(AddMapSignName,'argument 2nd is must string','x',{},'y') "
-        "check(AddMapSignName,'argument 3st is must string','x','y',{}) "
-        "check(AddMapBackgroundBmp,'argument 1nd is must string',{},'y') "
-        "check(AddMapBackgroundBmp,'argument 2st is must string','x',{}) "
-        "assert(AddMapDisplayName('lua','Lua map',true)) "
-        "assert(AddMapSignName('lua','Lua first','Lua second')) "
-        "assert(AddMapBackgroundBmp('lua','Lua art')) "
-        "assert(AddMapDisplayName(42,123,false)) "
-        "assert(AddMapDisplayName('nul'..string.char(0)..'tail','head'..string.char(0)..'tail',false)) ";
-    assert(map_info_load(g_mapInfo));
-    assert(!strcmp(map_info_display_name(g_mapInfo,"lua"),"Lua map"));
-    assert(!strcmp(map_info_display_name(g_mapInfo,"42"),"123"));
-    assert(!strcmp(map_info_display_name(g_mapInfo,"nul"),"head"));
-    map_info_show_banner(g_mapInfo,"lua"); assert(!strcmp(shown_line1,"Lua first") && !strcmp(shown_ornament,"Lua art"));
-    lua_script="local ok,why=AddMapDisplayName('lua','replacement',true); assert(not ok and why=='out of memory')";
-    fail_after=1; assert(map_info_load(g_mapInfo)); fail_after=-1;
-    assert(!strcmp(map_info_display_name(g_mapInfo,"lua"),"Lua map"));
+    reset(); strcpy(default_name,"Loaded default");
+    assert(!map_info_load(g_mapInfo));
+    assert(!strcmp(map_info_display_name(g_mapInfo,"missing"),"Loaded default"));
+    map_info_show_banner(g_mapInfo,"missing"); assert(banners==released);
+    strcpy(default_name,"Unknown map");
 }
 int main(void)
 {
-    test_failures(); test_storage(); test_instances(); test_banners(); test_lua();
+    test_failures(); test_storage(); test_instances(); test_banners(); test_load();
     fail_after=-1; map_info_destroy(); map_info_destroy(); assert(!live && banners==released);
     assert(!*map_info_display_name(NULL,"x"));
     map_info_show_banner(NULL,"x"); map_info_render_banner(NULL);
     assert(!map_info_load(NULL) && !map_info_set_display_name(NULL,"x","y",0));
-    puts("Map metadata: C ownership, moving storage, stable text, atomic failures, instance names, real Lua callbacks and banner lifetime passed.");
+    puts("Map metadata: C ownership, moving storage, stable text, atomic failures, instance names, no mapInfo script and banner lifetime passed.");
     return 0;
 }
