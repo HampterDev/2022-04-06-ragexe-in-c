@@ -3,7 +3,7 @@
 #include "world/mode_manager.h"
 #include "game/context.h"
 #include <string.h>
-#include <mbstring.h>
+#include <shlwapi.h>
 #include "ui/shops/storage_internal.h"
 #include "ui/runtime.h"
 #include "core/msg_str.h"
@@ -295,7 +295,7 @@ static int store_text_find(const char *text, size_t text_len, const char *needle
     return 0;
 }
 
-int storage_filter(struct UIItemBaseWnd *base, const struct String *needle, int by_mbsstr)
+int storage_filter(struct UIItemBaseWnd *base, const struct String *needle, int ignore_case)
 {
     struct ListNode *node;
 
@@ -308,9 +308,8 @@ int storage_filter(struct UIItemBaseWnd *base, const struct String *needle, int 
 
         item_info_copy(&copy, LIST_VALUE(node, struct ItemInfo));
         string_copy(&text, &copy.name);
-        if (by_mbsstr) {
-            found = _mbsstr((const unsigned char *)string_cstr(&text),
-                            (const unsigned char *)string_cstr(needle)) != NULL;
+        if (ignore_case) {
+            found = StrStrIA(string_cstr(&text), string_cstr(needle)) != NULL;
         } else {
             found = store_text_find(string_cstr(&text), text.size, string_cstr(needle), needle->size);
         }

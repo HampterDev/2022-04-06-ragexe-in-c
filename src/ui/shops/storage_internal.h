@@ -104,7 +104,7 @@ void storage_store_info(struct UIWindow *wnd, struct WindowInfo *info);
 void storage_set_count_text(struct UIWindow *wnd, struct String *text, int count, int most);
 void storage_fill(struct UIItemBaseWnd *base, int category);
 int storage_sort(struct UIItemBaseWnd *base, int descending);
-int storage_filter(struct UIItemBaseWnd *base, const struct String *needle, int by_mbsstr);
+int storage_filter(struct UIItemBaseWnd *base, const struct String *needle, int ignore_case);
 void storage_sort_chosen(struct UIItemBaseWnd *base);
 void storage_list_create(struct UIItemBaseWnd *base, struct UIWindow **title, struct UIResizer **resizer);
 void storage_list_draw(struct UIItemBaseWnd *base, const struct String *count_text);
