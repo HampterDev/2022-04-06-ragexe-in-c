@@ -118,6 +118,7 @@ static void client_install_hooks(void)
 
     g_windowMgrHandlers.chat_edit = ui_chat_window_edit;
     g_windowMgrHandlers.chat_whisper_edit = ui_chat_window_whisper_edit;
+    g_windowMgrHandlers.chat_enter = ui_new_chat_wnd_on_enter;
     g_windowMgrHandlers.save_chat_log = ui_chat_wnd_write_chat_to_file;
     g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
     g_windowMgrHandlers.open_whisper = ui_whisper_wnd_open;
