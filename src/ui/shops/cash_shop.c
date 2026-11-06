@@ -12,6 +12,7 @@
 #include "ui/shops/cash_shop.h"
 #include <mmsystem.h>
 #include <shellapi.h>
+#include <shlwapi.h>
 #include "ui/window_mgr.h"
 #include "ui/game.h"
 #include "ui/ui_items.h"
@@ -929,15 +930,9 @@ static void drop_on_shop(struct UICashShopWnd *self)
 
 static int text_contains(const char *hay, size_t hay_len, const char *needle, size_t needle_len)
 {
-    const char *p, *end;
-
     if (needle_len > hay_len)
         return 0;
-    end = hay + (hay_len - needle_len + 1);
-    for (p = hay; (p = memchr(p, needle[0], end - p)) != NULL; p++)
-        if (!memcmp(p, needle, needle_len))
-            return 1;
-    return 0;
+    return StrStrIA(hay, needle) != NULL;
 }
 
 static void search_goods(struct UICashShopWnd *self)
