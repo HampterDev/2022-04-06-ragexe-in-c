@@ -249,6 +249,8 @@ call "%~dp0build_gm_name_packets.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 call "%~dp0build_text_viewer_links.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_item_collection_toggle.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 if exist "%ROOT%\build\main_rebuild.exe" (
     call "%~dp0build_cps_imports.bat"
     if errorlevel 1 (popd & exit /b 1)
