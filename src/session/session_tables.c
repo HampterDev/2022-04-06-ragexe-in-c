@@ -1,5 +1,4 @@
 #include "session/character_name.h"
-#include "contents/manner_filter.h"
 #include "session/csession.h"
 #include "session/session_items.h"
 #include "session/session_jobs.h"
@@ -216,7 +215,6 @@ void session_reload_texts(struct Session *self)
     struct TableReader *words = &self->tableReader;
 
     msg_str_load();
-    word_filter_load(&g_nameFilter, "manner.txt");
     session_load_talk_tables(self);
     table_reader_read(words, "mapNameTable.txt", TABLE_FIELDS);
     for (size_t i = 0; i + 2 <= words->count; i += 2) {
