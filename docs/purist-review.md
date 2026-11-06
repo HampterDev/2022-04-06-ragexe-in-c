@@ -12564,3 +12564,90 @@ Clean exports of each commit (`build/snap/k1`, `k2`, `k3`), logs `libs-k<n>-*` i
 - `git diff --check` passes for each commit.
 
 Not run: macOS and Android, a live client.
+
+## Knot cuts 3 to 25: the knot is gone (2026-11-06)
+
+Decision: Patrick asked to continue after cuts 1 and 2, merging into `purist` later. The cuts
+followed the [ranking](#ranking-the-knots-cuts-2026-11-06), measured again after each; one
+commit per cut, behaviour unchanged. From cut 20 on, the ranking was rerun on the code of the
+cut before (`topcuts`, the ranking's candidates on the SCC that holds `actor/game_object.c`),
+since the cuts before had changed the graph; cut 21 there is a different cut from the
+ranking's 21, which freed the same navigation files.
+
+| cut | commit | change | kind | game knot after (files / lines) |
+|---|---|---|---|---|
+| | `2ba04c5` | after cuts 1 and 2 | | 219 / 62,995 |
+| 3 | `70f8f5d` | a game actor's messages: `game_actor_handle_msg` through `g_gameActorHandleMsg` | hook | 205 / 57,823 |
+| 4 | `18c5241` | the empty `mode_nothing` to `world/mode_context.c` | move | 192 / 55,112 |
+| 5 | `b45a2e1` | the three session redraws that reach above the window manager to `session/session_redraws_game.c` | split | 181 / 52,492 |
+| 6 | `d9f1a0c` | `g_silentWhisperAcks` and `g_mapPropertyQuiet` to `game/client_state.c`, with their header | move | 176 / 50,510 |
+| 7 | `f99852b` | the navigation command reaches the chat window through `g_windowMgrHandlers` (new `chat_enter`) | hook | 167 / 46,202 |
+| 8 | `bd256fc` | `world_remove_object` to `world/objects_remove.c` | move | 154 / 44,612 |
+| 9 | `8d3ffc5` | `ui_bitmap_edit_ctrl_ops` to `ui/controls/edit_variants.c`, with the control | move | 151 / 43,293 |
+| 10 | `701c8f8` | the basic info window's layout from the session through `g_sessionBasicInfoHeight` | hook | 148 / 41,999 |
+| 11 | `e1e5236` | arrows, plant attacks and corpses through `g_actorSpawns` (`actor/actor_spawns.h`) | table | 132 / 36,842 |
+| 12 | `3833d7a` | render objects drawn by `render_object_draw` through `g_renderObjectDraw` | hook | 124 / 33,630 |
+| 13 | `66bea37` | `g_playerBlind` to `actor/player_blind.c` | move | 117 / 32,104 |
+| 14 | `5a37d3d` | the plain actor corpse to `actor/actor_corpse.c` | move | 111 / 30,440 |
+| 15 | `227d1b5` | `g_navi` to `navi/navi_instance.c` | move | 103 / 28,951 |
+| 16 | `ad0a14e` | `g_weather` to `actor/weather_instance.c` | move | 98 / 27,732 |
+| 17 | `6c8c5c0` | `game_mode_get_actor_name` to `game/actor_name_lookup.c` | move | 93 / 26,526 |
+| 18 | `919cf1c` | the client's Lua functions registered through `g_clientLuaFunctions` | hook | 88 / 25,423 |
+| 19 | `02e0df1` | `g_shiftDown` and the ground cell pick to `game/input_queries.c` | move | 80 / 23,296 |
+| 20 | `3166d95` | a party plate's click through `g_uiHooks.click_actor` | hook | 70 / 19,374 |
+| 21 | `96d72fd` | the navigation tables loaded from the session through `g_sessionNaviTables` | hook | 50 / 13,067 |
+| 22 | `a38015e` | the session's job queries to `session/session_job_queries.c` | move | 37 / 10,547 |
+| 23 | `2e4b969` | the party member lookups to `session/session_party_lookups.c` | move | 25 / 7,036 |
+| 24 | `8ad6b84` | the listed-window functions to `game/mode_listed.c`, the character-ID lookup to `world/actor_lookup.c` | move | 17 / 5,088 |
+| 25 | `397ec03` | the render object's resource accessors to `actor/render_object_res.c` | move | 9 / 2,586 |
+
+15 of the 23 are moves of a definition to a file of its own or to its header's library, as in
+step 1 of the restructuring; 8 go through a hook or a table that `client_install_hooks()` fills
+in, as in step 2. Each hook says where it is declared who installs it and what happens while it
+is NULL.
+
+### What is left
+
+No SCC holds the game any more. From cut 20 on the largest is the lower libraries' 78 files
+(the [second SCC](#the-second-scc)); the rest are components of their own:
+
+| files / lines | what |
+|---|---|
+| 78 / 18,786 | render, resources and widgets (the table's exceptions and the cycles inside `render` and `resources`) |
+| 24 / 14,697 | the effect primitives (`feat-rag`) |
+| 12 / 4,953 | the navigation: manager, route, guide and its windows |
+| 9 / 2,586 | the actor and effect object model: the method tables in `actor/game_object.c`, the actor message, process and state code, the effect base |
+| 9 / 4,318 | the chat line and the item tags it shows |
+| 8 / 2,782 | the session's job, name and sprite lookups with the world view and resource paths |
+| 8 / 1,938 | the party plates |
+| 8 / 3,585 | the guild windows |
+| 7 / 989 | the map entry and its login steps |
+
+The library table still has one `knot` library for the files that were in the knot; the checks
+pass with it, but it no longer names one SCC. Splitting it into libraries along these components
+is the next step and needs a decision on how fine the libraries should be.
+
+### Validation
+
+Clean exports of each commit, logs `libs-v01` to `v03`, `w04` to `w13` and `x14` to `x23` in the
+worktree's `build/`.
+
+- **Each commit:** `build.bat` without compiler, librarian or linker warnings; the include and
+  link checks pass with the same 269 and 129 exceptions; the full `testsuild.bat` and the seven
+  standalone suites pass. Every result line is the one of the export before the cuts
+  (`pfinal3`), the effect trace, packet dispatch, effect factory, window list and startup order
+  digests among them, except the two library-check lines (more files, includes and uses, and 19
+  libraries since `feat-rag`).
+- **The first full runs failed** on three tests that compile or include a file whose definition
+  moved or whose call became a hook: `test_incoming_whisper` (includes `game/mode_whisper.c`),
+  `test_lua_boundaries` (includes `contents/client_lua.c` and counts its registration stub's
+  calls) and `test_weather_state` (compiles `actor/weather.c`). Each now compiles or includes the
+  new file or installs the hook, in the commit that needs it, and passes with its result line
+  unchanged. Every test that compiles or includes one of the changed files was checked.
+- **At `397ec03`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`: no
+  warnings. CMake with MSVC, Win32 and x64 (Debug): no warnings, CTest 23 of 23 and 22 of 22.
+  Linux (WSL, GCC 13.3): CTest 28 of 28, 1,665 warnings as before.
+- `git diff --check` passes for each commit.
+
+Not run: macOS and Android, a live client. No test drives the hooks' installation in
+`client_install_hooks()` (`core/client_init.c` is in no test), as for the hooks before.
