@@ -1489,6 +1489,7 @@ static void prepare(void)
     g_actor_ops.base.get_effect_state = actor_state;
     g_actor_ops.set_job_model = actor_set_job_model_stub;
     g_foreign_ops = g_actor_ops;
+    g_ragEffectProcess = rag_effect_on_process;
 
     g_renderer_store.proj[0] = 700.0f;
     g_renderer_store.proj[1] = 700.0f;

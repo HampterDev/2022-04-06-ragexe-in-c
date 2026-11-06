@@ -37,6 +37,7 @@
 #include "std/std.h"
 #include "actor/weather.h"
 #include "effects/effect_render_hooks.h"
+#include "effects/rag/rag_effect.h"
 #include "ui/character/character.h"
 #include "ui/controls/ui_hooks.h"
 #include "ui/items/item_collection.h"
@@ -104,6 +105,7 @@ static void client_install_hooks(void)
     g_grannyJobModelName = session_granny_job_model;
     g_clientInfoWeatherScript = weather_add_etc_script;
     g_worldResLight = weather_take_map_light;
+    g_ragEffectProcess = rag_effect_on_process;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;

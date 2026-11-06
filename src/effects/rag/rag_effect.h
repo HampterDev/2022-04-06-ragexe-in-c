@@ -38,6 +38,11 @@ void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender, Re
                                     RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3);
 int rag_effect_get_duration(struct RagEffect *self);
 void rag_effect_set_duration(struct RagEffect *self, int frame);
+/* Called by an effect's on_process for each of its frames: the process of its effect ID
+   (rag_effect_on_process, effects/rag/rag_effect_process.c, which reaches the game, the
+   actors and the session). client_install_hooks() (core/client_init.c) installs
+   rag_effect_on_process. NULL: an effect ends at its first frame. */
+extern unsigned char (*g_ragEffectProcess)(struct GameObject *object);
 struct EffectPrim *rag_launch_prim(struct RagEffect *self, int kind, float dx, float dy, float dz);
 
 void rag_effect_init(struct RagEffect *self, struct RenderObject *master, int effect_id, Vec3 offset);

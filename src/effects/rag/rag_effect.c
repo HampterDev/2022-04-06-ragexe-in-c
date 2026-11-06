@@ -10,10 +10,19 @@
 struct GameObject;
 struct RenderObject;
 
+unsigned char (*g_ragEffectProcess)(struct GameObject *object);
+
+static unsigned char rag_effect_process(struct GameObject *object)
+{
+    if (!g_ragEffectProcess)
+        return 0;
+    return g_ragEffectProcess(object);
+}
+
 static const struct RenderObjectOps rag_effect_ops = {
     .base = {
         .destroy = rag_effect_delete,
-        .on_process = rag_effect_on_process,
+        .on_process = rag_effect_process,
         .send_msg = render_object_send_msg,
         .render = rag_effect_render,
         .get_direction = game_object_dir_of,
