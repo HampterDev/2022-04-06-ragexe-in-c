@@ -231,3 +231,12 @@ the way and the validation are in
 | [8207595e5c](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8207595e5c38c0841e514b2406dd6640efdd5f1e) | [721d4c9316](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/721d4c9316839b171e4209d2ff63bf20ba845d18) | Ground skill effects: as the original's switch, no case 0x21d, one for 0x302 (Kevin Birk) |
 | [7b0a0d119f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/7b0a0d119f4a73784ce9d1a8ce7c6c0dbf9923de) | [037c1658e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/037c1658e345478fa62e89f452147e42b9552e27) (adapted) | Cut the Star Gladiator notice's job name to its packet field |
 | [341f8e1be3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/341f8e1be3e851598b90f88cba7dc4b92788f706) | [8c02cc7c66](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c02cc7c6659d766422bf8a9f6a371dc8fa1bf29) | Whip effects: draw the joints' shimmer every frame, as the original does |
+
+## Foundation fixes from the WARP port, 2026-11-06
+
+Found while porting WARP patches to `main` on the `warp-patches` branch, fixed on `main` and
+picked onto `purist` with `git cherry-pick -x`.
+
+| Foundation commit | Purist | Change |
+| --- | --- | --- |
+| [a1a5a206b4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a1a5a206b4ec43a3213d8f3aaa0365055382b07b) | [9d2ba7b65e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9d2ba7b65e1488ca3dae79fde5c386dab87ca5b1) (adapted) | GM name packets: copy the name within its 24-byte field |
