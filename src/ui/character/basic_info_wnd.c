@@ -123,6 +123,7 @@ const struct UIWindowOps ui_basic_info_wnd_ops = {
 #define BASIC_CMD_CLOSE_ALL 0xd6
 
 #define BASIC_RED 0xff
+#define BASIC_EXP_NUMBER_COLOUR 0x93d49a
 
 static struct UIWindow *basic_wnd(struct UIBasicInfoWnd *self)
 {
@@ -570,6 +571,16 @@ static void basic_draw_compact(struct UIBasicInfoWnd *self)
     }
 }
 
+static void basic_draw_exp_number(struct UIWindow *wnd, int y, __int64 exp, __int64 next)
+{
+    char text[0x20];
+
+    if (!((int)exp | (int)next))
+        return;
+    sprintf(text, "%d / %d", (int)exp, (int)next);
+    ui_window_text_out(wnd, 0x56, y, text, 0, 1, 0xd, BASIC_EXP_NUMBER_COLOUR, 0, 0);
+}
+
 static void basic_draw_expanded(struct UIBasicInfoWnd *self)
 {
     struct UIWindow *wnd = basic_wnd(self);
@@ -599,6 +610,8 @@ static void basic_draw_expanded(struct UIBasicInfoWnd *self)
     ui_window_text_out(wnd, 0x11, 2, title, 0, 0, 0xc, 0, 0, 0);
     ui_window_text_out(wnd, 0x11, 0x33, "HP", 0, 1, 0xe, 0, 0, 0);
     ui_window_text_out(wnd, 0x11, 0x41, "SP", 0, 1, 0xe, 0, 0, 0);
+    basic_draw_exp_number(wnd, 0x4e, g_session1.baseExp, g_session1.nextBaseExp);
+    basic_draw_exp_number(wnd, 0x68, g_session1.jobExp, g_session1.nextJobExp);
     if (g_session1.maxHp != 0) {
         sprintf(text, "%d%%", g_session1.hp * 100 / g_session1.maxHp);
         ui_window_text_out(wnd, 0xad, 0x33, text, 0, 1, 0xe, 0, 0, 0);
