@@ -1,7 +1,6 @@
 #include "render/texture_cache.h"
 #include "render/texture_types.h"
 #include "platform/client_config.h"
-#include <stdio.h>
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/render/render.h"
 #include "contents/mouse.h"
@@ -23,7 +22,6 @@ enum {
 };
 
 #define TILE_FMT UI_SKIN "T_배경%d-%d.bmp"
-#define LOGO_FMT UI_SKIN "T_R%d.tga"
 
 static void draw(RECT *rc, struct Texture *tex)
 {
@@ -143,7 +141,6 @@ static void draw_tape(struct UIWindowMgr *self, int tw, float fth)
 
 static void draw_logo(struct UIWindowMgr *self, int tw, int th, float fth)
 {
-    char name[256];
     RECT rc;
     float top_offset = fth * 0.1f, half_row = fth * 0.5f, depth = fth + fth;
     int x, y, left, right;
@@ -164,8 +161,7 @@ static void draw_logo(struct UIWindowMgr *self, int tw, int th, float fth)
             rc.left = left;
             rc.right = right;
             rc.bottom = n <= 2 ? y : (int)(half_row + (float)rc.top);
-            sprintf(name, LOGO_FMT, n);
-            draw(&rc, texture_cache_get(&g_textureCache, name, 0, 0));
+            draw(&rc, texture_cache_get(&g_textureCache, UI_SKIN, 0, 0));
         } while ((float)self->logo_y + depth > (float)y);
     }
 }
