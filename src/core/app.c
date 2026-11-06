@@ -154,7 +154,7 @@ int app_create_window(HINSTANCE instance)
             y = 0;
     }
 
-    g_hMainWnd = CreateWindowExA(0, wc.lpszClassName, g_windowClassName, 0x2c20000, x, y,
+    g_hMainWnd = CreateWindowExA(0, wc.lpszClassName, g_windowClassName, 0x2ca0000, x, y,
                                    rect.right - rect.left, rect.bottom - rect.top, 0, 0, instance, 0);
     if (!g_hMainWnd) {
         MessageBoxA(0, "Window Creation Failed", "ERROR", 0);

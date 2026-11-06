@@ -126,7 +126,7 @@ static void relaunch_state_icons(void)
     }
 }
 
-#define WINDOWED_STYLE   (WS_CAPTION | WS_MINIMIZEBOX | WS_CLIPCHILDREN)
+#define WINDOWED_STYLE   (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN)
 #define FULLSCREEN_STYLE WS_POPUP
 
 static HMONITOR target_monitor(HWND hwnd, const GUID *adapter)
