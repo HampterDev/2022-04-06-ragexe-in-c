@@ -13,6 +13,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
 | `src/platform/window_win32.c`     | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
 | `granny2.dll` clock imports (Windows) | `scene_granny_win.c` | Granny models animate on the scene clock, as the POSIX runtime does |
+| `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
 produces the same pixels every run, and the same random effects on every platform.
@@ -96,11 +97,14 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
-| `capture(name)` | writes `<out>/<name>.png` |
+| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg` |
+| `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
 | `fail(message)` | marks the scene failed and goes on |
 
 A script error, a map that does not finish loading, or `fail` ends the run with exit status 1.
+On Windows a message box the client would show (`error_msg`, a Lua error) is written to stdout
+as `scene: message box "<caption>": <text>` and the run goes on.
 
 The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACCEPT_ENTER2`), the
 client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the

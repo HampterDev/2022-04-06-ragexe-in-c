@@ -9,7 +9,9 @@
 #include "core/app.h"
 #include "core/drive_state.h"
 #include "core/user_input.h"
+#include "actor/types.h"
 #include "contents/account_settings_internal.h"
+#include "effects/rag/rag_effect_types.h"
 #include "game/gamemode.h"
 #include "game/packet_ids.h"
 #include "game/packets_entry.h"
@@ -23,6 +25,7 @@
 #include "render/gfx.h"
 #include "session/character_name.h"
 #include "session/state.h"
+#include "std/list.h"
 #include "std/string.h"
 #include "ui/window_access.h"
 #include "world/mode_manager.h"
@@ -461,27 +464,46 @@ static void write_file(void *context, void *data, int size)
     fwrite(data, 1, (size_t)size, context);
 }
 
+/* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
+   left corner is x, y (default: centred on the frame), as <out>/<name>.png, or with jpeg = quality
+   (1 to 100) as <out>/<name>.jpg. */
 static int l_capture(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
+    int crop = lua_istable(L, 2), jpeg = opt_int(L, crop ? 2 : 0, "jpeg", 0);
     struct gfx_lock lk;
     unsigned char *rgb;
     char path[1200];
     FILE *file;
-    DWORD x, y;
+    DWORD x, y, x0 = 0, y0 = 0, w, h;
     int ok;
     if (!g_3dDevice.target || gfx_lock(g_3dDevice.target, NULL, GFX_LOCK_WAIT, &lk) < 0)
         return luaL_error(L, "capture: cannot read the frame");
-    rgb = malloc((size_t)lk.width * lk.height * 3);
+    w = lk.width;
+    h = lk.height;
+    if (crop) {
+        int cw = opt_int(L, 2, "w", (int)lk.width), ch = opt_int(L, 2, "h", (int)lk.height);
+        int cx = opt_int(L, 2, "x", ((int)lk.width - cw) / 2), cy = opt_int(L, 2, "y", ((int)lk.height - ch) / 2);
+        if (cw <= 0 || ch <= 0 || cx < 0 || cy < 0 || cx + cw > (int)lk.width || cy + ch > (int)lk.height) {
+            gfx_unlock(g_3dDevice.target);
+            return luaL_error(L, "capture: %dx%d at %d,%d is not inside the %ux%u frame", cw, ch, cx, cy,
+                              (unsigned)lk.width, (unsigned)lk.height);
+        }
+        x0 = (DWORD)cx;
+        y0 = (DWORD)cy;
+        w = (DWORD)cw;
+        h = (DWORD)ch;
+    }
+    rgb = malloc((size_t)w * h * 3);
     if (!rgb) {
         gfx_unlock(g_3dDevice.target);
         return luaL_error(L, "capture: out of memory");
     }
-    for (y = 0; y < lk.height; y++) {
-        const unsigned char *row = (const unsigned char *)lk.bits + (size_t)y * lk.pitch;
-        for (x = 0; x < lk.width; x++) {
-            const unsigned char *p = row + (size_t)x * (lk.bpp / 8);
-            unsigned char *o = rgb + ((size_t)y * lk.width + x) * 3;
+    for (y = 0; y < h; y++) {
+        const unsigned char *row = (const unsigned char *)lk.bits + (size_t)(y + y0) * lk.pitch;
+        for (x = 0; x < w; x++) {
+            const unsigned char *p = row + (size_t)(x + x0) * (lk.bpp / 8);
+            unsigned char *o = rgb + ((size_t)y * w + x) * 3;
             if (lk.bpp == 32) {
                 o[0] = p[2];
                 o[1] = p[1];
@@ -495,9 +517,12 @@ static int l_capture(lua_State *L)
         }
     }
     gfx_unlock(g_3dDevice.target);
-    snprintf(path, sizeof path, "%s/%s.png", S.out, name);
+    snprintf(path, sizeof path, "%s/%s.%s", S.out, name, jpeg > 0 ? "jpg" : "png");
     file = fopen(path, "wb");
-    ok = file && stbi_write_png_to_func(write_file, file, (int)lk.width, (int)lk.height, 3, rgb, (int)lk.width * 3);
+    if (jpeg > 0)
+        ok = file && stbi_write_jpg_to_func(write_file, file, (int)w, (int)h, 3, rgb, jpeg > 100 ? 100 : jpeg);
+    else
+        ok = file && stbi_write_png_to_func(write_file, file, (int)w, (int)h, 3, rgb, (int)w * 3);
     if (file && fclose(file))
         ok = 0;
     free(rgb);
@@ -505,6 +530,28 @@ static int l_capture(lua_State *L)
         return luaL_error(L, "capture: cannot write %s", path);
     printf("scene: captured %s (frame %u, %u shown)\n", path, S.frame, S.shown);
     return 0;
+}
+
+/* scene.effects(): a list of the effect IDs attached to the player (oldest first), and the number
+   of objects in the world's object list (actors, effects and what they spawned). */
+static int l_effects(lua_State *L)
+{
+    struct World *world = g_modeMgr.curModeType == MODE_TYPE_GAME && g_modeMgr.curMode
+                              ? ((struct GameMode *)g_modeMgr.curMode)->world : NULL;
+    struct AbleToMakeEffect *player = world ? (struct AbleToMakeEffect *)world->player : NULL;
+    struct ListNode *node;
+    int n = 0;
+    lua_newtable(L);
+    if (player && player->effects.head)
+        for (node = player->effects.head->next; node != player->effects.head; node = node->next) {
+            struct RagEffect *effect = *LIST_VALUE(node, struct RagEffect *);
+            if (effect) {
+                lua_pushinteger(L, effect->effect_id);
+                lua_rawseti(L, -2, ++n);
+            }
+        }
+    lua_pushinteger(L, world && world->gameObjects.head ? (lua_Integer)world->gameObjects.size : 0);
+    return 2;
 }
 
 static int l_frame(lua_State *L)
@@ -545,7 +592,7 @@ static int l_fail(lua_State *L)
 static const luaL_Reg scene_api[] = {
     {"enter_map", l_enter_map}, {"spawn", l_spawn}, {"vanish", l_vanish}, {"say", l_say},
     {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
-    {"button", l_button}, {"open", l_open}, {"capture", l_capture}, {"frame", l_frame},
+    {"button", l_button}, {"open", l_open}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
     {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
     {NULL, NULL},
 };
