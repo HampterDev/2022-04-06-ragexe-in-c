@@ -42,7 +42,6 @@
 #define TITLE_HEIGHT 0x11
 #define STATUS_WIDTH 0x118
 #define STATUS_HEIGHT 0x8d
-#define STATUS_HEIGHT_EXPANDED 0xf1
 #define OFF_SCREEN (-100)
 
 #define MSG_STATUS_TITLE 0x69
@@ -440,28 +439,6 @@ static void status_place_buttons(struct UIStatusWnd *self)
     ui_window_invalidate_base(&self->frame.base);
 }
 
-static void status_toggle_expand(struct UIStatusWnd *self)
-{
-    struct UIWindow *wnd = &self->frame.base;
-    const char *normal, *press;
-
-    if (self->expanded == 1) {
-        self->expanded = 0;
-        ui_window_resize_base(wnd, STATUS_WIDTH, STATUS_HEIGHT);
-        normal = UI_SKIN "statuswnd\\expand_on_normal.bmp";
-        press = UI_SKIN "statuswnd\\expand_on_press.bmp";
-    } else {
-        self->expanded = 1;
-        ui_window_resize_base(wnd, STATUS_WIDTH, STATUS_HEIGHT_EXPANDED);
-        normal = UI_SKIN "statuswnd\\expand_off_normal.bmp";
-        press = UI_SKIN "statuswnd\\expand_off_press.bmp";
-    }
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, normal, 0, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, normal, 1, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, press, 2, 0);
-    self->full_height = wnd->height;
-}
-
 static void status_plus(struct UIStatusWnd *self, int stat)
 {
     if (g_session1.statCosts[stat] > g_session1.statusPoints)
@@ -484,10 +461,6 @@ static void status_on_command(struct UIStatusWnd *self, int id)
         if (g_session1.traitCost[trait] <= 0)
             return;
         mode_send_message(client_current_mode(), REQ_TRAIT_CHANGE, SP_POW + trait, 1, 0, 0);
-        return;
-    }
-    if (id == ID_EXPAND) {
-        status_toggle_expand(self);
         return;
     }
     switch (id) {
@@ -544,7 +517,6 @@ int ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
         ui_status_wnd_send_msg(wnd, NULL, STATUS_MSG_REFRESH, 0, 0, 0, 0);
         ui_frame_wnd_move(wnd, self->info->rect.x, self->info->rect.y);
         self->expanded = self->info->expanded != 1;
-        ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_EXPAND, 0, 0, 0);
         info = self->info;
         if (info->rect.height != info->org_height)
             ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);

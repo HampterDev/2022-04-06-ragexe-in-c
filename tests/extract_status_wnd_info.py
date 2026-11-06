@@ -1,4 +1,4 @@
-"""Extract the status window's layout state machine (info, expand, minimize)."""
+"""Extract the status window's layout state machine (info, minimize)."""
 from pathlib import Path
 import re
 import sys
@@ -13,7 +13,6 @@ parts.append(declaration[0])
 signatures = [
     'void ui_status_wnd_store_info(',
     'static void status_place_buttons(',
-    'static void status_toggle_expand(',
     'static void status_plus(',
     'static void status_on_command(',
     'int ui_status_wnd_send_msg(',

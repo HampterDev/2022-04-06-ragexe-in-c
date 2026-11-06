@@ -6,8 +6,11 @@
 #include <stdio.h>
 
 /* Restore saved status-window layouts through the production UI_MSG_SET_INFO
-   path. A window saved as a title bar must come back as a title bar and
-   expand to the saved full height. */
+   path. A window saved as a title bar must come back as a title bar. The
+   trait expand command does nothing, so the restored expand flag is the
+   inverse of the saved one and the height is not changed by it. */
+#define SAVED_EXPANDED_HEIGHT 0xf1
+
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 struct SnapMgr g_snapMgr;
@@ -29,11 +32,6 @@ void ui_window_resize_base(struct UIWindow *self, int width, int height)
 void ui_window_move_base(struct UIWindow *self, int x, int y) { self->x = x; self->y = y; }
 void ui_frame_wnd_move(struct UIWindow *self, int x, int y) { self->x = x; self->y = y; }
 void ui_window_invalidate_base(struct UIWindow *self) { (void)self; }
-BYTE ui_bitmap_button_set_bitmap(struct UIBitmapButton *self, const char *path, int state, int reserved)
-{
-    assert(self == &expand_button.bmp && path && state >= 0 && state <= 2 && reserved == 0);
-    return 1;
-}
 void ui_window_mgr_update_snap_rect(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
     assert(self == &g_windowMgr && wnd);
@@ -103,6 +101,11 @@ static void toggle_title_bar(struct UIStatusWnd *self)
     ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
 }
 
+static void press_expand(struct UIStatusWnd *self)
+{
+    ui_status_wnd_send_msg(&self->frame.base, NULL, UI_MSG_COMMAND, ID_EXPAND, 0, 0, 0);
+}
+
 int main(void)
 {
     static struct UIStatusWnd wnd;
@@ -113,34 +116,38 @@ int main(void)
 
     info = (struct StatusWndInfo){ { 10, 20, STATUS_WIDTH, STATUS_HEIGHT }, STATUS_HEIGHT, 1, 0 };
     restore(&wnd, &info);
-    expect(&wnd, 10, 20, STATUS_HEIGHT, STATUS_HEIGHT, 0);
+    expect(&wnd, 10, 20, STATUS_HEIGHT, STATUS_HEIGHT, 1);
+    press_expand(&wnd);
+    expect(&wnd, 10, 20, STATUS_HEIGHT, STATUS_HEIGHT, 1);
 
-    info = (struct StatusWndInfo){ { 30, 40, STATUS_WIDTH, STATUS_HEIGHT_EXPANDED }, STATUS_HEIGHT_EXPANDED, 1, 1 };
+    info = (struct StatusWndInfo){ { 30, 40, STATUS_WIDTH, SAVED_EXPANDED_HEIGHT }, SAVED_EXPANDED_HEIGHT, 1, 1 };
     restore(&wnd, &info);
-    expect(&wnd, 30, 40, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 30, 40, STATUS_HEIGHT, STATUS_HEIGHT, 0);
+    press_expand(&wnd);
+    expect(&wnd, 30, 40, STATUS_HEIGHT, STATUS_HEIGHT, 0);
 
     info = (struct StatusWndInfo){ { 50, 60, STATUS_WIDTH, TITLE_HEIGHT }, STATUS_HEIGHT, 1, 0 };
     restore(&wnd, &info);
-    expect(&wnd, 50, 60, TITLE_HEIGHT, STATUS_HEIGHT, 0);
+    expect(&wnd, 50, 60, TITLE_HEIGHT, STATUS_HEIGHT, 1);
     toggle_title_bar(&wnd);
-    expect(&wnd, 50, 60, STATUS_HEIGHT, STATUS_HEIGHT, 0);
+    expect(&wnd, 50, 60, STATUS_HEIGHT, STATUS_HEIGHT, 1);
 
-    info = (struct StatusWndInfo){ { 70, 80, STATUS_WIDTH, TITLE_HEIGHT }, STATUS_HEIGHT_EXPANDED, 1, 1 };
+    info = (struct StatusWndInfo){ { 70, 80, STATUS_WIDTH, TITLE_HEIGHT }, SAVED_EXPANDED_HEIGHT, 1, 1 };
     restore(&wnd, &info);
-    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT, 0);
     ui_status_wnd_store_info(&wnd.frame.base);
-    assert(info.rect.height == TITLE_HEIGHT && info.org_height == STATUS_HEIGHT_EXPANDED && info.expanded == 1);
+    assert(info.rect.height == TITLE_HEIGHT && info.org_height == STATUS_HEIGHT && info.expanded == 0);
     restore(&wnd, &info);
-    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT, 1);
     toggle_title_bar(&wnd);
-    expect(&wnd, 70, 80, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 70, 80, STATUS_HEIGHT, STATUS_HEIGHT, 1);
     toggle_title_bar(&wnd);
-    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 70, 80, TITLE_HEIGHT, STATUS_HEIGHT, 1);
 
     info = (struct StatusWndInfo){ { 90, 100, 0x100, TITLE_HEIGHT }, STATUS_HEIGHT, 1, 0 };
     restore(&wnd, &info);
-    expect(&wnd, 0xb9, 0x12c, STATUS_HEIGHT_EXPANDED, STATUS_HEIGHT_EXPANDED, 1);
+    expect(&wnd, 0xb9, 0x12c, STATUS_HEIGHT, STATUS_HEIGHT, 0);
 
-    printf("Status window info: %d cases passed (saved title bar restored, expanded height kept).\n", cases);
+    printf("Status window info: %d cases passed (saved title bar restored, expand command ignored).\n", cases);
     return 0;
 }
