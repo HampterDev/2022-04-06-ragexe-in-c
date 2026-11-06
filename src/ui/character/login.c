@@ -504,10 +504,6 @@ void ui_login_wnd_store_info(struct UIWindow *window)
 #define LOGIN_REQ_SET_SUBMODE 0x2735
 #define LOGIN_SUBMODE_OTP 0x26
 #define LOGIN_REQ_QUIT 2
-#define LOGIN_ID_MIN_CHARS 4
-#define LOGIN_PASSWORD_MIN_CHARS 6
-#define MSG_LOGIN_ID_TOO_SHORT 0xbd5
-#define MSG_LOGIN_PASSWORD_TOO_SHORT 0xbd6
 #define MSG_LOGIN_QUIT_ASK 0x11
 #define MSG_LOGIN_JOIN_ASK 0xd08
 #define LOGIN_JOIN_URL_HANGAME "http://ro.hangame.com/login/loginstep.asp?prevURL=/NHNCommon/NHN/Memberjoin.asp"
@@ -520,27 +516,15 @@ static void login_leave(struct UILoginWnd *self)
 
 static void login_start(struct UILoginWnd *self)
 {
-    struct String text;
-
     sound_play_wave("버튼소리.wav"  , 0.0f, 0.0f, 0.0f, 0xfa,
                     0x28, 1.0f);
-    if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS) {
-        mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
-        _snprintf_s(g_session1.launchArg2, sizeof g_session1.launchArg2, (size_t)-1, "%s", ui_edit_ctrl_get_text(self->id_edit));
-        mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (int)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
-        mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (int)self->account_class, 0, 0, 0);
-        ui_window_mgr_post_quit1(&g_windowMgr, 3);
-        ui_login_wnd_store_saved_id(self);
-        return;
-    }
-    string_init(&text);
-    if (ui_edit_ctrl_get_text_size(self->id_edit) < LOGIN_ID_MIN_CHARS)
-        string_format(&text, msg_str(MSG_LOGIN_ID_TOO_SHORT), LOGIN_ID_MIN_CHARS);
-    else
-        string_format(&text, msg_str(MSG_LOGIN_PASSWORD_TOO_SHORT), LOGIN_PASSWORD_MIN_CHARS);
-    ui_message_box(string_cstr(&text));
-    string_free(&text);
+    mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
+    _snprintf_s(g_session1.launchArg2, sizeof g_session1.launchArg2, (size_t)-1, "%s", ui_edit_ctrl_get_text(self->id_edit));
+    mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_USER_ID, (int)ui_edit_ctrl_get_text(self->id_edit), 0, 0, 0);
+    mode_send_message(client_current_mode(), LOGIN_REQ_ACCOUNT_CLASS, (int)self->account_class, 0, 0, 0);
+    ui_window_mgr_post_quit1(&g_windowMgr, 3);
+    ui_login_wnd_store_saved_id(self);
 }
 
 static void login_join(struct UILoginWnd *self)
