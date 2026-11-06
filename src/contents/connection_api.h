@@ -11,6 +11,7 @@ struct ServerAddress {
 };
 
 char connection_startup(void);
+void connection_resolve_server_address(void);
 void connection_shutdown(void);
 char connection_ws2_unhooked(void);
 struct Connection *connection_construct(struct Connection *connection);

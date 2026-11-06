@@ -4,6 +4,7 @@
 #include "actor/weather.h"
 #include "platform/client_config.h"
 #include "core/text_util.h"
+#include "contents/connection_api.h"
 
 unsigned char g_startupSecondMod4;
 #include "session/state.h"
@@ -347,6 +348,7 @@ static void read_connection(struct XmlElement *node)
     set_option(node);
     if ((text = child_text(node, "address")) != NULL)
         g_serverAddress = text;
+    connection_resolve_server_address();
     if ((text = child_text(node, "port")) != NULL)
         g_serverPort = text;
     if ((text = child_text(node, "domain")) != NULL)

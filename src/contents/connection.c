@@ -6,6 +6,7 @@
 #include "contents/connection.h"
 #include "std/std.h"
 #include "contents/ui_window_mgr.h"
+#include "platform/client_config.h"
 #include <mmsystem.h>
 
 typedef int (__stdcall *Ws2TransferFn)(SOCKET s, char *buf, int len, int flags);
@@ -17,6 +18,19 @@ WSADATA g_wsa_data;
 #define RECV_CHUNK 0x800
 
 static const char *const ws2_checked[4] = { "connect", "closesocket", "send", "select" };
+static char resolved_server_address[16];
+
+void connection_resolve_server_address(void)
+{
+    struct hostent *host = gethostbyname(g_serverAddress);
+    const unsigned char *ip;
+
+    if (!host)
+        return;
+    ip = (const unsigned char *)host->h_addr_list[0];
+    sprintf(resolved_server_address, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+    g_serverAddress = resolved_server_address;
+}
 
 char connection_ws2_unhooked(void)
 {
@@ -42,6 +56,7 @@ char connection_startup(void)
         WSACleanup();
         return 0;
     }
+    connection_resolve_server_address();
     g_ws2_32 = LoadLibraryA("ws2_32.dll");
     g_ws2_send = (Ws2TransferFn)GetProcAddress(g_ws2_32, "send");
     g_ws2_recv = (Ws2TransferFn)GetProcAddress(g_ws2_32, "recv");
