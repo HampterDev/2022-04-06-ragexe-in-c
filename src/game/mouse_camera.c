@@ -163,7 +163,7 @@ static void right_button_held(struct GameMode *self)
         int dy = (g_mouse.y - self->last_mouse_y) / 2;
         float range = 10.0f;
         if (self->camera_free)
-            range = 20.0f;
+            range = 42.0f;
         set_pitch(self, self->view->destLatitude - (float)dy, range);
     }
 
