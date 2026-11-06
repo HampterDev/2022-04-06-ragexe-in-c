@@ -99,10 +99,8 @@ void login_mode_refuse_login(struct LoginMode *self, int code, const char *text)
             "비밀번호를 3회 잘못입력하였습니다. "
             "비밀번호를 확인해주세요.              "
             "클라이언트 실행을 종료합니다.", 0x66);
-        if (refuse_box(&s, 0, 1) == 0xb0) {
-            open_page(g_session1.channelCopId == 1 ? "http://www.hangame.com" : "http://ragnarok.co.kr");
+        if (refuse_box(&s, 0, 1) == 0xb0)
             mode_mgr_quit(&g_modeMgr);
-        }
         string_clear(&s);
         break;
     case 2:   set_msg(&s, 8); break;

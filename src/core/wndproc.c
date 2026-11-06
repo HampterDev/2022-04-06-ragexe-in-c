@@ -114,8 +114,6 @@ static LRESULT on_close(void)
         char_user_data_save(g_charUserDataMgr);
     if (game_current_mode() != 0)
         adventurer_agency_cancel_own_booking(g_adventurerAgency);
-    if (g_serviceType == 0xb)
-        open_page("http://www.ragnarok.co.in/index.php");
     return 0;
 }
 

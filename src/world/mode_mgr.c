@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <io.h>
 #include <direct.h>
-#include <shellapi.h>
 #include <mmsystem.h>
 #include "core/app.h"
 #include "platform/language.h"
@@ -39,8 +38,6 @@ int mode_send_msg_base(struct Mode *self, int msg, int a, int b, int c, int d)
         }
         if (g_modeMgr.curMode)
             g_modeMgr.curMode->loop_cond = 0;
-        if (g_serviceType == 0xb)
-            ShellExecuteA(g_hMainWnd, "open", "http://www.ragnarok.co.in/index.php", NULL, NULL, SW_SHOWNORMAL);
         g_modeMgr.loopCond = 0;
         return 0;
     case MODE_MSG_SCREENSHOT:
@@ -253,8 +250,6 @@ void mode_mgr_quit(struct ModeMgr *self)
 {
     if (self->curMode)
         self->curMode->loop_cond = 0;
-    if (g_serviceType == 0xb)
-        ShellExecuteA(g_hMainWnd, "open", "http://www.ragnarok.co.in/index.php", NULL, NULL, SW_SHOWNORMAL);
     self->loopCond = 0;
 }
 

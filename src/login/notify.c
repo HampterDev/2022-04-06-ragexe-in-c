@@ -75,12 +75,8 @@ static void open_account_page(void)
         ShellExecuteA(g_hMainWnd, "open", msg_str(g_session1.channelCopId == 1 ? 0x51c : 0x210), NULL, NULL, SW_SHOWNORMAL);
         return;
     case 1:
-        ShellExecuteA(g_hMainWnd, "open", "https://iro.ragnarokonline.com/member/memberjoin1.asp?mNum=1", NULL, NULL, SW_SHOWNORMAL);
-        return;
     case 2:
-        return;
     case 3:
-        ShellExecuteA(g_hMainWnd, "open", "http://t.kunlun.com/?act=voucher.main&cid=1000&pid=61", NULL, NULL, SW_SHOWNORMAL);
         return;
     default:
         ShellExecuteA(g_hMainWnd, "open", msg_str(0x210), NULL, NULL, SW_SHOWNORMAL);
