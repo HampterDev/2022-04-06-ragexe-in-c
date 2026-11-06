@@ -17,7 +17,6 @@ struct SnapMgr g_snapMgr;
 static struct Renderer renderer;
 struct Renderer *g_renderer = &renderer;
 static struct UIBitmapButton plus_buttons[STAT_COUNT], trait_buttons[STAT_COUNT];
-static struct UIBmpTextButton expand_button;
 static int cases;
 
 int session_get_drawn_job(struct Session *self) { (void)self; return 0; }
@@ -78,7 +77,6 @@ static void create(struct UIStatusWnd *self)
         self->plus[i] = &plus_buttons[i];
         self->trait_plus[i] = &trait_buttons[i];
     }
-    self->expand = &expand_button;
     self->full_height = self->frame.base.height;
 }
 

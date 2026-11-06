@@ -45,7 +45,6 @@
 #define OFF_SCREEN (-100)
 
 #define MSG_STATUS_TITLE 0x69
-#define MSG_EXPAND 0xe1d
 
 struct UIStatusWnd {
     struct UIFrameWnd frame;
@@ -56,12 +55,10 @@ struct UIStatusWnd {
     int tip_dy;
     int tip_dx;
     struct UIBitmapButton *trait_plus[STAT_COUNT];
-    struct UIBmpTextButton *expand;
     BYTE expanded;
 };
 OFFSET_ASSERT(UIStatusWnd, plus, 0x94);
 OFFSET_ASSERT(UIStatusWnd, trait_plus, 0xc0);
-OFFSET_ASSERT(UIStatusWnd, expanded, 0xdc);
 
 int session_get_param(struct Session *self, int type)
 {
@@ -177,13 +174,8 @@ void ui_status_wnd_on_create(struct UIWindow *window, int width, int height)
 {
     struct UIStatusWnd *self = (struct UIStatusWnd *)window;
     static const char arrow[] = UI_SKIN "basic_interface\\arw_right.bmp";
-    const char *expand_normal = UI_SKIN "statuswnd\\expand_on_normal.bmp";
-    const char *expand_press = UI_SKIN "statuswnd\\expand_on_press.bmp";
     struct UIWindow *wnd = &self->frame.base;
-    struct UIBmpTextButton *expand;
-    const char *caption;
-    void *mem;
-    int i, state;
+    int i;
 
     (void)width;
     (void)height;
@@ -196,22 +188,6 @@ void ui_status_wnd_on_create(struct UIWindow *window, int width, int height)
     for (i = 0; i < STAT_COUNT; i++)
         status_make_plus(self, &self->trait_plus[i], self->trait_plus, arrow, 0x91 + 0x10 * i,
                          ID_TRAIT_PLUS_POW + i);
-
-    mem = mem_alloc(sizeof(struct UIBmpTextButton));
-    self->expand = expand = mem ? ui_bmp_text_button_construct(mem) : NULL;
-    ui_bitmap_button_set_bitmap(&expand->bmp, expand_normal, 0, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, expand_normal, 1, 0);
-    ui_bitmap_button_set_bitmap(&self->expand->bmp, expand_press, 2, 0);
-    for (state = 0; state < 3; state++)
-        ui_bmp_text_button_set_text_style(self->expand, state, 0xc, 0, 0, 1, 0x10, 3);
-    expand = self->expand;
-    ui_window_create(&expand->bmp.button.base, expand->bmp.bitmap_width, expand->bmp.bitmap_height);
-    caption = msg_str(MSG_EXPAND);
-    string_assign_cstr(&self->expand->caption, caption);
-    ui_window_invalidate_base(&self->expand->bmp.button.base);
-    ui_window_move_base(&self->expand->bmp.button.base, 2, 0x79);
-    self->expand->bmp.button.base.id = ID_EXPAND;
-    ui_window_add_child(wnd, &self->expand->bmp.button.base);
     self->full_height = wnd->height;
 }
 
