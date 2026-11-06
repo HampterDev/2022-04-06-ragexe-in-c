@@ -238,15 +238,3 @@ BYTE session_is_known_name(struct Session *self, struct String name)
     string_free(&name);
     return known;
 }
-
-BYTE session_is_ascii_name(struct Session *self, const char *name)
-{
-    int len = (int)strlen(name);
-    int i;
-
-    (void)self;
-    for (i = 0; i < len; i++)
-        if ((signed char)name[i] < 0)
-            return 0;
-    return 1;
-}

@@ -48,7 +48,6 @@
 #define MSG_MAKE_CHAR_LEFT_TIP 0x87e
 #define MSG_MAKE_CHAR_RIGHT_TIP 0x87f
 #define MSG_NAME_FILTERED 0x14
-#define MSG_NAME_SERVICE 0xbe
 #define MSG_NAME_BLANK_EDGE 0xc7
 #define MSG_NAME_LONG 0x213
 #define MSG_NAME_HAS_TAG 0xafc
@@ -423,7 +422,7 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     struct Mode *mode;
     char name[MAKE_CHAR_NAME_MAX];
     struct NewCharLooks looks;
-    int filtered, service, blank, i;
+    int filtered, blank, i;
 
     if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
                 (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
@@ -434,9 +433,6 @@ static int make_char_ok(struct UIMakeCharWnd *self)
         return 0;
     }
     filtered = word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit));
-    service = 1;
-    if (g_serviceType == 1)
-        service = session_is_ascii_name(&g_session1, ui_edit_ctrl_get_text(self->name_edit)) ? 1 : 0;
     string_init(&copy);
     string_assign_cstr(&copy, ui_edit_ctrl_get_text(self->name_edit));
     if (session_has_control_char(&g_session1, copy))
@@ -444,14 +440,6 @@ static int make_char_ok(struct UIMakeCharWnd *self)
     blank = np_dect(ui_edit_ctrl_get_text(self->name_edit));
     if (!filtered) {
         name_box(MSG_NAME_FILTERED);
-        if (!service)
-            name_box(MSG_NAME_SERVICE);
-        if (blank)
-            name_box(MSG_NAME_BLANK_EDGE);
-        goto send;
-    }
-    if (!service) {
-        name_box(MSG_NAME_SERVICE);
         if (blank)
             name_box(MSG_NAME_BLANK_EDGE);
         goto send;

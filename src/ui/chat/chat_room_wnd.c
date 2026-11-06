@@ -132,7 +132,6 @@ const struct UIWindowOps ui_chat_room_wnd_ops = {
 #define TALK_TYPE_SAVE_ROOM 0x34
 
 #define MSG_ITEM_LINK_REFUSED 0xbe2
-#define MSG_TEXT_NOT_ASCII 0xbe
 #define MSG_ROOM_RESTORED 0x40
 #define MSG_ROOM_PRIVATE_LABEL 0x59
 #define MSG_ROOM_PUBLIC_LABEL 0x5a
@@ -272,12 +271,6 @@ static void send_line(struct UIChatRoomWnd *self, int type)
         _snprintf_s(buf, sizeof buf, (size_t)-1, "%s", string_cstr(&line));
     else
         strcpy(buf, ui_edit_ctrl_get_text(edit));
-
-    if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, buf)) {
-        ui_chat_line(msg_str(MSG_TEXT_NOT_ASCII), 0xff);
-        string_free(&line);
-        return;
-    }
 
     if (members->selected != -1) {
         const char *me;

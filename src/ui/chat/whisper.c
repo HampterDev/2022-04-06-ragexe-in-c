@@ -118,7 +118,6 @@ const struct UIWindowOps ui_whisper_wnd_ops = {
 #define MSG_WHISPER_MENU_ADD_FRIEND 0x166
 
 #define MSG_WHISPER_ITEM_LINK 0xbe2
-#define MSG_TEXT_NOT_ASCII 0xbe
 #define MODE_REQ_WHISPER 0xb
 #define MODE_REQ_TALK 0x2a
 #define MODE_REQ_MENU_NAME 0x65
@@ -360,11 +359,6 @@ static void send_line(struct UIWhisperWnd *self)
     ui_window_mgr_set_focus_edit(&g_windowMgr, edit);
     if (!strlen(line))
         return;
-    if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, line)) {
-        ui_chat_line(msg_str(MSG_TEXT_NOT_ASCII), 0xff);
-        return;
-    }
-
     if (self->name.size && line[0] != '/') {
         if (((struct UIEditCtrl *)edit)->navigation_link) {
             struct TextView link = ui_edit_ctrl_link_text((struct UIEditCtrl *)edit);

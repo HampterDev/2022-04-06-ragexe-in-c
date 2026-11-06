@@ -62,7 +62,6 @@
 #define MSG_SEND_TO_GUILD 0x1b5
 #define MSG_SEND_TO_CLAN 0x939
 #define MSG_CHAT_ITEM_LINK 0xbe2
-#define MSG_CHAT_NOT_ASCII 0xbe
 #define MSG_CHAT_NAME_LINK 0xafc
 #define MSG_CHAT_TOO_MANY_TABS 0x62a
 #define CHAT_NOTICE_COLOUR 0x64ffff
@@ -606,10 +605,6 @@ static void send_line(struct UINewChatWnd *self)
     string_clear(&self->edit->edit.raw_text);
     if (!strlen(line))
         goto done;
-    if (g_serviceType == 1 && !session_is_ascii_name(&g_session1, line)) {
-        ui_chat_line(msg_str(MSG_CHAT_NOT_ASCII), CHAT_COLOUR_RED);
-        goto done;
-    }
     if (ui_edit_ctrl_get_text_size(&self->whisper->edit.base) && line[0] != '/') {
         string_assign_cstr(&g_windowMgr.chat_line, line);
         mode_send_message(client_current_mode(), MODE_REQ_WHISPER, (int)ui_edit_ctrl_get_text(&self->whisper->edit.base), 0, 0,
