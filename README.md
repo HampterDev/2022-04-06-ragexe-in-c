@@ -133,8 +133,7 @@ The patches of a [WARP](https://github.com/Neo-Mind/WARP) session (PLV Online's
 `warpsession.yml`) are made here in the source; each carries its WARP name in a blue badge.
 Where WARP changes a copy of the code that the 2022 exe never calls (DecrAFDelay's follow
 delay, NoHourly's Game Grade badge, EnableWho's plain user count), the patched exe does not
-change, and neither does this client. CustomIcon replaces the icon in `res\app.res` and is not
-a source change.
+change, and neither does this client.
 
 Starting and connecting:
 
@@ -211,6 +210,10 @@ Window, display and sound:
   The login screen shows no Gravity logo, age-rating image, tape strips or Game Grade badge.
 - [![WARP: NoSerialDisplay](https://img.shields.io/badge/WARP-NoSerialDisplay-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/NoSerialDisplay.qjs)
   The login screens no longer show the serial placeholder at the bottom right.
+- [![WARP: CustomIcon](https://img.shields.io/badge/WARP-CustomIcon-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Patches/Env.yml)
+  The exe's icon and the window's icon are PLV Online's 32x32 `ragnarok.ico`: icon groups 114
+  and 119 in `res\app.res` hold it in place of the generic and the 32x32 Ragnarok icon. Group
+  123, `app.ico` and `icon.png` keep the Ragnarok icon.
 - [![WARP: FixLatestNCWin](https://img.shields.io/badge/WARP-FixLatestNCWin-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/FixLatestNCWin.qjs)
   The new character-making screen has no `bg_back2.tga` backdrop and its window sits 64 px
   lower.
