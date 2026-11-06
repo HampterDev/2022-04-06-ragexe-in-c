@@ -1037,7 +1037,8 @@ void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
             sm_close_window(&self->monster_gage_wnd);
         w = self->monster_gage_wnd;
         if (w == NULL)
-            w = sm_window(&self->monster_gage_wnd, (struct UIWindow *)ui_monster_gage_new(), 0x3c, 5);
+            w = sm_window(&self->monster_gage_wnd, (struct UIWindow *)ui_monster_gage_new(),
+                          self->is_boss == 2 ? 0x78 : self->is_boss == 1 ? 0x3c : 0x5a, 5);
         ui_pc_gage_set_hp((struct UIPcGage *)w, (int)par1, (int)par2);
         w = self->monster_gage_wnd;
         ui_window_move(w, self->screen_x - w->width / 2,
