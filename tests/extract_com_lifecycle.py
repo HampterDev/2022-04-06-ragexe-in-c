@@ -32,6 +32,10 @@ if legacy:
     WIN32_FIND_DATAA found, replay_found, navi_found;
     HANDLE find, replay_find, navi_find;
 """
+if "instance_mutex" in tail:
+    prefix += """
+    HANDLE instance_mutex;
+"""
 Path(sys.argv[3]).write_text(
     "#define TEST_LEGACY_EXIT " + str(int(legacy)) + "\n" + pump + "\n"
     + prefix + tail + "}\n", encoding="utf-8")

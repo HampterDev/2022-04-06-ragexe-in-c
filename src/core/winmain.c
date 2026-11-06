@@ -125,7 +125,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     const char *account;
     WIN32_FIND_DATAA found;
     WIN32_FIND_DATAA replay_found, navi_found;
-    HANDLE find, replay_find, navi_find;
+    HANDLE find, replay_find, navi_find, instance_mutex;
     TIMECAPS caps;
     HRESULT com_result;
     UINT period;
@@ -215,6 +215,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     }
     frame_timer_reset();
     com_result = CoInitialize(0);
+    instance_mutex = CreateMutexA(0, FALSE, "Global\\Surface");
+    if (!instance_mutex || WaitForSingleObject(instance_mutex, 0) == WAIT_TIMEOUT)
+        ExitProcess(0);
     if (!sound_mgr_create()) {
         error_msg("Audio System Init Failed", 0);
         result = 0;
