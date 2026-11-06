@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game/mode_msg.h"
-#include "platform/language.h"
 #include "game/chat.h"
 #include "game/mode_misc.h"
 #include "session/session_talk.h"
@@ -99,8 +98,6 @@ int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
     case MODE_MSG_EMOTION:
         return game_mode_msg_emotion(self, a);
     case MODE_MSG_USER_COUNT:
-        if (g_serviceType == 3 || g_serviceType == 8 || g_serviceType == 9)
-            return 0;
         send_id(0xc1);
         return 0;
     case MODE_MSG_EMOTION_ANSWERED:
