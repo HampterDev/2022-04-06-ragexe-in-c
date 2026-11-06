@@ -722,7 +722,7 @@ void player_send_msg(struct GameObject *object, struct GameObject *source,
         self->skill_level = p1;
         break;
     case 0x5b:
-        if (timeGetTime() > self->held_walk_tick + 0x15e) {
+        if (timeGetTime() > self->held_walk_tick) {
             self->held_walk_tick = timeGetTime();
             MODE_SEND(mode, 0x8a, p1, p2, 0);
         }

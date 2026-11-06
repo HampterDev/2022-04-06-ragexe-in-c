@@ -378,7 +378,7 @@ int game_mode_process_ground_click(struct GameMode *self, int picked)
         g_hoverCellHidden = show;
     }
 
-    due = timeGetTime() > self->click_repeat_time + 600;
+    due = timeGetTime() > self->click_repeat_time;
     if (self->world->player->pending == 0 && g_mouse.button[MOUSE_LEFT] == BUTTON_HELD) {
         if (!due || self->held_walk_allowed == 0)
             return picked;
