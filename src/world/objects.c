@@ -119,14 +119,3 @@ void world_clear_objects(struct World *self)
     tree_clear(&self->idsByCell, cell_ids_destroy);
     list_clear(&self->idsNowhere, NULL);
 }
-
-void world_remove_object(struct World *self, void *object)
-{
-    struct ListNode *n = find_value(&self->gameObjects, object);
-
-    if (n == self->gameObjects.head)
-        return;
-    if (object)
-        game_object_destroy((struct GameObject *)object);
-    list_erase(&self->gameObjects, n, NULL);
-}

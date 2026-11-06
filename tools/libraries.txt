@@ -200,7 +200,8 @@ paths   actor/
         ui/social/party_windows.h ui/wndmgr/plates.c world/ground_draw.c world/hover_cell.h
         world/lifecycle.h world/load.h world/mode.h world/mode_mgr.c world/model_actor.c
         world/model_load.c world/model_node_render.c world/models.* world/object_lookup.h
-        world/objects.c world/player.h world/tooltip.* world/view_camera.c world/view_context.c
+        world/objects.c world/objects_remove.c world/player.h world/tooltip.*
+        world/view_camera.c world/view_context.c
         world/world.* world/world_imports.h world/world_near.c
 
 library feat-packets
