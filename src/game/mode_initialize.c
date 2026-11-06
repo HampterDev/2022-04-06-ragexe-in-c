@@ -95,6 +95,7 @@ static void make_windows(void)
         ui_window_open(0xa4);
     if (g_session1.storeSearchOpenOnEnter != 0)
         ui_window_open(0xb5);
+    ui_window_open(0x10c);
     if (g_session1.cameraInfoShown != 0)
         ui_window_open(0x121);
 }
