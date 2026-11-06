@@ -31,7 +31,6 @@ extern GUID g_deviceGuid;
 void check_system_message(void);
 void app_last_pump(void);
 int app_create_window(HINSTANCE instance);
-HANDLE app_run(const char *cmd);
 void app_swap_ai_folder(void);
 void app_destroy_singletons(void);
 void app_finish_async_work(void);

@@ -83,7 +83,10 @@ lists it, in an orange badge.
 
 - [![NEMO: HKLM To HKCU](https://img.shields.io/badge/NEMO-HKLM_To_HKCU-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/HKLMtoHKCU.qs)
   Settings are read from and written to `HKEY_CURRENT_USER` instead of `HKEY_LOCAL_MACHINE`,
-  so the client needs no administrator rights.
+  so the client needs no administrator rights. `Setup.exe` and most servers' setup tools still
+  write `HKEY_LOCAL_MACHINE`, so the original's wait at start-up (run `Setup.exe` until the setup
+  keys exist) could never end. Without the keys the client starts with the setup defaults
+  instead: the primary display and Miles 2D positional sound.
 - [![NEMO: Always read msgstringtable.txt](https://img.shields.io/badge/NEMO-Always_read_msgstringtable.txt-e67e22)](https://gitlab.com/4144/Nemo/-/blob/master/Patches/ReadMsgstringtabledottxt.qs)
   The message strings come from `msgStringTable.txt` for every service type. The file is
   required: the client has no built-in strings, and the kRO full client does not ship one, so

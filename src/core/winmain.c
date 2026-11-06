@@ -20,6 +20,7 @@
 #include "platform/bink_api.h"
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
+#include "platform/client_options.h"
 #include "render/display_devices.h"
 #include "platform/client_config.h"
 #include "ui/skin_manager.h"
@@ -36,7 +37,6 @@
 #include <float.h>
 #include <string.h>
 #include <stdio.h>
-#include <io.h>
 #include "std/std.h"
 #include "render/render_api.h"
 #include "core/app.h"
@@ -200,17 +200,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     app_swap_ai_folder();
 
     session_init_at_startup(&g_session1);
-    if (read_registry() == 0) {
-        do {
-            struct String setup;
-
-            string_init(&setup);
-            string_assign_cstr(&setup, "Setup.exe");
-            if (_access(string_cstr(&setup), 0) == 0)
-                WaitForSingleObject(app_run(string_cstr(&setup)), INFINITE);
-            string_free(&setup);
-        } while (read_registry() == 0);
-    }
+    /* The original runs Setup.exe until the setup keys exist. Setup.exe and the servers' setup
+       tools write HKEY_LOCAL_MACHINE, which this client no longer reads, so without the keys under
+       HKEY_CURRENT_USER it starts with the setup defaults instead. */
+    if (read_registry() == 0)
+        g_soundMode = 2;
 
     if (render_enum_adapters() < 0)
         MessageBoxA(0, "d3denum init", "Error", 0);
