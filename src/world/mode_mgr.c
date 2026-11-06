@@ -21,10 +21,6 @@
 
 static int g_screenShotCounter = 0;
 
-void mode_nothing(struct Mode *self)
-{
-}
-
 intptr_t mode_send_msg_base(struct Mode *self, int msg, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     switch (msg) {
