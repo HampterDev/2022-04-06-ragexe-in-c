@@ -178,13 +178,6 @@ static int refresh(struct UIMessengerGroupWnd *self)
             for (i = 0; i < 4; i++)
                 ui_bitmap_button_set_bitmap(agency, UI_SKIN "basic_interface\\mesbtn_01_disable.bmp", i, 0);
             ui_bitmap_button_set_tool_tip(agency, msg_str(0x62));
-        } else {
-            agency->button.disabled = 0;
-            ui_window_invalidate_base(&agency->button.base);
-            ui_bitmap_button_set_bitmap(agency, UI_SKIN "basic_interface\\mesbtn_partymaster_01.bmp", 0, 0);
-            ui_bitmap_button_set_bitmap(agency, UI_SKIN "basic_interface\\mesbtn_partymaster_01_a.bmp", 1, 0);
-            ui_bitmap_button_set_bitmap(agency, UI_SKIN "basic_interface\\mesbtn_partymaster_01_b.bmp", 2, 0);
-            ui_bitmap_button_set_tool_tip(agency, msg_str(0xdba));
         }
     }
     ui_messenger_group_wnd_layout_buttons(self);
