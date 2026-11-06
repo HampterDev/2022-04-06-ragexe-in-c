@@ -258,7 +258,7 @@ void game_mode_notify_ban(struct GameMode *self, const struct PACKET_SC_NOTIFY_B
         string_assign_cstr(&text, fallback);
     }
     ui_window_mgr_message_box(&g_windowMgr, string_cstr(&text), 0, 1, 1, 0, "Message", 0x118, 0x78, 0);
-    mode_send_msg(self, MODE_REQ_QUIT, 0, 0, 0, 0);
+    mode_send_msg(self, MODE_REQ_LOGIN_WINDOW, 0, 0, 0, 0);
     string_free(&text);
 }
 
