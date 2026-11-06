@@ -185,6 +185,13 @@ void npc_render(struct GameObject *object, const float *view);
 void pc_render(struct GameObject *object, const float *view);
 void rag_effect_render(struct GameObject *object, const float *view);
 void render_object_render(struct GameObject *object, const float *view);
+/* Called by render_object_render, the render method of the render objects, actors and their
+   subclasses that do not draw themselves: draws the object's shadow and sprite
+   (render_object_draw, actor/render_misc.c, whose sprite, layer and shadow drawing reaches the
+   session and the actors). client_install_hooks() (core/client_init.c) installs
+   render_object_draw. NULL: such objects are not drawn. */
+extern void (*g_renderObjectDraw)(struct GameObject *object, const float *view);
+void render_object_draw(struct GameObject *object, const float *view);
 void skill_render(struct GameObject *object, const float *view);
 void sound_maker_render(struct GameObject *object, const float *view);
 void game_object_render_base(struct GameObject *object, const float *view);
