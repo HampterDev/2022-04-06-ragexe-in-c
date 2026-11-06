@@ -447,15 +447,6 @@ void game_actor_set_sex(struct GameActor *self, int value)
     self->sex = value & 1;
 }
 
-void render_object_load_spr_res(struct RenderObject *self, const char *name)
-{
-    if (self->spr)
-        res_unlock((struct Res *)self->spr);
-    self->spr = res_mgr_get(g_resMgr(), name);
-    if (self->spr)
-        res_lock((struct Res *)self->spr);
-}
-
 void game_actor_clear_unit_cell(struct GameActor * self)
 {
     game_send_message(0xd, self->aid, 0, 0, 0);
