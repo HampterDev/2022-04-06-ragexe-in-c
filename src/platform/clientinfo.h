@@ -25,7 +25,6 @@ extern BYTE g_clientInfoRead;
 extern BYTE g_showNameA;
 extern BYTE g_showNameB;
 extern int g_nameFontHeight;
-extern BYTE g_accountOnCmdLine;
 extern char g_accountServerAddr[0x81];
 extern struct Vec g_adminAids;
 extern struct Vec g_yellowAids;

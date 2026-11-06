@@ -183,7 +183,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
         while (*src != 0 && *src != '\t' && *src != ' ')
             *dst++ = *src++;
         *dst = 0;
-        g_accountOnCmdLine = 1;
     }
 
     if (!gameguard_startup()) {
