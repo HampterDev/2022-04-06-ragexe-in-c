@@ -132,12 +132,15 @@ paths   contents/
 
 library knot
 note    The knot: the strongly connected component of the map with communal globals counted (actor,
-        session, effects/rag, world, the game core, navigation and the feature windows tied into
-        it), plus the game mode's run loop and operations (game/mode_run.c, game/lifecycle.c). It
-        stays one library until hooks cut it.
+        session, the effect base of effects/rag, world, the game core, navigation and the feature
+        windows tied into it), plus the game mode's run loop and operations (game/mode_run.c,
+        game/lifecycle.c). It stays one library until hooks cut it. effects/rag/effect_prim.h is
+        here, not with effect_prim.c (feat-rag): rag_effect.h needs its types.
 uses    gamedata
 paths   actor/
-        effects/ navi/ ui/render/ ui/resource/ ui/worldmap/ contents/account_settings.*
+        effects/ effects/rag/effect_prim.h effects/rag/effect_prim_shared.c
+        effects/rag/prim_records.h effects/rag/rag_effect.* effects/rag/rag_effect_types.h
+        effects/rag/rag_str_anim.* effects/rag/rag_str_playback.c navi/ ui/render/ ui/resource/ ui/worldmap/ contents/account_settings.*
         contents/account_settings_internal.h contents/account_settings_json.c
         contents/adventurer_agency.* contents/agency_internal.h contents/body_layer.*
         contents/champion_monster.* contents/champion_monster_effects.h
@@ -163,7 +166,7 @@ paths   actor/
         game/state_change_helpers.h game/talk_commands.c game/talk_options.c game/target_actor.c
         game/tips.h game/whisper.h game/whisper_log.h game/world_objects.* game/world_pick.*
         login/merc_ai.* login/merc_ai_cmds.c session/hotkeys.c session/job_sounds.*
-        session/predicates.c session/session_efst_image.c session/session_exchange.c
+        session/predicates.c session/session_exchange.c
         session/session_item_lists.c session/session_item_lookup.c session/session_items.*
         session/session_job.c session/session_job_rules.c session/session_lookups.c
         session/session_lua.* session/session_mail.c session/session_misc.c
@@ -251,6 +254,14 @@ library feat-effects
 note    Above the knot: the effect classes of effects/skills, each its own cluster.
 uses    knot
 paths   effects/skills/
+
+library feat-rag
+note    Above the knot since cuts 1 and 2 of the knot ranking (docs/purist-review.md): the
+        processes of the effect IDs (effects/rag/rag_effect_process*.c, reached through
+        g_ragEffectProcess), the launchers they call and the primitives.
+uses    knot
+paths   effects/rag/
+        effects/effect_objects.c session/session_efst_image.c
 
 library feat-social
 note    Above the knot: the ui/social windows (guild, messenger, party, accept).
