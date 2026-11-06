@@ -90,7 +90,7 @@ void item_collection_card_item(struct ItemInfo *card, int card_id);
 void item_collection_show_card(int wnd_id, struct ItemInfo *card, int past_slots);
 void item_collection_take_info(struct UIWindow *wnd, struct WindowInfo *info, int default_y);
 void item_collection_set_height(struct UIItemCollectionWnd *self, int height);
-int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *info, int toggle, int no_compare);
+int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *info, int comparison, int no_compare);
 void item_collection_refresh(struct UIItemCollectionWnd *self);
 
 struct UIItemCollectionWnd *ui_item_collection_wnd_construct(struct UIItemCollectionWnd *self);

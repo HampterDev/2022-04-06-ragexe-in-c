@@ -216,7 +216,7 @@ static int collection_is_headgear(int location)
     return 0;
 }
 
-int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *info, int toggle, int no_compare)
+int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *info, int comparison, int no_compare)
 {
     struct UIWindow *wnd = COLLECTION_WND(self);
     const struct ItemTextLines *desc;
@@ -225,7 +225,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
     if (string_equal(&info->id_text, &self->item.id_text)
         && info->refine == self->item.refine && info->slot[0] == self->item.slot[0]
         && info->slot[1] == self->item.slot[1] && info->slot[2] == self->item.slot[2]
-        && info->slot[3] == self->item.slot[3] && toggle) {
+        && info->slot[3] == self->item.slot[3] && !comparison) {
         ui_window_mgr_post_quit1(&g_windowMgr, self->wnd_id);
         return 0;
     }
@@ -263,7 +263,7 @@ int item_collection_set_item(struct UIItemCollectionWnd *self, struct ItemInfo *
     }
 
     desc = item_info_get_description(&self->item);
-    collection_place_card_button(self, toggle);
+    collection_place_card_button(self, comparison);
     ui_list_box_clear((struct UIListBox *)self->text);
     if (self->item.expire_time)
         collection_add_expiry(self);
