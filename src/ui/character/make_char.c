@@ -47,7 +47,6 @@
 #define MSG_MAKE_CHAR_TITLE 0x940
 #define MSG_MAKE_CHAR_LEFT_TIP 0x87e
 #define MSG_MAKE_CHAR_RIGHT_TIP 0x87f
-#define MSG_NAME_SHORT 0x15
 #define MSG_NAME_FILTERED 0x14
 #define MSG_NAME_SERVICE 0xbe
 #define MSG_NAME_BLANK_EDGE 0xc7
@@ -433,10 +432,6 @@ static int make_char_ok(struct UIMakeCharWnd *self)
         name_box(MSG_NAME_HAS_TAG);
         ui_edit_ctrl_set_text_default((struct UIEditCtrl *)self->name_edit, "");
         return 0;
-    }
-    if (ui_edit_ctrl_get_text_size(self->name_edit) < 4) {
-        name_box(MSG_NAME_SHORT);
-        goto send;
     }
     filtered = word_filter_is_clean(&g_nameFilter, ui_edit_ctrl_get_text(self->name_edit));
     service = 1;

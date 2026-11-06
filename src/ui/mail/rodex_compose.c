@@ -163,7 +163,6 @@ const struct UIEditCtrl3Ops ui_rodex_edit_ctrl3_ops = {
 #define JOB_BABY_TAEKWON 0x1081
 
 #define TITLE_MAX 0x33
-#define TITLE_MIN 4
 #define BODY_MAX 0x3e9
 #define RECEIVER_MAX 0x18
 
@@ -827,14 +826,12 @@ static void send_mail(struct UIRodexComposeWnd *self)
     struct String body;
     struct String joined = {0};
     __int64 zeny;
-    int len;
 
     if (!ui_edit_ctrl_get_text_size(EDIT(self->receiver)) && !ui_edit_ctrl_get_text_size(EDIT(self->receiver_name))) {
         rodex_chat(MSG_NO_RECEIVER);
         return;
     }
-    len = ui_edit_ctrl_get_text_size(EDIT(self->title));
-    if (len < TITLE_MIN || ui_edit_ctrl_get_text_size(EDIT(self->title)) > TITLE_MAX) {
+    if (ui_edit_ctrl_get_text_size(EDIT(self->title)) > TITLE_MAX) {
         rodex_chat(MSG_BAD_TITLE);
         return;
     }

@@ -510,10 +510,6 @@ static void on_make(struct UINewMakeCharWnd *self, struct UIWindow *sender)
     for (i = 0; i < 2; i++)
         if ((g_session1.doramMakeable || i != RACE_DORAM) && sender == self->race_buttons[i])
             return;
-    if (ui_edit_ctrl_get_text_size(self->name_edit) < 4) {
-        box(0x15);
-        return;
-    }
     if (_mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
                 (const unsigned char *)string_cstr(&text_tag_ITEML)) ||
         _mbsstr((const unsigned char *)ui_edit_ctrl_get_text(self->name_edit),
