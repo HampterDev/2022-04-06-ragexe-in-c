@@ -162,17 +162,6 @@ struct PrimParticle *prim_particle_construct(struct PrimParticle *p)
     return p;
 }
 
-struct PrimTriangle *prim_triangle_construct(struct PrimTriangle *t)
-{
-    int i;
-
-    for (i = 0; i < 3; i++) {
-        memset(&t->v[i], 0, sizeof(t->v[i]));
-        t->v[i].specular = 0xff000000;
-    }
-    return t;
-}
-
 void effect_prim_destruct(struct EffectPrim *self)
 {
     self->base.ops = &effect_prim_ops.base;
@@ -206,12 +195,6 @@ void effect_prim_init(struct EffectPrim *self, struct RagEffect *master, int kin
     self->master_pos = master->base.pos;
     self->base.pos = self->master_pos;
     self->stage = 0;
-}
-
-void effect_prim_send_msg(struct EffectPrim *self, RenderMsgArg msg)
-{
-    if (msg == PRIM_MSG_MASTER_GONE)
-        self->master = NULL;
 }
 
 unsigned char prim_step_motion(struct EffectPrim *self)
