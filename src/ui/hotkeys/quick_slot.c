@@ -197,29 +197,24 @@ void ui_quik_slot_wnd_drag_and_drop(struct UIWindow *window, int x, int y, const
 
         session_get_inventory_item(&g_session1, &item, drag->index);
         if ((unsigned)item.index > 0 && item.identified && (unsigned)item.type <= 0x13) {
-            static const BYTE kind_of_type[0x14] = { 0, 0, 0, 2, 1, 1, 2, 2, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 2, 0 };
-            int kind = kind_of_type[item.type];
+            int column = ui_quik_slot_wnd_hit_slot(self, x, y);
 
-            if (kind == 0 || (kind == 1 && item.equip_location != 0)) {
-                int column = ui_quik_slot_wnd_hit_slot(self, x, y);
+            if (column != -1) {
+                struct SkillCooldownNode *cd;
 
-                if (column != -1) {
-                    struct SkillCooldownNode *cd;
+                session_set_quick_slot(&g_session1, 0, item_info_get_item_id(&item), 0, column);
+                if (drag->count != column) {
+                    for (cd = g_session1.skillDelays.head; cd != NULL; cd = cd->next) {
+                        struct CooldownTimerNode *t = cooldown_timers_find(&cd->value.timers_quick, column);
 
-                    session_set_quick_slot(&g_session1, 0, item_info_get_item_id(&item), 0, column);
-                    if (drag->count != column) {
-                        for (cd = g_session1.skillDelays.head; cd != NULL; cd = cd->next) {
-                            struct CooldownTimerNode *t = cooldown_timers_find(&cd->value.timers_quick, column);
-
-                            if (t != NULL) {
-                                cooldown_timers_remove(&cd->value.timers_quick, t);
-                                break;
-                            }
+                        if (t != NULL) {
+                            cooldown_timers_remove(&cd->value.timers_quick, t);
+                            break;
                         }
                     }
-                    ui_quik_slot_wnd_send_msg(wnd, NULL, HOTKEY_MSG_REFRESH, 0, 0, 0, 0);
-                    ui_window_invalidate_base(wnd);
                 }
+                ui_quik_slot_wnd_send_msg(wnd, NULL, HOTKEY_MSG_REFRESH, 0, 0, 0, 0);
+                ui_window_invalidate_base(wnd);
             }
         }
         item_info_destruct(&item);
