@@ -53,7 +53,7 @@ enum {
 
 void talk_cmd_send_chat(struct GameMode *self, int type)
 {
-    char line[0x6c];
+    char line[0x16a];
     int party = 0, guild = 0;
     int target;
 
@@ -109,7 +109,7 @@ void talk_cmd_send_chat(struct GameMode *self, int type)
 
 void talk_cmd_hi_friends(struct GameMode *self, const struct String *args)
 {
-    char line[0x80];
+    char line[0x190];
     struct String text;
     const char *typed;
 

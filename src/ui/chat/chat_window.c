@@ -512,7 +512,7 @@ void ui_new_chat_wnd_on_create(struct UIWindow *window, int width, int height)
     self->edit = edit;
     ui_window_create(&edit->edit.base, 0x1cc, 0x10);
     ui_window_move_base(&self->edit->edit.base, 0x6e, wnd->height - self->bar_height + 4);
-    self->edit->edit.max_chars = 0x46;
+    self->edit->edit.max_chars = 0xff;
     ui_edit_ctrl_set_back_colour(&self->edit->edit.base, 0xf0, 0xf0, 0xf0);
     ui_window_add_child(wnd, &self->edit->edit.base);
     self->focus_edit = &self->edit->edit.base;
