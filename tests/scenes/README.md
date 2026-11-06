@@ -110,3 +110,36 @@ The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACC
 client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the
 hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
 `keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
+
+## Effect gallery
+
+`tools/effect_gallery.py` renders every RagEffect ID and writes a static page, `index.html`, with
+a card per ID: a filmstrip of frames 1, 8, 16, 32 and 64 after the effect starts (hover to play
+it), its `data/effects/effects.json` row when the effect is data (`Str`, `Play`), a `code` tag
+with the first statement of its case when `src/effects/rag/rag_effect_process*.c` has one, its
+duration, and what the run saw: effects still on the player at the last frame, objects left over
+after clearing, a message box (`Invalid Effect Id`, a missing file) or a crash. Search by ID,
+range (`100-200`), hex (`0x1f3`) or text (a file or function name); filter data, Play, Str, code,
+no case, or IDs with a crash, a message box or leftovers.
+
+```sh
+python tools/effect_gallery.py --exe build/ragexe_scenes --game <game dir> --out <dir>
+python tools/effect_gallery.py ... --data           # only the IDs effects.json has
+python tools/effect_gallery.py ... --ids 300-373    # some IDs
+python tools/effect_gallery.py ... --resume         # only the IDs <dir> does not have yet
+python tools/effect_gallery.py --out <dir> --page-only
+```
+
+By default it runs every ID `tests/test_effect_trace.c` runs (0 to 2384, 2385, 10000 and 60000),
+which takes a few minutes and about 500 MB of JPEG captures. Captures and the page belong to one
+data set, so `<dir>` stays outside the repository, like the golden images. Open
+`<dir>/index.html` in a browser; it needs no server.
+
+The scene is `gallery/effect_gallery.lua`, outside `scripts/`, so `run.py` and the `scenes` ctest
+do not run it. On a Novice on `prt_fild08` it sends `ZC_NOTIFY_EFFECT2` for each ID, as the map
+server does (`game_mode_on_notify_effect2`), captures a 448×384 crop around the player, then
+clears every effect on the player with `ZC_CLEAR_EFFECT` and waits until the objects the effect
+made are gone. The tool runs the client on 400 IDs at a time; when it crashes or stops writing
+output for a minute, the ID is marked and the next run starts after it. Options for the frames,
+crop, JPEG quality, map, job and settling time are in `--help`; the script reads them from
+`RAGEXE_GALLERY_*` environment variables.
