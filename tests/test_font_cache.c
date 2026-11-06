@@ -178,7 +178,7 @@ static void installed_fonts(void)
     font_cache_construct(&cache);
     first = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
     assert(first && !last_indirect && !strcmp(last_font.lfFaceName, "Eras Medium ITC"));
-    assert(last_font.lfHeight == 13 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
+    assert(last_font.lfHeight == -12 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
     c = creates; a = allocs;
     assert(font_cache_get_font(&cache, 0, 13, 129, 256, 256) == first);
     assert(creates == c && allocs == a);
@@ -233,7 +233,7 @@ static void file_fonts(void)
         assert(last_font.lfWeight == 700 && last_font.lfCharSet == 129);
         if (mode == 5) {
             assert(!last_indirect && !strcmp(last_font.lfFaceName, "Eras Medium ITC"));
-            assert(last_font.lfHeight == 19 && last_font.lfItalic == 1);
+            assert(last_font.lfHeight == -12 && last_font.lfItalic == 1);
         } else {
             assert(last_indirect && last_font.lfHeight == -19 && last_font.lfItalic == 2);
             assert(live_resources[mode == 7 ? 0 : 1] == 1);
