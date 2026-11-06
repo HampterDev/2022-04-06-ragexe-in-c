@@ -82,6 +82,24 @@ static void read_launch_args(const char *cmd)
     g_session1.launchArg3[n < 0x17 ? n : 0x17] = 0;
 }
 
+static void add_archives_from_ini(void)
+{
+    char key[2] = "9";
+    char name[0x74];
+    int added;
+
+    do {
+        added = 0;
+        for (key[0] = '9'; key[0] >= '0'; key[0]--) {
+            GetPrivateProfileStringA("Data", key, key, name, sizeof name, ".\\DATA.INI");
+            if (memcmp(name, key, sizeof key) != 0) {
+                game_file_manager_add_archive(&g_fileMgr, name);
+                added++;
+            }
+        }
+    } while (!added && WritePrivateProfileStringA("Data", "2", "data.grf", ".\\DATA.INI"));
+}
+
 static void choose_login_start(void)
 {
     int service = g_serviceType;
@@ -155,7 +173,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     strstr(cmd, "1rag1");
 
     g_session1.pcBang = strstr(cmd, "pc") != 0;
-    game_file_manager_add_archive(&g_fileMgr, "data.grf");
+    add_archives_from_ini();
     memcpy(config, g_configFileName, 15);
     account = strstr(cmd, "/account:");
     if (account != 0) {
