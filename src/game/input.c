@@ -200,9 +200,6 @@ void game_mode_process_input(struct GameMode *self)
         && taken == 0 && g_windowMgr.item_store_wnd == 0) {
         verdict = game_mode_process_ground_click(self, game_mode_process_actor_pick(self, verdict, pick));
         game_mode_point_at_target(self);
-        if (verdict != 1 && g_mouse.button[MOUSE_LEFT] == BUTTON_PRESSED) {
-            ui_window_mgr_set_focus_edit(&g_windowMgr, 0);
-        }
     } else if (pick != 0 && verdict == 0) {
         game_mode_process_monster_pick(self, pick->aid);
     }
