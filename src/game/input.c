@@ -26,8 +26,6 @@
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/wndmgr.h"
 
-int g_shiftDown;
-
 enum { WID_RELEASE_CLOSE = 0x12 };
 
 enum { SKILL_AM_POTIONPITCHER = 0xe7 };
@@ -40,41 +38,6 @@ enum { ACTORMSG_RELEASE = 0xf };
 #include "ui/character/popup_menu.h"
 #include "platform/clock.h"
 #include "platform/window.h"
-
-#define NO_HIT 999999.0f
-
-RAGE_NOINLINE char game_mode_pick_ground_cell(struct GameMode *self, int *cell_x, int *cell_y)
-{
-    struct RayPicker blocks;
-    struct Ray3 ray;
-    Vec3 eye;
-    size_t index;
-    float best = NO_HIT, distance;
-    char hit;
-    int x, y;
-
-    ray_picker_construct(&blocks);
-    eye = (Vec3){self->view->from[0], self->view->from[1], self->view->from[2]};
-    renderer_cursor_ray(g_renderer, g_mouse.x, g_mouse.y, &eye, self->view->invViewMatrix,
-                        &ray);
-    ray_picker_pick_ray(&blocks, &ray, &self->world->root);
-    for (index = 0; index < blocks.count; ++index) {
-        struct SceneGraphNode *block = blocks.hits[index];
-        struct C3dAttr *ground = block->attr;
-        for (y = block->attrCell[1]; y <= block->attrCell[3]; y++) {
-            for (x = block->attrCell[0]; x <= block->attrCell[2]; x++) {
-                distance = ground_ray_distance(ground, &ray, x, y);
-                if (best > distance) {
-                    best = distance;
-                    *cell_x = x;
-                    *cell_y = y;
-                }
-            }
-        }
-    }
-    hit = NO_HIT > best;
-    return hit;
-}
 
 void game_mode_cast_player_ray(struct GameMode *self)
 {

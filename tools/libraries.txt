@@ -158,7 +158,8 @@ paths   actor/
         game/actor_names.*
         game/actor_popup_menu.c game/balloon_frame.c game/barter_drag.h game/camera.* game/chat.*
         game/display_settings.h game/drag.* game/entry_packet_handlers.h game/ground_item_state.h
-        game/input.* game/item_records.h game/lifecycle.* game/magic_static.h game/map_property.c
+        game/input.* game/input_queries.c game/item_records.h game/lifecycle.*
+        game/magic_static.h game/map_property.c
         game/minimap.* game/mode_misc.* game/mode_run.c game/mode_tips.c game/mode_util.*
         game/mode_whisper.c game/mouse_camera.* game/msg_skills.c game/name_balloon.*
         game/object_click.c game/objects.h game/packet_data.* game/packet_ids.h game/packet_rows.h
