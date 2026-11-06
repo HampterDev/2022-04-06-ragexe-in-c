@@ -8,7 +8,6 @@
 #include "iteminfo/iteminfo.h"
 
 #include <string.h>
-#include "core/msg_str.h"
 #include "session/session_names.h"
 #include "ui/ui_std.h"
 
@@ -185,7 +184,6 @@ static void load_descriptions(struct TableReader *tokens, const char *name, int 
             itemId = atoi(line);
             continue;
         }
-        text_decode(line);
         item_table_append_description(item_table_at(itemId), identified, *p);
     }
 }

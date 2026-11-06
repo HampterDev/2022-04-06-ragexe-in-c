@@ -153,10 +153,6 @@ void debug_divide_by_zero(void)
 {
     abort();
 }
-char *text_decode(char *arg0)
-{
-    abort();
-}
 void window_mgr_clear_chat_line(struct UIWindowMgr *arg0)
 {
     abort();

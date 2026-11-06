@@ -12,21 +12,13 @@
 /* Run the production session_get_monster_skill_info over a parsed
    monsterskillinfo.xml. Values longer than 8 bytes, values with printf
    conversions, missing <action> or <loopType> nodes and monster names longer
-   than its 0x100-byte buffer must be read without overrunning anything, with
-   the tags stored plain and, as for the Korean service, mirrored. */
+   than its 0x100-byte buffer must be read without overrunning anything. */
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
-static int korean, admin, boxes;
+static int admin, boxes;
 
 __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
-
-#include "text_mirror.inc"
-
-char *text_decode(char *text)
-{
-    return korean ? text_decode_mirror(text) : text;
-}
 
 int session_is_admin_option(struct Session *self, int what)
 {
@@ -45,17 +37,11 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
 
 #include "monster_skill_info.inc"
 
-/* Append "<tag>" or "</tag>", the tag mirrored for the Korean service. */
+/* Append "<tag>" or "</tag>". */
 static void tag(char *xml, const char *name, int close)
 {
-    char stored[64];
-
-    assert(strlen(name) < sizeof stored);
-    strcpy(stored, name);
-    if (korean)
-        text_decode_mirror(stored);
     strcat(xml, close ? "</" : "<");
-    strcat(xml, stored);
+    strcat(xml, name);
     strcat(xml, ">");
 }
 
@@ -121,28 +107,26 @@ int main(void)
 
     memset(long_name, 'p', sizeof long_name - 1);
     long_name[sizeof long_name - 1] = 0;
-    for (korean = 0; korean < 2; ++korean) {
-        load();
-        admin = 0;
-        check("poring", 10, 3, 1, 0);
-        check("PORING", 10, 3, 1, 0);
-        check("poring", 11, 7, -2, 0);
-        check("poring", 12, 5, 0, 0);
-        check("poring", 13, 4, 0, 0);
-        check("poring", 14, 0, 1, 0);
-        check("poring", 15, 0, 0, 0);
-        check("poring", 16, 0, 0, 0);
-        check("poring", 99, -1, 0x66, 0);
-        check("lunatic", 10, -1, 0x66, 0);
-        check(long_name, 10, -1, 0x66, 0);
-        check("poring", 10, 3, 1, 0);
-        admin = 1;
-        check("poring", 10, 3, 1, 0);
-        check("poring", 13, 0, 0, 2);
-        check("poring", 14, 0, 0, 2);
-        check("poring", 11, 7, -2, 0);
-        unload();
-    }
+    load();
+    admin = 0;
+    check("poring", 10, 3, 1, 0);
+    check("PORING", 10, 3, 1, 0);
+    check("poring", 11, 7, -2, 0);
+    check("poring", 12, 5, 0, 0);
+    check("poring", 13, 4, 0, 0);
+    check("poring", 14, 0, 1, 0);
+    check("poring", 15, 0, 0, 0);
+    check("poring", 16, 0, 0, 0);
+    check("poring", 99, -1, 0x66, 0);
+    check("lunatic", 10, -1, 0x66, 0);
+    check(long_name, 10, -1, 0x66, 0);
+    check("poring", 10, 3, 1, 0);
+    admin = 1;
+    check("poring", 10, 3, 1, 0);
+    check("poring", 13, 0, 0, 2);
+    check("poring", 14, 0, 0, 2);
+    check("poring", 11, 7, -2, 0);
+    unload();
     printf("Monster skill info: %d lookups; long, formatted and missing values and long names.\n", cases);
     return 0;
 }

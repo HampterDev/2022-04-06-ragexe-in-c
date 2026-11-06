@@ -1,5 +1,4 @@
-"""Extract the pet and monster talk-line functions and the talk-word table from talk_tables.c,
-and the Korean-service text mirror from msg_str.c."""
+"""Extract the pet and monster talk-line functions and the talk-word table from talk_tables.c."""
 from pathlib import Path
 import re
 import sys
@@ -25,9 +24,5 @@ parts += function('static void talk_copy(', optional=True)
 parts += function('void session_get_monster_talk_info(')
 parts += function('void session_get_pet_speak(')
 parts += function('void session_format_chat_line(')
-mirror = (root / 'src/core/msg_str.c').read_text(encoding='utf-8')
-start = mirror.index('static char *text_decode_mirror(')
 output.mkdir(parents=True, exist_ok=True)
 (output / 'talk_lines.inc').write_text('\n\n'.join(parts) + '\n', encoding='utf-8')
-(output / 'text_mirror.inc').write_text(mirror[start:mirror.index('\n}', start) + 2] + '\n',
-                                        encoding='utf-8')

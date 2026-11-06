@@ -81,28 +81,3 @@ char *msg_str(int id)
     }
     return tagged_messages[id];
 }
-
-static char *text_decode_mirror(char *text)
-{
-    int len = (int)strlen(text), i;
-
-    for (i = 0; i < len; i++) {
-        unsigned char c = (unsigned char)text[i];
-        unsigned char b = (unsigned char)(c - 'a') <= 25 ? (unsigned char)(0xdb - c) : c;
-
-        if ((unsigned char)(b - 'A') <= 25)
-            text[i] = (char)(0x9b - b);
-        else if ((unsigned char)(b + 0x50) <= 0xf)
-            text[i] = (char)(0x6f - b);
-        else
-            text[i] = (char)b;
-    }
-    return text;
-}
-
-char *text_decode(char *text)
-{
-    if (g_serviceType != SERVICE_KOREA)
-        return text;
-    return text_decode_mirror(text);
-}

@@ -50,8 +50,7 @@ const char *g_talkWords[] = {
 };
 
 /* The number in an <action> or <loopType> node of monsterskillinfo.xml; a missing node
-   counts as 0, as on the administrator path. atoi reads only blanks, a sign and digits,
-   which text_decode leaves as they are, so the text is read as stored. */
+   counts as 0, as on the administrator path. */
 static int node_number(struct XmlElement *node)
 {
     return node ? atoi(node_text(node)) : 0;
@@ -66,23 +65,23 @@ void session_get_monster_skill_info(struct Session *self, const char *monsterNam
 
     *action = -1;
     strcpy(key, "Monster_Action_Table");
-    node = xml_find_child(&self->monsterSkillTable.root, text_decode(key));
+    node = xml_find_child(&self->monsterSkillTable.root, key);
     if (!node)
         return;
     _itoa(skillId, number, 10);
     sprintf(skillKey, "_%s", number);
     _snprintf_s(name, sizeof name, _TRUNCATE, "%s", monsterName);
     _strlwr(name);
-    node = xml_find_child(node, text_decode(name));
+    node = xml_find_child(node, name);
     if (!node)
         return;
-    node = xml_find_child(node, text_decode(skillKey));
+    node = xml_find_child(node, skillKey);
     if (!node)
         return;
     strcpy(key, "action");
-    actionNode = xml_find_child(node, text_decode(key));
+    actionNode = xml_find_child(node, key);
     strcpy(key, "loopType");
-    loopNode = xml_find_child(node, text_decode(key));
+    loopNode = xml_find_child(node, key);
 
     if (session_is_admin_option(&g_session1, 1) && (!actionNode || !loopNode)) {
         *action = 0;
@@ -146,7 +145,7 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
 
     talk_copy(out, out_size, "", 0);
     strcpy(key, "enemy_monster_talk_table");
-    node = xml_find_child(&self->monsterTalkTable.root, text_decode(key));
+    node = xml_find_child(&self->monsterTalkTable.root, key);
     if (!node)
         return;
     /* A job past the name table has no entry, like a monster without one. */
@@ -154,23 +153,20 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
         return;
     _snprintf_s(name, sizeof name, _TRUNCATE, "%s", ((const char **)g_session1.reqJobNames.first)[job]);
     _strlwr(name);
-    node = xml_find_child(node, text_decode(name));
+    node = xml_find_child(node, name);
     if (!node)
         return;
     stateName = session_get_state_name(&g_session1, state);
     if (!stateName)
         return;
-    /* Keys and lines are decoded once, in copies: the state name is a string literal,
-       and decoding a node's text in place would flip it on every call. */
     _snprintf_s(stateKey, sizeof stateKey, _TRUNCATE, "%s", stateName);
-    stateNode = xml_find_child(node, text_decode(stateKey));
+    stateNode = xml_find_child(node, stateKey);
     if (!stateNode)
         return;
 
     lines.first = lines.last = lines.end = NULL;
     if ((unsigned)(state - 1) <= 2) {
         _itoa(value, number, 10);
-        text_decode(number);
         for (n = xml_find_child(stateNode, number); n; n = xml_find_next(n, number)) {
             const char *text = node_text(n);
 
@@ -189,8 +185,6 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
 
         string_init(&line);
         string_assign_cstr(&line, ((const char **)lines.first)[rand() % (int)count]);
-        if (line.size)
-            text_decode(line.data);
         session_format_chat_line(&g_session1, string_cstr(&line), out, out_size, aid, 0);
         string_free(&line);
     }
@@ -208,11 +202,11 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
 
     talk_copy(out, out_size, "", 0);
     strcpy(key, "monster_talk_table");
-    node = xml_find_child(&self->petTalkTable.root, text_decode(key));
+    node = xml_find_child(&self->petTalkTable.root, key);
     if (!node)
         return;
     strcpy(key, session_get_pet_name(petJob));
-    node = xml_find_child(node, text_decode(key));
+    node = xml_find_child(node, key);
     if (!node)
         return;
     switch (hunger) {
@@ -223,12 +217,12 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
     default: hungerName = "hungry"; break;
     }
     strcpy(key, hungerName);
-    node = xml_find_child(node, text_decode(key));
+    node = xml_find_child(node, key);
     if (!node)
         return;
     actionName = session_get_pet_act_text(action);
     strcpy(key, actionName);
-    n = xml_find_child(node, text_decode(key));
+    n = xml_find_child(node, key);
     if (!n)
         return;
 
@@ -238,16 +232,13 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
 
         vec_push(&lines, &text, sizeof text);
         strcpy(key, actionName);
-        n = xml_find_next(n, text_decode(key));
+        n = xml_find_next(n, key);
     } while (n);
     count = VEC_COUNT(&lines, const char *);
     if (count) {
         const char *line = ((const char **)lines.first)[rand() % (int)count];
 
-        /* The Korean-service mirror maps lead and trail bytes to lead and trail bytes,
-           so cutting before decoding keeps the same whole characters. */
         talk_copy(out, out_size, line, strlen(line));
-        text_decode(out);
     }
     vec_free(&lines);
 }

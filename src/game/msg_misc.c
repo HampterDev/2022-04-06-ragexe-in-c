@@ -549,7 +549,7 @@ int game_mode_msg_scream_line(int which)
         return 0;
     }
     free(buf);
-    if (snprintf(line, sizeof line, "%s : %s", session_character_name(&g_session1), text_decode(text)) < 0) {
+    if (snprintf(line, sizeof line, "%s : %s", session_character_name(&g_session1), text) < 0) {
         file_destruct(&file);
         return 0;
     }
