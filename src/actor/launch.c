@@ -1,4 +1,5 @@
 #include "actor/actor_ops.h"
+#include "actor/actor_spawns.h"
 #include "session/state.h"
 #include "actor/actor.h"
 #include "game/context.h"
@@ -27,7 +28,7 @@ void game_actor_make_corpse(struct GameActor * self)
 
     if (!mode)
         return;
-    copy = game_mode_make_corpse(mode, self->pos, act, spr, self->base_action, self->motion, self->roty);
+    copy = actor_spawn_corpse(mode, self->pos, act, spr, self->base_action, self->motion, self->roty);
     if (!copy)
         return;
     if (self->monster_job > 0)

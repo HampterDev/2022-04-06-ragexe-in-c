@@ -37,7 +37,9 @@
 #include "session/state.h"
 #include "skills/skill_action.h"
 #include "std/std.h"
+#include "actor/actor_spawns.h"
 #include "actor/weather.h"
+#include "game/world_objects.h"
 #include "effects/effect_render_hooks.h"
 #include "effects/rag/rag_effect.h"
 #include "ui/character/character.h"
@@ -110,6 +112,10 @@ static void client_install_hooks(void)
     g_ragEffectProcess = rag_effect_on_process;
     g_gameActorHandleMsg = game_actor_handle_msg;
     g_sessionBasicInfoHeight = ui_basic_info_wnd_set_height;
+    g_actorSpawns.launch_arrow = game_mode_launch_arrow;
+    g_actorSpawns.launch_plant_attack = game_mode_launch_plant_attack;
+    g_actorSpawns.make_corpse = game_mode_make_corpse;
+    g_actorSpawns.make_granny_corpse = game_mode_make_granny_corpse;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;
