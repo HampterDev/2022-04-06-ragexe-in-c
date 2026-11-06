@@ -20,7 +20,7 @@
 #include "ui/hotkeys/hotkeys.h"
 #include "world/camera.h"
 
-float g_maxViewDistance = 400.0f;
+float g_maxViewDistance = 1224.0f;
 
 enum { JOB_STAR_GLADIATOR = 0xfcf, JOB_BABY_STAR_GLADIATOR = 0x1082, JOB_STAR_EMPEROR = 0x108f, JOB_BABY_STAR_EMPEROR = 0x1091 };
 

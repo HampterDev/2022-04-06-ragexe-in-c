@@ -565,5 +565,5 @@ void talk_cmd_zoom_range(struct GameMode *self)
     (void)self;
     g_session1.zoomFarLimit = wide;
     talk_print_msg(wide == 1 ? 0xdb7 : 0xdb8, TALK_COLOR_NOTICE);
-    g_maxViewDistance = wide == 1 ? 480.0f : 400.0f;
+    g_maxViewDistance = 1224.0f;
 }

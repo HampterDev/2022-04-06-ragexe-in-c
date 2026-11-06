@@ -761,7 +761,7 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             g_sound_settings.effects_on = value;
         } else if (sender == W(self->box_zoom)) {
             g_session1.zoomFarLimit = value;
-            g_maxViewDistance = value ? 480.0f : 400.0f;
+            g_maxViewDistance = 1224.0f;
         } else if (sender == W(self->box_emblem_frame)) {
             g_session1.emblemFrame = value;
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);

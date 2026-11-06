@@ -17,7 +17,6 @@ void session_load_options(struct Session *self)
     struct String text, *skin;
     OSVERSIONINFOA version;
     int effectVolume;
-    float farthest;
 
     client_lua_call(g_session1.luaState, "SetCmdOnOffList", "");
     file_make_file_name("OptionInfo.lua", 1);
@@ -51,21 +50,15 @@ void session_load_options(struct Session *self)
         g_fixedViewDistance = g_fixedViewDistanceMax;
 
     self->zoomFarLimit = session_get_option_int(self, msg_str(0xdb9), 0);
-    if (self->zoomFarLimit) {
-        farthest = 480.0f;
-        g_maxViewDistance = 480.0f;
-    } else {
-        farthest = 400.0f;
-        g_maxViewDistance = 400.0f;
-    }
+    g_maxViewDistance = 1224.0f;
     if (-65.0f > g_freeViewPitch)
         g_freeViewPitch = -65.0f;
     else if (g_freeViewPitch > -25.0f)
         g_freeViewPitch = -25.0f;
     if (g_viewDistanceMin > g_freeViewDistance)
         g_freeViewDistance = g_viewDistanceMin;
-    if (g_freeViewDistance > farthest)
-        g_freeViewDistance = farthest;
+    if (g_freeViewDistance > g_maxViewDistance)
+        g_freeViewDistance = g_maxViewDistance;
 
     skin = session_get_option_string(self, &text, "SkinName", "<Basic Skin>");
     if (skin != &g_skinMgr.name) {
