@@ -138,7 +138,7 @@ void clientinfo_load(const char *xml_name)
     g_licenceFile = "..\\licence.txt";
     g_startupSecondMod4 = (BYTE)now.wSecond & 3;
     g_registryKeyPath = "Software\\Gravity Soft\\Ragnarok";
-    g_windowClassName = "Ragnarok";
+    g_windowClassName = "PLV Online";
     file_destruct(&file);
 }
 
