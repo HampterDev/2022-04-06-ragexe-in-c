@@ -520,7 +520,7 @@ void ui_whisper_wnd_on_create(struct UIWindow *window, int width, int height)
     self->edit = edit;
     ui_window_create((struct UIWindow *)edit, wnd->width - 0x1e, 0x10);
     ui_window_move_base((struct UIWindow *)edit, 3, wnd->height - 0x12);
-    edit->edit.max_chars = 0x46;
+    edit->edit.max_chars = 0xff;
     ui_edit_ctrl_set_back_colour((struct UIWindow *)edit, 0xff, 0, 0xff);
     ui_edit_ctrl_set_text_colour((struct UIWindow *)edit, 0xff, 0xff, 0xff, -1);
     ui_window_add_child(wnd, (struct UIWindow *)edit);
