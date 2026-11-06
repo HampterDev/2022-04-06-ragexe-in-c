@@ -524,8 +524,7 @@ static void login_start(struct UILoginWnd *self)
 
     sound_play_wave("버튼소리.wav"  , 0.0f, 0.0f, 0.0f, 0xfa,
                     0x28, 1.0f);
-    if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS
-        && ui_edit_ctrl_get_text_size(self->id_edit) >= LOGIN_ID_MIN_CHARS) {
+    if (ui_edit_ctrl_get_text_size(self->password_edit) >= LOGIN_PASSWORD_MIN_CHARS) {
         mode_send_message(client_current_mode(), LOGIN_REQ_SET_SUBMODE, LOGIN_SUBMODE_OTP, 0, 0, 0);
         _snprintf_s(g_session1.launchArg2, sizeof g_session1.launchArg2, (size_t)-1, "%s", ui_edit_ctrl_get_text(self->id_edit));
         mode_send_message(client_current_mode(), LOGIN_REQ_PASSWORD, (int)ui_edit_ctrl_get_text(self->password_edit), 0, 0, 0);
