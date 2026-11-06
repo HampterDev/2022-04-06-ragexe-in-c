@@ -368,7 +368,9 @@ void ui_menu_icon_wnd_on_create(struct UIWindow *window, int width, int height)
         name = menu_icon_names[i];
         if (id == MENU_ID_STATUS && session_is_doram_job(&g_session1, g_session1.job) == 1)
             name = "status_doram";
-        if (id == MENU_ID_BOOKING || id == MENU_ID_SNS || id == 0x239)
+        if (id == MENU_ID_BOOKING || id == MENU_ID_SNS || id == 0x239 || id == MENU_ID_GUILD || id == MENU_ID_MAP ||
+            id == MENU_ID_NAVIGATION || id == MENU_ID_BANK || id == MENU_ID_REC || id == MENU_ID_TIP ||
+            id == MENU_ID_AGENCY || id == MENU_ID_REPUTE)
             continue;
         x = (unsigned)placed % MENU_COLUMNS * MENU_ICON_DX + MENU_ICON_X;
         y = (unsigned)placed / MENU_COLUMNS * MENU_ICON_DY;
