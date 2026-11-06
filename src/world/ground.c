@@ -95,7 +95,7 @@ int gnd_lightmap_set_build(struct GndLightmapSet *self, const struct GndRes *gnd
             lm->quarter[3][0] = rec[0x40 + 45 * 3 + 2];
         }
 
-        tex = texture_from_pixels(0x100, 0x100, pixels, 1, 0, 0);
+        tex = texture_from_pixels(0x100, 0x100, pixels, 4, 0, 0);
         if (!tex)
             goto fail;
         self->pages[page] = tex;

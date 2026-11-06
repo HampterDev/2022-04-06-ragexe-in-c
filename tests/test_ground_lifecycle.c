@@ -68,7 +68,7 @@ struct Texture *texture_cache_get(struct TexCache *cache, const char *name, int 
 struct Texture *texture_from_pixels(int width, int height,
     const DWORD *pixels, int a, int b, int c)
 {
-    assert(width == 256 && height == 256 && a == 1 && !b && !c);
+    assert(width == 256 && height == 256 && a == 4 && !b && !c);
     assert(pixels[0] == 0x80182028u);
     if (++page_calls == fail_page_at) return NULL;
     assert(live_pages < 3);
