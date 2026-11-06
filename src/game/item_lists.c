@@ -25,6 +25,8 @@
 struct SchedulerCashItem {
     int item_id;
     int value;
+    unsigned short view;
+    int location;
 };
 struct PACKET_ZC_ACK_SCHEDULER_CASHITEM {
     unsigned short packet_type;
@@ -34,7 +36,7 @@ struct PACKET_ZC_ACK_SCHEDULER_CASHITEM {
     struct SchedulerCashItem items[];
 };
 #pragma pack(pop)
-SIZE_ASSERT(SchedulerCashItem, 8);
+SIZE_ASSERT(SchedulerCashItem, 14);
 OFFSET_ASSERT(PACKET_ZC_ACK_SCHEDULER_CASHITEM, items, 8);
 
 void game_mode_item_list_by_kind(const unsigned char *pkt)
@@ -65,6 +67,8 @@ void game_mode_item_list_by_kind(const unsigned char *pkt)
         item.bind_on_equip_type = slot;
         item_info_set_item_id(&item, id);
         name = item_info_get_name(&item);
+        item.view = entry->view;
+        item.equip_location = entry->location;
         item_info_set_name(&item, name);
         kind = (short)packet->kind;
         if ((unsigned)(int)kind <= 10)
