@@ -93,10 +93,10 @@ paths   ui/
         world/mode_context.c world/mode_dispatch.* world/mode_types.h world/path_info.h
 
 library gamedata
-note    The rest of the library layer below the knot: game-side modules the knot uses and that never
-        use it (the session's storage and tables, item and skill information, contents managers, Lua
-        bindings, chat and link text, world, actor and navigation helpers, login records, startup
-        settings).
+note    The rest of the library layer below game-state: game-side modules the libraries above use
+        and that never use them (the session's storage and tables, item and skill information,
+        contents managers, Lua bindings, chat and link text, world, actor and navigation helpers,
+        login records, startup settings).
 uses    widgets
 paths   contents/
         effects/stl/ iteminfo/ login/ session/ skills/ ui/character/ ui/chat/ ui/items/ ui/mail/
@@ -130,86 +130,139 @@ paths   contents/
         ui/social/guild_reason.c ui/social/memorial_dungeon.c ui/social/social.h
         ui/wndmgr/make_window_internal.h ui/worldmap/kafra_lua.c ui/worldmap/kafra_services.h
 
-library knot
-note    The knot: the strongly connected component of the map with communal globals counted (actor,
-        session, the effect base of effects/rag, world, the game core, navigation and the feature
-        windows tied into it), plus the game mode's run loop and operations (game/mode_run.c,
-        game/lifecycle.c). It stays one library until hooks cut it. effects/rag/effect_prim.h is
-        here, not with effect_prim.c (feat-rag): rag_effect.h needs its types.
+library game-state
+note    Below the actor core: what the actor and effect object model uses, and nothing above it
+        (the session's data and lookups, the world and its lookups, game helpers, actor helpers
+        such as position, motion and values, effect helpers, the mercenary AI commands). Split from
+        the knot library (docs/purist-review.md, "Splitting the knot library"). Headers here whose
+        .c is in a higher library, because files here need their types or globals:
+        actor/appearance.h, actor/attr_state.h, actor/tetra_ball.h, actor/weather.h,
+        effects/particle.h, effects/rag/effect_prim.h, effects/rag/rag_effect.h,
+        game/actor_marks.h, game/actor_names.h, game/input.h, game/mode_misc.h, game/mode_util.h,
+        game/world_objects.h, navi/navi_manager.h, session/job_sounds.h, session/session_party.h,
+        world/tooltip.h.
 uses    gamedata
-paths   actor/
-        effects/ effects/rag/effect_prim.h effects/rag/effect_prim_shared.c
-        effects/rag/prim_records.h effects/rag/rag_effect.* effects/rag/rag_effect_types.h
-        effects/rag/rag_str_anim.* effects/rag/rag_str_playback.c navi/ ui/render/ ui/resource/ ui/worldmap/ contents/account_settings.*
+paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/actor_spawns.h
+        actor/appearance.h actor/attr_state.h actor/game_actor.c actor/game_actor.h
+        actor/liveness.h actor/object_ops.c actor/object_ops.h actor/player_blind.c
+        actor/position.c actor/render_object_res.c actor/sprite_draw.h actor/sprite_render.h
+        actor/tetra_ball.h actor/weather.h actor/weather_instance.c contents/client_lua.c
+        contents/client_lua.h contents/guild_emblem_download.c contents/guild_emblem_file.c
+        contents/guild_info.c contents/guild_info.h contents/guild_mgr.c contents/guild_mgr.h
+        effects/effect.c effects/effect.h effects/effect_controls.h effects/effect_mgr.c
+        effects/effect_mgr.h effects/effect_types.h effects/ez2str_playback.c effects/particle.h
+        effects/rag/effect_prim.h effects/rag/effect_prim_shared.c effects/rag/prim_records.h
+        effects/rag/rag_effect.h effects/rag/rag_effect_types.h effects/rag/rag_str_playback.c
+        effects/render_object.h effects/skills/skill_entry.h effects/skills/skill_state.h
+        effects/str_path.c effects/str_path.h game/actor_marks.h game/actor_name_lookup.c
+        game/actor_names.h game/ground_item_state.h game/input.h game/input_queries.c
+        game/mode_listed.c game/mode_misc.h game/mode_util.h game/msg_skills.c game/name_balloon.c
+        game/name_balloon.h game/party_member.h game/pickup_requests.h game/world_objects.h
+        login/merc_ai.c login/merc_ai.h login/merc_ai_cmds.c navi/grid_uv.h navi/navi_instance.c
+        navi/navi_manager.h navi/navigation.h session/job_sounds.h session/predicates.c
+        session/session_items.c session/session_items.h session/session_job_rules.c
+        session/session_lookups.c session/session_lua.c session/session_lua.h
+        session/session_names.c session/session_names.h session/session_party.h
+        session/session_party_lookups.c session/session_redraws.c session/session_refresh.c
+        session/session_skills.c session/session_skills.h session/session_state.c
+        session/session_state.h session/session_windows.h session/skill_commands.h
+        session/skill_levels.h session/skill_queries.h session/sprite_names.c
+        ui/quests/world_view.c ui/quests/world_view.h ui/resource/resource_paths.c
+        ui/resource/resource_paths.h ui/social/guild_containers.c ui/social/guild_member_sort.h
+        world/actor_lookup.c world/hover_cell.h world/lifecycle.h world/load.h world/mode.h
+        world/model_actor.c world/model_load.c world/model_node_render.c world/models.c
+        world/models.h world/object_lookup.h world/objects_remove.c world/player.h world/tooltip.h
+        world/view_context.c world/world.c world/world.h world/world_imports.h world/world_near.c
+
+library actors
+note    The actor and effect object model: the method tables of actor/game_object.c, the actor
+        message, process and state code, the effect base (effects/rag/rag_effect.c, rag_str_anim.c)
+        and the game mode helpers it calls (game/mode_util.c).
+uses    game-state
+paths   actor/able_send_msg.c actor/actor_msg.c actor/actor_msg.h actor/actor_process.c
+        actor/actor_state.c actor/effect_launch.c actor/game_object.c effects/rag/rag_effect.c
+        effects/rag/rag_str_anim.c effects/rag/rag_str_anim.h game/mode_util.c
+
+library game-parts
+note    Beside the actor core: the parts of the knot library that use only game-state, not the
+        actors (guild, party, agency and account data and windows, effect classes that do not touch
+        actors, navigation data, smaller pieces). Its pieces do not use each other. Headers here
+        whose .c is in a higher library, because files here need their types or globals:
+        actor/pc.h, contents/body_layer.h, game/drag.h, ui/chat/chat_room_wnd.h.
+uses    game-state
+paths   actor/appearance.c actor/clone_owner.c actor/clone_owner.h actor/granny_model.c
+        actor/merc_render.c actor/overlay.c actor/pc.h actor/sprite_overlays.c actor/sprite_quad.c
+        actor/sprite_quad.h contents/account_settings.c contents/account_settings.h
         contents/account_settings_internal.h contents/account_settings_json.c
-        contents/adventurer_agency.* contents/agency_internal.h contents/body_layer.*
-        contents/champion_monster.* contents/champion_monster_effects.h
-        contents/character_settings.* contents/character_settings_internal.h
-        contents/character_settings_seed.c contents/client_lua.* contents/client_lua_funcs.c
-        contents/guild_emblem_download.c contents/guild_emblem_file.c contents/guild_info.*
-        contents/guild_mgr.* contents/mcstore_backup.* contents/mcstore_json.c
-        contents/mcstore_local.c contents/pet_auto_feed.* contents/user_hotkeys.*
-        core/character_npc.* effects/skills/arrow_effect.* effects/skills/curse_of_cube_effect.c
-        effects/skills/dummy_effect_launcher.* effects/skills/emitter_effect.*
-        effects/skills/energy_orb_effect.c effects/skills/mandra_attack_effect.*
-        effects/skills/msg_effect.* effects/skills/msg_effect_process.c effects/skills/skill_entry.h
-        effects/skills/skill_state.h effects/skills/skill_view.h effects/skills/tetra_ball_effect.c
-        game/actor_actions.h game/actor_entry.h game/actor_marks.* game/actor_name_lookup.c
-        game/actor_names.*
-        game/actor_popup_menu.c game/balloon_frame.c game/barter_drag.h game/camera.* game/chat.*
-        game/display_settings.h game/drag.* game/entry_packet_handlers.h game/ground_item_state.h
-        game/input.* game/input_queries.c game/item_records.h game/lifecycle.*
-        game/magic_static.h game/map_property.c
-        game/minimap.* game/mode_misc.* game/mode_run.c game/mode_tips.c game/mode_util.*
-        game/mode_whisper.c game/mouse_camera.* game/msg_skills.c game/name_balloon.*
-        game/object_click.c game/objects.h game/packet_data.* game/packet_ids.h game/packet_rows.h
-        game/packets.h game/party_member.h game/pickup_requests.h game/popup_entries.h
-        game/quest_info.h game/session_bridge.h game/skill_fx.h game/skill_unit_packets.h
-        game/state_change_helpers.h game/talk_commands.c game/talk_options.c game/target_actor.c
-        game/tips.h game/whisper.h game/whisper_log.h game/world_objects.* game/world_pick.*
-        login/merc_ai.* login/merc_ai_cmds.c session/hotkeys.c session/job_sounds.*
-        session/predicates.c session/session_exchange.c
-        session/session_item_lists.c session/session_item_lookup.c session/session_items.*
-        session/session_job.c session/session_job_rules.c session/session_lookups.c
-        session/session_lua.* session/session_mail.c session/session_misc.c
-        session/session_name_checks.c session/session_names.* session/session_party.*
-        session/session_party_lookups.c game/mode_listed.c world/actor_lookup.c
-        session/session_prohibit.c session/session_redraws.c
-        session/session_redraws_game.c session/session_refresh.c
-        session/session_resets.c session/session_skills.* session/session_state.*
-        session/session_tables.c session/session_talk_type.c session/session_use_effect.c
-        session/session_variables.c session/session_windows.h session/skill_commands.h
-        session/skill_effect.c session/skill_levels.h session/skill_queries.h
-        session/skill_use_look.c session/sprite_names.c session/talk_options_lua.*
-        session/talk_tables.c ui/character/bar_graph.c ui/character/basic_info_wnd.c
-        ui/character/char_info.h ui/character/popup_menu.* ui/character/word_display.c
+        contents/adventurer_agency.c contents/adventurer_agency.h contents/agency_internal.h
+        contents/body_layer.h contents/character_settings.c contents/character_settings.h
+        contents/character_settings_internal.h contents/character_settings_seed.c
+        contents/client_lua_funcs.c contents/mcstore_backup.c contents/mcstore_backup.h
+        contents/mcstore_json.c contents/mcstore_local.c contents/pet_auto_feed.c
+        contents/pet_auto_feed.h contents/user_hotkeys.c contents/user_hotkeys.h
+        effects/effect_allocator.h effects/effect_lua.c effects/ez2str_particle.c
+        effects/multitex_particle.c effects/particle.c effects/particle_pool.c
+        effects/skills/emitter_effect.c effects/skills/emitter_effect.h
+        effects/skills/energy_orb_effect.c effects/skills/skill_view.h effects/sprite_particle.c
+        game/actor_entry.h game/actor_popup_menu.c game/balloon_frame.c game/barter_drag.h
+        game/drag.h game/minimap.c game/minimap.h game/mode_tips.c game/popup_entries.h
+        game/quest_info.h game/talk_options.c game/tips.h navi/navi_accessors.c navi/navi_base.c
+        navi/navi_containers.c navi/navi_maps.c navi/navi_object_queries.c navi/navi_results.c
+        navi/navi_search.c navi/navi_search.h session/hotkeys.c session/job_sounds.c
+        session/session_item_lists.c session/session_item_lookup.c session/session_mail.c
+        session/session_misc.c session/session_name_checks.c session/session_prohibit.c
+        session/session_talk_type.c session/session_use_effect.c session/talk_options_lua.c
+        session/talk_options_lua.h session/talk_tables.c ui/character/bar_graph.c
+        ui/character/basic_info_wnd.c ui/character/word_display.c ui/chat/chat_room_wnd.h
+        ui/chat/friend_request.c ui/chat/markup_links.c ui/chat/markup_links.h ui/items/item_base.c
+        ui/items/item_icon_draw.c ui/items/pet_info.c ui/quests/navigation.h
+        ui/quests/private_airplane_wnd.c ui/shops/item_grid.c ui/shops/shops.h ui/shops/vending.c
+        ui/social/accept_base.c ui/social/agency_results.c ui/social/guild_emblem.c
+        ui/social/member_list_box.c ui/social/party_apply.c ui/social/party_board.c
+        ui/social/party_board.h ui/social/party_booking.h ui/social/party_info.c
+        ui/social/party_register.c ui/worldmap/route_view.h world/mode_mgr.c world/objects.c
+        world/tooltip.c
+
+library game-world
+note    Above the actor core: the rest of the knot library, which uses it (the actor classes, the
+        game mode's actions and the windows tied to the actors, the navigation route and guide),
+        and the game mode's run loop and operations (game/mode_run.c, game/lifecycle.c). It is one
+        connected piece.
+uses    actors game-parts
+paths   actor/ effects/ navi/ ui/render/ ui/worldmap/ contents/body_layer.*
+        contents/champion_monster.* contents/champion_monster_effects.h core/character_npc.*
+        effects/skills/arrow_effect.* effects/skills/curse_of_cube_effect.c
+        effects/skills/dummy_effect_launcher.* effects/skills/mandra_attack_effect.*
+        effects/skills/msg_effect.* effects/skills/msg_effect_process.c
+        effects/skills/tetra_ball_effect.c game/actor_actions.h game/actor_marks.*
+        game/actor_names.* game/camera.* game/chat.* game/display_settings.h game/drag.*
+        game/entry_packet_handlers.h game/input.* game/item_records.h game/lifecycle.*
+        game/magic_static.h game/map_property.c game/mode_misc.* game/mode_run.c
+        game/mode_whisper.c game/mouse_camera.* game/object_click.c game/objects.h
+        game/packet_data.* game/packet_ids.h game/packet_rows.h game/packets.h
+        game/session_bridge.h game/skill_fx.h game/skill_unit_packets.h game/state_change_helpers.h
+        game/talk_commands.c game/target_actor.c game/whisper.h game/whisper_log.h
+        game/world_objects.* game/world_pick.* session/session_exchange.c session/session_job.c
+        session/session_party.* session/session_redraws_game.c session/session_resets.c
+        session/session_tables.c session/session_variables.c session/skill_effect.c
+        session/skill_use_look.c ui/character/char_info.h ui/character/popup_menu.*
         ui/chat/chat_edit.c ui/chat/chat_room.c ui/chat/chat_room_wnd.* ui/chat/chat_window.*
-        ui/chat/chat_window_msg.c ui/chat/edit_history.* ui/chat/friend_request.c
-        ui/chat/markup_links.* ui/chat/whisper.* ui/hotkeys/hotkeys.h ui/items/item_base.c
-        ui/items/item_icon_draw.c ui/items/item_tag_text.c ui/items/item_tags.*
-        ui/items/item_tags_chat.c ui/items/item_tags_internal.h ui/items/pet_info.c
-        ui/mail/rodex_compose.* ui/mail/rodex_ui.h ui/quests/navigation.h ui/quests/navigation_cmd.c
-        ui/quests/navigation_view.c ui/quests/navigation_wnd.c ui/quests/npc_input.*
-        ui/quests/private_airplane_wnd.c ui/quests/world_view.* ui/quests/world_view_display.c
-        ui/shops/item_grid.c ui/shops/merchant_shop_make.* ui/shops/merchant_shop_make_internal.h
-        ui/shops/merchant_shop_make_messages.c ui/shops/npc_shop.c ui/shops/npc_shop_internal.h
-        ui/shops/shops.h ui/shops/shops_std.h ui/shops/storage.* ui/shops/storage_find.c
-        ui/shops/storage_internal.h ui/shops/storage_item_list.c ui/shops/vending.c
-        ui/social/accept_base.c ui/social/agency_results.c ui/social/guild_containers.c
-        ui/social/guild_emblem.c ui/social/guild_member_sort.h ui/social/member_list_box.c
+        ui/chat/chat_window_msg.c ui/chat/edit_history.* ui/chat/whisper.* ui/hotkeys/hotkeys.h
+        ui/items/item_tag_text.c ui/items/item_tags.* ui/items/item_tags_chat.c
+        ui/items/item_tags_internal.h ui/mail/rodex_compose.* ui/mail/rodex_ui.h
+        ui/quests/navigation_cmd.c ui/quests/navigation_view.c ui/quests/navigation_wnd.c
+        ui/quests/npc_input.* ui/quests/world_view_display.c ui/shops/merchant_shop_make.*
+        ui/shops/merchant_shop_make_internal.h ui/shops/merchant_shop_make_messages.c
+        ui/shops/npc_shop.c ui/shops/npc_shop_internal.h ui/shops/shops_std.h ui/shops/storage.*
+        ui/shops/storage_find.c ui/shops/storage_internal.h ui/shops/storage_item_list.c
         ui/social/mini_party_area.* ui/social/mini_party_info.c ui/social/mini_party_wnd.c
-        ui/social/party_apply.c ui/social/party_area_mgr.c ui/social/party_board.*
-        ui/social/party_booking.h ui/social/party_info.c ui/social/party_register.c
-        ui/social/party_windows.h ui/wndmgr/plates.c world/ground_draw.c world/hover_cell.h
-        world/lifecycle.h world/load.h world/mode.h world/mode_mgr.c world/model_actor.c
-        world/model_load.c world/model_node_render.c world/models.* world/object_lookup.h
-        world/objects.c world/objects_remove.c world/player.h world/tooltip.*
-        world/view_camera.c world/view_context.c
-        world/world.* world/world_imports.h world/world_near.c
+        ui/social/party_area_mgr.c ui/social/party_windows.h ui/wndmgr/plates.c world/ground_draw.c
+        world/view_camera.c
 
 library feat-packets
-note    Above the knot: the game packet handlers and the windows they drive, one cluster of the map.
-uses    knot
+note    Above game-world: the game packet handlers and the windows they drive, one cluster of the
+        map.
+uses    game-world
 paths   ui/hotkeys/
         ui/shops/ actor/player.* actor/player_status_icons.c contents/renew_quest_info.c
         core/map_sky.* core/touch.* core/user_input.* core/window_events.* effects/effect_tool.c
@@ -248,36 +301,36 @@ paths   ui/hotkeys/
         world/world_lists.c world/world_load.c world/world_player.c
 
 library feat-game
-note    Above the knot: the other game handler clusters (skill casting, guild, items, trade,
+note    Above game-world: the other game handler clusters (skill casting, guild, items, trade,
         storage, party, vending, Rodex, marks).
-uses    knot
+uses    game-world
 paths   game/
         effects/skills/ground_scope.c session/session_cast_effect.c ui/social/guild_storage_log.c
         ui/social/party_request.c
 
 library feat-effects
-note    Above the knot: the effect classes of effects/skills, each its own cluster.
-uses    knot
+note    Above game-world: the effect classes of effects/skills, each its own cluster.
+uses    game-world
 paths   effects/skills/
 
 library feat-rag
-note    Above the knot since cuts 1 and 2 of the knot ranking (docs/purist-review.md): the
+note    Above game-world since cuts 1 and 2 of the knot ranking (docs/purist-review.md): the
         processes of the effect IDs (effects/rag/rag_effect_process*.c, reached through
         g_ragEffectProcess), the launchers they call and the primitives.
-uses    knot
+uses    game-world
 paths   effects/rag/
         effects/effect_objects.c session/session_efst_image.c
 
 library feat-social
-note    Above the knot: the ui/social windows (guild, messenger, party, accept).
-uses    knot
+note    Above game-world: the ui/social windows (guild, messenger, party, accept).
+uses    game-world
 paths   ui/social/
         ui/chat/guild_notice.c ui/controls/agit_list.c ui/controls/agit_message_box.c
 
 library feat-character
-note    Above the knot: the ui/character windows (skills, descriptions, status, companion, character
-        selection).
-uses    knot
+note    Above game-world: the ui/character windows (skills, descriptions, status, companion,
+        character selection).
+uses    game-world
 paths   ui/character/change_name.c
         ui/character/companion_info.c ui/character/esc_menu.c ui/character/menu_icon_wnd.c
         ui/character/monster_info.c ui/character/select_server.* ui/character/show_warp.c
@@ -286,8 +339,8 @@ paths   ui/character/change_name.c
         ui/character/status_wnd.c
 
 library feat-items
-note    Above the knot: the ui/items windows.
-uses    knot
+note    Above game-world: the ui/items windows.
+uses    game-world
 paths   game/packets_pet.c
         ui/items/item_collection.* ui/items/item_collection_text.c
         ui/items/item_collection_variants.c ui/items/item_confirm.c ui/items/item_identify.c
@@ -295,20 +348,20 @@ paths   game/packets_pet.c
         ui/items/merge_item.c
 
 library feat-quests
-note    Above the knot: the ui/quests windows (achievements, attendance, NPC menus).
-uses    knot
+note    Above game-world: the ui/quests windows (achievements, attendance, NPC menus).
+uses    game-world
 paths   ui/quests/
 
 library feat-shops
-note    Above the knot: the ui/shops windows.
-uses    knot
+note    Above game-world: the ui/shops windows.
+uses    game-world
 paths   ui/shops/merchant_log.c
         ui/shops/npc_shop_sell.c ui/shops/storage_category.c ui/shops/store_search.c
         ui/shops/trade.c
 
 library feat-other
-note    Above the knot: the remaining clusters (chat, map, world map, mail, crash report, ...).
-uses    knot
+note    Above game-world: the remaining clusters (chat, map, world map, mail, crash report, ...).
+uses    game-world
 paths   ui/map/
         actor/weather_hooks.c contents/guild_emblem_hooks.* diag/crash_report.*
         effects/effect_render_hooks.* effects/skills/show_effect.c navi/navi_ui_hooks.*
