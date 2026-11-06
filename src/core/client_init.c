@@ -127,6 +127,7 @@ static void client_install_hooks(void)
     g_uiHooks.navi_show_map = navi_link_show_map;
     g_uiHooks.open_quest = game_open_quest_link;
     g_uiHooks.may_move_ime_caret = ui_rodex_compose_allows_caret_move;
+    g_uiHooks.click_actor = game_click_current_actor;
 
     g_windowMgrHandlers.chat_edit = ui_chat_window_edit;
     g_windowMgrHandlers.chat_whisper_edit = ui_chat_window_whisper_edit;
