@@ -301,8 +301,7 @@ int game_mode_msg_send_name(unsigned short id, const char *name)
 #pragma pack(pop)
 
     packet.id = id;
-    memset(packet.name, 0, sizeof packet.name);
-    strcpy(packet.name, name);
+    strncpy(packet.name, name, sizeof packet.name);
     send_packet(id, &packet);
     return 0;
 }
@@ -317,11 +316,10 @@ int game_mode_msg_req_status_gm(const char *name)
 #pragma pack(pop)
     char line[0x1000];
 
-    memset(packet.name, 0, sizeof packet.name);
     packet.id = CZ_REQ_STATUS_GM;
-    memcpy(packet.name, name, 24);
+    strncpy(packet.name, name, sizeof packet.name);
     send_packet(CZ_REQ_STATUS_GM, &packet);
-    sprintf(line, "[ %s ]", packet.name);
+    sprintf(line, "[ %.24s ]", packet.name);
     chat_print(line, CHAT_COLOR_GM_STATUS);
     return 0;
 }

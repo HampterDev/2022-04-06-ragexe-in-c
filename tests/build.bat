@@ -183,6 +183,8 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 call "%~dp0build_shortcut_packets.bat"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
+call "%~dp0build_gm_name_packets.bat"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 cl /nologo /W3 /WX /O2 /Gy /Gw /MD /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_quest_value.c" "%ROOT%\src\contents\quest_value.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\ui\std\ui_std_vector.c" "%ROOT%\tests\quest_value_support.c" "%ROOT%\src\std\string_vec.c" /Fe:test_quest_value.exe /link /OPT:REF
 if not "%errorlevel%"=="0" (popd & exit /b 1)
