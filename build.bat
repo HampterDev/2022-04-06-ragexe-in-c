@@ -114,8 +114,8 @@ if "%ARCH%"=="x64" (
 ) else (
   set "VLIB=%BUILD%\vendor"
   link /nologo msvcrt.lib msvcprt.lib @"%BUILD%\%OUT%.objs.rsp" ^
-   "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" /LIBPATH:"%ROOT%lib" ^
-   cps.lib granny2.lib mss32.lib shlwapi.lib ^
+   "%ROOT%lib\cps.lib" "!VLIB!\imglibs.lib" "!VLIB!\lua514.lib" "!VLIB!\yyjson.lib" "!VLIB!\crijndael.lib" "!VLIB!\font_backend.lib" "!VLIB!\jpeg.lib" /LIBPATH:"%ROOT%lib" ^
+   granny2.lib mss32.lib shlwapi.lib ^
    !TEXTLIB! msvcp140.lib vcruntime.lib ucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
    /OUT:"%BUILD%\%OUT%.exe" /IMPLIB:"%BUILD%\%OUT%.lib" /SUBSYSTEM:WINDOWS /MACHINE:X86 /SAFESEH /LARGEADDRESSAWARE ^
    /OPT:NOICF /MAP:"%BUILD%\%OUT%.map" /Brepro %LINKDBG%
