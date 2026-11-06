@@ -5,8 +5,6 @@
 #include "actor/pc.h"
 #include "actor/sprite_render.h"
 #include "std/std.h"
-#include "core/msg_str.h"
-#include "platform/clientinfo.h"
 #include "session/session_jobs.h"
 #include "session/session_lua.h"
 #include "session/session_names.h"
@@ -336,36 +334,13 @@ void pc_set_spr_job(struct GameActor * base_actor, int job)
     actor_set_imf_name(self);
 }
 
-static struct Res *pc_layer_res(struct Pc *self, int layer, const char *name, const char *const names[2][2][2])
-{
-    if (clientinfo_is_yellow_aid(self->aid)) {
-        int event = is_event_aid(self->aid) ? 0 : 1;
-
-        if (layer == 0 || layer == 5)
-            return res_mgr_get(g_resMgr(), names[event][layer == 5][self->sex != 0]);
-        if (layer == 6)
-            return NULL;
-    }
-    return res_mgr_get(g_resMgr(), name);
-}
-
 void pc_set_layer_spr(struct Pc *self, int layer, const char *name)
 {
-    static const char *const names[2][2][2] = {
-        { { "인간족\\몸통\\여\\운영자""2_여.Spr"  ,
-            "인간족\\몸통\\남\\운영자""2_남.Spr"   },
-          { "인간족\\운영자\\운영자""2_여_검.Spr"  ,
-            "인간족\\운영자\\운영자""2_남_검.Spr"   } },
-        { { "인간족\\몸통\\여\\운영자_여.Spr"  ,
-            "인간족\\몸통\\남\\운영자_남.Spr"   },
-          { "인간족\\운영자\\운영자_여_검.Spr"  ,
-            "인간족\\운영자\\운영자_남_검.Spr"   } },
-    };
     struct Res **res = (struct Res **)self->layer_sprs.first;
 
     if (res[layer])
         res_unlock(res[layer]);
-    ((struct Res **)self->layer_sprs.first)[layer] = pc_layer_res(self, layer, name, names);
+    ((struct Res **)self->layer_sprs.first)[layer] = res_mgr_get(g_resMgr(), name);
     res = (struct Res **)self->layer_sprs.first;
     if (res[layer])
         res_lock(res[layer]);
@@ -373,21 +348,11 @@ void pc_set_layer_spr(struct Pc *self, int layer, const char *name)
 
 void pc_set_layer_act(struct Pc *self, int layer, const char *name)
 {
-    static const char *const names[2][2][2] = {
-        { { "인간족\\몸통\\여\\운영자""2_여.Act"  ,
-            "인간족\\몸통\\남\\운영자""2_남.Act"   },
-          { "인간족\\운영자\\운영자""2_여_검.Act"  ,
-            "인간족\\운영자\\운영자""2_남_검.Act"   } },
-        { { "인간족\\몸통\\여\\운영자_여.Act"  ,
-            "인간족\\몸통\\남\\운영자_남.Act"   },
-          { "인간족\\운영자\\운영자_여_검.Act"  ,
-            "인간족\\운영자\\운영자_남_검.Act"   } },
-    };
     struct Res **res = (struct Res **)self->layer_acts.first;
 
     if (res[layer])
         res_unlock(res[layer]);
-    ((struct Res **)self->layer_acts.first)[layer] = pc_layer_res(self, layer, name, names);
+    ((struct Res **)self->layer_acts.first)[layer] = res_mgr_get(g_resMgr(), name);
     res = (struct Res **)self->layer_acts.first;
     if (res[layer])
         res_lock(res[layer]);
