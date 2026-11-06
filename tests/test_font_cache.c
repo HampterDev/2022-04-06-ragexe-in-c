@@ -1,5 +1,4 @@
 #include "render/fonts.h"
-#include "render/device.h"
 #include "render/font_family.h"
 #include "core/text_encoding.h"
 #include <assert.h>
@@ -8,16 +7,14 @@
 #include <string.h>
 #include <wchar.h>
 
-struct C3dDevice g_3dDevice;
-static int startup_fails, create_fails, add_fails, dc_fails, alloc_fails;
+static int startup_fails, create_fails, add_fails, alloc_fails;
 static int family_fails, wide_fails, text_fails;
-static int starts, stops, creates, deletes, adds, removes, dc_gets, dc_releases, enums, reads, allocs;
-static int live_fonts, live_resources[2], active_dc;
+static int starts, stops, creates, deletes, adds, removes, reads, allocs;
+static int live_fonts, live_resources[2];
 static uintptr_t active_token;
 static int alive[4096], resource_for_font[4096];
 static LOGFONTA last_font;
-static int last_indirect, last_name_null;
-static const char *available[4];
+static int last_indirect;
 static const wchar_t *family_name = L"Test Family";
 static const char *family_text = "Test Family";
 static void (*exit_callback)(void);
@@ -78,46 +75,11 @@ void *font_cache_test_realloc(void *data, size_t size)
     return alloc_fails ? NULL : realloc(data, size);
 }
 
-HDC WINAPI font_cache_test_get_dc(HWND window)
-{
-    assert(!window && !active_dc);
-    ++dc_gets;
-    if (dc_fails)
-        return NULL;
-    active_dc = 1;
-    return (HDC)(uintptr_t)0x234;
-}
-
-int WINAPI font_cache_test_release_dc(HWND window, HDC dc)
-{
-    assert(!window && active_dc && dc == (HDC)(uintptr_t)0x234);
-    ++dc_releases;
-    active_dc = 0;
-    return 1;
-}
-
-int WINAPI font_cache_test_enum(HDC dc, LPLOGFONTA query, FONTENUMPROCA callback, LPARAM context, DWORD flags)
-{
-    int i, result = 0;
-    assert(active_dc && dc == (HDC)(uintptr_t)0x234 && !flags);
-    assert(!query->lfFaceName[0] && !query->lfPitchAndFamily);
-    ++enums;
-    for (i = 0; available[i]; ++i) {
-        LOGFONTA font = {0};
-        strcpy(font.lfFaceName, available[i]);
-        result = callback(&font, NULL, TRUETYPE_FONTTYPE, context);
-        if (!result)
-            break;
-    }
-    return result;
-}
-
-static HFONT created(const LOGFONTA *font, int indirect, int null_name)
+static HFONT created(const LOGFONTA *font, int indirect)
 {
     ++creates;
     last_font = *font;
     last_indirect = indirect;
-    last_name_null = null_name;
     assert(creates < (int)(sizeof(alive) / sizeof(alive[0])));
     if (create_fails)
         return NULL;
@@ -140,12 +102,12 @@ HFONT WINAPI font_cache_test_create(int height, int width, int escapement, int o
     font.lfCharSet = (BYTE)charset;
     if (name)
         strcpy(font.lfFaceName, name);
-    return created(&font, 0, name == NULL);
+    return created(&font, 0);
 }
 
 HFONT WINAPI font_cache_test_create_indirect(const LOGFONTA *font)
 {
-    return created(font, 1, 0);
+    return created(font, 1);
 }
 
 static int resource_index(const char *path)
@@ -201,7 +163,7 @@ static void finish(struct FontCache *cache)
     int deleted, removed, stopped;
     font_cache_destruct(cache);
     assert(!cache->entries && !cache->count && !cache->capacity && !cache->token);
-    assert(!live_fonts && !live_resources[0] && !live_resources[1] && !active_token && !active_dc);
+    assert(!live_fonts && !live_resources[0] && !live_resources[1] && !active_token);
     deleted = deletes; removed = removes; stopped = stops;
     font_cache_destruct(cache);
     assert(deletes == deleted && removes == removed && stops == stopped);
@@ -209,17 +171,17 @@ static void finish(struct FontCache *cache)
 
 static void installed_fonts(void)
 {
+    static const int faces[] = {1, -1, 12, 1000000};
     struct FontCache cache;
     HFONT first;
-    int c, a, d, e, i;
+    int c, a, i;
     font_cache_construct(&cache);
-    available[0] = "unrelated"; available[1] = "PRIMARY";
     first = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
-    assert(first && !last_indirect && !strcmp(last_font.lfFaceName, "Primary"));
+    assert(first && !last_indirect && !strcmp(last_font.lfFaceName, "Eras Medium ITC"));
     assert(last_font.lfHeight == 13 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
-    c = creates; a = allocs; d = dc_gets; e = enums;
+    c = creates; a = allocs;
     assert(font_cache_get_font(&cache, 0, 13, 129, 256, 256) == first);
-    assert(creates == c && allocs == a && dc_gets == d && enums == e);
+    assert(creates == c && allocs == a);
     assert(font_cache_get_font(&cache, 1, 13, 129, 0, 0) != first);
     assert(font_cache_get_font(&cache, 0, 14, 129, 0, 0) != first);
     assert(font_cache_get_font(&cache, 0, 13, 0, 0, 0) != first);
@@ -227,24 +189,10 @@ static void installed_fonts(void)
     assert(font_cache_get_font(&cache, 0, 13, 129, 0, 1) != first);
     assert(font_cache_get_font(&cache, 0, 13, 129, 0, 2) != first);
     assert(last_font.lfItalic == 1);
-    available[1] = "fallback";
-    assert(font_cache_get_font(&cache, 0, 15, 0, 0, 0));
-    assert(!strcmp(last_font.lfFaceName, "Fallback"));
-    available[1] = NULL;
-    assert(font_cache_get_font(&cache, 0, 16, 0, 0, 0) && last_name_null);
-    available[0] = NULL;
-    assert(font_cache_get_font(&cache, 0, 17, 0, 0, 0) && last_name_null);
-    g_3dDevice.faceNamesA[1] = g_3dDevice.faceNamesB[1] = NULL;
-    e = enums;
-    assert(font_cache_get_font(&cache, 1, 17, 0, 0, 0) && last_name_null && enums == e);
-    d = dc_gets;
-    assert(font_cache_get_font(&cache, -1, 17, 0, 0, 0) && last_name_null);
-    assert(font_cache_get_font(&cache, 12, 17, 0, 0, 0) && last_name_null);
-    assert(font_cache_get_font(&cache, 1000000, 17, 0, 0, 0) && last_name_null && dc_gets == d);
-    dc_fails = 1;
-    e = enums;
-    assert(font_cache_get_font(&cache, 0, 18, 0, 0, 0) && last_name_null && enums == e);
-    dc_fails = 0;
+    for (i = 0; i < 4; ++i) {
+        assert(font_cache_get_font(&cache, faces[i], 17, 0, 0, 0));
+        assert(!last_indirect && !strcmp(last_font.lfFaceName, "Eras Medium ITC"));
+    }
     for (i = 0; i < 500; ++i)
         assert(font_cache_get_font(&cache, 0, 100 + i, 0, i % 2, i % 3));
     assert(font_cache_get_font(&cache, 0, 13, 129, 0, 0) == first);
@@ -256,7 +204,7 @@ static void eot_fonts(void)
     static const char *const names[] = {"RixSquirrel_10.eot", "RixLoveangel_10.eot", "RixNHCgogo_10.eot",
         "RixDiary_10.eot", "RixMiniHeart_10.eot", "RixFreshman_10.eot", "RixKid_10.eot", "RixMagic_10.eot", "RixJJangu_10.eot"};
     struct FontCache cache;
-    int i, d = dc_gets, a = adds;
+    int i, a = adds;
     font_cache_construct(&cache);
     for (i = 0; i < 9; ++i) {
         assert(font_cache_get_font(&cache, 20 + i, 99, 129, 1, 2));
@@ -264,7 +212,7 @@ static void eot_fonts(void)
         assert(last_font.lfHeight == -13 && last_font.lfWeight == 400 && last_font.lfCharSet == 1);
         assert(!last_font.lfItalic && last_font.lfOutPrecision == 6 && last_font.lfQuality == 2);
     }
-    assert(dc_gets == d && adds == a);
+    assert(adds == a);
     finish(&cache);
 }
 
@@ -284,7 +232,8 @@ static void file_fonts(void)
         assert(font_cache_get_font(&cache, 29, 19, 129, mode == 7 ? 2 : 1, 2) == font && adds == a + 1);
         assert(last_font.lfWeight == 700 && last_font.lfCharSet == 129);
         if (mode == 5) {
-            assert(!last_indirect && last_name_null && last_font.lfHeight == 19 && last_font.lfItalic == 1);
+            assert(!last_indirect && !strcmp(last_font.lfFaceName, "Eras Medium ITC"));
+            assert(last_font.lfHeight == 19 && last_font.lfItalic == 1);
         } else {
             assert(last_indirect && last_font.lfHeight == -19 && last_font.lfItalic == 2);
             assert(live_resources[mode == 7 ? 0 : 1] == 1);
@@ -357,8 +306,6 @@ int main(void)
     struct { unsigned before[4]; struct FontCache cache; unsigned after[4]; } guarded;
     unsigned i;
     int stopped;
-    g_3dDevice.faceNamesA[0] = g_3dDevice.faceNamesA[1] = "Primary";
-    g_3dDevice.faceNamesB[0] = g_3dDevice.faceNamesB[1] = "Fallback";
     memset(&guarded, 0xa5, sizeof(guarded));
     assert(font_cache_construct(&guarded.cache) == &guarded.cache);
     finish(&guarded.cache);
@@ -370,7 +317,6 @@ int main(void)
     assert(exit_callback == gdiplus_destroy && g_fontCache.token == active_token);
     exit_callback(); exit_callback();
     assert(stops == stopped + 1 && !g_fontCache.entries && !g_fontCache.count);
-    assert(dc_gets == dc_releases + 1 && !active_dc);
     puts("Font cache: C storage, five-field keys, installed/EOT/file fonts, growth, failure retry and resource cleanup passed.");
     return 0;
 }

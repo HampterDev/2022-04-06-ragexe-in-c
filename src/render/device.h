@@ -38,8 +38,6 @@ struct C3dDevice {
     BYTE tex1024;
     BYTE surfacesLost;
     DWORD colorKeyPixel;
-    const char *faceNamesB[12];
-    const char *faceNamesA[12];
     int faceCharsets[12];
     BYTE hexDigitFlags[0x140];
     signed char hexDigitValues[0x140];

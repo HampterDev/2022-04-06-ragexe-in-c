@@ -1,5 +1,4 @@
 #include "render/fonts.h"
-#include "render/device.h"
 #include "render/font_family.h"
 #include "core/text_encoding.h"
 #include <stdlib.h>
@@ -16,44 +15,6 @@ struct FontEntry {
 };
 
 struct FontCache g_fontCache;
-
-struct FontSearch {
-    const char *name;
-    int found;
-};
-
-static int CALLBACK font_enum_match(const LOGFONTA *font, const TEXTMETRICA *metric,
-                                    DWORD type, LPARAM context)
-{
-    struct FontSearch *search = (struct FontSearch *)context;
-    (void)metric;
-    (void)type;
-    search->found = _stricmp(search->name, font->lfFaceName) == 0;
-    return !search->found;
-}
-
-static const char *installed_face_name(int face, int charset)
-{
-    LOGFONTA lf = {0};
-    HDC dc;
-    struct FontSearch search = {0};
-    if (face < 0 || (size_t)face >= sizeof(g_3dDevice.faceNamesA) / sizeof(g_3dDevice.faceNamesA[0]))
-        return NULL;
-    dc = GetDC(NULL);
-    if (!dc)
-        return NULL;
-    lf.lfCharSet = (BYTE)charset;
-    search.name = g_3dDevice.faceNamesA[face];
-    if (search.name)
-        EnumFontFamiliesExA(dc, &lf, font_enum_match, (LPARAM)&search, 0);
-    if (!search.found) {
-        search.name = g_3dDevice.faceNamesB[face];
-        if (search.name)
-            EnumFontFamiliesExA(dc, &lf, font_enum_match, (LPARAM)&search, 0);
-    }
-    ReleaseDC(NULL, dc);
-    return search.found ? search.name : NULL;
-}
 
 static void eot_logfont(LOGFONTA *lf, const char *name)
 {
@@ -151,7 +112,7 @@ HFONT font_cache_get_font(struct FontCache *self, int face, int size, int charse
         if (!entry.resource_path)
             entry.font = CreateFontA(size, 0, 0, 0, entry.bold ? 700 : 400,
                                     entry.italic != 0, 0, 0, charset, 0, 0,
-                                    NONANTIALIASED_QUALITY, 0, installed_face_name(face, charset));
+                                    NONANTIALIASED_QUALITY, 0, "Eras Medium ITC");
     }
     if (!entry.font) {
         if (entry.resource_path)
