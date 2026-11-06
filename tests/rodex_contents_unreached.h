@@ -34,7 +34,7 @@ struct UIWindow * ui_window_add_sys_button(struct UIWindow * arg0) { abort(); }
 void ui_window_clear_canvas(struct UIWindow * arg0, DWORD arg1) { abort(); }
 void ui_window_drag_and_drop_base(struct UIWindow *arg0, int arg1, int arg2, const struct DragInfo *arg3) { abort(); }
 void ui_window_draw_bitmap(struct UIWindow * arg0, int arg1, int arg2, struct BitmapRes * arg3, int arg4) { abort(); }
-void ui_window_draw_item_icon_count(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4, BYTE arg5) { abort(); }
+void ui_window_draw_item_icon_count(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4) { abort(); }
 int ui_window_draw_title_bar(struct UIWindow * arg0, int arg1, const char * arg2, int arg3) { abort(); }
 DWORD ui_window_get_color(struct UIWindow * arg0) { abort(); }
 struct UIWindow * ui_window_hit_test_base(struct UIWindow * arg0, int arg1, int arg2) { abort(); }

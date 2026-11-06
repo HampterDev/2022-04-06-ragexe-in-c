@@ -148,7 +148,7 @@ void ui_scroll_bar_custom_set_arrows(struct UIScrollBar_Custom * arg0, struct St
 void ui_scroll_bar_custom_set_thumb(struct UIScrollBar_Custom * arg0, struct String arg1, struct String arg2, struct String arg3) { abort(); }
 void ui_window_draw_item_win_mid(struct UIWindow * arg0, int arg1, int arg2) { abort(); }
 void ui_window_draw_item_icon(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4) { abort(); }
-void ui_window_draw_item_icon_count(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4, BYTE arg5) { abort(); }
+void ui_window_draw_item_icon_count(struct UIWindow * arg0, int arg1, int arg2, const struct ItemInfo * arg3, BYTE arg4) { abort(); }
 void ui_window_draw_item_icon_count_grey(struct UIWindow * arg0, int arg1, int arg2, int arg3, const struct ItemInfo * arg4, BYTE arg5, BYTE arg6) { abort(); }
 int ui_window_draw_item_name_short(struct UIWindow * arg0, int arg1, int arg2, int arg3, const struct ItemInfo * arg4, int arg5) { abort(); }
 COLORREF session_get_item_dis_color(const struct ItemInfo * arg0) { abort(); }

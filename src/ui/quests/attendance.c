@@ -385,7 +385,7 @@ void ui_check_attendance_wnd_on_draw(struct UIWindow *window)
         info.count = check_attendance_reward(g_attendanceTable, &reward, day)->count;
         check_attendance_reward(g_attendanceTable, &reward, day);
         ui_window_draw_item_icon_count(wnd, col * ATTENDANCE_SLOT_PITCH_X + 0x2b,
-                                   row * ATTENDANCE_SLOT_PITCH_Y + 0x6d + shift, &info, 1, 0);
+                                   row * ATTENDANCE_SLOT_PITCH_Y + 0x6d + shift, &info, 1);
         string_format(&text, msg_str(0xd8b), day);
         text_centred(self, col * ATTENDANCE_SLOT_PITCH_X + ATTENDANCE_SLOT_X,
                      row * ATTENDANCE_SLOT_PITCH_Y + 0x8c + shift, string_cstr(&text), 0x3a, 0xc, 0xa44f3b);

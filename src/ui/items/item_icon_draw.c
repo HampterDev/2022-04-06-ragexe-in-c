@@ -70,7 +70,7 @@ void ui_window_draw_item_icon_by_name(struct UIWindow *self, int x, int y,
 }
 
 void ui_window_draw_item_icon_count(struct UIWindow *self, int x, int y,
-                                           const struct ItemInfo *info, BYTE force_identified, BYTE plain_count)
+                                           const struct ItemInfo *info, BYTE force_identified)
 {
     struct BitmapRes *bitmap = item_bitmap(string_cstr(&info->id_text),
                                             info->identified || force_identified ? 1 : 0);
@@ -78,7 +78,7 @@ void ui_window_draw_item_icon_count(struct UIWindow *self, int x, int y,
     if (bitmap)
         ui_window_draw_bitmap(self, x, y, bitmap, 1);
     if (info->count != -1 && info->count != 0)
-        draw_count(self, x, y, info->count, plain_count);
+        draw_count(self, x, y, info->count, 0);
 }
 
 void ui_window_draw_item_icon_count_grey(struct UIWindow *self, int tint, int x, int y,

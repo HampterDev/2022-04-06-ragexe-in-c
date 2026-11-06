@@ -17,7 +17,7 @@ void ui_window_draw_item_icon(struct UIWindow *self, int x, int y,
                                       const struct ItemInfo *info, BYTE force_identified);
 
 void ui_window_draw_item_icon_count(struct UIWindow *self, int x, int y,
-                                           const struct ItemInfo *info, BYTE force_identified, BYTE plain_count);
+                                           const struct ItemInfo *info, BYTE force_identified);
 
 void ui_window_draw_item_icon_count_grey(struct UIWindow *self, int grey_arg, int x, int y,
                                                const struct ItemInfo *info, BYTE identified, BYTE plain_count);

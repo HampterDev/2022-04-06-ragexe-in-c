@@ -330,7 +330,7 @@ void ui_bartermarket_wnd_on_draw(struct UIWindow *window)
         if (goods->no_stock == 1)
             ui_window_draw_item_icon(wnd, col_x + 0x2c, row_y + 0x15, &info, 0);
         else
-            ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, &info, 0, 0);
+            ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, &info, 0);
         item_info_destruct(&info);
         barter_goods_to_item_info(goods, &info);
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, 0x78, &info, 12);

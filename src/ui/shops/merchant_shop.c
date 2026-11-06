@@ -230,7 +230,7 @@ static void shop_draw_item(struct UIMerchantItemShopWnd *self, const struct Item
         ui_window_text_out(wnd, width - 0x12, row_y + 0x1d, money, 0, 0, 12, 0xff, 0, 0);
         ui_window_draw_item_icon(wnd, col_x + 0x2c, row_y + 0x15, info, 0);
     } else {
-        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0);
     }
     if (info->grade > 0) {
         struct String path;

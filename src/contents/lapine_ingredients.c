@@ -557,7 +557,7 @@ void lapine_row_on_draw(struct UIWindow *window)
         ui_window_draw_bitmap(&self->frame.base, 0x20, 0, res_mgr_get(g_resMgr(), LAPINE_BMP("list_selected_item.bmp")), 0);
     ui_window_fit_text(&self->frame.base, &cut, 100, string_cstr(&self->item.name), 0, 0xc, 0);
     if (!self->unusable)
-        ui_window_draw_item_icon_count(&self->frame.base, 4, 3, &self->item, 0, 0);
+        ui_window_draw_item_icon_count(&self->frame.base, 4, 3, &self->item, 0);
     else
         ui_window_draw_item_icon_count_grey(&self->frame.base, 1, 4, 3, &self->item, self->item.identified, 0);
     ui_window_draw_shadow_text(&self->frame.base, 0x24, 9, string_cstr(&cut), 0, self->unusable ? 0x969696 : 0, 0xe0e0e0,

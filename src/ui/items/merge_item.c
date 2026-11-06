@@ -287,7 +287,7 @@ static void place_items(struct MergeItemWnd *self)
         if (item.index != 0) {
             ui_check_box_set_hidden(&check->base, 0);
             ui_window_move_base(&check->base, x, row_y + 0x28);
-            ui_window_draw_item_icon_count(&self->frame.base, x + 5, row_y + 0x16, &item, 0, 0);
+            ui_window_draw_item_icon_count(&self->frame.base, x + 5, row_y + 0x16, &item, 0);
         }
         item_info_destruct(&item);
     }

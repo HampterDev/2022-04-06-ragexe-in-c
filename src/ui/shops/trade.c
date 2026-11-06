@@ -372,7 +372,7 @@ static void draw_items(struct UIExchangeWnd *self, struct List *list, int icon_x
         if (item_grid_hidden(info))
             continue;
         y = self->row_height * row;
-        ui_window_draw_item_icon_count(wnd, icon_x, y + 0x15, info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, icon_x, y + 0x15, info, 0);
         ui_window_draw_item_name(wnd, name_x, y + 0x1d, info, 0, 1);
         if (info->grade > 0) {
             struct String path;

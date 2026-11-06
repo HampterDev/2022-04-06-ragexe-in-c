@@ -476,7 +476,7 @@ void ui_item_wnd_on_draw(struct UIWindow *window)
             continue;
         x = cell % self->base.columns * GRID_CELL + 0x2c;
         y = cell / self->base.columns * GRID_CELL;
-        ui_window_draw_item_icon_count(wnd, x, y + 0x15, info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, x, y + 0x15, info, 0);
         if (info->grade > 0) {
             struct String path;
 

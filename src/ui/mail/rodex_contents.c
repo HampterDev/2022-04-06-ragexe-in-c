@@ -362,7 +362,7 @@ void ui_rodex_contents_wnd_on_draw(struct UIWindow *window)
 
         ui_window_draw_bitmap(wnd, x - 4, 0x13f, res_mgr_get(g_resMgr(), RODEX_DIR "shadow_item_on.bmp"),
                             1);
-        ui_window_draw_item_icon_count(wnd, x, ITEM_ROW_TOP, item, 0, 0);
+        ui_window_draw_item_icon_count(wnd, x, ITEM_ROW_TOP, item, 0);
         if (item->grade > 0) {
             string_init(&text);
             string_format(&text, UI_SKIN "grade_enchant\\grade_icon%d.bmp", item->grade);

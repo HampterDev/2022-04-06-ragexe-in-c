@@ -168,13 +168,13 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
 
     barter_goods_ex_to_item_info(goods, &info);
     if (!market)
-        ui_window_draw_item_icon_count(wnd, 0x2c, y, &info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, 0x2c, y, &info, 0);
     else if (goods->no_stock == 1)
         ui_window_draw_item_icon(wnd, 0x2c, y, &info, 0);
     else if (goods->count == 0)
         ui_window_draw_item_icon_count_grey(wnd, 0, 0x2c, y, &info, 1, 0);
     else
-        ui_window_draw_item_icon_count(wnd, 0x2c, y, &info, 1, 0);
+        ui_window_draw_item_icon_count(wnd, 0x2c, y, &info, 1);
     item_info_destruct(&info);
     barter_goods_ex_to_item_info(goods, &info);
     ui_window_draw_item_name_short(wnd, 0x4c, y + 8, 100, &info, 12);
@@ -192,7 +192,7 @@ static void exb_draw_line(struct ExpandedBarterWnd *self, const struct BarterGoo
         if (market && goods->count == 0)
             ui_window_draw_item_icon_count_grey(wnd, 0, x, y + 0x1c, &item, 1, 0);
         else
-            ui_window_draw_item_icon_count(wnd, x, y + 0x1c, &item, 1, 0);
+            ui_window_draw_item_icon_count(wnd, x, y + 0x1c, &item, 1);
         if (market ? item.refine != 0 : item.refine > 0) {
             COLORREF colour = EXB_REFINE_COLOUR;
             char text[0x10];

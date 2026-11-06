@@ -431,7 +431,7 @@ void ui_barter_item_purchase_wnd_on_draw(struct UIWindow *window)
         if (self->hover == i)
             barter_draw_highlight(wnd, col_x, row_y, 0xbf);
         barter_goods_to_item_info(goods, &info);
-        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, &info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, &info, 0);
         ui_window_draw_item_name_short(wnd, col_x + 0x4c, row_y + 0x1d, 100, &info, 12);
         barter_draw_pay(wnd, row_y, goods, goods->count, 1);
         item_info_destruct(&info);

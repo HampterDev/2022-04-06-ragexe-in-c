@@ -632,7 +632,7 @@ void ui_merchant_shop_make_wnd_on_draw(struct UIWindow *window)
             continue;
         row_y = shown / self->columns * ROW_HEIGHT;
         x = shown % self->columns * ROW_HEIGHT;
-        ui_window_draw_item_icon_count(wnd, x + 7, row_y + 0x30, info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, x + 7, row_y + 0x30, info, 0);
         ui_window_draw_item_name_short(wnd, x + 0x27, row_y + 0x39, 0x64, info, 0xc);
         if (info->grade > 0) {
             struct String path;

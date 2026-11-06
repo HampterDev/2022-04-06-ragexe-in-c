@@ -462,17 +462,17 @@ void ui_roullette_wnd_on_draw(struct UIWindow *window)
         int x = ROULETTE_SLOT_X(slot->row, slot->position), y = ROULETTE_ROW_Y(slot->row);
 
         if (r->step == slot->row && (r->has_slot || r->spinning))
-            ui_window_draw_item_icon_count(wnd, x, y, &entry->item, 0, 0);
+            ui_window_draw_item_icon_count(wnd, x, y, &entry->item, 0);
         else
             ui_window_draw_item_icon_count_grey(wnd, 0, x, y, &entry->item, 0, 0);
         r = g_roulette;
     }
     if (r->has_slot == 1 && r->slot_item.count != 0) {
-        ui_window_draw_item_icon_count(wnd, 0xbd, 0x91, &r->slot_item, 0, 0);
+        ui_window_draw_item_icon_count(wnd, 0xbd, 0x91, &r->slot_item, 0);
         r = g_roulette;
     }
     if (r->addition_item.count != 0)
-        ui_window_draw_item_icon_count(wnd, 0x3c, 0x87, &r->addition_item, 0, 0);
+        ui_window_draw_item_icon_count(wnd, 0x3c, 0x87, &r->addition_item, 0);
 }
 
 void ui_roullette_wnd_on_l_btn_down(struct UIWindow *self, int x, int y)

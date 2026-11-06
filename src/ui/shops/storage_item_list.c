@@ -43,7 +43,7 @@ void storage_draw_items(struct UIItemBaseWnd *base, int x0, int name_width)
             continue;
         x = drawn % base->columns * ITEM_GRID_CELL + x0;
         y = drawn / base->columns * ITEM_GRID_CELL;
-        ui_window_draw_item_icon_count(wnd, x + 4, y + 0x15, item, 0, 0);
+        ui_window_draw_item_icon_count(wnd, x + 4, y + 0x15, item, 0);
         ui_window_draw_item_name_short(wnd, x + 0x28, y + 0x1d, name_width ? name_width : wnd->width - x - 0x42,
                                    item, 0xc);
         if (item->grade > 0) {

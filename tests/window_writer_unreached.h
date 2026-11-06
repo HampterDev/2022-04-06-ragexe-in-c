@@ -289,7 +289,7 @@ void ui_window_draw_item_icon(struct UIWindow *arg0, int arg1, int arg2, const s
     abort();
 }
 void ui_window_draw_item_icon_count(struct UIWindow *arg0, int arg1, int arg2, const struct ItemInfo *arg3,
-                                BYTE arg4, BYTE arg5)
+                                BYTE arg4)
 {
     abort();
 }

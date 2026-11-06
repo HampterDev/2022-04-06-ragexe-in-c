@@ -245,7 +245,7 @@ void ui_item_purchase_wnd_on_draw(struct UIWindow *window)
         col_x = cell % base->columns * ITEM_GRID_CELL;
         if (self->hover == index)
             ui_window_fill_rect(wnd, col_x + 0x48, row_y + 0x13, 0xbf, 0x1c, ui_skin_colour(6, 2));
-        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0, 0);
+        ui_window_draw_item_icon_count(wnd, col_x + 0x2c, row_y + 0x15, info, 0);
         name_width = 0x6e;
         if (info->price != info->charged_price) {
             if (info->price >= 10000)

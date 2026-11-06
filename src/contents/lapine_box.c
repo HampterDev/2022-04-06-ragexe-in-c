@@ -422,7 +422,7 @@ void lapine_box_on_draw(struct UIWindow *window)
 
         ui_window_draw_bitmap(&self->frame.base, pos.x - 4, pos.y + 0xb, shadow, 1);
         chosen = (const struct ItemInfo *)self->chosen.first;
-        ui_window_draw_item_icon_count(&self->frame.base, pos.x, pos.y, (struct ItemInfo *)&chosen[i], 0, 0);
+        ui_window_draw_item_icon_count(&self->frame.base, pos.x, pos.y, (struct ItemInfo *)&chosen[i], 0);
     }
 
     if (self->notice_time + self->notice_duration > timeGetTime()) {

@@ -233,7 +233,7 @@ void ui_merchant_item_log_wnd_on_draw(struct UIWindow *window)
                 if (!item_grid_hidden(item)) {
                     y = shown / self->base.columns * ITEM_GRID_CELL;
                     x = shown % self->base.columns * ITEM_GRID_CELL + 0x2c;
-                    ui_window_draw_item_icon_count(wnd, x, y + 0x15, item, 0, 0);
+                    ui_window_draw_item_icon_count(wnd, x, y + 0x15, item, 0);
                     if (item->grade > 0) {
                         struct String path;
 

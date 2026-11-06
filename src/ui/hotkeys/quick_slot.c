@@ -311,7 +311,7 @@ void ui_quik_slot_wnd_on_draw(struct UIWindow *window)
 
             session_get_inventory_item_by_id(&g_session1, &item, slot->id, 1);
             if ((unsigned)item.index > 0) {
-                ui_window_draw_item_icon_count(wnd, x, 5, &item, item.identified, 1);
+                ui_window_draw_item_icon_count(wnd, x, 5, &item, item.identified);
                 if (item.grade > 0) {
                     struct String path;
 

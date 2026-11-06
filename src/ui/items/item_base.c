@@ -183,7 +183,7 @@ void ui_item_base_wnd_on_draw(struct UIWindow *window)
         x = cell % self->columns * GRID_CELL;
         y = cell / self->columns * GRID_CELL;
         if (self->show_counts)
-            ui_window_draw_item_icon_count(wnd, x + 0x2c, y + 0x15, info, 0, 0);
+            ui_window_draw_item_icon_count(wnd, x + 0x2c, y + 0x15, info, 0);
         else
             ui_window_draw_item_icon(wnd, x + 0x2c, y + 0x15, info, 0);
         if (info->grade > 0) {
