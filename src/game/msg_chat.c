@@ -3,7 +3,6 @@
 #include "session/character_name.h"
 #include "game/replay_actor_events.h"
 #include "contents/manner_filter.h"
-#include "game/client_state.h"
 #include "contents/guild_info.h"
 #include "ui/window_manager_state.h"
 #include <windows.h>
@@ -51,34 +50,20 @@ static void filter_bad_words(char *line)
     string_assign_cstr(&g_windowMgr.chat_line, line);
 }
 
-static int refuse_repeated(struct GameMode *self, const char *line)
-{
-    int repeats;
-
-    if (string_equal_cstr(&self->last_chat_line, line))
-        repeats = ++self->chat_repeats;
-    else
-        repeats = self->chat_repeats = 0;
-    if (chat_refuse_repeated_line(repeats))
-        return 1;
-    string_assign_cstr(&self->last_chat_line, line);
-    return 0;
-}
-
-static int prepare_line(struct GameMode *self, char *line)
+static void prepare_line(char *line)
 {
     strcpy(line, chat_line());
     filter_bad_words(line);
-    return !refuse_repeated(self, line);
 }
 
-static int take_chat_line(struct GameMode *self, char *line)
+static int take_chat_line(char *line)
 {
     if (!strlen(chat_line()))
         return 0;
     if (session_has_berserk(&g_session1) == 1)
         return 0;
-    return prepare_line(self, line);
+    prepare_line(line);
+    return 1;
 }
 
 static int send_chat_line(int packet_id)
@@ -178,7 +163,7 @@ int game_mode_msg_chat(struct GameMode *self)
     struct String *seen;
     int n, i, count, hits;
 
-    if (!take_chat_line(self, line))
+    if (!take_chat_line(line))
         return 0;
 
     memcpy(dup2, line, sizeof dup2);
@@ -253,8 +238,7 @@ int game_mode_msg_guild_chat(struct GameMode *self)
         return 0;
     if (session_has_berserk(&g_session1) == 1)
         return 0;
-    if (!prepare_line(self, line))
-        return 0;
+    prepare_line(line);
     return send_chat_line(CZ_GUILD_CHAT);
 }
 
@@ -262,7 +246,7 @@ int game_mode_msg_party_chat(struct GameMode *self)
 {
     char line[0x16a];
 
-    if (!take_chat_line(self, line))
+    if (!take_chat_line(line))
         return 0;
     return send_chat_line(CZ_REQUEST_CHAT_PARTY);
 }
@@ -284,13 +268,6 @@ int game_mode_msg_clan_chat(struct GameMode *self)
         return 0;
     strcpy_s(line, sizeof line, chat_line());
     filter_bad_words(line);
-    if (string_equal_cstr(&self->last_chat_line, line)) {
-        if (chat_refuse_repeated_line(++self->chat_repeats))
-            return 0;
-    } else {
-        self->chat_repeats = 0;
-    }
-    string_assign_cstr(&self->last_chat_line, line);
     typed = chat_line();
     charset = language_charset_tag(g_language, 0);
     sprintf(text, "%s : %s%s", session_character_name(&g_session1), charset, typed);
@@ -315,7 +292,7 @@ int game_mode_msg_battlefield_chat(struct GameMode *self)
     struct ChatPacket packet;
     unsigned len;
 
-    if (!take_chat_line(self, line))
+    if (!take_chat_line(line))
         return 0;
     typed = chat_line();
     charset = language_charset_tag(g_language, 0);
@@ -345,15 +322,6 @@ int game_mode_msg_whisper(struct GameMode *self, const char *target)
     strncpy(line, chat_line(), 0x151);
     line[0x151] = 0;
     filter_bad_words(line);
-    if (!g_silentWhisperAcks) {
-        if (string_equal_cstr(&self->last_chat_line, line))
-            self->chat_repeats++;
-        else
-            self->chat_repeats = 0;
-    }
-    if (!g_session1.autoMessageOn && chat_refuse_repeated_line(self->chat_repeats))
-        return 0;
-    string_assign_cstr(&self->last_chat_line, line);
 
     memset(name, 0, sizeof name);
     strcpy(name, target);

@@ -51,7 +51,6 @@ struct GameMode *game_mode_create(void)
     self->skill_use.level = 0;
     self->skill_use_unchecked = 0;
     string_init(&self->illust_file);
-    string_init(&self->last_chat_line);
     for (i = 0; i < 11; i++)
         string_init(&self->chat_history[i]);
     self->boss_x = 0;
@@ -87,7 +86,6 @@ __declspec(noinline) void game_mode_destruct(struct GameMode *self)
     list_free(&self->listed, NULL);
     for (i = 11; i-- > 0;)
         string_free(&self->chat_history[i]);
-    string_free(&self->last_chat_line);
     string_free(&self->illust_file);
     string_free(&self->own_chat_room.password);
     string_free(&self->own_chat_room.title);

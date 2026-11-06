@@ -260,9 +260,7 @@ void game_mode_initialize(struct GameMode *self)
     self->skill_upgrade_pending = 0;
     self->trade_add_amount = 0;
     self->exchange_open = 0;
-    self->chat_repeats = 0;
     self->server_time_syncs = 0;
-    string_clear(&self->last_chat_line);
     self->skill_use.type = 0;
     self->skill_use.skill_id = 0;
     g_skillAimGood = 0;

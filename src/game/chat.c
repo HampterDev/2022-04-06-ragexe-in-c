@@ -12,7 +12,6 @@
 #include "game/chat.h"
 #include "game/client.h"
 #include "platform/language.h"
-#include "core/msg_str.h"
 #include "platform/clientinfo.h"
 #include "session/session_state.h"
 
@@ -53,18 +52,6 @@ void game_mode_mute_self_for_flooding(void)
     packet.type = 2;
     packet.points = 10;
     send_packet(CZ_REQ_GIVE_MANNER_POINT, &packet);
-}
-
-char chat_refuse_repeated_line(int repeats)
-{
-    if (g_serverType == 3 || g_serviceType == 10)
-        return 0;
-    if (repeats < 2)
-        return 0;
-    ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);
-    ui_window_mgr_send_msg_(&g_windowMgr, UIWM_CHAT_PRINT, (int)msg_str(0x31), CHAT_COLOR_RED, 0, 0);
-    string_clear(&g_windowMgr.chat_line);
-    return 1;
 }
 
 struct File g_whisperLog;

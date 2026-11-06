@@ -178,8 +178,7 @@ static void populate_strings(struct GameMode *mode, int round)
                                    &mode->drag.name2,
                                    &mode->own_chat_room.title,
                                    &mode->own_chat_room.password,
-                                   &mode->illust_file,
-                                   &mode->last_chat_line};
+                                   &mode->illust_file};
     const char *text = round & 1 ? "긴 스크린샷 이름과 게임 상태 문자열" : "이름";
     size_t i;
     for (i = 0; i < sizeof strings / sizeof *strings; ++i)
@@ -238,7 +237,7 @@ int main(int argc, char **argv)
     }
     for (i = 0; i < trace_count * sizeof *trace; ++i)
         digest = (digest ^ ((const unsigned char *)trace)[i]) * UINT32_C(16777619);
-    assert(trace_count == 6722 && digest == UINT32_C(0xcb530c74));
+    assert(trace_count == 6562 && digest == UINT32_C(0xdbd3141c));
     if (argc == 2) {
         FILE *file = fopen(argv[1], "wb");
         assert(file && fwrite(trace, sizeof *trace, trace_count, file) == trace_count);

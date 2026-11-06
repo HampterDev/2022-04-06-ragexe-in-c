@@ -190,9 +190,6 @@ struct GameMode {
     char skill_use_unchecked;
     int illust_position;
     struct String illust_file;
-    struct String
-        last_chat_line;
-    int chat_repeats;
     int server_time_syncs;
     int ray_tests_cells;
     int composition_card_index;
