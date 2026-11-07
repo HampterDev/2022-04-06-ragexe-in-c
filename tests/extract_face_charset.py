@@ -19,7 +19,7 @@ def function(source, signature):
 
 
 device = read('render/c3ddevice.c')
-start = device.index('#define HEX_FLAGS_0_9 ')
+start = device.index('#define FACE_GULIM ')
 end = device.index('\n};', device.index('struct C3dDevice g_3dDevice = {')) + 3
 parts = [device[start:end],
          function(read('platform/charset.c'), 'UINT get_code_page_from_charset('),

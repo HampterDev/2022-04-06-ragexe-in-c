@@ -1,6 +1,9 @@
 #include "render/fonts.h"
+#include "render/device.h"
 #include <assert.h>
 #include <stdio.h>
+
+struct C3dDevice g_3dDevice;
 
 static void cycle(void)
 {
@@ -30,6 +33,8 @@ int main(void)
 {
     DWORD before, after;
     int i;
+    g_3dDevice.faceNamesA[0] = "Arial";
+    g_3dDevice.faceNamesB[0] = "Tahoma";
     cycle();
     before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     for (i = 0; i < 32; ++i)
