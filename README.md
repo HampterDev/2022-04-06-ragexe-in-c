@@ -194,10 +194,11 @@ Window, display and sound:
 - [![WARP: EnableSysMenu](https://img.shields.io/badge/WARP-EnableSysMenu-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/WindowFrame.qjs)
   The game window has a system menu with its icon, minimize and close buttons, and Alt+Space,
   also after switching back from fullscreen or borderless.
-- [![WARP: CustomFontName](https://img.shields.io/badge/WARP-CustomFontName-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs) [![WARP: CustomFontHeight](https://img.shields.io/badge/WARP-CustomFontHeight-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs) [![WARP: CustomFontWeight](https://img.shields.io/badge/WARP-CustomFontWeight-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs)
-  UI text is drawn in "Eras Medium ITC", 12 px tall and at normal weight (400), whatever size
-  and weight the UI asks for, instead of each language's font. The Rix and SCDream fonts are
-  unchanged.
+- [![WARP: CustomFontCellHeight](https://img.shields.io/badge/WARP-CustomFontCellHeight-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/CustomFont.qjs)
+  UI text has a 14 px cell height whatever size the UI asks for, as in PLV Online's exe. The
+  font face and weight stay each language's: warpsession.yml also lists CustomFontName ("Eras
+  Medium ITC"), CustomFontHeight (12) and CustomFontWeight (400), but the exe PLV ships has none
+  of them. The Rix and SCDream fonts are unchanged.
 - [![WARP: IncrMapQuality](https://img.shields.io/badge/WARP-IncrMapQuality-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/IncrMapQuality.qjs)
   Map lightmaps are 32-bit textures instead of 16-bit 4444, so ground lighting has no banding.
 - [![WARP: RestoreModelCulling](https://img.shields.io/badge/WARP-RestoreModelCulling-2980b9)](https://github.com/Neo-Mind/WARP/blob/rock_win32/Scripts/Patches/RestoreModelCulling.qjs)
@@ -367,6 +368,9 @@ Overruns and bad table indexes:
   before its sine and cosine tables.
 - Bytes above 0x7f no longer index before the hex digit table, and
   non-hex characters decode as 0.
+- The font lookup releases the screen DCs it takes; the original
+  leaked two per lookup. An unknown font id, SCDream's fallback included, uses GDI's default
+  font instead of reading past the twelve font slots.
 
 Format strings:
 
