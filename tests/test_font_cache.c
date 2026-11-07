@@ -216,7 +216,7 @@ static void installed_fonts(void)
     available[0] = "unrelated"; available[1] = "PRIMARY";
     first = font_cache_get_font(&cache, 0, 13, 129, 0, 0);
     assert(first && !last_indirect && !strcmp(last_font.lfFaceName, "Primary"));
-    assert(last_font.lfHeight == -12 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
+    assert(last_font.lfHeight == 14 && last_font.lfWeight == 400 && last_font.lfCharSet == 129 && !last_font.lfItalic);
     c = creates; a = allocs; d = dc_gets; e = enums;
     assert(font_cache_get_font(&cache, 0, 13, 129, 256, 256) == first);
     assert(creates == c && allocs == a && dc_gets == d && enums == e);
@@ -284,7 +284,7 @@ static void file_fonts(void)
         assert(font_cache_get_font(&cache, 29, 19, 129, mode == 7 ? 2 : 1, 2) == font && adds == a + 1);
         assert(last_font.lfWeight == 700 && last_font.lfCharSet == 129);
         if (mode == 5) {
-            assert(!last_indirect && last_name_null && last_font.lfHeight == -12 && last_font.lfItalic == 1);
+            assert(!last_indirect && last_name_null && last_font.lfHeight == 14 && last_font.lfItalic == 1);
         } else {
             assert(last_indirect && last_font.lfHeight == -19 && last_font.lfItalic == 2);
             assert(live_resources[mode == 7 ? 0 : 1] == 1);

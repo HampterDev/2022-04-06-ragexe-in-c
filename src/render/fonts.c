@@ -149,7 +149,7 @@ HFONT font_cache_get_font(struct FontCache *self, int face, int size, int charse
             }
         }
         if (!entry.resource_path)
-            entry.font = CreateFontA(-12, 0, 0, 0, entry.bold ? 700 : 400,
+            entry.font = CreateFontA(14, 0, 0, 0, entry.bold ? 700 : 400,
                                     entry.italic != 0, 0, 0, charset, 0, 0,
                                     NONANTIALIASED_QUALITY, 0, installed_face_name(face, charset));
     }
