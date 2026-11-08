@@ -81,5 +81,26 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_ez2str_files.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\ez2str_head.inc" ^
+  "src/effects/skills/ez2str_effect.c::line::#define HAT_FIRST 0x950" ^
+  "src/effects/skills/ez2str_effect.c::line::#define ACTOR_RIDING(a)    ((const struct GameActor *)(a))->mounted" ^
+  "src/effects/skills/ez2str_effect.c::line::struct TypeRange { short first, last; };" ^
+  "src/effects/skills/ez2str_effect.c::static int type_in(" ^
+  "src/effects/skills/ez2str_effect.c::line::#define TYPE_IN(set, type) type_in((set), (int)(sizeof(set) / sizeof((set)[0])), (type))" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange HEADGEAR_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange HEAD_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::line::struct TypeShift { short first, last; signed char shift; };" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeShift HEAD_HEIGHT_SHIFTS[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static void lua_ask_hat(" ^
+  "src/effects/skills/ez2str_effect.c::unsigned char ez2_str_effect_is_headgear_type(" ^
+  "src/effects/skills/ez2str_effect.c::unsigned char ez2_str_effect_is_head_type(" ^
+  "src/effects/skills/ez2str_effect.c::float ez2str_head_x_offset(" ^
+  "src/effects/skills/ez2str_effect.c::int ez2str_head_height("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_ez2str_head.c" "%ROOT%\tests\oracle\oracle_image.c" /Fe:test_ez2str_head.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_ez2str_head.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0
