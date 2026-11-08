@@ -38,6 +38,18 @@ static int off_screen(const struct TexDrawVertex *v)
     return 0;
 }
 
+/* custom: whether a projected quad has a corner on or behind the camera's own plane. Its corners
+   are drawn as pre-transformed vertices, so such a corner flips to the far side of the screen and
+   the quad covers the view with its texture sampled at one point (flat white, grey or olive ground,
+   or black blocks). The original's camera stays high above the ground and never meets such a
+   cell; with the unlocked tilt (game/camera.h) the eye comes down to a few units above it, and the
+   cells under and behind it reach the camera plane. Those cells lie below the bottom of the view,
+   so they are left out. */
+static int behind_eye(const struct TexDrawVertex *v)
+{
+    return !(v[0].rhw > 0.0f) || !(v[1].rhw > 0.0f) || !(v[2].rhw > 0.0f) || !(v[3].rhw > 0.0f);
+}
+
 static void c3d_ground15_draw_surface(struct C3dGround15 *self, const float *view,
                                         struct GndSurface *s, char clip)
 {
@@ -58,6 +70,8 @@ static void c3d_ground15_draw_surface(struct C3dGround15 *self, const float *vie
             Vec3 world_point = {s->v[i].pos[0], s->v[i].pos[1], s->v[i].pos[2]};
             renderer_project_vertex(g_renderer, &world_point, view, &v[i]);
         }
+    if (behind_eye(v))
+        return;
     if (clip && off_screen(v))
         return;
 
@@ -141,6 +155,8 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
             Vec3 world_point = {cell->water[i][0], cell->water[i][1], cell->water[i][2]};
             renderer_project_vertex(g_renderer, &world_point, view, &v[i]);
         }
+    if (behind_eye(v))
+        return NULL;
     if (!((v[2].x - v[0].x) * (v[1].y - v[0].y) > (v[1].x - v[0].x) * (v[2].y - v[0].y)))
         return NULL;
 

@@ -44,6 +44,16 @@ static void face_colours(struct C3dNode *node, struct TexDrawVertex *out, const 
     }
 }
 
+/* custom: whether a projected triangle has a corner on or behind the camera's own plane. Model
+   triangles are drawn as pre-transformed vertices, so such a corner flips to the far side of the
+   screen and the triangle smears its texture across the view. The original's camera stays outside
+   the models; with the unlocked zoom and tilt (game/camera.h) the eye can stand inside a building,
+   whose triangles around it are then left out instead. */
+static int behind_eye(const struct TexDrawVertex *a, const struct TexDrawVertex *b, const struct TexDrawVertex *c)
+{
+    return !(a->rhw > 0.0f) || !(b->rhw > 0.0f) || !(c->rhw > 0.0f);
+}
+
 static int on_screen(const struct TexDrawVertex *a, const struct TexDrawVertex *b, const struct TexDrawVertex *c)
 {
     struct Renderer *r = g_renderer;
@@ -147,6 +157,8 @@ void c3d_node_v1_render(struct C3dNode *base, const float *view, BYTE mirrored,
             a = &buf[face->v[0]];
             b = &buf[face->v[1]];
             c = &buf[face->v[2]];
+            if (behind_eye(a, b, c))
+                continue;
             if (clip && !on_screen(a, b, c))
                 continue;
             front = (b->y - a->y) * (c->x - a->x) > (c->y - a->y) * (b->x - a->x);
@@ -225,6 +237,8 @@ void c3d_node_v2_render(struct C3dNode *base, const float *view, BYTE mirrored,
             a = &buf[face->v[0]];
             b = &buf[face->v[1]];
             c = &buf[face->v[2]];
+            if (behind_eye(a, b, c))
+                continue;
             if (clip && !on_screen(a, b, c))
                 continue;
             front = (c->y - a->y) * (b->x - a->x) > (b->y - a->y) * (c->x - a->x);
