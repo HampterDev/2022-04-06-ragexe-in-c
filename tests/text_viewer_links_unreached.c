@@ -75,10 +75,6 @@ void ui_new_chat_wnd_readable_links(void)
 {
     abort();
 }
-void ui_open_url_link(void)
-{
-    abort();
-}
 void ui_text_button_add_line(void)
 {
     abort();

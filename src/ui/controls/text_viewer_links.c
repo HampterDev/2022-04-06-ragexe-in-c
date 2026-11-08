@@ -26,7 +26,6 @@
 #include <string.h>
 #include "core/app.h"
 #include "ui/tips/tips.h"
-#include "ui/controls/url_link.h"
 
 #define LINK_URL 0x1ad
 #define LINK_NAVI 0x1ae
@@ -526,7 +525,8 @@ static void on_link(struct UITextButton *link, int id)
         if (!link)
             return;
         arg = ui_text_button_get_line(link, 0);
-        ui_open_url_link(arg);
+        if (arg.size)
+            ShellExecuteA(g_hMainWnd, "open", arg.data, NULL, NULL, SW_SHOWNORMAL);
         break;
     case LINK_NAVI: {
         unsigned count;
