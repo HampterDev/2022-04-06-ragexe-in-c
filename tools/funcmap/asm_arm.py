@@ -16,10 +16,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('table')
     ap.add_argument('values', nargs='+')
-    ap.add_argument('--herc', default=os.path.normpath(os.path.join(cs.REPO, '..', 'herc-client')))
+    ap.add_argument('--asm', help='the folder of the assembly listing', default=os.path.normpath(os.path.join(cs.REPO, '..', 'herc-client')))
     ap.add_argument('--lines', type=int, default=14)
     args = ap.parse_args()
-    asm = cs.Asm(args.herc)
+    asm = cs.Asm(args.asm)
     tables = [t for t in asm.tables if t.name == args.table]
     if not tables:
         sys.exit(f'no jump through {args.table}')
@@ -27,7 +27,7 @@ def main():
 
     def lines_of(file):
         if file not in texts:
-            with open(os.path.join(args.herc, file), encoding='utf-8', errors='replace') as f:
+            with open(os.path.join(args.asm, file), encoding='utf-8', errors='replace') as f:
                 texts[file] = f.read().split('\n')
         return texts[file]
 

@@ -15,7 +15,7 @@ the state, frame for frame, without anyone watching a screen.
 | `parity.py` | the runner: `smoke`, `determinism`, `record`, `replay`, `offline`, `compare`, `bless`, `check`, `pair`, `upgrade`; its docstring is the reference |
 | `scenario.py`, `inputs.py`, `scenarios/` | a scenario is a list of timed steps (keys, clicks addressed to windows the state probe finds, chat lines, captures, state dumps, the quit) plus one of three networks: offline, record (relayed to a real server), replay (the recording answers) |
 | `recordings/` | per scenario, the recorded session (`NAME.json`) and the golden it is judged by (`NAME.golden.json`: pixel hashes and state texts from two agreeing runs of the reference) |
-| `reference/` | `reference.py` builds the reference client from a herc-client checkout (expected beside this repository, or `--herc PATH`) with `reference/parity_probe.c` compiled in; the recordings here were made against it |
+| `reference/` | `reference.py` builds the reference client from a checkout of the `herc-client` repository (expected beside this repository, or `--herc PATH`) with `reference/parity_probe.c` compiled in; the recordings here were made against it |
 | `src/parity/` (in the client) | the state probe the DLL calls between frames: `parity_probe.c` writes the windows and the picks, `parity_world.c` the world section; the client exports `parity_probe` and `parity_call` |
 | `seqfuzz.py`, `seqgen.py`, `seqtarget.py`, `seqbounds.py` | the packet-sequence differential tester: generated server packet sequences played to both clients, their answers compared |
 | `variants.py`, `variants/` | data variants (messages emptied, Lua tables changed, files removed) laid over a run folder |
@@ -67,8 +67,8 @@ is not large-address-aware).
 
 ## What the recordings can and cannot judge
 
-The recordings and goldens were made against the reference, a herc-client build that carries
-deliberate changes to the original: among them the login window sends the plain login request
+The recordings and goldens were made against the reference client, whose behaviour differs from
+the original's in places: among them its login window sends the plain login request
 (`0x0064`, after the exe digest and a `0x0200` queue packet) where the original, and this tree,
 send the token login (`0x0acf`); a one-row character-server list is skipped; the licence screen
 is hidden; the English kRO data set is read. So `check` of this tree fails at the first login

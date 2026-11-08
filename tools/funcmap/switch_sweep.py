@@ -1,9 +1,9 @@
 """The empty-switch fingerprint sweep: the arms of every jump table in the original against the
 arms of the switches in the lifted C that came from the same function.
 
-    python -I tools/funcmap/switch_sweep.py [--herc PATH] [--out report.tsv] [--all]
+    python -I tools/funcmap/switch_sweep.py [--asm PATH] [--out report.tsv] [--all]
 
-The original's side is the reassembly's text chunks (herc-client `text/*.inc`): every function
+The original's side is the assembly listing's text chunks (`text/*.inc`): every function
 (a `sub_<addr>` or named label; a label marked `chunk of` stays in its function) with the jump
 tables it jumps through (`jmp dword [reg*4+jump_table_X]`) and, for each, the distinct targets of
 its `dd` entries: the arms the compiler emitted, raw-byte `xt_` targets among them. The lift's
@@ -81,19 +81,19 @@ class AsmFunction:
 
 
 class Asm:
-    """The reassembly's functions: their tables, their string literals; every table's targets."""
+    """The listing's functions: their tables, their string literals; every table's targets."""
 
-    def __init__(self, herc):
+    def __init__(self, listing):
         self.tables = {}
         self.functions = []
-        text = os.path.join(herc, 'text')
+        text = os.path.join(listing, 'text')
         for name in sorted(os.listdir(text)):
             if name.endswith('.inc'):
                 with open(os.path.join(text, name), encoding='utf-8', errors='replace') as f:
                     lines = f.read().split('\n')
                 self._collect_tables(lines)
                 self._collect_functions('text/' + name, lines)
-        rdata = os.path.join(herc, 'rdata')
+        rdata = os.path.join(listing, 'rdata')
         if os.path.isdir(rdata):
             for name in sorted(os.listdir(rdata)):
                 if name.endswith('.inc'):
@@ -241,12 +241,12 @@ def function_body(lines, start):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--herc', default=os.path.normpath(os.path.join(REPO, '..', 'herc-client')))
+    ap.add_argument('--asm', help='the folder of the assembly listing', default=os.path.normpath(os.path.join(REPO, '..', 'herc-client')))
     ap.add_argument('--out', default=os.path.join(HERE, 'switch_sweep.tsv'))
     ap.add_argument('--all', action='store_true', help='report every paired function, flagged or not')
     args = ap.parse_args()
 
-    asm = Asm(args.herc)
+    asm = Asm(args.asm)
     with_tables = [fn for fn in asm.functions if fn.tables]
     cfuncs = c_functions(os.path.join(REPO, 'src'))
     by_name = defaultdict(list)

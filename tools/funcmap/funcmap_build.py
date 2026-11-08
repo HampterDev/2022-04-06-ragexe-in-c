@@ -1,10 +1,10 @@
 """Build the original-function -> lifted-function map.
 
 Inputs (all paths as arguments):
-  refmap.jsonl     per reference-tree function: cited sub_ addresses (refmap.py)
-  rename.jsonl     reference name -> client-tree name (rename_map.py)
-  function_map.jsonl   herc-client's asm inventory: name, addr, chunk, line0, line1
-  class_map.tsv    herc-client: function  addr  class  vtable
+  refmap.jsonl     per annotated C function: cited sub_ addresses (refmap.py)
+  rename.jsonl     annotated name -> this tree's name (rename_map.py)
+  function_map.jsonl   the assembly listing's inventory: name, addr, chunk, line0, line1
+  class_map.tsv    the listing's class map: function  addr  class  vtable
   main_src         our main's src/ (to locate each final name today)
   out.tsv
 """
