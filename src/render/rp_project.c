@@ -3,6 +3,7 @@
 #include "render/math3d.h"
 #include "render/rp_pool.h"
 #include <math.h>
+#include <string.h>
 
 DWORD rp_fog_blend(DWORD argb)
 {
@@ -83,6 +84,28 @@ float sprite_ground_squash(const float *up, const float *pos)
         return 1.0f;
     s = fabsf(up[0] * pos[0] + up[1] * pos[1] + up[2] * pos[2]) / (lu * lp) / 0.70710678f;
     return s < 1.5f ? s : 1.5f;
+}
+
+void renderer_world_view(const struct Renderer *self, const float *view, struct GfxWorldView *out)
+{
+    float range = g_fogFar - g_fogNear;
+
+    memcpy(out->view, view, sizeof out->view);
+    out->proj[0] = self->proj[0];
+    out->proj[1] = self->proj[1];
+    out->centre[0] = (float)self->centreX;
+    out->centre[1] = (float)self->centreY;
+    out->nearZ = RENDER_NEAR_Z;
+    out->depthScale = RENDER_DEPTH_SCALE;
+    /* rp_vertex_fog_alpha: 1 - ((vz - 10) / 1490 - near) / (far - near), or without the second
+       step when far equals near */
+    if (range != 0.0f) {
+        out->fogStart = g_fogNear * 1490.0f + 10.0f;
+        out->fogEnd = g_fogFar * 1490.0f + 10.0f;
+    } else {
+        out->fogStart = 10.0f;
+        out->fogEnd = 1500.0f;
+    }
 }
 
 float renderer_project_depth(float rhw)

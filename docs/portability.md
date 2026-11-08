@@ -390,9 +390,11 @@ which the SDL layer calls once a frame.
 ### Renderer
 
 `render/gfx_gl.c` implements `render/gfx.h` with OpenGL 3.3 core (macOS also offers 4.1 core, so the
-backend is usable there until a Metal backend exists). All client geometry arrives pre-transformed
-(D3D `XYZRHW`), so one vertex shader maps D3D9 pixel centres to GL clip space with the vertex's
-`1/rhw` as `w`, and one fragment shader evaluates the two fixed-function texture stages
+backend is usable there until a Metal backend exists). All client geometry but the ground arrives
+pre-transformed (D3D `XYZRHW`), so one vertex shader maps D3D9 pixel centres to GL clip space with
+the vertex's `1/rhw` as `w`; the ground's static meshes (`gfx_draw_mesh`, *render/gfx.h*) take a
+matrix to the same pixel space times the view depth, so they land on the same pixels, and work
+out their fog from that depth. One fragment shader evaluates the two fixed-function texture stages
 (`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
 test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on
 horizontal edges the other way from D3D's top-left rule, so a quad on whole-pixel
@@ -408,8 +410,8 @@ unlocking never touch GL: pixels live in a CPU copy in the client's 1555/4444/56
 and are uploaded on the main thread when the texture is next bound, because the model loader
 thread creates textures. `tests/test_gfx_gl.c` drives the backend through the gfx API and reads back
 pixels: clears, D3D pixel-centre edges, all texture formats, alpha test, vertex fog, blending, render
-target orientation and system-surface blits. The client has no vertex-buffer mesh producer, so
-`gfx_draw_vbuffer` is empty in this backend.
+target orientation and system-surface blits. A mesh keeps its arrays and gets its GL buffers on its
+first draw, on the main thread; the test does not draw one yet.
 
 ### What was verified
 

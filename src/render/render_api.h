@@ -24,15 +24,6 @@
 #include "render/device.h"
 #include <stddef.h>
 
-struct RPMesh {
-    float m[12];
-    struct VertexBuffer *vb;
-    DWORD start, count;
-    void *indices;
-    DWORD nindices;
-    struct Texture *texture;
-};
-
 #include "render/cdc.h"
 
 #include "render/textdc.h"
@@ -42,13 +33,6 @@ extern int   g_wobbleFramesLeft;
 extern BYTE  g_wobbleMode;
 extern short g_wobbleAmplitude;
 extern GUID g_driverGuid;
-
-struct VertexBuffer {
-    DWORD count;
-    DWORD vertexSize;
-    DWORD used;
-    gfx_vbuffer *vb;
-};
 
 extern GUID init_adapter;
 int set_display(int w, int h, int fullscreen, const GUID *adapter);

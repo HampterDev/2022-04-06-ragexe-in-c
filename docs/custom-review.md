@@ -12931,3 +12931,69 @@ result lines, the six oracle tests among them. The scene `camera_level_view` sho
 textured at the closest zoom and the flattest tilt; Patrick checked the zoom, the tilt, the sprites,
 the shadows and the camera inside a building in the client. Not run: `freetype` and `libs`, CMake,
 Linux, macOS and Android.
+
+## Ground drawn from device-projected meshes (2026-11-08)
+
+Patrick asked how hard dynamic shadows would be on `custom`, for buildings rather than sprites,
+and then for a first step on a branch from `custom`. Shadow mapping needs the device to know where
+each triangle lies in the world, and every vertex of the client reached it projected by the CPU
+(`renderer_project_vertex`, `XYZRHW`). The houses' shadows on the ground are already in the map's
+lightmaps; what is missing is shadow on the models themselves. This step moves the ground, the
+largest and simplest static geometry, to meshes the device projects; models and the shadow pass
+are not done.
+
+- **The device API.** `render/gfx.h` gains `gfx_mesh_create`/`gfx_mesh_destroy` (world-space
+  vertices with colour and two texture coordinates, 16-bit triangle-list indices),
+  `gfx_set_world_view` and `gfx_draw_mesh`. `struct GfxWorldView` carries the CPU's own projection:
+  the 4x3 view matrix, `proj[0..1]`, the screen centre, `RENDER_NEAR_Z` and
+  `RENDER_DEPTH_SCALE`, so a point lands on the pixel and depth `project_vertex` gives it, and the
+  fog start and end that reproduce `rp_vertex_fog_alpha` (`renderer_world_view` in
+  `rp_project.c`, which also covers its case of fog near equal to far). Direct3D 9 draws a mesh
+  through the fixed-function pipeline: the view matrix as `D3DTS_VIEW`, a projection built from
+  the current viewport, linear vertex fog on the view depth (range fog off) and lighting off, set
+  around the draw and put back after it. The vertex and index buffers are `D3DPOOL_MANAGED`; the
+  mesh keeps its arrays, and the three places that release the device drop its buffers so the
+  next draw makes them on the new device. The GL vertex shader has a mesh branch: one matrix to
+  the pre-transformed vertex's pixel space times the view depth, then the same pixel-centre
+  mapping as before, and the fog factor from the depth, rounded down to a step as the CPU's is.
+  The buffers are made on the first draw, on the main thread, as textures are.
+- **The original's vertex-buffer path goes.** `gfx_draw_vbuffer`, `gfx_vbuffer`, `struct RPMesh`,
+  `struct VertexBuffer`, the `RENDER_OPAQUE_MESH`/`RENDER_ALPHA_MESH`/`RENDER_OVERLAY_MESH` queues,
+  their flushes and the `l_opaque_mesh`/`l_alpha_mesh` timing phases had no producer; the one
+  mesh queue now is `RENDER_GROUND_MESH`.
+- **The ground.** `world/ground_draw.c` builds a mesh per block of 32 by 32 cells on the ground's
+  first draw (`GND_GPU_BLOCK`, at most 12,288 vertices): four vertices and two triangles per
+  surface in the corner order of `c3d_ground15_draw_surface`'s strip, grouped into runs of one
+  texture and one lightmap page. `c3d_ground15_render` queues each block that shares a cell with
+  the scene-graph leaf once a frame, with `renderer_add_mesh_draw`, and `flush_ground_mesh`
+  draws them right after the ground's two-texture quads, with their states. The device clips what
+  the CPU path left out with `off_screen` and `behind_eye`. Water keeps its per-cell loop.
+- **When the CPU path stays.** The meshes hold each surface's own colour, which the CPU path uses
+  only while lightmaps are on, the two-texture path is supported and the weather colour is
+  exactly white (`g_weather.color` is 1, so the scaling changes nothing); otherwise the whole
+  ground takes the old path that frame. Surfaces with `halfAlpha` take colour alpha 0x80 there
+  unless the player is blind, so they stay on the CPU path then and join the meshes while the
+  player is blind.
+- **Depth ties.** The device rounds the depth differently from `project_vertex`, by a few steps
+  of the depth buffer, and the ground is drawn after the models with `LESSEQUAL`. Where a model
+  lies on the ground (Prontera's flower beds, which z-fight with it in the original too) a row of
+  pixels changes sides. A bias of 2^-20 to push the ground back was tried: it kept the flower
+  beds' edges but flipped many more of the z-fighting pixels (954 instead of 82 in
+  `prontera_crowd`), so the meshes use none.
+
+Validation, in `C:\Users\Patrick Kuhlmann\GIT\client-files` with `RAGEXE_MSAA=1`: all twelve scene
+captures from a scene build of the unchanged objects repeat exactly, and the meshes' captures
+differ from them by at most one colour step (the fog factor, which the fixed-function pipeline
+does not round down) except in the flower beds' z-fighting: 82 pixels in `prontera_crowd` and 182
+or 183 in each of the six captures of `granny_dead`, `granny_models`, `guild_flags` and
+`hunter_traps` (all in Prontera), none in `camera_level_view`, `iz_int03_enter`, `keyboard` and
+`windows_open`. `build.bat check` passes (1,822 files in 22 libraries, 1,151 objects), and so does
+the full `testsuild.bat`. `test_projection` now checks that `renderer_world_view` puts points on
+the pixels and depths of `renderer_project_vertex`, with the fog of `rp_vertex_fog_alpha` to one
+step, for three fog ranges, near equal to far among them; `test_renderer_storage` feeds the
+ground-mesh queue and counts the queues with `RENDER_PASS_COUNT`, its render digests as before, and
+`test_effect_trace` keeps the digest `2842b5a04b52ece4`. `gfx_gl.c` compiles without warnings
+against SDL3's headers (x64 `cl /W3`); it was not run, and `test_gfx_gl` draws no mesh. Not run
+either: `x64`, `freetype` and `libs` builds, CMake, Linux, macOS and Android. Next: the models
+(`model_node_render.c`, whose colours follow blindness, highlight, the actor's alpha and the
+ground lighting per frame), then a shadow-map pass from the map's light direction.

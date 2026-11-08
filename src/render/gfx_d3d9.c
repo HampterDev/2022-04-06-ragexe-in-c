@@ -62,10 +62,18 @@ static int reset_failures;
 #define D3DERR_DEVICEHUNG MAKE_D3DHRESULT(2164)
 #endif
 
-struct gfx_vbuffer {
+/* custom: a static world mesh (render/gfx.h). The arrays stay with it so that the buffers can be
+   made again for a new device; D3DPOOL_MANAGED keeps them through a reset. */
+struct gfx_mesh {
+    struct GfxMeshVertex *verts;
+    WORD *indices;
+    int nverts, nindices;
     IDirect3DVertexBuffer9 *vb;
-    DWORD fvf, stride;
+    IDirect3DIndexBuffer9 *ib;
+    struct gfx_mesh *prev, *next;
 };
+
+#define FVF_MESH (D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2)
 
 #define N_RS 256
 #define N_TSS 33
@@ -106,7 +114,12 @@ static struct {
     struct gfx_surface *stageTex[8];
     struct { GUID guid; UINT ordinal; } adapters[16];
     int nAdapters;
+    struct gfx_mesh *meshes;
+    struct GfxWorldView worldView;
+    int worldViewSet;
 } d9;
+
+static void drop_meshes(void);
 
 static D3DFORMAT client_format(int fmt)
 {
@@ -1058,6 +1071,7 @@ int gfx_close(struct C3dDevice *d)
         drop_objects(s);
     }
     ReleaseSRWLockExclusive(&handles_lock);
+    drop_meshes();
     if (d9.dev) {
         IDirect3DDevice9_Release(d9.dev);
         d9.dev = NULL;
@@ -1222,6 +1236,7 @@ static int recreate_device(struct C3dDevice *d)
         }
     }
     ReleaseSRWLockExclusive(&handles_lock);
+    drop_meshes();
     IDirect3DDevice9_Release(old);
     d9.dev = dev;
     d->dev = dev;
@@ -1448,6 +1463,7 @@ static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int f
         }
     }
     ReleaseSRWLockExclusive(&handles_lock);
+    drop_meshes();
     IDirect3DDevice9_Release(old);
     d9.dev = dev;
     d->dev = dev;
@@ -2041,34 +2057,191 @@ static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts,
         IDirect3DDevice9_DrawPrimitiveUP(d9.dev, (D3DPRIMITIVETYPE)prim, prim_count(prim, nverts), verts, stride);
 }
 
-void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const WORD *indices, DWORD nindices)
+gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices)
 {
-    batch_flush();
-    if (!d9.dev)
+    struct gfx_mesh *m;
+    if (!verts || !indices || nverts <= 0 || nverts > 0x10000 || nindices <= 0 || nindices % 3)
+        return NULL;
+    m = calloc(1, sizeof *m);
+    if (!m)
+        return NULL;
+    m->verts = malloc((size_t)nverts * sizeof *verts);
+    m->indices = malloc((size_t)nindices * sizeof *indices);
+    if (!m->verts || !m->indices) {
+        free(m->verts);
+        free(m->indices);
+        free(m);
+        return NULL;
+    }
+    memcpy(m->verts, verts, (size_t)nverts * sizeof *verts);
+    memcpy(m->indices, indices, (size_t)nindices * sizeof *indices);
+    m->nverts = nverts;
+    m->nindices = nindices;
+    m->next = d9.meshes;
+    if (d9.meshes)
+        d9.meshes->prev = m;
+    d9.meshes = m;
+    return m;
+}
+
+static void mesh_drop_buffers(struct gfx_mesh *m)
+{
+    if (m->vb)
+        IDirect3DVertexBuffer9_Release(m->vb);
+    if (m->ib)
+        IDirect3DIndexBuffer9_Release(m->ib);
+    m->vb = NULL;
+    m->ib = NULL;
+}
+
+static void drop_meshes(void)
+{
+    struct gfx_mesh *m;
+    for (m = d9.meshes; m; m = m->next)
+        mesh_drop_buffers(m);
+}
+
+void gfx_mesh_destroy(gfx_mesh *m)
+{
+    if (!m)
         return;
+    batch_flush();
+    mesh_drop_buffers(m);
+    if (m->prev)
+        m->prev->next = m->next;
+    else
+        d9.meshes = m->next;
+    if (m->next)
+        m->next->prev = m->prev;
+    free(m->verts);
+    free(m->indices);
+    free(m);
+}
+
+static int mesh_upload(struct gfx_mesh *m)
+{
+    void *p = NULL;
+    UINT vbytes = (UINT)m->nverts * sizeof *m->verts, ibytes = (UINT)m->nindices * sizeof *m->indices;
+    if (m->vb && m->ib)
+        return 1;
+    mesh_drop_buffers(m);
+    if (FAILED(IDirect3DDevice9_CreateVertexBuffer(d9.dev, vbytes, D3DUSAGE_WRITEONLY, FVF_MESH, D3DPOOL_MANAGED,
+                                                   &m->vb, NULL))
+        || FAILED(IDirect3DDevice9_CreateIndexBuffer(d9.dev, ibytes, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
+                                                     D3DPOOL_MANAGED, &m->ib, NULL))) {
+        mesh_drop_buffers(m);
+        return 0;
+    }
+    if (FAILED(IDirect3DVertexBuffer9_Lock(m->vb, 0, 0, &p, 0))) {
+        mesh_drop_buffers(m);
+        return 0;
+    }
+    memcpy(p, m->verts, vbytes);
+    IDirect3DVertexBuffer9_Unlock(m->vb);
+    if (FAILED(IDirect3DIndexBuffer9_Lock(m->ib, 0, 0, &p, 0))) {
+        mesh_drop_buffers(m);
+        return 0;
+    }
+    memcpy(p, m->indices, ibytes);
+    IDirect3DIndexBuffer9_Unlock(m->ib);
+    return 1;
+}
+
+void gfx_set_world_view(const struct GfxWorldView *view)
+{
+    d9.worldView = *view;
+    d9.worldViewSet = 1;
+}
+
+/* the client's 4x3 layout as a row-vector D3D matrix */
+static void matrix_4x3(D3DMATRIX *out, const float *m)
+{
+    int r;
+    for (r = 0; r < 4; r++) {
+        out->m[r][0] = m[r * 3];
+        out->m[r][1] = m[r * 3 + 1];
+        out->m[r][2] = m[r * 3 + 2];
+        out->m[r][3] = r == 3 ? 1.0f : 0.0f;
+    }
+}
+
+/* View space to clip space: the viewport transform then puts a point where renderer_project_vertex
+   puts it, in the pixel space of a pre-transformed vertex, with the same depth. */
+static void world_projection(D3DMATRIX *out, const struct GfxWorldView *v, const D3DVIEWPORT9 *vp)
+{
+    float w = (float)vp->Width, h = (float)vp->Height, dz = vp->MaxZ - vp->MinZ;
+    if (dz == 0.0f)
+        dz = 1.0f;
+    memset(out, 0, sizeof *out);
+    out->_11 = 2.0f * v->proj[0] / w;
+    out->_22 = -2.0f * v->proj[1] / h;
+    out->_31 = 2.0f * (v->centre[0] - (float)vp->X) / w - 1.0f;
+    out->_32 = 1.0f - 2.0f * (v->centre[1] - (float)vp->Y) / h;
+    out->_33 = (v->depthScale - vp->MinZ) / dz;
+    out->_34 = 1.0f;
+    out->_43 = -v->nearZ * v->depthScale / dz;
+}
+
+static DWORD float_bits(float f)
+{
+    DWORD d;
+    memcpy(&d, &f, sizeof d);
+    return d;
+}
+
+/* The fixed-function pipeline transforms the mesh and computes its vertex fog from the view-space
+   depth, as rp_vertex_fog_alpha does for a pre-transformed vertex; the states it needs for that are
+   set around the draw and put back after it. */
+void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
+{
+    static const D3DRENDERSTATETYPE ids[] = { D3DRS_LIGHTING, D3DRS_RANGEFOGENABLE, D3DRS_FOGVERTEXMODE,
+                                              D3DRS_FOGTABLEMODE, D3DRS_FOGSTART, D3DRS_FOGEND };
+    static const float identity[12] = { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 };
+    DWORD saved[sizeof ids / sizeof ids[0]], values[sizeof ids / sizeof ids[0]];
+    D3DMATRIX world, view, proj;
+    D3DVIEWPORT9 vp;
+    size_t i;
+    g_perf.drawCalls++;
+    batch_flush();
+    if (!d9.dev || !m || !d9.worldViewSet || first < 0 || count <= 0 || count % 3 || first > m->nindices - count)
+        return;
+    if (!mesh_upload(m) || FAILED(IDirect3DDevice9_GetViewport(d9.dev, &vp)) || !vp.Width || !vp.Height)
+        return;
+    g_perf.draws++;
+    g_perf.prims += (unsigned)count / 3;
     if (is_main_target(d9.target))
         scene_write();
     d9.taaFlat = 0;
     update_transparency_aa();
-    IDirect3DDevice9_SetStreamSource(d9.dev, 0, vb->vb, 0, vb->stride);
-    IDirect3DDevice9_SetFVF(d9.dev, vb->fvf);
-    if (indices) {
-        IDirect3DIndexBuffer9 *ib = NULL;
-        void *p = NULL;
-        if (FAILED(IDirect3DDevice9_CreateIndexBuffer(d9.dev, nindices * 2, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
-                                                      D3DPOOL_MANAGED, &ib, NULL)))
-            return;
-        if (SUCCEEDED(IDirect3DIndexBuffer9_Lock(ib, 0, 0, &p, 0))) {
-            memcpy(p, indices, nindices * 2);
-            IDirect3DIndexBuffer9_Unlock(ib);
-            IDirect3DDevice9_SetIndices(d9.dev, ib);
-            IDirect3DDevice9_DrawIndexedPrimitive(d9.dev, (D3DPRIMITIVETYPE)prim, start, 0, count, 0, prim_count(prim, nindices));
-            IDirect3DDevice9_SetIndices(d9.dev, NULL);
-        }
-        IDirect3DIndexBuffer9_Release(ib);
-    } else {
-        IDirect3DDevice9_DrawPrimitive(d9.dev, (D3DPRIMITIVETYPE)prim, start, prim_count(prim, count));
+    matrix_4x3(&world, model ? model : identity);
+    matrix_4x3(&view, d9.worldView.view);
+    world_projection(&proj, &d9.worldView, &vp);
+    IDirect3DDevice9_SetTransform(d9.dev, D3DTS_WORLD, &world);
+    IDirect3DDevice9_SetTransform(d9.dev, D3DTS_VIEW, &view);
+    IDirect3DDevice9_SetTransform(d9.dev, D3DTS_PROJECTION, &proj);
+    values[0] = FALSE;
+    values[1] = FALSE;
+    values[2] = D3DFOG_LINEAR;
+    values[3] = D3DFOG_NONE;
+    values[4] = float_bits(d9.worldView.fogStart);
+    values[5] = float_bits(d9.worldView.fogEnd);
+    for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
+        if (FAILED(IDirect3DDevice9_GetRenderState(d9.dev, ids[i], &saved[i])))
+            saved[i] = values[i];
+        IDirect3DDevice9_SetRenderState(d9.dev, ids[i], values[i]);
     }
+    IDirect3DDevice9_SetFVF(d9.dev, FVF_MESH);
+    IDirect3DDevice9_SetStreamSource(d9.dev, 0, m->vb, 0, sizeof *m->verts);
+    IDirect3DDevice9_SetIndices(d9.dev, m->ib);
+    IDirect3DDevice9_DrawIndexedPrimitive(d9.dev, D3DPT_TRIANGLELIST, 0, 0, (UINT)m->nverts, (UINT)first,
+                                          (UINT)count / 3);
+    IDirect3DDevice9_SetStreamSource(d9.dev, 0, NULL, 0, 0);
+    IDirect3DDevice9_SetIndices(d9.dev, NULL);
+    for (i = 0; i < sizeof ids / sizeof ids[0]; i++)
+        IDirect3DDevice9_SetRenderState(d9.dev, ids[i], saved[i]);
+    for (i = 1; i < 4; i++)
+        if (d9.xfSet[i])
+            IDirect3DDevice9_SetTransform(d9.dev, i == 1 ? D3DTS_WORLD : (D3DTRANSFORMSTATETYPE)i, &d9.xf[i]);
 }
 
 int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)

@@ -5,6 +5,8 @@
 #include "world/camera.h"
 
 #include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "render/render_api.h"
 #include "render/render_options.h"
@@ -218,6 +220,178 @@ static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
     renderer_add_prim(g_renderer, q, 1);
 }
 
+/* custom: the ground as static meshes the device projects (render/gfx.h, world/ground.h). A block's
+   mesh holds four vertices and two triangles per surface, the corners and their order as
+   c3d_ground15_draw_surface gives them to the ground's two-texture quads (a strip, 0 1 2 then
+   2 1 3), so the device draws the same triangles with the same colours, texture coordinates and
+   lightmap coordinates. They take the place of those quads while that path would draw a surface
+   with its own colour unscaled: lightmaps and the two-texture path on, the weather colour white.
+   Surfaces with halfAlpha are drawn so only while the player is blind; otherwise
+   c3d_ground15_draw_surface keeps them, as it keeps every surface when the conditions fail. */
+
+struct GpuSurface {
+    struct GndSurface *surface;
+    uintptr_t key[3];
+};
+
+static int gpu_surface_less(const void *a, const void *b)
+{
+    const struct GpuSurface *x = a, *y = b;
+    int i;
+
+    for (i = 0; i < 3; i++)
+        if (x->key[i] != y->key[i])
+            return x->key[i] < y->key[i] ? -1 : 1;
+    return 0;
+}
+
+static int gpu_add(struct GpuSurface *list, int n, struct GndSurface *s)
+{
+    if (!s)
+        return n;
+    list[n].surface = s;
+    list[n].key[0] = s->halfAlpha != 0;
+    list[n].key[1] = (uintptr_t)s->texture;
+    list[n].key[2] = (uintptr_t)s->lightmapPage;
+    return n + 1;
+}
+
+static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int bx, int by,
+                           struct GpuSurface *list, struct GfxMeshVertex *verts, WORD *indices)
+{
+    int x0 = bx * GND_GPU_BLOCK, y0 = by * GND_GPU_BLOCK, x, y, n = 0, i, k, half = 0;
+    int x1 = x0 + GND_GPU_BLOCK < self->width ? x0 + GND_GPU_BLOCK : self->width;
+    int y1 = y0 + GND_GPU_BLOCK < self->height ? y0 + GND_GPU_BLOCK : self->height;
+
+    b->lastFrame = -1;
+    for (y = y0; y < y1; y++)
+        for (x = x0; x < x1; x++) {
+            struct GndCell *cell = GND_CELL(self, x, y);
+
+            n = gpu_add(list, n, cell->top);
+            n = gpu_add(list, n, cell->frontWall);
+            n = gpu_add(list, n, cell->rightWall);
+        }
+    if (!n)
+        return 1;
+    qsort(list, (size_t)n, sizeof *list, gpu_surface_less);
+    b->draws = calloc((size_t)n, sizeof *b->draws);
+    if (!b->draws)
+        return 0;
+    for (i = 0; i < n; i++) {
+        const struct GndSurface *s = list[i].surface;
+        struct GndGpuDraw *d = b->drawCount ? &b->draws[b->drawCount - 1] : NULL;
+
+        for (k = 0; k < 4; k++) {
+            struct GfxMeshVertex *v = &verts[i * 4 + k];
+
+            v->x = s->v[k].pos[0];
+            v->y = s->v[k].pos[1];
+            v->z = s->v[k].pos[2];
+            v->diffuse = s->v[k].colour;
+            v->u0 = s->v[k].u;
+            v->v0 = s->v[k].v;
+            v->u1 = s->v[k].lu;
+            v->v1 = s->v[k].lv;
+        }
+        indices[i * 6] = (WORD)(i * 4);
+        indices[i * 6 + 1] = (WORD)(i * 4 + 1);
+        indices[i * 6 + 2] = (WORD)(i * 4 + 2);
+        indices[i * 6 + 3] = (WORD)(i * 4 + 2);
+        indices[i * 6 + 4] = (WORD)(i * 4 + 1);
+        indices[i * 6 + 5] = (WORD)(i * 4 + 3);
+        if (!d || i == 0 || gpu_surface_less(&list[i - 1], &list[i])) {
+            d = &b->draws[b->drawCount++];
+            d->texture = s->texture;
+            d->lightmap = s->lightmapPage;
+            d->first = i * 6;
+            if (!list[i].key[0])
+                b->plainCount = b->drawCount;
+        }
+        d->count += 6;
+        half += list[i].key[0] != 0;
+    }
+    if (half) {
+        b->half = malloc((size_t)half * sizeof *b->half);
+        if (!b->half)
+            return 0;
+        for (i = n - half; i < n; i++)
+            b->half[b->halfCount++] = list[i].surface;
+    }
+    b->mesh = gfx_mesh_create(verts, n * 4, indices, n * 6);
+    return b->mesh != NULL;
+}
+
+static int gpu_build(struct C3dGround15 *self)
+{
+    enum { MAX_SURFACES = GND_GPU_BLOCK * GND_GPU_BLOCK * 3 };
+    struct GpuSurface *list = malloc(MAX_SURFACES * sizeof *list);
+    struct GfxMeshVertex *verts = malloc(MAX_SURFACES * 4 * sizeof *verts);
+    WORD *indices = malloc(MAX_SURFACES * 6 * sizeof *indices);
+    int bx, by, ok = list && verts && indices && self->width > 0 && self->height > 0;
+
+    if (ok) {
+        self->gpuCols = (self->width + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+        self->gpuRows = (self->height + GND_GPU_BLOCK - 1) / GND_GPU_BLOCK;
+        self->gpuBlocks = calloc((size_t)self->gpuCols * (size_t)self->gpuRows, sizeof *self->gpuBlocks);
+        ok = self->gpuBlocks != NULL;
+    }
+    for (by = 0; ok && by < self->gpuRows; by++)
+        for (bx = 0; ok && bx < self->gpuCols; bx++)
+            ok = gpu_block_build(self, &self->gpuBlocks[by * self->gpuCols + bx], bx, by, list, verts, indices);
+    free(list);
+    free(verts);
+    free(indices);
+    if (!ok) {
+        ground_gpu_free(self);
+        self->gpuState = -1;
+        return 0;
+    }
+    self->gpuState = 1;
+    return 1;
+}
+
+static int gpu_usable(struct C3dGround15 *self)
+{
+    if (!g_waterBumpSupported || !g_lightmap || g_weather.color[0] != 1.0f || g_weather.color[1] != 1.0f
+        || g_weather.color[2] != 1.0f)
+        return 0;
+    if (self->gpuState == 0)
+        gpu_build(self);
+    return self->gpuState == 1;
+}
+
+/* Queues the blocks that share a cell with `cells`, each once a frame; the device clips what lies
+   outside the view, which c3d_ground15_draw_surface leaves out itself (off_screen, behind_eye). */
+static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells, char clip)
+{
+    int frame = g_renderer->frame, bx0, by0, bx1, by1, bx, by, i;
+
+    bx0 = cells[0] < 0 ? 0 : cells[0] / GND_GPU_BLOCK;
+    by0 = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
+    bx1 = cells[2] / GND_GPU_BLOCK;
+    by1 = cells[3] / GND_GPU_BLOCK;
+    if (bx1 >= self->gpuCols)
+        bx1 = self->gpuCols - 1;
+    if (by1 >= self->gpuRows)
+        by1 = self->gpuRows - 1;
+    for (by = by0; by <= by1; by++)
+        for (bx = bx0; bx <= bx1; bx++) {
+            struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
+            int draws = g_playerBlind ? b->drawCount : b->plainCount;
+
+            if (b->lastFrame == frame)
+                continue;
+            b->lastFrame = frame;
+            for (i = 0; i < draws; i++)
+                renderer_add_mesh_draw(g_renderer, b->mesh, b->draws[i].first, b->draws[i].count, view,
+                                       b->draws[i].texture, b->draws[i].lightmap);
+            if (!g_playerBlind)
+                for (i = 0; i < b->halfCount; i++)
+                    c3d_ground15_draw_surface(self, view, b->half[i], clip);
+        }
+}
+
 void c3d_ground15_render(struct C3dGround15 *self, const float *view,
                                    const int *cells, char clip)
 {
@@ -227,6 +401,22 @@ void c3d_ground15_render(struct C3dGround15 *self, const float *view,
     tint[0] = g_weather.tint[0];
     tint[1] = g_weather.tint[1];
     tint[2] = g_weather.tint[2];
+    if (gpu_usable(self)) {
+        gpu_render(self, view, cells, clip);
+        if (!self->waters)
+            return;
+        for (y = cells[1]; y <= cells[3]; y++)
+            for (x = cells[0]; x <= cells[2]; x++) {
+                struct GndCell *cell = GND_CELL(self, x, y);
+
+                if (cell->lastFrame == g_renderer->frame)
+                    continue;
+                cell->lastFrame = g_renderer->frame;
+                if (cell->top)
+                    c3d_ground15_draw_water(self, x, y, cell, view, tint);
+            }
+        return;
+    }
     for (y = cells[1]; y <= cells[3]; y++)
         for (x = cells[0]; x <= cells[2]; x++) {
             struct GndCell *cell = GND_CELL(self, x, y);

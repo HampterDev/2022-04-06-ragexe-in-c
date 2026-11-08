@@ -7,9 +7,11 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 DWORD g_fogColor;
+float g_fogNear, g_fogFar;
 struct Renderer *g_renderer;
 struct C3dDevice g_3dDevice;
 static DWORD cleared_color;
@@ -159,6 +161,52 @@ static void test_cursor(struct Renderer *renderer)
     }
 }
 
+/* rp_vertex_fog_alpha (render/rp_pool.c), which this test does not link */
+static int cpu_fog_alpha(float rhw)
+{
+    float range = g_fogFar - g_fogNear, t = (1.0f / rhw - 10.0f) / 1490.0f;
+    if (range != 0.0f)
+        t = (t - g_fogNear) / range;
+    t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+    return (int)((1.0f - t) * 255.0f);
+}
+
+/* custom: a static mesh drawn by the device (render/gfx.h) lands where renderer_project_vertex puts
+   the same point, with its depth and fog */
+static void test_world_view(struct Renderer *renderer)
+{
+    static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
+    static const float fog[3][2] = {{0.2f, 0.8f}, {0.0f, 1.0f}, {0.5f, 0.5f}};
+    static const Vec3 points[4] = {{0, 0, 0}, {120, 35, -80}, {-200, 10, 400}, {35, -60, 900}};
+    struct GfxWorldView world;
+    int f, i;
+    for (f = 0; f < 3; ++f) {
+        g_fogNear = fog[f][0];
+        g_fogFar = fog[f][1];
+        renderer_world_view(renderer, view, &world);
+        assert(!memcmp(world.view, view, sizeof view));
+        assert(world.nearZ == RENDER_NEAR_Z && world.depthScale == RENDER_DEPTH_SCALE);
+        assert(world.centre[0] == (float)renderer->centreX && world.centre[1] == (float)renderer->centreY);
+        for (i = 0; i < 4; ++i) {
+            const Vec3 *p = &points[i];
+            struct TexDrawVertex cpu;
+            float vx = world.view[0] * p->x + world.view[3] * p->y + world.view[6] * p->z + world.view[9];
+            float vy = world.view[1] * p->x + world.view[4] * p->y + world.view[7] * p->z + world.view[10];
+            float vz = world.view[2] * p->x + world.view[5] * p->y + world.view[8] * p->z + world.view[11];
+            float a = (world.fogEnd - vz) / (world.fogEnd - world.fogStart);
+            int fogAlpha;
+            renderer_project_vertex(renderer, p, view, &cpu);
+            assert(vz > RENDER_NEAR_Z);
+            assert(fabsf(vx * world.proj[0] / vz + world.centre[0] - cpu.x) < 0.01f);
+            assert(fabsf(vy * world.proj[1] / vz + world.centre[1] - cpu.y) < 0.01f);
+            assert(fabsf((vz - world.nearZ) * world.depthScale / vz - cpu.z) < 1e-6f);
+            a = a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
+            fogAlpha = (int)floorf(a * 255.0f);
+            assert(abs(fogAlpha - cpu_fog_alpha(cpu.rhw)) <= 1);
+        }
+    }
+}
+
 int main(void)
 {
     struct Renderer renderer = {0};
@@ -170,7 +218,9 @@ int main(void)
     test_vertices(&renderer);
     test_cursor(&renderer);
     test_screen();
+    test_world_view(&renderer);
     puts("projection: archived coordinates/depth/rays, distinct centres, vertex payload preservation and real ground picking passed");
     puts("renderer screen: named dimensions, clear colour, fog blending, depth clear and frame restore passed");
+    puts("world view: device-projected meshes land on the CPU's pixels, depth and fog passed");
     return 0;
 }

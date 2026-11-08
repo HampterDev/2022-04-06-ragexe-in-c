@@ -48,6 +48,16 @@ struct RPTwoTexQuad {
     struct RPTwoTexVertex quad[4];
 };
 
+struct gfx_mesh;
+
+/* custom: a draw of part of a static world mesh (render/gfx.h), queued like the primitives above;
+   view is the view matrix it is drawn with (render/rp_project.c) */
+struct RPMeshDraw {
+    struct gfx_mesh *mesh;
+    int first, count;
+    float view[12];
+};
+
 struct PrimTriangle {
     struct TexDrawVertex v[3];
     struct Texture *texture;

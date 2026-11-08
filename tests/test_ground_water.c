@@ -27,6 +27,8 @@ struct Texture *texture_cache_get(struct TexCache *cache, const char *name, int 
     return fail_picture ? NULL : &picture_texture;
 }
 void surface_destroy(struct Surface *surface) { (void)surface; abort(); }
+/* the ground's meshes are built on its first draw, which these tests do not reach */
+void gfx_mesh_destroy(struct gfx_mesh *mesh) { (void)mesh; abort(); }
 float get_sin_deg(int degrees)
 {
     sampled_angle = degrees;

@@ -60,24 +60,6 @@ static void draw_twotex(const struct RPTwoTex *n)
     gfx_draw(n->prim, GFX_VTX_TEX2, n->verts, n->nverts, (const WORD *)n->indices, n->nindices);
 }
 
-static void mesh_matrix(struct GfxMatrix *m, const struct RPMesh *n)
-{
-    m->m[0][0] = n->m[0]; m->m[0][1] = n->m[1];  m->m[0][2] = n->m[2];  m->m[0][3] = 0.0f;
-    m->m[1][0] = n->m[3]; m->m[1][1] = n->m[4];  m->m[1][2] = n->m[5];  m->m[1][3] = 0.0f;
-    m->m[2][0] = n->m[6]; m->m[2][1] = n->m[7];  m->m[2][2] = n->m[8];  m->m[2][3] = 0.0f;
-    m->m[3][0] = n->m[9]; m->m[3][1] = n->m[10]; m->m[3][2] = n->m[11]; m->m[3][3] = 1.0f;
-}
-
-static void draw_mesh(const struct RPMesh *n)
-{
-    struct GfxMatrix m;
-    if (!n->count)
-        return;
-    mesh_matrix(&m, n);
-    gfx_set_transform(GFX_TS_WORLD, &m);
-    gfx_draw_vbuffer(GFX_PT_TRIANGLELIST, n->vb->vb, n->start, n->count, NULL, 0);
-}
-
 static unsigned char keyed_less(const void *a, const void *b, void *pred)
 {
     const struct RenderEntry *x = (const struct RenderEntry *)a, *y = (const struct RenderEntry *)b;
@@ -90,13 +72,6 @@ static unsigned char keyed_less(const void *a, const void *b, void *pred)
 }
 
 static unsigned char quad_less(const void *a, const void *b, void *pred)
-{
-    const struct RenderEntry *x = a, *y = b;
-    (void)pred;
-    return x->textures[0].sort_key < y->textures[0].sort_key;
-}
-
-static unsigned char mesh_less(const void *a, const void *b, void *pred)
 {
     const struct RenderEntry *x = a, *y = b;
     (void)pred;
@@ -177,14 +152,24 @@ static void flush_blended(struct Renderer *self, const struct RenderEntry *entry
     draw_quad(n);
 }
 
-static void flush_mesh_list(struct Renderer *self, int list)
+/* custom: the ground's static meshes (render/gfx.h), drawn with the states of the ground's
+   two-texture quads in flush_water_bump */
+static void flush_ground_mesh(struct Renderer *self)
 {
-    struct RenderQueue *l = &self->queues[list];
-    queue_sort(l, mesh_less);
+    struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
+    const float *view = NULL;
+    queue_sort(l, two_tex_less);
     for (size_t i = 0; i < l->count; ++i) {
-        struct RPMesh *n = l->items[i].primitive;
+        struct RPMeshDraw *n = l->items[i].primitive;
+        if (!view || memcmp(view, n->view, sizeof n->view)) {
+            struct GfxWorldView world;
+            renderer_world_view(self, n->view, &world);
+            gfx_set_world_view(&world);
+            view = n->view;
+        }
         set_tex0(self, l->items[i].textures[0].surface);
-        draw_mesh(n);
+        set_tex1(self, l->items[i].textures[1].surface);
+        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
     }
 }
 
@@ -547,7 +532,6 @@ static void renderer_draw_lists(struct Renderer *self)
     HRS(self, GFX_RS_ZENABLE, TRUE);
     HRS(self, GFX_RS_ZWRITEENABLE, TRUE);
     TIMED(PERF_L_GROUND, flush_opaque_lists(self));
-    TIMED(PERF_L_OPAQUE_MESH, flush_mesh_list(self, RENDER_OPAQUE_MESH));
     HRS(self, GFX_RS_AMBIENT, 0xffffffff);
     HRS(self, GFX_RS_CULLMODE, GFX_CULL_CW);
     perf_begin(PERF_L_WATER);
@@ -556,6 +540,7 @@ static void renderer_draw_lists(struct Renderer *self)
             HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
             flush_water_bump(self);
+            flush_ground_mesh(self);
             HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
         } else {
@@ -639,7 +624,6 @@ static void renderer_draw_lists(struct Renderer *self)
     HRS(self, GFX_RS_ALPHAREF, 0xcf);
     TIMED(PERF_L_ALPHA_CUTOUT, flush_keyed(self, RENDER_ALPHA_CUTOUT, 1, 0));
     HRS(self, GFX_RS_ALPHAREF, alpha);
-    TIMED(PERF_L_ALPHA_MESH, flush_mesh_list(self, RENDER_ALPHA_MESH));
     HRS(self, GFX_RS_FOGENABLE, FALSE);
     HRS(self, GFX_RS_SRCBLEND, GFX_BLEND_ONE);
     HRS(self, GFX_RS_DESTBLEND, GFX_BLEND_ONE);

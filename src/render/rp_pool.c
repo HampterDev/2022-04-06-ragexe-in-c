@@ -118,7 +118,7 @@ struct RenderPool {
 };
 
 struct RenderStorage {
-    struct RenderPool quads, primitives, two_texture_quads, vertices;
+    struct RenderPool quads, primitives, two_texture_quads, vertices, mesh_draws;
 };
 
 static void pool_free(struct RenderPool *pool)
@@ -212,6 +212,7 @@ static void renderer_storage_free(struct Renderer *renderer)
         pool_free(&storage->primitives);
         pool_free(&storage->two_texture_quads);
         pool_free(&storage->vertices);
+        pool_free(&storage->mesh_draws);
         free(storage);
         renderer->storage = NULL;
     }
@@ -231,7 +232,8 @@ struct Renderer *renderer_construct(struct Renderer *self)
     if (!pool_init(&storage->quads, sizeof(struct RPQuad), 1024, initialize_quad)
         || !pool_init(&storage->primitives, sizeof(struct TexDrawPrim), 512, initialize_primitive)
         || !pool_init(&storage->two_texture_quads, sizeof(struct RPTwoTexQuad), 8192, initialize_two_texture_quad)
-        || !pool_init(&storage->vertices, sizeof(struct TexDrawVertex), 10240, NULL)) {
+        || !pool_init(&storage->vertices, sizeof(struct TexDrawVertex), 10240, NULL)
+        || !pool_init(&storage->mesh_draws, sizeof(struct RPMeshDraw), 256, NULL)) {
         renderer_storage_free(self);
         return NULL;
     }
@@ -448,6 +450,21 @@ void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int lis
     renderer_add_prim(r, q, list_flags);
 }
 
+void renderer_add_mesh_draw(struct Renderer *self, struct gfx_mesh *mesh, int first, int count,
+                            const float *view, struct Texture *texture0, struct Texture *texture1)
+{
+    struct RPMeshDraw *draw;
+
+    if (!mesh || count <= 0)
+        return;
+    draw = pool_take(&self->storage->mesh_draws, 1);
+    draw->mesh = mesh;
+    draw->first = first;
+    draw->count = count;
+    memcpy(draw->view, view, sizeof draw->view);
+    queue_append(&self->queues[RENDER_GROUND_MESH], draw, 0.0f, texture0, texture1);
+}
+
 void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVertex *vertex)
 {
     struct TexDrawVertex *v = (struct TexDrawVertex *)self->verts;
@@ -471,6 +488,7 @@ void renderer_destroy_all_rp_list(struct Renderer *self)
         pool_rewind(&storage->primitives);
         pool_rewind(&storage->two_texture_quads);
         pool_rewind(&storage->vertices);
+        pool_rewind(&storage->mesh_draws);
     }
     sprite_atlas_finish_frame(self);
 }

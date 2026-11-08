@@ -5,7 +5,6 @@
 #include "render/primitive_types.h"
 
 struct Renderer;
-struct RPMesh;
 
 struct RPQuad *rp_quad_construct(struct RPQuad *self);
 struct RPTwoTexQuad *rp_two_tex_quad_construct(struct RPTwoTexQuad *self);
@@ -27,6 +26,10 @@ void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
 void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int which);
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
+/* custom: queues `count` indices from `first` of a static world mesh (render/gfx.h), drawn with the
+   view matrix `view` and the two textures where the ground's two-texture quads are drawn */
+void renderer_add_mesh_draw(struct Renderer *self, struct gfx_mesh *mesh, int first, int count,
+                            const float *view, struct Texture *texture0, struct Texture *texture1);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
 int rp_vertex_fog_alpha(float rhw);

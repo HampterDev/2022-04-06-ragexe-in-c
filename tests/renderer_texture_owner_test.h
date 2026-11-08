@@ -195,10 +195,10 @@ static void queued_all_routes(struct Renderer *renderer)
     renderer_add_two_tex_prim(renderer, &pair->prim, 1);
     renderer_add_multi_tex_batch(renderer, &pair->prim);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
-    assert(surface->refs == 1 + submissions + 6 + 1);
+    renderer_add_mesh_draw(renderer, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view, texture, texture);
+    assert(surface->refs == 1 + submissions + 6 + 1 + 2);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
-        if (i == RENDER_OPAQUE_MESH || i == RENDER_ALPHA_MESH || i == RENDER_OVERLAY_MESH) continue;
         assert(renderer->queues[i].count);
         for (n = 0; n < renderer->queues[i].count; ++n) {
             const struct RenderTexture *retained = renderer->queues[i].items[n].textures;
@@ -210,7 +210,7 @@ static void queued_all_routes(struct Renderer *renderer)
         renderer->twoPassAlpha = (BYTE)(i & 1);
         g_lightmap = i != 0; g_waterBumpSupported = (BYTE)(i > 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 6 + 1);
+        assert(live_surfaces == 1 && surface->refs == submissions + 6 + 1 + 2);
     }
     g_lightmap = 0; g_waterBumpSupported = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);

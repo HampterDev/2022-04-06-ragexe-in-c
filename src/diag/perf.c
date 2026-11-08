@@ -25,8 +25,8 @@ struct perf_counters g_perf;
 
 static const char *const phase_name[PERF_N] = {
     "frame", "scene", "destroy", "endscene", "overlay", "targetlock", "present", "text", "texlock",
-    "l_ground", "l_opaque_mesh", "l_water", "l_multitexture", "l_blended_nodepth", "l_alpha_nodepth", "l_alpha_depth", "l_additive_fog", "l_alphatest",
-    "l_alpha_writedepth", "l_alpha_cutout", "l_alpha_mesh", "l_additive", "l_blended_wrap", "l_additive_overlay", "l_overlay_ordered", "l_blended_overlay",
+    "l_ground", "l_water", "l_multitexture", "l_blended_nodepth", "l_alpha_nodepth", "l_alpha_depth", "l_additive_fog", "l_alphatest",
+    "l_alpha_writedepth", "l_alpha_cutout", "l_additive", "l_blended_wrap", "l_additive_overlay", "l_overlay_ordered", "l_blended_overlay",
 };
 
 static struct {

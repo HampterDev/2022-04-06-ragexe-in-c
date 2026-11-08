@@ -60,6 +60,11 @@ int g_lightmap;
 BYTE g_waterBumpSupported;
 void sprite_atlas_initialize(struct Renderer *r) { assert(r); ++atlas_starts; }
 void sprite_atlas_destroy(struct Renderer *r) { assert(r); ++atlas_ends; }
+#ifdef RENDERER_BASELINE
+#define TEST_PASSES 24
+#else
+#define TEST_PASSES RENDER_PASS_COUNT
+#endif
 static size_t queued(const struct Renderer *r, size_t pass)
 {
 #ifdef RENDERER_BASELINE
@@ -74,7 +79,7 @@ void sprite_atlas_finish_frame(struct Renderer *r)
 {
     size_t i;
     assert(effect_ends == frame_ends + 1);
-    for (i = 0; i < 24; ++i) assert(!queued(r, i));
+    for (i = 0; i < TEST_PASSES; ++i) assert(!queued(r, i));
     ++frame_ends;
 }
 #ifdef RENDERER_BASELINE
@@ -99,7 +104,6 @@ struct gfx_surface {
     int allocated, width, height, format;
     DWORD pixels[16 * 16];
 };
-struct gfx_vbuffer { unsigned id; };
 static unsigned live_surfaces, retained_surfaces, released_surfaces;
 static gfx_surface *bound_surfaces[2];
 void gfx_addref(gfx_surface *surface)
@@ -174,11 +178,17 @@ void gfx_draw(int primitive, int kind, const void *vertices, int count, const WO
     sample_textures();
     ++draws;
 }
-void gfx_draw_vbuffer(int primitive, gfx_vbuffer *buffer, DWORD start, DWORD count, const WORD *indices, DWORD index_count)
+static int mesh_token;
+static const float mesh_view[12] = {12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+void gfx_set_world_view(const struct GfxWorldView *view)
+{ assert(!memcmp(view->view, mesh_view, sizeof mesh_view)); word(7); }
+void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count)
 {
-    assert(!indices && !index_count);
-    word(6); word(primitive); word(buffer->id); word(start); word(count); sample_textures(); ++draws;
+    assert(mesh == (gfx_mesh *)&mesh_token && !model && first == 0 && count == 3);
+    word(6); word((unsigned)first); word((unsigned)count); sample_textures(); ++draws;
 }
+void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out)
+{ assert(renderer == g_renderer); memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view); }
 int gfx_begin_scene(void) { abort(); }
 void gfx_end_scene(void) { abort(); }
 void gfx_set_light(const float *dir, const float *diffuse, const float *ambient)
@@ -243,7 +253,7 @@ static void routing(void)
         quad.base.alpha_mode = (BYTE)mode;
         for (flags = 0; flags < 65536; ++flags) renderer_add_prim(&renderer, &quad.base, flags);
         printf("route %u", mode);
-        for (i = 0; i < 24; ++i) printf(" %u", (unsigned)queued(&renderer, i));
+        for (i = 0; i < TEST_PASSES; ++i) printf(" %u", (unsigned)queued(&renderer, i));
         putchar('\n'); renderer_destroy_all_rp_list(&renderer);
     }
     renderer_destruct(&renderer); assert(!outstanding);

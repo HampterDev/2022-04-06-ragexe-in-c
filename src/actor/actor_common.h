@@ -71,7 +71,6 @@
 struct UIWindow;
 struct RenderObject;
 struct SkillActionMgr;
-struct RPMesh;
 struct SprImg;
 struct GameObject;
 struct GameActor;

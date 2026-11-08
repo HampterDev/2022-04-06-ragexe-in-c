@@ -1,8 +1,10 @@
+#include "render/gfx.h"
 #include "render/texture.h"
 #include "world/ground.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
+#include <string.h>
 
 void gnd_lightmap_set_reset(struct GndLightmapSet *self)
 {
@@ -19,6 +21,28 @@ void gnd_lightmap_set_reset(struct GndLightmapSet *self)
     self->pages = NULL;
     self->lightmaps = NULL;
     self->pageCount = self->count = 0;
+}
+
+/* custom: the ground's static meshes (world/ground.h); world/ground_draw.c builds them */
+static void gpu_block_free(struct GndGpuBlock *b)
+{
+    gfx_mesh_destroy(b->mesh);
+    free(b->draws);
+    free(b->half);
+    memset(b, 0, sizeof *b);
+}
+
+void ground_gpu_free(struct C3dGround15 *self)
+{
+    int i;
+
+    if (self->gpuBlocks)
+        for (i = 0; i < self->gpuCols * self->gpuRows; i++)
+            gpu_block_free(&self->gpuBlocks[i]);
+    free(self->gpuBlocks);
+    self->gpuBlocks = NULL;
+    self->gpuCols = self->gpuRows = 0;
+    self->gpuState = 0;
 }
 
 struct C3dGround15 *ground_new(void)
@@ -46,6 +70,7 @@ void ground_set_attribute_map(struct C3dGround15 *ground, struct C3dAttr *attr)
 
 void c3d_ground15_clear(struct C3dGround15 *self)
 {
+    ground_gpu_free(self);
     free(self->waters);
     free(self->cells);
     free(self->colours);

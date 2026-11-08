@@ -45,6 +45,8 @@ static void checked_free(void *memory)
 #define calloc checked_calloc
 #define free checked_free
 #include "../src/world/ground_lifecycle.c"
+/* the ground's meshes are built on its first draw, which these tests do not reach */
+void gfx_mesh_destroy(gfx_mesh *mesh) { (void)mesh; abort(); }
 #include "../src/world/ground.c"
 #include "../src/world/ground_load.c"
 #include "../src/world/ground_water.c"

@@ -89,6 +89,7 @@
     X(void, glUniform2f, (GLint location, GLfloat a, GLfloat b)) \
     X(void, glUniform4f, (GLint location, GLfloat a, GLfloat b, GLfloat c, GLfloat d)) \
     X(void, glUniform4i, (GLint location, GLint a, GLint b, GLint c, GLint d)) \
+    X(void, glUniformMatrix4fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)) \
     X(void, glGenFramebuffers, (GLsizei n, GLuint *framebuffers)) \
     X(void, glDeleteFramebuffers, (GLsizei n, const GLuint *framebuffers)) \
     X(void, glBindFramebuffer, (GLenum target, GLuint framebuffer)) \
@@ -132,18 +133,24 @@ struct gfx_surface {
     unsigned version;
 };
 
-struct gfx_vbuffer {
-    int unused;
+/* custom: a static world mesh (render/gfx.h). The arrays stay with it; its buffers are made on the
+   main thread when it is first drawn, and again after the context is recreated. */
+struct gfx_mesh {
+    struct GfxMeshVertex *verts;
+    WORD *indices;
+    int nverts, nindices;
+    GLuint vbo, ibo;
+    struct gfx_mesh *prev, *next;
 };
 
 enum {
     U_VIEWPORT, U_STAGE0, U_STAGE0B, U_STAGE1, U_STAGE1B, U_FLAGS, U_ALPHAREF, U_FOGCOLOR, U_TFACTOR,
-    U_BUMPMAT, U_TEX0, U_TEX1, U_COUNT
+    U_BUMPMAT, U_TEX0, U_TEX1, U_MESH, U_XFORM, U_MESHFOG, U_COUNT
 };
 
 static const char *const uniform_names[U_COUNT] = {
     "u_viewport", "u_stage0", "u_stage0b", "u_stage1", "u_stage1b", "u_flags", "u_alpharef", "u_fogcolor",
-    "u_tfactor", "u_bumpmat", "u_tex0", "u_tex1"
+    "u_tfactor", "u_bumpmat", "u_tex0", "u_tex1", "u_mesh", "u_xform", "u_meshfog"
 };
 
 static struct {
@@ -164,6 +171,9 @@ static struct {
     float maxAniso;
     int inScene, mipmaps, vsync;
     int boundTarget;
+    struct gfx_mesh *meshes;
+    struct GfxWorldView worldView;
+    int worldViewSet;
 } gl;
 
 static unsigned content_tick;
@@ -187,16 +197,15 @@ static const char vertex_source[] =
     "layout(location = 3) in vec2 a_uv0;\n"
     "layout(location = 4) in vec2 a_uv1;\n"
     "uniform vec2 u_viewport;\n"
+    "uniform int u_mesh;\n"
+    "uniform mat4 u_xform;\n"
+    "uniform vec2 u_meshfog;\n"
     "out vec4 v_diffuse;\n"
     "out vec4 v_specular;\n"
     "out vec2 v_uv0;\n"
     "out vec2 v_uv1;\n"
     "void main()\n"
     "{\n"
-    "    float w = a_pos.w > 0.0 ? 1.0 / a_pos.w : 1.0;\n"
-    "    vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
-    "    vec2 ndc = vec2(pixel.x / u_viewport.x * 2.0 - 1.0, 1.0 - pixel.y / u_viewport.y * 2.0);\n"
-    "    gl_Position = vec4(ndc * w, (a_pos.z * 2.0 - 1.0) * w, w);\n"
     "#ifdef GFX_GLES\n"
     "    v_diffuse = a_diffuse.bgra;\n"
     "    v_specular = a_specular.bgra;\n"
@@ -204,6 +213,19 @@ static const char vertex_source[] =
     "    v_diffuse = a_diffuse;\n"
     "    v_specular = a_specular;\n"
     "#endif\n"
+    "    if (u_mesh != 0) {\n"
+    "        vec4 h = u_xform * vec4(a_pos.xyz, 1.0);\n"
+    "        vec2 pixel = h.xy + vec2(0.5 - 1.0 / 128.0) * h.w;\n"
+    "        gl_Position = vec4(pixel.x / u_viewport.x * 2.0 - h.w, h.w - pixel.y / u_viewport.y * 2.0,\n"
+    "                           h.z * 2.0 - h.w, h.w);\n"
+    "        float fog = clamp((u_meshfog.y - h.w) / (u_meshfog.y - u_meshfog.x), 0.0, 1.0);\n"
+    "        v_specular = vec4(0.0, 0.0, 0.0, floor(fog * 255.0) / 255.0);\n"
+    "    } else {\n"
+    "        float w = a_pos.w > 0.0 ? 1.0 / a_pos.w : 1.0;\n"
+    "        vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
+    "        vec2 ndc = vec2(pixel.x / u_viewport.x * 2.0 - 1.0, 1.0 - pixel.y / u_viewport.y * 2.0);\n"
+    "        gl_Position = vec4(ndc * w, (a_pos.z * 2.0 - 1.0) * w, w);\n"
+    "    }\n"
     "    v_uv0 = a_uv0;\n"
     "    v_uv1 = a_uv1;\n"
     "}\n";
@@ -297,6 +319,8 @@ static const char fragment_source[] =
     "    }\n"
     "    o_color = cur;\n"
     "}\n";
+
+static void drop_meshes(void);
 
 static int load_functions(void)
 {
@@ -943,14 +967,137 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
     raw_draw(prim, vertexKind, verts, nverts, indices, nindices);
 }
 
-void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const WORD *indices, DWORD nindices)
+gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices)
 {
-    (void)prim;
-    (void)vb;
-    (void)start;
-    (void)count;
-    (void)indices;
-    (void)nindices;
+    struct gfx_mesh *m;
+    if (!verts || !indices || nverts <= 0 || nverts > 0x10000 || nindices <= 0 || nindices % 3)
+        return NULL;
+    m = calloc(1, sizeof *m);
+    if (!m)
+        return NULL;
+    m->verts = malloc((size_t)nverts * sizeof *verts);
+    m->indices = malloc((size_t)nindices * sizeof *indices);
+    if (!m->verts || !m->indices) {
+        free(m->verts);
+        free(m->indices);
+        free(m);
+        return NULL;
+    }
+    memcpy(m->verts, verts, (size_t)nverts * sizeof *verts);
+    memcpy(m->indices, indices, (size_t)nindices * sizeof *indices);
+    m->nverts = nverts;
+    m->nindices = nindices;
+    m->next = gl.meshes;
+    if (gl.meshes)
+        gl.meshes->prev = m;
+    gl.meshes = m;
+    return m;
+}
+
+static void mesh_drop_buffers(struct gfx_mesh *m)
+{
+    if (gl.context) {
+        if (m->vbo)
+            p_glDeleteBuffers(1, &m->vbo);
+        if (m->ibo)
+            p_glDeleteBuffers(1, &m->ibo);
+    }
+    m->vbo = m->ibo = 0;
+}
+
+static void drop_meshes(void)
+{
+    struct gfx_mesh *m;
+    for (m = gl.meshes; m; m = m->next)
+        mesh_drop_buffers(m);
+}
+
+void gfx_mesh_destroy(gfx_mesh *m)
+{
+    if (!m)
+        return;
+    batch_flush();
+    mesh_drop_buffers(m);
+    if (m->prev)
+        m->prev->next = m->next;
+    else
+        gl.meshes = m->next;
+    if (m->next)
+        m->next->prev = m->prev;
+    free(m->verts);
+    free(m->indices);
+    free(m);
+}
+
+void gfx_set_world_view(const struct GfxWorldView *view)
+{
+    gl.worldView = *view;
+    gl.worldViewSet = 1;
+}
+
+/* World coordinates to the pre-transformed vertex's pixel space times the view-space depth:
+   (x * w, y * w, z * w, w) for the pixel (x, y), the depth z and w = vz (column-major). */
+static void mesh_xform(GLfloat *out, const struct GfxWorldView *v, const float *model)
+{
+    const float *m = v->view;
+    float a[3][4];
+    int r, c;
+    for (r = 0; r < 3; r++) {
+        if (model) {
+            for (c = 0; c < 3; c++)
+                a[r][c] = model[c * 3] * m[r] + model[c * 3 + 1] * m[3 + r] + model[c * 3 + 2] * m[6 + r];
+            a[r][3] = model[9] * m[r] + model[10] * m[3 + r] + model[11] * m[6 + r] + m[9 + r];
+        } else {
+            a[r][0] = m[r];
+            a[r][1] = m[3 + r];
+            a[r][2] = m[6 + r];
+            a[r][3] = m[9 + r];
+        }
+    }
+    for (c = 0; c < 4; c++) {
+        out[c * 4] = v->proj[0] * a[0][c] + v->centre[0] * a[2][c];
+        out[c * 4 + 1] = v->proj[1] * a[1][c] + v->centre[1] * a[2][c];
+        out[c * 4 + 2] = v->depthScale * a[2][c];
+        out[c * 4 + 3] = a[2][c];
+    }
+    out[14] -= v->nearZ * v->depthScale;
+}
+
+void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
+{
+    GLfloat xform[16];
+    g_perf.drawCalls++;
+    batch_flush();
+    if (!gl.context || !gl.target || !m || !gl.worldViewSet || first < 0 || count <= 0 || count % 3
+        || first > m->nindices - count)
+        return;
+    g_perf.draws++;
+    g_perf.prims += (unsigned)count / 3;
+    bind_target(gl.target);
+    if (gl.stateDirty)
+        apply_state();
+    if (!m->vbo || !m->ibo) {
+        p_glGenBuffers(1, &m->vbo);
+        p_glGenBuffers(1, &m->ibo);
+        p_glBindBuffer(GL_ARRAY_BUFFER, m->vbo);
+        p_glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)m->nverts * (GLsizeiptr)sizeof *m->verts, m->verts, GL_STATIC_DRAW);
+        p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);
+        p_glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)m->nindices * 2, m->indices, GL_STATIC_DRAW);
+    }
+    mesh_xform(xform, &gl.worldView, model);
+    p_glUniform1i(gl.uniforms[U_MESH], 1);
+    p_glUniformMatrix4fv(gl.uniforms[U_XFORM], 1, GL_FALSE, xform);
+    p_glUniform2f(gl.uniforms[U_MESHFOG], gl.worldView.fogStart, gl.worldView.fogEnd);
+    p_glBindBuffer(GL_ARRAY_BUFFER, m->vbo);
+    p_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)0);
+    p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)12);
+    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)12);
+    p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)16);
+    p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)24);
+    p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);
+    p_glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (const void *)(uintptr_t)(first * 2));
+    p_glUniform1i(gl.uniforms[U_MESH], 0);
+    gl.target->version = ++content_tick;
 }
 
 static void draw_textured_quad(struct gfx_surface *dst, const RECT *dr, struct gfx_surface *src, const RECT *sr, int keyed)
@@ -1275,6 +1422,7 @@ int gfx_close(struct C3dDevice *d)
     for (s = gl.handles; s; s = s->next)
         drop_gpu(s);
     collect_dead_textures();
+    drop_meshes();
     if (gl.context) {
         p_glDeleteSamplers(2, gl.samplers);
         p_glDeleteBuffers(1, &gl.vbo);

@@ -6,7 +6,7 @@
 #include "platform/window_handle.h"
 
 typedef struct gfx_surface gfx_surface;
-typedef struct gfx_vbuffer gfx_vbuffer;
+typedef struct gfx_mesh gfx_mesh;
 struct C3dDevice;
 
 struct SurfaceDesc {
@@ -210,7 +210,38 @@ void gfx_set_transform(int which, const struct GfxMatrix *m);
 void gfx_set_light(const float *dir, const float *diffuse, const float *ambient);
 void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices);
 
-void gfx_draw_vbuffer(int prim, gfx_vbuffer *vb, DWORD start, DWORD count, const WORD *indices, DWORD nindices);
+/* custom: static geometry in world coordinates that the device projects itself, where everything
+   else arrives projected by the CPU (renderer_project_vertex, render/rp_project.c). A mesh keeps
+   its vertices and indices; the device copies them to its own buffers on the first draw and again
+   after it is recreated. Indices are triangle lists into the mesh's own vertices. */
+struct GfxMeshVertex {
+    float x, y, z;
+    DWORD diffuse;
+    float u0, v0, u1, v1;
+};
+
+/* The projection a mesh is drawn with, the CPU's own (render/rp_project.c): view is the client's
+   4x3 view matrix, view-space x = view[0] * x + view[3] * y + view[6] * z + view[9], y likewise
+   with entries 1, 4, 7, 10 and the depth vz with 2, 5, 8, 11. A point lands at the pixel
+   (x * proj[0] / vz + centre[0], y * proj[1] / vz + centre[1]) with the depth
+   (vz - nearZ) * depthScale / vz, as a pre-transformed vertex with rhw 1 / vz would. Its fog factor
+   is (fogEnd - vz) / (fogEnd - fogStart), clamped to 0..1, as rp_vertex_fog_alpha puts it in the
+   specular alpha of a pre-transformed vertex. */
+struct GfxWorldView {
+    float view[12];
+    float proj[2];
+    float centre[2];
+    float nearZ, depthScale;
+    float fogStart, fogEnd;
+};
+
+gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices);
+void gfx_mesh_destroy(gfx_mesh *mesh);
+void gfx_set_world_view(const struct GfxWorldView *view);
+/* Draws `count` indices from `first` (a multiple of three each) with the bound textures and the
+   current render and stage states, as gfx_draw would draw the same triangles pre-transformed.
+   model is a 4x3 matrix in the view's layout that places the mesh in the world, NULL for none. */
+void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
 
 typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, PlatformDisplay monitor);
 int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);
