@@ -192,6 +192,8 @@ int main(void)
         dc_bitmap_copy_bitmap(&bitmap, 1, 1, 2, 2, &empty);
         dc_bitmap_copy_rect(&bitmap, 0, 0, 1, 1, 2, 2, NULL);
         dc_bitmap_copy_rect(&bitmap, 0, 0, 1, 1, 2, 2, &empty);
+        clear_counts(); dc_bitmap_draw(NULL, 0, 0, 2, 2, 0x12345678);
+        assert(!uploads && !draws);
         assert(!bitmap.changed && bitmap.bits[0] == 0x5a5a5a5a && bitmap.bits[5] == 0x5a5a5a5a);
     }
     {

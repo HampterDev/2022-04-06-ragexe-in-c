@@ -349,7 +349,7 @@ void dc_bitmap_draw(struct DcBitmap *self, int x, int y, int w, int h, DWORD col
 {
     size_t columns, i;
     int tx, ty, tw, th;
-    if (!self->bits || w <= 0 || h <= 0) return;
+    if (!self || !self->bits || w <= 0 || h <= 0) return;
     dc_bitmap_upload(self);
     if (!self->texture_count || self->changed) return;
     if (self->singleTexture == 1) {
