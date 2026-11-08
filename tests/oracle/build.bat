@@ -40,5 +40,10 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_job_lookups.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+cl %CFLAGS% "%ROOT%\tests\oracle\test_ground_skill.c" "%ROOT%\tests\oracle\oracle_image.c" "%ROOT%\src\actor\ground_skill.c" "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" /Fe:test_ground_skill.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_ground_skill.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0

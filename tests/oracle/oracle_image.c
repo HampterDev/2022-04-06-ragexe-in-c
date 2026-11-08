@@ -42,6 +42,27 @@ void oracle_patch_return(unsigned original_va, int value, unsigned stack_bytes)
     }
 }
 
+void oracle_patch_jump(unsigned original_va, void *fn)
+{
+    unsigned char code[5];
+    int rel = (int)((unsigned char *)fn - ((unsigned char *)oracle_addr(original_va) + 5));
+    code[0] = 0xe9;
+    memcpy(code + 1, &rel, 4);
+    oracle_patch(original_va, code, 5);
+}
+
+unsigned oracle_call_target(unsigned call_va)
+{
+    const unsigned char *p = oracle_addr(call_va);
+    int rel;
+    if (p[0] != 0xe8) {
+        fprintf(stderr, "oracle: no call instruction at 0x%x\n", call_va);
+        ExitProcess(3);
+    }
+    memcpy(&rel, p + 1, 4);
+    return call_va + 5 + (unsigned)rel;
+}
+
 static int apply_relocations(const IMAGE_NT_HEADERS *nt, unsigned delta)
 {
     const IMAGE_DATA_DIRECTORY *dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
