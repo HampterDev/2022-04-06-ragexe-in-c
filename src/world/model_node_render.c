@@ -230,10 +230,21 @@ static int gpu_build(struct C3dNode *node, int version)
         const struct AnimMeshFace *face = &mesh->faces[list[i].face];
         const struct FaceInfo *info = &node->faceInfo[list[i].face];
 
+        const Vec3 *a = &mesh->positions[face->v[0]], *b = &mesh->positions[face->v[1]];
+        const Vec3 *c = &mesh->positions[face->v[2]];
+        float e1[3] = {b->x - a->x, b->y - a->y, b->z - a->z}, e2[3] = {c->x - a->x, c->y - a->y, c->z - a->z};
+        float n[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
+        float len = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+
+        if (len > 0.0f)
+            n[0] /= len, n[1] /= len, n[2] /= len;
         for (k = 0; k < 3; k++) {
             struct GfxMeshVertex *v = &verts[i * 3 + k];
             const Vec3 *p = &mesh->positions[face->v[k]];
 
+            v->nx = n[0];
+            v->ny = n[1];
+            v->nz = n[2];
             v->x = p->x;
             v->y = p->y;
             v->z = p->z;

@@ -41,8 +41,7 @@ struct Renderer {
        view that renderer_shadow_frame set for the frame being drawn, valid while shadowPending */
     float lightDir[3];
     int lightSet;
-    float shadowFromView[16];
-    float shadowBias;
+    struct GfxShadow shadow;
     int shadowPending;
 };
 
@@ -61,10 +60,10 @@ void renderer_enable_fog(struct Renderer *self, int enable);
 void renderer_set_light(struct Renderer *self, const float *dir,
                        const float *diffuse, const float *ambient);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
-/* custom: shadows for the models' meshes this frame (render/gfx.h): the light falls along the
-   map's light direction onto a square of `radius` around `focus` (world coordinates), and `view`
-   is the frame's view matrix, which the meshes' draws reach view space with. */
-void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float radius);
+/* custom: shadows for the models' meshes this frame (render/gfx.h): cascades along the map's light
+   fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
+   with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). */
+void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);
 void renderer_draw_battle_field_icon(struct Renderer *self);
 SIZE *renderer_get_text_extent(struct Renderer *self, SIZE *out, const char *text, int length,
                 int a, int b, int c);

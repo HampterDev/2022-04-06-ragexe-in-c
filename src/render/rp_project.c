@@ -112,10 +112,31 @@ void renderer_world_view(const struct Renderer *self, const float *view, const f
     }
 }
 
-/* half the depth the shadow map covers along the light, in world units, and the depth a pixel may
-   lie behind the nearest caster and still count as lit */
+/* custom: the cascades of the models' shadow maps (render/gfx.h). The models that receive shadow
+   lie in a band from SHADOW_ABOVE units above the camera's focus to SHADOW_BELOW below it (+y is
+   down), so the view is cut into GFX_SHADOW_CASCADES slices of view depth between where its four
+   corner rays enter and leave that band, no further than four times the camera's distance. The
+   slices grow with the depth (SHADOW_SPLIT between even and geometric steps). Each cascade's map
+   covers its slice's part of the band as the light sees it: the light map is orthographic, so a
+   caster that shades something in the slice lands on the same place of the map, however far off
+   screen it stands; SHADOW_DEPTH either way along the light is kept. A cascade's square is rounded
+   up and its centre kept to whole texels so that its texels stay put while the camera moves and
+   shadow edges do not crawl. */
+#define SHADOW_ABOVE 300.0f
+#define SHADOW_BELOW 60.0f
 #define SHADOW_DEPTH 3000.0f
+#define SHADOW_SPLIT 0.7f
+/* a pixel stays lit up to SHADOW_BIAS units behind the nearest caster, and is looked up from a
+   point moved SHADOW_OFFSET texels off its surface towards the light (times the sine of the angle
+   between them), which keeps a surface at a slant to the light from shadowing itself. Models lay
+   decorations a unit or two over their surfaces (Prontera's flower beds put the flowers over the
+   grass); at 1 unit those shaded the surface under them. */
 #define SHADOW_BIAS 4.0f
+#define SHADOW_OFFSET 1.5f
+/* shadow edges fade over twice SHADOW_SOFTNESS units, about as far as the one coarse shadow map
+   first drawn here blurred them (0.8 units a texel at the default zoom); at 1.5 the edges spread
+   over three units and the shadows of thin casters, such as a lamp post's, faded away */
+#define SHADOW_SOFTNESS 0.5f
 
 static int invert_4x3(const float *m, float *out)
 {
@@ -141,15 +162,23 @@ static int invert_4x3(const float *m, float *out)
     return 1;
 }
 
-void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float radius)
+static float dot3(const float *a, const float *b)
 {
-    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], world[4][4], len;
-    int i, j, k;
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
 
-    if (!self->lightSet || !(radius > 0.0f) || !invert_4x3(view, inv))
+void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance)
+{
+    struct GfxShadow *shadow = &self->shadow;
+    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], eye[3], ray[4][3], enter[4], leave[4];
+    float top = focus[1] - SHADOW_ABOVE, bottom = focus[1] + SHADOW_BELOW, len, nearest, farthest, maxDepth;
+    float split[GFX_SHADOW_CASCADES + 1];
+    int i, j, k, c, any = 0;
+
+    self->shadowPending = 0;
+    if (!self->lightSet || !invert_4x3(view, inv))
         return;
-    len = sqrtf(self->lightDir[0] * self->lightDir[0] + self->lightDir[1] * self->lightDir[1]
-                + self->lightDir[2] * self->lightDir[2]);
+    len = sqrtf(dot3(self->lightDir, self->lightDir));
     if (!(len > 0.0f))
         return;
     /* the map's light vector points the way the light travels: Prontera's is (0.5, 0.707, 0.5),
@@ -161,32 +190,129 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     r[0] = up[1] * f[2] - up[2] * f[1];
     r[1] = up[2] * f[0] - up[0] * f[2];
     r[2] = up[0] * f[1] - up[1] * f[0];
-    len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    len = sqrtf(dot3(r, r));
     for (i = 0; i < 3; i++)
         r[i] /= len;
     u[0] = f[1] * r[2] - f[2] * r[1];
     u[1] = f[2] * r[0] - f[0] * r[2];
     u[2] = f[0] * r[1] - f[1] * r[0];
-    /* world to light, row vectors */
-    for (i = 0; i < 3; i++) {
-        world[i][0] = r[i] / radius;
-        world[i][1] = u[i] / radius;
-        world[i][2] = f[i] / (2.0f * SHADOW_DEPTH);
-        world[i][3] = 0.0f;
-    }
-    world[3][0] = -(focus[0] * r[0] + focus[1] * r[1] + focus[2] * r[2]) / radius;
-    world[3][1] = -(focus[0] * u[0] + focus[1] * u[1] + focus[2] * u[2]) / radius;
-    world[3][2] = 0.5f - (focus[0] * f[0] + focus[1] * f[1] + focus[2] * f[2]) / (2.0f * SHADOW_DEPTH);
-    world[3][3] = 1.0f;
-    /* view to world (the inverse view, a 4x4 with the last column 0 0 0 1), then to light */
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++) {
-            float sum = i == 3 ? world[3][j] : 0.0f;
-            for (k = 0; k < 3; k++)
-                sum += inv[i * 3 + k] * world[k][j];
-            self->shadowFromView[i * 4 + j] = sum;
+
+    /* the view's four corner rays in the world, per unit of view depth, and where they cross the band */
+    maxDepth = distance * 4.0f + 400.0f;
+    maxDepth = maxDepth < 8000.0f ? maxDepth : 8000.0f;
+    for (i = 0; i < 3; i++)
+        eye[i] = inv[9 + i];
+    nearest = maxDepth;
+    farthest = RENDER_NEAR_Z;
+    for (k = 0; k < 4; k++) {
+        float dx = ((k & 1 ? (float)self->width : 0.0f) - (float)self->centreX) / self->proj[0];
+        float dy = ((k & 2 ? (float)self->height : 0.0f) - (float)self->centreY) / self->proj[1];
+
+        for (i = 0; i < 3; i++)
+            ray[k][i] = dx * inv[i] + dy * inv[3 + i] + inv[6 + i];
+        enter[k] = RENDER_NEAR_Z;
+        leave[k] = maxDepth;
+        if (ray[k][1] != 0.0f) {
+            float a = (top - eye[1]) / ray[k][1], b = (bottom - eye[1]) / ray[k][1];
+            if ((a < b ? a : b) > enter[k])
+                enter[k] = a < b ? a : b;
+            if ((a > b ? a : b) < leave[k])
+                leave[k] = a > b ? a : b;
+        } else if (eye[1] < top || eye[1] > bottom) {
+            leave[k] = enter[k];
         }
-    self->shadowBias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
+        if (enter[k] < leave[k]) {
+            nearest = enter[k] < nearest ? enter[k] : nearest;
+            farthest = leave[k] > farthest ? leave[k] : farthest;
+            any = 1;
+        }
+    }
+    if (!any)
+        return;
+    for (c = 0; c <= GFX_SHADOW_CASCADES; c++) {
+        float t = (float)c / GFX_SHADOW_CASCADES;
+        split[c] = SHADOW_SPLIT * nearest * powf(farthest / nearest, t) + (1.0f - SHADOW_SPLIT) * (nearest + (farthest - nearest) * t);
+    }
+    split[0] = nearest;
+    split[GFX_SHADOW_CASCADES] = farthest;
+
+    shadow->cascades = GFX_SHADOW_CASCADES;
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+        float lo[2] = {1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f}, centre[2], radius = 0.0f, texel, depth, w[4][4];
+        int points = 0;
+
+        /* the slice's part of each corner ray inside the band, or the whole slice where none is */
+        for (j = 0; j < 2; j++)
+            for (k = 0; k < 4; k++) {
+                float a = split[c] > enter[k] ? split[c] : enter[k];
+                float b = split[c + 1] < leave[k] ? split[c + 1] : leave[k];
+                float t = j ? b : a, p[3], x, y;
+
+                if (a > b)
+                    continue;
+                for (i = 0; i < 3; i++)
+                    p[i] = eye[i] + ray[k][i] * t;
+                x = dot3(p, r);
+                y = dot3(p, u);
+                lo[0] = x < lo[0] ? x : lo[0];
+                hi[0] = x > hi[0] ? x : hi[0];
+                lo[1] = y < lo[1] ? y : lo[1];
+                hi[1] = y > hi[1] ? y : hi[1];
+                points++;
+            }
+        if (!points)
+            for (j = 0; j < 2; j++)
+                for (k = 0; k < 4; k++) {
+                    float p[3], x, y;
+                    for (i = 0; i < 3; i++)
+                        p[i] = eye[i] + ray[k][i] * split[c + j];
+                    x = dot3(p, r);
+                    y = dot3(p, u);
+                    lo[0] = x < lo[0] ? x : lo[0];
+                    hi[0] = x > hi[0] ? x : hi[0];
+                    lo[1] = y < lo[1] ? y : lo[1];
+                    hi[1] = y > hi[1] ? y : hi[1];
+                }
+        centre[0] = (lo[0] + hi[0]) * 0.5f;
+        centre[1] = (lo[1] + hi[1]) * 0.5f;
+        radius = (hi[0] - lo[0] > hi[1] - lo[1] ? hi[0] - lo[0] : hi[1] - lo[1]) * 0.5f;
+        /* a margin for the soft edge and the offset, then up to a multiple of 8 units */
+        radius = ceilf((radius * 1.05f + 4.0f + SHADOW_SOFTNESS) / 8.0f) * 8.0f;
+        texel = 2.0f * radius / GFX_SHADOW_SIZE;
+        centre[0] = floorf(centre[0] / texel + 0.5f) * texel;
+        centre[1] = floorf(centre[1] / texel + 0.5f) * texel;
+        depth = dot3(focus, f);
+        for (i = 0; i < 3; i++) {
+            w[i][0] = r[i] / radius;
+            w[i][1] = u[i] / radius;
+            w[i][2] = f[i] / (2.0f * SHADOW_DEPTH);
+            w[i][3] = 0.0f;
+        }
+        w[3][0] = -centre[0] / radius;
+        w[3][1] = -centre[1] / radius;
+        w[3][2] = 0.5f - depth / (2.0f * SHADOW_DEPTH);
+        w[3][3] = 1.0f;
+        /* view to world (the inverse view, a 4x4 with the last column 0 0 0 1), then to light */
+        for (i = 0; i < 4; i++)
+            for (j = 0; j < 4; j++) {
+                float sum = i == 3 ? w[3][j] : 0.0f;
+                for (k = 0; k < 3; k++)
+                    sum += inv[i * 3 + k] * w[k][j];
+                shadow->fromView[c][i * 4 + j] = sum;
+            }
+        shadow->farDepth[c] = split[c + 1];
+        shadow->offset[c] = SHADOW_OFFSET * texel;
+        shadow->blur[c] = SHADOW_SOFTNESS / (2.0f * radius);
+    }
+    /* towards the light in view space */
+    for (i = 0; i < 3; i++)
+        shadow->lightView[i] = -(f[0] * view[i] + f[1] * view[3 + i] + f[2] * view[6 + i]);
+    len = sqrtf(dot3(shadow->lightView, shadow->lightView));
+    if (len > 0.0f)
+        for (i = 0; i < 3; i++)
+            shadow->lightView[i] /= len;
+    shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
+    shadow->slant = SHADOW_SOFTNESS / (2.0f * SHADOW_DEPTH);
     self->shadowPending = 1;
 }
 

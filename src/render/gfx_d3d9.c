@@ -74,7 +74,7 @@ struct gfx_mesh {
     struct gfx_mesh *prev, *next;
 };
 
-#define FVF_MESH (D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX2)
+#define FVF_MESH (D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX2)
 
 #define N_RS 256
 #define N_TSS 33
@@ -118,11 +118,11 @@ static struct {
     struct gfx_mesh *meshes;
     struct GfxWorldView worldView;
     int worldViewSet;
-    IDirect3DTexture9 *shadowTex;
+    IDirect3DTexture9 *shadowTex[GFX_SHADOW_CASCADES];
     IDirect3DSurface9 *shadowDepth, *savedTarget, *savedDepth;
     IDirect3DVertexShader9 *vsDepth, *vsReceive;
     IDirect3DPixelShader9 *psDepth, *psReceive;
-    int shadowState, shadowPass, shadowReady, shadowReceive;
+    int shadowState, shadowPass, shadowReady, shadowReceive, shadowCascade;
     struct GfxShadow shadow;
     D3DVIEWPORT9 savedViewport;
     DWORD savedShadowStates[8];
@@ -2162,67 +2162,95 @@ static int mesh_upload(struct gfx_mesh *m)
 }
 
 /* custom: shadow mapping for meshes (render/gfx.h). The fixed-function pipeline cannot compare
-   depths, so the shadow pass and the meshes that receive shadow use shaders, compiled when first
-   needed by D3DCompile from d3dcompiler_47.dll, which Windows has carried since 8.1. Without it,
-   or without an R32F render target, gfx_shadow_begin answers 0 and nothing changes.
+   depths, so the shadow pass and the meshes that receive shadow use shaders, compiled at the first
+   shadow frame by D3DCompile from d3dcompiler_47.dll, which Windows has carried since 8.1. The
+   receiving shaders choose a cascade per pixel, so they need shader model 3. Without the DLL,
+   shader model 3 or an R32F render target, gfx_shadow_begin answers 0 and nothing changes;
    RAGEXE_SHADOWS=0 turns shadows off. The receiving shaders do what the stages do for an opaque
-   mesh (texture times colour, the colour scaled) and leave the alpha test and the fog to the
-   fixed-function stages, the fog through the shader's fog output. */
-
-#define SHADOW_SIZE 2048
+   mesh (texture times colour, the colour scaled) and the fixed-function fog, which shader model 3
+   leaves to the pixel shader; the alpha test stays fixed-function. */
 
 static const char shadow_hlsl[] =
     "row_major float4x4 toClip : register(c0);\n"
-    "row_major float4x4 toLight : register(c4);\n"
-    "float4 fog : register(c8);\n"
-    "float4 scale : register(c9);\n"
-    "struct DepthOut { float4 pos : POSITION; float depth : TEXCOORD0; };\n"
-    "DepthOut vs_depth(float4 pos : POSITION)\n"
+    "float4 depthPass(float4 pos : POSITION, out float depth : TEXCOORD0) : POSITION\n"
     "{\n"
-    "    DepthOut o;\n"
-    "    o.pos = mul(pos, toClip);\n"
-    "    o.depth = o.pos.z;\n"
-    "    return o;\n"
+    "    float4 p = mul(pos, toClip);\n"
+    "    depth = p.z;\n"
+    "    return p;\n"
     "}\n"
-    "float4 ps_depth(float depth : TEXCOORD0) : COLOR\n"
+    "float4 depthColour(float depth : TEXCOORD0) : COLOR\n"
     "{\n"
     "    return float4(depth, depth, depth, 1);\n"
     "}\n"
-    "struct ReceiveOut {\n"
-    "    float4 pos : POSITION; float4 lit : COLOR0; float4 shade : COLOR1;\n"
-    "    float2 uv : TEXCOORD0; float3 light : TEXCOORD1; float fog : FOG;\n"
+    "row_major float4x4 toView : register(c4);\n"
+    "row_major float4x4 fromView[4] : register(c8);\n"
+    "float4 fog : register(c24);\n"
+    "float4 scale : register(c25);\n"
+    "float4 lightView : register(c26);\n"
+    "float4 offset : register(c27);\n"
+    "float4 slope : register(c28);\n"
+    "struct ReceiveIn {\n"
+    "    float4 pos : POSITION; float3 normal : NORMAL; float4 lit : COLOR0; float4 shade : COLOR1;\n"
+    "    float2 uv : TEXCOORD0;\n"
     "};\n"
-    "ReceiveOut vs_receive(float4 pos : POSITION, float4 lit : COLOR0, float4 shade : COLOR1,\n"
-    "                      float2 uv : TEXCOORD0)\n"
+    "struct ReceiveOut {\n"
+    "    float4 pos : POSITION; float4 lit : COLOR0; float4 shade : COLOR1; float2 uv : TEXCOORD0;\n"
+    "    float4 l0 : TEXCOORD1; float4 l1 : TEXCOORD2; float4 l2 : TEXCOORD3; float4 l3 : TEXCOORD4;\n"
+    "    float3 depthFog : TEXCOORD5;\n"
+    "};\n"
+    "ReceiveOut receive(ReceiveIn i)\n"
     "{\n"
     "    ReceiveOut o;\n"
-    "    o.pos = mul(pos, toClip);\n"
-    "    o.lit = float4(floor(floor(lit.rgb * 255 + 0.5) * scale.rgb) / 255, lit.a);\n"
-    "    o.shade = float4(floor(floor(shade.rgb * 255 + 0.5) * scale.rgb) / 255, lit.a);\n"
-    "    o.uv = uv;\n"
-    "    o.light = mul(pos, toLight).xyz;\n"
-    "    o.fog = saturate((fog.y - o.pos.w) * fog.z);\n"
+    "    o.pos = mul(i.pos, toClip);\n"
+    "    o.lit = float4(floor(floor(i.lit.rgb * 255 + 0.5) * scale.rgb) / 255, i.lit.a);\n"
+    "    o.shade = float4(floor(floor(i.shade.rgb * 255 + 0.5) * scale.rgb) / 255, i.lit.a);\n"
+    "    o.uv = i.uv;\n"
+    "    float3 v = mul(i.pos, toView).xyz;\n"
+    "    float3 n = mul(i.normal, (float3x3)toView);\n"
+    "    n *= rsqrt(max(dot(n, n), 1e-12));\n"
+    "    float c = dot(n, lightView.xyz);\n"
+    "    float3 away = n * sign(c) * sqrt(saturate(1 - c * c));\n"
+    "    o.l0 = mul(float4(v + away * offset.x, 1), fromView[0]);\n"
+    "    o.l1 = mul(float4(v + away * offset.y, 1), fromView[1]);\n"
+    "    o.l2 = mul(float4(v + away * offset.z, 1), fromView[2]);\n"
+    "    o.l3 = mul(float4(v + away * offset.w, 1), fromView[3]);\n"
+    "    float tangent = min(sqrt(saturate(1 - c * c)) / max(abs(c), 1e-3), slope.y);\n"
+    "    o.depthFog = float3(o.pos.w, saturate((fog.y - o.pos.w) * fog.z), tangent * slope.x);\n"
     "    return o;\n"
     "}\n"
     "sampler2D colourMap : register(s0);\n"
-    "sampler2D shadowMap : register(s1);\n"
-    "float4 params : register(c0);\n"
-    "float4 ps_receive(float4 lit : COLOR0, float4 shade : COLOR1, float2 uv : TEXCOORD0,\n"
-    "                  float3 light : TEXCOORD1) : COLOR\n"
+    "sampler2D map0 : register(s1);\n"
+    "sampler2D map1 : register(s2);\n"
+    "sampler2D map2 : register(s3);\n"
+    "sampler2D map3 : register(s4);\n"
+    "float4 cascadeFar : register(c0);\n"
+    "float4 params : register(c1);\n"
+    "float4 fogColour : register(c2);\n"
+    "float4 blur : register(c3);\n"
+    "static const float2 disk[16] = {\n"
+    "    float2(-0.942, -0.399), float2(0.946, -0.769), float2(-0.094, -0.929), float2(0.345, 0.294),\n"
+    "    float2(-0.916, 0.458), float2(-0.815, -0.879), float2(-0.383, 0.277), float2(0.975, 0.756),\n"
+    "    float2(0.443, -0.975), float2(0.537, -0.474), float2(-0.265, -0.419), float2(0.792, 0.191),\n"
+    "    float2(-0.242, 0.997), float2(-0.814, 0.914), float2(0.200, 0.786), float2(0.144, -0.141)\n"
+    "};\n"
+    "float shadowSeen(sampler2D map, float4 l, float radius, float slant)\n"
     "{\n"
-    "    float4 t = tex2D(colourMap, uv);\n"
-    "    float d = light.z - params.y;\n"
-    "    float2 texel = light.xy * params.z - 0.5, f = frac(texel);\n"
-    "    float2 at = (texel - f + 0.5) * params.x;\n"
-    "    float s00 = tex2D(shadowMap, at).r >= d ? 1 : 0;\n"
-    "    float s10 = tex2D(shadowMap, at + float2(params.x, 0)).r >= d ? 1 : 0;\n"
-    "    float s01 = tex2D(shadowMap, at + float2(0, params.x)).r >= d ? 1 : 0;\n"
-    "    float s11 = tex2D(shadowMap, at + params.xx).r >= d ? 1 : 0;\n"
-    "    float near = lerp(lerp(s00, s10, f.x), lerp(s01, s11, f.x), f.y);\n"
-    "    float2 edge = abs(light.xy - 0.5);\n"
-    "    float seen = max(edge.x, edge.y) < 0.5 && light.z < 1 ? near : 1;\n"
-    "    float4 c = lerp(shade, lit, seen);\n"
-    "    return t * c;\n"
+    "    float d = l.z - params.z - slant, sum = 0;\n"
+    "    [unroll] for (int k = 0; k < 16; k++)\n"
+    "        sum += tex2Dlod(map, float4(l.xy + disk[k] * radius, 0, 0)).r >= d ? 1 : 0;\n"
+    "    float2 edge = abs(l.xy - 0.5);\n"
+    "    return max(edge.x, edge.y) < 0.5 && l.z < 1 ? sum / 16 : 1;\n"
+    "}\n"
+    "float4 receiveColour(ReceiveOut i) : COLOR\n"
+    "{\n"
+    "    float seen = 1;\n"
+    "    if (i.depthFog.x < cascadeFar.x) seen = shadowSeen(map0, i.l0, blur.x, i.depthFog.z);\n"
+    "    else if (i.depthFog.x < cascadeFar.y) seen = shadowSeen(map1, i.l1, blur.y, i.depthFog.z);\n"
+    "    else if (i.depthFog.x < cascadeFar.z) seen = shadowSeen(map2, i.l2, blur.z, i.depthFog.z);\n"
+    "    else if (i.depthFog.x < cascadeFar.w) seen = shadowSeen(map3, i.l3, blur.w, i.depthFog.z);\n"
+    "    float4 c = tex2D(colourMap, i.uv) * lerp(i.shade, i.lit, seen);\n"
+    "    c.rgb = fogColour.w > 0 ? lerp(fogColour.rgb, c.rgb, i.depthFog.y) : c.rgb;\n"
+    "    return c;\n"
     "}\n";
 
 typedef HRESULT (WINAPI *d3d_compile_fn)(LPCVOID, SIZE_T, LPCSTR, const D3D_SHADER_MACRO *, ID3DInclude *, LPCSTR,
@@ -2240,11 +2268,14 @@ static int shadow_compile(d3d_compile_fn compile, const char *entry, const char 
 
 static void shadow_drop_targets(void)
 {
-    if (d9.shadowTex)
-        IDirect3DTexture9_Release(d9.shadowTex);
+    int i;
+    for (i = 0; i < GFX_SHADOW_CASCADES; i++) {
+        if (d9.shadowTex[i])
+            IDirect3DTexture9_Release(d9.shadowTex[i]);
+        d9.shadowTex[i] = NULL;
+    }
     if (d9.shadowDepth)
         IDirect3DSurface9_Release(d9.shadowDepth);
-    d9.shadowTex = NULL;
     d9.shadowDepth = NULL;
     d9.shadowReady = 0;
 }
@@ -2269,25 +2300,34 @@ static void shadow_drop(void)
         d9.shadowState = 0;
 }
 
+static int shadow_supported(void)
+{
+    D3DDISPLAYMODE mode;
+    D3DCAPS9 caps;
+    char env[8];
+
+    if (GetEnvironmentVariableA("RAGEXE_SHADOWS", env, sizeof env) && env[0] == '0' && !env[1])
+        return 0;
+    if (FAILED(IDirect3DDevice9_GetDeviceCaps(d9.dev, &caps)) || caps.PixelShaderVersion < D3DPS_VERSION(3, 0)
+        || ((d9.behaviour & D3DCREATE_HARDWARE_VERTEXPROCESSING) && caps.VertexShaderVersion < D3DVS_VERSION(3, 0))
+        || caps.MaxTextureWidth < GFX_SHADOW_SIZE || caps.MaxTextureHeight < GFX_SHADOW_SIZE)
+        return 0;
+    return SUCCEEDED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode))
+           && SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_RENDERTARGET,
+                                                     D3DRTYPE_TEXTURE, D3DFMT_R32F));
+}
+
 static int shadow_prepare(void)
 {
     static d3d_compile_fn compile;
     static int loaded;
     ID3DBlob *code[4] = { NULL, NULL, NULL, NULL };
-    D3DDISPLAYMODE mode;
-    char env[8];
     int i, ok;
 
     if (d9.shadowState < 0)
         return 0;
     if (d9.shadowState == 0) {
-        if (GetEnvironmentVariableA("RAGEXE_SHADOWS", env, sizeof env) && env[0] == '0' && !env[1]) {
-            d9.shadowState = -1;
-            return 0;
-        }
-        if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode))
-            || FAILED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_RENDERTARGET,
-                                                   D3DRTYPE_TEXTURE, D3DFMT_R32F))) {
+        if (!shadow_supported()) {
             d9.shadowState = -1;
             return 0;
         }
@@ -2296,10 +2336,10 @@ static int shadow_prepare(void)
             loaded = 1;
             compile = dll ? (d3d_compile_fn)(void *)GetProcAddress(dll, "D3DCompile") : NULL;
         }
-        ok = compile && shadow_compile(compile, "vs_depth", "vs_2_0", &code[0])
-             && shadow_compile(compile, "ps_depth", "ps_2_0", &code[1])
-             && shadow_compile(compile, "vs_receive", "vs_2_0", &code[2])
-             && shadow_compile(compile, "ps_receive", "ps_2_0", &code[3])
+        ok = compile && shadow_compile(compile, "depthPass", "vs_2_0", &code[0])
+             && shadow_compile(compile, "depthColour", "ps_2_0", &code[1])
+             && shadow_compile(compile, "receive", "vs_3_0", &code[2])
+             && shadow_compile(compile, "receiveColour", "ps_3_0", &code[3])
              && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[0]), &d9.vsDepth))
              && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[1]), &d9.psDepth))
              && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[2]), &d9.vsReceive))
@@ -2314,13 +2354,17 @@ static int shadow_prepare(void)
         }
         d9.shadowState = 1;
     }
-    if (!d9.shadowTex
-        && (FAILED(IDirect3DDevice9_CreateTexture(d9.dev, SHADOW_SIZE, SHADOW_SIZE, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F,
-                                                  D3DPOOL_DEFAULT, &d9.shadowTex, NULL))
-            || FAILED(IDirect3DDevice9_CreateDepthStencilSurface(d9.dev, SHADOW_SIZE, SHADOW_SIZE, D3DFMT_D24X8,
-                                                                 D3DMULTISAMPLE_NONE, 0, TRUE, &d9.shadowDepth, NULL)))) {
-        shadow_drop_targets();
-        return 0;
+    if (!d9.shadowDepth) {
+        for (i = 0; i < GFX_SHADOW_CASCADES; i++)
+            if (FAILED(IDirect3DDevice9_CreateTexture(d9.dev, GFX_SHADOW_SIZE, GFX_SHADOW_SIZE, 1, D3DUSAGE_RENDERTARGET,
+                                                      D3DFMT_R32F, D3DPOOL_DEFAULT, &d9.shadowTex[i], NULL)))
+                break;
+        if (i < GFX_SHADOW_CASCADES
+            || FAILED(IDirect3DDevice9_CreateDepthStencilSurface(d9.dev, GFX_SHADOW_SIZE, GFX_SHADOW_SIZE, D3DFMT_D24X8,
+                                                                 D3DMULTISAMPLE_NONE, 0, TRUE, &d9.shadowDepth, NULL))) {
+            shadow_drop_targets();
+            return 0;
+        }
     }
     return 1;
 }
@@ -2332,30 +2376,17 @@ static const D3DRENDERSTATETYPE shadow_states[] = { D3DRS_ZENABLE, D3DRS_ZWRITEE
 int gfx_shadow_begin(const struct GfxShadow *shadow)
 {
     static const DWORD values[] = { TRUE, TRUE, D3DCMP_LESSEQUAL, D3DCULL_NONE, FALSE, FALSE, FALSE, FALSE };
-    IDirect3DSurface9 *level = NULL;
     size_t i;
 
     batch_flush();
     d9.shadowReady = 0;
-    if (!d9.dev || d9.shadowPass || !shadow_prepare())
+    if (!d9.dev || d9.shadowPass || shadow->cascades < 1 || shadow->cascades > GFX_SHADOW_CASCADES || !shadow_prepare())
         return 0;
     if (FAILED(IDirect3DDevice9_GetRenderTarget(d9.dev, 0, &d9.savedTarget)))
         return 0;
     if (FAILED(IDirect3DDevice9_GetDepthStencilSurface(d9.dev, &d9.savedDepth)))
         d9.savedDepth = NULL;
     IDirect3DDevice9_GetViewport(d9.dev, &d9.savedViewport);
-    if (FAILED(IDirect3DTexture9_GetSurfaceLevel(d9.shadowTex, 0, &level))
-        || FAILED(IDirect3DDevice9_SetRenderTarget(d9.dev, 0, level))) {
-        if (level)
-            IDirect3DSurface9_Release(level);
-        IDirect3DSurface9_Release(d9.savedTarget);
-        if (d9.savedDepth)
-            IDirect3DSurface9_Release(d9.savedDepth);
-        return 0;
-    }
-    IDirect3DSurface9_Release(level);
-    IDirect3DDevice9_SetDepthStencilSurface(d9.dev, d9.shadowDepth);
-    IDirect3DDevice9_Clear(d9.dev, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffff, 1.0f, 0);
     for (i = 0; i < sizeof shadow_states / sizeof shadow_states[0]; i++) {
         if (FAILED(IDirect3DDevice9_GetRenderState(d9.dev, shadow_states[i], &d9.savedShadowStates[i])))
             d9.savedShadowStates[i] = values[i];
@@ -2364,7 +2395,29 @@ int gfx_shadow_begin(const struct GfxShadow *shadow)
     IDirect3DDevice9_SetVertexShader(d9.dev, d9.vsDepth);
     IDirect3DDevice9_SetPixelShader(d9.dev, d9.psDepth);
     d9.shadow = *shadow;
+    d9.shadowCascade = -1;
     d9.shadowPass = 1;
+    return 1;
+}
+
+int gfx_shadow_cascade(int cascade)
+{
+    IDirect3DSurface9 *level = NULL;
+    int ok;
+
+    batch_flush();
+    d9.shadowCascade = -1;
+    if (!d9.shadowPass || cascade < 0 || cascade >= d9.shadow.cascades)
+        return 0;
+    ok = SUCCEEDED(IDirect3DTexture9_GetSurfaceLevel(d9.shadowTex[cascade], 0, &level))
+         && SUCCEEDED(IDirect3DDevice9_SetRenderTarget(d9.dev, 0, level));
+    if (level)
+        IDirect3DSurface9_Release(level);
+    if (!ok)
+        return 0;
+    IDirect3DDevice9_SetDepthStencilSurface(d9.dev, d9.shadowDepth);
+    IDirect3DDevice9_Clear(d9.dev, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffff, 1.0f, 0);
+    d9.shadowCascade = cascade;
     return 1;
 }
 
@@ -2407,21 +2460,19 @@ static void matrix_multiply(D3DMATRIX *out, const D3DMATRIX *a, const D3DMATRIX 
     *out = r;
 }
 
-/* The light's space for the mesh: in the shadow pass its clip space (x and y from -1 to 1, depth
+/* A cascade's view-to-light matrix: in the shadow pass its clip space (x and y from -1 to 1, depth
    0 to 1), otherwise the shadow map's texture space, texel centres where the pass drew them. */
-static void shadow_light_matrix(D3DMATRIX *out, const D3DMATRIX *view, int texture)
+static void shadow_light_matrix(D3DMATRIX *out, int cascade, int texture)
 {
-    D3DMATRIX from;
-    memcpy(&from, d9.shadow.fromView, sizeof from);
-    matrix_multiply(out, view, &from);
+    memcpy(out, d9.shadow.fromView[cascade], sizeof *out);
     if (texture) {
         D3DMATRIX tex;
         memset(&tex, 0, sizeof tex);
         tex._11 = 0.5f;
         tex._22 = -0.5f;
         tex._33 = 1.0f;
-        tex._41 = 0.5f + 0.5f / SHADOW_SIZE;
-        tex._42 = 0.5f + 0.5f / SHADOW_SIZE;
+        tex._41 = 0.5f + 0.5f / GFX_SHADOW_SIZE;
+        tex._42 = 0.5f + 0.5f / GFX_SHADOW_SIZE;
         tex._44 = 1.0f;
         matrix_multiply(out, out, &tex);
     }
@@ -2429,8 +2480,11 @@ static void shadow_light_matrix(D3DMATRIX *out, const D3DMATRIX *view, int textu
 
 static void shadow_draw_depth(struct gfx_mesh *m, const D3DMATRIX *view, int first, int count)
 {
-    D3DMATRIX toClip;
-    shadow_light_matrix(&toClip, view, 0);
+    D3DMATRIX light, toClip;
+    if (d9.shadowCascade < 0)
+        return;
+    shadow_light_matrix(&light, d9.shadowCascade, 0);
+    matrix_multiply(&toClip, view, &light);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 0, &toClip._11, 4);
     IDirect3DDevice9_SetFVF(d9.dev, FVF_MESH);
     IDirect3DDevice9_SetStreamSource(d9.dev, 0, m->vb, 0, sizeof *m->verts);
@@ -2445,46 +2499,75 @@ static void shadow_draw_receiving(struct gfx_mesh *m, const D3DMATRIX *toClip, c
     static const D3DSAMPLERSTATETYPE ids[] = { D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_MAGFILTER,
                                                D3DSAMP_MINFILTER, D3DSAMP_MIPFILTER };
     static const DWORD values[] = { D3DTADDRESS_CLAMP, D3DTADDRESS_CLAMP, D3DTEXF_POINT, D3DTEXF_POINT, D3DTEXF_NONE };
-    DWORD saved[sizeof ids / sizeof ids[0]];
+    DWORD saved[GFX_SHADOW_CASCADES][sizeof ids / sizeof ids[0]], fogOn = FALSE, fogColour = 0;
     const struct GfxWorldView *w = &d9.worldView;
-    D3DMATRIX toLight;
-    float fog[4], scale[4], params[4];
+    D3DMATRIX light;
+    float fog[4], scale[4], lightView[4], offset[4], farDepth[4], blur[4], slope[4], params[4], colour[4];
+    int c;
     size_t i;
 
-    shadow_light_matrix(&toLight, view, 1);
     fog[0] = w->fogStart;
     fog[1] = w->fogEnd;
     fog[2] = w->fogEnd != w->fogStart ? 1.0f / (w->fogEnd - w->fogStart) : 0.0f;
     fog[3] = 0.0f;
-    scale[0] = w->colourScale[0];
-    scale[1] = w->colourScale[1];
-    scale[2] = w->colourScale[2];
-    scale[3] = 1.0f;
-    params[0] = 1.0f / SHADOW_SIZE;
-    params[1] = d9.shadow.bias;
-    params[2] = (float)SHADOW_SIZE;
+    for (i = 0; i < 3; i++) {
+        scale[i] = w->colourScale[i];
+        lightView[i] = d9.shadow.lightView[i];
+    }
+    scale[3] = lightView[3] = 0.0f;
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+        offset[c] = c < d9.shadow.cascades ? d9.shadow.offset[c] : 0.0f;
+        farDepth[c] = c < d9.shadow.cascades ? d9.shadow.farDepth[c] : 0.0f;
+        blur[c] = c < d9.shadow.cascades ? d9.shadow.blur[c] : 0.0f;
+    }
+    params[0] = 1.0f / GFX_SHADOW_SIZE;
+    params[1] = (float)GFX_SHADOW_SIZE;
+    params[2] = d9.shadow.bias;
     params[3] = 0.0f;
+    IDirect3DDevice9_GetRenderState(d9.dev, D3DRS_FOGENABLE, &fogOn);
+    IDirect3DDevice9_GetRenderState(d9.dev, D3DRS_FOGCOLOR, &fogColour);
+    colour[0] = (float)((fogColour >> 16) & 0xff) / 255.0f;
+    colour[1] = (float)((fogColour >> 8) & 0xff) / 255.0f;
+    colour[2] = (float)(fogColour & 0xff) / 255.0f;
+    colour[3] = fogOn ? 1.0f : 0.0f;
     IDirect3DDevice9_SetVertexShader(d9.dev, d9.vsReceive);
     IDirect3DDevice9_SetPixelShader(d9.dev, d9.psReceive);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 0, &toClip->_11, 4);
-    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 4, &toLight._11, 4);
-    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 8, fog, 1);
-    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 9, scale, 1);
-    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 0, params, 1);
-    IDirect3DDevice9_SetTexture(d9.dev, 1, (IDirect3DBaseTexture9 *)d9.shadowTex);
-    for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
-        if (FAILED(IDirect3DDevice9_GetSamplerState(d9.dev, 1, ids[i], &saved[i])))
-            saved[i] = values[i];
-        IDirect3DDevice9_SetSamplerState(d9.dev, 1, ids[i], values[i]);
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 4, &view->_11, 4);
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+        shadow_light_matrix(&light, c < d9.shadow.cascades ? c : 0, 1);
+        IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 8 + c * 4, &light._11, 4);
+    }
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 24, fog, 1);
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 25, scale, 1);
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 26, lightView, 1);
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 27, offset, 1);
+    slope[0] = d9.shadow.slant;
+    slope[1] = 8.0f;
+    slope[2] = slope[3] = 0.0f;
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 28, slope, 1);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 0, farDepth, 1);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 1, params, 1);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 2, colour, 1);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 3, blur, 1);
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+        IDirect3DDevice9_SetTexture(d9.dev, 1 + c, (IDirect3DBaseTexture9 *)d9.shadowTex[c]);
+        for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
+            if (FAILED(IDirect3DDevice9_GetSamplerState(d9.dev, 1 + c, ids[i], &saved[c][i])))
+                saved[c][i] = values[i];
+            IDirect3DDevice9_SetSamplerState(d9.dev, 1 + c, ids[i], values[i]);
+        }
     }
     IDirect3DDevice9_SetFVF(d9.dev, FVF_MESH);
     IDirect3DDevice9_SetStreamSource(d9.dev, 0, m->vb, 0, sizeof *m->verts);
     IDirect3DDevice9_SetIndices(d9.dev, m->ib);
     IDirect3DDevice9_DrawIndexedPrimitive(d9.dev, D3DPT_TRIANGLELIST, 0, 0, (UINT)m->nverts, (UINT)first,
                                           (UINT)count / 3);
-    for (i = 0; i < sizeof ids / sizeof ids[0]; i++)
-        IDirect3DDevice9_SetSamplerState(d9.dev, 1, ids[i], saved[i]);
-    IDirect3DDevice9_SetTexture(d9.dev, 1, texture_of(d9.stageTex[1]));
+    for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
+        for (i = 0; i < sizeof ids / sizeof ids[0]; i++)
+            IDirect3DDevice9_SetSamplerState(d9.dev, 1 + c, ids[i], saved[c][i]);
+        IDirect3DDevice9_SetTexture(d9.dev, 1 + c, texture_of(d9.stageTex[1 + c]));
+    }
     IDirect3DDevice9_SetVertexShader(d9.dev, NULL);
     IDirect3DDevice9_SetPixelShader(d9.dev, NULL);
 }

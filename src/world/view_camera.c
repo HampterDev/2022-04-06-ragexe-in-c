@@ -283,11 +283,8 @@ void view_on_render(struct View *self)
     g_quakeFrameDrawn = 1;
     r = g_renderer;
     view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
-    /* custom: the models' shadows cover a square around what the camera looks at, wider the
-       further it stands (render/renderer.h) */
-    renderer_shadow_frame(r, view, self->at,
-                          self->distance * 1.5f < 200.0f ? 200.0f
-                          : self->distance * 1.5f > 2500.0f ? 2500.0f : self->distance * 1.5f);
+    /* custom: the models' shadows, fitted to what the camera sees (render/renderer.h) */
+    renderer_shadow_frame(r, view, self->at, self->distance);
     g_drawnCellMinY = 999;
     g_drawnCellMinX = 999;
     g_drawnCellMaxY = 0;

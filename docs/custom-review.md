@@ -13115,3 +13115,57 @@ and the full `tests\build.bat` pass; `test_renderer_storage` stubs the shadow ca
 shadows from models outside the view (only the frame's model draws cast, so a shadow can end at
 the screen's edge), shadows on the ground, sprites or effects, the GL backend, a frame-time
 measurement, and a setting in the options window.
+
+## Sharper shadows: cascades, steady texels, offset and soft edges (2026-11-09)
+
+Patrick found the first shadows blocky and asked for shadows that look exact on Direct3D 9: a
+map fitted to the view, more texels, cascades, texels that stay put, and a bias that holds on
+slanted surfaces. Seeing them sharp, he asked for the soft border the first, coarse map had.
+
+- **Why they were blocky.** One 2048 map covered a square of 1.5 times the camera's distance in
+  radius, about 1,700 units across in `prontera_crowd`: 0.8 units a texel, while one world unit is
+  about six screen pixels at the default zoom (RO's view is 15 degrees high), so a texel covered
+  about five pixels. Most of the square lay off screen.
+- **Fitted cascades.** `renderer_shadow_frame` now cuts the view into four slices of view depth
+  (`GFX_SHADOW_CASCADES`), between where the view's four corner rays enter and leave a band from
+  300 units above to 60 below the camera's focus (+y down), where the receiving models stand, no
+  further than four times the camera's distance (at most 8,000). The slices grow with the depth
+  (0.7 of the way from even to geometric steps). Each cascade's map covers its slice's part of the
+  band as the light sees it, plus a margin, in its own 2048 by 2048 `R32F` target; the four share
+  one depth surface (80 MB with it, where one 4096 map with its depth surface takes 128 MB and
+  spends the same texels evenly). The light's map is orthographic, so a caster off screen that
+  shades something in view lands on the same place of the map and is kept; only its depth range
+  (3,000 units either way) bounds it. By the view's geometry (not measured), a texel at the default
+  view is now about 0.15 units, under a screen pixel.
+- **Choosing a cascade per pixel** needs dynamic branching, so the receiving shaders move to
+  `vs_3_0`/`ps_3_0`; the backend asks for shader model 3 (in hardware vertex processing) and
+  `GFX_SHADOW_SIZE` textures and draws no shadows without them. Shader model 3 leaves the fog to
+  the pixel shader, which blends towards `D3DRS_FOGCOLOR` while `D3DRS_FOGENABLE` is on, by the
+  same linear factor. The shadow pass still uses `vs_2_0`/`ps_2_0`, once per cascade
+  (`gfx_shadow_cascade`).
+- **Steady texels.** A cascade's half size is rounded up to a multiple of 8 units and its centre
+  kept to whole texels, so its texels stay put while the camera moves and edges do not crawl.
+- **Offset and bias.** Each model vertex now carries its face's normal
+  (`GfxMeshVertex.nx`/`ny`/`nz`, `D3DFVF_NORMAL`; zero for the ground, which does not receive). The
+  receiving vertex shader moves the lookup off the surface towards the light by 1.5 texels times
+  the sine of the angle between the surface and the light, and the constant bias stays 4 units: at
+  1 unit, Prontera's flower beds, which lay their flowers a unit or two over the grass, shaded the
+  grass under them.
+- **Soft edges.** The lookup is the share of 16 points on a disc of 0.5 units radius that are lit
+  (point samples of the map), so edges fade over about a unit, as the first coarse map blurred
+  them. Over that disc a slanted surface moves along the light, which shaded a band of a beam that
+  lies at a steep angle to it, so the bias grows by the disc's radius times the tangent of the
+  slant (up to 8 times). With a radius of 1.5 the edges spread over three units and the shadows of
+  thin casters, such as a lamp post's across the fountain, faded away.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, captures compared with the first shadow
+build and with each step: the statue's and the lamp post's shadows in the fountain keep their
+shapes with smooth edges instead of steps of a texel; the house's beam keeps its shadow (its
+brightness across the edge measured the same in all three builds); the flower bed shows no shadow
+of its own flowers. Against the unchanged objects, 39,575 pixels of `prontera_crowd` differ by
+more than a step, 30,237 to 32,027 in the other Prontera scenes, 46,272 and 85,752 in
+`camera_level_view`, and 2,585, 2,559 and 306 on `iz_int03`. A view of the shadow test alone (lit
+white, shadowed black) found the band the soft edges shaded on the beam and showed it gone with the
+slope bias. `build.bat check` and the full
+`tests\build.bat` pass. Not done: shadows from models outside the frame's draws, the GL backend,
+a frame-time measurement, and a setting for the softness.

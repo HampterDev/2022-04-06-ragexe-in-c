@@ -210,27 +210,27 @@ static void flush_blended_wrap(struct Renderer *self)
 static int draw_shadow_map(struct Renderer *self)
 {
     struct RenderQueue *l = &self->queues[RENDER_MODEL_MESH];
-    struct GfxShadow shadow;
-    const float *view = NULL;
+    int cascade;
 
     if (!self->shadowPending)
         return 0;
     self->shadowPending = 0;
-    if (!l->count)
+    if (!l->count || !gfx_shadow_begin(&self->shadow))
         return 0;
-    memcpy(shadow.fromView, self->shadowFromView, sizeof shadow.fromView);
-    shadow.bias = self->shadowBias;
-    if (!gfx_shadow_begin(&shadow))
-        return 0;
-    for (size_t i = 0; i < l->count; ++i) {
-        struct RPMeshDraw *n = l->items[i].primitive;
-        if (!view || memcmp(view, n->view, sizeof n->view)) {
-            struct GfxWorldView world;
-            renderer_world_view(self, n->view, NULL, &world);
-            gfx_set_world_view(&world);
-            view = n->view;
+    for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
+        const float *view = NULL;
+        if (!gfx_shadow_cascade(cascade))
+            continue;
+        for (size_t i = 0; i < l->count; ++i) {
+            struct RPMeshDraw *n = l->items[i].primitive;
+            if (!view || memcmp(view, n->view, sizeof n->view)) {
+                struct GfxWorldView world;
+                renderer_world_view(self, n->view, NULL, &world);
+                gfx_set_world_view(&world);
+                view = n->view;
+            }
+            gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
         }
-        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
     }
     gfx_shadow_end();
     return 1;
