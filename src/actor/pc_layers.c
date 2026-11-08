@@ -632,8 +632,8 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
     struct SprClip *clip;
     struct SprImg *image;
     void *palette;
-    float v[3], x, y, rhw, s, k, depth, top, bottom, left, right, top_d, bottom_d, shift;
-    double t;
+    float v[3], x, y, rhw, s, k, depth, top, bottom, left, right, shift, anchor[3];
+    double t, squash;
 
     if (obj->monster_job == 0x235 || !obj->has_shadow)
         return;
@@ -657,9 +657,15 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
     k = 1.0f;
     render_object_apply_pulse_scale(obj, &k);
     t = (double)(k * zoom * obj->shadow_scale);
-    top = (float)((double)clip->y * (double)s * (double)clip->zoomY * t + (double)y);
-    bottom = (float)((double)((image->heightHalved + 1) * image->height + clip->y) * (double)s * (double)clip->zoomY * t + (double)y
-                     + 1.0);
+    anchor[0] = m[0] * v[0] + m[3] * v[1] + m[6] * v[2] + m[9];
+    anchor[1] = m[1] * v[0] + m[4] * v[1] + m[7] * v[2] + m[10];
+    anchor[2] = depth;
+    /* custom: the shadow lies on the ground, so it is foreshortened with it; at the original's
+       tilts this is about 1, and near a level view the shadow flattens as the ground does */
+    squash = (double)sprite_ground_squash(m + 3, anchor);
+    top = (float)((double)clip->y * (double)s * (double)clip->zoomY * t * squash + (double)y);
+    bottom = (float)((double)((image->heightHalved + 1) * image->height + clip->y) * (double)s * (double)clip->zoomY * t * squash
+                     + (double)y + 1.0);
     left = (float)((double)clip->x * (double)s * (double)clip->zoomX * t + (double)x);
     right = (float)((double)((image->widthHalved + 1) * image->width + clip->x) * (double)s * (double)clip->zoomX * t + (double)x
                     + 1.0);
@@ -671,10 +677,8 @@ void render_object_render_shadow(struct RenderObject *obj, const float *matrix, 
     quad.x0 = shift + left;
     quad.bottom = bottom;
     quad.x1 = shift + right;
-    top_d = (top - y) * g_depthPerPixelCot;
-    bottom_d = (bottom - y) * g_depthPerPixelCot;
-    quad.depth_a = 1.0f / (depth - bottom_d) + 1.0e-5f;
-    quad.depth_b = 1.0f / (depth - top_d) + 1.0e-5f;
+    quad.depth_a = sprite_flat_row_rhw(m + 3, anchor, bottom - y) + 1.0e-5f;
+    quad.depth_b = sprite_flat_row_rhw(m + 3, anchor, top - y) + 1.0e-5f;
     quad.color = ((((unsigned)clip->color[3] << 8) + clip->color[0]) << 16) + ((unsigned)clip->color[1] << 8)
                  + clip->color[2];
     quad.angle = (float)clip->angle;

@@ -255,7 +255,7 @@ unsigned char prim_flying_sprites_process(struct EffectPrim *self)
 
 static float row_rhw(float row, float sy, float depth, float per_row, float eps)
 {
-    return 1.0f / ((row - sy) * per_row + depth) + eps;
+    return sprite_row_rhw(depth, (row - sy) * per_row) + eps;
 }
 
 static unsigned pack_argb(unsigned short a, unsigned char r, unsigned char g, unsigned char b)
@@ -367,7 +367,7 @@ unsigned char prim_ground_sprite_process(struct EffectPrim *self)
 void prim_ground_sprite_render(struct EffectPrim *self, const float *view)
 {
     struct RagEffect *master = self->master;
-    float sx, sy, rhw, pixel, depth;
+    float sx, sy, rhw, pixel, depth, anchor[3];
     void *spr, *act;
     struct Motion *motion;
     Vec3 at;
@@ -384,6 +384,9 @@ void prim_ground_sprite_render(struct EffectPrim *self, const float *view)
     }
     at.z = self->base.pos.z;
     depth = view[2] * at.x + view[5] * at.y + view[8] * at.z + view[11];
+    anchor[0] = view[0] * at.x + view[3] * at.y + view[6] * at.z + view[9];
+    anchor[1] = view[1] * at.x + view[4] * at.y + view[7] * at.z + view[10];
+    anchor[2] = depth;
     renderer_project_point(g_renderer, &at, view, &sx, &sy, &rhw);
     pixel = renderer_screen_scale(g_renderer, rhw);
     master = self->master;
@@ -420,8 +423,8 @@ void prim_ground_sprite_render(struct EffectPrim *self, const float *view)
         q.bottom = y1;
         q.right = shift_x + x1;
         q.image = img;
-        q.rhw_bottom = 1.0f / (depth - (y1 - sy) * g_depthPerPixelCot) + 1e-5f;
-        q.rhw_top = 1.0f / (depth - (y0 - sy) * g_depthPerPixelCot) + 1e-5f;
+        q.rhw_bottom = sprite_flat_row_rhw(view + 3, anchor, y1 - sy) + 1e-5f;
+        q.rhw_top = sprite_flat_row_rhw(view + 3, anchor, y0 - sy) + 1e-5f;
         fade = (float)(unsigned char)(int)self->alpha / 255.0f * (float)(argb >> 24);
         q.argb = (unsigned)(unsigned char)(int)fade << 24 | (argb & 0xffffff);
         q.angle = (float)clip->angle;

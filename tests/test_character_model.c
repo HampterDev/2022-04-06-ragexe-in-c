@@ -39,7 +39,7 @@ static struct Renderer renderer;
 struct Renderer *g_renderer = &renderer;
 struct Session g_session1;
 float g_viewDistance = 400.0f, g_spriteLayerDepthStep = 9e-6f, g_spriteScaleDepthBias = 3.6e-5f;
-float g_spriteScaleDivisor = 1.34f, g_spriteRowDepthStep = 0.001f, g_depthPerPixelCot = 0.001f;
+float g_spriteScaleDivisor = 1.34f, g_spriteRowDepthStep = 0.001f;
 static struct SprRes sprites[9];
 static struct PaletteRes palettes[9];
 static struct SprImg images[9];
@@ -380,6 +380,10 @@ void renderer_project_point(struct Renderer *r, const Vec3 *p, const float *m, f
 float renderer_project_depth(float rhw)
 {
     return 1 - rhw;
+}
+float sprite_row_rhw(float depth, float shift)
+{
+    return (depth - shift) / (depth * depth);
 }
 float renderer_screen_scale(struct Renderer *r, float rhw)
 {

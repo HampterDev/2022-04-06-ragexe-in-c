@@ -1,6 +1,8 @@
 #include "render/render_api.h"
+#include "render/renderer.h"
 #include "render/math3d.h"
 #include "render/rp_pool.h"
+#include <math.h>
 
 DWORD rp_fog_blend(DWORD argb)
 {
@@ -23,6 +25,64 @@ float renderer_screen_scale(struct Renderer *self, float rhw)
 float renderer_scale_x(struct Renderer *self)
 {
     return self->scaleX;
+}
+
+float sprite_row_rhw(float depth, float shift)
+{
+    float rhw;
+
+    if (!(depth > 0.0f))
+        return 1.0f / (depth + shift);
+    rhw = (depth - shift) / (depth * depth);
+    return rhw > 1.0f / RENDER_FAR_Z ? rhw : 1.0f / RENDER_FAR_Z;
+}
+
+float g_viewGroundUp[3] = {0.0f, 1.0f, 0.0f};
+
+/* how far (a share of the depth) a flat sprite is moved towards the camera so that it stays above
+   the ground's own triangles; an upright sprite's feet are lifted by twice that, to stay above it */
+#define FLAT_DEPTH_SLACK 0.001f
+
+static float ground_row_slope(const float *up, const float *pos)
+{
+    float height = up[0] * pos[0] + up[1] * pos[1] + up[2] * pos[2];
+
+    if (height == 0.0f || !g_renderer || g_renderer->proj[1] == 0.0f)
+        return 0.0f;
+    return up[1] / (g_renderer->proj[1] * height);
+}
+
+float sprite_flat_row_rhw(const float *up, const float *pos, float rows)
+{
+    float rhw;
+
+    if (!(pos[2] > 0.0f))
+        return 1.0f / pos[2];
+    rhw = (1.0f + FLAT_DEPTH_SLACK) / pos[2] + rows * ground_row_slope(up, pos);
+    return rhw > 1.0f / RENDER_FAR_Z ? rhw : 1.0f / RENDER_FAR_Z;
+}
+
+float sprite_ground_lift(const float *up, const float *pos, float step, float rows)
+{
+    float slope;
+
+    if (!(pos[2] > 0.0f))
+        return 0.0f;
+    slope = ground_row_slope(up, pos);
+    return ((slope > 0.0f ? slope : 0.0f) + step / (pos[2] * pos[2])) * rows
+           + 2.0f * FLAT_DEPTH_SLACK / pos[2];
+}
+
+float sprite_ground_squash(const float *up, const float *pos)
+{
+    float lu = sqrtf(up[0] * up[0] + up[1] * up[1] + up[2] * up[2]);
+    float lp = sqrtf(pos[0] * pos[0] + pos[1] * pos[1] + pos[2] * pos[2]);
+    float s;
+
+    if (lu == 0.0f || lp == 0.0f)
+        return 1.0f;
+    s = fabsf(up[0] * pos[0] + up[1] * pos[1] + up[2] * pos[2]) / (lu * lp) / 0.70710678f;
+    return s < 1.5f ? s : 1.5f;
 }
 
 float renderer_project_depth(float rhw)

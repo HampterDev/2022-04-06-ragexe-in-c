@@ -64,7 +64,30 @@ extern struct Renderer *g_renderer;
 
 extern float g_spriteDepthScale;
 extern float g_spriteRowDepthStep;
-extern float g_depthPerPixelCot;
+/* custom: the rhw of a sprite row `shift` camera-space units behind the sprite's anchor at depth
+   `depth`, where the original takes 1 / (depth + shift). That curve is replaced by its tangent at
+   the anchor, so rhw (and with it z) is linear in the row: every layer of a figure then lies on one
+   line and only the layer offsets order them, and a quad flat on the ground lies in the ground's
+   plane. Within the original's zoom and tilt the two differ by about one percent at most. */
+float sprite_row_rhw(float depth, float shift);
+/* custom: the rhw of a row `rows` screen rows below the anchor of a sprite lying flat on the
+   ground. `up` is the world's up axis in view space (entries 3..5 of a view matrix) and `pos` the
+   anchor in view space. The ground plane's 1/z is linear in the screen row with the slope
+   up_y / (proj[1] * up . pos), so the quad lies in the ground's plane at any zoom, tilt and screen
+   position. The original took a fixed 0.16 / scaleY units per row times cot of the tilt, right only
+   near the centre of the screen at the default distance of 300. */
+float sprite_flat_row_rhw(const float *up, const float *pos, float rows);
+/* custom: the rhw an upright sprite at `pos` (view space) needs on top of its rows' own so that
+   `rows` screen rows below its anchor stay in front of the ground: going down, the ground's rhw
+   rises by the slope above while the sprite's falls by step / depth^2. */
+float sprite_ground_lift(const float *up, const float *pos, float step, float rows);
+/* custom: how much a sprite lying on the ground at `pos` (view space) is foreshortened on screen
+   compared with the original's view of it at a tilt of -45: the sine of the angle between the view
+   ray and the ground, over sin 45. 1 at the original's default view, towards 0 as the view grows
+   level with the ground. */
+float sprite_ground_squash(const float *up, const float *pos);
+/* custom: the up axis of the world view in view space, set where the view matrix is built */
+extern float g_viewGroundUp[3];
 extern float g_spriteScaleDivisor;
 
 #endif

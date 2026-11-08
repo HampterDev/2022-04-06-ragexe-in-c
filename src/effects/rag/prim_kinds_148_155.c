@@ -476,7 +476,7 @@ static int clip_screen_box(const struct SprClip *clip, const struct SprImg *img,
 
 static float edge_rhw(float edge, float sy, float depth)
 {
-    return 1.0f / ((edge - sy) * g_spriteRowDepthStep + depth);
+    return sprite_row_rhw(depth, (edge - sy) * g_spriteRowDepthStep);
 }
 
 void prim_sprite_ghosts_render(struct EffectPrim *self, const float *view)

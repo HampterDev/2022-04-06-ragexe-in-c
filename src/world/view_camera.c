@@ -88,6 +88,9 @@ static void view_build_view_matrix(struct View *self)
     mat_invert(self->invViewMatrix, self->viewMatrix);
 }
 
+    g_viewGroundUp[0] = self->viewMatrix[3];
+    g_viewGroundUp[1] = self->viewMatrix[4];
+    g_viewGroundUp[2] = self->viewMatrix[5];
 void view_get_view_dir(struct View *self, Vec3 *dir)
 {
     float inv;
@@ -103,7 +106,7 @@ void view_get_view_dir(struct View *self, Vec3 *dir)
 
 void view_process_camera(struct View *self)
 {
-    float d, rot, zoom, x, y, z, t, cot, bias, k, r;
+    float d, rot, zoom, x, y, z, t, bias, k, r, depth_tilt;
 
     while (self->destLongitude >= 360.0f)
         self->destLongitude -= 360.0f;
@@ -140,14 +143,16 @@ void view_process_camera(struct View *self)
     self->at[1] = y;
     self->at[0] = x;
 
-    t = get_sin_deg((int)-rot) / get_cos_deg((int)-self->latitude);
-    cot = get_cos_deg((int)-self->latitude) / get_sin_deg((int)-self->latitude);
+    /* custom: the upright sprites' depth per screen row models a figure foreshortened by the tilt
+       (tan), but sprites keep their full height on screen. Past the original's tilt range that step
+       grows without bound and pushes a sprite's top through the near plane, so it takes the tilt
+       held to -65..-25; inside that range nothing changes. The flat sprites take the ground's
+       own slope from the view matrix (g_viewGroundUp, sprite_flat_row_rhw). */
+    depth_tilt = rot < -65.0f ? -65.0f : rot > -25.0f ? -25.0f : rot;
+    t = get_sin_deg((int)-depth_tilt) / get_cos_deg((int)-depth_tilt);
     k = g_spriteDepthScale * t;
     r = g_renderer->scaleY;
     g_spriteRowDepthStep = k / r;
-    k = g_spriteDepthScale * cot;
-    r = g_renderer->scaleY;
-    g_depthPerPixelCot = k / r;
     bias = get_sin_deg((int)-self->latitude) / get_sin_deg(45) * 9.0e-6f;
     g_spriteLayerDepthStep = g_fixedViewDistanceMax / self->distance * bias;
     g_spriteScaleDepthBias = g_fixedViewDistanceMax / self->distance * 3.6e-5f;

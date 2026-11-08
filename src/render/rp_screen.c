@@ -8,7 +8,6 @@ float g_spriteDepthScale = 0.159999996f;
 
 float g_spriteRowDepthStep = 0.159999996f;
 
-float g_depthPerPixelCot = 0.159999996f;
 
 float g_spriteScaleDivisor = 1.34000003f;
 
@@ -42,7 +41,6 @@ void renderer_set_projection(struct Renderer *self, int width, int height)
     self->scaleY = (float)height / 480.0f;
     g_spriteScaleDivisor = (float)height * 1.34f / 768.0f;
     g_spriteRowDepthStep = g_spriteDepthScale / self->scaleY;
-    g_depthPerPixelCot = g_spriteDepthScale / self->scaleY;
 }
 
 void renderer_clear_frame(struct Renderer *self, int flag)

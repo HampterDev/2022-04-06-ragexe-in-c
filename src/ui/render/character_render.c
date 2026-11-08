@@ -143,8 +143,8 @@ static int place_sprite(int index, float scale, const struct SprClip *clip, floa
             return 0;
     }
     step = (float)(index + 3);
-    *rhw_bottom = 1.0f / ((bottom - oy) * g_spriteRowDepthStep + viewpos[2]) + step * g_spriteLayerDepthStep + bias;
-    *rhw_top = 1.0f / ((top - oy) * g_spriteRowDepthStep + viewpos[2]) + step * g_spriteLayerDepthStep + bias;
+    *rhw_bottom = sprite_row_rhw(viewpos[2], (bottom - oy) * g_spriteRowDepthStep) + step * g_spriteLayerDepthStep + bias;
+    *rhw_top = sprite_row_rhw(viewpos[2], (top - oy) * g_spriteRowDepthStep) + step * g_spriteLayerDepthStep + bias;
     rec->left = left + xoff;
     rec->top = top;
     rec->bottom = bottom;
@@ -212,6 +212,11 @@ static struct TexDrawPrim *make_quad(const struct ChrSpriteRect *rec, DWORD *pal
         v[3].x = rec->right + 0.5f;
         v[3].y = rec->bottom + 0.5f;
     }
+    /* custom: the rows keep their own depth (z) for the depth test, but all four corners share
+       the top row's rhw. The GPU interpolates the texture by rhw, so a top and bottom rhw that
+       differ (more so the steeper the camera tilts) warp the flat sprite. The top row's rhw is
+       what the original's first corner carried, and the draw queues sort by it, so a shadow still
+       draws before the figure standing on it. */
     v[0].z = z_top;
     v[0].rhw = rec->rhw_top;
     v[0].u = place.u;
@@ -223,12 +228,12 @@ static struct TexDrawPrim *make_quad(const struct ChrSpriteRect *rec, DWORD *pal
     v[1].v = place.v;
     v[1].diffuse = rec->colour;
     v[2].z = z_bottom;
-    v[2].rhw = rec->rhw_bottom;
+    v[2].rhw = rec->rhw_top;
     v[2].u = place.u;
     v[2].v = place.v1;
     v[2].diffuse = rec->colour;
     v[3].z = z_bottom;
-    v[3].rhw = rec->rhw_bottom;
+    v[3].rhw = rec->rhw_top;
     v[3].u = place.u1;
     v[3].v = place.v1;
     v[3].diffuse = rec->colour;
@@ -611,8 +616,15 @@ struct TexDrawPrim *character_render_shadow_quad(struct CharacterRender *self, c
     rec.left = left;
     rec.bottom = bottom;
     rec.right = right;
-    rec.rhw_bottom = 1.0f / (depth - (bottom - sy) * g_depthPerPixelCot) + 1.0e-5f;
-    rec.rhw_top = 1.0f / (depth - (top - sy) * g_depthPerPixelCot) + 1.0e-5f;
+    {
+        float anchor[3];
+
+        anchor[0] = m[0] * ground.x + m[3] * ground.y + m[6] * ground.z + m[9];
+        anchor[1] = m[1] * ground.x + m[4] * ground.y + m[7] * ground.z + m[10];
+        anchor[2] = depth;
+        rec.rhw_bottom = sprite_flat_row_rhw(m + 3, anchor, bottom - sy) + 1.0e-5f;
+        rec.rhw_top = sprite_flat_row_rhw(m + 3, anchor, top - sy) + 1.0e-5f;
+    }
     rec.colour = (((((DWORD)rgba[3] << 8) + rgba[0]) << 8) + rgba[1]) << 8 | rgba[2];
     rec.angle = (float)clip->angle;
     rec.img = img;

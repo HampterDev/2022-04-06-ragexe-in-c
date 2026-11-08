@@ -535,8 +535,8 @@ void prim_sprite_trail_render(struct EffectPrim *self, const float *view)
                 quad.right = right;
             }
             quad.image = image;
-            quad.rhw_bottom = 1.0f / ((bottom - screen_y) * g_spriteRowDepthStep + depth) + 0.0001f;
-            quad.rhw_top = 1.0f / ((top - screen_y) * g_spriteRowDepthStep + depth) + 0.0001f;
+            quad.rhw_bottom = sprite_row_rhw(depth, (bottom - screen_y) * g_spriteRowDepthStep) + 0.0001f;
+            quad.rhw_top = sprite_row_rhw(depth, (top - screen_y) * g_spriteRowDepthStep) + 0.0001f;
             if (self->pattern & SPRITE_CLIP_COLORS) {
                 unsigned c = clip->color[3];
 

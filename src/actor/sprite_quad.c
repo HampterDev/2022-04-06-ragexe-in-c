@@ -17,6 +17,10 @@ float g_spriteLayerDepthStep = 9.00000032e-06f;
 
 float g_spriteScaleDepthBias = 3.60000013e-05f;
 
+/* custom: how many sprite pixels below its anchor an upright sprite may reach (its feet) and stay
+   in front of the ground */
+#define SPRITE_FOOT_ROWS 8.0f
+
 unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, int layer,
                                                   float scale, const struct SprClip *clip, float x, float y,
                                                   const float *view, float shift, float *depth_a, float *depth_b,
@@ -91,23 +95,27 @@ unsigned char render_object_clip_to_quad(struct RenderObject *self, int index, i
         float eb = bottom - y, et = top - y;
 
         if (self->slant_depth) {
-            eb = eb * g_depthPerPixelCot;
-            *depth_a = 1.0f / (view[2] - eb) + (float)n * g_spriteLayerDepthStep + zbias;
-            et = et * g_depthPerPixelCot;
-            db = 1.0f / (view[2] - et);
+            *depth_a = sprite_flat_row_rhw(g_viewGroundUp, view, eb) + (float)n * g_spriteLayerDepthStep + zbias;
+            db = sprite_flat_row_rhw(g_viewGroundUp, view, et);
         } else {
             float term = (float)n * g_spriteLayerDepthStep;
+            float lift = sprite_ground_lift(g_viewGroundUp, view, fixed_step ? 0.06f : g_spriteRowDepthStep,
+                                            SPRITE_FOOT_ROWS * scale * self->zoom);
 
+            /* custom: the original's bias keeps the feet in front of the ground only within its
+               zoom and tilt; closer or tilted further they sank into it */
+            if (lift > zbias)
+                zbias = lift;
             if (fixed_step) {
                 eb = eb * 0.06f;
                 et = et * 0.06f;
-                *depth_a = 1.0f / (eb + view[2]) + term + zbias;
+                *depth_a = sprite_row_rhw(view[2], eb) + term + zbias;
             } else {
                 eb = eb * g_spriteRowDepthStep;
-                *depth_a = 1.0f / (eb + view[2]) + term + zbias;
+                *depth_a = sprite_row_rhw(view[2], eb) + term + zbias;
                 et = et * g_spriteRowDepthStep;
             }
-            db = 1.0f / (et + view[2]);
+            db = sprite_row_rhw(view[2], et);
         }
         db = db + (float)(self->depth_layer + 3 + layer) * g_spriteLayerDepthStep;
         db = db + zbias;
@@ -234,6 +242,11 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
     if (*(const int *)palette == 0xd77b)
         uv.u1 = uv.u1 - 0.002f;
 
+    /* custom: the rows keep their own depth (z) for the depth test, but all four corners share
+       the top row's rhw. The GPU interpolates the texture by rhw, so a top and bottom rhw that
+       differ (more so the steeper the camera tilts) warp the flat sprite. The top row's rhw is
+       what the original's first corner carried, and the draw queues sort by it, so a shadow still
+       draws before the figure standing on it. */
     v[0].rhw = quad->depth_b;
     v[0].z = z_b;
     v[0].u = uv.u;
@@ -244,12 +257,12 @@ void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *qua
     v[1].u = uv.u1;
     v[1].v = uv.v;
     v[1].diffuse = quad->color;
-    v[2].rhw = quad->depth_a;
+    v[2].rhw = quad->depth_b;
     v[2].z = z_a;
     v[2].u = uv.u;
     v[2].v = uv.v1;
     v[2].diffuse = quad->color;
-    v[3].rhw = quad->depth_a;
+    v[3].rhw = quad->depth_b;
     v[3].z = z_a;
     v[3].u = uv.u1;
     v[3].v = uv.v1;
