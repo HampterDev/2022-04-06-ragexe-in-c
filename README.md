@@ -252,6 +252,9 @@ Data, time and leaks:
   checking for it, so the element swallowed the rest of the file and the connections in it.
 - Player-name requests and the name cache still time out correctly
   when the millisecond clock wraps, after 49.7 days of Windows uptime.
+- The emote cooldown still lets an emote through 2.5 seconds after the last one when the
+  millisecond clock wraps. The original added the wait to the last emote's time and compared,
+  so after the wrap every emote was refused until the next map load.
 
 ### Graphics and display
 
