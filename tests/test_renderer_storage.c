@@ -187,6 +187,9 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count)
     assert(mesh == (gfx_mesh *)&mesh_token && !model && first == 0 && count == 3);
     word(6); word((unsigned)first); word((unsigned)count); sample_textures(); ++draws;
 }
+int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
+void gfx_shadow_end(void) { abort(); }
+void gfx_shadow_receive(int on) { (void)on; abort(); }
 void renderer_world_view(const struct Renderer *renderer, const float *view, const float *scale,
                          struct GfxWorldView *out)
 {

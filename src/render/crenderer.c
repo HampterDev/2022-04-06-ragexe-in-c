@@ -206,11 +206,46 @@ static void flush_blended_wrap(struct Renderer *self)
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
 }
 
+/* custom: the shadow map of this frame's model meshes, which then receive it (render/gfx.h) */
+static int draw_shadow_map(struct Renderer *self)
+{
+    struct RenderQueue *l = &self->queues[RENDER_MODEL_MESH];
+    struct GfxShadow shadow;
+    const float *view = NULL;
+
+    if (!self->shadowPending)
+        return 0;
+    self->shadowPending = 0;
+    if (!l->count)
+        return 0;
+    memcpy(shadow.fromView, self->shadowFromView, sizeof shadow.fromView);
+    shadow.bias = self->shadowBias;
+    if (!gfx_shadow_begin(&shadow))
+        return 0;
+    for (size_t i = 0; i < l->count; ++i) {
+        struct RPMeshDraw *n = l->items[i].primitive;
+        if (!view || memcmp(view, n->view, sizeof n->view)) {
+            struct GfxWorldView world;
+            renderer_world_view(self, n->view, NULL, &world);
+            gfx_set_world_view(&world);
+            view = n->view;
+        }
+        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
+    }
+    gfx_shadow_end();
+    return 1;
+}
+
 static void flush_opaque_lists(struct Renderer *self)
 {
+    int shadows = draw_shadow_map(self);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
     flush_plain(self, RENDER_OPAQUE_CLAMP, 1, 1);
+    if (shadows)
+        gfx_shadow_receive(1);
     flush_mesh_queue(self, RENDER_MODEL_MESH);
+    if (shadows)
+        gfx_shadow_receive(0);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_WRAP);
     flush_plain(self, RENDER_OPAQUE_WRAP, 1, 1);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
@@ -379,7 +414,8 @@ void renderer_enable_fog(struct Renderer *self, int enable)
 
 void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient)
 {
-    (void)self;
+    memcpy(self->lightDir, dir, sizeof self->lightDir);
+    self->lightSet = 1;
     gfx_set_light(dir, diffuse, ambient);
 }
 

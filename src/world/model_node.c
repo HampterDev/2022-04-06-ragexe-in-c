@@ -47,6 +47,8 @@ void model_node_destroy(struct C3dNode *node, int version)
     free(node->children);
     free(node->faceInfo);
     free(node->lightInts);
+    free(node->shadowColours);
+    free(node->shadowGround);
     free(node);
 }
 
@@ -85,6 +87,9 @@ static int prepare_node(struct C3dNode *node, struct ModelResNode *res)
         node->faceInfo = calloc(faces, sizeof *node->faceInfo);
         node->lightInts = calloc(faces, 9 * sizeof *node->lightInts);
         if (!node->faceInfo || !node->lightInts) return 0;
+        node->shadowColours = calloc(faces, 3 * sizeof *node->shadowColours);
+        node->shadowGround = calloc(faces, 3 * sizeof *node->shadowGround);
+        if (!node->shadowColours || !node->shadowGround) return 0;
     }
     return 1;
 }

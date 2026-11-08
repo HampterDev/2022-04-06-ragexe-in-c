@@ -218,7 +218,7 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
    drawn and destroyed on the thread that draws. */
 struct GfxMeshVertex {
     float x, y, z;
-    DWORD diffuse;
+    DWORD diffuse, shadow;
     float u0, v0, u1, v1;
 };
 
@@ -247,6 +247,23 @@ void gfx_set_world_view(const struct GfxWorldView *view);
    current render and stage states, as gfx_draw would draw the same triangles pre-transformed.
    model is a 4x3 matrix in the view's layout that places the mesh in the world, NULL for none. */
 void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
+
+/* custom: shadow mapping for meshes. Between gfx_shadow_begin and gfx_shadow_end, gfx_draw_mesh
+   draws the meshes' depth from the light into the shadow map instead of colour. fromView takes the
+   view space of the draws' world views to the light's space, row vectors: x and y from -1 to 1
+   across the map, z from 0 to 1 along the light. While gfx_shadow_receive is on, gfx_draw_mesh
+   draws a vertex's shadow colour where the map puts its pixel more than bias behind a caster and
+   its own colour elsewhere; it is meant for draws with the stage states of opaque meshes (texture
+   times colour). gfx_shadow_begin answers 0 where the device cannot draw shadows, and the receiving
+   draws then look as before. */
+struct GfxShadow {
+    float fromView[16];
+    float bias;
+};
+
+int gfx_shadow_begin(const struct GfxShadow *shadow);
+void gfx_shadow_end(void);
+void gfx_shadow_receive(int on);
 
 typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, PlatformDisplay monitor);
 int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);

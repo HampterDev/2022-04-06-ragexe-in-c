@@ -1031,6 +1031,22 @@ void gfx_mesh_destroy(gfx_mesh *m)
     free(m);
 }
 
+/* custom: shadow maps are not drawn yet (render/gfx.h); receiving draws look as before */
+int gfx_shadow_begin(const struct GfxShadow *shadow)
+{
+    (void)shadow;
+    return 0;
+}
+
+void gfx_shadow_end(void)
+{
+}
+
+void gfx_shadow_receive(int on)
+{
+    (void)on;
+}
+
 void gfx_set_world_view(const struct GfxWorldView *view)
 {
     gl.worldView = *view;
@@ -1095,9 +1111,9 @@ void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
     p_glBindBuffer(GL_ARRAY_BUFFER, m->vbo);
     p_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)0);
     p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)12);
-    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)12);
-    p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)16);
-    p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)24);
+    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)16);
+    p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)20);
+    p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)28);
     p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);
     p_glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (const void *)(uintptr_t)(first * 2));
     p_glUniform1i(gl.uniforms[U_MESH], 0);

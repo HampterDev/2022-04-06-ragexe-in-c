@@ -412,7 +412,8 @@ and are uploaded on the main thread when the texture is next bound, because the 
 thread creates textures. `tests/test_gfx_gl.c` drives the backend through the gfx API and reads back
 pixels: clears, D3D pixel-centre edges, all texture formats, alpha test, vertex fog, blending, render
 target orientation and system-surface blits. A mesh keeps its arrays and gets its GL buffers on its
-first draw, on the main thread; the test does not draw one yet.
+first draw, on the main thread; the test does not draw one yet. The backend draws no shadow maps
+yet: `gfx_shadow_begin` answers 0, and the models are drawn without shadows.
 
 ### What was verified
 

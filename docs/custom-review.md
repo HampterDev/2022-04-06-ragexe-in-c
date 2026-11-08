@@ -13058,3 +13058,60 @@ pixels differ by one step (the scale's rounding), the rest on the edges of a han
 draw with a cull mode as well, and `test_projection` checks the colour scale `renderer_world_view`
 passes on. Not run: GL, `x64`, `freetype`, `libs`, CMake and the other platforms. No frame-time
 measurement was made.
+
+## Shadows on the models (2026-11-08)
+
+Patrick asked for the shadow pass after the models moved to device-projected meshes. The ground's
+lightmaps already hold the shadows the map's editor baked for the buildings, so only the models
+receive the new shadows; on the ground they would darken what is already dark. Only the models'
+opaque meshes cast them.
+
+- **The colour in shadow.** A model face's lit colour is the map's ambient plus its diffuse light
+  times the face's N.L, baked when the model is placed (`c3d_node_light`). It now also stores,
+  per face corner, the colour without the diffuse part: `C3dNode.shadowColours` beside the
+  `FaceInfo` colours (the ambient times the same 128-or-255 factor; unlit models, shade type 0,
+  keep their own colour) and `shadowGround` beside `lightInts` (the ground's cell colour added as
+  for the lit one). The mesh vertex carries it as `GfxMeshVertex.shadow`, which Direct3D 9 reads
+  as the specular colour. A face turned away from the light has the same two colours, so it does
+  not darken twice.
+- **The shadow map.** `renderer_shadow_frame` (`rp_project.c`), called from `view_on_render`,
+  builds an orthographic view along the map's light over a square of 1.5 times the camera's
+  distance (200 to 2,500 units) around the point it looks at, 3,000 units deep either way, as a
+  matrix from view space (the space every model draw already reaches with its own matrix) to the
+  light's. The renderer keeps the light from `renderer_set_light`. `flush_opaque_lists` first draws
+  this frame's `RENDER_MODEL_MESH` draws into the shadow map (`gfx_shadow_begin`/`gfx_shadow_end`),
+  then draws them with `gfx_shadow_receive` on.
+- **Which way the light points.** The map's light vector is the direction the light travels:
+  Prontera's is (0.5, 0.707, 0.5), and +y is down in the world. Taken as the direction towards the
+  light, the shadow map looked up from under the map and darkened every face that looks up (the
+  fountain's basin floor came out black in a view of the shadow test alone).
+- **Direct3D 9.** The fixed-function pipeline cannot compare depths, so the shadow pass and the
+  receiving draws use the backend's first shaders, HLSL compiled at the first shadow frame by
+  `D3DCompile` from `d3dcompiler_47.dll` (Windows 8.1 and later carry it; loaded with
+  `LoadLibrary`, so the build needs nothing new) for `vs_2_0`/`ps_2_0`. The shadow pass writes the
+  light depth into a 2048 by 2048 `R32F` render target with its own D24X8 depth surface; the
+  receiving pixel shader does what the stages do for an opaque mesh (texture times colour, the
+  colour scaled by the weather colour and rounded down as before) and blends between the shadow and
+  the lit colour by four shadow-map taps interpolated by the sample's place between texels. The
+  alpha test stays fixed-function, and so does the fog, from the vertex shader's fog output. Both
+  targets are `D3DPOOL_DEFAULT`, dropped before a reset and wherever the device is released, and
+  made again on the next shadow frame; the shaders go with the device. Without the DLL, without an
+  `R32F` render target, or with `RAGEXE_SHADOWS=0`, `gfx_shadow_begin` answers 0 and the models are
+  drawn as before. The GL backend answers 0 for now.
+- **Bias and filtering.** A pixel counts as lit while it lies no more than 4 world units behind
+  the depth in the map. With 2 units, faces at a slant to the light shadowed themselves in places;
+  8 looked the same as 4 on the lit faces. Four taps at half a texel (point samples averaged) left
+  the statue's shadow in the fountain in steps of a texel (about 0.8 units at the default zoom);
+  weighting the four nearest texels by the sample's position smooths it.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: the house's roof overhang now shades the
+wall under it, the statue throws a soft shadow into the basin, and the towers' sides away from the
+light keep their colour. Against the unchanged objects, 47,846 pixels of `prontera_crowd` differ by
+more than a step, 43,939 to 45,631 in the other Prontera scenes, 8,170 and 11,550 in
+`camera_level_view`, and 2,962, 2,972 and 312 on `iz_int03` (`iz_int03_enter`, `keyboard`,
+`windows_open`; a second run moved the first two by about ten pixels). A view of the shadow test alone (lit
+white, shadowed black) was checked on `prontera_crowd` and `camera_level_view`. `build.bat check`
+and the full `tests\build.bat` pass; `test_renderer_storage` stubs the shadow calls. Not done:
+shadows from models outside the view (only the frame's model draws cast, so a shadow can end at
+the screen's edge), shadows on the ground, sprites or effects, the GL backend, a frame-time
+measurement, and a setting in the options window.

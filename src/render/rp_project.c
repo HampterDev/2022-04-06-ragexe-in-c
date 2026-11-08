@@ -112,6 +112,84 @@ void renderer_world_view(const struct Renderer *self, const float *view, const f
     }
 }
 
+/* half the depth the shadow map covers along the light, in world units, and the depth a pixel may
+   lie behind the nearest caster and still count as lit */
+#define SHADOW_DEPTH 3000.0f
+#define SHADOW_BIAS 4.0f
+
+static int invert_4x3(const float *m, float *out)
+{
+    float det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6])
+                + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    float inv;
+    int i;
+
+    if (!(det > 1e-12f || det < -1e-12f))
+        return 0;
+    inv = 1.0f / det;
+    out[0] = (m[4] * m[8] - m[5] * m[7]) * inv;
+    out[1] = (m[2] * m[7] - m[1] * m[8]) * inv;
+    out[2] = (m[1] * m[5] - m[2] * m[4]) * inv;
+    out[3] = (m[5] * m[6] - m[3] * m[8]) * inv;
+    out[4] = (m[0] * m[8] - m[2] * m[6]) * inv;
+    out[5] = (m[2] * m[3] - m[0] * m[5]) * inv;
+    out[6] = (m[3] * m[7] - m[4] * m[6]) * inv;
+    out[7] = (m[1] * m[6] - m[0] * m[7]) * inv;
+    out[8] = (m[0] * m[4] - m[1] * m[3]) * inv;
+    for (i = 0; i < 3; i++)
+        out[9 + i] = -(m[9] * out[i] + m[10] * out[3 + i] + m[11] * out[6 + i]);
+    return 1;
+}
+
+void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float radius)
+{
+    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], world[4][4], len;
+    int i, j, k;
+
+    if (!self->lightSet || !(radius > 0.0f) || !invert_4x3(view, inv))
+        return;
+    len = sqrtf(self->lightDir[0] * self->lightDir[0] + self->lightDir[1] * self->lightDir[1]
+                + self->lightDir[2] * self->lightDir[2]);
+    if (!(len > 0.0f))
+        return;
+    /* the map's light vector points the way the light travels: Prontera's is (0.5, 0.707, 0.5),
+       down (+y) onto the map; taken the other way, the shadow map looked up from under it */
+    for (i = 0; i < 3; i++)
+        f[i] = self->lightDir[i] / len;
+    k = fabsf(f[0]) <= fabsf(f[1]) ? (fabsf(f[0]) <= fabsf(f[2]) ? 0 : 2) : (fabsf(f[1]) <= fabsf(f[2]) ? 1 : 2);
+    up[k] = 1.0f;
+    r[0] = up[1] * f[2] - up[2] * f[1];
+    r[1] = up[2] * f[0] - up[0] * f[2];
+    r[2] = up[0] * f[1] - up[1] * f[0];
+    len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    for (i = 0; i < 3; i++)
+        r[i] /= len;
+    u[0] = f[1] * r[2] - f[2] * r[1];
+    u[1] = f[2] * r[0] - f[0] * r[2];
+    u[2] = f[0] * r[1] - f[1] * r[0];
+    /* world to light, row vectors */
+    for (i = 0; i < 3; i++) {
+        world[i][0] = r[i] / radius;
+        world[i][1] = u[i] / radius;
+        world[i][2] = f[i] / (2.0f * SHADOW_DEPTH);
+        world[i][3] = 0.0f;
+    }
+    world[3][0] = -(focus[0] * r[0] + focus[1] * r[1] + focus[2] * r[2]) / radius;
+    world[3][1] = -(focus[0] * u[0] + focus[1] * u[1] + focus[2] * u[2]) / radius;
+    world[3][2] = 0.5f - (focus[0] * f[0] + focus[1] * f[1] + focus[2] * f[2]) / (2.0f * SHADOW_DEPTH);
+    world[3][3] = 1.0f;
+    /* view to world (the inverse view, a 4x4 with the last column 0 0 0 1), then to light */
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++) {
+            float sum = i == 3 ? world[3][j] : 0.0f;
+            for (k = 0; k < 3; k++)
+                sum += inv[i * 3 + k] * world[k][j];
+            self->shadowFromView[i * 4 + j] = sum;
+        }
+    self->shadowBias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
+    self->shadowPending = 1;
+}
+
 float renderer_project_depth(float rhw)
 {
     return (1.0f / rhw - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * rhw;

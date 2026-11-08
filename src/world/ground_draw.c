@@ -289,7 +289,7 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
             v->x = s->v[k].pos[0];
             v->y = s->v[k].pos[1];
             v->z = s->v[k].pos[2];
-            v->diffuse = s->v[k].colour;
+            v->diffuse = v->shadow = s->v[k].colour;
             v->u0 = s->v[k].u;
             v->v0 = s->v[k].v;
             v->u1 = s->v[k].lu;
