@@ -39,13 +39,24 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | --- | --- | --- | --- | --- |
 | `test_skill_poses` | `sub_87af10` (use pose) | `session_get_use_effect` | skills 0..0x1518, Lua begin effect patched to none | 5,401 calls, 0 mismatches |
 | `test_skill_poses` | `sub_8797a0` (cast pose) | `session_get_cast_effect` | the same skills x levels 0..7, job 0 | 43,208 calls, 0 mismatches |
+| `test_job_lookups` | `sub_8760c0` | `session_remap_job` | jobs -2..0x2400 | 9,223 calls, 0 mismatches |
+| `test_job_lookups` | `sub_878cb0` | `session_get_mounted_job` | jobs -2..0x2400 | 9,223 calls, 0 mismatches |
+| `test_job_lookups` | `sub_8840d0`, `sub_8840a0`, `sub_869980`, `sub_8698e0`, `sub_884160`, `sub_890310` | `session_is_super_novice_job`, `_expanded_super_novice_job`, `_fourth_job`, `_third_job`, `_expanded_job`, `_doram_job` | jobs -2..0x2400 each | 55,338 calls, 0 mismatches |
+| `test_job_lookups` | `sub_88dec0` | `session_get_max_job_level` | jobs -2..0x2400, the eight MaxLevelTable globals seeded with distinct values on both sides | 9,223 calls, 0 mismatches |
+| `test_job_lookups` | `sub_855840` | `session_get_party_color_by_seq` | seq -1..64 | 66 calls, 0 mismatches |
+| `test_job_lookups` | `sub_8771d0` | `session_get_pet_act_text` | actions -2..40, strings compared | 43 calls, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
+The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
+`jobLevel2nd` of the initial lift (fixed on main 2026-11-02; purist still has the swap).
+
+`extract_functions.py` copies named production functions (and a file-local struct or helper)
+into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
+the call for `test_job_lookups`.
 
 ## Candidates next
 
 Pure or nearly pure lookups with large switches or tables: the ground-skill effect table
-(`game_actor_am_groundskill`, once its spawn calls are stubbed), `session_remap_job`,
-`session_get_party_color_by_seq`, `session_get_pet_act_text`, the job sprite and IMF name
-builders (they read the job tables, which `.data` holds), and the message-id lookups that take
-only a code.
+(`game_actor_am_groundskill`, once its spawn calls are stubbed), the job sprite and IMF name
+builders (they read the job tables, which `.data` holds), the message-id lookups that take only
+a code, the talk-option name table, and the angle and distance helpers of the effects.

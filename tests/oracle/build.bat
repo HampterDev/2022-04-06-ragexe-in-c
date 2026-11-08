@@ -20,5 +20,25 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_skill_poses.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\job_lookups.inc" ^
+  "src/session/session_job_rules.c::line::struct JobRange { WORD first, last; };" ^
+  "src/session/session_job_rules.c::static int in_ranges(" ^
+  "src/session/session_job_rules.c::int session_is_third_job(" ^
+  "src/session/session_job_rules.c::BYTE session_is_fourth_job(" ^
+  "src/session/predicates.c::BYTE session_is_expanded_super_novice_job(" ^
+  "src/session/predicates.c::BYTE session_is_super_novice_job(" ^
+  "src/session/predicates.c::BYTE session_is_expanded_job(" ^
+  "src/session/predicates.c::BYTE session_is_doram_job(" ^
+  "src/session/session_lookups.c::int session_remap_job(" ^
+  "src/session/sprite_names.c::int session_get_mounted_job(" ^
+  "src/session/session_party.c::DWORD session_get_party_color_by_seq(" ^
+  "src/session/pet.c::const char *session_get_pet_act_text(" ^
+  "src/session/session_misc.c::int session_get_max_job_level("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_job_lookups.c" "%ROOT%\tests\oracle\oracle_image.c" /Fe:test_job_lookups.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_job_lookups.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0
