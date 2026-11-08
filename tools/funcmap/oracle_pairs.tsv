@@ -1,0 +1,55 @@
+addr	final_name	note
+8068e0	game_mode_show_skill_use	tests/oracle/test_skill_use.c
+801150	game_mode_on_notify_skill2	tests/oracle/test_skill_hit.c
+7eb5f0	game_mode_zc_useskill_ack	tests/oracle/test_skill_cast.c
+765b90	game_actor_am_groundskill	tests/oracle/test_ground_skill.c
+87af10	session_get_use_effect	tests/oracle/test_skill_poses.c
+8797a0	session_get_cast_effect	tests/oracle/test_skill_poses.c
+875350	session_get_begin_effect_id	tests/oracle/test_skill_poses.c, patched to -1
+6617e0	mode_mgr_get_game_mode	tests/oracle/skill_oracle.h, stood in
+65c540	world_get_actor_or_player	tests/oracle/skill_oracle.h, stood in
+65c580	world_get_game_actor_by_aid	tests/oracle/skill_oracle.h, stood in
+65c6a0	world_get_skill_by_aid	tests/oracle/skill_oracle.h, stood in
+74be60	able_to_make_effect_is_effect_exist	tests/oracle/skill_oracle.h, stood in
+74bf80	game_actor_launch_effect	tests/oracle/skill_oracle.h, stood in
+96aca0	effect_mgr_spawn	tests/oracle/skill_oracle.h, stood in
+90e8a0	sound_play_wave	tests/oracle/skill_oracle.h, stood in
+75f0c0	render_object_play_motion_range	tests/oracle/skill_oracle.h, stood in
+748960	render_object_turn_toward	tests/oracle/skill_oracle.h, stood in
+96b6c0	effect_mgr_find_effect	tests/oracle/skill_oracle.h, stood in
+957b80	servant_weapon_effect_count_armed	tests/oracle/skill_oracle.h, stood in
+957960	servant_weapon_effect_fire	tests/oracle/skill_oracle.h, stood in
+992050	effect_add_sound_cue	tests/oracle/skill_oracle.h, stood in
+97fff0	effect_mgr_is_registered	tests/oracle/skill_oracle.h, stood in
+a14060	skill_action_mgr_use	tests/oracle/skill_oracle.h, stood in
+a13e30	skill_action_mgr_hit	tests/oracle/skill_oracle.h, stood in
+a13b20	skill_action_mgr_cast	tests/oracle/skill_oracle.h, stood in
+a13ba0	skill_action_mgr_cast_on_target	tests/oracle/skill_oracle.h, stood in
+a13c20	skill_action_mgr_cast_at_cell	tests/oracle/skill_oracle.h, stood in
+883e20	session_is_monster_actor	tests/oracle/skill_oracle.h, stood in
+8699b0	session_is_pc_job	tests/oracle/skill_oracle.h, stood in
+853fb0	session_get_job_name	tests/oracle/skill_oracle.h, stood in
+876400	session_get_monster_skill_info	tests/oracle/skill_oracle.h, stood in
+85a220	session_clear_homun_commands	tests/oracle/skill_oracle.h, stood in
+789610	game_mode_get_view_heading	tests/oracle/skill_oracle.h, stood in
+75ef00	render_object_set_script_step_frames	tests/oracle/skill_oracle.h, stood in
+642fb0	ui_window_mgr_send_msg_	tests/oracle/skill_oracle.h, stood in
+477530	msg_str	tests/oracle/skill_oracle.h, stood in
+772740	game_mode_launch_effect_at	tests/oracle/skill_oracle.h, stood in
+8842a0	skill_effect_on_caster	tests/oracle/skill_oracle.h, stood in
+7f0820	skill_use_counted_effect	tests/oracle/test_skill_use.c, run real
+512e20	game_actor_get_counter	tests/oracle/skill_oracle.h, stood in
+7e64b0	game_actor_set_counter	tests/oracle/skill_oracle.h, stood in
+76ea10	game_mode_get_actor_name	tests/oracle/skill_oracle.h, stood in
+76ec30	game_mode_cell_to_world	tests/oracle/skill_oracle.h, stood in
+7705a0	game_mode_world_to_cell	tests/oracle/skill_oracle.h, stood in
+9f2780	c3d_attr_get_height	tests/oracle/skill_oracle.h, stood in
+7eb880	skill_cast_chat_line	tests/oracle/skill_oracle.h, stood in
+7ef530	skill_cast_special	tests/oracle/test_skill_cast.c, run real
+7ef710	skill_cast_target_look	tests/oracle/test_skill_cast.c, run real
+75f6e0	render_object_set_motion_delay	tests/oracle/skill_oracle.h, stood in
+74aea0	game_actor_get_job	tests/oracle/skill_oracle.h, stood in
+a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
+89a900	ground_scope_construct	tests/oracle/skill_oracle.h, stood in
+761af0	skill_action_mgr_instance	tests/oracle, run real
+93dfc0	client_lua_call	tests/oracle, stood in
