@@ -1,9 +1,9 @@
 """The case-value sweep: every jump table in the original, as the set of switch values it
 handles, against the case labels of the lifted C switch that handles the same values.
 
-    python -I tools/funcmap/case_sweep.py [--herc PATH] [--out report.tsv] [--min-share 0.5]
+    python -I tools/funcmap/case_sweep.py [--asm PATH] [--out report.tsv] [--min-share 0.5]
 
-A jump table in the reassembly (herc-client `text/*.inc`) is read with the compare in front of
+A jump table in the assembly listing (`text/*.inc`) is read with the compare in front of
 it: `sub/add/lea` for the base, `cmp R, N` and `ja default` for the range and the default arm,
 the optional `movzx R, byte [R+lookup_table_Y]` for the arm index. Its values are base + i for
 every i whose arm is not the default arm: the switch's case constants, which a C switch spells
@@ -62,18 +62,18 @@ class Table:
 
 
 class Asm:
-    def __init__(self, herc):
+    def __init__(self, listing):
         self.jump = {}
         self.lookup = {}
         self.tables = []
         files = []
         for sub in ('text', 'rdata'):
-            d = os.path.join(herc, sub)
+            d = os.path.join(listing, sub)
             if os.path.isdir(d):
                 files += [(sub, n) for n in sorted(os.listdir(d)) if n.endswith('.inc')]
         texts = {}
         for sub, name in files:
-            with open(os.path.join(herc, sub, name), encoding='utf-8', errors='replace') as f:
+            with open(os.path.join(listing, sub, name), encoding='utf-8', errors='replace') as f:
                 lines = f.read().split('\n')
             texts[f'{sub}/{name}'] = lines
             self._collect_defs(lines)
@@ -235,12 +235,12 @@ def c_switches(src):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--herc', default=os.path.normpath(os.path.join(REPO, '..', 'herc-client')))
+    ap.add_argument('--asm', help='the folder of the assembly listing', default=os.path.normpath(os.path.join(REPO, '..', 'herc-client')))
     ap.add_argument('--out', default=os.path.join(HERE, 'case_sweep.tsv'))
     ap.add_argument('--min-share', type=float, default=0.5)
     args = ap.parse_args()
 
-    asm = Asm(args.herc)
+    asm = Asm(args.asm)
     switches = c_switches(os.path.join(REPO, 'src'))
     by_value = defaultdict(set)
     for sw in switches:

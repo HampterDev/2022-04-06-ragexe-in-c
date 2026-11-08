@@ -1,4 +1,4 @@
-"""Reference-tree provenance: for every C function definition in herc-client-integration's src/,
+"""Address citations: for every C function definition in the annotated C tree's src/,
 collect the sub_XXXXXX addresses cited in the comment block right above it and inside its body."""
 import os, re, sys, json
 
