@@ -92,7 +92,7 @@ int session_is_homunculus_skill(struct Session *self, int id)
 
 int session_is_mercenary_or_homun_s_job(struct Session *self, int id)
 {
-    return (unsigned)(id - 0x1781) <= 0x23;
+    return (unsigned)(id - 0x1782) <= 0x22;
 }
 
 int session_is_homun_or_merc_job(struct Session *self, int id)

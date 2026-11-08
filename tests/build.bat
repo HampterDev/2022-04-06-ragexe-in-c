@@ -897,9 +897,6 @@ if not "%errorlevel%"=="0" exit /b 1
 call "%~dp0build_skin_scan.bat"
 if not "%errorlevel%"=="0" exit /b 1
 
-call "%~dp0build_mercenary_job.bat"
-if not "%errorlevel%"=="0" exit /b 1
-
 call "%~dp0build_heal_colours.bat"
 if not "%errorlevel%"=="0" exit /b 1
 
