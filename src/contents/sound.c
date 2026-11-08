@@ -286,16 +286,16 @@ void sound_stop_stream(void)
     LeaveCriticalSection(&mgr->stream_lock);
 }
 
-int sound_stream_playing(void)
+int sound_stream_done(void)
 {
     struct SoundManager *mgr = sound_manager;
-    int playing;
+    int done;
     if (!mgr || !g_soundMode)
         return 0;
     EnterCriticalSection(&mgr->stream_lock);
-    playing = mgr->stream && _AIL_stream_status(mgr->stream) == MSS_STREAM_PLAYING;
+    done = mgr->stream && _AIL_stream_status(mgr->stream) == MSS_STREAM_DONE;
     LeaveCriticalSection(&mgr->stream_lock);
-    return playing;
+    return done;
 }
 
 void sound_bgm_fade_in(void) { start_fade(1); }

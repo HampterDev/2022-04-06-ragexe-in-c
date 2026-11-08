@@ -4,7 +4,7 @@
 #define MSS_IMPORT __declspec(dllimport)
 #endif
 #define MSS_SAMPLE_DONE 2
-#define MSS_STREAM_PLAYING 2
+#define MSS_STREAM_DONE 2
 
 MSS_IMPORT void __stdcall _AIL_set_redist_directory(const char *dir);
 MSS_IMPORT int __stdcall _AIL_startup(void);
