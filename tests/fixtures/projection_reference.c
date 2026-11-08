@@ -1,4 +1,5 @@
 #include "render/renderer.h"
+#include "render/render_api.h"
 #include "render/primitive_types.h"
 #include "projection_reference.h"
 
@@ -12,9 +13,10 @@ float reference_CRenderer_GetScaleX(struct Renderer *self)
     return self->scaleX;
 }
 
+/* The original maps depth over 10..1500 (a factor of 1.0067114); custom draws to RENDER_FAR_Z. */
 float reference_Renderer_ProjectZ(float rhw)
 {
-    return (1.0f / rhw - 10.0f) * 1.0067114f * rhw;
+    return (1.0f / rhw - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * rhw;
 }
 
 static float reference_depth_rhw(const float *v, const float *m)
@@ -63,7 +65,7 @@ static void reference_project_vertex(const struct Renderer *self, const float *v
     x = reference_view_x(v, m) * r * self->proj[0] + (float)self->centreX;
     out[0] = x;
     y = reference_view_y(v, m) * r * self->proj[1] + (float)self->centreY;
-    out[2] = (1.0f / r - 10.0f) * 1.0067114f * r;
+    out[2] = (1.0f / r - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * r;
     out[1] = y;
 }
 

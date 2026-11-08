@@ -1,4 +1,5 @@
 #include "world/frustum.h"
+#include "render/render_api.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -130,8 +131,8 @@ static int corners(const struct ViewFrustum *frustum, const struct FrustumObb *b
 }
 static void plane_tests(void)
 {
-    static const float expected[6][4] = {{-1,0,1,0},{1,0,1,0},{0,-1,1,0},{0,1,1,0},{0,0,1,-10},{0,0,-1,1500}};
-    static const float depths[] = {-10,0,8,9,10,11,12,100,1498,1499,1500,1501,1502};
+    static const float expected[6][4] = {{-1,0,1,0},{1,0,1,0},{0,-1,1,0},{0,1,1,0},{0,0,1,-10},{0,0,-1,RENDER_FAR_Z}};
+    static const float depths[] = {-10,0,8,9,10,11,12,100,1500,RENDER_FAR_Z-2,RENDER_FAR_Z-1,RENDER_FAR_Z,RENDER_FAR_Z+1,RENDER_FAR_Z+2};
     struct ViewFrustum *frustum = &guarded.value;
     struct FrustumObb box = {{1,1,1},{0,0,100},{{1,0,0},{0,1,0},{0,0,1}}};
     size_t z;

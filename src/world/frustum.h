@@ -23,7 +23,4 @@ void view_frustum_build(struct ViewFrustum *self, float tanX, float tanY,
 int view_frustum_test_obb(struct ViewFrustum *self, const struct FrustumObb *box);
 void view_frustum_clear(struct ViewFrustum *self);
 
-#define VIEW_NEAR_D 10.0f
-#define VIEW_FAR_D 1500.0f
-
 #endif

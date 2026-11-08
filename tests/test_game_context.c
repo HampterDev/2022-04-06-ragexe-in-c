@@ -39,7 +39,6 @@ int main(void)
     assert(!game_current_view() && !game_current_map_attr());
     assert(!game_camera_is_free() && !game_player_is_dead());
     assert(!game_map_has_party_marks());
-    game_camera_limit_distance(100.0f);
     game_complete_item_use();
     assert(game_camera_pitch() == 0.0f);
     assert(game_camera_heading() == 0.0f);
@@ -126,10 +125,6 @@ int main(void)
     assert(game_camera_scale() == 0.0f);
     view.destDistance = 800.0f;
     assert(game_camera_scale() == 0.5f);
-    game_camera_limit_distance(400.0f);
-    assert(view.destDistance == 400.0f);
-    game_camera_limit_distance(600.0f);
-    assert(view.destDistance == 400.0f);
     view.destDistance = -1.0f;
     assert(game_camera_scale() == 0.0f);
     current = NULL;

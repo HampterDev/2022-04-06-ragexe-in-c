@@ -38,7 +38,6 @@
 #include "session/session_state.h"
 #include "ui/ui_std.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "game/mouse_camera.h"
 #include "core/app.h"
 #include "platform/clock.h"
 #include "platform/window.h"
@@ -550,5 +549,4 @@ void talk_cmd_zoom_range(struct GameMode *self)
     (void)self;
     g_session1.zoomFarLimit = wide;
     talk_print_msg(wide == 1 ? 0xdb7 : 0xdb8, TALK_COLOR_NOTICE);
-    g_maxViewDistance = wide == 1 ? 480.0f : 400.0f;
 }

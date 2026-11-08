@@ -34,7 +34,6 @@
 #include "session/session_names.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "ui/render/graphic_setting.h"
-#include "game/mouse_camera.h"
 
 #define WID_GRAPHIC_SETTING 0x131
 #define WID_COMMAND_LIST 0x70
@@ -741,7 +740,6 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             g_sound_settings.effects_on = value;
         } else if (sender == W(self->box_zoom)) {
             g_session1.zoomFarLimit = value;
-            g_maxViewDistance = value ? 480.0f : 400.0f;
         } else if (sender == W(self->box_emblem_frame)) {
             g_session1.emblemFrame = value;
             ui_window_mgr_send_msg_(&g_windowMgr, 3, 0, 0, 0, 0);

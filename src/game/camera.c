@@ -21,13 +21,10 @@ float g_freeViewPitch = -45.0f;
 
 float g_viewDistance = 300.0f;
 
-float g_viewDistanceMin = 230.0f;
+float g_viewDistanceMin = 100.0f;
 
 float g_viewPitch = -45.0f;
 
-#define VIEW_PITCH_CENTRE   -45.0f
-#define VIEW_PITCH_RANGE_FIXED 10.0f
-#define VIEW_PITCH_RANGE_FREE  20.0f
 #define FIXED_VIEW_HEADING  45.0f
 
 #include "actor/render_ops.h"
@@ -43,7 +40,7 @@ void game_mode_init_view(struct GameMode *self)
     struct View *view = self->view;
     const struct Player *player = self->world->player;
     struct Vec *preset;
-    float pitch_range, max_distance, pitch, distance;
+    float max_distance, pitch, distance;
     int found;
 
     view->at[0] = player->pos.x;
@@ -74,14 +71,12 @@ void game_mode_init_view(struct GameMode *self)
 
     if (!session_is_fixed_view_map(&g_session1, self->map_name)) {
         self->camera_free = 1;
-        pitch_range = VIEW_PITCH_RANGE_FREE;
-        max_distance = g_maxViewDistance;
+        max_distance = VIEW_DISTANCE_LIMIT;
         pitch = g_freeViewPitch;
         distance = g_freeViewDistance;
     } else {
         self->camera_free = 0;
-        pitch_range = VIEW_PITCH_RANGE_FIXED;
-        max_distance = g_fixedViewDistanceMax;
+        max_distance = VIEW_DISTANCE_LIMIT;
         self->yaw_centre = FIXED_VIEW_HEADING;
         self->view->longitude = FIXED_VIEW_HEADING;
         self->view->destLongitude = self->yaw_centre;
@@ -91,12 +86,12 @@ void game_mode_init_view(struct GameMode *self)
 
     g_viewDistance = distance;
     g_viewPitch = pitch;
-    if (VIEW_PITCH_CENTRE - pitch_range > pitch) {
-        pitch = VIEW_PITCH_CENTRE - pitch_range;
+    if (VIEW_PITCH_STEEPEST > pitch) {
+        pitch = VIEW_PITCH_STEEPEST;
         g_viewPitch = pitch;
     }
-    if (pitch > pitch_range - 45.0f) {
-        pitch = pitch_range - 45.0f;
+    if (pitch > VIEW_PITCH_FLATTEST) {
+        pitch = VIEW_PITCH_FLATTEST;
         g_viewPitch = pitch;
     }
     if (g_viewDistanceMin > distance) {

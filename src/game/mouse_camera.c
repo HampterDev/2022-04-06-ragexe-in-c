@@ -22,8 +22,6 @@
 #include "platform/clock.h"
 #include "platform/window.h"
 
-float g_maxViewDistance = 400.0f;
-
 enum { JOB_STAR_GLADIATOR = 0xfcf, JOB_BABY_STAR_GLADIATOR = 0x1082 };
 
 enum { SKILL_SG_DEVIL = 0x1b9, SKILL_DA_DREAM = 0x27f };
@@ -46,7 +44,7 @@ static int key_down(int vk)
     return (unsigned char)((unsigned)platform_async_key_state(vk) >> 8) != 0;
 }
 
-static void set_pitch(struct GameMode *self, float pitch, float range)
+static void set_pitch(struct GameMode *self, float pitch)
 {
     g_viewPitch = pitch;
     if (self->has_camera_preset) {
@@ -61,16 +59,11 @@ static void set_pitch(struct GameMode *self, float pitch, float range)
             g_viewPitch = pitch;
         }
     } else {
-        float lo = -45.0f - range, hi;
-        if (lo > pitch)
-            g_viewPitch = lo;
-        if (key_down(VK_CONTROL) && g_maxViewDistance >= self->view->destDistance)
-            hi = range - 45.0f;
-        else
-            hi = range - 70.0f;
+        if (VIEW_PITCH_STEEPEST > pitch)
+            g_viewPitch = VIEW_PITCH_STEEPEST;
         pitch = g_viewPitch;
-        if (pitch > hi) {
-            pitch = hi;
+        if (pitch > VIEW_PITCH_FLATTEST) {
+            pitch = VIEW_PITCH_FLATTEST;
             g_viewPitch = pitch;
         }
     }
@@ -156,17 +149,14 @@ static void right_button_held(struct GameMode *self)
 
     if (!key_down(VK_MENU) && key_down(VK_SHIFT)) {
         int dy = (g_mouse.y - self->last_mouse_y) / 2;
-        float range = 10.0f;
-        if (self->camera_free)
-            range = 20.0f;
-        set_pitch(self, self->view->destLatitude - (float)dy, range);
+        set_pitch(self, self->view->destLatitude - (float)dy);
     }
 
     if (key_down(VK_CONTROL)) {
         int dy = (g_mouse.y - self->last_mouse_y) / 2;
         float far_limit, d;
         g_viewDistance = self->view->destDistance - (float)dy;
-        far_limit = self->camera_free ? g_maxViewDistance : g_fixedViewDistanceMax;
+        far_limit = VIEW_DISTANCE_LIMIT;
         if (self->has_camera_preset)
             d = bound_distance(self);
         else if (!session_is_admin_option(&g_session1, 5))
@@ -212,7 +202,7 @@ static void wheel_zoom(struct GameMode *self)
     int job_zoom;
 
     g_viewDistance = self->view->destDistance - step;
-    far_limit = self->camera_free ? g_maxViewDistance : g_fixedViewDistanceMax;
+    far_limit = VIEW_DISTANCE_LIMIT;
     skill_table_find(&g_session1.skills, &skill, SKILL_SG_DEVIL);
     job_zoom = skill.level <= 0
                && (session_get_drawn_job(&g_session1) == JOB_STAR_GLADIATOR || session_get_drawn_job(&g_session1) == JOB_BABY_STAR_GLADIATOR)
@@ -263,8 +253,7 @@ RAGE_NOINLINE void game_mode_process_wheel(struct GameMode *self, int verdict)
 
     if (key_down(VK_SHIFT)) {
         float step = g_mouse.wheel > 0 ? -5.0f : 5.0f;
-        float range = self->camera_free ? 20.0f : 10.0f;
-        set_pitch(self, self->view->destLatitude - step, range);
+        set_pitch(self, self->view->destLatitude - step);
     } else if (!verdict || key_down(VK_CONTROL)) {
         if (g_session1.quickSpellWheel == 1) {
             struct UIWindow *w = g_windowMgr.short_cut_wnd;

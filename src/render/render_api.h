@@ -65,6 +65,13 @@ extern DWORD g_fogUseRange;
 extern float g_fogDensity;
 extern float g_fogNear, g_fogFar;
 
+/* The camera-space depth range of the 3D view. The original draws to 1500; custom draws to 40000
+   so that the unlocked zoom (game/camera.h) keeps the world in view. Fog keeps the original's
+   1490-unit scale. */
+#define RENDER_NEAR_Z 10.0f
+#define RENDER_FAR_Z 40000.0f
+#define RENDER_DEPTH_SCALE (RENDER_FAR_Z / (RENDER_FAR_Z - RENDER_NEAR_Z))
+
 extern BYTE  g_waterBumpSupported;
 extern RECT  g_monitorRect;
 extern const char g_msgBgr565NotSupported[];

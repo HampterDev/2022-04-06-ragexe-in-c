@@ -9,7 +9,6 @@
 #include <string.h>
 #include "core/window_state.h"
 #include "ui/render/graphic_setting.h"
-#include "game/mouse_camera.h"
 #include "render/texture_cache.h"
 #include "game/camera.h"
 
@@ -17,7 +16,6 @@ void session_load_options(struct Session *self)
 {
     struct String text, *skin;
     int effectVolume;
-    float farthest;
 
     client_lua_call(g_session1.luaState, "SetCmdOnOffList", "");
     file_make_file_name("OptionInfo.lua", 1);
@@ -41,31 +39,24 @@ void session_load_options(struct Session *self)
     g_freeViewDistance = session_get_option_float(self, "Outdoor_ViewDistance", 300.0f);
     g_fixedViewPitch = session_get_option_float(self, "Indoor_ViewLatitude", -45.0f);
     g_fixedViewDistance = session_get_option_float(self, "Indoor_ViewDistance", 300.0f);
-    if (-55.0f > g_fixedViewPitch)
-        g_fixedViewPitch = -55.0f;
-    else if (g_fixedViewPitch > -35.0f)
-        g_fixedViewPitch = -35.0f;
+    if (VIEW_PITCH_STEEPEST > g_fixedViewPitch)
+        g_fixedViewPitch = VIEW_PITCH_STEEPEST;
+    else if (g_fixedViewPitch > VIEW_PITCH_FLATTEST)
+        g_fixedViewPitch = VIEW_PITCH_FLATTEST;
     if (g_viewDistanceMin > g_fixedViewDistance)
         g_fixedViewDistance = g_viewDistanceMin;
-    if (g_fixedViewDistance > g_fixedViewDistanceMax)
-        g_fixedViewDistance = g_fixedViewDistanceMax;
+    if (g_fixedViewDistance > VIEW_DISTANCE_LIMIT)
+        g_fixedViewDistance = VIEW_DISTANCE_LIMIT;
 
     self->zoomFarLimit = session_get_option_int(self, msg_str(0xdb9), 0);
-    if (self->zoomFarLimit) {
-        farthest = 480.0f;
-        g_maxViewDistance = 480.0f;
-    } else {
-        farthest = 400.0f;
-        g_maxViewDistance = 400.0f;
-    }
-    if (-65.0f > g_freeViewPitch)
-        g_freeViewPitch = -65.0f;
-    else if (g_freeViewPitch > -25.0f)
-        g_freeViewPitch = -25.0f;
+    if (VIEW_PITCH_STEEPEST > g_freeViewPitch)
+        g_freeViewPitch = VIEW_PITCH_STEEPEST;
+    else if (g_freeViewPitch > VIEW_PITCH_FLATTEST)
+        g_freeViewPitch = VIEW_PITCH_FLATTEST;
     if (g_viewDistanceMin > g_freeViewDistance)
         g_freeViewDistance = g_viewDistanceMin;
-    if (g_freeViewDistance > farthest)
-        g_freeViewDistance = farthest;
+    if (g_freeViewDistance > VIEW_DISTANCE_LIMIT)
+        g_freeViewDistance = VIEW_DISTANCE_LIMIT;
 
     skin = session_get_option_string(self, &text, "SkinName", "<Basic Skin>");
     if (skin != &g_skinMgr.name) {

@@ -102,13 +102,6 @@ float game_camera_pitch(void)
     return view ? view->latitude : 0.0f;
 }
 
-void game_camera_limit_distance(float maximum)
-{
-    struct View *view = game_current_view();
-    if (view && view->destDistance > maximum)
-        view->destDistance = maximum;
-}
-
 float game_camera_heading(void)
 {
     struct View *view = game_current_view();

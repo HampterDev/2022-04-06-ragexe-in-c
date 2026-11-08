@@ -1,4 +1,5 @@
 #include "world/frustum.h"
+#include "render/render_api.h"
 #include <string.h>
 
 #include <math.h>
@@ -52,13 +53,13 @@ void view_frustum_build(struct ViewFrustum *self, float tanX, float tanY,
     self->plane[4][0] = m[1] * z + m[0] * z + m[2];
     self->plane[4][1] = m[4] * z + m[3] * z + m[5];
     self->plane[4][2] = m[7] * z + m[6] * z + m[8];
-    self->plane[4][3] = m[10] * z + m[9] * z + m[11] - VIEW_NEAR_D;
+    self->plane[4][3] = m[10] * z + m[9] * z + m[11] - RENDER_NEAR_Z;
     copy_normal(self, 4);
 
     self->plane[5][0] = m[1] * z + m[0] * z - m[2] * 1.0f;
     self->plane[5][1] = m[4] * z + m[3] * z - m[5] * 1.0f;
     self->plane[5][2] = m[7] * z + m[6] * z - m[8] * 1.0f;
-    self->plane[5][3] = m[10] * z + m[9] * z - m[11] * 1.0f + VIEW_FAR_D;
+    self->plane[5][3] = m[10] * z + m[9] * z - m[11] * 1.0f + RENDER_FAR_Z;
     copy_normal(self, 5);
 
     view_frustum_clear(self);

@@ -25,7 +25,6 @@
 #include "ui/character/gauge.h"
 #include "ui/window.h"
 #include "ui/wndmgr/wndmgr.h"
-#include "game/mouse_camera.h"
 #include <stdint.h>
 #include "platform/clock.h"
 
@@ -395,12 +394,6 @@ static int pc_hit_action(int job)
     }
 }
 
-static void pc_cap_zoom(struct Pc *self)
-{
-    if (self->aid == g_session1.ownAid)
-        game_camera_limit_distance(g_maxViewDistance);
-}
-
 static void pc_attack_reset(struct Pc *self)
 {
     self->casting = 0;
@@ -442,10 +435,6 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
     switch (state) {
     case 0:
         game_actor_set_state(actor, 0, snap);
-        if (game_actor_get_job(actor) == 0xfcf)
-            pc_cap_zoom(self);
-        if (game_actor_get_job(actor) == 0x1082)
-            pc_cap_zoom(self);
         self->motion = self->head_dir;
         if (old == 2 || old == 4 || old == 8 || old == 52 || old == 53 || old == 54 || old == 58 || old == 59
             || self->pk_mode)

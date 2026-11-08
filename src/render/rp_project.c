@@ -27,7 +27,7 @@ float renderer_scale_x(struct Renderer *self)
 
 float renderer_project_depth(float rhw)
 {
-    return (1.0f / rhw - 10.0f) * 1.0067114f * rhw;
+    return (1.0f / rhw - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * rhw;
 }
 
 static float depth_rhw(const Vec3 *v, const float *m)
@@ -79,7 +79,7 @@ static struct ScreenPoint project_vertex(const struct Renderer *self, const Vec3
     x = view_x(v, m) * r * self->proj[0] + (float)self->centreX;
     out.x = x;
     y = view_y(v, m) * r * self->proj[1] + (float)self->centreY;
-    out.z = (1.0f / r - 10.0f) * 1.0067114f * r;
+    out.z = (1.0f / r - RENDER_NEAR_Z) * RENDER_DEPTH_SCALE * r;
     out.y = y;
     return out;
 }
