@@ -150,27 +150,6 @@ void skill_tree_apply_points(struct UINewSkillListWnd *self)
     skill_tree_layout_buttons(self);
 }
 
-static void mark_required_tabs(struct UINewSkillListWnd *self, int skill_id)
-{
-    int tab, count = skill_tree_tab_count(self);
-
-    for (tab = 0; tab < count; tab++) {
-        const struct List *list;
-        const struct ListNode *node;
-
-        if (tab == self->tab)
-            continue;
-        list = tab == count - 1 ? &g_session1.skills.extra_skills : &self->tab_skills[tab];
-        for (node = list->head->next; node != list->head; node = node->next) {
-            if (LIST_VALUE(node, struct SkillInfo)->id == skill_id) {
-                ((int *)self->tabs->colours.first)[tab] = 0xe1e7fc;
-                ui_window_invalidate_base(&self->tabs->base);
-                break;
-            }
-        }
-    }
-}
-
 void skill_tree_mark_required(struct UINewSkillListWnd *self)
 {
     struct UITabControl *tabs;
@@ -203,10 +182,18 @@ void skill_tree_mark_required(struct UINewSkillListWnd *self)
     reqs = SKILL_INFO_REQUIREMENTS(LIST_VALUE(node, struct SkillInfo));
     for (k = 0; k < VEC_COUNT(reqs, struct SkillRequirement); k++) {
         struct SkillRequirement *req = &((struct SkillRequirement *)reqs->first)[k];
-        int id = req->skill_id, level;
+        int id = req->skill_id, tab, level;
         struct SkillRequirement *have;
 
-        mark_required_tabs(self, id);
+        if ((unsigned)(id - 1) <= 0x35 || (unsigned)(id - 0x8e) <= 0xf || (unsigned)(id - 0x19b) <= 0x21
+            || (unsigned)(id - 0x1f4) <= 0x2c)
+            tab = 0;
+        else
+            tab = (unsigned)(id - 0x7d0) <= 0x214 ? 2 : 1;
+        if (tab != self->tab && tab < skill_tree_tab_count(self)) {
+            ((int *)self->tabs->colours.first)[tab] = 0xe1e7fc;
+            ui_window_invalidate_base(&self->tabs->base);
+        }
         level = req->level;
         have = skill_tree_level_list_find(&self->required, id);
         if (have) {
