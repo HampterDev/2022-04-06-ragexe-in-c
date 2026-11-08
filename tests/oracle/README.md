@@ -19,6 +19,38 @@ inside the original is caught with SEH and reported with its address in the orig
 original executable at `%ORACLE_EXE%`, by default `..\client-files\2022-04-06_Ragexe_1648707856.exe`
 beside this checkout, and `tests\build.bat` runs it only when that file exists.
 
+## On custom
+
+`custom` removed job and skill ranges on purpose, so these tests compare it with the original
+everywhere except there:
+
+- `custom_removed.h` lists the removed jobs (third, fourth and expanded classes, Doram) and
+  skills (third-class, expanded, 4th-class, Homunculus S and elemental), with the ranges the
+  removals were made with in `docs/custom-review.md`. Every test leaves those inputs out and says
+  how many.
+- `test_job_lookups` compares the remap, mounted-job, Super Novice, maximum-job-level and
+  party-colour lookups. The third, fourth, expanded, expanded Super Novice and Doram predicates
+  and the pet act text are gone from custom, so they are not compared.
+- custom removed the skill and object halves of the skill-action manager (all 121 registrations
+  were 4th-class), so its call sites take the not-found path without calling it. The original's
+  calls are still answered "none" in `skill_oracle.h`, but no longer recorded.
+- custom always runs as service type 20 (the langtype 20 lock), so `skill_oracle_setup` sets the
+  original's `g_serviceType` (`0x1226950`) to 20. Under service type 0 the original launches
+  Korea's Slow Poison effect, which custom removed with the other service types.
+
+Results on custom, 2026-11-08:
+
+| test | calls compared | left out (removed on custom) | result |
+| --- | --- | --- | --- |
+| `test_skill_poses` | 40,680 | 881 skills | 0 mismatches, 0 faults |
+| `test_job_lookups` | 36,174 | 768 jobs | 0 mismatches, 0 faults |
+| `test_ground_skill` | 18,612 | 979 skills | 0 mismatches, 0 faults |
+| `test_skill_use` | 182,928 | 2,164 skill/option pairs | 0 mismatches, 0 faults |
+| `test_skill_hit` | 274,392 | 2,164 skill/option pairs | 0 mismatches, 0 faults |
+| `test_skill_cast` | 76,220 | 2,164 skill/option pairs | 0 mismatches, 0 faults |
+
+The table below is `main`'s.
+
 ## Adding a routine
 
 1. Find its address. Use `tools/funcmap/function_map.tsv` for the C name, then confirm the start
@@ -52,7 +84,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
-`jobLevel2nd` of the initial lift (fixed on main 2026-11-02; purist still has the swap).
+`jobLevel2nd` of the initial lift (fixed on main 2026-11-02, and on custom by `b64030b7`).
 
 The ground-skill test shows the pattern for a routine with side effects: every helper the
 original calls (the effect launchers, the wave player, the motion player, the Lua ground-effect

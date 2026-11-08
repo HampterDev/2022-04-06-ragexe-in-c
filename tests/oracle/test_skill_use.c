@@ -1,4 +1,5 @@
 #include "skill_oracle.h"
+#include "custom_removed.h"
 
 #define SKILL_LIMIT 0x2200
 #define MAX_REPORTED 60
@@ -10,6 +11,8 @@ static int call_original(show_skill_use_fn f, int skill, int level, int src, int
     __try { f(orig_mode, NULL, skill, level, src, target, result); return 1; }
     __except (note_fault(GetExceptionInformation())) { return 0; }
 }
+
+static unsigned removed_skills;
 
 int main(int argc, char **argv)
 {
@@ -37,6 +40,10 @@ int main(int argc, char **argv)
 
     for (option = 0; option < 2; option++) {
         for (skill = 0; skill < SKILL_LIMIT; skill++) {
+            if (custom_removed_skill(skill)) {
+                removed_skills++;
+                continue;
+            }
             int any = 0;
             for (li = 0; li < (int)(sizeof levels / sizeof *levels); li++) {
                 for (vi = 0; vi < (int)(sizeof variants / sizeof *variants); vi++) {
@@ -79,6 +86,7 @@ int main(int argc, char **argv)
             skills_with_events += any;
         }
     }
+    printf("  %u skill inputs left out: removed on custom (custom_removed.h)\n", removed_skills);
     printf("Skill use: %d calls compared against the original (%u events recorded, %u skill/option pairs with events), "
            "%u mismatches, %u faults%s\n", compared, recorded, skills_with_events, mismatches, faults,
            reported > MAX_REPORTED ? " (first 60 shown)" : "");

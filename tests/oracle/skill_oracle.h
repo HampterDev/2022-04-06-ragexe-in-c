@@ -85,6 +85,7 @@
 #define ORIG_OWN_AID           0x113520cu
 #define ORIG_EFFECT_OPTION     0x1138cbcu
 #define ORIG_DURATIONS         0xe907a0u
+#define ORIG_SERVICE_TYPE      0x1226950u
 
 #define ORIG_ACTOR_AID         0x110
 #define ORIG_ACTOR_POS         0x10
@@ -126,7 +127,6 @@
 struct Session g_session1;
 struct EffectMgr *g_effectMgr;
 struct UIWindowMgr g_windowMgr;
-int g_serviceType;
 float g_sinTable[361], g_cosTable[361];
 
 static char events[EVENTS][EVENT_LEN];
@@ -247,10 +247,6 @@ void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int f
 unsigned char effect_mgr_is_registered(struct EffectMgr *self, int type) { (void)self; event("registered %x", type); return 0; }
 unsigned char effect_type_is_listed(int type) { event("listed %x", type); return 0; }
 struct SkillActionMgr *skill_action_mgr_instance(void) { return (struct SkillActionMgr *)&lift_action_mgr; }
-unsigned char skill_action_mgr_use(struct SkillActionMgr *self, int skill_id, int level, SkillActor *caster, SkillActor *target)
-{ (void)self; event("action use %x %d %s %s", skill_id, level, who(caster), who(target)); return 0; }
-unsigned char skill_action_mgr_hit(struct SkillActionMgr *self, int skill_id, SkillActor *caster, SkillActor *target, SkillActor *unit)
-{ (void)self; event("action hit %x %s %s %s", skill_id, who(caster), who(target), who(unit)); return 0; }
 struct SkillActionAnswer *skill_action_mgr_use_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)
 { (void)self; (void)skill_id; out->found = 0; out->value = 0; return out; }
 unsigned char skill_action_mgr_holds_ground_pose(struct SkillActionMgr *self, int skill_id) { (void)self; (void)skill_id; return 0; }
@@ -258,6 +254,7 @@ int session_get_begin_effect_id(int id) { (void)id; return -1; }
 int session_is_monster_actor(struct Session *self, struct GameActor *actor) { (void)self; (void)actor; return 0; }
 int session_is_pc_job(struct Session *self, int job) { (void)self; (void)job; return 1; }
 int session_is_mercenary_or_homun_s_job(struct Session *self, int id) { (void)self; (void)id; return 0; }
+int session_is_mercenary_job(struct Session *self, int id) { (void)self; (void)id; return 0; }
 void session_clear_homun_commands(struct Session *self) { (void)self; event("clear homun"); }
 void session_get_monster_skill_info(struct Session *self, const char *monsterName, int skillId, int *action, int *loop_type)
 { (void)self; (void)monsterName; (void)skillId; *action = -1; *loop_type = 0; }
@@ -292,12 +289,6 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
 struct GroundScope *ground_scope_new(void)
 { memset(lift_scope, 0, sizeof lift_scope); *(const struct RenderObjectOps **)lift_scope = &lift_scope_ops; return (struct GroundScope *)lift_scope; }
 void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size) { (void)list; (void)where; (void)size; return (void *)value; }
-unsigned char skill_action_mgr_cast(struct SkillActionMgr *self, int skill_id, unsigned cast_time, SkillActor *caster)
-{ (void)self; event("action cast %x %u %s", skill_id, cast_time, who(caster)); return 0; }
-unsigned char skill_action_mgr_cast_on_target(struct SkillActionMgr *self, int skill_id, SkillActor *target)
-{ (void)self; event("action cast-on %x %s", skill_id, who(target)); return 0; }
-unsigned char skill_action_mgr_cast_at_cell(struct SkillActionMgr *self, int skill_id, unsigned cast_time, short x, short y)
-{ (void)self; event("action cast-at %x %u %d %d", skill_id, cast_time, x, y); return 0; }
 unsigned char skill_info_is_good_skill_for_actor(int skill_id) { (void)skill_id; return 1; }
 void render_object_set_motion_delay(struct RenderObject *self, float delay) { event("mdelay %s %.2f", who(self), delay); }
 struct SkillActionAnswer *skill_action_mgr_cast_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)
@@ -352,10 +343,13 @@ static int __fastcall o_servant_fire(void *self, void *edx, int effect) { (void)
 static void *__fastcall o_effect_cue(void *self, void *edx, int kind, const char *wave, int frame, int height)
 { (void)self; (void)edx; event("cue %d %s %d %.0f", kind, wave ? wave : "-", frame, (double)height); return NULL; }
 static int __fastcall o_is_registered(void *self, void *edx, int type) { (void)self; (void)edx; event("registered %x", type); return 0; }
+/* custom removed the skill and object halves of the skill-action manager, whose 121
+ * registrations were all 4th-class, so each lift call site takes the not-found path directly.
+ * The original's calls are answered "none", as before, and are not recorded. */
 static int __fastcall o_action_use(void *self, void *edx, int skill, int level, void *caster, void *target)
-{ (void)self; (void)edx; event("action use %x %d %s %s", skill, level, who(caster), who(target)); return 0; }
+{ (void)self; (void)edx; (void)skill; (void)level; (void)caster; (void)target; return 0; }
 static int __fastcall o_action_hit(void *self, void *edx, int skill, void *caster, void *target, void *unit)
-{ (void)self; (void)edx; event("action hit %x %s %s %s", skill, who(caster), who(target), who(unit)); return 0; }
+{ (void)self; (void)edx; (void)skill; (void)caster; (void)target; (void)unit; return 0; }
 static int __stdcall o_is_monster_actor(void *actor) { (void)actor; return 0; }
 static int __stdcall o_is_pc_job(int job) { (void)job; return 1; }
 static const char *__fastcall o_job_name(void *self, void *edx, int job, int sex) { (void)self; (void)edx; (void)job; (void)sex; return ""; }
@@ -396,11 +390,11 @@ static int __cdecl o_chat_line(void *caster, void *target, int skill, int quiet)
 { event("chat %x %s %s %d", skill & 0xffff, who(caster), who(target), quiet & 0xff); return 0; }
 static void *__fastcall o_ground_scope_ctor(void *self, void *edx) { (void)edx; *(void **)self = orig_ground_vt; orig_scope = self; return self; }
 static int __fastcall o_action_cast(void *self, void *edx, int skill, unsigned time, void *caster)
-{ (void)self; (void)edx; event("action cast %x %u %s", skill, time, who(caster)); return 0; }
+{ (void)self; (void)edx; (void)skill; (void)time; (void)caster; return 0; }
 static int __fastcall o_action_cast_on_target(void *self, void *edx, int skill, void *caster, void *target)
-{ (void)self; (void)edx; (void)caster; event("action cast-on %x %s", skill, who(target)); return 0; }
+{ (void)self; (void)edx; (void)skill; (void)caster; (void)target; return 0; }
 static int __fastcall o_action_cast_at_cell(void *self, void *edx, int skill, unsigned time, void *target, int x, int y)
-{ (void)self; (void)edx; (void)target; event("action cast-at %x %u %d %d", skill, time, (short)x, (short)y); return 0; }
+{ (void)self; (void)edx; (void)skill; (void)time; (void)target; (void)x; (void)y; return 0; }
 static void __fastcall o_motion_delay(void *self, void *edx, float delay) { (void)edx; event("mdelay %s %.2f", who(self), delay); }
 static void __fastcall o_set_attack_speed(void *self, void *edx, int value) { (void)edx; event("aspd %s %d", who(self), value); }
 static int __fastcall o_get_job(void *self, void *edx) { (void)self; (void)edx; return 0; }
@@ -420,6 +414,7 @@ static void __fastcall o_server_coor(void *self, void *edx, float x, float z, in
 static DWORD WINAPI o_time(void) { return 0x10000000u; }
 void *oracle_time_slot = (void *)o_time;
 #pragma comment(linker, "/alternatename:__imp__timeGetTime@0=_oracle_time_slot")
+uint32_t platform_ticks_ms(void) { return o_time(); }
 
 static int trap_slot;
 static void *trap_self;
@@ -601,6 +596,9 @@ static void seed_all(int option)
 static void skill_oracle_setup(int verbose)
 {
     int i;
+    /* custom always runs as service type 20 (the langtype 20 lock) and dropped the other types'
+     * branches, such as Korea's Slow Poison effect (cmp dword [0x1226950], 0x0 at 0x806d11) */
+    *(int *)oracle_addr(ORIG_SERVICE_TYPE) = 20;
     if (verbose) {
         AddVectoredExceptionHandler(1, first_look);
         fprintf(stderr, "lift offsets: aid 0x%x pos 0x%x action 0x%x job 0x%x roty 0x%x\n", (unsigned)offsetof(struct GameActor, aid),

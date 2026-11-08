@@ -21,18 +21,10 @@ if errorlevel 1 (popd & exit /b 1)
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\job_lookups.inc" ^
-  "src/session/session_job_rules.c::line::struct JobRange { WORD first, last; };" ^
-  "src/session/session_job_rules.c::static int in_ranges(" ^
-  "src/session/session_job_rules.c::int session_is_third_job(" ^
-  "src/session/session_job_rules.c::BYTE session_is_fourth_job(" ^
-  "src/session/predicates.c::BYTE session_is_expanded_super_novice_job(" ^
   "src/session/predicates.c::BYTE session_is_super_novice_job(" ^
-  "src/session/predicates.c::BYTE session_is_expanded_job(" ^
-  "src/session/predicates.c::BYTE session_is_doram_job(" ^
   "src/session/session_lookups.c::int session_remap_job(" ^
   "src/session/sprite_names.c::int session_get_mounted_job(" ^
   "src/session/session_party.c::DWORD session_get_party_color_by_seq(" ^
-  "src/session/pet.c::const char *session_get_pet_act_text(" ^
   "src/session/session_misc.c::int session_get_max_job_level("
 if errorlevel 1 (popd & exit /b 1)
 cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_job_lookups.c" "%ROOT%\tests\oracle\oracle_image.c" /Fe:test_job_lookups.exe %LFLAGS%
@@ -47,8 +39,8 @@ if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 cl %CFLAGS% "%ROOT%\tests\oracle\test_skill_use.c" "%ROOT%\tests\oracle\oracle_image.c" ^
   "%ROOT%\src\game\skill_use.c" "%ROOT%\src\game\skill_use_basic.c" "%ROOT%\src\game\skill_use_second.c" ^
-  "%ROOT%\src\game\skill_use_extra.c" "%ROOT%\src\game\skill_use_third.c" "%ROOT%\src\game\skill_use_third2.c" ^
-  "%ROOT%\src\game\skill_use_late.c" "%ROOT%\src\game\skill_use_fourth.c" "%ROOT%\src\game\skill_use_companion.c" ^
+  "%ROOT%\src\game\skill_use_extra.c" ^
+  "%ROOT%\src\game\skill_use_late.c" "%ROOT%\src\game\skill_use_companion.c" ^
   "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" "%ROOT%\src\game\cell_coordinates.c" /Fe:test_skill_use.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_skill_use.exe "%ORACLE_EXE%"

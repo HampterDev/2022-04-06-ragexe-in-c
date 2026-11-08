@@ -12,6 +12,7 @@
 #include <string.h>
 #include <windows.h>
 #include "oracle_image.h"
+#include "custom_removed.h"
 #include "session/state.h"
 #include "session/session_skills.h"
 #include "skills/skill_answer.h"
@@ -76,6 +77,8 @@ static void report(const char *what, int skill, int level, int oe, int oa, int l
                what, skill, level, oe, oa, le, la);
 }
 
+static unsigned removed_skills;
+
 int main(int argc, char **argv)
 {
     const char *exe = argc > 1 ? argv[1] : getenv("ORACLE_EXE");
@@ -101,6 +104,10 @@ int main(int argc, char **argv)
     memset(&g_session1, 0, sizeof g_session1);
 
     for (skill = 0; skill < SKILL_LIMIT; skill++) {
+        if (custom_removed_skill(skill)) {
+            removed_skills++;
+            continue;
+        }
         int oe = 0, oa = 0, le = 0, la = 0;
         if (getenv("ORACLE_VERBOSE") && skill % 0x100 == 0)
             printf("skill 0x%x\n", skill);
@@ -124,6 +131,7 @@ int main(int argc, char **argv)
                 report("cast", skill, level, oe, oa, le, la);
         }
     }
+    printf("  %u skill inputs left out: removed on custom (custom_removed.h)\n", removed_skills);
     printf("Skill poses: %d calls compared against the original, %u mismatches, %u faults%s\n", compared, mismatches,
            faults, reported > MAX_REPORTED ? " (first 40 shown)" : "");
     return mismatches || faults ? 1 : 0;

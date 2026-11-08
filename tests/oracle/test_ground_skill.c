@@ -3,6 +3,7 @@
 #include <string.h>
 #include <windows.h>
 #include "oracle_image.h"
+#include "custom_removed.h"
 #include "session/state.h"
 #include "session/session_skills.h"
 #include "skills/skill_answer.h"
@@ -177,6 +178,8 @@ static void joined(char *out, size_t size)
     }
 }
 
+static unsigned removed_skills;
+
 int main(int argc, char **argv)
 {
     const char *exe = argc > 1 ? argv[1] : getenv("ORACLE_EXE");
@@ -231,6 +234,10 @@ int main(int argc, char **argv)
     g_effectMgr = (struct EffectMgr *)&lift_mgr;
 
     for (skill = 0; skill < SKILL_LIMIT; skill++) {
+        if (custom_removed_skill(skill)) {
+            removed_skills++;
+            continue;
+        }
         for (li = 0; li < (int)(sizeof levels / sizeof *levels); li++) {
             struct GroundSkillInfo rec;
             char orig_text[EVENTS * EVENT_LEN], lift_text[EVENTS * EVENT_LEN];
@@ -287,6 +294,7 @@ int main(int argc, char **argv)
             }
         }
     }
+    printf("  %u skill inputs left out: removed on custom (custom_removed.h)\n", removed_skills);
     printf("Ground skill table: %d calls compared against the original (%u launches, waves, poses and motions recorded for %u skills), "
            "%u mismatches, %u faults%s\n", compared, launches, skills_with_launches, mismatches, faults,
            reported > MAX_REPORTED ? " (first 40 shown)" : "");
