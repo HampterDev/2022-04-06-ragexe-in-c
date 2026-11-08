@@ -52,8 +52,8 @@ int game_mode_msg_skill_aim_level_change(struct GameMode *self, int by)
 
 int game_mode_msg_skill_shout(struct GameMode *self, int skill_id, struct GameActor *actor, int level)
 {
-    char line[0x68];
-    char skill[0x40];
+    char frame[0x40 + 0x68];
+    char *const skill = frame, *const line = frame + 0x40;
     struct String name;
     int shout;
 
