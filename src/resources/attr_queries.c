@@ -30,6 +30,25 @@ float c3d_attr_get_height(struct C3dAttr *self, float x, float y)
     return px * (right - left) / zoom + left;
 }
 
+float c3d_attr_get_height_nearest(struct C3dAttr *self, float x, float y)
+{
+    float half_w = (float)self->width * (float)self->zoom * 0.5f;
+    float half_h = (float)self->height * (float)self->zoom * 0.5f;
+    float inset = (float)self->zoom * 0.5f;
+
+    if (self->width <= 0 || self->height <= 0)
+        return 0.0f;
+    if (x < -half_w + inset)
+        x = -half_w + inset;
+    else if (x > half_w - inset)
+        x = half_w - inset;
+    if (y < -half_h + inset)
+        y = -half_h + inset;
+    else if (y > half_h - inset)
+        y = half_h - inset;
+    return c3d_attr_get_height(self, x, y);
+}
+
 void c3d_attr_get_height_min_max(struct C3dAttr *self, const RECT *rect, float *low,
                                        float *high)
 {

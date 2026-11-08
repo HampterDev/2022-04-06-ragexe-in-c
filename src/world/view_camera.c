@@ -61,7 +61,9 @@ static void clamp_eye_to_ground(float eye[3])
 
     if (!world || !world->attr)
         return;
-    height = c3d_attr_get_height(world->attr, eye[0], eye[2]);
+    /* custom: the unlocked zoom (game/camera.h) can put the eye far outside the map, where the
+       plain lookup answers 0 and the eye could sink below the map's ground */
+    height = c3d_attr_get_height_nearest(world->attr, eye[0], eye[2]);
     if (eye[1] > height)
         eye[1] = height;
 }
@@ -86,11 +88,11 @@ static void view_build_view_matrix(struct View *self)
         mat_look_at(self->viewMatrix, &eye_point, &target_point, &up_direction);
     }
     mat_invert(self->invViewMatrix, self->viewMatrix);
-}
-
     g_viewGroundUp[0] = self->viewMatrix[3];
     g_viewGroundUp[1] = self->viewMatrix[4];
     g_viewGroundUp[2] = self->viewMatrix[5];
+}
+
 void view_get_view_dir(struct View *self, Vec3 *dir)
 {
     float inv;
