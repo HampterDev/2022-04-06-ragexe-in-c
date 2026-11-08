@@ -161,6 +161,7 @@ static struct {
     DWORD tss[8][N_TSS];
     DWORD samp[2][5];
     int stateDirty, samplerDirty;
+    float maxAniso;
     int inScene, mipmaps, vsync;
     int boundTarget;
 } gl;
@@ -736,6 +737,27 @@ static GLint gl_address(DWORD a)
 
 enum { SAMP_ADDRESS, SAMP_BORDER, SAMP_MAG, SAMP_MIN, SAMP_MIP };
 
+#define GFX_GL_TEXTURE_MAX_ANISOTROPY 0x84FE
+#define GFX_GL_MAX_TEXTURE_MAX_ANISOTROPY 0x84FF
+
+/* custom: the anisotropy the context allows, up to 16, or 1 without the extension. The unlocked
+   camera tilt (game/camera.h) looks along the ground at grazing angles, where each pixel covers a
+   long, thin strip of the texture and a linear filter blurs or aliases it. */
+static float max_anisotropy(void)
+{
+    GLint level = 1;
+
+    if (gl.maxAniso > 0.0f)
+        return gl.maxAniso;
+    gl.maxAniso = 1.0f;
+    if (SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic")
+        || SDL_GL_ExtensionSupported("GL_ARB_texture_filter_anisotropic")) {
+        p_glGetIntegerv(GFX_GL_MAX_TEXTURE_MAX_ANISOTROPY, &level);
+        gl.maxAniso = level > 16 ? 16.0f : level > 1 ? (float)level : 1.0f;
+    }
+    return gl.maxAniso;
+}
+
 static void apply_samplers(void)
 {
     int i;
@@ -757,6 +779,10 @@ static void apply_samplers(void)
         p_glSamplerParameteri(sm, GL_TEXTURE_WRAP_T, gl_address(gl.samp[i][SAMP_ADDRESS]));
         p_glSamplerParameteri(sm, GL_TEXTURE_MAG_FILTER, gl.samp[i][SAMP_MAG] == GFX_FILTER_LINEAR ? GL_LINEAR : GL_NEAREST);
         p_glSamplerParameteri(sm, GL_TEXTURE_MIN_FILTER, minFilter);
+        if (max_anisotropy() > 1.0f) {
+            GLfloat aniso = linearMin && minFilter != GL_LINEAR ? max_anisotropy() : 1.0f;
+            p_glSamplerParameterfv(sm, GFX_GL_TEXTURE_MAX_ANISOTROPY, &aniso);
+        }
         border[0] = ((b >> 16) & 0xff) / 255.0f;
         border[1] = ((b >> 8) & 0xff) / 255.0f;
         border[2] = (b & 0xff) / 255.0f;

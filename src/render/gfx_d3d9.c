@@ -76,6 +76,8 @@ static struct {
     IDirect3DDevice9 *dev;
     D3DPRESENT_PARAMETERS pp;
     UINT adapter;
+    UINT anisoAdapter;
+    DWORD maxAniso;
     DWORD behaviour;
     D3DFORMAT bbFormat, zFormat;
     int bbBpp;
@@ -330,6 +332,24 @@ static void set_tss(int stage, int id, DWORD v)
     }
     g_perf.statesSent++;
     apply_tss(stage, id, v);
+}
+
+/* custom: the anisotropy the adapter allows, up to 16, or 1 without anisotropic minification. The
+   unlocked camera tilt (game/camera.h) looks along the ground at grazing angles, where each pixel
+   covers a long, thin strip of the texture: a linear filter blurs it (with mipmaps) or aliases it
+   (without). */
+static DWORD max_anisotropy(void)
+{
+    D3DCAPS9 caps;
+
+    if (d9.maxAniso && d9.anisoAdapter == d9.adapter)
+        return d9.maxAniso;
+    d9.maxAniso = 1;
+    d9.anisoAdapter = d9.adapter;
+    if (d9.d3d && SUCCEEDED(IDirect3D9_GetDeviceCaps(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, &caps))
+        && (caps.TextureFilterCaps & D3DPTFILTERCAPS_MINFANISOTROPIC) && caps.MaxAnisotropy > 1)
+        d9.maxAniso = caps.MaxAnisotropy < 16 ? caps.MaxAnisotropy : 16;
+    return d9.maxAniso;
 }
 
 static void set_samp(int stage, int id, DWORD v)
@@ -1909,6 +1929,11 @@ void gfx_set_stage_state(int stage, int state, DWORD value)
         set_samp(stage, D3DSAMP_MAGFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
         break;
     case GFX_TSS_MINFILTER:
+        if (value == GFX_FILTER_LINEAR && max_anisotropy() > 1) {
+            set_samp(stage, D3DSAMP_MAXANISOTROPY, max_anisotropy());
+            set_samp(stage, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
+            break;
+        }
         set_samp(stage, D3DSAMP_MINFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
         break;
     case GFX_TSS_MIPFILTER:
