@@ -471,7 +471,6 @@ static struct UIWindow *make_window_by_id(struct UIWindowMgr *self, int window_i
         ui_second_password_wnd_set_mode((struct UISecondPasswordInputWnd *)self->second_password_input_wnd, 0);
         break;
     case 0xc8:
-    case 0x167:
         wnd = make_second_password(self, &self->second_password_edit_wnd, &ui_second_password_edit_wnd_ops);
         ui_second_password_wnd_set_mode((struct UISecondPasswordInputWnd *)self->second_password_edit_wnd, 1);
         break;
