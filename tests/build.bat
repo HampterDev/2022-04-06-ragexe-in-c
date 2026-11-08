@@ -811,6 +811,15 @@ if not "%errorlevel%"=="0" exit /b 1
 call "%~dp0build_gfx_batch.bat"
 if not "%errorlevel%"=="0" exit /b 1
 
+REM the oracle tests need the original executable; they are skipped without it
+if "%ORACLE_EXE%"=="" set "ORACLE_EXE=%ROOT%\..\client-files\2022-04-06_Ragexe_1648707856.exe"
+if exist "%ORACLE_EXE%" (
+  call "%~dp0oracle\build.bat"
+  if not "%errorlevel%"=="0" exit /b 1
+) else (
+  echo oracle tests skipped: no original executable at "%ORACLE_EXE%"
+)
+
 REM The library table (tools\libraries.txt): include check, and link check on build.bat's
 REM release objects (built first when they are missing or older than src).
 call "%~dp0..\tools\check_libraries.bat"
