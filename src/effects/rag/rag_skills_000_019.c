@@ -56,7 +56,7 @@ void rag_hit1(struct RagEffect *self)
     p->duration = 10;
     p->angle[0] = (float)facing;
     p->angle[1] = -90.0f;
-    mat_set_rotate_y(p->matrix, deg_to_rad((int)p->angle[1]));
+    mat_set_rotate_x(p->matrix, deg_to_rad((int)p->angle[1]));
     mat_rotate_y(p->matrix, deg_to_rad((int)p->angle[0]));
     p->delta2.x = 0.0f;
     p->delta2.y = -10.0f;
