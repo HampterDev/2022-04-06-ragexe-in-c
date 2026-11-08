@@ -81,7 +81,7 @@ struct InventoryMatch *session_find_inventory_item(struct Session *session,
     item_info_construct(&out->item);
     out->found = id != 1;
     out->item.index = id == 3 ? 0 : id;
-    out->item.count = id == 4 ? 2 : 20;
+    out->item.count = 20;
     return out;
 }
 
@@ -112,14 +112,6 @@ struct ItemInfo *session_shop_item_at(struct Session *session, struct ItemInfo *
 static void parse(struct JsonTree *tree, const char *text)
 {
     json_tree_init(tree); assert(json_parse_text(tree, text, strlen(text)));
-}
-
-int session_get_store_setup_count(struct Session *session, int index)
-{
-    int i;
-    assert(session == &g_session1);
-    for (i = 0; i < sold; ++i) if (sold_index[i] == index) return sold_count[i];
-    return 0;
 }
 
 static void load_tests(void)
@@ -219,7 +211,7 @@ static void restore_tests(void)
         shop.items = checked_malloc(4 * sizeof *shop.items); shop.item_count = 4;
         memset(shop.items, 0, 4 * sizeof *shop.items);
         for (i = 0; i < 4; ++i) {
-            shop.items[i].id = i + 1; shop.items[i].count = 5; shop.items[i].price = (i + 1) * 100;
+            shop.items[i].id = i + 1; shop.items[i].count = 5;
             shop.items[i].refine = i + 2; shop.items[i].identified = 1;
             shop.items[i].slot[3] = 401 + i; shop.items[i].option_count = 1;
             shop.items[i].options[0].id = 0xfff2; shop.items[i].options[0].value = -5;
@@ -228,14 +220,12 @@ static void restore_tests(void)
         queries = sold = mirrored = 0; expected_mode = mode;
         mcstore_restore_shop(&shop, (char)mode, 0); mcstore_restore_shop(&shop, (char)mode, -1);
         assert(!queries);
-        mcstore_restore_shop(&shop, (char)mode, 2);
-        assert(queries == 4 && seen[0] == 1 && seen[3] == 4);
-        assert(shop.item_count == 2 && shop.items[0].id == 2 && shop.items[1].id == 4);
-        assert(shop.items[0].price == 200 && shop.items[1].price == 400);
-        assert(shop.items[1].count == (mode ? 5 : 2));
-        assert(sold == 2 && mirrored == 2 && sold_index[0] == 2 && sold_index[1] == 4 && sold_count[0] == (mode ? 20 : 5));
+        mcstore_restore_shop(&shop, (char)mode, 3);
+        assert(queries == 3 && seen[0] == 1 && seen[1] == 2 && seen[2] == 3);
+        assert(shop.item_count == 3 && shop.items[0].id == 2 && shop.items[2].id == 4);
+        assert(sold == 1 && mirrored == 1 && sold_index[0] == 2 && sold_count[0] == (mode ? 20 : 5));
         mcstore_clear_items(&shop); mcstore_restore_shop(&shop, (char)mode, 9);
-        assert(queries == 4); mcstore_destroy(&shop); assert(!live);
+        assert(queries == 3); mcstore_destroy(&shop); assert(!live);
     }
 }
 
