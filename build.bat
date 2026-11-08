@@ -1,6 +1,6 @@
 @echo off
-REM build.bat      -> build\main_rebuild.exe  (release)
-REM build.bat dbg  -> build\main_dbg.exe      (optimized, with build\main_dbg.pdb)
+REM build.bat      -> build\ragexe.exe      (release)
+REM build.bat dbg  -> build\ragexe_dbg.exe  (optimized, with build\ragexe_dbg.pdb)
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
@@ -10,12 +10,12 @@ if not exist "%BUILD%" mkdir "%BUILD%"
 set "WANTDBG="
 for %%a in (%*) do if /i "%%~a"=="dbg" set "WANTDBG=1"
 if defined WANTDBG (
-  set "OUT=main_dbg"
+  set "OUT=ragexe_dbg"
   set "OBJ=%BUILD%\obj_dbg"
-  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:main_dbg.pdb"
+  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:ragexe_dbg.pdb"
   set "CDBG=/Z7"
 ) else (
-  set "OUT=main_rebuild"
+  set "OUT=ragexe"
   set "OBJ=%BUILD%\obj"
   set "LINKDBG="
   set "CDBG="

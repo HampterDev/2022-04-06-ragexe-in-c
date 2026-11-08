@@ -86,14 +86,14 @@ SAVED_EXPECTED = os.path.join(HERE, 'saved_expected.json')
 SCENARIOS = os.path.join(HERE, 'scenarios')
 
 # PARITY_RAGEXE_EXE names another ragexe build to run as ragexe: a sanitizer build (build.bat,
-# RAGEXE_SANITIZE) is build\asan\main_rebuild.exe or build\fill\main_rebuild.exe.
+# RAGEXE_SANITIZE) is build\asan\ragexe.exe or build\fill\ragexe.exe.
 # `original` is the untouched 2022-04-06 client (PARITY_ORIGINAL_EXE, by default where tests\oracle expects it).
 # It has no state probe, so only its pictures and its packets can be compared; it must be told it was started
 # by the patcher (`1rag1`, or it shows an error box and ends), and its manifest asks for elevation the harness
 # does not have, which __COMPAT_LAYER lets CreateProcess ignore.
 CLIENTS = {
     'herc': {'exe': os.environ.get('PARITY_HERC_EXE', r'C:\parity\reference\build\main_rebuild.exe'), 'env': {}},
-    'ragexe': {'exe': os.environ.get('PARITY_RAGEXE_EXE', os.path.join(REPO, 'build', 'main_rebuild.exe')),
+    'ragexe': {'exe': os.environ.get('PARITY_RAGEXE_EXE', os.path.join(REPO, 'build', 'ragexe.exe')),
                'env': {}, 'aliases': {}},
     'original': {'exe': os.environ.get('PARITY_ORIGINAL_EXE',
                                        os.path.join(REPO, '..', 'client-files', '2022-04-06_Ragexe_1648707856.exe')),
