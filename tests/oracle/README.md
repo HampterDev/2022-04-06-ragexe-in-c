@@ -45,10 +45,23 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_job_lookups` | `sub_88dec0` | `session_get_max_job_level` | jobs -2..0x2400, the eight MaxLevelTable globals seeded with distinct values on both sides | 9,223 calls, 0 mismatches |
 | `test_job_lookups` | `sub_855840` | `session_get_party_color_by_seq` | seq -1..64 | 66 calls, 0 mismatches |
 | `test_job_lookups` | `sub_8771d0` | `session_get_pet_act_text` | actions -2..40, strings compared | 43 calls, 0 mismatches |
+| `test_ground_skill` | the routine at `0x765b90` (`CGameActor::Am_Groundskill`) | `game_actor_am_groundskill` | skills 0..0x15ff x levels 1, 5, 6, 10; the effect launches, spawns, waves, motions, state changes and the pose fields recorded on both sides through stand-ins | 22,528 calls, 45,240 events, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
 `jobLevel2nd` of the initial lift (fixed on main 2026-11-02; purist still has the swap).
+
+The ground-skill test shows the pattern for a routine with side effects: every helper the
+original calls (the effect launchers, the wave player, the motion player, the Lua ground-effect
+lookup, the actor's state setter through its vtable, the world queries) is redirected with
+`oracle_patch_jump` to a C stand-in of the same calling convention that records the call, and the
+lifted function links against stand-ins that record the same lines; the two event lists are then
+compared as text. Two things it had to learn: a herc-client label is not a function start
+(`PlayWave` sat on an epilogue's `pop esi`, `GetClientCoor` was fifty bytes early; the true entries
+came from the call sites in the routine's own bytes), and a lazily constructing getter must be
+left to the original rather than stubbed, or the code behind it walks an object that was never
+built. The original's effect-duration table lives in `.data` and is filled at start-up, so the
+test seeds it from the lift's `g_effectDurations`, which also checks the two tables index for index.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
 into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
@@ -56,7 +69,7 @@ the call for `test_job_lookups`.
 
 ## Candidates next
 
-Pure or nearly pure lookups with large switches or tables: the ground-skill effect table
-(`game_actor_am_groundskill`, once its spawn calls are stubbed), the job sprite and IMF name
-builders (they read the job tables, which `.data` holds), the message-id lookups that take only
-a code, the talk-option name table, and the angle and distance helpers of the effects.
+Lookups with large switches or tables: the job sprite and IMF name builders (they read the job
+tables, which `.data` holds), the message-id lookups that take only a code, the talk-option name
+table, and the angle and distance helpers of the effects. With the stand-in pattern, the other
+large per-skill switches: the skill-use handler, the cast-start handler and the hit handler.

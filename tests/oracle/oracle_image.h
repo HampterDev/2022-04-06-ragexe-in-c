@@ -26,4 +26,11 @@ void oracle_patch(unsigned original_va, const void *bytes, unsigned size);
  * (0 for cdecl, the arguments' size for stdcall / thiscall). */
 void oracle_patch_return(unsigned original_va, int value, unsigned stack_bytes);
 
+/* Makes the routine at the address jump to fn: a C stand-in with the original's calling
+ * convention (__fastcall with this and a dummy edx for a thiscall method). */
+void oracle_patch_jump(unsigned original_va, void *fn);
+
+/* The original address a call instruction at the address targets. */
+unsigned oracle_call_target(unsigned call_va);
+
 #endif
