@@ -2,7 +2,7 @@ name: Portable foundations
 
 on:
   push:
-    branches: [purist-portable]
+    branches: [custom]
   pull_request:
   workflow_dispatch:
 

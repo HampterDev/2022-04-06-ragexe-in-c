@@ -48,7 +48,7 @@
           destroyed.
           WM_KEPT_BY_CLEAR (quirk): clear_slots leaves the slot; the window's destructor
           forgets it, so after close_all_windows it is NULL anyway.
-          The quirks are recorded as found; docs/purist-review.md lists them.
+          The quirks are recorded as found; docs/custom-review.md lists them.
    make   the factory. make_window registers what it returns under the ID (wm_register);
           NULL: make_window creates nothing. The WM_ROW_OPEN rows use wm_open_row, which
           opens the slot's window from the row's `open` column (wm_open: created once,

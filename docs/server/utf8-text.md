@@ -1,6 +1,6 @@
 # UTF-8 text
 
-`hercules-utf8-text.patch` is a separate server change for the purist client,
+`hercules-utf8-text.patch` is a separate server change for the custom client,
 which sends and stores names, chat, titles and other text as UTF-8. It has not
 been applied to either existing server checkout. The client's own data files are
 converted separately with [`tools/utf8-data`](../../tools/utf8-data/README.md).
@@ -202,7 +202,7 @@ a manual merge:
 The other 15 files apply.
 
 Then rebuild the map, login and api servers. Run the database upgrade and set
-the configuration before the first start with the purist client.
+the configuration before the first start with the custom client.
 
 ## Validation performed
 
@@ -244,7 +244,7 @@ The test, build scripts, SQL checks and MariaDB connection logs are in
 [`utf8-text-validation/`](utf8-text-validation/); the MSVC build logs were not
 kept. `test_msvc.bat <patched tree>` reruns the helper checks. No live game
 server, client, account or player database was used. Before deployment, verify
-with the purist client:
+with the custom client:
 - creating, renaming and logging in Cyrillic and Hangul characters, including
   names containing Р, Э, 갠 and 갭
 - creating parties and guilds

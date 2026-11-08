@@ -1,4 +1,4 @@
-"""Convert the purist client's data to UTF-8 and repair the damaged files.
+"""Convert the custom client's data to UTF-8 and repair the damaged files.
 
     python tools/utf8-data/convert.py [--client-files DIR] [--out DIR] [--report DIR]
 

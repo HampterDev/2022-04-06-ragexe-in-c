@@ -1,5 +1,8 @@
 # Foundation fixes from the purist review
 
+This index records every fix from `main` and whether `custom` has it. `custom` was called `purist`
+until 2026-11-08; the sections before that date use the old name.
+
 The prepared fixes were committed individually on `main` on 2026-11-01.
 The series starts after `54ca05e3785e1ab2771362b150f8050c2a832b9a` and ends at
 `eefcfba4c417e94e9a6c5f3af4984d0e14c36505`. The emblem cache fix was already present.
@@ -73,7 +76,7 @@ was rewritten for purist's single-height window. The patch files are
 
 ESC menu command `ESC_ID_1C1` (toggle of window `0xec`) is dead code on both
 branches and was left unchanged; see the candidate list in
-[purist-review.md](../purist-review.md).
+[custom-review.md](../custom-review.md).
 
 ## Foundation fixes from the UTF-8 review, 2026-11-03
 
@@ -132,10 +135,10 @@ instead of zeroed. The patch files are `git format-patch` exports of the `main` 
 
 The removal of the dead server types 3 and 13 that came with them is purist-only. The
 overlay change is recorded in
-[purist-review.md](../purist-review.md#frame-time-overlay-opt-in-2026-11-03).
+[custom-review.md](../custom-review.md#frame-time-overlay-opt-in-2026-11-03).
 The purist differences, the format-string calls left as they are, the bugs found
 and not fixed, and the validation are in
-[purist-review.md](../purist-review.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
+[custom-review.md](../custom-review.md#foundation-fixes-from-the-utf-8-review-2026-11-03).
 
 ## Purist-only fixes after the merge of purist-portable, 2026-11-04
 
@@ -151,7 +154,7 @@ Windows code page, so `main` has no commit and there are no patch files.
 | [aed6618d0d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/aed6618d0db3ca81facfc46b014c4b473e87da42) | The variables are still used there | Locals the removals left unused are gone; no code change. |
 
 What each does, the sweep, the checks on `main` and the validation are in
-[purist-review.md](../purist-review.md#fixes-after-the-merge-of-purist-portable-2026-11-04).
+[custom-review.md](../custom-review.md#fixes-after-the-merge-of-purist-portable-2026-11-04).
 
 ## Foundation fixes ported from `main`, 2026-11-06
 
@@ -162,7 +165,7 @@ in `main`'s order with `git cherry-pick -x`; Kevin Birk's commits keep his autho
 on `purist`, 23 of them adapted (each says how under "On purist" in its message), and 7 are left
 out. There are no patch files: every commit is on `main`. The adaptations, the bugs found on
 the way and the validation are in
-[purist-review.md](../purist-review.md#foundation-fixes-ported-from-main-2026-11-06).
+[custom-review.md](../custom-review.md#foundation-fixes-ported-from-main-2026-11-06).
 
 
 | Foundation commit | Purist | Change |

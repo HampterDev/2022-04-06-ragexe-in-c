@@ -1,4 +1,4 @@
-"""Which data files the purist client loads, and which of their fields are display text.
+"""Which data files the custom client loads, and which of their fields are display text.
 
 Every string the client can show is DISPLAY and goes CP949 -> UTF-8.  Every
 string that becomes a file name or resource lookup is RESOURCE and keeps its
@@ -90,7 +90,7 @@ def _table(name, rules, note=''):
 
 ALL_LINES = 'all'            # table rule: every non-comment field is display text
 
-# Files the purist client loads (checked against src/ at 46ecf0b) that hold non-ASCII
+# Files the custom client loads (checked against src/ at 46ecf0b) that hold non-ASCII
 # text.  Files whose non-ASCII bytes are all resource names or comments are listed
 # too, with no display rule, so the report shows that they were looked at.
 #

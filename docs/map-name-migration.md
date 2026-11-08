@@ -1,6 +1,6 @@
-# Map names in the purist client
+# Map names in the custom client
 
-The purist client loads readable map names from `System/mapInfo_true.lub` only.
+The custom client loads readable map names from `System/mapInfo_true.lub` only.
 `mapNameTable.txt` and its language-folder variants are no longer read. Supply a
 populated Lua file with the client; the old empty `mapTbl` supplies no names.
 Unknown maps retain the existing default-name behavior.
@@ -59,4 +59,4 @@ are recorded in `build/map-name-migration/sources.json`. These generated assets
 stay under the ignored build directory, outside the source distribution.
 
 No installed client files or GRFs were modified. Deploy the prepared catalog
-alongside the purist executable when testing this change.
+alongside the custom executable when testing this change.

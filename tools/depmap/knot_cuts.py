@@ -16,7 +16,7 @@ X is a file, a directory, a stem group (`dir/stem*`) or a top directory. Each st
 cut with the most knot lines freed per symbol to reroute (freeing at least MIN_LINES), applies it
 and measures again; it repeats for the second largest SCC. The printed symbols are the work:
 each is a definition to move, a call to hook or a table row to add. The tool does not say which,
-docs/purist-review.md ("Ranking the knot's cuts") does for the published run.
+docs/custom-review.md ("Ranking the knot's cuts") does for the published run.
 """
 import json
 import sys

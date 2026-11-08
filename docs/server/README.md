@@ -1,6 +1,6 @@
 # Guild emblems over the game connection
 
-`hercules-emblem-packets.patch` is a separate server change for the purist client.
+`hercules-emblem-packets.patch` is a separate server change for the custom client.
 It has not been applied to either existing server checkout. It targets Hercules
 commit `84da0df5ea655c8339430d2065dbe3b0b1a40577` (Release v2024.09); the eventual
 server fork may need adaptation. Build with `PACKETVER=20220406` for this client.
@@ -24,11 +24,11 @@ All fields use the existing little-endian packet encoding.
 
 Uploads use the existing packet ID with a different image representation for
 modern clients. Stock Hercules expects compressed BMP data on `0x0153` and rejects
-these raw uploads. Deploy the patch with the purist client before testing uploads.
+these raw uploads. Deploy the patch with the custom client before testing uploads.
 The modern branch uses the same client-generation guards as Hercules's chunked
 emblem response. Older compiled client generations retain compressed BMP uploads.
 A legacy client cannot display a GIF stored by a modern client; this patch is for
-a server using the purist 2022 client, not mixed-generation image compatibility.
+a server using the custom 2022 client, not mixed-generation image compatibility.
 
 ## Server changes
 

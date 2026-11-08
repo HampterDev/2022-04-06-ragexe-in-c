@@ -1,6 +1,6 @@
 @echo off
 REM tools\check_libraries.bat [OBJDIR]
-REM Checks the library table tools\libraries.txt (docs\purist-review.md, "Restructuring: library
+REM Checks the library table tools\libraries.txt (docs\custom-review.md, "Restructuring: library
 REM table and checks"):
 REM   1. include check: tools\depmap\check_includes.py over every file under src;
 REM   2. link check: tools\depmap\check_links.py over the dumpbin listing of OBJDIR's objects,

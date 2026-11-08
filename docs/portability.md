@@ -1,12 +1,12 @@
 # Portable client foundations
 
-The port is part of `purist`: the `purist-portable` branch, started from `purist` commit `d725b49`,
-was merged into `purist` on 2026-11-04 (see *Merge of purist-portable* in the
-[review ledger](purist-review.md#merge-of-purist-portable-2026-11-04)), so `purist` is the one line for
-Windows and the ports from here on. `purist-portable` can fast-forward to `purist` with
-`git merge --ff-only purist` from its own worktree. The original [macOS plan](../plans/mac-port.md)
+The port is part of `custom` (called `purist` until 2026-11-08): the `purist-portable` branch,
+started from `purist` commit `d725b49`, was merged into `purist` on 2026-11-04 (see *Merge of
+purist-portable* in the [review ledger](custom-review.md#merge-of-purist-portable-2026-11-04)), and
+was deleted on 2026-11-08. `custom` is the one line for Windows and the ports, and the portable CI
+workflow runs on its pushes. The original [macOS plan](../plans/mac-port.md)
 was written against the older `herc-client/client` tree. Here its paths are relative
-to the repository root. Purist has removed Bink, embedded browsing, HTTP
+to the repository root. Custom has removed Bink, embedded browsing, HTTP
 services, several startup checks and the features listed in its README. Those features must not be
 reintroduced.
 

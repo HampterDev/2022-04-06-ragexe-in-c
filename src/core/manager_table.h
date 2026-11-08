@@ -10,7 +10,7 @@
    Composition: g_clientManagers (core/client_managers.c) is the one list of rows. Startup
    runs it forwards with manager_table_create(); shutdown runs it in destroy-rank order with
    manager_table_destroy(). Shutdown is not the reverse of startup (the order was recorded as
-   it was, see docs/purist-review.md), so each row says where its destroy comes.
+   it was, see docs/custom-review.md), so each row says where its destroy comes.
 
    Order: the list order is the create order. destroy_rank is the destroy order: the rows are
    destroyed from the lowest rank to the highest; gaps between ranks are allowed. Two rows

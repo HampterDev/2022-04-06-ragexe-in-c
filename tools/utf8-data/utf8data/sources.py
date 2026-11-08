@@ -1,4 +1,4 @@
-"""Find the copy of a data file that the purist client actually reads.
+"""Find the copy of a data file that the custom client actually reads.
 
 Mirrors the client's lookup (src/fileio/file.c, file_mgr.c, contents/client_lua.c):
   * via the file manager, names get a 'data\\' prefix; data.grf is read first

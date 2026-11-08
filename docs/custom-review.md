@@ -1,6 +1,7 @@
-# Purist client review
+# Custom client review
 
-The `purist` branch is the permanent, deliberately reduced client base. Review the
+The `custom` branch, called `purist` until 2026-11-08 (the entries below use that name), is the
+permanent, deliberately reduced client base. Review the
 published client in execution order, explain each behavior, and let Patrick decide
 what stays. Future composer and gameplay deviations start from this base.
 

@@ -8,7 +8,7 @@ listing. Writes the file graph with sizes and prints a summary.
 
 Edges are link-time references between `.c` files: file A uses an external function or data that
 file B defines. Communal globals (`int g_x;` without an initializer) have no defining object in
-MSVC's listing and draw no edge, as in every map recorded in docs/purist-review.md; with
+MSVC's listing and draw no edge, as in every map recorded in docs/custom-review.md; with
 --communal they count as defined by the files that declare them that way (as the link check
 counts them).
 """

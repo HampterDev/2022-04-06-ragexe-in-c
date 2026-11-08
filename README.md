@@ -1,8 +1,8 @@
-# Purist client
+# Custom client
 
-`purist` is the permanent reduced base for our custom client. These are its intentional deviations from [`main`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/main).
+`custom` is our own client: [`main`](https://github.com/HampterDev/2022-04-06-ragexe-in-c/tree/main) with opinionated changes on top. These are its intentional deviations from `main`. Until 2026-11-08 the branch was called `purist`, and older commits and docs use that name.
 
-The [review ledger](docs/purist-review.md) records decisions and validation; [shared correctness fixes](docs/upstream/README.md) belong on `main` and are excluded from this list.
+The [review ledger](docs/custom-review.md) records decisions and validation; [shared correctness fixes](docs/upstream/README.md) belong on `main` and are excluded from this list.
 
 - Remove automatic creation of an empty `data.grf`.
 - Remove Bink, opening videos, the video window and video textures on world models.

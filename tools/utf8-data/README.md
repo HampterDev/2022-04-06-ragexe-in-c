@@ -1,6 +1,6 @@
 # utf8-data
 
-This tool converts the display text in the data files the purist client loads from
+This tool converts the display text in the data files the custom client loads from
 CP949 to UTF-8, for the client build that runs locked to langtype 20 with code page
 65001. Names that become file paths (sprites, textures, sounds, illustrations) keep
 their CP949 bytes, because GRF entry names and the client's path literals are CP949.
@@ -46,7 +46,7 @@ loses to that copy as "shadowed (not loaded)". Most of the loose `.lua` files un
 
 ## Rules
 
-The rules live in `utf8data/rules.py`, with one entry per file the purist client
+The rules live in `utf8data/rules.py`, with one entry per file the custom client
 loads (checked against `src/` at 46ecf0b).
 
 - **How fields are classified.** Each Lua file is run in `luadump` with stand-ins for

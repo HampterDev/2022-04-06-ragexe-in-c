@@ -1,6 +1,6 @@
 # Adventurer's Agency over the game connection
 
-The purist client keeps the Adventurer's Agency windows and replaces their HTTP
+The custom client keeps the Adventurer's Agency windows and replaces their HTTP
 advertisement service with binary packets on the existing map-server connection.
 Listing, filtering, viewing your advertisement, registering/editing it, deleting
 it and checking an advertisement before applying no longer use HTTP or JSON.

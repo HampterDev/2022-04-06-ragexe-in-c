@@ -1,4 +1,4 @@
-"""Convert the purist client's data files and repair the damaged ones.
+"""Convert the custom client's data files and repair the damaged ones.
 
 Output layout (nothing else is written there):
     <out>\\<path>              loose files of client-files (System\\..., data\\...)

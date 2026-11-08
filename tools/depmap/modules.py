@@ -19,7 +19,7 @@ from depmap import scc
 sys.setrecursionlimit(100000)
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# The 23 files of the first measurements (docs/purist-review.md, "Restructuring: definitions and
+# The 23 files of the first measurements (docs/custom-review.md, "Restructuring: definitions and
 # hooks"), the window and object-type row files and their registries (window and object-type
 # tables), and the manager list (manager lifecycle table).
 REGISTRY = {

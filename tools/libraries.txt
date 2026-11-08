@@ -1,5 +1,5 @@
 # The client's libraries and what each may use: step 4 of the restructuring, before any file
-# moves (docs/purist-review.md, "Restructuring: library table and checks").
+# moves (docs/custom-review.md, "Restructuring: library table and checks").
 #
 # tools\check_libraries.bat checks this table against src and a build:
 #   - include check (tools/depmap/check_includes.py): no file under src includes a header of a
@@ -134,7 +134,7 @@ library game-state
 note    Below the actor core: what the actor and effect object model uses, and nothing above it
         (the session's data and lookups, the world and its lookups, game helpers, actor helpers
         such as position, motion and values, effect helpers, the mercenary AI commands). Split from
-        the knot library (docs/purist-review.md, "Splitting the knot library"). Headers here whose
+        the knot library (docs/custom-review.md, "Splitting the knot library"). Headers here whose
         .c is in a higher library, because files here need their types or globals:
         actor/appearance.h, actor/attr_state.h, actor/tetra_ball.h, actor/weather.h,
         effects/particle.h, effects/rag/effect_prim.h, effects/rag/rag_effect.h,
@@ -314,7 +314,7 @@ uses    game-world
 paths   effects/skills/
 
 library feat-rag
-note    Above game-world since cuts 1 and 2 of the knot ranking (docs/purist-review.md): the
+note    Above game-world since cuts 1 and 2 of the knot ranking (docs/custom-review.md): the
         processes of the effect IDs (effects/rag/rag_effect_process*.c, reached through
         g_ragEffectProcess), the launchers they call and the primitives.
 uses    game-world
