@@ -16,7 +16,7 @@ void sound_play_stream(const char *name, int loop_count);
 /* NULL or an empty path stops playback and clears the remembered map track. */
 void sound_play_bgm(const char *name);
 void sound_stop_stream(void);
-int sound_stream_playing(void);
+int sound_stream_done(void);
 void sound_bgm_fade_in(void);
 void sound_bgm_fade_out(void);
 

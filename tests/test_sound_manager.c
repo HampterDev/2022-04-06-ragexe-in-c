@@ -171,7 +171,7 @@ void __stdcall _AIL_set_stream_volume(void *stream, int volume)
 void __stdcall _AIL_set_stream_loop_count(void *stream, int count)
 { assert(stream == &stream_token && stream_open); loop_count = count; }
 int __stdcall _AIL_stream_status(void *stream)
-{ assert(stream == &stream_token && stream_open); return 4; }
+{ assert(stream == &stream_token && stream_open); return 2; }
 int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
 {
     int index = (int)(INT_PTR)*next;
@@ -244,7 +244,7 @@ static void test_failures(void)
     reset(0); assert(sound_mgr_create()); assert(!started && registrations == 1);
     sound_mgr_destroy(); sound_mgr_destroy(); assert(!allocations);
     sound_bgm_fade_in(); sound_bgm_fade_out(); sound_stop_stream(); sound_end_samples();
-    assert(!sound_stream_playing() && !sound_bgm_volume());
+    assert(!sound_stream_done() && !sound_bgm_volume());
 }
 
 static void test_streams(void)
@@ -253,14 +253,14 @@ static void test_streams(void)
     int attempts;
     reset(1); assert(sound_mgr_create()); assert(!sound_mgr_create());
     fail_stream = 1; sound_play_stream("bgm/retry.mp3", 1);
-    assert(!sound_stream_playing() && !stream_starts && stream_attempts == 1);
+    assert(!sound_stream_done() && !stream_starts && stream_attempts == 1);
     fail_stream = 0; sound_play_stream("bgm/retry.mp3", 1);
-    assert(sound_stream_playing() && stream_starts == 1 && stream_attempts == 2 && loop_count == 1);
+    assert(sound_stream_done() && stream_starts == 1 && stream_attempts == 2 && loop_count == 1);
     sound_play_stream("bgm/retry.mp3", 0); assert(stream_attempts == 2);
     allocation_failure = 1; sound_play_stream("bgm/other.mp3", 0);
-    assert(stream_attempts == 2 && sound_stream_playing()); allocation_failure = 0;
+    assert(stream_attempts == 2 && sound_stream_done()); allocation_failure = 0;
     g_sound_settings.bgm_on = 0; sound_play_bgm(name); name[4] = 'X';
-    sound_stop_stream(); assert(!sound_stream_playing());
+    sound_stop_stream(); assert(!sound_stream_done());
     sound_play_stream(NULL, 0); assert(strcmp(last_stream, "bgm/borrowed.mp3") == 0);
     sound_set_bgm_volume(999); assert(sound_bgm_volume() == 127 && stream_volume == 127);
     sound_set_bgm_volume(-1); assert(sound_bgm_volume() == 0 && stream_volume == 0);
@@ -270,14 +270,14 @@ static void test_streams(void)
     attempts = stream_attempts;
     allocation_failure = 1;
     sound_play_bgm(NULL);
-    assert(!sound_stream_playing() && !sound_manager->bgm_name && !sound_manager->stream_name);
+    assert(!sound_stream_done() && !sound_manager->bgm_name && !sound_manager->stream_name);
     sound_play_stream(NULL, 0);
     assert(stream_attempts == attempts);
     allocation_failure = 0; g_sound_settings.bgm_on = 1;
     sound_play_bgm("bgm/restored.mp3");
-    assert(sound_stream_playing() && stream_attempts == attempts + 1 && loop_count == 0);
+    assert(sound_stream_done() && stream_attempts == attempts + 1 && loop_count == 0);
     sound_play_bgm("");
-    assert(!sound_stream_playing() && !sound_manager->bgm_name && !sound_manager->stream_name);
+    assert(!sound_stream_done() && !sound_manager->bgm_name && !sound_manager->stream_name);
     g_soundMode = 0; sound_mgr_destroy(); assert(shutdown_count == 1 && !allocations);
     cleanup(); assert(shutdown_count == 1 && registrations == 1);
 }
