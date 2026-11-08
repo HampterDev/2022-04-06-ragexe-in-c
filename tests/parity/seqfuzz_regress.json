@@ -1,0 +1,326 @@
+{
+ "about": "seqfuzz.py regress: cases herc and ragexe must agree on. A case with events is that list; one with scripts is seqtarget.py's scripts of those names, in order; one with neither is the seed's own generated case (seqgen.generate, 'length' events). One with bounds is those scripts with every text field they send (or the 'only' fields, as 'LAYOUT.FIELD') rewritten to that seqbounds.py variant.",
+ "cases": [
+  {
+   "name": "unit_reentry",
+   "seed": 900,
+   "why": "A ground skill unit out of sight and back under the same id, with no hits queued: removed at once and shown again (world_remove_skill).",
+   "events": [
+    {
+     "k": "new",
+     "gap": 5,
+     "id": 40001,
+     "kind": "unit",
+     "map": "prontera",
+     "how": "idle",
+     "attrs": {
+      "x": 158,
+      "y": 187,
+      "dir": 0,
+      "utype": 133,
+      "creator": 2900104,
+      "range": 1,
+      "level": 1
+     }
+    },
+    {
+     "k": "state",
+     "gap": 10
+    },
+    {
+     "k": "leave",
+     "gap": 5,
+     "id": 40001,
+     "why": "out"
+    },
+    {
+     "k": "state",
+     "gap": 5
+    },
+    {
+     "k": "enter",
+     "gap": 8,
+     "id": 40001,
+     "how": "idle"
+    },
+    {
+     "k": "state",
+     "gap": 20
+    }
+   ]
+  },
+  {
+   "name": "meteor_shake",
+   "seed": 25,
+   "why": "Meteor Storm after a map change: the screen shake's offset comes from rand(), whose sequence the session decoy draws and the name option's int store keep in step with the client's.",
+   "events": [
+    {
+     "k": "warp",
+     "gap": 18,
+     "map": "geffen"
+    },
+    {
+     "k": "new",
+     "gap": 11,
+     "id": 2900502,
+     "kind": "pc",
+     "map": "geffen",
+     "attrs": {
+      "x": 119,
+      "y": 52,
+      "dir": 3,
+      "gid": 150502,
+      "speed": 200,
+      "head": 15,
+      "weapon": 1201,
+      "hpal": 0,
+      "bpal": 0,
+      "sex": 0,
+      "level": 39,
+      "maxhp": 7386,
+      "job": 2,
+      "name": "pc502"
+     },
+     "how": "spawn"
+    },
+    {
+     "k": "ground",
+     "gap": 12,
+     "src": 2900502,
+     "skill": 83,
+     "lv": 6,
+     "at": [
+      120,
+      53
+     ]
+    },
+    {
+     "k": "state",
+     "gap": 56
+    }
+   ]
+  },
+  {
+   "name": "hit_prims",
+   "seed": 5,
+   "why": "A damaging hit after a spawn: its effect primitives' lifetimes come from rand(), so the world's object count frame by frame follows the same sequence.",
+   "events": [
+    {
+     "k": "new",
+     "gap": 36,
+     "id": 40003,
+     "kind": "mob",
+     "map": "prontera",
+     "attrs": {
+      "x": 156,
+      "y": 187,
+      "dir": 5,
+      "gid": 0,
+      "speed": 150,
+      "head": 0,
+      "weapon": 0,
+      "hpal": 0,
+      "bpal": 0,
+      "sex": 1,
+      "level": 36,
+      "maxhp": 8981,
+      "job": 1002,
+      "name": "mob3"
+     },
+     "how": "spawn"
+    },
+    {
+     "k": "hit",
+     "gap": 16,
+     "src": 40003,
+     "dst": 2900104,
+     "how": "melee",
+     "amt": 432,
+     "dmt": 576,
+     "dmg": 1022,
+     "div": 5,
+     "act": 8,
+     "skill": 46,
+     "lv": 6
+    },
+    {
+     "k": "new",
+     "gap": 25,
+     "id": 40007,
+     "kind": "mob",
+     "map": "prontera",
+     "attrs": {
+      "x": 160,
+      "y": 185,
+      "dir": 4,
+      "gid": 0,
+      "speed": 150,
+      "head": 0,
+      "weapon": 0,
+      "hpal": 0,
+      "bpal": 0,
+      "sex": 0,
+      "level": 62,
+      "maxhp": 8204,
+      "job": 1063,
+      "name": "mob7"
+     },
+     "how": "spawn"
+    },
+    {
+     "k": "state",
+     "gap": 21
+    }
+   ]
+  },
+  {
+   "name": "seed_20",
+   "seed": 20,
+   "why": "generated case covering: cast, die, enter, ground, hit, icon, leave, leave:0, leave:out, move, new, new:item:drop, new:item:idle, new:mob:idle, new:mob:spawn, new:mob:walk, new:npc:idle, new:pc:spawn, new:unit:idle, opt, revive, state, stop, support"
+  },
+  {
+   "name": "seed_197",
+   "seed": 197,
+   "why": "generated case covering: cast, die, enter, ground, hit, icon, leave, leave:0, leave:2, leave:3, leave:gone, new, new:mob:idle, new:mob:spawn, new:pc:idle, new:unit:idle, opt, state, support, warp"
+  },
+  {
+   "name": "target_social",
+   "seed": 1001,
+   "why": "Handlers no scenario reached: another player's chat room joined, changed and left, the player's own room, a trade from the request to its end and its refusals, a party's members, chat, deaths and leader, the friend list and requests.",
+   "scripts": [
+    "chat_room_member",
+    "chat_room_owner",
+    "trade",
+    "party",
+    "friends"
+   ]
+  },
+  {
+   "name": "target_windows",
+   "seed": 1002,
+   "why": "Handlers no scenario reached: map properties, minimap marks, the camera command and the UI openers (bank, stylist, macro detector, tip box), NPC script extras (dialog clear, music, sounds, progress bar, alignment, book, navigation), the quest list and objectives, the server's table, formatted and broadcast messages.",
+   "scripts": [
+    "map_marks",
+    "npc_script",
+    "quests",
+    "messages"
+   ]
+  },
+  {
+   "name": "target_items_skills",
+   "seed": 1003,
+   "why": "Handlers no scenario reached: Magnifier, cards, refining, Weapon Repair, item merging, overweight notices, the skill pick lists (Auto Spell, Arrow Crafting, Pharmacy, Cooking, refine, Warp Portal) and their answers, cart and equipment answers, a buying store from its sign to its sales, store search answers.",
+   "scripts": [
+    "item_services",
+    "skills",
+    "items",
+    "buying_store"
+   ]
+  },
+  {
+   "name": "target_guild_combat",
+   "seed": 1004,
+   "why": "Handlers no scenario reached: guild invitations, alliances and member notices, a memorial dungeon's queue, timers and end, Blade Stop, combo delay, the MVP effect, Gospel messages, Talkie Box, pet emotions, sprite changes.",
+   "scripts": [
+    "guild_requests",
+    "memorial_dungeon",
+    "combat_notices"
+   ]
+  },
+  {
+   "name": "target_answers",
+   "seed": 1005,
+   "why": "Handlers no scenario reached: a failed whisper, mail zeny and items taken and a mail deleted, guild members expelled and leaving, guild positions and relations, bank withdrawals, the stylist's answer, a progress bar over a unit, hunting counts, an item's options changed, the ranking window, guild castle answers, an NPC market and a barter shop.",
+   "scripts": [
+    "mail_guild_bank",
+    "script_extras",
+    "markets"
+   ]
+  },
+  {
+   "name": "target_macro_detector",
+   "seed": 1006,
+   "why": "The macro detector shown to the player: its picture in a chunk, the answer requests and results, closed as answered; the picture acknowledged once every byte is in (captcha.c).",
+   "scripts": [
+    "macro_detector"
+   ]
+  },
+  {
+   "name": "target_appearance",
+   "seed": 1007,
+   "why": "Players' looks from their option bits, body and health states: riding classes entering mounted and dismounting, carts, falcons, wedding and costume looks, hiding and cloaking, and the player's own states set and cleared.",
+   "scripts": [
+    "appearance"
+   ]
+  },
+  {
+   "name": "target_effects",
+   "seed": 1008,
+   "why": "Every special effect Hercules' scripts and items show (212 ids), by turns on the player and on an NPC. Effects whose primitives draw rand() put every later draw out of step when a lift draws a different number: on ced0667c the whip shimmer did, and a later screen shake moved the view a pixel.",
+   "scripts": [
+    "special_effects"
+   ]
+  },
+  {
+   "name": "target_bg_booking",
+   "seed": 1009,
+   "why": "Handlers no scenario reached: a battleground's team chat, marks, score, minimap positions and HP; party booking's answers and ad notices; personal information; the macro reporter's players in range; an expanded barter shop.",
+   "scripts": [
+    "battleground",
+    "party_booking",
+    "personal_and_range"
+   ]
+  },
+  {
+   "name": "bounds_friends_full",
+   "seed": 1101,
+   "bounds": "full",
+   "scripts": [
+    "friends"
+   ],
+   "why": "Friend names that fill their 24 bytes with no NUL of their own: each is copied as its 24 bytes and a NUL (friends.c), the last one at the packet's end."
+  },
+  {
+   "name": "bounds_texts_short",
+   "seed": 1102,
+   "bounds": "short",
+   "scripts": [
+    "texts",
+    "names"
+   ],
+   "why": "Every name and line the text packets carry at the longest the field holds with its NUL: chat, whispers, broadcasts, NPC talk and menus, shop signs, names asked for, party, guild, homunculus, mail and cut-in names."
+  },
+  {
+   "name": "bounds_texts_lead_nul",
+   "seed": 1103,
+   "bounds": "lead_nul",
+   "scripts": [
+    "texts",
+    "names",
+    "whispers"
+   ],
+   "why": "The same fields ending in a CP949 lead byte before the NUL: a cut double-byte character at the end of every name and line."
+  },
+  {
+   "name": "bounds_ragexe_texts_full",
+   "seed": 1104,
+   "bounds": "full",
+   "scripts": [
+    "ragexe_texts"
+   ],
+   "why": "The Ragexe Saga server's whisper replay, coloured line and friends panel with every name filling its field and every line without its NUL."
+  },
+  {
+   "name": "bounds_social_over",
+   "seed": 1105,
+   "bounds": "over",
+   "scripts": [
+    "chat_room_member",
+    "party",
+    "guild_requests",
+    "battleground"
+   ],
+   "why": "Chat room titles, party chat, guild names and battleground chat one byte past the longest the server sends."
+  }
+ ]
+}

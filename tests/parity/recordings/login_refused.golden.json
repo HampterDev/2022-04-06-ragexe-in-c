@@ -1,0 +1,146 @@
+{
+ "captures": {
+  "box_closed": "1ea7879a30d46e5da7cedb5c265b53beb35cc1939a093548e3f92c9686eb5980",
+  "char_select": "10cb955e8c3883901b4838ee0690ef962fa8e3dd6c3881ec503c1d855b7839fc",
+  "on_map": "a87b6272ddf97cfa65dd990c5ed9b689463d737f0b1a92bf04a354a91ea7cb74",
+  "refused_again": "63131a09b57334c607f1004082637e3015f546b0ab3ddb4295b7a445226dc8e8",
+  "refused_password": "0913adb14a9e51a148e2e08dcac185cb366d30106502fe9b2c9e9f6546f2a01b"
+ },
+ "states": {
+  "box_closed": "mode=login\nui=1024,768\nUIRPImageWnd2@@ id=325 rect=377,480,301,132 shown=1\nUILoginWnd@@ id=3 rect=377,480,301,132 shown=1\n  UIStaticText@@ id=569 rect=73,87,72,22 shown=1 text=Save\\x20ID\n  UIBmpTextButton@@ id=277 rect=13,104,67,23 shown=1 text=Settings\n  UIBmpTextButton@@ id=259 rect=87,104,84,23 shown=1 text=Sign\\x20Up\n  UIBitmapButton@@ id=178 rect=192,32,84,84 shown=1\n  UIBitmapButton@@ id=213 rect=273,15,19,19 shown=1\n  UIEditCtrl_Custom@@ id=569 rect=15,64,153,16 shown=1 masked=8 sel=0,8\n  UIEditCtrl_Custom@@ id=569 rect=15,40,153,16 shown=1 text= sel=0,0\n  UICheckBox@@ id=205 rect=56,85,12,12 shown=1 on=0 dim=0\n  UIComboBoxDef2Wnd@@ id=569 rect=13,10,160,22 shown=1 open=0\n    UIBitmapButton@@ id=265 rect=138,0,22,22 shown=1\n    UIComboBoxEx2@@ id=569 rect=0,22,160,20 shown=1 row=0 top=0\n      UIScrollBar_Navi@@ id=569 rect=153,0,7,20 shown=1 pos=0 max=0 page=1 total=1\n      UIScrollBar@@ id=569 rect=0,13,153,13 shown=1 pos=0 max=0 page=0 total=0\n    UIStaticText@@ id=569 rect=29,6,138,16 shown=1 text=Integrated\\x20Account\n",
+  "char_select": "mode=login\nui=1024,768\nUIRPImageWnd@@ id=569 rect=13,71,997,626 shown=1\nUINewSelectCharWnd@@ id=277 rect=13,71,997,626 shown=1\n  UISlotBmpButton@@ id=196 rect=10,21,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=1\n  UISlotBmpButton@@ id=196 rect=167,21,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=324,21,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=481,21,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=638,21,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=10,216,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=167,216,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=324,216,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=481,216,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=638,216,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=10,411,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=167,411,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=324,411,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=481,411,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UISlotBmpButton@@ id=196 rect=638,411,161,197 shown=1\n    UIStaticBitmap@@ id=569 rect=118,14,25,25 shown=0\n  UIStaticBitmap@@ id=569 rect=809,26,173,575 shown=1\n  UIBitmapButton@@ id=177 rect=945,5,17,18 shown=1\n  UIBmpTextButton@@ id=278 rect=830,351,131,24 shown=0 text=Notice\n  UIBitmapButton@@ id=408 rect=200,334,42,20 shown=0\n  UIBitmapButton@@ id=409 rect=200,334,42,20 shown=0\n  UIBmpTextButton@@ id=399 rect=830,322,131,24 shown=1 text=Delete\\x20Character\n  UIBmpTextButton@@ id=400 rect=830,322,131,24 shown=0 text=Cancel\\x20Deletion\n  UIBmpTextButton@@ id=176 rect=816,407,165,110 shown=1 text=Game\\x20Start\n  UIBmpTextButton@@ id=203 rect=830,351,131,24 shown=0 text=Delete\n  UIBitmapButton@@ id=308 rect=830,558,21,28 shown=1\n  UIBitmapButton@@ id=309 rect=939,558,21,28 shown=1\n  UIStaticText@@ id=569 rect=856,538,81,15 shown=1 text=Character\\x20List\n  UIStaticText@@ id=569 rect=879,564,35,21 shown=1 text=1\\x20/\\x201\n  UIStaticText@@ id=569 rect=868,133,107,15 shown=1 text=Novice\n  UIStaticText@@ id=569 rect=868,150,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,167,107,15 shown=1 text=0\n  UIStaticText@@ id=569 rect=868,184,107,15 shown=1 text=10000\n  UIStaticText@@ id=569 rect=868,201,107,15 shown=1 text=10000\n  UIStaticText@@ id=569 rect=868,218,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,235,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,252,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,269,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,286,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,303,107,15 shown=1 text=1\n  UIStaticText@@ id=569 rect=868,116,107,15 shown=1 text=Prontera,\\x20Capital\\x20of\\x20...\n  UIStaticText@@ id=569 rect=66,189,100,20 shown=1 text=Parity48\n  UIStaticText@@ id=569 rect=245,21,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=402,21,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=559,21,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=716,21,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=88,216,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=245,216,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=402,216,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=559,216,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=716,216,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=88,411,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=245,411,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=402,411,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=559,411,100,20 shown=1 text=\n  UIStaticText@@ id=569 rect=716,411,100,20 shown=1 text=\n",
+  "on_map": "mode=game\nui=1024,768\nUITransBalloonText@@ id=569 rect=439,260,147,23 shown=1 text=Welcome\\x20to\\x20Ragexe\\x20Saga!\nUIPlayerGage@@ id=569 rect=482,398,60,9 shown=1\nUIQuestDisplay@@ id=569 rect=704,150,250,400 shown=0\nUIBasicInfoWnd@@ id=0 rect=0,0,220,134 shown=1\n  UIBitmapButton@@ id=569 rect=3,3,11,11 shown=1\n  UIBitmapButton@@ id=194 rect=206,3,11,11 shown=1\n  UIStaticText@@ id=569 rect=9,22,200,15 shown=1 text=Parity48\n  UIBarGraphPlayer@@ id=569 rect=35,53,135,9 shown=1\n  UIBarGraphPlayer@@ id=569 rect=35,68,135,9 shown=1\n  UIBarGraphPlayerAP@@ id=569 rect=-100,-100,135,9 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,89,112,6 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,101,112,6 shown=1\nUIMenuIconWnd@@ id=307 rect=0,130,220,154 shown=1\n  UIMenuIcon@@ id=184 rect=9,23,32,34 shown=1\n  UIMenuIcon@@ id=184 rect=9,17,35,40 shown=0\n  UIMenuIcon@@ id=187 rect=51,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,17,35,40 shown=0\n  UIMenuIcon@@ id=188 rect=135,23,32,34 shown=1\n  UIMenuIcon@@ id=188 rect=135,17,35,40 shown=0\n  UIMenuIcon@@ id=191 rect=177,23,32,34 shown=1\n  UIMenuIcon@@ id=365 rect=9,66,32,34 shown=1\n  UIMenuIcon@@ id=353 rect=51,66,32,34 shown=1\n  UIMenuIcon@@ id=211 rect=93,66,32,34 shown=1\n  UIMenuIcon@@ id=422 rect=135,66,32,34 shown=1\n  UIMenuIcon@@ id=185 rect=177,66,32,34 shown=1\n  UIMenuIcon@@ id=453 rect=9,109,32,34 shown=1\n  UIMenuIcon@@ id=391 rect=51,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,103,35,40 shown=0\n  UIMenuIcon@@ id=362 rect=135,109,32,34 shown=1\n  UIMenuIcon@@ id=536 rect=177,109,32,34 shown=1\n  UIBitmapButton@@ id=502 rect=0,4,219,9 shown=0\n  UIBitmapButton@@ id=502 rect=0,0,219,13 shown=0\n  UIBitmapButton@@ id=193 rect=0,4,219,9 shown=1\nUIMinimapZoomWnd@@ id=14 rect=879,17,128,140 shown=1\n  UIBitmapButton@@ id=444 rect=1,128,12,12 shown=1\n  UIBitmapButton@@ id=208 rect=73,128,12,12 shown=1\n  UIBitmapButton@@ id=209 rect=87,128,12,12 shown=1\n  UIBitmapButton@@ id=181 rect=101,128,12,12 shown=1\n  UIBitmapButton@@ id=446 rect=115,128,12,12 shown=1\n  UIBitmapButton@@ id=1000 rect=55,91,12,12 shown=1\n  UIBitmapButton@@ id=1001 rect=57,111,12,12 shown=1\n  UIBitmapButton@@ id=1002 rect=100,55,12,12 shown=1\n  UIBitmapButton@@ id=1003 rect=17,53,12,12 shown=1\n  UIBitmapButton@@ id=1004 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1005 rect=58,58,12,12 shown=1\n  UIBitmapButton@@ id=1006 rect=58,57,12,12 shown=1\n  UIBitmapButton@@ id=1007 rect=98,52,12,12 shown=1\n  UIBitmapButton@@ id=1008 rect=20,56,12,12 shown=1\n  UIBitmapButton@@ id=1009 rect=60,109,12,12 shown=1\n  UIBitmapButton@@ id=1010 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1011 rect=51,48,12,12 shown=1\n  UIBitmapButton@@ id=1012 rect=65,49,12,12 shown=1\n  UIBitmapButton@@ id=1013 rect=66,60,12,12 shown=1\n  UIBitmapButton@@ id=1014 rect=74,58,12,12 shown=1\n  UIBitmapButton@@ id=1015 rect=43,49,12,12 shown=1\n  UIBitmapButton@@ id=1016 rect=56,58,12,12 shown=1\n  UIBitmapButton@@ id=1017 rect=60,58,12,12 shown=1\nUINewChatWnd@@ id=1 rect=0,672,600,96 shown=1 chat\n  UITabControl@@ id=569 rect=3,0,165,17 shown=1 tab=0\n    UIEditCtrl2@@ id=569 rect=-100,-100,100,19 shown=1 text= sel=0,0\n  UIBitmapButton@@ id=350 rect=544,4,14,9 shown=1\n  UIBitmapButton@@ id=185 rect=533,4,9,9 shown=1\n  UIBitmapButton@@ id=366 rect=560,4,8,8 shown=1\n  UIBitmapButton@@ id=194 rect=570,4,8,8 shown=1\n  UIChatHisBox@@ id=485 rect=5,18,592,52 shown=1 row=0 top=14\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=14 max=14 page=3 total=17\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatHisBox@@ id=485 rect=-700,-100,592,52 shown=1 row=0 top=0\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatEditCtrl@@ id=485 rect=110,76,460,16 shown=1 text= sel=0,0\n  UIWhisperEditCtrl@@ id=569 rect=6,76,90,16 shown=1 text= sel=0,0\n  UIResizer@@ id=569 rect=3,72,2,24 shown=1\n  UIBitmapButton@@ id=217 rect=97,75,8,18 shown=1\n  UIBitmapButton@@ id=204 rect=586,79,11,11 shown=1\n  UIBitmapButton@@ id=230 rect=572,79,11,11 shown=1\n  UIResizer@@ id=569 rect=3,16,574,6 shown=1\nUIShortCutWnd@@ id=36 rect=230,0,290,67 shown=1\n  UIBitmapButton@@ id=193 rect=280,0,11,11 shown=1\n  UICheckBox@@ id=541 rect=3,4,10,26 shown=1 on=0 dim=0\n  UIBitmapButton@@ id=209 rect=277,39,11,11 shown=1\n  UIBitmapButton@@ id=208 rect=277,54,11,11 shown=1\nUIQuikSlotWnd@@ id=159 rect=900,0,77,34 shown=1\nUIItemDropCntWnd@@ id=15 rect=392,320,182,46 shown=0\n  UIEditCtrl@@ id=569 rect=15,22,80,16 shown=1 text=0 sel=0,1\n  UIStaticText@@ id=569 rect=15,6,100,15 shown=1 text=\n  UIBitmapButton@@ id=176 rect=127,14,42,20 shown=1\nactor id=2900148 job=0 kind=0 rect=493,296,38,96\nactor id=110012001 job=117 kind=0 rect=566,321,39,100\nactor id=110002194 job=83 kind=0 rect=590,153,67,98\nactor id=110001135 job=117 kind=0 rect=424,154,35,94\nactor id=110012006 job=117 kind=0 rect=787,321,39,100\nactor id=110012005 job=117 kind=0 rect=677,321,39,100\nactor id=110012002 job=122 kind=0 rect=885,301,61,120\nactor id=110011884 job=1130 kind=0 rect=192,40,48,77\nactor id=110011883 job=650 kind=0 rect=203,38,87,95\nactor id=110011863 job=122 kind=0 rect=276,113,57,112\nactor id=110011038 job=105 kind=0 rect=445,72,65,115\nactor id=110004811 job=92 kind=0 rect=562,97,35,85\nactor id=110011879 job=795 kind=0 rect=820,17,42,98\nactor id=110011859 job=509 kind=0 rect=699,128,105,96\nworld objects=16 effects=1 actors=13 items=0 units=0 pending=0\nwplayer id=2900148 job=0 kind=0 cell=0,0 at=155,185 state=0 action=4 held=0 opt=0 vanish=0 fx=1\nwactor id=110001135 job=117 kind=6 cell=153,191 at=153,191 state=0 action=6 held=0 opt=0 vanish=0 fx=0\nwactor id=110002194 job=83 kind=6 cell=158,191 at=158,191 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110004811 job=92 kind=6 cell=157,194 at=157,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011038 job=105 kind=6 cell=154,194 at=154,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011859 job=509 kind=6 cell=162,192 at=162,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011863 job=122 kind=6 cell=149,192 at=149,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011879 job=795 kind=6 cell=165,197 at=165,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011883 job=650 kind=6 cell=147,196 at=147,196 state=0 action=1 held=0 opt=0 vanish=0 fx=0\nwactor id=110011884 job=1130 kind=6 cell=146,197 at=146,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012001 job=117 kind=6 cell=157,184 at=157,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012002 job=122 kind=6 cell=166,184 at=166,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012005 job=117 kind=6 cell=160,184 at=160,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012006 job=117 kind=6 cell=163,184 at=163,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\n",
+  "refused_again": "mode=login\nui=1024,768\nUIWaitWnd@@ id=6 rect=377,480,280,120 shown=1\n  UIBitmapButton@@ id=177 rect=117,50,46,20 shown=1\n  UITextViewer@@ id=569 rect=10,22,260,65 shown=1 lines=1 hash=bb013e0a links=0 text=Please\\x20wait...\n    UIScrollBar@@ id=569 rect=247,0,13,65 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar@@ id=569 rect=0,52,247,13 shown=1 pos=0 max=0 page=0 total=0\nUIMessageBox@@ id=569 rect=377,324,280,120 shown=1 modal\n  UITextViewer@@ id=569 rect=10,22,260,65 shown=1 lines=2 hash=3f97bb7d links=0 text=Incorrect\\x20User\\x20ID\\x20or\\x20Password.\\x20Please\\x20\\x0atry\\x20again.\n    UIScrollBar@@ id=569 rect=247,0,13,65 shown=1 pos=0 max=0 page=3 total=2\n    UIScrollBar@@ id=569 rect=0,52,247,13 shown=1 pos=0 max=0 page=0 total=0\n  UIBitmapButton@@ id=176 rect=234,96,42,20 shown=1\n",
+  "refused_password": "mode=login\nui=1024,768\nUIWaitWnd@@ id=6 rect=377,480,280,120 shown=1\n  UIBitmapButton@@ id=177 rect=117,50,46,20 shown=1\n  UITextViewer@@ id=569 rect=10,22,260,65 shown=1 lines=1 hash=bb013e0a links=0 text=Please\\x20wait...\n    UIScrollBar@@ id=569 rect=247,0,13,65 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar@@ id=569 rect=0,52,247,13 shown=1 pos=0 max=0 page=0 total=0\nUIMessageBox@@ id=569 rect=377,324,280,120 shown=1 modal\n  UITextViewer@@ id=569 rect=10,22,260,65 shown=1 lines=2 hash=3f97bb7d links=0 text=Incorrect\\x20User\\x20ID\\x20or\\x20Password.\\x20Please\\x20\\x0atry\\x20again.\n    UIScrollBar@@ id=569 rect=247,0,13,65 shown=1 pos=0 max=0 page=3 total=2\n    UIScrollBar@@ id=569 rect=0,52,247,13 shown=1 pos=0 max=0 page=0 total=0\n  UIBitmapButton@@ id=176 rect=234,96,42,20 shown=1\n"
+ },
+ "sends": [
+  [
+   251,
+   0,
+   99,
+   "0204"
+  ],
+  [
+   541,
+   1,
+   99,
+   "0204"
+  ],
+  [
+   831,
+   2,
+   99,
+   "0204"
+  ],
+  [
+   835,
+   3,
+   17,
+   "0065"
+  ],
+  [
+   839,
+   3,
+   23,
+   "0187"
+  ],
+  [
+   1043,
+   3,
+   26,
+   "0066"
+  ],
+  [
+   1049,
+   4,
+   23,
+   "0436"
+  ],
+  [
+   1085,
+   4,
+   61,
+   "0bf6"
+  ],
+  [
+   1102,
+   4,
+   65,
+   "0447"
+  ]
+ ],
+ "window": {
+  "box_closed": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "char_select": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "on_map": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "refused_again": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "refused_password": "style=06ca0000 exstyle=00000100 client=1024x768"
+ },
+ "counters": {
+  "box_closed": {
+   "draws": 2227,
+   "render_states": 17050,
+   "set_textures": 2270,
+   "textures_made": 76,
+   "vertex_buffers_made": 0,
+   "files_opened": 88,
+   "texts_drawn": 169,
+   "arena_allocs": 1652229,
+   "arena_live_kb": 101615,
+   "arena_peak_kb": 110885
+  },
+  "char_select": {
+   "draws": 8071,
+   "render_states": 44266,
+   "set_textures": 8112,
+   "textures_made": 106,
+   "vertex_buffers_made": 0,
+   "files_opened": 89,
+   "texts_drawn": 587,
+   "arena_allocs": 1667013,
+   "arena_live_kb": 104689,
+   "arena_peak_kb": 110885
+  },
+  "on_map": {
+   "draws": 18799,
+   "render_states": 57203,
+   "set_textures": 19444,
+   "textures_made": 581,
+   "vertex_buffers_made": 0,
+   "files_opened": 101,
+   "texts_drawn": 791,
+   "arena_allocs": 1784647,
+   "arena_live_kb": 129519,
+   "arena_peak_kb": 130622
+  },
+  "refused_again": {
+   "draws": 3653,
+   "render_states": 27466,
+   "set_textures": 3696,
+   "textures_made": 76,
+   "vertex_buffers_made": 0,
+   "files_opened": 88,
+   "texts_drawn": 357,
+   "arena_allocs": 1652300,
+   "arena_live_kb": 101611,
+   "arena_peak_kb": 110885
+  },
+  "refused_password": {
+   "draws": 2012,
+   "render_states": 15286,
+   "set_textures": 2056,
+   "textures_made": 75,
+   "vertex_buffers_made": 0,
+   "files_opened": 88,
+   "texts_drawn": 143,
+   "arena_allocs": 1652079,
+   "arena_live_kb": 101611,
+   "arena_peak_kb": 110885
+  }
+ },
+ "saved": {
+  "registry": "Software\\Gravity Soft\\Ragnarok|WIDTH|dword|1024\nSoftware\\Gravity Soft\\Ragnarok|HEIGHT|dword|768\nSoftware\\Gravity Soft\\Ragnarok|ISFULLSCREENMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITPERPIXEL|dword|32\nSoftware\\Gravity Soft\\Ragnarok|SOUNDMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|SHOWTIPSATSTARTUP|dword|0\nSoftware\\Gravity Soft\\Ragnarok|NUMACCOUNT|dword|0\nSoftware\\Gravity Soft\\Ragnarok|ID|sz|\nSoftware\\Gravity Soft\\Ragnarok|CHECKSAVE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITWISE|dword|1\nSoftware\\Gravity Soft\\Ragnarok\\NeoCash|CASH_CATEGORY|dword|0\n",
+  "files": {}
+ },
+ "noisy": []
+}

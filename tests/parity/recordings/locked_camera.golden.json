@@ -1,0 +1,154 @@
+{
+ "captures": {
+  "prontera_again": "b9937b161a57fa294405a973fcf96b7a932eb16f0e2f0ae9728455972817faa9",
+  "prontera_camera": "f88d6cf60d12b9c21a057f75db881ed9fce7948c7a10fba0955a7f5e8c68907f",
+  "tower_camera": "07b67a77109fbf32a7074a312626a6415397c75cb8e73c663be36a38024cddd5"
+ },
+ "states": {
+  "prontera_again": "mode=game\nui=1024,768\nUINameBalloonText@@ id=569 rect=486,410,52,20 shown=1 text=Parity34\nUIPlayerGage@@ id=569 rect=482,399,60,9 shown=1\nUIQuestDisplay@@ id=569 rect=704,150,250,400 shown=0\nUIBasicInfoWnd@@ id=0 rect=0,0,220,134 shown=1\n  UIBitmapButton@@ id=569 rect=3,3,11,11 shown=1\n  UIBitmapButton@@ id=194 rect=206,3,11,11 shown=1\n  UIStaticText@@ id=569 rect=9,22,200,15 shown=1 text=Parity34\n  UIBarGraphPlayer@@ id=569 rect=35,53,135,9 shown=1\n  UIBarGraphPlayer@@ id=569 rect=35,68,135,9 shown=1\n  UIBarGraphPlayerAP@@ id=569 rect=-100,-100,135,9 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,89,112,6 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,101,112,6 shown=1\nUIMenuIconWnd@@ id=307 rect=0,130,220,154 shown=1\n  UIMenuIcon@@ id=184 rect=9,23,32,34 shown=1\n  UIMenuIcon@@ id=184 rect=9,17,35,40 shown=0\n  UIMenuIcon@@ id=187 rect=51,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,17,35,40 shown=0\n  UIMenuIcon@@ id=188 rect=135,23,32,34 shown=1\n  UIMenuIcon@@ id=188 rect=135,17,35,40 shown=0\n  UIMenuIcon@@ id=191 rect=177,23,32,34 shown=1\n  UIMenuIcon@@ id=365 rect=9,66,32,34 shown=1\n  UIMenuIcon@@ id=353 rect=51,66,32,34 shown=1\n  UIMenuIcon@@ id=211 rect=93,66,32,34 shown=1\n  UIMenuIcon@@ id=422 rect=135,66,32,34 shown=1\n  UIMenuIcon@@ id=185 rect=177,66,32,34 shown=1\n  UIMenuIcon@@ id=453 rect=9,109,32,34 shown=1\n  UIMenuIcon@@ id=391 rect=51,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,103,35,40 shown=0\n  UIMenuIcon@@ id=362 rect=135,109,32,34 shown=1\n  UIMenuIcon@@ id=536 rect=177,109,32,34 shown=1\n  UIBitmapButton@@ id=502 rect=0,4,219,9 shown=0\n  UIBitmapButton@@ id=502 rect=0,0,219,13 shown=0\n  UIBitmapButton@@ id=193 rect=0,4,219,9 shown=1\nUIMinimapZoomWnd@@ id=14 rect=879,17,128,140 shown=1\n  UIBitmapButton@@ id=444 rect=1,128,12,12 shown=1\n  UIBitmapButton@@ id=208 rect=73,128,12,12 shown=1\n  UIBitmapButton@@ id=209 rect=87,128,12,12 shown=1\n  UIBitmapButton@@ id=181 rect=101,128,12,12 shown=1\n  UIBitmapButton@@ id=446 rect=115,128,12,12 shown=1\n  UIBitmapButton@@ id=1000 rect=55,91,12,12 shown=1\n  UIBitmapButton@@ id=1001 rect=57,111,12,12 shown=1\n  UIBitmapButton@@ id=1002 rect=100,55,12,12 shown=1\n  UIBitmapButton@@ id=1003 rect=17,53,12,12 shown=1\n  UIBitmapButton@@ id=1004 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1005 rect=58,58,12,12 shown=1\n  UIBitmapButton@@ id=1006 rect=58,57,12,12 shown=1\n  UIBitmapButton@@ id=1007 rect=98,52,12,12 shown=1\n  UIBitmapButton@@ id=1008 rect=20,56,12,12 shown=1\n  UIBitmapButton@@ id=1009 rect=60,109,12,12 shown=1\n  UIBitmapButton@@ id=1010 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1011 rect=51,48,12,12 shown=1\n  UIBitmapButton@@ id=1012 rect=65,49,12,12 shown=1\n  UIBitmapButton@@ id=1013 rect=66,60,12,12 shown=1\n  UIBitmapButton@@ id=1014 rect=74,58,12,12 shown=1\n  UIBitmapButton@@ id=1015 rect=43,49,12,12 shown=1\n  UIBitmapButton@@ id=1016 rect=56,58,12,12 shown=1\n  UIBitmapButton@@ id=1017 rect=60,58,12,12 shown=1\nUINewChatWnd@@ id=1 rect=0,672,600,96 shown=1 chat\n  UITabControl@@ id=569 rect=3,0,165,17 shown=1 tab=0\n    UIEditCtrl2@@ id=569 rect=-100,-100,100,19 shown=1 text= sel=0,0\n  UIBitmapButton@@ id=350 rect=544,4,14,9 shown=1\n  UIBitmapButton@@ id=185 rect=533,4,9,9 shown=1\n  UIBitmapButton@@ id=366 rect=560,4,8,8 shown=1\n  UIBitmapButton@@ id=194 rect=570,4,8,8 shown=1\n  UIChatHisBox@@ id=485 rect=5,18,592,52 shown=1 row=0 top=18\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=18 max=18 page=3 total=21\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatHisBox@@ id=485 rect=-700,-100,592,52 shown=1 row=0 top=0\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatEditCtrl@@ id=485 rect=110,76,460,16 shown=1 text= sel=0,0\n  UIWhisperEditCtrl@@ id=569 rect=6,76,90,16 shown=1 text= sel=0,0\n  UIResizer@@ id=569 rect=3,72,2,24 shown=1\n  UIBitmapButton@@ id=217 rect=97,75,8,18 shown=1\n  UIBitmapButton@@ id=204 rect=586,79,11,11 shown=1\n  UIBitmapButton@@ id=230 rect=572,79,11,11 shown=1\n  UIResizer@@ id=569 rect=3,16,574,6 shown=1\nUIShortCutWnd@@ id=36 rect=230,0,290,67 shown=1\n  UIBitmapButton@@ id=193 rect=280,0,11,11 shown=1\n  UICheckBox@@ id=541 rect=3,4,10,26 shown=1 on=0 dim=0\n  UIBitmapButton@@ id=209 rect=277,39,11,11 shown=1\n  UIBitmapButton@@ id=208 rect=277,54,11,11 shown=1\nUIQuikSlotWnd@@ id=159 rect=900,0,77,34 shown=1\nUIItemDropCntWnd@@ id=15 rect=392,320,182,46 shown=0\n  UIEditCtrl@@ id=569 rect=15,22,80,16 shown=1 text=0 sel=0,1\n  UIStaticText@@ id=569 rect=15,6,100,15 shown=1 text=\n  UIBitmapButton@@ id=176 rect=127,14,42,20 shown=1\nactor id=2900134 job=0 kind=0 rect=492,290,40,103\nactor id=110012001 job=117 kind=0 rect=531,325,43,108\nactor id=110002194 job=83 kind=0 rect=558,208,71,104\nactor id=110001135 job=117 kind=0 rect=383,209,37,100\nactor id=110012006 job=117 kind=0 rect=769,325,43,108\nactor id=110012005 job=117 kind=0 rect=650,325,43,108\nactor id=110012002 job=122 kind=0 rect=875,304,66,130\nactor id=110011884 job=1130 kind=0 rect=144,137,48,82\nactor id=110011883 job=650 kind=0 rect=154,129,91,100\nactor id=110011863 job=122 kind=0 rect=227,175,61,119\nactor id=110011038 job=105 kind=0 rect=406,149,68,121\nactor id=110004811 job=92 kind=0 rect=529,175,37,90\nactor id=110011879 job=795 kind=0 rect=801,119,40,98\nactor id=110011859 job=509 kind=0 rect=673,191,111,101\nworld objects=16 effects=1 actors=13 items=0 units=0 pending=0\nwplayer id=2900134 job=0 kind=0 cell=0,0 at=156,186 state=0 action=4 held=0 opt=0 vanish=0 fx=1\nwactor id=110001135 job=117 kind=6 cell=153,191 at=153,191 state=0 action=6 held=0 opt=0 vanish=0 fx=0\nwactor id=110002194 job=83 kind=6 cell=158,191 at=158,191 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110004811 job=92 kind=6 cell=157,194 at=157,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011038 job=105 kind=6 cell=154,194 at=154,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011859 job=509 kind=6 cell=162,192 at=162,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011863 job=122 kind=6 cell=149,192 at=149,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011879 job=795 kind=6 cell=165,197 at=165,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011883 job=650 kind=6 cell=147,196 at=147,196 state=0 action=1 held=0 opt=0 vanish=0 fx=0\nwactor id=110011884 job=1130 kind=6 cell=146,197 at=146,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012001 job=117 kind=6 cell=157,184 at=157,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012002 job=122 kind=6 cell=166,184 at=166,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012005 job=117 kind=6 cell=160,184 at=160,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012006 job=117 kind=6 cell=163,184 at=163,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\n",
+  "prontera_camera": "mode=game\nui=1024,768\nUINameBalloonText@@ id=569 rect=486,410,52,20 shown=1 text=Parity34\nUITransBalloonText@@ id=569 rect=439,254,147,23 shown=1 text=Welcome\\x20to\\x20Ragexe\\x20Saga!\nUIPlayerGage@@ id=569 rect=482,399,60,9 shown=1\nUIQuestDisplay@@ id=569 rect=704,150,250,400 shown=0\nUIBasicInfoWnd@@ id=0 rect=0,0,220,134 shown=1\n  UIBitmapButton@@ id=569 rect=3,3,11,11 shown=1\n  UIBitmapButton@@ id=194 rect=206,3,11,11 shown=1\n  UIStaticText@@ id=569 rect=9,22,200,15 shown=1 text=Parity34\n  UIBarGraphPlayer@@ id=569 rect=35,53,135,9 shown=1\n  UIBarGraphPlayer@@ id=569 rect=35,68,135,9 shown=1\n  UIBarGraphPlayerAP@@ id=569 rect=-100,-100,135,9 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,89,112,6 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,101,112,6 shown=1\nUIMenuIconWnd@@ id=307 rect=0,130,220,154 shown=1\n  UIMenuIcon@@ id=184 rect=9,23,32,34 shown=1\n  UIMenuIcon@@ id=184 rect=9,17,35,40 shown=0\n  UIMenuIcon@@ id=187 rect=51,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,17,35,40 shown=0\n  UIMenuIcon@@ id=188 rect=135,23,32,34 shown=1\n  UIMenuIcon@@ id=188 rect=135,17,35,40 shown=0\n  UIMenuIcon@@ id=191 rect=177,23,32,34 shown=1\n  UIMenuIcon@@ id=365 rect=9,66,32,34 shown=1\n  UIMenuIcon@@ id=353 rect=51,66,32,34 shown=1\n  UIMenuIcon@@ id=211 rect=93,66,32,34 shown=1\n  UIMenuIcon@@ id=422 rect=135,66,32,34 shown=1\n  UIMenuIcon@@ id=185 rect=177,66,32,34 shown=1\n  UIMenuIcon@@ id=453 rect=9,109,32,34 shown=1\n  UIMenuIcon@@ id=391 rect=51,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,103,35,40 shown=0\n  UIMenuIcon@@ id=362 rect=135,109,32,34 shown=1\n  UIMenuIcon@@ id=536 rect=177,109,32,34 shown=1\n  UIBitmapButton@@ id=502 rect=0,4,219,9 shown=0\n  UIBitmapButton@@ id=502 rect=0,0,219,13 shown=0\n  UIBitmapButton@@ id=193 rect=0,4,219,9 shown=1\nUIMinimapZoomWnd@@ id=14 rect=879,17,128,140 shown=1\n  UIBitmapButton@@ id=444 rect=1,128,12,12 shown=1\n  UIBitmapButton@@ id=208 rect=73,128,12,12 shown=1\n  UIBitmapButton@@ id=209 rect=87,128,12,12 shown=1\n  UIBitmapButton@@ id=181 rect=101,128,12,12 shown=1\n  UIBitmapButton@@ id=446 rect=115,128,12,12 shown=1\n  UIBitmapButton@@ id=1000 rect=55,91,12,12 shown=1\n  UIBitmapButton@@ id=1001 rect=57,111,12,12 shown=1\n  UIBitmapButton@@ id=1002 rect=100,55,12,12 shown=1\n  UIBitmapButton@@ id=1003 rect=17,53,12,12 shown=1\n  UIBitmapButton@@ id=1004 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1005 rect=58,58,12,12 shown=1\n  UIBitmapButton@@ id=1006 rect=58,57,12,12 shown=1\n  UIBitmapButton@@ id=1007 rect=98,52,12,12 shown=1\n  UIBitmapButton@@ id=1008 rect=20,56,12,12 shown=1\n  UIBitmapButton@@ id=1009 rect=60,109,12,12 shown=1\n  UIBitmapButton@@ id=1010 rect=57,14,12,12 shown=1\n  UIBitmapButton@@ id=1011 rect=51,48,12,12 shown=1\n  UIBitmapButton@@ id=1012 rect=65,49,12,12 shown=1\n  UIBitmapButton@@ id=1013 rect=66,60,12,12 shown=1\n  UIBitmapButton@@ id=1014 rect=74,58,12,12 shown=1\n  UIBitmapButton@@ id=1015 rect=43,49,12,12 shown=1\n  UIBitmapButton@@ id=1016 rect=56,58,12,12 shown=1\n  UIBitmapButton@@ id=1017 rect=60,58,12,12 shown=1\nUINewChatWnd@@ id=1 rect=0,672,600,96 shown=1 chat\n  UITabControl@@ id=569 rect=3,0,165,17 shown=1 tab=0\n    UIEditCtrl2@@ id=569 rect=-100,-100,100,19 shown=1 text= sel=0,0\n  UIBitmapButton@@ id=350 rect=544,4,14,9 shown=1\n  UIBitmapButton@@ id=185 rect=533,4,9,9 shown=1\n  UIBitmapButton@@ id=366 rect=560,4,8,8 shown=1\n  UIBitmapButton@@ id=194 rect=570,4,8,8 shown=1\n  UIChatHisBox@@ id=485 rect=5,18,592,52 shown=1 row=0 top=14\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=14 max=14 page=3 total=17\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatHisBox@@ id=485 rect=-700,-100,592,52 shown=1 row=0 top=0\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatEditCtrl@@ id=485 rect=110,76,460,16 shown=1 text= sel=0,0\n  UIWhisperEditCtrl@@ id=569 rect=6,76,90,16 shown=1 text= sel=0,0\n  UIResizer@@ id=569 rect=3,72,2,24 shown=1\n  UIBitmapButton@@ id=217 rect=97,75,8,18 shown=1\n  UIBitmapButton@@ id=204 rect=586,79,11,11 shown=1\n  UIBitmapButton@@ id=230 rect=572,79,11,11 shown=1\n  UIResizer@@ id=569 rect=3,16,574,6 shown=1\nUIShortCutWnd@@ id=36 rect=230,0,290,67 shown=1\n  UIBitmapButton@@ id=193 rect=280,0,11,11 shown=1\n  UICheckBox@@ id=541 rect=3,4,10,26 shown=1 on=0 dim=0\n  UIBitmapButton@@ id=209 rect=277,39,11,11 shown=1\n  UIBitmapButton@@ id=208 rect=277,54,11,11 shown=1\nUIQuikSlotWnd@@ id=159 rect=900,0,77,34 shown=1\nUIItemDropCntWnd@@ id=15 rect=392,320,182,46 shown=0\n  UIEditCtrl@@ id=569 rect=15,22,80,16 shown=1 text=0 sel=0,1\n  UIStaticText@@ id=569 rect=15,6,100,15 shown=1 text=\n  UIBitmapButton@@ id=176 rect=127,14,42,20 shown=1\nactor id=2900134 job=0 kind=0 rect=492,290,40,103\nactor id=110012001 job=117 kind=0 rect=570,308,42,107\nactor id=110002194 job=83 kind=0 rect=593,193,70,103\nactor id=110001135 job=117 kind=0 rect=420,194,37,99\nactor id=110012006 job=117 kind=0 rect=806,308,42,107\nactor id=110012005 job=117 kind=0 rect=688,308,42,107\nactor id=110012002 job=122 kind=0 rect=910,286,66,128\nactor id=110011884 job=1130 kind=0 rect=182,122,47,82\nactor id=110011883 job=650 kind=0 rect=192,115,90,99\nactor id=110011863 job=122 kind=0 rect=266,160,60,117\nactor id=110011038 job=105 kind=0 rect=442,134,68,120\nactor id=110004811 job=92 kind=0 rect=564,160,37,89\nactor id=110011879 job=795 kind=0 rect=832,105,39,97\nactor id=110011859 job=509 kind=0 rect=707,176,110,100\nworld objects=16 effects=1 actors=13 items=0 units=0 pending=0\nwplayer id=2900134 job=0 kind=0 cell=0,0 at=155,185 state=0 action=4 held=0 opt=0 vanish=0 fx=1\nwactor id=110001135 job=117 kind=6 cell=153,191 at=153,191 state=0 action=6 held=0 opt=0 vanish=0 fx=0\nwactor id=110002194 job=83 kind=6 cell=158,191 at=158,191 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110004811 job=92 kind=6 cell=157,194 at=157,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011038 job=105 kind=6 cell=154,194 at=154,194 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011859 job=509 kind=6 cell=162,192 at=162,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011863 job=122 kind=6 cell=149,192 at=149,192 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011879 job=795 kind=6 cell=165,197 at=165,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110011883 job=650 kind=6 cell=147,196 at=147,196 state=0 action=1 held=0 opt=0 vanish=0 fx=0\nwactor id=110011884 job=1130 kind=6 cell=146,197 at=146,197 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012001 job=117 kind=6 cell=157,184 at=157,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012002 job=122 kind=6 cell=166,184 at=166,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012005 job=117 kind=6 cell=160,184 at=160,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\nwactor id=110012006 job=117 kind=6 cell=163,184 at=163,184 state=0 action=0 held=0 opt=0 vanish=0 fx=0\n",
+  "tower_camera": "mode=game\nui=1024,768\nUINameBalloonText@@ id=569 rect=486,410,52,20 shown=1 text=Parity34\nUIPlayerGage@@ id=569 rect=482,399,60,9 shown=1\nUIQuestDisplay@@ id=569 rect=704,150,250,400 shown=0\nUIBasicInfoWnd@@ id=0 rect=0,0,220,134 shown=1\n  UIBitmapButton@@ id=569 rect=3,3,11,11 shown=1\n  UIBitmapButton@@ id=194 rect=206,3,11,11 shown=1\n  UIStaticText@@ id=569 rect=9,22,200,15 shown=1 text=Parity34\n  UIBarGraphPlayer@@ id=569 rect=35,53,135,9 shown=1\n  UIBarGraphPlayer@@ id=569 rect=35,68,135,9 shown=1\n  UIBarGraphPlayerAP@@ id=569 rect=-100,-100,135,9 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,89,112,6 shown=1\n  UIINT64BarGraph@@ id=569 rect=85,101,112,6 shown=1\nUIMenuIconWnd@@ id=307 rect=0,130,220,154 shown=1\n  UIMenuIcon@@ id=184 rect=9,23,32,34 shown=1\n  UIMenuIcon@@ id=184 rect=9,17,35,40 shown=0\n  UIMenuIcon@@ id=187 rect=51,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,23,32,34 shown=1\n  UIMenuIcon@@ id=186 rect=93,17,35,40 shown=0\n  UIMenuIcon@@ id=188 rect=135,23,32,34 shown=1\n  UIMenuIcon@@ id=188 rect=135,17,35,40 shown=0\n  UIMenuIcon@@ id=191 rect=177,23,32,34 shown=1\n  UIMenuIcon@@ id=365 rect=9,66,32,34 shown=1\n  UIMenuIcon@@ id=353 rect=51,66,32,34 shown=1\n  UIMenuIcon@@ id=211 rect=93,66,32,34 shown=1\n  UIMenuIcon@@ id=422 rect=135,66,32,34 shown=1\n  UIMenuIcon@@ id=185 rect=177,66,32,34 shown=1\n  UIMenuIcon@@ id=453 rect=9,109,32,34 shown=1\n  UIMenuIcon@@ id=391 rect=51,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,109,32,34 shown=1\n  UIMenuIcon@@ id=468 rect=93,103,35,40 shown=0\n  UIMenuIcon@@ id=362 rect=135,109,32,34 shown=1\n  UIMenuIcon@@ id=536 rect=177,109,32,34 shown=1\n  UIBitmapButton@@ id=502 rect=0,4,219,9 shown=0\n  UIBitmapButton@@ id=502 rect=0,0,219,13 shown=0\n  UIBitmapButton@@ id=193 rect=0,4,219,9 shown=1\nUIMinimapZoomWnd@@ id=14 rect=879,17,128,140 shown=1\n  UIBitmapButton@@ id=444 rect=1,128,12,12 shown=1\n  UIBitmapButton@@ id=208 rect=73,128,12,12 shown=1\n  UIBitmapButton@@ id=209 rect=87,128,12,12 shown=1\n  UIBitmapButton@@ id=181 rect=101,128,12,12 shown=1\n  UIBitmapButton@@ id=446 rect=115,128,12,12 shown=1\nUINewChatWnd@@ id=1 rect=0,672,600,96 shown=1 chat\n  UITabControl@@ id=569 rect=3,0,165,17 shown=1 tab=0\n    UIEditCtrl2@@ id=569 rect=-100,-100,100,19 shown=1 text= sel=0,0\n  UIBitmapButton@@ id=350 rect=544,4,14,9 shown=1\n  UIBitmapButton@@ id=185 rect=533,4,9,9 shown=1\n  UIBitmapButton@@ id=366 rect=560,4,8,8 shown=1\n  UIBitmapButton@@ id=194 rect=570,4,8,8 shown=1\n  UIChatHisBox@@ id=485 rect=5,18,592,52 shown=1 row=0 top=16\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=16 max=16 page=3 total=19\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatHisBox@@ id=485 rect=-700,-100,592,52 shown=1 row=0 top=0\n    UIScrollBar2@@ id=569 rect=579,0,13,52 shown=1 pos=0 max=0 page=3 total=1\n    UIScrollBar2@@ id=569 rect=0,39,579,13 shown=1 pos=0 max=0 page=0 total=0\n  UIChatEditCtrl@@ id=485 rect=110,76,460,16 shown=1 text= sel=0,0\n  UIWhisperEditCtrl@@ id=569 rect=6,76,90,16 shown=1 text= sel=0,0\n  UIResizer@@ id=569 rect=3,72,2,24 shown=1\n  UIBitmapButton@@ id=217 rect=97,75,8,18 shown=1\n  UIBitmapButton@@ id=204 rect=586,79,11,11 shown=1\n  UIBitmapButton@@ id=230 rect=572,79,11,11 shown=1\n  UIResizer@@ id=569 rect=3,16,574,6 shown=1\nUIShortCutWnd@@ id=36 rect=230,0,290,67 shown=1\n  UIBitmapButton@@ id=193 rect=280,0,11,11 shown=1\n  UICheckBox@@ id=541 rect=3,4,10,26 shown=1 on=0 dim=0\n  UIBitmapButton@@ id=209 rect=277,39,11,11 shown=1\n  UIBitmapButton@@ id=208 rect=277,54,11,11 shown=1\nUIQuikSlotWnd@@ id=159 rect=900,0,77,34 shown=1\nUIItemDropCntWnd@@ id=15 rect=392,320,182,46 shown=0\n  UIEditCtrl@@ id=569 rect=15,22,80,16 shown=1 text=0 sel=0,1\n  UIStaticText@@ id=569 rect=15,6,100,15 shown=1 text=\n  UIBitmapButton@@ id=176 rect=127,14,42,20 shown=1\nactor id=2900134 job=0 kind=0 rect=486,291,43,99\nactor id=110000910 job=406 kind=0 rect=352,218,66,108\nworld objects=4 effects=1 actors=1 items=0 units=0 pending=0\nwplayer id=2900134 job=0 kind=0 cell=0,0 at=81,100 state=0 action=3 held=0 opt=0 vanish=0 fx=1\nwactor id=110000910 job=406 kind=6 cell=81,105 at=81,105 state=0 action=3 held=0 opt=0 vanish=0 fx=0\n"
+ },
+ "sends": [
+  [
+   248,
+   0,
+   99,
+   "0204"
+  ],
+  [
+   252,
+   1,
+   17,
+   "0065"
+  ],
+  [
+   434,
+   1,
+   20,
+   "0066"
+  ],
+  [
+   436,
+   2,
+   23,
+   "0436"
+  ],
+  [
+   473,
+   2,
+   61,
+   "0bf6"
+  ],
+  [
+   490,
+   2,
+   65,
+   "0447"
+  ],
+  [
+   702,
+   2,
+   71,
+   "0368"
+  ],
+  [
+   809,
+   2,
+   106,
+   "00f3"
+  ],
+  [
+   845,
+   2,
+   124,
+   "0bf6"
+  ],
+  [
+   847,
+   2,
+   130,
+   "0368"
+  ],
+  [
+   851,
+   2,
+   132,
+   "0447"
+  ],
+  [
+   1075,
+   2,
+   169,
+   "00f3"
+  ],
+  [
+   1111,
+   2,
+   187,
+   "0bf6"
+  ],
+  [
+   1113,
+   2,
+   193,
+   "0368"
+  ],
+  [
+   1124,
+   2,
+   195,
+   "0447"
+  ]
+ ],
+ "window": {
+  "prontera_again": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "prontera_camera": "style=06ca0000 exstyle=00000100 client=1024x768",
+  "tower_camera": "style=06ca0000 exstyle=00000100 client=1024x768"
+ },
+ "counters": {
+  "prontera_again": {
+   "draws": 38176,
+   "render_states": 59295,
+   "set_textures": 38887,
+   "textures_made": 838,
+   "vertex_buffers_made": 0,
+   "files_opened": 101,
+   "texts_drawn": 3673,
+   "arena_allocs": 1934056,
+   "arena_live_kb": 141293,
+   "arena_peak_kb": 141435
+  },
+  "prontera_camera": {
+   "draws": 18875,
+   "render_states": 34903,
+   "set_textures": 19672,
+   "textures_made": 588,
+   "vertex_buffers_made": 0,
+   "files_opened": 101,
+   "texts_drawn": 827,
+   "arena_allocs": 1790545,
+   "arena_live_kb": 129526,
+   "arena_peak_kb": 130626
+  },
+  "tower_camera": {
+   "draws": 25644,
+   "render_states": 47053,
+   "set_textures": 26225,
+   "textures_made": 646,
+   "vertex_buffers_made": 0,
+   "files_opened": 101,
+   "texts_drawn": 2225,
+   "arena_allocs": 1832101,
+   "arena_live_kb": 124887,
+   "arena_peak_kb": 130626
+  }
+ },
+ "saved": {
+  "registry": "Software\\Gravity Soft\\Ragnarok|WIDTH|dword|1024\nSoftware\\Gravity Soft\\Ragnarok|HEIGHT|dword|768\nSoftware\\Gravity Soft\\Ragnarok|ISFULLSCREENMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITPERPIXEL|dword|32\nSoftware\\Gravity Soft\\Ragnarok|SOUNDMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|SHOWTIPSATSTARTUP|dword|0\nSoftware\\Gravity Soft\\Ragnarok|NUMACCOUNT|dword|0\nSoftware\\Gravity Soft\\Ragnarok|ID|sz|\nSoftware\\Gravity Soft\\Ragnarok|CHECKSAVE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITWISE|dword|1\nSoftware\\Gravity Soft\\Ragnarok\\NeoCash|CASH_CATEGORY|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM010|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL010|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM110|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL110|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM210|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL210|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM310|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL310|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM410|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL410|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM510|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL510|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM610|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL610|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM710|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL710|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM810|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL810|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM910|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL910|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1010|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1010|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1110|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1110|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1210|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1210|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1310|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1310|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1410|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1410|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1510|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1510|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1610|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1610|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1710|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1710|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1810|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1810|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM1910|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL1910|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2010|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2010|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2110|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2110|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2210|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2210|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2310|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2310|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2410|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2410|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2510|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2510|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2610|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2610|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2710|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2710|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2810|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2810|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM2910|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL2910|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3010|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3010|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3110|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3110|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3210|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3210|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3310|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3310|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3410|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3410|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|SITEM3510|sz|nothing\nSoftware\\Gravity Soft\\Ragnarok\\ShortcutItem\\Hercules|S_SKILL_USE_LEVEL3510|dword|0\nSoftware\\Gravity Soft\\Ragnarok\\NameBaloon\\Hercules|POS|dword|0\n",
+  "files": {
+   "MiniPartyInfo_290134.lua": ""
+  }
+ },
+ "noisy": []
+}

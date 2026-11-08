@@ -1,0 +1,79 @@
+{
+ "about": "teardown.py regress: interrupted sessions the gate replays on ragexe (and its AddressSanitizer build with TD_ASAN_EXE), each against herc's summary in recordings/teardown_regress.golden.json (teardown.py bless). A case is a scenario, a moment and an interruption kind (teardown.py's KINDS); 'why' says what it keeps covered. 'ragexe_differs' names the state lines ragexe differs from herc by on purpose, and why.",
+ "cases": [
+  {
+   "scenario": "npc_dialogs",
+   "moment": "conn2.007d",
+   "kind": "warp_close",
+   "why": "the login's same-map warp still queued when the server ends the connection behind the map-loaded packet: the disconnect box must stand (RAGEXE_FEATURE_DISCONNECT_BOX drops the move), and the drive logs in again"
+  },
+  {
+   "scenario": "npc_dialogs",
+   "moment": "talk_a_02",
+   "kind": "reset_send",
+   "why": "a reset met first by a send, with an NPC dialog open: the flush leaves the socket for the pump to end (RAGEXE_FEATURE_DISCONNECT_BOX)"
+  },
+  {
+   "scenario": "npc_dialogs",
+   "moment": "talk_a_02",
+   "kind": "warp_twice_load",
+   "why": "a second map move while the first map loads, with an NPC dialog open"
+  },
+  {
+   "scenario": "npc_dialogs",
+   "moment": "talk_a_02",
+   "kind": "servermove",
+   "why": "a map server move mid-dialog: the connection closed and opened again, the map entered anew"
+  },
+  {
+   "scenario": "npc_dialogs",
+   "moment": "talk_a_02",
+   "kind": "ui_charselect",
+   "why": "Character Select with an NPC dialog open, then the character chosen again: the game's windows and world torn down and made again"
+  },
+  {
+   "scenario": "npc_dialogs",
+   "moment": "conn1",
+   "kind": "close",
+   "why": "the character server closing before the character list: the box, the login typed again, the reconnects"
+  },
+  {
+   "scenario": "charselect",
+   "moment": "char_select",
+   "kind": "ban8",
+   "why": "SC_NOTIFY_BAN at the character selection (the login mode's reason switch) and the way back in"
+  },
+  {
+   "scenario": "wide_banner",
+   "moment": "res_1024x768_asks",
+   "kind": "warp_close",
+   "why": "a same-map warp and a close while Graphics' \"keep this resolution?\" box stands: the warp's window reset destroys the box inside its modal loop, and the loop must not post the freed box (whose address the new basic info window takes) to the quit list",
+   "ragexe_differs": {
+    "why": "the modal loop posts its box only while the box is still the manager's modal window; herc posts the freed one and loses the basic info window (stock, sub_62deb0)",
+    "lines": [
+     "+UIBasicInfoWnd@@ id=0 rect=0,0,220,134 shown=1",
+     "+  UIBitmapButton@@ id=569 rect=3,3,11,11 shown=1",
+     "+  UIBitmapButton@@ id=194 rect=206,3,11,11 shown=1",
+     "+  UIStaticText@@ id=569 rect=9,22,200,15 shown=1 text=Parity44",
+     "+  UIBarGraphPlayer@@ id=569 rect=35,53,135,9 shown=1",
+     "+  UIBarGraphPlayer@@ id=569 rect=35,68,135,9 shown=1",
+     "+  UIBarGraphPlayerAP@@ id=569 rect=-100,-100,135,9 shown=1",
+     "+  UIINT64BarGraph@@ id=569 rect=85,89,112,6 shown=1",
+     "+  UIINT64BarGraph@@ id=569 rect=85,101,112,6 shown=1"
+    ]
+   }
+  },
+  {
+   "scenario": "persistence",
+   "moment": "second_session",
+   "kind": "reset",
+   "why": "a later session: the first played whole in the same folder, the second's map connection reset at its first state, the login typed again"
+  },
+  {
+   "scenario": "variant_skill_tag",
+   "moment": "conn2.007d",
+   "kind": "warp_other",
+   "why": "a variant scenario (its skill names retyped as tags) in a fresh folder with the variant laid over it: a map change with the login's same-map warp still queued"
+  }
+ ]
+}

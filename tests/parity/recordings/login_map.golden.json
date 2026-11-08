@@ -1,0 +1,69 @@
+{
+ "captures": {
+  "char_select": "faf11ccf13ef3428ec1a7c6872ea490f0192fce994592c71ac301203722b6b04",
+  "login_typed": "03e5d6bec59cdc0cab76742bf94b04d0264882bd2a37d29098d7e8a2461b0917",
+  "login_window": "74f595096e546de04f0c4e7c688f1796fad3d228e4b67f77434049e196f9d05b",
+  "map_1000": "a7cd4728275004f490528dbed5cde3293ff716f512a1a1eb9ed8cc5a45409c5b",
+  "map_1300": "24b794fdc79dfbdd8a13f821735bfcbe37d215e048872e80eb69307ab4b4585a",
+  "map_700": "7abe45b6ff837a29c14497b9bea4144e0081c70fdf443bd7cb95779c3ffa25f6",
+  "service_select": "8953a88e76faec5d65b55f0286525ad786b411ba509e21e47e7f7e9257311002"
+ },
+ "states": {},
+ "sends": [
+  [
+   272,
+   0,
+   99,
+   "0204"
+  ],
+  [
+   275,
+   1,
+   17,
+   "0065"
+  ],
+  [
+   444,
+   1,
+   20,
+   "0066"
+  ],
+  [
+   446,
+   2,
+   23,
+   "0436"
+  ],
+  [
+   483,
+   2,
+   61,
+   "0bf6"
+  ],
+  [
+   500,
+   2,
+   65,
+   "0447"
+  ],
+  [
+   1188,
+   2,
+   67,
+   "0b1c"
+  ],
+  [
+   1234,
+   2,
+   73,
+   "0360"
+  ]
+ ],
+ "window": {},
+ "counters": {},
+ "saved": {
+  "registry": "Software\\Gravity Soft\\Ragnarok|WIDTH|dword|1024\nSoftware\\Gravity Soft\\Ragnarok|HEIGHT|dword|768\nSoftware\\Gravity Soft\\Ragnarok|ISFULLSCREENMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITPERPIXEL|dword|32\nSoftware\\Gravity Soft\\Ragnarok|SOUNDMODE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|SHOWTIPSATSTARTUP|dword|0\nSoftware\\Gravity Soft\\Ragnarok|NUMACCOUNT|dword|0\nSoftware\\Gravity Soft\\Ragnarok|ID|sz|\nSoftware\\Gravity Soft\\Ragnarok|CHECKSAVE|dword|0\nSoftware\\Gravity Soft\\Ragnarok|BITWISE|dword|1\nSoftware\\Gravity Soft\\Ragnarok\\NeoCash|CASH_CATEGORY|dword|0\n",
+  "files": {}
+ },
+ "noisy": []
+}
