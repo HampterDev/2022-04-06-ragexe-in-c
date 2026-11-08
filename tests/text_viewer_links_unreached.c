@@ -6,6 +6,7 @@ void fatal_error(void)
 }
 char g_codePage[0x10000];
 char g_navi[0x10000];
+char g_hMainWnd[sizeof(void *)];
 char g_windowMgr[0x10000];
 void game_current_mode(void)
 {
