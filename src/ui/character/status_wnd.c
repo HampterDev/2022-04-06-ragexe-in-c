@@ -541,13 +541,13 @@ int ui_status_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int
             status_wnd_info_make_default(self->info);
         info = self->info;
         ui_status_wnd_send_msg(wnd, NULL, UI_MSG_RESIZE, 7, info->rect.width, info->org_height, 0);
+        info = self->info;
+        if (info->rect.height != info->org_height)
+            ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         ui_status_wnd_send_msg(wnd, NULL, STATUS_MSG_REFRESH, 0, 0, 0, 0);
         ui_frame_wnd_move(wnd, self->info->rect.x, self->info->rect.y);
         self->expanded = self->info->expanded != 1;
         ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, ID_EXPAND, 0, 0, 0);
-        info = self->info;
-        if (info->rect.height != info->org_height)
-            ui_status_wnd_send_msg(wnd, NULL, UI_MSG_COMMAND, UI_ID_HELP, 0, 0, 0);
         return 0;
 
     case STATUS_MSG_REFRESH:
