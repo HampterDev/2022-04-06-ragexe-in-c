@@ -709,7 +709,7 @@ void prim_rings_ripple_process(struct EffectPrim *self)
             ring->alpha -= 2;
             if (ring->alpha <= 0) {
                 ring->alpha = 0;
-                ring->radius = 2.14f;
+                ring->radius = 2.1399999f;
                 ring->tilt = 74;
             }
         } else {
