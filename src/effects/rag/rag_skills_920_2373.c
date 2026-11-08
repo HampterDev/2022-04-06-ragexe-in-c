@@ -210,8 +210,8 @@ void rag_snow_134(struct RagEffect *self, unsigned char style)
         row->heading += (short)(rand() % 41 + 160);
         if (row->heading >= 360)
             row->heading -= 360;
-        row->target.x = self->base.pos.x;
-        row->target.z = self->base.pos.z;
+        row->target.x = self->offset.x;
+        row->target.z = self->offset.z;
         row->target.y = row->start_y;
         rag_rand(360);
         row->texture = 3;
