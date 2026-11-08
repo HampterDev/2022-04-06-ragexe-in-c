@@ -617,7 +617,7 @@ static int board_search(struct UIAdvenPartyBoardWnd *self, int page)
         ad.roles[i] = self->roles[i]->checked;
     if (ui_edit_ctrl_get_text_size(self->min_level) > 0)
         ad.min_level = atoi(ui_edit_ctrl_get_text(self->min_level));
-    if (ui_edit_ctrl_get_text_size(self->max_level) > 0)
+    if (ui_edit_ctrl_get_text_size(self->min_level) > 0)
         ad.max_level = atoi(ui_edit_ctrl_get_text(self->max_level));
     if (self->purpose)
         ad.purpose = self->purpose;
@@ -745,7 +745,8 @@ static void board_page_buttons(struct UIAdvenPartyBoardWnd *self)
 {
     if (self->page > self->pages)
         self->page = self->pages;
-    button_enable(self->next_page, self->page >= self->pages);
+    if (self->page != self->pages)
+        button_enable(self->next_page, 0);
     button_enable(self->prev_page, self->page == 1);
     ui_window_invalidate_base(&self->frame.base);
     if (g_session1.partyLeader == 0)
