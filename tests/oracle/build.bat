@@ -131,5 +131,16 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_ez2str_init.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\rag_effect_init.inc" ^
+  "src/effects/rag/rag_str_anim.c::line::#define FULL_OR_MIN(full, min) (g_session1.map_rule_flags[0] == 0 ? (full) : (min))" ^
+  "src/effects/rag/rag_str_anim.c::static int roll(" ^
+  "src/effects/rag/rag_str_anim.c::void rag_effect_init("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_rag_effect_init.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\effects\durations.c" /Fe:test_rag_effect_init.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_rag_effect_init.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0

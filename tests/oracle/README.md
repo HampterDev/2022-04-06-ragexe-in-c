@@ -52,6 +52,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_ez2str_files` | the routine at `0x9997a0` (`CEZ2STREffect`'s str file by effect type, one jump table of 1026 arms) | `ez2_str_effect_open_for_type` with its `str_files` table and `ez2_str_particle_open` | every effect type below 0x1000 x both effect options; the path every load receives recorded on both sides, the resource check answering "available" so the min-effect path is taken | 8,192 calls, 2,049 loads, 0 mismatches |
 | `test_ez2str_head` | the routines at `0x998cf0` (head-type test), `0x9955e0` (head x offset) and `0x9959b0` (head height) | `ez2_str_effect_is_head_type`, `ez2str_head_x_offset`, `ez2str_head_height` with their range tables | every effect type below 0x1000; five str paths for the offset; no actor and eight riding/baby/doram actors for the height, the job predicates and mount height stood in on both sides | 61,440 calls, 0 mismatches |
 | `test_ez2str_init` | the routines at `0x996150` (`CEZ2STREffect::Init`) and `0x996870` (its after-init, with 174 sound cues) | `ez2_str_effect_init` and `ez2_str_effect_after_init` with their type tables | every effect type below 0x1000 x both effect options x levels 1 and 3, owner 1001, a fixed position and target; the particle's creation, every str load, sound cue and zoom recorded on both sides, then the instance-key, shrink, head and camera fields of the effect and the owner, loop, scale, loops, spin, list and lifetime fields of the particle compared; the Lua questions answer no, the owner is absent, the camera heading and the screen projection are stood in with the same numbers on both sides | 16,384 calls, 21,774 events, 0 mismatches |
+| `test_rag_effect_init` | the routine at `0x6e8c70` (`CRagEffect::Init`, one jump table of 224 arms) | `rag_effect_init` | every effect id the duration table covers (0..2384) x both effect options, one master with a position and heading, one offset; the duration set through the vtable and the str name asked of the resource manager recorded on both sides, then the id, master, position, heading, offset and loop-count fields compared; the resource manager answers "none" on both sides | 4,770 calls, 5,222 events, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -109,8 +110,8 @@ the call for `test_job_lookups`.
 
 The large tables the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a numeric
 C switch, biggest first: the chat command dispatcher at `0x7a0570` (798 arms, with files, windows
-and settings among its side effects), and `CRagEffect::Init` (224 arms) and `CRagEffect::OnProcess`
-(359 arms), which emit primitives and so need fake primitives whose fields both sides write.
-Smaller pure lookups: the job sprite and IMF name builders (they read the job tables, which
-`.data` holds), the message-id lookups that take only a code, the talk-option name table, and the
-angle and distance helpers of the effects.
+and settings among its side effects), and `CRagEffect::OnProcess` (359 arms), which emits
+primitives and so needs fake primitives whose fields both sides write. Smaller pure lookups: the
+job sprite and IMF name builders (they read the job tables, which `.data` holds), the message-id
+lookups that take only a code, the talk-option name table, and the angle and distance helpers of
+the effects.
