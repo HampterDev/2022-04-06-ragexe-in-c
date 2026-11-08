@@ -250,3 +250,96 @@ picked onto `purist` with `git cherry-pick -x`.
 | [bbf0be8ec1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbf0be8ec1d94d292b48d519a8d0248e447277e4) | [f6a797f63a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f6a797f63ac74b9fa64222dce59f0a42d18eef69) (adapted) | Item description: a second right-click on the same item closes it |
 | [875ce6c0b4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/875ce6c0b4a9f0250e0236cc7a7c9b789dfc3a5b) | Not needed on purist, code removed (purist starts with defaults already) | Start with the setup defaults when the setup keys are missing |
 | [9448917b02](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9448917b02b986a9f27731526bb3d49c0d94ed06) | [98eb46a8d0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/98eb46a8d0985dd98ad8119e1a6065441df4b323) | Skip UI quads when a window has no canvas |
+
+## Foundation fixes ported from `main`, 2026-11-08
+
+`main` had moved on to `origin/main` at `b5e3ec71` with commits `custom` had not looked at:
+six fixes from 2026-11-01 that predated the earlier ports, the fixes ported from kbirk/fenrir-ragexe,
+reverts of fixes that changed the original's own behaviour, the oracle tests, the parity harness,
+the function map and documentation. Fixes were picked with `git cherry-pick -x` (each adapted
+one says how in its message). The no-canvas fix came in with the effect gallery branch.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [9448917b02](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9448917b02b986a9f27731526bb3d49c0d94ed06) | [98eb46a8d0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/98eb46a8d0985dd98ad8119e1a6065441df4b323) | Skip UI quads when a window has no canvas |
+| [430f32c1c9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/430f32c1c9cf92a907f3f29a84b549942f7e5440) | [5c17aed10a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5c17aed10a075e2d8b069dcdd25b66a98e0f40b1) (adapted) | Present the final game frame before a map transition |
+| [ac0dc7f555](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ac0dc7f555fefc3299a690d2deb9c6cceddfb355) | [e2f2685def](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/e2f2685defa2b15c135b344c6bc0dddeb7c6c319) (adapted) | Restore the original whisper title spacing |
+| [27f06738cb](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/27f06738cb5a8f7caa38c0ee510c623b8a9344e6) | [d80f44c430](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d80f44c43018f7b9115ff3329ab2cbcf625b4c9c) | Restore the vending purchase window default geometry |
+| [6b430bb85f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6b430bb85f751f2ffefad93242d2bad9b4d50d7b) | [246c0bb5ca](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/246c0bb5ca70e16016be2cd71d364f68ad4406db) (adapted) | Select the first character slot when CURSLOT is absent |
+| [54ca05e378](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/54ca05e3785e1ab2771362b150f8050c2a832b9a) | [dada202bb6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/dada202bb64a46a87af87c88427a60a3af7fefa8) (adapted) | Keep vending setup items available after a rejected request |
+| [fca5559498](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/fca555949871183a6ddb2a15e51553461de083ae) | [1dec343e36](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1dec343e360fb061c878ee28784b4c83187c03f4) | Whip effects: draw no joint shimmer, as the original's kind-70 renderer |
+| [5e1fe50518](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/5e1fe505189738c17bf646b793cd94633daea718) | [bcdaee4b07](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bcdaee4b07fafa3786f51dd304253994e52569a9) | Copy a friend's name as its 24 bytes and a NUL |
+| [d1cce05e08](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d1cce05e0882466738c778aa0a4a282605e1ac51) | [0c42c0d3d0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0c42c0d3d06a8ce64895a53c02a66fcc96566d92) | Draw nothing for a window that has no canvas |
+| [51555aa935](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/51555aa935b242097c17446f520374eb27d241cd) | [d849919425](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d84991942563b99df6c5ebf4b4fb1a838e11dd11) | Item count window: the item's name cut to the label with "..." when shown |
+| [321658bb8e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/321658bb8ec2a3b5b49109ebeff4e909c78b2d70) | [df6e0e8664](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/df6e0e8664f9364e174920571d83e52eae57c69e) | Ring ripple: restart a ring at the client's radius, 0x4008f5c2 |
+| [1450ad0d53](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1450ad0d53bbe3c6c13c03f9b5a7f7b9fbb40b83) | [129e2b5889](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/129e2b588935702bef2d0dbc37625947e677ca68) | World view: a style value the Lua function does not return reads as 0 |
+| [54ed1f209d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/54ed1f209d632ff1e45908524f408241b469fa47) | [6354bfbce3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6354bfbce3df6659fec3c71262312f22fa7e4142) | Skill shout: a long skill name runs into the line buffer, as in the original's frame |
+| [ff1a1f05e7](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ff1a1f05e778afa795a85bd29be9120d125965d9) | [2377a39fa9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/2377a39fa9aed02913d8fd8018f2e755200d33b2) (adapted) | Quest journal: look for a requested quest in three tabs, as the original |
+| [874444c452](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/874444c4520ce4b8a460214a20eeb7b159407d9a) | [f8ae426e23](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f8ae426e23b58f3a8c83105cd5df1441df5e9ba6) (adapted, with 3aa2e000) | Revert "Restore map music only after NPC music finishes" |
+| [3aa2e0003e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3aa2e0003eb0ecadaa8c99a8635d50b9d5752dca) | [f8ae426e23](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f8ae426e23b58f3a8c83105cd5df1441df5e9ba6) (adapted, with 874444c4) | Name the music stream's done test sound_stream_done |
+| [829aae0ef0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/829aae0ef0dba56bdbc9010e404a6ce74d9cc603) | [26dc533107](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/26dc533107fd444f37ad9ae97dc266566c7bf49f) | tools/funcmap: the original-address to lifted-function map |
+| [9150627e8e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9150627e8e760abdfe32e3ccb43686b47b57b85e) | [c18b6d1f2d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/c18b6d1f2dd2636f9caa4d98fb60f561e9bb7129) | tools/funcmap: the switch sweeps, every jump table's values against the lifted switches |
+| [0aa00b340d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0aa00b340dec3923443442f9995f6433afe81045) | [2ec8b4bf2e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/2ec8b4bf2ee281da52219304925e9e3caa2a2278) (adapted) | tools, tests: the tool docs speak of the assembly listing and the annotated C, not of where they came from |
+| [63b3843a71](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/63b3843a71011603fd6445cda7f138d1e69f8000) | [143f5fbb11](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/143f5fbb11e6e8c23a933702d811440b978dbf5a) | tools/funcmap: check the map against the dump's function starts and the oracle's pairs |
+| [3a9e094a2f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/3a9e094a2f59bbc3d7dc0f86921f7855da4a2042) | [ca55dfd2dd](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/ca55dfd2dde5192437329e49ab776fdfaab6c8f4) | Turn off Claude Code commit and PR attribution |
+| [78d599c0bf](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/78d599c0bf203c67db1a97d29cc2f399831de9a4) | [536f3bad6a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/536f3bad6a4a9b5633eb3196ac5f96bfdb33bd46) (adapted) | build.bat: name the exe ragexe.exe |
+| [581d3505db](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/581d3505dbdae380c0a6b213e7d8ff647f743960) | Already correct on custom: its window table has no rows for 0x166 and 0x167 | Make no window for ids 0x166 and 0x167 |
+| [41a072d62a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/41a072d62ab267affd902f54459c524c52a27a95) | Not needed on custom, code removed (replay control) | Replay control: give the location its own static text, past a hidden one |
+| [9631d4fab9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9631d4fab9392740afa42e777cb369124c178225) | Not needed: custom keeps the URL scheme check, so on_link still goes through ui_open_url_link | test_text_viewer_links: define g_hMainWnd for on_link |
+
+### Reverts on `main` that `custom` does not follow
+
+These reverts put back the original's own behaviour: the lift had matched the original, and the
+fix changed it on purpose. `custom` keeps the fixes. Two reverted fixes rested on a misreading
+instead, and `custom` follows those: the whip shimmer (`fca55594`, read from the wrong routine) and
+the NPC music restart (`874444c4`, which read the stream status code the wrong way round). The
+quest journal search (`ff1a1f05`) is followed for the same reason: its fix searched one tab more
+than the original.
+
+| Revert on `main` | On custom | Change |
+| --- | --- | --- |
+| [dbba05ad6a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/dbba05ad6afdab41a18a26fbd969303354d0b2ad) | Job 6017 is the first mercenary in the game data; custom also stops at 6046 | Revert "Count job 6017 as a mercenary" |
+| [4bfd69ab22](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/4bfd69ab227c5c125747ff5c1820cb43980ca6df) | Only http and https links are opened; a hardening custom keeps | Revert "Open only http and https targets from text-viewer URL links" |
+| [598fd4c531](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/598fd4c53144b6d84e0559aa6520a0f23f8f4fae) | The ESC list gets no entry for a window no factory makes | Revert "Stop requesting the nonexistent option window 0xd" |
+| [165eb950a7](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/165eb950a7e5a96ac45f1a4897471f42044d0717) | Custom has its own single-height version of the fix | Revert "Keep a status window saved as a title bar minimized" |
+| [b1b9fa0665](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b1b9fa0665b7e63a2e8b336182abbd7738c9a863) | The hints follow the skill lists custom shows | Revert "Find prerequisite tab hints in the displayed skill lists" |
+| [6832fcf74a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6832fcf74abb61755ba2efc906af0e41065fedef) | The navigation directory check uses its own search handle | Revert "Check the navigation directory with its own search handle" |
+| [8ed1087779](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8ed1087779831793ecc2a1693025e6566cc2778c) | Approved on purist (review ledger, guild flags) | Revert "Load guild flag animations through the normal cache path" |
+| [0773244266](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0773244266da5bc5929f7e68ad58a4de8cfc1f03) | Custom keeps both halves: the maximum level read under its own length, and the page buttons | Revert "Correct Adventurer Agency level and pagination controls" |
+| [a3729f9bb2](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/a3729f9bb26154043e08d602b5c9c67a75327ff2) | Custom saves merchant presets locally and keeps the stricter match | Revert "Match item options and restore valid merchant preset entries" |
+| [d714811b9f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d714811b9fb6e628589d815a395e83770686392a) | Goes with a3729f9b; the merchant restore test stays | Revert "Update merchant restore regression for compacted results" |
+| [fa9f7f76d1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/fa9f7f76d1afdc292bb50dc3e3302037bcf477b2) | A cleared macro is saved as cleared | Revert "Persist cleared chat macros as empty strings" |
+| [77ea681cf6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/77ea681cf6193df57fde8671056285828f98a5ff) | Not needed on custom, code removed (roulette) | Revert "Order roulette prizes by row then position" |
+
+### Not ported
+
+| Commit on `main` | Why | Change |
+| --- | --- | --- |
+| [70413bb9ff](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/70413bb9ffccccfef5803511923eebd83e088c49) | Custom keeps comments in its sources; main has a no-comment rule | Drop the comments that later commits added |
+| [78a5cc82e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/78a5cc82e3732e39eb0d90284bd7ea0a9d7926a8) | Oracle tests: none passes on custom unchanged (below) | tests/oracle: the original executable as an in-process oracle |
+| [472c3a5332](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/472c3a53325ce9889c858c34b2c11368ecd9b345) | Oracle tests | tests/oracle: the job, party and pet lookups against the original |
+| [f5620d6b4f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f5620d6b4f6f3e1b73ff0e34bcff7df14d409233) | Oracle tests | tests/oracle: the ground-skill table against the original |
+| [de451abfad](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/de451abfadd408050465915972766f6c7c325de4) | Oracle tests | tests/oracle: the skill-use handler against the original |
+| [8c7e2c7e96](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c7e2c7e963a3e3247c5da36ce221a61e6840f06) | Oracle tests | tests/oracle: the skill-hit handler against the original, and the shared skill scaffolding |
+| [f3fbb6e3c0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f3fbb6e3c0edbfe6304c775dba7e31fa932c99a8) | Oracle tests | tests/oracle: the cast-start handler against the original |
+| [8be1ce97ea](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8be1ce97ea4fbe2208f86b1e89319f54a3617e77) | Oracle tests | tests/oracle: the action manager's dropped cast arguments are read by no action |
+| [031109f1c8](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/031109f1c871c30140c4b68484283cd2d1e53d35) | Parity harness: custom is not held to the reference client | tests/parity: the record-and-replay harness, and the client's state probe |
+| [720189be19](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/720189be194e0e675148e171ca1da8bdf959d3e3) | Parity harness | tests/parity: first runs, and the original client in the harness |
+| [681bb731ba](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/681bb731bac9444802b372ef6d43b88e2622ea3c) | README | README: Scroll Lock toggles the overlay only with RAGEXE_OVERLAY set |
+| [123877dbf1](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/123877dbf15cb35f41714ba6996d0e9057d0ccd7) | README | README: list the emote cooldown rollover fix |
+| [02a91ab50f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/02a91ab50fae34c5d2a60ce73d37c802cc70a0db) | README | README: a short introduction, the full change list in docs/changes.md |
+| [1a63e4a190](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/1a63e4a1901ca18ee0103b01e65dc8455ac4dbda) | README | README: the exe table without an empty header row |
+| [7d4031889d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/7d4031889d51a1c4eeb95b0eb181b5f443901a2b) | README | README: left-align the exe table's header row |
+| [cf9e872d94](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/cf9e872d94655dabd58b37daa4a2c8f98f7e8179) | docs/changes.md lists main's changes from the original; custom's README lists its own | docs: where this tree is not the original |
+| [35da545064](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/35da54506457d7cc6aa8a95af58540ce54087ae6) | docs/changes.md | docs: what this tree changes from the original, as a plain list |
+| [bd74f7aad0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bd74f7aad04d6aa0edbabb993d9fc4e4b942ec73) | docs/changes.md | docs: one change list, docs/changes.md |
+| [69385d1b97](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/69385d1b972bab054bb5a83aef73ab44a8701102) | AGENTS.md: custom has its own, from main's | AGENTS.md: how to work on this tree, from mistakes made on it |
+| [b5e3ec71ec](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b5e3ec71ecbada1c8c289eab2b8d9b897d80c558) | AGENTS.md | AGENTS.md: only the rules that matter |
+
+The oracle tests run the original's routines against the C over their whole input space. On
+`custom` the job lookups extract functions that the third-class removal deleted, the skill-use
+test needs the removed third- and fourth-class handler files, the cast test needs custom's
+platform and mercenary links, and the ground-skill (776 of 22,528 calls) and skill-hit (every call)
+tests mismatch. Each would need its stubs and the skill ranges custom removed taken into account;
+that is left for its own change. `4232ffa0`, a further oracle test on the local `main`, was not
+pushed yet and is not included.
