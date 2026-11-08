@@ -49,16 +49,24 @@ cl %CFLAGS% "%ROOT%\tests\oracle\test_skill_use.c" "%ROOT%\tests\oracle\oracle_i
   "%ROOT%\src\game\skill_use.c" "%ROOT%\src\game\skill_use_basic.c" "%ROOT%\src\game\skill_use_second.c" ^
   "%ROOT%\src\game\skill_use_extra.c" "%ROOT%\src\game\skill_use_third.c" "%ROOT%\src\game\skill_use_third2.c" ^
   "%ROOT%\src\game\skill_use_late.c" "%ROOT%\src\game\skill_use_fourth.c" "%ROOT%\src\game\skill_use_companion.c" ^
-  "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" /Fe:test_skill_use.exe %LFLAGS%
+  "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" "%ROOT%\src\game\cell_coordinates.c" /Fe:test_skill_use.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_skill_use.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 cl %CFLAGS% "%ROOT%\tests\oracle\test_skill_hit.c" "%ROOT%\tests\oracle\oracle_image.c" ^
   "%ROOT%\src\game\skill_notify.c" "%ROOT%\src\game\skill_hit_fx.c" "%ROOT%\src\render\math3d.c" ^
-  "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" /Fe:test_skill_hit.exe %LFLAGS%
+  "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" "%ROOT%\src\game\cell_coordinates.c" /Fe:test_skill_hit.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_skill_hit.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
+cl %CFLAGS% "%ROOT%\tests\oracle\test_skill_cast.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\game\skill_cast.c" "%ROOT%\src\game\skill_cast_look.c" "%ROOT%\src\game\cell_coordinates.c" ^
+  "%ROOT%\src\session\session_cast_effect.c" "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" ^
+  "%ROOT%\src\render\math3d.c" "%ROOT%\src\std\tree.c" /Fe:test_skill_cast.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_skill_cast.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 popd

@@ -48,6 +48,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_ground_skill` | the routine at `0x765b90` (`CGameActor::Am_Groundskill`) | `game_actor_am_groundskill` | skills 0..0x15ff x levels 1, 5, 6, 10; the effect launches, spawns, waves, motions, state changes and the pose fields recorded on both sides through stand-ins | 22,528 calls, 45,240 events, 0 mismatches |
 | `test_skill_use` | the routine at `0x8068e0` (`CGameMode::ShowSkillUse`, 15 jump tables, 529 arms) | `game_mode_show_skill_use` and the eight `skill_use_*.c` files behind it | skills 0..0x21ff x levels 1, 5, 10 x four caster/target/result variants x both effect options; every launch, spawn, wave, motion, state, turn, message, counter and window call recorded through stand-ins on both sides | 208,896 calls, 887,505 events, 0 mismatches |
 | `test_skill_hit` | the routine at `0x801150` (`CGameMode::Zc_Notify_Skill2`, five jump tables) | `game_mode_on_notify_skill2` with `skill_hit_fx.c` | skills 0..0x21ff x levels 1, 5, 10 x six caster/target/damage/action variants x both effect options; the hit message to the actors, the action manager's hit, and every effect, wave, motion and state call recorded on both sides | 313,344 calls, 840,108 events, 0 mismatches |
+| `test_skill_cast` | the routine at `0x7eb5f0` (`CGameMode::Zc_UseSkill_Ack`) with its cast look (`0x7eb880`) | `game_mode_zc_useskill_ack` with `skill_cast.c`, `skill_cast_look.c` and `session_cast_effect.c` | skills 0..0x21ff x five caster/target/cell/delay/property variants x both effect options; the chat line, the cast messages, the action manager's casts, every effect spawn with its stop frame, the ground scope's messages, turns and tints recorded on both sides | 87,040 calls, 820,930 events, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -74,6 +75,18 @@ every patch. Three helpers' addresses are read from the skill-use handler's own 
 two more are the call that follows a known call (`call_after`). Pointers that a message carries
 (a position, the skill-use record) are printed as what they point to, since the two sides'
 stacks differ. The sides call `srand(1)` before each run so `rand()` agrees.
+Both sides read a fixed clock: the original's `timeGetTime` import is pointed at the test's
+(`oracle_bind_import`), and the lift's, declared `dllimport`, is resolved to the same function by
+a linker `/alternatename` for its import symbol, with `winmm.lib` left off the link. The cell
+conversions (`GetClientCoor`, `GetServerCoor`) and the world's attribute block are stood in with
+the lift's own formulas on a 5 x 5 x 5 attribute, so they are not under test here; the ground
+scope the cast look makes is a fake on both sides, its constructor patched, and the world's
+object list is seeded with a real sentinel node so the original's `std::list` push works.
+
+Two shapes the cast test showed but could not judge: the original passes the caster to the
+action manager's cast-on-target and the target to its cast-at-cell, which the lift's
+`skill_action_mgr_cast_on_target` and `skill_action_mgr_cast_at_cell` do not take; whether an
+action needs them is a question for the actions in `skills/`, not for this test.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
 into an include file, so a test links a lookup without the file it lives in; `build.bat` shows

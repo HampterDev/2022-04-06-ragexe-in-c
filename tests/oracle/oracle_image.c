@@ -220,3 +220,34 @@ int oracle_load(const char *exe_path)
     VirtualProtect(g_base, g_size, PAGE_EXECUTE_READWRITE, &old);
     return 1;
 }
+
+int oracle_bind_import(const char *dll_name, const char *import_name, void *fn)
+{
+    const IMAGE_DOS_HEADER *dos = (const IMAGE_DOS_HEADER *)g_base;
+    const IMAGE_NT_HEADERS *nt = (const IMAGE_NT_HEADERS *)(g_base + dos->e_lfanew);
+    const IMAGE_DATA_DIRECTORY *dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    const IMAGE_IMPORT_DESCRIPTOR *desc;
+    int bound = 0;
+
+    if (!dir->Size)
+        return 0;
+    for (desc = (const IMAGE_IMPORT_DESCRIPTOR *)(g_base + dir->VirtualAddress); desc->Name; desc++) {
+        const unsigned *lookup = (const unsigned *)(g_base + (desc->OriginalFirstThunk ? desc->OriginalFirstThunk : desc->FirstThunk));
+        unsigned *thunk = (unsigned *)(g_base + desc->FirstThunk);
+
+        if (_stricmp((const char *)(g_base + desc->Name), dll_name) != 0)
+            continue;
+        for (; *lookup; lookup++, thunk++) {
+            DWORD old;
+            if (*lookup & IMAGE_ORDINAL_FLAG32)
+                continue;
+            if (strcmp(((const IMAGE_IMPORT_BY_NAME *)(g_base + *lookup))->Name, import_name) != 0)
+                continue;
+            VirtualProtect(thunk, sizeof *thunk, PAGE_READWRITE, &old);
+            *thunk = (unsigned)(UINT_PTR)fn;
+            VirtualProtect(thunk, sizeof *thunk, old, &old);
+            bound++;
+        }
+    }
+    return bound;
+}
