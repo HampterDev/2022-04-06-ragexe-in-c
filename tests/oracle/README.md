@@ -106,7 +106,12 @@ the call for `test_job_lookups`.
 
 ## Candidates next
 
-Lookups with large switches or tables: the job sprite and IMF name builders (they read the job
-tables, which `.data` holds), the message-id lookups that take only a code, the talk-option name
-table, and the angle and distance helpers of the effects. With the stand-in pattern, the other
-large per-skill switches: the skill-use handler, the cast-start handler and the hit handler.
+The large tables the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a numeric
+C switch, biggest first: the chat command dispatcher at `0x7a0570` (798 arms, with files, windows
+and settings among its side effects), the ez2str effect's init family (the routine at `0x996150`
+and its chunks, which the lift spreads over `ez2_str_effect_init` and `ez2_str_effect_after_init`
+with some 170 sound cues), and `CRagEffect::Init` (224 arms) and `CRagEffect::OnProcess` (359
+arms), which emit primitives and so need fake primitives whose fields both sides write. Smaller
+pure lookups: the job sprite and IMF name builders (they read the job tables, which `.data`
+holds), the message-id lookups that take only a code, the talk-option name table, and the angle
+and distance helpers of the effects.
