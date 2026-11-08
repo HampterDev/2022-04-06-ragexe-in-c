@@ -316,13 +316,6 @@ than the original.
 | Commit on `main` | Why | Change |
 | --- | --- | --- |
 | [70413bb9ff](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/70413bb9ffccccfef5803511923eebd83e088c49) | Custom keeps comments in its sources; main has a no-comment rule | Drop the comments that later commits added |
-| [78a5cc82e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/78a5cc82e3732e39eb0d90284bd7ea0a9d7926a8) | Oracle tests: none passes on custom unchanged (below) | tests/oracle: the original executable as an in-process oracle |
-| [472c3a5332](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/472c3a53325ce9889c858c34b2c11368ecd9b345) | Oracle tests | tests/oracle: the job, party and pet lookups against the original |
-| [f5620d6b4f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f5620d6b4f6f3e1b73ff0e34bcff7df14d409233) | Oracle tests | tests/oracle: the ground-skill table against the original |
-| [de451abfad](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/de451abfadd408050465915972766f6c7c325de4) | Oracle tests | tests/oracle: the skill-use handler against the original |
-| [8c7e2c7e96](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c7e2c7e963a3e3247c5da36ce221a61e6840f06) | Oracle tests | tests/oracle: the skill-hit handler against the original, and the shared skill scaffolding |
-| [f3fbb6e3c0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f3fbb6e3c0edbfe6304c775dba7e31fa932c99a8) | Oracle tests | tests/oracle: the cast-start handler against the original |
-| [8be1ce97ea](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8be1ce97ea4fbe2208f86b1e89319f54a3617e77) | Oracle tests | tests/oracle: the action manager's dropped cast arguments are read by no action |
 | [031109f1c8](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/031109f1c871c30140c4b68484283cd2d1e53d35) | Parity harness: custom is not held to the reference client | tests/parity: the record-and-replay harness, and the client's state probe |
 | [720189be19](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/720189be194e0e675148e171ca1da8bdf959d3e3) | Parity harness | tests/parity: first runs, and the original client in the harness |
 | [681bb731ba](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/681bb731bac9444802b372ef6d43b88e2622ea3c) | README | README: Scroll Lock toggles the overlay only with RAGEXE_OVERLAY set |
@@ -336,10 +329,26 @@ than the original.
 | [69385d1b97](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/69385d1b972bab054bb5a83aef73ab44a8701102) | AGENTS.md: custom has its own, from main's | AGENTS.md: how to work on this tree, from mistakes made on it |
 | [b5e3ec71ec](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b5e3ec71ecbada1c8c289eab2b8d9b897d80c558) | AGENTS.md | AGENTS.md: only the rules that matter |
 
-The oracle tests run the original's routines against the C over their whole input space. On
-`custom` the job lookups extract functions that the third-class removal deleted, the skill-use
-test needs the removed third- and fourth-class handler files, the cast test needs custom's
-platform and mercenary links, and the ground-skill (776 of 22,528 calls) and skill-hit (every call)
-tests mismatch. Each would need its stubs and the skill ranges custom removed taken into account;
-that is left for its own change. `4232ffa0`, a further oracle test on the local `main`, was not
-pushed yet and is not included.
+### The oracle tests, ported afterwards
+
+The oracle tests run the original's routines against the C over their whole input space. Picked
+as they were, none passed on `custom`, so they were left out of the port above and adapted the
+same day on their own. Every mismatch came from something custom changed on purpose: the jobs and
+skills it removed (now listed in `tests/oracle/custom_removed.h` and left out), the predicates and
+the pet act text that went with them, the skill-action manager's removed skill and object halves,
+and the langtype 20 lock (the original now runs as service type 20). None was a reconstruction
+bug. All six tests pass on custom: 629,006 calls, no mismatch, no fault. `tests/oracle/README.md`
+has the details. `4232ffa0` and the later oracle tests on the local `main` were not pushed yet and
+are not included.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [78a5cc82e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/78a5cc82e3732e39eb0d90284bd7ea0a9d7926a8) | [990494273e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/990494273ecb41855c889996849d414ed4df6207) | tests/oracle: the original executable as an in-process oracle |
+| [472c3a5332](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/472c3a53325ce9889c858c34b2c11368ecd9b345) | [b0d2528545](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b0d25285455a8673303abbba4d190bb7f9681b60) | tests/oracle: the job, party and pet lookups against the original |
+| [f5620d6b4f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f5620d6b4f6f3e1b73ff0e34bcff7df14d409233) | [d5e8b86c5e](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d5e8b86c5e1b7d30a096e309b70bd96ec6eeaa77) | tests/oracle: the ground-skill table against the original |
+| [de451abfad](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/de451abfadd408050465915972766f6c7c325de4) | [d255321a3d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/d255321a3d03d1991e968ecf18fe7faaf9d96e6d) | tests/oracle: the skill-use handler against the original |
+| [8c7e2c7e96](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c7e2c7e963a3e3247c5da36ce221a61e6840f06) | [35464d2b67](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/35464d2b671bafa7a0bab8904003b75fee039eeb) | tests/oracle: the skill-hit handler against the original, and the shared skill scaffolding |
+| [f3fbb6e3c0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/f3fbb6e3c0edbfe6304c775dba7e31fa932c99a8) | [fdf31efea6](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/fdf31efea673768d1d313c6a22f33dc5ed4f8e47) | tests/oracle: the cast-start handler against the original |
+| [8be1ce97ea](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8be1ce97ea4fbe2208f86b1e89319f54a3617e77) | [28ae90475f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/28ae90475f5101b35f29ccf33ce8ad9dd53dbc70) | tests/oracle: the action manager's dropped cast arguments are read by no action |
+| [0aa00b340d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0aa00b340dec3923443442f9995f6433afe81045) | [b393e1780a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b393e1780a33755c93ecdfbf6b5e8b2bee5d6abf) (the oracle half) | tools, tests: the tool docs speak of the assembly listing and the annotated C, not of where they came from |
+| | [24ada4d717](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/24ada4d71747dc41d9b709ed9e042ff5a3c65cde) | tests/oracle: compare custom with the original outside what it removed |

@@ -12727,8 +12727,9 @@ only a reduced base.
   `main`'s reverts of its own fixes, Patrick asked for each to be checked: two rested on a
   misreading (the whip shimmer, the NPC music status) and are followed, with the quest journal's
   extra tab; the others undo deliberate improvements and are not.
-- The oracle tests are not ported: none passes on `custom` unchanged. The parity harness, the
-  no-comment pass and `main`'s README and `docs/changes.md` rewrites are left out.
+- The oracle tests passed nowhere on `custom` as picked; Patrick had them adapted in a follow-up
+  the same day (below). The parity harness, the no-comment pass and `main`'s README and
+  `docs/changes.md` rewrites are left out.
 - The executables are `ragexe*.exe`, as on `main`; `AGENTS.md` says how to work on this branch.
 
 ### Validation
@@ -12739,3 +12740,15 @@ only a reduced base.
   more than after the merges, for the vending retry test).
 
 Not run: `freetype` and `libs` variants, CMake, Linux, macOS and Android, a live client.
+
+### The oracle tests on custom
+
+Each mismatch of the picked tests was read and traced to a deliberate change: the removed jobs and
+skills (left out through `tests/oracle/custom_removed.h`, with the ranges of the 4th-class and
+third-class removals above), the predicates and the pet act text that went with them, the
+skill-action manager's removed skill and object halves (the original's calls are no longer
+recorded), and the langtype 20 lock (the original runs with `g_serviceType` 20; under 0 it
+launches Korea's Slow Poison effect at `0x806d11`). No reconstruction bug was found. All six tests
+pass: 629,006 calls, no mismatch, no fault (`tests/oracle/README.md` has each count).
+`build.bat check` and the full `tests\build.bat`, which now runs them before the library checks,
+pass with 268 result lines.
