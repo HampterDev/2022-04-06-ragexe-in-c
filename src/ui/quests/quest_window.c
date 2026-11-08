@@ -496,14 +496,14 @@ static int quest_wnd_refresh(struct UIRenewQuestWnd *self, int quest_id)
         int tab;
         unsigned i;
 
-        for (tab = QUEST_TAB_ACTIVE; tab < QUEST_TAB_COUNT; tab++) {
+        for (tab = QUEST_TAB_ACTIVE; tab <= QUEST_TAB_PAUSED; tab++) {
             for (i = 0; i < quest_wnd_count(self, tab); i++)
                 if (quest_wnd_id(self, tab, i) == quest_id)
                     break;
             if (i < quest_wnd_count(self, tab))
                 break;
         }
-        if (tab == QUEST_TAB_COUNT) {
+        if (tab > QUEST_TAB_PAUSED) {
             ui_window_mgr_message_box(&g_windowMgr, "not found quest info", 0, 1, 0, 0,
                                    UI_MSGBOX_TITLE, 0x118, 0x78, 0);
             return 0;
