@@ -323,7 +323,7 @@ void rag_throw_lines(struct RagEffect *self, short side, const char *tex)
         st->half_width = (float)rag_rand(6) * 0.1f + 0.5f;
         st->length = (float)rag_rand(31) + 40.0f;
         st->color = (unsigned char)(rag_rand(3) + 10);
-        rag_rand(11);
+        st->speed = (float)rag_rand(11) * 0.1f + 1.0f;
         prim_heading_degrees(self->offset.x - self->base.pos.x, self->offset.z - self->base.pos.z, &st->heading);
         st->alpha = 0;
     }

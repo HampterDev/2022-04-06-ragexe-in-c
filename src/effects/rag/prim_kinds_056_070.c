@@ -802,8 +802,8 @@ void prim_slide_stripe_process(struct EffectPrim *self)
         if (st->age++ < 10)
             st->alpha += bright ? 20 : 12;
         if (bright)
-            st->length = st->length + 0.05f;
-        st->start = st->start + st->length;
+            st->speed = st->speed + 0.05f;
+        st->start = st->start + st->speed;
         if (st->start >= 200.0f)
             st->start = st->start - 200.0f;
         if (st->age > 20) {

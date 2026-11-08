@@ -123,7 +123,7 @@ void rag_lines_to_offset_56(struct RagEffect *self, short sel)
             st->half_width = (float)rag_rand(4) * 0.1f + 0.3f;
             st->length = (float)rag_rand(31) + 20.0f;
             st->color = (unsigned char)(rag_rand(3) + 30);
-            rag_rand(21);
+            st->speed = (float)rag_rand(21) * 0.1f + 1.5f;
         }
         prim_heading_degrees(self->offset.x - self->base.pos.x, self->offset.z - self->base.pos.z, &st->heading);
         st->alpha = 0;

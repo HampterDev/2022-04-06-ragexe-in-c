@@ -115,6 +115,7 @@ struct PrimSlideStripe {
     float side_shift;
     float start;
     float length;
+    float speed;
     unsigned char color;
     short heading;
     float back;

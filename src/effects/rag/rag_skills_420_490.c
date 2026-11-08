@@ -391,17 +391,17 @@ void rag_line_bursts(struct RagEffect *self, short style)
             st->half_width = (float)rand_below(4) * 0.1f + 0.3f;
             st->length = (float)rand_below(31) + 20.0f;
             st->color = (unsigned char)rand_below(3);
-            rand_below(21);
+            st->speed = (float)rand_below(21) * 0.1f + 1.5f;
         } else if (style < 20) {
             st->half_width = (float)rand_below(6) * 0.1f + 0.5f;
             st->length = (float)rand_below(31) + 40.0f;
             st->color = (unsigned char)(rand_below(3) + 10);
-            rand_below(11);
+            st->speed = (float)rand_below(11) * 0.1f + 1.0f;
         } else {
             st->half_width = (float)rand_below(4) * 0.1f + 0.4f;
             st->length = (float)rand_below(31) + 30.0f;
             st->color = (unsigned char)(rand_below(3) + 20);
-            rand_below(21);
+            st->speed = (float)rand_below(21) * 0.1f + 1.5f;
         }
         prim_heading_degrees(self->offset.x - self->base.pos.x, self->offset.z - self->base.pos.z, &st->heading);
         st->alpha = 0;
