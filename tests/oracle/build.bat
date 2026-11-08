@@ -69,5 +69,17 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_skill_cast.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\str_path_open.inc" ^
+  "src/effects/str_path.c::static int is_word_char(" ^
+  "src/effects/str_path.c::static int split_str_path(" ^
+  "src/effects/str_path.c::struct String *ez2str_min_path(" ^
+  "src/effects/str_path.c::void ez2_str_particle_open("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_ez2str_files.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\effects\skills\ez2str_effect_files.c" "%ROOT%\src\std\string.c" /Fe:test_ez2str_files.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_ez2str_files.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0

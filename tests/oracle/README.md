@@ -49,6 +49,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_skill_use` | the routine at `0x8068e0` (`CGameMode::ShowSkillUse`, 15 jump tables, 529 arms) | `game_mode_show_skill_use` and the eight `skill_use_*.c` files behind it | skills 0..0x21ff x levels 1, 5, 10 x four caster/target/result variants x both effect options; every launch, spawn, wave, motion, state, turn, message, counter and window call recorded through stand-ins on both sides | 208,896 calls, 887,505 events, 0 mismatches |
 | `test_skill_hit` | the routine at `0x801150` (`CGameMode::Zc_Notify_Skill2`, five jump tables) | `game_mode_on_notify_skill2` with `skill_hit_fx.c` | skills 0..0x21ff x levels 1, 5, 10 x six caster/target/damage/action variants x both effect options; the hit message to the actors, the action manager's hit, and every effect, wave, motion and state call recorded on both sides | 313,344 calls, 840,108 events, 0 mismatches |
 | `test_skill_cast` | the routine at `0x7eb5f0` (`CGameMode::Zc_UseSkill_Ack`) with its cast look (`0x7eb880`) | `game_mode_zc_useskill_ack` with `skill_cast.c`, `skill_cast_look.c` and `session_cast_effect.c` | skills 0..0x21ff x five caster/target/cell/delay/property variants x both effect options; the chat line, the cast messages, the action manager's casts, every effect spawn with its stop frame, the ground scope's messages, turns and tints recorded on both sides | 87,040 calls, 820,930 events, 0 mismatches |
+| `test_ez2str_files` | the routine at `0x9997a0` (`CEZ2STREffect`'s str file by effect type, one jump table of 1026 arms) | `ez2_str_effect_open_for_type` with its `str_files` table and `ez2_str_particle_open` | every effect type below 0x1000 x both effect options; the path every load receives recorded on both sides, the resource check answering "available" so the min-effect path is taken | 8,192 calls, 2,049 loads, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -90,6 +91,13 @@ skill action classes in the original, two override cast-on-target (NW_ONLY_ONE_B
 SKE_ALL_IN_THE_SKY) and one overrides cast-at-cell (HN_JACK_FROST_NOVA); the first two read
 only the target, the third only the time and the position, and the base class returns at once.
 The lift's hooks take exactly what is read.
+
+The str-file test stands in the original's min-effect path transform: it is a `std::regex`
+(`^(.+\\)(\w+\.str)$`) whose locale set-up reads C runtime state no entry point initialised, so
+it cannot run in the mapped image. The stand-in is the regex written out (folder up to the last
+backslash with no line break, a word name, `.str`), and the lift's `split_str_path` is held to
+it; which row of the table reaches a load, with which path and under which option, is the
+original's own code.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
 into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
