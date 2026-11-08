@@ -142,5 +142,35 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_rag_effect_init.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\rag_process.inc" ^
+  "src/effects/rag/effect_prim.c::line::#define COPY_AS_INT(dst, src) (*(int *)&(dst) = *(const int *)&(src))" ^
+  "src/effects/rag/effect_prim.c::void prim_sync_particles(" ^
+  "src/effects/rag/effect_prim.c::void prim_heading_degrees(" ^
+  "src/actor/position.c::static float facing_of(" ^
+  "src/actor/position.c::float render_object_calc_dir(" ^
+  "src/actor/position.c::void render_object_turn_toward(" ^
+  "src/actor/position.c::float render_object_calc_ground_dist(" ^
+  "src/actor/position.c::static float view_facing(" ^
+  "src/actor/position.c::static int dir_rounded(" ^
+  "src/actor/position.c::int render_object_camera_dir(" ^
+  "src/effects/effect_sound.c::void effect_play_wave_at(" ^
+  "src/actor/game_object.c::void render_object_set_argb(" ^
+  "src/effects/rag/rag_effect.c::int rag_effect_get_duration(" ^
+  "src/session/session_names.c::const char *session_get_attr_wave_name(" ^
+  "src/skills/skill_info.c::line::static const char k_zeroSkillIdName[] = \"Zero Skill\";" ^
+  "src/skills/skill_info.c::const char *skill_get_id_name("
+if errorlevel 1 (popd & exit /b 1)
+set RAG=
+for %%f in ("%ROOT%\src\effects\rag\rag_skills_*.c") do call set RAG=%%RAG%% "%%f"
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_rag_effect_process.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\effects\rag\rag_effect_process.c" "%ROOT%\src\effects\rag\rag_effect_process_491.c" "%ROOT%\src\effects\rag\rag_effect_process_800.c" ^
+  "%ROOT%\src\effects\rag\rag_process_moves.c" "%ROOT%\src\effects\rag\rag_songs.c" "%ROOT%\src\effects\rag\rag_msg_sprites.c" ^
+  %RAG% "%ROOT%\src\effects\rag\rag_unreferenced.c" "%ROOT%\src\effects\rag\rag_unreferenced_prims.c" ^
+  "%ROOT%\src\effects\durations.c" "%ROOT%\src\render\math3d.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" ^
+  /Fe:test_rag_effect_process.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_rag_effect_process.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0
