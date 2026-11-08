@@ -47,6 +47,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_job_lookups` | `sub_8771d0` | `session_get_pet_act_text` | actions -2..40, strings compared | 43 calls, 0 mismatches |
 | `test_ground_skill` | the routine at `0x765b90` (`CGameActor::Am_Groundskill`) | `game_actor_am_groundskill` | skills 0..0x15ff x levels 1, 5, 6, 10; the effect launches, spawns, waves, motions, state changes and the pose fields recorded on both sides through stand-ins | 22,528 calls, 45,240 events, 0 mismatches |
 | `test_skill_use` | the routine at `0x8068e0` (`CGameMode::ShowSkillUse`, 15 jump tables, 529 arms) | `game_mode_show_skill_use` and the eight `skill_use_*.c` files behind it | skills 0..0x21ff x levels 1, 5, 10 x four caster/target/result variants x both effect options; every launch, spawn, wave, motion, state, turn, message, counter and window call recorded through stand-ins on both sides | 208,896 calls, 887,505 events, 0 mismatches |
+| `test_skill_hit` | the routine at `0x801150` (`CGameMode::Zc_Notify_Skill2`, five jump tables) | `game_mode_on_notify_skill2` with `skill_hit_fx.c` | skills 0..0x21ff x levels 1, 5, 10 x six caster/target/damage/action variants x both effect options; the hit message to the actors, the action manager's hit, and every effect, wave, motion and state call recorded on both sides | 313,344 calls, 840,108 events, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -63,6 +64,16 @@ came from the call sites in the routine's own bytes), and a lazily constructing 
 left to the original rather than stubbed, or the code behind it walks an object that was never
 built. The original's effect-duration table lives in `.data` and is filled at start-up, so the
 test seeds it from the lift's `g_effectDurations`, which also checks the two tables index for index.
+
+The skill handlers share their stand-ins: `skill_oracle.h` holds the fakes (a mode with its
+world, caster, target and player, the effect every launch returns, the effect every spawn
+returns), the recorders on both sides, the vtable traps that name the slot and the receiver when
+the original calls a method the test has not provided, and `skill_oracle_setup`, which applies
+every patch. Three helpers' addresses are read from the skill-use handler's own call sites
+(`call_target_by_prefix`), since the labels the reassembly gave them sit inside other routines;
+two more are the call that follows a known call (`call_after`). Pointers that a message carries
+(a position, the skill-use record) are printed as what they point to, since the two sides'
+stacks differ. The sides call `srand(1)` before each run so `rand()` agrees.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
 into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
