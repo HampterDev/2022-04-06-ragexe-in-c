@@ -496,7 +496,8 @@ static BYTE render_composited(struct UIScrollWnd *self, int force)
             } else {
                 quad = ui_window_make_quad(child);
             }
-            list_push_back(&quads, &quad, sizeof quad);
+            if (quad)
+                list_push_back(&quads, &quad, sizeof quad);
         }
         render_quads_to_texture(self->vbar_width + self->content_width, self->hbar_height + self->content_height,
                    &quads, &self->base.texture);

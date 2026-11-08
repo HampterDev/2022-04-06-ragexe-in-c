@@ -13,6 +13,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
 | `src/platform/window_win32.c`     | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
 | `granny2.dll` clock imports (Windows) | `scene_granny_win.c` | Granny models animate on the scene clock, as the POSIX runtime does |
+| `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
 produces the same pixels every run, and the same random effects on every platform.
@@ -96,13 +97,49 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
-| `capture(name)` | writes `<out>/<name>.png` |
+| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg` |
+| `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
 | `fail(message)` | marks the scene failed and goes on |
 
 A script error, a map that does not finish loading, or `fail` ends the run with exit status 1.
+On Windows a message box the client would show (`error_msg`, a Lua error) is written to stdout
+as `scene: message box "<caption>": <text>` and the run goes on.
 
 The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACCEPT_ENTER2`), the
 client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the
 hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
 `keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
+
+## Effect gallery
+
+`tools/effect_gallery.py` renders every RagEffect ID and writes a static page, `index.html`, with
+a card per ID: a filmstrip of frames 1, 8, 16, 32 and 64 after the effect starts (hover to play
+it), its `data/effects/effects.json` row when the effect is data (`Str`, `Play`), a `code` tag
+with the first statement of its case when `src/effects/rag/rag_effect_process*.c` has one, its
+duration, and what the run saw: effects still on the player at the last frame, objects left over
+after clearing, a message box (`Invalid Effect Id`, a missing file) or a crash. Search by ID,
+range (`100-200`), hex (`0x1f3`) or text (a file or function name); filter data, Play, Str, code,
+no case, or IDs with a crash, a message box or leftovers.
+
+```sh
+python tools/effect_gallery.py --exe build/ragexe_scenes --game <game dir> --out <dir>
+python tools/effect_gallery.py ... --data           # only the IDs effects.json has
+python tools/effect_gallery.py ... --ids 300-373    # some IDs
+python tools/effect_gallery.py ... --resume         # only the IDs <dir> does not have yet
+python tools/effect_gallery.py --out <dir> --page-only
+```
+
+By default it runs every ID `tests/test_effect_trace.c` runs (0 to 2384, 2385, 10000 and 60000),
+which takes a few minutes and about 500 MB of JPEG captures. Captures and the page belong to one
+data set, so `<dir>` stays outside the repository, like the golden images. Open
+`<dir>/index.html` in a browser; it needs no server.
+
+The scene is `gallery/effect_gallery.lua`, outside `scripts/`, so `run.py` and the `scenes` ctest
+do not run it. On a Novice on `prt_fild08` it sends `ZC_NOTIFY_EFFECT2` for each ID, as the map
+server does (`game_mode_on_notify_effect2`), captures a 448×384 crop around the player, then
+clears every effect on the player with `ZC_CLEAR_EFFECT` and waits until the objects the effect
+made are gone. The tool runs the client on 400 IDs at a time; when it crashes or stops writing
+output for a minute, the ID is marked and the next run starts after it. Options for the frames,
+crop, JPEG quality, map, job and settling time are in `--help`; the script reads them from
+`RAGEXE_GALLERY_*` environment variables.
