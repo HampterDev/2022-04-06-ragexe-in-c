@@ -261,6 +261,15 @@ static void test_failure(struct WorldView *view, struct ClientLua *lua, const ch
     script = basic; assert(load(view, lua)); verify_basic(view);
 }
 
+static void test_short_style(struct WorldView *view, struct ClientLua *lua)
+{
+    script = basic; assert(load(view, lua));
+    script = NULL; run(lua->L, "function Get_Worldview_info_Mob_Color() return 1,2,3 end");
+    assert(load(view, lua) && view->world_count == 2);
+    assert(view->mob_colour[0] == 0x030201 && view->mob_colour[1] == 0);
+    script = basic; assert(load(view, lua)); verify_basic(view);
+}
+
 static void test_failures(struct WorldView *view, struct ClientLua *lua)
 {
     int n, attempts, live;
@@ -360,6 +369,7 @@ int main(void)
     test_marks_and_layout(&view);
     test_failures(&view, &lua);
     test_lua_failures(&view, &lua);
+    test_short_style(&view, &lua);
     script = NULL;
     run(lua.L, "for k in pairs(_G) do if string.sub(k,1,19)=='Get_Worldview_info_' then _G[k]=nil end end");
     assert(load(&view, &lua));

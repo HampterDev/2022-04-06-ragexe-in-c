@@ -398,6 +398,10 @@ static int query(struct LoadContext *load, const char *name, const char *table, 
 static int integer(lua_State *L, int index, int *out)
 {
     double value = lua_tonumber(L, index);
+    if (lua_isnil(L, index)) {
+        *out = 0;
+        return 1;
+    }
     if (!lua_isnumber(L, index) || !(value >= INT_MIN && value <= INT_MAX))
         return 0;
     *out = (int)value;
