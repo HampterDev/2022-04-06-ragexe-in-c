@@ -102,5 +102,34 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_ez2str_head.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\ez2str_init.inc" ^
+  "src/effects/skills/ez2str_effect.c::line::#define HAT_FIRST 0x950" ^
+  "src/effects/skills/ez2str_effect.c::line::#define PARTICLE_LIFETIME(p) ((p)->base.life_seconds)" ^
+  "src/effects/skills/ez2str_effect.c::line::struct TypeRange { short first, last; };" ^
+  "src/effects/skills/ez2str_effect.c::static int type_in(" ^
+  "src/effects/skills/ez2str_effect.c::line::#define TYPE_IN(set, type) type_in((set), (int)(sizeof(set) / sizeof((set)[0])), (type))" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange HEADGEAR_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange LOOPING_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange KEYED_LOOPING_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static const struct TypeRange BEFORE_ACTORS_TYPES[] = {" ^
+  "src/effects/skills/ez2str_effect.c::static void lua_ask_hat(" ^
+  "src/effects/skills/ez2str_effect.c::static void cue(" ^
+  "src/effects/skills/ez2str_effect.c::static void cue_message(" ^
+  "src/effects/skills/ez2str_effect.c::static void set_list(" ^
+  "src/effects/skills/ez2str_effect.c::unsigned char ez2_str_effect_is_headgear_type(" ^
+  "src/effects/skills/ez2str_effect.c::void ez2_str_effect_init(" ^
+  "src/effects/skills/ez2str_effect.c::static double screen_angle_reversed(" ^
+  "src/effects/skills/ez2str_effect.c::static void hat_render_order(" ^
+  "src/effects/skills/ez2str_effect.c::line::#define WAVE_BEGIN_SPELL \"effect\\EF_BeginSpell.wav\"" ^
+  "src/effects/skills/ez2str_effect.c::line::#define WAVE_BEGIN_SPELL_LC \"effect\\ef_beginspell.wav\"" ^
+  "src/effects/skills/ez2str_effect.c::void ez2_str_effect_after_init("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_ez2str_init.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\effects\skills\ez2str_effect_files.c" "%ROOT%\src\effects\effect_math.c" "%ROOT%\src\render\math3d.c" ^
+  "%ROOT%\src\effects\durations.c" "%ROOT%\src\std\string.c" /Fe:test_ez2str_init.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_ez2str_init.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0
