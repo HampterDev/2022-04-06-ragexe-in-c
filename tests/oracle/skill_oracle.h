@@ -182,8 +182,6 @@ static const char *who(const void *p)
     return other;
 }
 
-/* Whether a message parameter is a pointer into memory this process can read, as the position and
- * record parameters are, rather than a number (a cell, a packed pair) that only looks like one. */
 static int readable(long long v)
 {
     MEMORY_BASIC_INFORMATION mbi;
@@ -213,7 +211,6 @@ static const char *msg_text(long long msg, long long a, long long b, long long c
     return text;
 }
 
-/* ---- the lift's side: its helpers replaced by recorders ---- */
 
 void *world_get_actor_or_player(struct World *self, int aid)
 {
@@ -321,7 +318,6 @@ static void lift_effect_spin(struct Effect *self, float degrees) { event("spin %
 static void lift_effect_init(struct Effect *self) { event("init %s", who(self)); }
 static void lift_effect_stop_frame(struct Effect *self, float frame) { event("stopframe %s %.2f", who(self), frame); }
 
-/* ---- the original's side: the same helpers, in its calling conventions ---- */
 
 static void *__fastcall o_get_mode(void *self, void *edx) { (void)self; (void)edx; return orig_mode; }
 static void *__fastcall o_actor_or_player(void *self, void *edx, int aid)
@@ -545,8 +541,6 @@ static void seed_lift_actor(struct GameActor *actor, int aid, float x, float y, 
     actor->pos.z = z;
 }
 
-/* Fresh fakes on both sides: a mode with its world, the caster, the target and the player, a rag
- * effect every launch returns, an effect every spawn returns, the effect option. */
 static void seed_all(int option)
 {
     int i;
@@ -604,7 +598,6 @@ static void seed_all(int option)
     g_effectMgr = (struct EffectMgr *)&lift_mgr;
 }
 
-/* Every patch the skill handlers need in the original, and the vtables and ops of the fakes. */
 static void skill_oracle_setup(int verbose)
 {
     int i;

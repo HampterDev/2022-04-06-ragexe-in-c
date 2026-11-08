@@ -24,7 +24,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 1. Find its address. Use `tools/funcmap/function_map.tsv` for the C name, then confirm the start
    in the Binary Ninja dump: the function-start lines there read
    `008797a0  uint32_t __stdcall sub_8797a0(int32_t* arg1, ...)` and give the convention and the
-   argument count. Do not take an address from a herc-client label or a comment without that
+   argument count. Do not take an address from an assembly-listing label or a comment without that
    check: the first attempt here used 0x879790 and landed in the `int3` padding before the
    function.
 2. Declare a function-pointer type for that convention (`__stdcall` for `retn N`, `__cdecl` for a
@@ -59,7 +59,7 @@ original calls (the effect launchers, the wave player, the motion player, the Lu
 lookup, the actor's state setter through its vtable, the world queries) is redirected with
 `oracle_patch_jump` to a C stand-in of the same calling convention that records the call, and the
 lifted function links against stand-ins that record the same lines; the two event lists are then
-compared as text. Two things it had to learn: a herc-client label is not a function start
+compared as text. Two things it had to learn: a listing label is not a function start
 (`PlayWave` sat on an epilogue's `pop esi`, `GetClientCoor` was fifty bytes early; the true entries
 came from the call sites in the routine's own bytes), and a lazily constructing getter must be
 left to the original rather than stubbed, or the code behind it walks an object that was never
@@ -71,7 +71,7 @@ world, caster, target and player, the effect every launch returns, the effect ev
 returns), the recorders on both sides, the vtable traps that name the slot and the receiver when
 the original calls a method the test has not provided, and `skill_oracle_setup`, which applies
 every patch. Three helpers' addresses are read from the skill-use handler's own call sites
-(`call_target_by_prefix`), since the labels the reassembly gave them sit inside other routines;
+(`call_target_by_prefix`), since the listing's labels for them sit inside other routines;
 two more are the call that follows a known call (`call_after`). Pointers that a message carries
 (a position, the skill-use record) are printed as what they point to, since the two sides'
 stacks differ. The sides call `srand(1)` before each run so `rand()` agrees.
