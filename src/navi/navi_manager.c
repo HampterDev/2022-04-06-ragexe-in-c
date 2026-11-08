@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include "ui/social/guild_member_sort.h"
 
-struct NaviManager g_navi;
-
 struct NaviManager *navi_manager_construct(struct NaviManager *self)
 {
     int i;

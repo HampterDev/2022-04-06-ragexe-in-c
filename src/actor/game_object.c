@@ -260,16 +260,6 @@ const char *render_object_get_act_name(struct RenderObject *self)
     return res_get_name((struct Res *)self->act);
 }
 
-void *render_object_get_act_res(struct RenderObject *self)
-{
-    return self->act;
-}
-
-void *render_object_get_spr_res(struct RenderObject *self)
-{
-    return self->spr;
-}
-
 static void able_to_make_effect_reset(struct AbleToMakeEffect *self)
 {
     self->effect_id = -1;
@@ -647,14 +637,6 @@ void mouse_pointer_send_msg(struct GameObject *object, struct GameObject *source
         else
             self->visible = 0;
     }
-}
-
-void render_object_load_act_res(struct RenderObject *self, const char *name)
-{
-    if (self->act)
-        res_unlock((struct Res *)self->act);
-    self->act = res_mgr_get(g_resMgr(), name);
-    res_lock((struct Res *)self->act);
 }
 
 void render_object_set_argb(struct RenderObject *self, int a, int r, int g, int b)

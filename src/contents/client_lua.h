@@ -14,6 +14,12 @@ void client_lua_destruct(struct ClientLua *self);
 void client_lua_close(struct ClientLua *self);
 void client_lua_open(struct ClientLua *self);
 void client_lua_register_functions(struct ClientLua *self);
+/* Called by client_lua_open after the standard libraries: registers the client's own
+   functions in the new state (client_lua_register_functions, contents/client_lua_funcs.c,
+   whose functions reach the session, the windows and the game mode).
+   client_install_hooks() (core/client_init.c) installs client_lua_register_functions.
+   NULL: scripts see only the standard libraries. */
+extern void (*g_clientLuaFunctions)(struct ClientLua *self);
 
 char client_lua_load_file(struct ClientLua *self, const char *name, char via_cfile, char disk_only);
 /* Load this exact local filename, without extension search or archive lookup. */

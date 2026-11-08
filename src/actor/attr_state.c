@@ -16,8 +16,6 @@
 #include "actor/attr_state.h"
 #include "effects/skills/msg_effect.h"
 
-int g_playerBlind = 0;
-
 static int own_poison_screen_effect;
 struct Player;
 

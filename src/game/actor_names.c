@@ -151,9 +151,3 @@ void game_mode_ack_req_name(struct GameMode *self, const unsigned char *pkt)
     string_free(&whole);
     pet_named(packet->aid, packet->name);
 }
-
-struct String *game_mode_get_actor_name(struct GameMode *self, struct String *out, int aid)
-{
-    name_card_holder_name(&self->actor_names, out, aid);
-    return out;
-}

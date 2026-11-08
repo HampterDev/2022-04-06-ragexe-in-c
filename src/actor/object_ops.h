@@ -123,6 +123,15 @@ void effect_maker_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void game_actor_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
+/* Called by game_actor_send_msg, a game actor's send_msg and its subclasses' fallback, with
+   the same arguments: what an actor does on a message (game_actor_handle_msg,
+   actor/actor_sendmsg.c, which reaches effects, windows and the session).
+   client_install_hooks() (core/client_init.c) installs game_actor_handle_msg. NULL: actors
+   ignore the messages their own classes do not handle. */
+extern void (*g_gameActorHandleMsg)(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
+void game_actor_handle_msg(struct GameObject *object, struct GameObject *source,
+    RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void graffi_skill_send_msg(struct GameObject *object, struct GameObject *source,
     RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3, RenderMsgArg par4);
 void ground_scope_send_msg(struct GameObject *object, struct GameObject *source,
@@ -176,6 +185,13 @@ void npc_render(struct GameObject *object, const float *view);
 void pc_render(struct GameObject *object, const float *view);
 void rag_effect_render(struct GameObject *object, const float *view);
 void render_object_render(struct GameObject *object, const float *view);
+/* Called by render_object_render, the render method of the render objects, actors and their
+   subclasses that do not draw themselves: draws the object's shadow and sprite
+   (render_object_draw, actor/render_misc.c, whose sprite, layer and shadow drawing reaches the
+   session and the actors). client_install_hooks() (core/client_init.c) installs
+   render_object_draw. NULL: such objects are not drawn. */
+extern void (*g_renderObjectDraw)(struct GameObject *object, const float *view);
+void render_object_draw(struct GameObject *object, const float *view);
 void skill_render(struct GameObject *object, const float *view);
 void sound_maker_render(struct GameObject *object, const float *view);
 void game_object_render_base(struct GameObject *object, const float *view);

@@ -26,11 +26,14 @@ void client_lua_destruct(struct ClientLua *self)
     client_lua_close(self);
 }
 
+void (*g_clientLuaFunctions)(struct ClientLua *self);
+
 static int open_libraries(lua_State *state)
 {
     struct ClientLua *self = lua_touserdata(state, 1);
     lua_open_client_libs(state);
-    client_lua_register_functions(self);
+    if (g_clientLuaFunctions)
+        g_clientLuaFunctions(self);
     return 0;
 }
 

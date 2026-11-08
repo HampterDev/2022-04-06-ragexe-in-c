@@ -1,4 +1,5 @@
 #include "ui/window_types.h"
+#include "actor/actor_spawns.h"
 #include "actor/actor_ops.h"
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
@@ -409,7 +410,7 @@ static void pc_attack_reset(struct Pc *self)
 
 static void pc_shoot(struct Pc *self, float height, int job)
 {
-    game_mode_launch_arrow(game_current_mode(), &self->pos, self->attack_target_aid, height, job);
+    actor_spawn_arrow(game_current_mode(), &self->pos, self->attack_target_aid, height, job);
     self->attack_motion_count = 8.0f / self->motion_delay + self->attack_motion_count;
 }
 
@@ -486,7 +487,7 @@ void pc_set_state(struct GameActor * base_actor, int state, unsigned char snap)
             if (actor_get_skip_arrow(self) == 1)
                 actor_set_skip_arrow(self, 0);
             else
-                game_mode_launch_arrow(game_current_mode(), &self->pos, self->attack_target_aid,
+                actor_spawn_arrow(game_current_mode(), &self->pos, self->attack_target_aid,
                            self->motion_delay * self->attack_motion_count, 0);
             self->attack_motion_count = 8.0f / self->motion_delay + self->attack_motion_count;
         }

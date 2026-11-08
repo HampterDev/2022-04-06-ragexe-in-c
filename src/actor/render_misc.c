@@ -2,7 +2,7 @@
 #include "actor/actor.h"
 #include "actor/sprite_render.h"
 
-void render_object_render(struct GameObject *object, const float *matrix)
+void render_object_draw(struct GameObject *object, const float *matrix)
 {
     struct RenderObject *self = (struct RenderObject *)object;
 

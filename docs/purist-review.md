@@ -12403,3 +12403,310 @@ Not run: macOS and Android, a live client, the scene captures (they need game da
 - On `main`, `broadcast_text_strip_annotation` (`33df070c`) cuts the repeated text at a byte
   count, which can split a CP949 double-byte character at the end of a 1,024-byte broadcast.
   `purist` cuts on a character boundary (above).
+
+## Ranking the knot's cuts (2026-11-06)
+
+Decision: Patrick asked for a ranking of what would shrink the knot most, before any more of it is
+cut (step 5 of the restructuring: what is still knotted). `tools/depmap/knot_cuts.py` computes it
+from the same graph as the library table: link-time references between `.c` files with communal
+globals counted, the 42 registry and startup files cut. At `dd3d5ba` (release objects of the
+validation export `build/snap/pfinal3`) the knot is 273 files / 96,292 lines, as in the table.
+
+A cut drops edges. `lower X`: X's calls into the rest of the knot go (they become hooks, or what X
+needs moves below the knot). `upper X`: the rest of the knot no longer reaches X (a table or hook
+that app installs, or the definition it uses moves out of X). `edge A -> B`: A no longer uses B.
+X is a file, a directory or a stem group. Each step takes the cut with the most knot lines freed
+per symbol to reroute, applies it and measures again; the symbols are the work. It is greedy, so
+a later step can be cheap only because of the earlier ones, and the order is a suggestion.
+
+### The result
+
+26 cuts, 39 symbols used from 34 files, dissolve the knot: what is left is
+`effects/rag/rag_effect.c` and `rag_str_anim.c` (373 lines), which call each other inside one
+directory. The first 14 cuts, 19 symbols, take it to 110 files / 30,438 lines.
+
+| | cut | symbols to reroute | knot after (files / lines) | kind |
+|---|---|---|---|---|
+| 1 | upper `effects/rag/rag_effect_process.c` | `rag_effect_on_process` | 243 / 77,700 | ops entry |
+| 2 | `effects/rag/rag_effect.c` -> `effect_prim.c` | `effect_prim_send_msg`, `prim_triangle_construct` | 219 / 62,986 | move |
+| 3 | upper `actor/actor_sendmsg.c` | `game_actor_send_msg` (2 ops entries, 8 calls in 5 files) | 205 / 57,804 | ops entry |
+| 4 | upper `world/mode_mgr.c` | `mode_nothing` | 192 / 55,093 | move |
+| 5 | lower `session/session_items.c` | `session_refresh_equip_wnd` | 181 / 52,540 | hook |
+| 6 | upper `game/mode_whisper.c` | `g_silentWhisperAcks` | 177 / 50,744 | move |
+| 7 | `ui/quests/navigation_cmd.c` -> `ui/chat/chat_window.c` | `ui_chat_window_edit`, `ui_new_chat_wnd_on_enter` | 168 / 46,426 | hook |
+| 8 | upper `world/objects.c` | `world_remove_object` | 155 / 44,836 | hook |
+| 9 | upper `ui/shops/storage*` | `ui_bitmap_edit_ctrl_ops` | 152 / 43,517 | move |
+| 10 | upper `ui/character/basic_info_wnd.c` | `ui_basic_info_wnd_set_height` | 149 / 42,221 | hook |
+| 11 | upper `game/world_objects.c` | `game_mode_launch_arrow`, `game_mode_launch_plant_attack`, `game_mode_make_corpse`, `game_mode_make_granny_corpse` | 133 / 37,062 | hook |
+| 12 | upper `actor/render_misc.c` | `render_object_render` (4 ops entries) | 125 / 33,842 | ops entry |
+| 13 | upper `actor/attr_state.c` | `g_playerBlind` | 117 / 32,130 | move |
+| 14 | upper `actor/launch.c` | `game_actor_make_corpse` | 110 / 30,438 | ops entry |
+| 15 | `navi/navi_object_queries.c` -> `navi/navi_manager.c` | `g_navi` | 103 / 29,174 | move |
+| 16 | upper `actor/weather.c` | `g_weather` | 98 / 27,955 | move |
+| 17 | upper `game/actor_names.c` | `game_mode_get_actor_name` (6 files) | 93 / 26,749 | hook |
+| 18 | lower `contents/client_lua.c` | `client_lua_register_functions` | 88 / 25,646 | table |
+| 19 | upper `game/input.c` | `g_shiftDown`, `game_mode_pick_ground_cell` | 80 / 23,519 | hook |
+| 20 | `ui/social/mini_party_info.c` -> `game/target_actor.c` | `game_mode_click_actor` | 70 / 19,600 | hook |
+| 21 | lower `navi/navi_manager.c` | `navi_manager_arrive`, `navi_manager_load_grid_images`, `navi_manager_reset`, `ui_navigation_invalidate` | 49 / 13,075 | hook |
+| 22 | upper `session/session_job.c` | `session_get_drawn_job` | 36 / 10,487 | move |
+| 23 | upper `session/session_party.c` | `session_get_party_member_by_name` | 24 / 6,997 | move |
+| 24 | lower `contents/` | `game_mode_notify_listed`, `world_find_pc_by_char_id` | 16 / 5,084 | hook |
+| 25 | lower `actor/game_actor.c` | `game_mode_remove_listed`, `render_object_load_act_res` | 9 / 2,617 | hook |
+| 26 | upper `actor/` | `render_object_construct`, `render_object_dc_render_object`, `render_object_return_zero` | 2 / 373 | ops entry |
+
+Where the files go: cuts 1 and 2 free 54 files / 33,306 lines, 52 of them in `effects/rag` (the
+effect kinds and primitives), 3 to 14 most of `actor`, the effect classes in `effects/` and the
+feature windows still tied in (chat, shops, social, character), 15 to 21 `navi` and the game
+input, 22 to 26 the rest of `session`, `contents` and `actor`.
+
+The kinds, read from the code at each symbol (the tool does not decide them):
+
+- **move** (9 cuts): a definition in the wrong file, as in step 1 of the restructuring. Two
+  three-line helpers of the primitives used by their master (2); the empty `mode_nothing` in the
+  mode manager, whose other code saves user data on quit (4); globals defined by a file above
+  their writers or readers: `g_silentWhisperAcks` (written by the session's party code),
+  `g_playerBlind` and `g_weather` (read by ground and model drawing), `g_navi` (read by the
+  navigation queries) (6, 13, 16, 15); an
+  edit control's method table defined in the storage window and used by the navigation window
+  (9); two session getters that only read session data, in files that also call upward (22, 23).
+- **ops entry** (5 cuts): a method table in a base file that names a subclass's or a handler's
+  function: the effect's `on_process` (1, the 239-kind switch), the actor's `send_msg` (3),
+  `render` (12), the corpse launcher (14), the render object's defaults (26). The table moves to
+  the file of the function, or the subclass passes its table to the base constructor.
+- **hook** (11 cuts): an upward call, as in step 2: the session refreshing windows (5, 10), the
+  actor and world asking the game mode to make corpses, arrows and names or to pick a cell
+  (11, 17, 19, 20, 24, 25), the world destroying an object (8), the navigation command and
+  manager calling the chat and navigation windows (7, 21).
+- **table** (1 cut): `client_lua_register_functions` registers every Lua function, a central
+  list as in step 3 (18).
+
+### The second SCC
+
+The next SCC is 78 files / 18,786 lines of the lower libraries (`render` 26, `widgets` 24,
+`resources` 21, `gamedata` 4, `platform` 2, `fileio` 1). Seven cuts, 19 symbols, dissolve it, and
+only the first crosses libraries: `ui_window_mgr_get_focus_edit`,
+`ui_window_mgr_is_chat_edit_focused` and `ui_window_mgr_send_msg_` called from `platform`,
+`fileio` and `gamedata` files, which the table already lists as exceptions. The other six are
+cycles inside `render` and `resources`, which the table allows.
+
+### What it does not show
+
+- A cut that frees files from the knot does not by itself put them in the right library; the
+  table is derived again after the cuts.
+- One symbol can be many call sites (`game_actor_send_msg` 8 calls, `g_weather` 13 uses), and a
+  hook is only right where the call really goes upward; a getter that only reads session data
+  moves down instead.
+- Each cut keeps behaviour only if it is checked like steps 1 to 3: the effect trace for 1 and 2,
+  the packet dispatch and window-list checksums for the rest.
+
+Recorded: `build/knot-cuts-tip.txt` and `.json` in the `purist-libs` worktree. Rerun after each
+cut with `python tools/depmap/knot_cuts.py <checkout> <symbols> <out.json>` (`symbols.bat` writes
+the listing).
+
+## Knot cuts 1 and 2: the effect processes and primitives (2026-11-06)
+
+Decision: Patrick chose the first two cuts of the [ranking](#ranking-the-knots-cuts-2026-11-06).
+Three commits, behaviour unchanged:
+
+- `71a0ad7` **cut 1**: `rag_effect.c`'s method table named `rag_effect_on_process`, the switch
+  over every effect ID. Its `on_process` is now a small function that calls
+  `g_ragEffectProcess` (`effects/rag/rag_effect.h`), which `client_install_hooks()` sets to
+  `rag_effect_on_process`. NULL: an effect ends at its first frame, as when its process returns 0
+  (`world_process_actors` then removes and destroys it). `test_effect_trace` installs the hook.
+- `a010e31` **cut 2**: `prim_triangle_construct` and `effect_prim_send_msg`, which the effect base
+  calls in its constructor and when it lets go of its primitives, move unchanged from
+  `effect_prim.c` to the new `effects/rag/effect_prim_shared.c`, which uses nothing of the
+  client.
+- `3d98e62` **the table**: the 54 files that left the knot become the library `feat-rag`, which
+  uses the knot: `effects/rag/` except the effect base (`rag_effect.*`, `rag_str_anim.*`,
+  `rag_str_playback.c`, `effect_prim_shared.c`), plus `effects/effect_objects.c` and
+  `session/session_efst_image.c`. `effect_prim.h`, `prim_records.h` and `rag_effect_types.h` stay
+  with the knot, since `rag_effect.h` needs their types; the table's note says so. No new
+  exception.
+
+### Measured
+
+| | knot files / lines | library layer | above the knot | clusters |
+|---|---|---|---|---|
+| `dd3d5ba` (before) | 273 / 96,292 | 507 / 97,137 | 312 / 105,217 | 127 |
+| `a010e31` (after cut 2) | 219 / 62,995 | 508 / 97,161 | 366 / 138,506 | 128 |
+
+As the ranking predicted (219 / 62,986, plus the nine lines of the hook). The freed primitives
+call each other, so above the knot they are an SCC of their own (24 files), as the effect classes
+of `effects/skills` are clusters. `knot_cuts.py` on the new objects gives the ranking's cuts 3 to
+26 unchanged (36 symbols) and the same second SCC (`build/knot-cuts-12.txt`).
+
+### Proof
+
+- **Effect trace:** both digests unchanged after each commit (`5c269a851ffa6be1`,
+  `1b0232b840610959`). Without the hook installed in the test it fails: 8,865 steps, no
+  primitives, digest `d4f729a52d9dfac3`.
+- **The table:** on the objects from before the two cuts (`build/snap/pfinal3`), the link check
+  with the new table fails on exactly the three uses they removed: `rag_effect.c` uses
+  `effect_prim_send_msg`, `prim_triangle_construct` and `rag_effect_on_process`. A change that
+  ties the effect base to the processes or the primitives again fails it.
+
+### Validation
+
+Clean exports of each commit (`build/snap/k1`, `k2`, `k3`), logs `libs-k<n>-*` in the worktree's
+`build/`.
+
+- **Each commit:** `build.bat` without compiler, librarian or linker warnings; the full
+  `testsuild.bat` and the seven standalone suites pass. Every result line is the one of the
+  export before the cuts (`pfinal3`) except the two library-check lines: one more file, include
+  and use (`effect_prim_shared.c` and the hook's include), and at `3d98e62` 19 libraries
+  instead of 18.
+- **At `3d98e62`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`
+  (one static library per table library, `feat-rag` among them): no warnings; the include and
+  link checks pass with the same 269 and 129 exceptions. CMake with MSVC, Win32 and x64 (Debug):
+  no warnings, CTest 23 of 23 and 22 of 22. Linux (WSL, GCC 13.3): CTest 28 of 28, 1,665
+  warnings as before.
+- `git diff --check` passes for each commit.
+
+Not run: macOS and Android, a live client.
+
+## Knot cuts 3 to 25: the knot is gone (2026-11-06)
+
+Decision: Patrick asked to continue after cuts 1 and 2, merging into `purist` later. The cuts
+followed the [ranking](#ranking-the-knots-cuts-2026-11-06), measured again after each; one
+commit per cut, behaviour unchanged. From cut 20 on, the ranking was rerun on the code of the
+cut before (`topcuts`, the ranking's candidates on the SCC that holds `actor/game_object.c`),
+since the cuts before had changed the graph; cut 21 there is a different cut from the
+ranking's 21, which freed the same navigation files.
+
+| cut | commit | change | kind | game knot after (files / lines) |
+|---|---|---|---|---|
+| | `2ba04c5` | after cuts 1 and 2 | | 219 / 62,995 |
+| 3 | `70f8f5d` | a game actor's messages: `game_actor_handle_msg` through `g_gameActorHandleMsg` | hook | 205 / 57,823 |
+| 4 | `18c5241` | the empty `mode_nothing` to `world/mode_context.c` | move | 192 / 55,112 |
+| 5 | `b45a2e1` | the three session redraws that reach above the window manager to `session/session_redraws_game.c` | split | 181 / 52,492 |
+| 6 | `d9f1a0c` | `g_silentWhisperAcks` and `g_mapPropertyQuiet` to `game/client_state.c`, with their header | move | 176 / 50,510 |
+| 7 | `f99852b` | the navigation command reaches the chat window through `g_windowMgrHandlers` (new `chat_enter`) | hook | 167 / 46,202 |
+| 8 | `bd256fc` | `world_remove_object` to `world/objects_remove.c` | move | 154 / 44,612 |
+| 9 | `8d3ffc5` | `ui_bitmap_edit_ctrl_ops` to `ui/controls/edit_variants.c`, with the control | move | 151 / 43,293 |
+| 10 | `701c8f8` | the basic info window's layout from the session through `g_sessionBasicInfoHeight` | hook | 148 / 41,999 |
+| 11 | `e1e5236` | arrows, plant attacks and corpses through `g_actorSpawns` (`actor/actor_spawns.h`) | table | 132 / 36,842 |
+| 12 | `3833d7a` | render objects drawn by `render_object_draw` through `g_renderObjectDraw` | hook | 124 / 33,630 |
+| 13 | `66bea37` | `g_playerBlind` to `actor/player_blind.c` | move | 117 / 32,104 |
+| 14 | `5a37d3d` | the plain actor corpse to `actor/actor_corpse.c` | move | 111 / 30,440 |
+| 15 | `227d1b5` | `g_navi` to `navi/navi_instance.c` | move | 103 / 28,951 |
+| 16 | `ad0a14e` | `g_weather` to `actor/weather_instance.c` | move | 98 / 27,732 |
+| 17 | `6c8c5c0` | `game_mode_get_actor_name` to `game/actor_name_lookup.c` | move | 93 / 26,526 |
+| 18 | `919cf1c` | the client's Lua functions registered through `g_clientLuaFunctions` | hook | 88 / 25,423 |
+| 19 | `02e0df1` | `g_shiftDown` and the ground cell pick to `game/input_queries.c` | move | 80 / 23,296 |
+| 20 | `3166d95` | a party plate's click through `g_uiHooks.click_actor` | hook | 70 / 19,374 |
+| 21 | `96d72fd` | the navigation tables loaded from the session through `g_sessionNaviTables` | hook | 50 / 13,067 |
+| 22 | `a38015e` | the session's job queries to `session/session_job_queries.c` | move | 37 / 10,547 |
+| 23 | `2e4b969` | the party member lookups to `session/session_party_lookups.c` | move | 25 / 7,036 |
+| 24 | `8ad6b84` | the listed-window functions to `game/mode_listed.c`, the character-ID lookup to `world/actor_lookup.c` | move | 17 / 5,088 |
+| 25 | `397ec03` | the render object's resource accessors to `actor/render_object_res.c` | move | 9 / 2,586 |
+
+15 of the 23 are moves of a definition to a file of its own or to its header's library, as in
+step 1 of the restructuring; 8 go through a hook or a table that `client_install_hooks()` fills
+in, as in step 2. Each hook says where it is declared who installs it and what happens while it
+is NULL.
+
+### What is left
+
+No SCC holds the game any more. From cut 20 on the largest is the lower libraries' 78 files
+(the [second SCC](#the-second-scc)); the rest are components of their own:
+
+| files / lines | what |
+|---|---|
+| 78 / 18,786 | render, resources and widgets (the table's exceptions and the cycles inside `render` and `resources`) |
+| 24 / 14,697 | the effect primitives (`feat-rag`) |
+| 12 / 4,953 | the navigation: manager, route, guide and its windows |
+| 9 / 2,586 | the actor and effect object model: the method tables in `actor/game_object.c`, the actor message, process and state code, the effect base |
+| 9 / 4,318 | the chat line and the item tags it shows |
+| 8 / 2,782 | the session's job, name and sprite lookups with the world view and resource paths |
+| 8 / 1,938 | the party plates |
+| 8 / 3,585 | the guild windows |
+| 7 / 989 | the map entry and its login steps |
+
+The library table still has one `knot` library for the files that were in the knot; the checks
+pass with it, but it no longer names one SCC. Splitting it into libraries along these components
+is the next step and needs a decision on how fine the libraries should be.
+
+### Validation
+
+Clean exports of each commit, logs `libs-v01` to `v03`, `w04` to `w13` and `x14` to `x23` in the
+worktree's `build/`.
+
+- **Each commit:** `build.bat` without compiler, librarian or linker warnings; the include and
+  link checks pass with the same 269 and 129 exceptions; the full `testsuild.bat` and the seven
+  standalone suites pass. Every result line is the one of the export before the cuts
+  (`pfinal3`), the effect trace, packet dispatch, effect factory, window list and startup order
+  digests among them, except the two library-check lines (more files, includes and uses, and 19
+  libraries since `feat-rag`).
+- **The first full runs failed** on three tests that compile or include a file whose definition
+  moved or whose call became a hook: `test_incoming_whisper` (includes `game/mode_whisper.c`),
+  `test_lua_boundaries` (includes `contents/client_lua.c` and counts its registration stub's
+  calls) and `test_weather_state` (compiles `actor/weather.c`). Each now compiles or includes the
+  new file or installs the hook, in the commit that needs it, and passes with its result line
+  unchanged. Every test that compiles or includes one of the changed files was checked.
+- **At `397ec03`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`: no
+  warnings. CMake with MSVC, Win32 and x64 (Debug): no warnings, CTest 23 of 23 and 22 of 22.
+  Linux (WSL, GCC 13.3): CTest 28 of 28, 1,665 warnings as before.
+- `git diff --check` passes for each commit.
+
+Not run: macOS and Android, a live client. No test drives the hooks' installation in
+`client_install_hooks()` (`core/client_init.c` is in no test), as for the hooks before.
+
+## Splitting the knot library (2026-11-06)
+
+Decision: after the knot cuts Patrick asked for a proposal to split the library table's `knot`
+library, and chose the four layers below over a finer split of `game-parts`.
+
+**By directory does not work.** With the 235 `.c` files grouped by directory (actor with the
+effect base, session, game, world, navi, contents, the effect classes of `effects/skills`, ui),
+every group uses every other one through some file. The best of all orders of the eight groups,
+with each file in the lowest group at or above its own that is at or above everything it uses and
+a local search toward the files' own groups, still puts 124 files (33,221 lines) in another
+directory's library: most directories hold low helpers, part of the actor model and high game
+mode code.
+
+**Around the actor core it layers.** Taken against the SCC of `actor/game_object.c` (the 9 files
+left after cut 25), the files fall into what the core uses, the core, what uses the core and what
+does neither, and between these four there is no use against the order:
+
+| library | uses | `.c` files | lines | what |
+|---|---|---|---|---|
+| `game-state` | `gamedata` | 51 | 9,996 | what the core uses: the session's data and lookups, the world and its lookups, game, actor and effect helpers, the mercenary AI commands |
+| `actors` | `game-state` | 9 | 2,586 | the core: the method tables of `actor/game_object.c`, the actor message, process and state code, the effect base, `game/mode_util.c` |
+| `game-parts` | `game-state` | 72 | 15,684 | neither: guild, party, agency and account data and windows, effect classes that do not touch actors, navigation data, smaller pieces, which do not use each other |
+| `game-world` | `actors`, `game-parts` | 103 | 35,216 | what uses the core: the actor classes, the game mode's actions and the windows tied to the actors, the navigation route and guide, the run loop (`game/mode_run.c`) and `game/lifecycle.c`; one connected piece |
+
+The feature libraries use `game-world` where they used `knot`.
+
+Two commits:
+
+- `3209b12` moves `g_isSkipFrame`, `g_followLastMoveTick` and `g_followLostSinceTick` from the run
+  loop to the new `game/mode_callbacks.c`, with their header in `gamedata`: the core and the
+  effects read them, and the layering would not allow the run loop below them. This and
+  `game/lifecycle.c` (the game mode's method table, which names the run loop's functions) were
+  the only link-check failures of the trial table.
+- `54ce159` writes the table. A header goes with the `.c` of its name unless a lower library
+  includes it for its types or globals, as `effects/rag/effect_prim.h` did; the 21 such headers
+  are named in the notes of `game-state` (17) and `game-parts` (4). Patterns of the old library
+  that no longer name a file are gone. No new exception: still 269 include and 129 link
+  exceptions.
+
+**Proof.** A call from `session/session_lookups.c` (`game-state`) to `game_object_construct`
+(`actors`) builds, and the link check then fails on exactly that use (`game-state may not use
+actors`). `build.bat libs` links the client from 21 static libraries, the four new ones among
+them.
+
+### Validation
+
+Clean exports of both commits (`build/snap/s1`, `s2`; the table commit was validated as
+`44e1e41`, the same tree as `54ce159` before its message was corrected), logs `libs-s1-*` and
+`libs-s2-*` in the worktree's `build/`.
+
+- **Both commits:** `build.bat` without warnings; the full `testsuild.bat` and the seven
+  standalone suites pass, every result line as before the cuts (`pfinal3`) except the two
+  library-check lines (22 libraries at `54ce159`).
+- **At `54ce159`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`: no
+  warnings; CMake with MSVC, Win32 and x64 (Debug): CTest 23 of 23 and 22 of 22; Linux (WSL,
+  GCC 13.3): CTest 28 of 28, 1,665 warnings as before.
+
+Not run: macOS and Android, a live client.

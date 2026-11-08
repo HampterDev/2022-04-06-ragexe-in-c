@@ -12,11 +12,10 @@
 
 
 #include <stdio.h>
-#include "ui/chat/chat_window_parts.h"
 #include "core/msg_str.h"
 #include "core/text_util.h"
-#include "ui/chat/chat_window.h"
 #include "ui/wndmgr/wndmgr.h"
+#include "ui/wndmgr/wndmgr_handlers.h"
 #include "core/app.h"
 #include "platform/clock.h"
 
@@ -146,6 +145,17 @@ void ui_navigation_v4_wnd_set_road_icon(struct UINavigationV4Wnd *self, int icon
     navi_manager_load_grid_images(&g_navi);
 }
 
+static struct UIWindow *chat_edit(void)
+{
+    return g_windowMgrHandlers.chat_edit ? g_windowMgrHandlers.chat_edit(g_windowMgr.new_chat_wnd) : NULL;
+}
+
+static void chat_enter(void)
+{
+    if (g_windowMgrHandlers.chat_enter)
+        g_windowMgrHandlers.chat_enter((struct UINewChatWnd *)g_windowMgr.new_chat_wnd);
+}
+
 void ui_navigation_v4_wnd_put_link(struct UINavigationV4Wnd *self, struct String map, int x, int y)
 {
     struct String xs = {0}, ys = {0}, link = {0};
@@ -160,12 +170,12 @@ void ui_navigation_v4_wnd_put_link(struct UINavigationV4Wnd *self, struct String
     string_append_cstr(&link, "</NAVIL>");
     if (ui_window_mgr_get_focus_edit(&g_windowMgr) &&
         ui_window_mgr_get_focus_edit(&g_windowMgr)->id != NAVI_ID_SEARCH_EDIT) {
-        if (ui_chat_window_edit(g_windowMgr.new_chat_wnd) == ui_window_mgr_get_focus_edit(&g_windowMgr) && !g_windowMgr.chat_bar_shown)
-            ui_new_chat_wnd_on_enter((struct UINewChatWnd *)g_windowMgr.new_chat_wnd);
+        if (chat_edit() == ui_window_mgr_get_focus_edit(&g_windowMgr) && !g_windowMgr.chat_bar_shown)
+            chat_enter();
     } else if (!g_windowMgr.chat_bar_shown) {
-        ui_new_chat_wnd_on_enter((struct UINewChatWnd *)g_windowMgr.new_chat_wnd);
+        chat_enter();
     } else {
-        ui_window_mgr_set_focus_edit(&g_windowMgr, ui_chat_window_edit(g_windowMgr.new_chat_wnd));
+        ui_window_mgr_set_focus_edit(&g_windowMgr, chat_edit());
     }
     focus = ui_window_mgr_get_focus_edit(&g_windowMgr);
     ui_window_send_msg(focus, NULL, NAVI_CHAT_MSG_LINK, (intptr_t)string_cstr(&link), 0, 0, 0);

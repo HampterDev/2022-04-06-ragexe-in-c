@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "owned_storage_test_allocator.h"
 #include "../src/game/mode_whisper.c"
+#include "../src/game/client_state.c"
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;

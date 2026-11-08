@@ -5,8 +5,6 @@
 #include "actor/weather.h"
 #include "ui/ui_std.h"
 
-struct Weather g_weather;
-
 #include <string.h>
 
 #define EFFECT_FADING_FRAMES 300

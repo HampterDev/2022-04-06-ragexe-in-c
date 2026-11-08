@@ -7,8 +7,8 @@ struct UINewChatWnd;
 struct UIWindow;
 struct UIWindowMgr;
 
-/* Window-specific steps the window manager (ui/wndmgr) hands to the module that owns
-   the window. There is one instance, g_windowMgrHandlers (ui/wndmgr/wndmgr_handlers.c);
+/* Window-specific steps the window manager (ui/wndmgr), and code that only knows the
+   window manager, hand to the module that owns the window. There is one instance, g_windowMgrHandlers (ui/wndmgr/wndmgr_handlers.c);
    client_install_hooks() in core/client_init.c fills it in once at startup, before any
    window exists. Each member says who provides it and what the window manager does
    while it is NULL. */
@@ -20,6 +20,9 @@ struct WindowMgrHandlers {
        edit counts as the chat window's. */
     struct UIWindow *(*chat_edit)(struct UIWindow *chat);
     struct UIWindow *(*chat_whisper_edit)(struct UIWindow *chat);
+    /* Enter on the chat window: shows its input bar, or hides the empty bar.
+       ui_new_chat_wnd_on_enter (ui/chat/chat_window.c). NULL: nothing happens. */
+    void (*chat_enter)(struct UINewChatWnd *chat);
     /* UIWM_MSG_SAVE_CHAT: writes the chat window's log to a file.
        ui_chat_wnd_write_chat_to_file (ui/chat/chat_window_log.c). NULL: nothing is
        written. */

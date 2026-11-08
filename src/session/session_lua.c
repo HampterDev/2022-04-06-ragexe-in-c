@@ -83,6 +83,8 @@ static const char *const navi_files[3][9] = {
         "Lua Files\\Navigation\\navi_picknpc_krLoc" },
 };
 
+unsigned char (*g_sessionNaviTables)(struct NaviManager *navi, void *lua);
+
 static void session_load_navigation_lua(struct Session *self)
 {
     const char *const *files = navi_files[g_serverType == 0 ? 0 : g_serverType == 1 ? 1 : 2];
@@ -92,7 +94,8 @@ static void session_load_navigation_lua(struct Session *self)
         return;
     for (i = 1; i < 9; i++)
         run_lua(self, files[i]);
-    navi_manager_load_tables(&g_navi, self->luaState);
+    if (g_sessionNaviTables)
+        g_sessionNaviTables(&g_navi, self->luaState);
 }
 
 /* "querytransparentiteminfo // %d 읽기 실패". An array, not a literal format: the compiler

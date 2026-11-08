@@ -44,8 +44,6 @@
 #include "world/world.h"
 #include "platform/clock.h"
 
-int g_isSkipFrame = 0;
-
 int g_followActorGid;
 DWORD g_firstFrameTick;
 
@@ -86,8 +84,6 @@ int game_mode_on_run(struct Mode *mode)
 struct Once g_firstFrameTickGuard;
 extern DWORD g_firstFrameTick;
 
-unsigned g_followLastMoveTick;
-unsigned g_followLostSinceTick;
 enum { WID_RELEASE_CLOSE = 0x12, PLAYER_STATE_SIT = 6 };
 
 #pragma pack(push, 1)

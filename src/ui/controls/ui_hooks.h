@@ -5,10 +5,11 @@
 
 struct ItemInfo;
 
-/* The calls the generic widgets in ui/controls make into feature code above them. There
-   is one instance, g_uiHooks (ui/controls/ui_hooks.c); client_install_hooks() in
-   core/client_init.c fills it in once at startup, before any window exists. Each member
-   says who provides it and what the widgets do while it is NULL. */
+/* The calls the generic widgets in ui/controls, and windows that know no more than they do,
+   make into feature code above them. There is one instance, g_uiHooks
+   (ui/controls/ui_hooks.c); client_install_hooks() in core/client_init.c fills it in once at
+   startup, before any window exists. Each member says who provides it and what the widgets
+   do while it is NULL. */
 struct UIHooks {
     /* Shows the help balloon with `text` near screen position (x, y), as
        mode_show_tooltip does. mode_show_current_tooltip (world/mode_ui_hooks.c), for
@@ -37,6 +38,10 @@ struct UIHooks {
        ui_rodex_compose_allows_caret_move (ui/mail/rodex_ui_hooks.c) says no while the
        mail compose window is open and its body is not the focused edit. NULL: it may. */
     int (*may_move_ime_caret)(void);
+    /* A click on a party member's plate (ui/social/mini_party_info.c): the game mode clicks
+       actor `aid`, as a click on the actor in the world does. game_click_current_actor
+       (game/game_ui_hooks.c), for the running game mode. NULL: the click selects nothing. */
+    void (*click_actor)(unsigned aid);
 };
 
 extern struct UIHooks g_uiHooks;

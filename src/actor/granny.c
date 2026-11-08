@@ -1,4 +1,5 @@
 #include "game/gamemode.h"
+#include "actor/actor_spawns.h"
 #include "actor/actor_ops.h"
 #include "actor/object_ops.h"
 #include "actor/render_ops.h"
@@ -15,7 +16,6 @@
 #include "actor/actor.h"
 #include "actor/granny_actor.h"
 #include "actor/game_actor.h"
-#include "game/world_objects.h"
 #include "actor/weather.h"
 #include "actor/sprite_render.h"
 #include "world/camera.h"
@@ -252,7 +252,7 @@ void c3d_granny_game_actor_make_corpse(struct GameActor * base_actor)
 {
     struct C3dGrannyGameActor * self = (struct C3dGrannyGameActor *)base_actor;
 
-    game_mode_make_granny_corpse(game_current_mode(), self->pos, self->facing, self->name);
+    actor_spawn_granny_corpse(game_current_mode(), self->pos, self->facing, self->name);
 }
 
 void *c3d_granny_game_actor_get_emblem_texture(struct C3dGrannyGameActor *self)

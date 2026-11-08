@@ -1,4 +1,5 @@
 #include "world/tooltip.h"
+#include "ui/controls/ui_hooks.h"
 #include "ui/chat/friends.h"
 #include "render/rp_pool.h"
 #include "session/character_name.h"
@@ -233,12 +234,8 @@ void ui_mini_party_info_wnd_on_l_btn_down(struct UIWindow *window, int x, int y)
     if (!g_session1.lockMouse)
         ui_mini_party_wnd_on_l_btn_down(&self->owner->frame.base, x, y);
     owner_member(self, &m);
-    if (m.found && m.state == 0) {
-        struct GameMode *mode = game_current_mode();
-
-        if (mode)
-            game_mode_click_actor(mode, m.aid);
-    }
+    if (m.found && m.state == 0 && g_uiHooks.click_actor)
+        g_uiHooks.click_actor(m.aid);
     party_member_destroy(&m);
 }
 

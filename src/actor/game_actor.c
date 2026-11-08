@@ -1,4 +1,5 @@
 #include "actor/actor_ops.h"
+#include "actor/actor_spawns.h"
 #include "effects/rag/rag_effect.h"
 #include "render/screen_bounds.h"
 #include "ui/window_access.h"
@@ -316,7 +317,7 @@ void game_actor_launch_ranged_attack(struct GameActor *self, int id, float heigh
     case 0x3fc: case 0x42c: case 0x6a8: case 0x6ad: case 0x6f5: case 0x75c: case 0x75e:
     case 0x7a5: case 0x7a6: case 0x7a7: case 0x7a8: case 0x7a9: case 0x7c4: case 0xe94:
     case 0xecf: case 0x500b:
-        game_mode_launch_plant_attack(mode, id, game_actor_get_job(self), 0.0f);
+        actor_spawn_plant_attack(mode, id, game_actor_get_job(self), 0.0f);
         break;
     case 0x3f8: case 0x4a5: case 0x4e5: case 0x4ea: case 0x4fc: case 0x502: case 0x505:
     case 0x582: case 0x584: case 0x58c: case 0x5ad: case 0x5af: case 0x5c1: case 0x5d7:
@@ -325,7 +326,7 @@ void game_actor_launch_ranged_attack(struct GameActor *self, int id, float heigh
     case 0xf2a: case 0x1781: case 0x1782: case 0x1783: case 0x1784: case 0x1785: case 0x1786:
     case 0x1787: case 0x1788: case 0x1789: case 0x178a: case 0x4f32: case 0x4f33: case 0x4f37:
     case 0x4f90: case 0x505f: case 0x5062: case 0x5069: case 0x5410: case 0x5455:
-        game_mode_launch_arrow(mode, &self->pos, id, height, game_actor_get_job(self));
+        actor_spawn_arrow(mode, &self->pos, id, height, game_actor_get_job(self));
         break;
     }
 }
@@ -444,15 +445,6 @@ void game_actor_set_request2(struct GameActor * self, const int * record, int wh
 void game_actor_set_sex(struct GameActor *self, int value)
 {
     self->sex = value & 1;
-}
-
-void render_object_load_spr_res(struct RenderObject *self, const char *name)
-{
-    if (self->spr)
-        res_unlock((struct Res *)self->spr);
-    self->spr = res_mgr_get(g_resMgr(), name);
-    if (self->spr)
-        res_lock((struct Res *)self->spr);
 }
 
 void game_actor_clear_unit_cell(struct GameActor * self)

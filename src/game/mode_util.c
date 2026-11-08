@@ -38,28 +38,6 @@ void follow_set_times(unsigned moved_at, unsigned lost_at)
     g_followLostSinceTick = lost_at != (unsigned)-1 ? lost_at : g_followLostSinceTick;
 }
 
-void game_mode_remove_listed(struct GameMode *self, void *obj)
-{
-    struct ListNode *head = self->listed.head;
-    struct ListNode *n;
-
-    for (n = head->next; n != head; n = n->next)
-        if (*LIST_VALUE(n, void *) == obj)
-            break;
-    if (n == head)
-        return;
-    list_erase(&self->listed, n, NULL);
-}
-
-void game_mode_notify_listed(struct GameMode *self, int arg)
-{
-    struct ListNode *n;
-    for (n = self->listed.head->next; n != self->listed.head; n = n->next) {
-        struct UIWindow *window = *LIST_VALUE(n, struct UIWindow *);
-        ui_window_send_msg(window, NULL, 0x3c, arg, 0, 0, 0);
-    }
-}
-
 char item_id_is994_to997(int id)
 {
     return (unsigned)(id - 994) <= 3;

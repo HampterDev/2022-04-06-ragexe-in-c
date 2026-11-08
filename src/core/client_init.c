@@ -5,6 +5,7 @@
 #include "core/object_type_registry.h"
 #include "core/packet_table.h"
 #include "core/res_mgr.h"
+#include "contents/client_lua.h"
 #include "contents/guild_emblem_hooks.h"
 #include "contents/guild_info.h"
 #include "core/xml.h"
@@ -32,11 +33,17 @@
 #include "resources/world_res.h"
 #include "session/session_granny_hooks.h"
 #include "session/session_state.h"
+#include "session/session_lua.h"
+#include "session/session_windows.h"
+#include "ui/character/gauge.h"
 #include "session/state.h"
 #include "skills/skill_action.h"
 #include "std/std.h"
+#include "actor/actor_spawns.h"
 #include "actor/weather.h"
+#include "game/world_objects.h"
 #include "effects/effect_render_hooks.h"
+#include "effects/rag/rag_effect.h"
 #include "ui/character/character.h"
 #include "ui/controls/ui_hooks.h"
 #include "ui/items/item_collection.h"
@@ -104,6 +111,16 @@ static void client_install_hooks(void)
     g_grannyJobModelName = session_granny_job_model;
     g_clientInfoWeatherScript = weather_add_etc_script;
     g_worldResLight = weather_take_map_light;
+    g_ragEffectProcess = rag_effect_on_process;
+    g_gameActorHandleMsg = game_actor_handle_msg;
+    g_renderObjectDraw = render_object_draw;
+    g_clientLuaFunctions = client_lua_register_functions;
+    g_sessionNaviTables = navi_manager_load_tables;
+    g_sessionBasicInfoHeight = ui_basic_info_wnd_set_height;
+    g_actorSpawns.launch_arrow = game_mode_launch_arrow;
+    g_actorSpawns.launch_plant_attack = game_mode_launch_plant_attack;
+    g_actorSpawns.make_corpse = game_mode_make_corpse;
+    g_actorSpawns.make_granny_corpse = game_mode_make_granny_corpse;
     g_uiHooks.show_tooltip = mode_show_current_tooltip;
     g_uiHooks.set_cursor_action = mode_set_current_cursor_action;
     g_uiHooks.show_item_link = item_collection_show_link;
@@ -112,9 +129,11 @@ static void client_install_hooks(void)
     g_uiHooks.navi_show_map = navi_link_show_map;
     g_uiHooks.open_quest = game_open_quest_link;
     g_uiHooks.may_move_ime_caret = ui_rodex_compose_allows_caret_move;
+    g_uiHooks.click_actor = game_click_current_actor;
 
     g_windowMgrHandlers.chat_edit = ui_chat_window_edit;
     g_windowMgrHandlers.chat_whisper_edit = ui_chat_window_whisper_edit;
+    g_windowMgrHandlers.chat_enter = ui_new_chat_wnd_on_enter;
     g_windowMgrHandlers.save_chat_log = ui_chat_wnd_write_chat_to_file;
     g_windowMgrHandlers.save_chat_room_talk = ui_chat_room_wnd_save_talk;
     g_windowMgrHandlers.open_whisper = ui_whisper_wnd_open;
