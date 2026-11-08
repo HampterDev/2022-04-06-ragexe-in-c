@@ -35,14 +35,22 @@ not inference:
 
 | method | rows | how |
 | --- | --- | --- |
-| `cited` | 5233 | the comment above the function names exactly one `sub_<addr>` |
-| `cited_multi` | 647 | that comment names several addresses (a function that merged several originals, or a family); every one is listed, low confidence |
-| `name` | 61 | the function is itself called `sub_<addr>` |
-| `cited_hex` | 5 | the comment says "lifted from 0x<addr>" |
-| `label` | 147 | the name equals a class label of the listing (`CGameMode__Zc_Par_Change` -> `GameMode_Zc_ParChange`) |
-| `ustr` | 420 | a string literal that occurs in exactly one assembly function and exactly one C function (26 of 26 right on held-out cited pairs) |
-| `callee` | 60 | the one unmapped callee of a mapped pair on both sides (about half right on held-out; verify before use) |
-| `jacc` | 118 | mutual-best Jaccard over strings, imports and calls into mapped functions (about half right on held-out; verify before use) |
+| `cited` | 5166 | the comment above the function names exactly one `sub_<addr>` |
+| `cited_multi` | 608 | that comment names several addresses (a function that merged several originals, or a family); every one is listed, low confidence |
+| `name` | 60 | the function is itself called `sub_<addr>` |
+| `cited_hex` | 1 | the comment says "lifted from 0x<addr>" |
+| `label` | 19 | the name equals a class label of the listing (`CGameMode__Zc_Par_Change` -> `GameMode_Zc_ParChange`) |
+| `dump_symbol` | 26 | a `label` row whose address sat inside another routine, moved to the start of the function the dump knows by that class and method name |
+| `ustr` | 288 | a string literal that occurs in exactly one assembly function and exactly one C function |
+| `callee` | 47 | the one unmapped callee of a mapped pair on both sides (about half right on held-out; verify before use) |
+| `jacc` | 74 | mutual-best Jaccard over strings, imports and calls into mapped functions (about half right on held-out; verify before use) |
+| `oracle` | 54 | the pair was driven over its input space by a test under `tests/oracle` (`oracle_pairs.tsv`) |
+| `*_inside` | 380 | any method whose address is not a function start in the dump: the label it came from sits inside another routine, so the address is wrong and the pairing suspect; low confidence |
+
+`verify_map.py` applies the last three: it checks every address against the dump's
+function-start lines, moves class-method labels to the dump's symbol, and writes the oracle
+pairs over whatever paired those addresses or functions differently. Run it after adding to
+`oracle_pairs.tsv`.
 
 Annotated name -> final name comes from pairing the definitions before and after the renaming
 to snake case, per file: exact, then by normalised name, then by order between anchors
