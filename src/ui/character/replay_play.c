@@ -642,9 +642,13 @@ struct UIReplayControlWnd {
     struct UIBarGraph4 *progress;
     struct UIWindow *clock_text;
     struct UIWindow *speed_text;
+    struct UIWindow *hidden_text;
     struct UIWindow *location_text;
 };
 OFFSET_ASSERT(UIReplayControlWnd, buttons, 0xa0);
+OFFSET_ASSERT(UIReplayControlWnd, clock_text, 0xb4);
+OFFSET_ASSERT(UIReplayControlWnd, location_text, 0xc0);
+SIZE_ASSERT(UIReplayControlWnd, 0xc4);
 
 struct UIReplayControlWnd *ui_replay_control_wnd_construct(struct UIReplayControlWnd *self)
 {
