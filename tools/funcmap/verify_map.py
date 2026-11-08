@@ -12,6 +12,8 @@ method's real start, method `dump_symbol`, confidence high.
 The pairs in `oracle_pairs.tsv` (address, final name; each proven by a test under tests/oracle
 driving the two sides over their input space) are written with method `oracle`, confidence
 high; a row that paired that address or that function differently is dropped, with a note.
+The pairs in `dispatch_pairs.tsv` (written by dispatch_check.py from the packet dispatcher's
+jump table) are written the same way with method `dispatch`.
 """
 import argparse
 import os
@@ -21,7 +23,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, '..', '..'))
 MAP = os.path.join(HERE, 'function_map.tsv')
-PAIRS = os.path.join(HERE, 'oracle_pairs.tsv')
+PAIRS = ((os.path.join(HERE, 'oracle_pairs.tsv'), 'oracle', 'the oracle'),
+         (os.path.join(HERE, 'dispatch_pairs.tsv'), 'dispatch', 'the packet dispatcher'))
 DEFAULT_DUMP = os.path.normpath(os.path.join(REPO, '..', 'client-disassembly',
                                              '2022-04-06_Ragexe_1648707856.exe.bndb_disassembly.txt'))
 START = re.compile(r'^00([0-9a-f]{6})  ([A-Za-z_].*?)\(')
@@ -61,9 +64,10 @@ def main():
     starts, by_name = read_dump(args.dump)
     head, rows = read_tsv(MAP)
     pairs = []
-    if os.path.exists(PAIRS):
-        _, prows = read_tsv(PAIRS)
-        pairs = [(int(r['addr'], 16), r['final_name'], r.get('note', '')) for r in prows]
+    for path, method, source in PAIRS:
+        if os.path.exists(path):
+            _, prows = read_tsv(path)
+            pairs += [(int(r['addr'], 16), r['final_name'], r.get('note', ''), method, source) for r in prows]
 
     inside = moved = 0
     for r in rows:
@@ -90,32 +94,30 @@ def main():
     for r in rows:
         by_addr.setdefault(int(r['addr'], 16), []).append(r)
     final_rows = []
-    pair_addrs = {a for a, _, _ in pairs}
-    pair_names = {n for _, n, _ in pairs}
+    pair_addrs = {a: s for a, _, _, _, s in pairs}
+    pair_names = {n: s for _, n, _, _, s in pairs}
     for r in rows:
         a = int(r['addr'], 16)
-        if r['method'] == 'oracle':
+        if a in pair_addrs and r['final_name'] not in {n for pa, n, _, _, _ in pairs if pa == a}:
+            dropped.append((r['addr'], r['final_name'], f'{pair_addrs[a]} pairs this address with another function'))
             continue
-        if a in pair_addrs and r['final_name'] not in {n for pa, n, _ in pairs if pa == a}:
-            dropped.append((r['addr'], r['final_name'], 'the oracle pairs this address with another function'))
-            continue
-        if r['final_name'] in pair_names and a not in pair_addrs and r['confidence'] == 'low':
-            dropped.append((r['addr'], r['final_name'], 'the oracle pairs this function with another address'))
+        if r['final_name'] in pair_names and a not in pair_addrs and (r['confidence'] == 'low' or pair_names[r['final_name']] != 'the oracle'):
+            dropped.append((r['addr'], r['final_name'], f'{pair_names[r["final_name"]]} pairs this function with another address'))
             continue
         final_rows.append(r)
     existing = {(int(r['addr'], 16), r['final_name']) for r in final_rows}
-    for a, n, note in pairs:
+    for a, n, note, method, _ in pairs:
         if (a, n) in existing:
             for r in final_rows:
-                if int(r['addr'], 16) == a and r['final_name'] == n:
-                    r['method'], r['confidence'] = 'oracle', 'high'
+                if int(r['addr'], 16) == a and r['final_name'] == n and (method == 'oracle' or r['confidence'] != 'high'):
+                    r['method'], r['confidence'] = method, 'high'
             continue
         final_rows.append({k: '' for k in head} | {'addr': f'{a:x}', 'asm_label': f'sub_{a:x}', 'final_name': n,
-                                                     'method': 'oracle', 'confidence': 'high', 'ref_file': note})
+                                                     'method': method, 'confidence': 'high', 'ref_file': note})
     final_rows.sort(key=lambda r: (int(r['addr'], 16), r['final_name']))
 
     print(f'{len(rows)} rows read; {inside} addresses inside another routine marked, {moved} moved to the dump\'s symbol, '
-          f'{len(pairs)} oracle pairs applied, {len(dropped)} rows dropped')
+          f'{len(pairs)} proven pairs applied, {len(dropped)} rows dropped')
     for d in dropped:
         print('  dropped', *d)
     if args.write:

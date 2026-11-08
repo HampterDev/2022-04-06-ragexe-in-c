@@ -45,12 +45,19 @@ not inference:
 | `callee` | 47 | the one unmapped callee of a mapped pair on both sides (about half right on held-out; verify before use) |
 | `jacc` | 74 | mutual-best Jaccard over strings, imports and calls into mapped functions (about half right on held-out; verify before use) |
 | `oracle` | 54 | the pair was driven over its input space by a test under `tests/oracle` (`oracle_pairs.tsv`) |
+| `dispatch` | 383 | the packet dispatcher's jump table sends the packet id to that handler and this tree's `packet_dispatch.c` sends the same id to that function (`dispatch_pairs.tsv`, written by `dispatch_check.py`) |
 | `*_inside` | 380 | any method whose address is not a function start in the dump: the label it came from sits inside another routine, so the address is wrong and the pairing suspect; low confidence |
 
-`verify_map.py` applies the last three: it checks every address against the dump's
-function-start lines, moves class-method labels to the dump's symbol, and writes the oracle
-pairs over whatever paired those addresses or functions differently. Run it after adding to
-`oracle_pairs.tsv`.
+`verify_map.py` applies the last four: it checks every address against the dump's
+function-start lines, moves class-method labels to the dump's symbol, and writes the oracle and
+dispatcher pairs over whatever paired those addresses or functions differently. Run it after
+adding to `oracle_pairs.tsv` or regenerating `dispatch_pairs.tsv`.
+
+`dispatch_check.py` reads the jump table of `CGameMode::PollNetworkStatus` (0x7a0570; ids 0x73
+to 0xbb3 at 0x7aab40) from the executable and this tree's `packet_dispatch.c` and
+`packet_dispatch2.c`: both dispatch the same 798 packet ids. For the arms that only push the
+packet and call a handler, and whose case here calls exactly one function, it pairs the two;
+the other arms inline their work or call several routines and are left to the oracle tests.
 
 Annotated name -> final name comes from pairing the definitions before and after the renaming
 to snake case, per file: exact, then by normalised name, then by order between anchors

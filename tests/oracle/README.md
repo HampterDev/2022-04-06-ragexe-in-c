@@ -129,8 +129,12 @@ arm sets stay unmapped and uncompared. Regenerate it after a change to the union
 
 ## Candidates next
 
-The large tables the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a numeric
-C switch, biggest first: the chat command dispatcher at `0x7a0570` (798 arms, with files, windows
-and settings among its side effects). Smaller pure lookups: the job sprite and IMF name builders
-(they read the job tables, which `.data` holds), the message-id lookups that take only a code,
-the talk-option name table, and the angle and distance helpers of the effects.
+The last large table the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a
+numeric C switch is the packet dispatcher at `0x7a0570` (798 arms). It cannot be driven here: each
+arm hands a received packet to a handler that works on the world, the actors and the windows.
+What can be checked statically is checked by `tools/funcmap/dispatch_check.py`: both sides
+dispatch the same 798 ids, and the handlers the simple arms call are paired with this tree's
+handler functions in the function map. The handlers themselves are the next oracle candidates,
+one at a time as the three skill handlers were. Smaller pure lookups: the job sprite and IMF
+name builders (they read the job tables, which `.data` holds), the message-id lookups that take
+only a code, the talk-option name table, and the angle and distance helpers of the effects.
