@@ -33,4 +33,8 @@ void oracle_patch_jump(unsigned original_va, void *fn);
 /* The original address a call instruction at the address targets. */
 unsigned oracle_call_target(unsigned call_va);
 
+/* Points the image's import of `import_name` from `dll_name` (case-insensitive) at fn, so a routine
+ * under test reads, say, a fixed clock. Returns how many import slots were changed. */
+int oracle_bind_import(const char *dll_name, const char *import_name, void *fn);
+
 #endif

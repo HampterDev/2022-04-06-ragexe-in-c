@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <math.h>
 #include <windows.h>
 #include "oracle_image.h"
 #include "session/state.h"
@@ -91,11 +92,25 @@
 #define ORIG_MODE_WORLD        0xcc
 #define ORIG_WORLD_PLAYER      0x2c
 #define ORIG_WORLD_ATTR        0x30
+#define ORIG_WORLD_OBJECTS     0x08
+#define ORIG_CHAT_LINE         0x7eb880u
+#define ORIG_GROUND_SCOPE_CTOR 0x89a900u
+#define ORIG_ACTION_CAST       0xa13b20u
+#define ORIG_ACTION_CAST_ON    0xa13ba0u
+#define ORIG_ACTION_CAST_AT    0xa13c20u
+#define ORIG_MOTION_DELAY      0x75f6e0u
+#define ORIG_IS_GOOD_SKILL     0xa11700u
+#define ORIG_GET_JOB           0x74aea0u
+#define ORIG_MODE_SERVER_COOR  0x7705a0u
+#define ORIG_WORLD_SERVER_COOR 0x770750u
+#define ORIG_EFFECT_VT_INIT      (0x04 / 4)
+#define ORIG_EFFECT_VT_STOP_FRAME (0x38 / 4)
 #define ORIG_MODE_VT_SEND_MSG  (0x18 / 4)
 #define ORIG_ACTOR_VT_SEND_MSG (0x08 / 4)
 #define ORIG_ACTOR_VT_SET_ACTION (0x1c / 4)
 #define ORIG_ACTOR_VT_EFFECT_STATE (0x34 / 4)
 #define ORIG_ACTOR_VT_SET_STATE  (0x3c / 4)
+#define ORIG_ACTOR_VT_ATTACK_SPEED (0x9c / 4)
 #define ORIG_RAG_VT_SEND_MSG     (0x40 / 4)
 #define ORIG_EFFECT_VT_DELAY     (0x40 / 4)
 #define ORIG_EFFECT_VT_SPIN      (0x44 / 4)
@@ -145,6 +160,11 @@ static struct GameActorOps lift_actor_ops;
 static struct RagEffect lift_rag;
 static struct Effect lift_effect;
 static struct EffectOps lift_effect_ops;
+static unsigned char lift_scope[0x200];
+static struct RenderObjectOps lift_scope_ops;
+static void *orig_scope;
+static void *orig_ground_vt[64];
+static unsigned orig_list_head[3];
 static int lift_mgr, lift_action_mgr;
 
 static const char *who(const void *p)
@@ -157,20 +177,33 @@ static const char *who(const void *p)
     if (p == orig_rag || p == &lift_rag) return "R";
     if (p == orig_effect || p == &lift_effect) return "E";
     if (p == orig_mode || p == &lift_mode) return "M";
+    if ((orig_scope && p == orig_scope) || p == lift_scope) return "G";
     snprintf(other, sizeof other, "?%p", p);
     return other;
+}
+
+/* Whether a message parameter is a pointer into memory this process can read, as the position and
+ * record parameters are, rather than a number (a cell, a packed pair) that only looks like one. */
+static int readable(long long v)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (v < 0x10000 || v > 0xffffffffll)
+        return 0;
+    if (!VirtualQuery((const void *)(UINT_PTR)v, &mbi, sizeof mbi) || mbi.State != MEM_COMMIT || (mbi.Protect & PAGE_GUARD))
+        return 0;
+    return (mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE)) != 0;
 }
 
 static const char *msg_text(long long msg, long long a, long long b, long long c, long long d)
 {
     static char text[96];
-    if (msg == 0xe && a) {
+    if (msg == 0xe && readable(a)) {
         const float *at = (const float *)(int)a;
         snprintf(text, sizeof text, "%llx at %.0f %.0f %.0f %llx %llx %llx", msg, at[0], at[1], at[2], b, c, d);
-    } else if (msg == 0x2c && c) {
+    } else if (msg == 0x2c && readable(c)) {
         const float *at = (const float *)(int)c;
         snprintf(text, sizeof text, "%llx %llx %llx at %.0f %.0f %.0f %llx", msg, a, b, at[0], at[1], at[2], d);
-    } else if (msg == 0x25 && a) {
+    } else if (msg == 0x25 && readable(a)) {
         const struct ActorSkillUse *u = (const struct ActorSkillUse *)(int)a;
         snprintf(text, sizeof text, "25 hit skill %x dmg %d act %d tgt %d t %d lv %d n %d cell %d %d mt %d %d", u->skill_id, u->damage,
                  u->action, u->target_aid, u->start_time, u->level, u->count, u->cell_x, u->cell_y, u->attack_mt, u->attacked_mt);
@@ -254,11 +287,27 @@ int game_actor_get_job(struct GameActor *self) { return self->job; }
 int game_actor_get_counter(struct GameActor *self, int key) { (void)self; (void)key; return 0; }
 void game_actor_set_counter(struct GameActor *self, int which, long long value) { event("counter %s %d %lld", who(self), which, value); }
 void string_free(struct String *s) { (void)s; }
-void game_mode_cell_to_world(struct GameMode *self, int x, int y, float *world_x, float *world_z)
-{ (void)self; *world_x = (float)x * 5.0f; *world_z = (float)y * 5.0f; }
 float c3d_attr_get_height(struct C3dAttr *self, float x, float z) { (void)self; (void)x; (void)z; return 0.0f; }
 void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender, RenderMsgArg msg, RenderMsgArg a, RenderMsgArg b, RenderMsgArg c)
 { (void)sender; event("ragmsg %s %s", who(self), msg_text(msg, a, b, c, 0)); }
+void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, int skill_id, unsigned char quiet)
+{ event("chat %x %s %s %d", skill_id, who(caster), who(target), quiet); }
+struct GroundScope *ground_scope_new(void)
+{ memset(lift_scope, 0, sizeof lift_scope); *(const struct RenderObjectOps **)lift_scope = &lift_scope_ops; return (struct GroundScope *)lift_scope; }
+void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size) { (void)list; (void)where; (void)size; return (void *)value; }
+unsigned char skill_action_mgr_cast(struct SkillActionMgr *self, int skill_id, unsigned cast_time, SkillActor *caster)
+{ (void)self; event("action cast %x %u %s", skill_id, cast_time, who(caster)); return 0; }
+unsigned char skill_action_mgr_cast_on_target(struct SkillActionMgr *self, int skill_id, SkillActor *target)
+{ (void)self; event("action cast-on %x %s", skill_id, who(target)); return 0; }
+unsigned char skill_action_mgr_cast_at_cell(struct SkillActionMgr *self, int skill_id, unsigned cast_time, short x, short y)
+{ (void)self; event("action cast-at %x %u %d %d", skill_id, cast_time, x, y); return 0; }
+unsigned char skill_info_is_good_skill_for_actor(int skill_id) { (void)skill_id; return 1; }
+void render_object_set_motion_delay(struct RenderObject *self, float delay) { event("mdelay %s %.2f", who(self), delay); }
+struct SkillActionAnswer *skill_action_mgr_cast_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)
+{ (void)self; (void)skill_id; out->found = 0; out->value = 0; return out; }
+void *mem_alloc(size_t bytes) { return malloc(bytes); }
+void mem_free(void *memory) { free(memory); }
+static void lift_set_attack_speed(struct GameActor *actor, int value) { event("aspd %s %d", who(actor), value); }
 
 static int lift_mode_send(struct Mode *mode, int message, int a, int b, int c, int d)
 { (void)mode; event("modemsg %x %x %s %x %x", message, a, who((void *)b), c, d); return 0; }
@@ -317,8 +366,6 @@ static const char *__fastcall o_job_name(void *self, void *edx, int job, int sex
 static void __fastcall o_monster_skill_info(void *self, void *edx, const char *name, int skill, int *action, int *loop_type)
 { (void)self; (void)edx; (void)name; (void)skill; *action = -1; *loop_type = 0; }
 static int __fastcall o_get_effect_state(void *self, void *edx) { (void)self; (void)edx; return 0; }
-static void __fastcall o_client_coor(void *self, void *edx, int cx, int cy, float *x, float *z)
-{ (void)self; (void)edx; *x = (float)cx * 5.0f; *z = (float)cy * 5.0f; }
 static double __fastcall o_height(void *self, void *edx, float x, float z) { (void)self; (void)edx; (void)x; (void)z; return 0.0; }
 static void *__fastcall o_get_actor_name(void *self, void *edx, unsigned *out, int aid)
 { (void)self; (void)edx; (void)aid; memset(out, 0, 24); out[5] = 15; return out; }
@@ -347,6 +394,36 @@ static void __fastcall o_rag_send_msg(void *self, void *edx, void *sender, long 
 static void __fastcall o_effect_delay(void *self, void *edx, int ms) { (void)edx; event("delay %s %d", who(self), ms); }
 static void __fastcall o_effect_zoom(void *self, void *edx, float zoom) { (void)edx; event("zoom %s %.2f", who(self), zoom); }
 static void __fastcall o_effect_spin(void *self, void *edx, float degrees) { (void)edx; event("spin %s %.2f", who(self), degrees); }
+static void __fastcall o_effect_init(void *self, void *edx) { (void)edx; event("init %s", who(self)); }
+static void __fastcall o_effect_stop_frame(void *self, void *edx, float frame) { (void)edx; event("stopframe %s %.2f", who(self), frame); }
+static int __cdecl o_chat_line(void *caster, void *target, int skill, int quiet)
+{ event("chat %x %s %s %d", skill & 0xffff, who(caster), who(target), quiet & 0xff); return 0; }
+static void *__fastcall o_ground_scope_ctor(void *self, void *edx) { (void)edx; *(void **)self = orig_ground_vt; orig_scope = self; return self; }
+static int __fastcall o_action_cast(void *self, void *edx, int skill, unsigned time, void *caster)
+{ (void)self; (void)edx; event("action cast %x %u %s", skill, time, who(caster)); return 0; }
+static int __fastcall o_action_cast_on_target(void *self, void *edx, int skill, void *caster, void *target)
+{ (void)self; (void)edx; (void)caster; event("action cast-on %x %s", skill, who(target)); return 0; }
+static int __fastcall o_action_cast_at_cell(void *self, void *edx, int skill, unsigned time, void *target, int x, int y)
+{ (void)self; (void)edx; (void)target; event("action cast-at %x %u %d %d", skill, time, (short)x, (short)y); return 0; }
+static void __fastcall o_motion_delay(void *self, void *edx, float delay) { (void)edx; event("mdelay %s %.2f", who(self), delay); }
+static void __fastcall o_set_attack_speed(void *self, void *edx, int value) { (void)edx; event("aspd %s %d", who(self), value); }
+static int __fastcall o_get_job(void *self, void *edx) { (void)self; (void)edx; return 0; }
+static void __fastcall o_client_coor(void *self, void *edx, int cx, int cy, float *x, float *z)
+{
+    float half_cell = (float)ATTR_ZOOM * 8.0f * 0.0625f;
+    (void)self; (void)edx;
+    *x = ((float)cx - (float)ATTR_ZOOM * 0.5f) * (float)ATTR_ZOOM + half_cell;
+    *z = ((float)cy - (float)ATTR_ZOOM * 0.5f) * (float)ATTR_ZOOM + half_cell;
+}
+static void __fastcall o_server_coor(void *self, void *edx, float x, float z, int *cx, int *cy)
+{
+    (void)self; (void)edx;
+    *cx = (int)(float)floor((double)((float)(ATTR_ZOOM / 2) + x / (float)ATTR_ZOOM));
+    *cy = (int)(float)floor((double)((float)(ATTR_ZOOM / 2) + z / (float)ATTR_ZOOM));
+}
+static DWORD WINAPI o_time(void) { return 0x10000000u; }
+void *oracle_time_slot = (void *)o_time;
+#pragma comment(linker, "/alternatename:__imp__timeGetTime@0=_oracle_time_slot")
 
 static int trap_slot;
 static void *trap_self;
@@ -375,8 +452,10 @@ static LONG WINAPI first_look(EXCEPTION_POINTERS *ep)
     unsigned char *image = (unsigned char *)oracle_addr(0x400000u);
     const unsigned *sp = (const unsigned *)ep->ContextRecord->Esp;
     int i;
-    fprintf(stderr, "  fault %08lx at %p (original 0x%x) eax=%08lx ecx=%08lx esp=%08lx\n", ep->ExceptionRecord->ExceptionCode, at,
-            (unsigned)(at - image) + 0x400000u, ep->ContextRecord->Eax, ep->ContextRecord->Ecx, ep->ContextRecord->Esp);
+    fprintf(stderr, "  fault %08lx at %p (original 0x%x) eax=%08lx ecx=%08lx edx=%08lx ebx=%08lx esi=%08lx edi=%08lx ebp=%08lx esp=%08lx\n",
+            ep->ExceptionRecord->ExceptionCode, at, (unsigned)(at - image) + 0x400000u, ep->ContextRecord->Eax, ep->ContextRecord->Ecx,
+            ep->ContextRecord->Edx, ep->ContextRecord->Ebx, ep->ContextRecord->Esi, ep->ContextRecord->Edi, ep->ContextRecord->Ebp,
+            ep->ContextRecord->Esp);
     for (i = 0; i < 96; i++) {
         unsigned char *v = (unsigned char *)sp[i];
         if (v >= image + 0x1000 && v < image + 0x8da000)
@@ -483,6 +562,11 @@ static void seed_all(int option)
     *(void **)(orig_world + ORIG_WORLD_ATTR) = orig_attr;
     *(void **)orig_rag = orig_rag_vt;
     *(void **)orig_effect = orig_effect_vt;
+    orig_list_head[0] = orig_list_head[1] = (unsigned)(UINT_PTR)orig_list_head;
+    orig_list_head[2] = 0;
+    *(void **)(orig_world + ORIG_WORLD_OBJECTS) = orig_list_head;
+    *(unsigned *)(orig_world + ORIG_WORLD_OBJECTS + 4) = 0;
+    orig_scope = NULL;
     seed_orig_actor(orig_caster, AID_CASTER, 100.0f, 5.0f, 200.0f);
     seed_orig_actor(orig_target, AID_TARGET, 130.0f, 7.0f, 260.0f);
     memset(orig_player, 0, sizeof orig_player);
@@ -503,8 +587,9 @@ static void seed_all(int option)
     lift_mode.world = &lift_world;
     lift_world.player = (struct Player *)lift_player;
     memset(&lift_attr, 0, sizeof lift_attr);
-    lift_attr.zoom = ATTR_ZOOM;
+    lift_attr.zoom = lift_attr.width = lift_attr.height = ATTR_ZOOM;
     lift_world.attr = &lift_attr;
+    memset(lift_scope, 0, sizeof lift_scope);
     lift_effect.ops = &lift_effect_ops;
     seed_lift_actor(&lift_caster, AID_CASTER, 100.0f, 5.0f, 200.0f);
     seed_lift_actor(&lift_target, AID_TARGET, 130.0f, 7.0f, 260.0f);
@@ -559,7 +644,6 @@ static void skill_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_IS_MONSTER_ACTOR, (void *)o_is_monster_actor);
     oracle_patch_jump(ORIG_IS_PC_JOB, (void *)o_is_pc_job);
     oracle_patch_jump(ORIG_JOB_NAME, (void *)o_job_name);
-    oracle_patch_jump(ORIG_GET_CLIENT_COOR, (void *)o_client_coor);
     oracle_patch_jump(ORIG_GET_ACTOR_NAME, (void *)o_get_actor_name);
     oracle_patch_jump(ORIG_ATTR_HEIGHT, (void *)o_height);
     {
@@ -581,15 +665,34 @@ static void skill_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_MSG_STR, (void *)o_msg_str);
     oracle_patch_jump(ORIG_LAUNCH_EFFECT_AT, (void *)o_launch_effect_at);
     oracle_patch_jump(ORIG_EFFECT_ON_CASTER, (void *)o_effect_on_caster);
+    oracle_patch_jump(ORIG_CHAT_LINE, (void *)o_chat_line);
+    oracle_patch_jump(ORIG_GROUND_SCOPE_CTOR, (void *)o_ground_scope_ctor);
+    oracle_patch_jump(ORIG_ACTION_CAST, (void *)o_action_cast);
+    oracle_patch_jump(ORIG_ACTION_CAST_ON, (void *)o_action_cast_on_target);
+    oracle_patch_jump(ORIG_ACTION_CAST_AT, (void *)o_action_cast_at_cell);
+    oracle_patch_jump(ORIG_MOTION_DELAY, (void *)o_motion_delay);
+    oracle_patch_jump(ORIG_GET_JOB, (void *)o_get_job);
+    oracle_patch_jump(ORIG_GET_CLIENT_COOR, (void *)o_client_coor);
+    oracle_patch_jump(ORIG_MODE_SERVER_COOR, (void *)o_server_coor);
+    oracle_patch_jump(ORIG_WORLD_SERVER_COOR, (void *)o_server_coor);
+    oracle_patch_return(ORIG_IS_GOOD_SKILL, 1, 0);
+    if (!oracle_bind_import("WINMM.dll", "timeGetTime", (void *)o_time))
+        fprintf(stderr, "the original's timeGetTime import was not found\n");
     memcpy(oracle_addr(ORIG_DURATIONS), g_effectDurations, sizeof g_effectDurations);
 
     for (i = 0; i < 64; i++)
-        orig_mode_vt[i] = orig_actor_vt[i] = orig_rag_vt[i] = orig_effect_vt[i] = traps[i];
+        orig_mode_vt[i] = orig_actor_vt[i] = orig_rag_vt[i] = orig_effect_vt[i] = orig_ground_vt[i] = traps[i];
+    orig_ground_vt[ORIG_ACTOR_VT_SEND_MSG] = (void *)o_actor_send_msg;
+    orig_effect_vt[ORIG_EFFECT_VT_INIT] = (void *)o_effect_init;
+    orig_effect_vt[ORIG_EFFECT_VT_STOP_FRAME] = (void *)o_effect_stop_frame;
+    lift_scope_ops.base.send_msg = lift_send_msg;
+    lift_actor_ops.set_attack_speed = lift_set_attack_speed;
     orig_mode_vt[ORIG_MODE_VT_SEND_MSG] = (void *)o_mode_send_msg;
     orig_actor_vt[ORIG_ACTOR_VT_SEND_MSG] = (void *)o_actor_send_msg;
     orig_actor_vt[ORIG_ACTOR_VT_SET_ACTION] = (void *)o_set_action;
     orig_actor_vt[ORIG_ACTOR_VT_SET_STATE] = (void *)o_set_state;
     orig_actor_vt[ORIG_ACTOR_VT_EFFECT_STATE] = (void *)o_get_effect_state;
+    orig_actor_vt[ORIG_ACTOR_VT_ATTACK_SPEED] = (void *)o_set_attack_speed;
     orig_rag_vt[ORIG_RAG_VT_SEND_MSG] = (void *)o_rag_send_msg;
     orig_effect_vt[ORIG_EFFECT_VT_DELAY] = (void *)o_effect_delay;
     orig_effect_vt[ORIG_EFFECT_VT_SPIN] = (void *)o_effect_spin;
