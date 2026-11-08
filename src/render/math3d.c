@@ -237,9 +237,10 @@ void math_init_degree_tables(void)
 
 static float degree_lookup(int table, int deg)
 {
-    deg %= 360;
+    if (deg > 360 || deg < -360)
+        deg %= 360;
     if (deg < 0)
-        deg += 360;
+        return g_degree_tables[table][361 + deg];
     return g_degree_tables[table][deg];
 }
 
