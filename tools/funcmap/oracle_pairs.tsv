@@ -53,3 +53,8 @@ a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
 89a900	ground_scope_construct	tests/oracle/skill_oracle.h, stood in
 761af0	skill_action_mgr_instance	tests/oracle, run real
 93dfc0	client_lua_call	tests/oracle, stood in
+68e550	effect_prim_on_process	tests/oracle/test_rag_effect_process.c
+68e110	prim_step_motion	tests/oracle/test_rag_effect_process.c
+6a3d90	prim_billboards_fly_process	tests/oracle/test_rag_effect_process.c
+74a920	render_object_get_act_res	tests/oracle/test_rag_effect_process.c
+9f1340	actres_frame_count	tests/oracle/test_rag_effect_process.c, stood in

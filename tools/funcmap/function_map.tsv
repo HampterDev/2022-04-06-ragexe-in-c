@@ -2329,14 +2329,14 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 68dee0	sub_68dee0	text/effects_0000.inc:970-984		prim_record_b4_construct			cited	high	effects/rag/effect_prim.c
 68df60	sub_68df60	text/effects_0000.inc:986-1051		CEffectPrim__Destruct			cited	high	effects/rag/effect_prim.c
 68e030	sub_68e030	text/effects_0000.inc:1053-1128	CEffectPrim	CEffectPrim__Delete			cited	high	effects/rag/effect_prim.c
-68e110	sub_68e110	text/effects_0000.inc:1130-1188		prim_step_motion	prim_step_motion	effects/rag/effect_prim.c:217	cited	high	effects/rag/effect_prim.c
+68e110	sub_68e110	text/effects_0000.inc:1130-1188		prim_step_motion	prim_step_motion	effects/rag/effect_prim.c:217	oracle	high	effects/rag/effect_prim.c
 68e190	sub_68e190	text/effects_0000.inc:1190-1220		prim_step_motion_counted	prim_step_motion_counted	effects/rag/effect_prim.c:239	cited	high	effects/rag/effect_prim.c
 68e220	sub_68e220	text/effects_0000.inc:1255-1307		prim_heading_degrees	prim_heading_degrees	effects/rag/effect_prim.c:267	cited	high	effects/rag/effect_prim.c
+68e550	sub_68e550				effect_prim_on_process		oracle	high	tests/oracle/test_rag_effect_process.c
 68e63c	sub_68e63c	text/effects_0000.inc:1550-1622			prim_screen_orbit_process	effects/rag/prim_screen_sprites.c:291	jacc_inside	low	
 68ee10	sub_68ee10	text/effects_0000.inc:1947-2031			prim_corner_trail_process	effects/rag/prim_flying_shapes.c:297	jacc_inside	low	
 692b8a	sub_692b8a	text/effects_0000.inc:6890-6998		prim_fan_wedge_process	prim_fan_wedge_process	effects/rag/prim_kinds_080_089.c:387	cited_multi	low	effects/rag/prim_kinds_080_089.c
 693d00	sub_693d00	text/effects_0000.inc:8333-8353			finish_frame	effects/rag/prim_sprite_particles.c:38	jacc	low	
-693d48	sub_693d48	text/effects_0000.inc:8355-8472			effect_prim_on_process	effects/rag/effect_prim_process.c:40	ustr_inside	low	
 694310	sub_694310	text/effects_0000.inc:8659-8716		prim_screen_spin			cited	high	effects/rag/prim_unreferenced_motion.c
 6944bf	CRagEffect__Potion_Berserk	text/effects_0000.inc:8718-9065			prim_screen_sprite_process	effects/rag/prim_screen_sprites.c:70	jacc_inside	low	
 6948b0	sub_6948b0	text/effects_0000.inc:9067-9156		prim_screen_circle			cited	high	effects/rag/prim_unreferenced_motion.c
@@ -2434,6 +2434,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6a3880	sub_6a3880	text/effects_0000.inc:27224-27327		prim_records_wander			cited	high	effects/rag/prim_unreferenced_records_b.c
 6a3980	sub_6a3980	text/effects_0000.inc:27329-27368		prim_records_turn_by			cited	high	effects/rag/prim_unreferenced_records_b.c
 6a39f0	sub_6a39f0	text/effects_0000.inc:27370-27446		prim_records_flicker_turn			cited	high	effects/rag/prim_unreferenced_records_b.c
+6a3d90	sub_6a3d90				prim_billboards_fly_process		oracle	high	tests/oracle/test_rag_effect_process.c
 6a4180	sub_6a4180	text/effects_0000.inc:27994-28082		prim_records_flash_late			cited	high	effects/rag/prim_unreferenced_records_b.c
 6a4440	sub_6a4440	text/effects_0000.inc:28236-28361		prim_records_ripple_swell			cited	high	effects/rag/prim_unreferenced_rings.c
 6a49c0	sub_6a49c0	text/effects_0000.inc:28643-28760		prim_records_reach			cited	high	effects/rag/prim_unreferenced_records_b.c
@@ -2735,6 +2736,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 748a10	CRenderObject__CalcDist	text/actor_0000.inc:5635-5661		CRenderObject__CalcDist			label	high	actor/position.c
 749a00	sub_749a00	text/actor_0000.inc:6887-7122			game_actor_set_hat_effect	actor/pc.c:9	ustr	high	
 74a90d	CRenderObject__GetSprName	text/actor_0000.inc:8266-8275		CRenderObject_GetSprName			label_inside	low	actor/game_object.c
+74a920	sub_74a920				render_object_get_act_res		oracle	high	tests/oracle/test_rag_effect_process.c
 74acc5	CGameActor__GetAttackMotion	text/actor_0000.inc:8491-8578		CGameActor_GetAttackMotion	game_actor_get_attack_motion	actor/game_actor.c:187	label_inside	low	actor/game_actor.c
 74aea0	sub_74aea0				game_actor_get_job		oracle	high	tests/oracle/skill_oracle.h, stood in
 74bd90	sub_74bd90	text/actor_0000.inc:9588-9613		sub_74bd90			name	high	actor/game_actor.c
@@ -5477,6 +5479,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 9f1060	CActRes__GetDelay	text/resources_0000.inc:4467-4485		CActRes__GetDelay			dump_symbol	high	resources/act.c
 9f10b0	CActRes__GetEventName	text/resources_0000.inc:4497-4530		CActRes__GetEventName			dump_symbol	high	resources/act.c
 9f1140	CActRes__GetMotion	text/resources_0000.inc:4556-4648		CActRes_GetMotion	act_res_get_motion	resources/act.c:279	dump_symbol	high	resources/act.c
+9f1340	sub_9f1340				actres_frame_count		oracle	high	tests/oracle/test_rag_effect_process.c, stood in
 9f21d4	C3dAttr__Load_	text/resources_0000.inc:5554-5757	C3dAttr	C3dAttr_Load	c3d_attr_load	resources/attr.c:46	label_inside	low	resources/attr.c
 9f26d0	sub_9f26d0	text/resources_0000.inc:6098-6150		C3dAttr_GetAttrAt			cited	high	resources/attr.c
 9f2780	sub_9f2780				c3d_attr_get_height		oracle	high	tests/oracle/skill_oracle.h, stood in
