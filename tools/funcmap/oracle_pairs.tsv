@@ -58,3 +58,17 @@ a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
 6a3d90	prim_billboards_fly_process	tests/oracle/test_rag_effect_process.c
 74a920	render_object_get_act_res	tests/oracle/test_rag_effect_process.c
 9f1340	actres_frame_count	tests/oracle/test_rag_effect_process.c, stood in
+6addc0	effect_prim_render	tests/oracle/test_rag_effect_process.c
+4e6440	renderer_add_triangle	tests/oracle/test_rag_effect_process.c, stood in
+6c6ad0	prim_is_visible	tests/oracle/test_rag_effect_process.c
+6c5a80	prim_strip_ring_render	tests/oracle/test_rag_effect_process.c
+6b7f50	prim_prism_render	tests/oracle/test_rag_effect_process.c
+6b0750	prim_fan_wedge_render	tests/oracle/test_rag_effect_process.c
+6b8b50	prim_ground_target_render	tests/oracle/test_rag_effect_process.c
+6ab4e0	prim_sprite_trail_render	tests/oracle/test_rag_effect_process.c
+6a69e0	prim_screen_sprite_render	tests/oracle/test_rag_effect_process.c
+6c3a10	prim_draw_quad	tests/oracle/test_rag_effect_process.c
+6c4430	prim_draw_strip	tests/oracle/test_rag_effect_process.c
+770750	game_mode_world_to_cell	tests/oracle/test_rag_effect_process.c
+6572c0	c3d_ground15_draw_attr_quad	tests/oracle/test_rag_effect_process.c, stood in
+9f1140	act_res_get_motion	tests/oracle/test_rag_effect_process.c, stood in

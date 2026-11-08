@@ -117,8 +117,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 4e5cf0	sub_4e5cf0	text/render_0000.inc:30500-30515		RPQuadBatch__CopyVerts			cited	high	render/rp_pool.c
 4e5fd0	sub_4e5fd0	text/render_0000.inc:30839-30919		CRenderer__AddMultiTexBatch			cited	high	render/rp_pool.c
 4e60c0	sub_4e60c0	text/render_0000.inc:30921-31248		CRenderer_AddPrim	renderer_add_prim	render/rp_pool.c:364	cited	high	render/rp_pool.c
-4e6440	sub_4e6440	text/render_0000.inc:31250-31326		CRenderer__AddTriangle			cited	high	render/rp_pool.c
-4e6440	sub_4e6440	text/render_0000.inc:31250-31326			screen_turn	effects/rag/prim_screen_sprites.c:212	callee	low	
+4e6440	sub_4e6440	text/render_0000.inc:31250-31326		CRenderer__AddTriangle	renderer_add_triangle		oracle	high	render/rp_pool.c
 4e6530	sub_4e6530	text/render_0000.inc:31328-31365		rp_add_mesh			cited	high	render/rp_pool.c
 4e6580	sub_4e6580	text/render_0000.inc:31367-31847		spr_image	spr_image	render/cdc.c:11	cited_multi	low	render/cdc.c
 4e7510	CRenderer__DestroyAllRPList	text/render_0000.inc:32819-32887		CRenderer__DestroyAllRPList			label	high	render/rp_pool.c
@@ -2164,6 +2163,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 656630	sub_656630	text/world_0000.inc:17220-17379		C3dGround15_GetAttrQuad	c3d_ground15_get_attr_quad	world/ground.c:150	cited	high	world/ground.c
 6567e0	sub_6567e0	text/world_0000.inc:17381-17466		C3dGround15_GetAttrQuadHalf	c3d_ground15_get_attr_quad_half	world/ground.c:180	cited	high	world/ground.c
 656f42	UIBasicInfoWnd__NewHeight	text/world_0000.inc:18004-18193			c3d_attr_get_cell	resources/attr_queries.c:5	callee_inside	low	
+6572c0	sub_6572c0				c3d_ground15_draw_attr_quad		oracle	high	tests/oracle/test_rag_effect_process.c, stood in
 659ba0	sub_659ba0	text/world_0000.inc:21899-21934			game_actor_get_guild_id	core/actor_slots.c:12	callee	low	
 65a890	sub_65a890	text/world_0000.inc:23399-23513		CWorld_Construct	world_construct	world/world_lists.c:12	cited	high	world/world_lists.c
 65aef0	sub_65aef0	text/world_0000.inc:23883-23923		std_cellmap_destroy			cited_multi	low	world/world_std.c
@@ -2445,6 +2445,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780		prim_screen_fan_m			cited_multi	low	effects/rag/prim_unreferenced_b.c
 6a63d0	sub_6a63d0	text/effects_0000.inc:30698-30780			weather_sun_position	actor/weather.c:69	jacc	low	
 6a65a0	sub_6a65a0	text/effects_0000.inc:30782-30973		prim_screen_spike_render	prim_screen_spike_render	effects/rag/prim_screen_sprites.c:221	cited	high	effects/rag/prim_screen_sprites.c
+6a69e0	sub_6a69e0				prim_screen_sprite_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6a7600	sub_6a7600	text/effects_0000.inc:31802-33585		prim_aura_particles_render	prim_aura_particles_render	effects/rag/prim_light_groups.c:203	cited	high	effects/rag/prim_light_groups.c
 6a8e30	sub_6a8e30	text/effects_0000.inc:33587-33827		prim_ring_wall_render	prim_ring_wall_render	effects/rag/prim_light_groups.c:485	cited	high	effects/rag/prim_light_groups.c
 6a9500	sub_6a9500	text/effects_0000.inc:34051-34260		prim_rings_render_offset	prim_rings_render_offset	effects/rag/prim_flat_quads.c:73	cited	high	effects/rag/prim_flat_quads.c
@@ -2453,6 +2454,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6ab150	sub_6ab150	text/effects_0000.inc:35551-35633		prim_screen_fan_m			cited_multi	low	effects/rag/prim_unreferenced_b.c
 6ab150	sub_6ab150	text/effects_0000.inc:35551-35633			sound_set_listener_angle	contents/sound.c:447	jacc	low	
 6ab320	sub_6ab320	text/effects_0000.inc:35635-35719		prim_screen_marker			cited	high	effects/rag/prim_unreferenced_b.c
+6ab4e0	sub_6ab4e0				prim_sprite_trail_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6ab850	sub_6ab850	text/effects_0000.inc:35984-36320		prim_draw_pyramid			cited_multi	low	effects/rag/prim_unreferenced_b.c
 6ab850	sub_6ab850	text/effects_0000.inc:35984-36320		prim_pyramid_render	prim_pyramid_render	effects/rag/prim_flying_shapes.c:48	cited	high	effects/rag/prim_flying_shapes.c
 6abf20	sub_6abf20	text/effects_0000.inc:36322-36641		prim_draw_pyramid			cited_multi	low	effects/rag/prim_unreferenced_b.c
@@ -2460,13 +2462,12 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6ac940	sub_6ac940	text/effects_0000.inc:36846-37372		prim_sphere_render	prim_sphere_render	effects/rag/prim_kinds_014_028.c:318	cited	high	effects/rag/prim_kinds_014_028.c
 6ad4b0	sub_6ad4b0	text/effects_0000.inc:37374-37743		prim_upright_quad_render	prim_upright_quad_render	effects/rag/prim_kinds_014_028.c:247	cited	high	effects/rag/prim_kinds_014_028.c
 6adb60	sub_6adb60	text/effects_0000.inc:37745-37848		prim_draw_card			cited	high	effects/rag/prim_unreferenced_b.c
-6addc0	sub_6addc0	text/effects_0000.inc:37850-37959	CEffectPrim	CEffectPrim__Render			cited	high	effects/rag/effect_prim_render.c
-6adf9a	sub_6adf9a	text/effects_0000.inc:37961-38000			renderer_add_triangle	render/rp_pool.c:436	callee_inside	low	
+6addc0	sub_6addc0	text/effects_0000.inc:37850-37959	CEffectPrim	CEffectPrim__Render	effect_prim_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6af122	sub_6af122	text/effects_0000.inc:39800-39858			prim_screen_ray_render	effects/rag/prim_screen_sprites.c:337	jacc_inside	low	
 6af6d0	sub_6af6d0	text/effects_0000.inc:40069-40219		prim_upright_square_render	prim_upright_square_render	effects/rag/prim_kinds_090_101.c:456	cited	high	effects/rag/prim_kinds_090_101.c
 6af920	sub_6af920	text/effects_0000.inc:40221-40826		prim_halo_render	prim_halo_render	effects/rag/prim_kinds_056_070.c:549	cited	high	effects/rag/prim_kinds_056_070.c
 6b0120	sub_6b0120	text/effects_0000.inc:40828-41072		prim_tilted_ring_render	prim_tilted_ring_render	effects/rag/prim_kinds_102_115.c:371	cited	high	effects/rag/prim_kinds_102_115.c
-6b0750	sub_6b0750	text/effects_0000.inc:41262-41676		prim_fan_wedge_render	prim_fan_wedge_render	effects/rag/prim_kinds_080_089.c:230	cited	high	effects/rag/prim_kinds_080_089.c
+6b0750	sub_6b0750	text/effects_0000.inc:41262-41676		prim_fan_wedge_render	prim_fan_wedge_render	effects/rag/prim_kinds_080_089.c:230	oracle	high	effects/rag/prim_kinds_080_089.c
 6b2640	sub_6b2640	text/effects_0000.inc:43339-43507		prim_column_ring_render	prim_column_ring_render	effects/rag/prim_kinds_071_079.c:258	cited	high	effects/rag/prim_kinds_071_079.c
 6b2860	sub_6b2860	text/effects_0000.inc:43509-43682		prim_stripes_render	prim_stripes_render	effects/rag/prim_kinds_036_055.c:616	cited	high	effects/rag/prim_kinds_036_055.c
 6b2b20	sub_6b2b20	text/effects_0000.inc:43684-44101		prim_slide_stripe_render	prim_slide_stripe_render	effects/rag/prim_kinds_056_070.c:44	cited	high	effects/rag/prim_kinds_056_070.c
@@ -2474,7 +2475,9 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6b34d0	sub_6b34d0	text/effects_0000.inc:44331-44480		prim_records_band			cited	high	effects/rag/prim_unreferenced_b.c
 6b3cf0	sub_6b3cf0	text/effects_0000.inc:45015-45299		prim_billboards_render	prim_billboards_render	effects/rag/prim_billboards.c:37	cited	high	effects/rag/prim_billboards.c
 6b4d80	sub_6b4d80	text/effects_0000.inc:46210-46402		prim_tilted_square_render	prim_tilted_square_render	effects/rag/prim_kinds_071_079.c:473	cited	high	effects/rag/prim_kinds_071_079.c
+6b7f50	sub_6b7f50				prim_prism_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6b84f0	sub_6b84f0	text/effects_0000.inc:49912-50306		prim_box_render	prim_box_render	effects/rag/prim_kinds_036_055.c:37	cited	high	effects/rag/prim_kinds_036_055.c
+6b8b50	sub_6b8b50				prim_ground_target_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6baf70	sub_6baf70	text/effects_0000.inc:52720-53211		prim_arc_tube_render	prim_arc_tube_render	effects/rag/prim_kinds_090_101.c:590	cited	high	effects/rag/prim_kinds_090_101.c
 6bb6c0	sub_6bb6c0	text/effects_0000.inc:53213-53757		prim_whip_render	prim_whip_render	effects/rag/prim_kinds_056_070.c:729	cited	high	effects/rag/prim_kinds_056_070.c
 6bbdd0	sub_6bbdd0	text/effects_0000.inc:53759-54208		prim_orbit_square_render	prim_orbit_square_render	effects/rag/prim_kinds_036_055.c:172	cited	high	effects/rag/prim_kinds_036_055.c
@@ -2500,15 +2503,16 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6c2919	sub_6c2919	text/effects_0000.inc:61147-61186		prim_square_stack_render	prim_square_stack_render	effects/rag/prim_kinds_102_115.c:201	cited_multi_inside	low	effects/rag/prim_kinds_102_115.c
 6c2d91	sub_6c2d91	text/effects_0000.inc:61457-61493		prim_square_stack_render	prim_square_stack_render	effects/rag/prim_kinds_102_115.c:201	cited_multi_inside	low	effects/rag/prim_kinds_102_115.c
 6c3080	sub_6c3080	text/effects_0000.inc:61683-61916		prim_upright_bar_render	prim_upright_bar_render	effects/rag/prim_kinds_036_055.c:285	cited	high	effects/rag/prim_kinds_036_055.c
-6c4430	lookup_table_6c4c1c	text/effects_0000.inc:63624-63625		prim_draw_strip	prim_draw_strip	effects/rag/effect_prim_draw.c:217	cited	high	effects/rag/effect_prim_draw.c
+6c3a10	sub_6c3a10				prim_draw_quad		oracle	high	tests/oracle/test_rag_effect_process.c
+6c4430	lookup_table_6c4c1c	text/effects_0000.inc:63624-63625		prim_draw_strip	prim_draw_strip	effects/rag/effect_prim_draw.c:217	oracle	high	effects/rag/effect_prim_draw.c
 6c510e	Play3DDigital	text/effects_0000.inc:63626-63920			rainbow_point	effects/rag/prim_kinds_090_101.c:281	callee_inside	low	
 6c5120	sub_6c5120	text/effects_0000.inc:63922-64295		prim_pipe_render	prim_pipe_render	effects/rag/prim_kinds_056_070.c:636	cited	high	effects/rag/prim_kinds_056_070.c
 6c5630	sub_6c5630	text/effects_0000.inc:64297-64651		prim_scroll_column_render	prim_scroll_column_render	effects/rag/prim_kinds_071_079.c:506	cited	high	effects/rag/prim_kinds_071_079.c
-6c5a80	sub_6c5a80	text/effects_0000.inc:64653-64824		prim_strip_ring_render	prim_strip_ring_render	effects/rag/prim_kinds_056_070.c:293	cited	high	effects/rag/prim_kinds_056_070.c
+6c5a80	sub_6c5a80	text/effects_0000.inc:64653-64824		prim_strip_ring_render	prim_strip_ring_render	effects/rag/prim_kinds_056_070.c:293	oracle	high	effects/rag/prim_kinds_056_070.c
 6c5cb0	sub_6c5cb0	text/effects_0000.inc:64826-65391		prim_wander_glows_render	prim_wander_glows_render	effects/rag/prim_kinds_129_134.c:211	cited	high	effects/rag/prim_kinds_129_134.c
 6c64c0	sub_6c64c0	text/effects_0000.inc:65408-65556		prim_shift_trail	prim_shift_trail	effects/rag/effect_prim.c:308	cited	high	effects/rag/effect_prim.c
 6c6800	tlvertex3d__tlvertex3d	text/effects_0000.inc:65709-65731		prim_quad_turn	prim_quad_turn	effects/rag/effect_prim.c:406	cited	high	effects/rag/effect_prim.c
-6c6ad0	sub_6c6ad0	text/effects_0000.inc:65733-65875		prim_is_visible	prim_is_visible	effects/rag/effect_prim.c:432	cited	high	effects/rag/effect_prim.c
+6c6ad0	sub_6c6ad0	text/effects_0000.inc:65733-65875		prim_is_visible	prim_is_visible	effects/rag/effect_prim.c:432	oracle	high	effects/rag/effect_prim.c
 6c6e80	sub_6c6e80	text/effects_0000.inc:66060-66181		prim_lean_ring_process	prim_lean_ring_process	effects/rag/prim_kinds_156_165.c:192	cited	high	effects/rag/prim_kinds_156_165.c
 6c72a0	sub_6c72a0	text/effects_0000.inc:66445-66895		prim_flying_sprites_process	prim_flying_sprites_process	effects/rag/prim_kinds_166_173.c:161	cited	high	effects/rag/prim_kinds_166_173.c
 6c7a30	sub_6c7a30	text/effects_0000.inc:66897-67110		prim_rising_bars_process	prim_rising_bars_process	effects/rag/prim_kinds_143_147.c:174	cited	high	effects/rag/prim_kinds_143_147.c
@@ -2785,6 +2789,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 76f2a0	sub_76f2a0	text/gamemode_0000.inc:7592-7665		CGameMode_CountItemIdText	game_mode_count_item_id_text	game/drag.c:193	cited	high	gamemode/drag.c
 7703a0	sub_7703a0	text/gamemode_0000.inc:8901-9085		Map24_BuyHead			cited_multi	low	gamemode/map_instances.c
 7705a0	sub_7705a0				game_mode_world_to_cell		oracle	high	tests/oracle/skill_oracle.h, stood in
+770750	sub_770750				game_mode_world_to_cell		oracle	high	tests/oracle/test_rag_effect_process.c
 770820	sub_770820	text/gamemode_0000.inc:9277-9419		skill_attack_range	skill_attack_range	game/msg_skills.c:408	cited	high	gamemode/msg_skills.c
 770a40	sub_770a40	text/gamemode_0000.inc:9469-9597		CGameMode_LocationText	game_mode_location_text	game/mode_misc.c:90	cited	high	gamemode/mode_misc.c
 770c10	sub_770c10	text/gamemode_0000.inc:9599-9651		CGameMode_CarriesItem	game_mode_carries_item	game/mode_misc.c:78	cited	high	gamemode/mode_misc.c
@@ -5478,7 +5483,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 9ed660			UIMiniPartyWnd	UIMiniPartyWnd_OnLBtnUp	ui_mini_party_wnd_on_l_btn_up	ui/social/mini_party_wnd.c:185	cited	high	ui/social/mini_party_wnd.c
 9f1060	CActRes__GetDelay	text/resources_0000.inc:4467-4485		CActRes__GetDelay			dump_symbol	high	resources/act.c
 9f10b0	CActRes__GetEventName	text/resources_0000.inc:4497-4530		CActRes__GetEventName			dump_symbol	high	resources/act.c
-9f1140	CActRes__GetMotion	text/resources_0000.inc:4556-4648		CActRes_GetMotion	act_res_get_motion	resources/act.c:279	dump_symbol	high	resources/act.c
+9f1140	CActRes__GetMotion	text/resources_0000.inc:4556-4648		CActRes_GetMotion	act_res_get_motion	resources/act.c:279	oracle	high	resources/act.c
 9f1340	sub_9f1340				actres_frame_count		oracle	high	tests/oracle/test_rag_effect_process.c, stood in
 9f21d4	C3dAttr__Load_	text/resources_0000.inc:5554-5757	C3dAttr	C3dAttr_Load	c3d_attr_load	resources/attr.c:46	label_inside	low	resources/attr.c
 9f26d0	sub_9f26d0	text/resources_0000.inc:6098-6150		C3dAttr_GetAttrAt			cited	high	resources/attr.c
