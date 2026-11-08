@@ -45,5 +45,14 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_ground_skill.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+cl %CFLAGS% "%ROOT%\tests\oracle\test_skill_use.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\game\skill_use.c" "%ROOT%\src\game\skill_use_basic.c" "%ROOT%\src\game\skill_use_second.c" ^
+  "%ROOT%\src\game\skill_use_extra.c" "%ROOT%\src\game\skill_use_third.c" "%ROOT%\src\game\skill_use_third2.c" ^
+  "%ROOT%\src\game\skill_use_late.c" "%ROOT%\src\game\skill_use_fourth.c" "%ROOT%\src\game\skill_use_companion.c" ^
+  "%ROOT%\src\session\session_use_effect.c" "%ROOT%\src\effects\durations.c" /Fe:test_skill_use.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_skill_use.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0
