@@ -12553,7 +12553,7 @@ Clean exports of each commit (`build/snap/k1`, `k2`, `k3`), logs `libs-k<n>-*` i
 `build/`.
 
 - **Each commit:** `build.bat` without compiler, librarian or linker warnings; the full
-  `testsuild.bat` and the seven standalone suites pass. Every result line is the one of the
+  `tests\build.bat` and the seven standalone suites pass. Every result line is the one of the
   export before the cuts (`pfinal3`) except the two library-check lines: one more file, include
   and use (`effect_prim_shared.c` and the hook's include), and at `3d98e62` 19 libraries
   instead of 18.
@@ -12634,7 +12634,7 @@ Clean exports of each commit, logs `libs-v01` to `v03`, `w04` to `w13` and `x14`
 worktree's `build/`.
 
 - **Each commit:** `build.bat` without compiler, librarian or linker warnings; the include and
-  link checks pass with the same 269 and 129 exceptions; the full `testsuild.bat` and the seven
+  link checks pass with the same 269 and 129 exceptions; the full `tests\build.bat` and the seven
   standalone suites pass. Every result line is the one of the export before the cuts
   (`pfinal3`), the effect trace, packet dispatch, effect factory, window list and startup order
   digests among them, except the two library-check lines (more files, includes and uses, and 19
@@ -12703,7 +12703,7 @@ Clean exports of both commits (`build/snap/s1`, `s2`; the table commit was valid
 `44e1e41`, the same tree as `54ce159` before its message was corrected), logs `libs-s1-*` and
 `libs-s2-*` in the worktree's `build/`.
 
-- **Both commits:** `build.bat` without warnings; the full `testsuild.bat` and the seven
+- **Both commits:** `build.bat` without warnings; the full `tests\build.bat` and the seven
   standalone suites pass, every result line as before the cuts (`pfinal3`) except the two
   library-check lines (22 libraries at `54ce159`).
 - **At `54ce159`:** `build.bat x64` and `freetype`, the same three with `check`, and `libs`: no
@@ -12752,3 +12752,182 @@ launches Korea's Slow Poison effect at `0x806d11`). No reconstruction bug was fo
 pass: 629,006 calls, no mismatch, no fault (`tests/oracle/README.md` has each count).
 `build.bat check` and the full `tests\build.bat`, which now runs them before the library checks,
 pass with 268 result lines.
+
+## Camera unlock (2026-11-08)
+
+Patrick asked for the zoom and the tilt to be unlocked, with no zoom-out limit, a closer zoom-in
+and no snap-back of the zoom.
+
+- **Zoom.** `VIEW_DISTANCE_LIMIT` (10,000, in `game/camera.h`) is the one far limit for the free
+  and the fixed (indoor) camera: the setup in `camera.c`, the Ctrl-drag and wheel zooms in
+  `mouse_camera.c` and the saved `Outdoor_ViewDistance`/`Indoor_ViewDistance` clamps. It replaces
+  `g_maxViewDistance` (400, or 480 with the wide zoom option) and the indoor 300.
+  `g_viewDistanceMin` is 100 instead of 230. `g_fixedViewDistanceMax` stays at 300: the sprite
+  depth steps scale with it, and Ctrl and a right double-click still reset the zoom to it. The
+  Star Gladiator's triple zoom stays, and `pc_cap_zoom`, which pulled a standing Star Gladiator
+  back to the far limit, goes with `game_camera_limit_distance`, its only use.
+- **Depth range.** The original draws camera-space depth 10..1500 (`frustum.h` and the
+  `1.0067114` factor in `rp_project.c`); beyond 1,500 nothing would be drawn at all.
+  `RENDER_NEAR_Z`/`RENDER_FAR_Z` in `render/render_api.h` (10 and 40,000, so the triple zoom
+  stays in view) feed both. The depth is hyperbolic, so its precision at the usual distances is
+  set by the near plane and barely changes. The fog keeps the original's 1,490-unit scale, so far
+  zoom ends in fog as the maps define it.
+- **Tilt.** `VIEW_PITCH_STEEPEST`/`VIEW_PITCH_FLATTEST` (-85 and -5) bound the tilt on every
+  map, with or without Ctrl, in the setup, the Shift-drag and Shift-wheel tilts and the saved
+  latitudes. The view divides by the sine and cosine of the tilt, so it stays clear of -90 and 0.
+- **The eye outside the map.** `clamp_eye_to_ground` keeps the eye above the ground's height at
+  its position. Zoomed far out at a low tilt the eye leaves the map, where `c3d_attr_get_height`
+  answers 0; below a map whose ground lies higher, the view looked at the map from underneath.
+  The eye now keeps above `c3d_attr_get_height_nearest`, the height at the nearest point of the
+  map (half a cell inside its edge); inside the map nothing changes.
+- **Left as they were.** Maps with a camera preset keep the preset's bounds. The indoor heading
+  still turns only 20 degrees either way. The wide zoom option's checkbox and command still save
+  and print their setting, but no longer change the distance.
+
+Tests: `test_frustum` expects the far plane at `RENDER_FAR_Z` and tests boxes around it;
+`projection_reference.c` maps depth with the same constants; `test_game_context` loses the
+checks of the removed `game_camera_limit_distance`. `test_effect_trace`, which links
+`rp_project.c`, has the digest `2842b5a04b52ece4` for its 2,083,072 steps; with `RENDER_FAR_Z` set
+back to 1,500 the same build gives the old `5c269a851ffa6be1`, so the depth range is the only
+change in it.
+
+## Sprite billboards without warp (2026-11-08)
+
+With the tilt unlocked, Patrick saw characters deform at steep angles. A sprite quad is drawn in
+screen space with a depth per row (`render_object_clip_to_quad` and the character previews:
+`1 / (view z + rows * g_spriteRowDepthStep)`), so it sorts against the ground like an upright
+figure. The same values went into each corner's `rhw`, and the GPU interpolates the texture by
+`rhw`, so the image was stretched toward its top or bottom. `g_spriteRowDepthStep` grows with
+tan(tilt): at the original's -45 the difference across a sprite is small, at -85 about 11 times
+larger.
+
+`render_object_submit_spr_quad`, which also draws the effect sprites, and the character-preview
+emitter in `character_render.c` now give all four corners the top row's `rhw` and keep each
+row's `z`. The depth test is unchanged, and so is the sorting: the draw queues key a sprite by its
+first corner's `rhw`, which was the top row's in the original too. (A first version took the
+foot's `rhw`; that moved each shadow behind the figure standing on it in the sorted list, so the
+figure's nearly transparent edge pixels wrote depth first and left an outline of bare ground in
+the shadow when zoomed in.) The Direct3D 9 backend takes quads with one
+`rhw` through its flat path, and the GL backend builds `w` from `rhw` and depth from `z`.
+
+That left the tops of the sprites cut off along a line at steep tilts. The row depth models an
+upright figure that the tilt foreshortens, but a sprite keeps its full height on screen, so near
+top-down the step (`g_spriteRowDepthStep`, tan of the tilt) grew about elevenfold and carried the
+upper rows through the near plane. `view_process_camera` now computes it with the tilt held to the
+original's range, -65..-25: inside it nothing changes, outside it the step keeps its value at the
+edge. A first version held the flat sprites' step (`g_depthPerPixelCot`, cot) the same way and cut
+the shadows into the ground: that step is the ground's own slope, so it follows the real tilt.
+
+Then the head was cut by the body and the shadow by the ground. A row's rhw was
+`1 / (depth + rows * step)`, a curve, while the GPU interpolates z linearly between a quad's top
+and bottom, so a tall quad (the body) and a short one (the head) disagreed at the same row by more
+than the layer offsets (`pc_layer_depth_bias*`, `g_spriteLayerDepthStep`) once the camera came
+closer or tilted further than the original allowed. `sprite_row_rhw` (`render/rp_project.c`)
+replaces the curve by its tangent at the anchor, `(depth - shift) / depth^2`, kept at or above
+`1 / RENDER_FAR_Z`. Every layer of a figure then lies on one line and only the layer offsets order
+them. It serves the upright row depths: `render_object_clip_to_quad`, the character previews in
+`character_render.c`, and the effect sprites in `prim_sprite_particles.c`, `prim_kinds_148_155.c`
+and `prim_kinds_166_173.c`. At the original's zoom (230 and more) and tilt it differs from the
+curve by about one percent at most.
+
+The shadows were still cut when zoomed in. A sprite lying flat on the ground (the slanted path of
+`render_object_clip_to_quad`, `render_object_render_shadow` in `pc_layers.c`,
+`character_render_shadow_quad` and the flat quads of `prim_kinds_166_173.c`) took a fixed 0.16 /
+`scaleY` camera-space units per screen row times cot of the tilt (`g_depthPerPixelCot`). Near the
+centre of the screen the ground plane's own 1/z changes by cot(tilt) / (`proj[1]` * depth) per row,
+and the two agree only at a depth of about 292 (`proj[1]` is 3.8 times the screen height), near the
+default distance of 300; zoomed in to 100 the fixed step was about three times too steep and sank
+the shadow's far half into the ground. A first fix used that centre-of-screen value, which still
+cut the shadow at a nearly level tilt: there tan(tilt) is small, so a character standing some rows
+off the centre, or a tilt read from the integer-degree sine table, or the eye held above the ground
+by `clamp_eye_to_ground`, changes the slope by a fifth or more.
+
+`sprite_flat_row_rhw` now takes the slope from the view matrix itself. With `up` the world's up
+axis in view space (entries 3..5 of the matrix) and `pos` the anchor in view space, a ground point
+on the screen row `t = vy / vz` satisfies `up . (vz * (u, t, 1)) = up . pos`, so its 1/z is linear
+in the row with the slope `up_y / (proj[1] * up . pos)`. That holds for any zoom, tilt and screen
+position and whatever moved the eye. The world view stores its up axis in `g_viewGroundUp` when it
+builds the matrix (`view_build_view_matrix`); the shadow, the character preview and the effect quads
+pass their own matrix. `g_depthPerPixelCot` has no use left and is gone; `sprite_ground_lift` takes
+the same slope.
+
+The feet then sank into the ground at some angles. An upright sprite's rows below its anchor (the
+feet reach a few sprite pixels below it) get farther away row by row, while the ground below the
+anchor comes nearer, so those rows are always a little behind the ground. The original covers that
+with its scale bias (`self->scale * g_spriteScaleDepthBias`), which fits its own zoom and tilt; at
+the default distance and -45 the gap over eight sprite pixels is about half that bias, but zoomed
+in with a steep tilt, or tilted towards level (where the ground's slope, cot, grows), the gap is
+larger. `render_object_clip_to_quad` now raises the bias of an upright sprite to
+`sprite_ground_lift`, the gap over `SPRITE_FOOT_ROWS` (eight) sprite pixels, whenever that is the
+larger. The bias is per object, the same for every layer, so the layer order is unchanged.
+
+Near a level view the shadow then sank again and, at the lowest tilts, vanished. A shadow is a
+screen-space image of fixed height, while the ground it lies on shrinks to a thin band as the view
+grows level (down to nothing where `clamp_eye_to_ground` holds the eye at the ground's height). Its
+upper rows then stand for ground far away or for no ground at all, and the plane slope behind them
+grows without bound. `render_object_render_shadow` now foreshortens the shadow's height with the
+ground: `sprite_ground_squash` is the sine of the angle between the view ray and the ground over
+sin 45, about 1 at the original's default view (1.28 at its steepest, -65), up to 1.5 looking
+straight down and towards 0 near level. That also keeps the shadow's depth finite when the eye is
+almost in the ground's plane. Flat sprites are moved towards the camera by a thousandth of their
+depth (`FLAT_DEPTH_SLACK`, on top of the original's 1e-5) to stay above the ground's own triangles,
+and `sprite_ground_lift` lifts an upright sprite's feet by twice that, so the feet stay above the
+shadow. The character previews and the flat effect quads keep their heights.
+
+## Anisotropic texture filtering (2026-11-08)
+
+With the tilt unlocked the camera can look along the ground at grazing angles. Each screen pixel
+there covers a long, thin footprint of the texture, which a linear minification filter blurs (it
+takes its mip level from the long side) or, without mipmaps, aliases. (The flat grey ground seen
+at the same time had another cause; see the next section.) Both backends
+now minify with anisotropic filtering where the device has it, up to 16 samples: Direct3D 9 sets
+`D3DTEXF_ANISOTROPIC` and `D3DSAMP_MAXANISOTROPY` wherever the client asks for linear
+minification (`max_anisotropy` reads `D3DPTFILTERCAPS_MINFANISOTROPIC` and `MaxAnisotropy` from
+the adapter's caps), and OpenGL sets `GL_TEXTURE_MAX_ANISOTROPY` on mipmapped linear samplers when
+`GL_EXT_texture_filter_anisotropic` or `GL_ARB_texture_filter_anisotropic` is there. Screen-aligned
+quads (the UI, sprites) have no anisotropy, so they look as before. The GL backend is not built on
+Windows; it was not compiled for this change.
+
+## Ground cells at the camera's plane (2026-11-08)
+
+Near the flattest tilt the ground of Prontera's main street turned into one flat colour (white,
+grey, khaki or olive, changing from frame to frame), sometimes with black blocks, while the
+light map's shadows stayed. It is not from this day's depth changes: it shows with `RENDER_FAR_Z`
+back at 1500 too. The original's camera never meets it.
+
+`tests/scenes/scripts/camera_level_view.lua` reproduces it: the scene drives the camera to the
+closest zoom and the flattest tilt, which no saved camera can then change. Ruled out one by one
+on that scene: the far plane, mipmapping (the ground textures have one level with Trilinear off),
+the texture binding cache (`gfx_set_texture` binding every time), the light map (stage 1 off),
+water, fog, the opaque and mesh lists, the texture coordinate indices, point sampling, the sorted
+two-texture list (every entry matched its primitive), and the texture itself (read back from the
+device at the moment it was drawn: the full cobblestones). Painted white, the flat area was the
+ground pass's own.
+
+The cause: at the closest zoom and a tilt of -5 the eye is about nine units above the ground,
+and the ground cells under and behind it reach the camera's plane. The ground and its water are
+drawn as pre-transformed vertices (`renderer_project_vertex`), so a corner at or behind the eye
+gets a negative `rhw` and lands hundreds of thousands of pixels off screen on the other side. The
+quad becomes a triangle across the view, in front of the street, with its texture sampled at
+about one point. `c3d_ground15_draw_surface` and `water_quad` now leave out a quad with such a
+corner (`behind_eye`). Those cells lie below the bottom of the view; on the scene the street is
+textured to the bottom edge.
+
+Models have the same failure. Their triangles are projected on the CPU as well
+(`c3d_node_v1_render`, `c3d_node_v2_render`), and with the eye inside a building its walls and
+roof around the eye reached the camera's plane and smeared their textures in stretched bands
+across the view. Both loops now leave out a triangle with a corner at or behind the eye
+(`behind_eye` in `model_node_render.c`); the eye inside a building then sees out through it.
+Clipping such triangles at the near plane instead would keep their visible parts; it is not done.
+
+### Commits of the camera work (2026-11-08)
+
+`7f94f40c` unlocks the zoom and the tilt, `7540b60b` keeps the sprite billboards and shadows whole,
+`9e10dc18` filters textures anisotropically, `b2ae8e24` keeps the eye above the map outside it and
+`bc8f1ab7` leaves out the ground, water and model triangles behind the camera. Validation at
+`bc8f1ab7`: `build.bat check` and `build.bat x64` without warnings, the include and link checks
+pass (1,822 files in 22 libraries, 1,151 objects), and the full `tests\build.bat` passes with 268
+result lines, the six oracle tests among them. The scene `camera_level_view` shows the street
+textured at the closest zoom and the flattest tilt; Patrick checked the zoom, the tilt, the sprites,
+the shadows and the camera inside a building in the client. Not run: `freetype` and `libs`, CMake,
+Linux, macOS and Android.
