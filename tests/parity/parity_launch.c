@@ -126,8 +126,10 @@ int wmain(int argc, wchar_t **argv)
         return fail("loading parity.dll here", 95);
     remote_init = (BYTE *)(UINT_PTR)remote_dll + ((BYTE *)GetProcAddress(local, "parity_init") - (BYTE *)local);
     ok = remote_call(pi.hProcess, (LPTHREAD_START_ROUTINE)remote_init, (void *)(UINT_PTR)pi.dwThreadId);
-    if (ok != 1)
+    if (ok != 1) {
+        fprintf(stderr, "parity_launch: parity_init in the client returned %lu\n", ok);
         return fail("parity_init in the client", 96);
+    }
 
     if (!write_code(pi.hProcess, entry, saved, 2))
         return fail("restoring the entry point", 93);

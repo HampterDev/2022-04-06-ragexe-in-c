@@ -1,0 +1,21 @@
+# Byte patches parity.dll applies to the untouched 2022-04-06 client before it runs, so that it
+# starts outside Gravity's service as the lifted client does. Each line: the virtual address, the
+# bytes the original has there, an arrow, the bytes put in their place. A line whose bytes are not
+# found is refused and logged, so another exe is left alone.
+#
+# The anti-cheat scans answer "clean" without running: CNProtectGameGuardMgr::CreateInstance's scan
+# (FindHack2_) and the other scan (FindHack2) return 1 in front of their bodies, as the lifted
+# client's gameguard_startup does.
+a0c490 55 8b ec 6a -> 31 c0 40 c3
+a0bd10 55 8b ec 6a -> 31 c0 40 c3
+# The nProtect GameGuard blocks of the game mode and the login mode are never entered (the lifted
+# client's gameguard_* calls are empty).
+7791a5 0f 84 96 00 00 00 -> e9 97 00 00 00 90
+820884 0f 84 96 00 00 00 -> e9 97 00 00 00 90
+# The IProcess module scan's result never ends the start-up (the lifted client does not run it).
+8a8565 75 18 -> eb 18
+# The integrity list (RagHash.dat, which Gravity's patcher supplies) may be missing or empty: the
+# hash manager's start-up accepts an empty list, as the lifted client's gg_hash_manager_startup does.
+a0b7c2 75 0d -> eb 0d
+a0b7dc 73 0e -> eb 0e
+a0b805 75 08 -> 90 90

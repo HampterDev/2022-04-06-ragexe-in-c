@@ -764,6 +764,8 @@ static int WSAAPI my_setsockopt(SOCKET s, int level, int name, const char *v, in
 #define ARENA_BASE ((void *)0x40000000)
 #define ARENA_SIZE (1024u << 20)
 #define ARENA_COMMIT (4u << 20)
+#define ARENA_MIN_SIZE (64u << 20)
+static DWORD g_arena_size;
 #define BLOCK_MARK 0x59544950u
 #define MAX_CLASSES 128
 
@@ -806,14 +808,18 @@ static void arena_init(void)
     }
     if (g_asan)
         return;
-    g_arena = VirtualAlloc(ARENA_BASE, ARENA_SIZE, MEM_RESERVE, PAGE_READWRITE);
-    if (!g_arena) {
-        g_arena = VirtualAlloc(NULL, ARENA_SIZE, MEM_RESERVE, PAGE_READWRITE);
-        plog("the arena is not at its fixed address");
+    g_arena_size = ARENA_SIZE;
+    g_arena = VirtualAlloc(ARENA_BASE, g_arena_size, MEM_RESERVE, PAGE_READWRITE);
+    while (!g_arena && g_arena_size >= ARENA_MIN_SIZE) {
+        g_arena = VirtualAlloc(NULL, g_arena_size, MEM_RESERVE, PAGE_READWRITE);
+        if (!g_arena)
+            g_arena_size /= 2;
     }
     if (!g_arena)
         fatal("arena reservation");
-    g_arena_end = g_arena + ARENA_SIZE;
+    if (g_arena != ARENA_BASE || g_arena_size != ARENA_SIZE)
+        plog("the arena is %lu MB at %p, not %u MB at %p", g_arena_size >> 20, g_arena, ARENA_SIZE >> 20, ARENA_BASE);
+    g_arena_end = g_arena + g_arena_size;
     g_bump = g_committed = g_arena;
 }
 
@@ -1635,6 +1641,70 @@ static void reg_set(const char *path, const char *name, DWORD type, const void *
     v->size = size;
     v->data = malloc(size ? size : 1);
     memcpy(v->data, data, size);
+}
+
+static int hex_bytes(const char *text, unsigned char *out, int max)
+{
+    int n = 0;
+    unsigned v;
+    while (*text && n < max) {
+        while (*text == ' ' || *text == '\t')
+            text++;
+        if (!*text || *text == '-' || *text == '#')
+            break;
+        if (sscanf(text, "%2x", &v) != 1)
+            return -1;
+        out[n++] = (unsigned char)v;
+        text += 2;
+    }
+    return n;
+}
+
+static void load_patches(const char *file)
+{
+    char line[1024];
+    int applied = 0, refused = 0;
+    FILE *f = fopen(file, "r");
+    if (!f) {
+        plog("no patch file %s", file);
+        return;
+    }
+    while (fgets(line, sizeof line, f)) {
+        unsigned char was[64], now[64];
+        char *arrow, *end;
+        unsigned va;
+        int n_was, n_now;
+        DWORD old;
+        if ((end = strpbrk(line, "\r\n")) != NULL)
+            *end = 0;
+        if (!*line || *line == '#')
+            continue;
+        arrow = strstr(line, "->");
+        if (!arrow || sscanf(line, "%x", &va) != 1) {
+            plog("patch line not understood: %s", line);
+            refused++;
+            continue;
+        }
+        n_was = hex_bytes(strchr(line, ' '), was, sizeof was);
+        n_now = hex_bytes(arrow + 2, now, sizeof now);
+        if (n_was <= 0 || n_was != n_now) {
+            plog("patch line not understood: %s", line);
+            refused++;
+            continue;
+        }
+        if (memcmp((void *)(UINT_PTR)va, was, n_was) != 0) {
+            plog("patch at %08x refused: the bytes there are not the ones it expects", va);
+            refused++;
+            continue;
+        }
+        VirtualProtect((void *)(UINT_PTR)va, n_was, PAGE_EXECUTE_READWRITE, &old);
+        memcpy((void *)(UINT_PTR)va, now, n_was);
+        VirtualProtect((void *)(UINT_PTR)va, n_was, old, &old);
+        FlushInstructionCache(GetCurrentProcess(), (void *)(UINT_PTR)va, n_was);
+        applied++;
+    }
+    fclose(f);
+    plog("patches: %d applied, %d refused (%s)", applied, refused, file);
 }
 
 static void load_registry(const char *file)
@@ -2783,8 +2853,6 @@ DWORD WINAPI parity_init(LPVOID main_tid)
         g_real_calloc = (calloc_fn)(void *)GetProcAddress(ucrt, "calloc");
         g_real_msize = (msize_fn)(void *)GetProcAddress(ucrt, "_msize");
     }
-    g_asan = GetModuleHandleA("clang_rt.asan_dynamic-i386.dll") != NULL;
-    arena_init();
     if (GetEnvironmentVariableA("PARITY_LOG", buf, sizeof buf)) {
         char *slash;
         g_log = fopen(buf, "w");
@@ -2795,6 +2863,8 @@ DWORD WINAPI parity_init(LPVOID main_tid)
         else
             g_dx_dir[0] = 0;
     }
+    g_asan = GetModuleHandleA("clang_rt.asan_dynamic-i386.dll") != NULL;
+    arena_init();
     if (!GetEnvironmentVariableA("PARITY_PIPE", buf, sizeof buf))
         fatal("PARITY_PIPE is not set");
     g_pipe = CreateFileA(buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
@@ -2819,6 +2889,8 @@ DWORD WINAPI parity_init(LPVOID main_tid)
     
     g_probe = (void (*)(const char *))(void *)GetProcAddress(GetModuleHandleA(NULL), "parity_probe");
     g_call = (int (__cdecl *)(const DWORD *, DWORD))(void *)GetProcAddress(GetModuleHandleA(NULL), "parity_call");
+    if (GetEnvironmentVariableA("PARITY_PATCHES", buf, sizeof buf))
+        load_patches(buf);
     if (GetEnvironmentVariableA("PARITY_REG", buf, sizeof buf))
         load_registry(buf);
     if (GetEnvironmentVariableA("PARITY_REG_END", g_reg_end, sizeof g_reg_end))

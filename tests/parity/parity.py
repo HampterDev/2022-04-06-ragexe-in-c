@@ -87,10 +87,18 @@ SCENARIOS = os.path.join(HERE, 'scenarios')
 
 # PARITY_RAGEXE_EXE names another ragexe build to run as ragexe: a sanitizer build (build.bat,
 # RAGEXE_SANITIZE) is build\asan\main_rebuild.exe or build\fill\main_rebuild.exe.
+# `original` is the untouched 2022-04-06 client (PARITY_ORIGINAL_EXE, by default where tests\oracle expects it).
+# It has no state probe, so only its pictures and its packets can be compared; it must be told it was started
+# by the patcher (`1rag1`, or it shows an error box and ends), and its manifest asks for elevation the harness
+# does not have, which __COMPAT_LAYER lets CreateProcess ignore.
 CLIENTS = {
     'herc': {'exe': os.environ.get('PARITY_HERC_EXE', r'C:\parity\reference\build\main_rebuild.exe'), 'env': {}},
     'ragexe': {'exe': os.environ.get('PARITY_RAGEXE_EXE', os.path.join(REPO, 'build', 'main_rebuild.exe')),
                'env': {}, 'aliases': {}},
+    'original': {'exe': os.environ.get('PARITY_ORIGINAL_EXE',
+                                       os.path.join(REPO, '..', 'client-files', '2022-04-06_Ragexe_1648707856.exe')),
+                 'env': {'__COMPAT_LAYER': 'RunAsInvoker'}, 'args': ['1rag1'],
+                 'patches': os.path.join(HERE, 'original_patches.txt')},
 }
 # PARITY_SPLIT_CLIENTS=<spec> adds herc_split and ragexe_split: herc and ragexe with PARITY_RECV_SPLIT=<spec>
 # set for them alone, run in herc's and ragexe's folders (`folder`), so that a pair can compare a client
@@ -284,6 +292,8 @@ def _run_in(client, scenario, out_dir, timeout, run_dir, after=None):
     pipe = Pipe(pipe_name)
     env = dict(os.environ)
     env.update(CLIENTS[client]['env'])
+    if CLIENTS[client].get('patches'):
+        env['PARITY_PATCHES'] = CLIENTS[client]['patches']
     env.update({'PARITY_PIPE': pipe_name, 'PARITY_REG': reg,
                 'PARITY_REG_END': os.path.join(out_dir, 'registry_end.txt'),
                 'PARITY_LOG': os.path.join(out_dir, 'parity_dll.log')})
@@ -297,7 +307,8 @@ def _run_in(client, scenario, out_dir, timeout, run_dir, after=None):
         # start-up for it. Going on costs only the unpoisoning of frames SEH unwinds.
         env.setdefault('ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE', '1')
     launcher = subprocess.Popen(
-        [os.path.join(HARNESS, 'parity_launch.exe'), os.path.join(HARNESS, 'parity.dll'), run_dir, exe],
+        [os.path.join(HARNESS, 'parity_launch.exe'), os.path.join(HARNESS, 'parity.dll'), run_dir, exe]
+        + CLIENTS[client].get('args', []),
         env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stalled = threading.Event()
 

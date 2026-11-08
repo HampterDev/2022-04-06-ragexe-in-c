@@ -39,8 +39,21 @@ python tests\parity\parity.py check camera --client ragexe
 python tests\parity\parity.py pair fighting
 ```
 
-`--client` is `herc` (the reference) or `ragexe` (this repository's build; `PARITY_RAGEXE_EXE`
-names another build).
+`--client` is `herc` (the reference), `ragexe` (this repository's build; `PARITY_RAGEXE_EXE`
+names another build) or `original` (the untouched 2022-04-06 client, `PARITY_ORIGINAL_EXE`, by
+default where `tests\oracle` expects it). The original is started as the patcher starts it
+(`1rag1`), its manifest's request for elevation is ignored (`__COMPAT_LAYER=RunAsInvoker`), and
+`parity.dll` applies `original_patches.txt` to it before it runs: the anti-cheat scans answer
+"clean", the GameGuard blocks are never entered, the IProcess module scan cannot end the
+start-up, and the hash manager accepts a missing RagHash.dat, each the behaviour the lifted
+client has. Every patch names the bytes it expects, so another exe is refused and logged. The
+original has no state probe, so only its pictures and its packets can be compared.
+
+The frozen data folder is made from the client folder with hard links: the GRF, the game DLLs
+(`cps`, `binkw32`, `granny2`, `ijl15`, `mss32`, `libcurl`, `mp3dec.asi`, `mssfast.m3d`), `data\`,
+`System\`, `BGM\`, `AI\` and `GameGuard\`; no save data, so every run starts clean. The
+arena the DLL reserves shrinks when a client's address space cannot hold a gigabyte (the original
+is not large-address-aware).
 
 ## What is not here
 
@@ -52,7 +65,24 @@ names another build).
   `parity.py expect`, with its reason.
 - Coverage bookkeeping tied to feature flags; the scenarios carry no coverage claims.
 
-The recordings and goldens were made against the reference, so a replay of this client can fail
-on behaviour the reference has and this tree does not, or the other way round; each such failure
-is a finding to be read, not a harness fault. None of the scenarios has been run against this
-tree yet: the port was built and compiled on 2026-11-08, not executed.
+## What the recordings can and cannot judge
+
+The recordings and goldens were made against the reference, a herc-client build that carries
+deliberate changes to the original: among them the login window sends the plain login request
+(`0x0064`, after the exe digest and a `0x0200` queue packet) where the original, and this tree,
+send the token login (`0x0acf`); a one-row character-server list is skipped; the licence screen
+is hidden; the English kRO data set is read. So `check` of this tree fails at the first login
+packet of every scenario that logs in, by the reference's design and not by a fault of this
+tree, and the offline sweeps (`windows_login`, `probe_startup`) are the only goldens that judge
+it as it is. A replay difference is a finding to be read, never a harness fault; but a golden
+is only as faithful as the reference it came from.
+
+First results on this tree (2026-11-08): `smoke --client ragexe` passes (240 frames, four
+captures), `determinism --client ragexe` passes (two runs, every pixel the same), and
+`check login_refused --client ragexe` diverges at frame 251 on the first packet as described
+above. `smoke --client original` gets through the start-up with the patches and stops at the
+renderer: the original draws through DirectDraw 7, which the DLL does not hook (it syncs frames
+and captures pictures at Direct3D 9's `Present`), so the original can run in the harness only
+once the DLL also treats a DirectDraw `Blt` or `Flip` to the primary surface as the frame's
+end. Pictures of the two would still differ renderer for renderer; the comparison worth having
+against the original is of the packets and their frames.
