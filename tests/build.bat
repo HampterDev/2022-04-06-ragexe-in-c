@@ -917,3 +917,12 @@ if not "%errorlevel%"=="0" exit /b 1
 
 call "%~dp0build_gfx_batch.bat"
 if not "%errorlevel%"=="0" exit /b 1
+
+REM the oracle tests need the original executable; they are skipped without it
+if "%ORACLE_EXE%"=="" set "ORACLE_EXE=%ROOT%\..\client-files\2022-04-06_Ragexe_1648707856.exe"
+if exist "%ORACLE_EXE%" (
+  call "%~dp0oracle\build.bat"
+  if not "%errorlevel%"=="0" exit /b 1
+) else (
+  echo oracle tests skipped: no original executable at "%ORACLE_EXE%"
+)
