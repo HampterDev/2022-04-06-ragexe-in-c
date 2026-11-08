@@ -110,6 +110,7 @@ static int event_count, overflow;
 static unsigned fault_code, fault_va;
 
 static int trace;
+static FILE *record_dump;
 
 static void event(const char *fmt, ...)
 {
@@ -542,6 +543,54 @@ static void mirror_prim(unsigned char *orig, const struct EffectPrim *lift)
             memcpy(orig + prim_map[i].orig_offset, bytes + prim_map[i].lift_offset, prim_map[i].size);
 }
 
+struct RecordField { const char *member; int kind; unsigned lift_off, orig_off, size; };
+struct RecordMember { const char *name; unsigned lift_base, lift_elem, count; };
+struct KindRecord { int kind; const char *member; };
+#include "rag_record_map.inc"
+#define ORIG_RECORDS 0x3e8
+#define ORIG_RECORD_SLOT 0xb4
+
+static int differs(const char *where, const char *field, const unsigned char *lift_bytes, const unsigned char *orig_bytes, unsigned n,
+                   char *report, size_t report_size);
+
+static int records_differ(const char *where, int kind, const unsigned char *lift_prim, const unsigned char *orig_prim, char *report, size_t size)
+{
+    unsigned k, m, f, e;
+    for (k = 0; k < sizeof kind_records / sizeof *kind_records; k++) {
+        const struct RecordMember *member = NULL;
+        if (kind_records[k].kind != kind)
+            continue;
+        for (m = 0; m < sizeof record_members / sizeof *record_members; m++)
+            if (strcmp(record_members[m].name, kind_records[k].member) == 0)
+                member = &record_members[m];
+        if (!member)
+            continue;
+        for (e = 0; e < member->count; e++)
+            for (f = 0; f < sizeof record_fields / sizeof *record_fields; f++) {
+                const struct RecordField *field = &record_fields[f];
+                const unsigned char *lift_elem = lift_prim + offsetof(struct EffectPrim, records) + member->lift_base + e * member->lift_elem;
+                const unsigned char *orig_slot = orig_prim + ORIG_RECORDS + e * ORIG_RECORD_SLOT;
+                char name[64];
+                unsigned alias, aliased = 0;
+                if (strcmp(field->member, member->name) != 0 || (field->kind != 0 && field->kind != kind))
+                    continue;
+                if (memcmp(lift_elem + field->lift_off, orig_slot + field->orig_off, field->size) == 0)
+                    continue;
+                for (alias = 0; alias < sizeof record_fields / sizeof *record_fields && !aliased; alias++)
+                    if (alias != f && strcmp(record_fields[alias].member, member->name) == 0 && record_fields[alias].orig_off == field->orig_off &&
+                        (record_fields[alias].kind == 0 || record_fields[alias].kind == kind) && record_fields[alias].size == field->size &&
+                        memcmp(lift_elem + record_fields[alias].lift_off, orig_slot + field->orig_off, field->size) == 0)
+                        aliased = 1;
+                if (aliased)
+                    continue;
+                snprintf(name, sizeof name, "%s[%u]+%x", member->name, e, field->lift_off);
+                if (differs(where, name, lift_elem + field->lift_off, orig_slot + field->orig_off, field->size, report, size))
+                    return 1;
+            }
+    }
+    return 0;
+}
+
 static const char *pointer_text(const void *p)
 {
     return who(p);
@@ -630,6 +679,9 @@ static int map_differs(const char *where, const struct FieldMap *map, unsigned c
             break;
         }
         case 'r':
+            if (records_differ(where, *(const int *)(lift_object + offsetof(struct EffectPrim, kind)), lift_object, orig_object, report, size))
+                return 1;
+            break;
         case 'x':
             break;
         case 'n':
@@ -738,6 +790,8 @@ int main(int argc, char **argv)
     const unsigned max_reported = getenv("ORACLE_REPORT") ? (unsigned)atoi(getenv("ORACLE_REPORT")) : MAX_REPORTED;
 
     setvbuf(stdout, NULL, _IONBF, 0);
+    if (getenv("ORACLE_RECORD_DUMP"))
+        record_dump = fopen(getenv("ORACLE_RECORD_DUMP"), "w");
     if (!exe) {
         fprintf(stderr, "usage: test_rag_effect_process <original exe>\n");
         return 2;
@@ -887,6 +941,19 @@ int main(int argc, char **argv)
             }
             if (failed)
                 continue;
+            if (record_dump) {
+                for (i = 0; i < lift_prim_count; i++) {
+                    const unsigned char *lr = (const unsigned char *)&lift_prims[i].records, *orr = orig_prims + (size_t)i * ORIG_PRIM_SIZE + 0x3e8;
+                    unsigned b;
+                    fprintf(record_dump, "%d %d %d ", effect_id, option, lift_prims[i].kind);
+                    for (b = 0; b < sizeof(union PrimRecords); b++)
+                        fprintf(record_dump, "%02x", lr[b]);
+                    fputc(' ', record_dump);
+                    for (b = 0; b < 0x2d0; b++)
+                        fprintf(record_dump, "%02x", orr[b]);
+                    fputc('\n', record_dump);
+                }
+            }
             for (i = 0; i < lift_prim_count; i++) {
                 char where[16];
                 snprintf(where, sizeof where, "p%d", i);

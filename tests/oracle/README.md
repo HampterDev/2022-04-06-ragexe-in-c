@@ -53,7 +53,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_ez2str_head` | the routines at `0x998cf0` (head-type test), `0x9955e0` (head x offset) and `0x9959b0` (head height) | `ez2_str_effect_is_head_type`, `ez2str_head_x_offset`, `ez2str_head_height` with their range tables | every effect type below 0x1000; five str paths for the offset; no actor and eight riding/baby/doram actors for the height, the job predicates and mount height stood in on both sides | 61,440 calls, 0 mismatches |
 | `test_ez2str_init` | the routines at `0x996150` (`CEZ2STREffect::Init`) and `0x996870` (its after-init, with 174 sound cues) | `ez2_str_effect_init` and `ez2_str_effect_after_init` with their type tables | every effect type below 0x1000 x both effect options x levels 1 and 3, owner 1001, a fixed position and target; the particle's creation, every str load, sound cue and zoom recorded on both sides, then the instance-key, shrink, head and camera fields of the effect and the owner, loop, scale, loops, spin, list and lifetime fields of the particle compared; the Lua questions answer no, the owner is absent, the camera heading and the screen projection are stood in with the same numbers on both sides | 16,384 calls, 21,774 events, 0 mismatches |
 | `test_rag_effect_init` | the routine at `0x6e8c70` (`CRagEffect::Init`, one jump table of 224 arms) | `rag_effect_init` | every effect id the duration table covers (0..2384) x both effect options, one master with a position and heading, one offset; the duration set through the vtable and the str name asked of the resource manager recorded on both sides, then the id, master, position, heading, offset and loop-count fields compared; the resource manager answers "none" on both sides | 4,770 calls, 5,222 events, 0 mismatches |
-| `test_rag_effect_process` | the routine at `0x6f85c0` (`CRagEffect::OnProcess`) with the two it dispatches to, `0x6ecd90` (effects 300 to 373) and `0x6ede30` (491 and up, one jump table of 1,883 arms) | `rag_effect_on_process`, `rag_effect_process300`, `rag_process_491`, `rag_process_800` and the `rag_skills_*.c` arms behind them | every effect id the duration table covers x both effect options, run for 64 frames (or the effect's duration) on a fake master; every prim launch, wave, texture and sprite load, action, message and spawn recorded on both sides; after each frame the effect's and the master's fields compared, after each run every launched prim's fields, particles and triangles (the prim record unions, which this tree lays out differently, are not compared); the thirteen effects that build whole game objects (blur and hallucination copies, the plant actor) are left out | 4,744 effect runs, 39,596 events, 13,816 prims, 0 mismatches |
+| `test_rag_effect_process` | the routine at `0x6f85c0` (`CRagEffect::OnProcess`) with the two it dispatches to, `0x6ecd90` (effects 300 to 373) and `0x6ede30` (491 and up, one jump table of 1,883 arms) | `rag_effect_on_process`, `rag_effect_process300`, `rag_process_491`, `rag_process_800` and the `rag_skills_*.c` arms behind them | every effect id the duration table covers x both effect options, run for 64 frames (or the effect's duration) on a fake master; every prim launch, wave, texture and sprite load, action, message and spawn recorded on both sides; after each frame the effect's and the master's fields compared, after each run every launched prim's fields, particles, triangles and records (through `rag_record_map.inc`, see below); the thirteen effects that build whole game objects (blur and hallucination copies, the plant actor) are left out | 4,744 effect runs, 39,596 events, 13,816 prims, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -112,12 +112,25 @@ print every recorded event as it happens (with the original's launch sites), `OR
 for a progress line per frame, `ORACLE_FIRST_LOOK=1` to report the first fault with its stack
 before the handlers see it, and `ORACLE_REPORT=<n>` to show more than forty mismatches.
 
+The original keeps a prim's records as four slots of 180 bytes with one field layout for every
+prim kind; this tree keeps a union of per-kind structs (`effects/rag/prim_records.h`), so the
+test compares the records through a map: `rag_record_map.inc` says, per union member and field
+unit, where in a slot the original keeps it, with a per-kind entry where the kinds differ (the
+textured square of kind 82 keeps its height in `point[0].y`, which the original keeps where the
+other textured kinds keep `point[2].y`). Two lift fields that share one slot field (the
+billboards' `wander` and `speed`, say) pass when either holds the slot's value. The map is
+derived from the data, not from reading the original's code: `rag_record_map.py` takes a record
+dump written by the test with `ORACLE_RECORD_DUMP=<file>` and the union layout, and maps each
+field unit to the slot offset that holds its bytes in every prim of that kind; fields no sampled
+arm sets stay unmapped and uncompared. Regenerate it after a change to the union or to an arm:
+
+    ORACLE_RECORD_DUMP=build\tests\oracle\records.txt build\tests\oracle\test_rag_effect_process.exe <exe>
+    python tests\oracle\rag_record_map.py . build\tests\oracle\records.txt tests\oracle\rag_record_map.inc
+
 ## Candidates next
 
 The large tables the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a numeric
 C switch, biggest first: the chat command dispatcher at `0x7a0570` (798 arms, with files, windows
-and settings among its side effects). The OnProcess test leaves the prim record unions
-uncompared; a field map for each prim kind would close that gap. Smaller pure lookups: the job
-sprite and IMF name builders (they read the job tables, which `.data` holds), the message-id
-lookups that take only a code, the talk-option name table, and the angle and distance helpers of
-the effects.
+and settings among its side effects). Smaller pure lookups: the job sprite and IMF name builders
+(they read the job tables, which `.data` holds), the message-id lookups that take only a code,
+the talk-option name table, and the angle and distance helpers of the effects.
