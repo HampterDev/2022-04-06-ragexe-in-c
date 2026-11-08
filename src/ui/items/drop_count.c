@@ -134,7 +134,7 @@ void ui_item_drop_cnt_wnd_set_show(struct UIWindow *window, int visible)
 
         drop_count_put_count(self, game);
         drop_count_item_name(game, &name);
-        ui_static_text_set_text(&self->name->base, string_cstr(&name), 0);
+        ui_static_text_set_text_ellipsis_wide(&self->name->base, string_cstr(&name));
         ui_window_invalidate_base(wnd);
         ui_window_mgr_update_snap_rect(&g_windowMgr, wnd);
         string_free(&name);
