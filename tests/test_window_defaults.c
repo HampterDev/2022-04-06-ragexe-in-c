@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Apply the production first-run window defaults to a whole window manager
-   and check that each default stays inside its own field. */
 struct Session g_session1;
 static struct Renderer renderer;
 struct Renderer *g_renderer = &renderer;

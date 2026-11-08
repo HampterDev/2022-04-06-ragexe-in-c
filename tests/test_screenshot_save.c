@@ -1,4 +1,3 @@
-/* Exercise the production screenshot request handler; replace only its I/O. */
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,7 +65,6 @@ char renderer_screenshot(struct Renderer *self, struct String filename)
 
 int renderer_text_out(struct Renderer *self, int x, int y, const char *text, COLORREF colour)
 {
-    /* Foundation still draws its timestamp before capturing. */
     assert(self == g_renderer && text);
     return 1;
 }
@@ -129,7 +127,6 @@ static void check_capture_failure(void)
     assert(captures == 1 && !notices && errors == 1);
     assert(strstr(error, captured_path));
     assert_consumed(&mode);
-    /* A subsequent manual request must work without the failed trade prefix. */
     mode.screenshot_pending = capture_ok = 1;
     mode_screen_shot(&mode);
     assert(captures == 2 && notices == 1 && errors == 1);

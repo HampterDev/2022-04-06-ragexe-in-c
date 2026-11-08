@@ -183,9 +183,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
     app_swap_ai_folder();
 
     session_init_at_startup(&g_session1);
-    /* The original runs Setup.exe until the setup keys exist. Setup.exe and the servers' setup
-       tools write HKEY_LOCAL_MACHINE, which this client no longer reads, so without the keys under
-       HKEY_CURRENT_USER it starts with the setup defaults instead. */
     if (read_registry() == 0)
         g_soundMode = 2;
 

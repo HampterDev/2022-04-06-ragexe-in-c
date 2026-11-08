@@ -10,9 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Run the production ui_window_mgr_make_window and ESC window-ID list helpers
-   with controlled sub-factories: ESC closes the listed IDs one by one, so a
-   request that leaves no window must not leave its ID behind. */
 int g_replayPlaying;
 struct Session g_session1;
 struct Renderer *g_renderer;
@@ -24,8 +21,8 @@ enum { NOT_MINE, NO_WINDOW, NEW_WINDOW };
 static int factory_mode(int id)
 {
     switch (id) {
-    case 0x58: case 0x71: case 0x28: return NO_WINDOW; /* no pet/homunculus, refused */
-    case 0xaa: case 0xcb: return NO_WINDOW;            /* "already open" requests */
+    case 0x58: case 0x71: case 0x28: return NO_WINDOW;
+    case 0xaa: case 0xcb: return NO_WINDOW;
     case 0x8: case 0xa: case 0x25: case 0xe: return NEW_WINDOW;
     }
     return NOT_MINE;
@@ -84,26 +81,25 @@ int main(void)
     list_init(&mgr.plates);
     tree_init(&mgr.windows_by_id);
 
-    request(0xd, 0);                /* no factory: the retired option window */
+    request(0xd, 0);
     expect_list(none, 0);
     request(0xec, 0);
     expect_list(none, 0);
     request(0x8, 1);
     expect_list(item, 1);
-    request(0x58, 0);               /* claimed, but nothing to show */
+    request(0x58, 0);
     expect_list(item, 1);
     request(0x28, 0);
     expect_list(item, 1);
-    request(0xcb, 0);               /* listed at the back, then dropped */
+    request(0xcb, 0);
     expect_list(item, 1);
     request(0xa, 1);
     expect_list(equip_item, 2);
-    request(0xe, 1);                /* untracked IDs never enter the list */
+    request(0xe, 1);
     expect_list(equip_item, 2);
     request(0x25, 1);
     expect_list(skill_equip_item, 3);
 
-    /* "Already open": no new window, but one is registered under the ID. */
     wm_register(&mgr, 0xaa, &windows[created++]);
     request(0xaa, 0);
     assert(*LIST_VALUE(mgr.id_list.head->next, int) == 0xaa);
@@ -111,7 +107,6 @@ int main(void)
     ui_window_mgr_forget_window_id(&mgr, 0x25);
     expect_list(equip_item, 2);
 
-    /* A stale entry for an ID that again produces nothing is dropped too. */
     list_insert(&mgr.id_list, mgr.id_list.head->next, &(int){0x58}, sizeof(int));
     expect_list(pet_equip_item, 3);
     request(0x71, 0);

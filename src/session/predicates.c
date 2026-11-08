@@ -90,7 +90,6 @@ int session_is_homunculus_skill(struct Session *self, int id)
     return (unsigned)(id - 0x1f40) <= 0x3c;
 }
 
-/* Mercenaries are jobs 6017-6046 (0x1781-0x179e); 6048-6052 are the Homunculus S. */
 int session_is_mercenary_or_homun_s_job(struct Session *self, int id)
 {
     return (unsigned)(id - 0x1781) <= 0x23;

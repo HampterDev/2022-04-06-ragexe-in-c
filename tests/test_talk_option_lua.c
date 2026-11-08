@@ -88,7 +88,6 @@ int main(void)
         assert(query(L, "/icon") == (unsigned char)values[i]);
         set(L, "/integer", values[i]);
         assert(g_session1.noShift == values[i] && query(L, "/integer") == (unsigned char)values[i]);
-        /* the name option's int lands its second byte on /loading's flag, as the client's store does */
         assert(g_session1.loadingScreenRandom == (unsigned char)((unsigned)values[i] >> 8));
         assert(g_session1.pcBang == 0xb6);
     }

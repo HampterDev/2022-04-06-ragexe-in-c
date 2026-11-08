@@ -371,7 +371,6 @@ struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
     return 0;
 }
 
-/* A NULL manager (its allocation failed) has no reform items, as one whose file did not load. */
 char item_reform_is_reform_item(struct ItemReformMgr *self, int item)
 {
     return self && tree_find(&self->reform_items, &item, tree_less_int) != 0;

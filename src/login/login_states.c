@@ -221,8 +221,6 @@ static void login_screen(struct LoginMode *self)
     mode_mgr_quit(&g_modeMgr);
 }
 
-/* Copies a server-list line into out[size], cut by whole characters. A ^RRGGBB colour
-   code that the cut would split is left out whole: its start would show as text. */
 static void server_line(char *out, size_t size, const struct String *line)
 {
     const char *text = string_cstr(line), *end = text + line->size, *code;
@@ -257,7 +255,6 @@ static void server_list(struct LoginMode *self)
     UIWND_SENDMSG(wnd, 0, 0x50, 0x2713, (int)"NUMSERVER", 0, 0);
     for (i = 0; i < self->numServer; i++) {
         e = &self->servers[i];
-        /* The name is login-server text in a 20-byte field that need not end in NUL. */
         string_init(&name);
         if (e->isNew == 1)
             string_assign_cstr(&name, msg_str(0x1e2));
@@ -280,8 +277,6 @@ static void server_list(struct LoginMode *self)
         case 3: string_append_cstr(&label, msg_str(0xcbb)); break;
         case 4: string_append_cstr(&label, msg_str(0xcbc)); break;
         }
-        /* The busy and state messages can make the line longer than text, and strcpy_s
-           would end the client: cut it instead. */
         server_line(text, sizeof text, label.size ? &label : &name);
         for (k = 3; k >= 0; k--)
             string_free(&colour[k]);

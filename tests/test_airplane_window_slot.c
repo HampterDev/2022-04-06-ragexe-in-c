@@ -1,9 +1,3 @@
-/* The private-airplane window slot. navigation_cmd.c keeps the window in
-   g_windowMgr.private_airplane_wnd for its modal loop and clears the slot only when the loop ends
-   with AIRPLANE_RESULT_CLOSED (0xb4). A flight ends it with 0xb1 instead: the airplane map move
-   (game_mode_zc_npcack_mapmove) sets that result. The loop then posts the window to the quit
-   list, and its destruction (ui_window_destruct -> ui_window_mgr_forget_window) must clear the
-   slot, or the slot points at the freed window. */
 #include "ui/window_manager_state.h"
 #include "ui/window_mgr.h"
 #include "ui/wndmgr/wndmgr.h"
@@ -21,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MODAL_RESULT_FLIGHT 0xb1 /* game_mode_zc_npcack_mapmove, packets_npc.c */
+#define MODAL_RESULT_FLIGHT 0xb1
 
 struct UIWindowMgr g_windowMgr;
 int g_quitRequested;
@@ -47,7 +41,6 @@ struct UIWindow *ui_window_get_ancestor(struct UIWindow *self) { return self; }
 void ui_window_mgr_focus_first_edit(struct UIWindowMgr *self) { (void)self; }
 struct Mode *client_current_mode(void) { return NULL; }
 
-/* The quit list: the window is destroyed after the loop, as destroy_closed_windows does. */
 static struct UIWindow *quitting;
 void ui_window_mgr_post_quit2(struct UIWindowMgr *self, struct UIWindow *wnd)
 {
@@ -55,7 +48,6 @@ void ui_window_mgr_post_quit2(struct UIWindowMgr *self, struct UIWindow *wnd)
     quitting = wnd;
 }
 
-/* One frame: the server's answer arrives. */
 static int frame_result, frames;
 void mode_update(struct Mode *mode)
 {
@@ -71,7 +63,6 @@ static void airplane_destroy(struct UIWindow *self)
 {
     ui_window_destruct(self);
     destroyed++;
-    /* Not freed, so that a slot still holding it can be recognised. */
 }
 const struct UIWindowOps ui_window_ops = { .on_destroy = on_destroy };
 static const struct UIWindowOps airplane_ops = { .destroy = airplane_destroy, .on_destroy = on_destroy };

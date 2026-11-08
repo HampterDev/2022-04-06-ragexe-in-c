@@ -158,13 +158,11 @@ int main(void)
         store(&editor);
         check_failure(mode);
     }
-    /* A short write while adding the missing separator also leaves the editor open. */
     reset();
     existing = "20\t30\tmanual note";
     failure = WRITE_FAIL;
     store(&editor);
     check_failure(WRITE_FAIL);
-    /* Retry through the same Store handler and editor after clearing the fault. */
     reset();
     store(&editor);
     CHECK(errors == 0 && editor_closed == 1 && reloads == 1 && closes == 1);

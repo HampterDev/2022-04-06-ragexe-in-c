@@ -89,8 +89,6 @@ void game_mode_zc_star_skill(struct GameMode *self, struct PACKET_ZC_STARSKILL *
         break;
     case STARSKILL_HATE:
     case STARSKILL_HATE_SAVED:
-        /* cut to the 24-byte field: a job name styled with both its names can be longer, and the
-         * monster id and the star follow the field */
         if (packet->name[0] == 0)
             _snprintf_s(packet->name, sizeof packet->name, _TRUNCATE, "%s",
                         session_get_job_name(&g_session1, packet->monster_id, -1));

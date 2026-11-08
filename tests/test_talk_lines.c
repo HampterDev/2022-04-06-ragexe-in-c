@@ -12,15 +12,6 @@
 #include "session/state.h"
 #include "std/string.h"
 
-/* Run the production pet and monster talk lines (session_get_pet_speak,
-   session_get_monster_talk_info, session_format_chat_line) over parsed
-   PetTalkTable.xml and MonsterTalkTable.xml, writing into 256-byte outputs with
-   a guard after them. Long lines and names must be cut to the output by whole
-   CP949 characters, printf conversions must arrive as text, and the
-   talk-word replacement must give the lines it gave before. For the Korean
-   service, whose tables are mirrored, the monster lines must be decoded without
-   writing to the state name, a string literal on a read-only page, or to the
-   table. Jobs past the name table have no entry. */
 
 struct Session g_session1;
 unsigned int g_codePage = 949;
@@ -31,7 +22,6 @@ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abor
 
 #include "text_mirror.inc"
 
-/* The Korean service mirrors its table text in place; the others leave it as it is. */
 char *text_decode(char *text) { return korean ? text_decode_mirror(text) : text; }
 const char *session_get_pet_name(int petJob) { assert(petJob == 1); return "poring"; }
 const char *session_get_pet_act_text(int action) { assert(action == 0); return "feeding"; }
@@ -76,7 +66,6 @@ static char *repeat(char *out, char c, size_t count)
     return out;
 }
 
-/* The line in a caller's buffer whose bytes after the NUL are not NUL. */
 static void format_line(const char *input, int aid, int replace, size_t size, const char *expected)
 {
     char text[0x400];
@@ -104,12 +93,9 @@ static void check_format(void)
     format_line("hi", 999, 0, 0x100, "");
     format_line("hello", 100, 0, 4, "Por");
 
-    /* The talk words, as before: each search starts after the last replacement. */
     format_line("형님 좋아요", 100, 1, 0x100, "Poring : 누님 좋아요");
     format_line("아빠 오빠 아빠", 100, 1, 0x100, "Poring : 엄마 오빠 엄마");
     format_line("형님 좋아요", 100, 0, 0x100, "Poring : 형님 좋아요");
-    /* 형씨 is shorter than 아가씨, so as before the rest skips two more bytes, but no
-       longer from past the end of the line. */
     format_line("형씨는 좋아", 100, 1, 0x100, "Poring : 아가씨 좋아");
     format_line("abc형씨", 100, 1, 0x100, "Poring : abc아가씨");
 
@@ -117,7 +103,6 @@ static void check_format(void)
     strcpy(expected, "Poring : ");
     repeat(expected + 9, 'x', 0xff - 9);
     format_line(input, 100, 0, 0x100, expected);
-    /* 9 + 245 bytes, then a two-byte character over the 255-byte limit. */
     repeat(input, 'x', 245);
     strcat(input, "가yyy");
     repeat(expected + 9, 'x', 245);
@@ -164,7 +149,6 @@ static void check_monster_talk(void)
 {
     static char xml[0x1000];
     char line[0x300], expected[0x200], name[0x140];
-    /* A valid name on each side of the table, where an unchecked index would find it. */
     const char *storage[6], **jobs = storage + 1;
     struct Guarded g;
 
@@ -203,7 +187,6 @@ static void check_monster_talk(void)
     g_session1.reqJobNames.first = g_session1.reqJobNames.last = g_session1.reqJobNames.end = NULL;
 }
 
-/* Appends text to xml, mirrored as the Korean service stores it. */
 static void stored(char *xml, const char *text)
 {
     char copy[0x100];
@@ -230,7 +213,6 @@ static void check_monster_talk_korean(void)
     struct Guarded g;
     int i, seen[2] = { 0, 0 };
 
-    /* The state name is a string literal on a page that cannot be written. */
     literal = session_get_state_name(&g_session1, 0);
     assert(strcmp(literal, "attack") == 0 && VirtualQuery(literal, &page, sizeof page) == sizeof page);
     assert(!(page.Protect & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE |
@@ -260,7 +242,6 @@ static void check_monster_talk_korean(void)
         else
             check_out(&g, sizeof g.out, "Poring : Grr two"), seen[1] = 1;
     }
-    /* Both lines are found every time, and the table keeps its stored text. */
     assert(seen[0] && seen[1]);
     korean = 0;
     strcpy(key, "enemy_monster_talk_table");

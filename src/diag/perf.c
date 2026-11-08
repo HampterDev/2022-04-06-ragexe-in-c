@@ -54,9 +54,6 @@ static LONGLONG now(void)
 
 static void init(void);
 
-/* The overlay is a developer tool and is off unless RAGEXE_OVERLAY is set to something
-   other than 0. Off, nothing is timed or drawn, and Scroll Lock, which players press
-   for screenshots, does not show it. */
 static int overlay_enabled(void)
 {
     if (!P.inited)
@@ -353,7 +350,6 @@ void perf_overlay_draw(struct Renderer *r)
     int visible;
     if (!overlay_enabled())
         return;
-    /* With the overlay on, Scroll Lock hides and shows it. */
     visible = GetKeyState(VK_SCROLL) & 1;
     if (visible != P.lastScroll) {
         P.lastScroll = visible;

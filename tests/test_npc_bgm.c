@@ -1,5 +1,3 @@
-/* Real packet handler -> sound manager -> update handoff; only hardware and
- * map lookup are substituted. No game window, device or server is opened. */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <assert.h>
@@ -17,8 +15,6 @@ static int failures, starts, opens, closes, backend_status, backend_loops, fail_
 static int driver_token, stream_token;
 static const char *map_track = "bgm\\map.mp3";
 static char current_track[128];
-/* Measured with the shipped mss32.dll. Keep these independent of the client
- * header so a mistaken production constant cannot make this test pass. */
 enum { BACKEND_DONE = 2, BACKEND_PLAYING = 4 };
 
 #define CHECK(condition) do { if (!(condition)) { \
@@ -108,7 +104,6 @@ int main(void)
     restart_bgm(&mode);
     CHECK(starts == before + 1);
 
-    /* Completion is also exercised without preceding playing-state updates. */
     reset_case(); request_music(&mode); before = starts;
     backend_status = BACKEND_DONE;
     restart_bgm(&mode);
@@ -126,7 +121,7 @@ int main(void)
 
     reset_case(); request_music(&mode); g_sound_settings.bgm_on = 0;
     sound_stop_stream(); before = opens; restart_bgm(&mode);
-    CHECK(opens == before); /* restoration must not override the user's mute */
+    CHECK(opens == before);
 
     reset_case(); fail_open = 1; request_music(&mode); fail_open = 0;
     before = starts; restart_bgm(&mode);

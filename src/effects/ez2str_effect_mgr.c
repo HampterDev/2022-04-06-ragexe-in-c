@@ -255,7 +255,6 @@ unsigned char ez2_str_effect_mgr_load(struct Ez2StrEffectMgr *self)
     return ok;
 }
 
-/* The lookups take a NULL manager (its allocation failed) as one without rows. */
 const struct EZ2STREntry *ez2_str_effect_mgr_find_by_effect_id(struct Ez2StrEffectMgr *self, int effect_id)
 {
     struct EZ2STRRow *row = self ? find_effect_id(self, effect_id) : NULL;

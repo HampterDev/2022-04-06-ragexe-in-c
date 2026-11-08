@@ -1,5 +1,3 @@
-/* Exact production control flow, with controlled COM results and subsystem
- * failures. The extractor leaves the startup tail and app_last_pump intact. */
 #include <windows.h>
 #include <objbase.h>
 #include <stdio.h>
@@ -71,7 +69,6 @@ static void fake_shell(void)
     ++shell_calls;
 }
 
-/* Keep these operations observable; the other subsystems are inert. */
 #define CoInitialize fake_initialize
 #define CoUninitialize fake_uninitialize
 #define sound_mgr_create() (failure != SOUND)

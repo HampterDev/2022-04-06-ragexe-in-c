@@ -9,11 +9,6 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_messages.h"
 
-/* Run the production session_get_monster_skill_info over a parsed
-   monsterskillinfo.xml. Values longer than 8 bytes, values with printf
-   conversions, missing <action> or <loopType> nodes and monster names longer
-   than its 0x100-byte buffer must be read without overrunning anything, with
-   the tags stored plain and, as for the Korean service, mirrored. */
 
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
@@ -45,7 +40,6 @@ int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int ty
 
 #include "monster_skill_info.inc"
 
-/* Append "<tag>" or "</tag>", the tag mirrored for the Korean service. */
 static void tag(char *xml, const char *name, int close)
 {
     char stored[64];

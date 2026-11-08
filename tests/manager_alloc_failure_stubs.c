@@ -1,7 +1,3 @@
-/* What the reputation, item-name, item-reform and enchant managers reach outside their files, for
-   test_manager_alloc_failure. Their Lua scripts never load here: lua_script_run_file answers 0,
-   as for a missing file, so the Lua API itself must not be reached. A LuaScript must lie in a
-   manager the allocator gave out; one reached through a NULL manager stops the test. */
 #include <windows.h>
 #include <lua.h>
 #include <stdio.h>
@@ -35,7 +31,6 @@ static void check_script(const struct LuaScript *self, const char *name)
     }
 }
 
-/* The managers' Lua scripts. */
 struct LuaScript *lua_script_construct(struct LuaScript *self) { check_script(self, "lua_script_construct"); return self; }
 void lua_script_destruct(struct LuaScript *self) { check_script(self, "lua_script_destruct"); }
 void lua_script_set_number(struct LuaScript *self, const char *name, double value)
@@ -52,7 +47,6 @@ char lua_script_run_file(struct LuaScript *self, const char *path)
     return 0;
 }
 
-/* The reputation load reads its own tables (repute_load.c). */
 char repute_mgr_load(struct ReputeMgr *self)
 {
     if (!alloc_failure_owns(self)) {
@@ -63,7 +57,6 @@ char repute_mgr_load(struct ReputeMgr *self)
     return 0;
 }
 
-/* The repute window. */
 struct UIWindow *ui_window_open(int id) { (void)id; alloc_failure_window_opens++; return fake_window; }
 struct UIWindow *ui_window_find(int id) { (void)id; return fake_window; }
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
@@ -77,7 +70,6 @@ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message
 char *msg_str(int id) { static char text[] = "changed"; (void)id; return text; }
 unsigned int g_codePage = 65001;
 
-/* Reached only with loaded tables. */
 struct String *text_utf8_to_codepage(struct String *out, const struct String *utf8, UINT code_page)
 { (void)utf8; (void)code_page; unreached("text_utf8_to_codepage"); return out; }
 struct String *string_vec_push_copy(struct Vec *v, const struct String *s) { (void)v; (void)s; unreached("string_vec_push_copy"); return NULL; }
@@ -107,7 +99,6 @@ ENCHANT_CALLBACK(enchant_lua_add_perfect_enchant)
 ENCHANT_CALLBACK(enchant_lua_add_upgrade_enchant)
 ENCHANT_CALLBACK(enchant_lua_get_slot_count)
 
-/* The Lua API: only a loaded script reaches it. */
 int lua_gettop(lua_State *L) { (void)L; unreached("lua_gettop"); return 0; }
 void lua_settop(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_settop"); }
 int lua_isnumber(lua_State *L, int idx) { (void)L; (void)idx; unreached("lua_isnumber"); return 0; }

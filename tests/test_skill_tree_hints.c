@@ -69,7 +69,6 @@ static void setup(struct Fixture *f, int count, int selected)
 static void teardown(struct Fixture *f)
 {
     int i;
-    /* Test skill requirements borrow stack arrays; list nodes are real allocations. */
     for (i = 0; i < SKILL_TREE_TABS; ++i) list_free(&f->window.tab_skills[i], NULL);
     list_free(&f->window.required, NULL);
     list_free(&f->window.planned, NULL);
@@ -143,7 +142,6 @@ static void stale_and_hidden_lists(void)
     target = add_skill(displayed(&f, 0), 60000, 0, reqs, 3);
     add_skill(displayed(&f, 1), 50000, 28, NULL, 0);
     add_skill(displayed(&f, 1), 50000, 35, NULL, 0);
-    /* These backing lists are not displayed: tab 2 is the extra list, tab 3 is absent. */
     add_skill(&f.window.tab_skills[2], 50001, 0, NULL, 0);
     add_skill(&f.window.tab_skills[3], 50001, 0, NULL, 0);
     skill_tree_mark_required(&f.window);

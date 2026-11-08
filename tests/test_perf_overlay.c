@@ -10,11 +10,6 @@
 #include "world/mode_dispatch.h"
 #include "world/mode_manager.h"
 
-/* Run the production diag/perf.c with a fake clock, environment and Scroll Lock state,
-   and the drawing calls stubbed. The frame-time overlay is a developer tool: without
-   RAGEXE_OVERLAY, or with it set to 0, it must never draw, Scroll Lock must not show it,
-   and the timing calls must not read the clock. With RAGEXE_OVERLAY=1 it starts shown
-   and Scroll Lock hides and shows it. Scroll Lock must still take a screenshot. */
 
 static const char *environment;
 static SHORT scroll_lock;
@@ -53,7 +48,6 @@ static BOOL WINAPI test_frequency(LARGE_INTEGER *f)
     return TRUE;
 }
 
-/* The drawing side: a texture that can be locked, and a count of overlay draws. */
 struct C3dDevice g_3dDevice;
 static DWORD pixels[1024 * 128];
 static char texture;
@@ -96,7 +90,6 @@ void renderer_set_blend_stages(struct Renderer *self, int mode) { (void)self; (v
 static struct Renderer renderer;
 static int cases;
 
-/* A fresh client process with the given RAGEXE_OVERLAY (NULL: not set). */
 static void start(const char *value)
 {
     memset(&P, 0, sizeof P);
@@ -108,7 +101,6 @@ static void start(const char *value)
     g_3dDevice.height = 600;
 }
 
-/* One frame of 100 ms, timed and drawn as the renderer does it; returns the overlay draws. */
 static int frame(void)
 {
     int before = draws;
@@ -144,7 +136,6 @@ static void check_on(void)
     start("1");
     for (i = 0; i < 6; ++i)
         frame();
-    /* Shown once the first half-second of timings is in. */
     assert(frame() == 1 && frame() == 1);
     scroll_lock ^= 1;
     assert(frame() == 0 && frame() == 0);
@@ -154,7 +145,6 @@ static void check_on(void)
     ++cases;
 }
 
-/* The screenshot keys of ui_window_mgr_handle_key. */
 #include "screenshot_keys.inc"
 static struct Mode *const current_mode = (struct Mode *)0x6d6f;
 static int screenshots;

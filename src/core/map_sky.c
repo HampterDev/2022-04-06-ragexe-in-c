@@ -177,7 +177,6 @@ void map_sky_mgr_apply(struct MapSkyMgr *self, const struct String *map)
     sky_name = game_mode_short_name(arg);
     string_init(&name);
     string_assign_cstr(&name, sky_name);
-    /* No manager (its allocation failed): no sky data, as when the file did not load. */
     if (self)
         client_lua_call(self->lua, "IsExistMapSkyData", "s>b", string_cstr(&name), &exists);
     if (!exists) {

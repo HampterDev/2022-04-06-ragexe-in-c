@@ -94,7 +94,6 @@ static BOOL WINAPI delete_temp(LPCSTR path)
 #undef MoveFileExA
 #undef DeleteFileA
 
-/* Actual destruction function, with only UI cleanup and notification substituted. */
 struct UIWindow { const int *ops; };
 struct UIFrameWnd { struct UIWindow base; };
 struct UINewChatWnd { struct UIFrameWnd frame; int boxes; };
@@ -174,7 +173,6 @@ int main(void)
     count = writes;
     assert(count > 20);
 
-    /* Every serializer write can fail or succeed with a short byte count. */
     for (i = 1; i <= count; ++i) {
         seed(); reset(WRITE_FAIL, i); destroy_window();
         assert(warnings == 1 && writes == i && !moves && deletes == 1);
@@ -204,7 +202,7 @@ int main(void)
 
     seed(); reset(MOVE_FAIL, 0); failed_delete = 1; destroy_window();
     assert(warnings == 1 && deletes == 1); check_old();
-    assert(DeleteFileA(temporary)); /* Simulated cleanup denial: remove our fixture. */
+    assert(DeleteFileA(temporary));
     reset(NONE, 0);
     assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, NULL));
     assert(!chat_tabs_save_layout(&g_session1.chatWndTabs, &g_session1.subChatWnds, 1, ""));

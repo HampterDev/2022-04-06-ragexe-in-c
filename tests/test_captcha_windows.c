@@ -258,8 +258,6 @@ static void test_windows(int custom, int bits, unsigned palette)
     assert(!detector.stream.received);
     packed.bytes[packed.size - 1] ^= 1;
     receive(&detector.frame.base, key, &packed, 1);
-    /* every byte in: acknowledged even when the picture does not decode, since the server asks for the
-     * answer only after the acknowledgement */
     assert(sent == old_sent + 1 && image.image.pixels == old_pixels);
     packed.bytes[packed.size - 1] ^= 1;
     assert(captcha_detector_begin(&detector.frame.base, key, packed.size));
@@ -301,7 +299,6 @@ int main(void)
         test_windows(custom, 8, 0);
         test_windows(custom, 8, 16);
     }
-    /* each run acknowledges the detector's corrupt picture and its good one */
     assert(shown == 6 && sent == 12 && refreshed >= 12);
     test_answers();
     puts("Captcha windows: factory failure cleanup, binary keys, real BMP/zlib decoding, replacement rollback and acknowledgments passed");

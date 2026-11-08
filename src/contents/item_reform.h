@@ -60,7 +60,6 @@ struct Vec *item_reform_base_items(struct ItemReformMgr *self, struct Vec *out,
 struct ReformInfo *item_reform_find(struct ItemReformMgr *self, int reform_item,
                                                int base_item);
 char item_reform_is_reform_item(struct ItemReformMgr *self, int item);
-/* The material slots of the reform window: max_materials, or its default without a manager. */
 unsigned item_reform_max_materials(const struct ItemReformMgr *self);
 
 void reform_info_init(struct ReformInfo *info);

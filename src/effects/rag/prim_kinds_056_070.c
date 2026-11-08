@@ -737,10 +737,6 @@ void prim_whip_render(struct EffectPrim *self, const float *view)
         float jy[WHIP_JOINTS] = {0}, jz[WHIP_JOINTS] = {0}, jx[WHIP_JOINTS] = {0};
         int joints = 0;
 
-        /* The joints shimmer: every frame each link up to the link length draws three rand() values
-         * (y, z, x, in that order) and moves its joint by up to 0.3 either way. The client draws them
-         * for every record whose link length is set, before and whether or not the record is drawn,
-         * so the draws happen here before the active test. Joints past the link length keep 0. */
         while (joints < WHIP_JOINTS - 1 && wh->link_length > (float)joints) {
             jy[joints] = (float)rag_rand(7) * 0.1f - 0.3f;
             jz[joints] = (float)rag_rand(7) * 0.1f - 0.3f;

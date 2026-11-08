@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Run both production <URL> link handlers with the shell stubbed. Link targets
-   come from server text, so only absolute http:// and https:// URLs may reach
-   ShellExecuteA; files, UNC paths and other protocol handlers must not. */
 static HINSTANCE test_shell_open(HWND window, const char *operation, const char *file,
                                  const char *parameters, const char *directory, int show);
 #define ShellExecuteA test_shell_open
@@ -29,7 +26,6 @@ static HINSTANCE test_shell_open(HWND window, const char *operation, const char 
     return (HINSTANCE)33;
 }
 
-/* Text-button lines, as the production button stores them. */
 struct TextView ui_text_button_get_line(const struct UITextButton *self, size_t i)
 {
     return text_array_at(&self->lines, i);
@@ -90,7 +86,6 @@ int main(void)
     stays_closed(" http://x");
     stays_closed("xhttp://x");
     check(text_view(embedded, sizeof embedded - 1), NULL);
-    /* A line taken from part of a longer text is stored with its own NUL. */
     check(text_view(slice, 8), "http://x");
 
     memset(&empty, 0, sizeof empty);

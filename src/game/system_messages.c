@@ -132,8 +132,6 @@ struct PACKET_ZC_FORMATSTRING_MSG {
 };
 #pragma pack(pop)
 
-/* The argument after arg among strings that end at end: the one past arg's NUL, or end,
-   an empty string, when arg runs to the end. */
 static const char *next_argument(const char *arg, const char *end)
 {
     const char *nul = memchr(arg, 0, (size_t)(end - arg));
@@ -161,9 +159,6 @@ void game_mode_format_string_msg(const unsigned char *pkt)
             p++;
     }
     memset(line, 0, sizeof line);
-    /* The arguments are NUL-terminated strings one after another, up to the packet
-       length. In this terminated copy an argument that runs to the end of the packet ends
-       there, and those after it are empty. */
     string_init(&strings);
     if (packet->length > sizeof *packet)
         string_assign(&strings, packet->strings, packet->length - sizeof *packet);

@@ -711,8 +711,6 @@ void captcha_detector_append(struct UIWindow *window, const void *key, const voi
     if (captcha_stream_append(&self->stream, chunk, size) != CAPTCHA_COMPLETE) return;
     if (captcha_unpack(self->image, &self->stream.packed))
         ui_window_invalidate(window);
-    /* the server asks for the answer only after this, so it goes out once every byte is in, whether or
-     * not the picture decodes */
     rag_connection_send_packet(rag_connection_instance(), sizeof id, &id);
 }
 

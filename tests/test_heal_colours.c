@@ -1,5 +1,3 @@
-/* The heal effect, run whole: effect types 0x459, 0x477 and 0x478 must play the purple, cyan
-   and yellow heal, as the original's heal switch does; 0x138 is the green heal for reference. */
 #include "../src/effects/skills/heal_effect.c"
 #include <assert.h>
 #include <stdio.h>
@@ -124,7 +122,6 @@ static void run(const struct Expected *expected)
         printf("Heal type 0x%x drew nothing\n", expected->type);
         exit(1);
     }
-    /* Frame 0: two strips of 21 column quads; frames 0, 6, ..., 48: four sparkles each. */
     check(&effect.columns, 2 * STRIP_QUADS, expected->column_texture, expected->column_r,
           expected->column_g, expected->column_b);
     check(&effect.cones, 0, "", 0, 0, 0);

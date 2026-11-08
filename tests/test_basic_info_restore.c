@@ -12,9 +12,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Run the production basic-info factory over saved "shown" flags and record
-   which windows it reopens. Every request enters the ESC window-ID list, so it
-   must name a window that a factory can create. */
 int g_replayPlaying;
 int g_spriteMode, g_textureMode;
 struct Session g_session1;
@@ -44,7 +41,6 @@ BYTE session_has_tracked_achievements(struct Session *self)
 }
 void ui_window_mgr_restore_plates(struct UIWindowMgr *self) { assert(self == &mgr); ++plate_restores; }
 
-/* Window creation is not exercised: the basic-info window already exists. */
 struct UIWindow *ui_basic_info_wnd_new(void) { assert(!"exists"); return NULL; }
 void ui_window_create(struct UIWindow *wnd, int width, int height) { (void)wnd; (void)width; (void)height; assert(!"exists"); }
 int session_get_drawn_job(struct Session *self) { (void)self; assert(!"exists"); return 0; }

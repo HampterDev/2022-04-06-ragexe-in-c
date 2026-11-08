@@ -344,7 +344,6 @@ static void memo_save_error(const struct String *path)
     string_free(&message);
 }
 
-/* Hand-edited files may lack the newline normally written by the client. */
 static int memo_append_separator(FILE *file)
 {
     long size;

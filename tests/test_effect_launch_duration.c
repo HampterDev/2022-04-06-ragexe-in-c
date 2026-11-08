@@ -3,8 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-/* Run the production rag_effect_init against the real duration table. Server
-   effect IDs reach it up to 60000; the table has EFFECT_DURATION_COUNT rows. */
 struct Session g_session1;
 static struct RagEffect effect;
 static int set_calls, last_duration, cases;

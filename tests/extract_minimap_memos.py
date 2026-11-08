@@ -17,7 +17,6 @@ for function in ("memo_path", "memo_save_error", "memo_append_separator",
     match = re.search(r"^(?:static )?(?:void|int) " + function + r"\([^;{]*\{.*?^\}",
                       source, re.M | re.S)
     if match is None:
-        # Allows the regression test to run against the original silent writer.
         if function in ("memo_save_error", "memo_append_separator"):
             continue
         raise ValueError(f"Missing production function: {function}")

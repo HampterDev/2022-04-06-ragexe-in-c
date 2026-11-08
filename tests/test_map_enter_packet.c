@@ -13,8 +13,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Run the production login-mode sender of map entry 0x0436 against stack
-   memory filled with a marker, and check every byte that reaches the wire. */
 struct Session g_session1;
 struct CharUserDataMgr *g_charUserDataMgr;
 struct GameGuard *g_gameGuard;

@@ -45,7 +45,6 @@ void game_mode_zc_property_pet(struct GameMode *self, unsigned char *pkt)
     struct UIWindow *wnd;
 
     (void)self;
-    /* The 24-byte name field need not end in NUL; everything below uses this copy. */
     _snprintf_s(name, sizeof name, _TRUNCATE, "%.*s", (int)sizeof packet->name, packet->name);
     g_session1.petJob = packet->job;
     if (packet->level < PET_LEVEL_OTHER) {

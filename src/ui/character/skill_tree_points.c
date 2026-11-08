@@ -160,7 +160,6 @@ static void mark_required_tabs(struct UINewSkillListWnd *self, int skill_id)
 
         if (tab == self->tab)
             continue;
-        /* Match the displayed lists: the final tab contains extra skills. */
         list = tab == count - 1 ? &g_session1.skills.extra_skills : &self->tab_skills[tab];
         for (node = list->head->next; node != list->head; node = node->next) {
             if (LIST_VALUE(node, struct SkillInfo)->id == skill_id) {

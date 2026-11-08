@@ -49,9 +49,6 @@ const char *g_talkWords[] = {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 };
 
-/* The number in an <action> or <loopType> node of monsterskillinfo.xml; a missing node
-   counts as 0, as on the administrator path. atoi reads only blanks, a sign and digits,
-   which text_decode leaves as they are, so the text is read as stored. */
 static int node_number(struct XmlElement *node)
 {
     return node ? atoi(node_text(node)) : 0;
@@ -125,7 +122,6 @@ const char *session_get_state_name(struct Session *self, int state)
     }
 }
 
-/* Copies length bytes of a talk line into out[size], cut by whole characters. */
 static void talk_copy(char *out, size_t size, const char *text, size_t length)
 {
     if (!size)
@@ -149,7 +145,6 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
     node = xml_find_child(&self->monsterTalkTable.root, text_decode(key));
     if (!node)
         return;
-    /* A job past the name table has no entry, like a monster without one. */
     if (job < 0 || (size_t)job >= VEC_COUNT(&g_session1.reqJobNames, const char *))
         return;
     _snprintf_s(name, sizeof name, _TRUNCATE, "%s", ((const char **)g_session1.reqJobNames.first)[job]);
@@ -160,8 +155,6 @@ void session_get_monster_talk_info(struct Session *self, int job, int state, int
     stateName = session_get_state_name(&g_session1, state);
     if (!stateName)
         return;
-    /* Keys and lines are decoded once, in copies: the state name is a string literal,
-       and decoding a node's text in place would flip it on every call. */
     _snprintf_s(stateKey, sizeof stateKey, _TRUNCATE, "%s", stateName);
     stateNode = xml_find_child(node, text_decode(stateKey));
     if (!stateNode)
@@ -244,16 +237,12 @@ void session_get_pet_speak(struct Session *self, int petJob, int hunger, int act
     if (count) {
         const char *line = ((const char **)lines.first)[rand() % (int)count];
 
-        /* The Korean-service mirror maps lead and trail bytes to lead and trail bytes,
-           so cutting before decoding keeps the same whole characters. */
         talk_copy(out, out_size, line, strlen(line));
         text_decode(out);
     }
     vec_free(&lines);
 }
 
-/* Builds "name : line" in a String and copies it into out[out_size], cut by whole
-   characters; text is copied as text and not written. */
 void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid,
                                        int replaceWords)
 {
@@ -279,8 +268,6 @@ void session_format_chat_line(struct Session *self, const char *text, char *out,
             const char *replacement = g_talkWords[g_talkWordCount + i];
             size_t length = strlen(replacement), offset = (size_t)(at - string_cstr(&line)), tail;
 
-            /* As before, the rest is taken from the source at the word's offset in the line
-               plus the replacement's length, but never from past the source's end. */
             tail = offset + length < source_size ? offset + length : source_size;
             string_truncate(&line, offset);
             string_append(&line, replacement, length);

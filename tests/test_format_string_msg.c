@@ -9,11 +9,6 @@
 #include "ui/window_manager_state.h"
 #include "ui/window_messages.h"
 
-/* Run the production game_mode_format_string_msg (ZC_FORMATSTRING_MSG) on packets
-   followed by bytes that are not NUL. Its arguments are NUL-terminated strings one
-   after another; each must be read no further than the packet length, so an argument
-   that runs to the end of the packet ends there and those after it are empty. The
-   %s count must stop at the end of a message that ends in a DBCS lead byte. */
 
 struct UIWindowMgr g_windowMgr;
 static char pushed[0x200];
@@ -21,7 +16,6 @@ static int pushes, cases;
 
 __declspec(noreturn) void fatal_error(const char *message) { (void)message; abort(); }
 
-/* A message that ends in a CP949 lead byte, with more %s after its NUL. */
 static const char lead_byte_end[] = "ab\xb0\0%s%s%s%s%s";
 
 char *msg_str(int id)
@@ -49,13 +43,10 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val
     return 0;
 }
 
-/* Lead bytes as in CP949, whatever the code page of the machine running the test. */
 #define IsDBCSLeadByte(c) IsDBCSLeadByteEx(949, (c))
 #include "format_string_msg.inc"
 #undef IsDBCSLeadByte
 
-/* Sends msg_id with the given argument bytes as a packet of exactly that length,
-   followed in memory by 'Z' bytes. */
 static void send_packet_of(unsigned short msg_id, const char *strings, size_t size)
 {
     unsigned char buffer[0x400];
@@ -111,7 +102,6 @@ int main(void)
     check(6, ARGS("x\0"), "ab\xb0");
     check(7, ARGS("x\0"), "\xb0\xa1 x");
 
-    /* An argument without a NUL that is longer than the line fills its 0x104 bytes. */
     memset(longer, 'L', sizeof longer);
     cut[0] = '(';
     memset(cut + 1, 'L', 0x103);

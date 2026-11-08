@@ -7,9 +7,6 @@
 #include "session/state.h"
 #include "std/string.h"
 
-/* Run the production private-airplane map and server moves on the 16-byte map field
-   of their packets, followed by bytes that are not NUL. A full field has no NUL; it must
-   reach the map move and the server move whole, and nothing after it. */
 
 struct Session g_session1;
 static struct GameMode *const test_mode = (struct GameMode *)0x6d6f;
@@ -39,7 +36,6 @@ void game_mode_move_to_server(struct GameMode *self, struct String map_name, int
 
 #include "private_airplane.inc"
 
-/* The packet's map field holding name, then 'Z' bytes. */
 static const char *field(char *buffer, size_t size, const char *name)
 {
     memset(buffer, 'Z', size - 1);
@@ -57,7 +53,6 @@ static void check(const char *name, const char *expected)
     memset(moved, 0x55, sizeof moved);
     game_mode_on_map_move_private_airplane(test_mode, field(buffer, sizeof buffer, name), 12, 34);
     assert(map_moves == before_map + 1 && g_session1.loadingAirplane == 1);
-    /* As game_mode_zc_npcack_mapmove reads the field. */
     assert(moved[0] == 0x91 && moved[1] == 0);
     memcpy(read, moved + 2, 16);
     read[16] = 0;

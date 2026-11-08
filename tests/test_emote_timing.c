@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* Keep production request logic; replace only clock and packet boundaries. */
 typedef uint32_t DWORD;
 struct GameMode { unsigned emotion_time; int emotion_pending; };
 _Static_assert(sizeof(unsigned) == sizeof(uint32_t), "32-bit client tick state");
@@ -34,7 +33,6 @@ static void check_interval(uint32_t previous, uint32_t elapsed, int should_send)
     CHECK(mode.emotion_time == (should_send ? clock_now : previous));
     if (should_send) {
         CHECK(sent_id == 0xbf && sent_emotion == 58);
-        /* A long elapsed interval must not bypass an outstanding animation. */
         clock_now += 10000;
         game_mode_msg_emotion(&mode, 2);
         CHECK(sent == 1 && mode.emotion_time == previous + elapsed);

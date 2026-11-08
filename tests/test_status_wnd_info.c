@@ -5,9 +5,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-/* Restore saved status-window layouts through the production UI_MSG_SET_INFO
-   path. A window saved as a title bar must come back as a title bar and
-   expand to the saved full height. */
 struct Session g_session1;
 struct UIWindowMgr g_windowMgr;
 struct SnapMgr g_snapMgr;
@@ -67,7 +64,6 @@ int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d
     return 0;
 }
 
-/* The state the status-window factory leaves before it sends UI_MSG_SET_INFO. */
 static void create(struct UIStatusWnd *self)
 {
     int i;

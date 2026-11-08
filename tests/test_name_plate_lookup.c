@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Run the production window-ID lookup: window 0x12d is the first party name
-   plate, and the cash shop is reachable only through its own ID 0x13e. */
 int g_replayPlaying;
 static struct UIWindowMgr mgr;
 static struct WmWindowEntry registered;

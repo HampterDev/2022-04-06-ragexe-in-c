@@ -11,15 +11,6 @@
 #include "render/fonts.h"
 #include "render/textdc.h"
 
-/* Run the production text_dc_select_font with the production g_3dDevice tables
-   for every face, language index, service type and folder language. Faces past
-   the 12-entry faceCharsets table must not read past it, and must get the
-   charset that the bytes after the table gave them where it mattered:
-   - faces 12-0x13 read 0, ANSI_CHARSET;
-   - SCDream (0x1d) read 0x10101, which fonts truncate to DEFAULT_CHARSET;
-   - the EOT faces 0x14-0x1c, whose LOGFONT has a fixed charset, get
-     ANSI_CHARSET, which decodes text with the same code page as what they read.
-   With language index 0, faces 0x14 and up keep the first entry. */
 
 int g_languageIndex;
 int g_serviceType;
@@ -30,8 +21,6 @@ struct Language *g_language = &language;
 
 #define TABLE_SIZE (sizeof g_3dDevice.faceCharsets / sizeof g_3dDevice.faceCharsets[0])
 
-/* What the old lookup g_3dDevice.faceCharsets[face] read: the four bytes at that
-   position of g_3dDevice, past the table for faces 12 and up. */
 static int read_at(int face)
 {
     int value;

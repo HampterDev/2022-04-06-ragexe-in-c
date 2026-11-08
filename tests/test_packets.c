@@ -152,7 +152,6 @@ int main(void)
     }
 
     {
-        /* 0x1236 is variable with an 8-byte table minimum; 0x7777 has no row. */
         static const unsigned char minimum[] = { 0x36, 0x12, 8, 0, 1, 2, 3, 4 };
         static const unsigned char unknown[] = { 0x77, 0x77, 5, 0, 9 };
         unsigned char framed[8];

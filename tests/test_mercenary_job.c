@@ -8,10 +8,6 @@
 #include "session/state.h"
 #include "world/view_types.h"
 
-/* Run the production mercenary-job predicate and game_actor_dir_of. The mercenary jobs
-   are 6017-6046 (MER_ARCHER01 Mina to MER_SWORDMAN10 Wayne in Hercules' mercenary_db);
-   6048-6052 are the Homunculus S, which this predicate also covers on main. Mina,
-   standing, must face the way every other mercenary does. */
 
 struct Session g_session1;
 static struct View view;
@@ -42,8 +38,6 @@ static void check_range(void)
     }
 }
 
-/* The 8-way direction a standing actor of this job shows, facing deg degrees from the
-   camera. */
 static int facing(int job, float deg)
 {
     struct GameActor actor;
@@ -66,7 +60,6 @@ static void check_facing(void)
             assert(facing(job, angles[i]) == facing(6018, angles[i]));
             ++cases;
         }
-    /* Rounded, not cut down: 40 degrees is direction 1 and 340 direction 0. */
     assert(facing(6017, 40.0f) == 1 && facing(6017, 340.0f) == 0);
 }
 

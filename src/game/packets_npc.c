@@ -419,7 +419,6 @@ void game_mode_zc_say_dialog(struct GameMode *self, const unsigned char *pkt)
 
     self->npc_dialog_open = 1;
     self->npc_dialog_id = packet->aid;
-    /* a length field below the header opens an empty page */
     if (length < 0)
         length = 0;
     if (length > NPC_DIALOG_TEXT_LEN_MAX)

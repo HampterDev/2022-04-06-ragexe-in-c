@@ -101,7 +101,6 @@ static void check_pixels(void)
 {
     const RECT region = {1, 1, 4, 3};
     int mode, bits, x, y;
-    /* Mode 3 covers screenshots with a missing optional logo. */
     for (mode = 1; mode <= 3; ++mode) for (bits = 16; bits <= 32; bits += 16) {
         int width = mode == 1 ? 3 : 5, height = mode == 1 ? 2 : 4;
         reset_capture(bits);

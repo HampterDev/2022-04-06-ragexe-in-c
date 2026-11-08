@@ -21,12 +21,6 @@
 #include "ui/controls/listbox.h"
 #include "ui/items/pet_windows.h"
 
-/* Run the production code that stores names and other text in fixed buffers: pet,
-   homunculus and couple names and the char-server list from the servers, the cut-in
-   image and map names, homunculus and pet names typed by the user or taken from the
-   job names, the saved styling-shop records and a formatted state-change line. Each
-   text is full of printf conversions and must arrive as it was, cut to the buffer, and
-   a full packet field without a NUL must be read no further than the field. */
 
 #define CONVERSIONS "a%d%x%%b"
 #define CONVERSIONS_N "%s%n%s%n"
@@ -77,7 +71,6 @@ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message
 }
 void ui_window_move_safe(struct UIWindow *window, int x, int y) { (void)window; (void)x; (void)y; }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; (void)window_id; abort(); }
-/* The pet windows: the names they are given, which must not run past the field. */
 static char pet_window_name[0x100], other_pet_name[0x100];
 static int invalidations;
 void ui_pet_info_set_name(struct UIWindow *wnd, const char *name)
@@ -111,7 +104,6 @@ static void default_wallpaper(struct LoginMode *self) { (void)self; }
 #include "name_text_server_list.inc"
 #include "name_text_map_helper.inc"
 
-/* The map name from a server-move packet, with its .gat extension. */
 static void map_name(const char *text)
 {
     struct String map_name, name;
@@ -123,8 +115,6 @@ static void map_name(const char *text)
     string_free(&map_name);
 }
 
-/* The map name from ZC_NPCACK_MAPMOVE, as game_mode_zc_npcack_mapmove takes it from
-   its 16-byte field. The previous code also used shorter. */
 static void mapmove_name(const char *text, char *out, size_t size)
 {
     char name_buf[17];
@@ -141,8 +131,6 @@ static void mapmove_name(const char *text, char *out, size_t size)
     string_free(&map);
 }
 
-/* The map name from HC_NOTIFY_ZONESVR in login_mode_enter_zone. The previous code also
-   used len. */
 static void zone_name(const char *text)
 {
     struct String mapName, map;
@@ -198,7 +186,6 @@ static void state_line(char *text, int index, int val1, int val2)
     }
 }
 
-/* A full field of `fill` followed by bytes that are not NUL, as in a packet. */
 static void full_field(char *field, size_t size, char fill)
 {
     memset(field, fill, size);
@@ -271,7 +258,6 @@ static void check_pet_names(void)
     check(pet_window_name, "QQQQQQQQQQQQQQQQQQQQQQQQ");
     assert(invalidations == 3);
 
-    /* Another player's pet goes to the item collection window. */
     strcpy(g_session1.petName, "kept");
     packet.pet.level = PET_LEVEL_OTHER + 3;
     strcpy(packet.pet.name, CONVERSIONS_N);
@@ -355,7 +341,6 @@ static void check_server_list(void)
     server_list(&login);
     check(listed, "(N) SSSSSSSSSSSSSSSSSSSS");
 
-    /* Colored lines with long busy and state messages are cut to text[0x40]. */
     e->usercount = 1;
     busy_text = "B";
     server_list(&login);
@@ -371,14 +356,11 @@ static void check_server_list(void)
     state_text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
     server_list(&login);
     check(listed, "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
-    /* 7 + 55 bytes, then a two-byte CP949 character over the 63-byte limit. */
     e->usercount = 0;
     e->state = 0;
     busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\xb0\xa1";
     server_list(&login);
     check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
-    /* A colour code that the cut would split is left out whole; one that ends at the
-       limit stays. */
     busy_text = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
     server_list(&login);
     check(listed, "^00B509BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB  ");
@@ -412,7 +394,6 @@ static void check_map_name(void)
     check(whole, "abcdefghijklmnopqrs");
     map_name("prontera.gat");
     check(whole, "prontera");
-    /* Four bytes or more lose the last four; a shorter name is kept. */
     map_name("x.gat");
     check(whole, "x");
     map_name(".gat");
@@ -424,7 +405,6 @@ static void check_map_name(void)
     map_name("");
     check(whole, "");
 
-    /* The same at the other two places that drop the extension. */
     {
         static const char *const names[][2] = {
             { "prontera.gat", "prontera" }, { "abcdefghijkl.gat", "abcdefghijkl" },

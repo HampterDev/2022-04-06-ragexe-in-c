@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Run the production ZC_ACK_RANDOM_UPGRADE_ITEM handler against controlled
-   synthesis (0x122) and upgrade (0x12e) windows. */
 struct UIWindowMgr g_windowMgr;
 static struct UIWindow synthesis_box, upgrade_box;
 static struct UIWindow *open_synthesis, *open_upgrade;

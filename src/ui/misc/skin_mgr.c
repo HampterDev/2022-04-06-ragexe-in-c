@@ -190,7 +190,6 @@ void skin_mgr_scan(struct SkinMgr *self)
             string_free(&path);
             continue;
         }
-        /* A file without an extension is not a zip skin: skip it like any other file. */
         extension = str_find_last(fd.cFileName, '.');
         if (!extension)
             continue;

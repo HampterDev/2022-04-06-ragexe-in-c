@@ -299,7 +299,6 @@ struct UIWindow *ui_window_mgr_make_window(struct UIWindowMgr *self, int window_
                     sizeof window_id);
     }
     wnd = make_window_by_id(self, window_id);
-    /* ESC closes the listed IDs; a request that left no window must not stay listed. */
     if (wnd == NULL && tracked && ui_window_mgr_get_window(self, window_id) == NULL)
         ui_window_mgr_forget_window_id(self, window_id);
     return wnd;

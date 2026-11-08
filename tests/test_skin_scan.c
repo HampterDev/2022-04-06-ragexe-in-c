@@ -9,9 +9,6 @@
 #include "std/string_vec.h"
 #include "ui/skin_manager.h"
 
-/* Run the production skin_mgr_scan over a fake .\skin folder. Folders become skins and
-   .zip files zip skins; every other file is skipped, including one without a '.' in its
-   name, for which str_find_last returns NULL. */
 
 struct Entry {
     const char *name;
@@ -116,7 +113,6 @@ int main(void)
     check_skins(&mgr, names, paths, zip, 3);
     assert(mgr.current == 2 && finds == 1 && closes == 1);
 
-    /* A folder of files without extensions has no skins. */
     listing = only_plain;
     listed = 1;
     skin_mgr_scan(&mgr);

@@ -6,11 +6,6 @@
 #include "login/loginmode.h"
 #include "platform/clientinfo.h"
 
-/* Load the connection and subconnection lists with the production
-   login_mode_load_connections and login_mode_load_sub_connections from a parsed
-   clientinfo.xml, after filling the stack with a pattern. Every entry, and every
-   entry built by login_conn_entry_construct, must have version and service_type
-   zero instead of whatever the stack held. */
 
 BYTE g_hideAccountList;
 static struct XmlDocument doc;

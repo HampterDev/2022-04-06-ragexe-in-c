@@ -129,7 +129,6 @@ static int check_literal_names(void)
     for (i = 0; i < sizeof bytes; ++i) bytes[i] = (char)i;
     failures += check_literal_name("all 256 byte values", bytes, sizeof bytes);
     memset(long_name, 'x', sizeof long_name);
-    /* Exercise escaping at output-buffer boundaries and before decimal digits. */
     for (i = 0; i < sizeof long_name; i += 127) long_name[i] = '\\';
     long_name[255] = '\1'; long_name[256] = '2'; long_name[257] = '3';
     failures += check_literal_name("long mixed name", long_name, sizeof long_name);

@@ -1,5 +1,3 @@
-/* Helpers of the text viewer's other link kinds (navigation, item, tip box,
-   quest) that the URL link test never reaches. Each stops the test if called. */
 #include <stdlib.h>
 
 #define UNREACHED(name) void name(void) { abort(); }

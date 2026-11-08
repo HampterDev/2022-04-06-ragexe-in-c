@@ -1,7 +1,3 @@
-/* Meteor storm (RagEffect 90): the waves and quakes of frames 0-300 must be those of the
-   original's case 90, which plays wizard_meteo and hunter_blastmine at frame 0, hunter_blastmine
-   at 10, wizard_meteo at 20, 50, 80, 100, 130, 140, 180 and 200, and quakes every 50 frames from
-   50 to 250. */
 #include "effects/rag/rag_effect.h"
 #include <assert.h>
 #include <stdio.h>

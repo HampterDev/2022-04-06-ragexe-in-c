@@ -34,7 +34,6 @@ static void write_name(struct LayoutWriter *file, struct TextView name)
             used = 0;
         }
         if (byte < 32 || byte > 126 || byte == '"' || byte == '\\') {
-            /* Three decimal digits prevent a following digit joining the escape. */
             buffer[used++] = '\\';
             buffer[used++] = (char)('0' + byte / 100);
             buffer[used++] = (char)('0' + byte / 10 % 10);

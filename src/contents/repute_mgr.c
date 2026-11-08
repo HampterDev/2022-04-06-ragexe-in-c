@@ -114,7 +114,6 @@ static void add_group_infos(const struct ReputeMgr *self, struct Vec *out, const
     }
 }
 
-/* A NULL manager (its allocation failed) has no groups and no infos, as one whose file did not load. */
 struct Vec *repute_mgr_group_names(struct ReputeMgr *self, struct Vec *out)
 {
     struct TreeNode *it;

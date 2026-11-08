@@ -161,9 +161,6 @@ int talk_option_set(const char *text, int value)
         return 0;
     if (!talk_option_settings_add(&g_session1.talkOptionSettings, text_view_cstr(text), option, value))
         return 0;
-    /* The client stores every option as an int, the one-byte name option too, so the int's second byte
-     * lands on /loading's flag right after it: the name option restored at start-up leaves the loading
-     * screens taking turns rather than coming at random. */
     if (option.byte == &g_session1.showName)
         g_session1.loadingScreenRandom = (BYTE)((unsigned)value >> 8);
     if (option.type == TALK_SHOW_NAME)

@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Extract the production helper; substitute only its Lua lookup boundary. */
 struct Session { struct ClientLua *luaState; };
 static struct Session session;
 static const char *lua_name;

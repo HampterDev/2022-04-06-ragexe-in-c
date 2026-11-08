@@ -218,7 +218,6 @@ struct EnchantMgr *enchant_mgr_construct(struct EnchantMgr *self)
 
 struct EnchantList *enchant_mgr_find_list(struct EnchantMgr *self, unsigned __int64 id)
 {
-    /* A NULL manager (its allocation failed) has no lists, as one whose file did not load. */
     struct EnchantListEntry *entry = self ? tree_find(&self->lists, &id, tree_less_uint64) : NULL;
 
     return entry ? &entry->list : NULL;

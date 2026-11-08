@@ -1,5 +1,3 @@
-/* Window constructors and helpers that make_window.c references but the
-   ESC window-ID list test never reaches. Each stops the test if called. */
 #include <stdlib.h>
 
 #define UNREACHED(name) void name(void) { abort(); }

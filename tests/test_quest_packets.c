@@ -169,7 +169,6 @@ int main(void)
             short done202 = quests[1].value.plain.hunt_done[0];
             fn(NULL, packet, used);
             assert(quests[0].value.plain.hunt_done[0] == 7);
-            /* the hunting info's entry n is looked for from slot n on, so its second entry skips slot 0 */
             if (kind == 2) assert(quests[1].value.plain.hunt_done[0] == done202);
             else assert(quests[1].value.plain.hunt_done[0] == 6 && quests[1].value.plain.hunt_goal[0] == 88);
         }
@@ -177,8 +176,6 @@ int main(void)
         quests[0].value.plain.hunt_count = 0; quests[0].value.plain.hunt_done[0] = 3;
         fn(NULL, packet, used); assert(quests[0].value.plain.hunt_done[0] == (kind == 2 ? 7 : 3));
     }
-    /* the hunting info as the server sends it after a quest is added: one entry per objective, every
-     * monster-type objective under the same id, each landing in its own slot */
     reset(); list_packet(0, 3);
     game_mode_all_quest_list3(NULL, packet, used);
     for (i = 0; i < 3; ++i) quests[0].value.plain.hunt_mob[i] = 31999;
