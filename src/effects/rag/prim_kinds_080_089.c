@@ -208,6 +208,11 @@ void prim_turned_square_render(struct EffectPrim *self, const float *view)
     }
 }
 
+static float table_past_end(const float *table, const float *next, int deg)
+{
+    return deg > 360 ? next[deg - 361] : table[deg];
+}
+
 static void fan_wedge(const struct PrimFanWedge *fw, int lo, int hi, Vec3 p[4])
 {
     int heading = fw->heading, lo_deg, hi_deg;
@@ -216,8 +221,8 @@ static void fan_wedge(const struct PrimFanWedge *fw, int lo, int hi, Vec3 p[4])
     lo_deg = heading + lo;
     if (lo_deg < 0)
         lo_deg += 360;
-    reach = COS_DEG(lo_deg) * length;
-    p[0] = vec3(tilt_cos * reach, tilt_sin * reach + height, SIN_DEG(lo_deg) * length);
+    reach = table_past_end(g_cosTable, g_negCosTable, lo_deg) * length;
+    p[0] = vec3(tilt_cos * reach, tilt_sin * reach + height, table_past_end(g_sinTable, g_negSinTable, lo_deg) * length);
     hi_deg = heading + hi;
     if (hi_deg >= 360)
         hi_deg -= 360;
