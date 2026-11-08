@@ -89,3 +89,32 @@ python finalize.py          map2.tsv <herc-client>/tools/function_map.jsonl func
 
 `herc-client/tools/function_map.jsonl` is that repository's generated inventory
 (`map_modules.py inventory`); the two client-tree snapshots come from `git archive`.
+
+## The switch sweeps
+
+The reconstruction bugs found so far share one shape: a jump-table target dropped, a branch
+attached to the wrong arm, twin cases made alike. Two scripts look for that shape across the
+whole image instead of in the routines someone happens to pick.
+
+- `case_sweep.py` reads every jump table in herc-client's `text/*.inc` with the compare in
+  front of it (base, range, default arm, lookup table) and turns it into the set of switch
+  values it handles; it then matches each table to the lifted C switches that share those
+  values and reports the values no matched switch has (`case_sweep.tsv`; tables matched by no
+  C switch, and tables whose compare the reader could not parse, are listed at the end).
+- `switch_sweep.py` pairs original functions with lifted functions (the map, then shared
+  string literals) and compares table and arm counts; coarser, and kept for functions whose C
+  switches use names rather than numbers.
+- `asm_arm.py TABLE VALUE...` prints the original's arm for a table's value, to read a lead.
+
+Run of 2026-11-08 (767 tables): 688 matched, 31 with values no matched switch has, 49
+unmatched, 30 without a readable compare (jsoncons and security code, and three
+`CMsgEffect::OnProcess` tables jumped through with no range check). Every reported value but
+one was found elsewhere in `src/`: the lift spells many of the original's switches as tables
+(`ez2str_effect_files.c`'s `LOAD(...)` rows, `skill_hit_fx.c`'s per-skill rows, the
+`skill_use_*.c` rows, `skill_info.c`'s ranges), which this sweep cannot see into; the one
+value (`0x13af` in `SKILL_INFO::IsGoodSkillForActor`) sits inside a range row. So the switch
+structure of the lift holds, and the risk moves to those table conversions, which only an
+oracle run of the converted routine can check (`tests/oracle`). The unmatched tables with the
+most arms are the candidates: the str-file-by-effect-type routine at `0x9997a0` (1026 values),
+the state-change message switch at `0x7a0570` (798), the ez2str head-height and after-init
+switches at `0x9959b0` and `0x998cf0`, the skill-use look at `0x8068e0` (15 tables, 529 arms).
