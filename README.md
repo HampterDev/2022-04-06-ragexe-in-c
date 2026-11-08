@@ -24,7 +24,7 @@ client redraws no window at all.
 The tree is reconstructed from this exe:
 
 | file | `2022-04-06_Ragexe_1648707856.exe` |
-| --- | --- |
+| :--- | :--- |
 | SHA-256 | `656b2f274c09dbb99787b3205e51feaac884d761bc11fbe31926acd92b1971a7` |
 | MD5 | `f914d47b44f11dbb73e51146d1993674` |
 
