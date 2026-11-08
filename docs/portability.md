@@ -249,7 +249,7 @@ that DC or the surface's. With FreeType a `DcBitmap` is a heap buffer with the s
 BGRA layout and no device context, and a `TextDC` draws into that buffer, or into a 32-bit
 surface it locks with `gfx_lock` on its first draw (`renderer_text_out`).
 
-`build.bat freetype` (also with `x64` and `dbg`) builds `main_rebuild_ft.exe`, whose text is
+`build.bat freetype` (also with `x64` and `dbg`) builds `ragexe_ft.exe`, whose text is
 drawn by FreeType as off Windows; `vendor\build_vendor.bat` then downloads FreeType 2.13.3, the
 release the Android build uses, and builds it static with CMake, and `tests\scenes\build.bat
 freetype` links the scene harness from those objects. Windows has no Fontconfig, so the font
@@ -449,7 +449,7 @@ character, entered `iz_int03`, walked and chatted. The 21 tests pass there as we
 
 ## 64-bit Windows client
 
-`build.bat x64` builds `build\main_rebuild_x64.exe` (`build.bat x64 dbg`: `main_dbg_x64.exe`) with
+`build.bat x64` builds `build\ragexe_x64.exe` (`build.bat x64 dbg`: `ragexe_dbg_x64.exe`) with
 the same Win32 window, GDI text and Direct3D 9 renderer as the 32-bit client. The only 32-bit parts
 of the 32-bit client are RAD's `granny2.dll` and `mss32.dll`, so the 64-bit build swaps them
 (`PLATFORM_RAD_DLLS` in `platform/win_types.h` is set only for 32-bit Windows):

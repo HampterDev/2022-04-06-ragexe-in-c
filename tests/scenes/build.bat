@@ -24,7 +24,7 @@ if defined TEXT (
 )
 set "OBJ=%BUILD%\obj_scenes%SUFFIX%"
 set "RSP=%BUILD%\ragexe_scenes%SUFFIX%.objs.rsp"
-if not exist "%BUILD%\main_rebuild%SUFFIX%.objs.rsp" ( echo Run build.bat %ARCH% first. & exit /b 1 )
+if not exist "%BUILD%\ragexe%SUFFIX%.objs.rsp" ( echo Run build.bat %ARCH% first. & exit /b 1 )
 if not exist "%OBJ%" mkdir "%OBJ%"
 
 call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
@@ -41,7 +41,7 @@ if errorlevel 1 ( echo *** scene harness compilation FAILED *** & exit /b 1 )
 
 REM The client's objects without the ones the harness replaces.
 type nul > "%RSP%"
-for /f "usebackq delims=" %%l in ("%BUILD%\main_rebuild%SUFFIX%.objs.rsp") do (
+for /f "usebackq delims=" %%l in ("%BUILD%\ragexe%SUFFIX%.objs.rsp") do (
   set "skip="
   for %%n in (net_win32 clock_win32 thread_win32 drive_state settings_win32 window_win32 crash_dialog) do if /i "%%~nl"=="%%n" set "skip=1"
   if not defined skip >> "%RSP%" echo %%l

@@ -1,7 +1,7 @@
 @echo off
 setlocal
 set "ROOT=%~dp0.."
-set "EXE=%ROOT%\build\main_rebuild.exe"
+set "EXE=%ROOT%\build\ragexe.exe"
 if not "%~1"=="" set "EXE=%~1"
 if not exist "%EXE%" (
     echo cps imports: %EXE% not found; run build.bat first.

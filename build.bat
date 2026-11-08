@@ -1,12 +1,12 @@
 @echo off
-REM build.bat          -> build\main_rebuild.exe      (32-bit release)
-REM build.bat dbg      -> build\main_dbg.exe          (optimized, with build\main_dbg.pdb)
-REM build.bat x64      -> build\main_rebuild_x64.exe  (64-bit; build.bat x64 dbg -> main_dbg_x64.exe)
-REM build.bat freetype -> build\main_rebuild_ft.exe   (text through FreeType instead of GDI, as off
-REM                       Windows; with x64 -> main_rebuild_x64_ft.exe)
+REM build.bat          -> build\ragexe.exe      (32-bit release)
+REM build.bat dbg      -> build\ragexe_dbg.exe  (optimized, with build\ragexe_dbg.pdb)
+REM build.bat x64      -> build\ragexe_x64.exe  (64-bit; build.bat x64 dbg -> ragexe_dbg_x64.exe)
+REM build.bat freetype -> build\ragexe_ft.exe   (text through FreeType instead of GDI, as off
+REM                       Windows; with x64 -> ragexe_x64_ft.exe)
 REM build.bat check    -> also checks the library table on the objects it built
 REM                       (tools\check_libraries.bat; combines with the other words)
-REM build.bat libs     -> build\main_libs_rebuild.exe: the same objects, archived per library of
+REM build.bat libs     -> build\ragexe_libs.exe: the same objects, archived per library of
 REM                       tools\libraries.txt (build\obj_libs\*.lib, next to the variant's object
 REM                       folder) and linked as app's objects plus those libraries; combines with
 REM                       the other words
@@ -36,18 +36,18 @@ if defined TEXT set "SUFFIX=%SUFFIX%_ft"
 set "VDIR=%BUILD%\vendor"
 if "%ARCH%"=="x64" set "VDIR=%BUILD%\vendor_x64"
 if defined WANTDBG (
-  set "OUT=main_dbg%SUFFIX%"
+  set "OUT=ragexe_dbg%SUFFIX%"
   set "OBJ=%BUILD%\obj_dbg%SUFFIX%"
-  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:main_dbg%SUFFIX%.pdb"
+  set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:ragexe_dbg%SUFFIX%.pdb"
   set "CDBG=/Z7"
 ) else (
-  set "OUT=main_rebuild%SUFFIX%"
+  set "OUT=ragexe%SUFFIX%"
   set "OBJ=%BUILD%\obj%SUFFIX%"
   set "LINKDBG="
   set "CDBG="
 )
 if not exist "%OBJ%" mkdir "%OBJ%"
-if defined LIBS set "OUT=%OUT:main_=main_libs_%"
+if defined LIBS set "OUT=%OUT:ragexe=ragexe_libs%"
 if defined LIBS if defined WANTDBG set "LINKDBG=/DEBUG /INCREMENTAL:NO /PDBALTPATH:%OUT%.pdb"
 
 call "%ROOT%tools\find_vcvars.bat" || exit /b 1
