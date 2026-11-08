@@ -12711,3 +12711,31 @@ Clean exports of both commits (`build/snap/s1`, `s2`; the table commit was valid
   GCC 13.3): CTest 28 of 28, 1,665 warnings as before.
 
 Not run: macOS and Android, a live client.
+
+## Consolidation and rename to custom (2026-11-08)
+
+Patrick asked for the branches to be cleaned up around three lines: `main`, `plv` and this one,
+renamed from `purist` to `custom` because it is his client with opinionated changes rather than
+only a reduced base.
+
+- `purist-portable` and the `port/*` branches were already merged; they and their worktrees are
+  deleted. `purist-libs` (the library layering and the knot split) and the effect gallery
+  (`claude/happy-pike-eb58aa`) are merged with `--no-ff`; the gallery's index row for the
+  no-canvas fix was taken into the newer index by hand.
+- The fixes `main` had that `custom` did not are picked, recorded in
+  [the upstream index](upstream/README.md#foundation-fixes-ported-from-main-2026-11-08). Of
+  `main`'s reverts of its own fixes, Patrick asked for each to be checked: two rested on a
+  misreading (the whip shimmer, the NPC music status) and are followed, with the quest journal's
+  extra tab; the others undo deliberate improvements and are not.
+- The oracle tests are not ported: none passes on `custom` unchanged. The parity harness, the
+  no-comment pass and `main`'s README and `docs/changes.md` rewrites are left out.
+- The executables are `ragexe*.exe`, as on `main`; `AGENTS.md` says how to work on this branch.
+
+### Validation
+
+- `build.bat check` and `build.bat x64`: no compiler, librarian or linker warnings; the include
+  and link checks pass (1,822 files in 22 libraries, 1,151 objects).
+- The full `tests\build.bat` passes after the merges and again at the end, 268 result lines (one
+  more than after the merges, for the vending retry test).
+
+Not run: `freetype` and `libs` variants, CMake, Linux, macOS and Android, a live client.
