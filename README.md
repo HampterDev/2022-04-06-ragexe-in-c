@@ -336,8 +336,8 @@ Data, time and leaks:
   cell, the last effect ids and the render checkpoint. The original's error dialog then shows
   the report, and it can be copied from there.
 - With `RAGEXE_OVERLAY=1` the client draws an FPS and frame-phase overlay
-  (scene, present, logic, text, busiest render lists, draw and state counts). Scroll Lock
-  toggles it in any session.
+  (scene, present, logic, text, busiest render lists, draw and state counts). Without
+  it the overlay never shows; with it, Scroll Lock hides and shows it.
 - With `RAGEXE_DRIVE_STATE=<file>` the client rewrites that file about four
   times a second with `key=value` lines. They hold the mode and screen, the map, the
   character's cell, HP, SP and level, the pickable actors with their screen boxes, the open
