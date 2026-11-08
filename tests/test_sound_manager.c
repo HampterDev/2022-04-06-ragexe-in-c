@@ -171,7 +171,7 @@ void __stdcall _AIL_set_stream_volume(void *stream, int volume)
 void __stdcall _AIL_set_stream_loop_count(void *stream, int count)
 { assert(stream == &stream_token && stream_open); loop_count = count; }
 int __stdcall _AIL_stream_status(void *stream)
-{ assert(stream == &stream_token && stream_open); return 4; }
+{ assert(stream == &stream_token && stream_open); return 2; }
 int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
 {
     int index = (int)(INT_PTR)*next;
