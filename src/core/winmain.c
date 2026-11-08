@@ -263,8 +263,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd, int sho
         CreateDirectoryA("Replay", 0);
     else
         FindClose(replay_find);
-    navi_find = FindFirstFileA("Navigationdata", &navi_found);
-    if (navi_find == INVALID_HANDLE_VALUE)
+    navi_find = FindFirstFileA("", &navi_found);
+    if (replay_find == INVALID_HANDLE_VALUE)
         CreateDirectoryA("Navigationdata", 0);
     else
         FindClose(navi_find);
