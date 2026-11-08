@@ -404,6 +404,7 @@ void rag_forest_light(struct RagEffect *self, const char *texture, char style)
             self->offset.z -= 70.0f;
             self->offset.x -= 70.0f;
         }
+        pr->top = self->offset;
         pr->color = (unsigned char)style;
     }
 }
