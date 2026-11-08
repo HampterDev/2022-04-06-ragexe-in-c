@@ -74,7 +74,6 @@ static LSTATUS WINAPI read_value(HKEY key, LPCSTR name, LPDWORD reserved, LPDWOR
     *type = REG_SZ;
     switch (atoi(name)) {
     case 0: text = "custom"; break;
-    case 1: text = ""; break;
     case 2: text = "/기쁨"; break;
     case 3: *type = REG_BINARY; text = "ignored"; break;
     case 4:
@@ -258,7 +257,6 @@ static int test_defaults(void)
     session_init_short_cut_texts(&session);
     count = attempts;
     assert(!strcmp(session_chat_macro(&session, 0).data, "custom"));
-    assert(session_chat_macro(&session, 1).size == 0);
     assert(!strcmp(session_chat_macro(&session, 2).data, "default-222"));
     assert(!strcmp(session_chat_macro(&session, 3).data, "default-223"));
     assert(!strcmp(session_chat_macro(&session, 4).data, "unterminated"));

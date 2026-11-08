@@ -37,7 +37,7 @@ void session_init_short_cut_texts(struct Session *self)
             if (RegQueryValueExA(key, name, NULL, &type, (BYTE *)value, &size) == ERROR_SUCCESS
                 && type == REG_SZ) {
                 value[sizeof value - 1] = 0;
-                if (!owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;
+                if (*value && !owned_text_assign(&replacement.items[i], text_view_cstr(value))) goto failed;
             }
         }
         RegCloseKey(key);
