@@ -3,8 +3,7 @@
 The client is meant to behave like the original exe. The differences below are deliberate;
 any other difference is a reconstruction bug. A change that a patch of the
 [NEMO](https://gitlab.com/4144/Nemo) patcher also makes starts with that patch's name, as
-NEMO lists it. [deviations.md](deviations.md) sets the same changes out as a table of what the
-exe does against what this tree does.
+NEMO lists it.
 
 ## Starting and connecting
 
@@ -31,8 +30,8 @@ exe does against what this tree does.
   The client starts without a launcher argument. The original refused to run unless the
   command line contained `1rag1`, `1sak1`, `1gld1`, `2rag2`, `1eve1` or `1pk1`.
 - [NEMO: Disable Ragexe Filename Check](https://gitlab.com/4144/Nemo/-/blob/master/Patches/DisableFilenameCheck.qs).
-  The start-up process check never stops the client. The original quit with "Please run a
-  genuine Ragnarok client".
+  The start-up process check (the IProcess module scan) never stops the client. The original
+  quit with "Please run a genuine Ragnarok client".
 - [NEMO: Remove hardcoded address/port](https://gitlab.com/4144/Nemo/-/blob/master/Patches/RemoveHardcodedAddress.qs).
   The login server is `<address>:<port>` from `clientinfo.xml`. The original picked a
   built-in `*.ragnarok.co.kr` server by server type, and set the client version and the
@@ -49,6 +48,16 @@ exe does against what this tree does.
 - The GDI check is retired. The original compared gdi32's `TextOutW`
   import with `GetProcAddress` and checked for a debugger. On a mismatch it disconnected and
   quit three times in five, and once due it ran every frame.
+- The integrity list `RagHash.dat`, which Gravity's patcher supplies, is never read; the list
+  stays empty. The original stopped at start-up when the file was missing, held fewer than two
+  entries or failed its checksum.
+- The start-up patch applier is gone. The original's applier opened `data.grf ` (with a
+  trailing space) and returned before writing anything. The open is kept, so a missing `data.grf` is still
+  created empty, as in the original.
+
+`tests/parity/original_patches.txt` patches the original exe the same way for the GameGuard
+blocks, the anti-cheat scans, the IProcess module scan and the integrity list, so that it runs
+outside Gravity's service in the parity harness.
 
 ## Input and text
 
@@ -234,7 +243,8 @@ Data, time and leaks:
 
 - The renderer is Direct3D 9 (fixed function) instead of DirectX 7 (DirectDraw 7 and
   Direct3D 7); DirectDraw is no longer used. Vertex processing is in hardware, with software as
-  the fallback. A lost device is reset and every state the client set is replayed.
+  the fallback. A lost device is reset and every state the client set is replayed. The frame a
+  fade-out starts from is saved into a render target instead of a plain surface.
 - The Graphic Device list has one entry per display adapter, named after it ("... (display
   2)" for a second monitor), instead of DirectX 7's "Direct3D HAL" and "T&L HAL" pair.
 - The resolution list takes modes up to 8192x4096 instead of 2048x1440, so
@@ -294,6 +304,8 @@ Data, time and leaks:
   the world's actor list. Ids that are absent are remembered too.
 - An actor's displayed job reads the effect-state mask once instead of
   once per rule (up to forty virtual calls).
+  This and the actor index above are meant to give the original's answers; the oracle tests do
+  not cover them yet.
 - Effect particles reuse the camera angle's sine,
   cosine and rotation matrix while the camera does not turn. The results are the same as
   before, to the bit.
