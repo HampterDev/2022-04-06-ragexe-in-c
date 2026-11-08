@@ -2105,7 +2105,6 @@ void gfx_mesh_destroy(gfx_mesh *m)
 {
     if (!m)
         return;
-    batch_flush();
     mesh_drop_buffers(m);
     if (m->prev)
         m->prev->next = m->next;
@@ -2182,6 +2181,11 @@ static void world_projection(D3DMATRIX *out, const struct GfxWorldView *v, const
     out->_43 = -v->nearZ * v->depthScale / dz;
 }
 
+static BYTE unit_byte(float f)
+{
+    return (BYTE)(f <= 0.0f ? 0 : f >= 1.0f ? 255 : (int)(f * 255.0f + 0.5f));
+}
+
 static DWORD float_bits(float f)
 {
     DWORD d;
@@ -2190,12 +2194,20 @@ static DWORD float_bits(float f)
 }
 
 /* The fixed-function pipeline transforms the mesh and computes its vertex fog from the view-space
-   depth, as rp_vertex_fog_alpha does for a pre-transformed vertex; the states it needs for that are
-   set around the draw and put back after it. */
+   depth, as rp_vertex_fog_alpha does for a pre-transformed vertex. A colour scale other than white
+   goes through its lighting with only the global ambient light, the scale, taking the material's
+   ambient colour and alpha from the vertex: that gives colour times scale, to within a step. The
+   states it needs are set around the draw and put back after it. */
 void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
 {
     static const D3DRENDERSTATETYPE ids[] = { D3DRS_LIGHTING, D3DRS_RANGEFOGENABLE, D3DRS_FOGVERTEXMODE,
-                                              D3DRS_FOGTABLEMODE, D3DRS_FOGSTART, D3DRS_FOGEND };
+                                              D3DRS_FOGTABLEMODE, D3DRS_FOGSTART, D3DRS_FOGEND,
+                                              D3DRS_AMBIENT, D3DRS_COLORVERTEX, D3DRS_AMBIENTMATERIALSOURCE,
+                                              D3DRS_DIFFUSEMATERIALSOURCE, D3DRS_EMISSIVEMATERIALSOURCE,
+                                              D3DRS_SPECULARENABLE };
+    const float *scale = d9.worldView.colourScale;
+    int lit = scale[0] != 1.0f || scale[1] != 1.0f || scale[2] != 1.0f;
+    D3DMATERIAL9 material, savedMaterial;
     static const float identity[12] = { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 };
     DWORD saved[sizeof ids / sizeof ids[0]], values[sizeof ids / sizeof ids[0]];
     D3DMATRIX world, view, proj;
@@ -2219,16 +2231,29 @@ void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
     IDirect3DDevice9_SetTransform(d9.dev, D3DTS_WORLD, &world);
     IDirect3DDevice9_SetTransform(d9.dev, D3DTS_VIEW, &view);
     IDirect3DDevice9_SetTransform(d9.dev, D3DTS_PROJECTION, &proj);
-    values[0] = FALSE;
+    values[0] = lit;
     values[1] = FALSE;
     values[2] = D3DFOG_LINEAR;
     values[3] = D3DFOG_NONE;
     values[4] = float_bits(d9.worldView.fogStart);
     values[5] = float_bits(d9.worldView.fogEnd);
-    for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
+    values[6] = D3DCOLOR_ARGB(255, unit_byte(scale[0]), unit_byte(scale[1]), unit_byte(scale[2]));
+    values[7] = TRUE;
+    values[8] = D3DMCS_COLOR1;
+    values[9] = D3DMCS_COLOR1;
+    values[10] = D3DMCS_MATERIAL;
+    values[11] = FALSE;
+    for (i = 0; i < (lit ? sizeof ids / sizeof ids[0] : 6); i++) {
         if (FAILED(IDirect3DDevice9_GetRenderState(d9.dev, ids[i], &saved[i])))
             saved[i] = values[i];
         IDirect3DDevice9_SetRenderState(d9.dev, ids[i], values[i]);
+    }
+    if (lit) {
+        memset(&material, 0, sizeof material);
+        if (FAILED(IDirect3DDevice9_GetMaterial(d9.dev, &savedMaterial)))
+            savedMaterial = material;
+        IDirect3DDevice9_SetMaterial(d9.dev, &material);
+        IDirect3DDevice9_LightEnable(d9.dev, 0, FALSE);
     }
     IDirect3DDevice9_SetFVF(d9.dev, FVF_MESH);
     IDirect3DDevice9_SetStreamSource(d9.dev, 0, m->vb, 0, sizeof *m->verts);
@@ -2237,8 +2262,13 @@ void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
                                           (UINT)count / 3);
     IDirect3DDevice9_SetStreamSource(d9.dev, 0, NULL, 0, 0);
     IDirect3DDevice9_SetIndices(d9.dev, NULL);
-    for (i = 0; i < sizeof ids / sizeof ids[0]; i++)
+    for (i = 0; i < (lit ? sizeof ids / sizeof ids[0] : 6); i++)
         IDirect3DDevice9_SetRenderState(d9.dev, ids[i], saved[i]);
+    if (lit) {
+        IDirect3DDevice9_SetMaterial(d9.dev, &savedMaterial);
+        if (d9.lightSet)
+            IDirect3DDevice9_LightEnable(d9.dev, 0, TRUE);
+    }
     for (i = 1; i < 4; i++)
         if (d9.xfSet[i])
             IDirect3DDevice9_SetTransform(d9.dev, i == 1 ? D3DTS_WORLD : (D3DTRANSFORMSTATETYPE)i, &d9.xf[i]);

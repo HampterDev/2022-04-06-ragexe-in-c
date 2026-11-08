@@ -38,6 +38,8 @@ static void *model_test_realloc(void *old, size_t size)
 #endif
 #ifdef TEST_RENDER_NODES
 #include "../src/world/model_node.c"
+/* a node's mesh is built on its first draw, which these tests do not reach */
+void gfx_mesh_destroy(gfx_mesh *mesh) { (void)mesh; abort(); }
 #endif
 #ifdef TEST_MODEL_ACTORS
 #define xform actor_xform

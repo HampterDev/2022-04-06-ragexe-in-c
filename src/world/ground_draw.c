@@ -224,10 +224,11 @@ static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
    mesh holds four vertices and two triangles per surface, the corners and their order as
    c3d_ground15_draw_surface gives them to the ground's two-texture quads (a strip, 0 1 2 then
    2 1 3), so the device draws the same triangles with the same colours, texture coordinates and
-   lightmap coordinates. They take the place of those quads while that path would draw a surface
-   with its own colour unscaled: lightmaps and the two-texture path on, the weather colour white.
-   Surfaces with halfAlpha are drawn so only while the player is blind; otherwise
-   c3d_ground15_draw_surface keeps them, as it keeps every surface when the conditions fail. */
+   lightmap coordinates, and the device scales the colours by the weather colour as that path does.
+   They take the place of those quads while lightmaps and the two-texture path are on. Surfaces
+   with halfAlpha take the weather colour only while the player is blind and are drawn so only
+   then; otherwise c3d_ground15_draw_surface keeps them, as it keeps every surface when lightmaps
+   or the two-texture path are off. */
 
 struct GpuSurface {
     struct GndSurface *surface;
@@ -353,8 +354,7 @@ static int gpu_build(struct C3dGround15 *self)
 
 static int gpu_usable(struct C3dGround15 *self)
 {
-    if (!g_waterBumpSupported || !g_lightmap || g_weather.color[0] != 1.0f || g_weather.color[1] != 1.0f
-        || g_weather.color[2] != 1.0f)
+    if (!g_waterBumpSupported || !g_lightmap)
         return 0;
     if (self->gpuState == 0)
         gpu_build(self);
@@ -384,8 +384,9 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
                 continue;
             b->lastFrame = frame;
             for (i = 0; i < draws; i++)
-                renderer_add_mesh_draw(g_renderer, b->mesh, b->draws[i].first, b->draws[i].count, view,
-                                       b->draws[i].texture, b->draws[i].lightmap);
+                renderer_add_mesh_draw(g_renderer, RENDER_GROUND_MESH, b->mesh, b->draws[i].first,
+                                       b->draws[i].count, view, g_weather.color, b->draws[i].texture,
+                                       b->draws[i].lightmap, 0);
             if (!g_playerBlind)
                 for (i = 0; i < b->halfCount; i++)
                     c3d_ground15_draw_surface(self, view, b->half[i], clip);

@@ -12988,7 +12988,7 @@ does not round down) except in the flower beds' z-fighting: 82 pixels in `pronte
 or 183 in each of the six captures of `granny_dead`, `granny_models`, `guild_flags` and
 `hunter_traps` (all in Prontera), none in `camera_level_view`, `iz_int03_enter`, `keyboard` and
 `windows_open`. `build.bat check` passes (1,822 files in 22 libraries, 1,151 objects), and so does
-the full `testsuild.bat`. `test_projection` now checks that `renderer_world_view` puts points on
+the full `tests\build.bat`. `test_projection` now checks that `renderer_world_view` puts points on
 the pixels and depths of `renderer_project_vertex`, with the fog of `rp_vertex_fog_alpha` to one
 step, for three fog ranges, near equal to far among them; `test_renderer_storage` feeds the
 ground-mesh queue and counts the queues with `RENDER_PASS_COUNT`, its render digests as before, and
@@ -12997,3 +12997,64 @@ against SDL3's headers (x64 `cl /W3`); it was not run, and `test_gfx_gl` draws n
 either: `x64`, `freetype` and `libs` builds, CMake, Linux, macOS and Android. Next: the models
 (`model_node_render.c`, whose colours follow blindness, highlight, the actor's alpha and the
 ground lighting per frame), then a shadow-map pass from the map's light direction.
+
+## Model faces drawn from device-projected meshes, and the weather colour (2026-11-08)
+
+Patrick asked for the models next. A model node's faces are lit once when the model is placed
+(`c3d_node_light`: `FaceInfo` colours and the ground-lit `lightInts`), so like the ground they
+can live in a static mesh; what changes per frame is the node's matrix and a few states.
+
+- **What goes into a node's mesh.** `world/model_node_render.c` builds it on the node's first
+  draw: three vertices per face with the position, the `FaceInfo` texture coordinates and the
+  colour `face_colours` gives (the `lightInts` while `g_weather.ground_lighting` is on, the
+  `FaceInfo` colour otherwise, alpha 0xff), grouped into runs of one texture, one-sided and
+  twoSided apart. Faces of an alpha-keyed texture (format 1) stay out, as do version 2 faces whose
+  texture has a texture-coordinate animation (`uv_xform_find`): those go into the sorted alpha
+  lists or need new coordinates every frame. A node with more than 21,845 faces or a corner
+  outside its vertices keeps the CPU path. The mesh is rebuilt when `ground_lighting` changes.
+- **When it is drawn.** While the actor is opaque (alpha 0xff), the player is not blind (that
+  path uses the weather tint) and the node is not highlighted; otherwise the node's faces take the
+  old path that frame. The mesh's draws go into `RENDER_MODEL_MESH`, flushed right after
+  `RENDER_OPAQUE_CLAMP` with its states, where those faces' quads went. The faces the mesh holds are
+  skipped in the CPU loops, and a node whose faces are all in it skips the CPU projection.
+- **Projection and culling.** A child node is drawn with its parent's matrix to view space as its
+  "view", so each node's own matrix to view space (`m`, the one `project()` uses) is the mesh's
+  view matrix; no separate model matrix is needed. The CPU loops cull by the screen winding, and the
+  two versions test it opposite ways: version 1 keeps the faces that turn counter-clockwise on
+  screen (y down), version 2 the clockwise ones, swapped for a mirrored actor (`mirrored`, from the
+  signs of its scale), and twoSided faces are kept either way. The draws carry the matching cull
+  mode (`GFX_CULL_CW`, the new `GFX_CULL_CCW`, or none), which `flush_mesh_queue` sets and puts
+  back.
+- **The weather colour on the device.** The ground and the models drew from meshes only while
+  `g_weather.color` was white, but that colour is `1 - (1 - ambient) * (1 - diffuse)` of the map's
+  own light, white only where one of them is, and it changes while weather darkens the light; the
+  indoor map `iz_int03` never used the meshes. `struct GfxWorldView` gains `colourScale`, which
+  `renderer_add_mesh_draw` takes with each draw. GL multiplies and rounds down in the vertex shader
+  as `face_colours` and `c3d_ground15_draw_surface` do. Direct3D 9 turns on fixed-function
+  lighting for a draw whose scale is not white, with the global ambient light set to the scale, the
+  material's ambient colour and alpha from the vertex, no emissive or specular and light 0 off, so
+  the colour is the vertex colour times the scale to within a step; the states, the material and
+  light 0 are put back after the draw. A white scale draws without lighting, as before.
+- **Destroying a mesh** no longer flushes the vertex batch; meshes are made, drawn and destroyed on
+  the drawing thread, as `gfx.h` now says.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the same captures of the unchanged
+objects (pixels differing by more than one step, then by more than 16):
+
+| capture | > 1 | > 16 |
+|---|---|---|
+| `prontera_crowd` | 1,176 | 114 |
+| `granny_dead` (2), `granny_models`, `guild_flags` (2), `hunter_traps` | 242 to 272 | 209 to 231 |
+| `camera_level_view`, moving and still | 17 and 244 | 12 and 204 |
+| `iz_int03_enter`, `keyboard`, `windows_open` | 12, 3, 10 | 6, 2, 4 |
+
+In `prontera_crowd`, 1,095 of them are new against the ground-only build, nearly all off by two to
+seven steps in the water over the fountain's basin (the basin's texture coordinates interpolated a
+little differently under the blend). The others are the flower beds' row, rows of single pixels
+along thin model edges, and places where a ground cell's wall and a model's face lie in one plane;
+no face is missing or added. `iz_int03` is now drawn from the meshes, and about 40,000 of its
+pixels differ by one step (the scale's rounding), the rest on the edges of a hanging chain.
+`build.bat check` and the full `tests\build.bat` pass; `test_renderer_storage` queues a model
+draw with a cull mode as well, and `test_projection` checks the colour scale `renderer_world_view`
+passes on. Not run: GL, `x64`, `freetype`, `libs`, CMake and the other platforms. No frame-time
+measurement was made.

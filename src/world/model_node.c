@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "base.h"
+#include "render/gfx.h"
 #include "world/model.h"
 #include "world/model_node_util.h"
 
@@ -22,9 +23,24 @@ static struct C3dNode *model_node_allocate(int version)
     return node;
 }
 
+void model_node_gpu_free(struct C3dNode *node)
+{
+    struct ModelGpu *g = node->gpu;
+
+    if (g) {
+        gfx_mesh_destroy(g->mesh);
+        free(g->draws);
+        free(g->inMesh);
+        free(g);
+    }
+    node->gpu = NULL;
+    node->gpuState = 0;
+}
+
 void model_node_destroy(struct C3dNode *node, int version)
 {
     size_t i;
+    model_node_gpu_free(node);
     if (version == 2) free(((struct C3dNodeV2 *)node)->uvXforms);
     for (i = 0; i < node->childCount; ++i)
         if (node->children[i]) model_node_destroy(node->children[i], version);

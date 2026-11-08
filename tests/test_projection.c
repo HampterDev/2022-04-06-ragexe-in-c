@@ -178,13 +178,15 @@ static void test_world_view(struct Renderer *renderer)
     static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
     static const float fog[3][2] = {{0.2f, 0.8f}, {0.0f, 1.0f}, {0.5f, 0.5f}};
     static const Vec3 points[4] = {{0, 0, 0}, {120, 35, -80}, {-200, 10, 400}, {35, -60, 900}};
+    static const float scales[3][3] = {{1, 1, 1}, {0.5f, 0.75f, 1}, {0, 0.25f, 0.9f}};
     struct GfxWorldView world;
     int f, i;
     for (f = 0; f < 3; ++f) {
         g_fogNear = fog[f][0];
         g_fogFar = fog[f][1];
-        renderer_world_view(renderer, view, &world);
+        renderer_world_view(renderer, view, f ? scales[f] : NULL, &world);
         assert(!memcmp(world.view, view, sizeof view));
+        assert(!memcmp(world.colourScale, scales[f], sizeof world.colourScale));
         assert(world.nearZ == RENDER_NEAR_Z && world.depthScale == RENDER_DEPTH_SCALE);
         assert(world.centre[0] == (float)renderer->centreX && world.centre[1] == (float)renderer->centreY);
         for (i = 0; i < 4; ++i) {

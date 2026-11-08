@@ -50,12 +50,15 @@ struct RPTwoTexQuad {
 
 struct gfx_mesh;
 
-/* custom: a draw of part of a static world mesh (render/gfx.h), queued like the primitives above;
-   view is the view matrix it is drawn with (render/rp_project.c) */
+/* custom: a draw of part of a static mesh (render/gfx.h), queued like the primitives above; view
+   takes the mesh's own coordinates to view space (render/rp_project.c), scale multiplies its
+   colours, and cull is the cull mode it is drawn with, 0 for the one its queue's flush has set */
 struct RPMeshDraw {
     struct gfx_mesh *mesh;
     int first, count;
     float view[12];
+    float scale[3];
+    int cull;
 };
 
 struct PrimTriangle {

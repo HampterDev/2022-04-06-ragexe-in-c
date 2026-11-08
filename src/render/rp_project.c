@@ -86,11 +86,15 @@ float sprite_ground_squash(const float *up, const float *pos)
     return s < 1.5f ? s : 1.5f;
 }
 
-void renderer_world_view(const struct Renderer *self, const float *view, struct GfxWorldView *out)
+void renderer_world_view(const struct Renderer *self, const float *view, const float *scale,
+                         struct GfxWorldView *out)
 {
     float range = g_fogFar - g_fogNear;
+    int i;
 
     memcpy(out->view, view, sizeof out->view);
+    for (i = 0; i < 3; i++)
+        out->colourScale[i] = scale ? scale[i] : 1.0f;
     out->proj[0] = self->proj[0];
     out->proj[1] = self->proj[1];
     out->centre[0] = (float)self->centreX;

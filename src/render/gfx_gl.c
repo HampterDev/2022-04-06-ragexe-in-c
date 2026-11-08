@@ -87,6 +87,7 @@
     X(void, glUniform1i, (GLint location, GLint value)) \
     X(void, glUniform1f, (GLint location, GLfloat value)) \
     X(void, glUniform2f, (GLint location, GLfloat a, GLfloat b)) \
+    X(void, glUniform3f, (GLint location, GLfloat a, GLfloat b, GLfloat c)) \
     X(void, glUniform4f, (GLint location, GLfloat a, GLfloat b, GLfloat c, GLfloat d)) \
     X(void, glUniform4i, (GLint location, GLint a, GLint b, GLint c, GLint d)) \
     X(void, glUniformMatrix4fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)) \
@@ -145,12 +146,12 @@ struct gfx_mesh {
 
 enum {
     U_VIEWPORT, U_STAGE0, U_STAGE0B, U_STAGE1, U_STAGE1B, U_FLAGS, U_ALPHAREF, U_FOGCOLOR, U_TFACTOR,
-    U_BUMPMAT, U_TEX0, U_TEX1, U_MESH, U_XFORM, U_MESHFOG, U_COUNT
+    U_BUMPMAT, U_TEX0, U_TEX1, U_MESH, U_XFORM, U_MESHFOG, U_MESHSCALE, U_COUNT
 };
 
 static const char *const uniform_names[U_COUNT] = {
     "u_viewport", "u_stage0", "u_stage0b", "u_stage1", "u_stage1b", "u_flags", "u_alpharef", "u_fogcolor",
-    "u_tfactor", "u_bumpmat", "u_tex0", "u_tex1", "u_mesh", "u_xform", "u_meshfog"
+    "u_tfactor", "u_bumpmat", "u_tex0", "u_tex1", "u_mesh", "u_xform", "u_meshfog", "u_meshscale"
 };
 
 static struct {
@@ -200,6 +201,7 @@ static const char vertex_source[] =
     "uniform int u_mesh;\n"
     "uniform mat4 u_xform;\n"
     "uniform vec2 u_meshfog;\n"
+    "uniform vec3 u_meshscale;\n"
     "out vec4 v_diffuse;\n"
     "out vec4 v_specular;\n"
     "out vec2 v_uv0;\n"
@@ -220,6 +222,7 @@ static const char vertex_source[] =
     "                           h.z * 2.0 - h.w, h.w);\n"
     "        float fog = clamp((u_meshfog.y - h.w) / (u_meshfog.y - u_meshfog.x), 0.0, 1.0);\n"
     "        v_specular = vec4(0.0, 0.0, 0.0, floor(fog * 255.0) / 255.0);\n"
+    "        v_diffuse.rgb = floor(floor(v_diffuse.rgb * 255.0 + 0.5) * u_meshscale) / 255.0;\n"
     "    } else {\n"
     "        float w = a_pos.w > 0.0 ? 1.0 / a_pos.w : 1.0;\n"
     "        vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
@@ -1016,7 +1019,6 @@ void gfx_mesh_destroy(gfx_mesh *m)
 {
     if (!m)
         return;
-    batch_flush();
     mesh_drop_buffers(m);
     if (m->prev)
         m->prev->next = m->next;
@@ -1088,6 +1090,8 @@ void gfx_draw_mesh(gfx_mesh *m, const float *model, int first, int count)
     p_glUniform1i(gl.uniforms[U_MESH], 1);
     p_glUniformMatrix4fv(gl.uniforms[U_XFORM], 1, GL_FALSE, xform);
     p_glUniform2f(gl.uniforms[U_MESHFOG], gl.worldView.fogStart, gl.worldView.fogEnd);
+    p_glUniform3f(gl.uniforms[U_MESHSCALE], gl.worldView.colourScale[0], gl.worldView.colourScale[1],
+                  gl.worldView.colourScale[2]);
     p_glBindBuffer(GL_ARRAY_BUFFER, m->vbo);
     p_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)0);
     p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)12);

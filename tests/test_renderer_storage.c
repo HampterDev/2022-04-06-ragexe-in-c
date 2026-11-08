@@ -187,8 +187,12 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count)
     assert(mesh == (gfx_mesh *)&mesh_token && !model && first == 0 && count == 3);
     word(6); word((unsigned)first); word((unsigned)count); sample_textures(); ++draws;
 }
-void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out)
-{ assert(renderer == g_renderer); memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view); }
+void renderer_world_view(const struct Renderer *renderer, const float *view, const float *scale,
+                         struct GfxWorldView *out)
+{
+    assert(renderer == g_renderer && scale && scale[0] == 1.0f && scale[1] == 1.0f && scale[2] == 1.0f);
+    memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view);
+}
 int gfx_begin_scene(void) { abort(); }
 void gfx_end_scene(void) { abort(); }
 void gfx_set_light(const float *dir, const float *diffuse, const float *ambient)

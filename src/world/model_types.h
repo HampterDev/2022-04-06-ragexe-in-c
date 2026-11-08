@@ -28,6 +28,26 @@ struct FaceInfo {
 };
 SIZE_ASSERT(FaceInfo, 0x24);
 
+/* custom: a node's faces as a static mesh the device projects (render/gfx.h), built on its first
+   draw (world/model_node_render.c). Only faces whose texture inMesh marks are in it: not alpha-keyed
+   (format 1) and, on version 2 nodes, without a texture-coordinate animation. A draw is a run of
+   faces with one texture, and with or without twoSided. */
+struct ModelGpuDraw {
+    struct Texture *texture;
+    int first, count;
+    BYTE twoSided;
+};
+
+struct ModelGpu {
+    struct gfx_mesh *mesh;
+    struct ModelGpuDraw *draws;
+    int drawCount;
+    BYTE *inMesh;
+    int inMeshCount;
+    int allInMesh;
+    int groundLighting;
+};
+
 struct C3dNode {
     const char *name;
     struct ModelResNode *resource;
@@ -43,7 +63,11 @@ struct C3dNode {
     struct FaceInfo *faceInfo;
     int *lightInts;
     BYTE highlight;
+    struct ModelGpu *gpu;
+    int gpuState;
 };
+
+void model_node_gpu_free(struct C3dNode *node);
 
 struct C3dNodeV1 {
     struct C3dNode base;

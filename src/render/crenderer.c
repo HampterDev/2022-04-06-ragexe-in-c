@@ -152,25 +152,36 @@ static void flush_blended(struct Renderer *self, const struct RenderEntry *entry
     draw_quad(n);
 }
 
-/* custom: the ground's static meshes (render/gfx.h), drawn with the states of the ground's
-   two-texture quads in flush_water_bump */
-static void flush_ground_mesh(struct Renderer *self)
+/* custom: static meshes (render/gfx.h): the ground's, drawn with the states of its two-texture
+   quads in flush_water_bump, and the models' opaque faces, drawn with the states of
+   RENDER_OPAQUE_CLAMP. Sorted by texture as those are; a draw's cull mode is put back after. */
+static void flush_mesh_queue(struct Renderer *self, int list)
 {
-    struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
-    const float *view = NULL;
+    struct RenderQueue *l = &self->queues[list];
+    const struct RPMeshDraw *last = NULL;
+    DWORD cull = 0;
+    int culled = 0;
     queue_sort(l, two_tex_less);
     for (size_t i = 0; i < l->count; ++i) {
         struct RPMeshDraw *n = l->items[i].primitive;
-        if (!view || memcmp(view, n->view, sizeof n->view)) {
+        if (!last || memcmp(last->view, n->view, sizeof n->view) || memcmp(last->scale, n->scale, sizeof n->scale)) {
             struct GfxWorldView world;
-            renderer_world_view(self, n->view, &world);
+            renderer_world_view(self, n->view, n->scale, &world);
             gfx_set_world_view(&world);
-            view = n->view;
+            last = n;
+        }
+        if (n->cull) {
+            if (!culled)
+                cull = get_rs(self, GFX_RS_CULLMODE);
+            HRS(self, GFX_RS_CULLMODE, (DWORD)n->cull);
+            culled = 1;
         }
         set_tex0(self, l->items[i].textures[0].surface);
         set_tex1(self, l->items[i].textures[1].surface);
         gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
     }
+    if (culled)
+        HRS(self, GFX_RS_CULLMODE, cull);
 }
 
 static void flush_alpha_keyed_lists(struct Renderer *self)
@@ -199,6 +210,7 @@ static void flush_opaque_lists(struct Renderer *self)
 {
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
     flush_plain(self, RENDER_OPAQUE_CLAMP, 1, 1);
+    flush_mesh_queue(self, RENDER_MODEL_MESH);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_WRAP);
     flush_plain(self, RENDER_OPAQUE_WRAP, 1, 1);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
@@ -540,7 +552,7 @@ static void renderer_draw_lists(struct Renderer *self)
             HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
             flush_water_bump(self);
-            flush_ground_mesh(self);
+            flush_mesh_queue(self, RENDER_GROUND_MESH);
             HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
         } else {

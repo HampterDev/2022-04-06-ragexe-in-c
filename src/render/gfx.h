@@ -129,6 +129,7 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_BLEND_INVSRCALPHA 6
 #define GFX_CULL_NONE         1
 #define GFX_CULL_CW           2
+#define GFX_CULL_CCW          3
 #define GFX_CMP_LESS          2
 #define GFX_CMP_LESSEQUAL     4
 #define GFX_CMP_GREATEREQUAL  7
@@ -213,7 +214,8 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
 /* custom: static geometry in world coordinates that the device projects itself, where everything
    else arrives projected by the CPU (renderer_project_vertex, render/rp_project.c). A mesh keeps
    its vertices and indices; the device copies them to its own buffers on the first draw and again
-   after it is recreated. Indices are triangle lists into the mesh's own vertices. */
+   after it is recreated. Indices are triangle lists into the mesh's own vertices. Meshes are made,
+   drawn and destroyed on the thread that draws. */
 struct GfxMeshVertex {
     float x, y, z;
     DWORD diffuse;
@@ -226,13 +228,16 @@ struct GfxMeshVertex {
    (x * proj[0] / vz + centre[0], y * proj[1] / vz + centre[1]) with the depth
    (vz - nearZ) * depthScale / vz, as a pre-transformed vertex with rhw 1 / vz would. Its fog factor
    is (fogEnd - vz) / (fogEnd - fogStart), clamped to 0..1, as rp_vertex_fog_alpha puts it in the
-   specular alpha of a pre-transformed vertex. */
+   specular alpha of a pre-transformed vertex. The red, green and blue of a vertex's colour are
+   multiplied by colourScale (0..1) and rounded down, as the CPU scales them by the weather colour;
+   a device that cannot round does so to within a step. */
 struct GfxWorldView {
     float view[12];
     float proj[2];
     float centre[2];
     float nearZ, depthScale;
     float fogStart, fogEnd;
+    float colourScale[3];
 };
 
 gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices);

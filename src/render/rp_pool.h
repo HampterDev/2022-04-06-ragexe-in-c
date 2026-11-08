@@ -26,10 +26,13 @@ void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
 void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int which);
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
-/* custom: queues `count` indices from `first` of a static world mesh (render/gfx.h), drawn with the
-   view matrix `view` and the two textures where the ground's two-texture quads are drawn */
-void renderer_add_mesh_draw(struct Renderer *self, struct gfx_mesh *mesh, int first, int count,
-                            const float *view, struct Texture *texture0, struct Texture *texture1);
+/* custom: queues `count` indices from `first` of a static mesh (render/gfx.h) with the matrix
+   `view` from its coordinates to view space, the colour scale `scale` (NULL: none), the two
+   textures and the cull mode `cull` (0: the flush's own). RENDER_GROUND_MESH is drawn where the ground's two-texture quads are, with their
+   states; RENDER_MODEL_MESH where the opaque quads of RENDER_OPAQUE_CLAMP are, with theirs. */
+void renderer_add_mesh_draw(struct Renderer *self, int pass, struct gfx_mesh *mesh, int first, int count,
+                            const float *view, const float *scale, struct Texture *texture0,
+                            struct Texture *texture1, int cull);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
 int rp_vertex_fog_alpha(float rhw);

@@ -450,19 +450,24 @@ void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int lis
     renderer_add_prim(r, q, list_flags);
 }
 
-void renderer_add_mesh_draw(struct Renderer *self, struct gfx_mesh *mesh, int first, int count,
-                            const float *view, struct Texture *texture0, struct Texture *texture1)
+void renderer_add_mesh_draw(struct Renderer *self, int pass, struct gfx_mesh *mesh, int first, int count,
+                            const float *view, const float *scale, struct Texture *texture0,
+                            struct Texture *texture1, int cull)
 {
     struct RPMeshDraw *draw;
+    int i;
 
-    if (!mesh || count <= 0)
+    if (!mesh || count <= 0 || (pass != RENDER_GROUND_MESH && pass != RENDER_MODEL_MESH))
         return;
     draw = pool_take(&self->storage->mesh_draws, 1);
     draw->mesh = mesh;
     draw->first = first;
     draw->count = count;
     memcpy(draw->view, view, sizeof draw->view);
-    queue_append(&self->queues[RENDER_GROUND_MESH], draw, 0.0f, texture0, texture1);
+    for (i = 0; i < 3; i++)
+        draw->scale[i] = scale ? scale[i] : 1.0f;
+    draw->cull = cull;
+    queue_append(&self->queues[pass], draw, 0.0f, texture0, texture1);
 }
 
 void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVertex *vertex)
