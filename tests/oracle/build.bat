@@ -143,9 +143,6 @@ if errorlevel 1 (popd & exit /b 1)
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
 python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\rag_process.inc" ^
-  "src/effects/rag/effect_prim.c::line::#define COPY_AS_INT(dst, src) (*(int *)&(dst) = *(const int *)&(src))" ^
-  "src/effects/rag/effect_prim.c::void prim_sync_particles(" ^
-  "src/effects/rag/effect_prim.c::void prim_heading_degrees(" ^
   "src/actor/position.c::static float facing_of(" ^
   "src/actor/position.c::float render_object_calc_dir(" ^
   "src/actor/position.c::void render_object_turn_toward(" ^
@@ -153,6 +150,9 @@ python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\rag_process.in
   "src/actor/position.c::static float view_facing(" ^
   "src/actor/position.c::static int dir_rounded(" ^
   "src/actor/position.c::int render_object_camera_dir(" ^
+  "src/actor/position.c::int game_object_dir_of(" ^
+  "src/render/rp_project.c::float renderer_screen_scale(" ^
+  "src/render/rp_project.c::float renderer_project_depth(" ^
   "src/effects/effect_sound.c::void effect_play_wave_at(" ^
   "src/actor/game_object.c::void render_object_set_argb(" ^
   "src/effects/rag/rag_effect.c::int rag_effect_get_duration(" ^
@@ -161,8 +161,8 @@ python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\rag_process.in
   "src/skills/skill_info.c::const char *skill_get_id_name("
 if errorlevel 1 (popd & exit /b 1)
 set RAG=
-for %%f in ("%ROOT%\src\effects\rag\rag_skills_*.c") do call set RAG=%%RAG%% "%%f"
-cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_rag_effect_process.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+for %%f in ("%ROOT%\src\effects\rag\rag_skills_*.c" "%ROOT%\src\effects\rag\prim_*.c" "%ROOT%\src\effects\rag\effect_prim*.c") do call set RAG=%%RAG%% "%%f"
+cl %CFLAGS% /wd4018 /I"%OUT%" "%ROOT%\tests\oracle\test_rag_effect_process.c" "%ROOT%\tests\oracle\oracle_image.c" ^
   "%ROOT%\src\effects\rag\rag_effect_process.c" "%ROOT%\src\effects\rag\rag_effect_process_491.c" "%ROOT%\src\effects\rag\rag_effect_process_800.c" ^
   "%ROOT%\src\effects\rag\rag_process_moves.c" "%ROOT%\src\effects\rag\rag_songs.c" "%ROOT%\src\effects\rag\rag_msg_sprites.c" ^
   %RAG% "%ROOT%\src\effects\rag\rag_unreferenced.c" "%ROOT%\src\effects\rag\rag_unreferenced_prims.c" ^
