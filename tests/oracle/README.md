@@ -83,10 +83,13 @@ the lift's own formulas on a 5 x 5 x 5 attribute, so they are not under test her
 scope the cast look makes is a fake on both sides, its constructor patched, and the world's
 object list is seeded with a real sentinel node so the original's `std::list` push works.
 
-Two shapes the cast test showed but could not judge: the original passes the caster to the
-action manager's cast-on-target and the target to its cast-at-cell, which the lift's
-`skill_action_mgr_cast_on_target` and `skill_action_mgr_cast_at_cell` do not take; whether an
-action needs them is a question for the actions in `skills/`, not for this test.
+Two shapes the cast test showed were checked by hand and are not bugs: the original passes the
+caster to the action manager's cast-on-target and the target to its cast-at-cell, which the lift's
+`skill_action_mgr_cast_on_target` and `skill_action_mgr_cast_at_cell` do not take. Of the 97
+skill action classes in the original, two override cast-on-target (NW_ONLY_ONE_BULLET,
+SKE_ALL_IN_THE_SKY) and one overrides cast-at-cell (HN_JACK_FROST_NOVA); the first two read
+only the target, the third only the time and the position, and the base class returns at once.
+The lift's hooks take exactly what is read.
 
 `extract_functions.py` copies named production functions (and a file-local struct or helper)
 into an include file, so a test links a lookup without the file it lives in; `build.bat` shows
