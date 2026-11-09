@@ -101,6 +101,9 @@ Uninitialized values:
   passes frame 0. The original took the wrap from an uninitialised value, so the layer stuck
   on its first texture or showed the white one (kRO `hogg.str`, `ssnnnn2.str`,
   `fullmoon_kick.str`).
+- The sprite ring of effect 941 (`m_ef05.spr`, a flying-sprite layer whose tint is 4) draws
+  its sprites with colour 0. The original coloured them from an uninitialised stack value,
+  since the layer's colour branches cover tints 0 and 1 only.
 
 Overruns and bad table indexes:
 
