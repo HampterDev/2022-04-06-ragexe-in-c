@@ -49,7 +49,6 @@ struct gfx_caps {
     int vertexFog;
     int bumpEnv;
     int bumpEnvLuminance;
-    int waterBump;
     DWORD minTexW, minTexH;
     DWORD maxTexW, maxTexH;
     DWORD texAspect;
@@ -69,7 +68,7 @@ extern struct gfx_caps g_gfxCaps;
 /* custom: GFX_VTX_TEX1's layout with x, y and z in world coordinates, which the device takes
    through the camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed
    vertex would have there; the rhw is not used, and the specular alpha is the vertex fog as for
-   GFX_VTX_TEX1. Only where gfx_world_supported answers 1. */
+   GFX_VTX_TEX1. */
 #define GFX_VTX_WORLD 3
 
 #define GFX_PT_POINTLIST     1
@@ -220,9 +219,10 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
    else arrives projected by the CPU (renderer_project_vertex, render/rp_project.c). A mesh keeps
    its vertices and indices; the device copies them to its own buffers on the first draw and again
    after it is recreated. Indices are triangle lists into the mesh's own vertices. Meshes are made,
-   drawn and destroyed on the thread that draws. A device draws meshes with shaders only:
-   gfx_mesh_create answers NULL where it has none, and the geometry then goes the CPU's way.
-   A vertex has two colours, a draw picks one (GfxMeshDraw). */
+   drawn and destroyed on the thread that draws. A device draws meshes with shaders, which the
+   client does not start without (gfx_world_supported); gfx_mesh_create answers NULL only for
+   vertices or indices it cannot take, or without memory. A vertex has two colours, a draw picks
+   one (GfxMeshDraw). */
 struct GfxMeshVertex {
     float x, y, z;
     float nx, ny, nz;
@@ -247,8 +247,10 @@ struct GfxWorldView {
 
 /* One draw of a mesh: `count` indices from `first`, a multiple of three each. kind picks what the
    stages would do with the bound textures and what a vertex's colours hold:
-   - GFX_MESH_GROUND: texture times colour, times the lightmap's alpha, plus its colour, as the
-     ground's two-texture quads have it; the colour is the vertex's diffuse.
+   - GFX_MESH_GROUND: texture times colour, times the lightmap's alpha (the texture bound to stage
+     1), plus its colour, as the original's two-texture ground quads have it; with stage 1's colour
+     operation GFX_TOP_DISABLE, texture times colour alone, as its ground quads without lightmaps.
+     The colour is the vertex's diffuse.
    - GFX_MESH_MODEL: texture times colour, both colour and alpha. The diffuse's red, green and blue
      are the model's own lit colour (0 to 255 a channel) and its alpha the share of the light it
      was lit with (0, 128 or 255, 0 for a model lit without its light); with lightGround set,
@@ -274,7 +276,7 @@ void gfx_set_world_view(const struct GfxWorldView *view);
 /* Draws as gfx_draw would draw the same triangles pre-transformed, in the world view set last. */
 void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
 /* custom: the world view GFX_VTX_WORLD vertices are drawn with (the camera's), and whether the
-   device can draw them */
+   device can draw them and meshes, which the client does not start without (render/c3ddevice.c) */
 void gfx_set_world_camera(const struct GfxWorldView *view);
 int gfx_world_supported(void);
 
@@ -335,6 +337,6 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
 int gfx_can_set_mode_live(const GUID *adapter);
 PlatformDisplay gfx_adapter_monitor(const GUID *adapter);
 
-int stale_guid(void);
+void stale_guid(void);
 
 #endif

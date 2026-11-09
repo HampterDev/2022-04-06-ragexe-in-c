@@ -56,7 +56,6 @@ extern float g_fogNear, g_fogFar;
 #define RENDER_FAR_Z 40000.0f
 #define RENDER_DEPTH_SCALE (RENDER_FAR_Z / (RENDER_FAR_Z - RENDER_NEAR_Z))
 
-extern BYTE  g_waterBumpSupported;
 extern RECT  g_monitorRect;
 extern const char g_msgBgr565NotSupported[];
 extern const char g_msgModeNotSupported[];

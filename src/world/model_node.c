@@ -7,8 +7,6 @@
 #include "world/model_node_util.h"
 
 DWORD g_nodeCornerColours[0x15f90];
-struct Once g_nodeV1TlVertsGuard;
-int g_isVoodooInUse;
 
 static struct C3dNode *model_node_allocate(int version)
 {
@@ -200,20 +198,6 @@ void c3d_node_v2_animate(struct C3dNode *base, double t)
     }
     for (i = 0; i < base->childCount; ++i)
         c3d_node_v2_animate(base->children[i], t);
-}
-
-void uv_turn(const struct UvTransform *x, float *u, float *v)
-{
-    float a, b, nu, nv;
-
-    a = float_cos(x->angle) * (*u - 0.5f);
-    b = (float)((double)a - (double)float_sin(x->angle) * (double)(*v - 0.5f));
-    nu = x->scale[0] * b + 0.5f + x->offset[0];
-    a = float_sin(x->angle) * (*u - 0.5f);
-    b = (float)((double)float_cos(x->angle) * (double)(*v - 0.5f) + (double)a);
-    nv = x->scale[1] * b + 0.5f + x->offset[1];
-    *u = nu;
-    *v = nv;
 }
 
 void uv_turn_matrix(const struct UvTransform *x, float *uv)

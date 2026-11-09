@@ -22,14 +22,23 @@ void c3d_ground15_get_cell_colour(struct C3dGround15 *ground, float x, float z, 
     rgb[2] = 30;
 }
 
-/* the corners' colours under the ground's light, as face_colours makes them */
+/* a corner's own colour channel under the ground's light, at most 0xff, as the device adds them
+   (render/gfx.h, GfxMeshDraw.lightGround) */
+static int ground_lit(int ground, DWORD own)
+{
+    int c = ground + (int)(own & 0xff);
+
+    return c < 0xff ? c : 0xff;
+}
+
+/* the corners' colours under the ground's light */
 static void expect_rgb(const int *light, const struct FaceInfo *info, int r, int g, int b)
 {
     int i;
     for (i = 0; i < 3; ++i) {
-        assert(ground_lit(light[i * 3], BYTE_R(info->colour[i])) == r);
-        assert(ground_lit(light[i * 3 + 1], BYTE_G(info->colour[i])) == g);
-        assert(ground_lit(light[i * 3 + 2], BYTE_B(info->colour[i])) == b);
+        assert(ground_lit(light[i * 3], info->colour[i] >> 16) == r);
+        assert(ground_lit(light[i * 3 + 1], info->colour[i] >> 8) == g);
+        assert(ground_lit(light[i * 3 + 2], info->colour[i]) == b);
     }
 }
 

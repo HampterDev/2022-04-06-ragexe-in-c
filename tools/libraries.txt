@@ -494,7 +494,6 @@ include contents/lua_calls.c contents/client_lua.h
 include contents/ui_window_mgr.h world/tooltip.h
 include contents/user_hotkey_apply.c contents/client_lua.h contents/user_hotkeys.h
 include core/actor_slots.c actor/appearance.h
-include core/startup_settings.c world/world_imports.h
 include effects/effect_math.h effects/effect.h
 include effects/effect_sound.c effects/render_object.h
 include effects/rag/effect_prim_draw.c effects/rag/rag_effect.h
@@ -699,7 +698,6 @@ include game/msg_popup_menu.c core/app.h
 include game/packets_item_test.c core/app.h
 include game/talk_commands.c core/app.h
 include login/account.c core/app.h
-include render/stale_guid.c core/app.h
 include session/csession.h session/session_imports.h
 include session/session_state.c core/app.h
 include ui/chat/chat_room.c core/app.h
@@ -788,10 +786,9 @@ link    platform/language.c g_windowMgr ui_window_mgr_get_focus_edit
 
 exception render-reaches-game-state
 why     The device notes a shown frame for the drive state (drive_state_frame_shown,
-        core/drive_state.c), the stale-GUID check reads g_isVoodoo (core/startup_settings.c) and the
-        registry key path (g_registryKeyPath, platform/clientinfo.c), and render files include
-        game/context.h and platform/clientinfo.h.
-remove  A frame hook for the drive state; the two values handed to the device when it is created;
+        core/drive_state.c), the stale-GUID check reads the registry key path (g_registryKeyPath,
+        platform/clientinfo.c), and render files include game/context.h and platform/clientinfo.h.
+remove  A frame hook for the drive state; the key path handed to the device when it is created;
         narrower includes.
 include render/c3ddevice.c core/drive_state.h
 include render/cframe.c game/context.h
@@ -799,7 +796,7 @@ include render/render_api.h game/context.h
 include render/screen_draw.c game/context.h
 include render/textdc.c platform/clientinfo.h
 link    render/c3ddevice.c drive_state_frame_shown
-link    render/stale_guid.c g_isVoodoo g_registryKeyPath
+link    render/stale_guid.c g_registryKeyPath
 
 exception client-dir
 why     g_clientDir, the game folder, is defined in core/app.c; core/client_path.c joins game paths

@@ -1408,7 +1408,6 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     out->trilinear = 1;
     out->bumpEnv = 1;
     out->bumpEnvLuminance = 1;
-    out->waterBump = 1;
     out->minTexW = 1;
     out->minTexH = 1;
     out->maxTexW = (DWORD)maxSize;

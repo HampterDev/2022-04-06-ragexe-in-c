@@ -20,7 +20,6 @@ extern RECT g_windowDragRect;
 extern POINT g_windowDragCursor;
 extern HWND g_windowDragHwnd;
 
-extern DWORD g_isVoodoo;
 extern char g_deviceName[0x28];
 extern GUID g_deviceGuid;
 

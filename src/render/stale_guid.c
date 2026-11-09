@@ -4,7 +4,6 @@
 #include "platform/win_types.h"
 #include <string.h>
 #include "render/gfx.h"
-#include "core/app.h"
 #include "platform/window.h"
 
 GUID g_driverGuid;
@@ -19,7 +18,7 @@ static BOOL match_adapter(GUID *guid, char *desc, char *name, void *ctx, Platfor
     return TRUE;
 }
 
-int stale_guid(void)
+void stale_guid(void)
 {
     static const GUID zero;
     if (memcmp(&g_driverGuid, &zero, sizeof(GUID)) != 0) {
@@ -41,5 +40,4 @@ int stale_guid(void)
                         "Display device reset", MB_ICONEXCLAMATION);
         }
     }
-    return g_isVoodoo;
 }

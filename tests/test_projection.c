@@ -1,6 +1,7 @@
 #include "render/projection.h"
 #include "render/renderer.h"
 #include "render/render_api.h"
+#include "render/render_options.h"
 #include "render/primitive_types.h"
 #include "resources/attr.h"
 #include "fixtures/projection_reference.h"
@@ -33,7 +34,7 @@ int c3d_device_clear_z(struct C3dDevice *device)
 }
 
 int gfx_shadows_supported(void) { return 1; }
-int gfx_world_supported(void) { return 1; }
+int g_lightmap = 1;
 
 void c3d_device_restore_frame(struct C3dDevice *device)
 {
@@ -210,6 +211,27 @@ static void test_world_view(struct Renderer *renderer)
     }
 }
 
+/* the frame's shadows follow the lightmaps: without them nothing casts */
+static void test_shadow_gate(struct Renderer *renderer)
+{
+    static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
+    static const float focus[3] = {0, 0, 0}, centre[3] = {0, 0, 0}, half[3] = {5, 5, 5};
+    renderer->lightSet = 1;
+    renderer->lightDir[0] = 0.5f; renderer->lightDir[1] = 0.707f; renderer->lightDir[2] = 0.5f;
+    renderer->shadowDarkness = 0.5f;
+    g_lightmap = 1;
+    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    assert(renderer->shadowPending && renderer_shadow_reaches(renderer, centre, half, NULL));
+    g_lightmap = 0;
+    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    assert(!renderer->shadowPending && !renderer_shadow_reaches(renderer, centre, half, NULL));
+    g_lightmap = 1;
+    renderer->shadowDarkness = 1.0f;
+    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    assert(!renderer->shadowPending);
+    renderer->lightSet = 0;
+}
+
 int main(void)
 {
     struct Renderer renderer = {0};
@@ -222,8 +244,10 @@ int main(void)
     test_cursor(&renderer);
     test_screen();
     test_world_view(&renderer);
+    test_shadow_gate(&renderer);
     puts("projection: archived coordinates/depth/rays, distinct centres, vertex payload preservation and real ground picking passed");
     puts("renderer screen: named dimensions, clear colour, fog blending, depth clear and frame restore passed");
     puts("world view: device-projected meshes land on the CPU's pixels, depth and fog passed");
+    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength passed");
     return 0;
 }

@@ -78,13 +78,15 @@ void renderer_set_light(struct Renderer *self, const float *dir, const float *di
 void renderer_set_blend_stages(struct Renderer *self, int mode);
 /* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light
    fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
-   with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). */
+   with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). With
+   lightmaps off, or where the map or the device has no shadows, shadowPending stays 0 and the
+   frame queues no casters. */
 void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);
 /* custom: the camera's view matrix for the frame being queued, which quads with world-space
    vertices (RPQuad.world) are drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);
 /* custom: whether quads drawn with the view matrix `view` can hand the device world coordinates
-   instead (RPQuad.world): `view` is the camera's for the frame, and the device projects them */
+   instead (RPQuad.world): `view` is the camera's for the frame */
 int renderer_world_quads(const struct Renderer *self, const float *view);
 /* custom: whether a box can cast into this frame's shadow maps: centre and half its sizes along its
    three axes (unit vectors, NULL for the world's), world coordinates */

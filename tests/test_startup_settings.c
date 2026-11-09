@@ -8,7 +8,6 @@
 #include "contents/sound.h"
 
 struct Settings {
-    DWORD voodoo;
     int trilinear;
     char device[40];
     GUID device_guid, driver_guid;
@@ -23,7 +22,6 @@ struct Value {
 };
 #define VALUE(name, type, member) { name, type, offsetof(struct Settings, member), sizeof(((struct Settings *)0)->member) }
 static const struct Value values[] = {
-    VALUE("ISVOODOO", REG_DWORD, voodoo),
     VALUE("TRILINEARFILTER", REG_DWORD, trilinear),
     VALUE("DEVICENAME", REG_SZ, device),
     VALUE("GUIDDEVICE", REG_BINARY, device_guid),
@@ -38,7 +36,7 @@ static LONG open_error;
 static int opens, closes, queries, live_key, normalized;
 static int empty_key, bad_value = -1, fault, key_token;
 const char *g_registryKeyPath = "Software\\TestClient";
-int g_trilinearFilter, g_isVoodooInUse;
+int g_trilinearFilter;
 GUID g_driverGuid;
 int g_sound_speaker_type;
 
@@ -97,22 +95,19 @@ static LONG WINAPI read_close(HKEY key)
 #undef win_utf8_reg_query_value
 #undef RegCloseKey
 
-int stale_guid(void)
+void stale_guid(void)
 {
     assert(!live_key);
     ++normalized;
-    return (int)g_isVoodoo;
 }
 static void expect(const struct Settings *expected)
 {
-    assert(g_isVoodoo == expected->voodoo);
     assert(g_trilinearFilter == expected->trilinear);
     assert(!memcmp(g_deviceName, expected->device, sizeof g_deviceName));
     assert(!memcmp(&g_deviceGuid, &expected->device_guid, sizeof g_deviceGuid));
     assert(!memcmp(&g_driverGuid, &expected->driver_guid, sizeof g_driverGuid));
     assert(g_soundMode == expected->sound);
     assert(g_sound_speaker_type == expected->speakers);
-    assert(g_isVoodooInUse == (int)expected->voodoo);
     assert(opens == 1 && !live_key);
     assert(closes == !open_error && normalized == !open_error);
     assert(queries == (open_error ? 0 : sizeof values / sizeof *values));
@@ -126,7 +121,7 @@ int main(void)
 {
     struct Settings expected;
     size_t i;
-    saved = (struct Settings){ .voodoo = 17, .trilinear = 1,
+    saved = (struct Settings){ .trilinear = 1,
         .device = "Saved display", .device_guid = {0x1234, 2, 3, {4}},
         .driver_guid = {0x5678, 6, 7, {8}}, .sound = 2, .speakers = 3 };
     for (i = 0; i < 3; ++i) {

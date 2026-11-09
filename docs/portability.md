@@ -390,13 +390,14 @@ which the SDL layer calls once a frame.
 ### Renderer
 
 `render/gfx_gl.c` implements `render/gfx.h` with OpenGL 3.3 core (macOS also offers 4.1 core, so the
-backend is usable there until a Metal backend exists). All client geometry but the ground and the
-models' opaque faces arrives pre-transformed (D3D `XYZRHW`), so one vertex shader maps D3D9 pixel
-centres to GL clip space with the vertex's `1/rhw` as `w`; the static meshes of those two
-(`gfx_draw_mesh`, *render/gfx.h*) take a matrix to the same pixel space times the view depth, so
-they land on the same pixels, work out their fog from that depth, scale their colour by the draw's
-colour, rounding down as the CPU does, and its alpha by the draw's alpha, and turn the first
-texture's coordinates by the draw's transform; the vertex's first or second colour is the
+backend is usable there until a Metal backend exists). All client geometry but the ground, the
+models and the quads of the water and the granny models arrives pre-transformed (D3D `XYZRHW`), so
+one vertex shader maps D3D9 pixel centres to GL clip space with the vertex's `1/rhw` as `w`; the
+static meshes of the ground and the models (`gfx_draw_mesh`, *render/gfx.h*) and the world-space
+quads (`GFX_VTX_WORLD`) take a matrix to the same pixel space times the view depth, so they land
+on the same pixels; the meshes work out their fog from that depth, scale their colour by the
+draw's colour, rounding down as the CPU does, and its alpha by the draw's alpha, and turn the
+first texture's coordinates by the draw's transform; the vertex's first or second colour is the
 diffuse. One fragment shader evaluates the two fixed-function texture stages
 (`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
 test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on

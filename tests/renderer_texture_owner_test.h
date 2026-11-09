@@ -192,8 +192,6 @@ static void queued_all_routes(struct Renderer *renderer)
     }
     pair->prim.tex0 = pair->prim.tex1 = texture;
     for (i = 0; i < 4; ++i) pair->quad[i].rhw = 0.00125f;
-    renderer_add_two_tex_prim(renderer, &pair->prim, 0);
-    renderer_add_two_tex_prim(renderer, &pair->prim, 1);
     renderer_add_multi_tex_batch(renderer, &pair->prim);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
     memset(&draw, 0, sizeof draw);
@@ -204,7 +202,7 @@ static void queued_all_routes(struct Renderer *renderer)
     renderer_add_mesh_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, NULL, 0.0f);
     draw.cull = GFX_CULL_CW;
     renderer_add_mesh_draw(renderer, renderer_mesh_pass(0x21), &draw, texture, NULL, 0.00125f);
-    assert(surface->refs == 1 + submissions + 6 + 1 + 4);
+    assert(surface->refs == 1 + submissions + 2 + 1 + 4);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
         assert(renderer->queues[i].count);
@@ -216,11 +214,11 @@ static void queued_all_routes(struct Renderer *renderer)
     texture_destroy(texture); assert(live_surfaces == 1);
     for (i = 0; i < 4; ++i) {
         renderer->twoPassAlpha = (BYTE)(i & 1);
-        g_lightmap = i != 0; g_waterBumpSupported = (BYTE)(i > 1);
+        g_lightmap = (int)(i >> 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 6 + 1 + 4);
+        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 4);
     }
-    g_lightmap = 0; g_waterBumpSupported = 0;
+    g_lightmap = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);
     texture = texture_create(1, 1, GFX_FMT_8888);
     queue_texture(renderer, texture, 0); texture_destroy(texture);

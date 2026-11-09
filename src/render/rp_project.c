@@ -2,6 +2,7 @@
 #include "render/renderer.h"
 #include "render/math3d.h"
 #include "render/rp_pool.h"
+#include "render/render_options.h"
 #include <math.h>
 #include <string.h>
 
@@ -177,7 +178,10 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     int i, j, k, c, any = 0;
 
     self->shadowPending = 0;
-    if (!self->lightSet || !(self->shadowDarkness < 1.0f) || !gfx_shadows_supported() || !invert_4x3(view, inv))
+    /* the shadow maps take the place of the lightmaps' shadows: without lightmaps the ground has
+       none, as in the original, and nothing casts */
+    if (!g_lightmap || !self->lightSet || !(self->shadowDarkness < 1.0f) || !gfx_shadows_supported()
+        || !invert_4x3(view, inv))
         return;
     len = sqrtf(dot3(self->lightDir, self->lightDir));
     if (!(len > 0.0f))
@@ -343,7 +347,7 @@ void renderer_set_camera(struct Renderer *self, const float *view)
 
 int renderer_world_quads(const struct Renderer *self, const float *view)
 {
-    return self->cameraSet && !memcmp(self->cameraView, view, sizeof self->cameraView) && gfx_world_supported();
+    return self->cameraSet && !memcmp(self->cameraView, view, sizeof self->cameraView);
 }
 
 /* the box's extent along each of the light's axes against a cascade's square and the depth kept:

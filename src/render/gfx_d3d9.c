@@ -1011,7 +1011,6 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
                          == (D3DPTFILTERCAPS_MINFLINEAR | D3DPTFILTERCAPS_MIPFLINEAR);
         out->bumpEnv = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAP) != 0;
         out->bumpEnvLuminance = (caps.TextureOpCaps & D3DTEXOPCAPS_BUMPENVMAPLUMINANCE) != 0;
-        out->waterBump = (caps.MaxTextureBlendStages >= 2 && (caps.TextureOpCaps & D3DTEXOPCAPS_MODULATEALPHA_ADDCOLOR)) ? 1 : 0;
         out->minTexW = 1;
         out->minTexH = 1;
         out->maxTexW = caps.MaxTextureWidth;
@@ -2184,13 +2183,13 @@ static int mesh_upload(struct gfx_mesh *m)
     return 1;
 }
 
-/* custom: meshes (render/gfx.h) are drawn by shaders, compiled when the first mesh is made by
-   D3DCompile from d3dcompiler_47.dll, which Windows has carried since 8.1. The colour shaders
-   choose a shadow cascade per pixel, so they need shader model 3; without the DLL or shader model 3
-   gfx_mesh_create answers NULL and the CPU projects everything, as the original does. The colour
-   shaders do what the stages do for a model's or the ground's quads, and the fixed-function fog,
-   which shader model 3 leaves to the pixel shader; the alpha test, blending and depth stay
-   fixed-function. Shadow maps need an R32F render target besides; RAGEXE_SHADOWS=0 turns them
+/* custom: meshes (render/gfx.h) are drawn by shaders, which D3DCompile from d3dcompiler_47.dll
+   (Windows has carried it since 8.1) compiles when the client starts (gfx_world_supported) and
+   again after the device is recreated. The colour shaders choose a shadow cascade per pixel, so
+   they need shader model 3; without the DLL or shader model 3 the client does not start. The
+   colour shaders do what the stages do for a model's or the ground's quads (the lightmap only
+   while stage 1 is on), and the fixed-function fog, which shader model 3 leaves to the pixel
+   shader; the alpha test, blending and depth stay fixed-function. Shadow maps need an R32F render target besides; RAGEXE_SHADOWS=0 turns them
    off. Model and ground draws share the vertex shader and the shadow maps' samplers, 2 to 5. */
 
 static const char mesh_hlsl[] =
@@ -2283,6 +2282,7 @@ static const char mesh_hlsl[] =
     "float4 blur : register(c3);\n"
     "float4 slant : register(c4);\n"
     "float4 caster : register(c5);\n"
+    "float4 stage1 : register(c6);\n"
     "float4 depthColour(float depth : TEXCOORD0) : COLOR\n"
     "{\n"
     "    return float4(depth * caster.x, 0, 0, 1);\n"
@@ -2334,7 +2334,7 @@ static const char mesh_hlsl[] =
        keep their own darkness */
     "float4 groundColour(MeshOut i) : COLOR\n"
     "{\n"
-    "    float4 t = tex2D(colourMap, i.uv.xy), lm = tex2D(lightMap, i.uv.zw);\n"
+    "    float4 t = tex2D(colourMap, i.uv.xy), lm = lerp(float4(0, 0, 0, 1), tex2D(lightMap, i.uv.zw), stage1.x);\n"
     "    float2 seen = seenAt(i);\n"
     "    float keep = lerp(saturate(lm.a / params.w) * lerp(params.w, 1, seen.x), lm.a, seen.y);\n"
     "    return fogged(float4(saturate(lm.rgb + keep * saturate(t.rgb * i.lit.rgb)), t.a * i.lit.a), i);\n"
@@ -2387,7 +2387,7 @@ static void shadow_drop(void)
     d9.shadowState = 0;
 }
 
-/* the shaders, on the device's first mesh */
+/* the shaders, on the first call after the device is made */
 static int mesh_shaders_ready(void)
 {
     static const struct {
@@ -2655,7 +2655,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     int receive = d9.shadowReceive, first = 2;
     D3DMATRIX light;
     float fog[4], lightView[4], offset[4], farDepth[4], blur[4], slant[4], slope[4], params[4], colour[4], pick[4];
-    float shading[4];
+    float shading[4], stage1[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
     int c;
     size_t i;
 
@@ -2716,6 +2716,9 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 2, colour, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 3, blur, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 4, slant, 1);
+    if (d9.tssSet[1][D3DTSS_COLOROP] && d9.tss[1][D3DTSS_COLOROP] == D3DTOP_DISABLE)
+        stage1[0] = 0.0f;
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 6, stage1, 1);
     for (c = 0; receive && c < GFX_SHADOW_CASCADES; c++) {
         IDirect3DDevice9_SetTexture(d9.dev, first + c, (IDirect3DBaseTexture9 *)d9.shadowTex[c]);
         for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {

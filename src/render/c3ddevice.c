@@ -16,8 +16,6 @@ const char g_msgModeNotSupported[] = "NOT SUPPORTED MODE";
 float g_texelOffsetU = 0.5f;
 float g_texelOffsetV = 0.5f;
 
-BYTE g_waterBumpSupported;
-
 /* Localized family names: 굴림, ＭＳ Ｐゴシック, 宋体 and 細明體. */
 #define FACE_GULIM_KR   L"\xad74\xb9bc"
 #define FACE_MS_PGOTHIC L"\xff2d\xff33 \xff30\x30b4\x30b7\x30c3\x30af"
@@ -269,10 +267,15 @@ struct Renderer *c3d_device_create_renderer(struct C3dDevice *self)
         self->maxTexW = g_gfxCaps.maxTexW;
         self->maxTexH = g_gfxCaps.maxTexH;
         self->texAspect = g_gfxCaps.texAspect;
-        g_waterBumpSupported = (BYTE)g_gfxCaps.waterBump;
         gfx_set_mipmaps(g_trilinearFilter && g_gfxCaps.trilinear);
     }
     self->bltStretch = g_gfxCaps.bltStretch;
+    /* custom: the ground and the models are meshes the device draws (render/gfx.h), with no
+       other way to draw them */
+    if (!gfx_world_supported()) {
+        error_msg("The graphics device cannot run the shaders the world is drawn with. Direct3D 9 needs shader model 3 and d3dcompiler_47.dll.", 0);
+        return NULL;
+    }
     self->tex1024 = (self->maxTexW >= 0x400 && self->maxTexH >= 0x400) ? 1 : 0;
 
     r = calloc(1, sizeof *r);

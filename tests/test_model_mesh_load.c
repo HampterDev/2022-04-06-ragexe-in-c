@@ -288,6 +288,22 @@ static void malformed_and_reload(void)
     assert(!outstanding && !locks);
 }
 
+/* the original's turn of one corner's texture coordinates, which uv_turn_matrix puts as a
+   transform */
+static void original_uv_turn(const struct UvTransform *x, float *u, float *v)
+{
+    float a, b, nu, nv;
+
+    a = float_cos(x->angle) * (*u - 0.5f);
+    b = (float)((double)a - (double)float_sin(x->angle) * (double)(*v - 0.5f));
+    nu = x->scale[0] * b + 0.5f + x->offset[0];
+    a = float_sin(x->angle) * (*u - 0.5f);
+    b = (float)((double)float_cos(x->angle) * (double)(*v - 0.5f) + (double)a);
+    nv = x->scale[1] * b + 0.5f + x->offset[1];
+    *u = nu;
+    *v = nv;
+}
+
 static void runtime_ownership(void)
 {
     int version;
@@ -335,7 +351,7 @@ static void runtime_ownership(void)
                         uv_turn_matrix(x, m);
                         u = u0;
                         v = v0;
-                        if (x) uv_turn(x, &u, &v);
+                        if (x) original_uv_turn(x, &u, &v);
                         assert(fabsf(u0 * m[0] + v0 * m[2] + m[4] - u) < 1e-5f);
                         assert(fabsf(u0 * m[1] + v0 * m[3] + m[5] - v) < 1e-5f);
                     }

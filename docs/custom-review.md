@@ -13479,3 +13479,58 @@ beds' outlines, along curbs where the ground meets a model, and on shadow edges;
 sails' shadows on `yuno_gate` are unchanged. The scene harness saves its last camera into
 `savedata/OptionInfo.lua` (`Outdoor_ViewDistance`, `Outdoor_ViewLatitude`), so each scene starts
 from the one before; comparisons need that file the same before each set.
+
+## No CPU path for the ground and the models (2026-11-09)
+
+Patrick asked why the ground and the models still had a CPU fallback and said it was not needed;
+with lightmaps off the ground should only leave the lightmap out, and the frame should save the
+work of the shadow maps. Three things sent them to the CPU: a device without the shaders
+(`d3dcompiler_47.dll` or shader model 3 missing), which sent the ground, the models, the water and
+the granny models there and drew no shadows; lightmaps off (the graphics settings box and
+`/lightmap`) or a device without the two-texture blend (`g_waterBumpSupported`), which sent the
+ground's surfaces there; and a node or a ground whose mesh could not be made.
+
+- **The client needs the shaders.** `c3d_device_create_renderer` asks `gfx_world_supported`, which
+  compiles them on Direct3D 9 (on GL it answers whether there is a context), and without them shows
+  a message and makes no renderer, so the client ends as it does when the renderer cannot be made.
+  The ground's shader does the two-texture blend itself, so the device's fixed-function support
+  for it no longer matters, and `g_waterBumpSupported` and the `waterBump` capability go.
+- **Lightmaps off.** The ground's draws bind no lightmap and the renderer leaves stage 1 off while
+  it draws the ground's meshes. GL evaluates the stages in its fragment shader and so drew the
+  texture times the colour already; the Direct3D 9 ground shader now reads stage 1's colour
+  operation from the state cache (pixel constant `c6`) and takes a black, opaque lightmap while it
+  is off, which leaves the texture times the colour, what the original drew without lightmaps.
+  `renderer_shadow_frame` sets up no shadows then: without lightmaps the original's ground has no
+  shadows for the maps to replace. The models' and the ground's in-view casters are now queued
+  only while the frame draws shadows (`shadowPending`); before, they were queued every frame and
+  dropped unused on maps whose shadow opacity is 0 or with `RAGEXE_SHADOWS=0`. The out-of-view
+  walk already stopped at `renderer_shadow_reaches`.
+- **Half alpha.** Surfaces with `halfAlpha` were the one part of the ground the meshes left to the
+  CPU while the player was not blind. They are now the block's last draws with the colour 1 and
+  the alpha 128/255, so a surface whose colour alpha is 0xff gets the original's 0x80, which the
+  opaque lists' alpha test (`GREATEREQUAL` 0xcf) drops as it dropped the original's quads. The
+  flag's only setter runs while `ray_tests_cells` is set, which nothing in this tree does.
+- **Meshes that cannot be made.** A node's mesh takes at most 21,845 faces (three vertices each,
+  16-bit indices). The largest node among the 9,614 models in the client's GRFs has 19,085
+  (`masin\ice_land.rsm`), so only bad data or a failed allocation leaves a node without a mesh,
+  and it is then not drawn; a ground whose blocks cannot be made draws only its water.
+- **What goes.** `c3d_ground15_draw_surface` and `off_screen`, the ground blocks' `half` lists,
+  the water's screen-space branch, the models' projected triangles (`project`, `face_colours`,
+  `on_screen`, `behind_eye`, the two 30,000-vertex buffers and their guard, `MODEL_TL_VERTS`), the
+  `clip` argument the screen tests read (`c3d_actor_v*_render`, `c3d_node_v*_render`,
+  `c3d_ground15_render`), `renderer_add_two_tex_prim`, the `RENDER_WATER_BASE`,
+  `RENDER_WATER_BLEND`, `RENDER_WATER_BUMP` and `RENDER_TWO_TEXTURE_ALT` queues with their flushes
+  and the `0x800`/`0x1000` routes, and the helpers only the CPU path used (`uv_turn`, `ground_lit`,
+  `SCALED`, `BYTE_R`/`BYTE_G`/`BYTE_B`; the tests keep their own copies as references). The models'
+  screen test was the only reader of `g_isVoodooInUse`, the 3dfx Voodoo's guard band; with it go
+  that flag, `g_isVoodoo`, the `ISVOODOO` read at startup and `stale_guid`'s answer, which was
+  `g_isVoodoo` (it still resets a saved display device that is gone). The granny models keep their
+  screen-space branch for a view other than the camera's.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build of the commit before from
+the same saved options: with lightmaps on, the five repository scenes, `yuno_gate`, the far
+flower-bed scene, two water scenes and an Izlude scene (20 captures) are identical. With lightmaps
+off, against that build's CPU ground with `RAGEXE_SHADOWS=0`: 0 to 335 pixels a capture, rows
+where a model lies on the ground (the beds' grass, the feet of walls), the depth ties the ground's
+meshes already had with lightmaps on; the models lose the shadows they kept there before.
+`test_projection` checks that the shadow frame is not set up without lightmaps.

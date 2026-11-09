@@ -423,7 +423,7 @@ static void fade(struct C3dNode *node)
     }
 }
 
-void c3d_actor_v1_render(struct C3dActor *base, const float *view, BYTE clip)
+void c3d_actor_v1_render(struct C3dActor *base, const float *view)
 {
     struct C3dActorV1 *self = (struct C3dActorV1 *)base;
     float m[12];
@@ -433,7 +433,7 @@ void c3d_actor_v1_render(struct C3dActor *base, const float *view, BYTE clip)
         c3d_actor_build_matrix(&self->base);
     mir = mirrored(&self->base);
     mat_multiply(m, self->base.matrix, view);
-    c3d_node_v1_render(self->root, m, mir, clip, self->base.layer);
+    c3d_node_v1_render(self->root, m, mir, self->base.layer);
     self->base.castFrame = g_renderer->frame;
     if (self->base.pickable == 1)
         fade(self->root);
@@ -451,7 +451,7 @@ void c3d_actor_v1_cast(struct C3dActor *base, const float *view)
     self->base.castFrame = g_renderer->frame;
 }
 
-void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
+void c3d_actor_v2_render(struct C3dActor *base, const float *view)
 {
     struct C3dActorV2 *self = (struct C3dActorV2 *)base;
     float m[12];
@@ -463,7 +463,7 @@ void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
     mir = mirrored(&self->base);
     mat_multiply(m, self->base.matrix, view);
     for (nodeIndex = 0; nodeIndex < self->nodeCount; ++nodeIndex) {
-        c3d_node_v2_render(self->nodes[nodeIndex], m, mir, clip, self->base.layer);
+        c3d_node_v2_render(self->nodes[nodeIndex], m, mir, self->base.layer);
         if (self->base.pickable == 1)
             fade(self->nodes[nodeIndex]);
     }

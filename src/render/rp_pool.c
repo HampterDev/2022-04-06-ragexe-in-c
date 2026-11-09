@@ -337,23 +337,6 @@ int rp_vertex_fog_alpha(float rhw)
     return (int)t;
 }
 
-void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int which)
-{
-    int i;
-
-    if (self->fogVertexCaps) {
-        for (i = 0; i < prim->nverts; i++) {
-            int alpha = rp_vertex_fog_alpha(((struct RPTwoTexVertex *)prim->verts)[i].rhw);
-
-            ((struct RPTwoTexVertex *)prim->verts)[i].specular = (DWORD)alpha << 24;
-        }
-    }
-    if (which == 0)
-        queue_append(&self->queues[RENDER_WATER_BUMP], prim, 0.0f, prim->tex0, prim->tex1);
-    else if (which == 1)
-        queue_append(&self->queues[RENDER_TWO_TEXTURE_ALT], prim, 0.0f, prim->tex0, prim->tex1);
-}
-
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim)
 {
     int i;
@@ -386,11 +369,7 @@ void renderer_add_prim(struct Renderer *r, struct RPQuad *p, int flags)
     }
     v = (const struct TexDrawVertex *)q->verts;
     if (!(flags & 1)) {
-        if (flags & 0x800)
-            queue_append(&r->queues[RENDER_WATER_BASE], q, 0.0f, q->texture, NULL);
-        else if (flags & 0x1000)
-            queue_append(&r->queues[RENDER_WATER_BLEND], q, 0.0f, q->texture, NULL);
-        else if (flags & 0x20)
+        if (flags & 0x20)
             queue_append(&r->queues[RENDER_OPAQUE_WRAP], q, 0.0f, q->texture, NULL);
         else
             queue_append(&r->queues[RENDER_OPAQUE_CLAMP], q, 0.0f, q->texture, NULL);

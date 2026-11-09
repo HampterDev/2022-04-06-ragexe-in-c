@@ -23,7 +23,6 @@ struct RPTwoTexQuad *renderer_new_two_tex_quad(struct Renderer *self);
 struct RPQuad *renderer_new_quad(struct Renderer *self);
 struct TexDrawVertex *renderer_new_tex_draw_vertices(struct Renderer *self, int count);
 void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
-void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int which);
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
 /* custom: queues a draw of a static mesh (render/gfx.h) with its two textures. In the queue that

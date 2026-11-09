@@ -57,7 +57,6 @@ void *g_effectMgr;
 struct EffectMgr *g_effectMgr;
 #endif
 int g_lightmap;
-BYTE g_waterBumpSupported;
 void sprite_atlas_initialize(struct Renderer *r) { assert(r); ++atlas_starts; }
 void sprite_atlas_destroy(struct Renderer *r) { assert(r); ++atlas_ends; }
 #ifdef RENDERER_BASELINE
@@ -286,7 +285,7 @@ static void blend_stage_arguments(void)
 
 static void render_trace(void)
 {
-    static const int flags[] = {0,0x800,0x1000,0x101,1,0x201,0x21,0x8001,0x103,3,0x203,5,0xd,0x209,0x11,0x205};
+    static const int flags[] = {0,0x20,0x101,1,0x201,0x21,0x8001,0x103,3,0x203,5,0xd,0x209,0x11,0x205};
     struct Renderer renderer = {0};
     struct TexDrawPrim quads[96];
     struct RPTwoTexQuad pairs[8];
@@ -296,11 +295,10 @@ static void render_trace(void)
     assert(renderer_construct(&renderer));
     for (i = 0; i < 4; ++i) textures[i].base.surface = &surfaces[i];
     g_fogNear = 0.2f; g_fogFar = 0.8f;
-    for (scenario = 0; scenario < 16; ++scenario) {
+    for (scenario = 0; scenario < 8; ++scenario) {
         renderer.twoPassAlpha = scenario & 1;
         g_lightmap = (scenario >> 1) & 1;
-        g_waterBumpSupported = (BYTE)((scenario >> 2) & 1);
-        renderer.fogVertexCaps = (scenario >> 3) & 1;
+        renderer.fogVertexCaps = (scenario >> 2) & 1;
         for (i = 0; i < 96; ++i) {
             struct TexDrawPrim *q = quads + i;
             rp_quad_batch_construct(q);
@@ -318,8 +316,7 @@ static void render_trace(void)
             memset(pairs + i, 0, sizeof pairs[i]); rp_two_tex_quad_construct(pairs + i);
             pairs[i].prim.tex0 = textures + (i % 4); pairs[i].prim.tex1 = textures + ((i + 1) % 4);
             for (j = 0; j < 4; ++j) { pairs[i].quad[j].rhw = 0.00125f; pairs[i].quad[j].diffuse = i + 1; }
-            if (i < 4) renderer_add_two_tex_prim(&renderer, &pairs[i].prim, 0);
-            else renderer_add_multi_tex_batch(&renderer, &pairs[i].prim);
+            renderer_add_multi_tex_batch(&renderer, &pairs[i].prim);
         }
         memset(states, 0, sizeof states); trace = UINT64_C(1469598103934665603); draws = 0;
         renderer_draw_lists(&renderer);

@@ -12,132 +12,20 @@
 #include "render/render_options.h"
 #include "actor/attr_state.h"
 
-static int off_screen(const struct TexDrawVertex *v)
-{
-    struct Renderer *r = g_renderer;
-    float lo01, lo23, hi01, hi23, lo, hi;
-
-    lo01 = v[0].x < v[1].x ? v[0].x : v[1].x;
-    lo23 = v[2].x < v[3].x ? v[2].x : v[3].x;
-    lo = lo23 > lo01 ? lo01 : lo23;
-    if (lo >= (float)r->width)
-        return 1;
-    hi01 = v[0].x > v[1].x ? v[0].x : v[1].x;
-    hi23 = v[2].x > v[3].x ? v[2].x : v[3].x;
-    hi = hi01 > hi23 ? hi01 : hi23;
-    if (0.0f > hi)
-        return 1;
-    lo01 = v[0].y < v[1].y ? v[0].y : v[1].y;
-    lo23 = v[2].y < v[3].y ? v[2].y : v[3].y;
-    lo = lo23 > lo01 ? lo01 : lo23;
-    if (lo >= (float)r->height)
-        return 1;
-    hi01 = v[0].y > v[1].y ? v[0].y : v[1].y;
-    hi23 = v[2].y > v[3].y ? v[2].y : v[3].y;
-    hi = hi01 > hi23 ? hi01 : hi23;
-    if (0.0f > hi)
-        return 1;
-    return 0;
-}
-
-/* custom: whether a projected quad has a corner on or behind the camera's own plane. Its corners
-   are drawn as pre-transformed vertices, so such a corner flips to the far side of the screen and
-   the quad covers the view with its texture sampled at one point (flat white, grey or olive ground,
-   or black blocks). The original's camera stays high above the ground and never meets such a
-   cell; with the unlocked tilt (game/camera.h) the eye comes down to a few units above it, and the
-   cells under and behind it reach the camera plane. Those cells lie below the bottom of the view,
-   so they are left out. */
+/* custom: whether a projected quad has a corner on or behind the camera's own plane. The original
+   drew its corners as pre-transformed vertices, where such a corner flips to the far side of the
+   screen; its camera stays high above the ground and never meets such a cell, but with the
+   unlocked tilt (game/camera.h) the eye comes down to a few units above it. Those cells lie below
+   the bottom of the view, so their water is left out. */
 static int behind_eye(const struct TexDrawVertex *v)
 {
     return !(v[0].rhw > 0.0f) || !(v[1].rhw > 0.0f) || !(v[2].rhw > 0.0f) || !(v[3].rhw > 0.0f);
 }
 
-static void c3d_ground15_draw_surface(struct C3dGround15 *self, const float *view,
-                                        struct GndSurface *s, char clip)
-{
-    struct TexDrawVertex v[4];
-    float lm[4][2];
-    float scale[3];
-    struct RPQuad *q;
-    int i;
-
-    memset(v, 0, sizeof(v));
-    for (i = 0; i < 4; i++)
-        v[i].specular = 0xff000000;
-    scale[0] = g_weather.color[0];
-    scale[1] = g_weather.color[1];
-    scale[2] = g_weather.color[2];
-    for (i = 0; i < 4; i++)
-        {
-            Vec3 world_point = {s->v[i].pos[0], s->v[i].pos[1], s->v[i].pos[2]};
-            renderer_project_vertex(g_renderer, &world_point, view, &v[i]);
-        }
-    if (behind_eye(v))
-        return;
-    if (clip && off_screen(v))
-        return;
-
-    if (g_playerBlind || !s->halfAlpha) {
-        for (i = 0; i < 4; i++) {
-            DWORD c;
-            BYTE *b = (BYTE *)&c;
-
-            v[i].u = s->v[i].u;
-            v[i].v = s->v[i].v;
-            lm[i][0] = s->v[i].lu;
-            lm[i][1] = s->v[i].lv;
-            c = s->v[i].colour;
-            b[2] = (BYTE)(int)((float)(BYTE)(c >> 16) * scale[0]);
-            b[1] = (BYTE)(int)((float)b[1] * scale[1]);
-            b[0] = (BYTE)(int)((float)b[0] * scale[2]);
-            v[i].diffuse = c;
-        }
-    } else {
-        for (i = 0; i < 4; i++) {
-            v[i].diffuse = s->v[i].colour;
-            v[i].u = s->v[i].u;
-            v[i].v = s->v[i].v;
-            lm[i][0] = s->v[i].lu;
-            lm[i][1] = s->v[i].lv;
-            ((BYTE *)&v[i].diffuse)[3] = 0x80;
-        }
-    }
-
-    if (g_waterBumpSupported) {
-        if (g_lightmap) {
-            struct RPTwoTex *t = &renderer_new_two_tex_quad(g_renderer)->prim;
-            struct RPTwoTexVertex *vertices = t->verts;
-
-            for (i = 0; i < 4; i++) {
-                memcpy(&vertices[i], &v[i], sizeof(v[i]));
-                vertices[i].u1 = lm[i][0];
-                vertices[i].v1 = lm[i][1];
-            }
-            t->tex0 = s->texture;
-            t->tex1 = s->lightmapPage;
-            renderer_add_two_tex_prim(g_renderer, t, 0);
-            return;
-        }
-    } else if (g_lightmap) {
-        q = &renderer_new_prim(g_renderer)->base;
-        memcpy(q->verts, v, sizeof(v));
-        for (i = 0; i < 4; i++) {
-            ((struct TexDrawVertex *)q->verts)[i].u = lm[i][0];
-            ((struct TexDrawVertex *)q->verts)[i].v = lm[i][1];
-        }
-        q->texture = s->lightmapPage;
-        renderer_add_prim(g_renderer, q, 0x1000);
-    }
-    q = &renderer_new_prim(g_renderer)->base;
-    memcpy(q->verts, v, sizeof(v));
-    q->texture = s->texture;
-    renderer_add_prim(g_renderer, q, 0x800);
-}
-
-/* A cell's water quad, or NULL where none is drawn. custom: with world set its corners stay in world
-   coordinates for the device to project (RPQuad.world), the projected ones deciding the rest. */
+/* A cell's water quad, or NULL where none is drawn. custom: its corners stay in world coordinates
+   for the device to project (RPQuad.world), the projected ones deciding the rest. */
 static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct GndCell *cell, const float *view,
-                                 const float *tint, float h, float hPrev, float hNext, int world)
+                                 const float *tint, float h, float hPrev, float hNext)
 {
     const struct GndSurface *top = cell->top;
     struct TexDrawVertex v[4];
@@ -166,14 +54,12 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
 
     q = &renderer_new_prim(g_renderer)->base;
     for (i = 0; i < 4; i++) {
-        if (world) {
-            v[i].x = cell->water[i][0];
-            v[i].y = cell->water[i][1];
-            v[i].z = cell->water[i][2];
-        }
+        v[i].x = cell->water[i][0];
+        v[i].y = cell->water[i][1];
+        v[i].z = cell->water[i][2];
         rp_quad_set_vertex_pos(q, i, &v[i]);
     }
-    q->world = (unsigned char)world;
+    q->world = 1;
     if (g_playerBlind == 0 && self->waterType == 4) {
         DWORD c = (BYTE)(int)(tint[0] * 255.0f);
         c = (c + 0xff00) << 8;
@@ -204,7 +90,7 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
 }
 
 static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
-                                      struct GndCell *cell, const float *view, const float *tint, int world)
+                                      struct GndCell *cell, const float *view, const float *tint)
 {
     float h, hPrev, hNext;
     int64_t diagonal;
@@ -222,22 +108,22 @@ static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
     h = ground_water_height(w, diagonal);
     hPrev = ground_water_height(w, diagonal - 1);
     hNext = ground_water_height(w, diagonal + 1);
-    q = water_quad(self, x, y, cell, view, tint, h, hPrev, hNext, world);
+    q = water_quad(self, x, y, cell, view, tint, h, hPrev, hNext);
     if (!q)
         return;
     q->texture = (self->waters)[block].texture;
     renderer_add_prim(g_renderer, q, 1);
 }
 
-/* custom: the ground as static meshes the device projects (render/gfx.h, world/ground.h). A block's
-   mesh holds four vertices and two triangles per surface, the corners and their order as
-   c3d_ground15_draw_surface gives them to the ground's two-texture quads (a strip, 0 1 2 then
-   2 1 3), so the device draws the same triangles with the same colours, texture coordinates and
-   lightmap coordinates, and the device scales the colours by the weather colour as that path does.
-   They take the place of those quads while lightmaps and the two-texture path are on. Surfaces
-   with halfAlpha take the weather colour only while the player is blind and are drawn so only
-   then; otherwise c3d_ground15_draw_surface keeps them, as it keeps every surface when lightmaps
-   or the two-texture path are off. */
+/* custom: the ground as static meshes the device projects (render/gfx.h, world/ground.h), in place
+   of the original's quads, one a surface, which the CPU projected each frame. A block's mesh holds
+   four vertices and two triangles per surface, the corners and their order as the original gave
+   them to its quads (a strip, 0 1 2 then 2 1 3), so the device draws the same triangles with the
+   same colours, texture coordinates and lightmap coordinates, and scales the colours by the
+   weather colour as the original did. Surfaces with halfAlpha keep their own colour with half
+   its alpha, unless the player is blind; the opaque lists' alpha test then drops them, as it
+   dropped the original's. With lightmaps off the draws bind none and stage 1 stays off
+   (render/crenderer.c), so the ground is its texture times its colour. */
 
 struct GpuSurface {
     struct GndSurface *surface;
@@ -269,7 +155,7 @@ static int gpu_add(struct GpuSurface *list, int n, struct GndSurface *s)
 static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int bx, int by,
                            struct GpuSurface *list, struct GfxMeshVertex *verts, WORD *indices)
 {
-    int x0 = bx * GND_GPU_BLOCK, y0 = by * GND_GPU_BLOCK, x, y, n = 0, i, k, half = 0;
+    int x0 = bx * GND_GPU_BLOCK, y0 = by * GND_GPU_BLOCK, x, y, n = 0, i, k;
     int x1 = x0 + GND_GPU_BLOCK < self->width ? x0 + GND_GPU_BLOCK : self->width;
     int y1 = y0 + GND_GPU_BLOCK < self->height ? y0 + GND_GPU_BLOCK : self->height;
 
@@ -332,14 +218,6 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
         d->count += 6;
         if (!list[i].key[0])
             b->castCount = d->first + d->count;
-        half += list[i].key[0] != 0;
-    }
-    if (half) {
-        b->half = malloc((size_t)half * sizeof *b->half);
-        if (!b->half)
-            return 0;
-        for (i = n - half; i < n; i++)
-            b->half[b->halfCount++] = list[i].surface;
     }
     b->mesh = gfx_mesh_create(verts, n * 4, indices, n * 6);
     return b->mesh != NULL;
@@ -374,10 +252,10 @@ static int gpu_build(struct C3dGround15 *self)
     return 1;
 }
 
-static int gpu_usable(struct C3dGround15 *self)
+/* whether the blocks are there, built on the first call; where they cannot be, the ground is not
+   drawn */
+static int gpu_ready(struct C3dGround15 *self)
 {
-    if (!g_waterBumpSupported || !g_lightmap)
-        return 0;
     if (self->gpuState == 0)
         gpu_build(self);
     return self->gpuState == 1;
@@ -421,92 +299,71 @@ static void gpu_cast(struct C3dGround15 *self, const float *view, const int *cel
         }
 }
 
-/* Queues the blocks that share a cell with `cells`, each once a frame, and their casters; the
-   device clips what lies outside the view, which c3d_ground15_draw_surface leaves out itself
-   (off_screen, behind_eye). */
-static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells, char clip)
+/* Queues the blocks that share a cell with `cells`, each once a frame; the device clips what lies
+   outside the view. */
+static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells)
 {
-    int frame = g_renderer->frame, b4[4], bx, by, i;
+    int frame = g_renderer->frame, b4[4], bx, by, i, k;
     struct RPMeshDraw draw;
 
     memset(&draw, 0, sizeof draw);
     memcpy(draw.view, view, sizeof draw.view);
     draw.draw.kind = GFX_MESH_GROUND;
-    for (i = 0; i < 3; i++)
-        draw.draw.colour[i] = g_weather.color[i];
-    draw.draw.colour[3] = 1.0f;
     draw.draw.uv[0] = draw.draw.uv[3] = 1.0f;
 
     gpu_blocks(self, cells, b4);
     for (by = b4[1]; by <= b4[3]; by++)
         for (bx = b4[0]; bx <= b4[2]; bx++) {
             struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
-            int draws = g_playerBlind ? b->drawCount : b->plainCount;
 
             if (b->lastFrame == frame)
                 continue;
             b->lastFrame = frame;
             draw.mesh = b->mesh;
-            for (i = 0; i < draws; i++) {
+            for (i = 0; i < b->drawCount; i++) {
+                int half = i >= b->plainCount && !g_playerBlind;
+
+                for (k = 0; k < 3; k++)
+                    draw.draw.colour[k] = half ? 1.0f : g_weather.color[k];
+                draw.draw.colour[3] = half ? 128.0f / 255.0f : 1.0f;
                 draw.draw.first = b->draws[i].first;
                 draw.draw.count = b->draws[i].count;
                 renderer_add_mesh_draw(g_renderer, RENDER_GROUND_MESH, &draw, b->draws[i].texture,
-                                       b->draws[i].lightmap, 0.0f);
+                                       g_lightmap ? b->draws[i].lightmap : NULL, 0.0f);
             }
-            if (!g_playerBlind)
-                for (i = 0; i < b->halfCount; i++)
-                    c3d_ground15_draw_surface(self, view, b->half[i], clip);
         }
 }
 
 void c3d_ground15_cast(struct C3dGround15 *self, const float *view, const int *cells)
 {
-    if (gpu_usable(self))
+    if (gpu_ready(self))
         gpu_cast(self, view, cells);
 }
 
-void c3d_ground15_render(struct C3dGround15 *self, const float *view,
-                                   const int *cells, char clip)
+void c3d_ground15_render(struct C3dGround15 *self, const float *view, const int *cells)
 {
     float tint[3];
     int x, y;
 
+    if (gpu_ready(self)) {
+        gpu_render(self, view, cells);
+        if (g_renderer->shadowPending)
+            gpu_cast(self, view, cells);
+    }
+    if (!self->waters)
+        return;
     tint[0] = g_weather.tint[0];
     tint[1] = g_weather.tint[1];
     tint[2] = g_weather.tint[2];
-    if (gpu_usable(self)) {
-        gpu_render(self, view, cells, clip);
-        gpu_cast(self, view, cells);
-        if (!self->waters)
-            return;
-        for (y = cells[1]; y <= cells[3]; y++)
-            for (x = cells[0]; x <= cells[2]; x++) {
-                struct GndCell *cell = GND_CELL(self, x, y);
-
-                if (cell->lastFrame == g_renderer->frame)
-                    continue;
-                cell->lastFrame = g_renderer->frame;
-                if (cell->top)
-                    c3d_ground15_draw_water(self, x, y, cell, view, tint, 1);
-            }
-        return;
-    }
     for (y = cells[1]; y <= cells[3]; y++)
         for (x = cells[0]; x <= cells[2]; x++) {
             struct GndCell *cell = GND_CELL(self, x, y);
-            int frame = g_renderer->frame;
 
-            if (cell->lastFrame == frame)
+            if (cell->lastFrame == g_renderer->frame)
                 continue;
-            cell->lastFrame = frame;
-            if (cell->top) {
-                c3d_ground15_draw_water(self, x, y, cell, view, tint, 0);
-                c3d_ground15_draw_surface(self, view, cell->top, clip);
-            }
-            if (cell->frontWall)
-                c3d_ground15_draw_surface(self, view, cell->frontWall, clip);
-            if (cell->rightWall)
-                c3d_ground15_draw_surface(self, view, cell->rightWall, clip);
+            cell->lastFrame = g_renderer->frame;
+            if (cell->top)
+                c3d_ground15_draw_water(self, x, y, cell, view, tint);
         }
 }
 

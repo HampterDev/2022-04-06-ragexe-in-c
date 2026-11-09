@@ -56,8 +56,6 @@ struct FrustumObb;
 
 #include "resources/attr.h"
 
-extern int g_isVoodooInUse;
-
 struct GameMode;
 
 #include "effects/effect_mgr.h"

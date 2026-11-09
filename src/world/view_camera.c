@@ -336,13 +336,11 @@ void view_on_render(struct View *self)
             res = view_frustum_test_obb(&self->frustum, &a->obb);
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
-            if (res == FRUSTUM_INSIDE)
-                a->ops->render(a, view, 0);
-            else if (res == FRUSTUM_CROSSING)
-                a->ops->render(a, view, 1);
+            if (res != FRUSTUM_OUTSIDE)
+                a->ops->render(a, view);
             a->lastFrame = g_renderer->frame;
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell, 1);
+        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
@@ -359,11 +357,11 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (a->lastFrame != g_renderer->frame) {
-                a->ops->render(a, view, 0);
+                a->ops->render(a, view);
                 a->lastFrame = g_renderer->frame;
             }
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell, 0);
+        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
         cells_max(&g_drawnCellMaxY, leaf->groundCell[3]);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);

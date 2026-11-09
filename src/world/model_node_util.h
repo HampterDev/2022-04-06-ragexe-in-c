@@ -19,19 +19,6 @@ static inline DWORD pack(BYTE a, BYTE r, BYTE g, BYTE b)
 {
     return (DWORD)b | (DWORD)g << 8 | (DWORD)r << 16 | (DWORD)a << 24;
 }
-#define BYTE_R(c) ((BYTE)((c) >> 16))
-#define BYTE_G(c) ((BYTE)((c) >> 8))
-#define BYTE_B(c) ((BYTE)(c))
-#define SCALED(x, s) ((BYTE)(int)((float)(x) * (s)))
-
-/* custom: a corner's own colour channel under the ground's light (groundLight), at most 0xff */
-static inline int ground_lit(int ground, BYTE own)
-{
-    int c = ground + own;
-
-    return c < 0xff ? c : 0xff;
-}
-
 static inline struct Texture *run_texture(struct C3dNode *self, WORD texture)
 {
     struct Texture *found = self->textureCount ? self->textures[texture % self->textureCount] : NULL;
@@ -39,8 +26,9 @@ static inline struct Texture *run_texture(struct C3dNode *self, WORD texture)
 }
 
 const struct UvTransform *uv_xform_find(const struct C3dNodeV2 *node, int texture);
-void uv_turn(const struct UvTransform *x, float *u, float *v);
-/* custom: uv_turn as a transform (render/gfx.h, GfxMeshDraw), the identity without x */
+/* custom: a texture-coordinate animation's turn as a transform (render/gfx.h, GfxMeshDraw): about
+   (0.5, 0.5) by its angle, then scaled and offset, as the original turned each corner's
+   coordinates; the identity without x */
 void uv_turn_matrix(const struct UvTransform *x, float *uv);
 
 #endif

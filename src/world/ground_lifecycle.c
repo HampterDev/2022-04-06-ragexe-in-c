@@ -28,7 +28,6 @@ static void gpu_block_free(struct GndGpuBlock *b)
 {
     gfx_mesh_destroy(b->mesh);
     free(b->draws);
-    free(b->half);
     memset(b, 0, sizeof *b);
 }
 

@@ -36,8 +36,7 @@ int c3d_ground15_get_vertex_colour(struct C3dGround15 *self, int ax, int ay,
 void c3d_ground15_get_lightmap_colour(struct C3dGround15 *self, int ax, int ay,
     BYTE *c0, BYTE *c1, BYTE *c2, BYTE *c3);
 void c3d_ground15_update_water(struct C3dGround15 *self);
-void c3d_ground15_render(struct C3dGround15 *self, const float *view,
-    const int *cells, char clip);
+void c3d_ground15_render(struct C3dGround15 *self, const float *view, const int *cells);
 /* custom: only the shadow casters of render's meshes (render/rp_pool.h) */
 void c3d_ground15_cast(struct C3dGround15 *self, const float *view, const int *cells);
 void c3d_ground15_draw_attr_quad(struct C3dGround15 *self, const float *view, int ax,

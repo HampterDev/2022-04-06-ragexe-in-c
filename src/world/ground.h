@@ -68,9 +68,8 @@ struct GndLightmapSet {
 /* custom: the ground's surfaces as static meshes that the device projects (render/gfx.h), one per
    block of GND_GPU_BLOCK x GND_GPU_BLOCK cells, built on their first draw (world/ground_draw.c).
    A draw is a run of surfaces with one texture and one lightmap page; the first plainCount draws
-   hold the surfaces without halfAlpha, the rest those with it, which half lists as well. The
-   first castCount indices are those plain draws', which cast shadows; castFrame is the last frame
-   that queued them. */
+   hold the surfaces without halfAlpha, the rest those with it. The first castCount indices are
+   those plain draws', which cast shadows; castFrame is the last frame that queued them. */
 #define GND_GPU_BLOCK 32
 
 struct GndGpuDraw {
@@ -82,8 +81,6 @@ struct GndGpuBlock {
     struct gfx_mesh *mesh;
     struct GndGpuDraw *draws;
     int drawCount, plainCount;
-    struct GndSurface **half;
-    int halfCount;
     int lastFrame, castCount, castFrame;
 };
 

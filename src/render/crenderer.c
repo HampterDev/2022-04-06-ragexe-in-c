@@ -18,8 +18,6 @@ static void flush_alpha_keyed_lists(struct Renderer *self);
 static void flush_blended_wrap(struct Renderer *self);
 static void flush_opaque_lists(struct Renderer *self);
 static void flush_blended_overlay(struct Renderer *self);
-static void renderer_flush_alpha_no_depth_list(struct Renderer *self);
-static void flush_water_bump(struct Renderer *self);
 static void flush_multitexture(struct Renderer *self);
 static void flush_blended_no_depth(struct Renderer *self);
 static void renderer_draw_lists(struct Renderer *self);
@@ -188,8 +186,8 @@ static void flush_blended(struct Renderer *self, const struct RenderEntry *entry
     draw_quad(n);
 }
 
-/* custom: the ground's meshes (render/gfx.h), drawn with the states of its two-texture quads in
-   flush_water_bump and sorted by texture as those are */
+/* custom: the ground's meshes (render/gfx.h), drawn with the states the original drew its
+   two-texture ground quads with and sorted by texture and lightmap as those were */
 static void flush_ground_meshes(struct Renderer *self)
 {
     struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
@@ -287,26 +285,6 @@ static void flush_blended_overlay(struct Renderer *self)
         draw_quad(n);
     }
     renderer_set_blend_stages(self, 0);
-}
-
-static void renderer_flush_alpha_no_depth_list(struct Renderer *self)
-{
-    flush_plain(self, RENDER_WATER_BASE, 1, 0);
-}
-
-static void flush_water_bump(struct Renderer *self)
-{
-    struct RenderQueue *l = &self->queues[RENDER_WATER_BUMP];
-    queue_sort(l, two_tex_less);
-    for (size_t i = 0; i < l->count; ++i) {
-        struct RPTwoTex *n = l->items[i].primitive;
-        if (n->nverts <= 0)
-            continue;
-        set_tex0(self, l->items[i].textures[0].surface);
-        set_tex1(self, l->items[i].textures[1].surface);
-        if (n->nverts)
-            draw_twotex(n);
-    }
 }
 
 static void flush_multitexture(struct Renderer *self)
@@ -608,33 +586,14 @@ static void renderer_draw_lists(struct Renderer *self)
     HRS(self, GFX_RS_AMBIENT, 0xffffffff);
     HRS(self, GFX_RS_CULLMODE, GFX_CULL_CW);
     perf_begin(PERF_L_WATER);
-    if (g_lightmap) {
-        if (g_waterBumpSupported) {
-            HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
-            HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
-            flush_water_bump(self);
-            flush_ground_meshes(self);
-            HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
-            HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
-        } else {
-            renderer_flush_alpha_no_depth_list(self);
-            HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
-            HTSS(self, 0, GFX_TSS_COLOROP, GFX_TOP_SELECTARG1);
-            HTSS(self, 0, GFX_TSS_ALPHAOP, GFX_TOP_SELECTARG1);
-            HRS(self, GFX_RS_ALPHABLENDENABLE, TRUE);
-            HRS(self, GFX_RS_ALPHAREF, 1);
-            HRS(self, GFX_RS_SRCBLEND, GFX_BLEND_ONE);
-            HRS(self, GFX_RS_DESTBLEND, GFX_BLEND_SRCALPHA);
-            flush_plain(self, RENDER_WATER_BLEND, 1, 0);
-            HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
-            HTSS(self, 0, GFX_TSS_COLOROP, GFX_TOP_MODULATE);
-            HTSS(self, 0, GFX_TSS_ALPHAOP, GFX_TOP_MODULATE);
-            HRS(self, GFX_RS_ALPHABLENDENABLE, FALSE);
-            HRS(self, GFX_RS_ALPHAREF, 0xcf);
-        }
-    } else {
-        renderer_flush_alpha_no_depth_list(self);
-    }
+    /* custom: the ground (world/ground_draw.c); without lightmaps stage 1 stays off, and the
+       ground is its texture times its colour, as the original's ground quads without them */
+    HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
+    if (g_lightmap)
+        HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
+    flush_ground_meshes(self);
+    HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
+    HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
     perf_end(PERF_L_WATER);
     HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
     HRS(self, GFX_RS_AMBIENT, 0);

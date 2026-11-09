@@ -18,7 +18,7 @@ struct ModelActorOps {
     void (*light)(struct C3dActor *actor, const float *direction, const float *diffuse, const float *ambient);
     void (*animate)(struct C3dActor *actor, double time);
     void (*tick)(struct C3dActor *actor);
-    void (*render)(struct C3dActor *actor, const float *view, BYTE clip);
+    void (*render)(struct C3dActor *actor, const float *view);
     /* custom: only the shadow casters of render (render/rp_pool.h) */
     void (*cast)(struct C3dActor *actor, const float *view);
     void (*set_speed)(struct C3dActor *actor, float speed);
