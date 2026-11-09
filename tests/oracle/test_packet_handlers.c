@@ -29,6 +29,12 @@
 #include "session/session_talk.h"
 #include "session/character_name.h"
 #include "platform/clientinfo.h"
+#include "game/display_settings.h"
+#include "game/character_stats.h"
+#include "game/status_values.h"
+#include "session/session_state.h"
+#include "ui/character/gauge.h"
+#include "ui/character/status_wnd.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -117,6 +123,71 @@
 #define ORIG_CHARACTER_NAME   0x875550u
 #define ORIG_IS_ADMIN_OPTION  0x8682a0u
 #define ORIG_IS_ADMIN_AID     0xb05da0u
+#define ORIG_INVALIDATE_WINDOWS 0x867610u
+#define ORIG_IS_SUPER_NOVICE  0x884100u
+#define ORIG_DRAWN_JOB        0x8539e0u
+#define ORIG_BASIC_INFO_HEIGHT 0xaf8c50u
+#define ORIG_BAR_SET_VALUES   0x568330u
+#define ORIG_REFRESH_ACTOR_EFFECTS 0x772130u
+#define ORIG_GET_WINDOW       0x6409d0u
+#define ORIG_REFRESH_SKILL_WNDS 0x88af30u
+#define ORIG_STATUS_RESTORE   0x57b6f0u
+#define ORIG_END_EXCHANGE     0x84f3f0u
+#define ORIG_FIND_ABR         0x875070u
+#define ORIG_ABR_GET          0x7e6110u
+#define ORIG_SET_ADVANCED_STATUS 0x7ae5e0u
+#define ORIG_PET_TALK_DUE     0x8903b0u
+#define ORIG_WND_STATUS       0xee8974u
+#define ORIG_WND_BASIC_INFO   0xee898cu
+#define ORIG_WND_GROUP        0xee8a78u
+#define ORIG_WND_HEIGHT       0x18
+#define ORIG_WND_BASE_BAR     0xd0
+#define ORIG_WND_JOB_BAR      0xd4
+#define ORIG_WINDOW_VT_SEND   (0x88 / 4)
+#define ORIG_MODE_EXCHANGE_OPEN 0x114
+#define ORIG_MODE_STATUS_PENDING 0x2e4
+#define ORIG_ABR_HP           0x1134374u
+#define ORIG_ABR_MAX_HP       0x113437cu
+#define ORIG_HP               0x1138ddcu
+#define ORIG_MAX_HP           0x1138de0u
+#define ORIG_SP               0x1138de4u
+#define ORIG_MAX_SP           0x1138de8u
+#define ORIG_WALK_SPEED       0x11352e4u
+#define ORIG_KARMA            0x11352f4u
+#define ORIG_MANNER           0x11352e8u
+#define ORIG_STATUS_POINTS    0x1135244u
+#define ORIG_BASE_LEVEL       0x1135240u
+#define ORIG_JOB_LEVEL        0x1135248u
+#define ORIG_SKILL_POINTS     0x113524cu
+#define ORIG_WEIGHT           0x11352f0u
+#define ORIG_MAX_WEIGHT       0x11352ecu
+#define ORIG_WEIGHT_PENALTY   0x113b5ecu
+#define ORIG_STATS            0x1135274u
+#define ORIG_STAT_COSTS       0x113528cu
+#define ORIG_STAT_BONUS       0x113525cu
+#define ORIG_TRAIT_BONUS      0x113b638u
+#define ORIG_ATK              0x11352a8u
+#define ORIG_REFINE_ATK       0x11352bcu
+#define ORIG_MATK_MAX         0x11352c0u
+#define ORIG_MATK_MIN         0x11352c4u
+#define ORIG_DEF              0x11352b4u
+#define ORIG_PLUS_DEF         0x11352b8u
+#define ORIG_MDEF             0x11352acu
+#define ORIG_PLUS_MDEF        0x11352c8u
+#define ORIG_HIT              0x11352ccu
+#define ORIG_FLEE             0x11352d0u
+#define ORIG_PLUS_FLEE        0x11352d8u
+#define ORIG_CRITICAL         0x11352d4u
+#define ORIG_ASPD             0x11352a4u
+#define ORIG_PLUS_ASPD        0x11352b0u
+#define ORIG_BASE_EXP         0x1135220u
+#define ORIG_NEXT_BASE_EXP    0x1135228u
+#define ORIG_NEXT_JOB_EXP     0x1135230u
+#define ORIG_JOB_EXP          0x1135238u
+#define ORIG_ZENY             0x11352e0u
+#define ORIG_PET_FULLNESS     0x1134c48u
+#define ORIG_PET_INTIMACY_VAL 0x1134c50u
+#define ORIG_PET_JOB          0x1134c40u
 #define ORIG_STD_STRING       24
 #define ORIG_STD_STRING_SSO   16
 
@@ -147,7 +218,7 @@
 #define FAKE_CONNECTION 0x5151
 
 enum { FILL_ZERO, FILL_PATTERN, FILL_ONES, FILL_COUNT };
-enum { PK_DEFAULT, PK_NAMES, PK_ENTRY };
+enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP };
 
 enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_COUNT };
 #define M(r) (1u << (r))
@@ -182,6 +253,34 @@ static unsigned fake_nodes[4][4];
 static int fake_node_count;
 static unsigned fake_tree_node[8];
 static struct MemberMark fake_mark;
+static int drawn_job, windows_present;
+static unsigned char orig_status_wnd[0x400], orig_basic_info_wnd[0x400], orig_group_wnd[0x400], orig_found_wnd[0x400];
+static struct UIWindow lift_status_wnd, lift_basic_info_wnd, lift_group_wnd, lift_found_wnd;
+static void *orig_window_vt[64];
+static long long fake_abr_value[2];
+static int fake_abr_used[2];
+static struct Int64Pair lift_abr_pair[2];
+static struct IntIntPair lift_adv_pair;
+static int adv_pending, adv_key, adv_value;
+
+static const char *window_name(const void *w)
+{
+    if (w == orig_status_wnd || w == &lift_status_wnd) return "status";
+    if (w == orig_basic_info_wnd || w == &lift_basic_info_wnd) return "bi";
+    if (w == orig_group_wnd || w == &lift_group_wnd) return "group";
+    if (w == orig_found_wnd || w == &lift_found_wnd) return "found";
+    return w ? "?" : "null";
+}
+static int is_super_novice(int job)
+{
+    return job == 0x17 || job == 0xfcd || job == 0x1020 || job == 0x104c || (job >= 0x105e && job <= 0x1061) || job == 0x10d3 || job == 0x10da;
+}
+static int abr_slot(const void *tree)
+{
+    if (tree == &g_session1.abrHp || tree == oracle_addr(ORIG_ABR_HP)) return 0;
+    if (tree == &g_session1.abrMaxHp || tree == oracle_addr(ORIG_ABR_MAX_HP)) return 1;
+    return -1;
+}
 
 #define SF(f) offsetof(struct Session, f)
 #define AF(f) offsetof(struct GameActor, f)
@@ -240,6 +339,42 @@ static const struct Field fields[] = {
     { "is_boss", M_ACTORS, ORIG_ACTOR_IS_BOSS, AF(is_boss), 1 },
     { "object_type", M_ACTORS, ORIG_ACTOR_OBJECT_TYPE, AF(object_type), 1 },
     { "vtable", M(R_NEW), 0, 0, 4, 1 },
+    { "maxHp", M(R_SESSION), S(ORIG_MAX_HP), SF(maxHp), 4 },
+    { "maxSp", M(R_SESSION), S(ORIG_MAX_SP), SF(maxSp), 4 },
+    { "walkSpeed", M(R_SESSION), S(ORIG_WALK_SPEED), SF(walkSpeed), 4 },
+    { "karma", M(R_SESSION), S(ORIG_KARMA), SF(karma), 4 },
+    { "manner", M(R_SESSION), S(ORIG_MANNER), SF(manner), 4 },
+    { "statusPoints", M(R_SESSION), S(ORIG_STATUS_POINTS), SF(statusPoints), 4 },
+    { "charBaseLevel", M(R_SESSION), S(ORIG_BASE_LEVEL), SF(charBaseLevel), 4 },
+    { "jobLevel", M(R_SESSION), S(ORIG_JOB_LEVEL), SF(jobLevel), 4 },
+    { "skillPoints", M(R_SESSION), S(ORIG_SKILL_POINTS), SF(skillPoints), 4 },
+    { "weight", M(R_SESSION), S(ORIG_WEIGHT), SF(weight), 4 },
+    { "maxWeight", M(R_SESSION), S(ORIG_MAX_WEIGHT), SF(maxWeight), 4 },
+    { "stats", M(R_SESSION), S(ORIG_STATS), SF(stats), 24 },
+    { "statCosts", M(R_SESSION), S(ORIG_STAT_COSTS), SF(statCosts), 24 },
+    { "statBonus", M(R_SESSION), S(ORIG_STAT_BONUS), SF(statBonus), 24 },
+    { "traitBonus", M(R_SESSION), S(ORIG_TRAIT_BONUS), SF(traitBonus), 24 },
+    { "atk", M(R_SESSION), S(ORIG_ATK), SF(atk), 4 },
+    { "refineAtk", M(R_SESSION), S(ORIG_REFINE_ATK), SF(refineAtk), 4 },
+    { "matkMax", M(R_SESSION), S(ORIG_MATK_MAX), SF(matkMax), 4 },
+    { "matkMin", M(R_SESSION), S(ORIG_MATK_MIN), SF(matkMin), 4 },
+    { "def", M(R_SESSION), S(ORIG_DEF), SF(def), 4 },
+    { "plusDef", M(R_SESSION), S(ORIG_PLUS_DEF), SF(plusDef), 4 },
+    { "mdef", M(R_SESSION), S(ORIG_MDEF), SF(mdef), 4 },
+    { "plusMdef", M(R_SESSION), S(ORIG_PLUS_MDEF), SF(plusMdef), 4 },
+    { "hit", M(R_SESSION), S(ORIG_HIT), SF(hit), 4 },
+    { "flee", M(R_SESSION), S(ORIG_FLEE), SF(flee), 4 },
+    { "plusFlee", M(R_SESSION), S(ORIG_PLUS_FLEE), SF(plusFlee), 4 },
+    { "critical", M(R_SESSION), S(ORIG_CRITICAL), SF(critical), 4 },
+    { "aspd", M(R_SESSION), S(ORIG_ASPD), SF(aspd), 4 },
+    { "plusAspd", M(R_SESSION), S(ORIG_PLUS_ASPD), SF(plusAspd), 4 },
+    { "baseExp", M(R_SESSION), S(ORIG_BASE_EXP), SF(baseExp), 8 },
+    { "nextBaseExp", M(R_SESSION), S(ORIG_NEXT_BASE_EXP), SF(nextBaseExp), 8 },
+    { "nextJobExp", M(R_SESSION), S(ORIG_NEXT_JOB_EXP), SF(nextJobExp), 8 },
+    { "jobExp", M(R_SESSION), S(ORIG_JOB_EXP), SF(jobExp), 8 },
+    { "zeny", M(R_SESSION), S(ORIG_ZENY), SF(zeny), 4 },
+    { "exchange_open", M(R_MODE), ORIG_MODE_EXCHANGE_OPEN, GF(exchange_open), 4 },
+    { "status_request_pending", M(R_MODE), ORIG_MODE_STATUS_PENDING, GF(status_request_pending), 4 },
 };
 
 static const struct { unsigned mask; unsigned orig_off, lift_off; const char *name; } strings[] = {
@@ -372,7 +507,26 @@ void game_actor_set_job(struct GameActor *self, int job) { event("setjob %s %d",
 void *session_get_actor_by_aid(struct Session *self, DWORD aid) { (void)self; return world_get_game_actor_by_aid(NULL, aid); }
 void render_object_set_argb(struct RenderObject *self, int a, int r, int g, int b) { event("argb %s %d %d %d %d", who(self), a, r, g, b); }
 void *tree_get(struct Tree *tree, const void *key, size_t key_size, size_t size, TreeLessFn less)
-{ (void)tree; (void)key_size; (void)size; (void)less; event("instvar get %d", *(const int *)key); lift_instant_var_got = 1; return &lift_instant_var; }
+{
+    int slot = abr_slot(tree);
+    (void)key_size; (void)size; (void)less;
+    if (slot >= 0) {
+        event("abr get %d %lld", slot, *(const long long *)key);
+        fake_abr_used[slot] = 1;
+        lift_abr_pair[slot].value = 0;
+        return &lift_abr_pair[slot];
+    }
+    if (tree == &g_session1.statusValues) {
+        adv_key = *(const int *)key;
+        adv_pending = 1;
+        lift_adv_pair.value = 0;
+        event("advstat get %d", adv_key);
+        return &lift_adv_pair;
+    }
+    event("instvar get %d", *(const int *)key);
+    lift_instant_var_got = 1;
+    return &lift_instant_var;
+}
 int tree_less_int(const void *a, const void *b) { return *(const int *)a < *(const int *)b; }
 struct RagConnection *rag_connection_instance(void) { return (struct RagConnection *)lift_connection; }
 struct Connection *rag_connection_transport(struct RagConnection *connection) { return (struct Connection *)connection; }
@@ -406,7 +560,7 @@ void string_assign(struct String *s, const char *text, size_t len)
 void string_assign_cstr(struct String *s, const char *text) { string_assign(s, text, strlen(text)); }
 void string_copy(struct String *dst, const struct String *src) { string_init(dst); string_assign(dst, string_cstr(src), src->size); }
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
-{ (void)window; (void)sender; event("wndsend %x %x %x %x %x", message, a, b, c, d); return 0; }
+{ (void)sender; event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d); return 0; }
 BYTE effect_state_bit6(DWORD state) { return (BYTE)((state >> 6) & 1); }
 BYTE is_effect_state_hiding(DWORD state) { return (BYTE)((state >> 1) & 1); }
 BYTE is_effect_state_cloaking(DWORD state) { return (BYTE)((state >> 2) & 1); }
@@ -472,7 +626,7 @@ int session_is_guardian(struct Session *self, int job) { (void)self; return job 
 int session_is_own_aid(struct Session *self, int aid) { return aid != -1 && aid == self->aid; }
 int session_is_homunculus_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
 int session_is_mercenary_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
-int session_is_admin_option(struct Session *self, int what) { return what == 7 && self->map_rule_flags[0]; }
+int session_is_admin_option(struct Session *self, int what) { return (what == 7 || what == 2) && self->map_rule_flags[0]; }
 const char *session_character_name(const struct Session *session) { (void)session; return "Hero"; }
 const char *session_get_pet_accessory_act(struct Session *self, int accessory)
 { static char name[32]; (void)self; snprintf(name, sizeof name, "pet%d.act", accessory); return name; }
@@ -498,6 +652,40 @@ int champion_monster_apply_effects(struct ChampionMonsterMgr *manager, int job, 
 { (void)manager; event("champion %d %s %d", job, who(actor), actor_id); return 0; }
 void world_place_id_nowhere(struct World *self, int id, const float *pos) { (void)self; event("place nowhere %d %.0f %.0f", id, pos[0], pos[1]); }
 void world_place_id_at_client_cell(struct World *self, int id, const int *cell) { (void)self; event("place cell %d %d %d", id, cell[0], cell[1]); }
+void session_invalidate_windows(struct Session *self) { (void)self; event("invalidate"); }
+BYTE session_is_any_super_novice_job(struct Session *self, int id) { (void)self; return (BYTE)is_super_novice(id); }
+int session_get_drawn_job(struct Session *self) { (void)self; return drawn_job; }
+void ui_basic_info_wnd_set_height(struct UIBasicInfoWnd *self, int height) { event("bi height %s %d", window_name(self), height); }
+void ui_basic_info_wnd_set_base_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum) { (void)self; event("bar 1 %lld %lld", current, maximum); }
+void ui_basic_info_wnd_set_job_exp(struct UIBasicInfoWnd *self, __int64 current, __int64 maximum) { (void)self; event("bar 2 %lld %lld", current, maximum); }
+void game_mode_refresh_actor_effects(struct GameMode *self, char player_only) { (void)self; event("refresh effects %d", player_only); }
+struct UIWindow *ui_window_find(int id) { event("find %x", id); return windows_present ? &lift_found_wnd : NULL; }
+void session_refresh_skill_wnds(struct Session *self) { (void)self; event("refresh skills"); }
+void ui_status_wnd_restore_frame(struct UIStatusWnd *self) { event("status restore %s", window_name(self)); }
+void session_end_exchange2(struct Session *self) { (void)self; event("end exchange"); }
+long long session_find_abr(struct Session *self, long long key) { (void)self; event("find abr %lld", key); return key == AID_UNKNOWN ? -1 : 0; }
+BYTE session_pet_talk_due(struct Session *self, __int64 interval) { (void)self; event("talk due %lld", interval); return 1; }
+int tree_less_int64(const void *a, const void *b) { return *(const long long *)a < *(const long long *)b; }
+void string_append_cstr(struct String *s, const char *text)
+{
+    size_t len = strlen(text);
+    char *copy = malloc(s->size + len + 1);
+    if (s->size)
+        memcpy(copy, s->data, s->size);
+    memcpy(copy + s->size, text, len + 1);
+    s->data = copy;
+    s->size += len;
+    s->capacity = s->size;
+}
+void string_format(struct String *s, const char *format, ...)
+{
+    char text[512];
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(text, sizeof text, format, ap);
+    va_end(ap);
+    string_assign_cstr(s, text);
+}
 
 static int lift_get_effect_state(struct RenderObject *self) { (void)self; return 0; }
 static void lift_set_head(struct GameActor *a, int v) { event("head %s %d", who(a), v); }
@@ -626,10 +814,37 @@ static void __fastcall o_names_set_name(void *self, void *edx, unsigned aid, str
 { (void)self; (void)edx; event("name %u '%s'", aid, orig_std_string(name.raw)); }
 static void __fastcall o_sync_server_time(void *self, void *edx, unsigned t) { (void)self; (void)edx; event("sync %u", t); }
 static const char *__fastcall o_character_name(void *self, void *edx) { (void)self; (void)edx; return "Hero"; }
-static int __fastcall o_is_admin_option(void *self, void *edx, int what) { (void)self; (void)edx; return what == 7 && *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
+static int __fastcall o_is_admin_option(void *self, void *edx, int what) { (void)self; (void)edx; return (what == 7 || what == 2) && *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
 static int __cdecl o_is_admin_aid(int aid) { return aid == AID_OWN; }
 static int __fastcall o_get_guild_id(void *self, void *edx) { (void)edx; return self == orig_target ? 77 : 0; }
 static void __fastcall o_set_guild(void *self, void *edx, int value0, int value1) { (void)edx; event("guild %s %d %d", who(self), value0, value1); }
+static void __cdecl o_invalidate_windows(void) { event("invalidate"); }
+static int __fastcall o_is_super_novice(void *self, void *edx, int job) { (void)self; (void)edx; return is_super_novice(job); }
+static int __fastcall o_drawn_job(void *self, void *edx) { (void)self; (void)edx; return drawn_job; }
+static void __fastcall o_basic_info_height(void *self, void *edx, int height) { (void)edx; event("bi height %s %d", window_name(self), height); }
+static void __fastcall o_bar_set_values(void *bar, void *edx, unsigned cur_lo, int cur_hi, unsigned max_lo, int max_hi)
+{ (void)edx; event("bar %d %lld %lld", (int)(UINT_PTR)bar, ((long long)cur_hi << 32) | cur_lo, ((long long)max_hi << 32) | max_lo); }
+static void __fastcall o_refresh_actor_effects(void *self, void *edx, int player_only) { (void)self; (void)edx; event("refresh effects %d", player_only & 0xff); }
+static void *__fastcall o_get_window(void *self, void *edx, int id) { (void)self; (void)edx; event("find %x", id); return windows_present ? orig_found_wnd : NULL; }
+static void __cdecl o_refresh_skill_wnds(void) { event("refresh skills"); }
+static void __fastcall o_status_restore(void *self, void *edx) { (void)edx; event("status restore %s", window_name(self)); }
+static void __fastcall o_end_exchange(void *self, void *edx) { (void)self; (void)edx; event("end exchange"); }
+static long long __fastcall o_find_abr(void *self, void *edx, unsigned lo, int hi) { (void)self; (void)edx; return session_find_abr(NULL, ((long long)hi << 32) | lo); }
+static long long *__fastcall o_abr_get(void *tree, void *edx, const long long *key)
+{
+    int slot = abr_slot(tree);
+    (void)edx;
+    event("abr get %d %lld", slot, *key);
+    fake_abr_used[slot] = 1;
+    fake_abr_value[slot] = 0;
+    return &fake_abr_value[slot];
+}
+static void __fastcall o_set_advanced_status(void *self, void *edx, int status, int value)
+{ (void)self; (void)edx; adv_key = status; adv_value = value; adv_pending = 1; event("advstat get %d", status); }
+static int __fastcall o_pet_talk_due(void *self, void *edx, unsigned lo, int hi) { (void)self; (void)edx; return session_pet_talk_due(NULL, ((long long)hi << 32) | lo); }
+static int __cdecl o_rand(void) { return rand(); }
+static int __fastcall o_window_send(void *self, void *edx, void *sender, int msg, int a, int b, int c, int d)
+{ (void)edx; return ui_window_send((struct UIWindow *)self, (struct UIWindow *)sender, msg, a, b, c, d); }
 
 typedef void (*mode_pkt_fn)(struct GameMode *, const void *);
 #define LIFT(fn) static void w_##fn(const unsigned char *pkt) { ((mode_pkt_fn)fn)(&lift_mode, pkt); }
@@ -676,6 +891,20 @@ LIFT(game_mode_zc_notify_newentry10)
 LIFT(game_mode_zc_notify_newentry11)
 LIFT(game_mode_zc_notify_standentry10)
 LIFT(game_mode_zc_notify_standentry11)
+LIFT(game_mode_zc_par_change)
+LIFT(game_mode_on_long_par_change)
+LIFT(game_mode_on_long_long_par_change)
+LIFT(game_mode_zc_status)
+LIFT(game_mode_zc_status_change_ack)
+LIFT(game_mode_zc_couple_status)
+LIFT(game_mode_zc_hp_info)
+LIFT(game_mode_zc_hp_info_tiny)
+LIFT(game_mode_zc_abr_init)
+LIFT(game_mode_zc_abr_par_change)
+LIFT(game_mode_on_notify_exp)
+LIFT(game_mode_on_notify_exp2)
+#define LIFT1(fn) static void w_##fn(const unsigned char *pkt) { ((void (*)(const void *))fn)(pkt); }
+LIFT1(game_mode_ack_status_gm)
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -685,6 +914,14 @@ static const unsigned entry_types[] = { 0, 1, 5, 6, 7, 8, 9, 10, 12, 13, 14 };
 static const int entry_jobs[] = { 0, 19, 20, 45, 46, 999, 1000, 1001, 1285, 2000, 3999, 4000, 6001, 6017, 6053, 20021, 32000, 0x2d2 };
 #define N_TYPES ((unsigned)(sizeof entry_types / sizeof *entry_types))
 #define N_JOBS ((unsigned)(sizeof entry_jobs / sizeof *entry_jobs))
+static const unsigned par_types[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xb, 0xc, 13, 14, 15, 16, 17, 18, 0x18, 0x19, 0x1c, 41, 42, 43, 44, 45, 46, 47, 48,
+                                      49, 50, 51, 52, 53, 54, 55, 0x3c, 0xdb, 0xe0, 0xe9, 0xea, 0xffff };
+static const unsigned exp_types[] = { 0, 1, 2, 3, 20, 21, 22, 23, 0xffff };
+static const unsigned ack_types[] = { 0, 13, 14, 15, 16, 17, 18, 19, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 100, 0xffff };
+static const unsigned couple_types[] = { 0, 12, 13, 14, 15, 16, 17, 18, 19, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf, 0xe0, 0xe1, 0xffff };
+static const unsigned exp_amounts[] = { 0xfffffffbu, 100000, 0xffffffffu };
+static const int par_values[12] = { 0, 1, -1, 50, 51, 100, 5000, 9000, 10000, 20000, -61, 123456 };
+static const int drawn_jobs[5] = { 0x17, 0x108e, 0xfce, 0xfd2, 1 };
 
 struct EntryLayout { unsigned char type_off, aid_off, job_off, head_off, varlen; };
 static const struct EntryLayout lay_new1 = { 0, 2, 0xe, 0x10, 0 };
@@ -754,12 +991,27 @@ static const struct Handler handlers[] = {
     { "newentry11", 0x7f1a50u, 0x9fe, 0x53, w_game_mode_zc_notify_newentry11, PK_ENTRY, NULL, 0, &lay_var10, 0 },
     { "standentry10", 0x7f27e0u, 0x9dd, 0x52, w_game_mode_zc_notify_standentry10, PK_ENTRY, NULL, 0, &lay_var10, 0 },
     { "standentry11", 0x7f2930u, 0x9ff, 0x54, w_game_mode_zc_notify_standentry11, PK_ENTRY, NULL, 0, &lay_var10, 0 },
+    { "par_change", 0x7cd5c0u, 0xb0, 8, w_game_mode_zc_par_change, PK_PAR, EXTRA(par_types) },
+    { "long_par_change", 0x7c4530u, 0xb1, 8, w_game_mode_on_long_par_change, PK_PAR, EXTRA(exp_types) },
+    { "long_long_par_change", 0x7fce30u, 0xacb, 12, w_game_mode_on_long_long_par_change, PK_PAR, EXTRA(exp_types) },
+    { "status", 0x7d7110u, 0xbd, 44, w_game_mode_zc_status, PK_DEFAULT, NULL, 0 },
+    { "status_change_ack", 0x7d7560u, 0xbc, 6, w_game_mode_zc_status_change_ack, PK_PAR, EXTRA(ack_types) },
+    { "ack_status_gm", 0x7b33a0u, 0x214, 44, w_game_mode_ack_status_gm, PK_DEFAULT, NULL, 0 },
+    { "couple_status", 0x7dd890u, 0x141, 14, w_game_mode_zc_couple_status, PK_PAR, EXTRA(couple_types) },
+    { "hp_info", 0x7f09f0u, 0x977, 14, w_game_mode_zc_hp_info, PK_DEFAULT, NULL, 0 },
+    { "hp_info_tiny", 0x7f0a40u, 0xa36, 7, w_game_mode_zc_hp_info_tiny, PK_DEFAULT, NULL, 0 },
+    { "abr_init", 0x7f4290u, 0xb6b, 14, w_game_mode_zc_abr_init, PK_DEFAULT, NULL, 0 },
+    { "abr_par_change", 0x7f4330u, 0xb6c, 12, w_game_mode_zc_abr_par_change, PK_DEFAULT, NULL, 0 },
+    { "notify_exp", 0x7c6ba0u, 0x7f6, 14, w_game_mode_on_notify_exp, PK_EXP, EXTRA(exp_amounts) },
+    { "notify_exp2", 0x7ff9b0u, 0xacc, 18, w_game_mode_on_notify_exp2, PK_EXP, EXTRA(exp_amounts) },
 };
 
 static unsigned handler_values(const struct Handler *h)
 {
     if (h->kind == PK_ENTRY)
         return (h->layout->type_off ? N_TYPES : 1) * N_JOBS * 2;
+    if (h->kind == PK_PAR)
+        return (unsigned)h->extra_count;
     return SWEEP_VALUES + h->extra_count;
 }
 
@@ -770,6 +1022,43 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
     for (i = 2; i < h->length; i++)
         pkt[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3);
     *(unsigned short *)pkt = h->id;
+    drawn_job = drawn_jobs[(value + fill) % 5];
+    if (h->kind == PK_PAR) {
+        unsigned ai = aid == AID_CASTER ? 0 : aid == AID_TARGET ? 1 : aid == AID_OWN ? 2 : 3;
+        int pv = par_values[ai * FILL_COUNT + fill];
+        unsigned short type = (unsigned short)value;
+        memcpy(pkt + 2, &type, 2);
+        *(int *)oracle_addr(ORIG_SESSION_AID) = g_session1.aid = (int)aid;
+        if (h->id == 0xbc) {
+            pkt[4] = (unsigned char)(ai & 1);
+            pkt[5] = (unsigned char)pv;
+        } else if (h->id == 0x141) {
+            int bonus = pv ^ 0x55;
+            memcpy(pkt + 2, &value, 4);
+            memcpy(pkt + 6, &pv, 4);
+            memcpy(pkt + 10, &bonus, 4);
+        } else if (h->length == 12) {
+            long long wide = pv;
+            memcpy(pkt + 4, &wide, 8);
+        } else {
+            memcpy(pkt + 4, &pv, 4);
+        }
+        return;
+    }
+    if (h->kind == PK_EXP) {
+        unsigned short var_id = (unsigned short)fill, exp_type = (unsigned short)(value & 1);
+        int var_off = h->id == 0xacc ? 14 : 10;
+        memcpy(pkt + 2, &aid, 4);
+        if (h->id == 0xacc) {
+            long long wide = (int)value;
+            memcpy(pkt + 6, &wide, 8);
+        } else {
+            memcpy(pkt + 6, &value, 4);
+        }
+        memcpy(pkt + var_off, &var_id, 2);
+        memcpy(pkt + var_off + 2, &exp_type, 2);
+        return;
+    }
     if (h->kind == PK_ENTRY) {
         const struct EntryLayout *l = h->layout;
         unsigned types = l->type_off ? N_TYPES : 1;
@@ -839,6 +1128,47 @@ static void seed_packets(int option)
     *(void **)(orig_world + ORIG_WORLD_ACTORS) = orig_actor_list_head;
     *(unsigned *)(orig_world + ORIG_WORLD_ACTORS + 4) = 0;
     fake_node_count = 0;
+    windows_present = option;
+    *(void **)oracle_addr(ORIG_WND_STATUS) = option ? orig_status_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_GROUP) = option ? orig_group_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_BASIC_INFO) = orig_basic_info_wnd;
+    g_windowMgr.status_wnd = option ? &lift_status_wnd : NULL;
+    g_windowMgr.messenger_group_wnd = option ? &lift_group_wnd : NULL;
+    g_windowMgr.basic_info_wnd = &lift_basic_info_wnd;
+    lift_basic_info_wnd.height = 77;
+    *(int *)(orig_basic_info_wnd + ORIG_WND_HEIGHT) = 77;
+    *(int *)(orig_basic_info_wnd + ORIG_WND_BASE_BAR) = 1;
+    *(int *)(orig_basic_info_wnd + ORIG_WND_JOB_BAR) = 2;
+    *(void **)orig_status_wnd = *(void **)orig_basic_info_wnd = *(void **)orig_group_wnd = *(void **)orig_found_wnd = orig_window_vt;
+    *(int *)(orig_mode + ORIG_MODE_EXCHANGE_OPEN) = option;
+    lift_mode.exchange_open = option;
+    *(int *)(orig_mode + ORIG_MODE_STATUS_PENDING) = 1;
+    lift_mode.status_request_pending = 1;
+    fake_abr_used[0] = fake_abr_used[1] = 0;
+    adv_pending = 0;
+#define SEED(orig, field, v) (*(int *)oracle_addr(orig) = (v), g_session1.field = (v))
+#define SEED64(orig, field, v) (*(long long *)oracle_addr(orig) = (v), g_session1.field = (v))
+    SEED(ORIG_HP, hp, 100);
+    SEED(ORIG_MAX_HP, maxHp, 1000);
+    SEED(ORIG_SP, sp, 50);
+    SEED(ORIG_MAX_SP, maxSp, 200);
+    SEED(ORIG_WEIGHT, weight, option ? 950 : 600);
+    SEED(ORIG_MAX_WEIGHT, maxWeight, 1000);
+    SEED(ORIG_WEIGHT_PENALTY, weightPenaltyPercent, 50);
+    SEED(ORIG_ZENY, zeny, 7);
+    SEED(ORIG_PET_FULLNESS, petFullness, 60);
+    SEED(ORIG_PET_INTIMACY_VAL, petIntimacy, 500);
+    SEED(ORIG_PET_JOB, petJob, 1002);
+    SEED(ORIG_BASE_LEVEL, charBaseLevel, 5);
+    SEED(ORIG_JOB_LEVEL, jobLevel, 3);
+    SEED64(ORIG_BASE_EXP, baseExp, 1000);
+    SEED64(ORIG_NEXT_BASE_EXP, nextBaseExp, 5000);
+    SEED64(ORIG_JOB_EXP, jobExp, 10);
+    SEED64(ORIG_NEXT_JOB_EXP, nextJobExp, 300);
+    for (i = 0; i < 6; i++)
+        *(int *)oracle_addr(ORIG_STATS + 4 * i) = g_session1.stats[i] = (int)i + 1;
+#undef SEED
+#undef SEED64
 }
 
 static void __fastcall o_set_counter_packets(void *counters, void *edx, int key, unsigned lo, int hi)
@@ -864,6 +1194,18 @@ static void after_call(int side)
         unsigned actors = side == 0 ? *(unsigned *)(orig_world + ORIG_WORLD_ACTORS + 4) : lift_world.actors.size;
         if (objects || actors)
             event("lists %u %u", objects, actors);
+    }
+    {
+        int slot;
+        for (slot = 0; slot < 2; slot++)
+            if (fake_abr_used[slot]) {
+                event("abr %d = %lld", slot, side == 0 ? fake_abr_value[slot] : lift_abr_pair[slot].value);
+                fake_abr_used[slot] = 0;
+            }
+        if (adv_pending) {
+            event("advstat %d = %d", adv_key, side == 0 ? adv_value : lift_adv_pair.value);
+            adv_pending = 0;
+        }
     }
     report_changes(side);
 }
@@ -940,6 +1282,7 @@ static void setup_regions(void)
 
 static void packet_oracle_setup(int verbose)
 {
+    int i;
     skill_oracle_setup(verbose);
     who_extra = who_packets;
     msg_str_named = 1;
@@ -1006,6 +1349,25 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_CHARACTER_NAME, (void *)o_character_name);
     oracle_patch_jump(ORIG_IS_ADMIN_OPTION, (void *)o_is_admin_option);
     oracle_patch_jump(ORIG_IS_ADMIN_AID, (void *)o_is_admin_aid);
+    oracle_patch_jump(ORIG_INVALIDATE_WINDOWS, (void *)o_invalidate_windows);
+    oracle_patch_jump(ORIG_IS_SUPER_NOVICE, (void *)o_is_super_novice);
+    oracle_patch_jump(ORIG_DRAWN_JOB, (void *)o_drawn_job);
+    oracle_patch_jump(ORIG_BASIC_INFO_HEIGHT, (void *)o_basic_info_height);
+    oracle_patch_jump(ORIG_BAR_SET_VALUES, (void *)o_bar_set_values);
+    oracle_patch_jump(ORIG_REFRESH_ACTOR_EFFECTS, (void *)o_refresh_actor_effects);
+    oracle_patch_jump(ORIG_GET_WINDOW, (void *)o_get_window);
+    oracle_patch_jump(ORIG_REFRESH_SKILL_WNDS, (void *)o_refresh_skill_wnds);
+    oracle_patch_jump(ORIG_STATUS_RESTORE, (void *)o_status_restore);
+    oracle_patch_jump(ORIG_END_EXCHANGE, (void *)o_end_exchange);
+    oracle_patch_jump(ORIG_FIND_ABR, (void *)o_find_abr);
+    oracle_patch_jump(ORIG_ABR_GET, (void *)o_abr_get);
+    oracle_patch_jump(ORIG_SET_ADVANCED_STATUS, (void *)o_set_advanced_status);
+    oracle_patch_jump(ORIG_PET_TALK_DUE, (void *)o_pet_talk_due);
+    for (i = 0; i < 64; i++)
+        orig_window_vt[i] = traps[i];
+    orig_window_vt[ORIG_WINDOW_VT_SEND] = (void *)o_window_send;
+    if (!oracle_bind_import("api-ms-win-crt-utility-l1-1-0.dll", "rand", (void *)o_rand))
+        fprintf(stderr, "the original's rand import was not found\n");
 
     orig_actor_vt[ORIG_ACTOR_VT_SET_HEAD] = (void *)o_set_head;
     orig_actor_vt[ORIG_ACTOR_VT_SET_WEAPON] = (void *)o_set_weapon;
@@ -1081,7 +1443,7 @@ int main(int argc, char **argv)
         for (fill = 0; fill < FILL_COUNT; fill++) {
             if (h->no_unknown && aids[ai] == AID_UNKNOWN)
                 continue;
-            unsigned value = h->kind == PK_ENTRY ? vi : vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
+            unsigned value = h->kind == PK_ENTRY ? vi : h->kind == PK_PAR ? h->extra[vi] : vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
             char orig_text[EVENTS * EVENT_LEN], lift_text[EVENTS * EVENT_LEN];
 
             compared++;
