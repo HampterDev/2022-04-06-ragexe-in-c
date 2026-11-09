@@ -229,3 +229,24 @@ a5fae0	ui_pet_info_wnd_update_intimacy	tests/oracle/test_packet_handlers.c, stoo
 8675e0	session_invalidate_mer_info_wnd	tests/oracle/test_packet_handlers.c, stood in
 5fbce0	list_clear	tests/oracle/test_packet_handlers.c, stood in
 87f780	session_reset_pet	tests/oracle/test_packet_handlers.c
+7ddc90	game_mode_zc_group_info_change	tests/oracle/test_packet_handlers.c
+7efcc0	game_mode_add_party_member	tests/oracle/test_packet_handlers.c
+671740	party_booking_add_rows	tests/oracle/test_packet_handlers.c, stood in
+670b50	party_booking_remove	tests/oracle/test_packet_handlers.c, stood in
+6714d0	party_booking_on_new	tests/oracle/test_packet_handlers.c, stood in
+671f40	party_booking_set_jobs	tests/oracle/test_packet_handlers.c, stood in
+5e57e0	job_list_set_wanted_jobs	tests/oracle/test_packet_handlers.c, stood in
+8b4740	adventurer_agency_stop_recruiting	tests/oracle/test_packet_handlers.c, stood in
+a320c0	ui_request_join_party_mgr_add_request	tests/oracle/test_packet_handlers.c, stood in
+644630	ui_window_mgr_command_plate_of	tests/oracle/test_packet_handlers.c, stood in
+883f00	session_is_own_unit_aid	tests/oracle/test_packet_handlers.c, stood in
+66ebe0	word_filter_contains	tests/oracle/test_packet_handlers.c, stood in
+66ded0	word_filter_censor	tests/oracle/test_packet_handlers.c, stood in
+86dc00	session_clear_inventory_move_pending	tests/oracle/test_packet_handlers.c, stood in
+86dc30	session_clear_cart_move_pending	tests/oracle/test_packet_handlers.c, stood in
+86dc60	session_clear_storage_move_pending	tests/oracle/test_packet_handlers.c, stood in
+855930	session_get_party_member	tests/oracle/test_packet_handlers.c, stood in
+84f550	session_set_party_member_state	tests/oracle/test_packet_handlers.c, stood in
+84e110	session_add_party_member	tests/oracle/test_packet_handlers.c, stood in
+855270	session_get_party_member_count	tests/oracle/test_packet_handlers.c
+7ae670	game_mode_set_actor_mark_flag	tests/oracle/test_packet_handlers.c

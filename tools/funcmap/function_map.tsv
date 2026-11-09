@@ -1646,6 +1646,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 5e4ea0				seek_party_load_regions	seek_party_load_regions	ui/social/seek_party_mb.c:278	cited	high	ui/social/seek_party_mb.c
 5e5240				make_job_boxes	make_job_boxes	ui/social/seek_party_mb.c:253	cited	high	ui/social/seek_party_mb.c
 5e54d0				fill_categories	fill_categories	ui/social/seek_party_mb.c:269	cited	high	ui/social/seek_party_mb.c
+5e57e0	sub_5e57e0				job_list_set_wanted_jobs		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 5e5840				UIJobListWnd_ShowJobs	ui_job_list_wnd_show_jobs	ui/character/job_list.c:166	cited	high	ui/character/job_list.c
 5e6420				load_regions	load_regions	ui/social/seek_party_list.c:388;ui/social/seek_party_mb.c:310	cited	high	ui/social/seek_party_mb.c
 5e67d0				region_chosen	region_chosen	ui/social/seek_party_list.c:364;ui/social/seek_party_mb.c:459	cited	high	ui/social/seek_party_list.c
@@ -2163,6 +2164,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 644540				ui_center_x640	ui_center_x640	ui/wndmgr/window_list.c:824	cited_multi	low	ui/wndmgr/window_list.c
 644560				ui_center_x640	ui_center_x640	ui/wndmgr/window_list.c:824	cited_multi	low	ui/wndmgr/window_list.c
 644580				UIWindowMgr_SendMsg12	ui_window_mgr_send_key_up	ui/wndmgr/window_list.c:788	cited	high	ui/wndmgr/window_list.c
+644630	sub_644630				ui_window_mgr_command_plate_of		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 644790				UIWindowMgr_UpdateSnapRect	ui_window_mgr_update_snap_rect	ui/wndmgr/snap.c:4	cited	high	ui/wndmgr/snap.c
 6469c0				UIWindowMgr_NotifyWhisperWnd	ui_window_mgr_notify_whisper_wnd	ui/wndmgr/whisper_map.c:27	cited	high	ui/wndmgr/whisper_map.c
 650db0	sub_650db0	text/world_0000.inc:9587-9639			place	world/model_actor.c:135	jacc	low	
@@ -2269,8 +2271,14 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 66cfb0	sub_66cfb0	text/contents_0000.inc:5033-5090		guild_expelled_list_clear			cited	high	contents/guild_lists.c
 66d050	sub_66d050	text/contents_0000.inc:5092-5143		guild_total_info_list_clear			cited	high	contents/guild_lists.c
 66d6f0	sub_66d6f0	text/contents_0000.inc:5747-6048			guild_tips_read	contents/tips.c:119	ustr	high	
+66ded0	sub_66ded0				word_filter_censor		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+66ebe0	sub_66ebe0				word_filter_contains		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66f6e3	CTipOfTheDay__Load_	text/contents_0000.inc:8926-9157			tip_of_the_day_read	contents/tips.c:89	ustr_inside	low	
 6705b0	sub_6705b0	text/contents_0000.inc:10291-10606		std_tree_extract			cited	high	std/std_tree.c
+670b50	sub_670b50				party_booking_remove		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+6714d0	sub_6714d0				party_booking_on_new		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+671740	sub_671740				party_booking_add_rows		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+671f40	sub_671f40				party_booking_set_jobs		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 6731f0	sub_6731f0	text/replay_0000.inc:1603-1744			read_at	replay/replay_file.c:18	jacc	low	
 6745b0	sub_6745b0				replay_recorder_next_packet		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 6747b0	sub_6747b0	text/replay_0000.inc:3662-3739			write_at	replay/replay_file.c:24	jacc	low	
@@ -2954,7 +2962,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7a0570	sub_7a0570				game_mode_poll_network_status		oracle	high	tests/oracle/test_packet_handlers.c, driven for its own arms
 7ad9f0	sub_7ad9f0				game_mode_notify_ban		dispatch	high	packet dispatcher arm for 0x81 HEADER_SC_NOTIFY_BAN
 7ae5e0	sub_7ae5e0	text/gamemode_0001.inc:12019-12088		Session_SetAdvancedStatus	session_set_advanced_status	game/status_values.c:228	oracle	high	gamemode/status_values.c
-7ae670	sub_7ae670	text/gamemode_0001.inc:12090-12105		GameMode_SetActorMarkFlag	game_mode_set_actor_mark_flag	game/minimap.c:451	cited	high	gamemode/minimap.c
+7ae670	sub_7ae670	text/gamemode_0001.inc:12090-12105		GameMode_SetActorMarkFlag	game_mode_set_actor_mark_flag	game/minimap.c:451	oracle	high	gamemode/minimap.c
 7ae6a0	sub_7ae6a0	text/gamemode_0001.inc:12107-12210		Session_SetShortcutKeys	session_set_shortcut_keys	game/shortcut_keys.c:18	cited	high	gamemode/shortcut_keys.c
 7ae9e0	sub_7ae9e0	text/gamemode_0001.inc:12379-12435		GameMode_SendQuestMarks	game_mode_send_quest_marks	game/minimap.c:438	cited	high	gamemode/minimap.c
 7aea60	sub_7aea60				ranking_receive_names		dispatch	high	packet dispatcher arm for 0x97d HEADER_ZC_ACK_RANKING
@@ -3207,7 +3215,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7dce20	sub_7dce20				game_mode_zc_ban_list_del_name		dispatch	high	packet dispatcher arm for 0xa87 HEADER_ZC_BAN_LIST_DELNAME
 7dd250	sub_7dd250				game_mode_zc_ban_list_new		dispatch	high	packet dispatcher arm for 0xb7c HEADER_ZC_BAN_LIST_NEW
 7dd890	sub_7dd890				game_mode_zc_couple_status		dispatch	high	packet dispatcher arm for 0x141 HEADER_ZC_COUPLESTATUS
-7ddc90	sub_7ddc90	text/gamemode_0001.inc:74228-74330			game_mode_zc_group_info_change	game/packets_party.c:572	jacc	low	
+7ddc90	sub_7ddc90	text/gamemode_0001.inc:74228-74330			game_mode_zc_group_info_change	game/packets_party.c:572	oracle	high	
 7de140	sub_7de140				game_mode_zc_guild_info_del_name		dispatch	high	packet dispatcher arm for 0xa84 HEADER_ZC_GUILD_INFO_DELNAME
 7de3c0	sub_7de3c0				game_mode_zc_guild_info_new		dispatch	high	packet dispatcher arm for 0xb7b HEADER_ZC_GUILD_INFO_NEW
 7de740	sub_7de740				game_mode_zc_guild_notice		dispatch	high	packet dispatcher arm for 0x16f HEADER_ZC_GUILD_NOTICE
@@ -3247,6 +3255,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7ef2a0	sub_7ef2a0	text/gamemode_0002.inc:18824-18840		SkillCast_CasterTint	skill_cast_caster_tint	game/skill_cast.c:75	cited	high	gamemode/skill_cast.c
 7ef530	sub_7ef530				skill_cast_special		oracle	high	tests/oracle/test_skill_cast.c, run real
 7ef710	sub_7ef710				skill_cast_target_look		oracle	high	tests/oracle/test_skill_cast.c, run real
+7efcc0	sub_7efcc0				game_mode_add_party_member		oracle	high	tests/oracle/test_packet_handlers.c
 7f0050	sub_7f0050				game_mode_set_player_names		oracle	high	tests/oracle/test_packet_handlers.c
 7f0210	sub_7f0210				game_mode_notify_effect_with_num		oracle	high	tests/oracle/test_packet_handlers.c
 7f0820	sub_7f0820	text/gamemode_0002.inc:20776-20838		skill_use_counted_effect	skill_use_counted_effect	game/skill_use_third.c:429	oracle	high	gamemode/skill_use_third.c
@@ -3497,10 +3506,12 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 84d4ec	CRmaRes__Load_	text/session_0000.inc:21008-21088			tokens_at	session/session_lookups.c:115	ustr_inside	low	
 84dd10	sub_84dd10				session_set_worn_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84dfd0	sub_84dfd0				session_add_inventory_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84e110	sub_84e110				session_add_party_member		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84e390	sub_84e390				session_add_cart_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84e7a0	sub_84e7a0				session_append_market_goods		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84ef00	sub_84ef00				session_add_storage_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f3f0	sub_84f3f0				session_end_exchange2		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84f550	sub_84f550				session_set_party_member_state		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f5f0	sub_84f5f0				session_reroll_values		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f900	sub_84f900				session_remove_inventory_other_types		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f9f0	sub_84f9f0				session_clear_lists		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3521,7 +3532,9 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 8539e0	sub_8539e0				session_get_drawn_job		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 853fb0	sub_853fb0				session_get_job_name		oracle	high	tests/oracle/skill_oracle.h, stood in
 854cf5	CSession__GetMp3Name	text/session_0000.inc:33472-33656		CSession_GetMp3Name	session_get_mp3_name	session/session_names.c:369	label_inside	low	session/a/session_names.c
+855270	sub_855270				session_get_party_member_count		oracle	high	tests/oracle/test_packet_handlers.c
 8558dd	CSession__GetPartyColorBySeq	text/session_0000.inc:34677-34684		CSession_GetPartyColorBySeq	session_get_party_color_by_seq	session/session_party.c:20	label_inside	low	session/a/session_party.c
+855930	sub_855930				session_get_party_member		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 855e20	sub_855e20	text/session_0000.inc:35265-35308			session_get_real_weapon_id	session/session_lua.c:16	ustr	high	
 856030	CSession__GetServerTime	text/session_0000.inc:35461-35469		CSession__GetServerTime			dump_symbol	high	session/a/session_init_state.c
 856030	CSession__GetServerTime	text/session_0000.inc:35461-35469			session_get_server_time	session/session_init_state.c:11	dump_symbol	high	
@@ -3575,6 +3588,9 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86d294	CSession__SetPlayerPosDir	text/session_0000.inc:62022-62032		CSession_SetPlayerPosDir	session_set_player_pos_dir	session/session_state.c:366	label_inside	low	session/a/session_state.c
 86d380	CSession__SetShortenItemName	text/session_0000.inc:62076-62181		CSession_SetShortenItemName	session_set_shorten_item_name	session/session_names.c:467	label_inside	low	session/a/session_names.c
 86d7e0	sub_86d7e0	text/session_0000.inc:62483-62590			session_load_transparent_items	session/session_lua.c:97	ustr	high	
+86dc00	sub_86dc00				session_clear_inventory_move_pending		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+86dc30	sub_86dc30				session_clear_cart_move_pending		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+86dc60	sub_86dc60				session_clear_storage_move_pending		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86dc90	sub_86dc90				session_sync_server_time		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86e2e0	sub_86e2e0	text/session_0000.inc:62935-63308		CSession_WriteOptionToRegistry			cited	high	session/a/session_options.c
 86ec20	sub_86ec20	text/session_0000.inc:63733-63779		PartyList_BuyNode0			cited	high	session/a/session_std.c
@@ -3652,6 +3668,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 883e20	sub_883e20				session_is_monster_actor		oracle	high	tests/oracle/skill_oracle.h, stood in
 883ec0	sub_883ec0				session_is_homunculus_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 883ee0	sub_883ee0				session_is_mercenary_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+883f00	sub_883f00				session_is_own_unit_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 883fc0	sub_883fc0				session_is_own_aid		oracle	high	tests/oracle/test_packet_handlers.c
 884010	sub_884010				session_is_player_job		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 884020	sub_884020				session_is_pet_egg_id		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3802,6 +3819,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 8b21d0	sub_8b21d0	text/asyncwork_0001.inc:10590-10707			adventurer_agency_url	web/service_requests.c:9	ustr	high	
 8b2320	sub_8b2320	text/asyncwork_0001.inc:10708-11179			party_booking_read	web/party_booking_json.c:17	jacc	low	
 8b2d40	sub_8b2d40	text/asyncwork_0001.inc:11421-11496		UIAdvenPartyBoardWnd_RequestPage	ui_adven_party_board_wnd_request_page	ui/social/party_board.c:311	cited_multi	low	ui/social/party_board.c
+8b4740	sub_8b4740				adventurer_agency_stop_recruiting		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 8b51c0	sub_8b51c0	text/asyncwork_0001.inc:14167-14661			party_change_master_work_run	web/party_works.c:30	ustr	high	
 8b6ad0	sub_8b6ad0	text/asyncwork_0001.inc:15840-16168			party_info_load_work_run	web/party_works.c:102	ustr	high	
 8b7760	sub_8b7760	text/asyncwork_0001.inc:16687-17364			party_list_load_work_run	web/party_works.c:133	ustr	high	
@@ -5851,6 +5869,7 @@ a31cd0			UIJobSlotButton	UIJobSlotButton_OnLBtnUp	ui_job_slot_button_on_l_btn_up
 a31d00			UIPartyInfoWnd	UIPartyInfoWnd_OnLBtnUp	ui_party_info_wnd_on_l_btn_up	ui/social/party_info.c:128	cited	high	ui/social/party_info.c
 a31d20			UIApplyForPartyWnd	UIApplyForPartyWnd_OnMouseHover	ui_apply_for_party_wnd_on_mouse_hover	ui/social/party_apply.c:191	cited	high	ui/social/party_apply.c
 a31ea0			UIPartyInfoWnd	UIPartyInfoWnd_Slot30	ui_party_info_wnd_on_r_btn_up	ui/social/party_info.c:135	cited	high	ui/social/party_info.c
+a320c0	sub_a320c0				ui_request_join_party_mgr_add_request		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 a32310				UIPartyInfoWnd_Reset	ui_party_info_wnd_reset	ui/social/party_info.c:167	cited	high	ui/social/party_info.c
 a33a00				UIAdvenPartyBoardWnd_SetOwnAd	ui_adven_party_board_wnd_set_own_ad	ui/social/party_board.c:360	cited	high	ui/social/party_board.c
 a33a90				UIJobSlotButton_SetChecked	ui_job_slot_button_set_checked	ui/social/party_board.c:163	cited	high	ui/social/party_board.c
