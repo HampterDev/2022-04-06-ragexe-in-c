@@ -182,6 +182,7 @@ cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_packet_handlers.c" "%ROOT%\tests
   "%ROOT%\src\game\cart_items.c" "%ROOT%\src\game\equip_items.c" "%ROOT%\src\game\inventory_items.c" "%ROOT%\src\game\inventory_lists.c" ^
   "%ROOT%\src\game\storage_items.c" "%ROOT%\src\game\storage_lists.c" "%ROOT%\src\iteminfo\item_info.c" ^
   "%ROOT%\src\game\packets_npc.c" "%ROOT%\src\platform\charset.c" ^
+  "%ROOT%\src\game\packets_pet.c" "%ROOT%\src\game\packets_mercenary.c" "%ROOT%\src\game\companion_packets.c" ^
   "%ROOT%\src\effects\durations.c" /Fe:test_packet_handlers.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_packet_handlers.exe "%ORACLE_EXE%"

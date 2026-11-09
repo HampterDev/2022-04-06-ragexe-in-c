@@ -56,6 +56,13 @@
 #include "ui/quests/say_dialog.h"
 #include "ui/character/character.h"
 #include "std/vec.h"
+#include "ui/items/pet_windows.h"
+#include "ui/items/item_list.h"
+#include "std/list.h"
+#include "skills/skill_info.h"
+#include "actor/game_actor.h"
+#include "iteminfo/item_name.h"
+#include "game/companion_packets.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -233,6 +240,65 @@
 #define ORIG_IS_COSTUME_LOCATION 0x883a80u
 #define ORIG_GET_INVENTORY_ITEM 0x8532e0u
 #define ORIG_PET_AUTO_FEEDING 0x91b940u
+#define ORIG_WND_PET_INFO     0xee8b14u
+#define ORIG_WND_HOMUN_INFO   0xee8b4cu
+#define ORIG_WND_HOMUN_SKILL  0xee8b50u
+#define ORIG_PET_INFO_INTIMACY 0xa5fae0u
+#define ORIG_PET_SPEAK        0x878480u
+#define ORIG_FORMAT_CHAT_LINE 0x878810u
+#define ORIG_SELECTED_ITEM    0x57e7c0u
+#define ORIG_SET_PK_MODE      0x75f770u
+#define ORIG_GET_ITEM_BY_ID   0x853220u
+#define ORIG_ITEM_GET_NAME    0x92d5c0u
+#define ORIG_ITEM_DISPLAY_NAME 0x92d720u
+#define ORIG_HOMUN_REDRAW     0x867570u
+#define ORIG_MERC_REDRAW      0x8675e0u
+#define ORIG_LIST_CLEAR       0x5fbce0u
+#define ORIG_MER_SKILLS       0x1133cbcu
+#define ORIG_PET_MODIFIED     0x1134c18u
+#define ORIG_PET_NAME         0x1134c1cu
+#define ORIG_PET_LEVEL        0x1134c44u
+#define ORIG_PET_PREV_FULLNESS 0x1134c58u
+#define ORIG_HIDE_CHAT        0x1138ca8u
+#define ORIG_HIDE_CHAT_GUILD  0x1138cacu
+#define ORIG_HOMUN_AID        0x1138decu
+#define ORIG_HOMUN_NAME       0x1138df0u
+#define ORIG_HOMUN_STATS      0x1138e10u
+#define ORIG_HOMUN_JOB        0x1138e30u
+#define ORIG_HOMUN_LEVEL      0x1138e34u
+#define ORIG_HOMUN_HP         0x1138e38u
+#define ORIG_HOMUN_MAX_HP     0x1138e3cu
+#define ORIG_HOMUN_SP         0x1138e40u
+#define ORIG_HOMUN_MAX_SP     0x1138e44u
+#define ORIG_HOMUN_INTIMACY   0x1138e48u
+#define ORIG_HOMUN_ITEM       0x1138e4cu
+#define ORIG_HOMUN_EXP        0x1138e50u
+#define ORIG_HOMUN_MAX_EXP    0x1138e58u
+#define ORIG_HOMUN_FULLNESS   0x1138e60u
+#define ORIG_HOMUN_RENAMED    0x1138e68u
+#define ORIG_HOMUN_AI_STATE   0x1138e90u
+#define ORIG_HOMUN_SKILL_POINTS 0x1135254u
+#define ORIG_MERC_AID         0x1138e9cu
+#define ORIG_MERC_NAME        0x1138ea0u
+#define ORIG_MERC_STATS       0x1138ec0u
+#define ORIG_MERC_HP          0x1138ee0u
+#define ORIG_MERC_MAX_HP      0x1138ee4u
+#define ORIG_MERC_JOB         0x1138ee8u
+#define ORIG_MERC_LEVEL       0x1138eecu
+#define ORIG_MERC_SP          0x1138ef0u
+#define ORIG_MERC_MAX_SP      0x1138ef4u
+#define ORIG_MERC_CONTRACT    0x1138ef8u
+#define ORIG_ELEMENTAL_AID    0x113943cu
+#define ORIG_ELEMENTAL_HP     0x1139440u
+#define ORIG_ELEMENTAL_SP     0x1139444u
+#define ORIG_ELEMENTAL_MAX_HP 0x1139448u
+#define ORIG_ELEMENTAL_MAX_SP 0x113944cu
+#define ORIG_ACTOR_VT_SET_SPR_JOB (0x54 / 4)
+#define ORIG_WINDOW_VT_INVALIDATE (0x8c / 4)
+#define ORIG_CTRL_VT_SET_TEXT (0xc0 / 4)
+#define ORIG_WND_NAME_CTRL    0x94
+#define ORIG_COLLECTION_PET   0x1e0
+#define N_COMPANION_NAMES 5
 #define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
 #define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
 #define ORIG_STORAGE_SET_NAME 0x7e3670u
@@ -385,6 +451,12 @@ static unsigned char orig_storage_wnd[0x400];
 static struct UIWindow lift_storage_wnd;
 static unsigned char orig_generic_wnd[0x400], orig_helper_wnd[0x400], orig_replay[0x100], orig_sound_mgr[0x100];
 static struct UIWindow lift_generic_wnd, lift_helper_wnd;
+static unsigned char orig_pet_info_wnd[0x400], orig_homun_info_wnd[0x400], orig_homun_skill_wnd[0x400], orig_name_ctrl[0x10];
+static struct UIWindow lift_pet_info_wnd, lift_homun_info_wnd, lift_homun_skill_wnd;
+static void *orig_ctrl_vt[64];
+static struct UIWindowOps lift_window_ops;
+static struct { short level, hunger, intimacy, accessory; int renamed; char name[32]; } lift_pet_details;
+static int current_fill;
 static struct ReplayRecorder lift_replay;
 static unsigned char orig_loop_sounds[4][ORIG_LOOP_SOUND_SIZE];
 static struct LoopSound lift_loop_sounds[4];
@@ -410,6 +482,9 @@ static const char *window_name(const void *w)
     if (w == orig_storage_wnd || w == &lift_storage_wnd) return "storage";
     if (w == orig_generic_wnd || w == &lift_generic_wnd) return "wnd";
     if (w == orig_helper_wnd || w == &lift_helper_wnd) return "helper";
+    if (w == orig_pet_info_wnd || w == &lift_pet_info_wnd) return "petinfo";
+    if (w == orig_homun_info_wnd || w == &lift_homun_info_wnd) return "homuninfo";
+    if (w == orig_homun_skill_wnd || w == &lift_homun_skill_wnd) return "homunskill";
     return w ? "?" : "null";
 }
 static int is_super_novice(int job)
@@ -570,6 +645,47 @@ static const struct Field fields[] = {
     { "playerPosX", M(R_SESSION), S(ORIG_PLAYER_POS_X), SF(playerPosX), 4 },
     { "playerPosY", M(R_SESSION), S(ORIG_PLAYER_POS_Y), SF(playerPosY), 4 },
     { "autoSaveChat", M(R_SESSION), S(ORIG_AUTO_SAVE_CHAT), SF(autoSaveChat), 4 },
+    { "petModified", M(R_SESSION), S(ORIG_PET_MODIFIED), SF(petModified), 4 },
+    { "petName", M(R_SESSION), S(ORIG_PET_NAME), SF(petName), 32 },
+    { "petJob", M(R_SESSION), S(ORIG_PET_JOB), SF(petJob), 4 },
+    { "petLevel", M(R_SESSION), S(ORIG_PET_LEVEL), SF(petLevel), 4 },
+    { "petFullness", M(R_SESSION), S(ORIG_PET_FULLNESS), SF(petFullness), 4 },
+    { "petIntimacy", M(R_SESSION), S(ORIG_PET_INTIMACY_VAL), SF(petIntimacy), 4 },
+    { "petPrevFullness", M(R_SESSION), S(ORIG_PET_PREV_FULLNESS), SF(petPrevFullness), 4 },
+    { "hideChat", M(R_SESSION), S(ORIG_HIDE_CHAT), SF(hideChat), 4 },
+    { "hideChatAndGuild", M(R_SESSION), S(ORIG_HIDE_CHAT_GUILD), SF(hideChatAndGuild), 4 },
+    { "homunAid", M(R_SESSION), S(ORIG_HOMUN_AID), SF(homunAid), 4 },
+    { "homunName", M(R_SESSION), S(ORIG_HOMUN_NAME), SF(homunName), 32 },
+    { "homunStats", M(R_SESSION), S(ORIG_HOMUN_STATS), SF(homunStats), 32 },
+    { "homunJob", M(R_SESSION), S(ORIG_HOMUN_JOB), SF(homunJob), 4 },
+    { "homunLevel", M(R_SESSION), S(ORIG_HOMUN_LEVEL), SF(homunLevel), 4 },
+    { "homunHp", M(R_SESSION), S(ORIG_HOMUN_HP), SF(homunHp), 4 },
+    { "homunMaxHp", M(R_SESSION), S(ORIG_HOMUN_MAX_HP), SF(homunMaxHp), 4 },
+    { "homunSp", M(R_SESSION), S(ORIG_HOMUN_SP), SF(homunSp), 4 },
+    { "homunMaxSp", M(R_SESSION), S(ORIG_HOMUN_MAX_SP), SF(homunMaxSp), 4 },
+    { "homunIntimacy", M(R_SESSION), S(ORIG_HOMUN_INTIMACY), SF(homunIntimacy), 4 },
+    { "homunItem", M(R_SESSION), S(ORIG_HOMUN_ITEM), SF(homunItem), 4 },
+    { "homunExp", M(R_SESSION), S(ORIG_HOMUN_EXP), SF(homunExp), 8 },
+    { "homunMaxExp", M(R_SESSION), S(ORIG_HOMUN_MAX_EXP), SF(homunMaxExp), 8 },
+    { "homunFullness", M(R_SESSION), S(ORIG_HOMUN_FULLNESS), SF(homunFullness), 4 },
+    { "homunRenamed", M(R_SESSION), S(ORIG_HOMUN_RENAMED), SF(homunRenamed), 4 },
+    { "homun_ai_state", M(R_SESSION), S(ORIG_HOMUN_AI_STATE), SF(homun_ai_state), 12 },
+    { "homunSkillPoints", M(R_SESSION), S(ORIG_HOMUN_SKILL_POINTS), SF(homunSkillPoints), 4 },
+    { "mercAid", M(R_SESSION), S(ORIG_MERC_AID), SF(mercAid), 4 },
+    { "mercName", M(R_SESSION), S(ORIG_MERC_NAME), SF(mercName), 32 },
+    { "mercStats", M(R_SESSION), S(ORIG_MERC_STATS), SF(mercStats), 32 },
+    { "mercHp", M(R_SESSION), S(ORIG_MERC_HP), SF(mercHp), 4 },
+    { "mercMaxHp", M(R_SESSION), S(ORIG_MERC_MAX_HP), SF(mercMaxHp), 4 },
+    { "mercJob", M(R_SESSION), S(ORIG_MERC_JOB), SF(mercJob), 4 },
+    { "mercLevel", M(R_SESSION), S(ORIG_MERC_LEVEL), SF(mercLevel), 4 },
+    { "mercSp", M(R_SESSION), S(ORIG_MERC_SP), SF(mercSp), 4 },
+    { "mercMaxSp", M(R_SESSION), S(ORIG_MERC_MAX_SP), SF(mercMaxSp), 4 },
+    { "merc_contract_stats", M(R_SESSION), S(ORIG_MERC_CONTRACT), SF(merc_contract_stats), 20 },
+    { "elementalAid", M(R_SESSION), S(ORIG_ELEMENTAL_AID), SF(elementalAid), 4 },
+    { "elementalHp", M(R_SESSION), S(ORIG_ELEMENTAL_HP), SF(elementalHp), 4 },
+    { "elementalSp", M(R_SESSION), S(ORIG_ELEMENTAL_SP), SF(elementalSp), 4 },
+    { "elementalMaxHp", M(R_SESSION), S(ORIG_ELEMENTAL_MAX_HP), SF(elementalMaxHp), 4 },
+    { "elementalMaxSp", M(R_SESSION), S(ORIG_ELEMENTAL_MAX_SP), SF(elementalMaxSp), 4 },
     { "lastPacketTime", M(R_SESSION), S(ORIG_LAST_PACKET_TIME), SF(lastPacketTime), 4, 1 },
 };
 
@@ -758,7 +874,7 @@ void string_copy(struct String *dst, const struct String *src) { string_init(dst
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
 {
     (void)sender;
-    if ((message == 0x1a || message == 0x1b) && readable(a))
+    if ((message == 0x1a || message == 0x1b || message == 0x1f) && readable(a))
         event("wndsend %s %x '%s' %x %x %x", window_name(window), message, (const char *)(int)a, b, c, d);
     else
         event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d);
@@ -795,6 +911,63 @@ struct UIParaResultWnd;
 void ui_para_result_wnd_add_bought_record(struct UIParaResultWnd *self, const struct ItemRecordA *record, int count)
 { (void)self; event("bought %s %d", lift_record_text(record), count); }
 struct ReplayRecorder *replay_recorder_instance(void) { return &lift_replay; }
+void ui_pet_info_update_intimacy(struct UIWindow *wnd) { event("pet intimacy %s", window_name(wnd)); }
+void ui_pet_info_set_name(struct UIWindow *wnd, const char *name) { event("pet name %s '%s'", window_name(wnd), name); }
+void ui_item_collection_set_pet(struct UIWindow *wnd, const struct PetEggDetails *pet)
+{
+    (void)wnd;
+    lift_pet_details.level = pet->level;
+    lift_pet_details.hunger = pet->hunger;
+    lift_pet_details.intimacy = pet->intimacy;
+    lift_pet_details.accessory = pet->accessory;
+    lift_pet_details.renamed = pet->renamed;
+    strncpy(lift_pet_details.name, pet->name, sizeof lift_pet_details.name - 1);
+}
+void session_get_pet_speak(struct Session *self, int petJob, int hunger, int action, char *out, size_t out_size)
+{
+    (void)self;
+    event("speak %d %d %d", petJob, hunger, action);
+    if (hunger == 0)
+        out[0] = 0;
+    else
+        snprintf(out, out_size, "pet %d says %d", petJob, action);
+}
+void session_format_chat_line(struct Session *self, const char *text, char *out, size_t out_size, int aid, int replaceWords)
+{
+    (void)self;
+    event("fmt '%s' %u %d", text, aid, replaceWords);
+    if (replaceWords < 0)
+        out[0] = 0;
+    else
+        snprintf(out, out_size, "%u: %s", aid, text);
+}
+void session_reset_pet(struct Session *self) { self->hatchedEggIndex = -1; self->petJob = -1; }
+void session_invalidate_homun_info_wnd(struct Session *self) { (void)self; event("homun redraw"); }
+void session_invalidate_mer_info_wnd(struct Session *self) { (void)self; event("merc redraw"); }
+void list_clear(struct List *list, ListDestroyFn destroy) { (void)destroy; event("list clear %s", list == &g_session1.merSkills ? "merSkills" : "?"); }
+void skill_info_destroy(void *skill) { (void)skill; }
+void game_actor_set_pk_mode(struct GameActor *self, int value) { event("pkmode %s %d", who(self), value); }
+struct ItemInfo *session_get_inventory_item_by_id(struct Session *self, struct ItemInfo *out, int itemId, BYTE requireIdentified)
+{
+    (void)self;
+    event("inv by id %d %d", itemId, requireIdentified);
+    item_info_construct(out);
+    out->count = itemId % 5;
+    return out;
+}
+const char *item_info_get_name(const struct ItemInfo *self) { (void)self; return "item"; }
+struct String *item_info_get_display_name(const struct ItemInfo *self, struct String *out) { (void)self; string_assign_cstr(out, "item"); return out; }
+struct ItemInfo *ui_item_identify_wnd_get_selected_item(struct UIItemIdentifyWnd *self, struct ItemInfo *out, int *found)
+{
+    event("selected %s", window_name(self));
+    item_info_construct(out);
+    out->index = 9;
+    item_info_set_item_id(out, 9009);
+    *found = current_fill == FILL_ONES;
+    return out;
+}
+static void lift_window_invalidate(struct UIWindow *self) { event("invalidate %s", window_name(self)); }
+static void lift_set_spr_job(struct GameActor *actor, int job) { event("sprjob %s %d", who(actor), job); }
 BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; event("replay mode %d", mode); return 1; }
 void text_drop_map_extension(struct String *map_name)
 {
@@ -918,7 +1091,7 @@ int session_is_guardian(struct Session *self, int job) { (void)self; return job 
 int session_is_own_aid(struct Session *self, int aid) { return aid != -1 && aid == self->aid; }
 int session_is_homunculus_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
 int session_is_mercenary_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
-int session_is_admin_option(struct Session *self, int what) { return (what == 7 || what == 2) && self->map_rule_flags[0]; }
+int session_is_admin_option(struct Session *self, int what) { return (what == 7 || what == 2 || what == 3) && self->map_rule_flags[0]; }
 const char *session_character_name(const struct Session *session) { (void)session; return "Hero"; }
 const char *session_get_pet_accessory_act(struct Session *self, int accessory)
 { static char name[32]; (void)self; snprintf(name, sizeof name, "pet%d.act", accessory); return name; }
@@ -1136,7 +1309,7 @@ static void __fastcall o_names_set_name(void *self, void *edx, unsigned aid, str
 { (void)self; (void)edx; event("name %u '%s'", aid, orig_std_string(name.raw)); }
 static void __fastcall o_sync_server_time(void *self, void *edx, unsigned t) { (void)self; (void)edx; event("sync %u", t); }
 static const char *__fastcall o_character_name(void *self, void *edx) { (void)self; (void)edx; return "Hero"; }
-static int __fastcall o_is_admin_option(void *self, void *edx, int what) { (void)self; (void)edx; return (what == 7 || what == 2) && *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
+static int __fastcall o_is_admin_option(void *self, void *edx, int what) { (void)self; (void)edx; return (what == 7 || what == 2 || what == 3) && *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
 static int __cdecl o_is_admin_aid(int aid) { return aid == AID_OWN; }
 static int __fastcall o_get_guild_id(void *self, void *edx) { (void)edx; return self == orig_target ? 77 : 0; }
 static void __fastcall o_set_guild(void *self, void *edx, int value0, int value1) { (void)edx; event("guild %s %d %d", who(self), value0, value1); }
@@ -1209,6 +1382,46 @@ static int __fastcall o_replay_next(void *self, void *edx, unsigned char *buffer
     return 1;
 }
 static int __fastcall o_replay_set_mode(void *self, void *edx, int mode) { (void)self; (void)edx; event("replay mode %d", mode); return 1; }
+static void __fastcall o_pet_info_intimacy(void *self, void *edx) { (void)edx; event("pet intimacy %s", window_name(self)); }
+static void __fastcall o_ctrl_set_text(void *self, void *edx, const char *text) { (void)self; (void)edx; event("pet name %s '%s'", window_name(orig_pet_info_wnd), text); }
+static void __fastcall o_pet_speak(void *self, void *edx, int job, int hunger, int action, char *out)
+{ (void)self; (void)edx; session_get_pet_speak(NULL, job, hunger, action, out, 256); }
+static char *__fastcall o_format_chat_line(void *self, void *edx, const char *text, char *out, int aid, int replace)
+{ (void)self; (void)edx; session_format_chat_line(NULL, text, out, 256, aid, replace); return out; }
+static void __cdecl o_homun_redraw(void) { event("homun redraw"); }
+static void __cdecl o_merc_redraw(void) { event("merc redraw"); }
+static void __fastcall o_list_clear(void *self, void *edx) { (void)edx; event("list clear %s", self == oracle_addr(ORIG_MER_SKILLS) ? "merSkills" : "?"); }
+static void __fastcall o_set_pk_mode(void *self, void *edx, int value) { (void)edx; event("pkmode %s %d", who(self), value); }
+static unsigned char *__fastcall o_get_item_by_id(void *self, void *edx, unsigned char *out, int item_id, int identified)
+{
+    (void)self; (void)edx;
+    event("inv by id %d %d", item_id, identified & 0xff);
+    ((void *(__fastcall *)(void *, void *))oracle_addr(ORIG_ITEM_CONSTRUCT))(out, NULL);
+    *(int *)(out + OI_COUNT) = item_id % 5;
+    return out;
+}
+static char *__fastcall o_item_get_name(void *self, void *edx, char *out) { (void)self; (void)edx; strcpy(out, "item"); return out; }
+static unsigned char *__fastcall o_item_display_name(void *self, void *edx, unsigned char *out)
+{
+    (void)self; (void)edx;
+    memset(out, 0, ORIG_STD_STRING);
+    strcpy((char *)out, "item");
+    *(unsigned *)(out + 0x10) = 4;
+    *(unsigned *)(out + 0x14) = ORIG_STD_STRING_SSO - 1;
+    return out;
+}
+static unsigned char *__fastcall o_selected_item(void *self, void *edx, unsigned char *out, int *found)
+{
+    (void)edx;
+    event("selected %s", window_name(self));
+    ((void *(__fastcall *)(void *, void *))oracle_addr(ORIG_ITEM_CONSTRUCT))(out, NULL);
+    *(int *)(out + OI_INDEX) = 9;
+    ((void (__fastcall *)(void *, void *, int))oracle_addr(ORIG_ITEM_SET_ID))(out, NULL, 9009);
+    *found = current_fill == FILL_ONES;
+    return out;
+}
+static void __fastcall o_window_invalidate(void *self, void *edx) { (void)edx; event("invalidate %s", window_name(self)); }
+static void __fastcall o_set_spr_job(void *self, void *edx, int job) { (void)edx; event("sprjob %s %d", who(self), job); }
 static void __fastcall o_log_whisper(void *self, void *edx, const char *line) { (void)self; (void)edx; event("log '%s'", line); }
 static void __fastcall o_clear_lists(void *self, void *edx) { (void)self; (void)edx; event("clear lists"); }
 static void *__cdecl o_item_table_get(int item_id) { *(int *)(fake_item_entry + 0x40) = item_id % 7; return fake_item_entry; }
@@ -1334,6 +1547,23 @@ LIFT(game_mode_zc_play_npc_bgm)
 LIFT(game_mode_zc_sound)
 LIFT(game_mode_zc_open_edit_dlg)
 static void w_dialog_text_align(const unsigned char *pkt) { game_mode_zc_dialog_text_align(&lift_mode, pkt[2]); }
+LIFT(game_mode_zc_property_pet)
+LIFT(game_mode_zc_pet_act)
+LIFT(game_mode_zc_pet_egg_list)
+static void w_pet_evolution_result(const unsigned char *pkt) { game_mode_zc_pet_evolution_result(&lift_mode, *(const unsigned *)(pkt + 2)); }
+LIFT(game_mode_zc_change_state_pet)
+LIFT(game_mode_zc_feed)
+LIFT(game_mode_zc_change_state_homun)
+static void w_ho_par_change2(const unsigned char *pkt) { game_mode_zc_ho_par_change2(pkt); }
+static void w_ho_par_change(const unsigned char *pkt) { game_mode_zc_ho_par_change(pkt); }
+LIFT(game_mode_zc_property_homun)
+LIFT(game_mode_zc_property_homun_no_accessory)
+LIFT(game_mode_zc_property_homun_no_accessory2)
+LIFT(game_mode_zc_property_homun_no_accessory3)
+LIFT(game_mode_zc_mer_init)
+static void w_mer_par_change(const unsigned char *pkt) { game_mode_zc_mer_par_change(pkt); }
+LIFT(game_mode_zc_el_init)
+LIFT(game_mode_zc_el_par_change)
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -1392,9 +1622,15 @@ struct Handler {
     const struct ListLayout *list;
     int arg_byte;
     int service_type;
+    int arg_dword;
 };
 #define EXTRA(a) a, (int)(sizeof a / sizeof *a)
 
+static const unsigned pet_act_values[] = { 22, 32, 123, 1234, 4567, 7777, 100000 };
+static const unsigned pet_state_values[] = { 17, 20, 27 };
+static const unsigned ho_par_vars[] = { 1, 5, 7, 0, 6, 8 };
+static const unsigned mer_par_vars[] = { 5, 6, 7, 8, 41, 49, 53, 165, 189, 190, 0, 9, 0xb9, 0xba, 1000 };
+static const unsigned el_par_vars[] = { 5, 6, 7, 8, 0, 1, 3, 9 };
 static const struct Handler handlers[] = {
     { "notify_vanish", 0x7cc580u, 0x80, 7, w_game_mode_zc_notify_vanish, PK_DEFAULT, NULL, 0 },
     { "sprite_change", 0x7d6650u, 0xc3, 8, w_game_mode_zc_sprite_change, PK_DEFAULT, NULL, 0 },
@@ -1496,6 +1732,24 @@ static const struct Handler handlers[] = {
     { "sound", 0x7d4820u, 0x1d3, 0x23, w_game_mode_zc_sound, PK_DEFAULT, NULL, 0 },
     { "open_edit_dlg", 0, 0x142, 6, w_game_mode_zc_open_edit_dlg, PK_DEFAULT, NULL, 0 },
     { "dialog_text_align", 0x7fad40u, 0xba1, 3, w_dialog_text_align, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 1 },
+    { "property_pet", 0x7d02c0u, 0x1a2, 0x25, w_game_mode_zc_property_pet, PK_DEFAULT, NULL, 0 },
+    { "pet_act", 0x7cf780u, 0x1aa, 10, w_game_mode_zc_pet_act, PK_DEFAULT, EXTRA(pet_act_values) },
+    { "pet_egg_list", 0x7cf660u, 0x1a6, 4, w_game_mode_zc_pet_egg_list, PK_DEFAULT, NULL, 0 },
+    { "pet_evolution_result", 0x7cf930u, 0x9fc, 6, w_pet_evolution_result, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 0, 0, 1 },
+    { "change_state_pet", 0x7b9d90u, 0x1a4, 11, w_game_mode_zc_change_state_pet, PK_DEFAULT, EXTRA(pet_state_values) },
+    { "feed_pet", 0x7bd8f0u, 0x1a3, 7, w_game_mode_zc_feed, PK_DEFAULT, NULL, 0 },
+    { "feed_homun", 0x7bd8f0u, 0x22f, 7, w_game_mode_zc_feed, PK_DEFAULT, NULL, 0 },
+    { "change_state_homun", 0x7b9bb0u, 0x230, 12, w_game_mode_zc_change_state_homun, PK_DEFAULT, NULL, 0 },
+    { "ho_par_change", 0x7bf420u, 0x7db, 8, w_ho_par_change, PK_PAR, EXTRA(ho_par_vars) },
+    { "ho_par_change2", 0x7bf3c0u, 0xba5, 12, w_ho_par_change2, PK_PAR, EXTRA(ho_par_vars) },
+    { "property_homun", 0x7cfbc0u, 0x22e, 0x49, w_game_mode_zc_property_homun, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 0, 1 },
+    { "property_homun_v1", 0x7d00f0u, 0xb2f, 0x49, w_game_mode_zc_property_homun_no_accessory, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 0, 1 },
+    { "property_homun_v2", 0x7cfd90u, 0xb76, 0x4d, w_game_mode_zc_property_homun_no_accessory2, PK_DEFAULT, NULL, 0 },
+    { "property_homun_v3", 0x7cff40u, 0xba4, 0x55, w_game_mode_zc_property_homun_no_accessory3, PK_DEFAULT, NULL, 0 },
+    { "mer_init", 0x7c5010u, 0x29b, 0x50, w_game_mode_zc_mer_init, PK_DEFAULT, NULL, 0 },
+    { "mer_par_change", 0x7c5130u, 0x2a2, 8, w_mer_par_change, PK_PAR, EXTRA(mer_par_vars) },
+    { "el_init", 0x7bade0u, 0x81d, 0x16, w_game_mode_zc_el_init, PK_DEFAULT, NULL, 0 },
+    { "el_par_change", 0x7bae50u, 0x81e, 8, w_game_mode_zc_el_par_change, PK_PAR, EXTRA(el_par_vars) },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -1518,6 +1772,7 @@ static unsigned handler_values(const struct Handler *h)
 static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned aid, unsigned value, int fill)
 {
     int i;
+    current_fill = fill;
     memset(pkt, 0, PACKET_MAX);
     for (i = 2; i < h->length; i++)
         pkt[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3);
@@ -1672,6 +1927,63 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         }
         return;
     }
+    if (h->id == 0x1a2 || h->id == 0x22e || h->id == 0xb2f || h->id == 0xb76 || h->id == 0xba4 || h->id == 0x29b) {
+        static const char *const names[N_COMPANION_NAMES] = { "", "Poring", "a", "twentythree_characters_", "Lunatic Jr." };
+        static const short fullness[] = { 1, 5, 10, 7, 0, 100 };
+        const char *name = names[value % N_COMPANION_NAMES];
+        short level = (short)(h->id == 0x1a2 && (value & 1) ? 10000 + (int)value : 10 + (int)value);
+        short full = fullness[value % 6], intimacy = (short)(100 * value), accessory = (short)(3 * value), job = (short)(1002 + fill);
+        if (h->id == 0x29b) {
+            memcpy(pkt + 2, &aid, 4);
+            memcpy(pkt + 0x16, name, strlen(name) + 1);
+            return;
+        }
+        memcpy(pkt + 2, name, strlen(name) + 1);
+        pkt[0x1a] = (unsigned char)fill;
+        memcpy(pkt + 0x1b, &level, 2);
+        memcpy(pkt + 0x1d, &full, 2);
+        memcpy(pkt + 0x1f, &intimacy, 2);
+        if (h->id == 0x1a2) {
+            memcpy(pkt + 0x21, &accessory, 2);
+            memcpy(pkt + 0x23, &job, 2);
+        }
+        return;
+    }
+    if (h->id == 0x1a6) {
+        unsigned count = value & 3, r;
+        short total = (short)(4 + 2 * count);
+        memcpy(pkt + 2, &total, 2);
+        for (r = 0; r < count; r++) {
+            short index = (short)(value + r);
+            memcpy(pkt + 4 + 2 * r, &index, 2);
+        }
+        return;
+    }
+    if (h->id == 0x9fc) {
+        memcpy(pkt + 2, &value, 4);
+        return;
+    }
+    if (h->id == 0x1a4) {
+        int type = (int)(value % 7), v = type == 6 ? (int)(value / 7) : (int)(value / 7) * 60;
+        pkt[2] = (unsigned char)type;
+        memcpy(pkt + 3, &aid, 4);
+        memcpy(pkt + 7, &v, 4);
+        return;
+    }
+    if (h->id == 0x1a3 || h->id == 0x22f) {
+        int food_id = 501 + 100 * fill + (int)(value / 2);
+        pkt[2] = (unsigned char)(value & 1);
+        memcpy(pkt + 3, &food_id, 4);
+        return;
+    }
+    if (h->id == 0x230) {
+        int v = (int)(value / 5) * 10;
+        pkt[2] = (unsigned char)fill;
+        pkt[3] = (unsigned char)(value % 5);
+        memcpy(pkt + 4, &aid, 4);
+        memcpy(pkt + 8, &v, 4);
+        return;
+    }
     if (h->length >= 6)
         memcpy(pkt + 2, &aid, 4);
     if (h->arg_byte)
@@ -1808,7 +2120,7 @@ static void seed_packets(int option)
     SEED(ORIG_MAX_WEIGHT, maxWeight, 1000);
     SEED(ORIG_WEIGHT_PENALTY, weightPenaltyPercent, 50);
     SEED(ORIG_ZENY, zeny, 7);
-    SEED(ORIG_PET_FULLNESS, petFullness, 60);
+    SEED(ORIG_PET_FULLNESS, petFullness, option ? 60 : 20);
     SEED(ORIG_PET_INTIMACY_VAL, petIntimacy, 500);
     SEED(ORIG_PET_JOB, petJob, 1002);
     SEED(ORIG_BASE_LEVEL, charBaseLevel, 5);
@@ -1848,6 +2160,27 @@ static void seed_packets(int option)
     SEED(ORIG_PLAYER_POS_X, playerPosX, 3);
     SEED(ORIG_PLAYER_POS_Y, playerPosY, 4);
     SEED(ORIG_AUTO_SAVE_CHAT, autoSaveChat, option);
+    SEED(ORIG_HIDE_CHAT, hideChat, option);
+    SEED(ORIG_HIDE_CHAT_GUILD, hideChatAndGuild, 0);
+    SEED(ORIG_HOMUN_AID, homunAid, option ? (int)AID_TARGET : (int)AID_UNKNOWN);
+    SEED(ORIG_ELEMENTAL_AID, elementalAid, option ? (int)AID_TARGET : -1);
+    SEED(ORIG_MERC_PRESENT, mercPresent, option);
+    SEED(ORIG_HOMUN_AI_STATE + 4, homun_ai_state[1], option ? 5 : 0);
+    SEED(ORIG_PET_PREV_FULLNESS, petPrevFullness, 40);
+    memset(orig_pet_info_wnd, 0, sizeof orig_pet_info_wnd);
+    memset(orig_homun_info_wnd, 0, sizeof orig_homun_info_wnd);
+    memset(orig_homun_skill_wnd, 0, sizeof orig_homun_skill_wnd);
+    *(void **)orig_pet_info_wnd = *(void **)orig_homun_info_wnd = *(void **)orig_homun_skill_wnd = orig_window_vt;
+    *(void **)(orig_pet_info_wnd + ORIG_WND_NAME_CTRL) = orig_name_ctrl;
+    *(void **)orig_name_ctrl = orig_ctrl_vt;
+    *(void **)oracle_addr(ORIG_WND_PET_INFO) = option ? orig_pet_info_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_HOMUN_INFO) = option ? orig_homun_info_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_HOMUN_SKILL) = option ? orig_homun_skill_wnd : NULL;
+    g_windowMgr.pet_info_wnd = option ? &lift_pet_info_wnd : NULL;
+    g_windowMgr.homun_info_wnd = option ? &lift_homun_info_wnd : NULL;
+    g_windowMgr.homun_skill_list_wnd = option ? &lift_homun_skill_wnd : NULL;
+    memset(orig_generic_wnd + ORIG_COLLECTION_PET, 0, 0x40);
+    memset(&lift_pet_details, 0, sizeof lift_pet_details);
 #undef SEED
 #undef SEED64
 }
@@ -1927,6 +2260,16 @@ static void after_call(int side)
         event("own states %u%s", count, text);
         event("modal %x", side == 0 ? *(int *)oracle_addr(ORIG_WND_MODAL_RESULT) : g_windowMgr.modal_result);
     }
+    if (current_handler->id == 0x1a2) {
+        if (side == 0) {
+            const unsigned char *w = orig_generic_wnd + ORIG_COLLECTION_PET;
+            event("collection pet %d %d %d %d %d '%.24s'", *(const short *)w, *(const short *)(w + 2), *(const short *)(w + 4),
+                  *(const short *)(w + 0x1e), *(const int *)(w + 0x20), (const char *)w + 6);
+        } else {
+            event("collection pet %d %d %d %d %d '%.24s'", lift_pet_details.level, lift_pet_details.hunger, lift_pet_details.intimacy,
+                  lift_pet_details.accessory, lift_pet_details.renamed, lift_pet_details.name);
+        }
+    }
     if (current_handler->id == 0x7fe)
         event("bgm %d", side == 0 ? *(int *)(orig_sound_mgr + ORIG_SOUND_BGM_OVERRIDDEN) : g_sound_settings.bgm_overridden);
     report_changes(side);
@@ -1943,6 +2286,8 @@ static int call_guarded(const struct Handler *h, unsigned char *pkt)
             *(int *)oracle_addr(ORIG_REPLAY_PLAYING) = 1;
             ((void (__fastcall *)(void *, void *))oracle_addr(ORIG_DISPATCHER))(orig_mode, NULL);
             *(int *)oracle_addr(ORIG_REPLAY_PLAYING) = 0;
+        } else if (h->arg_dword) {
+            ((handler_fn)oracle_addr(h->orig))(orig_mode, NULL, (void *)(UINT_PTR)*(const unsigned *)(pkt + 2));
         } else if (h->arg_byte) {
             ((handler_fn)oracle_addr(h->orig))(orig_mode, NULL, (void *)(UINT_PTR)pkt[2]);
         } else {
@@ -2137,6 +2482,17 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_MOVE_TO_SERVER, (void *)o_move_to_server);
     oracle_patch_jump(ORIG_PLAY_STREAM, (void *)o_play_stream);
     oracle_patch_jump(ORIG_SET_TEXT_ALIGN, (void *)o_set_text_align);
+    oracle_patch_jump(ORIG_PET_INFO_INTIMACY, (void *)o_pet_info_intimacy);
+    oracle_patch_jump(ORIG_PET_SPEAK, (void *)o_pet_speak);
+    oracle_patch_jump(ORIG_FORMAT_CHAT_LINE, (void *)o_format_chat_line);
+    oracle_patch_jump(ORIG_SELECTED_ITEM, (void *)o_selected_item);
+    oracle_patch_jump(ORIG_SET_PK_MODE, (void *)o_set_pk_mode);
+    oracle_patch_jump(ORIG_GET_ITEM_BY_ID, (void *)o_get_item_by_id);
+    oracle_patch_jump(ORIG_ITEM_GET_NAME, (void *)o_item_get_name);
+    oracle_patch_jump(ORIG_ITEM_DISPLAY_NAME, (void *)o_item_display_name);
+    oracle_patch_jump(ORIG_HOMUN_REDRAW, (void *)o_homun_redraw);
+    oracle_patch_jump(ORIG_MERC_REDRAW, (void *)o_merc_redraw);
+    oracle_patch_jump(ORIG_LIST_CLEAR, (void *)o_list_clear);
     for (i = 0; i < (int)sizeof long_text_600 - 1; i++)
         long_text_600[i] = "abcdefghij"[i % 10];
     for (i = 0; i < (int)sizeof long_text_max - 1; i++)
@@ -2144,6 +2500,13 @@ static void packet_oracle_setup(int verbose)
     for (i = 0; i < 64; i++)
         orig_window_vt[i] = traps[i];
     orig_window_vt[ORIG_WINDOW_VT_SEND] = (void *)o_window_send;
+    orig_window_vt[ORIG_WINDOW_VT_INVALIDATE] = (void *)o_window_invalidate;
+    for (i = 0; i < 64; i++)
+        orig_ctrl_vt[i] = traps[i];
+    orig_ctrl_vt[ORIG_CTRL_VT_SET_TEXT] = (void *)o_ctrl_set_text;
+    lift_window_ops.invalidate = lift_window_invalidate;
+    lift_status_wnd.ops = lift_basic_info_wnd.ops = lift_group_wnd.ops = lift_found_wnd.ops = lift_storage_wnd.ops = lift_generic_wnd.ops =
+        lift_helper_wnd.ops = lift_pet_info_wnd.ops = lift_homun_info_wnd.ops = lift_homun_skill_wnd.ops = &lift_window_ops;
     if (!oracle_bind_import("api-ms-win-crt-utility-l1-1-0.dll", "rand", (void *)o_rand))
         fprintf(stderr, "the original's rand import was not found\n");
 
@@ -2167,10 +2530,12 @@ static void packet_oracle_setup(int verbose)
     orig_actor_vt[ORIG_ACTOR_VT_SET_GUILD] = (void *)o_set_guild;
     orig_actor_vt[ORIG_ACTOR_VT_GET_GUILD_ID] = (void *)o_get_guild_id;
     orig_actor_vt[ORIG_ACTOR_VT_SET_JOB_MODEL] = (void *)o_set_job_model;
+    orig_actor_vt[ORIG_ACTOR_VT_SET_SPR_JOB] = (void *)o_set_spr_job;
 
     lift_actor_ops.base.get_effect_state = lift_get_effect_state;
     lift_actor_ops.set_head = lift_set_head;
     lift_actor_ops.set_job_model = lift_set_job_model;
+    lift_actor_ops.set_spr_job = lift_set_spr_job;
     lift_actor_ops.set_weapon = lift_set_weapon;
     lift_actor_ops.set_weapon_look = lift_set_weapon_look;
     lift_actor_ops.set_accessory = lift_set_accessory;

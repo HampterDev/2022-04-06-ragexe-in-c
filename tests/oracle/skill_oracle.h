@@ -282,7 +282,7 @@ struct String *game_mode_get_actor_name(struct GameMode *self, struct String *ou
 void render_object_set_script_step_frames(struct RenderObject *self, unsigned char frames) { event("step %s %d", who(self), frames); }
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; event("quit1 %x", window_id); return 1; }
 int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
-{ (void)self; event("wndmsg %x '%s' %x %x %x", msg, msg == 1 ? (const char *)val1 : "", val2, val3, val4); return 0; }
+{ (void)self; event("wndmsg %x '%s' %x %x %x", msg, (msg == 1 || msg == 0x13) && readable(val1) ? (const char *)val1 : "", val2, val3, val4); return 0; }
 static int msg_str_named;
 char *msg_str(int id)
 {
@@ -398,7 +398,7 @@ static int __cdecl o_clear_homun(void) { event("clear homun"); return 0; }
 static double __fastcall o_view_heading(void *self, void *edx) { (void)self; (void)edx; return 0.0; }
 static int __fastcall o_step_frames(void *self, void *edx, int frames) { (void)edx; event("step %s %d", who(self), frames); return 0; }
 static int __fastcall o_wndmgr_send_msg(void *self, void *edx, int msg, int val1, int val2, int val3, int val4)
-{ (void)self; (void)edx; event("wndmsg %x '%s' %x %x %x", msg, msg == 1 ? (const char *)val1 : "", val2, val3, val4); return 0; }
+{ (void)self; (void)edx; event("wndmsg %x '%s' %x %x %x", msg, (msg == 1 || msg == 0x13) && readable(val1) ? (const char *)val1 : "", val2, val3, val4); return 0; }
 static const char *__cdecl o_msg_str(int id) { return msg_str(id); }
 static int __fastcall o_launch_effect_at(void *self, void *edx, int effect, void *caster, void *target, int level)
 { (void)self; (void)edx; event("launch-at %x %s %s %d", effect, who(caster), who(target), level); return 1; }
