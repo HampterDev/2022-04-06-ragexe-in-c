@@ -34,6 +34,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 48c4c0	sub_48c4c0	text/jsoncons_0000.inc:7486-7634		dwords_resize			cited	high	std/std_comdats.c
 48c630	sub_48c630	text/jsoncons_0000.inc:7647-7776		std_vector_bytes_resize			cited	high	std/std_comdats.c
 48c970	sub_48c970	text/jsoncons_0000.inc:7968-8056		std_string_compare			cited	high	std/std_comdats.c
+4941a0	sub_4941a0				string_construct_copy		oracle	high	tests/oracle/test_packet_handlers.c
 496b70	sub_496b70	text/jsoncons_0000.inc:22154-22205		bytes_tidy			cited	high	std/std_comdats.c
 496bf0	sub_496bf0	text/jsoncons_0000.inc:22207-22259		int_vector_destroy_eh			cited	high	std/std_comdats.c
 49b700	sub_49b700	text/jsoncons_0000.inc:29463-29499		int_vector_buy			cited	high	std/std_comdats.c
@@ -1364,6 +1365,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 5ab7d0				equip_release	equip_release	ui/character/equip_wnd.c:183	cited	high	ui/character/equip_wnd.c
 5ab910				UIWindowMgr_SetText4a0	ui_window_mgr_set_chat_line	ui/wndmgr/whisper_map.c:105	cited	high	ui/wndmgr/whisper_map.c
 5ab940				equip_update_look	equip_update_look	ui/character/equip_wnd.c:261	cited	high	ui/character/equip_wnd.c
+5abbf0	sub_5abbf0				ui_wait_wnd_set_text		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 5abc40			UINotifyItemObtainWnd	UINotifyItemObtainWnd_Slot8	ui_notify_item_obtain_wnd_is_hit_testable	ui/items/item_obtain_notice.c:115	cited	high	ui/items/item_obtain_notice.c
 5abc50				totd_count	totd_count	ui/tips/tip_of_the_day.c:32	cited	high	ui/tips/tip_of_the_day.c
 5abc80				tipbox_cut_at	tipbox_cut_at	ui/tips/tipbox.c:77	cited	high	ui/tips/tipbox.c
@@ -2219,11 +2221,12 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 661aa0	CMode__ProcessHelpBalloon	text/world_0000.inc:33948-33967		CMode_ProcessHelpBalloon	mode_process_help_balloon	world/tooltip.c:63	dump_symbol	high	world/tooltip.c
 661af1	CMode__SendMsg	text/world_0000.inc:33972-33996		CMode_SendMsg	mode_send_msg_base	world/mode_mgr.c:28	label_inside	low	world/mode_mgr.c
 661b60	CModeMgr__Run	text/world_0000.inc:33998-34131		CModeMgr__Run			label_inside	low	world/mode_loop.c
+661c60	sub_661c60				mode_run_fade_out		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 661d2c	CMode__RunFadeOut	text/world_0000.inc:34133-34203		CMode__RunFadeOut			label_inside	low	world/mode_draw.c
-661d2c	CMode__RunFadeOut	text/world_0000.inc:34133-34203			mode_run_fade_out	world/mode_draw.c:131	ustr_inside	low	
 662729	UIChatRoomWnd__WriteChatToReportFile	text/world_0000.inc:34205-34886			mode_screen_shot	world/mode_mgr.c:170	ustr_inside	low	
 66279b	CModeMgr__Quit	text/world_0000.inc:34889-34973	CMode	CModeMgr_Quit	mode_mgr_quit	world/mode_mgr.c:252	label_inside	low	world/mode_mgr.c
 662830	CMode__SetCursorAction	text/world_0000.inc:34975-34999		CMode__SetCursorAction			dump_symbol	high	world/mode_draw.c
+662870	sub_662870				mode_mgr_switch		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 665fe0	sub_665fe0	text/world_0000.inc:41066-41107		CActorPickNode_Construct	actor_pick_node_construct	world/pick_node.c:16	cited	high	world/pick_node.c
 666100	sub_666100	text/world_0000.inc:41158-41208			list_free	std/list.c:62	callee	low	
 666180	sub_666180	text/world_0000.inc:41210-41238		CActorPickNode_Destruct	actor_pick_node_destruct	world/pick_node.c:22	cited	high	world/pick_node.c
@@ -2268,8 +2271,10 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 66f6e3	CTipOfTheDay__Load_	text/contents_0000.inc:8926-9157			tip_of_the_day_read	contents/tips.c:89	ustr_inside	low	
 6705b0	sub_6705b0	text/contents_0000.inc:10291-10606		std_tree_extract			cited	high	std/std_tree.c
 6731f0	sub_6731f0	text/replay_0000.inc:1603-1744			read_at	replay/replay_file.c:18	jacc	low	
+6745b0	sub_6745b0				replay_recorder_next_packet		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 6747b0	sub_6747b0	text/replay_0000.inc:3662-3739			write_at	replay/replay_file.c:24	jacc	low	
-676270	sub_676270	text/replay_0000.inc:5989-6104			update_state_seconds	effects/rag/prim_screen_sprites.c:14	callee	low	
+675fe0	sub_675fe0				replay_recorder_set_mode		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+676270	sub_676270				replay_recorder_instance		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 676d80	sub_676d80	text/replay_0000.inc:7003-7050		NaviManagerBase_Construct	navi_manager_base_construct	navi/navi_base.c:23	cited	high	navi/navi_base.c
 676e70	sub_676e70	text/replay_0000.inc:7052-7068		navi_route_nodes_destroy_range			cited_multi	low	navi/navi_containers.c
 677110	sub_677110	text/replay_0000.inc:7311-7315		NaviRouteNode_Destruct			cited_multi	low	navi/navi_base.c
@@ -2814,6 +2819,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 770820	sub_770820	text/gamemode_0000.inc:9277-9419		skill_attack_range	skill_attack_range	game/msg_skills.c:408	cited	high	gamemode/msg_skills.c
 770a40	sub_770a40	text/gamemode_0000.inc:9469-9597		CGameMode_LocationText	game_mode_location_text	game/mode_misc.c:90	cited	high	gamemode/mode_misc.c
 770c10	sub_770c10	text/gamemode_0000.inc:9599-9651		CGameMode_CarriesItem	game_mode_carries_item	game/mode_misc.c:78	cited	high	gamemode/mode_misc.c
+7713e0	sub_7713e0				game_mode_initialize		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 772130	sub_772130				game_mode_refresh_actor_effects		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 772740	sub_772740				game_mode_launch_effect_at		oracle	high	tests/oracle/skill_oracle.h, stood in
 7737e0	sub_7737e0				game_mode_make_emblem_wnd		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -2835,9 +2841,11 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7808f3	sub_7808f3	text/gamemode_0000.inc:31041-31060			talk_cmd_fog	game/talk_commands.c:408	ustr_inside	low	
 780e1d	sub_780e1d	text/gamemode_0000.inc:31516-31570			talk_cmd_build_info	game/talk_commands.c:481	ustr_inside	low	
 78115d	sub_78115d	text/gamemode_0000.inc:31778-31898			talk_cmd_send_camera	game/talk_commands.c:513	ustr_inside	low	
+7829b0	sub_7829b0				game_mode_reset_for_warp		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 784e70	sub_784e70	text/gamemode_0000.inc:36745-36900		GameMode_ShowActorText	game_mode_show_actor_text	game/packets_world.c:74	cited	high	gamemode/packets_world.c
 785000	sub_785000	text/gamemode_0000.inc:36902-37000		GameMode_PlayerMsg52	game_mode_player_progress	game/packets_unused.c:16	cited	high	gamemode/packets_unused.c
 785df0	sub_785df0	text/gamemode_0000.inc:38029-38112			game_mode_pass_map_rsw	game/mode_util.c:117	jacc	low	
+786130	sub_786130				game_mode_log_whisper		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 786450	sub_786450	text/gamemode_0000.inc:38578-38614		Map24_BuyHead			cited_multi	low	gamemode/map_instances.c
 7864d0	sub_7864d0	text/gamemode_0000.inc:38625-38661		Tree194_BuyHead			cited	high	gamemode/map_instances.c
 786550	sub_786550	text/gamemode_0000.inc:38672-38708		Tree1ac_BuyHead			cited	high	gamemode/map_instances.c
@@ -2934,12 +2942,14 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 79dbf0	sub_79dbf0	text/gamemode_0000.inc:71740-71812		PingMarks_At			cited	high	gamemode/map_instances.c
 79dc80	sub_79dc80	text/gamemode_0000.inc:71814-71886		QuestMarks_At			cited	high	gamemode/map_instances.c
 79e582	CGameMode__ZC_BLACKSMITH_RANK	text/gamemode_0000.inc:72958-73045			ranking_style	contents/ranking_style.c:3	jacc_inside	low	
+79eab0	sub_79eab0				game_mode_move_to_server		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 79f580	sub_79f580				game_mode_job_sex		oracle	high	tests/oracle/test_packet_handlers.c
 79fc29	CGameMode__Zc_Ack_Whisper	text/gamemode_0000.inc:74273-74576			show_sent_whisper	game/mode_whisper.c:32	ustr_inside	low	
 7a00b0	sub_7a00b0				game_mode_zc_npcack_servermove_domain		dispatch	high	packet dispatcher arm for 0xac7 HEADER_ZC_NPCACK_SERVERMOVE_DOMAIN
 7a0240	sub_7a0240				game_mode_game_guard_auth		dispatch	high	packet dispatcher arm for 0x9cf HEADER_ZC_NPROTECTGAMEGUARDCSAUTH
 7a02b0	sub_7a02b0				game_mode_buying_store_bought_packet		dispatch	high	packet dispatcher arm for 0x9e6 HEADER_ZC_UPDATE_ITEM_FROM_BUYING_STORE2
 7a0490	sub_7a0490	text/gamemode_0000.inc:75341-75409		GameMode_CameraInfo	game_mode_camera_info	game/camera.c:153	cited	high	gamemode/camera.c
+7a0570	sub_7a0570				game_mode_poll_network_status		oracle	high	tests/oracle/test_packet_handlers.c, driven for its own arms
 7ad9f0	sub_7ad9f0				game_mode_notify_ban		dispatch	high	packet dispatcher arm for 0x81 HEADER_SC_NOTIFY_BAN
 7ae5e0	sub_7ae5e0	text/gamemode_0001.inc:12019-12088		Session_SetAdvancedStatus	session_set_advanced_status	game/status_values.c:228	oracle	high	gamemode/status_values.c
 7ae670	sub_7ae670	text/gamemode_0001.inc:12090-12105		GameMode_SetActorMarkFlag	game_mode_set_actor_mark_flag	game/minimap.c:451	cited	high	gamemode/minimap.c
@@ -3305,6 +3315,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7fa8b0	sub_7fa8b0				game_mode_on_clear_effect		dispatch	high	packet dispatcher arm for 0xb0d HEADER_ZC_CLEAR_EFFECT
 7fac60	sub_7fac60				game_mode_on_congratulation		dispatch	high	packet dispatcher arm for 0x1ea HEADER_ZC_CONGRATULATION
 7face0	sub_7face0				game_mode_zc_couple_name		dispatch	high	packet dispatcher arm for 0x1e6 HEADER_ZC_COUPLENAME
+7fad40	sub_7fad40				game_mode_zc_dialog_text_align		oracle	high	tests/oracle/test_packet_handlers.c
 7fad70	sub_7fad70				game_mode_on_efst_set_enter		dispatch	high	packet dispatcher arm for 0x8ff HEADER_ZC_EFST_SET_ENTER
 7fada0	sub_7fada0				game_mode_on_equipment_effect		dispatch	high	packet dispatcher arm for 0xa3b HEADER_ZC_EQUIPMENT_EFFECT
 7fae00	sub_7fae00				game_mode_zc_extend_body_item_size		dispatch	high	packet dispatcher arm for 0xb18 HEADER_ZC_EXTEND_BODYITEM_SIZE
@@ -3484,10 +3495,12 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 84dd10	sub_84dd10				session_set_worn_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84dfd0	sub_84dfd0				session_add_inventory_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84e390	sub_84e390				session_add_cart_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84e7a0	sub_84e7a0				session_append_market_goods		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84ef00	sub_84ef00				session_add_storage_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f3f0	sub_84f3f0				session_end_exchange2		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f5f0	sub_84f5f0				session_reroll_values		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f900	sub_84f900				session_remove_inventory_other_types		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84f9f0	sub_84f9f0				session_clear_lists		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84fa60	sub_84fa60				session_clear_worn_items		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84faa0	sub_84faa0				session_remove_inventory_filter_types		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84fc30	sub_84fc30				session_clear_inventory		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3519,6 +3532,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 85c4e0	CSession__InitJobNameTable_	text/session_0000.inc:42162-43842			session_init_job_name_tables	session/session_job_name_table.c:428	ustr_inside	low	
 85cb00	sub_85cb00	text/session_0000.inc:43950-44638			session_init_lua_files	session/session_lua.c:123	ustr	high	
 85d762	CSession__InitTalkTypeTable	text/session_0000.inc:45186-45193		CSession__InitMapPosTable			label_inside	low	session/a/session_map_pos.c
+862e10	sub_862e10				session_reset_store_search		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 862e70	sub_862e70	text/session_0000.inc:49387-49461			session_load_shadow_factors	session/session_lua.c:251	jacc	low	
 862fda	CSession__InitTable	text/session_0000.inc:49467-49964		CSession_InitTable	session_init_table	session/session_tables.c:329	label_inside	low	session/a/session_tables.c
 8667a2	CSession__InitViewPointTable	text/session_0000.inc:53374-53612			session_load_view_points	session/session_tables.c:204	ustr_inside	low	
@@ -3581,7 +3595,9 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 873c40	sub_873c40				session_set_worn_costume		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 8749cb	CSession__AppendProhibit	text/session_0000.inc:72891-73210		CSession_AppendProhibit	session_append_prohibit	session/session_prohibit.c:9	label_inside	low	session/a/session_prohibit.c
 8749f0	sub_8749f0	text/session_0000.inc:73212-73338			session_is_emotion_text	session/session_lookups.c:131	ustr	high	
+874b70	sub_874b70				session_reset_mail_items		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874c40	sub_874c40				session_clear_worn_costumes		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+874c70	sub_874c70				session_clear_mail_item_counts		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874db0	sub_874db0				session_erase_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874f82	CSession__EraseProhibit	text/session_0000.inc:73725-73794		CSession_EraseProhibit	session_erase_prohibit	session/session_prohibit.c:74	label_inside	low	session/a/session_prohibit.c
 875070	sub_875070				session_find_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3914,6 +3930,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 90b8cb	CConnection__Startup_	text/contents_0002.inc:26723-26893			connection_startup	contents/connection.c:38	ustr_inside	low	
 90bac0	sub_90bac0				rag_connection_instance		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 90d9b2	InitMSS_	text/contents_0002.inc:29638-29903			open_manager	contents/sound.c:168	ustr_inside	low	
+90e710	sub_90e710				sound_play_stream		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 90e876	PlayStream	text/contents_0002.inc:30865-31008		play_stream	play_stream	contents/sound.c:73	label_inside	low	contents/sound.c
 90e8a0	sub_90e8a0				sound_play_wave		oracle	high	tests/oracle/skill_oracle.h, stood in
 90eb0b	PlayWave	text/contents_0002.inc:31010-31225		play_wave	play_wave	effects/skills/acidified_throw.c:80	label_inside	low	effects/skills/acidified_throw.c
@@ -3965,7 +3982,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 92bd20	sub_92bd20	text/iteminfo_0000.inc:275-336			lookup	iteminfo/item_table.c:89	callee	low	
 92c970	sub_92c970				item_info_construct		oracle	high	tests/oracle/test_packet_handlers.c
 92d4a0	sub_92d4a0	text/iteminfo_0000.inc:2754-2837			item_info_get_name_color	iteminfo/item_name.c:170	callee	low	
-92d620	sub_92d620	text/iteminfo_0000.inc:2928-2936			item_table_get	iteminfo/item_table.c:97	callee	low	
+92d620	sub_92d620	text/iteminfo_0000.inc:2928-2936			item_table_get	iteminfo/item_table.c:97	oracle	high	
 92e460	sub_92e460	text/iteminfo_0000.inc:4299-4414			item_name_append_card_postfixes	iteminfo/item_name.c:145	ustr	high	
 92e580	ITEM_INFO__GetRefining	text/iteminfo_0000.inc:4536-4545			item_name_append_refine	iteminfo/item_name.c:57	ustr	high	
 92ef41	ITEM_INFO__GetSocketNumber	text/iteminfo_0000.inc:5191-5247			item_name_append_sockets	iteminfo/item_name.c:51	ustr_inside	low	
@@ -6319,6 +6336,7 @@ a7e360				UIParaItemShopWnd_Destroy	ui_para_item_shop_wnd_destroy	ui/shops/para_
 a7e3b0				UIParaResultWnd_Destroy	ui_para_result_wnd_destroy	ui/shops/para_shop.c:765	cited_multi	low	ui/shops/para_shop.c
 a7e480			UIParaItemShopWnd	UIParaItemShopWnd_Destroy	ui_para_item_shop_wnd_destroy	ui/shops/para_shop.c:343	cited_multi	low	ui/shops/para_shop.c
 a7e4f0			UIParaResultWnd	UIParaResultWnd_Destroy	ui_para_result_wnd_destroy	ui/shops/para_shop.c:765	cited_multi	low	ui/shops/para_shop.c
+a7e570	sub_a7e570				ui_para_result_wnd_add_bought_record		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 a7e6e0			UIParaItemPurchaseWnd	UIParaItemPurchaseWnd_DragAndDrop	ui_para_item_purchase_wnd_drag_and_drop	ui/shops/para_shop.c:545	cited	high	ui/shops/para_shop.c
 a7e7d0			UIParaItemShopWnd	UIParaItemShopWnd_DragAndDrop	ui_para_item_shop_wnd_drag_and_drop	ui/shops/para_shop.c:351	cited	high	ui/shops/para_shop.c
 a7e880			UIParaResultWnd	UIParaResultWnd_DragAndDrop	ui_para_result_wnd_drag_and_drop	ui/shops/para_shop.c:794	cited	high	ui/shops/para_shop.c
@@ -6978,7 +6996,7 @@ af6ce0				UITagTextViewer_OnLink213	ui_tag_text_viewer_on_quest_link	ui/quests/t
 af6da0				UITagTextViewer_OnLink1FD	ui_tag_text_viewer_on_tip_link	ui/quests/tag_text_viewer.c:189	cited	high	ui/quests/tag_text_viewer.c
 af6e60				UITagTextViewer_OnUrlLink	ui_tag_text_viewer_on_url_link	ui/quests/tag_text_viewer.c:163	cited	high	ui/quests/tag_text_viewer.c
 af6fc0				UITagTextViewer_UpdateScroll	ui_tag_text_viewer_update_scroll	ui/quests/tag_text_viewer.c:323	cited	high	ui/quests/tag_text_viewer.c
-af7670				UITagTextViewer_SetAlign	ui_tag_text_viewer_set_align	ui/quests/tag_text_viewer.c:348	cited	high	ui/quests/tag_text_viewer.c
+af7670				UITagTextViewer_SetAlign	ui_tag_text_viewer_set_align	ui/quests/tag_text_viewer.c:348	oracle	high	ui/quests/tag_text_viewer.c
 af7e50				UIBasicInfoWnd_Construct	ui_basic_info_wnd_construct	ui/character/basic_info_wnd.c:153	cited	high	ui/character/basic_info_wnd.c
 af7f50				UIBarGraphPlayerAP_Destroy	ui_bar_graph_player_ap_destroy	ui/character/bar_graph.c:679	cited	high	ui/character/bar_graph.c
 af7fa0				UIBasicInfoWnd_Destruct	ui_basic_info_wnd_destruct	ui/character/basic_info_wnd.c:181	cited	high	ui/character/basic_info_wnd.c
@@ -7048,6 +7066,7 @@ b02ea0				CLanguage_CaretBack	language_caret_back	platform/language.c:160	cited	
 b02ef0				CLanguage_DeleteSelection	language_delete_selection	platform/language.c:56	cited	high	platform/language.c
 b02f70			CLanguageTC	CLanguageTC_ClearKeys	language_tc_clear_keys	platform/language_tc.c:138	cited	high	platform/language_tc.c
 b02fc0				CLanguage_CandidateText	language_candidate_text	platform/language.c:189	cited	high	platform/language.c
+b03030	sub_b03030				get_charset_from_lang		oracle	high	tests/oracle/test_packet_handlers.c
 b03260				CodePageFromLang	code_page_from_lang	platform/charset.c:63	cited	high	platform/charset.c
 b03690				CLanguage_ReadCursorPos	language_read_cursor_pos	platform/language.c:286	cited	high	platform/language.c
 b036e0				CLanguage_InsertResult	language_insert_result	platform/language.c:301	cited	high	platform/language.c

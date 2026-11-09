@@ -193,3 +193,26 @@ af8c50	ui_basic_info_wnd_set_height	tests/oracle/test_packet_handlers.c, stood i
 930070	item_info_clear	tests/oracle/test_packet_handlers.c
 9305f0	item_info_set_item_id	tests/oracle/test_packet_handlers.c
 478110	string_assign	tests/oracle/test_packet_handlers.c
+7a0570	game_mode_poll_network_status	tests/oracle/test_packet_handlers.c, driven for its own arms
+676270	replay_recorder_instance	tests/oracle/test_packet_handlers.c, stood in
+6745b0	replay_recorder_next_packet	tests/oracle/test_packet_handlers.c, stood in
+675fe0	replay_recorder_set_mode	tests/oracle/test_packet_handlers.c, stood in
+786130	game_mode_log_whisper	tests/oracle/test_packet_handlers.c, stood in
+84f9f0	session_clear_lists	tests/oracle/test_packet_handlers.c, stood in
+92d620	item_table_get	tests/oracle/test_packet_handlers.c, stood in
+84e7a0	session_append_market_goods	tests/oracle/test_packet_handlers.c, stood in
+a7e570	ui_para_result_wnd_add_bought_record	tests/oracle/test_packet_handlers.c, stood in
+662870	mode_mgr_switch	tests/oracle/test_packet_handlers.c, stood in
+5abbf0	ui_wait_wnd_set_text	tests/oracle/test_packet_handlers.c, stood in
+862e10	session_reset_store_search	tests/oracle/test_packet_handlers.c, stood in
+7829b0	game_mode_reset_for_warp	tests/oracle/test_packet_handlers.c, stood in
+7713e0	game_mode_initialize	tests/oracle/test_packet_handlers.c, stood in
+661c60	mode_run_fade_out	tests/oracle/test_packet_handlers.c, stood in
+874b70	session_reset_mail_items	tests/oracle/test_packet_handlers.c, stood in
+874c70	session_clear_mail_item_counts	tests/oracle/test_packet_handlers.c, stood in
+79eab0	game_mode_move_to_server	tests/oracle/test_packet_handlers.c, stood in
+90e710	sound_play_stream	tests/oracle/test_packet_handlers.c, stood in
+af7670	ui_tag_text_viewer_set_align	tests/oracle/test_packet_handlers.c, stood in
+7fad40	game_mode_zc_dialog_text_align	tests/oracle/test_packet_handlers.c
+b03030	get_charset_from_lang	tests/oracle/test_packet_handlers.c
+4941a0	string_construct_copy	tests/oracle/test_packet_handlers.c
