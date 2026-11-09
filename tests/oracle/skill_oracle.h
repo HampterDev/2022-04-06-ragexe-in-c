@@ -122,7 +122,7 @@
 #define AID_OWN    7777
 #define ATTR_ZOOM  5
 #define EVENTS 48
-#define EVENT_LEN 112
+#define EVENT_LEN 256
 
 struct Session g_session1;
 struct EffectMgr *g_effectMgr;
@@ -200,9 +200,15 @@ static int readable(long long v)
     return (mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE)) != 0;
 }
 
+static const char *(*msg_text_extra)(long long msg, long long a, long long b, long long c, long long d);
+
 static const char *msg_text(long long msg, long long a, long long b, long long c, long long d)
 {
-    static char text[96];
+    static char text[256];
+    if (msg_text_extra) {
+        const char *extra = msg_text_extra(msg, a, b, c, d);
+        if (extra) return extra;
+    }
     if (msg == 0xe && readable(a)) {
         const float *at = (const float *)(int)a;
         snprintf(text, sizeof text, "%llx at %.0f %.0f %.0f %llx %llx %llx", msg, at[0], at[1], at[2], b, c, d);
@@ -294,7 +300,8 @@ struct GameMode *game_current_mode(void) { return &lift_mode; }
 struct Player *game_current_player(void) { return (struct Player *)lift_player; }
 int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
 { (void)mode; event("modemsg %x %x %s %x %x", msg, a, who((void *)b), c, d); return 0; }
-int game_actor_get_job(struct GameActor *self) { return self->job; }
+static int (*job_hook)(const struct GameActor *actor);
+int game_actor_get_job(struct GameActor *self) { return job_hook ? job_hook(self) : self->job; }
 int game_actor_get_counter(struct GameActor *self, int key) { (void)self; (void)key; return 0; }
 void game_actor_set_counter(struct GameActor *self, int which, long long value) { event("counter %s %d %lld", who(self), which, value); }
 void string_free(struct String *s) { (void)s; }
@@ -305,7 +312,7 @@ void skill_cast_chat_line(struct GameActor *caster, struct GameActor *target, in
 { event("chat %x %s %s %d", skill_id, who(caster), who(target), quiet); }
 struct GroundScope *ground_scope_new(void)
 { memset(lift_scope, 0, sizeof lift_scope); *(const struct RenderObjectOps **)lift_scope = &lift_scope_ops; return (struct GroundScope *)lift_scope; }
-void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size) { (void)list; (void)where; (void)size; return (void *)value; }
+void *list_insert(struct List *list, struct ListNode *where, const void *value, size_t size) { (void)where; (void)size; list->size++; return (void *)value; }
 unsigned char skill_action_mgr_cast(struct SkillActionMgr *self, int skill_id, unsigned cast_time, SkillActor *caster)
 { (void)self; event("action cast %x %u %s", skill_id, cast_time, who(caster)); return 0; }
 unsigned char skill_action_mgr_cast_on_target(struct SkillActionMgr *self, int skill_id, SkillActor *target)
@@ -316,7 +323,12 @@ unsigned char skill_info_is_good_skill_for_actor(int skill_id) { (void)skill_id;
 void render_object_set_motion_delay(struct RenderObject *self, float delay) { event("mdelay %s %.2f", who(self), delay); }
 struct SkillActionAnswer *skill_action_mgr_cast_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)
 { (void)self; (void)skill_id; out->found = 0; out->value = 0; return out; }
-void *mem_alloc(size_t bytes) { return malloc(bytes); }
+static void *(*mem_alloc_hook)(size_t bytes);
+void *mem_alloc(size_t bytes)
+{
+    void *memory = mem_alloc_hook ? mem_alloc_hook(bytes) : NULL;
+    return memory ? memory : malloc(bytes);
+}
 void mem_free(void *memory) { free(memory); }
 static void lift_set_attack_speed(struct GameActor *actor, int value) { event("aspd %s %d", who(actor), value); }
 

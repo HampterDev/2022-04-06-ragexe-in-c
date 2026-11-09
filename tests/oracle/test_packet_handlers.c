@@ -19,6 +19,16 @@
 #include "std/tree.h"
 #include "std/integer_map.h"
 #include "platform/error_message.h"
+#include "game/actor_entry.h"
+#include "game/entry_packet_handlers.h"
+#include "game/actor_marks.h"
+#include "contents/champion_monster_effects.h"
+#include "contents/player_names.h"
+#include "world/world.h"
+#include "session/session_jobs.h"
+#include "session/session_talk.h"
+#include "session/character_name.h"
+#include "platform/clientinfo.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -66,6 +76,47 @@
 #define ORIG_REFRESH_BASIC    0x867510u
 #define ORIG_IS_PC_JOB_ACTOR  0x74bf70u
 #define ORIG_SPRINTF          0x4bcf10u
+#define ORIG_SESSION_AID      0x1134c14u
+#define ORIG_PET_ACCESSORY    0x1134c3cu
+#define ORIG_HOMUN_AI_FLAG    0x1138e84u
+#define ORIG_MERC_PRESENT     0x1138f28u
+#define ORIG_PVP_FIRST_TIME   0x11343acu
+#define ORIG_PVP_RULE         0x1138cc8u
+#define ORIG_REPLAY_PLAYING   0x1119d38u
+#define ORIG_MODE_SQUARE_MARKS   0x1b4
+#define ORIG_MODE_TRIANGLE_MARKS 0x1bc
+#define ORIG_WORLD_ACTORS     0x10
+#define ORIG_PLAYER_PVP_RANK  0x474
+#define ORIG_PLAYER_PVP_TOTAL 0x478
+#define ORIG_ACTOR_BALLOON_FONT 0xfc
+#define ORIG_ACTOR_MARK_LISTED  0x2e8
+#define ORIG_ACTOR_IS_BOSS      0x308
+#define ORIG_ACTOR_OBJECT_TYPE  0x318
+#define ORIG_PC_SIZE          0x4d8
+#define ORIG_OPERATOR_NEW     0xb461beu
+#define ORIG_PC_CONSTRUCT     0x82e5e0u
+#define ORIG_NEW_ACTOR_FOR_JOB 0x777890u
+#define ORIG_LIST_BUY_NODE    0x659710u
+#define ORIG_ACTOR_LIST_BUY_NODE 0x7979e0u
+#define ORIG_OBJECT_LIST_PUSH 0x70bbb0u
+#define ORIG_ACTOR_LIST_PUSH  0x7e3530u
+#define ORIG_MARKS_FIND       0x797860u
+#define ORIG_MAKE_EMBLEM_WND  0x7737e0u
+#define ORIG_IS_SIEGE_MODE    0x884040u
+#define ORIG_IS_PLAYER_JOB    0x884010u
+#define ORIG_IS_HOMUNCULUS_AID 0x883ec0u
+#define ORIG_IS_MERCENARY_AID 0x883ee0u
+#define ORIG_PET_ACCESSORY_ACT 0x877120u
+#define ORIG_LOAD_ACT_RES     0x75cc50u
+#define ORIG_CHAMPION_EFFECTS 0x9238b0u
+#define ORIG_PLAYER_NAMES_SET 0x8f1710u
+#define ORIG_PLACE_NOWHERE    0x65ed90u
+#define ORIG_PLACE_AT_CELL    0x65ec20u
+#define ORIG_NAMES_SET_NAME   0x8b0da0u
+#define ORIG_SYNC_SERVER_TIME 0x86dc90u
+#define ORIG_CHARACTER_NAME   0x875550u
+#define ORIG_IS_ADMIN_OPTION  0x8682a0u
+#define ORIG_IS_ADMIN_AID     0xb05da0u
 #define ORIG_STD_STRING       24
 #define ORIG_STD_STRING_SSO   16
 
@@ -86,6 +137,8 @@
 #define ORIG_ACTOR_VT_SET_ROBE        (0xac / 4)
 #define ORIG_ACTOR_VT_SET_BODY_STYLE  (0xb0 / 4)
 #define ORIG_ACTOR_VT_REFRESH_ACC3    (0xe8 / 4)
+#define ORIG_ACTOR_VT_SET_GUILD       (0xc0 / 4)
+#define ORIG_ACTOR_VT_GET_GUILD_ID    (0xc4 / 4)
 
 #define AID_UNKNOWN 4242
 #define PACKET_MAX 256
@@ -94,11 +147,11 @@
 #define FAKE_CONNECTION 0x5151
 
 enum { FILL_ZERO, FILL_PATTERN, FILL_ONES, FILL_COUNT };
-enum { PK_DEFAULT, PK_NAMES };
+enum { PK_DEFAULT, PK_NAMES, PK_ENTRY };
 
-enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_COUNT };
+enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_COUNT };
 #define M(r) (1u << (r))
-#define M_ACTORS (M(R_CASTER) | M(R_TARGET) | M(R_PLAYER))
+#define M_ACTORS (M(R_CASTER) | M(R_TARGET) | M(R_PLAYER) | M(R_NEW))
 
 struct Region {
     const char *name;
@@ -111,6 +164,7 @@ struct Field {
     const char *name;
     unsigned mask;
     unsigned orig_off, lift_off, size;
+    int quiet;
 };
 
 static struct Region regions[R_COUNT];
@@ -120,6 +174,14 @@ static int instant_var_set, lift_instant_var_got;
 static unsigned char lift_connection[0x100];
 static unsigned char lift_names_holder;
 static struct UIWindow *lift_window;
+static unsigned char orig_new_actor[0x1000];
+static union { struct Pc pc; unsigned char raw[0x1000]; } lift_new_actor;
+static int sweep_job, move_mask;
+static unsigned orig_actor_list_head[3];
+static unsigned fake_nodes[4][4];
+static int fake_node_count;
+static unsigned fake_tree_node[8];
+static struct MemberMark fake_mark;
 
 #define SF(f) offsetof(struct Session, f)
 #define AF(f) offsetof(struct GameActor, f)
@@ -166,6 +228,18 @@ static const struct Field fields[] = {
     { "src_blend", M(R_EFFECT), 0x148, EF(src_blend), 4 },
     { "dest_blend", M(R_EFFECT), 0x14c, EF(dest_blend), 4 },
     { "max_frames", M(R_EFFECT), 0x184, EF(max_frames), 4 },
+    { "aid", M(R_SESSION), S(ORIG_SESSION_AID), SF(aid), 4 },
+    { "petAccessory", M(R_SESSION), S(ORIG_PET_ACCESSORY), SF(petAccessory), 4 },
+    { "homun_ai_flag", M(R_SESSION), S(ORIG_HOMUN_AI_FLAG), SF(homun_ai_flags), 4 },
+    { "mercPresent", M(R_SESSION), S(ORIG_MERC_PRESENT), SF(mercPresent), 4 },
+    { "pvpFirstPlaceTime", M(R_SESSION), S(ORIG_PVP_FIRST_TIME), SF(pvpFirstPlaceTime), 4 },
+    { "pvp_rank", M(R_PLAYER), ORIG_PLAYER_PVP_RANK, PF(pvp_rank), 4 },
+    { "pvp_total", M(R_PLAYER), ORIG_PLAYER_PVP_TOTAL, PF(pvp_total), 4 },
+    { "balloon_font", M_ACTORS, ORIG_ACTOR_BALLOON_FONT, AF(balloon_font), 2 },
+    { "mark_listed", M_ACTORS, ORIG_ACTOR_MARK_LISTED, AF(mark_listed), 4 },
+    { "is_boss", M_ACTORS, ORIG_ACTOR_IS_BOSS, AF(is_boss), 1 },
+    { "object_type", M_ACTORS, ORIG_ACTOR_OBJECT_TYPE, AF(object_type), 1 },
+    { "vtable", M(R_NEW), 0, 0, 4, 1 },
 };
 
 static const struct { unsigned mask; unsigned orig_off, lift_off; const char *name; } strings[] = {
@@ -175,6 +249,7 @@ static const struct { unsigned mask; unsigned orig_off, lift_off; const char *na
 static const char *who_packets(const void *p)
 {
     if (p == (const char *)oracle_addr(ORIG_INSTANT_VARS) - ORIG_ACTOR_COUNTERS) return "V";
+    if (p == orig_new_actor || p == &lift_new_actor) return "N";
     return NULL;
 }
 
@@ -226,6 +301,8 @@ static void report_changes(int side)
             if (!(f->mask & M(r)))
                 continue;
             memset(seen, 1, f->size);
+            if (f->quiet)
+                continue;
             if (memcmp(now, was, f->size) != 0)
                 event("set %s.%s %s->%s", g->name, f->name, hex_bytes(was, f->size), hex_bytes(now, f->size));
         }
@@ -334,6 +411,94 @@ BYTE effect_state_bit6(DWORD state) { return (BYTE)((state >> 6) & 1); }
 BYTE is_effect_state_hiding(DWORD state) { return (BYTE)((state >> 1) & 1); }
 BYTE is_effect_state_cloaking(DWORD state) { return (BYTE)((state >> 2) & 1); }
 
+int g_replayPlaying;
+struct ChampionMonsterMgr *g_championMonster;
+
+static int job_of(const void *actor)
+{
+    if (actor == orig_caster || actor == &lift_caster) return 46;
+    if (actor == orig_target || actor == &lift_target) return 1002;
+    if (actor == orig_new_actor || actor == &lift_new_actor) return sweep_job;
+    return 0;
+}
+static int lift_job(const struct GameActor *actor) { return job_of(actor); }
+static void *lift_alloc(size_t bytes) { return bytes == sizeof(struct Pc) ? (void *)&lift_new_actor : NULL; }
+static const char *tree_name(const void *tree)
+{
+    if (tree == &lift_mode.square_marks || tree == orig_mode + ORIG_MODE_SQUARE_MARKS) return "sq";
+    if (tree == &lift_mode.triangle_marks || tree == orig_mode + ORIG_MODE_TRIANGLE_MARKS) return "tri";
+    return "?";
+}
+static const char *entry_text(long long msg, long long a)
+{
+    static char text[2][256];
+    static int turn;
+    char *out = text[turn ^= 1];
+    int n;
+    if (msg == ACTOR_MSG_ENTRY_OLD || msg == ACTOR_MSG_NEW_ENTRY_OLD || msg == ACTOR_MSG_NEW_ENTRY || msg == ACTOR_MSG_ENTRY) {
+        const struct ActorEntryInfo *e = (const struct ActorEntryInfo *)(int)a;
+        snprintf(out, 256, "%llx entry a%u j%d s%d at%d,%d,%d sp%d sz%d,%d h%d w%d,%d ac%d st%d bs%d hs%d es%x pk%d sh%d a2%d a3%d hp%d bp%d hd%d g%u ev%d ho%d v%d r%d c%d b%d",
+                 msg, e->aid, e->job, e->sex, e->x, e->y, e->dir, e->speed, e->x_size, e->y_size, e->head, e->weapon[0], e->weapon[1],
+                 e->accessory, e->state, e->body_state, e->health_state, e->effect_state, e->is_pk_mode, e->shield, e->accessory2,
+                 e->accessory3, e->head_palette, e->body_palette, e->head_dir, e->guild_id, e->emblem_version, e->honor, e->virtue,
+                 e->robe, e->char_id, e->body);
+        return out;
+    }
+    if (msg == ACTOR_MSG_MOVE_ENTRY_OLD || msg == ACTOR_MSG_NEW_MOVE_ENTRY_OLD || msg == ACTOR_MSG_NEW_MOVE_ENTRY || msg == ACTOR_MSG_MOVE_ENTRY) {
+        const struct ActorMoveEntryInfo *e = (const struct ActorMoveEntryInfo *)(int)a;
+        n = snprintf(out, 256, "%llx move a%u j%d s%d t%u from%d,%d sub%d,%d to%d,%d sp%d h%d w%d,%d ac%d bs%d hs%d es%x pk%d a2%d a3%d hp%d bp%d hd%d g%u ev%d ho%d v%d",
+                     msg, e->aid, e->job, e->sex, e->move_start_time, e->src_x, e->src_y, e->sub_x, e->sub_y, e->dst_x, e->dst_y, e->speed,
+                     e->head, e->weapon[0], e->weapon[1], e->accessory, e->body_state, e->health_state, e->effect_state, e->is_pk_mode,
+                     e->accessory2, e->accessory3, e->head_palette, e->body_palette, e->head_dir, e->guild_id,
+                     e->emblem_version, e->honor, e->virtue);
+        if (move_mask & 8) n += snprintf(out + n, 256 - n, " sh%d", e->shield);
+        if (move_mask & 1) n += snprintf(out + n, 256 - n, " r%d", e->robe);
+        if (move_mask & 2) n += snprintf(out + n, 256 - n, " c%u", e->char_id);
+        if (move_mask & 4) n += snprintf(out + n, 256 - n, " b%d", e->body);
+        return out;
+    }
+    return NULL;
+}
+static const char *msg_text_packets(long long msg, long long a, long long b, long long c, long long d)
+{ (void)b; (void)c; (void)d; return readable(a) ? entry_text(msg, a) : NULL; }
+
+int game_actor_get_guild_id(struct GameActor *actor) { return actor == &lift_target ? 77 : 0; }
+void game_actor_set_guild(struct GameActor *actor, int value0, int value1) { event("guild %s %d %d", who(actor), value0, value1); }
+void game_actor_set_mark_listed(struct GameActor *self, int value) { self->mark_listed = value; }
+BYTE clientinfo_is_admin_aid(int aid) { return aid == AID_OWN; }
+int session_is_siege_mode(struct Session *self) { return self->map_rule_flags[0]; }
+int session_is_player_job(struct Session *self, int id) { (void)self; return id < 1000; }
+int session_is_guardian(struct Session *self, int job) { (void)self; return job >= 1285 && job <= 1287; }
+int session_is_own_aid(struct Session *self, int aid) { return aid != -1 && aid == self->aid; }
+int session_is_homunculus_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
+int session_is_mercenary_aid(struct Session *self, int aid) { (void)self; return aid == AID_UNKNOWN; }
+int session_is_admin_option(struct Session *self, int what) { return what == 7 && self->map_rule_flags[0]; }
+const char *session_character_name(const struct Session *session) { (void)session; return "Hero"; }
+const char *session_get_pet_accessory_act(struct Session *self, int accessory)
+{ static char name[32]; (void)self; snprintf(name, sizeof name, "pet%d.act", accessory); return name; }
+void render_object_load_act_res(struct RenderObject *self, const char *name) { event("loadact %s %s", who(self), name); }
+void game_mode_make_emblem_wnd(struct GameMode *self, struct GameActor *actor, int guild_id) { (void)self; event("emblem %s %d", who(actor), guild_id); }
+struct Pc *pc_construct(struct Pc *self)
+{ ((struct GameActor *)self)->ops = (const struct GameObjectOps *)&lift_actor_ops; event("pc construct %s", who(self)); return self; }
+struct GameActor *game_mode_new_actor_for_job(struct GameMode *self, int job)
+{
+    (void)self;
+    event("new actor %d", job);
+    lift_new_actor.pc.ops = (const struct GameObjectOps *)&lift_actor_ops;
+    return (struct GameActor *)&lift_new_actor;
+}
+void actor_list_push_back(struct List *list, void *actor) { list_push_back(list, &actor, sizeof actor); }
+void *tree_find(const struct Tree *tree, const void *key, TreeLessFn less)
+{ unsigned aid = *(const unsigned *)key; (void)less; event("marks %s %u", tree_name(tree), aid); return aid == AID_OWN ? &fake_mark : NULL; }
+int tree_less_uint(const void *a, const void *b) { return *(const unsigned *)a < *(const unsigned *)b; }
+void name_card_holder_set_name(struct ActorNameCardHolder *self, unsigned aid, struct String name)
+{ (void)self; event("name %u '%s'", aid, string_cstr(&name)); }
+int player_names_set(unsigned char_id, struct TextView name) { event("pname %u '%.*s'", char_id, (int)name.size, name.data); return 0; }
+int champion_monster_apply_effects(struct ChampionMonsterMgr *manager, int job, struct GameActor *actor, int actor_id)
+{ (void)manager; event("champion %d %s %d", job, who(actor), actor_id); return 0; }
+void world_place_id_nowhere(struct World *self, int id, const float *pos) { (void)self; event("place nowhere %d %.0f %.0f", id, pos[0], pos[1]); }
+void world_place_id_at_client_cell(struct World *self, int id, const int *cell) { (void)self; event("place cell %d %d %d", id, cell[0], cell[1]); }
+
 static int lift_get_effect_state(struct RenderObject *self) { (void)self; return 0; }
 static void lift_set_head(struct GameActor *a, int v) { event("head %s %d", who(a), v); }
 static void lift_set_weapon(struct GameActor *a, int64_t v) { event("weapon %s %lld", who(a), v); }
@@ -399,7 +564,7 @@ static void __fastcall o_level_aura(void *self, void *edx) { (void)edx; event("l
 static void __fastcall o_remove_type(void *self, void *edx, int aid, int type) { (void)self; (void)edx; event("remove type %x aid %d", type, aid); }
 static void __fastcall o_reroll(void *self, void *edx) { (void)self; (void)edx; event("reroll"); }
 static void __fastcall o_refresh_basic(void *self, void *edx) { (void)self; (void)edx; event("refresh basic"); }
-static int __cdecl o_is_pc_job_actor(int job) { return game_actor_is_pc_job(job); }
+static int __stdcall o_is_pc_job_actor(int job) { return game_actor_is_pc_job(job); }
 static int __cdecl o_sprintf(char *out, const char *fmt, ...)
 {
     va_list ap;
@@ -428,6 +593,44 @@ static void __fastcall o_set_robe(void *a, void *edx, int v, int f) { (void)edx;
 static void __fastcall o_set_body_style(void *a, void *edx, int v, int f) { (void)edx; event("bodystyle %s %d %d", who(a), v, f & 0xff); }
 static void __fastcall o_refresh_accessory3(void *a, void *edx) { (void)edx; event("refreshacc3 %s", who(a)); }
 
+static int __fastcall o_job_packets(void *self, void *edx) { (void)edx; return job_of(self); }
+static void *__cdecl o_operator_new(unsigned size) { return size == ORIG_PC_SIZE ? (void *)orig_new_actor : malloc(size); }
+static void *__fastcall o_pc_construct(void *self, void *edx) { (void)edx; *(void **)self = orig_actor_vt; event("pc construct %s", who(self)); return self; }
+static void *__fastcall o_new_actor_for_job(void *self, void *edx, int job)
+{ (void)self; (void)edx; event("new actor %d", job); *(void **)orig_new_actor = orig_actor_vt; return orig_new_actor; }
+static void *__stdcall o_buy_node(void *next, void *prev, void *value)
+{
+    unsigned *node = fake_nodes[fake_node_count++ & 3];
+    node[0] = (unsigned)(UINT_PTR)next;
+    node[1] = (unsigned)(UINT_PTR)prev;
+    node[2] = *(unsigned *)value;
+    return node;
+}
+static void __fastcall o_list_push(void *list, void *edx, void *value) { (void)edx; (void)value; ((unsigned *)list)[1]++; }
+static unsigned **__fastcall o_marks_find(void *tree, void *edx, unsigned **out, const unsigned *key)
+{ (void)edx; event("marks %s %u", tree_name(tree), *key); *out = *key == AID_OWN ? fake_tree_node : *(unsigned **)tree; return out; }
+static void __fastcall o_make_emblem_wnd(void *self, void *edx, void *actor, int guild_id, int emblem_version)
+{ (void)self; (void)edx; (void)emblem_version; event("emblem %s %d", who(actor), guild_id); }
+static int __fastcall o_is_siege_mode(void *self, void *edx) { (void)self; (void)edx; return *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
+static int __fastcall o_is_player_job(void *self, void *edx, int id) { (void)self; (void)edx; return id < 1000; }
+static int __fastcall o_is_homunculus_aid(void *self, void *edx, int aid) { (void)self; (void)edx; return aid == AID_UNKNOWN; }
+static int __fastcall o_is_mercenary_aid(void *self, void *edx, int aid) { (void)self; (void)edx; return aid == AID_UNKNOWN; }
+static const char *__fastcall o_pet_accessory_act(void *self, void *edx, int accessory) { (void)self; (void)edx; return session_get_pet_accessory_act(NULL, accessory); }
+static int __fastcall o_load_act_res(void *self, void *edx, const char *name) { (void)edx; event("loadact %s %s", who(self), name); return 0; }
+static int __fastcall o_champion_effects(void *self, void *edx, int job, void *actor, int aid) { (void)self; (void)edx; event("champion %d %s %d", job, who(actor), aid); return 0; }
+static void __fastcall o_player_names_set(void *self, void *edx, unsigned char_id, struct OrigString name)
+{ (void)self; (void)edx; event("pname %u '%s'", char_id, orig_std_string(name.raw)); }
+static int __fastcall o_place_nowhere(void *self, void *edx, int id, const float *pos) { (void)self; (void)edx; event("place nowhere %d %.0f %.0f", id, pos[0], pos[1]); return 0; }
+static int __fastcall o_place_at_cell(void *self, void *edx, int id, const int *cell) { (void)self; (void)edx; event("place cell %d %d %d", id, cell[0], cell[1]); return 0; }
+static void __fastcall o_names_set_name(void *self, void *edx, unsigned aid, struct OrigString name)
+{ (void)self; (void)edx; event("name %u '%s'", aid, orig_std_string(name.raw)); }
+static void __fastcall o_sync_server_time(void *self, void *edx, unsigned t) { (void)self; (void)edx; event("sync %u", t); }
+static const char *__fastcall o_character_name(void *self, void *edx) { (void)self; (void)edx; return "Hero"; }
+static int __fastcall o_is_admin_option(void *self, void *edx, int what) { (void)self; (void)edx; return what == 7 && *(int *)oracle_addr(ORIG_EFFECT_OPTION); }
+static int __cdecl o_is_admin_aid(int aid) { return aid == AID_OWN; }
+static int __fastcall o_get_guild_id(void *self, void *edx) { (void)edx; return self == orig_target ? 77 : 0; }
+static void __fastcall o_set_guild(void *self, void *edx, int value0, int value1) { (void)edx; event("guild %s %d %d", who(self), value0, value1); }
+
 typedef void (*mode_pkt_fn)(struct GameMode *, const void *);
 #define LIFT(fn) static void w_##fn(const unsigned char *pkt) { ((mode_pkt_fn)fn)(&lift_mode, pkt); }
 LIFT(game_mode_zc_notify_vanish)
@@ -448,10 +651,49 @@ LIFT(game_mode_on_congratulation)
 LIFT(game_mode_on_npc_show_efst_update)
 LIFT(game_mode_zc_devotion_list)
 LIFT(game_mode_zc_dispel)
+LIFT(game_mode_zc_notify_newentry)
+LIFT(game_mode_zc_notify_newentry2)
+LIFT(game_mode_zc_notify_newentry3)
+LIFT(game_mode_zc_notify_newentry4)
+LIFT(game_mode_zc_notify_standentry)
+LIFT(game_mode_zc_notify_standentry_npc)
+LIFT(game_mode_zc_notify_standentry2)
+LIFT(game_mode_zc_notify_standentry3)
+LIFT(game_mode_zc_notify_standentry4)
+LIFT(game_mode_zc_notify_standentry5)
+LIFT(game_mode_zc_notify_newentry5)
+LIFT(game_mode_zc_notify_moveentry)
+LIFT(game_mode_zc_notify_moveentry2)
+LIFT(game_mode_zc_notify_moveentry3)
+LIFT(game_mode_zc_notify_moveentry6)
+LIFT(game_mode_zc_notify_ranking)
+LIFT(game_mode_zc_notify_newentry7)
+LIFT(game_mode_zc_notify_standentry8)
+LIFT(game_mode_zc_notify_moveentry9)
+LIFT(game_mode_zc_notify_moveentry10)
+LIFT(game_mode_zc_notify_moveentry11)
+LIFT(game_mode_zc_notify_newentry10)
+LIFT(game_mode_zc_notify_newentry11)
+LIFT(game_mode_zc_notify_standentry10)
+LIFT(game_mode_zc_notify_standentry11)
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
 static const unsigned state_bits[] = { 0x40, 0x42, 0x44, 0x46 };
+static const unsigned ranks[] = { 1, 10, 11, 0xfffffff0u };
+static const unsigned entry_types[] = { 0, 1, 5, 6, 7, 8, 9, 10, 12, 13, 14 };
+static const int entry_jobs[] = { 0, 19, 20, 45, 46, 999, 1000, 1001, 1285, 2000, 3999, 4000, 6001, 6017, 6053, 20021, 32000, 0x2d2 };
+#define N_TYPES ((unsigned)(sizeof entry_types / sizeof *entry_types))
+#define N_JOBS ((unsigned)(sizeof entry_jobs / sizeof *entry_jobs))
+
+struct EntryLayout { unsigned char type_off, aid_off, job_off, head_off, varlen; };
+static const struct EntryLayout lay_new1 = { 0, 2, 0xe, 0x10, 0 };
+static const struct EntryLayout lay_new4 = { 0, 2, 0x10, 0x12, 0 };
+static const struct EntryLayout lay_stand = { 2, 3, 0xf, 0x11, 0 };
+static const struct EntryLayout lay_npc = { 2, 3, 0x15, 0xf, 0 };
+static const struct EntryLayout lay_move3 = { 2, 3, 0x11, 0x13, 0 };
+static const struct EntryLayout lay_var = { 4, 5, 0x13, 0x15, 1 };
+static const struct EntryLayout lay_var10 = { 4, 5, 0x17, 0x19, 1 };
 
 struct Handler {
     const char *name;
@@ -462,6 +704,9 @@ struct Handler {
     int kind;
     const unsigned *extra;
     int extra_count;
+    const struct EntryLayout *layout;
+    int move_mask;
+    int no_unknown;
 };
 #define EXTRA(a) a, (int)(sizeof a / sizeof *a)
 
@@ -484,7 +729,39 @@ static const struct Handler handlers[] = {
     { "npc_show_efst_update", 0x803b30u, 0x28a, 18, w_game_mode_on_npc_show_efst_update, PK_DEFAULT, EXTRA(state_bits) },
     { "devotion_list", 0x7ba9d0u, 0x1cf, 28, w_game_mode_zc_devotion_list, PK_DEFAULT, EXTRA(actor_aids) },
     { "dispel", 0x7bac20u, 0x1b9, 6, w_game_mode_zc_dispel, PK_DEFAULT, NULL, 0 },
+    { "newentry", 0x7c9ce0u, 0x79, 0x35, w_game_mode_zc_notify_newentry, PK_ENTRY, NULL, 0, &lay_new1, 0 },
+    { "newentry2", 0x7c8c50u, 0x1d9, 0x39, w_game_mode_zc_notify_newentry2, PK_ENTRY, NULL, 0, &lay_new1, 0 },
+    { "newentry3", 0x7c91d0u, 0x22b, 0x3f, w_game_mode_zc_notify_newentry3, PK_ENTRY, NULL, 0, &lay_new4, 0 },
+    { "newentry4", 0x7c9750u, 0x2ed, 0x3f, w_game_mode_zc_notify_newentry4, PK_ENTRY, NULL, 0, &lay_new4, 0 },
+    { "standentry", 0x7cbbf0u, 0x78, 0x37, w_game_mode_zc_notify_standentry, PK_ENTRY, NULL, 0, &lay_stand, 0 },
+    { "standentry_npc", 0x7cc180u, 0x7c, 0x2c, w_game_mode_zc_notify_standentry_npc, PK_ENTRY, NULL, 0, &lay_npc, 0 },
+    { "standentry2", 0x7cacc0u, 0x1d8, 0x3a, w_game_mode_zc_notify_standentry2, PK_ENTRY, NULL, 0, &lay_new1, 0 },
+    { "standentry3", 0x7cb1d0u, 0x22a, 0x40, w_game_mode_zc_notify_standentry3, PK_ENTRY, NULL, 0, &lay_new4, 0 },
+    { "standentry4", 0x7cb6e0u, 0x2ee, 0x40, w_game_mode_zc_notify_standentry4, PK_ENTRY, NULL, 0, &lay_new4, 0 },
+    { "standentry5", 0x7ca7b0u, 0x7f9, 0x45, w_game_mode_zc_notify_standentry5, PK_ENTRY, NULL, 0, &lay_var, 0 },
+    { "newentry5", 0x7c87b0u, 0x7f8, 0x44, w_game_mode_zc_notify_newentry5, PK_ENTRY, NULL, 0, &lay_var, 0 },
+    { "moveentry", 0x7c8280u, 0x7b, 0x3c, w_game_mode_zc_notify_moveentry, PK_ENTRY, NULL, 0, &lay_new1, 12 },
+    { "moveentry2", 0x7c7150u, 0x1da, 0x40, w_game_mode_zc_notify_moveentry2, PK_ENTRY, NULL, 0, &lay_new1, 4 },
+    { "moveentry3", 0x7c76d0u, 0x22c, 0x45, w_game_mode_zc_notify_moveentry3, PK_ENTRY, NULL, 0, &lay_move3, 4 },
+    { "moveentry6", 0x7c7c70u, 0x2ec, 0x4b, w_game_mode_zc_notify_moveentry6, PK_ENTRY, NULL, 0, &lay_var, 5 },
+    { "ranking", 0x7ca510u, 0x19a, 14, w_game_mode_zc_notify_ranking, PK_DEFAULT, EXTRA(ranks), NULL, 0, 1 },
+    { "newentry7", 0x7f1ba0u, 0x90f, 0x4d, w_game_mode_zc_notify_newentry7, PK_ENTRY, NULL, 0, &lay_var, 0 },
+    { "standentry8", 0x7f2a90u, 0x915, 0x4e, w_game_mode_zc_notify_standentry8, PK_ENTRY, NULL, 0, &lay_var, 0 },
+    { "moveentry9", 0x7f0d40u, 0x914, 0x54, w_game_mode_zc_notify_moveentry9, PK_ENTRY, NULL, 0, &lay_var, 5 },
+    { "moveentry10", 0x7f0a90u, 0x9db, 0x58, w_game_mode_zc_notify_moveentry10, PK_ENTRY, NULL, 0, &lay_var10, 7 },
+    { "moveentry11", 0x7f0be0u, 0x9fd, 0x5a, w_game_mode_zc_notify_moveentry11, PK_ENTRY, NULL, 0, &lay_var10, 7 },
+    { "newentry10", 0x7f1900u, 0x9dc, 0x51, w_game_mode_zc_notify_newentry10, PK_ENTRY, NULL, 0, &lay_var10, 0 },
+    { "newentry11", 0x7f1a50u, 0x9fe, 0x53, w_game_mode_zc_notify_newentry11, PK_ENTRY, NULL, 0, &lay_var10, 0 },
+    { "standentry10", 0x7f27e0u, 0x9dd, 0x52, w_game_mode_zc_notify_standentry10, PK_ENTRY, NULL, 0, &lay_var10, 0 },
+    { "standentry11", 0x7f2930u, 0x9ff, 0x54, w_game_mode_zc_notify_standentry11, PK_ENTRY, NULL, 0, &lay_var10, 0 },
 };
+
+static unsigned handler_values(const struct Handler *h)
+{
+    if (h->kind == PK_ENTRY)
+        return (h->layout->type_off ? N_TYPES : 1) * N_JOBS * 2;
+    return SWEEP_VALUES + h->extra_count;
+}
 
 static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned aid, unsigned value, int fill)
 {
@@ -493,6 +770,28 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
     for (i = 2; i < h->length; i++)
         pkt[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3);
     *(unsigned short *)pkt = h->id;
+    if (h->kind == PK_ENTRY) {
+        const struct EntryLayout *l = h->layout;
+        unsigned types = l->type_off ? N_TYPES : 1;
+        unsigned char type = (unsigned char)entry_types[value % types];
+        unsigned pet = value / (types * N_JOBS);
+        short job = (short)entry_jobs[(value / types) % N_JOBS];
+        short head = 0x2b;
+        int name_len = fill == FILL_ZERO ? 0 : fill == FILL_PATTERN ? 4 : 15;
+        sweep_job = job;
+        if (l->type_off)
+            pkt[l->type_off] = type;
+        memcpy(pkt + l->aid_off, &aid, 4);
+        memcpy(pkt + l->job_off, &job, 2);
+        if (pet)
+            memcpy(pkt + l->head_off, &head, 2);
+        if (l->varlen) {
+            short total = (short)(h->length + name_len);
+            memcpy(pkt + 2, &total, 2);
+            memcpy(pkt + h->length, "Entry name here", name_len);
+        }
+        return;
+    }
     if (h->length >= 6)
         memcpy(pkt + 2, &aid, 4);
     if (h->kind == PK_NAMES) {
@@ -528,6 +827,18 @@ static void seed_packets(int option)
     instant_var_set = 0;
     lift_instant_var_got = 0;
     lift_instant_var.value = 0x55;
+    *(int *)oracle_addr(ORIG_SESSION_AID) = AID_OWN;
+    g_session1.aid = AID_OWN;
+    *(int *)oracle_addr(ORIG_PVP_RULE) = option;
+    g_session1.map_rule_flags[3] = option;
+    *(int *)oracle_addr(ORIG_REPLAY_PLAYING) = 0;
+    memset(orig_new_actor, 0, sizeof orig_new_actor);
+    memset(&lift_new_actor, 0, sizeof lift_new_actor);
+    orig_actor_list_head[0] = orig_actor_list_head[1] = (unsigned)(UINT_PTR)orig_actor_list_head;
+    orig_actor_list_head[2] = 0;
+    *(void **)(orig_world + ORIG_WORLD_ACTORS) = orig_actor_list_head;
+    *(unsigned *)(orig_world + ORIG_WORLD_ACTORS + 4) = 0;
+    fake_node_count = 0;
 }
 
 static void __fastcall o_set_counter_packets(void *counters, void *edx, int key, unsigned lo, int hi)
@@ -548,6 +859,12 @@ static void after_call(int side)
         event("instvar 5 = %lld", orig_instant_var);
     if (side == 1 && lift_instant_var_got)
         event("instvar 5 = %lld", lift_instant_var.value);
+    {
+        unsigned objects = side == 0 ? *(unsigned *)(orig_world + ORIG_WORLD_OBJECTS + 4) : lift_world.gameObjects.size;
+        unsigned actors = side == 0 ? *(unsigned *)(orig_world + ORIG_WORLD_ACTORS + 4) : lift_world.actors.size;
+        if (objects || actors)
+            event("lists %u %u", objects, actors);
+    }
     report_changes(side);
 }
 
@@ -580,7 +897,7 @@ static int call_original(const struct Handler *h, unsigned char *pkt)
 static void setup_regions(void)
 {
     static const struct { const char *name; int r; } names[R_COUNT] = {
-        { "S", R_SESSION }, { "M", R_MODE }, { "C", R_CASTER }, { "T", R_TARGET }, { "P", R_PLAYER }, { "E", R_EFFECT },
+        { "S", R_SESSION }, { "M", R_MODE }, { "C", R_CASTER }, { "T", R_TARGET }, { "P", R_PLAYER }, { "E", R_EFFECT }, { "N", R_NEW },
     };
     int r;
     for (r = 0; r < R_COUNT; r++)
@@ -609,6 +926,10 @@ static void setup_regions(void)
     regions[R_EFFECT].orig_size = sizeof orig_effect;
     regions[R_EFFECT].lift = (unsigned char *)&lift_effect_storage;
     regions[R_EFFECT].lift_size = sizeof lift_effect_storage;
+    regions[R_NEW].orig = orig_new_actor;
+    regions[R_NEW].orig_size = sizeof orig_new_actor;
+    regions[R_NEW].lift = (unsigned char *)&lift_new_actor;
+    regions[R_NEW].lift_size = sizeof lift_new_actor;
     for (r = 0; r < R_COUNT; r++) {
         regions[r].orig_snap = calloc(1, regions[r].orig_size);
         regions[r].orig_seen = calloc(1, regions[r].orig_size);
@@ -660,6 +981,31 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_IS_PC_JOB_ACTOR, (void *)o_is_pc_job_actor);
     oracle_patch_jump(ORIG_SPRINTF, (void *)o_sprintf);
     oracle_patch_jump(ORIG_SET_COUNTER, (void *)o_set_counter_packets);
+    oracle_patch_jump(ORIG_GET_JOB, (void *)o_job_packets);
+    oracle_patch_jump(ORIG_OPERATOR_NEW, (void *)o_operator_new);
+    oracle_patch_jump(ORIG_PC_CONSTRUCT, (void *)o_pc_construct);
+    oracle_patch_jump(ORIG_NEW_ACTOR_FOR_JOB, (void *)o_new_actor_for_job);
+    oracle_patch_jump(ORIG_LIST_BUY_NODE, (void *)o_buy_node);
+    oracle_patch_jump(ORIG_ACTOR_LIST_BUY_NODE, (void *)o_buy_node);
+    oracle_patch_jump(ORIG_OBJECT_LIST_PUSH, (void *)o_list_push);
+    oracle_patch_jump(ORIG_ACTOR_LIST_PUSH, (void *)o_list_push);
+    oracle_patch_jump(ORIG_MARKS_FIND, (void *)o_marks_find);
+    oracle_patch_jump(ORIG_MAKE_EMBLEM_WND, (void *)o_make_emblem_wnd);
+    oracle_patch_jump(ORIG_IS_SIEGE_MODE, (void *)o_is_siege_mode);
+    oracle_patch_jump(ORIG_IS_PLAYER_JOB, (void *)o_is_player_job);
+    oracle_patch_jump(ORIG_IS_HOMUNCULUS_AID, (void *)o_is_homunculus_aid);
+    oracle_patch_jump(ORIG_IS_MERCENARY_AID, (void *)o_is_mercenary_aid);
+    oracle_patch_jump(ORIG_PET_ACCESSORY_ACT, (void *)o_pet_accessory_act);
+    oracle_patch_jump(ORIG_LOAD_ACT_RES, (void *)o_load_act_res);
+    oracle_patch_jump(ORIG_CHAMPION_EFFECTS, (void *)o_champion_effects);
+    oracle_patch_jump(ORIG_PLAYER_NAMES_SET, (void *)o_player_names_set);
+    oracle_patch_jump(ORIG_PLACE_NOWHERE, (void *)o_place_nowhere);
+    oracle_patch_jump(ORIG_PLACE_AT_CELL, (void *)o_place_at_cell);
+    oracle_patch_jump(ORIG_NAMES_SET_NAME, (void *)o_names_set_name);
+    oracle_patch_jump(ORIG_SYNC_SERVER_TIME, (void *)o_sync_server_time);
+    oracle_patch_jump(ORIG_CHARACTER_NAME, (void *)o_character_name);
+    oracle_patch_jump(ORIG_IS_ADMIN_OPTION, (void *)o_is_admin_option);
+    oracle_patch_jump(ORIG_IS_ADMIN_AID, (void *)o_is_admin_aid);
 
     orig_actor_vt[ORIG_ACTOR_VT_SET_HEAD] = (void *)o_set_head;
     orig_actor_vt[ORIG_ACTOR_VT_SET_WEAPON] = (void *)o_set_weapon;
@@ -678,6 +1024,8 @@ static void packet_oracle_setup(int verbose)
     orig_actor_vt[ORIG_ACTOR_VT_SET_ROBE] = (void *)o_set_robe;
     orig_actor_vt[ORIG_ACTOR_VT_SET_BODY_STYLE] = (void *)o_set_body_style;
     orig_actor_vt[ORIG_ACTOR_VT_REFRESH_ACC3] = (void *)o_refresh_accessory3;
+    orig_actor_vt[ORIG_ACTOR_VT_SET_GUILD] = (void *)o_set_guild;
+    orig_actor_vt[ORIG_ACTOR_VT_GET_GUILD_ID] = (void *)o_get_guild_id;
 
     lift_actor_ops.base.get_effect_state = lift_get_effect_state;
     lift_actor_ops.set_head = lift_set_head;
@@ -697,6 +1045,9 @@ static void packet_oracle_setup(int verbose)
     lift_actor_ops.set_robe = lift_set_robe;
     lift_actor_ops.set_body_style = lift_set_body_style;
     lift_actor_ops.refresh_accessory3 = lift_refresh_accessory3;
+    msg_text_extra = msg_text_packets;
+    job_hook = lift_job;
+    mem_alloc_hook = lift_alloc;
 }
 
 int main(int argc, char **argv)
@@ -705,6 +1056,7 @@ int main(int argc, char **argv)
     const char *only = getenv("ORACLE_ONLY");
     const int verbose = getenv("ORACLE_VERBOSE") != NULL;
     const int trace = getenv("ORACLE_TRACE") != NULL;
+    const unsigned max_reported = getenv("ORACLE_REPORTS") ? (unsigned)atoi(getenv("ORACLE_REPORTS")) : MAX_REPORTED;
     static const unsigned aids[] = { AID_CASTER, AID_TARGET, AID_OWN, AID_UNKNOWN };
     unsigned char pkt[PACKET_MAX];
     unsigned hi, ai, vi, fill, option;
@@ -720,18 +1072,21 @@ int main(int argc, char **argv)
 
     for (hi = 0; hi < sizeof handlers / sizeof *handlers; hi++) {
         const struct Handler *h = &handlers[hi];
-        unsigned values = SWEEP_VALUES + h->extra_count, handler_compared = 0, handler_events = 0, handler_bad = 0;
+        unsigned values = handler_values(h), handler_compared = 0, handler_events = 0, handler_bad = 0;
         if (only && strcmp(only, h->name) != 0)
             continue;
         for (option = 0; option < 2; option++)
         for (ai = 0; ai < sizeof aids / sizeof *aids; ai++)
         for (vi = 0; vi < values; vi++)
         for (fill = 0; fill < FILL_COUNT; fill++) {
-            unsigned value = vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
+            if (h->no_unknown && aids[ai] == AID_UNKNOWN)
+                continue;
+            unsigned value = h->kind == PK_ENTRY ? vi : vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
             char orig_text[EVENTS * EVENT_LEN], lift_text[EVENTS * EVENT_LEN];
 
             compared++;
             handler_compared++;
+            move_mask = h->kind == PK_ENTRY ? h->move_mask : 7;
             if (verbose) { fprintf(stderr, "%s option %u aid %u value %u fill %u\n", h->name, option, aids[ai], value, fill); fflush(stderr); }
             seed_packets(option);
             build_packet(pkt, h, aids[ai], value, fill);
@@ -742,7 +1097,7 @@ int main(int argc, char **argv)
             if (!call_original(h, pkt)) {
                 faults++;
                 handler_bad++;
-                if (reported++ < MAX_REPORTED)
+                if (reported++ < max_reported)
                     printf("  %s option %u aid %u value %u fill %u: the original faulted (code %08x at 0x%x)\n", h->name, option, aids[ai],
                            value, fill, fault_code, fault_va);
                 continue;
@@ -767,7 +1122,7 @@ int main(int argc, char **argv)
             if (strcmp(orig_text, lift_text) != 0) {
                 mismatches++;
                 handler_bad++;
-                if (reported++ < MAX_REPORTED)
+                if (reported++ < max_reported)
                     printf("  %s option %u aid %u value %u fill %u:\n    original: %s\n    lift:     %s\n", h->name, option, aids[ai], value, fill,
                            orig_text, lift_text);
             }
@@ -775,6 +1130,6 @@ int main(int argc, char **argv)
         printf("  %-22s %5u calls %6u events %s\n", h->name, handler_compared, handler_events, handler_bad ? "MISMATCH" : "ok");
     }
     printf("Packet handlers: %u calls compared against the original (%u events recorded), %u mismatches, %u faults%s\n", compared, recorded,
-           mismatches, faults, reported > MAX_REPORTED ? " (first 40 shown)" : "");
+           mismatches, faults, reported > max_reported ? " (not all shown)" : "");
     return mismatches || faults ? 1 : 0;
 }

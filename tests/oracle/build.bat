@@ -177,6 +177,7 @@ python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\packet_handler
 if errorlevel 1 (popd & exit /b 1)
 cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_packet_handlers.c" "%ROOT%\tests\oracle\oracle_image.c" ^
   "%ROOT%\src\game\packets_actor.c" "%ROOT%\src\game\effect_notify.c" "%ROOT%\src\game\cell_coordinates.c" ^
+  "%ROOT%\src\game\packets_entry.c" "%ROOT%\src\game\packets_entry_hp.c" ^
   "%ROOT%\src\effects\durations.c" /Fe:test_packet_handlers.exe %LFLAGS%
 if errorlevel 1 (popd & exit /b 1)
 .\test_packet_handlers.exe "%ORACLE_EXE%"
