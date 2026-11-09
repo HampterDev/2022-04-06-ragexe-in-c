@@ -172,7 +172,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     int i, j, k, c, any = 0;
 
     self->shadowPending = 0;
-    if (!self->lightSet || !(self->shadowDarkness < 1.0f) || !invert_4x3(view, inv))
+    if (!self->lightSet || !(self->shadowDarkness < 1.0f) || !gfx_shadows_supported() || !invert_4x3(view, inv))
         return;
     len = sqrtf(dot3(self->lightDir, self->lightDir));
     if (!(len > 0.0f))
@@ -328,6 +328,12 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f
                                                                                              : self->lightAmbient[i];
     self->shadowPending = 1;
+}
+
+void renderer_set_camera(struct Renderer *self, const float *view)
+{
+    memcpy(self->cameraView, view, sizeof self->cameraView);
+    self->cameraSet = 1;
 }
 
 /* the box's extent along each of the light's axes against a cascade's square and the depth kept:

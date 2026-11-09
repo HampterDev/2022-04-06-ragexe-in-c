@@ -66,6 +66,11 @@ extern struct gfx_caps g_gfxCaps;
 
 #define GFX_VTX_TEX1 1
 #define GFX_VTX_TEX2 2
+/* custom: GFX_VTX_TEX1's layout with x, y and z in world coordinates, which the device takes
+   through the camera's world view (gfx_set_world_camera) to the pixel and depth a pre-transformed
+   vertex would have there; the rhw is not used, and the specular alpha is the vertex fog as for
+   GFX_VTX_TEX1. Only where gfx_world_supported answers 1. */
+#define GFX_VTX_WORLD 3
 
 #define GFX_PT_POINTLIST     1
 #define GFX_PT_LINELIST      2
@@ -268,6 +273,10 @@ void gfx_mesh_destroy(gfx_mesh *mesh);
 void gfx_set_world_view(const struct GfxWorldView *view);
 /* Draws as gfx_draw would draw the same triangles pre-transformed, in the world view set last. */
 void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
+/* custom: the world view GFX_VTX_WORLD vertices are drawn with (the camera's), and whether the
+   device can draw them */
+void gfx_set_world_camera(const struct GfxWorldView *view);
+int gfx_world_supported(void);
 
 /* custom: cascaded shadow maps for meshes, each GFX_SHADOW_SIZE texels square. Between
    gfx_shadow_begin and gfx_shadow_end, gfx_draw_mesh draws the meshes' depth from the light into
@@ -305,6 +314,8 @@ struct GfxShadow {
     float ambient[3];
 };
 
+/* whether the device draws shadows at all: where it answers 0, gfx_shadow_begin does too */
+int gfx_shadows_supported(void);
 int gfx_shadow_begin(const struct GfxShadow *shadow);
 int gfx_shadow_cascade(int cascade);
 void gfx_shadow_end(void);

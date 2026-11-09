@@ -19,6 +19,8 @@ struct RPQuad {
     void *indices;
     int nindices;
     unsigned char alpha_mode;
+    /* custom: the vertices' x, y and z are world coordinates (GFX_VTX_WORLD, render/gfx.h) */
+    unsigned char world;
     uint32_t srcBlend, destBlend;
     int stageMode;
     int prim;

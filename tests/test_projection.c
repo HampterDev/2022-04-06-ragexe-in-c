@@ -32,6 +32,8 @@ int c3d_device_clear_z(struct C3dDevice *device)
     return 0;
 }
 
+int gfx_shadows_supported(void) { return 1; }
+
 void c3d_device_restore_frame(struct C3dDevice *device)
 {
     assert(device == &g_3dDevice);

@@ -64,7 +64,8 @@ int batch_add(int prim, int vertexKind, const void *verts, int nverts, const WOR
     int tris = triangles_of(prim, n), stride, base, t;
     int kind = vertexKind & 0xff;
     WORD *out;
-    if (!B.draw || tris < 0 || nverts > BATCH_VERTS || (kind != GFX_VTX_TEX1 && kind != GFX_VTX_TEX2))
+    if (!B.draw || tris < 0 || nverts > BATCH_VERTS
+        || (kind != GFX_VTX_TEX1 && kind != GFX_VTX_TEX2 && kind != GFX_VTX_WORLD))
         return 0;
     if (tris == 0)
         return 1;

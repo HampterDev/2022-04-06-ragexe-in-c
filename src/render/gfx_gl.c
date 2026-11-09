@@ -175,8 +175,8 @@ static struct {
     int inScene, mipmaps, vsync;
     int boundTarget;
     struct gfx_mesh *meshes;
-    struct GfxWorldView worldView;
-    int worldViewSet;
+    struct GfxWorldView worldView, worldCamera;
+    int worldViewSet, worldCameraSet;
 } gl;
 
 static unsigned content_tick;
@@ -224,19 +224,21 @@ static const char vertex_source[] =
     "        vec2 pixel = h.xy + vec2(0.5 - 1.0 / 128.0) * h.w;\n"
     "        gl_Position = vec4(pixel.x / u_viewport.x * 2.0 - h.w, h.w - pixel.y / u_viewport.y * 2.0,\n"
     "                           h.z * 2.0 - h.w, h.w);\n"
-    "        float fog = clamp((u_meshfog.y - h.w) / (u_meshfog.y - u_meshfog.x), 0.0, 1.0);\n"
-    "        vec3 own = floor(v_diffuse.rgb * 255.0 + 0.5);\n"
-    "        if (u_meshkind.y != 0) own = min(own + floor(v_specular.rgb * 255.0 + 0.5), vec3(255.0));\n"
-    "        v_diffuse = vec4(floor(own * u_meshcolour.rgb) / 255.0,\n"
-    "                         (u_meshkind.x != 0 ? 1.0 : v_diffuse.a) * u_meshcolour.a);\n"
-    "        v_specular = vec4(0.0, 0.0, 0.0, floor(fog * 255.0) / 255.0);\n"
+    "        if (u_mesh == 1) {\n"
+    "            float fog = clamp((u_meshfog.y - h.w) / (u_meshfog.y - u_meshfog.x), 0.0, 1.0);\n"
+    "            vec3 own = floor(v_diffuse.rgb * 255.0 + 0.5);\n"
+    "            if (u_meshkind.y != 0) own = min(own + floor(v_specular.rgb * 255.0 + 0.5), vec3(255.0));\n"
+    "            v_diffuse = vec4(floor(own * u_meshcolour.rgb) / 255.0,\n"
+    "                             (u_meshkind.x != 0 ? 1.0 : v_diffuse.a) * u_meshcolour.a);\n"
+    "            v_specular = vec4(0.0, 0.0, 0.0, floor(fog * 255.0) / 255.0);\n"
+    "        }\n"
     "    } else {\n"
     "        float w = a_pos.w > 0.0 ? 1.0 / a_pos.w : 1.0;\n"
     "        vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
     "        vec2 ndc = vec2(pixel.x / u_viewport.x * 2.0 - 1.0, 1.0 - pixel.y / u_viewport.y * 2.0);\n"
     "        gl_Position = vec4(ndc * w, (a_pos.z * 2.0 - 1.0) * w, w);\n"
     "    }\n"
-    "    v_uv0 = u_mesh != 0 ? u_meshuv * vec3(a_uv0, 1.0) : a_uv0;\n"
+    "    v_uv0 = u_mesh == 1 ? u_meshuv * vec3(a_uv0, 1.0) : a_uv0;\n"
     "    v_uv1 = a_uv1;\n"
     "}\n";
 
@@ -940,16 +942,24 @@ static GLenum gl_prim(int prim)
     }
 }
 
+static void mesh_xform(GLfloat *out, const struct GfxWorldView *v);
+
 static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
 {
     GLsizei stride = vertexKind == GFX_VTX_TEX2 ? 40 : 32;
-    if (!gl.context || !gl.target || nverts <= 0)
+    if (!gl.context || !gl.target || nverts <= 0 || (vertexKind == GFX_VTX_WORLD && !gl.worldCameraSet))
         return;
     g_perf.draws++;
     g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
     bind_target(gl.target);
     if (gl.stateDirty)
         apply_state();
+    if (vertexKind == GFX_VTX_WORLD) {
+        GLfloat xform[16];
+        mesh_xform(xform, &gl.worldCamera);
+        p_glUniform1i(gl.uniforms[U_MESH], 2);
+        p_glUniformMatrix4fv(gl.uniforms[U_XFORM], 1, GL_FALSE, xform);
+    }
     p_glBindBuffer(GL_ARRAY_BUFFER, gl.vbo);
     p_glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)nverts * stride, verts, GL_STREAM_DRAW);
     p_glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, (const void *)(uintptr_t)0);
@@ -964,6 +974,8 @@ static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, co
     } else {
         p_glDrawArrays(gl_prim(prim), 0, nverts);
     }
+    if (vertexKind == GFX_VTX_WORLD)
+        p_glUniform1i(gl.uniforms[U_MESH], 0);
     if (gl.target)
         gl.target->version = ++content_tick;
 }
@@ -1039,6 +1051,11 @@ void gfx_mesh_destroy(gfx_mesh *m)
 }
 
 /* custom: shadow maps are not drawn yet (render/gfx.h); receiving draws look as before */
+int gfx_shadows_supported(void)
+{
+    return 0;
+}
+
 int gfx_shadow_begin(const struct GfxShadow *shadow)
 {
     (void)shadow;
@@ -1064,6 +1081,18 @@ void gfx_set_world_view(const struct GfxWorldView *view)
 {
     gl.worldView = *view;
     gl.worldViewSet = 1;
+}
+
+void gfx_set_world_camera(const struct GfxWorldView *view)
+{
+    batch_flush();
+    gl.worldCamera = *view;
+    gl.worldCameraSet = 1;
+}
+
+int gfx_world_supported(void)
+{
+    return gl.context != NULL;
 }
 
 /* World coordinates to the pre-transformed vertex's pixel space times the view-space depth:

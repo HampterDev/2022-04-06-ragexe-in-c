@@ -75,8 +75,9 @@ struct gfx_mesh {
 };
 
 #define FVF_MESH (D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX2)
+#define FVF_WORLD (D3DFVF_XYZW | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX1)
 
-enum { MESH_VS_DEPTH, MESH_VS_DEPTH_ALPHA, MESH_VS_COLOUR, MESH_VS_COUNT };
+enum { MESH_VS_DEPTH, MESH_VS_DEPTH_ALPHA, MESH_VS_COLOUR, MESH_VS_WORLD, MESH_VS_COUNT };
 enum { MESH_PS_DEPTH, MESH_PS_DEPTH_ALPHA, MESH_PS_MODEL, MESH_PS_GROUND, MESH_PS_COUNT };
 
 #define N_RS 256
@@ -119,8 +120,8 @@ static struct {
     struct { GUID guid; UINT ordinal; } adapters[16];
     int nAdapters;
     struct gfx_mesh *meshes;
-    struct GfxWorldView worldView;
-    int worldViewSet;
+    struct GfxWorldView worldView, worldCamera;
+    int worldViewSet, worldCameraSet;
     IDirect3DTexture9 *shadowTex[GFX_SHADOW_CASCADES];
     IDirect3DSurface9 *shadowDepth, *savedTarget, *savedDepth;
     IDirect3DVertexShader9 *vs[MESH_VS_COUNT];
@@ -135,6 +136,9 @@ static void drop_meshes(void);
 static void shadow_drop(void);
 static void shadow_drop_targets(void);
 static int mesh_shaders_ready(void);
+static void matrix_4x3(D3DMATRIX *out, const float *m);
+static void matrix_multiply(D3DMATRIX *out, const D3DMATRIX *a, const D3DMATRIX *b);
+static void world_projection(D3DMATRIX *out, const struct GfxWorldView *v, const D3DVIEWPORT9 *vp);
 
 static D3DFORMAT client_format(int fmt)
 {
@@ -2045,7 +2049,7 @@ static UINT prim_count(int prim, int n)
 void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
 {
     g_perf.drawCalls++;
-    if (flat_draw(vertexKind, verts, nverts))
+    if (vertexKind != GFX_VTX_WORLD && flat_draw(vertexKind, verts, nverts))
         vertexKind |= FLAT_KIND;
     if (batch_add(prim, vertexKind, verts, nverts, indices, nindices))
         return;
@@ -2057,11 +2061,23 @@ static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts,
 {
     int flat = (vertexKind & FLAT_KIND) != 0;
     DWORD fvf, stride;
+    D3DVIEWPORT9 vp;
     vertexKind &= ~FLAT_KIND;
-    fvf = vertexKind == GFX_VTX_TEX2 ? FVF_TEX2 : FVF_TEX1;
+    fvf = vertexKind == GFX_VTX_TEX2 ? FVF_TEX2 : vertexKind == GFX_VTX_WORLD ? FVF_WORLD : FVF_TEX1;
     stride = vertexKind == GFX_VTX_TEX2 ? 40 : 32;
     if (!d9.dev)
         return;
+    if (vertexKind == GFX_VTX_WORLD) {
+        D3DMATRIX view, proj, toClip;
+        if (!d9.worldCameraSet || !mesh_shaders_ready() || FAILED(IDirect3DDevice9_GetViewport(d9.dev, &vp))
+            || !vp.Width || !vp.Height)
+            return;
+        matrix_4x3(&view, d9.worldCamera.view);
+        world_projection(&proj, &d9.worldCamera, &vp);
+        matrix_multiply(&toClip, &view, &proj);
+        IDirect3DDevice9_SetVertexShader(d9.dev, d9.vs[MESH_VS_WORLD]);
+        IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 0, &toClip._11, 4);
+    }
     g_perf.draws++;
     g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
     if (is_main_target(d9.target))
@@ -2074,6 +2090,8 @@ static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts,
                                                 indices, D3DFMT_INDEX16, verts, stride);
     else
         IDirect3DDevice9_DrawPrimitiveUP(d9.dev, (D3DPRIMITIVETYPE)prim, prim_count(prim, nverts), verts, stride);
+    if (vertexKind == GFX_VTX_WORLD)
+        IDirect3DDevice9_SetVertexShader(d9.dev, NULL);
 }
 
 gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices)
@@ -2191,6 +2209,16 @@ static const char mesh_hlsl[] =
     "float2 turn(float2 uv)\n"
     "{\n"
     "    return float2(dot(float3(uv, 1), uvU.xyz), dot(float3(uv, 1), uvV.xyz));\n"
+    "}\n"
+    "float4 worldVertex(float4 pos : POSITION, float4 d0 : COLOR0, float4 d1 : COLOR1, float2 uv : TEXCOORD0,\n"
+    "                   out float4 o0 : COLOR0, out float4 o1 : COLOR1, out float2 t0 : TEXCOORD0,\n"
+    "                   out float fog : FOG) : POSITION\n"
+    "{\n"
+    "    o0 = d0;\n"
+    "    o1 = d1;\n"
+    "    t0 = uv;\n"
+    "    fog = d1.a;\n"
+    "    return mul(float4(pos.xyz, 1), toClip);\n"
     "}\n"
     "float4 depthPass(float4 pos : POSITION, out float depth : TEXCOORD0) : POSITION\n"
     "{\n"
@@ -2367,6 +2395,7 @@ static int mesh_shaders_ready(void)
         { "meshVertex", "vs_3_0", MESH_VS_COLOUR, 0 },
         { "modelColour", "ps_3_0", MESH_PS_MODEL, 1 },
         { "groundColour", "ps_3_0", MESH_PS_GROUND, 1 },
+        { "worldVertex", "vs_2_0", MESH_VS_WORLD, 0 },
     };
     static d3d_compile_fn compile;
     static int loaded;
@@ -2424,16 +2453,21 @@ static int shadow_supported(void)
                                                      D3DRTYPE_TEXTURE, D3DFMT_R32F));
 }
 
+int gfx_shadows_supported(void)
+{
+    if (!mesh_shaders_ready())
+        return 0;
+    if (d9.shadowState == 0)
+        d9.shadowState = shadow_supported() ? 1 : -1;
+    return d9.shadowState > 0;
+}
+
 /* the shaders, then on the first shadow frame the maps and their depth surface */
 static int shadow_prepare(void)
 {
     int i;
 
-    if (!mesh_shaders_ready())
-        return 0;
-    if (d9.shadowState == 0)
-        d9.shadowState = shadow_supported() ? 1 : -1;
-    if (d9.shadowState < 0)
+    if (!gfx_shadows_supported())
         return 0;
     if (!d9.shadowDepth) {
         for (i = 0; i < GFX_SHADOW_CASCADES; i++)
@@ -2692,6 +2726,18 @@ void gfx_set_world_view(const struct GfxWorldView *view)
 {
     d9.worldView = *view;
     d9.worldViewSet = 1;
+}
+
+void gfx_set_world_camera(const struct GfxWorldView *view)
+{
+    batch_flush();
+    d9.worldCamera = *view;
+    d9.worldCameraSet = 1;
+}
+
+int gfx_world_supported(void)
+{
+    return mesh_shaders_ready();
 }
 
 /* the client's 4x3 layout as a row-vector D3D matrix */

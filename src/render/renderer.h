@@ -54,9 +54,10 @@ struct Renderer {
     struct GfxShadow shadow;
     struct ShadowReach shadowReach;
     int shadowPending, shadowDrawn;
-    /* custom: the view of the world view the mesh draws set last this frame (render/gfx.h) */
-    float meshView[12];
-    int meshViewSet;
+    /* custom: the view of the world view the mesh draws set last this frame (render/gfx.h), and
+       the camera's view of the frame, which world-space quads are drawn with (renderer_set_camera) */
+    float meshView[12], cameraView[12];
+    int meshViewSet, cameraSet;
 };
 
 void renderer_set_projection(struct Renderer *self, int width, int height);
@@ -79,6 +80,9 @@ void renderer_set_blend_stages(struct Renderer *self, int mode);
    fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
    with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). */
 void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);
+/* custom: the camera's view matrix for the frame being queued, which quads with world-space
+   vertices (RPQuad.world) are drawn with */
+void renderer_set_camera(struct Renderer *self, const float *view);
 /* custom: whether a box can cast into this frame's shadow maps: centre and half its sizes along its
    three axes (unit vectors, NULL for the world's), world coordinates */
 int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3]);

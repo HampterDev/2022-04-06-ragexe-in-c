@@ -18,6 +18,7 @@ struct RPQuad *rp_quad_construct(struct RPQuad *self)
     self->indices = NULL;
     self->nindices = 0;
     self->alpha_mode = 1;
+    self->world = 0;
     self->srcBlend = 0;
     self->destBlend = 0;
     self->stageMode = 0;
@@ -85,6 +86,7 @@ static void tex_draw_prim_header(struct TexDrawPrim *self)
     h->indices = NULL;
     h->nindices = 0;
     h->alpha_mode = 1;
+    h->world = 0;
     h->srcBlend = 0;
     h->destBlend = 0;
     h->stageMode = 0;
@@ -264,7 +266,9 @@ void renderer_save_frame(struct Renderer *self)
 
 struct TexDrawPrim *renderer_new_prim(struct Renderer *renderer)
 {
-    return pool_take(&renderer->storage->primitives, 1);
+    struct TexDrawPrim *prim = pool_take(&renderer->storage->primitives, 1);
+    prim->base.world = 0;
+    return prim;
 }
 
 struct RPTwoTexQuad *renderer_new_two_tex_quad(struct Renderer *renderer)
@@ -276,6 +280,7 @@ struct RPQuad *renderer_new_quad(struct Renderer *renderer)
 {
     struct RPQuad *quad = pool_take(&renderer->storage->quads, 1);
     quad->nindices = 0;
+    quad->world = 0;
     return quad;
 }
 

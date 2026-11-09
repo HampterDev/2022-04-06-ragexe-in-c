@@ -134,8 +134,10 @@ static void c3d_ground15_draw_surface(struct C3dGround15 *self, const float *vie
     renderer_add_prim(g_renderer, q, 0x800);
 }
 
+/* A cell's water quad, or NULL where none is drawn. custom: with world set its corners stay in world
+   coordinates for the device to project (RPQuad.world), the projected ones deciding the rest. */
 static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct GndCell *cell, const float *view,
-                                 const float *tint, float h, float hPrev, float hNext)
+                                 const float *tint, float h, float hPrev, float hNext, int world)
 {
     const struct GndSurface *top = cell->top;
     struct TexDrawVertex v[4];
@@ -163,8 +165,15 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
         return NULL;
 
     q = &renderer_new_prim(g_renderer)->base;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++) {
+        if (world) {
+            v[i].x = cell->water[i][0];
+            v[i].y = cell->water[i][1];
+            v[i].z = cell->water[i][2];
+        }
         rp_quad_set_vertex_pos(q, i, &v[i]);
+    }
+    q->world = (unsigned char)world;
     if (g_playerBlind == 0 && self->waterType == 4) {
         DWORD c = (BYTE)(int)(tint[0] * 255.0f);
         c = (c + 0xff00) << 8;
@@ -195,7 +204,7 @@ static struct RPQuad *water_quad(struct C3dGround15 *self, int x, int y, struct 
 }
 
 static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
-                                      struct GndCell *cell, const float *view, const float *tint)
+                                      struct GndCell *cell, const float *view, const float *tint, int world)
 {
     float h, hPrev, hNext;
     int64_t diagonal;
@@ -213,7 +222,7 @@ static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
     h = ground_water_height(w, diagonal);
     hPrev = ground_water_height(w, diagonal - 1);
     hNext = ground_water_height(w, diagonal + 1);
-    q = water_quad(self, x, y, cell, view, tint, h, hPrev, hNext);
+    q = water_quad(self, x, y, cell, view, tint, h, hPrev, hNext, world);
     if (!q)
         return;
     q->texture = (self->waters)[block].texture;
@@ -478,7 +487,7 @@ void c3d_ground15_render(struct C3dGround15 *self, const float *view,
                     continue;
                 cell->lastFrame = g_renderer->frame;
                 if (cell->top)
-                    c3d_ground15_draw_water(self, x, y, cell, view, tint);
+                    c3d_ground15_draw_water(self, x, y, cell, view, tint, 1);
             }
         return;
     }
@@ -491,7 +500,7 @@ void c3d_ground15_render(struct C3dGround15 *self, const float *view,
                 continue;
             cell->lastFrame = frame;
             if (cell->top) {
-                c3d_ground15_draw_water(self, x, y, cell, view, tint);
+                c3d_ground15_draw_water(self, x, y, cell, view, tint, 0);
                 c3d_ground15_draw_surface(self, view, cell->top, clip);
             }
             if (cell->frontWall)

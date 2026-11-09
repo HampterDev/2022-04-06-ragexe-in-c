@@ -52,7 +52,8 @@ static void draw_quad(const struct RPQuad *n)
 {
     if (!n->nverts)
         return;
-    gfx_draw(n->prim, GFX_VTX_TEX1, n->verts, n->nverts, n->nindices ? (const WORD *)n->indices : NULL, n->nindices);
+    gfx_draw(n->prim, n->world ? GFX_VTX_WORLD : GFX_VTX_TEX1, n->verts, n->nverts,
+             n->nindices ? (const WORD *)n->indices : NULL, n->nindices);
 }
 
 static void draw_twotex(const struct RPTwoTex *n)
@@ -585,6 +586,12 @@ static void renderer_draw_lists(struct Renderer *self)
 {
     DWORD fog, zwrite, alpha;
     self->meshViewSet = 0;
+    if (self->cameraSet) {
+        struct GfxWorldView camera;
+        renderer_world_view(self, self->cameraView, &camera);
+        gfx_set_world_camera(&camera);
+        self->cameraSet = 0;
+    }
     HTSS(self, 0, GFX_TSS_MIPFILTER, GFX_MIPFILTER_LINEAR);
     renderer_do_fog_(self);
     HTSS(self, 0, GFX_TSS_COLOROP, GFX_TOP_MODULATE);

@@ -191,6 +191,7 @@ int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
 int gfx_shadow_cascade(int cascade) { (void)cascade; abort(); }
 void gfx_shadow_end(void) { abort(); }
 void gfx_shadow_receive(int receive) { assert(!receive); }
+void gfx_set_world_camera(const struct GfxWorldView *view) { (void)view; abort(); }
 void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out)
 {
     assert(renderer == g_renderer);

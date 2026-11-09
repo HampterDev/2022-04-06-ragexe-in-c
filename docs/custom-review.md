@@ -13378,3 +13378,41 @@ street at the bottom; `izlude` 2,343, a post's shadow at the left edge whose pos
 of view; `prontera_crowd` 497; `granny_models` and `guild_flags` 3; `iz_int03_enter` and the six
 `yuno_gate` frames 0. `build.bat check` and the full `tests\build.bat` pass. Not measured: the
 frame time of the second walk and the extra casters.
+
+## Water projected by the device (2026-11-09)
+
+The fourth item was water and the ground's surfaces with half alpha.
+
+- **Half alpha.** Only `c3d_ground15_check_alpha` sets `GndSurface.halfAlpha`, and its one caller
+  (`game/input.c`) runs it only while `ray_tests_cells` is on, which `game/map_entry.c` sets to 0
+  and nothing sets otherwise, so no surface has half alpha in this tree. The meshes' handling of
+  them (`plainCount`, `half`) stays, so they would still be drawn the CPU's way if one had.
+- **Why water is not a mesh.** Each water cell is its own quad in the alpha lists, sorted by the
+  rhw of its first corner among the sprites and effects there, which do not write depth: where a
+  character wades, the cells nearer than its feet are drawn over them. A mesh drawn a block at a
+  time would sort as one, and the heights change every frame (`ground_water_height` by the
+  cell's diagonal, from a table of whole degrees). So the CPU keeps building the quads.
+- **World-space quads.** A new vertex kind, `GFX_VTX_WORLD`, has `GFX_VTX_TEX1`'s layout with x, y
+  and z in world coordinates, which the device takes through the camera's world view
+  (`gfx_set_world_camera`, set at the start of `renderer_draw_lists` from the view
+  `renderer_set_camera` stored in `view_on_render`) to the pixel and depth the CPU would have
+  given them. Direct3D 9 draws them with a `vs_2_0` vertex shader (`worldVertex`) and the
+  fixed-function pixel stages, so every stage, blend and alpha state of the lists applies as
+  before, the fog coming from the specular alpha as for a pre-transformed vertex; the batch keeps
+  them apart from the pre-transformed ones. GL draws them with the mesh branch of its vertex
+  shader. `RPQuad.world` marks such a quad (reset by every pool take); `draw_quad` passes the kind.
+- **Water's quads.** `water_quad` still projects the four corners to make its decisions (a corner
+  behind the eye, a quad facing away, the alpha list's key and the vertex fog, both from the rhw),
+  then hands the device the corners' world coordinates while the ground is drawn from meshes; the
+  CPU-only path is unchanged.
+- **A fix to the third item.** `renderer_shadow_frame` set up the frame's shadows, and with them
+  the second walk of the world, even where the device draws none (`RAGEXE_SHADOWS=0`, no shader
+  model 3, GL): the walk then ticked models out of view for no shadow, and a swinging bell in
+  `camera_level_view_moving` stood at another angle than without the walk. It now asks
+  `gfx_shadows_supported` first, which `shadow_prepare` uses as well.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: against the build before, with shadows,
+every capture is the same pixel for pixel, `prontera_crowd` with the water in the fountain's basin
+among them; with `RAGEXE_SHADOWS=0` every capture is the same as the second item's, and so
+against the CPU-only build as in the entries before. The two `alberta` spots captured show no water. `build.bat check` and the full
+`tests\build.bat` pass. Not run: GL.

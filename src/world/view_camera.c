@@ -317,6 +317,7 @@ void view_on_render(struct View *self)
     view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
     /* custom: the models' shadows, fitted to what the camera sees (render/renderer.h) */
     renderer_shadow_frame(r, view, self->at, self->distance);
+    renderer_set_camera(r, view);
     g_drawnCellMinY = 999;
     g_drawnCellMinX = 999;
     g_drawnCellMaxY = 0;
