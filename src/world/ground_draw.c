@@ -264,7 +264,7 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
     int x1 = x0 + GND_GPU_BLOCK < self->width ? x0 + GND_GPU_BLOCK : self->width;
     int y1 = y0 + GND_GPU_BLOCK < self->height ? y0 + GND_GPU_BLOCK : self->height;
 
-    b->lastFrame = -1;
+    b->lastFrame = b->castFrame = -1;
     for (y = y0; y < y1; y++)
         for (x = x0; x < x1; x++) {
             struct GndCell *cell = GND_CELL(self, x, y);
@@ -321,6 +321,8 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
                 b->plainCount = b->drawCount;
         }
         d->count += 6;
+        if (!list[i].key[0])
+            b->castCount = d->first + d->count;
         half += list[i].key[0] != 0;
     }
     if (half) {
@@ -372,11 +374,50 @@ static int gpu_usable(struct C3dGround15 *self)
     return self->gpuState == 1;
 }
 
-/* Queues the blocks that share a cell with `cells`, each once a frame; the device clips what lies
-   outside the view, which c3d_ground15_draw_surface leaves out itself (off_screen, behind_eye). */
+/* the blocks that share a cell with `cells`: x0, y0, x1, y1 */
+static void gpu_blocks(const struct C3dGround15 *self, const int *cells, int *out)
+{
+    out[0] = cells[0] < 0 ? 0 : cells[0] / GND_GPU_BLOCK;
+    out[1] = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
+    out[2] = cells[2] / GND_GPU_BLOCK;
+    out[3] = cells[3] / GND_GPU_BLOCK;
+    if (out[2] >= self->gpuCols)
+        out[2] = self->gpuCols - 1;
+    if (out[3] >= self->gpuRows)
+        out[3] = self->gpuRows - 1;
+}
+
+/* Queues the blocks' plain surfaces as one shadow caster each, once a frame. */
+static void gpu_cast(struct C3dGround15 *self, const float *view, const int *cells)
+{
+    int frame = g_renderer->frame, b4[4], bx, by;
+    struct RPMeshDraw draw;
+
+    memset(&draw, 0, sizeof draw);
+    memcpy(draw.view, view, sizeof draw.view);
+    draw.draw.kind = GFX_MESH_GROUND;
+    draw.draw.colour[0] = draw.draw.colour[1] = draw.draw.colour[2] = draw.draw.colour[3] = 1.0f;
+    draw.draw.uv[0] = draw.draw.uv[3] = 1.0f;
+    gpu_blocks(self, cells, b4);
+    for (by = b4[1]; by <= b4[3]; by++)
+        for (bx = b4[0]; bx <= b4[2]; bx++) {
+            struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
+
+            if (b->castFrame == frame || !b->castCount)
+                continue;
+            b->castFrame = frame;
+            draw.mesh = b->mesh;
+            draw.draw.count = b->castCount;
+            renderer_add_mesh_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, NULL, NULL, 0.0f);
+        }
+}
+
+/* Queues the blocks that share a cell with `cells`, each once a frame, and their casters; the
+   device clips what lies outside the view, which c3d_ground15_draw_surface leaves out itself
+   (off_screen, behind_eye). */
 static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells, char clip)
 {
-    int frame = g_renderer->frame, bx0, by0, bx1, by1, bx, by, i;
+    int frame = g_renderer->frame, b4[4], bx, by, i;
     struct RPMeshDraw draw;
 
     memset(&draw, 0, sizeof draw);
@@ -387,16 +428,9 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
     draw.draw.colour[3] = 1.0f;
     draw.draw.uv[0] = draw.draw.uv[3] = 1.0f;
 
-    bx0 = cells[0] < 0 ? 0 : cells[0] / GND_GPU_BLOCK;
-    by0 = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
-    bx1 = cells[2] / GND_GPU_BLOCK;
-    by1 = cells[3] / GND_GPU_BLOCK;
-    if (bx1 >= self->gpuCols)
-        bx1 = self->gpuCols - 1;
-    if (by1 >= self->gpuRows)
-        by1 = self->gpuRows - 1;
-    for (by = by0; by <= by1; by++)
-        for (bx = bx0; bx <= bx1; bx++) {
+    gpu_blocks(self, cells, b4);
+    for (by = b4[1]; by <= b4[3]; by++)
+        for (bx = b4[0]; bx <= b4[2]; bx++) {
             struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
             int draws = g_playerBlind ? b->drawCount : b->plainCount;
 
@@ -416,6 +450,12 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
         }
 }
 
+void c3d_ground15_cast(struct C3dGround15 *self, const float *view, const int *cells)
+{
+    if (gpu_usable(self))
+        gpu_cast(self, view, cells);
+}
+
 void c3d_ground15_render(struct C3dGround15 *self, const float *view,
                                    const int *cells, char clip)
 {
@@ -427,6 +467,7 @@ void c3d_ground15_render(struct C3dGround15 *self, const float *view,
     tint[2] = g_weather.tint[2];
     if (gpu_usable(self)) {
         gpu_render(self, view, cells, clip);
+        gpu_cast(self, view, cells);
         if (!self->waters)
             return;
         for (y = cells[1]; y <= cells[3]; y++)

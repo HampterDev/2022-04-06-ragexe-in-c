@@ -242,16 +242,9 @@ done:
     return ok;
 }
 
-/* Queues the node's draws, and answers whether it did: its mesh is built on the first call, and
-   where that fails the caller draws the faces itself. A draw that goes into an alpha list is keyed
-   there by the rhw of its first face's first corner, as a quad by its first vertex's. */
-static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mirrored, BYTE layer)
+/* the node's mesh, built on the first call; NULL where it cannot be */
+static struct ModelGpu *gpu_ready(struct C3dNode *node)
 {
-    struct ModelGpu *g;
-    struct RPMeshDraw draw;
-    BYTE alpha = node->actor->alpha;
-    int i, k, cull, blind = g_playerBlind != 0;
-
     if (node->gpuState == 0) {
         int built = gpu_build(node);
 
@@ -259,8 +252,43 @@ static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mi
             model_node_gpu_free(node);
         node->gpuState = built ? 1 : -1;
     }
-    g = node->gpu;
-    if (node->gpuState != 1 || !g)
+    return node->gpuState == 1 ? node->gpu : NULL;
+}
+
+/* Queues every draw of the mesh as a shadow caster, with its texture and texture-coordinate
+   animation, which the shadow pass tests for alpha. */
+static void gpu_cast(struct C3dNode *node, int version, const struct ModelGpu *g, const float *m)
+{
+    struct RPMeshDraw draw;
+    int i;
+
+    memset(&draw, 0, sizeof draw);
+    draw.mesh = g->mesh;
+    memcpy(draw.view, m, sizeof draw.view);
+    draw.draw.kind = GFX_MESH_MODEL;
+    for (i = 0; i < 4; i++)
+        draw.draw.colour[i] = 1.0f;
+    for (i = 0; i < g->drawCount; i++) {
+        const struct ModelGpuDraw *d = &g->draws[i];
+
+        uv_turn_matrix(version == 2 ? uv_xform_find((const struct C3dNodeV2 *)node, d->texture) : NULL, draw.draw.uv);
+        draw.draw.first = d->first;
+        draw.draw.count = d->count;
+        renderer_add_mesh_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, run_texture(node, d->texture), NULL, 0.0f);
+    }
+}
+
+/* Queues the node's draws and its casters, and answers whether it did; where its mesh cannot be
+   made the caller draws the faces itself. A draw that goes into an alpha list is keyed there by
+   the rhw of its first face's first corner, as a quad by its first vertex's. */
+static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mirrored, BYTE layer)
+{
+    struct ModelGpu *g = gpu_ready(node);
+    struct RPMeshDraw draw;
+    BYTE alpha = node->actor->alpha;
+    int i, k, cull, blind = g_playerBlind != 0;
+
+    if (!g)
         return 0;
     memset(&draw, 0, sizeof draw);
     draw.mesh = g->mesh;
@@ -291,10 +319,38 @@ static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mi
         draw.draw.first = d->first;
         draw.draw.count = d->count;
         draw.cull = d->twoSided ? GFX_CULL_NONE : cull;
-        uv_turn_matrix(x, draw.draw.uv);        renderer_add_mesh_draw(g_renderer, renderer_mesh_pass(flags), &draw, t, NULL, key);
-        renderer_add_mesh_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, t, NULL, 0.0f);
+        uv_turn_matrix(x, draw.draw.uv);
+        renderer_add_mesh_draw(g_renderer, renderer_mesh_pass(flags), &draw, t, NULL, key);
     }
+    gpu_cast(node, version, g, m);
     return 1;
+}
+
+/* custom: only the node's shadow casters, and its children's (render/rp_pool.h) */
+void c3d_node_v1_cast(struct C3dNode *base, const float *view)
+{
+    struct ModelGpu *g = gpu_ready(base);
+    float m[12];
+    size_t child;
+
+    mat_multiply(m, base->matrix, view);
+    if (g)
+        gpu_cast(base, 1, g, m);
+    for (child = 0; child < base->childCount; ++child)
+        c3d_node_v1_cast(base->children[child], m);
+}
+
+void c3d_node_v2_cast(struct C3dNode *base, const float *view)
+{
+    struct ModelGpu *g = gpu_ready(base);
+    float m[12];
+    size_t child;
+
+    mat_multiply(m, base->matrix, view);
+    if (g)
+        gpu_cast(base, 2, g, m);
+    for (child = 0; child < base->childCount; ++child)
+        c3d_node_v2_cast(base->children[child], m);
 }
 
 void c3d_node_v1_render(struct C3dNode *base, const float *view, BYTE mirrored,

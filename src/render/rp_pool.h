@@ -30,8 +30,8 @@ void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int 
    renderer_mesh_pass gives for the flags a model's quads would have, the draw takes their place,
    drawn among them with their states and, where that queue sorts by depth, by `key` (the rhw of
    its first vertex, as theirs); RENDER_GROUND_MESH is drawn where the ground's two-texture quads
-   are, with their states; RENDER_SHADOW_CASTERS only into the shadow maps, its first texture,
-   where there is one, tested for alpha. */
+   are, with their states, and casts nothing; RENDER_SHADOW_CASTERS only into the shadow maps, its
+   first texture, where there is one, tested for alpha. */
 int renderer_mesh_pass(int flags);
 void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMeshDraw *draw, struct Texture *texture0,
                             struct Texture *texture1, float key);

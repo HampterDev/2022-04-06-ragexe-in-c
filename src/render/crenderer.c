@@ -104,8 +104,8 @@ static void queue_sort(struct RenderQueue *queue, StdSortLessFn less)
 
 /* custom: a mesh draw among a queue's entries (render/gfx.h): the world view of its view where that
    differs from the last one set this frame, then for its colour its cull mode, put back after, and
-   its textures, or as a shadow caster (the shadow pass culls nothing) its first texture or none */
-static void draw_mesh_entry(struct Renderer *self, const struct RenderEntry *e, int caster, int textured)
+   its textures, or as a shadow caster (the shadow pass culls nothing) its first texture */
+static void draw_mesh_entry(struct Renderer *self, const struct RenderEntry *e, int caster)
 {
     const struct RPMeshDraw *n = e->primitive;
     DWORD cull = 0;
@@ -121,7 +121,7 @@ static void draw_mesh_entry(struct Renderer *self, const struct RenderEntry *e, 
         cull = get_rs(self, GFX_RS_CULLMODE);
         HRS(self, GFX_RS_CULLMODE, (DWORD)n->cull);
     }
-    set_tex0(self, textured ? e->textures[0].surface : NULL);
+    set_tex0(self, e->textures[0].surface);
     if (!caster)
         set_tex1(self, e->textures[1].surface);
     gfx_draw_mesh(n->mesh, &n->draw);
@@ -139,7 +139,7 @@ static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
         e = l->items + i;
         struct RPQuad *n = e->primitive;
         if (e->mesh) {
-            draw_mesh_entry(self, e, 0, 1);
+            draw_mesh_entry(self, e, 0);
             continue;
         }
         if (skipNull && !n)
@@ -157,7 +157,7 @@ static void flush_plain(struct Renderer *self, int list, int sort, int skipNull)
     for (size_t i = 0; i < l->count; ++i) {
         struct RPQuad *n = l->items[i].primitive;
         if (l->items[i].mesh) {
-            draw_mesh_entry(self, &l->items[i], 0, 1);
+            draw_mesh_entry(self, &l->items[i], 0);
             continue;
         }
         if (skipNull && !n)
@@ -194,7 +194,7 @@ static void flush_ground_meshes(struct Renderer *self)
     struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
     queue_sort(l, two_tex_less);
     for (size_t i = 0; i < l->count; ++i)
-        draw_mesh_entry(self, &l->items[i], 0, 1);
+        draw_mesh_entry(self, &l->items[i], 0);
 }
 
 static void flush_alpha_keyed_lists(struct Renderer *self)
@@ -220,17 +220,17 @@ static void flush_blended_wrap(struct Renderer *self)
 }
 
 /* custom: draws a queue's meshes into the shadow map cascade chosen (render/gfx.h), with their
-   first textures bound (which tests them for alpha) or none */
-static void draw_shadow_casters(struct Renderer *self, int list, int textured)
+   first textures bound, which tests them for alpha, where they have one */
+static void draw_shadow_casters(struct Renderer *self, int list)
 {
     struct RenderQueue *l = &self->queues[list];
 
     for (size_t i = 0; i < l->count; ++i)
-        draw_mesh_entry(self, &l->items[i], 1, textured);
+        draw_mesh_entry(self, &l->items[i], 1);
 }
 
-/* custom: the shadow maps of this frame's casters and ground, which every mesh draw of the frame
-   then receives (self->shadowDrawn) */
+/* custom: the shadow maps of this frame's casters, models and ground, which every mesh draw of
+   the frame then receives (self->shadowDrawn) */
 static void draw_shadow_maps(struct Renderer *self)
 {
     int cascade;
@@ -239,15 +239,14 @@ static void draw_shadow_maps(struct Renderer *self)
     if (!self->shadowPending)
         return;
     self->shadowPending = 0;
-    if (!self->queues[RENDER_SHADOW_CASTERS].count && !self->queues[RENDER_GROUND_MESH].count)
+    if (!self->queues[RENDER_SHADOW_CASTERS].count)
         return;
     if (!gfx_shadow_begin(&self->shadow))
         return;
     for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
         if (!gfx_shadow_cascade(cascade))
             continue;
-        draw_shadow_casters(self, RENDER_SHADOW_CASTERS, 1);
-        draw_shadow_casters(self, RENDER_GROUND_MESH, 0);
+        draw_shadow_casters(self, RENDER_SHADOW_CASTERS);
         self->shadowDrawn = 1;
     }
     gfx_shadow_end();

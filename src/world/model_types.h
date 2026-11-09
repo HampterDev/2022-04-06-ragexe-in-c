@@ -19,6 +19,8 @@ struct ModelActorOps {
     void (*animate)(struct C3dActor *actor, double time);
     void (*tick)(struct C3dActor *actor);
     void (*render)(struct C3dActor *actor, const float *view, BYTE clip);
+    /* custom: only the shadow casters of render (render/rp_pool.h) */
+    void (*cast)(struct C3dActor *actor, const float *view);
     void (*set_speed)(struct C3dActor *actor, float speed);
 };
 
@@ -104,6 +106,8 @@ struct C3dActor {
     float bboxMin[3];
     float bboxMax[3];
     int lastFrame;
+    /* custom: the frame whose shadow maps have the actor's casters (render or cast) */
+    int castFrame;
     BYTE pickable;
     BYTE picked;
     BYTE alpha;

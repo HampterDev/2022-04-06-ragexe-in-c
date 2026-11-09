@@ -21,6 +21,8 @@ struct Vec;
 
 void c3d_node_v1_render(struct C3dNode *node, const float *matrix, BYTE mirrored, BYTE clip, BYTE layer) { abort(); }
 void c3d_node_v2_render(struct C3dNode *node, const float *matrix, BYTE mirrored, BYTE clip, BYTE layer) { abort(); }
+void c3d_node_v1_cast(struct C3dNode *node, const float *matrix) { abort(); }
+void c3d_node_v2_cast(struct C3dNode *node, const float *matrix) { abort(); }
 void c3d_node_light(struct C3dNode * arg0, const float * arg1, const float * arg2, const float * arg3, const float * arg4, int arg5) { abort(); }
 void renderer_add_prim(struct Renderer * arg0, struct RPQuad * arg1, int arg2) { abort(); }
 struct TexDrawPrim * renderer_new_prim(struct Renderer * arg0) { abort(); }

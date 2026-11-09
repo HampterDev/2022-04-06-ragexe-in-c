@@ -14,6 +14,7 @@ static const struct ModelActorOps model_actor_v1_ops = {
     .animate = c3d_actor_v1_animate,
     .tick = c3d_actor_v1_tick,
     .render = c3d_actor_v1_render,
+    .cast = c3d_actor_v1_cast,
     .set_speed = c3d_actor_set_speed,
 };
 
@@ -24,6 +25,7 @@ static const struct ModelActorOps model_actor_v2_ops = {
     .animate = c3d_actor_v2_animate,
     .tick = c3d_actor_v2_tick,
     .render = c3d_actor_v2_render,
+    .cast = c3d_actor_v2_cast,
     .set_speed = c3d_actor_v2_set_speed,
 };
 
@@ -432,8 +434,21 @@ void c3d_actor_v1_render(struct C3dActor *base, const float *view, BYTE clip)
     mir = mirrored(&self->base);
     mat_multiply(m, self->base.matrix, view);
     c3d_node_v1_render(self->root, m, mir, clip, self->base.layer);
+    self->base.castFrame = g_renderer->frame;
     if (self->base.pickable == 1)
         fade(self->root);
+}
+
+void c3d_actor_v1_cast(struct C3dActor *base, const float *view)
+{
+    struct C3dActorV1 *self = (struct C3dActorV1 *)base;
+    float m[12];
+
+    if (self->base.dirty == 1)
+        c3d_actor_build_matrix(&self->base);
+    mat_multiply(m, self->base.matrix, view);
+    c3d_node_v1_cast(self->root, m);
+    self->base.castFrame = g_renderer->frame;
 }
 
 void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
@@ -452,6 +467,21 @@ void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip)
         if (self->base.pickable == 1)
             fade(self->nodes[nodeIndex]);
     }
+    self->base.castFrame = g_renderer->frame;
+}
+
+void c3d_actor_v2_cast(struct C3dActor *base, const float *view)
+{
+    struct C3dActorV2 *self = (struct C3dActorV2 *)base;
+    float m[12];
+    size_t nodeIndex;
+
+    if (self->base.dirty == 1)
+        c3d_actor_v2_build_matrix(&self->base);
+    mat_multiply(m, self->base.matrix, view);
+    for (nodeIndex = 0; nodeIndex < self->nodeCount; ++nodeIndex)
+        c3d_node_v2_cast(self->nodes[nodeIndex], m);
+    self->base.castFrame = g_renderer->frame;
 }
 
 void c3d_actor_pick(struct C3dActor *self, const struct Ray3 *ray)

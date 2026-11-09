@@ -281,6 +281,12 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         centre[0] = floorf(centre[0] / texel + 0.5f) * texel;
         centre[1] = floorf(centre[1] / texel + 0.5f) * texel;
         depth = dot3(focus, f);
+        for (i = 0; i < 2; i++) {
+            self->shadowReach.lo[c][i] = centre[i] - radius;
+            self->shadowReach.hi[c][i] = centre[i] + radius;
+        }
+        self->shadowReach.depth[0] = depth - SHADOW_DEPTH;
+        self->shadowReach.depth[1] = depth + SHADOW_DEPTH;
         for (i = 0; i < 3; i++) {
             w[i][0] = r[i] / radius;
             w[i][1] = u[i] / radius;
@@ -303,6 +309,11 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         shadow->offset[c] = SHADOW_OFFSET * texel;
         shadow->blur[c] = SHADOW_SOFTNESS / (2.0f * radius);
     }
+    for (i = 0; i < 3; i++) {
+        self->shadowReach.axis[0][i] = r[i];
+        self->shadowReach.axis[1][i] = u[i];
+        self->shadowReach.axis[2][i] = f[i];
+    }
     /* towards the light in view space */
     for (i = 0; i < 3; i++)
         shadow->lightView[i] = -(f[0] * view[i] + f[1] * view[3 + i] + f[2] * view[6 + i]);
@@ -317,6 +328,34 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f
                                                                                              : self->lightAmbient[i];
     self->shadowPending = 1;
+}
+
+/* the box's extent along each of the light's axes against a cascade's square and the depth kept:
+   a caster casts into a cascade wherever it lies along the light, the map being orthographic */
+int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3])
+{
+    static const float world[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const struct ShadowReach *reach = &self->shadowReach;
+    float mid[3], ext[3];
+    int a, b, c;
+
+    if (!self->shadowPending)
+        return 0;
+    if (!axes)
+        axes = world;
+    for (a = 0; a < 3; a++) {
+        mid[a] = dot3(centre, reach->axis[a]);
+        ext[a] = 0.0f;
+        for (b = 0; b < 3; b++)
+            ext[a] += half[b] * fabsf(dot3(axes[b], reach->axis[a]));
+    }
+    if (mid[2] + ext[2] < reach->depth[0] || mid[2] - ext[2] > reach->depth[1])
+        return 0;
+    for (c = 0; c < self->shadow.cascades; c++)
+        if (mid[0] + ext[0] >= reach->lo[c][0] && mid[0] - ext[0] <= reach->hi[c][0]
+            && mid[1] + ext[1] >= reach->lo[c][1] && mid[1] - ext[1] <= reach->hi[c][1])
+            return 1;
+    return 0;
 }
 
 float renderer_project_depth(float rhw)

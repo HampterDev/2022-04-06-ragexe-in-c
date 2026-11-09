@@ -12,6 +12,15 @@ struct Texture;
 struct SpriteAtlasCache;
 struct RenderStorage;
 
+/* custom: where a shadow caster can lie for the frame's shadow maps (renderer_shadow_frame): across
+   the light, along axis[0] and axis[1], inside one cascade's square (lo to hi), and along it,
+   axis[2], from depth[0] to depth[1]; world coordinates */
+struct ShadowReach {
+    float axis[3][3];
+    float lo[GFX_SHADOW_CASCADES][2], hi[GFX_SHADOW_CASCADES][2];
+    float depth[2];
+};
+
 struct Renderer {
     float proj[4];
     float aspect;
@@ -43,6 +52,7 @@ struct Renderer {
     float lightDir[3], lightAmbient[3], shadowDarkness;
     int lightSet;
     struct GfxShadow shadow;
+    struct ShadowReach shadowReach;
     int shadowPending, shadowDrawn;
     /* custom: the view of the world view the mesh draws set last this frame (render/gfx.h) */
     float meshView[12];
@@ -69,6 +79,9 @@ void renderer_set_blend_stages(struct Renderer *self, int mode);
    fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
    with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). */
 void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);
+/* custom: whether a box can cast into this frame's shadow maps: centre and half its sizes along its
+   three axes (unit vectors, NULL for the world's), world coordinates */
+int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3]);
 void renderer_draw_battle_field_icon(struct Renderer *self);
 SIZE *renderer_get_text_extent(struct Renderer *self, SIZE *out, const char *text, int length,
                 int a, int b, int c);

@@ -13341,7 +13341,40 @@ Validation, in `client-files` with `RAGEXE_MSAA=1`: with `RAGEXE_SHADOWS=0` ever
 the patch on Prontera's tower reads 117 (118 without shadows, 107 before); on `yuno_gate` the
 towers' shaded sides look as without shadows again; on
 `izlude` (opacity 0.6) the shadowed ground is 0.78 to 0.80 times as bright as before (0.4 over
-0.502). The same `izlude` capture shows the next gap: a large shadow the editor baked from a
-building out of view, which the shadow pass, drawing only what the camera kept, does not cast.
+0.502).
 `build.bat check` and the full `tests\build.bat` pass; `test_model_lighting` checks the ground's
 light and the sums `face_colours` makes from it. Not run: GL, `x64`, `freetype`, CMake.
+
+## Shadows from what the camera does not see (2026-11-09)
+
+The third item: the shadow pass drew the casters the camera's pass had queued, so a building or a
+lamp post just out of view cast nothing into it, and shadows popped in at the screen's edges and
+from behind the camera. (The entry before this one took the darker ground at the lower right of
+its `izlude` capture for a shadow baked from a building out of view; it is a darker stone
+texture, the same with and without shadows, and that sentence is removed.)
+
+- **Where a caster can be.** The light map is orthographic, so a caster shades a cascade wherever
+  it lies along the light, as long as it lies across the light inside the cascade's square.
+  `renderer_shadow_frame` keeps the light's axes, each cascade's square and the depth kept along
+  the light (`struct ShadowReach`); `renderer_shadow_reaches` tests a box, given by its centre,
+  half sizes and axes, against them.
+- **A second walk of the world.** After the camera's pass, `view_on_render` walks the scene graph
+  with that test (`view_cast_shadows`): from a leaf it reaches, each model whose oriented box it
+  reaches and that has not queued its casters this frame (`C3dActor.castFrame`, set by `render`
+  and the new `cast`) queues only its casters (`ModelActorOps.cast`, `c3d_node_v1_cast`,
+  `c3d_node_v2_cast`), and the leaf's ground queues its blocks' (`c3d_ground15_cast`). Such a model
+  is ticked once that frame, as the camera's pass ticks the ones in the leaves it visits, so its
+  animation, and its shadow's, keep going while only its shadow is in view; the original ticks
+  only the models of the camera's leaves.
+- **One caster per ground block.** A block's plain surfaces now cast as one untextured draw
+  (`castCount` indices, once a frame: `castFrame`) into `RENDER_SHADOW_CASTERS`, which the models'
+  casters share; `RENDER_GROUND_MESH` no longer casts, and the shadow pass draws that one queue.
+  The surfaces with half alpha, which only a blind player sees, still cast nothing.
+- A formatting slip from the first item is fixed: two statements of `gpu_render` shared a line.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build before, with shadows:
+`camera_level_view` 5,463 pixels (moving 7,478), a shadow from behind the camera now on the
+street at the bottom; `izlude` 2,343, a post's shadow at the left edge whose post stands just out
+of view; `prontera_crowd` 497; `granny_models` and `guild_flags` 3; `iz_int03_enter` and the six
+`yuno_gate` frames 0. `build.bat check` and the full `tests\build.bat` pass. Not measured: the
+frame time of the second walk and the extra casters.

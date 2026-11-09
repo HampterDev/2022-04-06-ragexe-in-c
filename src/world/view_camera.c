@@ -273,6 +273,38 @@ static void cells_max(int *v, int c)
         *v = c;
 }
 
+/* custom: the models and ground the view left out whose shadows can fall into it
+   (render/renderer.h): their casters only, the models animated as the view's are */
+static void view_cast_shadows(struct SceneGraphNode *node, int level, const float *view)
+{
+    struct Renderer *r = g_renderer;
+    size_t index;
+    int i;
+
+    if (!renderer_shadow_reaches(r, node->centre, node->half, NULL))
+        return;
+    if (level < RSW_TREE_DEPTH) {
+        for (i = 0; i < 4; i++)
+            if (node->child[i])
+                view_cast_shadows(node->child[i], level + 1, view);
+        return;
+    }
+    for (index = 0; index < node->objects.count; ++index) {
+        struct C3dActor *a = node->objects.data[index];
+
+        if (a->castFrame == r->frame || !renderer_shadow_reaches(r, a->obb.centre, a->obb.extent, a->obb.axis))
+            continue;
+        if (a->lastFrame != r->frame) {
+            if (g_isSkipFrame > 0)
+                a->ops->tick(a);
+            a->lastFrame = r->frame;
+        }
+        a->ops->cast(a, view);
+    }
+    if (node->ground)
+        c3d_ground15_cast(node->ground, view, node->groundCell);
+}
+
 void view_on_render(struct View *self)
 {
     struct Renderer *r;
@@ -336,6 +368,8 @@ void view_on_render(struct View *self)
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
     }
+
+    view_cast_shadows(&self->world->root, 0, view);
 
     navi_manager_draw_path(&g_navi, view);
     if (g_hoverCellHidden == 0)

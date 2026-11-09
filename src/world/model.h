@@ -21,9 +21,11 @@ struct ModeMgr;
 int c3d_node_v1_load(struct C3dNode *base, struct ModelResNode *resource);
 void c3d_node_v1_animate(struct C3dNode *base, double t);
 void c3d_node_v1_render(struct C3dNode *base, const float *view, BYTE mirrored, BYTE clip, BYTE layer);
+void c3d_node_v1_cast(struct C3dNode *base, const float *view);
 int c3d_node_v2_load(struct C3dNode *base, struct ModelResNode *resource);
 void c3d_node_v2_animate(struct C3dNode *base, double t);
 void c3d_node_v2_render(struct C3dNode *base, const float *view, BYTE mirrored, BYTE clip, BYTE layer);
+void c3d_node_v2_cast(struct C3dNode *base, const float *view);
 void c3d_node_get_bound(struct C3dNode *self, float *box, const float *parent);
 void c3d_node_light(struct C3dNode *self, const float *parent, const float *dir,
                               const float *diffuse, const float *ambient, int shadeType);
@@ -37,6 +39,7 @@ void c3d_actor_v1_light(struct C3dActor *base, const float *dir, const float *di
 void c3d_actor_v1_animate(struct C3dActor *base, double t);
 void c3d_actor_v1_tick(struct C3dActor *base);
 void c3d_actor_v1_render(struct C3dActor *base, const float *view, BYTE clip);
+void c3d_actor_v1_cast(struct C3dActor *base, const float *view);
 void model_actor_v2_destroy(struct C3dActor *base);
 int c3d_actor_v2_create(struct C3dActor *base, struct C3dModelRes *res);
 void c3d_actor_v2_build_matrix(struct C3dActor *base);
@@ -45,6 +48,7 @@ void c3d_actor_v2_light(struct C3dActor *base, const float *dir, const float *di
 void c3d_actor_v2_animate(struct C3dActor *base, double t);
 void c3d_actor_v2_tick(struct C3dActor *base);
 void c3d_actor_v2_render(struct C3dActor *base, const float *view, BYTE clip);
+void c3d_actor_v2_cast(struct C3dActor *base, const float *view);
 void c3d_actor_v2_set_speed(struct C3dActor *base, float speed);
 
 #endif
