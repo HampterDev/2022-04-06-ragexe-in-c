@@ -72,6 +72,10 @@
 #include "session/session_party.h"
 #include "game/party_member.h"
 #include "game/minimap.h"
+#include "ui/chat/chat_room_wnd.h"
+#include "game/chat_room.h"
+#include "game/actor_packets.h"
+#include "world/mode_dispatch.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -343,6 +347,28 @@
 #define ORIG_MODE_ITEM_MOVE_READY 0x5f0
 #define ORIG_POST_SIZE        0x30
 #define ORIG_MEMBER_SIZE      0x50
+#define ORIG_WND_EXCHANGE     0xee8a30u
+#define ORIG_CURRENT_MODE_PTR 0xe8e304u
+#define ORIG_ROOM_OWNER_AT    0x79db60u
+#define ORIG_IS_YELLOW_AID    0xb05de0u
+#define ORIG_REMOVE_FRIEND    0x8515b0u
+#define ORIG_NOTIFY_GROUP_WND 0x86c2b0u
+#define ORIG_END_EXCHANGE1    0x84f2d0u
+#define ORIG_THEIR_ZENY       0x86cf30u
+#define ORIG_ADD_THEIR_ITEM   0x86d510u
+#define ORIG_REFUSE_TRADES    0x1138cb0u
+#define ORIG_MODE_CHAT_PENDING 0xfc
+#define ORIG_MODE_EXCHANGE_PENDING 0x100
+#define ORIG_MODE_WHISPER_NAME 0x118
+#define ORIG_MODE_EXCHANGE_PARTNER 0x148
+#define ORIG_MODE_FAMILY_AID  0x290
+#define ORIG_MODE_FAMILY_CHAR_ID 0x294
+#define ORIG_MODE_COUPLE_NAME 0x298
+#define ORIG_MODE_OWN_ROOM    0x3c0
+#define ORIG_WND_ROOM         0x94
+#define ORIG_ROOM_SIZE        0x40
+#define ORIG_ITEM_ARG_SIZE    0xe8
+#define N_CHAT_TEXTS 6
 #define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
 #define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
 #define ORIG_STORAGE_SET_NAME 0x7e3670u
@@ -508,6 +534,11 @@ struct UIRequestJoinPartyMgr *g_requestJoinPartyMgr;
 struct AdventurerAgencyMgr *g_adventurerAgency;
 struct WordFilter g_nameFilter;
 static short wanted_jobs[PARTY_BOOKING_JOBS];
+static struct UIChatRoomWnd lift_chat_room_wnd;
+static unsigned orig_room_owners[4];
+static struct ChatRoomOwner lift_room_owners[4];
+static int current_side;
+static const char *const chat_names[N_COMPANION_NAMES] = { "Hero", "Poring", "badname", "", "Lunatic Jr." };
 static struct ReplayRecorder lift_replay;
 static unsigned char orig_loop_sounds[4][ORIG_LOOP_SOUND_SIZE];
 static struct LoopSound lift_loop_sounds[4];
@@ -533,6 +564,7 @@ static const char *window_name(const void *w)
     if (w == orig_storage_wnd || w == &lift_storage_wnd) return "storage";
     if (w == orig_generic_wnd || w == &lift_generic_wnd) return "wnd";
     if (w == orig_helper_wnd || w == &lift_helper_wnd) return "helper";
+    if (w == &lift_chat_room_wnd) return "wnd";
     if (w == orig_pet_info_wnd || w == &lift_pet_info_wnd) return "petinfo";
     if (w == orig_homun_info_wnd || w == &lift_homun_info_wnd) return "homuninfo";
     if (w == orig_homun_skill_wnd || w == &lift_homun_skill_wnd) return "homunskill";
@@ -749,6 +781,14 @@ static const struct Field fields[] = {
     { "item_move_ready", M(R_MODE), ORIG_MODE_ITEM_MOVE_READY, GF(item_move_ready), 1 },
     { "partyName", M(R_SESSION), S(ORIG_PARTY_NAME), SF(partyName), 12, 1 },
     { "partyName_", M(R_SESSION), S(ORIG_PARTY_NAME + 12), SF(partyName), 12, 1 },
+    { "chat_room_pending", M(R_MODE), ORIG_MODE_CHAT_PENDING, GF(chat_room_pending), 4 },
+    { "exchange_add_pending", M(R_MODE), ORIG_MODE_EXCHANGE_PENDING, GF(exchange_add_pending), 4 },
+    { "exchange_partner", M(R_MODE), ORIG_MODE_EXCHANGE_PARTNER, GF(exchange_partner), 12, 1 },
+    { "exchange_partner_", M(R_MODE), ORIG_MODE_EXCHANGE_PARTNER + 12, GF(exchange_partner), 12, 1 },
+    { "family_request_aid", M(R_MODE), ORIG_MODE_FAMILY_AID, GF(family_request_aid), 4 },
+    { "family_request_char_id", M(R_MODE), ORIG_MODE_FAMILY_CHAR_ID, GF(family_request_char_id), 4 },
+    { "couple_name", M(R_MODE), ORIG_MODE_COUPLE_NAME, GF(couple_name), 24 },
+    { "own_room_users", M(R_MODE), ORIG_MODE_OWN_ROOM + 0x34, GF(own_chat_room.users), 4 },
     { "lastPacketTime", M(R_SESSION), S(ORIG_LAST_PACKET_TIME), SF(lastPacketTime), 4, 1 },
 };
 
@@ -784,6 +824,7 @@ static const char *orig_std_string(const unsigned char *s)
 static void snapshot_regions(int side)
 {
     int r;
+    current_side = side;
     for (r = 0; r < R_COUNT; r++) {
         struct Region *g = &regions[r];
         if (side == 0) {
@@ -873,7 +914,11 @@ void session_notify_messenger_group_and_plates(struct Session *self) { (void)sel
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg4, int arg5, const char *title,
                               int width, int height, int arg9)
 { (void)self; (void)title; event("msgbox '%s' %d %d %d %d %d %d %d", text, type, arg3, arg4, arg5, width, height, arg9); return 0; }
-struct UIWindow *ui_window_open(int id) { event("open %x", id); return id == 0x21 ? &lift_storage_wnd : &lift_generic_wnd; }
+struct UIWindow *ui_window_open(int id)
+{
+    event("open %x", id);
+    return id == 0x21 ? &lift_storage_wnd : id == 0x1c ? (struct UIWindow *)&lift_chat_room_wnd : &lift_generic_wnd;
+}
 unsigned ui_merchant_shop_seller(const struct UIWindow *wnd) { (void)wnd; return 0; }
 void session_clear_purchase_lists(struct Session *self) { (void)self; event("clear purchase"); }
 void session_set_job(struct Session *self, int job) { (void)self; event("session job %d", job); }
@@ -891,6 +936,8 @@ void *tree_get(struct Tree *tree, const void *key, size_t key_size, size_t size,
         lift_abr_pair[slot].value = 0;
         return &lift_abr_pair[slot];
     }
+    if (tree == &lift_mode.chat_room_owners)
+        return &lift_room_owners[*(const unsigned *)key % 4];
     if (tree == &g_session1.statusValues) {
         adv_key = *(const int *)key;
         adv_pending = 1;
@@ -934,12 +981,30 @@ void string_assign(struct String *s, const char *text, size_t len)
 }
 void string_assign_cstr(struct String *s, const char *text) { string_assign(s, text, strlen(text)); }
 void string_copy(struct String *dst, const struct String *src) { string_init(dst); string_assign(dst, string_cstr(src), src->size); }
+static const char *room_text(const void *p)
+{
+    static char text[256];
+    if (current_side == 0) {
+        const unsigned char *r = p;
+        snprintf(text, sizeof text, "room '%s' pw '%s' t%d u%d m%d id%d", orig_std_string(r), orig_std_string(r + 0x18), *(const int *)(r + 0x30),
+                 *(const int *)(r + 0x34), *(const int *)(r + 0x38), *(const int *)(r + 0x3c));
+    } else {
+        const struct ChatRoomInfo *r = p;
+        snprintf(text, sizeof text, "room '%s' pw '%s' t%d u%d m%d id%d", string_cstr(&r->title), string_cstr(&r->password), r->type, r->users,
+                 r->max_users, r->room_id);
+    }
+    return text;
+}
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
 {
     (void)sender;
-    if (message == 0x38 && readable(b))
+    if (message == 0x22 && readable(a))
+        event("wndsend %s %x %s", window_name(window), message, room_text((const void *)(int)a));
+    else if ((message == 0x38 || message == 0x5a || message == 0x5b) && readable(b))
         event("wndsend %s %x %x '%s' %x %x", window_name(window), message, a, (const char *)(int)b, c, d);
-    else if ((message == 0x1a || message == 0x1b || message == 0x1f) && readable(a))
+    else if (message == 0x5f && readable(c))
+        event("wndsend %s %x %x %x '%s' %x", window_name(window), message, a, b, (const char *)(int)c, d);
+    else if ((message == 0x1a || message == 0x1b || message == 0x1f || message == 0x2c || message == 0x2d || message == 0x2e || message == 0x32) && readable(a))
         event("wndsend %s %x '%s' %x %x %x", window_name(window), message, (const char *)(int)a, b, c, d);
     else
         event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d);
@@ -1125,6 +1190,33 @@ struct PartyMember *session_get_party_member(struct Session *self, struct PartyM
     return out;
 }
 void session_set_party_member_state(struct Session *self, DWORD aid, DWORD role) { (void)self; event("member state %u %u", aid, role); }
+struct ChatRoomInfo *chat_room_info_copy(struct ChatRoomInfo *room, const struct ChatRoomInfo *from)
+{
+    string_copy(&room->title, &from->title);
+    string_copy(&room->password, &from->password);
+    room->type = from->type;
+    room->users = from->users;
+    room->max_users = from->max_users;
+    room->room_id = from->room_id;
+    return room;
+}
+BYTE clientinfo_is_yellow_aid(int aid) { return aid == (int)AID_TARGET; }
+void vec_resize(struct Vec *v, size_t count, size_t size)
+{
+    char *p = malloc(count * size + 1);
+    memset(p, 0, count * size + 1);
+    v->first = p;
+    v->last = p + count * size;
+    v->end = v->last;
+}
+void session_end_exchange(struct Session *self) { (void)self; event("end exchange 1"); }
+int session_remove_friend(struct Session *self, DWORD value) { (void)self; event("remove friend %u", value); return value & 1; }
+void session_notify_messenger_group_wnd(struct Session *self) { (void)self; event("notify group wnd"); }
+void session_set_their_trade_zeny(struct Session *self, int money) { (void)self; event("their zeny %d", money); }
+void session_add_their_trade_item(struct Session *self, struct ItemInfo item) { (void)self; event("their item %s", item_text(&item)); }
+int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+{ (void)mode; event("modemsg %x %x %s %x %x", message, a, who((void *)b), c, d); return 0; }
+struct Mode *client_current_mode(void) { return (struct Mode *)&lift_mode; }
 BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; event("replay mode %d", mode); return 1; }
 void text_drop_map_extension(struct String *map_name)
 {
@@ -1233,6 +1325,10 @@ static const char *msg_text_packets(long long msg, long long a, long long b, lon
     (void)c; (void)d;
     if (msg == 7 && readable(a)) {
         snprintf(chat, sizeof chat, "7 '%s' %llx", (const char *)(int)a, b);
+        return chat;
+    }
+    if (msg == 0x20 && readable(a)) {
+        snprintf(chat, sizeof chat, "20 %s", room_text((const void *)(int)a));
         return chat;
     }
     return readable(a) ? entry_text(msg, a) : NULL;
@@ -1619,6 +1715,14 @@ static void __fastcall o_add_party_member(void *self, void *edx, const unsigned 
                                orig_std_string(m + 0x24), *(const unsigned *)(m + 0x3c), *(const unsigned *)(m + 0x40), *(const unsigned short *)(m + 0x48),
                                *(const unsigned short *)(m + 0x4a), *(const unsigned *)(m + 0x4c)));
 }
+static unsigned *__fastcall o_room_owner_at(void *self, void *edx, const unsigned *key) { (void)self; (void)edx; return &orig_room_owners[*key % 4]; }
+static int __cdecl o_is_yellow_aid(int aid) { return aid == (int)AID_TARGET; }
+static int __fastcall o_remove_friend(void *self, void *edx, unsigned char_id) { (void)self; (void)edx; event("remove friend %u", char_id); return char_id & 1; }
+static void __cdecl o_notify_group_wnd(void) { event("notify group wnd"); }
+static void __fastcall o_end_exchange1(void *self, void *edx) { (void)self; (void)edx; event("end exchange 1"); }
+static void __fastcall o_their_zeny(void *self, void *edx, int money) { (void)self; (void)edx; event("their zeny %d", money); }
+struct OrigItemArg { unsigned char b[ORIG_ITEM_ARG_SIZE]; };
+static void __fastcall o_add_their_item(void *self, void *edx, struct OrigItemArg item) { (void)self; (void)edx; event("their item %s", orig_item_text(item.b)); }
 static void __fastcall o_log_whisper(void *self, void *edx, const char *line) { (void)self; (void)edx; event("log '%s'", line); }
 static void __fastcall o_clear_lists(void *self, void *edx) { (void)self; (void)edx; event("clear lists"); }
 static void *__cdecl o_item_table_get(int item_id) { *(int *)(fake_item_entry + 0x40) = item_id % 7; return fake_item_entry; }
@@ -1783,6 +1887,36 @@ LIFT(game_mode_on_add_member_to_group)
 LIFT(game_mode_on_add_member_to_group2)
 LIFT(game_mode_on_party_member_state)
 LIFT(game_mode_on_list_flag_clear)
+LIFT(game_mode_zc_room_newentry)
+LIFT(game_mode_zc_refuse_enter_room)
+LIFT(game_mode_zc_ack_create_chatroom)
+LIFT(game_mode_zc_destroy_room)
+LIFT(game_mode_zc_member_newentry)
+LIFT(game_mode_zc_member_exit)
+LIFT(game_mode_zc_role_change)
+LIFT(game_mode_zc_change_chatroom)
+LIFT(game_mode_zc_setting_whisper_pc2)
+LIFT(game_mode_zc_setting_whisper_pc)
+LIFT(game_mode_zc_setting_whisper_state)
+LIFT(game_mode_zc_notify_chat)
+LIFT(game_mode_zc_whisper_list)
+LIFT(game_mode_zc_req_exchange_item2)
+LIFT(game_mode_zc_req_exchange_item)
+LIFT(game_mode_zc_conclude_exchange_item)
+LIFT(game_mode_zc_cancel_exchange_item)
+LIFT(game_mode_zc_exec_exchange_item)
+LIFT(game_mode_zc_exchange_item_undo)
+LIFT(game_mode_zc_req_add_friends)
+LIFT(game_mode_zc_delete_friends)
+LIFT(game_mode_zc_req_baby)
+LIFT(game_mode_zc_req_couple)
+LIFT(game_mode_on_add_exchange_item_opt)
+LIFT(game_mode_on_add_exchange_item_grade)
+LIFT(game_mode_zc_couple_name)
+LIFT(game_mode_zc_divorce)
+static void w_baby_msg(const unsigned char *pkt) { game_mode_zc_baby_msg(pkt); }
+static void w_ack_give_manner_point(const unsigned char *pkt) { game_mode_zc_ack_give_manner_point(pkt); }
+static void w_notify_manner_point_given(const unsigned char *pkt) { game_mode_zc_notify_manner_point_given(pkt); }
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -1994,6 +2128,37 @@ static const struct Handler handlers[] = {
     { "add_member_to_group4", 0x7f4510u, 0xae4, 0x59, w_game_mode_on_add_member_to_group2, PK_DEFAULT, NULL, 0 },
     { "party_member_state", 0x815bc0u, 0xab2, 7, w_game_mode_on_party_member_state, PK_DEFAULT, NULL, 0 },
     { "list_flag_clear", 0x815b50u, 0xaa7, 4, w_game_mode_on_list_flag_clear, PK_DEFAULT, NULL, 0 },
+    { "room_newentry", 0, 0xd7, 0x11, w_game_mode_zc_room_newentry, PK_DEFAULT, NULL, 0 },
+    { "refuse_enter_room", 0x7d0620u, 0xda, 3, w_game_mode_zc_refuse_enter_room, PK_DEFAULT, NULL, 0 },
+    { "ack_create_chatroom", 0, 0xd6, 3, w_game_mode_zc_ack_create_chatroom, PK_DEFAULT, NULL, 0 },
+    { "destroy_room", 0, 0xd8, 6, w_game_mode_zc_destroy_room, PK_DEFAULT, NULL, 0 },
+    { "member_newentry", 0, 0xdc, 28, w_game_mode_zc_member_newentry, PK_DEFAULT, NULL, 0 },
+    { "member_exit", 0, 0xdd, 29, w_game_mode_zc_member_exit, PK_DEFAULT, NULL, 0 },
+    { "role_change", 0, 0xe1, 30, w_game_mode_zc_role_change, PK_DEFAULT, NULL, 0 },
+    { "change_chatroom", 0, 0xdf, 0x11, w_game_mode_zc_change_chatroom, PK_DEFAULT, NULL, 0 },
+    { "setting_whisper_pc2", 0x7d2600u, 0xae1, 28, w_game_mode_zc_setting_whisper_pc2, PK_DEFAULT, NULL, 0 },
+    { "setting_whisper_pc", 0x7d27f0u, 0xd1, 4, w_game_mode_zc_setting_whisper_pc, PK_DEFAULT, NULL, 0 },
+    { "setting_whisper_state", 0, 0xd2, 4, w_game_mode_zc_setting_whisper_state, PK_DEFAULT, NULL, 0 },
+    { "notify_chat", 0x7c6710u, 0x8d, 8, w_game_mode_zc_notify_chat, PK_DEFAULT, NULL, 0 },
+    { "notify_chat_gm", 0x7c6710u, 0x8d, 8, w_game_mode_zc_notify_chat, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 0, 1 },
+    { "whisper_list", 0, 0xd4, 4, w_game_mode_zc_whisper_list, PK_DEFAULT, NULL, 0 },
+    { "req_exchange_item2", 0, 0x1f4, 32, w_game_mode_zc_req_exchange_item2, PK_DEFAULT, NULL, 0 },
+    { "req_exchange_item", 0, 0xe5, 26, w_game_mode_zc_req_exchange_item, PK_DEFAULT, NULL, 0 },
+    { "conclude_exchange_item", 0, 0xec, 3, w_game_mode_zc_conclude_exchange_item, PK_DEFAULT, NULL, 0 },
+    { "cancel_exchange_item", 0, 0xee, 2, w_game_mode_zc_cancel_exchange_item, PK_DEFAULT, NULL, 0 },
+    { "exec_exchange_item", 0, 0xf0, 3, w_game_mode_zc_exec_exchange_item, PK_DEFAULT, NULL, 0 },
+    { "exchange_item_undo", 0, 0xf1, 2, w_game_mode_zc_exchange_item_undo, PK_DEFAULT, NULL, 0 },
+    { "req_add_friends", 0x7d11e0u, 0x207, 34, w_game_mode_zc_req_add_friends, PK_DEFAULT, NULL, 0 },
+    { "delete_friends", 0x7d0dd0u, 0x20a, 10, w_game_mode_zc_delete_friends, PK_DEFAULT, NULL, 0 },
+    { "req_baby", 0, 0x1f6, 34, w_game_mode_zc_req_baby, PK_DEFAULT, NULL, 0 },
+    { "req_couple", 0, 0x1e2, 34, w_game_mode_zc_req_couple, PK_DEFAULT, NULL, 0 },
+    { "add_exchange_item_opt", 0x7f8cd0u, 0xa96, 0x3d, w_game_mode_on_add_exchange_item_opt, PK_DEFAULT, NULL, 0 },
+    { "add_exchange_item_grade", 0x7f8e90u, 0xb42, 0x3e, w_game_mode_on_add_exchange_item_grade, PK_DEFAULT, NULL, 0 },
+    { "couple_name", 0x7face0u, 0x1e6, 26, w_game_mode_zc_couple_name, PK_DEFAULT, NULL, 0 },
+    { "divorce", 0x7bad60u, 0x205, 26, w_game_mode_zc_divorce, PK_DEFAULT, NULL, 0 },
+    { "baby_msg", 0, 0x216, 6, w_baby_msg, PK_DEFAULT, NULL, 0 },
+    { "ack_give_manner_point", 0, 0x14a, 6, w_ack_give_manner_point, PK_DEFAULT, NULL, 0 },
+    { "notify_manner_point_given", 0, 0x14b, 27, w_notify_manner_point_given, PK_DEFAULT, NULL, 0 },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -2310,6 +2475,134 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         pkt[0x54 + off] = (unsigned char)(fill >> 1);
         return;
     }
+    if (h->id == 0xd7 || h->id == 0xdf) {
+        const char *title = dialog_text(value % N_TEXTS);
+        size_t len = strlen(title);
+        short total, max_users = 20, users = (short)value;
+        int room_id = (int)(value % 4);
+        if (len > 100)
+            len = 100;
+        total = (short)(0x11 + len);
+        memcpy(pkt + 2, &total, 2);
+        memcpy(pkt + 4, &aid, 4);
+        memcpy(pkt + 8, &room_id, 4);
+        memcpy(pkt + 0xc, &max_users, 2);
+        memcpy(pkt + 0xe, &users, 2);
+        pkt[0x10] = (unsigned char)fill;
+        memcpy(pkt + 0x11, title, len);
+        return;
+    }
+    if (h->id == 0xda || h->id == 0xd6 || h->id == 0xec || h->id == 0xf0) {
+        pkt[2] = (unsigned char)value;
+        return;
+    }
+    if (h->id == 0xd8 || h->id == 0x216 || h->id == 0x14a) {
+        memcpy(pkt + 2, &value, 4);
+        return;
+    }
+    if (h->id == 0xdc || h->id == 0xdd || h->id == 0xe1 || h->id == 0xae1 || h->id == 0x14b || h->id == 0x205 || h->id == 0x1e6) {
+        const char *name = chat_names[value % N_COMPANION_NAMES];
+        unsigned off = h->id == 0xe1 ? 6 : h->id == 0x14b ? 3 : h->id == 0xdc || h->id == 0xdd ? 4 : 2;
+        short users = (short)value;
+        int role = (int)value;
+        memset(pkt + off, 0, 24);
+        memcpy(pkt + off, name, strlen(name));
+        if (h->id == 0xdc || h->id == 0xdd)
+            memcpy(pkt + 2, &users, 2);
+        if (h->id == 0xdd)
+            pkt[0x1c] = (unsigned char)(value % 3);
+        if (h->id == 0xe1)
+            memcpy(pkt + 2, &role, 4);
+        if (h->id == 0xae1) {
+            pkt[0x1a] = (unsigned char)(value & 1);
+            pkt[0x1b] = (unsigned char)(value >> 1);
+        }
+        if (h->id == 0x14b)
+            pkt[2] = (unsigned char)((value >> 3) & 1);
+        return;
+    }
+    if (h->id == 0xd1 || h->id == 0xd2) {
+        pkt[2] = (unsigned char)(value & 1);
+        pkt[3] = (unsigned char)(value >> 1);
+        return;
+    }
+    if (h->id == 0xd4) {
+        unsigned count = value & 3, r;
+        short total = (short)(4 + 24 * count);
+        memcpy(pkt + 2, &total, 2);
+        for (r = 0; r < count; r++) {
+            const char *name = chat_names[(value + r) % N_COMPANION_NAMES];
+            memset(pkt + 4 + 24 * r, 0, 24);
+            memcpy(pkt + 4 + 24 * r, name, strlen(name));
+        }
+        return;
+    }
+    if (h->id == 0x8d) {
+        static const char *const texts[N_CHAT_TEXTS] = { "", "hello", "bad words here", "Hello %s %d", long_text_600, "x" };
+        const char *text = texts[value % N_CHAT_TEXTS];
+        size_t len = strlen(text);
+        unsigned short total = (unsigned short)(8 + len);
+        memcpy(pkt + 2, &total, 2);
+        memcpy(pkt + 4, &aid, 4);
+        memcpy(pkt + 8, text, len);
+        return;
+    }
+    if (h->id == 0xe5 || h->id == 0x1f4) {
+        const char *name = chat_names[value % N_COMPANION_NAMES];
+        int char_id = 100 + (int)value;
+        short level = (short)(10 * fill);
+        memset(pkt + 2, 0, 24);
+        memcpy(pkt + 2, name, strlen(name));
+        if (h->id == 0x1f4) {
+            memcpy(pkt + 0x1a, &char_id, 4);
+            memcpy(pkt + 0x1e, &level, 2);
+        }
+        return;
+    }
+    if (h->id == 0x207 || h->id == 0x20a || h->id == 0x1e2 || h->id == 0x1f6) {
+        const char *name = chat_names[value % N_COMPANION_NAMES];
+        unsigned char_id = h->id == 0x20a ? value : 100 + value;
+        memcpy(pkt + 2, &aid, 4);
+        memcpy(pkt + 6, &char_id, 4);
+        if (h->id != 0x20a) {
+            memset(pkt + 0xa, 0, 24);
+            memcpy(pkt + 0xa, name, strlen(name));
+        }
+        return;
+    }
+    if (h->id == 0xa96 || h->id == 0xb42) {
+        int item_id = value == 0 ? 0 : 501 + (int)value, amount = (value & 1) ? -1 - (int)value : (int)value * 7;
+        int location = 2 << fill, i;
+        unsigned short look = (unsigned short)(value * 3);
+        unsigned cards = h->id == 0xa96 ? 0xe : 0xd, options = h->id == 0xa96 ? 0x1e : 0x1d;
+        memcpy(pkt + 2, &item_id, 4);
+        pkt[6] = (unsigned char)(fill + 2);
+        memcpy(pkt + 7, &amount, 4);
+        pkt[0xb] = (unsigned char)(value & 1);
+        pkt[0xc] = (unsigned char)(fill == FILL_ONES);
+        for (i = 0; i < 4; i++) {
+            int card = 4001 + i * fill;
+            memcpy(pkt + cards + 4 * i, &card, 4);
+        }
+        for (i = 0; i < 5; i++) {
+            unsigned short id = (unsigned)i < value % 6 ? (unsigned short)(100 + i) : 0;
+            short v = (short)(7 * i);
+            memcpy(pkt + options + 5 * i, &id, 2);
+            memcpy(pkt + options + 5 * i + 2, &v, 2);
+            pkt[options + 5 * i + 4] = (unsigned char)fill;
+        }
+        if (h->id == 0xa96) {
+            pkt[0xd] = (unsigned char)fill;
+            memcpy(pkt + 0x37, &location, 4);
+            memcpy(pkt + 0x3b, &look, 2);
+        } else {
+            memcpy(pkt + 0x36, &location, 4);
+            memcpy(pkt + 0x3a, &look, 2);
+            pkt[0x3c] = (unsigned char)fill;
+            pkt[0x3d] = (unsigned char)(value & 3);
+        }
+        return;
+    }
     if (h->id == 0x1a6) {
         unsigned count = value & 3, r;
         short total = (short)(4 + 2 * count);
@@ -2542,8 +2835,7 @@ static void seed_packets(int option)
     g_windowMgr.homun_skill_list_wnd = option ? &lift_homun_skill_wnd : NULL;
     SEED(ORIG_OWN_AID, ownAid, (int)AID_OWN);
     SEED(ORIG_PARTY_LEADER, partyLeader, option);
-    *(void **)oracle_addr(ORIG_WND_CHAT_ROOM) = option ? orig_generic_wnd : NULL;
-    g_windowMgr.chat_room_wnd = option ? &lift_generic_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_CHAT_ROOM) = option != (current_handler && current_handler->id == 0x8d && current_handler->service_type) ? orig_generic_wnd : NULL;
     *(void **)oracle_addr(ORIG_WND_PARTY_SETTING) = option ? orig_generic_wnd : NULL;
     g_windowMgr.party_setting_wnd = option ? &lift_generic_wnd : NULL;
     *(void **)oracle_addr(ORIG_REQUEST_MGR_PTR) = orig_request_mgr;
@@ -2556,6 +2848,62 @@ static void seed_packets(int option)
     strcpy((char *)orig_mode + ORIG_MODE_MAP_NAME, "prontera.rsw");
     memset(lift_mode.map_name, 0, sizeof lift_mode.map_name);
     strcpy(lift_mode.map_name, "prontera.rsw");
+    SEED(ORIG_REFUSE_TRADES, refuseTrades, option);
+    *(void **)oracle_addr(ORIG_WND_EXCHANGE) = option ? orig_generic_wnd : NULL;
+    g_windowMgr.exchange_wnd = option ? &lift_generic_wnd : NULL;
+    *(void **)oracle_addr(ORIG_CURRENT_MODE_PTR) = orig_mode;
+    g_windowMgr.chat_room_wnd = option != (current_handler && current_handler->id == 0x8d && current_handler->service_type) ? (struct UIWindow *)&lift_chat_room_wnd : NULL;
+    memset(orig_generic_wnd + ORIG_WND_ROOM, 0, ORIG_ROOM_SIZE);
+    strcpy((char *)orig_generic_wnd + ORIG_WND_ROOM, "room");
+    *(unsigned *)(orig_generic_wnd + ORIG_WND_ROOM + 0x10) = 4;
+    *(unsigned *)(orig_generic_wnd + ORIG_WND_ROOM + 0x14) = ORIG_STD_STRING_SSO - 1;
+    *(unsigned *)(orig_generic_wnd + ORIG_WND_ROOM + 0x18 + 0x14) = ORIG_STD_STRING_SSO - 1;
+    *(int *)(orig_generic_wnd + ORIG_WND_ROOM + 0x30) = 1;
+    *(int *)(orig_generic_wnd + ORIG_WND_ROOM + 0x34) = 3;
+    *(int *)(orig_generic_wnd + ORIG_WND_ROOM + 0x38) = 20;
+    *(int *)(orig_generic_wnd + ORIG_WND_ROOM + 0x3c) = 5;
+    memset(&lift_chat_room_wnd, 0, sizeof lift_chat_room_wnd);
+    lift_chat_room_wnd.frame.base.ops = &lift_window_ops;
+    string_init(&lift_chat_room_wnd.room.title);
+    string_init(&lift_chat_room_wnd.room.password);
+    string_assign_cstr(&lift_chat_room_wnd.room.title, "room");
+    lift_chat_room_wnd.room.type = 1;
+    lift_chat_room_wnd.room.users = 3;
+    lift_chat_room_wnd.room.max_users = 20;
+    lift_chat_room_wnd.room.room_id = 5;
+    memset(orig_mode + ORIG_MODE_OWN_ROOM, 0, ORIG_ROOM_SIZE);
+    strcpy((char *)orig_mode + ORIG_MODE_OWN_ROOM, "own");
+    *(unsigned *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x10) = 3;
+    *(unsigned *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x14) = ORIG_STD_STRING_SSO - 1;
+    *(unsigned *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x18 + 0x14) = ORIG_STD_STRING_SSO - 1;
+    *(int *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x30) = 2;
+    *(int *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x38) = 10;
+    *(int *)(orig_mode + ORIG_MODE_OWN_ROOM + 0x3c) = 9;
+    string_init(&lift_mode.own_chat_room.title);
+    string_init(&lift_mode.own_chat_room.password);
+    string_assign_cstr(&lift_mode.own_chat_room.title, "own");
+    lift_mode.own_chat_room.type = 2;
+    lift_mode.own_chat_room.users = 0;
+    lift_mode.own_chat_room.max_users = 10;
+    lift_mode.own_chat_room.room_id = 9;
+    memset(orig_mode + ORIG_MODE_WHISPER_NAME, 0, ORIG_STD_STRING);
+    strcpy((char *)orig_mode + ORIG_MODE_WHISPER_NAME, "Whisp");
+    *(unsigned *)(orig_mode + ORIG_MODE_WHISPER_NAME + 0x10) = 5;
+    *(unsigned *)(orig_mode + ORIG_MODE_WHISPER_NAME + 0x14) = ORIG_STD_STRING_SSO - 1;
+    string_init(&lift_mode.whisper_setting_name);
+    string_assign_cstr(&lift_mode.whisper_setting_name, "Whisp");
+    memset(orig_mode + ORIG_MODE_EXCHANGE_PARTNER, 0, ORIG_STD_STRING);
+    *(unsigned *)(orig_mode + ORIG_MODE_EXCHANGE_PARTNER + 0x14) = ORIG_STD_STRING_SSO - 1;
+    string_init(&lift_mode.exchange_partner);
+    memset(orig_mode + ORIG_MODE_COUPLE_NAME, 0, 24);
+    memset(lift_mode.couple_name, 0, sizeof lift_mode.couple_name);
+    for (i = 0; i < 4; i++) {
+        static const unsigned owners[4] = { AID_CASTER, AID_TARGET, AID_UNKNOWN, 0 };
+        orig_room_owners[i] = lift_room_owners[i].aid = owners[i];
+        lift_room_owners[i].room_id = i;
+    }
+    *(int *)(orig_mode + ORIG_MODE_CHAT_PENDING) = lift_mode.chat_room_pending = 1;
+    *(int *)(orig_mode + ORIG_MODE_EXCHANGE_PENDING) = lift_mode.exchange_add_pending = 1;
     memset(orig_generic_wnd + ORIG_COLLECTION_PET, 0, 0x40);
     memset(&lift_pet_details, 0, sizeof lift_pet_details);
 #undef SEED
@@ -2649,6 +2997,8 @@ static void after_call(int side)
     }
     if (current_handler->id == 0xfe || current_handler->id == 0xa43 || current_handler->id == 0xae4)
         event("party name '%s'", side == 0 ? orig_std_string(oracle_addr(ORIG_PARTY_NAME)) : string_cstr(&g_session1.partyName));
+    if (current_handler->id == 0xe5 || current_handler->id == 0x1f4)
+        event("partner '%s'", side == 0 ? orig_std_string(orig_mode + ORIG_MODE_EXCHANGE_PARTNER) : string_cstr(&lift_mode.exchange_partner));
     if (current_handler->id == 0x7fe)
         event("bgm %d", side == 0 ? *(int *)(orig_sound_mgr + ORIG_SOUND_BGM_OVERRIDDEN) : g_sound_settings.bgm_overridden);
     report_changes(side);
@@ -2889,6 +3239,13 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_GET_PARTY_MEMBER, (void *)o_get_party_member);
     oracle_patch_jump(ORIG_SET_MEMBER_STATE, (void *)o_set_member_state);
     oracle_patch_jump(ORIG_ADD_PARTY_MEMBER, (void *)o_add_party_member);
+    oracle_patch_jump(ORIG_ROOM_OWNER_AT, (void *)o_room_owner_at);
+    oracle_patch_jump(ORIG_IS_YELLOW_AID, (void *)o_is_yellow_aid);
+    oracle_patch_jump(ORIG_REMOVE_FRIEND, (void *)o_remove_friend);
+    oracle_patch_jump(ORIG_NOTIFY_GROUP_WND, (void *)o_notify_group_wnd);
+    oracle_patch_jump(ORIG_END_EXCHANGE1, (void *)o_end_exchange1);
+    oracle_patch_jump(ORIG_THEIR_ZENY, (void *)o_their_zeny);
+    oracle_patch_jump(ORIG_ADD_THEIR_ITEM, (void *)o_add_their_item);
     for (i = 0; i < (int)sizeof long_text_600 - 1; i++)
         long_text_600[i] = "abcdefghij"[i % 10];
     for (i = 0; i < (int)sizeof long_text_max - 1; i++)
