@@ -442,27 +442,32 @@ struct PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST {
 #pragma pack(pop)
 SIZE_ASSERT(PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST, 4);
 
+#define NOT_MOVABLE_NAMES_MAX 511
+
 void game_mode_shop_not_movable_items(const unsigned char *pkt)
 {
     const struct PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST *packet = (const struct PACKET_ZC_MCSTORE_NOTMOVEITEM_LIST *)pkt;
-    char text[512];
-    const int *id = packet->item_ids;
-    unsigned n = ((unsigned)(int)packet->packet_length - 4) >> 2;
-    const char *s;
-    char *d;
+    int n = packet->packet_length >= 4 ? (packet->packet_length - 4) >> 2 : 0;
+    struct String names, line;
+    int i;
 
-    s = item_table_get(*id)->name;
-    d = text;
-    while ((*d++ = *s++) != 0)
-        ;
-    id++;
-    if (n > 1) {
-        for (n--; n != 0; n--, id++)
-            sprintf(text, "%s, %s", text, item_table_get(*id)->name);
+    string_init(&names);
+    for (i = 0; i < n; i++) {
+        const char *name = item_table_get(packet->item_ids[i])->name;
+        size_t sep = i ? 2 : 0;
+
+        if (names.size + sep + strlen(name) > NOT_MOVABLE_NAMES_MAX)
+            break;
+        if (sep)
+            string_append(&names, ", ", 2);
+        string_append_cstr(&names, name);
     }
-    sprintf(text, msg_str(0x827), text);
+    string_init(&line);
+    string_format(&line, msg_str(0x827), string_cstr(&names));
     chat_refresh();
-    chat_line(text, 0xff);
+    chat_line(string_cstr(&line), 0xff);
+    string_free(&line);
+    string_free(&names);
 }
 
 void game_mode_shop_open_result(struct GameMode *self, unsigned char result)

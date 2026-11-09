@@ -238,6 +238,10 @@ Data, time and leaks:
   original read the same bytes forever and hung; 1 to 3 put every later packet out of step. A
   variable packet shorter than its table minimum is read as the original reads it, but the
   bytes up to the minimum are zero instead of an earlier packet's.
+- The list of items a store cannot take (`ZC_MCSTORE_NOTMOVEITEM_LIST`, 0x08b1) shows as many
+  whole names as fit in 511 bytes, and an empty list shows none. The original joined the names
+  with `sprintf` into a 512-byte stack buffer, so a long list from the server overran the
+  stack, and an empty one still read one item id past the packet.
 - Player-name requests and the name cache still time out correctly
   when the millisecond clock wraps, after 49.7 days of Windows uptime.
 - The emote cooldown still lets an emote through 2.5 seconds after the last one when the
