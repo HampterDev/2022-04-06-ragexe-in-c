@@ -18,7 +18,6 @@ static void c3d_node_light_from_ground(struct C3dNode *self, const float *m, str
         for (k = 0; k < 3; k++) {
             int rgb[3] = {0, 0, 0}, c;
             int *li = (int *)self->lightInts + f * 9 + k * 3;
-            DWORD shade;
 
             if (ground) {
                 const Vec3 *v = &mesh->positions[face->v[k]];
@@ -34,12 +33,6 @@ static void c3d_node_light_from_ground(struct C3dNode *self, const float *m, str
             li[1] = c < 0xff ? c : 0xff;
             c = rgb[2] + BYTE_B(info->colour[k]);
             li[2] = c < 0xff ? c : 0xff;
-            if (self->shadowColours && self->shadowGround) {
-                shade = self->shadowColours[f * 3 + k];
-                self->shadowGround[f * 3 + k] = pack(0xff, (BYTE)(rgb[0] + BYTE_R(shade) < 0xff ? rgb[0] + BYTE_R(shade) : 0xff),
-                                                     (BYTE)(rgb[1] + BYTE_G(shade) < 0xff ? rgb[1] + BYTE_G(shade) : 0xff),
-                                                     (BYTE)(rgb[2] + BYTE_B(shade) < 0xff ? rgb[2] + BYTE_B(shade) : 0xff));
-            }
         }
     }
 }
@@ -74,21 +67,6 @@ void c3d_node_light(struct C3dNode *self, const float *parent, const float *dir,
 
     mat_multiply(m, self->matrix, parent);
     memcpy(r, m, sizeof(r));
-    /* custom: the colour in shadow is the same light without its diffuse part (shadowColours) */
-    if (self->shadowColours && shadeType != 0) {
-        BYTE a = (BYTE)(int)(self->alpha * 255.0f);
-        for (f = 0; f < mesh->faceCount; f++) {
-            const struct AnimMeshFace *fc = &mesh->faces[f];
-
-            for (k = 0; k < 3; k++) {
-                float s = mesh->texVertCount && mesh->texVerts[fc->tv[k]].colour != 0 ? 128.0f : 255.0f;
-
-                self->shadowColours[f * 3 + k] = pack(a, (BYTE)(int)(clamp1(ambient[0]) * s),
-                                                      (BYTE)(int)(clamp1(ambient[1]) * s),
-                                                      (BYTE)(int)(clamp1(ambient[2]) * s));
-            }
-        }
-    }
     switch (shadeType) {
     case 0:
         for (f = 0; f < mesh->faceCount; f++)
@@ -142,12 +120,6 @@ void c3d_node_light(struct C3dNode *self, const float *parent, const float *dir,
             info->colour[0] = buf[0];
             info->colour[1] = buf[1];
             info->colour[2] = buf[2];
-            if (self->shadowColours && shadeType == 0) {
-                size_t at = (size_t)(info - self->faceInfo) * 3;
-                self->shadowColours[at] = buf[0];
-                self->shadowColours[at + 1] = buf[1];
-                self->shadowColours[at + 2] = buf[2];
-            }
             if (self->mesh->texVertCount == 0) {
                 for (k = 0; k < 3; k++) {
                     info->uv[k][0] = su;

@@ -219,7 +219,7 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
 struct GfxMeshVertex {
     float x, y, z;
     float nx, ny, nz;
-    DWORD diffuse, shadow;
+    DWORD diffuse;
     float u0, v0, u1, v1;
 };
 
@@ -254,8 +254,8 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
    the cascade gfx_shadow_cascade chose instead of colour. fromView[c] takes the view space of the
    draws' world views to cascade c's light space, row vectors: x and y from -1 to 1 across its map,
    z from 0 to 1 along the light. While gfx_shadow_receive is on, gfx_draw_mesh draws a vertex's
-   shadow colour where its pixel lies more than bias behind the nearest caster and its own colour
-   elsewhere, looking it up in the first cascade whose farDepth (a view depth) lies beyond the pixel,
+   colour times darkness where its pixel lies more than bias behind the nearest caster and its own
+   colour elsewhere, looking it up in the first cascade whose farDepth (a view depth) lies beyond the pixel,
    from a point moved off the surface towards the light by offset[c] (view units) times the sine of
    the angle between the surface and the light (lightView: towards the light, view space; the
    surface's normal comes from the vertex's), as the share of 16 points spread over a disc of
@@ -264,9 +264,15 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
    by slant (light depth) times the tangent of that slant, up to 8 times. It is meant for draws with
    the stage states of opaque
    meshes (texture times colour). gfx_shadow_begin answers 0 where the device cannot draw shadows,
-   and the receiving draws then look as before. */
+   and the receiving draws then look as before.
+   gfx_shadow_receive picks the receiving draws: GFX_SHADOW_MODELS with the stages above,
+   GFX_SHADOW_GROUND with the stages of the ground's two-texture quads (texture times colour,
+   times the lightmap's alpha, plus its colour), where the shadow maps take the place of the
+   lightmap's alpha, the shadows the map's editor baked into it; 0 turns receiving off. */
 #define GFX_SHADOW_SIZE 2048
 #define GFX_SHADOW_CASCADES 4
+#define GFX_SHADOW_MODELS 1
+#define GFX_SHADOW_GROUND 2
 
 struct GfxShadow {
     int cascades;
@@ -275,13 +281,13 @@ struct GfxShadow {
     float offset[GFX_SHADOW_CASCADES];
     float blur[GFX_SHADOW_CASCADES];
     float lightView[3];
-    float bias, slant;
+    float bias, slant, darkness;
 };
 
 int gfx_shadow_begin(const struct GfxShadow *shadow);
 int gfx_shadow_cascade(int cascade);
 void gfx_shadow_end(void);
-void gfx_shadow_receive(int on);
+void gfx_shadow_receive(int receiver);
 
 typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, PlatformDisplay monitor);
 int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);

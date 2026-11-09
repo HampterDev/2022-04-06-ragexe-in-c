@@ -206,45 +206,57 @@ static void flush_blended_wrap(struct Renderer *self)
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
 }
 
-/* custom: the shadow map of this frame's model meshes, which then receive it (render/gfx.h) */
-static int draw_shadow_map(struct Renderer *self)
+/* custom: draws a queue's meshes into the shadow map cascade chosen (render/gfx.h) */
+static void draw_shadow_casters(struct Renderer *self, int list)
 {
-    struct RenderQueue *l = &self->queues[RENDER_MODEL_MESH];
+    struct RenderQueue *l = &self->queues[list];
+    const float *view = NULL;
+
+    for (size_t i = 0; i < l->count; ++i) {
+        struct RPMeshDraw *n = l->items[i].primitive;
+        if (!view || memcmp(view, n->view, sizeof n->view)) {
+            struct GfxWorldView world;
+            renderer_world_view(self, n->view, NULL, &world);
+            gfx_set_world_view(&world);
+            view = n->view;
+        }
+        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
+    }
+}
+
+/* custom: the shadow maps of this frame's model and ground meshes, which both then receive them
+   (self->shadowDrawn) */
+static void draw_shadow_maps(struct Renderer *self)
+{
     int cascade;
 
+    self->shadowDrawn = 0;
     if (!self->shadowPending)
-        return 0;
+        return;
     self->shadowPending = 0;
-    if (!l->count || !gfx_shadow_begin(&self->shadow))
-        return 0;
+    if (!self->queues[RENDER_MODEL_MESH].count && !self->queues[RENDER_GROUND_MESH].count)
+        return;
+    if (!gfx_shadow_begin(&self->shadow))
+        return;
     for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
-        const float *view = NULL;
         if (!gfx_shadow_cascade(cascade))
             continue;
-        for (size_t i = 0; i < l->count; ++i) {
-            struct RPMeshDraw *n = l->items[i].primitive;
-            if (!view || memcmp(view, n->view, sizeof n->view)) {
-                struct GfxWorldView world;
-                renderer_world_view(self, n->view, NULL, &world);
-                gfx_set_world_view(&world);
-                view = n->view;
-            }
-            gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
-        }
+        draw_shadow_casters(self, RENDER_MODEL_MESH);
+        draw_shadow_casters(self, RENDER_GROUND_MESH);
+        self->shadowDrawn = 1;
     }
     gfx_shadow_end();
-    return 1;
 }
 
 static void flush_opaque_lists(struct Renderer *self)
 {
-    int shadows = draw_shadow_map(self);
+    draw_shadow_maps(self);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
     flush_plain(self, RENDER_OPAQUE_CLAMP, 1, 1);
-    if (shadows)
-        gfx_shadow_receive(1);
+    if (self->shadowDrawn)
+        gfx_shadow_receive(GFX_SHADOW_MODELS);
     flush_mesh_queue(self, RENDER_MODEL_MESH);
-    if (shadows)
+    if (self->shadowDrawn)
         gfx_shadow_receive(0);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_WRAP);
     flush_plain(self, RENDER_OPAQUE_WRAP, 1, 1);
@@ -588,7 +600,11 @@ static void renderer_draw_lists(struct Renderer *self)
             HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
             flush_water_bump(self);
+            if (self->shadowDrawn)
+                gfx_shadow_receive(GFX_SHADOW_GROUND);
             flush_mesh_queue(self, RENDER_GROUND_MESH);
+            if (self->shadowDrawn)
+                gfx_shadow_receive(0);
             HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
         } else {

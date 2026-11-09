@@ -13169,3 +13169,41 @@ white, shadowed black) found the band the soft edges shaded on the beam and show
 slope bias. `build.bat check` and the full
 `tests\build.bat` pass. Not done: shadows from models outside the frame's draws, the GL backend,
 a frame-time measurement, and a setting for the softness.
+
+## The shadow maps replace the baked shadows (2026-11-09)
+
+Patrick asked for the moving windmill sails at yuno_fild01's south gate to shade the ground, and
+then said what the shadow maps are for: to replace the shadows the map's editor baked into the
+lightmaps, matching them.
+
+- **One map for models and ground.** The ground's meshes now cast into the shadow maps as the
+  models' do (each ground surface gets its face's normal, so the offset and the slope bias work on
+  it), and both receive them. A first version kept a second set of maps, cast only by animated
+  model nodes, for the ground alone, so that it would not darken the baked shadows twice; with
+  the baked shadows replaced there is nothing to darken twice, and it went.
+- **The ground's receiving shader** (`ground_hlsl`, `GFX_SHADOW_GROUND`) does what its two stages
+  do, lightmap colour plus intensity times texture times colour, but takes the intensity as lit
+  down to the darkness of a shadow and lets the shadow maps darken it instead; texels darker than
+  a shadow keep their own darkness (`saturate(intensity / darkness)`). Where the shadow maps are
+  not drawn (no shader model 3, `RAGEXE_SHADOWS=0`, the GL backend, a surface on the CPU path),
+  the baked shadows stay as before.
+- **How dark.** The baked intensities are two levels: 128 in shadow, 255 in the sun, some 45
+  percent of the texels each in the GNDs of yuno_fild01, prontera and iz_int03, the rest on the
+  edges between. A shadow is therefore half the lit colour (`SHADOW_DARKNESS`, 128/255), for the
+  ground and the models alike. That replaces the colour without the diffuse light that each model
+  corner (`shadowColours`, `shadowGround`) and ground corner carried before, which was darker than
+  the baked shadows (the map's ambient alone, 0.3 at yuno_fild01); the vertex loses that colour.
+- **Which way.** The light vector is the direction the light travels. Mirroring x was tried after
+  one windmill's shadow seemed to fall the wrong way, but it had been compared with another
+  windmill's baked shadow: a test build drew, on every ground pixel, the baked intensity and the
+  shadow test side by side, and the share of pixels shaded in both over those shaded in either
+  came to 0.49, 0.72 and 0.37 on `yuno_gate`, `prontera_crowd` and `camera_level_view` as it is,
+  against 0.29, 0.09 and 0.25 with x mirrored, and at most 0.35 with z or both.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: side by side with the unchanged objects, the
+shadows on the ground of the three maps fall where the baked ones did, about as dark; the
+windmill's sails shade the grass as they turn. `build.bat check` and the full `tests\build.bat`
+pass. Not done: alpha-keyed faces (tree leaves) and texture-animated faces do not cast, models
+outside the frame's draws and models fading, highlighted or seen blind do not cast, the ground's
+half-alpha surfaces keep the baked shadows and its water takes none, and the models' ground-lit colours
+(`lightInts`, from the lightmap under them) still carry the baked shadows.

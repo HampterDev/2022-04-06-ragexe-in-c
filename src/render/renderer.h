@@ -42,7 +42,7 @@ struct Renderer {
     float lightDir[3];
     int lightSet;
     struct GfxShadow shadow;
-    int shadowPending;
+    int shadowPending, shadowDrawn;
 };
 
 void renderer_set_projection(struct Renderer *self, int width, int height);

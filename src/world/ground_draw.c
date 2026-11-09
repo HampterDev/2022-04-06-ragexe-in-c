@@ -283,14 +283,24 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
         const struct GndSurface *s = list[i].surface;
         struct GndGpuDraw *d = b->drawCount ? &b->draws[b->drawCount - 1] : NULL;
 
+        const float *p0 = s->v[0].pos, *p1 = s->v[1].pos, *p2 = s->v[2].pos;
+        float e1[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
+        float e2[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
+        float n[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
+        float len = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+
+        for (k = 0; k < 3 && len > 0.0f; k++)
+            n[k] /= len;
         for (k = 0; k < 4; k++) {
             struct GfxMeshVertex *v = &verts[i * 4 + k];
 
             v->x = s->v[k].pos[0];
             v->y = s->v[k].pos[1];
             v->z = s->v[k].pos[2];
-            v->nx = v->ny = v->nz = 0.0f;
-            v->diffuse = v->shadow = s->v[k].colour;
+            v->nx = n[0];
+            v->ny = n[1];
+            v->nz = n[2];
+            v->diffuse = s->v[k].colour;
             v->u0 = s->v[k].u;
             v->v0 = s->v[k].v;
             v->u1 = s->v[k].lu;

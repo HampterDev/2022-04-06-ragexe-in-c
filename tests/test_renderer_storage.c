@@ -190,7 +190,7 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count)
 int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
 int gfx_shadow_cascade(int cascade) { (void)cascade; abort(); }
 void gfx_shadow_end(void) { abort(); }
-void gfx_shadow_receive(int on) { (void)on; abort(); }
+void gfx_shadow_receive(int receiver) { (void)receiver; abort(); }
 void renderer_world_view(const struct Renderer *renderer, const float *view, const float *scale,
                          struct GfxWorldView *out)
 {

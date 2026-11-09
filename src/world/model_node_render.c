@@ -163,16 +163,6 @@ static DWORD gpu_corner_colour(const struct C3dNode *node, int face, int corner)
     return (info->colour[corner] & 0x00ffffff) | 0xff000000;
 }
 
-/* the same corner's colour in shadow (C3dNode.shadowColours), its lit colour where there is none */
-static DWORD gpu_corner_shadow(const struct C3dNode *node, int face, int corner)
-{
-    const DWORD *shade = g_weather.ground_lighting ? node->shadowGround : node->shadowColours;
-
-    if (!shade)
-        return gpu_corner_colour(node, face, corner);
-    return (shade[face * 3 + corner] & 0x00ffffff) | 0xff000000;
-}
-
 static int gpu_build(struct C3dNode *node, int version)
 {
     struct AnimMesh *mesh = node->mesh;
@@ -249,7 +239,6 @@ static int gpu_build(struct C3dNode *node, int version)
             v->y = p->y;
             v->z = p->z;
             v->diffuse = gpu_corner_colour(node, list[i].face, k);
-            v->shadow = gpu_corner_shadow(node, list[i].face, k);
             v->u0 = info->uv[k][0];
             v->v0 = info->uv[k][1];
             v->u1 = v->v1 = 0.0f;

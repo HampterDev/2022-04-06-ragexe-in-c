@@ -137,6 +137,10 @@ void renderer_world_view(const struct Renderer *self, const float *view, const f
    first drawn here blurred them (0.8 units a texel at the default zoom); at 1.5 the edges spread
    over three units and the shadows of thin casters, such as a lamp post's, faded away */
 #define SHADOW_SOFTNESS 0.5f
+/* how dark a shadow is: the lightmaps the map's editor baked hold 128 in shadow and 255 in the
+   sun (the GNDs of yuno_fild01, prontera and iz_int03: some 45 percent of texels each, the rest
+   on the edges between), and the ground draws its colour times that intensity */
+#define SHADOW_DARKNESS (128.0f / 255.0f)
 
 static int invert_4x3(const float *m, float *out)
 {
@@ -182,7 +186,10 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     if (!(len > 0.0f))
         return;
     /* the map's light vector points the way the light travels: Prontera's is (0.5, 0.707, 0.5),
-       down (+y) onto the map; taken the other way, the shadow map looked up from under it */
+       down (+y) onto the map; taken the other way, the shadow map looked up from under it. The
+       shadows then fall where the map's editor baked them into the lightmaps: on the ground of
+       yuno_fild01's south gate and two Prontera scenes, the baked and the drawn shadows overlap
+       0.49, 0.72 and 0.37 (shared over either), against 0.09 to 0.35 with x, z or both mirrored. */
     for (i = 0; i < 3; i++)
         f[i] = self->lightDir[i] / len;
     k = fabsf(f[0]) <= fabsf(f[1]) ? (fabsf(f[0]) <= fabsf(f[2]) ? 0 : 2) : (fabsf(f[1]) <= fabsf(f[2]) ? 1 : 2);
@@ -313,6 +320,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
             shadow->lightView[i] /= len;
     shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
     shadow->slant = SHADOW_SOFTNESS / (2.0f * SHADOW_DEPTH);
+    shadow->darkness = SHADOW_DARKNESS;
     self->shadowPending = 1;
 }
 

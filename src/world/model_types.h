@@ -65,11 +65,6 @@ struct C3dNode {
     BYTE highlight;
     struct ModelGpu *gpu;
     int gpuState;
-    /* custom: each face corner's colour in shadow, as c3d_node_light and
-       c3d_node_light_from_ground (world/model_node_light.c) give the lit one in faceInfo and
-       lightInts but without the map's diffuse light: shadowColours beside FaceInfo.colour,
-       shadowGround (packed) beside lightInts. NULL leaves them out. */
-    DWORD *shadowColours, *shadowGround;
 };
 
 void model_node_gpu_free(struct C3dNode *node);
