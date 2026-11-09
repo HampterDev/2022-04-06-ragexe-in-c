@@ -394,8 +394,10 @@ backend is usable there until a Metal backend exists). All client geometry but t
 models' opaque faces arrives pre-transformed (D3D `XYZRHW`), so one vertex shader maps D3D9 pixel
 centres to GL clip space with the vertex's `1/rhw` as `w`; the static meshes of those two
 (`gfx_draw_mesh`, *render/gfx.h*) take a matrix to the same pixel space times the view depth, so
-they land on the same pixels, work out their fog from that depth and scale their colour by the
-weather colour, rounding down as the CPU does. One fragment shader evaluates the two fixed-function texture stages
+they land on the same pixels, work out their fog from that depth, scale their colour by the draw's
+colour, rounding down as the CPU does, and its alpha by the draw's alpha, and turn the first
+texture's coordinates by the draw's transform; the vertex's first or second colour is the
+diffuse. One fragment shader evaluates the two fixed-function texture stages
 (`GFX_TOP_*`, argument modifiers, bump-env offsets), the specular-alpha vertex fog and the alpha
 test. Positions move 1/128 pixel up and left before rasterization: GL breaks ties on
 horizontal edges the other way from D3D's top-left rule, so a quad on whole-pixel
@@ -413,7 +415,7 @@ thread creates textures. `tests/test_gfx_gl.c` drives the backend through the gf
 pixels: clears, D3D pixel-centre edges, all texture formats, alpha test, vertex fog, blending, render
 target orientation and system-surface blits. A mesh keeps its arrays and gets its GL buffers on its
 first draw, on the main thread; the test does not draw one yet. The backend draws no shadow maps
-yet: `gfx_shadow_begin` answers 0, and the models are drawn without shadows.
+yet: `gfx_shadow_begin` answers 0, and the meshes are drawn without shadows.
 
 ### What was verified
 

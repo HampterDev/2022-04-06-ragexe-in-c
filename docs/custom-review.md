@@ -13234,3 +13234,69 @@ highlighted nodes changed no pixel of these scenes (none of them has an alpha-ke
 view or a fading building), so they are built and queued but not seen in a capture.
 `build.bat check` and the full `tests\build.bat` pass; `test_renderer_storage` feeds the new
 queue.
+
+## Every model face from the mesh, and shaders for every mesh (2026-11-09)
+
+Patrick asked what still had to be kept in step with the CPU path, then to work through the list.
+The first item was the nodes split between the two paths: a node drew some textures from its mesh
+and the rest on the CPU (`inMesh`, `allInMesh`), fell back to the CPU entirely while it faded, was
+highlighted or the player was blind, and cast from a second mesh (`casterMesh`) through a
+shadow-only queue. All of that came from four things the CPU did per vertex (the actor's alpha,
+the highlight, the blind tint, texture-coordinate animation) and from the alpha-texture faces,
+which have to sort with the other alpha quads.
+
+- **Shaders only.** Fixed-function Direct3D 9 could give the draw a colour scale only through its
+  lighting, and could not reproduce the clamped lighting the next step needs, so a mesh is now
+  drawn by shaders alone: `gfx_mesh_create` compiles them for the device's first mesh
+  (`d3dcompiler_47.dll`, shader model 3) and answers NULL without them, and the ground and the
+  models then take the CPU path. The model and ground draws share one vertex shader
+  (`meshVertex`); the shadow maps sit on samplers 2 to 5 for both, and are sampled only while
+  `gfx_shadow_receive(1)` is on, which the renderer turns on after drawing the maps and off at the
+  end of the frame; otherwise the cascades' far depths are 0 and every pixel counts as lit. The
+  fixed-function mesh path, its material and light-0 handling are gone. The scale rounds down
+  exactly in the shader, where fixed-function lighting came within a step.
+- **A draw's own state.** `struct GfxMeshDraw` carries what the stages would do (`kind`: model or
+  ground), the vertex colour to use (`second`: a vertex now has `diffuse` and `colour2`), a colour
+  whose red, green and blue scale the vertex colour, rounded down as before, and whose alpha
+  multiplies its alpha, and a 2x3 transform of the first texture's coordinates.
+  `GfxWorldView.colourScale` moved into it.
+- **One mesh per node, every face.** The mesh holds all of a node's faces, sorted into draws of one
+  texture and one `twoSided`; `diffuse` is the ground-lit colour (`lightInts`) and `colour2` the
+  node's own (`FaceInfo`), both opaque. Each frame `gpu_render` gives every draw what
+  `face_colours` and the loops give its faces' quads: the weather colour, or the weather tint and
+  the node's own colour for a blind player, the node's own colour also while ground lighting is
+  off (so the mesh no longer has to be rebuilt when it changes), the actor's alpha, and on a
+  version 2 node its texture-coordinate animation as the transform `uv_turn_matrix` makes from
+  `uv_turn`'s steps. Its list flags are the loops' own, and `renderer_mesh_pass` maps them to the
+  queue `renderer_add_prim` would use (`RENDER_OPAQUE_CLAMP`, `_WRAP`, `RENDER_ALPHA_CLAMP`,
+  `_WRAP`, `_WRITE_DEPTH`); in an alpha list the draw is keyed by the rhw of its first face's
+  first corner, as a quad by its first vertex. The CPU loops stay for a node whose mesh cannot be
+  made.
+- **Mesh draws among the quads.** A `RenderEntry` now says whether it holds a mesh draw;
+  `flush_plain` and `flush_keyed` draw those with `draw_mesh_entry` (world view when it changes,
+  cull mode set and put back, textures), so they are sorted and drawn with the quads of their list
+  and its states, two-pass alpha included. `RENDER_MODEL_MESH` is gone and `RENDER_SHADOW_ONLY`
+  became `RENDER_SHADOW_CASTERS`, which every model draw also goes into; the ground's draws stay in
+  `RENDER_GROUND_MESH` and cast from there. Casters are drawn without their cull modes.
+- **The highlight.** `C3dNode.highlight` was only read and cleared; nothing in this tree sets it,
+  on `main` either. It and its colours in `face_colours` are removed.
+
+No model in this tree fades: `world_model_create` sets every model actor's `pickable` to 0, so
+`c3d_actor_pick` and `fade` never change its alpha, and the alpha path was checked through the
+alpha-texture draws instead.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1` (pixels differing by more than one step, then
+by more than 16). Against the CPU-only build, with `RAGEXE_SHADOWS=0`: `prontera_crowd` 1,176
+and 114, `camera_level_view` 244 and 204 (moving 942 and 641), `granny_models` 242 and 206,
+`guild_flags` 244 to 247 and 208, `yuno_gate` 21 to 23 and 15 to 17, as with the old path, and
+`iz_int03_enter` 3 and 2 (12 and 6 before, the exact rounding). Against the build before, with
+shadows: 0 in `prontera_crowd`, `camera_level_view` and the six `yuno_gate` frames, 3 to 22 in
+`granny_models`, `guild_flags` and `iz_int03_enter`, and 615 in `camera_level_view_moving`, a row
+along a flower bed's top edge where two faces at one depth meet and the other one now wins, since
+the model draws sort with the opaque quads by texture. Six spots on maps built from version 2
+models, where a temporary log showed alpha-texture draws in four (`wolfvill` twice, `ba_maison`,
+`nif_dun01`) and animated texture coordinates in two of them, differ from the CPU-only build in 0
+to 298 pixels, seams where two faces meet at one depth; the animated and alpha faces themselves
+match. `test_model_mesh_load` checks `uv_turn_matrix` against `uv_turn`; `test_renderer_storage`
+queues a model draw into an alpha list. Not seen in a capture: a blind player. Not run: GL,
+`x64`, `freetype`, CMake and the other platforms.

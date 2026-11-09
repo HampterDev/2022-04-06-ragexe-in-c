@@ -29,10 +29,7 @@ void model_node_gpu_free(struct C3dNode *node)
 
     if (g) {
         gfx_mesh_destroy(g->mesh);
-        gfx_mesh_destroy(g->casterMesh);
         free(g->draws);
-        free(g->casterDraws);
-        free(g->inMesh);
         free(g);
     }
     node->gpu = NULL;
@@ -217,6 +214,25 @@ void uv_turn(const struct UvTransform *x, float *u, float *v)
     nv = x->scale[1] * b + 0.5f + x->offset[1];
     *u = nu;
     *v = nv;
+}
+
+void uv_turn_matrix(const struct UvTransform *x, float *uv)
+{
+    float c, s;
+
+    if (!x) {
+        uv[0] = uv[3] = 1.0f;
+        uv[1] = uv[2] = uv[4] = uv[5] = 0.0f;
+        return;
+    }
+    c = float_cos(x->angle);
+    s = float_sin(x->angle);
+    uv[0] = x->scale[0] * c;
+    uv[2] = -x->scale[0] * s;
+    uv[4] = x->scale[0] * (s - c) * 0.5f + 0.5f + x->offset[0];
+    uv[1] = x->scale[1] * s;
+    uv[3] = x->scale[1] * c;
+    uv[5] = -x->scale[1] * (s + c) * 0.5f + 0.5f + x->offset[1];
 }
 
 void c3d_node_get_bound(struct C3dNode *self, float *box, const float *parent)

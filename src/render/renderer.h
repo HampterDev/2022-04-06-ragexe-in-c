@@ -43,6 +43,9 @@ struct Renderer {
     int lightSet;
     struct GfxShadow shadow;
     int shadowPending, shadowDrawn;
+    /* custom: the view of the world view the mesh draws set last this frame (render/gfx.h) */
+    float meshView[12];
+    int meshViewSet;
 };
 
 void renderer_set_projection(struct Renderer *self, int width, int height);
@@ -60,7 +63,7 @@ void renderer_enable_fog(struct Renderer *self, int enable);
 void renderer_set_light(struct Renderer *self, const float *dir,
                        const float *diffuse, const float *ambient);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
-/* custom: shadows for the models' meshes this frame (render/gfx.h): cascades along the map's light
+/* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light
    fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
    with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). */
 void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);

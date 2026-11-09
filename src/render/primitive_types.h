@@ -2,6 +2,7 @@
 #define RENDER_PRIMITIVE_TYPES_H
 
 #include <stdint.h>
+#include "render/gfx.h"
 
 struct Texture;
 
@@ -48,17 +49,14 @@ struct RPTwoTexQuad {
     struct RPTwoTexVertex quad[4];
 };
 
-struct gfx_mesh;
-
-/* custom: a draw of part of a static mesh (render/gfx.h), queued like the primitives above; view
-   takes the mesh's own coordinates to view space (render/rp_project.c), scale multiplies its
-   colours, and cull is the cull mode it is drawn with, 0 for the one its queue's flush has set */
+/* custom: a draw of part of a static mesh (render/gfx.h), queued among the primitives above; view
+   takes the mesh's own coordinates to view space (render/rp_project.c), and cull is the cull mode
+   it is drawn with, 0 for the one its queue's flush has set */
 struct RPMeshDraw {
     struct gfx_mesh *mesh;
-    int first, count;
     float view[12];
-    float scale[3];
     int cull;
+    struct GfxMeshDraw draw;
 };
 
 struct PrimTriangle {

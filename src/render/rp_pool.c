@@ -315,6 +315,7 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     queue->items[queue->count].order = (unsigned)queue->count;
     queue->items[queue->count].textures[0] = retain_texture(texture0);
     queue->items[queue->count].textures[1] = retain_texture(texture1);
+    queue->items[queue->count].mesh = 0;
     ++queue->count;
 }
 
@@ -450,24 +451,41 @@ void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int lis
     renderer_add_prim(r, q, list_flags);
 }
 
-void renderer_add_mesh_draw(struct Renderer *self, int pass, struct gfx_mesh *mesh, int first, int count,
-                            const float *view, const float *scale, struct Texture *texture0,
-                            struct Texture *texture1, int cull)
+/* the queue renderer_add_prim puts a quad with these flags in, of those a model's quads use */
+int renderer_mesh_pass(int flags)
 {
-    struct RPMeshDraw *draw;
-    int i;
+    if (!(flags & 1))
+        return flags & 0x20 ? RENDER_OPAQUE_WRAP : RENDER_OPAQUE_CLAMP;
+    if (flags & 0x20)
+        return RENDER_ALPHA_WRAP;
+    return flags & 0x8000 ? RENDER_ALPHA_WRITE_DEPTH : RENDER_ALPHA_CLAMP;
+}
 
-    if (!mesh || count <= 0 || (pass != RENDER_GROUND_MESH && pass != RENDER_MODEL_MESH && pass != RENDER_SHADOW_ONLY))
+void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMeshDraw *draw, struct Texture *texture0,
+                            struct Texture *texture1, float key)
+{
+    struct RPMeshDraw *copy;
+    struct RenderQueue *queue;
+
+    if (!draw || !draw->mesh || draw->draw.count <= 0)
         return;
-    draw = pool_take(&self->storage->mesh_draws, 1);
-    draw->mesh = mesh;
-    draw->first = first;
-    draw->count = count;
-    memcpy(draw->view, view, sizeof draw->view);
-    for (i = 0; i < 3; i++)
-        draw->scale[i] = scale ? scale[i] : 1.0f;
-    draw->cull = cull;
-    queue_append(&self->queues[pass], draw, 0.0f, texture0, texture1);
+    switch (pass) {
+    case RENDER_OPAQUE_CLAMP:
+    case RENDER_OPAQUE_WRAP:
+    case RENDER_ALPHA_CLAMP:
+    case RENDER_ALPHA_WRAP:
+    case RENDER_ALPHA_WRITE_DEPTH:
+    case RENDER_GROUND_MESH:
+    case RENDER_SHADOW_CASTERS:
+        break;
+    default:
+        return;
+    }
+    copy = pool_take(&self->storage->mesh_draws, 1);
+    *copy = *draw;
+    queue = &self->queues[pass];
+    queue_append(queue, copy, key, texture0, texture1);
+    queue->items[queue->count - 1].mesh = 1;
 }
 
 void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVertex *vertex)

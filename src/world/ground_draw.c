@@ -300,7 +300,7 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
             v->nx = n[0];
             v->ny = n[1];
             v->nz = n[2];
-            v->diffuse = s->v[k].colour;
+            v->diffuse = v->colour2 = s->v[k].colour;
             v->u0 = s->v[k].u;
             v->v0 = s->v[k].v;
             v->u1 = s->v[k].lu;
@@ -377,6 +377,15 @@ static int gpu_usable(struct C3dGround15 *self)
 static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells, char clip)
 {
     int frame = g_renderer->frame, bx0, by0, bx1, by1, bx, by, i;
+    struct RPMeshDraw draw;
+
+    memset(&draw, 0, sizeof draw);
+    memcpy(draw.view, view, sizeof draw.view);
+    draw.draw.kind = GFX_MESH_GROUND;
+    for (i = 0; i < 3; i++)
+        draw.draw.colour[i] = g_weather.color[i];
+    draw.draw.colour[3] = 1.0f;
+    draw.draw.uv[0] = draw.draw.uv[3] = 1.0f;
 
     bx0 = cells[0] < 0 ? 0 : cells[0] / GND_GPU_BLOCK;
     by0 = cells[1] < 0 ? 0 : cells[1] / GND_GPU_BLOCK;
@@ -394,10 +403,13 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
             if (b->lastFrame == frame)
                 continue;
             b->lastFrame = frame;
-            for (i = 0; i < draws; i++)
-                renderer_add_mesh_draw(g_renderer, RENDER_GROUND_MESH, b->mesh, b->draws[i].first,
-                                       b->draws[i].count, view, g_weather.color, b->draws[i].texture,
-                                       b->draws[i].lightmap, 0);
+            draw.mesh = b->mesh;
+            for (i = 0; i < draws; i++) {
+                draw.draw.first = b->draws[i].first;
+                draw.draw.count = b->draws[i].count;
+                renderer_add_mesh_draw(g_renderer, RENDER_GROUND_MESH, &draw, b->draws[i].texture,
+                                       b->draws[i].lightmap, 0.0f);
+            }
             if (!g_playerBlind)
                 for (i = 0; i < b->halfCount; i++)
                     c3d_ground15_draw_surface(self, view, b->half[i], clip);

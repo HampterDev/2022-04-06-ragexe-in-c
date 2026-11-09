@@ -26,15 +26,15 @@ void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
 void renderer_add_two_tex_prim(struct Renderer *self, struct RPTwoTex *prim, int which);
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
-/* custom: queues `count` indices from `first` of a static mesh (render/gfx.h) with the matrix
-   `view` from its coordinates to view space, the colour scale `scale` (NULL: none), the two
-   textures and the cull mode `cull` (0: the flush's own). RENDER_GROUND_MESH is drawn where the
-   ground's two-texture quads are, with their states; RENDER_MODEL_MESH where the opaque quads of
-   RENDER_OPAQUE_CLAMP are, with theirs; RENDER_SHADOW_ONLY only into the shadow maps, its first
-   texture, where there is one, tested for alpha. */
-void renderer_add_mesh_draw(struct Renderer *self, int pass, struct gfx_mesh *mesh, int first, int count,
-                            const float *view, const float *scale, struct Texture *texture0,
-                            struct Texture *texture1, int cull);
+/* custom: queues a draw of a static mesh (render/gfx.h) with its two textures. In the queue that
+   renderer_mesh_pass gives for the flags a model's quads would have, the draw takes their place,
+   drawn among them with their states and, where that queue sorts by depth, by `key` (the rhw of
+   its first vertex, as theirs); RENDER_GROUND_MESH is drawn where the ground's two-texture quads
+   are, with their states; RENDER_SHADOW_CASTERS only into the shadow maps, its first texture,
+   where there is one, tested for alpha. */
+int renderer_mesh_pass(int flags);
+void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMeshDraw *draw, struct Texture *texture0,
+                            struct Texture *texture1, float key);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
 int rp_vertex_fog_alpha(float rhw);

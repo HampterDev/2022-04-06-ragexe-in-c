@@ -182,19 +182,18 @@ static int mesh_token;
 static const float mesh_view[12] = {12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
 void gfx_set_world_view(const struct GfxWorldView *view)
 { assert(!memcmp(view->view, mesh_view, sizeof mesh_view)); word(7); }
-void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count)
+void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw)
 {
-    assert(mesh == (gfx_mesh *)&mesh_token && !model && first == 0 && count == 3);
-    word(6); word((unsigned)first); word((unsigned)count); sample_textures(); ++draws;
+    assert(mesh == (gfx_mesh *)&mesh_token && draw->first == 0 && draw->count == 3);
+    word(6); word((unsigned)draw->first); word((unsigned)draw->count); sample_textures(); ++draws;
 }
 int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
 int gfx_shadow_cascade(int cascade) { (void)cascade; abort(); }
 void gfx_shadow_end(void) { abort(); }
-void gfx_shadow_receive(int receiver) { (void)receiver; abort(); }
-void renderer_world_view(const struct Renderer *renderer, const float *view, const float *scale,
-                         struct GfxWorldView *out)
+void gfx_shadow_receive(int receive) { assert(!receive); }
+void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out)
 {
-    assert(renderer == g_renderer && scale && scale[0] == 1.0f && scale[1] == 1.0f && scale[2] == 1.0f);
+    assert(renderer == g_renderer);
     memset(out, 0, sizeof *out); memcpy(out->view, view, sizeof out->view);
 }
 int gfx_begin_scene(void) { abort(); }

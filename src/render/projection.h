@@ -19,11 +19,9 @@ void renderer_project_multitex_vertex(struct Renderer *renderer, const Vec3 *poi
 
 float renderer_project_depth(float rhw);
 /* custom: the projection of renderer_project_vertex and the vertex fog of rp_vertex_fog_alpha for
-   the view matrix `view`, with the colour scale `scale` (NULL: none), for static meshes the device
-   projects (render/gfx.h) */
+   the view matrix `view`, for static meshes the device projects (render/gfx.h) */
 struct GfxWorldView;
-void renderer_world_view(const struct Renderer *renderer, const float *view, const float *scale,
-                         struct GfxWorldView *out);
+void renderer_world_view(const struct Renderer *renderer, const float *view, struct GfxWorldView *out);
 float renderer_screen_scale(struct Renderer *renderer, float rhw);
 float renderer_scale_x(struct Renderer *renderer);
 

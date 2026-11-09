@@ -215,11 +215,13 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
    else arrives projected by the CPU (renderer_project_vertex, render/rp_project.c). A mesh keeps
    its vertices and indices; the device copies them to its own buffers on the first draw and again
    after it is recreated. Indices are triangle lists into the mesh's own vertices. Meshes are made,
-   drawn and destroyed on the thread that draws. */
+   drawn and destroyed on the thread that draws. A device draws meshes with shaders only:
+   gfx_mesh_create answers NULL where it has none, and the geometry then goes the CPU's way.
+   A vertex has two colours, a draw picks one (GfxMeshDraw). */
 struct GfxMeshVertex {
     float x, y, z;
     float nx, ny, nz;
-    DWORD diffuse;
+    DWORD diffuse, colour2;
     float u0, v0, u1, v1;
 };
 
@@ -229,30 +231,44 @@ struct GfxMeshVertex {
    (x * proj[0] / vz + centre[0], y * proj[1] / vz + centre[1]) with the depth
    (vz - nearZ) * depthScale / vz, as a pre-transformed vertex with rhw 1 / vz would. Its fog factor
    is (fogEnd - vz) / (fogEnd - fogStart), clamped to 0..1, as rp_vertex_fog_alpha puts it in the
-   specular alpha of a pre-transformed vertex. The red, green and blue of a vertex's colour are
-   multiplied by colourScale (0..1) and rounded down, as the CPU scales them by the weather colour;
-   a device that cannot round does so to within a step. */
+   specular alpha of a pre-transformed vertex. */
 struct GfxWorldView {
     float view[12];
     float proj[2];
     float centre[2];
     float nearZ, depthScale;
     float fogStart, fogEnd;
-    float colourScale[3];
+};
+
+/* One draw of a mesh: `count` indices from `first`, a multiple of three each. kind picks what the
+   stages would do with the bound textures: GFX_MESH_MODEL texture times colour, both colour and
+   alpha; GFX_MESH_GROUND that times the lightmap's alpha, plus its colour, as the ground's
+   two-texture quads have it. The vertex colour is the vertex's diffuse, or colour2 with
+   second set; its red, green and blue are multiplied by colour (0..1) and rounded down, as the CPU
+   scales them by the weather colour, its alpha by colour[3]. The first texture's coordinates go
+   through uv: (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]). The render states
+   (blending, the alpha test, depth, culling, fog on or off) and the texture addressing are the
+   current ones, as they would be for gfx_draw. */
+#define GFX_MESH_MODEL 1
+#define GFX_MESH_GROUND 2
+
+struct GfxMeshDraw {
+    int kind, first, count, second;
+    float colour[4];
+    float uv[6];
 };
 
 gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices);
 void gfx_mesh_destroy(gfx_mesh *mesh);
 void gfx_set_world_view(const struct GfxWorldView *view);
-/* Draws `count` indices from `first` (a multiple of three each) with the bound textures and the
-   current render and stage states, as gfx_draw would draw the same triangles pre-transformed.
-   model is a 4x3 matrix in the view's layout that places the mesh in the world, NULL for none. */
-void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
+/* Draws as gfx_draw would draw the same triangles pre-transformed, in the world view set last. */
+void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
 
 /* custom: cascaded shadow maps for meshes, each GFX_SHADOW_SIZE texels square. Between
    gfx_shadow_begin and gfx_shadow_end, gfx_draw_mesh draws the meshes' depth from the light into
    the cascade gfx_shadow_cascade chose instead of colour, testing the texture bound to stage 0,
-   where there is one, for alpha: texels the opaque lists' alpha test (0xcf) drops cast nothing.
+   where there is one, for alpha at the draw's texture coordinates: texels the opaque lists' alpha
+   test (0xcf) drops cast nothing.
    fromView[c] takes the view space of the draws' world views to cascade c's light space, row
    vectors: x and y from -1 to 1 across its map, z from 0 to 1 along the light. While
    gfx_shadow_receive is on, gfx_draw_mesh draws a vertex's colour times darkness where its pixel
@@ -263,18 +279,12 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
    surface's normal comes from the vertex's), as the share of 16 points spread over a disc of
    radius blur[c] (texture units of the cascade's map) that are lit, so that shadow edges fade over
    a fixed width. Over that disc a surface at a slant to the light moves along it, so the bias grows
-   by slant (light depth) times the tangent of that slant, up to 8 times. It is meant for draws with
-   the stage states of opaque
-   meshes (texture times colour). gfx_shadow_begin answers 0 where the device cannot draw shadows,
-   and the receiving draws then look as before.
-   gfx_shadow_receive picks the receiving draws: GFX_SHADOW_MODELS with the stages above,
-   GFX_SHADOW_GROUND with the stages of the ground's two-texture quads (texture times colour,
-   times the lightmap's alpha, plus its colour), where the shadow maps take the place of the
-   lightmap's alpha, the shadows the map's editor baked into it; 0 turns receiving off. */
+   by slant (light depth) times the tangent of that slant, up to 8 times. On a GFX_MESH_GROUND draw
+   the shadow maps take the place of the lightmap's alpha, the shadows the map's editor baked into
+   it. gfx_shadow_begin answers 0 where the device cannot draw shadows; gfx_shadow_receive(0)
+   turns receiving off, and the draws then look as without shadows. */
 #define GFX_SHADOW_SIZE 2048
 #define GFX_SHADOW_CASCADES 4
-#define GFX_SHADOW_MODELS 1
-#define GFX_SHADOW_GROUND 2
 
 struct GfxShadow {
     int cascades;

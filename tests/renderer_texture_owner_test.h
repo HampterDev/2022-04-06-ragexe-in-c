@@ -182,6 +182,7 @@ static void queued_all_routes(struct Renderer *renderer)
     struct TexDrawPrim *quad = renderer_new_prim(renderer);
     struct RPTwoTexQuad *pair = renderer_new_two_tex_quad(renderer);
     struct PrimTriangle triangle = {0};
+    struct RPMeshDraw draw;
     unsigned flags, mode, i, submissions = 0;
     quad->base.texture = texture;
     for (i = 0; i < 4; ++i) quad->quad[i].rhw = 0.00125f;
@@ -195,12 +196,14 @@ static void queued_all_routes(struct Renderer *renderer)
     renderer_add_two_tex_prim(renderer, &pair->prim, 1);
     renderer_add_multi_tex_batch(renderer, &pair->prim);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
-    renderer_add_mesh_draw(renderer, RENDER_GROUND_MESH, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view,
-                           NULL, texture, texture, 0);
-    renderer_add_mesh_draw(renderer, RENDER_MODEL_MESH, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view,
-                           NULL, texture, NULL, GFX_CULL_CW);
-    renderer_add_mesh_draw(renderer, RENDER_SHADOW_ONLY, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view,
-                           NULL, texture, NULL, 0);
+    memset(&draw, 0, sizeof draw);
+    draw.mesh = (struct gfx_mesh *)&mesh_token;
+    memcpy(draw.view, mesh_view, sizeof draw.view);
+    draw.draw.count = 3;
+    renderer_add_mesh_draw(renderer, RENDER_GROUND_MESH, &draw, texture, texture, 0.0f);
+    renderer_add_mesh_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, NULL, 0.0f);
+    draw.cull = GFX_CULL_CW;
+    renderer_add_mesh_draw(renderer, renderer_mesh_pass(0x21), &draw, texture, NULL, 0.00125f);
     assert(surface->refs == 1 + submissions + 6 + 1 + 4);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;

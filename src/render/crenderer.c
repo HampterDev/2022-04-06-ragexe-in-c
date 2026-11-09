@@ -102,6 +102,33 @@ static void queue_sort(struct RenderQueue *queue, StdSortLessFn less)
         std_sort(queue->items, queue->items + queue->count, sizeof *queue->items, less, NULL);
 }
 
+/* custom: a mesh draw among a queue's entries (render/gfx.h): the world view of its view where that
+   differs from the last one set this frame, then for its colour its cull mode, put back after, and
+   its textures, or as a shadow caster (the shadow pass culls nothing) its first texture or none */
+static void draw_mesh_entry(struct Renderer *self, const struct RenderEntry *e, int caster, int textured)
+{
+    const struct RPMeshDraw *n = e->primitive;
+    DWORD cull = 0;
+
+    if (!self->meshViewSet || memcmp(self->meshView, n->view, sizeof n->view)) {
+        struct GfxWorldView world;
+        renderer_world_view(self, n->view, &world);
+        gfx_set_world_view(&world);
+        memcpy(self->meshView, n->view, sizeof self->meshView);
+        self->meshViewSet = 1;
+    }
+    if (n->cull && !caster) {
+        cull = get_rs(self, GFX_RS_CULLMODE);
+        HRS(self, GFX_RS_CULLMODE, (DWORD)n->cull);
+    }
+    set_tex0(self, textured ? e->textures[0].surface : NULL);
+    if (!caster)
+        set_tex1(self, e->textures[1].surface);
+    gfx_draw_mesh(n->mesh, &n->draw);
+    if (n->cull && !caster)
+        HRS(self, GFX_RS_CULLMODE, cull);
+}
+
 static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
 {
     struct RenderQueue *l = &self->queues[list];
@@ -111,6 +138,10 @@ static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
     for (size_t i = 0; i < l->count; ++i) {
         e = l->items + i;
         struct RPQuad *n = e->primitive;
+        if (e->mesh) {
+            draw_mesh_entry(self, e, 0, 1);
+            continue;
+        }
         if (skipNull && !n)
             continue;
         set_tex0(self, e->textures[0].surface);
@@ -125,6 +156,10 @@ static void flush_plain(struct Renderer *self, int list, int sort, int skipNull)
         queue_sort(l, quad_less);
     for (size_t i = 0; i < l->count; ++i) {
         struct RPQuad *n = l->items[i].primitive;
+        if (l->items[i].mesh) {
+            draw_mesh_entry(self, &l->items[i], 0, 1);
+            continue;
+        }
         if (skipNull && !n)
             continue;
         set_tex0(self, l->items[i].textures[0].surface);
@@ -152,36 +187,14 @@ static void flush_blended(struct Renderer *self, const struct RenderEntry *entry
     draw_quad(n);
 }
 
-/* custom: static meshes (render/gfx.h): the ground's, drawn with the states of its two-texture
-   quads in flush_water_bump, and the models' opaque faces, drawn with the states of
-   RENDER_OPAQUE_CLAMP. Sorted by texture as those are; a draw's cull mode is put back after. */
-static void flush_mesh_queue(struct Renderer *self, int list)
+/* custom: the ground's meshes (render/gfx.h), drawn with the states of its two-texture quads in
+   flush_water_bump and sorted by texture as those are */
+static void flush_ground_meshes(struct Renderer *self)
 {
-    struct RenderQueue *l = &self->queues[list];
-    const struct RPMeshDraw *last = NULL;
-    DWORD cull = 0;
-    int culled = 0;
+    struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
     queue_sort(l, two_tex_less);
-    for (size_t i = 0; i < l->count; ++i) {
-        struct RPMeshDraw *n = l->items[i].primitive;
-        if (!last || memcmp(last->view, n->view, sizeof n->view) || memcmp(last->scale, n->scale, sizeof n->scale)) {
-            struct GfxWorldView world;
-            renderer_world_view(self, n->view, n->scale, &world);
-            gfx_set_world_view(&world);
-            last = n;
-        }
-        if (n->cull) {
-            if (!culled)
-                cull = get_rs(self, GFX_RS_CULLMODE);
-            HRS(self, GFX_RS_CULLMODE, (DWORD)n->cull);
-            culled = 1;
-        }
-        set_tex0(self, l->items[i].textures[0].surface);
-        set_tex1(self, l->items[i].textures[1].surface);
-        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
-    }
-    if (culled)
-        HRS(self, GFX_RS_CULLMODE, cull);
+    for (size_t i = 0; i < l->count; ++i)
+        draw_mesh_entry(self, &l->items[i], 0, 1);
 }
 
 static void flush_alpha_keyed_lists(struct Renderer *self)
@@ -211,23 +224,13 @@ static void flush_blended_wrap(struct Renderer *self)
 static void draw_shadow_casters(struct Renderer *self, int list, int textured)
 {
     struct RenderQueue *l = &self->queues[list];
-    const float *view = NULL;
 
-    for (size_t i = 0; i < l->count; ++i) {
-        struct RPMeshDraw *n = l->items[i].primitive;
-        set_tex0(self, textured ? l->items[i].textures[0].surface : NULL);
-        if (!view || memcmp(view, n->view, sizeof n->view)) {
-            struct GfxWorldView world;
-            renderer_world_view(self, n->view, NULL, &world);
-            gfx_set_world_view(&world);
-            view = n->view;
-        }
-        gfx_draw_mesh(n->mesh, NULL, n->first, n->count);
-    }
+    for (size_t i = 0; i < l->count; ++i)
+        draw_mesh_entry(self, &l->items[i], 1, textured);
 }
 
-/* custom: the shadow maps of this frame's model and ground meshes and of the shadow-only ones,
-   which models and ground then receive (self->shadowDrawn) */
+/* custom: the shadow maps of this frame's casters and ground, which every mesh draw of the frame
+   then receives (self->shadowDrawn) */
 static void draw_shadow_maps(struct Renderer *self)
 {
     int cascade;
@@ -236,16 +239,14 @@ static void draw_shadow_maps(struct Renderer *self)
     if (!self->shadowPending)
         return;
     self->shadowPending = 0;
-    if (!self->queues[RENDER_MODEL_MESH].count && !self->queues[RENDER_GROUND_MESH].count
-        && !self->queues[RENDER_SHADOW_ONLY].count)
+    if (!self->queues[RENDER_SHADOW_CASTERS].count && !self->queues[RENDER_GROUND_MESH].count)
         return;
     if (!gfx_shadow_begin(&self->shadow))
         return;
     for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
         if (!gfx_shadow_cascade(cascade))
             continue;
-        draw_shadow_casters(self, RENDER_MODEL_MESH, 1);
-        draw_shadow_casters(self, RENDER_SHADOW_ONLY, 1);
+        draw_shadow_casters(self, RENDER_SHADOW_CASTERS, 1);
         draw_shadow_casters(self, RENDER_GROUND_MESH, 0);
         self->shadowDrawn = 1;
     }
@@ -255,13 +256,9 @@ static void draw_shadow_maps(struct Renderer *self)
 static void flush_opaque_lists(struct Renderer *self)
 {
     draw_shadow_maps(self);
+    gfx_shadow_receive(self->shadowDrawn);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
     flush_plain(self, RENDER_OPAQUE_CLAMP, 1, 1);
-    if (self->shadowDrawn)
-        gfx_shadow_receive(GFX_SHADOW_MODELS);
-    flush_mesh_queue(self, RENDER_MODEL_MESH);
-    if (self->shadowDrawn)
-        gfx_shadow_receive(0);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_WRAP);
     flush_plain(self, RENDER_OPAQUE_WRAP, 1, 1);
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
@@ -583,6 +580,7 @@ void rp_quad_draw(struct RPQuad *self)
 static void renderer_draw_lists(struct Renderer *self)
 {
     DWORD fog, zwrite, alpha;
+    self->meshViewSet = 0;
     HTSS(self, 0, GFX_TSS_MIPFILTER, GFX_MIPFILTER_LINEAR);
     renderer_do_fog_(self);
     HTSS(self, 0, GFX_TSS_COLOROP, GFX_TOP_MODULATE);
@@ -604,11 +602,7 @@ static void renderer_draw_lists(struct Renderer *self)
             HRS(self, GFX_RS_COLORKEYENABLE, FALSE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_MODULATEALPHA_ADDCOLOR);
             flush_water_bump(self);
-            if (self->shadowDrawn)
-                gfx_shadow_receive(GFX_SHADOW_GROUND);
-            flush_mesh_queue(self, RENDER_GROUND_MESH);
-            if (self->shadowDrawn)
-                gfx_shadow_receive(0);
+            flush_ground_meshes(self);
             HRS(self, GFX_RS_COLORKEYENABLE, TRUE);
             HTSS(self, 1, GFX_TSS_COLOROP, GFX_TOP_DISABLE);
         } else {
@@ -708,6 +702,7 @@ static void renderer_draw_lists(struct Renderer *self)
     HRS(self, GFX_RS_SRCBLEND, GFX_BLEND_SRCALPHA);
     HRS(self, GFX_RS_DESTBLEND, GFX_BLEND_INVSRCALPHA);
     HTSS(self, 0, GFX_TSS_MIPFILTER, GFX_MIPFILTER_NONE);
+    gfx_shadow_receive(0);
 }
 
 int renderer_draw_scene(struct Renderer *self)

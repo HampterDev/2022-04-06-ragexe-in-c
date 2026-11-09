@@ -32,5 +32,7 @@ static inline struct Texture *run_texture(struct C3dNode *self, WORD texture)
 
 const struct UvTransform *uv_xform_find(const struct C3dNodeV2 *node, int texture);
 void uv_turn(const struct UvTransform *x, float *u, float *v);
+/* custom: uv_turn as a transform (render/gfx.h, GfxMeshDraw), the identity without x */
+void uv_turn_matrix(const struct UvTransform *x, float *uv);
 
 #endif

@@ -20,8 +20,7 @@ enum RenderPass {
     RENDER_ADDITIVE,
     RENDER_ADDITIVE_OVERLAY,
     RENDER_GROUND_MESH,
-    RENDER_MODEL_MESH,
-    RENDER_SHADOW_ONLY,
+    RENDER_SHADOW_CASTERS,
     RENDER_BLENDED_WRAP,
     RENDER_WATER_BUMP,
     RENDER_TWO_TEXTURE_ALT,
@@ -38,11 +37,13 @@ struct RenderTexture {
     unsigned sort_key;
 };
 
+/* mesh: the primitive is a struct RPMeshDraw (custom) */
 struct RenderEntry {
     void *primitive;
     float key;
     unsigned order;
     struct RenderTexture textures[2];
+    unsigned char mesh;
 };
 
 struct RenderQueue {

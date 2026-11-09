@@ -325,7 +325,20 @@ static void runtime_ownership(void)
                 assert(allocation_calls == before);
                 if (version == 2) {
                     const struct UvTransform *uv = uv_xform_find((struct C3dNodeV2 *)root, 2);
+                    struct UvTransform turned = {2, {0.25f, -0.5f}, {1.5f, 0.75f}, 0.6f};
+                    float m[6], u, v;
+                    int k;
                     assert(uv && uv->offset[0] == 1.5f && uv->scale[1] == 2.5f);
+                    for (k = 0; k < 4; ++k) {
+                        const struct UvTransform *x = k == 0 ? uv : k == 1 ? &turned : NULL;
+                        float u0 = 0.125f + 0.3f * k, v0 = 0.9f - 0.2f * k;
+                        uv_turn_matrix(x, m);
+                        u = u0;
+                        v = v0;
+                        if (x) uv_turn(x, &u, &v);
+                        assert(fabsf(u0 * m[0] + v0 * m[2] + m[4] - u) < 1e-5f);
+                        assert(fabsf(u0 * m[1] + v0 * m[3] + m[5] - v) < 1e-5f);
+                    }
                 }
                 assert(c3d_actor_add_volume_boxes(actor, actor->volumeBoxes, 1));
                 assert(actor->volumeBoxCount == model.blockCount + 1);
