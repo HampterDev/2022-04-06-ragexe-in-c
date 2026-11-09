@@ -936,10 +936,14 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     return 0;
 }
 
+/* custom: without a stencil the original took D16 first. With the unlocked camera's far plane at
+   40,000 (render/render_api.h) and the near plane at 10, 16 bits tell apart depths about
+   vz^2 / 655,360 units apart: 14 units at a distance of 3,000, where the ground covered the
+   flower beds and the fountain, against 0.05 with 24 bits; D24X8 comes first now. */
 static D3DFORMAT pick_zformat(int stencil)
 {
     static const D3DFORMAT withStencil[] = { D3DFMT_D24S8, D3DFMT_D24X4S4, D3DFMT_D15S1, D3DFMT_D16 };
-    static const D3DFORMAT plain[] = { D3DFMT_D16, D3DFMT_D24X8, D3DFMT_D32, D3DFMT_D24S8 };
+    static const D3DFORMAT plain[] = { D3DFMT_D24X8, D3DFMT_D24S8, D3DFMT_D32, D3DFMT_D16 };
     const D3DFORMAT *list = stencil ? withStencil : plain;
     D3DDISPLAYMODE mode;
     int i;

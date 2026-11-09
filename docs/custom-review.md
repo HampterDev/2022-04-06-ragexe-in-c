@@ -13586,3 +13586,29 @@ started (`motion_update.c`), so they were even; the camera was what jerked.
 
 Validation: the scene set's captures are identical to the commit before (the harness's frames
 take 16 ms each). `build.bat check` and the full `testsuild.bat` pass.
+
+## A 24-bit depth buffer (2026-11-09)
+
+Patrick saw things z-fighting when zoomed far out. `pick_zformat` took the original's list
+without a stencil, `D16` first, so Direct3D 9 drew with 16 bits of depth (GL already asked for
+`GL_DEPTH24_STENCIL8`). A pixel's depth is `(vz - 10) * s / vz` with `s` close to 1, so 16 bits
+tell apart depths about vz^2 / 655,360 units apart: 0.24 at the original's furthest zoom (400),
+but 1.5 at 1,000, 14 at 3,000, 55 at 6,000 and 153 at the unlocked 10,000 (`Camera: unlock the
+zoom and the tilt` drew the view to 40,000 and left the near plane at 10). Captures of Prontera
+from 1,500, 3,000 and 6,000 showed the ground covering the flower beds and the fountain, and
+walls ragged at their feet.
+
+- **The change.** The list without a stencil now starts with `D3DFMT_D24X8` (then `D24S8`, `D32`,
+  `D16`); 24 bits tell apart 0.05 units at 3,000, 0.21 at 6,000 and 0.6 at 10,000. The depth
+  biases in normalized depth (the cell markers' 2^-15, the sprites' row and layer steps) keep
+  their size.
+- **What stays.** At the furthest zoom, layers closer than about half a unit (the beds' grass
+  0.3 over the plaza) can still fight; moving the near plane out with the zoom would cure that,
+  but the sprites' depth steps are tuned to the present mapping.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the 16-bit build of the commit
+before from the same saved options: the far captures differ by 29,149, 64,990 and 99,769 pixels
+at 1,500, 3,000 and 6,000 (the beds, the fountain, models' feet); the 20 captures of the scene
+set by 267 to 17,368, in rows of pixels where models meet the ground (curbs, planters, the beds'
+edges, walls), the depth ties now resolved at 24 bits; sprites, their shadows and effects are
+unchanged. `build.bat check` and the full `testsuild.bat` pass.
