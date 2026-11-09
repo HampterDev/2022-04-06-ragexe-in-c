@@ -216,3 +216,16 @@ af7670	ui_tag_text_viewer_set_align	tests/oracle/test_packet_handlers.c, stood i
 7fad40	game_mode_zc_dialog_text_align	tests/oracle/test_packet_handlers.c
 b03030	get_charset_from_lang	tests/oracle/test_packet_handlers.c
 4941a0	string_construct_copy	tests/oracle/test_packet_handlers.c
+7cf930	game_mode_zc_pet_evolution_result	tests/oracle/test_packet_handlers.c
+a5fae0	ui_pet_info_wnd_update_intimacy	tests/oracle/test_packet_handlers.c, stood in
+878480	session_get_pet_speak	tests/oracle/test_packet_handlers.c, stood in
+878810	session_format_chat_line	tests/oracle/test_packet_handlers.c, stood in
+57e7c0	ui_item_identify_wnd_get_selected_item	tests/oracle/test_packet_handlers.c, stood in
+75f770	game_actor_set_pk_mode	tests/oracle/test_packet_handlers.c, stood in
+853220	session_get_inventory_item_by_id	tests/oracle/test_packet_handlers.c, stood in
+92d5c0	item_info_get_name	tests/oracle/test_packet_handlers.c, stood in
+92d720	item_info_get_display_name	tests/oracle/test_packet_handlers.c, stood in
+867570	session_invalidate_homun_info_wnd	tests/oracle/test_packet_handlers.c, stood in
+8675e0	session_invalidate_mer_info_wnd	tests/oracle/test_packet_handlers.c, stood in
+5fbce0	list_clear	tests/oracle/test_packet_handlers.c, stood in
+87f780	session_reset_pet	tests/oracle/test_packet_handlers.c
