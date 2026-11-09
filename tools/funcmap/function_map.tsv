@@ -29,7 +29,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 477db0	sub_477db0	text/core_0000.inc:1974-2009		std_string_move_assign			cited	high	std/string_storage.c
 477f40	sub_477f40	text/core_0000.inc:2131-2181		allocate_strings			cited	high	ui/std/ui_std_vector.c
 477fb0	sub_477fb0				string_append_cstr		oracle	high	tests/oracle/test_packet_handlers.c
-478110	sub_478110	text/core_0000.inc:2344-2461			string_equal_cstr	std/string.c:339	callee	low	
+478110	sub_478110				string_assign		oracle	high	tests/oracle/test_packet_handlers.c
 4882b7	std___Sort	text/jsoncons_0000.inc:594-806		std_sort	std_sort	std/std_sort.c:205	label_inside	low	std/std_sort.c
 48c4c0	sub_48c4c0	text/jsoncons_0000.inc:7486-7634		dwords_resize			cited	high	std/std_comdats.c
 48c630	sub_48c630	text/jsoncons_0000.inc:7647-7776		std_vector_bytes_resize			cited	high	std/std_comdats.c
@@ -562,7 +562,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 537cc0				UIEditCtrl_TruncateDefault	ui_edit_ctrl_truncate_default	ui/controls/edit_text.c:69	cited	high	ui/controls/edit_text.c
 537f90				UIStaticText_SetTextFit	ui_static_text_set_text_fit	ui/controls/static.c:453	cited	high	ui/controls/static.c
 538030				UIStaticText_SetNumber	ui_static_text_set_number	ui/controls/static.c:468	cited	high	ui/controls/static.c
-5380c0				UIStaticText_SetTextEllipsis	ui_static_text_set_text_ellipsis	ui/controls/static.c:480	cited	high	ui/controls/static.c
+5380c0				UIStaticText_SetTextEllipsis	ui_static_text_set_text_ellipsis	ui/controls/static.c:480	oracle	high	ui/controls/static.c
 539160				UICheckBox_SetToolTip	ui_check_box_set_tool_tip	ui/controls/check_radio.c:378	cited	high	ui/controls/check_radio.c
 539190				UIStaticBitmap_SetToolTip	ui_static_bitmap_set_tool_tip	ui/controls/static.c:388	cited	high	ui/controls/static.c
 539660				UIBalloonText_IsHitTestable	ui_balloon_text_is_hit_testable	ui/controls/window_defaults.c:220	cited_inside	low	ui/controls/window_defaults.c
@@ -2137,6 +2137,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 640330				UIWindowMgr_SendChatMacro	ui_window_mgr_send_chat_macro	ui/wndmgr/key_down.c:379	cited	high	ui/wndmgr/key_down.c
 6405d0				UIWindowMgr_ToggleHideUI	ui_window_mgr_toggle_hide_ui	ui/wndmgr/hide_ui.c:110	cited	high	ui/wndmgr/hide_ui.c
 6409d0				UIWindowMgr_GetWindow	ui_window_mgr_get_window	ui/wndmgr/window_slots.c:17	oracle	high	ui/wndmgr/window_slots.c
+640e00	sub_640e00				ui_window_mgr_refresh_item_windows		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 640e90				UIWindowMgr_Tick	ui_window_mgr_tick	ui/wndmgr/window_list.c:530	cited	high	ui/wndmgr/window_list.c
 640f00				UIWindowMgr_ReleaseCapture	ui_window_mgr_release_capture	ui/wndmgr/window_list.c:540	cited	high	ui/wndmgr/window_list.c
 641510				close_drag_plate	close_drag_plate	ui/wndmgr/window_slots.c:135	cited	high	ui/wndmgr/window_slots.c
@@ -3218,6 +3219,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7e1f40	sub_7e1f40				game_mode_zc_update_map_info		dispatch	high	packet dispatcher arm for 0x192 HEADER_ZC_UPDATE_MAPINFO
 7e2600	sub_7e2600	text/gamemode_0002.inc:1269-1282		quest_node_destroy_value			cited	high	gamemode/map_instances.c
 7e3530	sub_7e3530				actor_list_push_back		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+7e3670	sub_7e3670				storage_wnd_set_name		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 7e3a00	sub_7e3a00	text/gamemode_0002.inc:3452-3494			rows_destroy_range	contents/enchant_list.c:188	callee	low	
 7e4be0	sub_7e4be0	text/gamemode_0002.inc:5481-5499		std_copy_memmove_cdecl			cited	high	std/std_vector.c
 7e55b0	sub_7e55b0	text/gamemode_0002.inc:6636-6667		enchant_row_construct			cited	high	std/std_vector.c
@@ -3479,9 +3481,18 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 84d350	sub_84d350	text/session_0000.inc:20814-20886		int_map_at	set_group_box	session/session_map_pos.c:45	cited	high	session/a/session_map_pos.c
 84d3e0	sub_84d3e0	text/session_0000.inc:20888-21006		string_map_at	named_rect_at	session/session_map_pos.c:32	cited	high	session/a/session_map_pos.c
 84d4ec	CRmaRes__Load_	text/session_0000.inc:21008-21088			tokens_at	session/session_lookups.c:115	ustr_inside	low	
+84dd10	sub_84dd10				session_set_worn_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84dfd0	sub_84dfd0				session_add_inventory_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84e390	sub_84e390				session_add_cart_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84ef00	sub_84ef00				session_add_storage_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f3f0	sub_84f3f0				session_end_exchange2		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f5f0	sub_84f5f0				session_reroll_values		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84f900	sub_84f900				session_remove_inventory_other_types		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84fa60	sub_84fa60				session_clear_worn_items		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84faa0	sub_84faa0				session_remove_inventory_filter_types		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84fc30	sub_84fc30				session_clear_inventory		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84fc60	sub_84fc60				session_clear_purchase_lists		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84fcc0	sub_84fcc0				session_clear_cart		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84ffe0	CSession__ClearShortenItemName	text/session_0000.inc:25578-25595		CSession_ClearShortenItemName	session_clear_shorten_item_name	session/session_state.c:73	label_inside	low	session/a/session_state.c
 850976	SelectKoreaClientInfo_	text/session_0000.inc:26596-26684			session_startup	session/session_startup.c:14	ustr_inside	low	
 851b90	sub_851b90	text/session_0000.inc:28654-28885			session_assist_addr	session/service_address.c:9	ustr	high	
@@ -3489,6 +3500,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 851f5c	CSession__GetAttrWaveName	text/session_0000.inc:28943-29058			session_get_attr_wave_name	session/session_names.c:36	ustr_inside	low	
 852fe0	CSession__GetItemBitmapFileName	text/session_0000.inc:30431-30455		CSession_GetItemBitmapFileName	session_get_item_bitmap_file_name	session/session_names.c:149	label_inside	low	session/a/session_names.c
 85302d	CSession__GetItemDisColor	text/session_0000.inc:30457-30484		CSession_GetItemDisColor	session_get_item_dis_color	session/session_item_lookup.c:206	label_inside	low	session/a/session_item_lookup.c
+8532e0	sub_8532e0				session_get_inventory_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 8539e0	sub_8539e0				session_get_drawn_job		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 853fb0	sub_853fb0				session_get_job_name		oracle	high	tests/oracle/skill_oracle.h, stood in
 854cf5	CSession__GetMp3Name	text/session_0000.inc:33472-33656		CSession_GetMp3Name	session_get_mp3_name	session/session_names.c:369	label_inside	low	session/a/session_names.c
@@ -3532,12 +3544,15 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86a890	CSession__PreLoadAlwaysNeededRes	text/session_0000.inc:58929-58991		tokens_count	tokens_count	session/session_talk_type.c:16	cited	high	session/a/session_talk_type.c
 86ab30	sub_86ab30	text/session_0000.inc:59111-60174			session_load_external_settings	session/session_lua.c:297	ustr	high	
 86bb30	sub_86bb30	text/session_0000.inc:60175-60645			session_load_options	session/session_option_load.c:15	ustr	high	
+86c2d0	sub_86c2d0				session_refresh_party_ui		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86c2ee	CSession__RefreshPartyUI	text/session_0000.inc:60747-60762		CSession__RefreshPartyUI			label_inside	low	session/a/session_redraws.c
 86c38c	CSession__RefreshMouseSnapState_	text/session_0000.inc:60818-60838		CSession_RefreshMouseSnapState	session_refresh_mouse_snap_state	session/session_redraws.c:103	label_inside	low	session/a/session_redraws.c
 86c3b0	sub_86c3b0				session_notify_messenger_group_and_plates		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+86c3e0	sub_86c3e0				session_refresh_friend_ui		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86c3fe	CSession__RefreshFriendUI	text/session_0000.inc:60858-60873		CSession__RefreshFriendUI			label_inside	low	session/a/session_redraws.c
 86c46f	CSession__SetCompressedEmblemImage	text/session_0000.inc:60970-61005		CSession_RemoveUnderbar	session_remove_underbar	session/session_names.c:487	label_inside	low	session/a/session_names.c
 86c70a	CSession__SetMyExchangeMoney	text/session_0000.inc:61145-61165		CSession_SetMyExchangeMoney	session_set_my_exchange_money	session/session_exchange.c:84	label_inside	low	session/a/session_exchange.c
+86cd50	sub_86cd50				session_inventory_update		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86cefa	CSession__SetOtherExchangeMoney	text/session_0000.inc:61767-61787		CSession_SetOtherExchangeMoney	session_set_other_exchange_money	session/session_exchange.c:94	label_inside	low	session/a/session_exchange.c
 86d294	CSession__SetPlayerPosDir	text/session_0000.inc:62022-62032		CSession_SetPlayerPosDir	session_set_player_pos_dir	session/session_state.c:366	label_inside	low	session/a/session_state.c
 86d380	CSession__SetShortenItemName	text/session_0000.inc:62076-62181		CSession_SetShortenItemName	session_set_shorten_item_name	session/session_names.c:467	label_inside	low	session/a/session_names.c
@@ -3563,8 +3578,10 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 872d10	sub_872d10	text/session_0000.inc:70581-70637		vector28_copy			cited_multi	low	session/a/session_tracked_achievements.c
 872d10	sub_872d10	text/session_0000.inc:70581-70637			entry_destroy	session/session_tracked_achievements.c:47	callee	low	
 8732f0	sub_8732f0	text/session_0000.inc:71168-71791		CSession_ToggleTrackedAchievement	session_toggle_tracked_achievement	session/session_tracked_achievements.c:118	cited	high	session/a/session_tracked_achievements.c
+873c40	sub_873c40				session_set_worn_costume		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 8749cb	CSession__AppendProhibit	text/session_0000.inc:72891-73210		CSession_AppendProhibit	session_append_prohibit	session/session_prohibit.c:9	label_inside	low	session/a/session_prohibit.c
 8749f0	sub_8749f0	text/session_0000.inc:73212-73338			session_is_emotion_text	session/session_lookups.c:131	ustr	high	
+874c40	sub_874c40				session_clear_worn_costumes		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874db0	sub_874db0				session_erase_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874f82	CSession__EraseProhibit	text/session_0000.inc:73725-73794		CSession_EraseProhibit	session_erase_prohibit	session/session_prohibit.c:74	label_inside	low	session/a/session_prohibit.c
 875070	sub_875070				session_find_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3603,6 +3620,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 87ff18	CSession__InitPetTalkTable_	text/session_0001.inc:12409-12510			session_load_talk_tables	session/session_init.c:65	ustr_inside	low	
 883955	CSession__IsAttack	text/session_0001.inc:16528-16545		CSession__IsAttack			label_inside	low	session/b/predicates.c
 883a20	sub_883a20	text/session_0001.inc:16621-16626		CSession_GetBattlefieldState	session_get_battlefield_state	session/session_queries.c:7	cited	high	session/a/session_queries.c
+883a80	sub_883a80				session_is_costume_or_shadow_location		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 883b10	sub_883b10	text/session_0001.inc:16730-16751		CSession_HasBerserk	session_has_berserk	session/session_queries.c:13	cited	high	session/a/session_queries.c
 883cd0	sub_883cd0				session_is_guardian		oracle	high	tests/oracle/test_packet_handlers.c
 883cf1	CSession__IsGuardian	text/session_0001.inc:16946-16966		CSession__IsGuardian			label_inside	low	session/b/predicates.c
@@ -3613,7 +3631,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 883ee0	sub_883ee0				session_is_mercenary_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 883fc0	sub_883fc0				session_is_own_aid		oracle	high	tests/oracle/test_packet_handlers.c
 884010	sub_884010				session_is_player_job		oracle	high	tests/oracle/test_packet_handlers.c, stood in
-884020	CSession__IsSiegeMode	text/session_0001.inc:17337-17342		CSession__IsSiegeMode			label	high	session/b/predicates.c
+884020	sub_884020				session_is_pet_egg_id		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 884040	sub_884040				session_is_siege_mode		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 88407a	CSession__IsSpace	text/session_0001.inc:17344-17361		CSession__IsSpace			label_inside	low	session/b/predicates.c
 884100	sub_884100				session_is_any_super_novice_job		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3667,7 +3685,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 899560	sub_899560	text/session_0001.inc:44786-44805		Session_SetPetAutoFeed	session_set_pet_auto_feed	session/session_auto_feed.c:23	cited	high	session/a/session_auto_feed.c
 8995d0	sub_8995d0	text/session_0001.inc:44824-44851		CSession_SendHomunAutoFeed	session_send_homun_auto_feed	session/session_auto_feed.c:50	cited	high	session/a/session_auto_feed.c
 899b50	sub_899b50	text/session_0001.inc:45258-45309		CSession_SetJob	session_set_job	session/session_job.c:91	cited	high	session/a/session_job.c
-899bd0	sub_899bd0	text/session_0001.inc:45311-45338		CSession_SendPetAutoFeed	session_send_pet_auto_feed	session/session_auto_feed.c:55	cited	high	session/a/session_auto_feed.c
+899bd0	sub_899bd0	text/session_0001.inc:45311-45338		CSession_SendPetAutoFeed	session_send_pet_auto_feed	session/session_auto_feed.c:55	oracle	high	session/a/session_auto_feed.c
 89a020	sub_89a020	text/session_0001.inc:45689-45785		CSession_SetArrowStatus	session_set_arrow_status	session/session_equip.c:250	cited	high	session/a/session_equip.c
 89a110	sub_89a110	text/session_0001.inc:45787-45883		CSession_OnPendingName	session_on_pending_name	session/session_pending_names.c:7	cited	high	session/a/session_pending_names.c
 89a1d0	sub_89a1d0	text/session_0001.inc:45885-45926		CSession_AddPendingName	session_add_pending_name	session/session_pending_names.c:18	cited_multi	low	session/a/session_pending_names.c
@@ -3914,6 +3932,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 919970	sub_919970	text/contents_0002.inc:47430-47599			lua_insert_ui_type	contents/achievement_lua.c:184	ustr	high	
 919b40	sub_919b40	text/contents_0002.inc:47601-47739			lua_set_id_by_tab	contents/achievement_lua.c:203	ustr	high	
 91b4a0	sub_91b4a0	text/contents_0002.inc:50134-50270			pet_evolution_load	contents/pet_evolution.c:187	ustr	high	
+91b940	sub_91b940				pet_evolution_is_auto_feeding		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 91beb0	sub_91beb0	text/contents_0002.inc:51179-51396			lua_insert_evolution_recipe	contents/pet_evolution.c:127	ustr	high	
 91c0f0	sub_91c0f0	text/contents_0002.inc:51398-51507			lua_insert_pet_auto_feeding	contents/pet_evolution.c:165	ustr	high	
 91f980	sub_91f980	text/contents_0002.inc:56317-56343		renew_quest_find_ongoing	renew_quest_find_ongoing	contents/renew_quest_info.c:54	cited_multi	low	contents/renew_quest_info.c
@@ -3944,15 +3963,16 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 92b720	sub_92b720	text/contents_0002.inc:73709-73807			lua_insert_endable_map	contents/private_airplane_mgr.c:100	ustr	high	
 92b860	sub_92b860	text/contents_0002.inc:73809-73907			lua_insert_startable_map	contents/private_airplane_mgr.c:93	ustr	high	
 92bd20	sub_92bd20	text/iteminfo_0000.inc:275-336			lookup	iteminfo/item_table.c:89	callee	low	
+92c970	sub_92c970				item_info_construct		oracle	high	tests/oracle/test_packet_handlers.c
 92d4a0	sub_92d4a0	text/iteminfo_0000.inc:2754-2837			item_info_get_name_color	iteminfo/item_name.c:170	callee	low	
 92d620	sub_92d620	text/iteminfo_0000.inc:2928-2936			item_table_get	iteminfo/item_table.c:97	callee	low	
 92e460	sub_92e460	text/iteminfo_0000.inc:4299-4414			item_name_append_card_postfixes	iteminfo/item_name.c:145	ustr	high	
 92e580	ITEM_INFO__GetRefining	text/iteminfo_0000.inc:4536-4545			item_name_append_refine	iteminfo/item_name.c:57	ustr	high	
 92ef41	ITEM_INFO__GetSocketNumber	text/iteminfo_0000.inc:5191-5247			item_name_append_sockets	iteminfo/item_name.c:51	ustr_inside	low	
 92ff70	sub_92ff70	text/iteminfo_0000.inc:6816-6870		table_token_is_number	table_token_is_number	iteminfo/item_loader.c:35	cited	high	iteminfo/item_loader.c
-930070	sub_930070	text/iteminfo_0000.inc:6951-6999		ItemInfo_Clear	item_info_clear	iteminfo/item_info.c:7	cited	high	iteminfo/item_info.c
-930070	sub_930070	text/iteminfo_0000.inc:6951-6999		Session_ClearWornItems	session_clear_worn_items	session/session_items.c:487	cited	high	session/a/session_items.c
+930070	sub_930070	text/iteminfo_0000.inc:6951-6999		ItemInfo_Clear	item_info_clear	iteminfo/item_info.c:7	oracle	high	iteminfo/item_info.c
 930130	sub_930130	text/iteminfo_0000.inc:7001-7202		ItemSearch_ByName	item_search_by_name	iteminfo/item_search.c:60	cited	high	iteminfo/item_search.c
+9305f0	sub_9305f0				item_info_set_item_id		oracle	high	tests/oracle/test_packet_handlers.c
 930b10	lookup_table_930cf0	text/iteminfo_0000.inc:8156-8157		read_int_file	read_int_file	iteminfo/item_loader.c:45	cited	high	iteminfo/item_loader.c
 93dfc0	sub_93dfc0	text/contents_0003.inc:384-437			client_lua_call	contents/lua_calls.c:138	oracle	high	
 93e940	sub_93e940	text/contents_0003.inc:1290-1402			client_lua_table_int	contents/lua_calls.c:177	callee	low	

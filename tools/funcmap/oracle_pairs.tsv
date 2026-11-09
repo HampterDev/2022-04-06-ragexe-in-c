@@ -167,3 +167,29 @@ af8c50	ui_basic_info_wnd_set_height	tests/oracle/test_packet_handlers.c, stood i
 506140	string_format	tests/oracle/test_packet_handlers.c
 50b600	string_assign_cstr	tests/oracle/test_packet_handlers.c
 477fb0	string_append_cstr	tests/oracle/test_packet_handlers.c
+84e390	session_add_cart_item	tests/oracle/test_packet_handlers.c, stood in
+84ef00	session_add_storage_item	tests/oracle/test_packet_handlers.c, stood in
+86cd50	session_inventory_update	tests/oracle/test_packet_handlers.c, stood in
+84dfd0	session_add_inventory_item	tests/oracle/test_packet_handlers.c, stood in
+84dd10	session_set_worn_item	tests/oracle/test_packet_handlers.c, stood in
+873c40	session_set_worn_costume	tests/oracle/test_packet_handlers.c, stood in
+84faa0	session_remove_inventory_filter_types	tests/oracle/test_packet_handlers.c, stood in
+84f900	session_remove_inventory_other_types	tests/oracle/test_packet_handlers.c, stood in
+84fa60	session_clear_worn_items	tests/oracle/test_packet_handlers.c, stood in
+874c40	session_clear_worn_costumes	tests/oracle/test_packet_handlers.c, stood in
+84fc30	session_clear_inventory	tests/oracle/test_packet_handlers.c, stood in
+84fcc0	session_clear_cart	tests/oracle/test_packet_handlers.c, stood in
+86c2d0	session_refresh_party_ui	tests/oracle/test_packet_handlers.c, stood in
+86c3e0	session_refresh_friend_ui	tests/oracle/test_packet_handlers.c, stood in
+640e00	ui_window_mgr_refresh_item_windows	tests/oracle/test_packet_handlers.c, stood in
+884020	session_is_pet_egg_id	tests/oracle/test_packet_handlers.c, stood in
+883a80	session_is_costume_or_shadow_location	tests/oracle/test_packet_handlers.c, stood in
+8532e0	session_get_inventory_item	tests/oracle/test_packet_handlers.c, stood in
+91b940	pet_evolution_is_auto_feeding	tests/oracle/test_packet_handlers.c, stood in
+899bd0	session_send_pet_auto_feed	tests/oracle/test_packet_handlers.c, stood in
+5380c0	ui_static_text_set_text_ellipsis	tests/oracle/test_packet_handlers.c, stood in
+7e3670	storage_wnd_set_name	tests/oracle/test_packet_handlers.c, stood in
+92c970	item_info_construct	tests/oracle/test_packet_handlers.c
+930070	item_info_clear	tests/oracle/test_packet_handlers.c
+9305f0	item_info_set_item_id	tests/oracle/test_packet_handlers.c
+478110	string_assign	tests/oracle/test_packet_handlers.c
