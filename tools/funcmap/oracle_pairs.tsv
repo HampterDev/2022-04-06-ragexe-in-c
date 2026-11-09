@@ -80,3 +80,44 @@ a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
 9f1020	motion_get_clip	tests/oracle/test_rag_effect_process.c
 74bca0	render_object_get_spr_res	tests/oracle/test_rag_effect_process.c
 4eb970	renderer_project_point	tests/oracle/test_rag_effect_process.c, stood in
+8af760	name_card_holder_erase	tests/oracle/test_packet_handlers.c, stood in
+8b0480	name_card_holder_set_all	tests/oracle/test_packet_handlers.c, stood in
+874db0	session_erase_abr	tests/oracle/test_packet_handlers.c, stood in
+65e390	world_remove_actor_by_aid	tests/oracle/test_packet_handlers.c, stood in
+74bef0	job_is_monster	tests/oracle/test_packet_handlers.c, stood in
+883dd0	session_is_homun_or_merc_job	tests/oracle/test_packet_handlers.c, stood in
+883d20	session_is_homunculus_job	tests/oracle/test_packet_handlers.c, stood in
+779bc0	game_mode_launch_dummy_effect	tests/oracle/test_packet_handlers.c, stood in
+8774c0	session_pet_hunger_level	tests/oracle/test_packet_handlers.c, stood in
+877360	session_pet_intimacy_level	tests/oracle/test_packet_handlers.c, stood in
+877280	session_get_pet_emotion	tests/oracle/test_packet_handlers.c, stood in
+8787d0	session_make_pet_talk_id	tests/oracle/test_packet_handlers.c, stood in
+86c3b0	session_notify_messenger_group_and_plates	tests/oracle/test_packet_handlers.c, stood in
+62e260	ui_window_mgr_message_box	tests/oracle/test_packet_handlers.c, stood in
+62b6c0	ui_window_mgr_post_quit1	tests/oracle/test_packet_handlers.c, stood in
+6349a0	ui_window_open	tests/oracle/test_packet_handlers.c, stood in
+84fc60	session_clear_purchase_lists	tests/oracle/test_packet_handlers.c, stood in
+75f300	game_actor_set_job	tests/oracle/test_packet_handlers.c, stood in
+87f2b0	session_get_weapon_view_id	tests/oracle/test_packet_handlers.c, stood in
+88b9b0	session_set_combo_delay	tests/oracle/test_packet_handlers.c, stood in
+75eee0	render_object_set_force_anim_end_tick	tests/oracle/test_packet_handlers.c, stood in
+875cd0	session_get_actor_by_aid	tests/oracle/test_packet_handlers.c, stood in
+75cf20	render_object_set_argb	tests/oracle/test_packet_handlers.c, stood in
+90bac0	rag_connection_instance	tests/oracle/test_packet_handlers.c, stood in
+90b640	connection_clear_held	tests/oracle/test_packet_handlers.c, stood in
+87eff0	session_get_title_string	tests/oracle/test_packet_handlers.c, stood in
+994520	emitter_effect_set_particle_speed	tests/oracle/test_packet_handlers.c, stood in
+9944f0	emitter_effect_set_count	tests/oracle/test_packet_handlers.c, stood in
+749ca0	game_actor_stop_aura_effects	tests/oracle/test_packet_handlers.c, stood in
+7497d0	game_actor_show_level_aura	tests/oracle/test_packet_handlers.c, stood in
+96b3d0	effect_mgr_remove_type	tests/oracle/test_packet_handlers.c, stood in
+84f5f0	session_reroll_values	tests/oracle/test_packet_handlers.c, stood in
+867510	session_refresh_basic_info	tests/oracle/test_packet_handlers.c, stood in
+74bf70	game_actor_is_pc_job	tests/oracle/test_packet_handlers.c, stood in
+867a80	effect_state_bit6	tests/oracle/test_packet_handlers.c
+8677c0	is_effect_state_hiding	tests/oracle/test_packet_handlers.c
+867930	is_effect_state_cloaking	tests/oracle/test_packet_handlers.c
+7d6230	game_mode_apply_sprite_change2	tests/oracle/test_packet_handlers.c
+7f0210	game_mode_notify_effect_with_num	tests/oracle/test_packet_handlers.c
+7e92d0	game_mode_game_mode_show_efst	tests/oracle/test_packet_handlers.c
+7f0050	game_mode_set_player_names	tests/oracle/test_packet_handlers.c
