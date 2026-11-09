@@ -43,7 +43,7 @@ struct TexDrawVertex *granny_projection_vertices(struct GrannyProjection *projec
 }
 
 void granny_projection_submit(struct Renderer *renderer, struct GrannyProjection *projection,
-                             struct Texture *texture, int triangles)
+                             struct Texture *texture, int triangles, int world)
 {
     const struct TexDrawVertex *vertices = granny_projection_vertices(projection, triangles);
     struct RPQuad *primitive;
@@ -54,5 +54,6 @@ void granny_projection_submit(struct Renderer *renderer, struct GrannyProjection
     primitive->verts = renderer_new_tex_draw_vertices(renderer, primitive->nverts);
     memcpy(primitive->verts, vertices, (size_t)primitive->nverts * sizeof *vertices);
     primitive->texture = texture;
+    primitive->world = (unsigned char)world;
     renderer_add_prim(renderer, primitive, 0);
 }

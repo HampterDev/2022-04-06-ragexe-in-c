@@ -44,25 +44,25 @@ static void granny_projection_ownership(void)
     memcpy(first_vertices, vertices, sizeof first_vertices);
     assert(renderer_construct(&renderer)); g_renderer = &renderer;
     texture = texture_create(1, 1, GFX_FMT_8888);
-    granny_projection_submit(&renderer, projection, texture, 2);
+    granny_projection_submit(&renderer, projection, texture, 2, 0);
     assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 1);
     first = renderer.queues[RENDER_OPAQUE_CLAMP].items[0].primitive;
-    assert(first->verts != vertices && first->nverts == 6 && first->alpha_mode == 1);
+    assert(first->verts != vertices && first->nverts == 6 && first->alpha_mode == 1 && !first->world);
     assert(first->prim == GFX_PT_TRIANGLELIST && !first->indices && !first->nindices);
     assert(!first->srcBlend && !first->destBlend && !first->stageMode);
     assert(!memcmp(first->verts, first_vertices, sizeof first_vertices));
     for (i = 0; i < 6; ++i) vertices[i].x += 100;
     memcpy(second_vertices, vertices, sizeof second_vertices);
-    granny_projection_submit(&renderer, projection, texture, 2);
+    granny_projection_submit(&renderer, projection, texture, 2, 0);
     second = renderer.queues[RENDER_OPAQUE_CLAMP].items[1].primitive;
     assert(second != first && second->verts != first->verts && second->verts != vertices);
     assert(!memcmp(first->verts, first_vertices, sizeof first_vertices));
     assert(!memcmp(second->verts, second_vertices, sizeof second_vertices));
     before = allocation_calls;
-    granny_projection_submit(&renderer, projection, texture, 0);
-    granny_projection_submit(&renderer, projection, texture, 3);
-    granny_projection_submit(&renderer, projection, NULL, 2);
-    granny_projection_submit(&renderer, NULL, texture, 2);
+    granny_projection_submit(&renderer, projection, texture, 0, 0);
+    granny_projection_submit(&renderer, projection, texture, 3, 0);
+    granny_projection_submit(&renderer, projection, NULL, 2, 0);
+    granny_projection_submit(&renderer, NULL, texture, 2, 0);
     assert(allocation_calls == before && renderer.queues[RENDER_OPAQUE_CLAMP].count == 2);
     granny_projection_destroy(projection);
     texture_destroy(texture);
@@ -82,7 +82,7 @@ static void granny_projection_ownership(void)
     for (i = 0; i < 3; ++i) vertices[i].rhw = 0.00125f;
     for (i = 0; i < 8300; ++i) {
         vertices[0].x = (float)i;
-        granny_projection_submit(&renderer, projection, texture, 1);
+        granny_projection_submit(&renderer, projection, texture, 1, 0);
     }
     assert(renderer.queues[RENDER_OPAQUE_CLAMP].count == 8300);
     first = renderer.queues[RENDER_OPAQUE_CLAMP].items[0].primitive;
@@ -96,7 +96,7 @@ static void granny_projection_ownership(void)
     vertices = granny_projection_vertices(projection, 1);
     for (i = 0; i < 3; ++i) vertices[i].rhw = 0.00125f;
     before = allocation_calls;
-    granny_projection_submit(&renderer, projection, texture, 1);
+    granny_projection_submit(&renderer, projection, texture, 1, 0);
     assert(allocation_calls == before);
     granny_projection_destroy(projection); granny_projection_destroy(NULL); texture_destroy(texture);
     for (pass = 1; pass < RENDER_PASS_COUNT; ++pass) assert(!renderer.queues[pass].count);

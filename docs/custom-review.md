@@ -13416,3 +13416,36 @@ every capture is the same pixel for pixel, `prontera_crowd` with the water in th
 among them; with `RAGEXE_SHADOWS=0` every capture is the same as the second item's, and so
 against the CPU-only build as in the entries before. The two `alberta` spots captured show no water. `build.bat check` and the full
 `tests\build.bat` pass. Not run: GL.
+
+## Granny models projected by the device; sprites and effects stay (2026-11-09)
+
+The fifth item was sprites and effects. A survey of what the CPU still projects showed three
+kinds of thing:
+
+- **Granny models** (`actor/granny.c`: the 3D actors, guild guardians among them) are skinned on
+  the CPU each frame and their triangles projected corner by corner, like the water's: true
+  world-space geometry. Their three drawing loops now also hand the device each corner's world
+  coordinates (`world_corner`, through the matrix the view follows in the corner's projection)
+  and mark the quad (`granny_projection_submit`'s new `world`), keeping the projected rhw for
+  the list's fog. They do so only while `renderer_world_quads` answers 1: the view they are drawn
+  with is the frame's camera view (`renderer_set_camera`), so a granny model drawn with another
+  view keeps the CPU's way, and the device can draw world-space quads.
+- **Effects** (`effects/rag`, about 170 call sites of `prim_project_vertex` and `prim_draw_quad`)
+  project their corners and then work on them in screen space: `quad_depth` biases a quad's depth
+  through its rhw (`PRIM_QUAD_DEPTH_BIAS`), puts it in front of everything with z 1e-9
+  (`PRIM_QUAD_IN_FRONT`) or rebuilds it upright around its projected centre, widened in pixels
+  (`PRIM_QUAD_UPRIGHT`); particles and the flying shapes add offsets in pixels.
+- **Sprites** project one anchor and build the billboard in pixels around it, with the depth of
+  each row set from the screen row (the billboard entries of `README.md`).
+
+Neither keeps a second copy of its geometry's projection to remove: what the device would do
+for them is screen-space work each kind defines for itself, and moving it to the device means
+writing each kind's vertex arithmetic again as shader code, with no pixel parity to check it
+against. They stay on the CPU. The CPU's projection itself stays in any case, for anchors, names,
+gauges and picking.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build before, with and without
+shadows: `granny_models` 7 pixels (edges of the guardians), `guild_flags` 2, everything else the
+same (`prontera_crowd` differs only where the mouse pointer was caught in one capture).
+`build.bat check` and the full `tests\build.bat` pass; `renderer_granny_projection_test.h` checks
+that a quad submitted without `world` is not marked.

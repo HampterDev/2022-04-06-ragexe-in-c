@@ -282,6 +282,16 @@ static void model_matrix(float *r, const char *name, float facing, const Vec3 *a
     mat_translate(r, at);
 }
 
+/* custom: a granny vertex's world coordinates for the device to project (render/renderer.h,
+   renderer_world_quads), where the CPU projected it for its decisions; toWorld is the matrix the
+   view follows in the vertex's projection */
+static void world_corner(struct TexDrawVertex *dst, const Vec3 *pt, const float *toWorld)
+{
+    dst->x = pt->x * toWorld[0] + pt->y * toWorld[3] + pt->z * toWorld[6] + toWorld[9];
+    dst->y = pt->x * toWorld[1] + pt->y * toWorld[4] + pt->z * toWorld[7] + toWorld[10];
+    dst->z = pt->x * toWorld[2] + pt->y * toWorld[5] + pt->z * toWorld[8] + toWorld[11];
+}
+
 void granny_corpse3d_render(struct GameObject *object, const float *view)
 {
     struct GrannyCorpse3d *self = (struct GrannyCorpse3d *)object;
@@ -291,7 +301,7 @@ void granny_corpse3d_render(struct GameObject *object, const float *view)
     struct Texture *tex = NULL;
     unsigned short *indices = NULL;
     int tris;
-    int i, t, j, n;
+    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
 
     if (!self->model)
         return;
@@ -332,6 +342,8 @@ void granny_corpse3d_render(struct GameObject *object, const float *view)
                 n++;
                 pt = src->pos;
                 renderer_project_vertex(g_renderer, &pt, m2, dst);
+                if (world)
+                    world_corner(dst, &pt, m1);
                 memcpy(&dst->u, &src->u, sizeof dst->u);
                 memcpy(&dst->v, &src->v, sizeof dst->v);
                 b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * 100.0f + 155.0f);
@@ -339,7 +351,7 @@ void granny_corpse3d_render(struct GameObject *object, const float *view)
                 dst->diffuse = (unsigned char)b * 0x10101u + ((unsigned)self->alpha << 24);
             }
         }
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris);
+        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris, world);
     }
 }
 
@@ -354,7 +366,7 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
     struct Texture *tex = NULL;
     unsigned short *indices = NULL;
     int tris;
-    int i, t, j, n;
+    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
 
     if (self->aid == -1)
         return;
@@ -414,6 +426,8 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
                 n++;
                 pt = src->pos;
                 renderer_project_vertex(g_renderer, &pt, m, dst);
+                if (world)
+                    world_corner(dst, &pt, r);
                 memcpy(&dst->u, &src->u, sizeof dst->u);
                 memcpy(&dst->v, &src->v, sizeof dst->v);
                 b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * 100.0f + 155.0f);
@@ -429,7 +443,7 @@ void c3d_granny_game_actor_render_emblem_model(struct C3dGrannyGameActor *self, 
         pt.z = (((z[2] * x + z[5] * y) + z[8] * w) + z[11]) + (float)((int)self->pos.z % 5);
         vec_push(&self->shadow_points, &pt, sizeof pt);
         drawn = i == 1 ? c3d_granny_game_actor_get_emblem_texture(self) : tex;
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, drawn, tris);
+        granny_projection_submit(g_renderer, self->model->meshes[i].projection, drawn, tris, world);
     }
     if (game_copy_camera_position(eye) && granny_bounds_screen_box(&self->model->bounds, &box, view, r, eye))
         game_actor_set_render_info((struct RenderObject *)self, &box, sx, sy);
@@ -448,7 +462,7 @@ void c3d_granny_game_actor_render_lit_model(struct C3dGrannyGameActor *self, con
     struct Texture *tex = NULL;
     unsigned short *indices = NULL;
     int tris;
-    int i, t, j, n;
+    int i, t, j, n, world = renderer_world_quads(g_renderer, view);
 
     if (self->aid == -1)
         return;
@@ -504,6 +518,8 @@ void c3d_granny_game_actor_render_lit_model(struct C3dGrannyGameActor *self, con
                 n++;
                 pt = src->pos;
                 renderer_project_vertex(g_renderer, &pt, m2, dst);
+                if (world)
+                    world_corner(dst, &pt, m1);
                 memcpy(&dst->u, &src->u, sizeof dst->u);
                 memcpy(&dst->v, &src->v, sizeof dst->v);
                 b = (unsigned)(light_term((src->nx * lx + src->ny * ly) + src->nz * lz) * (float)a + (float)(0xff - a));
@@ -513,7 +529,7 @@ void c3d_granny_game_actor_render_lit_model(struct C3dGrannyGameActor *self, con
             }
             vec_push(&self->shadow_points, &pt, sizeof pt);
         }
-        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris);
+        granny_projection_submit(g_renderer, self->model->meshes[i].projection, tex, tris, world);
     }
     if (game_copy_camera_position(eye) && granny_bounds_screen_box(&self->model->bounds, &box, view, r, eye))
         game_actor_set_render_info((struct RenderObject *)self, &box, sx, sy);

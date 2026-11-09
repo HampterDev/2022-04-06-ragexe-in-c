@@ -9,7 +9,8 @@ struct Renderer;
 struct GrannyProjection *granny_projection_create(int triangles);
 void granny_projection_destroy(struct GrannyProjection *projection);
 struct TexDrawVertex *granny_projection_vertices(struct GrannyProjection *projection, int triangles);
+/* custom: world says the vertices hold world coordinates for the device to project (RPQuad.world) */
 void granny_projection_submit(struct Renderer *renderer, struct GrannyProjection *projection,
-                             struct Texture *texture, int triangles);
+                             struct Texture *texture, int triangles, int world);
 
 #endif

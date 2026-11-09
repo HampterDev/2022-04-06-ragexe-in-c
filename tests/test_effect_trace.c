@@ -700,6 +700,7 @@ int g_isSkipFrame;
 DWORD g_fogColor;
 float g_fogNear, g_fogFar;
 int gfx_shadows_supported(void) { return 0; }
+int gfx_world_supported(void) { return 0; }
 static struct World g_world;
 static int g_res_mgr_token, g_map_attr_token, g_mode_token;
 

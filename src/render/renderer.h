@@ -83,6 +83,9 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
 /* custom: the camera's view matrix for the frame being queued, which quads with world-space
    vertices (RPQuad.world) are drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);
+/* custom: whether quads drawn with the view matrix `view` can hand the device world coordinates
+   instead (RPQuad.world): `view` is the camera's for the frame, and the device projects them */
+int renderer_world_quads(const struct Renderer *self, const float *view);
 /* custom: whether a box can cast into this frame's shadow maps: centre and half its sizes along its
    three axes (unit vectors, NULL for the world's), world coordinates */
 int renderer_shadow_reaches(const struct Renderer *self, const float *centre, const float *half, const float (*axes)[3]);
