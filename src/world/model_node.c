@@ -29,7 +29,9 @@ void model_node_gpu_free(struct C3dNode *node)
 
     if (g) {
         gfx_mesh_destroy(g->mesh);
+        gfx_mesh_destroy(g->casterMesh);
         free(g->draws);
+        free(g->casterDraws);
         free(g->inMesh);
         free(g);
     }

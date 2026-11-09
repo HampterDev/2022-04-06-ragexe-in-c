@@ -31,7 +31,9 @@ SIZE_ASSERT(FaceInfo, 0x24);
 /* custom: a node's faces as a static mesh the device projects (render/gfx.h), built on its first
    draw (world/model_node_render.c). Only faces whose texture inMesh marks are in it: not alpha-keyed
    (format 1) and, on version 2 nodes, without a texture-coordinate animation. A draw is a run of
-   faces with one texture, and with or without twoSided. */
+   faces with one texture, and with or without twoSided. The other faces are in casterMesh, which
+   only casts shadows: a draw there is a run of alpha-keyed faces with their texture, which the
+   shadow pass tests, or of the rest without one. */
 struct ModelGpuDraw {
     struct Texture *texture;
     int first, count;
@@ -39,9 +41,9 @@ struct ModelGpuDraw {
 };
 
 struct ModelGpu {
-    struct gfx_mesh *mesh;
-    struct ModelGpuDraw *draws;
-    int drawCount;
+    struct gfx_mesh *mesh, *casterMesh;
+    struct ModelGpuDraw *draws, *casterDraws;
+    int drawCount, casterDrawCount;
     BYTE *inMesh;
     int inMeshCount;
     int allInMesh;

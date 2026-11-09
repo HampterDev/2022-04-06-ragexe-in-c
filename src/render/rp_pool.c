@@ -457,7 +457,7 @@ void renderer_add_mesh_draw(struct Renderer *self, int pass, struct gfx_mesh *me
     struct RPMeshDraw *draw;
     int i;
 
-    if (!mesh || count <= 0 || (pass != RENDER_GROUND_MESH && pass != RENDER_MODEL_MESH))
+    if (!mesh || count <= 0 || (pass != RENDER_GROUND_MESH && pass != RENDER_MODEL_MESH && pass != RENDER_SHADOW_ONLY))
         return;
     draw = pool_take(&self->storage->mesh_draws, 1);
     draw->mesh = mesh;

@@ -120,8 +120,8 @@ static struct {
     int worldViewSet;
     IDirect3DTexture9 *shadowTex[GFX_SHADOW_CASCADES];
     IDirect3DSurface9 *shadowDepth, *savedTarget, *savedDepth;
-    IDirect3DVertexShader9 *vsDepth, *vsReceive, *vsGround;
-    IDirect3DPixelShader9 *psDepth, *psReceive, *psGround;
+    IDirect3DVertexShader9 *vsDepth, *vsDepthAlpha, *vsReceive, *vsGround;
+    IDirect3DPixelShader9 *psDepth, *psDepthAlpha, *psReceive, *psGround;
     int shadowState, shadowPass, shadowReady, shadowReceive, shadowCascade;
     struct GfxShadow shadow;
     D3DVIEWPORT9 savedViewport;
@@ -2250,6 +2250,19 @@ static const char shadow_hlsl[] =
     "    float4 c = tex2D(colourMap, i.uv) * float4(i.lit.rgb * lerp(params.w, 1, seen), i.lit.a);\n"
     "    c.rgb = fogColour.w > 0 ? lerp(fogColour.rgb, c.rgb, i.depthFog.y) : c.rgb;\n"
     "    return c;\n"
+    "}\n"
+    "float4 depthAlphaPass(float4 pos : POSITION, float2 uv : TEXCOORD0, out float depth : TEXCOORD0,\n"
+    "                      out float2 tuv : TEXCOORD1) : POSITION\n"
+    "{\n"
+    "    float4 p = mul(pos, toClip);\n"
+    "    depth = p.z;\n"
+    "    tuv = uv;\n"
+    "    return p;\n"
+    "}\n"
+    "float4 depthAlphaColour(float depth : TEXCOORD0, float2 uv : TEXCOORD1) : COLOR\n"
+    "{\n"
+    "    clip(tex2D(colourMap, uv).a - 207.0 / 255);\n"
+    "    return float4(depth, depth, depth, 1);\n"
     "}\n";
 
 /* The ground's receiving shaders (GFX_SHADOW_GROUND): what the ground's two stages do, texture
@@ -2373,6 +2386,12 @@ static void shadow_drop(void)
         IDirect3DPixelShader9_Release(d9.psReceive);
     if (d9.vsGround)
         IDirect3DVertexShader9_Release(d9.vsGround);
+    if (d9.vsDepthAlpha)
+        IDirect3DVertexShader9_Release(d9.vsDepthAlpha);
+    if (d9.psDepthAlpha)
+        IDirect3DPixelShader9_Release(d9.psDepthAlpha);
+    d9.vsDepthAlpha = NULL;
+    d9.psDepthAlpha = NULL;
     if (d9.psGround)
         IDirect3DPixelShader9_Release(d9.psGround);
     d9.vsDepth = NULL;
@@ -2407,7 +2426,7 @@ static int shadow_prepare(void)
 {
     static d3d_compile_fn compile;
     static int loaded;
-    ID3DBlob *code[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
+    ID3DBlob *code[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
     int i, ok;
 
     if (d9.shadowState < 0)
@@ -2428,13 +2447,17 @@ static int shadow_prepare(void)
              && shadow_compile(compile, shadow_hlsl, "receiveColour", "ps_3_0", &code[3])
              && shadow_compile(compile, ground_hlsl, "groundReceive", "vs_3_0", &code[4])
              && shadow_compile(compile, ground_hlsl, "groundColour", "ps_3_0", &code[5])
+             && shadow_compile(compile, shadow_hlsl, "depthAlphaPass", "vs_2_0", &code[6])
+             && shadow_compile(compile, shadow_hlsl, "depthAlphaColour", "ps_2_0", &code[7])
              && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[0]), &d9.vsDepth))
              && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[1]), &d9.psDepth))
              && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[2]), &d9.vsReceive))
              && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[3]), &d9.psReceive))
              && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[4]), &d9.vsGround))
-             && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[5]), &d9.psGround));
-        for (i = 0; i < 6; i++)
+             && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[5]), &d9.psGround))
+             && SUCCEEDED(IDirect3DDevice9_CreateVertexShader(d9.dev, ID3D10Blob_GetBufferPointer(code[6]), &d9.vsDepthAlpha))
+             && SUCCEEDED(IDirect3DDevice9_CreatePixelShader(d9.dev, ID3D10Blob_GetBufferPointer(code[7]), &d9.psDepthAlpha));
+        for (i = 0; i < 8; i++)
             if (code[i])
                 ID3D10Blob_Release(code[i]);
         if (!ok) {
@@ -2575,6 +2598,8 @@ static void shadow_draw_depth(struct gfx_mesh *m, const D3DMATRIX *view, int fir
         return;
     shadow_light_matrix(&light, d9.shadowCascade, 0);
     matrix_multiply(&toClip, view, &light);
+    IDirect3DDevice9_SetVertexShader(d9.dev, d9.stageTex[0] ? d9.vsDepthAlpha : d9.vsDepth);
+    IDirect3DDevice9_SetPixelShader(d9.dev, d9.stageTex[0] ? d9.psDepthAlpha : d9.psDepth);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 0, &toClip._11, 4);
     IDirect3DDevice9_SetFVF(d9.dev, FVF_MESH);
     IDirect3DDevice9_SetStreamSource(d9.dev, 0, m->vb, 0, sizeof *m->verts);

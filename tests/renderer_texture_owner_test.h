@@ -199,7 +199,9 @@ static void queued_all_routes(struct Renderer *renderer)
                            NULL, texture, texture, 0);
     renderer_add_mesh_draw(renderer, RENDER_MODEL_MESH, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view,
                            NULL, texture, NULL, GFX_CULL_CW);
-    assert(surface->refs == 1 + submissions + 6 + 1 + 3);
+    renderer_add_mesh_draw(renderer, RENDER_SHADOW_ONLY, (struct gfx_mesh *)&mesh_token, 0, 3, mesh_view,
+                           NULL, texture, NULL, 0);
+    assert(surface->refs == 1 + submissions + 6 + 1 + 4);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
         assert(renderer->queues[i].count);
@@ -213,7 +215,7 @@ static void queued_all_routes(struct Renderer *renderer)
         renderer->twoPassAlpha = (BYTE)(i & 1);
         g_lightmap = i != 0; g_waterBumpSupported = (BYTE)(i > 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 6 + 1 + 3);
+        assert(live_surfaces == 1 && surface->refs == submissions + 6 + 1 + 4);
     }
     g_lightmap = 0; g_waterBumpSupported = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);

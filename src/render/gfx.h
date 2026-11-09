@@ -251,11 +251,13 @@ void gfx_draw_mesh(gfx_mesh *mesh, const float *model, int first, int count);
 
 /* custom: cascaded shadow maps for meshes, each GFX_SHADOW_SIZE texels square. Between
    gfx_shadow_begin and gfx_shadow_end, gfx_draw_mesh draws the meshes' depth from the light into
-   the cascade gfx_shadow_cascade chose instead of colour. fromView[c] takes the view space of the
-   draws' world views to cascade c's light space, row vectors: x and y from -1 to 1 across its map,
-   z from 0 to 1 along the light. While gfx_shadow_receive is on, gfx_draw_mesh draws a vertex's
-   colour times darkness where its pixel lies more than bias behind the nearest caster and its own
-   colour elsewhere, looking it up in the first cascade whose farDepth (a view depth) lies beyond the pixel,
+   the cascade gfx_shadow_cascade chose instead of colour, testing the texture bound to stage 0,
+   where there is one, for alpha: texels the opaque lists' alpha test (0xcf) drops cast nothing.
+   fromView[c] takes the view space of the draws' world views to cascade c's light space, row
+   vectors: x and y from -1 to 1 across its map, z from 0 to 1 along the light. While
+   gfx_shadow_receive is on, gfx_draw_mesh draws a vertex's colour times darkness where its pixel
+   lies more than bias behind the nearest caster and its own colour elsewhere, looking it up in the
+   first cascade whose farDepth (a view depth) lies beyond the pixel,
    from a point moved off the surface towards the light by offset[c] (view units) times the sine of
    the angle between the surface and the light (lightView: towards the light, view space; the
    surface's normal comes from the vertex's), as the share of 16 points spread over a disc of

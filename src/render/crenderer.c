@@ -206,14 +206,16 @@ static void flush_blended_wrap(struct Renderer *self)
     HTSS(self, 0, GFX_TSS_ADDRESS, GFX_ADDRESS_CLAMP);
 }
 
-/* custom: draws a queue's meshes into the shadow map cascade chosen (render/gfx.h) */
-static void draw_shadow_casters(struct Renderer *self, int list)
+/* custom: draws a queue's meshes into the shadow map cascade chosen (render/gfx.h), with their
+   first textures bound (which tests them for alpha) or none */
+static void draw_shadow_casters(struct Renderer *self, int list, int textured)
 {
     struct RenderQueue *l = &self->queues[list];
     const float *view = NULL;
 
     for (size_t i = 0; i < l->count; ++i) {
         struct RPMeshDraw *n = l->items[i].primitive;
+        set_tex0(self, textured ? l->items[i].textures[0].surface : NULL);
         if (!view || memcmp(view, n->view, sizeof n->view)) {
             struct GfxWorldView world;
             renderer_world_view(self, n->view, NULL, &world);
@@ -224,8 +226,8 @@ static void draw_shadow_casters(struct Renderer *self, int list)
     }
 }
 
-/* custom: the shadow maps of this frame's model and ground meshes, which both then receive them
-   (self->shadowDrawn) */
+/* custom: the shadow maps of this frame's model and ground meshes and of the shadow-only ones,
+   which models and ground then receive (self->shadowDrawn) */
 static void draw_shadow_maps(struct Renderer *self)
 {
     int cascade;
@@ -234,15 +236,17 @@ static void draw_shadow_maps(struct Renderer *self)
     if (!self->shadowPending)
         return;
     self->shadowPending = 0;
-    if (!self->queues[RENDER_MODEL_MESH].count && !self->queues[RENDER_GROUND_MESH].count)
+    if (!self->queues[RENDER_MODEL_MESH].count && !self->queues[RENDER_GROUND_MESH].count
+        && !self->queues[RENDER_SHADOW_ONLY].count)
         return;
     if (!gfx_shadow_begin(&self->shadow))
         return;
     for (cascade = 0; cascade < self->shadow.cascades; ++cascade) {
         if (!gfx_shadow_cascade(cascade))
             continue;
-        draw_shadow_casters(self, RENDER_MODEL_MESH);
-        draw_shadow_casters(self, RENDER_GROUND_MESH);
+        draw_shadow_casters(self, RENDER_MODEL_MESH, 1);
+        draw_shadow_casters(self, RENDER_SHADOW_ONLY, 1);
+        draw_shadow_casters(self, RENDER_GROUND_MESH, 0);
         self->shadowDrawn = 1;
     }
     gfx_shadow_end();

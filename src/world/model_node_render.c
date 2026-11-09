@@ -163,6 +163,57 @@ static DWORD gpu_corner_colour(const struct C3dNode *node, int face, int corner)
     return (info->colour[corner] & 0x00ffffff) | 0xff000000;
 }
 
+/* Fills a mesh with three vertices per face of `list` (n faces, sorted) and a draw per run of
+   equal keys: key[0] the twoSided flag, key[1] the draw's texture. */
+static int gpu_mesh_from(struct C3dNode *node, struct GpuFace *list, int n, struct GfxMeshVertex *verts,
+                         WORD *indices, struct ModelGpuDraw *draws, int *drawCount, struct gfx_mesh **out)
+{
+    struct AnimMesh *mesh = node->mesh;
+    int i, k;
+
+    if (!n)
+        return 1;
+    qsort(list, (size_t)n, sizeof *list, gpu_face_less);
+    for (i = 0; i < n; i++) {
+        const struct AnimMeshFace *face = &mesh->faces[list[i].face];
+        const struct FaceInfo *info = &node->faceInfo[list[i].face];
+        const Vec3 *a = &mesh->positions[face->v[0]], *b = &mesh->positions[face->v[1]];
+        const Vec3 *c = &mesh->positions[face->v[2]];
+        float e1[3] = {b->x - a->x, b->y - a->y, b->z - a->z}, e2[3] = {c->x - a->x, c->y - a->y, c->z - a->z};
+        float nrm[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
+        float len = sqrtf(nrm[0] * nrm[0] + nrm[1] * nrm[1] + nrm[2] * nrm[2]);
+
+        for (k = 0; k < 3 && len > 0.0f; k++)
+            nrm[k] /= len;
+        for (k = 0; k < 3; k++) {
+            struct GfxMeshVertex *v = &verts[i * 3 + k];
+            const Vec3 *p = &mesh->positions[face->v[k]];
+
+            v->x = p->x;
+            v->y = p->y;
+            v->z = p->z;
+            v->nx = nrm[0];
+            v->ny = nrm[1];
+            v->nz = nrm[2];
+            v->diffuse = gpu_corner_colour(node, list[i].face, k);
+            v->u0 = info->uv[k][0];
+            v->v0 = info->uv[k][1];
+            v->u1 = v->v1 = 0.0f;
+            indices[i * 3 + k] = (WORD)(i * 3 + k);
+        }
+        if (i == 0 || list[i - 1].key[0] != list[i].key[0] || list[i - 1].key[1] != list[i].key[1]) {
+            struct ModelGpuDraw *d = &draws[(*drawCount)++];
+
+            d->texture = (struct Texture *)list[i].key[1];
+            d->twoSided = (BYTE)list[i].key[0];
+            d->first = i * 3;
+        }
+        draws[*drawCount - 1].count += 3;
+    }
+    *out = gfx_mesh_create(verts, n * 3, indices, n * 3);
+    return *out != NULL;
+}
+
 static int gpu_build(struct C3dNode *node, int version)
 {
     struct AnimMesh *mesh = node->mesh;
@@ -194,7 +245,8 @@ static int gpu_build(struct C3dNode *node, int version)
     verts = malloc((size_t)mesh->faceCount * 3 * sizeof *verts);
     indices = malloc((size_t)mesh->faceCount * 3 * sizeof *indices);
     g->draws = calloc((size_t)mesh->faceCount, sizeof *g->draws);
-    if (!g->inMesh || !list || !verts || !indices || !g->draws)
+    g->casterDraws = calloc((size_t)mesh->faceCount, sizeof *g->casterDraws);
+    if (!g->inMesh || !list || !verts || !indices || !g->draws || !g->casterDraws)
         goto done;
     g->inMeshCount = textures;
     g->allInMesh = 1;
@@ -212,49 +264,22 @@ static int gpu_build(struct C3dNode *node, int version)
         list[n].key[1] = (uintptr_t)run_texture(node, face->texture);
         n++;
     }
-    ok = 1;
-    if (!n)
+    if (!gpu_mesh_from(node, list, n, verts, indices, g->draws, &g->drawCount, &g->mesh))
         goto done;
-    qsort(list, (size_t)n, sizeof *list, gpu_face_less);
-    for (i = 0; i < n; i++) {
-        const struct AnimMeshFace *face = &mesh->faces[list[i].face];
-        const struct FaceInfo *info = &node->faceInfo[list[i].face];
+    /* the faces left out cast from casterMesh: an alpha-keyed face with its texture, the rest
+       (texture-coordinate animations, opaque) without */
+    for (f = 0, n = 0; f < mesh->faceCount; f++) {
+        const struct AnimMeshFace *face = &mesh->faces[f];
+        struct Texture *t = run_texture(node, face->texture);
 
-        const Vec3 *a = &mesh->positions[face->v[0]], *b = &mesh->positions[face->v[1]];
-        const Vec3 *c = &mesh->positions[face->v[2]];
-        float e1[3] = {b->x - a->x, b->y - a->y, b->z - a->z}, e2[3] = {c->x - a->x, c->y - a->y, c->z - a->z};
-        float n[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
-        float len = sqrtf(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
-
-        if (len > 0.0f)
-            n[0] /= len, n[1] /= len, n[2] /= len;
-        for (k = 0; k < 3; k++) {
-            struct GfxMeshVertex *v = &verts[i * 3 + k];
-            const Vec3 *p = &mesh->positions[face->v[k]];
-
-            v->nx = n[0];
-            v->ny = n[1];
-            v->nz = n[2];
-            v->x = p->x;
-            v->y = p->y;
-            v->z = p->z;
-            v->diffuse = gpu_corner_colour(node, list[i].face, k);
-            v->u0 = info->uv[k][0];
-            v->v0 = info->uv[k][1];
-            v->u1 = v->v1 = 0.0f;
-            indices[i * 3 + k] = (WORD)(i * 3 + k);
-        }
-        if (i == 0 || list[i - 1].key[0] != list[i].key[0] || list[i - 1].key[1] != list[i].key[1]) {
-            struct ModelGpuDraw *d = &g->draws[g->drawCount++];
-
-            d->texture = (struct Texture *)list[i].key[1];
-            d->twoSided = (BYTE)list[i].key[0];
-            d->first = i * 3;
-        }
-        g->draws[g->drawCount - 1].count += 3;
+        if (g->inMesh[face->texture])
+            continue;
+        list[n].face = f;
+        list[n].key[0] = 0;
+        list[n].key[1] = t->format == 1 ? (uintptr_t)t : 0;
+        n++;
     }
-    g->mesh = gfx_mesh_create(verts, n * 3, indices, n * 3);
-    ok = g->mesh != NULL;
+    ok = gpu_mesh_from(node, list, n, verts, indices, g->casterDraws, &g->casterDrawCount, &g->casterMesh);
 done:
     free(list);
     free(verts);
@@ -262,15 +287,15 @@ done:
     return ok;
 }
 
-/* Queues the node's mesh when its faces would be drawn with their own colours into the opaque
-   list, and answers whether it did: the caller then leaves the faces inMesh marks to it. */
+/* Queues the node's meshes: the mesh into the opaque list when its faces would be drawn with their
+   own colours there (the actor opaque, the player not blind, the node not highlighted), and answers
+   whether it did, so that the caller leaves the faces inMesh marks to it; otherwise the mesh only
+   casts shadows this frame, as casterMesh always does. */
 static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mirrored, BYTE alpha)
 {
     struct ModelGpu *g;
-    int i, cull;
+    int i, cull, colour;
 
-    if (alpha != 0xff || g_playerBlind || node->highlight)
-        return 0;
     if (node->gpu && node->gpu->groundLighting != g_weather.ground_lighting)
         model_node_gpu_free(node);
     if (node->gpuState == 0) {
@@ -283,12 +308,16 @@ static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mi
     g = node->gpu;
     if (node->gpuState != 1 || !g)
         return 0;
+    colour = alpha == 0xff && !g_playerBlind && !node->highlight;
     cull = (version == 1) == (mirrored == 0) ? GFX_CULL_CW : GFX_CULL_CCW;
     for (i = 0; i < g->drawCount; i++)
-        renderer_add_mesh_draw(g_renderer, RENDER_MODEL_MESH, g->mesh, g->draws[i].first, g->draws[i].count, m,
-                               g_weather.color, g->draws[i].texture, NULL,
+        renderer_add_mesh_draw(g_renderer, colour ? RENDER_MODEL_MESH : RENDER_SHADOW_ONLY, g->mesh, g->draws[i].first,
+                               g->draws[i].count, m, g_weather.color, colour ? g->draws[i].texture : NULL, NULL,
                                g->draws[i].twoSided ? GFX_CULL_NONE : cull);
-    return 1;
+    for (i = 0; i < g->casterDrawCount; i++)
+        renderer_add_mesh_draw(g_renderer, RENDER_SHADOW_ONLY, g->casterMesh, g->casterDraws[i].first,
+                               g->casterDraws[i].count, m, NULL, g->casterDraws[i].texture, NULL, 0);
+    return colour;
 }
 
 static int gpu_has(const struct C3dNode *node, WORD texture)

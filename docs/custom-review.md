@@ -13207,3 +13207,30 @@ pass. Not done: alpha-keyed faces (tree leaves) and texture-animated faces do no
 outside the frame's draws and models fading, highlighted or seen blind do not cast, the ground's
 half-alpha surfaces keep the baked shadows and its water takes none, and the models' ground-lit colours
 (`lightInts`, from the lightmap under them) still carry the baked shadows.
+
+## Shadows through alpha, and from models drawn on the CPU (2026-11-09)
+
+With the baked shadows replaced, whatever does not cast loses its shadow. Two gaps followed from
+the meshes' shape:
+
+- **Alpha.** The models' opaque lists draw with the alpha test at 0xcf, so a texture with an
+  alpha channel, such as the cloth and lattice of yuno_fild01's windmill sails or tree leaves, shows
+  only its opaque texels; the shadow pass drew the whole faces and the sails cast solid
+  rectangles. A draw with a texture bound to stage 0 now goes through a second depth shader pair
+  (`depthAlphaPass`/`depthAlphaColour`, `vs_2_0`/`ps_2_0`) that drops the texels under 207/255,
+  and the models' mesh draws are cast with their textures: the sails' shadows on the grass now
+  have the baked ones' shape.
+- **Faces outside the mesh, and frames without it.** Each node also gets `casterMesh`, which only
+  casts: its alpha-keyed faces (format 1, which the alpha lists draw) with their texture, and its
+  faces with a texture-coordinate animation without one. Its draws, and the node's mesh in a
+  frame whose colour takes the CPU path (the actor fading, the node highlighted, the player
+  blind), go into `RENDER_SHADOW_ONLY`, which only the shadow pass draws, so a building does not
+  lose its shadow while it fades. The two meshes share their making (`gpu_mesh_from`).
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: on `yuno_gate` the alpha test changed 75,674
+pixels against the build before it, where the sails' and trees' shadows on the grass now follow
+their textures as the baked ones did. `casterMesh` and the shadow-only frames of fading or
+highlighted nodes changed no pixel of these scenes (none of them has an alpha-keyed caster in
+view or a fading building), so they are built and queued but not seen in a capture.
+`build.bat check` and the full `tests\build.bat` pass; `test_renderer_storage` feeds the new
+queue.
