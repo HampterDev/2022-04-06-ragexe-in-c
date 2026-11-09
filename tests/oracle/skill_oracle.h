@@ -122,7 +122,7 @@
 #define AID_OWN    7777
 #define ATTR_ZOOM  5
 #define EVENTS 48
-#define EVENT_LEN 256
+#define EVENT_LEN 384
 
 struct Session g_session1;
 struct EffectMgr *g_effectMgr;

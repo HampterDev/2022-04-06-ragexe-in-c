@@ -35,6 +35,13 @@
 #include "session/session_state.h"
 #include "ui/character/gauge.h"
 #include "ui/character/status_wnd.h"
+#include "iteminfo/item_api.h"
+#include "game/item_info.h"
+#include "contents/pet_evolution.h"
+#include "session/item_predicates.h"
+#include "ui/shops/storage.h"
+#include "ui/wndmgr/wndmgr.h"
+#include "core/unknown_packet.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -188,6 +195,63 @@
 #define ORIG_PET_FULLNESS     0x1134c48u
 #define ORIG_PET_INTIMACY_VAL 0x1134c50u
 #define ORIG_PET_JOB          0x1134c40u
+#define ORIG_HATCHED_EGG      0x1134c54u
+#define ORIG_PET_AUTO_FEED    0x1135200u
+#define ORIG_PACKET_BUFFER    0x1121a10u
+#define ORIG_ITEM_CONSTRUCT   0x92c970u
+#define ORIG_ITEM_SET_ID      0x9305f0u
+#define ORIG_ADD_CART_ITEM    0x84e390u
+#define ORIG_ADD_STORAGE_ITEM 0x84ef00u
+#define ORIG_INVENTORY_UPDATE 0x86cd50u
+#define ORIG_ADD_INVENTORY_ITEM 0x84dfd0u
+#define ORIG_SET_WORN_ITEM    0x84dd10u
+#define ORIG_SET_WORN_COSTUME 0x873c40u
+#define ORIG_REMOVE_FILTER_TYPES 0x84faa0u
+#define ORIG_REMOVE_OTHER_TYPES 0x84f900u
+#define ORIG_CLEAR_WORN_ITEMS 0x84fa60u
+#define ORIG_CLEAR_WORN_COSTUMES 0x874c40u
+#define ORIG_CLEAR_INVENTORY  0x84fc30u
+#define ORIG_CLEAR_CART       0x84fcc0u
+#define ORIG_REFRESH_PARTY_UI 0x86c2d0u
+#define ORIG_REFRESH_FRIEND_UI 0x86c3e0u
+#define ORIG_REFRESH_ITEM_WNDS 0x640e00u
+#define ORIG_IS_PET_EGG_ID    0x884020u
+#define ORIG_IS_COSTUME_LOCATION 0x883a80u
+#define ORIG_GET_INVENTORY_ITEM 0x8532e0u
+#define ORIG_PET_AUTO_FEEDING 0x91b940u
+#define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
+#define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
+#define ORIG_STORAGE_SET_NAME 0x7e3670u
+#define ORIG_WND_TITLE_CTRL   0x13c
+#define OI_TYPE 0x00
+#define OI_INDEX 0x04
+#define OI_EQUIP_LOCATION 0x08
+#define OI_WORN_LOCATION 0x0c
+#define OI_COUNT 0x10
+#define OI_PRICE 0x14
+#define OI_CHARGED_PRICE 0x18
+#define OI_SLOT 0x1c
+#define OI_ID_TEXT 0x2c
+#define OI_NAME 0x44
+#define OI_IDENTIFIED 0x5c
+#define OI_DAMAGED 0x5d
+#define OI_REFINE 0x60
+#define OI_BIND 0x64
+#define OI_EXPIRE_HOURS 0x66
+#define OI_EXPIRE 0x68
+#define OI_WEIGHT 0x6c
+#define OI_VIEW 0x70
+#define OI_FAVORITE 0x74
+#define OI_IS_NEW 0x75
+#define OI_MOVE_PENDING 0x76
+#define OI_BY_INDEX 0x77
+#define OI_SALE_KIND 0x78
+#define OI_SALE_START 0x7c
+#define OI_SALE_END 0x80
+#define OI_SALE_REMAINING 0x84
+#define OI_GRADE 0x88
+#define OI_OPTION_COUNT 0x8c
+#define OI_OPTIONS 0x90
 #define ORIG_STD_STRING       24
 #define ORIG_STD_STRING_SSO   16
 
@@ -218,7 +282,7 @@
 #define FAKE_CONNECTION 0x5151
 
 enum { FILL_ZERO, FILL_PATTERN, FILL_ONES, FILL_COUNT };
-enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP };
+enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP, PK_LIST, PK_SPLIT_SET };
 
 enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_COUNT };
 #define M(r) (1u << (r))
@@ -262,6 +326,11 @@ static int fake_abr_used[2];
 static struct Int64Pair lift_abr_pair[2];
 static struct IntIntPair lift_adv_pair;
 static int adv_pending, adv_key, adv_value;
+static unsigned char orig_storage_wnd[0x400];
+static struct UIWindow lift_storage_wnd;
+struct PetEvolutionMgr *g_petTable;
+BYTE g_packetBuffer[0x10000];
+void vec_free(struct Vec *v) { (void)v; }
 
 static const char *window_name(const void *w)
 {
@@ -269,11 +338,59 @@ static const char *window_name(const void *w)
     if (w == orig_basic_info_wnd || w == &lift_basic_info_wnd) return "bi";
     if (w == orig_group_wnd || w == &lift_group_wnd) return "group";
     if (w == orig_found_wnd || w == &lift_found_wnd) return "found";
+    if (w == orig_storage_wnd || w == &lift_storage_wnd) return "storage";
     return w ? "?" : "null";
 }
 static int is_super_novice(int job)
 {
     return job == 0x17 || job == 0xfcd || job == 0x1020 || job == 0x104c || (job >= 0x105e && job <= 0x1061) || job == 0x10d3 || job == 0x10da;
+}
+static const char *orig_std_string(const unsigned char *s);
+static int is_pet_egg(int id) { return (unsigned)(id - 9001) <= 0x1f2; }
+static int is_costume_location(int flag) { return flag != 0 && flag % 3 == 1; }
+static const char *item_fields_text(int index, const char *id, const char *name, int type, int eq, int worn, int count, int price,
+                                    int charged, const int *slot, int identified, int damaged, int refine, int bind, int hours,
+                                    int expire, int weight, int view, int favorite, int is_new, int move_pending, int by_index,
+                                    int sale_kind, int sale_start, int sale_end, int sale_remaining, int grade, int option_count,
+                                    const unsigned char *options)
+{
+    static char text[2][256];
+    static int turn;
+    char *out = text[turn ^= 1];
+    int n, i;
+    n = snprintf(out, 256, "i%d id'%s' n'%s' t%d eq%x w%x c%d p%d cp%d s%x,%x,%x,%x idf%d dmg%d r%d b%d eh%d x%x wt%d v%d f%d nw%d mp%d bi%d sk%d ss%d se%d sr%d g%d o%d",
+                 index, id, name, type, eq, worn, count, price, charged, slot[0], slot[1], slot[2], slot[3], identified, damaged, refine,
+                 bind, hours, expire, weight, view, favorite, is_new, move_pending, by_index, sale_kind, sale_start, sale_end, sale_remaining,
+                 grade, option_count);
+    for (i = 0; i < ITEM_OPTION_SLOTS; i++) {
+        unsigned short oid = *(const unsigned short *)(options + 5 * i);
+        short oval = *(const short *)(options + 5 * i + 2);
+        unsigned char oparam = options[5 * i + 4];
+        if (oid || oval || oparam)
+            n += snprintf(out + n, 256 - n, " [%u %d %u]", oid, oval, oparam);
+    }
+    return out;
+}
+static const char *item_text(const struct ItemInfo *it)
+{
+    return item_fields_text(it->index, string_cstr(&it->id_text), string_cstr(&it->name), it->type, it->equip_location, it->worn_location,
+                            it->count, it->price, it->charged_price, it->slot, it->identified, it->damaged, it->refine, it->bind_on_equip_type,
+                            it->expire_in_hours, it->expire_time, it->weight, it->view, it->favorite, it->is_new, it->move_pending,
+                            it->by_index, it->sale_kind, it->sale_start_time, it->sale_end_time, it->sale_remaining, it->grade,
+                            it->option_count, (const unsigned char *)it->options);
+}
+#define OI32(b, off) (*(const int *)((b) + (off)))
+#define OI16(b, off) (*(const unsigned short *)((b) + (off)))
+#define OI8(b, off) ((b)[off])
+static const char *orig_item_text(const unsigned char *b)
+{
+    return item_fields_text(OI32(b, OI_INDEX), orig_std_string(b + OI_ID_TEXT), orig_std_string(b + OI_NAME), OI32(b, OI_TYPE),
+                            OI32(b, OI_EQUIP_LOCATION), OI32(b, OI_WORN_LOCATION), OI32(b, OI_COUNT), OI32(b, OI_PRICE),
+                            OI32(b, OI_CHARGED_PRICE), (const int *)(b + OI_SLOT), OI8(b, OI_IDENTIFIED), OI8(b, OI_DAMAGED),
+                            OI32(b, OI_REFINE), OI16(b, OI_BIND), OI8(b, OI_EXPIRE_HOURS), OI32(b, OI_EXPIRE), OI16(b, OI_WEIGHT),
+                            OI32(b, OI_VIEW), OI8(b, OI_FAVORITE), OI8(b, OI_IS_NEW), OI8(b, OI_MOVE_PENDING), OI8(b, OI_BY_INDEX),
+                            OI32(b, OI_SALE_KIND), OI32(b, OI_SALE_START), OI32(b, OI_SALE_END), OI32(b, OI_SALE_REMAINING),
+                            *(const short *)(b + OI_GRADE), OI32(b, OI_OPTION_COUNT), b + OI_OPTIONS);
 }
 static int abr_slot(const void *tree)
 {
@@ -375,6 +492,7 @@ static const struct Field fields[] = {
     { "zeny", M(R_SESSION), S(ORIG_ZENY), SF(zeny), 4 },
     { "exchange_open", M(R_MODE), ORIG_MODE_EXCHANGE_OPEN, GF(exchange_open), 4 },
     { "status_request_pending", M(R_MODE), ORIG_MODE_STATUS_PENDING, GF(status_request_pending), 4 },
+    { "hatchedEggIndex", M(R_SESSION), S(ORIG_HATCHED_EGG), SF(hatchedEggIndex), 4 },
 };
 
 static const struct { unsigned mask; unsigned orig_off, lift_off; const char *name; } strings[] = {
@@ -498,7 +616,7 @@ void session_notify_messenger_group_and_plates(struct Session *self) { (void)sel
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg4, int arg5, const char *title,
                               int width, int height, int arg9)
 { (void)self; (void)title; event("msgbox '%s' %d %d %d %d %d %d %d", text, type, arg3, arg4, arg5, width, height, arg9); return 0; }
-struct UIWindow *ui_window_open(int id) { event("open %x", id); return lift_window; }
+struct UIWindow *ui_window_open(int id) { event("open %x", id); return id == 0x21 ? &lift_storage_wnd : lift_window; }
 unsigned ui_merchant_shop_seller(const struct UIWindow *wnd) { (void)wnd; return 0; }
 void session_clear_purchase_lists(struct Session *self) { (void)self; event("clear purchase"); }
 void session_set_job(struct Session *self, int job) { (void)self; event("session job %d", job); }
@@ -686,6 +804,36 @@ void string_format(struct String *s, const char *format, ...)
     va_end(ap);
     string_assign_cstr(s, text);
 }
+BYTE session_add_cart_item(struct Session *self, const struct ItemInfo *item) { (void)self; event("cart add %s", item_text(item)); return 1; }
+BYTE session_add_storage_item(struct Session *self, const struct ItemInfo *item, BYTE notify) { (void)self; event("storage add %s %d", item_text(item), notify); return 1; }
+void session_inventory_update(struct Session *self, const struct ItemInfo *item, BYTE notify) { (void)self; event("inv update %s %d", item_text(item), notify); }
+BYTE session_add_inventory_item(struct Session *self, const struct ItemInfo *item, BYTE refresh) { (void)self; event("inv add %s %d", item_text(item), refresh); return 1; }
+BYTE session_set_worn_item(struct Session *self, const struct ItemInfo *item) { (void)self; event("worn %s", item_text(item)); return 1; }
+BYTE session_set_worn_costume(struct Session *self, const struct ItemInfo *item) { (void)self; event("costume %s", item_text(item)); return 1; }
+void session_remove_inventory_filter_types(struct Session *self) { (void)self; event("remove filter types"); }
+void session_remove_inventory_other_types(struct Session *self) { (void)self; event("remove other types"); }
+void session_clear_worn_items(struct Session *self) { (void)self; event("clear worn"); }
+void session_clear_worn_costumes(struct Session *self) { (void)self; event("clear costumes"); }
+void session_clear_inventory(struct Session *self) { (void)self; event("clear inventory"); }
+void session_clear_cart(struct Session *self) { (void)self; event("clear cart"); }
+void session_refresh_party_ui(struct Session *self) { (void)self; event("refresh party"); }
+void session_refresh_friend_ui(struct Session *self) { (void)self; event("refresh friend"); }
+void ui_window_mgr_refresh_item_windows(struct UIWindowMgr *self) { (void)self; event("refresh item wnds"); }
+int session_is_pet_egg_id(struct Session *self, int id) { (void)self; return is_pet_egg(id); }
+BYTE session_is_costume_or_shadow_location(struct Session *self, int flag) { (void)self; return (BYTE)is_costume_location(flag); }
+struct ItemInfo *session_get_inventory_item(struct Session *self, struct ItemInfo *out, int index)
+{
+    (void)self;
+    event("inv get %d", index);
+    item_info_construct(out);
+    out->index = index & 1 ? index : 0;
+    item_info_set_item_id(out, 9000 + index);
+    return out;
+}
+char pet_evolution_is_auto_feeding(struct PetEvolutionMgr *self, int egg_id) { (void)self; return (char)(egg_id & 1); }
+void session_send_pet_auto_feed(struct Session *self, BYTE on) { (void)self; event("autofeed %d", on); }
+void ui_storage_set_title(struct UIWindow *wnd, const char *name) { event("storage title %s '%s'", window_name(wnd), name); }
+void ui_storage_set_list_received(struct UIWindow *wnd) { event("storage received %s", window_name(wnd)); }
 
 static int lift_get_effect_state(struct RenderObject *self) { (void)self; return 0; }
 static void lift_set_head(struct GameActor *a, int v) { event("head %s %d", who(a), v); }
@@ -732,7 +880,7 @@ static int __fastcall o_message_box(void *self, void *edx, const char *text, int
                                     int width, int height, int arg9)
 { (void)edx; return ui_window_mgr_message_box((struct UIWindowMgr *)self, text, type, arg3, arg4, arg5, title, width, height, arg9); }
 static int __fastcall o_post_quit(void *self, void *edx, int id) { (void)self; (void)edx; event("quit1 %x", id); return 1; }
-static void *__fastcall o_make_window(void *self, void *edx, int id) { (void)self; (void)edx; event("open %x", id); return NULL; }
+static void *__fastcall o_make_window(void *self, void *edx, int id) { (void)self; (void)edx; event("open %x", id); return id == 0x21 ? orig_storage_wnd : NULL; }
 static void __fastcall o_clear_purchase(void *self, void *edx) { (void)self; (void)edx; event("clear purchase"); }
 static void __fastcall o_actor_set_job(void *self, void *edx, int job) { (void)edx; event("setjob %s %d", who(self), job); }
 static void __fastcall o_session_set_job(void *self, void *edx, int job) { (void)self; (void)edx; event("session job %d", job); }
@@ -845,6 +993,36 @@ static int __fastcall o_pet_talk_due(void *self, void *edx, unsigned lo, int hi)
 static int __cdecl o_rand(void) { return rand(); }
 static int __fastcall o_window_send(void *self, void *edx, void *sender, int msg, int a, int b, int c, int d)
 { (void)edx; return ui_window_send((struct UIWindow *)self, (struct UIWindow *)sender, msg, a, b, c, d); }
+static int __fastcall o_add_cart_item(void *self, void *edx, const unsigned char *item) { (void)self; (void)edx; event("cart add %s", orig_item_text(item)); return 1; }
+static int __fastcall o_add_storage_item(void *self, void *edx, const unsigned char *item, int notify) { (void)self; (void)edx; event("storage add %s %d", orig_item_text(item), notify & 0xff); return 1; }
+static void __fastcall o_inventory_update(void *self, void *edx, const unsigned char *item, int notify) { (void)self; (void)edx; event("inv update %s %d", orig_item_text(item), notify & 0xff); }
+static int __fastcall o_add_inventory_item(void *self, void *edx, const unsigned char *item, int refresh) { (void)self; (void)edx; event("inv add %s %d", orig_item_text(item), refresh & 0xff); return 1; }
+static int __fastcall o_set_worn_item(void *self, void *edx, const unsigned char *item) { (void)self; (void)edx; event("worn %s", orig_item_text(item)); return 1; }
+static int __fastcall o_set_worn_costume(void *self, void *edx, const unsigned char *item) { (void)self; (void)edx; event("costume %s", orig_item_text(item)); return 1; }
+static void __fastcall o_remove_filter_types(void *self, void *edx) { (void)self; (void)edx; event("remove filter types"); }
+static void __fastcall o_remove_other_types(void *self, void *edx) { (void)self; (void)edx; event("remove other types"); }
+static void __fastcall o_clear_worn_items(void *self, void *edx) { (void)self; (void)edx; event("clear worn"); }
+static void __fastcall o_clear_worn_costumes(void *self, void *edx) { (void)self; (void)edx; event("clear costumes"); }
+static void __fastcall o_clear_inventory(void *self, void *edx) { (void)self; (void)edx; event("clear inventory"); }
+static void __fastcall o_clear_cart(void *self, void *edx) { (void)self; (void)edx; event("clear cart"); }
+static void __cdecl o_refresh_party_ui(void) { event("refresh party"); }
+static void __cdecl o_refresh_friend_ui(void) { event("refresh friend"); }
+static void __fastcall o_refresh_item_wnds(void *self, void *edx) { (void)self; (void)edx; event("refresh item wnds"); }
+static int __fastcall o_is_pet_egg_id(void *self, void *edx, int id) { (void)self; (void)edx; return is_pet_egg(id); }
+static int __fastcall o_is_costume_location(void *self, void *edx, int flag) { (void)self; (void)edx; return is_costume_location(flag); }
+static unsigned char *__fastcall o_get_inventory_item(void *self, void *edx, unsigned char *out, int index)
+{
+    (void)self; (void)edx;
+    event("inv get %d", index);
+    ((void *(__fastcall *)(void *, void *))oracle_addr(ORIG_ITEM_CONSTRUCT))(out, NULL);
+    *(int *)(out + OI_INDEX) = index & 1 ? index : 0;
+    ((void (__fastcall *)(void *, void *, int))oracle_addr(ORIG_ITEM_SET_ID))(out, NULL, 9000 + index);
+    return out;
+}
+static int __fastcall o_pet_auto_feeding(void *self, void *edx, int egg_id) { (void)self; (void)edx; return egg_id & 1; }
+static void __fastcall o_send_pet_auto_feed(void *self, void *edx, int on) { (void)self; (void)edx; event("autofeed %d", on & 0xff); }
+static void __fastcall o_set_text_ellipsis(void *ctrl, void *edx, const char *text) { (void)ctrl; (void)edx; event("storage title storage '%s'", text); }
+static void __fastcall o_storage_set_name(void *wnd, void *edx, struct OrigString name) { (void)edx; event("storage title %s '%s'", window_name(wnd), orig_std_string(name.raw)); }
 
 typedef void (*mode_pkt_fn)(struct GameMode *, const void *);
 #define LIFT(fn) static void w_##fn(const unsigned char *pkt) { ((mode_pkt_fn)fn)(&lift_mode, pkt); }
@@ -905,6 +1083,30 @@ LIFT(game_mode_on_notify_exp)
 LIFT(game_mode_on_notify_exp2)
 #define LIFT1(fn) static void w_##fn(const unsigned char *pkt) { ((void (*)(const void *))fn)(pkt); }
 LIFT1(game_mode_ack_status_gm)
+LIFT1(game_mode_cart_equipment_item_list2)
+LIFT1(game_mode_cart_equipment_item_list3)
+LIFT1(game_mode_cart_item_list_equip_v5)
+LIFT1(game_mode_cart_item_list_equip_v6)
+LIFT1(game_mode_cart_item_list_normal_v5)
+LIFT1(game_mode_equipment_item_list2)
+LIFT1(game_mode_equipment_item_list3)
+LIFT1(game_mode_equipment_item_list4)
+LIFT1(game_mode_equipment_item_list_v5)
+LIFT1(game_mode_equipment_item_list_v6)
+LIFT1(game_mode_equipment_item_list_v7)
+LIFT1(game_mode_inventory_item_list_normal_v5)
+LIFT1(game_mode_inventory_tab)
+LIFT1(game_mode_store_item_list_equip_v5)
+LIFT1(game_mode_store_item_list_equip_v6)
+LIFT1(game_mode_store_item_list_normal_v5)
+LIFT(game_mode_zc_store_equipment_item_list2)
+LIFT(game_mode_zc_store_equipment_item_list3)
+LIFT(game_mode_zc_store_item_list_equip_v2)
+LIFT(game_mode_zc_store_item_list_equip_v5)
+LIFT(game_mode_zc_store_item_list_equip_v6)
+LIFT(game_mode_zc_store_item_list_normal_v5)
+LIFT(game_mode_zc_split_send_item_list_equip_v8)
+LIFT(game_mode_zc_split_send_item_list_set)
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -922,6 +1124,22 @@ static const unsigned couple_types[] = { 0, 12, 13, 14, 15, 16, 17, 18, 19, 0xda
 static const unsigned exp_amounts[] = { 0xfffffffbu, 100000, 0xffffffffu };
 static const int par_values[12] = { 0, 1, -1, 50, 51, 100, 5000, 9000, 10000, 20000, -61, 123456 };
 static const int drawn_jobs[5] = { 0x17, 0x108e, 0xfce, 0xfd2, 1 };
+static const char *const list_names[4] = { "", "Kafra", "xxxxxxxxxxxxxxxxxxxxxxx", "Store" };
+static const char long_list_name[] = "yyyyyyyyyyyyyyyyyyyyyyyyy";
+
+struct ListLayout { unsigned char rec_size, flags_off, damaged_off, header; };
+static const struct ListLayout lay_old34 = { 34, 0, 0xc, 4 };
+static const struct ListLayout lay_old38 = { 38, 0, 0xc, 4 };
+static const struct ListLayout lay_eq4 = { 37, 0x24, 0, 4 };
+static const struct ListLayout lay_v5 = { 41, 0x28, 0, 4 };
+static const struct ListLayout lay_v6 = { 67, 0x42, 0, 4 };
+static const struct ListLayout lay_v7 = { 68, 0x43, 0, 4 };
+static const struct ListLayout lay_n34 = { 34, 0, 0, 4 };
+static const struct ListLayout lay_neq4 = { 37, 0x24, 0, 0x1c };
+static const struct ListLayout lay_nv5 = { 41, 0x28, 0, 0x1c };
+static const struct ListLayout lay_nv6 = { 67, 0x42, 0, 0x1c };
+static const struct ListLayout lay_nn34 = { 34, 0, 0, 0x1c };
+static const struct ListLayout lay_split8 = { 0x44, 0x43, 0, 5 };
 
 struct EntryLayout { unsigned char type_off, aid_off, job_off, head_off, varlen; };
 static const struct EntryLayout lay_new1 = { 0, 2, 0xe, 0x10, 0 };
@@ -944,6 +1162,7 @@ struct Handler {
     const struct EntryLayout *layout;
     int move_mask;
     int no_unknown;
+    const struct ListLayout *list;
 };
 #define EXTRA(a) a, (int)(sizeof a / sizeof *a)
 
@@ -1004,6 +1223,30 @@ static const struct Handler handlers[] = {
     { "abr_par_change", 0x7f4330u, 0xb6c, 12, w_game_mode_zc_abr_par_change, PK_DEFAULT, NULL, 0 },
     { "notify_exp", 0x7c6ba0u, 0x7f6, 14, w_game_mode_on_notify_exp, PK_EXP, EXTRA(exp_amounts) },
     { "notify_exp2", 0x7ff9b0u, 0xacc, 18, w_game_mode_on_notify_exp2, PK_EXP, EXTRA(exp_amounts) },
+    { "cart_equip2", 0x7b84a0u, 0x297, 4, w_game_mode_cart_equipment_item_list2, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old34 },
+    { "cart_equip3", 0x7b8600u, 0x2d2, 4, w_game_mode_cart_equipment_item_list3, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old38 },
+    { "cart_equip_v5", 0x7b8a30u, 0x994, 4, w_game_mode_cart_item_list_equip_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_v5 },
+    { "cart_equip_v6", 0x7b8ce0u, 0xa0f, 4, w_game_mode_cart_item_list_equip_v6, PK_LIST, NULL, 0, NULL, 0, 0, &lay_v6 },
+    { "cart_normal_v5", 0x7b9100u, 0x993, 4, w_game_mode_cart_item_list_normal_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_n34 },
+    { "equip2", 0x7bb600u, 0x295, 4, w_game_mode_equipment_item_list2, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old34 },
+    { "equip3", 0x7bb7e0u, 0x2d0, 4, w_game_mode_equipment_item_list3, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old38 },
+    { "equip4", 0x7bf850u, 0x901, 4, w_game_mode_equipment_item_list4, PK_LIST, NULL, 0, NULL, 0, 0, &lay_eq4 },
+    { "equip_v5", 0x7bfa60u, 0x992, 4, w_game_mode_equipment_item_list_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_v5 },
+    { "equip_v6", 0x7bfe60u, 0xa0d, 4, w_game_mode_equipment_item_list_v6, PK_LIST, NULL, 0, NULL, 0, 0, &lay_v6 },
+    { "equip_v7", 0x7c0290u, 0xb3c, 4, w_game_mode_equipment_item_list_v7, PK_LIST, NULL, 0, NULL, 0, 0, &lay_v7 },
+    { "inventory_normal_v5", 0x7c0830u, 0x991, 4, w_game_mode_inventory_item_list_normal_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_n34 },
+    { "inventory_tab", 0x7c0990u, 0x908, 6, w_game_mode_inventory_tab, PK_DEFAULT, NULL, 0 },
+    { "guild_equip_v5", 0x7be970u, 0x9d3, 0x1c, w_game_mode_store_item_list_equip_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nv5 },
+    { "guild_equip_v6", 0x7beca0u, 0xa11, 0x1c, w_game_mode_store_item_list_equip_v6, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nv6 },
+    { "guild_normal_v5", 0x7bf030u, 0x9d2, 0x1c, w_game_mode_store_item_list_normal_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nn34 },
+    { "store_equip2", 0x7d7850u, 0x296, 4, w_game_mode_zc_store_equipment_item_list2, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old34 },
+    { "store_equip3", 0x7d79c0u, 0x2d1, 4, w_game_mode_zc_store_equipment_item_list3, PK_LIST, NULL, 0, NULL, 0, 0, &lay_old38 },
+    { "store_equip_v2", 0x7d7e20u, 0x976, 0x1c, w_game_mode_zc_store_item_list_equip_v2, PK_LIST, NULL, 0, NULL, 0, 0, &lay_neq4 },
+    { "store_equip_v5", 0x7d8040u, 0x996, 0x1c, w_game_mode_zc_store_item_list_equip_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nv5 },
+    { "store_equip_v6", 0x7d8370u, 0xa10, 0x1c, w_game_mode_zc_store_item_list_equip_v6, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nv6 },
+    { "store_normal_v5", 0x7d8a40u, 0x995, 0x1c, w_game_mode_zc_store_item_list_normal_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nn34 },
+    { "split_equip_v8", 0x7d54c0u, 0xb39, 5, w_game_mode_zc_split_send_item_list_equip_v8, PK_LIST, NULL, 0, NULL, 0, 0, &lay_split8 },
+    { "split_set", 0x7d6100u, 0xb08, 5, w_game_mode_zc_split_send_item_list_set, PK_SPLIT_SET, NULL, 0 },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -1012,6 +1255,8 @@ static unsigned handler_values(const struct Handler *h)
         return (h->layout->type_off ? N_TYPES : 1) * N_JOBS * 2;
     if (h->kind == PK_PAR)
         return (unsigned)h->extra_count;
+    if (h->kind == PK_LIST || h->kind == PK_SPLIT_SET)
+        return 8;
     return SWEEP_VALUES + h->extra_count;
 }
 
@@ -1023,6 +1268,42 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         pkt[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3);
     *(unsigned short *)pkt = h->id;
     drawn_job = drawn_jobs[(value + fill) % 5];
+    if (h->kind == PK_LIST || h->kind == PK_SPLIT_SET) {
+        unsigned ai = aid == AID_CASTER ? 0 : aid == AID_TARGET ? 1 : aid == AID_OWN ? 2 : 3;
+        const char *name = h->kind == PK_SPLIT_SET && (value & 4) ? long_list_name : list_names[ai];
+        short total;
+        memset(pkt + 2, 0, PACKET_MAX - 2);
+        if (h->kind == PK_SPLIT_SET) {
+            total = (short)(5 + strlen(name));
+            pkt[4] = (unsigned char)(value & 3);
+            memcpy(pkt + 5, name, strlen(name));
+        } else {
+            const struct ListLayout *l = h->list;
+            unsigned records = value & 3, egg = value >> 2, r;
+            total = (short)(l->header + records * l->rec_size);
+            if (l->header == 0x1c)
+                strncpy((char *)pkt + 4, name, 24);
+            if (l->header == 5)
+                pkt[4] = (unsigned char)ai;
+            for (r = 0; r < records; r++) {
+                unsigned char *rec = pkt + l->header + r * l->rec_size;
+                short index = (short)(r + 1);
+                int item_id = egg ? 9005 + (int)r : 1201 + 100 * fill + (int)r;
+                for (i = 0; i < l->rec_size; i++)
+                    rec[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3 + r * 13);
+                memcpy(rec, &index, 2);
+                memcpy(rec + 2, &item_id, 4);
+                if (egg && l->damaged_off)
+                    rec[l->damaged_off] = 1;
+                if (egg && l->flags_off)
+                    rec[l->flags_off] |= 2;
+            }
+        }
+        memcpy(pkt + 2, &total, 2);
+        memcpy(g_packetBuffer, pkt, PACKET_MAX);
+        memcpy(oracle_addr(ORIG_PACKET_BUFFER), pkt, PACKET_MAX);
+        return;
+    }
     if (h->kind == PK_PAR) {
         unsigned ai = aid == AID_CASTER ? 0 : aid == AID_TARGET ? 1 : aid == AID_OWN ? 2 : 3;
         int pv = par_values[ai * FILL_COUNT + fill];
@@ -1167,6 +1448,11 @@ static void seed_packets(int option)
     SEED64(ORIG_NEXT_JOB_EXP, nextJobExp, 300);
     for (i = 0; i < 6; i++)
         *(int *)oracle_addr(ORIG_STATS + 4 * i) = g_session1.stats[i] = (int)i + 1;
+    SEED(ORIG_HATCHED_EGG, hatchedEggIndex, option ? 3 : 4);
+    *(unsigned char *)oracle_addr(ORIG_PET_AUTO_FEED) = 1;
+    g_session1.petAutoFeed = 1;
+    *(void **)orig_storage_wnd = orig_window_vt;
+    *(int *)(orig_storage_wnd + ORIG_WND_TITLE_CTRL) = 1;
 #undef SEED
 #undef SEED64
 }
@@ -1363,6 +1649,28 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_ABR_GET, (void *)o_abr_get);
     oracle_patch_jump(ORIG_SET_ADVANCED_STATUS, (void *)o_set_advanced_status);
     oracle_patch_jump(ORIG_PET_TALK_DUE, (void *)o_pet_talk_due);
+    oracle_patch_jump(ORIG_ADD_CART_ITEM, (void *)o_add_cart_item);
+    oracle_patch_jump(ORIG_ADD_STORAGE_ITEM, (void *)o_add_storage_item);
+    oracle_patch_jump(ORIG_INVENTORY_UPDATE, (void *)o_inventory_update);
+    oracle_patch_jump(ORIG_ADD_INVENTORY_ITEM, (void *)o_add_inventory_item);
+    oracle_patch_jump(ORIG_SET_WORN_ITEM, (void *)o_set_worn_item);
+    oracle_patch_jump(ORIG_SET_WORN_COSTUME, (void *)o_set_worn_costume);
+    oracle_patch_jump(ORIG_REMOVE_FILTER_TYPES, (void *)o_remove_filter_types);
+    oracle_patch_jump(ORIG_REMOVE_OTHER_TYPES, (void *)o_remove_other_types);
+    oracle_patch_jump(ORIG_CLEAR_WORN_ITEMS, (void *)o_clear_worn_items);
+    oracle_patch_jump(ORIG_CLEAR_WORN_COSTUMES, (void *)o_clear_worn_costumes);
+    oracle_patch_jump(ORIG_CLEAR_INVENTORY, (void *)o_clear_inventory);
+    oracle_patch_jump(ORIG_CLEAR_CART, (void *)o_clear_cart);
+    oracle_patch_jump(ORIG_REFRESH_PARTY_UI, (void *)o_refresh_party_ui);
+    oracle_patch_jump(ORIG_REFRESH_FRIEND_UI, (void *)o_refresh_friend_ui);
+    oracle_patch_jump(ORIG_REFRESH_ITEM_WNDS, (void *)o_refresh_item_wnds);
+    oracle_patch_jump(ORIG_IS_PET_EGG_ID, (void *)o_is_pet_egg_id);
+    oracle_patch_jump(ORIG_IS_COSTUME_LOCATION, (void *)o_is_costume_location);
+    oracle_patch_jump(ORIG_GET_INVENTORY_ITEM, (void *)o_get_inventory_item);
+    oracle_patch_jump(ORIG_PET_AUTO_FEEDING, (void *)o_pet_auto_feeding);
+    oracle_patch_jump(ORIG_SEND_PET_AUTO_FEED, (void *)o_send_pet_auto_feed);
+    oracle_patch_jump(ORIG_SET_TEXT_ELLIPSIS, (void *)o_set_text_ellipsis);
+    oracle_patch_jump(ORIG_STORAGE_SET_NAME, (void *)o_storage_set_name);
     for (i = 0; i < 64; i++)
         orig_window_vt[i] = traps[i];
     orig_window_vt[ORIG_WINDOW_VT_SEND] = (void *)o_window_send;
