@@ -51,8 +51,6 @@ void c3d_ground15_draw_attr_marker(struct C3dGround15 *self, const float *view,
 int c3d_ground15_load_water(struct C3dGround15 *self, const struct GndRes *gnd,
     const struct GroundWaterSettings *scene);
 void c3d_ground15_build_vertex_colours(struct C3dGround15 *self);
-void c3d_ground15_check_alpha(struct C3dGround15 *self, const struct Ray3 *ray, int x, int y,
-    float maxT);
 int c3d_ground15_load(struct C3dGround15 *self, const struct GndRes *gnd,
     const float *lightDir, const float *diffuse, const float *ambient);
 int c3d_ground15_get_block_index(struct C3dGround15 *self, int x, int y);

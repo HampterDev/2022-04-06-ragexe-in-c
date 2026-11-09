@@ -51,7 +51,7 @@ void weather_forget_effect(struct Weather *value)
 
 void game_mode_init_view(struct GameMode *value)
 {
-    assert(value == &mode && world.player == &player && !mode.ray_tests_cells);
+    assert(value == &mode && world.player == &player);
     ++views;
 }
 
@@ -73,20 +73,19 @@ int main(void)
     mode.world = &world;
     mode.view = &view;
     mode.base.loop_cond = 1;
-    mode.ray_tests_cells = 7;
     player.pos.x = 12;
     player.pos.y = -24;
     player.pos.z = 36;
 
     assert(!game_mode_load_world(&mode));
     assert(loads == 1 && logins == 1 && !mode.base.loop_cond);
-    assert(views == 0 && pointers == 0 && mode.ray_tests_cells == 7);
+    assert(views == 0 && pointers == 0);
 
     mode.base.loop_cond = 1;
     load_ok = 1;
     assert(game_mode_load_world(&mode));
     assert(loads == 2 && logins == 1 && mode.base.loop_cond);
-    assert(views == 1 && pointers == 1 && !mode.ray_tests_cells);
+    assert(views == 1 && pointers == 1);
 
     view.at[0] = 1;
     view.at[1] = 2;

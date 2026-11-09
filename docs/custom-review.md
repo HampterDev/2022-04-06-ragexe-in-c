@@ -13534,3 +13534,25 @@ off, against that build's CPU ground with `RAGEXE_SHADOWS=0`: 0 to 335 pixels a 
 where a model lies on the ground (the beds' grass, the feet of walls), the depth ties the ground's
 meshes already had with lightmaps on; the models lose the shadows they kept there before.
 `test_projection` checks that the shadow frame is not set up without lightmaps.
+
+## The ground's half alpha goes (2026-11-09)
+
+With the ground drawn only from its meshes, the surfaces with `halfAlpha` were the last thing that
+kept a split in the ground's blocks (their draws after `plainCount`, outside `castCount`). Patrick
+had them removed. The flag was set only by `c3d_ground15_check_alpha`, a ray test from the camera
+towards the player that `game_mode_cast_player_ray` ran over the picked blocks' cells while
+`GameMode.ray_tests_cells` was set; `game_mode_load_world` sets it to 0 and nothing sets it to
+anything else, so no surface ever had the flag and the original's alpha test would have dropped
+one that did.
+
+- **What goes.** `GndSurface.halfAlpha`, `c3d_ground15_check_alpha` and `surface_check_alpha`,
+  `GameMode.ray_tests_cells` and the loop over the picked cells, and the blocks' `plainCount`.
+  A block's draws are now sorted by texture and lightmap only, all with the weather colour, and
+  all its indices cast (`indexCount`, which replaces `castCount`). `ray_triangle_hit` stays for the
+  attribute map's picking.
+- **Tests.** `test_ground_lifecycle` loses the ray test's case and `test_map_entry` the field's
+  reset.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build of the commit before from
+the same saved options: the 20 captures of the scene set above are identical with lightmaps on and
+with lightmaps off. `build.bat check` and the full `testsuild.bat` pass.

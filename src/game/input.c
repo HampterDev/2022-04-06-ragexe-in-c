@@ -4,7 +4,6 @@
 #include "world/tooltip.h"
 #include "world/model_types.h"
 #include "render/projection.h"
-#include "world/ground_api.h"
 #include "resources/attr_queries.h"
 #include "world/pick_node.h"
 #include "session/state.h"
@@ -49,7 +48,7 @@ void game_mode_cast_player_ray(struct GameMode *self)
     struct SceneGraphNode *block;
     struct GameActor *player;
     size_t object_index;
-    int sx, sy, x, y;
+    int sx, sy;
 
     if (self->world == 0 || self->world->player == 0 || g_renderer == 0)
         return;
@@ -67,15 +66,6 @@ void game_mode_cast_player_ray(struct GameMode *self)
         for (object_index = 0; object_index < block->objects.count; ++object_index) {
             struct C3dActor *object = block->objects.data[object_index];
             c3d_actor_pick(object, &to_player);
-        }
-    }
-    if (self->ray_tests_cells != 0) {
-        for (index = 0; index < blocks.count; ++index) {
-            block = blocks.hits[index];
-            for (y = block->groundCell[1]; y <= block->groundCell[3]; y++)
-                for (x = block->groundCell[0]; x <= block->groundCell[2]; x++)
-                    c3d_ground15_check_alpha(block->ground, &ray, x, y,
-                                                                       to_player.length);
         }
     }
 }

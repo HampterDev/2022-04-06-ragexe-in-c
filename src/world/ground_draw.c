@@ -120,14 +120,12 @@ static void c3d_ground15_draw_water(struct C3dGround15 *self, int x, int y,
    four vertices and two triangles per surface, the corners and their order as the original gave
    them to its quads (a strip, 0 1 2 then 2 1 3), so the device draws the same triangles with the
    same colours, texture coordinates and lightmap coordinates, and scales the colours by the
-   weather colour as the original did. Surfaces with halfAlpha keep their own colour with half
-   its alpha, unless the player is blind; the opaque lists' alpha test then drops them, as it
-   dropped the original's. With lightmaps off the draws bind none and stage 1 stays off
-   (render/crenderer.c), so the ground is its texture times its colour. */
+   weather colour as the original did. With lightmaps off the draws bind none and stage 1 stays
+   off (render/crenderer.c), so the ground is its texture times its colour. */
 
 struct GpuSurface {
     struct GndSurface *surface;
-    uintptr_t key[3];
+    uintptr_t key[2];
 };
 
 static int gpu_surface_less(const void *a, const void *b)
@@ -135,7 +133,7 @@ static int gpu_surface_less(const void *a, const void *b)
     const struct GpuSurface *x = a, *y = b;
     int i;
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 2; i++)
         if (x->key[i] != y->key[i])
             return x->key[i] < y->key[i] ? -1 : 1;
     return 0;
@@ -146,9 +144,8 @@ static int gpu_add(struct GpuSurface *list, int n, struct GndSurface *s)
     if (!s)
         return n;
     list[n].surface = s;
-    list[n].key[0] = s->halfAlpha != 0;
-    list[n].key[1] = (uintptr_t)s->texture;
-    list[n].key[2] = (uintptr_t)s->lightmapPage;
+    list[n].key[0] = (uintptr_t)s->texture;
+    list[n].key[1] = (uintptr_t)s->lightmapPage;
     return n + 1;
 }
 
@@ -212,13 +209,10 @@ static int gpu_block_build(struct C3dGround15 *self, struct GndGpuBlock *b, int 
             d->texture = s->texture;
             d->lightmap = s->lightmapPage;
             d->first = i * 6;
-            if (!list[i].key[0])
-                b->plainCount = b->drawCount;
         }
         d->count += 6;
-        if (!list[i].key[0])
-            b->castCount = d->first + d->count;
     }
+    b->indexCount = n * 6;
     b->mesh = gfx_mesh_create(verts, n * 4, indices, n * 6);
     return b->mesh != NULL;
 }
@@ -274,7 +268,7 @@ static void gpu_blocks(const struct C3dGround15 *self, const int *cells, int *ou
         out[3] = self->gpuRows - 1;
 }
 
-/* Queues the blocks' plain surfaces as one shadow caster each, once a frame. */
+/* Queues the blocks as one shadow caster each, once a frame. */
 static void gpu_cast(struct C3dGround15 *self, const float *view, const int *cells)
 {
     int frame = g_renderer->frame, b4[4], bx, by;
@@ -290,11 +284,11 @@ static void gpu_cast(struct C3dGround15 *self, const float *view, const int *cel
         for (bx = b4[0]; bx <= b4[2]; bx++) {
             struct GndGpuBlock *b = &self->gpuBlocks[by * self->gpuCols + bx];
 
-            if (b->castFrame == frame || !b->castCount)
+            if (b->castFrame == frame || !b->indexCount)
                 continue;
             b->castFrame = frame;
             draw.mesh = b->mesh;
-            draw.draw.count = b->castCount;
+            draw.draw.count = b->indexCount;
             renderer_add_mesh_draw(g_renderer, RENDER_SHADOW_CASTERS, &draw, NULL, NULL, 0.0f);
         }
 }
@@ -303,12 +297,15 @@ static void gpu_cast(struct C3dGround15 *self, const float *view, const int *cel
    outside the view. */
 static void gpu_render(struct C3dGround15 *self, const float *view, const int *cells)
 {
-    int frame = g_renderer->frame, b4[4], bx, by, i, k;
+    int frame = g_renderer->frame, b4[4], bx, by, i;
     struct RPMeshDraw draw;
 
     memset(&draw, 0, sizeof draw);
     memcpy(draw.view, view, sizeof draw.view);
     draw.draw.kind = GFX_MESH_GROUND;
+    for (i = 0; i < 3; i++)
+        draw.draw.colour[i] = g_weather.color[i];
+    draw.draw.colour[3] = 1.0f;
     draw.draw.uv[0] = draw.draw.uv[3] = 1.0f;
 
     gpu_blocks(self, cells, b4);
@@ -321,11 +318,6 @@ static void gpu_render(struct C3dGround15 *self, const float *view, const int *c
             b->lastFrame = frame;
             draw.mesh = b->mesh;
             for (i = 0; i < b->drawCount; i++) {
-                int half = i >= b->plainCount && !g_playerBlind;
-
-                for (k = 0; k < 3; k++)
-                    draw.draw.colour[k] = half ? 1.0f : g_weather.color[k];
-                draw.draw.colour[3] = half ? 128.0f / 255.0f : 1.0f;
                 draw.draw.first = b->draws[i].first;
                 draw.draw.count = b->draws[i].count;
                 renderer_add_mesh_draw(g_renderer, RENDER_GROUND_MESH, &draw, b->draws[i].texture,

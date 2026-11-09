@@ -431,35 +431,3 @@ void c3d_ground15_build_vertex_colours(struct C3dGround15 *self)
     }
 }
 
-static void surface_check_alpha(struct GndSurface *s, const struct Ray3 *ray, float maxT)
-{
-    Vec3 q[4];
-    float u, v, t;
-    int i;
-
-    for (i = 0; i < 4; i++) {
-        q[i].x = s->v[i].pos[0];
-        q[i].y = s->v[i].pos[1];
-        q[i].z = s->v[i].pos[2];
-    }
-    if (ray_triangle_hit(ray, &q[0], &q[1], &q[2], &u, &v, &t) && maxT > t)
-        s->halfAlpha = 1;
-    if (s->halfAlpha == 0 && ray_triangle_hit(ray, &q[1], &q[3], &q[2], &u, &v, &t) && maxT > t)
-        s->halfAlpha = 1;
-}
-
-void c3d_ground15_check_alpha(struct C3dGround15 *self, const struct Ray3 *ray, int x, int y,
-                                       float maxT)
-{
-    struct GndCell *cell;
-
-    if (x < 0 || x >= self->width || y < 0 || y >= self->height)
-        return;
-    cell = GND_CELL(self, x, y);
-    if (cell->top)
-        surface_check_alpha(cell->top, ray, maxT);
-    if (cell->frontWall)
-        surface_check_alpha(cell->frontWall, ray, maxT);
-    if (cell->rightWall)
-        surface_check_alpha(cell->rightWall, ray, maxT);
-}

@@ -19,7 +19,6 @@ int game_mode_load_world(struct GameMode *mode)
 {
     if (!world_load(mode->world))
         return map_entry_failed(mode);
-    mode->ray_tests_cells = 0;
     game_mode_init_view(mode);
     game_mode_make_mouse_pointer(mode);
     return 1;

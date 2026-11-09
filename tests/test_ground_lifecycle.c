@@ -110,32 +110,6 @@ static void check_cells(struct C3dGround15 *ground, int width, int height)
     for (i = 0; i < count * 4; ++i)
         assert(ground->colours[i].r == 1 && ground->colours[i].g == 1 && ground->colours[i].b == 1);
 }
-static void test_surface_picking(void)
-{
-    struct GndSurface surface = {0};
-    struct GndCell cell = {0};
-    struct C3dGround15 ground = {0};
-    struct Ray3 ray = {{0.25f, -5, 0.25f}, {0, 1, 0}, 0};
-    int triangle;
-    ground.width = ground.height = 1;
-    ground.cells = &cell;
-    cell.top = &surface;
-    surface.v[1].pos[0] = surface.v[3].pos[0] = 1;
-    surface.v[2].pos[2] = surface.v[3].pos[2] = 1;
-    for (triangle = 0; triangle < 2; ++triangle) {
-        ray.origin.x = ray.origin.z = triangle ? 0.75f : 0.25f;
-        surface.halfAlpha = 0;
-        c3d_ground15_check_alpha(&ground, &ray, 0, 0, 5);
-        assert(!surface.halfAlpha);
-        c3d_ground15_check_alpha(&ground, &ray, 0, 0, 6);
-        assert(surface.halfAlpha);
-    }
-    ray.origin.x = 2;
-    surface.halfAlpha = 0;
-    c3d_ground15_check_alpha(&ground, &ray, 0, 0, 6);
-    assert(!surface.halfAlpha);
-}
-
 int main(void)
 {
     struct C3dAttr attr = {0};
@@ -148,7 +122,6 @@ int main(void)
     const float direction[3] = {0, 1, 0}, diffuse[3] = {0.5f, 0.5f, 0.5f};
     const float ambient[3] = {0.25f, 0.25f, 0.25f};
     unsigned pass, i, j;
-    test_surface_picking();
     ground_free(NULL);
     fail_at = 1;
     assert(!ground_new() && !live_allocations);
