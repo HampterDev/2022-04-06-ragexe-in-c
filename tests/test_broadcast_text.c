@@ -4,6 +4,8 @@
 #include <string.h>
 #include <windows.h>
 
+unsigned int g_codePage = 949;
+
 static void plain(const char *input, const char *text, unsigned colour, int balloon, int log_line, int channel)
 {
     struct BroadcastText result;
@@ -33,6 +35,11 @@ int main(void)
     plain("#tag: hello", "#tag: hello", 0xffff, 1, 1, BROADCAST_CHANNEL);
     plain("Bob: Event in #main", "Bob: Event in : Event in #main", 0xffff, 0, 1, BROADCAST_CHANNEL);
     plain(":lead#tag", ":lead", 0xffff, 0, 1, BROADCAST_CHANNEL);
+    {
+        char cut[11] = "a:블루#x";
+        assert(broadcast_text_strip_annotation(cut, sizeof cut));
+        assert(strcmp(cut, "a:블루:블") == 0);
+    }
     plain("tool12345xhello", "hello", 0x452301, 1, 1, BROADCAST_CHANNEL);
     plain("tool 0x1fFhi", "hi", 0xff0100, 1, 1, BROADCAST_CHANNEL);
     plain("tool-00001hi", "hi", 0xffffff, 1, 1, BROADCAST_CHANNEL);

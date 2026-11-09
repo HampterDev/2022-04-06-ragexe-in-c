@@ -1,4 +1,6 @@
 #include "game/broadcast_text.h"
+#include "core/text_format.h"
+#include "platform/code_page.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,9 +37,7 @@ int broadcast_text_strip_annotation(char *text, size_t capacity)
         return 0;
     kept = (size_t)(hash - text);
     if (colon && colon != text) {
-        tail = strlen(colon);
-        if (tail > capacity - 1 - kept)
-            tail = capacity - 1 - kept;
+        tail = text_prefix_length(colon, strlen(colon), capacity - 1 - kept, g_codePage);
         memmove(hash, colon, tail);
     }
     text[kept + tail] = 0;
