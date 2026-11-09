@@ -8,12 +8,7 @@ const float g_halfTurnDegrees = 180.0f;
 
 struct Mat34 g_identityMatrix = { { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 } };
 
-float g_radianTable[361], g_negRadianTable[361];
-float g_sinTable[361], g_negSinTable[361];
-float g_cosTable[361], g_negCosTable[361];
-float *const g_degree_tables[6] = {
-    g_radianTable, g_negRadianTable, g_sinTable, g_negSinTable, g_cosTable, g_negCosTable,
-};
+float g_degreeTables[6 * 361];
 
 #define PI_F 3.141592f
 
@@ -224,14 +219,14 @@ void math_init_degree_tables(void)
     for (deg = 0; deg <= 360; deg++) {
         float s, c;
 
-        g_degree_tables[0][deg] = (float)deg / 180.0f * PI_F;
-        s = float_sin(g_degree_tables[0][deg]);
-        g_degree_tables[2][deg] = s;
-        c = float_cos(g_degree_tables[0][deg]);
-        g_degree_tables[1][deg] = -g_degree_tables[0][deg];
-        g_degree_tables[4][deg] = c;
-        g_degree_tables[3][deg] = -g_degree_tables[2][deg];
-        g_degree_tables[5][deg] = -c;
+        g_radianTable[deg] = (float)deg / 180.0f * PI_F;
+        s = float_sin(g_radianTable[deg]);
+        g_sinTable[deg] = s;
+        c = float_cos(g_radianTable[deg]);
+        g_negRadianTable[deg] = -g_radianTable[deg];
+        g_cosTable[deg] = c;
+        g_negSinTable[deg] = -g_sinTable[deg];
+        g_negCosTable[deg] = -c;
     }
 }
 
@@ -240,8 +235,8 @@ static float degree_lookup(int table, int deg)
     if (deg > 360 || deg < -360)
         deg %= 360;
     if (deg < 0)
-        return g_degree_tables[table][361 + deg];
-    return g_degree_tables[table][deg];
+        return g_degreeTables[table * 361 + 361 + deg];
+    return g_degreeTables[table * 361 + deg];
 }
 
 float get_cos_deg(int deg)

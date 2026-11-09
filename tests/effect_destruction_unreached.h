@@ -14,11 +14,10 @@ unsigned char is_effect_state_cloaking(unsigned long state) { abort(); }
 void *effect_find_actor(int aid) { abort(); }
 void effect_play_wave_at(const char *wave, const Vec3 *position, float height) { abort(); }
 Vec3 *effect_player_position(Vec3 *out) { abort(); }
-float g_cosTable[361] = {0};
+float g_degreeTables[6 * 361] = {0};
 struct EffectMgr *g_effectMgr = {0};
 struct Renderer *g_renderer = {0};
 struct Session g_session1 = {0};
-float g_sinTable[361] = {0};
 int game_copy_view_matrix(float matrix[12]) { abort(); }
 int game_send_message(int message, int a, int b, int c, int d) { abort(); }
 void particle_free(struct Particle *p) { abort(); }

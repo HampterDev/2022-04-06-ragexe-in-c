@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-float g_sinTable[361], g_negSinTable[361], g_cosTable[361], g_negCosTable[361];
+float g_degreeTables[6 * 361];
 
 void *mem_alloc(size_t bytes)
 {

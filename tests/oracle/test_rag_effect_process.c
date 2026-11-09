@@ -1145,12 +1145,12 @@ int main(int argc, char **argv)
     lift_master_ops.get_effect_state = lift_master_effect_state;
     lift_mode.base.ops = &lift_mode_ops;
     math_init_degree_tables();
-    memcpy(oracle_addr(ORIG_RADIAN_TABLE), g_radianTable, sizeof g_radianTable);
-    memcpy(oracle_addr(ORIG_NEG_RADIAN_TABLE), g_negRadianTable, sizeof g_negRadianTable);
-    memcpy(oracle_addr(ORIG_SIN_TABLE), g_sinTable, sizeof g_sinTable);
-    memcpy(oracle_addr(ORIG_NEG_SIN_TABLE), g_negSinTable, sizeof g_negSinTable);
-    memcpy(oracle_addr(ORIG_COS_TABLE), g_cosTable, sizeof g_cosTable);
-    memcpy(oracle_addr(ORIG_NEG_COS_TABLE), g_negCosTable, sizeof g_negCosTable);
+    memcpy(oracle_addr(ORIG_RADIAN_TABLE), g_radianTable, 361 * sizeof *g_radianTable);
+    memcpy(oracle_addr(ORIG_NEG_RADIAN_TABLE), g_negRadianTable, 361 * sizeof *g_negRadianTable);
+    memcpy(oracle_addr(ORIG_SIN_TABLE), g_sinTable, 361 * sizeof *g_sinTable);
+    memcpy(oracle_addr(ORIG_NEG_SIN_TABLE), g_negSinTable, 361 * sizeof *g_negSinTable);
+    memcpy(oracle_addr(ORIG_COS_TABLE), g_cosTable, 361 * sizeof *g_cosTable);
+    memcpy(oracle_addr(ORIG_NEG_COS_TABLE), g_negCosTable, 361 * sizeof *g_negCosTable);
     memcpy(oracle_addr(ORIG_DURATIONS), g_effectDurations, sizeof g_effectDurations);
 
     oracle_patch_jump(ORIG_LAUNCH_PRIM, (void *)o_launch_prim);

@@ -128,7 +128,7 @@ struct Session g_session1;
 struct EffectMgr *g_effectMgr;
 struct UIWindowMgr g_windowMgr;
 int g_serviceType;
-float g_sinTable[361], g_cosTable[361];
+float g_degreeTables[6 * 361];
 
 static char events[EVENTS][EVENT_LEN];
 static int event_count, overflow;

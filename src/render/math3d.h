@@ -31,10 +31,13 @@ struct OrientedBox {
 SIZE_ASSERT(OrientedBox, 0x3c);
 
 extern struct Mat34 g_identityMatrix;
-extern float g_radianTable[361], g_negRadianTable[361];
-extern float g_sinTable[361], g_negSinTable[361];
-extern float g_cosTable[361], g_negCosTable[361];
-extern float *const g_degree_tables[6];
+extern float g_degreeTables[6 * 361];
+#define g_radianTable (g_degreeTables + 0 * 361)
+#define g_negRadianTable (g_degreeTables + 1 * 361)
+#define g_sinTable (g_degreeTables + 2 * 361)
+#define g_negSinTable (g_degreeTables + 3 * 361)
+#define g_cosTable (g_degreeTables + 4 * 361)
+#define g_negCosTable (g_degreeTables + 5 * 361)
 extern const float g_halfTurnDegrees;
 extern const float g_pi;
 

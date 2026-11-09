@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-float g_cosTable[361] = { 1.0f };
-float g_sinTable[361] = { 0.0f };
+float g_degreeTables[6 * 361] = { [4 * 361] = 1.0f };
 struct Session g_session1;
 static struct EffectPrim prim;
 static struct RenderObject actor;

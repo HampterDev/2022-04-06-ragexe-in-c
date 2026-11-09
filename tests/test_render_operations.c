@@ -19,7 +19,7 @@
 
 struct Session g_session1;
 struct Renderer *g_renderer;
-float g_sinTable[361];
+float g_degreeTables[6 * 361];
 static DWORD tick;
 static float camera_scale = 2.0f, time_left, sampled_time;
 static int finished, samples, plays, use_hover;
