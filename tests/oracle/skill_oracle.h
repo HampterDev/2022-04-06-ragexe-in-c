@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
+#include <setjmp.h>
 #include <windows.h>
 #include "oracle_image.h"
 #include "session/state.h"
@@ -146,7 +147,7 @@ static void event(const char *fmt, ...)
 }
 
 static unsigned char orig_mode[0x2000], orig_world[0x1000], orig_caster[0x1000], orig_target[0x1000], orig_player[0x3000];
-static unsigned char orig_rag[0x400], orig_effect[0x400], orig_mgr[0x100];
+static unsigned char orig_rag[0x400], orig_effect[0x1000], orig_mgr[0x100];
 static unsigned orig_attr[0x40];
 static void *orig_mode_vt[64], *orig_actor_vt[64], *orig_rag_vt[64], *orig_effect_vt[64];
 
@@ -158,7 +159,8 @@ static struct GameActor lift_caster, lift_target;
 static unsigned char lift_player[0x3000];
 static struct GameActorOps lift_actor_ops;
 static struct RagEffect lift_rag;
-static struct Effect lift_effect;
+static union { struct Effect effect; unsigned char raw[0x1000]; } lift_effect_storage;
+#define lift_effect lift_effect_storage.effect
 static struct EffectOps lift_effect_ops;
 static unsigned char lift_scope[0x200];
 static struct RenderObjectOps lift_scope_ops;
@@ -167,10 +169,16 @@ static void *orig_ground_vt[64];
 static unsigned orig_list_head[3];
 static int lift_mgr, lift_action_mgr;
 
+static const char *(*who_extra)(const void *p);
+
 static const char *who(const void *p)
 {
     static char other[16];
     if (!p) return "0";
+    if (who_extra) {
+        const char *extra = who_extra(p);
+        if (extra) return extra;
+    }
     if (p == orig_caster || p == &lift_caster) return "C";
     if (p == orig_target || p == &lift_target) return "T";
     if (p == orig_player || p == lift_player) return "P";
@@ -269,7 +277,13 @@ void render_object_set_script_step_frames(struct RenderObject *self, unsigned ch
 BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id) { (void)self; event("quit1 %x", window_id); return 1; }
 int ui_window_mgr_send_msg_(struct UIWindowMgr *self, int msg, int val1, int val2, int val3, int val4)
 { (void)self; event("wndmsg %x '%s' %x %x %x", msg, msg == 1 ? (const char *)val1 : "", val2, val3, val4); return 0; }
-char *msg_str(int id) { static char none[1]; (void)id; none[0] = 0; return none; }
+static int msg_str_named;
+char *msg_str(int id)
+{
+    static char text[16];
+    if (msg_str_named) snprintf(text, sizeof text, "msg%d", id); else text[0] = 0;
+    return text;
+}
 char game_mode_launch_effect_at(struct GameMode *mode, int effect_id, struct GameActor *caster, struct GameActor *target, int level)
 { (void)mode; event("launch-at %x %s %s %d", effect_id, who(caster), who(target), level); return 1; }
 BYTE skill_effect_on_caster(int skill, struct GameActor *caster, struct GameActor *target)
@@ -373,7 +387,7 @@ static double __fastcall o_view_heading(void *self, void *edx) { (void)self; (vo
 static int __fastcall o_step_frames(void *self, void *edx, int frames) { (void)edx; event("step %s %d", who(self), frames); return 0; }
 static int __fastcall o_wndmgr_send_msg(void *self, void *edx, int msg, int val1, int val2, int val3, int val4)
 { (void)self; (void)edx; event("wndmsg %x '%s' %x %x %x", msg, msg == 1 ? (const char *)val1 : "", val2, val3, val4); return 0; }
-static const char *__cdecl o_msg_str(int id) { (void)id; return ""; }
+static const char *__cdecl o_msg_str(int id) { return msg_str(id); }
 static int __fastcall o_launch_effect_at(void *self, void *edx, int effect, void *caster, void *target, int level)
 { (void)self; (void)edx; event("launch-at %x %s %s %d", effect, who(caster), who(target), level); return 1; }
 static int __cdecl o_effect_on_caster(int skill, int level, void *caster, void *target)
@@ -423,8 +437,13 @@ void *oracle_time_slot = (void *)o_time;
 
 static int trap_slot;
 static void *trap_self;
+static jmp_buf *trap_jump;
 static void __cdecl trap_hit(void)
 {
+    if (trap_jump) {
+        event("trap slot %d %s", trap_slot, who(trap_self));
+        longjmp(*trap_jump, 1);
+    }
     fprintf(stderr, "  the original called vtable slot %d (offset 0x%x) on %s, which the test does not provide\n", trap_slot,
             trap_slot * 4, who(trap_self));
     fflush(stderr);
@@ -575,7 +594,7 @@ static void seed_all(int option)
     memset(&lift_mode, 0, sizeof lift_mode);
     memset(&lift_world, 0, sizeof lift_world);
     memset(&lift_rag, 0, sizeof lift_rag);
-    memset(&lift_effect, 0, sizeof lift_effect);
+    memset(&lift_effect_storage, 0, sizeof lift_effect_storage);
     memset(lift_player, 0, sizeof lift_player);
     lift_mode.base.ops = &lift_mode_ops;
     lift_mode.world = &lift_world;

@@ -172,5 +172,15 @@ if errorlevel 1 (popd & exit /b 1)
 .\test_rag_effect_process.exe "%ORACLE_EXE%"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 
+python "%ROOT%\tests\oracle\extract_functions.py" "%ROOT%" "%OUT%\packet_handlers.inc" ^
+  "src/game/packet_data.c::void packet_decode_move_data("
+if errorlevel 1 (popd & exit /b 1)
+cl %CFLAGS% /I"%OUT%" "%ROOT%\tests\oracle\test_packet_handlers.c" "%ROOT%\tests\oracle\oracle_image.c" ^
+  "%ROOT%\src\game\packets_actor.c" "%ROOT%\src\game\effect_notify.c" "%ROOT%\src\game\cell_coordinates.c" ^
+  "%ROOT%\src\effects\durations.c" /Fe:test_packet_handlers.exe %LFLAGS%
+if errorlevel 1 (popd & exit /b 1)
+.\test_packet_handlers.exe "%ORACLE_EXE%"
+if not "%errorlevel%"=="0" (popd & exit /b 1)
+
 popd
 exit /b 0

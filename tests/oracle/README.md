@@ -54,6 +54,7 @@ beside this checkout, and `tests\build.bat` runs it only when that file exists.
 | `test_ez2str_init` | the routines at `0x996150` (`CEZ2STREffect::Init`) and `0x996870` (its after-init, with 174 sound cues) | `ez2_str_effect_init` and `ez2_str_effect_after_init` with their type tables | every effect type below 0x1000 x both effect options x levels 1 and 3, owner 1001, a fixed position and target; the particle's creation, every str load, sound cue and zoom recorded on both sides, then the instance-key, shrink, head and camera fields of the effect and the owner, loop, scale, loops, spin, list and lifetime fields of the particle compared; the Lua questions answer no, the owner is absent, the camera heading and the screen projection are stood in with the same numbers on both sides | 16,384 calls, 21,774 events, 0 mismatches |
 | `test_rag_effect_init` | the routine at `0x6e8c70` (`CRagEffect::Init`, one jump table of 224 arms) | `rag_effect_init` | every effect id the duration table covers (0..2384) x both effect options, one master with a position and heading, one offset; the duration set through the vtable and the str name asked of the resource manager recorded on both sides, then the id, master, position, heading, offset and loop-count fields compared; the resource manager answers "none" on both sides | 4,770 calls, 5,222 events, 0 mismatches |
 | `test_rag_effect_process` | the routine at `0x6f85c0` (`CRagEffect::OnProcess`) with the two it dispatches to, `0x6ecd90` (effects 300 to 373) and `0x6ede30` (491 and up, one jump table of 1,883 arms) | `rag_effect_on_process`, `rag_effect_process300`, `rag_process_491`, `rag_process_800` and the `rag_skills_*.c` arms behind them | every effect id the duration table covers x both effect options, run for 64 frames (or the effect's duration) on a fake master; every prim launch, wave, texture and sprite load, action, message and spawn recorded on both sides; after each frame the effect's and the master's fields compared, after each run every launched prim's fields, particles, triangles and records (through `rag_record_map.inc`, see below), and then every launched prim is stepped 32 times through `0x68e550` (`CEffectPrim::OnProcess`, the per-kind table at `0x693fd8`) against `effect_prim_on_process` and the `prim_*.c` arms, with the same compare after each step, and drawn after each step through `0x6addc0` (`CEffectPrim::Render`, the per-kind table at `0x6af458`) against `effect_prim_render`, every triangle the two sides hand the renderer compared vertex by vertex and every sprite quad they submit compared field by field; the thirteen effects that build whole game objects (blur and hallucination copies, the plant actor) are left out | 4,744 effect runs, 44,834 events, 13,816 prims, 419,468 prim steps and draws, 6,461,354 triangles and sprite quads, 0 mismatches |
+| `test_packet_handlers` | eighteen packet handlers of `CGameMode`: `0x7cc580` (vanish), `0x7d6650` and `0x7f5320` (sprite change), `0x7fae70` (fast move), `0x7f9bb0` (blade stop), `0x7f4d40` (actor init), `0x7ce200` (par change by user), `0x7f4470` (names), `0x7ba170` (combo delay), `0x7ff750`, `0x7ff460`, `0x7ff730` and `0x7f4ed0` (notify effect 1 to 4), `0x7fa8b0` (clear effect), `0x7fac60` (congratulation), `0x803b30` (efst update), `0x7ba9d0` (devotion list), `0x7bac20` (dispel) | the handlers of `packets_actor.c` and `effect_notify.c` | every handler x the caster, the target, the player and an unknown aid x sixteen swept values and the handler's own interesting values in the first field after the aid x three fillers for the rest of the packet x both effect options; every helper the handler calls recorded through stand-ins on both sides, then the session, the mode, the three actors and the spawned effect diffed against a snapshot and every changed field reported by name | 7,944 calls, 19,132 events, 0 mismatches |
 
 Skills from 0x1519 go to the skill-action registry, stubbed here; the comparison stops below it.
 The maximum-job-level row is the test that would have caught the swapped `jobLevelBase` /
@@ -149,14 +150,34 @@ those rows. Regenerate it after a change to the union or to an arm:
     ORACLE_RECORD_DUMP=build\tests\oracle\records.txt build\tests\oracle\test_rag_effect_process.exe <exe>
     python tests\oracle\rag_record_map.py . build\tests\oracle\records.txt tests\oracle\rag_record_map.inc
 
+The packet handlers run on the skill fakes plus a diff of the state they touch.
+`test_packet_handlers` hands each handler a packet built from the id, an aid, a swept value in
+the first field after the aid and a filler for the rest, the same bytes on both sides, with every
+helper the handler calls stood in as a recorder (the name cards, the session's look and job
+setters, the window manager's quit, open and message box, the effect manager's remove, the
+actor's look setters through its vtable, the connection). After the call the original's session
+block (`0x1133c50`, 0x83b0 bytes), the mode, the caster, the target, the player and the spawned
+effect are compared with a snapshot taken before it, and every changed field is reported by name
+through a map from this tree's field to the original's offset (`fields[]` in the test; the
+layouts differ, the session's own aid sits at `0x129c` here and `0x15bc` there). A change outside
+the map is reported with its raw offset on either side, so the sides disagree until the field is
+mapped, which is how the map was filled. A vtable slot the test does not provide is reported as
+an event and the call abandoned (`trap_jump`), so a handler reaching new ground shows as a
+mismatch rather than ending the run. The `std::string` members of the fake effect are
+pre-constructed empty (capacity 15), since a handler assigns into them. Every handler is called
+with the mode in `ecx`: the arms that take only the packet (`retn 4`) still read the mode from
+`ecx`, left there by the dispatcher. `ORACLE_ONLY=<handler name>` runs one handler,
+`ORACLE_TRACE=1` prints every event list.
+
 ## Candidates next
 
 The last large table the switch sweep (`tools/funcmap/case_sweep.py`) could not match to a
-numeric C switch is the packet dispatcher at `0x7a0570` (798 arms). It cannot be driven here: each
-arm hands a received packet to a handler that works on the world, the actors and the windows.
-What can be checked statically is checked by `tools/funcmap/dispatch_check.py`: both sides
-dispatch the same 798 ids, and the handlers the simple arms call are paired with this tree's
-handler functions in the function map. The handlers themselves are the next oracle candidates,
-one at a time as the three skill handlers were. Smaller pure lookups: the job sprite and IMF
-name builders (they read the job tables, which `.data` holds), the message-id lookups that take
-only a code, the talk-option name table, and the angle and distance helpers of the effects.
+numeric C switch is the packet dispatcher at `0x7a0570` (798 arms). It is checked statically by
+`tools/funcmap/dispatch_check.py`: both sides dispatch the same 798 ids, and the handlers the
+simple arms call are paired with this tree's handler functions in the function map. The handlers
+themselves are driven one family at a time by `test_packet_handlers`, the actor and effect
+notifications so far; the next families are the entry handlers (`packets_entry*.c`), the par
+changes, the item lists and the NPC dialogs, each with its own stand-ins. Smaller pure lookups:
+the job sprite and IMF name builders (they read the job tables, which `.data` holds), the
+message-id lookups that take only a code, the talk-option name table, and the angle and distance
+helpers of the effects.
