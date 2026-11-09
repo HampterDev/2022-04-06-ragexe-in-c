@@ -112,8 +112,10 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
 /* custom: the cascades of the models' shadow maps (render/gfx.h). The models that receive shadow
    lie in a band from SHADOW_ABOVE units above the camera's focus to SHADOW_BELOW below it (+y is
    down), so the view is cut into GFX_SHADOW_CASCADES slices of view depth between where its four
-   corner rays enter and leave that band, no further than four times the camera's distance. The
-   slices grow with the depth (SHADOW_SPLIT between even and geometric steps). Each cascade's map
+   corner rays enter and leave that band, no further than four times the camera's distance and the
+   view's far plane (a cap of 8,000 left the band out of reach, and the frame without shadows,
+   when the camera looked down steeply from beyond about 8,000). The slices grow with the depth
+   (SHADOW_SPLIT between even and geometric steps). Each cascade's map
    covers its slice's part of the band as the light sees it: the light map is orthographic, so a
    caster that shades something in the slice lands on the same place of the map, however far off
    screen it stands; SHADOW_DEPTH either way along the light is kept. A cascade's square is rounded
@@ -207,7 +209,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
 
     /* the view's four corner rays in the world, per unit of view depth, and where they cross the band */
     maxDepth = distance * 4.0f + 400.0f;
-    maxDepth = maxDepth < 8000.0f ? maxDepth : 8000.0f;
+    maxDepth = maxDepth < RENDER_FAR_Z ? maxDepth : RENDER_FAR_Z;
     for (i = 0; i < 3; i++)
         eye[i] = inv[9 + i];
     nearest = maxDepth;

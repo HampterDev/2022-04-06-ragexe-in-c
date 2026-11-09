@@ -13612,3 +13612,26 @@ at 1,500, 3,000 and 6,000 (the beds, the fountain, models' feet); the 20 capture
 set by 267 to 17,368, in rows of pixels where models meet the ground (curbs, planters, the beds'
 edges, walls), the depth ties now resolved at 24 bits; sprites, their shadows and effects are
 unchanged. `build.bat check` and the full `testsuild.bat` pass.
+
+## Shadows at the furthest zoom (2026-11-09)
+
+Patrick saw no shadows over Prontera from far out at one tilt, and saw them come back when he
+tilted the camera up a little. `renderer_shadow_frame` cut the view into cascades between where
+its corner rays enter and leave the band around the focus, no deeper than four times the
+camera's distance and never deeper than 8,000. Looking down steeply from beyond about 8,000, every
+corner ray reaches the band deeper than that, no ray kept any of it, and the frame drew no
+shadows; tilting up brought the bottom of the view nearer than 8,000. Captures from a distance of
+10,000 at -60 and -70 degrees were the same with and without shadows.
+
+- **The change.** The depth is capped by the view's far plane (`RENDER_FAR_Z`, 40,000) instead,
+  so the cascades reach the band at any zoom. Nothing changes below a distance of 1,900, where
+  four times the distance stays under 8,000.
+- **The light's depth.** The maps keep `SHADOW_DEPTH` (3,000) either way along the light from the
+  focus. The largest ground among the client's maps is 2,080 units across (`pay_fild03`), so
+  from one corner the other lies at most 2,080 times the sum of the light's two level components
+  along it, under 2,950 for any light, as long as the ground is level; it stays.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: from 10,000 at -60 and -70 degrees the town
+now has its shadows (18,832 and 20,343 pixels differ from the capture without shadows); the 20
+captures of the scene set are identical to the commit before. `build.bat check` and the full
+`testsuild.bat` pass.
