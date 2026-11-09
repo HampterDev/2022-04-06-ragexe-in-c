@@ -47,6 +47,8 @@ static void test_quaternions_and_degrees(void)
     near_value(get_sin_deg(90), 1.0f);
     near_value(get_cos_deg(180), -1.0f);
     near_value(get_sin_deg(-90), get_sin_deg(271));
+    near_value(get_cos_deg(-90), get_cos_deg(271));
+    near_value(deg_to_rad(-90), deg_to_rad(271));
     near_value(get_cos_deg(-1), get_cos_deg(360));
     near_value(get_sin_deg(-360), get_sin_deg(1));
     near_value(get_sin_deg(-361), get_sin_deg(360));
