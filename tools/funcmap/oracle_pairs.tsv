@@ -150,3 +150,20 @@ b461be	mem_alloc	tests/oracle/test_packet_handlers.c, stood in
 7f1320	moveentry10	tests/oracle/test_packet_handlers.c
 7f2170	newentry10	tests/oracle/test_packet_handlers.c
 7f3060	standentry10	tests/oracle/test_packet_handlers.c
+867610	session_invalidate_windows	tests/oracle/test_packet_handlers.c, stood in
+884100	session_is_any_super_novice_job	tests/oracle/test_packet_handlers.c, stood in
+8539e0	session_get_drawn_job	tests/oracle/test_packet_handlers.c, stood in
+af8c50	ui_basic_info_wnd_set_height	tests/oracle/test_packet_handlers.c, stood in
+568330	uiint64_bar_graph_set_values	tests/oracle/test_packet_handlers.c, stood in
+772130	game_mode_refresh_actor_effects	tests/oracle/test_packet_handlers.c, stood in
+6409d0	ui_window_mgr_get_window	tests/oracle/test_packet_handlers.c, stood in
+88af30	session_refresh_skill_wnds	tests/oracle/test_packet_handlers.c, stood in
+57b6f0	ui_status_wnd_restore_frame	tests/oracle/test_packet_handlers.c, stood in
+84f3f0	session_end_exchange2	tests/oracle/test_packet_handlers.c, stood in
+875070	session_find_abr	tests/oracle/test_packet_handlers.c, stood in
+7e6110	tree_get	tests/oracle/test_packet_handlers.c, stood in
+7ae5e0	session_set_advanced_status	tests/oracle/test_packet_handlers.c, stood in
+8903b0	session_pet_talk_due	tests/oracle/test_packet_handlers.c, stood in
+506140	string_format	tests/oracle/test_packet_handlers.c
+50b600	string_assign_cstr	tests/oracle/test_packet_handlers.c
+477fb0	string_append_cstr	tests/oracle/test_packet_handlers.c
