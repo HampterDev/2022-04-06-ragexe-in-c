@@ -294,12 +294,16 @@ int gfx_world_supported(void);
    the angle between the surface and the light (lightView: towards the light, view space; the
    surface's normal comes from the vertex's), as the share of 16 points spread over a disc of
    radius blur[c] (texture units of the cascade's map) that are lit, so that shadow edges fade over
-   a fixed width. Over that disc a surface at a slant to the light moves along it, so the bias grows
-   by slant (light depth) times the tangent of that slant, up to 8 times. On a GFX_MESH_GROUND draw
-   the shadow maps take the place of the lightmap's alpha, the shadows the map's editor baked into
-   it: down to darkness that alpha counts as lit, and the shadow maps darken to darkness; a texel
-   darker still keeps its own. gfx_shadow_begin answers 0 where the device cannot draw shadows;
-   gfx_shadow_receive(0) turns receiving off, and the draws then look as without shadows. */
+   a fixed width. Over that disc, and over the cascade's texels, a surface at a slant to the light
+   moves along it, so the bias grows by slant[c] (light depth) times the tangent of that slant, up
+   to 8 times. On a GFX_MESH_GROUND draw the shadow maps take the place of the lightmap's alpha,
+   the shadows the map's editor baked into it: down to darkness that alpha counts as lit, and the
+   shadow maps darken to darkness; a texel darker still keeps its own. Where a model's surface lies
+   within the bias in front of the ground, or as far behind it as that slant reaches, the maps
+   cannot tell whether it shades it, and the ground keeps the lightmap's alpha there (the shadow
+   pass keeps the models' depths negative). gfx_shadow_begin answers 0 where the device cannot
+   draw shadows; gfx_shadow_receive(0) turns receiving off, and the draws then look as without
+   shadows. */
 #define GFX_SHADOW_SIZE 2048
 #define GFX_SHADOW_CASCADES 4
 
@@ -310,7 +314,8 @@ struct GfxShadow {
     float offset[GFX_SHADOW_CASCADES];
     float blur[GFX_SHADOW_CASCADES];
     float lightView[3];
-    float bias, slant, darkness;
+    float slant[GFX_SHADOW_CASCADES];
+    float bias, darkness;
     float ambient[3];
 };
 

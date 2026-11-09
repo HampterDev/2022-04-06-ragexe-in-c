@@ -13449,3 +13449,33 @@ shadows: `granny_models` 7 pixels (edges of the guardians), `guild_flags` 2, eve
 same (`prontera_crowd` differs only where the mouse pointer was caught in one capture).
 `build.bat check` and the full `tests\build.bat` pass; `renderer_granny_projection_test.h` checks
 that a quad submitted without `world` is not marked.
+
+## The ground under models it touches keeps its baked shadow (2026-11-09)
+
+Patrick saw Prontera's flower beds, from further away, striped with pale bands. The bed
+(`나무잡초꽃\둥근꽃밭.rsm`, scale 1 at the plaza's own height) lays a grass plane 0.3 units and its
+flowers 0.2 to 2.4 units over the plaza's cobblestones, which show between them; the editor baked
+those cobblestones in shadow, so the gaps read as grey soil. The shadow maps cannot tell layers
+that close apart: within the bias (4 units) the plaza counted as lit and showed white between the
+flowers, and farther away, where a cascade's texel is a unit or more wide, the comparison changed
+from texel to texel and drew the bands. A smaller bias (0.5 to 1 unit) only softened the bands,
+and casting the flowers without the alpha test left them too.
+
+- **Contact zones.** The shadow pass now writes a model caster's depth negative (the R32F maps
+  keep the sign; the clear stays 1). Where a tap of the ground's lookup finds a model's surface in
+  front of the ground within the bias, or behind it within the slant the cascade's texels reach,
+  the ground takes the lightmap's alpha for that tap, the shadow the editor baked, instead of the
+  shadow maps' answer. The editor traced rays exactly and baked such contact; the maps keep
+  everything farther apart. Models' own receiving is unchanged.
+- **The slant grows with the texel.** `GfxShadow.slant` became one value per cascade: the soft
+  edge's half width plus the cascade's texel width, times the tangent of the surface's slant to
+  the light, the depth one texel spans over a slanted surface. Before, it held the soft edge alone.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, a new scene with the camera zoomed out and
+tilted over Prontera's fountain: the beds now show the grey soil between the flowers as they do
+without shadows, with the lamp posts' and the fountain's drawn shadows across them, and no
+bands. Against the build before, from the same saved camera: 1,411 to 21,458 pixels, along the
+beds' outlines, along curbs where the ground meets a model, and on shadow edges; the windmill
+sails' shadows on `yuno_gate` are unchanged. The scene harness saves its last camera into
+`savedata/OptionInfo.lua` (`Outdoor_ViewDistance`, `Outdoor_ViewLatitude`), so each scene starts
+from the one before; comparisons need that file the same before each set.

@@ -126,7 +126,12 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
    point moved SHADOW_OFFSET texels off its surface towards the light (times the sine of the angle
    between them), which keeps a surface at a slant to the light from shadowing itself. Models lay
    decorations a unit or two over their surfaces (Prontera's flower beds put the flowers over the
-   grass); at 1 unit those shaded the surface under them. */
+   grass); at 1 unit those shaded the surface under them. Where a model lies that close over the
+   ground, the ground keeps its baked shadow instead (render/gfx.h): Prontera's flower beds lay
+   their grass 0.3 units and their flowers 0.2 to 2.4 units over the plaza, which the editor baked
+   in shadow, and the shadow maps lit the plaza between the flowers, in bands where the
+   comparison changed from texel to texel. The bias grows by a texel's width times the tangent of
+   the surface's slant to the light, what the depth of one texel spans over it. */
 #define SHADOW_BIAS 4.0f
 #define SHADOW_OFFSET 1.5f
 /* shadow edges fade over twice SHADOW_SOFTNESS units, about as far as the one coarse shadow map
@@ -307,6 +312,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
             }
         shadow->farDepth[c] = split[c + 1];
         shadow->offset[c] = SHADOW_OFFSET * texel;
+        shadow->slant[c] = (SHADOW_SOFTNESS + texel) / (2.0f * SHADOW_DEPTH);
         shadow->blur[c] = SHADOW_SOFTNESS / (2.0f * radius);
     }
     for (i = 0; i < 3; i++) {
@@ -322,7 +328,6 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         for (i = 0; i < 3; i++)
             shadow->lightView[i] /= len;
     shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
-    shadow->slant = SHADOW_SOFTNESS / (2.0f * SHADOW_DEPTH);
     shadow->darkness = self->shadowDarkness;
     for (i = 0; i < 3; i++)
         shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f

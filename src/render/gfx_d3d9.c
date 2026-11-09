@@ -2268,7 +2268,7 @@ static const char mesh_hlsl[] =
     "    o.l2 = mul(float4(v + away * offset.z, 1), fromView[2]);\n"
     "    o.l3 = mul(float4(v + away * offset.w, 1), fromView[3]);\n"
     "    float tangent = min(sqrt(saturate(1 - s * s)) / max(abs(s), 1e-3), slope.y);\n"
-    "    o.depthFog = float3(o.pos.w, saturate((fog.y - o.pos.w) * fog.z), tangent * slope.x);\n"
+    "    o.depthFog = float3(o.pos.w, saturate((fog.y - o.pos.w) * fog.z), tangent);\n"
     "    return o;\n"
     "}\n"
     "sampler2D colourMap : register(s0);\n"
@@ -2281,14 +2281,16 @@ static const char mesh_hlsl[] =
     "float4 params : register(c1);\n"
     "float4 fogColour : register(c2);\n"
     "float4 blur : register(c3);\n"
+    "float4 slant : register(c4);\n"
+    "float4 caster : register(c5);\n"
     "float4 depthColour(float depth : TEXCOORD0) : COLOR\n"
     "{\n"
-    "    return float4(depth, depth, depth, 1);\n"
+    "    return float4(depth * caster.x, 0, 0, 1);\n"
     "}\n"
     "float4 depthAlphaColour(float depth : TEXCOORD0, float2 uv : TEXCOORD1) : COLOR\n"
     "{\n"
     "    clip(tex2D(colourMap, uv).a - 207.0 / 255);\n"
-    "    return float4(depth, depth, depth, 1);\n"
+    "    return float4(depth * caster.x, 0, 0, 1);\n"
     "}\n"
     "static const float2 disk[16] = {\n"
     "    float2(-0.942, -0.399), float2(0.946, -0.769), float2(-0.094, -0.929), float2(0.345, 0.294),\n"
@@ -2296,21 +2298,24 @@ static const char mesh_hlsl[] =
     "    float2(0.443, -0.975), float2(0.537, -0.474), float2(-0.265, -0.419), float2(0.792, 0.191),\n"
     "    float2(-0.242, 0.997), float2(-0.814, 0.914), float2(0.200, 0.786), float2(0.144, -0.141)\n"
     "};\n"
-    "float shadowSeen(sampler2D map, float4 l, float radius, float slant)\n"
+    "float2 shadowSeen(sampler2D map, float4 l, float radius, float slant)\n"
     "{\n"
-    "    float d = l.z - params.z - slant, sum = 0;\n"
-    "    [unroll] for (int k = 0; k < 16; k++)\n"
-    "        sum += tex2Dlod(map, float4(l.xy + disk[k] * radius, 0, 0)).r >= d ? 1 : 0;\n"
+    "    float d = l.z - params.z - slant, lit = 0, contact = 0;\n"
+    "    [unroll] for (int k = 0; k < 16; k++) {\n"
+    "        float s = tex2Dlod(map, float4(l.xy + disk[k] * radius, 0, 0)).r;\n"
+    "        lit += abs(s) >= d ? 1 : 0;\n"
+    "        contact += s < 0 && -s >= d && -s <= l.z + slant ? 1 : 0;\n"
+    "    }\n"
     "    float2 edge = abs(l.xy - 0.5);\n"
-    "    return max(edge.x, edge.y) < 0.5 && l.z < 1 ? sum / 16 : 1;\n"
+    "    return max(edge.x, edge.y) < 0.5 && l.z < 1 ? float2(lit, contact) / 16 : float2(1, 0);\n"
     "}\n"
-    "float seenAt(MeshOut i)\n"
+    "float2 seenAt(MeshOut i)\n"
     "{\n"
-    "    float seen = 1;\n"
-    "    if (i.depthFog.x < cascadeFar.x) seen = shadowSeen(map0, i.l0, blur.x, i.depthFog.z);\n"
-    "    else if (i.depthFog.x < cascadeFar.y) seen = shadowSeen(map1, i.l1, blur.y, i.depthFog.z);\n"
-    "    else if (i.depthFog.x < cascadeFar.z) seen = shadowSeen(map2, i.l2, blur.z, i.depthFog.z);\n"
-    "    else if (i.depthFog.x < cascadeFar.w) seen = shadowSeen(map3, i.l3, blur.w, i.depthFog.z);\n"
+    "    float2 seen = float2(1, 0);\n"
+    "    if (i.depthFog.x < cascadeFar.x) seen = shadowSeen(map0, i.l0, blur.x, i.depthFog.z * slant.x);\n"
+    "    else if (i.depthFog.x < cascadeFar.y) seen = shadowSeen(map1, i.l1, blur.y, i.depthFog.z * slant.y);\n"
+    "    else if (i.depthFog.x < cascadeFar.z) seen = shadowSeen(map2, i.l2, blur.z, i.depthFog.z * slant.z);\n"
+    "    else if (i.depthFog.x < cascadeFar.w) seen = shadowSeen(map3, i.l3, blur.w, i.depthFog.z * slant.w);\n"
     "    return seen;\n"
     "}\n"
     "float4 fogged(float4 c, MeshOut i)\n"
@@ -2320,7 +2325,7 @@ static const char mesh_hlsl[] =
     "}\n"
     "float4 modelColour(MeshOut i) : COLOR\n"
     "{\n"
-    "    float4 c = tex2D(colourMap, i.uv.xy) * float4(lerp(i.shade.rgb, i.lit.rgb, seenAt(i)), i.lit.a);\n"
+    "    float4 c = tex2D(colourMap, i.uv.xy) * float4(lerp(i.shade.rgb, i.lit.rgb, seenAt(i).x), i.lit.a);\n"
     "    return fogged(c, i);\n"
     "}\n"
     /* the ground's two stages, texture times colour times the lightmap's intensity plus its colour,
@@ -2330,7 +2335,8 @@ static const char mesh_hlsl[] =
     "float4 groundColour(MeshOut i) : COLOR\n"
     "{\n"
     "    float4 t = tex2D(colourMap, i.uv.xy), lm = tex2D(lightMap, i.uv.zw);\n"
-    "    float keep = saturate(lm.a / params.w) * lerp(params.w, 1, seenAt(i));\n"
+    "    float2 seen = seenAt(i);\n"
+    "    float keep = lerp(saturate(lm.a / params.w) * lerp(params.w, 1, seen.x), lm.a, seen.y);\n"
     "    return fogged(float4(saturate(lm.rgb + keep * saturate(t.rgb * i.lit.rgb)), t.a * i.lit.a), i);\n"
     "}\n";
 
@@ -2618,8 +2624,11 @@ static void mesh_draw_indexed(struct gfx_mesh *m, const struct GfxMeshDraw *draw
     IDirect3DDevice9_SetIndices(d9.dev, NULL);
 }
 
+/* A caster's depth, negative for a model's: where the ground has a model's surface within the bias
+   in front of it, the shadow maps cannot tell whether it shades the ground (render/gfx.h). */
 static void shadow_draw_depth(struct gfx_mesh *m, const D3DMATRIX *view, const struct GfxMeshDraw *draw)
 {
+    float sign[4] = { draw->kind == GFX_MESH_MODEL ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f };
     D3DMATRIX light, toClip;
     if (d9.shadowCascade < 0)
         return;
@@ -2628,6 +2637,7 @@ static void shadow_draw_depth(struct gfx_mesh *m, const D3DMATRIX *view, const s
     IDirect3DDevice9_SetVertexShader(d9.dev, d9.vs[d9.stageTex[0] ? MESH_VS_DEPTH_ALPHA : MESH_VS_DEPTH]);
     IDirect3DDevice9_SetPixelShader(d9.dev, d9.ps[d9.stageTex[0] ? MESH_PS_DEPTH_ALPHA : MESH_PS_DEPTH]);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 0, &toClip._11, 4);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 5, sign, 1);
     mesh_uv_constants(draw);
     mesh_draw_indexed(m, draw);
 }
@@ -2644,7 +2654,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     const struct GfxWorldView *w = &d9.worldView;
     int receive = d9.shadowReceive, first = 2;
     D3DMATRIX light;
-    float fog[4], lightView[4], offset[4], farDepth[4], blur[4], slope[4], params[4], colour[4], pick[4];
+    float fog[4], lightView[4], offset[4], farDepth[4], blur[4], slant[4], slope[4], params[4], colour[4], pick[4];
     float shading[4];
     int c;
     size_t i;
@@ -2661,6 +2671,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
         offset[c] = on ? d9.shadow.offset[c] : 0.0f;
         farDepth[c] = on ? d9.shadow.farDepth[c] : 0.0f;
         blur[c] = on ? d9.shadow.blur[c] : 0.0f;
+        slant[c] = on ? d9.shadow.slant[c] : 0.0f;
     }
     params[0] = 1.0f / GFX_SHADOW_SIZE;
     params[1] = (float)GFX_SHADOW_SIZE;
@@ -2693,7 +2704,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 25, draw->colour, 1);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 26, lightView, 1);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 27, offset, 1);
-    slope[0] = receive ? d9.shadow.slant : 0.0f;
+    slope[0] = 0.0f;
     slope[1] = 8.0f;
     slope[2] = slope[3] = 0.0f;
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 28, slope, 1);
@@ -2704,6 +2715,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 1, params, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 2, colour, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 3, blur, 1);
+    IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 4, slant, 1);
     for (c = 0; receive && c < GFX_SHADOW_CASCADES; c++) {
         IDirect3DDevice9_SetTexture(d9.dev, first + c, (IDirect3DBaseTexture9 *)d9.shadowTex[c]);
         for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
