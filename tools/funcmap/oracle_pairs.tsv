@@ -250,3 +250,10 @@ a320c0	ui_request_join_party_mgr_add_request	tests/oracle/test_packet_handlers.c
 84e110	session_add_party_member	tests/oracle/test_packet_handlers.c, stood in
 855270	session_get_party_member_count	tests/oracle/test_packet_handlers.c
 7ae670	game_mode_set_actor_mark_flag	tests/oracle/test_packet_handlers.c
+b05de0	clientinfo_is_yellow_aid	tests/oracle/test_packet_handlers.c, stood in
+8515b0	session_remove_friend	tests/oracle/test_packet_handlers.c, stood in
+86c2b0	session_notify_messenger_group_wnd	tests/oracle/test_packet_handlers.c, stood in
+84f2d0	session_end_exchange	tests/oracle/test_packet_handlers.c, stood in
+86cf30	session_set_their_trade_zeny	tests/oracle/test_packet_handlers.c, stood in
+86d510	session_add_their_trade_item	tests/oracle/test_packet_handlers.c, stood in
+79c0f0	chat_room_info_copy	tests/oracle/test_packet_handlers.c

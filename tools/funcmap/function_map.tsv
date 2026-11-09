@@ -2922,6 +2922,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 79bcb0	sub_79bcb0	text/gamemode_0000.inc:69177-69212		loop_sound_copy			cited	high	gamemode/vector_instances.c
 79be30	sub_79be30	text/gamemode_0000.inc:69317-69359		log_swap	log_swap	game/guild_log_vector.c:76	cited	high	gamemode/guild_log_vector.c
 79bf60	sub_79bf60	text/gamemode_0000.inc:69417-69474		Vec8_Copy			cited_multi	low	gamemode/vector_instances.c
+79c0f0	sub_79c0f0				chat_room_info_copy		oracle	high	tests/oracle/test_packet_handlers.c
 79c170	sub_79c170	text/gamemode_0000.inc:69596-69627		PartyMemberInfo_Construct	party_member_info_construct	game/party_list.c:238	cited	high	gamemode/party_list.c
 79c2d0	sub_79c2d0	text/gamemode_0000.inc:69689-69751		GuildLogEntry_Construct	guild_log_entry_construct	game/guild_log_vector.c:24	cited	high	gamemode/guild_log_vector.c
 79c3a0	sub_79c3a0	text/gamemode_0000.inc:69753-69899		QuestHunt_Copy	quest_hunt_copy	contents/quest_value.c:67	cited	high	contents/quest_value.c
@@ -3510,6 +3511,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 84e390	sub_84e390				session_add_cart_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84e7a0	sub_84e7a0				session_append_market_goods		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84ef00	sub_84ef00				session_add_storage_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+84f2d0	sub_84f2d0				session_end_exchange		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f3f0	sub_84f3f0				session_end_exchange2		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f550	sub_84f550				session_set_party_member_state		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84f5f0	sub_84f5f0				session_reroll_values		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3522,6 +3524,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 84fcc0	sub_84fcc0				session_clear_cart		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 84ffe0	CSession__ClearShortenItemName	text/session_0000.inc:25578-25595		CSession_ClearShortenItemName	session_clear_shorten_item_name	session/session_state.c:73	label_inside	low	session/a/session_state.c
 850976	SelectKoreaClientInfo_	text/session_0000.inc:26596-26684			session_startup	session/session_startup.c:14	ustr_inside	low	
+8515b0	sub_8515b0				session_remove_friend		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 851b90	sub_851b90	text/session_0000.inc:28654-28885			session_assist_addr	session/service_address.c:9	ustr	high	
 851f5c	CSession__GetAttrWaveName	text/session_0000.inc:28943-29058		CSession__GetAttrWaveName			label_inside	low	session/a/session_names.c
 851f5c	CSession__GetAttrWaveName	text/session_0000.inc:28943-29058			session_get_attr_wave_name	session/session_names.c:36	ustr_inside	low	
@@ -3575,6 +3578,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86a890	CSession__PreLoadAlwaysNeededRes	text/session_0000.inc:58929-58991		tokens_count	tokens_count	session/session_talk_type.c:16	cited	high	session/a/session_talk_type.c
 86ab30	sub_86ab30	text/session_0000.inc:59111-60174			session_load_external_settings	session/session_lua.c:297	ustr	high	
 86bb30	sub_86bb30	text/session_0000.inc:60175-60645			session_load_options	session/session_option_load.c:15	ustr	high	
+86c2b0	sub_86c2b0				session_notify_messenger_group_wnd		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86c2d0	sub_86c2d0				session_refresh_party_ui		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86c2ee	CSession__RefreshPartyUI	text/session_0000.inc:60747-60762		CSession__RefreshPartyUI			label_inside	low	session/a/session_redraws.c
 86c38c	CSession__RefreshMouseSnapState_	text/session_0000.inc:60818-60838		CSession_RefreshMouseSnapState	session_refresh_mouse_snap_state	session/session_redraws.c:103	label_inside	low	session/a/session_redraws.c
@@ -3585,8 +3589,10 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86c70a	CSession__SetMyExchangeMoney	text/session_0000.inc:61145-61165		CSession_SetMyExchangeMoney	session_set_my_exchange_money	session/session_exchange.c:84	label_inside	low	session/a/session_exchange.c
 86cd50	sub_86cd50				session_inventory_update		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86cefa	CSession__SetOtherExchangeMoney	text/session_0000.inc:61767-61787		CSession_SetOtherExchangeMoney	session_set_other_exchange_money	session/session_exchange.c:94	label_inside	low	session/a/session_exchange.c
+86cf30	sub_86cf30				session_set_their_trade_zeny		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86d294	CSession__SetPlayerPosDir	text/session_0000.inc:62022-62032		CSession_SetPlayerPosDir	session_set_player_pos_dir	session/session_state.c:366	label_inside	low	session/a/session_state.c
 86d380	CSession__SetShortenItemName	text/session_0000.inc:62076-62181		CSession_SetShortenItemName	session_set_shorten_item_name	session/session_names.c:467	label_inside	low	session/a/session_names.c
+86d510	sub_86d510				session_add_their_trade_item		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86d7e0	sub_86d7e0	text/session_0000.inc:62483-62590			session_load_transparent_items	session/session_lua.c:97	ustr	high	
 86dc00	sub_86dc00				session_clear_inventory_move_pending		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86dc30	sub_86dc30				session_clear_cart_move_pending		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -7123,6 +7129,7 @@ b05b8e	sub_b05b8e	text/platform_0000.inc:2682-2811		InitLanguage_	init_language_
 b05b8e	sub_b05b8e	text/platform_0000.inc:2682-2811			init_language_	platform/clientinfo.c:255	ustr_inside	low	
 b05da0	sub_b05da0				clientinfo_is_admin_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 b05dd0	sub_b05dd0	text/platform_0000.inc:2838-2840		sub_b05dd0			name	high	platform/clientinfo.c
+b05de0	sub_b05de0				clientinfo_is_yellow_aid		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 b06343	SelectClientInfo_	text/platform_0000.inc:2868-3422			read_connection	platform/clientinfo.c:343	jacc_inside	low	
 b0661b	SelectClientInfo2	text/platform_0000.inc:3424-3722		SelectClientInfo2	select_client_info2	platform/clientinfo.c:406	label_inside	low	platform/clientinfo.c
 b06620	sub_b06620	text/platform_0000.inc:3724-3777		clientinfo_korea_defaults			cited_multi	low	platform/clientinfo.c
