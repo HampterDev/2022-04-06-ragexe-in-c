@@ -121,3 +121,32 @@ a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
 7f0210	game_mode_notify_effect_with_num	tests/oracle/test_packet_handlers.c
 7e92d0	game_mode_game_mode_show_efst	tests/oracle/test_packet_handlers.c
 7f0050	game_mode_set_player_names	tests/oracle/test_packet_handlers.c
+7e3530	actor_list_push_back	tests/oracle/test_packet_handlers.c, stood in
+797860	tree_find	tests/oracle/test_packet_handlers.c, stood in
+7737e0	game_mode_make_emblem_wnd	tests/oracle/test_packet_handlers.c, stood in
+884040	session_is_siege_mode	tests/oracle/test_packet_handlers.c, stood in
+884010	session_is_player_job	tests/oracle/test_packet_handlers.c, stood in
+883ec0	session_is_homunculus_aid	tests/oracle/test_packet_handlers.c, stood in
+883ee0	session_is_mercenary_aid	tests/oracle/test_packet_handlers.c, stood in
+877120	session_get_pet_accessory_act	tests/oracle/test_packet_handlers.c, stood in
+75cc50	render_object_load_act_res	tests/oracle/test_packet_handlers.c, stood in
+9238b0	champion_monster_apply_effects	tests/oracle/test_packet_handlers.c, stood in
+8f1710	player_names_set	tests/oracle/test_packet_handlers.c, stood in
+8b0da0	name_card_holder_set_name	tests/oracle/test_packet_handlers.c, stood in
+86dc90	session_sync_server_time	tests/oracle/test_packet_handlers.c, stood in
+875550	session_character_name	tests/oracle/test_packet_handlers.c, stood in
+8682a0	session_is_admin_option	tests/oracle/test_packet_handlers.c, stood in
+b05da0	clientinfo_is_admin_aid	tests/oracle/test_packet_handlers.c, stood in
+b461be	mem_alloc	tests/oracle/test_packet_handlers.c, stood in
+82e5e0	pc_construct	tests/oracle/test_packet_handlers.c, stood in
+777890	game_mode_new_actor_for_job	tests/oracle/test_packet_handlers.c, stood in
+65ed90	world_place_id_nowhere	tests/oracle/test_packet_handlers.c, stood in
+65ec20	world_place_id_at_client_cell	tests/oracle/test_packet_handlers.c, stood in
+79c9f0	actor_entry_info_construct	tests/oracle/test_packet_handlers.c
+79f580	game_mode_job_sex	tests/oracle/test_packet_handlers.c
+883fc0	session_is_own_aid	tests/oracle/test_packet_handlers.c
+883cd0	session_is_guardian	tests/oracle/test_packet_handlers.c
+75f170	game_actor_set_mark_listed	tests/oracle/test_packet_handlers.c
+7f1320	moveentry10	tests/oracle/test_packet_handlers.c
+7f2170	newentry10	tests/oracle/test_packet_handlers.c
+7f3060	standentry10	tests/oracle/test_packet_handlers.c
