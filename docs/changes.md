@@ -113,8 +113,6 @@ Overruns and bad table indexes:
   buffer (0..0x7fd), and incomplete packets are rejected.
 - A long item name can no longer overflow the file path of the
   package item test report.
-- Negative angles are normalised (-90 is 270). The original indexed
-  before its sine and cosine tables.
 - Bytes above 0x7f no longer index before the hex digit table, and
   non-hex characters decode as 0.
 - The font lookup releases the screen DCs it takes; the original
