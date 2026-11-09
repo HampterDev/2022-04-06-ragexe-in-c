@@ -42,6 +42,20 @@
 #include "ui/shops/storage.h"
 #include "ui/wndmgr/wndmgr.h"
 #include "core/unknown_packet.h"
+#include "iteminfo/item_table.h"
+#include "replay/replay.h"
+#include "game/own_states.h"
+#include "game/connection.h"
+#include "game/map_entry.h"
+#include "game/chat.h"
+#include "contents/sound.h"
+#include "core/object_type.h"
+#include "core/text_util.h"
+#include "world/mode_manager.h"
+#include "world/mode_actions.h"
+#include "ui/quests/say_dialog.h"
+#include "ui/character/character.h"
+#include "std/vec.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -222,6 +236,48 @@
 #define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
 #define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
 #define ORIG_STORAGE_SET_NAME 0x7e3670u
+#define ORIG_DISPATCHER       0x7a0570u
+#define ORIG_REPLAY_INSTANCE  0x676270u
+#define ORIG_REPLAY_NEXT      0x6745b0u
+#define ORIG_REPLAY_SET_MODE  0x675fe0u
+#define ORIG_LOG_WHISPER      0x786130u
+#define ORIG_CLEAR_LISTS      0x84f9f0u
+#define ORIG_ITEM_TABLE_GET   0x92d620u
+#define ORIG_APPEND_MARKET    0x84e7a0u
+#define ORIG_ADD_BOUGHT       0xa7e570u
+#define ORIG_RT_DYNAMIC_CAST  0xba592eu
+#define ORIG_MODE_MGR_SWITCH  0x662870u
+#define ORIG_WAIT_SET_TEXT    0x5abbf0u
+#define ORIG_RESET_STORE_SEARCH 0x862e10u
+#define ORIG_RESET_FOR_WARP   0x7829b0u
+#define ORIG_MODE_INITIALIZE  0x7713e0u
+#define ORIG_RUN_FADE_OUT     0x661c60u
+#define ORIG_RESET_MAIL_ITEMS 0x874b70u
+#define ORIG_CLEAR_MAIL_COUNTS 0x874c70u
+#define ORIG_MOVE_TO_SERVER   0x79eab0u
+#define ORIG_PLAY_STREAM      0x90e710u
+#define ORIG_SET_TEXT_ALIGN   0xaf7670u
+#define ORIG_SOUND_MGR_PTR    0x115c1a0u
+#define ORIG_SOUND_BGM_ON     0x18
+#define ORIG_SOUND_BGM_OVERRIDDEN 0x1c
+#define ORIG_WND_SAY_HELPER   0xee89a0u
+#define ORIG_WND_REPLAY_CONTROL 0xeebe9cu
+#define ORIG_WND_MODAL_RESULT 0xee8c00u
+#define ORIG_OWN_STATES_BEGIN 0xeebfbcu
+#define ORIG_OWN_STATES_END   0xeebfc0u
+#define ORIG_MODE_DIALOG_ID   0x2ec
+#define ORIG_MODE_LOOP_SOUNDS 0x1e4
+#define ORIG_MAP_NAME         0x1134388u
+#define ORIG_PLAYER_POS_X     0x1134b18u
+#define ORIG_PLAYER_POS_Y     0x1134b1cu
+#define ORIG_AUTO_SAVE_CHAT   0x1138dc8u
+#define ORIG_LAST_PACKET_TIME 0x113b618u
+#define ORIG_WND_ALIGN_CTRL   0x94
+#define ORIG_ACTOR_VT_SET_JOB_MODEL (0x48 / 4)
+#define ORIG_LOOP_SOUND_SIZE  0x24
+#define ORIG_OWN_STATE_SIZE   0x14
+#define N_TEXTS 10
+#define N_MAPS 6
 #define ORIG_WND_TITLE_CTRL   0x13c
 #define OI_TYPE 0x00
 #define OI_INDEX 0x04
@@ -276,13 +332,13 @@
 #define ORIG_ACTOR_VT_GET_GUILD_ID    (0xc4 / 4)
 
 #define AID_UNKNOWN 4242
-#define PACKET_MAX 256
+#define PACKET_MAX 0x1000
 #define SWEEP_VALUES 16
 #define MAX_REPORTED 40
 #define FAKE_CONNECTION 0x5151
 
 enum { FILL_ZERO, FILL_PATTERN, FILL_ONES, FILL_COUNT };
-enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP, PK_LIST, PK_SPLIT_SET };
+enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP, PK_LIST, PK_SPLIT_SET, PK_TEXT, PK_MARKET, PK_MAP };
 
 enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_COUNT };
 #define M(r) (1u << (r))
@@ -308,7 +364,6 @@ static long long orig_instant_var;
 static int instant_var_set, lift_instant_var_got;
 static unsigned char lift_connection[0x100];
 static unsigned char lift_names_holder;
-static struct UIWindow *lift_window;
 static unsigned char orig_new_actor[0x1000];
 static union { struct Pc pc; unsigned char raw[0x1000]; } lift_new_actor;
 static int sweep_job, move_mask;
@@ -328,6 +383,20 @@ static struct IntIntPair lift_adv_pair;
 static int adv_pending, adv_key, adv_value;
 static unsigned char orig_storage_wnd[0x400];
 static struct UIWindow lift_storage_wnd;
+static unsigned char orig_generic_wnd[0x400], orig_helper_wnd[0x400], orig_replay[0x100], orig_sound_mgr[0x100];
+static struct UIWindow lift_generic_wnd, lift_helper_wnd;
+static struct ReplayRecorder lift_replay;
+static unsigned char orig_loop_sounds[4][ORIG_LOOP_SOUND_SIZE];
+static struct LoopSound lift_loop_sounds[4];
+static unsigned char orig_own_states[4][ORIG_OWN_STATE_SIZE];
+static struct OwnStateEntry lift_own_states[4];
+static size_t lift_own_count;
+static const struct Handler *current_handler;
+static const unsigned char *pending_pkt;
+static int pending_count;
+static unsigned char fake_item_entry[0x80];
+static struct ItemTableEntry lift_item_entry;
+static char long_text_600[601], long_text_max[0x7fe];
 struct PetEvolutionMgr *g_petTable;
 BYTE g_packetBuffer[0x10000];
 void vec_free(struct Vec *v) { (void)v; }
@@ -339,6 +408,8 @@ static const char *window_name(const void *w)
     if (w == orig_group_wnd || w == &lift_group_wnd) return "group";
     if (w == orig_found_wnd || w == &lift_found_wnd) return "found";
     if (w == orig_storage_wnd || w == &lift_storage_wnd) return "storage";
+    if (w == orig_generic_wnd || w == &lift_generic_wnd) return "wnd";
+    if (w == orig_helper_wnd || w == &lift_helper_wnd) return "helper";
     return w ? "?" : "null";
 }
 static int is_super_novice(int job)
@@ -493,6 +564,13 @@ static const struct Field fields[] = {
     { "exchange_open", M(R_MODE), ORIG_MODE_EXCHANGE_OPEN, GF(exchange_open), 4 },
     { "status_request_pending", M(R_MODE), ORIG_MODE_STATUS_PENDING, GF(status_request_pending), 4 },
     { "hatchedEggIndex", M(R_SESSION), S(ORIG_HATCHED_EGG), SF(hatchedEggIndex), 4 },
+    { "npc_dialog_id", M(R_MODE), ORIG_MODE_DIALOG_ID, GF(npc_dialog_id), 4 },
+    { "loop_sounds", M(R_MODE), ORIG_MODE_LOOP_SOUNDS, GF(loop_sounds), 12, 1 },
+    { "mapName", M(R_SESSION), S(ORIG_MAP_NAME), SF(mapName), 16 },
+    { "playerPosX", M(R_SESSION), S(ORIG_PLAYER_POS_X), SF(playerPosX), 4 },
+    { "playerPosY", M(R_SESSION), S(ORIG_PLAYER_POS_Y), SF(playerPosY), 4 },
+    { "autoSaveChat", M(R_SESSION), S(ORIG_AUTO_SAVE_CHAT), SF(autoSaveChat), 4 },
+    { "lastPacketTime", M(R_SESSION), S(ORIG_LAST_PACKET_TIME), SF(lastPacketTime), 4, 1 },
 };
 
 static const struct { unsigned mask; unsigned orig_off, lift_off; const char *name; } strings[] = {
@@ -616,7 +694,7 @@ void session_notify_messenger_group_and_plates(struct Session *self) { (void)sel
 int ui_window_mgr_message_box(struct UIWindowMgr *self, const char *text, int type, int arg3, int arg4, int arg5, const char *title,
                               int width, int height, int arg9)
 { (void)self; (void)title; event("msgbox '%s' %d %d %d %d %d %d %d", text, type, arg3, arg4, arg5, width, height, arg9); return 0; }
-struct UIWindow *ui_window_open(int id) { event("open %x", id); return id == 0x21 ? &lift_storage_wnd : lift_window; }
+struct UIWindow *ui_window_open(int id) { event("open %x", id); return id == 0x21 ? &lift_storage_wnd : &lift_generic_wnd; }
 unsigned ui_merchant_shop_seller(const struct UIWindow *wnd) { (void)wnd; return 0; }
 void session_clear_purchase_lists(struct Session *self) { (void)self; event("clear purchase"); }
 void session_set_job(struct Session *self, int job) { (void)self; event("session job %d", job); }
@@ -678,7 +756,95 @@ void string_assign(struct String *s, const char *text, size_t len)
 void string_assign_cstr(struct String *s, const char *text) { string_assign(s, text, strlen(text)); }
 void string_copy(struct String *dst, const struct String *src) { string_init(dst); string_assign(dst, string_cstr(src), src->size); }
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
-{ (void)sender; event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d); return 0; }
+{
+    (void)sender;
+    if ((message == 0x1a || message == 0x1b) && readable(a))
+        event("wndsend %s %x '%s' %x %x %x", window_name(window), message, (const char *)(int)a, b, c, d);
+    else
+        event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d);
+    return 0;
+}
+static const char *dialog_text(unsigned value)
+{
+    static const char *const texts[] = { "", "Hello", "yes:no", "one:two:three", "::", "a:", "Welcome, traveler.:Buy:Sell:Cancel", "prontera" };
+    if (value < 8)
+        return texts[value];
+    return value == 8 ? long_text_600 : long_text_max;
+}
+static const char *record_text(int index, int price, int charged, int type, int identified, const char *id, int location, int view)
+{
+    static char text[128];
+    snprintf(text, sizeof text, "rec i%d p%d cp%d t%d idf%d id'%s' eq%x v%d", index, price, charged, type, identified, id, location, view);
+    return text;
+}
+static const char *lift_record_text(const struct ItemRecordA *r)
+{ return record_text(r->index, r->price, r->charged_price, r->type, r->identified, r->id_text, r->equip_location, r->view); }
+static const char *orig_record_text(const unsigned char *r)
+{
+    return record_text(*(const int *)r, *(const int *)(r + 4), *(const int *)(r + 8), *(const int *)(r + 0xc), r[0x10], (const char *)r + 0x11,
+                       *(const int *)(r + 0x34), *(const int *)(r + 0x38));
+}
+static void lift_set_job_model(struct GameActor *actor, int job, int sex) { event("jobmodel %s %d %d", who(actor), job, sex); }
+void game_mode_log_whisper(struct GameMode *self, const char *line) { (void)self; event("log '%s'", line); }
+void session_clear_lists(struct Session *self) { (void)self; event("clear lists"); }
+const struct ItemTableEntry *item_table_get(int item_id) { lift_item_entry.class_num = item_id % 7; return &lift_item_entry; }
+void session_append_market_goods(struct Session *self, const struct ItemRecordA *packetItem, int count, WORD weight)
+{ (void)self; event("market %s %d %d", lift_record_text(packetItem), count, weight); }
+void *object_as_type(void *object, enum ObjectType type) { (void)type; return object; }
+struct UIParaResultWnd;
+void ui_para_result_wnd_add_bought_record(struct UIParaResultWnd *self, const struct ItemRecordA *record, int count)
+{ (void)self; event("bought %s %d", lift_record_text(record), count); }
+struct ReplayRecorder *replay_recorder_instance(void) { return &lift_replay; }
+BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; event("replay mode %d", mode); return 1; }
+void text_drop_map_extension(struct String *map_name)
+{
+    if (map_name->size >= 4) {
+        map_name->size -= 4;
+        map_name->data[map_name->size] = 0;
+    }
+}
+struct ModeMgr g_modeMgr;
+void mode_mgr_switch(struct ModeMgr *self, int type, const char *name) { (void)self; event("switch %d '%s'", type, name); }
+void ui_wait_wnd_set_text(struct UIWindow *wnd, const char *text) { event("wait text %s '%s'", window_name(wnd), text); }
+void session_reset_store_search(struct Session *self) { (void)self; event("reset store search"); }
+int game_mode_reset_for_warp(struct GameMode *mode) { (void)mode; event("reset warp"); return 1; }
+void game_mode_initialize(struct GameMode *self) { (void)self; event("initialize"); }
+void mode_run_fade_out(struct Mode *self, int logo) { (void)self; event("fade out %d", logo); }
+size_t own_states_count(void) { return lift_own_count; }
+const struct OwnStateEntry *own_states_at(size_t position) { return &lift_own_states[position]; }
+void own_states_erase_at(size_t position)
+{
+    memmove(&lift_own_states[position], &lift_own_states[position + 1], (lift_own_count - position - 1) * sizeof *lift_own_states);
+    lift_own_count--;
+}
+void session_reset_mail_items(struct Session *self) { (void)self; event("reset mail"); }
+void session_clear_mail_item_counts(struct Session *self) { (void)self; event("clear mail counts"); }
+void game_mode_move_to_server(struct GameMode *self, struct String map_name, int x, int y, unsigned long ip, int port, struct String server_map_name)
+{ (void)self; event("move '%s' %d %d %x %d '%s'", string_cstr(&map_name), x, y, (unsigned)ip, port, string_cstr(&server_map_name)); }
+struct SoundSettings g_sound_settings;
+void sound_play_stream(const char *name, int loop_count) { event("stream '%s' %d", name, loop_count); }
+void ui_say_dialog_wnd_set_text_align(struct UISayDialogWnd *self, unsigned char align) { (void)self; event("align %d", align); }
+void *vec_push(struct Vec *v, const void *elem, size_t size)
+{
+    size_t count = vec_count(v, size), capacity = vec_capacity(v, size);
+    if (count == capacity) {
+        size_t grown = capacity ? capacity * 2 : 4;
+        char *copy = malloc(grown * size);
+        memcpy(copy, v->first, count * size);
+        v->first = copy;
+        v->last = copy + count * size;
+        v->end = copy + grown * size;
+    }
+    memcpy(v->last, elem, size);
+    v->last = (char *)v->last + size;
+    return (char *)v->last - size;
+}
+void vec_erase(struct Vec *v, void *first, void *last)
+{
+    size_t tail = (size_t)((char *)v->last - (char *)last);
+    memmove(first, last, tail);
+    v->last = (char *)first + tail;
+}
 BYTE effect_state_bit6(DWORD state) { return (BYTE)((state >> 6) & 1); }
 BYTE is_effect_state_hiding(DWORD state) { return (BYTE)((state >> 1) & 1); }
 BYTE is_effect_state_cloaking(DWORD state) { return (BYTE)((state >> 2) & 1); }
@@ -732,7 +898,15 @@ static const char *entry_text(long long msg, long long a)
     return NULL;
 }
 static const char *msg_text_packets(long long msg, long long a, long long b, long long c, long long d)
-{ (void)b; (void)c; (void)d; return readable(a) ? entry_text(msg, a) : NULL; }
+{
+    static char chat[300];
+    (void)c; (void)d;
+    if (msg == 7 && readable(a)) {
+        snprintf(chat, sizeof chat, "7 '%s' %llx", (const char *)(int)a, b);
+        return chat;
+    }
+    return readable(a) ? entry_text(msg, a) : NULL;
+}
 
 int game_actor_get_guild_id(struct GameActor *actor) { return actor == &lift_target ? 77 : 0; }
 void game_actor_set_guild(struct GameActor *actor, int value0, int value1) { event("guild %s %d %d", who(actor), value0, value1); }
@@ -880,7 +1054,7 @@ static int __fastcall o_message_box(void *self, void *edx, const char *text, int
                                     int width, int height, int arg9)
 { (void)edx; return ui_window_mgr_message_box((struct UIWindowMgr *)self, text, type, arg3, arg4, arg5, title, width, height, arg9); }
 static int __fastcall o_post_quit(void *self, void *edx, int id) { (void)self; (void)edx; event("quit1 %x", id); return 1; }
-static void *__fastcall o_make_window(void *self, void *edx, int id) { (void)self; (void)edx; event("open %x", id); return id == 0x21 ? orig_storage_wnd : NULL; }
+static void *__fastcall o_make_window(void *self, void *edx, int id) { (void)self; (void)edx; event("open %x", id); return id == 0x21 ? orig_storage_wnd : orig_generic_wnd; }
 static void __fastcall o_clear_purchase(void *self, void *edx) { (void)self; (void)edx; event("clear purchase"); }
 static void __fastcall o_actor_set_job(void *self, void *edx, int job) { (void)edx; event("setjob %s %d", who(self), job); }
 static void __fastcall o_session_set_job(void *self, void *edx, int job) { (void)self; (void)edx; event("session job %d", job); }
@@ -1023,6 +1197,39 @@ static int __fastcall o_pet_auto_feeding(void *self, void *edx, int egg_id) { (v
 static void __fastcall o_send_pet_auto_feed(void *self, void *edx, int on) { (void)self; (void)edx; event("autofeed %d", on & 0xff); }
 static void __fastcall o_set_text_ellipsis(void *ctrl, void *edx, const char *text) { (void)ctrl; (void)edx; event("storage title storage '%s'", text); }
 static void __fastcall o_storage_set_name(void *wnd, void *edx, struct OrigString name) { (void)edx; event("storage title %s '%s'", window_name(wnd), orig_std_string(name.raw)); }
+static void *__cdecl o_replay_instance(void) { return orig_replay; }
+static int __fastcall o_replay_next(void *self, void *edx, unsigned char *buffer, unsigned *id_out)
+{
+    (void)self; (void)edx;
+    if (pending_count <= 0)
+        return 0;
+    pending_count--;
+    memcpy(buffer, pending_pkt, PACKET_MAX);
+    *id_out = *(const unsigned short *)pending_pkt;
+    return 1;
+}
+static int __fastcall o_replay_set_mode(void *self, void *edx, int mode) { (void)self; (void)edx; event("replay mode %d", mode); return 1; }
+static void __fastcall o_log_whisper(void *self, void *edx, const char *line) { (void)self; (void)edx; event("log '%s'", line); }
+static void __fastcall o_clear_lists(void *self, void *edx) { (void)self; (void)edx; event("clear lists"); }
+static void *__cdecl o_item_table_get(int item_id) { *(int *)(fake_item_entry + 0x40) = item_id % 7; return fake_item_entry; }
+static void __fastcall o_append_market(void *self, void *edx, const unsigned char *record, int count, int weight)
+{ (void)self; (void)edx; event("market %s %d %d", orig_record_text(record), count, weight & 0xffff); }
+static void __fastcall o_add_bought(void *self, void *edx, const unsigned char *record, int count) { (void)self; (void)edx; event("bought %s %d", orig_record_text(record), count); }
+static void *__cdecl o_rt_dynamic_cast(void *object, int delta, void *from, void *to, int is_reference)
+{ (void)delta; (void)from; (void)to; (void)is_reference; return object; }
+static void __fastcall o_mode_mgr_switch(void *self, void *edx, int type, const char *name) { (void)self; (void)edx; event("switch %d '%s'", type, name); }
+static void __fastcall o_wait_set_text(void *wnd, void *edx, const char *text, int a, int b) { (void)edx; (void)a; (void)b; event("wait text %s '%s'", window_name(wnd), text); }
+static void __fastcall o_reset_store_search(void *self, void *edx) { (void)self; (void)edx; event("reset store search"); }
+static int __fastcall o_reset_for_warp(void *self, void *edx) { (void)self; (void)edx; event("reset warp"); return 1; }
+static void __fastcall o_mode_initialize(void *self, void *edx) { (void)self; (void)edx; event("initialize"); }
+static void __fastcall o_run_fade_out(void *self, void *edx, int logo) { (void)self; (void)edx; event("fade out %d", logo); }
+static void __fastcall o_reset_mail_items(void *self, void *edx) { (void)self; (void)edx; event("reset mail"); }
+static void __fastcall o_clear_mail_counts(void *self, void *edx) { (void)self; (void)edx; event("clear mail counts"); }
+static void __fastcall o_move_to_server(void *self, void *edx, struct OrigString map, int x, int y, unsigned ip, int port, struct OrigString extra)
+{ (void)self; (void)edx; event("move '%s' %d %d %x %d '%s'", orig_std_string(map.raw), x, y, ip, port, orig_std_string(extra.raw)); }
+static void __fastcall o_play_stream(void *self, void *edx, const char *name, int loop_count) { (void)self; (void)edx; event("stream '%s' %d", name, loop_count); }
+static void __fastcall o_set_text_align(void *ctrl, void *edx, int align) { (void)ctrl; (void)edx; event("align %d", align & 0xff); }
+static void __fastcall o_set_job_model(void *self, void *edx, int job, int sex, int extra) { (void)edx; (void)extra; event("jobmodel %s %d %d", who(self), job, sex); }
 
 typedef void (*mode_pkt_fn)(struct GameMode *, const void *);
 #define LIFT(fn) static void w_##fn(const unsigned char *pkt) { ((mode_pkt_fn)fn)(&lift_mode, pkt); }
@@ -1107,6 +1314,26 @@ LIFT(game_mode_zc_store_item_list_equip_v6)
 LIFT(game_mode_zc_store_item_list_normal_v5)
 LIFT(game_mode_zc_split_send_item_list_equip_v8)
 LIFT(game_mode_zc_split_send_item_list_set)
+LIFT(game_mode_zc_npc_sprite_change)
+LIFT(game_mode_zc_npc_chat)
+LIFT(game_mode_zc_npc_market_open2)
+LIFT(game_mode_zc_npc_market_open)
+LIFT(game_mode_zc_npc_market_purchase_result_v2)
+LIFT(game_mode_zc_npcack_mapmove)
+LIFT(game_mode_zc_npcack_servermove)
+LIFT(game_mode_zc_npcack_servermove_domain)
+LIFT(game_mode_zc_open_edit_dlg_str)
+LIFT(game_mode_zc_say_dialog)
+LIFT(game_mode_zc_select_dealtype)
+LIFT(game_mode_zc_clear_dialog)
+LIFT(game_mode_zc_dynamic_npc_create_result)
+LIFT(game_mode_zc_wait_dialog)
+LIFT(game_mode_zc_close_dialog)
+LIFT(game_mode_zc_menu_list)
+LIFT(game_mode_zc_play_npc_bgm)
+LIFT(game_mode_zc_sound)
+LIFT(game_mode_zc_open_edit_dlg)
+static void w_dialog_text_align(const unsigned char *pkt) { game_mode_zc_dialog_text_align(&lift_mode, pkt[2]); }
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -1163,6 +1390,8 @@ struct Handler {
     int move_mask;
     int no_unknown;
     const struct ListLayout *list;
+    int arg_byte;
+    int service_type;
 };
 #define EXTRA(a) a, (int)(sizeof a / sizeof *a)
 
@@ -1247,6 +1476,26 @@ static const struct Handler handlers[] = {
     { "store_normal_v5", 0x7d8a40u, 0x995, 0x1c, w_game_mode_zc_store_item_list_normal_v5, PK_LIST, NULL, 0, NULL, 0, 0, &lay_nn34 },
     { "split_equip_v8", 0x7d54c0u, 0xb39, 5, w_game_mode_zc_split_send_item_list_equip_v8, PK_LIST, NULL, 0, NULL, 0, 0, &lay_split8 },
     { "split_set", 0x7d6100u, 0xb08, 5, w_game_mode_zc_split_send_item_list_set, PK_SPLIT_SET, NULL, 0 },
+    { "npc_sprite_change", 0x7cc9b0u, 0x1b0, 11, w_game_mode_zc_npc_sprite_change, PK_DEFAULT, NULL, 0 },
+    { "npc_chat", 0x7cc9e0u, 0x2c1, 12, w_game_mode_zc_npc_chat, PK_TEXT, NULL, 200 },
+    { "npc_market_open2", 0x7cca90u, 0xb7a, 4, w_game_mode_zc_npc_market_open2, PK_MARKET, NULL, 19 },
+    { "npc_market_open", 0, 0x9d5, 4, w_game_mode_zc_npc_market_open, PK_MARKET, NULL, 15 },
+    { "market_purchase_v2", 0x7cce00u, 0xb4e, 6, w_game_mode_zc_npc_market_purchase_result_v2, PK_MARKET, NULL, 10 },
+    { "npcack_mapmove", 0x7cd0b0u, 0x91, 0x16, w_game_mode_zc_npcack_mapmove, PK_MAP, NULL, 0 },
+    { "npcack_servermove", 0, 0x92, 0x1c, w_game_mode_zc_npcack_servermove, PK_MAP, NULL, 0 },
+    { "servermove_domain", 0x7a00b0u, 0xac7, 0x9c, w_game_mode_zc_npcack_servermove_domain, PK_MAP, NULL, 0 },
+    { "open_edit_dlg_str", 0x7cd540u, 0x1d4, 6, w_game_mode_zc_open_edit_dlg_str, PK_DEFAULT, NULL, 0 },
+    { "say_dialog", 0, 0xb4, 8, w_game_mode_zc_say_dialog, PK_TEXT, NULL, 0x7fd, NULL, 0, 0, NULL, 0, 1 },
+    { "select_dealtype", 0, 0xc4, 6, w_game_mode_zc_select_dealtype, PK_DEFAULT, NULL, 0 },
+    { "clear_dialog", 0x7fa880u, 0x8d6, 2, w_game_mode_zc_clear_dialog, PK_DEFAULT, NULL, 0 },
+    { "dynamic_npc_result", 0x7f08d0u, 0xa17, 6, w_game_mode_zc_dynamic_npc_create_result, PK_DEFAULT, NULL, 0 },
+    { "wait_dialog", 0, 0xb5, 6, w_game_mode_zc_wait_dialog, PK_DEFAULT, NULL, 0 },
+    { "close_dialog", 0, 0xb6, 6, w_game_mode_zc_close_dialog, PK_DEFAULT, NULL, 0 },
+    { "menu_list", 0, 0xb7, 8, w_game_mode_zc_menu_list, PK_TEXT, NULL, 0x7fd },
+    { "play_npc_bgm", 0x7cf9f0u, 0x7fe, 2, w_game_mode_zc_play_npc_bgm, PK_TEXT, NULL, 100 },
+    { "sound", 0x7d4820u, 0x1d3, 0x23, w_game_mode_zc_sound, PK_DEFAULT, NULL, 0 },
+    { "open_edit_dlg", 0, 0x142, 6, w_game_mode_zc_open_edit_dlg, PK_DEFAULT, NULL, 0 },
+    { "dialog_text_align", 0x7fad40u, 0xba1, 3, w_dialog_text_align, PK_DEFAULT, NULL, 0, NULL, 0, 0, NULL, 1 },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -1257,6 +1506,12 @@ static unsigned handler_values(const struct Handler *h)
         return (unsigned)h->extra_count;
     if (h->kind == PK_LIST || h->kind == PK_SPLIT_SET)
         return 8;
+    if (h->kind == PK_TEXT)
+        return N_TEXTS;
+    if (h->kind == PK_MARKET)
+        return h->id == 0xb4e ? 28 : 4;
+    if (h->kind == PK_MAP)
+        return N_MAPS;
     return SWEEP_VALUES + h->extra_count;
 }
 
@@ -1302,6 +1557,61 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         memcpy(pkt + 2, &total, 2);
         memcpy(g_packetBuffer, pkt, PACKET_MAX);
         memcpy(oracle_addr(ORIG_PACKET_BUFFER), pkt, PACKET_MAX);
+        return;
+    }
+    if (h->kind == PK_TEXT) {
+        const char *text = dialog_text(value);
+        size_t len = strlen(text);
+        unsigned short total;
+        int color = fill * 0x111111;
+        if (len > (size_t)h->extra_count)
+            len = (size_t)h->extra_count;
+        memcpy(pkt + h->length, text, len);
+        pkt[h->length + len] = 0;
+        total = (unsigned short)(h->length + len + (h->id == 0x2c1 ? 1 : 0));
+        if (h->length >= 8) {
+            memcpy(pkt + 2, &total, 2);
+            memcpy(pkt + 4, &aid, 4);
+        }
+        if (h->length >= 12)
+            memcpy(pkt + 8, &color, 4);
+        return;
+    }
+    if (h->kind == PK_MARKET) {
+        static const short results[] = { -1, 0, 1, 2, 3, 9, 4 };
+        unsigned records = value & 3, r;
+        int rec_size = h->extra_count;
+        unsigned short total = (unsigned short)(h->length + records * rec_size);
+        memcpy(pkt + 2, &total, 2);
+        if (h->length == 6)
+            memcpy(pkt + 4, &results[(value >> 2) % 7], 2);
+        for (r = 0; r < records; r++) {
+            unsigned char *rec = pkt + h->length + r * rec_size;
+            int item_id = 501 + 100 * fill + (int)r;
+            for (i = 0; i < rec_size; i++)
+                rec[i] = fill == FILL_ZERO ? 0 : fill == FILL_ONES ? 0xff : (unsigned char)(i * 7 + 3 + r * 13);
+            memcpy(rec, &item_id, 4);
+        }
+        return;
+    }
+    if (h->kind == PK_MAP) {
+        static const char *const maps[N_MAPS] = { "prontera.gat", "prontera", "geffen.gat", "prt_fild", "sixteen_chars_xy", "payon.rsw" };
+        const char *map = maps[value % N_MAPS];
+        short x = (short)(10 + 7 * fill), y = (short)(20 - 3 * fill);
+        unsigned ip = 0x0100007fu + (unsigned)fill;
+        short port = (short)(6900 + fill);
+        memset(pkt + 2, 0, 16);
+        memcpy(pkt + 2, map, strlen(map));
+        memcpy(pkt + 0x12, &x, 2);
+        memcpy(pkt + 0x14, &y, 2);
+        if (h->length >= 0x1c) {
+            memcpy(pkt + 0x16, &ip, 4);
+            memcpy(pkt + 0x1a, &port, 2);
+        }
+        if (h->length == 0x9c) {
+            memset(pkt + 0x1c, 0, 0x80);
+            strcpy((char *)pkt + 0x1c, fill == FILL_ZERO ? "" : "example.domain.test");
+        }
         return;
     }
     if (h->kind == PK_PAR) {
@@ -1364,6 +1674,20 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
     }
     if (h->length >= 6)
         memcpy(pkt + 2, &aid, 4);
+    if (h->arg_byte)
+        pkt[2] = (unsigned char)value;
+    if (h->id == 0xa17)
+        memcpy(pkt + 2, &value, 4);
+    if (h->id == 0x1d3) {
+        static const char *const names[] = { "snd_a", "snd_b", "snd_c" };
+        unsigned interval = 500 + 1000 * (unsigned)fill;
+        memset(pkt + 2, 0, 24);
+        strcpy((char *)pkt + 2, names[(value / 3) % 3]);
+        pkt[0x1a] = (unsigned char)(value % 3);
+        memcpy(pkt + 0x1b, &interval, 4);
+        memcpy(pkt + 0x1f, &aid, 4);
+        return;
+    }
     if (h->kind == PK_NAMES) {
         const char *names[5] = { "ann", "party1", "guild22", "pos", "x" };
         for (i = 0; i < 4; i++) {
@@ -1382,6 +1706,52 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         pkt[6] = (unsigned char)value;
 }
 
+static void seed_loop_sounds(void)
+{
+    static const char *const names[] = { "snd_a", "snd_b" };
+    int i;
+    memset(orig_loop_sounds, 0, sizeof orig_loop_sounds);
+    memset(lift_loop_sounds, 0, sizeof lift_loop_sounds);
+    lift_mode.loop_sounds.first = lift_mode.loop_sounds.last = lift_loop_sounds;
+    lift_mode.loop_sounds.end = lift_loop_sounds + 4;
+    for (i = 0; i < 2; i++) {
+        unsigned char *s = orig_loop_sounds[i];
+        struct LoopSound sound;
+        strcpy((char *)s, names[i]);
+        *(unsigned *)(s + 0x10) = (unsigned)strlen(names[i]);
+        *(unsigned *)(s + 0x14) = ORIG_STD_STRING_SSO - 1;
+        *(unsigned *)(s + 0x18) = 1000 + (unsigned)i;
+        *(unsigned *)(s + 0x1c) = 500 * ((unsigned)i + 1);
+        *(unsigned *)(s + 0x20) = 77;
+        string_init(&sound.name);
+        string_assign_cstr(&sound.name, names[i]);
+        sound.npc_aid = 1000 + (unsigned)i;
+        sound.interval = 500 * ((unsigned)i + 1);
+        sound.next_tick = 77;
+        vec_push(&lift_mode.loop_sounds, &sound, sizeof sound);
+    }
+    *(void **)(orig_mode + ORIG_MODE_LOOP_SOUNDS) = orig_loop_sounds[0];
+    *(void **)(orig_mode + ORIG_MODE_LOOP_SOUNDS + 4) = orig_loop_sounds[2];
+    *(void **)(orig_mode + ORIG_MODE_LOOP_SOUNDS + 8) = (unsigned char *)orig_loop_sounds + sizeof orig_loop_sounds;
+}
+
+static void seed_own_states(void)
+{
+    static const int indexes[3] = { 5, 0xc8, 7 };
+    int i;
+    memset(orig_own_states, 0, sizeof orig_own_states);
+    memset(lift_own_states, 0, sizeof lift_own_states);
+    for (i = 0; i < 3; i++) {
+        *(int *)orig_own_states[i] = indexes[i];
+        *(int *)(orig_own_states[i] + 4) = 1000 + i;
+        lift_own_states[i].index = indexes[i];
+        lift_own_states[i].end_tick = 1000 + (unsigned)i;
+    }
+    lift_own_count = 3;
+    *(void **)oracle_addr(ORIG_OWN_STATES_BEGIN) = orig_own_states[0];
+    *(void **)oracle_addr(ORIG_OWN_STATES_END) = orig_own_states[3];
+}
+
 static void seed_packets(int option)
 {
     unsigned i;
@@ -1389,6 +1759,7 @@ static void seed_packets(int option)
     seed_all(option);
     *(int *)oracle_addr(ORIG_EFFECT_ON) = 1;
     g_session1.effectOn = 1;
+    g_serviceType = current_handler && current_handler->service_type && option ? 10 : 0;
     *(int *)oracle_addr(ORIG_SERVICE_TYPE) = g_serviceType;
     *(unsigned *)(orig_player + ORIG_PLAYER_TARGET) = AID_TARGET;
     for (i = 0; i < sizeof strings / sizeof *strings; i++)
@@ -1453,6 +1824,30 @@ static void seed_packets(int option)
     g_session1.petAutoFeed = 1;
     *(void **)orig_storage_wnd = orig_window_vt;
     *(int *)(orig_storage_wnd + ORIG_WND_TITLE_CTRL) = 1;
+    *(void **)orig_generic_wnd = *(void **)orig_helper_wnd = orig_window_vt;
+    *(void **)(orig_found_wnd + ORIG_WND_ALIGN_CTRL) = orig_found_wnd;
+    *(void **)oracle_addr(ORIG_WND_SAY_HELPER) = option ? orig_helper_wnd : NULL;
+    g_windowMgr.say_dialog_wnd = option ? &lift_helper_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_REPLAY_CONTROL) = orig_generic_wnd;
+    g_windowMgr.replay_reccontrol_wnd = &lift_generic_wnd;
+    *(int *)oracle_addr(ORIG_WND_MODAL_RESULT) = 0;
+    g_windowMgr.modal_result = 0;
+    memset(orig_replay, 0, sizeof orig_replay);
+    memset(&lift_replay, 0, sizeof lift_replay);
+    *(int *)(orig_replay + 0xc) = lift_replay.state = current_handler && current_handler->orig ? (option ? 2 : 7) : 0;
+    pending_count = 0;
+    memset(orig_sound_mgr, 0, sizeof orig_sound_mgr);
+    *(void **)oracle_addr(ORIG_SOUND_MGR_PTR) = orig_sound_mgr;
+    *(int *)(orig_sound_mgr + ORIG_SOUND_BGM_ON) = g_sound_settings.bgm_on = option;
+    g_sound_settings.bgm_overridden = 0;
+    seed_loop_sounds();
+    seed_own_states();
+    strcpy((char *)oracle_addr(ORIG_MAP_NAME), "prontera");
+    memset(g_session1.mapName, 0, sizeof g_session1.mapName);
+    strcpy(g_session1.mapName, "prontera");
+    SEED(ORIG_PLAYER_POS_X, playerPosX, 3);
+    SEED(ORIG_PLAYER_POS_Y, playerPosY, 4);
+    SEED(ORIG_AUTO_SAVE_CHAT, autoSaveChat, option);
 #undef SEED
 #undef SEED64
 }
@@ -1493,6 +1888,47 @@ static void after_call(int side)
             adv_pending = 0;
         }
     }
+    if (current_handler->id == 0x1d3) {
+        char text[256];
+        int n = 0;
+        unsigned count, i;
+        if (side == 0) {
+            const unsigned char *begin = *(unsigned char **)(orig_mode + ORIG_MODE_LOOP_SOUNDS);
+            const unsigned char *end = *(unsigned char **)(orig_mode + ORIG_MODE_LOOP_SOUNDS + 4);
+            count = (unsigned)(end - begin) / ORIG_LOOP_SOUND_SIZE;
+            for (i = 0; i < count; i++) {
+                const unsigned char *s = begin + i * ORIG_LOOP_SOUND_SIZE;
+                n += snprintf(text + n, sizeof text - n, " '%s' %u %u %u", orig_std_string(s), *(const unsigned *)(s + 0x18),
+                              *(const unsigned *)(s + 0x1c), *(const unsigned *)(s + 0x20));
+            }
+        } else {
+            const struct LoopSound *s = lift_mode.loop_sounds.first;
+            count = (unsigned)vec_count(&lift_mode.loop_sounds, sizeof *s);
+            for (i = 0; i < count; i++)
+                n += snprintf(text + n, sizeof text - n, " '%s' %u %u %u", string_cstr(&s[i].name), s[i].npc_aid, s[i].interval, s[i].next_tick);
+        }
+        event("loops %u%s", count, text);
+    }
+    if (current_handler->id == 0x91) {
+        char text[64];
+        int n = 0;
+        unsigned count, i;
+        if (side == 0) {
+            const unsigned char *begin = *(unsigned char **)oracle_addr(ORIG_OWN_STATES_BEGIN);
+            const unsigned char *end = *(unsigned char **)oracle_addr(ORIG_OWN_STATES_END);
+            count = (unsigned)(end - begin) / ORIG_OWN_STATE_SIZE;
+            for (i = 0; i < count; i++)
+                n += snprintf(text + n, sizeof text - n, " %d", *(const int *)(begin + i * ORIG_OWN_STATE_SIZE));
+        } else {
+            count = (unsigned)lift_own_count;
+            for (i = 0; i < count; i++)
+                n += snprintf(text + n, sizeof text - n, " %d", lift_own_states[i].index);
+        }
+        event("own states %u%s", count, text);
+        event("modal %x", side == 0 ? *(int *)oracle_addr(ORIG_WND_MODAL_RESULT) : g_windowMgr.modal_result);
+    }
+    if (current_handler->id == 0x7fe)
+        event("bgm %d", side == 0 ? *(int *)(orig_sound_mgr + ORIG_SOUND_BGM_OVERRIDDEN) : g_sound_settings.bgm_overridden);
     report_changes(side);
 }
 
@@ -1501,7 +1937,17 @@ typedef void (__fastcall *handler_fn)(void *self, void *edx, void *pkt);
 static int call_guarded(const struct Handler *h, unsigned char *pkt)
 {
     __try {
-        ((handler_fn)oracle_addr(h->orig))(orig_mode, NULL, pkt);
+        if (h->orig == 0) {
+            pending_pkt = pkt;
+            pending_count = 1;
+            *(int *)oracle_addr(ORIG_REPLAY_PLAYING) = 1;
+            ((void (__fastcall *)(void *, void *))oracle_addr(ORIG_DISPATCHER))(orig_mode, NULL);
+            *(int *)oracle_addr(ORIG_REPLAY_PLAYING) = 0;
+        } else if (h->arg_byte) {
+            ((handler_fn)oracle_addr(h->orig))(orig_mode, NULL, (void *)(UINT_PTR)pkt[2]);
+        } else {
+            ((handler_fn)oracle_addr(h->orig))(orig_mode, NULL, pkt);
+        }
         return 1;
     } __except (note_fault(GetExceptionInformation())) {
         return 0;
@@ -1671,6 +2117,30 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_SEND_PET_AUTO_FEED, (void *)o_send_pet_auto_feed);
     oracle_patch_jump(ORIG_SET_TEXT_ELLIPSIS, (void *)o_set_text_ellipsis);
     oracle_patch_jump(ORIG_STORAGE_SET_NAME, (void *)o_storage_set_name);
+    oracle_patch_jump(ORIG_REPLAY_INSTANCE, (void *)o_replay_instance);
+    oracle_patch_jump(ORIG_REPLAY_NEXT, (void *)o_replay_next);
+    oracle_patch_jump(ORIG_REPLAY_SET_MODE, (void *)o_replay_set_mode);
+    oracle_patch_jump(ORIG_LOG_WHISPER, (void *)o_log_whisper);
+    oracle_patch_jump(ORIG_CLEAR_LISTS, (void *)o_clear_lists);
+    oracle_patch_jump(ORIG_ITEM_TABLE_GET, (void *)o_item_table_get);
+    oracle_patch_jump(ORIG_APPEND_MARKET, (void *)o_append_market);
+    oracle_patch_jump(ORIG_ADD_BOUGHT, (void *)o_add_bought);
+    oracle_patch_jump(ORIG_RT_DYNAMIC_CAST, (void *)o_rt_dynamic_cast);
+    oracle_patch_jump(ORIG_MODE_MGR_SWITCH, (void *)o_mode_mgr_switch);
+    oracle_patch_jump(ORIG_WAIT_SET_TEXT, (void *)o_wait_set_text);
+    oracle_patch_jump(ORIG_RESET_STORE_SEARCH, (void *)o_reset_store_search);
+    oracle_patch_jump(ORIG_RESET_FOR_WARP, (void *)o_reset_for_warp);
+    oracle_patch_jump(ORIG_MODE_INITIALIZE, (void *)o_mode_initialize);
+    oracle_patch_jump(ORIG_RUN_FADE_OUT, (void *)o_run_fade_out);
+    oracle_patch_jump(ORIG_RESET_MAIL_ITEMS, (void *)o_reset_mail_items);
+    oracle_patch_jump(ORIG_CLEAR_MAIL_COUNTS, (void *)o_clear_mail_counts);
+    oracle_patch_jump(ORIG_MOVE_TO_SERVER, (void *)o_move_to_server);
+    oracle_patch_jump(ORIG_PLAY_STREAM, (void *)o_play_stream);
+    oracle_patch_jump(ORIG_SET_TEXT_ALIGN, (void *)o_set_text_align);
+    for (i = 0; i < (int)sizeof long_text_600 - 1; i++)
+        long_text_600[i] = "abcdefghij"[i % 10];
+    for (i = 0; i < (int)sizeof long_text_max - 1; i++)
+        long_text_max[i] = "klmnopqrst"[i % 10];
     for (i = 0; i < 64; i++)
         orig_window_vt[i] = traps[i];
     orig_window_vt[ORIG_WINDOW_VT_SEND] = (void *)o_window_send;
@@ -1696,9 +2166,11 @@ static void packet_oracle_setup(int verbose)
     orig_actor_vt[ORIG_ACTOR_VT_REFRESH_ACC3] = (void *)o_refresh_accessory3;
     orig_actor_vt[ORIG_ACTOR_VT_SET_GUILD] = (void *)o_set_guild;
     orig_actor_vt[ORIG_ACTOR_VT_GET_GUILD_ID] = (void *)o_get_guild_id;
+    orig_actor_vt[ORIG_ACTOR_VT_SET_JOB_MODEL] = (void *)o_set_job_model;
 
     lift_actor_ops.base.get_effect_state = lift_get_effect_state;
     lift_actor_ops.set_head = lift_set_head;
+    lift_actor_ops.set_job_model = lift_set_job_model;
     lift_actor_ops.set_weapon = lift_set_weapon;
     lift_actor_ops.set_weapon_look = lift_set_weapon_look;
     lift_actor_ops.set_accessory = lift_set_accessory;
@@ -1743,6 +2215,7 @@ int main(int argc, char **argv)
     for (hi = 0; hi < sizeof handlers / sizeof *handlers; hi++) {
         const struct Handler *h = &handlers[hi];
         unsigned values = handler_values(h), handler_compared = 0, handler_events = 0, handler_bad = 0;
+        current_handler = h;
         if (only && strcmp(only, h->name) != 0)
             continue;
         for (option = 0; option < 2; option++)
@@ -1751,7 +2224,7 @@ int main(int argc, char **argv)
         for (fill = 0; fill < FILL_COUNT; fill++) {
             if (h->no_unknown && aids[ai] == AID_UNKNOWN)
                 continue;
-            unsigned value = h->kind == PK_ENTRY ? vi : h->kind == PK_PAR ? h->extra[vi] : vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
+            unsigned value = h->kind == PK_ENTRY || h->kind == PK_TEXT || h->kind == PK_MARKET || h->kind == PK_MAP ? vi : h->kind == PK_PAR ? h->extra[vi] : vi < SWEEP_VALUES ? vi : h->extra[vi - SWEEP_VALUES];
             char orig_text[EVENTS * EVENT_LEN], lift_text[EVENTS * EVENT_LEN];
 
             compared++;

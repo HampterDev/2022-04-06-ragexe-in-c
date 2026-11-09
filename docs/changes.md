@@ -139,6 +139,8 @@ Overruns and bad table indexes:
   it did for a private-airplane move with a full 16-byte map name.
 - A map name shorter than its 4-byte `.gat` extension is kept as it is on a map or server
   move. The original's size wrapped, and the client ended with "string too long".
+- A map move onto the same map returns after the warp reset fails and leaves for the login
+  screen. The original went on to initialise the mode and fade in.
 - An effect id from the server past the 2,385-row duration table takes its own id as its
   duration, as the unconfigured rows do. The original read past the table.
 - For the Korean service, a monster with a `MonsterTalkTable.xml` entry no longer crashes the
