@@ -475,7 +475,9 @@ int ui_cash_shop_wnd_cart_send_msg(struct UIWindow *window, struct UIWindow *sen
 {
     struct UICashShopWnd_Cart *self = (struct UICashShopWnd_Cart *)window;
     switch (msg) {
-    case UI_MSG_SCROLL_V: {
+    case UI_MSG_SCROLL_V:
+    case UI_MSG_PAGE_UP:
+    case UI_MSG_PAGE_DOWN: {
         int count = (int)CART_LINE_COUNT(self);
         int max_pos, first;
 
