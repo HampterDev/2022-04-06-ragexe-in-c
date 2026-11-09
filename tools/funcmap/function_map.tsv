@@ -149,7 +149,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 4eb1e0	sub_4eb1e0	text/render_0000.inc:33571-33696		spr_image	spr_image	render/cdc.c:11	cited_multi	low	render/cdc.c
 4eb2e0				sub_4eb2e0			name	high	cframe.c
 4eb6e0	sub_4eb6e0	text/render_0000.inc:33976-34154		texture_load	texture_load	render/tex_cache.c:159	cited	high	render/tex_cache.c
-4eb970	sub_4eb970	text/render_0000.inc:34155-34211			line_angle	effects/skills/ez2str_effect_ex.c:254	callee	low	
+4eb970	sub_4eb970	text/render_0000.inc:34155-34211			renderer_project_point	render/rp_project.c:48	oracle	high	
 4ed520	sub_4ed520	text/render_0000.inc:34747-34773		sub_4ed520			name	high	render/rp_pool.c
 4ee5a0				sub_4ee5a0			name	high	render/frame_capture.c
 4f8a20	sub_4f8a20	text/fileio_0000.inc:831-856			bink_player_release	skills/bink_decoder.c:19	callee	low	
@@ -2538,7 +2538,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6cb710	sub_6cb710	text/effects_0000.inc:71820-72002		prim_lean_ring_render	prim_lean_ring_render	effects/rag/prim_kinds_156_165.c:232	cited	high	effects/rag/prim_kinds_156_165.c
 6cb990	sub_6cb990	text/effects_0000.inc:72004-72186		prim_swell_rings_render	prim_swell_rings_render	effects/rag/prim_kinds_166_173.c:607	cited	high	effects/rag/prim_kinds_166_173.c
 6cbc10	sub_6cbc10	text/effects_0000.inc:72188-72415		prim_wave_ring_render	prim_wave_ring_render	effects/rag/prim_kinds_143_147.c:48	cited	high	effects/rag/prim_kinds_143_147.c
-6cbf20	sub_6cbf20	text/effects_0000.inc:72417-72812		prim_flying_sprites_render	prim_flying_sprites_render	effects/rag/prim_kinds_166_173.c:269	cited	high	effects/rag/prim_kinds_166_173.c
+6cbf20	sub_6cbf20	text/effects_0000.inc:72417-72812		prim_flying_sprites_render	prim_flying_sprites_render	effects/rag/prim_kinds_166_173.c:269	oracle	high	effects/rag/prim_kinds_166_173.c
 6cca50	sub_6cca50	text/effects_0000.inc:73193-713		prim_jitter_quad_render	prim_jitter_quad_render	effects/rag/prim_kinds_156_165.c:62	cited	high	effects/rag/prim_kinds_156_165.c
 6cdea0	sub_6cdea0	text/effects_0001.inc:715-1178		prim_drift_orb_render	prim_drift_orb_render	effects/rag/prim_kinds_143_147.c:358	cited	high	effects/rag/prim_kinds_143_147.c
 6ce540	sub_6ce540	text/effects_0001.inc:1180-1609		prim_orb_blades_render	prim_orb_blades_render	effects/rag/prim_kinds_143_147.c:462	cited	high	effects/rag/prim_kinds_143_147.c
@@ -2555,7 +2555,10 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6d3d60	sub_6d3d60	text/effects_0001.inc:6831-7502		prim_ribbon_render	prim_ribbon_render	effects/rag/prim_kinds_166_173.c:86	cited	high	effects/rag/prim_kinds_166_173.c
 6d47c0	sub_6d47c0	text/effects_0001.inc:7504-8106		prim_twin_wisps_render	prim_twin_wisps_render	effects/rag/prim_kinds_148_155.c:805	cited	high	effects/rag/prim_kinds_148_155.c
 6d5050	sub_6d5050	text/effects_0001.inc:8108-8411		prim_orbit_launcher_render	prim_orbit_launcher_render	effects/rag/prim_kinds_148_155.c:346	cited	high	effects/rag/prim_kinds_148_155.c
+6d54e0	sub_6d54e0				prim_ground_sprite_render		oracle	high	tests/oracle/test_rag_effect_process.c
+6d58e0	sub_6d58e0				prim_sprite_ghosts_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6d5930	CGndRiser__OnProcess	text/effects_0001.inc:8699-9288		CGndRiser_OnProcess			label_inside	low	actor/small_actors.c
+6d6230	sub_6d6230				prim_sprite_halo_render		oracle	high	tests/oracle/test_rag_effect_process.c
 6d70c0	sub_6d70c0	text/effects_0001.inc:10251-10835		prim_rising_motes_render	prim_rising_motes_render	effects/rag/prim_kinds_148_155.c:276	cited	high	effects/rag/prim_kinds_148_155.c
 6d7a30	sub_6d7a30	text/effects_0001.inc:10883-10998		float_vector_emplace_grow			cited_multi	low	effects/rag/rag_effect_containers.c
 6d7b70	sub_6d7b70	text/effects_0001.inc:11012-11148		CRagEffect__CRagEffect			cited	high	effects/rag/rag_effect.c
@@ -2743,6 +2746,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 74a920	sub_74a920				render_object_get_act_res		oracle	high	tests/oracle/test_rag_effect_process.c
 74acc5	CGameActor__GetAttackMotion	text/actor_0000.inc:8491-8578		CGameActor_GetAttackMotion	game_actor_get_attack_motion	actor/game_actor.c:187	label_inside	low	actor/game_actor.c
 74aea0	sub_74aea0				game_actor_get_job		oracle	high	tests/oracle/skill_oracle.h, stood in
+74bca0	sub_74bca0				render_object_get_spr_res		oracle	high	tests/oracle/test_rag_effect_process.c
 74bd90	sub_74bd90	text/actor_0000.inc:9588-9613		sub_74bd90			name	high	actor/game_actor.c
 74be40	sub_74be40	text/actor_0000.inc:9647-9654		sub_74be40			name	high	actor/game_actor.c
 74be60	sub_74be60				able_to_make_effect_is_effect_exist		oracle	high	tests/oracle/skill_oracle.h, stood in
@@ -2761,6 +2765,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 74f910	sub_74f910	text/actor_0000.inc:14191-14192	CGameObject	sub_74f910			name	high	actor/object_ops.c
 750220	CRenderObject__RenderMercenary	text/actor_0000.inc:14729-15061		CRenderObject__RenderMercenary			label_inside	low	actor/merc_render.c
 751153	CSession__ReLoadAlwaysNeededRes	text/actor_0000.inc:15718-15979		CSession_ReloadAlwaysNeededRes			label_inside	low	session/a/session_startup.c
+751160	sub_751160				render_object_submit_spr_quad		oracle	high	tests/oracle/test_rag_effect_process.c, stood in
 75b80e	sub_75b80e	text/actor_0000.inc:30386-30493		CFallenAngelEffect__SetPosition			cited_multi_inside	low	effects/skills/fallen_angel_effect.c
 75cf31	CRenderObject__SetArgb	text/actor_0000.inc:31587-31619		CRenderObject__SetArgb			label_inside	low	actor/game_object.c
 75eea0	CPc__SetSprShoe	text/actor_0000.inc:34604-34610		CRenderObject__SetForceAnimEndTick			label	high	actor/motion.c
@@ -5481,6 +5486,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 9ed380			UIMiniPartyWnd	UIMiniPartyWnd_OnCreate	ui_mini_party_wnd_on_create	ui/social/mini_party_wnd.c:128	cited	high	ui/social/mini_party_wnd.c
 9ed450			UIMiniPartyWnd	UIMiniPartyWnd_OnDraw	ui_mini_party_wnd_on_draw	ui/social/mini_party_wnd.c:146	cited	high	ui/social/mini_party_wnd.c
 9ed660			UIMiniPartyWnd	UIMiniPartyWnd_OnLBtnUp	ui_mini_party_wnd_on_l_btn_up	ui/social/mini_party_wnd.c:185	cited	high	ui/social/mini_party_wnd.c
+9f1020	sub_9f1020				motion_get_clip		oracle	high	tests/oracle/test_rag_effect_process.c
 9f1060	CActRes__GetDelay	text/resources_0000.inc:4467-4485		CActRes__GetDelay			dump_symbol	high	resources/act.c
 9f10b0	CActRes__GetEventName	text/resources_0000.inc:4497-4530		CActRes__GetEventName			dump_symbol	high	resources/act.c
 9f1140	CActRes__GetMotion	text/resources_0000.inc:4556-4648		CActRes_GetMotion	act_res_get_motion	resources/act.c:279	oracle	high	resources/act.c

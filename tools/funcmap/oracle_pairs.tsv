@@ -72,3 +72,11 @@ a11700	skill_info_is_good_skill_for_actor	tests/oracle/skill_oracle.h, stood in
 770750	game_mode_world_to_cell	tests/oracle/test_rag_effect_process.c
 6572c0	c3d_ground15_draw_attr_quad	tests/oracle/test_rag_effect_process.c, stood in
 9f1140	act_res_get_motion	tests/oracle/test_rag_effect_process.c, stood in
+6d58e0	prim_sprite_ghosts_render	tests/oracle/test_rag_effect_process.c
+6d6230	prim_sprite_halo_render	tests/oracle/test_rag_effect_process.c
+6cbf20	prim_flying_sprites_render	tests/oracle/test_rag_effect_process.c
+6d54e0	prim_ground_sprite_render	tests/oracle/test_rag_effect_process.c
+751160	render_object_submit_spr_quad	tests/oracle/test_rag_effect_process.c, stood in
+9f1020	motion_get_clip	tests/oracle/test_rag_effect_process.c
+74bca0	render_object_get_spr_res	tests/oracle/test_rag_effect_process.c
+4eb970	renderer_project_point	tests/oracle/test_rag_effect_process.c, stood in
