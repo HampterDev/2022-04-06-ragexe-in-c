@@ -13556,3 +13556,33 @@ one that did.
 Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build of the commit before from
 the same saved options: the 20 captures of the scene set above are identical with lightmaps on and
 with lightmaps off. `build.bat check` and the full `testsuild.bat` pass.
+
+## The camera eases by real time (2026-11-09)
+
+Patrick sent a recording of the client (1920 by 1080 at 30 frames a second, 33 seconds of zooming
+in on and tilting over Prontera on a 60 Hz display) that was not entirely smooth. No two recorded
+frames repeat while the view moves, so the client presented a frame for every one recorded, but
+the zoom between recorded frames jumps within one steady movement (5.5, 12.8, 6.4 per mille of
+scale in a row, measured by matching features from frame to frame).
+
+The game advances in ticks of 16 ms (`frame_timer_start(0x3c)`, 1000 / 60 rounded down), and
+each frame runs as many ticks as the time since the last one holds (`frame_timer_step_count`),
+one call of `view_on_calc_view_info` a tick (one also when there are none). The display waits for
+the vertical blank, every 16.7 ms at 60 Hz, so most frames run one tick and every 24th runs two,
+more often where a frame's start falls close to a tick's end. `view_process_camera` moves the
+camera a tenth of the rest of its way per call, so in those frames the whole view moved twice as
+far. The actors' positions follow the server time and their animation frames the time since they
+started (`motion_update.c`), so they were even; the camera was what jerked.
+
+- **The change.** `view_process_camera` moves the camera by the real time since its last call
+  (`View.easedAt`, the performance counter): the rest of the way times 1 - 0.9^(ms / 16), a tenth
+  for 16 ms as one tick moved it, so it keeps the original's speed and converges as the original
+  does after a long frame. A frame's further ticks find next to no time passed and move it by
+  next to nothing. The division keeps the original's form, `(to - from) / divisor + from`, and
+  the divisor for 16 ms is exactly 10, so a run whose frames take 16 ms, as the scene harness's
+  do, moves the camera exactly as before.
+- **What still steps by ticks.** The effects (`effect_mgr_process`) and the water's animation
+  (`c3d_ground15_update_water`) still advance once per tick; they move little of the view.
+
+Validation: the scene set's captures are identical to the commit before (the harness's frames
+take 16 ms each). `build.bat check` and the full `testsuild.bat` pass.

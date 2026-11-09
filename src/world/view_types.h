@@ -20,6 +20,9 @@ struct View {
     struct ViewFrustum frustum;
     struct World *world;
     struct SkyModel *sky;
+    /* custom: the performance counter at the camera's last easing step (view_process_camera), 0
+       before the first */
+    int64_t easedAt;
 };
 
 #endif

@@ -106,9 +106,33 @@ void view_get_view_dir(struct View *self, Vec3 *dir)
     dir->z = dir->z * inv;
 }
 
+/* custom: what the camera divides the rest of its way by this call. The original moved it a tenth
+   of the way once per game tick (16 ms, frame_timer_step_count) and ran as many ticks as each
+   frame's time held, so on a 60 Hz display most frames moved it one step and every 24th frame two
+   (more often where the frame's start wavered across a tick), and the whole view jerked a few
+   times a second while the camera moved. It now moves by the time since the last call, a tenth
+   per 16 ms (exactly 10 for 16 ms, as the scene harness's frames take), so a frame's further
+   ticks move it by next to nothing; 0 where no time has passed. */
+static float ease_divisor(struct View *self)
+{
+    int64_t now = platform_perf_counter(), freq = platform_perf_frequency();
+    double ms = self->easedAt && freq > 0 ? (double)(now - self->easedAt) * 1000.0 / (double)freq : 16.0;
+
+    self->easedAt = now;
+    if (!(ms > 0.0))
+        return 0.0f;
+    return (float)(1.0 / (1.0 - pow(0.9, ms / 16.0)));
+}
+
+/* `from` moved towards `to` by the share ease_divisor gives, as the original moved it a tenth */
+static float eased(float from, float to, float divisor)
+{
+    return divisor > 0.0f ? (to - from) / divisor + from : from;
+}
+
 void view_process_camera(struct View *self)
 {
-    float d, rot, zoom, x, y, z, t, bias, k, r, depth_tilt;
+    float d, x, y, z, t, bias, k, r, depth_tilt, divisor = ease_divisor(self);
 
     while (self->destLongitude >= 360.0f)
         self->destLongitude -= 360.0f;
@@ -119,27 +143,22 @@ void view_process_camera(struct View *self)
         d -= 360.0f;
     while (-180.0f > d)
         d += 360.0f;
-    self->longitude = d / 10.0f + self->longitude;
+    if (divisor > 0.0f)
+        self->longitude = d / divisor + self->longitude;
     while (self->longitude >= 360.0f)
         self->longitude -= 360.0f;
     while (0.0f > self->longitude)
         self->longitude += 360.0f;
 
-    rot = self->destLatitude - self->latitude;
-    zoom = self->destDistance - self->distance;
+    self->latitude = eased(self->latitude, self->destLatitude, divisor);
+    self->distance = eased(self->distance, self->destDistance, divisor);
     x = self->destAt[0];
     y = self->destAt[1];
-    rot = rot / 10.0f;
-    zoom = zoom / 10.0f;
-    rot = rot + self->latitude;
-    zoom = zoom + self->distance;
     z = self->destAt[2];
-    self->latitude = rot;
-    self->distance = zoom;
     if (g_isFixedCamera == 0) {
-        x = (x - self->at[0]) / 10.0f + self->at[0];
-        y = (y - self->at[1]) / 10.0f + self->at[1];
-        z = (z - self->at[2]) / 10.0f + self->at[2];
+        x = eased(self->at[0], x, divisor);
+        y = eased(self->at[1], y, divisor);
+        z = eased(self->at[2], z, divisor);
     }
     self->at[2] = z;
     self->at[1] = y;
@@ -150,7 +169,7 @@ void view_process_camera(struct View *self)
        grows without bound and pushes a sprite's top through the near plane, so it takes the tilt
        held to -65..-25; inside that range nothing changes. The flat sprites take the ground's
        own slope from the view matrix (g_viewGroundUp, sprite_flat_row_rhw). */
-    depth_tilt = rot < -65.0f ? -65.0f : rot > -25.0f ? -25.0f : rot;
+    depth_tilt = self->latitude < -65.0f ? -65.0f : self->latitude > -25.0f ? -25.0f : self->latitude;
     t = get_sin_deg((int)-depth_tilt) / get_cos_deg((int)-depth_tilt);
     k = g_spriteDepthScale * t;
     r = g_renderer->scaleY;
