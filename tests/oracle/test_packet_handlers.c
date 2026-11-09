@@ -63,6 +63,15 @@
 #include "actor/game_actor.h"
 #include "iteminfo/item_name.h"
 #include "game/companion_packets.h"
+#include "contents/party_booking.h"
+#include "game/party_booking_packets.h"
+#include "ui/social/party_board.h"
+#include "ui/social/seek_party_mb.h"
+#include "web/service_managers.h"
+#include "contents/manner_filter.h"
+#include "session/session_party.h"
+#include "game/party_member.h"
+#include "game/minimap.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -299,6 +308,41 @@
 #define ORIG_WND_NAME_CTRL    0x94
 #define ORIG_COLLECTION_PET   0x1e0
 #define N_COMPANION_NAMES 5
+#define ORIG_WND_CHAT_ROOM    0xee8a28u
+#define ORIG_WND_PARTY_SETTING 0xee8abcu
+#define ORIG_REQUEST_MGR_PTR  0x121ffc4u
+#define ORIG_AGENCY_PTR       0x113be40u
+#define ORIG_BOOKING_ADD_ROWS 0x671740u
+#define ORIG_BOOKING_REMOVE   0x670b50u
+#define ORIG_BOOKING_ON_NEW   0x6714d0u
+#define ORIG_BOOKING_SET_JOBS 0x671f40u
+#define ORIG_SET_WANTED_JOBS  0x5e57e0u
+#define ORIG_STOP_RECRUITING  0x8b4740u
+#define ORIG_ADD_JOIN_REQUEST 0xa320c0u
+#define ORIG_COMMAND_PLATE_OF 0x644630u
+#define ORIG_IS_OWN_UNIT_AID  0x883f00u
+#define ORIG_FILTER_CONTAINS  0x66ebe0u
+#define ORIG_FILTER_CENSOR    0x66ded0u
+#define ORIG_CLEAR_INV_PENDING 0x86dc00u
+#define ORIG_CLEAR_CART_PENDING 0x86dc30u
+#define ORIG_CLEAR_STORAGE_PENDING 0x86dc60u
+#define ORIG_GET_PARTY_MEMBER 0x855930u
+#define ORIG_SET_MEMBER_STATE 0x84f550u
+#define ORIG_ADD_PARTY_MEMBER 0x84e110u
+#define ORIG_OWN_AID          0x113520cu
+#define ORIG_PARTY_LEADER     0x1138cd0u
+#define ORIG_PARTY_EXP_OPTION 0x1138d10u
+#define ORIG_PARTY_PICKUP_RULE 0x1138d14u
+#define ORIG_PARTY_DIVISION_RULE 0x1138d18u
+#define ORIG_PARTY_NAME       0x1138d34u
+#define ORIG_PARTY_INVITE_REFUSED 0x11391b0u
+#define ORIG_BOOKING_ALARM_FILTERED 0x11393f9u
+#define ORIG_BOOKING_QUEUE_NEW 0x1139420u
+#define ORIG_BOOKING_ANSWER_TICK 0x1139428u
+#define ORIG_MODE_MAP_NAME    0x68
+#define ORIG_MODE_ITEM_MOVE_READY 0x5f0
+#define ORIG_POST_SIZE        0x30
+#define ORIG_MEMBER_SIZE      0x50
 #define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
 #define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
 #define ORIG_STORAGE_SET_NAME 0x7e3670u
@@ -457,6 +501,13 @@ static void *orig_ctrl_vt[64];
 static struct UIWindowOps lift_window_ops;
 static struct { short level, hunger, intimacy, accessory; int renamed; char name[32]; } lift_pet_details;
 static int current_fill;
+static const char *const companion_names[N_COMPANION_NAMES] = { "", "Poring", "badname", "twentythree_characters_", "Lunatic Jr." };
+static unsigned char orig_request_mgr[0x100], orig_agency[0x100];
+static int lift_request_mgr[0x40], lift_agency[0x40];
+struct UIRequestJoinPartyMgr *g_requestJoinPartyMgr;
+struct AdventurerAgencyMgr *g_adventurerAgency;
+struct WordFilter g_nameFilter;
+static short wanted_jobs[PARTY_BOOKING_JOBS];
 static struct ReplayRecorder lift_replay;
 static unsigned char orig_loop_sounds[4][ORIG_LOOP_SOUND_SIZE];
 static struct LoopSound lift_loop_sounds[4];
@@ -686,6 +737,18 @@ static const struct Field fields[] = {
     { "elementalSp", M(R_SESSION), S(ORIG_ELEMENTAL_SP), SF(elementalSp), 4 },
     { "elementalMaxHp", M(R_SESSION), S(ORIG_ELEMENTAL_MAX_HP), SF(elementalMaxHp), 4 },
     { "elementalMaxSp", M(R_SESSION), S(ORIG_ELEMENTAL_MAX_SP), SF(elementalMaxSp), 4 },
+    { "ownAid", M(R_SESSION), S(ORIG_OWN_AID), SF(ownAid), 4 },
+    { "partyLeader", M(R_SESSION), S(ORIG_PARTY_LEADER), SF(partyLeader), 4 },
+    { "partyExpOption", M(R_SESSION), S(ORIG_PARTY_EXP_OPTION), SF(partyExpOption), 4 },
+    { "partyItemPickupRule", M(R_SESSION), S(ORIG_PARTY_PICKUP_RULE), SF(partyItemPickupRule), 4 },
+    { "partyItemDivisionRule", M(R_SESSION), S(ORIG_PARTY_DIVISION_RULE), SF(partyItemDivisionRule), 4 },
+    { "partyInviteRefused", M(R_SESSION), S(ORIG_PARTY_INVITE_REFUSED), SF(partyInviteRefused), 1 },
+    { "booking_alarm_filtered", M(R_SESSION), S(ORIG_BOOKING_ALARM_FILTERED), SF(partyBooking.alarm_filtered), 1 },
+    { "booking_queue_new", M(R_SESSION), S(ORIG_BOOKING_QUEUE_NEW), SF(partyBooking.queue_new), 1 },
+    { "booking_answer_tick", M(R_SESSION), S(ORIG_BOOKING_ANSWER_TICK), SF(partyBooking.answer_tick), 4, 1 },
+    { "item_move_ready", M(R_MODE), ORIG_MODE_ITEM_MOVE_READY, GF(item_move_ready), 1 },
+    { "partyName", M(R_SESSION), S(ORIG_PARTY_NAME), SF(partyName), 12, 1 },
+    { "partyName_", M(R_SESSION), S(ORIG_PARTY_NAME + 12), SF(partyName), 12, 1 },
     { "lastPacketTime", M(R_SESSION), S(ORIG_LAST_PACKET_TIME), SF(lastPacketTime), 4, 1 },
 };
 
@@ -874,7 +937,9 @@ void string_copy(struct String *dst, const struct String *src) { string_init(dst
 int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message, int a, int b, int c, int d)
 {
     (void)sender;
-    if ((message == 0x1a || message == 0x1b || message == 0x1f) && readable(a))
+    if (message == 0x38 && readable(b))
+        event("wndsend %s %x %x '%s' %x %x", window_name(window), message, a, (const char *)(int)b, c, d);
+    else if ((message == 0x1a || message == 0x1b || message == 0x1f) && readable(a))
         event("wndsend %s %x '%s' %x %x %x", window_name(window), message, (const char *)(int)a, b, c, d);
     else
         event("wndsend %s %x %x %x %x %x", window_name(window), message, a, b, c, d);
@@ -968,6 +1033,98 @@ struct ItemInfo *ui_item_identify_wnd_get_selected_item(struct UIItemIdentifyWnd
 }
 static void lift_window_invalidate(struct UIWindow *self) { event("invalidate %s", window_name(self)); }
 static void lift_set_spr_job(struct GameActor *actor, int job) { event("sprjob %s %d", who(actor), job); }
+static const char *post_text(const unsigned char *p)
+{
+    static char text[128];
+    const short *jobs = (const short *)(p + 0x24);
+    snprintf(text, sizeof text, "post %d '%.24s' %d %d %d j%d,%d,%d,%d,%d,%d", *(const int *)p, (const char *)p + 4, *(const int *)(p + 0x1c),
+             *(const short *)(p + 0x20), *(const short *)(p + 0x22), jobs[0], jobs[1], jobs[2], jobs[3], jobs[4], jobs[5]);
+    return text;
+}
+static const char *member_text(unsigned found, unsigned aid, unsigned char_id, const char *name, const char *map, unsigned role, unsigned state,
+                               unsigned job, unsigned level, unsigned dead)
+{
+    static char text[160];
+    snprintf(text, sizeof text, "member %u %u %u '%s' '%s' r%u s%u j%u l%u d%u", found, aid, char_id, name, map, role, state, job, level, dead);
+    return text;
+}
+static void censor_text(char *text)
+{
+    char *bad = strstr(text, "bad");
+    if (bad)
+        memcpy(bad, "***", 3);
+}
+int party_booking_decode_search(struct PartyBookingSearch *out, const unsigned char *packet, size_t size)
+{
+    if (!packet || size < 5)
+        return 0;
+    if (*(const unsigned short *)(packet + 2) != size || (size - 5) % ORIG_POST_SIZE)
+        return 0;
+    out->posts = packet + 5;
+    out->count = (size - 5) / ORIG_POST_SIZE;
+    out->more = (char)packet[4];
+    return 1;
+}
+void party_booking_add_search(struct PartyBooking *self, const struct PartyBookingSearch *search)
+{
+    size_t i;
+    (void)self;
+    event("booking add %u %d", (unsigned)search->count, search->more);
+    for (i = 0; i < search->count; i++)
+        event("%s", post_text(search->posts + i * ORIG_POST_SIZE));
+}
+void party_booking_remove(struct PartyBooking *self, int id) { (void)self; event("booking remove %d", id); }
+void party_booking_on_new(struct PartyBooking *self, struct PartyBookingPost post) { (void)self; event("booking new %s", post_text((const unsigned char *)&post)); }
+void party_booking_set_jobs(struct PartyBooking *self, int id, const short *jobs)
+{ (void)self; event("booking jobs %d %d %d %d %d %d %d", id, jobs[0], jobs[1], jobs[2], jobs[3], jobs[4], jobs[5]); }
+void ui_window_mgr_command_plate_of(struct UIWindowMgr *self, int aid, int a, int b) { (void)self; event("plate %u %d %d", aid, a, b); }
+int session_is_own_unit_aid(struct Session *self, int aid) { (void)self; return aid == (int)AID_OWN; }
+void adventurer_agency_stop_recruiting(struct AdventurerAgencyMgr *self, int aid) { (void)self; event("stop recruiting %u", aid); }
+void ui_request_join_party_mgr_add_request(struct UIRequestJoinPartyMgr *self, int char_id, int aid, const char *name, int level, int job)
+{ (void)self; event("join request %d %u '%s' %d %d", char_id, aid, name, level, job); }
+const short *ui_seek_party_mb_jobs(const struct UIWindow *wnd) { (void)wnd; return wanted_jobs; }
+void job_list_set_wanted_jobs(const short *jobs) { (void)jobs; event("wanted jobs"); }
+int word_filter_contains(const struct WordFilter *filter, const char *text) { (void)filter; return strstr(text, "bad") != NULL; }
+void word_filter_censor(const struct WordFilter *filter, char *text) { (void)filter; censor_text(text); event("censor '%s'", text); }
+void game_mode_set_actor_mark_flag(struct GameMode *self, int aid, int flag)
+{
+    struct GameActor *actor = world_get_game_actor_by_aid(self->world, aid);
+    if (actor)
+        game_actor_set_mark_listed(actor, flag);
+}
+int session_get_party_member_count(struct Session *self) { (void)self; return 0; }
+void session_add_party_member(struct Session *self, struct PartyMember *m)
+{
+    (void)self;
+    event("add %s", member_text(m->found, m->aid, m->char_id, string_cstr(&m->name), string_cstr(&m->map_name), m->role, m->state, m->job, m->level, m->dead));
+}
+void session_clear_inventory_move_pending(struct Session *self, int index) { (void)self; event("clear inv pending %d", index); }
+void session_clear_cart_move_pending(struct Session *self, int index) { (void)self; event("clear cart pending %d", index); }
+void session_clear_storage_move_pending(struct Session *self, int index) { (void)self; event("clear storage pending %d", index); }
+void string_resize(struct String *s, size_t size, char fill)
+{
+    char *copy = malloc(size + 1);
+    size_t keep = s->size < size ? s->size : size;
+    if (keep)
+        memcpy(copy, string_cstr(s), keep);
+    memset(copy + keep, fill, size - keep);
+    copy[size] = 0;
+    s->data = copy;
+    s->size = size;
+    s->capacity = size;
+}
+int string_equal(const struct String *a, const struct String *b) { return a->size == b->size && memcmp(string_cstr(a), string_cstr(b), a->size) == 0; }
+struct PartyMember *session_get_party_member(struct Session *self, struct PartyMember *out, DWORD aid)
+{
+    (void)self;
+    event("member get %u", aid);
+    memset(out, 0, sizeof *out);
+    string_init(&out->name);
+    string_init(&out->map_name);
+    out->found = aid == AID_TARGET;
+    return out;
+}
+void session_set_party_member_state(struct Session *self, DWORD aid, DWORD role) { (void)self; event("member state %u %u", aid, role); }
 BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; event("replay mode %d", mode); return 1; }
 void text_drop_map_extension(struct String *map_name)
 {
@@ -1422,6 +1579,46 @@ static unsigned char *__fastcall o_selected_item(void *self, void *edx, unsigned
 }
 static void __fastcall o_window_invalidate(void *self, void *edx) { (void)edx; event("invalidate %s", window_name(self)); }
 static void __fastcall o_set_spr_job(void *self, void *edx, int job) { (void)edx; event("sprjob %s %d", who(self), job); }
+struct OrigPost { unsigned char b[ORIG_POST_SIZE]; };
+static void __fastcall o_booking_add_rows(void *self, void *edx, const unsigned char *posts, int count, int more)
+{
+    int i;
+    (void)self; (void)edx;
+    event("booking add %u %d", (unsigned)count, (char)more);
+    for (i = 0; i < count; i++)
+        event("%s", post_text(posts + i * ORIG_POST_SIZE));
+}
+static void __fastcall o_booking_remove(void *self, void *edx, int id) { (void)self; (void)edx; event("booking remove %d", id); }
+static void __fastcall o_booking_on_new(void *self, void *edx, struct OrigPost post) { (void)self; (void)edx; event("booking new %s", post_text(post.b)); }
+static void __fastcall o_booking_set_jobs(void *self, void *edx, int id, const short *jobs)
+{ (void)self; (void)edx; event("booking jobs %d %d %d %d %d %d %d", id, jobs[0], jobs[1], jobs[2], jobs[3], jobs[4], jobs[5]); }
+static void __fastcall o_set_wanted_jobs(void *self, void *edx, void *wnd) { (void)self; (void)edx; (void)wnd; event("wanted jobs"); }
+static void __fastcall o_stop_recruiting(void *self, void *edx, int aid) { (void)self; (void)edx; event("stop recruiting %u", aid); }
+static void __fastcall o_add_join_request(void *self, void *edx, int char_id, int aid, const char *name, int level, int job)
+{ (void)self; (void)edx; event("join request %d %u '%s' %d %d", char_id, aid, name, level, job); }
+static void __fastcall o_command_plate_of(void *self, void *edx, int aid, int a, int b) { (void)self; (void)edx; event("plate %u %d %d", aid, a, b); }
+static int __fastcall o_is_own_unit_aid(void *self, void *edx, int aid) { (void)self; (void)edx; return aid == (int)AID_OWN; }
+static int __fastcall o_filter_contains(void *self, void *edx, const char *text) { (void)self; (void)edx; return strstr(text, "bad") != NULL; }
+static void __fastcall o_filter_censor(void *self, void *edx, char *text, void *out) { (void)self; (void)edx; (void)out; censor_text(text); event("censor '%s'", text); }
+static void __fastcall o_clear_inv_pending(void *self, void *edx, int index) { (void)self; (void)edx; event("clear inv pending %d", index); }
+static void __fastcall o_clear_cart_pending(void *self, void *edx, int index) { (void)self; (void)edx; event("clear cart pending %d", index); }
+static void __fastcall o_clear_storage_pending(void *self, void *edx, int index) { (void)self; (void)edx; event("clear storage pending %d", index); }
+static unsigned char *__fastcall o_get_party_member(void *self, void *edx, unsigned char *out, unsigned aid)
+{
+    (void)self; (void)edx;
+    event("member get %u", aid);
+    memset(out, 0, ORIG_MEMBER_SIZE);
+    *(unsigned *)out = aid == AID_TARGET;
+    return out;
+}
+static void __fastcall o_set_member_state(void *self, void *edx, unsigned aid, unsigned state) { (void)self; (void)edx; event("member state %u %u", aid, state); }
+static void __fastcall o_add_party_member(void *self, void *edx, const unsigned char *m)
+{
+    (void)self; (void)edx;
+    event("add %s", member_text(*(const unsigned *)m, *(const unsigned *)(m + 4), *(const unsigned *)(m + 8), orig_std_string(m + 0xc),
+                               orig_std_string(m + 0x24), *(const unsigned *)(m + 0x3c), *(const unsigned *)(m + 0x40), *(const unsigned short *)(m + 0x48),
+                               *(const unsigned short *)(m + 0x4a), *(const unsigned *)(m + 0x4c)));
+}
 static void __fastcall o_log_whisper(void *self, void *edx, const char *line) { (void)self; (void)edx; event("log '%s'", line); }
 static void __fastcall o_clear_lists(void *self, void *edx) { (void)self; (void)edx; event("clear lists"); }
 static void *__cdecl o_item_table_get(int item_id) { *(int *)(fake_item_entry + 0x40) = item_id % 7; return fake_item_entry; }
@@ -1564,6 +1761,28 @@ LIFT(game_mode_zc_mer_init)
 static void w_mer_par_change(const unsigned char *pkt) { game_mode_zc_mer_par_change(pkt); }
 LIFT(game_mode_zc_el_init)
 LIFT(game_mode_zc_el_par_change)
+static void w_booking_ack_delete(const unsigned char *pkt) { game_mode_zc_party_booking_ack_delete(pkt); }
+static void w_booking_ack_register(const unsigned char *pkt) { game_mode_zc_party_booking_ack_register(pkt); }
+static void w_booking_ack_search(const unsigned char *pkt) { game_mode_zc_party_booking_ack_search(pkt, *(const unsigned short *)(pkt + 2)); }
+static void w_booking_notify_delete(const unsigned char *pkt) { game_mode_zc_party_booking_notify_delete(pkt); }
+static void w_booking_notify_insert(const unsigned char *pkt) { game_mode_zc_party_booking_notify_insert(pkt); }
+static void w_booking_notify_update(const unsigned char *pkt) { game_mode_zc_party_booking_notify_update(pkt); }
+LIFT(game_mode_zc_seek_party)
+static void w_party_config(const unsigned char *pkt) { game_mode_zc_party_config(pkt); }
+static void w_join_req_ack_from_master(const unsigned char *pkt) { game_mode_zc_party_join_req_ack_from_master(pkt); }
+static void w_req_master_to_join(const unsigned char *pkt) { game_mode_zc_party_req_master_to_join(pkt); }
+static void w_req_join_group(const unsigned char *pkt) { game_mode_zc_req_join_group(pkt); }
+static void w_party_join_ack(const unsigned char *pkt) { game_mode_party_join_ack(pkt); }
+static void w_groupinfo_change_v2(const unsigned char *pkt) { game_mode_zc_req_groupinfo_change_v2(pkt); }
+static void w_ack_make_group(const unsigned char *pkt) { game_mode_zc_ack_make_group(pkt); }
+LIFT(game_mode_zc_notify_hp_to_group_m)
+LIFT(game_mode_zc_notify_hp_to_group_m_r2)
+LIFT(game_mode_zc_notify_position_to_group_m)
+static void w_group_info_change(const unsigned char *pkt) { game_mode_zc_group_info_change(pkt); }
+LIFT(game_mode_on_add_member_to_group)
+LIFT(game_mode_on_add_member_to_group2)
+LIFT(game_mode_on_party_member_state)
+LIFT(game_mode_on_list_flag_clear)
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -1631,6 +1850,7 @@ static const unsigned pet_state_values[] = { 17, 20, 27 };
 static const unsigned ho_par_vars[] = { 1, 5, 7, 0, 6, 8 };
 static const unsigned mer_par_vars[] = { 5, 6, 7, 8, 41, 49, 53, 165, 189, 190, 0, 9, 0xb9, 0xba, 1000 };
 static const unsigned el_par_vars[] = { 5, 6, 7, 8, 0, 1, 3, 9 };
+static const unsigned join_ack_values[] = { 18, 100 };
 static const struct Handler handlers[] = {
     { "notify_vanish", 0x7cc580u, 0x80, 7, w_game_mode_zc_notify_vanish, PK_DEFAULT, NULL, 0 },
     { "sprite_change", 0x7d6650u, 0xc3, 8, w_game_mode_zc_sprite_change, PK_DEFAULT, NULL, 0 },
@@ -1750,6 +1970,30 @@ static const struct Handler handlers[] = {
     { "mer_par_change", 0x7c5130u, 0x2a2, 8, w_mer_par_change, PK_PAR, EXTRA(mer_par_vars) },
     { "el_init", 0x7bade0u, 0x81d, 0x16, w_game_mode_zc_el_init, PK_DEFAULT, NULL, 0 },
     { "el_par_change", 0x7bae50u, 0x81e, 8, w_game_mode_zc_el_par_change, PK_PAR, EXTRA(el_par_vars) },
+    { "booking_ack_delete", 0x7ce240u, 0x807, 4, w_booking_ack_delete, PK_DEFAULT, NULL, 0 },
+    { "booking_ack_register", 0x7ce2e0u, 0x803, 4, w_booking_ack_register, PK_DEFAULT, NULL, 0 },
+    { "booking_ack_search", 0x7ce3a0u, 0x805, 5, w_booking_ack_search, PK_DEFAULT, NULL, 0 },
+    { "booking_notify_delete", 0x7ce480u, 0x80b, 6, w_booking_notify_delete, PK_DEFAULT, NULL, 0 },
+    { "booking_notify_insert", 0x7ce4c0u, 0x809, 50, w_booking_notify_insert, PK_DEFAULT, NULL, 0 },
+    { "booking_notify_update", 0x7ce510u, 0x80a, 18, w_booking_notify_update, PK_DEFAULT, NULL, 0 },
+    { "seek_party", 0, 0x7dd, 34, w_game_mode_zc_seek_party, PK_DEFAULT, NULL, 0 },
+    { "party_config", 0x7ce550u, 0x2c9, 3, w_party_config, PK_DEFAULT, NULL, 0 },
+    { "join_req_ack_from_master", 0x7ce590u, 0xafa, 58, w_join_req_ack_from_master, PK_DEFAULT, NULL, 0 },
+    { "req_master_to_join", 0, 0xae7, 38, w_req_master_to_join, PK_DEFAULT, NULL, 0 },
+    { "req_join_group", 0, 0xfe, 30, w_req_join_group, PK_DEFAULT, NULL, 0 },
+    { "party_join_ack", 0x7b2790u, 0xfd, 30, w_party_join_ack, PK_DEFAULT, EXTRA(join_ack_values) },
+    { "party_join_req_ack", 0x7b2790u, 0x2c5, 30, w_party_join_ack, PK_DEFAULT, EXTRA(join_ack_values) },
+    { "groupinfo_change_v2", 0x7d0f70u, 0x7d8, 8, w_groupinfo_change_v2, PK_DEFAULT, NULL, 0 },
+    { "ack_make_group", 0, 0xfa, 3, w_ack_make_group, PK_DEFAULT, NULL, 0 },
+    { "notify_hp_to_group", 0, 0x106, 10, w_game_mode_zc_notify_hp_to_group_m, PK_DEFAULT, NULL, 0 },
+    { "notify_hp_to_group_r2", 0, 0x80e, 14, w_game_mode_zc_notify_hp_to_group_m_r2, PK_DEFAULT, NULL, 0 },
+    { "notify_position_to_group", 0, 0x107, 10, w_game_mode_zc_notify_position_to_group_m, PK_DEFAULT, NULL, 0 },
+    { "group_info_change", 0, 0x101, 6, w_group_info_change, PK_DEFAULT, NULL, 0 },
+    { "group_info_change_fn", 0x7ddc90u, 0x101, 6, w_group_info_change, PK_DEFAULT, NULL, 0 },
+    { "add_member_to_group3", 0x8156e0u, 0xa43, 0x55, w_game_mode_on_add_member_to_group, PK_DEFAULT, NULL, 0 },
+    { "add_member_to_group4", 0x7f4510u, 0xae4, 0x59, w_game_mode_on_add_member_to_group2, PK_DEFAULT, NULL, 0 },
+    { "party_member_state", 0x815bc0u, 0xab2, 7, w_game_mode_on_party_member_state, PK_DEFAULT, NULL, 0 },
+    { "list_flag_clear", 0x815b50u, 0xaa7, 4, w_game_mode_on_list_flag_clear, PK_DEFAULT, NULL, 0 },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -1928,9 +2172,8 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         return;
     }
     if (h->id == 0x1a2 || h->id == 0x22e || h->id == 0xb2f || h->id == 0xb76 || h->id == 0xba4 || h->id == 0x29b) {
-        static const char *const names[N_COMPANION_NAMES] = { "", "Poring", "a", "twentythree_characters_", "Lunatic Jr." };
         static const short fullness[] = { 1, 5, 10, 7, 0, 100 };
-        const char *name = names[value % N_COMPANION_NAMES];
+        const char *name = companion_names[value % N_COMPANION_NAMES];
         short level = (short)(h->id == 0x1a2 && (value & 1) ? 10000 + (int)value : 10 + (int)value);
         short full = fullness[value % 6], intimacy = (short)(100 * value), accessory = (short)(3 * value), job = (short)(1002 + fill);
         if (h->id == 0x29b) {
@@ -1947,6 +2190,124 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
             memcpy(pkt + 0x21, &accessory, 2);
             memcpy(pkt + 0x23, &job, 2);
         }
+        return;
+    }
+    if (h->id == 0x807 || h->id == 0x803 || h->id == 0x101 || h->id == 0xaa7 || h->id == 0x2c9 || h->id == 0xfa) {
+        unsigned short v = (unsigned short)(h->id == 0x803 ? value % 4 : h->id == 0x2c9 ? value & 1 : value);
+        if (h->length == 3)
+            pkt[2] = (unsigned char)v;
+        else if (h->length == 4)
+            memcpy(pkt + 2, &v, 2);
+        else
+            memcpy(pkt + 2, &value, 4);
+        return;
+    }
+    if (h->id == 0x805 || h->id == 0x809 || h->id == 0x80a || h->id == 0x80b) {
+        unsigned count = h->id == 0x805 ? value & 3 : 1, r;
+        unsigned short total = (unsigned short)(5 + count * ORIG_POST_SIZE);
+        unsigned char *post = pkt + (h->id == 0x805 ? 5 : 2);
+        int id = 100 + (int)value;
+        if (h->id == 0x805) {
+            memcpy(pkt + 2, &total, 2);
+            pkt[4] = (unsigned char)(fill & 1);
+        }
+        if (h->id == 0x80b || h->id == 0x80a) {
+            memcpy(pkt + 2, &id, 4);
+            if (h->id == 0x80a)
+                for (r = 0; r < PARTY_BOOKING_JOBS; r++)
+                    *(short *)(pkt + 6 + 2 * r) = (short)((value + r) % 3);
+            return;
+        }
+        for (r = 0; r < count; r++, post += ORIG_POST_SIZE) {
+            const char *leader = companion_names[(value + r) % N_COMPANION_NAMES];
+            int posted = 1000 * fill, pid = id + (int)r, j;
+            short level = (short)value, map = (short)fill;
+            memset(post, 0, ORIG_POST_SIZE);
+            memcpy(post, &pid, 4);
+            memcpy(post + 4, leader, strlen(leader));
+            memcpy(post + 0x1c, &posted, 4);
+            memcpy(post + 0x20, &level, 2);
+            memcpy(post + 0x22, &map, 2);
+            for (j = 0; j < PARTY_BOOKING_JOBS; j++)
+                *(short *)(post + 0x24 + 2 * j) = (short)((value + r + j) % 3);
+        }
+        return;
+    }
+    if (h->id == 0x7dd) {
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        int job = 10 * (int)value, v = fill;
+        memcpy(pkt + 2, name, strlen(name) + 1);
+        memcpy(pkt + 0x1a, &job, 4);
+        memcpy(pkt + 0x1e, &v, 4);
+        return;
+    }
+    if (h->id == 0xafa || h->id == 0xfd || h->id == 0x2c5 || h->id == 0xfe || h->id == 0xae7) {
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        const char *other = companion_names[(value + 1) % N_COMPANION_NAMES];
+        if (h->id == 0xfe) {
+            memcpy(pkt + 2, &value, 4);
+            memcpy(pkt + 6, name, strlen(name) + 1);
+            return;
+        }
+        if (h->id == 0xae7) {
+            int request = 500 + (int)value;
+            unsigned short level = (unsigned short)(10 + fill), job = (unsigned short)value;
+            memcpy(pkt + 2, &aid, 4);
+            memcpy(pkt + 6, &request, 4);
+            memcpy(pkt + 0xa, name, strlen(name) + 1);
+            memcpy(pkt + 0x22, &level, 2);
+            memcpy(pkt + 0x24, &job, 2);
+            return;
+        }
+        memcpy(pkt + 2, name, strlen(name) + 1);
+        if (h->id == 0xafa) {
+            memcpy(pkt + 0x1a, other, strlen(other) + 1);
+            memcpy(pkt + 0x32, &aid, 4);
+            memcpy(pkt + 0x36, &value, 4);
+        } else {
+            memcpy(pkt + 0x1a, &value, 4);
+        }
+        return;
+    }
+    if (h->id == 0x7d8) {
+        int exp = (int)(value % 4);
+        memcpy(pkt + 2, &exp, 4);
+        pkt[6] = (unsigned char)fill;
+        pkt[7] = (unsigned char)(value & 1);
+        return;
+    }
+    if (h->id == 0x106 || h->id == 0x80e || h->id == 0x107) {
+        int hp = (int)value, max = 100 * fill;
+        memcpy(pkt + 2, &aid, 4);
+        if (h->id == 0x80e) {
+            memcpy(pkt + 6, &hp, 4);
+            memcpy(pkt + 0xa, &max, 4);
+        } else {
+            *(short *)(pkt + 6) = (short)hp;
+            *(short *)(pkt + 8) = (short)(h->id == 0x107 ? fill : max);
+        }
+        return;
+    }
+    if (h->id == 0xa43 || h->id == 0xae4) {
+        static const char *const maps[] = { "prontera.gat", "geffen.gat", "prt_fild" };
+        unsigned off = h->id == 0xae4 ? 4 : 0;
+        int gid = 777, role = (int)((value >> 1) & 1);
+        unsigned short job = 4, level = 50;
+        const char *party = companion_names[(value / 4) % N_COMPANION_NAMES];
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        memcpy(pkt + 2, &aid, 4);
+        if (off)
+            memcpy(pkt + 6, &gid, 4);
+        memcpy(pkt + 6 + off, &role, 4);
+        memcpy(pkt + 0xa + off, &job, 2);
+        memcpy(pkt + 0xc + off, &level, 2);
+        pkt[0x12 + off] = (unsigned char)(value & 3);
+        memset(pkt + 0x13 + off, 0, 64);
+        memcpy(pkt + 0x13 + off, party, strlen(party));
+        memcpy(pkt + 0x2b + off, name, strlen(name));
+        memcpy(pkt + 0x43 + off, maps[fill], strlen(maps[fill]));
+        pkt[0x53 + off] = (unsigned char)(fill & 1);
+        pkt[0x54 + off] = (unsigned char)(fill >> 1);
         return;
     }
     if (h->id == 0x1a6) {
@@ -2179,6 +2540,22 @@ static void seed_packets(int option)
     g_windowMgr.pet_info_wnd = option ? &lift_pet_info_wnd : NULL;
     g_windowMgr.homun_info_wnd = option ? &lift_homun_info_wnd : NULL;
     g_windowMgr.homun_skill_list_wnd = option ? &lift_homun_skill_wnd : NULL;
+    SEED(ORIG_OWN_AID, ownAid, (int)AID_OWN);
+    SEED(ORIG_PARTY_LEADER, partyLeader, option);
+    *(void **)oracle_addr(ORIG_WND_CHAT_ROOM) = option ? orig_generic_wnd : NULL;
+    g_windowMgr.chat_room_wnd = option ? &lift_generic_wnd : NULL;
+    *(void **)oracle_addr(ORIG_WND_PARTY_SETTING) = option ? orig_generic_wnd : NULL;
+    g_windowMgr.party_setting_wnd = option ? &lift_generic_wnd : NULL;
+    *(void **)oracle_addr(ORIG_REQUEST_MGR_PTR) = orig_request_mgr;
+    *(void **)oracle_addr(ORIG_AGENCY_PTR) = orig_agency;
+    g_requestJoinPartyMgr = (struct UIRequestJoinPartyMgr *)lift_request_mgr;
+    g_adventurerAgency = (struct AdventurerAgencyMgr *)lift_agency;
+    memset(oracle_addr(ORIG_PARTY_NAME), 0, ORIG_STD_STRING);
+    *(unsigned *)((unsigned char *)oracle_addr(ORIG_PARTY_NAME) + 0x14) = ORIG_STD_STRING_SSO - 1;
+    string_init(&g_session1.partyName);
+    strcpy((char *)orig_mode + ORIG_MODE_MAP_NAME, "prontera.rsw");
+    memset(lift_mode.map_name, 0, sizeof lift_mode.map_name);
+    strcpy(lift_mode.map_name, "prontera.rsw");
     memset(orig_generic_wnd + ORIG_COLLECTION_PET, 0, 0x40);
     memset(&lift_pet_details, 0, sizeof lift_pet_details);
 #undef SEED
@@ -2270,6 +2647,8 @@ static void after_call(int side)
                   lift_pet_details.accessory, lift_pet_details.renamed, lift_pet_details.name);
         }
     }
+    if (current_handler->id == 0xfe || current_handler->id == 0xa43 || current_handler->id == 0xae4)
+        event("party name '%s'", side == 0 ? orig_std_string(oracle_addr(ORIG_PARTY_NAME)) : string_cstr(&g_session1.partyName));
     if (current_handler->id == 0x7fe)
         event("bgm %d", side == 0 ? *(int *)(orig_sound_mgr + ORIG_SOUND_BGM_OVERRIDDEN) : g_sound_settings.bgm_overridden);
     report_changes(side);
@@ -2493,6 +2872,23 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_HOMUN_REDRAW, (void *)o_homun_redraw);
     oracle_patch_jump(ORIG_MERC_REDRAW, (void *)o_merc_redraw);
     oracle_patch_jump(ORIG_LIST_CLEAR, (void *)o_list_clear);
+    oracle_patch_jump(ORIG_BOOKING_ADD_ROWS, (void *)o_booking_add_rows);
+    oracle_patch_jump(ORIG_BOOKING_REMOVE, (void *)o_booking_remove);
+    oracle_patch_jump(ORIG_BOOKING_ON_NEW, (void *)o_booking_on_new);
+    oracle_patch_jump(ORIG_BOOKING_SET_JOBS, (void *)o_booking_set_jobs);
+    oracle_patch_jump(ORIG_SET_WANTED_JOBS, (void *)o_set_wanted_jobs);
+    oracle_patch_jump(ORIG_STOP_RECRUITING, (void *)o_stop_recruiting);
+    oracle_patch_jump(ORIG_ADD_JOIN_REQUEST, (void *)o_add_join_request);
+    oracle_patch_jump(ORIG_COMMAND_PLATE_OF, (void *)o_command_plate_of);
+    oracle_patch_jump(ORIG_IS_OWN_UNIT_AID, (void *)o_is_own_unit_aid);
+    oracle_patch_jump(ORIG_FILTER_CONTAINS, (void *)o_filter_contains);
+    oracle_patch_jump(ORIG_FILTER_CENSOR, (void *)o_filter_censor);
+    oracle_patch_jump(ORIG_CLEAR_INV_PENDING, (void *)o_clear_inv_pending);
+    oracle_patch_jump(ORIG_CLEAR_CART_PENDING, (void *)o_clear_cart_pending);
+    oracle_patch_jump(ORIG_CLEAR_STORAGE_PENDING, (void *)o_clear_storage_pending);
+    oracle_patch_jump(ORIG_GET_PARTY_MEMBER, (void *)o_get_party_member);
+    oracle_patch_jump(ORIG_SET_MEMBER_STATE, (void *)o_set_member_state);
+    oracle_patch_jump(ORIG_ADD_PARTY_MEMBER, (void *)o_add_party_member);
     for (i = 0; i < (int)sizeof long_text_600 - 1; i++)
         long_text_600[i] = "abcdefghij"[i % 10];
     for (i = 0; i < (int)sizeof long_text_max - 1; i++)
