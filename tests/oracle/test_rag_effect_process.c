@@ -38,6 +38,7 @@
 #include "skills/skill_info.h"
 #include "contents/client_lua_calls.h"
 #include "resources/animation.h"
+#include "resources/sprite.h"
 #include "world/mode_dispatch.h"
 #include "world/mode_manager.h"
 #include "std/vec.h"
@@ -84,6 +85,26 @@
 #define ORIG_RENDERER_PTR    0xee5be0u
 #define ORIG_EFFECT_ON       0x1138cb4u
 #define ORIG_PRIM_VT_RENDER  (0x0c / 4)
+#define ORIG_SUBMIT_SPR_QUAD 0x751160u
+#define ORIG_SPR_RES         0x104
+#define ORIG_SPR_PALETTE     0x110
+#define ORIG_SPR_IMAGES      0x510
+#define ORIG_MOTION_CLIPS    0x20
+#define ORIG_MOTION_CLIP_END 0x24
+#define ORIG_MOTION_CLIP_COUNT 0x2c
+#define ORIG_QUAD_IMAGE      0x2c
+#define LIFT_QUAD_IMAGE      0x20
+#define ORIG_RENDERER_DIMS   0x2c
+#define ORIG_ROW_DEPTH_STEP  0xe89eb4u
+#define ORIG_DEPTH_PER_PIXEL 0xe89eb8u
+#define FAKE_MOTIONS 4
+#define FAKE_CLIPS 3
+#define FAKE_IMAGES 6
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 768
+#define ROW_DEPTH_STEP 0.16f
+#define STACK_CLEAR 2048
+#define DEPTH_PER_PIXEL 0.08f
 #define ORIG_NEW             0xb461beu
 #define ORIG_NEW_2           0xb46099u
 #define ORIG_NEW_3           0xb46508u
@@ -126,7 +147,7 @@
 #define PRIMS 1024
 #define PRIM_STEPS 32
 #define MAX_REPORTED 40
-#define EVENTS 256
+#define EVENTS 1024
 #define EVENT_LEN 192
 #define CAMERA_HEADING 37.0f
 #define CAMERA_PITCH 33.0f
@@ -173,8 +194,18 @@ static const char *mode_msg_text(int message, int a, int b, int c, int d)
 static unsigned char orig_effect[0x12000], orig_master[0x200], orig_mode[0x200], orig_world[0x100], orig_view[0x200];
 static unsigned char orig_player[0x200], orig_attr[0x100], orig_res_mgr[0x100], orig_texture[0x200], orig_actres[0x200], lift_actres[0x10];
 static int orig_actions[FAKE_ACTIONS][3];
-static unsigned char orig_renderer[0x400], orig_motion[0x80], orig_ground[0x100], lift_ground[0x10];
-static struct Motion lift_motion;
+static unsigned char orig_renderer[0x400], orig_motions[FAKE_MOTIONS][0x80], orig_ground[0x100], lift_ground[0x10], orig_spr[0x600];
+static struct Motion lift_motions[FAKE_MOTIONS];
+static struct SprClip fake_clips[FAKE_MOTIONS][FAKE_CLIPS] = {
+    { { -4, -3, 0, 0, { 255, 200, 100, 255 }, 1.0f, 1.0f, 0, 0 } },
+    { { -6, -5, 2, 1, { 10, 20, 30, 200 }, 1.5f, 0.75f, 45, 0 }, { -6, -4, 1, 0, { 90, 160, 250, 128 }, 1.0f, 1.0f, -30, 1 } },
+    { { 0, 0, -1, 0, { 0, 0, 0, 0 }, 1.0f, 1.0f, 0, 0 }, { -14, -10, 5, 0, { 200, 40, 40, 255 }, 2.0f, 2.0f, 0, 1 },
+      { -5, -7, 3, 1, { 40, 200, 40, 96 }, 0.5f, 1.25f, 90, 0 } },
+    { { 0, 0, -1, 0, { 0, 0, 0, 0 }, 1.0f, 1.0f, 0, 0 } },
+};
+static const unsigned fake_clip_counts[FAKE_MOTIONS] = { 1, 2, 3, 0 };
+static struct SprImg orig_images[2][FAKE_IMAGES], lift_images[2][FAKE_IMAGES], *orig_image_ptrs[2][FAKE_IMAGES];
+static struct SprRes lift_spr;
 static const float view_matrix[16] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 static unsigned char *orig_prims;
 static void *orig_rag_vt[ORIG_RAG_VTABLE_SLOTS], *orig_master_vt[65], *orig_mode_vt[64], *orig_prim_vt[ORIG_PRIM_VTABLE_SLOTS];
@@ -192,6 +223,45 @@ static unsigned char lift_texture[0x200];
 static struct EffectPrim *lift_prims;
 
 static unsigned fake_motions(unsigned action) { return action < FAKE_ACTIONS ? 2 + action % 5 : 1; }
+static unsigned fake_motion_index(unsigned action, unsigned motion) { return (action * 3 + motion) % FAKE_MOTIONS; }
+static const char *who(const void *p);
+
+static void spr_quad_event(const void *self, const float *quad, const void *image, const void *palette, int flags, float dx, float dy)
+{
+    char image_name[24];
+    snprintf(image_name, sizeof image_name, "%s", who(image));
+    event("sprquad %s %d [%.2f %.2f %.2f %.2f] %.4f %.4f %08x %.1f %s %s %.1f %.1f", who(self), flags, quad[0], quad[1], quad[2], quad[3],
+          quad[4], quad[5], *(const unsigned *)&quad[6], quad[7], image_name, who(palette), dx, dy);
+}
+
+static void fake_sprites(void)
+{
+    int m, kind, i;
+    for (m = 0; m < FAKE_MOTIONS; m++) {
+        lift_motions[m].clips = fake_clips[m];
+        lift_motions[m].clip_count = fake_clip_counts[m];
+        *(struct SprClip **)(orig_motions[m] + ORIG_MOTION_CLIPS) = fake_clips[m];
+        *(struct SprClip **)(orig_motions[m] + ORIG_MOTION_CLIP_END) = fake_clips[m] + fake_clip_counts[m];
+        *(unsigned *)(orig_motions[m] + ORIG_MOTION_CLIP_COUNT) = fake_clip_counts[m];
+    }
+    for (kind = 0; kind < 2; kind++) {
+        for (i = 0; i < FAKE_IMAGES; i++) {
+            struct SprImg img = { 0 };
+            img.width = (short)(8 + 4 * i + 16 * kind);
+            img.height = (short)(6 + 3 * i);
+            img.widthHalved = (short)(i % 2);
+            img.heightHalved = (short)((i + 1) % 2);
+            orig_images[kind][i] = img;
+            lift_images[kind][i] = img;
+            orig_image_ptrs[kind][i] = &orig_images[kind][i];
+        }
+        lift_spr.images[kind].items = lift_images[kind];
+        lift_spr.images[kind].count = FAKE_IMAGES;
+        *(struct SprImg ***)(orig_spr + ORIG_SPR_IMAGES + kind * 12) = orig_image_ptrs[kind];
+        *(struct SprImg ***)(orig_spr + ORIG_SPR_IMAGES + kind * 12 + 4) = orig_image_ptrs[kind] + FAKE_IMAGES;
+        *(struct SprImg ***)(orig_spr + ORIG_SPR_IMAGES + kind * 12 + 8) = orig_image_ptrs[kind] + FAKE_IMAGES;
+    }
+}
 
 static void triangle_event(const struct PrimTriangle *tri, int flags)
 {
@@ -212,6 +282,16 @@ static const char *who(const void *p)
     if (p == orig_effect || p == &lift_effect) return "E";
     if (p == orig_player || p == &lift_player) return "P";
     if (p == orig_texture || p == lift_texture) return "T";
+    if (p == orig_spr + ORIG_SPR_PALETTE || p == lift_spr.palette) return "Pal";
+    {
+        int kind, index;
+        for (kind = 0; kind < 2; kind++)
+            for (index = 0; index < FAKE_IMAGES; index++)
+                if (p == &orig_images[kind][index] || p == &lift_images[kind][index]) {
+                    snprintf(other, sizeof other, "I%d.%d", kind, index);
+                    return other;
+                }
+    }
     if (orig_prims && (unsigned char *)p >= orig_prims && (unsigned char *)p < orig_prims + (size_t)PRIMS * ORIG_PRIM_SIZE) {
         snprintf(other, sizeof other, "p%u", (unsigned)(((unsigned char *)p - orig_prims) / ORIG_PRIM_SIZE));
         return other;
@@ -339,7 +419,7 @@ float c3d_attr_get_height(struct C3dAttr *self, float x, float z) { (void)self; 
 struct Texture *texture_cache_get(struct TexCache *cache, const char *name, int keyed, int full_size)
 { (void)cache; event("tex %s %d %d", name, keyed, full_size); return (struct Texture *)lift_texture; }
 void render_object_load_act_res(struct RenderObject *self, const char *name) { self->act = lift_actres; event("act %s %s", who(self), name); }
-void render_object_load_spr_res(struct RenderObject *self, const char *name) { event("spr %s %s", who(self), name); }
+void render_object_load_spr_res(struct RenderObject *self, const char *name) { self->spr = &lift_spr; event("spr %s %s", who(self), name); }
 void render_object_set_action_base(struct RenderObject *object, int action, int type) { event("setaction %s %d %d", who(object), action, type); }
 void render_object_play_motion_range(struct RenderObject *self, unsigned char action, unsigned char motion, unsigned char last,
                                      unsigned char close_action, unsigned char close_motion, int timed, int duration, int loop)
@@ -372,8 +452,12 @@ int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d
 struct Mode *client_current_mode(void) { return &lift_mode.base; }
 size_t own_states_count(void) { return 0; }
 const struct OwnStateEntry *own_states_at(size_t position) { (void)position; return NULL; }
-struct Motion *act_res_get_motion(const struct ActRes *self, unsigned action, unsigned motion) { (void)self; (void)action; (void)motion; return &lift_motion; }
-struct SprClip *motion_get_clip(const struct Motion *self, unsigned index) { (void)self; (void)index; return NULL; }
+struct Motion *act_res_get_motion(const struct ActRes *self, unsigned action, unsigned motion) { (void)self; return &lift_motions[fake_motion_index(action, motion)]; }
+struct SprClip *motion_get_clip(const struct Motion *self, unsigned index)
+{
+    static struct SprClip empty = { 0, 0, -1, 0, { 255, 255, 255, 255 }, 1.0f, 1.0f, 0, 0 };
+    return self && index < self->clip_count ? &self->clips[index] : &empty;
+}
 int client_lua_call(struct ClientLua *lua, const char *function, const char *format, ...) { (void)lua; (void)function; (void)format; return 0; }
 void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender, RenderMsgArg msg, RenderMsgArg par1, RenderMsgArg par2, RenderMsgArg par3)
 { event("ragmsg %s from %s %llx %llx %llx %llx", who(self), who(sender), msg, par1, par2, par3); }
@@ -431,7 +515,7 @@ void render_object_send_msg(struct GameObject *object, struct GameObject *source
                             RenderMsgArg c, RenderMsgArg d)
 { event("msg %s from %s %llx %llx %llx %llx %llx", who(object), who(source), msg, a, b, c, d); }
 void render_object_submit_spr_quad(struct RenderObject *self, struct SqQuad *quad, const void *palette, int flags, float x, float y)
-{ (void)quad; (void)palette; event("sprquad %s %d %.1f %.1f", who(self), flags, x, y); }
+{ spr_quad_event(self, (const float *)quad, *(void *const *)((const unsigned char *)quad + LIFT_QUAD_IMAGE), palette, flags, x, y); }
 void render_object_update_motion_base(struct RenderObject *object) { (void)object; }
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags) { (void)self; triangle_event(tri, flags); }
 struct ReplayRecorder *replay_recorder_instance(void) { return &lift_replay; }
@@ -469,7 +553,8 @@ static void *__fastcall o_get_mode(void *self, void *edx) { (void)self; (void)ed
 static double __fastcall o_height(void *self, void *edx, float x, float z) { (void)self; (void)edx; return (double)fake_height(x, z); }
 static void __fastcall o_load_act(void *self, void *edx, const char *name)
 { (void)edx; *(void **)((unsigned char *)self + ORIG_ACT_RES) = orig_actres; event("act %s %s", who(self), name); }
-static void __fastcall o_load_spr(void *self, void *edx, const char *name) { (void)edx; event("spr %s %s", who(self), name); }
+static void __fastcall o_load_spr(void *self, void *edx, const char *name)
+{ (void)edx; *(void **)((unsigned char *)self + ORIG_SPR_RES) = orig_spr; event("spr %s %s", who(self), name); }
 static void *__fastcall o_texture_get(void *self, void *edx, const char *name, char keyed, int full_size)
 { (void)self; (void)edx; event("tex %s %d %d", name, keyed, full_size); return orig_texture; }
 static void *__cdecl o_res_mgr(void) { return orig_res_mgr; }
@@ -499,7 +584,10 @@ static void __fastcall o_actor_send_msg(void *self, void *edx, void *sender, lon
 { (void)edx; event("msg %s from %s %llx %llx %llx %llx %llx", who(self), who(sender), msg, a, b, c, d); }
 static void __fastcall o_set_action(void *self, void *edx, int action, int unused, int type) { (void)edx; (void)unused; event("setaction %s %d %d", who(self), action, type); }
 static void *__cdecl o_new(size_t size) { return size >= 0x3c0 ? NULL : calloc(1, size + ALLOC_SLACK); }
-static void *__fastcall o_get_motion(void *self, void *edx, int action, int motion) { (void)self; (void)edx; (void)action; (void)motion; return orig_motion; }
+static void *__fastcall o_get_motion(void *self, void *edx, int action, int motion)
+{ (void)self; (void)edx; return orig_motions[fake_motion_index((unsigned)action, (unsigned)motion)]; }
+static void __fastcall o_submit_spr_quad(void *self, void *edx, const float *quad, void *palette, int flags, float dx, float dy)
+{ (void)edx; spr_quad_event(self, quad, *(void *const *)((const unsigned char *)quad + ORIG_QUAD_IMAGE), palette, flags, dx, dy); }
 static void __fastcall o_draw_attr_quad(void *self, void *edx, const float *view, int ax, int ay, unsigned colour, void *texture, const float *uv)
 { (void)self; (void)edx; (void)view; attr_quad_event(ax, ay, colour, texture, uv); }
 static int __cdecl o_lua_call(void *lua, const char *function, const char *format, ...) { (void)lua; (void)function; (void)format; return 0; }
@@ -574,9 +662,18 @@ static int call_original(process_fn process, unsigned char *result)
 
 typedef void (__fastcall *render_fn)(void *self, void *edx, const float *view);
 
+static __declspec(noinline) void clear_stack_below(void)
+{
+    volatile unsigned char pad[STACK_CLEAR];
+    unsigned i;
+    for (i = 0; i < sizeof pad; i++)
+        pad[i] = 0;
+}
+
 static int render_original(unsigned char *prim)
 {
     render_fn render = (render_fn)orig_prim_vt[ORIG_PRIM_VT_RENDER];
+    clear_stack_below();
     __try { render(prim, NULL, view_matrix); return 1; }
     __except (note_fault(GetExceptionInformation())) { return 0; }
 }
@@ -1034,7 +1131,15 @@ int main(int argc, char **argv)
     *(void **)(orig_actres + ORIG_ACTRES_ACTIONS) = orig_actions;
     *(void **)(orig_actres + ORIG_ACTRES_ACTIONS + 4) = orig_actions + FAKE_ACTIONS;
     lift_renderer.proj[0] = 1024.0f;
+    lift_renderer.proj[1] = 1024.0f;
+    lift_renderer.halfW = SCREEN_WIDTH / 2;
+    lift_renderer.halfH = SCREEN_HEIGHT / 2;
+    lift_renderer.width = SCREEN_WIDTH;
+    lift_renderer.height = SCREEN_HEIGHT;
     g_renderer = &lift_renderer;
+    g_spriteRowDepthStep = ROW_DEPTH_STEP;
+    g_depthPerPixelCot = DEPTH_PER_PIXEL;
+    fake_sprites();
     lift_master_ops.base.send_msg = lift_master_send;
     lift_master_ops.set_action = lift_master_set_action;
     lift_master_ops.get_effect_state = lift_master_effect_state;
@@ -1073,7 +1178,10 @@ int main(int argc, char **argv)
     oracle_patch_jump(ORIG_GET_MOTION, (void *)o_get_motion);
     oracle_patch_jump(ORIG_DRAW_ATTR_QUAD, (void *)o_draw_attr_quad);
     *(void **)oracle_addr(ORIG_RENDERER_PTR) = orig_renderer;
-    *(float *)orig_renderer = lift_renderer.proj[0];
+    memcpy(orig_renderer, &lift_renderer, ORIG_RENDERER_DIMS);
+    *(float *)oracle_addr(ORIG_ROW_DEPTH_STEP) = ROW_DEPTH_STEP;
+    *(float *)oracle_addr(ORIG_DEPTH_PER_PIXEL) = DEPTH_PER_PIXEL;
+    oracle_patch_jump(ORIG_SUBMIT_SPR_QUAD, (void *)o_submit_spr_quad);
     *(int *)oracle_addr(ORIG_EFFECT_ON) = 1;
     oracle_patch_jump(ORIG_NEW, (void *)o_new);
     oracle_patch_jump(ORIG_NEW_2, (void *)o_new);
@@ -1256,7 +1364,7 @@ int main(int argc, char **argv)
             }
         }
     }
-    printf("Rag effect process: %d effect runs compared against the original (%u events recorded, %u prims compared, %u prim steps, %u draws with %u triangles), %u mismatches, %u faults%s\n",
+    printf("Rag effect process: %d effect runs compared against the original (%u events recorded, %u prims compared, %u prim steps, %u draws with %u triangles and sprite quads), %u mismatches, %u faults%s\n",
            compared, recorded, prims_compared, steps_compared, draws_compared, triangles, mismatches, faults, reported > max_reported ? " (not all shown)" : "");
     return mismatches || faults ? 1 : 0;
 }
