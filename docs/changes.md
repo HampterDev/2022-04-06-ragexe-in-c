@@ -242,6 +242,9 @@ Data, time and leaks:
   whole names as fit in 511 bytes, and an empty list shows none. The original joined the names
   with `sprintf` into a 512-byte stack buffer, so a long list from the server overran the
   stack, and an empty one still read one item id past the packet.
+- A navigation name too long for its 100-character buffer is converted only as far as the
+  buffer holds. The original's name splitter passed the name's byte count as the buffer's size,
+  unlike its other conversions, so a long name overran the stack.
 - Player-name requests and the name cache still time out correctly
   when the millisecond clock wraps, after 49.7 days of Windows uptime.
 - The emote cooldown still lets an emote through 2.5 seconds after the last one when the

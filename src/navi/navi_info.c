@@ -81,7 +81,7 @@ int navi_manager_add_text_lines(struct NaviManager *self, int style, int x, int 
     string_assign_cstr(&s, "[");
     string_append_cstr(&s, text);
     memset(wide, 0, 0xc8);
-    MultiByteToWideChar(0, 0, string_cstr(&s), -1, wide, s.size);
+    MultiByteToWideChar(0, 0, string_cstr(&s), -1, wide, s.size < 100 ? (int)s.size : 100);
     len = (int)wcsnlen(wide, 100);
     memset(line, 0, sizeof line);
     lines = len / 12;
