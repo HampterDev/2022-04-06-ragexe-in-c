@@ -352,3 +352,18 @@ are not included.
 | [8be1ce97ea](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8be1ce97ea4fbe2208f86b1e89319f54a3617e77) | [28ae90475f](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/28ae90475f5101b35f29ccf33ce8ad9dd53dbc70) | tests/oracle: the action manager's dropped cast arguments are read by no action |
 | [0aa00b340d](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/0aa00b340dec3923443442f9995f6433afe81045) | [b393e1780a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/b393e1780a33755c93ecdfbf6b5e8b2bee5d6abf) (the oracle half) | tools, tests: the tool docs speak of the assembly listing and the annotated C, not of where they came from |
 | | [24ada4d717](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/24ada4d71747dc41d9b709ed9e042ff5a3c65cde) | tests/oracle: compare custom with the original outside what it removed |
+
+## Foundation fixes from the scroll review, 2026-11-09
+
+The wheel handlers and the scroll messages (7 to 0xc) of every UI class were compared with the
+original's; two differed. Both were fixed on `main`, which had not been pushed yet. The command list
+fix was picked with `git cherry-pick -x`. The other two commits of the series follow ea40abe7, the
+degree lookups' original path for negative angles, which `custom` has not taken: its lookup still
+reduces -90 to 270.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [744395e4ad](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/744395e4adecd77776bfb2daef10e59cb80f3bbf) | [6291ca5fc9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6291ca5fc9f4e660d9a2cbaf780ecb7d1b001b80) | Command list: the wheel scrolls the window |
+| [8d01bd194a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8d01bd194a9f02ca4ccd70ebde3009fdb4fd3275) | Not needed on custom, code removed (cash shop) | Cash shop cart: page up and page down take the scroll arm |
+| [8aef09d5f4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8aef09d5f4d76c507e952dc12b40717f356497cf) | Not ported: docs/changes.md | docs: negative angles are no longer a change from the original |
+| [bbec17c670](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbec17c670b3756642f4a2ef625035984bf32bda) | Not ported: tests ea40abe7, which custom does not have | test_math3d: the cosine and radian lookups at -90 |
