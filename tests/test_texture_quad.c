@@ -118,7 +118,7 @@ int main(void)
     check_quad(upright, 0x80aabbcc, cropped);
     screen_texture_rect(&renderer, &rect, 90, expected_rhw, 0xffffffff, &texture, crop);
     check_quad(clockwise, 0xffffffff, cropped);
-    screen_texture_rect(&renderer, &rect, -90, expected_rhw, 0x00112233, &texture, crop);
+    screen_texture_rect(&renderer, &rect, 270, expected_rhw, 0x00112233, &texture, crop);
     check_quad(anticlockwise, 0x00112233, cropped);
     assert(allocations == 3 && submissions == 3 && projections == 3);
 
@@ -167,6 +167,17 @@ int main(void)
     assert(g_gradeBadgeState == 0 && submissions == 7);
     renderer_draw_game_grade_badge(&renderer);
     assert(submissions == 7);
+    {
+        float positions[4][2];
+        int i;
+        screen_texture_rect(&renderer, &rect, 271, expected_rhw, 0x00112233, &texture, crop);
+        for (i = 0; i < 4; ++i) {
+            positions[i][0] = primitive.base.verts[i].x;
+            positions[i][1] = primitive.base.verts[i].y;
+        }
+        screen_texture_rect(&renderer, &rect, -90, expected_rhw, 0x00112233, &texture, crop);
+        check_quad(positions, 0x00112233, cropped);
+    }
     puts("PASS: texture geometry, resource failures and frame badge rendering/fades");
     return 0;
 }
