@@ -418,7 +418,7 @@ void ui_command_list_wnd_on_wheel(struct UIWindow *window, int delta)
     step = self->rows > 3 ? 3 : self->rows - 1;
     if (delta >= 0)
         step = -step;
-    ui_window_send_msg_base(&self->scroll->base, &self->scroll->base, 7, step, 0, 0, 0);
+    ui_window_send_msg(&self->frame.base, &self->scroll->base, 7, step, 0, 0, 0);
 }
 
 int ui_command_list_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender, int msg,
