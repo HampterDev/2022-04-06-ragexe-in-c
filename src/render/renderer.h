@@ -37,9 +37,10 @@ struct Renderer {
     struct RenderQueue queues[RENDER_PASS_COUNT];
     struct SpriteAtlasCache *sprite_atlas;
     struct RenderStorage *storage;
-    /* custom: the direction the map's light travels (renderer_set_light) and the shadow map's
-       view that renderer_shadow_frame set for the frame being drawn, valid while shadowPending */
-    float lightDir[3];
+    /* custom: the direction the map's light travels, its ambient light and what remains of the
+       light in a shadow (renderer_set_light), and the shadow map's view that renderer_shadow_frame
+       set for the frame being drawn, valid while shadowPending */
+    float lightDir[3], lightAmbient[3], shadowDarkness;
     int lightSet;
     struct GfxShadow shadow;
     int shadowPending, shadowDrawn;
@@ -60,8 +61,9 @@ void renderer_flip(struct Renderer *self, char vsync);
 void renderer_save_frame(struct Renderer *self);
 void renderer_draw_frame_extras(struct Renderer *self);
 void renderer_enable_fog(struct Renderer *self, int enable);
-void renderer_set_light(struct Renderer *self, const float *dir,
-                       const float *diffuse, const float *ambient);
+/* custom: shadowOpacity is the share of the light a shadow takes away (world_res.h), 0 to 1 */
+void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient,
+                        float shadowOpacity);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
 /* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light
    fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space

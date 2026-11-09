@@ -425,9 +425,14 @@ void renderer_enable_fog(struct Renderer *self, int enable)
     g_fogVertexMode = 3;
 }
 
-void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient)
+void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient,
+                        float shadowOpacity)
 {
+    float darkness = 1.0f - (shadowOpacity == shadowOpacity ? shadowOpacity : 0.5f);
+
     memcpy(self->lightDir, dir, sizeof self->lightDir);
+    memcpy(self->lightAmbient, ambient, sizeof self->lightAmbient);
+    self->shadowDarkness = darkness < 0.0f ? 0.0f : darkness > 1.0f ? 1.0f : darkness;
     self->lightSet = 1;
     gfx_set_light(dir, diffuse, ambient);
 }

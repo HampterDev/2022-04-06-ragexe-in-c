@@ -318,7 +318,7 @@ static void runtime_ownership(void)
                 assert(!strcmp(root->name, root_name) && !strcmp(child->name, "child") && child->parent == root);
                 assert(root->actor == actor && child->actor == actor);
                 assert(root->resource == model.nodes[0] && root->mesh == model.nodes[0]->mesh);
-                assert(root->faceInfo && root->lightInts && child->faceInfo && child->lightInts);
+                assert(root->faceInfo && root->groundLight && child->faceInfo && child->groundLight);
                 assert(actor->volumeBoxCount == model.blockCount && actor->volumeBoxes != model.blocks);
                 before = allocation_calls;
                 actor->ops->animate(actor, version == 1 ? 5 : 500);

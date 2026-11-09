@@ -24,6 +24,14 @@ static inline DWORD pack(BYTE a, BYTE r, BYTE g, BYTE b)
 #define BYTE_B(c) ((BYTE)(c))
 #define SCALED(x, s) ((BYTE)(int)((float)(x) * (s)))
 
+/* custom: a corner's own colour channel under the ground's light (groundLight), at most 0xff */
+static inline int ground_lit(int ground, BYTE own)
+{
+    int c = ground + own;
+
+    return c < 0xff ? c : 0xff;
+}
+
 static inline struct Texture *run_texture(struct C3dNode *self, WORD texture)
 {
     struct Texture *found = self->textureCount ? self->textures[texture % self->textureCount] : NULL;

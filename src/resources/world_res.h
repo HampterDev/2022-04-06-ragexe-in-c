@@ -24,6 +24,10 @@ struct C3dWorldRes {
     int waterAnimSpeed;
     int lightLatitude, lightLongitude;
     float lightDir[3], diffuse[3], ambient[3];
+    /* custom: the share of the light the map's editor took away in the shadows it baked into the
+       ground's lightmaps (they hold 255 lit, about 255 * (1 - shadowOpacity) in shadow), from
+       version 1.7 on; 0.5 before */
+    float shadowOpacity;
     unsigned char major, minor;
     int bounds[4];
     unsigned char twoPassAlpha;

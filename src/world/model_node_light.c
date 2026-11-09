@@ -16,8 +16,8 @@ static void c3d_node_light_from_ground(struct C3dNode *self, const float *m, str
         const struct FaceInfo *info = (const struct FaceInfo *)self->faceInfo + f;
 
         for (k = 0; k < 3; k++) {
-            int rgb[3] = {0, 0, 0}, c;
-            int *li = (int *)self->lightInts + f * 9 + k * 3;
+            int rgb[3] = {0, 0, 0};
+            int *li = self->groundLight + f * 9 + k * 3;
 
             if (ground) {
                 const Vec3 *v = &mesh->positions[face->v[k]];
@@ -27,12 +27,9 @@ static void c3d_node_light_from_ground(struct C3dNode *self, const float *m, str
 
                 c3d_ground15_get_cell_colour(ground, x, z, rgb);
             }
-            c = rgb[0] + BYTE_R(info->colour[k]);
-            li[0] = c < 0xff ? c : 0xff;
-            c = rgb[1] + BYTE_G(info->colour[k]);
-            li[1] = c < 0xff ? c : 0xff;
-            c = rgb[2] + BYTE_B(info->colour[k]);
-            li[2] = c < 0xff ? c : 0xff;
+            li[0] = rgb[0];
+            li[1] = rgb[1];
+            li[2] = rgb[2];
         }
     }
 }

@@ -27,6 +27,7 @@ static void world_res_defaults(struct C3dWorldRes *self)
     memset(self->lightDir, 0, sizeof self->lightDir);
     self->diffuse[0] = self->diffuse[1] = self->diffuse[2] = 1;
     self->ambient[0] = self->ambient[1] = self->ambient[2] = 0.3f;
+    self->shadowOpacity = 0.5f;
     self->major = self->minor = self->twoPassAlpha = 0;
     self->bounds[0] = self->bounds[2] = -500;
     self->bounds[1] = self->bounds[3] = 500;
@@ -102,7 +103,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
     struct File fp;
     char magic[4], message[256];
     BYTE major, minor;
-    int build = 0, count, i, type, skipped;
+    int build = 0, count, i, type;
     size_t model_capacity = 0, effect_capacity = 0, sound_capacity = 0;
     float matrix[12];
 
@@ -158,7 +159,7 @@ BYTE c3d_world_res_load(struct C3dWorldRes *self, const char *name)
     self->lightDir[0] = matrix[0] * 0.0f + matrix[3] + matrix[6] * 0.0f + matrix[9];
     self->lightDir[1] = matrix[1] * 0.0f + matrix[4] + matrix[7] * 0.0f + matrix[10];
     self->lightDir[2] = matrix[2] * 0.0f + matrix[5] + matrix[8] * 0.0f + matrix[11];
-    if (RSW_AT_LEAST_1(major, minor, 7) && !file_read(&fp, &skipped, 4))
+    if (RSW_AT_LEAST_1(major, minor, 7) && !file_read(&fp, &self->shadowOpacity, 4))
         goto fail;
     if (RSW_AT_LEAST_1(major, minor, 6) && !file_read(&fp, self->bounds, sizeof self->bounds))
         goto fail;

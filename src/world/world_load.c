@@ -38,7 +38,7 @@ static int world_load_from(struct World *self, struct C3dWorldRes *rsw)
     lighting.ambient[1] = rsw->ambient[1];
     lighting.ambient[2] = rsw->ambient[2];
     g_renderer->twoPassAlpha = rsw->twoPassAlpha;
-    renderer_set_light(g_renderer, lighting.direction, lighting.diffuse, lighting.ambient);
+    renderer_set_light(g_renderer, lighting.direction, lighting.diffuse, lighting.ambient, rsw->shadowOpacity);
 
     if (rsw->gatFile[0] == 0) {
         error_msg("attr \xed\x8c\x8c\xec\x9d\xbc\xec\x9d\xb4 rsw \xeb\x82\xb4\xec\x97\x90 \xec\xa7\x80\xec\xa0\x95\xeb\x90\x98\xec\x96\xb4 " /* "attr 파일이 rsw 내에 지정되어 " */

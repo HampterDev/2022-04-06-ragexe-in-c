@@ -29,11 +29,14 @@ static void face_colours(struct C3dNode *node, struct TexDrawVertex *out, const 
                                  SCALED(BYTE_B(c), tint[2]));
         }
     } else if (g_weather.ground_lighting) {
-        const int *li = (const int *)node->lightInts + (info - infoBase) * 9;
+        const int *li = node->groundLight + (info - infoBase) * 9;
 
-        for (k = 0; k < 3; k++)
-            out[k].diffuse = pack(alpha, SCALED(li[3 * k], scale[0]), SCALED(li[3 * k + 1], scale[1]),
-                                 SCALED(li[3 * k + 2], scale[2]));
+        for (k = 0; k < 3; k++) {
+            DWORD c = info->colour[k];
+            out[k].diffuse = pack(alpha, SCALED(ground_lit(li[3 * k], BYTE_R(c)), scale[0]),
+                                 SCALED(ground_lit(li[3 * k + 1], BYTE_G(c)), scale[1]),
+                                 SCALED(ground_lit(li[3 * k + 2], BYTE_B(c)), scale[2]));
+        }
     } else {
         for (k = 0; k < 3; k++) {
             DWORD c = info->colour[k];
@@ -116,12 +119,15 @@ static void project(struct C3dNode *self, const float *m, struct TexDrawVertex *
 }
 
 /* custom: a node's faces as one static mesh the device projects (render/gfx.h, world/model_types.h).
-   A face's three corners keep their position, texture coordinates and the two colours face_colours
-   picks from, opaque: diffuse the ground-lit one (lightInts), colour2 the node's own. Each frame a
-   draw goes where the loops below would send its faces' quads, with the colours, alpha and list
-   they would give them: from the weather, the player's blindness, the actor's alpha, the texture's
-   format and, on a version 2 node, its texture-coordinate animation, which turns the draw's
-   coordinates as uv_turn does. The device projects with the node's own matrix to view space, the
+   A face's three corners keep their position, texture coordinates and what face_colours makes
+   their colour from: diffuse the node's own lit colour, with the share of the light it was lit
+   with as its alpha (128 or 255 by the corner's texture vertex, as c3d_node_light takes it, 0 for
+   a model lit without its light), colour2 the ground's light under the corner. Each frame a draw
+   goes where the loops below would send its faces' quads, with the colours, alpha and list they
+   would give them: from the weather, the player's blindness, the ground lighting option, the
+   actor's alpha, the texture's format and, on a version 2 node, its texture-coordinate animation,
+   which turns the draw's coordinates as uv_turn does. In a shadow the device takes the light's
+   direct part away from a corner's own colour (render/gfx.h). The device projects with the node's own matrix to view space, the
    one project() uses, and culls as the loops below do: a version 1 node keeps the faces that turn
    counter-clockwise on screen, a version 2 node the clockwise ones, the other way round when the
    actor is mirrored, and both sides of a twoSided face. Every draw also casts a shadow. */
@@ -142,9 +148,17 @@ static int gpu_face_less(const void *a, const void *b)
     return x->face < y->face ? -1 : x->face > y->face;
 }
 
-static DWORD opaque(DWORD c)
+/* the share of the light c3d_node_light lit a corner with */
+static BYTE light_share(const struct C3dNode *node, const struct AnimMeshFace *face, int corner)
 {
-    return c | 0xff000000;
+    const struct AnimMesh *mesh = node->mesh;
+    int shadeType = node->actor ? node->actor->shadeType : 0;
+
+    if (shadeType != 1 && shadeType != 2)
+        return 0;
+    return mesh->texVertCount && face->tv[corner] < mesh->texVertCount && mesh->texVerts[face->tv[corner]].colour != 0
+               ? 128
+               : 255;
 }
 
 static int gpu_build(struct C3dNode *node)
@@ -157,7 +171,7 @@ static int gpu_build(struct C3dNode *node)
     int f, i, k, n, ok = 0;
 
     if (!mesh || !mesh->faces || !mesh->positions || mesh->faceCount <= 0 || mesh->faceCount > 0x10000 / 3
-        || !node->faceInfo || !node->lightInts)
+        || !node->faceInfo || !node->groundLight)
         return 0;
     n = mesh->faceCount;
     for (f = 0; f < n; f++)
@@ -183,7 +197,7 @@ static int gpu_build(struct C3dNode *node)
     for (i = 0; i < n; i++) {
         const struct AnimMeshFace *face = &mesh->faces[list[i].face];
         const struct FaceInfo *info = &node->faceInfo[list[i].face];
-        const int *li = node->lightInts + list[i].face * 9;
+        const int *li = node->groundLight + list[i].face * 9;
         const Vec3 *a = &mesh->positions[face->v[0]], *b = &mesh->positions[face->v[1]];
         const Vec3 *c = &mesh->positions[face->v[2]];
         float e1[3] = {b->x - a->x, b->y - a->y, b->z - a->z}, e2[3] = {c->x - a->x, c->y - a->y, c->z - a->z};
@@ -202,8 +216,8 @@ static int gpu_build(struct C3dNode *node)
             v->nx = nrm[0];
             v->ny = nrm[1];
             v->nz = nrm[2];
-            v->diffuse = pack(0xff, (BYTE)li[k * 3], (BYTE)li[k * 3 + 1], (BYTE)li[k * 3 + 2]);
-            v->colour2 = opaque(info->colour[k]);
+            v->diffuse = (info->colour[k] & 0x00ffffff) | (DWORD)light_share(node, face, k) << 24;
+            v->colour2 = pack(0xff, (BYTE)li[k * 3], (BYTE)li[k * 3 + 1], (BYTE)li[k * 3 + 2]);
             v->u0 = info->uv[k][0];
             v->v0 = info->uv[k][1];
             v->u1 = v->v1 = 0.0f;
@@ -252,7 +266,7 @@ static int gpu_render(struct C3dNode *node, int version, const float *m, BYTE mi
     draw.mesh = g->mesh;
     memcpy(draw.view, m, sizeof draw.view);
     draw.draw.kind = GFX_MESH_MODEL;
-    draw.draw.second = blind || !g_weather.ground_lighting;
+    draw.draw.lightGround = !blind && g_weather.ground_lighting;
     for (k = 0; k < 3; k++)
         draw.draw.colour[k] = blind ? g_weather.tint[k] : g_weather.color[k];
     draw.draw.colour[3] = (float)alpha / 255.0f;

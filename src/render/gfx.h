@@ -241,19 +241,24 @@ struct GfxWorldView {
 };
 
 /* One draw of a mesh: `count` indices from `first`, a multiple of three each. kind picks what the
-   stages would do with the bound textures: GFX_MESH_MODEL texture times colour, both colour and
-   alpha; GFX_MESH_GROUND that times the lightmap's alpha, plus its colour, as the ground's
-   two-texture quads have it. The vertex colour is the vertex's diffuse, or colour2 with
-   second set; its red, green and blue are multiplied by colour (0..1) and rounded down, as the CPU
-   scales them by the weather colour, its alpha by colour[3]. The first texture's coordinates go
-   through uv: (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]). The render states
-   (blending, the alpha test, depth, culling, fog on or off) and the texture addressing are the
-   current ones, as they would be for gfx_draw. */
+   stages would do with the bound textures and what a vertex's colours hold:
+   - GFX_MESH_GROUND: texture times colour, times the lightmap's alpha, plus its colour, as the
+     ground's two-texture quads have it; the colour is the vertex's diffuse.
+   - GFX_MESH_MODEL: texture times colour, both colour and alpha. The diffuse's red, green and blue
+     are the model's own lit colour (0 to 255 a channel) and its alpha the share of the light it
+     was lit with (0, 128 or 255, 0 for a model lit without its light); with lightGround set,
+     colour2 is the ground's light under the vertex, added at most to 255 a channel. The alpha
+     is colour[3] alone.
+   The colour's red, green and blue are then multiplied by colour (0..1) and rounded down, as the
+   CPU scales them by the weather colour, its alpha by colour[3]. The first texture's coordinates
+   go through uv: (u * uv[0] + v * uv[2] + uv[4], u * uv[1] + v * uv[3] + uv[5]). The render
+   states (blending, the alpha test, depth, culling, fog on or off) and the texture addressing are
+   the current ones, as they would be for gfx_draw. */
 #define GFX_MESH_MODEL 1
 #define GFX_MESH_GROUND 2
 
 struct GfxMeshDraw {
-    int kind, first, count, second;
+    int kind, first, count, lightGround;
     float colour[4];
     float uv[6];
 };
@@ -271,9 +276,11 @@ void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
    test (0xcf) drops cast nothing.
    fromView[c] takes the view space of the draws' world views to cascade c's light space, row
    vectors: x and y from -1 to 1 across its map, z from 0 to 1 along the light. While
-   gfx_shadow_receive is on, gfx_draw_mesh draws a vertex's colour times darkness where its pixel
-   lies more than bias behind the nearest caster and its own colour elsewhere, looking it up in the
-   first cascade whose farDepth (a view depth) lies beyond the pixel,
+   gfx_shadow_receive is on, a pixel that lies more than bias behind the nearest caster is drawn
+   in shadow: a model's with its own lit colour times darkness, but no darker than ambient times
+   its share of the light (what a face turned from the light has), before the ground's light is
+   added; the ground's as described below. A pixel is looked up in the first cascade whose
+   farDepth (a view depth) lies beyond it,
    from a point moved off the surface towards the light by offset[c] (view units) times the sine of
    the angle between the surface and the light (lightView: towards the light, view space; the
    surface's normal comes from the vertex's), as the share of 16 points spread over a disc of
@@ -281,8 +288,9 @@ void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw);
    a fixed width. Over that disc a surface at a slant to the light moves along it, so the bias grows
    by slant (light depth) times the tangent of that slant, up to 8 times. On a GFX_MESH_GROUND draw
    the shadow maps take the place of the lightmap's alpha, the shadows the map's editor baked into
-   it. gfx_shadow_begin answers 0 where the device cannot draw shadows; gfx_shadow_receive(0)
-   turns receiving off, and the draws then look as without shadows. */
+   it: down to darkness that alpha counts as lit, and the shadow maps darken to darkness; a texel
+   darker still keeps its own. gfx_shadow_begin answers 0 where the device cannot draw shadows;
+   gfx_shadow_receive(0) turns receiving off, and the draws then look as without shadows. */
 #define GFX_SHADOW_SIZE 2048
 #define GFX_SHADOW_CASCADES 4
 
@@ -294,6 +302,7 @@ struct GfxShadow {
     float blur[GFX_SHADOW_CASCADES];
     float lightView[3];
     float bias, slant, darkness;
+    float ambient[3];
 };
 
 int gfx_shadow_begin(const struct GfxShadow *shadow);

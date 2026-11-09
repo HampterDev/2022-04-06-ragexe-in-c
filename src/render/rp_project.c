@@ -133,10 +133,6 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
    first drawn here blurred them (0.8 units a texel at the default zoom); at 1.5 the edges spread
    over three units and the shadows of thin casters, such as a lamp post's, faded away */
 #define SHADOW_SOFTNESS 0.5f
-/* how dark a shadow is: the lightmaps the map's editor baked hold 128 in shadow and 255 in the
-   sun (the GNDs of yuno_fild01, prontera and iz_int03: some 45 percent of texels each, the rest
-   on the edges between), and the ground draws its colour times that intensity */
-#define SHADOW_DARKNESS (128.0f / 255.0f)
 
 static int invert_4x3(const float *m, float *out)
 {
@@ -176,7 +172,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     int i, j, k, c, any = 0;
 
     self->shadowPending = 0;
-    if (!self->lightSet || !invert_4x3(view, inv))
+    if (!self->lightSet || !(self->shadowDarkness < 1.0f) || !invert_4x3(view, inv))
         return;
     len = sqrtf(dot3(self->lightDir, self->lightDir));
     if (!(len > 0.0f))
@@ -316,7 +312,10 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
             shadow->lightView[i] /= len;
     shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
     shadow->slant = SHADOW_SOFTNESS / (2.0f * SHADOW_DEPTH);
-    shadow->darkness = SHADOW_DARKNESS;
+    shadow->darkness = self->shadowDarkness;
+    for (i = 0; i < 3; i++)
+        shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f
+                                                                                             : self->lightAmbient[i];
     self->shadowPending = 1;
 }
 

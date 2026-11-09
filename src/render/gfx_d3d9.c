@@ -2187,6 +2187,7 @@ static const char mesh_hlsl[] =
     "float4 uvU : register(c29);\n"
     "float4 uvV : register(c30);\n"
     "float4 pick : register(c31);\n"
+    "float4 shading : register(c32);\n"
     "float2 turn(float2 uv)\n"
     "{\n"
     "    return float2(dot(float3(uv, 1), uvU.xyz), dot(float3(uv, 1), uvV.xyz));\n"
@@ -2210,7 +2211,7 @@ static const char mesh_hlsl[] =
     "    float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1;\n"
     "};\n"
     "struct MeshOut {\n"
-    "    float4 pos : POSITION; float4 lit : COLOR0; float4 uv : TEXCOORD0;\n"
+    "    float4 pos : POSITION; float4 lit : COLOR0; float4 shade : COLOR1; float4 uv : TEXCOORD0;\n"
     "    float4 l0 : TEXCOORD1; float4 l1 : TEXCOORD2; float4 l2 : TEXCOORD3; float4 l3 : TEXCOORD4;\n"
     "    float3 depthFog : TEXCOORD5;\n"
     "};\n"
@@ -2218,8 +2219,16 @@ static const char mesh_hlsl[] =
     "{\n"
     "    MeshOut o;\n"
     "    o.pos = mul(i.pos, toClip);\n"
-    "    float4 c = pick.x > 0 ? i.lit2 : i.lit;\n"
-    "    o.lit = float4(floor(floor(c.rgb * 255 + 0.5) * colour.rgb) / 255, c.a * colour.a);\n"
+    "    float3 own = floor(i.lit.rgb * 255 + 0.5);\n"
+    "    if (pick.y > 0) {\n"
+    "        float3 ground = pick.x > 0 ? floor(i.lit2.rgb * 255 + 0.5) : 0;\n"
+    "        float3 dark = min(max(floor(shading.rgb * floor(i.lit.a * 255 + 0.5)), floor(own * shading.w)), own);\n"
+    "        o.lit = float4(floor(min(own + ground, 255) * colour.rgb) / 255, colour.a);\n"
+    "        o.shade = float4(floor(min(dark + ground, 255) * colour.rgb) / 255, colour.a);\n"
+    "    } else {\n"
+    "        o.lit = float4(floor(own * colour.rgb) / 255, i.lit.a * colour.a);\n"
+    "        o.shade = o.lit;\n"
+    "    }\n"
     "    o.uv = float4(turn(i.uv), i.uv1);\n"
     "    float3 v = mul(i.pos, toView).xyz;\n"
     "    float3 n = mul(i.normal, (float3x3)toView);\n"
@@ -2283,7 +2292,7 @@ static const char mesh_hlsl[] =
     "}\n"
     "float4 modelColour(MeshOut i) : COLOR\n"
     "{\n"
-    "    float4 c = tex2D(colourMap, i.uv.xy) * float4(i.lit.rgb * lerp(params.w, 1, seenAt(i)), i.lit.a);\n"
+    "    float4 c = tex2D(colourMap, i.uv.xy) * float4(lerp(i.shade.rgb, i.lit.rgb, seenAt(i)), i.lit.a);\n"
     "    return fogged(c, i);\n"
     "}\n"
     /* the ground's two stages, texture times colour times the lightmap's intensity plus its colour,
@@ -2602,6 +2611,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     int receive = d9.shadowReceive, first = 2;
     D3DMATRIX light;
     float fog[4], lightView[4], offset[4], farDepth[4], blur[4], slope[4], params[4], colour[4], pick[4];
+    float shading[4];
     int c;
     size_t i;
 
@@ -2621,9 +2631,13 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     params[0] = 1.0f / GFX_SHADOW_SIZE;
     params[1] = (float)GFX_SHADOW_SIZE;
     params[2] = d9.shadow.bias;
-    params[3] = d9.shadow.darkness > 0.0f ? d9.shadow.darkness : 1.0f;
-    pick[0] = draw->second ? 1.0f : 0.0f;
-    pick[1] = pick[2] = pick[3] = 0.0f;
+    params[3] = !receive ? 1.0f : d9.shadow.darkness > 1.0f / 255.0f ? d9.shadow.darkness : 1.0f / 255.0f;
+    pick[0] = draw->lightGround ? 1.0f : 0.0f;
+    pick[1] = draw->kind == GFX_MESH_MODEL ? 1.0f : 0.0f;
+    pick[2] = pick[3] = 0.0f;
+    for (i = 0; i < 3; i++)
+        shading[i] = receive ? d9.shadow.ambient[i] : 1.0f;
+    shading[3] = params[3];
     IDirect3DDevice9_GetRenderState(d9.dev, D3DRS_FOGENABLE, &fogOn);
     IDirect3DDevice9_GetRenderState(d9.dev, D3DRS_FOGCOLOR, &fogColour);
     colour[0] = (float)((fogColour >> 16) & 0xff) / 255.0f;
@@ -2651,6 +2665,7 @@ static void mesh_draw_colour(struct gfx_mesh *m, const D3DMATRIX *toClip, const 
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 28, slope, 1);
     mesh_uv_constants(draw);
     IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 31, pick, 1);
+    IDirect3DDevice9_SetVertexShaderConstantF(d9.dev, 32, shading, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 0, farDepth, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 1, params, 1);
     IDirect3DDevice9_SetPixelShaderConstantF(d9.dev, 2, colour, 1);

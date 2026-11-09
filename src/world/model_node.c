@@ -45,7 +45,7 @@ void model_node_destroy(struct C3dNode *node, int version)
         if (node->children[i]) model_node_destroy(node->children[i], version);
     free(node->children);
     free(node->faceInfo);
-    free(node->lightInts);
+    free(node->groundLight);
     free(node);
 }
 
@@ -73,7 +73,7 @@ static int prepare_node(struct C3dNode *node, struct ModelResNode *res)
     size_t faces;
     if (!res->mesh || res->mesh->faceCount < 0) return 0;
     faces = (size_t)res->mesh->faceCount;
-    if (faces > SIZE_MAX / sizeof *node->faceInfo || faces > SIZE_MAX / (9 * sizeof *node->lightInts)) return 0;
+    if (faces > SIZE_MAX / sizeof *node->faceInfo || faces > SIZE_MAX / (9 * sizeof *node->groundLight)) return 0;
     node->resource = res;
     node->name = owned_text_cstr(&res->name);
     node->mesh = res->mesh;
@@ -82,8 +82,8 @@ static int prepare_node(struct C3dNode *node, struct ModelResNode *res)
     node->alpha = (float)res->alpha / 255.0f;
     if (faces) {
         node->faceInfo = calloc(faces, sizeof *node->faceInfo);
-        node->lightInts = calloc(faces, 9 * sizeof *node->lightInts);
-        if (!node->faceInfo || !node->lightInts) return 0;
+        node->groundLight = calloc(faces, 9 * sizeof *node->groundLight);
+        if (!node->faceInfo || !node->groundLight) return 0;
     }
     return 1;
 }

@@ -88,6 +88,7 @@
     X(void, glUniform1f, (GLint location, GLfloat value)) \
     X(void, glUniform2f, (GLint location, GLfloat a, GLfloat b)) \
     X(void, glUniform4f, (GLint location, GLfloat a, GLfloat b, GLfloat c, GLfloat d)) \
+    X(void, glUniform2i, (GLint location, GLint a, GLint b)) \
     X(void, glUniform4i, (GLint location, GLint a, GLint b, GLint c, GLint d)) \
     X(void, glUniformMatrix3x2fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)) \
     X(void, glUniformMatrix4fv, (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)) \
@@ -146,13 +147,13 @@ struct gfx_mesh {
 
 enum {
     U_VIEWPORT, U_STAGE0, U_STAGE0B, U_STAGE1, U_STAGE1B, U_FLAGS, U_ALPHAREF, U_FOGCOLOR, U_TFACTOR,
-    U_BUMPMAT, U_TEX0, U_TEX1, U_MESH, U_XFORM, U_MESHFOG, U_MESHCOLOUR, U_MESHUV, U_COUNT
+    U_BUMPMAT, U_TEX0, U_TEX1, U_MESH, U_XFORM, U_MESHFOG, U_MESHCOLOUR, U_MESHUV, U_MESHKIND, U_COUNT
 };
 
 static const char *const uniform_names[U_COUNT] = {
     "u_viewport", "u_stage0", "u_stage0b", "u_stage1", "u_stage1b", "u_flags", "u_alpharef", "u_fogcolor",
     "u_tfactor", "u_bumpmat", "u_tex0", "u_tex1", "u_mesh", "u_xform", "u_meshfog", "u_meshcolour",
-    "u_meshuv"
+    "u_meshuv", "u_meshkind"
 };
 
 static struct {
@@ -204,6 +205,7 @@ static const char vertex_source[] =
     "uniform vec2 u_meshfog;\n"
     "uniform vec4 u_meshcolour;\n"
     "uniform mat3x2 u_meshuv;\n"
+    "uniform ivec2 u_meshkind;\n"
     "out vec4 v_diffuse;\n"
     "out vec4 v_specular;\n"
     "out vec2 v_uv0;\n"
@@ -223,9 +225,11 @@ static const char vertex_source[] =
     "        gl_Position = vec4(pixel.x / u_viewport.x * 2.0 - h.w, h.w - pixel.y / u_viewport.y * 2.0,\n"
     "                           h.z * 2.0 - h.w, h.w);\n"
     "        float fog = clamp((u_meshfog.y - h.w) / (u_meshfog.y - u_meshfog.x), 0.0, 1.0);\n"
+    "        vec3 own = floor(v_diffuse.rgb * 255.0 + 0.5);\n"
+    "        if (u_meshkind.y != 0) own = min(own + floor(v_specular.rgb * 255.0 + 0.5), vec3(255.0));\n"
+    "        v_diffuse = vec4(floor(own * u_meshcolour.rgb) / 255.0,\n"
+    "                         (u_meshkind.x != 0 ? 1.0 : v_diffuse.a) * u_meshcolour.a);\n"
     "        v_specular = vec4(0.0, 0.0, 0.0, floor(fog * 255.0) / 255.0);\n"
-    "        v_diffuse = vec4(floor(floor(v_diffuse.rgb * 255.0 + 0.5) * u_meshcolour.rgb) / 255.0,\n"
-    "                         v_diffuse.a * u_meshcolour.a);\n"
     "    } else {\n"
     "        float w = a_pos.w > 0.0 ? 1.0 / a_pos.w : 1.0;\n"
     "        vec2 pixel = a_pos.xy + vec2(0.5 - 1.0 / 128.0);\n"
@@ -1078,11 +1082,11 @@ static void mesh_xform(GLfloat *out, const struct GfxWorldView *v)
 }
 
 /* The stages do with the bound textures what draw->kind asks of a device without them, as for the
-   ground's and the models' quads. The vertex's first or second colour is the shaders' diffuse. */
+   ground's and the models' quads; the vertex shader makes the diffuse colour from the vertex's two
+   colours as render/gfx.h says. Shadows are not drawn. */
 void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
 {
     GLfloat xform[16], uv[6];
-    const void *colour = (const void *)(uintptr_t)(draw && draw->second ? 28 : 24);
     int i;
     g_perf.drawCalls++;
     batch_flush();
@@ -1110,10 +1114,11 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
     p_glUniform2f(gl.uniforms[U_MESHFOG], gl.worldView.fogStart, gl.worldView.fogEnd);
     p_glUniform4f(gl.uniforms[U_MESHCOLOUR], draw->colour[0], draw->colour[1], draw->colour[2], draw->colour[3]);
     p_glUniformMatrix3x2fv(gl.uniforms[U_MESHUV], 1, GL_FALSE, uv);
+    p_glUniform2i(gl.uniforms[U_MESHKIND], draw->kind == GFX_MESH_MODEL, draw->kind == GFX_MESH_MODEL && draw->lightGround);
     p_glBindBuffer(GL_ARRAY_BUFFER, m->vbo);
     p_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)0);
-    p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, colour);
-    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, colour);
+    p_glVertexAttribPointer(1, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)24);
+    p_glVertexAttribPointer(2, GFX_COLOUR_SIZE, GL_UNSIGNED_BYTE, GL_TRUE, sizeof *m->verts, (const void *)(uintptr_t)28);
     p_glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)32);
     p_glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof *m->verts, (const void *)(uintptr_t)40);
     p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);

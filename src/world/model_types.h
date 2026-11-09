@@ -56,7 +56,9 @@ struct C3dNode {
     size_t textureCount;
     float alpha;
     struct FaceInfo *faceInfo;
-    int *lightInts;
+    /* custom: the ground's light under each corner (red, green, blue, nine a face), which the
+       original kept added to the corner's colour and clamped */
+    int *groundLight;
     struct ModelGpu *gpu;
     int gpuState;
 };

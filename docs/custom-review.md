@@ -13300,3 +13300,48 @@ to 298 pixels, seams where two faces meet at one depth; the animated and alpha f
 match. `test_model_mesh_load` checks `uv_turn_matrix` against `uv_turn`; `test_renderer_storage`
 queues a model draw into an alpha list. Not seen in a capture: a blind player. Not run: GL,
 `x64`, `freetype`, CMake and the other platforms.
+
+## Shadows that know the model's light, and the map's own shadow strength (2026-11-09)
+
+The second item: the models' faces carry the light of the map (`c3d_node_light`: diffuse times
+the cosine to the light plus ambient, clamped to 1, times 128 or 255 by the texture vertex) and
+the ground's colour under them, and the shadow maps then multiplied the whole colour by 128/255
+wherever a face lay in shadow. Since the shadow pass casts from both sides of every face, a face
+turned away from the light always lies in shadow, and it was darkened twice: Prontera's tower
+showed its shaded side at 107 instead of 118 (mean grey of the patch).
+
+- **The map's shadow strength.** The RSW light block's last float, which the client skipped, is
+  the share of the light the map's editor took away in the shadows it baked: across the maps of
+  `client-files` the lightmaps' shadow intensity is about 255 times one minus it (izlude 0.6 bakes
+  104, lighthalzen 0.4 bakes 156, nif_fild01 0.7 bakes 80, job_prist 0.2 bakes 208, ra_fild03
+  0.55 bakes 116; 754 maps hold 0.5, and prontera, yuno_fild01 and iz_int03 bake 128, the
+  constant used so far). A few maps hold a
+  value their lightmaps were not baked with (ve_fild06 holds 0.4 and bakes 128). `c3d_world_res_load`
+  now reads it as `shadowOpacity` (0.5 for maps before version 1.7), `renderer_set_light` takes
+  it, and the shadow's darkness is one minus it; at darkness 1 (61 maps hold 0) no shadow map is
+  drawn, as their editor baked none.
+- **A model face in shadow.** The vertex shader works out two colours per corner: the lit one, the
+  CPU's exactly, and the shadowed one, the corner's own lit colour times the darkness but no less
+  than ambient times its share of the light (128 or 255; 0 for a model lit without the light),
+  what `c3d_node_light` gives a face turned away from the light, before the ground's light is
+  added; the pixel shader mixes them by how much of the pixel is lit. A face turned away from the
+  light keeps its colour in shadow, a face towards it darkens as the ground does, and no face
+  ends darker than its ambient light. Without receiving, the mix is the lit colour alone.
+- **The vertex colours.** `diffuse` now holds the node's own colour with the share of the light as
+  its alpha, `colour2` the ground's light under the corner; `GfxMeshDraw.second` became
+  `lightGround`, which adds it (at most 255 a channel). `C3dNode.lightInts`, the sum of both, became
+  `groundLight`, the ground's light alone, and `face_colours` adds it (`ground_lit`), so the CPU
+  path draws as before.
+- **Receiving off** now sets the ground's darkness to 1, so the baked shadows stay as they are; a
+  frame without a shadow pass after one with it took the darkness of the last.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: with `RAGEXE_SHADOWS=0` every capture
+(`prontera_crowd`, `camera_level_view` both, `granny_models`, `guild_flags` both,
+`iz_int03_enter`, six `yuno_gate` frames) is the same as before, pixel for pixel. With shadows,
+the patch on Prontera's tower reads 117 (118 without shadows, 107 before); on `yuno_gate` the
+towers' shaded sides look as without shadows again; on
+`izlude` (opacity 0.6) the shadowed ground is 0.78 to 0.80 times as bright as before (0.4 over
+0.502). The same `izlude` capture shows the next gap: a large shadow the editor baked from a
+building out of view, which the shadow pass, drawing only what the camera kept, does not cast.
+`build.bat check` and the full `tests\build.bat` pass; `test_model_lighting` checks the ground's
+light and the sums `face_colours` makes from it. Not run: GL, `x64`, `freetype`, CMake.
