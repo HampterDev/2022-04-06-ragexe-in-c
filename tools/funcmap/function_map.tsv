@@ -2122,6 +2122,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 6331a0				UIWindowMgr_TouchWindowId	ui_window_mgr_touch_window_id	ui/wndmgr/window_slots.c:111	cited	high	ui/wndmgr/window_slots.c
 633410				StdString_FromInt			cited	high	ui/wndmgr/number_text.c
 633ce0	UIWindowMgr__InvalidateAll_	text/world_0000.inc:7468-7488		UIWindowMgr__InvalidateAll			dump_symbol	high	ui/wndmgr/window_list.c
+633d30	sub_633d30				window_mgr_invalidate_guild_wnd		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 633ea0				UIWindowMgr_IsUntrackedId	ui_window_mgr_is_untracked_id	ui/wndmgr/window_slots.c:68	cited	high	ui/wndmgr/window_slots.c
 634080				UIWindowMgr_HasPlate	ui_window_mgr_has_plate	ui/wndmgr/plates.c:43	cited	high	ui/wndmgr/plates.c
 6341d0				UIWindowMgr_IsFirstEdit	ui_window_mgr_is_first_edit	ui/wndmgr/keyboard.c:254	cited	high	ui/wndmgr/keyboard.c
@@ -2261,7 +2262,13 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 66a9d0	sub_66a9d0	text/contents_0000.inc:1605-1947			lua_add_item	contents/item_info_mgr.c:206	ustr	high	
 66b0c0	sub_66b0c0	text/contents_0000.inc:2214-2325			lua_add_item_is_costume	contents/item_info_mgr.c:286	ustr	high	
 66b440	sub_66b440	text/contents_0000.inc:2532-2573		guild_expelled_construct			cited	high	contents/guild_lists.c
+66be70	sub_66be70				guild_info_set_member_position		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+66bf50	sub_66bf50				guild_info_remove_relation		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66c010	CSession__GetJobName	text/contents_0000.inc:3624-3631		CSession_GetJobName	session_get_job_name	session/session_names.c:307	label	high	session/a/session_names.c
+66c3d0	sub_66c3d0				guild_info_reset		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+66ca70	sub_66ca70				guild_info_set_member_status		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+66cb00	sub_66cb00				guild_info_set_member_online		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+66cb70	sub_66cb70				guild_info_set_master		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 66cc80	sub_66cc80	text/contents_0000.inc:4712-4748		guild_position_name_map_alloc_head			cited	high	contents/guild_lists.c
 66cd00	sub_66cd00	text/contents_0000.inc:4759-4805		guild_relation_list_buynode0			cited	high	contents/guild_lists.c
 66cd90	sub_66cd90	text/contents_0000.inc:4816-4862		guild_expelled_list_buynode0			cited	high	contents/guild_lists.c
@@ -3300,6 +3307,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 7f54f0	sub_7f54f0				game_mode_zc_grade_enchant_ack		dispatch	high	packet dispatcher arm for 0xb5d HEADER_ZC_GRADE_ENCHANT_ACK
 7f5b30	sub_7f5b30				game_mode_zc_ack_add_item_rodex2		dispatch	high	packet dispatcher arm for 0xb3f HEADER_ZC_ACK_ADD_ITEM_RODEX2
 7f5de0	sub_7f5de0				game_mode_zc_ack_add_item_rodex		dispatch	high	packet dispatcher arm for 0xa05 HEADER_ZC_ACK_ADD_ITEM_RODEX
+7f6000	sub_7f6000				game_mode_on_actor_guild		oracle	high	tests/oracle/test_packet_handlers.c
 7f6040	sub_7f6040				game_mode_zc_ack_all_rodex_list		dispatch	high	packet dispatcher arm for 0xac2 HEADER_ZC_ACK_ALL_RODEX_LIST
 7f6830	sub_7f6830				game_mode_ack_buy_styling_shop		dispatch	high	packet dispatcher arm for 0xa47 HEADER_ZC_ACK_BUY_STYLINGSHOP
 7f6af0	sub_7f6af0				game_mode_zc_ack_close_roulette		dispatch	high	packet dispatcher arm for 0xa1e HEADER_ZC_ACK_CLOSE_ROULETTE
@@ -3587,6 +3595,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 86c3fe	CSession__RefreshFriendUI	text/session_0000.inc:60858-60873		CSession__RefreshFriendUI			label_inside	low	session/a/session_redraws.c
 86c46f	CSession__SetCompressedEmblemImage	text/session_0000.inc:60970-61005		CSession_RemoveUnderbar	session_remove_underbar	session/session_names.c:487	label_inside	low	session/a/session_names.c
 86c70a	CSession__SetMyExchangeMoney	text/session_0000.inc:61145-61165		CSession_SetMyExchangeMoney	session_set_my_exchange_money	session/session_exchange.c:84	label_inside	low	session/a/session_exchange.c
+86c830	sub_86c830				session_save_emblem		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86cd50	sub_86cd50				session_inventory_update		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 86cefa	CSession__SetOtherExchangeMoney	text/session_0000.inc:61767-61787		CSession_SetOtherExchangeMoney	session_set_other_exchange_money	session/session_exchange.c:94	label_inside	low	session/a/session_exchange.c
 86cf30	sub_86cf30				session_set_their_trade_zeny		oracle	high	tests/oracle/test_packet_handlers.c, stood in
@@ -3625,6 +3634,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 874c40	sub_874c40				session_clear_worn_costumes		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874c70	sub_874c70				session_clear_mail_item_counts		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874db0	sub_874db0				session_erase_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+874e60	sub_874e60				session_refresh_guild_skill_hotkeys		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 874f82	CSession__EraseProhibit	text/session_0000.inc:73725-73794		CSession_EraseProhibit	session_erase_prohibit	session/session_prohibit.c:74	label_inside	low	session/a/session_prohibit.c
 875070	sub_875070				session_find_abr		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 875350	sub_875350	text/session_0000.inc:74120-74185			session_get_begin_effect_id	session/session_skills.c:231	oracle	high	
@@ -3898,6 +3908,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 8eae90	sub_8eae90	text/contents_0001.inc:60500-60501		lapine_upgrade_nothing			cited	high	contents/lapine_upgrade_list.c
 8ec280	sub_8ec280	text/contents_0001.inc:62193-62460		set_box	set_box	contents/lapine_upgrade.c:85	cited	high	contents/lapine_upgrade.c
 8f1710	sub_8f1710				player_names_set		oracle	high	tests/oracle/test_packet_handlers.c, stood in
+8f1b80	sub_8f1b80				player_name_lookup		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 8f45b0	sub_8f45b0	text/contents_0001.inc:72663-72703		group_record_buy			cited_multi	low	contents/repute_maps.c
 8f4640	sub_8f4640	text/contents_0001.inc:72713-72753		info_record_buy			cited_multi	low	contents/repute_maps.c
 8f6010	sub_8f6010	text/contents_0001.inc:75522-75579		group_record_buy			cited_multi	low	contents/repute_maps.c
@@ -3966,6 +3977,7 @@ addr	asm_label	asm_chunk	class	ref_name	final_name	main_where	method	confidence	
 90e8a0	sub_90e8a0				sound_play_wave		oracle	high	tests/oracle/skill_oracle.h, stood in
 90eb0b	PlayWave	text/contents_0002.inc:31010-31225		play_wave	play_wave	effects/skills/acidified_throw.c:80	label_inside	low	effects/skills/acidified_throw.c
 9142b0	sub_9142b0	text/contents_0002.inc:39639-40090			guild_emblem_save	contents/guild_emblem_file.c:74	ustr	high	
+914ab0	sub_914ab0				guild_mgr_set_emblem_version		oracle	high	tests/oracle/test_packet_handlers.c, stood in
 915460	sub_915460	text/contents_0002.inc:40797-40839		achievement_at	achievement_at	contents/achievement_std.c:93	cited_multi	low	contents/achievement_std.c
 915a40	sub_915a40	text/contents_0002.inc:41468-41640		achievement_at	achievement_at	contents/achievement_std.c:93	cited_multi	low	contents/achievement_std.c
 916a00	sub_916a00	text/contents_0002.inc:42908-42980		achievement_at	achievement_at	contents/achievement_std.c:93	cited_multi	low	contents/achievement_std.c
