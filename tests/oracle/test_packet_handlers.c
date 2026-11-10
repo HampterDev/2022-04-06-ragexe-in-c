@@ -76,6 +76,9 @@
 #include "game/chat_room.h"
 #include "game/actor_packets.h"
 #include "world/mode_dispatch.h"
+#include "contents/guild_info.h"
+#include "contents/guild_emblem_api.h"
+#include "session/session_options.h"
 #include "packet_handlers.inc"
 
 #define ORIG_SESSION          0x1133c50u
@@ -369,6 +372,24 @@
 #define ORIG_ROOM_SIZE        0x40
 #define ORIG_ITEM_ARG_SIZE    0xe8
 #define N_CHAT_TEXTS 6
+#define ORIG_GUILD_INFO       0x1118ac0u
+#define ORIG_GUILD_INFO_SIZE  0x100
+#define ORIG_GUILD_MGR_PTR    0x115c1b4u
+#define ORIG_WND_GUILD_MANAGE 0xee8ad0u
+#define ORIG_SET_EMBLEM_VERSION 0x914ab0u
+#define ORIG_INVALIDATE_GUILD_WND 0x633d30u
+#define ORIG_SAVE_EMBLEM      0x86c830u
+#define ORIG_GUILD_HOTKEYS    0x874e60u
+#define ORIG_GUILD_RESET      0x66c3d0u
+#define ORIG_REMOVE_RELATION  0x66bf50u
+#define ORIG_MEMBER_ONLINE    0x66cb00u
+#define ORIG_MEMBER_STATUS    0x66ca70u
+#define ORIG_PLAYER_NAME_LOOKUP 0x8f1b80u
+#define ORIG_MEMBER_POSITION  0x66be70u
+#define ORIG_SET_GUILD_MASTER 0x66cb70u
+#define ORIG_RELATION_PUSH    0x7e3620u
+#define ORIG_ACTOR_VT_SET_GUILD_ID (0xbc / 4)
+#define GI(f) offsetof(struct GuildInfo, f)
 #define ORIG_SEND_PET_AUTO_FEED 0x899bd0u
 #define ORIG_SET_TEXT_ELLIPSIS 0x5380c0u
 #define ORIG_STORAGE_SET_NAME 0x7e3670u
@@ -476,7 +497,7 @@
 enum { FILL_ZERO, FILL_PATTERN, FILL_ONES, FILL_COUNT };
 enum { PK_DEFAULT, PK_NAMES, PK_ENTRY, PK_PAR, PK_EXP, PK_LIST, PK_SPLIT_SET, PK_TEXT, PK_MARKET, PK_MAP };
 
-enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_COUNT };
+enum { R_SESSION, R_MODE, R_CASTER, R_TARGET, R_PLAYER, R_EFFECT, R_NEW, R_GUILD, R_COUNT };
 #define M(r) (1u << (r))
 #define M_ACTORS (M(R_CASTER) | M(R_TARGET) | M(R_PLAYER) | M(R_NEW))
 
@@ -539,6 +560,8 @@ static unsigned orig_room_owners[4];
 static struct ChatRoomOwner lift_room_owners[4];
 static int current_side;
 static const char *const chat_names[N_COMPANION_NAMES] = { "Hero", "Poring", "badname", "", "Lunatic Jr." };
+struct GuildInfo g_guildInfo;
+struct GuildMgr *g_guildMgr;
 static struct ReplayRecorder lift_replay;
 static unsigned char orig_loop_sounds[4][ORIG_LOOP_SOUND_SIZE];
 static struct LoopSound lift_loop_sounds[4];
@@ -789,11 +812,32 @@ static const struct Field fields[] = {
     { "family_request_char_id", M(R_MODE), ORIG_MODE_FAMILY_CHAR_ID, GF(family_request_char_id), 4 },
     { "couple_name", M(R_MODE), ORIG_MODE_COUPLE_NAME, GF(couple_name), 24 },
     { "own_room_users", M(R_MODE), ORIG_MODE_OWN_ROOM + 0x34, GF(own_chat_room.users), 4 },
+    { "level", M(R_GUILD), 0x60, GI(level), 4 },
+    { "member_count", M(R_GUILD), 0x64, GI(member_count), 4 },
+    { "online_count", M(R_GUILD), 0x68, GI(online_count), 4 },
+    { "max_members", M(R_GUILD), 0x6c, GI(max_members), 4 },
+    { "average_level", M(R_GUILD), 0x70, GI(average_level), 4 },
+    { "exp", M(R_GUILD), 0x8c, GI(exp), 4 },
+    { "exp_next", M(R_GUILD), 0x90, GI(exp_next), 4 },
+    { "tax_points", M(R_GUILD), 0x98, GI(tax_points), 4 },
+    { "honor", M(R_GUILD), 0x9c, GI(honor), 4 },
+    { "virtue", M(R_GUILD), 0xa0, GI(virtue), 4 },
+    { "menu_flags", M(R_GUILD), 0xa4, GI(menu_flags), 4 },
+    { "guild_id", M(R_GUILD), 0xa8, GI(guild_id), 4 },
+    { "can_invite", M(R_GUILD), 0xac, GI(can_invite), 4 },
+    { "can_expel", M(R_GUILD), 0xb0, GI(can_expel), 4 },
+    { "is_master", M(R_GUILD), 0xb4, GI(is_master), 4 },
+    { "page_asked", M(R_GUILD), 0xbc, GI(page_asked), 20 },
+    { "master_gid", M(R_GUILD), 0xd0, GI(master_gid), 4 },
+    { "relations", M(R_GUILD), 0xe4, GI(relations), 8, 1 },
     { "lastPacketTime", M(R_SESSION), S(ORIG_LAST_PACKET_TIME), SF(lastPacketTime), 4, 1 },
 };
 
 static const struct { unsigned mask; unsigned orig_off, lift_off; const char *name; } strings[] = {
     { M(R_EFFECT), 0x130, EF(texture), "texture" },
+    { M(R_GUILD), 0x00, GI(name), "name" },
+    { M(R_GUILD), 0x18, GI(master_name), "master_name" },
+    { M(R_GUILD), 0x74, GI(castle_name), "castle_name" },
 };
 
 static const char *who_packets(const void *p)
@@ -972,7 +1016,10 @@ void warning_plane_effect_set_end_time(struct Effect *effect, DWORD end_time) { 
 int game_actor_is_pc_job(int job) { return job < 1000; }
 void string_assign(struct String *s, const char *text, size_t len)
 {
-    char *copy = malloc(len + 1);
+    char *copy;
+    if (s->size == len && (len == 0 || memcmp(string_cstr(s), text, len) == 0))
+        return;
+    copy = malloc(len + 1);
     memcpy(copy, text, len);
     copy[len] = 0;
     s->data = copy;
@@ -1000,7 +1047,7 @@ int ui_window_send(struct UIWindow *window, struct UIWindow *sender, int message
     (void)sender;
     if (message == 0x22 && readable(a))
         event("wndsend %s %x %s", window_name(window), message, room_text((const void *)(int)a));
-    else if ((message == 0x38 || message == 0x5a || message == 0x5b) && readable(b))
+    else if ((message == 0x38 || message == 0x5a || message == 0x5b || message == 0x49 || message == 0x4a) && readable(b))
         event("wndsend %s %x %x '%s' %x %x", window_name(window), message, a, (const char *)(int)b, c, d);
     else if (message == 0x5f && readable(c))
         event("wndsend %s %x %x %x '%s' %x", window_name(window), message, a, b, (const char *)(int)c, d);
@@ -1215,8 +1262,54 @@ void session_notify_messenger_group_wnd(struct Session *self) { (void)self; even
 void session_set_their_trade_zeny(struct Session *self, int money) { (void)self; event("their zeny %d", money); }
 void session_add_their_trade_item(struct Session *self, struct ItemInfo item) { (void)self; event("their item %s", item_text(&item)); }
 int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
-{ (void)mode; event("modemsg %x %x %s %x %x", message, a, who((void *)b), c, d); return 0; }
+{
+    (void)mode;
+    if (message == 0x8c && readable(a))
+        event("modemsg %x '%s' %x", message, (const char *)a, b);
+    else
+        event("modemsg %x %x %s %x %x", message, a, who((void *)b), c, d);
+    return 0;
+}
 struct Mode *client_current_mode(void) { return (struct Mode *)&lift_mode; }
+static const char *member_name_for(unsigned gid)
+{
+    static char text[16];
+    if (gid % 3 == 0)
+        text[0] = 0;
+    else
+        snprintf(text, sizeof text, "Mem%u", gid % 100);
+    return text;
+}
+int guild_mgr_download_chunk(struct GuildMgr *manager, int part, unsigned guild, int version, const void *data, size_t size)
+{ (void)manager; (void)data; event("emblem chunk %d %u %d %u", part, guild, version, (unsigned)size); return 0; }
+void guild_mgr_set_emblem_version(struct GuildMgr *manager, unsigned guild, int version) { (void)manager; event("emblem version %u %d", guild, version); }
+void window_mgr_invalidate_guild_wnd(struct UIWindowMgr *manager) { (void)manager; event("invalidate guild wnd"); }
+void session_save_emblem(struct Session *self, const void *data, size_t size, int guildId, int version)
+{ (void)self; (void)data; event("save emblem %d %u %d", (int)size, guildId, version); }
+void session_refresh_guild_skill_hotkeys(struct Session *self) { (void)self; event("refresh guild hotkeys"); }
+void guild_info_reset(struct GuildInfo *self) { (void)self; event("guild reset"); }
+void guild_info_remove_relation(struct GuildInfo *self, int id, int kind) { (void)self; event("relation remove %u %d", id, kind); }
+void guild_info_set_member_online(struct GuildInfo *self, int aid, int online) { (void)self; event("member online %u %d", aid, online); }
+void guild_info_set_member_status(struct GuildInfo *self, int online, int gid, short sex, short hair_style, short hair_color)
+{ (void)self; event("member status %d %u %d %d %d", online, gid, sex, hair_style, hair_color); }
+struct TextView player_name_lookup(unsigned char_id)
+{
+    struct TextView view;
+    view.data = member_name_for(char_id);
+    view.size = strlen(view.data);
+    return view;
+}
+void guild_info_set_member_position(struct GuildInfo *self, int aid, int gid, int position) { (void)self; event("member position %u %u %d", aid, gid, position); }
+void guild_info_set_master(struct GuildInfo *self, int gid) { (void)self; event("set master %u", gid); }
+void guild_relation_copy(struct GuildRelation *dst, const struct GuildRelation *src)
+{
+    dst->id = src->id;
+    dst->kind = src->kind;
+    string_copy(&dst->name, &src->name);
+    event("relation add %d %d '%s'", src->id, src->kind, string_cstr(&src->name));
+}
+int string_equal_cstr(const struct String *s, const char *text) { return strcmp(string_cstr(s), text) == 0; }
+void game_actor_set_guild_id(struct GameActor *actor, int value0) { event("guildid %s %d", who(actor), value0); }
 BYTE replay_recorder_set_mode(struct ReplayRecorder *self, int mode) { (void)self; event("replay mode %d", mode); return 1; }
 void text_drop_map_extension(struct String *map_name)
 {
@@ -1723,6 +1816,31 @@ static void __fastcall o_end_exchange1(void *self, void *edx) { (void)self; (voi
 static void __fastcall o_their_zeny(void *self, void *edx, int money) { (void)self; (void)edx; event("their zeny %d", money); }
 struct OrigItemArg { unsigned char b[ORIG_ITEM_ARG_SIZE]; };
 static void __fastcall o_add_their_item(void *self, void *edx, struct OrigItemArg item) { (void)self; (void)edx; event("their item %s", orig_item_text(item.b)); }
+static void __fastcall o_set_emblem_version(void *self, void *edx, unsigned guild, int version) { (void)self; (void)edx; event("emblem version %u %d", guild, version); }
+static void __fastcall o_invalidate_guild_wnd(void *self, void *edx) { (void)self; (void)edx; event("invalidate guild wnd"); }
+static void __fastcall o_save_emblem(void *self, void *edx, const void *data, int size, unsigned guild, int version)
+{ (void)self; (void)edx; (void)data; event("save emblem %d %u %d", size, guild, version); }
+static void __fastcall o_guild_hotkeys(void *self, void *edx) { (void)self; (void)edx; event("refresh guild hotkeys"); }
+static void __fastcall o_guild_reset(void *self, void *edx) { (void)self; (void)edx; event("guild reset"); }
+static void __fastcall o_remove_relation(void *self, void *edx, unsigned id, int kind) { (void)self; (void)edx; event("relation remove %u %d", id, kind); }
+static void __fastcall o_member_online(void *self, void *edx, unsigned aid, int online) { (void)self; (void)edx; event("member online %u %d", aid, online); }
+static void __fastcall o_member_status(void *self, void *edx, unsigned aid, int online, unsigned gid, int sex, int head, int palette)
+{ (void)self; (void)edx; (void)aid; event("member status %d %u %d %d %d", online, gid, (short)sex, (short)head, (short)palette); }
+static unsigned char *__cdecl o_player_name_lookup(unsigned char *out, unsigned gid)
+{
+    const char *name = member_name_for(gid);
+    memset(out, 0, ORIG_STD_STRING);
+    strcpy((char *)out, name);
+    *(unsigned *)(out + 0x10) = (unsigned)strlen(name);
+    *(unsigned *)(out + 0x14) = ORIG_STD_STRING_SSO - 1;
+    return out;
+}
+static void __fastcall o_member_position(void *self, void *edx, unsigned aid, unsigned gid, int position)
+{ (void)self; (void)edx; event("member position %u %u %d", aid, gid, position); }
+static void __fastcall o_set_guild_master(void *self, void *edx, unsigned gid) { (void)self; (void)edx; event("set master %u", gid); }
+static void __fastcall o_relation_push(void *self, void *edx, const unsigned char *record)
+{ (void)self; (void)edx; event("relation add %d %d '%s'", *(const int *)record, *(const int *)(record + 4), orig_std_string(record + 8)); }
+static void __fastcall o_set_guild_id(void *self, void *edx, int value0) { (void)edx; event("guildid %s %d", who(self), value0); }
 static void __fastcall o_log_whisper(void *self, void *edx, const char *line) { (void)self; (void)edx; event("log '%s'", line); }
 static void __fastcall o_clear_lists(void *self, void *edx) { (void)self; (void)edx; event("clear lists"); }
 static void *__cdecl o_item_table_get(int item_id) { *(int *)(fake_item_entry + 0x40) = item_id % 7; return fake_item_entry; }
@@ -1917,6 +2035,30 @@ LIFT(game_mode_zc_divorce)
 static void w_baby_msg(const unsigned char *pkt) { game_mode_zc_baby_msg(pkt); }
 static void w_ack_give_manner_point(const unsigned char *pkt) { game_mode_zc_ack_give_manner_point(pkt); }
 static void w_notify_manner_point_given(const unsigned char *pkt) { game_mode_zc_notify_manner_point_given(pkt); }
+static void w_req_ally_guild(const unsigned char *pkt) { game_mode_zc_req_ally_guild((const struct PACKET_ZC_REQ_GUILD_INVITE *)pkt); }
+static void w_req_join_guild(const unsigned char *pkt) { game_mode_zc_req_join_guild((const struct PACKET_ZC_REQ_GUILD_INVITE *)pkt); }
+static void w_result_make_guild(const unsigned char *pkt) { game_mode_zc_result_make_guild((const struct PACKET_ZC_RESULT_MAKE_GUILD *)pkt); }
+LIFT(game_mode_zc_update_charstat2)
+LIFT(game_mode_zc_update_charstat)
+LIFT(game_mode_zc_update_gdid2)
+LIFT(game_mode_zc_update_gdid)
+LIFT(game_mode_zc_change_guild)
+static void w_guild_info2(const unsigned char *pkt) { game_mode_zc_guild_info2((const struct PACKET_ZC_GUILD_INFO2 *)pkt); }
+LIFT(game_mode_zc_notify_position_to_guild_m)
+LIFT(game_mode_zc_guild_member_map_change)
+static void w_guild_info(const unsigned char *pkt) { game_mode_zc_guild_info(pkt); }
+LIFT(game_mode_zc_guild_emblem_img)
+static void w_ack_req_join_guild(const unsigned char *pkt) { game_mode_zc_ack_req_join_guild(pkt); }
+static void w_menu_interface(const unsigned char *pkt) { game_mode_zc_ack_guild_menu_interface(pkt); }
+static void w_req_change_members(const unsigned char *pkt) { game_mode_zc_ack_req_change_members(pkt); }
+static void w_disorganize_result(const unsigned char *pkt) { game_mode_zc_ack_disorganize_guild_result(pkt); }
+static void w_disorganize(const unsigned char *pkt) { game_mode_zc_ack_disorganize_guild(pkt); }
+static void w_ack_req_ally(const unsigned char *pkt) { game_mode_zc_ack_req_ally_guild(pkt); }
+static void w_ack_hostile(const unsigned char *pkt) { game_mode_zc_ack_req_hostile_guild(pkt); }
+static void w_delete_related(const unsigned char *pkt) { game_mode_zc_delete_related_guild(pkt); }
+static void w_add_related(const unsigned char *pkt) { game_mode_zc_add_related_guild(pkt); }
+static void w_actor_guild(const unsigned char *pkt)
+{ game_mode_on_actor_guild(&lift_mode, *(const int *)(pkt + 0xa), *(const int *)(pkt + 2), *(const int *)(pkt + 6)); }
 
 static const unsigned effect_ids[] = { 0x3fd, 0x5a, 0x5c, 0x5f, 0x238, 0x14b, 0x14c, 0x291, 0x294, 0x298, 0x299 };
 static const unsigned actor_aids[] = { AID_CASTER, AID_TARGET, AID_OWN };
@@ -2159,6 +2301,29 @@ static const struct Handler handlers[] = {
     { "baby_msg", 0, 0x216, 6, w_baby_msg, PK_DEFAULT, NULL, 0 },
     { "ack_give_manner_point", 0, 0x14a, 6, w_ack_give_manner_point, PK_DEFAULT, NULL, 0 },
     { "notify_manner_point_given", 0, 0x14b, 27, w_notify_manner_point_given, PK_DEFAULT, NULL, 0 },
+    { "guild_menu_interface", 0, 0x14e, 6, w_menu_interface, PK_DEFAULT, NULL, 0 },
+    { "guild_info", 0, 0x150, 0x76, w_guild_info, PK_DEFAULT, NULL, 0 },
+    { "guild_emblem_img", 0, 0x152, 0xc, w_game_mode_zc_guild_emblem_img, PK_DEFAULT, NULL, 0 },
+    { "guild_change_members", 0, 0x156, 4, w_req_change_members, PK_DEFAULT, NULL, 0 },
+    { "disorganize_result", 0, 0x15e, 6, w_disorganize_result, PK_DEFAULT, NULL, 0 },
+    { "disorganize_guild", 0, 0x15f, 42, w_disorganize, PK_DEFAULT, NULL, 0 },
+    { "result_make_guild", 0, 0x167, 3, w_result_make_guild, PK_DEFAULT, NULL, 0 },
+    { "ack_req_join_guild", 0, 0x169, 3, w_ack_req_join_guild, PK_DEFAULT, NULL, 0 },
+    { "req_join_guild", 0, 0x16a, 30, w_req_join_guild, PK_DEFAULT, NULL, 0 },
+    { "update_gdid", 0, 0x16c, 0x2b, w_game_mode_zc_update_gdid, PK_DEFAULT, NULL, 0 },
+    { "update_charstat", 0, 0x16d, 14, w_game_mode_zc_update_charstat, PK_DEFAULT, NULL, 0 },
+    { "req_ally_guild", 0, 0x171, 30, w_req_ally_guild, PK_DEFAULT, NULL, 0 },
+    { "ack_req_ally_guild", 0, 0x173, 3, w_ack_req_ally, PK_DEFAULT, NULL, 0 },
+    { "ack_hostile_guild", 0, 0x181, 3, w_ack_hostile, PK_DEFAULT, NULL, 0 },
+    { "delete_related_guild", 0, 0x184, 10, w_delete_related, PK_DEFAULT, NULL, 0 },
+    { "add_related_guild", 0, 0x185, 34, w_add_related, PK_DEFAULT, NULL, 0 },
+    { "change_guild", 0x7b9850u, 0x1b4, 12, w_game_mode_zc_change_guild, PK_DEFAULT, NULL, 0 },
+    { "guild_info2", 0x7be630u, 0x1b6, 0x72, w_guild_info2, PK_DEFAULT, NULL, 0 },
+    { "position_to_guild", 0, 0x1eb, 10, w_game_mode_zc_notify_position_to_guild_m, PK_DEFAULT, NULL, 0 },
+    { "guild_member_map", 0, 0x1ec, 0x1a, w_game_mode_zc_guild_member_map_change, PK_DEFAULT, NULL, 0 },
+    { "update_charstat2", 0, 0x1f2, 0x14, w_game_mode_zc_update_charstat2, PK_DEFAULT, NULL, 0 },
+    { "update_gdid2", 0, 0x2f7, 0x2f, w_game_mode_zc_update_gdid2, PK_DEFAULT, NULL, 0 },
+    { "add_new_emblem", 0, 0xb47, 14, w_actor_guild, PK_DEFAULT, NULL, 0 },
 };
 
 static unsigned handler_values(const struct Handler *h)
@@ -2603,6 +2768,138 @@ static void build_packet(unsigned char *pkt, const struct Handler *h, unsigned a
         }
         return;
     }
+    if (h->id == 0x14e || h->id == 0x15e) {
+        memcpy(pkt + 2, &value, 4);
+        return;
+    }
+    if (h->id == 0x167 || h->id == 0x169 || h->id == 0x173 || h->id == 0x181) {
+        pkt[2] = (unsigned char)value;
+        return;
+    }
+    if (h->id == 0x150 || h->id == 0x1b6) {
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        const char *master = chat_names[(value + fill) % N_COMPANION_NAMES];
+        const char *land = fill == FILL_ZERO ? "" : "prt_gld";
+        unsigned gid = 500 + (value & 1);
+        int i;
+        memcpy(pkt + 2, &gid, 4);
+        for (i = 0; i < 10; i++) {
+            int v = (int)value * 10 + i + 100 * fill;
+            memcpy(pkt + 6 + 4 * i, &v, 4);
+        }
+        memset(pkt + 0x2e, 0, h->id == 0x150 ? 72 : 64);
+        memcpy(pkt + 0x2e, name, strlen(name));
+        memcpy(pkt + 0x46, master, strlen(master));
+        memcpy(pkt + 0x5e, land, strlen(land));
+        return;
+    }
+    if (h->id == 0x152) {
+        unsigned n = value * 5, gid = 500 + (value & 1);
+        short total = (short)(0xc + n);
+        int version = (int)value + fill;
+        memcpy(pkt + 2, &total, 2);
+        memcpy(pkt + 4, &gid, 4);
+        memcpy(pkt + 8, &version, 4);
+        return;
+    }
+    if (h->id == 0x156) {
+        unsigned count = value & 3, r;
+        short total = (short)(4 + 12 * count);
+        memcpy(pkt + 2, &total, 2);
+        for (r = 0; r < count; r++) {
+            unsigned rec_aid = r == 0 ? aid : 2000 + r, gid = 100 + r + value, position = (value + r) % 3;
+            memcpy(pkt + 4 + 12 * r, &rec_aid, 4);
+            memcpy(pkt + 8 + 12 * r, &gid, 4);
+            memcpy(pkt + 12 + 12 * r, &position, 4);
+        }
+        return;
+    }
+    if (h->id == 0x15f) {
+        const char *reason = dialog_text(value % N_TEXTS);
+        size_t len = strlen(reason);
+        memcpy(pkt + 2, reason, len > 40 ? 40 : len);
+        return;
+    }
+    if (h->id == 0x16a || h->id == 0x171) {
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        memcpy(pkt + 2, &aid, 4);
+        memset(pkt + 6, 0, 24);
+        memcpy(pkt + 6, name, strlen(name));
+        return;
+    }
+    if (h->id == 0x16c || h->id == 0x2f7) {
+        static const unsigned rights[4] = { 0, 1, 0x10, 0x11 };
+        const char *name = companion_names[value % N_COMPANION_NAMES];
+        unsigned gid = 500 + (value & 1), emblem = value, right = rights[(value >> 1) % 4], extra = 900 + value;
+        memcpy(pkt + 2, &gid, 4);
+        memcpy(pkt + 6, &emblem, 4);
+        memcpy(pkt + 0xa, &right, 4);
+        pkt[0xe] = (unsigned char)(fill & 1);
+        memset(pkt + 0x13, 0, 24);
+        memcpy(pkt + 0x13, name, strlen(name));
+        if (h->id == 0x2f7)
+            memcpy(pkt + 0x2b, &extra, 4);
+        return;
+    }
+    if (h->id == 0x16d || h->id == 0x1f2) {
+        unsigned gid = 300 + value;
+        int status = (int)(value & 1);
+        memcpy(pkt + 2, &aid, 4);
+        memcpy(pkt + 6, &gid, 4);
+        memcpy(pkt + 0xa, &status, 4);
+        if (h->id == 0x1f2) {
+            *(unsigned short *)(pkt + 0xe) = (unsigned short)(value & 1);
+            *(unsigned short *)(pkt + 0x10) = (unsigned short)(value * 3);
+            *(unsigned short *)(pkt + 0x12) = (unsigned short)fill;
+        }
+        return;
+    }
+    if (h->id == 0x184 || h->id == 0x185) {
+        unsigned gid = 600 + value;
+        int relation = (int)(value & 1);
+        if (h->id == 0x184) {
+            memcpy(pkt + 2, &gid, 4);
+            memcpy(pkt + 6, &relation, 4);
+        } else {
+            const char *name = companion_names[value % N_COMPANION_NAMES];
+            memcpy(pkt + 2, &relation, 4);
+            memcpy(pkt + 6, &gid, 4);
+            memset(pkt + 0xa, 0, 24);
+            memcpy(pkt + 0xa, name, strlen(name));
+        }
+        return;
+    }
+    if (h->id == 0x1b4) {
+        unsigned gid = 500 + value;
+        short emblem = (short)(value * 2 + fill);
+        memcpy(pkt + 2, &aid, 4);
+        memcpy(pkt + 6, &gid, 4);
+        memcpy(pkt + 0xa, &emblem, 2);
+        return;
+    }
+    if (h->id == 0x1eb) {
+        memcpy(pkt + 2, &aid, 4);
+        *(short *)(pkt + 6) = (short)value;
+        *(short *)(pkt + 8) = (short)fill;
+        return;
+    }
+    if (h->id == 0x1ec) {
+        static const char *const maps[4] = { "prontera", "geffen", "prontera.gat", "" };
+        unsigned gid = 500;
+        memcpy(pkt + 2, &gid, 4);
+        memcpy(pkt + 6, &aid, 4);
+        memset(pkt + 0xa, 0, 16);
+        memcpy(pkt + 0xa, maps[value % 4], strlen(maps[value % 4]));
+        return;
+    }
+    if (h->id == 0xb47) {
+        unsigned gid = value == 0 ? 0 : 500 + value;
+        int version = (int)value + fill;
+        memcpy(pkt + 2, &gid, 4);
+        memcpy(pkt + 6, &version, 4);
+        memcpy(pkt + 0xa, &aid, 4);
+        return;
+    }
     if (h->id == 0x1a6) {
         unsigned count = value & 3, r;
         short total = (short)(4 + 2 * count);
@@ -2904,6 +3201,27 @@ static void seed_packets(int option)
     }
     *(int *)(orig_mode + ORIG_MODE_CHAT_PENDING) = lift_mode.chat_room_pending = 1;
     *(int *)(orig_mode + ORIG_MODE_EXCHANGE_PENDING) = lift_mode.exchange_add_pending = 1;
+    {
+        unsigned char *gi = (unsigned char *)oracle_addr(ORIG_GUILD_INFO);
+        static const unsigned strings_at[5] = { 0x00, 0x18, 0x30, 0x48, 0x74 };
+        memset(gi, 0, ORIG_GUILD_INFO_SIZE);
+        for (i = 0; i < 5; i++)
+            *(unsigned *)(gi + strings_at[i] + 0x14) = ORIG_STD_STRING_SSO - 1;
+        *(int *)(gi + 0xa8) = 500;
+        *(int *)(gi + 0xbc) = *(int *)(gi + 0xc0) = *(int *)(gi + 0xc8) = option;
+        memset(&g_guildInfo, 0, sizeof g_guildInfo);
+        string_init(&g_guildInfo.name);
+        string_init(&g_guildInfo.master_name);
+        string_init(&g_guildInfo.notice_subject);
+        string_init(&g_guildInfo.notice_body);
+        string_init(&g_guildInfo.castle_name);
+        g_guildInfo.guild_id = 500;
+        g_guildInfo.page_asked[GUILD_PAGE_INFO] = g_guildInfo.page_asked[GUILD_PAGE_MEMBERS] = g_guildInfo.page_asked[GUILD_PAGE_SKILLS] = option;
+        *(void **)oracle_addr(ORIG_GUILD_MGR_PTR) = orig_agency;
+        g_guildMgr = (struct GuildMgr *)lift_agency;
+        *(void **)oracle_addr(ORIG_WND_GUILD_MANAGE) = option ? orig_generic_wnd : NULL;
+        g_windowMgr.guild_info_manage_wnd = option ? &lift_generic_wnd : NULL;
+    }
     memset(orig_generic_wnd + ORIG_COLLECTION_PET, 0, 0x40);
     memset(&lift_pet_details, 0, sizeof lift_pet_details);
 #undef SEED
@@ -3046,6 +3364,7 @@ static void setup_regions(void)
 {
     static const struct { const char *name; int r; } names[R_COUNT] = {
         { "S", R_SESSION }, { "M", R_MODE }, { "C", R_CASTER }, { "T", R_TARGET }, { "P", R_PLAYER }, { "E", R_EFFECT }, { "N", R_NEW },
+        { "G", R_GUILD },
     };
     int r;
     for (r = 0; r < R_COUNT; r++)
@@ -3078,6 +3397,10 @@ static void setup_regions(void)
     regions[R_NEW].orig_size = sizeof orig_new_actor;
     regions[R_NEW].lift = (unsigned char *)&lift_new_actor;
     regions[R_NEW].lift_size = sizeof lift_new_actor;
+    regions[R_GUILD].orig = (unsigned char *)oracle_addr(ORIG_GUILD_INFO);
+    regions[R_GUILD].orig_size = ORIG_GUILD_INFO_SIZE;
+    regions[R_GUILD].lift = (unsigned char *)&g_guildInfo;
+    regions[R_GUILD].lift_size = sizeof g_guildInfo;
     for (r = 0; r < R_COUNT; r++) {
         regions[r].orig_snap = calloc(1, regions[r].orig_size);
         regions[r].orig_seen = calloc(1, regions[r].orig_size);
@@ -3246,6 +3569,18 @@ static void packet_oracle_setup(int verbose)
     oracle_patch_jump(ORIG_END_EXCHANGE1, (void *)o_end_exchange1);
     oracle_patch_jump(ORIG_THEIR_ZENY, (void *)o_their_zeny);
     oracle_patch_jump(ORIG_ADD_THEIR_ITEM, (void *)o_add_their_item);
+    oracle_patch_jump(ORIG_SET_EMBLEM_VERSION, (void *)o_set_emblem_version);
+    oracle_patch_jump(ORIG_INVALIDATE_GUILD_WND, (void *)o_invalidate_guild_wnd);
+    oracle_patch_jump(ORIG_SAVE_EMBLEM, (void *)o_save_emblem);
+    oracle_patch_jump(ORIG_GUILD_HOTKEYS, (void *)o_guild_hotkeys);
+    oracle_patch_jump(ORIG_GUILD_RESET, (void *)o_guild_reset);
+    oracle_patch_jump(ORIG_REMOVE_RELATION, (void *)o_remove_relation);
+    oracle_patch_jump(ORIG_MEMBER_ONLINE, (void *)o_member_online);
+    oracle_patch_jump(ORIG_MEMBER_STATUS, (void *)o_member_status);
+    oracle_patch_jump(ORIG_PLAYER_NAME_LOOKUP, (void *)o_player_name_lookup);
+    oracle_patch_jump(ORIG_MEMBER_POSITION, (void *)o_member_position);
+    oracle_patch_jump(ORIG_SET_GUILD_MASTER, (void *)o_set_guild_master);
+    oracle_patch_jump(ORIG_RELATION_PUSH, (void *)o_relation_push);
     for (i = 0; i < (int)sizeof long_text_600 - 1; i++)
         long_text_600[i] = "abcdefghij"[i % 10];
     for (i = 0; i < (int)sizeof long_text_max - 1; i++)
@@ -3281,6 +3616,7 @@ static void packet_oracle_setup(int verbose)
     orig_actor_vt[ORIG_ACTOR_VT_SET_BODY_STYLE] = (void *)o_set_body_style;
     orig_actor_vt[ORIG_ACTOR_VT_REFRESH_ACC3] = (void *)o_refresh_accessory3;
     orig_actor_vt[ORIG_ACTOR_VT_SET_GUILD] = (void *)o_set_guild;
+    orig_actor_vt[ORIG_ACTOR_VT_SET_GUILD_ID] = (void *)o_set_guild_id;
     orig_actor_vt[ORIG_ACTOR_VT_GET_GUILD_ID] = (void *)o_get_guild_id;
     orig_actor_vt[ORIG_ACTOR_VT_SET_JOB_MODEL] = (void *)o_set_job_model;
     orig_actor_vt[ORIG_ACTOR_VT_SET_SPR_JOB] = (void *)o_set_spr_job;

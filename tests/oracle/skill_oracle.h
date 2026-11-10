@@ -299,7 +299,14 @@ int game_send_message(int message, int a, int b, int c, int d)
 struct GameMode *game_current_mode(void) { return &lift_mode; }
 struct Player *game_current_player(void) { return (struct Player *)lift_player; }
 int game_mode_send_msg(struct Mode *mode, int msg, int a, int b, int c, int d)
-{ (void)mode; event("modemsg %x %x %s %x %x", msg, a, who((void *)b), c, d); return 0; }
+{
+    (void)mode;
+    if (msg == 0x8c && readable(a))
+        event("modemsg %x '%s' %x", msg, (const char *)a, b);
+    else
+        event("modemsg %x %x %s %x %x", msg, a, who((void *)b), c, d);
+    return 0;
+}
 static int (*job_hook)(const struct GameActor *actor);
 int game_actor_get_job(struct GameActor *self) { return job_hook ? job_hook(self) : self->job; }
 int game_actor_get_counter(struct GameActor *self, int key) { (void)self; (void)key; return 0; }
@@ -406,7 +413,14 @@ static int __cdecl o_effect_on_caster(int skill, int level, void *caster, void *
 { (void)level; event("on-caster %x %s %s", skill, who(caster), who(target)); return 0; }
 
 static int __fastcall o_mode_send_msg(void *self, void *edx, int msg, int a, int b, int c, int d)
-{ (void)self; (void)edx; event("modemsg %x %x %s %x %x", msg, a, who((void *)b), c, d); return 0; }
+{
+    (void)self; (void)edx;
+    if (msg == 0x8c && readable(a))
+        event("modemsg %x '%s' %x", msg, (const char *)a, b);
+    else
+        event("modemsg %x %x %s %x %x", msg, a, who((void *)b), c, d);
+    return 0;
+}
 static void __fastcall o_actor_send_msg(void *self, void *edx, void *sender, long long msg, long long p1, long long p2, long long p3, long long p4)
 { (void)edx; (void)sender; event("msg %s %s", who(self), msg_text(msg, p1, p2, p3, p4)); }
 static void __fastcall o_set_action(void *self, void *edx, int action, int type, int flag) { (void)edx; (void)type; event("setaction %s %d %d", who(self), action, flag); }
