@@ -232,6 +232,43 @@ static void test_shadow_gate(struct Renderer *renderer)
     renderer->lightSet = 0;
 }
 
+/* the focus lies in the cascade the shaders look it up in, inside its map, from any tilt and
+   distance: from a flat camera far off the view's upper corner rays pass over the band the
+   cascades cover (-5) or meet it only beyond the depth kept (-8), and the lower ones leave it
+   before the focus */
+static void test_shadow_focus(void)
+{
+    static const float tilts[] = {-5, -8, -15, -35, -55, -85}, distances[] = {150, 488, 1000, 2500, 6000};
+    struct Renderer renderer = {0};
+    size_t t, d;
+
+    renderer_set_projection(&renderer, 1600, 900);
+    renderer.lightSet = 1;
+    renderer.lightDir[0] = 0.5f; renderer.lightDir[1] = 0.707f; renderer.lightDir[2] = 0.5f;
+    renderer.shadowDarkness = 0.5f;
+    g_lightmap = 1;
+    for (t = 0; t < sizeof tilts / sizeof tilts[0]; t++)
+        for (d = 0; d < sizeof distances / sizeof distances[0]; d++) {
+            /* looking down by the tilt (+y is down) at the origin from the distance */
+            float s = sinf(-tilts[t] * 3.14159265f / 180.0f), c = cosf(-tilts[t] * 3.14159265f / 180.0f);
+            float view[12] = {1, 0, 0, 0, c, s, 0, -s, c, 0, 0, 0}, focus[3] = {0, 0, 0}, p[4];
+            int k, j, i;
+
+            view[11] = distances[d];
+            renderer_shadow_frame(&renderer, view, focus, distances[d]);
+            assert(renderer.shadowPending);
+            for (k = 0; k < renderer.shadow.cascades && !(renderer.shadow.farDepth[k] > distances[d]); k++)
+                ;
+            assert(k < renderer.shadow.cascades);
+            for (j = 0; j < 4; j++) {
+                p[j] = renderer.shadow.fromView[k][12 + j];
+                for (i = 0; i < 3; i++)
+                    p[j] += (i == 2 ? distances[d] : 0.0f) * renderer.shadow.fromView[k][i * 4 + j];
+            }
+            assert(fabsf(p[0]) <= 1.0f && fabsf(p[1]) <= 1.0f && p[2] >= 0.0f && p[2] <= 1.0f);
+        }
+}
+
 int main(void)
 {
     struct Renderer renderer = {0};
@@ -245,9 +282,10 @@ int main(void)
     test_screen();
     test_world_view(&renderer);
     test_shadow_gate(&renderer);
+    test_shadow_focus();
     puts("projection: archived coordinates/depth/rays, distinct centres, vertex payload preservation and real ground picking passed");
     puts("renderer screen: named dimensions, clear colour, fog blending, depth clear and frame restore passed");
     puts("world view: device-projected meshes land on the CPU's pixels, depth and fog passed");
-    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength passed");
+    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength, the focus in its cascade from any tilt and distance passed");
     return 0;
 }

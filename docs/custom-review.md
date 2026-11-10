@@ -13555,7 +13555,7 @@ one that did.
 
 Validation, in `client-files` with `RAGEXE_MSAA=1`, against the build of the commit before from
 the same saved options: the 20 captures of the scene set above are identical with lightmaps on and
-with lightmaps off. `build.bat check` and the full `testsuild.bat` pass.
+with lightmaps off. `build.bat check` and the full `tests\build.bat` pass.
 
 ## The camera eases by real time (2026-11-09)
 
@@ -13585,7 +13585,7 @@ started (`motion_update.c`), so they were even; the camera was what jerked.
   (`c3d_ground15_update_water`) still advance once per tick; they move little of the view.
 
 Validation: the scene set's captures are identical to the commit before (the harness's frames
-take 16 ms each). `build.bat check` and the full `testsuild.bat` pass.
+take 16 ms each). `build.bat check` and the full `tests\build.bat` pass.
 
 ## A 24-bit depth buffer (2026-11-09)
 
@@ -13611,7 +13611,7 @@ before from the same saved options: the far captures differ by 29,149, 64,990 an
 at 1,500, 3,000 and 6,000 (the beds, the fountain, models' feet); the 20 captures of the scene
 set by 267 to 17,368, in rows of pixels where models meet the ground (curbs, planters, the beds'
 edges, walls), the depth ties now resolved at 24 bits; sprites, their shadows and effects are
-unchanged. `build.bat check` and the full `testsuild.bat` pass.
+unchanged. `build.bat check` and the full `tests\build.bat` pass.
 
 ## Shadows at the furthest zoom (2026-11-09)
 
@@ -13634,4 +13634,44 @@ shadows; tilting up brought the bottom of the view nearer than 8,000. Captures f
 Validation, in `client-files` with `RAGEXE_MSAA=1`: from 10,000 at -60 and -70 degrees the town
 now has its shadows (18,832 and 20,343 pixels differ from the capture without shadows); the 20
 captures of the scene set are identical to the commit before. `build.bat check` and the full
-`testsuild.bat` pass.
+`tests\build.bat` pass.
+
+## Shadows from a flat camera far off (2026-11-11)
+
+Patrick saw no shadows on Prontera's south gate, seen from outside the walls with the camera
+tilted almost level. `renderer_shadow_frame` fitted the cascades to the view's four corner rays
+alone: the band's depth range was where those rays crossed it, and each cascade covered its
+slice's part of each ray inside the band. RO's view is 15 degrees high, so at the flattest tilt
+(-5) the upper rays climb 2.5 degrees. From 2,500 units the eye is 218 above the focus, the upper
+rays leave the band (300 above the focus) at a depth of 1,866, the lower ones (12.5 degrees down)
+reach its floor (60 below) at 1,273, and the focus lies at 2,500: the cascades ended before the
+middle of the screen, which had no shadows. A little steeper, the upper rays meet the band only
+beyond the depth kept (four times the distance), and a slice that the lower rays crossed only near
+its front covered only that part, leaving the middle of the slice off its map. Over tilts from -5
+to -85 degrees, half a degree apart, and distances from 100 to 10,000, 50 apart, the focus lay
+outside the cascade the shaders pick for it in 1,553 of 32,039 views, all at tilts from -5 to -21
+and distances of 1,050 or more: beyond the last cascade at -5 to -9 degrees from distances of
+2,300 to 6,100 on, and otherwise off a cascade's map. Captures from 2,500 and 4,000 at -5 degrees
+showed shadows only along the bottom edge.
+
+- **The change.** `band_corners` finds the corners of the part of a slice of the view that lies in
+  the band: that part is convex, so they are the slice's own corners in the band and the points
+  where its twelve edges (the four corner rays and the edges of its near and far rectangles)
+  cross the band's two planes. The view's depth range in the band is that of its corners between
+  the near plane and the deepest depth kept, and each cascade covers its slice's corners as the
+  light sees them; where rounding leaves a slice none, it covers the whole slice, as before. Over
+  the same 32,039 views the focus now always lies on the map of the cascade picked for it.
+- **What it changes elsewhere.** Where the corner rays already held the band's extremes the depth
+  range is the same, and a cascade's square grows only by the points where its slice's rectangles
+  cross the band, so its texels may move. In the scene set only the two captures of
+  `camera_level_view` (a level camera) change, in the far trees' shading at the top of the screen
+  (91 and 47 pixels by more than 16).
+- **Test.** `test_projection` looks at the origin from tilts of -5, -8, -15, -35, -55 and -85
+  degrees and distances of 150 to 6,000 and checks that the focus lies in the cascade the shaders
+  pick for its depth, inside its map. With the old fit it lay beyond the last cascade from -5
+  degrees at 2,500 and 6,000 and from -8 at 6,000, and off the map from -8 at 2,500.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`: from 2,500 at -5 degrees the gate, its trees
+and the town behind it now have their shadows; from 10,000 at -70 degrees the shadows remain
+(21,852 pixels differ from the capture without shadows, 21,731 before); the scene set's other 11
+captures are identical. `build.bat check` and the full `tests\build.bat` pass.
