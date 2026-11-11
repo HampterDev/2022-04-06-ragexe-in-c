@@ -8,15 +8,16 @@ are for anyone changing it, person or agent.
 A reconstruction bug is a place where this tree does something the original exe does not. Fix it
 to match the original, even where the original's behaviour looks wrong.
 
-A bug the original has too is not a reconstruction bug, and a feature or UX change is not a bug
-fix at all. Make such changes only on purpose, and list each in `docs/changes.md`. When reviewing
-a fork or an outside patch, take only its reconstruction bugs.
+A bug the original has too is not a reconstruction bug. Fix it only on purpose, and list it in
+`docs/changes.md`. A feature, UX change or tool is not a bug fix at all and goes on `custom`, not
+here. When reviewing a fork or an outside patch, take only its reconstruction bugs.
 
 Read the original's assembly before deciding which it is. Follow the real dispatch, the jump
 table or vtable slot the code goes through, not a disassembler label's name: labels are often
 wrong. When the lift and a proposed fix both differ from the original, match the original.
 
-Fix every real bug you find, not a chosen few.
+Fix every real bug you find, not a chosen few. Leftovers found on the way, such as dead code, a
+half-removed feature or a name that lies, are part of the task: fix them rather than list them.
 
 ## Data from outside
 
@@ -34,11 +35,20 @@ a format string, and carry on. Do not assert or abort on such data.
 ## Changes and reverts
 
 Before reverting a commit, look for later commits built on it, such as a test changed to match
-it or a later commit that replaced part of it, and handle those too. Run the whole suite,
-`tests\build.bat`, before committing.
+it or a later commit that replaced part of it, and handle those too.
 
 Check every claim in a commit message or doc against the code. A commit message says what the
 original does and how that was checked.
+
+## Checking your work
+
+Before saying something works, run it the way it will be used, and say what was not checked.
+Another agent's finding, even "confirmed against the asm", is a lead until you have read the
+assembly yourself. Never start the client fullscreen to check something.
+
+While working, run the tests for the code you changed. Run the whole suite, `tests\build.bat`,
+once before committing, for everything going into the commit. A commit that changes only
+documentation needs no suite run.
 
 ## Commits
 
