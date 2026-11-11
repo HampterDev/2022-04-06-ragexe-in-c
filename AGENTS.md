@@ -72,8 +72,10 @@ Arguments go to CTest:
 
 Every test runs headless and silent: CTest gives it SDL's dummy video and audio drivers (`audio`
 the `disk` driver, which writes files), and on Windows the message boxes of the client code
-under test go to stderr (`tests/headless.h`). A test that needs a real window is labelled
-`interactive` and left out by `tests\build.bat`. Keep new tests that way.
+under test go to stderr (`tests/headless.h` for `platform_message_box`, `tests/headless_win32.h`
+for `platform/net_win32.c`'s own). A test that needs a real window is labelled `interactive` and
+left out by `tests\build.bat`; tests that need the game folder beside the checkout are labelled
+`client-files`. Keep new tests that way.
 
 ## Commits
 

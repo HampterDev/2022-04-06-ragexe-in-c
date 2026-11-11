@@ -18,7 +18,7 @@ where ninja >nul 2>nul || (echo *** tests\build.bat needs Ninja on PATH: Visual 
 set "OUT=%ROOT%\build\tests"
 REM A build\tests without a CMake cache holds the programs of the batch files before 2026-11-11.
 if exist "%OUT%" if not exist "%OUT%\CMakeCache.txt" rd /s /q "%OUT%"
-if not exist "%OUT%\CMakeCache.txt" (
+if not exist "%OUT%\build.ninja" (
   cmake -S "%ROOT%" -B "%OUT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
   if errorlevel 1 exit /b 1
 )
@@ -36,7 +36,7 @@ if not exist "%ORACLE_EXE%" (
 call "%ROOT%\tools\find_vcvars.bat" x86 || exit /b 1
 call "%VCVARS%" >nul
 set "OUT=%ROOT%\build\oracle"
-if not exist "%OUT%\CMakeCache.txt" (
+if not exist "%OUT%\build.ninja" (
   cmake -S "%ROOT%" -B "%OUT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DRAGE_ORACLE=ON
   if errorlevel 1 exit /b 1
 )

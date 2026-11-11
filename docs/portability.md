@@ -48,7 +48,9 @@ The matching classic-Mac branch in libpng's `pngpriv.h` also excludes `__APPLE__
 so current macOS uses `<math.h>` rather than the removed `<fp.h>`.
 
 `tests/CMakeLists.txt` declares the whole test suite, once for every platform (`rage_test`; its
-helpers say what each keyword does). Every platform builds the portable tests: strings,
+helpers say what each keyword does). Windows, Linux and macOS build the portable tests (Android
+configures with `-DBUILD_TESTING=OFF`, and the tests' platform library expects an iconv there):
+strings,
 containers, numbers, 3D math, XML, Lua bytecode, compiled Korean literals, frame timing, the
 platform layer (clock, files, threads, sockets, code pages, SHA-256), JPEG, two extracted
 production routines and the Python checks (source encoding, the library table's include check,
@@ -68,7 +70,8 @@ Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
 into files in its directory, `platform_window` the offscreen video driver, and `gfx_gl` keeps the
 platform's video driver, in a hidden window, for its OpenGL context. SDL shows no message box
 with the dummy video driver, and on Windows the client libraries compile `platform/window_sdl.c`
-with `tests/headless.h`, which writes the client's message boxes to stderr even when a test
+with `tests/headless.h` and `platform/net_win32.c`, whose two boxes call `MessageBoxA` itself,
+with `tests/headless_win32.h`, which write the client's message boxes to stderr even when a test
 program runs by hand. `platform_probe` shows a real window and is labelled `interactive`; leave
 it out with `ctest -LE interactive`.
 
@@ -163,7 +166,7 @@ IJL; visual comparison of full in-game screenshots is still pending.
   `_sdl.c` file for every platform (`platform/window_sdl.c`, `core/app_sdl.c`). Each
   implementation file starts with the `#ifdef _WIN32` or `#ifndef _WIN32` that selects it, so
   `build.bat`, which compiles every file under `src/`, and the client's CMake glob each get one
-  implementation; `rage_platform` in `CMakeLists.txt` names its files by the same rule. Small
+  implementation; `platform_files` in `tests/CMakeLists.txt` names its files by the same rule. Small
   differences inside a shared file (an include, one call) stay as `#ifdef`s where they are.
 - Runtime containers and XML nodes are not serialized layouts. Their old x86
   offset/size checks were removed as those modules were made buildable on x64.
@@ -232,9 +235,11 @@ Linux headless smoke runs can use `SDL_VIDEODRIVER=dummy`; that does not validat
 a native desktop window. Linux desktop builds need SDL's X11/Wayland development
 dependencies; consult the [SDL build documentation](https://wiki.libsdl.org/SDL3/README-linux).
 
-The CI matrix covers Linux with sanitizers and macOS arm64 with the probe. The Windows job
-builds the complete client and the scene harness and runs `tests\build.bat`, the whole suite;
-its oracle tests are skipped there, since the original executable is not in the repository.
+The CI matrix covers Windows x64 (the CMake `-A x64` Debug build, which declares the whole suite
+there), Linux with sanitizers and macOS arm64 with the probe. The Windows job also builds the
+complete client with the library table's check (`build.bat check`) and the scene harness, and
+runs `tests\build.bat`, the whole suite in Release; its oracle tests are skipped there, since the
+original executable is not in the repository.
 The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Workflow configuration is not evidence of a successful run; record results when
 the workflow actually completes.
@@ -293,7 +298,7 @@ beyond the bounds, feeds every prefix of each file and thousands of damaged copi
 (on Windows each ending where readable memory ends), and mixes through SDL's disk driver: a voice
 plays its sound once, the music its two loops, a gain halves, a stereo sound stays stereo and the
 mono mode puts the mix in both channels. Given a game folder (`RAGE_AUDIO_GAME_DIR`, by default
-`client-files` beside the checkout; the test is labelled `game`) it also decodes PCM, 8-bit,
+`client-files` beside the checkout; the test is labelled `client-files`) it also decodes PCM, 8-bit,
 stereo and both ADPCM sounds from `data.grf` and `BGM\01.mp3`, and mixes two effects with the music;
 without one that part is skipped. `tests/fixtures/make_audio_fixtures.py` regenerates the fixtures.
 
@@ -615,8 +620,9 @@ ships; a 64-bit program skips those and would need the x64 redistributable insta
 `vendor\build_vendor.bat` writes what it built the libraries as into `build\vendor\kind.txt`, and a
 `build\vendor` without that file, or with another kind, such as a checkout's 32-bit libraries from
 before 2026-11-11, is removed and built again. The tests do not use `build\vendor`'s libraries:
-CMake builds the ones they link from `vendor/`, and SDL through `cmake/SDL3.cmake`, from the source
-in `build\vendor\sdl3-src` when it is there.
+CMake builds the ones they link from `vendor/`, and SDL through `cmake/SDL3.cmake`, unpacked into
+the tests' build from `build\vendor\sdl3.tar.gz`, the same pinned and hash-checked archive, when it
+is there.
 
 SDL is built with its video and GPU subsystems as well as audio, for the renderer of
 `plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its

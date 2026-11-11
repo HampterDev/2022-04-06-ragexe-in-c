@@ -139,6 +139,7 @@ endfunction()
 rage_client_link(platform/window_sdl.c SDL3::SDL3)
 if(WIN32)
     rage_client_options(platform/window_sdl.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless.h)
+    rage_client_options(platform/net_win32.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless_win32.h)
     # Only the platform tests link it, which were never held to more than /W1: at /W3 its winsock
     # calls are deprecated (C4996).
     rage_client_warnings(1 platform/net_win32.c)
@@ -283,12 +284,12 @@ function(rage_test_objects name)
 endfunction()
 
 # rage_test(<name> [<source>...] [MAIN <file>] [CLIENT <file under src>...] [OBJECTS <name>...]
-#           [LIBS <library>...] [ARGS <argument>...] [EXIT <code>] [LABELS ...] [ENVIRONMENT ...]
+#           [LIBS <library>...] [ARGS <argument>...] [LABELS ...] [ENVIRONMENT ...]
 #           and the options of rage_test_compile)
 # Builds test_<name> from MAIN (tests/test_<name>.c by default) and the sources, and runs it as the
 # test <name> (rage_test_run).
 function(rage_test name)
-    cmake_parse_arguments(PARSE_ARGV 1 T "W1;W4;NO_WX;WE4013" "MAIN;EXIT;FORCE_INCLUDE"
+    cmake_parse_arguments(PARSE_ARGV 1 T "W1;W4;NO_WX;WE4013" "MAIN;FORCE_INCLUDE"
         "CLIENT;OBJECTS;GENERATED;DEFINES;OPTIONS;INCLUDES;LIBS;ARGS;LABELS;ENVIRONMENT")
     if(NOT T_MAIN)
         set(T_MAIN tests/test_${name}.c)
@@ -312,11 +313,7 @@ function(rage_test name)
     else()
         target_link_libraries(${target} PRIVATE m)
     endif()
-    set(run COMMAND ${target} ${T_ARGS} LABELS ${T_LABELS} ENVIRONMENT ${T_ENVIRONMENT})
-    if(T_EXIT)
-        list(APPEND run EXIT ${T_EXIT})
-    endif()
-    rage_test_run(${name} ${run})
+    rage_test_run(${name} COMMAND ${target} ${T_ARGS} LABELS ${T_LABELS} ENVIRONMENT ${T_ENVIRONMENT})
 endfunction()
 
 # rage_test_run(<name> COMMAND <target or program> [<argument>...] [EXIT <code>] [LABELS ...]
@@ -355,11 +352,9 @@ endfunction()
 # generated/<name> (a test reads it with GENERATED <name>). The script is called with the
 # repository and that directory unless ARGS says otherwise.
 function(rage_test_generate name)
-    cmake_parse_arguments(PARSE_ARGV 1 G "" "SCRIPT" "OUTPUTS;DEPENDS;ARGS")
+    cmake_parse_arguments(PARSE_ARGV 1 G "" "" "OUTPUTS;DEPENDS;ARGS")
     set(dir ${CMAKE_CURRENT_BINARY_DIR}/generated/${name})
-    if(NOT G_SCRIPT)
-        set(G_SCRIPT tests/extract_${name}.py)
-    endif()
+    set(script ${PROJECT_SOURCE_DIR}/tests/extract_${name}.py)
     if(NOT G_ARGS)
         set(G_ARGS ${PROJECT_SOURCE_DIR} ${dir})
     endif()
@@ -375,8 +370,8 @@ function(rage_test_generate name)
     endforeach()
     file(MAKE_DIRECTORY ${dir})
     add_custom_command(OUTPUT ${G_OUTPUTS}
-        COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/${G_SCRIPT} ${G_ARGS}
-        DEPENDS ${PROJECT_SOURCE_DIR}/${G_SCRIPT} ${depends}
+        COMMAND Python3::Interpreter ${script} ${G_ARGS}
+        DEPENDS ${script} ${depends}
         COMMENT "Extracting ${name} for the tests" VERBATIM)
     add_custom_target(rage_generate_${name} DEPENDS ${G_OUTPUTS})
 endfunction()
@@ -429,8 +424,8 @@ rage_test(latest_achievements WE4013 CLIENT std/tree.c GENERATED latest_achievem
 
 # Sound (platform/audio_sdl.c, which the test includes), where SDL is part of the build: decoding,
 # and mixing through SDL's disk driver into files in the test's directory, never to a sound device.
-# Given a game folder (RAGE_AUDIO_GAME_DIR, by default client-files beside the checkout) it also
-# decodes and mixes the game's own sounds; it says so when it skips them.
+# Given a game folder (RAGE_AUDIO_GAME_DIR, by default client-files beside the checkout; label
+# client-files) it also decodes and mixes the game's own sounds; it says so when it skips them.
 if(TARGET SDL3::SDL3)
     get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
     set(RAGE_AUDIO_GAME_DIR "${default_game}" CACHE PATH "Game folder whose data.grf and BGM test_audio decodes and mixes")
@@ -442,7 +437,7 @@ if(TARGET SDL3::SDL3)
     rage_test(audio CLIENT core/cstr.c core/memory.c fileio/grf_cipher.c fileio/grf_mapfile.c fileio/grf_pak.c
         std/std_sort.c ${platform_files} DEFINES ${audio_defines} LIBS rage_dr_mp3 rage_zlib SDL3::SDL3
         ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures ${RAGE_AUDIO_GAME_DIR} ENVIRONMENT SDL_AUDIO_DRIVER=disk
-        LABELS game)
+        LABELS client-files)
 endif()
 
 # ---- Windows, 32- and 64-bit ----

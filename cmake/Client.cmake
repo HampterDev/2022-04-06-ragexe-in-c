@@ -149,6 +149,6 @@ if(BUILD_TESTING AND NOT ANDROID)
             --exe $<TARGET_FILE:ragexe_scenes> --game ${RAGE_SCENE_GAME_DIR} --out ${CMAKE_BINARY_DIR}/scenes
             ${RAGE_SCENE_COMPARE})
         # run.py gives the client SDL's dummy audio driver; the harness picks its own video driver.
-        set_tests_properties(scenes PROPERTIES TIMEOUT 1800 LABELS game)
+        set_tests_properties(scenes PROPERTIES TIMEOUT 1800 LABELS client-files)
     endif()
 endif()

@@ -14459,14 +14459,16 @@ objects). The CMake build declared 23 more tests for Linux, macOS and Windows, w
   themselves (`achievement_owner`, `chat_layout_save`, `com_lifecycle`, `headgear_names`,
   `item_definitions`, `item_restrictions`, `lua_boundaries`, `lua_calls`, `lua_data_managers`,
   `pet_accessory`, `startup_order`, `town_info`, `win_utf8`) and `crash_dialog` its dialog; the
-  tests that link `platform/window_sdl.c` could reach `platform_message_box` (none did in a passing
-  run). SDL shows no box with the dummy video driver; in the client libraries `window_sdl.c` is
-  also compiled with `tests/headless.h`, which writes the box to stderr, so that a test program
-  run by hand stays without one too. `audio` plays to SDL's `disk` driver, into files in its own
-  directory, `platform_window` gets the offscreen video driver for the clipboard, `gfx_gl` keeps
-  the platform's video driver for its OpenGL context, in a hidden window, and `platform_probe`,
-  whose window shows, is labelled `interactive`, which `tests\build.bat` leaves out. No test starts
-  the client. The scene captures are outside the suite: `tests/scenes/run.py` gives the client
+  tests that link `platform/window_sdl.c` could reach `platform_message_box` (none did in a
+  passing run). SDL shows no box with the dummy video driver; in the client libraries
+  `window_sdl.c` is also compiled with `tests/headless.h`, which writes the box to stderr, so that
+  a test program run by hand stays without one too, and `platform/net_win32.c`, whose two boxes
+  for a ws2_32.dll without send or recv call `MessageBoxA` themselves, with
+  `tests/headless_win32.h`. `audio` plays to SDL's `disk` driver, into files in its own directory,
+  `platform_window` gets the offscreen video driver for the clipboard, `gfx_gl` keeps the
+  platform's video driver for its OpenGL context, in a hidden window, and `platform_probe`, whose
+  window shows, is labelled `interactive`, which `tests\build.bat` leaves out. No test starts the
+  client. The scene captures are outside the suite: `tests/scenes/run.py` gives the client
   `SDL_AUDIO_DRIVER=dummy` unless a driver is set, and on Windows the harness never shows the
   client's window (`tests/scenes/scene_app_win.c`).
 - **Phase 1 and the sound change.** Merged after them, the suite takes over their test changes:
@@ -14477,12 +14479,15 @@ objects). The CMake build declared 23 more tests for Linux, macOS and Windows, w
   with `platform/code_page_win32.c` instead, `language_input` links SDL in place of
   `platform/win_utf8.c`, `tag_text_viewer` and `url_link` get SDL's headers, `com_lifecycle`
   extracts its startup tail from `core/app_sdl.c`, and `audio` (`tests/test_audio.c`, in place of
-  `miles_sdl`) runs on every platform with SDL, labelled `game`: with `client-files` beside the
-  checkout (`RAGE_AUDIO_GAME_DIR`) it decodes and mixes the game's own sounds. SDL comes from
-  `cmake/SDL3.cmake` on Windows too, built with `vendor\build_vendor.bat`'s options and from the
-  source that script fetched into `build\vendor\sdl3-src`, at the commit both pin, when it is
-  there; it compiles with its own options, since its `/utf-8` contradicts the client's character
-  sets. `dr_mp3` is a CMake library on Windows as well.
+  `miles_sdl`) runs on every platform with SDL, labelled `client-files` (as the scene test is; a
+  `game` label would also have selected the libraries `game-state` and the rest under `-L`): with
+  `client-files` beside the checkout (`RAGE_AUDIO_GAME_DIR`) it decodes and mixes the game's own
+  sounds. SDL comes from `cmake/SDL3.cmake` on Windows too, built with
+  `vendor\build_vendor.bat`'s options and unpacked into the tests' build from the archive that
+  script downloaded into `build\vendor` when it is there (the same pinned, hash-checked archive),
+  so that `build_vendor.bat` rebuilding `build\vendor` from clean leaves the tests' copy alone.
+  It compiles with its own options, since its `/utf-8` contradicts the client's character sets.
+  `dr_mp3` is a CMake library on Windows as well.
 - **Every configuration.** The tests' directory drops `NDEBUG` (assertions stay on, in the tests
   and the client files they link) and compiles with `/Gy /Gw /GF` and links with `/OPT:REF` in
   every configuration, as the batch files' optimized builds did. The `-A x64` Debug configuration
@@ -14498,17 +14503,23 @@ objects). The CMake build declared 23 more tests for Linux, macOS and Windows, w
   reaches; `-R <regex>` picks tests by name.
 
 Validation, on this machine (24 cores, with other agents at work on it):
-`tests\build.bat` from a clean `build\tests` and `build\oracle` took 62 s, again without a change
-21 s (CTest 16 s, of which `library_includes` alone takes 15 s), after touching `src/std/string.c`
-24 s (13 compiles: the shared object, seven fixture copies and five tests that include the
-file; 171 relinks) and after touching `src/render/rp_project.c` 22 s (2 compiles, 29 relinks).
-The old suite took 514 s and rebuilt everything every time. All 311 tests and the 6 oracle tests
-pass; every line the old suite's tests printed comes out the same (363 lines,
-effect and trace digests included), and the other 13 lines come from the tests the old suite did
-not run. `build.bat check` passes. The CMake `-A x64` (311 tests) and `-A Win32` (24) Debug
-configurations build and pass. Linux, macOS and Android were not built here; their tests now link
-the client libraries (the platform library with `_POSIX_C_SOURCE` and, on Apple,
-`_DARWIN_C_SOURCE`, as `rage_platform` had) instead of compiling the files themselves.
+`tests\build.bat` from a clean `build\tests` and `build\oracle` took 62 s before the merge and
+75 s after it, which brought SDL into the tests' build; again without a change 20 s (CTest 16 s,
+of which `library_includes` alone takes 15 s), after touching `src/std/string.c` 23 s (13
+compiles: the shared object, seven fixture copies and five tests that include the file; 171
+relinks) and after touching `src/render/rp_project.c` 21 s (2 compiles, 29 relinks). The old
+suite took 514 s and rebuilt everything every time. Before the merge all 311 tests and the 6
+oracle tests passed, and every line the old suite's tests printed came out the same (363 lines,
+effect and trace digests included; the other 13 lines come from the tests the old suite did not
+run). After it 64-bit Windows declares 312 tests (`audio` in place of nothing: `miles_sdl` was
+POSIX-only), and all of them and the 6 oracle tests pass; of the 385 lines `gpu-world`'s old suite
+printed, 381 come out the same, and the other four are a batch file's own echo, an extraction
+script's, and two timings. `build.bat check` passes. The CMake `-A x64` (312 tests) and `-A Win32`
+(24) Debug configurations build and pass. Linux, macOS and Android were not built here; off
+Windows the tests now link the client libraries, every one of them compiled with
+`_POSIX_C_SOURCE` (and `_DARWIN_C_SOURCE` on Apple), which `rage_platform` gave only the platform
+files and which only adds declarations, instead of compiling the files themselves. Android
+configures with `-DBUILD_TESTING=OFF`.
 
 ## The x87 precision setting goes (START-073, 2026-11-11)
 
@@ -14525,7 +14536,6 @@ with its `<float.h>`, and from `tests/test_effect_trace.c`, whose digest is unch
 did nothing on x64 there either. Nothing that the client draws or sends changes.
 
 Also: `tests/captcha_window_test_boundaries.h` and `tests/name_card_owner_support.c`, which nothing
-in the tree refers to (no batch file compiled them either), are removed; `tests\build.bat`
-says when Ninja is missing, and the Windows CI job installs a pinned Ninja from PyPI
-(`ninja==1.11.1.1`), since the runner image's Visual Studio CMake tools are not certain to put one
-on `PATH`.
+in the tree refers to (no batch file compiled them either), are removed, and `tests\build.bat`
+says when Ninja is missing. It finds Visual Studio's own: `vcvars64.bat` puts the CMake tools'
+`ninja.exe` on `PATH` (checked here with nothing else on it), which the Windows CI job relies on.

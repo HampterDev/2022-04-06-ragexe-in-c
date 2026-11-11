@@ -37,14 +37,10 @@ jobs:
       - name: Build Windows client
         if: matrix.os == 'windows-2022'
         shell: cmd
-        run: build.bat && tests\scenes\build.bat
-      # tests\build.bat builds with Ninja, which the image's Visual Studio may not put on PATH:
-      # a pinned one from PyPI.
-      - name: Ninja
-        if: matrix.os == 'windows-2022'
-        run: python -m pip install ninja==1.11.1.1
-      # The same suite as the client is built: Release, /MT, Ninja; the oracle tests skip
-      # themselves without the original executable.
+        run: build.bat check && tests\scenes\build.bat
+      # The same suite as the client is built: Release, /MT, with the Ninja that vcvars64 puts on
+      # PATH from Visual Studio's CMake tools; the oracle tests skip themselves without the original
+      # executable. The library table's link check ran with build.bat check above.
       - name: Test Windows client
         if: matrix.os == 'windows-2022'
         shell: cmd
