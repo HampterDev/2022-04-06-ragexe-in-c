@@ -27,7 +27,6 @@ static void *checked_calloc(size_t count, size_t size)
     if (p) memset(p, 0, count * size);
     return p;
 }
-#define MSS_IMPORT
 #define malloc checked_malloc
 #define calloc checked_calloc
 #define free checked_free
@@ -68,12 +67,12 @@ void game_file_mgr_release_data(struct GameFileMgr *mgr, void *data)
 BYTE game_file_mgr_is_file_exist(struct GameFileMgr *mgr, const char *name, BYTE disk)
 { (void)mgr; (void)name; (void)disk; return (BYTE)file_present; }
 
-int __stdcall _AIL_file_type(const void *data, unsigned size)
+int _AIL_file_type(const void *data, unsigned size)
 {
     assert(data && size == (unsigned)input_size && !memcmp(data, input, size));
     ++type_calls; return file_kind;
 }
-int __stdcall _AIL_WAV_info(const void *data, struct AilSoundInfo *info)
+int _AIL_WAV_info(const void *data, struct AilSoundInfo *info)
 {
     ++info_calls;
     if (info_failure) return 0;
@@ -99,12 +98,12 @@ static int decode(void **out, unsigned *size)
     *size = empty_output ? 0 : 16;
     return !decode_failure;
 }
-int __stdcall _AIL_decompress_ADPCM(const struct AilSoundInfo *info, void **out, unsigned *size)
+int _AIL_decompress_ADPCM(const struct AilSoundInfo *info, void **out, unsigned *size)
 { assert(info && info->dataLen == 8); return decode(out, size); }
-int __stdcall _AIL_decompress_ASI(const void *data, unsigned size, const char *name,
+int _AIL_decompress_ASI(const void *data, unsigned size, const char *name,
     void **out, unsigned *out_size, void *callback)
 { assert(data && size == (unsigned)input_size && name && !callback); return decode(out, out_size); }
-void __stdcall _AIL_mem_free_lock(void *p)
+void _AIL_mem_free_lock(void *p)
 {
     unsigned i;
     assert(p);

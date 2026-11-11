@@ -157,7 +157,7 @@ static void check_on(void)
 static struct Mode *const current_mode = (struct Mode *)0x6d6f;
 static int screenshots;
 struct Mode *client_current_mode(void) { return current_mode; }
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     assert(mode == current_mode && message == MODE_MSG_SCREENSHOT && !a && !b && !c && !d);
     ++screenshots;

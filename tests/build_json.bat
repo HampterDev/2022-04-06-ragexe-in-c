@@ -8,7 +8,7 @@ set "SANITIZE="
 if "%~1"=="asan" (set "DIR=json_asan" & set "SANITIZE=/fsanitize=address /Z7")
 if not exist "%ROOT%\build\tests\%DIR%" mkdir "%ROOT%\build\tests\%DIR%"
 pushd "%ROOT%\build\tests\%DIR%" || exit /b 1
-set "CFLAGS=%SANITIZE% /nologo /W3 /WX /Gy /Gw /O2 /MD /D_CRT_SECURE_NO_WARNINGS /DYYJSON_READER_DEPTH_LIMIT=256 /DYYJSON_WRITER_DEPTH_LIMIT=256"
+set "CFLAGS=%SANITIZE% /nologo /W3 /WX /Gy /Gw /O2 /MT /D_CRT_SECURE_NO_WARNINGS /DYYJSON_READER_DEPTH_LIMIT=256 /DYYJSON_WRITER_DEPTH_LIMIT=256"
 cl %CFLAGS% /c /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\src\core\owned_text.c" "%ROOT%\src\json\service_json.c" "%ROOT%\src\json\json_tree.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" "%ROOT%\tests\json_test_support.c" "%ROOT%\vendor\yyjson-0.13.0\yyjson.c"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 lib /nologo /out:json_text_storage.lib owned_text.obj

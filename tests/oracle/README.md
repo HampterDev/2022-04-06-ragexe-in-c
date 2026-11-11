@@ -13,9 +13,10 @@ routine ever reaches one. Globals therefore hold the file's `.data` values; a ro
 state the client fills at start-up needs that state seeded (`oracle_addr`), or the reading routine
 patched (`oracle_patch_return`), and the lifted side held to the same answer.
 
-Every test is a 32-bit program linked with `/BASE:0x10000000 /FIXED /DYNAMICBASE:NO`; a fault
-inside the original is caught with SEH and reported with its address in the original image
-(`test_skill_poses.c` shows the pattern). `build.bat` builds and runs them all; it needs the
+Every test is a 32-bit program, as the original is (`tools\find_vcvars.bat x86`), linked with
+`/BASE:0x10000000 /FIXED /DYNAMICBASE:NO`; they are the suite's only 32-bit programs, the rest is
+64-bit like the client. A fault inside the original is caught with SEH and reported with its
+address in the original image (`test_skill_poses.c` shows the pattern). `build.bat` builds and runs them all; it needs the
 original executable at `%ORACLE_EXE%`, by default `..\client-files\2022-04-06_Ragexe_1648707856.exe`
 beside this checkout, and `tests\build.bat` runs it only when that file exists.
 

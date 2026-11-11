@@ -2,12 +2,14 @@
 
 The client draws the emperium, the WoE guardians, the guild flag and the treasure box as
 Granny 2.1 models (`data\model\3dmob\*.gr2`) with animations from `data\model\3dmob_bone\*.gr2`.
-Windows decodes them with the game's `granny2.dll`. There is no Granny for 64-bit Windows, Linux, macOS
-or Android, so those builds read the same models from glTF 2.0 files that this tool writes once
-per game installation, using `granny2.dll` to do the decoding.
+The original decodes them with the game's `granny2.dll`, which exists only for 32-bit Windows. The
+client is 64-bit on Windows and also runs on Linux, macOS and Android, so it reads the same models
+from glTF 2.0 files that this tool writes once per game installation, using `granny2.dll` to do the
+decoding. The tool is therefore a 32-bit program, like the oracle tests (and the `lua_chunk` that
+writes the Lua test fixture); it compiles zlib in from `vendor\zlib-1.2.11` and needs nothing else
+built first.
 
 ```bat
-build.bat
 tools\granny_export\build.bat
 build\granny_export.exe <game directory>
 ```
@@ -39,7 +41,10 @@ What a file holds:
 bindings and whether it is rigid, a texture's alpha, the animation's duration. The files open in
 Blender and other glTF tools, in Granny's own axes and units.
 
-`src/resources/granny_gltf.c` implements the part of the Granny API the client calls on these
-files. The scenes `granny_models` and `granny_dead` (`tests/scenes`) compare it with
-`granny2.dll`: with the Windows scene harness on the same clock the two match except for single
-pixels along edges.
+`src/resources/granny_gltf.c` implements the part of the Granny API the client calls on these files.
+The scenes `granny_models`, `granny_dead` and `guild_flags` (`tests/scenes`) compared it with
+`granny2.dll` while there was a 32-bit client. In the last comparison, on 2026-11-11, the 64-bit
+scene harness on the same clock captured `granny_dead` and `guild_flags` within 1 per channel,
+`guild_flags_later` with 2 pixels of the flag's tassel apart, and `granny_dying` and `granny_models`
+with a few steps of shading over the models and more along their edges: 292 and 7,058 pixels more
+than 1 apart, 16 and 365 more than 16 ([portability notes](../../docs/portability.md#linux-client)).

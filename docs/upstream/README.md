@@ -251,6 +251,12 @@ picked onto `purist` with `git cherry-pick -x`.
 | [875ce6c0b4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/875ce6c0b4a9f0250e0236cc7a7c9b789dfc3a5b) | Not needed on purist, code removed (purist starts with defaults already) | Start with the setup defaults when the setup keys are missing |
 | [9448917b02](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9448917b02b986a9f27731526bb3d49c0d94ed06) | [98eb46a8d0](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/98eb46a8d0985dd98ad8119e1a6065441df4b323) | Skip UI quads when a window has no canvas |
 
+The `cps.dll` pick (`f9808810`) applied only to the 32-bit client, which `custom` no longer builds
+since 2026-11-11 (`docs/custom-review.md`, "One 64-bit Windows client"): no build links `cps.dll`,
+the client inflates through its bundled zlib, and `tests/build_cps_imports.bat` went with the
+32-bit link. A `cps.dll` that does more than zlib, such as GRF Editor's for the GRFs it encrypts,
+has no effect on `custom` (`docs/portability.md`, *Windows client*). `main` keeps the fix.
+
 ## Foundation fixes ported from `main`, 2026-11-08
 
 `main` had moved on to `origin/main` at `b5e3ec71` with commits `custom` had not looked at:

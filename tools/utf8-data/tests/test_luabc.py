@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from helpers import K, U, compile_lua, needs_lua
@@ -48,6 +49,44 @@ class BytecodeTest(unittest.TestCase):
     def test_rejects_non_bytecode(self):
         with self.assertRaises(luabc.BytecodeError):
             luabc.read(b'tbl = {}')
+
+
+# The game's .lub files were written by 32-bit Lua: 4-byte sizes. compile_lua makes 8-byte ones,
+# so this chunk of the same form (tests/fixtures/lua51_win32.lub, docs/portability.md) keeps the
+# real format covered.
+WIN32_CHUNK = os.path.join(dump.ROOT, 'tests', 'fixtures', 'lua51_win32.lub')
+
+
+class Win32ChunkTest(unittest.TestCase):
+    def setUp(self):
+        with open(WIN32_CHUNK, 'rb') as f:
+            self.data = f.read()
+
+    def test_sizes_are_four_bytes(self):
+        self.assertEqual(self.data[8], 4)
+
+    def test_read_write_is_byte_identical(self):
+        self.assertEqual(luabc.write(luabc.read(self.data)), self.data)
+
+    def test_rewriting_a_constant_keeps_four_byte_lengths(self):
+        chunk = luabc.read(self.data)
+        _, _, c = next(luabc.string_constants(chunk))
+        self.assertEqual(c.value, K('안녕') + b'\0suffix')
+        value = U('안녕') + b' suffix'
+        luabc.set_string(chunk, c, value)
+        self.assertEqual(c.raw[:4], (len(value) + 1).to_bytes(4, 'little'))
+        out = luabc.write(chunk)
+        self.assertEqual(len(out) - len(self.data), len(value) - len(K('안녕') + b'\0suffix'))
+        self.assertEqual(luabc.structure_without_strings(luabc.read(out)),
+                         luabc.structure_without_strings(luabc.read(self.data)))
+        self.assertEqual(luabc.write(luabc.read(out)), out)
+
+    @needs_lua
+    def test_luadump_loads_the_rewritten_chunk(self):
+        chunk = luabc.read(self.data)
+        _, _, c = next(luabc.string_constants(chunk))
+        luabc.set_string(chunk, c, U('안녕') + b' suffix')
+        self.assertEqual(dump.run([luabc.write(chunk)]), [])
 
 
 if __name__ == '__main__':

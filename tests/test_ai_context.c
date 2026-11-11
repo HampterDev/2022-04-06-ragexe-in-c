@@ -54,7 +54,7 @@ intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intp
     assert(active && message_count < 8);
     message_ids[message_count++] = message;
     if (message == 0x46) memcpy(use_data, (const void *)a, sizeof use_data);
-    if (message == 0x45) { use_data[0] = a; use_data[1] = b; use_data[2] = c; }
+    if (message == 0x45) { use_data[0] = (int)a; use_data[1] = (int)b; use_data[2] = (int)c; }
     assert(d == 0);
     return 0;
 }

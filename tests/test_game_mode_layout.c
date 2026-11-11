@@ -236,8 +236,10 @@ int main(int argc, char **argv)
     }
     for (i = 0; i < trace_count * sizeof *trace; ++i)
         digest = (digest ^ ((const unsigned char *)trace)[i]) * UINT32_C(16777619);
-    /* Removing the screenshot prefix eliminates one allocation/free per round. */
-    assert(trace_count == 6562 && digest == UINT32_C(0x274efe64));
+    /* Removing the screenshot prefix eliminates one allocation/free per round. The 64-bit trace
+       is the 32-bit one (digest 274efe64) but for the sizes of 384 allocations holding pointers:
+       32 bytes for 16, 16 for 8 and 192 for 100. */
+    assert(trace_count == 6562 && digest == UINT32_C(0x0d45e24c));
     if (argc == 2) {
         FILE *file = fopen(argv[1], "wb");
         assert(file && fwrite(trace, sizeof *trace, trace_count, file) == trace_count);

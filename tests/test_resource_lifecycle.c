@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "owned_storage_test_allocator.h"
-#define GRANNY_IMPORT
-#define MSS_IMPORT
 static void *lifecycle_calloc(size_t count, size_t size)
 {
     void *p = checked_malloc(count * size);
@@ -86,71 +84,68 @@ void mat_multiply(float *out, const float *a, const float *b) { (void)out; (void
 void mat_set_rotate_z(float *out, float angle) { (void)out; (void)angle; abort(); }
 const char *session_get_job_name(struct Session *session, unsigned job, int sex)
 { assert(session == &g_session1 && job > 0 && sex == -1); last_lookup_job = job; return job_model_name; }
-granny_control *__stdcall _GrannyPlayControlledAnimation(float time, granny_animation *a, granny_model_instance *m)
+granny_control *_GrannyPlayControlledAnimation(float time, granny_animation *a, granny_model_instance *m)
 { (void)time; (void)a; (void)m; abort(); }
-void __stdcall _GrannySetControlLoopCount(granny_control *p, int count) { (void)p; (void)count; abort(); }
-void __stdcall _GrannySetControlActive(granny_control *p, BYTE active) { (void)p; (void)active; abort(); }
-void __stdcall _GrannyFreeControl(granny_control *p) { (void)p; abort(); }
-void __stdcall _GrannySetModelClock(granny_model_instance *p, float time) { (void)p; (void)time; abort(); }
-void __stdcall _GrannySampleModelAnimations(granny_model_instance *p, int first, int count, granny_local_pose *pose)
+void _GrannySetControlLoopCount(granny_control *p, int count) { (void)p; (void)count; abort(); }
+void _GrannySetControlActive(granny_control *p, BYTE active) { (void)p; (void)active; abort(); }
+void _GrannyFreeControl(granny_control *p) { (void)p; abort(); }
+void _GrannySetModelClock(granny_model_instance *p, float time) { (void)p; (void)time; abort(); }
+void _GrannySampleModelAnimations(granny_model_instance *p, int first, int count, granny_local_pose *pose)
 { (void)p; (void)first; (void)count; (void)pose; abort(); }
-void __stdcall _GrannyBuildWorldPose(granny_skeleton *p, int first, int count, granny_local_pose *pose,
+void _GrannyBuildWorldPose(granny_skeleton *p, int first, int count, granny_local_pose *pose,
     const float *offset, granny_world_pose *world)
 { (void)p; (void)first; (void)count; (void)pose; (void)offset; (void)world; abort(); }
-void __stdcall _GrannyFreeCompletedModelControls(granny_model_instance *p) { (void)p; abort(); }
-float *__stdcall _GrannyGetWorldPoseComposite4x4Array(granny_world_pose *p) { (void)p; abort(); }
-float *__stdcall _GrannyGetWorldPoseComposite4x4(granny_world_pose *p, int bone) { (void)p; (void)bone; abort(); }
-int *__stdcall _GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *p) { (void)p; abort(); }
-int *__stdcall _GrannyGetMeshTriangleGroups(granny_mesh *p) { (void)p; abort(); }
-void *__stdcall _GrannyGetMeshVertices(granny_mesh *p) { (void)p; abort(); }
-void __stdcall _GrannyDeformVertices(granny_mesh_deformer *p, const int *bones, const float *matrix,
+float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *p) { (void)p; abort(); }
+float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *p, int bone) { (void)p; (void)bone; abort(); }
+int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *p) { (void)p; abort(); }
+int *_GrannyGetMeshTriangleGroups(granny_mesh *p) { (void)p; abort(); }
+void *_GrannyGetMeshVertices(granny_mesh *p) { (void)p; abort(); }
+void _GrannyDeformVertices(granny_mesh_deformer *p, const int *bones, const float *matrix,
     int count, const void *from, void *to)
 { (void)p; (void)bones; (void)matrix; (void)count; (void)from; (void)to; abort(); }
-int __stdcall _GrannyGetMeshBytesPerIndex(granny_mesh *p) { (void)p; abort(); }
-void *__stdcall _GrannyGetMeshIndices(granny_mesh *p) { (void)p; abort(); }
+int _GrannyGetMeshBytesPerIndex(granny_mesh *p) { (void)p; abort(); }
+void *_GrannyGetMeshIndices(granny_mesh *p) { (void)p; abort(); }
 
 static void *sdk_alloc(void) { void *p = checked_malloc(1); if (p) ++sdk_handles; return p; }
 static void sdk_free(void *p) { assert(p && sdk_handles); --sdk_handles; checked_free(p); }
-BYTE __stdcall _GrannyVersionsMatch_(int a, int b, int c, int d)
+BYTE _GrannyVersionsMatch_(int a, int b, int c, int d)
 { assert(a == 2 && b == 1 && !c && d == 5); return (BYTE)sdk_version; }
-granny_file *__stdcall _GrannyReadEntireFileFromMemory(int size, void *data)
+granny_file *_GrannyReadEntireFileFromMemory(int size, void *data)
 { assert(size == sizeof file_data && data == file_data); return sdk_read ? sdk_alloc() : NULL; }
-granny_file_info *__stdcall _GrannyGetFileInfo(granny_file *file)
+granny_file_info *_GrannyGetFileInfo(granny_file *file)
 { assert(file); return sdk_info ? &info : NULL; }
-void __stdcall _GrannyFreeFileSection(granny_file *file, int section)
-{ assert(file && (section == 1 || section == 2 || section == 4 || section == 5)); }
-void __stdcall _GrannyFreeFile(granny_file *p) { sdk_free(p); }
-granny_local_pose *__stdcall _GrannyNewLocalPose(int bones) { assert(bones == 1); return sdk_alloc(); }
-void __stdcall _GrannyFreeLocalPose(granny_local_pose *p) { sdk_free(p); }
-granny_world_pose *__stdcall _GrannyNewWorldPose(int bones) { assert(bones == 1); return sdk_alloc(); }
-void __stdcall _GrannyFreeWorldPose(granny_world_pose *p) { sdk_free(p); }
-granny_model_instance *__stdcall _GrannyInstantiateModel(granny_model *m) { assert(m == &model); return sdk_alloc(); }
-void __stdcall _GrannyFreeModelInstance(granny_model_instance *p) { sdk_free(p); }
-granny_skeleton *__stdcall _GrannyGetSourceSkeleton(granny_model_instance *p) { assert(p); return &skeleton; }
-granny_mesh_binding *__stdcall _GrannyNewMeshBinding(granny_mesh *m, granny_skeleton *a, granny_skeleton *b)
+void _GrannyFreeFile(granny_file *p) { sdk_free(p); }
+granny_local_pose *_GrannyNewLocalPose(int bones) { assert(bones == 1); return sdk_alloc(); }
+void _GrannyFreeLocalPose(granny_local_pose *p) { sdk_free(p); }
+granny_world_pose *_GrannyNewWorldPose(int bones) { assert(bones == 1); return sdk_alloc(); }
+void _GrannyFreeWorldPose(granny_world_pose *p) { sdk_free(p); }
+granny_model_instance *_GrannyInstantiateModel(granny_model *m) { assert(m == &model); return sdk_alloc(); }
+void _GrannyFreeModelInstance(granny_model_instance *p) { sdk_free(p); }
+granny_skeleton *_GrannyGetSourceSkeleton(granny_model_instance *p) { assert(p); return &skeleton; }
+granny_mesh_binding *_GrannyNewMeshBinding(granny_mesh *m, granny_skeleton *a, granny_skeleton *b)
 { assert(m == &mesh && a == &skeleton && b == &skeleton); return sdk_alloc(); }
-void __stdcall _GrannyFreeMeshBinding(granny_mesh_binding *p) { sdk_free(p); }
-int __stdcall _GrannyGetMeshIndexCount(granny_mesh *m) { assert(m == &mesh); return index_count; }
-void __stdcall _GrannyCopyMeshIndices(granny_mesh *m, int bytes, void *out)
+void _GrannyFreeMeshBinding(granny_mesh_binding *p) { sdk_free(p); }
+int _GrannyGetMeshIndexCount(granny_mesh *m) { assert(m == &mesh); return index_count; }
+void _GrannyCopyMeshIndices(granny_mesh *m, int bytes, void *out)
 { assert(m == &mesh && bytes == 2); memset(out, 0, (size_t)index_count * 2); if (invalid_index) ((unsigned short *)out)[0] = 3; }
-int __stdcall _GrannyGetMeshVertexCount(granny_mesh *m) { assert(m == &mesh); return vertex_count; }
-BYTE __stdcall _GrannyMeshIsRigid(granny_mesh *m) { assert(m == &mesh); return (BYTE)rigid; }
-void __stdcall _GrannyCopyMeshVertices(granny_mesh *m, const granny_data_type_definition *type, void *out)
+int _GrannyGetMeshVertexCount(granny_mesh *m) { assert(m == &mesh); return vertex_count; }
+BYTE _GrannyMeshIsRigid(granny_mesh *m) { assert(m == &mesh); return (BYTE)rigid; }
+void _GrannyCopyMeshVertices(granny_mesh *m, const granny_data_type_definition *type, void *out)
 { assert(m == &mesh && type == GrannyPNT332VertexType); memset(out, 0, 96); }
-const granny_data_type_definition *__stdcall _GrannyGetMeshVertexType(granny_mesh *m)
+const granny_data_type_definition *_GrannyGetMeshVertexType(granny_mesh *m)
 { assert(m == &mesh); return GrannyPNT332VertexType; }
-granny_mesh_deformer *__stdcall _GrannyNewMeshDeformer(const granny_data_type_definition *a,
+granny_mesh_deformer *_GrannyNewMeshDeformer(const granny_data_type_definition *a,
     const granny_data_type_definition *b, int kind)
 {
     assert(a == b && kind == GRANNY_DEFORM_POSITION_NORMAL);
     deformer_call = allocation_calls + 1;
     return fail_deformer ? NULL : sdk_alloc();
 }
-void __stdcall _GrannyFreeMeshDeformer(granny_mesh_deformer *p) { sdk_free(p); }
-granny_texture *__stdcall _GrannyGetMaterialTextureByType(granny_material *material, int kind)
+void _GrannyFreeMeshDeformer(granny_mesh_deformer *p) { sdk_free(p); }
+granny_texture *_GrannyGetMaterialTextureByType(granny_material *material, int kind)
 { (void)material; assert(kind == GRANNY_DIFFUSE_COLOR_TEXTURE); return &texture; }
-BYTE __stdcall _GrannyTextureHasAlpha(granny_texture *t) { assert(t == &texture); return (BYTE)has_alpha; }
-void __stdcall _GrannyCopyTextureImage(granny_texture *t, int image, int mip,
+BYTE _GrannyTextureHasAlpha(granny_texture *t) { assert(t == &texture); return (BYTE)has_alpha; }
+void _GrannyCopyTextureImage(granny_texture *t, int image, int mip,
     const granny_pixel_layout *layout, int w, int h, int stride, void *out)
 {
     assert(t == &texture && !image && !mip && layout == GrannyRGBA8888PixelFormat);
@@ -169,21 +164,21 @@ struct Texture *texture_from_pixels(int w, int h,
     return texture;
 }
 
-int __stdcall _AIL_file_type(const void *data, unsigned size)
+int _AIL_file_type(const void *data, unsigned size)
 { assert(data && size == sizeof file_data); return wave_kind; }
-int __stdcall _AIL_WAV_info(const void *data, struct AilSoundInfo *out)
+int _AIL_WAV_info(const void *data, struct AilSoundInfo *out)
 {
     assert(data); memset(out, 0, sizeof *out);
     out->data = (const BYTE *)data + 60; out->dataLen = 8; out->rate = 8000;
     out->bits = 4; out->channels = 1; out->samples = 9; out->blockSize = 8;
     return 1;
 }
-int __stdcall _AIL_decompress_ADPCM(const struct AilSoundInfo *in, void **out, unsigned *size)
+int _AIL_decompress_ADPCM(const struct AilSoundInfo *in, void **out, unsigned *size)
 { assert(in && size); *out = sdk_alloc(); *size = 62; return 1; }
-int __stdcall _AIL_decompress_ASI(const void *data, unsigned size, const char *name,
+int _AIL_decompress_ASI(const void *data, unsigned size, const char *name,
     void **out, unsigned *out_size, void *callback)
 { assert(data && size == sizeof file_data && name && out_size && !callback); *out = sdk_alloc(); *out_size = 62; return 1; }
-void __stdcall _AIL_mem_free_lock(void *p) { sdk_free(p); ++wave_frees; }
+void _AIL_mem_free_lock(void *p) { sdk_free(p); ++wave_frees; }
 
 static void test_wave(void)
 {
@@ -321,7 +316,7 @@ static void test_granny_failures(void)
             case 8: texture.Width = 0; break;
             case 9: texture.Height = -1; break;
             case 10: texture.Width = INT_MAX; break;
-            case 11: texture.Width = texture.Height = 65536; break;
+            case 11: texture.Width = INT_MAX / 4 + 1; break;
             case 12: textures[0] = NULL; break;
             case 13: skeleton.BoneCount = -1; break;
             }

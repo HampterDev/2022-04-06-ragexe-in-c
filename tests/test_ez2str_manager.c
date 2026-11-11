@@ -80,7 +80,9 @@ static void record(const void *data, size_t size)
 }
 static void record_string(const struct String *s)
 {
-    record(&s->size, sizeof s->size);
+    /* As four bytes, as the trace was recorded from the 32-bit client. */
+    unsigned size = (unsigned)s->size;
+    record(&size, sizeof size);
     record(string_cstr(s), s->size);
 }
 static void append(const void *data, size_t size)

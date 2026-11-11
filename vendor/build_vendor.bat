@@ -1,15 +1,38 @@
 @echo off
-REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib
-REM (build_vendor.bat x64: ..\build\vendor_x64\*.lib, plus dr_mp3 and an audio-only SDL3 for the
-REM Miles replacement, platform\miles_sdl.c; build_vendor.bat <x86|x64> freetype: FreeType too, for
-REM the FreeType text backend). Run from a vcvars environment of the same width.
+REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib, 64-bit
+REM and with the static C runtime (/MT) like the client: zlib and libpng, Lua, yyjson, stb's JPEG,
+REM the client's C++ helpers, dr_mp3 and SDL3 (the Miles replacement, platform\miles_sdl.c, plays
+REM sound through it). Words:
+REM   freetype  FreeType too, for the FreeType text backend
+REM   ifneeded  nothing when build\vendor was already built by this version (the tests use it)
+REM Run from a vcvars64 environment (tools\find_vcvars.bat).
 setlocal
 pushd "%~dp0" || exit /b 1
-set "ARCH=x86"
-if /i "%~1"=="x64" set "ARCH=x64"
-if "%ARCH%"=="x64" (set "OUT=%~dp0..\build\vendor_x64") else (set "OUT=%~dp0..\build\vendor")
+set "OUT=%~dp0..\build\vendor"
+set "WANTFT="
+set "IFNEEDED="
+for %%a in (%*) do (
+  if /i "%%~a"=="freetype" set "WANTFT=1"
+  if /i "%%~a"=="ifneeded" set "IFNEEDED=1"
+)
+
+REM build\vendor\kind.txt says what the libraries there were built as; it is written once all but
+REM FreeType are built. A folder without it, or built as anything else (32-bit until 2026-11-11,
+REM then with the DLL runtime), is removed and built again from clean, since the linker would
+REM otherwise take its libraries. Change KIND whenever the libraries must be built again.
+set "KIND=x64 /MT, SDL without OpenGL"
+set "STAMP=%OUT%\kind.txt"
+set "BUILT="
+if exist "%STAMP%" set /p BUILT=<"%STAMP%"
+if "%BUILT%"=="%KIND%" if defined IFNEEDED goto done
+if not "%BUILT%"=="%KIND%" if exist "%OUT%" (
+  echo build\vendor was not built as "%KIND%": building it again from clean.
+  rd /s /q "%OUT%"
+  if exist "%OUT%" ( echo *** Cannot remove "%OUT%" & goto failed )
+)
 if not exist "%OUT%" mkdir "%OUT%"
-set "CFLAGS=/nologo /c /O2 /MD /MP4 /DNDEBUG /D_CRT_SECURE_NO_WARNINGS"
+REM Not CFLAGS, which CMake would take as the C flags of SDL3 and FreeType.
+set "CLOPTS=/nologo /c /O2 /MT /MP4 /DNDEBUG /D_CRT_SECURE_NO_WARNINGS"
 
 call :library imglibs "/Izlib-1.2.11" zlib-1.2.11\*.c libpng-1.6.36\*.c
 if errorlevel 1 goto failed
@@ -23,16 +46,16 @@ call :library crijndael "/EHsc /GR- /I..\src" crijndael\*.cpp
 if errorlevel 1 goto failed
 call :library font_backend "/EHsc /GR- /I..\src" font_backend\*.cpp
 if errorlevel 1 goto failed
-if "%ARCH%"=="x64" (
-  call :library dr_mp3 "/DDR_MP3_NO_STDIO" dr_libs\dr_mp3_impl.c
-  if errorlevel 1 goto failed
-  call :sdl3
-  if errorlevel 1 goto failed
-)
-if /i "%~2"=="freetype" (
+call :library dr_mp3 "/DDR_MP3_NO_STDIO" dr_libs\dr_mp3_impl.c
+if errorlevel 1 goto failed
+call :sdl3
+if errorlevel 1 goto failed
+>"%STAMP%" echo %KIND%
+if defined WANTFT (
   call :freetype
   if errorlevel 1 goto failed
 )
+:done
 popd
 exit /b 0
 
@@ -45,12 +68,18 @@ set "NAME=%~1"
 set "EXTRA=%~2"
 if not exist "%OUT%\obj\%NAME%" mkdir "%OUT%\obj\%NAME%"
 del /q "%OUT%\obj\%NAME%\*.obj" 2>nul
-cl %CFLAGS% %EXTRA% %3 %4 %5 /Fo"%OUT%\obj\%NAME%\\"
+cl %CLOPTS% %EXTRA% %3 %4 %5 /Fo"%OUT%\obj\%NAME%\\"
 if errorlevel 1 exit /b 1
 lib /nologo /OUT:"%OUT%\%NAME%.lib" "%OUT%\obj\%NAME%\*.obj"
 exit /b %errorlevel%
 
-REM SDL3 at the commit cmake\SDL3.cmake pins, static, with only its audio subsystem.
+REM SDL3 at the commit cmake\SDL3.cmake pins, static, with its audio, video and GPU subsystems: the
+REM client plays sound through it, and the renderer of plans\gpu-renderer.md will use its window and
+REM GPU API on Vulkan. OpenGL and OpenGL ES (with EGL) are left out: nothing will use them. SDL has
+REM no switch for its Direct3D 12 GPU driver, which it builds whenever dxgi1_6.h is there (the same
+REM check gives its Windows video driver the displays' HDR properties), so that driver stays. SDL's
+REM dynamic API table refers to every function it has, so the client links all three subsystems
+REM although it calls only audio yet; they need no system library beyond those build.bat links.
 :sdl3
 if exist "%OUT%\SDL3-static.lib" exit /b 0
 set "SDL_COMMIT=829a65d769d935c4852f8159e964312c0957260a"
@@ -65,8 +94,10 @@ if not exist "%OUT%\sdl3-src\CMakeLists.txt" (
 set "GEN=NMake Makefiles"
 where ninja >nul 2>nul && set "GEN=Ninja"
 cmake -S "%OUT%\sdl3-src" -B "%OUT%\sdl3-build" -G "%GEN%" -DCMAKE_BUILD_TYPE=Release ^
+ -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
  -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF ^
- -DSDL_VIDEO=OFF -DSDL_RENDER=OFF -DSDL_GPU=OFF -DSDL_CAMERA=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF ^
+ -DSDL_VIDEO=ON -DSDL_GPU=ON -DSDL_VULKAN=ON -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF ^
+ -DSDL_RENDER=OFF -DSDL_CAMERA=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF ^
  -DSDL_HIDAPI=OFF -DSDL_SENSOR=OFF -DSDL_POWER=OFF -DSDL_DIALOG=OFF -DSDL_TRAY=OFF >"%OUT%\sdl3-configure.log" 2>&1
 if errorlevel 1 ( type "%OUT%\sdl3-configure.log" & exit /b 1 )
 cmake --build "%OUT%\sdl3-build" >"%OUT%\sdl3-build.log" 2>&1
@@ -75,7 +106,8 @@ copy /y "%OUT%\sdl3-build\SDL3-static.lib" "%OUT%\SDL3-static.lib" >nul
 exit /b %errorlevel%
 
 REM FreeType at the release cmake\Freetype.cmake fetches for Android, static, with only what the
-REM client reads (no compressed fonts, no PNG glyphs, no shaping).
+REM client reads (no compressed fonts, no PNG glyphs, no shaping). Its CMake files predate the
+REM runtime setting (policy CMP0091), so the policy is switched on for it.
 :freetype
 if exist "%OUT%\freetype.lib" exit /b 0
 set "FT_TAG=VER-2-13-3"
@@ -90,6 +122,7 @@ if not exist "%OUT%\freetype-src\CMakeLists.txt" (
 set "GEN=NMake Makefiles"
 where ninja >nul 2>nul && set "GEN=Ninja"
 cmake -S "%OUT%\freetype-src" -B "%OUT%\freetype-build" -G "%GEN%" -DCMAKE_BUILD_TYPE=Release ^
+ -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
  -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_ZLIB=ON -DFT_DISABLE_BZIP2=ON -DFT_DISABLE_PNG=ON ^
  -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON >"%OUT%\freetype-configure.log" 2>&1
 if errorlevel 1 ( type "%OUT%\freetype-configure.log" & exit /b 1 )

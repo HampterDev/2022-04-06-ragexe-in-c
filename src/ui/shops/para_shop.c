@@ -404,12 +404,12 @@ void ui_para_item_shop_wnd_on_draw(struct UIWindow *window)
                       msg_str(MSG_POINTS_CASH),
                       name,
                       g_session1.cashPoints);
-        ui_window_text_out(wnd, 0xc, wnd->height - 0x15, string_cstr(&line), line.size, 0, 0xc, 0, 0, 0);
+        ui_window_text_out(wnd, 0xc, wnd->height - 0x15, string_cstr(&line), (int)line.size, 0, 0xc, 0, 0, 0);
         string_free(&line);
         string_format(&line, msg_str(MSG_POINTS_FREE),
                       name,
                       g_session1.freePoints);
-        ui_window_text_out(wnd, 0xc, wnd->height - bar - 0x15, string_cstr(&line), line.size, 0, 0xc, 0, 0,
+        ui_window_text_out(wnd, 0xc, wnd->height - bar - 0x15, string_cstr(&line), (int)line.size, 0, 0xc, 0, 0,
                          0);
         string_free(&line);
         string_free(&shortened);
@@ -430,12 +430,12 @@ intptr_t ui_para_item_shop_wnd_send_msg(struct UIWindow *window, struct UIWindow
     case UI_MSG_COMMAND:
 
         if (val1 == UI_ID_CHECKBOX) {
-            g_windowMgr.drag_all = val2;
+            g_windowMgr.drag_all = (int)val2;
         }
         return 0;
     case UI_MSG_RESIZE:
         if (val1 == PARA_SHOP_RESIZE_EDGE)
-            shop_resize(shop, val2, val3, 1);
+            shop_resize(shop, (int)val2, (int)val3, 1);
         return 0;
     case SHOP_MSG_REFRESH:
         clear_items(&shop->base);
@@ -620,7 +620,7 @@ intptr_t ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWi
         take_info(wnd, self->info, PARA_CART_RESIZE_EDGE, purchase_info_usable, purchase_info_default);
         return 0;
     case UI_MSG_ADD_DRAGGED:
-        cart_add_dragged(self, val1);
+        cart_add_dragged(self, (int)val1);
         return 0;
     case UI_MSG_COMMAND:
 
@@ -641,8 +641,8 @@ intptr_t ui_para_item_purchase_wnd_send_msg(struct UIWindow *window, struct UIWi
 
         if (val1 != PARA_CART_RESIZE_EDGE)
             return 0;
-        width = val2;
-        height = val3;
+        width = (int)val2;
+        height = (int)val3;
         clamp_size(&width, &height);
         if (width != wnd->width || height != wnd->height) {
             ui_window_resize_base(wnd, width, height);
@@ -879,8 +879,8 @@ intptr_t ui_para_result_wnd_send_msg(struct UIWindow *window, struct UIWindow *s
     case UI_MSG_RESIZE:
         if (val1 != PARA_RESULT_RESIZE_EDGE)
             return 0;
-        width = val2;
-        height = val3;
+        width = (int)val2;
+        height = (int)val3;
         clamp_size(&width, &height);
         if (width != wnd->width || height != wnd->height) {
             ui_window_resize_base(wnd, width, height);

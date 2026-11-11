@@ -13792,3 +13792,193 @@ frame after one speaks 57,662.
 Validation: the 12 captures of the scene set are identical to the commit before (Direct3D 9;
 the GL side was neither built nor run here). `build.bat check`
 and the full `tests\build.bat` pass.
+
+## One 64-bit Windows client (2026-11-11)
+
+Phase 0 of `plans/gpu-renderer.md`, decided with Patrick on 2026-11-11: there is no 32-bit client
+any more, and SDL is built with its video and GPU API for the phases that use them. Until now
+`build.bat` built a 32-bit client by default and a 64-bit one with `x64`. The 32-bit one linked
+the three DLLs of the original that exist only for 32-bit Windows (RAD's `mss32.dll` and
+`granny2.dll`, and `cps.dll`); the 64-bit one already did without them, as every other platform
+does.
+
+- **What went.** The x86 path of `build.bat` (its link line with `lib\cps.lib`, `granny2.lib`,
+  `mss32.lib` and `msvcp140.lib`, `/SAFESEH`, `/LARGEADDRESSAWARE`) and the `x64` word and `ARCH`
+  switching there, in `tests\scenes\build.bat` and in `vendor\build_vendor.bat`; `lib\cps.lib`,
+  `mss32.lib` and `msvcp140.lib`, which only the 32-bit links of `build.bat` and
+  `tests\scenes\build.bat` used, and `lib\vcruntime140.lib`, which no link line has named since the
+  tree's first commit (`granny2.lib` stays for `tools\granny_export`); `PLATFORM_RAD_DLLS`,
+  `GRANNY_IMPORT` and `MSS_IMPORT` with the guards that left `resources/granny_gltf.c` and
+  `platform/miles_sdl.c` empty on 32-bit Windows, which now compile everywhere; `__stdcall` on the
+  Granny and Miles declarations, on `miles_sdl.c`'s definitions and on the tests' stubs, since no
+  DLL is called through them any more, and with it `#define __stdcall` and `#define __cdecl` in
+  `platform/win_types.h`, which nothing built off Windows uses now (`platform/thread_win32.c` and
+  three Windows-only tests keep MSVC's own `__stdcall` for `_beginthreadex`);
+  `_GrannyFreeFileSection` and `_GrannyFreeCompletedModelControls`, which the client never called,
+  with their test stubs;
+  `tests/scenes/scene_granny_win.c`, which pointed `granny2.dll`'s clock imports at the scene
+  clock; and `tests/build_cps_imports.bat`, which checked that the 32-bit exe took `compress` and
+  `uncompress` from `cps.dll` (`f9808810`; `docs/upstream/README.md` says why it no longer
+  applies).
+- **Names.** `build\ragexe.exe` (with `dbg`: `ragexe_dbg.exe`, `freetype`: `ragexe_ft.exe`, `libs`:
+  `ragexe_libs.exe`), objects in `build\obj` (`obj_dbg`, `obj_ft`), vendor libraries in
+  `build\vendor` (was `build\vendor_x64`, which nothing reads now), the scene harness
+  `build\ragexe_scenes.exe` (`ragexe_scenes_ft.exe`). `tests\scenes\build.bat` links every object
+  in its folder, so it now deletes them before it compiles: the old 32-bit `scene_granny_win.obj`
+  stopped the link.
+- **The C runtime.** The client and its variants, the scene harness, every library
+  `vendor\build_vendor.bat` builds and the unit tests are compiled with `/MT`, and the client's and
+  the harness's links name `libcmt.lib`, `libcpmt.lib`, `libvcruntime.lib` and `libucrt.lib` where
+  they named `msvcrt.lib`, `msvcprt.lib`, `vcruntime.lib` and `ucrt.lib`. CMake builds SDL3 and
+  FreeType with `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` (FreeType with policy CMP0091 switched
+  on, since its CMake files predate it). `vendor\build_vendor.bat` kept its compiler options in
+  `CFLAGS`, which CMake also read as the C flags of SDL3 and FreeType; they are `CLOPTS` now.
+  `dumpbin /dependents` of `ragexe.exe`, `ragexe_dbg.exe`, `ragexe_ft.exe`, `ragexe_libs.exe`,
+  `ragexe_scenes.exe` and `ragexe_scenes_ft.exe` lists no `vcruntime*.dll`, `msvcp*.dll` or
+  `api-ms-win-crt-*` set; until now the 64-bit client imported `VCRUNTIME140.dll`,
+  `VCRUNTIME140_1.dll` and eleven `api-ms-win-crt-*` sets. `build\ragexe.exe` is 7,110,144 bytes
+  (6,719,488 before, with the DLL runtime and SDL's OpenGL). The oracle tests and
+  `tools\granny_export` keep the DLL runtime; they link no `build\vendor` library.
+- **Old libraries.** `build\vendor` still held the 32-bit libraries in a checkout that had built
+  the 32-bit client, and nothing checked what they were: `build.bat freetype`, or the suite run
+  before `build.bat`, linked them into 64-bit programs (LNK1112). `vendor\build_vendor.bat` now
+  writes `build\vendor\kind.txt` ("x64 /MT, SDL without OpenGL") once all its libraries but
+  FreeType are built, and when that file is missing or names anything else it removes
+  `build\vendor` and builds everything again, SDL's download included. `tests\build.bat`,
+  `build_effect_data.bat`, `build_effect_launch_duration.bat`, `build_effect_trace.bat` and
+  `build_jpeg.bat`, which built the libraries only when `yyjson.lib` or `jpeg.lib` was missing,
+  call it with the new word `ifneeded`, which returns at once when the file matches.
+- **What the player notices.**
+  - Players of the 32-bit client, the default until now, hear sound through
+    `platform/miles_sdl.c` on SDL3 instead of RAD's Miles. It leaves out speaker types, room types
+    and reverb, none of which reached them before: a 32-bit probe of the game's `mss32.dll` found
+    "Miles Fast 2D Positional Audio", the provider `contents/sound.c` asks for, answering -1 for its
+    speaker type, so the client never applied the `SPEAKERTYPE` setting, and the client only ever
+    sets room type 0 and gives every 3D sample an effects (reverb) level of 0. What changes is the
+    mixing: `miles_sdl.c`'s distance falloff and left/right balance in place of the provider's,
+    SDL's resampling and output device, and `dr_mp3` in place of `mp3dec.asi` for the music. They
+    have not been compared with Miles by ear or sample by sample. `mss32.dll`, `mssfast.m3d` and
+    `mp3dec.asi` in the game folder are no longer loaded.
+  - Granny models (the emperium, the guardians, the guild flag, the treasure box) come only from
+    the glTF files `tools\granny_export` writes once per game folder. Without them each model load
+    shows "Unable to load file .gr2 (C3dGrannyModelRes :: Load)" and the model is not drawn; the
+    first also writes the missing file's name to the debug output, which on Windows is
+    `OutputDebugString` and seen only with a debugger attached. With them the models look as the
+    table below shows.
+  - GRF tables and files and guild emblems inflate, and the emblem cache deflates, through the
+    bundled zlib, never through `cps.dll`. A `cps.dll` that does more than zlib (GRF Editor's, for
+    the GRFs it encrypts) has no effect: a GRF whose file table needs it does not open
+    (`fileio/grf_pak.c:207`), so the client goes without that GRF's files, and a file that needs it
+    inflates partly or not at all and reads as truncated data padded with zeros (`grf_pak.c:305`,
+    whose result is not checked). Captcha images, which used zlib too, went on 2026-11-02.
+  - The client needs no Visual C++ runtime. The game folder's 32-bit `vcruntime140.dll` and
+    `msvcp140.dll` served the 32-bit client; a 64-bit program skips them (on this Windows 10 22H2 a
+    `/MD` probe copied into a game folder loaded `System32\VCRUNTIME140.dll`), so the 64-bit client
+    with the DLL runtime started only where the x64 redistributable was installed.
+    `build\ragexe.exe` copied into a copy of `client-files` starts and opens its window.
+- **SDL.** `build_vendor.bat` configures SDL 3 at the pinned commit with `-DSDL_VIDEO=ON
+  -DSDL_GPU=ON -DSDL_VULKAN=ON -DSDL_OPENGL=OFF -DSDL_OPENGLES=OFF` besides audio (render, camera,
+  joystick, haptic, HIDAPI, sensor, power, dialog and tray stay off), which gives the video
+  drivers `windows`, `offscreen` and `dummy`, the GPU drivers `d3d12` and `vulkan` and the audio
+  drivers `wasapi`, `dsound`, `disk` and `dummy`. The plan uses Vulkan on Windows and no OpenGL, so
+  SDL's OpenGL, OpenGL ES and EGL support, on by default, is off: `SDL_windowsopengl.c`,
+  `SDL_windowsopengles.c` and `SDL_egl.c` are compiled without their GL code and are not in the
+  map. SDL has no option
+  for its Direct3D 12 GPU driver: its `CMakeLists.txt` builds `src/gpu/d3d12` whenever
+  `check_include_file(dxgi1_6.h)` succeeds, and the same result gives the Windows video driver the
+  displays' HDR properties (`SDL_windowsmodes.c`), so the driver stays. `SDL_DIRECTX` stays on for
+  DirectSound. `dumpbin /linkermember:1 build\vendor\SDL3-static.lib` lists `SDL_CreateGPUDevice`,
+  `SDL_ClaimWindowForGPUDevice`, `SDL_CreateWindow`, `SDL_Vulkan_CreateSurface`, `VulkanDriver` and
+  `D3D12Driver`. The client calls only audio, but SDL's dynamic API table, on in its static Windows
+  build, refers to every function, so the exe links the video and GPU code too (`VulkanDriver` and
+  `D3D12Driver` are in the map) and imports `setupapi.dll` and `version.dll` for it, which the
+  audio-only 64-bit client of 2026-11-08 did not. `build.bat` already linked both libraries.
+- **Who builds 32-bit.** `tools\find_vcvars.bat` gives `vcvars64.bat`, and with `x86` the
+  `vcvars32.bat` beside it, for the two scripts whose programs load 32-bit code of the original:
+  `tests\oracle` (the original executable; its link now names `/MACHINE:X86`, so a 64-bit
+  environment fails at the link instead of building 64-bit tests) and `tools\granny_export`
+  (`granny2.dll`; it now compiles zlib in instead of linking `build\vendor\imglibs.lib`). The CMake
+  `-A Win32` configuration still builds; its `lua_chunk` is the one that writes
+  `tests/fixtures/lua51_win32.lub` with the `.lub` files' 4-byte sizes. `tools\utf8-data`'s
+  `luadump` is 64-bit like the client: the vendored Lua reads the `.lub` files' 4-byte sizes on a
+  64-bit host, and its dumps of the 23 `.lub` files in `client-files\System` are byte for byte
+  those of a 32-bit build. The chunks the tool's tests compile with it now have 8-byte sizes, so
+  `Win32ChunkTest` reads that fixture for the 4-byte form: a byte-identical read and write, a
+  rewritten constant with a 4-byte length, and `luadump` loading the result. The 45 tests pass.
+- **The link check.** `tools/depmap/objsyms.py` gave the link check and the dependency map every
+  symbol through `plain()`, which stripped a leading underscore and cut at `@`, for x86's
+  decorations. On x64 that renamed real names such as `_AIL_startup` and `_GrannyGetFileInfo`. The
+  readers now keep the names of dumpbin and ELF listings and strip the underscore only from a
+  Mach-O listing (one whose external symbols all start with it), for the macOS `library_links`
+  CTest; `plain()` is gone.
+
+The suite builds 64-bit now; 45 of its steps failed at first. What x64 showed:
+
+- **A bound.** `select_char_init_storage` bounded the character pages by `SIZE_MAX`, which on
+  32-bit also kept `per_page * page_count` within an `int`. On x64 a slot count near `INT_MAX`
+  passed and the product overflowed. The client never passes one: the counts are three BYTE fields
+  of the character list header and the highest slot is a BYTE (`login/char_list.c:103-105`,
+  `login/char_info.h`), so there are at most 765 slots; only a direct call, as
+  `test_character_preview` makes, reached it. The pages are now bounded by `INT_MAX` as well.
+  `main` is 32-bit and does not need it.
+- **Narrowing in what the tests compile at `/W3 /WX`.** On x64 MSVC warns where a `size_t` becomes
+  an `int` (C4267) and where a window message's `intptr_t` value does (C4244); the client builds
+  at `/W1` and never showed them. In the 14 files concerned they are explicit casts now; none of
+  the values was a pointer. `text_to_wide` (`core/text_util.c`) leaves a string over `INT_MAX`
+  bytes empty instead of handing the conversion a negative length.
+- **Stubs.** Thirteen test files defined `mode_send_message`, `ui_window_send`,
+  `game_send_message`, `ui_window_mgr_send_msg_`, a window's `send_msg` or `std_sort` with the
+  `int` parameters that 32-bit let pass for `intptr_t` and `size_t`; they take the real types now.
+  Two of them cut pointers on x64: the effect trace's `game_send_message` read the quake's three
+  float pointers through `int`s, and the window lists' generated `ui_window_mgr_send_msg_` (from
+  before the message values were widened) recorded the chat text's address as a number. The crash
+  dialog's fixture now replaces `GetWindowLongPtrA`, a function of its own on x64.
+- **32-bit facts.** Sizes and widths the tests asserted are the x64 ones (`JobHitSounds` 24 bytes,
+  `ChatTabs` 16 and `ChatTabSettings` 56, the crash report's 16-digit addresses, the effect
+  primitives' 8-byte texture slots), and the frozen path finder's 32-bit layout asserts are gone.
+  Cases that only a 32-bit `size_t` rejected (an `INT_MAX` Granny vertex or mesh count,
+  `INT_MAX / 3` triangles, a 65,536-square Granny texture, an `INT_MAX`-wide texture upload)
+  reach the allocator or the copy on x64 and are gone, or moved to the `int` bounds that still
+  reject them. `test_object_type` compared `object_as_type` with the runtime's `__RTDynamicCast`
+  on the original's RTTI in its 32-bit form; it now copies that RTTI into the 64-bit form
+  (image-relative offsets, signature 1) first and still makes 2,717 comparisons with 205 casts
+  accepted. `test_ez2str_manager` records string sizes as four bytes and keeps its digest. Three
+  traces take new digests after a 32-bit build of the same test was run beside the 64-bit one:
+  `test_game_mode_layout`'s differs only in the sizes of 384 allocations holding pointers,
+  `test_window_lists`'s only in the field offsets of 358 lines, and `test_effect_trace`'s 6,707,631
+  lines are the same once the objects' sizes, the hashes of their bytes and the offsets and counts
+  of their changed words are left out. CMake builds `test_crash_dump` with every MSVC, since it
+  passes on x64.
+
+Validation: `build.bat check` (no warnings; the link check passes over 1,151 objects with 29,919
+uses of client symbols, 128 of them exceptions), `build.bat dbg`, `freetype` and `libs`,
+`tests\scenes\build.bat` and `tests\scenes\build.bat freetype` build, and none of those six
+executables imports a C runtime DLL. The full `tests\build.bat` passes, its oracle tests 32-bit
+against the original executable (629,006 calls, no mismatch, no fault). The CMake builds of
+`docs/portability.md` with `-A x64` and `-A Win32` build and pass their 23 tests each, and the
+Win32 `lua_chunk` writes `tests/fixtures/lua51_win32.lub` again byte for byte. `build\ragexe.exe`
+copied into a copy of `client-files` (hard links and junctions, with the 32-bit
+`vcruntime140.dll`) starts and opens its window; it was closed by its process ID.
+
+In `client-files` with `RAGEXE_MSAA=1` and `RAGEXE_VSYNC=0`, the 64-bit harness captures the seven
+captures of the scene set without Granny models bit for bit like the last 32-bit build
+(`6b176290`), with the same counts (only the two CPU times differ). `client-files` has no
+converted Granny models, so there the other five show none, with 13 "Unable to load file .gr2"
+boxes in all. In the copy of
+it, with the 21 files `tools\granny_export` wrote into it, against the 32-bit build drawing with
+`granny2.dll`:
+
+| capture | pixels differing at all | by more than 1 | by more than 16 |
+|---|---|---|---|
+| `granny_dead` | 4 | 0 | 0 |
+| `granny_dying` | 3,349 | 292 | 16 |
+| `granny_models` | 12,619 | 7,058 | 365 |
+| `guild_flags` | 136 | 0 | 0 |
+| `guild_flags_later` | 230 | 2 | 2 |
+
+In `granny_models` the emperium, a guardian and the treasure box differ over their surfaces by a
+few steps of shading and by more along edges inside them; in `granny_dying` along the edges of a
+guardian and the treasure box; in `guild_flags_later` in two pixels of the flag's tassel. The
+static runtime and SDL's new options change no pixel: in the copy, the harness built with them
+captures all 12 captures of the set exactly as the 64-bit harness built before them, with the same
+counts.

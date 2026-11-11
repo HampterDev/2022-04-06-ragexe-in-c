@@ -1,12 +1,6 @@
 #ifndef PLATFORM_WIN_TYPES_H
 #define PLATFORM_WIN_TYPES_H
 
-/* The 32-bit Windows client links RAD's granny2.dll and mss32.dll. Every other build implements
-   the parts of their APIs the client uses: resources/granny_gltf.c and platform/miles_sdl.c. */
-#if defined(_WIN32) && !defined(_WIN64)
-#define PLATFORM_RAD_DLLS 1
-#endif
-
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -79,8 +73,6 @@ typedef struct tagSIZE {
 
 #define WINAPI
 #define CALLBACK
-#define __stdcall
-#define __cdecl
 
 #define LOBYTE(w) ((BYTE)((DWORD_PTR)(w) & 0xff))
 #define HIBYTE(w) ((BYTE)(((DWORD_PTR)(w) >> 8) & 0xff))

@@ -3,13 +3,13 @@ setlocal
 set "ROOT=%~dp0.."
 call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
 call "%VCVARS%" >nul
-if not exist "%ROOT%\build\vendor\yyjson.lib" call "%ROOT%\vendor\build_vendor.bat"
+call "%ROOT%\vendor\build_vendor.bat" ifneeded
 if errorlevel 1 exit /b 1
 if not exist "%ROOT%\build\tests\effect_trace" mkdir "%ROOT%\build\tests\effect_trace"
 pushd "%ROOT%\build\tests\effect_trace" || exit /b 1
 set "R=%ROOT%\src\effects\rag"
 rem The effect data as build.bat embeds it.
-cl /nologo /O2 /MD "%ROOT%\tools\bin2c.c" /Fe:bin2c.exe
+cl /nologo /O2 /MT "%ROOT%\tools\bin2c.c" /Fe:bin2c.exe
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 bin2c.exe effect_data_embedded.c g_effectData "%ROOT%\data\effects\effects.json"
 if not "%errorlevel%"=="0" (popd & exit /b 1)
@@ -19,7 +19,7 @@ set "CORE="%R%\rag_prim_launch.c" "%R%\effect_prim.c" "%R%\effect_prim_shared.c"
 set "DATA="%ROOT%\src\effects\effect_data.c" "%R%\rag_str_bindings.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" effect_data_embedded.c"
 set "SUPPORT="%ROOT%\src\render\math3d.c" "%ROOT%\src\render\rp_project.c" "%ROOT%\src\session\session_effect_state.c" "%ROOT%\src\std\list.c" "%ROOT%\src\std\vec.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c""
 rem The client's compiler flags (build.bat), warnings as errors, and the rand() seam.
-cl /nologo /std:c11 /O2 /Oy- /MD /GS /Gd /we4013 /W1 /WX /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /FI"%ROOT%\tests\effect_trace_rand.h" /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\yyjson-0.13.0" %DISPATCH% %LAUNCHERS% %CORE% %DATA% %SUPPORT% "%ROOT%\tests\test_effect_trace.c" /Fe:test_effect_trace.exe /link /OPT:REF "%ROOT%\build\vendor\yyjson.lib" user32.lib
+cl /nologo /std:c11 /O2 /Oy- /MT /GS /Gd /we4013 /W1 /WX /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /FI"%ROOT%\tests\effect_trace_rand.h" /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\yyjson-0.13.0" %DISPATCH% %LAUNCHERS% %CORE% %DATA% %SUPPORT% "%ROOT%\tests\test_effect_trace.c" /Fe:test_effect_trace.exe /link /OPT:REF "%ROOT%\build\vendor\yyjson.lib" user32.lib
 if not "%errorlevel%"=="0" (popd & exit /b 1)
 test_effect_trace.exe %*
 set "CODE=%errorlevel%"

@@ -1,5 +1,3 @@
-#include "platform/win_types.h"
-#ifndef PLATFORM_RAD_DLLS
 #include "resources/granny_sdk.h"
 #include "fileio/file_api.h"
 #include "platform/clock.h"
@@ -574,12 +572,6 @@ granny_file_info *_GrannyGetFileInfo(granny_file *file)
     return file ? &file->info : NULL;
 }
 
-void _GrannyFreeFileSection(granny_file *file, int section)
-{
-    (void)file;
-    (void)section;
-}
-
 void _GrannyFreeFile(granny_file *file)
 {
     if (!file)
@@ -725,18 +717,6 @@ float _GrannyGetControlDurationLeft(granny_control *control)
         return LOOP_FOREVER_LEFT;
     left = control->start + control->animation->duration * (float)control->loops - control->instance->clock;
     return left > 0.0f ? left : 0.0f;
-}
-
-void _GrannyFreeCompletedModelControls(granny_model_instance *instance)
-{
-    granny_control *control, *next;
-    if (!instance)
-        return;
-    for (control = instance->controls; control; control = next) {
-        next = control->next;
-        if (control->loops > 0 && !(_GrannyGetControlDurationLeft(control) > 0.0f))
-            _GrannyFreeControl(control);
-    }
 }
 
 void _GrannySetModelClock(granny_model_instance *instance, float t)
@@ -1106,4 +1086,3 @@ void _GrannyCopyTextureImage(granny_texture *texture, int image, int mip, const 
     for (y = 0; y < height; y++)
         memcpy((unsigned char *)pixels + (size_t)y * stride, t->rgba + (size_t)y * width * 4, (size_t)width * 4);
 }
-#endif

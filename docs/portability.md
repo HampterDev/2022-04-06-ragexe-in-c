@@ -14,8 +14,13 @@ Since the merge the client's text is UTF-8 on every platform (`core/utf8.h`): th
 passes it to SDL as it is, converts it to UTF-16 for the Windows W calls (`platform/win_utf8.c` for
 message boxes and the registry), and keeps CP949 only for resource names (`RESOURCE_NAME_CODE_PAGE`).
 
-The complete client builds and plays on 64-bit Linux (see *Linux client*) and macOS (see
-*macOS client*). The Windows x86 client still builds with `build.bat` and stays the reference.
+The complete client builds and plays on 64-bit Windows (`build.bat`, see *Windows client*), Linux
+(see *Linux client*), macOS (see *macOS client*) and Android (see *Android client*). There has been
+no 32-bit client since 2026-11-11. Three things are still built 32-bit, because they load or write
+32-bit code or data of the original: the oracle tests (`tests/oracle`, the original executable),
+`tools/granny_export` (the game's `granny2.dll`) and, when the Lua fixture is regenerated,
+`lua_chunk` from a CMake `-A Win32` configuration (the `.lub` files' 4-byte sizes, see *Lua 5.1
+chunks*).
 
 ## Build and test
 
@@ -28,7 +33,8 @@ cmake --build build/portable --parallel 4
 ctest --test-dir build/portable --output-on-failure
 ```
 
-With Visual Studio, add `-A x64` or `-A Win32` at configure time and use
+With Visual Studio, add `-A x64` at configure time (`-A Win32` still configures these tests, and
+makes the 32-bit `lua_chunk` that writes the Lua fixture below) and use
 `--config Debug` for build and `-C Debug` for CTest. Use separate build directories.
 Clang and GCC builds can enable `-DRAGE_SANITIZERS=ON` for ASan, UBSan and
 float-cast-overflow checking. Set `UBSAN_OPTIONS=halt_on_error=1` when running tests.
@@ -165,7 +171,10 @@ cross-endian bytecode converter. The loader also checks string terminators.
 
 `tests/fixtures/lua51_win32.lub` contains only our own test code, built from
 `lua51_port.lua` using the vendored x86 Lua. It includes nested closures, debug
-names and a CP949 string containing an embedded NUL. Regenerate from the repo root:
+names and a CP949 string containing an embedded NUL. `tools/utf8-data`'s tests read it
+too, for the `.lub` files' 4-byte sizes, which their 64-bit `luadump` does not write.
+Regenerate it from the repo root, with `lua_chunk` from a `-A Win32` configuration in
+`build/portable-win32`:
 
 ```powershell
 build/portable-win32/Debug/lua_chunk.exe --dump tests/fixtures/lua51_port.lua tests/fixtures/lua51_win32.lub
@@ -195,28 +204,39 @@ Linux headless smoke runs can use `SDL_VIDEODRIVER=dummy`; that does not validat
 a native desktop window. Linux desktop builds need SDL's X11/Wayland development
 dependencies; consult the [SDL build documentation](https://wiki.libsdl.org/SDL3/README-linux).
 
-The CI matrix covers Windows x86/x64, Linux with sanitizers, and macOS arm64 with
-the probe. The Windows x86 job additionally builds the complete client and runs
-the full existing regression suite. The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+The CI matrix covers Windows x64, Linux with sanitizers, and macOS arm64 with
+the probe. The Windows job additionally builds the complete client and the scene harness and
+runs the full regression suite, whose oracle tests skip themselves there: the original
+executable is not in the repository. The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Workflow configuration is not evidence of a successful run; record results when
 the workflow actually completes.
 
 ## Audio
 
-Windows keeps Miles Sound System. Off Windows, `src/platform/miles_sdl.c`
-implements the Miles subset declared in `platform/miles_api.h` on SDL3: one device
-stream per digital driver at the requested rate and channels (22050 Hz, 16-bit; mono
-in 2D mode, stereo in 3D mode), mixed in the device callback. Samples are converted
-to the mix format when their file is set (`SDL_ConvertAudioSamples`); the background
+The client no longer links Miles Sound System, which exists only as a 32-bit DLL. On every
+platform `src/platform/miles_sdl.c` implements the Miles subset declared in
+`platform/miles_api.h` on SDL3: one device stream per digital driver at the requested rate and
+channels (22050 Hz, 16-bit; mono in 2D mode, stereo in 3D mode), mixed in the device callback.
+Samples are converted to the mix format when their file is set (`SDL_ConvertAudioSamples`); the background
 music is decoded from memory with the vendored `dr_mp3` and resampled by an
 `SDL_AudioStream`. Volumes are linear 0..127; sample and stream status uses the Miles
 done/playing values. The one 3D provider is named "Miles Fast 2D Positional Audio":
 inverse-distance attenuation between the minimum and maximum distance, silence beyond
 the maximum, and a left/right balance from the listener's orientation. Speaker and
-room types report "unsupported"; there is no reverb.
+room types report "unsupported"; there is no reverb. `_AIL_set_redist_directory` and
+`_AIL_set_preference` do nothing, and no `.m3d` or `.asi` plugin is loaded.
+
+What the client asked of the game's `mss32.dll` and this leaves out is not heard: a 32-bit probe
+of that DLL on 2026-11-11 found "Miles Fast 2D Positional Audio" the only provider in the game
+folder, answering -1 for its speaker type, so `contents/sound.c` never set one (the `SPEAKERTYPE`
+setting had no effect there either), and supporting room types, of which the client only ever sets
+type 0 while giving every 3D sample an effects (reverb) level of 0. What does change is the mixing:
+this file's distance falloff and balance in place of the provider's, SDL's resampling and output
+device, and `dr_mp3` in place of `mp3dec.asi` for the music. They have not been compared with Miles
+sample by sample.
 
 `_AIL_file_type`, `_AIL_WAV_info`, `_AIL_decompress_ADPCM` and `_AIL_decompress_ASI`
-give `resources/wave.c` the same data as on Windows: a PCM WAV image with a 44-byte
+give `resources/wave.c` the same data as Miles did: a PCM WAV image with a 44-byte
 header, freed by `_AIL_mem_free_lock`. Microsoft and IMA ADPCM both decode; the IMA
 decoder is the Intel/DVI reference algorithm (FFmpeg rounds differently). Every ADPCM
 file in `data.grf` (five IMA, one Microsoft) decoded identically to the reference
@@ -249,7 +269,7 @@ that DC or the surface's. With FreeType a `DcBitmap` is a heap buffer with the s
 BGRA layout and no device context, and a `TextDC` draws into that buffer, or into a 32-bit
 surface it locks with `gfx_lock` on its first draw (`renderer_text_out`).
 
-`build.bat freetype` (also with `x64` and `dbg`) builds `ragexe_ft.exe`, whose text is
+`build.bat freetype` (also with `dbg`) builds `ragexe_ft.exe`, whose text is
 drawn by FreeType as off Windows; `vendor\build_vendor.bat` then downloads FreeType 2.13.3, the
 release the Android build uses, and builds it static with CMake, and `tests\scenes\build.bat
 freetype` links the scene harness from those objects. Windows has no Fontconfig, so the font
@@ -337,13 +357,32 @@ case-insensitively; on a case-insensitive volume, finds still report the stored 
 `luaL_openlibs`.
 
 **Granny models** (the emperium, the guardians, the guild flag and the treasure box) have no
-Granny runtime off Windows. `tools/granny_export` converts the game's `.gr2` files once, with
-`granny2.dll` on Windows or under Wine, to glTF 2.0 files in `data\model\gltf`, named by the CRC-32
-of the `.gr2` they came from; `resources/granny_gltf.c` implements the Granny calls the client
-makes (file info, poses, controls, skinning, textures) on those files, found by the CRC of the
-bytes the client loads. Without them the models are not drawn and stderr says so once. The
-scenes `granny_models` and `granny_dead`, with the Windows scene harness on the same clock, match
-`granny2.dll` except for single pixels along edges ([tools/granny_export](../tools/granny_export/README.md)).
+Granny runtime but the game's 32-bit `granny2.dll`, so no build of the client uses one, Windows
+included. `tools/granny_export` converts the game's `.gr2` files once, with `granny2.dll` on
+Windows or under Wine, to glTF 2.0 files in `data\model\gltf`, named by the CRC-32 of the `.gr2`
+they came from; `resources/granny_gltf.c` implements the Granny calls the client makes (file info,
+poses, controls, skinning, textures) on those files, found by the CRC of the bytes the client
+loads. Without them the models are not drawn: each load shows the client's "Unable to load file
+.gr2 (C3dGrannyModelRes :: Load)" box, and the first also writes a line naming the missing file to
+the debug output (`OutputDebugString` on Windows, seen only with a debugger attached; stderr
+elsewhere).
+
+Against the last client that used `granny2.dll` (the 32-bit build of `6b176290`), the 64-bit scene
+harness on the same clock captures the Granny scenes with converted models like this (pixels whose
+largest channel difference is more than 1, and more than 16):
+
+| capture | more than 1 | more than 16 |
+|---|---|---|
+| `granny_dead` | 0 | 0 |
+| `granny_dying` | 292 | 16 |
+| `granny_models` | 7,058 | 365 |
+| `guild_flags` | 0 | 0 |
+| `guild_flags_later` | 2 | 2 |
+
+In `granny_models` the emperium, a guardian and the treasure box differ over their surfaces by a
+few steps of shading and by more along edges inside them; in `granny_dying` along the edges of a
+guardian and the treasure box ([tools/granny_export](../tools/granny_export/README.md), and *One
+64-bit Windows client* in the [review ledger](custom-review.md)).
 
 ### Window, input and IME
 
@@ -427,8 +466,8 @@ windows, Hangul chat through IBus, and an active audio stream. The frame overlay
 1024×768 on llvmpipe. A `-DRAGE_SANITIZERS=ON` build reached the same points; the misaligned
 packet-key loads and the null `memmove` it reported are fixed.
 
-For rendering questions, the Windows build runs under Wine in the same VM (`wine32` plus 32-bit
-Mesa, the client DLLs next to it) against the same data and server. It drew `iz_int03` the same
+For rendering questions, the Windows build, then 32-bit, ran under Wine in the same VM (`wine32`
+plus 32-bit Mesa, the client DLLs next to it) against the same data and server. It drew `iz_int03` the same
 way as the GL backend, including the black outside of the cabin's south wall that hides the lower
 half of the room from the default camera.
 
@@ -454,23 +493,50 @@ from the command line tools, MacPorts for cmake, ninja, freetype and fontconfig)
 built in the same machine: `ragexe.app` opened from the game folder, logged in, created a
 character, entered `iz_int03`, walked and chatted. The 21 tests pass there as well.
 
-## 64-bit Windows client
+## Windows client
 
-`build.bat x64` builds `build\ragexe_x64.exe` (`build.bat x64 dbg`: `ragexe_dbg_x64.exe`) with
-the same Win32 window, GDI text and Direct3D 9 renderer as the 32-bit client. The only 32-bit parts
-of the 32-bit client are RAD's `granny2.dll` and `mss32.dll`, so the 64-bit build swaps them
-(`PLATFORM_RAD_DLLS` in `platform/win_types.h` is set only for 32-bit Windows):
+`build.bat` builds `build\ragexe.exe` (`build.bat dbg`: `ragexe_dbg.exe`), a 64-bit program with
+the Win32 window, GDI text and Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
+client by default and this one with `x64`. The 32-bit client linked three DLLs of the original
+that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
+does:
 
-- sound goes through `platform/miles_sdl.c`, the Miles subset the POSIX builds use, on an
-  audio-only static SDL3 that `vendor\build_vendor.bat x64` downloads (the commit
-  `cmake/SDL3.cmake` pins, hash-checked) and builds with CMake;
-- Granny models come from the converted glTF files (`tools/granny_export`), as off Windows;
-- `cps.dll`, which the client never calls, is no longer linked.
+- sound goes through `platform/miles_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
+  static SDL3 that `vendor\build_vendor.bat` downloads (the commit `cmake/SDL3.cmake` pins,
+  hash-checked) and builds with CMake into `build\vendor`;
+- Granny models come from the converted glTF files (see *Linux client*) in place of RAD's
+  `granny2.dll`;
+- GRF tables and files and guild emblems inflate, and the emblem cache deflates, through the
+  bundled zlib in place of `cps.dll`'s `uncompress` and `compress`. A `cps.dll` that does more
+  than zlib (GRF Editor's, for the GRFs it encrypts) therefore has no effect: a GRF whose file
+  table needs it does not open (`fileio/grf_pak.c`, `load_table_v2`), so the client goes without
+  its files, and a file in a GRF that needs it inflates partly or not at all and reads as truncated
+  data padded with zeros (`grf_archive_read`, which does not check what `uncompress` returns).
 
-The crash report prints full-width addresses. `tests\scenes\build.bat x64` builds the scene
-harness; every non-Granny scene captures bit for bit what the 32-bit client captures, and the
-Granny scenes differ from `granny2.dll` only along edges, as on Linux. The `-A x64` CI job builds
-both.
+Everything `build.bat` links, the vendor libraries included, is compiled with `/MT`: the client
+carries the C runtime and imports no `vcruntime*.dll`, `msvcp*.dll` or `api-ms-win-crt-*` set, so it
+needs no Visual C++ redistributable. (The 32-bit client used the 32-bit runtime DLLs the game folder
+ships; a 64-bit program skips those and would need the x64 redistributable installed.)
+`vendor\build_vendor.bat` writes what it built the libraries as into `build\vendor\kind.txt`, and a
+`build\vendor` without that file, or with another kind, such as a checkout's 32-bit libraries from
+before 2026-11-11, is removed and built again; the tests call it with `ifneeded`, which builds only
+then.
+
+SDL is built with its video and GPU subsystems as well as audio, for the renderer of
+`plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its
+Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is found, so that driver is in too. The
+client calls only SDL's audio functions so far, but SDL's dynamic API table refers to every function
+SDL has, so the executable contains all three subsystems and imports `setupapi.dll` and
+`version.dll` for them, which `build.bat` already linked.
+
+The crash report prints full-width addresses. `tests\scenes\build.bat` builds the scene harness,
+`build\ragexe_scenes.exe`. Against the last 32-bit build its captures of the scene set are the same
+bit for bit except in the Granny scenes, which with converted models differ as *Linux client* lists.
+`tests\build.bat` builds and runs the tests 64-bit too, with `/MT` like the client, except the
+oracle tests (`tests/oracle`), which map the original executable into their own process and stay
+32-bit: `tools\find_vcvars.bat x86` gives them, and `tools/granny_export`, the 32-bit compiler,
+and they link with `/MACHINE:X86`. The Windows CI job builds the client and the scene harness and
+runs the suite.
 
 ## Android client
 

@@ -9,9 +9,10 @@ Inputs:
   symbol).
 
 For every object, `defs` maps each external symbol it defines to 'func', 'data' or 'communal'
-and `refs` is the set of external symbols it uses without defining them. Names are kept as the
-compiler wrote them (`_name`, `@name@8`, `_name@4` on x86), so a reference matches its definition
-exactly; `plain()` gives the C name for messages and tables.
+and `refs` is the set of external symbols it uses without defining them, by their C names. MSVC's
+x64 objects and ELF objects carry the C names as they are, `_AIL_startup` and `_Granny...`
+included. Mach-O puts an underscore before every C name, so a listing whose external symbols all
+start with one is taken as Mach-O's and loses that underscore here.
 
 Communal symbols: MSVC compiles a C global without an initializer (`int g_x;`) as a communal
 symbol, which dumpbin lists as UNDEF with its size as the value; the linker allocates it. It has
@@ -23,7 +24,7 @@ import re
 from pathlib import Path
 
 _DUMPBIN_FILE = re.compile(r'^Dump of file (.+)$')
-# 01E 00000000 SECT4  notype ()    External     | _able_to_make_effect_send_msg
+# 01E 00000000 SECT4  notype ()    External     | able_to_make_effect_send_msg
 _DUMPBIN_SYM = re.compile(
     r'^[0-9A-F]{3,8} ([0-9A-F]{8}) (SECT[0-9A-F]+|UNDEF)\s+\w+\s*(\(\))?\s+External\s+\|\s+(\S+)')
 
@@ -35,17 +36,6 @@ class ObjectSymbols:
         self.name = name
         self.defs = {}
         self.refs = set()
-
-
-def plain(sym):
-    """The C name of a decorated symbol: `_f` and `_f@8` (x86 cdecl, stdcall), `@f@8` (fastcall)."""
-    if sym.startswith('__imp_'):
-        sym = sym[6:]
-    if sym.startswith('@'):
-        sym = sym[1:]
-    elif sym.startswith('_'):
-        sym = sym[1:]
-    return sym.split('@')[0]
 
 
 def _finish(obj):
@@ -95,6 +85,7 @@ _NM_DEF = set('TDBRGSVWCuiI')
 def read_nm(path, objects=None):
     """Parse `nm -P -A` output ("OBJECT: SYMBOL TYPE [VALUE [SIZE]]" or "ARCHIVE[MEMBER]: ...")."""
     objects = {} if objects is None else objects
+    rows = []
     with open(path, encoding='utf-8', errors='replace') as f:
         for line in f:
             head, sep, rest = line.rpartition(': ')
@@ -103,14 +94,19 @@ def read_nm(path, objects=None):
             parts = rest.split()
             if len(parts) < 2:
                 continue
-            sym, kind = parts[0], parts[1]
-            obj = objects.setdefault(head, ObjectSymbols(head))
-            if kind == 'U':
-                obj.refs.add(sym)
-            elif kind == 'C':
-                obj.defs[sym] = 'communal'
-            elif kind in _NM_DEF:
-                obj.defs.setdefault(sym, 'func' if kind in 'TW' else 'data')
+            rows.append((head, parts[0], parts[1]))
+    external = [sym for _, sym, kind in rows if kind == 'U' or kind in _NM_DEF]
+    macho = bool(external) and all(sym.startswith('_') for sym in external)
+    for head, sym, kind in rows:
+        obj = objects.setdefault(head, ObjectSymbols(head))
+        if macho:
+            sym = sym[1:]
+        if kind == 'U':
+            obj.refs.add(sym)
+        elif kind == 'C':
+            obj.defs[sym] = 'communal'
+        elif kind in _NM_DEF:
+            obj.defs.setdefault(sym, 'func' if kind in 'TW' else 'data')
     for obj in objects.values():
         _finish(obj)
     return objects

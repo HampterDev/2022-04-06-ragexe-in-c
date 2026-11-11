@@ -1,7 +1,5 @@
 #include "render/screen_bounds.h"
-#define GRANNY_IMPORT
 #include <assert.h>
-#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,21 +74,21 @@ static void fixture_init(struct ModelFixture *f, int count)
         m->materialCount = 1; m->textures = f->materials;
     }
 }
-int __stdcall _GrannyGetMeshVertexCount(granny_mesh *mesh)
+int _GrannyGetMeshVertexCount(granny_mesh *mesh)
 { return ((struct MeshData *)mesh->PrimaryVertexData)->vertex_count; }
-int __stdcall _GrannyGetMeshIndexCount(granny_mesh *mesh)
+int _GrannyGetMeshIndexCount(granny_mesh *mesh)
 { return ((struct MeshData *)mesh->PrimaryVertexData)->index_count; }
-BYTE __stdcall _GrannyMeshIsRigid(granny_mesh *mesh)
+BYTE _GrannyMeshIsRigid(granny_mesh *mesh)
 { return (BYTE)((struct MeshData *)mesh->PrimaryVertexData)->rigid; }
-int *__stdcall _GrannyGetMeshTriangleGroups(granny_mesh *mesh)
+int *_GrannyGetMeshTriangleGroups(granny_mesh *mesh)
 { return ((struct MeshData *)mesh->PrimaryVertexData)->groups; }
-void *__stdcall _GrannyGetMeshVertices(granny_mesh *mesh)
+void *_GrannyGetMeshVertices(granny_mesh *mesh)
 { return ((struct MeshData *)mesh->PrimaryVertexData)->vertices; }
-int __stdcall _GrannyGetMeshBytesPerIndex(granny_mesh *mesh) { (void)mesh; return 2; }
-void *__stdcall _GrannyGetMeshIndices(granny_mesh *mesh)
+int _GrannyGetMeshBytesPerIndex(granny_mesh *mesh) { (void)mesh; return 2; }
+void *_GrannyGetMeshIndices(granny_mesh *mesh)
 { return ((struct MeshData *)mesh->PrimaryVertexData)->indices; }
-void __stdcall _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones,
-                                    const float *matrix, int count, const void *source, void *out)
+void _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones,
+                           const float *matrix, int count, const void *source, void *out)
 {
     struct GrannyMeshVertex *vertices = out;
     int i;
@@ -163,8 +161,6 @@ static void test_create_failures(void)
         }
     }
     fixtures[0].model.meshCount = -1;
-    assert(!granny_model_state_create(&fixtures[0].resource, NULL));
-    fixtures[0].model.meshCount = INT_MAX;
     assert(!granny_model_state_create(&fixtures[0].resource, NULL));
     fixtures[0].model.meshCount = 1;
     fixtures[0].data[0].index_count = -1;

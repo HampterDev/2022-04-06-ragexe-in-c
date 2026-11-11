@@ -289,7 +289,7 @@ intptr_t ui_radio_btn_send_msg(struct UIWindow *window, struct UIWindow *sender,
 {
     struct UIRadioBtn *self = (struct UIRadioBtn *)window;
     if (msg == UI_MSG_SET_STATE) {
-        self->base.state = val1;
+        self->base.state = (int)val1;
         ui_window_invalidate_base(&self->base);
     }
     return 0;

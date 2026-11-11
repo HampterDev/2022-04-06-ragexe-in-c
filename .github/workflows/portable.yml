@@ -16,8 +16,6 @@ jobs:
       matrix:
         include:
           - os: windows-2022
-            configure: -A Win32
-          - os: windows-2022
             configure: -A x64
           - os: ubuntu-24.04
             configure: -DCMAKE_C_COMPILER=clang -DRAGE_SANITIZERS=ON
@@ -35,15 +33,11 @@ jobs:
       - name: Test
         run: ctest --test-dir build/portable -C Debug --output-on-failure
       - name: Build Windows client
-        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        if: matrix.os == 'windows-2022'
         shell: cmd
-        run: build.bat
-      - name: Build 64-bit Windows client
-        if: matrix.os == 'windows-2022' && matrix.configure == '-A x64'
-        shell: cmd
-        run: build.bat x64 && tests\scenes\build.bat x64
+        run: build.bat && tests\scenes\build.bat
       - name: Test Windows client
-        if: matrix.os == 'windows-2022' && matrix.configure == '-A Win32'
+        if: matrix.os == 'windows-2022'
         shell: cmd
         run: tests\build.bat
 

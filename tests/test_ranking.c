@@ -89,7 +89,7 @@ intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr *s, int msg, intptr_t a, int
     const char *text = (const char *)a;
     assert(s == &g_windowMgr && msg == 1 && !c && !d && line_count < 32);
     lines[line_count] = malloc(strlen(text) + 1); assert(lines[line_count]);
-    strcpy(lines[line_count], text); colors[line_count++] = color; return 0;
+    strcpy(lines[line_count], text); colors[line_count++] = (int)color; return 0;
 }
 static void clear_lines(void)
 {

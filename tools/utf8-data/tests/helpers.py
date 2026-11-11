@@ -23,7 +23,8 @@ def U(text):
 
 
 def compile_lua(source: bytes) -> bytes:
-    """Lua 5.1 bytecode of `source`, made by the vendored Lua (32-bit, like the .lub files)."""
+    """Lua 5.1 bytecode of `source`, made by the vendored Lua (64-bit: 8-byte sizes, where the
+    .lub files have 4; test_luabc.Win32ChunkTest covers those)."""
     with tempfile.TemporaryDirectory() as tmp:
         src, out = os.path.join(tmp, 'in.lua'), os.path.join(tmp, 'out.lub')
         with open(src, 'wb') as f:

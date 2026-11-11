@@ -282,7 +282,7 @@ int ui_scroll_bar_hit_part(struct UIScrollBar *self, int x, int y)
 
 static int ask_parent(struct UIScrollBar *self, int msg, int val1)
 {
-    return ui_window_send_msg(self->base.parent, &self->base, msg, val1, 0, 0, 0);
+    return (int)ui_window_send_msg(self->base.parent, &self->base, msg, val1, 0, 0, 0);
 }
 
 void ui_scroll_bar_on_l_btn_down(struct UIWindow *window, int x, int y)

@@ -65,7 +65,6 @@ static struct PlatformThread *begin_thread(void (*entry)(void *context), void *c
     return thread_failure ? NULL : platform_thread_create(entry, context);
 }
 
-#define MSS_IMPORT
 #define malloc guard_alloc
 #define calloc guard_calloc
 #define free guard_free
@@ -106,59 +105,59 @@ float float_sqrt(float x) { return sqrtf(x); }
 float get_sin_deg(int x) { return sinf((float)x * 0.017453292519943295f); }
 float get_cos_deg(int x) { return cosf((float)x * 0.017453292519943295f); }
 
-void __stdcall _AIL_set_redist_directory(const char *dir) { assert(strcmp(dir, ".\\") == 0); }
-int __stdcall _AIL_startup(void) { assert(!started); started = 1; return 1; }
-void __stdcall _AIL_shutdown(void)
+void _AIL_set_redist_directory(const char *dir) { assert(strcmp(dir, ".\\") == 0); }
+int _AIL_startup(void) { assert(!started); started = 1; return 1; }
+void _AIL_shutdown(void)
 {
     assert(started && !driver_open && !stream_open && !provider_open && !listener_open);
     assert(!sample_allocated && !sample_3d_allocated);
     started = 0; ++shutdown_count;
 }
-int __stdcall _AIL_set_preference(unsigned n, int value) { assert(n == 15 && value == 0); return 0; }
-void *__stdcall _AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
+int _AIL_set_preference(unsigned n, int value) { assert(n == 15 && value == 0); return 0; }
+void *_AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
 {
     assert(started && rate == 22050 && bits == 16);
     assert(channels == expected_channels && flags == 1);
     driver_open = !fail_driver;
     return driver_open ? &driver_token : NULL;
 }
-void __stdcall _AIL_close_digital_driver(void *driver)
+void _AIL_close_digital_driver(void *driver)
 {
     assert(driver == &driver_token && driver_open && !stream_open);
     assert(!sample_allocated && !sample_3d_allocated && !provider_open);
     driver_open = 0;
 }
-void *__stdcall _AIL_allocate_sample_handle(void *driver)
+void *_AIL_allocate_sample_handle(void *driver)
 {
     assert(driver == &driver_token && driver_open);
     if (sample_allocated == sample_limit)
         return NULL;
     return &sample_storage[sample_allocated++];
 }
-void __stdcall _AIL_release_sample_handle(void *sample)
+void _AIL_release_sample_handle(void *sample)
 {
     assert(sample >= (void *)sample_storage && sample < (void *)(sample_storage + 48));
     assert(sample_allocated > 0 && driver_open); --sample_allocated; ++release_count;
 }
-void __stdcall _AIL_init_sample(void *sample) { assert(sample && driver_open); }
-int __stdcall _AIL_set_sample_file(void *sample, const void *file, int block)
+void _AIL_init_sample(void *sample) { assert(sample && driver_open); }
+int _AIL_set_sample_file(void *sample, const void *file, int block)
 { assert(sample && file == wave_resource.data && block == 0); return 1; }
-void __stdcall _AIL_set_sample_volume(void *sample, int volume) { assert(sample); volume_2d = volume; }
-void __stdcall _AIL_start_sample(void *sample) { assert(sample); ++sample_starts; }
-void __stdcall _AIL_end_sample(void *sample) { assert(sample && driver_open); }
-unsigned __stdcall _AIL_sample_status(void *sample) { assert(sample && driver_open); return 2; }
-void *__stdcall _AIL_open_stream(void *driver, const char *name, int memory)
+void _AIL_set_sample_volume(void *sample, int volume) { assert(sample); volume_2d = volume; }
+void _AIL_start_sample(void *sample) { assert(sample); ++sample_starts; }
+void _AIL_end_sample(void *sample) { assert(sample && driver_open); }
+unsigned _AIL_sample_status(void *sample) { assert(sample && driver_open); return 2; }
+void *_AIL_open_stream(void *driver, const char *name, int memory)
 {
     assert(driver == &driver_token && driver_open && !stream_open && memory == 0);
     ++stream_attempts; strcpy_s(last_stream, sizeof last_stream, name);
     stream_open = !fail_stream;
     return stream_open ? &stream_token : NULL;
 }
-void __stdcall _AIL_close_stream(void *stream)
+void _AIL_close_stream(void *stream)
 { assert(stream == &stream_token && stream_open); stream_open = 0; }
-void __stdcall _AIL_start_stream(void *stream)
+void _AIL_start_stream(void *stream)
 { assert(stream == &stream_token && stream_open); ++stream_starts; }
-void __stdcall _AIL_set_stream_volume(void *stream, int volume)
+void _AIL_set_stream_volume(void *stream, int volume)
 {
     assert(stream == &stream_token && stream_open && volume >= 0 && volume <= 127);
     InterlockedExchange(&stream_volume, volume);
@@ -168,11 +167,11 @@ void __stdcall _AIL_set_stream_volume(void *stream, int volume)
         assert(stream_open && driver_open && started);
     }
 }
-void __stdcall _AIL_set_stream_loop_count(void *stream, int count)
+void _AIL_set_stream_loop_count(void *stream, int count)
 { assert(stream == &stream_token && stream_open); loop_count = count; }
-int __stdcall _AIL_stream_status(void *stream)
+int _AIL_stream_status(void *stream)
 { assert(stream == &stream_token && stream_open); return 2; }
-int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
+int _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
 {
     int index = (int)(INT_PTR)*next;
     assert(started);
@@ -184,40 +183,40 @@ int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
     *name = !no_provider && index == provider_index ? "Miles Fast 2D Positional Audio" : "Other provider";
     return 1;
 }
-int __stdcall _AIL_open_3D_provider(void *provider)
+int _AIL_open_3D_provider(void *provider)
 { assert(provider == &provider_token && !provider_open); provider_open = !fail_provider; return fail_provider; }
-void __stdcall _AIL_close_3D_provider(void *provider)
+void _AIL_close_3D_provider(void *provider)
 { assert(provider == &provider_token && provider_open && !listener_open && !sample_3d_allocated); provider_open = 0; }
-int __stdcall _AIL_3D_speaker_type(void *provider) { assert(provider && provider_open); return 0; }
-void __stdcall _AIL_set_3D_speaker_type(void *provider, int type) { assert(provider && provider_open && type == 0); }
-int __stdcall _AIL_3D_room_type(void *provider) { assert(provider && provider_open); return room_type; }
-void __stdcall _AIL_set_3D_room_type(void *provider, int type) { assert(provider && provider_open); room_type = type; }
-void *__stdcall _AIL_open_3D_listener(void *provider)
+int _AIL_3D_speaker_type(void *provider) { assert(provider && provider_open); return 0; }
+void _AIL_set_3D_speaker_type(void *provider, int type) { assert(provider && provider_open && type == 0); }
+int _AIL_3D_room_type(void *provider) { assert(provider && provider_open); return room_type; }
+void _AIL_set_3D_room_type(void *provider, int type) { assert(provider && provider_open); room_type = type; }
+void *_AIL_open_3D_listener(void *provider)
 { assert(provider && provider_open); listener_open = !fail_listener; return listener_open ? &listener_token : NULL; }
-void __stdcall _AIL_close_3D_listener(void *listener)
+void _AIL_close_3D_listener(void *listener)
 { assert(listener == &listener_token && listener_open && !sample_3d_allocated); listener_open = 0; }
-void *__stdcall _AIL_allocate_3D_sample_handle(void *provider)
+void *_AIL_allocate_3D_sample_handle(void *provider)
 {
     assert(provider && provider_open);
     if (sample_3d_allocated == sample_limit)
         return NULL;
     return &sample_3d_storage[sample_3d_allocated++];
 }
-void __stdcall _AIL_release_3D_sample_handle(void *sample)
+void _AIL_release_3D_sample_handle(void *sample)
 { assert(sample && sample_3d_allocated > 0 && provider_open); --sample_3d_allocated; ++release_count; }
-int __stdcall _AIL_set_3D_sample_file(void *sample, const void *file)
+int _AIL_set_3D_sample_file(void *sample, const void *file)
 { assert(sample && provider_open && file == wave_resource.data); return !reject_3d; }
-void __stdcall _AIL_set_3D_sample_effects_level(void *sample, float level) { assert(sample && level == 0); }
-void __stdcall _AIL_set_3D_position(void *object, float x, float y, float z)
+void _AIL_set_3D_sample_effects_level(void *sample, float level) { assert(sample && level == 0); }
+void _AIL_set_3D_position(void *object, float x, float y, float z)
 { assert(object); last_position[0] = x; last_position[1] = y; last_position[2] = z; }
-void __stdcall _AIL_set_3D_orientation(void *object, float x, float y, float z, float ux, float uy, float uz)
+void _AIL_set_3D_orientation(void *object, float x, float y, float z, float ux, float uy, float uz)
 { assert(object && ux == 0 && uy == 1 && uz == 0); last_orientation[0] = x; last_orientation[1] = y; last_orientation[2] = z; }
-void __stdcall _AIL_set_3D_sample_volume(void *sample, int volume) { assert(sample); volume_3d = volume; }
-void __stdcall _AIL_set_3D_sample_distances(void *sample, float max, float min)
+void _AIL_set_3D_sample_volume(void *sample, int volume) { assert(sample); volume_3d = volume; }
+void _AIL_set_3D_sample_distances(void *sample, float max, float min)
 { assert(sample); distances[0] = max; distances[1] = min; }
-void __stdcall _AIL_start_3D_sample(void *sample) { assert(sample && provider_open); ++sample_3d_starts; }
-void __stdcall _AIL_end_3D_sample(void *sample) { assert(sample && provider_open); }
-unsigned __stdcall _AIL_3D_sample_status(void *sample) { assert(sample && provider_open); return 2; }
+void _AIL_start_3D_sample(void *sample) { assert(sample && provider_open); ++sample_3d_starts; }
+void _AIL_end_3D_sample(void *sample) { assert(sample && provider_open); }
+unsigned _AIL_3D_sample_status(void *sample) { assert(sample && provider_open); return 2; }
 
 static void reset(int mode)
 {

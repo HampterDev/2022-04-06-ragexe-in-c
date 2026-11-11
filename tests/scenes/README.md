@@ -12,7 +12,6 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
 | `src/platform/window_win32.c`     | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
-| `granny2.dll` clock imports (Windows) | `scene_granny_win.c` | Granny models animate on the scene clock, as the POSIX runtime does |
 | `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
@@ -23,7 +22,10 @@ produces the same pixels every run, and the same random effects on every platfor
 Linux and macOS: build with `-DRAGE_CLIENT=ON` (the target is built with `ragexe`). Windows: run
 `build.bat`, then `tests\scenes\build.bat`, which links `build\ragexe_scenes.exe` from the same
 objects (`build.bat freetype` and `tests\scenes\build.bat freetype`: `ragexe_scenes_ft.exe`, with
-FreeType text as on Linux). Then run every script in `scripts/` from the game directory:
+FreeType text as on Linux). Then run every script in `scripts/` from the game directory. The
+Granny models of `granny_models`, `granny_dead` and `guild_flags` come from the glTF files that
+[`tools/granny_export`](../../tools/granny_export/README.md) writes into the game directory, on
+every platform; without them those scenes show message boxes and no models.
 
 ```sh
 python3 tests/scenes/run.py --exe build/ragexe_scenes --game ~/ro --out /tmp/scenes

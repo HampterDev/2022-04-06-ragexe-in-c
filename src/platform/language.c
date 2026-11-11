@@ -151,7 +151,7 @@ void language_caret_back(struct Language *self)
 void language_caret_forward(struct Language *self)
 {
     const char *s;
-    unsigned size = self->input_length;
+    unsigned size = (unsigned)self->input_length;
 
     if ((unsigned)self->caret == size)
         return;
@@ -204,7 +204,7 @@ void language_set_masked(struct Language *self, BYTE masked)
 
 void language_move_caret_forward(struct Language *self, int count)
 {
-    unsigned size = self->input_length;
+    unsigned size = (unsigned)self->input_length;
 
     if ((unsigned)self->caret == size)
         return;
@@ -280,8 +280,8 @@ static void plain_key(struct Language *self, int key)
 {
     switch (key) {
     case VK_END:
-        self->caret = self->input_length;
-        self->anchor = self->input_length;
+        self->caret = (int)self->input_length;
+        self->anchor = (int)self->input_length;
         break;
     case VK_HOME:
         self->anchor = 0;
@@ -307,7 +307,7 @@ static void shift_key(struct Language *self, int key)
 {
     switch (key) {
     case VK_END:
-        self->caret = self->input_length;
+        self->caret = (int)self->input_length;
         break;
     case VK_HOME:
         self->caret = 0;
@@ -343,8 +343,8 @@ void language_cancel_input(struct Language *self)
     platform_ime_cancel(g_hMainWnd);
     self->input_length = 0;
     if (self->input) self->input[0] = 0;
-    self->caret = self->input_length;
-    self->anchor = self->input_length;
+    self->caret = (int)self->input_length;
+    self->anchor = (int)self->input_length;
     self->composition_length = 0;
     self->composition[0] = 0;
     self->pending_unit = 0;
@@ -360,7 +360,7 @@ void language_set_selection(struct Language *self, int anchor, int caret)
         self->anchor = 0;
         anchor = 0;
     }
-    size = self->input_length;
+    size = (unsigned)self->input_length;
     if ((unsigned)anchor > size)
         self->anchor = size;
     if (caret < 0) {

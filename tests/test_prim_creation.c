@@ -121,8 +121,9 @@ static void reset(void)
 static void test_texture_arrays(void)
 {
     static const int counts[] = {0, 1, 2, 17};
-    static const size_t byte_counts[] = {0, 4, 8, 68};
+    static const size_t byte_counts[] = {0, 8, 16, 136};
     static const int limits[] = {0x3fffffff, 0x40000000, INT_MAX, -1};
+    static const size_t limit_bytes[] = {0x1fffffff8, 0x200000000, 0x3fffffff8, SIZE_MAX};
     struct EffectPrim prim = {0};
     unsigned path, i, j;
 
@@ -146,7 +147,7 @@ static void test_texture_arrays(void)
     for (i = 0; i < sizeof limits / sizeof limits[0]; ++i) {
         prim.motion_count = limits[i];
         assert(!rag_prim_new_textures(&prim));
-        assert(requested_texture_bytes == (i == 0 ? 0xfffffffcu : SIZE_MAX));
+        assert(requested_texture_bytes == limit_bytes[i]);
     }
     checking_texture_array = 0;
     puts("primitive textures: typed borrowed values, empty arrays, guarded motion slots and overflow requests passed");

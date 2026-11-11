@@ -14,11 +14,6 @@
 
 void scene_clock_advance(uint32_t ms);
 
-#ifdef _WIN32
-/* scene_granny_win.c: points granny2.dll's clock imports at the scene clock. */
-void scene_granny_clock_install(void);
-#endif
-
 /* Server side of the fake sockets. */
 typedef void (*SceneServerPacket)(int port, const unsigned char *packet, int length);
 void scene_net_set_handler(SceneServerPacket handler);

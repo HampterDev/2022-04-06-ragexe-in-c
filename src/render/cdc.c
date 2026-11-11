@@ -256,7 +256,7 @@ void dc_bitmap_draw_sprite(struct DcBitmap *self, int a, int b, int c, int d, vo
         palette = spr->palette;
     memset(&place, 0, sizeof(place));
     for (i = 0; i < motion->clip_count; i++) {
-        struct SprClip *clip = motion_get_clip(motion, i);
+        struct SprClip *clip = motion_get_clip(motion, (unsigned)i);
         struct SprImg *img;
         struct Texture *tex;
         float zx, zy;

@@ -70,7 +70,7 @@ def check(table, src, listings, strict=False, out=sys.stdout):
             n_refs += 1
             if libs & allowed:
                 continue
-            key = (rel, objsyms.plain(sym))
+            key = (rel, sym)
             if key in table.link_exceptions:
                 used.add(key)
                 continue

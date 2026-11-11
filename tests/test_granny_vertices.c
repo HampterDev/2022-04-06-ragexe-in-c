@@ -1,6 +1,4 @@
-#define GRANNY_IMPORT
 #include <assert.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,32 +57,32 @@ static granny_world_pose *default_pose = (granny_world_pose *)1;
 static granny_world_pose *alternate_pose = (granny_world_pose *)2;
 static granny_world_pose *last_pose;
 
-int __stdcall _GrannyGetMeshVertexCount(granny_mesh *mesh)
+int _GrannyGetMeshVertexCount(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return vertex_count; }
-int __stdcall _GrannyGetMeshIndexCount(granny_mesh *mesh)
+int _GrannyGetMeshIndexCount(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return index_count; }
-BYTE __stdcall _GrannyMeshIsRigid(granny_mesh *mesh)
+BYTE _GrannyMeshIsRigid(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return (BYTE)rigid; }
-int *__stdcall _GrannyGetMeshTriangleGroups(granny_mesh *mesh)
+int *_GrannyGetMeshTriangleGroups(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return missing_groups ? NULL : material_group; }
-int *__stdcall _GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *binding)
+int *_GrannyGetMeshBindingToBoneIndices(granny_mesh_binding *binding)
 { assert(binding == (granny_mesh_binding *)3); return bone_indices; }
-float *__stdcall _GrannyGetWorldPoseComposite4x4Array(granny_world_pose *pose)
+float *_GrannyGetWorldPoseComposite4x4Array(granny_world_pose *pose)
 {
     assert(pose == default_pose || pose == alternate_pose);
     last_pose = pose;
     return pose == default_pose ? default_composite : alternate_composite;
 }
-float *__stdcall _GrannyGetWorldPoseComposite4x4(granny_world_pose *pose, int bone)
+float *_GrannyGetWorldPoseComposite4x4(granny_world_pose *pose, int bone)
 { assert((pose == default_pose || pose == alternate_pose) && bone == 5); return pose == default_pose ? default_composite : alternate_composite; }
-void *__stdcall _GrannyGetMeshVertices(granny_mesh *mesh)
+void *_GrannyGetMeshVertices(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return source_vertices; }
-int __stdcall _GrannyGetMeshBytesPerIndex(granny_mesh *mesh)
+int _GrannyGetMeshBytesPerIndex(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return 2; }
-void *__stdcall _GrannyGetMeshIndices(granny_mesh *mesh)
+void *_GrannyGetMeshIndices(granny_mesh *mesh)
 { assert(mesh == &source_mesh); return NULL; }
-void __stdcall _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones,
-                                    const float *composite, int count, const void *from, void *to)
+void _GrannyDeformVertices(granny_mesh_deformer *deformer, const int *bones,
+                           const float *composite, int count, const void *from, void *to)
 {
     struct GrannyMeshVertex *out = to;
     int i;
@@ -242,7 +240,6 @@ int main(void)
     calls = allocation_calls;
     vertex_count = -1; assert(!granny_vertex_buffer_create(&resource, 0));
     vertex_count = 0; assert(!granny_vertex_buffer_create(&resource, 0));
-    vertex_count = INT_MAX; assert(!granny_vertex_buffer_create(&resource, 0));
     assert(allocation_calls == calls);
     vertex_count = 8;
     fail_allocation = 1;

@@ -1,6 +1,7 @@
 #include "session/state.h"
 #include "core/text_util.h"
 #include "platform/code_page.h"
+#include <limits.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,14 +17,16 @@ static void text_to_wide(struct WString *out, UINT code_page, const struct Strin
     int count;
 
     wstring_init(out);
-    count = platform_code_page_to_utf16(code_page, string_cstr(src), src->size, NULL, 0);
+    if (src->size > INT_MAX)
+        return;
+    count = platform_code_page_to_utf16(code_page, string_cstr(src), (int)src->size, NULL, 0);
     if (count == 0)
         return;
     wide = malloc(((size_t)count + 1) * sizeof *wide);
     if (!wide)
         return;
     wide[count] = 0;
-    if (platform_code_page_to_utf16(code_page, string_cstr(src), src->size, wide, count) != 0)
+    if (platform_code_page_to_utf16(code_page, string_cstr(src), (int)src->size, wide, count) != 0)
         wstring_assign(out, wide, utf16_length(wide));
     free(wide);
 }

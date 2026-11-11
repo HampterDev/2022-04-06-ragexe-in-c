@@ -1,5 +1,3 @@
-#include "platform/win_types.h"
-#ifndef PLATFORM_RAD_DLLS
 #include "platform/miles_api.h"
 #include "platform/filesystem.h"
 #include "platform/thread.h"
@@ -652,33 +650,33 @@ static void driver_destroy(struct MilesDriver *driver)
     free(driver);
 }
 
-void __stdcall _AIL_set_redist_directory(const char *dir)
+void _AIL_set_redist_directory(const char *dir)
 {
     (void)dir;
 }
 
-int __stdcall _AIL_startup(void)
+int _AIL_startup(void)
 {
     if (!g_audio_started)
         g_audio_started = SDL_InitSubSystem(SDL_INIT_AUDIO);
     return g_audio_started;
 }
 
-void __stdcall _AIL_shutdown(void)
+void _AIL_shutdown(void)
 {
     if (g_audio_started)
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
     g_audio_started = 0;
 }
 
-int __stdcall _AIL_set_preference(unsigned number, int value)
+int _AIL_set_preference(unsigned number, int value)
 {
     (void)number;
     (void)value;
     return 0;
 }
 
-void *__stdcall _AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
+void *_AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
 {
     struct MilesDriver *driver;
     SDL_AudioSpec spec;
@@ -697,23 +695,23 @@ void *__stdcall _AIL_open_digital_driver(unsigned rate, int bits, int channels, 
     return driver;
 }
 
-void __stdcall _AIL_close_digital_driver(void *driver)
+void _AIL_close_digital_driver(void *driver)
 {
     if (driver)
         driver_destroy(driver);
 }
 
-void *__stdcall _AIL_allocate_sample_handle(void *driver)
+void *_AIL_allocate_sample_handle(void *driver)
 {
     return sample_create(driver, 0);
 }
 
-void __stdcall _AIL_release_sample_handle(void *sample)
+void _AIL_release_sample_handle(void *sample)
 {
     sample_release(sample);
 }
 
-void __stdcall _AIL_init_sample(void *handle)
+void _AIL_init_sample(void *handle)
 {
     struct MilesSample *sample = handle;
     if (!sample)
@@ -727,33 +725,33 @@ void __stdcall _AIL_init_sample(void *handle)
     platform_mutex_unlock(sample->object.driver->lock);
 }
 
-int __stdcall _AIL_set_sample_file(void *sample, const void *file, int block)
+int _AIL_set_sample_file(void *sample, const void *file, int block)
 {
     (void)block;
     return sample_load(sample, file);
 }
 
-void __stdcall _AIL_set_sample_volume(void *sample, int volume)
+void _AIL_set_sample_volume(void *sample, int volume)
 {
     sample_set_volume(sample, volume);
 }
 
-void __stdcall _AIL_start_sample(void *sample)
+void _AIL_start_sample(void *sample)
 {
     sample_start(sample);
 }
 
-void __stdcall _AIL_end_sample(void *sample)
+void _AIL_end_sample(void *sample)
 {
     sample_end(sample);
 }
 
-unsigned __stdcall _AIL_sample_status(void *sample)
+unsigned _AIL_sample_status(void *sample)
 {
     return sample_status(sample);
 }
 
-void *__stdcall _AIL_open_stream(void *handle, const char *name, int stream_memory)
+void *_AIL_open_stream(void *handle, const char *name, int stream_memory)
 {
     struct MilesDriver *driver = handle;
     struct MilesStream *stream;
@@ -793,13 +791,13 @@ void *__stdcall _AIL_open_stream(void *handle, const char *name, int stream_memo
     return stream;
 }
 
-void __stdcall _AIL_close_stream(void *stream)
+void _AIL_close_stream(void *stream)
 {
     if (stream)
         stream_close(stream);
 }
 
-void __stdcall _AIL_start_stream(void *handle)
+void _AIL_start_stream(void *handle)
 {
     struct MilesStream *stream = handle;
     if (!stream)
@@ -815,7 +813,7 @@ void __stdcall _AIL_start_stream(void *handle)
     platform_mutex_unlock(stream->driver->lock);
 }
 
-void __stdcall _AIL_set_stream_volume(void *handle, int volume)
+void _AIL_set_stream_volume(void *handle, int volume)
 {
     struct MilesStream *stream = handle;
     if (!stream)
@@ -825,7 +823,7 @@ void __stdcall _AIL_set_stream_volume(void *handle, int volume)
     platform_mutex_unlock(stream->driver->lock);
 }
 
-void __stdcall _AIL_set_stream_loop_count(void *handle, int count)
+void _AIL_set_stream_loop_count(void *handle, int count)
 {
     struct MilesStream *stream = handle;
     if (!stream)
@@ -835,7 +833,7 @@ void __stdcall _AIL_set_stream_loop_count(void *handle, int count)
     platform_mutex_unlock(stream->driver->lock);
 }
 
-int __stdcall _AIL_stream_status(void *handle)
+int _AIL_stream_status(void *handle)
 {
     struct MilesStream *stream = handle;
     int status;
@@ -847,7 +845,7 @@ int __stdcall _AIL_stream_status(void *handle)
     return status;
 }
 
-int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
+int _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
 {
     if (*next)
         return 0;
@@ -857,42 +855,42 @@ int __stdcall _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
     return 1;
 }
 
-int __stdcall _AIL_open_3D_provider(void *provider)
+int _AIL_open_3D_provider(void *provider)
 {
     struct MilesProvider *owner = provider;
     return owner == &g_provider && owner->driver ? PROVIDER_OK : PROVIDER_ERROR;
 }
 
-void __stdcall _AIL_close_3D_provider(void *provider)
+void _AIL_close_3D_provider(void *provider)
 {
     (void)provider;
 }
 
-int __stdcall _AIL_3D_speaker_type(void *provider)
-{
-    (void)provider;
-    return PROVIDER_FEATURE_UNSUPPORTED;
-}
-
-void __stdcall _AIL_set_3D_speaker_type(void *provider, int type)
-{
-    (void)provider;
-    (void)type;
-}
-
-int __stdcall _AIL_3D_room_type(void *provider)
+int _AIL_3D_speaker_type(void *provider)
 {
     (void)provider;
     return PROVIDER_FEATURE_UNSUPPORTED;
 }
 
-void __stdcall _AIL_set_3D_room_type(void *provider, int type)
+void _AIL_set_3D_speaker_type(void *provider, int type)
 {
     (void)provider;
     (void)type;
 }
 
-void *__stdcall _AIL_open_3D_listener(void *provider)
+int _AIL_3D_room_type(void *provider)
+{
+    (void)provider;
+    return PROVIDER_FEATURE_UNSUPPORTED;
+}
+
+void _AIL_set_3D_room_type(void *provider, int type)
+{
+    (void)provider;
+    (void)type;
+}
+
+void *_AIL_open_3D_listener(void *provider)
 {
     struct MilesDriver *driver = provider ? ((struct MilesProvider *)provider)->driver : NULL;
     if (!driver)
@@ -903,7 +901,7 @@ void *__stdcall _AIL_open_3D_listener(void *provider)
     return &driver->listener;
 }
 
-void __stdcall _AIL_close_3D_listener(void *listener)
+void _AIL_close_3D_listener(void *listener)
 {
     struct MilesObject *object = listener;
     if (!object)
@@ -913,28 +911,28 @@ void __stdcall _AIL_close_3D_listener(void *listener)
     platform_mutex_unlock(object->driver->lock);
 }
 
-void *__stdcall _AIL_allocate_3D_sample_handle(void *provider)
+void *_AIL_allocate_3D_sample_handle(void *provider)
 {
     return provider ? sample_create(((struct MilesProvider *)provider)->driver, 1) : NULL;
 }
 
-void __stdcall _AIL_release_3D_sample_handle(void *sample)
+void _AIL_release_3D_sample_handle(void *sample)
 {
     sample_release(sample);
 }
 
-int __stdcall _AIL_set_3D_sample_file(void *sample, const void *file)
+int _AIL_set_3D_sample_file(void *sample, const void *file)
 {
     return sample_load(sample, file);
 }
 
-void __stdcall _AIL_set_3D_sample_effects_level(void *sample, float level)
+void _AIL_set_3D_sample_effects_level(void *sample, float level)
 {
     (void)sample;
     (void)level;
 }
 
-void __stdcall _AIL_set_3D_position(void *handle, float x, float y, float z)
+void _AIL_set_3D_position(void *handle, float x, float y, float z)
 {
     struct MilesObject *object = handle;
     if (!object)
@@ -946,8 +944,8 @@ void __stdcall _AIL_set_3D_position(void *handle, float x, float y, float z)
     platform_mutex_unlock(object->driver->lock);
 }
 
-void __stdcall _AIL_set_3D_orientation(void *handle, float face_x, float face_y, float face_z,
-                                       float up_x, float up_y, float up_z)
+void _AIL_set_3D_orientation(void *handle, float face_x, float face_y, float face_z,
+                             float up_x, float up_y, float up_z)
 {
     struct MilesObject *object = handle;
     if (!object)
@@ -962,12 +960,12 @@ void __stdcall _AIL_set_3D_orientation(void *handle, float face_x, float face_y,
     platform_mutex_unlock(object->driver->lock);
 }
 
-void __stdcall _AIL_set_3D_sample_volume(void *sample, int volume)
+void _AIL_set_3D_sample_volume(void *sample, int volume)
 {
     sample_set_volume(sample, volume);
 }
 
-void __stdcall _AIL_set_3D_sample_distances(void *handle, float max_distance, float min_distance)
+void _AIL_set_3D_sample_distances(void *handle, float max_distance, float min_distance)
 {
     struct MilesSample *sample = handle;
     if (!sample)
@@ -978,22 +976,22 @@ void __stdcall _AIL_set_3D_sample_distances(void *handle, float max_distance, fl
     platform_mutex_unlock(sample->object.driver->lock);
 }
 
-void __stdcall _AIL_start_3D_sample(void *sample)
+void _AIL_start_3D_sample(void *sample)
 {
     sample_start(sample);
 }
 
-void __stdcall _AIL_end_3D_sample(void *sample)
+void _AIL_end_3D_sample(void *sample)
 {
     sample_end(sample);
 }
 
-unsigned __stdcall _AIL_3D_sample_status(void *sample)
+unsigned _AIL_3D_sample_status(void *sample)
 {
     return sample_status(sample);
 }
 
-int __stdcall _AIL_file_type(const void *data, unsigned size)
+int _AIL_file_type(const void *data, unsigned size)
 {
     const unsigned char *bytes = data;
     struct WaveFormat wave;
@@ -1013,7 +1011,7 @@ int __stdcall _AIL_file_type(const void *data, unsigned size)
     return AIL_FILE_UNKNOWN;
 }
 
-int __stdcall _AIL_WAV_info(const void *data, struct AilSoundInfo *info)
+int _AIL_WAV_info(const void *data, struct AilSoundInfo *info)
 {
     struct WaveFormat wave;
     if (!data || !info || !wave_parse(data, &wave))
@@ -1030,7 +1028,7 @@ int __stdcall _AIL_WAV_info(const void *data, struct AilSoundInfo *info)
     return 1;
 }
 
-int __stdcall _AIL_decompress_ADPCM(const struct AilSoundInfo *info, void **out, unsigned *outSize)
+int _AIL_decompress_ADPCM(const struct AilSoundInfo *info, void **out, unsigned *outSize)
 {
     const unsigned char *block, *end;
     unsigned char *image;
@@ -1067,8 +1065,8 @@ int __stdcall _AIL_decompress_ADPCM(const struct AilSoundInfo *info, void **out,
     return 1;
 }
 
-int __stdcall _AIL_decompress_ASI(const void *data, unsigned size, const char *name, void **out,
-                                  unsigned *outSize, void *callback)
+int _AIL_decompress_ASI(const void *data, unsigned size, const char *name, void **out,
+                        unsigned *outSize, void *callback)
 {
     drmp3_config config;
     drmp3_uint64 frames = 0;
@@ -1091,8 +1089,7 @@ int __stdcall _AIL_decompress_ASI(const void *data, unsigned size, const char *n
     return image != NULL;
 }
 
-void __stdcall _AIL_mem_free_lock(void *p)
+void _AIL_mem_free_lock(void *p)
 {
     free(p);
 }
-#endif

@@ -3,8 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 INT_PTR WINAPI test_dialog_box(HINSTANCE instance, const char *resource, HWND parent, DLGPROC proc, LPARAM parameter);
-LONG WINAPI test_dialog_set_data(HWND window, int index, LONG value);
-LONG WINAPI test_dialog_get_data(HWND window, int index);
+LONG_PTR WINAPI test_dialog_set_data(HWND window, int index, LONG_PTR value);
+LONG_PTR WINAPI test_dialog_get_data(HWND window, int index);
 BOOL WINAPI test_dialog_text(HWND window, int control, const char *text);
 BOOL WINAPI test_dialog_rect(HWND window, RECT *rect);
 int WINAPI test_dialog_metrics(int index);
@@ -21,8 +21,8 @@ HANDLE WINAPI test_clipboard_set(UINT format, HANDLE memory);
 BOOL WINAPI test_clipboard_close(void);
 #ifndef CRASH_DIALOG_TEST_DRIVER
 #define DialogBoxParamA test_dialog_box
-#define SetWindowLongA test_dialog_set_data
-#define GetWindowLongA test_dialog_get_data
+#define SetWindowLongPtrA test_dialog_set_data
+#define GetWindowLongPtrA test_dialog_get_data
 #define SetDlgItemTextA test_dialog_text
 #define GetWindowRect test_dialog_rect
 #define GetSystemMetrics test_dialog_metrics

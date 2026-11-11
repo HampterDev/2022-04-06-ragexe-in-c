@@ -36,7 +36,7 @@ struct Sent {
     int what;
     void *to;
     long long par2;
-    int value[5];
+    intptr_t value[5];
     char text[32];
     struct ActorAttack attack;
     struct ActorSkillUse use;
@@ -331,7 +331,7 @@ static void skill_use(void)
     assert(sent_count == 2);
     expect_use(&sent[0], &monster, 0x13, 40, 8, 9, 5, 2, 70, 80);
     assert(sent[1].what == SENT_MODE && sent[1].value[0] == 0x56 && sent[1].value[1] == 0x13);
-    assert(sent[1].value[2] == (int)(intptr_t)&monster && sent[1].value[3] == 5);
+    assert(sent[1].value[2] == (intptr_t)&monster && sent[1].value[3] == 5);
 
     setup();
     memset(packet, 0, sizeof packet);

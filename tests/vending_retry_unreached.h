@@ -6,7 +6,7 @@
 
 struct UIWindowMgr g_windowMgr;
 int rag_connection_get_packet_length(struct RagConnection *c, int id) { abort(); }
-int ui_window_send(struct UIWindow *w, struct UIWindow *s, int m, int a, int b, int c, int d) { abort(); }
+intptr_t ui_window_send(struct UIWindow *w, struct UIWindow *s, int m, intptr_t a, intptr_t b, intptr_t c, intptr_t d) { abort(); }
 void session_refresh_equip_wnd(struct Session *s) { abort(); }
 void ui_window_mgr_invalidate_once_per_frame(struct UIWindowMgr *w) { abort(); }
 void ui_window_mgr_refresh_item_windows(struct UIWindowMgr *w) { abort(); }

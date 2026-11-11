@@ -68,7 +68,7 @@ struct UIWindow * merge_item_wnd_new(void)
     return (struct UIWindow *)wl_fake_window("merge_item_wnd_new");
 }
 
-int mode_send_message(struct Mode * a0, int a1, int a2, int a3, int a4, int a5)
+intptr_t mode_send_message(struct Mode * a0, int a1, intptr_t a2, intptr_t a3, intptr_t a4, intptr_t a5)
 {
     wl_call("mode_send_message");
     wl_ptr(a0);
@@ -78,7 +78,7 @@ int mode_send_message(struct Mode * a0, int a1, int a2, int a3, int a4, int a5)
     wl_int((long long)a4);
     wl_int((long long)a5);
     wl_end();
-    return (int)wl_env_int();
+    return (intptr_t)wl_env_int();
 }
 
 void * object_as_type(void * a0, enum ObjectType a1)
@@ -1442,7 +1442,7 @@ void ui_window_mgr_restore_plates(struct UIWindowMgr * a0)
     wl_end();
 }
 
-int ui_window_mgr_send_msg_(struct UIWindowMgr * a0, int a1, int a2, int a3, int a4, int a5)
+intptr_t ui_window_mgr_send_msg_(struct UIWindowMgr * a0, int a1, intptr_t a2, intptr_t a3, intptr_t a4, intptr_t a5)
 {
     wl_call("ui_window_mgr_send_msg_");
     wl_ptr(a0);
@@ -1452,7 +1452,7 @@ int ui_window_mgr_send_msg_(struct UIWindowMgr * a0, int a1, int a2, int a3, int
     wl_int((long long)a4);
     wl_int((long long)a5);
     wl_end();
-    return (int)wl_env_int();
+    return (intptr_t)wl_env_int();
 }
 
 BYTE ui_window_mgr_show_option_window(struct UIWindowMgr * a0, int a1, int a2)

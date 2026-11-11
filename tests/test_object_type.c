@@ -2,6 +2,7 @@
 #include "core/object_type_registry.h"
 #include <windows.h>
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,115 @@ static int old_class_is(const char *name, const char *expected)
     return !*expected && (*name == '@' || !*name);
 }
 
+/* The fixture keeps the original's RTTI as the 32-bit runtime reads it: absolute pointers in a
+   complete object locator of signature 0. The 64-bit runtime's __RTDynamicCast reads signature 1,
+   whose pointers are 32-bit offsets from the image base (the locator's own offset says where that
+   base is), so the locators, hierarchies and base classes are copied into that form, inside this
+   image, before they are compared. The type descriptors are the fixture's own. */
+struct Rtti64Locator { DWORD signature, offset, cd_offset; int type, hierarchy, self; };
+struct Rtti64Hierarchy { DWORD signature, attributes, count; int bases; };
+struct Rtti64Base { int type; DWORD contained; int mdisp, pdisp, vdisp; DWORD attributes; int hierarchy; };
+
+extern IMAGE_DOS_HEADER __ImageBase;
+static unsigned long long rtti_arena[1 << 15];
+static size_t rtti_used;
+static struct { const void *from; void *to; } rtti_copies[2048];
+static size_t rtti_copy_count;
+
+static int rtti_rva(const void *p)
+{
+    ptrdiff_t rva = (const char *)p - (const char *)&__ImageBase;
+    assert(rva > 0 && rva <= INT_MAX);
+    return (int)rva;
+}
+
+static void *rtti_take(size_t bytes)
+{
+    void *p = (unsigned char *)rtti_arena + rtti_used;
+    rtti_used += (bytes + 7) & ~(size_t)7;
+    assert(rtti_used <= sizeof rtti_arena);
+    return p;
+}
+
+static void *rtti_copy_of(const void *from)
+{
+    size_t i;
+    for (i = 0; i < rtti_copy_count; ++i)
+        if (rtti_copies[i].from == from) return rtti_copies[i].to;
+    return NULL;
+}
+
+static void rtti_note(const void *from, void *to)
+{
+    assert(rtti_copy_count < sizeof rtti_copies / sizeof rtti_copies[0]);
+    rtti_copies[rtti_copy_count].from = from;
+    rtti_copies[rtti_copy_count++].to = to;
+}
+
+static const struct Rtti64Base *rtti_base(const uintptr_t *base);
+
+static const struct Rtti64Hierarchy *rtti_hierarchy(const uintptr_t *hierarchy)
+{
+    struct Rtti64Hierarchy *copy = rtti_copy_of(hierarchy);
+    const uintptr_t *bases = (const uintptr_t *)hierarchy[3];
+    int *array;
+    size_t i;
+    if (copy) return copy;
+    copy = rtti_take(sizeof *copy);
+    rtti_note(hierarchy, copy);
+    copy->signature = (DWORD)hierarchy[0];
+    copy->attributes = (DWORD)hierarchy[1];
+    copy->count = (DWORD)hierarchy[2];
+    array = rtti_take(copy->count * sizeof *array);
+    copy->bases = rtti_rva(array);
+    for (i = 0; i < copy->count; ++i)
+        array[i] = rtti_rva(rtti_base((const uintptr_t *)bases[i]));
+    return copy;
+}
+
+static const struct Rtti64Base *rtti_base(const uintptr_t *base)
+{
+    struct Rtti64Base *copy = rtti_copy_of(base);
+    if (copy) return copy;
+    copy = rtti_take(sizeof *copy);
+    rtti_note(base, copy);
+    copy->type = rtti_rva((const void *)base[0]);
+    copy->contained = (DWORD)base[1];
+    copy->mdisp = (int)base[2];
+    copy->pdisp = (int)base[3];
+    copy->vdisp = (int)base[4];
+    copy->attributes = (DWORD)base[5];
+    copy->hierarchy = rtti_rva(rtti_hierarchy((const uintptr_t *)base[6]));
+    return copy;
+}
+
+static const struct Rtti64Locator *rtti_locator(const uintptr_t *locator)
+{
+    struct Rtti64Locator *copy = rtti_take(sizeof *copy);
+    assert(!locator[0]);
+    copy->signature = 1;
+    copy->offset = (DWORD)locator[1];
+    copy->cd_offset = (DWORD)locator[2];
+    copy->type = rtti_rva((const void *)locator[3]);
+    copy->hierarchy = rtti_rva(rtti_hierarchy((const uintptr_t *)locator[4]));
+    copy->self = rtti_rva(copy);
+    return copy;
+}
+
+/* What the original's dynamic_cast answers for an object whose vtable is entry `index`. */
+static int runtime_cast_succeeds(size_t index, const struct ReferenceCast *cast)
+{
+    static const void *tables[REFERENCE_VTABLE_COUNT][2];
+    static const void *object;
+    void *result;
+    if (!tables[index][0])
+        tables[index][0] = rtti_locator(reference_vtables[index].locator);
+    object = &tables[index][1];
+    result = __RTDynamicCast((void *)&object, 0, cast->source, cast->target, 0);
+    assert(!result || result == (void *)&object);
+    return result != NULL;
+}
+
 int main(void)
 {
     SYSTEM_INFO system;
@@ -39,7 +149,6 @@ int main(void)
     };
     const void *unknown = (const void *)(uintptr_t)1;
     object_types_install(&g_objectTypes);
-    assert(sizeof(void *) == 4);
     assert(offsetof(struct ReferenceVtable, slots) == sizeof(void *));
     GetSystemInfo(&system);
     pages = VirtualAlloc(NULL, system.dwPageSize * 2, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -48,7 +157,7 @@ int main(void)
     for (i = 0; i < REFERENCE_VTABLE_COUNT; ++i) {
         const void *table = reference_vtables[i].slots;
         const uintptr_t *locator = reference_vtables[i].locator;
-        const char *previous_name = (const char *)locator[3] + 8 + 4;
+        const char *previous_name = (const char *)locator[3] + 2 * sizeof(void *) + 4;
         const char *name = object_type_name(table);
         int is_window = !!(reference_valid_sources[i] & (UINT32_C(1) << OBJECT_FRAME_WINDOW));
         int has_name = is_window;
@@ -158,7 +267,7 @@ int main(void)
             void *actual;
             assert(cast->type == (enum ObjectType)kind);
             if (reference_valid_sources[i] & (UINT32_C(1) << kind)) {
-                expected = __RTDynamicCast(guarded, 0, cast->source, cast->target, 0);
+                expected = runtime_cast_succeeds(i, cast) ? guarded : NULL;
                 ++comparisons;
             }
             actual = object_as_type(guarded, cast->type);

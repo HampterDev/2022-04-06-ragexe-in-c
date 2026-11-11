@@ -63,12 +63,12 @@ static void tag_links_free(struct Vec *v)
 
 static struct String *unescape_newlines(struct String *out, const struct String *in)
 {
-    int at;
+    size_t at;
 
     string_copy(out, in);
-    while ((at = string_find(out, "\\n", 0)) != -1)
+    while ((at = string_find(out, "\\n", 0)) != STRING_NPOS)
         string_replace(out, at, 2, "\n", 1);
-    while ((at = string_find(out, "\\r", 0)) != -1)
+    while ((at = string_find(out, "\\r", 0)) != STRING_NPOS)
         string_replace(out, at, 2, "\r", 1);
     return out;
 }
@@ -99,7 +99,7 @@ static int *link_place(struct UITextViewer *self, int out[2], int pos, int lines
         string_assign_cstr(&plain, string_cstr(LINE(self, i)));
         if (plain.size)
             plain.size = text_strip_colour_codes(plain.data, plain.size);
-        total += plain.size;
+        total += (int)plain.size;
         if (total > pos) {
             out[0] = i;
             string_init(&head);
@@ -438,7 +438,7 @@ static void on_link(struct UITextButton *link, int id)
     case LINK_NAVI: {
         unsigned count;
 
-        if (link && (count = ui_text_button_line_count(link)) != 0)
+        if (link && (count = (unsigned)ui_text_button_line_count(link)) != 0)
             navi_link(link, count);
         break;
     }
@@ -501,10 +501,10 @@ intptr_t ui_text_viewer_send_msg(struct UIWindow *window, struct UIWindow *sende
             ui_window_send_msg(&self->list.base, &self->list.vbar->base, UI_MSG_SCROLL_V, 1, 0, 0, 0);
         return 0;
     case UI_MSG_ADD_TEXT:
-        add_text(self, (char *)val1, val2, val3, val4);
+        add_text(self, (char *)val1, (int)val2, (int)val3, (int)val4);
         return 0;
     case UI_MSG_TEXT_BUTTON:
-        on_link((struct UITextButton *)sender, val1);
+        on_link((struct UITextButton *)sender, (int)val1);
         return 0;
     }
     return ui_list_box_send_msg((struct UIWindow *)(&self->list), sender, msg, val1, val2, val3, val4);

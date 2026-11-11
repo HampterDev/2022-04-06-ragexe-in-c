@@ -371,7 +371,7 @@ intptr_t ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
             val1 = -1;
         else if (msg == UI_MSG_PAGE_DOWN)
             val1 = 1;
-        return scroll_by(self, self->vbar, &self->vpos, val1, self->content_height, self->view_height);
+        return scroll_by(self, self->vbar, &self->vpos, (int)val1, self->content_height, self->view_height);
     case UI_MSG_SCROLL_H:
     case UI_MSG_PAGE_LEFT:
     case UI_MSG_PAGE_RIGHT:
@@ -379,7 +379,7 @@ intptr_t ui_scroll_wnd_send_msg(struct UIWindow *window, struct UIWindow *sender
             val1 = -1;
         else if (msg == UI_MSG_PAGE_RIGHT)
             val1 = 1;
-        return scroll_by(self, self->hbar, &self->hpos, val1, self->content_width, self->view_width);
+        return scroll_by(self, self->hbar, &self->hpos, (int)val1, self->content_width, self->view_width);
     }
     return ui_window_send_msg_base(&self->base, sender, msg, val1, val2, val3, val4);
 }

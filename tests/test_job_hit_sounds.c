@@ -44,7 +44,7 @@ int main(void)
     unsigned i;
     int job;
 
-    assert(sizeof(struct JobHitSounds) == 12);
+    assert(sizeof(struct JobHitSounds) == 24);
     for (i = 0; i < JOB_HIT_SOUND_COUNT; i++) {
         expected[i] = "player_clothes.wav";
         assert(job_hit_sound(&sounds, i) == NULL);

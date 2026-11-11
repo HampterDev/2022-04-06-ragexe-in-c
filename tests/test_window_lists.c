@@ -722,8 +722,8 @@ static void op_on_wheel(struct UIWindow *self, int delta)
     wl_end();
 }
 
-static int op_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, int val1, int val2, int val3,
-                       int val4)
+static intptr_t op_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2,
+                            intptr_t val3, intptr_t val4)
 {
     op_begin(self, "send_msg");
     wl_ptr(sender);
@@ -1398,6 +1398,8 @@ int main(int argc, char **argv)
            (unsigned long long)digest);
     fflush(stdout);
     assert(line_count == 37047);
-    assert(digest == UINT64_C(0x2232167ff470caa7));
+    /* 64-bit. The 32-bit build's digest was 2232167ff470caa7; its trace differs from this one
+       only in the field offsets of 358 lines. */
+    assert(digest == UINT64_C(0xd30af1f1e9372818));
     return 0;
 }

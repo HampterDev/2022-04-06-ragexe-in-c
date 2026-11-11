@@ -17,7 +17,7 @@ static void granny_projection_ownership(void)
 
     before = allocation_calls;
     assert(!granny_projection_create(0) && !granny_projection_create(-1));
-    assert(!granny_projection_create(INT_MAX) && !granny_projection_create(INT_MAX / 3));
+    assert(!granny_projection_create(INT_MAX) && !granny_projection_create(INT_MAX / 3 + 1));
     assert(allocation_calls == before);
     fail_at = allocation_calls + 1;
     assert(!granny_projection_create(2));

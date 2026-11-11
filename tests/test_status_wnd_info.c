@@ -51,7 +51,7 @@ BYTE ui_window_mgr_post_quit1(struct UIWindowMgr *self, int window_id)
     return 0;
 }
 struct Mode *client_current_mode(void) { assert(!"no stat requests"); return NULL; }
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     (void)mode; (void)message; (void)a; (void)b; (void)c; (void)d;
     assert(!"no stat requests");

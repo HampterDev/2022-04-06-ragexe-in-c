@@ -242,7 +242,6 @@ static void test_upload_failure(void)
     assert(!texture_upload(texture, 1, 0, 4, 4, pixels, 0, 0));
     assert(!texture_upload(texture, 0, INT_MAX, 4, 4, pixels, 0, 0));
     assert(!texture_upload(texture, 0, 0, 4, 4, pixels, 0, 3));
-    assert(!texture_upload(texture, 0, 0, INT_MAX, 2, pixels, 0, 0));
     assert(!texture_upload(texture, 0, 0, 4, -1, pixels, 0, 0));
     assert(!texture_upload(texture, 0, 0, 0, 4, pixels, 0, 0));
     assert(!texture_upload(texture, 0, 0, 4, 4, NULL, 0, 0));

@@ -88,11 +88,11 @@ void ui_bmp_text_button_set_text_style(struct UIBmpTextButton *self, int state,
     size_t i;
 
     if (x == UI_TEXT_CENTRED)
-        x = (int)((wnd->width - ui_window_text_width(wnd, string_cstr(&self->caption), self->caption.size,
+        x = (int)((wnd->width - ui_window_text_width(wnd, string_cstr(&self->caption), (int)self->caption.size,
                                                     0, font_height, (BYTE)arg4, 0)) * 0.5);
     if (y == UI_TEXT_CENTRED)
         y = (int)((wnd->height - ui_window_text_height(wnd, string_cstr(&self->caption),
-                                                      self->caption.size, 0, font_height, (BYTE)arg4, 0)) * 0.5);
+                                                      (int)self->caption.size, 0, font_height, (BYTE)arg4, 0)) * 0.5);
     for (i = 0; i < self->style_count; ++i) {
         s = &self->styles[i];
         if (s->state == state)

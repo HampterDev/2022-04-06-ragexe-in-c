@@ -56,7 +56,10 @@
 #include "world/view_types.h"
 #include "game/context.h"
 
-#define EXPECTED_DIGEST 0x2842b5a04b52ece4ull
+/* 64-bit. The 32-bit build's digest was 2842b5a04b52ece4; its trace is this one line for line
+   once the objects' sizes, the hashes of their bytes and the offsets and counts of the changed
+   words, which follow the layout, are left out. */
+#define EXPECTED_DIGEST 0x7421cc352aaed63cull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -778,22 +781,22 @@ float c3d_attr_get_height(struct C3dAttr *self, float x, float z)
     return z * 0.0625f - x * 0.03125f - 7.0f;
 }
 
-int game_send_message(int message, int a, int b, int c, int d)
+intptr_t game_send_message(int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
     if (message == 0x87) {
         /* The quake with strength, duration and amplitude passes them as float pointers. */
         char x[32], y[32], z[32];
         line("game_msg 0x87 %s %s %s %d", fstr(*(const float *)(uintptr_t)a, x), fstr(*(const float *)(uintptr_t)b, y),
-             fstr(*(const float *)(uintptr_t)c, z), d);
+             fstr(*(const float *)(uintptr_t)c, z), (int)d);
         return 0;
     }
-    line("game_msg 0x%x %d %d %d %d", message, a, b, c, d);
+    line("game_msg 0x%x %d %d %d %d", message, (int)a, (int)b, (int)c, (int)d);
     return 0;
 }
 
-int mode_send_message(struct Mode *mode, int message, int a, int b, int c, int d)
+intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t b, intptr_t c, intptr_t d)
 {
-    line("mode_msg %s 0x%x %d %d %d %d", mode == client_current_mode() ? "mode" : "?", message, a, b, c, d);
+    line("mode_msg %s 0x%x %d %d %d %d", mode == client_current_mode() ? "mode" : "?", message, (int)a, (int)b, (int)c, (int)d);
     return 0;
 }
 
