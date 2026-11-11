@@ -14195,9 +14195,9 @@ cause is not known (Discord's overlay was hooked into the process at the time).
 
 ## Sound without a position (2026-11-11)
 
-Decided with Patrick on 2026-11-11: positional audio goes ("totally unnecessary") and the audio
-layer becomes as simple as it can be; then, from him: "the range check should be completely
-removed everything you can see that play a sound should play at the channels volume". Until now
+Positional audio goes and the audio layer becomes as simple as it can be: sounds have no position
+and no distance test, and each plays at its channel's volume (the one exception, map ambient
+sources, is below). Until now
 `contents/sound.c` and `resources/wave.c` called the subset of the Miles Sound System API the
 original calls (45 `_AIL_*` functions, `platform/miles_api.h`), which `platform/miles_sdl.c` (1,095
 lines) implemented on SDL 3 with a mixer of its own, a 3D provider and its own ADPCM decoders.
