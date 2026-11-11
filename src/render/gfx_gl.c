@@ -1638,14 +1638,14 @@ void gfx_set_mipmaps(int on)
 
 static const GUID gl_device_guid = { 0x3ec2a7e0, 0x5b2f, 0x4f62, { 'o', 'p', 'e', 'n', 'g', 'l', '3', '3' } };
 
-void gfx_enum_adapter(const GUID *adapter, const char *desc, PlatformDisplay monitor)
+void gfx_enum_adapter(const GUID *adapter, const char *desc)
 {
     static const struct { unsigned w, h; } windowed[] = {
         { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1280, 1024 }, { 1366, 768 },
         { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }
     };
     struct DisplayModeList modes = {0};
-    SDL_DisplayID display = monitor ? monitor : SDL_GetPrimaryDisplay();
+    SDL_DisplayID display = SDL_GetPrimaryDisplay();
     const SDL_DisplayMode *desktop = display ? SDL_GetDesktopDisplayMode(display) : NULL;
     SDL_DisplayMode **list;
     int count = 0, i;
@@ -1674,7 +1674,7 @@ int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
     char desc[] = "OpenGL";
     char name[] = "display";
     (void)flags;
-    callback(NULL, desc, name, ctx, 0);
+    callback(NULL, desc, name, ctx);
     return 0;
 }
 

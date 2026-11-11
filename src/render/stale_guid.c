@@ -10,9 +10,9 @@ GUID g_driverGuid;
 
 static int guid_attached;
 
-static BOOL match_adapter(GUID *guid, char *desc, char *name, void *ctx, PlatformDisplay monitor)
+static BOOL match_adapter(GUID *guid, char *desc, char *name, void *ctx)
 {
-    (void)desc; (void)name; (void)ctx; (void)monitor;
+    (void)desc; (void)name; (void)ctx;
     if (guid && memcmp(guid, &g_driverGuid, sizeof(GUID)) == 0)
         guid_attached = 1;
     return TRUE;

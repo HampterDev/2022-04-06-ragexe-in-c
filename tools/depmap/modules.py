@@ -20,15 +20,16 @@ sys.setrecursionlimit(100000)
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 # The 23 files of the first measurements (docs/custom-review.md, "Restructuring: definitions and
-# hooks"), the window and object-type row files and their registries (window and object-type
-# tables), and the manager list (manager lifecycle table).
+# hooks") but core/wndproc.c, which went with the Win32 window on 2026-11-11, the window and
+# object-type row files and their registries (window and object-type tables), and the manager list
+# (manager lifecycle table).
 REGISTRY = {
     'core/object_type.c', 'effects/effect_registry.c',
     'game/packet_dispatch.c', 'game/packet_dispatch2.c', 'login/login_dispatch.c',
     'ui/wndmgr/make_window.c', 'ui/wndmgr/make_window_hud.c', 'ui/wndmgr/make_window_trade.c',
     'ui/wndmgr/make_window_social.c', 'ui/wndmgr/make_window_character.c',
     'ui/wndmgr/window_slots.c', 'ui/wndmgr/forget_window.c', 'ui/wndmgr/teardown.c',
-    'core/app.c', 'core/startup.c', 'core/client_init.c', 'core/winmain.c', 'core/wndproc.c',
+    'core/app.c', 'core/startup.c', 'core/client_init.c', 'core/winmain.c',
     'session/session_lifetime.c', 'game/mode_msg.c', 'game/mode_run.c', 'login/login_states.c',
     'login/mode.c',
     'ui/wndmgr/make_window_login.c', 'ui/wndmgr/window_registry.c',

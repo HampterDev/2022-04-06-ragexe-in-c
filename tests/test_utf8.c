@@ -255,8 +255,6 @@ static void check_utf16(void)
     static const wchar_t sample[] = { 'A', 0xe9, 0xd55c, 0xd83d, 0xde00, 0x416 };
     static const wchar_t lone[] = { 0xd83d, 'x', 0xde00, 0xd83d };
     char out[32];
-    unsigned long points[2];
-    wchar_t pending = 0;
     size_t n, i;
 
     n = utf8_from_utf16(out, sizeof out, sample, 6);
@@ -279,16 +277,6 @@ static void check_utf16(void)
     }
     assert(utf8_from_utf16(out, 4, sample + 3, 2) == 0 && !out[0]);  /* 😀 needs four bytes plus NUL */
     assert(utf8_from_utf16(out, 5, sample + 3, 2) == 4);
-
-    assert(utf16_feed(&pending, 'A', points) == 1 && points[0] == 'A' && !pending);
-    assert(utf16_feed(&pending, 0xd83d, points) == 0 && pending == 0xd83d);
-    assert(utf16_feed(&pending, 0xde00, points) == 1 && points[0] == 0x1f600 && !pending);
-    assert(utf16_feed(&pending, 0xde00, points) == 1 && points[0] == UTF8_REPLACEMENT);
-    assert(utf16_feed(&pending, 0xd83d, points) == 0);
-    assert(utf16_feed(&pending, 0xd55c, points) == 2 && points[0] == UTF8_REPLACEMENT && points[1] == 0xd55c);
-    assert(utf16_feed(&pending, 0xd83d, points) == 0);
-    assert(utf16_feed(&pending, 0xdbff, points) == 1 && points[0] == UTF8_REPLACEMENT && pending == 0xdbff);
-    assert(utf16_feed(&pending, 0xdfff, points) == 1 && points[0] == 0x10ffff && !pending);
 }
 
 int main(void)

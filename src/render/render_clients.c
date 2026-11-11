@@ -3,19 +3,12 @@
 #include "render/render_api.h"
 #include "std/list.h"
 #include <stdlib.h>
-#include <string.h>
-#include "platform/window.h"
 
-RECT g_monitorRect;
-
-static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx, PlatformDisplay monitor)
+static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx)
 {
     (void)name;
     (void)ctx;
-    if (guid && monitor && memcmp(guid, &g_driverGuid, sizeof(GUID)) == 0) {
-        platform_monitor_rect(monitor, &g_monitorRect);
-    }
-    gfx_enum_adapter(guid, desc, monitor);
+    gfx_enum_adapter(guid, desc);
     return 1;
 }
 

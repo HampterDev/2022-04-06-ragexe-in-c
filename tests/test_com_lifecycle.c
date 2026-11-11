@@ -12,7 +12,7 @@ static struct FakeRenderer renderer = {1024, 768}, *g_renderer;
 static struct { int fullscreen; } g_3dDevice;
 static struct { const char *launchArg3; } g_session1;
 static int g_replayLaunch, g_loginStartMode, g_openLauncherPageAtExit, g_serverType;
-static HWND g_hMainWnd;
+static void *g_hMainWnd;
 static HRESULT com_status;
 static enum Failure failure;
 static int init_calls, uninit_calls, balance, frees, shell_calls, failures;
@@ -47,9 +47,8 @@ static void fake_uninitialize(void)
     --balance;
 }
 
-static int fake_window(HINSTANCE instance)
+static int fake_window(void)
 {
-    (void)instance;
     return failure != WINDOW;
 }
 
@@ -81,9 +80,9 @@ static void fake_shell(void)
 #define c3d_device_create_renderer(...) (failure == RENDERER ? NULL : &renderer)
 #define connection_startup() (failure != CONNECTION)
 #define mode_mgr_run(...) check_com_alive()
-#define pump_messages() check_com_alive()
-#define window_drag_follow() ((void)0)
-#define DestroyWindow(...) check_com_alive()
+#define pump_events() check_com_alive()
+#define SDL_StopTextInput(...) ((void)0)
+#define SDL_DestroyWindow(...) check_com_alive()
 #define app_destroy_singletons() check_com_alive()
 #define sound_mgr_destroy() check_com_alive()
 #define async_work_mgr_destroy() check_com_alive()
@@ -98,10 +97,7 @@ static void fake_shell(void)
 #define frame_timer_start(...) ((void)0)
 #define session_startup(...) ((void)0)
 #define res_mgr_read_res_name_table(...) ((void)0)
-#define SetFocus(...) ((void)0)
-#define ShowCursor(...) ((void)0)
 #define platform_focus_window(...) ((void)0)
-#define platform_show_cursor(...) ((void)0)
 #define ui_window_mgr_set_screen_size(...) ((void)0)
 #define ui_window_mgr_init_ui_rect_info_from_reg(...) ((void)0)
 #define granny_animation_cache_init(...) ((void)0)

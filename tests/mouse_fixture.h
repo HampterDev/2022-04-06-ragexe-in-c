@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #ifndef TEST_MOUSE_FIXTURE_H
 #define TEST_MOUSE_FIXTURE_H
@@ -6,17 +7,12 @@
 #include <windows.h>
 #include <mmsystem.h>
 
+/* The clock and SDL's mouse capture, as contents/mouse.c and platform/window_sdl.c call them. */
 uint32_t mouse_test_time(void);
-BOOL mouse_test_cursor(POINT *point);
-BOOL mouse_test_client(HWND window, POINT *point);
-HWND mouse_test_capture(HWND window);
-BOOL mouse_test_release(void);
+bool mouse_test_capture(bool capture);
 
 #define timeGetTime mouse_test_time
 #define platform_ticks_ms mouse_test_time
-#define GetCursorPos mouse_test_cursor
-#define ScreenToClient mouse_test_client
-#define SetCapture mouse_test_capture
-#define ReleaseCapture mouse_test_release
+#define SDL_CaptureMouse mouse_test_capture
 
 #endif

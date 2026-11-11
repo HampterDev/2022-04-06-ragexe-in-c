@@ -74,12 +74,12 @@ lib /nologo /OUT:"%OUT%\%NAME%.lib" "%OUT%\obj\%NAME%\*.obj"
 exit /b %errorlevel%
 
 REM SDL3 at the commit cmake\SDL3.cmake pins, static, with its audio, video and GPU subsystems: the
-REM client plays sound through it, and the renderer of plans\gpu-renderer.md will use its window and
-REM GPU API on Vulkan. OpenGL and OpenGL ES (with EGL) are left out: nothing will use them. SDL has
+REM client plays sound through it and runs in its window, and the renderer of plans\gpu-renderer.md
+REM will use its GPU API on Vulkan. OpenGL and OpenGL ES (with EGL) are left out: nothing will use them. SDL has
 REM no switch for its Direct3D 12 GPU driver, which it builds whenever dxgi1_6.h is there (the same
 REM check gives its Windows video driver the displays' HDR properties), so that driver stays. SDL's
-REM dynamic API table refers to every function it has, so the client links all three subsystems
-REM although it calls only audio yet; they need no system library beyond those build.bat links.
+REM dynamic API table refers to every function it has, so the client links the GPU code too, which
+REM it does not call yet; none of it needs a system library beyond those build.bat links.
 :sdl3
 if exist "%OUT%\SDL3-static.lib" exit /b 0
 set "SDL_COMMIT=829a65d769d935c4852f8159e964312c0957260a"

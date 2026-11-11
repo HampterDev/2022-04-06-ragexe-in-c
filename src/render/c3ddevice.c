@@ -114,16 +114,6 @@ int c3d_device_clear_z(struct C3dDevice *self)
     return gfx_clear(GFX_CLEAR_ZBUFFER, 0, 1.0f, &r);
 }
 
-RECT *window_client_rect_on_monitor(RECT *out, PlatformWindow hwnd)
-{
-    platform_client_screen_rect(hwnd, out);
-    out->left -= g_monitorRect.left;
-    out->top -= g_monitorRect.top;
-    out->right -= g_monitorRect.left;
-    out->bottom -= g_monitorRect.top;
-    return out;
-}
-
 static void mask_shift(DWORD mask, DWORD *shift, DWORD *bits)
 {
     if (!mask)
@@ -154,15 +144,10 @@ int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc
         self->rcWindow = (RECT){0, 0, mode->width, mode->height};
         self->width = self->rcWindow.right;
         self->height = self->rcWindow.bottom;
-        self->rcClient = self->rcWindow;
     } else {
-        RECT rc;
         platform_client_rect(self->hwnd, &self->rcWindow);
         self->width = self->rcWindow.right;
         self->height = self->rcWindow.bottom;
-        self->rcClient = *window_client_rect_on_monitor(&rc, self->hwnd);
-        if (!(flags & 2))
-            platform_client_screen_rect(self->hwnd, &self->rcWindow);
     }
     hr = gfx_create_screen(self, mode, flags);
     if (self->primary) {
@@ -231,7 +216,15 @@ int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, const GUID *ada
         flags &= ~1;
         platform_window_frameless(g_hMainWnd, &rcMon);
     } else if (self->fullscreen) {
+#ifdef _WIN32
+        /* Direct3D 9 switches the display mode itself: its window is a frameless one at the
+           monitor's corner as large as the mode, as set_display places it for a switch at run time,
+           not SDL's own fullscreen window. */
+        platform_window_place_frameless(g_hMainWnd, gfx_adapter_monitor(adapter), (int)mode->width,
+                                        (int)mode->height);
+#else
         platform_window_fullscreen(g_hMainWnd);
+#endif
     }
     hr = c3d_device_create_environment(self, adapter, device, mode, flags);
     if (hr < 0) {
@@ -339,21 +332,13 @@ void c3d_device_on_surfaces_lost(struct C3dDevice *self)
 
 int c3d_device_show_frame(struct C3dDevice *self, char vsync)
 {
-    RECT rc;
     drive_state_frame_shown();
     if (!self->primary)
         return GFX_E_NO_PRIMARY;
     if (!self->back)
         return gfx_is_lost(self->primary);
-    if (vsync) {
-        if (self->fullscreen && !self->bltToClient) {
-            platform_client_screen_rect(self->hwnd, &self->rcClient);
-            return gfx_present(self, 1, 1);
-        }
-        self->rcClient = *window_client_rect_on_monitor(&rc, self->hwnd);
-        return gfx_present(self, 1, 0);
-    }
-    platform_client_screen_rect(self->hwnd, &self->rcClient);
+    if (vsync)
+        return gfx_present(self, 1, self->fullscreen && !self->bltToClient);
     return gfx_present(self, 0, 0);
 }
 

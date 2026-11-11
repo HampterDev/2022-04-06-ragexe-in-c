@@ -32,7 +32,6 @@ struct Language {
     size_t composition_length;
     int composition_cursor;
     BYTE masked;
-    WCHAR pending_unit;
     WORD folder_lang;
     char *display_text;
     size_t display_capacity;
@@ -52,8 +51,8 @@ void language_caret_forward(struct Language *self);
 /* The client draws the composition itself and leaves the candidate list to the IME's own
    window. x is where the composition starts and top..bottom the line it is on, in client
    coordinates of the main window; the IME opens the list below that line, or above it when
-   there is no room. Windows: platform/language_win32.c; elsewhere platform/language_posix.c keeps
-   the place for the SDL layer (core/app_sdl.c), which hands it to SDL's text input area. */
+   there is no room. The place is kept for the SDL layer (core/app_sdl.c), which hands it to
+   SDL's text input area. */
 void language_place_candidates(struct Language *self, int x, int top, int bottom);
 int language_get_text(struct Language *self, struct TextView *out);
 void language_get_selection(struct Language *self, int *anchor, int *caret);
@@ -62,17 +61,9 @@ void language_move_caret_forward(struct Language *self, int count);
 void language_move_caret_back(struct Language *self, int count);
 void language_on_char(struct Language *self, int ch);
 void language_on_key_down(struct Language *self, int key);
-#ifdef _WIN32
-void language_read_composition(struct Language *self);
-void language_read_cursor_pos(struct Language *self);
-void language_insert_result(struct Language *self);
-int language_on_ime_message(struct Language *self, HWND hwnd, UINT msg, WPARAM wparam,
-                                      LPARAM lparam, BYTE *handled);
-#else
 /* SDL's composition (UTF-8, cursor in characters, -1 for the end) and committed text. */
 void language_set_composition(struct Language *self, const char *text, int cursor);
 void language_commit(struct Language *self, const char *text);
-#endif
 void language_cancel_input(struct Language *self);
 void language_set_selection(struct Language *self, int anchor, int caret);
 

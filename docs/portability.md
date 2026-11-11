@@ -131,9 +131,9 @@ IJL; visual comparison of full in-game screenshots is still pending.
   renderer-specific objects inside each backend. Shared POSIX behavior serves
   both macOS and Linux; use Apple-specific code only for Apple-specific services.
 - A platform module is one header with one file per implementation: `<module>_win32.c` for
-  Windows and `<module>_posix.c` for Linux, macOS and Android, or `_sdl.c` where that side is
-  written against SDL (`platform/window_sdl.c`, `core/app_sdl.c`). Code both sides share stays
-  in `<module>.c` (`platform/language.c`, `core/app.c`). Each
+  Windows and `<module>_posix.c` for Linux, macOS and Android. Code both sides share stays
+  in `<module>.c` (`platform/language.c`, `core/app.c`), and a module written against SDL is one
+  `_sdl.c` file for every platform (`platform/window_sdl.c`, `core/app_sdl.c`). Each
   implementation file starts with the `#ifdef _WIN32` or `#ifndef _WIN32` that selects it, so
   `build.bat`, which compiles every file under `src/`, and the client's CMake glob each get one
   implementation; `rage_platform` in `CMakeLists.txt` names its files by the same rule. Small
@@ -387,22 +387,62 @@ guardian and the treasure box ([tools/granny_export](../tools/granny_export/READ
 ### Window, input and IME
 
 Every platform's keys, characters and pointer go through one module, `core/user_input.h`: the
-Windows window procedure (`core/wndproc.c`), the SDL layer and the scene scripts all describe a key
-transition the same way (virtual-key code, the Win32 VK numbering in `platform/vk.h`; scan code;
-repeat; Alt held) and hand over pointer moves, buttons and wheel notches in scene pixels. The
-module packs the `lParam` scan-code layout that the window manager and edit boxes read, sends a
-press with Alt held, or F10, to the window manager's system-key handling (`WM_SYSKEYDOWN` on
-Windows) and everything else to `core/window_events.c`, and tells `platform_note_key` and
-`platform_note_cursor` the key and pointer state, which the SDL platform layer keeps and Windows
-keeps itself.
+SDL layer and the scene scripts both describe a key transition the same way (virtual-key code, the
+Win32 VK numbering in `platform/vk.h`; scan code; repeat; Alt held) and hand over pointer moves,
+buttons and wheel notches in scene pixels. The module packs the `lParam` scan-code layout that the
+window manager and edit boxes read, sends a press with Alt held, or F10, to the window manager's
+system-key handling (the original's `WM_SYSKEYDOWN`) and everything else to
+`core/window_events.c`, and tells `platform_note_key` and `platform_note_cursor` the key and
+pointer state, which the platform layer keeps. A character comes on its own only as Backspace or
+printable ASCII (`language_on_char`); other text arrives as UTF-8 through `language_commit`. The
+key state is what the window's key events said, so a key held while the window gets the focus
+counts once it is pressed again, and the lock keys' toggles start off.
 
-`core/app_sdl.c` replaces the Win32 window procedure. It creates the SDL window and GL context and
-turns SDL events into that input: Print Screen only as it goes up and Backspace also as a
-character, as Windows delivers them, the window activation, and touch screens through
-`core/touch.c` (*Android client*). Composition events go to `language_set_composition` and
-committed text to `language_commit`, both UTF-8 as the client's text is; the edit boxes'
-`language_place_candidates` reaches SDL's text input area on the desktop, so that the IME opens its
-candidate list below the composition's line as on Windows. The window sets
+`core/app_sdl.c` is the client's window on every platform, Windows included since 2026-11-11 (the
+Win32 window procedure and message loop of `core/wndproc.c` and `core/app_win32.c` are gone). It
+creates the SDL window, with a GL context off Windows (on Windows Direct3D 9 draws into the window's
+`HWND`, `SDL_PROP_WINDOW_WIN32_HWND_POINTER`), and turns SDL events into that input: Print Screen
+only as it goes up and Backspace also as a character, as Windows delivered them, the keypad with
+NumLock off as the navigation keys Windows names it by (Home, End, the arrows, Page Up and Down,
+Insert, Delete, Clear), the window activation, one close for SDL's close request and the quit that
+follows it, the client's own cursor taken out of the scene when the pointer leaves the client area
+(the system cursor is hidden over it, `SDL_HideCursor`), and touch screens through `core/touch.c`
+(*Android client*). AltGr types characters as Ctrl+Alt does, and Windows reported it to the Win32
+client as a left Ctrl and a right Alt, so that edit boxes took the keys pressed with it as
+characters (`altgr_down` in `ui/wndmgr/key_down.c`); SDL reports it as `SDLK_MODE` on X11 and
+Wayland and as a right Alt alone on Windows, and `app_sdl.c` turns either into Ctrl and Alt held,
+with the keys pressed with it carrying no Alt. The other keys follow SDL's: letters and digits by
+the keyboard layout, the rest by their US positions, so a punctuation key of another layout has
+the virtual key of the US key in its place (hotkeys bound to it with the Win32 client may now sit
+on another key), the AZERTY `,` key, in the US `M` position, gives `M` too, and the ISO `<>` key,
+Apps and the Hangul and Hanja keys give none and are not passed on.
+Composition events go to `language_set_composition` and committed text to `language_commit`, both
+UTF-8 as the client's text is; the edit boxes' `language_place_candidates` reaches SDL's text input
+area on the desktop, so that the IME opens its candidate list below the composition's line, as the
+Win32 client placed it. On a desktop the window is created hidden, its frame's corner put at
+`Window_XPos` and `Window_YPos` as `platform_window_rect` saves them, and then shown; X11 knows the
+frame only once the window is shown, so there the window is moved by it after showing (not tried on
+X11).
+
+On Windows `app_sdl.c` also does what the Win32 window did beyond SDL's defaults: the click that
+activates the window reaches the game (`SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH`), the window class keeps
+the name `Ragnarok` and the icon of the resources (`SDL_RegisterApp`, `SDL_HINT_WINDOWS_INTRESOURCE_ICON`),
+and a window that is not active shows its frame again at once when it is moved. SDL's Windows
+message hook takes a press on the caption, so that the client moves the window itself from its own
+loop and the game runs on while it is dragged, where Windows' move loop would stop it; a modal loop
+of the window's system menu counts as inactive (`app_activate`). The hook also tells a right Alt
+that came with the left Ctrl Windows sends for AltGr, which SDL leaves out, from a plain right Alt,
+and it queues the keys the IME takes in Hangul or kana mode, which Windows reports as
+`VK_PROCESSKEY` and SDL leaves out too, so that they reach the client in order with their scan
+codes and the hotkeys still find their letters (`ui_window_mgr_classify_key`); the IME still gets
+them. Direct3D 9's exclusive fullscreen gets a frameless window at the monitor's corner as large as
+the mode, at start (`c3d_device_init`) as in a switch at run time (`set_display`), not SDL's own
+fullscreen window; starting in exclusive fullscreen is left to be tried by hand. The process
+stays system-DPI-aware through the executable's manifest, which SDL's own per-monitor request
+cannot change. The IME's composition and candidates come from SDL's handling of `WM_IME_*`, which
+places the candidate list with `CFS_EXCLUDE` around the text input area and reports the cursor in
+UTF-16 units (the same as characters for Hangul); the password box still switches the IME to
+alphanumeric input through the window's input context (`platform_ime_alphanumeric`). The window sets
 `SDL_HINT_IME_IMPLEMENTED_UI` to `composition`: without it SDL does not report the preedit text
 and the IME draws its own window. SDL reports the end of a composition (an empty editing event)
 before the committed text, and the key that caused the commit never arrives as a key event, so a
@@ -410,18 +450,21 @@ commit right after a composition is taken as IME text whatever the key-as-text s
 window manager. With IBus and `ibus-hangul`, Hangul chat was typed, corrected with Backspace
 through and past the composition, and sent in game (`SDL_IM_MODULE=ibus`, `XMODIFIERS=@im=ibus`).
 
-`platform/window.h` holds the remaining window services: message boxes, key and mouse state,
-clipboard text, cursor visibility and clipping, window and monitor rectangles, window placement
-for windowed, frameless and fullscreen modes, and IME cancellation. They take the platform's own
-window and display (`platform/window_handle.h`: `PlatformWindow` and `PlatformDisplay`, on
-Windows a window and a monitor handle, elsewhere SDL's window and display id), so the SDL layer's
-window is the client's main window (`g_hMainWnd`) and the device's, with no cast and no copy of it
-in the platform code. The display queries follow the window: off Windows the window's display is
-the one SDL has it on, so a borderless or full-screen switch and its placement happen on the
-display the window is on, not always on the primary one. Message boxes and the clipboard take
+`platform/window.h` holds the remaining window services, `platform/window_sdl.c` on every
+platform: message boxes, key and mouse state, clipboard text, cursor clipping, window and monitor
+rectangles, window placement for windowed, frameless and fullscreen modes, and IME cancellation.
+They take SDL's window and display id (`platform/window_handle.h`: `PlatformWindow` and
+`PlatformDisplay`), so the SDL layer's window is the client's main window (`g_hMainWnd`) and the
+device's, with no cast and no copy of it in the platform code; the Direct3D 9 backend maps its
+adapters' monitors to SDL's displays (`SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER`). The display
+queries follow the window: the window's display is the one SDL has it on, so a borderless or
+full-screen switch and its placement happen on the display the window is on, not always on the
+primary one. Windowed placement takes the corner of the window's frame, as the Win32 window did,
+where SDL places the client area inside it; on X11 before the window manager has framed the window
+the frame counts as none. Message boxes and the clipboard take
 the client's UTF-8 as SDL does (a message box shows text that is not UTF-8 as CP949, the
 resource-name encoding, as Windows does), and the message box shows the error, warning or
-information icon the caller asked for;
+information icon the caller asked for and ignores the other flags, `MB_TASKMODAL` among them;
 `tests/test_platform_window.c` checks the clipboard in Korean, Japanese, Cyrillic, Western and
 emoji UTF-8, and U+FFFD for invalid bytes. The GL backend learns what covers the window (*Android client*) from `gfx_gl_set_cover`,
 which the SDL layer calls once a frame.
@@ -496,7 +539,7 @@ character, entered `iz_int03`, walked and chatted. The 21 tests pass there as we
 ## Windows client
 
 `build.bat` builds `build\ragexe.exe` (`build.bat dbg`: `ragexe_dbg.exe`), a 64-bit program with
-the Win32 window, GDI text and Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
+SDL's window (*Window, input and IME*), GDI text and the Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
 client by default and this one with `x64`. The 32-bit client linked three DLLs of the original
 that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
 does:
@@ -525,9 +568,10 @@ then.
 SDL is built with its video and GPU subsystems as well as audio, for the renderer of
 `plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its
 Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is found, so that driver is in too. The
-client calls only SDL's audio functions so far, but SDL's dynamic API table refers to every function
-SDL has, so the executable contains all three subsystems and imports `setupapi.dll` and
-`version.dll` for them, which `build.bat` already linked.
+client plays sound through SDL and, since 2026-11-11, runs in its window; it does not call the GPU
+API yet, but SDL's dynamic API table refers to every function SDL has, so the executable contains
+all three subsystems and imports `setupapi.dll` and `version.dll` for them. `build.bat` already
+linked every library they need.
 
 The crash report prints full-width addresses. `tests\scenes\build.bat` builds the scene harness,
 `build\ragexe_scenes.exe`. Against the last 32-bit build its captures of the scene set are the same
@@ -682,18 +726,21 @@ the other entry's second one, which is not an ordering; it compares like with li
 
 ## Remaining work
 
-1. macOS: check Hangul composition through the macOS input method and Retina scaling on
+1. Windows: check by hand Hangul composition and the Hanja candidate list through the Microsoft
+   IME on SDL's text input, the letter hotkeys in Hangul mode, AltGr on a German or French layout,
+   and starting in exclusive fullscreen.
+2. macOS: check Hangul composition through the macOS input method and Retina scaling on
    Apple hardware (the window does not ask for a high-density drawable,
    so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
    deprecated OpenGL later.
-2. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
-3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
-4. Keep auditing pointer-width message arguments, raw strides and packed packet
+3. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
+4. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
+5. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
-5. Expand CMake to the remaining test suites.
-6. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
+6. Expand CMake to the remaining test suites.
+7. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
-7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
+8. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
    the default resolution is 4:3 whatever the screen's aspect (*Android client*).
 

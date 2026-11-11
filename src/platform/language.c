@@ -12,8 +12,9 @@
 #include "core/window_state.h"
 #include "core/utf8.h"
 
-/* The input editor every edit box shares, the same on every platform. The IME side is
-   platform/language_win32.c on Windows and platform/language_posix.c elsewhere. */
+/* The input editor every edit box shares, the same on every platform. Its IME side takes the
+   composition and committed text core/app_sdl.c hands over from SDL, both UTF-8 like the client's
+   own text, and keeps the place of the IME's candidate list for it. */
 
 struct Language *g_language;
 
@@ -228,40 +229,24 @@ void language_move_caret_back(struct Language *self, int count)
         self->anchor = self->caret;
 }
 
-static void insert_code_point(struct Language *self, unsigned long code_point)
-{
-    char text[UTF8_CHAR_MAX + 1];
-    size_t length = utf8_encode(code_point, text);
-
-    text[length] = 0;
-    if (length)
-        language_replace_selection(self, text);
-}
-
-/* ch is one UTF-16 unit from WM_CHAR; a surrogate pair arrives as two messages. */
+/* ch is a character typed on its own: Backspace, or a printable ASCII character, which is how
+   core/app_sdl.c hands over SDL's one-byte text. Other text, a composition's included, arrives
+   through language_commit. */
 void language_on_char(struct Language *self, int ch)
 {
-    unsigned long points[2];
-    size_t count, i;
+    char text[2];
 
-    switch (ch) {
-    case VK_BACK:
-        self->pending_unit = 0;
+    if (ch == VK_BACK) {
         if (self->caret == self->anchor)
             language_caret_back(self);
         language_delete_selection(self);
         return;
-    case '\t': case '\n': case '\r': case 0x1b:
-        self->pending_unit = 0;
-        return;
     }
-    if ((unsigned)ch <= 0x1f || (unsigned)ch > 0xffff) {
-        self->pending_unit = 0;
+    if (ch < 0x20 || ch > 0x7e)
         return;
-    }
-    count = utf16_feed(&self->pending_unit, (WCHAR)ch, points);
-    for (i = 0; i < count; i++)
-        insert_code_point(self, points[i]);
+    text[0] = (char)ch;
+    text[1] = 0;
+    language_replace_selection(self, text);
 }
 
 static void ctrl_key(struct Language *self, int key)
@@ -338,6 +323,44 @@ void language_on_key_down(struct Language *self, int key)
         plain_key(self, key);
 }
 
+void language_place_candidates(struct Language *self, int x, int top, int bottom)
+{
+    struct LanguageCandidatePos *pos = &self->candidate_pos;
+
+    pos->x = x;
+    pos->top = top;
+    pos->bottom = bottom;
+    pos->placed = 1;
+}
+
+/* SDL counts the cursor in characters; the editor needs a byte offset. A composition that does not
+   fit is cut on a character boundary. */
+void language_set_composition(struct Language *self, const char *text, int cursor)
+{
+    size_t length = utf8_prefix(text, strlen(text), sizeof self->composition - 1);
+    const char *at = text, *end = text + length;
+
+    memcpy(self->composition, text, length);
+    self->composition[length] = 0;
+    self->composition_length = length;
+    if (cursor < 0) {
+        at = end;
+    } else {
+        while (cursor-- > 0 && at < end)
+            at = utf8_step(at, end);
+    }
+    self->composition_cursor = (int)(at - text);
+    if (!length)
+        self->candidate_pos.placed = 0;
+}
+
+void language_commit(struct Language *self, const char *text)
+{
+    self->composition[0] = 0;
+    self->composition_length = 0;
+    language_replace_selection(self, text);
+}
+
 void language_cancel_input(struct Language *self)
 {
     platform_ime_cancel(g_hMainWnd);
@@ -347,7 +370,6 @@ void language_cancel_input(struct Language *self)
     self->anchor = (int)self->input_length;
     self->composition_length = 0;
     self->composition[0] = 0;
-    self->pending_unit = 0;
 }
 
 void language_set_selection(struct Language *self, int anchor, int caret)

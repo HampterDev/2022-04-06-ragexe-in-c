@@ -1,16 +1,19 @@
-#ifndef _WIN32
 #include "platform/window.h"
 #include <stdlib.h>
 #include <string.h>
 #include "platform/code_page.h"
 #include "core/utf8.h"
 #include "platform/vk.h"
-#include "platform/system.h"
 #include <SDL3/SDL.h>
+#ifdef _WIN32
+#include <imm.h>
+#pragma comment(lib, "imm32.lib")
+#endif
+
+/* The client's window services on SDL, on every platform. */
 
 static unsigned char g_keys[256];
 static unsigned char g_toggles[256];
-static int g_cursorCount;
 static int g_cursorX, g_cursorY;
 
 void platform_note_key(int vk, int down)
@@ -135,16 +138,6 @@ void platform_mouse_capture(PlatformWindow window, int capture)
     SDL_CaptureMouse(capture != 0);
 }
 
-int platform_show_cursor(int show)
-{
-    g_cursorCount += show ? 1 : -1;
-    if (g_cursorCount >= 0)
-        SDL_ShowCursor();
-    else
-        SDL_HideCursor();
-    return g_cursorCount;
-}
-
 void platform_clip_cursor_to_client(PlatformWindow window, int clip)
 {
     if (window)
@@ -175,13 +168,6 @@ static SDL_DisplayID display_or_primary(PlatformDisplay display)
     return display ? display : SDL_GetPrimaryDisplay();
 }
 
-void platform_monitor_rect(PlatformDisplay display, RECT *out)
-{
-    SDL_Rect bounds = {0, 0, 0, 0};
-    SDL_GetDisplayBounds(display_or_primary(display), &bounds);
-    *out = (RECT){bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h};
-}
-
 void platform_monitor_rects(PlatformDisplay display, RECT *mon, RECT *work)
 {
     SDL_Rect bounds = {0, 0, 1024, 768}, usable;
@@ -196,18 +182,6 @@ void platform_monitor_rects(PlatformDisplay display, RECT *mon, RECT *work)
 PlatformDisplay platform_window_monitor(PlatformWindow window)
 {
     return window ? SDL_GetDisplayForWindow(window) : SDL_GetPrimaryDisplay();
-}
-
-void platform_client_screen_rect(PlatformWindow window, RECT *out)
-{
-    int x = 0, y = 0;
-    platform_client_rect(window, out);
-    if (window)
-        SDL_GetWindowPosition(window, &x, &y);
-    out->left += x;
-    out->right += x;
-    out->top += y;
-    out->bottom += y;
 }
 
 void platform_screen_size(int *width, int *height)
@@ -247,14 +221,24 @@ void platform_ime_cancel(PlatformWindow window)
         SDL_ClearComposition(window);
 }
 
+/* Windows: the IME of the window's input context leaves its native mode (Hangul, kana) for
+   alphanumeric input, as the password box asks every frame it has the focus. SDL has no call for an
+   input method's mode; elsewhere this does nothing. */
 void platform_ime_alphanumeric(PlatformWindow window)
 {
+#ifdef _WIN32
+    HWND hwnd = window ? (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
+                                                      SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL) : NULL;
+    HIMC imc = hwnd ? ImmGetContext(hwnd) : NULL;
+    DWORD conversion, sentence;
+    if (!imc)
+        return;
+    if (ImmGetConversionStatus(imc, &conversion, &sentence))
+        ImmSetConversionStatus(imc, 0, sentence);
+    ImmReleaseContext(hwnd, imc);
+#else
     (void)window;
-}
-
-WORD platform_keyboard_language(void)
-{
-    return (WORD)platform_user_language();
+#endif
 }
 
 int platform_window_has_caption(PlatformWindow window)
@@ -267,25 +251,32 @@ int platform_window_is_foreground(PlatformWindow window)
     return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS);
 }
 
+/* x and y are the corner of the window's frame, as platform_window_rect gives it, and the frame is
+   what is centred and kept in the work area; SDL places the client area inside it. Where the frame
+   is not known yet (X11 before the window manager has framed the window), it counts as none. */
 void platform_window_place_windowed(PlatformWindow window, PlatformDisplay on, int x, int y, int clientW,
                                     int clientH, int centre)
 {
     RECT mon, work;
+    int top = 0, left = 0, bottom = 0, right = 0, w, h;
     if (!window)
         return;
     platform_monitor_rects(on, &mon, &work);
     SDL_SetWindowFullscreen(window, false);
     SDL_SetWindowBordered(window, true);
     SDL_SetWindowSize(window, clientW, clientH);
+    SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
+    w = clientW + left + right;
+    h = clientH + top + bottom;
     if (centre) {
-        x = work.left + (work.right - work.left - clientW) / 2;
-        y = work.top + (work.bottom - work.top - clientH) / 2;
+        x = work.left + (work.right - work.left - w) / 2;
+        y = work.top + (work.bottom - work.top - h) / 2;
     }
-    if (x + clientW > work.right)  x = work.right - clientW;
-    if (y + clientH > work.bottom) y = work.bottom - clientH;
+    if (x + w > work.right)  x = work.right - w;
+    if (y + h > work.bottom) y = work.bottom - h;
     if (x < work.left) x = work.left;
     if (y < work.top)  y = work.top;
-    SDL_SetWindowPosition(window, x, y);
+    SDL_SetWindowPosition(window, x + left, y + top);
     SDL_SyncWindow(window);
 }
 
@@ -301,4 +292,3 @@ void platform_window_place_frameless(PlatformWindow window, PlatformDisplay on, 
     SDL_SetWindowSize(window, w, h);
     SDL_SyncWindow(window);
 }
-#endif

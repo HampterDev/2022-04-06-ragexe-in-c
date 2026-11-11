@@ -149,7 +149,7 @@ char g_clientDir[128];
 
 const struct TextureUV g_fullUV;
 
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 
 struct ModeMgr g_modeMgr;
 

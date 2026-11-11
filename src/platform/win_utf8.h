@@ -3,12 +3,9 @@
 
 #include <windows.h>
 
-/* Drop-in replacements for the ANSI message box, registry and shell calls, taking the client's
-   UTF-8 text. They call the W functions, so text does not depend on the Windows code
-   page. Text that is not valid UTF-8 is taken as CP949, the encoding of resource
-   names. */
-
-int WINAPI win_utf8_message_box(HWND owner, LPCSTR text, LPCSTR caption, UINT type);
+/* Drop-in replacements for the ANSI registry and shell calls, taking the client's UTF-8 text.
+   They call the W functions, so text does not depend on the Windows code page. Text that is not
+   valid UTF-8 is taken as CP949, the encoding of resource names. */
 
 /* ShellExecuteA with UTF-8 operation, file, parameters and directory (ShellExecuteW). Text that
    cannot be converted (no memory) is not opened: the result is SE_ERR_OOM. */

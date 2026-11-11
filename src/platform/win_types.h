@@ -30,14 +30,9 @@ typedef uintptr_t UINT_PTR;
 typedef intptr_t LONG_PTR;
 typedef uintptr_t ULONG_PTR;
 typedef uintptr_t DWORD_PTR;
-typedef uintptr_t WPARAM;
-typedef intptr_t LPARAM;
-typedef intptr_t LRESULT;
 typedef DWORD COLORREF;
 
 typedef void *HANDLE;
-typedef struct PlatformWindowHandle *HWND;
-typedef struct PlatformModuleHandle *HINSTANCE;
 typedef struct PlatformDcHandle *HDC;
 typedef struct PlatformGdiObject *HGDIOBJ;
 typedef struct PlatformBitmapHandle *HBITMAP;
@@ -72,7 +67,6 @@ typedef struct tagSIZE {
 #define MAX_PATH 260
 
 #define WINAPI
-#define CALLBACK
 
 #define LOBYTE(w) ((BYTE)((DWORD_PTR)(w) & 0xff))
 #define HIBYTE(w) ((BYTE)(((DWORD_PTR)(w) >> 8) & 0xff))

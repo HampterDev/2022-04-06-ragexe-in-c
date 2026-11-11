@@ -3,6 +3,7 @@ setlocal
 set "ROOT=%~dp0.."
 call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
 call "%VCVARS%" >nul
+call "%ROOT%\tests\window_sdl.bat"
 set "OUT=%ROOT%\build\tests\lua_calls"
 if not exist "%OUT%\runtime" mkdir "%OUT%\runtime"
 pushd "%ROOT%\vendor" || exit /b 1
@@ -16,7 +17,7 @@ if errorlevel 1 (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 popd
 pushd "%OUT%" || exit /b 1
-cl /nologo /W3 /WX /O2 /Gy /Gw /MT /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_lua_calls.c" lua_test.lib "%ROOT%\src\platform\window_win32.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\src\core\utf8.c" /Fe:test_lua_calls.exe /link /OPT:REF
+cl /nologo /W3 /WX /O2 /Gy /Gw /MT /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_lua_calls.c" lua_test.lib %WINDOW_SDL% "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" /Fe:test_lua_calls.exe /link /OPT:REF
 if errorlevel 1 (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 test_lua_calls.exe
@@ -28,7 +29,7 @@ if not errorlevel 0 (popd & exit /b 1)
 test_lua_calls_disabled.exe
 if errorlevel 1 (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
-cl /nologo /W3 /WX /O2 /Gy /Gw /MT /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_lua_boundaries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" lua_test.lib "%ROOT%\src\platform\window_win32.c" "%ROOT%\src\platform\win_utf8.c" "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_lua_boundaries.exe /link /OPT:REF user32.lib
+cl /nologo /W3 /WX /O2 /Gy /Gw /MT /D_CRT_SECURE_NO_WARNINGS /source-charset:utf-8 /execution-charset:.949 /I"%ROOT%\src" /I"%ROOT%\vendor\lua-5.1.4\src" /I"%ROOT%\vendor\zlib-1.2.11" /I"%ROOT%\vendor\libpng-1.6.36" /I"%ROOT%\vendor\yyjson-0.13.0" "%ROOT%\tests\test_lua_boundaries.c" "%ROOT%\src\fileio\file.c" "%ROOT%\src\fileio\resource_path.c" "%ROOT%\src\platform\code_page_win32.c" "%ROOT%\src\core\utf8.c" "%ROOT%\src\std\string.c" "%ROOT%\src\std\container_memory.c" "%ROOT%\src\std\vec.c" lua_test.lib %WINDOW_SDL% "%ROOT%\src\platform\filesystem_win32.c" /Fe:test_lua_boundaries.exe /link /OPT:REF user32.lib
 if errorlevel 1 (popd & exit /b 1)
 if not errorlevel 0 (popd & exit /b 1)
 test_lua_boundaries.exe

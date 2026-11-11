@@ -7,7 +7,6 @@
 #include "core/client_managers.h"
 #include "core/text_util.h"
 
-HINSTANCE g_hInstance;
 char g_clientDir[0x88];
 
 /* Destroys the client's managers (g_clientManagers, core/client_managers.c) in destroy-rank
