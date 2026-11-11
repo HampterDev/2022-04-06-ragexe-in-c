@@ -33,12 +33,13 @@ cmake --build build/portable --parallel 4
 ctest --test-dir build/portable --output-on-failure
 ```
 
-With Visual Studio, add `-A x64` at configure time (`-A Win32` still configures these tests, and
-makes the 32-bit `lua_chunk` that writes the Lua fixture below) and use
-`--config Debug` for build and `-C Debug` for CTest. Use separate build directories.
+With Visual Studio, add `-A x64` at configure time and use `--config Debug` for build and
+`-C Debug` for CTest; `-A Win32` configures the tests that do not need 64-bit Windows, and makes the
+32-bit `lua_chunk` that writes the Lua fixture below. Use separate build directories.
 Clang and GCC builds can enable `-DRAGE_SANITIZERS=ON` for ASan, UBSan and
 float-cast-overflow checking. Set `UBSAN_OPTIONS=halt_on_error=1` when running tests.
-Test assertions stay enabled even in Release configurations.
+Test assertions stay enabled even in Release configurations: the tests' directory drops `NDEBUG`
+for the tests and for the client files they link.
 
 The zlib 1.2.11 `zutil.h` classic-Mac branch excludes modern `__APPLE__` targets:
 current SDKs define `TARGET_OS_MAC`, but macOS provides POSIX `fdopen`. Treating it
@@ -46,11 +47,34 @@ as classic Mac OS rewrites the SDK's function declaration and prevents compilati
 The matching classic-Mac branch in libpng's `pngpriv.h` also excludes `__APPLE__`,
 so current macOS uses `<math.h>` rather than the removed `<fp.h>`.
 
-The initial CTest set covers the real string, container, numeric, 3D math and XML modules,
-Lua bytecode, compiled Korean literals, frame timing and filesystem behavior.
-The full Windows regression suite still runs through `tests/build.bat`.
+`tests/CMakeLists.txt` declares the whole test suite, once for every platform (`rage_test`; its
+helpers say what each keyword does). Every platform builds the portable tests: strings,
+containers, numbers, 3D math, XML, Lua bytecode, compiled Korean literals, frame timing, the
+platform layer (clock, files, threads, sockets, code pages, SHA-256), JPEG, two extracted
+production routines and the Python checks (source encoding, the library table's include check,
+the map-name migration). 64-bit Windows adds the rest of the suite, about 290 tests that only
+build there; Linux and macOS add the settings store, FreeType text and, with SDL, the audio layer
+and the clipboard.
 
-With `RAGE_CLIENT=ON`, CTest's `gfx_gl` opens an SDL window. When SDL is built with
+Client files are compiled once, into one static library per library of `tools/libraries.txt`
+(`rage_client_<library>`), and each test links the libraries of the files it names; a test that
+compiles a client file with defines or a fixture of its own keeps its own copy. Each test is
+labelled with the libraries whose `.c` files it compiles, links or includes, so
+`ctest -L render` runs the tests a change in the render library reaches.
+
+Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
+`SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `platform_window` the offscreen video
+driver, and `gfx_gl` keeps the platform's video driver, in a hidden window, for its OpenGL
+context. On Windows the client files the tests link show no message box: `tests/headless.h`
+writes it to stderr and answers with its default button. `platform_probe` shows a real window
+and is labelled `interactive`; leave it out with `ctest -LE interactive`.
+
+On Windows `tests\build.bat` configures `build\tests` with Ninja (Release, `/MT`), builds what
+changed and runs CTest on every core, then the oracle tests (`tests/oracle`), a 32-bit
+configuration of their own (`-DRAGE_ORACLE=ON`) in `build\oracle`. Its arguments go to CTest
+(`tests\build.bat -R chat_tabs`, `-L render`).
+
+With `RAGE_CLIENT=ON`, CTest's `gfx_gl` opens a hidden SDL window. When SDL is built with
 `-DSDL_UNIX_CONSOLE_BUILD=ON` (no X11, Wayland or other window backend, as on a WSL without
 their development packages), SDL finds no video device unless its offscreen driver is chosen,
 and `gfx_gl` reports itself skipped ("No available video device"). Run CTest with that driver
@@ -74,8 +98,8 @@ errors. Frame capture unlocks the render target before opening/writing the file,
 keeps the existing Windows filename handling and checks close failures. This avoids
 mixing filename encoding policy into the codec.
 
-`tests/build_jpeg.bat` covers the real decoder/encoder, bitmap color keys, padded
-rows, and framebuffer/file failures. CTest runs the codec test on every platform.
+The tests `jpeg_codec`, `jpeg_bitmap` and `jpeg_capture` cover the real decoder/encoder, bitmap
+color keys, padded rows, and framebuffer/file failures. The codec test runs on every platform.
 The quadrant JPEG is our own image, generated independently with Pillow by
 `tests/fixtures/make_jpeg_quadrants.py`; Pillow is only needed to regenerate it.
 UBSan found a signed-shift defect in stb's JPEG bit writer; the documented local
@@ -198,16 +222,17 @@ committed UTF-8 text. Resize and move between displays to inspect drawable sizes
 Escape exits. This is a diagnostic window; it does not render game text.
 
 `platform_probe --smoke` opens the window, presents frames and closes automatically.
-CTest runs it when enabled. This checks initialization/rendering, **not** Hangul
-composition or candidate-window behavior. Those require a real interactive Mac.
+CTest runs it when enabled, labelled `interactive` since its window shows. This checks
+initialization/rendering, **not** Hangul composition or candidate-window behavior. Those require a
+real interactive Mac.
 Linux headless smoke runs can use `SDL_VIDEODRIVER=dummy`; that does not validate
 a native desktop window. Linux desktop builds need SDL's X11/Wayland development
 dependencies; consult the [SDL build documentation](https://wiki.libsdl.org/SDL3/README-linux).
 
-The CI matrix covers Windows x64, Linux with sanitizers, and macOS arm64 with
-the probe. The Windows job additionally builds the complete client and the scene harness and
-runs the full regression suite, whose oracle tests skip themselves there: the original
-executable is not in the repository. The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+The CI matrix covers Linux with sanitizers and macOS arm64 with the probe. The Windows job
+builds the complete client and the scene harness and runs `tests\build.bat`, the whole suite;
+its oracle tests are skipped there, since the original executable is not in the repository.
+The macOS label follows the [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Workflow configuration is not evidence of a successful run; record results when
 the workflow actually completes.
 
@@ -519,8 +544,8 @@ needs no Visual C++ redistributable. (The 32-bit client used the 32-bit runtime 
 ships; a 64-bit program skips those and would need the x64 redistributable installed.)
 `vendor\build_vendor.bat` writes what it built the libraries as into `build\vendor\kind.txt`, and a
 `build\vendor` without that file, or with another kind, such as a checkout's 32-bit libraries from
-before 2026-11-11, is removed and built again; the tests call it with `ifneeded`, which builds only
-then.
+before 2026-11-11, is removed and built again. The tests do not use `build\vendor`: CMake builds the
+libraries they link from `vendor/`.
 
 SDL is built with its video and GPU subsystems as well as audio, for the renderer of
 `plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its
@@ -535,8 +560,8 @@ bit for bit except in the Granny scenes, which with converted models differ as *
 `tests\build.bat` builds and runs the tests 64-bit too, with `/MT` like the client, except the
 oracle tests (`tests/oracle`), which map the original executable into their own process and stay
 32-bit: `tools\find_vcvars.bat x86` gives them, and `tools/granny_export`, the 32-bit compiler,
-and they link with `/MACHINE:X86`. The Windows CI job builds the client and the scene harness and
-runs the suite.
+and they link with `/MACHINE:X86` (see *Build and test*). The Windows CI job builds the client and
+the scene harness and runs the suite.
 
 ## Android client
 
@@ -690,10 +715,9 @@ the other entry's second one, which is not an ordering; it compares like with li
 3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
 4. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
-5. Expand CMake to the remaining test suites.
-6. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
+5. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
-7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
+6. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
    the default resolution is 4:3 whatever the screen's aspect (*Android client*).
 

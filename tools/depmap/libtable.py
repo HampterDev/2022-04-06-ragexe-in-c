@@ -225,10 +225,29 @@ def load(path=None):
     return Table(path)
 
 
+def write_cmake(table, owners, out):
+    """The CMake form of the table for tests/CMakeLists.txt: the library of every C file under src
+    (RAGE_LIBRARY_OF_<path>) and the libraries from the highest to the lowest, the order of a link
+    line (RAGE_LIBRARY_ORDER). The file is only rewritten when it changes."""
+    lines = ['# Written by tools/depmap/libtable.py --cmake from tools/libraries.txt.\n',
+             'set(RAGE_LIBRARY_ORDER %s)\n' % ' '.join(reversed(table.order))]
+    lines += ['set(RAGE_LIBRARY_OF_%s %s)\n' % (f, lib) for f, lib in sorted(owners.items())
+              if f.endswith('.c')]
+    text = ''.join(lines)
+    out = Path(out)
+    if not out.exists() or out.read_text(encoding='utf-8') != text:
+        out.write_text(text, encoding='utf-8')
+
+
 if __name__ == '__main__':
     # libtable.py [table] [src]: print each library with its size and what it may use.
+    # libtable.py --cmake FILE: write the table for CMake (write_cmake).
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     root = Path(__file__).resolve().parent.parent.parent
+    if len(sys.argv) == 3 and sys.argv[1] == '--cmake':
+        t = load()
+        write_cmake(t, t.assign(root / 'src'), sys.argv[2])
+        sys.exit(0)
     t = load(sys.argv[1] if len(sys.argv) > 1 else None)
     owners = t.assign(sys.argv[2] if len(sys.argv) > 2 else root / 'src')
     src = Path(sys.argv[2]) if len(sys.argv) > 2 else root / 'src'

@@ -2,18 +2,14 @@
 REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib, 64-bit
 REM and with the static C runtime (/MT) like the client: zlib and libpng, Lua, yyjson, stb's JPEG,
 REM the client's C++ helpers, dr_mp3 and SDL3 (the Miles replacement, platform\miles_sdl.c, plays
-REM sound through it). Words:
-REM   freetype  FreeType too, for the FreeType text backend
-REM   ifneeded  nothing when build\vendor was already built by this version (the tests use it)
+REM sound through it). With the word freetype FreeType too, for the FreeType text backend.
 REM Run from a vcvars64 environment (tools\find_vcvars.bat).
 setlocal
 pushd "%~dp0" || exit /b 1
 set "OUT=%~dp0..\build\vendor"
 set "WANTFT="
-set "IFNEEDED="
 for %%a in (%*) do (
   if /i "%%~a"=="freetype" set "WANTFT=1"
-  if /i "%%~a"=="ifneeded" set "IFNEEDED=1"
 )
 
 REM build\vendor\kind.txt says what the libraries there were built as; it is written once all but
@@ -24,7 +20,6 @@ set "KIND=x64 /MT, SDL without OpenGL"
 set "STAMP=%OUT%\kind.txt"
 set "BUILT="
 if exist "%STAMP%" set /p BUILT=<"%STAMP%"
-if "%BUILT%"=="%KIND%" if defined IFNEEDED goto done
 if not "%BUILT%"=="%KIND%" if exist "%OUT%" (
   echo build\vendor was not built as "%KIND%": building it again from clean.
   rd /s /q "%OUT%"
@@ -55,7 +50,6 @@ if defined WANTFT (
   call :freetype
   if errorlevel 1 goto failed
 )
-:done
 popd
 exit /b 0
 

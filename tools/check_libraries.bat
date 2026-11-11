@@ -7,7 +7,8 @@ REM   2. link check: tools\depmap\check_links.py over the dumpbin listing of OBJ
 REM      build\obj (build.bat's release build) by default. Without OBJDIR, build.bat runs first
 REM      when an object is missing or older than a file under src.
 REM Both fail on a use the table does not allow and on an exception that matches nothing.
-REM tests\build.bat runs this; build.bat check runs it on the objects of the variant it built.
+REM build.bat check runs it on the objects of the variant it built. The test suite runs the include
+REM check as its test library_includes (tests\CMakeLists.txt).
 setlocal
 for %%i in ("%~dp0..") do set "ROOT=%%~fi"
 python "%ROOT%\tools\depmap\check_includes.py" --strict

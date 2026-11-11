@@ -3,7 +3,8 @@
 From src/core/startup.c: init_failed and app_init_managers; from src/core/app.c:
 app_destroy_singletons. Each must be found exactly once. Writes startup_order.inc, which
 includes the manager table's header first: the two functions run g_clientManagers, which
-build_startup_order.bat compiles from src/core/client_managers.c and manager_table.c.
+the startup_order test (tests/CMakeLists.txt) links from src/core/client_managers.c and
+manager_table.c.
 Usage: extract_startup_order.py ROOT OUT
 """
 from pathlib import Path

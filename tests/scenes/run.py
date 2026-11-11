@@ -121,6 +121,10 @@ def compare(golden_path, actual_path, diff_path, tolerance):
 
 def run_scene(args, script, out):
     env = dict(os.environ, RAGEXE_SCENE=os.path.abspath(script), RAGEXE_SCENE_OUT=os.path.abspath(out))
+    # Scenes are silent: SDL's dummy audio driver, unless the caller chose a driver (SDL 3 reads
+    # SDL_AUDIO_DRIVER, and SDL_AUDIODRIVER when that is not set).
+    if not env.get("SDL_AUDIO_DRIVER") and not env.get("SDL_AUDIODRIVER"):
+        env["SDL_AUDIO_DRIVER"] = "dummy"
     started = time.monotonic()
     try:
         proc = subprocess.run([os.path.abspath(args.exe)], cwd=args.game, env=env, stdout=subprocess.PIPE,

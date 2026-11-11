@@ -52,8 +52,10 @@ RAGEXE_SCENE=<repo>/tests/scenes/scripts/prontera_crowd.lua RAGEXE_SCENE_OUT=/tm
 On Linux and macOS the harness defaults to `SDL_VIDEODRIVER=offscreen` (an EGL context, no
 window) and `SDL_AUDIODRIVER=dummy`; set either to watch or hear a scene. SDL's offscreen driver
 needs EGL, which macOS does not have, so on a Mac set `SDL_VIDEODRIVER=cocoa`. On Windows the
-client window shows while the client starts and is hidden on the first frame. Every platform
-gets `RAGEXE_VSYNC=0`. `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
+client window shows while the client starts and is hidden on the first frame (Direct3D 9 needs a
+real window). Captures are silent on every platform: `run.py` gives the client
+`SDL_AUDIO_DRIVER=dummy` unless `SDL_AUDIO_DRIVER` or `SDL_AUDIODRIVER` is set, and the harness
+itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`. `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
 changes.
 
 The game directory's `SaveData` (resolution, options, chat windows) and data files are read as

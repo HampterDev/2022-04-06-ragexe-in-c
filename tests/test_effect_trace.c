@@ -1484,8 +1484,11 @@ static void prepare(void)
 
     SetUnhandledExceptionFilter(crashed);
     /* The client's floating-point setting (START-073, src/core/winmain.c): 24-bit x87
-       precision. */
+       precision. x64 has no precision control: its C runtime ignores the request, and the
+       debug runtime asserts on it. */
+#ifdef _M_IX86
     _controlfp(0x20000, 0x30000);
+#endif
     math_init_degree_tables();
     g_actor_ops.base.base.destroy = actor_destroy;
     g_actor_ops.base.base.on_process = actor_process;

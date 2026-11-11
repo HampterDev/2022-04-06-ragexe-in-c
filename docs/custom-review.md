@@ -13982,3 +13982,118 @@ guardian and the treasure box; in `guild_flags_later` in two pixels of the flag'
 static runtime and SDL's new options change no pixel: in the copy, the harness built with them
 captures all 12 captures of the set exactly as the 64-bit harness built before them, with the same
 counts.
+
+## One test suite in CMake (2026-11-11)
+
+Decided with Patrick on 2026-11-11: one test definition for every platform, in CMake, built with
+Ninja and run with CTest on every core, and every test headless and silent. Until now
+`tests\build.bat` walked 161 batch files, one per test, and `tests\oracle\build.bat`: 328 `cl`
+calls that compiled 1,665 files per run, 744 of them distinct, the client's own files 1,167 times
+for 361 distinct files (`std/string.c` 79 times), one after another on one core, with nothing kept
+between runs. A run took 514 s (570 s when its library check first had to build the client's
+objects). The CMake build declared 23 more tests for Linux, macOS and Windows, which
+`tests\build.bat` never ran.
+
+- **One declaration.** `tests/CMakeLists.txt` declares every test once: `rage_test` builds
+  `test_<name>` and runs it as the test `<name>`, `rage_test_run` adds a run of a program,
+  `rage_test_objects` compiles sources with options of their own, `rage_test_generate` copies
+  production code out of `src` at build time; the helpers at the top of the file say what each
+  keyword does. The root `CMakeLists.txt` only adds the directory. A one-off generator wrote the
+  Windows tests from the batch files: they were run once with command echo on, which records
+  every command after its variables are expanded, the directory it ran in and the exit code of
+  every program; the generator turned that trace into declarations, which were checked by hand,
+  and was deleted.
+- **Compiled once.** A client file a test names with `CLIENT` is compiled once, into one static
+  library per library of `tools/libraries.txt` (`rage_client_<library>`, the table read through
+  `tools/depmap/libtable.py --cmake`), and a test links the libraries of its files, highest first,
+  taking from them only the objects it uses: the objects its batch file listed, since every client
+  symbol has one definition. Each file keeps the highest warning level a test compiled it at
+  (`/W3`; 36 files `/W1`, 21 `/W4`; `platform/net_win32.c` `/W1`, since only the portable platform
+  tests linked it, at the default level). Before choosing the options, every distinct compile of the
+  old suite outside the oracle (1,067 pairs of file and options) was compiled with its old options
+  and with the new ones and the objects compared (`/Brepro`): all were identical but 52, which
+  differed only by `/std:c11`, now on every target (`CMAKE_C_STANDARD`), and only in the order of
+  their sections: section for section they hold the same code and data. Extra
+  include directories and yyjson's depth defines never changed a client object, so those files
+  are shared; a file compiled with a test's fixture (`/FI`), its own defines or `/Oy- /GS /Gd`
+  stays the test's own copy, among its sources or in one of the 39 object libraries (four of
+  them hold files that several tests compile alike). A cold build makes
+  870 compiles (the vendor libraries and the oracle included); the client's files are compiled
+  442 times for 366 files, `std/string.c` 8 times (once shared, seven fixture copies).
+- **What the batch files did around the compiler.** The 30 extraction scripts are custom
+  commands that run again when the files they read change (found by running each with an audit
+  hook on the files it opens; two read a whole directory, which is globbed). The effect data is
+  embedded by `cmake/EffectData.cmake`, as for the Linux client. The six copies of the Lua
+  runtime that batch files compiled, and `build\vendor`'s `lua514.lib`, `yyjson.lib`,
+  `imglibs.lib`, `jpeg.lib` and `crijndael.lib`, are `vendor/CMakeLists.txt`'s libraries, so the
+  tests no longer need `vendor\build_vendor.bat`, whose `ifneeded` word is gone with its last user.
+  `renderer_storage`'s two runs that must end with exit code 3 go through `tests/expect_exit.cmake`.
+  Every test runs in a directory of its own (`work/<name>`), so parallel tests share no files.
+- **The oracle tests** are a configuration of their own: `-DRAGE_ORACLE=ON` from a 32-bit MSVC
+  environment, which `tests\build.bat` builds in `build\oracle` (the same options, `/MD`, linked at
+  `0x10000000`). A CMake preset cannot set up the compiler's environment, which Ninja needs, so the
+  batch file does. They read `ORACLE_EXE` when they run (`tests/oracle/run.cmake`) and report
+  themselves skipped without the original. The old `tests\build.bat` ignored their result: its
+  `if not "%errorlevel%"=="0" exit /b 1` sat inside the parenthesized `if exist` block, where
+  `%errorlevel%` is expanded before the call runs. Their results are the same as before (629,006
+  calls, no mismatch, no fault).
+- **What runs now.** The same tests with the same results, under CTest's names (`test_x.exe` is
+  `x`), and these differences:
+
+  | before | now | why |
+  |---|---|---|
+  | `test_texture_cache_owner_1`, `_0` | `texture_cache_owner` | the two builds have been identical since the tree's first commit: the loop variable only named the program |
+  | `test_renderer_storage` with `growth_failure`, `queue_failure` | `renderer_storage_growth_failure`, `renderer_storage_queue_failure` | one test per run |
+  | not run | `com_lifecycle`, `emote_timing`, `headgear_names`, `pet_accessory`, `pet_portrait`, `skill_tree_hints` | their batch files existed, nothing called them; they pass |
+  | CMake only | `source_encoding`, `literal_bytes`, `frame_timer`, `platform_clock`, `platform_filesystem`, `platform_thread`, `platform_net`, `platform_code_page`, `platform_sha256`, `code_page_iconv`, `lua_port` | the CMake tests are the suite |
+  | `tools\check_libraries.bat` | `library_includes`; the link check in `build.bat check` | the link check needs the client's objects, and building them in every suite run would undo the incremental build |
+  | `build_agency_server.bat <Hercules>` | `agency_server`, `agency_server_reply` with `-DRAGE_HERCULES_DIR` (label `hercules`) | not run here: no patched Hercules |
+
+  The batch files' manual words are gone (`build_json.bat asan`, the trace arguments of
+  `build_effect_trace.bat`, `build_window_lists.bat`, `build_packet_dispatch.bat` and
+  `build_broadcast_packets.bat`, another source
+  tree for `build_com_lifecycle.bat` and `build_item_restrictions.bat`); the built programs take
+  the same arguments.
+- **Headless and silent.** Every test gets `SDL_VIDEO_DRIVER=dummy` and `SDL_AUDIO_DRIVER=dummy`
+  (`RAGE_TEST_ENVIRONMENT`). Which tests could show anything: no Windows test opens a window or an
+  audio device; `sound_manager` replaces Miles with stubs; 13 tests stub the message boxes
+  themselves (`achievement_owner`, `chat_layout_save`, `com_lifecycle`, `headgear_names`,
+  `item_definitions`, `item_restrictions`, `lua_boundaries`, `lua_calls`, `lua_data_managers`,
+  `pet_accessory`, `startup_order`, `town_info`, `win_utf8`) and `crash_dialog` its dialog; the
+  tests that link `platform/win_utf8.c`, directly or through `platform_message_box` in
+  `platform/window_win32.c`, could show the client's boxes (none did in a passing run). In the
+  client libraries `win_utf8.c` is now compiled with `tests/headless.h`, which writes a message box
+  to stderr and answers with its default button. Off Windows `miles_sdl` plays to the dummy driver,
+  `platform_window` gets the offscreen video driver for the clipboard, `gfx_gl` keeps the
+  platform's video driver for its OpenGL context, in a hidden window, and `platform_probe`, whose
+  window shows, is labelled `interactive`, which `tests\build.bat` leaves out. No test starts the
+  client. The scene captures are outside the suite: `tests/scenes/run.py` gives the client
+  `SDL_AUDIO_DRIVER=dummy` unless a driver is set, and on Windows the harness hides the client's
+  window on its first frame (Direct3D 9 needs a real one).
+- **Every configuration.** The tests' directory drops `NDEBUG` (assertions stay on, in the tests
+  and the client files they link) and compiles with `/Gy /Gw /GF` and links with `/OPT:REF` in
+  every configuration, as the batch files' optimized builds did. The `-A x64` Debug configuration
+  now builds the whole suite; three tests held only optimized: `shorten_text` compared the address
+  of `""` literals from two files (pooled by `/GF`), and `character_model` and `effect_operations`
+  reached functions their stubs lacked (two stubs added). `effect_trace` called
+  `_controlfp(_PC_24, _MCW_PC)` as the client does (START-073); x64 has no x87 precision control,
+  its C runtime ignores the request and its debug runtime asserts, so the test makes the call on
+  32-bit x86 only. `src/core/winmain.c` still makes it: the 64-bit client has never had the 24-bit
+  precision the original set, which is not changed here.
+- **The tests a change reaches.** Each test is labelled with the libraries of `tools/libraries.txt`
+  whose `.c` files it compiles, links or includes (through the files under `tests` it includes),
+  so `tests\build.bat -L render` builds what changed and runs the tests the render library
+  reaches; `-R <regex>` picks tests by name.
+
+Validation, on this machine (24 cores, with other agents at work on it):
+`tests\build.bat` from a clean `build\tests` and `build\oracle` took 62 s, again without a change
+21 s (CTest 16 s, of which `library_includes` alone takes 15 s), after touching `src/std/string.c`
+24 s (13 compiles: the shared object, seven fixture copies and five tests that include the
+file; 171 relinks) and after touching `src/render/rp_project.c` 22 s (2 compiles, 29 relinks).
+The old suite took 514 s and rebuilt everything every time. All 311 tests and the 6 oracle tests
+pass; every line the old suite's tests printed comes out the same (363 lines,
+effect and trace digests included), and the other 13 lines come from the tests the old suite did
+not run. `build.bat check` passes. The CMake `-A x64` (311 tests) and `-A Win32` (24) Debug
+configurations build and pass. Linux, macOS and Android were not built here; their tests now link
+the client libraries (the platform library with `_POSIX_C_SOURCE` and, on Apple,
+`_DARWIN_C_SOURCE`, as `rage_platform` had) instead of compiling the files themselves.

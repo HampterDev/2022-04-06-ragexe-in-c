@@ -140,10 +140,14 @@ in either order.
 Reproduce the focused tests from the client checkout:
 
 ```text
-tests\build_agency_packets.bat
-tests\build_agency_server.bat <patched-Hercules-directory>
-tests\build_agency_packets.bat "<absolute-client-path>\build\tests\agency_server\server-list.bin"
+tests\build.bat -R agency
+cmake -DRAGE_HERCULES_DIR=<patched-Hercules-directory> build\tests
+tests\build.bat -L hercules
 ```
+
+With `RAGE_HERCULES_DIR` the suite has two more tests (label `hercules`): `agency_server` compiles
+the handler extracted from that checkout and writes its reply to `server-list.bin`, and
+`agency_server_reply` decodes that reply with the client's decoder (`test_agency_packets`).
 
 Logs are under `build/purist-agency-*.log`. No live account, server process or
 database was used. Live validation remains: two clients registering/searching,

@@ -52,7 +52,28 @@ Check every claim in a commit message or doc against the code.
 
 `build.bat check` and the whole suite, `tests\build.bat`, pass before committing. From a shell
 that sets `NoDefaultCurrentDirectoryInExePath` (agent shells do), clear it first, or `cmd` will
-not find `build.bat` or the test programs in the current directory.
+not find `build.bat` in the current directory.
+
+Every test is declared once, for every platform, in `tests/CMakeLists.txt` (`rage_test`; the
+helpers at its top say what each keyword does). `tests\build.bat` configures `build\tests` with
+Ninja the first time, builds only what changed since the last run and runs the tests with CTest on
+every core; then the 32-bit oracle tests in `build\oracle`, when the original executable is there.
+Each client file is compiled once, into one static library per library of `tools/libraries.txt`,
+so a change recompiles the files it touches and relinks only the tests that link their library.
+Arguments go to CTest:
+
+- While working, run the tests the change reaches: `tests\build.bat -R <regex>` (tests by name,
+  `ctest --test-dir build\tests -N` lists them) or `tests\build.bat -L <library>` (every test that
+  compiles, links or includes a `.c` file of that library, for example `-L render`; for a header,
+  the libraries whose files include it).
+- Before committing, the whole suite once: `tests\build.bat`. Unchanged tests are not rebuilt, so
+  a run costs about 20 seconds plus the build of what changed.
+- A change to docs only needs no suite.
+
+Every test runs headless and silent: CTest gives it SDL's dummy video and audio drivers, and on
+Windows the message boxes of the client code under test go to stderr (`tests/headless.h`). A test
+that needs a real window is labelled `interactive` and left out by `tests\build.bat`. Keep new
+tests that way.
 
 ## Commits
 

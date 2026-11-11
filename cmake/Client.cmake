@@ -133,7 +133,9 @@ if(BUILD_TESTING AND NOT ANDROID)
     # The link check of the library table (tools/libraries.txt) on the client's objects, through nm.
     add_test(NAME library_links COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tools/depmap/check_links.py
         --nm ${CMAKE_BINARY_DIR}/CMakeFiles/ragexe.dir --strict)
-    set_tests_properties(gfx_gl PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+    # gfx_gl needs an OpenGL context, so it keeps the platform's video driver, in a hidden window.
+    set_tests_properties(gfx_gl PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60 ENVIRONMENT SDL_AUDIO_DRIVER=dummy)
+    set_tests_properties(library_links PROPERTIES ENVIRONMENT "${RAGE_TEST_ENVIRONMENT}")
 
     # The scene captures need game data; with RAGE_SCENE_GOLDEN they are compared with golden images.
     set(RAGE_SCENE_GAME_DIR "" CACHE PATH "Game directory the scene tests run in (tests/scenes/README.md)")
@@ -146,6 +148,7 @@ if(BUILD_TESTING AND NOT ANDROID)
         add_test(NAME scenes COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/tests/scenes/run.py
             --exe $<TARGET_FILE:ragexe_scenes> --game ${RAGE_SCENE_GAME_DIR} --out ${CMAKE_BINARY_DIR}/scenes
             ${RAGE_SCENE_COMPARE})
-        set_tests_properties(scenes PROPERTIES TIMEOUT 1800)
+        # run.py gives the client SDL's dummy audio driver; the harness picks its own video driver.
+        set_tests_properties(scenes PROPERTIES TIMEOUT 1800 LABELS game)
     endif()
 endif()

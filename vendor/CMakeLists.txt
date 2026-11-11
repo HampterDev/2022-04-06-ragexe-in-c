@@ -43,7 +43,8 @@ if(NOT WIN32)
     target_link_libraries(rage_dr_mp3 PUBLIC m)
 endif()
 
-if(RAGE_CLIENT)
+# C++, enabled for the client and for the Windows tests (the top CMakeLists.txt).
+if(CMAKE_CXX_COMPILER_LOADED)
     add_library(rage_crijndael STATIC crijndael/Rijndael.cpp crijndael/rijndael_api.cpp)
     target_include_directories(rage_crijndael PRIVATE ${PROJECT_SOURCE_DIR}/src)
 endif()

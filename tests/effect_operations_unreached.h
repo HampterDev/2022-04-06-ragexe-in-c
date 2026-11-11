@@ -25,4 +25,5 @@ void particle_slots_add(struct ParticleSlots *s, struct Particle *p) { abort(); 
 void particle_slots_clear(struct ParticleSlots *s) { abort(); }
 void particle_slots_construct(struct ParticleSlots *s) { abort(); }
 void particle_slots_destroy(struct ParticleSlots *s) { abort(); }
+void particle_slots_release(struct ParticleSlots *s, struct Particle *p) { abort(); }
 void particle_slots_use_all(struct ParticleSlots *s) { abort(); }

@@ -1,12 +1,12 @@
 """Write tests/window_lists_stubs.c, the recording stubs of test_window_lists.
 
 Usage: make_window_lists_stubs.py <preprocessed .i files...> --names <file> --out <file>
-The .i files are `cl /P` of the eight window-list files that build_window_lists.bat compiles
-(same /I options). <names> lists the symbols they use from the rest of the client, one per
-line without the leading underscore: the unresolved externals of linking them alone with
-std/list.c, std/tree.c and an empty main (`link /FORCE:UNRESOLVED`). Rerun it when the
-window-list files start calling something new. Every function becomes a stub that records its
-name and arguments through window_lists_trace.h and returns:
+The .i files are `cl /P` of the eight window-list files that the window_lists test compiles
+(tests/CMakeLists.txt; same /I options). <names> lists the symbols they use from the rest of
+the client, one per line without the leading underscore: the unresolved externals of linking
+them alone with std/list.c, std/tree.c and an empty main (`link /FORCE:UNRESOLVED`). Rerun it
+when the window-list files start calling something new. Every function becomes a stub that
+records its name and arguments through window_lists_trace.h and returns:
   - a new fake window for the window constructors (*_new, ui_*_create returning a pointer,
     except ui_window_create);
   - its first argument for the *_construct functions, made a fake window in place

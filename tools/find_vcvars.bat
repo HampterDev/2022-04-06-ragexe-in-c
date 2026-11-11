@@ -1,8 +1,9 @@
 @echo off
 REM find_vcvars.bat [x86] - set VCVARS to a vcvars64.bat, for build.bat, vendor\build_vendor.bat,
 REM the tests and the tools (called; sets VCVARS in the caller's environment). With x86 it is the
-REM vcvars32.bat beside it instead, for the two scripts that build 32-bit programs: tests\oracle,
-REM which loads the original executable, and tools\granny_export, which loads the game's granny2.dll.
+REM vcvars32.bat beside it instead, for the two things built 32-bit: the oracle tests
+REM (tests\build.bat builds them in build\oracle), which load the original executable, and
+REM tools\granny_export, which loads the game's granny2.dll.
 REM
 REM   1. VCVARS already set to an existing file           -> kept (the manual override; either
 REM      vcvars64.bat or vcvars32.bat, the other one is taken from beside it)

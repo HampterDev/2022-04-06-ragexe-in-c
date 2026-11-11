@@ -92,12 +92,12 @@ allowed only as the `%d` of `Variants`.
 
 ## Checking a change
 
-`tests\build_effect_trace.bat` runs every effect ID through the client code with several
-inputs and compares one digest; a change to this file changes the digest of the IDs it
-touches, so update `EXPECTED_DIGEST` in `tests/test_effect_trace.c` once the change is
-intended (`--digests FILE` lists the digest of every ID, `--trace FILE --ids FIRST LAST`
-writes what happened frame by frame). `tests\build_effect_data.bat` checks the loader's
-rules and the fallback.
+The test `effect_trace` (`ctest --test-dir build\tests -R effect_trace`, after `tests\build.bat`)
+runs every effect ID through the client code with several inputs and compares one digest; a
+change to this file changes the digest of the IDs it touches, so update `EXPECTED_DIGEST` in
+`tests/test_effect_trace.c` once the change is intended (`build\tests\tests\test_effect_trace.exe
+--digests FILE` lists the digest of every ID, `--trace FILE --ids FIRST LAST` writes what
+happened frame by frame). The test `effect_data` checks the loader's rules and the fallback.
 
 ## Building elsewhere
 
