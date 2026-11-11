@@ -78,7 +78,7 @@ Facts from the code at `0dcd5df8`.
   with `-DSDL_VIDEO=OFF -DSDL_GPU=OFF` (`vendor/build_vendor.bat:26-31, 67-70`). Shaders are source
   strings compiled at run time (`D3DCompile` from `d3dcompiler_47.dll`, GLSL on GL).
 - **Tests:** the whole `tests\build.bat` suite builds 32-bit (`tools/find_vcvars.bat` picks
-  `vcvars32.bat`). The oracle tests (`tests/oracle/`) load the original 32-bit executable into their
+  `vcvars32.bat`; 64-bit since phase 0). The oracle tests (`tests/oracle/`) load the original 32-bit executable into their
   own process, so they can only ever be 32-bit; they do not touch rendering. `test_gfx_gl` (CMake)
   drives the GL backend; about 14 tests stub `gfx_*` with today's signatures; the scene harness
   captures by locking the target (`scene_driver.c:480-519`).
@@ -118,12 +118,23 @@ supported by a second path.
 
 ### Shaders
 
-- HLSL sources under `src/render/shaders/`, one file per program, compiled offline with
-  SDL_shadercross (DXC and SPIRV-Cross inside) to SPIR-V and MSL. A small tool turns the results
-  into C arrays committed beside
-  the sources, each stamped with a hash of its source; `build.bat check` fails when a source changed
-  and its arrays did not. Builds never need a shader compiler, and `d3dcompiler_47.dll` is no longer
-  loaded.
+- HLSL sources under `src/render/shaders/`, one file per program, compiled offline with the Vulkan
+  SDK's `dxc` (to SPIR-V for Vulkan 1.0, the version SDL's Vulkan driver creates) and
+  `spirv-cross` (SPIR-V to MSL). A small tool turns the results into C arrays committed beside the
+  sources, each stamped with a hash of its source, the tools' versions and their flags;
+  `build.bat check` fails when a source changed and its arrays did not. Builds never need a shader
+  compiler, and `d3dcompiler_47.dll` is no longer loaded. Checked on 2026-11-11 with `dxc`
+  1.8.0.5123 and the SDK's `spirv-cross` (a spike of a vertex, a fragment and a compute shader):
+  - HLSL registers that follow SDL's rules land in the descriptor sets SDL's Vulkan driver expects
+    without `vk::binding`; a sampled texture and its sampler take `[[vk::combinedImageSampler]]`,
+    one descriptor, as SDL binds them. The output passes `spirv-val` and is byte-identical from
+    run to run, with no paths in it.
+  - `spirv-cross`'s command line cannot give every resource the Metal index SDL's rules ask for
+    (compute shaders' uniform buffers and graphics shaders' storage buffers come out wrong), so
+    the tool sets them through SPIRV-Cross's C API (`spvc_compiler_msl_add_resource_binding_2`)
+    and reports the resource counts `SDL_GPUShaderCreateInfo` needs. Entry points are `main` in
+    SPIR-V and `main0` in MSL.
+  - Nothing has run on a GPU yet, and the MSL has not met a Metal compiler.
 - Per-draw data comes through an instance-rate vertex attribute holding the draw's index, never
   through `SV_InstanceID`: SDL warns that `first_instance` does not reach built-in IDs the same way
   on every API (`SDL_GPUIndirectDrawCommand` in `SDL_gpu.h`).
@@ -146,6 +157,12 @@ supported by a second path.
 - **One upload per frame.** Everything the CPU writes for a frame (dynamic vertices, instance data,
   per-draw constants, changed texture tiles) goes into one transfer buffer that cycles, copied in
   one copy pass at the start of the frame's command buffer.
+- **Only the main thread talks to the GPU.** The model loader thread (`world/models.c:113`) creates
+  and uploads textures today (`texture_cache_get` to `gfx_create_texture` and
+  `texture_upload_pixels`), which Direct3D 9's `MULTITHREADED` device serialises. SDL documents no
+  thread safety for creating resources and filling transfer buffers, so the loader only prepares
+  pixels on the CPU, as the GL backend already does, and the main thread places them in their
+  texture array layer in the frame's upload.
 - **Static data is resident.** A map's ground and model meshes share one vertex and one index
   buffer, filled when the map loads and as streamed models arrive. Map textures and lightmap pages
   live in texture arrays by size class, so a draw picks its texture by layer instead of by binding.
@@ -156,8 +173,10 @@ supported by a second path.
   a storage buffer: its index range, texture layer, lightmap layer, flags, bounds and transform
   index.
 - Each frame a compute pass culls the records against the view and against each shadow cascade and
-  writes indirect draw commands; the passes draw them with one indirect call per pipeline. The CPU
-  no longer walks the scene graph's leaves to queue mesh draws.
+  writes indirect draw commands; the passes draw them with one indirect call per pipeline. SDL has
+  no draw whose count the GPU writes (`draw_count` is the CPU's), so the pass writes one command per
+  record and culls a record by giving it no instances. The CPU no longer walks the scene graph's
+  leaves to queue mesh draws.
 - Animated model nodes write their matrices into a per-frame transform buffer; static nodes'
   matrices stay put.
 - Water becomes a static mesh per map whose waves the vertex shader animates from the time.
@@ -232,23 +251,31 @@ buffer, the copy swap, `renderer_lock_target`, `targetBits`, the startup texel p
 Each phase ends deleting what it replaced, with captures against the reference and the counters
 recorded.
 
-### Phase 0: groundwork (small to medium)
+### Phase 0: groundwork (done 2026-11-11)
 
-- Drop the 32-bit client: `build.bat` builds x64 only, and the x86 link line goes with
-  `granny2.lib`, `mss32.lib` and `cps.lib` from `lib/` and whatever code exists only for them. The
-  unit tests move to x64, the way the client is built; `tests/oracle/` stays 32-bit because it
-  loads the original executable, and is the only 32-bit build left. Fix what x64 shows in the
-  tests. Update `docs/portability.md`, which names the x86 client the reference, and the CI matrix.
-- Build SDL 3.4 with video and the GPU API in `vendor/build_vendor.bat`, at the pinned commit
-  `cmake/SDL3.cmake` already uses.
-- Check on real hardware what the plan rests on: the shader tool chain produces every format from
-  one HLSL file; texture creation from the model-streaming thread follows SDL's thread rules (the
-  Direct3D 9 device is created `MULTITHREADED`, `gfx_d3d9.c:835`, which suggests other threads use
-  it).
-- Build the reference binaries into `build/ref/` and capture their goldens.
-- Make the counters measurable without the overlay: draws, pipeline or state changes, texture
-  binds, bytes uploaded and CPU time in `renderer_draw_scene` and `view_on_render`, logged by the
-  scene harness per capture. Record the baseline.
+- **Counters** (`6b176290`): each scene capture writes `<name>.counters.json` with its frame's
+  draws, draw calls, primitives, states sent and skipped, texture binds, vertex and texture bytes
+  uploaded and the CPU time in `renderer_draw_scene` and `view_on_render`
+  (`tests/scenes/README.md`). The Direct3D 9 baseline is in `docs/custom-review.md`; for example
+  `prontera_crowd` makes 1,174 draws (1,954 calls) and `camera_level_view` 3,345.
+- **One 64-bit Windows client** (`02fc9e5e`): `build.bat` builds `build\ragexe.exe` for x64 only,
+  with the C runtime linked statically; the unit tests build 64-bit. Still 32-bit, because they
+  load 32-bit code of the original: `tests/oracle/` and `tools/granny_export`; the CMake `-A Win32`
+  configuration still builds too, for the Lua fixture with 4-byte sizes. Players notice: Granny
+  models come only from the glTF files `tools\granny_export` writes into the game folder, a
+  `cps.dll` that encrypts GRFs has no effect, and sound is always mixed by `platform/miles_sdl.c`.
+- **SDL** (`02fc9e5e`): built with video and the GPU API (Vulkan; SDL builds its Direct3D 12
+  driver whenever the Windows SDK has `dxgi1_6.h` and offers no switch for it, so it is linked
+  but never created) and without OpenGL.
+- **Settled without code:** the shader tool chain (see *Shaders*) and which threads reach the GPU
+  (see *Memory and uploads*).
+- **The reference:** `build/ref/ragexe.exe` and `build/ref/ragexe_scenes.exe`, built from
+  `02fc9e5e` (`build/ref/COMMIT.txt`), outside the tree. Its goldens are the 12 captures of the
+  scene set (`build/ref/goldens`, with their counters in `build/ref/run`) and 16 shadow views
+  (`build/ref/extra`: Prontera's south gate, the far steep view, and the hilliest spots of
+  `manuk`, `hu_fild01`, `ve_fild05` and `man_fild03` from three cameras), captured with
+  `RAGEXE_MSAA=1` in a copy of `client-files` with the Granny models converted, since
+  `client-files` itself has none.
 
 ### Phase 1: Windows on the SDL window (medium)
 
@@ -281,7 +308,8 @@ recorded.
 - Replace the render-state and stage-state machine with pipelines per queue and shaders per stage
   combination. `gfx.h` loses `GFX_RS_*`, `GFX_TSS_*`, `GFX_TOP_*`, `GFX_TA_*`, the transform and
   light calls, `SurfaceDesc`, the DirectDraw enumeration, modes and adapters, `flip_to_gdi`,
-  `get_dc`, `is_lost`, `restore_all` and `evict_managed_textures`.
+  `get_dc`, `is_lost`, `restore_all` and `evict_managed_textures`. With `get_dc` go `text_gdi.c`
+  and the `build.bat gdi` variant: text is FreeType's everywhere.
 - Fog moves to the shaders; the per-vertex fog alpha on the CPU goes.
 - Fullscreen becomes borderless with scaling.
 
@@ -322,8 +350,9 @@ Taken with Patrick on 2026-11-11:
 
 - **Windows moves onto SDL's window** (phase 1), so every platform shares one window, input and
   IME path.
-- **No 32-bit client.** Only the oracle tests stay 32-bit, because they load the original
-  executable.
+- **No 32-bit client.** Only programs that load 32-bit code of the original stay 32-bit (the oracle
+  tests load the original executable, `tools/granny_export` its `granny2.dll`), as does the CMake
+  `-A Win32` build of the Lua fixture.
 - **Shadows are fitted on the GPU** from what the frame shows (phase 5), with today's look.
 - **Vulkan on Windows**, as on Linux and Android; Metal on macOS. SDL runs on the driver the client
   ships shaders for, and the client's own code is the same with either Windows driver. Against
@@ -338,10 +367,12 @@ Taken with Patrick on 2026-11-11:
 - **Fullscreen without mode switches:** borderless at the desktop's size, scaled.
 - **Android needs Vulkan** once the GLES path goes.
 
-Not in this plan, but a uniformity candidate: Windows draws text with GDI (`text_gdi.c`), every
-other platform with FreeType (`text_freetype.c`, already a `build.bat freetype` variant). Moving
-Windows to FreeType would remove the last per-platform text path, and would change how text looks
-on Windows.
+Text: Windows moves to FreeType on `minimap-zoom-levels`, in the minimap generator's worktree
+(uncommitted when this was written). There FreeType becomes the default on every platform and GDI
+stays as a `build.bat gdi` variant, kept only to compare pixels during the move; Patrick agreed on
+2026-11-11 that it can go. `text_gdi.c` draws onto surfaces through `gfx_get_dc`
+(`text_gdi.c:103-129`), which phase 3 deletes, so phase 3 deletes `text_gdi.c` and the `gdi`
+variant too if they are still there, and every platform draws text with FreeType.
 
 ## Risks
 
@@ -358,8 +389,9 @@ on Windows.
   walking close past the camera can change a cascade's square from one frame to the next; the
   rounding and texel snapping that keep today's edges still must hold them still, and phase 5
   checks it with the moving captures.
-- **Threads.** If loader threads create textures or meshes today, they will have to hand them to
-  the render thread or follow SDL's rules for concurrent resource creation.
+- **Threads.** The loader thread's texture creation moves to the main thread's upload (see *Memory
+  and uploads*); SDL's own drivers lock creation internally, but the API does not promise it, so
+  the plan does not lean on it.
 - **Upstream picks.** After phases 1 and 2, reconstruction fixes to `main`'s Win32 and Direct3D 9
   code no longer apply here; each is recorded as not needed, and fixes above `gfx.h` and the window
   layer still pick as before.
