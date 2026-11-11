@@ -109,22 +109,23 @@ void renderer_world_view(const struct Renderer *self, const float *view, struct 
     }
 }
 
-/* custom: the cascades of the models' shadow maps (render/gfx.h). The models that receive shadow
-   lie in a band from SHADOW_ABOVE units above the camera's focus to SHADOW_BELOW below it (+y is
-   down), so the view is cut into GFX_SHADOW_CASCADES slices of view depth from the nearest to the
-   farthest of its points in that band (band_corners), no further than four times the camera's
-   distance and the view's far plane (a cap of 8,000 left the band out of reach, and the frame
-   without shadows, when the camera looked down steeply from beyond about 8,000). The slices grow
-   with the depth (SHADOW_SPLIT between even and geometric steps). Each cascade's map
-   covers its slice's part of the band as the light sees it: the light map is orthographic, so a
-   caster that shades something in the slice lands on the same place of the map, however far off
-   screen it stands; SHADOW_DEPTH either way along the light is kept. A cascade's square is rounded
-   up and its centre kept to whole texels so that its texels stay put while the camera moves and
-   shadow edges do not crawl. */
-#define SHADOW_ABOVE 300.0f
-#define SHADOW_BELOW 60.0f
-#define SHADOW_DEPTH 3000.0f
+/* custom: the cascades of the meshes' shadow maps (render/gfx.h). The ground and the models
+   receive shadows, and the world hands the frame the boxes they lie in (renderer_shadow_frame).
+   The view is cut into GFX_SHADOW_CASCADES slices of view depth from the nearest to the farthest
+   of its points inside those boxes, no further than four times the camera's distance and the
+   view's far plane (a cap of 8,000 left everything out of reach, and the frame without shadows,
+   when the camera looked down steeply from beyond about 8,000). The slices grow with the depth
+   (SHADOW_SPLIT between even and geometric steps). Each cascade's map covers its slice's part of
+   the boxes as the light sees it: the light map is orthographic, so a caster that shades
+   something in the slice lands on the same place of the map, however far off screen it stands,
+   and along the light the maps keep every box, SHADOW_MARGIN beyond. The receivers were once
+   taken to lie in a band from 300 units above the camera's focus to 60 below it: hills and
+   models taller than that, and from a flat camera far off even the focus, fell outside every
+   cascade and were drawn without shadows. A cascade's square is rounded up and its centre kept to
+   whole texels so that its texels stay put while the camera moves and shadow edges do not
+   crawl. */
 #define SHADOW_SPLIT 0.7f
+#define SHADOW_MARGIN 8.0f
 /* a pixel stays lit up to SHADOW_BIAS units behind the nearest caster, and is looked up from a
    point moved SHADOW_OFFSET texels off its surface towards the light (times the sine of the angle
    between them), which keeps a surface at a slant to the light from shadowing itself. Models lay
@@ -171,56 +172,181 @@ static float dot3(const float *a, const float *b)
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-/* the corners of the part of the view from depth d0 to d1 (ray: the corner rays from the eye, per
-   unit of view depth) that lies between the heights top and bottom, each with its view depth in
-   out[n][3]. That part is convex, so its corners are the slice's own corners between the heights
-   and the points where the slice's twelve edges cross them. The four corner rays alone missed the
-   band where it lay between them: from a flat camera far off the upper rays passed over it or met
-   it only beyond the depth kept, the lower ones left it before the focus, and the middle of the
-   view had no shadows. */
-static int band_corners(const float *eye, const float (*ray)[3], float d0, float d1, float top, float bottom,
-                        float (*out)[4])
+/* a slice of the view from one view depth to another: its corners, the corner rays' at the
+   nearer depth and then at the farther (bit 1 across, bit 2 down, as the rays), and the planes
+   that bound it, inside where n . p + n[3] >= 0; world coordinates */
+struct ViewSlice {
+    float corner[8][3];
+    float plane[6][4];
+};
+
+/* the points of the view found inside the boxes: their view depths and where they lie across the
+   light (axes r and u) */
+struct ShadowFit {
+    const float *view, *r, *u;
+    float nearest, farthest, lo[2], hi[2];
+    int points;
+};
+
+static void view_slice(struct ViewSlice *s, const float *view, const float *eye, const float (*ray)[3], float d0,
+                       float d1)
 {
-    static const unsigned char edges[12][2] = {{0, 4}, {1, 5}, {2, 6}, {3, 7}, {0, 1}, {2, 3},
-                                               {0, 2}, {1, 3}, {4, 5}, {6, 7}, {4, 6}, {5, 7}};
-    float p[8][4];
-    int e, i, j, n = 0;
+    static const unsigned char sides[4][2] = {{0, 1}, {2, 3}, {0, 2}, {1, 3}};
+    float middle[3];
+    int i, k;
 
-    for (j = 0; j < 8; j++) {
-        p[j][3] = j < 4 ? d0 : d1;
+    for (k = 0; k < 8; k++)
         for (i = 0; i < 3; i++)
-            p[j][i] = eye[i] + ray[j & 3][i] * p[j][3];
+            s->corner[k][i] = eye[i] + ray[k & 3][i] * (k < 4 ? d0 : d1);
+    for (i = 0; i < 3; i++) {
+        s->plane[0][i] = view[2 + 3 * i];
+        s->plane[1][i] = -view[2 + 3 * i];
+        middle[i] = ray[0][i] + ray[1][i] + ray[2][i] + ray[3][i];
     }
-    for (e = 0; e < 12; e++) {
-        const float *a = p[edges[e][0]], *b = p[edges[e][1]];
-        float t0 = 0.0f, t1 = 1.0f, dy = b[1] - a[1];
+    s->plane[0][3] = view[11] - d0;
+    s->plane[1][3] = d1 - view[11];
+    /* the four sides through the eye, each turned towards the view's middle */
+    for (k = 0; k < 4; k++) {
+        const float *a = ray[sides[k][0]], *b = ray[sides[k][1]];
+        float *n = s->plane[2 + k], sign;
 
-        if (dy != 0.0f) {
-            float s = (top - a[1]) / dy, t = (bottom - a[1]) / dy;
-            float lo = s < t ? s : t, hi = s < t ? t : s;
-
-            t0 = lo > 0.0f ? lo : 0.0f;
-            t1 = hi < 1.0f ? hi : 1.0f;
-        } else if (a[1] < top || a[1] > bottom) {
-            continue;
-        }
-        if (t0 > t1)
-            continue;
-        for (j = 0; j < 2; j++)
-            for (i = 0; i < 4; i++)
-                out[n + j][i] = a[i] + (b[i] - a[i]) * (j ? t1 : t0);
-        n += 2;
+        n[0] = a[1] * b[2] - a[2] * b[1];
+        n[1] = a[2] * b[0] - a[0] * b[2];
+        n[2] = a[0] * b[1] - a[1] * b[0];
+        sign = dot3(n, middle) < 0.0f ? -1.0f : 1.0f;
+        for (i = 0; i < 3; i++)
+            n[i] *= sign;
+        n[3] = -dot3(n, eye);
     }
-    return n;
 }
 
-void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance)
+static void fit_reset(struct ShadowFit *fit)
+{
+    fit->nearest = fit->lo[0] = fit->lo[1] = 1e30f;
+    fit->farthest = fit->hi[0] = fit->hi[1] = -1e30f;
+    fit->points = 0;
+}
+
+/* the points from centre - half to centre + half (half 0 for a single point): the depths and the
+   light's axes are linear, so their extremes over a box lie half's reach either side of its centre */
+static void fit_extent(struct ShadowFit *fit, const float *centre, const float *half)
+{
+    const float *m = fit->view, *r = fit->r, *u = fit->u;
+    float depth = m[2] * centre[0] + m[5] * centre[1] + m[8] * centre[2] + m[11], x = dot3(centre, r), y = dot3(centre, u);
+    float dd = fabsf(m[2]) * half[0] + fabsf(m[5]) * half[1] + fabsf(m[8]) * half[2];
+    float dx = fabsf(r[0]) * half[0] + fabsf(r[1]) * half[1] + fabsf(r[2]) * half[2];
+    float dy = fabsf(u[0]) * half[0] + fabsf(u[1]) * half[1] + fabsf(u[2]) * half[2];
+
+    fit->nearest = depth - dd < fit->nearest ? depth - dd : fit->nearest;
+    fit->farthest = depth + dd > fit->farthest ? depth + dd : fit->farthest;
+    fit->lo[0] = x - dx < fit->lo[0] ? x - dx : fit->lo[0];
+    fit->hi[0] = x + dx > fit->hi[0] ? x + dx : fit->hi[0];
+    fit->lo[1] = y - dy < fit->lo[1] ? y - dy : fit->lo[1];
+    fit->hi[1] = y + dy > fit->hi[1] ? y + dy : fit->hi[1];
+    fit->points++;
+}
+
+static void fit_point(struct ShadowFit *fit, const float *p)
+{
+    static const float none[3] = {0.0f, 0.0f, 0.0f};
+
+    fit_extent(fit, p, none);
+}
+
+/* the ends of the part of the segment from a to b inside all six planes */
+static void fit_segment(struct ShadowFit *fit, const float *a, const float *b, const float (*plane)[4])
+{
+    float t0 = 0.0f, t1 = 1.0f, p[3];
+    int i, k;
+
+    for (k = 0; k < 6; k++) {
+        float fa = dot3(plane[k], a) + plane[k][3], fb = dot3(plane[k], b) + plane[k][3];
+
+        if (fa < 0.0f && fb < 0.0f)
+            return;
+        if (fa < 0.0f)
+            t0 = fa / (fa - fb) > t0 ? fa / (fa - fb) : t0;
+        else if (fb < 0.0f)
+            t1 = fa / (fa - fb) < t1 ? fa / (fa - fb) : t1;
+    }
+    if (t0 > t1)
+        return;
+    for (k = 0; k < 2; k++) {
+        for (i = 0; i < 3; i++)
+            p[i] = a[i] + (b[i] - a[i]) * (k ? t1 : t0);
+        fit_point(fit, p);
+    }
+}
+
+/* a box's centre and half its size, or 0 where it is empty or not finite */
+static int box_extent(const struct ShadowBox *box, float *centre, float *half)
+{
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        if (!(box->min[i] > -1e30f && box->max[i] < 1e30f && box->min[i] <= box->max[i]))
+            return 0;
+        centre[i] = (box->min[i] + box->max[i]) * 0.5f;
+        half[i] = (box->max[i] - box->min[i]) * 0.5f;
+    }
+    return 1;
+}
+
+/* the corners of the part of a box inside the slice. Both are convex, so they are the box's
+   corners inside the slice, the slice's inside the box, and the points where the edges of either
+   cross the faces of the other: the ends of each edge's part inside the other. The slice's edges
+   lie in its four sides, so a box within those adds nothing through them. */
+static void fit_box(struct ShadowFit *fit, const struct ViewSlice *s, const struct ShadowBox *box)
+{
+    float plane[6][4] = {{0}}, corner[8][3], centre[3], half[3];
+    int i, k, inside = 1, within = 1;
+
+    if (!box_extent(box, centre, half))
+        return;
+    for (k = 0; k < 6; k++) {
+        const float *n = s->plane[k];
+        float mid = dot3(n, centre) + n[3], reach = fabsf(n[0]) * half[0] + fabsf(n[1]) * half[1] + fabsf(n[2]) * half[2];
+
+        if (mid + reach < 0.0f)
+            return;
+        if (mid - reach < 0.0f) {
+            inside = 0;
+            within = within && k < 2;
+        }
+    }
+    if (inside) {
+        fit_extent(fit, centre, half);
+        return;
+    }
+    for (k = 0; k < 8; k++)
+        for (i = 0; i < 3; i++)
+            corner[k][i] = k & (1 << i) ? box->max[i] : box->min[i];
+    for (i = 0; i < 3; i++) {
+        plane[2 * i][i] = 1.0f;
+        plane[2 * i][3] = -box->min[i];
+        plane[2 * i + 1][i] = -1.0f;
+        plane[2 * i + 1][3] = box->max[i];
+    }
+    for (k = 0; k < 8; k++)
+        for (i = 1; i < 8; i <<= 1)
+            if (!(k & i)) {
+                fit_segment(fit, corner[k], corner[k | i], s->plane);
+                if (!within)
+                    fit_segment(fit, s->corner[k], s->corner[k | i], plane);
+            }
+}
+
+void renderer_shadow_frame(struct Renderer *self, const float *view, float distance, const struct ShadowBox *boxes,
+                           size_t count)
 {
     struct GfxShadow *shadow = &self->shadow;
-    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], eye[3], ray[4][3], corner[24][4];
-    float top = focus[1] - SHADOW_ABOVE, bottom = focus[1] + SHADOW_BELOW, len, nearest, farthest, maxDepth;
+    struct ShadowFit fit;
+    struct ViewSlice slice;
+    float inv[12], f[3], up[3] = {0, 0, 0}, r[3], u[3], eye[3], ray[4][3], centre[3], half[3];
+    float len, nearest, farthest, maxDepth, lightNear = 1e30f, lightFar = -1e30f, range;
     float split[GFX_SHADOW_CASCADES + 1];
-    int i, j, k, c, n;
+    size_t b;
+    int i, j, k, c;
 
     self->shadowPending = 0;
     /* the shadow maps take the place of the lightmaps' shadows: without lightmaps the ground has
@@ -250,7 +376,23 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     u[1] = f[2] * r[0] - f[0] * r[2];
     u[2] = f[0] * r[1] - f[1] * r[0];
 
-    /* the view's four corner rays in the world, per unit of view depth, and its depths in the band */
+    /* along the light the maps keep every box: the casters stand in them too */
+    for (b = 0; b < count; b++) {
+        float mid, reach;
+
+        if (!box_extent(&boxes[b], centre, half))
+            continue;
+        mid = dot3(centre, f);
+        reach = fabsf(f[0]) * half[0] + fabsf(f[1]) * half[1] + fabsf(f[2]) * half[2];
+        lightNear = mid - reach < lightNear ? mid - reach : lightNear;
+        lightFar = mid + reach > lightFar ? mid + reach : lightFar;
+    }
+    if (lightNear > lightFar)
+        return;
+    lightNear -= SHADOW_MARGIN;
+    range = lightFar + SHADOW_MARGIN - lightNear;
+
+    /* the view's four corner rays in the world, per unit of view depth, and its depths in the boxes */
     maxDepth = distance * 4.0f + 400.0f;
     maxDepth = maxDepth < RENDER_FAR_Z ? maxDepth : RENDER_FAR_Z;
     for (i = 0; i < 3; i++)
@@ -262,14 +404,20 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
         for (i = 0; i < 3; i++)
             ray[k][i] = dx * inv[i] + dy * inv[3 + i] + inv[6 + i];
     }
-    n = band_corners(eye, ray, RENDER_NEAR_Z, maxDepth, top, bottom, corner);
-    if (!n)
+    fit.view = view;
+    fit.r = r;
+    fit.u = u;
+    fit_reset(&fit);
+    view_slice(&slice, view, eye, ray, RENDER_NEAR_Z, maxDepth);
+    for (b = 0; b < count; b++)
+        fit_box(&fit, &slice, &boxes[b]);
+    if (!fit.points)
         return;
-    nearest = farthest = corner[0][3];
-    for (j = 1; j < n; j++) {
-        nearest = corner[j][3] < nearest ? corner[j][3] : nearest;
-        farthest = corner[j][3] > farthest ? corner[j][3] : farthest;
-    }
+    nearest = fit.nearest > RENDER_NEAR_Z ? fit.nearest : RENDER_NEAR_Z;
+    farthest = fit.farthest < maxDepth ? fit.farthest : maxDepth;
+    /* a unit beyond: the shaders look a pixel up in the first cascade whose far depth lies beyond
+       it, so that the farthest point itself has one */
+    farthest = (farthest > nearest ? farthest : nearest) + 1.0f;
     for (c = 0; c <= GFX_SHADOW_CASCADES; c++) {
         float t = (float)c / GFX_SHADOW_CASCADES;
         split[c] = SHADOW_SPLIT * nearest * powf(farthest / nearest, t) + (1.0f - SHADOW_SPLIT) * (nearest + (farthest - nearest) * t);
@@ -279,44 +427,36 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
 
     shadow->cascades = GFX_SHADOW_CASCADES;
     for (c = 0; c < GFX_SHADOW_CASCADES; c++) {
-        float lo[2] = {1e30f, 1e30f}, hi[2] = {-1e30f, -1e30f}, centre[2], radius = 0.0f, texel, depth, w[4][4];
+        float square[2] = {0.0f, 0.0f}, radius = 8.0f, texel, w[4][4];
 
-        /* the slice's part of the band, or the whole slice where rounding leaves none of it */
-        n = band_corners(eye, ray, split[c], split[c + 1], top, bottom, corner);
-        if (!n)
-            n = band_corners(eye, ray, split[c], split[c + 1], -1e30f, 1e30f, corner);
-        for (j = 0; j < n; j++) {
-            float x = dot3(corner[j], r), y = dot3(corner[j], u);
-
-            lo[0] = x < lo[0] ? x : lo[0];
-            hi[0] = x > hi[0] ? x : hi[0];
-            lo[1] = y < lo[1] ? y : lo[1];
-            hi[1] = y > hi[1] ? y : hi[1];
+        fit_reset(&fit);
+        view_slice(&slice, view, eye, ray, split[c], split[c + 1]);
+        for (b = 0; b < count; b++)
+            fit_box(&fit, &slice, &boxes[b]);
+        /* a margin for the soft edge and the offset, then up to a multiple of 8 units. A slice with
+           nothing in it (between the top of a cliff and its foot) takes no casters. */
+        if (fit.points) {
+            square[0] = (fit.lo[0] + fit.hi[0]) * 0.5f;
+            square[1] = (fit.lo[1] + fit.hi[1]) * 0.5f;
+            radius = (fit.hi[0] - fit.lo[0] > fit.hi[1] - fit.lo[1] ? fit.hi[0] - fit.lo[0] : fit.hi[1] - fit.lo[1]) * 0.5f;
+            radius = ceilf((radius * 1.05f + 4.0f + SHADOW_SOFTNESS) / 8.0f) * 8.0f;
         }
-        centre[0] = (lo[0] + hi[0]) * 0.5f;
-        centre[1] = (lo[1] + hi[1]) * 0.5f;
-        radius = (hi[0] - lo[0] > hi[1] - lo[1] ? hi[0] - lo[0] : hi[1] - lo[1]) * 0.5f;
-        /* a margin for the soft edge and the offset, then up to a multiple of 8 units */
-        radius = ceilf((radius * 1.05f + 4.0f + SHADOW_SOFTNESS) / 8.0f) * 8.0f;
         texel = 2.0f * radius / GFX_SHADOW_SIZE;
-        centre[0] = floorf(centre[0] / texel + 0.5f) * texel;
-        centre[1] = floorf(centre[1] / texel + 0.5f) * texel;
-        depth = dot3(focus, f);
+        square[0] = floorf(square[0] / texel + 0.5f) * texel;
+        square[1] = floorf(square[1] / texel + 0.5f) * texel;
         for (i = 0; i < 2; i++) {
-            self->shadowReach.lo[c][i] = centre[i] - radius;
-            self->shadowReach.hi[c][i] = centre[i] + radius;
+            self->shadowReach.lo[c][i] = fit.points ? square[i] - radius : 1e30f;
+            self->shadowReach.hi[c][i] = fit.points ? square[i] + radius : -1e30f;
         }
-        self->shadowReach.depth[0] = depth - SHADOW_DEPTH;
-        self->shadowReach.depth[1] = depth + SHADOW_DEPTH;
         for (i = 0; i < 3; i++) {
             w[i][0] = r[i] / radius;
             w[i][1] = u[i] / radius;
-            w[i][2] = f[i] / (2.0f * SHADOW_DEPTH);
+            w[i][2] = f[i] / range;
             w[i][3] = 0.0f;
         }
-        w[3][0] = -centre[0] / radius;
-        w[3][1] = -centre[1] / radius;
-        w[3][2] = 0.5f - depth / (2.0f * SHADOW_DEPTH);
+        w[3][0] = -square[0] / radius;
+        w[3][1] = -square[1] / radius;
+        w[3][2] = -lightNear / range;
         w[3][3] = 1.0f;
         /* view to world (the inverse view, a 4x4 with the last column 0 0 0 1), then to light */
         for (i = 0; i < 4; i++)
@@ -328,9 +468,11 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
             }
         shadow->farDepth[c] = split[c + 1];
         shadow->offset[c] = SHADOW_OFFSET * texel;
-        shadow->slant[c] = (SHADOW_SOFTNESS + texel) / (2.0f * SHADOW_DEPTH);
+        shadow->slant[c] = (SHADOW_SOFTNESS + texel) / range;
         shadow->blur[c] = SHADOW_SOFTNESS / (2.0f * radius);
     }
+    self->shadowReach.depth[0] = lightNear;
+    self->shadowReach.depth[1] = lightNear + range;
     for (i = 0; i < 3; i++) {
         self->shadowReach.axis[0][i] = r[i];
         self->shadowReach.axis[1][i] = u[i];
@@ -343,7 +485,7 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, const float
     if (len > 0.0f)
         for (i = 0; i < 3; i++)
             shadow->lightView[i] /= len;
-    shadow->bias = SHADOW_BIAS / (2.0f * SHADOW_DEPTH);
+    shadow->bias = SHADOW_BIAS / range;
     shadow->darkness = self->shadowDarkness;
     for (i = 0; i < 3; i++)
         shadow->ambient[i] = self->lightAmbient[i] < 0.0f ? 0.0f : self->lightAmbient[i] > 1.0f ? 1.0f

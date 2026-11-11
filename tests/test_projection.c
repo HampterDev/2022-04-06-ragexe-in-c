@@ -215,32 +215,79 @@ static void test_world_view(struct Renderer *renderer)
 static void test_shadow_gate(struct Renderer *renderer)
 {
     static const float view[12] = {0.8f, -0.3f, 0.52f, 0.1f, 0.9f, 0.42f, -0.6f, -0.3f, 0.74f, 15, -40, 260};
-    static const float focus[3] = {0, 0, 0}, centre[3] = {0, 0, 0}, half[3] = {5, 5, 5};
+    static const float centre[3] = {0, 0, 0}, half[3] = {5, 5, 5};
+    static const struct ShadowBox ground = {{-500, 0, -500}, {500, 0, 500}};
     renderer->lightSet = 1;
     renderer->lightDir[0] = 0.5f; renderer->lightDir[1] = 0.707f; renderer->lightDir[2] = 0.5f;
     renderer->shadowDarkness = 0.5f;
     g_lightmap = 1;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    renderer_shadow_frame(renderer, view, 300.0f, &ground, 1);
     assert(renderer->shadowPending && renderer_shadow_reaches(renderer, centre, half, NULL));
     g_lightmap = 0;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    renderer_shadow_frame(renderer, view, 300.0f, &ground, 1);
     assert(!renderer->shadowPending && !renderer_shadow_reaches(renderer, centre, half, NULL));
     g_lightmap = 1;
     renderer->shadowDarkness = 1.0f;
-    renderer_shadow_frame(renderer, view, focus, 300.0f);
+    renderer_shadow_frame(renderer, view, 300.0f, &ground, 1);
     assert(!renderer->shadowPending);
     renderer->lightSet = 0;
 }
 
-/* the focus lies in the cascade the shaders look it up in, inside its map, from any tilt and
-   distance: from a flat camera far off the view's upper corner rays pass over the band the
-   cascades cover (-5) or meet it only beyond the depth kept (-8), and the lower ones leave it
-   before the focus */
-static void test_shadow_focus(void)
+/* every point of the boxes that the view sees up to four times the camera's distance deep (the
+   shadows' reach) lies in the cascade the shaders look it up in, inside its map, from any tilt and
+   distance. Around the camera's focus lie flat ground, a hill rising 600 units over it and a pit
+   400 deep, both outside the band from 300 above the focus to 60 below it that the cascades were
+   once fitted to; from a flat camera far off even the focus fell outside that band's cascades. */
+static const struct ShadowBox shadow_scene[] = {
+    {{-1500, 0, -1500}, {1500, 0, 1500}},
+    {{200, -600, 300}, {500, 0, 700}},
+    {{-600, 0, -200}, {-300, 400, 200}},
+};
+
+static void check_shadow_point(const struct Renderer *renderer, const float *view, const float *w, float reach)
+{
+    float v[3], p[4];
+    int i, j, k;
+
+    for (i = 0; i < 3; i++)
+        v[i] = view[i] * w[0] + view[3 + i] * w[1] + view[6 + i] * w[2] + view[9 + i];
+    if (!(v[2] > RENDER_NEAR_Z && v[2] < reach))
+        return;
+    if (fabsf(v[0] * renderer->proj[0] / v[2]) > renderer->centreX
+        || fabsf(v[1] * renderer->proj[1] / v[2]) > renderer->centreY)
+        return;
+    for (k = 0; k < renderer->shadow.cascades && !(renderer->shadow.farDepth[k] > v[2]); k++)
+        ;
+    assert(k < renderer->shadow.cascades);
+    for (j = 0; j < 4; j++) {
+        p[j] = renderer->shadow.fromView[k][12 + j];
+        for (i = 0; i < 3; i++)
+            p[j] += v[i] * renderer->shadow.fromView[k][i * 4 + j];
+    }
+    assert(fabsf(p[0]) <= 1.0f && fabsf(p[1]) <= 1.0f && p[2] >= 0.0f && p[2] <= 1.0f);
+}
+
+/* a point on a face of a box, a unit inside the face's edges: i and j from 0 to 24 across it */
+static void face_point(const struct ShadowBox *box, int axis, int side, int i, int j, float *w)
+{
+    int a = (axis + 1) % 3, e = (axis + 2) % 3;
+
+    w[axis] = side ? box->max[axis] : box->min[axis];
+    w[a] = box->min[a] + (box->max[a] - box->min[a]) * (float)i / 24.0f;
+    w[e] = box->min[e] + (box->max[e] - box->min[e]) * (float)j / 24.0f;
+    if (box->max[a] > box->min[a])
+        w[a] += i == 0 ? 1.0f : i == 24 ? -1.0f : 0.0f;
+    if (box->max[e] > box->min[e])
+        w[e] += j == 0 ? 1.0f : j == 24 ? -1.0f : 0.0f;
+}
+
+static void test_shadow_coverage(void)
 {
     static const float tilts[] = {-5, -8, -15, -35, -55, -85}, distances[] = {150, 488, 1000, 2500, 6000};
+    static const float away[12] = {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -100000};
+    const size_t boxes = sizeof shadow_scene / sizeof shadow_scene[0];
     struct Renderer renderer = {0};
-    size_t t, d;
+    size_t t, d, b;
 
     renderer_set_projection(&renderer, 1600, 900);
     renderer.lightSet = 1;
@@ -251,22 +298,24 @@ static void test_shadow_focus(void)
         for (d = 0; d < sizeof distances / sizeof distances[0]; d++) {
             /* looking down by the tilt (+y is down) at the origin from the distance */
             float s = sinf(-tilts[t] * 3.14159265f / 180.0f), c = cosf(-tilts[t] * 3.14159265f / 180.0f);
-            float view[12] = {1, 0, 0, 0, c, s, 0, -s, c, 0, 0, 0}, focus[3] = {0, 0, 0}, p[4];
-            int k, j, i;
+            float view[12] = {1, 0, 0, 0, c, s, 0, -s, c, 0, 0, 0}, w[3];
+            int axis, side, i, j;
 
             view[11] = distances[d];
-            renderer_shadow_frame(&renderer, view, focus, distances[d]);
+            renderer_shadow_frame(&renderer, view, distances[d], shadow_scene, boxes);
             assert(renderer.shadowPending);
-            for (k = 0; k < renderer.shadow.cascades && !(renderer.shadow.farDepth[k] > distances[d]); k++)
-                ;
-            assert(k < renderer.shadow.cascades);
-            for (j = 0; j < 4; j++) {
-                p[j] = renderer.shadow.fromView[k][12 + j];
-                for (i = 0; i < 3; i++)
-                    p[j] += (i == 2 ? distances[d] : 0.0f) * renderer.shadow.fromView[k][i * 4 + j];
-            }
-            assert(fabsf(p[0]) <= 1.0f && fabsf(p[1]) <= 1.0f && p[2] >= 0.0f && p[2] <= 1.0f);
+            for (b = 0; b < boxes; b++)
+                for (axis = 0; axis < 3; axis++)
+                    for (side = 0; side < 2; side++)
+                        for (i = 0; i <= 24; i++)
+                            for (j = 0; j <= 24; j++) {
+                                face_point(&shadow_scene[b], axis, side, i, j, w);
+                                check_shadow_point(&renderer, view, w, distances[d] * 4.0f + 400.0f);
+                            }
         }
+    /* a frame that sees none of the boxes draws no shadows */
+    renderer_shadow_frame(&renderer, away, 300.0f, shadow_scene, boxes);
+    assert(!renderer.shadowPending);
 }
 
 int main(void)
@@ -282,10 +331,10 @@ int main(void)
     test_screen();
     test_world_view(&renderer);
     test_shadow_gate(&renderer);
-    test_shadow_focus();
+    test_shadow_coverage();
     puts("projection: archived coordinates/depth/rays, distinct centres, vertex payload preservation and real ground picking passed");
     puts("renderer screen: named dimensions, clear colour, fog blending, depth clear and frame restore passed");
     puts("world view: device-projected meshes land on the CPU's pixels, depth and fog passed");
-    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength, the focus in its cascade from any tilt and distance passed");
+    puts("shadow frame: drawn with lightmaps and a shadowing map, none without lightmaps or shadow strength, what the view sees of the boxes in its cascade from any tilt and distance passed");
     return 0;
 }

@@ -27,6 +27,36 @@ static void scene_graph_node_set_attr(struct SceneGraphNode *self, void *attr, i
         scene_graph_node_set_attr(self->child[i], attr, level);
 }
 
+/* custom: the box around the surfaces of a leaf's cells (groundCell, both ends included), walls
+   included: a wall rises from its cell's edge to the neighbour's, which may lie in the next leaf */
+static void leaf_ground_box(struct SceneGraphNode *self)
+{
+    const struct C3dGround15 *g = self->ground;
+    int x0 = self->groundCell[0] > 0 ? self->groundCell[0] : 0, y0 = self->groundCell[1] > 0 ? self->groundCell[1] : 0;
+    int x1, y1, x, y, s, v, k;
+
+    if (!g || !g->cells || g->width <= 0 || g->height <= 0)
+        return;
+    x1 = self->groundCell[2] < g->width - 1 ? self->groundCell[2] : g->width - 1;
+    y1 = self->groundCell[3] < g->height - 1 ? self->groundCell[3] : g->height - 1;
+    for (y = y0; y <= y1; y++)
+        for (x = x0; x <= x1; x++) {
+            const struct GndCell *cell = GND_CELL(g, x, y);
+            const struct GndSurface *surface[3] = {cell->top, cell->rightWall, cell->frontWall};
+
+            for (s = 0; s < 3; s++)
+                for (v = 0; surface[s] && v < 4; v++)
+                    for (k = 0; k < 3; k++) {
+                        float p = surface[s]->v[v].pos[k];
+
+                        if (!(p > -SCENE_HEIGHT_HUGE && p < SCENE_HEIGHT_HUGE))
+                            continue;
+                        self->groundMin[k] = p < self->groundMin[k] ? p : self->groundMin[k];
+                        self->groundMax[k] = p > self->groundMax[k] ? p : self->groundMax[k];
+                    }
+        }
+}
+
 static void scene_graph_node_set_ground(struct SceneGraphNode *self, struct C3dGround15 *ground, int level)
 {
     int i;
@@ -35,8 +65,10 @@ static void scene_graph_node_set_ground(struct SceneGraphNode *self, struct C3dG
     self->ground = ground;
     c3d_ground_get_cell_pos(ground, self->min[0], self->min[2], &self->groundCell[0], &self->groundCell[1]);
     c3d_ground_get_cell_pos(self->ground, self->max[0], self->max[2], &self->groundCell[2], &self->groundCell[3]);
-    if (level == SCENE_GRAPH_DEPTH)
+    if (level == SCENE_GRAPH_DEPTH) {
+        leaf_ground_box(self);
         return;
+    }
     level++;
     for (i = 0; i < 4; i++)
         scene_graph_node_set_ground(self->child[i], ground, level);

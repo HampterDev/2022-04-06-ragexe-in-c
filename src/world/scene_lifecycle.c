@@ -4,8 +4,14 @@
 
 struct SceneGraphNode *scene_graph_node_construct(struct SceneGraphNode *self)
 {
+    int i;
+
     memset(self, 0, sizeof *self);
     self->needUpdate = 1;
+    for (i = 0; i < 3; i++) {
+        self->groundMin[i] = SCENE_HEIGHT_HUGE;
+        self->groundMax[i] = -SCENE_HEIGHT_HUGE;
+    }
     return self;
 }
 

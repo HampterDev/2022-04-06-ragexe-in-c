@@ -21,6 +21,12 @@ struct ShadowReach {
     float depth[2];
 };
 
+/* custom: a box the meshes that receive and cast the frame's shadows lie in (renderer_shadow_frame),
+   world coordinates */
+struct ShadowBox {
+    float min[3], max[3];
+};
+
 struct Renderer {
     float proj[4];
     float aspect;
@@ -76,12 +82,14 @@ void renderer_enable_fog(struct Renderer *self, int enable);
 void renderer_set_light(struct Renderer *self, const float *dir, const float *diffuse, const float *ambient,
                         float shadowOpacity);
 void renderer_set_blend_stages(struct Renderer *self, int mode);
-/* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light
-   fitted to what the view, with the view matrix `view` (which the meshes' draws reach view space
-   with), sees around `focus` (world coordinates) from `distance` away (render/rp_project.c). With
-   lightmaps off, or where the map or the device has no shadows, shadowPending stays 0 and the
-   frame queues no casters. */
-void renderer_shadow_frame(struct Renderer *self, const float *view, const float *focus, float distance);
+/* custom: shadows for this frame's meshes (render/gfx.h): cascades along the map's light fitted
+   to what the view, with the view matrix `view` (which the meshes' draws reach view space with),
+   sees of the `count` boxes the meshes that receive and cast shadows lie in, up to four times the
+   camera's `distance` deep (render/rp_project.c). Boxes that are empty or not finite are left out.
+   With lightmaps off, where the map or the device has no shadows, or where the view sees none of
+   the boxes, shadowPending stays 0 and the frame queues no casters. */
+void renderer_shadow_frame(struct Renderer *self, const float *view, float distance, const struct ShadowBox *boxes,
+                           size_t count);
 /* custom: the camera's view matrix for the frame being queued, which quads with world-space
    vertices (RPQuad.world) are drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);

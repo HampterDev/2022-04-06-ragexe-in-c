@@ -292,6 +292,39 @@ static void cells_max(int *v, int c)
         *v = c;
 }
 
+/* custom: where the frame's shadows can fall and their casters stand (renderer_shadow_frame): per
+   leaf of the scene graph, the box around its ground and the models in it */
+static void view_shadow_boxes(const struct SceneGraphNode *node, int level, struct ShadowBox *boxes, size_t *count)
+{
+    struct ShadowBox box;
+    size_t index;
+    int i;
+
+    if (level < RSW_TREE_DEPTH) {
+        for (i = 0; i < 4; i++)
+            if (node->child[i])
+                view_shadow_boxes(node->child[i], level + 1, boxes, count);
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        box.min[i] = node->groundMin[i];
+        box.max[i] = node->groundMax[i];
+    }
+    for (index = 0; index < node->objects.count; ++index) {
+        const struct C3dActor *a = node->objects.data[index];
+
+        for (i = 0; a && i < 3; i++)
+            if (!(a->bboxMin[i] > -SCENE_HEIGHT_HUGE && a->bboxMax[i] < SCENE_HEIGHT_HUGE))
+                a = NULL;
+        for (i = 0; a && i < 3; i++) {
+            box.min[i] = a->bboxMin[i] < box.min[i] ? a->bboxMin[i] : box.min[i];
+            box.max[i] = a->bboxMax[i] > box.max[i] ? a->bboxMax[i] : box.max[i];
+        }
+    }
+    if (box.min[0] <= box.max[0] && *count < SCENE_GRAPH_MAX_LEAVES)
+        boxes[(*count)++] = box;
+}
+
 /* custom: the models and ground the view left out whose shadows can fall into it
    (render/renderer.h): their casters only, the models animated as the view's are */
 static void view_cast_shadows(struct SceneGraphNode *node, int level, const float *view)
@@ -326,6 +359,8 @@ static void view_cast_shadows(struct SceneGraphNode *node, int level, const floa
 
 void view_on_render(struct View *self)
 {
+    static struct ShadowBox boxes[SCENE_GRAPH_MAX_LEAVES];
+    size_t boxCount = 0;
     struct Renderer *r;
     struct ListNode *n;
     size_t leaf_index;
@@ -334,8 +369,10 @@ void view_on_render(struct View *self)
     g_quakeFrameDrawn = 1;
     r = g_renderer;
     view_frustum_build(&self->frustum, r->proj[2], r->proj[3], view, &self->world->root);
-    /* custom: the models' shadows, fitted to what the camera sees (render/renderer.h) */
-    renderer_shadow_frame(r, view, self->at, self->distance);
+    /* custom: the meshes' shadows, fitted to what the camera sees of the ground and the models
+       (render/renderer.h) */
+    view_shadow_boxes(&self->world->root, 0, boxes, &boxCount);
+    renderer_shadow_frame(r, view, self->distance, boxes, boxCount);
     renderer_set_camera(r, view);
     g_drawnCellMinY = 999;
     g_drawnCellMinX = 999;

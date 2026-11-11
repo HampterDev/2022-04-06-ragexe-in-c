@@ -13675,3 +13675,56 @@ Validation, in `client-files` with `RAGEXE_MSAA=1`: from 2,500 at -5 degrees the
 and the town behind it now have their shadows; from 10,000 at -70 degrees the shadows remain
 (21,852 pixels differ from the capture without shadows, 21,731 before); the scene set's other 11
 captures are identical. `build.bat check` and the full `tests\build.bat` pass.
+
+## Shadows fitted to the ground and the models (2026-11-11)
+
+The two fixes before this one fitted the cascades better to a guess: that the meshes that receive
+shadows lie in a band from 300 units above the camera's focus to 60 below it, out to four times the
+camera's distance. It fails wherever ground or models lie outside that band. On 63 of the 926
+grounds in the client's GRFs the heights spread over more than the band's 360 units (up to 804, on
+`mjolnir_04_1`; `manuk` 736, `ve_fild05` 670, `hu_fild01` 577). A pixel outside every cascade
+counts as lit, and on the ground the shadow maps take the place of the lightmap's baked shadows, so
+there the baked shadow was taken away as well. Patrick asked for the structural fix; the cascades
+are now fitted to where the ground and the models are.
+
+- **The boxes.** `world_build_scene_graph` gives each leaf of the scene graph (32 by 32 over the
+  ground) the box around its cells' surfaces, walls included (`groundMin`, `groundMax`): a wall
+  rises from its cell's edge to the neighbour's height, which may lie in the next leaf, so the
+  cells' tops alone left cliffs' faces out. Each frame `view_shadow_boxes` widens each leaf's box
+  by the models in it (`bboxMin`, `bboxMax`, the leaves the scene graph already keeps them in,
+  streamed models and skills' models included) and hands the 1,024 boxes to
+  `renderer_shadow_frame`. Boxes that are empty or not finite are left out.
+- **The fit.** For the view from the near plane to four times the camera's distance, and then for
+  each cascade's slice of it, `fit_box` finds the corners of each box's part inside the slice:
+  both are convex, so they are the box's corners inside the slice, the slice's inside the box,
+  and the ends of each edge's part inside the other. A box wholly inside a slice gives its
+  extremes along the view's depth and the light's two axes directly (its centre plus or minus
+  half its size along each); a box within the slice's four sides needs only its own edges. The
+  cascades' depths run from the nearest to the farthest point found, the last a unit beyond (the
+  shaders take the first cascade whose far depth lies beyond a pixel), and each cascade's square
+  covers its slice's points as the light sees them. A slice with nothing in it, as between the
+  top of a cliff and its foot, takes no casters.
+- **Along the light** the maps keep every box, 8 units beyond (`SHADOW_MARGIN`), in place of 3,000
+  units either way from the focus; the bias and the slant scale with that range as they did with
+  the 6,000 before. The camera's focus is no longer needed and `renderer_shadow_frame` drops it.
+- **Cost.** With 1,024 boxes over a 2,000-unit map of random heights, the fit takes 0.11 ms a frame
+  from the default camera (488 at -55 degrees), 0.29 ms from 2,500 at -5 degrees and 0.46 ms from
+  6,000 at -70 degrees with the whole map in view (`renderer_shadow_frame` in a loop, /O2). Most of
+  it is testing every box against five slices; keeping the boxes in view after the first would cut
+  that.
+- **Tests.** `test_projection` looks from tilts of -5 to -85 degrees and distances of 150 to 6,000
+  at flat ground with a hill rising 600 units and a pit 400 deep, both outside the old band, and
+  checks that every point on the boxes' faces that the view sees within the shadows' reach lies in
+  the cascade the shaders pick for it, inside its map, and that a view that sees none of the boxes
+  draws no shadows. `test_scene_ground_box` checks a leaf's ground box: the wall up to the next
+  leaf's raised cell, the cells clamped to the ground, an empty leaf and a height that is not
+  finite.
+
+Validation, in `client-files` with `RAGEXE_MSAA=1`, against the commit before. On the hilliest
+spots of `manuk`, `hu_fild01`, `ve_fild05` and `man_fild03`, from 800 at -40, 1,500 at -20 and
+2,500 at -10 degrees, the pixels the shadow maps draw lighter than without them (a baked shadow
+taken away) fall in 11 of the 12 captures (from 800 on `hu_fild01` from 29,454 to 14,150: the old
+fit drew lit a slope that the editor baked in a ridge's shadow, and the new one shades it), and
+rise by 4 in the twelfth. Prontera's south gate from 2,500 at -5 degrees keeps its shadows. The 13
+captures of the scene set change by a texel along shadow edges (105 to 316 pixels by more than 16
+each, none in `iz_int03_enter`). `build.bat check` and the full `tests\build.bat` pass.

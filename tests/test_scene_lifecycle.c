@@ -59,7 +59,12 @@ static void add_borrowed_objects(struct SceneGraphNode *node)
 static void empty(const struct SceneGraphNode *node)
 {
     struct SceneGraphNode expected;
+    int i;
     memset(&expected, 0, sizeof expected); expected.needUpdate = 1;
+    for (i = 0; i < 3; ++i) {
+        expected.groundMin[i] = SCENE_HEIGHT_HUGE;
+        expected.groundMax[i] = -SCENE_HEIGHT_HUGE;
+    }
     assert(!memcmp(node, &expected, sizeof expected));
 }
 
