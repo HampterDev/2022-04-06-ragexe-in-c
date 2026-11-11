@@ -613,11 +613,13 @@ SIZE_ASSERT(PACKET_ZC_SOUND, 0x23);
 void game_mode_zc_sound(struct GameMode *self, const unsigned char *pkt)
 {
     const struct PACKET_ZC_SOUND *packet = (const struct PACKET_ZC_SOUND *)pkt;
-    const char *name = packet->name;
+    char name[sizeof packet->name + 1];
     unsigned char action = packet->action;
     DWORD interval = packet->interval;
     unsigned npc_aid = packet->npc_aid;
 
+    memcpy(name, packet->name, sizeof packet->name);
+    name[sizeof packet->name] = 0;
     if (action == SOUND_ONCE) {
         struct GameActor *npc = world_get_game_actor_by_aid(self->world, npc_aid);
 

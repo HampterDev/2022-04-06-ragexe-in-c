@@ -3646,6 +3646,54 @@ static void packet_oracle_setup(int verbose)
     mem_alloc_hook = lift_alloc;
 }
 
+static unsigned sound_name_overreads(void)
+{
+    static const char xs[] = "xxxxxxxxxxxxxxxxxxxxxxxx";
+    static const char played[] = "wave xxxxxxxxxxxxxxxxxxxxxxxx 0 0 0; ";
+    unsigned char pkt[PACKET_MAX];
+    char text[EVENTS * EVENT_LEN];
+    unsigned action, bad = 0;
+
+    current_handler = NULL;
+    for (action = 0; action < 3; action++) {
+        const struct LoopSound *s;
+        size_t before, after, i, named = 0;
+
+        memset(pkt, 'y', sizeof pkt);
+        pkt[0] = 0xd3;
+        pkt[1] = 0x01;
+        memcpy(pkt + 2, xs, 24);
+        pkt[0x1a] = (unsigned char)action;
+        seed_packets(0);
+        if (action == 2) {
+            struct LoopSound sound;
+            string_init(&sound.name);
+            string_assign_cstr(&sound.name, xs);
+            sound.npc_aid = 1002;
+            sound.interval = 1500;
+            sound.next_tick = 77;
+            vec_push(&lift_mode.loop_sounds, &sound, sizeof sound);
+        }
+        before = vec_count(&lift_mode.loop_sounds, sizeof *s);
+        event_count = 0;
+        overflow = 0;
+        w_game_mode_zc_sound(pkt);
+        joined(text, sizeof text);
+        after = vec_count(&lift_mode.loop_sounds, sizeof *s);
+        s = lift_mode.loop_sounds.first;
+        for (i = 0; i < after; i++)
+            named += strcmp(string_cstr(&s[i].name), xs) == 0;
+        if (action == 2 ? after != before - 1 || named != 0 || event_count != 0
+                        : strcmp(text, played) != 0 || named != (action == 1u) || after != before + (action == 1u)) {
+            bad++;
+            printf("  sound action %u with a name of 24 bytes and no NUL: %s (%u loop sounds, %u named so)\n", action, text,
+                   (unsigned)after, (unsigned)named);
+        }
+    }
+    printf("Sound names: 3 names of 24 bytes without a NUL read within their field: %s\n", bad ? "MISMATCH" : "ok");
+    return bad;
+}
+
 int main(int argc, char **argv)
 {
     const char *exe = argc > 1 ? argv[1] : getenv("ORACLE_EXE");
@@ -3728,5 +3776,7 @@ int main(int argc, char **argv)
     }
     printf("Packet handlers: %u calls compared against the original (%u events recorded), %u mismatches, %u faults%s\n", compared, recorded,
            mismatches, faults, reported > max_reported ? " (not all shown)" : "");
+    if (sound_name_overreads())
+        mismatches++;
     return mismatches || faults ? 1 : 0;
 }

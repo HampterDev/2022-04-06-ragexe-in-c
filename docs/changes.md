@@ -127,11 +127,11 @@ Overruns and bad table indexes:
   `MonsterSkillInfo.xml` (8-byte buffers), the pet portrait file name and the pet name the
   pet windows show. The original used `strcpy` or `sprintf` and ran past the buffer or the
   packet.
-- Packet fields that need not end in a NUL are read within their field: the private-airplane
-  map name (16 bytes) and the pet name (24). The arguments of a format-string message
-  (`ZC_FORMATSTRING_MSG`) are read up to the packet's length, and its `%s` count stops at a
-  message that ends in a lead byte. The original read a missing or unterminated argument from
-  past the packet.
+- Packet fields that need not end in a NUL are read within their field: the private-airplane map
+  name (16 bytes), the pet name (24) and the sound name of `ZC_SOUND` (24). The arguments of a
+  format-string message (`ZC_FORMATSTRING_MSG`) are read up to the packet's length, and its `%s`
+  count stops at a message that ends in a lead byte. The original read a missing or unterminated
+  argument from past the packet.
 - A char-server list line of 64 bytes or more is cut at a whole character, before any colour
   code the cut would split. The original's `strcpy_s` ended the client without a message, as
   it did for a private-airplane move with a full 16-byte map name.
