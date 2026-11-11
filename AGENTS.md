@@ -24,7 +24,18 @@ Read the original's assembly before deciding which kind a change is. Follow the 
 jump table or vtable slot the code goes through, not a disassembler label's name: labels are often
 wrong.
 
-Fix every real bug you find, not a chosen few.
+Fix every real bug you find, not a chosen few. Leftovers found on the way, such as dead code, a
+half-removed feature or a name that lies, are part of the task: fix them rather than list them.
+
+## Replacing things
+
+When new code takes over a job, the old way goes in the same change: no fallback, opt-in switch
+or second code path kept to be safe. A reference build outside the tree is fine for comparing.
+When a fix needs a second patch for the same symptom, look for the structural cause instead, and
+design from what the thing must do, not from how today's code does it.
+
+New logic with one job goes into its own library in `tools/libraries.txt`, behind a narrow header
+and with its own tests, rather than into a file that already does something else.
 
 ## Data from outside
 
@@ -48,11 +59,24 @@ it or a later commit that replaced part of it, and handle those too.
 
 Check every claim in a commit message or doc against the code.
 
+## Checking your work
+
+Before saying something works, run it the way it will be used: the option someone will turn, the
+exe that will be handed on, with what it needs to start. For anything drawn, compare pictures
+with the scene harness in `tests/scenes` instead of asking someone to look. Say what was not
+checked. Another agent's finding, even "confirmed against the asm", is a lead until you have read
+the code yourself.
+
+Checks run with a hidden window and no sound. Never start the client fullscreen.
+
 ## Building and testing
 
-`build.bat check` and the whole suite, `tests\build.bat`, pass before committing. From a shell
-that sets `NoDefaultCurrentDirectoryInExePath` (agent shells do), clear it first, or `cmd` will
-not find `build.bat` or the test programs in the current directory.
+While working, run the tests for the code you changed and `build.bat check`. Run `build.bat
+check` and the whole suite, `tests\build.bat`, once before committing, for everything going into
+the commit. A commit that changes only documentation needs neither.
+
+From a shell that sets `NoDefaultCurrentDirectoryInExePath` (agent shells do), clear it first, or
+`cmd` will not find `build.bat` or the test programs in the current directory.
 
 ## Commits
 
