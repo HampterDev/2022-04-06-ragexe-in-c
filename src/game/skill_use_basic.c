@@ -103,12 +103,7 @@ int skill_use_basic(const struct SkillCast *cast)
         if (!target || cast->skill_id != SKILL_STONE_CURSE)
             return 1;
         actor_launch_effect(target, 0x17);
-        {
-            struct Player *player = cast->mode->world->player;
-
-            play_skill_wave_at(WAVE_STONE_CURSE, target->pos.x - player->pos.x, 0.0f,
-                               target->pos.z - player->pos.z);
-        }
+        play_skill_wave(WAVE_STONE_CURSE);
         return 1;
 
     case SKILL_HEAL:

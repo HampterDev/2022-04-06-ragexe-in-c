@@ -46,7 +46,7 @@ static void launch_effect(struct GameActor *player, int effect_id)
 
 static void play_chime(void)
 {
-    sound_play_wave("effect\\T_피링.wav", 0.0f, -250.0f, 0.0f, 0xfa, 0x28, 1.0f);
+    sound_play_wave("effect\\T_피링.wav", 1.0f);
 }
 
 static void format_star(char *text, int first_msg, unsigned char star, const char *name)

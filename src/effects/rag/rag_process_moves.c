@@ -17,13 +17,13 @@ void rag_wave_at(struct RagEffect *self, int frame, const char *wave)
 {
     if (self->frame == frame) {
         rag_follow_master(self);
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
     }
 }
 
 void rag_wave_plain(const char *wave)
 {
-    sound_play_wave(wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave(wave, 1.0f);
 }
 
 unsigned char rag_str_step_up80(struct RagEffect *self)
@@ -94,8 +94,7 @@ void rag_flying_kick_wave(struct RagEffect *self)
     if (f != 5 && f != 20 && f != 35 && f != 50 && f != 65)
         return;
     rag_follow_master(self);
-    sound_play_wave("effect\\T_날라차기.wav",
-             0.0f, f <= 50 ? (float)(5 - f) : -50.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave("effect\\T_날라차기.wav", 1.0f);
 }
 
 void rag_streams_tint(struct RagEffect *self)
@@ -114,7 +113,7 @@ void rag_spell_circles(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, texture, style);
     rag_casting_circle(self, 25, texture, style);
 }
@@ -124,7 +123,7 @@ void rag_spell_circles_low(struct RagEffect *self, const char *texture, char sty
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, texture, style45);
     rag_casting_circle(self, 25, texture, style25);
 }
@@ -134,7 +133,7 @@ void rag_spell_rings(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_rings(self, texture, style);
 }
 

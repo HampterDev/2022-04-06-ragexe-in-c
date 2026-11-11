@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "advapi32.lib")
 
@@ -42,20 +41,6 @@ static wchar_t *widen(const char *text, int bytes, int *units)
     if (units)
         *units = count;
     return wide;
-}
-
-int WINAPI win_utf8_message_box(HWND owner, LPCSTR text, LPCSTR caption, UINT type)
-{
-    wchar_t *wide_text = widen(text, -1, NULL), *wide_caption = widen(caption, -1, NULL);
-    int result;
-
-    if ((text && !wide_text) || (caption && !wide_caption))
-        result = MessageBoxA(owner, text, caption, type);
-    else
-        result = MessageBoxW(owner, wide_text, wide_caption, type);
-    free(wide_text);
-    free(wide_caption);
-    return result;
 }
 
 HINSTANCE WINAPI win_utf8_shell_execute(HWND owner, LPCSTR operation, LPCSTR file, LPCSTR parameters,

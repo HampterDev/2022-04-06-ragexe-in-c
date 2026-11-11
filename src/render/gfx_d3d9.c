@@ -11,6 +11,7 @@ static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts,
 #include <d3dcompiler.h>
 #include <stdlib.h>
 #include <string.h>
+#include <SDL3/SDL.h>
 
 STATIC_ASSERT(d9_matrix, sizeof(D3DMATRIX) == sizeof(struct GfxMatrix));
 STATIC_ASSERT(d9_rect, sizeof(D3DRECT) == sizeof(RECT));
@@ -812,6 +813,27 @@ static UINT adapter_ordinal(const GUID *guid)
     return D3DADAPTER_DEFAULT;
 }
 
+/* The device draws into the HWND of the client's SDL window. */
+static HWND device_window(const struct C3dDevice *d)
+{
+    return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(d->hwnd), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+}
+
+/* The SDL display that shows a monitor; 0 when SDL does not know the monitor. */
+static PlatformDisplay monitor_display(HMONITOR monitor)
+{
+    SDL_DisplayID *displays, found = 0;
+    int count = 0, i;
+    if (!monitor || !(displays = SDL_GetDisplays(&count)))
+        return 0;
+    for (i = 0; i < count && !found; i++)
+        if (SDL_GetPointerProperty(SDL_GetDisplayProperties(displays[i]), SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER,
+                                   NULL) == monitor)
+            found = displays[i];
+    SDL_free(displays);
+    return found;
+}
+
 static int ensure_d3d(void)
 {
     if (!d9.d3d)
@@ -873,7 +895,7 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     d9.pp.BackBufferHeight = d->height;
     d9.pp.BackBufferCount = 1;
     d9.pp.SwapEffect = D3DSWAPEFFECT_COPY;
-    d9.pp.hDeviceWindow = d->hwnd;
+    d9.pp.hDeviceWindow = device_window(d);
     d9.pp.Windowed = !d->fullscreen;
     d9.pp.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
     d9.pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
@@ -888,10 +910,10 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     } else {
         d9.pp.BackBufferFormat = D3DFMT_UNKNOWN;
     }
-    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d->hwnd, d9.behaviour, &d9.pp, &d9.dev);
+    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
     if (FAILED(hr) && (d9.behaviour & D3DCREATE_HARDWARE_VERTEXPROCESSING)) {
         d9.behaviour = (d9.behaviour & ~D3DCREATE_HARDWARE_VERTEXPROCESSING) | D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d->hwnd, d9.behaviour, &d9.pp, &d9.dev);
+        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
     }
     if (FAILED(hr))
         return d->fullscreen ? GFX_E_DISPLAY_MODE : GFX_E_PRIMARY;
@@ -1238,12 +1260,12 @@ static int recreate_device(struct C3dDevice *d)
     struct gfx_surface *s;
     HRESULT hr;
     batch_drop();
-    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d->hwnd, d9.behaviour, &pp, &dev);
+    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
     if (FAILED(hr) && !pp.Windowed) {
         pp.Windowed = TRUE;
         pp.BackBufferFormat = D3DFMT_UNKNOWN;
         pp.FullScreen_RefreshRateInHz = 0;
-        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d->hwnd, d9.behaviour, &pp, &dev);
+        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
     }
     if (FAILED(hr))
         return GFX_E_SURFACELOST;
@@ -1461,10 +1483,10 @@ static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int f
     pp.Windowed = TRUE;
     pp.BackBufferFormat = D3DFMT_UNKNOWN;
     pp.FullScreen_RefreshRateInHz = 0;
-    hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, d->hwnd, d9.behaviour, &pp, &dev);
+    hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
     if (FAILED(hr) && (d9.behaviour & D3DCREATE_HARDWARE_VERTEXPROCESSING)) {
         DWORD b = (d9.behaviour & ~D3DCREATE_HARDWARE_VERTEXPROCESSING) | D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-        hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, d->hwnd, b, &pp, &dev);
+        hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, device_window(d), b, &pp, &dev);
         if (SUCCEEDED(hr))
             d9.behaviour = b;
     }
@@ -1544,11 +1566,11 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
     return 0;
 }
 
-HMONITOR gfx_adapter_monitor(const GUID *adapter)
+PlatformDisplay gfx_adapter_monitor(const GUID *adapter)
 {
     if (!ensure_d3d())
-        return NULL;
-    return IDirect3D9_GetAdapterMonitor(d9.d3d, adapter ? adapter_ordinal(adapter) : d9.adapter);
+        return 0;
+    return monitor_display(IDirect3D9_GetAdapterMonitor(d9.d3d, adapter ? adapter_ordinal(adapter) : d9.adapter));
 }
 
 void gfx_set_mipmaps(int on)
@@ -1556,7 +1578,7 @@ void gfx_set_mipmaps(int on)
     d9.mipmaps = on;
 }
 
-void gfx_enum_adapter(const GUID *adapter, const char *desc, HMONITOR monitor)
+void gfx_enum_adapter(const GUID *adapter, const char *desc)
 {
     static const D3DFORMAT modeFormats[] = { D3DFMT_X8R8G8B8, D3DFMT_R5G6B5 };
     struct DisplayModeList modes = {0};
@@ -1565,10 +1587,8 @@ void gfx_enum_adapter(const GUID *adapter, const char *desc, HMONITOR monitor)
     if (!ensure_d3d())
         return;
     if (adapter) {
-        n = IDirect3D9_GetAdapterCount(d9.d3d);
-        for (i = 0; i < n; i++)
-            if (IDirect3D9_GetAdapterMonitor(d9.d3d, i) == monitor)
-                ordinal = i;
+        /* gfx_ddraw_enumerate names each adapter by its ordinal (adapter_guid) */
+        ordinal = adapter_ordinal(adapter);
         if (d9.nAdapters < (int)(sizeof(d9.adapters) / sizeof(d9.adapters[0]))) {
             d9.adapters[d9.nAdapters].guid = *adapter;
             d9.adapters[d9.nAdapters].ordinal = ordinal;
@@ -2833,7 +2853,7 @@ int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
             lstrcpynA(desc, id.Description, sizeof(desc));
         else
             wsprintfA(desc, "%s (display %u)", id.Description, i + 1);
-        if (!callback(i == 0 ? NULL : &g, desc, id.DeviceName, ctx, IDirect3D9_GetAdapterMonitor(d9.d3d, i)))
+        if (!callback(i == 0 ? NULL : &g, desc, id.DeviceName, ctx))
             break;
     }
     return 0;

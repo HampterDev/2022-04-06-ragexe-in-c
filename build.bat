@@ -10,7 +10,7 @@ REM                       tools\libraries.txt (build\obj_libs\*.lib, next to the
 REM                       folder) and linked as app's objects plus those libraries; combines with
 REM                       the other words
 REM The client draws Granny models from converted glTF files (tools\granny_export) and plays sound
-REM through SDL3 (platform\miles_sdl.c). It links the C runtime statically (/MT), as do the vendor
+REM through SDL3 (platform\audio_sdl.c). It links the C runtime statically (/MT), as do the vendor
 REM libraries, so it needs no Visual C++ runtime DLL: the 32-bit ones game folders ship serve only
 REM 32-bit programs.
 setlocal enabledelayedexpansion

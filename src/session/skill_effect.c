@@ -20,11 +20,8 @@ BYTE session_play_ground_skill_effect(struct Session *self, int skill, struct Ve
         return 0;
     wave = "";
     if (client_lua_call(g_session1.luaState, "GetEffectWaveFileName", "d>s", skill, &wave)
-        && strcmp(wave, "") != 0) {
-        struct Vec3 origin = { 0.0f, 0.0f, 0.0f };
-
-        sound_play_wave(wave, origin.x, origin.y, origin.z, 0xfa, 0x28, 1.0f);
-    }
+        && strcmp(wave, "") != 0)
+        sound_play_wave(wave, 1.0f);
     count = 0;
     if (client_lua_call(g_session1.luaState, "GetGroundEffectNum", "d>d", skill, &count)) {
         for (i = 0; i < count;) {
@@ -65,11 +62,8 @@ BYTE skill_effect_on_caster(int skill, struct GameActor *caster, struct GameActo
         return 0;
     wave = "";
     if (client_lua_call(g_session1.luaState, "GetEffectWaveFileName", "d>s", skill, &wave)
-        && strcmp(wave, "") != 0) {
-        struct Vec3 origin = { 0.0f, 0.0f, 0.0f };
-
-        sound_play_wave(wave, origin.x, origin.y, origin.z, 0xfa, 0x28, 1.0f);
-    }
+        && strcmp(wave, "") != 0)
+        sound_play_wave(wave, 1.0f);
     count = 0;
     if (!client_lua_call(g_session1.luaState, "GetEffectNum", "d>d", skill, &count))
         return 0;
@@ -108,11 +102,8 @@ BYTE skill_effect_on_target(int skill, struct GameActor *target)
         return 0;
     wave = "";
     if (client_lua_call(g_session1.luaState, "GetTargetEffectWaveFileName", "d>s", skill, &wave)
-        && strcmp(wave, "") != 0) {
-        struct Vec3 origin = { 0.0f, 0.0f, 0.0f };
-
-        sound_play_wave(wave, origin.x, origin.y, origin.z, 0xfa, 0x28, 1.0f);
-    }
+        && strcmp(wave, "") != 0)
+        sound_play_wave(wave, 1.0f);
     count = 0;
     if (!client_lua_call(g_session1.luaState, "GetTargetEffectNum", "d>d", skill, &count))
         return 1;

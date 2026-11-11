@@ -161,7 +161,7 @@ void gravity_control_effect_release(struct Effect *effect)
     owner = effect_find_actor(self->base.owner_aid);
     if (ground_height_under(owner, &ground_height)) {
         ((struct RenderObject *)owner)->pos.y = ground_height;
-        effect_play_wave_at("effect\\t_공격력.wav", &self->base.pos, 0.0f);
+        effect_play_wave("effect\\t_공격력.wav");
     }
     if (self->particle) {
         particle_free(&self->particle->base);

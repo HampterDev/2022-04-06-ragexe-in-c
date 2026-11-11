@@ -14,12 +14,9 @@ int platform_clipboard_set(PlatformWindow owner, const char *text, size_t length
 char *platform_clipboard_get(PlatformWindow owner);
 void platform_cursor_client_pos(PlatformWindow window, POINT *out);
 void platform_mouse_capture(PlatformWindow window, int capture);
-int platform_show_cursor(int show);
 void platform_clip_cursor_to_client(PlatformWindow window, int clip);
-void platform_client_screen_rect(PlatformWindow window, RECT *out);
 void platform_client_rect(PlatformWindow window, RECT *out);
 void platform_window_rect(PlatformWindow window, RECT *out);
-void platform_monitor_rect(PlatformDisplay display, RECT *out);
 void platform_monitor_rects(PlatformDisplay display, RECT *mon, RECT *work);
 /* The display the window is on. */
 PlatformDisplay platform_window_monitor(PlatformWindow window);
@@ -34,11 +31,10 @@ void platform_focus_window(PlatformWindow window);
 void platform_window_frameless(PlatformWindow window, const RECT *area);
 void platform_window_fullscreen(PlatformWindow window);
 void platform_ime_cancel(PlatformWindow window);
-WORD platform_keyboard_language(void);
 void platform_ime_alphanumeric(PlatformWindow window);
 
-/* Key and pointer state for the window systems that do not keep it (core/user_input.c tells; the key
-   and cursor queries above read it back). Windows keeps its own, so there they do nothing. */
+/* Key and pointer state as the client asks for it, kept from the input SDL delivers:
+   core/user_input.c tells, the key and cursor queries above read it back. */
 void platform_note_key(int vk, int down);
 void platform_note_cursor(int x, int y);
 

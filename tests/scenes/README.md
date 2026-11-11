@@ -11,7 +11,8 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
-| `src/platform/window_win32.c`     | `scene_input_win.c` | cursor and key state come from the script, never from the desktop |
+| `src/core/app_sdl.c` (Windows) | `scene_app_win.c` | the window is never shown: Direct3D 9 draws into it hidden, so a run never takes the focus or the mouse or covers the screen |
+| `src/platform/window_sdl.c` (Windows) | `scene_window_win.c` | a message box is written to stdout instead of waiting for a click |
 | `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
 Everything else is the shipped client, renderer included. With the same game data a scene
@@ -52,10 +53,10 @@ RAGEXE_SCENE=<repo>/tests/scenes/scripts/prontera_crowd.lua RAGEXE_SCENE_OUT=/tm
 On Linux and macOS the harness defaults to `SDL_VIDEODRIVER=offscreen` (an EGL context, no
 window) and `SDL_AUDIODRIVER=dummy`; set either to watch or hear a scene. SDL's offscreen driver
 needs EGL, which macOS does not have, so on a Mac set `SDL_VIDEODRIVER=cocoa`. On Windows the
-client window shows while the client starts and is hidden on the first frame (Direct3D 9 needs a
-real window). Captures are silent on every platform: `run.py` gives the client
+client's window is never shown. Captures are silent on every platform: `run.py` gives the client
 `SDL_AUDIO_DRIVER=dummy` unless `SDL_AUDIO_DRIVER` or `SDL_AUDIODRIVER` is set, and the harness
-itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`. `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
+itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`.
+`RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode
 changes.
 
 The game directory's `SaveData` (resolution, options, chat windows) and data files are read as

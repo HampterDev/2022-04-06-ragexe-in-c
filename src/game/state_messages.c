@@ -133,7 +133,7 @@ static int state_began(struct GameMode *mode, const struct PacketMsgStateChange 
     case 0x21: say(text, 0x28c); break;
     case 0xb6:
         if (is_own(packet))
-            sound_play_wave("lava_golem_move.wav", 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+            sound_play_wave("lava_golem_move.wav", 1.0f);
         no_line(text);
         break;
     case 0xf1: case 0x10f: say(text, 0x4cf); break;

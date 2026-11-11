@@ -123,8 +123,7 @@ struct Mode * client_current_mode(void) { abort(); }
 int crt_snprintf_s(char * arg0, size_t arg1, size_t arg2, const char * arg3, ...) { abort(); }
 char g_clientDir[] = {0};
 struct GuildInfo g_guildInfo;
-HMODULE g_hInstance;
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 struct Language * g_language;
 struct Renderer * g_renderer;
 struct ResMgr * g_resMgr(void) { abort(); }

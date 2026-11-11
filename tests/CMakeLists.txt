@@ -7,6 +7,12 @@
 # answer the client's message boxes on stderr (headless.h). A test that needs a real window is
 # labelled `interactive`.
 
+# 64-bit Windows tests link the client's window services and sound, which run on SDL. It is added
+# first, so that it builds with its own options and not the tests' below.
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    include(${PROJECT_SOURCE_DIR}/cmake/SDL3.cmake)
+endif()
+
 # Assertions stay on in every configuration, in the tests and in the client code they test.
 foreach(language C CXX)
     foreach(config RELEASE RELWITHDEBINFO MINSIZEREL)
@@ -55,6 +61,11 @@ function(rage_client_options file)
     set_property(GLOBAL APPEND PROPERTY RAGE_CLIENT_OPTIONS_${file} ${ARGN})
 endfunction()
 
+# rage_client_link(<file> <library>...): what a library that holds the client file links.
+function(rage_client_link file)
+    set_property(GLOBAL APPEND PROPERTY RAGE_CLIENT_LINK_${file} ${ARGN})
+endfunction()
+
 # rage_client_warnings(<level> <file>...): the warning level of client files other than 3.
 function(rage_client_warnings level)
     foreach(file IN LISTS ARGN)
@@ -82,12 +93,15 @@ function(rage_link_client target)
             else()
                 target_link_libraries(${lib} PUBLIC m)
             endif()
-            if(NOT WIN32 AND library STREQUAL "platform")
-                find_package(Threads REQUIRED)
+            if(NOT WIN32)
+                # POSIX declarations, which the platform files need; elsewhere they only add.
                 target_compile_definitions(${lib} PRIVATE _POSIX_C_SOURCE=200809L)
                 if(APPLE)
                     target_compile_definitions(${lib} PRIVATE _DARWIN_C_SOURCE)
                 endif()
+            endif()
+            if(NOT WIN32 AND library STREQUAL "platform")
+                find_package(Threads REQUIRED)
                 target_link_libraries(${lib} PUBLIC Threads::Threads)
                 find_package(Iconv REQUIRED)
                 target_link_libraries(${lib} PUBLIC Iconv::Iconv)
@@ -98,6 +112,8 @@ function(rage_link_client target)
             set_property(GLOBAL APPEND PROPERTY RAGE_CLIENT_FILES ${file})
             set(path ${PROJECT_SOURCE_DIR}/src/${file})
             target_sources(${lib} PRIVATE ${path})
+            get_property(links GLOBAL PROPERTY RAGE_CLIENT_LINK_${file})
+            target_link_libraries(${lib} PUBLIC ${links})
             if(MSVC)
                 get_property(options GLOBAL PROPERTY RAGE_CLIENT_OPTIONS_${file})
                 if(NOT options MATCHES "/W[0-4]")
@@ -119,8 +135,10 @@ function(rage_link_client target)
     endforeach()
 endfunction()
 
+# The client's window services and sound run on SDL.
+rage_client_link(platform/window_sdl.c SDL3::SDL3)
 if(WIN32)
-    rage_client_options(platform/win_utf8.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless.h)
+    rage_client_options(platform/window_sdl.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless.h)
     # Only the platform tests link it, which were never held to more than /W1: at /W3 its winsock
     # calls are deprecated (C4996).
     rage_client_warnings(1 platform/net_win32.c)
@@ -251,15 +269,16 @@ function(rage_test_label_sources target)
 endfunction()
 
 # rage_test_objects(<name> <source>... [W1|W4] [NO_WX] [WE4013] [FORCE_INCLUDE <header>]
-#                   [DEFINES ...] [OPTIONS ...] [INCLUDES ...])
+#                   [DEFINES ...] [OPTIONS ...] [INCLUDES ...] [LIBS ...])
 # Sources several tests share, or that one test compiles with options of their own, as an object
 # library; a test links it with OBJECTS.
 function(rage_test_objects name)
     cmake_parse_arguments(PARSE_ARGV 1 T "W1;W4;NO_WX;WE4013" "FORCE_INCLUDE"
-        "DEFINES;OPTIONS;INCLUDES;GENERATED")
+        "DEFINES;OPTIONS;INCLUDES;GENERATED;LIBS")
     rage_test_paths(sources ${T_UNPARSED_ARGUMENTS})
     add_library(${name} OBJECT ${sources})
     rage_test_compile(${name})
+    target_link_libraries(${name} PUBLIC ${T_LIBS})
     rage_test_label_sources(${name} ${sources})
 endfunction()
 
@@ -408,6 +427,24 @@ rage_test(chat_room_title WE4013 GENERATED chat_room_title)
 rage_test_generate(latest_achievements OUTPUTS latest_achievements.inc DEPENDS session/session_achievements.c)
 rage_test(latest_achievements WE4013 CLIENT std/tree.c GENERATED latest_achievements LIBS rage_lua)
 
+# Sound (platform/audio_sdl.c, which the test includes), where SDL is part of the build: decoding,
+# and mixing through SDL's disk driver into files in the test's directory, never to a sound device.
+# Given a game folder (RAGE_AUDIO_GAME_DIR, by default client-files beside the checkout) it also
+# decodes and mixes the game's own sounds; it says so when it skips them.
+if(TARGET SDL3::SDL3)
+    get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
+    set(RAGE_AUDIO_GAME_DIR "${default_game}" CACHE PATH "Game folder whose data.grf and BGM test_audio decodes and mixes")
+    if(WIN32)
+        set(audio_defines)
+    else()
+        set(audio_defines _POSIX_C_SOURCE=200809L)
+    endif()
+    rage_test(audio CLIENT core/cstr.c core/memory.c fileio/grf_cipher.c fileio/grf_mapfile.c fileio/grf_pak.c
+        std/std_sort.c ${platform_files} DEFINES ${audio_defines} LIBS rage_dr_mp3 rage_zlib SDL3::SDL3
+        ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures ${RAGE_AUDIO_GAME_DIR} ENVIRONMENT SDL_AUDIO_DRIVER=disk
+        LABELS game)
+endif()
+
 # ---- Windows, 32- and 64-bit ----
 if(MSVC)
     rage_test_objects(test_crash_dump_crash_dump W4 src/platform/crash_dump.c FORCE_INCLUDE tests/crash_dump_fixture.h
@@ -435,8 +472,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         ui/wndmgr/make_window_character.c)
     rage_test_generate(chat_layout_destroy OUTPUTS chat_layout_destroy.inc DEPENDS ui/chat/chat_window.c)
     rage_test_generate(com_lifecycle OUTPUTS com_lifecycle_functions.inc DEPENDS core/winmain.c
-        core/app_win32.c ARGS ${PROJECT_SOURCE_DIR}/src/core/winmain.c
-        ${PROJECT_SOURCE_DIR}/src/core/app_win32.c
+        core/app_sdl.c ARGS ${PROJECT_SOURCE_DIR}/src/core/winmain.c
+        ${PROJECT_SOURCE_DIR}/src/core/app_sdl.c
         ${CMAKE_CURRENT_BINARY_DIR}/generated/com_lifecycle/com_lifecycle_functions.inc)
     rage_test_generate(effect_launch_duration OUTPUTS effect_launch_duration.inc DEPENDS
         effects/rag/rag_str_anim.c)
@@ -498,7 +535,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/crash_report_fixture.h)
     rage_test_objects(test_font_cache_fonts src/render/fonts.c FORCE_INCLUDE tests/font_cache_fixture.h)
     rage_test_objects(test_mouse_mouse src/contents/mouse.c FORCE_INCLUDE tests/mouse_fixture.h)
-    rage_test_objects(test_mouse_window_win32 src/platform/window_win32.c FORCE_INCLUDE tests/mouse_fixture.h)
+    rage_test_objects(test_mouse_window_sdl src/platform/window_sdl.c FORCE_INCLUDE tests/mouse_fixture.h
+        LIBS SDL3::SDL3)
     rage_test_objects(test_object_type_actor_object_types W4 src/actor/actor_object_types.c DEFINES
         TYPE_QUERY_FIXTURE FORCE_INCLUDE tests/type_query_fixture.h)
     rage_test_objects(test_object_type_character_object_types W4 src/ui/character/character_object_types.c
@@ -562,7 +600,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(agency_packets W4)
     rage_test(agency_results W1)
     rage_test(ai_context CLIENT core/numeric.c core/utf8.c login/merc_ai.c login/merc_ai_cmds.c
-        platform/clock_win32.c platform/win_utf8.c platform/window_win32.c std/tree.c
+        platform/clock_win32.c platform/code_page_win32.c platform/window_sdl.c std/tree.c
         ui/hotkeys/session_option_map.c LIBS rage_lua)
     rage_test(airplane_window_slot WE4013 CLIENT std/list.c ui/wndmgr/forget_window.c ui/wndmgr/window_table.c
         ui/wndmgr/wndmgr_handlers.c GENERATED airplane_window_slot window_rows)
@@ -710,9 +748,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(frustum CLIENT world/frustum.c)
     rage_test(game_context CLIENT game/context.c world/mode_context.c world/mode_dispatch.c)
     rage_test(game_mode_layout W1 WE4013 CLIENT core/once_win32.c core/utf8.c platform/clock_win32.c
-        platform/win_utf8.c platform/window_win32.c std/container_memory.c std/list.c std/string.c std/tree.c
-        std/vec.c ui/std/ui_std_list.c ui/wndmgr/wndmgr_std.c web/name_cards.c world/mode_dispatch.c
-        world/mode_draw.c world/mode_lifetime.c)
+        platform/code_page_win32.c platform/window_sdl.c std/container_memory.c std/list.c std/string.c
+        std/tree.c std/vec.c ui/std/ui_std_list.c ui/wndmgr/wndmgr_std.c web/name_cards.c
+        world/mode_dispatch.c world/mode_draw.c world/mode_lifetime.c)
     rage_test(gauge_sources tests/gauge_sources_support.c CLIENT ui/character/bar_graph.c
         ui/character/gauge_value.c ui/character/gauges.c ui/items/homun_bar.c)
     rage_test(gfx_batch CLIENT platform/thread_win32.c render/gfx_batch.c)
@@ -750,8 +788,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         std/list.c std/string.c std/vec.c)
     rage_test(item_collection_toggle tests/item_collection_toggle_unreached.c CLIENT core/memory.c
         std/container_memory.c std/string.c)
-    rage_test(item_definitions tests/item_info_support.c CLIENT core/utf8.c platform/win_utf8.c
-        platform/window_win32.c std/vec.c OBJECTS rage_test_weather_state_support LIBS rage_lua)
+    rage_test(item_definitions tests/item_info_support.c CLIENT core/utf8.c platform/code_page_win32.c
+        platform/window_sdl.c std/vec.c OBJECTS rage_test_weather_state_support LIBS rage_lua)
     rage_test(item_info CLIENT iteminfo/item_info.c iteminfo/item_list.c std/container_memory.c std/list.c
         std/string.c std/vec.c)
     rage_test(item_links CLIENT iteminfo/item_info.c iteminfo/item_link.c std/container_memory.c std/string.c
@@ -770,12 +808,12 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(jpeg_capture)
     rage_test(json_text CLIENT json/json_tree.c LIBS rage_json)
     rage_test(kafra_services LIBS rage_lua)
-    rage_test(language_input CLIENT core/utf8.c platform/code_page_win32.c platform/win_utf8.c)
+    rage_test(language_input CLIENT core/utf8.c platform/code_page_win32.c LIBS SDL3::SDL3)
     rage_test(line_layout CLIENT core/text_format.c core/text_markup.c core/utf8.c initializers/markup_tags.c
         iteminfo/item_info.c platform/code_page_win32.c std/container_memory.c std/std_comdats.c std/string.c
         std/vec.c ui/chat/message_tags.c ui/std/ui_std_vector.c)
     rage_test(link_buttons CLIENT core/utf8.c initializers/markup_tags.c iteminfo/item_info.c
-        platform/win_utf8.c platform/window_win32.c std/container_memory.c std/std_comdats.c std/string.c
+        platform/code_page_win32.c platform/window_sdl.c std/container_memory.c std/std_comdats.c std/string.c
         std/vec.c ui/chat/navi_text.c ui/std/ui_std_vector.c)
     rage_test(list_operations W1 CLIENT std/container_memory.c std/string.c std/tree.c std/vec.c
         ui/controls/combo_list.c ui/controls/controls_std.c ui/controls/listbox_ex.c ui/controls/listbox_id.c)
@@ -783,8 +821,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         contents/lua_calls.c contents/settings_json.c contents/user_hotkey_apply.c contents/user_hotkeys.c
         contents/whisper_block.c core/owned_text.c core/text_array.c core/text_encoding.c core/utf8.c
         json/json_tree.c json/service_json.c platform/code_page_win32.c platform/sha256_win32.c
-        platform/system_win32.c platform/win_utf8.c platform/window_win32.c session/chat_macro_json.c
-        session/session_chat_macros.c LIBS rage_json rage_lua)
+        platform/system_win32.c platform/window_sdl.c session/chat_macro_json.c session/session_chat_macros.c
+        LIBS rage_json rage_lua)
     rage_test(local_character CLIENT contents/character_settings.c contents/settings_file.c core/owned_text.c
         json/json_tree.c json/service_json.c platform/filesystem_win32.c platform/sha256_win32.c
         platform/system_win32.c platform/win_utf8.c LIBS rage_json)
@@ -797,9 +835,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(login_pin_state WE4013 CLIENT core/memory.c login/char_results.c login/login_dispatch.c
         platform/clock_win32.c)
     rage_test(lua_boundaries CLIENT core/utf8.c fileio/file.c fileio/resource_path.c
-        platform/code_page_win32.c platform/filesystem_win32.c platform/win_utf8.c platform/window_win32.c
-        std/container_memory.c std/string.c std/vec.c LIBS rage_lua)
-    rage_test(lua_calls CLIENT core/utf8.c platform/win_utf8.c platform/window_win32.c LIBS rage_lua)
+        platform/code_page_win32.c platform/filesystem_win32.c platform/window_sdl.c std/container_memory.c
+        std/string.c std/vec.c LIBS rage_lua)
+    rage_test(lua_calls CLIENT core/utf8.c platform/code_page_win32.c platform/window_sdl.c LIBS rage_lua)
     rage_test(lua_calls_disabled MAIN tests/test_lua_calls.c LIBS rage_lua)
     rage_test(lua_data_managers W1 WE4013 src/contents/champion_monster.c src/contents/check_attendance.c
         src/contents/pet_auto_feed.c src/contents/private_airplane_mgr.c src/contents/lua_data.c
@@ -827,7 +865,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(memory W4)
     rage_test(mercenary_job WE4013 GENERATED mercenary_job)
     rage_test(message_tables tests/message_tables_support.c CLIENT core/utf8.c iteminfo/item_loader.c
-        platform/win_utf8.c platform/window_win32.c std/container_memory.c std/string.c std/vec.c OBJECTS
+        platform/code_page_win32.c platform/window_sdl.c std/container_memory.c std/string.c std/vec.c OBJECTS
         rage_test_weather_state_support)
     rage_test(meteor_storm_waves WE4013 GENERATED meteor_storm_waves)
     rage_test(mode_lifecycle CLIENT world/mode_loop.c)
@@ -846,9 +884,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(model_resource_types CLIENT core/owned_text.c resources/model_res_queries.c)
     rage_test(monster_skill_info WE4013 CLIENT core/cstr.c core/memory.c core/xml.c std/string.c GENERATED
         monster_skill_info)
-    rage_test(mouse CLIENT core/utf8.c platform/win_utf8.c OBJECTS test_mouse_mouse test_mouse_window_win32)
+    rage_test(mouse CLIENT core/utf8.c platform/code_page_win32.c OBJECTS test_mouse_mouse
+        test_mouse_window_sdl)
     rage_test(multiline_draw W1 WE4013 CLIENT core/byte_array.c core/owned_text.c core/text_array.c
-        core/utf8.c platform/clock_win32.c platform/win_utf8.c platform/window_win32.c
+        core/utf8.c platform/clock_win32.c platform/code_page_win32.c platform/window_sdl.c
         ui/controls/edit3_lines.c ui/controls/window_coloured_lines.c ui/items/item_tag_buttons.c)
     rage_test(multiline_lines W1 WE4013 CLIENT core/byte_array.c core/fatal.c core/memory.c core/owned_text.c
         core/text_array.c core/utf8.c std/string.c ui/controls/edit3_lines.c
@@ -863,7 +902,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         navi/navi_object_queries.c navi/navi_records.c navi/navi_window.c platform/clock_win32.c
         std/container_memory.c std/string.c std/vec.c ui/quests/navigation_view.c)
     rage_test(navigation_objects tests/navigation_object_support.c CLIENT core/utf8.c navi/navi_containers.c
-        platform/win_utf8.c platform/window_win32.c std/container_memory.c std/string.c std/vec.c OBJECTS
+        platform/code_page_win32.c platform/window_sdl.c std/container_memory.c std/string.c std/vec.c OBJECTS
         rage_test_weather_state_support)
     rage_test(navigation_state tests/navigation_state_support.c CLIENT navi/navi_containers.c
         navi/navi_guide.c navi/navi_instance.c navi/navi_manager.c navi/navi_object_queries.c
@@ -928,7 +967,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         tests/render_operations_boundaries.h)
     rage_test(renderer_storage CLIENT core/utf8.c fileio/resource_path.c platform/clock_win32.c
         platform/code_page_win32.c platform/filesystem_win32.c platform/system_memory_win32.c
-        platform/thread_win32.c platform/win_utf8.c platform/window_win32.c std/std_sort.c)
+        platform/thread_win32.c platform/window_sdl.c std/std_sort.c)
     rage_test_run(renderer_storage_growth_failure COMMAND test_renderer_storage growth_failure EXIT 3)
     rage_test_run(renderer_storage_queue_failure COMMAND test_renderer_storage queue_failure EXIT 3)
     rage_test(renew_quest_text CLIENT contents/renew_quest_text.c core/memory.c core/utf8.c std/string.c)
@@ -991,10 +1030,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         effects/rag/rag_str_playback.c effects/str_animation.c effects/str_path.c render/math3d.c
         std/container_memory.c std/string.c std/vec.c)
     rage_test(string_move W4 CLIENT std/string.c)
-    rage_test(surface_lifecycle CLIENT core/utf8.c platform/clock_win32.c platform/system_memory_win32.c
-        platform/thread_win32.c platform/win_utf8.c platform/window_win32.c)
+    rage_test(surface_lifecycle CLIENT core/utf8.c platform/clock_win32.c platform/code_page_win32.c
+        platform/system_memory_win32.c platform/thread_win32.c platform/window_sdl.c)
     rage_test(tag_text_viewer CLIENT initializers/markup_tags.c iteminfo/item_info.c std/container_memory.c
-        std/std_comdats.c std/string.c std/vec.c ui/std/ui_std_vector.c)
+        std/std_comdats.c std/string.c std/vec.c ui/std/ui_std_vector.c LIBS SDL3::SDL3)
     rage_test(talk_option_lua LIBS rage_lua)
     rage_test(talk_option_storage)
     rage_test(talk_type CLIENT core/memory.c core/text_tokens.c core/text_util.c platform/code_page_win32.c
@@ -1032,7 +1071,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(ui_extensions W1 CLIENT core/abstract_method.c)
     rage_test(ui_invalidation OPTIONS /Oy- OBJECTS test_ui_invalidation_uiwindow)
     rage_test(url_link WE4013 tests/url_link_unreached.c CLIENT core/owned_text.c core/text_array.c GENERATED
-        url_link)
+        url_link LIBS SDL3::SDL3)
     rage_test(user_hotkeys)
     rage_test(utf8 W4 CLIENT core/utf8.c)
     rage_test(vending_retry CLIENT core/fatal.c core/memory.c game/msg_vending.c iteminfo/item_info.c
@@ -1096,9 +1135,6 @@ if(NOT WIN32)
             CLIENT ${platform_files} LIBS Freetype::Freetype Fontconfig::Fontconfig)
     endif()
     if(TARGET SDL3::SDL3)
-        # Silent: SDL's dummy audio driver, as every test has.
-        rage_test(miles_sdl CLIENT ${platform_files} DEFINES _POSIX_C_SOURCE=200809L
-            LIBS rage_dr_mp3 SDL3::SDL3 ARGS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures)
         # The clipboard needs a video driver; the offscreen one shows no window.
         rage_test(platform_window src/platform/window_sdl.c CLIENT ${platform_files}
             DEFINES _POSIX_C_SOURCE=200809L LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)

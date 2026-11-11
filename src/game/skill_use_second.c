@@ -302,7 +302,7 @@ int skill_use_second(const struct SkillCast *cast)
         return 1;
 
     case SKILL_BREAKFALL:
-        play_skill_wave_at("effect\\T_낙법.wav", 0.0f, -150.0f, 0.0f);
+        play_skill_wave("effect\\T_낙법.wav");
         return 1;
 
     case SKILL_TK_SEVENWIND:
@@ -392,7 +392,7 @@ int skill_use_second(const struct SkillCast *cast)
     case SKILL_SL_SWOO:
         if (!target)
             return 1;
-        play_skill_wave_at("effect\\T_슈웃.wav", 0.0f, -50.0f, 0.0f);
+        play_skill_wave("effect\\T_슈웃.wav");
         actor_restart_effect(target, 0x1a4);
         actor_launch_effect(target, 0x24d);
         return 1;
@@ -461,7 +461,7 @@ int skill_use_second(const struct SkillCast *cast)
         return 1;
 
     case SKILL_TK_MISSION:
-        play_skill_wave_at("effect\\T_피링.wav", 0.0f, -100.0f, 0.0f);
+        play_skill_wave("effect\\T_피링.wav");
         return 1;
 
     case SKILL_KN_ONEHAND:

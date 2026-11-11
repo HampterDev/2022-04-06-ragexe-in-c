@@ -1,5 +1,4 @@
 #include "core/app.h"
-#include "contents/sound.h"
 #include "platform/settings.h"
 #include "render/render_api.h"
 #include "render/render_options.h"
@@ -35,7 +34,6 @@ void read_startup_settings(void)
     memset(&g_deviceGuid, 0, sizeof g_deviceGuid);
     memset(&g_driverGuid, 0, sizeof g_driverGuid);
     g_soundMode = 2;
-    g_sound_speaker_type = 0;
 
     if (!platform_settings_open(g_registryKeyPath, PLATFORM_SETTINGS_QUERY, &key))
         return;
@@ -45,7 +43,6 @@ void read_startup_settings(void)
     read_startup_value(key, "GUIDDEVICE", PLATFORM_SETTING_BINARY, &g_deviceGuid, sizeof g_deviceGuid);
     read_startup_value(key, "GUIDDRIVER", PLATFORM_SETTING_BINARY, &g_driverGuid, sizeof g_driverGuid);
     read_startup_value(key, "SOUNDMODE", PLATFORM_SETTING_DWORD, &g_soundMode, sizeof g_soundMode);
-    read_startup_value(key, "SPEAKERTYPE", PLATFORM_SETTING_DWORD, &g_sound_speaker_type, sizeof g_sound_speaker_type);
     platform_settings_close(key);
 
     stale_guid();

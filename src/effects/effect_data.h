@@ -8,8 +8,8 @@
 
 enum RagStrOpKind {
     RAG_STR_FOLLOW,         /* the effect moves to its master */
-    RAG_STR_WAVE,           /* a wave at the effect, at a height */
-    RAG_STR_PLAYER_WAVE,    /* a wave at the player */
+    RAG_STR_WAVE,           /* a wave, when there is a player */
+    RAG_STR_PLAYER_WAVE,    /* a wave, even without a player */
     RAG_STR_QUAKE,          /* the quake message 0x7a */
     RAG_STR_DURATION,       /* the effect's duration is set */
 };
@@ -17,7 +17,6 @@ enum RagStrOpKind {
 struct RagStrOp {
     unsigned char kind;
     int value;              /* the quake parameter or the duration */
-    float height;
     const char *wave;
 };
 

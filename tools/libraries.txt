@@ -43,8 +43,9 @@ paths   core/
         platform/win_types.h
 
 library platform
-note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, crash
-        dumps, display depth, the text-input editor and IME (platform/language*.c), client paths,
+note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
+        (platform/audio_sdl.c), crash dumps, display depth, the text-input editor and IME
+        (platform/language.c), the window services on SDL (platform/window_sdl.c), client paths,
         and the main window's handle and state (core/window_state.c).
 uses    base
 paths   platform/
@@ -371,18 +372,18 @@ paths   ui/map/
 
 library app
 note    The composition points, the only library that may use the feature libraries: client_run and
-        startup (core/winmain.c, client_init.c, startup.c, app.c), the application layers and window
-        procedure (core/app_win32.c, app_sdl.c, wndproc.c), the manager table, the registries
-        (effects, windows and their rows, object types and their rows), the packet dispatchers, the
-        game mode's message switch (game/mode_msg.c), the login mode (login/mode.c, login_states.c,
-        login_dispatch.c, loginmode_vtables.c), the main loop (world/mode_loop.c) and the session's
-        construction (session/session_lifetime.c).
+        startup (core/winmain.c, client_init.c, startup.c, app.c), the SDL window and its events
+        (core/app_sdl.c), the manager table, the registries (effects, windows and their rows,
+        object types and their rows), the packet dispatchers, the game mode's message switch
+        (game/mode_msg.c), the login mode (login/mode.c, login_states.c, login_dispatch.c,
+        loginmode_vtables.c), the main loop (world/mode_loop.c) and the session's construction
+        (session/session_lifetime.c).
 uses    *
 paths   actor/actor_object_types.c
-        core/app.* core/app_sdl.c core/app_win32.c core/client_init.* core/client_managers.*
-        core/manager_table.* core/object_type_registry.* core/startup.c core/winmain.c
-        core/wndproc.c effects/effect_registry.* effects/skills/skill_object_types.c game/mode_msg.*
-        game/packet_dispatch.* game/packet_dispatch2.c login/login_dispatch.c login/login_states.c
+        core/app.* core/app_sdl.c core/client_init.* core/client_managers.* core/manager_table.*
+        core/object_type_registry.* core/startup.c core/winmain.c effects/effect_registry.*
+        effects/skills/skill_object_types.c game/mode_msg.* game/packet_dispatch.*
+        game/packet_dispatch2.c login/login_dispatch.c login/login_states.c
         login/loginmode_vtables.c login/mode.c resources/resource_object_types.c
         session/session_imports.h session/session_lifetime.c ui/character/character_object_types.c
         ui/chat/chat_object_types.c ui/controls/controls_object_types.c
@@ -495,7 +496,7 @@ include contents/ui_window_mgr.h world/tooltip.h
 include contents/user_hotkey_apply.c contents/client_lua.h contents/user_hotkeys.h
 include core/actor_slots.c actor/appearance.h
 include effects/effect_math.h effects/effect.h
-include effects/effect_sound.c effects/render_object.h
+include effects/effect_sound.c effects/effect.h
 include effects/rag/effect_prim_draw.c effects/rag/rag_effect.h
 include effects/rag/prim_flat_quads.c effects/rag/rag_effect.h
 include game/cells.c session/session_skills.h
@@ -755,9 +756,9 @@ link    render/tex_cache.c g_resMgr g_resPurgeAgeMs res_mgr_get res_mgr_release
 
 exception main-loop-state
 why     The game and login code switch modes through the main loop (mode_mgr_switch,
-        world/mode_loop.c), pump window messages (check_system_message, core/app_win32.c and
-        app_sdl.c), and read g_loginStartMode (core/winmain.c) and g_mapServerAidPending
-        (login/login_dispatch.c); all of these are in app.
+        world/mode_loop.c), pump window messages (check_system_message, core/app_sdl.c), and read
+        g_loginStartMode (core/winmain.c) and g_mapServerAidPending (login/login_dispatch.c); all
+        of these are in app.
 remove  Move mode_mgr_switch to the mode manager (world/mode_mgr.c), make the message pump a
         platform call, and define the two login globals in a login file below the knot.
 link    game/enter_map.c mode_mgr_switch

@@ -648,9 +648,9 @@ int ui_window_mgr_add_whisper_chat_to_whisper_wnd(struct UIWindowMgr *self, cons
         string_free(&code);
         if (opened) {
             if (res_mgr_is_available(g_resMgr(), g_whisperSound))
-                sound_play_wave(g_whisperSound, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+                sound_play_wave(g_whisperSound, 1.0f);
             else if (g_session1.playWhisperOpenSound)
-                sound_play_wave(SOUND_BUTTON, 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+                sound_play_wave(SOUND_BUTTON, 1.0f);
         }
     }
 

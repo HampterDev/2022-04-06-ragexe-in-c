@@ -140,7 +140,6 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
     if (info->hit_effect == -2) {
         self->hit_flash = 0;
     } else {
-        struct GameActor *player = (struct GameActor *)mode->world->player;
         const char *wave;
 
         self->hit_flash = 1;
@@ -160,8 +159,7 @@ static void sm_hit(struct GameActor *self, struct GameMode *mode, long long msg,
             }
             wave = session_get_weapon_hit_wave(&g_session1, w);
         }
-        sound_play_wave(wave, self->pos.x - player->pos.x, 0.0f, self->pos.z - player->pos.z,
-                        250, 40, 1.0f);
+        sound_play_wave(wave, 1.0f);
     }
 
     if (effect == 0x61f) {

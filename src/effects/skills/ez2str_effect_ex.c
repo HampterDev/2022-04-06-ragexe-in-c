@@ -120,9 +120,9 @@ void ez2_str_effect_ex_init(struct Effect *effect)
     self->start_frame = row->start_delay / 16;
     if (row->sound_path.size != 0)
         effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, string_cstr(&row->sound_path),
-                             self->start_frame + 1, 0.0f);
+                             self->start_frame + 1);
     if (row->quake_delay >= 0)
-        effect_add_sound_cue(&self->base, SOUND_CUE_GAME_MESSAGE, 0, row->quake_delay, 0.0f);
+        effect_add_sound_cue(&self->base, SOUND_CUE_GAME_MESSAGE, 0, row->quake_delay);
     if (row->flags & EZ2STR_EX_FLOOR)
         p->base.list_flags = EZ2STR_EX_LIST_FLOOR;
     if (row->flags & EZ2STR_EX_SCREEN_FILL)

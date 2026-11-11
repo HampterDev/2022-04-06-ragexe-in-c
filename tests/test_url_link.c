@@ -16,6 +16,9 @@ static HINSTANCE test_shell_open_ansi(HWND window, const char *operation, const 
                                       const char *parameters, const char *directory, int show);
 #define ShellExecuteW test_shell_open
 #define ShellExecuteA test_shell_open_ansi
+/* The shell's messages belong to the client's window: the HWND of its SDL window. */
+#define SDL_GetWindowProperties test_window_properties
+#define SDL_GetPointerProperty test_pointer_property
 #include "url_link_helper.inc"
 #include "url_link_handlers.inc"
 #include "../src/platform/desktop_win32.c"
@@ -24,8 +27,23 @@ static HINSTANCE test_shell_open_ansi(HWND window, const char *operation, const 
 struct UIHooks g_uiHooks;
 #undef ShellExecuteW
 #undef ShellExecuteA
+#undef SDL_GetWindowProperties
+#undef SDL_GetPointerProperty
 
-HWND g_hMainWnd = (HWND)0x1234;
+#define TEST_MAIN_WINDOW ((PlatformWindow)(uintptr_t)0x5678)
+#define TEST_HWND ((HWND)(uintptr_t)0x1234)
+PlatformWindow g_hMainWnd = TEST_MAIN_WINDOW;
+SDL_PropertiesID test_window_properties(SDL_Window *window)
+{
+    assert(window == TEST_MAIN_WINDOW);
+    return 7;
+}
+void *test_pointer_property(SDL_PropertiesID properties, const char *name, void *fallback)
+{
+    (void)fallback;
+    assert(properties == 7 && !strcmp(name, SDL_PROP_WINDOW_WIN32_HWND_POINTER));
+    return TEST_HWND;
+}
 static char opened[128];
 static wchar_t opened_wide[128];
 static int opens, ansi_opens, cases;
@@ -33,7 +51,7 @@ static int opens, ansi_opens, cases;
 static HINSTANCE WINAPI test_shell_open(HWND window, const wchar_t *operation, const wchar_t *file,
                                         const wchar_t *parameters, const wchar_t *directory, int show)
 {
-    assert(window == g_hMainWnd && !wcscmp(operation, L"open"));
+    assert(window == TEST_HWND && !wcscmp(operation, L"open"));
     assert(!parameters && !directory && show == SW_SHOWNORMAL);
     assert(wcslen(file) < sizeof opened_wide / sizeof *opened_wide);
     wcscpy(opened_wide, file);

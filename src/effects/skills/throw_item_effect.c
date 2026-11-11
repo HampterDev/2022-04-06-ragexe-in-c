@@ -540,13 +540,12 @@ void throw_item_effect_after_init(struct Effect *effect)
     if (type > THROW_COIN) {
         if (type == THROW_SPORE)
             effect_add_sound_cue(effect, SOUND_CUE_WAVE,
-                                 "effect\\G스포어익스플로젼.wav", 0,
-                                 0.0f);
+                                 "effect\\G스포어익스플로젼.wav", 0);
     } else if (type >= THROW_SHURIKEN) {
         effect_add_sound_cue(effect, SOUND_CUE_WAVE,
-                             "effect\\닌자_던지기.wav", 0, 0.0f);
+                             "effect\\닌자_던지기.wav", 0);
     } else if (type == THROW_BOTTLE) {
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "_heal_effect.wav", 0, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "_heal_effect.wav", 0);
     }
 }
 

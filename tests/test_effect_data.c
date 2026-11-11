@@ -92,8 +92,8 @@ int main(int argc, char **argv)
 
     /* A good override replaces the embedded data. */
     load_text(HEAD "\"RagEffect\": {\"30\": {\"Str\": {\"File\": \"x%d.str\", \"Variants\": 12}, \"Play\": "
-              "{\"Timeline\": [{\"At\": 4, \"AfterStr\": true, \"Do\": [{\"Follow\": true}, {\"Wave\": \"w.wav\", "
-              "\"Height\": -2.5}, {\"Wave\": \"p.wav\", \"AtPlayer\": true}, {\"Quake\": 1}, {\"Duration\": 7}]}], "
+              "{\"Timeline\": [{\"At\": 4, \"AfterStr\": true, \"Do\": [{\"Follow\": true}, {\"Wave\": \"w.wav\"}, "
+              "{\"Wave\": \"p.wav\", \"AtPlayer\": true}, {\"Quake\": 1}, {\"Duration\": 7}]}], "
               "\"Offset\": [1, 2.25, -3], \"OnStrEnd\": \"Stop\", \"StopFrame\": 9}}}, "
               "\"Ez2StrFile\": {\"7\": {\"File\": \"\xed\x9d\xa1\xea\xb8\xb0.str\", \"FullOnly\": true}}}");
     assert(g_errors == 0);
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     assert(b && b->variants == 12 && !strcmp(b->file, "x%d.str") && b->plays && b->cue_count == 1);
     assert(b->cues[0].at == 4 && b->cues[0].after_str == 1 && b->cues[0].op_count == 5);
     assert(b->cues[0].ops[0].kind == RAG_STR_FOLLOW && b->cues[0].ops[1].kind == RAG_STR_WAVE);
-    assert(b->cues[0].ops[1].height == -2.5f && b->cues[0].ops[2].kind == RAG_STR_PLAYER_WAVE);
+    assert(!strcmp(b->cues[0].ops[1].wave, "w.wav") && b->cues[0].ops[2].kind == RAG_STR_PLAYER_WAVE);
     assert(b->cues[0].ops[3].kind == RAG_STR_QUAKE && b->cues[0].ops[3].value == 1);
     assert(b->cues[0].ops[4].kind == RAG_STR_DURATION && b->cues[0].ops[4].value == 7);
     assert(b->offset[0] == 1.0f && b->offset[1] == 2.25f && b->offset[2] == -3.0f && b->stop_frame == 9);
@@ -164,12 +164,12 @@ int main(int argc, char **argv)
                     EZ, "At must be from 0");
     expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Wave\": \"a.wav\", "
                     "\"Quake\": 0}]}]}}}, " EZ, "one of Follow, Wave, Quake or Duration");
-    expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Height\": 1}]}]}}}, " EZ,
+    expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"AtPlayer\": true}]}]}}}, " EZ,
                     "one of Follow, Wave, Quake or Duration");
-    expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Quake\": 0, \"Height\": 1}]}]}}}, "
-                    EZ, "belong to a Wave");
+    expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Quake\": 0, \"AtPlayer\": true}]}]}}}, "
+                    EZ, "belongs to a Wave");
     expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Wave\": \"a.wav\", "
-                    "\"Height\": 1, \"AtPlayer\": true}]}]}}}, " EZ, "has no Height");
+                    "\"Height\": 1}]}]}}}, " EZ, "unknown key \"Height\"");
     expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Follow\": false}]}]}}}, " EZ,
                     "Follow must be true");
     expect_rejected(HEAD "\"RagEffect\": {\"5\": {\"Play\": {\"Timeline\": [{\"Do\": [{\"Fly\": true}]}]}}}, " EZ,

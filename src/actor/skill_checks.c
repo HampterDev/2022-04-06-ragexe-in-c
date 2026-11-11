@@ -108,11 +108,6 @@ static struct RagEffect *sot_launch(void *actor, int effect)
     return game_actor_launch_effect((struct GameActor *)actor, effect, zero, 0.0f);
 }
 
-static void sot_wave(const char *name, float x, float y, float z)
-{
-    sound_play_wave(name, x, y, z, 250, 40, 1.0f);
-}
-
 static void sot_motion(struct GameActor *self, int action, int motion, int last, int duration)
 {
     render_object_play_motion_range((struct RenderObject *)self, (unsigned char)action, (unsigned char)motion,
@@ -314,14 +309,14 @@ void game_actor_skill_on_target(struct GameActor *self, const struct ActorSkillU
         render_object_set_script_step_frames((struct RenderObject *)self, 6);
         sot_motion(self, 0x60, 1, 2, sot_attack_duration(self));
         game_send_message(0x7a, 0, 0, 0, 0);
-        sot_wave("effect\\mon_맹룡과강.wav", 0.0f, 0.0f, 0.0f);
+        sound_play_wave("effect\\mon_맹룡과강.wav", 1.0f);
         sot_launch(self, 0x107);
         sot_launch(self, 0x14a);
         break;
     case 0x172:
         sot_motion(self, 0x60, 3, 4, 1);
         game_send_message(0x7a, 0, 0, 0, 0);
-        sot_wave("effect\\맹호경파산.wav", 0.0f, 0.0f, 0.0f);
+        sound_play_wave("effect\\맹호경파산.wav", 1.0f);
         sot_launch(target, 0x178);
         break;
     case 0x173:

@@ -676,11 +676,6 @@ static void start(void)
     }
     snprintf(S.out, sizeof S.out, "%s", out ? out : ".");
     make_directory(S.out);
-#ifdef _WIN32
-    /* The Windows client has a real window: hidden, the desktop's mouse cannot reach it and
-       focus goes back where it was. */
-    ShowWindow(g_hMainWnd, SW_HIDE);
-#endif
     S.L = luaL_newstate();
     luaL_openlibs(S.L);
     luaL_register(S.L, "scene", scene_api);

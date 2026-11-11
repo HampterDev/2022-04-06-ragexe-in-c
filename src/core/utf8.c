@@ -208,26 +208,3 @@ size_t utf8_from_utf16(char *out, size_t capacity, const uint16_t *text, size_t 
     out[written] = 0;
     return written;
 }
-
-size_t utf16_feed(uint16_t *pending, uint16_t unit, unsigned long out[2])
-{
-    unsigned long u = (unsigned short)unit;
-    size_t count = 0;
-
-    if (*pending) {
-        unsigned long high = (unsigned short)*pending;
-
-        *pending = 0;
-        if (IS_LOW(u)) {
-            out[0] = 0x10000 + ((high - 0xd800) << 10) + (u - 0xdc00);
-            return 1;
-        }
-        out[count++] = UTF8_REPLACEMENT;
-    }
-    if (IS_HIGH(u)) {
-        *pending = unit;
-        return count;
-    }
-    out[count++] = IS_LOW(u) ? UTF8_REPLACEMENT : u;
-    return count;
-}

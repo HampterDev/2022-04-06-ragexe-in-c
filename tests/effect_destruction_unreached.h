@@ -17,7 +17,7 @@ float get_cos_deg(int deg) { abort(); }
 float get_sin_deg(int deg) { abort(); }
 unsigned char is_effect_state_cloaking(unsigned long state) { abort(); }
 void *effect_find_actor(int aid) { abort(); }
-void effect_play_wave_at(const char *wave, const Vec3 *position, float height) { abort(); }
+void effect_play_wave(const char *wave) { abort(); }
 Vec3 *effect_player_position(Vec3 *out) { abort(); }
 float g_cosTable[361] = {0};
 struct EffectMgr *g_effectMgr = {0};

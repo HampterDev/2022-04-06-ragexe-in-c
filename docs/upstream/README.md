@@ -235,6 +235,14 @@ the way and the validation are in
 | [bf6670583a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bf6670583ad3f988402e0b0c61ed56bb6b07cf77) | [037c1658e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/037c1658e345478fa62e89f452147e42b9552e27) (adapted) | Cut the Star Gladiator notice's job name to its packet field |
 | [34bd3bd2f9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/34bd3bd2f954c42af315de392a6940558e2fe865) | [8c02cc7c66](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c02cc7c6659d766422bf8a9f6a371dc8fa1bf29) | Whip effects: draw the joints' shimmer every frame, as the original does |
 
+The WAV pick (`8e895acb`) handed a PCM WAV to Miles as it was, without the client's chunk check.
+Since 2026-11-11 `custom` decodes every sound file when it loads, with SDL's WAV loader
+(`platform/audio_sdl.c`; `docs/custom-review.md`, "Sound without a position"), which walks the
+chunks within the file itself: of the pick's sloppy headers, a RIFF size that counts the whole file
+or is 0xFFFFFFFF and a data chunk longer than the file still play (`tests/test_audio.c`), an empty
+data chunk plays nothing, and a file that does not decode loads without a sound and plays nothing.
+`main` keeps the fix.
+
 ## Foundation fixes from the WARP port, 2026-11-06
 
 Found while porting WARP patches to `main` on the `warp-patches` branch, fixed on `main` and
@@ -373,3 +381,14 @@ reduces -90 to 270.
 | [8d01bd194a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8d01bd194a9f02ca4ccd70ebde3009fdb4fd3275) | Not needed on custom, code removed (cash shop) | Cash shop cart: page up and page down take the scroll arm |
 | [8aef09d5f4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8aef09d5f4d76c507e952dc12b40717f356497cf) | Not ported: docs/changes.md | docs: negative angles are no longer a change from the original |
 | [bbec17c670](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbec17c670b3756642f4a2ef625035984bf32bda) | Not ported: tests ea40abe7, which custom does not have | test_math3d: the cosine and radian lookups at -90 |
+
+## Foundation fix from the sound review, 2026-11-11
+
+A review of the sound change on `gpu-audio` found `game_mode_zc_sound` reading the 24-byte name of
+`ZC_SOUND` as a C string. The original reads it the same way, so it was bounded on `main` under its
+rule for data from outside, with a check in `main`'s packet-handler oracle, and picked with
+`git cherry-pick -x`. `custom` has neither that oracle nor `docs/changes.md`.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [82531e269b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/82531e269bc99a2864870be60f39092b511dc665) | [38a9093e27](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/38a9093e274dd606f98de2ce97bc6d6143b6dbff) | Read ZC_SOUND's sound name within its 24 bytes |

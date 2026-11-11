@@ -37,7 +37,7 @@ void winmain_on_crash(void)
 {
 }
 
-static int client_run(HINSTANCE instance)
+static int client_run(void)
 {
     struct InitResult init;
     struct PlatformFind *find;
@@ -82,7 +82,7 @@ static int client_run(HINSTANCE instance)
     session_startup(&g_session1);
 
     res_mgr_read_res_name_table(g_resMgr());
-    if (app_create_window(instance) == 0) {
+    if (app_create_window() == 0) {
         result = 1;
         goto com_done;
     }
@@ -108,8 +108,6 @@ static int client_run(HINSTANCE instance)
 
     frame_timer_start(0x3c);
     platform_focus_window(g_hMainWnd);
-    if (g_3dDevice.fullscreen != 0)
-        platform_show_cursor(0);
 
     ui_window_mgr_set_screen_size(&g_windowMgr, g_renderer->width,
                g_renderer->height);
@@ -150,10 +148,11 @@ com_done:
 #ifdef _WIN32
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_unused, LPSTR cmd_unused, int show)
 {
+    (void)instance;
     (void)prev_unused;
     (void)cmd_unused;
     (void)show;
-    return client_run(instance);
+    return client_run();
 }
 #else
 #include <unistd.h>
@@ -172,7 +171,7 @@ int main(int argc, char **argv)
     (void)argv;
     if (!files || chdir(files) != 0)
         SDL_Log("ragexe: cannot enter the game folder %s", files ? files : SDL_GetError());
-    return client_run(NULL);
+    return client_run();
 }
 #else
 /* Like a double-clicked Windows exe, run in the game folder: the current directory when it holds
@@ -203,7 +202,7 @@ static void enter_game_directory(void)
 int main(void)
 {
     enter_game_directory();
-    return client_run(NULL);
+    return client_run();
 }
 #endif
 #endif

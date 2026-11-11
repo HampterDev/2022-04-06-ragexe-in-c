@@ -1,32 +1,28 @@
 #include "contents/mouse.h"
 #include "render/device.h"
+#include "platform/window.h"
 #include "mouse_fixture.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+/* contents/mouse.c with the SDL platform layer: the pointer is where the input last put it
+   (platform_note_cursor, in client coordinates), and holding the left button captures the mouse
+   through SDL. */
 struct C3dDevice g_3dDevice;
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 static DWORD now;
-static POINT cursor;
 static unsigned captures, releases;
 
 uint32_t mouse_test_time(void) { return now; }
-BOOL mouse_test_cursor(POINT *point) { *point = cursor; return TRUE; }
-BOOL mouse_test_client(HWND window, POINT *point)
+bool mouse_test_capture(bool capture)
 {
-    assert(window == g_hMainWnd);
-    point->x -= 20;
-    point->y -= 30;
-    return TRUE;
+    if (capture)
+        ++captures;
+    else
+        ++releases;
+    return true;
 }
-HWND mouse_test_capture(HWND window)
-{
-    assert(window == g_hMainWnd);
-    ++captures;
-    return NULL;
-}
-BOOL mouse_test_release(void) { ++releases; return TRUE; }
 
 void mem_free(void *memory)
 {
@@ -47,8 +43,7 @@ int main(void)
     assert(g_mouse.wheel == 0 && g_mouse.wheel_pending == 0);
 
     now = 2000;
-    cursor.x = 100;
-    cursor.y = 200;
+    platform_note_cursor(80, 170);
     mouse_on_move(&g_mouse);
     assert(g_mouse.x == 0 && g_mouse.y == 0);
     mouse_read_state(&g_mouse);

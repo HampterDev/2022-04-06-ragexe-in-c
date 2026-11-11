@@ -24,7 +24,6 @@ void session_load_options(struct Session *self)
     sound_set_bgm_volume(session_get_option_int(self, "Bgm_Volume", 100));
     sound_set_bgm_fade_target(sound_bgm_volume());
     sound_set_effect_volume(effectVolume);
-    sound_set_effect_volume_3d(effectVolume);
 
     self->showWhisperWnd = session_get_option_int(self, "AutoOpen1to1Window", 1);
     self->showWhisperWndFriend = session_get_option_int(self, "AutoOpen1to1Window_Friend", 1);

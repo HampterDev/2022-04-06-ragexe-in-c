@@ -110,7 +110,7 @@ void root_twist_effect_init(struct Effect *effect)
 void root_twist_effect_after_init(struct Effect *effect)
 {
     if (effect->type == EFFECT_ROOT_TWIST)
-        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\su_roottwist.wav", 0, 0.0f);
+        effect_add_sound_cue(effect, SOUND_CUE_WAVE, "effect\\su_roottwist.wav", 0);
 }
 
 void root_twist_effect_process(struct Effect *effect)

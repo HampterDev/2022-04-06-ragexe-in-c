@@ -184,7 +184,7 @@ int gfx_present(struct C3dDevice *d, int vsync, int whole);
 int gfx_restore_all(struct C3dDevice *d);
 void gfx_evict_managed_textures(struct C3dDevice *d);
 void gfx_set_mipmaps(int on);
-void gfx_enum_adapter(const GUID *adapter, const char *desc, PlatformDisplay monitor);
+void gfx_enum_adapter(const GUID *adapter, const char *desc);
 
 gfx_surface *gfx_create_surface(int w, int h);
 gfx_surface *gfx_create_texture(int w, int h, int fmt);
@@ -328,7 +328,7 @@ int gfx_shadow_cascade(int cascade);
 void gfx_shadow_end(void);
 void gfx_shadow_receive(int receiver);
 
-typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx, PlatformDisplay monitor);
+typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx);
 int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);
 
 unsigned gfx_content_version(gfx_surface *s);

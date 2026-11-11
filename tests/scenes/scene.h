@@ -6,8 +6,9 @@
 
 /* The scene harness is the whole client with a few files swapped: the clock (scene_clock.c), the
    sockets (scene_net.c, an in-process map server), the threads (scene_thread.c), the settings
-   store (scene_settings.c), on Windows the cursor and key state (scene_input_win.c), and the
-   per-frame driver hook (scene_driver.c, which runs a Lua scene script). */
+   store (scene_settings.c), the per-frame driver hook (scene_driver.c, which runs a Lua scene
+   script) and, on Windows, the window (scene_app_win.c, never shown) and the message boxes
+   (scene_window_win.c). */
 
 #define SCENE_MAP_PORT 5121
 #define SCENE_FRAME_MS 16

@@ -22,18 +22,16 @@ int input_key_lparam(const struct InputKey *key)
     return (int)value;
 }
 
-int input_key(const struct InputKey *key)
+void input_key(const struct InputKey *key)
 {
     int lparam = input_key_lparam(key);
     platform_note_key(key->vk, key->down);
-    if (!key->down) {
+    if (!key->down)
         window_events_key_up(key->vk, lparam);
-        return 1;
-    }
-    if (key->alt || key->vk == VK_F10)
-        return ui_window_mgr_on_key_down(&g_windowMgr, key->vk, lparam, !key->repeat);
-    window_events_key_down(key->vk, lparam);
-    return 1;
+    else if (key->alt || key->vk == VK_F10)
+        ui_window_mgr_on_key_down(&g_windowMgr, key->vk, lparam, !key->repeat);
+    else
+        window_events_key_down(key->vk, lparam);
 }
 
 void input_char(int ch)

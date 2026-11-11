@@ -842,7 +842,6 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         g_sound_settings.effects_on = value;
         sound_set_bgm_volume(session_get_default_option_int(&g_session1, "Bgm_Volume", 100));
         sound_set_effect_volume(session_get_default_option_int(&g_session1, "Effect_Volume", 100));
-        sound_set_effect_volume_3d(session_get_default_option_int(&g_session1, "Effect_Volume", 100));
         ui_graphic_setting_wnd_load_options(self);
         return 0;
     case ID_COMMAND_LIST:
@@ -902,7 +901,6 @@ intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
             ui_window_invalidate_base(&self->effect_volume->base);
             ui_window_invalidate_base(WND(self));
             sound_set_effect_volume(pos);
-            sound_set_effect_volume_3d(pos);
             return pos - old;
         }
         if (sender == W(self->sprite_bar)) {

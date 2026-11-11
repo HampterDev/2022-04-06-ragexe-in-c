@@ -70,10 +70,10 @@ Arguments go to CTest:
   a run costs about 20 seconds plus the build of what changed.
 - A change to docs only needs no suite.
 
-Every test runs headless and silent: CTest gives it SDL's dummy video and audio drivers, and on
-Windows the message boxes of the client code under test go to stderr (`tests/headless.h`). A test
-that needs a real window is labelled `interactive` and left out by `tests\build.bat`. Keep new
-tests that way.
+Every test runs headless and silent: CTest gives it SDL's dummy video and audio drivers (`audio`
+the `disk` driver, which writes files), and on Windows the message boxes of the client code
+under test go to stderr (`tests/headless.h`). A test that needs a real window is labelled
+`interactive` and left out by `tests\build.bat`. Keep new tests that way.
 
 ## Commits
 

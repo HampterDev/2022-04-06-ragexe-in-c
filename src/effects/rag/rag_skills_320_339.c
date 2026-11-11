@@ -132,9 +132,9 @@ void rag_magnum_break2(struct RagEffect *self, const char *texture)
     if (self->frame == 0)
         self->id_state = 0;
     else if (self->frame == 20)
-        rag_play_wave_here(self, "permeter_attack.wav");
+        effect_play_wave("permeter_attack.wav");
     else if (self->frame == 30)
-        rag_play_wave_here(self, "effect\\EF_MagnumBreak.wav");
+        effect_play_wave("effect\\EF_MagnumBreak.wav");
     k = self->frame - 25;
     if ((unsigned)k <= 30 && self->frame % 3 == 0 && ++self->id_state < 11) {
         struct EffectPrim *p = rag_launch_prim(self, 0x49, 0.0f, 0.0f, 0.0f);
@@ -211,7 +211,7 @@ void rag_begin_asura(struct RagEffect *self, char style)
     if (self->frame == 0) {
         if (self->duration < 350)
             self->duration = 350;
-        rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+        effect_play_wave("effect\\EF_BeginSpell.wav");
         rag_casting_circle(self, 45, "effect\\ring_white.tga", 2);
         rag_casting_circle(self, 25, "effect\\ring_white.tga", 2);
     }
@@ -330,7 +330,7 @@ void rag_guard(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\kyrie_guard.wav");
+    effect_play_wave("effect\\kyrie_guard.wav");
     p = rag_launch_prim(self, 0x3d, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -402,9 +402,9 @@ void rag_time_bubbles(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame == 0) {
         if (style == 0)
-            rag_play_wave(self, "_heal_effect.wav", -40.0f);
+            effect_play_wave("_heal_effect.wav");
         else if (style == 1)
-            rag_play_wave(self, "effect\\흡기.wav", -80.0f);
+            effect_play_wave("effect\\흡기.wav");
     }
     if (self->frame > 20 || self->frame % 4 != 0)
         return;
@@ -497,11 +497,11 @@ void rag_triple_attack(struct RagEffect *self)
         }
     }
     if (self->frame == 10)
-        rag_play_wave_here(self, "effect\\EF_hit2.wav");
+        effect_play_wave("effect\\EF_hit2.wav");
     if (self->frame == 20)
-        rag_play_wave_here(self, "effect\\EF_hit4.wav");
+        effect_play_wave("effect\\EF_hit4.wav");
     if (self->frame == 30)
-        rag_play_wave_here(self, "effect\\EF_hit2.wav");
+        effect_play_wave("effect\\EF_hit2.wav");
 }
 
 void rag_maple(struct RagEffect *self)

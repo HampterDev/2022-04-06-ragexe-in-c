@@ -53,8 +53,9 @@ containers, numbers, 3D math, XML, Lua bytecode, compiled Korean literals, frame
 platform layer (clock, files, threads, sockets, code pages, SHA-256), JPEG, two extracted
 production routines and the Python checks (source encoding, the library table's include check,
 the map-name migration). 64-bit Windows adds the rest of the suite, about 290 tests that only
-build there; Linux and macOS add the settings store, FreeType text and, with SDL, the audio layer
-and the clipboard.
+build there; Linux and macOS add the settings store and FreeType text and, with SDL, the
+clipboard. Where SDL is part of the build (always on 64-bit Windows, which gets it from
+`cmake/SDL3.cmake` as the Linux client does), `audio` checks the sound module.
 
 Client files are compiled once, into one static library per library of `tools/libraries.txt`
 (`rage_client_<library>`), and each test links the libraries of the files it names; a test that
@@ -63,11 +64,13 @@ labelled with the libraries whose `.c` files it compiles, links or includes, so
 `ctest -L render` runs the tests a change in the render library reaches.
 
 Every test runs headless and silent: CTest gives it `SDL_VIDEO_DRIVER=dummy` and
-`SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `platform_window` the offscreen video
-driver, and `gfx_gl` keeps the platform's video driver, in a hidden window, for its OpenGL
-context. On Windows the client files the tests link show no message box: `tests/headless.h`
-writes it to stderr and answers with its default button. `platform_probe` shows a real window
-and is labelled `interactive`; leave it out with `ctest -LE interactive`.
+`SDL_AUDIO_DRIVER=dummy` (`RAGE_TEST_ENVIRONMENT`), `audio` SDL's `disk` driver, which writes
+into files in its directory, `platform_window` the offscreen video driver, and `gfx_gl` keeps the
+platform's video driver, in a hidden window, for its OpenGL context. SDL shows no message box
+with the dummy video driver, and on Windows the client libraries compile `platform/window_sdl.c`
+with `tests/headless.h`, which writes the client's message boxes to stderr even when a test
+program runs by hand. `platform_probe` shows a real window and is labelled `interactive`; leave
+it out with `ctest -LE interactive`.
 
 On Windows `tests\build.bat` configures `build\tests` with Ninja (Release, `/MT`), builds what
 changed and runs CTest on every core, then the oracle tests (`tests/oracle`), a 32-bit
@@ -155,9 +158,9 @@ IJL; visual comparison of full in-game screenshots is still pending.
   renderer-specific objects inside each backend. Shared POSIX behavior serves
   both macOS and Linux; use Apple-specific code only for Apple-specific services.
 - A platform module is one header with one file per implementation: `<module>_win32.c` for
-  Windows and `<module>_posix.c` for Linux, macOS and Android, or `_sdl.c` where that side is
-  written against SDL (`platform/window_sdl.c`, `core/app_sdl.c`). Code both sides share stays
-  in `<module>.c` (`platform/language.c`, `core/app.c`). Each
+  Windows and `<module>_posix.c` for Linux, macOS and Android. Code both sides share stays
+  in `<module>.c` (`platform/language.c`, `core/app.c`), and a module written against SDL is one
+  `_sdl.c` file for every platform (`platform/window_sdl.c`, `core/app_sdl.c`). Each
   implementation file starts with the `#ifdef _WIN32` or `#ifndef _WIN32` that selects it, so
   `build.bat`, which compiles every file under `src/`, and the client's CMake glob each get one
   implementation; `rage_platform` in `CMakeLists.txt` names its files by the same rule. Small
@@ -238,37 +241,61 @@ the workflow actually completes.
 
 ## Audio
 
-The client no longer links Miles Sound System, which exists only as a 32-bit DLL. On every
-platform `src/platform/miles_sdl.c` implements the Miles subset declared in
-`platform/miles_api.h` on SDL3: one device stream per digital driver at the requested rate and
-channels (22050 Hz, 16-bit; mono in 2D mode, stereo in 3D mode), mixed in the device callback.
-Samples are converted to the mix format when their file is set (`SDL_ConvertAudioSamples`); the background
-music is decoded from memory with the vendored `dr_mp3` and resampled by an
-`SDL_AudioStream`. Volumes are linear 0..127; sample and stream status uses the Miles
-done/playing values. The one 3D provider is named "Miles Fast 2D Positional Audio":
-inverse-distance attenuation between the minimum and maximum distance, silence beyond
-the maximum, and a left/right balance from the listener's orientation. Speaker and
-room types report "unsupported"; there is no reverb. `_AIL_set_redist_directory` and
-`_AIL_set_preference` do nothing, and no `.m3d` or `.asi` plugin is loaded.
+Sound goes through the client's own module, `platform/audio.h`, implemented once for every platform
+on SDL 3 in `platform/audio_sdl.c`. Until 2026-11-11 `platform/miles_sdl.c` implemented the subset
+of the Miles Sound System API (`platform/miles_api.h`) that the original calls, with a mixer of its
+own and a 3D provider; both files are gone (`docs/custom-review.md`, "Sound without a position").
 
-What the client asked of the game's `mss32.dll` and this leaves out is not heard: a 32-bit probe
-of that DLL on 2026-11-11 found "Miles Fast 2D Positional Audio" the only provider in the game
-folder, answering -1 for its speaker type, so `contents/sound.c` never set one (the `SPEAKERTYPE`
-setting had no effect there either), and supporting room types, of which the client only ever sets
-type 0 while giving every 3D sample an effects (reverb) level of 0. What does change is the mixing:
-this file's distance falloff and balance in place of the provider's, SDL's resampling and output
-device, and `dr_mp3` in place of `mp3dec.asi` for the music. They have not been compared with Miles
-sample by sample.
+- **Device.** `audio_open` opens SDL's default playback device with SDL's default format, and SDL
+  mixes every `SDL_AudioStream` bound to it itself, converting each to the device's format and rate
+  and applying each stream's gain. With the `SOUNDMODE` setting 1, the original's 2D mode, for which
+  the client opened a mono Miles driver, a post-mix callback averages the first two channels, so
+  both carry the same mono mix.
+- **Effects.** `audio_voice_play` gives a decoded sound its own stream, bound to the device with a
+  copy of the samples, a linear gain and nothing else; `audio_voice_playing` asks SDL whether the
+  stream still has output, and `audio_voice_stop` destroys it. `contents/sound.c` keeps the
+  original's 48 voices: an effect that finds all of them playing is dropped.
+- **Music.** `audio_music_play` reads the MP3 file into memory and decodes it with the vendored
+  `dr_mp3` on the device's thread, in the stream's get callback, as the device asks for more; it
+  plays the file `loop_count` times, 0 for ever, and `audio_music_done` answers once the last loop
+  has played out. The fade sets the music's gain in steps from its thread as before.
+- **Decoding.** `audio_sound_decode` reads a RIFF WAVE with SDL's own loader (`SDL_LoadWAV_IO` on
+  the bytes in memory: PCM, Microsoft and IMA ADPCM and SDL's other WAV formats) and anything that
+  starts with an ID3 tag or an MPEG frame sync with `dr_mp3`, as Miles' file type told the original
+  apart. It sets `SDL_HINT_WAVE_TRUNCATION` to `dropframe` once, with override priority, so an ADPCM
+  file whose last block is cut short keeps that block's whole frames whatever the environment says,
+  and cuts the result to whole frames, since SDL takes a PCM file's block size from its header. It
+  refuses a sound outside 1,000 to 384,000 Hz or longer than five minutes, so a damaged header
+  cannot hold a voice for hours; the game's WAVs are 8,000 to 48,000 Hz, the longest 40 s. A WAV
+  that is MPEG Layer 3 inside RIFF (format 0x55) decodes neither now nor in `miles_sdl.c` before;
+  `data.grf` has none, nor any MP3 data named `.wav`. `resources/wave.c` decodes a sound file once,
+  when it loads, and keeps the result in the resource cache; a file that reads but does not decode
+  loads without a sound and plays nothing.
 
-`_AIL_file_type`, `_AIL_WAV_info`, `_AIL_decompress_ADPCM` and `_AIL_decompress_ASI`
-give `resources/wave.c` the same data as Miles did: a PCM WAV image with a 44-byte
-header, freed by `_AIL_mem_free_lock`. Microsoft and IMA ADPCM both decode; the IMA
-decoder is the Intel/DVI reference algorithm (FFmpeg rounds differently). Every ADPCM
-file in `data.grf` (five IMA, one Microsoft) decoded identically to the reference
-decoders, and all 64 BGM tracks of the local game data played through.
-`test_miles_sdl` (built when SDL is part of the build, e.g. with
-`RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
-`tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
+Sounds have no position: there is no listener, 3D provider, distance, panning or falloff, and
+`sound_play_wave` takes the file and a volume only. Every effect plays at the effect volume times
+that volume, which is 1 for every caller but a map's sound sources (the RSW's own volume per
+source), and the music at the music volume. What the player hears differently from `miles_sdl.c`: no
+distance (in the default 3D mode its falloff and balance, in mode 1 the client's own), and the mix
+at the output device's rate instead of 22,050 Hz, so the music keeps the frequencies above 11 kHz
+that the old mix cut. The one test of distance left is a map's sound sources' own:
+`sound_maker_on_process` (`actor/small_actors.c`) starts a source's sound only while the player is
+within 130 of the source's range plus the diagonal of its area, measured from its position, and
+within 75 of its range from the edge of its area towards the player; within that it now plays at its
+full volume. Every one of the game's 2,976 WAV files (2,974 in `data.grf`, 2 loose under `data\wav`)
+decodes to the same samples as through `resources/wave.c` and `miles_sdl.c` before; without
+`dropframe` four IMA ADPCM files would lose a last block of 31 to 46 ms.
+
+`test_audio` (CTest's `audio`, built when SDL is part of the build: always on 64-bit Windows,
+elsewhere e.g. with `RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) decodes the ADPCM fixtures to their
+reference decodes, PCM byte for byte and the MP3 fixture to its tone, refuses rates and lengths
+beyond the bounds, feeds every prefix of each file and thousands of damaged copies to the decoder
+(on Windows each ending where readable memory ends), and mixes through SDL's disk driver: a voice
+plays its sound once, the music its two loops, a gain halves, a stereo sound stays stereo and the
+mono mode puts the mix in both channels. Given a game folder (`RAGE_AUDIO_GAME_DIR`, by default
+`client-files` beside the checkout; the test is labelled `game`) it also decodes PCM, 8-bit,
+stereo and both ADPCM sounds from `data.grf` and `BGM\01.mp3`, and mixes two effects with the music;
+without one that part is skipped. `tests/fixtures/make_audio_fixtures.py` regenerates the fixtures.
 
 ## Text
 
@@ -412,22 +439,62 @@ guardian and the treasure box ([tools/granny_export](../tools/granny_export/READ
 ### Window, input and IME
 
 Every platform's keys, characters and pointer go through one module, `core/user_input.h`: the
-Windows window procedure (`core/wndproc.c`), the SDL layer and the scene scripts all describe a key
-transition the same way (virtual-key code, the Win32 VK numbering in `platform/vk.h`; scan code;
-repeat; Alt held) and hand over pointer moves, buttons and wheel notches in scene pixels. The
-module packs the `lParam` scan-code layout that the window manager and edit boxes read, sends a
-press with Alt held, or F10, to the window manager's system-key handling (`WM_SYSKEYDOWN` on
-Windows) and everything else to `core/window_events.c`, and tells `platform_note_key` and
-`platform_note_cursor` the key and pointer state, which the SDL platform layer keeps and Windows
-keeps itself.
+SDL layer and the scene scripts both describe a key transition the same way (virtual-key code, the
+Win32 VK numbering in `platform/vk.h`; scan code; repeat; Alt held) and hand over pointer moves,
+buttons and wheel notches in scene pixels. The module packs the `lParam` scan-code layout that the
+window manager and edit boxes read, sends a press with Alt held, or F10, to the window manager's
+system-key handling (the original's `WM_SYSKEYDOWN`) and everything else to
+`core/window_events.c`, and tells `platform_note_key` and `platform_note_cursor` the key and
+pointer state, which the platform layer keeps. A character comes on its own only as Backspace or
+printable ASCII (`language_on_char`); other text arrives as UTF-8 through `language_commit`. The
+key state is what the window's key events said, so a key held while the window gets the focus
+counts once it is pressed again, and the lock keys' toggles start off.
 
-`core/app_sdl.c` replaces the Win32 window procedure. It creates the SDL window and GL context and
-turns SDL events into that input: Print Screen only as it goes up and Backspace also as a
-character, as Windows delivers them, the window activation, and touch screens through
-`core/touch.c` (*Android client*). Composition events go to `language_set_composition` and
-committed text to `language_commit`, both UTF-8 as the client's text is; the edit boxes'
-`language_place_candidates` reaches SDL's text input area on the desktop, so that the IME opens its
-candidate list below the composition's line as on Windows. The window sets
+`core/app_sdl.c` is the client's window on every platform, Windows included since 2026-11-11 (the
+Win32 window procedure and message loop of `core/wndproc.c` and `core/app_win32.c` are gone). It
+creates the SDL window, with a GL context off Windows (on Windows Direct3D 9 draws into the window's
+`HWND`, `SDL_PROP_WINDOW_WIN32_HWND_POINTER`), and turns SDL events into that input: Print Screen
+only as it goes up and Backspace also as a character, as Windows delivered them, the keypad with
+NumLock off as the navigation keys Windows names it by (Home, End, the arrows, Page Up and Down,
+Insert, Delete, Clear), the window activation, one close for SDL's close request and the quit that
+follows it, the client's own cursor taken out of the scene when the pointer leaves the client area
+(the system cursor is hidden over it, `SDL_HideCursor`), and touch screens through `core/touch.c`
+(*Android client*). AltGr types characters as Ctrl+Alt does, and Windows reported it to the Win32
+client as a left Ctrl and a right Alt, so that edit boxes took the keys pressed with it as
+characters (`altgr_down` in `ui/wndmgr/key_down.c`); SDL reports it as `SDLK_MODE` on X11 and
+Wayland and as a right Alt alone on Windows, and `app_sdl.c` turns either into Ctrl and Alt held,
+with the keys pressed with it carrying no Alt. The other keys follow SDL's: letters and digits by
+the keyboard layout, the rest by their US positions, so a punctuation key of another layout has
+the virtual key of the US key in its place (hotkeys bound to it with the Win32 client may now sit
+on another key), the AZERTY `,` key, in the US `M` position, gives `M` too, and the ISO `<>` key,
+Apps and the Hangul and Hanja keys give none and are not passed on.
+Composition events go to `language_set_composition` and committed text to `language_commit`, both
+UTF-8 as the client's text is; the edit boxes' `language_place_candidates` reaches SDL's text input
+area on the desktop, so that the IME opens its candidate list below the composition's line, as the
+Win32 client placed it. On a desktop the window is created hidden, its frame's corner put at
+`Window_XPos` and `Window_YPos` as `platform_window_rect` saves them, and then shown; X11 knows the
+frame only once the window is shown, so there the window is moved by it after showing (not tried on
+X11).
+
+On Windows `app_sdl.c` also does what the Win32 window did beyond SDL's defaults: the click that
+activates the window reaches the game (`SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH`), the window class keeps
+the name `Ragnarok` and the icon of the resources (`SDL_RegisterApp`, `SDL_HINT_WINDOWS_INTRESOURCE_ICON`),
+and a window that is not active shows its frame again at once when it is moved. SDL's Windows
+message hook takes a press on the caption, so that the client moves the window itself from its own
+loop and the game runs on while it is dragged, where Windows' move loop would stop it; a modal loop
+of the window's system menu counts as inactive (`app_activate`). The hook also tells a right Alt
+that came with the left Ctrl Windows sends for AltGr, which SDL leaves out, from a plain right Alt,
+and it queues the keys the IME takes in Hangul or kana mode, which Windows reports as
+`VK_PROCESSKEY` and SDL leaves out too, so that they reach the client in order with their scan
+codes and the hotkeys still find their letters (`ui_window_mgr_classify_key`); the IME still gets
+them. Direct3D 9's exclusive fullscreen gets a frameless window at the monitor's corner as large as
+the mode, at start (`c3d_device_init`) as in a switch at run time (`set_display`), not SDL's own
+fullscreen window; starting in exclusive fullscreen is left to be tried by hand. The process
+stays system-DPI-aware through the executable's manifest, which SDL's own per-monitor request
+cannot change. The IME's composition and candidates come from SDL's handling of `WM_IME_*`, which
+places the candidate list with `CFS_EXCLUDE` around the text input area and reports the cursor in
+UTF-16 units (the same as characters for Hangul); the password box still switches the IME to
+alphanumeric input through the window's input context (`platform_ime_alphanumeric`). The window sets
 `SDL_HINT_IME_IMPLEMENTED_UI` to `composition`: without it SDL does not report the preedit text
 and the IME draws its own window. SDL reports the end of a composition (an empty editing event)
 before the committed text, and the key that caused the commit never arrives as a key event, so a
@@ -435,18 +502,21 @@ commit right after a composition is taken as IME text whatever the key-as-text s
 window manager. With IBus and `ibus-hangul`, Hangul chat was typed, corrected with Backspace
 through and past the composition, and sent in game (`SDL_IM_MODULE=ibus`, `XMODIFIERS=@im=ibus`).
 
-`platform/window.h` holds the remaining window services: message boxes, key and mouse state,
-clipboard text, cursor visibility and clipping, window and monitor rectangles, window placement
-for windowed, frameless and fullscreen modes, and IME cancellation. They take the platform's own
-window and display (`platform/window_handle.h`: `PlatformWindow` and `PlatformDisplay`, on
-Windows a window and a monitor handle, elsewhere SDL's window and display id), so the SDL layer's
-window is the client's main window (`g_hMainWnd`) and the device's, with no cast and no copy of it
-in the platform code. The display queries follow the window: off Windows the window's display is
-the one SDL has it on, so a borderless or full-screen switch and its placement happen on the
-display the window is on, not always on the primary one. Message boxes and the clipboard take
+`platform/window.h` holds the remaining window services, `platform/window_sdl.c` on every
+platform: message boxes, key and mouse state, clipboard text, cursor clipping, window and monitor
+rectangles, window placement for windowed, frameless and fullscreen modes, and IME cancellation.
+They take SDL's window and display id (`platform/window_handle.h`: `PlatformWindow` and
+`PlatformDisplay`), so the SDL layer's window is the client's main window (`g_hMainWnd`) and the
+device's, with no cast and no copy of it in the platform code; the Direct3D 9 backend maps its
+adapters' monitors to SDL's displays (`SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER`). The display
+queries follow the window: the window's display is the one SDL has it on, so a borderless or
+full-screen switch and its placement happen on the display the window is on, not always on the
+primary one. Windowed placement takes the corner of the window's frame, as the Win32 window did,
+where SDL places the client area inside it; on X11 before the window manager has framed the window
+the frame counts as none. Message boxes and the clipboard take
 the client's UTF-8 as SDL does (a message box shows text that is not UTF-8 as CP949, the
 resource-name encoding, as Windows does), and the message box shows the error, warning or
-information icon the caller asked for;
+information icon the caller asked for and ignores the other flags, `MB_TASKMODAL` among them;
 `tests/test_platform_window.c` checks the clipboard in Korean, Japanese, Cyrillic, Western and
 emoji UTF-8, and U+FFFD for invalid bytes. The GL backend learns what covers the window (*Android client*) from `gfx_gl_set_cover`,
 which the SDL layer calls once a frame.
@@ -521,12 +591,12 @@ character, entered `iz_int03`, walked and chatted. The 21 tests pass there as we
 ## Windows client
 
 `build.bat` builds `build\ragexe.exe` (`build.bat dbg`: `ragexe_dbg.exe`), a 64-bit program with
-the Win32 window, GDI text and Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
+SDL's window (*Window, input and IME*), GDI text and the Direct3D 9 renderer. Until 2026-11-11 `build.bat` built a 32-bit
 client by default and this one with `x64`. The 32-bit client linked three DLLs of the original
 that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
 does:
 
-- sound goes through `platform/miles_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
+- sound goes through `platform/audio_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
   static SDL3 that `vendor\build_vendor.bat` downloads (the commit `cmake/SDL3.cmake` pins,
   hash-checked) and builds with CMake into `build\vendor`;
 - Granny models come from the converted glTF files (see *Linux client*) in place of RAD's
@@ -544,15 +614,17 @@ needs no Visual C++ redistributable. (The 32-bit client used the 32-bit runtime 
 ships; a 64-bit program skips those and would need the x64 redistributable installed.)
 `vendor\build_vendor.bat` writes what it built the libraries as into `build\vendor\kind.txt`, and a
 `build\vendor` without that file, or with another kind, such as a checkout's 32-bit libraries from
-before 2026-11-11, is removed and built again. The tests do not use `build\vendor`: CMake builds the
-libraries they link from `vendor/`.
+before 2026-11-11, is removed and built again. The tests do not use `build\vendor`'s libraries:
+CMake builds the ones they link from `vendor/`, and SDL through `cmake/SDL3.cmake`, from the source
+in `build\vendor\sdl3-src` when it is there.
 
 SDL is built with its video and GPU subsystems as well as audio, for the renderer of
 `plans/gpu-renderer.md`, with Vulkan and without OpenGL and OpenGL ES. SDL has no switch for its
 Direct3D 12 GPU driver, which it builds whenever `dxgi1_6.h` is found, so that driver is in too. The
-client calls only SDL's audio functions so far, but SDL's dynamic API table refers to every function
-SDL has, so the executable contains all three subsystems and imports `setupapi.dll` and
-`version.dll` for them, which `build.bat` already linked.
+client plays sound through SDL and, since 2026-11-11, runs in its window; it does not call the GPU
+API yet, but SDL's dynamic API table refers to every function SDL has, so the executable contains
+all three subsystems and imports `setupapi.dll` and `version.dll` for them. `build.bat` already
+linked every library they need.
 
 The crash report prints full-width addresses. `tests\scenes\build.bat` builds the scene harness,
 `build\ragexe_scenes.exe`. Against the last 32-bit build its captures of the scene set are the same
@@ -707,17 +779,20 @@ the other entry's second one, which is not an ordering; it compares like with li
 
 ## Remaining work
 
-1. macOS: check Hangul composition through the macOS input method and Retina scaling on
+1. Windows: check by hand Hangul composition and the Hanja candidate list through the Microsoft
+   IME on SDL's text input, the letter hotkeys in Hangul mode, AltGr on a German or French layout,
+   and starting in exclusive fullscreen.
+2. macOS: check Hangul composition through the macOS input method and Retina scaling on
    Apple hardware (the window does not ask for a high-density drawable,
    so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
    deprecated OpenGL later.
-2. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
-3. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
-4. Keep auditing pointer-width message arguments, raw strides and packed packet
+3. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
+4. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
+5. Keep auditing pointer-width message arguments, raw strides and packed packet
    fields; the sanitizer run covered login to the first map, not every window.
-5. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
+6. The GL backend does not multisample; Direct3D 9 uses 4x MSAA with transparency
    supersampling by default (*Scene captures*).
-6. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
+7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
    the default resolution is 4:3 whatever the screen's aspect (*Android client*).
 

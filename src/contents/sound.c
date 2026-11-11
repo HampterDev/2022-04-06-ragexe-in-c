@@ -1,14 +1,13 @@
 #include "contents/sound.h"
 #include "resources/wave.h"
 #include "fileio/resource_api.h"
+#include "platform/audio.h"
 #include "platform/client_options.h"
-#include "platform/miles_api.h"
-#include "render/math3d.h"
 #include "platform/thread.h"
 #include <stdlib.h>
 #include <string.h>
 
-#define SOUND_SAMPLES 48
+#define SOUND_VOICES 48
 #define FADE_STEPS 1000
 #define FADE_STEP_MS 10
 
@@ -17,17 +16,12 @@ struct SoundManager {
     struct PlatformThread *fade_thread;
     struct PlatformEvent *fade_cancel;
     int fade_in;
-    int miles_started;
-    void *driver;
-    void *stream;
-    void *samples[SOUND_SAMPLES];
-    void *samples_3d[SOUND_SAMPLES];
-    void *provider;
-    void *listener;
+    int audio_opened;
+    struct AudioMusic *music;
+    struct AudioVoice *voices[SOUND_VOICES];
     int bgm_fade_target;
     int bgm_volume;
     int effect_volume;
-    int effect_volume_3d;
     char *stream_name;
     char *bgm_name;
 };
@@ -35,13 +29,17 @@ struct SoundManager {
 static struct SoundManager *sound_manager;
 static int cleanup_registered;
 struct SoundSettings g_sound_settings = { 1, 1, 0 };
-int g_sound_speaker_type;
 
 static int clamp_volume(int volume)
 {
     if (volume > SOUND_VOLUME_MAX)
         return SOUND_VOLUME_MAX;
     return volume < 0 ? 0 : volume;
+}
+
+static float volume_gain(int volume)
+{
+    return (float)volume / SOUND_VOLUME_MAX;
 }
 
 static char *copy_name(const char *name)
@@ -55,10 +53,8 @@ static char *copy_name(const char *name)
 
 static void close_stream(struct SoundManager *mgr)
 {
-    if (mgr->stream) {
-        _AIL_close_stream(mgr->stream);
-        mgr->stream = NULL;
-    }
+    audio_music_stop(mgr->music);
+    mgr->music = NULL;
     free(mgr->stream_name);
     mgr->stream_name = NULL;
 }
@@ -66,30 +62,26 @@ static void close_stream(struct SoundManager *mgr)
 static void play_stream(struct SoundManager *mgr, const char *name, int loop_count)
 {
     char *copy;
-    if (!mgr->driver || !name || !*name)
+    if (!mgr->audio_opened || !name || !*name)
         return;
-    if (mgr->stream && strcmp(name, mgr->stream_name) == 0)
+    if (mgr->music && strcmp(name, mgr->stream_name) == 0)
         return;
     copy = copy_name(name);
     if (!copy)
         return;
     close_stream(mgr);
-    mgr->stream = _AIL_open_stream(mgr->driver, copy, 0);
-    if (!mgr->stream) {
+    mgr->music = audio_music_play(copy, loop_count, volume_gain(mgr->bgm_volume));
+    if (!mgr->music) {
         free(copy);
         return;
     }
     mgr->stream_name = copy;
-    _AIL_set_stream_volume(mgr->stream, mgr->bgm_volume);
-    _AIL_set_stream_loop_count(mgr->stream, loop_count);
-    _AIL_start_stream(mgr->stream);
 }
 
 static void set_bgm_volume(struct SoundManager *mgr, int volume)
 {
     mgr->bgm_volume = clamp_volume(volume);
-    if (mgr->stream)
-        _AIL_set_stream_volume(mgr->stream, mgr->bgm_volume);
+    audio_music_set_gain(mgr->music, volume_gain(mgr->bgm_volume));
 }
 
 static void sound_fade_thread(void *context)
@@ -135,20 +127,10 @@ static void destroy_manager(struct SoundManager *mgr)
     int i;
     stop_fade(mgr);
     close_stream(mgr);
-    for (i = 0; i < SOUND_SAMPLES; ++i) {
-        if (mgr->samples_3d[i])
-            _AIL_release_3D_sample_handle(mgr->samples_3d[i]);
-        if (mgr->samples[i])
-            _AIL_release_sample_handle(mgr->samples[i]);
-    }
-    if (mgr->listener)
-        _AIL_close_3D_listener(mgr->listener);
-    if (mgr->provider)
-        _AIL_close_3D_provider(mgr->provider);
-    if (mgr->driver)
-        _AIL_close_digital_driver(mgr->driver);
-    if (mgr->miles_started)
-        _AIL_shutdown();
+    for (i = 0; i < SOUND_VOICES; ++i)
+        audio_voice_stop(mgr->voices[i]);
+    if (mgr->audio_opened)
+        audio_close();
     if (mgr->fade_cancel)
         platform_event_destroy(mgr->fade_cancel);
     platform_mutex_destroy(mgr->stream_lock);
@@ -158,46 +140,10 @@ static void destroy_manager(struct SoundManager *mgr)
 
 static int open_manager(struct SoundManager *mgr)
 {
-    int i, channels;
-    void *next = NULL, *provider = NULL;
-    char *name = NULL;
     if (g_soundMode == 0)
         return 1;
-    _AIL_set_redist_directory(".\\");
-    _AIL_startup();
-    mgr->miles_started = 1;
-    channels = g_soundMode == 1 ? 1 : 2;
-    _AIL_set_preference(15, 0);
-    mgr->driver = _AIL_open_digital_driver(22050, 16, channels, 1);
-    if (!mgr->driver)
-        return 0;
-    if (g_soundMode == 1) {
-        for (i = 0; i < SOUND_SAMPLES; ++i) {
-            mgr->samples[i] = _AIL_allocate_sample_handle(mgr->driver);
-            if (!mgr->samples[i])
-                break;
-        }
-    } else if (g_soundMode == 2) {
-        while (_AIL_enumerate_3D_providers(&next, &provider, &name)) {
-            if (name && strcmp(name, "Miles Fast 2D Positional Audio") == 0) {
-                if (_AIL_open_3D_provider(provider) != 0)
-                    return 0;
-                mgr->provider = provider;
-                if (_AIL_3D_speaker_type(provider) != -1)
-                    _AIL_set_3D_speaker_type(provider, g_sound_speaker_type);
-                mgr->listener = _AIL_open_3D_listener(provider);
-                if (!mgr->listener)
-                    return 0;
-                for (i = 0; i < SOUND_SAMPLES; ++i) {
-                    mgr->samples_3d[i] = _AIL_allocate_3D_sample_handle(provider);
-                    if (!mgr->samples_3d[i])
-                        break;
-                }
-                break;
-            }
-        }
-    }
-    return 1;
+    mgr->audio_opened = audio_open(g_soundMode == 1);
+    return mgr->audio_opened;
 }
 
 int sound_mgr_create(void)
@@ -211,7 +157,7 @@ int sound_mgr_create(void)
     mgr->stream_lock = platform_mutex_create();
     mgr->fade_cancel = platform_event_create();
     mgr->bgm_fade_target = mgr->bgm_volume = 100;
-    mgr->effect_volume = mgr->effect_volume_3d = 100;
+    mgr->effect_volume = 100;
     if (!mgr->fade_cancel || !open_manager(mgr)) {
         destroy_manager(mgr);
         return 0;
@@ -266,7 +212,6 @@ void sound_play_bgm(const char *name)
     else if (g_sound_settings.bgm_on && g_soundMode)
         play_stream(mgr, copy, 0);
     platform_mutex_unlock(mgr->stream_lock);
-    sound_set_room_type(0);
 }
 
 void sound_stop_stream(void)
@@ -286,7 +231,7 @@ int sound_stream_done(void)
     if (!mgr || !g_soundMode)
         return 0;
     platform_mutex_lock(mgr->stream_lock);
-    done = mgr->stream && _AIL_stream_status(mgr->stream) == MSS_STREAM_DONE;
+    done = audio_music_done(mgr->music);
     platform_mutex_unlock(mgr->stream_lock);
     return done;
 }
@@ -294,74 +239,30 @@ int sound_stream_done(void)
 void sound_bgm_fade_in(void) { start_fade(1); }
 void sound_bgm_fade_out(void) { start_fade(0); }
 
-static char sound_play_2d(struct SoundManager *self, void *file, const float *x, const float *y,
-                          const float *z, int max_distance, int full_distance, float volume_scale)
+static int scaled_volume(const struct SoundManager *self, float scale)
 {
-    float flat = float_sqrt(*x * *x + *z * *z);
-    float distance = float_sqrt(*y * *y + flat * flat);
-    int volume, i;
-
-    if (distance >= (float)max_distance)
-        return 0;
-    volume = self->effect_volume;
-    if (!((float)full_distance >= distance))
-        volume = (int)((float)volume * (float)full_distance / distance);
-    volume = (int)((float)volume * volume_scale);
-    for (i = 0; i < SOUND_SAMPLES; i++) {
-        void *sample = self->samples[i];
-
-        if (sample && _AIL_sample_status(sample) == MSS_SAMPLE_DONE) {
-            _AIL_init_sample(sample);
-            _AIL_set_sample_file(sample, file, 0);
-            _AIL_set_sample_volume(sample, volume);
-            _AIL_start_sample(sample);
-            return 1;
-        }
-    }
-    return 0;
+    float volume = (float)self->effect_volume * scale;
+    return volume >= SOUND_VOLUME_MAX ? SOUND_VOLUME_MAX : volume > 0.0f ? (int)volume : 0;
 }
 
-static char sound_play_3d(struct SoundManager *self, void *file, const float *x, const float *y,
-                              const float *z, int max_distance, int full_distance, float volume_scale)
-{
-    int volume = (int)((float)self->effect_volume_3d * volume_scale);
-    int i;
-
-    if (!self->provider)
-        return sound_play_2d(self, file, x, y, z, 250, 40, 1.0f);
-    for (i = 0; i < SOUND_SAMPLES; i++) {
-        void *sample = self->samples_3d[i];
-
-        if (!sample || _AIL_3D_sample_status(sample) != MSS_SAMPLE_DONE)
-            continue;
-        if (!_AIL_set_3D_sample_file(sample, file))
-            return 0;
-        _AIL_set_3D_sample_effects_level(sample, 0.0f);
-        _AIL_set_3D_position(sample, *x, *y, *z);
-        _AIL_set_3D_orientation(sample, -*x, -*y, -*z, 0.0f, 1.0f, 0.0f);
-        _AIL_set_3D_sample_volume(sample, volume);
-        _AIL_set_3D_sample_distances(sample, (float)max_distance, (float)full_distance);
-        _AIL_start_3D_sample(sample);
-        return 1;
-    }
-    return 0;
-}
-
-void sound_play_wave(const char *name, float x, float y, float z,
-                                int max_distance, int full_distance, float volume_scale)
+void sound_play_wave(const char *name, float volume)
 {
     struct SoundManager *self = sound_manager;
     struct Wave *wave;
+    int i;
 
     if (!self || !name || g_soundMode == 0 || !g_sound_settings.effects_on)
         return;
     wave = (struct Wave *)res_mgr_get(g_resMgr(), name);
-    if (!wave)
+    if (!wave || !wave->sound || (g_soundMode != 1 && g_soundMode != 2))
         return;
-    if (g_soundMode == 1)
-        sound_play_2d(self, wave->data, &x, &y, &z, max_distance, full_distance, volume_scale);
-    else if (g_soundMode == 2)
-        sound_play_3d(self, wave->data, &x, &y, &z, max_distance, full_distance, volume_scale);
+    for (i = 0; i < SOUND_VOICES; i++) {
+        if (!audio_voice_playing(self->voices[i])) {
+            audio_voice_stop(self->voices[i]);
+            self->voices[i] = audio_voice_play(wave->sound, volume_gain(scaled_volume(self, volume)));
+            return;
+        }
+    }
 }
 
 void sound_end_samples(void)
@@ -370,15 +271,10 @@ void sound_end_samples(void)
     int i;
     if (!self)
         return;
-
-    for (i = 0; i < SOUND_SAMPLES; i++)
-        if (self->samples[i])
-            _AIL_end_sample(self->samples[i]);
-    if (!self->provider)
-        return;
-    for (i = 0; i < SOUND_SAMPLES; i++)
-        if (self->samples_3d[i])
-            _AIL_end_3D_sample(self->samples_3d[i]);
+    for (i = 0; i < SOUND_VOICES; i++) {
+        audio_voice_stop(self->voices[i]);
+        self->voices[i] = NULL;
+    }
 }
 
 int sound_bgm_volume(void)
@@ -427,26 +323,4 @@ void sound_set_effect_volume(int volume)
 {
     if (sound_manager)
         sound_manager->effect_volume = clamp_volume(volume);
-}
-
-void sound_set_effect_volume_3d(int volume)
-{
-    if (sound_manager)
-        sound_manager->effect_volume_3d = clamp_volume(volume);
-}
-
-void sound_set_listener_angle(float angle)
-{
-    struct SoundManager *mgr = sound_manager;
-    int degrees = (int)(180.0f - angle);
-    if (mgr && mgr->listener)
-        _AIL_set_3D_orientation(mgr->listener, get_sin_deg(degrees), 0.0f,
-                               -get_cos_deg(degrees), 0.0f, 1.0f, 0.0f);
-}
-
-void sound_set_room_type(int room_type)
-{
-    struct SoundManager *mgr = sound_manager;
-    if (mgr && mgr->provider && _AIL_3D_room_type(mgr->provider) != -1)
-        _AIL_set_3D_room_type(mgr->provider, room_type);
 }

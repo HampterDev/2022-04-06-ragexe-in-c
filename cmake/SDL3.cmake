@@ -14,8 +14,32 @@ if(NOT SDL3_FOUND)
     endif()
     set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
     set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    if(WIN32)
+        # The Windows tests (tests/CMakeLists.txt) link SDL as vendor\build_vendor.bat builds it for
+        # the client: audio, video and the GPU API on Vulkan, no OpenGL, no renderer or input devices
+        # beyond keyboard and mouse. That script fetched the same commit into build\vendor\sdl3-src;
+        # its source is used when it is there.
+        foreach(option VIDEO GPU VULKAN)
+            set(SDL_${option} ON CACHE BOOL "" FORCE)
+        endforeach()
+        foreach(option EXAMPLES OPENGL OPENGLES RENDER CAMERA JOYSTICK HAPTIC HIDAPI SENSOR POWER DIALOG TRAY)
+            set(SDL_${option} OFF CACHE BOOL "" FORCE)
+        endforeach()
+        if(NOT FETCHCONTENT_SOURCE_DIR_SDL3 AND EXISTS ${PROJECT_SOURCE_DIR}/build/vendor/sdl3-src/CMakeLists.txt)
+            set(FETCHCONTENT_SOURCE_DIR_SDL3 ${PROJECT_SOURCE_DIR}/build/vendor/sdl3-src)
+        endif()
+    endif()
     FetchContent_Declare(SDL3
         URL https://codeload.github.com/libsdl-org/SDL/tar.gz/829a65d769d935c4852f8159e964312c0957260a
         URL_HASH SHA256=48e15cf1a6928453d77afa955d1fdfbbca9169e2bc3d76d111acb9b8bb076d66)
-    FetchContent_MakeAvailable(SDL3)
+    if(MSVC)
+        # SDL compiles with /utf-8, which the client's /source-charset:utf-8 and
+        # /execution-charset:.949 (the top CMakeLists.txt) contradict: SDL gets its own options.
+        get_property(rage_options DIRECTORY PROPERTY COMPILE_OPTIONS)
+        set_property(DIRECTORY PROPERTY COMPILE_OPTIONS "")
+        FetchContent_MakeAvailable(SDL3)
+        set_property(DIRECTORY PROPERTY COMPILE_OPTIONS "${rage_options}")
+    else()
+        FetchContent_MakeAvailable(SDL3)
+    endif()
 endif()

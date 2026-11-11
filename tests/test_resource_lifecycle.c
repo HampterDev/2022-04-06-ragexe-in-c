@@ -20,11 +20,9 @@ static void *lifecycle_calloc(size_t count, size_t size)
 #undef free
 #include "../src/session/session_granny_hooks.c"
 
-#define AIL_FILE_WAV 1
-
 static unsigned sdk_handles, file_closes, errors, wave_frees;
 static int file_available = 1, sdk_version = 1, sdk_read = 1, sdk_info = 1;
-static int wave_kind = AIL_FILE_WAV, rigid = 1, has_alpha = 1;
+static int decodes = 1, rigid = 1, has_alpha = 1;
 static int vertex_count = 3, index_count = 3, invalid_index, fail_deformer;
 static unsigned deformer_call;
 static unsigned texture_copies;
@@ -164,34 +162,21 @@ struct Texture *texture_from_pixels(int w, int h,
     return texture;
 }
 
-int _AIL_file_type(const void *data, unsigned size)
-{ assert(data && size == sizeof file_data); return wave_kind; }
-int _AIL_WAV_info(const void *data, struct AilSoundInfo *out)
-{
-    assert(data); memset(out, 0, sizeof *out);
-    out->data = (const BYTE *)data + 60; out->dataLen = 8; out->rate = 8000;
-    out->bits = 4; out->channels = 1; out->samples = 9; out->blockSize = 8;
-    return 1;
-}
-int _AIL_decompress_ADPCM(const struct AilSoundInfo *in, void **out, unsigned *size)
-{ assert(in && size); *out = sdk_alloc(); *size = 62; return 1; }
-int _AIL_decompress_ASI(const void *data, unsigned size, const char *name,
-    void **out, unsigned *out_size, void *callback)
-{ assert(data && size == sizeof file_data && name && out_size && !callback); *out = sdk_alloc(); *out_size = 62; return 1; }
-void _AIL_mem_free_lock(void *p) { sdk_free(p); ++wave_frees; }
+struct AudioSound *audio_sound_decode(const void *data, size_t size)
+{ assert(data == file_data && size == sizeof file_data); return decodes ? sdk_alloc() : NULL; }
+void audio_sound_free(struct AudioSound *sound) { if (sound) { sdk_free(sound); ++wave_frees; } }
 
 static void test_wave(void)
 {
-    const int kinds[] = {AIL_FILE_WAV, AIL_FILE_ADPCM, AIL_FILE_ASI};
     unsigned i;
-    for (i = 0; i < sizeof kinds / sizeof *kinds; ++i) {
+    for (i = 0; i < 2; ++i) {
         struct Res *res = wave_resource_create();
         struct Wave *wave = (struct Wave *)res;
         assert(res && res->ops == &wave_resource_ops && !resource_is_resident(res));
-        resource_update(res); wave_kind = kinds[i];
-        assert(resource_load(res, "sound.wav") && wave->data);
+        resource_update(res); decodes = i == 0;
+        assert(resource_load(res, "sound.wav") && !wave->sound == !decodes);
         wave_resource_reset(wave); wave_resource_reset(wave);
-        assert(!wave->data && !wave->milesOwned && !sdk_handles && outstanding == 1);
+        assert(!wave->sound && !sdk_handles && outstanding == 1);
         assert(resource_load(res, "sound.wav"));
         assert(resource_load(res, "replacement.wav"));
         resource_destroy(res); assert(!outstanding && !sdk_handles);
@@ -201,7 +186,8 @@ static void test_wave(void)
         file_available = 0; assert(!resource_load(res, "missing.wav"));
         resource_destroy(res); file_available = 1; assert(!outstanding);
     }
-    assert(wave_frees == 6);
+    decodes = 1;
+    assert(wave_frees == 3);
 }
 
 static void fixture(void)

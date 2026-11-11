@@ -17,7 +17,7 @@ void rag_stone_chips(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_icewall.wav");
+    effect_play_wave("effect\\wizard_icewall.wav");
     self->duration = 9999;
     for (i = -2; i < 4; i += 2) {
         struct EffectPrim *p;
@@ -93,7 +93,7 @@ static void fireball(struct RagEffect *self, int turned, float turn, int r, int 
 void rag_fireball_volleys(struct RagEffect *self)
 {
     if (self->frame == 5)
-        sound_play_wave("effect\\EF_FireBall.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\EF_FireBall.wav", 1.0f);
     if (self->frame >= 0 && self->frame <= 3)
         fireball(self, 0, 0.0f, 0x9b, 0x9b, 0xff, 5);
     if (self->frame >= 6 && self->frame <= 9)
@@ -430,12 +430,12 @@ unsigned char rag_spreading_rings(struct RagEffect *self, const char *tex,
         three_rings_60(self, tex, short13, radius, 25);
     if (wide == 1) {
         if (self->frame == 30) {
-            rag_play_wave_here(self, "effect\\EF_GlassWall.wav");
+            effect_play_wave("effect\\EF_GlassWall.wav");
             three_rings_60(self, tex, tall24, radius, 90);
         }
     } else {
         if (self->frame == 30) {
-            rag_play_wave_here(self, "effect\\EF_GlassWall.wav");
+            effect_play_wave("effect\\EF_GlassWall.wav");
             three_rings_60(self, tex, tall34, radius, 90);
         }
         if (self->frame == 60)

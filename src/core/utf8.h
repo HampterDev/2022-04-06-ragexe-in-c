@@ -62,9 +62,4 @@ size_t utf8_encode(unsigned long code_point, char out[UTF8_CHAR_MAX]);
    nothing when capacity is 0. */
 size_t utf8_from_utf16(char *out, size_t capacity, const uint16_t *text, size_t count);
 
-/* Feeds one UTF-16 unit, as WM_CHAR delivers them, and writes the completed code
-   points to out (0-2 of them). A high surrogate waits in *pending for its low
-   surrogate; an unpaired surrogate becomes U+FFFD. */
-size_t utf16_feed(uint16_t *pending, uint16_t unit, unsigned long out[2]);
-
 #endif

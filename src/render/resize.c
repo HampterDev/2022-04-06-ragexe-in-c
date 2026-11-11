@@ -156,17 +156,14 @@ static int current_kind(const struct C3dDevice *d)
 
 static void read_geometry(struct C3dDevice *d, int fullscreen, int w, int h)
 {
-    RECT rc;
     if (fullscreen) {
         d->rcWindow = (RECT){0, 0, w, h};
         d->width = w;
         d->height = h;
-        d->rcClient = d->rcWindow;
     } else {
         platform_client_rect(d->hwnd, &d->rcWindow);
         d->width = d->rcWindow.right;
         d->height = d->rcWindow.bottom;
-        d->rcClient = *window_client_rect_on_monitor(&rc, d->hwnd);
     }
 }
 
@@ -227,10 +224,6 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
         if (d->width != modeW || d->height != modeH)
             gfx_set_mode(d, NULL, d->width, d->height, 0);
     }
-    if (devFull && !wasDevFull)
-        platform_show_cursor(0);
-    else if (!devFull && wasDevFull)
-        platform_show_cursor(1);
     if (r) {
         renderer_set_projection(r, d->width, d->height);
         if (r->clipLeft == -40.0f) {

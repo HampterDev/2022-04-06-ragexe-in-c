@@ -79,171 +79,149 @@ static struct PlatformThread *begin_thread(void (*entry)(void *context), void *c
 #undef platform_event_create
 #undef platform_thread_create
 
+/* The audio module, as sound.c sees it: an opened device, voices and one music stream. */
+#define VOICES 64
 uint32_t g_soundMode;
-static int started, driver_open, provider_open, listener_open, stream_open;
-static int fail_driver, fail_provider, fail_listener, fail_stream, no_provider;
-static int sample_limit, sample_allocated, sample_3d_allocated, enumerations, provider_index;
-static int stream_attempts, stream_starts, sample_starts, sample_3d_starts;
-static int volume_2d, volume_3d, loop_count, expected_channels;
-static int release_count, shutdown_count, room_type, wave_missing, reject_3d;
-static int sample_storage[48], sample_3d_storage[48], driver_token, provider_token, listener_token, stream_token;
-static float last_position[3], last_orientation[3], distances[2];
-static char last_stream[128], last_wave[128];
+static int device_open, device_mono, fail_open, fail_music, music_open, music_done_answer;
+static int open_count, close_count, music_attempts, voice_starts, voice_limit, wave_missing, undecodable;
+static int music_loops;
+static float last_gain, voice_gain[VOICES];
+static int voice_live[VOICES], voice_playing[VOICES];
+static struct AudioSound *decoded = (struct AudioSound *)&decoded;
+static char last_music[128], last_wave[128];
 static struct Wave wave_resource;
 static struct ResMgr resource_manager;
-static HANDLE volume_entered, volume_release;
-static volatile LONG block_volume, stream_volume;
+static HANDLE gain_entered, gain_release;
+static volatile LONG block_gain, music_gain;
 
 struct ResMgr *g_resMgr(void) { return &resource_manager; }
 void *res_mgr_get(struct ResMgr *mgr, const char *name)
 {
     assert(mgr == &resource_manager);
     strcpy_s(last_wave, sizeof last_wave, name);
+    wave_resource.sound = undecodable ? NULL : decoded;
     return wave_missing ? NULL : &wave_resource;
 }
-float float_sqrt(float x) { return sqrtf(x); }
-float get_sin_deg(int x) { return sinf((float)x * 0.017453292519943295f); }
-float get_cos_deg(int x) { return cosf((float)x * 0.017453292519943295f); }
 
-void _AIL_set_redist_directory(const char *dir) { assert(strcmp(dir, ".\\") == 0); }
-int _AIL_startup(void) { assert(!started); started = 1; return 1; }
-void _AIL_shutdown(void)
+int audio_open(int mono)
 {
-    assert(started && !driver_open && !stream_open && !provider_open && !listener_open);
-    assert(!sample_allocated && !sample_3d_allocated);
-    started = 0; ++shutdown_count;
-}
-int _AIL_set_preference(unsigned n, int value) { assert(n == 15 && value == 0); return 0; }
-void *_AIL_open_digital_driver(unsigned rate, int bits, int channels, unsigned flags)
-{
-    assert(started && rate == 22050 && bits == 16);
-    assert(channels == expected_channels && flags == 1);
-    driver_open = !fail_driver;
-    return driver_open ? &driver_token : NULL;
-}
-void _AIL_close_digital_driver(void *driver)
-{
-    assert(driver == &driver_token && driver_open && !stream_open);
-    assert(!sample_allocated && !sample_3d_allocated && !provider_open);
-    driver_open = 0;
-}
-void *_AIL_allocate_sample_handle(void *driver)
-{
-    assert(driver == &driver_token && driver_open);
-    if (sample_allocated == sample_limit)
-        return NULL;
-    return &sample_storage[sample_allocated++];
-}
-void _AIL_release_sample_handle(void *sample)
-{
-    assert(sample >= (void *)sample_storage && sample < (void *)(sample_storage + 48));
-    assert(sample_allocated > 0 && driver_open); --sample_allocated; ++release_count;
-}
-void _AIL_init_sample(void *sample) { assert(sample && driver_open); }
-int _AIL_set_sample_file(void *sample, const void *file, int block)
-{ assert(sample && file == wave_resource.data && block == 0); return 1; }
-void _AIL_set_sample_volume(void *sample, int volume) { assert(sample); volume_2d = volume; }
-void _AIL_start_sample(void *sample) { assert(sample); ++sample_starts; }
-void _AIL_end_sample(void *sample) { assert(sample && driver_open); }
-unsigned _AIL_sample_status(void *sample) { assert(sample && driver_open); return 2; }
-void *_AIL_open_stream(void *driver, const char *name, int memory)
-{
-    assert(driver == &driver_token && driver_open && !stream_open && memory == 0);
-    ++stream_attempts; strcpy_s(last_stream, sizeof last_stream, name);
-    stream_open = !fail_stream;
-    return stream_open ? &stream_token : NULL;
-}
-void _AIL_close_stream(void *stream)
-{ assert(stream == &stream_token && stream_open); stream_open = 0; }
-void _AIL_start_stream(void *stream)
-{ assert(stream == &stream_token && stream_open); ++stream_starts; }
-void _AIL_set_stream_volume(void *stream, int volume)
-{
-    assert(stream == &stream_token && stream_open && volume >= 0 && volume <= 127);
-    InterlockedExchange(&stream_volume, volume);
-    if (InterlockedCompareExchange(&block_volume, 0, 1) == 1) {
-        SetEvent(volume_entered);
-        assert(WaitForSingleObject(volume_release, 5000) == WAIT_OBJECT_0);
-        assert(stream_open && driver_open && started);
-    }
-}
-void _AIL_set_stream_loop_count(void *stream, int count)
-{ assert(stream == &stream_token && stream_open); loop_count = count; }
-int _AIL_stream_status(void *stream)
-{ assert(stream == &stream_token && stream_open); return 2; }
-int _AIL_enumerate_3D_providers(void **next, void **dest, char **name)
-{
-    int index = (int)(INT_PTR)*next;
-    assert(started);
-    ++enumerations;
-    if (index > provider_index)
+    assert(!device_open);
+    ++open_count;
+    if (fail_open)
         return 0;
-    *next = (void *)(INT_PTR)(index + 1);
-    *dest = &provider_token;
-    *name = !no_provider && index == provider_index ? "Miles Fast 2D Positional Audio" : "Other provider";
+    device_open = 1;
+    device_mono = mono;
     return 1;
 }
-int _AIL_open_3D_provider(void *provider)
-{ assert(provider == &provider_token && !provider_open); provider_open = !fail_provider; return fail_provider; }
-void _AIL_close_3D_provider(void *provider)
-{ assert(provider == &provider_token && provider_open && !listener_open && !sample_3d_allocated); provider_open = 0; }
-int _AIL_3D_speaker_type(void *provider) { assert(provider && provider_open); return 0; }
-void _AIL_set_3D_speaker_type(void *provider, int type) { assert(provider && provider_open && type == 0); }
-int _AIL_3D_room_type(void *provider) { assert(provider && provider_open); return room_type; }
-void _AIL_set_3D_room_type(void *provider, int type) { assert(provider && provider_open); room_type = type; }
-void *_AIL_open_3D_listener(void *provider)
-{ assert(provider && provider_open); listener_open = !fail_listener; return listener_open ? &listener_token : NULL; }
-void _AIL_close_3D_listener(void *listener)
-{ assert(listener == &listener_token && listener_open && !sample_3d_allocated); listener_open = 0; }
-void *_AIL_allocate_3D_sample_handle(void *provider)
+void audio_close(void)
 {
-    assert(provider && provider_open);
-    if (sample_3d_allocated == sample_limit)
-        return NULL;
-    return &sample_3d_storage[sample_3d_allocated++];
+    int i;
+    assert(device_open && !music_open);
+    for (i = 0; i < VOICES; ++i)
+        assert(!voice_live[i]);
+    device_open = 0;
+    ++close_count;
 }
-void _AIL_release_3D_sample_handle(void *sample)
-{ assert(sample && sample_3d_allocated > 0 && provider_open); --sample_3d_allocated; ++release_count; }
-int _AIL_set_3D_sample_file(void *sample, const void *file)
-{ assert(sample && provider_open && file == wave_resource.data); return !reject_3d; }
-void _AIL_set_3D_sample_effects_level(void *sample, float level) { assert(sample && level == 0); }
-void _AIL_set_3D_position(void *object, float x, float y, float z)
-{ assert(object); last_position[0] = x; last_position[1] = y; last_position[2] = z; }
-void _AIL_set_3D_orientation(void *object, float x, float y, float z, float ux, float uy, float uz)
-{ assert(object && ux == 0 && uy == 1 && uz == 0); last_orientation[0] = x; last_orientation[1] = y; last_orientation[2] = z; }
-void _AIL_set_3D_sample_volume(void *sample, int volume) { assert(sample); volume_3d = volume; }
-void _AIL_set_3D_sample_distances(void *sample, float max, float min)
-{ assert(sample); distances[0] = max; distances[1] = min; }
-void _AIL_start_3D_sample(void *sample) { assert(sample && provider_open); ++sample_3d_starts; }
-void _AIL_end_3D_sample(void *sample) { assert(sample && provider_open); }
-unsigned _AIL_3D_sample_status(void *sample) { assert(sample && provider_open); return 2; }
+struct AudioVoice *audio_voice_play(const struct AudioSound *sound, float gain)
+{
+    int i;
+    assert(device_open && sound == decoded && gain >= 0.0f && gain <= 1.0f);
+    for (i = 0; i < voice_limit; ++i)
+        if (!voice_live[i]) {
+            voice_live[i] = voice_playing[i] = 1;
+            voice_gain[i] = last_gain = gain;
+            ++voice_starts;
+            return (struct AudioVoice *)&voice_live[i];
+        }
+    return NULL;
+}
+static int voice_index(struct AudioVoice *voice)
+{
+    int i = (int)((int *)voice - voice_live);
+    assert(i >= 0 && i < VOICES && voice_live[i]);
+    return i;
+}
+int audio_voice_playing(struct AudioVoice *voice)
+{
+    return voice && voice_playing[voice_index(voice)];
+}
+void audio_voice_stop(struct AudioVoice *voice)
+{
+    if (voice)
+        voice_live[voice_index(voice)] = voice_playing[voice_index(voice)] = 0;
+}
+struct AudioMusic *audio_music_play(const char *path, int loop_count, float gain)
+{
+    assert(device_open && !music_open && path);
+    ++music_attempts;
+    strcpy_s(last_music, sizeof last_music, path);
+    if (fail_music)
+        return NULL;
+    music_open = 1;
+    music_loops = loop_count;
+    InterlockedExchange(&music_gain, (LONG)lrintf(gain * SOUND_VOLUME_MAX));
+    return (struct AudioMusic *)&music_open;
+}
+void audio_music_set_gain(struct AudioMusic *music, float gain)
+{
+    if (!music)
+        return;
+    assert(music == (struct AudioMusic *)&music_open && music_open && gain >= 0.0f && gain <= 1.0f);
+    InterlockedExchange(&music_gain, (LONG)lrintf(gain * SOUND_VOLUME_MAX));
+    if (InterlockedCompareExchange(&block_gain, 0, 1) == 1) {
+        SetEvent(gain_entered);
+        assert(WaitForSingleObject(gain_release, 5000) == WAIT_OBJECT_0);
+        assert(music_open && device_open);
+    }
+}
+int audio_music_done(struct AudioMusic *music)
+{
+    if (!music)
+        return 0;
+    assert(music == (struct AudioMusic *)&music_open && music_open);
+    return music_done_answer;
+}
+void audio_music_stop(struct AudioMusic *music)
+{
+    if (!music)
+        return;
+    assert(music == (struct AudioMusic *)&music_open && music_open);
+    music_open = 0;
+}
 
 static void reset(int mode)
 {
     sound_mgr_destroy();
-    assert(!allocations && !started && !stream_open && !driver_open && !provider_open);
+    assert(!allocations && !device_open && !music_open);
     allocation_failure = event_failure = thread_failure = registration_failure = 0;
-    fail_driver = fail_provider = fail_listener = fail_stream = no_provider = 0;
-    stream_attempts = stream_starts = sample_starts = sample_3d_starts = 0;
-    enumerations = release_count = shutdown_count = room_type = wave_missing = reject_3d = 0;
-    provider_index = 0; sample_limit = 48;
+    fail_open = fail_music = wave_missing = undecodable = music_done_answer = 0;
+    open_count = close_count = music_attempts = voice_starts = 0;
+    voice_limit = VOICES;
     g_soundMode = mode;
-    expected_channels = mode == 1 ? 1 : 2;
-    wave_resource.data = &wave_resource;
 }
 
 static void test_failures(void)
 {
-    reset(1); allocation_failure = 1; assert(!sound_mgr_create()); assert(!allocations);
-    reset(1); event_failure = 1; assert(!sound_mgr_create()); assert(!allocations && !shutdown_count);
-    reset(1); fail_driver = 1; assert(!sound_mgr_create()); assert(!allocations && shutdown_count == 1);
-    reset(2); fail_provider = 1; assert(!sound_mgr_create()); assert(!allocations && shutdown_count == 1);
-    reset(2); fail_listener = 1; assert(!sound_mgr_create()); assert(!allocations && shutdown_count == 1);
-    reset(1); registration_failure = 1; assert(!sound_mgr_create()); assert(!allocations && shutdown_count == 1);
-    reset(0); assert(sound_mgr_create()); assert(!started && registrations == 1);
-    sound_mgr_destroy(); sound_mgr_destroy(); assert(!allocations);
+    reset(1); allocation_failure = 1; assert(!sound_mgr_create()); assert(!allocations && !open_count);
+    reset(1); event_failure = 1; assert(!sound_mgr_create()); assert(!allocations && !open_count);
+    reset(1); fail_open = 1; assert(!sound_mgr_create()); assert(!allocations && open_count == 1 && !close_count);
+    reset(2); registration_failure = 1; assert(!sound_mgr_create()); assert(!allocations && close_count == 1);
+    reset(0); assert(sound_mgr_create()); assert(!open_count && registrations == 1);
+    sound_play_bgm("track"); sound_play_wave("one.wav", 1.0f); assert(!music_attempts && !voice_starts);
+    sound_mgr_destroy(); sound_mgr_destroy(); assert(!allocations && !close_count);
     sound_bgm_fade_in(); sound_bgm_fade_out(); sound_stop_stream(); sound_end_samples();
     assert(!sound_stream_done() && !sound_bgm_volume());
+}
+
+static void test_modes(void)
+{
+    reset(1); assert(sound_mgr_create()); assert(device_open && device_mono); sound_mgr_destroy();
+    reset(2); assert(sound_mgr_create()); assert(device_open && !device_mono); sound_mgr_destroy();
+    /* Any other mode opens the device and plays the music, but no effects, as before. */
+    reset(3); assert(sound_mgr_create()); assert(device_open && !device_mono);
+    sound_play_wave("one.wav", 1.0f); assert(!voice_starts && !strcmp(last_wave, "one.wav"));
+    sound_play_stream("bgm/one.mp3", 0); assert(music_open);
+    sound_mgr_destroy(); assert(close_count == 1 && !allocations);
 }
 
 static void test_streams(void)
@@ -251,63 +229,78 @@ static void test_streams(void)
     char name[] = "bgm/borrowed.mp3";
     int attempts;
     reset(1); assert(sound_mgr_create()); assert(!sound_mgr_create());
-    fail_stream = 1; sound_play_stream("bgm/retry.mp3", 1);
-    assert(!sound_stream_done() && !stream_starts && stream_attempts == 1);
-    fail_stream = 0; sound_play_stream("bgm/retry.mp3", 1);
-    assert(sound_stream_done() && stream_starts == 1 && stream_attempts == 2 && loop_count == 1);
-    sound_play_stream("bgm/retry.mp3", 0); assert(stream_attempts == 2);
+    fail_music = 1; sound_play_stream("bgm/retry.mp3", 1);
+    assert(!sound_stream_done() && music_attempts == 1 && !music_open);
+    fail_music = 0; sound_play_stream("bgm/retry.mp3", 1);
+    assert(music_open && music_attempts == 2 && music_loops == 1 && music_gain == 100);
+    assert(!sound_stream_done()); music_done_answer = 1; assert(sound_stream_done()); music_done_answer = 0;
+    sound_play_stream("bgm/retry.mp3", 0); assert(music_attempts == 2);
     allocation_failure = 1; sound_play_stream("bgm/other.mp3", 0);
-    assert(stream_attempts == 2 && sound_stream_done()); allocation_failure = 0;
+    assert(music_attempts == 2 && music_open); allocation_failure = 0;
     g_sound_settings.bgm_on = 0; sound_play_bgm(name); name[4] = 'X';
-    sound_stop_stream(); assert(!sound_stream_done());
-    sound_play_stream(NULL, 0); assert(strcmp(last_stream, "bgm/borrowed.mp3") == 0);
-    sound_set_bgm_volume(999); assert(sound_bgm_volume() == 127 && stream_volume == 127);
-    sound_set_bgm_volume(-1); assert(sound_bgm_volume() == 0 && stream_volume == 0);
+    assert(music_attempts == 2 && !strcmp(last_music, "bgm/retry.mp3"));
+    sound_stop_stream(); assert(!sound_stream_done() && !music_open);
+    sound_play_stream(NULL, 0); assert(!strcmp(last_music, "bgm/borrowed.mp3") && music_loops == 0);
+    sound_set_bgm_volume(999); assert(sound_bgm_volume() == 127 && music_gain == 127);
+    sound_set_bgm_volume(-1); assert(sound_bgm_volume() == 0 && music_gain == 0);
+    sound_set_bgm_volume(64); assert(sound_bgm_volume() == 64 && music_gain == 64);
     sound_set_bgm_fade_target(999); assert(sound_bgm_fade_target() == 127);
     sound_set_effect_volume(-1); assert(sound_effect_volume() == 0);
     sound_set_effect_volume(999); assert(sound_effect_volume() == 127);
-    attempts = stream_attempts;
+    attempts = music_attempts;
     allocation_failure = 1;
     sound_play_bgm(NULL);
-    assert(!sound_stream_done() && !sound_manager->bgm_name && !sound_manager->stream_name);
+    assert(!sound_stream_done() && !music_open && !sound_manager->bgm_name && !sound_manager->stream_name);
     sound_play_stream(NULL, 0);
-    assert(stream_attempts == attempts);
+    assert(music_attempts == attempts);
     allocation_failure = 0; g_sound_settings.bgm_on = 1;
     sound_play_bgm("bgm/restored.mp3");
-    assert(sound_stream_done() && stream_attempts == attempts + 1 && loop_count == 0);
+    assert(music_open && music_attempts == attempts + 1 && music_loops == 0 && music_gain == 64);
     sound_play_bgm("");
-    assert(!sound_stream_done() && !sound_manager->bgm_name && !sound_manager->stream_name);
-    g_soundMode = 0; sound_mgr_destroy(); assert(shutdown_count == 1 && !allocations);
-    cleanup(); assert(shutdown_count == 1 && registrations == 1);
+    assert(!music_open && !sound_manager->bgm_name && !sound_manager->stream_name);
+    sound_play_bgm("bgm/last.mp3"); assert(music_open);
+    sound_mgr_destroy(); assert(close_count == 1 && !music_open && !allocations);
+    cleanup(); assert(close_count == 1 && registrations == 1);
 }
 
 static void test_effects(void)
 {
-    reset(1); sample_limit = 3; assert(sound_mgr_create());
-    sound_play_wave("one.wav", 0, 0, 80, 250, 40, 0.5f);
-    assert(sample_starts == 1 && volume_2d == 25);
-    sound_play_wave("one.wav", 250, 0, 0, 250, 40, 1); assert(sample_starts == 1);
+    int i;
+    reset(2); voice_limit = 3; assert(sound_mgr_create());
+    /* No position: every effect plays at the effect volume times its own volume. */
+    sound_play_wave("one.wav", 0.5f);
+    assert(voice_starts == 1 && fabsf(last_gain - 50.0f / 127) < 1e-6f);
+    sound_set_effect_volume(127); sound_play_wave("one.wav", 1.0f);
+    assert(voice_starts == 2 && last_gain == 1.0f);
+    sound_set_effect_volume(100); sound_play_wave("one.wav", 1e30f);
+    assert(voice_starts == 3 && last_gain == 1.0f);
+    voice_playing[0] = 0; sound_play_wave("one.wav", -2.0f);
+    assert(voice_starts == 4 && last_gain == 0.0f && voice_live[0]);
+    voice_playing[0] = 0; sound_play_wave("one.wav", NAN);
+    assert(voice_starts == 5 && last_gain == 0.0f);
+    /* every voice busy: the effect is dropped, as when all of the 48 samples played */
+    sound_play_wave("one.wav", 1.0f); assert(voice_starts == 5);
     g_sound_settings.effects_on = 0;
-    sound_play_wave("one.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 1);
+    voice_playing[1] = 0; sound_play_wave("one.wav", 1.0f); assert(voice_starts == 5);
     g_sound_settings.effects_on = 1;
-    sound_play_wave("one.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 2);
-    sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 3);
-    wave_missing = 1; sound_play_wave("버튼소리.wav", 0, 0, 0, 250, 40, 1); assert(sample_starts == 3);
-    sound_end_samples(); sound_mgr_destroy(); assert(release_count == 3 && !allocations);
-    reset(2); provider_index = 130; sample_limit = 2; assert(sound_mgr_create());
-    assert(enumerations == 131 && sample_3d_allocated == 2);
-    sound_set_effect_volume_3d(80); sound_play_wave("three.wav", 1, 2, 3, 250, 40, 0.5f);
-    assert(sample_3d_starts == 1 && volume_3d == 40);
-    assert(last_position[0] == 1 && last_position[1] == 2 && last_position[2] == 3);
-    assert(last_orientation[0] == -1 && last_orientation[1] == -2 && last_orientation[2] == -3);
-    assert(distances[0] == 250 && distances[1] == 40);
-    reject_3d = 1; sound_play_wave("three.wav", 0, 0, 0, 250, 40, 1); assert(sample_3d_starts == 1);
-    sound_set_room_type(7); assert(room_type == 7); sound_play_bgm("track"); assert(room_type == 0);
-    sound_set_listener_angle(90); assert(fabsf(last_orientation[0] - 1) < 0.00001f);
-    sound_end_samples(); g_soundMode = 0; sound_mgr_destroy(); assert(release_count == 2 && !allocations);
-    reset(2); no_provider = 1; assert(sound_mgr_create()); assert(!provider_open);
-    sound_play_wave("three.wav", 0, 0, 0, 250, 40, 1); assert(!sample_starts && !sample_3d_starts);
-    sound_mgr_destroy(); assert(!allocations);
+    sound_play_wave("버튼소리.wav", 1.0f); assert(voice_starts == 6 && !strcmp(last_wave, "버튼소리.wav"));
+    wave_missing = 1; voice_playing[1] = 0; sound_play_wave("two.wav", 1.0f); assert(voice_starts == 6);
+    wave_missing = 0; undecodable = 1; sound_play_wave("two.wav", 1.0f); assert(voice_starts == 6);
+    undecodable = 0; sound_play_wave(NULL, 1.0f); assert(voice_starts == 6);
+    sound_end_samples();
+    for (i = 0; i < VOICES; ++i) assert(!voice_live[i]);
+    sound_mgr_destroy(); assert(!allocations && close_count == 1);
+
+    reset(1); assert(sound_mgr_create());
+    for (i = 0; i < 60; ++i)
+        sound_play_wave("one.wav", 1.0f);
+    assert(voice_starts == 48);
+    for (i = 0; i < VOICES; ++i)
+        voice_playing[i] = 0;
+    for (i = 0; i < 60; ++i)
+        sound_play_wave("one.wav", 1.0f);
+    assert(voice_starts == 96);
+    sound_mgr_destroy(); assert(!allocations && close_count == 1);
 }
 
 static void wait_volume(int target)
@@ -322,8 +315,8 @@ static unsigned __stdcall release_backend(void *unused)
 {
     (void)unused;
     Sleep(80);
-    assert(stream_open && driver_open && started && !shutdown_count);
-    SetEvent(volume_release);
+    assert(music_open && device_open && !close_count);
+    SetEvent(gain_release);
     return 0;
 }
 
@@ -333,40 +326,34 @@ static void test_fades(void)
     int i;
     reset(1); assert(sound_mgr_create()); sound_play_bgm("track");
     sound_set_bgm_volume(0); sound_set_bgm_fade_target(3); sound_bgm_fade_in(); wait_volume(3);
-    sound_bgm_fade_out(); wait_volume(0);
+    assert(music_gain == 3);
+    sound_bgm_fade_out(); wait_volume(0); assert(music_gain == 0);
     thread_failure = 1; sound_bgm_fade_in(); assert(sound_bgm_volume() == 0); thread_failure = 0;
     for (i = 0; i < 20; ++i) { sound_bgm_fade_in(); sound_bgm_fade_out(); }
     sound_bgm_fade_out(); wait_volume(0);
-    volume_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
-    volume_release = CreateEventW(NULL, TRUE, FALSE, NULL);
-    assert(volume_entered && volume_release);
-    InterlockedExchange(&block_volume, 1); sound_bgm_fade_in();
-    assert(WaitForSingleObject(volume_entered, 2000) == WAIT_OBJECT_0);
+    gain_entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+    gain_release = CreateEventW(NULL, TRUE, FALSE, NULL);
+    assert(gain_entered && gain_release);
+    InterlockedExchange(&block_gain, 1); sound_bgm_fade_in();
+    assert(WaitForSingleObject(gain_entered, 2000) == WAIT_OBJECT_0);
     helper = (HANDLE)_beginthreadex(NULL, 0, release_backend, NULL, 0, NULL); assert(helper);
     sound_mgr_destroy();
     assert(WaitForSingleObject(helper, 2000) == WAIT_OBJECT_0); CloseHandle(helper);
-    CloseHandle(volume_entered); CloseHandle(volume_release);
-    assert(!allocations && shutdown_count == 1);
+    CloseHandle(gain_entered); CloseHandle(gain_release);
+    assert(!allocations && close_count == 1);
 }
 
 int main(void)
 {
-    int mode, limit, cycle;
-    test_failures(); test_streams(); test_effects(); test_fades();
-    for (mode = 0; mode <= 2; ++mode) {
-        for (limit = 0; limit <= 48; limit += 16) {
-            reset(mode); sample_limit = limit;
-            assert(sound_mgr_create());
-            assert(sample_allocated + sample_3d_allocated == (mode ? limit : 0));
-            sound_mgr_destroy();
-            assert(!allocations && release_count == (mode ? limit : 0));
-        }
-    }
+    int cycle;
+    test_failures(); test_modes(); test_streams(); test_effects(); test_fades();
     for (cycle = 0; cycle < 20; ++cycle) {
-        reset(1); assert(sound_mgr_create()); sound_play_bgm("cycle"); sound_bgm_fade_out();
-        sound_mgr_destroy(); sound_mgr_destroy(); assert(!allocations && shutdown_count == 1);
+        reset(1); assert(sound_mgr_create()); sound_play_bgm("cycle"); sound_play_wave("one.wav", 1.0f);
+        sound_bgm_fade_out();
+        sound_mgr_destroy(); sound_mgr_destroy(); assert(!allocations && close_count == 1);
     }
     assert(registrations == 1);
-    puts("Sound manager: options, samples, stream retry, provider enumeration, rollback, real fades and joined shutdown passed");
+    puts("Sound manager: modes, effects without position at the effect volume, the 48-voice cap, music retry, "
+         "volumes, rollback, real fades and joined shutdown passed");
     return 0;
 }

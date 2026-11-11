@@ -58,7 +58,7 @@ __declspec(noreturn) void fatal_error(const char *message) { (void)message; abor
 
 struct NaviManager g_navi;
 struct Session g_session1;
-HWND g_hMainWnd;
+PlatformWindow g_hMainWnd;
 void navi_manager_reset_link_depths(struct NaviManager *manager)
 { assert(manager == &g_navi); ++depth_resets; }
 
