@@ -36,4 +36,21 @@ static inline void present_fit(int window_w, int window_h, int scene_w, int scen
     *y = cover->top + (area_h - *h) / 2 - cover->lift;
 }
 
+/* The scene pixel under the point x, y of a window window_w by window_h, all in the window's own
+   coordinates (SDL's: pixels on Windows and Android, points on macOS and scaled Wayland, where the
+   scene has more pixels than the window has points), through where present_fit puts the scene. */
+static inline void present_point(int window_w, int window_h, int scene_w, int scene_h,
+                                 const struct PresentCover *cover, float x, float y, int *scene_x, int *scene_y)
+{
+    int fx, fy, fw, fh;
+    present_fit(window_w, window_h, scene_w, scene_h, cover, &fx, &fy, &fw, &fh);
+    if (fw > 0 && fh > 0 && scene_w > 0 && scene_h > 0) {
+        *scene_x = (int)((x - fx) * scene_w / fw);
+        *scene_y = (int)((y - fy) * scene_h / fh);
+    } else {
+        *scene_x = (int)x;
+        *scene_y = (int)y;
+    }
+}
+
 #endif

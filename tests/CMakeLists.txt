@@ -135,8 +135,9 @@ function(rage_link_client target)
     endforeach()
 endfunction()
 
-# The client's window services and sound run on SDL.
-rage_client_link(platform/window_sdl.c SDL3::SDL3)
+# The client's window services and sound run on SDL; the window services take window coordinates
+# for pixels from the display options' library.
+rage_client_link(platform/window_sdl.c SDL3::SDL3 rage_client_display_options)
 if(WIN32)
     rage_client_options(platform/window_sdl.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless.h)
     rage_client_options(platform/net_win32.c /FI${CMAKE_CURRENT_SOURCE_DIR}/headless_win32.h)
@@ -409,6 +410,8 @@ rage_test(code_page_iconv W1 NO_WX src/platform/code_page_iconv.c src/platform/c
 rage_test(numeric W4 CLIENT core/numeric.c)
 rage_test(cstr W4 CLIENT core/cstr.c)
 rage_test(math3d CLIENT render/math3d.c)
+rage_test(display_options W4 CLIENT render/display_options.c)
+rage_test(present_fit W4)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -669,7 +672,6 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(cooldown_storage CLIENT ui/cooldown_timer.c)
     rage_test(crash_dialog W4 OBJECTS test_crash_dialog_crash_dialog)
     rage_test(crash_report OBJECTS test_crash_report_crash_report)
-    rage_test(display_devices)
     rage_test(draw_maps W1 WE4013 CLIENT contents/body_layer_maps.c core/once_win32.c std/container_memory.c
         std/string.c std/tree.c std/vec.c)
     rage_test(edit_history W1 CLIENT core/owned_text.c core/text_array.c core/utf8.c
@@ -879,8 +881,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(model_resource_types CLIENT core/owned_text.c resources/model_res_queries.c)
     rage_test(monster_skill_info WE4013 CLIENT core/cstr.c core/memory.c core/xml.c std/string.c GENERATED
         monster_skill_info)
-    rage_test(mouse CLIENT core/utf8.c platform/code_page_win32.c OBJECTS test_mouse_mouse
-        test_mouse_window_sdl)
+    rage_test(mouse CLIENT core/utf8.c platform/code_page_win32.c render/display_options.c OBJECTS
+        test_mouse_mouse test_mouse_window_sdl)
     rage_test(multiline_draw W1 WE4013 CLIENT core/byte_array.c core/owned_text.c core/text_array.c
         core/utf8.c platform/clock_win32.c platform/code_page_win32.c platform/window_sdl.c
         ui/controls/edit3_lines.c ui/controls/window_coloured_lines.c ui/items/item_tag_buttons.c)
@@ -1131,7 +1133,7 @@ if(NOT WIN32)
     endif()
     if(TARGET SDL3::SDL3)
         # The clipboard needs a video driver; the offscreen one shows no window.
-        rage_test(platform_window src/platform/window_sdl.c CLIENT ${platform_files}
+        rage_test(platform_window src/platform/window_sdl.c CLIENT ${platform_files} render/display_options.c
             DEFINES _POSIX_C_SOURCE=200809L LIBS SDL3::SDL3 ENVIRONMENT SDL_VIDEO_DRIVER=offscreen)
     endif()
 endif()

@@ -6,8 +6,9 @@
 extern int g_lightmap;
 
 /* Display options: loaded with the saved options (session/session_option_load.c) and changed by
-   the graphics settings window (ui/render/graphic_setting.c); the device, the sprite loader and the
-   frame windows read them. Defined in render/render_options.c. */
+   the graphics settings window (ui/render/graphic_setting.c); the device and the sprite loader read
+   them. g_displayWidth and g_displayHeight are the windowed size, also while the game is
+   fullscreen (render/display_options.h). Defined in render/render_options.c. */
 extern int g_textureMode;
 extern int g_displayHeight;
 extern int g_displayWidth;

@@ -45,11 +45,11 @@ for /f "usebackq delims=" %%l in ("%BUILD%\ragexe%SUFFIX%.objs.rsp") do (
 )
 for %%f in ("%OBJ%\*.obj") do >> "%RSP%" echo "%%~ff"
 
-set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib oleaut32.lib ws2_32.lib winmm.lib ddraw.lib d3d9.lib dxguid.lib gdiplus.lib imm32.lib ole32.lib uuid.lib netapi32.lib"
-link /nologo libcmt.lib libcpmt.lib @"%RSP%" ^
+set "SYSLIBS=kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib ws2_32.lib winmm.lib d3d9.lib gdiplus.lib imm32.lib ole32.lib uuid.lib"
+link /nologo libcmt.lib @"%RSP%" ^
  "%VDIR%\imglibs.lib" "%VDIR%\lua514.lib" "%VDIR%\yyjson.lib" "%VDIR%\crijndael.lib" "%VDIR%\font_backend.lib" "%VDIR%\jpeg.lib" ^
- "%VDIR%\dr_mp3.lib" "%VDIR%\SDL3-static.lib" setupapi.lib version.lib cfgmgr32.lib shlwapi.lib ^
- %TEXTLIB% libvcruntime.lib libucrt.lib legacy_stdio_definitions.lib %SYSLIBS% ^
+ "%VDIR%\dr_mp3.lib" "%VDIR%\SDL3-static.lib" setupapi.lib version.lib shlwapi.lib ^
+ %TEXTLIB% libvcruntime.lib libucrt.lib %SYSLIBS% ^
  /OUT:"%BUILD%\ragexe_scenes%SUFFIX%.exe" /SUBSYSTEM:WINDOWS /MACHINE:X64 /OPT:NOICF
 if errorlevel 1 ( echo *** scene harness LINK FAILED *** & exit /b 1 )
 echo Done -^> "%BUILD%\ragexe_scenes%SUFFIX%.exe"

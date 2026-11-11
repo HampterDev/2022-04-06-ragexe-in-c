@@ -492,11 +492,11 @@ that came with the left Ctrl Windows sends for AltGr, which SDL leaves out, from
 and it queues the keys the IME takes in Hangul or kana mode, which Windows reports as
 `VK_PROCESSKEY` and SDL leaves out too, so that they reach the client in order with their scan
 codes and the hotkeys still find their letters (`ui_window_mgr_classify_key`); the IME still gets
-them. Direct3D 9's exclusive fullscreen gets a frameless window at the monitor's corner as large as
-the mode, at start (`c3d_device_init`) as in a switch at run time (`set_display`), not SDL's own
-fullscreen window; starting in exclusive fullscreen is left to be tried by hand. The process
-stays system-DPI-aware through the executable's manifest, which SDL's own per-monitor request
-cannot change. The IME's composition and candidates come from SDL's handling of `WM_IME_*`, which
+them. Direct3D 9 is always windowed, also in fullscreen, which is SDL's own fullscreen window as on
+the other platforms (*Display modes* below). The executable's manifest (`res/app.res`, resource
+`RT_MANIFEST` 1) declares per-monitor (v2) DPI awareness, so SDL's window coordinates are the
+display's pixels on every display, whatever its scale, and Windows never stretches the window. The
+IME's composition and candidates come from SDL's handling of `WM_IME_*`, which
 places the candidate list with `CFS_EXCLUDE` around the text input area and reports the cursor in
 UTF-16 units (the same as characters for Hangul); the password box still switches the IME to
 alphanumeric input through the window's input context (`platform_ime_alphanumeric`). The window sets
@@ -509,13 +509,12 @@ through and past the composition, and sent in game (`SDL_IM_MODULE=ibus`, `XMODI
 
 `platform/window.h` holds the remaining window services, `platform/window_sdl.c` on every
 platform: message boxes, key and mouse state, clipboard text, cursor clipping, window and monitor
-rectangles, window placement for windowed, frameless and fullscreen modes, and IME cancellation.
+rectangles, window placement in the windowed and the fullscreen mode, and IME cancellation.
 They take SDL's window and display id (`platform/window_handle.h`: `PlatformWindow` and
 `PlatformDisplay`), so the SDL layer's window is the client's main window (`g_hMainWnd`) and the
-device's, with no cast and no copy of it in the platform code; the Direct3D 9 backend maps its
-adapters' monitors to SDL's displays (`SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER`). The display
-queries follow the window: the window's display is the one SDL has it on, so a borderless or
-full-screen switch and its placement happen on the display the window is on, not always on the
+device's, with no cast and no copy of it in the platform code. The display
+queries follow the window: the window's display is the one SDL has it on, so fullscreen covers,
+and a window coming out of it is centred on, the display the window is on, not always the
 primary one. Windowed placement takes the corner of the window's frame, as the Win32 window did,
 where SDL places the client area inside it; on X11 before the window manager has framed the window
 the frame counts as none. Message boxes and the clipboard take
@@ -525,6 +524,43 @@ information icon the caller asked for and ignores the other flags, `MB_TASKMODAL
 `tests/test_platform_window.c` checks the clipboard in Korean, Japanese, Cyrillic, Western and
 emoji UTF-8, and U+FFFD for invalid bytes. The GL backend learns what covers the window (*Android client*) from `gfx_gl_set_cover`,
 which the SDL layer calls once a frame.
+
+**Display modes.** The client is windowed or fullscreen, on every platform and with either backend
+(`render/display_options.h`, the `display-options` library), and draws at its window's client size
+in pixels: the window is created with `SDL_WINDOW_HIGH_PIXEL_DENSITY`, the device takes
+`SDL_GetWindowSizeInPixels` (`platform_client_rect`), window coordinates for a size in pixels come
+from `platform_window_units`, and the pointer, in SDL's window coordinates (points on macOS and
+scaled Wayland), is mapped to the device's pixels through `present_point` (`render/present_fit.h`).
+Windowed, the window has a frame, the player can resize it by its border, down to 1024 by 664 pixels
+(`platform_window_minimum`, set again, rounded up, when the window goes to a display of another
+pixel density), and maximise it (its button, or a double click on the title bar). `WIDTH` and
+`HEIGHT` keep the last size the window had when it was neither maximised nor fullscreen,
+`Window_XPos` and `Window_YPos` where its frame was then, and `ISMAXIMIZED` whether it was
+maximised; a window opens at that size and place, made to fit the room its display has
+(`display_fit`), and is restored to them. Fullscreen is SDL's fullscreen desktop
+(`platform_window_fullscreen`: `SDL_SetWindowFullscreenMode` with no mode, then
+`SDL_SetWindowFullscreen`): a borderless window over the display the window is on, at the display's
+own mode, so the display never changes mode. Once a pump (`display_follow_window`,
+`render/resize.c`) the device follows the window's size through `gfx_resize`, whoever changed it
+(the player, the settings, SDL, the system), and the display options follow what the window is,
+fullscreen included; when the device does not take a size, it tries again once the window's size
+changes, or, if the device was lost (Direct3D 9), once it is no longer lost, which it asks every 250
+ms. Until then Direct3D 9 presents the picture where `present_fit` puts it, as GL does. The 3D view
+keeps its vertical field of view, so a wider window shows more of the world sideways, and the UI
+windows keep their distance to the nearer edge of the screen, or stay centred, and are kept on it.
+`set_display` puts the window in the mode the graphics settings ask for. While fullscreen, the
+window is made to cover its display again when the display's own resolution changes
+(`SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED`; SDL itself makes a fullscreen window moved to another
+display cover that one), except on Android, whose window SDL keeps at the screen's size. A client
+started in fullscreen goes fullscreen on the display its saved windowed position is on, or the
+primary display when no display holds it, before its window is first shown. The graphics settings'
+resolution picker is disabled in fullscreen and shows the display's size; windowed, it shows the
+window's size and offers the common sizes from 1024x768 up whose window, frame included, fits the
+work area of the display the window is on, and the largest that fits; a size picked there restores a
+maximised window and is set when the player presses Apply and confirms. On Windows, Direct3D 9
+always uses the primary display's adapter; a window on a display of another graphics card is copied
+across. While the player drags the border on Windows, Windows runs its own sizing loop, in which the
+game does not draw; it draws at the new size when the drag ends.
 
 ### Renderer
 
@@ -676,9 +712,10 @@ names the servers as on any other platform; an emulator reaches servers on its h
 
 **What is different on Android:**
 
-- The client always runs in its full-screen mode, at the resolution set in its options, and the
-  backend scales the scene to the screen with the aspect kept (`render/present_fit.h`), as the
-  desktop backends do for a window of another size. The system bars are hidden.
+- The client always runs in its fullscreen mode (*Display modes*), at the size of its window, the
+  screen on a phone and the app's window on a desktop, and follows the window when it is resized
+  or turned. SDL gives an Android window's size in the screen's pixels, so the interface is drawn
+  small on a dense screen until it is scaled. The system bars are hidden.
 - On a desktop (ChromeOS, Android's own desktop windowing) the app runs in a window the
   player moves, resizes and maximises; the first one is about 4:3 (`<layout>` in the manifest) and
   the system remembers the size after that. The full-screen request only takes effect when the
@@ -787,11 +824,12 @@ the other entry's second one, which is not an ordering; it compares like with li
 
 1. Windows: check by hand Hangul composition and the Hanja candidate list through the Microsoft
    IME on SDL's text input, the letter hotkeys in Hangul mode, AltGr on a German or French layout,
-   and starting in exclusive fullscreen.
-2. macOS: check Hangul composition through the macOS input method and Retina scaling on
-   Apple hardware (the window does not ask for a high-density drawable,
-   so macOS scales a 1x picture). A Metal backend behind `render/gfx.h` can replace the
-   deprecated OpenGL later.
+   and the display modes: fullscreen on and off, starting in it, on a second display, Alt+Tab, a
+   display of another scale, and resizing, maximising and restoring the window.
+2. macOS: check Hangul composition through the macOS input method and the game on a Retina
+   display, where the window asks for a high-density drawable and the game draws at the display's
+   pixels, so the interface is small until it is scaled. A Metal backend behind `render/gfx.h` can
+   replace the deprecated OpenGL later.
 3. Granny models need a one-time conversion with `tools/granny_export` (Windows or Wine).
 4. Listen to the POSIX audio in game and compare JPEG screenshots with Windows.
 5. Keep auditing pointer-width message arguments, raw strides and packed packet
@@ -800,7 +838,7 @@ the other entry's second one, which is not an ordering; it compares like with li
    supersampling by default (*Scene captures*).
 7. Android: only the x86_64 emulators (phone and desktop) were played; try arm64 hardware, a real
    Chromebook and a real touch screen (the gestures were driven through a virtual uinput one), and
-   the default resolution is 4:3 whatever the screen's aspect (*Android client*).
+   play at the screen's own size, which the client draws at (*Android client*).
 
 `g_clientDir` is filled by `platform_current_directory` with at most 0x7f bytes, as
 before; a longer client directory leaves it empty on every platform.

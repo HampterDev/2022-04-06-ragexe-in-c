@@ -1,63 +1,17 @@
 #include "ui/window_manager_lifecycle.h"
 #include "render/device.h"
-#include "render/display_devices.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "core/object_type.h"
-#include "core/memory.h"
 #include "render/render_api.h"
 #include "ui/window_types.h"
-#include "ui/controls/check_radio.h"
 #include "actor/status_icons.h"
 #include <string.h>
 #include "core/window_state.h"
-#include "core/msg_str.h"
-#include "session/session_options.h"
-#include "ui/render/graphic_setting.h"
+#include "render/display_options.h"
+#include "render/render_options.h"
+#include "platform/clock.h"
 #include "platform/window.h"
-
-
-#define MSG_APPLY_AGREE    0xc5f
-
-enum { KIND_WINDOWED, KIND_EXCLUSIVE, KIND_BORDERLESS };
-static int current_kind(const struct C3dDevice *d);
-static int requested_kind(int fullscreen);
-static struct UICheckBox *borderlessBox;
-
-static int live_request(const struct UIGraphicSettingWnd *wnd, int *w, int *h, int *fullscreen)
-{
-    const struct DisplayMode *mode;
-
-    if (!g_3dDevice.dev)
-        return 0;
-    if (!wnd->modes.first || wnd->mode < 0)
-        return 0;
-    if (!gfx_can_set_mode_live(&wnd->adapter_guid))
-        return 0;
-    mode = (const struct DisplayMode *)wnd->modes.first + wnd->mode;
-    *w = (int)mode->width;
-    *h = (int)mode->height;
-    *fullscreen = wnd->box_fullscreen && wnd->box_fullscreen->base.state;
-    return *w > 0 && *h > 0;
-}
-
-char *display_prompt_text(struct UIGraphicSettingWnd *wnd, int restartId)
-{
-    int w, h, fs;
-    return msg_str(live_request(wnd, &w, &h, &fs) ? MSG_APPLY_AGREE : restartId);
-}
-
-int apply_display_mode(struct UIGraphicSettingWnd *wnd)
-{
-    int w, h, fs;
-
-    g_fullscreenMode = wnd->box_fullscreen ? wnd->box_fullscreen->base.state : 0;
-    if (borderlessBox)
-        borderless_setting = borderlessBox->base.state != 0;
-    if (!live_request(wnd, &w, &h, &fs))
-        return 0;
-    return set_display(w, h, fs, &wnd->adapter_guid);
-}
 
 static int moved(int pos, int size, int oldExtent, int newExtent)
 {
@@ -126,104 +80,41 @@ static void relaunch_state_icons(void)
     }
 }
 
-static PlatformDisplay target_monitor(PlatformWindow hwnd, const GUID *adapter)
-{
-    PlatformDisplay m = gfx_adapter_monitor(adapter);
-    return m ? m : platform_window_monitor(hwnd);
-}
+/* After the device did not take the window's size: that size, whether the device was lost then
+   (a lost Direct3D 9 device cannot be reset until the system gives it back), and when it was last
+   asked whether it still is. The device tries again when the window's size changes, or once it is
+   no longer lost; a size it did not take for another reason is not tried again. */
+#define LOST_POLL_MS 250
 
-static void monitor_size(PlatformDisplay m, int *w, int *h)
-{
-    RECT mon, work;
-    platform_monitor_rects(m, &mon, &work);
-    *w = mon.right - mon.left;
-    *h = mon.bottom - mon.top;
-}
+static struct {
+    int pending, width, height, lost;
+    uint32_t asked;
+} failed;
 
-static int requested_kind(int fullscreen)
+/* custom: the device at the window's client size in pixels (render/display_options.h), and the
+   projection and the UI windows with it; 0 when the device did not take the size. */
+static int fit_device(struct C3dDevice *d)
 {
-    if (!fullscreen)
-        return KIND_WINDOWED;
-    return borderless_setting ? KIND_BORDERLESS : KIND_EXCLUSIVE;
-}
-
-static int current_kind(const struct C3dDevice *d)
-{
-    if (d->fullscreen)
-        return KIND_EXCLUSIVE;
-    return platform_window_has_caption(d->hwnd) ? KIND_WINDOWED : KIND_BORDERLESS;
-}
-
-static void read_geometry(struct C3dDevice *d, int fullscreen, int w, int h)
-{
-    if (fullscreen) {
-        d->rcWindow = (RECT){0, 0, w, h};
-        d->width = w;
-        d->height = h;
-    } else {
-        platform_client_rect(d->hwnd, &d->rcWindow);
-        d->width = d->rcWindow.right;
-        d->height = d->rcWindow.bottom;
-    }
-}
-
-int set_display(int w, int h, int fullscreen, const GUID *adapter)
-{
-    struct C3dDevice *d = &g_3dDevice;
     struct Renderer *r = g_renderer;
-    RECT old;
-    PlatformDisplay was, on;
-    int oldW = d->width, oldH = d->height, moving, kind, wasKind, devFull, wasDevFull;
+    RECT client;
 
-    if (!d->hwnd || !d->dev || w <= 0 || h <= 0)
-        return 0;
-    moving = adapter && memcmp(adapter, &init_adapter, sizeof(GUID)) != 0;
-    kind = requested_kind(fullscreen);
-    wasKind = current_kind(d);
-    devFull = kind == KIND_EXCLUSIVE;
-    wasDevFull = d->fullscreen != 0;
-    platform_window_rect(d->hwnd, &old);
-    was = target_monitor(d->hwnd, &init_adapter);
-    on = target_monitor(d->hwnd, adapter ? adapter : &init_adapter);
-    if (kind == KIND_BORDERLESS)
-        monitor_size(on, &w, &h);
-    if (w == oldW && h == oldH && kind == wasKind && !moving)
+    platform_client_rect(d->hwnd, &client);
+    if (client.right <= 0 || client.bottom <= 0 || (client.right == d->width && client.bottom == d->height)) {
+        failed.pending = 0;
         return 1;
-    if (devFull) {
-        platform_window_place_frameless(d->hwnd, on, w, h);
-        read_geometry(d, 1, w, h);
-    } else if (!wasDevFull) {
-        if (kind == KIND_BORDERLESS)
-            platform_window_place_frameless(d->hwnd, on, w, h);
-        else
-            platform_window_place_windowed(d->hwnd, on, old.left, old.top, w, h, moving || wasKind == KIND_BORDERLESS);
-        read_geometry(d, 0, w, h);
-    } else {
-        read_geometry(d, 1, w, h);
     }
-    if (gfx_set_mode(d, adapter, d->width, d->height, devFull) != 0) {
-        if (wasDevFull || wasKind == KIND_BORDERLESS)
-            platform_window_place_frameless(d->hwnd, was, oldW, oldH);
-        else
-            platform_window_place_windowed(d->hwnd, was, old.left, old.top, oldW, oldH, 0);
-        read_geometry(d, wasDevFull, oldW, oldH);
+    if (gfx_resize(d, client.right, client.bottom) != 0) {
+        failed.pending = 1;
+        failed.width = client.right;
+        failed.height = client.bottom;
+        failed.lost = gfx_device_lost();
+        failed.asked = platform_ticks_ms();
         return 0;
     }
-    if (adapter)
-        init_adapter = *adapter;
-    d->fullscreen = devFull;
-    if (!devFull && wasDevFull) {
-        int modeW = d->width, modeH = d->height;
-        if (kind == KIND_BORDERLESS) {
-            monitor_size(on, &w, &h);
-            platform_window_place_frameless(d->hwnd, on, w, h);
-        } else {
-            platform_window_place_windowed(d->hwnd, on, 0, 0, w, h, 1);
-        }
-        read_geometry(d, 0, w, h);
-        if (d->width != modeW || d->height != modeH)
-            gfx_set_mode(d, NULL, d->width, d->height, 0);
-    }
+    failed.pending = 0;
+    d->rcWindow = client;
+    d->width = client.right;
+    d->height = client.bottom;
     if (r) {
         renderer_set_projection(r, d->width, d->height);
         if (r->clipLeft == -40.0f) {
@@ -233,78 +124,93 @@ int set_display(int w, int h, int fullscreen, const GUID *adapter)
     }
     relayout_ui(d->width, d->height);
     relaunch_state_icons();
-    if (g_session1.mouseExclusiveOption && platform_window_is_foreground(d->hwnd))
-        platform_clip_cursor_to_client(d->hwnd, 1);
     return 1;
 }
 
-#define BORDERLESS_ROW_Y   0x100
-#define TRILINEAR_ROW_Y    0xc0
-#define ROW_HIDDEN        -200
-
-void settings_add_row(struct UIGraphicSettingWnd *wnd, struct UIWindow *fullscreenBox)
+/* Whether to give the device the window's size now. */
+static int should_fit(struct C3dDevice *d)
 {
-    struct UICheckBox *box;
+    RECT client;
+    uint32_t now;
 
-    ui_window_add_child((struct UIWindow *)wnd, fullscreenBox);
-    box = (struct UICheckBox *)mem_alloc(sizeof *box);
-    borderlessBox = NULL;
-    if (!box)
-        return;
-    ui_check_box_construct(&box->base);
-    ui_window_create((&box->base), 60, 12);
-    ui_check_box_set_bitmaps(&box->base, "유저인터페이스\\checkbox_1.bmp", "유저인터페이스\\checkbox_0.bmp", msg_str(0xc69));
-    ui_check_box_set_check(&box->base, borderless_setting != 0);
-    ui_window_add_child((struct UIWindow *)wnd, (&box->base));
-    borderlessBox = box;
-}
-
-int settings_is_display_box(struct UIWindow *sender, struct UIGraphicSettingWnd *wnd)
-{
-    return sender == (&wnd->box_fullscreen->base) || sender == (&wnd->box_mouse->base)
-        || (borderlessBox && sender == (&borderlessBox->base));
-}
-
-void settings_hide_rows(struct UIGraphicSettingWnd *wnd)
-{
-    move_window((&wnd->box_trilinear->base), ROW_HIDDEN, ROW_HIDDEN);
-    if (borderlessBox)
-        move_window((&borderlessBox->base), ROW_HIDDEN, ROW_HIDDEN);
-}
-
-void settings_place_rows(struct UIGraphicSettingWnd *wnd)
-{
-    const struct UIWindow *at = (const struct UIWindow *)wnd->device_box;
-
-    move_window((&wnd->box_trilinear->base), at->x, at->y + TRILINEAR_ROW_Y);
-    if (borderlessBox)
-        move_window((&borderlessBox->base), at->x, at->y + BORDERLESS_ROW_Y);
-}
-
-void settings_draw_labels(struct UIGraphicSettingWnd *wnd)
-{
-    ui_window_text_out((struct UIWindow *)wnd, 0x12, wnd->box_trilinear->base.y,
-               msg_str(0x7ce), 0, 0, 0xc, 0, 0, 0);
-    if (borderlessBox)
-        ui_window_text_out((struct UIWindow *)wnd, 0x12, borderlessBox->base.y,
-                   "Borderless", 0, 0, 0xc, 0, 0, 0);
-}
-
-int settings_display_changed(struct UIGraphicSettingWnd *wnd)
-{
-    if (wnd->box_fullscreen->base.state != g_fullscreenMode)
+    if (!failed.pending)
         return 1;
-    return borderlessBox && (borderlessBox->base.state != 0) != (borderless_setting != 0);
+    platform_client_rect(d->hwnd, &client);
+    if (client.right != failed.width || client.bottom != failed.height)
+        return 1;
+    now = platform_ticks_ms();
+    if (!failed.lost || now - failed.asked < LOST_POLL_MS)
+        return 0;
+    failed.asked = now;
+    return !gfx_device_lost();
 }
 
-int read_display_options(void *session, const char *name, int def)
+/* The display options follow what the window is (render/display_options.h). */
+static void track_window(struct C3dDevice *d)
 {
-    borderless_setting = session_get_option_int(session, "ISBORDERLESS", 1) != 0;
-    return session_get_option_int(session, name, def);
+    struct DisplayOptions options = { g_fullscreenMode, g_windowMaximized, g_displayWidth, g_displayHeight,
+                                      g_windowX, g_windowY, g_displayWidth, g_displayHeight };
+    RECT client, frame;
+
+    platform_client_rect(d->hwnd, &client);
+    platform_window_rect(d->hwnd, &frame);
+    display_options_track(&options, platform_window_is_fullscreen(d->hwnd), platform_window_is_maximized(d->hwnd),
+                          platform_window_is_minimized(d->hwnd), client.right, client.bottom, frame.left,
+                          frame.top);
+    g_fullscreenMode = options.fullscreen;
+    g_windowMaximized = options.maximized;
+    g_displayWidth = options.width;
+    g_displayHeight = options.height;
+    g_windowX = options.x;
+    g_windowY = options.y;
 }
 
-void write_display_options(void *session, void *stream, const char *name, int value)
+/* custom: the window in its mode and the device at its size. Fullscreen covers the display the
+   window is on. Windowed, the window is maximised, or its client area is w by h, made to fit the
+   room its display has, with the frame's corner where the window last was neither maximised nor
+   fullscreen, or centred on its display when no such place is known. Either way the maximised state
+   is kept, for when the window is windowed. A device that does not take the size yet follows the
+   window later (display_follow_window). */
+void set_display(int fullscreen, int maximized, int w, int h)
 {
-    session_write_option_int(session, stream, name, value);
-    session_write_option_int(session, stream, "ISBORDERLESS", borderless_setting != 0);
+    struct C3dDevice *d = &g_3dDevice;
+    int wasFullscreen, wasMaximized, displayW, displayH, roomW, roomH;
+
+    if (!d->hwnd || !d->dev || w <= 0 || h <= 0)
+        return;
+    g_windowMaximized = maximized != 0;
+    wasFullscreen = platform_window_is_fullscreen(d->hwnd);
+    wasMaximized = platform_window_is_maximized(d->hwnd);
+    if (fullscreen && !wasFullscreen) {
+        platform_window_fullscreen(d->hwnd);
+    } else if (!fullscreen && (wasFullscreen || maximized != wasMaximized
+                               || (!maximized && (w != d->width || h != d->height)))) {
+        int known = g_windowX != DISPLAY_NO_POSITION && g_windowY != DISPLAY_NO_POSITION;
+        RECT frame;
+        platform_window_rect(d->hwnd, &frame);
+        platform_window_room(d->hwnd, &displayW, &displayH, &roomW, &roomH);
+        display_fit(&w, &h, roomW, roomH);
+        g_displayWidth = w;
+        g_displayHeight = h;
+        platform_window_place_windowed(d->hwnd, known ? g_windowX : frame.left, known ? g_windowY : frame.top, w, h,
+                                       wasFullscreen && !known, maximized);
+    }
+    fit_device(d);
+    track_window(d);
+    if (g_session1.mouseExclusiveOption && platform_window_is_foreground(d->hwnd))
+        platform_clip_cursor_to_client(d->hwnd, 1);
+}
+
+/* Once a pump (core/app_sdl.c): the device follows the window's size in pixels, which the player
+   (dragging the frame, maximising, restoring), the system or SDL may change at any time, and the
+   display options follow what the window is. */
+void display_follow_window(void)
+{
+    struct C3dDevice *d = &g_3dDevice;
+
+    if (!d->hwnd || !d->dev)
+        return;
+    if (!platform_window_is_minimized(d->hwnd) && should_fit(d))
+        fit_device(d);
+    track_window(d);
 }

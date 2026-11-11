@@ -42,12 +42,20 @@ paths   core/
         initializers/ json/ std/ actor/actor_ops.h base.h fileio/file_api.h platform/vk.h
         platform/win_types.h
 
+library display-options
+note    The window's display modes as pure logic (render/display_options.c): the saved display
+        options and how they follow the window, the windowed size's bounds and how it fits a
+        display, window coordinates for pixels, and the graphics settings' resolution picker. Uses
+        nothing else of the client.
+uses
+paths   render/display_options.*
+
 library platform
 note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
-        (platform/audio_sdl.c), crash dumps, display depth, the text-input editor and IME
+        (platform/audio_sdl.c), crash dumps, the text-input editor and IME
         (platform/language.c), the window services on SDL (platform/window_sdl.c), client paths,
         and the main window's handle and state (core/window_state.c).
-uses    base
+uses    base display-options
 paths   platform/
         core/client_path.* core/file_util.* core/text_encoding.* core/text_tokens.c core/text_util.*
         core/window_state.*
@@ -64,7 +72,7 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio
+uses    fileio display-options
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 
@@ -706,7 +714,6 @@ include ui/chat/whisper.c core/app.h
 include ui/controls/text_viewer_links.c core/app.h
 include ui/quests/navigation_cmd.c core/app.h
 include ui/quests/tag_text_viewer.c core/app.h
-include ui/render/graphic_setting.c core/app.h
 include ui/social/guild_info_tab.c core/app.h
 include world/mode_mgr.c core/app.h
 include world/world_load.c core/app.h
@@ -787,17 +794,14 @@ link    platform/language.c g_windowMgr ui_window_mgr_get_focus_edit
 
 exception render-reaches-game-state
 why     The device notes a shown frame for the drive state (drive_state_frame_shown,
-        core/drive_state.c), the stale-GUID check reads the registry key path (g_registryKeyPath,
-        platform/clientinfo.c), and render files include game/context.h and platform/clientinfo.h.
-remove  A frame hook for the drive state; the key path handed to the device when it is created;
-        narrower includes.
+        core/drive_state.c), and render files include game/context.h and platform/clientinfo.h.
+remove  A frame hook for the drive state; narrower includes.
 include render/c3ddevice.c core/drive_state.h
 include render/cframe.c game/context.h
 include render/render_api.h game/context.h
 include render/screen_draw.c game/context.h
 include render/textdc.c platform/clientinfo.h
 link    render/c3ddevice.c drive_state_frame_shown
-link    render/stale_guid.c g_registryKeyPath
 
 exception client-dir
 why     g_clientDir, the game folder, is defined in core/app.c; core/client_path.c joins game paths

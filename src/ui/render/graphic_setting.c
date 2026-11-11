@@ -4,7 +4,6 @@
 #include "render/rp_pool.h"
 #include "render/texture_cache.h"
 #include "contents/sound.h"
-#include "render/display_devices.h"
 #include "actor/weather.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
@@ -23,8 +22,8 @@
 #include "ui/render/render_std.h"
 #include <stdlib.h>
 #include <string.h>
-#include "core/app.h"
-#include "platform/display_depth.h"
+#include "platform/window.h"
+#include "core/window_state.h"
 #include "core/msg_str.h"
 #include "core/skin_path.h"
 #include "ui/skin_manager.h"
@@ -43,14 +42,12 @@
 #define ID_APPLY 0x107
 #define ID_RESET 0x163
 #define ID_COMMAND_LIST 0x1f6
-#define ID_DEVICE 0x1fa
 #define ID_MODE 0x1fb
 
 #define TAB_OPTIONS 0
 
 #define OFF_SCREEN (-200)
 
-#define MSG_CONFIRM_RESTART 0xc60
 #define MSG_CONFIRM_APPLY 0xc5f
 #define MSG_CONFIRM_RESET 0xc5e
 
@@ -67,12 +64,12 @@
 #define W(ctrl) ((struct UIWindow *)(ctrl))
 #define STR_AT(v, i) (&((struct String *)(v)->first)[i])
 #define STR_COUNT(v) ((unsigned)(((BYTE *)(v)->last - (BYTE *)(v)->first) / (int)sizeof(struct String)))
-#define MODE_AT(v, i) (&((struct DisplayMode *)(v)->first)[i])
 
 void ui_graphic_setting_wnd_destroy(struct UIWindow *window);
 void ui_graphic_setting_wnd_store_info(struct UIWindow *self);
 void ui_graphic_setting_wnd_on_create(struct UIWindow *self, int width, int height);
 void ui_graphic_setting_wnd_on_draw(struct UIWindow *self);
+static void ui_graphic_setting_wnd_on_process(struct UIWindow *self);
 intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *self, struct UIWindow *sender, int msg, intptr_t val1, intptr_t val2, intptr_t val3, intptr_t val4);
 const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .destroy = ui_graphic_setting_wnd_destroy,
@@ -91,7 +88,7 @@ const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .set_show = ui_window_set_show_base,
     .on_create = ui_graphic_setting_wnd_on_create,
     .on_destroy = ui_window_on_destroy_base,
-    .on_process = ui_window_on_process_base,
+    .on_process = ui_graphic_setting_wnd_on_process,
     .on_draw = ui_graphic_setting_wnd_on_draw,
     .on_focus = ui_window_on_focus_base,
     .on_focus_lost = ui_window_on_focus_lost_base,
@@ -119,10 +116,6 @@ const struct UIWindowOps ui_graphic_setting_wnd_ops = {
     .render_overlay = ui_window_render_overlay_base,
 };
 
-int g_displayDeviceIndex;
-int g_displayModeIndex;
-int g_bitsPerPixel;
-
 #pragma pack(push, 1)
 struct PacketSetUserConfig {
     unsigned short id;
@@ -139,12 +132,15 @@ struct UIGraphicSettingWnd *ui_graphic_setting_wnd_construct(struct UIGraphicSet
 {
     ui_frame_wnd_construct(&self->frame, 0);
     WND(self)->ops = &ui_graphic_setting_wnd_ops;
-    memset(&self->device_names, 0, sizeof(self->device_names));
+    memset(&self->picker, 0, sizeof(self->picker));
+    memset(&self->listed, 0, sizeof(self->listed));
     memset(&self->mode_names, 0, sizeof(self->mode_names));
-    memset(&self->modes, 0, sizeof(self->modes));
-    self->device = 0;
-    self->mode = 0;
-    string_init(&self->device_name);
+    self->pick_width = g_3dDevice.width;
+    self->pick_height = g_3dDevice.height;
+    self->picked = 0;
+    self->seen_fullscreen = g_fullscreenMode;
+    self->seen_width = g_3dDevice.width;
+    self->seen_height = g_3dDevice.height;
     memset(&self->info, 0, (BYTE *)&self->box_rodex_all - (BYTE *)&self->info);
     return self;
 }
@@ -157,10 +153,7 @@ struct UIWindow *ui_graphic_setting_wnd_new(void)
 void ui_graphic_setting_wnd_destruct(struct UIGraphicSettingWnd *self)
 {
     WND(self)->ops = &ui_graphic_setting_wnd_ops;
-    string_free(&self->device_name);
-    vec_free(&self->modes);
     string_vec_free(&self->mode_names);
-    string_vec_free(&self->device_names);
     ui_frame_wnd_destruct(&self->frame);
 }
 
@@ -171,72 +164,33 @@ void ui_graphic_setting_wnd_destroy(struct UIWindow *window)
     mem_free(self);
 }
 
-void ui_graphic_setting_wnd_build_mode_list(struct UIGraphicSettingWnd *self)
+/* custom: the resolution picker (render/display_options.h): while the game is fullscreen, disabled at
+   the size of the display the window covers; windowed, the window's size (maximised or dragged)
+   until one is picked, and the sizes whose window fits the work area of the display the window is
+   on, frame included. */
+static void refresh_picker(struct UIGraphicSettingWnd *self)
 {
-    const struct DisplayDevice *rec;
-    unsigned count, i, hw, m;
-    int has_16bit_modes = platform_display_has_16bit_modes();
+    int displayW, displayH, roomW, roomH;
 
-    count = (unsigned)display_devices_count();
-    self->modes.last = self->modes.first;
-    string_vec_clear(&self->mode_names);
-    for (i = 0, hw = 0; i < count; i++) {
-        struct String name;
-
-        rec = display_devices_at(i);
-        if (!rec->hardware)
-            continue;
-        if (hw++ != (unsigned)self->device)
-            continue;
-        string_init(&name);
-        string_assign_cstr(&name, rec->name);
-        string_free(&self->device_name);
-        self->device_name = name;
-        string_init(&name);
-        string_free(&name);
-        self->device_guid = rec->device_guid;
-        self->adapter_guid = rec->adapter_guid;
-        for (m = 0; m < rec->mode_count; m++) {
-            const struct DisplayMode *mode = &rec->modes[m];
-            int width = (int)mode->width, height = (int)mode->height, bpp = (int)mode->bpp;
-
-            if (!has_16bit_modes) {
-                if ((unsigned)height >= 0x298 && bpp == 32 && (unsigned)width <= 0x2000
-                    && (unsigned)height <= 0x1000) {
-                    struct String text;
-                    struct DisplayMode entry;
-
-                    string_init(&text);
-                    string_format(&text, "%d x %d x %d", width, height, bpp);
-                    string_vec_push_copy(&self->mode_names, &text);
-                    string_free(&text);
-                    entry.width = width;
-                    entry.height = height;
-                    entry.bpp = 32;
-                    vec_push(&self->modes, &entry, sizeof entry);
-                }
-            } else if ((unsigned)height >= 0x298 && (unsigned)width <= 0x2000 && (unsigned)height <= 0x1000
-                       && (bpp == 16 || bpp == 32)) {
-                struct String text;
-                struct DisplayMode entry;
-
-                string_init(&text);
-                string_format(&text, "%d x %d x %d", width, height, bpp);
-                string_vec_push_copy(&self->mode_names, &text);
-                string_free(&text);
-                entry.width = width;
-                entry.height = height;
-                entry.bpp = bpp;
-                vec_push(&self->modes, &entry, sizeof entry);
-            }
-            if (width == g_displayWidth && height == g_displayHeight && bpp == g_bitsPerPixel) {
-                g_displayModeIndex = (int)vec_count(&self->modes, sizeof(struct DisplayMode)) - 1;
-                self->mode = g_displayModeIndex;
-            }
-        }
+    if (!self->picked) {
+        self->pick_width = g_3dDevice.width;
+        self->pick_height = g_3dDevice.height;
     }
-    if (self->mode < 0 || (size_t)self->mode >= vec_count(&self->modes, sizeof(struct DisplayMode)))
-        self->mode = 0;
+    platform_window_room(g_hMainWnd, &displayW, &displayH, &roomW, &roomH);
+    display_picker_build(&self->picker, g_fullscreenMode, displayW, displayH, roomW, roomH,
+                         self->pick_width, self->pick_height);
+}
+
+/* A size picked that the window does not have yet. */
+static int size_picked(const struct UIGraphicSettingWnd *self)
+{
+    return self->picker.enabled && self->picked
+           && (self->pick_width != g_3dDevice.width || self->pick_height != g_3dDevice.height);
+}
+
+static int display_changed(const struct UIGraphicSettingWnd *self)
+{
+    return W(self->box_fullscreen)->state != g_fullscreenMode || size_picked(self);
 }
 
 int ui_graphic_setting_wnd_check_changed(struct UIGraphicSettingWnd *self)
@@ -244,8 +198,7 @@ int ui_graphic_setting_wnd_check_changed(struct UIGraphicSettingWnd *self)
     struct UIWindow *apply = W(self->btn_apply);
     int changed = 0;
 
-    if (self->device != g_displayDeviceIndex || self->mode != g_displayModeIndex
-        || settings_display_changed(self))
+    if (display_changed(self))
         changed = 2;
     else if (self->sprite_mode != g_spriteMode || self->texture_detail != g_textureMode
              || W(self->box_mouse)->state != (g_session1.mouseExclusiveOption != 0)
@@ -256,6 +209,27 @@ int ui_graphic_setting_wnd_check_changed(struct UIGraphicSettingWnd *self)
     else
         ui_window_move_base(apply, W(self->btn_close)->x - apply->width - 10, WND(self)->height - apply->height - 3);
     return changed;
+}
+
+/* custom: the window's mode and size follow the window (render/resize.c), which the player or the
+   system may change while the dialog is open: the dialog shows them, and the Fullscreen box follows
+   unless the player has ticked or cleared it since, so that Apply does not undo the change. */
+static void ui_graphic_setting_wnd_on_process(struct UIWindow *window)
+{
+    struct UIGraphicSettingWnd *self = (struct UIGraphicSettingWnd *)window;
+
+    if (g_fullscreenMode == self->seen_fullscreen && g_3dDevice.width == self->seen_width
+        && g_3dDevice.height == self->seen_height)
+        return;
+    if ((W(self->box_fullscreen)->state != 0) == (self->seen_fullscreen != 0))
+        ui_check_box_set_check(W(self->box_fullscreen), g_fullscreenMode);
+    self->seen_fullscreen = g_fullscreenMode;
+    self->seen_width = g_3dDevice.width;
+    self->seen_height = g_3dDevice.height;
+    refresh_picker(self);
+    if (self->tab != TAB_OPTIONS)
+        ui_graphic_setting_wnd_check_changed(self);
+    ui_window_invalidate_base(WND(self));
 }
 
 static struct UICheckBox *make_check_box(struct UIGraphicSettingWnd *self, int width, int msg)
@@ -312,32 +286,10 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
 {
     struct UIGraphicSettingWnd *self = (struct UIGraphicSettingWnd *)window;
     struct UIWindow *wnd = WND(self);
-    const struct DisplayDevice *rec;
-    unsigned count, i;
-    int running = -1;
     void *mem;
 
     ui_window_add_sys_button(wnd);
     ui_window_add_close_button(wnd, "Alt+D", 0);
-    string_vec_clear(&self->device_names);
-    self->device = g_displayDeviceIndex;
-    count = (unsigned)display_devices_count();
-    for (i = 0; i < count; i++) {
-        rec = display_devices_at(i);
-        if (!rec->hardware)
-            continue;
-        if (running < 0 && memcmp(&rec->adapter_guid, &init_adapter, sizeof(GUID)) == 0)
-            running = (int)STR_COUNT(&self->device_names);
-        string_vec_push_text(&self->device_names, rec->name, strlen(rec->name));
-    }
-    if (running >= 0)
-        self->device = running;
-    else if (self->device < 0 || (unsigned)self->device >= STR_COUNT(&self->device_names))
-        self->device = 0;
-    g_displayDeviceIndex = self->device;
-    self->mode = g_displayModeIndex;
-    ui_graphic_setting_wnd_build_mode_list(self);
-    g_displayModeIndex = self->mode;
 
     mem = mem_alloc(SIZE_TAB_CONTROL);
     self->tabs = (struct UITabControl *)(mem ? ui_tab_control_construct(mem) : NULL);
@@ -414,8 +366,6 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
     self->box_extend_damage = make_check_box(self, 0x3c, 0xdf8);
     ui_window_add_child(wnd, W(self->box_extend_damage));
 
-    self->device_box = make_combo(ID_DEVICE, 0xc67);
-    ui_window_add_child(wnd, W(self->device_box));
     self->mode_box = make_combo(ID_MODE, 0xc68);
     ui_window_add_child(wnd, W(self->mode_box));
 
@@ -433,7 +383,7 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
 
     self->box_fullscreen = make_check_box(self, 0x3c, 0xc69);
     ui_check_box_set_check(W(self->box_fullscreen), g_fullscreenMode);
-    settings_add_row(self, W(self->box_fullscreen));
+    ui_window_add_child(wnd, W(self->box_fullscreen));
     self->box_mouse = make_check_box(self, 0x50, 0xc6a);
     ui_check_box_set_check(W(self->box_mouse), g_session1.mouseExclusiveOption);
     ui_window_add_child(wnd, W(self->box_mouse));
@@ -443,6 +393,7 @@ void ui_graphic_setting_wnd_on_create(struct UIWindow *window, int width,
     self->box_rodex_all = make_check_box(self, 0x3c, 0xf1c);
     ui_check_box_set_check(W(self->box_rodex_all), g_session1.userConfigEntry1 != 0);
     ui_window_add_child(wnd, W(self->box_rodex_all));
+    refresh_picker(self);
 
     ui_graphic_setting_wnd_load_options(self);
     ui_graphic_setting_wnd_apply_tab(self);
@@ -460,6 +411,22 @@ static void draw_combo(struct UIWindow *wnd, struct UIWindow *box)
     ui_window_draw_outline(wnd, box->x, box->y, 0xb5, 0x12, 0xc0c0c0);
     arrow = res_mgr_get(g_resMgr(), ui_skin_path(UI_SKIN "basic_interface\\txtbox_btn_a.bmp"));
     ui_window_draw_bitmap(wnd, box->x + box->width - arrow->width, box->y, arrow, 0);
+}
+
+/* custom: disabled (fullscreen, or no size fits), the picker shows its size in grey, without the
+   list's arrow */
+static void draw_picker(struct UIWindow *wnd, struct UIWindow *box, const struct DisplayPicker *picker)
+{
+    char text[32];
+
+    snprintf(text, sizeof text, "%d x %d", picker->width, picker->height);
+    if (picker->enabled) {
+        draw_combo(wnd, box);
+        draw_label(wnd, box->x + 3, box->y + 4, text);
+        return;
+    }
+    ui_window_draw_outline(wnd, box->x, box->y, 0xb5, 0x12, 0xc0c0c0);
+    ui_window_text_out(wnd, box->x + 3, box->y + 4, text, 0, 0, 0xc, 0x808080, 0, 0);
 }
 
 void ui_graphic_setting_wnd_on_draw(struct UIWindow *window)
@@ -488,21 +455,14 @@ void ui_graphic_setting_wnd_on_draw(struct UIWindow *window)
         draw_label(wnd, 0x12, W(self->box_zoom)->y + 2, msg_str(0xdb5));
         return;
     }
-    box = W(self->device_box);
-    draw_label(wnd, 0x12, box->y + 3, msg_str(0xc6d));
-    draw_combo(wnd, box);
-    if (STR_COUNT(&self->device_names) > (unsigned)self->device)
-        draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->device_names, self->device)));
     box = W(self->mode_box);
     draw_label(wnd, 0x12, box->y + 3, msg_str(0xc6e));
-    draw_combo(wnd, box);
-    if (STR_COUNT(&self->mode_names) > (unsigned)self->mode)
-        draw_label(wnd, box->x + 3, box->y + 4, string_cstr(STR_AT(&self->mode_names, self->mode)));
+    draw_picker(wnd, box, &self->picker);
     draw_label(wnd, 0x12, W(self->sprite_bar)->y + 2, msg_str(0x144));
     draw_label(wnd, 0x12, W(self->texture_bar)->y + 2, msg_str(0x145));
     draw_label(wnd, 0x12, W(self->box_fullscreen)->y, msg_str(0xc6f));
     draw_label(wnd, 0x12, W(self->box_mouse)->y, msg_str(0xc70));
-    settings_draw_labels(self);
+    draw_label(wnd, 0x12, W(self->box_trilinear)->y, msg_str(0x7ce));
     draw_label(wnd, 0x12, W(self->box_emblem_frame)->y, msg_str(0xdc6));
 }
 
@@ -518,13 +478,12 @@ void ui_graphic_setting_wnd_apply_tab(struct UIGraphicSettingWnd *self)
 
     if (self->tab == TAB_OPTIONS) {
         move_to(self->btn_apply, OFF_SCREEN, OFF_SCREEN);
-        move_to(self->device_box, OFF_SCREEN, OFF_SCREEN);
         move_to(self->mode_box, OFF_SCREEN, OFF_SCREEN);
         move_to(self->sprite_bar, OFF_SCREEN, OFF_SCREEN);
         move_to(self->texture_bar, OFF_SCREEN, OFF_SCREEN);
         move_to(self->box_fullscreen, OFF_SCREEN, OFF_SCREEN);
         move_to(self->box_mouse, OFF_SCREEN, OFF_SCREEN);
-        settings_hide_rows(self);
+        move_to(self->box_trilinear, OFF_SCREEN, OFF_SCREEN);
         move_to(self->box_emblem_frame, OFF_SCREEN, OFF_SCREEN);
         move_to(self->btn_reset, 5, wnd->height - W(self->btn_reset)->height - 3);
         move_to(self->btn_commands, W(self->btn_reset)->x + 5 + W(self->btn_reset)->width,
@@ -573,15 +532,14 @@ void ui_graphic_setting_wnd_apply_tab(struct UIGraphicSettingWnd *self)
     move_to(self->box_zoom, OFF_SCREEN, OFF_SCREEN);
     move_to(self->box_extend_damage, OFF_SCREEN, OFF_SCREEN);
     ui_graphic_setting_wnd_check_changed(self);
-    move_to(self->device_box, 0x96, 0x2b);
-    at = W(self->device_box);
-    move_to(self->mode_box, at->x, at->y + 0x20);
-    move_to(self->sprite_bar, at->x, at->y + 0x40);
-    move_to(self->texture_bar, at->x, at->y + 0x60);
-    move_to(self->box_fullscreen, at->x, at->y + 0x80);
-    move_to(self->box_mouse, at->x, at->y + 0xa0);
-    settings_place_rows(self);
-    move_to(self->box_emblem_frame, at->x, at->y + 0xe0);
+    move_to(self->mode_box, 0x96, 0x2b);
+    at = W(self->mode_box);
+    move_to(self->sprite_bar, at->x, at->y + 0x20);
+    move_to(self->texture_bar, at->x, at->y + 0x40);
+    move_to(self->box_fullscreen, at->x, at->y + 0x60);
+    move_to(self->box_mouse, at->x, at->y + 0x80);
+    move_to(self->box_trilinear, at->x, at->y + 0xa0);
+    move_to(self->box_emblem_frame, at->x, at->y + 0xc0);
     move_to(self->box_rodex_all, OFF_SCREEN, OFF_SCREEN);
 }
 
@@ -632,6 +590,22 @@ static void place_list(struct UIGraphicSettingWnd *self, struct UIWindow *list, 
     y = box->y + 0x11;
     ui_window_to_screen(WND(self), &x, &y);
     ui_window_move(list, x + 1, y + 1);
+}
+
+/* custom: fullscreen, or windowed: at the size picked, which also restores a maximised window, or
+   as the window was, at once (render/resize.c) */
+static void apply_display(struct UIGraphicSettingWnd *self)
+{
+    int maximized = g_windowMaximized;
+
+    if (size_picked(self)) {
+        g_displayWidth = self->pick_width;
+        g_displayHeight = self->pick_height;
+        maximized = 0;
+    }
+    set_display(W(self->box_fullscreen)->state != 0, maximized, g_displayWidth, g_displayHeight);
+    self->picked = 0;
+    refresh_picker(self);
 }
 
 static void store_quality_settings(struct UIGraphicSettingWnd *self)
@@ -686,7 +660,7 @@ static void open_string_list(struct UIGraphicSettingWnd *self, int id, struct Ve
 
 static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender, int id, int value)
 {
-    int answer, count, i, height;
+    int answer, changed, count, i, height;
     struct UIWindow *list;
 
     switch (id) {
@@ -746,7 +720,8 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             ui_window_mgr_send_msg_(&g_windowMgr, 1, (intptr_t)msg_str(g_session1.emblemFrame ? 0xdc7 : 0xdc8), 0x64ffff, 0, 0);
         } else if (sender == W(self->box_extend_damage)) {
             g_session1.extendDamage = value;
-        } else if (settings_is_display_box(sender, self) || sender == W(self->box_trilinear)) {
+        } else if (sender == W(self->box_fullscreen) || sender == W(self->box_mouse)
+                   || sender == W(self->box_trilinear)) {
             ui_graphic_setting_wnd_check_changed(self);
         } else if (sender == W(self->box_rodex_all)) {
             struct PacketSetUserConfig packet;
@@ -781,45 +756,17 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
         place_list(self, list, W(self->skin_box), g_skinMgr.current + 1, height);
         return 0;
     case ID_APPLY:
-        switch (ui_graphic_setting_wnd_check_changed(self)) {
-        case 2:
-            answer = ui_window_mgr_message_box(&g_windowMgr, display_prompt_text(self, MSG_CONFIRM_RESTART),
-                                            UI_MSGBOX_QUESTION, 1, 0, 0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
-            if (answer == UI_MSGBOX_ANSWER_NO)
-                return 0;
-            if (g_displayDeviceIndex != self->device || g_displayModeIndex != self->mode) {
-                const struct DisplayMode *mode;
-
-                g_displayDeviceIndex = self->device;
-                g_displayModeIndex = self->mode;
-                snprintf(g_deviceName, sizeof(g_deviceName), "%s",
-                            string_cstr(&self->device_name));
-                g_deviceGuid = self->device_guid;
-                g_driverGuid = self->adapter_guid;
-                if (vec_count(&self->modes, sizeof(struct DisplayMode)) > (size_t)self->mode) {
-                    mode = MODE_AT(&self->modes, self->mode);
-                    g_displayWidth = mode->width;
-                    g_displayHeight = mode->height;
-                    g_bitsPerPixel = mode->bpp;
-                }
-            }
-            if (apply_display_mode(self) == 1) {
-                store_quality_settings(self);
-                return 0;
-            }
-            connection_disconnect(rag_connection_transport(rag_connection_instance()));
-            mode_send_message(client_current_mode(), 2, 0, 0, 0, 0);
+        changed = ui_graphic_setting_wnd_check_changed(self);
+        if (!changed)
             return 0;
-        case 1:
-            answer = ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_APPLY), UI_MSGBOX_QUESTION, 1, 0,
-                                            0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
-            if (answer == UI_MSGBOX_ANSWER_NO)
-                return 0;
-            store_quality_settings(self);
+        answer = ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_APPLY), UI_MSGBOX_QUESTION, 1, 0,
+                                        0, UI_MSGBOX_TITLE, 0x118, 0x78, 0);
+        if (answer == UI_MSGBOX_ANSWER_NO)
             return 0;
-        default:
-            return 0;
-        }
+        if (changed == 2)
+            apply_display(self);
+        store_quality_settings(self);
+        return 0;
     case ID_RESET:
         if (ui_window_mgr_message_box(&g_windowMgr, msg_str(MSG_CONFIRM_RESET), UI_MSGBOX_QUESTION, 1, 0, 0,
                                    UI_MSGBOX_TITLE, 0x118, 0x78, 0) != UI_MSGBOX_ANSWER_YES)
@@ -849,11 +796,19 @@ static int on_command(struct UIGraphicSettingWnd *self, struct UIWindow *sender,
             return 0;
         ui_window_open(WID_COMMAND_LIST);
         return 0;
-    case ID_DEVICE:
-        open_string_list(self, ID_DEVICE, &self->device_names, self->device, W(self->device_box));
-        return 0;
     case ID_MODE:
-        open_string_list(self, ID_MODE, &self->mode_names, self->mode, W(self->mode_box));
+        refresh_picker(self);
+        if (!self->picker.enabled)
+            return 0;
+        /* the list keeps these sizes while it is open, whatever the window does meanwhile */
+        self->listed = self->picker;
+        string_vec_clear(&self->mode_names);
+        for (i = 0; i < self->listed.count; i++) {
+            char text[32];
+            snprintf(text, sizeof text, "%d x %d", self->listed.sizes[i][0], self->listed.sizes[i][1]);
+            string_vec_push_text(&self->mode_names, text, strlen(text));
+        }
+        open_string_list(self, ID_MODE, &self->mode_names, self->listed.selected, W(self->mode_box));
         return 0;
     default:
         return 0;
@@ -947,17 +902,13 @@ intptr_t ui_graphic_setting_wnd_send_msg(struct UIWindow *window,
             ui_window_mgr_invalidate_all(&g_windowMgr);
             skin_mgr_set_current_skin_num(&g_skinMgr, val1 - 1);
             return 0;
-        case ID_DEVICE:
-            if (self->device == val1)
-                return 0;
-            self->device = val1;
-            ui_graphic_setting_wnd_build_mode_list(self);
-            ui_graphic_setting_wnd_check_changed(self);
-            break;
         case ID_MODE:
-            if (self->mode == val1)
+            if (val1 < 0 || val1 >= self->listed.count)
                 return 0;
-            self->mode = val1;
+            self->pick_width = self->listed.sizes[val1][0];
+            self->pick_height = self->listed.sizes[val1][1];
+            self->picked = 1;
+            refresh_picker(self);
             ui_graphic_setting_wnd_check_changed(self);
             break;
         default:

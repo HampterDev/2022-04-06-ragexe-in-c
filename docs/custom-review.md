@@ -262,7 +262,7 @@ The first four operations are at lines 133-139.
 | START-068 | Screenshot capture drew the local date, weekday and time into the bottom-left of the image. `mode_screen_shot` in `src/world/mode_mgr.c`. | Remove the visible timestamp for an unobstructed image; files retain ordinary filesystem timestamps. | Remove, approved 2026-11-01 | Removed date/time generation, weekday table, text buffer and all five drawing calls. Changed-unit release rebuild/relink and JPEG capture tests passed. |
 | START-069 | Screenshot capture composites `scr_logo.bmp` into the bottom-right, treating magenta as transparent. It also required that resource before capturing. `src/render/frame_capture.c`. | Remove the screenshot logo overlay and its resource dependency from purist. | Remove, approved 2026-11-01 | Removed lookup, compositor and bitmap-specific include. Capture and save-notification regression tests and release relink passed. Foundation patch preserves optional logo rendering and fixes failed-save reporting. |
 | START-070 | An unchecked-by-default trade-window checkbox requests a screenshot when Exchange is clicked, before sending the trade commit request. `src/ui/shops/trade.c`. | Remove this optional automatic screenshot behavior and checkbox; retain manual screenshots and ordinary trading. | Remove, approved 2026-11-01 | Removed checkbox, label, state and automatic request; removed the now-unused custom screenshot prefix and base destructor. Full release build, manual screenshot tests, mode lifecycle tests and trade-command source audit passed. |
-| START-071 | Startup detects graphics adapters and available display modes, populates graphics-setting choices and finds the selected adapter's monitor coordinates. `src/render/render_clients.c`, `gfx_d3d9.c`, `display_devices.c`. | Keep this shared graphics support. | Keep, approved 2026-11-01 | Retained unchanged; used by graphics settings and coordinate conversion for the selected monitor. |
+| START-071 | Startup detects graphics adapters and available display modes, populates graphics-setting choices and finds the selected adapter's monitor coordinates. `src/render/render_clients.c`, `gfx_d3d9.c`, `display_devices.c`. | Keep this shared graphics support. | Keep, approved 2026-11-01; removed 2026-11-11 | Removed with exclusive fullscreen and the display-mode changes (*Windowed with resizing, and fullscreen at the display's own resolution*): the display is the window's, Direct3D 9 always uses the primary display's adapter, and the resolution picker offers common sizes that fit the window's display. |
 | START-072 | Startup creates `savedata` if it is missing. The directory holds local options, chat layouts, quest-tracker selections, party-panel records and local account/character preferences. `src/core/winmain.c` and the individual settings writers. | Keep this shared storage setup; review individual saved features separately. | Keep, approved 2026-11-01 | Retained unchanged. Several retained systems use this directory. |
 | START-073 | Startup calls `_controlfp(0x20000, 0x30000)`, selecting 24-bit x87 floating-point precision in this 32-bit client. `src/core/winmain.c`. | Keep the existing numerical environment; review any math modernization separately. | Keep, approved 2026-11-01 | Retained unchanged. This is a CPU arithmetic setting, not a visual effect or data format. |
 | START-074 | Startup requests finer Windows timer resolution with `timeBeginPeriod`, aiming for 1 ms within supported limits; normal shutdown calls `timeEndPeriod`. `src/core/winmain.c`. | Keep while the client uses `timeGetTime` for logic, animation and timeouts; review timing modernization separately. | Keep, approved 2026-11-01 | Retained unchanged. This improves timing granularity, not the configured update rate. |
@@ -14539,3 +14539,177 @@ Also: `tests/captcha_window_test_boundaries.h` and `tests/name_card_owner_suppor
 in the tree refers to (no batch file compiled them either), are removed, and `tests\build.bat`
 says when Ninja is missing. It finds Visual Studio's own: `vcvars64.bat` puts the CMake tools'
 `ninja.exe` on `PATH` (checked here with nothing else on it), which the Windows CI job relies on.
+
+## Windowed with resizing, and fullscreen at the display's own resolution (START-071, 2026-11-11)
+
+Decided with Patrick on 2026-11-11: the game is windowed or fullscreen, on every platform and with
+either backend, and always draws at its window's size in pixels. Windowed, the player resizes the
+window by its border and maximises it. Fullscreen is a borderless window over the display the
+window is on, at that display's own mode, and nothing changes the display's mode any more. This
+takes the fullscreen of `plans/gpu-renderer.md` (phase 3) ahead, except that the game is drawn at
+the display's size rather than drawn at its own resolution and scaled. It also ends what START-071
+kept: the adapters and display modes the client gathered at startup for the graphics settings.
+
+- **The window and the device.** The window is created with `SDL_WINDOW_HIGH_PIXEL_DENSITY` and,
+  off Android, `SDL_WINDOW_RESIZABLE`. Its minimum client size is 1024 by 664 pixels
+  (`DISPLAY_MIN_WIDTH`, `DISPLAY_MIN_HEIGHT`; 664 rows are the fewest the original's resolution
+  list had, and the interface fits at that size, as the scene `window_resize` shows), in window
+  coordinates rounded up so that it never holds fewer pixels (`platform_window_minimum`), and set
+  again whenever the window's display or pixel density changes (`SDL_EVENT_WINDOW_DISPLAY_CHANGED`,
+  `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`). All conversions of pixels to window coordinates go through
+  `platform_window_units` and `display_units`. The device takes the window's client size in pixels
+  (`platform_client_rect`, now `SDL_GetWindowSizeInPixels`) when it is created, and once a pump
+  `display_follow_window` (`render/resize.c`) gives it the window's size whenever that changed,
+  through `gfx_resize` (a Reset with the new back buffer size on Direct3D 9, new targets on GL), with
+  the projection and the UI windows as before; dragging the border, maximising, restoring, the
+  settings, SDL and the system all go that one way. When the device does not take a size, it tries
+  again once the window's size changes, or, if the device was lost then (`gfx_device_lost`, a
+  Direct3D 9 device that cannot be reset until the system gives it back), once it is no longer
+  lost, asked every 250 ms (`platform_ticks_ms`); a size refused for another reason is not tried
+  again until the window's size changes. Until the device has the window's size, Direct3D 9
+  presents the picture where `present_fit` puts it, as the GL backend does, so that the pointer,
+  which `present_point` (`render/present_fit.h`) maps from SDL's window coordinates (points on
+  macOS and scaled Wayland) to the device's pixels through the same fit, lands where the picture
+  shows it. The 3D view keeps its vertical field of view (`renderer_set_projection` takes the same
+  focal length for both axes from the height), so a wider window shows more of the world sideways;
+  UI windows keep their distance to the nearer edge, or stay centred, and are kept on the screen.
+  The IME's candidate area is sent again when the window or the scene changes size, not only when
+  the composition moves. The executable's manifest (`res/app.res`, resource `RT_MANIFEST` 1)
+  declared system DPI awareness (`dpiAware` `true`), under which Windows stretches the window on a
+  display whose scale is not the system's; its `dpiAware` element is now `true/pm` with
+  `dpiAwareness` `PerMonitorV2` beside it, so SDL's window coordinates are the display's pixels on
+  every display. The resource file is otherwise unchanged: its other 22 resources are the same
+  bytes.
+- **Fullscreen.** SDL's fullscreen desktop: `platform_window_fullscreen` sets the window's
+  fullscreen mode to none (`SDL_SetWindowFullscreenMode(window, NULL)`) and calls
+  `SDL_SetWindowFullscreen`. SDL does this on every platform the client runs on: it makes the
+  window cover the display it is on (on Windows a borderless window over the monitor, without
+  Windows 11's rounded corners), gives the window its frame back when it leaves, does not minimise
+  it when it loses the focus (it does that only for an exclusive mode), and makes a fullscreen
+  window moved to another display cover that one. When the display's own resolution changes, SDL
+  leaves the window as it was, so the client makes it fullscreen again
+  (`SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED`; not on Android, whose window SDL keeps at the screen).
+  Direct3D 9 needs nothing from it: its device is windowed in both modes (`Windowed`, a
+  `D3DFMT_UNKNOWN` back buffer, a copy swap into the window's `HWND`) and never owns the display.
+  It is always the default adapter's, the primary display's, wherever the window is; a window on a
+  display of another graphics card gets the frames copied across adapters. A client started in
+  fullscreen goes fullscreen, before its window is first shown, on the display its saved windowed
+  position is on, or on the primary display when no display holds that point or none was saved.
+- **The settings follow the window.** `set_display` puts the window in the mode the graphics
+  settings ask for and keeps the maximised state asked for, also when the window goes fullscreen,
+  so that it comes out of fullscreen as asked. Once a pump the display options follow what the
+  window is (`display_options_track`): whether it is fullscreen, so that a window the system takes
+  out of fullscreen (macOS, a window manager) stays out of it and the settings' Fullscreen box
+  follows unless the player has changed it; when it is not, whether it is maximised; and when it is
+  neither, its frame's corner (`g_windowX`, `g_windowY`) and its client size (`WIDTH`, `HEIGHT`). A
+  minimised window changes nothing, so a window minimised from maximised comes back maximised. A
+  window opens at the saved size and place, and is restored to them, with the size made to fit the
+  room the display has for a client area, but no smaller than the minimum (`display_fit`).
+- **What went.** Direct3D 9's exclusive mode: the fullscreen present parameters, the dialog-box mode
+  `gfx_flip_to_gdi` set for it, the mode `Reset`s of `change_mode`, `switch_adapter` (the device
+  made again on another adapter, also forced by `RAGEXE_SWITCH_DEVICE`) with `same_gpu`,
+  `recreate_device`'s retry in windowed mode, the adapter table and its GUIDs, `monitor_display`,
+  the adapter field and `IID_IDirect3DHALDevice`; `gfx_set_mode`, `gfx_can_set_mode_live`,
+  `gfx_adapter_monitor`, `gfx_enum_adapter`, `gfx_ddraw_enumerate`, `GfxAdapterCallback`,
+  `gfx_flip_to_gdi` and `GFX_E_DISPLAY_MODE` in both backends (the GL backend's mode list with
+  them); the adapter of `gfx_open`, the mode of `gfx_create_screen`, the device of `gfx_create_3d`
+  and the unused `whole` of `gfx_present`; `render/display_devices.c` and `.h` with
+  `render_enum_adapters`, its "d3denum init" box and `tests/test_display_devices.c`;
+  `render/stale_guid.c`, which cleared a saved `GUIDDRIVER` with a "Display device reset" box;
+  `platform/display_depth*`; `struct SurfaceDesc`, `C3dDevice.primaryDesc`, `desktopBpp`,
+  `fullscreen` and `bltToClient`, which nothing read, and the adapter, device and mode arguments of
+  `c3d_device_init`, whose screen creation is now the file's own `create_screen`; the error box's
+  display hook (`g_errorMsgPrepareDisplay`, `device_flip_to_gdi`), which handed an exclusive
+  display back to GDI; `init_adapter`, `borderless_setting`, `borderless_rect`; in
+  `render/resize.c` the windowed, exclusive and borderless kinds, the frameless placement, the
+  live-or-restart test and the Borderless check box with its `settings_*` helpers and
+  `read_display_options`/`write_display_options`; `platform_window_place_frameless`,
+  `platform_window_frameless`, `platform_window_has_caption`, the display argument of
+  `platform_window_place_windowed` and, outside the platform layer, `platform_monitor_rects`;
+  `g_bitsPerPixel`, `g_displayDeviceIndex`, `g_displayModeIndex`, `g_deviceName`, `g_deviceGuid`,
+  `g_driverGuid` and `g_screenWidth`/`g_screenHeight` (the windowed size, which
+  `g_displayWidth`/`g_displayHeight` hold); the GL backend's `is_main_target`, which nothing
+  called. From the link lines of `build.bat` and `tests\scenes\build.bat` go the libraries the
+  linker reports unused (`/VERBOSE:UNUSEDLIBS`): `ddraw.lib`, `dxguid.lib`, `netapi32.lib`,
+  `oleaut32.lib`, `cfgmgr32.lib`, `libcpmt.lib` and `legacy_stdio_definitions.lib`.
+- **What follows from it.** The game draws while it is inactive in fullscreen. The frame loop drew
+  nothing and slept a millisecond while inactive in exclusive fullscreen (`game/mode_run.c`,
+  `login/mode.c`); a fullscreen window now stays on the screen, a second display's beside other work
+  included, so it goes on drawing as a window does. The window's other exclusive-only cases go too:
+  an inactive window that is moved shows its last frame again, the client's cursor leaves the scene
+  when the pointer leaves the window, and a press on a caption starts the client's own drag, in
+  either mode, except that a maximised window is left to Windows to drag (dragging restores it).
+  Two places took the resolution option for the screen's size, which it no longer is: the frame
+  windows' drag guard (`ui/controls/frame_wnd.c`) and the hotkey bars' tooltip placement
+  (`ui/hotkeys/hotkey_bar_common.c`) read the window manager's screen size. On Android, whose window
+  always covers the screen, the game draws at the window's size, which SDL gives in the screen's
+  pixels, so the interface is small on a dense screen until it is scaled; on a Retina display the
+  game draws at the display's pixels too. While the player drags the border on Windows, Windows
+  runs its own sizing loop and the game does not draw; it draws at the new size once the drag ends.
+  SDL sends an expose event from within that loop that a watcher could draw from, but the client's
+  frame code (`game_mode_on_update`, the login mode, the map loader) pumps the events itself
+  (`check_system_message`), and drawing a frame from inside SDL's pump would enter that pump again.
+- **The graphics settings.** The resolution picker (`render/display_options.c`,
+  `display_picker_build`, in the `display-options` library with the rest of the display modes' pure
+  logic) is disabled in fullscreen and shows the size of the display the window covers, in grey and
+  without the list's arrow. Windowed, it shows the window's size (maximised, dragged or picked) and
+  offers, smallest first, those of 26 common sizes (4:3, 5:4, 16:9, 16:10 and 21:9, from 1024x768
+  to 5120x2880) and the window's own size that fit the room the window's display has for a client
+  area (its work area less the window's frame, `platform_window_room`, in pixels), and that room
+  itself, the largest window that fits, all within the sizes the options keep; with nothing to
+  offer it is disabled too. The entries read `1600 x 900`. A size picked there restores a
+  maximised window and is set when the player presses Apply and confirms "Set to these values?",
+  which Apply asks for every change. The Graphic Device row goes: the display is the window's and
+  the device the default adapter's, so there is nothing to choose; the rows below it move up one.
+- **Saved settings.** `OptionInfo.lua` keeps `ISFULLSCREENMODE`, the new `ISMAXIMIZED`, `WIDTH`,
+  `HEIGHT`, `Window_XPos`, `Window_YPos`, `OLD_WIDTH` and `OLD_HEIGHT` (`display_options_read` and
+  `display_options_write`). A nonzero `ISFULLSCREENMODE` is fullscreen, whether `ISBORDERLESS` made
+  it exclusive (0) or borderless (1, also when missing); a nonzero `ISMAXIMIZED` is maximised, and a
+  file without it is not. `WIDTH` and `HEIGHT` are the windowed size, the one a maximised window is
+  restored to, also when they held an exclusive mode or, in borderless fullscreen, the resolution
+  picked; outside 1024 to 8,192 by 664 to 4,096 they give 1024x768 (the original only gave
+  1024x768 for a height below 664, compared unsigned, so a negative height went through).
+  `Window_XPos` and `Window_YPos` are where the frame last was when the window was neither
+  maximised nor fullscreen, where they used to be wherever the frame was when the client closed
+  (a maximised or fullscreen window's corner); without both no position is known, and none is
+  written. `ISBORDERLESS`, `BITPERPIXEL`, `DEVICECNT` and `MODECNT` are no longer read or written,
+  so the next save leaves them out. The registry's `DEVICENAME`, `GUIDDEVICE` and `GUIDDRIVER` are
+  no longer read; this client only ever wrote a zero `GUIDDRIVER` (`stale_guid`), and a
+  `GUIDDRIVER` from the original's setup tool, a DirectDraw device GUID, matched no adapter, so the
+  device was the default adapter's in any case. START-071's row in the startup table is updated.
+
+Tests: `tests/test_display_options.c` reads the option files the client wrote with exclusive,
+borderless, windowed and maximised windows and the original's file without `ISBORDERLESS`, with
+and without a position, checks that the dropped options are never asked for, that sizes out of
+range give 1024x768 and that what is written reads back the same; follows a window that is dragged
+and moved, maximised, minimised, made fullscreen, taken out of fullscreen by the system and
+restored, and one at sizes the options do not keep, keeping its last normal size and place; fits
+sizes to rooms larger and smaller than the minimum; checks that the minimum rounded up holds at
+least 1024 by 664 pixels, and is the fewest window coordinates that do, at densities from 1 to 3
+including 1.25, where rounding to the nearest gave 1023 by 663; and builds the picker in fullscreen
+and windowed on a 1920x1080 display with a taskbar, a 5120x1440 one, 1366x768 and 1280x800 laptops
+where only the room fits, and displays too small for any size, with the window's size among the
+offered ones, between them, past them, maximised and too large to be offered.
+`tests/test_present_fit.c` maps the pointer at one, two and one and a half pixels a point, in a
+covered window and in one of another aspect. `tests/test_startup_settings.c` reads
+`TRILINEARFILTER` and `SOUNDMODE` only. `tests/test_gfx_gl.c` calls the GL backend with the new
+signatures. The scene harness gains `scene.resize(w, h)`, and the scene `window_resize` resizes the
+hidden window to 1280 by 720, below the minimum (it stays at 1024 by 664) and to 1920 by 900, and
+captures each.
+
+Validation: `build.bat check` passes (the include check over 1,813 files in 23 libraries, the link
+check over 1,143 objects), and `build.bat freetype` links without the libraries removed from its
+link line too; the whole `tests\build.bat` passes (313 tests, and the 6 oracle tests). GCC in WSL,
+with SDL's headers from `build\vendor`, compiles every client file CMake builds off Windows and the
+tests above (syntax only) without an error, and the changed ones without a warning at `-Wall
+-Wextra`. `tests\scenes\build.bat` builds, and with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's
+dummy audio driver the 12 captures of the scene set are identical to the reference's goldens
+(`build/ref`), with the same counters; the four of `window_resize` are at the sizes asked for
+(1280x720, 1024x664 when 800x600 was asked for, 1920x900), with the 3D view as high as before and
+wider or narrower, and the UI windows on the screen. A scene run in the hidden harness window opened
+the graphics settings, picked 1440 x 900 and applied it after the question: the frame became
+1440x900 and the windows at the right edge moved with it. Not run: fullscreen and maximising (the
+harness never shows its window, and SDL makes a hidden window fullscreen or maximised only once it
+is shown), dragging the border, a second display, a display of another scale, a lost Direct3D 9
+device, and Linux, macOS, Wayland and Android, which were not built or run; they are to be tried by
+hand.

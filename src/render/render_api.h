@@ -32,16 +32,12 @@ void rp_quad_draw(struct RPQuad *self);
 extern int   g_wobbleFramesLeft;
 extern BYTE  g_wobbleMode;
 extern short g_wobbleAmplitude;
-extern GUID g_driverGuid;
 
-extern GUID init_adapter;
-int set_display(int w, int h, int fullscreen, const GUID *adapter);
-/* Fullscreen is drawn as a frameless window covering the monitor when nonzero (the
-   ISBORDERLESS option). borderless_rect gives that monitor's rectangle, or 0 when the
-   setting is off or the adapter has no monitor. Both in render/c3ddevice.c; a monitor's
-   full and work-area rectangles come from platform_monitor_rects (platform/window.h). */
-int borderless_rect(const GUID *adapter, RECT *rc);
-extern int borderless_setting;
+/* render/resize.c: the window in its display mode and the device at its client size in pixels
+   (render/display_options.h); display_follow_window, once a pump, keeps the device at the window's
+   size and the display options at what the window is. */
+void set_display(int fullscreen, int maximized, int w, int h);
+void display_follow_window(void);
 extern float g_texelOffsetU, g_texelOffsetV;
 extern DWORD g_fogVertexMode;
 extern DWORD g_fogColor;
@@ -61,15 +57,5 @@ extern const char g_msgModeNotSupported[];
 
 struct List;
 char render_quads_to_texture(int w, int h, const struct List *quads, struct Texture **out);
-
-struct UIGraphicSettingWnd;
-int apply_display_mode(struct UIGraphicSettingWnd *wnd);
-char *display_prompt_text(struct UIGraphicSettingWnd *wnd, int restartId);
-void settings_add_row(struct UIGraphicSettingWnd *wnd, struct UIWindow *fullscreenBox);
-int settings_display_changed(struct UIGraphicSettingWnd *wnd);
-void settings_draw_labels(struct UIGraphicSettingWnd *wnd);
-void settings_hide_rows(struct UIGraphicSettingWnd *wnd);
-int settings_is_display_box(struct UIWindow *sender, struct UIGraphicSettingWnd *wnd);
-void settings_place_rows(struct UIGraphicSettingWnd *wnd);
 
 #endif

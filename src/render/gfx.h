@@ -9,29 +9,6 @@ typedef struct gfx_surface gfx_surface;
 typedef struct gfx_mesh gfx_mesh;
 struct C3dDevice;
 
-struct SurfaceDesc {
-    DWORD size;
-    DWORD flags;
-    DWORD height;
-    DWORD width;
-    LONG  pitch;
-    DWORD backBufferCount;
-    DWORD refreshRate;
-    DWORD alphaBitDepth;
-    void *surface;
-    DWORD colourKeys[8];
-    DWORD pfSize;
-    DWORD pfFlags;
-    DWORD fourCC;
-    DWORD bitCount;
-    DWORD rMask;
-    DWORD gMask;
-    DWORD bMask;
-    DWORD aMask;
-    DWORD caps[4];
-    DWORD textureStage;
-};
-
 struct gfx_lock {
     void *bits;
     LONG pitch;
@@ -166,25 +143,24 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_E_ZBUFFER           0x82000005
 #define GFX_E_VIEWPORT          0x82000006
 #define GFX_E_PRIMARY           0x82000007
-#define GFX_E_DISPLAY_MODE      0x82000009
 #define GFX_E_NO_PRIMARY        0x8200000e
 #define GFX_E_SURFACELOST        ((int)0x887601c2)
 #define GFX_E_FAIL               ((int)0x80004005)
 #define GFX_E_INVALIDARG         ((int)0x80070057)
 
-int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags);
-int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int flags);
-int gfx_create_3d(struct C3dDevice *d, const GUID *device, int flags);
+int gfx_open(struct C3dDevice *d, int flags);
+/* custom: the device draws into its window at d->width by d->height and never changes the
+   display's mode; fullscreen is the window's (render/display_options.h). */
+int gfx_create_screen(struct C3dDevice *d, int flags);
+int gfx_create_3d(struct C3dDevice *d, int flags);
 int gfx_create_zbuffer(struct C3dDevice *d);
 int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out);
 void gfx_default_states(struct C3dDevice *d);
 int gfx_close(struct C3dDevice *d);
-void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst);
-int gfx_present(struct C3dDevice *d, int vsync, int whole);
+int gfx_present(struct C3dDevice *d, int vsync);
 int gfx_restore_all(struct C3dDevice *d);
 void gfx_evict_managed_textures(struct C3dDevice *d);
 void gfx_set_mipmaps(int on);
-void gfx_enum_adapter(const GUID *adapter, const char *desc);
 
 gfx_surface *gfx_create_surface(int w, int h);
 gfx_surface *gfx_create_texture(int w, int h, int fmt);
@@ -328,15 +304,11 @@ int gfx_shadow_cascade(int cascade);
 void gfx_shadow_end(void);
 void gfx_shadow_receive(int receiver);
 
-typedef BOOL (*GfxAdapterCallback)(GUID *adapter, char *desc, char *name, void *ctx);
-int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags);
-
 unsigned gfx_content_version(gfx_surface *s);
 
-int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int fullscreen);
-int gfx_can_set_mode_live(const GUID *adapter);
-PlatformDisplay gfx_adapter_monitor(const GUID *adapter);
-
-void stale_guid(void);
+/* custom: the back buffer and the targets of its size at w by h, for a window resized to that. */
+int gfx_resize(struct C3dDevice *d, int w, int h);
+/* custom: the device is lost and cannot be reset until the system gives it back (Direct3D 9). */
+int gfx_device_lost(void);
 
 #endif

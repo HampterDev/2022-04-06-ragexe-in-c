@@ -103,6 +103,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
+| `resize(w, h)` | the windowed client area becomes `w`×`h` pixels, as when the player drags the window's frame, no smaller than 1024×664; the game follows on the next frame |
 | `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |

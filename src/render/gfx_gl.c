@@ -2,7 +2,6 @@
 #include "render/gfx.h"
 #include "render/gfx_batch.h"
 #include "render/device.h"
-#include "render/display_devices.h"
 #include "render/present_fit.h"
 #include "diag/perf.h"
 #include <SDL3/SDL.h>
@@ -543,11 +542,6 @@ void gfx_release(gfx_surface *s)
 {
     if (s && --s->refs <= 0)
         free_handle(s);
-}
-
-static int is_main_target(const struct gfx_surface *s)
-{
-    return s && (s->kind == K_SCREEN || s->kind == K_TARGET);
 }
 
 static int is_gpu_target(const struct gfx_surface *s)
@@ -1280,9 +1274,8 @@ static int choose_vsync(void)
     return !(env && env[0] == '0' && !env[1]);
 }
 
-int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags)
+int gfx_open(struct C3dDevice *d, int flags)
 {
-    (void)adapter;
     (void)flags;
     gl.window = d->hwnd;
     if (!gl.window)
@@ -1290,7 +1283,6 @@ int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags)
     if (!gl.lock)
         gl.lock = SDL_CreateMutex();
     d->dd = gl.window;
-    d->desktopBpp = 32;
     return 0;
 }
 
@@ -1326,27 +1318,9 @@ static int ensure_context(void)
     return 1;
 }
 
-static void fill_surface_desc(struct SurfaceDesc *sd, int w, int h, int refresh)
-{
-    memset(sd, 0, sizeof(*sd));
-    sd->size = sizeof(*sd);
-    sd->flags = 0x1 | 0x2 | 0x4 | 0x8 | 0x1000 | 0x40000;
-    sd->height = h;
-    sd->width = w;
-    sd->pitch = w * 4;
-    sd->refreshRate = refresh;
-    sd->pfSize = 0x20;
-    sd->pfFlags = 0x40;
-    sd->bitCount = 32;
-    sd->rMask = 0xff0000;
-    sd->gMask = 0xff00;
-    sd->bMask = 0xff;
-}
-
-int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int flags)
+int gfx_create_screen(struct C3dDevice *d, int flags)
 {
     struct gfx_surface *scene, *save;
-    (void)mode;
     if (!gl.window || !ensure_context())
         return GFX_E_PRIMARY;
     reset_state();
@@ -1367,7 +1341,6 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     d->target->refs++;
     gl.mainTarget = d->target;
     gl.target = d->target;
-    fill_surface_desc(&d->primaryDesc, d->width, d->height, 0);
     d->bpp = 32;
     d->rMask = 0xff0000;
     d->gMask = 0xff00;
@@ -1382,9 +1355,8 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     return 0;
 }
 
-int gfx_create_3d(struct C3dDevice *d, const GUID *device, int flags)
+int gfx_create_3d(struct C3dDevice *d, int flags)
 {
-    (void)device;
     (void)flags;
     if (!gl.context)
         return GFX_E_DEVICE_CREATE;
@@ -1505,13 +1477,6 @@ int gfx_close(struct C3dDevice *d)
     return 0;
 }
 
-void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
-{
-    (void)d;
-    (void)unlockFirst;
-    batch_flush();
-}
-
 /* The cover in window points, in the drawable's pixels. */
 static struct PresentCover cover_in_pixels(int w, int h)
 {
@@ -1530,14 +1495,13 @@ static struct PresentCover cover_in_pixels(int w, int h)
     return pixels;
 }
 
-int gfx_present(struct C3dDevice *d, int vsync, int whole)
+int gfx_present(struct C3dDevice *d, int vsync)
 {
     int w = 0, h = 0, fx, fy, fw, fh;
     struct gfx_surface *scene = gl.mainTarget;
     struct PresentCover cover;
     (void)d;
     (void)vsync;
-    (void)whole;
     batch_flush();
     if (!gl.context || !scene)
         return -1;
@@ -1587,11 +1551,10 @@ static void resize_target(struct gfx_surface *s, int w, int h, int withDepth)
     s->version = ++content_tick;
 }
 
-int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int fullscreen)
+/* custom: the scene and its targets at w by h, for a window resized to that. */
+int gfx_resize(struct C3dDevice *d, int w, int h)
 {
     struct gfx_surface *s;
-    (void)adapter;
-    (void)fullscreen;
     if (!gl.context || w <= 0 || h <= 0)
         return -1;
     batch_flush();
@@ -1613,69 +1576,12 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
     if (d->save)
         resize_target(d->save, w, h, 0);
     gl.boundTarget = -1;
-    fill_surface_desc(&d->primaryDesc, w, h, 0);
-    return 0;
-}
-
-/* One adapter, the GL context's: which display it shows on is the window's, so no adapter names one. */
-/* The GL backend draws on whatever device it has and resizes in place: any adapter is live. */
-int gfx_can_set_mode_live(const GUID *adapter)
-{
-    (void)adapter;
-    return gl.context != 0;
-}
-
-PlatformDisplay gfx_adapter_monitor(const GUID *adapter)
-{
-    (void)adapter;
     return 0;
 }
 
 void gfx_set_mipmaps(int on)
 {
     gl.mipmaps = on;
-}
-
-static const GUID gl_device_guid = { 0x3ec2a7e0, 0x5b2f, 0x4f62, { 'o', 'p', 'e', 'n', 'g', 'l', '3', '3' } };
-
-void gfx_enum_adapter(const GUID *adapter, const char *desc)
-{
-    static const struct { unsigned w, h; } windowed[] = {
-        { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1280, 1024 }, { 1366, 768 },
-        { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }
-    };
-    struct DisplayModeList modes = {0};
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-    const SDL_DisplayMode *desktop = display ? SDL_GetDesktopDisplayMode(display) : NULL;
-    SDL_DisplayMode **list;
-    int count = 0, i;
-    unsigned maxW = desktop ? (unsigned)desktop->w : 1920, maxH = desktop ? (unsigned)desktop->h : 1080;
-    for (i = 0; i < (int)(sizeof windowed / sizeof windowed[0]); i++)
-        if (windowed[i].w <= maxW && windowed[i].h <= maxH)
-            display_modes_append(&modes, windowed[i].w, windowed[i].h, 32);
-    list = display ? SDL_GetFullscreenDisplayModes(display, &count) : NULL;
-    for (i = 0; list && i < count; i++) {
-        size_t k;
-        int dup = 0;
-        for (k = 0; k < modes.count; k++)
-            if (modes.items[k].width == (unsigned)list[i]->w && modes.items[k].height == (unsigned)list[i]->h)
-                dup = 1;
-        if (!dup)
-            display_modes_append(&modes, (unsigned)list[i]->w, (unsigned)list[i]->h, 32);
-    }
-    SDL_free(list);
-    display_modes_sort(&modes);
-    display_devices_add(desc, adapter, desc, &gl_device_guid, 1, DISPLAY_DEPTH_32, &modes);
-    display_modes_destroy(&modes);
-}
-
-int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
-{
-    char desc[] = "OpenGL";
-    char name[] = "display";
-    (void)flags;
-    callback(NULL, desc, name, ctx);
-    return 0;
 }
 
 gfx_surface *gfx_create_surface(int w, int h)
@@ -1960,6 +1866,11 @@ int gfx_refresh_mips(gfx_surface *tex, const RECT *r)
 int gfx_is_lost(gfx_surface *s)
 {
     (void)s;
+    return 0;
+}
+
+int gfx_device_lost(void)
+{
     return 0;
 }
 

@@ -1,23 +1,7 @@
 #include "render/texture_cache.h"
-#include "render/display_devices.h"
 #include "render/render_api.h"
 #include "std/list.h"
 #include <stdlib.h>
-
-static BOOL ddraw_enum_adapter_callback(GUID *guid, char *desc, char *name, void *ctx)
-{
-    (void)name;
-    (void)ctx;
-    gfx_enum_adapter(guid, desc);
-    return 1;
-}
-
-int render_enum_adapters(void)
-{
-    display_devices_reset();
-    gfx_ddraw_enumerate(ddraw_enum_adapter_callback, NULL, 7);
-    return display_devices_result();
-}
 
 char render_quads_to_texture(int w, int h, const struct List *quads, struct Texture **out)
 {

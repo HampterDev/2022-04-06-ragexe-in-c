@@ -70,11 +70,7 @@ int game_mode_on_run(struct Mode *mode)
         }
 
         game_mode_on_update(mode);
-        /* Drawing nothing (inactive in exclusive fullscreen), nothing waits for the display. */
-        if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
-            platform_thread_sleep(1);
-        else
-            platform_thread_yield();
+        platform_thread_yield();
     }
     mode_run_fade_out(&self->base, 0);
 
@@ -266,8 +262,6 @@ void game_mode_on_update(struct Mode *mode)
         ui_window_mgr_invalidate_all(&g_windowMgr);
     }
     weather_process(&g_weather);
-    if (g_windowActive == 0 && g_3dDevice.fullscreen != 0)
-        return;
     render_frame(self);
     mode_screen_shot(&self->base);
     send_stat_raises(self);

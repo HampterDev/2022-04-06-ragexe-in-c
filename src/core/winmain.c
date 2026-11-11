@@ -11,7 +11,6 @@
 #include "resources/granny_res.h"
 #include "fileio/resource_api.h"
 #include "contents/sound.h"
-#include "render/display_devices.h"
 #include "platform/client_config.h"
 #include "ui/skin_manager.h"
 #include "session/state.h"
@@ -58,8 +57,6 @@ static int client_run(void)
     session_init_at_startup(&g_session1);
     read_startup_settings();
 
-    if (render_enum_adapters() < 0)
-        platform_message_box(0, "d3denum init", "Error", 0);
     find = platform_find_first("savedata");
     if (!find)
         platform_directory_create("savedata");

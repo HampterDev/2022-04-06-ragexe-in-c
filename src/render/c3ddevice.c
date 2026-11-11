@@ -4,7 +4,6 @@
 #include "diag/diag.h"
 #include <string.h>
 #include <stdlib.h>
-#include "core/window_state.h"
 #include "platform/code_page.h"
 #include "core/drive_state.h"
 #include "render/render_options.h"
@@ -39,8 +38,6 @@ struct C3dDevice g_3dDevice = {
                        ['a'] = 1, ['b'] = 1, ['c'] = 1, ['d'] = 1, ['e'] = 1, ['f'] = 1 },
     .hexDigitValues = { HEX_VALUES_0_9, ['a'] = 10, ['b'] = 11, ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15 },
 };
-
-GUID init_adapter;
 
 void c3d_device_clamp_texture_size(struct C3dDevice *self, unsigned *pw, unsigned *ph)
 {
@@ -137,19 +134,15 @@ static void mask_shift(DWORD mask, DWORD *shift, DWORD *bits)
     }
 }
 
-int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc *mode, int flags)
+/* custom: the screen surfaces at the window's client size in pixels, windowed or fullscreen
+   (render/display_options.h); the display's mode never changes. */
+static int create_screen(struct C3dDevice *self, int flags)
 {
     int hr;
-    if (flags & 1) {
-        self->rcWindow = (RECT){0, 0, mode->width, mode->height};
-        self->width = self->rcWindow.right;
-        self->height = self->rcWindow.bottom;
-    } else {
-        platform_client_rect(self->hwnd, &self->rcWindow);
-        self->width = self->rcWindow.right;
-        self->height = self->rcWindow.bottom;
-    }
-    hr = gfx_create_screen(self, mode, flags);
+    platform_client_rect(self->hwnd, &self->rcWindow);
+    self->width = self->rcWindow.right;
+    self->height = self->rcWindow.bottom;
+    hr = gfx_create_screen(self, flags);
     if (self->primary) {
         self->rShift = 0; self->rBits = 8;
         self->gShift = 0; self->gBits = 8;
@@ -163,19 +156,16 @@ int c3d_device_set_display_mode(struct C3dDevice *self, const struct SurfaceDesc
     return hr;
 }
 
-int c3d_device_create_environment(struct C3dDevice *self, const GUID *adapter, const GUID *device,
-                                            const struct SurfaceDesc *mode, int flags)
+static int create_environment(struct C3dDevice *self, int flags)
 {
     int hr;
-    hr = gfx_open(self, adapter, flags);
+    hr = gfx_open(self, flags);
     if (hr < 0)
         return hr;
-    hr = c3d_device_set_display_mode(self, mode, flags);
+    hr = create_screen(self, flags);
     if (hr < 0)
         return hr;
-    if (!device)
-        return 0;
-    hr = gfx_create_3d(self, device, flags);
+    hr = gfx_create_3d(self, flags);
     if (hr < 0)
         return hr;
     gfx_get_caps(self, &g_gfxCaps);
@@ -184,49 +174,14 @@ int c3d_device_create_environment(struct C3dDevice *self, const GUID *adapter, c
     return gfx_create_zbuffer(self);
 }
 
-int borderless_setting = 1;
-
-int borderless_rect(const GUID *adapter, RECT *rc)
-{
-    RECT work;
-    PlatformDisplay m = gfx_adapter_monitor(adapter);
-    if (!m || !borderless_setting)
-        return 0;
-    platform_monitor_rects(m, rc, &work);
-    return 1;
-}
-
-int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, const GUID *adapter, const GUID *device,
-                               const struct SurfaceDesc *mode, int flags)
+/* The window is in its display mode already (core/app_sdl.c, app_create_window). */
+int c3d_device_init(struct C3dDevice *self, PlatformWindow hwnd, int flags)
 {
     int hr;
-    RECT rcMon;
     self->hwnd = hwnd;
-    if (!hwnd || !device)
+    if (!hwnd)
         return GFX_E_INVALIDARG;
-    if (!mode && (flags & 1))
-        return GFX_E_INVALIDARG;
-    self->fullscreen = flags & 1;
-    if (adapter)
-        init_adapter = *adapter;
-    else
-        memset(&init_adapter, 0, sizeof(init_adapter));
-    if (self->fullscreen && mode && borderless_rect(adapter, &rcMon)) {
-        self->fullscreen = 0;
-        flags &= ~1;
-        platform_window_frameless(g_hMainWnd, &rcMon);
-    } else if (self->fullscreen) {
-#ifdef _WIN32
-        /* Direct3D 9 switches the display mode itself: its window is a frameless one at the
-           monitor's corner as large as the mode, as set_display places it for a switch at run time,
-           not SDL's own fullscreen window. */
-        platform_window_place_frameless(g_hMainWnd, gfx_adapter_monitor(adapter), (int)mode->width,
-                                        (int)mode->height);
-#else
-        platform_window_fullscreen(g_hMainWnd);
-#endif
-    }
-    hr = c3d_device_create_environment(self, adapter, device, mode, flags);
+    hr = create_environment(self, flags);
     if (hr < 0) {
         gfx_close(self);
         if (hr == GFX_E_FAIL)
@@ -306,12 +261,6 @@ int c3d_device_release_all(struct C3dDevice *self)
     return gfx_close(self);
 }
 
-void device_flip_to_gdi(void)
-{
-    if (g_3dDevice.dd)
-        gfx_flip_to_gdi(&g_3dDevice, 1);
-}
-
 void c3d_device_restore_frame(struct C3dDevice *self)
 {
     if (self->target && self->save) {
@@ -337,9 +286,7 @@ int c3d_device_show_frame(struct C3dDevice *self, char vsync)
         return GFX_E_NO_PRIMARY;
     if (!self->back)
         return gfx_is_lost(self->primary);
-    if (vsync)
-        return gfx_present(self, 1, self->fullscreen && !self->bltToClient);
-    return gfx_present(self, 0, 0);
+    return gfx_present(self, vsync != 0);
 }
 
 static const DWORD probe_pattern[16] = {

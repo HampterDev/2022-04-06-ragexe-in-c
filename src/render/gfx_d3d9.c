@@ -1,9 +1,8 @@
-#include "render/display_devices.h"
 #include "render/render_api.h"
-extern const IID IID_IDirect3DHALDevice;
 #include "diag/perf.h"
 #include "render/gfx_batch.h"
 #include "diag/diag.h"
+#include "render/present_fit.h"
 
 static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices);
 #define COBJMACROS
@@ -89,14 +88,12 @@ static struct {
     IDirect3D9 *d3d;
     IDirect3DDevice9 *dev;
     D3DPRESENT_PARAMETERS pp;
-    UINT adapter;
-    UINT anisoAdapter;
     DWORD maxAniso;
     DWORD behaviour;
     D3DFORMAT bbFormat, zFormat;
     int bbBpp;
     DWORD rMask, gMask, bMask, aMask;
-    int inScene, mipmaps, dialogMode;
+    int inScene, mipmaps;
     struct gfx_surface *handles;
     struct gfx_surface *target;
     struct gfx_surface *mainTarget;
@@ -118,8 +115,6 @@ static struct {
     D3DMATRIX xf[4]; BYTE xfSet[4];
     D3DLIGHT9 light; int lightSet;
     struct gfx_surface *stageTex[8];
-    struct { GUID guid; UINT ordinal; } adapters[16];
-    int nAdapters;
     struct gfx_mesh *meshes;
     struct GfxWorldView worldView, worldCamera;
     int worldViewSet, worldCameraSet;
@@ -328,7 +323,6 @@ static void forget_state(void)
     memset(d9.xfSet, 0, sizeof(d9.xfSet));
     memset(d9.stageTex, 0, sizeof(d9.stageTex));
     d9.lightSet = 0;
-    d9.dialogMode = 0;
     d9.taaWanted = 0;
     d9.taaFlat = 0;
     d9.taaApplied = -1;
@@ -373,11 +367,10 @@ static DWORD max_anisotropy(void)
 {
     D3DCAPS9 caps;
 
-    if (d9.maxAniso && d9.anisoAdapter == d9.adapter)
+    if (d9.maxAniso)
         return d9.maxAniso;
     d9.maxAniso = 1;
-    d9.anisoAdapter = d9.adapter;
-    if (d9.d3d && SUCCEEDED(IDirect3D9_GetDeviceCaps(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, &caps))
+    if (d9.d3d && SUCCEEDED(IDirect3D9_GetDeviceCaps(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps))
         && (caps.TextureFilterCaps & D3DPTFILTERCAPS_MINFANISOTROPIC) && caps.MaxAnisotropy > 1)
         d9.maxAniso = caps.MaxAnisotropy < 16 ? caps.MaxAnisotropy : 16;
     return d9.maxAniso;
@@ -421,8 +414,6 @@ static void replay_state(void)
     for (i = 0; i < 8; i++)
         if (d9.stageTex[i])
             IDirect3DDevice9_SetTexture(d9.dev, i, texture_of(d9.stageTex[i]));
-    if (d9.dialogMode)
-        IDirect3DDevice9_SetDialogBoxMode(d9.dev, TRUE);
     d9.taaWanted = d9.rsSet[D3DRS_ALPHABLENDENABLE] && !d9.rs[D3DRS_ALPHABLENDENABLE];
     d9.taaApplied = -1;
     d9.msaaApplied = -1;
@@ -591,9 +582,9 @@ static void pick_multisample(void)
     if (want > 16)
         want = 16;
     for (n = want; n >= 2; n--) {
-        if (SUCCEEDED(IDirect3D9_CheckDeviceMultiSampleType(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d9.bbFormat, d9.pp.Windowed,
+        if (SUCCEEDED(IDirect3D9_CheckDeviceMultiSampleType(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d9.bbFormat, d9.pp.Windowed,
                                                             (D3DMULTISAMPLE_TYPE)n, &q))
-            && SUCCEEDED(IDirect3D9_CheckDeviceMultiSampleType(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, d9.zFormat, d9.pp.Windowed,
+            && SUCCEEDED(IDirect3D9_CheckDeviceMultiSampleType(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d9.zFormat, d9.pp.Windowed,
                                                                (D3DMULTISAMPLE_TYPE)n, NULL))) {
             d9.msType = (D3DMULTISAMPLE_TYPE)n;
             break;
@@ -618,9 +609,9 @@ static void pick_transparency_aa(void)
         wantSsaa = lstrcmpiA(env, "ssaa") == 0;
         wantAtoc = lstrcmpiA(env, "atoc") == 0;
     }
-    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode)))
+    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, D3DADAPTER_DEFAULT, &mode)))
         mode.Format = D3DFMT_X8R8G8B8;
-#define TAA_SUPPORTED(fourcc) SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, 0, \
+#define TAA_SUPPORTED(fourcc) SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format, 0, \
                                                                      D3DRTYPE_SURFACE, (D3DFORMAT)(fourcc)))
     if (wantSsaa && TAA_SUPPORTED(ssaa)) {
         d9.taa = 1;
@@ -788,50 +779,10 @@ static int draw_surface_quad(struct gfx_surface *dst, const RECT *dr, struct gfx
     return 0;
 }
 
-#define ADAPTER_TAG 0x43524548u
-
-static void adapter_guid(UINT ordinal, GUID *g)
-{
-    memset(g, 0, sizeof(*g));
-    g->Data1 = ADAPTER_TAG;
-    g->Data2 = (WORD)ordinal;
-    g->Data3 = 0x3944;
-    memcpy(g->Data4, "adapter", 7);
-}
-
-static UINT adapter_ordinal(const GUID *guid)
-{
-    int i;
-    if (!guid)
-        return D3DADAPTER_DEFAULT;
-    if (guid->Data1 == ADAPTER_TAG && guid->Data3 == 0x3944 && d9.d3d
-        && guid->Data2 < IDirect3D9_GetAdapterCount(d9.d3d))
-        return guid->Data2;
-    for (i = 0; i < d9.nAdapters; i++)
-        if (memcmp(&d9.adapters[i].guid, guid, sizeof(GUID)) == 0)
-            return d9.adapters[i].ordinal;
-    return D3DADAPTER_DEFAULT;
-}
-
 /* The device draws into the HWND of the client's SDL window. */
 static HWND device_window(const struct C3dDevice *d)
 {
     return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(d->hwnd), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-}
-
-/* The SDL display that shows a monitor; 0 when SDL does not know the monitor. */
-static PlatformDisplay monitor_display(HMONITOR monitor)
-{
-    SDL_DisplayID *displays, found = 0;
-    int count = 0, i;
-    if (!monitor || !(displays = SDL_GetDisplays(&count)))
-        return 0;
-    for (i = 0; i < count && !found; i++)
-        if (SDL_GetPointerProperty(SDL_GetDisplayProperties(displays[i]), SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER,
-                                   NULL) == monitor)
-            found = displays[i];
-    SDL_free(displays);
-    return found;
 }
 
 static int ensure_d3d(void)
@@ -841,15 +792,15 @@ static int ensure_d3d(void)
     return d9.d3d != NULL;
 }
 
-int gfx_open(struct C3dDevice *d, const GUID *adapter, int flags)
+/* custom: the device is always the default adapter's, the primary display's, wherever the window
+   opens (core/app_sdl.c) or goes. The device is windowed, also when its window is fullscreen, so a
+   window on another display still shows what it draws, copied across adapters when that display
+   is on another graphics card. */
+int gfx_open(struct C3dDevice *d, int flags)
 {
-    D3DDISPLAYMODE mode;
     if (!ensure_d3d())
         return GFX_E_DDRAW_CREATE;
     d->dd = d9.d3d;
-    d9.adapter = adapter_ordinal(adapter);
-    if (SUCCEEDED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode)))
-        d->desktopBpp = format_bpp(mode.Format);
     d9.behaviour = D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED;
     if (flags & 0x10)
         d9.behaviour |= D3DCREATE_FPU_PRESERVE;
@@ -867,22 +818,7 @@ static void format_masks(D3DFORMAT f, DWORD *r, DWORD *g, DWORD *b, DWORD *a)
     }
 }
 
-static void fill_surface_desc(struct SurfaceDesc *sd, int w, int h, D3DFORMAT f, int refresh)
-{
-    memset(sd, 0, sizeof(*sd));
-    sd->size = sizeof(*sd);
-    sd->flags = 0x1 | 0x2 | 0x4 | 0x8 | 0x1000 | 0x40000;
-    sd->height = h;
-    sd->width = w;
-    sd->pitch = w * (format_bpp(f) >> 3);
-    sd->refreshRate = refresh;
-    sd->pfSize = 0x20;
-    sd->pfFlags = 0x40;
-    sd->bitCount = format_bpp(f);
-    format_masks(f, &sd->rMask, &sd->gMask, &sd->bMask, &sd->aMask);
-}
-
-int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int flags)
+int gfx_create_screen(struct C3dDevice *d, int flags)
 {
     IDirect3DSurface9 *bb = NULL, *save = NULL;
     D3DSURFACE_DESC desc;
@@ -896,7 +832,8 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     d9.pp.BackBufferCount = 1;
     d9.pp.SwapEffect = D3DSWAPEFFECT_COPY;
     d9.pp.hDeviceWindow = device_window(d);
-    d9.pp.Windowed = !d->fullscreen;
+    d9.pp.Windowed = TRUE;
+    d9.pp.BackBufferFormat = D3DFMT_UNKNOWN;
     d9.pp.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
     d9.pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
     {
@@ -904,19 +841,13 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
         if (GetEnvironmentVariableA("RAGEXE_VSYNC", env, sizeof(env)) && env[0] == '0' && !env[1])
             d9.pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     }
-    if (d->fullscreen) {
-        d9.pp.BackBufferFormat = D3DFMT_X8R8G8B8;
-        d9.pp.FullScreen_RefreshRateInHz = mode->refreshRate;
-    } else {
-        d9.pp.BackBufferFormat = D3DFMT_UNKNOWN;
-    }
-    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
+    hr = IDirect3D9_CreateDevice(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
     if (FAILED(hr) && (d9.behaviour & D3DCREATE_HARDWARE_VERTEXPROCESSING)) {
         d9.behaviour = (d9.behaviour & ~D3DCREATE_HARDWARE_VERTEXPROCESSING) | D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
+        hr = IDirect3D9_CreateDevice(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &d9.pp, &d9.dev);
     }
     if (FAILED(hr))
-        return d->fullscreen ? GFX_E_DISPLAY_MODE : GFX_E_PRIMARY;
+        return GFX_E_PRIMARY;
     d->dev = d9.dev;
     forget_state();
     batch_init(d9_raw_draw);
@@ -939,7 +870,6 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     d9.mainTarget = d->target;
     d9.target = d->target;
 
-    fill_surface_desc(&d->primaryDesc, d->width, d->height, desc.Format, 0);
     d->bpp = d9.bbBpp;
     d->rMask = d9.rMask;
     d->gMask = d9.gMask;
@@ -965,22 +895,21 @@ static D3DFORMAT pick_zformat(int stencil)
     const D3DFORMAT *list = stencil ? withStencil : plain;
     D3DDISPLAYMODE mode;
     int i;
-    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode)))
+    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, D3DADAPTER_DEFAULT, &mode)))
         mode.Format = D3DFMT_X8R8G8B8;
     for (i = 0; i < 4; i++) {
-        if (SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_DEPTHSTENCIL,
+        if (SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_DEPTHSTENCIL,
                                                    D3DRTYPE_SURFACE, list[i]))
-            && SUCCEEDED(IDirect3D9_CheckDepthStencilMatch(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format,
+            && SUCCEEDED(IDirect3D9_CheckDepthStencilMatch(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format,
                                                            d9.bbFormat, list[i])))
             return list[i];
     }
     return D3DFMT_UNKNOWN;
 }
 
-int gfx_create_3d(struct C3dDevice *d, const GUID *device, int flags)
+int gfx_create_3d(struct C3dDevice *d, int flags)
 {
     D3DVIEWPORT9 vp;
-    (void)device;
     if (!d9.dev)
         return GFX_E_DEVICE_CREATE;
     d->d3d = d9.d3d;
@@ -1025,7 +954,7 @@ int gfx_get_caps(struct C3dDevice *d, struct gfx_caps *out)
     (void)d;
     if (!d9.d3d)
         return -1;
-    hr = IDirect3D9_GetDeviceCaps(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, &caps);
+    hr = IDirect3D9_GetDeviceCaps(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps);
     if (hr == D3D_OK) {
         out->zbufferless = 0;
         out->vertexFog = (caps.RasterCaps & D3DPRASTERCAPS_FOGVERTEX) != 0;
@@ -1128,37 +1057,44 @@ int gfx_close(struct C3dDevice *d)
     return 0;
 }
 
-void gfx_flip_to_gdi(struct C3dDevice *d, int unlockFirst)
-{
-    batch_flush();
-    (void)unlockFirst;
-    if (d9.dev && d->fullscreen && !d9.dialogMode) {
-        if (SUCCEEDED(IDirect3DDevice9_SetDialogBoxMode(d9.dev, TRUE)))
-            d9.dialogMode = 1;
-    }
-}
-
-static HRESULT present_without_wait(void)
+static HRESULT present_without_wait(const RECT *dest)
 {
     IDirect3DSwapChain9 *chain = NULL;
     HRESULT hr = IDirect3DDevice9_GetSwapChain(d9.dev, 0, &chain);
     if (FAILED(hr))
-        return IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL);
-    hr = IDirect3DSwapChain9_Present(chain, NULL, NULL, NULL, NULL, D3DPRESENT_DONOTWAIT);
+        return IDirect3DDevice9_Present(d9.dev, NULL, dest, NULL, NULL);
+    hr = IDirect3DSwapChain9_Present(chain, NULL, dest, NULL, NULL, D3DPRESENT_DONOTWAIT);
     IDirect3DSwapChain9_Release(chain);
     return hr;
 }
 
-int gfx_present(struct C3dDevice *d, int vsync, int whole)
+/* custom: while the back buffer is not the window's size yet (render/resize.c), the picture goes
+   where present_fit puts it, with its aspect kept, as on GL, so that the pointer, which the SDL
+   layer maps back through present_fit (present_point), lands where the picture shows it. NULL when
+   the sizes match: the whole client area. */
+static const RECT *present_rect(const struct C3dDevice *d, RECT *dest)
+{
+    static const struct PresentCover none;
+    RECT client;
+    int x, y, w, h, bw = (int)d9.pp.BackBufferWidth, bh = (int)d9.pp.BackBufferHeight;
+    if (!GetClientRect(device_window(d), &client) || (client.right == bw && client.bottom == bh))
+        return NULL;
+    present_fit(client.right, client.bottom, bw, bh, &none, &x, &y, &w, &h);
+    *dest = (RECT){x, y, x + w, y + h};
+    return dest;
+}
+
+int gfx_present(struct C3dDevice *d, int vsync)
 {
     HRESULT hr;
+    RECT area;
+    const RECT *dest;
     batch_flush();
-    (void)d;
-    (void)whole;
     if (!d9.dev)
         return -1;
     resolve_ms();
-    hr = vsync ? IDirect3DDevice9_Present(d9.dev, NULL, NULL, NULL, NULL) : present_without_wait();
+    dest = present_rect(d, &area);
+    hr = vsync ? IDirect3DDevice9_Present(d9.dev, NULL, dest, NULL, NULL) : present_without_wait(dest);
     if (hr == D3DERR_WASSTILLDRAWING)
         return 0;
     if (hr == D3DERR_DEVICELOST)
@@ -1260,13 +1196,7 @@ static int recreate_device(struct C3dDevice *d)
     struct gfx_surface *s;
     HRESULT hr;
     batch_drop();
-    hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
-    if (FAILED(hr) && !pp.Windowed) {
-        pp.Windowed = TRUE;
-        pp.BackBufferFormat = D3DFMT_UNKNOWN;
-        pp.FullScreen_RefreshRateInHz = 0;
-        hr = IDirect3D9_CreateDevice(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
-    }
+    hr = IDirect3D9_CreateDevice(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
     if (FAILED(hr))
         return GFX_E_SURFACELOST;
     AcquireSRWLockExclusive(&handles_lock);
@@ -1284,7 +1214,6 @@ static int recreate_device(struct C3dDevice *d)
     d9.dev = dev;
     d->dev = dev;
     d9.pp = pp;
-    d9.dialogMode = 0;
     return recreate_after_reset();
 }
 
@@ -1341,41 +1270,6 @@ static void size_screen_handles(int w, int h)
             s->height = h;
         }
     ReleaseSRWLockExclusive(&handles_lock);
-}
-
-static int change_mode(int w, int h, int fullscreen)
-{
-    D3DPRESENT_PARAMETERS old = d9.pp;
-    int hr;
-    size_screen_handles(w, h);
-    d9.pp.Windowed = !fullscreen;
-    d9.pp.BackBufferFormat = fullscreen ? D3DFMT_X8R8G8B8 : D3DFMT_UNKNOWN;
-    d9.pp.FullScreen_RefreshRateInHz = 0;
-    d9.dialogMode = 0;
-    hr = reset_device();
-    if (hr != 0) {
-        d9.pp = old;
-        size_screen_handles(old.BackBufferWidth, old.BackBufferHeight);
-        reset_device();
-    }
-    return hr;
-}
-
-static int same_gpu(UINT a, UINT b)
-{
-    D3DADAPTER_IDENTIFIER9 ia, ib;
-    if (FAILED(IDirect3D9_GetAdapterIdentifier(d9.d3d, a, 0, &ia)) || FAILED(IDirect3D9_GetAdapterIdentifier(d9.d3d, b, 0, &ib)))
-        return 0;
-    return ia.VendorId == ib.VendorId && ia.DeviceId == ib.DeviceId;
-}
-
-int gfx_can_set_mode_live(const GUID *adapter)
-{
-    UINT ordinal;
-    if (!d9.d3d || !d9.dev)
-        return 0;
-    ordinal = adapter ? adapter_ordinal(adapter) : d9.adapter;
-    return ordinal == d9.adapter || same_gpu(d9.adapter, ordinal);
 }
 
 static int copy_surface(IDirect3DSurface9 *dst, IDirect3DSurface9 *src)
@@ -1456,100 +1350,24 @@ static void migrate_sysmem(IDirect3DDevice9 *dev, struct gfx_surface *s)
         s->version = (unsigned)InterlockedIncrement(&content_tick);
 }
 
-static int switch_adapter(struct C3dDevice *d, UINT ordinal, int w, int h, int fullscreen)
+/* custom: a Reset with the back buffer at the window's new size; the targets of its size follow.
+   When the device does not take it, the old size comes back. */
+int gfx_resize(struct C3dDevice *d, int w, int h)
 {
-    IDirect3DDevice9 *dev = NULL, *old = d9.dev;
-    D3DPRESENT_PARAMETERS pp, oldpp = d9.pp;
-    D3DDISPLAYMODE mode;
-    struct gfx_surface *s;
-    HRESULT hr;
-    int rc;
-    if (!same_gpu(d9.adapter, ordinal))
-        return -1;
-    batch_drop();
-    if (!d9.pp.Windowed) {
-        d9.pp.Windowed = TRUE;
-        d9.pp.BackBufferFormat = D3DFMT_UNKNOWN;
-        d9.pp.FullScreen_RefreshRateInHz = 0;
-        if (reset_device() != 0) {
-            d9.pp = oldpp;
-            reset_device();
-            return GFX_E_SURFACELOST;
-        }
-    }
-    pp = d9.pp;
-    pp.BackBufferWidth = w;
-    pp.BackBufferHeight = h;
-    pp.Windowed = TRUE;
-    pp.BackBufferFormat = D3DFMT_UNKNOWN;
-    pp.FullScreen_RefreshRateInHz = 0;
-    hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, device_window(d), d9.behaviour, &pp, &dev);
-    if (FAILED(hr) && (d9.behaviour & D3DCREATE_HARDWARE_VERTEXPROCESSING)) {
-        DWORD b = (d9.behaviour & ~D3DCREATE_HARDWARE_VERTEXPROCESSING) | D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-        hr = IDirect3D9_CreateDevice(d9.d3d, ordinal, D3DDEVTYPE_HAL, device_window(d), b, &pp, &dev);
-        if (SUCCEEDED(hr))
-            d9.behaviour = b;
-    }
-    if (FAILED(hr)) {
-        if (!oldpp.Windowed) {
-            d9.pp = oldpp;
-            reset_device();
-        }
-        return (int)hr;
-    }
-    AcquireSRWLockExclusive(&handles_lock);
-    for (s = d9.handles; s; s = s->next) {
-        switch (s->kind) {
-        case K_TEXTURE: migrate_texture(dev, s); break;
-        case K_SYSMEM:  migrate_sysmem(dev, s); break;
-        default:        drop_objects(s); break;
-        }
-    }
-    ReleaseSRWLockExclusive(&handles_lock);
-    drop_meshes();
-    shadow_drop();
-    IDirect3DDevice9_Release(old);
-    d9.dev = dev;
-    d->dev = dev;
-    d9.adapter = ordinal;
-    d9.pp = pp;
-    d9.dialogMode = 0;
-    size_screen_handles(w, h);
-    if (SUCCEEDED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, ordinal, &mode)))
-        d->desktopBpp = format_bpp(mode.Format);
-    rc = recreate_after_reset();
-    if (rc != 0)
-        return rc;
-    if (fullscreen) {
-        d9.pp.Windowed = FALSE;
-        d9.pp.BackBufferFormat = D3DFMT_X8R8G8B8;
-        d9.pp.FullScreen_RefreshRateInHz = 0;
-        if (reset_device() != 0) {
-            d9.pp.Windowed = TRUE;
-            d9.pp.BackBufferFormat = D3DFMT_UNKNOWN;
-            reset_device();
-            return GFX_E_SURFACELOST;
-        }
-    }
-    return 0;
-}
-
-int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int fullscreen)
-{
+    D3DPRESENT_PARAMETERS old = d9.pp;
     IDirect3DSurface9 *bb = NULL;
     D3DSURFACE_DESC desc;
-    UINT ordinal;
     int hr;
     if (!d9.dev || w <= 0 || h <= 0)
         return -1;
-    ordinal = adapter ? adapter_ordinal(adapter) : d9.adapter;
-    {
-        char env[8];
-        int force = GetEnvironmentVariableA("RAGEXE_SWITCH_DEVICE", env, sizeof(env)) && env[0] == '1' && !env[1];
-        hr = (ordinal != d9.adapter || force) ? switch_adapter(d, ordinal, w, h, fullscreen) : change_mode(w, h, fullscreen);
-    }
-    if (hr != 0)
+    size_screen_handles(w, h);
+    hr = reset_device();
+    if (hr != 0) {
+        d9.pp = old;
+        size_screen_handles(old.BackBufferWidth, old.BackBufferHeight);
+        reset_device();
         return hr;
+    }
     if (SUCCEEDED(IDirect3DDevice9_GetBackBuffer(d9.dev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &bb))) {
         IDirect3DSurface9_GetDesc(bb, &desc);
         IDirect3DSurface9_Release(bb);
@@ -1562,76 +1380,12 @@ int gfx_set_mode(struct C3dDevice *d, const GUID *adapter, int w, int h, int ful
         d->bMask = d9.bMask;
         d->aMask = d9.aMask;
     }
-    fill_surface_desc(&d->primaryDesc, w, h, d9.bbFormat, 0);
     return 0;
-}
-
-PlatformDisplay gfx_adapter_monitor(const GUID *adapter)
-{
-    if (!ensure_d3d())
-        return 0;
-    return monitor_display(IDirect3D9_GetAdapterMonitor(d9.d3d, adapter ? adapter_ordinal(adapter) : d9.adapter));
 }
 
 void gfx_set_mipmaps(int on)
 {
     d9.mipmaps = on;
-}
-
-void gfx_enum_adapter(const GUID *adapter, const char *desc)
-{
-    static const D3DFORMAT modeFormats[] = { D3DFMT_X8R8G8B8, D3DFMT_R5G6B5 };
-    struct DisplayModeList modes = {0};
-    D3DCAPS9 caps;
-    UINT ordinal = D3DADAPTER_DEFAULT, n, i, f;
-    if (!ensure_d3d())
-        return;
-    if (adapter) {
-        /* gfx_ddraw_enumerate names each adapter by its ordinal (adapter_guid) */
-        ordinal = adapter_ordinal(adapter);
-        if (d9.nAdapters < (int)(sizeof(d9.adapters) / sizeof(d9.adapters[0]))) {
-            d9.adapters[d9.nAdapters].guid = *adapter;
-            d9.adapters[d9.nAdapters].ordinal = ordinal;
-            d9.nAdapters++;
-        }
-    }
-    if (FAILED(IDirect3D9_GetDeviceCaps(d9.d3d, ordinal, D3DDEVTYPE_HAL, &caps)))
-        return;
-    for (f = 0; f < 2; f++) {
-        struct { UINT w, h; } seen[256];
-        int nseen = 0, k, dup;
-        D3DDISPLAYMODE desk;
-        if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, ordinal, &desk)))
-            desk.Width = desk.Height = 0;
-        n = IDirect3D9_GetAdapterModeCount(d9.d3d, ordinal, modeFormats[f]);
-        for (i = 0; i < n; i++) {
-            D3DDISPLAYMODE m;
-            if (FAILED(IDirect3D9_EnumAdapterModes(d9.d3d, ordinal, modeFormats[f], i, &m)))
-                continue;
-            if (desk.Width && (m.Width > desk.Width || m.Height > desk.Height))
-                continue;
-            for (dup = 0, k = 0; k < nseen; k++)
-                if (seen[k].w == m.Width && seen[k].h == m.Height) {
-                    dup = 1;
-                    break;
-                }
-            if (dup)
-                continue;
-            if (nseen < (int)(sizeof(seen) / sizeof(seen[0]))) {
-                seen[nseen].w = m.Width;
-                seen[nseen].h = m.Height;
-                nseen++;
-            }
-            if (!display_modes_append(&modes, m.Width, m.Height,
-                                      modeFormats[f] == D3DFMT_R5G6B5 ? 16 : 32))
-                goto modes_ready;
-        }
-    }
-modes_ready:
-    display_modes_sort(&modes);
-    display_devices_add(desc, adapter, desc, &IID_IDirect3DHALDevice, 1,
-                        DISPLAY_DEPTH_16 | DISPLAY_DEPTH_32, &modes);
-    display_modes_destroy(&modes);
 }
 
 gfx_surface *gfx_create_surface(int w, int h)
@@ -1657,9 +1411,9 @@ int gfx_texture_format_ok(int fmt)
     D3DFORMAT f = client_format(fmt);
     if (!d9.d3d || f == D3DFMT_UNKNOWN)
         return 0;
-    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode)))
+    if (FAILED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, D3DADAPTER_DEFAULT, &mode)))
         mode.Format = D3DFMT_X8R8G8B8;
-    return SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, 0, D3DRTYPE_TEXTURE, f));
+    return SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format, 0, D3DRTYPE_TEXTURE, f));
 }
 
 static int mip_levels(int w, int h)
@@ -2478,8 +2232,8 @@ static int shadow_supported(void)
     if (FAILED(IDirect3DDevice9_GetDeviceCaps(d9.dev, &caps)) || caps.MaxTextureWidth < GFX_SHADOW_SIZE
         || caps.MaxTextureHeight < GFX_SHADOW_SIZE)
         return 0;
-    return SUCCEEDED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, d9.adapter, &mode))
-           && SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, d9.adapter, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_RENDERTARGET,
+    return SUCCEEDED(IDirect3D9_GetAdapterDisplayMode(d9.d3d, D3DADAPTER_DEFAULT, &mode))
+           && SUCCEEDED(IDirect3D9_CheckDeviceFormat(d9.d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, mode.Format, D3DUSAGE_RENDERTARGET,
                                                      D3DRTYPE_TEXTURE, D3DFMT_R32F));
 }
 
@@ -2835,28 +2589,9 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
     mesh_draw_colour(m, &toClip, &view, draw);
 }
 
-int gfx_ddraw_enumerate(GfxAdapterCallback callback, void *ctx, DWORD flags)
+int gfx_device_lost(void)
 {
-    UINT n, i;
-    (void)flags;
-    if (!ensure_d3d())
-        return E_FAIL;
-    n = IDirect3D9_GetAdapterCount(d9.d3d);
-    for (i = 0; i < n; i++) {
-        D3DADAPTER_IDENTIFIER9 id;
-        char desc[MAX_DEVICE_IDENTIFIER_STRING + 24];
-        GUID g;
-        if (FAILED(IDirect3D9_GetAdapterIdentifier(d9.d3d, i, 0, &id)))
-            continue;
-        adapter_guid(i, &g);
-        if (i == 0)
-            lstrcpynA(desc, id.Description, sizeof(desc));
-        else
-            wsprintfA(desc, "%s (display %u)", id.Description, i + 1);
-        if (!callback(i == 0 ? NULL : &g, desc, id.DeviceName, ctx))
-            break;
-    }
-    return 0;
+    return d9.dev && IDirect3DDevice9_TestCooperativeLevel(d9.dev) == D3DERR_DEVICELOST;
 }
 
 unsigned gfx_content_version(gfx_surface *s)

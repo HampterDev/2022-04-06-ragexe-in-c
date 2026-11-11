@@ -173,9 +173,6 @@ void login_mode_on_update(struct Mode *mode)
                    res_mgr_get(g_resMgr(), ui_skin_path(string_cstr(&self->wallpaper))));
     }
 
-    if (!g_windowActive && g_3dDevice.fullscreen)
-        return;
-
     renderer_clear_frame(g_renderer, 1);
     ui_window_mgr_on_process(&g_windowMgr);
     ui_window_mgr_draw_login_screen(&g_windowMgr);

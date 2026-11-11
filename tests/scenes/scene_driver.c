@@ -10,6 +10,7 @@
 #include "core/app.h"
 #include "core/drive_state.h"
 #include "core/user_input.h"
+#include "core/window_state.h"
 #include "actor/types.h"
 #include "contents/account_settings_internal.h"
 #include "diag/perf.h"
@@ -456,6 +457,18 @@ static int l_button(lua_State *L)
     return 0;
 }
 
+/* scene.resize(w, h): the windowed client area becomes w by h pixels, as when the player drags
+   the window's frame, no smaller than the window's minimum size; the device follows on the next
+   frame. */
+static int l_resize(lua_State *L)
+{
+    RECT frame;
+    platform_window_rect(g_hMainWnd, &frame);
+    platform_window_place_windowed(g_hMainWnd, frame.left, frame.top, (int)luaL_checkinteger(L, 1),
+                                   (int)luaL_checkinteger(L, 2), 0, 0);
+    return 0;
+}
+
 static int l_open(lua_State *L)
 {
     lua_pushboolean(L, ui_window_open((int)luaL_checkinteger(L, 1)) != NULL);
@@ -620,7 +633,7 @@ static int l_fail(lua_State *L)
 static const luaL_Reg scene_api[] = {
     {"enter_map", l_enter_map}, {"spawn", l_spawn}, {"vanish", l_vanish}, {"say", l_say},
     {"chat", l_chat}, {"send", l_send}, {"key_event", l_key_event}, {"text", l_text}, {"mouse", l_mouse},
-    {"button", l_button}, {"open", l_open}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
+    {"button", l_button}, {"open", l_open}, {"resize", l_resize}, {"capture", l_capture}, {"effects", l_effects}, {"frame", l_frame},
     {"mode", l_mode}, {"wait", l_wait}, {"wait_ready", l_wait_ready}, {"fail", l_fail},
     {NULL, NULL},
 };

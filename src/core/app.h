@@ -15,9 +15,6 @@
 
 extern char g_clientDir[0x88];
 
-extern char g_deviceName[0x28];
-extern GUID g_deviceGuid;
-
 void check_system_message(void);
 void app_last_pump(void);
 int app_create_window(void);

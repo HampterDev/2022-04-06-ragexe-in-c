@@ -103,7 +103,6 @@ static void release_loading_screens(void) { string_vec_free(&g_loadingScreens); 
    each is documented where it is declared. */
 static void client_install_hooks(void)
 {
-    g_errorMsgPrepareDisplay = device_flip_to_gdi;
     g_renderBeforeClearLists = effect_mgr_destroy_removed_effects;
     g_emblemRules.is_bad = guild_emblem_is_bad;
     g_emblemRules.mark_bad = guild_emblem_mark_bad;

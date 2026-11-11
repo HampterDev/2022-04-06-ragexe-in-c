@@ -161,8 +161,8 @@ that is read from a file or passed to a library needs checking first.
 
 ### Renderer
 
-`render/gfx.h` is a good seam, with three leaks: it uses `RECT`, `GUID` and `HMONITOR`, `gfx_ddraw_enumerate`
-still has a DirectDraw shape, and `gfx_get_dc` hands out an `HDC` (its only caller is `render/textdc.c`).
+`render/gfx.h` is a good seam, with two leaks: it uses `RECT`, and `gfx_get_dc` hands out an `HDC` (its only
+caller is `render/textdc.c`).
 
 The backend has to reproduce:
 

@@ -11,8 +11,9 @@
 #include "platform/vk.h"
 #include "platform/window.h"
 #include "render/device.h"
+#include "render/display_options.h"
 #include "render/present_fit.h"
-#include "session/session_options.h"
+#include "render/render_api.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "ui/window_access.h"
@@ -151,18 +152,12 @@ static char *client_text(const char *utf8)
     return text;
 }
 
+/* SDL's pointer is in window coordinates, the game's in the device's pixels (present_point). */
 static void scene_point(float x, float y, int *outX, int *outY)
 {
-    int w = 0, h = 0, fx, fy, fw, fh;
+    int w = 0, h = 0;
     SDL_GetWindowSize(g_hMainWnd, &w, &h);
-    present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, &fx, &fy, &fw, &fh);
-    if (fw > 0 && fh > 0 && g_3dDevice.width > 0 && g_3dDevice.height > 0) {
-        *outX = (int)((x - fx) * g_3dDevice.width / fw);
-        *outY = (int)((y - fy) * g_3dDevice.height / fh);
-    } else {
-        *outX = (int)x;
-        *outY = (int)y;
-    }
+    present_point(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, x, y, outX, outY);
 }
 
 /* AltGr types characters as Ctrl+Alt does, and Windows reports it as a left Ctrl and a right Alt.
@@ -342,14 +337,27 @@ static void dispatch(const SDL_Event *event)
     case SDL_EVENT_WINDOW_MOVED:
         /* A window that is not active still draws, but shows its last frame again at once when it
            is moved, as the Win32 window did. */
-        if (g_windowActive != 1 && !g_3dDevice.fullscreen)
+        if (g_windowActive != 1)
             c3d_device_show_frame(&g_3dDevice, 1);
         break;
 #endif
+#ifndef __ANDROID__
+    case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
+        /* Fullscreen keeps covering its display when the display's own resolution changes, which
+           SDL leaves to the client. */
+        if (g_fullscreenMode && event->display.displayID == SDL_GetDisplayForWindow(g_hMainWnd))
+            platform_window_fullscreen(g_hMainWnd);
+        break;
+#endif
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        /* the smallest size in pixels, at the pixel density of the display the window is now on */
+        platform_window_minimum(g_hMainWnd, DISPLAY_MIN_WIDTH, DISPLAY_MIN_HEIGHT);
+        break;
     case SDL_EVENT_WINDOW_MOUSE_LEAVE:
         /* The pointer went onto the window's frame or off the window, where the system's cursor
            shows: the client's own cursor, drawn in the scene, leaves the scene. */
-        if (!g_3dDevice.fullscreen && !g_session1.mouseExclusiveOption) {
+        if (!g_session1.mouseExclusiveOption) {
             mouse_set_x(&g_mouse, -100);
             mouse_set_y(&g_mouse, -100);
         }
@@ -425,7 +433,8 @@ static bool SDLCALL window_message(void *userdata, MSG *msg)
         }
         return true;
     case WM_NCLBUTTONDOWN:
-        if (msg->wParam != HTCAPTION || g_3dDevice.fullscreen)
+        /* a maximised window is Windows' to drag: dragging restores it */
+        if (msg->wParam != HTCAPTION || (SDL_GetWindowFlags(g_hMainWnd) & SDL_WINDOW_MAXIMIZED))
             return true;
         SDL_GetGlobalMouseState(&g_drag.x, &g_drag.y);
         SDL_GetWindowPosition(g_hMainWnd, &g_drag.left, &g_drag.top);
@@ -581,16 +590,23 @@ static void sync_text_input(void)
 static void sync_candidate_area(void)
 {
     static struct LanguageCandidatePos told;
+    static int toldW, toldH, toldSceneW, toldSceneH;
     const struct LanguageCandidatePos *pos;
     int w = 0, h = 0, fx, fy, fw, fh;
     SDL_Rect area;
     if (!g_language || !g_composing || !(pos = &g_language->candidate_pos)->placed
         || g_3dDevice.width <= 0 || g_3dDevice.height <= 0)
         return;
-    if (told.placed && told.x == pos->x && told.top == pos->top && told.bottom == pos->bottom)
+    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    /* the same place in the scene is somewhere else in a window or a scene of another size */
+    if (told.placed && told.x == pos->x && told.top == pos->top && told.bottom == pos->bottom && toldW == w
+        && toldH == h && toldSceneW == g_3dDevice.width && toldSceneH == g_3dDevice.height)
         return;
     told = *pos;
-    SDL_GetWindowSize(g_hMainWnd, &w, &h);
+    toldW = w;
+    toldH = h;
+    toldSceneW = g_3dDevice.width;
+    toldSceneH = g_3dDevice.height;
     present_fit(w, h, g_3dDevice.width, g_3dDevice.height, &g_cover, &fx, &fy, &fw, &fh);
     area.x = fx + pos->x * fw / g_3dDevice.width;
     area.y = fy + pos->top * fh / g_3dDevice.height;
@@ -603,6 +619,7 @@ static void sync_candidate_area(void)
 void check_system_message(void)
 {
     pump_events();
+    display_follow_window();
 #ifdef __ANDROID__
     sync_window_cover();
     sync_text_input();
@@ -621,10 +638,31 @@ void app_last_pump(void)
     g_hMainWnd = NULL;
 }
 
+/* The display a client that starts fullscreen goes fullscreen on: the one its saved windowed
+   position is on, or the primary display when no display holds that point or none was saved. */
+static SDL_DisplayID saved_display(void)
+{
+    SDL_Point at;
+    SDL_Rect bounds;
+    SDL_DisplayID id;
+    if (g_windowX == DISPLAY_NO_POSITION || g_windowY == DISPLAY_NO_POSITION)
+        return SDL_GetPrimaryDisplay();
+    at.x = g_windowX;
+    at.y = g_windowY;
+    id = SDL_GetDisplayForPoint(&at);
+    if (!id || !SDL_GetDisplayBounds(id, &bounds) || !SDL_PointInRect(&at, &bounds))
+        return SDL_GetPrimaryDisplay();
+    return id;
+}
+
 int app_create_window(void)
 {
-    SDL_WindowFlags flags = 0;
-    int screenW, screenH, x = 0, y = 0, top = 0, left = 0;
+    /* With a high pixel density the window has as many pixels as the display gives it, also where
+       SDL's window coordinates are points (macOS, scaled Wayland); the game draws at its size in
+       pixels and the windowed size is in pixels (render/display_options.h). */
+    SDL_WindowFlags flags = SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_DisplayID on;
+    int screenW, screenH, x = 0, y = 0, top = 0, left = 0, w, h;
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
     /* Touches reach the client through core/touch.c only, a mouse and a pen as a mouse. */
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
@@ -673,45 +711,70 @@ int app_create_window(void)
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
 #endif
 #ifdef __ANDROID__
-    /* An Android window always covers the screen, so the client runs in its full-screen mode: at its
-       own resolution, scaled to the screen with the aspect kept, without the system bars. */
+    /* An Android window always covers the screen, so the client runs in its fullscreen mode, at the
+       window's size, without the system bars. */
     g_fullscreenMode = 1;
     flags |= SDL_WINDOW_FULLSCREEN;
 #else
-    /* Shown once it is in its place. */
-    flags |= SDL_WINDOW_HIDDEN;
+    /* Shown once it is in its place; the player can resize and maximise it when it is windowed. */
+    flags |= SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE;
 #endif
-    g_hMainWnd = SDL_CreateWindow(g_windowClassName, g_screenWidth, g_screenHeight, flags);
+    on = g_fullscreenMode ? saved_display() : SDL_GetPrimaryDisplay();
+    w = platform_window_units(NULL, on, g_displayWidth, 0);
+    h = platform_window_units(NULL, on, g_displayHeight, 0);
+    g_hMainWnd = SDL_CreateWindow(g_windowClassName, w, h, flags);
     if (!g_hMainWnd) {
         platform_message_box(NULL, "Window Creation Failed", "ERROR", 0);
         return 0;
     }
+    platform_window_minimum(g_hMainWnd, DISPLAY_MIN_WIDTH, DISPLAY_MIN_HEIGHT);
     if (g_fullscreenMode == 0) {
+        int placed = g_savedWidth == g_displayWidth && g_savedHeight == g_displayHeight
+                     && g_windowX != DISPLAY_NO_POSITION;
+        int displayW, displayH, roomW, roomH, fitW = g_displayWidth, fitH = g_displayHeight;
+        /* a saved size the display has no room for opens at the largest that fits */
+        platform_window_room(g_hMainWnd, &displayW, &displayH, &roomW, &roomH);
+        display_fit(&fitW, &fitH, roomW, roomH);
+        if (fitW != g_displayWidth || fitH != g_displayHeight) {
+            g_displayWidth = fitW;
+            g_displayHeight = fitH;
+            w = platform_window_units(g_hMainWnd, 0, fitW, 0);
+            h = platform_window_units(g_hMainWnd, 0, fitH, 0);
+            SDL_SetWindowSize(g_hMainWnd, w, h);
+        }
         /* x and y are the window's outer corner, as Window_XPos and Window_YPos keep it
            (platform_window_rect); SDL places the client area, inside the frame. */
         platform_screen_size(&screenW, &screenH);
-        x = (screenW - g_screenWidth) / 2;
-        y = (screenH - g_screenHeight) / 2;
-        if (g_savedWidth == g_screenWidth && g_savedHeight == g_screenHeight) {
-            x = session_get_option_int(&g_session1, "Window_XPos", x);
-            y = session_get_option_int(&g_session1, "Window_YPos", y);
+        x = (screenW - w) / 2;
+        y = (screenH - h) / 2;
+        if (placed) {
+            x = g_windowX;
+            y = g_windowY;
         }
-        if (x > screenW - g_screenWidth)
-            x = (screenW - g_screenWidth) / 2;
+        if (x > screenW - w)
+            x = (screenW - w) / 2;
         if (x < 0)
             x = 0;
-        if (y > screenH - g_screenHeight)
-            y = (screenH - g_screenHeight) / 2;
+        if (y > screenH - h)
+            y = (screenH - h) / 2;
         if (y < 0)
             y = 0;
         SDL_GetWindowBordersSize(g_hMainWnd, &top, &left, NULL, NULL);
         SDL_SetWindowPosition(g_hMainWnd, x + left, y + top);
+        /* maximised once it is shown, and restored to this size and place */
+        if (g_windowMaximized)
+            SDL_MaximizeWindow(g_hMainWnd);
+    } else {
+        /* covers the display it is placed on once it is shown; the device takes its size
+           (render/c3ddevice.c) */
+        SDL_SetWindowPosition(g_hMainWnd, SDL_WINDOWPOS_CENTERED_DISPLAY(on), SDL_WINDOWPOS_CENTERED_DISPLAY(on));
+        platform_window_fullscreen(g_hMainWnd);
     }
     SDL_ShowWindow(g_hMainWnd);
+    SDL_SyncWindow(g_hMainWnd);
     if (g_fullscreenMode == 0) {
         /* X11 knows the frame only once the window manager has framed the shown window */
         int shownTop = 0, shownLeft = 0;
-        SDL_SyncWindow(g_hMainWnd);
         SDL_GetWindowBordersSize(g_hMainWnd, &shownTop, &shownLeft, NULL, NULL);
         if (shownTop != top || shownLeft != left)
             SDL_SetWindowPosition(g_hMainWnd, x + shownLeft, y + shownTop);

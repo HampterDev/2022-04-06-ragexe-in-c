@@ -127,7 +127,6 @@ static void check_texel_centres(struct C3dDevice *d)
 int main(void)
 {
     struct C3dDevice *d = &g_3dDevice;
-    struct SurfaceDesc mode = {0};
     struct Vertex v[4];
     gfx_surface *rt, *sys;
     struct gfx_lock lk;
@@ -146,9 +145,9 @@ int main(void)
     }
     d->width = W;
     d->height = H;
-    assert(gfx_open(d, NULL, 0) == 0);
-    assert(gfx_create_screen(d, &mode, 2) == 0);
-    assert(gfx_create_3d(d, NULL, 0) == 0);
+    assert(gfx_open(d, 0) == 0);
+    assert(gfx_create_screen(d, 2) == 0);
+    assert(gfx_create_3d(d, 0) == 0);
     assert(gfx_get_caps(d, &g_gfxCaps) == 0);
     assert(gfx_create_zbuffer(d) == 0);
     gfx_default_states(d);
@@ -255,7 +254,7 @@ int main(void)
     assert(screen_pixel(d, 12, 11) == 0xffff00 && screen_pixel(d, 12, 16) == 0xff00ff && screen_pixel(d, 9, 9) == 0);
     gfx_release(sys);
 
-    assert(gfx_present(d, 0, 0) == 0);
+    assert(gfx_present(d, 0) == 0);
     gfx_close(d);
     SDL_DestroyWindow(d->hwnd);
     SDL_Quit();
