@@ -235,6 +235,14 @@ the way and the validation are in
 | [bf6670583a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bf6670583ad3f988402e0b0c61ed56bb6b07cf77) | [037c1658e3](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/037c1658e345478fa62e89f452147e42b9552e27) (adapted) | Cut the Star Gladiator notice's job name to its packet field |
 | [34bd3bd2f9](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/34bd3bd2f954c42af315de392a6940558e2fe865) | [8c02cc7c66](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8c02cc7c6659d766422bf8a9f6a371dc8fa1bf29) | Whip effects: draw the joints' shimmer every frame, as the original does |
 
+The WAV pick (`8e895acb`) handed a PCM WAV to Miles as it was, without the client's chunk check.
+Since 2026-11-11 `custom` decodes every sound file when it loads, with SDL's WAV loader
+(`platform/audio_sdl.c`; `docs/custom-review.md`, "Sound without a position"), which walks the
+chunks within the file itself: of the pick's sloppy headers, a RIFF size that counts the whole file
+or is 0xFFFFFFFF and a data chunk longer than the file still play (`tests/test_audio.c`), an empty
+data chunk plays nothing, and a file that does not decode loads without a sound and plays nothing.
+`main` keeps the fix.
+
 ## Foundation fixes from the WARP port, 2026-11-06
 
 Found while porting WARP patches to `main` on the `warp-patches` branch, fixed on `main` and

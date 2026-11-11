@@ -13982,3 +13982,192 @@ guardian and the treasure box; in `guild_flags_later` in two pixels of the flag'
 static runtime and SDL's new options change no pixel: in the copy, the harness built with them
 captures all 12 captures of the set exactly as the 64-bit harness built before them, with the same
 counts.
+
+## Sound without a position (2026-11-11)
+
+Decided with Patrick on 2026-11-11: positional audio goes ("totally unnecessary") and the audio
+layer becomes as simple as it can be; then, from him: "the range check should be completely
+removed everything you can see that play a sound should play at the channels volume". Until now
+`contents/sound.c` and `resources/wave.c` called the subset of the Miles Sound System API the
+original calls (45 `_AIL_*` functions, `platform/miles_api.h`), which `platform/miles_sdl.c` (1,095
+lines) implemented on SDL 3 with a mixer of its own, a 3D provider and its own ADPCM decoders.
+
+- **The module.** `platform/audio.h`, implemented once for every platform in `platform/audio_sdl.c`
+  (254 lines), with no SDL type in the header. `audio_open(mono)` opens SDL's default playback
+  device with SDL's default format and `audio_close` closes it; SDL mixes every stream bound to the
+  device itself, converting each to the device's format and rate and applying its gain.
+  `audio_sound_decode` decodes a sound file held in memory (`audio_sound_free` frees the result);
+  `audio_voice_play(sound, gain)` plays it once on a stream of its own holding a copy of the
+  samples, `audio_voice_playing` asks SDL whether that stream still has output and
+  `audio_voice_stop` destroys it; `audio_music_play(path, loop_count, gain)` streams an MP3 file
+  `loop_count` times (0 for ever), with `audio_music_set_gain`, `audio_music_done` and
+  `audio_music_stop`. No new library: SDL at the pinned commit (3.4.18) and `dr_mp3` 0.7.3 were
+  linked already.
+- **Decoding.** A RIFF WAVE goes to SDL's own loader, `SDL_LoadWAV_IO` on the bytes in memory
+  (PCM, Microsoft and IMA ADPCM and SDL's other WAV formats); anything that starts with an ID3 tag
+  or an MPEG frame sync, which is how Miles' `AIL_file_type` told MP3 apart, goes to `dr_mp3`.
+  Everything is read from the file in memory and nothing past it. Two details came out of the
+  comparison and the damaged-file test below: SDL drops an ADPCM file's last block when the file
+  cuts it short, which four IMA files of `data.grf` do (31 to 46 ms of quiet tail), so
+  `SDL_HINT_WAVE_TRUNCATION` is set to `dropframe`, which keeps that block's whole frames as
+  `miles_sdl.c`'s decoder did, once and with override priority, so an `SDL_WAVE_TRUNCATION`
+  environment variable cannot change it; and SDL takes a PCM file's block size from its header, so a
+  header whose block size is not a whole frame gave samples SDL's streams refuse
+  (`SDL_PutAudioStreamData` takes whole frames only): the result is cut to whole frames. A sound
+  must also be 1,000 to 384,000 Hz and at most five minutes long, seven times the longest WAV of
+  `data.grf` (40 s, `effect\가스펠.wav`): a damaged header with a rate of 1 Hz decoded and would
+  have held a voice for hours. The game's files are 8,000 to 48,000 Hz.
+- **The music.** The file is read into memory as before and `dr_mp3` decodes it on the device's
+  thread, in the stream's get callback, as the device asks for more; at the end of the file it
+  seeks to the start until it has played `loop_count` times, and stops at once on a file that
+  decodes nothing, as `miles_sdl.c` did. `contents/sound.c` keeps the rest: a track already open
+  under the same name is not restarted, `sound_play_bgm` remembers the map's track, and the fade
+  thread steps the music volume by 1 every 10 ms.
+- **`contents/sound.c`** (452 lines, now 326) keeps 48 voice slots in place of 48 2D and 48 3D
+  sample handles. `sound_play_wave(name, volume)` loads the wave through the resource manager as
+  before (nothing with sound mode 0 or effects off), plays only in sound modes 1 and 2 as before
+  (any other mode plays music but no effects), and starts it in the first slot whose voice has
+  finished, at the effect volume times `volume`; with all 48 playing the effect is dropped, as when
+  no sample handle was free. The product is clamped to 0..127 before it becomes an integer, so a
+  map sound source's RSW volume of NaN or 1e30 gives silence or full volume where the conversion was
+  undefined.
+- **`resources/wave.c`** (162 lines, now 51) decodes the file from its buffer when it loads and
+  keeps the result in the resource cache. A file that cannot be read, or is shorter than 12 bytes,
+  fails to load as before; one that reads but does not decode loads without a sound and plays
+  nothing. Before, an ADPCM or MP3 file that did not decode failed to load, with the "Resource File
+  Loading fail" chat lines and another try at each play, while a PCM or unknown file loaded and
+  Miles refused it silently at each play. The chunk checks that kept Miles' parser inside the file
+  (`wave_riff_valid`, `wave_info_valid`) went with it.
+
+**No distance.** Patrick's word goes further than the position: nothing on the way from the game to
+the device measures distance any more, with one exception below. Gone from `contents/sound.c`: the
+2D path's range check, under which an effect at or beyond its maximum distance (250 for every
+caller but a map's sound sources, which pass their range) did not play in sound mode 1, and its
+falloff (the volume times 40 over the distance beyond 40), the 3D path of sound mode 2, the
+default (provider, listener, positions, orientations and distances; `miles_sdl.c` gave it
+inverse-distance falloff, silence beyond the maximum distance and a left/right balance),
+`sound_set_listener_angle` (called from `game/mode_initialize.c` and `game/mouse_camera.c`),
+`sound_set_room_type`, `sound_set_effect_volume_3d` (always called beside `sound_set_effect_volume`
+with the same value), and `g_sound_speaker_type` with the `SPEAKERTYPE` setting it was read from.
+Gone with them, as they only carried a position on: the position and distances of all 61 calls of
+`sound_play_wave`; `effect_play_wave_at`'s position and height (now `effect_play_wave`, 145 calls),
+which took the place of `rag_play_wave` and `rag_play_wave_here`; the effect argument of
+`rag_play_two_waves`; the height of `follow_wave` and of `effect_add_sound_cue` with
+`struct SoundCue`'s field; `gs_wave`, `ps_play_wave`, `sot_wave`, `play_skill_wave_at` and
+`play_at_unit`, which passed one on; the effect data's wave `Height` (14 operations in
+`data/effects/effects.json`, `struct RagStrOp`'s field; the loader now rejects the key as unknown);
+and what was looked up only for a position: `ZC_SOUND`'s NPC for a sound played once (it played
+either way), the player in the hit sound (`actor/actor_sendmsg.c`), the stone curse wave
+(`game/skill_use_basic.c`) and the ranking packet (`game/packets_entry.c`), and the zero vectors of
+`game/shops.c` and `session/skill_effect.c`. The effect trace is the same but for its 2,638 wave
+lines, which lose the position and the distances. Heard now and never before: `number_change.wav`
+(a PvP rank change, whose call passed the player's absolute position, so only a player within
+250 of the map's centre, the world's origin, heard it) and the Star Gladiator's `T_피링.wav`
+(placed 250 from the player, exactly its maximum distance). Everything beyond 40 of the player
+was quieter before and is not now.
+
+The exception is a map's own sound sources (the RSW's sound objects, `SoundMaker`): their own test
+in `sound_maker_on_process` (`actor/small_actors.c:641-673`) starts a source's sound only while the
+player is within 130 of the source's range plus its area's diagonal, from its position, and within
+75 of its range from the edge of its area towards the player. Patrick decided it stays ("only start
+ambient sounds when near like before"): without it every source of the map would start on every
+one of its cycles. `data.grf` has 22,650 sources in 481 of its 938 maps (110 in Izlude, 25 in
+Prontera, 66 in Payon, 87 in `1@mjo1`), and 14,702 of them have a sound longer than their cycle;
+started on every cycle, the ambient sounds alone would hold more than 48 voices on average on 118
+maps (about 94 in Izlude, 340 in `iz_dun02`) and drop the effects of what the player sees. Counted
+by walking each RSW's object list as `resources/world_res.c` reads it, which leaves exactly the
+65,520 bytes of the map's quadtree after the list in 936 of the 938 maps (the other two end with
+it), and for the voices by summing each source's sound length over its cycle, at most 1. A first
+count, which searched each file for a type 3 followed 84 bytes later by a `.wav` name, found
+43,489: the editor left uninitialised memory in the records' name fields, copies of names and
+small integers among it, and that matched too. Within that reach a source now plays at its full
+RSW volume: before, it faded beyond a sixth of its range and fell silent at the range itself,
+which `sound_play_wave`'s check was given, so it is now heard up to 75 further. The four sources of
+`moc_fild16` whose cycle is 0 restart on every frame within reach, as before, now at full volume.
+
+Conditions that still keep a sound from playing, none about distance, all as they were:
+
+- no current player: `effects/effect_sound.c:7` (`effect_play_wave`, every RagEffect, skill and
+  STR wave but the effect data's operations marked `AtPlayer`, which
+  `effects/rag/rag_str_bindings.c` plays with `sound_play_wave`), `actor/motion.c:28` (a motion's
+  sound event), `actor/pc_process.c:56` and `actor/player.c:80` (an actor's pending wave),
+  `actor/actor_efst.c:113` (`ef_wave`), `actor/attr_state.c:27,101,103` (status sounds), and the
+  sound sources' `actor/small_actors.c:643`;
+- an NPC loop sound (`ZC_SOUND` repeat) whose NPC the client does not have in its actor list, which
+  is the server's view range (`game/mode_run.c:156`);
+- the 48 voices (`contents/sound.c:259`), sound mode 0 or effects off (`:254`), a mode other than 1
+  or 2 for effects (`:257`), music off (`contents/sound.c:212`, `login/mode.c:109`,
+  `game/packets_npc.c:541`), and a wave that is missing or does not decode (`:257`);
+- a sound source's cycle, its empty wave name and a zero area width (`actor/small_actors.c:641,
+  674, 676`), and its RSW volume, which scales its sound.
+
+What else the player hears differently:
+
+- SDL mixes at the output device's rate (it asks the device for at least 44,100 Hz) instead of
+  `miles_sdl.c`'s 22,050 Hz mix, so the music keeps the frequencies above 11 kHz that mix cut,
+  and each sound is resampled once instead of twice.
+- In sound mode 2 the nine stereo WAVs of `data.grf` play in stereo; a 3D sample took them mixed
+  down to mono. Sound mode 1, for which the client opened a mono Miles driver, still plays mono:
+  a post-mix callback averages the first two channels, as SDL averaged the music into that driver.
+- An ADPCM or MP3 file that does not decode is silent without a chat line (above).
+
+Decoding, compared over all of the game's WAV files: the 2,974 in `data.grf` (read with
+`fileio/grf_pak.c`, so `worm_tail_damage.wav`, whose zlib data is cut, reads as the client reads it)
+and the 2 loose ones under `data\wav`, through `resources/wave.c` and `miles_sdl.c` of `9aaa4146`
+(the sample a 3D sample would play) and through `audio_sound_decode`: all 2,976 play both ways, with
+the same channels, sample size, rate and bytes. Of the 2,973 whose data is whole, 2,967 are PCM
+(8- and 16-bit, mono and stereo, 8,000 to 48,000 Hz), five IMA ADPCM and one Microsoft ADPCM; the
+loose two are PCM. With SDL's default truncation four IMA files (`welcome.wav`, `charge.wav`,
+`she_bop.wav`, `horn.wav`) were 2,722 to 4,034 bytes short, the rest identical. `data.grf` has no
+MP3 data named `.wav` and no MPEG Layer 3 inside RIFF (format 0x55), which `miles_sdl.c` did not
+decode either and still does not decode.
+
+Tests:
+
+- `test_audio` (new; `tests\build_audio.bat` in the suite, and off Windows CTest's `audio` in place
+  of `miles_sdl`): the four ADPCM fixtures decode to their reference decodes byte for byte, PCM
+  WAVs (16-bit with a LIST chunk, 8-bit) to their data, the MP3 fixture to its 440 Hz tone, with
+  and without its ID3 tag; every prefix of each of them, ending where readable memory ends on
+  Windows, and 1,500 damaged copies of each WAV and 400 of the MP3 (bytes flipped, 32-bit fields
+  set to 0, 1, 2, 3, 0x7fffffff, 0x80000000, 0xffffffff, 0xfffffff8 or 0x10000, cut short) decode
+  or are refused without a fault, 14,440 decoded and 7,336 refused, and what decodes converts
+  through an `SDL_AudioStream`. Rates of 1, 999, 384,001 and 0xFFFFFFFF Hz and 300,001 frames at
+  1,000 Hz are refused, 1,000 and 384,000 Hz and five minutes play. The pick's sloppy headers
+  (`docs/upstream/README.md`) are pinned: a RIFF size that counts the whole file or is 0xFFFFFFFF
+  and a data chunk longer than the file play, an empty data chunk, format 0x55 and no channels do
+  not. Mixing through SDL's disk driver
+  into files: a voice plays its sound once and its sounding stretch is as long as the sound's
+  (within 300 frames), the music plays the MP3 twice with loop count 2 and `audio_music_done`
+  answers after it, a stereo tone keeps its channels at gain 1 and halves at 0.5, and with mono
+  both channels carry half. With `client-files` beside the checkout (`AUDIO_GAME_DIR`) it decodes
+  `plasma_damage.wav` (PCM), `dying.wav` (8-bit), `CHUNITHM_std.wav` (stereo, 48 kHz),
+  `welcome.wav` and `glass.wav` (IMA, mono and stereo) and `se_frog02.wav` (Microsoft) from
+  `data.grf` and `BGM\01.mp3`, then plays `welcome.wav` and `plasma_damage.wav` over the music at
+  half volume: in the suite's run the voices ended after their 2.27 s (2,306 ms), and the output
+  is as long, not silent and carries the mix (peak at the limit, RMS 5,821).
+- `test_sound_manager` stubs the new module instead of Miles: modes, effects at the effect volume
+  times their own with the clamp, the 48 voices and their reuse, the music's retry, loops and
+  volumes, rollback, the fades on a real thread and the joined shutdown.
+- `test_wave_palette` and `test_resource_lifecycle` hand the decoder the file's own bytes and own
+  what it returns; `test_effect_sound` plays a wave with any player and none without;
+  `test_effect_data` rejects `Height`; `test_startup_settings` no longer reads `SPEAKERTYPE`; the
+  effect trace takes digest `356d458afcc7debb` (above); the oracle tests record a wave by its name
+  on both sides, and a sound cue without its height. `test_miles_sdl` is gone; its fixtures stay
+  for `test_audio`.
+
+Validation: `build.bat check` (no warnings; the include check passes over 1,822 files with
+11,137 includes, 267 of them exceptions, the link check over 1,151 objects with 29,871 uses of
+client symbols, 128 of them exceptions), `build.bat dbg`, `freetype` and `libs` and
+`tests\scenes\build.bat` build. The full `tests\build.bat` passes, its oracle tests against the
+original executable (629,006 calls, no mismatch, no fault). The CMake build of `docs/portability.md`
+with `-A x64` builds and passes its 23 tests. Off Windows, where `test_audio` joins CTest, GCC under
+WSL with `-Wall -Wextra` gives the changed C files the same 77 warnings as their versions at
+`9aaa4146` and `test_audio.c` none; CTest itself was not run there. A review then had the bounds on
+rate and length, the hint's priority, the stream bound after its data, `as_play_wave_at_player`'s
+unused parameter and `effect_sound.c`'s include changed; `build.bat check` and the suite were run
+again after them, the client below was not. `build\ragexe.exe`, copied into a mirror of
+`client-files` and started with `SDL_AUDIO_DRIVER=disk`, wrote 44,100 Hz 16-bit stereo in real
+time (2,768,896 bytes in 16 s) but silence, since the game folder's options have `/bgm` off; in a second mirror with a
+copy of `savedata` whose options turn it on, the login music played from within the first two
+seconds (RMS 3,063 to 4,998 in each two seconds after them). On SDL's dummy driver, as the scene
+harness runs it, it opens its window too. Each run was closed by its process ID.

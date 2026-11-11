@@ -375,7 +375,7 @@ static void fireball(struct RagEffect *self, int turned, float turn, int rg, int
 static void fireball_volleys(struct RagEffect *self, const int *rg)
 {
     if (self->frame == 5)
-        sound_play_wave("effect\\EF_FireBall.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\EF_FireBall.wav", 1.0f);
     if (self->frame == 0 || self->frame == 1 || self->frame == 2 || self->frame == 3)
         fireball(self, 0, 0.0f, rg[0], 5);
     if (self->frame == 6 || self->frame == 7 || self->frame == 8 || self->frame == 9)
@@ -424,7 +424,7 @@ void rag_begin_spell_rings(struct RagEffect *self)
     self->base.pos = self->master->pos;
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, "effect\\ring_white.tga", 15);
     rag_casting_circle(self, 25, "effect\\ring_white.tga", 15);
 }
@@ -539,9 +539,9 @@ void rag_cloud_dash_69(struct RagEffect *self)
         }
     }
     if (self->frame == 10)
-        rag_play_wave_here(self, "effect\\EF_hit2.wav");
+        effect_play_wave("effect\\EF_hit2.wav");
     if (self->frame == 20)
-        rag_play_wave_here(self, "effect\\EF_hit4.wav");
+        effect_play_wave("effect\\EF_hit4.wav");
 }
 
 void rag_master_whirl(struct RagEffect *self)

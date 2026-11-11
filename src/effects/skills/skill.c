@@ -310,7 +310,7 @@ static int due(struct Skill *self, int period)
 
 static void unit_sound(const char *wave)
 {
-    sound_play_wave(wave, 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave(wave, 1.0f);
 }
 
 void skill_launch_area_effect(struct Skill *self, int effect_id, int period)

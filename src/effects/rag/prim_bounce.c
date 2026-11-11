@@ -30,7 +30,7 @@ unsigned char prim_bounce_process(struct EffectPrim *self)
                 char wave[0x34];
 
                 sprintf(wave, "effect\\EF_Coin%d.wav", prim_rand_below(3) + 1);
-                effect_play_wave_at(wave, &self->base.pos, 0.0f);
+                effect_play_wave(wave);
             }
         }
     }

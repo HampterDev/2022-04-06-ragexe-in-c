@@ -10,7 +10,7 @@
 void rag_cloaking(struct RagEffect *self)
 {
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\assasin_cloaking.wav");
+        effect_play_wave("effect\\assasin_cloaking.wav");
     render_object_set_argb(self->master, 50, -1, -1, -1);
     self->base.has_shadow = 0;
 }
@@ -18,7 +18,7 @@ void rag_cloaking(struct RagEffect *self)
 unsigned char rag_concentration(struct RagEffect *self)
 {
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\ac_concentration.wav");
+        effect_play_wave("effect\\ac_concentration.wav");
     return rag_str_step(self, 0.0f, -80.0f, 0.0f) != 0;
 }
 
@@ -168,7 +168,7 @@ unsigned char rag_cart_revolution(struct RagEffect *self)
     if (self->frame == 7 || self->frame == 20) {
         struct EffectPrim *p;
 
-        rag_play_wave_here(self, "effect\\EF_MagnumBreak.wav");
+        effect_play_wave("effect\\EF_MagnumBreak.wav");
         p = rag_launch_prim(self, 12, 0.0f, 0.0f, 0.0f);
         if (!p)
             return 0;
@@ -213,7 +213,7 @@ void rag_sonic_blow_hit(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\assasin_sonicblow.wav");
+    effect_play_wave("effect\\assasin_sonicblow.wav");
     if (self->frame != 0)
         return;
     yaw = (int)(180.0f - self->master->roty);
@@ -250,12 +250,12 @@ void rag_over_thrust(struct RagEffect *self)
     struct EffectPrim *p;
 
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\black_overthrust.wav");
+        effect_play_wave("effect\\black_overthrust.wav");
     rag_project_master(self);
     if (self->frame != 0)
         return;
     self->duration = 9999;
-    rag_play_wave_here(self, "effect\\EF_StoneCurse.wav");
+    effect_play_wave("effect\\EF_StoneCurse.wav");
     p = rag_launch_prim(self, 4, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -292,7 +292,7 @@ void rag_grimtooth(struct RagEffect *self)
     if (self->frame == 0) {
         float turn[12];
 
-        rag_play_wave_here(self, "effect\\EF_FrostDiver.wav");
+        effect_play_wave("effect\\EF_FrostDiver.wav");
         render_object_turn_toward(&self->base, self->offset.x, self->offset.z);
         mat_set_rotate_y(turn, deg_to_rad((int)-self->base.roty));
         mat_apply(turn, 0.0f, 0.0f, 2.0f, step);
@@ -384,7 +384,7 @@ void rag_heavens_drive(struct RagEffect *self)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_earthspike.wav");
+    effect_play_wave("effect\\wizard_earthspike.wav");
     game_send_message(GAME_MSG_QUAKE, 0, 0, 0, 0);
     self->duration += 50;
     for (z = -10; z < 15; z += 5) {

@@ -368,8 +368,7 @@ intptr_t ui_select_server_wnd_send_msg(struct UIWindow *window, struct UIWindow 
                 return 0;
             ui_window_mgr_post_quit2(&g_windowMgr, wnd);
             mode_send_message(client_current_mode(), self->mode_request, self->list->list.selected, 0, 0, 0);
-            sound_play_wave("버튼소리.wav"  , 0.0f, 0.0f,
-                            0.0f, 0xfa, 0x28, 1.0f);
+            sound_play_wave("버튼소리.wav", 1.0f);
             value = string_cstr(&self->server_value);
             self->server = self->list->list.selected;
             if (!platform_settings_create(g_registryKeyPath, PLATFORM_SETTINGS_ALL, &key))

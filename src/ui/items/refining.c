@@ -498,9 +498,9 @@ void ui_refining_wnd_on_process(struct UIWindow *window)
     self->anim_frame++;
     if (self->state == REFINE_PROCESS) {
         if (self->anim_frame == 7)
-            sound_play_wave("effect\\refine\\bs_refine_1.wav", 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+            sound_play_wave("effect\\refine\\bs_refine_1.wav", 1.0f);
         if (self->anim_frame == 0xc)
-            sound_play_wave("effect\\refine\\bs_refine_2.wav", 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
+            sound_play_wave("effect\\refine\\bs_refine_2.wav", 1.0f);
     }
     state = self->state;
     if (last_frame[state] <= self->anim_frame) {
@@ -522,12 +522,10 @@ void ui_refining_wnd_on_process(struct UIWindow *window)
         }
         if (state == REFINE_PROCESS) {
             if (self->result == REFINE_SUCCESS)
-                sound_play_wave("effect\\refine\\bs_refine_success.wav", 0.0f, 0.0f, 0.0f, 0xfa,
-                                0x28, 1.0f);
+                sound_play_wave("effect\\refine\\bs_refine_success.wav", 1.0f);
             else if (self->result == REFINE_FAILURE || self->result == REFINE_DOWNGRADE ||
                      self->result == REFINE_FAILURE_KEPT)
-                sound_play_wave("effect\\refine\\bs_refine_failed.wav", 0.0f, 0.0f, 0.0f, 0xfa,
-                                0x28, 1.0f);
+                sound_play_wave("effect\\refine\\bs_refine_failed.wav", 1.0f);
             ui_refining_wnd_refresh(self);
             ui_refining_wnd_set_state(self, self->result, REFINE_NO_RESULT);
             return;

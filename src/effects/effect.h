@@ -21,7 +21,6 @@ enum SoundCueKind {
 struct SoundCue {
     int kind;
     int frame;
-    float height;
     struct String wave;
 };
 
@@ -90,7 +89,7 @@ struct Effect *effect_construct(struct Effect *self, int type);
 void effect_destruct(struct Effect *self);
 void effect_set_owner(struct Effect *self, int aid);
 void effect_set_target(struct Effect *self, int aid);
-void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame, float height);
+void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame);
 unsigned char effect_is_owner_alive(struct Effect *self);
 unsigned char effect_is_finished(struct Effect *self);
 unsigned char effect_is_within_duration(struct Effect *self);
@@ -121,7 +120,8 @@ struct Renderer;
 extern struct EffectMgr *g_effectMgr;
 
 void *effect_find_actor(int aid);
-void effect_play_wave_at(const char *wave, const Vec3 *position, float height);
+/* plays a sound effect when there is a player to hear it */
+void effect_play_wave(const char *wave);
 struct World;
 struct RenderObject;
 int effect_add_world_object(struct World *expected_world, struct RenderObject *object);

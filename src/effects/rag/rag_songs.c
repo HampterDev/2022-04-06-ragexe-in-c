@@ -394,7 +394,7 @@ void rag_finger_offensive(struct RagEffect *self)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\mon_탄지신통.wav");
+    effect_play_wave("effect\\mon_탄지신통.wav");
     prim = launch(self, 42);
     if (!prim)
         return;
@@ -449,7 +449,7 @@ void rag_directed_sprite(struct RagEffect *self, char style)
     if (self->frame != 0)
         return;
     if (style == 0)
-        rag_play_wave_here(self, "effect\\mon_침투경.wav");
+        effect_play_wave("effect\\mon_침투경.wav");
     self->last_prim = rag_launch_prim(self, 46, 0.0f, 0.0f, 0.0f);
     if (!self->last_prim)
         return;

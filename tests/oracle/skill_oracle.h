@@ -232,8 +232,8 @@ struct RagEffect *game_actor_launch_effect(struct GameActor *self, int effect_id
 { (void)offset; (void)rotation; event("launch %x %s", effect_id, who(self)); return &lift_rag; }
 struct Effect *effect_mgr_spawn(struct EffectMgr *self, int aid, int type, Vec3 pos, int target_aid, int level, unsigned char reuse, int instance_key)
 { (void)self; (void)reuse; (void)instance_key; event("spawn %x aid %d tgt %d lvl %d at %.0f %.0f %.0f", type, aid, target_aid, level, pos.x, pos.y, pos.z); return &lift_effect; }
-void sound_play_wave(const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
-{ (void)max_distance; (void)full_distance; (void)volume; event("wave %s %.0f %.0f %.0f", name, x, y, z); }
+void sound_play_wave(const char *name, float volume)
+{ (void)volume; event("wave %s", name); }
 void render_object_play_motion_range(struct RenderObject *self, unsigned char action, unsigned char motion, unsigned char last,
                                      unsigned char close_action, unsigned char close_motion, int timed, int duration, int loop)
 { event("motion %s %x %d %d %d %d %d %d %d", who(self), action, motion, last, close_action, close_motion, timed, duration, loop); }
@@ -242,8 +242,8 @@ unsigned char able_to_make_effect_is_effect_exist(void *self, int effect_id) { e
 struct Effect *effect_mgr_find_effect(struct EffectMgr *self, int aid, int type) { (void)self; event("find %x aid %d", type, aid); return NULL; }
 int servant_weapon_effect_count_armed(struct Effect *effect) { (void)effect; return 0; }
 void servant_weapon_effect_fire(struct Effect *effect, int effect_id) { (void)effect; event("servant fire %x", effect_id); }
-void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame, float height)
-{ (void)self; event("cue %d %s %d %.0f", kind, wave ? wave : "-", frame, height); }
+void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame)
+{ (void)self; event("cue %d %s %d", kind, wave ? wave : "-", frame); }
 unsigned char effect_mgr_is_registered(struct EffectMgr *self, int type) { (void)self; event("registered %x", type); return 0; }
 unsigned char effect_type_is_listed(int type) { event("listed %x", type); return 0; }
 struct SkillActionMgr *skill_action_mgr_instance(void) { return (struct SkillActionMgr *)&lift_action_mgr; }
@@ -332,7 +332,7 @@ static void *__fastcall o_launch(void *self, void *edx, int effect, float x, flo
 static void *__fastcall o_spawn(void *self, void *edx, int aid, int type, float x, float y, float z, int target, int level, int reuse, int key)
 { (void)self; (void)edx; (void)reuse; (void)key; event("spawn %x aid %d tgt %d lvl %d at %.0f %.0f %.0f", type, aid, target, level, x, y, z); return orig_effect; }
 static void __fastcall o_play_wave(void *self, void *edx, const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
-{ (void)self; (void)edx; (void)max_distance; (void)full_distance; (void)volume; event("wave %s %.0f %.0f %.0f", name, x, y, z); }
+{ (void)self; (void)edx; (void)x; (void)y; (void)z; (void)max_distance; (void)full_distance; (void)volume; event("wave %s", name); }
 static int __fastcall o_motion(void *self, void *edx, int action, int motion, int last, int close_action, int close_motion, int timed, int duration, int loop)
 { (void)edx; event("motion %s %x %d %d %d %d %d %d %d", who(self), action & 0xff, motion & 0xff, last & 0xff, close_action & 0xff, close_motion & 0xff, timed, duration, loop); return 0; }
 static int __fastcall o_turn_toward(void *self, void *edx, float x, float z) { (void)edx; event("turn %s %.0f %.0f", who(self), x, z); return 0; }
@@ -341,7 +341,7 @@ static void *__fastcall o_find_effect(void *self, void *edx, int aid, int type) 
 static int __fastcall o_servant_count(void *self, void *edx) { (void)self; (void)edx; return 0; }
 static int __fastcall o_servant_fire(void *self, void *edx, int effect) { (void)self; (void)edx; event("servant fire %x", effect); return 0; }
 static void *__fastcall o_effect_cue(void *self, void *edx, int kind, const char *wave, int frame, int height)
-{ (void)self; (void)edx; event("cue %d %s %d %.0f", kind, wave ? wave : "-", frame, (double)height); return NULL; }
+{ (void)self; (void)edx; (void)height; event("cue %d %s %d", kind, wave ? wave : "-", frame); return NULL; }
 static int __fastcall o_is_registered(void *self, void *edx, int type) { (void)self; (void)edx; event("registered %x", type); return 0; }
 /* custom removed the skill and object halves of the skill-action manager, whose 121
  * registrations were all 4th-class, so each lift call site takes the not-found path directly.

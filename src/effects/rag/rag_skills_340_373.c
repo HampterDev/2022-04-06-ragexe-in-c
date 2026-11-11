@@ -67,7 +67,7 @@ void rag_spell_casting_rings(struct RagEffect *self, const char *tex)
     follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, tex, 3);
     rag_casting_circle(self, 25, tex, 3);
 }
@@ -136,7 +136,7 @@ void rag_four_blue_rings(struct RagEffect *self)
     follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_Portal.wav", -150.0f);
+    effect_play_wave("effect\\EF_Portal.wav");
     p = launch_prim(self, 60, 0);
     if (!p)
         return;
@@ -220,7 +220,7 @@ void rag_wedding_paper(struct RagEffect *self, const char *tex, unsigned char si
     if (self->frame != 0)
         return;
     if (silent == 0)
-        rag_play_wave_here(self, "effect\\wedding.wav");
+        effect_play_wave("effect\\wedding.wav");
     p = launch_prim(self, 78, 1);
     if (!p)
         return;
@@ -468,7 +468,7 @@ void rag_valentine_sprite(struct RagEffect *self, char look)
     follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\vallentine.wav");
+    effect_play_wave("effect\\vallentine.wav");
     p = rag_launch_prim(self, 5, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -809,7 +809,7 @@ void rag_heart_rings(struct RagEffect *self)
     if (self->frame != 0)
         return;
     rag_follow_master(self);
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     for (i = 0; i < 20; i++)
         rag_two_rings(self, "effect\\ring_red.tga", heart[i][0], heart[i][1]);
 }

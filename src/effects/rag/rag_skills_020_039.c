@@ -28,7 +28,7 @@ void rag_poison_attack(struct RagEffect *self, char variant)
     struct EffectPrim *p;
 
     if (self->frame == 0 && variant == 0)
-        rag_play_two_waves(self, "effect\\assasin_enchantpoison.wav", "effect\\EF_PoisonAttack.wav");
+        rag_play_two_waves("effect\\assasin_enchantpoison.wav", "effect\\EF_PoisonAttack.wav");
     if (variant == 1) {
         if (self->frame % 9 != 0)
             return;
@@ -58,7 +58,7 @@ void rag_detoxication(struct RagEffect *self)
     if (self->frame % (g_session1.map_rule_flags[0] != 0 ? 15 : 5) != 0)
         return;
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\EF_Detoxication.wav");
+        effect_play_wave("effect\\EF_Detoxication.wav");
     p = self->last_prim = rag_launch_prim(self, 5, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -171,7 +171,7 @@ void rag_fire_ball(struct RagEffect *self)
 
     if (self->frame != 20 && self->frame != 24 && self->frame != 28 && self->frame != 32)
         return;
-    rag_play_wave_here(self, "effect\\EF_FireBall.wav");
+    effect_play_wave("effect\\EF_FireBall.wav");
     p = self->last_prim = rag_launch_prim(self, 5, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -257,7 +257,7 @@ void rag_ice_arrow(struct RagEffect *self)
     self->base.pos = self->master->pos;
     if (self->frame == 12) {
         sprintf(wave, "effect\\EF_IceArrow%d.wav", rnd(3) + 1);
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
         self->hit_count *= 10;
     }
     if (self->frame >= 12 && (self->frame - 12) % 10 == 0 && self->frame - 12 < self->hit_count) {
@@ -282,7 +282,7 @@ void rag_fire_arrow(struct RagEffect *self)
     self->base.pos = self->master->pos;
     if (self->frame == 12) {
         sprintf(wave, "effect\\EF_FireArrow%d.wav", rnd(3) + 1);
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
         self->hit_count *= 10;
     }
     if (self->frame >= 12 && (self->frame - 12) % 10 == 0 && self->frame - 12 < self->hit_count) {
@@ -393,7 +393,7 @@ void rag_frost_diver2(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_FrostDiver2.wav");
+    effect_play_wave("effect\\EF_FrostDiver2.wav");
     for (i = 0; i < 8; i++) {
         p = self->last_prim = rag_launch_prim(self, 9, 0.0f, 0.0f, 0.0f);
         if (!p)
@@ -433,7 +433,7 @@ void rag_napalm_beat(struct RagEffect *self)
     if (self->frame < self->frame % 5)
         return;
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\EF_NapalmBeat.wav");
+        effect_play_wave("effect\\EF_NapalmBeat.wav");
     p = self->last_prim = rag_launch_prim(self, 0, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -518,7 +518,7 @@ void rag_inc_agility(struct RagEffect *self)
     rag_project_master(self);
     self->base.pos = self->master->pos;
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_IncAgility.wav");
+        effect_play_wave("effect\\EF_IncAgility.wav");
         agility_picture(self, "effect\\agi_up.bmp", PRIM_VARIANT_EVERY_FRAME);
     }
     if (self->frame & 1)
@@ -537,7 +537,7 @@ void rag_dec_agility(struct RagEffect *self)
     rag_project_master(self);
     self->base.pos = self->master->pos;
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_DecAgility.wav");
+        effect_play_wave("effect\\EF_DecAgility.wav");
         p = self->last_prim = rag_launch_prim(self, 0, 0.0f, 0.0f, 0.0f);
         if (!p)
             return;

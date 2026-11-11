@@ -89,11 +89,6 @@ static __inline void send_quake(void)
     game_send_message(MODE_MSG_QUAKE, 0, 0, 0, 0);
 }
 
-static __inline void play_skill_wave_at(const char *wave, float x, float y, float z)
-{
-    sound_play_wave(wave, x, y, z, 250, 40, 1.0f);
-}
-
 static __inline Vec3 actor_pos(const struct GameActor *actor)
 {
     Vec3 at;

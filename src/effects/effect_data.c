@@ -203,24 +203,21 @@ static const char *read_name(struct Reader *r, const char *where, const char *na
 
 static int read_op(struct Reader *r, const char *where, yyjson_val *v, struct RagStrOp *op)
 {
-    static const char *const keys[] = { "Follow", "Wave", "Height", "AtPlayer", "Quake", "Duration", NULL };
-    yyjson_val *wave, *height, *player, *quake, *duration, *follow;
+    static const char *const keys[] = { "Follow", "Wave", "AtPlayer", "Quake", "Duration", NULL };
+    yyjson_val *wave, *player, *quake, *duration, *follow;
     int actions;
     if (!known_keys(r, where, v, keys))
         return 0;
     follow = yyjson_obj_get(v, "Follow");
     wave = yyjson_obj_get(v, "Wave");
-    height = yyjson_obj_get(v, "Height");
     player = yyjson_obj_get(v, "AtPlayer");
     quake = yyjson_obj_get(v, "Quake");
     duration = yyjson_obj_get(v, "Duration");
     actions = !!follow + !!wave + !!quake + !!duration;
     if (actions != 1)
         return fail(r, where, "an operation is one of Follow, Wave, Quake or Duration");
-    if ((height || player) && !wave)
-        return fail(r, where, "Height and AtPlayer belong to a Wave");
-    if (height && player)
-        return fail(r, where, "a wave at the player has no Height");
+    if (player && !wave)
+        return fail(r, where, "AtPlayer belongs to a Wave");
     if (follow) {
         op->kind = RAG_STR_FOLLOW;
         return read_true(r, where, "Follow", follow);
@@ -235,8 +232,6 @@ static int read_op(struct Reader *r, const char *where, yyjson_val *v, struct Ra
     }
     op->kind = player ? RAG_STR_PLAYER_WAVE : RAG_STR_WAVE;
     if (player && !read_true(r, where, "AtPlayer", player))
-        return 0;
-    if (height && !read_float(r, where, "Height", height, &op->height))
         return 0;
     op->wave = read_name(r, where, "Wave", wave, 259, 0);
     return op->wave != NULL;

@@ -244,7 +244,7 @@ static unsigned char step_kyrie_guard(struct MsgEffect *self)
 
     me->action = me->base_action;
     if (me->motion == 0) {
-        effect_play_wave_at("effect\\kyrie_guard.wav", &me->pos, 0.0f);
+        effect_play_wave("effect\\kyrie_guard.wav");
     }
     me->motion++;
     if (me->motion >= motion_count(me))

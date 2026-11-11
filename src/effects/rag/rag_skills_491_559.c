@@ -64,7 +64,7 @@ void rag_poison_particles(struct RagEffect *self)
     int f = self->frame;
 
     if (f == 0 || f == 5 || f == 11 || f == 18 || f == 26 || f == 40)
-        rag_play_wave_here(self, "effect\\assasin_enchantpoison.wav");
+        effect_play_wave("effect\\assasin_enchantpoison.wav");
     if (self->frame % 3 != 0)
         return;
     p = rag_launch_prim(self, 5, 0.0f, 0.0f, 0.0f);
@@ -135,7 +135,7 @@ void rag_guard_ring(struct RagEffect *self, const char *tex)
     follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\black_maximize_power_sword_bic.wav");
+    effect_play_wave("effect\\black_maximize_power_sword_bic.wav");
     p = launch_prim(self, 61, 2);
     if (!p)
         return;
@@ -404,7 +404,7 @@ void rag_shield_boomerang_volley(struct RagEffect *self, const char *tex)
     follow_master(self);
     f = self->frame;
     if (f == 0)
-        rag_play_wave_here(self, "effect\\cru_shield boomerang.wav");
+        effect_play_wave("effect\\cru_shield boomerang.wav");
     else if (f != 3 && f != 6 && f != 9 && f != 12)
         return;
     p = launch_prim(self, 116, 0);
@@ -486,7 +486,7 @@ void rag_fire_wall_rings(struct RagEffect *self, const char *tex)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_FireWall.wav");
+    effect_play_wave("effect\\EF_FireWall.wav");
     follow_master(self);
     p = launch_prim(self, 118, 0);
     if (!p)
@@ -787,7 +787,7 @@ void rag_line_burst_quake(struct RagEffect *self, unsigned char with_wave)
         game_send_message(GAME_MSG_QUAKE, 0, 0, 0, 0);
         if (with_wave) {
             rag_follow_master(self);
-            rag_play_wave_here(self, "effect\\연주붕격.wav");
+            effect_play_wave("effect\\연주붕격.wav");
         }
     }
     if ((unsigned)(self->frame - 20) <= 80) {

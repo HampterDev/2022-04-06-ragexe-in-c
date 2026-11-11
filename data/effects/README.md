@@ -60,12 +60,12 @@ An operation has exactly one action:
 | Operation | Effect |
 |---|---|
 | `{"Follow": true}` | The effect moves to its master's position. |
-| `{"Wave": "file.wav", "Height": y}` | Plays the wave at the effect's position, `y` above it (`rag_play_wave`; default height 0). |
-| `{"Wave": "file.wav", "AtPlayer": true}` | Plays the wave at the player (`sound_play_wave` at 0, 0, 0). |
+| `{"Wave": "file.wav"}` | Plays the wave when there is a player (`effect_play_wave`). |
+| `{"Wave": "file.wav", "AtPlayer": true}` | Plays the wave even when there is none (`sound_play_wave`). |
 | `{"Quake": n}` | Sends game message `0x7a` (quake) with parameter `n`. |
 | `{"Duration": n}` | Sets the effect's duration to `n` frames. |
 
-Numbers given as floats (`Offset`, `Height`) must be exactly representable as a 32-bit
+Numbers given as floats (`Offset`) must be exactly representable as a 32-bit
 float, as the C constants they replace were.
 
 ### Ez2StrFile

@@ -148,7 +148,7 @@ static void base_level_up(struct GameMode *self, int level)
     g_session1.charBaseLevel = level;
     session_invalidate_windows(&g_session1);
     self->world->player->level = (short)g_session1.charBaseLevel;
-    sound_play_wave("levelup.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+    sound_play_wave("levelup.wav", 1.0f);
     launch_on_player(self, level_up_effect());
     ui_window_open(WINDOW_LEVEL_UP);
     if (pet_present(self))

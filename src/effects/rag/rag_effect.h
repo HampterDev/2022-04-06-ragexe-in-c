@@ -22,16 +22,6 @@
 #define RAG_MSG_SET_DURATION 0x50
 #define RAG_MSG_SET_COLOR    0x7f
 
-static __inline void rag_play_wave(struct RagEffect *self, const char *wave, float y)
-{
-    effect_play_wave_at(wave, &self->base.pos, y);
-}
-
-static __inline void rag_play_wave_here(struct RagEffect *self, const char *wave)
-{
-    rag_play_wave(self, wave, 0.0f);
-}
-
 struct RagEffect *rag_effect_construct(struct RagEffect *self);
 void rag_effect_destruct(struct RagEffect *self);
 void rag_effect_send_msg(struct RagEffect *self, struct RenderObject *sender, RenderMsgArg msg,
@@ -456,7 +446,7 @@ static __inline void rag_toss_wave(struct RagEffect *self)
 {
     if (self->frame == 1 || self->frame == 11 || self->frame == 21 || self->frame == 31) {
         rag_follow_master(self);
-        rag_play_wave_here(self, "effect\\복호격.wav");
+        effect_play_wave("effect\\복호격.wav");
     }
 }
 

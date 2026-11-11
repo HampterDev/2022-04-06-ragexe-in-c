@@ -12,7 +12,7 @@ unsigned char rag_potion_berserk(struct RagEffect *self)
     }
     if (self->frame == 18) {
         game_send_message(GAME_MSG_QUAKE, 1, 0, 0, 0);
-        sound_play_wave("effect\\ac_concentration.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\ac_concentration.wav", 1.0f);
     }
     rag_follow_master(self);
     if ((unsigned)(self->frame - 13) <= 96 && self->frame % 4 == 0) {
@@ -157,7 +157,7 @@ void rag_grand_cross_rings(struct RagEffect *self, unsigned short alpha,
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\cru_grand cross.wav");
+    effect_play_wave("effect\\cru_grand cross.wav");
     p = rag_launch_prim(self, 0x22, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -431,7 +431,7 @@ void rag_heal_rings(struct RagEffect *self, const char *texture, char style)
         ring[3].mode = fade_age;
 
         if (style < 2)
-            rag_play_wave_here(self, "_heal_effect.wav");
+            effect_play_wave("_heal_effect.wav");
     } else if (self->frame <= 50 && self->frame % 6 == 0 && style < 2) {
         rag_heal_bubbles(self, 1, 2.0f, style == 0 ? 0.4f : 0.6f);
     }
@@ -520,7 +520,7 @@ void rag_wind(struct RagEffect *self)
         prim_ring_fill_columns(ring, column[i], 0);
         ring->mode = 0;
     }
-    rag_play_wave_here(self, "_heal_effect.wav");
+    effect_play_wave("_heal_effect.wav");
 }
 
 void rag_intimidate(struct RagEffect *self, char style)
@@ -607,7 +607,7 @@ void rag_shield_boomerang(struct RagEffect *self, const char *texture)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\cru_shield boomerang.wav");
+    effect_play_wave("effect\\cru_shield boomerang.wav");
     p = rag_launch_textured(self, 0x2a, texture);
     if (!p)
         return;

@@ -15,7 +15,7 @@ void rag_spear_boomerang(struct RagEffect *self)
 
     if (self->frame != 0 && self->frame != 4 && self->frame != 8 && self->frame != 12)
         return;
-    rag_play_wave_here(self, "effect\\EF_FireBall.wav");
+    effect_play_wave("effect\\EF_FireBall.wav");
     p = self->last_prim = rag_launch_prim(self, 5, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -113,7 +113,7 @@ void rag_turn_undead(struct RagEffect *self)
     int n;
 
     if (self->frame == 37)
-        rag_play_wave_here(self, "effect\\EF_Bash.wav");
+        effect_play_wave("effect\\EF_Bash.wav");
     rag_project_master(self);
     if (self->frame == 0) {
         p = self->last_prim = rag_launch_prim(self, 4, 0.0f, 0.0f, 0.0f);
@@ -190,7 +190,7 @@ unsigned char rag_aspersio(struct RagEffect *self)
     struct EffectPrim *p;
 
     if (self->frame == 70)
-        rag_play_wave_here(self, "effect\\priest_aspersio.wav");
+        effect_play_wave("effect\\priest_aspersio.wav");
     if (self->frame % 5 == 0 && self->frame > 60 && self->frame < 140) {
         p = self->last_prim = rag_launch_prim(self, 7, 0.0f, 0.0f, 0.0f);
         if (!p)
@@ -221,7 +221,7 @@ unsigned char rag_storm_gust(struct RagEffect *self)
     float sin_a, cos_a;
 
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\wizard_stormgust.wav");
+        effect_play_wave("effect\\wizard_stormgust.wav");
     if (g_session1.map_rule_flags[0] == 0 && self->frame % 29 == 0 && (unsigned)(self->frame - 31) <= 119) {
         for (i = 0; i < 2; i++) {
             yaw = rnd(360);
@@ -260,7 +260,7 @@ void rag_jupitel(struct RagEffect *self, char variant)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\hunter_shockwavetrap.wav");
+    effect_play_wave("effect\\hunter_shockwavetrap.wav");
     if (self->frame != 0)
         return;
 
@@ -370,7 +370,7 @@ void rag_water_ball(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_waterball_chulung.wav");
+    effect_play_wave("effect\\wizard_waterball_chulung.wav");
     p = self->last_prim = rag_launch_prim(self, 8, 0.0f, 0.0f, 0.0f);
     if (!p)
         return;
@@ -404,10 +404,10 @@ void rag_adrenaline_rush(struct RagEffect *self)
 
     if (self->frame == 0) {
         self->duration = 300;
-        rag_play_wave_here(self, "effect\\black_adrenalinerush_a.wav");
+        effect_play_wave("effect\\black_adrenalinerush_a.wav");
     }
     if (self->frame == 30)
-        rag_play_wave_here(self, "effect\\black_adrenalinerush_b.wav");
+        effect_play_wave("effect\\black_adrenalinerush_b.wav");
     rag_project_master(self);
     if (self->frame != 0)
         return;
@@ -456,7 +456,7 @@ void rag_flasher(struct RagEffect *self)
     int rays;
 
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\hunter_flasher.wav");
+        effect_play_wave("effect\\hunter_flasher.wav");
     rag_project_master(self);
     if (self->frame != 0)
         return;
@@ -503,7 +503,7 @@ void rag_remove_trap(struct RagEffect *self)
     int sparks;
 
     if (self->frame == 0)
-        rag_play_wave_here(self, "effect\\hunter_removetrap.wav");
+        effect_play_wave("effect\\hunter_removetrap.wav");
     if (self->frame != 0 && self->frame != 7)
         return;
     for (sparks = 12; sparks != 0; sparks--) {
@@ -583,9 +583,9 @@ void rag_blitz_beat(struct RagEffect *self)
     int flakes, angle, yaw, x_rnd, y_rnd;
 
     if (self->frame == 5)
-        rag_play_wave_here(self, "effect\\hunter_blitzbeat_1st.wav");
+        effect_play_wave("effect\\hunter_blitzbeat_1st.wav");
     if (self->frame == 30)
-        rag_play_wave_here(self, "effect\\hunter_blitzbeat.wav");
+        effect_play_wave("effect\\hunter_blitzbeat.wav");
     self->base.pos = self->master->pos;
     if (self->frame == 0) {
         g_blitzBeatRingCount = 0;
@@ -669,7 +669,7 @@ void rag_detecting(struct RagEffect *self, char variant)
     default: wave = NULL; break;
     }
     if (wave != NULL)
-        rag_play_wave_here(self, wave);
+        effect_play_wave(wave);
     if (self->frame != 0)
         return;
     p = self->last_prim = rag_launch_prim(self, 15, 0.0f, 0.0f, 0.0f);

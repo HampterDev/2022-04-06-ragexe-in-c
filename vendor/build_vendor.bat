@@ -1,8 +1,8 @@
 @echo off
 REM The third-party libraries, from the sources in this folder, to ..\build\vendor\*.lib, 64-bit
 REM and with the static C runtime (/MT) like the client: zlib and libpng, Lua, yyjson, stb's JPEG,
-REM the client's C++ helpers, dr_mp3 and SDL3 (the Miles replacement, platform\miles_sdl.c, plays
-REM sound through it). Words:
+REM the client's C++ helpers, dr_mp3 and SDL3 (platform\audio_sdl.c plays sound through them).
+REM Words:
 REM   freetype  FreeType too, for the FreeType text backend
 REM   ifneeded  nothing when build\vendor was already built by this version (the tests use it)
 REM Run from a vcvars64 environment (tools\find_vcvars.bat).

@@ -39,8 +39,8 @@ struct SkillActionAnswer *skill_action_mgr_use_action(struct SkillActionMgr *sel
 { (void)self; (void)skill_id; out->found = 0; out->value = 0; return out; }
 struct SkillActionAnswer *skill_action_mgr_cast_action(struct SkillActionMgr *self, struct SkillActionAnswer *out, int skill_id)
 { (void)self; (void)skill_id; out->found = 0; out->value = 0; return out; }
-void sound_play_wave(const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
-{ (void)name; (void)x; (void)y; (void)z; (void)max_distance; (void)full_distance; (void)volume; }
+void sound_play_wave(const char *name, float volume)
+{ (void)name; (void)volume; }
 
 static unsigned mismatches, reported, faults;
 
