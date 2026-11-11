@@ -14,6 +14,7 @@ if not defined JOBS set "JOBS=4"
 setlocal
 call "%ROOT%\tools\find_vcvars.bat" || exit /b 1
 call "%VCVARS%" >nul
+where ninja >nul 2>nul || (echo *** tests\build.bat needs Ninja on PATH: Visual Studio's CMake tools, or ninja-build.org & exit /b 1)
 set "OUT=%ROOT%\build\tests"
 REM A build\tests without a CMake cache holds the programs of the batch files before 2026-11-11.
 if exist "%OUT%" if not exist "%OUT%\CMakeCache.txt" rd /s /q "%OUT%"

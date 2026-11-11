@@ -22,7 +22,6 @@
 #include "platform/desktop.h"
 #include "platform/win_types.h"
 #include "platform/filesystem.h"
-#include <float.h>
 #include <string.h>
 #include "std/std.h"
 #include "render/render_api.h"
@@ -66,9 +65,6 @@ static int client_run(void)
         platform_directory_create("savedata");
     else
         platform_find_close(find);
-#ifdef _WIN32
-    _controlfp(0x20000, 0x30000);
-#endif
 
     period = platform_timer_period_begin();
     frame_timer_reset();

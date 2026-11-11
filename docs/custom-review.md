@@ -14489,10 +14489,9 @@ objects). The CMake build declared 23 more tests for Linux, macOS and Windows, w
   now builds the whole suite; three tests held only optimized: `shorten_text` compared the address
   of `""` literals from two files (pooled by `/GF`), and `character_model` and `effect_operations`
   reached functions their stubs lacked (two stubs added). `effect_trace` called
-  `_controlfp(_PC_24, _MCW_PC)` as the client does (START-073); x64 has no x87 precision control,
-  its C runtime ignores the request and its debug runtime asserts, so the test makes the call on
-  32-bit x86 only. `src/core/winmain.c` still makes it: the 64-bit client has never had the 24-bit
-  precision the original set, which is not changed here.
+  `_controlfp(_PC_24, _MCW_PC)` as the client did (START-073); x64 has no x87 precision control,
+  its C runtime ignores the request and its debug runtime asserts, so the test made the call on
+  32-bit x86 only, until the next entry removed it from the client and the test.
 - **The tests a change reaches.** Each test is labelled with the libraries of `tools/libraries.txt`
   whose `.c` files it compiles, links or includes (through the files under `tests` it includes),
   so `tests\build.bat -L render` builds what changed and runs the tests the render library
@@ -14510,3 +14509,23 @@ not run. `build.bat check` passes. The CMake `-A x64` (311 tests) and `-A Win32`
 configurations build and pass. Linux, macOS and Android were not built here; their tests now link
 the client libraries (the platform library with `_POSIX_C_SOURCE` and, on Apple,
 `_DARWIN_C_SOURCE`, as `rage_platform` had) instead of compiling the files themselves.
+
+## The x87 precision setting goes (START-073, 2026-11-11)
+
+START-073 kept `_controlfp(0x20000, 0x30000)` at startup (`_PC_24` under `_MCW_PC`, 24-bit
+precision for the x87 unit) when the client was 32-bit. Since `02fc9e5e` it is 64-bit only, and
+x64 has no x87 precision control: the C runtime ignores the request, and its debug runtime asserts
+on it (the effect trace test failed for that in a Debug build, *One test suite in CMake*). The
+64-bit client has therefore never had the original's 24-bit precision. Its floating-point math
+runs in SSE, each operation at its own type's precision: `float` arithmetic is rounded to single
+precision at every step, as the original's 24-bit setting rounded every x87 result (but without
+the x87 registers' wider exponent range), and `double` arithmetic keeps its full 53-bit precision,
+where the original computed doubles at 24 bits. The call is removed from `src/core/winmain.c`
+with its `<float.h>`, and from `tests/test_effect_trace.c`, whose digest is unchanged: the call
+did nothing on x64 there either. Nothing that the client draws or sends changes.
+
+Also: `tests/captcha_window_test_boundaries.h` and `tests/name_card_owner_support.c`, which nothing
+in the tree refers to (no batch file compiled them either), are removed; `tests\build.bat`
+says when Ninja is missing, and the Windows CI job installs a pinned Ninja from PyPI
+(`ninja==1.11.1.1`), since the runner image's Visual Studio CMake tools are not certain to put one
+on `PATH`.

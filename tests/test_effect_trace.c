@@ -27,7 +27,6 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <float.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1484,12 +1483,6 @@ static void prepare(void)
     struct RagEffect *effect;
 
     SetUnhandledExceptionFilter(crashed);
-    /* The client's floating-point setting (START-073, src/core/winmain.c): 24-bit x87
-       precision. x64 has no precision control: its C runtime ignores the request, and the
-       debug runtime asserts on it. */
-#ifdef _M_IX86
-    _controlfp(0x20000, 0x30000);
-#endif
     math_init_degree_tables();
     g_actor_ops.base.base.destroy = actor_destroy;
     g_actor_ops.base.base.on_process = actor_process;

@@ -10,7 +10,8 @@ Original upstream SHA-256:
 
 `dr_mp3_impl.c` compiles the decoder once, without its stdio file helpers
 (`DR_MP3_NO_STDIO`, set for every user of the library), into `build\vendor\dr_mp3.lib`
-on Windows (`vendor\build_vendor.bat`) and `rage_dr_mp3` elsewhere (CMake). It decodes
+on Windows (`vendor\build_vendor.bat`) and `rage_dr_mp3` in the CMake builds (the
+tests on Windows too). It decodes
 the MP3 background music and MP3 sound effects (`src/platform/audio_sdl.c`). The
 caller opens files through the platform filesystem layer and hands the decoder memory.
 
