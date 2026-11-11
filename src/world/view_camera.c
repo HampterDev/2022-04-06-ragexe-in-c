@@ -15,6 +15,7 @@
 #include "game/camera.h"
 #include "game/mode_callbacks.h"
 #include "platform/clock.h"
+#include "diag/perf.h"
 
 int g_drawnCellMaxX = 0;
 
@@ -365,6 +366,8 @@ void view_on_render(struct View *self)
     struct ListNode *n;
     size_t leaf_index;
     float *view = self->viewMatrix;
+    /* custom: timed for the counters (diag/perf.h) */
+    int64_t start = platform_stopwatch_ns();
 
     g_quakeFrameDrawn = 1;
     r = g_renderer;
@@ -440,4 +443,5 @@ void view_on_render(struct View *self)
     effect_mgr_render(g_effectMgr);
 
     view_frustum_clear(&self->frustum);
+    g_perf.viewRenderNs += platform_stopwatch_ns() - start;
 }

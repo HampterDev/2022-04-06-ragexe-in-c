@@ -13728,3 +13728,67 @@ fit drew lit a slope that the editor baked in a ridge's shadow, and the new one 
 rise by 4 in the twelfth. Prontera's south gate from 2,500 at -5 degrees keeps its shadows. The 13
 captures of the scene set change by a texel along shadow edges (105 to 316 pixels by more than 16
 each, none in `iz_int03_enter`). `build.bat check` and the full `tests\build.bat` pass.
+
+## The renderer's counters without the overlay (2026-11-11)
+
+Phase 0 of `plans/gpu-renderer.md` asks for the renderer's work to be measurable without the
+overlay, per scene capture, and for a baseline the later phases are measured against. `g_perf`
+(`diag/perf.h`) counted draws, states and texture binds whether the overlay was on or not, but
+only the overlay read them, and only the overlay timed anything. Its timer is
+`platform_perf_counter`, which the scene harness runs on its frame clock, so within a scene frame
+no time passes. The two devices did not count alike either: GL counted render states it changed but
+no stage or sampler states and nothing skipped, and counted its blits drawn as quads as draws;
+Direct3D 9 counted each sampler state it set, two for a texture address or an anisotropic filter.
+
+- **What is counted** (`diag/perf.h` says exactly): the device's draws after batching (shadow maps
+  included) and their primitives, the `gfx_draw` and `gfx_draw_mesh` calls, state changes sent and
+  states set to the value they had, texture binds, the bytes of vertices and indices the device is
+  given for draws and for a mesh when it fills the mesh's buffers (`vertexBytes`), the texels
+  written by `texture_upload_pixels`, `surface_fill_pixels` and the sprite atlas
+  (`texture_draw_sprite_frame`, `textureBytes`), and the time spent in `renderer_draw_scene` and
+  `view_on_render` (`drawSceneNs`, `viewRenderNs`). The texels and the times are counted above
+  `render/gfx.h`; the rest in each device, the same way: one count per `gfx_set_render_state` or
+  `gfx_set_stage_state` call (`perf_count_state`), blits as blits only. GL now ignores the texture
+  perspective and colour-key states as Direct3D 9 does; it never used them and
+  `gfx_get_render_state` already answered `TRUE` for both.
+- **The clock.** `platform_stopwatch_ns` (`platform/clock.h`) gives real nanoseconds on every
+  platform, and the scene harness's `scene_clock.c` leaves it real while its other clocks follow
+  the frames. Each timed call reads it twice; the overlay keeps its own timer.
+- **Threads.** The model loader's thread (`world/models.c`) creates and builds textures while
+  frames are drawn, so `texCreated`, `locks`, `builds`, `buildsSkipped` and `textureBytes` go up
+  atomically (`perf_count_shared`, through the new `platform_atomic_add`), and a texture the loader
+  builds counts in the frame during which it does. `resGets` and `resHits` already went up under
+  the resource manager's lock. The overlay's own timing of texture locks (`PERF_TEXLOCK`) still
+  races with the loader; it is the overlay's alone. Scene runs have no loader thread.
+- **The harness.** `drive_state_frame_shown` keeps the counters of the frame being shown and
+  starts them again, and `scene.capture` writes `<name>.counters.json` beside each capture: the
+  counters of the frame it shows, with the two times in milliseconds
+  (`tests/scenes/README.md`). The times are one frame's and are not averaged; they differ by about
+  a fifth between runs, so compare several.
+
+Baseline, Direct3D 9 in `client-files` with `RAGEXE_MSAA=1` (the counts are the same in every
+run; the times are one run's):
+
+| capture | draws | calls | primitives | states sent / skipped | binds | vertex bytes | texel bytes | scene ms | view ms |
+|---|---|---|---|---|---|---|---|---|---|
+| `camera_level_view` | 3,345 | 3,631 | 201,876 | 706 / 287 | 2,646 | 43,120 | 0 | 4.37 | 0.72 |
+| `camera_level_view_moving` | 3,318 | 3,623 | 201,444 | 706 / 287 | 2,617 | 45,920 | 0 | 4.34 | 0.70 |
+| `granny_dead` | 1,140 | 1,179 | 88,945 | 144 / 164 | 1,014 | 301,522 | 0 | 1.19 | 0.54 |
+| `granny_dying` | 1,140 | 1,179 | 88,945 | 144 / 164 | 1,014 | 301,522 | 0 | 1.21 | 0.58 |
+| `granny_models` | 1,147 | 1,186 | 89,277 | 144 / 164 | 1,021 | 335,066 | 0 | 1.48 | 0.68 |
+| `guild_flags` | 1,129 | 1,170 | 86,638 | 144 / 164 | 1,003 | 66,208 | 0 | 1.35 | 0.38 |
+| `guild_flags_later` | 1,129 | 1,170 | 86,638 | 144 / 164 | 1,003 | 66,208 | 0 | 1.16 | 0.38 |
+| `hunter_traps` | 1,198 | 1,237 | 87,303 | 169 / 179 | 1,056 | 9,660 | 0 | 1.22 | 0.31 |
+| `iz_int03_enter` | 262 | 265 | 11,358 | 82 / 89 | 209 | 3,080 | 0 | 0.34 | 0.24 |
+| `keyboard` | 266 | 269 | 11,366 | 82 / 89 | 213 | 3,640 | 0 | 0.33 | 0.23 |
+| `prontera_crowd` | 1,174 | 1,954 | 88,015 | 154 / 1,667 | 1,031 | 113,336 | 0 | 1.23 | 0.45 |
+| `windows_open` | 274 | 277 | 11,382 | 82 / 89 | 221 | 4,760 | 32,768 | 0.35 | 0.26 |
+
+Over six runs `camera_level_view` took 4.4 to 5.7 ms in `renderer_draw_scene` and 0.69 to 1.02
+in `view_on_render`, `prontera_crowd` 1.23 to 1.53 and 0.45 to 0.64. A frame that builds textures
+counts them: in Prontera, the frame after two actors appear writes 111,792 texel bytes and the
+frame after one speaks 57,662.
+
+Validation: the 12 captures of the scene set are identical to the commit before (Direct3D 9;
+the GL side was neither built nor run here). `build.bat check`
+and the full `tests\build.bat` pass.

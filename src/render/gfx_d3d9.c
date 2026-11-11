@@ -334,36 +334,34 @@ static void forget_state(void)
     d9.msaaApplied = -1;
 }
 
-static void set_rs(int id, DWORD v)
+/* set_rs, set_tss and set_samp answer whether they sent the state; gfx_set_render_state and
+   gfx_set_stage_state count each call once (diag/perf.h), as the GL backend does. */
+static int set_rs(int id, DWORD v)
 {
     if ((unsigned)id < N_RS) {
-        if (d9.rsSet[id] && d9.rs[id] == v) {
-            g_perf.statesSkipped++;
-            return;
-        }
+        if (d9.rsSet[id] && d9.rs[id] == v)
+            return 0;
         d9.rs[id] = v;
         d9.rsSet[id] = 1;
     }
-    g_perf.statesSent++;
     apply_rs(id, v);
     if (id == D3DRS_ALPHABLENDENABLE) {
         d9.taaWanted = !v;
         update_transparency_aa();
     }
+    return 1;
 }
 
-static void set_tss(int stage, int id, DWORD v)
+static int set_tss(int stage, int id, DWORD v)
 {
     if ((unsigned)stage < 8 && (unsigned)id < N_TSS) {
-        if (d9.tssSet[stage][id] && d9.tss[stage][id] == v) {
-            g_perf.statesSkipped++;
-            return;
-        }
+        if (d9.tssSet[stage][id] && d9.tss[stage][id] == v)
+            return 0;
         d9.tss[stage][id] = v;
         d9.tssSet[stage][id] = 1;
     }
-    g_perf.statesSent++;
     apply_tss(stage, id, v);
+    return 1;
 }
 
 /* custom: the anisotropy the adapter allows, up to 16, or 1 without anisotropic minification. The
@@ -384,18 +382,16 @@ static DWORD max_anisotropy(void)
     return d9.maxAniso;
 }
 
-static void set_samp(int stage, int id, DWORD v)
+static int set_samp(int stage, int id, DWORD v)
 {
     if ((unsigned)stage < 8 && (unsigned)id < N_SAMP) {
-        if (d9.sampSet[stage][id] && d9.samp[stage][id] == v) {
-            g_perf.statesSkipped++;
-            return;
-        }
+        if (d9.sampSet[stage][id] && d9.samp[stage][id] == v)
+            return 0;
         d9.samp[stage][id] = v;
         d9.sampSet[stage][id] = 1;
     }
-    g_perf.statesSent++;
     apply_samp(stage, id, v);
+    return 1;
 }
 
 static IDirect3DBaseTexture9 *texture_of(struct gfx_surface *s);
@@ -1666,7 +1662,7 @@ static int mip_levels(int w, int h)
 
 gfx_surface *gfx_create_texture(int w, int h, int fmt)
 {
-    g_perf.texCreated++;
+    perf_count_shared(&g_perf.texCreated, 1);
     D3DFORMAT f = client_format(fmt);
     IDirect3DTexture9 *tex = NULL;
     struct gfx_surface *s;
@@ -1716,7 +1712,7 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
         return D3DERR_INVALIDCALL;
     if (!s->surf)
         return D3DERR_INVALIDCALL;
-    g_perf.locks++;
+    perf_count_shared(&g_perf.locks, 1);
     if (s->kind == K_SCREEN || s->kind == K_TARGET) {
         g_perf.targetLocks++;
         resolve_ms();
@@ -1943,7 +1939,7 @@ void gfx_set_render_state(int state, DWORD value)
 {
     if (state == GFX_RS_TEXTUREPERSPECTIVE || state == GFX_RS_COLORKEYENABLE)
         return;
-    set_rs(state, value);
+    perf_count_state(set_rs(state, value));
 }
 
 int gfx_get_render_state(int state, DWORD *out)
@@ -1959,33 +1955,35 @@ int gfx_get_render_state(int state, DWORD *out)
 
 void gfx_set_stage_state(int stage, int state, DWORD value)
 {
+    int sent;
     switch (state) {
     case GFX_TSS_ADDRESS:
-        set_samp(stage, D3DSAMP_ADDRESSU, value);
-        set_samp(stage, D3DSAMP_ADDRESSV, value);
+        sent = set_samp(stage, D3DSAMP_ADDRESSU, value);
+        sent |= set_samp(stage, D3DSAMP_ADDRESSV, value);
         break;
     case GFX_TSS_BORDERCOLOR:
-        set_samp(stage, D3DSAMP_BORDERCOLOR, value);
+        sent = set_samp(stage, D3DSAMP_BORDERCOLOR, value);
         break;
     case GFX_TSS_MAGFILTER:
-        set_samp(stage, D3DSAMP_MAGFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+        sent = set_samp(stage, D3DSAMP_MAGFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
         break;
     case GFX_TSS_MINFILTER:
         if (value == GFX_FILTER_LINEAR && max_anisotropy() > 1) {
-            set_samp(stage, D3DSAMP_MAXANISOTROPY, max_anisotropy());
-            set_samp(stage, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
+            sent = set_samp(stage, D3DSAMP_MAXANISOTROPY, max_anisotropy());
+            sent |= set_samp(stage, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
             break;
         }
-        set_samp(stage, D3DSAMP_MINFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+        sent = set_samp(stage, D3DSAMP_MINFILTER, value == GFX_FILTER_LINEAR ? D3DTEXF_LINEAR : D3DTEXF_POINT);
         break;
     case GFX_TSS_MIPFILTER:
-        set_samp(stage, D3DSAMP_MIPFILTER, value == GFX_MIPFILTER_LINEAR ? D3DTEXF_LINEAR
-                                          : value == GFX_MIPFILTER_NONE ? D3DTEXF_NONE : D3DTEXF_POINT);
+        sent = set_samp(stage, D3DSAMP_MIPFILTER, value == GFX_MIPFILTER_LINEAR ? D3DTEXF_LINEAR
+                                                 : value == GFX_MIPFILTER_NONE ? D3DTEXF_NONE : D3DTEXF_POINT);
         break;
     default:
-        set_tss(stage, state, value);
+        sent = set_tss(stage, state, value);
         break;
     }
+    perf_count_state(sent);
 }
 
 void gfx_set_texture(int stage, gfx_surface *s)
@@ -2083,6 +2081,7 @@ static void d9_raw_draw(int prim, int vertexKind, const void *verts, int nverts,
     }
     g_perf.draws++;
     g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
+    g_perf.vertexBytes += (unsigned)nverts * stride + (unsigned)nindices * 2;
     if (is_main_target(d9.target))
         scene_write();
     d9.taaFlat = flat;
@@ -2184,6 +2183,7 @@ static int mesh_upload(struct gfx_mesh *m)
     }
     memcpy(p, m->indices, ibytes);
     IDirect3DIndexBuffer9_Unlock(m->ib);
+    g_perf.vertexBytes += vbytes + ibytes;
     return 1;
 }
 

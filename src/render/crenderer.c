@@ -677,8 +677,11 @@ static void renderer_draw_lists(struct Renderer *self)
 
 int renderer_draw_scene(struct Renderer *self)
 {
+    /* custom: timed for the counters (diag/perf.h) */
+    int64_t start = platform_stopwatch_ns();
     if (gfx_begin_scene() < 0) {
         renderer_destroy_all_rp_list(self);
+        g_perf.drawSceneNs += platform_stopwatch_ns() - start;
         return 0;
     }
     g_renderCheckpointLine = 0x341;
@@ -693,6 +696,7 @@ int renderer_draw_scene(struct Renderer *self)
     TIMED(PERF_ENDSCENE, gfx_end_scene());
     g_renderCheckpointLine = 0x346;
     g_renderCheckpointFile = renderer_source_file;
+    g_perf.drawSceneNs += platform_stopwatch_ns() - start;
     return 1;
 }
 

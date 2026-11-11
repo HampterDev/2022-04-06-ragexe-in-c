@@ -187,6 +187,11 @@ int32_t platform_atomic_decrement(volatile int32_t *value)
     return __atomic_sub_fetch(value, 1, __ATOMIC_SEQ_CST);
 }
 
+int32_t platform_atomic_add(volatile int32_t *value, int32_t amount)
+{
+    return __atomic_add_fetch(value, amount, __ATOMIC_SEQ_CST);
+}
+
 int32_t platform_atomic_load(volatile int32_t *value)
 {
     return __atomic_load_n(value, __ATOMIC_SEQ_CST);

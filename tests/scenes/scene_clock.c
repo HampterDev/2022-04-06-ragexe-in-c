@@ -1,5 +1,6 @@
 /* Virtual clock for scene runs: time only moves when the driver advances it, one step per frame,
-   and the wall clock is a fixed date in UTC, so every run sees the same times. */
+   and the wall clock is a fixed date in UTC, so every run sees the same times. Only the stopwatch
+   that times the client's work stays real. */
 #include "platform/clock.h"
 #include "scene.h"
 #include <stdint.h>
@@ -7,6 +8,8 @@
 #include <string.h>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #define gmtime_r(stamp, out) (gmtime_s((out), (stamp)) == 0 ? (out) : NULL)
 #define timegm _mkgmtime
 #endif
@@ -38,6 +41,21 @@ int64_t platform_perf_counter(void)
 int64_t platform_perf_frequency(void)
 {
     return 1000000;
+}
+
+int64_t platform_stopwatch_ns(void)
+{
+#ifdef _WIN32
+    LARGE_INTEGER counter, frequency;
+    QueryPerformanceCounter(&counter);
+    QueryPerformanceFrequency(&frequency);
+    return counter.QuadPart / frequency.QuadPart * 1000000000
+         + counter.QuadPart % frequency.QuadPart * 1000000000 / frequency.QuadPart;
+#else
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (int64_t)now.tv_sec * 1000000000 + now.tv_nsec;
+#endif
 }
 
 unsigned platform_timer_period_begin(void)

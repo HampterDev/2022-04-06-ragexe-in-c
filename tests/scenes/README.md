@@ -5,7 +5,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 
 | replaced                    | by                   | what changes                                                     |
 |-----------------------------|----------------------|------------------------------------------------------------------|
-| `src/platform/clock_*.c`    | `scene_clock.c`      | time moves one frame (16 ms) per shown frame; the date is fixed  |
+| `src/platform/clock_*.c`    | `scene_clock.c`      | time moves one frame (16 ms) per shown frame; the date is fixed; only the stopwatch that times the [counters](#counters) runs in real time |
 | `src/platform/net_*.c`      | `scene_net.c`        | sockets stay in the process; the driver plays the map server     |
 | `src/platform/thread_*.c`   | `scene_thread.c`     | no client threads: models load in order on the main thread       |
 | `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
@@ -32,9 +32,10 @@ python3 tests/scenes/run.py ... --golden ~/scene-golden            # compare wit
 python3 tests/scenes/run.py ... prontera_crowd                     # one scene
 ```
 
-`run.py` writes the captures, one log per scene, a difference image per changed capture and
-`report.html` (golden, capture and difference side by side) into `--out`. It exits with 1 when a
-scene fails or a capture differs; `--tolerance` and `--max-pixels` loosen the comparison.
+`run.py` writes the captures with their [counters](#counters), one log per scene, a difference
+image per changed capture and `report.html` (golden, capture and difference side by side) into
+`--out`. It exits with 1 when a scene fails or a capture differs; `--tolerance` and
+`--max-pixels` loosen the comparison.
 Golden images belong to one data set and one renderer, so they live outside the repository.
 With `-DRAGE_SCENE_GAME_DIR=<game dir>` (and optionally `-DRAGE_SCENE_GOLDEN=<dir>`) the same run
 is the `scenes` ctest.
@@ -97,7 +98,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `key(vk[, scan])`, `key_event(vk, scan, down)`, `alt_key(vk[, scan])` | keys, through `core/user_input.h`; a key pressed while the script holds Alt (`0x12`) down comes with Alt, as `alt_key` presses it; `scene.VK` names a few virtual keys |
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
-| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg` |
+| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
 | `fail(message)` | marks the scene failed and goes on |
@@ -110,6 +111,30 @@ The fake map server answers what a scene needs: the map entry (`ZC_AID`, `ZC_ACC
 client's notice that the map is loaded (`ZC_NOTIFY_ACTORINIT`, without which the client keeps the
 hotkeys off), guild emblems, and the player's own chat line, which it says back as rAthena does.
 `keyboard.lua` opens the inventory with Alt+E and sends a line from the chat line.
+
+## Counters
+
+Every capture writes `<out>/<name>.counters.json` beside the image: the renderer's counters
+(`src/diag/perf.h`, which says exactly what each counts) for the frame the capture shows, from the
+moment the frame before it was shown to the moment it was. Both devices count the same way. The
+file is one JSON object of numbers:
+
+| key | counts |
+|-----|--------|
+| `frame` | the frame number the capture's log line gives |
+| `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives |
+| `draw_calls` | `gfx_draw` and `gfx_draw_mesh` calls |
+| `states_sent`, `states_skipped` | render and stage state changes sent to the device, and states set to the value they had |
+| `texture_binds` | `gfx_set_texture` calls that changed a stage's texture |
+| `vertex_bytes` | vertices and indices given to the device for draws, and a mesh's when it is uploaded |
+| `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |
+| `draw_scene_ms`, `view_render_ms` | time spent in `renderer_draw_scene` and in `view_on_render` |
+
+The counts are the same in every run. The two times are real time (`platform_stopwatch_ns`, the
+one clock the harness leaves running), taken from that one frame and not averaged, and differ by
+about a fifth from run to run, so compare several runs. Scene runs load models on the main thread,
+so the textures a frame loads count in that frame. The harness starts the counters again with every
+frame it shows, so the overlay (`RAGEXE_OVERLAY`) shows nothing useful in a scene run.
 
 ## Effect gallery
 

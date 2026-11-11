@@ -150,6 +150,7 @@ int surface_fill_pixels(struct Surface *self, int x, int y, int w, int h, const 
             }
         }
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w * h * (lk.bpp / 8));
     return gfx_unlock(self->surface) >= 0;
 }
 
@@ -428,13 +429,13 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
         if (rec && rec->tex == self && rec->surface == self->base.surface && rec->version == version
             && rec->x == x && rec->y == y && rec->w == w && rec->h == h && rec->pitch == pitch
             && rec->colorKeyed == (BYTE)colorKeyed && memcmp(rec->hash, hash, sizeof(hash)) == 0) {
-            g_perf.buildsSkipped++;
+            perf_count_shared(&g_perf.buildsSkipped, 1);
             self->reqWidth = req_width; self->reqHeight = req_height;
             self->colorKeyed = (BYTE)colorKeyed;
             return 1;
         }
     }
-    g_perf.builds++;
+    perf_count_shared(&g_perf.builds, 1);
     r.left = x0;
     r.top = y0;
     r.right = x0 + w0;
@@ -504,6 +505,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
             break;
         }
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w0 * h0 * (self->format == GFX_FMT_8888 ? 4 : 2));
     if (gfx_unlock(self->base.surface) < 0)
         return 0;
     whole(&all, &self->base);
@@ -569,6 +571,7 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
         memset(dst, 0, w * 2);
         dst += lk.pitch;
     }
+    perf_count_shared(&g_perf.textureBytes, (unsigned)w * h * 2);
     if (gfx_unlock(self->base.surface) < 0)
         return 0;
     r.left = x;

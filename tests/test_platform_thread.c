@@ -119,6 +119,8 @@ static void test_workers(struct Shared *shared)
     assert(platform_atomic_load(&shared->counter) == 0);
     assert(platform_atomic_increment(&shared->counter) == 1);
     assert(platform_atomic_decrement(&shared->counter) == 0);
+    assert(platform_atomic_add(&shared->counter, 5) == 5);
+    assert(platform_atomic_add(&shared->counter, -5) == 0);
 }
 
 int main(void)

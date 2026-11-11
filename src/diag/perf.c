@@ -66,8 +66,8 @@ static LONGLONG now(void)
 static void init(void);
 
 /* The overlay is a developer tool and is off unless RAGEXE_OVERLAY is set to something
-   other than 0. Off, nothing is timed or drawn, and Scroll Lock, which players press
-   for screenshots, does not show it. */
+   other than 0. Off, it times and draws nothing (the counters in perf.h still count), and
+   Scroll Lock, which players press for screenshots, does not show it. */
 static int overlay_enabled(void)
 {
     if (!P.inited)

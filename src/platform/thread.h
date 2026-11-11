@@ -28,6 +28,8 @@ uint32_t platform_thread_id(void);
 
 int32_t platform_atomic_increment(volatile int32_t *value);
 int32_t platform_atomic_decrement(volatile int32_t *value);
+/* adds amount and answers the sum, wrapping around as unsigned arithmetic does */
+int32_t platform_atomic_add(volatile int32_t *value, int32_t amount);
 int32_t platform_atomic_load(volatile int32_t *value);
 
 #endif

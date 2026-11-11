@@ -33,6 +33,11 @@ int64_t platform_perf_frequency(void)
     return 1000000000;
 }
 
+int64_t platform_stopwatch_ns(void)
+{
+    return platform_perf_counter();
+}
+
 unsigned platform_timer_period_begin(void)
 {
     return 0;

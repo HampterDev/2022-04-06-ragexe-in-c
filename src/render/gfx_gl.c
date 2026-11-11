@@ -944,13 +944,12 @@ static GLenum gl_prim(int prim)
 
 static void mesh_xform(GLfloat *out, const struct GfxWorldView *v);
 
-static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
+/* answers whether it drew */
+static int raw_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
 {
     GLsizei stride = vertexKind == GFX_VTX_TEX2 ? 40 : 32;
     if (!gl.context || !gl.target || nverts <= 0 || (vertexKind == GFX_VTX_WORLD && !gl.worldCameraSet))
-        return;
-    g_perf.draws++;
-    g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
+        return 0;
     bind_target(gl.target);
     if (gl.stateDirty)
         apply_state();
@@ -978,6 +977,18 @@ static void raw_draw(int prim, int vertexKind, const void *verts, int nverts, co
         p_glUniform1i(gl.uniforms[U_MESH], 0);
     if (gl.target)
         gl.target->version = ++content_tick;
+    return 1;
+}
+
+/* The client's vertices, batched (gfx_batch.c) or not, counted as the Direct3D 9 backend counts
+   them (diag/perf.h); the blit quads draw through raw_draw alone and count as blits. */
+static void client_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
+{
+    if (!raw_draw(prim, vertexKind, verts, nverts, indices, nindices))
+        return;
+    g_perf.draws++;
+    g_perf.prims += perf_prim_count(prim, nindices ? nindices : nverts);
+    g_perf.vertexBytes += (unsigned)nverts * (vertexKind == GFX_VTX_TEX2 ? 40 : 32) + (unsigned)nindices * 2;
 }
 
 void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WORD *indices, int nindices)
@@ -986,7 +997,7 @@ void gfx_draw(int prim, int vertexKind, const void *verts, int nverts, const WOR
     if (batch_add(prim, vertexKind, verts, nverts, indices, nindices))
         return;
     batch_flush();
-    raw_draw(prim, vertexKind, verts, nverts, indices, nindices);
+    client_draw(prim, vertexKind, verts, nverts, indices, nindices);
 }
 
 gfx_mesh *gfx_mesh_create(const struct GfxMeshVertex *verts, int nverts, const WORD *indices, int nindices)
@@ -1134,6 +1145,7 @@ void gfx_draw_mesh(gfx_mesh *m, const struct GfxMeshDraw *draw)
         p_glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)m->nverts * (GLsizeiptr)sizeof *m->verts, m->verts, GL_STATIC_DRAW);
         p_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->ibo);
         p_glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)m->nindices * 2, m->indices, GL_STATIC_DRAW);
+        g_perf.vertexBytes += (unsigned)m->nverts * (unsigned)sizeof *m->verts + (unsigned)m->nindices * 2;
     }
     mesh_xform(xform, &gl.worldView);
     for (i = 0; i < 6; i++)
@@ -1338,7 +1350,7 @@ int gfx_create_screen(struct C3dDevice *d, const struct SurfaceDesc *mode, int f
     if (!gl.window || !ensure_context())
         return GFX_E_PRIMARY;
     reset_state();
-    batch_init(raw_draw);
+    batch_init(client_draw);
     scene = new_handle(K_SCREEN, d->width, d->height, -1);
     if (!scene || !make_target(scene, 1))
         return GFX_E_PRIMARY;
@@ -1711,7 +1723,7 @@ static int mip_levels(int w, int h)
 gfx_surface *gfx_create_texture(int w, int h, int fmt)
 {
     struct gfx_surface *s;
-    g_perf.texCreated++;
+    perf_count_shared(&g_perf.texCreated, 1);
     if (!gfx_texture_format_ok(fmt) || w <= 0 || h <= 0)
         return NULL;
     s = new_handle(K_TEXTURE, w, h, fmt);
@@ -1753,7 +1765,7 @@ int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
     int bytes;
     if (flags & GFX_LOCK_UNSIZED)
         return -1;
-    g_perf.locks++;
+    perf_count_shared(&g_perf.locks, 1);
     if (is_gpu_target(s)) {
         if (!s->pixels[0]) {
             s->pixels[0] = malloc((size_t)s->width * s->height * 4);
@@ -2037,14 +2049,18 @@ int gfx_set_render_target(gfx_surface *s)
     return 0;
 }
 
+/* The states are counted as the Direct3D 9 backend counts them (diag/perf.h). Neither device has
+   the texture perspective or the colour key; gfx_get_render_state answers TRUE for both. */
 void gfx_set_render_state(int state, DWORD value)
 {
-    if ((unsigned)state >= N_RS || gl.rs[state] == value)
+    if ((unsigned)state >= N_RS || state == GFX_RS_TEXTUREPERSPECTIVE || state == GFX_RS_COLORKEYENABLE)
+        return;
+    perf_count_state(gl.rs[state] != value);
+    if (gl.rs[state] == value)
         return;
     batch_flush();
     gl.rs[state] = value;
     gl.stateDirty = 1;
-    g_perf.statesSent++;
 }
 
 int gfx_get_render_state(int state, DWORD *out)
@@ -2057,7 +2073,10 @@ int gfx_get_render_state(int state, DWORD *out)
 
 static void set_sampler(int stage, int which, DWORD value)
 {
-    if (stage >= 2 || gl.samp[stage][which] == value)
+    if (stage >= 2)
+        return;
+    perf_count_state(gl.samp[stage][which] != value);
+    if (gl.samp[stage][which] == value)
         return;
     batch_flush();
     gl.samp[stage][which] = value;
@@ -2076,7 +2095,10 @@ void gfx_set_stage_state(int stage, int state, DWORD value)
     case GFX_TSS_MINFILTER:   set_sampler(stage, SAMP_MIN, value); break;
     case GFX_TSS_MIPFILTER:   set_sampler(stage, SAMP_MIP, value); break;
     default:
-        if ((unsigned)state < N_TSS && gl.tss[stage][state] != value) {
+        if ((unsigned)state >= N_TSS)
+            break;
+        perf_count_state(gl.tss[stage][state] != value);
+        if (gl.tss[stage][state] != value) {
             batch_flush();
             gl.tss[stage][state] = value;
             gl.stateDirty = 1;

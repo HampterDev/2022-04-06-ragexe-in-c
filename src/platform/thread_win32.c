@@ -129,6 +129,11 @@ int32_t platform_atomic_decrement(volatile int32_t *value)
     return InterlockedDecrement((volatile LONG *)value);
 }
 
+int32_t platform_atomic_add(volatile int32_t *value, int32_t amount)
+{
+    return (int32_t)((uint32_t)InterlockedExchangeAdd((volatile LONG *)value, amount) + (uint32_t)amount);
+}
+
 int32_t platform_atomic_load(volatile int32_t *value)
 {
     return InterlockedCompareExchange((volatile LONG *)value, 0, 0);

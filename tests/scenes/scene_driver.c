@@ -2,7 +2,8 @@
    drive_state_frame_shown() for every frame it shows, which advances the virtual clock by one
    frame, and drive_state_tick() once per message pump, which resumes the Lua scene script. The
    script's `scene` table puts the client into a state (map, actors, chat, windows, input) and
-   captures PNGs; the driver also answers the client's map server requests.
+   captures PNGs, each with the counters of its frame (diag/perf.h); the driver also answers the
+   client's map server requests.
 
    Environment: RAGEXE_SCENE=<script.lua>, RAGEXE_SCENE_OUT=<directory for captures>,
    RAGEXE_SCENE_TRACE=1 for the packets and mode changes. See tests/scenes/README.md. */
@@ -11,6 +12,7 @@
 #include "core/user_input.h"
 #include "actor/types.h"
 #include "contents/account_settings_internal.h"
+#include "diag/perf.h"
 #include "effects/rag/rag_effect_types.h"
 #include "game/gamemode.h"
 #include "game/packet_ids.h"
@@ -63,6 +65,7 @@ static struct {
     unsigned frame, shown;
     char out[1024];
     int enter_x, enter_y, enter_dir, traced_mode;
+    struct perf_counters counters; /* of the last frame shown */
 } S;
 
 /* Headless, silent and without vsync unless the caller says otherwise; set before the client
@@ -464,9 +467,32 @@ static void write_file(void *context, void *data, int size)
     fwrite(data, 1, (size_t)size, context);
 }
 
+/* <out>/<name>.counters.json: the counters of the frame a capture shows (README.md). */
+static int write_counters(const char *name)
+{
+    const struct perf_counters *c = &S.counters;
+    char path[1200];
+    FILE *file;
+    int ok;
+    snprintf(path, sizeof path, "%s/%s.counters.json", S.out, name);
+    file = fopen(path, "w");
+    if (!file)
+        return 0;
+    ok = fprintf(file,
+                 "{\n  \"frame\": %u,\n  \"draws\": %u,\n  \"draw_calls\": %u,\n  \"primitives\": %u,\n"
+                 "  \"states_sent\": %u,\n  \"states_skipped\": %u,\n  \"texture_binds\": %u,\n"
+                 "  \"vertex_bytes\": %u,\n  \"texture_bytes\": %u,\n"
+                 "  \"draw_scene_ms\": %.3f,\n  \"view_render_ms\": %.3f\n}\n",
+                 S.frame, c->draws, c->drawCalls, c->prims, c->statesSent, c->statesSkipped, c->texSets,
+                 c->vertexBytes, c->textureBytes, (double)c->drawSceneNs / 1e6, (double)c->viewRenderNs / 1e6) > 0;
+    if (fclose(file))
+        ok = 0;
+    return ok;
+}
+
 /* scene.capture(name[, {w, h, x, y, jpeg}]): the whole frame, or a w x h part of it whose top
    left corner is x, y (default: centred on the frame), as <out>/<name>.png, or with jpeg = quality
-   (1 to 100) as <out>/<name>.jpg. */
+   (1 to 100) as <out>/<name>.jpg, and the frame's counters beside it. */
 static int l_capture(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
@@ -528,6 +554,8 @@ static int l_capture(lua_State *L)
     free(rgb);
     if (!ok)
         return luaL_error(L, "capture: cannot write %s", path);
+    if (!write_counters(name))
+        return luaL_error(L, "capture: cannot write the counters of %s", path);
     printf("scene: captured %s (frame %u, %u shown)\n", path, S.frame, S.shown);
     return 0;
 }
@@ -671,10 +699,17 @@ static void start(void)
 }
 
 /* One frame of virtual time per shown frame: loops that wait on the clock (fades, timeouts)
-   always present while they wait. */
+   always present while they wait. The counters start again with each frame shown, so that a
+   capture writes those of the frame it shows. */
 void drive_state_frame_shown(void)
 {
     S.shown++;
+    /* a frame shown again without being drawn (a move while the window is inactive) keeps the
+       counters of the frame it shows */
+    if (g_perf.drawCalls || g_perf.drawSceneNs) {
+        S.counters = g_perf;
+        memset(&g_perf, 0, sizeof g_perf);
+    }
     scene_clock_advance(SCENE_FRAME_MS);
 }
 

@@ -3,6 +3,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include "platform/win_types.h"
+#include "platform/thread.h"
+#include <stdint.h>
 
 enum perf_phase {
     PERF_FRAME,
@@ -32,12 +34,34 @@ enum perf_phase {
     PERF_N
 };
 
+/* Counted whether the overlay is on or not; with RAGEXE_OVERLAY on the overlay starts them again
+   every half second, the scene harness with every frame it draws and shows
+   (tests/scenes/README.md). Both devices count the same way for the states the client sets:
+   - draws and prims: the draws the device makes of gfx_draw's vertices (after batching) and of
+     meshes, the shadow maps' included; drawCalls: the gfx_draw and gfx_draw_mesh calls. Blits
+     drawn as quads count as blitQuads alone.
+   - statesSent and statesSkipped: gfx_set_render_state and gfx_set_stage_state calls that change a
+     state the device keeps, and that leave it as it was; texSets: gfx_set_texture calls that
+     change a stage's texture.
+   - vertexBytes: the vertices and indices a draw of gfx_draw's vertices gives the device, and those
+     of a mesh when the device fills its buffers.
+   - textureBytes: the texels written by texture_upload_pixels, surface_fill_pixels and
+     texture_draw_sprite_frame (the sprite atlas), at the texture's or surface's own depth.
+   - drawSceneNs and viewRenderNs: the time spent in renderer_draw_scene and view_on_render.
+   The model loader's thread (world/models.c) creates textures and builds them as well, so
+   texCreated, locks, builds, buildsSkipped and textureBytes go up through perf_count_shared, and a
+   texture counts in whichever frame the loader built it during; resGets and resHits go up under
+   the resource manager's lock. The rest only go up on the thread that draws. */
 struct perf_counters {
     unsigned draws;
     unsigned prims;
     unsigned statesSent;
     unsigned statesSkipped;
     unsigned texSets;
+    unsigned vertexBytes;
+    unsigned textureBytes;
+    int64_t drawSceneNs;
+    int64_t viewRenderNs;
     unsigned locks;
     unsigned targetLocks;
     unsigned texCreated;
@@ -66,6 +90,21 @@ void perf_begin(int phase);
 void perf_end(int phase);
 void perf_frame_end(struct Renderer *r);
 void perf_overlay_draw(struct Renderer *r);
+
+/* a counter that threads other than the one that draws bump too */
+static __inline void perf_count_shared(unsigned *counter, unsigned amount)
+{
+    platform_atomic_add((volatile int32_t *)counter, (int32_t)amount);
+}
+
+/* a gfx_set_render_state or gfx_set_stage_state call, which sent the state or left it as it was */
+static __inline void perf_count_state(int sent)
+{
+    if (sent)
+        g_perf.statesSent++;
+    else
+        g_perf.statesSkipped++;
+}
 
 static __inline unsigned perf_prim_count(int prim, int n)
 {
