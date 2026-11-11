@@ -54,9 +54,9 @@ unsigned char rag_process_491(struct RagEffect *self)
     case 503:
         rag_follow_master(self);
         if (self->frame == 0)
-            rag_play_wave(self, "effect\\T_캐스팅.wav", 0.0f);
+            effect_play_wave("effect\\T_캐스팅.wav");
         if (self->frame == 145)
-            rag_play_wave(self, "effect\\T_영혼.wav", -50.0f);
+            effect_play_wave("effect\\T_영혼.wav");
         rag_soul_light(self, "effect\\whitelight.tga");
         rag_soul_link_letters(self);
         break;
@@ -64,7 +64,7 @@ unsigned char rag_process_491(struct RagEffect *self)
         rag_spirit_spheres(self, 1); break;
     case 505:
         if (self->frame == 0)
-            rag_play_wave_here(self, "effect\\priest_suffragium.wav");
+            effect_play_wave("effect\\priest_suffragium.wav");
         rag_flicker_tint(self, 10, 35, 0, 1, 250, 250, 100);
         break;
     case 506:
@@ -297,7 +297,7 @@ unsigned char rag_process_491(struct RagEffect *self)
         break;
     case 599:
         if (self->frame == 5)
-            rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+            effect_play_wave("effect\\EF_BeginSpell.wav");
         rag_flicker_tint(self, 5, 25, 0, 1, 250, 250, 100);
         break;
     case 600:
@@ -468,7 +468,7 @@ unsigned char rag_process_491(struct RagEffect *self)
     case 652:
         if (self->frame == 0) {
             rag_follow_master(self);
-            rag_play_wave_here(self, "effect\\EF_hit2.wav");
+            effect_play_wave("effect\\EF_hit2.wav");
             rag_master_flash(self, 0xffff0000);
         }
         break;
@@ -647,7 +647,7 @@ unsigned char rag_process_491(struct RagEffect *self)
     case 723:
         rag_follow_master(self);
         if (self->frame == 0)
-            rag_play_wave_here(self, "hundred.wav");
+            effect_play_wave("hundred.wav");
         rag_directed_sprite(self, 12);
         break;
     case 724:
@@ -710,7 +710,7 @@ unsigned char rag_process_491(struct RagEffect *self)
         rag_blur_trail(self); break;
     case 753:
         if (self->frame == 1)
-            rag_play_wave_here(self, "effect\\샤프슈팅.wav");
+            effect_play_wave("effect\\샤프슈팅.wav");
         rag_time_bubbles(self, "effect\\white02.bmp", 1);
         rag_storm_ring(self, "effect\\storm2.tga", 8);
         break;

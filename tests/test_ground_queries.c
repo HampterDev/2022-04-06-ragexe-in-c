@@ -29,8 +29,7 @@ void prim_shift_trail(struct EffectPrim *self)
 { assert(self == &particle); ++trail_steps; }
 unsigned char prim_step_motion(struct EffectPrim *self)
 { assert(self == &particle); ++motion_steps; return 1; }
-void effect_play_wave_at(const char *name, const Vec3 *position, float height)
-{ (void)name; (void)position; (void)height; abort(); }
+void effect_play_wave(const char *name) { (void)name; abort(); }
 
 static void test_height_queries(void)
 {

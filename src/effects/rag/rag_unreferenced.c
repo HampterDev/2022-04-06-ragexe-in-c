@@ -22,14 +22,14 @@ static void mode_message(int msg, int par1)
 unsigned char rag_quagmire_wave(struct RagEffect *self)
 {
     if (self->frame == 0 && rag_rand_mod(12) == 0)
-        rag_play_wave(self, "effect\\wizard_quagmire.wav", -100.0f);
+        effect_play_wave("effect\\wizard_quagmire.wav");
     return step(self);
 }
 
 unsigned char rag_attr_wave(struct RagEffect *self)
 {
     if (self->frame == 0)
-        rag_play_wave_here(self, session_get_attr_wave_name(3));
+        effect_play_wave(session_get_attr_wave_name(3));
     return step(self);
 }
 
@@ -39,13 +39,13 @@ unsigned char rag_meteor_storm_waves(struct RagEffect *self)
 
     switch (self->frame) {
     case 0:
-        rag_play_wave_here(self, "effect\\wizard_meteo.wav");
+        effect_play_wave("effect\\wizard_meteo.wav");
         /* Falls through, as in the original: frame 0 also plays the blast mine wave. */
     case 10:
-        rag_play_wave_here(self, "effect\\hunter_blastmine.wav");
+        effect_play_wave("effect\\hunter_blastmine.wav");
         break;
     case 20: case 50: case 80: case 100: case 130: case 140: case 180: case 200:
-        rag_play_wave_here(self, "effect\\wizard_meteo.wav");
+        effect_play_wave("effect\\wizard_meteo.wav");
         break;
     default:
         break;
@@ -69,7 +69,7 @@ unsigned char rag_concentration_column(struct RagEffect *self)
 {
     rag_follow_master(self);
     if (self->frame == 30) {
-        sound_play_wave("effect\\ac_concentration.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\ac_concentration.wav", 1.0f);
         rag_potion_pillar(self, 1.9f, 30);
     }
     return step(self);
@@ -79,7 +79,7 @@ unsigned char rag_concentration_column_long(struct RagEffect *self)
 {
     rag_follow_master(self);
     if (self->frame == 0) {
-        sound_play_wave("effect\\ac_concentration.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\ac_concentration.wav", 1.0f);
         rag_potion_pillar(self, 2.0f, 50);
     }
     return step(self);
@@ -101,7 +101,7 @@ static void spell_cast(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_rings(self, texture, style);
 }
 
@@ -110,7 +110,7 @@ static void spell_rings(struct RagEffect *self, const char *texture, char style)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, texture, style);
     rag_casting_circle(self, 25, texture, style);
 }

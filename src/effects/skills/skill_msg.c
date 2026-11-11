@@ -54,10 +54,6 @@ static Vec3 vec_zero(void)
     return v;
 }
 
-static void play_at_unit(struct Skill *self, const char *wave)
-{
-    effect_play_wave_at(wave, &self->base.pos, 0.0f);
-}
 
 static struct Effect *spawn(struct Skill *self, int type, Vec3 pos, int level)
 {
@@ -180,7 +176,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
 
     switch (type) {
     case 0x7f:
-        play_at_unit(self, "effect\\EF_FireWall.wav");
+        effect_play_wave("effect\\EF_FireWall.wav");
         me->pickable = 0;
         break;
     case 0x85:
@@ -214,7 +210,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
             if (r < 0)
                 r = 0;
             if (r == 0)
-                play_at_unit(self, "effect\\화염진.wav");
+                effect_play_wave("effect\\화염진.wav");
         }
         me->pickable = 0;
         break;
@@ -223,7 +219,7 @@ static void appear_by_type(struct Skill *self, const struct SkillUnitEntry *entr
     case 0xc0: self->effect_id = 0x8b; me->pickable = 0; break;
     case 0xc1: self->effect_id = 0x6c; me->pickable = 0; break;
     case 0xda: me->pickable = 1; self->effect_id = 0x1d0; break;
-    case 0x101: play_at_unit(self, "effect\\NC_MAGMA_ERUPTION.wav"); me->pickable = 0; break;
+    case 0x101: effect_play_wave("effect\\NC_MAGMA_ERUPTION.wav"); me->pickable = 0; break;
     case 0x10c:
         if (entry->level >= 1 && entry->level <= 5)
             self->effect_id = 0x641 + entry->level;
@@ -268,7 +264,7 @@ static void set_type(struct Skill *self, int type)
     game_actor_set_job((struct GameActor *)me, type);
     switch (game_actor_get_job((struct GameActor *)me)) {
     case 0x80:
-        play_at_unit(self, "effect\\EF_Portal.wav");
+        effect_play_wave("effect\\EF_Portal.wav");
         break;
     case 0x8c:
         if (self->effect_id != -1 && !effect_mgr_spawn(g_effectMgr, 0, self->effect_id, me->pos, 0, -1, 0, 0)) {

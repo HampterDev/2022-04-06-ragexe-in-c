@@ -114,8 +114,7 @@ unsigned char effect_is_within_duration(struct Effect *self)
     return self->frame < self->duration;
 }
 
-void effect_add_sound_cue(struct Effect *self, int kind, const char *wave,
-                                     int frame, float height)
+void effect_add_sound_cue(struct Effect *self, int kind, const char *wave, int frame)
 {
     struct SoundCue cue, copy;
     const char *text = wave ? wave : "";
@@ -124,10 +123,8 @@ void effect_add_sound_cue(struct Effect *self, int kind, const char *wave,
     string_assign_cstr(&cue.wave, text);
     cue.kind = kind;
     cue.frame = frame;
-    cue.height = height;
     copy.kind = cue.kind;
     copy.frame = cue.frame;
-    copy.height = cue.height;
     string_copy(&copy.wave, &cue.wave);
     vec_push(&self->sound_cues, &copy, sizeof copy);
     string_free(&cue.wave);
@@ -145,7 +142,6 @@ void effect_set_sound_cue_frame(struct Effect *self, int kind, int frame)
 
 void effect_play_sound_cues(struct Effect *self)
 {
-    const Vec3 here = self->pos;
     struct SoundCue *cue;
 
     for (cue = self->sound_cues.first; cue != (struct SoundCue *)self->sound_cues.last; cue++) {
@@ -153,7 +149,7 @@ void effect_play_sound_cues(struct Effect *self)
             continue;
         if (cue->kind == SOUND_CUE_WAVE) {
             if (cue->wave.size)
-                effect_play_wave_at(string_cstr(&cue->wave), &here, cue->height);
+                effect_play_wave(string_cstr(&cue->wave));
         } else if (cue->kind == SOUND_CUE_GAME_MESSAGE) {
             game_send_message(GAME_MSG_QUAKE, 0, 0, 0, 0);
         }

@@ -22,16 +22,15 @@ struct Player;
 #define AS_SEND(self, msg, par1) render_object_send((self), NULL, (msg), (par1), 0, 0, 0)
 #define AS_SEND0(self, msg) AS_SEND((self), (msg), 0)
 
-static void as_play_wave(const struct GameActor *self, const struct RenderObject *player, const char *name)
+static void as_play_wave(const struct RenderObject *player, const char *name)
 {
     if (player)
-        sound_play_wave(name, self->pos.x - player->pos.x, 0.0f, self->pos.z - player->pos.z, 250, 40,
-                        1.0f);
+        sound_play_wave(name, 1.0f);
 }
 
-static void as_play_wave_at_player(const struct GameActor *self, const char *name)
+static void as_play_wave_at_player(const char *name)
 {
-    as_play_wave(self, (const struct RenderObject *)game_current_player(), name);
+    as_play_wave((const struct RenderObject *)game_current_player(), name);
 }
 
 static void as_launch(struct GameActor *self, int effect)
@@ -100,9 +99,9 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
     player = (const struct RenderObject *)game_current_player();
 
     if (effect_state_bit0_changed(self->effect_state, old_effect) && effect_state_bit0(self->effect_state) && player)
-        as_play_wave(self, player, "effect\\EF_Sight.wav");
+        as_play_wave(player, "effect\\EF_Sight.wav");
     if (effect_state_bit13_changed(self->effect_state, old_effect) && effect_state_bit13(self->effect_state) && player)
-        as_play_wave(self, player, "effect\\EF_Sight.wav");
+        as_play_wave(player, "effect\\EF_Sight.wav");
 
     if (effect_state_bit1_changed(self->effect_state, old_effect)) {
         game_actor_stop_aura_effects(self);
@@ -189,13 +188,13 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
     if (old_body != self->body_state) {
         switch (old_body) {
         case 1:
-            as_play_wave_at_player(self, "_stone_explosion.wav");
+            as_play_wave_at_player("_stone_explosion.wav");
             game_complete_item_use();
             break;
         case 2:
             AS_SEND0(self, 0x3b);
             AS_SEND0(self, 0x3e);
-            as_play_wave_at_player(self, "_frozen_explosion.wav");
+            as_play_wave_at_player("_frozen_explosion.wav");
             self->motion_finished = 1;
             self->motion_held = 0;
             self->argb_locked = 0;
@@ -232,12 +231,12 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
             self->argb_locked = 1;
             as_rgb(self, 0x00, 0x80, 0xff);
             if (sound)
-                as_play_wave_at_player(self, "_stonecurse.wav");
+                as_play_wave_at_player("_stonecurse.wav");
             break;
         case 3:
             AS_SEND0(self, 0x47);
             if (sound)
-                as_play_wave_at_player(self, "_stun.wav");
+                as_play_wave_at_player("_stun.wav");
             break;
         case 4:
             AS_SEND0(self, 0x45);
@@ -286,7 +285,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
             struct GameMode *mode = game_current_mode();
             struct RenderObject *player = (struct RenderObject *)(struct GameActor *)mode->world->player;
 
-            as_play_wave(self, player, "_poison.wav");
+            as_play_wave(player, "_poison.wav");
             if (self->aid == g_session1.ownAid &&
                 !able_to_make_effect_is_effect_exist((struct GameActor *)mode->world->player, 0x14f))
                 as_launch(self, 0x14f);
@@ -301,20 +300,20 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
         self->argb_locked = 1;
         as_rgb(self, 0xc8, 0x32, 0x32);
         if (sound)
-            as_play_wave_at_player(self, "_curse.wav");
+            as_play_wave_at_player("_curse.wav");
     } else {
         AS_SEND0(self, 0x44);
     }
     if (self->health_state & 0x04) {
         if (sound)
-            as_play_wave_at_player(self, "_silence.wav");
+            as_play_wave_at_player("_silence.wav");
         AS_SEND0(self, 0x49);
     } else {
         AS_SEND0(self, 0x4a);
     }
     AS_SEND0(self, (self->health_state & 0x20) ? 0x4b : 0x4c);
     if ((self->health_state & 0x08) && sound)
-        as_play_wave_at_player(self, "_confusion.wav");
+        as_play_wave_at_player("_confusion.wav");
     if (self->health_state & 0x10) {
         if (self->aid == g_session1.ownAid)
             g_playerBlind = 1;
@@ -322,7 +321,7 @@ void game_actor_set_attr_state(struct GameActor *self, int body, int effect, int
             struct GameMode *mode = game_current_mode();
             struct RenderObject *player = (struct RenderObject *)(struct GameActor *)mode->world->player;
 
-            as_play_wave(self, player, "_blind.wav");
+            as_play_wave(player, "_blind.wav");
             if (self->aid == g_session1.ownAid &&
                 !able_to_make_effect_is_effect_exist((struct GameActor *)mode->world->player, 0x14e))
                 as_launch(self, 0x14e);

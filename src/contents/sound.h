@@ -20,8 +20,8 @@ int sound_stream_done(void);
 void sound_bgm_fade_in(void);
 void sound_bgm_fade_out(void);
 
-void sound_play_wave(const char *name, float x, float y, float z,
-                     int max_distance, int full_distance, float volume);
+/* plays a sound effect at the effect volume times volume, wherever its source is */
+void sound_play_wave(const char *name, float volume);
 void sound_end_samples(void);
 
 int sound_bgm_volume(void);
@@ -30,10 +30,5 @@ int sound_effect_volume(void);
 void sound_set_bgm_volume(int volume);
 void sound_set_bgm_fade_target(int volume);
 void sound_set_effect_volume(int volume);
-void sound_set_effect_volume_3d(int volume);
-void sound_set_listener_angle(float angle);
-void sound_set_room_type(int room_type);
-
-extern int g_sound_speaker_type;
 
 #endif

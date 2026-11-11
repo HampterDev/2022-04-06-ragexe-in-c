@@ -213,37 +213,61 @@ the workflow actually completes.
 
 ## Audio
 
-The client no longer links Miles Sound System, which exists only as a 32-bit DLL. On every
-platform `src/platform/miles_sdl.c` implements the Miles subset declared in
-`platform/miles_api.h` on SDL3: one device stream per digital driver at the requested rate and
-channels (22050 Hz, 16-bit; mono in 2D mode, stereo in 3D mode), mixed in the device callback.
-Samples are converted to the mix format when their file is set (`SDL_ConvertAudioSamples`); the background
-music is decoded from memory with the vendored `dr_mp3` and resampled by an
-`SDL_AudioStream`. Volumes are linear 0..127; sample and stream status uses the Miles
-done/playing values. The one 3D provider is named "Miles Fast 2D Positional Audio":
-inverse-distance attenuation between the minimum and maximum distance, silence beyond
-the maximum, and a left/right balance from the listener's orientation. Speaker and
-room types report "unsupported"; there is no reverb. `_AIL_set_redist_directory` and
-`_AIL_set_preference` do nothing, and no `.m3d` or `.asi` plugin is loaded.
+Sound goes through the client's own module, `platform/audio.h`, implemented once for every platform
+on SDL 3 in `platform/audio_sdl.c`. Until 2026-11-11 `platform/miles_sdl.c` implemented the subset
+of the Miles Sound System API (`platform/miles_api.h`) that the original calls, with a mixer of its
+own and a 3D provider; both files are gone (`docs/custom-review.md`, "Sound without a position").
 
-What the client asked of the game's `mss32.dll` and this leaves out is not heard: a 32-bit probe
-of that DLL on 2026-11-11 found "Miles Fast 2D Positional Audio" the only provider in the game
-folder, answering -1 for its speaker type, so `contents/sound.c` never set one (the `SPEAKERTYPE`
-setting had no effect there either), and supporting room types, of which the client only ever sets
-type 0 while giving every 3D sample an effects (reverb) level of 0. What does change is the mixing:
-this file's distance falloff and balance in place of the provider's, SDL's resampling and output
-device, and `dr_mp3` in place of `mp3dec.asi` for the music. They have not been compared with Miles
-sample by sample.
+- **Device.** `audio_open` opens SDL's default playback device with SDL's default format, and SDL
+  mixes every `SDL_AudioStream` bound to it itself, converting each to the device's format and rate
+  and applying each stream's gain. With the `SOUNDMODE` setting 1, the original's 2D mode, for which
+  the client opened a mono Miles driver, a post-mix callback averages the first two channels, so
+  both carry the same mono mix.
+- **Effects.** `audio_voice_play` gives a decoded sound its own stream, bound to the device with a
+  copy of the samples, a linear gain and nothing else; `audio_voice_playing` asks SDL whether the
+  stream still has output, and `audio_voice_stop` destroys it. `contents/sound.c` keeps the
+  original's 48 voices: an effect that finds all of them playing is dropped.
+- **Music.** `audio_music_play` reads the MP3 file into memory and decodes it with the vendored
+  `dr_mp3` on the device's thread, in the stream's get callback, as the device asks for more; it
+  plays the file `loop_count` times, 0 for ever, and `audio_music_done` answers once the last loop
+  has played out. The fade sets the music's gain in steps from its thread as before.
+- **Decoding.** `audio_sound_decode` reads a RIFF WAVE with SDL's own loader (`SDL_LoadWAV_IO` on
+  the bytes in memory: PCM, Microsoft and IMA ADPCM and SDL's other WAV formats) and anything that
+  starts with an ID3 tag or an MPEG frame sync with `dr_mp3`, as Miles' file type told the original
+  apart. It sets `SDL_HINT_WAVE_TRUNCATION` to `dropframe` once, with override priority, so an ADPCM
+  file whose last block is cut short keeps that block's whole frames whatever the environment says,
+  and cuts the result to whole frames, since SDL takes a PCM file's block size from its header. It
+  refuses a sound outside 1,000 to 384,000 Hz or longer than five minutes, so a damaged header
+  cannot hold a voice for hours; the game's WAVs are 8,000 to 48,000 Hz, the longest 40 s. A WAV
+  that is MPEG Layer 3 inside RIFF (format 0x55) decodes neither now nor in `miles_sdl.c` before;
+  `data.grf` has none, nor any MP3 data named `.wav`. `resources/wave.c` decodes a sound file once,
+  when it loads, and keeps the result in the resource cache; a file that reads but does not decode
+  loads without a sound and plays nothing.
 
-`_AIL_file_type`, `_AIL_WAV_info`, `_AIL_decompress_ADPCM` and `_AIL_decompress_ASI`
-give `resources/wave.c` the same data as Miles did: a PCM WAV image with a 44-byte
-header, freed by `_AIL_mem_free_lock`. Microsoft and IMA ADPCM both decode; the IMA
-decoder is the Intel/DVI reference algorithm (FFmpeg rounds differently). Every ADPCM
-file in `data.grf` (five IMA, one Microsoft) decoded identically to the reference
-decoders, and all 64 BGM tracks of the local game data played through.
-`test_miles_sdl` (built when SDL is part of the build, e.g. with
-`RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) runs headless on SDL's dummy driver;
-`tests/fixtures/make_audio_fixtures.py` regenerates its fixtures.
+Sounds have no position: there is no listener, 3D provider, distance, panning or falloff, and
+`sound_play_wave` takes the file and a volume only. Every effect plays at the effect volume times
+that volume, which is 1 for every caller but a map's sound sources (the RSW's own volume per
+source), and the music at the music volume. What the player hears differently from `miles_sdl.c`: no
+distance (in the default 3D mode its falloff and balance, in mode 1 the client's own), and the mix
+at the output device's rate instead of 22,050 Hz, so the music keeps the frequencies above 11 kHz
+that the old mix cut. The one test of distance left is a map's sound sources' own:
+`sound_maker_on_process` (`actor/small_actors.c`) starts a source's sound only while the player is
+within 130 of the source's range plus the diagonal of its area, measured from its position, and
+within 75 of its range from the edge of its area towards the player; within that it now plays at its
+full volume. Every one of the game's 2,976 WAV files (2,974 in `data.grf`, 2 loose under `data\wav`)
+decodes to the same samples as through `resources/wave.c` and `miles_sdl.c` before; without
+`dropframe` four IMA ADPCM files would lose a last block of 31 to 46 ms.
+
+`test_audio` (`tests\build_audio.bat`; off Windows CTest's `audio`, built when SDL is part of the
+build, e.g. with `RAGE_PLATFORM_PROBE` or `RAGE_CLIENT`) decodes the ADPCM fixtures to their
+reference decodes, PCM byte for byte and the MP3 fixture to its tone, refuses rates and lengths
+beyond the bounds, feeds every prefix of each file and thousands of damaged copies to the decoder
+(on Windows each ending where readable memory ends), and mixes through SDL's disk driver: a voice
+plays its sound once, the music its two loops, a gain halves, a stereo sound stays stereo and the
+mono mode puts the mix in both channels. Given a game folder (`AUDIO_GAME_DIR`, by default
+`client-files` beside the checkout; CMake's `RAGE_AUDIO_GAME_DIR`) it also decodes PCM, 8-bit,
+stereo and both ADPCM sounds from `data.grf` and `BGM\01.mp3`, and mixes two effects with the music;
+without one that part is skipped. `tests/fixtures/make_audio_fixtures.py` regenerates the fixtures.
 
 ## Text
 
@@ -544,7 +568,7 @@ client by default and this one with `x64`. The 32-bit client linked three DLLs o
 that exist only for 32-bit Windows; the 64-bit client does without them, as every other platform
 does:
 
-- sound goes through `platform/miles_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
+- sound goes through `platform/audio_sdl.c` in place of RAD's `mss32.dll` (see *Audio*), on a
   static SDL3 that `vendor\build_vendor.bat` downloads (the commit `cmake/SDL3.cmake` pins,
   hash-checked) and builds with CMake into `build\vendor`;
 - Granny models come from the converted glTF files (see *Linux client*) in place of RAD's

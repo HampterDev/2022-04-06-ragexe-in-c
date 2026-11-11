@@ -3,10 +3,13 @@
 
 #include "fileio/resource_types.h"
 
+struct AudioSound;
+
+/* A sound file, decoded when it loads. A file that can be read loads even when it does not
+   decode; it then has no sound and plays nothing. */
 struct Wave {
     struct Res res;
-    void *data;
-    int milesOwned;
+    struct AudioSound *sound;
 };
 
 void wave_resource_reset(struct Wave *wave);

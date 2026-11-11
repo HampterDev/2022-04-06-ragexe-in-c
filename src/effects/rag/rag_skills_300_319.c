@@ -131,7 +131,7 @@ void rag_exit_rings(struct RagEffect *self, const char *texture)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_Teleportation.wav");
+    effect_play_wave("effect\\EF_Teleportation.wav");
     p = rag_launch_textured(self, 0x3c, texture);
     if (!p)
         return;
@@ -162,7 +162,7 @@ unsigned char rag_glass_wall_textured(struct RagEffect *self, const char *textur
 
     rag_follow_master(self);
     if (self->frame == 0) {
-        rag_play_wave_here(self, "effect\\EF_GlassWall.wav");
+        effect_play_wave("effect\\EF_GlassWall.wav");
         p = rag_launch_textured(self, 0x3c, texture);
         if (!p)
             return 0;
@@ -200,7 +200,7 @@ void rag_teleportation(struct RagEffect *self, const char *texture, short n)
     if (self->frame != 0)
         return;
     rag_follow_master(self);
-    rag_play_wave_here(self, "effect\\EF_Teleportation.wav");
+    effect_play_wave("effect\\EF_Teleportation.wav");
     p = rag_launch_textured(self, 0x39, texture);
     if (!p)
         return;
@@ -235,7 +235,7 @@ void rag_ready_portal(struct RagEffect *self)
 
     if (self->frame % 14 == 0) {
         rag_follow_master(self);
-        rag_play_wave_here(self, "effect\\EF_ReadyPortal.wav");
+        effect_play_wave("effect\\EF_ReadyPortal.wav");
     }
     if (self->frame != 0)
         return;
@@ -468,7 +468,7 @@ void rag_heal(struct RagEffect *self, const char *texture, char style)
     }
     ring[2].active = 0;
     ring[3].active = 0;
-    rag_play_wave_here(self, "_heal_effect.wav");
+    effect_play_wave("_heal_effect.wav");
 }
 
 void rag_first_aid(struct RagEffect *self)
@@ -480,7 +480,7 @@ void rag_first_aid(struct RagEffect *self)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "_heal_effect.wav", 150.0f);
+    effect_play_wave("_heal_effect.wav");
     p = rag_launch_textured(self, 0x3a, "effect\\pikapika2.bmp");
     if (!p)
         return;
@@ -572,7 +572,7 @@ void rag_demonstration(struct RagEffect *self)
 void rag_firework_sound(struct RagEffect *self)
 {
     if (self->frame == 300)
-        sound_play_wave("effect\\폭죽.wav", 0.0f, 0.0f, 0.0f, 250, 40, 1.0f);
+        sound_play_wave("effect\\폭죽.wav", 1.0f);
     if (self->frame > 2300)
         self->frame = 299;
 }

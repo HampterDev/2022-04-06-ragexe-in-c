@@ -152,12 +152,12 @@ static void lua_ask_hat(const char *func, const char *fmt, int hat, void *out)
 
 static void cue(struct Ez2StrEffect *self, const char *wave, int frame)
 {
-    effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, wave, frame, 0.0f);
+    effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, wave, frame);
 }
 
 static void cue_message(struct Ez2StrEffect *self, int frame)
 {
-    effect_add_sound_cue(&self->base, SOUND_CUE_GAME_MESSAGE, 0, frame, 0.0f);
+    effect_add_sound_cue(&self->base, SOUND_CUE_GAME_MESSAGE, 0, frame);
 }
 
 static void set_list(struct Ez2StrEffect *self, int list_flags)
@@ -680,7 +680,7 @@ void ez2_str_effect_after_init(struct Effect *effect)
     case 0x469: cue(self, "effect\\su_svg_spirit.wav", 0); break;
     case 0x489:
         if (rand() % 12 == 0)
-            effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, "effect\\wizard_quagmire.wav", 0, -100.0f);
+            effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, "effect\\wizard_quagmire.wav", 0);
         break;
     case 0x48a:
         cue(self, "effect\\wizard_meteo.wav", 0);

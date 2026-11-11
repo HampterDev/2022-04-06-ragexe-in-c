@@ -30,8 +30,7 @@
 
 static void play_sale_sound(void)
 {
-    struct Vec3 here = { 0, 0, 0 };
-    sound_play_wave("effect\\ef_steal.wav", here.x, here.y, here.z, 0xfa, 0x28, 1.0f);
+    sound_play_wave("effect\\ef_steal.wav", 1.0f);
 }
 
 static void refresh_window(struct UIWindow *w)

@@ -3,7 +3,6 @@
 #include "game/gamemode.h"
 #include "session/option_pairs.h"
 #include "skills/skill_bundle.h"
-#include "contents/sound.h"
 #include "session/state.h"
 #include "ui/window_manager_state.h"
 #include "contents/mouse.h"
@@ -144,7 +143,6 @@ static void right_button_held(struct GameMode *self)
         } else {
             view_add_longitude(self->view, (float)(g_mouse.x - self->last_mouse_x));
         }
-        sound_set_listener_angle(self->view->destLongitude);
     }
 
     if (!key_down(VK_MENU) && key_down(VK_SHIFT)) {

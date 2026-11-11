@@ -58,8 +58,10 @@
 
 /* 64-bit. The 32-bit build's digest was 2842b5a04b52ece4; its trace is this one line for line
    once the objects' sizes, the hashes of their bytes and the offsets and counts of the changed
-   words, which follow the layout, are left out. */
-#define EXPECTED_DIGEST 0x7421cc352aaed63cull
+   words, which follow the layout, are left out. Sounds have no position since 2026-11-11: the
+   trace before (7421cc352aaed63c) is this one line for line once its wave lines lose their
+   position and distances. */
+#define EXPECTED_DIGEST 0x356d458afcc7debbull
 #define EXPECTED_EZ2STR_DIGEST 0x1b0232b840610959ull
 
 #define FRAME_CAP 400
@@ -800,11 +802,10 @@ intptr_t mode_send_message(struct Mode *mode, int message, intptr_t a, intptr_t 
     return 0;
 }
 
-void sound_play_wave(const char *name, float x, float y, float z, int max_distance, int full_distance, float volume)
+void sound_play_wave(const char *name, float volume)
 {
-    char a[32], b[32], c[32], d[32];
-    line("wave f%d %s %s %s %s %d %d %s", g_effect ? g_effect->frame : -1, name, fstr(x, a), fstr(y, b),
-         fstr(z, c), max_distance, full_distance, fstr(volume, d));
+    char a[32];
+    line("wave f%d %s %s", g_effect ? g_effect->frame : -1, name, fstr(volume, a));
 }
 
 void error_msg(const char *text, int flags)

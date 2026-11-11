@@ -413,7 +413,7 @@ void rag_blue_casting(struct RagEffect *self)
     follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave(self, "effect\\EF_BeginSpell.wav", -100.0f);
+    effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, "effect\\ring_blue.tga", 5);
     rag_casting_circle(self, 25, "effect\\ring_blue.tga", 5);
 }
@@ -495,7 +495,7 @@ void rag_black_casting(struct RagEffect *self, char silent)
     if (self->frame != 0)
         return;
     if (silent == 0)
-        rag_play_wave_here(self, "effect\\EF_BeginSpell.wav");
+        effect_play_wave("effect\\EF_BeginSpell.wav");
     rag_casting_circle(self, 45, "effect\\ring_black.tga", 6);
     rag_casting_circle(self, 25, "effect\\ring_black.tga", 6);
 }
@@ -515,7 +515,7 @@ void rag_rising_light(struct RagEffect *self, char look)
     self->screen_pos.y = screen.y;
     follow_master(self);
     if (self->frame == 0)
-        rag_play_wave_here(self, look == 3 ? "effect\\소울 체인지.wav"
+        effect_play_wave(look == 3 ? "effect\\소울 체인지.wav"
                                            : "effect\\EF_IncAgility.wav");
     if (self->frame & 1)
         return;
@@ -673,7 +673,7 @@ void rag_flying_kick(struct RagEffect *self)
 {
     if (self->frame == 5) {
         rag_follow_master(self);
-        rag_play_wave_here(self, "effect\\T_날라차기.wav"  );
+        effect_play_wave("effect\\T_날라차기.wav"  );
         self->master->state = 0x1b;
         render_object_play_motion_range(self->master, 0x60, 5, 5, 0x60, 5, 1, 25, 0);
     }
@@ -687,7 +687,7 @@ void rag_flower_rings_ramp(struct RagEffect *self)
 
     if (self->frame == 5) {
         rag_follow_master(self);
-        rag_play_wave_here(self, "effect\\T_안락한마법.wav"  );
+        effect_play_wave("effect\\T_안락한마법.wav"  );
     }
     fx = self->master;
     if (!(fx->overlay_flags & 0x800)) {

@@ -64,7 +64,7 @@ void rag_holy_water(struct RagEffect *self)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_Aqua.wav");
+    effect_play_wave("effect\\EF_Aqua.wav");
     prim = launch(self, 5);
     if (!prim)
         return;
@@ -249,7 +249,7 @@ void rag_fire_ivy(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_fire_ivy.wav");
+    effect_play_wave("effect\\wizard_fire_ivy.wav");
     if (self->frame != 0)
         return;
     prim = launch(self, 15);
@@ -269,7 +269,7 @@ void rag_water_out(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\wizard_waterball_chulung.wav");
+    effect_play_wave("effect\\wizard_waterball_chulung.wav");
     if (self->frame != 0)
         return;
     prim = launch(self, 15);
@@ -396,7 +396,7 @@ void rag_ready_portal_rings(struct RagEffect *self)
 
     if (self->frame % 14 != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_ReadyPortal.wav");
+    effect_play_wave("effect\\EF_ReadyPortal.wav");
     prim = launch(self, 12);
     if (!prim)
         return;
@@ -454,7 +454,7 @@ void rag_stone_curse(struct RagEffect *self)
     project_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_StoneCurse.wav");
+    effect_play_wave("effect\\EF_StoneCurse.wav");
     prim = launch(self, 4);
     if (!prim)
         return;
@@ -474,7 +474,7 @@ void rag_teleport_ring(struct RagEffect *self)
 
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_Teleportation.wav");
+    effect_play_wave("effect\\EF_Teleportation.wav");
     prim = launch(self, 13);
     if (!prim)
         return;
@@ -522,7 +522,7 @@ void rag_thunderstorm_sprite(struct RagEffect *self)
     rag_follow_master(self);
     if (self->frame != 0)
         return;
-    rag_play_wave_here(self, "effect\\EF_ThunderStorm.wav");
+    effect_play_wave("effect\\EF_ThunderStorm.wav");
     prim = launch(self, 5);
     if (!prim)
         return;

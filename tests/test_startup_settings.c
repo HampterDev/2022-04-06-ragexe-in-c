@@ -5,14 +5,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "core/app.h"
-#include "contents/sound.h"
 
 struct Settings {
     int trilinear;
     char device[40];
     GUID device_guid, driver_guid;
     uint32_t sound;
-    int speakers;
 };
 struct Value {
     const char *name;
@@ -26,8 +24,7 @@ static const struct Value values[] = {
     VALUE("DEVICENAME", REG_SZ, device),
     VALUE("GUIDDEVICE", REG_BINARY, device_guid),
     VALUE("GUIDDRIVER", REG_BINARY, driver_guid),
-    VALUE("SOUNDMODE", REG_DWORD, sound),
-    VALUE("SPEAKERTYPE", REG_DWORD, speakers)
+    VALUE("SOUNDMODE", REG_DWORD, sound)
 };
 #undef VALUE
 static const struct Settings defaults = { .sound = 2 };
@@ -38,7 +35,6 @@ static int empty_key, bad_value = -1, fault, key_token;
 const char *g_registryKeyPath = "Software\\TestClient";
 int g_trilinearFilter;
 GUID g_driverGuid;
-int g_sound_speaker_type;
 
 static LONG WINAPI read_open(HKEY root, const char *path, DWORD options, REGSAM access, HKEY *key)
 {
@@ -107,7 +103,6 @@ static void expect(const struct Settings *expected)
     assert(!memcmp(&g_deviceGuid, &expected->device_guid, sizeof g_deviceGuid));
     assert(!memcmp(&g_driverGuid, &expected->driver_guid, sizeof g_driverGuid));
     assert(g_soundMode == expected->sound);
-    assert(g_sound_speaker_type == expected->speakers);
     assert(opens == 1 && !live_key);
     assert(closes == !open_error && normalized == !open_error);
     assert(queries == (open_error ? 0 : sizeof values / sizeof *values));
@@ -123,7 +118,7 @@ int main(void)
     size_t i;
     saved = (struct Settings){ .trilinear = 1,
         .device = "Saved display", .device_guid = {0x1234, 2, 3, {4}},
-        .driver_guid = {0x5678, 6, 7, {8}}, .sound = 2, .speakers = 3 };
+        .driver_guid = {0x5678, 6, 7, {8}}, .sound = 2 };
     for (i = 0; i < 3; ++i) {
         saved.sound = (uint32_t)i;
         load();

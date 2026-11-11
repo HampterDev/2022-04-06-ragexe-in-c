@@ -43,10 +43,10 @@ paths   core/
         platform/win_types.h
 
 library platform
-note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, crash
-        dumps, display depth, the text-input editor and IME (platform/language.c), the window
-        services on SDL (platform/window_sdl.c), client paths, and the main window's handle and
-        state (core/window_state.c).
+note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
+        (platform/audio_sdl.c), crash dumps, display depth, the text-input editor and IME
+        (platform/language.c), the window services on SDL (platform/window_sdl.c), client paths,
+        and the main window's handle and state (core/window_state.c).
 uses    base
 paths   platform/
         core/client_path.* core/file_util.* core/text_encoding.* core/text_tokens.c core/text_util.*
@@ -496,7 +496,7 @@ include contents/ui_window_mgr.h world/tooltip.h
 include contents/user_hotkey_apply.c contents/client_lua.h contents/user_hotkeys.h
 include core/actor_slots.c actor/appearance.h
 include effects/effect_math.h effects/effect.h
-include effects/effect_sound.c effects/render_object.h
+include effects/effect_sound.c effects/effect.h
 include effects/rag/effect_prim_draw.c effects/rag/rag_effect.h
 include effects/rag/prim_flat_quads.c effects/rag/rag_effect.h
 include game/cells.c session/session_skills.h

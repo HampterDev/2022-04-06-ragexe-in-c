@@ -222,7 +222,7 @@ void item_drop_effect_after_init(struct Effect *effect)
     }
     string_copy(&path, &self->sound_dir);
     string_append(&path, string_cstr(&self->wave), self->wave.size);
-    effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, string_cstr(&path), 0, 0.0f);
+    effect_add_sound_cue(&self->base, SOUND_CUE_WAVE, string_cstr(&path), 0);
     string_free(&path);
 }
 

@@ -675,8 +675,7 @@ unsigned char sound_maker_on_process(struct GameObject *object)
         return 1;
     if (platform_ticks_ms() > self->interval + self->last_play) {
         self->last_play = platform_ticks_ms();
-        sound_play_wave(string_cstr(&self->wave), at_x - player->pos.x, 0.0f,
-                        at_z - player->pos.z, (int)self->range, (int)(self->range / 6.0f), self->volume);
+        sound_play_wave(string_cstr(&self->wave), self->volume);
     }
     return 1;
 }

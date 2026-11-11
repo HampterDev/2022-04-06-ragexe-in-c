@@ -336,7 +336,6 @@ void talk_cmd_volume(struct GameMode *self, const struct String *args, int effec
     (void)self;
     if (!effects) {
         sound_set_effect_volume(volume);
-        sound_set_effect_volume_3d(volume);
     } else {
         sound_set_bgm_volume(volume);
         sound_set_bgm_fade_target(sound_bgm_volume());

@@ -77,11 +77,8 @@ unsigned char player_on_process(struct GameObject *object)
     result = actor_process_state(self);
     render_object_process_sound((struct RenderObject *)self);
     if (self->wave_pending) {
-        struct GameActor *player = (struct GameActor *)game_current_player();
-
-        if (player)
-            sound_play_wave((const char *)self->wave_name, self->pos.x - player->pos.x, 0.0f,
-                            self->pos.z - player->pos.z, 0xfa, 0x28, 1.0f);
+        if (game_current_player())
+            sound_play_wave((const char *)self->wave_name, 1.0f);
         self->wave_pending = 0;
     }
     player_process_costume_body(self, game_actor_get_transform_job(actor) > 0);

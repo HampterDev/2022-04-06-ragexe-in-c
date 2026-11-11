@@ -25,12 +25,8 @@ static void motion_sound(struct RenderObject *self, void *act, int motion)
     string_init(&s);
     string_assign_cstr(&s, name);
     if (string_find(&s, ".wav", 0) != STRING_NPOS) {
-        struct RenderObject *player =
-            (struct RenderObject *)game_current_player();
-
-        if (player)
-            sound_play_wave(string_cstr(&s), self->pos.x - player->pos.x, 0.0f,
-                            self->pos.z - player->pos.z, 0xfa, 0x28, 1.0f);
+        if (game_current_player())
+            sound_play_wave(string_cstr(&s), 1.0f);
     }
     string_free(&s);
 }

@@ -148,23 +148,13 @@ static void follow_pointed_actor(struct GameMode *self)
 static void play_loop_sounds(struct GameMode *self)
 {
     struct LoopSound *sound;
-    struct GameActor *npc;
-    struct Player *player;
 
     for (sound = self->loop_sounds.first; sound != (struct LoopSound *)self->loop_sounds.last; sound++) {
         platform_ticks_ms();
         if (platform_ticks_ms() < sound->next_tick)
             continue;
-        if (sound->npc_aid != 0) {
-            npc = world_get_game_actor_by_aid(self->world, sound->npc_aid);
-            if (npc != 0) {
-                player = self->world->player;
-                sound_play_wave(string_cstr(&sound->name), player->pos.x - npc->pos.x, 0.0f,
-                                player->pos.z - npc->pos.z, 0xfa, 0x28, 1.0f);
-            }
-        } else {
-            sound_play_wave(string_cstr(&sound->name), 0.0f, 0.0f, 0.0f, 0xfa, 0x28, 1.0f);
-        }
+        if (sound->npc_aid == 0 || world_get_game_actor_by_aid(self->world, sound->npc_aid))
+            sound_play_wave(string_cstr(&sound->name), 1.0f);
         sound->next_tick = platform_ticks_ms() + sound->interval;
     }
 }

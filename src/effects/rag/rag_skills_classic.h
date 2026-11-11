@@ -104,10 +104,10 @@ static __inline void prim_add_alpha_key(struct EffectPrim *p, float frame, float
     alpha_key_push(&p->alpha_key_ceilings, ceiling);
 }
 
-static __inline void rag_play_two_waves(struct RagEffect *self, const char *first, const char *second)
+static __inline void rag_play_two_waves(const char *first, const char *second)
 {
-    rag_play_wave_here(self, first);
-    rag_play_wave_here(self, second);
+    effect_play_wave(first);
+    effect_play_wave(second);
 }
 
 #define SPR_DIR "이팩트\\"

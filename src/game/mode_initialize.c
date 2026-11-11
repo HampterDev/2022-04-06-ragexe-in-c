@@ -6,7 +6,6 @@
 #include "world/view_types.h"
 #include "world/pathfinder_state.h"
 #include "navi/navi_manager.h"
-#include "contents/sound.h"
 #include "ui/misc/snap_mgr.h"
 #include "world/pick_node.h"
 #include "actor/weather.h"
@@ -231,7 +230,6 @@ void game_mode_initialize(struct GameMode *self)
     memset(self->stat_raises, 0, sizeof self->stat_raises);
     self->wheel_count = 0;
     self->wheel_count_max = 0;
-    sound_set_listener_angle(self->view->destLongitude);
     mode_send_msg(self, MODE_MSG_TOGGLE_STATUS_BARS, 0, 0, 0, 0);
     if (g_isStopByLogin != 0)
         greet_after_login(self);
