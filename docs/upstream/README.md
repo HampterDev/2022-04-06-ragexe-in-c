@@ -381,3 +381,14 @@ reduces -90 to 270.
 | [8d01bd194a](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8d01bd194a9f02ca4ccd70ebde3009fdb4fd3275) | Not needed on custom, code removed (cash shop) | Cash shop cart: page up and page down take the scroll arm |
 | [8aef09d5f4](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/8aef09d5f4d76c507e952dc12b40717f356497cf) | Not ported: docs/changes.md | docs: negative angles are no longer a change from the original |
 | [bbec17c670](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/bbec17c670b3756642f4a2ef625035984bf32bda) | Not ported: tests ea40abe7, which custom does not have | test_math3d: the cosine and radian lookups at -90 |
+
+## Foundation fix from the sound review, 2026-11-11
+
+A review of the sound change on `gpu-audio` found `game_mode_zc_sound` reading the 24-byte name of
+`ZC_SOUND` as a C string. The original reads it the same way, so it was bounded on `main` under its
+rule for data from outside, with a check in `main`'s packet-handler oracle, and picked with
+`git cherry-pick -x`. `custom` has neither that oracle nor `docs/changes.md`.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [82531e269b](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/82531e269bc99a2864870be60f39092b511dc665) | [38a9093e27](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/38a9093e274dd606f98de2ce97bc6d6143b6dbff) | Read ZC_SOUND's sound name within its 24 bytes |
