@@ -1645,13 +1645,11 @@ int gfx_get_size(gfx_surface *s, int *w, int *h)
     return 0;
 }
 
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
 {
     batch_flush();
     D3DLOCKED_RECT lr;
     HRESULT hr;
-    if (flags & GFX_LOCK_UNSIZED)
-        return D3DERR_INVALIDCALL;
     if (!s->surf)
         return D3DERR_INVALIDCALL;
     g_perf.locks++;

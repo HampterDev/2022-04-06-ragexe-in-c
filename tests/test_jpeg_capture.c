@@ -11,9 +11,9 @@ static int surface_token, resource_token;
 static int locks, unlocks, held, fail_lock, destroyed_strings;
 static int missing_logo;
 
-int gfx_lock(gfx_surface *handle, const RECT *rect, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *handle, const RECT *rect, struct gfx_lock *out)
 {
-    assert(handle == (gfx_surface *)&surface_token && !rect && flags == GFX_LOCK_WAIT);
+    assert(handle == (gfx_surface *)&surface_token && !rect);
     ++locks;
     if (fail_lock) return -1;
     assert(!held);

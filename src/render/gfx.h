@@ -80,11 +80,6 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_CLEAR_TARGET  1
 #define GFX_CLEAR_ZBUFFER 2
 
-#define GFX_LOCK_WAIT      1
-#define GFX_LOCK_WRITEONLY 2
-#define GFX_LOCK_RETRY     4
-#define GFX_LOCK_UNSIZED   8
-
 #define GFX_BLT_WAIT  1
 #define GFX_BLT_ASYNC 2
 
@@ -185,7 +180,7 @@ gfx_surface *gfx_create_render_target(int w, int h);
 void gfx_addref(gfx_surface *s);
 void gfx_release(gfx_surface *s);
 int gfx_get_size(gfx_surface *s, int *w, int *h);
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out);
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out);
 int gfx_unlock(gfx_surface *s);
 int gfx_blit(gfx_surface *dst, const RECT *dstRect, gfx_surface *src, const RECT *srcRect, int flags);
 int gfx_refresh_mips(gfx_surface *tex, const RECT *r);

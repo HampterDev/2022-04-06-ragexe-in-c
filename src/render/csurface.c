@@ -112,7 +112,7 @@ int surface_fill_pixels(struct Surface *self, int x, int y, int w, int h, const 
     r.top = y;
     r.right = x + w;
     r.bottom = y + h;
-    if (gfx_lock(self->surface, &r, GFX_LOCK_WAIT | GFX_LOCK_WRITEONLY, &lk) < 0)
+    if (gfx_lock(self->surface, &r, &lk) < 0)
         return 0;
     if (lk.bpp != 16 && lk.bpp != 32) {
         gfx_unlock(self->surface);
@@ -288,7 +288,7 @@ int texture_create_bump(struct Texture *self, int width, int height)
     s = gfx_create_texture(actual_width, actual_height, GFX_FMT_BUMP);
     if (!s)
         return 0;
-    if (gfx_lock(s, NULL, GFX_LOCK_RETRY, &lk) < 0) {
+    if (gfx_lock(s, NULL, &lk) < 0) {
         gfx_release(s);
         return 0;
     }
@@ -434,7 +434,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
     r.top = y0;
     r.right = x0 + w0;
     r.bottom = y0 + h0;
-    if (gfx_lock(self->base.surface, &r, GFX_LOCK_WAIT | GFX_LOCK_WRITEONLY, &lk) < 0)
+    if (gfx_lock(self->base.surface, &r, &lk) < 0)
         return 0;
     {
         BYTE *dst = (BYTE *)lk.bits;
@@ -530,7 +530,7 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
         || x < 0 || y < 0 || x > self->base.width || y > self->base.height
         || w > self->base.width - x || h > self->base.height - y)
         return 0;
-    if (gfx_lock(self->base.surface, NULL, GFX_LOCK_WAIT, &lk) < 0)
+    if (gfx_lock(self->base.surface, NULL, &lk) < 0)
         return 0;
     if (lk.bpp != 16) {
         gfx_unlock(self->base.surface);

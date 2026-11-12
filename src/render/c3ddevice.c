@@ -402,7 +402,7 @@ static int probe_codes(struct C3dDevice *self, struct Surface *surf, float texW,
         }
         gfx_end_scene();
         gfx_blit(surf->surface, NULL, self->target, NULL, GFX_BLT_WAIT);
-        if (gfx_lock(surf->surface, NULL, GFX_LOCK_WAIT, &lk) < 0)
+        if (gfx_lock(surf->surface, NULL, &lk) < 0)
             return 0;
         {
             unsigned bpp = lk.bpp >> 3;

@@ -40,10 +40,9 @@ gfx_surface *gfx_create_texture(int width, int height, int format)
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
 int gfx_get_size(gfx_surface *surface, int *width, int *height)
 { assert(surface && surface->refs); *width = surface->width; *height = surface->height; return 0; }
-int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *surface, const RECT *rect, struct gfx_lock *out)
 {
     unsigned stride;
-    (void)flags;
     assert(surface && surface->refs);
     if (upload_failure) return -1;
     stride = surface->format == GFX_FMT_8888 ? 4 : 2;

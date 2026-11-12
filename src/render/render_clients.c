@@ -89,7 +89,7 @@ unsigned char bink_frame_to_texture(struct BinkPlayer *self, void *texture)
 
     if (!tex || !tex->base.surface)
         return 0;
-    if (gfx_lock(tex->base.surface, NULL, GFX_LOCK_WAIT, &lk) < 0)
+    if (gfx_lock(tex->base.surface, NULL, &lk) < 0)
         return 0;
     _BinkCopyToBuffer(self->bink, lk.bits, lk.pitch, lk.height, 0, 0, 5);
     if (gfx_unlock(tex->base.surface) < 0)
