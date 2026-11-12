@@ -9,14 +9,14 @@
 #define WRAP DRAW_ADDRESS_WRAP
 #define BORDER DRAW_ADDRESS_BORDER
 #define SCREEN DRAW_INTO_SCREEN
-#define ANY (DRAW_INTO_SCREEN | DRAW_INTO_COPY | DRAW_INTO_TEXTURE)
+#define ANY (DRAW_INTO_SCREEN | DRAW_INTO_TEXTURE)
 #define MESHES DRAW_MESHES
 
 /* The Direct3D 9 client's states for each (render/crenderer.c): every list filters stage 0 with
    mipmaps and stage 1 reads with a border unless it says otherwise; blending, the alpha test and
    fog as renderer_draw_lists set them before the list. The interface's windows were composited
-   with the states the frame's last list left, without depth and fog; the frame-time overlay and the
-   probe with their own. */
+   with the states the frame's last list left, without depth and fog; the frame-time overlay with
+   its own. */
 static const struct DrawModeDesc modes[DRAW_MODE_COUNT] = {
     /*                        combine                       src     dst     depth              alpha test            ref   fog colour address        filter               lightmap into */
     [DRAW_OPAQUE_CLAMP]     = { DRAW_COMBINE_MODULATE,      OFF,    OFF,    DRAW_DEPTH_WRITE,  DRAW_ALPHA_AT_LEAST, 0xcf, 1, 1, { CLAMP, BORDER }, DRAW_FILTER_MIPMAPS, 0, SCREEN | MESHES },
@@ -42,7 +42,6 @@ static const struct DrawModeDesc modes[DRAW_MODE_COUNT] = {
     [DRAW_EFFECT_OVERLAY]   = { DRAW_COMBINE_FROM_DRAW,     BYDRAW, BYDRAW, DRAW_DEPTH_OFF,    DRAW_ALPHA_AT_LEAST, 1,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_MIPMAPS, 0, SCREEN },
     [DRAW_COMPOSITE]        = { DRAW_COMBINE_MODULATE,      SA,     ISA,    DRAW_DEPTH_OFF,    DRAW_ALPHA_AT_LEAST, 1,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_LINEAR,  0, DRAW_INTO_TEXTURE },
     [DRAW_PANEL]            = { DRAW_COMBINE_TEXTURE,       SA,     ISA,    DRAW_DEPTH_OFF,    DRAW_ALPHA_OFF,      0,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_LINEAR,  0, SCREEN },
-    [DRAW_PROBE]            = { DRAW_COMBINE_MODULATE,      OFF,    OFF,    DRAW_DEPTH_OFF,    DRAW_ALPHA_OFF,      0,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_LINEAR,  0, SCREEN },
     [DRAW_BLIT]             = { DRAW_COMBINE_TEXTURE,       OFF,    OFF,    DRAW_DEPTH_OFF,    DRAW_ALPHA_OFF,      0,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_POINT,   0, ANY },
     [DRAW_CLEAR]            = { DRAW_COMBINE_DIFFUSE,       OFF,    OFF,    DRAW_DEPTH_ALWAYS, DRAW_ALPHA_OFF,      0,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_POINT,   0, SCREEN },
     [DRAW_CLEAR_COLOUR]     = { DRAW_COMBINE_DIFFUSE,       OFF,    OFF,    DRAW_DEPTH_OFF,    DRAW_ALPHA_OFF,      0,    0, 1, { CLAMP, BORDER }, DRAW_FILTER_POINT,   0, ANY },

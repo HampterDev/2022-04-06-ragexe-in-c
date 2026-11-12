@@ -44,7 +44,7 @@ void app_activate(int active)
    the window in its mode); it never changes the display's mode. */
 int app_init_3d(void)
 {
-    if (c3d_device_init(&g_3dDevice, g_hMainWnd, 6) < 0) {
+    if (c3d_device_init(&g_3dDevice, g_hMainWnd) < 0) {
         error_msg("Cannot init d3d OR grf file has problem.", 0);
         return 0;
     }

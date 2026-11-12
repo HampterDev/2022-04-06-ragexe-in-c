@@ -7,6 +7,9 @@ void texture_lock(struct Texture *texture);
 void texture_unlock(struct Texture *texture);
 
 struct Texture *texture_create(int width, int height, int format);
+/* custom: a texture whose pixels are a render target's, width by height, which draws go into
+   (gfx_set_render_target) and quads read as they read any texture; its pixels stay on the GPU. */
+struct Texture *texture_create_target(int width, int height);
 
 struct Texture *texture_from_pixels(int width, int height, const DWORD *pixels,
     int format, int keyed, int full_size);
@@ -27,7 +30,6 @@ static inline int texture_upload(struct Texture *texture, int x, int y, int widt
 struct Texture *texture_init(struct Texture *texture, int width, int height, int format);
 int texture_recreate(struct Texture *texture, int width, int height, int format);
 int texture_update_mip_chain(struct Texture *texture, const RECT *rect);
-int texture_copy_rect_from(struct Texture *texture, gfx_surface *source, RECT *rect);
 int texture_blit_rect(struct Texture *texture, struct Surface *source, int sx, int sy, int sw, int sh,
                       int dx, int dy, int dw, int dh);
 

@@ -17,7 +17,6 @@ DWORD texel_pack(int fmt, DWORD argb);
 int texel_bytes(int fmt);
 
 void texel_rows_to_bgra(int fmt, const void *src, long srcPitch, int w, int h, void *dst, long dstPitch);
-void texel_rows_from_bgra(int fmt, const void *src, long srcPitch, int w, int h, void *dst, long dstPitch);
 /* A system-memory surface's X8R8G8B8 rows: the colour key's texels transparent with their colour
    kept, the others opaque. */
 void texel_rows_keyed_to_bgra(const void *src, long srcPitch, int w, int h, DWORD key, void *dst, long dstPitch);

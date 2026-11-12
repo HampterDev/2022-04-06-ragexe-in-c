@@ -1,9 +1,9 @@
 # One renderer on SDL's GPU API
 
 Status: phases 0 and 1 are done, and so is the window that resizes and goes fullscreen at native
-resolution. Phases 2 and 3 are done on Windows. On Linux their unit tests and scene harness have run
+resolution. Phases 2 to 4 are done on Windows. On Linux their unit tests and scene harness have run
 in WSL with Mesa's lavapipe, but no one has played on it; the macOS and Android clients have not
-been built or run on it, and no Metal compiler has seen its shaders. Phases 4 to 7 are to do. File
+been built or run on it, and no Metal compiler has seen its shaders. Phases 5 to 7 are to do. File
 references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
@@ -62,11 +62,14 @@ references drift as the code changes. Sizes are judgement, not measurement.
   `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`). Non-mesh draws go through
   `render/gfx_batch.c` (8,192 vertices), flushed on any texture change or change of what they are
   drawn with into a draw of the recorded frame.
-- **GPU-to-CPU traffic:** the screen wobble locks the back buffer every frame it runs
-  (`render/cframe.c`); UI windows that composite render to a target and copy it back
-  (`render/render_clients.c`); a startup probe locks a target (`render/c3ddevice.c`); screenshots
-  and scene captures lock the target. Each lock submits the frame so far and waits for the target's
-  download.
+- **No read-backs** (phase 4). Nothing comes back from the GPU while playing: the screen wobble
+  is a step of the frame that copies the screen and draws it again with its rows moved
+  (`gfx_wobble`), from a table the CPU computes with the original's random numbers
+  (`render/screen_wobble.c`); windows that composite draw into a render target that their quad reads
+  (`render/render_clients.c`); the texel offset is the constant half a texel. Only screenshots and
+  scene captures read the screen, when asked (`gfx_read_frame`), each a submit and a wait for its
+  download. The device makes a swapchain only for a window that has been shown, so the scene
+  harness has none.
 - **Textures:** 16-bit 4444/1555 converted on the CPU (`render/csurface.c`) and widened to
   B8G8R8A8 when they go up, magenta keyed to alpha 0, mips made on the GPU; sprite atlas pages
   decoded from palette RLE on the CPU (`render/rp_atlas.c`); UI canvases re-uploaded as 256-pixel
@@ -318,11 +321,31 @@ recorded.
   3 to 16 pixels a scene; the hill and gate views differ from phase 2's in their text alone, and
   five of them from the reference along shadow edges, as phase 2's did (`docs/custom-review.md`).
 
-### Phase 4: no read-backs (small to medium)
+### Phase 4: no read-backs (done)
 
-- The wobble pass, compositing into target textures, captures by download without a swapchain.
-- Delete `gfx_lock` on targets, `renderer_lock_target`, `targetBits`/`targetPitch`, the startup
-  texel probe and the lockable back buffer.
+- The screen wobble is a pass: a copy of the screen so far, then one triangle over the whole screen
+  whose pixels read the copy from the row and shift a table gives (`src/render/shaders/rows.hlsl`),
+  every sample of a pixel alike, so a multisampled screen resolves to the same texels. The CPU makes
+  the table with the same `rand()` calls, in the same order, as the original's row loop
+  (`render/screen_wobble.c`, the library `screen-wobble`, tested against that loop). The windows
+  that composite draw into a render target their quad reads (`texture_create_target`). The texel
+  probe is gone (`TEXEL_CENTRE`). Screenshots and scene captures download the screen
+  (`gfx_read_frame`). The window is claimed, and gets its swapchain, when a frame is first presented
+  while it is shown, not minimized and of a size, and again at the next frame where SDL did not take
+  it; the scene harness hides its window on every platform, so it runs without a swapchain. SDL's
+  GPU drivers need no window at all, only a video driver that makes Vulkan surfaces or Metal views;
+  the harness keeps the client's window, hidden, because the client reads its size and the resize
+  scene changes it.
+- Deleted: `gfx_lock` on targets with its lock copies and write-back, `renderer_lock_target`,
+  `targetBits`, `targetPitch` and the renderer's `bpp`, the texel probe and its draw mode, the save
+  surface's kind (`K_SAVE`) and the pipelines for the screen's copy (`DRAW_INTO_COPY`), copies from
+  a target into a texture with their download when the texture was locked (`gpuNewer`), and the
+  overlay's target-lock timing and counter, the back buffer's handle that shared the screen's
+  texture and the startup flag that asked for it, and the device's fields from Direct3D 9 that
+  nothing read. The fade's saved frame is an ordinary render target.
+- The scene set, `window_resize`, the wobble's nine captures, the hill scenes and the gate scene are
+  phase 3's to the pixel, without and with multisampling, with the same draws; a screenshot is phase
+  3's JPEG byte for byte.
 
 ### Phase 5: the static world and its shadows on the GPU (large)
 

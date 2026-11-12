@@ -11,10 +11,6 @@
 #include <limits.h>
 #include "platform/clock.h"
 
-#ifdef _WIN32
-#pragma comment(lib, "winmm.lib")
-#endif
-
 static WORD pixel16(const struct C3dDevice *dev, DWORD r, DWORD g, DWORD b)
 {
     return (WORD)((((int)b >> dev->bBits) << dev->bShift) + (((int)g >> dev->gBits) << dev->gShift)
@@ -82,7 +78,7 @@ void surface_stretch_to_target(struct Surface *self, int unused1, int unused2, i
     r.top = 0;
     r.right = w;
     r.bottom = h;
-    gfx_blit(g_3dDevice.target, &r, self->surface, NULL, GFX_BLT_WAIT);
+    gfx_blit(g_3dDevice.target, &r, self->surface, NULL);
     (void)unused1;
     (void)unused2;
 }
@@ -111,7 +107,7 @@ int surface_fill_pixels(struct Surface *self, int x, int y, int w, int h, const 
     r.top = y;
     r.right = x + w;
     r.bottom = y + h;
-    if (gfx_lock(self->surface, &r, GFX_LOCK_WAIT | GFX_LOCK_WRITEONLY, &lk) < 0)
+    if (gfx_lock(self->surface, &r, 0, &lk) < 0)
         return 0;
     if (lk.bpp != 16 && lk.bpp != 32) {
         gfx_unlock(self->surface);
@@ -162,7 +158,7 @@ int surface_wallpaper_fill_pixels(struct Surface *self, int unused1, int unused2
     if (!tmp.surface)
         return 0;
     uploaded = surface_fill_pixels(&tmp, 0, 0, w, h, bits, 0, pitch)
-        && gfx_blit(self->surface, NULL, tmp.surface, NULL, GFX_BLT_WAIT) >= 0;
+        && gfx_blit(self->surface, NULL, tmp.surface, NULL) >= 0;
     surface_reset(&tmp);
     return uploaded;
 }
@@ -199,21 +195,39 @@ struct Texture *texture_create(int width, int height, int format)
     return texture;
 }
 
-struct Texture *texture_init(struct Texture *self, int width, int height, int format)
+/* An empty texture with the next serial, the order the render queues sort textures in. */
+static void texture_start(struct Texture *self)
 {
     static unsigned serial;
     memset(self, 0, sizeof *self);
     self->serial = ++serial;
     self->base.ops = &texture_surface_ops;
+}
+
+struct Texture *texture_init(struct Texture *self, int width, int height, int format)
+{
+    texture_start(self);
     texture_recreate(self, width, height, format);
     return self;
 }
 
-int texture_copy_rect_from(struct Texture *self, gfx_surface *src, RECT *r)
+struct Texture *texture_create_target(int width, int height)
 {
-    if (!self->base.surface)
-        return 0;
-    return gfx_blit(self->base.surface, r, src, r, GFX_BLT_WAIT) >= 0;
+    struct Texture *texture;
+    gfx_surface *target = gfx_create_render_target(width, height);
+    if (!target)
+        return NULL;
+    texture = calloc(1, sizeof *texture);
+    if (!texture) {
+        gfx_release(target);
+        return NULL;
+    }
+    texture_start(texture);
+    texture->base.surface = target;
+    texture->base.width = texture->reqWidth = width;
+    texture->base.height = texture->reqHeight = height;
+    texture->format = GFX_FMT_8888;
+    return texture;
 }
 
 int texture_blit_rect(struct Texture *self, struct Surface *src, int sx, int sy, int sw, int sh,
@@ -230,7 +244,7 @@ int texture_blit_rect(struct Texture *self, struct Surface *src, int sx, int sy,
     dstRect.top = dy;
     dstRect.right = dx + dw;
     dstRect.bottom = dy + dh;
-    if (gfx_blit(self->base.surface, &dstRect, src->surface, &srcRect, GFX_BLT_WAIT) != 0)
+    if (gfx_blit(self->base.surface, &dstRect, src->surface, &srcRect) != 0)
         return 0;
     whole(&all, &self->base);
     return texture_update_mip_chain(self, &all);
@@ -368,7 +382,7 @@ int texture_upload_pixels(struct Texture *self, int x, int y, int w, int h, cons
     r.top = y0;
     r.right = x0 + w0;
     r.bottom = y0 + h0;
-    if (gfx_lock(self->base.surface, &r, GFX_LOCK_WAIT | GFX_LOCK_WRITEONLY, &lk) < 0)
+    if (gfx_lock(self->base.surface, &r, 0, &lk) < 0)
         return 0;
     {
         BYTE *dst = (BYTE *)lk.bits;
@@ -465,7 +479,7 @@ int texture_draw_sprite_frame(struct Texture *self, int x, int y, int w, int h, 
         || x < 0 || y < 0 || x > self->base.width || y > self->base.height
         || w > self->base.width - x || h > self->base.height - y)
         return 0;
-    if (gfx_lock(self->base.surface, NULL, GFX_LOCK_WAIT, &lk) < 0)
+    if (gfx_lock(self->base.surface, NULL, 0, &lk) < 0)
         return 0;
     if (lk.bpp != 16) {
         gfx_unlock(self->base.surface);

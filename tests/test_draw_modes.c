@@ -33,7 +33,7 @@ static void table(void)
         assert(m->alphaTest != DRAW_ALPHA_OFF || m->alphaRef == 0);
         assert(m->address[0] <= DRAW_ADDRESS_BORDER && m->address[1] <= DRAW_ADDRESS_BORDER);
         assert(m->filter <= DRAW_FILTER_POINT && m->fog <= 1 && m->colour <= 1 && m->lightmap <= 1);
-        assert(m->into && !(m->into & ~(DRAW_INTO_SCREEN | DRAW_INTO_COPY | DRAW_INTO_TEXTURE | DRAW_MESHES)));
+        assert(m->into && !(m->into & ~(DRAW_INTO_SCREEN | DRAW_INTO_TEXTURE | DRAW_MESHES)));
         /* meshes draw into the screen, and only the ground's modes have its lightmap */
         assert(!m->lightmap || (m->into == DRAW_MESHES && mode == DRAW_GROUND_LIGHTMAP));
     }
@@ -167,20 +167,6 @@ static const struct step frame[] = {
     END
 };
 
-/* The texel probe at the device's start (render/c3ddevice.c), from the states the device started with
-   (gfx_default_states): the pattern times the vertex colour, filtered linearly, nothing blended,
-   tested or fogged. The Direct3D 9 client's stage 1 added white over it (MODULATEALPHA_ADDCOLOR
-   without a texture), which washed the pattern out and left the client's half-texel offset, as
-   the probe drawn without it finds; the mode leaves stage 1 out. */
-static void probe(void)
-{
-    const struct DrawModeDesc *m = draw_mode(DRAW_PROBE);
-    assert(m->combine == DRAW_COMBINE_MODULATE && m->src == DRAW_BLEND_OFF && m->depth == DRAW_DEPTH_OFF);
-    assert(m->alphaTest == DRAW_ALPHA_OFF && !m->fog && m->colour && m->filter == DRAW_FILTER_LINEAR);
-    assert(m->address[0] == DRAW_ADDRESS_CLAMP && m->address[1] == DRAW_ADDRESS_BORDER);
-    assert(m->into == DRAW_INTO_SCREEN && !m->lightmap);
-}
-
 /* Blits and clears were no draws under Direct3D 9 (StretchRect, UpdateSurface, Clear): their modes
    copy a texture's nearest texel or write the vertex colour and depth, over everything, into every
    target that has what they write. */
@@ -197,7 +183,7 @@ static void copies(void)
         assert(m->depth == (depth ? DRAW_DEPTH_ALWAYS : DRAW_DEPTH_OFF));
         assert(m->colour == (modes[i] != DRAW_CLEAR_DEPTH));
         /* depth is the screen's alone */
-        assert(m->into == (depth ? DRAW_INTO_SCREEN : (DRAW_INTO_SCREEN | DRAW_INTO_COPY | DRAW_INTO_TEXTURE)));
+        assert(m->into == (depth ? DRAW_INTO_SCREEN : (DRAW_INTO_SCREEN | DRAW_INTO_TEXTURE)));
     }
 }
 
@@ -271,9 +257,8 @@ int main(void)
     blend_factors();
     replay(0);
     replay(1);
-    probe();
     copies();
     puts("Draw modes: the table, the effect presets, the blend factors, every list's mode against the Direct3D 9 "
-         "client's states, with and without two-pass alpha, the probe's, the blits' and the clears' passed.");
+         "client's states, with and without two-pass alpha, the blits' and the clears' passed.");
     return 0;
 }

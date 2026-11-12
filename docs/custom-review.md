@@ -15182,3 +15182,202 @@ the display language) and on a Chinese one (SimSun, MingLiU by their names in Ch
 `test_font_system` would compare with GDI there; that the quads' fog test fails on the shader that
 divided (it was not run against it); and a game played by hand, in which the effects' presets and
 blend factors other than the scenes' would show.
+
+## No read-backs (2026-11-12)
+
+Phase 4 of `plans/gpu-renderer.md`: nothing comes back from the GPU while the game is played. Each
+read-back the GPU device served by submitting the frame so far, waiting for it and downloading a
+target is gone or done on the GPU.
+
+- **The screen wobble.** The player's status 0x108 (`actor/actor_efst.c`) shakes the screen for
+  eight frames, while the amplitude climbs from 2 to 16 in steps of 2; its period, in rows, is the
+  amplitude up to 10 and 20 less it above. The original locked the finished frame and went over its
+  rows from the bottom up: a row whose number is a multiple of the period (an anchor) was kept, and
+  every other row was overwritten with the last row kept, moved right in mode 1 by
+  `(rand() % 8) << 4` bytes, 0 to 28 pixels of the frame's 32-bit pixels (X8R8G8B8 under Direct3D
+  9), the pixels left of the shift keeping the row's own; mode 0 copies in place. On the GPU device
+  each such frame submitted its draws, waited for them, downloaded the whole frame, moved the rows
+  on the CPU, uploaded the rows that changed and drew the result back into the multisampled screen.
+  Since the loop only copies rows it has not changed, each row of its result is one row of the frame
+  as it was, moved: `render/screen_wobble.c` (the library `screen-wobble`, pure) makes that table,
+  calling `rand()` once for each row that is not an anchor, from the bottom row up and in mode 0
+  too, as the original did, so that every random number the game draws after it stays the same, and
+  advances the amplitude and the frames left as before. The device's `gfx_wobble` records a copy of
+  the screen (resolved, when multisampled, at the end of the pass before) and a pass of its own
+  whose one triangle covers the whole screen and reads each pixel from the copy as the table says
+  (`src/render/shaders/rows.hlsl`; the table goes up in the frame's one upload). That pass's
+  viewport is the whole target, not the half-pixel one of the client's draws, so that every sample
+  of the first column and row is written; every sample of a pixel takes the same texel, so a
+  multisampled screen resolves to it exactly, and what is drawn after the wobble lands on it. The
+  wobble's draw is not one of the client's and counts in no counter. An amplitude whose period is 0
+  as a byte (20, 276), which the client never stores and which made the original divide by zero,
+  moves no row and draws no number. The table is computed only once the device has in place
+  everything the pass needs (`gfx_wobble` calls back for it after the copy texture, the steps, the
+  draw and its record are made): where the device cannot draw the wobble (no screen, no memory), no
+  random number is drawn and the amplitude and frames do not advance, as the original's frame drew
+  none and advanced nothing when its lock failed.
+- **Windows that composite** (the menu icon window, the party plates, the equipment preview, the
+  quest image window) were drawn into a render target made for each composite and copied into the
+  window's texture, a CPU texture whose size was the first composite's rounded up to powers of two:
+  the copy stayed on the GPU, and only a lock of the texture, which nothing made, would have read it
+  back. Now the window's texture is a render target (`texture_create_target`), cleared and drawn
+  into by each composite and read by the window's quad as any texture; nothing is copied, and a
+  composite no longer makes and frees a render target of its own. Its size is the composite's, and a
+  window whose size changes gets a target of the new size, made before the old one goes: where none
+  can be made, the window keeps the texture it had and the composite draws nothing, and an empty
+  size makes nothing. Before, a composite wider or taller than the first texture copied nothing, its
+  rectangle reaching outside the texture, and the window went on showing its older picture; no scene
+  changes a composited window's size.
+- **The texel probe** (`c3d_device_probe_texel_offset`) drew 65,536 sub-texel offsets of a 4x4
+  pattern at startup, copied the screen into a system surface and read it (one or two submits and
+  downloads of the whole screen, by its size), to find the offset at which a pixel centre reads one
+  texel alone; on Direct3D 9 and on the GPU device it is half a texel, where Direct3D 9 put pixel
+  centres and where the GPU device puts them by construction. `TEXEL_CENTRE` (`render/render_api.h`)
+  takes the place of `g_texelOffsetU` and `g_texelOffsetV` in their six users, whose arithmetic is
+  the same to the bit; `draw_list.c`'s bottom edge, which added the U offset to a V coordinate, no
+  longer names the other axis. The probe's draw mode (`DRAW_PROBE`) goes with it, and `test_gfx_gpu`
+  draws its linearly filtered checks in the interface's mode.
+- **Screenshots and scene captures** download the screen when asked (`gfx_read_frame`: the frame's
+  work is submitted with an `SDL_DownloadFromGPUTexture` of the screen, a rectangle of it or the
+  whole, and the CPU waits for both), where they locked the target, which also copied the whole
+  frame into a buffer to compare with on unlock. A screenshot (`renderer_screenshot`) of the same
+  frame is the same JPEG, byte for byte, through the lock and through the download.
+- **No swapchain without a window shown.** SDL 3.4's GPU drivers need no window: the Vulkan driver
+  needs a video driver that makes Vulkan surfaces (Windows', X11's, Wayland's, the offscreen
+  driver's), the Metal driver one that makes Metal views (Cocoa's or UIKit's, not the offscreen
+  driver's), and a swapchain exists only for a window claimed for the device
+  (`SDL_ClaimWindowForGPUDevice`). The device now claims its window at the first present while the
+  window is shown, not minimized and of a size in pixels (the client shows it before it makes the
+  device), and a claim counts only once SDL keeps the window, which SDL says by knowing the window's
+  swapchain format. SDL 3.4's Vulkan driver answers the claim of a window whose surface has no size
+  (NVIDIA's Windows driver reports one for a minimized window) with success but keeps nothing of it,
+  so that every later acquire fails as for a window never claimed; a window minimized before the
+  first frame would have stayed black for the session. A claim that fails or is not kept is tried
+  again at the next present, its failure logged once: on Android the window has no surface while the
+  app is in the background. A claimed window that is minimized or hidden later keeps its claim
+  (SDL's Vulkan driver then gives no picture to present into until it shows again). The scene
+  harness never shows its window (`tests/scenes/scene_app_hidden.c`, which Linux now uses too, so
+  that its offscreen window is no longer claimed and presented to a headless swapchain), so no scene
+  run has a swapchain; the harness keeps the window because the client reads its size and the resize
+  scene changes it.
+- **Deleted** with the read-backs: `gfx_lock` on targets with its lock buffers, the copy it compared
+  against and the write-back of what changed, the main-thread check they needed,
+  `renderer_lock_target`, `targetBits`, `targetPitch`, the renderer's `bpp` (written, never read),
+  `pixel16_to_bgr`, copies from a target into a texture with the download when such a texture was
+  locked (`gpuNewer`, `cpu_current`, the stretched copy's colour-target texture),
+  `texture_copy_rect_from`, the overlay's `targetlock` timing (`PERF_TARGETLOCK`, which timed the
+  write of `bpp` in `renderer_flip`) and its target-lock count. The save surface for the fade
+  (`mode_run_fade_out`) was a kind of its own (`K_SAVE`) with pipelines of its own (the screen's
+  copy, `DRAW_INTO_COPY`), made with the screen and resized with it: it is an ordinary render target
+  now, made by `c3d_device_save_frame` at the screen's size when first needed and again when that
+  changes, and the fade copies to and from it on the GPU as before. `gfx_lock` takes textures and
+  system surfaces, whose pixels the CPU keeps, and `gfx_blit` copies from a target only into a
+  target. The device makes 147 pipelines, 148 with multisampling, as before: the probe's were the
+  blits', the screen's copy had one of its own, and the wobble has one.
+- **Deleted** as leftovers that nothing used: the back buffer's handle (`K_TARGET`,
+  `C3dDevice.back`), which shared the screen's texture and was the device's target, and the startup
+  flag that asked for it (`c3d_device_init`'s flags, 6, of which the device read only that bit); the
+  device's target is the screen itself, and `primary`, the same surface, goes. The depth buffer's
+  handle (`K_ZBUFFER`, `C3dDevice.zbuffer`), which nothing read; `gfx_create_3d`, which only wrote
+  fields nothing read; the fields `rcWindow`, `dd`, `d3d`, `devcaps`, `zbufferCaps`, `zformat`,
+  `aShift`, `aBits`, `aMask`, `bltStretch`, `tex1024` and the `hexDigitFlags` and `hexDigitValues`
+  tables, which nothing read (`rcWindow` only as a temporary of the screen's creation), with the
+  capabilities `zbufferless` (always 0, so the branch that skipped the depth buffer never ran) and
+  `bltStretch`; `gfx_blit`'s flags, which it ignored, with the fade's retry of the same copy
+  (`GFX_BLT_ASYNC`, then `GFX_BLT_WAIT`); `gfx_lock`'s flags `GFX_LOCK_WAIT` and
+  `GFX_LOCK_WRITEONLY`, which it ignored (`GFX_LOCK_UNSIZED` stays: the original's lock without the
+  surface's size failed, and so does this one); `#pragma comment(lib, "winmm.lib")` in `cframe.c` and
+  `csurface.c`, which call nothing of it (`build.bat` links it); and the unused parameters of
+  `gfx_get_caps`, `gfx_present` and `gfx_resize`.
+
+Tests: `test_screen_wobble` runs the original's row loop, as `render/cframe.c` had it, on frames of
+32-bit pixels in memory and applies the table to the same frames: the same pixels, the same state of
+the C runtime's `rand()` after both, the same amplitude and frames, for every amplitude the client
+passes through and those below and above it, both modes and one that moves nothing, 13 heights from
+1 to 1,441 rows, pitches wider than the row, and 400 random frames; a run of the wobble; and the
+periods of 0. `test_gfx_gpu` reads the screen with `gfx_read_frame` (a rectangle and the whole,
+rectangles outside it and a narrow pitch refused, a target refused by `gfx_lock`); records, in one
+frame as the client does, a picture of distinct pixels and a quad still batched, the wobble and a
+quad after it, reads the screen once at the end and compares every pixel with the table applied to
+the picture (the batched quad going into the picture's pass, and once into a pass of its own after
+one into another target), without and with multisampling, and the wobble again at another window
+size, its rows filled only when the device asks and not for a wobble it cannot draw; draws a 15 by 9
+target of distinct texels as a composited window's quad draws it (its place and size, texture
+coordinates from the first texel's centre) and finds every pixel its own texel, by the nearest texel
+and, as the client draws it, filtered linearly in the interface's mode (not compared on lavapipe,
+which mixes neighbours into that read, below); draws a composite's target as a texture, copied and
+blended; copies between targets and not into a texture, and the fade's save and restore through a
+render target; and checks that the hidden window is not claimed. Under SDL's offscreen video driver
+(the test `gfx_gpu_present`) it shows the window, which that driver shows nowhere, and checks that
+it is claimed and presented into, hidden again keeps its claim and frames go on being drawn and
+read; where that driver makes no swapchain (a Vulkan without `VK_EXT_headless_surface`, as NVIDIA's
+on Windows), SDL's own claim must fail too, and the test says it did not present.
+`test_surface_lifecycle` makes, numbers and frees render-target textures and fails each step, and
+runs `render_quads_to_texture`: a window's target made at its size, kept at the same size, made
+again at a new one before the old goes, kept where the device or the memory fails and for an empty
+size, the screen set back and its reference given back, nothing drawn without a screen or a target,
+the quads drawn in order with their textures. `test_c3d_device` (new) runs `c3ddevice.c` over a
+device that records what it is asked: the fade's frame kept in a target made at the first save, used
+again while the size stays, made again after a resize, none where the device makes none, a restore
+without a saved frame copying nothing; the start at the window's client size with the screen's
+channel shifts, closed again when a step fails; the frame presented only with a screen.
+`test_frame_extras` (new) runs `cframe.c`'s wobble: none without effects, frames, a mode that moves
+rows or rows to move; otherwise the rows, the random numbers drawn, the amplitude and the frames of
+`wobble_frame` from the same seed, and nothing drawn or advanced where the device cannot draw the
+wobble. `test_jpeg_capture` takes the screenshot from a downloaded frame of the screen's rectangle,
+which is 32-bit (the 16-bit frames of the lock went with it), and fails each step;
+`test_window_quad` expects half-texel coordinates, and `test_draw_modes` loses the probe.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio, phase 3's scene harness and
+this one's run one after the other. A new scene, `screen_wobble`, sends the status to the player in
+Prontera and captures the eight frames of the wobble and the one after; the composited menu icon
+window shows in every scene of the set but `keyboard`, `windows_open` and `window_resize`, where
+other windows cover its place.
+
+- The scene set, `window_resize`, `screen_wobble`, the hill scenes and the gate scene are phase 3's
+  to the pixel (26 captures and 16 shadow views), and so are all of them with `RAGEXE_MSAA=4`; the
+  counters are the same in every capture (draws, calls, primitives, modes, binds, vertex and texel
+  bytes).
+- Against the Direct3D 9 client of 02fc9e5e built with FreeType (`build/ref/freetype`), which runs
+  `screen_wobble`: the wobble's frames 2 to 8 are identical, frames 1 and 9 within one step in 2 and
+  3 pixels, and the rest of the set within one step as at phase 3 (`hangul_text` differs where that
+  client's text predates phase 3's fixes). Against the GDI client: the same text pixels as at phase
+  3 (3 to 16 a scene, 483 in `hangul_text`), and 0 to 4 pixels in each of the wobble's frames, where
+  rows moved them or moved others over them; the shadow views differ from the reference in the same
+  pixels as phase 3's.
+
+What changed in the work a frame does, by the code: a frame of the wobble submitted twice (the
+lock's flush and the present) and downloaded and uploaded most of the frame (5.8 MB each way at
+1600x900) and drew it back into the multisampled screen; it submits once now, and the GPU copies the
+frame and draws one triangle. At startup the probe's 65,536 quads, its submits and its downloads go.
+A capture or screenshot is still a submit and a download, without the copy of the frame into the
+lock's buffer and the comparison at unlock. The scene captures' `present_ms` is not comparable
+across the change: the wobble's lock had submitted and waited for the frame's work outside it.
+
+Linux, in WSL (Ubuntu 24.04) with Mesa's lavapipe: the CMake client and the scene harness build,
+`test_screen_wobble`, `test_draw_modes`, `test_vertex_fog` and `test_texel_convert` pass, and so
+does `test_gfx_gpu` without and with multisampling, under the offscreen video driver, which gives a
+shown window a headless swapchain there: the window is claimed when shown and presented into. Its
+read of a composited window's target filtered linearly is not compared there, for the reason below.
+The harness hides its window there too and runs without a swapchain. Against phase 3's Linux
+harness, run one after the other, its captures of the scene set, `window_resize` and `screen_wobble`
+have the same counters, and those that do not show the composited menu window (`keyboard`,
+`windows_open`, `window_resize`) are the same to the pixel; in the others the window differs in
+8,800 to 11,000 pixels by up to 47. Lavapipe's anisotropic filtering mixes neighbouring texels into
+a read of one texel per pixel when the coordinates are a render target's, which the device scales to
+the target's part of a texture a texel wider and taller (`MARGIN`), and not when they are a
+power-of-two texture's: a 40 by 30 target read so in the interface's mode differs from its texels in
+944 of its 1,200 pixels, by up to 32, and a 64 by 32 texture in none; NVIDIA's driver reads the
+texel alone in both. Lavapipe's window differed from the Windows captures before as well: in
+`iz_int03_enter` phase 3's in 9,285 of the window's pixels and this one's in 12,061, by up to 106.
+
+`build.bat check` passes (the include check over 1,828 files in 29 libraries, the link check over
+1,144 objects, the shaders' check), and so does the whole suite (`tests\build.bat`: 324 tests, and
+the 6 oracle tests). Not run or not checked: Android and macOS, which were not built, and the MSL of
+the new shader, which no Metal compiler has seen; the wobble, the fade and a screenshot in a game
+played by hand (the screenshot was taken by the harness, the fade not at all); fullscreen; a
+composited window resized; the claim of a window minimized before the first frame and the retry of a
+claim that failed, which no headless run can bring about (SDL's offscreen driver does not minimize,
+and on Windows with NVIDIA it makes no swapchain), and claiming and presenting into a window on
+Windows at all: the client's own window was not shown, and the claim and the present ran only on
+lavapipe's headless swapchain.

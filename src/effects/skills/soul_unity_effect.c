@@ -181,8 +181,8 @@ void soul_unity_effect_render_particle(struct Particle *p)
     tex = p->texture;
     w = (float)TEXTURE_WIDTH(tex);
     h = (float)TEXTURE_HEIGHT(tex);
-    particle_render(p, 1, ((float)(double)TEXTURE_IMAGE_HEIGHT(tex) + g_texelOffsetV) / h, g_texelOffsetV / h,
-                      g_texelOffsetU / w, ((float)(double)TEXTURE_IMAGE_WIDTH(tex) + g_texelOffsetU) / w, 1);
+    particle_render(p, 1, ((float)(double)TEXTURE_IMAGE_HEIGHT(tex) + TEXEL_CENTRE) / h, TEXEL_CENTRE / h,
+                      TEXEL_CENTRE / w, ((float)(double)TEXTURE_IMAGE_WIDTH(tex) + TEXEL_CENTRE) / w, 1);
 }
 
 void soul_unity_effect_render(struct Effect *effect)

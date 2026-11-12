@@ -12,7 +12,6 @@ enum perf_phase {
     PERF_DESTROY,
     PERF_ENDSCENE,
     PERF_OVERLAY,
-    PERF_TARGETLOCK,
     PERF_PRESENT,
     PERF_TEXT,
     PERF_TEXLOCK,
@@ -66,7 +65,6 @@ struct perf_counters {
     int64_t viewRenderNs;
     int64_t presentNs;
     unsigned locks;
-    unsigned targetLocks;
     unsigned texCreated;
     unsigned surfCreated;
     unsigned blits;

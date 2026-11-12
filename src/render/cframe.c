@@ -1,22 +1,37 @@
-#include "render/texture_cache.h"
-#include "resources/bitmap_types.h"
-#include "session/state.h"
-#include "game/context.h"
-#define _CRT_SECURE_NO_WARNINGS
 #include "render/render_api.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "platform/language.h"
+#include "render/screen_wobble.h"
 #include "session/session_names.h"
-
-#ifdef _WIN32
-#pragma comment(lib, "winmm.lib")
-#endif
+#include <stdlib.h>
 
 int   g_wobbleFramesLeft;
 BYTE  g_wobbleMode;
 short g_wobbleAmplitude;
+
+/* the wobble's random numbers: the C runtime's, which the rest of the game draws from too */
+static int wobble_rand(void *context)
+{
+    (void)context;
+    return rand();
+}
+
+struct WobbleRows {
+    struct WobbleRow *rows;
+    int height;
+};
+
+/* One frame of the wobble over the renderer's rows, advancing its globals: called by the device
+   only once it can draw the wobble, so that a frame it cannot draw it on draws no random numbers
+   and advances nothing, as the original's frame that did not lock. */
+static void wobble_rows(void *context)
+{
+    struct WobbleRows *w = context;
+    struct Wobble wobble;
+    wobble.framesLeft = g_wobbleFramesLeft;
+    wobble.amplitude = g_wobbleAmplitude;
+    wobble_frame(&wobble, w->height, g_wobbleMode, wobble_rand, NULL, w->rows);
+    g_wobbleFramesLeft = wobble.framesLeft;
+    g_wobbleAmplitude = wobble.amplitude;
+}
 
 void renderer_draw_frame_extras(struct Renderer *self)
 {
@@ -29,39 +44,15 @@ void renderer_draw_frame_extras(struct Renderer *self)
     }
     if (session_get_battlefield_state(&g_session1) == 1)
         renderer_draw_battle_field_icon(self);
-    if (g_session1.effectOn != 0 && g_wobbleFramesLeft > 0 && g_wobbleMode != 2 && renderer_lock_target(self)) {
-        LONG pitch = self->targetPitch;
-        BYTE *buf = (BYTE *)malloc(pitch);
-        short amp = g_wobbleAmplitude;
-        int y;
-        if (amp < 2)
-            g_wobbleAmplitude = amp = 2;
-        for (y = self->height - 1; y >= 0; y--) {
-            BYTE *row = (BYTE *)self->targetBits + y * pitch;
-            int period = amp <= 10 ? amp : 20 - amp;
-            if (y == self->height - 1)
-                memcpy(buf, row, pitch);
-            if (y % (BYTE)period == 0) {
-                memcpy(buf, row, pitch);
-            } else {
-                int shift = (rand() % 8) << 4;
-                if (g_wobbleMode == 0)
-                    memcpy(row, buf, pitch);
-                else if (g_wobbleMode == 1)
-                    memcpy(row + shift, buf, pitch - shift);
-            }
-            amp = g_wobbleAmplitude;
+    if (g_session1.effectOn != 0 && g_wobbleFramesLeft > 0 && g_wobbleMode != 2) {
+        /* custom: the frame drawn so far is drawn again by the device with its rows moved
+           (render/screen_wobble.h), where the original locked the frame and moved them on the CPU */
+        struct WobbleRows w;
+        w.height = self->height;
+        w.rows = self->height > 0 ? malloc((size_t)self->height * sizeof *w.rows) : NULL;
+        if (w.rows) {
+            gfx_wobble(w.rows, w.height, wobble_rows, &w);
+            free(w.rows);
         }
-        amp = (short)(amp + 2);
-        g_wobbleAmplitude = amp;
-        if (amp < 2) {
-            g_wobbleAmplitude = 2;
-        } else if (amp > 16) {
-            g_wobbleFramesLeft = g_wobbleFramesLeft - 1 < 0 ? 0 : g_wobbleFramesLeft - 1;
-            g_wobbleAmplitude = 2;
-        }
-        free(buf);
-        gfx_unlock(g_3dDevice.target);
     }
 }
-

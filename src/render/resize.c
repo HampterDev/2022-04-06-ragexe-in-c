@@ -98,14 +98,13 @@ static int fit_device(struct C3dDevice *d)
         failed.pending = 0;
         return 1;
     }
-    if (gfx_resize(d, client.right, client.bottom) != 0) {
+    if (gfx_resize(client.right, client.bottom) != 0) {
         failed.pending = 1;
         failed.width = client.right;
         failed.height = client.bottom;
         return 0;
     }
     failed.pending = 0;
-    d->rcWindow = client;
     d->width = client.right;
     d->height = client.bottom;
     if (r) {

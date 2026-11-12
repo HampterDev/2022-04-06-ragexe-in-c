@@ -36,7 +36,6 @@ enum DrawMode {
     /* the rest */
     DRAW_COMPOSITE,         /* interface quads into a window's texture (render/render_clients.c) */
     DRAW_PANEL,             /* the frame-time overlay (diag/perf.c): its texture as it is, blended */
-    DRAW_PROBE,             /* the texel-offset probe (render/c3ddevice.c) */
     DRAW_BLIT,              /* a rectangle of a surface copied into a target (render/gfx_gpu.c) */
     DRAW_CLEAR,             /* a rectangle of a target cleared to the vertex colour and a depth */
     DRAW_CLEAR_COLOUR,      /* a rectangle of a target cleared to the vertex colour, its depth kept */
@@ -88,9 +87,8 @@ enum DrawCombine {
 #define DRAW_BLEND_OFF             0
 #define DRAW_BLEND_FROM_DRAW       0xff
 
-/* The factors a GPU blends with: those of targets without alpha of their own, as the screen and
-   its copy were (X8R8G8B8 under Direct3D 9), into which the modes that blend by a destination's
-   alpha draw. */
+/* The factors a GPU blends with: those of a target without alpha of its own, as the screen was
+   (X8R8G8B8 under Direct3D 9), into which the modes that blend by a destination's alpha draw. */
 enum DrawFactor {
     DRAW_FACTOR_ZERO,
     DRAW_FACTOR_ONE,
@@ -133,12 +131,11 @@ enum DrawFilter {
     DRAW_FILTER_POINT
 };
 
-/* What a mode is drawn into, and with: the screen and its copy, a render target's texture, and
-   meshes (render/gfx.h, gfx_draw_mesh) as well as quads, into the screen. */
+/* What a mode is drawn into, and with: the screen, a render target's texture, and meshes
+   (render/gfx.h, gfx_draw_mesh) as well as quads, into the screen. */
 #define DRAW_INTO_SCREEN  1
-#define DRAW_INTO_COPY    2
-#define DRAW_INTO_TEXTURE 4
-#define DRAW_MESHES       8
+#define DRAW_INTO_TEXTURE 2
+#define DRAW_MESHES       4
 
 struct DrawModeDesc {
     unsigned char combine;      /* enum DrawCombine, or DRAW_COMBINE_FROM_DRAW */

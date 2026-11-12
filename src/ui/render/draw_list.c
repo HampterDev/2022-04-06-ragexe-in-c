@@ -67,12 +67,12 @@ void ui_window_queue_bitmap(struct UIWindow *self, int x, int y, struct String n
         tw = (float)tex->base.width;
         th = (float)tex->base.height;
         quad_place(quad, (float)x, (float)y, (float)(x + width), (float)(y + height));
-        u1 = ((float)(width > image_w ? image_w : width) + g_texelOffsetU) / tw;
+        u1 = ((float)(width > image_w ? image_w : width) + TEXEL_CENTRE) / tw;
         if (height > image_h)
-            v1 = ((float)image_h + g_texelOffsetV) / th;
+            v1 = ((float)image_h + TEXEL_CENTRE) / th;
         else
-            v1 = ((float)height + g_texelOffsetU) / th;
-        quad_map(quad, g_texelOffsetU / tw, g_texelOffsetV / th, u1, v1);
+            v1 = ((float)height + TEXEL_CENTRE) / th;
+        quad_map(quad, TEXEL_CENTRE / tw, TEXEL_CENTRE / th, u1, v1);
         quad_finish(quad, argb);
         list_push_back(&self->draws, &quad, sizeof quad);
     }
@@ -93,8 +93,8 @@ void ui_window_queue_bitmap_bottom(struct UIWindow *self, int x, int y, struct S
         top = image_h - height;
         quad->base.texture = tex;
         quad_place(quad, (float)x, (float)y, (float)(x + image_w), (float)(y + height));
-        quad_map(quad, g_texelOffsetU / tw, ((float)top + g_texelOffsetV) / th, ((float)image_w + g_texelOffsetU) / tw,
-                 ((float)image_h + g_texelOffsetV) / th);
+        quad_map(quad, TEXEL_CENTRE / tw, ((float)top + TEXEL_CENTRE) / th, ((float)image_w + TEXEL_CENTRE) / tw,
+                 ((float)image_h + TEXEL_CENTRE) / th);
         quad_finish(quad, argb);
         list_push_back(&self->draws, &quad, sizeof quad);
     }

@@ -1,5 +1,5 @@
 /* Generated from quad.hlsl by tools/shaders (tools/shaders/build.bat); do not edit.
-   source 1ff7165e3238e93c
+   source be62703ea91c6518
    tool c084cc6aba648d8e
    tools: dxc dxcompiler.dll: 1.10 - 1.8.0.5123 (3f85295cf); dxil.dll: 1.8(1.8.2502.11); SPIRV-Cross C API 0.67.0 (Vulkan SDK 1.4.335.0)
    flags: -spirv -fspv-target-env=vulkan1.0 -fspv-entrypoint-name=main -O3 -Zpr -WX; MSL 2.1

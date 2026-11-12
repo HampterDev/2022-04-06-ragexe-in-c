@@ -54,8 +54,6 @@ void dc_bitmap_copy_bitmap(struct DcBitmap * arg0, unsigned int arg1, unsigned i
 void fatal_error(const char * arg0) { abort(); }
 struct Renderer * g_renderer;
 struct ResMgr * g_resMgr(void) { abort(); }
-float g_texelOffsetU;
-float g_texelOffsetV;
 struct UIWindowMgr g_windowMgr;
 void * mem_alloc(size_t arg0) { abort(); }
 void mem_free(void * arg0) { abort(); }

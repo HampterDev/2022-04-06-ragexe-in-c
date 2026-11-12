@@ -11,7 +11,7 @@ without a server or a login and capture the frame as a PNG. It builds on Linux, 
 | `src/platform/settings_*.c` | `scene_settings.c`   | an empty settings store in memory: the registry and `client_settings.ini` are neither read nor written |
 | `src/core/drive_state.c`    | `scene_driver.c`     | runs the scene script, answers the map server packets, captures  |
 | (C library `rand`, POSIX)   | `scene_rand.c`       | the Microsoft runtime's generator, the one the Windows client uses |
-| `src/core/app_sdl.c` (Windows, macOS) | `scene_app_hidden.c` | the window is never shown: the GPU device draws for it hidden, so a run never takes the focus or the mouse or covers the screen |
+| `src/core/app_sdl.c`        | `scene_app_hidden.c` | the window is never shown, so the GPU device makes no swapchain for it and a run never takes the focus or the mouse or covers the screen |
 | `src/platform/window_sdl.c` (Windows) | `scene_window_win.c` | a message box is written to stdout instead of waiting for a click |
 | `src/ui/misc/crash_dialog.c` (Windows) | `scene_crash_win.c` | a crash report goes to stderr and the run ends, instead of a dialog waiting for a click |
 
@@ -49,11 +49,15 @@ cd <game dir>
 RAGEXE_SCENE=<repo>/tests/scenes/scripts/prontera_crowd.lua RAGEXE_SCENE_OUT=/tmp/out <build>/ragexe_scenes
 ```
 
-On Linux the harness defaults to `SDL_VIDEODRIVER=offscreen` (no window: SDL's Vulkan driver draws
-for a headless surface); set it to watch a scene. On Windows and macOS the client's window is never
-shown: SDL's Metal driver needs a window's view, which the offscreen driver does not give. The
-captures need no swapchain: a device that cannot present to the window draws and captures all the
-same (not yet tried on a Mac). Captures are silent on every platform: `run.py` gives the client
+The client's window is never shown, on any platform, and the GPU device claims a window, and makes
+a swapchain for it, only once it is shown, so a scene run has no swapchain: its frames are drawn
+and each capture downloads the frame just shown (`gfx_read_frame`). SDL's GPU drivers need no
+window, only a video driver that can make what a window would be presented through: Vulkan
+surfaces for its Vulkan driver (the offscreen driver's too), Metal views for its Metal driver
+(Cocoa's and UIKit's). On Linux the harness defaults to `SDL_VIDEODRIVER=offscreen`, so that nothing
+reaches the desktop and a build without X11 and Wayland runs it; on Windows and macOS it keeps the
+platform's driver (on macOS the one SDL's Metal driver runs with), with the window hidden. A Mac
+has not run it yet. Captures are silent on every platform: `run.py` gives the client
 `SDL_AUDIO_DRIVER=dummy` unless `SDL_AUDIO_DRIVER` or `SDL_AUDIODRIVER` is set, and the harness
 itself sets `SDL_AUDIODRIVER=dummy` when it is not. Every platform gets `RAGEXE_VSYNC=0`.
 `RAGEXE_SCENE_TRACE=1` logs the packets the client sends and the mode changes.
@@ -105,7 +109,7 @@ scene.capture("poring_hello")            -- <out>/poring_hello.png
 | `text(s)` | characters, typed as a keyboard types them: each letter, digit or space with its key down before it and up after, since the window manager decides on the key whether characters go to the chat line |
 | `open(id)` | opens a UI window by its window id |
 | `resize(w, h)` | the windowed client area becomes `w`×`h` pixels, as when the player drags the window's frame, no smaller than 1024×664; the game follows on the next frame |
-| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
+| `capture(name[, {w, h, x, y, jpeg}])` | writes `<out>/<name>.png`: the frame just shown, downloaded from the GPU, or a `w`×`h` part of it at `x, y` (default centred); with `jpeg = quality`, `<out>/<name>.jpg`. Beside it, `<out>/<name>.counters.json` (see [Counters](#counters)) |
 | `effects()` | the IDs of the effects attached to the player, and the number of objects in the world's object list |
 | `frame()`, `mode()` | the frame number; `"login"` or `"game"` |
 | `fail(message)` | marks the scene failed and goes on |
