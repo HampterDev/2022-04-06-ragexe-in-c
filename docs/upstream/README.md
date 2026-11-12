@@ -382,3 +382,16 @@ the five pictures.
 | Foundation commit | Custom | Change |
 | --- | --- | --- |
 | [9775c52229](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/9775c52229cd3d735d3eb83b3e89e85d25c90717) | [239d464715](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/239d464715d3b874c8ca106d587a54804a7db4da) (adapted) | The canvas's scaled draw locks its texture as the original does |
+
+## Foundation fixes from the GPU water work, 2026-11-12
+
+The water quad (`0x6583c0`) truncates its wave angle to whole degrees with `cvttss2si`, which
+gives INT_MIN for every angle beyond the int range. `ground_water_height` wrapped such an angle
+into one turn with `fmod` instead. It was found while the water's waves moved into a vertex
+shader for the GPU renderer. The fix was made on `main`, which had not been pushed yet, and
+picked with `git cherry-pick -x`. `custom`'s sine lookup still adds a full turn to a negative
+angle (ea40abe7 above), so INT_MIN degrees read its table at 232, where the original reads 233.
+
+| Foundation commit | Custom | Change |
+| --- | --- | --- |
+| [6409b13567](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/6409b13567077ced97b7074c4fa2459bdea8356b) | [03de396147](https://github.com/HampterDev/2022-04-06-ragexe-in-c/commit/03de396147483cd17cf5132f3c2e370822fda696) | The water's wave angle becomes degrees as x86's truncation makes it |
