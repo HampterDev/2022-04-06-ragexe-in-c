@@ -52,7 +52,7 @@ void dc_bitmap_draw_texels(struct DcBitmap *self, int x, int y, struct Texture *
     int pitch2, r, i, col;
     if (!tex || !self->bits || !tex->base.surface)
         return;
-    if (gfx_lock(tex->base.surface, NULL, 0, &lk) < 0)
+    if (gfx_lock(tex->base.surface, NULL, &lk) < 0)
         return;
     src = (const WORD *)lk.bits;
     pitch2 = lk.pitch / 2;
@@ -111,7 +111,7 @@ void dc_bitmap_draw_texels_scaled(struct DcBitmap *self, int dx0, int dy0, int d
     format = tex->format;
     if (!surf)
         return;
-    if (gfx_lock(surf, NULL, GFX_LOCK_UNSIZED, &lk) < 0)
+    if (gfx_lock(surf, NULL, &lk) < 0)
         return;
     pitch2 = lk.pitch / 2;
     srcRow = (const WORD *)lk.bits + pitch2 * sy + sx;

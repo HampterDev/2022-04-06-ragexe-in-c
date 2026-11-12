@@ -59,9 +59,9 @@ static char texture;
 int gfx_texture_format_ok(int fmt) { (void)fmt; return 1; }
 gfx_surface *gfx_create_texture(int w, int h, int fmt) { (void)w; (void)h; (void)fmt; return (gfx_surface *)&texture; }
 void gfx_release(gfx_surface *s) { (void)s; }
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
 {
-    (void)s; (void)r; (void)flags;
+    (void)s; (void)r;
     out->bits = pixels;
     out->pitch = 1024 * 4;
     out->width = 1024;

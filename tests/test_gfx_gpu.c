@@ -77,7 +77,7 @@ static void fill_2x2(gfx_surface *t, int fmt, const DWORD argb[4])
 {
     struct gfx_lock lk;
     int i;
-    assert(gfx_lock(t, NULL, 0, &lk) == 0);
+    assert(gfx_lock(t, NULL, &lk) == 0);
     for (i = 0; i < 4; i++) {
         BYTE *p = (BYTE *)lk.bits + (i / 2) * lk.pitch + (i % 2) * (lk.bpp / 8);
         DWORD c = argb[i], a = c >> 24, r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
@@ -342,7 +342,7 @@ static void check_read_frame(struct C3dDevice *d)
             assert((part[y * 10 + x] & 0xffffff) == (x == 9 && y == 3 ? 0x654321u : 0x0000ffu));
     read_screen(d, all);
     assert(all[13 * W + 29] == 0x654321 && all[13 * W + 28] == 0x0000ff && all[W + 1] == 0x0000ff);
-    assert(gfx_lock(d->target, NULL, 0, &lk) < 0);
+    assert(gfx_lock(d->target, NULL, &lk) < 0);
 }
 
 /* A clear of a rectangle after draws in the same pass, of the colour and of the depth alone. */
@@ -388,7 +388,7 @@ static void check_mipmaps(struct C3dDevice *d)
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
     for (pass = 0; pass < 2; pass++) {
         DWORD dark = pass ? 0xff0000ffu : 0xff000000u;
-        assert(gfx_lock(t, NULL, 0, &lk) == 0);
+        assert(gfx_lock(t, NULL, &lk) == 0);
         for (y = 0; y < 8; y++)
             for (x = 0; x < 8; x++) {
                 DWORD c = (x + y) & 1 ? 0xffffffffu : dark;
@@ -1162,7 +1162,7 @@ static void check_wobble(struct C3dDevice *d)
     gfx_surface *sys = gfx_create_surface(W, H), *other = gfx_create_render_target(4, 4);
     struct gfx_lock lk;
     int x, y, round;
-    assert(sys && other && gfx_lock(sys, NULL, 0, &lk) == 0);
+    assert(sys && other && gfx_lock(sys, NULL, &lk) == 0);
     for (y = 0; y < H; y++)
         for (x = 0; x < W; x++) {
             DWORD c = wobble_pattern(x, y);
@@ -1194,7 +1194,7 @@ static int check_window_target(struct C3dDevice *d)
     struct gfx_lock lk;
     struct Vertex v[4];
     int x, y, i, pass;
-    assert(rt && sys && gfx_lock(sys, NULL, 0, &lk) == 0);
+    assert(rt && sys && gfx_lock(sys, NULL, &lk) == 0);
     for (y = 0; y < TH; y++)
         for (x = 0; x < TW; x++) {
             DWORD c = 0xff000000u | (DWORD)(x * 17 + 1) << 16 | (DWORD)(y * 29 + 3) << 8 | (DWORD)((x * y * 5 + 7) & 0xff);
@@ -1430,7 +1430,7 @@ int main(int argc, char **argv)
     check_modes_counted();
 
     sys = gfx_create_surface(8, 8);
-    assert(sys && gfx_lock(sys, NULL, 0, &lk) == 0);
+    assert(sys && gfx_lock(sys, NULL, &lk) == 0);
     for (y = 0; y < 8; y++)
         for (x = 0; x < 8; x++) {
             DWORD c = y < 4 ? 0x00ffff00 : 0x00ff00ff;

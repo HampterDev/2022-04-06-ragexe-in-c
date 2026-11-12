@@ -3020,12 +3020,10 @@ int gfx_get_size(gfx_surface *s, int *w, int *h)
 
 /* A rectangle of a texture's or a system surface's CPU pixels, the whole of them without one; a
    target has none. A rectangle that is empty or reaches outside the surface locks nothing. */
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out)
 {
     RECT rect;
     int bytes;
-    if (flags & GFX_LOCK_UNSIZED)
-        return -1;
     perf_count_shared(&g_perf.locks, 1);
     whole_rect(&rect, s);
     if (r) {

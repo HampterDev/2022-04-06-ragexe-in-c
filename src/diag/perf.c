@@ -257,7 +257,7 @@ static int upload(void)
         if (!P.tex)
             return 0;
     }
-    if (gfx_lock(P.tex, NULL, 0, &lk) < 0) {
+    if (gfx_lock(P.tex, NULL, &lk) < 0) {
         gfx_release(P.tex);
         P.tex = NULL;
         return 0;

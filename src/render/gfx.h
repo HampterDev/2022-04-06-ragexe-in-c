@@ -46,10 +46,6 @@ extern struct gfx_caps g_gfxCaps;
 #define GFX_CLEAR_TARGET  1
 #define GFX_CLEAR_ZBUFFER 2
 
-/* gfx_lock's one flag: a lock the original asked for without the surface's size, which failed, so
-   the lock fails as well */
-#define GFX_LOCK_UNSIZED   8
-
 /* custom: the cull mode of a mesh's draw (GfxMeshDraw): Direct3D 9's, which culls by the winding on
    the screen, y down: GFX_CULL_CW drops the clockwise triangles, GFX_CULL_CCW the others. */
 #define GFX_CULL_NONE         1
@@ -85,7 +81,7 @@ void gfx_release(gfx_surface *s);
 int gfx_get_size(gfx_surface *s, int *w, int *h);
 /* custom: the CPU's pixels of a texture or a system surface, a rectangle of them or all; a render
    target has none (-1), its pixels stay on the GPU. */
-int gfx_lock(gfx_surface *s, const RECT *r, int flags, struct gfx_lock *out);
+int gfx_lock(gfx_surface *s, const RECT *r, struct gfx_lock *out);
 int gfx_unlock(gfx_surface *s);
 /* custom: a copy from a render target goes into a render target, on the GPU; into a texture or a
    system surface it is refused (-1). */

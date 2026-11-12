@@ -15285,8 +15285,7 @@ target is gone or done on the GPU.
   capabilities `zbufferless` (always 0, so the branch that skipped the depth buffer never ran) and
   `bltStretch`; `gfx_blit`'s flags, which it ignored, with the fade's retry of the same copy
   (`GFX_BLT_ASYNC`, then `GFX_BLT_WAIT`); `gfx_lock`'s flags `GFX_LOCK_WAIT` and
-  `GFX_LOCK_WRITEONLY`, which it ignored (`GFX_LOCK_UNSIZED` stays: the original's lock without the
-  surface's size failed, and so does this one); `#pragma comment(lib, "winmm.lib")` in `cframe.c` and
+  `GFX_LOCK_WRITEONLY`, which it ignored; `#pragma comment(lib, "winmm.lib")` in `cframe.c` and
   `csurface.c`, which call nothing of it (`build.bat` links it); and the unused parameters of
   `gfx_get_caps`, `gfx_present` and `gfx_resize`.
 

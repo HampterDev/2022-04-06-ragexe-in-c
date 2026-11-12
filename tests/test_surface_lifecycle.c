@@ -64,10 +64,9 @@ void gfx_release(gfx_surface *surface)
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
 int gfx_get_size(gfx_surface *surface, int *w, int *h)
 { assert(surface && surface->live); if (fail_size) return -1; *w = surface->width; *h = surface->height; return 0; }
-int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock *out)
+int gfx_lock(gfx_surface *surface, const RECT *rect, struct gfx_lock *out)
 {
     unsigned bytes;
-    (void)flags;
     ++locks;
     if (fail_lock) return -1;
     assert(surface && surface->live);
