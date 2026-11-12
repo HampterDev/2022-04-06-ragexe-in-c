@@ -52,21 +52,14 @@ static void test_quaternions_and_degrees(void)
 
 static void test_picking(void)
 {
-    struct OrientedBox box = {
-        { 1, 1, 1 }, { 0, 0, 0 }, { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } }
-    };
     struct Ray3 ray = { { 0, 0, -5 }, { 0, 0, 1 }, 10 };
     struct Vec3 a = { -1, -1, 0 }, b = { 1, -1, 0 }, c = { 0, 1, 0 };
     float u, v, t;
-    assert(ray_hits_obb(&ray, &box));
     assert(ray_triangle_hit(&ray, &a, &b, &c, &u, &v, &t));
     near_value(t, 5.0f);
     near_value(u, 0.25f);
     near_value(v, 0.5f);
-    ray.length = 3;
-    assert(!ray_hits_obb(&ray, &box));
     ray.origin.x = 5;
-    assert(!ray_hits_obb(&ray, &box));
     assert(!ray_triangle_hit(&ray, &a, &b, &c, &u, &v, &t));
 }
 

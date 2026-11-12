@@ -8,6 +8,7 @@
    which SDL_GPUShaderCreateInfo wants counted. */
 #define GPU_SHADER_VERTEX 0
 #define GPU_SHADER_FRAGMENT 1
+#define GPU_SHADER_COMPUTE 2
 
 struct GpuShaderCode {
     const unsigned char *spirv;
@@ -16,6 +17,14 @@ struct GpuShaderCode {
     size_t mslSize;
     int stage;
     unsigned samplers, storageTextures, storageBuffers, uniformBuffers;
+};
+
+/* A compute shader, for SDL_GPUComputePipelineCreateInfo: its code's storage textures and buffers
+   are the read-only ones. */
+struct GpuComputeCode {
+    struct GpuShaderCode code;
+    unsigned readwriteStorageTextures, readwriteStorageBuffers;
+    unsigned threads[3];
 };
 
 #endif

@@ -33,42 +33,9 @@ enum { CURSOR_NORMAL = 0, CURSOR_SKILL_TARGET = 0xa, CURSOR_NO_WALK = 0xd };
 
 enum { ACTORMSG_RELEASE = 0xf };
 
-#include "world/ray_picker.h"
 #include "ui/character/popup_menu.h"
 #include "platform/clock.h"
 #include "platform/window.h"
-
-void game_mode_cast_player_ray(struct GameMode *self)
-{
-    struct RayPicker blocks;
-    struct Ray3 to_player;
-    struct Ray3 ray;
-    Vec3 eye;
-    size_t index;
-    struct SceneGraphNode *block;
-    struct GameActor *player;
-    size_t object_index;
-    int sx, sy;
-
-    if (self->world == 0 || self->world->player == 0 || g_renderer == 0)
-        return;
-    player = (struct GameActor *)self->world->player;
-    sx = player->screen_x;
-    sy = (int)((float)player->screen_y - g_renderer->scaleY * 23.0f);
-    ray_picker_construct(&blocks);
-    eye = (Vec3){self->view->from[0], self->view->from[1], self->view->from[2]};
-    renderer_cursor_ray(g_renderer, sx, sy, &eye, self->view->invViewMatrix, &ray);
-    to_player = ray;
-    to_player.length = self->world->player->pos.y + self->view->distance - 16.0f;
-    ray_picker_pick_ray(&blocks, &ray, &self->world->root);
-    for (index = 0; index < blocks.count; ++index) {
-        block = blocks.hits[index];
-        for (object_index = 0; object_index < block->objects.count; ++object_index) {
-            struct C3dActor *object = block->objects.data[object_index];
-            c3d_actor_pick(object, &to_player);
-        }
-    }
-}
 
 static int pick_offsets_cursor(const struct GameMode *self, const struct PickInfo *pick)
 {
@@ -147,7 +114,6 @@ void game_mode_process_input(struct GameMode *self)
         }
     }
 
-    game_mode_cast_player_ray(self);
     if (self->player_dead == 0 && (self->npc_dialog_open == 0 || self->world->player->recharge_gage_wnd != 0)
         && taken == 0 && g_windowMgr.item_store_wnd == 0) {
         verdict = game_mode_process_ground_click(self, game_mode_process_actor_pick(self, verdict, pick));

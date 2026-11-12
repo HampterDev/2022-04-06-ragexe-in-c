@@ -15213,3 +15213,269 @@ Two fixes found while building parts of `plans/gpu-renderer.md`'s phases 5 and 6
   pixels as the x86_64 client's on the emulator before it, a screen with little float math).
 
 `build.bat check` and the whole suite (`tests\build.bat`: 320 tests, and the 6 oracle tests) pass.
+
+## The static world on the GPU (2026-11-12)
+
+The first half of phase 5 of `plans/gpu-renderer.md`: a map's ground and models stay on the GPU and
+are drawn from draw records that a compute pass culls, and so is its water. The shadows' fit and the
+casters' choice stay the CPU's until the second half.
+
+- **What the device keeps** (`render/gfx.h`, `gfx_world_*`; `render/gfx_gpu.c`). One vertex buffer
+  (`struct GfxMeshVertex`, 48 bytes), beside it a buffer of each vertex's record, and one index
+  buffer of 32-bit indices, so that a draw may start at any index on Metal; a mesh is placed behind
+  the others (`sw_layout_place`) with its own 16-bit indices, widened as they go up, and a base
+  vertex. The buffers grow by doubling (`sw_layout_grow`), what they held copied over. The textures
+  and lightmap pages lie in texture arrays (`sw_texture_place`): one size and one number of mipmap
+  levels each (a texture made while mipmaps were off has one level, one of its size made after a
+  chain), 256 layers at most (Vulkan's least `maxImageArrayLayers`), declared by the client as it
+  opens one (`gfx_world_array`), made with as many layers as the frame that first draws it has
+  placed (on a map's first frame all of the map's but the streamed models'), and made again with the
+  power of two at or above the layers placed where more come, its layers copied over, so that an
+  array never takes more than one begun with four layers and doubled took; each layer is filled from
+  its texture's own pixels and mipmapped with linear blits level by level, as
+  `SDL_GenerateMipmapsForGPUTexture` makes a texture's mipmaps on Vulkan. The meshes and textures go
+  up through a stream of their own (`world_stream`): a transfer buffer of 32 MB, or the largest
+  texture where that is larger, filled a batch at a time, the textures' pixels widened straight from
+  their surfaces, each batch in a command buffer of its own that is waited for before the next fills
+  the buffer; a map's first frame streams its meshes as they are placed, a buffer's worth at a time,
+  and its textures before the frame's own commands. The records (`struct SwRecord`, sorted as the
+  passes draw them, packed as the shaders read them by `render/world_layout.c`, the library
+  `world-layout`), the transform slots (`struct GfxWorldSlot`: a matrix, the parent's slot and, for
+  an animated node, the frame's matrix that takes its place), and the water's cells with the table
+  of sines go up when they change; the frame (`gfx_world_frame`: the camera, the frustum, the
+  animated slots' matrices, the texture-coordinate matrices and the waves) every frame, until the
+  frame is shown. The frame's own transfer buffer, which grows with what a frame stages, is made
+  again as small as the frames need once they have needed a quarter of it at most for 120 flushes,
+  and the staging memory given back.
+- **When the device's world is made again.** Its generation (`gfx_world_generation`) moves on when
+  the client clears it (a new map, or the models given up below), when the device is made again,
+  when the textures are reloaded (`texcache_reload_all`, from the graphics settings' Texture Detail
+  and Trilinear: every cached texture gets a new surface, of a new size or mipmap levels, which the
+  arrays' copies must follow), and when the stream or the frame's world buffers cannot be made; the
+  client then builds it again. After two such failures in a row the device takes nothing more of
+  the world until the client clears it, rather than stage all of it again every frame. Every draw
+  of the world is recorded with the generation and left out where the world was made again before
+  it went up, or where what it reads is not there (`world_drawable`); a frame whose own upload fails
+  stages the records, slots and cells again with the next.
+- **What the client gives it** (`world/world_gpu.c`, in the library `gamedata`). On the map's first
+  frame: each ground block of 32 by 32 cells as one mesh (`c3d_ground15_block_mesh`), its runs of
+  one texture and one lightmap page a record each of the ground's pass, in slot 0, the camera's view
+  as it is; the water's cells (`c3d_ground15_water_cells`): those with a top surface, a block of
+  water and a corner the wave can rise above; and each model the scene graph holds, each node one
+  mesh, its runs of one texture and one two-sidedness a record of the pass `renderer_add_prim`'s
+  flags sent its quads to, culled as the node's winding and the model's mirroring say, in a
+  transform slot of its own under its parent's, up to the model's slot. A node animates where it or
+  an ancestor has more than one key in a channel, whatever the model's `animType` says when it is
+  built: a skill's trap is built still and set going when it fires (`effects/skills/skill_msg.c`).
+  Streamed models are appended as the scene graph takes them; a model of a skill (a trap,
+  `effects/skills/skill.c`) when the frame's walk first meets it, its records dead once it is given
+  up (`world_gpu_forget`: nothing of it is read again), and the world built again once the dead
+  vertices pass 2^20. A model in no leaf of the scene graph gets nothing, as nothing drew it; a part
+  that does not fit (a chain of more than 64 slots, more slots, arrays or elements than the buffers
+  take) is left out. The records built since the last are sorted among themselves and merged into
+  the live ones, the same order a sort of them all gives (`sw_record_before`), and the device gets
+  them all again: on `prontera` (3,137 records) a model given up costs 0.04 ms to send, against 0.6
+  ms to sort them all afresh, and 0.02 ms to pack for the device; on `rag_fes` (4,246 records) 0.054
+  ms against 0.83 ms, and 0.038 ms; the device then stages them all again, about 64 bytes a record.
+  A model that appears is built and sent with its frame in 0.19 ms on `prontera` and 0.9 ms on
+  `rag_fes`.
+- **Each frame.** `world_gpu_begin` builds what is new and takes the frame's view and frustum. The
+  walk of the scene graph's leaves the view reaches ticks the models as before; a model it draws
+  (`world_gpu_seen`) or whose shadow it casts (`world_gpu_cast_actor`) gives the device its pose the
+  first time in the frame: the matrices of its animated nodes and its texture-coordinate animations
+  as its first tick of the frame left them, as the CPU drew its triangles then (a model in several
+  leaves the view holds is ticked once for each, and the clock may move between). A model it draws
+  queues its alpha-blended records the view keeps, in the order of its nodes and their runs, keyed
+  by the rhw of their first corner through the node's view as the CPU projected it, to the bit. At
+  the walk's end (`world_gpu_frame`) every other model gives its pose as it stands; one that
+  animates and holds a record the view keeps (`sw_record_in_view`, the GPU's own test) is ticked
+  first, as the walk ticks a model it reaches, so that no part moves into view standing still in a
+  pose the frame did not tick (a model whose moving part leaves its box, which places it in the
+  scene graph's leaves); and its alpha-blended records the view keeps are queued. A compute pass
+  then computes each slot's view and its place in the world as the CPU computed a node's matrix,
+  `mat_multiply(node, mat_multiply(parent, ... mat_multiply(model, view)))`, and the clip-space
+  matrix the vertex shader takes, to the bit (`world_transform.hlsl`); a second culls the records
+  against the view's frustum as `sw_record_in_view` does, to the bit, an animated record's bounds
+  moved by its slot's place: a group of 64 threads takes each run of records with one texture array,
+  lightmap array and cull mode, keeps those in view, gives each its place in the frame's index
+  buffer of them, one after the other in the records' order, and writes the run's one indexed
+  indirect draw (`world_cull.hlsl`); a third, a group of 64 threads to each 64 indices of a record
+  of those runs (`struct WlChunk`, fixed with the records), copies them to the record's place where
+  it is kept, the base vertex added, and leaves at once where it is not (`world_compact.hlsl`). The
+  renderer draws the models' opaque passes before the opaque lists' quads and the ground after them,
+  one indirect call of one command a run (`gfx_world_draw`). The vertex shader (`world.hlsl`) finds
+  its record by the number its vertex carries, since the device asks Vulkan for no
+  `drawIndirectFirstInstance`.
+- **What the CPU still does.** The leaves of the scene graph the view reaches are still walked: for
+  the models' ticks and the poses and alpha-blended records taken from them, for the shadow
+  casters, which are still chosen as before and drawn from the records (`world_gpu_cast_actor`,
+  `c3d_ground15_cast`, `gfx_world_cast`), for the actors, and for the water, whose cells in view
+  are each keyed among the sprites as their quads were, by the rhw of the first corner at the wave
+  before the cell's (`c3d_ground15_leaf`). The cells that follow one another in a list with one
+  texture and colour are drawn as one instanced draw (`gfx_world_draw_water`), and the vertex
+  shader builds each cell's quad as the CPU built it each frame, to the bit (`water.hlsli`): the
+  three waves from the table of sines by whole degree, the test of the cell's ground against the
+  wave, the corners in front of the eye, the first triangle facing the screen, and the fog by the
+  rhw of each corner. `GndCell.water`, where the CPU kept a cell's corners and heights, is the
+  cell's number among the water's cells.
+- **Order.** The records are sorted by pass, then by the order the renderer drew textures in (the
+  textures' creation order; the ground's texture, then its lightmap page), then by cull mode and
+  place in the index buffer. Within a texture the renderer's order was its unstable sort's, which
+  changed from frame to frame with the queue's order; the records' order is fixed. Faces of one
+  texture that lie in one plane and overlap therefore show the one drawn last where the frame before
+  showed the other, which is the change the captures below show. Sorting by texture array first
+  would make fewer calls but would turn round pairs of faces of two textures in one plane that the
+  renderer drew in texture order (up to 10 a map over the poses of `test_static_world_maps`). The
+  opaque passes come first in their lists and the lists' quads after them, where the renderer
+  sorted both by their textures' creation order together: a quad whose texture is older than a
+  model's (a Granny actor's cached from an earlier map) now draws after it, which shows only where
+  the two lie at one depth. The alpha-blended records are queued where the walk drew their models,
+  in their nodes' order, so that draws at one depth keep the order they had, ties included.
+- **Deleted.** `world/model_node_render.c` (the per-node meshes, their draws and casters), `struct
+  ModelGpu`, the models' `render` and `cast` operations, `c3d_ground15_render` and the ground's
+  per-block meshes, the `RENDER_GROUND_MESH` queue with `flush_ground_meshes` and `two_tex_less`,
+  `struct RPMeshDraw`, `renderer_add_mesh_draw` and `renderer_mesh_pass`, `gfx_mesh_create`,
+  `gfx_mesh_destroy`, `gfx_draw_mesh`, `gfx_set_world_view`, `GfxMeshDraw` and `GFX_CULL_*`, the
+  water's quads the CPU built for each cell in view every frame (`water_quad`), the shaders
+  `mesh.hlsl` and `caster.hlsl`, which `world.hlsl` and `world_caster.hlsl` replace, the quads'
+  view records' view and fog and the draw records' texture-coordinate rows, which no shader read.
+  The model fade went too, which never ran: a model faded while picked by the ray from the camera
+  to the player (`game_mode_cast_player_ray`, `c3d_actor_pick`) only where it was pickable, and
+  `world_model_create` and the skills' traps clear `pickable` on every model, before or after
+  `create` (the original's constructor sets it, which `test_model_load` keeps as it was); so the
+  ray cast every frame, `c3d_actor_pick`, `ray_hits_obb` and `struct OrientedBox`, the models'
+  `pickable`, `picked` and `alpha` (always 255), the fade and the `deferred` argument of
+  `world_model_create` that only ordered the clearing are gone. `sw_cull_view`'s key sort, which
+  no draw used (the alpha keys are the CPU projection's), and `sw_texture_size`, which only the
+  maps test used, left `render/static_world.c`; one function, `c3d_ground15_water_block`, gives a
+  cell's block of water where two did.
+- **The wave's degree beyond the int range.** `ground_water_height` took an angle outside the int
+  range through doubles and `fmod`, where the original's conversion (`cvttss2si`) gives INT_MIN,
+  as it does for an angle that is no number; the shader could not follow the doubles. Both now
+  give INT_MIN; only a map's absurd wave pitch reaches it. `main` has the same code.
+- **Two things a GPU does otherwise.** Vulkan leaves SPIR-V's remainder of a negative operand
+  (`OpSRem`, `OpSMod`) undefined, and NVIDIA's driver does not give C's: the water's degree of a
+  wave whose angle is negative came out wrong (71 of `comodo`'s 175,644 cells over the poses of
+  `test_static_world_maps`, which found it), so `water.hlsli` takes the remainder of the magnitude
+  and puts C's sign back. And a draw takes its texture arrays when the frame is replayed, not when
+  it is recorded, so that a draw recorded in the frame an array is made or grown reads the array as
+  the stream left it (`test_gfx_gpu` draws in such frames). Vulkan also lets a device flush
+  denormals to zero, where the C keeps them; the world's numbers are far from that range, and the
+  maps test finds no difference.
+
+Captures with `RAGEXE_MSAA=1`, `RAGEXE_VSYNC=0` and SDL's dummy audio, the scene harness of the
+commit before (with the records and the shadow fit built ahead, which draw nothing yet) and this
+one's run one after the other; this one's last build, captured again after its last change, gives
+the same 46 captures to the pixel. The scene set, `window_resize`, `hangul_text`, the 16 shadow
+views and 13 scenes of water, `izlude` and Prontera's flower beds (the steps of `tests/scenes`): 30
+of the 46 are the same to the pixel, and 16 differ, in 1 to 417 pixels, 1,296 in all (`granny_dead`
+and `granny_dying` 45, `granny_models` 43, `prontera_crowd` 1; the south gate at 700 and 2,500 329
+and 211, `manuk` at 800, 1,500 and 2,500 16, 56 and 34, `ve_fild05` at 2,500 1, the far steep view
+at 10,000 52; `beds_far_1` 24, `beds_far_2` 1, `izlude_1` 417, `v2_1` 1, `water_2` 20). Every one of
+those pixels is one where faces of one texture overlap in one plane: two builds that differ from
+this one only in the order of the records of one texture (one with them in the opposite order of
+their place in the index buffer, one with their cull modes in the opposite order) each change some
+of them, together all of them, and in each pixel one of the two shows the base's colour exactly. No
+pixel changed where an animated part the leaves left out appears: no scene shows one, and
+`test_static_world_maps` finds three, on `amatsu`. A model's pose taken at its first tick, the
+models ticked for a part in view, the alpha-blended records queued in the walk's order and the cull
+compacted by run change no pixel of these scenes (the harness's clock stands still within a frame,
+so a second tick of a frame changes no pose there). Against the Direct3D 9 reference (`build/ref`,
+within 3 a channel) the scene set and the shadow views differ where the commit before differed
+(their text, and five shadow views along shadow edges) and in the pixels above, which the reference
+drew as the commit before did: its order of such faces is the same unstable sort's.
+
+Counters (`tests/scenes`, the frame a capture shows), the commit before and this one. The counts
+are the same in every run: on Prontera's main street at the closest, flattest camera
+(`camera_level_view`) 2,943 draws where there were 3,345, 2,715 draw calls where there were 3,631,
+22 texture binds where there were 2,646, and 7,244 bytes of vertices given where there were 38,192;
+in Izlude's interior (`iz_int03_enter`) 231 draws, 221 calls and 19 binds where there were 262, 265
+and 209. The world's draws are its runs, one indirect draw each whether the view keeps anything of
+the run or not, so that they no longer follow the view: with the shadows off the main pass makes
+259 draws on that street where it made 661, and 259 where it made 134 by the castle, where the
+scenes of Granny actors, guild flags, traps and the crowd stand (`granny_models`, `guild_flags`,
+`hunter_traps`, `prontera_crowd`: 115 to 125 draws more with the shadows on); the shadow maps' draws
+are as many as before (992 in `granny_models`). On still views held for 40 frames, each run three
+times by turns with the commit before (`prontera`, `rag_fes` and `izlude` where the player enters
+them), the median `draw_scene_ms` is 0.020, 0.045 and 0.028 where it was 0.102, 0.164 and 0.157,
+and `view_render_ms` 0.26, 0.35 and 0.29 where it was 0.32, 0.44 and 0.32; `present_ms`, where the
+device submits the frame and waits while the GPU is two frames behind, is 2.67, 2.88 and 1.91 where
+it was 2.50, 2.69 and 2.05, each within the other's quartiles (another session: 3.15, 3.49 and 2.45
+against 3.05, 3.22 and 2.30). The cull and the compaction take the GPU 0.006 to 0.12 ms a view
+(`test_static_world_maps`, each map's first view, here a GTX 970: `prontera` 0.035, `rag_fes` 0.05
+to 0.06, `amatsu`, with 2,761 animated records, the most). Measured the same way, a group of 64
+threads that copies its run's kept indices itself took 0.16 ms on `prontera` and 0.33 on
+`prt_fild08`, whose ground's runs are long, and a thread for each index that finds its record by a
+binary search 0.09 on `prontera` and 0.23 on `dicastes01`, where most indices are culled; the chunks
+take neither cost. A run is one command, where a command for each record would be 3,137 on
+`prontera` and not 239: SDL draws each command with a call of its own on Metal and where Vulkan
+has no `multiDrawIndirect`.
+
+Memory: the scene harness's peak commit (private bytes) and peak working set over a map's load and
+its first 120 frames (`rag_fes`, `lighthalzen`, `prontera`), two runs each by turns with the commit
+before: 1,579, 984 and 832 MB of commit where it took 1,509, 934 and 890, and 645, 465 and 412 MB of
+working set where it took 1,045, 535 and 485. `rag_fes` takes 4.3 s for that where it took 3.6. Its
+texture arrays hold 625.7 MB with their mipmaps on the GPU, where arrays begun with four layers and
+doubled would hold 627.8 (`test_static_world_maps`, which reports each map's).
+
+Tests. `test_static_world` checks the records' numbers and the vertices' records (a vertex two runs
+share is refused), the draw runs (a run ends where the pass, an array or the cull mode changes, and
+counts its indices), the sort by cull mode and a merge of two sorted lists against a sort of them
+all, the cull against the projection and `world/frustum.c`, and the texture arrays by size and
+levels with a placement taken back. `test_world_layout` checks the packing against the fields the
+shaders read, the runs' places in the compacted index buffer, the chunks (every index of every
+record of the runs drawn indirectly in one chunk, in order, and none of the others', up to a record
+of 2^32 - 1 indices), the projection against `renderer_project_vertex`'s pixels, and the dispatches'
+groups split into rows. `test_static_world_maps` is the check against the Direct3D 9 client's code:
+it keeps that code as it was before the static world (the ground's blocks and water, the models'
+nodes, the leaves' walk, the renderer's queues and their sort) and builds each map's static world
+through the client's own `world/world_gpu.c` into a device that keeps what it is given. It keeps the
+clock itself, each tick moving it on a millisecond, and runs each pose's frame twice from the same
+start: by the client's `view_on_render`, which ticks the models as the game does, and by the
+reference, ticked as the old walk ticked them. On 10 maps (`prontera`, `prt_fild08`, `iz_int03`,
+`comodo`, `dicastes01`, `1@adv`, `rag_fes`, `amatsu`, `alberta`, `izlude`) at 12 poses each, and on
+`prontera` on a screen of 1025 by 769: every draw of the reference that the records keep has the
+same vertices, textures, lightmap, cull, matrix and pass; every slot's view is the reference's
+matrix to the bit, the pose of the model's first tick; every draw the records leave out has no area
+on screen (the records keep 3 parts of `amatsu` the reference left out that show, up to 30 pixels,
+ticked: the shadows' walk ticks their model); no record the view keeps belongs to a model that
+animates and was not ticked, and no model is ticked beyond the reference's but one that animates
+with a record in view; the casters are the reference's in its order; the 1,104 alpha-blended records
+queued are keyed to the bit as the reference keyed them and drawn in its order, ties included; and
+every water quad the reference drew is queued with its key to the bit. On the first map a trap is
+built still with its nodes with keys animated, set going and drawn in the pose of its first tick
+each frame, taken out of the scene graph and ticked all the same for its records in view, given up
+with its nodes poisoned (nothing reads them), given up 408 times more until the world is built again
+as it was; the world is built again as it was after the device made its own again, and from new
+surfaces of half the size after a texture reload. Taking any of the review's bugs back into
+`world/world_gpu.c` fails it: an animated slot only where the model animates when built, the pose
+taken at the frame's end, no tick for a part in view, a model's alpha records queued in another
+order, a model given up still posed. On the GPU (here a GTX 970) it runs the transform pass, the
+cull and the compaction and the water's quads (`tests/shaders/water_probe.hlsl`, which takes
+`water.hlsli`) over every map with the device's own packing, every output poisoned before the pass:
+414,348 slots, 85,028 draws' clip-space matrices, 19,500 runs of 400,416 records compacted (72,505
+kept) and 551,760 cells of water (461,189 drawn), all the C's to the bit; the cull and the
+compaction give the same with their dispatches split into rows of 3 and of 7 groups, as a dispatch
+of more than 65,535 groups is split (taking the rows out of either shader's numbering of its groups
+fails it, as does a compaction that skips a chunk or copies a chunk's indices from the record's
+start); it times the cull and the compaction of each map's first view; and it fails on any float
+operation in their SPIR-V without `NoContraction`. `test_gfx_gpu` draws the world through the
+device, without and with multisampling: records in each cull mode, one by one and as a pass the GPU
+culls; a frustum narrower than the screen leaving out a record on screen beyond it and keeping an
+animated record its slot moves into it; runs of two texture arrays, two layers and three cull modes
+in one pass; a record from an odd index; a model's slot, an animated node's slot under it, a
+texture-coordinate matrix; the shared buffers and an array grown in a later frame while holding what
+earlier frames put up; an array layer's mipmaps against the same texture's own; a caster with a
+texture whose alpha drops half of it, and the ground in its shadow; a world cleared after its draws
+were recorded; the ground with its lightmap from another array of another size; and the water's
+cells. `test_renderer_storage` checks the world's entries in the renderer's lists: the passes once a
+frame while the world is set, the records and water among the alpha list's quads by key, the cells
+that follow one another with one texture and colour as one draw, broken by a quad between them, and
+casters kept out of the alpha lists; `test_texture_cache_owner` that a texture reload clears the
+device's world.
+
+`build.bat check` passes, and the whole suite (`tests\build.bat` with `ORACLE_EXE`): 325 tests and
+the oracle's 6. Not checked: the Linux, macOS and Android builds (not built), the Metal shaders
+SPIRV-Cross makes (not run, and the arrays' mipmaps by blits there), the GPU's own time for a whole
+frame (`present_ms` only shows it with the CPU's), the device's failure paths beyond what
+`test_gfx_gpu` and the maps test reach (no scene makes an upload fail), and a game played by hand.

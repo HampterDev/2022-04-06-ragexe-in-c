@@ -38,6 +38,7 @@ gfx_surface *gfx_create_texture(int width, int height, int format)
     return surface;
 }
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
+void gfx_world_clear(void) {}
 int gfx_get_size(gfx_surface *surface, int *width, int *height)
 { assert(surface && surface->refs); *width = surface->width; *height = surface->height; return 0; }
 int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock *out)
@@ -181,7 +182,7 @@ static void queued_all_routes(struct Renderer *renderer)
     struct TexDrawPrim *quad = renderer_new_prim(renderer);
     struct RPTwoTexQuad *pair = renderer_new_two_tex_quad(renderer);
     struct PrimTriangle triangle = {0};
-    struct RPMeshDraw draw;
+    struct RPWorldDraw draw;
     unsigned flags, mode, i, submissions = 0;
     quad->base.texture = texture;
     for (i = 0; i < 4; ++i) quad->quad[i].rhw = 0.00125f;
@@ -194,14 +195,12 @@ static void queued_all_routes(struct Renderer *renderer)
     renderer_add_multi_tex_batch(renderer, &pair->prim);
     triangle.texture = texture; renderer_add_triangle(renderer, &triangle, 0);
     memset(&draw, 0, sizeof draw);
-    draw.mesh = (struct gfx_mesh *)&mesh_token;
-    memcpy(draw.view, mesh_view, sizeof draw.view);
-    draw.draw.count = 3;
-    renderer_add_mesh_draw(renderer, RENDER_GROUND_MESH, &draw, texture, texture, 0.0f);
-    renderer_add_mesh_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, NULL, 0.0f);
-    draw.draw.cull = GFX_CULL_CW;
-    renderer_add_mesh_draw(renderer, renderer_mesh_pass(0x21), &draw, texture, NULL, 0.00125f);
-    assert(surface->refs == 1 + submissions + 2 + 1 + 4);
+    draw.kind = RP_WORLD_CAST;
+    draw.count = 3;
+    renderer_add_world_draw(renderer, RENDER_SHADOW_CASTERS, &draw, texture, 0.0f);
+    draw.kind = RP_WORLD_WATER;
+    renderer_add_world_draw(renderer, RENDER_ALPHA_CLAMP, &draw, texture, 0.00125f);
+    assert(surface->refs == 1 + submissions + 2 + 1 + 2);
     for (i = 0; i < RENDER_PASS_COUNT; ++i) {
         size_t n;
         assert(renderer->queues[i].count);
@@ -215,7 +214,7 @@ static void queued_all_routes(struct Renderer *renderer)
         renderer->twoPassAlpha = (BYTE)(i & 1);
         g_lightmap = (int)(i >> 1);
         renderer_draw_lists(renderer);
-        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 4);
+        assert(live_surfaces == 1 && surface->refs == submissions + 2 + 1 + 2);
     }
     g_lightmap = 0;
     renderer_destroy_all_rp_list(renderer); renderer_destroy_all_rp_list(renderer); assert(!live_surfaces);

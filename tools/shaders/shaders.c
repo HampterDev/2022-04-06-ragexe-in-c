@@ -9,15 +9,20 @@
 
    usage: shaders <dxc> <spirv-val> <tools/shaders/shaders.c> <work directory> <sdk version> <file.hlsl>...
 
-   An entry point vs_main is a vertex shader, fs_main a fragment shader. dxc compiles each to
-   SPIR-V with HLSL registers that follow SDL's rules (SDL_CreateGPUShader in SDL_gpu.h: vertex
-   resources in space 0 and its uniforms in space 1, fragment ones in spaces 2 and 3; sampled
-   textures, then storage textures, then storage buffers), which land in the descriptor sets SDL's
-   Vulkan driver binds; a texture and its sampler share one binding as
-   [[vk::combinedImageSampler]]. SPIRV-Cross's C API turns the SPIR-V into MSL with the indices
-   SDL's Metal driver binds: [[texture(n)]] and [[sampler(n)]] in the same order, [[buffer(n)]]
-   the uniform buffers and then the storage buffers. The tool fails when a resource is not where
-   those rules put it. Entry points are main in SPIR-V and main0 in MSL. */
+   An entry point vs_main is a vertex shader, fs_main a fragment shader, cs_main a compute shader,
+   which a file holds alone. dxc compiles each to SPIR-V with HLSL registers that follow SDL's rules,
+   which land in the descriptor sets SDL's Vulkan driver binds:
+   - vertex and fragment shaders (SDL_CreateGPUShader in SDL_gpu.h): vertex resources in space 0
+     and its uniforms in space 1, fragment ones in spaces 2 and 3; sampled textures, then storage
+     textures, then storage buffers;
+   - compute shaders (SDL_CreateGPUComputePipeline): space 0 sampled textures, then read-only
+     storage textures, then read-only storage buffers; space 1 read-write storage textures, then
+     read-write storage buffers; space 2 uniforms.
+   A texture and its sampler share one binding as [[vk::combinedImageSampler]]. SPIRV-Cross's C
+   API turns the SPIR-V into MSL with the indices SDL's Metal driver binds: [[texture(n)]] and
+   [[sampler(n)]] in the order above, [[buffer(n)]] the uniform buffers first and then the storage
+   buffers in the order above. The tool fails when a resource is not where those rules put it.
+   Entry points are main in SPIR-V and main0 in MSL. */
 #define _CRT_SECURE_NO_WARNINGS
 #include <spirv_cross/spirv_cross_c.h>
 #include <stdarg.h>
@@ -93,22 +98,25 @@ static uint64_t fnv(uint64_t h, const unsigned char *p, size_t n)
     return h;
 }
 
-/* The source's hash: the file, then each file it includes with #include "name", depth first, in
-   the order they appear, each once. */
-static uint64_t hash_source(const char *dir, const char *name, uint64_t h, char seen[][128], int *nseen)
+/* The source's hash: the file, then each file it includes with #include "name", named from the
+   directory of the file that includes it as dxc names it, depth first, in the order they appear,
+   each path once. */
+static uint64_t hash_source(const char *dir, const char *name, uint64_t h, char seen[][1024], int *nseen)
 {
-    char path[1024];
+    char path[1024], subdir[1024];
     unsigned char *text;
     size_t size;
-    const char *p;
+    const char *p, *slash;
     int i;
+    snprintf(path, sizeof path, "%s/%s", dir, name);
     for (i = 0; i < *nseen; i++)
-        if (!strcmp(seen[i], name))
+        if (!strcmp(seen[i], path))
             return h;
     if (*nseen >= 32)
         fail("too many includes");
-    snprintf(seen[(*nseen)++], 128, "%s", name);
-    snprintf(path, sizeof path, "%s/%s", dir, name);
+    snprintf(seen[(*nseen)++], 1024, "%s", path);
+    slash = strrchr(path, '/');
+    snprintf(subdir, sizeof subdir, "%.*s", (int)(slash - path), path);
     text = read_file(path, &size);
     if (!text)
         fail("cannot read %s", path);
@@ -122,7 +130,7 @@ static uint64_t hash_source(const char *dir, const char *name, uint64_t h, char 
             fail("%s: bad #include", path);
         memcpy(inc, p, (size_t)(end - p));
         inc[end - p] = 0;
-        h = hash_source(dir, inc, h, seen, nseen);
+        h = hash_source(subdir, inc, h, seen, nseen);
         p = end;
     }
     free(text);
@@ -203,17 +211,100 @@ static void place(const char *what, SpvExecutionModel stage, const Res *r, unsig
     spvc_compiler_msl_add_resource_binding_2(g_comp, &b);
 }
 
+#define VERTEX 0
+#define FRAGMENT 1
+#define COMPUTE 2
+
+static const char *const g_suffix[3] = {"vs", "fs", "cs"};
+static const char *const g_profile[3] = {"vs_6_0", "ps_6_0", "cs_6_0"};
+
 struct Compiled {
     unsigned char *spirv;
     size_t spirvSize;
     char *msl;
+    /* storageTextures and storageBuffers: a compute shader's read-only ones */
     unsigned samplers, storageTextures, storageBuffers, uniformBuffers;
+    unsigned readwriteStorageTextures, readwriteStorageBuffers, threads[3];
 };
 
-static void compile_stage(const char *dir, const char *file, const char *base, const char *entry, int fragment,
-                          struct Compiled *out)
+/* A vertex or fragment shader's resources (the comment at the top), its own in `set` and its
+   uniforms in set + 1. */
+static void place_graphics(const char *file, const char *entry, SpvExecutionModel stage, unsigned set,
+                           const List *sampled, const List *storageImages, const List *storageBuffers,
+                           const List *uniforms, struct Compiled *out)
 {
     const unsigned NONE = ~0u;
+    Res a[32];
+    unsigned i, n, textures;
+    if (not_in(sampled, set, set) || not_in(storageImages, set, set) || not_in(storageBuffers, set, set)
+        || not_in(uniforms, set + 1, set + 1))
+        fail("%s (%s): a resource outside the sets SDL binds for this stage (%u and %u)", file, entry, set, set + 1);
+
+    /* sampled textures 0..n-1, storage textures after them, storage buffers after those; MSL
+       numbers textures and samplers alike, and buffers uniforms first */
+    n = in_set(sampled, set, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], i, NONE, i, i);
+    out->samplers = n;
+    textures = n;
+    n = in_set(storageImages, set, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], textures + i, NONE, textures + i, NONE);
+    out->storageTextures = n;
+    textures += n;
+    n = in_set(uniforms, set + 1, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], i, i, NONE, NONE);
+    out->uniformBuffers = n;
+    n = in_set(storageBuffers, set, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], textures + i, out->uniformBuffers + i, NONE, NONE);
+    out->storageBuffers = n;
+}
+
+/* A compute shader's resources (the comment at the top). */
+static void place_compute(const char *file, SpvExecutionModel stage, const List *sampled, const List *storageImages,
+                          const List *storageBuffers, const List *uniforms, struct Compiled *out)
+{
+    const unsigned NONE = ~0u;
+    Res a[32];
+    unsigned i, n, binding, textures, buffers;
+    if (not_in(sampled, 0, 0) || not_in(storageImages, 0, 1) || not_in(storageBuffers, 0, 1) || not_in(uniforms, 2, 2))
+        fail("%s (cs_main): a resource outside the sets SDL binds for compute (0, 1 and 2)", file);
+    n = in_set(uniforms, 2, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], i, i, NONE, NONE);
+    out->uniformBuffers = buffers = n;
+    n = in_set(sampled, 0, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], i, NONE, i, i);
+    out->samplers = textures = binding = n;
+    n = in_set(storageImages, 0, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], binding + i, NONE, textures + i, NONE);
+    out->storageTextures = n;
+    textures += n;
+    binding += n;
+    n = in_set(storageBuffers, 0, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], binding + i, buffers + i, NONE, NONE);
+    out->storageBuffers = n;
+    buffers += n;
+    n = in_set(storageImages, 1, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], i, NONE, textures + i, NONE);
+    out->readwriteStorageTextures = binding = n;
+    n = in_set(storageBuffers, 1, a);
+    for (i = 0; i < n; i++)
+        place(file, stage, &a[i], binding + i, buffers + i, NONE, NONE);
+    out->readwriteStorageBuffers = n;
+    for (i = 0; i < 3; i++)
+        out->threads[i] = spvc_compiler_get_execution_mode_argument_by_index(g_comp, SpvExecutionModeLocalSize, i);
+}
+
+static void compile_stage(const char *dir, const char *file, const char *base, const char *entry, int kind,
+                          struct Compiled *out)
+{
     char spv[1024];
     spvc_context ctx;
     spvc_parsed_ir ir;
@@ -221,12 +312,9 @@ static void compile_stage(const char *dir, const char *file, const char *base, c
     spvc_resources res;
     SpvExecutionModel stage;
     List sampled, images, samplers, storageImages, storageBuffers, uniforms;
-    Res a[32];
-    unsigned i, n, set = fragment ? 2 : 0, textures;
     const char *msl;
-    snprintf(spv, sizeof spv, "%s/%s_%s.spv", g_work, base, fragment ? "fs" : "vs");
-    if (run("\"%s\" %s -T %s -E %s -Fo \"%s\" \"%s/%s\"", g_dxc, DXC_FLAGS, fragment ? "ps_6_0" : "vs_6_0", entry,
-            spv, dir, file))
+    snprintf(spv, sizeof spv, "%s/%s_%s.spv", g_work, base, g_suffix[kind]);
+    if (run("\"%s\" %s -T %s -E %s -Fo \"%s\" \"%s/%s\"", g_dxc, DXC_FLAGS, g_profile[kind], entry, spv, dir, file))
         fail("dxc failed on %s (%s)", file, entry);
     if (run("\"%s\" --target-env vulkan1.0 \"%s\"", g_val, spv))
         fail("spirv-val rejects %s (%s)", file, entry);
@@ -253,31 +341,11 @@ static void compile_stage(const char *dir, const char *file, const char *base, c
     collect(res, SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, &uniforms);
     if (images.n || samplers.n)
         fail("%s (%s): a texture without [[vk::combinedImageSampler]]", file, entry);
-    if (not_in(&sampled, set, set) || not_in(&storageImages, set, set) || not_in(&storageBuffers, set, set)
-        || not_in(&uniforms, set + 1, set + 1))
-        fail("%s (%s): a resource outside the sets SDL binds for this stage (%u and %u)", file, entry, set, set + 1);
-
-    /* sampled textures 0..n-1, storage textures after them, storage buffers after those; MSL
-       numbers textures and samplers alike, and buffers uniforms first */
-    n = in_set(&sampled, set, a);
-    for (i = 0; i < n; i++)
-        place(file, stage, &a[i], i, NONE, i, i);
-    out->samplers = n;
-    textures = n;
-    n = in_set(&storageImages, set, a);
-    for (i = 0; i < n; i++)
-        place(file, stage, &a[i], textures + i, NONE, textures + i, NONE);
-    out->storageTextures = n;
-    textures += n;
-    n = in_set(&uniforms, set + 1, a);
-    for (i = 0; i < n; i++)
-        place(file, stage, &a[i], i, i, NONE, NONE);
-    out->uniformBuffers = n;
-    n = in_set(&storageBuffers, set, a);
-    for (i = 0; i < n; i++)
-        place(file, stage, &a[i], textures + i, out->uniformBuffers + i, NONE, NONE);
-    out->storageBuffers = n;
-
+    if (kind == COMPUTE)
+        place_compute(file, stage, &sampled, &storageImages, &storageBuffers, &uniforms, out);
+    else
+        place_graphics(file, entry, stage, kind == FRAGMENT ? 2 : 0, &sampled, &storageImages, &storageBuffers,
+                       &uniforms, out);
     if (spvc_compiler_compile(g_comp, &msl) != SPVC_SUCCESS)
         fail("%s (%s): %s", file, entry, spvc_context_get_last_error_string(ctx));
     out->msl = malloc(strlen(msl) + 1);
@@ -296,18 +364,27 @@ static void write_bytes(FILE *f, const char *name, const unsigned char *p, size_
     fprintf(f, "\n};\n");
 }
 
-static void write_stage(FILE *f, const char *base, const char *suffix, int fragment, const struct Compiled *c)
+static void write_stage(FILE *f, const char *base, int kind, const struct Compiled *c)
 {
+    static const char *const stages[3] = {"GPU_SHADER_VERTEX", "GPU_SHADER_FRAGMENT", "GPU_SHADER_COMPUTE"};
     char spirv[160], msl[160];
-    snprintf(spirv, sizeof spirv, "%s_%s_spirv", base, suffix);
-    snprintf(msl, sizeof msl, "%s_%s_msl", base, suffix);
+    snprintf(spirv, sizeof spirv, "%s_%s_spirv", base, g_suffix[kind]);
+    snprintf(msl, sizeof msl, "%s_%s_msl", base, g_suffix[kind]);
     write_bytes(f, spirv, c->spirv, c->spirvSize);
     write_bytes(f, msl, (const unsigned char *)c->msl, strlen(c->msl));
-    fprintf(f,
-            "static const struct GpuShaderCode %s_%s = {\n    %s, sizeof %s, %s, sizeof %s, %s,\n"
-            "    %u, %u, %u, %u\n};\n",
-            base, suffix, spirv, spirv, msl, msl, fragment ? "GPU_SHADER_FRAGMENT" : "GPU_SHADER_VERTEX",
-            c->samplers, c->storageTextures, c->storageBuffers, c->uniformBuffers);
+    if (kind == COMPUTE)
+        fprintf(f,
+                "static const struct GpuComputeCode %s_%s = {\n    {%s, sizeof %s, %s, sizeof %s, %s,\n"
+                "    %u, %u, %u, %u},\n    %u, %u, {%u, %u, %u}\n};\n",
+                base, g_suffix[kind], spirv, spirv, msl, msl, stages[kind], c->samplers, c->storageTextures,
+                c->storageBuffers, c->uniformBuffers, c->readwriteStorageTextures, c->readwriteStorageBuffers,
+                c->threads[0], c->threads[1], c->threads[2]);
+    else
+        fprintf(f,
+                "static const struct GpuShaderCode %s_%s = {\n    %s, sizeof %s, %s, sizeof %s, %s,\n"
+                "    %u, %u, %u, %u\n};\n",
+                base, g_suffix[kind], spirv, spirv, msl, msl, stages[kind], c->samplers, c->storageTextures,
+                c->storageBuffers, c->uniformBuffers);
 }
 
 static void tool_versions(void)
@@ -330,14 +407,14 @@ static void tool_versions(void)
 
 static void generate(const char *source)
 {
-    char dir[1024], file[256], base[128], out[1200], tools[512], seen[32][128], hex[17];
+    char dir[1024], file[256], base[128], out[1200], tools[512], seen[32][1024], hex[17];
     const char *slash = strrchr(source, '/'), *back = strrchr(source, '\\'), *dot;
     unsigned char *text, *body, *mark;
     size_t size;
     uint64_t h;
-    int nseen = 0, vs, fs;
+    int nseen = 0, vs, fs, cs;
     unsigned major, minor, patch;
-    struct Compiled vsc = {0}, fsc = {0};
+    struct Compiled vsc = {0}, fsc = {0}, csc = {0};
     FILE *f;
     if (back > slash)
         slash = back;
@@ -357,17 +434,22 @@ static void generate(const char *source)
         fail("cannot read %s", source);
     vs = strstr((const char *)text, " vs_main(") != NULL;
     fs = strstr((const char *)text, " fs_main(") != NULL;
+    cs = strstr((const char *)text, " cs_main(") != NULL;
     free(text);
-    if (!vs && !fs)
-        fail("%s has neither vs_main nor fs_main", source);
+    if (!vs && !fs && !cs)
+        fail("%s has none of vs_main, fs_main and cs_main", source);
+    if (cs && (vs || fs))
+        fail("%s: a compute shader's file holds it alone", source);
     h = hash_source(dir, file, 0xcbf29ce484222325ull, seen, &nseen);
     spvc_get_version(&major, &minor, &patch);
     snprintf(tools, sizeof tools, "dxc %s; SPIRV-Cross C API %u.%u.%u (Vulkan SDK %s)", g_dxcVersion, major, minor,
              patch, g_sdk);
     if (vs)
-        compile_stage(dir, file, base, "vs_main", 0, &vsc);
+        compile_stage(dir, file, base, "vs_main", VERTEX, &vsc);
     if (fs)
-        compile_stage(dir, file, base, "fs_main", 1, &fsc);
+        compile_stage(dir, file, base, "fs_main", FRAGMENT, &fsc);
+    if (cs)
+        compile_stage(dir, file, base, "cs_main", COMPUTE, &csc);
 
     snprintf(out, sizeof out, "%s/%s.h", dir, base);
     f = fopen(out, "wb");
@@ -380,9 +462,11 @@ static void generate(const char *source)
     fprintf(f, "   flags: %s; %s\n", DXC_FLAGS, MSL_FLAGS);
     fprintf(f, "   output %016llx */\n", 0ull);
     if (vs)
-        write_stage(f, base, "vs", 0, &vsc);
+        write_stage(f, base, VERTEX, &vsc);
     if (fs)
-        write_stage(f, base, "fs", 1, &fsc);
+        write_stage(f, base, FRAGMENT, &fsc);
+    if (cs)
+        write_stage(f, base, COMPUTE, &csc);
     if (fclose(f))
         fail("cannot write %s", out);
     /* the output's hash, over what follows the comment, in place of the zeros */
@@ -400,11 +484,13 @@ static void generate(const char *source)
     if (!f || fwrite(text, 1, size, f) != size || fclose(f))
         fail("cannot write %s", out);
     free(text);
-    printf("%s: %s%s%s\n", out, vs ? "vertex" : "", vs && fs ? " and " : "", fs ? "fragment" : "");
+    printf("%s: %s%s%s%s\n", out, vs ? "vertex" : "", vs && fs ? " and " : "", fs ? "fragment" : "", cs ? "compute" : "");
     free(vsc.spirv);
     free(vsc.msl);
     free(fsc.spirv);
     free(fsc.msl);
+    free(csc.spirv);
+    free(csc.msl);
 }
 
 int main(int argc, char **argv)

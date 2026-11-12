@@ -16,6 +16,9 @@
 #include "game/mode_callbacks.h"
 #include "platform/clock.h"
 #include "diag/perf.h"
+#include "world/world_gpu.h"
+#include "actor/attr_state.h"
+#include "actor/weather.h"
 
 int g_drawnCellMaxX = 0;
 
@@ -328,7 +331,7 @@ static void view_shadow_boxes(const struct SceneGraphNode *node, int level, stru
 
 /* custom: the models and ground the view left out whose shadows can fall into it
    (render/renderer.h): their casters only, the models animated as the view's are */
-static void view_cast_shadows(struct SceneGraphNode *node, int level, const float *view)
+static void view_cast_shadows(struct World *world, struct SceneGraphNode *node, int level)
 {
     struct Renderer *r = g_renderer;
     size_t index;
@@ -339,7 +342,7 @@ static void view_cast_shadows(struct SceneGraphNode *node, int level, const floa
     if (level < RSW_TREE_DEPTH) {
         for (i = 0; i < 4; i++)
             if (node->child[i])
-                view_cast_shadows(node->child[i], level + 1, view);
+                view_cast_shadows(world, node->child[i], level + 1);
         return;
     }
     for (index = 0; index < node->objects.count; ++index) {
@@ -352,10 +355,55 @@ static void view_cast_shadows(struct SceneGraphNode *node, int level, const floa
                 a->ops->tick(a);
             a->lastFrame = r->frame;
         }
-        a->ops->cast(a, view);
+        world_gpu_cast_actor(world, a);
+        a->castFrame = r->frame;
     }
     if (node->ground)
-        c3d_ground15_cast(node->ground, view, node->groundCell);
+        c3d_ground15_cast(node->ground, node->groundCell);
+}
+
+/* custom: the frame of the static world (world/world_gpu.c) begins: the ground and the models
+   drawn with the weather's colour as the original's CPU scaled them by it, the models with the
+   player's blind tint while blind, and the ground's light under the models where that option is
+   on; a model's alpha is whole, as no model is ever picked */
+static void world_begin(struct World *world, const float *view)
+{
+    struct GfxWorldDraw models, ground;
+    int k;
+
+    memset(&models, 0, sizeof models);
+    memset(&ground, 0, sizeof ground);
+    models.kind = GFX_MESH_MODEL;
+    models.lightGround = !g_playerBlind && g_weather.ground_lighting;
+    ground.kind = GFX_MESH_GROUND;
+    for (k = 0; k < 3; k++) {
+        models.colour[k] = g_playerBlind ? g_weather.tint[k] : g_weather.color[k];
+        ground.colour[k] = g_weather.color[k];
+    }
+    models.colour[3] = 1.0f;
+    ground.colour[3] = 1.0f;
+    world_gpu_begin(world, view, &models, &ground);
+}
+
+/* custom: a model in the view, where the original drew it: the device draws it from the static
+   world (world/world_gpu.c); while the frame draws shadows its records cast */
+static void actor_seen(struct World *world, struct C3dActor *a)
+{
+    world_gpu_seen(world, a);
+    if (g_renderer->shadowPending)
+        world_gpu_cast_actor(world, a);
+    a->castFrame = g_renderer->frame;
+}
+
+/* custom: a model the walk below did not reach whose moving part the view holds (world/world_gpu.c):
+   ticked as the walk ticks a model it reaches, once a frame */
+static void tick_in_view(struct C3dActor *a)
+{
+    if (a->lastFrame == g_renderer->frame)
+        return;
+    if (g_isSkipFrame > 0)
+        a->ops->tick(a);
+    a->lastFrame = g_renderer->frame;
 }
 
 void view_on_render(struct View *self)
@@ -381,6 +429,8 @@ void view_on_render(struct View *self)
     view_shadow_boxes(&self->world->root, 0, boxes, &boxCount);
     renderer_shadow_frame(r, view, self->distance, boxes, boxCount);
     renderer_set_camera(r, view);
+    /* custom: the static world takes the models the scene graph took (world/world_gpu.c) */
+    world_begin(self->world, view);
     g_drawnCellMinY = 999;
     g_drawnCellMinX = 999;
     g_drawnCellMaxY = 0;
@@ -400,10 +450,10 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (res != FRUSTUM_OUTSIDE)
-                a->ops->render(a, view);
+                actor_seen(self->world, a);
             a->lastFrame = g_renderer->frame;
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
+        c3d_ground15_leaf(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
@@ -420,18 +470,19 @@ void view_on_render(struct View *self)
             if (g_isSkipFrame > 0)
                 a->ops->tick(a);
             if (a->lastFrame != g_renderer->frame) {
-                a->ops->render(a, view);
+                actor_seen(self->world, a);
                 a->lastFrame = g_renderer->frame;
             }
         }
-        c3d_ground15_render(leaf->ground, view, leaf->groundCell);
+        c3d_ground15_leaf(leaf->ground, view, leaf->groundCell);
         cells_min(&g_drawnCellMinY, leaf->groundCell[1]);
         cells_max(&g_drawnCellMaxY, leaf->groundCell[3]);
         cells_min(&g_drawnCellMinX, leaf->groundCell[0]);
         cells_max(&g_drawnCellMaxX, leaf->groundCell[2]);
     }
 
-    view_cast_shadows(&self->world->root, 0, view);
+    view_cast_shadows(self->world, &self->world->root, 0);
+    world_gpu_frame(self->world, tick_in_view);
 
     navi_manager_draw_path(&g_navi, view);
     if (g_hoverCellHidden == 0)

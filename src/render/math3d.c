@@ -147,54 +147,6 @@ void mat_rotate_z(float *m, float rad)
     mat34_post_multiply(m, &b);
 }
 
-static int ray_slab(float e, float f, float h, float *tmin, float *tmax)
-{
-    if ((float)fabs(f) > 1.0e-5f) {
-        float inv = 1.0f / f;
-        float t1 = (h + e) * inv;
-        float t2 = (e - h) * inv;
-
-        if (t1 > t2) {
-            *tmin = t2 > *tmin ? t2 : *tmin;
-            *tmax = t1 < *tmax ? t1 : *tmax;
-        } else {
-            *tmin = t1 > *tmin ? t1 : *tmin;
-            *tmax = t2 < *tmax ? t2 : *tmax;
-        }
-        if (*tmin > *tmax)
-            return 0;
-        if (0.0f > *tmax)
-            return 0;
-    } else {
-        if (-e - h > 0.0f)
-            return 0;
-        if (0.0f > h - e)
-            return 0;
-    }
-    return 1;
-}
-
-int ray_hits_obb(const struct Ray3 *ray, const struct OrientedBox *box)
-{
-    float tmin = -999999.0f, tmax = 999999.0f;
-    float dx = box->centre.x - ray->origin.x;
-    float dy = box->centre.y - ray->origin.y;
-    float dz = box->centre.z - ray->origin.z;
-    int i;
-
-    for (i = 0; i < 3; i++) {
-        const struct Vec3 *a = &box->axis[i];
-        float e = dy * a->y + dx * a->x + dz * a->z;
-        float f = ray->dir.x * a->x + ray->dir.y * a->y + ray->dir.z * a->z;
-
-        if (!ray_slab(e, f, box->half[i], &tmin, &tmax))
-            return 0;
-    }
-    if (tmin > 0.0f)
-        return !(tmin > ray->length);
-    return !(tmax > ray->length);
-}
-
 int ray_triangle_hit(const struct Ray3 *ray, const struct Vec3 *v0, const struct Vec3 *v1,
                          const struct Vec3 *v2, float *u, float *v, float *t)
 {

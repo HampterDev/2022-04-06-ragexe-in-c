@@ -79,6 +79,28 @@ note    The font finder's rules as pure functions (render/font_faces.c): which f
 uses    base
 paths   render/font_faces.*
 
+library static-world
+note    The static world as data the GPU keeps, as pure rules (render/static_world.c): the map's
+        shared vertex and index buffers, a draw record per texture run of a ground block or a model
+        node, texture arrays by size and mipmap levels, and the cull that picks the records a view
+        or a shadow cascade draws. Uses nothing else of the client.
+uses
+paths   render/static_world.*
+
+library world-layout
+note    The static world as the device's shaders read it, as pure packing (render/world_layout.c):
+        its records by id and in draw order, the runs the GPU's cull compacts, its transform slots
+        and the uniforms of the frame's compute passes, which the device and the tests pack alike.
+uses    static-world
+paths   render/world_layout.*
+
+library shadow-fit
+note    The frame's shadow cascades fitted to the view depths of what it shows, as pure logic
+        (render/shadow_fit.c): the steps of the GPU's fit, which its compute passes are checked
+        against. Uses nothing else of the client.
+uses
+paths   render/shadow_fit.*
+
 library platform
 note    The operating system: files, threads, sockets, clock, settings, code pages, desktop, sound
         (platform/audio_sdl.c), crash dumps, the text-input editor and IME
@@ -108,7 +130,7 @@ library render
 note    The 3D device, textures and surfaces, the renderer and its lists, text and fonts, 3D math,
         sprite drawing, the display options (render/render_options.c) and the frame-time overlay
         (diag/perf.c).
-uses    fileio display-options texel-convert draw-modes vertex-fog font-finder
+uses    fileio display-options texel-convert draw-modes vertex-fog font-finder world-layout
 paths   diag/
         render/ resources/animation.h resources/bitmap_types.h resources/sprite.h
 
@@ -215,9 +237,9 @@ paths   actor/actor_common.h actor/actor_corpse.c actor/actor_spawns.c actor/act
         ui/quests/world_view.c ui/quests/world_view.h ui/resource/resource_paths.c
         ui/resource/resource_paths.h ui/social/guild_containers.c ui/social/guild_member_sort.h
         world/actor_lookup.c world/hover_cell.h world/lifecycle.h world/load.h world/mode.h
-        world/model_actor.c world/model_load.c world/model_node_render.c world/models.c
-        world/models.h world/object_lookup.h world/objects_remove.c world/player.h world/tooltip.h
-        world/view_context.c world/world.c world/world.h world/world_imports.h world/world_near.c
+        world/model_actor.c world/model_load.c world/models.c world/models.h world/object_lookup.h
+        world/objects_remove.c world/player.h world/tooltip.h world/view_context.c world/world.c
+        world/world.h world/world_imports.h world/world_near.c
 
 library actors
 note    The actor and effect object model: the method tables of actor/game_object.c, the actor

@@ -602,10 +602,16 @@ log). `tests/test_gfx_gpu.c` drives it through the gfx API and reads the pixels 
 format, texel centres, culling, textures changed and released within a frame, the alpha test, the
 fog (the quads' at the first rhw of every step, and the one before it, against the original's CPU
 formula), blending, the effect modes' blending and the 16 effect presets against Direct3D 9's
-texture stages, two textures, the ground's meshes with and without lightmaps, two-pass alpha,
+texture stages, two textures, the ground's records with and without lightmaps, two-pass alpha,
 effects behind depth, composites into a target's texture, clears inside a pass, the overlays drawn
 as one batch, mipmaps, render targets, system-surface blits, copies between targets, pixels written
-into a locked target, world vertices and meshes, without and with multisampling.
+into a locked target, world vertices, the static world's records (each cull mode, one by one and
+culled by the GPU, from an odd index), its transform slots, animated ones too, its
+texture-coordinate matrices and texture arrays, the water's cells, the GPU's cull of a pass run by
+run against a frustum narrower than the screen (an animated record moved into it and out), the
+world's buffers and arrays grown while holding what earlier frames put up, an array layer's mipmaps
+against the same texture's own, casters into a shadow map and the ground in their shadow, and a
+world cleared after its draws were recorded, without and with multisampling.
 
 Draws are made in draw modes (`render/draw_modes.c`, the library `draw-modes`, tested by
 `test_draw_modes` against the render states the Direct3D 9 client set for each of its lists): each
@@ -617,32 +623,35 @@ milliseconds where the driver keeps its shader cache): the effect modes, whose q
 effect file's D3DBLEND factors (taken whole) and texture-stage preset, get one pipeline for each
 pair of the eight blend factors a target without alpha of its own distinguishes. Quads are batched
 until what they are drawn with changes, as Direct3D 9's draws were until a state changed. Fog is
-computed in the vertex shaders and interpolated across the triangle: for the meshes from the view
-depth as the Direct3D 9 client's mesh shader did; for the quads the original's vertex fog to the
-bit, the 1/255 step its CPU computed from a vertex's rhw, which the shader looks up in the fog's
-table of the rhw at which each step begins (`render/vertex_fog.c`, the library `vertex-fog`),
-since a GPU's division need not round as the CPU's does.
+computed in the vertex shaders and interpolated across the triangle: for the static world's
+records from the view depth as the Direct3D 9 client's mesh shader did; for the quads the
+original's vertex fog to the bit, the 1/255 step its CPU computed from a vertex's rhw, which the
+shader looks up in the fog's table of the rhw at which each step begins (`render/vertex_fog.c`,
+the library `vertex-fog`), since a GPU's division need not round as the CPU's does.
 
 A frame is recorded, not drawn. Each draw becomes a record of what its mode and the draw give the
 shaders (the combination, the alpha test, the fog, the viewport scale; `struct GpuDraw`) and goes
-into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels
-of the textures it uses that changed since they last went up, widened to B8G8R8A8
-(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame
-is presented, or the CPU needs a target's pixels (`gfx_lock` on a target: the scene harness's
-captures, screenshots, the wobble), one command buffer copies all of it through one transfer buffer
-in one copy pass and replays the passes, then downloads the target (`SDL_DownloadFromGPUTexture`)
-or presents, fitted into the window by `present_fit`. The shaders read the records from storage
-buffers, finding a draw's through an instance-rate vertex attribute that holds its index (a draw's
-first instance), never through the instance ID. Textures keep their pixels on the CPU in the
-client's own format, so the model loader's thread creates, locks and fills them without calling SDL;
-the main thread uploads them when a draw first uses them after a change, and a texture changed after
-a draw used it in the same frame takes its new texels in a copy pass of its own between the render
-passes, so that the earlier draw keeps the old ones. Mipmaps are made on the GPU
+into a list of passes, one per target or shadow cascade; its vertices and indices, and the texels of
+the textures it uses that changed since they last went up, widened to B8G8R8A8
+(`render/texel_convert.c`, the `texel-convert` library), go into one staging area. When the frame is
+presented, or the CPU needs a target's pixels (`gfx_lock` on a target: the scene harness's captures,
+screenshots, the wobble), one command buffer copies all of it through one transfer buffer in one
+copy pass (the static world's meshes and textures went up before it, through a stream of their own,
+below), runs the static world's compute passes (below) and replays the passes, then downloads the
+target (`SDL_DownloadFromGPUTexture`) or presents, fitted into the window by `present_fit`. The
+shaders read the records from storage buffers, finding a draw's through an instance-rate vertex
+attribute that holds its index (a draw's first instance), or for the static world's draws through a
+uniform, never through the instance ID. Textures keep their pixels on the CPU in the client's own
+format, so the model loader's thread creates, locks and fills them without calling SDL; the main
+thread uploads them when a draw first uses them after a change, and a texture changed after a draw
+used it in the same frame takes its new texels in a copy pass of its own between the render passes,
+so that the earlier draw keeps the old ones. Mipmaps are made on the GPU
 (`SDL_GenerateMipmapsForGPUTexture`) whenever the texels of a texture that has them go up. Render
 targets live on the GPU; a copy from one into a texture stays on the GPU until the texture is
 locked. Without a swapchain (the scene harness's hidden window) frames are drawn and captured all
 the same, and a fence on each frame keeps the CPU at most two frames ahead of the GPU with or
-without one. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
+without one. A transfer buffer far larger than the frames have needed for 120 flushes in a row is
+made again as large as they need, and the staging texels' memory given back. The present mode is vsync unless `RAGEXE_VSYNC=0`. A frame the client shows without
 waiting (`renderer_flip` without vsync, as the map loading screen's are) never waits for the window:
 SDL's acquire of a picture waits for the presentation engine even when told not to block, so such a
 frame asks for one only once a refresh of the display (60 Hz where its mode does not say) has passed
@@ -656,36 +665,79 @@ Pixels: every vertex lands where Direct3D 9 put it. Every pass's viewport is its
 half a pixel, (0.5, 0.5, width, height), so that Direct3D 9's pixel centres fall on the target's;
 since a viewport must lie within its texture (SDL's GPU API, Metal), a target's textures are a pixel
 wider and taller than the target, and a stage that samples a target scales its texture coordinates
-to match and, when it clamps, keeps them off the margin. Meshes, world vertices and shadow casters
-take the matrices the Direct3D 9 client drew with, computed in floats as it computed them and
-multiplied in the order Direct3D 9's shader compiler did, and the GPU divides and moves their points
-as Direct3D 9's did. Pre-transformed vertices are snapped in the vertex shader to the 1/256 of a
-pixel Direct3D 9's rasterizer snapped them to, rounding to even, and handed over a 1/1024 of a pixel
-further on, so that the GPU's own viewport transform, which lands within a few ten-thousandths of a
-pixel of that point, snaps to the same place whether it rounds or truncates
+to match and, when it clamps, keeps them off the margin. The static world's records, its casters and
+world vertices take the matrices the Direct3D 9 client drew with, computed in floats as it computed
+them and multiplied in the order Direct3D 9's shader compiler did, and the GPU divides and moves
+their points as Direct3D 9's did. Pre-transformed vertices are snapped in the vertex shader to the
+1/256 of a pixel Direct3D 9's rasterizer snapped them to, rounding to even, and handed over a 1/1024
+of a pixel further on, so that the GPU's own viewport transform, which lands within a few
+ten-thousandths of a pixel of that point, snaps to the same place whether it rounds or truncates
 (`src/render/shaders/records.hlsli`, `snapped_ndc`); they cover the pixels Direct3D 9 covered, with
 Direct3D's top-left rule. Their `w` stays 1 so that nothing divides the position, and the shader
 interpolates colours and texture coordinates perspective-correct itself, with the rhw. The shadow
 lookups read the maps by texel, the one point sampling picked. Like Direct3D 9's own viewport, the
 passes' viewport leaves out the left half of the first column and the top half of the first row,
-which a GPU that clips to it (Mesa's lavapipe) leaves uncovered when multisampling. Meshes keep
-32-bit indices, so that a draw may start at any index where Metal takes an index buffer's offset in
-multiples of 4 bytes. The shadow maps are four layers of one R32F array texture. Multisampling
-(`RAGEXE_MSAA`: 2, 4 or 8 samples, 4 when unset, 1 for none; a count the GPU does not take falls to
-the next lower one it does) resolves the screen at the end of each pass on it, and alpha-tested
-draws without blending use alpha to coverage. Direct3D 9 drew flat draws (every vertex the same rhw:
-the UI, sprites) without multisampling, which SDL's GPU API cannot switch off for a draw: in a
-multisampled pass a flat draw's vertices move onto the pixel boundaries that keep the pixels
-Direct3D 9 covered, with the values their triangle has there, so edges along the pixel rows and
-columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
+which a GPU that clips to it (Mesa's lavapipe) leaves uncovered when multisampling. The static
+world's index buffer holds 32-bit indices, so that a draw may start at any index where Metal takes
+an index buffer's offset in multiples of 4 bytes. The shadow maps are four layers of one R32F array
+texture. Multisampling (`RAGEXE_MSAA`: 2, 4 or 8 samples, 4 when unset, 1 for none; a count the GPU
+does not take falls to the next lower one it does) resolves the screen at the end of each pass on
+it, and alpha-tested draws without blending use alpha to coverage. Direct3D 9 drew flat draws (every
+vertex the same rhw: the UI, sprites) without multisampling, which SDL's GPU API cannot switch off
+for a draw: in a multisampled pass a flat draw's vertices move onto the pixel boundaries that keep
+the pixels Direct3D 9 covered, with the values their triangle has there, so edges along the pixel
+rows and columns come out as Direct3D 9 drew them and only slanted ones are smoothed. Direct3D 9's
 transparency anti-aliasing was the driver's (`SSAA` or `ATOC`); on NVIDIA its supersampling shaded
 every sample of each alpha-tested draw without blending, which the ground's and the models' are, so
 with multisampling on their textures were read at each sample, where alpha to coverage reads them
 once a pixel.
 
+The static world (`render/gfx.h`, `gfx_world_*`; `render/static_world.c`, the library
+`static-world`; `render/world_layout.c`, the library `world-layout`, which packs it as the shaders
+read it; and `world/world_gpu.c`) stays on the GPU while a map is shown: the ground's blocks and the
+models' nodes in one vertex and one index buffer, each mesh placed behind the others as the map
+loads and its models stream in, with its own 16-bit indices widened to 32 bits and a base vertex;
+their textures and lightmap pages in texture arrays, one for each size and number of mipmap levels
+(Vulkan promises 256 layers an array; a size with more takes another array), each made with as many
+layers as the map's first frame places in it and made again with the power of two at or above the
+layers placed where more come;
+a draw record for each run of one texture of a block or node; and a transform slot for each model
+and node, with its matrix and its parent's slot. The meshes and the textures go up through a
+transfer buffer of their own, 32 MB (or the largest texture), a batch at a time in a command buffer
+of its own that is waited for before the next fills it, the textures' pixels widened straight from
+their surfaces, and the layers mipmapped level by level with linear blits, as
+`SDL_GenerateMipmapsForGPUTexture` makes a texture's mipmaps on Vulkan (on Metal SDL makes those
+with the blit encoder; the arrays' are blits there too, which no Metal device has compared yet). A
+texture reload (`texcache_reload_all`) makes the device's world again from the new surfaces. Each
+frame three compute passes run before the render passes: one computes every slot's view and its
+place in the world from the camera's view, the model's matrix, the nodes' own matrices and the
+frame's matrices of the animated nodes, as the CPU computed a node's matrix, to the bit
+(`world_transform.hlsl`); the next culls the records against the frustum of the view, a group of
+threads to each run of records that share their texture array, lightmap array and cull mode,
+giving each kept record its place in the frame's index buffer of them, one after the other, and
+writing the run's one indexed indirect draw (`world_cull.hlsl`), since SDL takes the count of
+indirect draws from the CPU; the last, a group of threads to each 64 indices of a record of those
+runs (`WlChunk`, fixed with the records), copies them there where the record is kept, its base
+vertex added, and leaves at once where it is not (`world_compact.hlsl`), so that no group copies a
+long run alone and no thread searches for its index. The ground and the opaque models are then one
+indirect call of one command for each run. A vertex carries its record's number in a buffer beside
+it, the indirect draws having no first instance to tell it (the device asks for no
+`drawIndirectFirstInstance`). A draw of the world is recorded with the world's generation and left
+out where the world was made again before it went up; uploads that fail make the world again, and
+after two in a row the device takes no more of it until the next map. The water's cells are kept likewise, and the vertex shader raises
+each by the frame's waves (`water.hlsli`). The passes that must give the CPU's floats follow the
+exact rules (`exact.hlsli`: `precise` on every operation, assigned to a variable, no `mad`, `mul`
+or `dot`, a correctly rounded division), and `test_static_world_maps` checks that their SPIR-V
+has no float operation without `NoContraction`, and their results against the C on real maps.
+
 The shaders are HLSL in `src/render/shaders` (`quad.hlsl` for the quads, with the texture stages'
-combinations and the vertex fog, `mesh.hlsl` for the ground and the models with their shadows,
-`caster.hlsl` for the shadow maps, and the records they share in `records.hlsli`). `tools\shaders\build.bat` compiles each with the Vulkan
+combinations and the vertex fog; `world.hlsl` for the static world's records with their shadows,
+`world_caster.hlsl` for its casters in the shadow maps, `water.hlsl` for the water, and the compute
+passes `world_transform.hlsl`, `world_cull.hlsl` and `world_compact.hlsl`; `shadow_range.hlsl`,
+`shadow_extents.hlsl` and `shadow_cascades.hlsl`, the shadow fit of phase 5's second half, which
+only `test_shadow_fit_gpu` runs yet; and what they share in `records.hlsli`, `quad.hlsli`,
+`world.hlsli`, `water.hlsli`, `shadow_fit.hlsli` and `exact.hlsli`; test programs' own shaders in
+`tests/shaders`). `tools\shaders\build.bat` compiles each with the Vulkan
 SDK's `dxc` to SPIR-V for Vulkan 1.0, checks it with `spirv-val`, turns it into MSL through
 SPIRV-Cross's C API with the resource indices SDL's Metal driver binds, and writes `<name>.h`
 beside the source: both as byte arrays, the resource counts `SDL_GPUShaderCreateInfo` needs, the

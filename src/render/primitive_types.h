@@ -51,12 +51,20 @@ struct RPTwoTexQuad {
     struct RPTwoTexVertex quad[4];
 };
 
-/* custom: a draw of part of a static mesh (render/gfx.h), queued among the primitives above; view
-   takes the mesh's own coordinates to view space (render/rp_project.c) */
-struct RPMeshDraw {
-    struct gfx_mesh *mesh;
-    float view[12];
-    struct GfxMeshDraw draw;
+/* custom: a draw of the static world (render/gfx.h) queued among the primitives above: one of its
+   records (RP_WORLD_RECORD, an alpha-blended model's, drawn with `draw`), a caster's triangles
+   (RP_WORLD_CAST: count indices from firstIndex after baseVertex, of textureArray, whose records'
+   ids lie below ids), or a cell of its water (RP_WORLD_WATER, drawn in `colour`). */
+enum { RP_WORLD_RECORD, RP_WORLD_CAST, RP_WORLD_WATER };
+
+struct RPWorldDraw {
+    int kind;
+    struct SwRecord record;
+    struct GfxWorldDraw draw;
+    uint32_t firstIndex, count, baseVertex, ids;
+    uint8_t textureArray;
+    uint32_t cell;
+    uint32_t colour;
 };
 
 struct PrimTriangle {

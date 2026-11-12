@@ -51,6 +51,9 @@ static DWORD pixels[256];
 static struct TexCache *recursive_cache;
 struct C3dDevice g_3dDevice;
 unsigned g_resPurgeAgeMs = 15;
+/* the static world's copies of the textures, made again after a reload (render/gfx.h) */
+static unsigned world_clears;
+void gfx_world_clear(void) { ++world_clears; }
 
 struct ResMgr *g_resMgr(void) { assert(manager_live); return &manager; }
 void res_mgr_purge_stale(struct ResMgr *unused) { (void)unused; abort(); }
@@ -166,8 +169,9 @@ static void lookup_reload_and_recursion(void)
     for (i = 0; i < 5; ++i) textures[i] = texture_cache_get(&cache, names[i], 0, 1);
     assert(textures[1] != textures[3]);
     start = loads; pixels[0] = 99;
+    world_clears = 0;
     texcache_reload_all(&cache);
-    assert(loads == start + 5);
+    assert(loads == start + 5 && world_clears == 1);
     for (i = start + 1; i < loads; ++i) assert(strcmp(loaded_names[i-1], loaded_names[i]) < 0);
     for (i = 0; i < 5; ++i) assert(textures[i]->base.surface->pixels == 99);
     old = textures[0]->base.surface;

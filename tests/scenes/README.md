@@ -128,11 +128,11 @@ moment the frame before it was shown to the moment it was. The file is one JSON 
 | key | counts |
 |-----|--------|
 | `frame` | the frame number the capture's log line gives |
-| `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives |
-| `draw_calls` | `gfx_draw` and `gfx_draw_mesh` calls |
+| `draws`, `primitives` | draws the device made, after batching, shadow maps included, and their primitives (an indirect draw of a run of the static world's records counts every primitive of the run, whether the GPU's cull keeps it or not) |
+| `draw_calls` | `gfx_draw` calls and the static world's draw calls (`gfx_world_draw`, `gfx_world_draw_record`, `gfx_world_draw_water`, `gfx_world_cast`) |
 | `modes_sent`, `modes_skipped` | `gfx_set_mode`, `gfx_set_effect` and `gfx_set_fog` calls that changed what the device draws with, and calls that left it as it was |
 | `texture_binds` | `gfx_set_texture` calls that changed a stage's texture |
-| `vertex_bytes` | vertices and indices given to the device for draws, and a mesh's when it is uploaded |
+| `vertex_bytes` | vertices and indices given to the device for draws, a static world mesh's when it is uploaded, and the water's cells drawn |
 | `texture_bytes` | texels written into textures and surfaces (texture builds, surface uploads, the sprite atlas) |
 | `draw_scene_ms`, `view_render_ms` | time spent in `renderer_draw_scene` and in `view_on_render` |
 | `present_ms` | time spent presenting the frame (`c3d_device_show_frame`), where the device submits the frame's recorded draws, and waits while the GPU is two frames behind |

@@ -13,6 +13,7 @@
 struct Player;
 struct GameMode;
 struct RswBounds;
+struct WorldGpu;
 
 struct World {
     struct GameMode *mode;
@@ -33,6 +34,8 @@ struct World {
     BYTE nearFlag;
     int nearRange;
     struct WorldLoader *modelLoader;
+    /* custom: the map's static world on the device (world/world_gpu.c) */
+    struct WorldGpu *gpu;
 };
 
 #endif

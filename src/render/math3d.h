@@ -23,13 +23,6 @@ struct Ray3 {
 };
 OFFSET_ASSERT(Ray3, length, 0x18);
 
-struct OrientedBox {
-    float half[3];
-    struct Vec3 centre;
-    struct Vec3 axis[3];
-};
-SIZE_ASSERT(OrientedBox, 0x3c);
-
 extern struct Mat34 g_identityMatrix;
 extern float g_radianTable[361], g_negRadianTable[361];
 extern float g_sinTable[361], g_negSinTable[361];
@@ -68,7 +61,6 @@ float get_cos_deg(int deg);
 float deg_to_rad(int deg);
 float get_sin_deg(int deg);
 
-int ray_hits_obb(const struct Ray3 *ray, const struct OrientedBox *box);
 int ray_triangle_hit(const struct Ray3 *ray, const struct Vec3 *v0, const struct Vec3 *v1,
                          const struct Vec3 *v2, float *u, float *v, float *t);
 void mat_look_at(float *m, const struct Vec3 *eye,

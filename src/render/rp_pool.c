@@ -118,7 +118,7 @@ struct RenderPool {
 };
 
 struct RenderStorage {
-    struct RenderPool quads, primitives, two_texture_quads, vertices, mesh_draws;
+    struct RenderPool quads, primitives, two_texture_quads, vertices, world_draws;
 };
 
 static void pool_free(struct RenderPool *pool)
@@ -212,7 +212,7 @@ static void renderer_storage_free(struct Renderer *renderer)
         pool_free(&storage->primitives);
         pool_free(&storage->two_texture_quads);
         pool_free(&storage->vertices);
-        pool_free(&storage->mesh_draws);
+        pool_free(&storage->world_draws);
         free(storage);
         renderer->storage = NULL;
     }
@@ -220,6 +220,9 @@ static void renderer_storage_free(struct Renderer *renderer)
         free(renderer->queues[i].items);
         memset(&renderer->queues[i], 0, sizeof renderer->queues[i]);
     }
+    free(renderer->waterCells);
+    renderer->waterCells = NULL;
+    renderer->waterCellCapacity = 0;
 }
 
 struct Renderer *renderer_construct(struct Renderer *self)
@@ -227,13 +230,15 @@ struct Renderer *renderer_construct(struct Renderer *self)
     struct RenderStorage *storage;
     memset(self->queues, 0, sizeof self->queues);
     self->sprite_atlas = NULL;
+    self->waterCells = NULL;
+    self->waterCellCapacity = 0;
     self->storage = storage = calloc(1, sizeof *storage);
     if (!storage) return NULL;
     if (!pool_init(&storage->quads, sizeof(struct RPQuad), 1024, initialize_quad)
         || !pool_init(&storage->primitives, sizeof(struct TexDrawPrim), 512, initialize_primitive)
         || !pool_init(&storage->two_texture_quads, sizeof(struct RPTwoTexQuad), 8192, initialize_two_texture_quad)
         || !pool_init(&storage->vertices, sizeof(struct TexDrawVertex), 10240, NULL)
-        || !pool_init(&storage->mesh_draws, sizeof(struct RPMeshDraw), 256, NULL)) {
+        || !pool_init(&storage->world_draws, sizeof(struct RPWorldDraw), 256, NULL)) {
         renderer_storage_free(self);
         return NULL;
     }
@@ -246,6 +251,22 @@ struct Renderer *renderer_construct(struct Renderer *self)
     self->twoPassAlpha = 0;
     sprite_atlas_initialize(self);
     return self;
+}
+
+uint32_t *renderer_water_cells(struct Renderer *self, size_t count)
+{
+    if (count > self->waterCellCapacity) {
+        size_t grown = self->waterCellCapacity ? self->waterCellCapacity : 1024;
+        uint32_t *more;
+        while (grown < count)
+            grown *= 2;
+        more = realloc(self->waterCells, grown * sizeof *more);
+        if (!more)
+            return NULL;
+        self->waterCells = more;
+        self->waterCellCapacity = grown;
+    }
+    return self->waterCells;
 }
 
 void renderer_destruct(struct Renderer *self)
@@ -318,7 +339,7 @@ static void queue_append(struct RenderQueue *queue, void *primitive, float key,
     queue->items[queue->count].order = (unsigned)queue->count;
     queue->items[queue->count].textures[0] = retain_texture(texture0);
     queue->items[queue->count].textures[1] = retain_texture(texture1);
-    queue->items[queue->count].mesh = 0;
+    queue->items[queue->count].world = 0;
     ++queue->count;
 }
 
@@ -404,41 +425,33 @@ void renderer_add_triangle(struct Renderer *r, struct PrimTriangle *tri, int lis
     renderer_add_prim(r, q, list_flags);
 }
 
-/* the queue renderer_add_prim puts a quad with these flags in, of those a model's quads use */
-int renderer_mesh_pass(int flags)
+void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWorldDraw *draw, struct Texture *texture,
+                             float key)
 {
-    if (!(flags & 1))
-        return flags & 0x20 ? RENDER_OPAQUE_WRAP : RENDER_OPAQUE_CLAMP;
-    if (flags & 0x20)
-        return RENDER_ALPHA_WRAP;
-    return flags & 0x8000 ? RENDER_ALPHA_WRITE_DEPTH : RENDER_ALPHA_CLAMP;
-}
+    struct RPWorldDraw *copy;
+    struct RenderQueue *q;
 
-void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMeshDraw *draw, struct Texture *texture0,
-                            struct Texture *texture1, float key)
-{
-    struct RPMeshDraw *copy;
-    struct RenderQueue *queue;
-
-    if (!draw || !draw->mesh || draw->draw.count <= 0)
+    if (!draw)
         return;
-    switch (pass) {
-    case RENDER_OPAQUE_CLAMP:
-    case RENDER_OPAQUE_WRAP:
+    switch (queue) {
     case RENDER_ALPHA_CLAMP:
     case RENDER_ALPHA_WRAP:
     case RENDER_ALPHA_WRITE_DEPTH:
-    case RENDER_GROUND_MESH:
+        if (draw->kind == RP_WORLD_CAST)
+            return;
+        break;
     case RENDER_SHADOW_CASTERS:
+        if (draw->kind != RP_WORLD_CAST)
+            return;
         break;
     default:
         return;
     }
-    copy = pool_take(&self->storage->mesh_draws, 1);
+    copy = pool_take(&self->storage->world_draws, 1);
     *copy = *draw;
-    queue = &self->queues[pass];
-    queue_append(queue, copy, key, texture0, texture1);
-    queue->items[queue->count - 1].mesh = 1;
+    q = &self->queues[queue];
+    queue_append(q, copy, key, texture, NULL);
+    q->items[q->count - 1].world = 1;
 }
 
 void rp_quad_set_vertex_pos(struct RPQuad *self, int i, const struct TexDrawVertex *vertex)
@@ -464,7 +477,7 @@ void renderer_destroy_all_rp_list(struct Renderer *self)
         pool_rewind(&storage->primitives);
         pool_rewind(&storage->two_texture_quads);
         pool_rewind(&storage->vertices);
-        pool_rewind(&storage->mesh_draws);
+        pool_rewind(&storage->world_draws);
     }
     sprite_atlas_finish_frame(self);
 }

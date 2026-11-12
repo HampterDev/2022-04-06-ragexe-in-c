@@ -25,6 +25,7 @@
 #include "actor/actor_common.h"
 #include "actor/game_actor.h"
 #include "world/world.h"
+#include "world/world_gpu.h"
 
 #define UNIT_JOB 0x7e
 #define NEW_FRAMES 36000
@@ -131,6 +132,8 @@ void skill_release_model(struct Skill *self)
     list = game_current_scene_root();
     if (list)
         scene_graph_node_remove(list, self->model, 0);
+    /* custom: its records leave the static world (world/world_gpu.c) */
+    world_gpu_forget(game_current_world(), self->model);
     if (self->model)
         self->model->ops->destroy(self->model);
     self->model = 0;
@@ -251,7 +254,6 @@ void skill_load_model(struct Skill *self, const char *name)
         skill_release_model(self); return;
     }
     self->model->ops->animate(self->model, 3.0);
-    self->model->pickable = 0;
     self->model->animType = 0;
     self->model->ops->light(self->model, colors[0], colors[1], colors[2]);
     if (scene != game_current_scene_root()) {

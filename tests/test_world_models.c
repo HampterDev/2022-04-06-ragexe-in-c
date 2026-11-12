@@ -88,9 +88,8 @@ static struct C3dActor *make_model(int id)
     return (struct C3dActor *)model;
 }
 struct C3dActor *world_model_create(const struct RswModel *record,
-    const struct WorldLighting *lighting, int deferred)
+    const struct WorldLighting *lighting)
 {
-    assert(deferred == 1);
     assert(memcmp(lighting, &expected_light, sizeof *lighting) == 0);
     assert(record->pos[0] == (float)record->animType);
     assert(strcmp(record->fileName, "copied model") == 0);

@@ -17,7 +17,6 @@ enum RenderPass {
     RENDER_ADDITIVE_FOG,
     RENDER_ADDITIVE,
     RENDER_ADDITIVE_OVERLAY,
-    RENDER_GROUND_MESH,
     RENDER_SHADOW_CASTERS,
     RENDER_BLENDED_WRAP,
     RENDER_BLENDED_NO_DEPTH,
@@ -33,13 +32,13 @@ struct RenderTexture {
     unsigned sort_key;
 };
 
-/* mesh: the primitive is a struct RPMeshDraw (custom) */
+/* world: the primitive is a struct RPWorldDraw (custom) */
 struct RenderEntry {
     void *primitive;
     float key;
     unsigned order;
     struct RenderTexture textures[2];
-    unsigned char mesh;
+    unsigned char world;
 };
 
 struct RenderQueue {

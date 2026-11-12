@@ -13,14 +13,13 @@ struct AnimMesh;
 struct Ray3;
 
 struct ModelActorOps {
+    /* custom: the model's version, 1 (struct C3dActorV1) or 2 (struct C3dActorV2) */
+    int version;
     void (*destroy)(struct C3dActor *actor);
     int (*create)(struct C3dActor *actor, struct C3dModelRes *resource);
     void (*light)(struct C3dActor *actor, const float *direction, const float *diffuse, const float *ambient);
     void (*animate)(struct C3dActor *actor, double time);
     void (*tick)(struct C3dActor *actor);
-    void (*render)(struct C3dActor *actor, const float *view);
-    /* custom: only the shadow casters of render (render/rp_pool.h) */
-    void (*cast)(struct C3dActor *actor, const float *view);
     void (*set_speed)(struct C3dActor *actor, float speed);
 };
 
@@ -29,21 +28,6 @@ struct FaceInfo {
     float uv[3][2];
 };
 SIZE_ASSERT(FaceInfo, 0x24);
-
-/* custom: a node's faces as one static mesh the device projects (render/gfx.h), built on its first
-   draw (world/model_node_render.c). A draw is a run of faces with one texture and one twoSided;
-   face is the first of them. */
-struct ModelGpuDraw {
-    int first, count, face;
-    WORD texture;
-    BYTE twoSided;
-};
-
-struct ModelGpu {
-    struct gfx_mesh *mesh;
-    struct ModelGpuDraw *draws;
-    int drawCount;
-};
 
 struct C3dNode {
     const char *name;
@@ -61,11 +45,7 @@ struct C3dNode {
     /* custom: the ground's light under each corner (red, green, blue, nine a face), which the
        original kept added to the corner's colour and clamped */
     int *groundLight;
-    struct ModelGpu *gpu;
-    int gpuState;
 };
-
-void model_node_gpu_free(struct C3dNode *node);
 
 struct C3dNodeV1 {
     struct C3dNode base;
@@ -106,11 +86,14 @@ struct C3dActor {
     float bboxMin[3];
     float bboxMax[3];
     int lastFrame;
-    /* custom: the frame whose shadow maps have the actor's casters (render or cast) */
+    /* custom: the frame whose shadow maps have the actor's casters (world/view_camera.c) */
     int castFrame;
-    BYTE pickable;
-    BYTE picked;
-    BYTE alpha;
+    /* custom: its place among the static world's models (world/world_gpu.c), made for the device's
+       world of generation gpuGeneration (-1: none), and the stamp of the last walk that found it in
+       a leaf of the scene graph */
+    uint32_t gpuModel;
+    int gpuGeneration;
+    unsigned gpuSeen;
     BYTE layer;
     struct VolumeBox *volumeBoxes;
     size_t volumeBoxCount;
@@ -138,6 +121,5 @@ struct C3dActorV2 {
 
 struct C3dActor *model_actor_create(int version);
 int c3d_actor_add_volume_boxes(struct C3dActor *actor, const struct VolumeBox *boxes, size_t count);
-void c3d_actor_pick(struct C3dActor *actor, const struct Ray3 *ray);
 
 #endif

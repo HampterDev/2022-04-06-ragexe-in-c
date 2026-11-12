@@ -26,13 +26,6 @@ static float unsigned_to_float(DWORD v)
     return (float)(double)v;
 }
 
-static void corner(const struct C3dGround15 *self, float *pos, int x, int y, float h)
-{
-    pos[0] = (float)(x - self->width / 2) * self->zoom;
-    pos[1] = h;
-    pos[2] = (float)(y - self->height / 2) * self->zoom;
-}
-
 static int load_surface(struct C3dGround15 *self, const struct GndRes *gnd, struct GndSurface *s,
                          const struct GndSurfaceRec *rec)
 {
@@ -146,20 +139,17 @@ int c3d_ground15_load(struct C3dGround15 *self, const struct GndRes *gnd,
             cell->height[1] = rec->height[1];
             cell->height[2] = rec->height[2];
             cell->height[3] = rec->height[3];
-            corner(self, cell->water[0], x, y, 0.0f);
-            corner(self, cell->water[1], x + 1, y, 0.0f);
-            corner(self, cell->water[2], x, y + 1, 0.0f);
-            corner(self, cell->water[3], x + 1, y + 1, 0.0f);
+            cell->water = -1;
 
             if (rec->top >= 0 && rec->top < gnd->surfaceCount) {
                 float h0, h1, h2, h3, zoom, dx, dz, d21, d20, d31, d32, e;
                 struct GndLightmap *lm;
 
                 s = self->surfaces + rec->top;
-                corner(self, s->v[0].pos, x, y, cell->height[0]);
-                corner(self, s->v[1].pos, x + 1, y, cell->height[1]);
-                corner(self, s->v[2].pos, x, y + 1, cell->height[2]);
-                corner(self, s->v[3].pos, x + 1, y + 1, cell->height[3]);
+                c3d_ground15_corner(self, x, y, cell->height[0], s->v[0].pos);
+                c3d_ground15_corner(self, x + 1, y, cell->height[1], s->v[1].pos);
+                c3d_ground15_corner(self, x, y + 1, cell->height[2], s->v[2].pos);
+                c3d_ground15_corner(self, x + 1, y + 1, cell->height[3], s->v[3].pos);
                 if (!load_surface(self, gnd, s, &gnd->surfaces[rec->top]))
                     goto fail;
                 lm = s->lightmap;
@@ -195,10 +185,10 @@ int c3d_ground15_load(struct C3dGround15 *self, const struct GndRes *gnd,
 
                 if (rec->front >= 0 && rec->front < gnd->surfaceCount) {
                     s = self->surfaces + rec->front;
-                    corner(self, s->v[0].pos, x, y + 1, rec->height[2]);
-                    corner(self, s->v[1].pos, x + 1, y + 1, rec->height[3]);
-                    corner(self, s->v[2].pos, x, y + 1, next->height[0]);
-                    corner(self, s->v[3].pos, x + 1, y + 1, next->height[1]);
+                    c3d_ground15_corner(self, x, y + 1, rec->height[2], s->v[0].pos);
+                    c3d_ground15_corner(self, x + 1, y + 1, rec->height[3], s->v[1].pos);
+                    c3d_ground15_corner(self, x, y + 1, next->height[0], s->v[2].pos);
+                    c3d_ground15_corner(self, x + 1, y + 1, next->height[1], s->v[3].pos);
                     if (!load_surface(self, gnd, s, &gnd->surfaces[rec->front]))
                         goto fail;
                     n->front[0] = 0.0f;
@@ -213,10 +203,10 @@ int c3d_ground15_load(struct C3dGround15 *self, const struct GndRes *gnd,
 
                 if (rec->right >= 0 && rec->right < gnd->surfaceCount) {
                     s = self->surfaces + rec->right;
-                    corner(self, s->v[0].pos, x + 1, y + 1, rec->height[3]);
-                    corner(self, s->v[1].pos, x + 1, y, rec->height[1]);
-                    corner(self, s->v[2].pos, x + 1, y + 1, next->height[2]);
-                    corner(self, s->v[3].pos, x + 1, y, next->height[0]);
+                    c3d_ground15_corner(self, x + 1, y + 1, rec->height[3], s->v[0].pos);
+                    c3d_ground15_corner(self, x + 1, y, rec->height[1], s->v[1].pos);
+                    c3d_ground15_corner(self, x + 1, y + 1, next->height[2], s->v[2].pos);
+                    c3d_ground15_corner(self, x + 1, y, next->height[0], s->v[3].pos);
                     if (!load_surface(self, gnd, s, &gnd->surfaces[rec->right]))
                         goto fail;
                     cell->lastFrame = -1;
@@ -431,3 +421,100 @@ void c3d_ground15_build_vertex_colours(struct C3dGround15 *self)
     }
 }
 
+/* custom: the ground in the static world (render/gfx.h, world/world_gpu.c), in place of the
+   original's quads, one a surface, which the CPU projected each frame. A block's mesh holds four
+   vertices and two triangles per surface, the corners and their order as the original gave them
+   to its quads (a strip, 0 1 2 then 2 1 3), so the device draws the same triangles with the same
+   colours, texture coordinates and lightmap coordinates, and scales the colours by the weather
+   colour as the original did. */
+
+struct BlockSurface {
+    struct GndSurface *surface;
+    uintptr_t key[2];
+};
+
+static int block_surface_less(const void *a, const void *b)
+{
+    const struct BlockSurface *x = a, *y = b;
+    int i;
+
+    for (i = 0; i < 2; i++)
+        if (x->key[i] != y->key[i])
+            return x->key[i] < y->key[i] ? -1 : 1;
+    return 0;
+}
+
+static int block_add(struct BlockSurface *list, int n, struct GndSurface *s)
+{
+    if (!s)
+        return n;
+    list[n].surface = s;
+    list[n].key[0] = (uintptr_t)s->texture;
+    list[n].key[1] = (uintptr_t)s->lightmapPage;
+    return n + 1;
+}
+
+int c3d_ground15_block_mesh(const struct C3dGround15 *self, int bx, int by, struct GfxMeshVertex *verts,
+                            WORD *indices, int *indexCount, struct GndBlockRun *runs)
+{
+    static struct BlockSurface list[GND_BLOCK_SURFACES];
+    int x0 = bx * GND_GPU_BLOCK, y0 = by * GND_GPU_BLOCK, x, y, n = 0, i, k, count = 0;
+    int x1 = x0 + GND_GPU_BLOCK < self->width ? x0 + GND_GPU_BLOCK : self->width;
+    int y1 = y0 + GND_GPU_BLOCK < self->height ? y0 + GND_GPU_BLOCK : self->height;
+
+    *indexCount = 0;
+    for (y = y0; y < y1; y++)
+        for (x = x0; x < x1; x++) {
+            const struct GndCell *cell = GND_CELL(self, x, y);
+
+            n = block_add(list, n, cell->top);
+            n = block_add(list, n, cell->frontWall);
+            n = block_add(list, n, cell->rightWall);
+        }
+    if (!n)
+        return 0;
+    qsort(list, (size_t)n, sizeof *list, block_surface_less);
+    for (i = 0; i < n; i++) {
+        const struct GndSurface *s = list[i].surface;
+        const float *p0 = s->v[0].pos, *p1 = s->v[1].pos, *p2 = s->v[2].pos;
+        float e1[3] = {p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]};
+        float e2[3] = {p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]};
+        float nrm[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
+        float len = sqrtf(nrm[0] * nrm[0] + nrm[1] * nrm[1] + nrm[2] * nrm[2]);
+
+        for (k = 0; k < 3 && len > 0.0f; k++)
+            nrm[k] /= len;
+        for (k = 0; k < 4; k++) {
+            struct GfxMeshVertex *v = &verts[i * 4 + k];
+
+            v->x = s->v[k].pos[0];
+            v->y = s->v[k].pos[1];
+            v->z = s->v[k].pos[2];
+            v->nx = nrm[0];
+            v->ny = nrm[1];
+            v->nz = nrm[2];
+            v->diffuse = v->colour2 = s->v[k].colour;
+            v->u0 = s->v[k].u;
+            v->v0 = s->v[k].v;
+            v->u1 = s->v[k].lu;
+            v->v1 = s->v[k].lv;
+        }
+        indices[i * 6] = (WORD)(i * 4);
+        indices[i * 6 + 1] = (WORD)(i * 4 + 1);
+        indices[i * 6 + 2] = (WORD)(i * 4 + 2);
+        indices[i * 6 + 3] = (WORD)(i * 4 + 2);
+        indices[i * 6 + 4] = (WORD)(i * 4 + 1);
+        indices[i * 6 + 5] = (WORD)(i * 4 + 3);
+        if (i == 0 || block_surface_less(&list[i - 1], &list[i])) {
+            struct GndBlockRun *r = &runs[count++];
+
+            r->texture = s->texture;
+            r->lightmap = s->lightmapPage;
+            r->first = i * 6;
+            r->count = 0;
+        }
+        runs[count - 1].count += 6;
+    }
+    *indexCount = n * 6;
+    return count;
+}

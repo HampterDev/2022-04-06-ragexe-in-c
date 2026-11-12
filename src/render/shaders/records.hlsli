@@ -13,9 +13,7 @@ struct Draw
                       // lightmap, the quads' fog table (64 float4 each, render/vertex_fog.h)
     float4 fog;       // the quads' fog: its table's base, direction and count
     float4 fogColour;
-    float4 colour;    // a mesh draw's colour (render/gfx.h, GfxMeshDraw)
-    float4 uvU;       // its first texture's coordinates: u' = dot(float3(u, v, 1), uvU.xyz)
-    float4 uvV;
+    float4 colour;    // a world draw's colour (render/gfx.h, GfxWorldDraw)
     float4 uvScale;   // each stage's texture coordinates times this, and then at most uvLimit: a
     float4 uvLimit;   // target's texture is wider than the target (render/gfx_gpu.c, MARGIN), and a
                       // clamped read stays off the margin
@@ -25,8 +23,6 @@ struct Draw
 struct View
 {
     float4x4 toClip;  // from the draw's space to clip space
-    float4x4 toView;  // from world space to view space (meshes)
-    float4 fog;       // the fog's start and end in view depth, 1 / (end - start)
 };
 
 struct Shadow

@@ -23,7 +23,7 @@ void c3d_ground15_get_cell_colour(struct C3dGround15 *ground, float x, float z, 
 }
 
 /* a corner's own colour channel under the ground's light, at most 0xff, as the device adds them
-   (render/gfx.h, GfxMeshDraw.lightGround) */
+   (render/gfx.h, GfxWorldDraw.lightGround) */
 static int ground_lit(int ground, DWORD own)
 {
     int c = ground + (int)(own & 0xff);

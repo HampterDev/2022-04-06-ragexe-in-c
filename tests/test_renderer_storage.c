@@ -113,6 +113,9 @@ static void sample_textures(void)
 static uint64_t trace;
 static unsigned draws;
 static int current_mode = -1;
+/* world_entries: the quads drawn among the world's entries go into world_calls too */
+static int count_quads;
+static void world_call(int kind, unsigned value);
 static void word(unsigned value) { trace = (trace ^ value) * UINT64_C(1099511628211); }
 static void bytes(const void *data, size_t count)
 { const BYTE *p = data; size_t i; for (i = 0; i < count; ++i) word(p[i]); }
@@ -145,17 +148,45 @@ void gfx_draw(int primitive, int kind, const void *vertices, int count, const WO
     if (index_count) bytes(indices, (size_t)index_count * sizeof *indices);
     sample_textures();
     ++draws;
+    if (count_quads)
+        world_call('Q', (unsigned)count);
 }
-static int mesh_token;
-static const float mesh_view[12] = {12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
-void gfx_set_world_view(const struct GfxWorldView *view)
-{ assert(!memcmp(view->view, mesh_view, sizeof mesh_view)); word(7); }
-void gfx_draw_mesh(gfx_mesh *mesh, const struct GfxMeshDraw *draw)
+/* the static world's draws (render/gfx.h), in the order the renderer made them: a pass of records
+   ('P', pass), one record ('R', its id) or a run of water cells ('W'), with the mode and the texture
+   they drew in */
+static struct { int kind, mode; unsigned value, texture, count; uint32_t cells[8]; DWORD colour; } world_calls[16];
+static unsigned world_call_count;
+static void world_call(int kind, unsigned value)
 {
-    assert(mesh == (gfx_mesh *)&mesh_token && draw->first == 0 && draw->count == 3);
-    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_MESHES));
-    word(6); word((unsigned)draw->first); word((unsigned)draw->count); sample_textures(); ++draws;
+    assert(world_call_count < 16);
+    memset(&world_calls[world_call_count], 0, sizeof world_calls[0]);
+    world_calls[world_call_count].kind = kind;
+    world_calls[world_call_count].mode = current_mode;
+    world_calls[world_call_count].value = value;
+    world_calls[world_call_count].texture = bound_surfaces[0] ? bound_surfaces[0]->id : 0;
+    ++world_call_count;
 }
+void gfx_world_draw(int pass, const struct GfxWorldDraw *draw)
+{
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_MESHES));
+    assert(draw->kind == (pass == SW_PASS_GROUND ? GFX_MESH_GROUND : GFX_MESH_MODEL));
+    world_call('P', (unsigned)pass);
+}
+void gfx_world_draw_record(const struct SwRecord *record, const struct GfxWorldDraw *draw)
+{
+    assert(draw_mode(current_mode) && (draw_mode(current_mode)->into & DRAW_MESHES) && draw->kind == GFX_MESH_MODEL);
+    world_call('R', record->id);
+}
+void gfx_world_draw_water(const uint32_t *cells, size_t count, DWORD colour)
+{
+    assert(count && count <= 8);
+    world_call('W', 0);
+    memcpy(world_calls[world_call_count - 1].cells, cells, count * sizeof *cells);
+    world_calls[world_call_count - 1].count = (unsigned)count;
+    world_calls[world_call_count - 1].colour = colour;
+}
+void gfx_world_cast(uint32_t firstIndex, uint32_t count, uint32_t baseVertex, uint8_t textureArray, uint32_t ids)
+{ (void)firstIndex; (void)count; (void)baseVertex; (void)textureArray; (void)ids; abort(); }
 int gfx_shadow_begin(const struct GfxShadow *shadow) { (void)shadow; abort(); }
 int gfx_shadow_cascade(int cascade) { (void)cascade; abort(); }
 void gfx_shadow_end(void) { abort(); }
@@ -371,6 +402,76 @@ static void multitex_frame_vertices(void)
     puts("Multitexture particles: frame-owned quads, projection inputs, skipped cells, UVs, fog, repeated draws, particle reuse and pool growth passed.");
 }
 
+/* The static world among the lists: its opaque passes and its ground once a frame while it is set,
+   its alpha-blended records and its water among the keyed alpha list's quads, farthest first, the
+   cells that follow one another with one texture and colour drawn as one run, which a quad between
+   them breaks. */
+static void world_entries(void)
+{
+    static const struct { int kind; unsigned value, texture; DWORD colour; float key; } adds[] = {
+        {RP_WORLD_WATER, 5, 0, 0x80ffffff, 0.4f}, {RP_WORLD_WATER, 3, 0, 0x80ffffff, 0.1f},
+        {RP_WORLD_RECORD, 7, 0, 0, 0.3f}, {RP_WORLD_WATER, 4, 0, 0x80ffffff, 0.2f},
+        {RP_WORLD_WATER, 6, 1, 0x80ffffff, 0.5f}, {RP_WORLD_WATER, 8, 1, 0x40ffffff, 0.6f},
+        {RP_WORLD_CAST, 9, 0, 0, 0.7f}, {RP_WORLD_WATER, 9, 0, 0x80ffffff, 0.45f}};
+    static const struct { int kind, mode; unsigned value, texture, count; uint32_t cells[2]; } want[] = {
+        {'P', DRAW_OPAQUE_CLAMP, SW_PASS_OPAQUE_CLAMP, 0, 0, {0}}, {'P', DRAW_OPAQUE_WRAP, SW_PASS_OPAQUE_WRAP, 0, 0, {0}},
+        {'P', DRAW_GROUND_LIGHTMAP, SW_PASS_GROUND, 0, 0, {0}}, {'W', DRAW_ALPHA_CLAMP, 0, 21, 2, {3, 4}},
+        {'R', DRAW_ALPHA_CLAMP, 7, 21, 0, {0}}, {'W', DRAW_ALPHA_CLAMP, 0, 21, 1, {5}},
+        {'Q', DRAW_ALPHA_CLAMP, 4, 21, 0, {0}}, {'W', DRAW_ALPHA_CLAMP, 0, 21, 1, {9}},
+        {'W', DRAW_ALPHA_CLAMP, 0, 22, 1, {6}}, {'W', DRAW_ALPHA_CLAMP, 0, 22, 1, {8}}};
+    struct Renderer renderer = {0};
+    struct Texture textures[2] = {0};
+    struct gfx_surface surfaces[2] = {{21}, {22}};
+    struct GfxWorldDraw models = {GFX_MESH_MODEL, 0, {1, 1, 1, 1}}, ground = {GFX_MESH_GROUND, 0, {1, 1, 1, 1}};
+    static struct TexDrawPrim quad;
+    unsigned i, j, frame;
+    assert(renderer_construct(&renderer));
+    renderer.twoPassAlpha = 0;
+    textures[0].base.surface = &surfaces[0];
+    textures[1].base.surface = &surfaces[1];
+    g_lightmap = 1;
+    for (frame = 0; frame < 2; ++frame) {
+        for (i = 0; i < sizeof adds / sizeof adds[0]; ++i) {
+            struct RPWorldDraw draw;
+            memset(&draw, 0, sizeof draw);
+            draw.kind = adds[i].kind;
+            draw.cell = adds[i].value;
+            draw.record.id = adds[i].value;
+            draw.draw = models;
+            draw.colour = adds[i].colour;
+            renderer_add_world_draw(&renderer, RENDER_ALPHA_CLAMP, &draw, textures + adds[i].texture, adds[i].key);
+        }
+        /* an ordinary quad with the first texture between cells 5 and 9 */
+        rp_quad_batch_construct(&quad);
+        quad.base.texture = textures;
+        quad.base.srcBlend = 5;
+        quad.base.destBlend = 6;
+        for (j = 0; j < 4; ++j)
+            quad.quad[j].rhw = 0.42f;
+        renderer_add_prim(&renderer, &quad.base, 1);
+        /* a caster goes only to the casters' queue */
+        assert(renderer.queues[RENDER_ALPHA_CLAMP].count == 8);
+        if (!frame)
+            renderer_set_world(&renderer, &models, &ground);
+        current_mode = -1; world_call_count = 0; count_quads = 1;
+        renderer_draw_lists(&renderer);
+        count_quads = 0;
+        /* the second frame, without the world set again, draws the queued entries alone */
+        assert(world_call_count == sizeof want / sizeof want[0] - (frame ? 3 : 0));
+        for (i = 0; i < world_call_count; ++i) {
+            unsigned w = i + (frame ? 3 : 0);
+            assert(world_calls[i].kind == want[w].kind && world_calls[i].mode == want[w].mode);
+            assert(world_calls[i].value == want[w].value && world_calls[i].texture == want[w].texture);
+            assert(world_calls[i].count == want[w].count);
+            assert(!memcmp(world_calls[i].cells, want[w].cells, want[w].count * sizeof want[w].cells[0]));
+        }
+        assert(world_calls[world_call_count - 1].colour == 0x40ffffff);
+        renderer_destroy_all_rp_list(&renderer);
+    }
+    g_lightmap = 0;
+    renderer_destruct(&renderer); assert(!outstanding);
+}
+
 static void failures(void)
 {
     struct Renderer renderer = {0}; unsigned point;
@@ -406,9 +507,9 @@ int main(int argc, char **argv)
         }
         return 99;
     }
-    if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); }
+    if (argc == 1) { failures(); multitex_frame_vertices(); queued_texture_ownership(); granny_projection_ownership(); world_entries(); }
     growth(); routing(); render_trace();
     assert(!outstanding && atlas_starts && atlas_ends && frame_ends == effect_ends);
-    if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes and real draw passes passed.");
+    if (argc == 1) puts("Renderer storage: C ownership, stable growth, reuse, every setup failure, all flag routes, real draw passes and the static world's draws among them passed.");
     return 0;
 }

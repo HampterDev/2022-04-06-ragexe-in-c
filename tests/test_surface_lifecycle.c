@@ -55,6 +55,7 @@ void gfx_release(gfx_surface *surface)
     surface->live = 0; --handles; ++releases; checked_free(surface);
 }
 int gfx_texture_format_ok(int format) { (void)format; return 1; }
+void gfx_world_clear(void) {}
 int gfx_get_size(gfx_surface *surface, int *w, int *h)
 { assert(surface && surface->live); if (fail_size) return -1; *w = surface->width; *h = surface->height; return 0; }
 int gfx_lock(gfx_surface *surface, const RECT *rect, int flags, struct gfx_lock *out)

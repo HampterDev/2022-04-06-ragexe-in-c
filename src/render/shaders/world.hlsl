@@ -1,22 +1,39 @@
-// The ground's and the models' meshes (render/gfx.h, gfx_draw_mesh), as the Direct3D 9 client
-// drew them: the stages' work for a model's or the ground's quads, the fog by view depth, and the
-// shadow maps while receiving (GfxShadow), with the alpha test of the draw's mode.
+// The static world's draw records (render/gfx.h, gfx_world_draw and gfx_world_draw_record): the
+// ground's and the models' triangles from the map's shared buffers, as the Direct3D 9 client drew
+// them: the stages' work for a model's or the ground's quads, the fog by view depth, and the shadow
+// maps while receiving (GfxShadow), with the alpha test of the draw's mode. A vertex carries its
+// record's id, which gives its transform slot, its texture-coordinate matrix and its textures'
+// layers; the draw's record (records.hlsli, Draw) comes as a uniform, the same for every record of
+// an indirect call.
 #include "records.hlsli"
+#include "world.hlsli"
 
 StructuredBuffer<Draw> draws : register(t0, space0);
-StructuredBuffer<View> views : register(t1, space0);
-StructuredBuffer<Shadow> shadows : register(t2, space0);
+StructuredBuffer<WorldRecord> records : register(t1, space0);
+StructuredBuffer<WorldView> views : register(t2, space0);
+StructuredBuffer<Shadow> shadows : register(t3, space0);
+StructuredBuffer<float4> uvs : register(t4, space0);
 
-[[vk::combinedImageSampler]] Texture2D<float4> colourMap : register(t0, space2);
+cbuffer VertexDraw : register(b0, space1)
+{
+    uint4 vertexDraw;  // x: the draw's record
+};
+
+[[vk::combinedImageSampler]] Texture2DArray<float4> colourMaps : register(t0, space2);
 [[vk::combinedImageSampler]] SamplerState colourSampler : register(s0, space2);
-[[vk::combinedImageSampler]] Texture2D<float4> lightMap : register(t1, space2);
+[[vk::combinedImageSampler]] Texture2DArray<float4> lightMaps : register(t1, space2);
 [[vk::combinedImageSampler]] SamplerState lightSampler : register(s1, space2);
 [[vk::combinedImageSampler]] Texture2DArray<float4> shadowMaps : register(t2, space2);
 [[vk::combinedImageSampler]] SamplerState shadowSampler : register(s2, space2);
 StructuredBuffer<Draw> fragmentDraws : register(t3, space2);
 StructuredBuffer<Shadow> fragmentShadows : register(t4, space2);
 
-struct MeshIn
+cbuffer FragmentDraw : register(b0, space3)
+{
+    uint4 fragmentDraw;  // x: the draw's record
+};
+
+struct WorldIn
 {
     [[vk::location(0)]] float3 position : TEXCOORD0;
     [[vk::location(1)]] float3 normal : TEXCOORD1;
@@ -24,10 +41,10 @@ struct MeshIn
     [[vk::location(3)]] float4 lit2 : TEXCOORD3;
     [[vk::location(4)]] float2 uv : TEXCOORD4;
     [[vk::location(5)]] float2 uv1 : TEXCOORD5;
-    [[vk::location(6)]] uint draw : TEXCOORD6;
+    [[vk::location(6)]] uint record : TEXCOORD6;   // the vertex's record id
 };
 
-struct MeshOut
+struct WorldOut
 {
     float4 position : SV_Position;
     [[vk::location(0)]] float4 lit : TEXCOORD0;
@@ -38,20 +55,17 @@ struct MeshOut
     [[vk::location(5)]] float4 l2 : TEXCOORD5;
     [[vk::location(6)]] float4 l3 : TEXCOORD6;
     [[vk::location(7)]] float3 depthFog : TEXCOORD7;  // view depth, fog factor, the slant's tangent
-    [[vk::location(8)]] nointerpolation uint draw : TEXCOORD8;
+    // the texture's layer, the lightmap's, and whether the record has each (bit 0, bit 1)
+    [[vk::location(8)]] nointerpolation uint3 layers : TEXCOORD8;
 };
 
-float2 turn(float2 uv, Draw d)
+WorldOut vs_main(WorldIn i)
 {
-    return float2(dot(float3(uv, 1), d.uvU.xyz), dot(float3(uv, 1), d.uvV.xyz));
-}
-
-MeshOut vs_main(MeshIn i)
-{
-    Draw d = draws[i.draw];
-    View v = views[d.mode.w];
+    Draw d = draws[vertexDraw.x];
+    WorldRecord rec = records[i.record];
+    WorldView v = views[record_slot(rec)];
     float4 lit = i.lit.zyxw, lit2 = i.lit2.zyxw;
-    MeshOut o;
+    WorldOut o;
     o.position = transform(i.position, v.toClip);
     float3 own = floor(lit.rgb * 255 + 0.5);
     bool receive = d.mesh.w != 0;
@@ -68,7 +82,10 @@ MeshOut vs_main(MeshIn i)
         o.lit = float4(floor(own * d.colour.rgb) / 255, lit.a * d.colour.a);
         o.shade = o.lit;
     }
-    o.uv = float4(turn(i.uv, d), i.uv1);
+    uint uvSlot = record_uv(rec);
+    float4 uvU = uvSlot != WORLD_NO_UV ? uvs[uvSlot * 2] : float4(1, 0, 0, 0);
+    float4 uvV = uvSlot != WORLD_NO_UV ? uvs[uvSlot * 2 + 1] : float4(0, 1, 0, 0);
+    o.uv = float4(world_turn(i.uv, uvU, uvV), i.uv1);
     float tangent = 0;
     o.l0 = o.l1 = o.l2 = o.l3 = 0;
     if (receive) {
@@ -85,8 +102,10 @@ MeshOut vs_main(MeshIn i)
         o.l3 = transform(p + away * s.offset.w, s.fromView[3]);
         tangent = min(sqrt(saturate(1 - c * c)) / max(abs(c), 1e-3), 8);
     }
-    o.depthFog = float3(o.position.w, saturate((v.fog.y - o.position.w) * v.fog.z), tangent);
-    o.draw = i.draw;
+    // the meshes' fog in the draw's record: its start and end in view depth, 1 / (end - start)
+    o.depthFog = float3(o.position.w, saturate((d.fog.y - o.position.w) * d.fog.z), tangent);
+    o.layers = uint3(rec.data.x & 0xffff, rec.data.x >> 16,
+                     (record_textured(rec) ? 1u : 0u) | (record_lightmapped(rec) ? 2u : 0u));
     return o;
 }
 
@@ -114,7 +133,7 @@ float2 shadow_seen(uint cascade, float4 l, float radius, float slant, float bias
     return max(edge.x, edge.y) < 0.5 && l.z < 1 ? float2(lit, contact) / 16 : float2(1, 0);
 }
 
-float2 seen_at(MeshOut i, Shadow s)
+float2 seen_at(WorldOut i, Shadow s)
 {
     float2 seen = float2(1, 0);
     float bias = s.lightView.w;
@@ -126,11 +145,11 @@ float2 seen_at(MeshOut i, Shadow s)
     return seen;
 }
 
-float4 fs_main(MeshOut i) : SV_Target0
+float4 fs_main(WorldOut i) : SV_Target0
 {
-    Draw d = fragmentDraws[i.draw];
-    float4 t = colourMap.Sample(colourSampler, stage_uv(i.uv.xy, d.uvScale.xy, d.uvLimit.xy));
-    float4 lightTexel = lightMap.Sample(lightSampler, stage_uv(i.uv.zw, d.uvScale.zw, d.uvLimit.zw));
+    Draw d = fragmentDraws[fragmentDraw.x];
+    float4 t = colourMaps.Sample(colourSampler, float3(stage_uv(i.uv.xy, d.uvScale.xy, d.uvLimit.xy), i.layers.x));
+    float4 lightTexel = lightMaps.Sample(lightSampler, float3(stage_uv(i.uv.zw, d.uvScale.zw, d.uvLimit.zw), i.layers.y));
     bool receive = d.mesh.w != 0;
     Shadow s = (Shadow)0;
     float2 seen = float2(1, 0);
@@ -147,8 +166,10 @@ float4 fs_main(MeshOut i) : SV_Target0
         // the ground's two stages, texture times colour times the lightmap's intensity plus its
         // colour, with the shadow maps in place of the shadows baked into that intensity: down to
         // the darkness of a shadow the intensity counts as lit, and the shadow maps darken to it;
-        // darker texels keep their own darkness
-        float4 lm = d.stages.z != 0 ? bordered(lightTexel, i.uv.zw, (d.stages.y & 2) != 0) : float4(0, 0, 0, 1);
+        // darker texels keep their own darkness. A stage reads with a border only where the record
+        // has its texture, as a stage without one read opaque white.
+        bool border = (d.stages.y & 2) != 0 && (i.layers.z & 2) != 0;
+        float4 lm = d.stages.z != 0 ? bordered(lightTexel, i.uv.zw, border) : float4(0, 0, 0, 1);
         float keep = lerp(saturate(lm.a / darkness) * lerp(darkness, 1, seen.x), lm.a, seen.y);
         c = float4(saturate(lm.rgb + keep * saturate(t.rgb * i.lit.rgb)), t.a * i.lit.a);
     }

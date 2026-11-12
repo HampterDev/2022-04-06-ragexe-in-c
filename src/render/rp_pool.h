@@ -25,15 +25,16 @@ struct TexDrawVertex *renderer_new_tex_draw_vertices(struct Renderer *self, int 
 void renderer_add_prim(struct Renderer *self, struct RPQuad *prim, int flags);
 void renderer_add_multi_tex_batch(struct Renderer *self, struct RPTwoTex *prim);
 void renderer_add_triangle(struct Renderer *self, struct PrimTriangle *tri, int flags);
-/* custom: queues a draw of a static mesh (render/gfx.h) with its two textures. In the queue that
-   renderer_mesh_pass gives for the flags a model's quads would have, the draw takes their place,
-   drawn among them with their states and, where that queue sorts by depth, by `key` (the rhw of
-   its first vertex, as theirs); RENDER_GROUND_MESH is drawn where the ground's two-texture quads
-   are, with their states, and casts nothing; RENDER_SHADOW_CASTERS only into the shadow maps, its
-   first texture, where there is one, tested for alpha. */
-int renderer_mesh_pass(int flags);
-void renderer_add_mesh_draw(struct Renderer *self, int pass, const struct RPMeshDraw *draw, struct Texture *texture0,
-                            struct Texture *texture1, float key);
+/* custom: queues a draw of the static world (render/gfx.h, struct RPWorldDraw): a record or a
+   cell of water into an alpha queue (RENDER_ALPHA_CLAMP, RENDER_ALPHA_WRAP, RENDER_ALPHA_WRITE_DEPTH),
+   drawn among its quads with their states, sorted by `key` (the rhw of its first corner, as
+   theirs), the water with `texture`; a caster into RENDER_SHADOW_CASTERS, drawn into the shadow
+   maps alone. */
+void renderer_add_world_draw(struct Renderer *self, int queue, const struct RPWorldDraw *draw, struct Texture *texture,
+                             float key);
+/* custom: room for `count` cells of water in the renderer's buffer of a run of them
+   (Renderer.waterCells), NULL without memory */
+uint32_t *renderer_water_cells(struct Renderer *self, size_t count);
 void rp_quad_set_vertex_pos(struct RPQuad *prim, int index, const struct TexDrawVertex *vertex);
 DWORD rp_fog_blend(DWORD argb);
 

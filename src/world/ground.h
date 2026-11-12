@@ -33,9 +33,11 @@ struct GndSurface {
     DWORD colour;
 };
 
+/* custom: water is the index of the cell's quad in the map's water (render/gfx.h, gfx_world_water),
+   -1 where the cell has none */
 struct GndCell {
     float height[4];
-    float water[4][3];
+    int water;
     struct GndSurface *top;
     struct GndSurface *rightWall;
     struct GndSurface *frontWall;
@@ -64,23 +66,27 @@ struct GndLightmapSet {
     size_t pageCount;
 };
 
-/* custom: the ground's surfaces as static meshes that the device projects (render/gfx.h), one per
-   block of GND_GPU_BLOCK x GND_GPU_BLOCK cells, built on their first draw (world/ground_draw.c).
-   A draw is a run of surfaces with one texture and one lightmap page; indexCount is all the
-   draws' indices, which cast shadows together, and castFrame the last frame that queued them. */
+/* custom: the ground's surfaces in the static world (render/gfx.h, gfx_world_mesh), one mesh per
+   block of GND_GPU_BLOCK x GND_GPU_BLOCK cells (c3d_ground15_block_mesh, world/world_gpu.c): where
+   a block's triangles lie in the world's shared buffers, which cast shadows together, none where
+   indexCount is 0; one past the greatest id of its records; and the last frame that queued them
+   as casters. */
 #define GND_GPU_BLOCK 32
 
-struct GndGpuDraw {
+struct GndGpuBlock {
+    uint32_t firstIndex, indexCount, baseVertex, ids;
+    int castFrame;
+};
+
+/* A run of a block's mesh: the surfaces with one texture and one lightmap page, `count` indices
+   from `first`. */
+struct GndBlockRun {
     struct Texture *texture, *lightmap;
     int first, count;
 };
 
-struct GndGpuBlock {
-    struct gfx_mesh *mesh;
-    struct GndGpuDraw *draws;
-    int drawCount;
-    int lastFrame, indexCount, castFrame;
-};
+/* The most surfaces of a block, and of its mesh's runs: a top, a front and a right wall a cell. */
+#define GND_BLOCK_SURFACES (GND_GPU_BLOCK * GND_GPU_BLOCK * 3)
 
 struct C3dGround15 {
     struct C3dAttr *attr;
@@ -100,7 +106,6 @@ struct C3dGround15 {
     BYTE waterPerBlock;
     struct GndGpuBlock *gpuBlocks;
     int gpuCols, gpuRows;
-    int gpuState;
 };
 
 #define GND_CELL(g, x, y) ((g)->cells + (size_t)(y) * (g)->width + (x))
@@ -109,5 +114,25 @@ void gnd_lightmap_set_reset(struct GndLightmapSet *self);
 int gnd_lightmap_set_build(struct GndLightmapSet *self, const struct GndRes *gnd);
 float ground_water_height(const struct GndWater *water, int64_t diagonal);
 void ground_gpu_free(struct C3dGround15 *self);
+/* a corner of cell (x, y) at height h: x, h, z */
+static inline void c3d_ground15_corner(const struct C3dGround15 *self, int x, int y, float h, float *pos)
+{
+    pos[0] = (float)(x - self->width / 2) * self->zoom;
+    pos[1] = h;
+    pos[2] = (float)(y - self->height / 2) * self->zoom;
+}
+/* custom: block (bx, by)'s surfaces as one mesh of the static world: four vertices and two
+   triangles a surface (a strip, 0 1 2 then 2 1 3), sorted by texture and lightmap page, into verts
+   (4 * GND_BLOCK_SURFACES) and indices (6 * GND_BLOCK_SURFACES), their runs into runs
+   (GND_BLOCK_SURFACES). Answers the number of runs, 0 for a block without surfaces; *indexCount the
+   indices. */
+int c3d_ground15_block_mesh(const struct C3dGround15 *self, int bx, int by, struct GfxMeshVertex *verts,
+                            WORD *indices, int *indexCount, struct GndBlockRun *runs);
+/* custom: the block of water a cell takes its wave from (struct GndWater), -1 for none */
+int c3d_ground15_water_block(struct C3dGround15 *self, int x, int y);
+/* custom: the cells whose water a frame may draw, into out (NULL: only counted; GndCell.water set
+   when out is given): those with a top surface, a block of water, and a corner of that top that
+   the wave can rise above. */
+size_t c3d_ground15_water_cells(struct C3dGround15 *self, struct GfxWaterCell *out);
 
 #endif

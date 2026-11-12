@@ -26,7 +26,7 @@ static inline struct Texture *run_texture(struct C3dNode *self, WORD texture)
 }
 
 const struct UvTransform *uv_xform_find(const struct C3dNodeV2 *node, int texture);
-/* custom: a texture-coordinate animation's turn as a transform (render/gfx.h, GfxMeshDraw): about
+/* custom: a texture-coordinate animation's turn as a transform (render/gfx.h, GfxWorldFrame.uv): about
    (0.5, 0.5) by its angle, then scaled and offset, as the original turned each corner's
    coordinates; the identity without x */
 void uv_turn_matrix(const struct UvTransform *x, float *uv);

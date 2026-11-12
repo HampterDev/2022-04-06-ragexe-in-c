@@ -281,36 +281,12 @@ static void model_v1_creation(void)
     assert(!live_blocks);
 }
 
-static void model_picking(void)
-{
-    struct C3dActor actor = {0};
-    struct Ray3 ray = {{2, 3, -5}, {0, 0, 1}, 10};
-    int i;
-    c3d_actor_pick(&actor, NULL);
-    assert(!actor.picked);
-    actor.pickable = 1;
-    actor.obb.centre[0] = 2; actor.obb.centre[1] = 3;
-    for (i = 0; i < 3; ++i) {
-        actor.obb.extent[i] = 1;
-        actor.obb.axis[i][i] = 1;
-    }
-    c3d_actor_pick(&actor, &ray);
-    assert(actor.picked);
-    actor.picked = 0; ray.length = 3;
-    c3d_actor_pick(&actor, &ray);
-    assert(!actor.picked);
-    ray.length = 10; ray.origin.x = 5;
-    c3d_actor_pick(&actor, &ray);
-    assert(!actor.picked);
-}
-
 int main(void)
 {
     g_guildInfo.master_gid = 321;
     world_proximity();
     model_creation();
     model_v1_creation();
-    model_picking();
     puts("traversal callbacks: synchronous names, model ownership, proximity boundaries and packet transitions passed");
     return 0;
 }

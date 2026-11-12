@@ -1,4 +1,3 @@
-#include "render/gfx.h"
 #include "render/texture.h"
 #include "world/ground.h"
 #include <stdlib.h>
@@ -23,25 +22,16 @@ void gnd_lightmap_set_reset(struct GndLightmapSet *self)
     self->pageCount = self->count = 0;
 }
 
-/* custom: the ground's static meshes (world/ground.h); world/ground_draw.c builds them */
-static void gpu_block_free(struct GndGpuBlock *b)
-{
-    gfx_mesh_destroy(b->mesh);
-    free(b->draws);
-    memset(b, 0, sizeof *b);
-}
-
+/* custom: the ground's place in the static world (world/ground.h); world/world_gpu.c makes it */
 void ground_gpu_free(struct C3dGround15 *self)
 {
-    int i;
+    size_t i;
 
-    if (self->gpuBlocks)
-        for (i = 0; i < self->gpuCols * self->gpuRows; i++)
-            gpu_block_free(&self->gpuBlocks[i]);
     free(self->gpuBlocks);
     self->gpuBlocks = NULL;
     self->gpuCols = self->gpuRows = 0;
-    self->gpuState = 0;
+    for (i = 0; i < self->cellCount && self->cells; i++)
+        self->cells[i].water = -1;
 }
 
 struct C3dGround15 *ground_new(void)
@@ -108,6 +98,7 @@ int c3d_ground15_create(struct C3dGround15 *self, int width, int height)
     for (i = 0; i < count; ++i) {
         self->cells[i].colour[0] = self->cells[i].colour[1] = self->cells[i].colour[2] = 255;
         self->cells[i].lastFrame = -1;
+        self->cells[i].water = -1;
     }
     for (i = 0; i < self->colourCount; ++i)
         self->colours[i].r = self->colours[i].g = self->colours[i].b = 1.0f;

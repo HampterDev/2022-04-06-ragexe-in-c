@@ -57,10 +57,16 @@ struct Renderer {
     struct GfxShadow shadow;
     struct ShadowReach shadowReach;
     int shadowPending, shadowDrawn;
-    /* custom: the view of the world view the mesh draws set last this frame (render/gfx.h), and
-       the camera's view of the frame, which world-space quads are drawn with (renderer_set_camera) */
-    float meshView[12], cameraView[12];
-    int meshViewSet, cameraSet;
+    /* custom: the camera's view of the frame, which world-space quads are drawn with
+       (renderer_set_camera), and what the static world's ground and opaque models are drawn with
+       this frame (renderer_set_world; render/gfx.h, gfx_world_draw), while worldSet */
+    float cameraView[12];
+    int cameraSet;
+    struct GfxWorldDraw worldModels, worldGround;
+    int worldSet;
+    /* custom: the cells of water a run of the alpha lists' water draws (render/crenderer.c) */
+    uint32_t *waterCells;
+    size_t waterCellCapacity;
 };
 
 void renderer_set_projection(struct Renderer *self, int width, int height);
@@ -88,6 +94,9 @@ void renderer_shadow_frame(struct Renderer *self, const float *view, float dista
 /* custom: the camera's view matrix for the frame being queued, which quads with world-space
    vertices (RPQuad.world) are drawn with */
 void renderer_set_camera(struct Renderer *self, const float *view);
+/* custom: the static world in this frame (render/gfx.h): its ground and opaque models are drawn
+   where the original drew their lists, with these */
+void renderer_set_world(struct Renderer *self, const struct GfxWorldDraw *models, const struct GfxWorldDraw *ground);
 /* custom: whether quads drawn with the view matrix `view` can hand the device world coordinates
    instead (RPQuad.world): `view` is the camera's for the frame */
 int renderer_world_quads(const struct Renderer *self, const float *view);

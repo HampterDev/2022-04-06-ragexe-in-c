@@ -166,7 +166,8 @@ rage_client_warnings(1 actor/map_type_table.c contents/body_layer_maps.c core/by
 rage_client_warnings(4 contents/byte_queue.c core/abstract_method.c core/cstr.c core/fatal.c core/hex.c
     core/numeric.c core/once_win32.c core/text_markup.c core/utf8.c effects/durations.c game/broadcast_text.c
     game/scream_text.c login/password_encode.c navi/navi_text_lines.c platform/code_page_win32.c
-    render/text_runs.c std/list.c std/tree.c std/vec.c ui/chat/speaker_name.c ui/controls/item_id_tag.c)
+    render/shadow_fit.c render/text_runs.c std/list.c std/tree.c std/vec.c ui/chat/speaker_name.c
+    ui/controls/item_id_tag.c)
 
 # ---- Test programs ----
 # Paths are relative to the repository root.
@@ -423,6 +424,11 @@ rage_test(texel_convert W4 CLIENT render/texel_convert.c)
 rage_test(draw_modes W4 CLIENT render/draw_modes.c)
 rage_test(vertex_fog W4 CLIENT render/vertex_fog.c)
 rage_test(font_faces W4 CLIENT render/font_faces.c core/cstr.c core/utf8.c)
+rage_test(world_layout W4 CLIENT render/world_layout.c render/static_world.c)
+rage_test(static_world W4 CLIENT render/math3d.c render/rp_project.c render/rp_screen.c render/static_world.c
+    world/frustum.c)
+# Against the CPU's shadow fit (render/rp_project.c), which it is to replace.
+rage_test(shadow_fit W4 tests/shadow_fit_scenes.c CLIENT render/shadow_fit.c render/rp_project.c render/math3d.c)
 rage_test(frame_timer W1 NO_WX CLIENT contents/frame_timer.c)
 rage_test(string W4)
 rage_test(touch CLIENT core/touch.c)
@@ -785,8 +791,9 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     # The GPU backend (render/gfx_gpu.c) on this machine's GPU, in a hidden window of the platform's
     # video driver (the dummy one has no Vulkan), without and with multisampling; skipped without a GPU.
     rage_test(gfx_gpu src/render/gfx_gpu.c src/render/gfx_batch.c src/render/texel_convert.c
-        CLIENT platform/thread_win32.c render/draw_modes.c render/vertex_fog.c LIBS SDL3::SDL3 ARGS 1
-        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+        CLIENT platform/thread_win32.c render/draw_modes.c render/static_world.c render/vertex_fog.c
+        render/world_layout.c
+        LIBS SDL3::SDL3 ARGS 1 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test_run(gfx_gpu_msaa COMMAND test_gfx_gpu 4 ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     set_tests_properties(gfx_gpu gfx_gpu_msaa PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(gm_name_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
@@ -1040,6 +1047,11 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(session_scalar_packets)
     rage_test(session_text CLIENT core/owned_text.c json/json_tree.c json/service_json.c platform/win_utf8.c
         std/container_memory.c std/string.c OBJECTS rage_test_json_test_support LIBS rage_json)
+    # The shadow fit's compute passes (src/render/shaders/shadow_*.hlsl) on this machine's GPU,
+    # against render/shadow_fit.c; skipped without a GPU.
+    rage_test(shadow_fit_gpu W4 tests/shadow_fit_scenes.c CLIENT render/shadow_fit.c LIBS SDL3::SDL3
+        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
+    set_tests_properties(shadow_fit_gpu PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
     rage_test(shortcut_packets W1 WE4013 CLIENT core/cstr.c platform/clock_win32.c)
     rage_test(shorten_text W1 CLIENT core/utf8.c ui/controls/window_shorten.c)
     rage_test(skill_action_registry WE4013 CLIENT skills/skill_action_mgr.c skills/skill_action_registry.c
@@ -1057,6 +1069,29 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     rage_test(startup_order WE4013 CLIENT core/client_managers.c core/manager_table.c std/string.c GENERATED
         startup_order)
     rage_test(startup_settings CLIENT platform/win_utf8.c)
+    # The static world on real maps against the draws the Direct3D 9 client's code made of them, and
+    # its compute passes on this machine's GPU against the C (label client-files): given a game folder
+    # (RAGE_MAPS_GAME_DIR, by default client-files beside the checkout); it says so when it skips
+    # them, and when it finds no GPU.
+    get_filename_component(default_game "${PROJECT_SOURCE_DIR}/../client-files" ABSOLUTE)
+    set(RAGE_MAPS_GAME_DIR "${default_game}" CACHE PATH
+        "Game folder whose data.grf test_static_world_maps loads maps from")
+    rage_test(static_world_maps CLIENT core/cstr.c core/memory.c core/numeric.c core/owned_text.c core/res_mgr.c
+        core/text_array.c fileio/file.c fileio/file_mgr.c fileio/grf_cipher.c fileio/grf_mapfile.c fileio/grf_pak.c
+        fileio/res_cache.c fileio/res_get.c fileio/resource_cache_store.c fileio/resource_errors.c
+        fileio/resource_path.c ${platform_files} render/anim_mesh.c render/crenderer.c render/draw_modes.c
+        render/keyframes.c render/math3d.c render/rp_pool.c render/rp_project.c render/rp_screen.c
+        render/static_world.c render/world_layout.c resources/attr.c resources/attr_queries.c resources/bitmap.c
+        resources/bitmap_codecs.c resources/bitmap_gif.c resources/bitmap_jpeg.c resources/bitmap_png.c
+        resources/bitmap_storage.c resources/gnd.c resources/jpeg_codec.c resources/jpeg_storage.c resources/model_mesh.c
+        resources/model_res_base.c resources/model_res_load.c resources/model_res_parts.c
+        resources/model_res_queries.c resources/resource_registry.c resources/world_res.c std/container_memory.c
+        std/list.c std/std_sort.c std/string.c std/vec.c world/frustum.c world/ground.c world/ground_draw.c
+        world/ground_lifecycle.c world/ground_load.c world/ground_water.c world/model_actor.c world/model_load.c
+        world/model_node.c world/model_node_light.c world/models.c world/scene_bounds.c world/scene_geometry.c
+        world/scene_graph.c world/scene_lifecycle.c world/scene_objects.c world/view_camera.c world/world_gpu.c
+        LIBS rage_png rage_stb rage_zlib SDL3::SDL3 ARGS ${RAGE_MAPS_GAME_DIR} LABELS client-files
+        ENVIRONMENT SDL_VIDEO_DRIVER=windows)
     rage_test(status_icons CLIENT actor/player_status_icons.c)
     rage_test(status_wnd_info WE4013 CLIENT ui/wndmgr/wnd_infos.c GENERATED status_wnd_info)
     rage_test(str_animation CLIENT effects/ez2str_playback.c effects/rag/rag_str_playback.c

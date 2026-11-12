@@ -5,9 +5,10 @@ resolution. Phases 2 and 3 are done on Windows. On Linux their unit tests and sc
 in WSL with Mesa's lavapipe, but no one has played on it. The Android client of phase 2 builds for
 both ABIs and draws the login screen on the x86_64 emulator (the host's GPU through gfxstream, and
 SwiftShader); no map has been drawn on Android. The macOS client has not been built or run on it,
-and no Metal compiler has seen its shaders. Phases 4 to 7 are to do; parts of phases 5 and 6 are
-built ahead of them on branches of their own (see those phases). File references drift as the code
-changes. Sizes are judgement, not measurement.
+and no Metal compiler has seen its shaders. The first half of phase 5, the static world drawn from
+records the GPU culls, is done on Windows. Phase 4, the second half of phase 5 (the shadows) and
+phases 6 and 7 are to do; parts of them are built ahead on branches of their own (see those
+phases). File references drift as the code changes. Sizes are judgement, not measurement.
 
 ## Goal
 
@@ -51,20 +52,32 @@ changes. Sizes are judgement, not measurement.
   factors. One quad shader runs the stage combinations, chosen by the draw's record. Fog is
   computed in the vertex shaders from view depth. Pre-transformed vertices (`GFX_VTX_TEX1/TEX2`,
   xyz-rhw) carry most of what is drawn.
-- **Already static on the GPU:** the ground (one mesh per 32 by 32 cells, `world/ground_draw.c`) and
-  the RSM models (one mesh per node, `world/model_node_render.c`). Per frame each visible block or
-  node still queues one draw per (texture, lightmap) or (texture, two-sided) run, each a draw of
-  its own with its own record.
+- **The static world on the GPU** (phase 5, first half): a map's ground blocks and RSM model nodes
+  in one vertex and one index buffer, their textures and lightmap pages in texture arrays of one
+  size and number of mipmap levels each, a draw record per (block or node, texture run) and a
+  transform slot per model and node (`render/static_world.c`, `render/world_layout.c`,
+  `world/world_gpu.c`, `gfx_world_*`); the meshes and textures go up through a stream of their own,
+  a bounded transfer buffer at a time. Each frame a compute pass computes every slot's view as the
+  CPU computed a node's matrix, to the bit, and two more cull the records against the view and
+  compact each run of records with one texture array, lightmap array and cull mode into one
+  indirect draw. A model's pose is the one its first tick of the frame left; a model whose moving
+  record the view holds is ticked though the walk does not reach it. The CPU culls the alpha-blended
+  models' records itself and queues them among the sprites as the walk reaches their models, and
+  still picks the shadow casters, drawn from the records. The water's cells stay on the GPU, raised
+  by the frame's waves in the vertex shader.
 - **Built on the CPU every frame:** actor sprites (projected on the CPU, `actor/sprite_quad.c`),
-  Granny actors (skinned, lit and projected per vertex, `actor/granny.c`), water (heights animated
-  per tick, corners projected), particles, STR effects, effect primitives, damage numbers and every
-  2D quad. The shadow cascades are fitted on the CPU to per-leaf boxes of the ground and models
-  (`renderer_shadow_frame`, `view_shadow_boxes`), and the CPU picks the casters
-  (`view_cast_shadows`).
-- **How it reaches the device:** 19 queues (`render/draw_queue.h`), flushed in a fixed order by
-  `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`). Non-mesh draws go through
-  `render/gfx_batch.c` (8,192 vertices), flushed on any texture change or change of what they are
-  drawn with into a draw of the recorded frame.
+  Granny actors (skinned, lit and projected per vertex, `actor/granny.c`), the water's key among the
+  sprites (one per cell in view), particles, STR effects, effect primitives, damage numbers and
+  every 2D quad. The shadow cascades are fitted on the CPU to per-leaf boxes of the ground and
+  models (`renderer_shadow_frame`, `view_shadow_boxes`), and the CPU picks the casters
+  (`view_cast_shadows`); so the CPU still walks the scene graph's leaves the view reaches, for the
+  casters, the water's keys, the actors, and the models' ticks and the poses and alpha-blended
+  records it takes from them for the device.
+- **How it reaches the device:** 18 queues (`render/draw_queue.h`), flushed in a fixed order by
+  `renderer_draw_lists`, each in its draw mode (`render/crenderer.c`), with the static world's
+  passes drawn before the opaque lists' quads and the ground's after them. Draws that are not the
+  static world's go through `render/gfx_batch.c` (8,192 vertices), flushed on any texture change or
+  change of what they are drawn with into a draw of the recorded frame.
 - **GPU-to-CPU traffic:** the screen wobble locks the back buffer every frame it runs
   (`render/cframe.c`); UI windows that composite render to a target and copy it back
   (`render/render_clients.c`); a startup probe locks a target (`render/c3ddevice.c`); screenshots
@@ -73,7 +86,8 @@ changes. Sizes are judgement, not measurement.
 - **Textures:** 16-bit 4444/1555 converted on the CPU (`render/csurface.c`) and widened to
   B8G8R8A8 when they go up, magenta keyed to alpha 0, mips made on the GPU; sprite atlas pages
   decoded from palette RLE on the CPU (`render/rp_atlas.c`); UI canvases re-uploaded as 256-pixel
-  tiles when they change. One texture per surface; no texture arrays yet.
+  tiles when they change. One texture per surface, but for the static world's, whose pixels go
+  into the layers of its texture arrays.
 - **Measured:** each scene capture writes its frame's counters (`tests/scenes/README.md`).
   `prontera_crowd` makes 1,174 draws (1,954 calls) and `camera_level_view` 3,345, as with Direct3D
   9; `docs/custom-review.md` has the baseline and phase 2's CPU times.
@@ -152,7 +166,11 @@ Nothing below this floor is supported by a second path.
   reads (`render/cdcbitmap.c`) are read from their CPU copy.
 - **One upload per frame.** Everything the CPU writes for a frame (dynamic vertices, instance data,
   per-draw constants, changed texture tiles) goes into one transfer buffer that cycles, copied in
-  one copy pass at the start of the frame's command buffer.
+  one copy pass at the start of the frame's command buffer, and made again smaller after a while
+  where it grew for a burst. The static world's meshes and textures, hundreds of MB on a map's first
+  frame, go up through a stream of their own instead: a transfer buffer of 32 MB (or the largest
+  texture) filled a batch at a time, each batch in a command buffer of its own that is waited for
+  before the next, the textures' pixels widened straight from their surfaces.
 - **Only the main thread talks to the GPU.** The model loader thread (`world/models.c`) creates and
   uploads textures today (`texture_cache_get` to `gfx_create_texture` and `texture_upload_pixels`),
   which Direct3D 9's `MULTITHREADED` device serialises. SDL documents no thread safety for creating
@@ -161,11 +179,13 @@ Nothing below this floor is supported by a second path.
 - **Static data is resident.** A map's ground and model meshes share one vertex and one index
   buffer, filled when the map loads and as streamed models arrive, each mesh behind the ones placed
   with its 16-bit indices and a base vertex. Map textures and lightmap pages live in texture arrays,
-  one per exact size (a texture in a larger layer would filter, wrap and mip differently), so a
-  draw picks its texture by layer instead of by binding. Over the 943 maps of the game's data
-  there are 41 sizes; 256 by 256 holds 74 % of the textures and every lightmap page; a map needs 8
-  arrays at the median and 23 at most, 338 layers of one size at most (two arrays at Vulkan's
-  minimum of 256 layers), and 33 MB of RGBA8 with mips on average, 471 MB at most.
+  one per exact size and number of mipmap levels (a texture in a larger layer would filter, wrap and
+  mip differently), each made with the layers the map's first frame places and grown to the power
+  of two at or above the layers where more come, so a draw picks its texture by layer instead of by
+  binding. Over the 943 maps of the game's
+  data there are 41 sizes; 256 by 256 holds 74 % of the textures and every lightmap page; a map
+  needs 8 arrays at the median and 23 at most, 338 layers of one size at most (two arrays at
+  Vulkan's minimum of 256 layers), and 33 MB of RGBA8 with mips on average, 471 MB at most.
 
 ### The static world, GPU-driven
 
@@ -174,17 +194,35 @@ Nothing below this floor is supported by a second path.
   cull mode, flags, bounds, transform slot, texture-coordinate matrix slot (RSM2 nodes), today's sort
   keys and, for alpha, the key's point.
 - Each frame a compute pass culls the records against the view and against each shadow cascade and
-  writes indirect draw commands; the passes draw them with one indirect call per pipeline and
-  texture array, the records sorted by pass, then array, then today's texture order (SDL binds at
-  most 16 sampled textures a stage, and a map can need 23 arrays). SDL has no draw whose count the
-  GPU writes (`draw_count` is the CPU's), so the pass writes one command per record and culls a
-  record by giving it no instances. The CPU no longer walks the scene graph's leaves to queue mesh
+  writes indirect draw commands; the passes draw them with one indirect call for each run of
+  records that share a pipeline, texture array and lightmap array, the records sorted by pass, then
+  today's texture order, then cull mode and place in the index buffer (SDL binds at most 16 sampled
+  textures a stage, and a map can need 23 arrays). Sorting by array before the texture order would
+  make fewer calls, but would turn round pairs of coplanar faces of two textures that today draws
+  in texture order (up to 10 a map). SDL has no draw whose count the GPU writes (`draw_count` is
+  the CPU's), so the cull compacts each run: a group of threads takes the run's records in order,
+  keeps those in view, gives each its place in the frame's index buffer of them, one after the
+  other, and writes the run's one command with the count it kept; a second pass, a group of
+  threads to each 64 indices of a record (fixed with the records), copies them, the base vertex
+  added, to the record's place where it is kept and leaves at once where it is not, so that a long
+  run's copy (the ground's runs hold the most) is spread over the GPU and not left to one group,
+  and no thread searches for its index. Since indirect draws have no first instance to give, each
+  vertex carries its record's number. The CPU no longer walks the scene graph's leaves to queue mesh
   draws.
 - Alpha-blended model draws stay among the sprites and effects, sorted back to front as today: the
-  CPU culls and keys them from their records.
-- Animated model nodes (the model animates and the node or an ancestor has more than one key in a
-  channel) write their matrices into a per-frame transform buffer; static nodes' matrices stay put.
-- Water becomes a static mesh per map whose waves the vertex shader animates from the time.
+  CPU culls and keys them from their records when the walk reaches their model, in the order of its
+  nodes and their runs, so that draws at one depth keep today's order.
+- Animated model nodes (the node or an ancestor has more than one key in a channel, whatever the
+  model's animation says when it is built: a skill's model is set going later) write their matrices
+  into a per-frame transform buffer; static nodes' matrices stay put. A model's pose is taken when
+  the frame first draws or casts it, as today drew it after its first tick; a model the walk did not
+  reach whose moving part the view holds is ticked first, so that no part is drawn in a pose the
+  frame did not tick. A compute pass multiplies each slot's matrix into its parent's view as the CPU
+  did, to the bit, so that the vertices land on the pixels they did.
+- The water's cells stay on the GPU, one quad each, and the vertex shader raises their corners by
+  the frame's waves as the CPU did each frame, to the bit. The water is drawn among the sprites, one
+  cell after another in the order of their depth, so the CPU still keys the cells it sees; drawing
+  them all at once would change the picture wherever water and sprites overlap.
 
 ### Shadows, fitted on the GPU
 
@@ -263,8 +301,9 @@ deleted.
 
 ### A frame
 
-1. Copy pass: the frame's upload.
-2. Compute: cull the draw records for the view.
+1. Copy pass: the frame's upload (the static world's meshes and textures went up before, through
+   their stream).
+2. Compute: cull the draw records for the view, compacting each run into one indirect draw.
 3. Depth pass (single-sample, view depth): the receivers.
 4. Compute: fit the cascades from that depth, then cull the draw records for each cascade.
 5. Shadow pass: four layers, indirect draws of the casters.
@@ -362,11 +401,29 @@ recorded.
 - Delete `gfx_lock` on targets, `renderer_lock_target`, `targetBits`/`targetPitch`, the startup
   texel probe and the lockable back buffer.
 
-### Phase 5: the static world and its shadows on the GPU (large)
+### Phase 5: the static world and its shadows on the GPU (large; first half done)
 
 - Shared map buffers, texture arrays, draw records, the compute cull for the view, the depth pass,
   the cascade fit and the cascade culls in compute, indirect draws, the transform buffer, water as a
   mesh.
+- Done, the first half: the static world as *The static world, GPU-driven* describes it, but for
+  the cascades' culls: shared buffers with 32-bit indices, texture arrays filled and mipmapped by
+  layer on the main thread through the stream, records, transform slots computed on the GPU, the
+  view's cull compacted into one indirect draw a run, the poses taken at a model's first sight and
+  the models ticked for a moving record in view, the alpha-blended models culled and keyed by the
+  CPU from their records, the water's cells on the GPU (`world/world_gpu.c`, `render/gfx_gpu.c`,
+  `render/world_layout.c`, `world.hlsl`, `world_transform.hlsl`, `world_cull.hlsl`,
+  `world_compact.hlsl`, `water.hlsl`). Deleted with it: the per-leaf mesh queuing
+  (`world/model_node_render.c`, `c3d_ground15_render`), the `GROUND_MESH` queue, the per-block and
+  per-node meshes (`gfx_mesh_create`, `gfx_draw_mesh`, `gfx_set_world_view`), the water's heights
+  and quads built on the CPU every frame, and the mesh and caster shaders. The captures are the
+  same as before but for the pixels the plan expected (`docs/custom-review.md`, "The static world
+  on the GPU").
+- To do, the second half: the depth pass, the cascade fit and the cascades' culls in compute, and
+  the shadow pass drawing their casters, the casters still being the CPU's choice, queued in
+  `SHADOW_CASTERS` and drawn from the records (`gfx_world_cast`). The transform pass already
+  computes each slot's view in every cascade's light space; the fit must write the cascades'
+  matrices into a buffer that pass reads, instead of the CPU's.
 - Built ahead, on branches of their own: the fit's math as a pure C reference with its three
   compute shaders (`render/shadow_fit.c`, branch `gpu-shadow-fit`; the shaders match the reference
   to the bit in range, extents, squares and snapped translations, and within a few units in the last
@@ -374,15 +431,16 @@ recorded.
   (`render/static_world.c`, branch `gpu-world-records`: layout, records, texture arrays and a CPU
   cull, which on 8 maps at 12 poses each draw exactly today's draws, the dropped ones having no
   pixel on screen). The hysteresis of the cascades' squares is not in the reference yet.
-- Delete the per-leaf mesh queuing in `view_on_render`, the CPU shadow fit and caster choice (the
-  list under *Shadows, fitted on the GPU*), the `GROUND_MESH` and `SHADOW_CASTERS` queues, and the
-  per-tick CPU water heights.
+- Delete the per-leaf mesh queuing in `view_on_render` (done), the CPU shadow fit and caster choice
+  (the list under *Shadows, fitted on the GPU*), the `GROUND_MESH` (done) and `SHADOW_CASTERS`
+  queues, and the water's heights and quads built on the CPU every frame (done). The leaves' walk
+  goes with the caster choice, but for the water's keys, the actors and the models' ticks.
 - Done when the scene set, the hill scenes and the gate scene show the same shadows as the
   reference, edge for edge where the texels allow, and the flat and steep far views from 2,500 to
   10,000 keep theirs. The review entry accounts for the pixels that change on purpose: where
   coplanar faces sharing a texture z-fight, today's unstable sort and the records' fixed order
   differ (today itself draws about half of such pairs in both orders); animated parts that today's
-  leaf culling leaves out show (on `amatsu` up to 31 pixels at a distance of 2,500).
+  leaf culling leaves out show, ticked (on `amatsu` up to 30 pixels at a distance of 2,500).
 
 ### Phase 6: sprites, actors and effects as instances (large)
 
@@ -432,9 +490,11 @@ recorded.
   it; the hysteresis of the squares and the texel snapping must hold the edges still, and phase 5
   checks it with the moving captures.
 - **Shaders that must match the CPU or Direct3D 9.** `records.hlsli`'s `transform()` for world
-  vertices, meshes and casters matches Direct3D 9 only where the driver fuses its multiply-adds, as
-  NVIDIA's does and lavapipe does not; the shaders of phases 5 and 6 that must match follow the
-  rules under *Sprites, actors and effects*.
+  vertices, the static world's records and casters matches Direct3D 9 only where the driver fuses
+  its multiply-adds, as NVIDIA's does and lavapipe does not; the shaders of phases 5 and 6 that
+  must match the CPU follow the rules under *Sprites, actors and effects* (`exact.hlsli`), and a
+  driver may still part from C where those rules do not reach, as NVIDIA's remainder of a negative
+  int did (`water.hlsli` takes it of the magnitude).
 - **Threads.** The loader thread's texture creation moves to the main thread's upload (see *Memory
   and uploads*); SDL's drivers lock creation internally, but the API does not promise it, so the
   plan does not lean on it.

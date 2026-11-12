@@ -4,6 +4,7 @@
 #include "diag/diag.h"
 #include "std/std_sort.h"
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "render/render_options.h"
 #include "platform/clock.h"
@@ -60,15 +61,6 @@ static unsigned char quad_less(const void *a, const void *b, void *pred)
     return x->textures[0].sort_key < y->textures[0].sort_key;
 }
 
-static unsigned char two_tex_less(const void *a, const void *b, void *pred)
-{
-    const struct RenderEntry *x = a, *y = b;
-    (void)pred;
-    if (x->textures[0].sort_key != y->textures[0].sort_key)
-        return x->textures[0].sort_key < y->textures[0].sort_key;
-    return x->textures[1].sort_key < y->textures[1].sort_key;
-}
-
 static unsigned char multitexture_less(const void *a, const void *b, void *pred)
 {
     const struct RenderEntry *x = a, *y = b;
@@ -84,24 +76,33 @@ static void queue_sort(struct RenderQueue *queue, StdSortLessFn less)
         std_sort(queue->items, queue->items + queue->count, sizeof *queue->items, less, NULL);
 }
 
-/* custom: a mesh draw among a queue's entries (render/gfx.h): the world view of its view where that
-   differs from the last one set this frame, then its textures, or as a shadow caster its first
-   texture */
-static void draw_mesh_entry(struct Renderer *self, const struct RenderEntry *e, int caster)
+/* custom: a draw of the static world among a queue's entries (render/gfx.h, struct RPWorldDraw): a
+   record, or the cells of water from entry i on that follow one another with one texture, drawn as
+   one run. Answers the entry after those drawn. */
+static size_t draw_world_entries(struct Renderer *self, const struct RenderQueue *l, size_t i)
 {
-    const struct RPMeshDraw *n = e->primitive;
+    const struct RPWorldDraw *w = l->items[i].primitive;
+    size_t j, n = 0;
 
-    if (!self->meshViewSet || memcmp(self->meshView, n->view, sizeof n->view)) {
-        struct GfxWorldView world;
-        renderer_world_view(self, n->view, &world);
-        gfx_set_world_view(&world);
-        memcpy(self->meshView, n->view, sizeof self->meshView);
-        self->meshViewSet = 1;
+    if (w->kind == RP_WORLD_RECORD) {
+        gfx_world_draw_record(&w->record, &w->draw);
+        return i + 1;
     }
-    set_tex0(self, e->textures[0].surface);
-    if (!caster)
-        set_tex1(self, e->textures[1].surface);
-    gfx_draw_mesh(n->mesh, &n->draw);
+    for (j = i; j < l->count; j++) {
+        const struct RPWorldDraw *x = l->items[j].primitive;
+
+        if (!l->items[j].world || x->kind != RP_WORLD_WATER || l->items[j].textures[0].surface != l->items[i].textures[0].surface
+            || x->colour != w->colour)
+            break;
+        if (!renderer_water_cells(self, n + 1))
+            break;
+        self->waterCells[n++] = x->cell;
+    }
+    if (!n)
+        return i + 1;
+    set_tex0(self, l->items[i].textures[0].surface);
+    gfx_world_draw_water(self->waterCells, n, w->colour);
+    return i + n;
 }
 
 static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
@@ -113,8 +114,8 @@ static void flush_keyed(struct Renderer *self, int list, int sort, int skipNull)
     for (size_t i = 0; i < l->count; ++i) {
         e = l->items + i;
         struct RPQuad *n = e->primitive;
-        if (e->mesh) {
-            draw_mesh_entry(self, e, 0);
+        if (e->world) {
+            i = draw_world_entries(self, l, i) - 1;
             continue;
         }
         if (skipNull && !n)
@@ -131,10 +132,6 @@ static void flush_plain(struct Renderer *self, int list, int sort, int skipNull)
         queue_sort(l, quad_less);
     for (size_t i = 0; i < l->count; ++i) {
         struct RPQuad *n = l->items[i].primitive;
-        if (l->items[i].mesh) {
-            draw_mesh_entry(self, &l->items[i], 0);
-            continue;
-        }
         if (skipNull && !n)
             continue;
         set_tex0(self, l->items[i].textures[0].surface);
@@ -169,16 +166,6 @@ static void flush_effects(struct Renderer *self, int list, int mode, int src, in
     }
 }
 
-/* custom: the ground's meshes (render/gfx.h), drawn in the mode of the original's two-texture
-   ground quads and sorted by texture and lightmap as those were */
-static void flush_ground_meshes(struct Renderer *self)
-{
-    struct RenderQueue *l = &self->queues[RENDER_GROUND_MESH];
-    queue_sort(l, two_tex_less);
-    for (size_t i = 0; i < l->count; ++i)
-        draw_mesh_entry(self, &l->items[i], 0);
-}
-
 /* The alpha lists of models and sprites, clamped then wrapped, in a pair of modes. */
 static void flush_alpha_keyed_lists(struct Renderer *self, int clampMode, int wrapMode)
 {
@@ -188,14 +175,17 @@ static void flush_alpha_keyed_lists(struct Renderer *self, int clampMode, int wr
     flush_keyed(self, RENDER_ALPHA_WRAP, 1, 0);
 }
 
-/* custom: draws a queue's meshes into the shadow map cascade chosen (render/gfx.h), with their
-   first textures bound, which tests them for alpha, where they have one */
+/* custom: draws a queue's casters of the static world into the shadow map cascade chosen
+   (render/gfx.h, gfx_world_cast) */
 static void draw_shadow_casters(struct Renderer *self, int list)
 {
     struct RenderQueue *l = &self->queues[list];
 
-    for (size_t i = 0; i < l->count; ++i)
-        draw_mesh_entry(self, &l->items[i], 1);
+    for (size_t i = 0; i < l->count; ++i) {
+        const struct RPWorldDraw *w = l->items[i].primitive;
+
+        gfx_world_cast(w->firstIndex, w->count, w->baseVertex, w->textureArray, w->ids);
+    }
 }
 
 /* custom: the shadow maps of this frame's casters, models and ground, which every mesh draw of
@@ -221,13 +211,22 @@ static void draw_shadow_maps(struct Renderer *self)
     gfx_shadow_end();
 }
 
+/* custom: the opaque models of the static world (render/gfx.h, gfx_world_draw) come first in their
+   lists, in the order of their textures, then the lists' quads in theirs. The renderer sorted both
+   together by the textures' creation order: a quad whose texture was made before a model's (a Granny
+   actor's cached from an earlier map) drew before it, and now draws after it, which shows only
+   where the two lie at the same depth. */
 static void flush_opaque_lists(struct Renderer *self)
 {
     draw_shadow_maps(self);
     gfx_shadow_receive(self->shadowDrawn);
     gfx_set_mode(DRAW_OPAQUE_CLAMP);
+    if (self->worldSet)
+        gfx_world_draw(SW_PASS_OPAQUE_CLAMP, &self->worldModels);
     flush_plain(self, RENDER_OPAQUE_CLAMP, 1, 1);
     gfx_set_mode(DRAW_OPAQUE_WRAP);
+    if (self->worldSet)
+        gfx_world_draw(SW_PASS_OPAQUE_WRAP, &self->worldModels);
     flush_plain(self, RENDER_OPAQUE_WRAP, 1, 1);
 }
 
@@ -260,6 +259,13 @@ void renderer_enable_fog(struct Renderer *self, int enable)
     self->fogEnable = enable;
 }
 
+void renderer_set_world(struct Renderer *self, const struct GfxWorldDraw *models, const struct GfxWorldDraw *ground)
+{
+    self->worldModels = *models;
+    self->worldGround = *ground;
+    self->worldSet = 1;
+}
+
 void renderer_set_light(struct Renderer *self, const float *dir, const float *ambient, float shadowOpacity)
 {
     float darkness = 1.0f - (shadowOpacity == shadowOpacity ? shadowOpacity : 0.5f);
@@ -280,7 +286,6 @@ void rp_quad_draw(struct RPQuad *self)
 static void renderer_draw_lists(struct Renderer *self)
 {
     struct GfxFog fog;
-    self->meshViewSet = 0;
     if (self->cameraSet) {
         struct GfxWorldView camera;
         renderer_world_view(self, self->cameraView, &camera);
@@ -296,10 +301,11 @@ static void renderer_draw_lists(struct Renderer *self)
     gfx_set_fog(&fog);
     TIMED(PERF_L_GROUND, flush_opaque_lists(self));
     perf_begin(PERF_L_WATER);
-    /* custom: the ground (world/ground_draw.c), without its lightmaps the texture times the colour,
+    /* custom: the ground of the static world, without its lightmaps the texture times the colour,
        as the original's ground quads without them */
     gfx_set_mode(g_lightmap ? DRAW_GROUND_LIGHTMAP : DRAW_GROUND);
-    flush_ground_meshes(self);
+    if (self->worldSet)
+        gfx_world_draw(SW_PASS_GROUND, &self->worldGround);
     perf_end(PERF_L_WATER);
     TIMED(PERF_L_MULTITEXTURE, flush_multitexture(self));
     TIMED(PERF_L_BLENDED_NO_DEPTH,
@@ -335,6 +341,7 @@ static void renderer_draw_lists(struct Renderer *self)
     TIMED(PERF_L_BLENDED_OVERLAY, flush_effects(self, RENDER_BLENDED_OVERLAY, DRAW_EFFECT_OVERLAY,
                                                 DRAW_BLEND_SRCALPHA, DRAW_BLEND_INVSRCALPHA, 1));
     gfx_shadow_receive(0);
+    self->worldSet = 0;
 }
 
 int renderer_draw_scene(struct Renderer *self)

@@ -402,3 +402,12 @@ nowhere to land here; it goes below as not needed, with what `custom` does in it
 come yet. Fixes above `render/gfx.h` pick as before, except that the render states `main`'s lists
 are drawn with (`render/crenderer.c`) are `custom`'s draw modes (`render/draw_modes.c`): a fix to
 them lands as a change of the modes.
+
+## A fix for `main` made on `custom` first, 2026-11-12
+
+The static world (`custom` only) raises the water's waves on the GPU, which must give the heights
+`world/ground_water.c` gives. `ground_water_height` took an angle outside the int range through
+doubles and `fmod`, where the original's conversion of the float angle (`cvttss2si`) gives
+INT_MIN, as the C already gave for an angle that is no number. `custom` now gives INT_MIN for both
+(`test_ground_water` checks it); `main` has the same code and wants the same fix, which only a
+map's absurd wave pitch reaches. When `main` makes it, the pick has nothing to add here.

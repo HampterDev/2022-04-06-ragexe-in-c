@@ -45,8 +45,6 @@ static void checked_free(void *memory)
 #define calloc checked_calloc
 #define free checked_free
 #include "../src/world/ground_lifecycle.c"
-/* the ground's meshes are built on its first draw, which these tests do not reach */
-void gfx_mesh_destroy(gfx_mesh *mesh) { (void)mesh; abort(); }
 #include "../src/world/ground.c"
 #include "../src/world/ground_load.c"
 #include "../src/world/ground_water.c"
@@ -101,9 +99,8 @@ static void check_cells(struct C3dGround15 *ground, int width, int height)
     assert(ground->width == width && ground->height == height);
     assert(ground->cellCount == count && ground->colourCount == count * 4);
     for (i = 0; i < count; ++i) {
-        static const float empty_water[4][3] = {{0}};
         const struct GndCell *cell = &ground->cells[i];
-        assert(!memcmp(cell->water, empty_water, sizeof empty_water));
+        assert(cell->water == -1);
         assert(!cell->top && !cell->frontWall && !cell->rightWall && cell->lastFrame == -1);
         assert(cell->colour[0] == 255 && cell->colour[1] == 255 && cell->colour[2] == 255);
     }
